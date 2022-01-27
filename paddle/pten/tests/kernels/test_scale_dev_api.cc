@@ -17,6 +17,7 @@ limitations under the License. */
 
 #include "paddle/pten/kernels/scale_kernel.h"
 
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
@@ -25,7 +26,7 @@ namespace pten {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
 TEST(DEV_API, scale) {
   // 1. create tensor
@@ -36,7 +37,8 @@ TEST(DEV_API, scale) {
                                                   framework::make_ddim({3, 4}),
                                                   pten::DataLayout::NCHW));
 
-  auto* dense_x_data = dense_x.mutable_data<float>();
+  auto* dense_x_data =
+      dense_x.mutable_data<float>(paddle::platform::CPUPlace());
   for (size_t i = 0; i < 12; ++i) {
     dense_x_data[i] = i * 1.0;
   }
@@ -44,17 +46,14 @@ TEST(DEV_API, scale) {
   float bias = 1;
   bool bias_after_scale = true;
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
-
   // 2. test API
-  auto out = pten::Scale<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
-      dense_x,
-      scale,
-      bias,
-      bias_after_scale);
+  pten::CPUContext dev_ctx;
+  dev_ctx.SetDeviceAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
+  auto out =
+      pten::Scale<float>(dev_ctx, dense_x, scale, bias, bias_after_scale);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);
@@ -75,7 +74,8 @@ TEST(DEV_API, scale_host) {
                             pten::DenseTensorMeta(pten::DataType::FLOAT32,
                                                   framework::make_ddim({3, 4}),
                                                   pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x.mutable_data<float>();
+  auto* dense_x_data =
+      dense_x.mutable_data<float>(paddle::platform::CPUPlace());
   for (size_t i = 0; i < 12; ++i) {
     dense_x_data[i] = i * 1.0;
   }
@@ -84,21 +84,18 @@ TEST(DEV_API, scale_host) {
                           pten::DenseTensorMeta(pten::DataType::FLOAT32,
                                                 framework::make_ddim({1}),
                                                 pten::DataLayout::NCHW));
-  scale.mutable_data<float>()[0] = 2;
+  scale.data<float>()[0] = 2;
   float bias = 1;
   bool bias_after_scale = true;
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
-
   // 2. test API
-  auto out = pten::Scale<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
-      dense_x,
-      scale,
-      bias,
-      bias_after_scale);
+  pten::CPUContext dev_ctx;
+  dev_ctx.SetDeviceAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
+  auto out =
+      pten::Scale<float>(dev_ctx, dense_x, scale, bias, bias_after_scale);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);

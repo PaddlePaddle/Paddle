@@ -15,9 +15,11 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
+#include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/kernels/empty_kernel.h"
 #include "paddle/pten/kernels/full_kernel.h"
 
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
@@ -26,19 +28,18 @@ namespace pten {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
 TEST(DEV_API, empty) {
   // 1. create input
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
+  pten::CPUContext dev_ctx;
+  dev_ctx.SetDeviceAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
 
   // 2. test API
-  auto out = pten::Empty<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
-      {3, 2},
-      pten::DataType::INT32);
+  auto out = pten::Empty<float>(dev_ctx, {3, 2}, pten::DataType::INT32);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);
@@ -56,16 +57,17 @@ TEST(DEV_API, empty_like) {
                             pten::DenseTensorMeta(pten::DataType::FLOAT32,
                                                   framework::make_ddim({3, 2}),
                                                   pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x.mutable_data<float>();
+  auto* dense_x_data =
+      dense_x.mutable_data<float>(paddle::platform::CPUPlace());
   dense_x_data[0] = 0;
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
-
   // 2. test API
-  auto out = pten::EmptyLike<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)), dense_x);
+  pten::CPUContext dev_ctx;
+  dev_ctx.SetDeviceAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
+  auto out = pten::EmptyLike<float>(dev_ctx, dense_x);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);
@@ -79,16 +81,13 @@ TEST(DEV_API, full) {
   // 1. create input
   float val = 1.0;
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
-
   // 2. test API
-  auto out = pten::Full<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
-      {3, 2},
-      val,
-      pten::DataType::FLOAT32);
+  pten::CPUContext dev_ctx;
+  dev_ctx.SetDeviceAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
+  auto out = pten::Full<float>(dev_ctx, {3, 2}, val, pten::DataType::FLOAT32);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);
@@ -111,19 +110,19 @@ TEST(DEV_API, full_like) {
                             pten::DenseTensorMeta(pten::DataType::FLOAT32,
                                                   framework::make_ddim({3, 2}),
                                                   pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x.mutable_data<float>();
+  auto* dense_x_data =
+      dense_x.mutable_data<float>(paddle::platform::CPUPlace());
   dense_x_data[0] = 0;
   float val = 1.0;
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
+  pten::CPUContext dev_ctx;
+  dev_ctx.SetDeviceAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
 
   // 2. test API
-  auto out = pten::FullLike<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
-      dense_x,
-      val);
+  auto out = pten::FullLike<float>(dev_ctx, dense_x, val);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);

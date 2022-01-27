@@ -13,13 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/dynload/cuda_driver.h"
+#include "paddle/pten/backends/dynload/cuda_driver.h"
 
 namespace paddle {
 namespace platform {
 namespace dynload {
-
-std::once_flag cuda_dso_flag;
-void* cuda_dso_handle = nullptr;
 
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
@@ -28,10 +26,7 @@ CUDA_ROUTINE_EACH_VVM(DEFINE_WRAP);
 #endif
 CUDA_ROUTINE_EACH(DEFINE_WRAP);
 
-bool HasCUDADriver() {
-  std::call_once(cuda_dso_flag, []() { cuda_dso_handle = GetCUDADsoHandle(); });
-  return cuda_dso_handle != nullptr;
-}
+bool HasCUDADriver() { return pten::dynload::HasCUDADriver(); }
 
 }  // namespace dynload
 }  // namespace platform

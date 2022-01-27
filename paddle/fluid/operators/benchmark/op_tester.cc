@@ -24,6 +24,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/pybind/pybind.h"
 
+// pten
+#include "paddle/pten/kernels/declarations.h"
+
 namespace paddle {
 namespace operators {
 namespace benchmark {
@@ -308,7 +311,7 @@ void OpTester::SetupTensor(framework::LoDTensor *tensor,
   }
 
   if (!platform::is_cpu_place(place_)) {
-    TensorCopySync(cpu_tensor, place_, tensor);
+    paddle::framework::TensorCopySync(cpu_tensor, place_, tensor);
   }
 }
 

@@ -32,17 +32,16 @@ void Copy(const Context& dev_ctx,
           DenseTensor* dst) {
   auto* src_ptr = src.data();
   const auto& src_place = src.place();
-  const auto& dst_place = dst->place();
 
   VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
-          << dst_place;
+          << src_place;
 
   dst->Resize(src.dims());
-  auto* dst_ptr = dst->mutable_data();
+  auto* dst_ptr = dev_ctx.Alloc(dst);
 
-  if (src_ptr == dst_ptr && src_place == dst_place) {
+  if (src_ptr == dst_ptr) {
     VLOG(3) << "Skip copy the same data async from " << src_place << " to "
-            << dst_place;
+            << src_place;
     return;
   }
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
@@ -51,13 +50,8 @@ void Copy(const Context& dev_ctx,
   auto size = src.numel() *
               paddle::framework::SizeOfType(TransToProtoVarType(src.dtype()));
 
-  if (paddle::platform::is_cpu_place(src_place) &&
-      paddle::platform::is_cpu_place(dst_place)) {
-    paddle::memory::Copy(BOOST_GET_CONST(paddle::platform::CPUPlace, dst_place),
-                         dst_ptr,
-                         BOOST_GET_CONST(paddle::platform::CPUPlace, src_place),
-                         src_ptr,
-                         size);
+  if (paddle::platform::is_cpu_place(src_place)) {
+    paddle::memory::Copy(src_place, dst_ptr, src_place, src_ptr, size);
   }
 }
 

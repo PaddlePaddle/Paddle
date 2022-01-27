@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,9 +14,47 @@ limitations under the License. */
 
 #pragma once
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device_context.h"
+#include <memory>
+
+#include "paddle/pten/backends/cpu/forwards.h"
+#include "paddle/pten/core/device_context.h"
+
+// TODO(wilber): Do we need to use place in pten kernel?
+#include "paddle/pten/common/place.h"
 
 namespace pten {
-using CPUContext = paddle::platform::CPUDeviceContext;
+
+struct CPUContextResource {
+  Eigen::DefaultDevice* device{nullptr};
+};
+
+class CPUContext : public DeviceContext {
+ public:
+  // NOTE: DeviceContext hold resources. Used in training scenarios.
+  CPUContext();
+
+  // NOTE: Share the same underlying resources, please ensure that resources are
+  // not released.
+  CPUContext(const CPUContext&);
+
+  CPUContext(CPUContext&&);
+
+  ~CPUContext();
+
+  Eigen::DefaultDevice* eigen_device() const;
+
+  // TODO(wilber): Whether the interface should be preserved.
+  Place GetPlace() const override;
+
+ public:
+  // NOTE: External users manage resources. Used in inference scenarios.
+  explicit CPUContext(const CPUContextResource& ctx_res);
+
+  void SetEigenDevice(Eigen::DefaultDevice* device);
+
+ private:
+  struct CPUImpl;
+  std::unique_ptr<CPUImpl> cpu_impl_;
+};
+
 }  // namespace pten

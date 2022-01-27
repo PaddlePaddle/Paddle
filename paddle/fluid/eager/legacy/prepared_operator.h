@@ -29,13 +29,13 @@ DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace framework {
-class Tensor;
 class Variable;
 }  // namespace framework
-namespace platform {
-class DeviceContext;
-}  // namespace platform
 }  // namespace paddle
+
+namespace pten {
+class DenseTensor;
+}  // namespace pten
 
 namespace egr {
 namespace legacy {
@@ -53,6 +53,13 @@ class PreparedOp {
              const paddle::framework::RuntimeContext& ctx,
              const paddle::framework::OpKernelType& kernel_type,
              const paddle::framework::OperatorWithKernel::OpKernelFunc& func,
+             paddle::platform::DeviceContext* dev_ctx);
+
+  PreparedOp(const paddle::framework::OperatorBase& op,
+             const paddle::framework::RuntimeContext& ctx,
+             const paddle::framework::OpKernelType& kernel_type,
+             const paddle::framework::KernelSignature& kernel_signature,
+             const pten::Kernel& pt_kernel,
              paddle::platform::DeviceContext* dev_ctx);
 
   static PreparedOp Prepare(
@@ -76,6 +83,13 @@ class PreparedOp {
   paddle::framework::OpKernelType kernel_type_;
   paddle::framework::OperatorWithKernel::OpKernelFunc func_;
   paddle::platform::DeviceContext* dev_ctx_;
+
+  // NOTE(chenweihang): Similar op members are used to adapt to
+  // new pten kernel, if there is a better design in the future,
+  // we may polish the implementation here
+  bool run_pten_kernel_{false};
+  paddle::framework::KernelSignature pt_kernel_signature_;
+  pten::Kernel pt_kernel_;
 };
 
 }  // namespace legacy

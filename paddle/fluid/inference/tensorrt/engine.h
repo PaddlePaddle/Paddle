@@ -36,12 +36,6 @@ limitations under the License. */
 #include "paddle/utils/any.h"
 
 namespace paddle {
-namespace framework {
-class Tensor;
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -128,7 +122,19 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
       dims.d[0] = shape[1];
       return dims;
     }
-    return nvinfer1::Dims3(shape[1], 1, 1);
+    // static shape doesn't support 1D op so far.
+    PADDLE_ENFORCE_NE(shape.size(), 1UL,
+                      platform::errors::InvalidArgument(
+                          "The input [%s] shape of trt subgraph is %s."
+                          "it's not supported by trt so far",
+                          input, ShapeStr(shape)));
+
+    nvinfer1::Dims dims;
+    dims.nbDims = shape.size() - 1;
+    for (size_t i = 1; i < shape.size(); i++) {
+      dims.d[i - 1] = shape[i];
+    }
+    return dims;
   } else {
     if (shape.size() == 4UL) {
       return nvinfer1::Dims4(shape[0], shape[1], shape[2], shape[3]);

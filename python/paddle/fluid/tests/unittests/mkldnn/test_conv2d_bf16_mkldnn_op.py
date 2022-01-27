@@ -50,6 +50,7 @@ class TestConv2DBF16Op(TestConv2DOp):
         self.init_fuse_residual()
         self.init_data_type()
         self.init_force_fp32_output()
+        self.init_infer_or_train()
 
         self.conv2d_param = {
             'stride': self.stride,
@@ -83,6 +84,9 @@ class TestConv2DBF16Op(TestConv2DOp):
         if self.input_type is not np.float32:
             self.input = convert_float_to_uint16(self.input)
 
+        if self.weight_type is not np.float32:
+            self.filter = convert_float_to_uint16(self.filter)
+
         self.inputs = {
             'Input': self.input,
             'Filter': OpTest.np_dtype_to_fluid_dtype(
@@ -104,6 +108,8 @@ class TestConv2DBF16Op(TestConv2DOp):
             'force_fp32_output': self.force_fp32_output,
             'fuse_residual_connection': self.fuse_residual
         }
+
+        self.init_additional_attrs()
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace())
@@ -141,6 +147,12 @@ class TestConv2DBF16Op(TestConv2DOp):
     def init_fuse_residual(self):
         self.fuse_residual = True
 
+    def init_infer_or_train(self):
+        self.weight_type = np.float32
+
+    def init_additional_attrs(self):
+        self.attrs['is_test'] = True
+
 
 @OpTestTool.skip_if_not_cpu_bf16()
 class TestConv2DWithGradBF16Op(TestConv2DBF16Op):
@@ -149,6 +161,12 @@ class TestConv2DWithGradBF16Op(TestConv2DBF16Op):
 
     def init_fuse_residual(self):
         self.fuse_residual = None
+
+    def init_additional_attrs(self):
+        self.attrs['is_test'] = False
+
+    def init_infer_or_train(self):
+        self.weight_type = np.uint16
 
     def test_check_grad(self):
         dout = self.conv_output_float

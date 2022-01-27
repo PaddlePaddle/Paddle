@@ -17,6 +17,7 @@ limitations under the License. */
 
 #include "paddle/pten/kernels/matmul_kernel.h"
 
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
@@ -25,7 +26,7 @@ namespace pten {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
 TEST(DEV_API, dot) {
   // 1. create tensor
@@ -36,13 +37,15 @@ TEST(DEV_API, dot) {
                                             framework::make_ddim({3, 3}),
                                             pten::DataLayout::NCHW));
 
-  auto* dense_x_data = dense_x.mutable_data<float>();
+  auto* dense_x_data =
+      dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 
   DenseTensor dense_y(alloc.get(),
                       pten::DenseTensorMeta(pten::DataType::FLOAT32,
                                             framework::make_ddim({3, 3}),
                                             pten::DataLayout::NCHW));
-  auto* dense_y_data = dense_y.mutable_data<float>();
+  auto* dense_y_data =
+      dense_y.mutable_data<float>(paddle::platform::CPUPlace());
 
   for (size_t i = 0; i < 9; ++i) {
     dense_x_data[i] = 1.0;
@@ -50,13 +53,13 @@ TEST(DEV_API, dot) {
   }
   std::vector<float> sum(9, 6.0);
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* ctx = pool.Get(paddle::platform::CPUPlace());
-
   // 2. test API
-  auto out = Matmul<float, CPUContext>(
-      *(static_cast<CPUContext*>(ctx)), dense_x, dense_y, false, false);
+  pten::CPUContext dev_ctx;
+  dev_ctx.SetDeviceAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
+  auto out = Matmul<float, CPUContext>(dev_ctx, dense_x, dense_y, false, false);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);

@@ -20,18 +20,17 @@ from ..utils import set_dist_op_desc_original_id
 
 
 class DistributedUpdateLossScaling(DistributedOperatorImplContainer):
-    def __init__(self, name):
-        super(DistributedUpdateLossScaling, self).__init__()
-        self._name = name
+    def __init__(self, op_type):
+        super(DistributedUpdateLossScaling, self).__init__(op_type)
 
 
 register_distributed_operator_impl_container(
-    "update_loss_scaling", DistributedUpdateLossScaling("update_loss_scaling"))
+    DistributedUpdateLossScaling("update_loss_scaling"))
 
 
 class DistributedUpdateLossScalingImpl(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedUpdateLossScalingImpl, self).__init__()
+        super(DistributedUpdateLossScalingImpl, self).__init__(name)
         self._name = name
         self._forward_implemented = False
         self._backward_implemented = True
@@ -44,6 +43,11 @@ class DistributedUpdateLossScalingImpl(DistributedOperatorImpl):
     def is_output_compatible(self, dist_op):
         raise RuntimeError(
             "DistributedUpdateLossScalingImpl's is_output_compatible should not be called !"
+        )
+
+    def is_auto_compatible(self, dist_op):
+        raise RuntimeError(
+            "DistributedUpdateLossScalingImpl's is_auto_compatible should not be called !"
         )
 
     def update_dims_mapping(self, dist_op):
@@ -83,9 +87,9 @@ class DistributedUpdateLossScalingImpl(DistributedOperatorImpl):
         assert 'Out' in kwargs, "output [{}] is not given".format('Out')
         assert 'LossScaling' in kwargs, "output [{}] is not given".format(
             'LossScaling')
-        assert 'OutGoodSteps' in kwargs, "input [{}] is not given".format(
+        assert 'OutGoodSteps' in kwargs, "output [{}] is not given".format(
             'OutGoodSteps')
-        assert 'OutBadSteps' in kwargs, "input [{}] is not given".format(
+        assert 'OutBadSteps' in kwargs, "output [{}] is not given".format(
             'OutBadSteps')
 
         assert len(kwargs['FoundInfinite']) == 1, \

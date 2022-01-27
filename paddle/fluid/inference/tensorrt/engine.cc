@@ -370,7 +370,8 @@ float *TensorRTEngine::GetWeightCPUData(const std::string &name,
                         name_with_suffix));
   weight_map[name_with_suffix].reset(new framework::Tensor());
   weight_map[name_with_suffix]->Resize(weight_tensor->dims());
-  TensorCopySync(*weight_tensor, cpu_place, weight_map[name_with_suffix].get());
+  paddle::framework::TensorCopySync(*weight_tensor, cpu_place,
+                                    weight_map[name_with_suffix].get());
   float *weight_data =
       weight_map[name_with_suffix]->mutable_data<float>(cpu_place);
   name_suffix_counter += 1;

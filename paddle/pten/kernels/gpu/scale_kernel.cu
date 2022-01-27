@@ -16,9 +16,9 @@ limitations under the License. */
 
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
+#include "paddle/pten/kernels/funcs/elementwise_base.h"
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/common/float16.h"
 
 namespace pten {
 
@@ -54,8 +54,10 @@ void ScaleKernel(const Context& dev_ctx,
   std::vector<DenseTensor*> outputs;
   inputs.emplace_back(&x);
   outputs.emplace_back(out);
-  out->mutable_data<T>();
-  LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, T>(
+  dev_ctx.template Alloc<T>(out);
+  pten::funcs::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary,
+                                                   T,
+                                                   T>(
       dev_ctx,
       inputs,
       &outputs,

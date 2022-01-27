@@ -282,6 +282,10 @@ class AllocatorFacadePrivate {
     return iter->second;
   }
 
+  void* GetBasePtr(const std::shared_ptr<pten::Allocation>& allocation) {
+    return static_cast<Allocation*>(allocation.get())->base_ptr();
+  }
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   bool HasCUDAAllocator(const platform::CUDAPlace& place,
                         const gpuStream_t& stream) {
@@ -813,13 +817,49 @@ const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
     }
 #endif
 
-    platform::CUDAPlace cuda_place =
-        BOOST_GET_CONST(platform::CUDAPlace, place);
+    platform::CUDAPlace cuda_place(place.GetDeviceId());
     return m_->GetAllocator(cuda_place, m_->GetDefaultStream(cuda_place));
   }
 #endif
 
   return m_->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1);
+}
+
+void* AllocatorFacade::GetBasePtr(
+    const std::shared_ptr<pten::Allocation>& allocation) {
+  PADDLE_ENFORCE_EQ(GetAllocatorStrategy(), AllocatorStrategy::kAutoGrowth,
+                    paddle::platform::errors::Unimplemented(
+                        "GetBasePtr() is only implemented for auto_growth "
+                        "strategy, not support allocator strategy: %d",
+                        static_cast<int>(GetAllocatorStrategy())));
+  PADDLE_ENFORCE_EQ(platform::is_gpu_place(allocation->place()), true,
+                    paddle::platform::errors::Unimplemented(
+                        "GetBasePtr() is only implemented for CUDAPlace(), not "
+                        "suppot place: %s",
+                        allocation->place()));
+  return m_->GetBasePtr(allocation);
+}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
+    const platform::Place& place, const gpuStream_t& stream) {
+  if (FLAGS_use_stream_safe_cuda_allocator && platform::is_gpu_place(place) &&
+      FLAGS_use_system_allocator == false) {
+#ifdef PADDLE_WITH_CUDA
+    if (UNLIKELY(platform::CUDAGraph::IsCapturing())) {
+      return m_->GetAllocator(place,
+                              /* A non-zero num to choose allocator_ */ 1);
+    }
+#endif
+    return m_->GetAllocator(place, stream, /*create_if_not_found=*/true);
+  }
+  return m_->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1);
+}
+#endif
+
+const std::shared_ptr<Allocator>& AllocatorFacade::GetZeroAllocator(
+    const platform::Place& place) {
+  return m_->GetAllocator(place, /* zero size */ 0);
 }
 
 std::shared_ptr<pten::Allocation> AllocatorFacade::AllocShared(
@@ -838,8 +878,7 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
     }
 #endif
 
-    platform::CUDAPlace cuda_place =
-        BOOST_GET_CONST(platform::CUDAPlace, place);
+    platform::CUDAPlace cuda_place(place.GetDeviceId());
     return Alloc(cuda_place, size, m_->GetDefaultStream(cuda_place));
   }
 #endif
@@ -859,8 +898,7 @@ uint64_t AllocatorFacade::Release(const platform::Place& place) {
     }
 #endif
 
-    platform::CUDAPlace cuda_place =
-        BOOST_GET_CONST(platform::CUDAPlace, place);
+    platform::CUDAPlace cuda_place(place.GetDeviceId());
     return Release(cuda_place, m_->GetDefaultStream(cuda_place));
   }
 #endif
@@ -935,7 +973,7 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place, size_t size,
   }
 #endif
 
-  platform::CUDAPlace p = BOOST_GET_CONST(platform::CUDAPlace, place);
+  platform::CUDAPlace p(place.GetDeviceId());
   if (LIKELY(size > 0 && FLAGS_use_system_allocator == false)) {
     return m_->GetAllocator(p, stream, /* create_if_not_found = */ true)
         ->Allocate(size);

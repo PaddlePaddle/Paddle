@@ -33,7 +33,7 @@ class AllReduceOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(place), true,
                       platform::errors::PreconditionNotMet(
                           "AllReduce op can run on gpu place only for now."));
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)

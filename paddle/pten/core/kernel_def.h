@@ -14,16 +14,25 @@
 
 #pragma once
 
+#include <functional>
+
 namespace pten {
 
 class Kernel;
 class KernelKey;
 class KernelArgsDef;
 class KernelContext;
+class KernelSignature;
+class ArgumentMappingContext;
+class InferMetaContext;
 
-using KernelFn = void (*)(KernelContext* ctx);
+using KernelFn = std::function<void(KernelContext* ctx)>;
 using KernelArgsDefFn = void (*)(Kernel* kernel);
 using KernelArgsParseFn = void (*)(const KernelKey& default_key,
                                    KernelArgsDef* args_def);
+
+using ArgumentMappingFn =
+    std::function<KernelSignature(const ArgumentMappingContext&)>;
+using InferMetaFn = void (*)(InferMetaContext* ctx);
 
 }  // namespace pten

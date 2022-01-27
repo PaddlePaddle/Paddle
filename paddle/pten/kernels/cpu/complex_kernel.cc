@@ -19,7 +19,7 @@
 #include "paddle/pten/core/kernel_registry.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/complex.h"
+#include "paddle/pten/common/complex.h"
 
 PT_REGISTER_KERNEL(conj,
                    CPU,

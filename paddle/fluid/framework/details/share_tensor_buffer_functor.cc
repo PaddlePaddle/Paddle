@@ -22,7 +22,6 @@
 namespace paddle {
 namespace framework {
 class Scope;
-class Tensor;
 class Variable;
 
 namespace ir {
@@ -30,6 +29,10 @@ class MemOptVarInfo;
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
+
+namespace pten {
+class DenseTensor;
+}  // namespace pten
 
 namespace paddle {
 namespace framework {

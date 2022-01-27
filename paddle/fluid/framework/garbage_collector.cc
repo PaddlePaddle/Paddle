@@ -101,7 +101,7 @@ StreamGarbageCollector::StreamGarbageCollector(const platform::CUDAPlace &place,
 }
 
 StreamGarbageCollector::~StreamGarbageCollector() {
-  auto place = BOOST_GET_CONST(platform::CUDAPlace, this->dev_ctx_->GetPlace());
+  auto place = this->dev_ctx_->GetPlace();
   platform::CUDADeviceGuard guard(place.device);
   platform::GpuStreamSync(stream_);
   platform::GpuDestroyStream(stream_);
@@ -186,7 +186,7 @@ MLUStreamGarbageCollector::MLUStreamGarbageCollector(
 }
 
 MLUStreamGarbageCollector::~MLUStreamGarbageCollector() {
-  auto place = BOOST_GET_CONST(platform::MLUPlace, this->dev_ctx_->GetPlace());
+  auto place = this->dev_ctx_->GetPlace();
   platform::MLUDeviceGuard guard(place.device);
   PADDLE_ENFORCE_MLU_SUCCESS(cnrtQueueSync(stream_));
   PADDLE_ENFORCE_MLU_SUCCESS(cnrtQueueDestroy(stream_));
