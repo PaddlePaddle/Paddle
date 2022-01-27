@@ -103,13 +103,13 @@ def GetAutoGradMetaVectorName(string):
 ######################
 def ReadFwdFile(filepath):
     f = open(filepath, 'r')
-    contents = yaml.load(f)
+    contents = yaml.load(f, Loader=yaml.FullLoader)
     return contents
 
 
 def ReadBwdFile(filepath):
     f = open(filepath, 'r')
-    contents = yaml.load(f)
+    contents = yaml.load(f, Loader=yaml.FullLoader)
     ret = {}
     for content in contents:
         assert 'backward_api' in content.keys()
