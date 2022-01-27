@@ -134,6 +134,8 @@ function(common_link TARGET_NAME)
   if (WITH_PROFILER)
     target_link_libraries(${TARGET_NAME} gperftools::profiler)
   endif()
+
+  
 endfunction()
 
 # find all third_party modules is used for paddle static library

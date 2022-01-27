@@ -108,6 +108,7 @@ class FileDataReader {
     // iters_per_epoch_ = labels.size() / (batch_size_ * world_size_);
     auto total_batch_size = batch_size_ * world_size_;
     iters_per_epoch_ = (labels.size() + total_batch_size) / total_batch_size;
+    std::cout << "DEBUGGGGG iters per epoch: " << iters_per_epoch_ << std::endl;
     is_closed_ = false;
     for (int i = 0, n = files.size(); i < n; i++)
       image_label_pairs_.emplace_back(std::move(files[i]), labels[i]);
@@ -176,6 +177,9 @@ class FileDataReader {
 
         is_closed_.store(true);
         break;
+      }
+      else{
+        std::cout << "index / size: " << i << "  / " <<  image_label_pairs_.size() << std::endl;
       }
       i %= image_label_pairs_.size();
       framework::LoDTensor tmp = ReadSample(image_label_pairs_[i].first);
