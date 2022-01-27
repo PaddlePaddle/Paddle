@@ -246,8 +246,9 @@ void DeserializeLodTensor(framework::Variable* var, const VarMsg& msg,
   }
   tensor->set_lod(lod);
 
-  void* tensor_data =
-      tensor->mutable_data(place, VarMessageToVarType(msg.data_type()));
+  void* tensor_data = tensor->mutable_data(
+      place,
+      framework::TransToPtenDataType(VarMessageToVarType(msg.data_type())));
 
   // IO Buffer
   if (platform::is_cpu_place(place)) {
@@ -291,8 +292,9 @@ void DeserializeSelectedRows(
     vec_dim.push_back(x);
   }
   tensor->Resize(framework::make_ddim(vec_dim));
-  void* tensor_data =
-      tensor->mutable_data(place, VarMessageToVarType(msg.data_type()));
+  void* tensor_data = tensor->mutable_data(
+      place,
+      framework::TransToPtenDataType(VarMessageToVarType(msg.data_type())));
   // IO Buffer
   if (platform::is_cpu_place(place)) {
     unsigned long data_len;                                 // NOLINT

@@ -188,8 +188,8 @@ template <typename T>
 inline T* DenseTensor::mutable_data(const paddle::platform::Place& place,
                                     size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
-  return reinterpret_cast<T*>(mutable_data(
-      place, paddle::framework::DataTypeTrait<T>::DataType(), requested_size));
+  return reinterpret_cast<T*>(
+      mutable_data(place, CppTypeToDataType<T>::Type(), requested_size));
 }
 
 void DenseTensor::ShareBufferWith(const DenseTensor& tensor) {
