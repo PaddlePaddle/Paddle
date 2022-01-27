@@ -575,7 +575,8 @@ headers = (
     # pten level api headers (low level api)
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pten/core', recursive=True)) +  # pten core headers
     # utila api headers
-    ['@PADDLE_SOURCE_DIR@/paddle/utils/any.h'])
+    ['@PADDLE_SOURCE_DIR@/paddle/utils/any.h'] +
+    ['@PADDLE_SOURCE_DIR@/paddle/utils/small_vector.h'])
 
 if '${WITH_MKLDNN}' == 'ON':
     headers += list(find_files('*', '${MKLDNN_INSTALL_DIR}/include')) # mkldnn
