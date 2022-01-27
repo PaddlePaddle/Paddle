@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/profiler/host_tracer.h"
 #include "glog/logging.h"
+#include "paddle/fluid/platform/profiler/common_event.h"
 #include "paddle/fluid/platform/profiler/host_event_recorder.h"
 
 namespace paddle {
@@ -44,9 +45,8 @@ void HostTracer::StartTracing() {
   PADDLE_ENFORCE_EQ(
       state_ == TracerState::READY || state_ == TracerState::STOPED, true,
       platform::errors::PreconditionNotMet("TracerState must be READY"));
-  auto& recorder = HostEventRecorder::GetInstance();
-  recorder.GatherEvents();
-  recorder.StartTrace(trace_level_);
+  HostEventRecorder::GetInstance().GatherEvents();
+  HostTraceLevel::GetInstance().SetLevel(trace_level_);
   state_ = TracerState::STARTED;
 }
 
@@ -54,7 +54,7 @@ void HostTracer::StopTracing() {
   PADDLE_ENFORCE_EQ(
       state_, TracerState::STARTED,
       platform::errors::PreconditionNotMet("TracerState must be STARTED"));
-  HostEventRecorder::GetInstance().StopTrace();
+  HostTraceLevel::GetInstance().SetLevel(HostTraceLevel::kDisabled);
   state_ = TracerState::STOPED;
 }
 

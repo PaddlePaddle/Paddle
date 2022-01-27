@@ -452,7 +452,7 @@ def pad(img, padding, fill=0, padding_mode='constant', data_format='CHW'):
     if padding_mode == 'edge':
         padding_mode = 'replicate'
     elif padding_mode == 'symmetric':
-        raise ValueError('Do not support symmetric mdoe')
+        raise ValueError('Do not support symmetric mode')
 
     img = img.unsqueeze(0)
     #  'constant', 'reflect', 'replicate', 'circular'

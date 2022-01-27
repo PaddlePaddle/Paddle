@@ -66,7 +66,7 @@ class Profiler {
 
   static std::atomic<bool> alive_;
   ProfilerOptions options_;
-  uint64_t profile_start_ns_ = UINT64_MAX;
+  uint64_t start_ns_ = UINT64_MAX;
   std::list<TracerHolder> tracers_;
 };
 

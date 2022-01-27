@@ -32,8 +32,8 @@ const paddle::framework::Tensor* GetTensorFromVar(
     const paddle::framework::Variable& var) {
   if (var.IsType<paddle::framework::LoDTensor>()) {
     return &(var.Get<paddle::framework::LoDTensor>());
-  } else if (var.IsType<paddle::framework::SelectedRows>()) {
-    return &(var.Get<paddle::framework::SelectedRows>().value());
+  } else if (var.IsType<pten::SelectedRows>()) {
+    return &(var.Get<pten::SelectedRows>().value());
   } else {
     return nullptr;
   }
@@ -116,7 +116,7 @@ PreparedOp PrepareImpl(const NameTensorMap& ins, const NameTensorMap& outs,
   auto& kernels = kernels_iter->second;
   auto kernel_iter = kernels.find(expected_kernel_key);
 #ifdef PADDLE_WITH_XPU
-  if (is_xpu_place(expected_kernel_key.place_) &&
+  if (paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
       (kernel_iter == kernels.end() ||
        !paddle::platform::is_xpu_support_op(op.Type(), expected_kernel_key) ||
        paddle::platform::is_in_xpu_black_list(op.Type()))) {
@@ -129,7 +129,7 @@ PreparedOp PrepareImpl(const NameTensorMap& ins, const NameTensorMap& outs,
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
   if (kernel_iter == kernels.end() &&
-      is_npu_place(expected_kernel_key.place_)) {
+      paddle::platform::is_npu_place(expected_kernel_key.place_)) {
     VLOG(3) << "missing NPU kernel: " << op.Type()
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";

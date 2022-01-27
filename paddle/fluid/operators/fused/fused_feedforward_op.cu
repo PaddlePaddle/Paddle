@@ -308,7 +308,8 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
     ins[1] = d_x;
     outs[0] = d_x;
     int elewise_add_axis = -1;
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+    paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T,
+                                                   T>(
         ctx, ins, &outs, elewise_add_axis, AddFunctor<T>());
   }
 

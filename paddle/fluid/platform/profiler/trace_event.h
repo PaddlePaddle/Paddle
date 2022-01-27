@@ -1,8 +1,11 @@
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+
 licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -73,26 +76,28 @@ struct KernelEventInfo {
   uint64_t completed;
 };
 
+static constexpr size_t kMemKindMaxLen = 50;
+
 struct MemcpyEventInfo {
   // The number of bytes transferred by the memory copy.
   uint64_t num_bytes;
   // The kind of the memory copy.
   // Each kind represents the source and destination targets of a memory copy.
   // Targets are host, device, and array. Refer to CUpti_ActivityMemcpyKind
-  uint8_t copy_kind;
+  // std::string copy_kind;
   // The source memory kind read by the memory copy.
   // Each kind represents the type of the memory accessed by a memory
   // operation/copy. Refer to CUpti_ActivityMemoryKind
-  uint8_t src_kind;
+  char src_kind[kMemKindMaxLen];
   // The destination memory kind read by the memory copy.
-  uint8_t dst_kind;
+  char dst_kind[kMemKindMaxLen];
 };
 
 struct MemsetEventInfo {
   // The number of bytes being set by the memory set.
   uint64_t num_bytes;
   // The memory kind of the memory set. Refer to CUpti_ActivityMemoryKind
-  uint8_t memory_kind;
+  char memory_kind[kMemKindMaxLen];
   // the value being assigned to memory by the memory set.
   uint32_t value;
 };

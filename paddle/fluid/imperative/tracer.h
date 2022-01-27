@@ -126,7 +126,7 @@ class Tracer {
   platform::Place expected_place_;
   GarbageCollectorMap gcs_;
   static thread_local bool has_grad_;
-  AmpLevel amp_level_{AmpLevel::O0};
+  static thread_local AmpLevel amp_level_;
 };
 
 // To access static variable current_tracer

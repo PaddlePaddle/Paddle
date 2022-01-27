@@ -52,13 +52,11 @@ class MatMulV2Kernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.device_context<DeviceContext>();
     Out->mutable_data<T>(X->place());
 
-    auto pt_x = paddle::experimental::MakePtenDenseTensor(*X);
-    auto pt_y = paddle::experimental::MakePtenDenseTensor(*Y);
-    auto pt_out = paddle::experimental::MakePtenDenseTensor(*Out);
-
     // call new kernel
-    pten::MatmulKernel<T>(dev_ctx, *pt_x, *pt_y, trans_x, trans_y,
-                          pt_out.get());
+    pten::MatmulKernel<T>(
+        static_cast<const typename paddle::framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *X, *Y, trans_x, trans_y, Out);
   }
 };
 
@@ -151,19 +149,13 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
     if (dx) dx->mutable_data<T>(ctx.GetPlace());
     if (dy) dy->mutable_data<T>(ctx.GetPlace());
 
-    auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
-    auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
-    auto pt_dout = paddle::experimental::MakePtenDenseTensor(*dout);
-    auto pt_dx = dx ? paddle::experimental::MakePtenDenseTensor(*dx)
-                    : std::unique_ptr<pten::DenseTensor>(nullptr);
-    auto pt_dy = dy ? paddle::experimental::MakePtenDenseTensor(*dy)
-                    : std::unique_ptr<pten::DenseTensor>(nullptr);
-
     auto& dev_ctx = ctx.device_context<DeviceContext>();
 
     // call new kernel
-    pten::MatmulGradKernel<T>(dev_ctx, *pt_x, *pt_y, *pt_dout, transpose_x,
-                              transpose_y, pt_dx.get(), pt_dy.get());
+    pten::MatmulGradKernel<T>(
+        static_cast<const typename paddle::framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *x, *y, *dout, transpose_x, transpose_y, dx, dy);
   }
 };
 
@@ -188,21 +180,13 @@ class MatMulV2DoubleGradKernel : public framework::OpKernel<T> {
     if (dy) dy->mutable_data<T>(context.GetPlace());
     if (ddout) ddout->mutable_data<T>(context.GetPlace());
 
-    auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
-    auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
-    auto pt_dout = paddle::experimental::MakePtenDenseTensor(*dout);
-    auto pt_ddx = paddle::experimental::MakePtenDenseTensor(*ddx);
-    auto pt_ddy = paddle::experimental::MakePtenDenseTensor(*ddy);
-    auto pt_dx = paddle::experimental::MakePtenDenseTensor(*dx);
-    auto pt_dy = paddle::experimental::MakePtenDenseTensor(*dy);
-    auto pt_ddout = paddle::experimental::MakePtenDenseTensor(*ddout);
-
     auto& dev_ctx = context.device_context<DeviceContext>();
 
     // call new kernel
-    pten::MatmulDoubleGradKernel<T>(dev_ctx, *pt_x, *pt_y, *pt_dout, *pt_ddx,
-                                    *pt_ddy, transpose_x, transpose_y,
-                                    pt_dx.get(), pt_dy.get(), pt_ddout.get());
+    pten::MatmulDoubleGradKernel<T>(
+        static_cast<const typename paddle::framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *x, *y, *dout, *ddx, *ddy, transpose_x, transpose_y, dx, dy, ddout);
   }
 };
 
@@ -238,28 +222,13 @@ class MatMulV2TripleGradKernel : public framework::OpKernel<T> {
     if (out_d_ddx) out_d_ddx->mutable_data<T>(context.GetPlace());
     if (out_d_ddy) out_d_ddy->mutable_data<T>(context.GetPlace());
 
-    auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
-    auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
-    auto pt_dout = paddle::experimental::MakePtenDenseTensor(*dout);
-    auto pt_ddx = paddle::experimental::MakePtenDenseTensor(*ddx);
-    auto pt_ddy = paddle::experimental::MakePtenDenseTensor(*ddy);
-    auto pt_d_dx = paddle::experimental::MakePtenDenseTensor(*d_dx);
-    auto pt_d_dy = paddle::experimental::MakePtenDenseTensor(*d_dy);
-    auto pt_d_ddout = paddle::experimental::MakePtenDenseTensor(*d_ddout);
-
-    auto pt_out_d_x = paddle::experimental::MakePtenDenseTensor(*out_d_x);
-    auto pt_out_d_y = paddle::experimental::MakePtenDenseTensor(*out_d_y);
-    auto pt_out_d_dout = paddle::experimental::MakePtenDenseTensor(*out_d_dout);
-    auto pt_out_d_ddx = paddle::experimental::MakePtenDenseTensor(*out_d_ddx);
-    auto pt_out_d_ddy = paddle::experimental::MakePtenDenseTensor(*out_d_ddy);
-
     auto& dev_ctx = context.device_context<DeviceContext>();
     // call new kernel
-    pten::MatmulTripleGradKernel<T>(dev_ctx, *pt_x, *pt_y, *pt_dout, *pt_ddx,
-                                    *pt_ddy, *pt_d_dx, *pt_d_dy, *pt_d_ddout,
-                                    transpose_x, transpose_y, pt_out_d_x.get(),
-                                    pt_out_d_y.get(), pt_out_d_dout.get(),
-                                    pt_out_d_ddx.get(), pt_out_d_ddy.get());
+    pten::MatmulTripleGradKernel<T>(
+        static_cast<const typename paddle::framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *x, *y, *dout, *ddx, *ddy, *d_dx, *d_dy, *d_ddout, transpose_x,
+        transpose_y, out_d_x, out_d_y, out_d_dout, out_d_ddx, out_d_ddy);
   }
 };
 

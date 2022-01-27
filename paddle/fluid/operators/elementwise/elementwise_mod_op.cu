@@ -14,9 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_mod_op.h"
 
-namespace ops = paddle::operators;
-namespace plat = paddle::platform;
-
 namespace paddle {
 namespace operators {
 
@@ -30,13 +27,17 @@ class ElementwiseModKernel<platform::CUDADeviceContext, T>
     const auto& cuda_ctx =
         ctx.template device_context<platform::CUDADeviceContext>();
     int axis = PackTensorsIntoVector<T>(ctx, &ins, &outs);
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        cuda_ctx, ins, &outs, axis, ModFunctor<T>());
+    paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T,
+                                                   T>(cuda_ctx, ins, &outs,
+                                                      axis, ModFunctor<T>());
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
+
+namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
     elementwise_mod, ops::ElementwiseModKernel<plat::CUDADeviceContext, int>,

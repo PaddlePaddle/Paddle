@@ -37,7 +37,8 @@ namespace operators {
 
 #define HANDLE_DIM(NDIM, RDIM)                                            \
   if (ndim == NDIM && rdim == RDIM) {                                     \
-    ReduceFunctor<DeviceContext, OutT, NDIM, RDIM, Functor>(              \
+    paddle::operators::ReduceFunctor<DeviceContext, OutT, NDIM, RDIM,     \
+                                     Functor>(                            \
         context.template device_context<DeviceContext>(), *input, output, \
         dims, keep_dim);                                                  \
   }
@@ -131,7 +132,7 @@ void HandleLargeDim(const framework::ExecutionContext& context,
   shuffled_input.Resize({unreduced, reduced});
   DDim output_dim = output->dims();
   output->Resize({unreduced});
-  ReduceFunctor<DeviceContext, OutT, 2, 1, Functor>(
+  paddle::operators::ReduceFunctor<DeviceContext, OutT, 2, 1, Functor>(
       context.template device_context<DeviceContext>(), shuffled_input, output,
       {1}, keep_dim);
   output->Resize(output_dim);
@@ -142,7 +143,7 @@ void HandleLargeDimGrad(const framework::ExecutionContext& context,
                         const framework::Tensor* x,
                         const framework::Tensor* out,
                         const framework::Tensor* dout, framework::Tensor* dx,
-                        const std::vector<int>& dims) {
+                        Functor functor, const std::vector<int>& dims) {
   const int64_t unreduced = out->numel();
   const int64_t reduced = x->numel() / unreduced;
   DDim out_dim(out->dims());
@@ -156,7 +157,7 @@ void HandleLargeDimGrad(const framework::ExecutionContext& context,
   dx->Resize({unreduced, reduced});
   ReduceGradFunctor<DeviceContext, T, 2, Functor>(
       context.template device_context<DeviceContext>(), shuffled_x, *out, *dout,
-      dx, {1});
+      dx, functor, {1});
   // transpose dX
   std::vector<int> origin_axis(x_dim.size());
   GetOriginDimFromShuffled(x_dim, dims, &origin_axis);
@@ -257,8 +258,11 @@ class ReduceKernel : public framework::OpKernel<T> {
     std::vector<int64_t> tmp_dims(dims.begin(), dims.end());
 
     // call new kernel
-    pten::Reduce<DeviceContext, T, Functor>(
-        dev_ctx, *pt_x.get(), reduce_all, tmp_dims, keep_dim,
+    pten::Reduce<typename framework::ConvertToPtenContext<DeviceContext>::TYPE,
+                 T, Functor>(
+        static_cast<const typename framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *pt_x.get(), reduce_all, tmp_dims, keep_dim,
         pten::TransToPtenDataType(cast_out_dtype), pt_out.get());
   }
 };
@@ -329,7 +333,7 @@ void LaunchReduceGradKernel(const framework::ExecutionContext& context,
                             const framework::Tensor* input0,
                             const framework::Tensor* input1,
                             const framework::Tensor* input2,
-                            paddle::framework::Tensor* output,
+                            paddle::framework::Tensor* output, Functor functor,
                             const std::vector<int>& dims,
                             bool reduce_all = false) {
   if (reduce_all) {
@@ -341,7 +345,6 @@ void LaunchReduceGradKernel(const framework::ExecutionContext& context,
         *context.template device_context<DeviceContext>().eigen_device();
     auto broadcast_dim =
         Eigen::array<int, 1>({{static_cast<int>(input0->numel())}});
-    Functor functor;
     functor(place, &x, &x_reduce, &x_grad, &x_reduce_grad, broadcast_dim,
             broadcast_dim[0]);
   } else {
@@ -350,36 +353,36 @@ void LaunchReduceGradKernel(const framework::ExecutionContext& context,
       case 1:
         ReduceGradFunctor<DeviceContext, T, 1, Functor>(
             context.template device_context<DeviceContext>(), *input0, *input1,
-            *input2, output, dims);
+            *input2, output, functor, dims);
         break;
       case 2:
         ReduceGradFunctor<DeviceContext, T, 2, Functor>(
             context.template device_context<DeviceContext>(), *input0, *input1,
-            *input2, output, dims);
+            *input2, output, functor, dims);
         break;
       case 3:
         ReduceGradFunctor<DeviceContext, T, 3, Functor>(
             context.template device_context<DeviceContext>(), *input0, *input1,
-            *input2, output, dims);
+            *input2, output, functor, dims);
         break;
       case 4:
         ReduceGradFunctor<DeviceContext, T, 4, Functor>(
             context.template device_context<DeviceContext>(), *input0, *input1,
-            *input2, output, dims);
+            *input2, output, functor, dims);
         break;
       case 5:
         ReduceGradFunctor<DeviceContext, T, 5, Functor>(
             context.template device_context<DeviceContext>(), *input0, *input1,
-            *input2, output, dims);
+            *input2, output, functor, dims);
         break;
       case 6:
         ReduceGradFunctor<DeviceContext, T, 6, Functor>(
             context.template device_context<DeviceContext>(), *input0, *input1,
-            *input2, output, dims);
+            *input2, output, functor, dims);
         break;
       default:
-        HandleLargeDimGrad<DeviceContext, T, Functor>(context, input0, input1,
-                                                      input2, output, dims);
+        HandleLargeDimGrad<DeviceContext, T, Functor>(
+            context, input0, input1, input2, output, functor, dims);
         break;
     }
   }
@@ -426,8 +429,10 @@ class ReduceGradKernel : public framework::OpKernel<T> {
     // NOTE(dengkaipeng): Out is unnecessary in some reduce kernel and
     // not be set as Input in grad Maker, use Out_grad to replace here
     if (!input1) input1 = input2;
-    LaunchReduceGradKernel<DeviceContext, T, Functor>(
-        context, input0, input1, input2, output, const_dims, reduce_all);
+    Functor functor;
+    LaunchReduceGradKernel<DeviceContext, T, Functor>(context, input0, input1,
+                                                      input2, output, functor,
+                                                      const_dims, reduce_all);
   }
 
   void Compute(const framework::ExecutionContext& context) const override {
@@ -547,17 +552,26 @@ class ReduceOp : public framework::OperatorWithKernel {
 
   framework::KernelSignature GetExpectedPtenKernelArgs(
       const framework::ExecutionContext& ctx) const override {
+    bool reduce_all = ctx.Attr<bool>("reduce_all");
     if (Type() == "reduce_sum") {
       if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
+        if (!reduce_all) {
+          return framework::KernelSignature(
+              "sum", {"X"}, {"dim", "out_dtype", "keep_dim"}, {"Out"});
+        }
         return framework::KernelSignature(
-            "sum", {"X"}, {"dim", "keep_dim", "reduce_all", "out_dtype"},
+            "sum_raw", {"X"}, {"dim", "keep_dim", "reduce_all", "out_dtype"},
             {"Out"});
       }
     }
     if (Type() == "reduce_mean") {
       if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
+        if (!reduce_all) {
+          return framework::KernelSignature("mean", {"X"}, {"dim", "keep_dim"},
+                                            {"Out"});
+        }
         return framework::KernelSignature(
-            "mean", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
+            "mean_raw", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
       }
     }
     // TODO(chentianyu03): support other cases after selected rows added

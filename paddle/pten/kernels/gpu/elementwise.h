@@ -14,14 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
-#include "paddle/fluid/platform/aligned_vector.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-#include "paddle/fluid/platform/function_traits.h"
-#include "paddle/pten/backends/gpu/gpu_context.h"
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/kernels/copy_kernel.h"
+#include "paddle/pten/kernels/funcs/common_shape.h"
 #include "paddle/pten/kernels/funcs/cuda_kernel_config.h"
 #include "paddle/pten/kernels/funcs/elementwise_base.h"
+#include "paddle/pten/kernels/gpu/reduce.h"
 
 #ifdef __HIPCC__
 constexpr int ELEMWISE_MAX_BLOCK_DIM = 256;
@@ -39,301 +36,7 @@ constexpr int ELEMWISE_MAX_BLOCK_DIM = 1024;
   } while (0)
 
 namespace pten {
-
-namespace kps = paddle::operators::kernel_primitives;
-enum ElementwiseType { kUnary = 1, kBinary = 2, kTernary = 3, kAny = -1 };
-
-/* Packing scalar type T(float, int etc.) into Array<T, NumOuts> type
-   for supporting multiple-output feature in elementwise system.*/
-template <class T, int Num>
-using ConditionalT =
-    typename std::conditional_t<Num == 1, T, paddle::framework::Array<T, Num>>;
-
 // FORWARD CODE
-template <typename InT,
-          typename OutT,
-          int VecSize,
-          typename Functor,
-          int Arity,
-          bool CallElementwiseAny = false>
-struct ElementwisePrimitiveCaller {
-  __device__ inline void operator()(Functor func,
-                                    InT (*args)[VecSize],
-                                    OutT *result);
-};
-
-template <typename InT, typename OutT, int VecSize, typename Functor, int Arity>
-struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, Arity, true> {
-  __device__ inline void operator()(Functor func,
-                                    InT (*args)[VecSize],
-                                    OutT *result) {
-    kps::ElementwiseAny<InT, OutT, VecSize, 1, 1, Arity, Functor>(
-        result, args, func);
-  }
-};
-
-template <typename InT, typename OutT, int VecSize, typename Functor>
-struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 1, false> {
-  __device__ inline void operator()(Functor func,
-                                    InT (*args)[VecSize],
-                                    OutT *result) {
-    kps::ElementwiseUnary<InT, OutT, VecSize, 1, 1, Functor>(
-        result, args[0], func);
-  }
-};
-
-template <typename InT, typename OutT, int VecSize, typename Functor>
-struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 2, false> {
-  __device__ inline void operator()(Functor func,
-                                    InT (*args)[VecSize],
-                                    OutT *result) {
-    kps::ElementwiseBinary<InT, OutT, VecSize, 1, 1, Functor>(
-        result, args[0], args[1], func);
-  }
-};
-
-template <typename InT, typename OutT, int VecSize, typename Functor>
-struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 3, false> {
-  __device__ inline void operator()(Functor func,
-                                    InT (*args)[VecSize],
-                                    OutT *result) {
-    kps::ElementwiseTernary<InT, OutT, VecSize, 1, 1, Functor>(
-        result, args[0], args[1], args[2], func);
-  }
-};
-
-template <typename OutT, int VecSize, bool IsBoundary, int NumOuts>
-struct ElementwiseWriteDataCaller {
-  __device__ __forceinline__ void operator()(
-      paddle::framework::Array<_ptr_ OutT *, NumOuts> outs,
-      ConditionalT<OutT, NumOuts> src[VecSize],
-      int block_offset,
-      int num) {
-    OutT dst[NumOuts][VecSize];
-#pragma unroll
-    for (int i = 0; i < VecSize; ++i) {
-#pragma unroll
-      for (int j = 0; j < NumOuts; ++j) {
-        dst[j][i] = (src[i])[j];
-      }
-    }
-#pragma unroll
-    for (int i = 0; i < NumOuts; ++i) {
-      kps::WriteData<OutT, VecSize, 1, 1, IsBoundary>(
-          outs[i] + block_offset, dst[i], num);
-    }
-  }
-};
-
-template <typename OutT, int VecSize, bool IsBoundary>
-struct ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, 1> {
-  __device__ __forceinline__ void operator()(
-      paddle::framework::Array<_ptr_ OutT *, 1> outs,
-      OutT src[VecSize],
-      int block_offset,
-      int num) {
-    kps::WriteData<OutT, VecSize, 1, 1, IsBoundary>(
-        outs[0] + block_offset, src, num);
-  }
-};
-
-template <typename InT,
-          typename OutT,
-          typename Functor,
-          int Arity,
-          int NumOuts,
-          int VecSize,
-          bool IsBoundary>
-__device__ void VectorizedElementwiseKernelImpl(
-    const paddle::framework::Array<const _ptr_ InT *__restrict__, Arity> &in,
-    paddle::framework::Array<_ptr_ OutT *, NumOuts> outs,
-    int num,
-    int data_offset,
-    Functor func) {
-  InT args[Arity][VecSize];
-  ConditionalT<OutT, NumOuts> result[VecSize];
-
-#pragma unroll
-  for (int i = 0; i < Arity; i++) {
-    kps::Init<InT, VecSize>(args[i], static_cast<InT>(1.0f));
-    kps::ReadData<InT, VecSize, 1, 1, IsBoundary>(
-        args[i], in[i] + data_offset, num);
-  }
-
-  constexpr bool kCallElementwiseAny =
-      paddle::platform::FunctionTraits<Functor>::has_pointer_args;
-  ElementwisePrimitiveCaller<InT,
-                             ConditionalT<OutT, NumOuts>,
-                             VecSize,
-                             Functor,
-                             Arity,
-                             kCallElementwiseAny>()(func, args, result);
-
-  ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, NumOuts>()(
-      outs, result, data_offset, num);
-}
-
-template <typename InT,
-          typename OutT,
-          typename Functor,
-          int Arity,
-          int NumOuts,
-          int VecSize>
-__global__ void VectorizedElementwiseKernel(
-    paddle::framework::Array<const _ptr_ InT *__restrict__, Arity> ins,
-    paddle::framework::Array<_ptr_ OutT *, NumOuts> outs,
-    int size,
-    int main_offset,
-    Functor func) {
-  int data_offset = BLOCK_ID_X * BLOCK_NUM_X * VecSize;
-  int stride = BLOCK_NUM_X * GRID_NUM_X * VecSize;
-  for (; data_offset < main_offset; data_offset += stride) {
-    VectorizedElementwiseKernelImpl<InT,
-                                    OutT,
-                                    Functor,
-                                    Arity,
-                                    NumOuts,
-                                    VecSize,
-                                    false>(
-        ins, outs, VecSize * BLOCK_NUM_X, data_offset, func);
-  }
-
-  int num = size - data_offset;
-  if (num > 0) {
-    VectorizedElementwiseKernelImpl<InT,
-                                    OutT,
-                                    Functor,
-                                    Arity,
-                                    NumOuts,
-                                    VecSize,
-                                    true>(ins, outs, num, data_offset, func);
-  }
-}
-
-template <typename InT, typename OutT>
-int GetVectorizedSizeForTensors(const std::vector<const DenseTensor *> &ins,
-                                const std::vector<DenseTensor *> &outs) {
-  int vec_size = 4;
-  for (auto iter = ins.begin(); iter != ins.end(); ++iter) {
-    vec_size = std::min<int>(
-        vec_size, paddle::platform::GetVectorizedSize((*iter)->data<InT>()));
-  }
-  for (auto iter = outs.begin(); iter != outs.end(); ++iter) {
-    vec_size = std::min<int>(
-        vec_size, paddle::platform::GetVectorizedSize((*iter)->data<OutT>()));
-  }
-  return vec_size;
-}
-
-template <typename InT,
-          typename OutT,
-          typename Functor,
-          int Arity,
-          int NumOuts,
-          int VecSize>
-void ElementwiseCudaKernel(const KPDevice &ctx,
-                           const std::vector<const DenseTensor *> &ins,
-                           std::vector<DenseTensor *> *outs,
-                           Functor func) {
-  auto numel = ins[0]->numel();
-  paddle::framework::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
-  paddle::framework::Array<_ptr_ OutT *, NumOuts> outs_data;
-
-  for (int i = 0; i < Arity; ++i) {
-    ins_data[i] = ins[i]->data<InT>();
-  }
-  for (int i = 0; i < NumOuts; ++i) {
-    outs_data[i] = (*outs)[i]->mutable_data<OutT>();
-  }
-#ifdef PADDLE_WITH_XPU2
-  int block_size = 64;
-  int grid_size = 8;
-  auto stream = ctx.x_context()->xpu_stream;
-  int main_offset = (numel / (VecSize * block_size)) * VecSize * block_size;
-  VectorizedElementwiseKernel<InT,
-                              OutT,
-                              Functor,
-                              Arity,
-                              NumOuts,
-                              VecSize><<<grid_size, block_size, 0, stream>>>(
-      ins_data, outs_data, numel, main_offset, func);
-#else
-  auto gpu_config = GetGpuLaunchConfig1D(ctx, numel, VecSize);
-  int main_offset = (numel / (VecSize * gpu_config.GetBlockSize())) * VecSize *
-                    gpu_config.GetBlockSize();
-  auto stream = ctx.stream();
-  VectorizedElementwiseKernel<InT, OutT, Functor, Arity, NumOuts, VecSize><<<
-      gpu_config.block_per_grid,
-      gpu_config.thread_per_block,
-      0,
-      stream>>>(ins_data, outs_data, numel, main_offset, func);
-#endif
-}
-
-template <ElementwiseType ET,
-          typename InT,
-          typename OutT,
-          typename Functor,
-          int NumOuts = 1>
-void LaunchSameDimsElementwiseCudaKernel(
-    const KPDevice &ctx,
-    const std::vector<const DenseTensor *> &ins,
-    std::vector<DenseTensor *> *outs,
-    Functor func) {
-  using Traits = paddle::platform::FunctionTraits<Functor>;
-  const int kArity =
-      Traits::has_pointer_args ? static_cast<int>(ET) : Traits::arity;
-  PADDLE_ENFORCE_EQ(ins.size(),
-                    kArity,
-                    paddle::platform::errors::InvalidArgument(
-                        "The number of inputs is expected to be equal to the "
-                        "arity of functor. But recieved: the number of inputs "
-                        "is %d, the arity of functor is %d.",
-                        ins.size(),
-                        kArity));
-  PADDLE_ENFORCE_EQ(outs->size(),
-                    NumOuts,
-                    paddle::platform::errors::InvalidArgument(
-                        "Number of outputs shall equal to number of functions, "
-                        "but number of outputs is %d, of functions is %d.",
-                        outs->size(),
-                        NumOuts));
-
-  if (NumOuts > 1) {
-    for (int i = 1; i < NumOuts; ++i) {
-      PADDLE_ENFORCE_EQ(
-          (*outs)[i]->dims(),
-          (*outs)[0]->dims(),
-          paddle::platform::errors::InvalidArgument(
-              "The shape of each output tensor shall be identical yet, "
-              "but %dth output tensor`s shape is not.",
-              i));
-    }
-  }
-
-  // calculate the max vec_size for all ins and outs
-  int vec_size = GetVectorizedSizeForTensors<InT, OutT>(ins, *outs);
-  switch (vec_size) {
-    case 4:
-      ElementwiseCudaKernel<InT, OutT, Functor, kArity, NumOuts, 4>(
-          ctx, ins, outs, func);
-      break;
-    case 2:
-      ElementwiseCudaKernel<InT, OutT, Functor, kArity, NumOuts, 2>(
-          ctx, ins, outs, func);
-      break;
-    case 1:
-      ElementwiseCudaKernel<InT, OutT, Functor, kArity, NumOuts, 1>(
-          ctx, ins, outs, func);
-      break;
-    default: {
-      PADDLE_THROW(paddle::platform::errors::Unimplemented(
-          "Unsupported vectorized size: %d !", vec_size));
-      break;
-    }
-  }
-}
-
 struct DimensionsTransform {
   using DimVector = std::vector<int64_t>;
   typedef void (*MergeFunctor)(
@@ -429,14 +132,14 @@ struct DimensionsTransform {
 
  public:
   explicit DimensionsTransform(const std::vector<const DenseTensor *> &ins,
-                               const paddle::framework::DDim &dims,
+                               const pten::framework::DDim &dims,
                                int axis) {
     const int N = ins.size();
     dim_size = dims.size();
-    out_dims = paddle::framework::vectorize<int64_t>(dims);
+    out_dims = pten::framework::vectorize<int64_t>(dims);
     in_dims.resize(N);
     for (int j = 0; j < N; ++j) {
-      in_dims[j] = paddle::framework::vectorize<int64_t>(ins[j]->dims());
+      in_dims[j] = pten::framework::vectorize<int64_t>(ins[j]->dims());
     }
     InputDimensionsExtend(N, axis);
 
@@ -513,11 +216,11 @@ template <typename InT,
           int Rank,
           bool IsBoundary = false>
 __device__ void ElementwiseBroadcastKernelImpl(
-    const paddle::framework::Array<const _ptr_ InT *__restrict__, Arity> &ins,
-    paddle::framework::Array<_ptr_ OutT *, NumOuts> outs,
-    const paddle::framework::Array<int, Arity> &use_broadcast,
+    const pten::framework::Array<const _ptr_ InT *__restrict__, Arity> &ins,
+    pten::framework::Array<_ptr_ OutT *, NumOuts> outs,
+    const pten::framework::Array<int, Arity> &use_broadcast,
     uint32_t numel,
-    const paddle::framework::Array<kps::details::BroadcastConfig<Rank>, Arity>
+    const pten::framework::Array<kps::details::BroadcastConfig<Rank>, Arity>
         &configs,
     int num,
     int block_offset,
@@ -538,14 +241,15 @@ __device__ void ElementwiseBroadcastKernelImpl(
   }
   constexpr bool kCallElementwiseAny =
       paddle::platform::FunctionTraits<Functor>::has_pointer_args;
-  ElementwisePrimitiveCaller<InT,
-                             ConditionalT<OutT, NumOuts>,
-                             VecSize,
-                             Functor,
-                             Arity,
-                             kCallElementwiseAny>()(func, args, result);
+  pten::funcs::ElementwisePrimitiveCaller<InT,
+                                          ConditionalT<OutT, NumOuts>,
+                                          VecSize,
+                                          Functor,
+                                          Arity,
+                                          kCallElementwiseAny>()(
+      func, args, result);
 
-  ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, NumOuts>()(
+  pten::funcs::ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, NumOuts>()(
       outs, result, block_offset, num);
 }
 
@@ -557,12 +261,11 @@ template <typename InT,
           int VecSize,
           int Rank>
 __global__ void ElementwiseBroadcastKernel(
-    paddle::framework::Array<const _ptr_ InT *__restrict__, Arity> ins,
-    paddle::framework::Array<_ptr_ OutT *, NumOuts> outs,
-    paddle::framework::Array<int, Arity> use_broadcast,
+    pten::framework::Array<const _ptr_ InT *__restrict__, Arity> ins,
+    pten::framework::Array<_ptr_ OutT *, NumOuts> outs,
+    pten::framework::Array<int, Arity> use_broadcast,
     uint32_t numel,
-    paddle::framework::Array<kps::details::BroadcastConfig<Rank>, Arity>
-        configs,
+    pten::framework::Array<kps::details::BroadcastConfig<Rank>, Arity> configs,
     int main_offset,
     int tail_tid,
     Functor func) {
@@ -643,13 +346,13 @@ void LaunchKernel(const KPDevice &ctx,
                   Functor func,
                   DimensionsTransform merge_dims) {
   int numel = (*outs)[0]->numel();
-  paddle::framework::Array<kps::details::BroadcastConfig<Rank>, Arity> configs;
-  paddle::framework::Array<int, Arity> use_broadcast;
-  paddle::framework::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
-  paddle::framework::Array<_ptr_ OutT *, NumOuts> outs_data;
+  pten::framework::Array<kps::details::BroadcastConfig<Rank>, Arity> configs;
+  pten::framework::Array<int, Arity> use_broadcast;
+  pten::framework::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
+  pten::framework::Array<_ptr_ OutT *, NumOuts> outs_data;
 
   for (int i = 0; i < NumOuts; ++i) {
-    outs_data[i] = (*outs)[i]->mutable_data<OutT>();
+    outs_data[i] = (*outs)[i]->mutable_data<OutT>(ctx.GetPlace());
   }
 
   for (int i = 0; i < Arity; i++) {
@@ -742,7 +445,7 @@ void LaunchBroadcastKernelForDifferentVecSize(
           "The maximum dimension of input tensor is expected to be less than "
           "%d, but recieved %d.\n",
           merge_dims.dim_size,
-          paddle::framework::DDim::kMaxRank));
+          pten::framework::DDim::kMaxRank));
     }
   }
 #undef CALL_BROADCAST_FOR_DIM_SIZE
@@ -864,16 +567,31 @@ void LaunchElementwiseCudaKernel(const KPDevice &ctx,
     dims_size.emplace_back(in->dims().size());
   }
   if (no_broadcast_flag) {
-    LaunchSameDimsElementwiseCudaKernel<ET, InT, OutT, Functor, NumOuts>(
-        ctx, ins, outs, func);
+    pten::funcs::
+        LaunchSameDimsElementwiseCudaKernel<ET, InT, OutT, Functor, NumOuts>(
+            ctx, ins, outs, func);
   } else {
     axis = axis == -1
                ? *std::max_element(dims_size.begin(), dims_size.end()) -
                      *std::min_element(dims_size.begin(), dims_size.end())
                : axis;
-    LaunchBroadcastElementwiseCudaKernel<ET, InT, OutT, Functor, NumOuts>(
+    pten::LaunchBroadcastElementwiseCudaKernel<ET, InT, OutT, Functor, NumOuts>(
         ctx, ins, outs, axis, func);
   }
+}
+
+template <typename Functor, typename T, typename OutType = T>
+void ElementwiseCompute(const GPUContext &dev_ctx,
+                        const DenseTensor &x,
+                        const DenseTensor &y,
+                        int axis,
+                        Functor func,
+                        DenseTensor *z) {
+  std::vector<const DenseTensor *> ins = {&x, &y};
+  std::vector<DenseTensor *> outs = {z};
+  z->mutable_data<OutType>(dev_ctx.GetPlace());
+  pten::LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, OutType>(
+      dev_ctx, ins, &outs, axis, func);
 }
 
 // BACKWARD CODE
@@ -1540,8 +1258,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
                              const GPUContext &ctx,
                              DX_OP dx_op,
                              DY_OP dy_op) {
-  const auto gplace =
-      BOOST_GET_CONST(paddle::platform::CUDAPlace, ctx.GetPlace());
+  const auto gplace = ctx.GetPlace();
   auto cplace = paddle::platform::CPUPlace();
   const T *x_data = x.data<T>();
   const T *y_data = y.data<T>();
@@ -2124,8 +1841,8 @@ void CommonElementwiseBroadcastBackward(const GPUContext &ctx,
   }
 
   VLOG(3) << "CommonElementwiseBroadcastBackward xdims:"
-          << paddle::framework::make_ddim(x_dims_array)
-          << " ydim:" << paddle::framework::make_ddim(y_dims_array);
+          << pten::framework::make_ddim(x_dims_array)
+          << " ydim:" << pten::framework::make_ddim(y_dims_array);
 
   CommonGradBroadcastCUDA<T, DX_OP, DY_OP, Tout>(x,
                                                  y,
@@ -2234,6 +1951,132 @@ void ElemwiseGradComputeWithBroadcast(const GPUContext &ctx,
         dy_op,
         dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
         dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
+  }
+}
+
+template <typename T>
+static __global__ void SimpleElemwiseAddGradCUDAKernel(
+    const T *__restrict__ dout, int size, int vec_size, T *dx, T *dy) {
+  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  int stride = gridDim.x * blockDim.x;
+  int loop = size / vec_size;
+  int remainder = size % vec_size;
+  const float4 *dout_vec = reinterpret_cast<const float4 *>(dout);
+  float4 *dx_vec = reinterpret_cast<float4 *>(dx);
+  float4 *dy_vec = reinterpret_cast<float4 *>(dy);
+  float4 tmp_loop;
+
+  for (int i = tid; i < loop; i += stride) {
+    tmp_loop = dout_vec[i];
+    dx_vec[i] = tmp_loop;
+    dy_vec[i] = tmp_loop;
+  }
+
+  if (tid == loop && remainder != 0) {
+    T tmp_rem;
+    while (remainder) {
+      int idx = size - remainder;
+      remainder--;
+      tmp_rem = dout[idx];
+      dx[idx] = tmp_rem;
+      dy[idx] = tmp_rem;
+    }
+  }
+}
+
+template <typename T>
+void default_elementwise_add_grad(const GPUContext &ctx,
+                                  const DenseTensor &x,
+                                  const DenseTensor &y,
+                                  const DenseTensor &out,
+                                  const DenseTensor &dout,
+                                  DenseTensor *dx,
+                                  DenseTensor *dy,
+                                  int axis = -1) {
+  auto *dout_data = dout.data<T>();
+
+  // dx
+  if (dx != nullptr) {
+    auto *dx_data = dx->mutable_data<T>(ctx.GetPlace());
+    if (dx->dims() == dout.dims()) {
+      if (dx_data != dout_data) {
+        pten::Copy(ctx, dout, false, dx);
+      }
+    } else {
+      // For inplace strategy, dx will be stored in addr of dout, which makes
+      // the result of dy wrong.
+      if (dx->IsSharedBufferWith(dout)) {
+        dx->clear();
+        dx->mutable_data<T>(x.dims(), ctx.GetPlace());
+      }
+      std::vector<int> reduce_dims =
+          funcs::GetReduceDim(x.dims(), out.dims(), axis);
+      gpuStream_t stream = ctx.stream();
+      kernels::TensorReduceFunctorImpl<T,
+                                       T,
+                                       kps::AddFunctor,
+                                       kps::IdentityFunctor<T>>(
+          dout, dx, kps::IdentityFunctor<T>(), reduce_dims, stream);
+    }
+  }
+  // dy
+  if (dy != nullptr) {
+    auto *dy_data = dy->mutable_data<T>(ctx.GetPlace());
+    if (dy->dims() == dout.dims()) {
+      if (dy_data != dout_data) {
+        pten::Copy(ctx, dout, false, dy);
+      }
+    } else {
+      std::vector<int> reduce_dims =
+          funcs::GetReduceDim(y.dims(), out.dims(), axis);
+      gpuStream_t stream = ctx.stream();
+      kernels::TensorReduceFunctorImpl<T,
+                                       T,
+                                       kps::AddFunctor,
+                                       kps::IdentityFunctor<T>>(
+          dout, dy, kps::IdentityFunctor<T>(), reduce_dims, stream);
+    }
+  }
+}
+
+template <typename T>
+void elementwise_add_grad(const GPUContext &ctx,
+                          const DenseTensor &x,
+                          const DenseTensor &y,
+                          const DenseTensor &out,
+                          const DenseTensor &dout,
+                          DenseTensor *dx,
+                          DenseTensor *dy) {
+  auto *dx_data = dx->mutable_data<T>(ctx.GetPlace());
+  auto *dy_data = dy->mutable_data<T>(ctx.GetPlace());
+  auto *dout_data = dout.data<T>();
+  if (dx_data == dout_data && dy_data != dout_data) {
+    VLOG(4) << "Special case when dx_data is the same as dout_data, "
+               "only need copy dout to dy";
+    pten::Copy(ctx, dout, false, dy);
+  } else if (dx_data != dout_data && dy_data == dout_data) {
+    VLOG(4) << "Special case when dy_data is the same as dout_data, "
+               "only need copy dout to dx";
+    pten::Copy(ctx, dout, false, dx);
+  } else if (dx_data != dout_data && dy_data != dout_data) {
+    auto size = x.numel();
+    int vec_size = max(static_cast<int>(sizeof(float4) / sizeof(T)), 1);
+    dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
+    dim3 grid_size =
+        dim3(((size + vec_size - 1) / vec_size + PREDEFINED_BLOCK_SIZE - 1) /
+                 PREDEFINED_BLOCK_SIZE,
+             1);
+    SimpleElemwiseAddGradCUDAKernel<
+        T><<<grid_size, block_size, 0, ctx.stream()>>>(
+        dout.data<T>(),
+        size,
+        vec_size,
+        dx->mutable_data<T>(ctx.GetPlace()),
+        dy->mutable_data<T>(ctx.GetPlace()));
+  } else {
+    VLOG(4) << "Special case when dy_data is the same as dout_data, "
+               "and dx_data is the same as dout_data, do not need "
+               "any operator";
   }
 }
 

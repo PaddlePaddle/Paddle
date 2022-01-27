@@ -21,7 +21,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_tracer.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/common_event.h"
 #include "paddle/fluid/platform/profiler/host_event_recorder.h"
+#include "paddle/fluid/platform/profiler/host_tracer.h"
 #include "paddle/fluid/platform/profiler_helper.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/nvtx.h"
@@ -74,11 +76,11 @@ RecordEvent::RecordEvent(const char *name, const EventRole role,
   }
 #endif
 #endif
-  if (UNLIKELY(FLAGS_enable_host_event_recorder_hook == false)) {
+  if (FLAGS_enable_host_event_recorder_hook == false) {
     OriginalConstruct(name, role, "none");
     return;
   }
-  if (UNLIKELY(HostEventRecorder::GetInstance().NeedTrace(level) == false)) {
+  if (UNLIKELY(HostTraceLevel::GetInstance().NeedTrace(level) == false)) {
     return;
   }
   is_enabled_ = true;
@@ -97,11 +99,11 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role,
   }
 #endif
 #endif
-  if (UNLIKELY(FLAGS_enable_host_event_recorder_hook == false)) {
+  if (FLAGS_enable_host_event_recorder_hook == false) {
     OriginalConstruct(name, role, "none");
     return;
   }
-  if (UNLIKELY(HostEventRecorder::GetInstance().NeedTrace(level) == false)) {
+  if (UNLIKELY(HostTraceLevel::GetInstance().NeedTrace(level) == false)) {
     return;
   }
   is_enabled_ = true;
@@ -120,11 +122,11 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role,
   }
 #endif
 #endif
-  if (UNLIKELY(FLAGS_enable_host_event_recorder_hook == false)) {
+  if (FLAGS_enable_host_event_recorder_hook == false) {
     OriginalConstruct(name, role, attr);
     return;
   }
-  if (UNLIKELY(HostEventRecorder::GetInstance().NeedTrace(level) == false)) {
+  if (UNLIKELY(HostTraceLevel::GetInstance().NeedTrace(level) == false)) {
     return;
   }
   is_enabled_ = true;
@@ -199,13 +201,12 @@ void RecordEvent::End() {
 
 RecordInstantEvent::RecordInstantEvent(const char *name, TracerEventType type,
                                        uint32_t level) {
-  auto &recorder = HostEventRecorder::GetInstance();
-  if (UNLIKELY(recorder.NeedTrace(level) == false)) {
+  if (UNLIKELY(HostTraceLevel::GetInstance().NeedTrace(level) == false)) {
     return;
   }
   auto start_end_ns = PosixInNsec();
-  recorder.RecordEvent(name, start_end_ns, start_end_ns, EventRole::kOrdinary,
-                       type);
+  HostEventRecorder::GetInstance().RecordEvent(name, start_end_ns, start_end_ns,
+                                               EventRole::kOrdinary, type);
 }
 
 void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
