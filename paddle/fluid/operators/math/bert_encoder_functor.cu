@@ -18,12 +18,16 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/math/bert_encoder_functor.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_cuda_utils.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/kernels/funcs/math_cuda_utils.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
+
+// NOTE(chenfeiyu): explicitly use operator+ for float2
+// since float2 is not in namespace pten::funcs, ADL won't help
+using pten::funcs::operator+;
 
 template <typename T>
 __device__ __forceinline__ T local_rsqrt(T num) {
@@ -34,11 +38,12 @@ __device__ __forceinline__ half local_rsqrt(half num) { return hrsqrt(num); }
 #endif
 
 template <typename T, int TPB>
-__device__ inline void LayerNormSmall(T val, const kvp<T> &thread_data,
+__device__ inline void LayerNormSmall(T val,
+                                      const pten::funcs::kvp<T> &thread_data,
                                       const int ld, const int idx,
                                       const float *bias, const float *scale,
                                       T *output, T eps) {
-  using BlockReduce = cub::BlockReduce<kvp<T>, TPB>;
+  using BlockReduce = cub::BlockReduce<pten::funcs::kvp<T>, TPB>;
   __shared__ typename BlockReduce::TempStorage temp_storage;
   __shared__ T mu;      // mean
   __shared__ T rsigma;  // 1 / std.dev.
@@ -59,10 +64,11 @@ __device__ inline void LayerNormSmall(T val, const kvp<T> &thread_data,
 }
 
 template <typename T, int TPB>
-__device__ inline void LayerNorm(const kvp<T> &thread_data, const int ld,
-                                 const int offset, const float *bias,
-                                 const float *scale, T *output, T eps) {
-  using BlockReduce = cub::BlockReduce<kvp<T>, TPB>;
+__device__ inline void LayerNorm(const pten::funcs::kvp<T> &thread_data,
+                                 const int ld, const int offset,
+                                 const float *bias, const float *scale,
+                                 T *output, T eps) {
+  using BlockReduce = cub::BlockReduce<pten::funcs::kvp<T>, TPB>;
   __shared__ typename BlockReduce::TempStorage temp_storage;
   __shared__ T mu;      // mean
   __shared__ T rsigma;  // 1 / std.dev.
@@ -85,10 +91,11 @@ __device__ inline void LayerNorm(const kvp<T> &thread_data, const int ld,
 }
 
 template <typename T, typename T2, int TPB>
-__device__ inline void LayerNorm2(const kvp<T> &thread_data, const int ld,
-                                  const int offset, const float2 *bias,
-                                  const float2 *scale, T2 *output, T eps) {
-  using BlockReduce = cub::BlockReduce<kvp<T>, TPB>;
+__device__ inline void LayerNorm2(const pten::funcs::kvp<T> &thread_data,
+                                  const int ld, const int offset,
+                                  const float2 *bias, const float2 *scale,
+                                  T2 *output, T eps) {
+  using BlockReduce = cub::BlockReduce<pten::funcs::kvp<T>, TPB>;
   __shared__ typename BlockReduce::TempStorage temp_storage;
   __shared__ T mu;      // mean
   __shared__ T rsigma;  // 1 / std.dev.
@@ -137,7 +144,7 @@ __global__ void EmbEltwiseLayernormKernel(int hidden, const int64_t *ids,
 
   const int64_t out_offset = seq_pos * hidden;
 
-  kvp<T> thread_data(0, 0);
+  pten::funcs::kvp<T> thread_data(0, 0);
 
 #pragma unroll
   for (int it = threadIdx.x; it < hidden; it += TPB) {
@@ -148,7 +155,8 @@ __global__ void EmbEltwiseLayernormKernel(int hidden, const int64_t *ids,
 
     output[out_offset + it] = val;
     const T rhiddenval = rhidden * val;
-    thread_data = pair_sum(thread_data, kvp<T>(rhiddenval, rhiddenval * val));
+    thread_data = pair_sum(thread_data,
+                           pten::funcs::kvp<T>(rhiddenval, rhiddenval * val));
   }
   LayerNorm<T, TPB>(thread_data, hidden, out_offset, bias, scale, output, eps);
 }
@@ -180,7 +188,7 @@ __global__ void EmbEltwiseLayernormKernel<half, 256>(
 
   const int64_t out_offset = seq_pos * hidden;
 
-  kvp<half> thread_data(0, 0);
+  pten::funcs::kvp<half> thread_data(0, 0);
 
 #pragma unroll
   for (int it = threadIdx.x; it < hidden; it += 256) {
@@ -191,8 +199,8 @@ __global__ void EmbEltwiseLayernormKernel<half, 256>(
 
     output[out_offset + it] = val;
     const half rhiddenval = rhidden * val;
-    thread_data =
-        pair_sum(thread_data, kvp<half>(rhiddenval, rhiddenval * val));
+    thread_data = pair_sum(
+        thread_data, pten::funcs::kvp<half>(rhiddenval, rhiddenval * val));
   }
   LayerNorm<half, 256>(thread_data, hidden, out_offset, bias, scale, output,
                        eps);
@@ -233,10 +241,10 @@ __global__ void SoftmaxKernelWithEltadd(T *qk_buf_, const T *bias_qk_,
                   ? static_cast<float>(qk_buf_[threadIdx.x + qk_offset] +
                                        bias_qk_[threadIdx.x + qk_offset])
                   : -1e20f;
-  float max_val = blockReduceMax<float>(tmp, mask);
+  float max_val = pten::funcs::blockReduceMax<float>(tmp, mask);
 
   float qk_tmp = threadIdx.x < seq_len ? __expf(tmp - max_val) : 0.0f;
-  float sum_val = blockReduceSum<float>(qk_tmp, mask);
+  float sum_val = pten::funcs::blockReduceSum<float>(qk_tmp, mask);
 
   if (threadIdx.x < seq_len)
     qk_buf_[threadIdx.x + qk_offset] = (T)(qk_tmp / sum_val);
@@ -256,10 +264,10 @@ __global__ void SoftmaxKernelWithEltadd<half>(
                   ? static_cast<float>(qk_buf_[threadIdx.x + qk_offset] +
                                        bias_qk_[threadIdx.x + qk_offset])
                   : -1e20f;
-  float max_val = blockReduceMax<float>(tmp, mask);
+  float max_val = pten::funcs::blockReduceMax<float>(tmp, mask);
 
   float qk_tmp = threadIdx.x < seq_len ? __expf(tmp - max_val) : 0.0f;
-  float sum_val = blockReduceSum<float>(qk_tmp, mask);
+  float sum_val = pten::funcs::blockReduceSum<float>(qk_tmp, mask);
 
   if (threadIdx.x < seq_len)
     qk_buf_[threadIdx.x + qk_offset] = (half)(qk_tmp / sum_val);
@@ -276,19 +284,20 @@ __global__ void SoftmaxKernelWithEltadd2(T *qk_buf_, const T *bias_qk_,
   int idx = threadIdx.x;
   assert(blockDim.x % 32 == 0);
 
-  float2 tmp =
-      idx < seq_len
-          ? ToFloat2<T>(qk_buf_[idx + qk_offset] + bias_qk_[idx + qk_offset])
-          : make_float2(-1e20f, -1e20f);
-  float max_val = blockReduceMax<float>(max(tmp.x, tmp.y), mask);
+  float2 tmp = idx < seq_len
+                   ? pten::funcs::ToFloat2<T>(qk_buf_[idx + qk_offset] +
+                                              bias_qk_[idx + qk_offset])
+                   : make_float2(-1e20f, -1e20f);
+  float max_val = pten::funcs::blockReduceMax<float>(max(tmp.x, tmp.y), mask);
   float2 qk_tmp = idx < seq_len ? make_float2(__expf(tmp.x - max_val),
                                               __expf(tmp.y - max_val))
                                 : make_float2(0.f, 0.f);
-  float sum_val = blockReduceSum<float>(qk_tmp.x + qk_tmp.y, mask) + 1e-6f;
+  float sum_val =
+      pten::funcs::blockReduceSum<float>(qk_tmp.x + qk_tmp.y, mask) + 1e-6f;
 
   if (idx < seq_len) {
     qk_buf_[idx + qk_offset] =
-        FloatsToPair<T>(qk_tmp.x / sum_val, qk_tmp.y / sum_val);
+        pten::funcs::FloatsToPair<T>(qk_tmp.x / sum_val, qk_tmp.y / sum_val);
   }
 }
 
@@ -304,18 +313,20 @@ __global__ void SoftmaxKernelWithEltadd2<half2>(
   int idx = threadIdx.x;
   assert(blockDim.x % 32 == 0);
 
-  float2 tmp = idx < seq_len ? ToFloat2<half2>(qk_buf_[idx + qk_offset] +
-                                               bias_qk_[idx + qk_offset])
-                             : make_float2(-1e20f, -1e20f);
-  float max_val = blockReduceMax<float>(max(tmp.x, tmp.y), mask);
+  float2 tmp = idx < seq_len
+                   ? pten::funcs::ToFloat2<half2>(qk_buf_[idx + qk_offset] +
+                                                  bias_qk_[idx + qk_offset])
+                   : make_float2(-1e20f, -1e20f);
+  float max_val = pten::funcs::blockReduceMax<float>(max(tmp.x, tmp.y), mask);
   float2 qk_tmp = idx < seq_len ? make_float2(__expf(tmp.x - max_val),
                                               __expf(tmp.y - max_val))
                                 : make_float2(0.f, 0.f);
-  float sum_val = blockReduceSum<float>(qk_tmp.x + qk_tmp.y, mask) + 1e-6f;
+  float sum_val =
+      pten::funcs::blockReduceSum<float>(qk_tmp.x + qk_tmp.y, mask) + 1e-6f;
 
   if (idx < seq_len) {
-    qk_buf_[idx + qk_offset] =
-        FloatsToPair<half2>(qk_tmp.x / sum_val, qk_tmp.y / sum_val);
+    qk_buf_[idx + qk_offset] = pten::funcs::FloatsToPair<half2>(
+        qk_tmp.x / sum_val, qk_tmp.y / sum_val);
   }
 #endif
 }
@@ -338,14 +349,14 @@ __global__ void SoftmaxKernelWithEltaddForLarge(T *qk_buf, const T *bias_qk,
                            bias_qk[threadIdx.x + i + qk_offset]
                      : stride_max;
   }
-  T max_val = blockReduceMax<T>(stride_max, mask);
+  T max_val = pten::funcs::blockReduceMax<T>(stride_max, mask);
 
   T stride_sum = 0.f;
   for (int i = 0; i < seq_len; i += blockDim.x) {
     stride_sum += __expf(qk_buf[threadIdx.x + i + qk_offset] +
                          bias_qk[threadIdx.x + i + qk_offset] - max_val);
   }
-  T sum_val = blockReduceSum<T>(stride_sum, mask);
+  T sum_val = pten::funcs::blockReduceSum<T>(stride_sum, mask);
 
   for (int i = 0; i < seq_len; i += blockDim.x) {
     qk_buf[threadIdx.x + i + qk_offset] =
@@ -371,7 +382,7 @@ __global__ void SoftmaxKernelWithEltaddForLarge(
                                    bias_qk[threadIdx.x + i + qk_offset]);
     stride_max = tmp > stride_max ? tmp : stride_max;
   }
-  float max_val = blockReduceMax<float>(stride_max, mask);
+  float max_val = pten::funcs::blockReduceMax<float>(stride_max, mask);
 
   float stride_sum = 0.f;
   for (int i = 0; i < seq_len; i += blockDim.x) {
@@ -379,7 +390,7 @@ __global__ void SoftmaxKernelWithEltaddForLarge(
                                    bias_qk[threadIdx.x + i + qk_offset]);
     stride_sum += __expf(tmp - max_val);
   }
-  float sum_val = blockReduceSum<float>(stride_sum, mask);
+  float sum_val = pten::funcs::blockReduceSum<float>(stride_sum, mask);
 
   for (int i = 0; i < seq_len; i += blockDim.x) {
     float tmp =
@@ -403,28 +414,33 @@ __global__ void SoftmaxKernelWithEltaddForLarge2(T *qk_buf_, const T *bias_qk_,
 
   float2 stride_max = make_float2(-1e20f, -1e20f);
   for (int i = 0; i < seq_len; i += blockDim.x) {
-    float2 cur = ToFloat2<T>(qk_buf_[threadIdx.x + i + qk_offset] +
-                             bias_qk_[threadIdx.x + i + qk_offset]);
+    float2 cur =
+        pten::funcs::ToFloat2<T>(qk_buf_[threadIdx.x + i + qk_offset] +
+                                 bias_qk_[threadIdx.x + i + qk_offset]);
     stride_max.x = max(stride_max.x, cur.x);
     stride_max.y = max(stride_max.y, cur.y);
   }
-  float max_val = blockReduceMax<float>(max(stride_max.x, stride_max.y), mask);
+  float max_val =
+      pten::funcs::blockReduceMax<float>(max(stride_max.x, stride_max.y), mask);
 
   float2 stride_sum = make_float2(0.f, 0.f);
   for (int i = 0; i < seq_len; i += blockDim.x) {
-    float2 cur = ToFloat2<T>(qk_buf_[threadIdx.x + i + qk_offset] +
-                             bias_qk_[threadIdx.x + i + qk_offset]);
+    float2 cur =
+        pten::funcs::ToFloat2<T>(qk_buf_[threadIdx.x + i + qk_offset] +
+                                 bias_qk_[threadIdx.x + i + qk_offset]);
     stride_sum.x += __expf(cur.x - max_val);
     stride_sum.y += __expf(cur.y - max_val);
   }
 
   float sum_val =
-      blockReduceSum<float>(stride_sum.x + stride_sum.y, mask) + 1e-6f;
+      pten::funcs::blockReduceSum<float>(stride_sum.x + stride_sum.y, mask) +
+      1e-6f;
 
   for (int i = 0; i < seq_len; i += blockDim.x) {
-    float2 cur = ToFloat2<T>(qk_buf_[threadIdx.x + i + qk_offset] +
-                             bias_qk_[threadIdx.x + i + qk_offset]);
-    qk_buf_[threadIdx.x + i + qk_offset] = FloatsToPair<T>(
+    float2 cur =
+        pten::funcs::ToFloat2<T>(qk_buf_[threadIdx.x + i + qk_offset] +
+                                 bias_qk_[threadIdx.x + i + qk_offset]);
+    qk_buf_[threadIdx.x + i + qk_offset] = pten::funcs::FloatsToPair<T>(
         __expf(cur.x - max_val) / sum_val, __expf(cur.y - max_val) / sum_val);
   }
 }
@@ -443,28 +459,33 @@ __global__ void SoftmaxKernelWithEltaddForLarge2(
 
   float2 stride_max = make_float2(-1e20f, -1e20f);
   for (int i = 0; i < seq_len; i += blockDim.x) {
-    float2 cur = ToFloat2<half2>(qk_buf_[threadIdx.x + i + qk_offset] +
-                                 bias_qk_[threadIdx.x + i + qk_offset]);
+    float2 cur =
+        pten::funcs::ToFloat2<half2>(qk_buf_[threadIdx.x + i + qk_offset] +
+                                     bias_qk_[threadIdx.x + i + qk_offset]);
     stride_max.x = max(stride_max.x, cur.x);
     stride_max.y = max(stride_max.y, cur.y);
   }
-  float max_val = blockReduceMax<float>(max(stride_max.x, stride_max.y), mask);
+  float max_val =
+      pten::funcs::blockReduceMax<float>(max(stride_max.x, stride_max.y), mask);
 
   float2 stride_sum = make_float2(0.f, 0.f);
   for (int i = 0; i < seq_len; i += blockDim.x) {
-    float2 cur = ToFloat2<half2>(qk_buf_[threadIdx.x + i + qk_offset] +
-                                 bias_qk_[threadIdx.x + i + qk_offset]);
+    float2 cur =
+        pten::funcs::ToFloat2<half2>(qk_buf_[threadIdx.x + i + qk_offset] +
+                                     bias_qk_[threadIdx.x + i + qk_offset]);
     stride_sum.x += __expf(cur.x - max_val);
     stride_sum.y += __expf(cur.y - max_val);
   }
 
   float sum_val =
-      blockReduceSum<float>(stride_sum.x + stride_sum.y, mask) + 1e-6f;
+      pten::funcs::blockReduceSum<float>(stride_sum.x + stride_sum.y, mask) +
+      1e-6f;
 
   for (int i = 0; i < seq_len; i += blockDim.x) {
-    float2 cur = ToFloat2<half2>(qk_buf_[threadIdx.x + i + qk_offset] +
-                                 bias_qk_[threadIdx.x + i + qk_offset]);
-    qk_buf_[threadIdx.x + i + qk_offset] = FloatsToPair<half2>(
+    float2 cur =
+        pten::funcs::ToFloat2<half2>(qk_buf_[threadIdx.x + i + qk_offset] +
+                                     bias_qk_[threadIdx.x + i + qk_offset]);
+    qk_buf_[threadIdx.x + i + qk_offset] = pten::funcs::FloatsToPair<half2>(
         __expf(cur.x - max_val) / sum_val, __expf(cur.y - max_val) / sum_val);
   }
 #endif
@@ -595,13 +616,14 @@ __global__ void SkipLayerNormSmallKernel(int num, int hidden, const T *input1,
   const T rld = T(1) / T(hidden);
   const int offset = blockIdx.x * hidden;
   cub::Sum pair_sum;
-  kvp<T> thread_data(0, 0);
+  pten::funcs::kvp<T> thread_data(0, 0);
   const int idx = offset + threadIdx.x;
   T val = 0;
   if (threadIdx.x < hidden) {
     val = input1[idx] + input2[idx];
     const T rldval = rld * val;
-    thread_data = pair_sum(thread_data, kvp<T>(rldval, rldval * val));
+    thread_data =
+        pair_sum(thread_data, pten::funcs::kvp<T>(rldval, rldval * val));
   }
   LayerNormSmall<T, TPB>(val, thread_data, hidden, idx, bias, scale, output,
                          eps);
@@ -617,13 +639,14 @@ __global__ void SkipLayerNormSmallKernel<half, 32>(
   const half rld = half(1) / half(hidden);
   const int offset = blockIdx.x * hidden;
   cub::Sum pair_sum;
-  kvp<half> thread_data(0, 0);
+  pten::funcs::kvp<half> thread_data(0, 0);
   const int idx = offset + threadIdx.x;
   half val = 0;
   if (threadIdx.x < hidden) {
     val = input1[idx] + input2[idx];
     const half rldval = rld * val;
-    thread_data = pair_sum(thread_data, kvp<half>(rldval, rldval * val));
+    thread_data =
+        pair_sum(thread_data, pten::funcs::kvp<half>(rldval, rldval * val));
   }
   LayerNormSmall<half, 32>(val, thread_data, hidden, idx, bias, scale, output,
                            eps);
@@ -638,13 +661,14 @@ __global__ void SkipLayerNormSmallKernel<half, 128>(
   const half rld = half(1) / half(hidden);
   const int offset = blockIdx.x * hidden;
   cub::Sum pair_sum;
-  kvp<half> thread_data(0, 0);
+  pten::funcs::kvp<half> thread_data(0, 0);
   const int idx = offset + threadIdx.x;
   half val = 0;
   if (threadIdx.x < hidden) {
     val = input1[idx] + input2[idx];
     const half rldval = rld * val;
-    thread_data = pair_sum(thread_data, kvp<half>(rldval, rldval * val));
+    thread_data =
+        pair_sum(thread_data, pten::funcs::kvp<half>(rldval, rldval * val));
   }
   LayerNormSmall<half, 128>(val, thread_data, hidden, idx, bias, scale, output,
                             eps);
@@ -659,13 +683,14 @@ __global__ void SkipLayerNormSmallKernel<half, 384>(
   const half rld = half(1) / half(hidden);
   const int offset = blockIdx.x * hidden;
   cub::Sum pair_sum;
-  kvp<half> thread_data(0, 0);
+  pten::funcs::kvp<half> thread_data(0, 0);
   const int idx = offset + threadIdx.x;
   half val = 0;
   if (threadIdx.x < hidden) {
     val = input1[idx] + input2[idx];
     const half rldval = rld * val;
-    thread_data = pair_sum(thread_data, kvp<half>(rldval, rldval * val));
+    thread_data =
+        pair_sum(thread_data, pten::funcs::kvp<half>(rldval, rldval * val));
   }
   LayerNormSmall<half, 384>(val, thread_data, hidden, idx, bias, scale, output,
                             eps);
@@ -681,13 +706,14 @@ __global__ void SkipLayerNormKernel(int num, int hidden, const T *input1,
   const T rld = T(1) / T(hidden);
   const int offset = blockIdx.x * hidden;
   cub::Sum pair_sum;
-  kvp<T> thread_data(0, 0);
+  pten::funcs::kvp<T> thread_data(0, 0);
 
   for (int it = threadIdx.x; it < hidden; it += TPB) {
     const int idx = offset + it;
     const T val = input1[idx] + input2[idx];
     const T rldval = rld * val;
-    thread_data = pair_sum(thread_data, kvp<T>(rldval, rldval * val));
+    thread_data =
+        pair_sum(thread_data, pten::funcs::kvp<T>(rldval, rldval * val));
     output[idx] = val;
   }
   LayerNorm<T, TPB>(thread_data, hidden, offset, bias, scale, output, eps);
@@ -705,13 +731,14 @@ __global__ void SkipLayerNormKernel<half, 256>(int num, int hidden,
   const half rld = half(1) / half(hidden);
   const int offset = blockIdx.x * hidden;
   cub::Sum pair_sum;
-  kvp<half> thread_data(0, 0);
+  pten::funcs::kvp<half> thread_data(0, 0);
 
   for (int it = threadIdx.x; it < hidden; it += 256) {
     const int idx = offset + it;
     const half val = input1[idx] + input2[idx];
     const half rldval = rld * val;
-    thread_data = pair_sum(thread_data, kvp<half>(rldval, rldval * val));
+    thread_data =
+        pair_sum(thread_data, pten::funcs::kvp<half>(rldval, rldval * val));
     output[idx] = val;
   }
   LayerNorm<half, 256>(thread_data, hidden, offset, bias, scale, output, eps);
@@ -727,13 +754,14 @@ __global__ void SkipLayerNormKernel2(int num, int hidden, const T2 *input1,
   const T rld = T(0.5f / hidden);  // because hidden is hidden/2
   const int offset = blockIdx.x * hidden;
   cub::Sum pair_sum;
-  kvp<T> thread_data(0, 0);
+  pten::funcs::kvp<T> thread_data(0, 0);
 
   for (int it = threadIdx.x; it < hidden; it += TPB) {
     const int idx = offset + it;
     const T2 val2 = input1[idx] + input2[idx];
     thread_data = pair_sum(
-        thread_data, kvp<T>(rld * (val2.x + val2.y),
+        thread_data,
+        pten::funcs::kvp<T>(rld * (val2.x + val2.y),
                             rld * val2.x * val2.x + rld * val2.y * val2.y));
     output[idx] = val2;
   }
@@ -751,13 +779,14 @@ __global__ void SkipLayerNormKernel2<half, half2, 256>(
   const half rld = half(0.5f / hidden);  // because hidden is hidden/2
   const int offset = blockIdx.x * hidden;
   cub::Sum pair_sum;
-  kvp<half> thread_data(0, 0);
+  pten::funcs::kvp<half> thread_data(0, 0);
 
   for (int it = threadIdx.x; it < hidden; it += 256) {
     const int idx = offset + it;
     const half2 val2 = input1[idx] + input2[idx];
     thread_data = pair_sum(
-        thread_data, kvp<half>(rld * (val2.x + val2.y),
+        thread_data,
+        pten::funcs::kvp<half>(rld * (val2.x + val2.y),
                                rld * val2.x * val2.x + rld * val2.y * val2.y));
     output[idx] = val2;
   }
