@@ -46,12 +46,9 @@ void TensorReduceFunctorImpl(const platform::CUDADeviceContext& dev_ctx,
                              gpuStream_t stream) {
   y->mutable_data<Ty>(x.place());
 
-  auto pt_x = paddle::experimental::MakePtenDenseTensor(x);
-  auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
-
   pten::kernels::TensorReduceFunctorImpl<Tx, Ty, ReduceOp, TransformOp>(
-      static_cast<const pten::GPUContext&>(dev_ctx), *pt_x.get(), pt_y.get(),
-      transform, origin_reduce_dims, stream);
+      static_cast<const pten::GPUContext&>(dev_ctx), x, y, transform,
+      origin_reduce_dims, stream);
 }
 
 }  // namespace operators

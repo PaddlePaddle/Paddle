@@ -24,6 +24,7 @@ limitations under the License. */
 #endif
 #include "glog/logging.h"
 #include "paddle/fluid/framework/expect.h"
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -137,11 +138,39 @@ inline void EmplaceDeviceContext(
         map_ptr,
     platform::Place p) {
   using PtrType = std::unique_ptr<DeviceContext>;
-  map_ptr->emplace(p, std::async(std::launch::deferred, [=] {
-                     // lazy evaluation. i.e., only create device context at
-                     // first `Get`
-                     return PtrType(new DevCtx(p));
-                   }));
+  map_ptr->emplace(
+      p, std::async(std::launch::deferred, [=] {
+        // lazy evaluation. i.e., only create device context at
+        // first `Get`
+        auto* dev_ctx = new DevCtx(p);
+        if (is_gpu_place(p)) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+          auto* cuda_ctx = dynamic_cast<CUDADeviceContext*>(dev_ctx);
+          PADDLE_ENFORCE_NOT_NULL(
+              cuda_ctx,
+              platform::errors::InvalidArgument(
+                  "Failed to dynamic_cast dev_ctx into CUDADeviceContext."));
+          dev_ctx->SetDeviceAllocator(
+              memory::allocation::AllocatorFacade::Instance()
+                  .GetAllocator(p, cuda_ctx->context()->RawStream())
+                  .get());
+#endif
+        } else {
+          dev_ctx->SetDeviceAllocator(
+              memory::allocation::AllocatorFacade::Instance()
+                  .GetAllocator(p)
+                  .get());
+        }
+        dev_ctx->SetHostAllocator(
+            memory::allocation::AllocatorFacade::Instance()
+                .GetAllocator(platform::CPUPlace())
+                .get());
+        dev_ctx->SetZeroAllocator(
+            memory::allocation::AllocatorFacade::Instance()
+                .GetZeroAllocator(p)
+                .get());
+        return PtrType(dev_ctx);
+      }));
 }
 
 DeviceContextPool::DeviceContextPool(
