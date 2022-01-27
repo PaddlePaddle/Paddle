@@ -82,6 +82,14 @@ def RemoveConstAndReference(string):
     return ret
 
 
+def GetGradNodeName(string):
+    return f"FinalGradNode{string}"
+
+
+def GetForwardFunctionName(string):
+    return f"{string}_final_state_dygraph_function"
+
+
 def GetAutoGradMetaName(string):
     return f"{string}_autograd_meta"
 
@@ -145,13 +153,13 @@ def ParseYamlArgs(string):
 def ParseYamlReturns(string):
     # Example: Tensor, Tensor
 
-    # list = [ [ret_type, orig_position], ...]
+    # list = [ ["", ret_type, orig_position], ...]
     returns_list = []
 
     returns = [x.strip() for x in string.strip().split(",")]
     for i in range(len(returns)):
         ret = returns[i]
-        returns_list.append([ret, i])
+        returns_list.append(["", ret, i])
 
     return returns_list
 
@@ -260,8 +268,8 @@ def ForwardsValidationCheck(forward_inputs_list, forward_attrs_list,
         assert orig_attr_pos == forward_attr_pos
 
     for i in range(len(forward_returns_list)):
-        orig_return_type = orig_forward_returns_list[i][0]
-        orig_return_pos = orig_forward_returns_list[i][1]
+        orig_return_type = orig_forward_returns_list[i][1]
+        orig_return_pos = orig_forward_returns_list[i][2]
         forward_return_type = forward_returns_list[i][1]
         forward_return_pos = forward_returns_list[i][2]
 
@@ -452,13 +460,14 @@ def GenerateNodeDeclaration(fwd_api_name, backward_fwd_input_map,
             RemoveConstAndReference(atype), saved_attr_name, default_val)
     # End: SetAttributes & Attribute Members
 
+    grad_node_name = GetGradNodeName(fwd_api_name)
     NODE_DECLARATION_TEMPLATE = """
-class GradNode{} : public egr::GradNodeBase {{
+class {} : public egr::GradNodeBase {{
  public:
-  GradNode{}() : egr::GradNodeBase() {{}}
-  GradNode{}(size_t bwd_in_slot_num, size_t bwd_out_slot_num) : 
+  {}() : egr::GradNodeBase() {{}}
+  {}(size_t bwd_in_slot_num, size_t bwd_out_slot_num) : 
       egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {{}}
-  ~GradNode{}() override = default;
+  ~{}() override = default;
 
   virtual std::vector<std::vector<egr::EagerTensor>> operator()(
       const std::vector<std::vector<egr::EagerTensor>>& grads) override;
@@ -476,7 +485,7 @@ class GradNode{} : public egr::GradNodeBase {{
 }};
 """
     node_declaration_str = NODE_DECLARATION_TEMPLATE.format(
-        forward_op_name, forward_op_name, forward_op_name, forward_op_name,
+        grad_node_name, grad_node_name, grad_node_name, grad_node_name,
         set_tensor_wrapper_methods_str, set_attribute_methods_str,
         tensor_wrapper_members_str, attribute_members_str)
 
@@ -536,8 +545,9 @@ def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
             returns_str += f"returns[{fwd_position}] = egr::EagerUtils::CreateEagerTensorFromTensor( grad_api_returns[{grad_api_position}] );\n"
     returns_str += f"return returns;\n"
 
+    grad_node_name = GetGradNodeName(fwd_api_name)
     FUNCTION_TEMPLATE = """
-std::vector<std::vector<egr::EagerTensor>> GradNode{}::operator()(const std::vector<std::vector<egr::EagerTensor>>& grads) {{
+std::vector<std::vector<egr::EagerTensor>> {}::operator()(const std::vector<std::vector<egr::EagerTensor>>& grads) {{
     // Call grad_api function
     auto grad_api_returns = paddle::experimental::{}({});
     {}
@@ -545,7 +555,7 @@ std::vector<std::vector<egr::EagerTensor>> GradNode{}::operator()(const std::vec
   """
 
     node_definition_str = FUNCTION_TEMPLATE.format(
-        fwd_api_name, bwd_api_name, grad_api_args_str, returns_str)
+        grad_node_name, bwd_api_name, grad_api_args_str, returns_str)
 
     return node_definition_str
 
@@ -615,7 +625,8 @@ def GenerateNodeCreationCodes(fwd_api_name, bwd_api_name,
     # Node Construction
     num_bwd_inputs = len(backward_grad_input_map.keys())
     num_bwd_outputs = len(backward_grad_output_map.keys())
-    node_construction_str = f"        auto grad_node = std::make_shared<GradNode{fwd_api_name}>({num_bwd_inputs}, {num_bwd_outputs});"
+    grad_node_name = GetGradNodeName(fwd_api_name)
+    node_construction_str = f"        auto grad_node = std::make_shared<{grad_node_name}>({num_bwd_inputs}, {num_bwd_outputs});"
 
     # SetAttributes
     set_attributes_list = []
@@ -791,7 +802,7 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
         backward_grad_output_map, backward_attrs_list)
 
     FORWARD_FUNCTION_TEMPLATE = """
-{} {}_dygraph_function({}) {{
+{} {}({}) {{
     // Forward API Call
     {}
     
@@ -804,11 +815,11 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
 }}
 """
 
+    forward_function_name = GetForwardFunctionName(fwd_api_name)
     forward_function_str = FORWARD_FUNCTION_TEMPLATE.format(
-        returns_type_str, fwd_api_name, inputs_args_str, forward_call_str,
-        returns_str, node_creation_str)
-
-    forward_function_declaration_str = f"{returns_type_str} {fwd_api_name}_dygraph_function({inputs_args_str});"
+        returns_type_str, forward_function_name, inputs_args_str,
+        forward_call_str, returns_str, node_creation_str)
+    forward_function_declaration_str = f"{returns_type_str} {forward_function_name}({inputs_args_str});"
 
     return forward_function_str, forward_function_declaration_str
 
@@ -817,6 +828,7 @@ def GenerateNodeCCFile(filepath, node_definition_str):
     file_contents = """
 #include "glog/logging.h"
 #include "paddle/pten/api/all.h"
+#include "paddle/pten/api/backward/backward_api.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/eager/utils.h"
