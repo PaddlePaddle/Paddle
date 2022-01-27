@@ -55,6 +55,12 @@ ENDIF()
 cc_library(place SRCS place.cc DEPS enforce boost pten_place)
 cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
 
+IF(WITH_MKLDNN)
+    set(MKLDNN_CTX_DEPS mkldnn)
+ELSE()
+    set(MKLDNN_CTX_DEPS)
+ENDIF()
+
 add_subdirectory(device)
 add_subdirectory(dynload)
 add_subdirectory(stream)
@@ -83,12 +89,6 @@ ENDIF()
 
 IF(WITH_MLU)
     set(MLU_CTX_DEPS mlu_device_context)
-ENDIF()
-
-IF(WITH_MKLDNN)
-    set(MKLDNN_CTX_DEPS mkldnn)
-ELSE()
-    set(MKLDNN_CTX_DEPS)
 ENDIF()
 
 IF(WITH_ASCEND_CL OR WITH_MLU)
