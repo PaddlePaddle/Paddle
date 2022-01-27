@@ -94,13 +94,8 @@ def main(args):
             optim,
             amp_lists=amp.bf16.AutoMixedPrecisionListsBF16(
                 custom_bf16_list={
-                    'pool2d',
-                    'relu',
-                    'scale',
-                    'elementwise_add',
-                    'reshape2',
-                    'slice',
-                    'reduce_mean',
+                    'matmul_v2', 'pool2d', 'relu', 'scale', 'elementwise_add',
+                    'reshape2', 'slice', 'reduce_mean', 'conv2d'
                 }, ))
 
     # Configuration model
