@@ -23,6 +23,7 @@ from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 from paddle.fluid.backward import append_backward
+from paddle.distributed.models.moe import utils
 
 
 def count(x, n_expert):
@@ -62,7 +63,7 @@ class TestExpertCountAPI(unittest.TestCase):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.fluid.data('x', self.x.shape, dtype="int64")
-            out = paddle.distributed.utils.expert_count(x, self.n_expert)
+            out = utils.expert_count(x, self.n_expert)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'x': self.x}, fetch_list=[out])
             assert np.allclose(res, self.out)
@@ -70,7 +71,7 @@ class TestExpertCountAPI(unittest.TestCase):
     def test_api_dygraph(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
-        out = paddle.distributed.utils.expert_count(x, self.n_expert)
+        out = utils.expert_count(x, self.n_expert)
         assert np.allclose(out.numpy(), self.out)
 
 
