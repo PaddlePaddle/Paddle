@@ -94,7 +94,7 @@ class EagerUtils {
    * **/
   static AutogradMeta* autograd_meta(egr::EagerTensor* target);
 
-  static std::vector<AutogradMeta*> multi_autograd_meta(
+  static std::vector<AutogradMeta*> autograd_meta(
       std::vector<egr::EagerTensor>* targets);
 
   static std::pair<size_t, size_t> OutRankInfo(const egr::EagerTensor& target);

@@ -93,6 +93,7 @@ void OpRunImpl(const paddle::framework::OperatorBase& op,
     prepared_op.Run(*tmp_ins_ptr, outs, attrs, default_attrs);
   }
 
+  VLOG(6) << "Run Prepared Op end";
   // TODO(jiabin): Set the output var's grad Forward DataType
 }
 
