@@ -11,3 +11,11 @@ cc_test(test_reshape_dev_api SRCS test_reshape_dev_api.cc DEPS pten pten_api_uti
 cc_test(test_sum_dev_api SRCS test_sum_dev_api.cc DEPS pten pten_api_utils)
 cc_test(test_conj_dev_api SRCS test_conj_dev_api.cc DEPS pten pten_api_utils)
 cc_test(test_concat_dev_api SRCS test_concat_dev_api.cc DEPS pten pten_api_utils)
+
+# For String Kernels
+cc_test(test_strings_case_convert_dev_api SRCS test_strings_case_convert_dev_api.cc DEPS pten pten_api_utils)
+IF(WITH_GPU)
+  nv_test(test_strings_case_convert_dev_gpu_api SRCS test_strings_case_convert_dev_api.cu DEPS pten pten_api_utils)
+ELSEIF(WITH_ROCM)
+  hip_test(test_strings_case_convert_dev_gpu_api SRCS test_strings_case_convert_dev_api.cu DEPS pten pten_api_utils)
+ENDIF()

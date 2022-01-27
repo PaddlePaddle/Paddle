@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/pten/common/float16.h"
 
 #include "paddle/pten/api/ext/exception.h"
+#include "paddle/pten/common/pstring.h"
 
 namespace paddle {
 namespace experimental {
@@ -27,6 +28,7 @@ using complex64 = ::pten::dtype::complex<float>;
 using complex128 = ::pten::dtype::complex<double>;
 using float16 = ::pten::dtype::float16;
 using bfloat16 = ::pten::dtype::bfloat16;
+using pstring = ::pten::dtype::pstring;
 
 enum class DataType {
   UNDEFINED = 0,
@@ -45,6 +47,7 @@ enum class DataType {
   FLOAT64,
   COMPLEX64,
   COMPLEX128,
+  STRING,
   NUM_DATA_TYPES,
   // See Note [ Why we need ALL in baisc kernel key member? ]
   ALL_DTYPE = UNDEFINED,
@@ -72,6 +75,8 @@ inline size_t SizeOf(DataType data_type) {
       return 8;
     case DataType::COMPLEX128:
       return 16;
+    case DataType::STRING:
+      return 24;
     case DataType::UNDEFINED:
       return 0;
     case DataType::NUM_DATA_TYPES:
@@ -82,22 +87,23 @@ inline size_t SizeOf(DataType data_type) {
   return 0;
 }
 
-#define PT_FOR_EACH_DATA_TYPE(_)    \
-  _(bool, DataType::BOOL)           \
-  _(int8_t, DataType::INT8)         \
-  _(uint8_t, DataType::UINT8)       \
-  _(int16_t, DataType::INT16)       \
-  _(uint16_t, DataType::UINT16)     \
-  _(int32_t, DataType::INT32)       \
-  _(uint32_t, DataType::UINT32)     \
-  _(int64_t, DataType::INT64)       \
-  _(uint64_t, DataType::UINT64)     \
-  _(bfloat16, DataType::BFLOAT16)   \
-  _(float16, DataType::FLOAT16)     \
-  _(float, DataType::FLOAT32)       \
-  _(double, DataType::FLOAT64)      \
-  _(complex64, DataType::COMPLEX64) \
-  _(complex128, DataType::COMPLEX128)
+#define PT_FOR_EACH_DATA_TYPE(_)      \
+  _(bool, DataType::BOOL)             \
+  _(int8_t, DataType::INT8)           \
+  _(uint8_t, DataType::UINT8)         \
+  _(int16_t, DataType::INT16)         \
+  _(uint16_t, DataType::UINT16)       \
+  _(int32_t, DataType::INT32)         \
+  _(uint32_t, DataType::UINT32)       \
+  _(int64_t, DataType::INT64)         \
+  _(uint64_t, DataType::UINT64)       \
+  _(bfloat16, DataType::BFLOAT16)     \
+  _(float16, DataType::FLOAT16)       \
+  _(float, DataType::FLOAT32)         \
+  _(double, DataType::FLOAT64)        \
+  _(complex64, DataType::COMPLEX64)   \
+  _(complex128, DataType::COMPLEX128) \
+  _(pstring, DataType::STRING)
 
 template <DataType T>
 struct DataTypeToCppType;
@@ -175,6 +181,9 @@ inline std::ostream& operator<<(std::ostream& os, DataType dtype) {
     case DataType::COMPLEX128:
       os << "complex128";
       break;
+    case DataType::STRING:
+      os << "string";
+      break;
     default:
       PD_THROW("Invalid enum data type `", static_cast<int>(dtype), "`.");
   }
@@ -195,4 +204,6 @@ using bfloat16 = paddle::experimental::bfloat16;
 using complex64 = paddle::experimental::complex64;
 using complex128 = paddle::experimental::complex128;
 using float16 = paddle::experimental::float16;
+using pstring = paddle::experimental::pstring;
+
 }  // namespace paddle

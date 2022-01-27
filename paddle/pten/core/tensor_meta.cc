@@ -40,4 +40,18 @@ bool DenseTensorMeta::valid() const noexcept {
   return valid;
 }
 
+StringTensorMeta::StringTensorMeta(const DDim& dims) : dims(dims) {}
+
+bool StringTensorMeta::valid() const noexcept {
+  bool valid{true};
+  valid = valid && (is_scalar || product(dims) >= 0);
+  return valid;
+}
+
+bool operator==(const StringTensorMeta& lhs, const StringTensorMeta& rhs) {
+  bool ret = true;
+  return ret && (lhs.is_scalar == rhs.is_scalar) && (lhs.dims == rhs.dims) &&
+         (lhs.offset == rhs.offset);
+}
+
 }  // namespace pten

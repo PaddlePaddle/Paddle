@@ -67,4 +67,7 @@ DenseTensorMeta SumInferMeta(const DenseTensorMeta& x_meta,
                              const std::vector<int64_t>& axis,
                              DataType dtype,
                              bool keep_dim);
+
+// Common InferMeta Functions of StringTensor for unary operators:
+StringTensorMeta UnchangedInferMeta(const StringTensorMeta& x_meta);
 }  // namespace pten

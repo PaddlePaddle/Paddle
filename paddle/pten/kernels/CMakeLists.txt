@@ -24,3 +24,6 @@ register_kernels(EXCLUDES math_kernel DEPS ${COMMON_KERNEL_DEPS})
 kernel_library(math_kernel DEPS ${MATH_KERNEL_DEPS})
 
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})
+
+# For strings kernels
+add_subdirectory(strings)

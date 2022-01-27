@@ -304,4 +304,8 @@ DenseTensorMeta ReduceInferMeta(const DenseTensorMeta& x_meta,
   return return_meta;
 }
 
+StringTensorMeta UnchangedInferMeta(const StringTensorMeta& x_meta) {
+  return x_meta;
+}
+
 }  // namespace pten

@@ -20,6 +20,7 @@
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_context.h"
 #include "paddle/pten/core/kernel_def.h"
+#include "paddle/pten/core/string_tensor.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/pten/core/enforce.h"
@@ -213,6 +214,9 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(DenseTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(DenseTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(DenseTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(StringTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(StringTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(StringTensor);
   // TODO(chenweihang): adapt SelectedRows
   // PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SelectedRowsTensor);
 
@@ -229,11 +233,13 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<int64_t>&);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const ScalarArray&);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<int>&);
-
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::string&);
   /* Output Helpers */
 
   PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(DenseTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(DenseTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(StringTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(StringTensor);
   // TODO(chenweihang): adapt SelectedRows
   // PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SelectedRowsTensor);
 
