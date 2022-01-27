@@ -24,13 +24,11 @@ limitations under the License. */
 
 namespace pten {
 
-DenseTensor::DenseTensor(const std::shared_ptr<Allocator>& a,
-                         const DenseTensorMeta& meta)
+DenseTensor::DenseTensor(Allocator* a, const DenseTensorMeta& meta)
     : meta_(meta),
       storage_(make_intrusive<TensorStorage>(a, SizeOf(dtype()) * numel())) {}
 
-DenseTensor::DenseTensor(const std::shared_ptr<Allocator>& a,
-                         DenseTensorMeta&& meta)
+DenseTensor::DenseTensor(Allocator* a, DenseTensorMeta&& meta)
     : meta_(std::move(meta)),
       storage_(make_intrusive<TensorStorage>(a, SizeOf(dtype()) * numel())) {}
 
@@ -67,6 +65,12 @@ DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
 #ifdef PADDLE_WITH_MKLDNN
   format_ = other.format_;
 #endif
+  return *this;
+}
+
+DenseTensor& DenseTensor::operator=(DenseTensor&& other) {
+  meta_ = std::move(other.meta_);
+  storage_.swap(other.storage_);
   return *this;
 }
 
@@ -429,6 +433,10 @@ inline T* DenseTensor::mutable_data(const paddle::platform::Place& place,
 }
 
 void DenseTensor::ShareBufferWith(const DenseTensor& tensor) {
+  if (storage_ == nullptr) {
+    storage_ = make_intrusive<paddle::experimental::SharedStorage>(
+        paddle::platform::CPUPlace());
+  }
   if (storage_ != nullptr && tensor.storage_ != nullptr) {
     storage_->set_data_shared(tensor.storage_->data_shared());
   }

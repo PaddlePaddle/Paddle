@@ -173,7 +173,7 @@ static void PreparedOpRunImpl(
   paddle::framework::Scope scope;
 
   EagerInferShapeContext infer_shape_ctx(&ins, &outs, &attrs, &default_attrs,
-                                         op.Type());
+                                         op.Type(), &kernel_type);
   op.Info().infer_shape_(&infer_shape_ctx);
 
   func(EagerExecutionContext(op, scope, *dev_ctx, ctx, ins, outs, attrs,

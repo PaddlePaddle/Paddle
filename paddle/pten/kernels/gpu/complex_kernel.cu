@@ -21,13 +21,14 @@
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/complex.h"
 
-PT_REGISTER_CTX_KERNEL(conj,
-                       GPU,
-                       ALL_LAYOUT,
-                       pten::Conj,
-                       paddle::platform::complex<float>,
-                       paddle::platform::complex<double>,
-                       float,
-                       double,
-                       int,
-                       int64_t) {}
+PT_REGISTER_KERNEL(conj,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::ConjKernel,
+                   paddle::platform::float16,
+                   paddle::platform::complex<float>,
+                   paddle::platform::complex<double>,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}

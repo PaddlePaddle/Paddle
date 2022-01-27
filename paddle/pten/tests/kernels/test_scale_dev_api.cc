@@ -15,7 +15,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/pten/include/math.h"
+#include "paddle/pten/kernels/scale_kernel.h"
 
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
@@ -29,9 +29,9 @@ using DDim = paddle::framework::DDim;
 
 TEST(DEV_API, scale) {
   // 1. create tensor
-  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+  const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc,
+  pten::DenseTensor dense_x(alloc.get(),
                             pten::DenseTensorMeta(pten::DataType::FLOAT32,
                                                   framework::make_ddim({3, 4}),
                                                   pten::DataLayout::NCHW));
@@ -69,9 +69,9 @@ TEST(DEV_API, scale) {
 
 TEST(DEV_API, scale_host) {
   // 1. create tensor
-  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+  const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc,
+  pten::DenseTensor dense_x(alloc.get(),
                             pten::DenseTensorMeta(pten::DataType::FLOAT32,
                                                   framework::make_ddim({3, 4}),
                                                   pten::DataLayout::NCHW));
@@ -79,9 +79,8 @@ TEST(DEV_API, scale_host) {
   for (size_t i = 0; i < 12; ++i) {
     dense_x_data[i] = i * 1.0;
   }
-  const auto alloc2 = std::make_shared<paddle::experimental::DefaultAllocator>(
-      paddle::platform::CPUPlace());
-  pten::DenseTensor scale(alloc2,
+
+  pten::DenseTensor scale(alloc.get(),
                           pten::DenseTensorMeta(pten::DataType::FLOAT32,
                                                 framework::make_ddim({1}),
                                                 pten::DataLayout::NCHW));

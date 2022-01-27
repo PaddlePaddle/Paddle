@@ -21,7 +21,7 @@ namespace operators {
 
 template <typename T>
 struct CudaLgammaFunctor {
-  __device__ __forceinline__ T operator()(const T& x) const {
+  __device__ __forceinline__ T operator()(const T x) const {
     return Eigen::numext::lgamma(x);
   }
 };

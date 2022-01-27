@@ -23,10 +23,10 @@ add_subdirectory(ops)
 add_subdirectory(tests)
 
 # make an unity target for compile deps
-set(PTEN_DEPS convert_utils dense_tensor pten_context kernel_factory kernel_context infermeta)
+set(PTEN_DEPS convert_utils dense_tensor pten_context kernel_factory kernel_context arg_map_context infermeta)
 get_property(pten_kernels GLOBAL PROPERTY PTEN_KERNELS)
 # keep this message for debug, remove it later if needless
 message(STATUS "All standard pten kernels: ${pten_kernels}")
 set(PTEN_DEPS ${PTEN_DEPS} ${pten_kernels})
 
-cc_library(pten SRCS all.cc DEPS ${PTEN_DEPS})
+cc_library(pten DEPS ${PTEN_DEPS})

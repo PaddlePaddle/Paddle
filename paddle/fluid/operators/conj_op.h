@@ -19,7 +19,6 @@
 
 // only can include the headers in paddle/pten/api dirs
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/include/core.h"
 #include "paddle/pten/kernels/complex_kernel.h"
 
 namespace paddle {
@@ -39,7 +38,7 @@ class ConjKernel : public framework::OpKernel<T> {
     auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
 
     // call new kernel
-    pten::Conj<T>(dev_ctx, *pt_x.get(), pt_out.get());
+    pten::ConjKernel<T>(dev_ctx, *pt_x.get(), pt_out.get());
   }
 };
 

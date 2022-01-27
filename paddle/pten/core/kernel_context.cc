@@ -50,6 +50,11 @@ void KernelContext::EmplaceBackOutputWithoutSetRange(
   outputs_.emplace_back(std::move(output));
 }
 
+void KernelContext::SetOutputWithoutSetRange(
+    int index, std::shared_ptr<TensorBase> output) {
+  outputs_.at(index) = std::move(output);
+}
+
 void KernelContext::EmplaceBackOutputs(
     paddle::SmallVector<std::shared_ptr<TensorBase>> outputs) {
   int index = outputs_.size();
@@ -119,8 +124,10 @@ void KernelContext::ClearData() {
     }
   }
   for (auto& out : outputs_) {
-    CompatibleDenseTensorUtils::ClearStorage(
-        static_cast<DenseTensor*>(out.get()));
+    if (out) {
+      CompatibleDenseTensorUtils::ClearStorage(
+          static_cast<DenseTensor*>(out.get()));
+    }
   }
   attrs_.clear();
 }

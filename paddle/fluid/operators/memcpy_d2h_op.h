@@ -24,7 +24,7 @@ class DeviceContext;
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
+class Tensor;
 class Variable;
 class SelectedRows;
 }  // namespace framework

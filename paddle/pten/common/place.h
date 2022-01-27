@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,52 +16,97 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/pten/common/device.h"
+namespace pten {
 
-namespace paddle {
-namespace experimental {
+enum class AllocationType : int8_t {
+  UNDEF = 0,
+  CPU = 1,
+  GPU = 2,
+  GPUPINNED = 3,
+  XPU = 4,
+  NPU = 5,
+  NPUPINNED = 6,
+  IPU = 7,
+  MLU = 8,
+};
+
+const char *AllocationTypeStr(AllocationType type);
 
 /// \brief The place is used to specify where the data is stored.
-class Place final {
+class Place {
  public:
-  Place() = default;
+  Place() : device(0), alloc_type_(AllocationType::UNDEF) {}
 
-  explicit Place(const Device& device) : device_(device) {}
+  explicit Place(AllocationType type, int8_t id)
+      : device(id), alloc_type_(type) {}
 
-  Place(DeviceType type, int8_t id) : device_(type, id) {}
+  explicit Place(AllocationType type) : device(0), alloc_type_(type) {}
 
-  Place(DeviceType type) : device_(type) {}
-
-  Place(const Device& device, bool is_pinned) noexcept : device_(device),
-                                                         is_pinned_(is_pinned) {
+  void Reset(AllocationType type, int8_t device_id = 0) noexcept {
+    alloc_type_ = type;
+    device = device_id;
   }
 
-  const Device& device() const noexcept { return device_; }
+  AllocationType GetType() const { return alloc_type_; }
 
-  /// \brief Returns whether the memory is a locked page. The page lock
-  /// memory is actually located in the host memory, but it can only be
-  /// used by certain devices and can be directly transferred by DMA.
-  /// \return Whether the memory is a locked page.
-  bool is_pinned() const noexcept { return is_pinned_; }
-
-  void Reset(const Device& device, bool is_pinned = false) noexcept {
-    device_ = device;
-    is_pinned_ = is_pinned;
-  }
+  int8_t GetDeviceId() const { return device; }
 
   std::string DebugString() const;
 
- private:
-  friend bool operator==(const Place&, const Place&) noexcept;
+ public:
+  // TODO(wilber): Just because of backward compatibility, it needs to be
+  // changed to private in the future.
+  int8_t device;
 
  private:
-  Device device_;
-  bool is_pinned_{false};
+  AllocationType alloc_type_;
 };
 
-inline bool operator==(const Place& lhs, const Place& rhs) noexcept {
-  return (lhs.device_ == rhs.device_) && (lhs.is_pinned_ == rhs.is_pinned_);
-}
+class CPUPlace : public Place {
+ public:
+  CPUPlace() : Place(AllocationType::CPU, 0) {}
+};
 
-}  // namespace experimental
-}  // namespace paddle
+class GPUPlace : public Place {
+ public:
+  GPUPlace() : Place(AllocationType::GPU, 0) {}
+  explicit GPUPlace(int device_id) : Place(AllocationType::GPU, device_id) {}
+};
+
+class GPUPinnedPlace : public Place {
+ public:
+  GPUPinnedPlace() : Place(AllocationType::GPUPINNED) {}
+};
+
+class XPUPlace : public Place {
+ public:
+  XPUPlace() : Place(AllocationType::XPU, 0) {}
+  explicit XPUPlace(int device_id) : Place(AllocationType::XPU, device_id) {}
+};
+
+class NPUPlace : public Place {
+ public:
+  NPUPlace() : Place(AllocationType::NPU, 0) {}
+  explicit NPUPlace(int device_id) : Place(AllocationType::XPU, device_id) {}
+};
+
+class NPUPinnedPlace : public Place {
+ public:
+  NPUPinnedPlace() : Place(AllocationType::NPUPINNED) {}
+};
+
+class IPUPlace : public Place {
+ public:
+  IPUPlace() : Place(AllocationType::XPU, 0) {}
+  explicit IPUPlace(int device_id) : Place(AllocationType::XPU, device_id) {}
+};
+
+class MLUPlace : public Place {
+ public:
+  MLUPlace() : Place(AllocationType::MLU, 0) {}
+  explicit MLUPlace(int device_id) : Place(AllocationType::MLU, device_id) {}
+};
+
+std::ostream &operator<<(std::ostream &, const Place &);
+
+}  // namespace pten

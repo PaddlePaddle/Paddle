@@ -62,8 +62,10 @@ TEST(CrossBatchAccumulation, SingleScaleNode) {
 
     auto meta = AutogradMeta();
     meta.SetSingleOutRankWithSlot(0, 0);
+    meta.SetStopGradient(false);
     meta.SetGradNode(acc_node_ptr);
-    scale_node_ptr->AddEdges({&meta}, 0);
+    std::vector<egr::AutogradMeta*> res = {&meta};
+    scale_node_ptr->AddEdges(&res, 0);
 
     AutogradMeta* auto_grad_meta1 = EagerUtils::autograd_meta(&leaf_tensor);
     auto_grad_meta1->SetGradNode(

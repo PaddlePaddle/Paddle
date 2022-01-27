@@ -31,7 +31,7 @@ class PSClient;
 class PSServer;
 }  // namespace distributed
 namespace framework {
-class LoDTensor;
+class Tensor;
 class Variable;
 }  // namespace framework
 }  // namespace paddle

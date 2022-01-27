@@ -20,7 +20,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/pooling.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/pten/include/core.h"
 #include "paddle/pten/kernels/empty_kernel.h"
 #include "paddle/pten/kernels/flatten_grad_kernel.h"
 #include "paddle/pten/kernels/flatten_kernel.h"

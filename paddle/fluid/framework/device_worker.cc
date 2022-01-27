@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-class LoDTensor;
+class Tensor;
 class Scope;
 
 void DeviceWorker::SetRootScope(Scope* root_scope) { root_scope_ = root_scope; }

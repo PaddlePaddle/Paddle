@@ -24,7 +24,7 @@
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
+class Tensor;
 
 namespace ir {
 class Node;

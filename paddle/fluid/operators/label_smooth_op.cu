@@ -28,7 +28,7 @@ struct LabelSmoothFunctor {
     label_dim = static_cast<T>(label_dim_data);
   }
 
-  __device__ __forceinline__ T operator()(const T& x) const {
+  __device__ __forceinline__ T operator()(const T x) const {
     return (static_cast<T>(1 - epsilon) * x +
             static_cast<T>(epsilon / label_dim));
   }
@@ -42,7 +42,7 @@ struct LabelSmoothGradFunctor {
     epsilon = static_cast<T>(epsilon_data);
   }
 
-  __device__ __forceinline__ T operator()(const T& x) const {
+  __device__ __forceinline__ T operator()(const T x) const {
     return static_cast<T>(1 - epsilon) * x;
   }
 };

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/platform/for_range.h"
 #include "paddle/fluid/platform/transform.h"
 #include "paddle/pten/backends/all_context.h"
 #include "paddle/pten/core/dense_tensor.h"
@@ -22,6 +23,28 @@ namespace pten {
 namespace funcs {
 
 using DDim = paddle::framework::DDim;
+
+template <typename T, typename DX_OP, typename DY_OP, typename Tout = T>
+struct ElemwiseGradNoBroadcast {
+  const T *x_;
+  const T *y_;
+  const Tout *out_;
+  const Tout *dout_;
+
+  HOSTDEVICE void operator()(size_t i) {
+    if (dx_ != nullptr) {
+      dx_[i] = dx_op_(x_[i], y_[i], out_[i], dout_[i]);
+    }
+    if (dy_ != nullptr) {
+      dy_[i] = dy_op_(x_[i], y_[i], out_[i], dout_[i]);
+    }
+  }
+
+  DX_OP dx_op_;
+  DY_OP dy_op_;
+  T *dx_;
+  T *dy_;
+};
 
 template <typename T, typename DeviceContext>
 class RowwiseTransformIterator;
@@ -378,5 +401,36 @@ inline void GetBroadcastDimsArrays(const DDim &x_dims,
     }
   }
 }
+
+template <typename DeviceContext,
+          typename T,
+          typename DX_OP,
+          typename DY_OP,
+          typename Tout = T>
+void ElemwiseGradComputeNoBroadcast(const DeviceContext &dev_ctx,
+                                    const DDim &x_dim,
+                                    const DDim &y_dim,
+                                    const DenseTensor &x,
+                                    const DenseTensor &y,
+                                    const DenseTensor &out,
+                                    const DenseTensor &dout,
+                                    int axis,
+                                    DenseTensor *dx,
+                                    DenseTensor *dy,
+                                    DX_OP dx_op,
+                                    DY_OP dy_op) {
+  size_t N = static_cast<size_t>(paddle::framework::product(x_dim));
+  paddle::platform::ForRange<DeviceContext> for_range(dev_ctx, N);
+  for_range(ElemwiseGradNoBroadcast<T, DX_OP, DY_OP, Tout>{
+      x.data<T>(),
+      y.data<T>(),
+      out.data<Tout>(),
+      dout.data<Tout>(),
+      dx_op,
+      dy_op,
+      dx == nullptr ? nullptr : dx->mutable_data<T>(dev_ctx.GetPlace()),
+      dy == nullptr ? nullptr : dy->mutable_data<T>(dev_ctx.GetPlace())});
+}
+
 }  // namespace funcs
 }  // namespace pten

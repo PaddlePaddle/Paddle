@@ -5,9 +5,6 @@ else()
 endif()
 
 cc_test(test_pten_exception SRCS test_pten_exception.cc DEPS gtest)
-cc_test(test_framework_storage SRCS test_storage.cc DEPS pten_api_utils)
-cc_test(test_framework_tensor_utils SRCS test_tensor_utils.cc DEPS pten_api_utils)
-cc_test(test_framework_place_utils storage SRCS test_place_utils.cc DEPS pten_api_utils)
 
 cc_test(test_mean_api SRCS test_mean_api.cc DEPS pten_tensor pten_api pten_api_utils)
 cc_test(test_dot_api SRCS test_dot_api.cc DEPS pten_tensor pten_api pten_api_utils)

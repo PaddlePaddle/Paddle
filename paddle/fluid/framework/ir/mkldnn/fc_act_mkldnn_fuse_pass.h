@@ -42,4 +42,4 @@ class FuseFCActOneDNNPass : public FusePassBase {
 
 }  // namespace ir
 }  // namespace framework
-}  // namespace paddlea
+}  // namespace paddle

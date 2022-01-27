@@ -257,9 +257,8 @@ void TensorDataShare(framework::LoDTensor* dst, paddle::lite_api::Tensor* src) {
   size_t memory_size =
       GetLiteTensorNumel(*src) *
       framework::SizeOfType(GetNativePrecisionType(src->precision()));
-  std::shared_ptr<memory::allocation::Allocation> holder(
-      new memory::allocation::Allocation(src_raw_data, memory_size,
-                                         GetNativePlace(src->target())));
+  std::shared_ptr<pten::Allocation> holder(new pten::Allocation(
+      src_raw_data, memory_size, GetNativePlace(src->target())));
   dst->Resize(paddle::framework::make_ddim(src->shape()));
   SetLoD(dst->mutable_lod(), src->lod());
   dst->ResetHolderWithType(holder, GetNativePrecisionType(src->precision()));

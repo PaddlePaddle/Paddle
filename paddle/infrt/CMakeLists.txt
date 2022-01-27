@@ -77,7 +77,6 @@ add_subdirectory(paddle)
 
 # MLIR td file generations
 set(infrt_mlir_incs
-        ops_inc
         basic_kernels_inc
         test_kernels_inc
         infrt_base_inc

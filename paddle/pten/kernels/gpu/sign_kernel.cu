@@ -23,5 +23,5 @@ limitations under the License. */
 
 using float16 = paddle::platform::float16;
 
-PT_REGISTER_CTX_KERNEL(
-    sign, GPU, ALL_LAYOUT, pten::Sign, float, double, float16) {}
+PT_REGISTER_KERNEL(
+    sign, GPU, ALL_LAYOUT, pten::SignKernel, float, double, float16) {}

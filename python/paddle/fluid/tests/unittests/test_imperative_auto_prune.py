@@ -15,6 +15,7 @@
 import unittest
 import paddle.fluid as fluid
 import numpy as np
+from paddle.fluid.framework import _test_eager_guard
 
 
 class AutoPruneLayer0(fluid.Layer):
@@ -145,7 +146,7 @@ class MyLayer2(fluid.Layer):
 
 
 class TestImperativeAutoPrune(unittest.TestCase):
-    def test_auto_prune(self):
+    def func_auto_prune(self):
         with fluid.dygraph.guard():
             case1 = AutoPruneLayer0(input_size=5)
             value1 = np.arange(25).reshape(5, 5).astype("float32")
@@ -157,7 +158,12 @@ class TestImperativeAutoPrune(unittest.TestCase):
             self.assertTrue(case1.linear2.weight._grad_ivar() is not None)
             self.assertTrue(case1.linear1.weight._grad_ivar() is not None)
 
-    def test_auto_prune2(self):
+    def test_auto_prune(self):
+        with _test_eager_guard():
+            self.func_auto_prune()
+        self.func_auto_prune()
+
+    def func_auto_prune2(self):
         with fluid.dygraph.guard():
             case2 = AutoPruneLayer1(input_size=5)
             value1 = np.arange(25).reshape(5, 5).astype("float32")
@@ -169,6 +175,11 @@ class TestImperativeAutoPrune(unittest.TestCase):
             loss.backward()
             self.assertTrue(case2.linear2.weight._grad_ivar() is None)
             self.assertTrue(case2.linear1.weight._grad_ivar() is not None)
+
+    def test_auto_prune2(self):
+        with _test_eager_guard():
+            self.func_auto_prune2()
+        self.func_auto_prune2()
 
     def test_auto_prune3(self):
         with fluid.dygraph.guard():

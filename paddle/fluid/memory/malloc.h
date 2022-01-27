@@ -28,7 +28,7 @@ class DeviceContext;
 
 namespace memory {
 
-using allocation::Allocation;
+using pten::Allocation;
 using allocation::Allocator;
 using allocation::AllocationPtr;
 

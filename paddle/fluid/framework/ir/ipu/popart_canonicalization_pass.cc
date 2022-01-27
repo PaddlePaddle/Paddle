@@ -16,7 +16,6 @@
 
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/platform/device/ipu/popart_canonicalization/canonicalization_utils.h"
-#include "paddle/fluid/platform/device/ipu/popart_canonicalization/post_canonicalization.h"
 
 namespace paddle {
 namespace framework {

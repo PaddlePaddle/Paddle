@@ -16,12 +16,12 @@
 function(kernel_declare TARGET_LIST)
     foreach(kernel_path ${TARGET_LIST})
         file(READ ${kernel_path} kernel_impl)
-        # TODO(chenweihang): rename PT_REGISTER_CTX_KERNEL to PT_REGISTER_KERNEL
+        # TODO(chenweihang): rename PT_REGISTER_KERNEL to PT_REGISTER_KERNEL
         # NOTE(chenweihang): now we don't recommend to use digit in kernel name
-        string(REGEX MATCH "(PT_REGISTER_CTX_KERNEL|PT_REGISTER_GENERAL_KERNEL)\\([ \t\r\n]*[a-z0-9_]*," first_registry "${kernel_impl}")
+        string(REGEX MATCH "(PT_REGISTER_KERNEL|PT_REGISTER_GENERAL_KERNEL)\\([ \t\r\n]*[a-z0-9_]*," first_registry "${kernel_impl}")
         if (NOT first_registry STREQUAL "")
             # parse the first kernel name
-            string(REPLACE "PT_REGISTER_CTX_KERNEL(" "" kernel_name "${first_registry}")
+            string(REPLACE "PT_REGISTER_KERNEL(" "" kernel_name "${first_registry}")
             string(REPLACE "PT_REGISTER_GENERAL_KERNEL(" "" kernel_name "${kernel_name}")
             string(REPLACE "," "" kernel_name "${kernel_name}")
             string(REGEX REPLACE "[ \t\r\n]+" "" kernel_name "${kernel_name}")
@@ -79,6 +79,9 @@ function(kernel_library TARGET)
     endif()
 
     list(APPEND all_srcs ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.h)
+    if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/impl/${TARGET}_impl.h)
+        list(APPEND all_srcs ${CMAKE_CURRENT_SOURCE_DIR}/impl/${TARGET}_impl.h)
+    endif()
     list(APPEND all_srcs ${common_srcs})
     list(APPEND all_srcs ${cpu_srcs})
     list(APPEND all_srcs ${gpu_srcs})

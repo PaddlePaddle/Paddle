@@ -181,7 +181,9 @@ void RunBackward(const std::vector<egr::EagerTensor>& tensors,
     PADDLE_ENFORCE(edges.size() == grad_output_tensors.size() || edges.empty(),
                    paddle::platform::errors::Fatal(
                        "Number of edges should be either empty ( for leaf node "
-                       ") or the same as number of output grad tensors"));
+                       ") or the same as number of output grad tensors, but we "
+                       "got edges size is: %d, grad_output size is: %d",
+                       edges.size(), grad_output_tensors.size()));
 
     for (size_t i = 0; i < edges.size(); i++) {
       for (size_t j = 0; j < edges[i].size(); j++) {

@@ -16,8 +16,10 @@ limitations under the License. */
 
 #include <cstdint>
 #include "paddle/fluid/platform/place.h"
+#include "paddle/pten/core/candidate/allocator.h"
 
 namespace pten {
+namespace deprecated {
 
 /// \brief Encapsulates strategies for access/addressing, allocation/
 /// deallocation and construction/destruction of objects.
@@ -147,4 +149,5 @@ inline Allocation Allocate(const std::shared_ptr<Allocator>& a, size_t n) {
   return a->Allocate(n);
 }
 
+}  // namespace deprecated
 }  // namespace pten

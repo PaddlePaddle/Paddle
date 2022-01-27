@@ -21,7 +21,7 @@
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
+class Tensor;
 class Scope;
 }  // namespace framework
 }  // namespace paddle

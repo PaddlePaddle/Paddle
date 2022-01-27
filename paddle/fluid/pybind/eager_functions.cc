@@ -34,7 +34,6 @@ limitations under the License. */
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/include/core.h"
 
 namespace paddle {
 namespace pybind {
@@ -53,7 +52,7 @@ size_t PyArray_Size_(PyObject* numpy_data) {
   return res;
 }
 
-class EagerNumpyAllocation : public paddle::memory::allocation::Allocation {
+class EagerNumpyAllocation : public pten::Allocation {
  public:
   explicit EagerNumpyAllocation(PyObject* numpy_data, pten::DataType dtype)
       : Allocation(

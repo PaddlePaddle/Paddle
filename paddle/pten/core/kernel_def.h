@@ -26,17 +26,4 @@ using KernelArgsDefFn = void (*)(Kernel* kernel);
 using KernelArgsParseFn = void (*)(const KernelKey& default_key,
                                    KernelArgsDef* args_def);
 
-// Multiple kernels of the same operation are distinguished by the difference
-// of the overload name. For the convenience of reuse, we define some overload
-// naming strings for the naming of the kernel
-
-// For kernels that contains dynamic tensor attribute and it need to be always
-// on host device, such as `ScaleTensor`
-constexpr char kContainHostTensorSuffix[] = "host";
-
-// For kernels with SelectedRowsTensor input and output
-constexpr char kContainSelectedRowsSuffix[] = "sr";
-
-// For kernels with intermediate output
-constexpr char kContainMidOutputTensorSuffix[] = "mid";
 }  // namespace pten

@@ -41,8 +41,9 @@ TEST(GradNodeInfo, GradNodeBase) {
   pten::DenseTensorMeta meta = pten::DenseTensorMeta(
       pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 1}));
   std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace()),
+      std::make_unique<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CPUPlace())
+          .get(),
       meta);
   auto* dt_ptr = dt->mutable_data<float>();
   dt_ptr[0] = 5.0f;
@@ -56,15 +57,17 @@ TEST(GradNodeInfo, GradNodeBase) {
   VLOG(6) << "Test Add Edges";
   egr::Edge edge0(grad_test_node1, 1, 2);
   auto auto_grad0 = std::make_shared<egr::AutogradMeta>(edge0);
+  auto_grad0->SetStopGradient(false);
   egr::Edge edge1(grad_test_node1, 3, 4);
   auto auto_grad1 = std::make_shared<egr::AutogradMeta>(edge1);
+  auto_grad1->SetStopGradient(false);
   grad_test_node0->AddEdges(auto_grad0.get(), 0);
   CHECK_EQ(grad_test_node0->GetEdges()[0][0].GetEdgeRankInfo().first,
            size_t(1));
   CHECK_EQ(grad_test_node0->GetEdges()[0][0].GetEdgeRankInfo().second,
            size_t(2));
   std::vector<egr::AutogradMeta*> metas = {auto_grad1.get()};
-  grad_test_node0->AddEdges(metas, 1);
+  grad_test_node0->AddEdges(&metas, 1);
   CHECK_EQ(grad_test_node0->GetEdges()[1][0].GetEdgeRankInfo().first,
            size_t(3));
   CHECK_EQ(grad_test_node0->GetEdges()[1][0].GetEdgeRankInfo().second,
@@ -95,8 +98,9 @@ TEST(GradNodeInfo, GradNodeBase) {
     pten::DenseTensorMeta meta = pten::DenseTensorMeta(
         pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 1}));
     std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
-        std::make_shared<paddle::experimental::DefaultAllocator>(
-            paddle::platform::CPUPlace()),
+        std::make_unique<paddle::experimental::DefaultAllocator>(
+            paddle::platform::CPUPlace())
+            .get(),
         meta);
     auto* dt_ptr = dt->mutable_data<float>();
     dt_ptr[0] = 6.0f;

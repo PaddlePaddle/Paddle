@@ -28,7 +28,6 @@
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/pten/api/all.h"
 #include "paddle/pten/core/convert_utils.h"
-#include "paddle/pten/include/core.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 #ifdef PADDLE_WITH_XPU
 #include "xpu/refactor/math.h"

@@ -17,7 +17,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
 class Tensor;
 }  // namespace framework
 namespace platform {

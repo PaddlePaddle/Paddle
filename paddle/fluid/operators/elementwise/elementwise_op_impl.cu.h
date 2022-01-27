@@ -22,7 +22,6 @@ limitations under the License. */
 
 // only can include the headers in paddle/top/api dirs
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/include/core.h"
 #include "paddle/pten/kernels/gpu/elementwise.h"
 
 namespace paddle {
@@ -35,8 +34,7 @@ using ElementwiseType = pten::ElementwiseType;
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor,
           int NumOuts = 1>
 void LaunchSameDimsElementwiseCudaKernel(
-    const platform::CUDADeviceContext &ctx,
-    const std::vector<const framework::Tensor *> &ins,
+    const KPDevice &ctx, const std::vector<const framework::Tensor *> &ins,
     std::vector<framework::Tensor *> *outs, Functor func) {
   std::vector<const pten::DenseTensor *> pt_inputs;
   std::vector<pten::DenseTensor *> pt_outputs;

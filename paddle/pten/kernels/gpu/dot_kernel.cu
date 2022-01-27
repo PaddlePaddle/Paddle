@@ -16,7 +16,7 @@
 
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/hybird/eigen/common.h"
+#include "paddle/pten/kernels/funcs/eigen/common.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/operators/eigen/eigen_function.h"
@@ -25,10 +25,10 @@
 namespace pten {
 
 template <typename T, typename Context>
-void Dot(const Context& dev_ctx,
-         const DenseTensor& x,
-         const DenseTensor& y,
-         DenseTensor* out) {
+void DotKernel(const Context& dev_ctx,
+               const DenseTensor& x,
+               const DenseTensor& y,
+               DenseTensor* out) {
   out->mutable_data<T>();
   if (1 == out->dims().size()) {
     auto eigen_out = pten::EigenScalar<T>::From(*out);
@@ -52,13 +52,13 @@ void Dot(const Context& dev_ctx,
 using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
-PT_REGISTER_CTX_KERNEL(dot,
-                       GPU,
-                       ALL_LAYOUT,
-                       pten::Dot,
-                       float,
-                       double,
-                       int,
-                       int64_t,
-                       complex64,
-                       complex128) {}
+PT_REGISTER_KERNEL(dot,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::DotKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   complex64,
+                   complex128) {}

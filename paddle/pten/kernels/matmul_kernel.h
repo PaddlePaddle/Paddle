@@ -14,14 +14,15 @@
 
 #pragma once
 
-#include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/infermeta/binary.h"
+
+#include "paddle/pten/kernels/empty_kernel.h"
 
 namespace pten {
 
 template <typename T, typename Context>
-void MatmulKernel(const Context& context,
+void MatmulKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& y,
                   bool transpose_x,
@@ -29,17 +30,14 @@ void MatmulKernel(const Context& context,
                   DenseTensor* out);
 
 template <typename T, typename Context>
-DenseTensor Matmul(const Context& context,
+DenseTensor Matmul(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
                    bool transpose_x,
                    bool transpose_y) {
   auto out_meta = MatmulInferMeta(x.meta(), y.meta(), transpose_x, transpose_y);
-  DenseTensor dense_out(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(
-          context.GetPlace()),
-      std::move(out_meta));
-  MatmulKernel<T, Context>(context, x, y, transpose_x, transpose_y, &dense_out);
+  auto dense_out = Empty<T, Context>(dev_ctx, std::move(out_meta));
+  MatmulKernel<T, Context>(dev_ctx, x, y, transpose_x, transpose_y, &dense_out);
   return dense_out;
 }
 

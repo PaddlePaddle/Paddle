@@ -39,6 +39,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+std::ostream& operator<<(std::ostream& os, const LoD& lod);
+std::ostream& operator<<(std::ostream& os, const Tensor& t);
+
 class PrintOptions {
  public:
   static PrintOptions& Instance() {
@@ -183,8 +186,7 @@ void TensorFromArray(const T* src, const size_t& array_size,
             paddle::memory::allocation::AllocatorFacade::Instance()
                 .GetAllocator(npu_pinned_place)
                 .get());
-    paddle::memory::allocation::Allocation* allocation =
-        npu_pinned_tensor.Holder().get();
+    pten::Allocation* allocation = npu_pinned_tensor.Holder().get();
     npu_pinned_allocator->RecordEvent(
         allocation,
         reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
@@ -241,8 +243,7 @@ void TensorFromVector(const std::vector<T>& src,
             paddle::memory::allocation::AllocatorFacade::Instance()
                 .GetAllocator(npu_pinned_place)
                 .get());
-    paddle::memory::allocation::Allocation* allocation =
-        npu_pinned_tensor.Holder().get();
+    pten::Allocation* allocation = npu_pinned_tensor.Holder().get();
     npu_pinned_allocator->RecordEvent(
         allocation,
         reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
@@ -312,8 +313,7 @@ inline void TensorFromVector(const std::vector<bool>& src,
             paddle::memory::allocation::AllocatorFacade::Instance()
                 .GetAllocator(npu_pinned_place)
                 .get());
-    paddle::memory::allocation::Allocation* allocation =
-        npu_pinned_tensor.Holder().get();
+    pten::Allocation* allocation = npu_pinned_tensor.Holder().get();
     npu_pinned_allocator->RecordEvent(
         allocation,
         reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
@@ -497,6 +497,5 @@ inline void TensorToVector(const Tensor& src, std::vector<bool>* dst) {
   delete[] array;
 }
 
-std::ostream& operator<<(std::ostream& os, const Tensor& t);
 }  // namespace framework
 }  // namespace paddle

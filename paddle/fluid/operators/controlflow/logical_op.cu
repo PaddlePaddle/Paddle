@@ -18,26 +18,6 @@ namespace plat = paddle::platform;
 namespace paddle {
 namespace operators {
 
-#define LOGICAL_BINARY_FUNCTOR(func_name, op)                          \
-  template <typename T>                                                \
-  struct func_name {                                                   \
-    using ELEMENT_TYPE = T;                                            \
-    HOSTDEVICE bool operator()(const T* args) const {                  \
-      return static_cast<bool>(args[0]) op static_cast<bool>(args[1]); \
-    }                                                                  \
-  };
-
-LOGICAL_BINARY_FUNCTOR(CudaOrFunctor, ||)
-LOGICAL_BINARY_FUNCTOR(CudaAndFunctor, &&)
-LOGICAL_BINARY_FUNCTOR(CudaXorFunctor, ^)
-#undef LOGICAL_BINARY_FUNCTOR
-
-template <typename T>
-struct CudaNotFunctor {
-  using ELEMENT_TYPE = T;
-  HOSTDEVICE bool operator()(const T* args) const { return !args[0]; }
-};
-
 template <typename Functor>
 class BinaryLogicalOpKernel<platform::CUDADeviceContext, Functor>
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
@@ -76,8 +56,8 @@ class BinaryLogicalOpKernel<platform::CUDADeviceContext, Functor>
       ops::BinaryLogicalOpKernel<plat::CUDADeviceContext, ops::func<float>>,   \
       ops::BinaryLogicalOpKernel<plat::CUDADeviceContext, ops::func<double>>);
 
-REGISTER_LOGICAL_CUDA_KERNEL(logical_or, CudaOrFunctor)
-REGISTER_LOGICAL_CUDA_KERNEL(logical_and, CudaAndFunctor)
-REGISTER_LOGICAL_CUDA_KERNEL(logical_xor, CudaXorFunctor)
-REGISTER_LOGICAL_CUDA_KERNEL(logical_not, CudaNotFunctor)
+REGISTER_LOGICAL_CUDA_KERNEL(logical_or, LogicalOrFunctor)
+REGISTER_LOGICAL_CUDA_KERNEL(logical_and, LogicalAndFunctor)
+REGISTER_LOGICAL_CUDA_KERNEL(logical_xor, LogicalXorFunctor)
+REGISTER_LOGICAL_CUDA_KERNEL(logical_not, LogicalNotFunctor)
 #undef REGISTER_LOGICAL_CUDA_KERNEL

@@ -32,7 +32,7 @@ template <typename T>
 class ClipFunctor {
  public:
   explicit ClipFunctor(const T min, const T max) : min_(min), max_(max) {}
-  HOSTDEVICE T operator()(const T& x) const {
+  HOSTDEVICE T operator()(const T x) const {
     return x < min_ ? min_ : x > max_ ? max_ : x;
   }
 
