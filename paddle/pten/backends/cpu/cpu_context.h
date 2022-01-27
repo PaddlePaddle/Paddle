@@ -24,37 +24,21 @@ limitations under the License. */
 
 namespace pten {
 
-struct CPUContextResource {
-  Eigen::DefaultDevice* device{nullptr};
-};
-
 class CPUContext : public DeviceContext {
  public:
-  // NOTE: DeviceContext hold resources. Used in training scenarios.
   CPUContext();
-
-  // NOTE: Share the same underlying resources, please ensure that resources are
-  // not released.
-  CPUContext(const CPUContext&);
-
-  CPUContext(CPUContext&&);
-
-  ~CPUContext();
-
+  virtual ~CPUContext();
   Eigen::DefaultDevice* eigen_device() const;
+  const Place& GetPlace() const override;
 
-  // TODO(wilber): Whether the interface should be preserved.
-  Place GetPlace() const override;
-
- public:
-  // NOTE: External users manage resources. Used in inference scenarios.
-  explicit CPUContext(const CPUContextResource& ctx_res);
-
+ protected:
+  struct ref_tag {};
+  explicit CPUContext(ref_tag);
   void SetEigenDevice(Eigen::DefaultDevice* device);
 
  private:
-  struct CPUImpl;
-  std::unique_ptr<CPUImpl> cpu_impl_;
+  struct Impl;
+  std::unique_ptr<Impl> impl_;
 };
 
 }  // namespace pten

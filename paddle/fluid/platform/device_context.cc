@@ -258,7 +258,7 @@ CPUDeviceContext::CPUDeviceContext(CPUPlace place) : pten::CPUContext() {}
 #ifdef PADDLE_WITH_IPU
 IPUDeviceContext::IPUDeviceContext(IPUPlace place) : place_(place) {}
 
-Place IPUDeviceContext::GetPlace() const { return place_; }
+const Place& IPUDeviceContext::GetPlace() const { return place_; }
 
 void IPUDeviceContext::Wait() const {
   /*! \brief  Wait for all operations completion in the stream. */
@@ -302,7 +302,7 @@ void NPUDeviceContext::Wait() const {
 
 aclrtStream NPUDeviceContext::stream() const { return stream_->raw_stream(); }
 
-Place NPUDeviceContext::GetPlace() const { return place_; }
+const Place& NPUDeviceContext::GetPlace() const { return place_; }
 
 aclrtContext NPUDeviceContext::context() const { return context_; }
 
@@ -319,7 +319,7 @@ Eigen::DefaultDevice* NPUPinnedDeviceContext::eigen_device() const {
   return eigen_device_.get();
 }
 
-Place NPUPinnedDeviceContext::GetPlace() const { return place_; }
+const Place& NPUPinnedDeviceContext::GetPlace() const { return place_; }
 
 #endif
 
@@ -538,7 +538,7 @@ CUDADeviceContext::~CUDADeviceContext() {
 #endif
 }
 
-Place CUDADeviceContext::GetPlace() const { return place_; }
+const Place& CUDADeviceContext::GetPlace() const { return place_; }
 
 void CUDADeviceContext::Wait() const { context()->Stream()->Wait(); }
 
@@ -614,7 +614,7 @@ Eigen::DefaultDevice* CUDAPinnedDeviceContext::eigen_device() const {
   return eigen_device_.get();
 }
 
-Place CUDAPinnedDeviceContext::GetPlace() const { return place_; }
+const Place& CUDAPinnedDeviceContext::GetPlace() const { return place_; }
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN

@@ -22,68 +22,40 @@
 
 namespace pten {
 
-struct CPUContext::CPUImpl {
-  CPUImpl() { device_ = new Eigen::DefaultDevice(); }
+struct CPUContext::Impl {
+  Impl() = default;
 
-  // Users need to manage external resources.
-  explicit CPUImpl(const CPUContextResource& ctx_res) : res_(ctx_res) {
-    device_ = res_.device;
-  }
+  explicit Impl(Place&& place)
+      : owned_(true),
+        eigen_device_(new Eigen::DefaultDevice()),
+        place_(std::move(place)) {}
 
-  ~CPUImpl() {
-    if (res_.device == nullptr && device_ != nullptr) {
-      delete device_;
-      device_ = nullptr;
+  ~Impl() {
+    if (owned_) {
+      delete eigen_device_;
     }
   }
 
-  Eigen::DefaultDevice* GetEigenDevice() const {
-    PD_CHECK(device_ != nullptr, "the eigen_device is nullptr.");
-    return device_;
-  }
-
-  void SetEigenDevice(Eigen::DefaultDevice* device) {
-    if (device == nullptr) {
-      return;
-    }
-    res_.device = device;
-    device_ = device;
-  }
-
-  Place GetPlace() const { return place_; }
-
-  Eigen::DefaultDevice* device_{nullptr};
-  CPUContextResource res_;
+  bool owned_{false};
+  Eigen::DefaultDevice* eigen_device_{nullptr};
   CPUPlace place_;
 };
 
-CPUContext::CPUContext() : DeviceContext() {
-  cpu_impl_ = std::make_unique<CPUImpl>();
-}
-
-CPUContext::CPUContext(const CPUContext& other) : DeviceContext() {
-  cpu_impl_ = std::make_unique<CPUImpl>();
-  cpu_impl_->SetEigenDevice(other.eigen_device());
-}
-
-CPUContext::CPUContext(CPUContext&& other) : DeviceContext() {
-  cpu_impl_ = std::move(other.cpu_impl_);
-}
+CPUContext::CPUContext()
+    : impl_(std::make_unique<CPUContext::Impl>(CPUPlace())) {}
 
 CPUContext::~CPUContext() = default;
 
-CPUContext::CPUContext(const CPUContextResource& ctx_res) : DeviceContext() {
-  cpu_impl_ = std::make_unique<CPUImpl>(ctx_res);
-}
+CPUContext::CPUContext(ref_tag) {}
 
 Eigen::DefaultDevice* CPUContext::eigen_device() const {
-  return cpu_impl_->GetEigenDevice();
+  return impl_->eigen_device_;
 }
+
+const Place& CPUContext::GetPlace() const { return impl_->place_; }
 
 void CPUContext::SetEigenDevice(Eigen::DefaultDevice* device) {
-  cpu_impl_->SetEigenDevice(device);
+  impl_->eigen_device_ = device;
 }
-
-Place CPUContext::GetPlace() const { return cpu_impl_->GetPlace(); }
 
 }  // namespace pten

@@ -84,7 +84,7 @@ struct XPUContext::XPUImpl {
     }
   }
 
-  Place GetPlace() const { return place_; }
+  const Place& GetPlace() const { return place_; }
 
   backends::xpu::XPUVersion GetXpuVersion() const { return xpu_version_; }
 
