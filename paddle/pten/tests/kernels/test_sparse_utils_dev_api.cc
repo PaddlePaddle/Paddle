@@ -284,8 +284,6 @@ TEST(DEV_API, sparse_coo_to_dense) {
   std::vector<float> non_zero_data = {1.0, 2.0, 3.0, 3.2};
   std::vector<int64_t> indices_data = {0, 1, 1, 2, 1, 0, 2, 0};
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
   pten::CPUContext dev_ctx_cpu;
 
   DDim dense_dims = framework::make_ddim({rows, cols});
@@ -325,6 +323,8 @@ TEST(DEV_API, sparse_coo_to_dense) {
   const auto cuda_alloc =
       std::make_shared<paddle::experimental::DefaultAllocator>(
           paddle::platform::CUDAPlace());
+  paddle::platform::DeviceContextPool& pool =
+      paddle::platform::DeviceContextPool::Instance();
   auto* cuda = pool.Get(paddle::platform::CUDAPlace());
   auto* dev_ctx_cuda = static_cast<paddle::platform::CUDADeviceContext*>(cuda);
   DenseTensor d_dense_indices(
