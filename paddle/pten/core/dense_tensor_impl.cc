@@ -101,17 +101,17 @@ void DenseTensor::ResetHolder(const std::shared_ptr<pten::Allocation>& holder) {
 
 void DenseTensor::ResetHolderWithType(
     const std::shared_ptr<pten::Allocation>& holder,
-    paddle::framework::proto::VarType::Type type) {
+    paddle::experimental::DataType type) {
   set_type(type);
   ResetHolder(holder);
 }
 
-void DenseTensor::set_type(paddle::framework::proto::VarType::Type type) {
-  meta_.dtype = TransToPtenDataType(type);
+void DenseTensor::set_type(paddle::experimental::DataType type) {
+  meta_.dtype = type
 }
 
 void* DenseTensor::mutable_data(const paddle::platform::Place& place,
-                                paddle::framework::proto::VarType::Type type,
+                                paddle::experimental::DataType type,
                                 size_t requested_size) {
   set_type(type);
   PADDLE_ENFORCE_GE(
@@ -144,7 +144,7 @@ void* DenseTensor::mutable_data(const paddle::platform::Place& place,
 }
 
 void* DenseTensor::mutable_data(const paddle::platform::Place& place,
-                                paddle::framework::proto::VarType::Type type,
+                                paddle::experimental::DataType type,
                                 const paddle::platform::Stream& stream) {
   set_type(type);
   PADDLE_ENFORCE_GE(

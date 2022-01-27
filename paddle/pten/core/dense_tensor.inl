@@ -122,7 +122,7 @@ void ResetHolder(const std::shared_ptr<pten::Allocation>& holder);
 void ResetHolderWithType(const std::shared_ptr<pten::Allocation>& holder,
                         paddle::framework::proto::VarType::Type type);
 
-void set_type(paddle::framework::proto::VarType::Type type);
+void set_type(paddle::experimental::DataType type);
 
 InplaceVersion& InplaceVersionCounter() {
   return *inplace_version_counter_;
