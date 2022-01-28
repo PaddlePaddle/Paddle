@@ -32,7 +32,6 @@ limitations under the License. */
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
-namespace m = paddle::operators::math;
 
 using Tensor = paddle::framework::Tensor;
 

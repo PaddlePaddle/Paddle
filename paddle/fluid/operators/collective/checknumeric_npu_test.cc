@@ -41,7 +41,6 @@ limitations under the License. */
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
-namespace m = paddle::operators::math;
 
 USE_OP(c_allreduce_sum);
 USE_OP_DEVICE_KERNEL(c_allreduce_sum, NPU);

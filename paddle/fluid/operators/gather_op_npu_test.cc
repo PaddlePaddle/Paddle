@@ -30,7 +30,6 @@ limitations under the License. */
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
-namespace m = paddle::operators::math;
 
 USE_OP(gather);
 USE_OP_DEVICE_KERNEL(gather, NPU);

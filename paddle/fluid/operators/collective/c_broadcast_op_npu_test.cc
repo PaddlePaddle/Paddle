@@ -40,7 +40,6 @@ limitations under the License. */
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
-namespace m = paddle::operators::math;
 
 USE_OP(c_broadcast);
 USE_NO_KERNEL_OP(c_gen_hccl_id);
