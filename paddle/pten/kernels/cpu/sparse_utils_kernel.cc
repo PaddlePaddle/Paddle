@@ -312,48 +312,12 @@ void DenseToSparseCsrKernel(const Context& dev_ctx,
   PADDLE_ENFORCE(valid,
                  paddle::platform::errors::InvalidArgument(
                      "SparseCsrTensor only support 2-D or 3-D Tensor."));
-
-  const T* x_data = x.data<T>();
-  int64_t non_zero_num = get_non_zero_num<T>(x, x_dims.size());
-  int batchs = x_dims.size() == 2 ? 1 : x_dims[0];
-  int rows = x_dims.size() == 2 ? x_dims[0] : x_dims[1];
-  int cols = x_dims.size() == 2 ? x_dims[1] : x_dims[2];
-  const auto place = dev_ctx.GetPlace();
-
-  DenseTensorMeta crows_meta(
-      DataType::INT64, {batchs * (rows + 1)}, DataLayout::NCHW);
-  DenseTensorMeta cols_meta(DataType::INT64, {non_zero_num}, DataLayout::NCHW);
-  DenseTensorMeta values_meta(x.dtype(), {non_zero_num}, x.layout());
-  pten::DenseTensor non_zero_crows(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(place),
-      std::move(crows_meta));
-  pten::DenseTensor non_zero_cols(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(place),
-      std::move(cols_meta));
-  pten::DenseTensor non_zero_elements(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(place),
-      std::move(values_meta));
-
-  auto* crows_data = non_zero_crows.mutable_data<int64_t>(place);
-  auto* cols_data = non_zero_cols.mutable_data<int64_t>(place);
-  auto* values_data = non_zero_elements.mutable_data<T>(place);
-
-  int non_zero_count = 0;
-  for (int b = 0; b < batchs; b++) {
-    for (int i = 0; i < rows; i++) {
-      crows_data[b * rows + i] = non_zero_count;
-      for (int j = 0; j < cols; j++) {
-        const T data = x_data[i * cols + j];
-        if (data != static_cast<T>(0)) {
-          cols_data[non_zero_count] = j;
-          values_data[non_zero_count] = data;
-          ++non_zero_count;
-        }
-      }
-    }
-    crows_data[b * (rows + 1) + rows] = non_zero_count;
-  }
-  out->SetMember(non_zero_crows, non_zero_cols, non_zero_elements, x_dims);
+  const int64_t sparse_dim = x_dims.size() == 2 ? 2 : 3;
+  DenseTensor indices = pten::Empty<T, Context>(dev_ctx);
+  DenseTensor values = pten::Empty<T, Context>(dev_ctx);
+  SparseCooTensor coo(indices, values, x.dims());
+  DenseToSparseCooKernel<T, Context>(dev_ctx, x, sparse_dim, &coo);
+  SparseCooToCsrKernel<T, Context>(dev_ctx, coo, out);
 }
 
 }  // namespace pten
@@ -390,7 +354,13 @@ PT_REGISTER_KERNEL(dense_to_sparse_csr,
                    ALL_LAYOUT,
                    pten::DenseToSparseCsrKernel,
                    float,
-                   double) {}
+                   double,
+                   pten::dtype::float16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
 
 PT_REGISTER_KERNEL(sparse_coo_to_dense,
                    CPU,

@@ -399,7 +399,6 @@ __global__ void kernel_convert_coo_rows_to_csr_crows(
   if (b > 0) {
     batch_start = batchs_offset[b - 1];
     batch_non_zero_num -= batch_start;
-    if (threadIdx.x == 0) printf("batch_start = %d\n", batch_start);
   }
   auto* coo_rows_ptr = coo_rows_data + batch_start;
   const int tid = threadIdx.x + blockIdx.x * blockDim.x;
@@ -513,6 +512,24 @@ void SparseCooToCsrKernel(const Context& dev_ctx,
   out->SetMember(non_zero_crows, non_zero_cols, non_zero_elements, x_dims);
 }
 
+template <typename T, typename Context>
+void DenseToSparseCsrKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            SparseCsrTensor* out) {
+  const auto& x_dims = x.dims();
+  bool valid = x_dims.size() == 2 || x_dims.size() == 3;
+  PADDLE_ENFORCE_EQ(valid,
+                    true,
+                    paddle::platform::errors::InvalidArgument(
+                        "SparseCsrTensor only support 2-D or 3-D Tensor."));
+  const int64_t sparse_dim = x_dims.size() == 2 ? 2 : 3;
+  DenseTensor indices = pten::Empty<T, Context>(dev_ctx);
+  DenseTensor values = pten::Empty<T, Context>(dev_ctx);
+  SparseCooTensor coo(indices, values, x.dims());
+  DenseToSparseCooKernel<T, Context>(dev_ctx, x, sparse_dim, &coo);
+  SparseCooToCsrKernel<T, Context>(dev_ctx, coo, out);
+}
+
 }  // namespace pten
 
 PT_REGISTER_KERNEL(dense_to_sparse_coo,
@@ -533,6 +550,19 @@ PT_REGISTER_KERNEL(sparse_coo_to_csr,
                    GPU,
                    ALL_LAYOUT,
                    pten::SparseCooToCsrKernel,
+                   float,
+                   double,
+                   pten::dtype::float16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
+PT_REGISTER_KERNEL(dense_to_sparse_csr,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::DenseToSparseCsrKernel,
                    float,
                    double,
                    pten::dtype::float16,
