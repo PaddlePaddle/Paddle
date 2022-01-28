@@ -17,30 +17,47 @@
 #include <iostream>
 #include <string>
 
+#include "paddle/fluid/distributed/socket/tcp_utils.h"
+
 namespace paddle {
 namespace distributed {
 
+class SocketOptions {
+ public:
+  void set_connect_timeout(std::chrono::seconds timeout) {
+    _connect_timeout = timeout;
+  }
+  std::chrono::seconds get_connect_timeout const { return _connect_timeout; }
+
+ private:
+  std::chrono::seconds _connect_timeout{30};
+};
+
 class Socket {
  public:
-  explicit Socket(int sock_fd) : sock_fd(sock_fd) {}
-  void listen(const std::string& host, std::uint16_t port);
-  void connect(const std::string& host, std::uint16_t port);
+  Socket() = default;
+  Socket(const Socket& o) = delete;
+  Socket& operator=(const Socket&) = delete;
+  Socket(const Socket&& o);
+  Socket& operator=(const Socket&&);
+  ~Socket() {}
+
+  static Socket& listen(std::uint16_t port, const SocketOptions& opts = {});
+  static Socket& connect(const std::string& host, std::uint16_t port,
+                         const SocketOptions& opts = {});
+  Socket accept() const;
+
   template <typename T>
   void sendValue(const T value);
   template <typename T>
   T recvValue();
 
-  Socket accept() const;
-
   std::uint16_t getPort() const;
 
  private:
-  int sock_fd;
+  explicit Socket(int sock) : _sock(sock) {}
+  int _sock;
 
-  bool tryListen(std::uint16_t port);
-  bool tryListen(const ::addrinfo& addr);
-  bool tryConnect(const std::string& host, std::uint16_t port);
-  bool tryConnect(const ::addrinfo& addr);
   template <typename T>
   void sendBytes(const T* buffer, size_t len);
   template <typename T>
