@@ -106,4 +106,10 @@ PT_REGISTER_KERNEL(dense_to_sparse_coo,
                    ALL_LAYOUT,
                    pten::DenseToSparseCooKernel,
                    float,
-                   double) {}
+                   double,
+                   paddle::float16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}

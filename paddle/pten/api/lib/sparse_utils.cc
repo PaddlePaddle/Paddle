@@ -24,7 +24,7 @@ limitations under the License. */
 
 PT_DECLARE_KERNEL(dense_to_sparse_coo, CPU, ALL_LAYOUT);
 
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PT_DECLARE_KERNEL(dense_to_sparse_coo, GPU, ALL_LAYOUT);
 #endif
 
