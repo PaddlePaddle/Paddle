@@ -36,7 +36,7 @@ struct TransposeNormal<CPUContext, T> {
     auto in_stride = pten::framework::stride(in.dims());
     auto out_stride = pten::framework::stride(out->dims());
     const T* in_ptr = in.data<T>();
-    T* out_ptr = out->mutable_data<T>(dev_ctx.GetPlace());
+    T* out_ptr = dev_ctx.template Alloc<T>(out);
 
     auto transpose_helper = [&](int64_t beg, int64_t end) {
       for (int64_t out_idx = beg; out_idx < end; ++out_idx) {

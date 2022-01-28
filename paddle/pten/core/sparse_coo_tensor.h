@@ -141,6 +141,11 @@ class SparseCooTensor : public TensorBase,
   /// return a mutable pointer of non_zero_elements.
   DenseTensor* mutable_non_zero_elements() { return &non_zero_elements_; }
 
+  /// \brief This function is not recommended
+  void* AllocateFrom(Allocator* allocator,
+                     DataType dtype,
+                     size_t requested_size = 0) override;
+
  private:
   // save the indices of non zero elements in original dense tensor
   DenseTensor non_zero_indices_;
