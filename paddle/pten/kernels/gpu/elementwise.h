@@ -2137,7 +2137,7 @@ void default_elementwise_sub_grad(const GPUContext &ctx,
                                        T,
                                        kps::AddFunctor,
                                        kps::IdentityFunctor<T>>(
-          dout, dx, kps::IdentityFunctor<T>(), reduce_dims, stream);
+          ctx, dout, dx, kps::IdentityFunctor<T>(), reduce_dims, stream);
     }
   }
   // dy
@@ -2161,7 +2161,7 @@ void default_elementwise_sub_grad(const GPUContext &ctx,
                                        T,
                                        kps::AddFunctor,
                                        kps::InverseFunctor<T>>(
-          dout, dy, kps::InverseFunctor<T>(), reduce_dims, stream);
+          ctx, dout, dy, kps::InverseFunctor<T>(), reduce_dims, stream);
     }
   }
 }
