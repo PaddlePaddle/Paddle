@@ -170,4 +170,6 @@ REGISTER_OP_CUDA_KERNEL(
     paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext,
                                    int64_t>,
     paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext,
-                                   paddle::platform::float16>);
+                                   paddle::platform::float16>,
+    paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext,
+                                   paddle::platform::bfloat16>);
