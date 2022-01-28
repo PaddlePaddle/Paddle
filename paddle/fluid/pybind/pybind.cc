@@ -1552,7 +1552,21 @@ All parameter, weight, gradient are variables in Paddle.
       .def_static("create",
                   [](paddle::platform::CPUPlace& place)
                       -> paddle::platform::DeviceContext* {
-                    return new paddle::platform::CPUDeviceContext();
+    auto* context = new paddle::platform::CPUDeviceContext();
+    context->SetAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+        .GetAllocator(place)
+        .get());
+    context->SetHostAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+        .GetAllocator(paddle::platform::CPUPlace())
+        .get());
+    context->SetZeroAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+        .GetZeroAllocator(place)
+        .get());
+    context->Init();
+    return context;
                   })
       .def_static("create",
                   [](paddle::platform::XPUPlace& place)
@@ -1563,7 +1577,21 @@ All parameter, weight, gradient are variables in Paddle.
                  "Cannot use XPUPlace in CPU/GPU version, "
                  "Please recompile or reinstall Paddle with XPU support."));
 #else
-                    return new paddle::platform::XPUDeviceContext(place);
+      auto* context = new paddle::platform::XPUDeviceContext(place);
+      context->SetAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(place)
+          .get());
+      context->SetHostAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
+      context->SetZeroAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(place)
+          .get());
+      context->Init();
+      return context;
 #endif
                   })
         .def_static("create",
@@ -1599,7 +1627,22 @@ All parameter, weight, gradient are variables in Paddle.
                  "Cannot use CUDAPlace in CPU only version, "
                  "Please recompile or reinstall Paddle with CUDA support."));
 #else
-                    return new paddle::platform::CUDADeviceContext(place);
+      auto* context = new paddle::platform::CUDADeviceContext(place);
+      context->PartialInitWithoutAllocator();
+      context->SetAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(place, context->stream())
+          .get());
+      context->SetHostAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
+      context->SetZeroAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+        .GetZeroAllocator(place)
+        .get());
+      context->PartialInitWithAllocator();
+      return context;
 #endif
                   })
           .def_static("create",

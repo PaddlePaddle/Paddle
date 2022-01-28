@@ -94,9 +94,9 @@ using miopenFusionPlanDescriptor_t = struct miopenFusionPlanDescriptor *;
 using miopenOperatorDescriptor_t = struct miopenOperatorDescriptor *;
 using miopenOperatorArgs_t = struct miopenOperatorArgs *;
 using miopenAllocatorFunction = void *(*)(void *context, size_t sizeBytes);
-using miopenDeallocatorFunction = void *(*)(void *context, void *memory);
-struct miopenConvAlgoPerf_t;
-struct miopenConvSolution_t;
+// using miopenDeallocatorFunction = void *(*)(void *context, void *memory);
+// struct miopenConvAlgoPerf_t;
+// struct miopenConvSolution_t;
 
 // Forward declaration of rocBLAS types.
 using rocblas_handle = struct _rocblas_handle *;

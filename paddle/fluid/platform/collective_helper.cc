@@ -15,6 +15,7 @@
 #include "paddle/fluid/platform/collective_helper.h"
 #include <utility>
 
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
 
@@ -187,6 +188,19 @@ NCCLComm* NCCLCommContext::AssignNCCLComm(ncclComm_t comm, int nranks, int rank,
                                           int dev_id, int ring_id) {
   std::unique_ptr<CUDADeviceContext> dev_ctx(
       new CUDADeviceContext(CUDAPlace(dev_id)));
+  dev_ctx->PartialInitWithoutAllocator();
+  dev_ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetAllocator(CUDAPlace(dev_id), dev_ctx->stream())
+                            .get());
+  dev_ctx->SetHostAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
+  dev_ctx->SetZeroAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(CUDAPlace(dev_id))
+          .get());
+  dev_ctx->PartialInitWithAllocator();
 
   std::shared_ptr<platform::CudaEventObject> compute_event(
       platform::CudaEventResourcePool::Instance().New(dev_id));
