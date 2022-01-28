@@ -296,7 +296,21 @@ def gene_infer_meta(input_names, attr_names, output_names, infer_meta) -> str:
 """
 
 
-def get_kernel_args(input_names, attrs, kernel_param):
+def get_kernel_args(inputs, attrs, out_type_list, kernel_param):
+    input_trans_map = {
+        'const Tensor&': 'const pten::DenseTensor&',
+        'const Tensor &': 'const pten::DenseTensor&',
+        'const std::vector<Tensor>&': 'const std::vector<pten::DenseTensor>&',
+        'const std::vector<Tensor> &': 'const std::vector<pten::DenseTensor>&'
+    }
+    out_trans_map = {
+        'Tensor': 'pten::DenseTensor*',
+        'std::vector<Tensor>': 'std::vector<pten::DenseTensor*>&'
+    }
+    input_names = inputs['names']
+    input_infos = inputs['input_info']
+    kernel_args_type_list = ['const platform::DeviceContext&']
+
     input_tensor_code = ""
     for input_name in input_names:
         # set input code
@@ -311,15 +325,26 @@ def get_kernel_args(input_names, attrs, kernel_param):
     for param in kernel_param:
         if param in input_names:
             kernel_args = kernel_args + "*" + PREFIX_TENSOR_NAME + param + ", "
+            kernel_args_type_list.append(input_trans_map[input_infos[param]])
         elif param in attr_names:
             # set attr for kernel_context
             if 'ScalarArray' in attrs['attr_info'][param][0]:
+                kernel_args_type_list.append('const pten::ScalarArray&')
                 param = 'pten::ScalarArray(' + param + ')'
             elif 'Scalar' in attrs['attr_info'][param][0]:
+                kernel_args_type_list.append('const pten::Scalar&')
                 param = 'pten::Scalar(' + param + ')'
+            else:
+                kernel_args_type_list.append(attrs['attr_info'][param][0])
             kernel_args = kernel_args + param + ", "
         elif isinstance(param, bool):
             kernel_args = kernel_args + str(param).lower() + ", "
         else:
             kernel_args = kernel_args + str(param) + ", "
-    return input_tensor_code, kernel_args[:-2]
+
+    for out_type in out_type_list:
+        kernel_args_type_list.append(out_trans_map[out_type])
+
+    kernel_signature = "void(*)(" + ", ".join(kernel_args_type_list) + ")"
+
+    return input_tensor_code, kernel_args[:-2], kernel_signature

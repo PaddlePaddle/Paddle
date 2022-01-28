@@ -17,6 +17,7 @@ limitations under the License. */
 #include <set>
 
 #include "paddle/pten/common/data_type.h"
+#include "paddle/pten/core/infermeta_utils.h"
 
 namespace pten {
 

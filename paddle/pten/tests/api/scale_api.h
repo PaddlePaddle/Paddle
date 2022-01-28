@@ -103,7 +103,7 @@ static void ScaleCPU(DataType kernel_dtype,
       break;
     }
     case pten::DataType::BFLOAT16: {
-      pten::ScaleKernel<paddle::platform::bfloat16>(
+      pten::ScaleKernel<pten::dtype::bfloat16>(
           dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
