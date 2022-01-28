@@ -104,7 +104,7 @@ function create_fake_models() {
     cd ${PADDLE_ROOT}/build
     # create multi_fc model, this will generate "multi_fc_model"
     python3 -m pip uninstall -y paddlepaddle
-    python3 -m pip install -y paddlepaddle
+    python3 -m pip install paddlepaddle
     python3 ${PADDLE_ROOT}/tools/infrt/fake_models/multi_fc.py
 }
 
