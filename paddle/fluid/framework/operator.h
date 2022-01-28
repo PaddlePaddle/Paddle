@@ -525,13 +525,27 @@ class OperatorWithKernel : public OperatorBase {
   }
 
   bool SupportGPU() const override {
-    auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
-    return std::any_of(op_kernels.begin(), op_kernels.end(),
-                       [](OpKernelMap::const_reference kern_pair) {
-                         return platform::is_gpu_place(kern_pair.first.place_);
-                       });
+    auto pten_kernels = pten::KernelFactory::Instance().SelectKernelMap(
+        pten::TransToPtenKernelName(type_));
+    auto has_pten_kernel = std::any_of(
+        pten_kernels.begin(), pten_kernels.end(),
+        [](pten::KernelFactory::KernelKeyMap::const_reference kern_pair) {
+          return kern_pair.first.backend() == pten::Backend::GPU;
+        });
+    if (has_pten_kernel) {
+      return true;
+    } else {
+      auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
+      return std::any_of(
+          op_kernels.begin(), op_kernels.end(),
+          [](OpKernelMap::const_reference kern_pair) {
+            return platform::is_gpu_place(kern_pair.first.place_);
+          });
+    }
   }
+
   bool SupportNPU() const override {
+    // TODO(zhiqiu): support pten if needed?
     auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
     return std::any_of(op_kernels.begin(), op_kernels.end(),
                        [](OpKernelMap::const_reference kern_pair) {
@@ -539,6 +553,7 @@ class OperatorWithKernel : public OperatorBase {
                        });
   }
   bool SupportMLU() const override {
+    // TODO(zhiqiu): support pten if needed?
     auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
     return std::any_of(op_kernels.begin(), op_kernels.end(),
                        [](OpKernelMap::const_reference kern_pair) {
@@ -583,28 +598,33 @@ class OperatorWithKernel : public OperatorBase {
     * When selecting Kernel during Op execution, select the arguments of the
     * original Op according to the GetExpectedPtenKernelArgs returned arguments.
     */
-  virtual KernelSignature GetExpectedPtenKernelArgs(
+  virtual pten::KernelSignature GetExpectedPtenKernelArgs(
       const ExecutionContext& ctx) const;
 
   /* member functions for adapting to pten lib */
-  void ChoosePtenKernel(const ExecutionContext& ctx) const;
+  pten::KernelKey ChoosePtenKernel(const ExecutionContext& ctx) const;
 
   /**
    * Transfer data place for pten kernel
    * Is this really needed?
    */
   Scope* PreparePtenData(const Scope& scope, const pten::Kernel& pt_kernel,
-                         const KernelSignature& pt_kernel_signature,
+                         const pten::KernelSignature& pt_kernel_signature,
                          RuntimeContext* ctx) const;
 
   void BuildPtenKernelContext(const RuntimeContext& ctx,
                               platform::DeviceContext* dev_ctx,
                               pten::KernelContext* pt_kernel_context) const;
 
-  void WriteBackToOutputs(RuntimeContext* ctx,
-                          pten::KernelContext* pt_kernel_context) const;
+  pten::KernelSignature* PtenKernelSignature() const {
+    return pt_kernel_signature_.get();
+  }
 
   pten::Kernel* PtenKernel() const { return pt_kernel_.get(); }
+
+  void ResetPtenKernel(pten::Kernel* kernel) const {
+    return pt_kernel_.reset(kernel);
+  }
 
   const OpKernelType* kernel_type() const { return kernel_type_.get(); }
 
@@ -662,7 +682,7 @@ class OperatorWithKernel : public OperatorBase {
   // new pten kernel, if there is a better design in the future,
   // we may polish the implementation here
   mutable bool run_pten_kernel_ = false;
-  mutable std::unique_ptr<KernelSignature> pt_kernel_signature_;
+  mutable std::unique_ptr<pten::KernelSignature> pt_kernel_signature_;
   mutable std::unique_ptr<pten::Kernel> pt_kernel_;
 };
 
