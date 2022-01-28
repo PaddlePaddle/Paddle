@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,33 +24,33 @@ class Store {
  public:
   static constexpr std::chrono::milliseconds kDefaultTimeout =
       std::chrono::seconds(360);
-  static constexpr std::chrono::milliseconds kDefaultTimeout =
-      std::chrono::zero();
+  static constexpr std::chrono::milliseconds kNoTimeout =
+      std::chrono::milliseconds::zero();
 
-  Store() : timeout_(kDefaultTimeout) {}
+  Store() : _timeout(kDefaultTimeout) {}
   explicit Store(const std::chrono::milliseconds& timeout)
-      : timeout_(timeout) {}
+      : _timeout(timeout) {}
   virtual ~Store() {}
 
   virtual void set(const std::string& key,
                    const std::vector<uint8_t>& value) = 0;
   virtual std::vector<uint8_t> get(const std::string& key) = 0;
 
-  virtual int64_t add(const std::string& key, int64_t value) = 0;
   virtual bool removeKey(const std::string& key) = 0;
+  virtual int64_t add(const std::string& key, int64_t value) = 0;
   virtual void wait(const std::vector<std::string>& keys) = 0;
   virtual void wait(const std::vector<std::string>& keys,
                     const std::chrono::milliseconds& timeout) = 0;
 
   virtual const std::chrono::milliseconds& getTimeout() const {
-    return timeout_;
+    return _timeout;
   }
   virtual void setTimeout(const std::chrono::milliseconds& timeout) {
-    timeout_ = timeout;
+    _timeout = timeout;
   }
 
  private:
-  std::chrono::milliseconds timeout_;
+  std::chrono::milliseconds _timeout;
 }
 
 }  // namespace distributed

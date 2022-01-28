@@ -14,40 +14,41 @@
 
 #pragma once
 
-#include <store.h>
 #include <iostream>
+#include "paddle/fluid/distributed/store/store.h"
 
 namespace paddle {
 namespace distributed {
 
 class TCPStore : public Store {
  public:
-  explicit TCPStore(std::string host);
+  static constexpr std::uint16_t kDefaultPort = 6170;
+  explicit TCPStore(std::string host, uint16_t port = kDefaultPort,
+                    bool is_master = false, size_t num_workers = 1,
+                    std::chrono::milliseconds timeout = Store::kDefaultTimeout);
 
   ~TCPStore() = default;
 
   void set(const std::string& key, const std::vector<uint8_t>& value) override;
   std::vector<uint8_t> get(const std::string& key) override;
 
-  int64_t add(const std::string& key, int64_t value) override;
   bool removeKey(const std::string& key) override;
+  int64_t add(const std::string& key, int64_t value) override;
   void wait(const std::vector<std::string>& keys) override;
   void wait(const std::vector<std::string>& keys,
             const std::chrono::milliseconds& timeout) override;
 
-  const std::string& getHost() const { return addr_.host; }
-
-  std::uint16_t getPort() const { return addr_.port; }
-
  private:
-  std::vector<uint8_t> doGet(const std::string& key);
   void doWait(const std::vector<std::string>& keys,
               const std::chrono::milliseconds& timeout);
   void waitWorkers();
 
-  const std::string initKey_ = "init/";
-  const std::string keyPrefix_ = "/";
-  std::mutex lock_;
+  const std::string _init_key = "init/";
+  const std::string _key_prefix = "/";
+  std::string _host;
+  uint16_t _port;
+  size_t _num_workers;
+  std::mutex _lock;
 }
 
 }  // namespace distributed
