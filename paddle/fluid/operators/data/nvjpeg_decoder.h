@@ -15,7 +15,11 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
-#include <opencv2/opencv.hpp>
+
+#ifdef PADDLE_WITH_OPENCV
+  #include <opencv2/opencv.hpp>
+#endif
+
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/gpu_info.h"
@@ -54,11 +58,12 @@ class NvjpegDecoder {
 
   private:
     DISABLE_COPY_AND_ASSIGN(NvjpegDecoder);
+#ifdef PADDLE_WITH_OPENCV
     void CPUDecodeRandomCropResize(const uint8_t* data, size_t length,
                                 RandomROIGenerator* roi_generator,
                                 unsigned char* workspace, size_t workspace_size,
                                 framework::LoDTensor& temp, framework::LoDTensor* out, platform::Place place);
-
+#endif
     int ParseDecodeParams(
         const uint8_t* bit_stream, size_t bit_len, framework::LoDTensor* out,
         RandomROIGenerator* roi_generator, nvjpegImage_t* out_image,
@@ -120,6 +125,64 @@ class NvjpegDecoderThreadPool {
     bool completed_;
 
     int outstand_tasks_;
+};
+
+class DecoderThreadPoolManager {
+ private:
+  DISABLE_COPY_AND_ASSIGN(DecoderThreadPoolManager);
+
+  static DecoderThreadPoolManager *pm_instance_ptr_;
+  static std::mutex m_;
+
+  std::map<int64_t, std::unique_ptr<NvjpegDecoderThreadPool>> prog_id_to_pool_;
+
+ public:
+  static DecoderThreadPoolManager* Instance() {
+    if (pm_instance_ptr_ == nullptr) {
+      std::lock_guard<std::mutex> lk(m_);
+      if (pm_instance_ptr_ == nullptr) {
+        pm_instance_ptr_ = new DecoderThreadPoolManager;
+      }
+    }
+    return pm_instance_ptr_;
+  }
+
+  NvjpegDecoderThreadPool* GetDecoderThreadPool(
+      const int64_t program_id, const int num_threads,
+      const std::string mode, const int dev_id) {
+    auto iter = prog_id_to_pool_.find(program_id);
+    if (iter == prog_id_to_pool_.end()) {
+      prog_id_to_pool_[program_id] = 
+        std::unique_ptr<NvjpegDecoderThreadPool>(
+            new NvjpegDecoderThreadPool(num_threads, mode, dev_id));
+    }
+    return prog_id_to_pool_[program_id].get();
+  }
+
+  void ShutDownDecoder(const int64_t program_id) {
+    auto iter = prog_id_to_pool_.find(program_id);
+    if (iter != prog_id_to_pool_.end()) {
+      iter->second.get()->ShutDown();
+      prog_id_to_pool_.erase(program_id);
+    }
+  }
+
+  void ShutDown() {
+    if (prog_id_to_pool_.empty()) return;
+    
+    std::lock_guard<std::mutex> lk(m_);
+    auto iter = prog_id_to_pool_.begin();
+    for (; iter != prog_id_to_pool_.end(); iter++) {
+      if (iter->second.get()) iter->second.get()->ShutDown();
+    }
+  }
+
+  DecoderThreadPoolManager() { VLOG(1) << "DecoderThreadPoolManager init"; }
+
+  ~DecoderThreadPoolManager() {
+    VLOG(1) << "~DecoderThreadPoolManager";
+    ShutDown();
+  }
 };
 
 }  // namespace data

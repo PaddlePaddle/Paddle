@@ -137,6 +137,10 @@ and 255.
     AddAttr<float>("area_min", "").SetDefault(0.08);
     AddAttr<float>("area_max", "").SetDefault(1.);
     AddAttr<int64_t>("num_attempts", "").SetDefault(10);
+    AddAttr<int64_t>("program_id",
+                     "(int64_t)"
+                     "The unique hash id used as cache key for "
+                     "decode thread pool");
   }
 };
 

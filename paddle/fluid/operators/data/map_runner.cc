@@ -59,7 +59,7 @@ bool MapRunner::ShareInputsIntoScope(Scope* scope) {
     // If input queue closed, namely EOE(end of epoch) from
     // dataset reader to here, read failed
     auto queue = input_queues_[i];
-    if (queue->IsClosed()) return false;
+    // if (queue->IsClosed()) return false;
 
     // read LoDTensorArray from queue
     bool success = true;
@@ -206,7 +206,7 @@ void MapRunner::ShutDown() {
   running_.store(false);
 
   for (auto queue :  output_queues_) {
-    if(queue) queue->Close();
+    if(queue && !queue->IsClosed()) queue->Close();
   }
 }
 

@@ -189,6 +189,9 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"run_program", {"Out", "DOut", "OutScope"}},
     {"dataloader", {"Out"}},
     {"map", {"Out"}},
+    {"file_label_loader", {"Image"}},
+    {"batch_decode", {"Out"}},
+    {"batch_decode_random_crop", {"Out"}},
     {"clear_float_status", {"FloatStatusOut"}},
     {"get_float_status", {"FloatStatusOut"}},
 };

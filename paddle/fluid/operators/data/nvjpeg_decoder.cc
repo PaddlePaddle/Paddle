@@ -33,7 +33,7 @@ NvjpegDecoder::NvjpegDecoder(std::string mode, int dev_id)
   // pinned_allocator_.pinned_malloc = &cudaMallocHost;
   // pinned_allocator_.pinned_free = &cudaFreeHost;
   PADDLE_ENFORCE_NVJPEG_SUCCESS(
-      platform::dynload::nvjpegCreateEx(NVJPEG_BACKEND_DEFAULT, &device_allocator_,
+      platform::dynload::nvjpegCreateEx(NVJPEG_BACKEND_HYBRID, &device_allocator_,
                            &pinned_allocator_, 0, &handle_));
   for (size_t i = 0; i < nvjpeg_streams_.size(); i++) {
     PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegJpegStreamCreate(handle_, &nvjpeg_streams_[i]));
@@ -41,7 +41,7 @@ NvjpegDecoder::NvjpegDecoder(std::string mode, int dev_id)
 
   // create decode params, decoder and state
   PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegDecodeParamsCreate(handle_, &decode_params_));
-  PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegDecoderCreate(handle_, NVJPEG_BACKEND_DEFAULT, &decoder_));
+  PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegDecoderCreate(handle_, NVJPEG_BACKEND_HYBRID, &decoder_));
   PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegDecoderStateCreate(handle_, decoder_, &state_));
 
   // create device & pinned buffer
@@ -79,6 +79,7 @@ NvjpegDecoder::~NvjpegDecoder() {
 //                                 unsigned char* workspace, size_t workspace_size,
 //                                 unsigned char* dst, int target_width,
 //                                 int target_height) {
+#ifdef PADDLE_WITH_OPENCV
 void NvjpegDecoder::CPUDecodeRandomCropResize(const uint8_t* data, size_t length,
                                 RandomROIGenerator* roi_generator,
                                 unsigned char* workspace, size_t workspace_size,
@@ -96,13 +97,6 @@ void NvjpegDecoder::CPUDecodeRandomCropResize(const uint8_t* data, size_t length
     cv_roi.y = roi.y;
     cv_roi.width = roi.w;
     cv_roi.height = roi.h;
-    // PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegDecodeParamsSetROI(decode_params_, roi.x, roi.y, roi.w, roi.h));
-    //   height = roi.h;
-    //   width = roi.w;
-    // }
-    // cv::Rect roi;
-    // roi_generator->GenerateRandomROI(image.cols, image.rows, &roi.x, &roi.y, &roi.width,
-    //                       &roi.height);
     height = roi.h;
     width = roi.w;
     std::vector<int64_t> out_shape = {3, height, width};
@@ -113,30 +107,14 @@ void NvjpegDecoder::CPUDecodeRandomCropResize(const uint8_t* data, size_t length
     cropped.data = data;
     image(cv_roi).copyTo(cropped);
     out->Resize(framework::make_ddim(out_shape));
-    // auto* data = temp.mutable_data<uint8_t>(cpu);
     
     TensorCopySync(temp, place, out);
-    // cropped = image;
     
   } else {
-    cropped = image;
+    // throw error
   }
-
-  // std::vector<int64_t> out_shape = {3, height, width};
-  // temp.Resize(framework::make_ddim(out_shape));
-  // platform::CPUPlace cpu;
-  // // allocate memory and assign to out_image
-  // auto* data = temp.mutable_data<uint8_t>(cpu);
-  // data = cropped.data;
-  // out->Resize(framework::make_ddim(out_shape));
-  // // auto* data = temp.mutable_data<uint8_t>(cpu);
-  // TensorCopySync(temp, place, out);
-  // return cropped;
-  // cv::Mat resized;
-  // cv::resize(cropped, resized, cv::Size(target_width, target_height), 0, 0, cv::INTER_LINEAR);
-  // cv::Mat dst_mat(target_height, target_width, CV_8UC3, dst, cv::Mat::AUTO_STEP);
-  // cv::cvtColor(resized, dst_mat, cv::COLOR_BGR2RGB);
 }
+#endif
 
 int NvjpegDecoder::ParseDecodeParams(
     const uint8_t* bit_stream, size_t bit_len, framework::LoDTensor* out,
@@ -153,20 +131,15 @@ int NvjpegDecoder::ParseDecodeParams(
   // PADDLE_ENFORCE_NVJPEG_SUCCESS(
   //     platform::dynload::nvjpegGetImageInfo(handle_, bit_stream, bit_len,
   //                        &components, &subsampling, widths, heights));
+
   if (status != NVJPEG_STATUS_SUCCESS || (components != 3 && components != 1)) {
+#ifdef PADDLE_WITH_OPENCV
     framework::LoDTensor temp;
     CPUDecodeRandomCropResize(bit_stream, bit_len, roi_generator, nullptr, 0, temp, out, place);
     return 1;
-
-    // CHECK_LE(target_width * target_height * kNumChannels, fallback_buffer_size_);
-    // fallback_handle_.DecodeRandomCropResize(data, length, crop_generator, nullptr, 0,
-    //                                         fallback_buffer_, target_width, target_height);
-    // OF_CUDA_CHECK(cudaMemcpyAsync(dst, fallback_buffer_,
-    //                               target_width * target_height * kNumChannels, cudaMemcpyDefault,
-    //                               cuda_stream_));
-    // return;
+#endif
   }
-  
+
   int64_t width = static_cast<int64_t>(widths[0]);
   int64_t height = static_cast<int64_t>(heights[0]);
 
@@ -297,11 +270,11 @@ void NvjpegDecoderThreadPool::ShutDown() {
   running_cond_.notify_all();
   lock.unlock();
 
+  task_queue_.clear();
+
   for (auto& thread : threads_) {
     if (thread.joinable())  thread.join();
   }
-
-  task_queue_.clear();
 }
 
 void NvjpegDecoderThreadPool::SortTaskByLengthDescend() {
@@ -340,6 +313,10 @@ void NvjpegDecoderThreadPool::ThreadLoop(const int thread_idx) {
     }
   }
 }
+
+// initialization static variables out of MapRunnerManager
+DecoderThreadPoolManager* DecoderThreadPoolManager::pm_instance_ptr_ = nullptr;
+std::mutex DecoderThreadPoolManager::m_;
 
 }  // namespace data
 }  // namespace operators

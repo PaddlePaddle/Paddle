@@ -89,7 +89,6 @@ class MapInferVarType : public framework::VarTypeInference {
   void operator()(framework::InferVarTypeContext* ctx) const override {}
 };
 
-
 class MapOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {

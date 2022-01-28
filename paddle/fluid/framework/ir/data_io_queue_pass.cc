@@ -27,6 +27,7 @@ class Graph;
 std::set<std::string> output_queue_holder_ops = {
   "file_label_reader",
   "map",
+  "data_reader",
 };
 
 std::set<std::string> input_array_ops = {
@@ -60,8 +61,7 @@ static void ProcessOutputQueueHolderOp(ir::Graph* graph) {
     if (n->IsVar() && n->Var()) {
       auto *var = n->Var();
       if (var_names.find(var->Name()) != var_names.end()) {
-        // VLOG(3) << "Change output variable type of " << var->Name() << " to queue holder";
-        LOG(ERROR) << "Change output variable type of " << var->Name() << " to queue holder";
+        VLOG(3) << "Change output variable type of " << var->Name() << " to queue holder";
         var->SetType(framework::proto::VarType::LOD_TENSOR_BLOCKING_QUEUE);
         var->SetPersistable(true);
       }
@@ -87,8 +87,7 @@ static void ProcessInputArrayOp(ir::Graph* graph) {
     if (n->IsVar() && n->Var()) {
       auto *var = n->Var();
       if (var_names.find(var->Name()) != var_names.end()) {
-        // VLOG(3) << "Change output variable type of " << var->Name() << " to queue holder";
-        LOG(ERROR) << "Change input variable type of " << var->Name() << " to array";
+        VLOG(3) << "Change output variable type of " << var->Name() << " to queue holder";
         var->SetType(framework::proto::VarType::LOD_TENSOR_ARRAY);
       }
     }

@@ -682,8 +682,15 @@ PYBIND11_MODULE(core_noavx, m) {
   m.def("_promote_types_if_complex_exists",
         &paddle::framework::PromoteTypesIfComplexExists);
 
-  m.def("_shutdown_dataloader",
-        &paddle::operators::data::ShutDownDataLoader);
+  m.def("_shutdown_all_dataloaders",
+        &paddle::operators::data::ShutDownAllDataLoaders);
+  m.def("_shutdown_readers_and_decoders",
+        &paddle::operators::data::ShutDownReadersAndDecoders);
+  m.def("_shutdown_maps", [](const std::vector<int64_t> program_ids) {
+        paddle::operators::data::ShutDownMaps(program_ids);
+      });
+  m.def("_shutdown_pipeline",
+        &paddle::operators::data::ShutDownPipeline);
 
   BindImperative(&m);
 

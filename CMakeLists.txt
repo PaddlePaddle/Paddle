@@ -229,7 +229,7 @@ option(NEW_RELEASE_CUBIN   "PaddlePaddle next-level release strategy for pypi cu
 option(NEW_RELEASE_JIT   "PaddlePaddle next-level release strategy for backup jit package"             OFF)
 option(WITH_ASCEND_INT64 "Compile with int64 kernel for ascend NPU"    OFF)
 option(WITH_POCKETFFT    "Compile with pocketfft support"      ON)
-option(WITH_OPENCV    "Compile with pocketfft support"      ON)
+option(WITH_OPENCV    "Compile with opencv"      ON)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -344,12 +344,9 @@ if(WITH_OPENCV)
     endif()
     message(STATUS "Found OpenCV: ${OpenCV_INCLUDE_DIRS} (found suitable version \"${OpenCV_VERSION}\", minimum required is \"3.0\")")
     include_directories(SYSTEM ${OpenCV_INCLUDE_DIRS})
-    message("DEBUGGGG_OPENCV")
     include_directories(${OpenCV_INCLUDE_DIRS})
     link_directories(${OpenCV_LIBS})
-    # target_link_libraries(paddle ${OpenCV_LIBS})
     add_definitions(-DPADDLE_WITH_OPENCV)
-    # target_link_libraries(paddle ${OpenCV_LIBS} )
 endif()
 
 if(WITH_PROFILER)

@@ -23,7 +23,7 @@ namespace data {
 
 using LoDTensorBlockingQueueHolder = operators::reader::LoDTensorBlockingQueueHolder;
 
-static NvjpegDecoderThreadPool* decode_pool = nullptr;
+// static NvjpegDecoderThreadPool* decode_pool = nullptr;
 
 template <typename T>
 class GPUBatchDecodeKernel : public framework::OpKernel<T> {
@@ -33,12 +33,16 @@ class GPUBatchDecodeKernel : public framework::OpKernel<T> {
     LOG(ERROR) << "GPUBatchDecodeJpegKernel Compute start, num_threads: " << num_threads;
     auto mode = ctx.Attr<std::string>("mode");
     auto local_rank = ctx.Attr<int>("local_rank");
+    auto program_id = ctx.Attr<int64_t>("program_id");
     
-    // multi-phrase decode thread pool
-    if (!decode_pool) {
-      LOG(ERROR) << "GPUBatchDecodeJpegKernel decode_pool init";
-      decode_pool = new NvjpegDecoderThreadPool(num_threads, mode, local_rank);
-    }
+    // // multi-phrase decode thread pool
+    // if (!decode_pool) {
+    //   LOG(ERROR) << "GPUBatchDecodeJpegKernel decode_pool init";
+    //   decode_pool = new NvjpegDecoderThreadPool(num_threads, mode, local_rank);
+    // }
+    auto* decode_pool = 
+      DecoderThreadPoolManager::Instance()->GetDecoderThreadPool(
+                          program_id, num_threads, mode, local_rank);
 
     const framework::LoDTensorArray* inputs =
         ctx.Input<framework::LoDTensorArray>("X");
@@ -63,27 +67,6 @@ class GPUBatchDecodeKernel : public framework::OpKernel<T> {
     }
 
     decode_pool->RunAll(true);
-    // out_queue->Push(out_array);
-
-    // // multi-phrase decode single thread
-    // if (!nvjpeg_decoder) {
-    //   nvjpeg_decoder = new NvjpegDecoder(mode);
-    // }
-    //
-    // const framework::LoDTensorArray* inputs =
-    //     ctx.Input<framework::LoDTensorArray>("X");
-    //
-    // auto* out = ctx.OutputVar("Out");
-    // auto& out_array = *out->GetMutable<framework::LoDTensorArray>();
-    // out_array.resize(inputs->size());
-    //
-    // for (size_t i = 0; i < inputs->size(); i++) {
-    //   const framework::LoDTensor x = inputs->at(i);
-    //   auto* x_data = x.data<T>();
-    //
-    //   nvjpeg_decoder->Run(x_data, static_cast<size_t>(x.numel()),
-    //                       &out_array[i], &ctx);
-    // }
 
     LOG(ERROR) << "GPUBatchDecodeJpegKernel Compute finish";
   }
