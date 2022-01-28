@@ -310,6 +310,10 @@ HOSTDEVICE inline bool(isfinite)(const bfloat16& a) {
   return !((isnan)(a)) && !((isinf)(a));
 }
 
+HOSTDEVICE inline bfloat16(abs)(const bfloat16& a) {
+  return bfloat16(std::abs(static_cast<float>(a)));
+}
+
 inline std::ostream& operator<<(std::ostream& os, const bfloat16& a) {
   os << a.x;
   return os;

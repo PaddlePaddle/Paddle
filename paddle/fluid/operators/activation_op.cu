@@ -1509,7 +1509,9 @@ namespace plat = paddle::platform;
       ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,           \
                                 ops::functor<double>>,                         \
       ops::ActivationCudaKernel<plat::CUDADeviceContext,                       \
-                                ops::functor<plat::float16>>);                 \
+                                ops::functor<plat::float16>>,                  \
+      ops::ActivationCudaKernel<plat::CUDADeviceContext,                       \
+                                ops::functor<plat::bfloat16>>);                \
   REGISTER_OP_CUDA_KERNEL(                                                     \
       act_type##_grad,                                                         \
       ops::ActivationGradCudaKernel<plat::CUDADeviceContext,                   \
@@ -1517,7 +1519,9 @@ namespace plat = paddle::platform;
       ops::ActivationGradCudaKernel<plat::CUDADeviceContext,                   \
                                     ops::grad_functor<double>>,                \
       ops::ActivationGradCudaKernel<plat::CUDADeviceContext,                   \
-                                    ops::grad_functor<plat::float16>>);
+                                    ops::grad_functor<plat::float16>>,         \
+      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,                   \
+                                    ops::grad_functor<plat::bfloat16>>);
 
 #define REGISTER_ACTIVATION_CUDA_KERNEL_INT(act_type, op_name, functor,        \
                                             grad_functor)                      \
@@ -1531,7 +1535,9 @@ namespace plat = paddle::platform;
       ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,           \
                                 ops::functor<int64_t>>,                        \
       ops::ActivationCudaKernel<plat::CUDADeviceContext,                       \
-                                ops::functor<plat::float16>>);                 \
+                                ops::functor<plat::float16>>,                  \
+      ops::ActivationCudaKernel<plat::CUDADeviceContext,                       \
+                                ops::functor<plat::bfloat16>>);                \
   REGISTER_OP_CUDA_KERNEL(                                                     \
       act_type##_grad,                                                         \
       ops::ActivationGradCudaKernel<plat::CUDADeviceContext,                   \
@@ -1543,7 +1549,9 @@ namespace plat = paddle::platform;
       ops::ActivationGradCudaKernel<plat::CUDADeviceContext,                   \
                                     ops::grad_functor<int64_t>>,               \
       ops::ActivationGradCudaKernel<plat::CUDADeviceContext,                   \
-                                    ops::grad_functor<plat::float16>>);
+                                    ops::grad_functor<plat::float16>>,         \
+      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,                   \
+                                    ops::grad_functor<plat::bfloat16>>);
 
 /* ======================== leaky relu register  ============================ */
 REGISTER_ACTIVATION_CUDA_KERNEL(leaky_relu, LeakyRelu, CudaLeakyReluFunctor,
@@ -1650,7 +1658,9 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SigmoidDoubleGradKernel<paddle::platform::CUDADeviceContext,
                                  ops::SigmoidGradGradFunctor<double>>,
     ops::SigmoidDoubleGradKernel<plat::CUDADeviceContext,
-                                 ops::SigmoidGradGradFunctor<plat::float16>>);
+                                 ops::SigmoidGradGradFunctor<plat::float16>>,
+    ops::SigmoidDoubleGradKernel<plat::CUDADeviceContext,
+                                 ops::SigmoidGradGradFunctor<plat::bfloat16>>);
 
 REGISTER_OP_CUDA_KERNEL(
     sigmoid_triple_grad,
@@ -1659,7 +1669,10 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SigmoidTripleGradKernel<paddle::platform::CUDADeviceContext,
                                  ops::SigmoidTripleGradFunctor<double>>,
     ops::SigmoidTripleGradKernel<plat::CUDADeviceContext,
-                                 ops::SigmoidTripleGradFunctor<plat::float16>>);
+                                 ops::SigmoidTripleGradFunctor<plat::float16>>,
+    ops::SigmoidTripleGradKernel<
+        plat::CUDADeviceContext,
+        ops::SigmoidTripleGradFunctor<plat::bfloat16>>);
 /* ========================================================================== */
 
 /* ===========================    tanh register  ============================ */
@@ -1696,7 +1709,9 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
                               ops::SqrtGradGradFunctor<double>>,
     ops::SqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                              ops::SqrtGradGradFunctor<plat::float16>>);
+                              ops::SqrtGradGradFunctor<plat::float16>>,
+    ops::SqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                              ops::SqrtGradGradFunctor<plat::bfloat16>>);
 /* ========================================================================== */
 
 /* ===========================   rsqrt register  =============================
@@ -1726,6 +1741,8 @@ REGISTER_OP_CUDA_KERNEL(
                                 ops::SquareGradGradFunctor<double>>,
     ops::SquareDoubleGradKernel<plat::CUDADeviceContext,
                                 ops::SquareGradGradFunctor<plat::float16>>,
+    ops::SquareDoubleGradKernel<plat::CUDADeviceContext,
+                                ops::SquareGradGradFunctor<plat::bfloat16>>,
     ops::SquareDoubleGradKernel<paddle::platform::CUDADeviceContext,
                                 ops::SquareGradGradFunctor<int>>,
     ops::SquareDoubleGradKernel<paddle::platform::CUDADeviceContext,
