@@ -401,7 +401,7 @@ class MatMulV2OpGrad : public framework::OperatorWithKernel {
     bool use_addto = ctx.Attr<bool>("use_addto");
     if (use_addto) {
       return framework::KernelSignature(
-          "matmul_grad_use_addto", {"X", "Y", framework::GradVarName("Out")},
+          "addto_matmul_grad", {"X", "Y", framework::GradVarName("Out")},
           {"trans_x", "trans_y", "use_addto"},
           {framework::GradVarName("X"), framework::GradVarName("Y")});
     }
