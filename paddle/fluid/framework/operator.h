@@ -461,11 +461,11 @@ class ExecutionArgumentMappingContext : public pten::ArgumentMappingContext {
   }
 
   size_t InputSize(const std::string& name) const override {
-    return ctx_.InputSize(name);
+    return ctx_.MultiInputVar(name).size();
   }
 
   size_t OutputSize(const std::string& name) const override {
-    return ctx_.OutputSize(name);
+    return ctx_.MultiOutputVar(name).size();
   }
 
   bool IsDenseTensorInput(const std::string& name) const override {
@@ -474,6 +474,14 @@ class ExecutionArgumentMappingContext : public pten::ArgumentMappingContext {
 
   bool IsSelectedRowsInput(const std::string& name) const override {
     return ctx_.InputVar(name)->IsType<pten::SelectedRows>();
+  }
+
+  bool IsDenseTensorOutput(const std::string& name) const override {
+    return ctx_.OutputVar(name)->IsType<framework::LoDTensor>();
+  }
+
+  bool IsSelectedRowsOutput(const std::string& name) const override {
+    return ctx_.OutputVar(name)->IsType<pten::SelectedRows>();
   }
 
  private:
@@ -615,9 +623,6 @@ class OperatorWithKernel : public OperatorBase {
   void BuildPtenKernelContext(const RuntimeContext& ctx,
                               platform::DeviceContext* dev_ctx,
                               pten::KernelContext* pt_kernel_context) const;
-
-  void WriteBackToOutputs(RuntimeContext* ctx,
-                          pten::KernelContext* pt_kernel_context) const;
 
   pten::KernelSignature* PtenKernelSignature() const {
     return pt_kernel_signature_.get();

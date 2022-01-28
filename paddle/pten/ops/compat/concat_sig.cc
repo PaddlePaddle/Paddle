@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,15 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/digamma_op.h"
+#include "paddle/pten/core/compat/op_utils.h"
 
-namespace ops = paddle::operators;
+namespace pten {
 
-REGISTER_OP_CUDA_KERNEL(
-    digamma, ops::DigammaKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::DigammaKernel<paddle::platform::CUDADeviceContext, double>);
+KernelSignature ConcatOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  if (ctx.HasInput("AxisTensor")) {
+    return KernelSignature("concat", {"X"}, {"AxisTensor"}, {"Out"});
+  }
+  return KernelSignature("concat", {"X"}, {"axis"}, {"Out"});
+}
 
-REGISTER_OP_CUDA_KERNEL(
-    digamma_grad,
-    ops::DigammaGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::DigammaGradKernel<paddle::platform::CUDADeviceContext, double>);
+}  // namespace pten
+
+PT_REGISTER_ARG_MAPPING_FN(concat, pten::ConcatOpArgumentMapping);

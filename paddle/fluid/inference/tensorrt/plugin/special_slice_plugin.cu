@@ -128,10 +128,14 @@ int SpecialSlicePluginDynamic::enqueue(
   auto input_dims = input_desc[0].dims;  // (sum(S), hidden, 1, 1)
   auto out_dims = output_desc[0].dims;   // (batch, hidden, 1, 1)
 
-  assert(input_desc[0].type == nvinfer1::DataType::kHALF);
-  assert(hidden % 128 == 0);
+  PADDLE_ENFORCE_EQ(
+      input_desc[0].type, nvinfer1::DataType::kHALF,
+      platform::errors::InvalidArgument("Type of input should be half."));
 
   const int32_t hidden = input_dims.d[1];
+  PADDLE_ENFORCE_EQ(hidden % 128, 0, platform::errors::InvalidArgument(
+                                         "hidden should be multiple of 128."));
+
   constexpr int num_threads = 128;
   const dim3 blocks(out_dims.d[0], hidden / num_threads);
 
