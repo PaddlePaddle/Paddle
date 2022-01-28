@@ -20,20 +20,18 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
-class NormKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in_x = ctx.Input<framework::Tensor>("X");
-    auto* out_y = ctx.Output<framework::Tensor>("Out");
-
-    auto& dev_ctx = context.device_context<DeviceContext>();
-    pten::NormKernel<T>(
-        static_cast<const typename framework::ConvertToPtenContext<
-            DeviceContext>::TYPE&>(ctx),
-        *in_x, out_y);
+inline void GetDims(const paddle::framework::DDim& dim, int axis, int* pre,
+                    int* n, int* post) {
+  *pre = 1;
+  *post = 1;
+  *n = dim[axis];
+  for (int i = 0; i < axis; ++i) {
+    (*pre) *= dim[i];
   }
-};
+  for (int i = axis + 1; i < dim.size(); ++i) {
+    (*post) *= dim[i];
+  }
+}
 
 template <typename DeviceContext, typename T, typename AttrType = T>
 class NormGradKernel : public framework::OpKernel<T> {

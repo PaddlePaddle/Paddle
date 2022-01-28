@@ -72,6 +72,13 @@ class NormOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim("Norm", xdim);
     }
   }
+}
+
+framework::KernelSignature
+GetExpectedPtenKernelArgs(
+    const framework::ExecutionContext& ctx) const override {
+  return framework::KernelSignature(
+      "norm", {"X"}, {"axis", "epsilon", "is_test"}, {"Out", "Norm"});
 };
 
 class NormOpGrad : public framework::OperatorWithKernel {
@@ -115,7 +122,5 @@ REGISTER_OPERATOR(norm, ops::NormOp, ops::NormOpMaker,
                   ops::NormOpGradOpMaker<paddle::framework::OpDesc>,
                   ops::NormOpGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(norm_grad, ops::NormOpGrad);
-REGISTER_OP_CPU_KERNEL(norm, ops::NormKernel<CPU, float>,
-                       ops::NormKernel<CPU, double>);
 REGISTER_OP_CPU_KERNEL(norm_grad, ops::NormGradKernel<CPU, float>,
                        ops::NormGradKernel<CPU, double>);
