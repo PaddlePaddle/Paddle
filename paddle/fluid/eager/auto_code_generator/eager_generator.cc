@@ -1014,7 +1014,7 @@ static std::string GenerateGradNodeCreationContent(
     if (output.duplicable()) {
       const char* GET_MULTI_AUTOGRAD_META_TEMPLATE =
           "  std::vector<egr::AutogradMeta*> %s = "
-          "egr::EagerUtils::multi_autograd_meta(&%s);\n";
+          "egr::EagerUtils::autograd_meta(&%s);\n";
       get_autograd_meta_str += paddle::string::Sprintf(
           GET_MULTI_AUTOGRAD_META_TEMPLATE, output_autograd_name, output_name);
 
@@ -1107,7 +1107,7 @@ static std::string GenerateGradNodeCreationContent(
       size_t input_position = fwd_inputs_name_pos_map.at(input_name);
 
       const char* SET_GRAD_OUT_META_TEMPLATE =
-          "    grad_node->SetGradOutMeta(%s, %d);\n";
+          "    grad_node->SetGradOutMeta(&%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
           SET_GRAD_OUT_META_TEMPLATE, input_autograd_name, input_position);
 
@@ -1138,6 +1138,11 @@ static std::string GenerateGradNodeCreationContent(
       grad_node_creation_str +=
           paddle::string::Sprintf(SET_HISTORY_TEMPLATE, output_autograd_name);
 
+      const char* SET_GRAD_IN_META_TEMPLATE =
+          "    grad_node->SetGradInMeta(&%s, %d);\n";
+      grad_node_creation_str += paddle::string::Sprintf(
+          SET_GRAD_IN_META_TEMPLATE, output_autograd_name, output_position);
+
     } else {
       pass_stop_gradient_args += ", " + output_autograd_name;
       const char* SET_OUT_RANK_TEMPLATE =
@@ -1149,12 +1154,12 @@ static std::string GenerateGradNodeCreationContent(
           "    egr::EagerUtils::SetHistory(%s, grad_node);\n";
       grad_node_creation_str +=
           paddle::string::Sprintf(SET_HISTORY_TEMPLATE, output_autograd_name);
-    }
 
-    const char* SET_GRAD_IN_META_TEMPLATE =
-        "    grad_node->SetGradInMeta(%s, %d);\n";
-    grad_node_creation_str += paddle::string::Sprintf(
-        SET_GRAD_IN_META_TEMPLATE, output_autograd_name, output_position);
+      const char* SET_GRAD_IN_META_TEMPLATE =
+          "    grad_node->SetGradInMeta(%s, %d);\n";
+      grad_node_creation_str += paddle::string::Sprintf(
+          SET_GRAD_IN_META_TEMPLATE, output_autograd_name, output_position);
+    }
 
     VLOG(6) << "Generated Call RetainGradForTensor";
     const char* RETAIN_GRAD_TEMPLATE =
