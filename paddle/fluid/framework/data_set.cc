@@ -54,6 +54,8 @@ DatasetImpl<T>::DatasetImpl() {
   parse_logkey_ = false;
   preload_thread_num_ = 0;
   global_index_ = 0;
+  shuffle_by_uid_ = false;
+  parse_uid_ = false;
 }
 
 // set filelist, file_idx_ will reset to zero.
@@ -145,6 +147,12 @@ void DatasetImpl<T>::SetMergeByInsId(int merge_size) {
 template <typename T>
 void DatasetImpl<T>::SetMergeBySid(bool is_merge) {
   merge_by_sid_ = is_merge;
+}
+
+template <typename T>
+void DatasetImpl<T>::SetShuffleByUid(bool enable_shuffle_uid) {
+  shuffle_by_uid_ = enable_shuffle_uid;
+  parse_uid_ = true;
 }
 
 template <typename T>
@@ -386,11 +394,14 @@ void DatasetImpl<T>::GlobalShuffle(int thread_num) {
           << input_channel_->Size();
 
   auto get_client_id = [this, fleet_ptr](const T& data) -> size_t {
-    if (!this->merge_by_insid_) {
-      return fleet_ptr->LocalRandomEngine()() % this->trainer_num_;
-    } else {
+    if (this->merge_by_insid_) {
       return XXH64(data.ins_id_.data(), data.ins_id_.length(), 0) %
              this->trainer_num_;
+    } else if (this->shuffle_by_uid_) {
+      return XXH64(data.uid_.data(), data.uid_.length(), 0) %
+             this->trainer_num_;
+    } else {
+      return fleet_ptr->LocalRandomEngine()() % this->trainer_num_;
     }
   };
 
@@ -618,6 +629,7 @@ void DatasetImpl<T>::CreateReaders() {
     readers_[i]->SetFileListIndex(&file_idx_);
     readers_[i]->SetFileList(filelist_);
     readers_[i]->SetParseInsId(parse_ins_id_);
+    readers_[i]->SetParseUid(parse_uid_);
     readers_[i]->SetParseContent(parse_content_);
     readers_[i]->SetParseLogKey(parse_logkey_);
     readers_[i]->SetEnablePvMerge(enable_pv_merge_);
@@ -686,6 +698,7 @@ void DatasetImpl<T>::CreatePreLoadReaders() {
     preload_readers_[i]->SetFileListIndex(&file_idx_);
     preload_readers_[i]->SetFileList(filelist_);
     preload_readers_[i]->SetParseInsId(parse_ins_id_);
+    preload_readers_[i]->SetParseUid(parse_uid_);
     preload_readers_[i]->SetParseContent(parse_content_);
     preload_readers_[i]->SetParseLogKey(parse_logkey_);
     preload_readers_[i]->SetEnablePvMerge(enable_pv_merge_);

@@ -68,6 +68,14 @@ class TestDataset(unittest.TestCase):
         self.assertTrue(dataset.parse_ins_id)
         self.assertTrue(dataset.parse_content)
 
+    def test_shuffle_by_uid(self):
+        """
+        Testcase for shuffle_by_uid.
+        """
+        dataset = paddle.distributed.InMemoryDataset()
+        dataset._set_uid_slot('6048')
+        dataset._set_shuffle_by_uid(True)
+
     def test_run_with_dump(self):
         """
         Testcase for InMemoryDataset from create to run.

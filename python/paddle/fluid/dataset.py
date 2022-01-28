@@ -221,6 +221,23 @@ class DatasetBase(object):
         self.dataset.set_filelist(filelist)
         self.filelist = filelist
 
+    def set_uid_slot(self, uid_slot):
+        """
+        Set user slot name.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset()
+              dataset.set_uid_slot('6048')
+
+        Args:
+            set_uid_slot(string): user slot name
+        """
+        multi_slot = self.proto_desc.multi_slot_desc
+        multi_slot.uid_slot = uid_slot
+
     def set_use_var(self, var_list):
         """
         Set Variables which you will use.
@@ -659,6 +676,23 @@ class InMemoryDataset(DatasetBase):
         self.dataset.set_merge_by_lineid(merge_size)
         self.merge_by_lineid = True
         self.parse_ins_id = True
+
+    def set_shuffle_by_uid(self, enable_shuffle_uid):
+        """
+        Set if Dataset need to shuffle by uid.
+
+        Args:
+            set_shuffle_by_uid(bool): if shuffle according to uid or not
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset.set_shuffle_by_uid(True)
+
+        """
+        self.dataset.set_shuffle_by_uid(enable_shuffle_uid)
 
     def set_generate_unique_feasigns(self, generate_uni_feasigns, shard_num):
         self.dataset.set_generate_unique_feasigns(generate_uni_feasigns)

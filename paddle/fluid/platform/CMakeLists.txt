@@ -71,6 +71,10 @@ ELSE()
   set(STREAM_CALLBACK_DEPS)
 ENDIF()
 
+if(WITH_GLOO)
+    cc_library(gloo_context SRCS gloo_context.cc DEPS framework_proto gloo_wrapper enforce)
+endif()
+
 cc_library(cudnn_workspace_helper SRCS cudnn_workspace_helper.cc DEPS boost)
 
 # memcpy depends on device_context, here add deps individually for
