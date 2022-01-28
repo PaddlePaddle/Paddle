@@ -15,6 +15,11 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
+
+#ifdef PADDLE_WITH_OPENCV
+  #include <opencv2/opencv.hpp>
+#endif
+
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/gpu_info.h"
@@ -53,8 +58,13 @@ class NvjpegDecoder {
 
   private:
     DISABLE_COPY_AND_ASSIGN(NvjpegDecoder);
-
-    void ParseDecodeParams(
+#ifdef PADDLE_WITH_OPENCV
+    void CPUDecodeRandomCropResize(const uint8_t* data, size_t length,
+                                RandomROIGenerator* roi_generator,
+                                unsigned char* workspace, size_t workspace_size,
+                                framework::LoDTensor& temp, framework::LoDTensor* out, platform::Place place);
+#endif
+    int ParseDecodeParams(
         const uint8_t* bit_stream, size_t bit_len, framework::LoDTensor* out,
         RandomROIGenerator* roi_generator, nvjpegImage_t* out_image,
         platform::Place place);

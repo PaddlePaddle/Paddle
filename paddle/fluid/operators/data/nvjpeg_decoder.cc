@@ -74,7 +74,49 @@ NvjpegDecoder::~NvjpegDecoder() {
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(cuda_stream_));
 }
 
-void NvjpegDecoder::ParseDecodeParams(
+// cv::Mat DecodeRandomCropResize(const unsigned char* data, size_t length,
+//                                 RandomROIGenerator* roi_generator,
+//                                 unsigned char* workspace, size_t workspace_size,
+//                                 unsigned char* dst, int target_width,
+//                                 int target_height) {
+#ifdef PADDLE_WITH_OPENCV
+void NvjpegDecoder::CPUDecodeRandomCropResize(const uint8_t* data, size_t length,
+                                RandomROIGenerator* roi_generator,
+                                unsigned char* workspace, size_t workspace_size,
+                                framework::LoDTensor& temp, framework::LoDTensor* out, platform::Place place) {
+  cv::Mat image =
+      cv::imdecode(cv::Mat(1, length, CV_8UC1, const_cast<unsigned char*>(data)), cv::IMREAD_COLOR);
+  cv::Mat cropped;
+  int height;
+  int width;
+  if (roi_generator) {
+    ROI roi;
+    roi_generator->GenerateRandomROI(image.cols, image.rows, &roi);
+    cv::Rect cv_roi;
+    cv_roi.x = roi.x;
+    cv_roi.y = roi.y;
+    cv_roi.width = roi.w;
+    cv_roi.height = roi.h;
+    height = roi.h;
+    width = roi.w;
+    std::vector<int64_t> out_shape = {3, height, width};
+    temp.Resize(framework::make_ddim(out_shape));
+    platform::CPUPlace cpu;
+    // allocate memory and assign to out_image
+    auto* data = temp.mutable_data<uint8_t>(cpu);
+    cropped.data = data;
+    image(cv_roi).copyTo(cropped);
+    out->Resize(framework::make_ddim(out_shape));
+    
+    TensorCopySync(temp, place, out);
+    
+  } else {
+    // throw error
+  }
+}
+#endif
+
+int NvjpegDecoder::ParseDecodeParams(
     const uint8_t* bit_stream, size_t bit_len, framework::LoDTensor* out,
     RandomROIGenerator* roi_generator, nvjpegImage_t* out_image,
     platform::Place place) {
@@ -83,9 +125,20 @@ void NvjpegDecoder::ParseDecodeParams(
   int widths[NVJPEG_MAX_COMPONENT];
   int heights[NVJPEG_MAX_COMPONENT];
 
-  PADDLE_ENFORCE_NVJPEG_SUCCESS(
-      platform::dynload::nvjpegGetImageInfo(handle_, bit_stream, bit_len,
-                         &components, &subsampling, widths, heights));
+  
+  nvjpegStatus_t status = platform::dynload::nvjpegGetImageInfo(handle_, bit_stream, bit_len,
+                         &components, &subsampling, widths, heights);
+  // PADDLE_ENFORCE_NVJPEG_SUCCESS(
+  //     platform::dynload::nvjpegGetImageInfo(handle_, bit_stream, bit_len,
+  //                        &components, &subsampling, widths, heights));
+
+  if (status != NVJPEG_STATUS_SUCCESS || (components != 3 && components != 1)) {
+#ifdef PADDLE_WITH_OPENCV
+    framework::LoDTensor temp;
+    CPUDecodeRandomCropResize(bit_stream, bit_len, roi_generator, nullptr, 0, temp, out, place);
+    return 1;
+#endif
+  }
 
   int64_t width = static_cast<int64_t>(widths[0]);
   int64_t height = static_cast<int64_t>(heights[0]);
@@ -102,7 +155,7 @@ void NvjpegDecoder::ParseDecodeParams(
       output_components = 3;
     } else {
       PADDLE_THROW(platform::errors::Fatal(
-          "The provided mode is not supported for JPEG files on GPU"));
+          "The provided mode is not supported for JPEG files on GPU: %s!", mode_));
     }
   } else if (mode_ == "gray") {
     output_format = NVJPEG_OUTPUT_Y;
@@ -111,8 +164,9 @@ void NvjpegDecoder::ParseDecodeParams(
     output_format = NVJPEG_OUTPUT_RGBI;
     output_components = 3;
   } else {
+    // std::cout << mode_ << std::endl;
     PADDLE_THROW(platform::errors::Fatal(
-        "The provided mode is not supported for JPEG files on GPU"));
+        "The provided mode is not supported for JPEG files on GPU: %s!", mode_));
   }
 
   PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegDecodeParamsSetOutputFormat(decode_params_, output_format));
@@ -133,6 +187,7 @@ void NvjpegDecoder::ParseDecodeParams(
   auto* data = out->mutable_data<uint8_t>(place);
   out_image->channel[0] = data;
   out_image->pitch[0] = output_components * width;
+  return 0;
 }
 
 void NvjpegDecoder::Decode(const uint8_t* bit_stream, size_t bit_len, nvjpegImage_t* out_image) {
@@ -143,7 +198,8 @@ void NvjpegDecoder::Decode(const uint8_t* bit_stream, size_t bit_len, nvjpegImag
   // decode jpeg in host to pinned buffer
   PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegStateAttachPinnedBuffer(state_, buffer));
   PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegJpegStreamParse(handle_, bit_stream, bit_len, false, false, stream));
-  PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegDecodeJpegHost(handle_, decoder_, state_, decode_params_, stream));
+  
+  (platform::dynload::nvjpegDecodeJpegHost(handle_, decoder_, state_, decode_params_, stream));
 
   // transfer and decode to device buffer
   PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegStateAttachDeviceBuffer(state_, device_buffer_));
@@ -157,7 +213,10 @@ void NvjpegDecoder::Run(
     const uint8_t* bit_stream, size_t bit_len, framework::LoDTensor* out,
     RandomROIGenerator* roi_generator, platform::Place& place) {
   nvjpegImage_t image;
-  ParseDecodeParams(bit_stream, bit_len, out, roi_generator, &image, place);
+  int res = ParseDecodeParams(bit_stream, bit_len, out, roi_generator, &image, place);
+  if (res) {
+    return;
+  }
   Decode(bit_stream, bit_len, &image);
 }
 
