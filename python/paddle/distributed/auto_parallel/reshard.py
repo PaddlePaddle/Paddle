@@ -20,6 +20,7 @@ import paddle.fluid.core as core
 from paddle.utils import unique_name
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import Program, OpProtoHolder
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
 import paddle.fluid.layers.utils as utils
 from ..collective import _get_global_env
 from .dist_context import DistributedContext
@@ -862,7 +863,7 @@ def _remove_no_need_ops(auto_parallel_main_prog, dist_context, rank_id):
         block._remove_op(idx)
 
 
-def _remove_no_need_vars(auto_parallel_main_prog):
+def _remove_no_need_vars(auto_parallel_main_prog, dist_params_grads):
     """Remove no need vars in the main program"""
     remove_vars = set()
     block = auto_parallel_main_prog.global_block()
@@ -879,14 +880,42 @@ def _remove_no_need_vars(auto_parallel_main_prog):
     for var in vars:
         if var not in need_vars:
             remove_vars.add(var)
+
+    # change dist_params_grads
+    param_grad_map = {}
+    for op in ops:
+        if int(op.attr('op_role')) == int(OpRole.Optimize):
+            if "Param" in op.input_names and "Grad" in op.input_names:
+                param_name = op.input("Param")[0]
+                grad_name = op.input("Grad")[0]
+                param_grad_map[param_name] = grad_name
+
+    need_remove_idx = []
+    for idx, item in enumerate(dist_params_grads):
+        if item[0].name not in param_grad_map.keys():
+            need_remove_idx.append(idx)
+
+    for idx in need_remove_idx[::-1]:
+        dist_params_grads.pop(idx)
+
+    idx = 0
+    while idx < len(dist_params_grads):
+        param_name = dist_params_grads[idx][0].name
+        grad_name = dist_params_grads[idx][1].name
+        if grad_name != param_grad_map[param_name]:
+            dist_params_grads[idx] = (vars[param_name],
+                                      vars[param_grad_map[param_name]])
+        idx += 1
+
     for var in remove_vars:
         block._remove_var(var)
 
 
-def remove_no_need_in_main(auto_parallel_main_prog, dist_context, rank_id):
+def remove_no_need_in_main(auto_parallel_main_prog, dist_context, rank_id,
+                           dist_params_grads):
     """Remove no need vars and ops in the main program."""
     _remove_no_need_ops(auto_parallel_main_prog, dist_context, rank_id)
-    _remove_no_need_vars(auto_parallel_main_prog)
+    _remove_no_need_vars(auto_parallel_main_prog, dist_params_grads)
 
 
 def remove_no_need_in_startup(auto_parallel_main_prog,
@@ -964,7 +993,7 @@ def remove_no_need_in_startup(auto_parallel_main_prog,
 
 
 def reshard(auto_parallel_main_prog, auto_parallel_startup_prog, rank_id,
-            dist_context):
+            dist_context, dist_params_grads):
     """
     Reshard tensor in the program according to its distributed attribute and corresponding op distributed attribute.
 
@@ -973,6 +1002,7 @@ def reshard(auto_parallel_main_prog, auto_parallel_startup_prog, rank_id,
         auto_parallel_startup_prog (Program): An auto parallel startup program.
         rank_id (int): The process id.
         dist_context (DistributedContext): The distributed context of this rank.
+        dist_params_grads (list): The list contains the tuple of param and grad.
     """
     assert isinstance(auto_parallel_main_prog, Program), "The type of auto_parallel_main_prog should be Program, " \
                                          "but got {}.".format(type(auto_parallel_main_prog))
@@ -1049,7 +1079,8 @@ def reshard(auto_parallel_main_prog, auto_parallel_startup_prog, rank_id,
             idx += 1
 
     # remove no need vars and ops in the main program
-    remove_no_need_in_main(auto_parallel_main_prog, dist_context, rank_id)
+    remove_no_need_in_main(auto_parallel_main_prog, dist_context, rank_id,
+                           dist_params_grads)
 
     # remove no need vars and ops in the startip program
     remove_no_need_in_startup(auto_parallel_main_prog,

@@ -52,6 +52,7 @@ struct DistModelConfig {
   int64_t mp_ring_id{-1};
   int64_t pp_upstream_ring_id{-1};
   int64_t pp_downstream_ring_id{-1};
+  bool enable_timer{false};
 };
 
 class DistModel {
