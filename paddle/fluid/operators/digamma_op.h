@@ -14,46 +14,4 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/pten/kernels/digamma_grad_kernel.h"
-#include "paddle/pten/kernels/digamma_kernel.h"
-
-namespace paddle {
-namespace operators {
-
-using Tensor = framework::Tensor;
-
-template <typename DeviceContext, typename T>
-class DigammaKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    const Tensor* x = context.Input<Tensor>("X");
-    Tensor* out = context.Output<Tensor>("Out");
-
-    auto& dev_ctx = context.device_context<DeviceContext>();
-    pten::DigammaKernel<T>(
-        static_cast<const typename framework::ConvertToPtenContext<
-            DeviceContext>::TYPE&>(dev_ctx),
-        *x, out);
-  }
-};
-
-template <typename DeviceContext, typename T>
-class DigammaGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    const Tensor* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
-    const Tensor* x = context.Input<Tensor>("X");
-    auto* d_x = context.Output<Tensor>(framework::GradVarName("X"));
-
-    auto& dev_ctx = context.device_context<DeviceContext>();
-    pten::DigammaGradKernel<T>(
-        static_cast<const typename framework::ConvertToPtenContext<
-            DeviceContext>::TYPE&>(dev_ctx),
-        *d_out, *x, d_x);
-  }
-};
-
-}  // namespace operators
-}  // namespace paddle
