@@ -27,9 +27,7 @@ using XPUKernelSet =
 using XPUOpMap = std::unordered_map<std::string, XPUKernelSet>;
 
 XPUOpMap& get_kp_ops() {
-  static XPUOpMap s_xpu_kp_kernels{
-      // TODO(Liu-xiandong)
-  };
+  static XPUOpMap s_xpu_kp_kernels{};
 
   return s_xpu_kp_kernels;
 }
