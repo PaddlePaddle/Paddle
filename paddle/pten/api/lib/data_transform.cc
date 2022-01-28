@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/api/lib/kernel_dispatch.h"
+#include "paddle/pten/backends/all_context.h"
 #include "paddle/pten/kernels/cast_kernel.h"
 #include "paddle/pten/kernels/transfer_layout_kernel.h"
 
@@ -93,6 +94,35 @@ pten::DenseTensor CastDateType(const Context& dev_ctx,
           tensor.dtype()));
   }
 }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+pten::DenseTensor CastDateType(const pten::GPUContext& dev_ctx,
+                               const pten::DenseTensor& tensor,
+                               DataType dtype) {
+  switch (tensor.dtype()) {
+    case DataType::FLOAT32:
+      return pten::Cast<float>(dev_ctx, tensor, dtype);
+    case DataType::FLOAT64:
+      return pten::Cast<double>(dev_ctx, tensor, dtype);
+    case DataType::INT32:
+      return pten::Cast<int32_t>(dev_ctx, tensor, dtype);
+    case DataType::INT64:
+      return pten::Cast<int64_t>(dev_ctx, tensor, dtype);
+    case DataType::FLOAT16:
+      return pten::Cast<platform::float16>(dev_ctx, tensor, dtype);
+    case DataType::BOOL:
+      return pten::Cast<bool>(dev_ctx, tensor, dtype);
+    case DataType::INT16:
+      return pten::Cast<int16_t>(dev_ctx, tensor, dtype);
+    case DataType::UINT8:
+      return pten::Cast<uint8_t>(dev_ctx, tensor, dtype);
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Data type (%s) is not supported when casting data type.",
+          tensor.dtype()));
+  }
+}
+#endif
 
 inline pten::DenseTensor TransDataType(const pten::DenseTensor& tensor,
                                        DataType dtype) {
