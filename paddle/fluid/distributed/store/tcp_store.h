@@ -15,10 +15,61 @@
 #pragma once
 
 #include <iostream>
+#include <memory>
+#include <mutex>
+#include "paddle/fluid/distributed/socket/socket.h"
 #include "paddle/fluid/distributed/store/store.h"
 
 namespace paddle {
 namespace distributed {
+
+enum class WaitReplyType { STOP_WAIT };
+
+enum class Command { SET, GET, REMOVE, ADD, WAIT };
+
+namespace detail {
+
+class TCPServer {
+ public:
+  explicit TCPServer(uint16_t port) : _port(port) {}
+  static std::unique_ptr<TCPServer> create(std::uint16_t port);
+
+ private:
+  std::uint16_t _port;
+};
+
+class TCPClient {
+ public:
+  explicit TCPClient(Socket&& socket) : _socket{std::move(socket)} {}
+  static std::unique_ptr<TCPClient> connect(
+      const std::string host, uint16_t port,
+      const std::chrono::seconds& timeout);
+  void sendCommandForKey(Command type, const std::string& key);
+  void sendCommand(Command type);
+  void sendStrings(std::vector<std::string> strings);
+  void sendBytes(const std::vector<std::uint8_t>& bytes);
+  std::vector<uint8_t> recvBytes() {
+    int sock_fd = _socket.get_socket_fd();
+    return tcputils::recvVector<std::uint8_t>(sock_fd);
+  }
+
+  template <typename T>
+  void sendValue(const T& value) {
+    int sock_fd = _socket.get_socket_fd();
+    tcputils::sendValue<T>(sock_fd, value);
+  }
+
+  template <typename T>
+  T recvValue(const T& value) {
+    int sock_fd = _socket.get_socket_fd();
+    return tcputils::recvValue<T>(sock_fd);
+  }
+
+ private:
+  Socket _socket;
+};
+
+}  // namespace detail
 
 class TCPStore : public Store {
  public:
@@ -28,6 +79,7 @@ class TCPStore : public Store {
                     std::chrono::milliseconds timeout = Store::kDefaultTimeout);
 
   ~TCPStore() = default;
+  void setTimeout(std::chrono::milliseconds timeout) { _timeout = timeout; }
 
   void set(const std::string& key, const std::vector<uint8_t>& value) override;
   std::vector<uint8_t> get(const std::string& key) override;
@@ -42,14 +94,18 @@ class TCPStore : public Store {
   void doWait(const std::vector<std::string>& keys,
               const std::chrono::milliseconds& timeout);
   void waitWorkers();
+  std::unique_ptr<detail::TCPServer> _server;
+  std::unique_ptr<detail::TCPClient> _client;
 
   const std::string _init_key = "init/";
   const std::string _key_prefix = "/";
+  std::chrono::milliseconds _timeout;
   std::string _host;
   uint16_t _port;
-  size_t _num_workers;
+  bool _is_master;
+  int _num_workers;
   std::mutex _lock;
-}
+};
 
 }  // namespace distributed
 }  // namespace paddle

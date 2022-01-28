@@ -12,8 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#ifndef PADDLE_FLUID_DISTRIBUTED_SOCKET_SOCKET_H_
+#define PADDLE_FLUID_DISTRIBUTED_SOCKET_SOCKET_H_
+
 #include <netdb.h>
+#include <chrono>
 #include <iostream>
 #include <string>
 
@@ -27,7 +30,7 @@ class SocketOptions {
   void set_connect_timeout(std::chrono::seconds timeout) {
     _connect_timeout = timeout;
   }
-  std::chrono::seconds get_connect_timeout const { return _connect_timeout; }
+  std::chrono::seconds get_connect_timeout() const { return _connect_timeout; }
 
  private:
   std::chrono::seconds _connect_timeout{30};
@@ -36,23 +39,20 @@ class SocketOptions {
 class Socket {
  public:
   Socket() = default;
-  Socket(const Socket& o) = delete;
-  Socket& operator=(const Socket&) = delete;
-  Socket(const Socket&& o);
-  Socket& operator=(const Socket&&);
-  ~Socket() {}
+  ~Socket() = default;
 
-  static Socket& listen(std::uint16_t port, const SocketOptions& opts = {});
-  static Socket& connect(const std::string& host, std::uint16_t port,
-                         const SocketOptions& opts = {});
+  static Socket listen(std::uint16_t port, const SocketOptions& opts = {});
+  static Socket connect(const std::string& host, std::uint16_t port,
+                        const SocketOptions& opts = {});
   Socket accept() const;
 
   template <typename T>
-  void sendValue(const T value);
+  void sendValue(const T& value);
   template <typename T>
   T recvValue();
 
   std::uint16_t getPort() const;
+  int get_socket_fd() const { return _sock; }
 
  private:
   explicit Socket(int sock) : _sock(sock) {}
@@ -62,7 +62,9 @@ class Socket {
   void sendBytes(const T* buffer, size_t len);
   template <typename T>
   void recvBytes(T* buffer, size_t len);
-}
+};
 
 }  // namespace distributed
 }  // namespace paddle
+
+#endif  // PADDLE_FLUID_DISTRIBUTED_SOCKET_SOCKET_H_

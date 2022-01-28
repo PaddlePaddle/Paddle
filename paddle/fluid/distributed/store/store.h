@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <chrono>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -51,7 +52,7 @@ class Store {
 
  private:
   std::chrono::milliseconds _timeout;
-}
+};
 
 }  // namespace distributed
 }  // namespace paddle

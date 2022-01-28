@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/socket/tcp_utils.h"
+#include <fcntl.h>
+#include <unistd.h>
 #include <cerrno>
 #include <cstring>
 #include "paddle/fluid/platform/enforce.h"
@@ -35,7 +37,7 @@ std::error_code getSocketError() {
   hints.ai_socktype = SOCK_STREAM;
 
   int n;
-  n = ::getaddrinfo(host.c_str(), service.c_str(), &hint, &res);
+  n = ::getaddrinfo(host.c_str(), service.c_str(), &hints, &res);
   const char* gai_err = ::gai_strerror(n);
   const char* network =
       (family == AF_INET ? "IPv4" : family == AF_INET6 ? "IPv6" : "");
@@ -60,14 +62,13 @@ int tcpConnect(const std::string host, const std::string service, int family,
   ::addrinfo* res = getAddrInfo(host, service, ai_flags, family);
 
   int sockfd;
-  auto now = std::chrono::steady_clock::now();
   bool is_timeout = false;
-  TimePoint deadline = start + timeout;
+  auto deadline = std::chrono::steady_clock::now() + timeout;
   do {
-    sockfd = ::socket(res->family, res->ai_socktype, res->ai_protocol);
+    sockfd = ::socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     if (sockfd < 0) {
       VLOG(0) << "Trying to connect to " << host << ":" << service
-              << " failed. Details: " << std::strrerror(errno);
+              << " failed. Details: " << std::strerror(errno);
       continue;
     }
 
@@ -75,8 +76,7 @@ int tcpConnect(const std::string host, const std::string service, int family,
       break;
     }
 
-    now = std::chrono::steady_clock::now();
-    if (timeout != kNoTimeOut && now > deadline) {
+    if (timeout != kNoTimeOut && std::chrono::steady_clock::now() >= deadline) {
       is_timeout = true;
     }
   } while (res->ai_next && !is_timeout);
@@ -94,10 +94,10 @@ int tcpListen(const std::string host, const std::string service, int family) {
   int sockfd;
 
   do {
-    sockfd = ::listen(res->family, res->ai_socktype, res->ai_protocol);
+    sockfd = ::socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     if (sockfd < 0) {
-      VLOG(0) << "Trying to listen on " << host << ":" << service
-              << " failed. Details: " << std::strrerror(errno);
+      VLOG(0) << "Cannot create socket on " << host << ":" << service
+              << " Details: " << std::strerror(errno);
       continue;
     }
 
@@ -131,14 +131,14 @@ int tcpAccept(int sock) {
       new_sock, 0,
       platform::errors::InvalidArgument(
           "The server failed to accept a new connection. Details: %s.",
-          std::strerr(errno)));
-  ::fcntl(new_socket, F_SETFD, FD_CLOEXEC);
+          std::strerror(errno)));
+  ::fcntl(new_sock, F_SETFD, FD_CLOEXEC);
   auto value = 1;
-  ::setSockOpt(new_socket, IPPROTO_TCP, TCP_NODELAY, &value, sizeof(value));
+  ::setsockopt(new_sock, IPPROTO_TCP, TCP_NODELAY, &value, sizeof(value));
   return new_sock;
 }
 
-bool setSockOpt(int sock, int level, int optname, const char* value,
+void setSockOpt(int sock, int level, int optname, const char* value,
                 int optlen) {
   ::setsockopt(sock, level, optname, value, optlen);
 }
@@ -152,10 +152,10 @@ void sendBytes(int sock, const T* buffer, size_t len) {
   auto bytes = reinterpret_cast<const char*>(buffer);
 
   while (to_send > 0) {
-    auto byte_sent = ::send(sock, bytes, to_send);
-    PADDLE_ENFORCE_GT(byte_sent, 0,
-                      platform::errors::InvalidArgument(
-                          "TCP send error. Details: %s.", std::strerr(errno)));
+    auto byte_sent = ::send(sock, bytes, to_send, 0);
+    PADDLE_ENFORCE_GT(byte_sent, 0, platform::errors::InvalidArgument(
+                                        "TCP send error. Details: %s.",
+                                        std::strerror(errno)));
 
     to_send -= byte_sent;
     bytes += byte_sent;
@@ -171,10 +171,10 @@ void recvBytes(int sock, T* buffer, size_t len) {
   auto bytes = reinterpret_cast<char*>(buffer);
 
   while (to_recv > 0) {
-    auto byte_recv = ::recv(sock, bytes, to_recv);
-    PADDLE_ENFORCE_GT(byte_recv, 0,
-                      platform::errors::InvalidArgument(
-                          "TCP recv error. Details: %s.", std::strerr(errno)));
+    auto byte_recv = ::recv(sock, bytes, to_recv, 0);
+    PADDLE_ENFORCE_GT(byte_recv, 0, platform::errors::InvalidArgument(
+                                        "TCP recv error. Details: %s.",
+                                        std::strerror(errno)));
 
     to_recv -= byte_recv;
     bytes += byte_recv;
@@ -197,7 +197,7 @@ template <typename T>
 void sendVector(int sock, const std::vector<T>& v) {
   size_t size = v.size();
   sendBytes<size_t>(sock, &size, 1);
-  sendBytes<T>(sock, vec.data(), size);
+  sendBytes<T>(sock, v.data(), size);
 }
 
 template <typename T>

@@ -13,19 +13,25 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/socket/socket.h"
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <chrono>
+#include <cstring>
+#include <iostream>
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace distributed {
 
 Socket Socket::listen(std::uint16_t port, const SocketOptions& opts) {
-  sock = tcpListen("", std::to_string(port), AF_INET);
+  int sock = tcputils::tcpListen("", std::to_string(port), AF_INET);
   return Socket(sock);
 }
 
 Socket Socket::connect(const std::string& host, std::uint16_t port,
                        const SocketOptions& opts) {
-  sock = tcpConnect(host, std::to_string(port), AF_INET,
-                    opts->get_connect_timeout());
+  int sock = tcputils::tcpConnect(host, std::to_string(port), AF_INET,
+                                  opts.get_connect_timeout());
   return Socket(sock);
 }
 
@@ -36,8 +42,8 @@ std::uint16_t Socket::getPort() const {
   int n =
       ::getsockname(_sock, reinterpret_cast<::sockaddr*>(&addr_s), &addr_len);
   PADDLE_ENFORCE_EQ(
-      n, 0, platform::errors::InvalidArgument(
-                "Failed to get tcp port. Details: %s.", std::strerr(errno)));
+      n, 0, paddle::platform::errors::InvalidArgument(
+                "Failed to get tcp port. Details: %s.", std::strerror(errno)));
 
   if (addr_s.ss_family == AF_INET) {
     return ntohs(reinterpret_cast<::sockaddr_in*>(&addr_s)->sin_port);
@@ -47,58 +53,28 @@ std::uint16_t Socket::getPort() const {
 }
 
 Socket Socket::accept() const {
-  sock = tcpAccept(_sock);
+  auto sock = tcputils::tcpAccept(_sock);
   return Socket(sock);
 }
 
 template <typename T>
 void Socket::sendBytes(const T* buffer, size_t len) {
-  size_t bytesToSend = sizeof(T) * len;
-  if (bytesToSend == 0) {
-    return;
-  }
-
-  auto ptr = reinterpret_cast<const char*>(buffer);
-
-  while (bytesToSend > 0) {
-    ssize_t bytesSent;
-    bytesSent = ::send(sock_fd, ptr, bytesToSend);
-    if (bytesSend == 0) {
-      throw something;
-    }
-    bytesToSend -= bytesSent;
-    ptr += bytesSent;
-  }
+  tcputils::sendBytes<T>(_sock, buffer, len);
 }
 
 template <typename T>
-void Socket::sendBytes(T* buffer, size_t len) {
-  ssize_t bytesToReceive = sizeof(T) * len;
-  if (bytesToReceive == 0) {
-    return;
-  }
-  auto ptr = reinterpret_cast<char*>(buffer);
-  while (bytesToReceive > 0) {
-    ssize_t bytesReceived;
-    bytesReceived = ::recv(sock_fd, ptr, bytesToReceive);
-    if (bytesReceived == 0) {
-      throw something;
-    }
-    bytesToReceive -= bytesReceived;
-    ptr += bytesReceived;
-  }
+void Socket::recvBytes(T* buffer, size_t len) {
+  tcputils::recvBytes<T>(_sock, buffer, len);
 }
 
 template <typename T>
-void Socket::sendValue(const T value) {
-  sendBytes<T>(&value, sizeof(T));
+void Socket::sendValue(const T& value) {
+  tcputils::sendValue<T>(_sock, value);
 }
 
 template <typename T>
 T Socket::recvValue() {
-  T value;
-  recvBytes(&T, sizeof(T));
-  return T;
+  return tcputils::recvValue<T>(_sock);
 }
 
 }  // namespace distributed

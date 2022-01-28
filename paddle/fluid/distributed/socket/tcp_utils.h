@@ -16,8 +16,10 @@
 #define PADDLE_FLUID_DISTRIBUTED_SOCKET_TCP_UTILS_H_
 
 #include <netdb.h>
+#include <netinet/tcp.h>
 #include <chrono>
 #include <iostream>
+#include <vector>
 
 // Utility functions for TCP socket.
 namespace paddle {
@@ -25,7 +27,7 @@ namespace distributed {
 namespace tcputils {
 
 constexpr int LISTENQ = 2048;
-constexpr int kNoTimeOut = std::chrono::seconds::zero();
+constexpr std::chrono::seconds kNoTimeOut = std::chrono::seconds::zero();
 
 std::error_code getSocketError();
 ::addrinfo* getAddrInfo(const std::string host, const std::string service,
@@ -33,10 +35,9 @@ std::error_code getSocketError();
 void freeAddrInfo(::addrinfo*);
 int tcpConnect(const std::string host, const std::string service, int family,
                std::chrono::seconds timeout);
-int tcpListen(const std::string host, const std::string service, int family,
-              std::chrono::seconds timeout);
+int tcpListen(const std::string host, const std::string service, int family);
 int tcpAccept(int sock);
-bool setSockOpt(int sock, int level, int optname, const char* value,
+void setSockOpt(int sock, int level, int optname, const char* value,
                 int opt_len);
 
 template <typename T>

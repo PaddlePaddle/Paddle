@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <store.h>
+#include "paddle/fluid/distributed/store/store.h"
 
 namespace paddle {
 namespace distributed {
