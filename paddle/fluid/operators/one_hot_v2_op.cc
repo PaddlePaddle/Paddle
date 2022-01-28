@@ -43,6 +43,13 @@ class OneHotV2Op : public framework::OperatorWithKernel {
     ctx->ShareLoD("X", /* --> */ "Out");
   }
 
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::KernelSignature("one_hot", {"X", "depth_tensor"},
+                                      {"depth", "dtype", "allow_out_of_range"},
+                                      {"Out"});
+  }
+
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {

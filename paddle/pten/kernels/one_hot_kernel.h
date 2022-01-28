@@ -21,10 +21,17 @@ namespace pten {
 template <typename T, typename Context>
 void OneHotKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  paddle::optional<const DenseTensor&> depth_tensor,
                   int depth,
                   int dtype,
                   bool allow_out_of_range,
                   DenseTensor* out);
+
+template <typename T, typename Context>
+void OneHotTensorKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& depth_tensor,
+                        int dtype,
+                        bool allow_out_of_range,
+                        DenseTensor* out);
 
 }  // namespace pten

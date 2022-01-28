@@ -342,14 +342,22 @@ static void BuildDygraphPtenKernelContext(
                         attr_names.size(), attr_defs.size()));
 
   for (size_t i = 0; i < input_names.size(); ++i) {
-    auto& ins_vector = ins.at(input_names[i]);
-
     size_t start_idx = (i == 0 ? 0 : kernel_ctx->InputRangeAt(i - 1).second);
-    size_t end_idx = start_idx + ins_vector.size();
 
-    for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
-      const auto* tensor_in = GetTensorFromVar(ins_vector[offset]->Var());
-      kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
+    auto iter = ins.find(input_names[i]);
+    size_t end_idx = start_idx;
+    if (iter == ins.end()) {
+      end_idx += 1;
+      kernel_ctx->EmplaceBackInputWithoutSetRange(nullptr);
+    } else {
+      auto& ins_vector = iter->second;
+
+      end_idx += ins_vector.size();
+
+      for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
+        const auto* tensor_in = GetTensorFromVar(ins_vector[offset]->Var());
+        kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
+      }
     }
     kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
   }
