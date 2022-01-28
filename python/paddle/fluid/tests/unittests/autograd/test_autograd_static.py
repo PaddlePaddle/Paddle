@@ -288,22 +288,20 @@ class TestHessianFloat64(unittest.TestCase):
 
         self.run_test_by_fullmatrix(pd_f, self.B, np_hess(self.B))
 
-    # TODO: debug for this case
-    # def test_batch_square(self):
-    #     def pd_f(x):
-    #         """Input is a square matrix."""
-    #         return paddle.matmul(x, x.T)
+        def test_batch_square(self):
+            def pd_f(x):
+                """Input is a square matrix."""
+                return paddle.matmul(x, paddle.transpose(x, [0, 2, 1]))
 
-    #     def np_hess(x):
-    #         bat, dim = x.shape
-    #         print("bat: ", x.shape)
-    #         print("dim: ", dim)
-    #         f_xx_upperleft = 2 * np.eye(dim, dtype=self.dtype)
-    #         f_xx = np.zeros([bat, dim * dim, dim * dim], dtype=self.dtype)
-    #         f_xx[..., :dim, :dim] = f_xx_upperleft
-    #         return f_xx
+            def np_hess(x):
+                bat, dim, _ = x.shape
+                f_xx_upperleft = 2 * np.eye(dim, dtype=self.dtype)
+                f_xx = np.zeros([bat, dim * dim, dim * dim], dtype=self.dtype)
+                f_xx[..., :dim, :dim] = f_xx_upperleft
+                return f_xx
 
-    #     self.run_test_by_fullmatrix(pd_f, self.B, np_hess(self.B), batch=True)
+            self.run_test_by_fullmatrix(
+                pd_f, self.E, np_hess(self.E), batch=True)
 
 
 if __name__ == "__main__":
