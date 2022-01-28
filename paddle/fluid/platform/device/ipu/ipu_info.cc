@@ -16,12 +16,10 @@ namespace paddle {
 namespace platform {
 
 //! Get a list of device ids from environment variable or use all.
-std::vector<int> GetSelectedIPUDevices() {
-  return platform::ipu::GetDeviceIds();
-}
+std::vector<int> GetSelectedIPUDevices() { return ipu::GetDeviceIds(); }
 
 //! Get the total number of IPU devices in system.
-int GetIPUDeviceCount() { return platform::ipu::GetNumDevices(); }
+int GetIPUDeviceCount() { return ipu::GetNumDevices(); }
 
 }  // namespace platform
 }  // namespace paddle

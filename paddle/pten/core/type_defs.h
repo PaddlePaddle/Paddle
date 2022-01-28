@@ -23,6 +23,9 @@ limitations under the License. */
 
 #include <boost/variant.hpp>
 
+namespace egr {
+class EagerTensor;
+}
 namespace paddle {
 namespace framework {
 // The order should be as same as framework.proto
@@ -71,6 +74,13 @@ template <>
 struct NameVarMapTrait<VariableWrapper> {
   using Type = std::map<std::string, SavedVariableWrapperList>;
 };
+
+template <>
+struct NameVarMapTrait<egr::EagerTensor> {
+  using Type =
+      std::map<std::string, std::vector<std::shared_ptr<egr::EagerTensor>>>;
+};
+
 }  // namespace details
 
 template <typename T>
@@ -78,6 +88,7 @@ using NameVarMap = typename details::NameVarMapTrait<T>::Type;
 
 using NameVarBaseMap = NameVarMap<VarBase>;
 using NameVariableWrapperMap = NameVarMap<VariableWrapper>;
+using NameTensorMap = NameVarMap<egr::EagerTensor>;
 
 using VariableWrapperList = std::vector<std::shared_ptr<VariableWrapper>>;
 
