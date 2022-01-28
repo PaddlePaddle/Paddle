@@ -22,6 +22,8 @@ cc_library(kernel_context SRCS kernel_context.cc DEPS pten_enforce pten_context)
 cc_library(tensor_base SRCS tensor_base.cc allocator.cc storage.cc DEPS pten_enforce)
 cc_library(tensor_meta SRCS tensor_meta.cc DEPS pten_enforce mixed_vector)
 cc_library(lod_utils SRCS lod_utils.cc DEPS pten_enforce mixed_vector)
+cc_library(sparse_coo_tensor SRCS sparse_coo_tensor.cc DEPS tensor_meta tensor_base)
+cc_library(sparse_csr_tensor SRCS sparse_csr_tensor.cc DEPS dense_tensor tensor_base)
 cc_library(dense_tensor SRCS dense_tensor.cc dense_tensor_impl.cc DEPS convert_utils tensor_meta tensor_base)
 cc_library(pten_device_context SRCS device_context.cc DEPS tensor_base )
 

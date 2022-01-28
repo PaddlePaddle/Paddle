@@ -317,3 +317,5 @@ void ReduceInferMeta(const MetaTensor& x,
 }
 
 }  // namespace pten
+
+PT_REGISTER_INFER_META_FN(sign, pten::UnchangedInferMetaNew);
