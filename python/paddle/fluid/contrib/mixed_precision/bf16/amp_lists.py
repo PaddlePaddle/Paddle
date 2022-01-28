@@ -91,13 +91,7 @@ bf16_list = {
 }
 
 # depends on the prev_op type
-gray_list = {
-    'cast',
-    'fill_constant',
-    'reduce_mean',
-    'reshape2',
-    'scale',
-}
+gray_list = gray_list_fp16
 
 _, _, _sys_unsupported_bf16_list = core.op_supported_infos(
     'CPU', core.VarDesc.VarType.BF16)
