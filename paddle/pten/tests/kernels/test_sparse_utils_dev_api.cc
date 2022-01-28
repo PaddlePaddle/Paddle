@@ -79,6 +79,71 @@ inline void CheckResult(
 #endif
 }
 
+template <typename ValueT, typename IndicesT>
+inline void CheckCsrResult(
+    const DeviceContext* dev_ctx,
+    const SparseCsrTensor& csr,
+    const std::vector<ValueT> non_zero_elements,
+    const std::vector<IndicesT>& non_zero_crows,
+    const std::vector<IndicesT>& non_zero_cols,
+    const int64_t non_zero_num,
+    const std::shared_ptr<paddle::experimental::DefaultAllocator>& alloc) {
+  const DenseTensor real_crows = csr.non_zero_crows();
+  const DenseTensor real_cols = csr.non_zero_cols();
+  const DenseTensor real_elements = csr.non_zero_elements();
+  ASSERT_EQ(csr.non_zero_cols().numel(), non_zero_num);
+
+#if defined(PADDLE_WITH_CUDA)
+  if (csr.place() == paddle::platform::CUDAPlace()) {
+    const auto* dev_ctx_cuda =
+        static_cast<const paddle::platform::CUDADeviceContext*>(dev_ctx);
+    DenseTensor crows(
+        alloc.get(),
+        DenseTensorMeta(
+            DataType::INT64, real_crows.dims(), real_crows.layout()));
+    DenseTensor cols(
+        alloc.get(),
+        DenseTensorMeta(DataType::INT64, real_cols.dims(), real_cols.layout()));
+
+    DenseTensor elements(alloc.get(),
+                         DenseTensorMeta(real_elements.dtype(),
+                                         real_elements.dims(),
+                                         real_elements.layout()));
+    pten::Copy(*dev_ctx_cuda, real_crows, true, &crows);
+    pten::Copy(*dev_ctx_cuda, real_cols, true, &cols);
+    pten::Copy(*dev_ctx_cuda, real_elements, true, &elements);
+
+    int cmp_crows = memcmp(crows.data<IndicesT>(),
+                           non_zero_crows.data(),
+                           non_zero_crows.size() * sizeof(IndicesT));
+    ASSERT_EQ(cmp_crows, 0);
+    int cmp_cols = memcmp(cols.data<IndicesT>(),
+                          non_zero_cols.data(),
+                          non_zero_cols.size() * sizeof(IndicesT));
+    ASSERT_EQ(cmp_cols, 0);
+    int cmp_elements = memcmp(elements.data<ValueT>(),
+                              non_zero_elements.data(),
+                              non_zero_elements.size() * sizeof(ValueT));
+    ASSERT_EQ(cmp_elements, 0);
+  } else {
+#endif
+    int cmp_crows = memcmp(real_crows.data<IndicesT>(),
+                           non_zero_crows.data(),
+                           non_zero_crows.size() * sizeof(IndicesT));
+    ASSERT_EQ(cmp_crows, 0);
+    int cmp_cols = memcmp(real_cols.data<IndicesT>(),
+                          non_zero_cols.data(),
+                          non_zero_cols.size() * sizeof(IndicesT));
+    ASSERT_EQ(cmp_cols, 0);
+    int cmp_elements = memcmp(real_elements.data<ValueT>(),
+                              non_zero_elements.data(),
+                              non_zero_elements.size() * sizeof(ValueT));
+    ASSERT_EQ(cmp_elements, 0);
+#if defined(PADDLE_WITH_CUDA)
+  }
+#endif
+}
+
 TEST(DEV_API, to_sparse_coo) {
   const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
@@ -423,6 +488,166 @@ TEST(DEV_API, sparse_csr_to_coo) {
                               non_zero_num,
                               alloc);
 #endif
+}
+
+TEST(DEV_API, dense_to_sparse_csr) {
+  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+      paddle::platform::CPUPlace());
+
+  DenseTensor dense_x(
+      alloc.get(),
+      DenseTensorMeta(
+          DataType::FLOAT32, framework::make_ddim({3, 3}), DataLayout::NCHW));
+
+  pten::CPUPlace cpu;
+  auto* dense_x_data = dense_x.mutable_data<float>(cpu);
+  float dense_data[3][3] = {{0.0, 1.0, 0.0}, {2.0, 0.0, 3.0}, {3.2, 0.0, 0.0}};
+  std::vector<float> non_zero_data = {1.0, 2.0, 3.0, 3.2};
+  std::vector<int64_t> cols_data = {1, 0, 2, 0};
+  std::vector<int64_t> crows_data = {0, 1, 3, 4};
+  const int64_t non_zero_num = 4;
+
+  std::copy(&dense_data[0][0], &dense_data[0][0] + 9, dense_x_data);
+
+  pten::CPUContext dev_ctx_cpu;
+
+  // 1. test cpu
+  auto cpu_sparse_out = DenseToSparseCsr<float>(dev_ctx_cpu, dense_x);
+  CheckCsrResult<float, int64_t>(&dev_ctx_cpu,
+                                 cpu_sparse_out,
+                                 non_zero_data,
+                                 crows_data,
+                                 cols_data,
+                                 non_zero_num,
+                                 alloc);
+
+// 2. test cuda
+#if defined(PADDLE_WITH_CUDA)
+// const auto cuda_alloc =
+//    std::make_shared<paddle::experimental::DefaultAllocator>(
+//        paddle::platform::CUDAPlace());
+// DenseTensor d_dense_x(
+//    cuda_alloc.get(),
+//    DenseTensorMeta(
+//        DataType::FLOAT32, framework::make_ddim({3, 3}), DataLayout::NCHW));
+
+// auto& pool = paddle::platform::DeviceContextPool::Instance();
+// auto* dev_ctx_cuda = pool.GetByPlace(paddle::platform::CUDAPlace());
+// pten::Copy(*dev_ctx_cuda, dense_x, true, &d_dense_x);
+// auto sparse_out =
+//    DenseToSparseCoo<float>(*dev_ctx_cuda, d_dense_x, sparse_dim);
+
+// CheckResult<float, int64_t>(dev_ctx_cuda,
+//                            sparse_out,
+//                            non_zero_data,
+//                            indices_data,
+//                            non_zero_num,
+//                            alloc);
+#endif
+}
+
+template <typename T>
+void TestCooToCsr(const DDim& dense_dims,
+                  const int64_t& non_zero_num,
+                  const std::vector<T>& non_zero_data,
+                  const std::vector<int64_t>& non_zero_indices,
+                  const std::vector<int64_t>& cols_data,
+                  const std::vector<int64_t>& crows_data) {
+  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+      paddle::platform::CPUPlace());
+
+  pten::CPUPlace cpu;
+  DenseTensorMeta indices_meta(
+      DataType::INT64,
+      {static_cast<int64_t>(dense_dims.size()), non_zero_num},
+      DataLayout::NCHW);
+  DenseTensor indices(alloc.get(), indices_meta);
+  DenseTensorMeta values_meta(
+      paddle::experimental::CppTypeToDataType<T>::Type(),
+      {non_zero_num},
+      DataLayout::NCHW);
+  DenseTensor values(alloc.get(), values_meta);
+
+  memcpy(indices.mutable_data<int64_t>(cpu),
+         non_zero_indices.data(),
+         non_zero_indices.size() * sizeof(int64_t));
+  memcpy(values.mutable_data<T>(cpu),
+         non_zero_data.data(),
+         non_zero_data.size() * sizeof(T));
+  pten::SparseCooTensor coo(indices, values, dense_dims);
+
+  // 1. test cpu
+  pten::CPUContext dev_ctx_cpu;
+  auto cpu_sparse_out = SparseCooToCsr<T>(dev_ctx_cpu, coo);
+  CheckCsrResult<T, int64_t>(&dev_ctx_cpu,
+                             cpu_sparse_out,
+                             non_zero_data,
+                             crows_data,
+                             cols_data,
+                             non_zero_num,
+                             alloc);
+
+// 2. test cuda
+#if defined(PADDLE_WITH_CUDA)
+  const auto cuda_alloc =
+      std::make_shared<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CUDAPlace());
+  auto& pool = paddle::platform::DeviceContextPool::Instance();
+  auto* dev_ctx_cuda = pool.GetByPlace(paddle::platform::CUDAPlace());
+  pten::DenseTensor d_indices(cuda_alloc.get(), indices_meta);
+  pten::DenseTensor d_values(cuda_alloc.get(), values_meta);
+  pten::Copy(*dev_ctx_cuda, indices, true, &d_indices);
+  pten::Copy(*dev_ctx_cuda, values, true, &d_values);
+  pten::SparseCooTensor d_coo(d_indices, d_values, dense_dims);
+  auto cuda_sparse_out = SparseCooToCsr<T>(*dev_ctx_cuda, d_coo);
+  CheckCsrResult<T, int64_t>(dev_ctx_cuda,
+                             cuda_sparse_out,
+                             non_zero_data,
+                             crows_data,
+                             cols_data,
+                             non_zero_num,
+                             alloc);
+#endif
+}
+
+TEST(DEV_API, coo_to_csr) {
+  // float dense_data[3][3] = {{0.0, 1.0, 0.0}, {2.0, 0.0, 3.0}, {3.2, 0.0,
+  // 0.0}};
+  std::vector<float> non_zero_data = {1.0, 2.0, 3.0, 3.2};
+  std::vector<int64_t> non_zero_indices = {0, 1, 1, 2, 1, 0, 2, 0};
+  std::vector<int64_t> cols_data = {1, 0, 2, 0};
+  std::vector<int64_t> crows_data = {0, 1, 3, 4};
+  const int64_t non_zero_num = 4;
+  auto dense_dims = pten::framework::make_ddim({3, 3});
+  TestCooToCsr<float>(dense_dims,
+                      non_zero_num,
+                      non_zero_data,
+                      non_zero_indices,
+                      cols_data,
+                      crows_data);
+}
+
+TEST(DEV_API, batch_coo_to_csr) {
+  // float dense_data[2][3][3] =
+  //  {{{0.0, 1.0, 0.0}, {2.0, 0.0, 3.0}, {3.2, 0.0, 0.0}},
+  //  {{0.0, 1.0, 0.0}, {2.0, 0.0, 3.0}, {0.0, 0.0, 0.0}}};
+  const int64_t non_zero_num = 7;
+  std::vector<float> data = {1.0, 2.0, 3.0, 3.2, 1.0, 2.0, 3.0};
+  std::vector<pten::dtype::float16> non_zero_data(non_zero_num);
+  for (int64_t i = 0; i < non_zero_num; i++) {
+    non_zero_data[i] = static_cast<pten::dtype::float16>(data[i]);
+  }
+  std::vector<int64_t> non_zero_indices = {0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 2,
+                                           0, 1, 1, 1, 0, 2, 0, 1, 0, 2};
+  std::vector<int64_t> cols_data = {1, 0, 2, 0, 1, 0, 2};
+  std::vector<int64_t> crows_data = {0, 1, 3, 4, 0, 1, 3, 3};
+  auto dense_dims = pten::framework::make_ddim({2, 3, 3});
+  TestCooToCsr<pten::dtype::float16>(dense_dims,
+                                     non_zero_num,
+                                     non_zero_data,
+                                     non_zero_indices,
+                                     cols_data,
+                                     crows_data);
 }
 
 }  // namespace tests

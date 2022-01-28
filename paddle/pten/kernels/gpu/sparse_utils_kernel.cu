@@ -12,7 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <cuda_runtime.h>
+#if defined(PADDLE_WITH_CUDA)
+
 #include <thrust/execution_policy.h>
 #include <thrust/sort.h>
 #include <cub/cub.cuh>
@@ -373,6 +374,145 @@ void SparseCsrToCooKernel(const Context& dev_ctx,
   out->SetMember(indices, values, x_dims, true);
 }
 
+__global__ void kernel_get_batchs_offset(const int64_t* batchs_ptr,
+                                         const int non_zero_num,
+                                         int64_t* batchs_offset) {
+  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  for (int i = tid; i < non_zero_num; i += gridDim.x * blockDim.x) {
+    if (i == non_zero_num - 1 || batchs_ptr[i] != batchs_ptr[i + 1]) {
+      batchs_offset[batchs_ptr[i]] = i + 1;
+    }
+  }
+}
+
+__global__ void kernel_convert_coo_rows_to_csr_crows(
+    const int64_t* batchs_offset,  // can be null if batchs = 1
+    const int64_t* coo_rows_data,
+    int64_t* csr_crows_data,
+    const int rows,
+    const int64_t non_zero_num) {
+  const int b = blockIdx.y;
+  int batch_non_zero_num =
+      batchs_offset == nullptr ? non_zero_num : batchs_offset[b];
+  if (batch_non_zero_num == 0) return;
+  int batch_start = 0;
+  if (b > 0) {
+    batch_start = batchs_offset[b - 1];
+    batch_non_zero_num -= batch_start;
+    if (threadIdx.x == 0) printf("batch_start = %d\n", batch_start);
+  }
+  auto* coo_rows_ptr = coo_rows_data + batch_start;
+  const int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  for (int i = tid; i < batch_non_zero_num; i += gridDim.x * blockDim.x) {
+    if (i == 0) {
+      for (int j = 0; j <= coo_rows_ptr[0]; j++) {
+        csr_crows_data[b * (rows + 1) + j] = 0;
+      }
+    } else {
+      for (int j = coo_rows_ptr[i - 1]; j < coo_rows_ptr[i]; j++) {
+        csr_crows_data[b * (rows + 1) + j + 1] = i;
+      }
+    }
+    if (i == batch_non_zero_num - 1) {
+      for (int64_t i = coo_rows_ptr[batch_non_zero_num - 1] + 1; i < rows + 1;
+           i++) {
+        csr_crows_data[b * (rows + 1) + i] = batch_non_zero_num;
+      }
+    }
+  }
+}
+
+template <typename T, typename Context>
+void SparseCooToCsrKernel(const Context& dev_ctx,
+                          const SparseCooTensor& x,
+                          SparseCsrTensor* out) {
+  const auto& x_dims = x.dims();
+  bool valid = x_dims.size() == 2 || x_dims.size() == 3;
+  PADDLE_ENFORCE_EQ(valid,
+                    true,
+                    paddle::platform::errors::InvalidArgument(
+                        "SparseCsrTensor only support 2-D or 3-D matrix"));
+  const int64_t non_zero_num = x.nnz();
+  if (non_zero_num <= 0) return;
+
+  int batchs = x_dims.size() == 2 ? 1 : x_dims[0];
+  int rows = x_dims.size() == 2 ? x_dims[0] : x_dims[1];
+
+  const auto place = dev_ctx.GetPlace();
+  DenseTensorMeta crows_meta(
+      DataType::INT64, {batchs * (rows + 1)}, DataLayout::NCHW);
+  DenseTensorMeta cols_meta(DataType::INT64, {non_zero_num}, DataLayout::NCHW);
+  DenseTensorMeta values_meta(x.dtype(), {non_zero_num}, x.layout());
+  pten::DenseTensor non_zero_crows(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(place),
+      std::move(crows_meta));
+  pten::DenseTensor non_zero_cols(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(place),
+      std::move(cols_meta));
+  pten::DenseTensor non_zero_elements(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(place),
+      std::move(values_meta));
+  int64_t* csr_crows_data = non_zero_crows.mutable_data<int64_t>(place);
+  int64_t* csr_cols_data = non_zero_cols.mutable_data<int64_t>(place);
+  T* csr_values_data = non_zero_elements.mutable_data<T>(place);
+
+  const auto& coo_indices = x.non_zero_indices();
+  const auto& coo_values = x.non_zero_elements();
+  const int64_t* batchs_ptr = coo_indices.data<int64_t>();
+  const int64_t* coo_rows_data =
+      batchs == 1 ? batchs_ptr : batchs_ptr + non_zero_num;
+  const int64_t* coo_cols_data = coo_rows_data + non_zero_num;
+  const T* coo_values_data = coo_values.data<T>();
+
+  if (!x.coalesced()) {
+    // TODO(zhangkahuo): call coalesced() to distinct and sort the indices
+  }
+  paddle::platform::GpuLaunchConfig config =
+      paddle::platform::GetGpuLaunchConfig1D(dev_ctx, non_zero_num);
+  if (batchs > 1) {
+    DenseTensorMeta batchs_meta(DataType::INT64, {batchs}, DataLayout::NCHW);
+    pten::DenseTensor batchs_offset(
+        pten::make_intrusive<paddle::experimental::SharedStorage>(place),
+        std::move(batchs_meta));
+    int64_t* batchs_offset_ptr = batchs_offset.mutable_data<int64_t>(place);
+    kernel_get_batchs_offset<<<config.block_per_grid,
+                               config.thread_per_block,
+                               0,
+                               dev_ctx.stream()>>>(
+        batchs_ptr, non_zero_num, batchs_offset_ptr);
+    config.block_per_grid.y = batchs;
+    kernel_convert_coo_rows_to_csr_crows<<<config.block_per_grid,
+                                           config.thread_per_block,
+                                           0,
+                                           dev_ctx.stream()>>>(
+        batchs_offset_ptr, coo_rows_data, csr_crows_data, rows, non_zero_num);
+    std::vector<int64_t> tmp(batchs * (rows + 1));
+    cudaMemcpy(tmp.data(),
+               csr_crows_data,
+               sizeof(int64_t) * batchs * (rows + 1),
+               cudaMemcpyDeviceToHost);
+  } else {
+    kernel_convert_coo_rows_to_csr_crows<<<config.block_per_grid,
+                                           config.thread_per_block,
+                                           0,
+                                           dev_ctx.stream()>>>(
+        nullptr, coo_rows_data, csr_crows_data, rows, non_zero_num);
+  }
+  paddle::memory::Copy(place,
+                       csr_cols_data,
+                       place,
+                       coo_cols_data,
+                       sizeof(int64_t) * non_zero_num,
+                       dev_ctx.stream());
+  paddle::memory::Copy(place,
+                       csr_values_data,
+                       place,
+                       coo_values_data,
+                       sizeof(T) * non_zero_num,
+                       dev_ctx.stream());
+  out->SetMember(non_zero_crows, non_zero_cols, non_zero_elements, x_dims);
+}
+
 }  // namespace pten
 
 PT_REGISTER_KERNEL(dense_to_sparse_coo,
@@ -389,9 +529,23 @@ PT_REGISTER_KERNEL(sparse_csr_to_coo,
                    float,
                    double) {}
 
+PT_REGISTER_KERNEL(sparse_coo_to_csr,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::SparseCooToCsrKernel,
+                   float,
+                   double,
+                   pten::dtype::float16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
 PT_REGISTER_KERNEL(sparse_coo_to_dense,
                    GPU,
                    ALL_LAYOUT,
                    pten::SparseCooToDenseKernel,
                    float,
                    double) {}
+#endif

@@ -74,6 +74,39 @@ SparseCooTensor SparseCsrToCoo(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void SparseCooToCsrKernel(const Context& dev_ctx,
+                          const SparseCooTensor& x,
+                          SparseCsrTensor* out);
+
+template <typename T, typename Context>
+SparseCsrTensor SparseCooToCsr(const Context& dev_ctx,
+                               const SparseCooTensor& x) {
+  DenseTensor non_zero_crows = pten::Empty<int64_t, Context>(dev_ctx);
+  DenseTensor non_zero_cols = pten::Empty<int64_t, Context>(dev_ctx);
+  DenseTensor non_zero_elements = pten::Empty<T, Context>(dev_ctx);
+  SparseCsrTensor csr(
+      non_zero_crows, non_zero_cols, non_zero_elements, x.dims());
+  SparseCooToCsrKernel<T, Context>(dev_ctx, x, &csr);
+  return csr;
+}
+
+template <typename T, typename Context>
+void DenseToSparseCsrKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            SparseCsrTensor* out);
+
+template <typename T, typename Context>
+SparseCsrTensor DenseToSparseCsr(const Context& dev_ctx, const DenseTensor& x) {
+  DenseTensor non_zero_crows = pten::Empty<int64_t, Context>(dev_ctx);
+  DenseTensor non_zero_cols = pten::Empty<int64_t, Context>(dev_ctx);
+  DenseTensor non_zero_elements = pten::Empty<T, Context>(dev_ctx);
+  SparseCsrTensor csr(
+      non_zero_crows, non_zero_cols, non_zero_elements, x.dims());
+  DenseToSparseCsrKernel<T, Context>(dev_ctx, x, &csr);
+  return csr;
+}
+
+template <typename T, typename Context>
 void SparseCooToDenseKernel(const Context& dev_ctx,
                             const SparseCooTensor& x,
                             DenseTensor* out);
