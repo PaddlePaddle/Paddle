@@ -52,6 +52,7 @@ TEST(DEV_API, mean) {
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(paddle::platform::CPUPlace())
           .get());
+  dev_ctx.Init();
   auto out = pten::Mean<float>(dev_ctx, dense_x, dims, false);
 
   // 3. check result

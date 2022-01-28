@@ -52,6 +52,8 @@ TEST(DEV_API, scale) {
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(paddle::platform::CPUPlace())
           .get());
+  dev_ctx.Init();
+
   auto out =
       pten::Scale<float>(dev_ctx, dense_x, scale, bias, bias_after_scale);
 
@@ -94,6 +96,8 @@ TEST(DEV_API, scale_host) {
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(paddle::platform::CPUPlace())
           .get());
+  dev_ctx.Init();
+
   auto out =
       pten::Scale<float>(dev_ctx, dense_x, scale, bias, bias_after_scale);
 

@@ -132,7 +132,7 @@ void XPUContext::SetXContext(xpu::Context* context) {
   impl_->SetXContext(context);
 }
 
-void SetL3Cache(int l3_size) { impl_->SetL3Cache(l3_size); }
+void XPUContext::SetL3Cache(int l3_size) { impl_->SetL3Cache(l3_size); }
 
 void XPUContext::SetBkclContext(xpu::BKCLContext_t context) {
   impl_->SetBkclContext(context);

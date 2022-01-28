@@ -109,7 +109,22 @@ class GPUContext : public DeviceContext {
   // NOTE: DeviceContext hold resources. Used in training scenarios.
   // The interface used by the training scene, DeviceContext will initialize
   // all resources and delete them when destructing.
+  // Note that you must set the Allocator before calling Init function.
   void Init();
+
+  // TODO(wilber): Why does the GetAllocator interface require a stream
+  // parameter?
+  // The temporary trick method bypasses this problem, and the following
+  // interfaces
+  // need to be deleted later.
+
+  // Note that this is a trick implementation, which can be used to partially
+  // initialize when the SetAllocator interface is not called.
+  void PartialInitWithoutAllocator();
+  // Note that this is a trick implementation that can be used to initialize
+  // resources that require an Allocator when the SetAllocator interface is
+  // called.
+  void PartialInitWithAllocator();
 
  protected:
   // NOTE: External users manage resources. Used in inference scenarios.

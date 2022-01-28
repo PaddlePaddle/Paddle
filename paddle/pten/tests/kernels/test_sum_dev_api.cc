@@ -50,6 +50,8 @@ TEST(DEV_API, sum) {
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(paddle::platform::CPUPlace())
           .get());
+  dev_ctx.Init();
+
   // 2. test API
   auto out =
       pten::Sum<float>(dev_ctx, dense_x, axis, pten::DataType::FLOAT32, false);

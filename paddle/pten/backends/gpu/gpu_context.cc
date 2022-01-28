@@ -197,6 +197,24 @@ struct GPUContext::Impl {
     InitDnnWorkspace();
   }
 
+  void PartialInitWithoutAllocator() {
+    owned_ = true;
+    backends::gpu::GPUDeviceGuard guard(place_.device);
+    InitGpuProperties();
+    InitStream();
+    InitBlasHandle();
+    InitDNNHandle();
+    InitSolverHandle();
+    InitSparseHandle();
+  }
+
+  void PartialInitWithAllocator() {
+    owned_ = true;
+    backends::gpu::GPUDeviceGuard guard(place_.device);
+    InitEigenDevice();
+    InitDnnWorkspace();
+  }
+
   Impl() : place_(GPUPlace()) {}
 
   explicit Impl(const GPUPlace& place) : place_(place) {}
@@ -743,6 +761,14 @@ void GPUContext::SetSparseHandle(sparseHandle_t handle) {
 
 void GPUContext::SetDnnWorkspaceHandle(DnnWorkspaceHandle* handle) {
   impl_->workspace_ = handle;
+}
+
+void GPUContext::PartialInitWithoutAllocator() {
+  impl_->PartialInitWithoutAllocator();
+}
+
+void GPUContext::PartialInitWithAllocator() {
+  impl_->PartialInitWithAllocator();
 }
 
 }  // namespace pten
