@@ -65,9 +65,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/npu/enforce_npu.h"
 #include "paddle/fluid/platform/device/npu/npu_stream.h"
 #endif
-#ifdef PADDLE_WITH_IPU
-#include "paddle/fluid/platform/device/ipu/device.h"
-#endif
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace Eigen {
@@ -78,6 +75,7 @@ struct GpuDevice;
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#include "paddle/pten/backends/xpu/xpu_context.h"
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -150,11 +148,9 @@ class IPUDeviceContext : public DeviceContext {
   Place GetPlace() const override;
   /*! \brief  Wait for all operations completion in the stream. */
   void Wait() const override;
-  int DeviceId() const { return device_.getId(); }
 
  private:
   IPUPlace place_;
-  platform::ipu::Device device_;
 };
 template <>
 struct DefaultDeviceContextType<platform::IPUPlace> {
@@ -171,39 +167,12 @@ struct DefaultDeviceContextType<platform::MLUPlace>;
 
 #ifdef PADDLE_WITH_XPU
 namespace xpu = baidu::xpu::api;
-class XPUDeviceContext : public DeviceContext {
+class XPUDeviceContext : public pten::XPUContext {
  public:
   XPUDeviceContext();
   explicit XPUDeviceContext(XPUPlace place);
   virtual ~XPUDeviceContext();
   Eigen::DefaultDevice* eigen_device() const { return nullptr; }
-  XPUVersion xpu_version() const { return xpu_version_; }
-  Place GetPlace() const override;
-  xpu::Context* x_context() const;
-
-  /*! \brief  Wait for all operations completion in the stream. */
-  void Wait() const override;
-
-#ifdef PADDLE_WITH_XPU_BKCL
-  /*! \brief  Return bkcl context. */
-  BKCLContext_t bkcl_context() const { return bkcl_context_; }
-
-  /*! \brief  Set bkcl context. */
-  void set_bkcl_context(BKCLContext_t context) { bkcl_context_ = context; }
-#endif
-
- private:
-  XPUPlace place_;
-  XPUVersion xpu_version_;
-  xpu::Context* context_;
-#ifdef PADDLE_WITH_XPU_BKCL
-  BKCLContext_t bkcl_context_;
-#endif
-
-  // Need to be the same with other DeviceContext,
-  // Eventhough eigen_device_ is not used in XPU
-  std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
-  DISABLE_COPY_AND_ASSIGN(XPUDeviceContext);
 };
 
 template <>
