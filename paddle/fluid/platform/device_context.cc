@@ -21,11 +21,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/mlu/device_context.h"
 #include "paddle/fluid/platform/device/mlu/device_context_allocator.h"
 #endif
-#ifdef PADDLE_WITH_IPU
-#include "paddle/fluid/platform/ipu/ipu_backend.h"
-#endif
 #include "glog/logging.h"
 #include "paddle/fluid/framework/expect.h"
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -139,11 +137,39 @@ inline void EmplaceDeviceContext(
         map_ptr,
     platform::Place p) {
   using PtrType = std::unique_ptr<DeviceContext>;
-  map_ptr->emplace(p, std::async(std::launch::deferred, [=] {
-                     // lazy evaluation. i.e., only create device context at
-                     // first `Get`
-                     return PtrType(new DevCtx(p));
-                   }));
+  map_ptr->emplace(
+      p, std::async(std::launch::deferred, [=] {
+        // lazy evaluation. i.e., only create device context at
+        // first `Get`
+        auto* dev_ctx = new DevCtx(p);
+        if (is_gpu_place(p)) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+          auto* cuda_ctx = dynamic_cast<CUDADeviceContext*>(dev_ctx);
+          PADDLE_ENFORCE_NOT_NULL(
+              cuda_ctx,
+              platform::errors::InvalidArgument(
+                  "Failed to dynamic_cast dev_ctx into CUDADeviceContext."));
+          dev_ctx->SetDeviceAllocator(
+              memory::allocation::AllocatorFacade::Instance()
+                  .GetAllocator(p, cuda_ctx->context()->RawStream())
+                  .get());
+#endif
+        } else {
+          dev_ctx->SetDeviceAllocator(
+              memory::allocation::AllocatorFacade::Instance()
+                  .GetAllocator(p)
+                  .get());
+        }
+        dev_ctx->SetHostAllocator(
+            memory::allocation::AllocatorFacade::Instance()
+                .GetAllocator(platform::CPUPlace())
+                .get());
+        dev_ctx->SetZeroAllocator(
+            memory::allocation::AllocatorFacade::Instance()
+                .GetZeroAllocator(p)
+                .get());
+        return PtrType(dev_ctx);
+      }));
 }
 
 DeviceContextPool::DeviceContextPool(
@@ -230,14 +256,10 @@ CPUDeviceContext::CPUDeviceContext() : pten::CPUContext() {}
 CPUDeviceContext::CPUDeviceContext(CPUPlace place) : pten::CPUContext() {}
 
 #ifdef PADDLE_WITH_IPU
-IPUDeviceContext::IPUDeviceContext(IPUPlace place) : place_(place) {
-  int id = place.GetDeviceId();
-  std::shared_ptr<platform::ipu::IpuBackend> ipu_backend =
-      platform::ipu::IpuBackend::GetInstance();
-  device_ = ipu_backend->GetDevice(id);
-}
+IPUDeviceContext::IPUDeviceContext(IPUPlace place) : place_(place) {}
 
 Place IPUDeviceContext::GetPlace() const { return place_; }
+
 void IPUDeviceContext::Wait() const {
   /*! \brief  Wait for all operations completion in the stream. */
 }
