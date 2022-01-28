@@ -45,11 +45,6 @@ pten::ScalarArray MakePtenScalarArrayFromVar(
 pten::ScalarArray MakePtenScalarArrayFromVarList(
     const std::vector<framework::Variable*>& variable_list);
 
-void SharesStorage(pten::DenseTensor* src, paddle::framework::Tensor* dst);
-
-void MakeVariableFromPtenTensor(pten::DenseTensor* src,
-                                framework::Variable* variable);
-
 void ResetTensorByArgDef(pten::DenseTensor* dst,
                          const pten::TensorArgDef& arg_def);
 
