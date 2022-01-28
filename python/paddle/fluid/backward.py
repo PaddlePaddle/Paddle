@@ -1041,7 +1041,7 @@ def _is_grad_op_(op):
 
 
 def _rename_grad_name_(name, grad_order):
-    return f'grad#{grad_order}{name}'
+    return 'grad/' * grad_order + name
 
 
 def _append_backward_ops_(block,
