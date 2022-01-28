@@ -18,21 +18,6 @@
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-namespace {
-inline void GetDims(
-    const paddle::framework::DDim& dim, int axis, int* pre, int* n, int* post) {
-  *pre = 1;
-  *post = 1;
-  *n = dim[axis];
-  for (int i = 0; i < axis; ++i) {
-    (*pre) *= dim[i];
-  }
-  for (int i = axis + 1; i < dim.size(); ++i) {
-    (*post) *= dim[i];
-  }
-}
-}  // namespace
-
 namespace pten {
 
 template <typename T, typename Context>
@@ -60,8 +45,8 @@ void NormKernel(const Context& ctx,
     out_norm = norm;
   }
 
-  out->mutable_data<T>(ctx.GetPlace());
-  out_norm->mutable_data<T>(ctx.GetPlace());
+  ctx.Alloc(out);
+  ctx.Alloc(out_norm);
 
   auto* place = ctx.eigen_device();
 

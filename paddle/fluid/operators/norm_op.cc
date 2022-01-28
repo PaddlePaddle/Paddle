@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/norm_op.h"
 #include <memory>
 #include <string>
 #include <vector>
@@ -72,13 +71,12 @@ class NormOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim("Norm", xdim);
     }
   }
-}
 
-framework::KernelSignature
-GetExpectedPtenKernelArgs(
-    const framework::ExecutionContext& ctx) const override {
-  return framework::KernelSignature(
-      "norm", {"X"}, {"axis", "epsilon", "is_test"}, {"Out", "Norm"});
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::KernelSignature(
+        "norm", {"X"}, {"axis", "epsilon", "is_test"}, {"Out", "Norm"});
+  }
 };
 
 class NormOpGrad : public framework::OperatorWithKernel {
@@ -89,6 +87,13 @@ class NormOpGrad : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Input",
                    "X@GRAD", "NormOpGrad");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+  }
+
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::KernelSignature(
+        "norm_grad", {framework::GradVarName("Out"), "X", "Norm"},
+        {"axis", "epsilon", "is_test"}, {framework::GradVarName("X")});
   }
 };
 
@@ -122,5 +127,3 @@ REGISTER_OPERATOR(norm, ops::NormOp, ops::NormOpMaker,
                   ops::NormOpGradOpMaker<paddle::framework::OpDesc>,
                   ops::NormOpGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(norm_grad, ops::NormOpGrad);
-REGISTER_OP_CPU_KERNEL(norm_grad, ops::NormGradKernel<CPU, float>,
-                       ops::NormGradKernel<CPU, double>);
