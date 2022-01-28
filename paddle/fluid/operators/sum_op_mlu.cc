@@ -33,7 +33,7 @@ class SumMLUKernel : public framework::OpKernel<T> {
       auto place = ctx.GetPlace();
       int ins_size = static_cast<int>(ins.size());
       if (ins_size == 1) {
-        TensorCopy(*ins[0], place, out);
+        framework::TensorCopy(*ins[0], place, out);
         return;
       }
 

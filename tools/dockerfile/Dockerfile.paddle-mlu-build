@@ -1,0 +1,5 @@
+FROM registry.baidubce.com/qili93/paddle-mlu:neuware-latest
+RUN apt-get install pigz -y
+RUN apt-get remove -y openjdk*
+CMD ["/bin/bash"]
+EXPOSE 22
