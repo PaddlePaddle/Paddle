@@ -30,7 +30,7 @@ void SetConstant<DeviceContext, T>::operator()(
 #ifdef PADDLE_WITH_XPU
   if (paddle::platform::is_xpu_place(context.GetPlace())) {
     xpu_place = true;
-    framework::VisitDataType(
+    paddle::framework::VisitDataType(
         tensor->type(),
         TensorSetConstantXPU<T>(tensor, num, context.GetPlace()));
   }
