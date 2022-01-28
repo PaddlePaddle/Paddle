@@ -305,3 +305,5 @@ DenseTensorMeta ReduceInferMeta(const DenseTensorMeta& x_meta,
 }
 
 }  // namespace pten
+
+PT_REGISTER_INFER_META_FN(sign, pten::UnchangedInferMetaNew);
