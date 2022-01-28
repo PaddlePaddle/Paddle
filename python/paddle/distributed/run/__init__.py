@@ -21,7 +21,9 @@ from . import plugins
 '''
 Paddle distribution training entry ``python -m paddle.distributed.run``.
 
-Case 1: collective, 1 node
+Collective Mode
+
+Case 1: 1 node
 
 use all visible devices
 # python -m paddle.distributed.run train.py
@@ -29,14 +31,28 @@ use all visible devices
 use specified devices
 # python -m paddle.distributed.run --gpus=0,1,2,3 train.py
 
-Case 2: multi-node collective, auto detect ip/port
+Case 2: multi-node, auto detect ip/port
 
 # python -m paddle.distributed.run --np 2 train.py
 # auto print following command
 # python -m paddle.distributed.run --master 10.0.0.1:13538 --np 2 demo.py
 
-Case 3: multi-node collective, specified master/rendezvous server
+Case 3: multi-node, specified master/rendezvous server
 
 # python -m paddle.distributed.run --np 2 --master 10.0.0.1:2379 train.py
+
+Parameter Server Mode
+
+Case 1: 1 node, 2 ps, 2 worker
+
+# python -m paddle.distributed.run --server_num=2 --worker_num=2 train.py
+
+Case 2: 2 node, 2 ps, 2 worker per node
+
+# python -m paddle.distributed.run --server_num=2 --worker_num=2 --np 2 train.py
+# auto print following command
+# python -m paddle.distributed.run --master 10.0.0.1:13538 --server_num=2 --worker_num=2 --np 2 train.py
+
+
 
 '''

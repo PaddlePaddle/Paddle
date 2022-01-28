@@ -52,6 +52,20 @@ class Store(object):
             self.server = KVServer(port)
             self.role = Store.MAIN
 
+            print("Copy the following commond to other nodes to run.")
+            cmd = [
+                sys.executable.split('/')[-1], "-m", "paddle.distributed.run"
+            ]
+            cmd.extend(["--master", self.master])
+            cmd.extend(sys.argv[1:])
+            print("-" * 80)
+            print(" ".join(cmd))
+            print("-" * 80)
+
+            if self.ctx.args.rank >= 0:
+                self.ctx.logger.warning(
+                    "--rank set in the command may not compatible in auto mode")
+
         self.client = KVClient(self.master)
 
         self.initialized = True
@@ -62,28 +76,6 @@ class Store(object):
         if self.server and not self.server.started:
             self.server.start()
             self.ctx.logger.debug("KV server start at {}".format(self.master))
-
-            print(
-                "Copy the following commond, and paste and run it in other node."
-            )
-            if self.ctx.args.master:
-                cmd = [
-                    sys.executable.split('/')[-1], "-m",
-                    "paddle.distributed.run"
-                ]
-            else:
-                cmd = [
-                    sys.executable.split('/')[-1], "-m",
-                    "paddle.distributed.run", "--master", self.master
-                ]
-            cmd.extend(sys.argv[1:])
-            print("-" * 80)
-            print(" ".join(cmd))
-            print("-" * 80)
-
-            if self.ctx.args.rank >= 0:
-                self.ctx.logger.warning(
-                    "--rank set in the command may not compatible in auto mode")
 
     def stop_server(self):
         if self.server and not self.server.stopped:
@@ -133,3 +125,24 @@ class Store(object):
                 return r
             else:
                 time.sleep(0.5)
+
+
+class ETCDStore(object):
+    def __init__(self, ctx):
+        self.ctx = ctx
+        self.server = None
+        self.initialized = False
+        self.master = None
+
+        import etcd3
+
+    '''
+    allgather gather all value for key under scop prefix
+    if rank is set, result will be sort
+    '''
+
+    def allgather(self, prefix, key, value, size, rank=-1) -> (list, int):
+        pass
+
+    def broadcast(self, key, value=None):
+        pass

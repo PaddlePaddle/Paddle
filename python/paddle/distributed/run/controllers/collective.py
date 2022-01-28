@@ -30,8 +30,6 @@ class CollectiveController(Controller):
 
         self.job.replicas = self.ctx.args.np or 1
 
-        self.job.endpoints = []
-
     def build_pod(self):
         self.pod.replicas = self.pod_replicas()
 
@@ -55,8 +53,6 @@ class CollectiveController(Controller):
 
         self.pod.rank = rank
 
-        print('eee', peer_list)
-
         for i in range(self.pod.replicas):
             e = {
                 "PADDLE_MASTER": self.store.master,
@@ -65,8 +61,7 @@ class CollectiveController(Controller):
                 "PADDLE_GLOBAL_RANK": "{}".format(i + rank_offset),
                 "PADDLE_LOCAL_RANK": "{}".format(i),
             }
-            c = self.build_container(envs=e)
-            self.add_container(c)
+            self.add_container(envs=e)
 
     '''
     compatible version of build_pod

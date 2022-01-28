@@ -88,15 +88,22 @@ class Controller(ControllerBase):
     def build_container(self, entrypoint=None, envs={}, use_ctx_env=True):
         c = Container()
         c.entrypoint = entrypoint or self._get_entrypoint()
-        c.env = self.ctx.get_envs()
+        c.env = self.ctx.get_envs() if use_ctx_env else {}
         c.update_env(envs)
         return c
 
-    def add_container(self, c, is_init=False):
+    def add_container(self,
+                      container=None,
+                      entrypoint=None,
+                      envs={},
+                      is_init=False):
+        if not container:
+            container = self.build_container(entrypoint=entrypoint, envs=envs)
+
         if is_init:
-            self.pod.init_containers.append(c)
+            self.pod.init_containers.append(container)
         else:
-            self.pod.containers.append(c)
+            self.pod.containers.append(container)
 
     def pod_replicas(self):
         if self.ctx.args.nproc_per_node:

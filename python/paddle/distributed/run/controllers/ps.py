@@ -19,7 +19,7 @@ class PSController(Controller):
     @classmethod
     def enable(cls, ctx):
         ctx.logger.debug("PSController enabled")
-        if ctx:
+        if ctx.args.server_num or len(ctx.args.servers) > 0:
             return True
         else:
             return False
@@ -30,52 +30,24 @@ class PSController(Controller):
 
         self.job.endpoints = []
 
-        if self.ctx.args.ips:
-            self.job.ips = self.ctx.args.ips.split(',')
-            self.job.replicas = self.ctx.args.np or len(self.job.ips)
-
     def build_pod(self):
 
         host = self.ctx.node.ip
-        self.pod.replicas = self.ctx.node.device.count
+        #self.pod.replicas = self.ctx.node.device.count
 
-        ips = self.ctx.args.ips.split(',')
-        assert ips.index(host) >= 0
-        if len(ips) > 1:
-            start_port = 6170
-            self.job.endpoints = [
-                "{}:{}".format(i, 6170 + p)
-                for p in range(self.pod.replicas) for i in ips
-            ]
+        server_num = ctx.args.server_num or len(ctx.args.servers)
 
-        self.pod.endpoints = [
-            "{}:{}".format(host, 6170 + p) for p in range(self.pod.replicas)
-        ]
-        '''
-        self.pod.endpoints = [
-            "{}:{}".format(self.ctx.node.ip, p)
-            for p in self.ctx.node.get_free_ports(self.pod.replicas)
-        ]
-        '''
-
-        self.ctx.logger.debug(self.pod)
-        '''
-        if self.enable_join():
-            self.ctx.logger.debug("join mode enabled")
-            self.sync_pods()
-        '''
-
-        if not self.job.endpoints:
-            self.job.endpoints = self.pod.endpoints.copy()
-
-        for i in range(self.pod.replicas):
+        for i in range(server_num):
             e = {
-                "PADDLE_TRAINER_ENDPOINTS": ",".join(self.job.endpoints),
-                "PADDLE_CURRENT_ENDPOINT": self.pod.endpoints[i],
-                "PADDLE_TRAINER_ID":
-                "%d" % self.job.endpoints.index(self.pod.endpoints[i]),
-                "PADDLE_TRAINERS_NUM": "%d" % len(self.job.endpoints),
-                "PADDLE_RANK_IN_NODE": str(i),
+                "PADDLE_PSERVERS": server_endpoints,
+                "PADDLE_TRAINER_ENDPOINTS": worker_endpoints,
+                "PADDLE_PORT": cur_server.endpoint.split(":")[1],
+                "TRAINING_ROLE": "PSERVER",
+                "PADDLE_TRAINERS_NUM": str(self.worker_num),
+                "POD_IP": host,
+                "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "0")),
+                "PADDLE_GLOO_RENDEZVOUS": "3",
+                "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
+                "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port
             }
-            c = self.build_container(envs=e)
-            self.add_container(c)
+            self.add_container(envs=e)

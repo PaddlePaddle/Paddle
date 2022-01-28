@@ -123,7 +123,7 @@ class Context(object):
             "training script")
 
         base_group.add_argument('training_script_args', nargs=REMAINDER)
-
+        '''
         # Optional arguments for the launch helper
         # for collective
         collective_group = parser.add_argument_group("Collective Parameters")
@@ -150,6 +150,7 @@ class Context(object):
             default=False,
             help="Set true to enable the lazy launch for auto-parallel scenario."
         )
+        '''
 
         ps_group = parser.add_argument_group("Parameter-Server Parameters")
         # for parameter server
