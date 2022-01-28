@@ -172,6 +172,7 @@ void BasicAucCalculator::compute() {
 }
 
 void BasicAucCalculator::calculate_bucket_error() {
+#if defined(PADDLE_WITH_GLOO)
   double last_ctr = -1;
   double impression_sum = 0;
   double ctr_sum = 0.0;
@@ -234,6 +235,7 @@ void BasicAucCalculator::calculate_bucket_error() {
     }
   }
   _bucket_error = error_count > 0 ? error_sum / error_count : 0.0;
+#endif
 }
 
 void BasicAucCalculator::reset_records() {

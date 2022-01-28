@@ -947,7 +947,6 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
         uint64_t feasign = (uint64_t)strtoull(uidptr, &uidptr, 10);
         instance->uid_ = feasign;
       }
-
       if (idx != -1) {
         if (all_slots_type_[i][0] == 'f') {  // float
           for (int j = 0; j < num; ++j) {
