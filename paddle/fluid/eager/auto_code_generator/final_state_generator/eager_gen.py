@@ -604,7 +604,7 @@ def GenerateNodeCreationCodes(fwd_api_name, bwd_api_name,
                 output_autograd_meta = f"    egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&outputs);"
             else:
                 assert IsVectorTensorType(rtype)
-                output_autograd_meta = f"    std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&{outputs});\n"
+                output_autograd_meta = f"    std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&outputs);\n"
                 output_autograd_meta += f"    std::vector<egr::AutogradMeta*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};"
         else:
             # Tuple api_result
