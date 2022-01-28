@@ -19,21 +19,8 @@
 
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
+#include "paddle/pten/kernels/gpu/masked_select_util.h"
 #include "paddle/pten/kernels/masked_select_grad_kernel.h"
-
-namespace {
-
-__global__ void SetMaskArray(const bool* mask, int32_t* mask_array, int size) {
-  int idx = blockDim.x * blockIdx.x + threadIdx.x;
-  for (; idx < size; idx += blockDim.x * gridDim.x) {
-    if (mask[idx])
-      mask_array[idx] = 1;
-    else
-      mask_array[idx] = 0;
-  }
-}
-
-}  // namespace
 
 namespace pten {
 

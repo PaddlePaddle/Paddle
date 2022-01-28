@@ -19,21 +19,8 @@
 
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
+#include "paddle/pten/kernels/gpu/masked_select_util.h"
 #include "paddle/pten/kernels/masked_select_kernel.h"
-
-namespace {
-
-__global__ void SetMaskArray(const bool* mask, int32_t* mask_array, int size) {
-  int idx = blockDim.x * blockIdx.x + threadIdx.x;
-  for (; idx < size; idx += blockDim.x * gridDim.x) {
-    if (mask[idx])
-      mask_array[idx] = 1;
-    else
-      mask_array[idx] = 0;
-  }
-}
-
-}  // namespace
 
 namespace pten {
 
@@ -65,7 +52,7 @@ void MaskedSelectKernel(const Context& dev_ctx,
   auto mask_dim = mask.dims();
   PADDLE_ENFORCE_EQ(input_dim,
                     mask_dim,
-                    platform::errors::InvalidArgument(
+                    pten::errors::InvalidArgument(
                         "The dim size of input and mask in OP(masked_selected) "
                         "must be equal, but got input dim:(%ld), mask dim: "
                         "(%ld). Please check input "
@@ -119,4 +106,6 @@ PT_REGISTER_KERNEL(masked_select,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t) {
+  kernel->InputAt(1).SetDataType(pten::DataType::BOOL);
+}

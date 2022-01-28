@@ -33,7 +33,7 @@ void MaskedSelectKernel(const Context& dev_ctx,
   auto mask_dim = mask.dims();
   PADDLE_ENFORCE_EQ(input_dim,
                     mask_dim,
-                    platform::errors::InvalidArgument(
+                    pten::errors::InvalidArgument(
                         "The dim size of input and mask in OP(masked_selected) "
                         "must be equal, but got input dim:(%ld), mask dim: "
                         "(%ld). Please check input "
@@ -68,4 +68,6 @@ PT_REGISTER_KERNEL(masked_select,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t) {
+  kernel->InputAt(1).SetDataType(pten::DataType::BOOL);
+}
