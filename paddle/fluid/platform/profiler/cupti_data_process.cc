@@ -116,8 +116,8 @@ void AddMemcpyRecord(const CUpti_ActivityMemcpy* memcpy, uint64_t start_ns,
   event.stream_id = memcpy->streamId;
   event.correlation_id = memcpy->correlationId;
   event.memcpy_info.num_bytes = memcpy->bytes;
-  snprintf(event.memcpy_info.copy_kind, kMemKindMaxLen, "%s",
-           MemcpyKind(memcpy->copyKind));
+  // snprintf(event.memcpy_info.copy_kind, kMemKindMaxLen, "%s",
+  //         MemcpyKind(memcpy->copyKind));
   snprintf(event.memcpy_info.src_kind, kMemKindMaxLen, "%s",
            MemcpyKind(memcpy->srcKind));
   snprintf(event.memcpy_info.dst_kind, kMemKindMaxLen, "%s",
