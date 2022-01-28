@@ -30,7 +30,8 @@ DenseTensor Cast(const Context& dev_ctx,
                  const DenseTensor& x,
                  DataType out_dtype) {
   auto dense_out = pten::Empty<T, Context>(dev_ctx);
-  CastInferMeta(x, out_dtype, &dense_out);
+  MetaTensor meta_out(&dense_out);
+  CastInferMeta(x, out_dtype, &meta_out);
   CastKernel<T, Context>(dev_ctx, x, out_dtype, &dense_out);
   return dense_out;
 }

@@ -20,7 +20,7 @@ namespace pten {
 
 void ConcatInferMeta(const std::vector<MetaTensor>& x,
                      const Scalar& axis_scalar,
-                     MetaTensor out,
+                     MetaTensor* out,
                      MetaConfig config) {
   PADDLE_ENFORCE_GE(x.size(),
                     0UL,
@@ -51,9 +51,9 @@ void ConcatInferMeta(const std::vector<MetaTensor>& x,
   pten::DDim out_dim =
       pten::funcs::ComputeAndCheckShape(config.is_runtime, x_dims, axis);
 
-  out.set_dims(out_dim);
-  out.set_dtype(x.at(0).dtype());
-  out.set_layout(x.at(0).layout());
+  out->set_dims(out_dim);
+  out->set_dtype(x.at(0).dtype());
+  out->set_layout(x.at(0).layout());
 }
 
 }  // namespace pten

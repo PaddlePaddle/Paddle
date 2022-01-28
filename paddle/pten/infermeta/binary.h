@@ -23,26 +23,26 @@ namespace pten {
 //   1. void [FunctionDesc|OpName]InferMeta(const MetaTensor& x,
 //                                          const MetaTensor& y,
 //                                          ...,
-//                                          MetaTensor out) {}
+//                                          MetaTensor* out) {}
 //
 // NOTE: The name "InferShape" may be not appropriate. "InferMeta" may be good.
 //   Because functions in this file not only can infer shape, but also need
 //   infer lod or other useful data.
 
-void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor out);
+void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
 void MatmulInferMeta(const MetaTensor& x,
                      const MetaTensor& y,
                      bool trans_x,
                      bool trans_y,
-                     MetaTensor out);
+                     MetaTensor* out);
 
 void ElementwiseInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
-                          MetaTensor out);
+                          MetaTensor* out);
 
 void ElementwiseRawInferMeta(const MetaTensor& x_meta,
                              const MetaTensor& y_meta,
                              int axis,
-                             MetaTensor out);
+                             MetaTensor* out);
 }  // namespace pten

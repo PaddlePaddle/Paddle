@@ -36,42 +36,42 @@ void UnchangedInferMetaNew(MetaConfig config,
                            const MetaTensor& x,
                            MetaTensor* out);
 
-void UnchangedInferMeta(const MetaTensor& x, MetaTensor out);
+void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void FlattenInferMeta(const MetaTensor& x,
                       int start_axis,
                       int stop_axis,
-                      MetaTensor out);
+                      MetaTensor* out);
 
-void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor out);
+void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out);
 
 void CreateLikeInferMeta(const MetaTensor& x,
                          DataType dtype,
                          DataLayout layout,
-                         MetaTensor out);
+                         MetaTensor* out);
 
 void InferMetaFromVecValue(const MetaTensor& x,
                            const std::vector<int64_t>& shape,
-                           MetaTensor out);
+                           MetaTensor* out);
 
 void ReshapeInferMeta(const MetaTensor& x,
                       const ScalarArray& shape,
-                      MetaTensor out);
+                      MetaTensor* out);
 
 void ReduceInferMeta(const MetaTensor& x,
                      const std::vector<int64_t>& axis,
                      bool keep_dim,
                      DataType dtype,
-                     MetaTensor out);
+                     MetaTensor* out);
 
 void ReduceInferMeta(const MetaTensor& x,
                      const std::vector<int64_t>& axis,
                      bool keep_dim,
-                     MetaTensor out);
+                     MetaTensor* out);
 
 void SumInferMeta(const MetaTensor& x,
                   const std::vector<int64_t>& axis,
                   DataType dtype,
                   bool keep_dim,
-                  MetaTensor out);
+                  MetaTensor* out);
 }  // namespace pten

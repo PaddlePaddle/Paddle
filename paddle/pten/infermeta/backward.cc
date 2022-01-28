@@ -21,10 +21,10 @@ void MatmulGradInferMeta(const MetaTensor& x,
                          const MetaTensor& out_grad_meta,
                          bool transpose_x,
                          bool transpose_y,
-                         MetaTensor dx,
-                         MetaTensor dy) {
-  dx.share_meta(x);
-  dy.share_meta(y);
+                         MetaTensor* dx,
+                         MetaTensor* dy) {
+  dx->share_meta(x);
+  dy->share_meta(y);
 }
 
 }  // namespace pten

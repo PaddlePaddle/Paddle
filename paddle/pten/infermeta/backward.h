@@ -25,7 +25,7 @@ void MatmulGradInferMeta(const MetaTensor& x,
                          const MetaTensor& out_grad_meta,
                          bool transpose_x,
                          bool transpose_y,
-                         MetaTensor dx,
-                         MetaTensor dy);
+                         MetaTensor* dx,
+                         MetaTensor* dy);
 
 }  // namespace pten

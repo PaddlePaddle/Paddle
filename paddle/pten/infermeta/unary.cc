@@ -30,14 +30,14 @@ DenseTensorMeta UnchangedInferMeta(const DenseTensorMeta& x_meta) {
   return x_meta;
 }
 
-void UnchangedInferMeta(const MetaTensor& x, MetaTensor out) {
-  out.share_meta(x);
+void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->share_meta(x);
 }
 
 void FlattenInferMeta(const MetaTensor& x,
                       int start_axis,
                       int stop_axis,
-                      MetaTensor out) {
+                      MetaTensor* out) {
   auto x_dims = x.dims();
   int in_dims_size = x_dims.size();
   if (start_axis < 0) {
@@ -71,30 +71,30 @@ void FlattenInferMeta(const MetaTensor& x,
     out_shape.push_back(x_dims[i]);
   }
   const auto& out_dims = pten::framework::make_ddim(out_shape);
-  out.set_dims(out_dims);
-  out.set_dtype(x.dtype());
-  out.set_layout(x.layout());
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
 
   if (x_dims[0] == out_dims[0]) {
     // Only pass LoD when the first dimension of output and Input(X)
     // are the same.
-    out.share_lod(x);
+    out->share_lod(x);
   }
 }
 
-void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor out) {
-  out.set_dims(x.dims());
-  out.set_dtype(out_dtype);
-  out.set_layout(x.layout());
+void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(out_dtype);
+  out->set_layout(x.layout());
 }
 
 void CreateLikeInferMeta(const MetaTensor& x,
                          DataType dtype,
                          DataLayout layout,
-                         MetaTensor out) {
-  out.set_dims(x.dims());
-  out.set_dtype(dtype == DataType::UNDEFINED ? x.dtype() : dtype);
-  out.set_layout(layout == DataLayout::UNDEFINED ? x.layout() : layout);
+                         MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(dtype == DataType::UNDEFINED ? x.dtype() : dtype);
+  out->set_layout(layout == DataLayout::UNDEFINED ? x.layout() : layout);
 }
 
 static pten::framework::DDim ValidateShape(
@@ -219,7 +219,7 @@ static pten::framework::DDim ValidateShape(
 
 void InferMetaFromVecValue(const MetaTensor& x,
                            const std::vector<int64_t>& shape,
-                           MetaTensor out) {
+                           MetaTensor* out) {
   PADDLE_ENFORCE_EQ(!shape.empty(),
                     true,
                     paddle::platform::errors::InvalidArgument(
@@ -227,19 +227,19 @@ void InferMetaFromVecValue(const MetaTensor& x,
                         "But received 'shape' is empty."));
   auto x_dims = x.dims();
   auto out_dims = ValidateShape(shape, x_dims);
-  out.set_dims(out_dims);
-  out.set_dtype(x.dtype());
-  out.set_layout(x.layout());
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
   if (x_dims[0] == out_dims[0]) {
     // Only pass LoD when the first dimension of output and Input(X)
     // are the same.
-    out.share_lod(x);
+    out->share_lod(x);
   }
 }
 
 void ReshapeInferMeta(const MetaTensor& x,
                       const ScalarArray& shape,
-                      MetaTensor out) {
+                      MetaTensor* out) {
   InferMetaFromVecValue(x, shape.GetData(), out);
 }
 
@@ -250,7 +250,7 @@ void SumInferMeta(const MetaTensor& x,
                   const std::vector<int64_t>& axis,
                   DataType dtype,
                   bool keep_dim,
-                  MetaTensor out) {
+                  MetaTensor* out) {
   ReduceInferMeta(x, axis, keep_dim, dtype, std::move(out));
 }
 
@@ -258,7 +258,7 @@ void ReduceInferMeta(const MetaTensor& x,
                      const std::vector<int64_t>& axis,
                      bool keep_dim,
                      DataType dtype,
-                     MetaTensor out) {
+                     MetaTensor* out) {
   bool reduce_all = true;
   std::set<int64_t> dims_set(axis.begin(), axis.end());
   for (int64_t i = 0; i < x.dims().size(); ++i) {
@@ -304,15 +304,15 @@ void ReduceInferMeta(const MetaTensor& x,
     }
   }
 
-  out.set_dims(out_dim);
-  out.set_dtype(out_dtype);
-  out.set_layout(x.layout());
+  out->set_dims(out_dim);
+  out->set_dtype(out_dtype);
+  out->set_layout(x.layout());
 }
 
 void ReduceInferMeta(const MetaTensor& x,
                      const std::vector<int64_t>& axis,
                      bool keep_dim,
-                     MetaTensor out) {
+                     MetaTensor* out) {
   ReduceInferMeta(x, axis, keep_dim, DataType::UNDEFINED, out);
 }
 

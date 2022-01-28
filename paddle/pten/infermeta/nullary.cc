@@ -19,17 +19,17 @@ namespace pten {
 void CreateInferMeta(const std::vector<int64_t>& shape,
                      DataType dtype,
                      DataLayout layout,
-                     MetaTensor out) {
+                     MetaTensor* out) {
   auto out_dims = pten::framework::make_ddim(shape);
-  out.set_dims(out_dims);
-  out.set_dtype(dtype);
-  out.set_layout(layout);
+  out->set_dims(out_dims);
+  out->set_dtype(dtype);
+  out->set_layout(layout);
 }
 
 void CreateInferMeta(const ScalarArray& shape,
                      DataType dtype,
                      DataLayout layout,
-                     MetaTensor out) {
+                     MetaTensor* out) {
   CreateInferMeta(shape.GetData(), dtype, layout, out);
 }
 

@@ -56,7 +56,8 @@ DenseTensor Empty(const Context& dev_ctx,
                   Backend backend = Backend::CPU,  // Is backend needed here?
                   DataLayout layout = DataLayout::NCHW) {
   auto dense_out = Empty<T, Context>(dev_ctx);
-  CreateInferMeta(shape, dtype, layout, &dense_out);
+  MetaTensor meta_out(&dense_out);
+  CreateInferMeta(shape, dtype, layout, &meta_out);
   EmptyKernel<T, Context>(dev_ctx, shape, &dense_out);
   return dense_out;
 }
@@ -69,7 +70,8 @@ DenseTensor EmptyLike(
     Backend backend = Backend::UNDEFINED,  // Is backend needed here?
     DataLayout layout = DataLayout::UNDEFINED) {
   auto dense_out = Empty<T, Context>(dev_ctx);
-  CreateLikeInferMeta(x, dtype, layout, &dense_out);
+  MetaTensor meta_out(&dense_out);
+  CreateLikeInferMeta(x, dtype, layout, &meta_out);
   EmptyLikeKernel<T, Context>(dev_ctx, &dense_out);
   return dense_out;
 }

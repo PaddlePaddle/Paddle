@@ -49,17 +49,12 @@ inline pten::MetaTensor MakeMetaTensor(const pten::DenseTensor& tensor) {
   return pten::MetaTensor(tensor);
 }
 
-inline pten::MetaTensor MakeMetaTensor(pten::DenseTensor* tensor) {
-  return pten::MetaTensor(tensor);
-}
-
 inline std::vector<pten::MetaTensor> MakeMetaTensor(
     const std::vector<pten::DenseTensor>& tensors) {
   std::vector<pten::MetaTensor> meta_tensors;
   meta_tensors.reserve(tensors.size());
   for (const auto& t : tensors) {
-    meta_tensors.emplace_back(
-        pten::MetaTensor(const_cast<pten::DenseTensor*>(&t)));
+    meta_tensors.emplace_back(t);
   }
   return meta_tensors;
 }

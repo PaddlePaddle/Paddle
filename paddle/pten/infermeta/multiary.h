@@ -20,7 +20,7 @@ namespace pten {
 
 void ConcatInferMeta(const std::vector<MetaTensor>& x,
                      const Scalar& axis_scalar,
-                     MetaTensor out,
+                     MetaTensor* out,
                      MetaConfig config = MetaConfig());
 
 }  // namespace pten

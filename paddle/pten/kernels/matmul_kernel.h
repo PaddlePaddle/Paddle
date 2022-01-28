@@ -36,7 +36,8 @@ DenseTensor Matmul(const Context& dev_ctx,
                    bool transpose_x,
                    bool transpose_y) {
   auto dense_out = Empty<T, Context>(dev_ctx);
-  MatmulInferMeta(x, y, transpose_x, transpose_y, &dense_out);
+  MetaTensor meta_out(&dense_out);
+  MatmulInferMeta(x, y, transpose_x, transpose_y, &meta_out);
   MatmulKernel<T, Context>(dev_ctx, x, y, transpose_x, transpose_y, &dense_out);
   return dense_out;
 }
