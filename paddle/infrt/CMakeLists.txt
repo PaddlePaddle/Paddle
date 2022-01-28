@@ -1,9 +1,11 @@
-#TO DO:remove fluid
-include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
-
 if (NOT WITH_INFRT)
     return()
 endif()
+
+option(INFRT_WITH_PTEN  "Compile INFRT with PTEN"    ON)
+
+#TODO(xiaowei) remove fluid
+include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
 
 # compile flags
 set(INFRT_FLAGS -Wno-comment)
