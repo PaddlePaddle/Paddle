@@ -105,7 +105,7 @@ void MatMul(const Context& dev_ctx,
             bool trans_b,
             DenseTensor* out,
             bool flag = false) {
-  out->mutable_data<T>();
+  dev_ctx.template Alloc<T>(out);
   auto blas = paddle::operators::math::GetBlas<Context, T>(dev_ctx);
   auto mat_dim_a =
       paddle::operators::math::CreateMatrixDescriptor(a.dims(), 0, trans_a);
@@ -123,7 +123,7 @@ void MatMul(const Context& dev_ctx,
               b.data<T>(),
               mat_dim_b,
               static_cast<T>(1),
-              out->mutable_data<T>(),
+              dev_ctx.template Alloc<T>(out),
               static_cast<T>(flag));
 }
 
@@ -242,8 +242,8 @@ void MatmulGradKernel(const Context& dev_ctx,
 
   // Case1 : x's or y's dim = 1
   if (x_ndim == 1 && y_ndim == 1) {
-    if (dx) dx->mutable_data<T>();
-    if (dy) dy->mutable_data<T>();
+    if (dx) dev_ctx.template Alloc<T>(dx);
+    if (dy) dev_ctx.template Alloc<T>(dy);
     if (out_grad.numel() == 1) {
       DotGradFunction<Context, T>()(dev_ctx, &x, &y, &out_grad, dx, dy);
       return;

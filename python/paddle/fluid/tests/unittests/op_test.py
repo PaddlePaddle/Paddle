@@ -25,10 +25,13 @@ import time
 import itertools
 import collections
 from collections import defaultdict
+from copy import copy
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle.fluid.framework import _in_eager_mode
+from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.backward import append_backward
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
@@ -495,7 +498,7 @@ class OpTest(unittest.TestCase):
             type=self.op_type,
             inputs=inputs,
             outputs=outputs,
-            attrs=self.attrs if hasattr(self, "attrs") else dict())
+            attrs=copy(self.attrs) if hasattr(self, "attrs") else dict())
         # infer variable type and infer shape in compile-time
         op.desc.infer_var_type(block.desc)
         op.desc.infer_shape(block.desc)
@@ -1111,7 +1114,8 @@ class OpTest(unittest.TestCase):
                                 no_check_set=None,
                                 equal_nan=False,
                                 check_dygraph=True,
-                                inplace_atol=None):
+                                inplace_atol=None,
+                                check_eager=False):
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
         if self.dtype == np.float64 and \
             self.op_type not in op_threshold_white_list.NEED_FIX_FP64_CHECK_OUTPUT_THRESHOLD_OP_LIST:
@@ -1120,6 +1124,7 @@ class OpTest(unittest.TestCase):
         if self.is_bfloat16_op():
             if self.is_mkldnn_op():
                 check_dygraph = False
+                check_eager = False
                 if hasattr(self, 'force_fp32_output') and getattr(
                         self, 'force_fp32_output'):
                     atol = 1e-2
@@ -1136,6 +1141,10 @@ class OpTest(unittest.TestCase):
         if check_dygraph:
             dygraph_outs = self._calc_dygraph_output(
                 place, no_check_set=no_check_set)
+        if check_eager:
+            with _test_eager_guard():
+                eager_dygraph_outs = self._calc_dygraph_output(
+                    place, no_check_set=no_check_set)
         outs, fetch_list = self._calc_output(place, no_check_set=no_check_set)
 
         for out_name, out_dup in Operator.get_op_outputs(self.op_type):
@@ -1178,6 +1187,13 @@ class OpTest(unittest.TestCase):
                             sub_out_name, dygraph_outs, place)
                         imperative_actual_t = np.array(imperative_actual.value()
                                                        .get_tensor())
+                    if check_eager:
+                        with _test_eager_guard():
+                            eager_imperative_actual = find_imperative_actual(
+                                sub_out_name, eager_dygraph_outs, place)
+                            eager_imperative_actual_t = eager_imperative_actual.numpy(
+                            )
+
                     idx = find_actual(sub_out_name, fetch_list)
                     actual = outs[idx]
                     actual_t = np.array(actual)
@@ -1197,6 +1213,16 @@ class OpTest(unittest.TestCase):
                                 equal_nan=equal_nan),
                             "Output (" + sub_out_name + ") has diff at " +
                             str(place) + " in dygraph mode")
+                    if check_eager:
+                        with _test_eager_guard():
+                            self.assertTrue(
+                                np.allclose(
+                                    eager_imperative_actual_t,
+                                    expect_t,
+                                    atol=atol,
+                                    equal_nan=equal_nan),
+                                "Output (" + sub_out_name + ") has diff at " +
+                                str(place) + " in eager dygraph mode")
                     if isinstance(expect, tuple):
                         self.assertListEqual(
                             actual.recursive_sequence_lengths(), expect[1],
@@ -1209,12 +1235,27 @@ class OpTest(unittest.TestCase):
                                 "Output (" + out_name +
                                 ") has different lod at " + str(place) +
                                 " in dygraph mode")
+                        if check_eager:
+                            with _test_eager_guard():
+                                self.assertListEqual(
+                                    eager_imperative_actual.value().get_tensor()
+                                    .recursive_sequence_lengths(), expect[1],
+                                    "Output (" + out_name +
+                                    ") has different lod at " + str(place) +
+                                    " in eager dygraph mode")
             else:
                 if check_dygraph:
                     imperative_actual = find_imperative_actual(
                         out_name, dygraph_outs, place)
                     imperative_actual_t = np.array(imperative_actual.value()
                                                    .get_tensor())
+                if check_eager:
+                    with _test_eager_guard():
+                        eager_imperative_actual = find_imperative_actual(
+                            out_name, eager_dygraph_outs, place)
+                        eager_imperative_actual_t = eager_imperative_actual.numpy(
+                        )
+
                 idx = find_actual(out_name, fetch_list)
                 actual = outs[idx]
                 actual_t = np.array(actual)
@@ -1275,6 +1316,32 @@ class OpTest(unittest.TestCase):
                             str(place) + "\nExpect " + str(expect_t) + "\n" +
                             "But Got" + str(imperative_actual_t) + " in class "
                             + self.__class__.__name__)
+                if check_eager:
+                    with _test_eager_guard():
+                        if self.is_bfloat16_op():
+                            if eager_imperative_actual_t.dtype == np.uint16:
+                                eager_imperative_actual_t = convert_uint16_to_float(
+                                    eager_imperative_actual_t)
+                            if expect_t.dtype == np.uint16:
+                                expect_t = convert_uint16_to_float(expect_t)
+                        if six.moves.reduce(lambda x, y: x * y,
+                                            eager_imperative_actual_t.shape,
+                                            1) == 0 and six.moves.reduce(
+                                                lambda x, y: x * y,
+                                                expect_t.shape, 1) == 0:
+                            pass
+                        else:
+                            self.assertTrue(
+                                np.allclose(
+                                    eager_imperative_actual_t,
+                                    expect_t,
+                                    atol=atol,
+                                    rtol=rtol,
+                                    equal_nan=equal_nan),
+                                "Output (" + out_name + ") has diff at " +
+                                str(place) + "\nExpect " + str(expect_t) + "\n"
+                                + "But Got" + str(eager_imperative_actual_t) +
+                                " in class " + self.__class__.__name__)
                 if isinstance(expect, tuple):
                     self.assertListEqual(actual.recursive_sequence_lengths(),
                                          expect[1], "Output (" + out_name +
@@ -1284,7 +1351,15 @@ class OpTest(unittest.TestCase):
                             imperative_actual.value().get_tensor()
                             .recursive_sequence_lengths(), expect[1],
                             "Output (" + out_name + ") has different lod at " +
-                            str(place) + " in dygraph mode")
+                            str(place) + " in eager dygraph mode")
+                    if check_eager:
+                        with _test_eager_guard():
+                            self.assertListEqual(
+                                eager_imperative_actual.value().get_tensor()
+                                .recursive_sequence_lengths(), expect[1],
+                                "Output (" + out_name +
+                                ") has different lod at " + str(place) +
+                                " in eager dygraph mode")
 
         # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure
         # computational consistency.
@@ -1306,7 +1381,9 @@ class OpTest(unittest.TestCase):
             self.check_inplace_output_with_place(
                 place, no_check_set=no_check_set, inplace_atol=inplace_atol)
 
-        if check_dygraph:
+        if check_eager:
+            return outs, dygraph_outs, eager_dygraph_outs, fetch_list
+        elif check_dygraph:
             return outs, dygraph_outs, fetch_list
         else:
             return outs, fetch_list
@@ -1377,7 +1454,8 @@ class OpTest(unittest.TestCase):
                      no_check_set=None,
                      equal_nan=False,
                      check_dygraph=True,
-                     inplace_atol=None):
+                     inplace_atol=None,
+                     check_eager=False):
         self.__class__.op_type = self.op_type
         if self.is_mkldnn_op():
             self.__class__.use_mkldnn = True
@@ -1387,10 +1465,18 @@ class OpTest(unittest.TestCase):
 
         places = self._get_places()
         for place in places:
-            res = self.check_output_with_place(place, atol, no_check_set,
-                                               equal_nan, check_dygraph,
-                                               inplace_atol)
-            if check_dygraph:
+            res = self.check_output_with_place(
+                place,
+                atol,
+                no_check_set,
+                equal_nan,
+                check_dygraph,
+                inplace_atol,
+                check_eager=check_eager)
+            if check_eager:
+                assert check_dygraph == True
+                outs, dygraph_outs, eager_dygraph_outs, fetch_list = res
+            elif check_dygraph:
                 outs, dygraph_outs, fetch_list = res
             else:
                 outs, fetch_list = res
@@ -1461,14 +1547,23 @@ class OpTest(unittest.TestCase):
                    max_relative_error=0.005,
                    user_defined_grads=None,
                    user_defined_grad_outputs=None,
-                   check_dygraph=True):
+                   check_dygraph=True,
+                   check_eager=False):
         self._check_grad_helper()
         places = self._get_places()
         for place in places:
             self.check_grad_with_place(
-                place, inputs_to_check, output_names, no_grad_set,
-                numeric_grad_delta, in_place, max_relative_error,
-                user_defined_grads, user_defined_grad_outputs, check_dygraph)
+                place,
+                inputs_to_check,
+                output_names,
+                no_grad_set,
+                numeric_grad_delta,
+                in_place,
+                max_relative_error,
+                user_defined_grads,
+                user_defined_grad_outputs,
+                check_dygraph,
+                check_eager=check_eager)
 
     def check_grad_with_place(self,
                               place,
@@ -1481,7 +1576,8 @@ class OpTest(unittest.TestCase):
                               user_defined_grads=None,
                               user_defined_grad_outputs=None,
                               check_dygraph=True,
-                              numeric_place=None):
+                              numeric_place=None,
+                              check_eager=False):
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
@@ -1490,6 +1586,7 @@ class OpTest(unittest.TestCase):
         self._check_grad_helper()
         if self.is_bfloat16_op() and self.is_mkldnn_op():
             check_dygraph = False
+            check_eager = False
 
         if self.dtype == np.float64 and \
             self.op_type not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST:
@@ -1591,6 +1688,22 @@ class OpTest(unittest.TestCase):
             self._assert_is_close(numeric_grads, dygraph_grad, inputs_to_check,
                                   max_relative_error,
                                   "Gradient Check On %s" % str(place))
+
+        if check_eager:
+            with _test_eager_guard():
+                eager_dygraph_grad = self._get_dygraph_grad(
+                    inputs_to_check, place, output_names,
+                    user_defined_grad_outputs, no_grad_set)
+                fp32_grads = []
+                for grad in eager_dygraph_grad:
+                    if grad.dtype == np.uint16:
+                        grad = convert_uint16_to_float(grad)
+                        max_relative_error = 0.03 if max_relative_error < 0.03 else max_relative_error
+                    fp32_grads.append(grad)
+                eager_dygraph_grad = fp32_grads
+                self._assert_is_close(numeric_grads, eager_dygraph_grad,
+                                      inputs_to_check, max_relative_error,
+                                      "Gradient Check On %s" % str(place))
 
     def _find_var_in_dygraph(self, output_vars, name):
         if name in output_vars:
@@ -1719,11 +1832,21 @@ class OpTest(unittest.TestCase):
                 for no_grad_val in no_grad_set:
                     del (inputs[no_grad_val])
 
-                grad_inputs = paddle.grad(
-                    outputs=fluid.layers.utils.flatten(outputs),
-                    inputs=fluid.layers.utils.flatten(inputs),
-                    grad_outputs=grad_outputs)
-                return [grad.numpy() for grad in grad_inputs]
+                if _in_eager_mode():
+                    core.eager.run_backward(
+                        fluid.layers.utils.flatten(outputs), grad_outputs,
+                        False)
+                    grad_inputs = []
+                    for inputs_list in inputs.values():
+                        for inp in inputs_list:
+                            grad_inputs.append(inp.grad.numpy())
+                    return grad_inputs
+                else:
+                    grad_inputs = paddle.grad(
+                        outputs=fluid.layers.utils.flatten(outputs),
+                        inputs=fluid.layers.utils.flatten(inputs),
+                        grad_outputs=grad_outputs)
+                    return [grad.numpy() for grad in grad_inputs]
 
     @staticmethod
     def _numpy_to_lod_tensor(np_value, lod, place):

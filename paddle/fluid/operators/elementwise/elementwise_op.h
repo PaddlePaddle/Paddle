@@ -137,50 +137,6 @@ class ElementwiseOp : public framework::OperatorWithKernel {
                                      tensor.place(), tensor.layout());
     }
   }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext &ctx) const override {
-    int axis = ctx.Attr<int>("axis");
-    if (Type() == "elementwise_add") {
-      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
-        if (axis == -1) {
-          return framework::KernelSignature("add", {"X", "Y"}, {}, {"Out"});
-        }
-        return framework::KernelSignature("add_raw", {"X", "Y"}, {"axis"},
-                                          {"Out"});
-      }
-    }
-    if (Type() == "elementwise_sub") {
-      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
-        if (axis == -1) {
-          return framework::KernelSignature("subtract", {"X", "Y"}, {},
-                                            {"Out"});
-        }
-        return framework::KernelSignature("subtract_raw", {"X", "Y"}, {"axis"},
-                                          {"Out"});
-      }
-    }
-    if (Type() == "elementwise_div") {
-      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
-        if (axis == -1) {
-          return framework::KernelSignature("divide", {"X", "Y"}, {}, {"Out"});
-        }
-        return framework::KernelSignature("divide_raw", {"X", "Y"}, {"axis"},
-                                          {"Out"});
-      }
-    }
-    if (Type() == "elementwise_mul") {
-      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
-        if (axis == -1) {
-          return framework::KernelSignature("multiply", {"X", "Y"}, {},
-                                            {"Out"});
-        }
-        return framework::KernelSignature("multiply_raw", {"X", "Y"}, {"axis"},
-                                          {"Out"});
-      }
-    }
-    return framework::KernelSignature("None", {"X"}, {}, {"Out"});
-  }
 };
 
 class ElementwiseOpInferVarType
@@ -354,6 +310,18 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
                                      tensor.place(), tensor.layout());
     }
   }
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext &ctx) const override {
+    if (Type() == "elementwise_add_grad") {
+      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
+        return framework::KernelSignature(
+            "add_grad", {"X", "Y", framework::GradVarName("Out")}, {"axis"},
+            {framework::GradVarName("X"), framework::GradVarName("Y")});
+      }
+    }
+
+    return framework::KernelSignature("None", {"X"}, {}, {"Out"});
+  }
 };
 
 class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
@@ -522,11 +490,9 @@ class ElemwiseGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto *dx =
         context.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    if (dx != nullptr) {
-      auto &dout =
-          *context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-      dx->set_lod(dout.lod());
-    }
+    auto &dout =
+        *context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+    pten::funcs::ElementwiseGradPreProcess(dout, dx);
   }
 };
 

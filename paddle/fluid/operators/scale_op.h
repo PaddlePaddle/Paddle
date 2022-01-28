@@ -43,34 +43,36 @@ class ScaleKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& ctx) const {
     auto* in_var = ctx.InputVar("X");
-    auto* in = framework::GetLoDTensorOrSelectedRowsValueFromVar(*in_var);
 
     auto bias = ctx.Attr<float>("bias");
     auto bias_after_scale = ctx.Attr<bool>("bias_after_scale");
-
     auto scale = ctx.Attr<float>("scale");
+    auto* out_var = ctx.OutputVar("Out");
+
     if (ctx.HasInput("ScaleTensor")) {
       auto* scale_tensor = ctx.Input<framework::Tensor>("ScaleTensor");
       scale = static_cast<float>(GetAttrFromTensor<T>(scale_tensor));
     }
 
-    auto* out_var = ctx.OutputVar("Out");
-    if (in_var->IsType<framework::SelectedRows>() && in_var != out_var) {
-      auto& in_slr = in_var->Get<framework::SelectedRows>();
-      auto* out_slr = out_var->GetMutable<framework::SelectedRows>();
-      out_slr->set_rows(in_slr.rows());
-      out_slr->set_height(in_slr.height());
-    }
+    auto* in = framework::GetLoDTensorOrSelectedRowsValueFromVar(*in_var);
     auto* out =
         framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(out_var);
     out->mutable_data<T>(in->place());
     auto& dev_ctx = ctx.device_context<DeviceContext>();
 
     // call new kernel
-    pten::ScaleKernel<T>(
-        static_cast<const typename framework::ConvertToPtenContext<
-            DeviceContext>::TYPE&>(dev_ctx),
-        *in, scale, bias, bias_after_scale, out);
+    if (in_var->IsType<pten::SelectedRows>()) {
+      pten::ScaleSR<T>(
+          static_cast<const typename framework::ConvertToPtenContext<
+              DeviceContext>::TYPE&>(dev_ctx),
+          in_var->Get<pten::SelectedRows>(), scale, bias, bias_after_scale,
+          out_var->GetMutable<pten::SelectedRows>());
+    } else {
+      pten::ScaleKernel<T>(
+          static_cast<const typename framework::ConvertToPtenContext<
+              DeviceContext>::TYPE&>(dev_ctx),
+          *in, scale, bias, bias_after_scale, out);
+    }
   }
 };
 

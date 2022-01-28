@@ -26,7 +26,7 @@ namespace pten {
 
 template <typename T, typename Context, typename VType>
 void FullValue(const Context& dev_ctx, DenseTensor* tensor, VType val) {
-  tensor->mutable_data<T>();
+  dev_ctx.template Alloc<T>(tensor);
   auto t = pten::EigenVector<T>::Flatten(*tensor);
   t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(val));
 }

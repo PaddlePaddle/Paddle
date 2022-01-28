@@ -118,7 +118,7 @@ void MatMulFunction(const Context& dev_ctx,
             N));
     VLOG(3) << "MatMul's case 1";
     Out->Resize({1});
-    Out->mutable_data<T>();
+    dev_ctx.template Alloc<T>(Out);
     blas.GEMM(CblasNoTrans,
               CblasTrans,
               1,
@@ -128,7 +128,7 @@ void MatMulFunction(const Context& dev_ctx,
               y_data,
               x_data,
               static_cast<T>(flag),
-              Out->mutable_data<T>());
+              dev_ctx.template Alloc<T>(Out));
     return;
   }
 
@@ -165,7 +165,7 @@ void MatMulFunction(const Context& dev_ctx,
       out_dims.back() = y_dims.back();
     }
     Out->ResizeAndAllocate(pten::framework::make_ddim(out_dims));
-    Out->mutable_data<T>();
+    dev_ctx.template Alloc<T>(Out);
     if (trans_y) {
       const int M = Y.numel() / N;
       VLOG(3) << "MatMul's case 2";
@@ -176,7 +176,7 @@ void MatMulFunction(const Context& dev_ctx,
                 y_data,
                 x_data,
                 static_cast<T>(flag),
-                Out->mutable_data<T>());
+                dev_ctx.template Alloc<T>(Out));
     } else {
       const int M = y_dims[y_ndim - 1];
       const int batch_size = Y.numel() / (M * N);
@@ -189,7 +189,7 @@ void MatMulFunction(const Context& dev_ctx,
                   y_data,
                   x_data,
                   static_cast<T>(flag),
-                  Out->mutable_data<T>());
+                  dev_ctx.template Alloc<T>(Out));
       } else {
         VLOG(3) << "MatMul's case 4";
         blas.BatchedGEMM(CblasTrans,
@@ -201,7 +201,7 @@ void MatMulFunction(const Context& dev_ctx,
                          y_data,
                          x_data,
                          static_cast<T>(flag),
-                         Out->mutable_data<T>(),
+                         dev_ctx.template Alloc<T>(Out),
                          batch_size,
                          M * N,
                          0);
@@ -243,7 +243,7 @@ void MatMulFunction(const Context& dev_ctx,
       std::copy_n(x_dims.cbegin(), x_ndim - 1, out_dims.begin());
     }
     Out->ResizeAndAllocate(pten::framework::make_ddim(out_dims));
-    Out->mutable_data<T>();
+    dev_ctx.template Alloc<T>(Out);
 
     if (trans_x) {
       const int M = x_dims[x_ndim - 1];
@@ -257,7 +257,7 @@ void MatMulFunction(const Context& dev_ctx,
                   x_data,
                   y_data,
                   static_cast<T>(flag),
-                  Out->mutable_data<T>());
+                  dev_ctx.template Alloc<T>(Out));
       } else {
         VLOG(3) << "MatMul's case 6";
         blas.BatchedGEMM(CblasTrans,
@@ -269,7 +269,7 @@ void MatMulFunction(const Context& dev_ctx,
                          x_data,
                          y_data,
                          static_cast<T>(flag),
-                         Out->mutable_data<T>(),
+                         dev_ctx.template Alloc<T>(Out),
                          batch_size,
                          M * N,
                          0);
@@ -284,7 +284,7 @@ void MatMulFunction(const Context& dev_ctx,
                 x_data,
                 y_data,
                 static_cast<T>(flag),
-                Out->mutable_data<T>());
+                dev_ctx.template Alloc<T>(Out));
     }
     return;
   }
@@ -331,7 +331,7 @@ void MatMulFunction(const Context& dev_ctx,
   out_broadcast_dims[ndim - 1] = N;
 
   Out->ResizeAndAllocate(pten::framework::make_ddim(out_broadcast_dims));
-  Out->mutable_data<T>();
+  dev_ctx.template Alloc<T>(Out);
 
   const int batch_dim = ndim - 2;
   // broadcast message
@@ -367,7 +367,7 @@ void MatMulFunction(const Context& dev_ctx,
               x_data,
               y_data,
               static_cast<T>(flag),
-              Out->mutable_data<T>());
+              dev_ctx.template Alloc<T>(Out));
   } else if (x_batch_size == 1) {
     if (M == 1 && trans_y) {
       VLOG(3) << "MatMul's case 9";
@@ -378,7 +378,7 @@ void MatMulFunction(const Context& dev_ctx,
                 y_data,
                 x_data,
                 static_cast<T>(flag),
-                Out->mutable_data<T>());
+                dev_ctx.template Alloc<T>(Out));
     } else {
       VLOG(3) << "MatMul's case 10";
       blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
@@ -390,7 +390,7 @@ void MatMulFunction(const Context& dev_ctx,
                        x_data,
                        y_data,
                        static_cast<T>(flag),
-                       Out->mutable_data<T>(),
+                       dev_ctx.template Alloc<T>(Out),
                        out_batch_size,
                        0,
                        K * N);
@@ -407,7 +407,7 @@ void MatMulFunction(const Context& dev_ctx,
                 x_data,
                 y_data,
                 static_cast<T>(flag),
-                Out->mutable_data<T>());
+                dev_ctx.template Alloc<T>(Out));
     } else {
       VLOG(3) << "MatMul's case 12";
       blas.BatchedGEMM(CblasTrans,
@@ -419,7 +419,7 @@ void MatMulFunction(const Context& dev_ctx,
                        x_data,
                        y_data,
                        static_cast<T>(flag),
-                       Out->mutable_data<T>(),
+                       dev_ctx.template Alloc<T>(Out),
                        out_batch_size,
                        M * K,
                        0);
@@ -435,7 +435,7 @@ void MatMulFunction(const Context& dev_ctx,
                      x_data,
                      y_data,
                      static_cast<T>(flag),
-                     Out->mutable_data<T>(),
+                     dev_ctx.template Alloc<T>(Out),
                      out_batch_size,
                      M * K,
                      K * N);
@@ -454,7 +454,7 @@ void MatMulFunction(const Context& dev_ctx,
 
       x_ptr[i] = x_data + x_index * M * K;
       y_ptr[i] = y_data + y_index * K * N;
-      out_ptr[i] = Out->mutable_data<T>() + i * M * N;
+      out_ptr[i] = dev_ctx.template Alloc<T>(Out) + i * M * N;
       IndexIncreaseFromDims(batch_dim, out_broadcast_dims.data(), index.data());
     }
     VLOG(3) << "MatMul's case 14";

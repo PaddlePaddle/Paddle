@@ -43,7 +43,7 @@ void CastCUDAKernelImpl(const GPUContext& dev_ctx,
   std::vector<DenseTensor*> outputs;
   inputs.emplace_back(&x);
   outputs.emplace_back(out);
-  out->mutable_data<OutT>();
+  dev_ctx.Alloc<OutT>(out);
   pten::funcs::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary,
                                                    InT,
                                                    OutT>(
