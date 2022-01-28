@@ -20,6 +20,7 @@
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/enforce.h"
 #include "paddle/pten/core/kernel_context.h"
+#include "paddle/pten/core/selected_rows.h"
 #include "paddle/pten/core/sparse_coo_tensor.h"
 #include "paddle/pten/core/sparse_csr_tensor.h"
 #include "paddle/pten/core/type_defs.h"
@@ -213,6 +214,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(DenseTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(DenseTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(DenseTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SelectedRows);
 
   PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SparseCooTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SparseCooTensor);
@@ -221,8 +223,6 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SparseCsrTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SparseCsrTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(SparseCsrTensor);
-  // TODO(chenweihang): adapt SelectedRows
-  // PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SelectedRowsTensor);
 
   /* Attribute Helpers */
 
@@ -242,14 +242,13 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
 
   PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(DenseTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(DenseTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SelectedRows);
 
   PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SparseCooTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(SparseCooTensor);
 
   PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SparseCsrTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(SparseCsrTensor);
-  // TODO(chenweihang): adapt SelectedRows
-  // PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SelectedRowsTensor);
 
   /* End case */
   template <typename T>
