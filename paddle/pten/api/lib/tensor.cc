@@ -19,7 +19,7 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
-#include "paddle/pten/api/include/utils.h"
+#include "paddle/pten/api/include/manual_api.h"
 #include "paddle/pten/api/lib/ext_compat_utils.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/api/lib/utils/storage.h"
