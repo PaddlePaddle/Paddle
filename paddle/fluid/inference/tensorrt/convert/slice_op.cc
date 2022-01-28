@@ -53,21 +53,23 @@ class SliceOpConverter : public OpConverter {
         input_dims.d[i] = input_dims.d[i - 1];
       }
       input_dims.d[0] = 1;  // fake batchsize, not useful here
-      for (size_t i = 0; i < axes.size(); i++) {
-        if (starts[i] < 0) {
-          starts[i] = std::max(starts[i] + input_dims.d[axes[i]], 0);
-        }
-        if (ends[i] < 0) {
-          ends[i] = std::max(ends[i] + input_dims.d[axes[i]], 0);
-        }
-        ends[i] = std::min(ends[i], input_dims.d[axes[i]]);
-        PADDLE_ENFORCE_GT(
-            ends[i], starts[i],
-            platform::errors::InvalidArgument(
-                "Attr(ends) should be greater than attr(starts) in "
-                "slice op. But received ends = %d, starts = %d.",
-                ends[i], starts[i]));
+    }
+
+    for (size_t i = 0; i < axes.size(); i++) {
+      if (starts[i] < 0) {
+        starts[i] = std::max(starts[i] + input_dims.d[axes[i]], 0);
       }
+      if (ends[i] < 0) {
+        ends[i] = std::max(ends[i] + input_dims.d[axes[i]], 0);
+      }
+      if (input_dims.d[axes[i]] != -1) {
+        ends[i] = std::min(ends[i], input_dims.d[axes[i]]);
+      }
+      PADDLE_ENFORCE_GT(ends[i], starts[i],
+                        platform::errors::InvalidArgument(
+                            "Attr(ends) should be greater than attr(starts) in "
+                            "slice op. But received ends = %d, starts = %d.",
+                            ends[i], starts[i]));
     }
 
     nvinfer1::ILayer* layer = nullptr;
@@ -105,21 +107,6 @@ class SliceOpConverter : public OpConverter {
         layer = engine_->AddDynamicPlugin(plugin_inputs.data(),
                                           plugin_inputs.size(), plugin);
       } else {
-        for (size_t i = 0; i < axes.size(); i++) {
-          if (starts[i] < 0) {
-            starts[i] = std::max(starts[i] + input_dims.d[axes[i]], 0);
-          }
-          if (ends[i] < 0) {
-            ends[i] = std::max(ends[i] + input_dims.d[axes[i]], 0);
-          }
-          ends[i] = std::min(ends[i], input_dims.d[axes[i]]);
-          PADDLE_ENFORCE_GT(
-              ends[i], starts[i],
-              platform::errors::InvalidArgument(
-                  "Attr(ends) should be greater than attr(starts) in "
-                  "slice op. But received ends = %d, starts = %d.",
-                  ends[i], starts[i]));
-        }
         bool with_fp16 =
             engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
         plugin::SlicePluginDynamic* plugin =
