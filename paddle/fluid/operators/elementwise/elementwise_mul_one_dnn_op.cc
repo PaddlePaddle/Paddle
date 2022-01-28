@@ -75,18 +75,6 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(elementwise_mul_one_dnn, ops::ElementwiseMulOneDNNOp,
                   ops::ElementwiseMulOneDNNOpMaker, ops::ElementwiseOpInferVarType);
 
-REGISTER_OP_CPU_KERNEL(
-    elementwise_mul_one_dnn,
-    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<float>>,
-    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<double>>);
-
 REGISTER_OP_VERSION(elementwise_mul_one_dnn)
     .AddCheckpoint(
         R"ROC(Register elementwise_mul_one_dnn for adding the attribute of Scale_y)ROC",

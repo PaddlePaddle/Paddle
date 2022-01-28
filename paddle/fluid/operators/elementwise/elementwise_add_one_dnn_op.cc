@@ -87,17 +87,6 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(elementwise_add_one_dnn, ops::ElementwiseAddOneDNNOp,
                   ops::ElementwiseAddOneDNNOpMaker, ops::ElementwiseOpInferVarType);
 
-REGISTER_OP_CPU_KERNEL(
-    elementwise_add_one_dnn,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<float>>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<double>>);
-
 REGISTER_OP_VERSION(elementwise_add_one_dnn)
     .AddCheckpoint(
         R"ROC(Register elementwise_add for adding the attribute of

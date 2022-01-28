@@ -87,17 +87,6 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(elementwise_sub_one_dnn, ops::ElementwiseSubOneDNNOp,
                   ops::ElementwiseSubOneDNNOpMaker, ops::ElementwiseOpInferVarType);
 
-REGISTER_OP_CPU_KERNEL(
-    elementwise_sub_one_dnn,
-    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<float>>,
-    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<double>>);
-
 REGISTER_OP_VERSION(elementwise_sub_one_dnn)
     .AddCheckpoint(
         R"ROC(Register elementwise_sub for adding the attribute of Scale_y)ROC",
