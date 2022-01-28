@@ -1051,11 +1051,11 @@ class Jacobian(object):
 
 class Hessian(object):
     def __init__(self, func, inputs, batch=False):
-        f_x = lambda xs: Jacobian(func, xs, batch=batch)[0] 
+        f_x = lambda xs: Jacobian(func, xs, batch=batch)[0]
         self.symbolic = Jacobian(f_x, inputs, batch=batch)
         self.xs = inputs
         self.batch = batch
-    
+
     def __getitem__(self, tup):
         return self.symbolic[tup]
 
