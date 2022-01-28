@@ -284,11 +284,30 @@ class FusedDropoutLayerNormHelper : public FusedDropoutHelper<T, MaskType> {
                                         P* d_layernorm_bias, T* d_dropout_src,
                                         T* d_bias, T* d_residual) {
     using U = LayerNormParamType<T>;
-    LayerNormBackward<T, U, is_same_type>(
-        layernorm_src, d_out, gamma, mean, variance, d_layernorm_src, d_scale,
-        d_layernorm_bias, epsilon_, this->rows_, this->cols_, ctx);
-    this->ResidualDropoutBiasGrad(ctx, d_layernorm_src, mask, d_dropout_src,
-                                  d_residual, d_bias);
+    bool can_call_1024_kernel = false;
+    // fast impl for cases when #cols is 1024 and linear_bias is nullptr.
+    // In the future, we can support linear_bias is not nullptr.
+    if (this->cols_ == 1024 && d_bias == nullptr && d_scale != nullptr &&
+        d_layernorm_bias != nullptr && sizeof(T) <= 4) {
+      can_call_1024_kernel = true;
+    }
+    VLOG(6) << "LaunchLayernormResidualDropoutGrad = " << can_call_1024_kernel;
+
+    if (can_call_1024_kernel) {
+      // note: d_layernorm_src is not set and returned.
+      LaunchLayernormResidualDropoutGrad<T, U, MaskType, is_same_type>(
+          ctx, this->rows_, this->cols_, epsilon_,
+          this->dropout_param_.dropout_prob,
+          this->dropout_param_.is_upscale_in_train, d_out, layernorm_src, gamma,
+          mean, variance, mask, d_scale, d_layernorm_bias, d_residual,
+          d_dropout_src);
+    } else {
+      LayerNormBackward<T, U, is_same_type>(
+          layernorm_src, d_out, gamma, mean, variance, d_layernorm_src, d_scale,
+          d_layernorm_bias, epsilon_, this->rows_, this->cols_, ctx);
+      this->ResidualDropoutBiasGrad(ctx, d_layernorm_src, mask, d_dropout_src,
+                                    d_residual, d_bias);
+    }
   }
 
  protected:
