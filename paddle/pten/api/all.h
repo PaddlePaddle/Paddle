@@ -40,6 +40,7 @@ limitations under the License. */
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/api/ext/dll_decl.h"
 #include "paddle/pten/api/ext/exception.h"
+#include "paddle/pten/api/ext/op_kernel_info.h"
 #include "paddle/pten/api/ext/op_meta_info.h"
 #include "paddle/pten/api/ext/place.h"
 #include "paddle/pten/api/ext/tensor_compat.h"

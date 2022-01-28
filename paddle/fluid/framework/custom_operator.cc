@@ -133,7 +133,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                               "is not initialized.",
                               i, in_name));
         paddle::experimental::Tensor custom_t;
-        custom_t.set_impl(std::move(experimental::MakePtenDenseTensor(*x)));
+        custom_t.set_impl(std::make_shared<pten::DenseTensor>(*x));
         custom_vec_in.emplace_back(custom_t);
       }
       custom_vec_ins.emplace_back(custom_vec_in);
@@ -145,7 +145,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                         platform::errors::InvalidArgument(
                             "Input tensor (%s) is not initialized.", in_name));
       paddle::experimental::Tensor custom_in;
-      custom_in.set_impl(std::move(experimental::MakePtenDenseTensor(*x)));
+      custom_in.set_impl(std::make_shared<pten::DenseTensor>(*x));
       custom_ins.emplace_back(custom_in);
     }
   }
@@ -207,17 +207,13 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                 "Tensors.",
                 vec_true_outs.size(), outs.size()));
         for (size_t j = 0; j < vec_true_outs.size(); ++j) {
-          experimental::SharesStorage(
-              std::dynamic_pointer_cast<pten::DenseTensor>(outs.at(j).impl())
-                  .get(),
-              vec_true_outs.at(j));
+          *vec_true_outs.at(j) =
+              *std::dynamic_pointer_cast<pten::DenseTensor>(outs.at(j).impl());
         }
       } else {
         auto* true_out = ctx.Output<Tensor>(out_name);
-        experimental::SharesStorage(
-            std::dynamic_pointer_cast<pten::DenseTensor>(outs.at(i).impl())
-                .get(),
-            true_out);
+        *true_out =
+            *std::dynamic_pointer_cast<pten::DenseTensor>(outs.at(i).impl());
       }
     }
   } catch (platform::EnforceNotMet& exception) {
