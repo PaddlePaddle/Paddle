@@ -329,7 +329,7 @@ BKCLComm* BKCLCommContext::AssignBKCLComm(BKCLContext_t comm, int nranks,
     auto* dev_ctx = static_cast<platform::XPUDeviceContext*>(
         platform::DeviceContextPool::Instance().Get(
             platform::XPUPlace(dev_id)));
-    dev_ctx->set_bkcl_context(comm);
+    dev_ctx->SetBkclContext(comm);
   }
 
   return comm_map_[ring_id][dev_id].get();

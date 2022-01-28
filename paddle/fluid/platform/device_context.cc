@@ -253,14 +253,16 @@ DeviceContextPool::DeviceContextPool(
   }
 }
 
-CPUDeviceContext::CPUDeviceContext() : pten::CPUContext() {}
+CPUDeviceContext::CPUDeviceContext() : pten::CPUContext() { this->Init(); }
 
-CPUDeviceContext::CPUDeviceContext(CPUPlace place) : pten::CPUContext() {}
+CPUDeviceContext::CPUDeviceContext(CPUPlace place) : pten::CPUContext(place) {
+  this->Init();
+}
 
 #ifdef PADDLE_WITH_IPU
 IPUDeviceContext::IPUDeviceContext(IPUPlace place) : place_(place) {}
 
-Place IPUDeviceContext::GetPlace() const { return place_; }
+const Place& IPUDeviceContext::GetPlace() const { return place_; }
 
 void IPUDeviceContext::Wait() const {
   /*! \brief  Wait for all operations completion in the stream. */
@@ -270,11 +272,12 @@ IPUDeviceContext::~IPUDeviceContext() {}
 
 #endif
 #ifdef PADDLE_WITH_XPU
-XPUDeviceContext::XPUDeviceContext() : pten::XPUContext() {}
+XPUDeviceContext::XPUDeviceContext() : pten::XPUContext() { this->Init(); }
 
 XPUDeviceContext::~XPUDeviceContext() {}
 
 XPUDeviceContext::XPUDeviceContext(XPUPlace place) : pten::XPUContext(place) {
+  this->Init();
   LOG_FIRST_N(WARNING, 1) << "Please NOTE: xpu device: "
                           << static_cast<int>(place.device);
 }
@@ -304,7 +307,7 @@ void NPUDeviceContext::Wait() const {
 
 aclrtStream NPUDeviceContext::stream() const { return stream_->raw_stream(); }
 
-Place NPUDeviceContext::GetPlace() const { return place_; }
+const Place& NPUDeviceContext::GetPlace() const { return place_; }
 
 aclrtContext NPUDeviceContext::context() const { return context_; }
 
@@ -321,7 +324,7 @@ Eigen::DefaultDevice* NPUPinnedDeviceContext::eigen_device() const {
   return eigen_device_.get();
 }
 
-Place NPUPinnedDeviceContext::GetPlace() const { return place_; }
+const Place& NPUPinnedDeviceContext::GetPlace() const { return place_; }
 
 #endif
 
@@ -474,6 +477,7 @@ CUDAContext::~CUDAContext() {
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
     : pten::GPUContext(place) {
+  this->Init();
   callback_manager_.reset(
       new StreamCallbackManager<gpuStream_t>(pten::GPUContext::stream()));
 }
@@ -585,7 +589,7 @@ Eigen::DefaultDevice* CUDAPinnedDeviceContext::eigen_device() const {
   return eigen_device_.get();
 }
 
-Place CUDAPinnedDeviceContext::GetPlace() const { return place_; }
+const Place& CUDAPinnedDeviceContext::GetPlace() const { return place_; }
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN

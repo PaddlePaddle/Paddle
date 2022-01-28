@@ -24,44 +24,18 @@ limitations under the License. */
 
 namespace pten {
 
-struct GPUContextResource {
-  int compute_capability;
-  int runtime_version;
-  int driver_version;
-  int multi_process;
-  int max_threads_per_mp;
-  int max_threads_per_block;
-  std::array<int, 3> max_grid_dim_size;
-
-  Eigen::GpuDevice* eigen_device{nullptr};
-  gpuStream_t stream{nullptr};
-
-  blasHandle_t blas_handle{nullptr};
-  blasHandle_t blas_tensor_core_handle{nullptr};
-  blasHandle_t blas_tf32_tensor_core_handle{nullptr};
-
-  dnnHandle_t dnn_handle{nullptr};
-
-  solverHandle_t solver_handle{nullptr};
-  sparseHandle_t sparse_handle{nullptr};
-};
+class DnnWorkspaceHandle;
 
 class GPUContext : public DeviceContext {
  public:
-  // NOTE: DeviceContext hold resources. Used in training scenarios.
   GPUContext();
+
   explicit GPUContext(const GPUPlace& place);
-
-  // NOTE: Share the same underlying resources, please ensure that resources are
-  // not released.
-  GPUContext(const GPUContext&);
-
-  GPUContext(GPUContext&&);
 
   virtual ~GPUContext();
 
   /*! \brief  Return place in the device context. */
-  Place GetPlace() const override;
+  const Place& GetPlace() const override;
 
   /*! \brief  Return gpu stream in the device context. */
   gpuStream_t stream() const;
@@ -102,6 +76,14 @@ class GPUContext : public DeviceContext {
   /*! \brief  Return eigen device in the device context. */
   Eigen::GpuDevice* eigen_device() const;
 
+  /*! \brief  Return a cudnn workspace handle to call multiple cudnn
+   *  functions without interrupting by other threads.
+   *  Once the first cudnn function is called by the handle, a lock
+   *  would be acquired to prevent other threads from accessing the
+   *  workspace. Once the handle is destructed, the lock would be released.
+   */
+  DnnWorkspaceHandle* cudnn_workspace_handle();
+
  public:
   /*! \brief  Call cublas function safely. */
   void CublasCall(const std::function<void(blasHandle_t)>&) const;
@@ -123,11 +105,16 @@ class GPUContext : public DeviceContext {
   /*! \brief  Set nccl communicators. */
   void set_nccl_comm(ncclComm_t comm);
 
+ public:
+  // NOTE: DeviceContext hold resources. Used in training scenarios.
+  // The interface used by the training scene, DeviceContext will initialize
+  // all resources and delete them when destructing.
+  void Init();
+
  protected:
   // NOTE: External users manage resources. Used in inference scenarios.
-  explicit GPUContext(const GPUContextResource& ctx_res,
-                      const GPUPlace& = GPUPlace(0));
-
+  // The Set interface is for inference only, DeviceContext will mark the
+  // resource as external, and will not delete any resource when destructing.
   void SetStream(cudaStream_t);
 
   void SetEigenDevice(Eigen::GpuDevice*);
@@ -139,6 +126,8 @@ class GPUContext : public DeviceContext {
   void SetSolverHandle(solverHandle_t);
 
   void SetSparseHandle(sparseHandle_t);
+
+  void SetDnnWorkspaceHandle(DnnWorkspaceHandle*);
 
  private:
   struct Impl;

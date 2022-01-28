@@ -150,7 +150,7 @@ class IPUDeviceContext : public DeviceContext {
   explicit IPUDeviceContext(IPUPlace place);
   virtual ~IPUDeviceContext();
   Eigen::DefaultDevice* eigen_device() const { return nullptr; }
-  Place GetPlace() const override;
+  const Place& GetPlace() const override;
   /*! \brief  Wait for all operations completion in the stream. */
   void Wait() const override;
 
@@ -192,7 +192,7 @@ class NPUDeviceContext : public DeviceContext {
   explicit NPUDeviceContext(NPUPlace place);
   virtual ~NPUDeviceContext();
   Eigen::DefaultDevice* eigen_device() const { return nullptr; }
-  Place GetPlace() const override;
+  const Place& GetPlace() const override;
   aclrtContext context() const;
 
   /*! \brief  Wait for all operations completion in the stream. */
@@ -252,7 +252,7 @@ class NPUPinnedDeviceContext : public DeviceContext {
   NPUPinnedDeviceContext();
   explicit NPUPinnedDeviceContext(NPUPinnedPlace place);
 
-  Place GetPlace() const override;
+  const Place& GetPlace() const override;
 
   Eigen::DefaultDevice* eigen_device() const;
 
@@ -509,7 +509,7 @@ class CUDADeviceContext : public pten::GPUContext {
 
   /*! \brief  Call cublas function safely. */
   inline void CublasCall(
-      const std::function<void(cublasHandle_t)>& callback) const {
+      const std::function<void(blasHandle_t)>& callback) const {
     if (!thread_ctx_.count(this)) {
       pten::GPUContext::CublasCall(callback);
       return;
@@ -532,7 +532,7 @@ class CUDADeviceContext : public pten::GPUContext {
   /*! \brief  Call cublas function with Tensor Core safely. If
       Tensor Core is not available, use DEFAULT_MATH instead. */
   inline void TensorCoreCublasCallIfAvailable(
-      const std::function<void(cublasHandle_t)>& callback) const {
+      const std::function<void(blasHandle_t)>& callback) const {
     if (!thread_ctx_.count(this)) {
       pten::GPUContext::TensorCoreCublasCallIfAvailable(callback);
       return;
@@ -664,7 +664,7 @@ class CUDAPinnedDeviceContext : public DeviceContext {
   CUDAPinnedDeviceContext();
   explicit CUDAPinnedDeviceContext(CUDAPinnedPlace place);
 
-  Place GetPlace() const override;
+  const Place& GetPlace() const override;
 
   Eigen::DefaultDevice* eigen_device() const;
 
