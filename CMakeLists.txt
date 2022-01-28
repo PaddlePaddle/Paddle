@@ -43,7 +43,7 @@ option(WITH_ONEMKL      "Compile PaddlePaddle with oneMKL"              OFF)
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
 option(WITH_TENSORRT    "Compile PaddlePaddle with NVIDIA TensorRT"     OFF)
 option(WITH_XPU         "Compile PaddlePaddle with BAIDU KUNLUN XPU"    OFF)
-option(WITH_XPU_KP         "Compile PaddlePaddle with BAIDU XPU compiler "    OFF)
+option(WITH_XPU_KP      "Compile PaddlePaddle with BAIDU XPU compiler " OFF)
 option(WITH_MLU    "Compile PaddlePaddle with CAMBRICON MLU"     OFF)
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode"    OFF)
 option(WITH_ASCEND         "Compile PaddlePaddle with ASCEND"        OFF)
@@ -277,12 +277,12 @@ if (NOT WITH_GPU AND WITH_NCCL)
         "Disable NCCL when compiling without GPU" FORCE)
 endif()
 
-# force XPU on when WITH_XPU_KP
+# force WITH_XPU on when WITH_XPU_KP
 if (WITH_XPU_KP AND NOT WITH_XPU)
     MESSAGE(WARNING
-        "Enable XPU when compiling with XPU2. Force WITH_XPU=ON.")
+        "Enable WITH_XPU when compiling with WITH_XPU_KP. Force WITH_XPU=ON.")
     set(WITH_XPU ON CACHE STRING
-        "Enable XPU when compiling with XPU2" FORCE)
+        "Enable WITH_XPU when compiling with WITH_XPU_KP" FORCE)
 endif()
 
 if (NOT WITH_XPU AND WITH_XPU_BKCL)
