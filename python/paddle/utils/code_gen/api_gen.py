@@ -27,6 +27,7 @@ class API:
         # args:
         #   inputs:
         #     names : [], list of input names
+        #     input_info : {input_name : type}
         #   attrs:
         #     names : [], list of attribute names
         #     attr_info : { attr_name : (type, default_values)}
@@ -91,8 +92,8 @@ PADDLE_API {self.return_type} {self.api}({self.args['args_declare']});
 
     def gene_api_code(self):
         if self.is_base_api:
-            input_tensors, kernel_args = gen_utils.get_kernel_args(
-                self.args['inputs']['names'], self.args['attrs'],
+            input_tensors, kernel_args, kernel_signature = gen_utils.get_kernel_args(
+                self.args['inputs'], self.args['attrs'], self.out_type_list,
                 self.kernel['param'])
             outputs_args, output_create = self.gene_output(self.out_type_list)
             return f"""
@@ -103,8 +104,8 @@ PADDLE_API {self.return_type} {self.api}({self.args["args_define"]}) {{
 {input_tensors}
 {gen_utils.gene_infer_meta(self.args['inputs']['names'], self.args['attrs']['names'], self.infer_meta)}
 {output_create}
-
-  auto* kernel_fn = kernel.GetVariadicKernelFn<pten::{self.api}_kernel>();
+  using kernel_signature = {kernel_signature};
+  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
   (*kernel_fn)({kernel_args}, {outputs_args});
 
   return out;
@@ -136,7 +137,6 @@ def source_include(header_file_path):
 
 #include "glog/logging.h"
 
-#include "paddle/pten/api/include/kernel_signature.h"
 #include "paddle/pten/api/lib/api_registry.h"
 #include "paddle/pten/api/lib/api_utils.h"
 #include "paddle/pten/api/lib/kernel_dispatch.h"

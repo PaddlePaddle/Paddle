@@ -18,6 +18,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/layer.h"
 
@@ -170,7 +171,10 @@ void SelectedRowsAddTensor(const framework::Variable& src_selected_rows_var,
                            const framework::Variable& src_tensor_var,
                            framework::Variable* dst_tensor_var);
 
-void TensorAdd(const framework::Variable& src, framework::Variable* dst);
+template <typename VarType>
+void TensorAdd(const VarType& src, VarType* dst);
+
+void VariableAdd(const egr::EagerTensor& src, egr::EagerTensor* dst);
 
 }  // namespace imperative
 }  // namespace paddle

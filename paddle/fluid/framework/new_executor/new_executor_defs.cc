@@ -313,7 +313,7 @@ bool InterpretercoreInferShapeContext::IsRunMKLDNNKernel() const {
     return ((op_with_kernel.kernel_type()) &&
             (op_with_kernel.kernel_type()->data_layout_ ==
              framework::DataLayout::kMKLDNN));
-  } catch (std::bad_cast exp) {
+  } catch (std::bad_cast& exp) {
     return false;
   }
 }

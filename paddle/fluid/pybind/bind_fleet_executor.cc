@@ -154,6 +154,7 @@ void BindFleetExecutor(py::module* m) {
       .def_readwrite("mp_degree", &DistModelConfig::mp_degree)
       .def_readwrite("pp_degree", &DistModelConfig::pp_degree)
       .def_readwrite("mp_ring_id", &DistModelConfig::mp_ring_id)
+      .def_readwrite("enable_timer", &DistModelConfig::enable_timer)
       .def_readwrite("pp_upstream_ring_id",
                      &DistModelConfig::pp_upstream_ring_id)
       .def_readwrite("pp_downstream_ring_id",

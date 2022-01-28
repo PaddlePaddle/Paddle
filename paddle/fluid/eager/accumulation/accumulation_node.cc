@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
-#include "paddle/fluid/eager/accumulation/gradient_accumulation.h"
 #include "paddle/fluid/eager/eager_tensor.h"
+#include "paddle/fluid/imperative/gradient_accumulator.h"
 
 #include "paddle/pten/api/all.h"
 #include "paddle/pten/core/dense_tensor.h"
@@ -35,7 +35,7 @@ static void CopyOrAddTensor(egr::EagerTensor* tensor,
     *tensor = t;
   } else {
     // Accumulation
-    egr::TensorAdd(t, tensor);
+    paddle::imperative::TensorAdd<egr::EagerTensor>(t, tensor);
   }
 }
 
