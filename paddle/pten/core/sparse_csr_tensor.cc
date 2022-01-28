@@ -67,6 +67,12 @@ SparseCsrTensor& SparseCsrTensor::operator=(const SparseCsrTensor& other) {
   return *this;
 }
 
+void* SparseCsrTensor::AllocateFrom(Allocator* allocator,
+                                    DataType dtype,
+                                    size_t requested_size) {
+  return non_zero_elements_.AllocateFrom(allocator, dtype, requested_size);
+}
+
 void SparseCsrTensor::Resize(const DDim& dense_dims,
                              const int64_t non_zero_num) {
   PADDLE_ENFORCE(this->initialized(),
