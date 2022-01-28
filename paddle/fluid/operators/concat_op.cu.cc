@@ -19,6 +19,7 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
+
 REGISTER_OP_CUDA_KERNEL(
     concat, ops::ConcatKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ConcatKernel<paddle::platform::CUDADeviceContext, float>,
@@ -32,6 +33,7 @@ REGISTER_OP_CUDA_KERNEL(
                       plat::complex<float>>,
     ops::ConcatKernel<paddle::platform::CUDADeviceContext,
                       plat::complex<double>>);
+
 REGISTER_OP_CUDA_KERNEL(
     concat_grad,
     ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, double>,
