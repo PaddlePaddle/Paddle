@@ -70,7 +70,8 @@ paddle::platform::Place TransToFluidPlace(const Backend& backend) {
       return paddle::platform::CPUPlace();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     case pten::Backend::GPU:
-      return paddle::platform::CUDAPlace(0);
+      return paddle::platform::CUDAPlace(
+          paddle::platform::GetCurrentDeviceId());
 #endif
 #ifdef PADDLE_WITH_MKLDNN
     case pten::Backend::MKLDNN:
@@ -78,15 +79,18 @@ paddle::platform::Place TransToFluidPlace(const Backend& backend) {
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     case pten::Backend::CUDNN:
-      return paddle::platform::CUDAPlace(0);
+      return paddle::platform::CUDAPlace(
+          paddle::platform::GetCurrentDeviceId());
 #endif
 #if defined(PADDLE_WITH_XPU)
     case pten::Backend::XPU:
-      return paddle::platform::XPUPlace(0);
+      return paddle::platform::XPUPlace(
+          paddle::platform::GetXPUCurrentDeviceId());
 #endif
 #if defined(PADDLE_WITH_ASCEND_CL)
     case pten::Backend::NPU:
-      return paddle::platform::NPUPlace(0);
+      return paddle::platform::NPUPlace(
+          paddle::platform::GetCurrentNPUDeviceId());
 #endif
     default:
       PADDLE_THROW(paddle::platform::errors::Unimplemented(
