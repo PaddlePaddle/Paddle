@@ -24,14 +24,30 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-inline bool NeedTransformLayout(const DataLayout& l, const DataLayout& r) {
-  bool ret =
-      (l != DataLayout::ALL_LAYOUT && r != DataLayout::ALL_LAYOUT && l != r);
+inline bool NeedTransformDataType(const DataType& input,
+                                  const DataType& target,
+                                  const TransformFlag& transform_flag) {
+  return input != target &&
+         (transform_flag.need_trans_data_type() ||
+          target == DataType::COMPLEX64 || target == DataType::COMPLEX128);
+}
+
+inline bool NeedTransformPlace(const paddle::platform::Place& input,
+                               const Backend& target,
+                               const TransformFlag& transform_flag) {
+  bool ret = transform_flag.need_trans_backend() &&
+             target != Backend::ALL_BACKEND &&
+             !platform::is_same_place(input, pten::TransToFluidPlace(target));
   return ret;
 }
 
-inline bool NeedTransformDataType(const DataType& l, const DataType& r) {
-  return l != r;
+inline bool NeedTransformLayout(const DataLayout& input,
+                                const DataLayout& target,
+                                const TransformFlag& transform_flag) {
+  bool ret = transform_flag.need_trans_layout() &&
+             (input != DataLayout::ALL_LAYOUT &&
+              target != DataLayout::ALL_LAYOUT && input != target);
+  return ret;
 }
 
 inline pten::DenseTensor TransDataLayout(const pten::DenseTensor& tensor,
@@ -105,18 +121,21 @@ inline pten::DenseTensor TransDataType(const pten::DenseTensor& tensor,
 }
 
 pten::DenseTensor TransformData(const pten::DenseTensor& tensor,
-                                const pten::TensorArgDef& target_args_def) {
+                                const pten::TensorArgDef& target_args_def,
+                                const TransformFlag& transform_flag) {
   pten::DenseTensor out = tensor;
-  if (NeedTransformLayout(tensor.layout(), target_args_def.layout)) {
+  if (NeedTransformLayout(
+          tensor.layout(), target_args_def.layout, transform_flag)) {
     out = TransDataLayout(out, target_args_def.layout);
   }
 
-  if (NeedTransformDataType(tensor.dtype(), target_args_def.dtype)) {
+  if (NeedTransformDataType(
+          tensor.dtype(), target_args_def.dtype, transform_flag)) {
     out = TransDataType(out, target_args_def.dtype);
   }
 
-  if (!platform::is_same_place(
-          out.place(), pten::TransToFluidPlace(target_args_def.backend))) {
+  if (NeedTransformPlace(
+          out.place(), target_args_def.backend, transform_flag)) {
     pten::DenseTensor result(
         pten::make_intrusive<paddle::experimental::SharedStorage>(
             pten::TransToFluidPlace(target_args_def.backend)),
@@ -131,38 +150,49 @@ pten::DenseTensor TransformData(const pten::DenseTensor& tensor,
 std::shared_ptr<pten::DenseTensor> PrepareData(
     const Tensor& input,
     const pten::TensorArgDef& target_args_def,
-    bool need_prepare) {
+    const TransformFlag& transform_flag) {
   const auto& tensor_in = input.impl();
-  if (!need_prepare ||
-      (tensor_in->place() == pten::TransToFluidPlace(target_args_def.backend) &&
-       !NeedTransformDataType(tensor_in->dtype(), target_args_def.dtype) &&
-       !NeedTransformLayout(tensor_in->layout(), target_args_def.layout))) {
+  if (!transform_flag.NeedTransform() || !tensor_in->initialized() ||
+      (!NeedTransformPlace(
+           tensor_in->place(), target_args_def.backend, transform_flag) &&
+       !NeedTransformDataType(
+           tensor_in->dtype(), target_args_def.dtype, transform_flag) &&
+       !NeedTransformLayout(
+           tensor_in->layout(), target_args_def.layout, transform_flag))) {
     return std::dynamic_pointer_cast<pten::DenseTensor>(tensor_in);
   }
 
-  pten::DenseTensor out = TransformData(
-      *(static_cast<pten::DenseTensor*>(tensor_in.get())), target_args_def);
+  pten::DenseTensor out =
+      TransformData(*(static_cast<pten::DenseTensor*>(tensor_in.get())),
+                    target_args_def,
+                    transform_flag);
   return std::make_shared<pten::DenseTensor>(out);
 }
 
 std::unique_ptr<std::vector<pten::DenseTensor>> PrepareData(
     const std::vector<Tensor>& inputs,
     const pten::TensorArgDef& target_args_def,
-    bool need_prepare) {
+    const TransformFlag& transform_flag) {
   auto pt_tensors = std::make_unique<std::vector<pten::DenseTensor>>();
   pt_tensors->reserve(inputs.size());
 
   for (const auto& input : inputs) {
     const auto& tensor_in = input.impl();
-    if (tensor_in->place() ==
-            pten::TransToFluidPlace(target_args_def.backend) &&
-        !NeedTransformDataType(tensor_in->dtype(), target_args_def.dtype) &&
-        !NeedTransformLayout(tensor_in->layout(), target_args_def.layout)) {
-      pt_tensors->push_back(
+    if (!transform_flag.NeedTransform() || !tensor_in->initialized() ||
+        (!NeedTransformPlace(
+             tensor_in->place(), target_args_def.backend, transform_flag) &&
+         !NeedTransformDataType(
+             tensor_in->dtype(), target_args_def.dtype, transform_flag) &&
+         !NeedTransformLayout(
+             tensor_in->layout(), target_args_def.layout, transform_flag))) {
+      pt_tensors->emplace_back(
           *std::dynamic_pointer_cast<pten::DenseTensor>(tensor_in));
+    } else {
+      pt_tensors->emplace_back(
+          TransformData(*(static_cast<pten::DenseTensor*>(tensor_in.get())),
+                        target_args_def,
+                        transform_flag));
     }
-    pt_tensors->push_back(TransformData(
-        *(static_cast<pten::DenseTensor*>(tensor_in.get())), target_args_def));
   }
 
   return std::move(pt_tensors);

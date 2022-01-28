@@ -50,6 +50,20 @@ class BackwardAPI:
                     'param']) == 0:
                 self.infer_meta['param'] = None
 
+            self.data_transform = {
+                'skip_transform': [],
+                'support_trans_dtype': []
+            }
+            if 'data_transform' in backward_item_yaml:
+                if 'skip_transform' in backward_item_yaml['data_transform']:
+                    self.data_transform['skip_transform'] = backward_item_yaml[
+                        'data_transform']['skip_transform']
+                if 'support_trans_dtype' in backward_item_yaml[
+                        'data_transform']:
+                    self.data_transform[
+                        'support_trans_dtype'] = backward_item_yaml[
+                            'data_transform']['support_trans_dtype']
+
     def parse_forward_config(self, forward_config):
         # api_name (const Tensor& input, ... , int attr, ...) -> Tensor(out)
         result = re.search(
@@ -136,7 +150,7 @@ class BackwardAPI:
         if self.is_base_api:
             input_tensors, kernel_args = gen_utils.get_kernel_args(
                 self.args['inputs']['names'], self.args['attrs'],
-                self.kernel['param'])
+                self.kernel['param'], self.data_transform)
             outputs_args, output_create = self.gene_output(
                 self.output_type_list)
             return f"""
