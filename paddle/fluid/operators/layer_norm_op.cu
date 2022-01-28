@@ -112,11 +112,49 @@ class LayerNormKernel<platform::CUDADeviceContext, T>
     }                                                                      \
   } while (0)
 
-    if (is_scale_bias_same_dtype_with_x) {
-      PADDLE_LAUNCH_LAYERNORM_FWD(T, true);
-    } else {
-      PADDLE_LAUNCH_LAYERNORM_FWD(U, false);
+#ifdef PADDLE_WITH_CUDA
+    bool can_call_1024_kernel = false;
+    if (feature_size == 1024 && scale != nullptr && bias != nullptr) {
+      can_call_1024_kernel = true;
     }
+    if (can_call_1024_kernel) {
+      const int WARPS_M = 4;
+      const int WARPS_N = 1;
+      const int THREADS_PER_WARP = 32;
+      const int BYTES_PER_LDG = 16;
+      const int VecSize = BYTES_PER_LDG / sizeof(T);
+
+      const int THREADS_PER_CTA = WARPS_N * THREADS_PER_WARP * WARPS_M;
+      const int ROWS_PER_CTA = WARPS_M;
+
+      const int grid = static_cast<int>(
+          std::ceil(batch_size / static_cast<float>(ROWS_PER_CTA)));
+      if (is_scale_bias_same_dtype_with_x) {
+        ln_fwd_1024_kernel<T, U, T, VecSize, WARPS_M, WARPS_N,
+                           BYTES_PER_LDG><<<grid, THREADS_PER_CTA, 0, stream>>>(
+            batch_size, feature_size, epsilon, x_data,
+            static_cast<const T *>(void_scale_data),
+            static_cast<const T *>(void_bias_data), mean_data, var_data,
+            y_data);
+      } else {
+        ln_fwd_1024_kernel<T, U, U, VecSize, WARPS_M, WARPS_N,
+                           BYTES_PER_LDG><<<grid, THREADS_PER_CTA, 0, stream>>>(
+            batch_size, feature_size, epsilon, x_data,
+            static_cast<const U *>(void_scale_data),
+            static_cast<const U *>(void_bias_data), mean_data, var_data,
+            y_data);
+      }
+    } else {
+#endif
+      if (is_scale_bias_same_dtype_with_x) {
+        PADDLE_LAUNCH_LAYERNORM_FWD(T, true);
+      } else {
+        PADDLE_LAUNCH_LAYERNORM_FWD(U, false);
+      }
+#ifdef PADDLE_WITH_CUDA
+    }
+#endif
+
 #undef PADDLE_LAUNCH_LAYERNORM_FWD
   }
 };

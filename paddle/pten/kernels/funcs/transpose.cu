@@ -61,7 +61,7 @@ struct TransposeNormal<GPUContext, T> {
     auto in_stride = pten::framework::stride(in.dims());
     auto out_stride = pten::framework::stride(out->dims());
     auto* in_ptr = in.data<T>();
-    auto* out_ptr = out->mutable_data<T>(dev_ctx.GetPlace());
+    T* out_ptr = dev_ctx.template Alloc<T>(out);
 
     // copy in_stride, out_stride, axis to gpu device
     const paddle::platform::CUDAPlace& cuda_place = dev_ctx.GetPlace();

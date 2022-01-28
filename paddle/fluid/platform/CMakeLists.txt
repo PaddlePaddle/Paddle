@@ -55,6 +55,12 @@ ENDIF()
 cc_library(place SRCS place.cc DEPS enforce boost pten_place)
 cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
 
+IF(WITH_MKLDNN)
+    set(MKLDNN_CTX_DEPS mkldnn)
+ELSE()
+    set(MKLDNN_CTX_DEPS)
+ENDIF()
+
 add_subdirectory(device)
 add_subdirectory(dynload)
 add_subdirectory(stream)
@@ -72,7 +78,7 @@ IF(WITH_GPU OR WITH_ROCM)
 ENDIF()
 
 IF(WITH_IPU)
-    set(IPU_CTX_DEPS ipu_backend)
+    set(IPU_CTX_DEPS ipu_info)
 ELSE()
     set(IPU_CTX_DEPS)
 ENDIF(WITH_IPU)
@@ -83,12 +89,6 @@ ENDIF()
 
 IF(WITH_MLU)
     set(MLU_CTX_DEPS mlu_device_context)
-ENDIF()
-
-IF(WITH_MKLDNN)
-    set(MKLDNN_CTX_DEPS mkldnn)
-ELSE()
-    set(MKLDNN_CTX_DEPS)
 ENDIF()
 
 IF(WITH_ASCEND_CL OR WITH_MLU)
@@ -116,11 +116,17 @@ endif()
 
 cc_library(cudnn_workspace_helper SRCS cudnn_workspace_helper.cc DEPS boost)
 
+# seperate init from device_context to avoid cycle dependencies
+cc_library(init SRCS init.cc DEPS device_context custom_kernel)
+
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
-cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool malloc xxhash ${STREAM_CALLBACK_DEPS}
+cc_library(device_context SRCS device_context.cc DEPS simple_threadpool malloc xxhash ${STREAM_CALLBACK_DEPS}
     place pten_place eigen3 stringpiece cpu_helper cpu_info framework_proto ${IPU_CTX_DEPS} ${GPU_CTX_DEPS} ${NPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
-    ${dgc_deps} dlpack cudnn_workspace_helper ${XPU_CTX_DEPS} ${MLU_CTX_DEPS} cpu_context)
+    ${dgc_deps} dlpack cudnn_workspace_helper ${XPU_CTX_DEPS} ${MLU_CTX_DEPS} eigen3 cpu_context)
+if(WITH_XPU)
+  target_link_libraries(device_context xpu_context)
+endif()
 
 cc_library(collective_helper SRCS collective_helper.cc gen_comm_id_helper.cc DEPS framework_proto device_context enforce)
 if(WITH_ASCEND_CL)

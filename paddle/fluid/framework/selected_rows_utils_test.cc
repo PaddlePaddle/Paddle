@@ -24,7 +24,7 @@ class SelectedRowsTester : public ::testing::Test {
     std::vector<int64_t> rows{0, 4, 7};
     int64_t height = 10;
     int64_t row_numel = 100;
-    selected_rows_.reset(new SelectedRows(rows, height));
+    selected_rows_.reset(new pten::SelectedRows(rows, height));
 
     Tensor* value = selected_rows_->mutable_value();
     auto* data = value->mutable_data<float>(
@@ -36,7 +36,7 @@ class SelectedRowsTester : public ::testing::Test {
 
  protected:
   platform::CPUPlace place_;
-  std::unique_ptr<SelectedRows> selected_rows_{nullptr};
+  std::unique_ptr<pten::SelectedRows> selected_rows_{nullptr};
 };
 
 TEST_F(SelectedRowsTester, height) { ASSERT_EQ(selected_rows_->height(), 10); }
@@ -50,7 +50,7 @@ TEST_F(SelectedRowsTester, complete_dims) {
 }
 
 TEST_F(SelectedRowsTester, SerializeAndDeseralize) {
-  SelectedRows dst_tensor;
+  pten::SelectedRows dst_tensor;
   platform::CPUDeviceContext cpu_ctx(place_);
   std::ostringstream oss;
 
@@ -71,7 +71,7 @@ TEST_F(SelectedRowsTester, SerializeAndDeseralize) {
 
 TEST(SelectedRows, SparseTable) {
   platform::CPUPlace cpu;
-  SelectedRows table;
+  pten::SelectedRows table;
 
   int64_t table_size = 100;
   int64_t embedding_width = 8;
@@ -124,7 +124,7 @@ TEST(SelectedRows, SparseTable) {
   }
 }
 
-void f1(SelectedRows* table, int table_size) {
+void f1(pten::SelectedRows* table, int table_size) {
   for (int i = 1000000; i > 0; --i) {
     auto id = i % table_size;
     int64_t index1 = table->AutoGrownIndex(id, true);
@@ -135,7 +135,7 @@ void f1(SelectedRows* table, int table_size) {
   }
 }
 
-void f2(SelectedRows* table, int table_size) {
+void f2(pten::SelectedRows* table, int table_size) {
   for (int i = 0; i < 1000000; ++i) {
     auto id = i % table_size;
     int64_t index1 = table->AutoGrownIndex(id, true);
@@ -146,7 +146,7 @@ void f2(SelectedRows* table, int table_size) {
   }
 }
 
-void f3(SelectedRows* table, int table_size) {
+void f3(pten::SelectedRows* table, int table_size) {
   clock_t t1 = clock();
   for (int i = 100000; i > 0; --i) {
     auto id1 = table->AutoGrownIndex(i % table_size, true);
@@ -157,7 +157,7 @@ void f3(SelectedRows* table, int table_size) {
   std::cout << "f3 run time:" << t2 - t1 << std::endl;
 }
 
-void f4(SelectedRows* table, int table_size) {
+void f4(pten::SelectedRows* table, int table_size) {
   clock_t t1 = clock();
   for (int i = 0; i < 100000; ++i) {
     auto id1 = table->AutoGrownIndex(i % table_size, true);
@@ -170,7 +170,7 @@ void f4(SelectedRows* table, int table_size) {
 
 TEST(SelectedRows, MultiThreadAutoIndex) {
   platform::CPUPlace cpu;
-  SelectedRows table;
+  pten::SelectedRows table;
 
   int64_t table_size = 100000;
   int64_t embedding_width = 8;
