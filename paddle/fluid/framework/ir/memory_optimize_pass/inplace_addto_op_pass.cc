@@ -227,7 +227,8 @@ static bool IsValidConv2DGradDataGradNode(const Node &node) {
   auto *generated_op = node.inputs[0];
   auto *op_desc = generated_op->Op();
   if (op_desc == nullptr || (op_desc->Type() != "conv2d_grad" &&
-                             op_desc->Type() != "resnet_unit_grad")) {
+                             op_desc->Type() != "resnet_unit_grad" &&
+                             op_desc->Type() != "matmul_v2_grad")) {
     return false;
   }
   const auto &outputs = op_desc->Outputs();
