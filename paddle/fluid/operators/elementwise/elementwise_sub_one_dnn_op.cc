@@ -15,6 +15,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/operators/elementwise/elementwise_sub_one_dnn_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_sub_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 
 namespace paddle {

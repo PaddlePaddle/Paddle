@@ -15,6 +15,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/operators/elementwise/elementwise_add_one_dnn_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 
 namespace paddle {
@@ -35,7 +36,7 @@ namespace operators {
 class ElementwiseAddOneDNNOpMaker : public ElementwiseOpMaker {
  protected:
   std::string GetName() const override { return "Add"; }
-  std::string GetEquation() const override { return "Out = X - Y"; }
+  std::string GetEquation() const override { return "Out = X + Y"; }
 
   void AddInputX() override {
     AddInput("X",
@@ -99,9 +100,10 @@ REGISTER_OP_CPU_KERNEL(
 
 REGISTER_OP_VERSION(elementwise_add_one_dnn)
     .AddCheckpoint(
-        R"ROC(Register elementwise_sub for adding the attribute of Scale_y)ROC",
+        R"ROC(Register elementwise_add for adding the attribute of
+		Scale_y)ROC",
         paddle::framework::compatible::OpVersionDesc().NewAttr(
             "Scale_y",
             "In order to support the function of scaling the input Y when "
-            "using the operator of elementwise_sub.",
+            "using the operator of elementwise_add.",
             1.0f));
