@@ -15,9 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
+#include "paddle/fluid/framework/fleet/metrics.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/string/string_helper.h"
-#include "paddle/fluid/framework/fleet/metrics.h"
 
 #if defined _WIN32 || defined __APPLE__
 #else
@@ -26,8 +26,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-std::shared_ptr<Metric> Metric::s_instance_ = nullptr;
-
 void DownpourWorker::Initialize(const TrainerDesc& desc) {
   param_ = desc.downpour_param();
   for (int i = 0; i < param_.sparse_table_size(); ++i) {

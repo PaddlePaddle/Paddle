@@ -22,7 +22,7 @@
 namespace paddle {
 namespace framework {
 
-// std::shared_ptr<Metric> Metric::s_instance_ = nullptr;
+std::shared_ptr<Metric> Metric::s_instance_ = nullptr;
 
 void BasicAucCalculator::init(int table_size) {
   set_table_size(table_size);
