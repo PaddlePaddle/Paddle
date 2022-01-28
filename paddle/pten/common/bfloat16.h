@@ -381,31 +381,31 @@ struct numeric_limits<pten::dtype::bfloat16> {
   static const bool traps = true;
   static const bool tinyness_before = false;
 
-  static pten::dtype::bfloat16(min)() {
+  HOSTDEVICE static pten::dtype::bfloat16(min)() {
     return pten::dtype::raw_uint16_to_bfloat16(0x007f);
   }
-  static pten::dtype::bfloat16 lowest() {
+  HOSTDEVICE static pten::dtype::bfloat16 lowest() {
     return pten::dtype::raw_uint16_to_bfloat16(0xff7f);
   }
-  static pten::dtype::bfloat16(max)() {
+  HOSTDEVICE static pten::dtype::bfloat16(max)() {
     return pten::dtype::raw_uint16_to_bfloat16(0x7f7f);
   }
-  static pten::dtype::bfloat16 epsilon() {
+  HOSTDEVICE static pten::dtype::bfloat16 epsilon() {
     return pten::dtype::raw_uint16_to_bfloat16(0x3400);
   }
-  static pten::dtype::bfloat16 round_error() {
+  HOSTDEVICE static pten::dtype::bfloat16 round_error() {
     return pten::dtype::bfloat16(0.5);
   }
-  static pten::dtype::bfloat16 infinity() {
+  HOSTDEVICE static pten::dtype::bfloat16 infinity() {
     return pten::dtype::raw_uint16_to_bfloat16(0x7f80);
   }
-  static pten::dtype::bfloat16 quiet_NaN() {
+  HOSTDEVICE static pten::dtype::bfloat16 quiet_NaN() {
     return pten::dtype::raw_uint16_to_bfloat16(0xffc1);
   }
-  static pten::dtype::bfloat16 signaling_NaN() {
+  HOSTDEVICE static pten::dtype::bfloat16 signaling_NaN() {
     return pten::dtype::raw_uint16_to_bfloat16(0xff81);
   }
-  static pten::dtype::bfloat16 denorm_min() {
+  HOSTDEVICE static pten::dtype::bfloat16 denorm_min() {
     return pten::dtype::raw_uint16_to_bfloat16(0x0001);
   }
 };

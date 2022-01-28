@@ -46,6 +46,12 @@ class VecT4<platform::float16> {
   using Type = int2;
 };
 
+template <>
+class VecT4<platform::bfloat16> {
+ public:
+  using Type = int2;
+};
+
 // Vectorization trait 2 * sizeof(T)
 template <typename T>
 class VecT2 {};
@@ -61,6 +67,12 @@ class VecT2<float> {
 };
 template <>
 class VecT2<platform::float16> {
+ public:
+  using Type = int;
+};
+
+template <>
+class VecT2<platform::bfloat16> {
  public:
   using Type = int;
 };
