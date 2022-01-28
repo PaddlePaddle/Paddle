@@ -146,7 +146,7 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
                          int index = 0) override {
     VLOG(10) << "Set data type in infer var type of Eager mode is meaning less "
                 "for var: "
-             << GetNameFromVar(out);
+             << name;
   }
 
   bool IsDygraph() const override { return true; }

@@ -64,15 +64,19 @@ class Tracer {
   ~Tracer() = default;
 
   template <typename VarType>
-  void TraceOp(const std::string& type, const NameVarBaseMap& ins,
-               const NameVarBaseMap& outs, framework::AttributeMap attrs,
+  void TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
+               const NameVarMap<VarType>& outs, framework::AttributeMap attrs,
                const platform::Place& place, bool trace_backward,
                const std::map<std::string, std::string>& inplace_map = {},
-               paddle::framework::AttributeMap* default_attrs = nullptr,
+               paddle::framework::AttributeMap* passed_default_attrs_ = nullptr,
                bool override_default_attr_map = true);
 
   void TraceOp(const std::string& type, const NameVarBaseMap& ins,
                const NameVarBaseMap& outs, framework::AttributeMap attrs,
+               const std::map<std::string, std::string>& inplace_map = {});
+
+  void TraceOp(const std::string& type, const NameTensorMap& ins,
+               const NameTensorMap& outs, paddle::framework::AttributeMap attrs,
                const std::map<std::string, std::string>& inplace_map = {});
 
   void TraceOp(const std::string& type, const NameTensorMap& ins,
@@ -84,9 +88,10 @@ class Tracer {
 
   bool ComputeRequiredGrad(const NameVarBaseMap& ins,
                            const NameVarBaseMap& outs, bool trace_backward);
-  bool ComputeRequiredGrad(
-      const NameTensorMap& ins, const NameTensorMap& outs,
-      bool trace_backward) void SetEnableProgramDescTracing(bool enabled) {
+  bool ComputeRequiredGrad(const NameTensorMap& ins, const NameTensorMap& outs,
+                           bool trace_backward);
+
+  void SetEnableProgramDescTracing(bool enabled) {
     enable_program_desc_tracing_ = enabled;
   }
 

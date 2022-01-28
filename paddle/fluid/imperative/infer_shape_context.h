@@ -21,8 +21,8 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/type_defs.h"
-#include "paddle/fluid/imperative/tensor_helper.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/imperative/var_helper.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
 
 namespace paddle {

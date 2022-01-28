@@ -15,12 +15,11 @@
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include <memory>
 #include <string>
+#include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/imperative/tracer.h"
+#include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/var_helper.h"
 
-namespace egr {
-class EagerTensor;
-}
 namespace paddle {
 namespace imperative {
 
@@ -100,12 +99,12 @@ std::ostream& operator<<(std::ostream& os, AmpOperators& ops) {
 
 template <typename VarType>
 inline std::string GetDtypeStr(const std::shared_ptr<VarType>& var) {
-  return framework::DataTypeToString(GetDataType(var));
+  return framework::DataTypeToString(GetDataType<VarType>(var));
 }
 template <typename VarType>
 inline bool NeedCast(const std::shared_ptr<VarType>& var) {
-  auto place = GetPlaceFromVar(var->Var());
-  auto data_type = GetDtypeFromVar(var->Var());
+  auto place = GetPlace(var);
+  auto data_type = GetDataType<VarType>(var);
   if (paddle::platform::is_gpu_place(place) ||
       paddle::platform::is_cuda_pinned_place(place) ||
       paddle::platform::is_xpu_place(place)) {
@@ -126,7 +125,7 @@ static inline std::shared_ptr<VarType> CastToType(
     const framework::proto::VarType::Type dst_type) {
   const auto& tracer = imperative::GetCurrentTracer();
   imperative::NameVarMap<VarType> ins = {{"X", {var}}};
-  framework::AttributeMap attrs = {{"in_dtype", var->DataType()},
+  framework::AttributeMap attrs = {{"in_dtype", GetDataType<VarType>(var)},
                                    {"out_dtype", dst_type}};
   auto out =
       std::shared_ptr<VarType>(new VarType(tracer->GenerateUniqueName()));
@@ -143,7 +142,7 @@ template <typename VarType>
 static inline std::shared_ptr<VarType> CastToFP16(
     const std::shared_ptr<VarType>& var) {
   auto dst_type = framework::proto::VarType::FP16;
-  if (NeedCast(var) && (GetDataType(var) != dst_type)) {
+  if (NeedCast(var) && (GetDataType<VarType>(var) != dst_type)) {
     return CastToType(var, dst_type);
   }
   return var;
@@ -151,9 +150,9 @@ static inline std::shared_ptr<VarType> CastToFP16(
 
 template <typename VarType>
 static inline std::shared_ptr<VarType> CastToFP32(
-    const std::shared_ptr<VarBase>& var) {
+    const std::shared_ptr<VarType>& var) {
   auto dst_type = framework::proto::VarType::FP32;
-  if (NeedCast(var) && (GetDataType(var) != dst_type)) {
+  if (NeedCast(var) && (GetDataType<VarType>(var) != dst_type)) {
     return CastToType(var, dst_type);
   }
   return var;
@@ -165,8 +164,8 @@ static inline framework::proto::VarType::Type GetPromoteType(
   auto dst_type = framework::proto::VarType::FP16;
   for (const auto& pair : ins) {
     for (const auto& var : pair.second) {
-      if (GetDataType(var) == framework::proto::VarType::FP32) {
-        dst_type = GetDataType(var);
+      if (GetDataType<VarType>(var) == framework::proto::VarType::FP32) {
+        dst_type = GetDataType<VarType>(var);
         break;
       }
     }
@@ -177,7 +176,7 @@ static inline framework::proto::VarType::Type GetPromoteType(
   if (op_type == "moving_average_abs_max_scale") {
     for (const auto& pair : ins) {
       if (pair.first == "X" &&
-          GetDataType(*pair.second.front()) ==
+          GetDataType<VarType>(pair.second.front()) ==
               framework::proto::VarType::FP16) {
         dst_type = framework::proto::VarType::FP16;
       }
@@ -211,7 +210,7 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
       VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
               << GetDtypeStr(*pair.second.cbegin()) << " to float16";
       for (auto& var : pair.second) {
-        var = CastToFP16(var);
+        var = CastToFP16<VarType>(var);
       }
     }
     return new_ins;
@@ -220,12 +219,12 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
       VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
               << GetDtypeStr(*pair.second.cbegin()) << " to float";
       for (auto& var : pair.second) {
-        var = CastToFP32(var);
+        var = CastToFP32<VarType>(var);
       }
     }
     return new_ins;
   } else {
-    auto dst_type = GetPromoteType(op_type, ins);
+    auto dst_type = GetPromoteType<VarType>(op_type, ins);
 
     // NOTE(zhiqiu): if the op has op fp16 kernel, fall back to fp32.
     if (dst_type == framework::proto::VarType::FP16 &&
@@ -252,19 +251,23 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
               << GetDtypeStr(*pair.second.cbegin()) << " to "
               << framework::DataTypeToString(dst_type);
       for (auto& var : pair.second) {
-        var = (dst_type == framework::proto::VarType::FP32 ? CastToFP32(var)
-                                                           : CastToFP16(var));
+        var = (dst_type == framework::proto::VarType::FP32
+                   ? CastToFP32<VarType>(var)
+                   : CastToFP16<VarType>(var));
       }
     }
     return new_ins;
   }
   return new_ins;
 }
-
+template NameVarMap<VarBase> AutoCastInputs<VarBase>(
+    const std::string& op_type, const NameVarMap<VarBase>& ins);
+template NameVarMap<egr::EagerTensor> AutoCastInputs<egr::EagerTensor>(
+    const std::string& op_type, const NameVarMap<egr::EagerTensor>& ins);
 template <typename VarType>
-NameVarType<VarType> CastPureFp16Inputs(const std::string& op_type,
-                                        const NameVarType<VarType>& ins) {
-  NameVarType<VarType> new_ins(ins);
+NameVarMap<VarType> CastPureFp16Inputs(const std::string& op_type,
+                                       const NameVarMap<VarType>& ins) {
+  NameVarMap<VarType> new_ins(ins);
   auto dst_type = framework::proto::VarType::FP16;
   if (AmpOperators::Instance().GetMutableUnsupportedFp16Ops()->count(op_type) ||
       AmpOperators::Instance().GetMutableBlockOps()->count(op_type)) {
@@ -294,12 +297,16 @@ NameVarType<VarType> CastPureFp16Inputs(const std::string& op_type,
             << GetDtypeStr(*pair.second.cbegin()) << " to "
             << framework::DataTypeToString(dst_type);
     for (auto& var : pair.second) {
-      var = (dst_type == framework::proto::VarType::FP32 ? CastToFP32(var)
-                                                         : CastToFP16(var));
+      var = (dst_type == framework::proto::VarType::FP32
+                 ? CastToFP32<VarType>(var)
+                 : CastToFP16<VarType>(var));
     }
   }
   return new_ins;
 }
-
+template NameVarMap<VarBase> CastPureFp16Inputs<VarBase>(
+    const std::string& op_type, const NameVarMap<VarBase>& ins);
+template NameVarMap<egr::EagerTensor> CastPureFp16Inputs<egr::EagerTensor>(
+    const std::string& op_type, const NameVarMap<egr::EagerTensor>& ins);
 }  // namespace imperative
 }  // namespace paddle

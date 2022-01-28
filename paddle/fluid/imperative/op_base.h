@@ -121,6 +121,8 @@ class OpBase {
   const framework::AttributeMap& DefaultAttrsMap() { return *default_attrs_; }
 
   bool HasAttr(const std::string& name) const {
+    VLOG(6) << "Default attrs: " << default_attrs_;
+    VLOG(6) << "attrs: " << &attrs_;
     return attrs_.count(name) > 0 || default_attrs_->count(name) > 0;
   }
 
@@ -179,6 +181,12 @@ class OpBase {
   static void Run(const framework::OperatorBase& op,
                   const NameVarMap<VariableWrapper>& ins,
                   const NameVarMap<VariableWrapper>& outs,
+                  const framework::AttributeMap& attrs,
+                  const framework::AttributeMap& default_attrs,
+                  const platform::Place& place);
+  static void Run(const framework::OperatorBase& op,
+                  const NameVarMap<egr::EagerTensor>& ins,
+                  const NameVarMap<egr::EagerTensor>& outs,
                   const framework::AttributeMap& attrs,
                   const framework::AttributeMap& default_attrs,
                   const platform::Place& place);

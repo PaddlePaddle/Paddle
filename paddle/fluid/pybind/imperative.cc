@@ -2305,9 +2305,9 @@ void BindImperative(py::module *m_ptr) {
              auto outs_map = ConvertToNameVarBaseMap(outs);
              {
                py::gil_scoped_release release;
-               self.TraceOp(type, std::move(ins_map), std::move(outs_map),
-                            std::move(attrs), place, trace_backward,
-                            inplace_map);
+               self.TraceOp<imperative::VarBase>(
+                   type, std::move(ins_map), std::move(outs_map),
+                   std::move(attrs), place, trace_backward, inplace_map);
              }
            })
       .def("trace",
@@ -2320,9 +2320,9 @@ void BindImperative(py::module *m_ptr) {
              auto outs_map = ConvertToNameVarBaseMap(outs);
              {
                py::gil_scoped_release release;
-               self.TraceOp(type, std::move(ins_map), std::move(outs_map),
-                            std::move(attrs), place, trace_backward,
-                            inplace_map);
+               self.TraceOp<imperative::VarBase>(
+                   type, std::move(ins_map), std::move(outs_map),
+                   std::move(attrs), place, trace_backward, inplace_map);
              }
            })
       .def("trace",
@@ -2335,9 +2335,9 @@ void BindImperative(py::module *m_ptr) {
              auto outs_map = ConvertToNameVarBaseMap(outs);
              {
                py::gil_scoped_release release;
-               self.TraceOp(type, std::move(ins_map), std::move(outs_map),
-                            std::move(attrs), place, trace_backward,
-                            inplace_map);
+               self.TraceOp<imperative::VarBase>(
+                   type, std::move(ins_map), std::move(outs_map),
+                   std::move(attrs), place, trace_backward, inplace_map);
              }
            })
       .def("trace",
@@ -2350,9 +2350,9 @@ void BindImperative(py::module *m_ptr) {
              auto outs_map = ConvertToNameVarBaseMap(outs);
              {
                py::gil_scoped_release release;
-               self.TraceOp(type, std::move(ins_map), std::move(outs_map),
-                            std::move(attrs), place, trace_backward,
-                            inplace_map);
+               self.TraceOp<imperative::VarBase>(
+                   type, std::move(ins_map), std::move(outs_map),
+                   std::move(attrs), place, trace_backward, inplace_map);
              }
            })
       .def("trace",
@@ -2365,9 +2365,9 @@ void BindImperative(py::module *m_ptr) {
              auto outs_map = ConvertToNameVarBaseMap(outs);
              {
                py::gil_scoped_release release;
-               self.TraceOp(type, std::move(ins_map), std::move(outs_map),
-                            std::move(attrs), place, trace_backward,
-                            inplace_map);
+               self.TraceOp<imperative::VarBase>(
+                   type, std::move(ins_map), std::move(outs_map),
+                   std::move(attrs), place, trace_backward, inplace_map);
              }
            });
 

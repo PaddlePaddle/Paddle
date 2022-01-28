@@ -135,11 +135,19 @@ class ScaleGradMaker : public framework::SingleGradOpMaker<T> {
       grad_op->SetInput("ScaleTensor", this->Input("ScaleTensor"));
     }
     grad_op->SetOutput("Out", this->InputGrad("X"));
+    VLOG(6) << "Finish SetOutput";
     grad_op->SetAttr("scale", this->GetAttr("scale"));
+    VLOG(6) << "Finish Set Attr scale";
     grad_op->SetAttr("bias", 0.0f);
+    VLOG(6) << "Finish Set Attr bias";
     grad_op->SetAttr("bias_after_scale", true);
-    if (grad_op->HasAttr("use_mkldnn"))
+    VLOG(6) << "Finish Set Attr bias_after_scale";
+    if (grad_op->HasAttr("use_mkldnn")) {
+      VLOG(6) << "Finish Check Attr use_mkldnn";
       grad_op->SetAttr("use_mkldnn", this->GetAttr("use_mkldnn"));
+      VLOG(6) << "Finish Set Attr use_mkldnn";
+    }
+    VLOG(6) << "Finish Apply";
   }
 };
 

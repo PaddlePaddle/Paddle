@@ -71,7 +71,7 @@ static const framework::Attribute& GetAttr(
 }
 
 template <typename VarType>
-static void HandleComplexGradToRealGrad(const NameVarMap<VarType>& outs) {
+void HandleComplexGradToRealGrad(const NameVarMap<VarType>& outs) {
   for (auto& pair : outs) {
     for (auto& var : pair.second) {
       if (var == nullptr) {
@@ -103,7 +103,7 @@ static void HandleComplexGradToRealGrad(const NameVarMap<VarType>& outs) {
 }
 
 template <>
-static void HandleComplexGradToRealGrad(
+void HandleComplexGradToRealGrad<egr::EagerTensor>(
     const NameVarMap<egr::EagerTensor>& outs) {
   // TODO(jiabin): Support Complex here.
 }

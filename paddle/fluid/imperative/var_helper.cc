@@ -21,20 +21,22 @@
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/platform/place.h"
-
+#include "paddle/pten/core/selected_rows.h"
 namespace paddle {
 namespace imperative {
 
-const std::shared_ptr<VariableWrapper> &GetVariableWrapper(
-    const std::shared_ptr<paddle::imperative::VarBase> &var) {
+/* GetVariableWrapper */
+template <>
+const std::shared_ptr<VariableWrapper> &GetVariableWrapper<VarBase>(
+    const std::shared_ptr<VarBase> &var) {
   return var->SharedVar();
 }
-
-const std::shared_ptr<VariableWrapper> &GetVariableWrapper(
+template <>
+const std::shared_ptr<VariableWrapper> &GetVariableWrapper<VariableWrapper>(
     const std::shared_ptr<VariableWrapper> &var) {
   return var;
 }
@@ -44,7 +46,7 @@ void InitializeVariable(paddle::framework::Variable *var,
   if (var_type == paddle::framework::proto::VarType::LOD_TENSOR) {
     var->GetMutable<paddle::framework::LoDTensor>();
   } else if (var_type == paddle::framework::proto::VarType::SELECTED_ROWS) {
-    var->GetMutable<paddle::framework::SelectedRows>();
+    var->GetMutable<pten::SelectedRows>();
   } else if (var_type == paddle::framework::proto::VarType::FEED_MINIBATCH) {
     var->GetMutable<paddle::framework::FeedList>();
   } else if (var_type == paddle::framework::proto::VarType::FETCH_LIST) {
@@ -84,9 +86,9 @@ void CopyVariable(const paddle::framework::Variable &src_var,
     auto &src_tensor = src_var.Get<paddle::framework::LoDTensor>();
     tmp_grad_tensor->set_lod(src_tensor.lod());
     paddle::framework::TensorCopy(src_tensor, cpu_place, tmp_grad_tensor);
-  } else if (src_var.IsType<paddle::framework::SelectedRows>()) {
-    auto &src_slr = src_var.Get<paddle::framework::SelectedRows>();
-    auto *tmp_grad_slr = dst_var->GetMutable<paddle::framework::SelectedRows>();
+  } else if (src_var.IsType<pten::SelectedRows>()) {
+    auto &src_slr = src_var.Get<pten::SelectedRows>();
+    auto *tmp_grad_slr = dst_var->GetMutable<pten::SelectedRows>();
     tmp_grad_slr->set_rows(src_slr.rows());
     tmp_grad_slr->set_height(src_slr.height());
     auto &src_t = src_slr.value();
@@ -97,51 +99,59 @@ void CopyVariable(const paddle::framework::Variable &src_var,
         "Unknown variable type to copy."));
   }
 }
-paddle::framework::proto::VarType::Type GetDtypeFromVar(
-    const paddle::framework::Variable &var) {
-  if (var.IsType<paddle::framework::LoDTensor>()) {
-    return var.Get<paddle::framework::LoDTensor>().type();
-  } else if (var.IsType<paddle::framework::SelectedRows>()) {
-    return var.Get<paddle::framework::SelectedRows>().value().type();
-  } else {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "Variable type is %s, expect LoDTensor or SelectedRows.",
-        paddle::framework::ToTypeName(var.Type())));
-  }
-}
-const paddle::platform::Place &GetPlaceFromVar(
-    const paddle::framework::Variable &var) {
-  if (var.IsType<paddle::framework::LoDTensor>()) {
-    return var.Get<paddle::framework::LoDTensor>().place();
-  } else if (var.IsType<paddle::framework::SelectedRows>()) {
-    return var.Get<paddle::framework::SelectedRows>().place();
-  } else {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "Variable type is %s, expect LoDTensor or SelectedRows.",
-        paddle::framework::ToTypeName(var.Type())));
-  }
-}
 
-std::string GetNameFromVar(const egr::EagerTensor &tensor) {
+/* GetPlace */
+template <typename VarType>
+const paddle::platform::Place &GetPlace(const std::shared_ptr<VarType> &var) {
+  paddle::framework::Variable variable = var->Var();
+  if (variable.IsType<paddle::framework::LoDTensor>()) {
+    return variable.Get<paddle::framework::LoDTensor>().place();
+  } else if (variable.IsType<pten::SelectedRows>()) {
+    return variable.Get<pten::SelectedRows>().place();
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "Variable type is %s, expect LoDTensor or SelectedRows.",
+        paddle::framework::ToTypeName(var->Var().Type())));
+  }
+}
+template const paddle::platform::Place &GetPlace<VarBase>(
+    const std::shared_ptr<VarBase> &var);
+template const paddle::platform::Place &GetPlace<VariableWrapper>(
+    const std::shared_ptr<VariableWrapper> &var);
+template const paddle::platform::Place &GetPlace<egr::EagerTensor>(
+    const std::shared_ptr<egr::EagerTensor> &var);
+
+/* GetNameFromVar */
+template <typename VarType>
+const std::string &GetNameFromVar(std::shared_ptr<VarType> var) {
+  return var->Name();
+}
+template <>
+const std::string &GetNameFromVar<egr::EagerTensor>(
+    std::shared_ptr<egr::EagerTensor> tensor) {
   return tensor->name();
 }
+template const std::string &GetNameFromVar<VariableWrapper>(
+    std::shared_ptr<VariableWrapper> var);
+template const std::string &GetNameFromVar<VarBase>(
+    std::shared_ptr<VarBase> var);
 
-std::string GetNameFromVar(const VarBase &var) { return var->Name(); }
-
-void SetType(std::shared_ptr<VarBase> var,
+/* SetType */
+template <typename VarType>
+void SetType(std::shared_ptr<VarType> var,
              framework::proto::VarType::Type type) {
   var->SetType(type);
 }
-
-void SetType(std::shared_ptr<egr::EagerTensor> var,
-             framework::proto::VarType::Type type) {
+template <>
+void SetType<egr::EagerTensor>(std::shared_ptr<egr::EagerTensor> var,
+                               framework::proto::VarType::Type type) {
   switch (type) {
     case paddle::framework::proto::VarType::LOD_TENSOR: {
       var->MutableVar()->GetMutable<paddle::framework::LoDTensor>();
       break;
     }
     case paddle::framework::proto::VarType::SELECTED_ROWS: {
-      var->MutableVar()->GetMutable<paddle::framework::SelectedRows>();
+      var->MutableVar()->GetMutable<pten::SelectedRows>();
       break;
     }
     default: {
@@ -151,55 +161,84 @@ void SetType(std::shared_ptr<egr::EagerTensor> var,
     }
   }
 }
+template void SetType<VarBase>(std::shared_ptr<VarBase> var,
+                               framework::proto::VarType::Type type);
+template void SetType<VariableWrapper>(std::shared_ptr<VariableWrapper> var,
+                                       framework::proto::VarType::Type type);
 
-framework::proto::VarType::Type GetType(std::shared_ptr<egr::EagerTensor> var) {
+/* GetType */
+template <typename VarType>
+framework::proto::VarType::Type GetType(std::shared_ptr<VarType> var) {
+  return var->Type();
+}
+template <>
+framework::proto::VarType::Type GetType<egr::EagerTensor>(
+    std::shared_ptr<egr::EagerTensor> var) {
   if (var->Var().IsInitialized()) {
     return paddle::framework::ToVarType(var->Var().Type());
   } else {
     return paddle::framework::proto::VarType::LOD_TENSOR;
   }
 }
+template framework::proto::VarType::Type GetType<VarBase>(
+    std::shared_ptr<VarBase> var);
+template framework::proto::VarType::Type GetType<VariableWrapper>(
+    std::shared_ptr<VariableWrapper> var);
 
-framework::proto::VarType::Type GetType(std::shared_ptr<VarBase> var) {
-  return var->Type();
+/* GetDataType */
+template <typename VarType>
+framework::proto::VarType::Type GetDataType(std::shared_ptr<VarType> var) {
+  return var->DataType();
 }
-
-framework::proto::VarType::Type GetDataType(
+template <>
+framework::proto::VarType::Type GetDataType<egr::EagerTensor>(
     std::shared_ptr<egr::EagerTensor> var) {
-  if (var->Var().IsType<framework::SelectedRows>()) {
-    var->Var().Get<framework::SelectedRows>().type();
+  if (var->Var().IsType<pten::SelectedRows>()) {
+    return var->Var().Get<pten::SelectedRows>().value().type();
   } else if (var->Var().IsType<framework::LoDTensor>()) {
-    var->Var().Get<framework::LoDTensor>().type();
+    return var->Var().Get<framework::LoDTensor>().type();
   } else {
     PADDLE_THROW(paddle::platform::errors::PermissionDenied(
-        "We only support framework::SelectedRows and framework::LoDTensor in "
+        "We only support pten::SelectedRows and framework::LoDTensor in "
         "eager mode, but we got %s here, please checkout your var type of "
         "tensor: %s",
         paddle::framework::ToTypeName(framework::ToVarType(var->Var().Type())),
         var->name()));
   }
 }
+template framework::proto::VarType::Type GetDataType<VarBase>(
+    std::shared_ptr<VarBase> var);
+template framework::proto::VarType::Type GetDataType<VariableWrapper>(
+    std::shared_ptr<VariableWrapper> var);
 
-framework::proto::VarType::Type GetDataType(std::shared_ptr<VarBase> var) {
-  return var->DataType();
-}
-
-bool CheckCachedKey(std::shared_ptr<VarBase> var,
+/* CheckCachedKey */
+template <typename VarType>
+bool CheckCachedKey(std::shared_ptr<VarType> var,
                     const paddle::framework::OpKernelType &key) {
-  GetVariableWrapper(var)->hasCacheKey(key);
+  return GetVariableWrapper(var)->hasCacheKey(key);
 }
-bool CheckCachedKey(std::shared_ptr<egr::EagerTensor> tensor,
-                    const paddle::framework::OpKernelType &key) {
+template <>
+bool CheckCachedKey<egr::EagerTensor>(
+    std::shared_ptr<egr::EagerTensor> tensor,
+    const paddle::framework::OpKernelType &key) {
   // TODO(jiabin): Support this later
   // VLOG(10) << "CheckCachedKey with tensor: " << tensor->name() << "and key is
   // equal to self: " << key == key.
   return false;
 }
+template bool CheckCachedKey<VarBase>(
+    std::shared_ptr<VarBase> var, const paddle::framework::OpKernelType &key);
+template bool CheckCachedKey<VariableWrapper>(
+    std::shared_ptr<VariableWrapper> var,
+    const paddle::framework::OpKernelType &key);
+
+/* GetCachedValue */
+template <typename VarType>
 std::shared_ptr<VariableWrapper> GetCachedValue(
-    std::shared_ptr<VarBase> tensor,
-    const paddle::framework::OpKernelType &key) {
+    std::shared_ptr<VarType> var, const paddle::framework::OpKernelType &key) {
   return GetVariableWrapper(var)->getCacheValue(key);
 }
+template <>
 std::shared_ptr<VariableWrapper> GetCachedValue(
     std::shared_ptr<egr::EagerTensor> var,
     const paddle::framework::OpKernelType &key) {
@@ -211,19 +250,36 @@ std::shared_ptr<VariableWrapper> GetCachedValue(
   //   is equal to self: " << key == key.
   return std::make_shared<VariableWrapper>("");
 }
-void SetCachedValue(std::shared_ptr<egr::EagerTensor> tensor,
+template std::shared_ptr<VariableWrapper> GetCachedValue<VarBase>(
+    std::shared_ptr<VarBase> var, const paddle::framework::OpKernelType &key);
+template std::shared_ptr<VariableWrapper> GetCachedValue<VariableWrapper>(
+    std::shared_ptr<VariableWrapper> var,
+    const paddle::framework::OpKernelType &key);
+
+/* SetCachedValue */
+template <typename VarType>
+void SetCachedValue(std::shared_ptr<VarType> var,
                     const paddle::framework::OpKernelType &key,
-                    std::shared_ptr<VarBase> res) {
+                    std::shared_ptr<VarType> res) {
+  GetVariableWrapper(var)->setCacheValue(key, GetVariableWrapper(res));
+}
+template <>
+void SetCachedValue<egr::EagerTensor>(
+    std::shared_ptr<egr::EagerTensor> tensor,
+    const paddle::framework::OpKernelType &key,
+    std::shared_ptr<egr::EagerTensor> res) {
   //   PADDLE_THROW(platform::errors::Fatal("In eager mode program should not
   //   reach this, support cache and remove this error check later, or this
   //   should not be supported."));
   //   VLOG(10) << "CheckCachedKey with tensor: " << tensor->name() << "and key
   //   is equal to self: " << key == key << " and res name is:" << res->Name().
 }
-void SetCachedValue(std::shared_ptr<VarBase> var,
-                    const paddle::framework::OpKernelType &key,
-                    std::shared_ptr<VarBase> res) {
-  GetVariableWrapper(var)->setCacheValue(key, GetVariableWrapper(res));
-}
+template void SetCachedValue<VarBase>(
+    std::shared_ptr<VarBase> var, const paddle::framework::OpKernelType &key,
+    std::shared_ptr<VarBase> res);
+template void SetCachedValue<VariableWrapper>(
+    std::shared_ptr<VariableWrapper> var,
+    const paddle::framework::OpKernelType &key,
+    std::shared_ptr<VariableWrapper> res);
 }  // namespace imperative
 }  // namespace paddle

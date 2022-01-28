@@ -19,7 +19,7 @@
 #include "paddle/fluid/imperative/infer_var_type_context.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/prepared_operator.h"
-#include "paddle/fluid/imperative/tensor_helper.h"
+#include "paddle/fluid/imperative/var_helper.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -106,9 +106,9 @@ static std::string DebugString(
         ss << "NOT_INITED";
       }
       ss << ">";
-    } else if (var.IsType<framework::SelectedRows>()) {
+    } else if (var.IsType<pten::SelectedRows>()) {
       ss << "SelectedRows<";
-      auto& selected_rows = var.Get<framework::SelectedRows>();
+      auto& selected_rows = var.Get<pten::SelectedRows>();
       auto& tensor = selected_rows.value();
       auto& rows = selected_rows.rows();
       if (tensor.IsInitialized()) {
@@ -176,7 +176,8 @@ std::string LayerDebugString(const std::string& op_type,
   return LayerDebugStringImpl<egr::EagerTensor>(op_type, ins, outs);
 }
 
-static void SetForwardDataTypeOfGradVars(const NameVarMap<VarBase>& outs) {
+template <typename VarType>
+static void SetForwardDataTypeOfGradVars(const NameVarMap<VarType>& outs) {
   for (auto& var_pair : outs) {
     for (auto& var : var_pair.second) {
       // NOTE(zhiqu): The ouput may be NULL because of pruning.
@@ -186,8 +187,9 @@ static void SetForwardDataTypeOfGradVars(const NameVarMap<VarBase>& outs) {
     }
   }
 }
-
-void SetForwardDataTypeOfGradVars(const NameVarMap<egr::EagerTensor>& outs) {
+template <>
+void SetForwardDataTypeOfGradVars<egr::EagerTensor>(
+    const NameVarMap<egr::EagerTensor>& outs) {
   // In eager mode we don't need this.
 }
 
@@ -498,7 +500,7 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
   VLOG(4) << LayerDebugString(op.Type(), ins, outs);
 
   // set the output var
-  SetForwardDataTypeOfGradVars(outs);
+  SetForwardDataTypeOfGradVars<VarType>(outs);
 }
 
 void OpBase::Run(const framework::OperatorBase& op,
@@ -586,6 +588,15 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
   } else {
     return nullptr;
   }
+}
+
+std::shared_ptr<GradOpNode> CreateGradOpNode(
+    const framework::OperatorBase& op, const NameTensorMap& ins,
+    const NameTensorMap& outs, const framework::AttributeMap& attrs,
+    const framework::AttributeMap& default_attrs, const platform::Place& place,
+    const std::map<std::string, std::string>& inplace_map) {
+  // Do Nothing in Eager Mode.
+  return nullptr;
 }
 
 }  // namespace imperative

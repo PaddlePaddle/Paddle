@@ -18,6 +18,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/operator.h"
@@ -25,23 +26,10 @@
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/imperative/execution_context.h"
 #include "paddle/fluid/imperative/layer.h"
-#include "paddle/fluid/imperative/tensor_helper.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/imperative/var_helper.h"
 
 DECLARE_bool(use_mkldnn);
-
-namespace egr {
-class EagerTensor;
-}
-namespace paddle {
-namespace framework {
-class Tensor;
-class Variable;
-}  // namespace framework
-namespace platform {
-class DeviceContext;
-}  // namespace platform
-}  // namespace paddle
 
 namespace paddle {
 namespace imperative {
@@ -71,7 +59,7 @@ void SetForwardDataTypeOfGradVar<VarBase>(const std::shared_ptr<VarBase>& var) {
 }
 
 template <>
-void SetForwardDataTypeOfGradVar<VarBase>(
+void SetForwardDataTypeOfGradVar<egr::EagerTensor>(
     const std::shared_ptr<egr::EagerTensor>& var) {
   VLOG(10) << "Var in Eager dose not support SetForwardDataTypeOfGradVar: "
            << var->name();
@@ -111,7 +99,7 @@ std::shared_ptr<NameVarMap<VarType>> PrepareData(
             const auto* tensor = GetTensorFromVar(cache_var->Var());
             auto tmp_var =
                 std::make_shared<VarType>(GetNameFromVar(template_var));
-            tmp_var->SetType(template_var->Type());
+            SetType(tmp_var, GetType(template_var));
             SetTensorToVariable(cache_var->Var(), *tensor,
                                 tmp_var->MutableVar());
             (*tmp_ins_ptr)[name_pair.first][i] = tmp_var;
@@ -129,7 +117,7 @@ std::shared_ptr<NameVarMap<VarType>> PrepareData(
               }
               auto tmp_var =
                   std::make_shared<VarType>(GetNameFromVar(template_var));
-              tmp_var->SetType(template_var->Type());
+              SetType(tmp_var, GetType(template_var));
               SetTensorToVariable(template_var->Var(), out,
                                   tmp_var->MutableVar());
               (*tmp_ins_ptr)[name_pair.first][i] = tmp_var;

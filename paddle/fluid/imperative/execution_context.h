@@ -19,8 +19,8 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/imperative/tensor_helper.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/imperative/var_helper.h"
 
 namespace paddle {
 namespace imperative {

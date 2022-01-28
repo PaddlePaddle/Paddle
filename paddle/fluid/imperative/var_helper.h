@@ -20,10 +20,13 @@
 namespace egr {
 class EagerTensor;
 }  // namespace egr
-
+namespace pten {
+class DenseTensor;
+}
 namespace paddle {
 namespace framework {
-class Tensor;
+class Variable;
+class OpKernelType;
 }  // namespace framework
 
 namespace imperative {
@@ -33,47 +36,37 @@ class VariableWrapper;
 
 void InitializeVariable(paddle::framework::Variable* var,
                         paddle::framework::proto::VarType::Type var_type);
-paddle::framework::proto::VarType::Type GetDtypeFromVar(
-    const paddle::framework::Variable& var);
-const paddle::platform::Place& GetPlaceFromVar(
-    const paddle::framework::Variable& var);
+template <typename VarType>
+const paddle::platform::Place& GetPlace(const std::shared_ptr<VarType>& var);
 void CopyVariable(const paddle::framework::Variable& src_var,
                   paddle::framework::Variable* dst_var);
-std::string GetNameFromVar(const egr::EagerTensor& tensor);
-std::string GetNameFromVar(const VarBase& var);
-bool CheckCachedKey(std::shared_ptr<egr::EagerTensor> tensor,
+template <typename VarType>
+const std::string& GetNameFromVar(std::shared_ptr<VarType> var);
+
+template <typename VarType>
+bool CheckCachedKey(std::shared_ptr<VarType> tensor,
                     const paddle::framework::OpKernelType& key);
-bool CheckCachedKey(std::shared_ptr<VarBase> var,
-                    const paddle::framework::OpKernelType& key);
-void SetCachedValue(std::shared_ptr<egr::EagerTensor> tensor,
+template <typename VarType>
+void SetCachedValue(std::shared_ptr<VarType> tensor,
                     const paddle::framework::OpKernelType& key,
-                    std::shared_ptr<VariableWrapper> res);
-void SetCachedValue(std::shared_ptr<VarBase> var,
-                    const paddle::framework::OpKernelType& key,
-                    std::shared_ptr<VariableWrapper> res);
+                    std::shared_ptr<VarType> res);
+template <typename VarType>
 std::shared_ptr<VariableWrapper> GetCachedValue(
-    std::shared_ptr<egr::EagerTensor> tensor,
+    std::shared_ptr<VarType> tensor,
     const paddle::framework::OpKernelType& key);
-std::shared_ptr<VariableWrapper> GetCachedValue(
-    std::shared_ptr<VarBase> var, const paddle::framework::OpKernelType& key);
-void SetType(std::shared_ptr<VarBase> var,
+
+template <typename VarType>
+void SetType(std::shared_ptr<VarType> var,
              framework::proto::VarType::Type type);
 
-void SetType(std::shared_ptr<egr::EagerTensor> var,
-             framework::proto::VarType::Type type);
+template <typename VarType>
+framework::proto::VarType::Type GetType(std::shared_ptr<VarType> var);
 
-framework::proto::VarType::Type GetType(std::shared_ptr<egr::EagerTensor> var);
+template <typename VarType>
+framework::proto::VarType::Type GetDataType(std::shared_ptr<VarType> var);
 
-framework::proto::VarType::Type GetType(std::shared_ptr<VarBase> var);
-
-framework::proto::VarType::Type GetDataType(
-    std::shared_ptr<egr::EagerTensor> var);
-
-framework::proto::VarType::Type GetDataType(std::shared_ptr<VarBase> var);
-
+template <typename VarType>
 const std::shared_ptr<VariableWrapper>& GetVariableWrapper(
-    const std::shared_ptr<paddle::imperative::VarBase>& var);
-const std::shared_ptr<VariableWrapper>& GetVariableWrapper(
-    const std::shared_ptr<VariableWrapper>& var);
+    const std::shared_ptr<VarType>& var);
 }  // namespace imperative
 }  // namespace paddle

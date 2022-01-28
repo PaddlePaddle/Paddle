@@ -22,7 +22,9 @@ limitations under the License. */
 #include <vector>
 
 #include <boost/variant.hpp>
-
+namespace egr {
+class EagerTensor;
+}
 namespace paddle {
 namespace framework {
 // The order should be as same as framework.proto
@@ -46,9 +48,6 @@ using Attribute = boost::variant<boost::blank,
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 }  // namespace framework
 
-namespace egr {
-class EagerTensor;
-}
 namespace imperative {
 
 class VariableWrapper;
