@@ -180,7 +180,8 @@ void InplaceAddToOpPass::Run(Graph *graph) const {
 
     // NOTE(zhiqiu): currently, only conv2d_grad supports addto strategy
     if (right_generated_op->Name() != "conv2d_grad" &&
-        right_generated_op->Name() != "resnet_unit_grad") {
+        right_generated_op->Name() != "resnet_unit_grad" &&
+        right_generated_op->Name() != "matmul_v2_grad") {
       continue;
     }
 
