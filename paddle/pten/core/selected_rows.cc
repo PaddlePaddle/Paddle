@@ -13,9 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/pten/core/selected_rows.h"
-
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/framework/data_type.h"
+#include "paddle/pten/core/utils/data_type.h"
 
 namespace pten {
 
@@ -92,6 +90,12 @@ struct TensorFillVisitor {
   int64_t dst_offset_;
   int64_t size_;
 };
+
+void* SelectedRows::AllocateFrom(Allocator* allocator,
+                                 DataType dtype,
+                                 size_t requested_size) {
+  return value_->AllocateFrom(allocator, dtype, requested_size);
+}
 
 bool SelectedRows::HasKey(int64_t key) const {
   return std::find(rows_.begin(), rows_.end(), key) == rows_.end() ? false
@@ -191,16 +195,16 @@ void SelectedRows::Get(const pten::DenseTensor& ids,
       int64_t index = AutoGrownIndex(id, auto_grown, is_test);
       if (index < 0) {
         VLOG(5) << "id " << id << " not in the table, return 0";
-        paddle::framework::VisitDataType(
-            value_->type(),
+        pten::VisitDataType(
+            value_->dtype(),
             TensorFillVisitor(value, i * value_width, value_width, 0.0));
       } else {
-        paddle::framework::VisitDataType(value_->type(),
-                                         TensorCopyVisitor(value,
-                                                           i * value_width,
-                                                           *value_.get(),
-                                                           index * value_width,
-                                                           value_width));
+        pten::VisitDataType(value_->dtype(),
+                            TensorCopyVisitor(value,
+                                              i * value_width,
+                                              *value_.get(),
+                                              index * value_width,
+                                              value_width));
       }
     }
   }

@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/selected_rows.h"
 #include "paddle/pten/infermeta/unary.h"
 #include "paddle/pten/kernels/empty_kernel.h"
 namespace pten {
@@ -27,6 +28,14 @@ void ScaleKernel(const Context& dev_ctx,
                  float bias,
                  bool bias_after_scale,
                  DenseTensor* out);
+
+template <typename T, typename Context>
+void ScaleSR(const Context& dev_ctx,
+             const SelectedRows& x,
+             const Scalar& scale,
+             float bias,
+             bool bias_after_scale,
+             SelectedRows* out);
 
 template <typename T, typename Context>
 DenseTensor Scale(const Context& dev_ctx,

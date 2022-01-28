@@ -34,6 +34,13 @@ if (WITH_ROCM)
             DEPS device_context malloc)
 endif()
 
+if(WITH_GPU AND WITH_TESTING AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")       
+  nv_test(get_base_ptr_test SRCS get_base_ptr_test.cu DEPS malloc gpu_info)
+  set_tests_properties(get_base_ptr_test PROPERTIES 
+                       ENVIRONMENT "FLAGS_allocator_strategy=auto_growth;
+                                    FLAGS_use_stream_safe_cuda_allocator=true;")
+endif()
+
 #if (WITH_GPU)
 #   nv_test(pinned_memory_test SRCS pinned_memory_test.cu  DEPS place memory)
 #endif()

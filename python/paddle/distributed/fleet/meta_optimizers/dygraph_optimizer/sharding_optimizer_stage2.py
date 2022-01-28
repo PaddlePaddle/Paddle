@@ -70,7 +70,7 @@ class ShardingOptimizerStage2(Optimizer):
                  device="gpu",
                  **kw):
 
-        # super().__init__(optim._learning_rate, params, kw)
+        super().__init__(optim._learning_rate, params, kw)
 
         # Segmentation information
         self._dtype_rank_params = OrderedDict(
@@ -109,6 +109,13 @@ class ShardingOptimizerStage2(Optimizer):
             self._optim._grad_clip = ShardingClipGrad(self._optim._grad_clip,
                                                       paddle.get_device(),
                                                       self.group)
+            if self._optim._parameter_list and isinstance(
+                    self._optim._parameter_list[0], dict):
+                for item in self._optim._param_groups:
+                    if "grad_clip" in item.keys():
+                        item["grad_clip"] = ShardingClipGrad(
+                            self._optim._grad_clip,
+                            paddle.get_device(), self.group)
 
         if offload:
             assert self._pfp16, "Only support offload strategy while using \'Adam\', \'AdamW\' and \'Momentum\' optimizer with AMP/Pure FP16"
@@ -355,6 +362,10 @@ class ShardingOptimizerStage2(Optimizer):
 
         # Synchronize all the updated shards in between the ranks
         self._broadcast_params()
+
+    def minimize(self):
+        raise RuntimeError(
+            "optimizer.minimize() not support now, please use optimizer.step()")
 
     def _clear_cache(self):
         self.__segment_params.clear()

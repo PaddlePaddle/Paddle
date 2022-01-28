@@ -26,7 +26,7 @@
 #include "paddle/pten/core/kernel_utils.h"
 #include "paddle/pten/core/macros.h"
 
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/core/enforce.h"
 
 namespace pten {
 
@@ -74,11 +74,17 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
                  std::type_index(typeid(const std::vector<DenseTensor>&))) {
         args_def->AppendInput(
             default_key.backend(), default_tensor_layout, default_key.dtype());
+      } else if (arg_type == std::type_index(typeid(const SelectedRows&))) {
+        args_def->AppendInput(
+            default_key.backend(), default_tensor_layout, default_key.dtype());
       } else if (arg_type == std::type_index(typeid(DenseTensor*))) {
         args_def->AppendOutput(
             default_key.backend(), default_tensor_layout, default_key.dtype());
       } else if (arg_type ==
                  std::type_index(typeid(std::vector<DenseTensor*>))) {
+        args_def->AppendOutput(
+            default_key.backend(), default_tensor_layout, default_key.dtype());
+      } else if (arg_type == std::type_index(typeid(SelectedRows*))) {
         args_def->AppendOutput(
             default_key.backend(), default_tensor_layout, default_key.dtype());
       } else {

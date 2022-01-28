@@ -50,8 +50,8 @@ template <typename T, typename Context>
 void SumKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const std::vector<int64_t>& dims,
-               bool keep_dim,
                DataType out_dtype,
+               bool keep_dim,
                DenseTensor* out);
 
 template <typename T, typename Context>
@@ -110,7 +110,7 @@ template <typename T, typename Context>
 DenseTensor Add(const Context& dev_ctx,
                 const DenseTensor& x,
                 const DenseTensor& y) {
-  auto out_meta = ElementwiseInferMeta(x.meta(), y.meta(), -1);
+  auto out_meta = ElementwiseRawInferMeta(x.meta(), y.meta(), -1);
   auto dense_out = pten::Empty(dev_ctx, std::move(out_meta));
   AddKernel<T, Context>(dev_ctx, x, y, &dense_out);
   return dense_out;
@@ -120,7 +120,7 @@ template <typename T, typename Context>
 DenseTensor Subtract(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y) {
-  auto out_meta = ElementwiseInferMeta(x.meta(), y.meta(), -1);
+  auto out_meta = ElementwiseRawInferMeta(x.meta(), y.meta(), -1);
   auto dense_out = pten::Empty(dev_ctx, std::move(out_meta));
   SubtractKernel<T, Context>(dev_ctx, x, y, &dense_out);
   return dense_out;
@@ -130,7 +130,7 @@ template <typename T, typename Context>
 DenseTensor Divide(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y) {
-  auto out_meta = ElementwiseInferMeta(x.meta(), y.meta(), -1);
+  auto out_meta = ElementwiseRawInferMeta(x.meta(), y.meta(), -1);
   auto dense_out = pten::Empty(dev_ctx, std::move(out_meta));
   DivideKernel<T, Context>(dev_ctx, x, y, &dense_out);
   return dense_out;
@@ -140,7 +140,7 @@ template <typename T, typename Context>
 DenseTensor Multiply(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y) {
-  auto out_meta = ElementwiseInferMeta(x.meta(), y.meta(), -1);
+  auto out_meta = ElementwiseRawInferMeta(x.meta(), y.meta(), -1);
   auto dense_out = pten::Empty(dev_ctx, std::move(out_meta));
   MultiplyKernel<T, Context>(dev_ctx, x, y, &dense_out);
   return dense_out;
@@ -163,10 +163,9 @@ DenseTensor Sum(const Context& dev_ctx,
                 const std::vector<int64_t>& axis,
                 DataType dtype,
                 bool keep_dim) {
-  auto out_meta = ReduceInferMeta(x.meta(), axis, keep_dim, dtype);
+  auto out_meta = SumInferMeta(x.meta(), axis, dtype, keep_dim);
   auto dense_out = pten::Empty(dev_ctx, std::move(out_meta));
-
-  SumKernel<T, Context>(dev_ctx, x, axis, keep_dim, dtype, &dense_out);
+  SumKernel<T, Context>(dev_ctx, x, axis, dtype, keep_dim, &dense_out);
   return dense_out;
 }
 
