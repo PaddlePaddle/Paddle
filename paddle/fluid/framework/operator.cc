@@ -2105,24 +2105,5 @@ void OperatorWithKernel::BuildPtenKernelContext(
   }
 }
 
-void OperatorWithKernel::WriteBackToOutputs(
-    RuntimeContext* ctx, pten::KernelContext* pt_kernel_context) const {
-  auto& output_names = std::get<2>(pt_kernel_signature_->args);
-
-  for (size_t i = 0; i < output_names.size(); ++i) {
-    auto& outs_vector = ctx->outputs.at(output_names[i]);
-
-    auto& range_pair = pt_kernel_context->OutputRangeAt(i);
-    auto pten_outs = pt_kernel_context->MutableOutputBetween<pten::DenseTensor>(
-        range_pair.first, range_pair.second);
-
-    for (size_t j = 0; j < pten_outs.size(); ++j) {
-      if (pten_outs[j]) {
-        experimental::MakeVariableFromPtenTensor(pten_outs[j], outs_vector[j]);
-      }
-    }
-  }
-}
-
 }  // namespace framework
 }  // namespace paddle
