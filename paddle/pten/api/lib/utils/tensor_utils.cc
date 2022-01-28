@@ -36,10 +36,6 @@ std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
   return std::make_unique<pten::DenseTensor>(src);
 }
 
-pten::Scalar MakePtenScalar(const paddle::framework::Tensor& src) {
-  return {src};
-}
-
 pten::Scalar MakePtenScalarFromVar(const framework::Variable& variable) {
   auto expected_place = pten::TransToFluidPlace(pten::Backend::CPU);
   if (variable.IsType<framework::LoDTensor>()) {
@@ -47,9 +43,9 @@ pten::Scalar MakePtenScalarFromVar(const framework::Variable& variable) {
     if (!platform::is_same_place(tensor.place(), expected_place)) {
       framework::LoDTensor tmp_tensor;
       framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
-      return MakePtenScalar(tmp_tensor);
+      return {tmp_tensor};
     } else {
-      return MakePtenScalar(tensor);
+      return {tensor};
     }
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(

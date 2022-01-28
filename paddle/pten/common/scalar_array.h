@@ -117,7 +117,7 @@ class ScalarArrayBase {
   // TODO(zhangyunfei) Replace std::vector with a more efficient container
   // structure.
   std::vector<int64_t> array_;
-  bool is_init_by_tensor_ = false;
+  bool is_init_by_tensor_{false};
 };
 
 using ScalarArray =

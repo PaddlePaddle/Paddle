@@ -196,7 +196,7 @@ class ScalarBase {
   friend void CopyScalar(const ScalarBase<T1>& src, ScalarBase<T2>* dst);
 
  private:
-  bool is_init_by_tensor_ = false;
+  bool is_init_by_tensor_{false};
   DataType dtype_;
   union data {
     bool b;

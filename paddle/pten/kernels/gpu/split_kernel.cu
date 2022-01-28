@@ -15,7 +15,7 @@
 #include "paddle/pten/kernels/split_kernel.h"
 
 #include "paddle/fluid/operators/strided_memcpy.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/common/float16.h"
 #include "paddle/pten/core/kernel_registry.h"
 
 #include "paddle/pten/kernels/gpu/concat_and_split.h"
@@ -39,7 +39,7 @@ void SplitKernel(const Context& dev_ctx,
 
   std::vector<const DenseTensor*> shape_refer;
   for (size_t j = 0; j < outs.size(); ++j) {
-    outs[j]->mutable_data<T>(dev_ctx.GetPlace());
+    dev_ctx.Alloc(outs[j]);
     shape_refer.emplace_back(outs[j]);
   }
 
@@ -64,4 +64,4 @@ PT_REGISTER_KERNEL(split,
                    int64_t,
                    int,
                    bool,
-                   paddle::platform::float16) {}
+                   pten::dtype::float16) {}

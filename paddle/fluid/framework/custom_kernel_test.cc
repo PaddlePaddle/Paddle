@@ -24,7 +24,6 @@ limitations under the License. */
 #include "paddle/extension.h"
 #include "paddle/fluid/framework/op_kernel_info_helper.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
-#include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_context.h"
 #include "paddle/pten/core/kernel_factory.h"
@@ -194,8 +193,7 @@ TEST(CustomKernel, custom_kernel_dot) {
   pten::DataType fake_attr_dtype = pten::DataType::UINT32;
   paddle::framework::LoDTensor tmp_tensor;
   tmp_tensor.mutable_data<uint8_t>({1}, pten::TransToFluidPlace(backend));
-  pten::Scalar fake_attr_scalar =
-      paddle::experimental::MakePtenScalar(tmp_tensor);
+  pten::Scalar fake_attr_scalar{tmp_tensor};
   pten::ScalarArray fake_attr_scalar_array;
   std::vector<int64_t> fake_attr_int64_vec;
   std::vector<int> fake_attr_int_vec;
