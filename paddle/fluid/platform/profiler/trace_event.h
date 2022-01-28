@@ -19,6 +19,8 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+static constexpr int kMaxSize = 50;
+
 enum class TracerEventType {
   // Used to mark operator record
   Operator = 0,
@@ -82,20 +84,20 @@ struct MemcpyEventInfo {
   // The kind of the memory copy.
   // Each kind represents the source and destination targets of a memory copy.
   // Targets are host, device, and array. Refer to CUpti_ActivityMemcpyKind
-  std::string copy_kind;
+  char copy_kind[kMaxSize];
   // The source memory kind read by the memory copy.
   // Each kind represents the type of the memory accessed by a memory
   // operation/copy. Refer to CUpti_ActivityMemoryKind
-  std::string src_kind;
+  char src_kind[kMaxSize];
   // The destination memory kind read by the memory copy.
-  std::string dst_kind;
+  char dst_kind[kMaxSize];
 };
 
 struct MemsetEventInfo {
   // The number of bytes being set by the memory set.
   uint64_t num_bytes;
   // The memory kind of the memory set. Refer to CUpti_ActivityMemoryKind
-  std::string memory_kind;
+  char memory_kind[kMaxSize];
   // the value being assigned to memory by the memory set.
   uint32_t value;
 };
