@@ -230,33 +230,49 @@ class EagerTensor final {
   paddle::framework::Variable* MutableVar() { return &var_; }
 
   /** Part 10: Sync paddle::framework::Variable with pten::Tensor **/
-  void SyncToVar(paddle::framework::proto::VarType_Type type =
-                     paddle::framework::proto::VarType::LOD_TENSOR) {
+  void SyncToVar() {
     // Synchronize allocation only once.
     if (!var_.IsInitialized()) {
       // TODO(jiabin): Support selected rows later.
       if (this->initialized()) {
-        if (type == paddle::framework::proto::VarType::LOD_TENSOR) {
+        auto tensor_dense =
+            std::dynamic_pointer_cast<pten::DenseTensor>(tensor_->impl());
+        if (tensor_dense) {
           auto* framework_tensor =
               var_.GetMutable<paddle::framework::LoDTensor>();
           framework_tensor->Resize(tensor_->dims());
           framework_tensor->set_layout(tensor_->layout());
           // Contruct framework::Tensor from egr::EagerTensor
-          auto tensor_dense =
-              std::dynamic_pointer_cast<pten::DenseTensor>(tensor_->impl());
-          if (tensor_dense && tensor_dense.get()) {
+
+          if (tensor_dense.get()) {
             paddle::experimental::SharesStorage(tensor_dense.get(),
                                                 framework_tensor);
           } else {
             PADDLE_THROW(paddle::platform::errors::Fatal(
-                "Unrecognized egr::EagerTensor type, only "
-                "DenseTensor is supported for now."));
+                "egr::EagerTensor not hold pten::DenseTensor."));
           }
+          return;
         }
+        auto selectedrows =
+            std::dynamic_pointer_cast<pten::SelectedRows>(tensor_->impl());
+        if (selectedrows) {
+          auto* framework_tensor = var_.GetMutable<pten::SelectedRows>();
+          if (selectedrows.get()) {
+            *framework_tensor = std::move(*(selectedrows.get()));
+            tensor_->set_impl(nullptr);
+          } else {
+            PADDLE_THROW(paddle::platform::errors::Fatal(
+                "egr::EagerTensor not hold pten::SelectedRows."));
+          }
+          return;
+        }
+        PADDLE_THROW(paddle::platform::errors::Fatal(
+            "Unrecognized egr::EagerTensor type, only "
+            "DenseTensor and SelectedRows are supported for now."));
       } else {
         PADDLE_THROW(paddle::platform::errors::Fatal(
             "Can not Sync EagerTensor %s whose "
-            "pten::DenseTensor is not initialized!",
+            "pten::TensorBase is not initialized!",
             name()));
       }
     }
@@ -270,6 +286,12 @@ class EagerTensor final {
                                 pten::DenseTensor>();
       } else if (var_.IsType<paddle::framework::Tensor>()) {
         SetImplWithLegacyTensor<paddle::framework::Tensor, pten::DenseTensor>();
+      } else if (var_.IsType<pten::SelectedRows>()) {
+        VLOG(8) << "Sync SelectedRows Var to tensor for " << name() << ".";
+        auto tensor = var_.GetMutable<pten::SelectedRows>();
+        this->set_impl(
+            std::make_shared<pten::SelectedRows>(std::move(*tensor)));
+        var_.Clear();
       } else {
         PADDLE_THROW(
             paddle::platform::errors::Fatal("Unable to fetch underlying tensor "
