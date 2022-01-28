@@ -35,8 +35,10 @@ TEST(DEV_API, split) {
                             pten::DenseTensorMeta(pten::DataType::FLOAT32,
                                                   framework::make_ddim({4, 10}),
                                                   pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x.mutable_data<float>(pten::platform::CPUPlace());
+  pten::CPUContext dev_ctx;
+  dev_ctx.SetDeviceAllocator(alloc.get());
 
+  auto* dense_x_data = dev_ctx.Alloc<float>(&dense_x);
   for (size_t i = 0; i < 4; ++i) {
     for (size_t j = 0; j < 10; ++j) {
       dense_x_data[i * 10 + j] = (i * 10 + j) * 1.0;
@@ -44,7 +46,6 @@ TEST(DEV_API, split) {
   }
 
   // 2. test API
-  pten::CPUContext dev_ctx;
   auto out = pten::Split<float>(dev_ctx, dense_x, {2, 2}, 0);
 
   // 3. check result
