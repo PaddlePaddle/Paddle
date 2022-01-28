@@ -245,8 +245,7 @@ class EagerTensor final {
           auto tensor_dense =
               std::dynamic_pointer_cast<pten::DenseTensor>(tensor_->impl());
           if (tensor_dense && tensor_dense.get()) {
-            paddle::experimental::SharesStorage(tensor_dense.get(),
-                                                framework_tensor);
+            *framework_tensor = *tensor_dense;
           } else {
             PADDLE_THROW(paddle::platform::errors::Fatal(
                 "Unrecognized egr::EagerTensor type, only "

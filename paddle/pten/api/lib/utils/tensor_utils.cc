@@ -198,68 +198,6 @@ pten::ScalarArray MakePtenScalarArrayFromVarList(
   return {vector_data};
 }
 
-void SharesStorageBase(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
-  PADDLE_ENFORCE_NOT_NULL(
-      src,
-      platform::errors::InvalidArgument(
-          "The source DenseTensor is nullptr when move allocation."));
-  PADDLE_ENFORCE_NOT_NULL(
-      dst,
-      platform::errors::InvalidArgument(
-          "The destination Tensor is nullptr when move allocation."));
-  dst->Resize(src->dims());
-  dst->ResetHolderWithType(src->Holder(),
-                           pten::TransToProtoVarType(src->dtype()));
-  dst->set_offset(src->meta().offset);
-}
-
-void SharesStorage(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
-  SharesStorageBase(src, static_cast<paddle::framework::Tensor*>(dst));
-  SetLoD(dst->mutable_lod(), src->lod());
-}
-
-static bool IsSameAllocation(const std::shared_ptr<memory::Allocation>& a,
-                             const std::shared_ptr<memory::Allocation>& b) {
-  return a->ptr() == b->ptr() && a->size() == b->size() &&
-         platform::is_same_place(a->place(), b->place());
-}
-
-void MakeVariableFromPtenTensor(pten::DenseTensor* src,
-                                framework::Variable* variable) {
-  if (variable->IsType<framework::LoDTensor>()) {
-    auto* tensor = variable->GetMutable<framework::LoDTensor>();
-
-    auto dtype = pten::TransToProtoVarType(src->dtype());
-    tensor->Resize(src->dims());
-    SetLoD(tensor->mutable_lod(), src->lod());
-
-    if (!tensor->IsInitialized() ||
-        (tensor->IsInitialized() &&
-         !IsSameAllocation(tensor->Holder(), src->Holder()))) {
-      tensor->ResetHolderWithType(std::move(src->Holder()), dtype);
-    } else {
-      // Even the pten tensor and Variable have the same Alloctation (both have
-      // the same pointer address, same size and same place)
-      // but there is possible that they do not have the same data_type.
-      // so, here we set the variable's type with the pten tensor dtype.
-      tensor->set_type(dtype);
-    }
-
-  } else if (variable->IsType<pten::SelectedRows>()) {
-    auto* tensor = variable->GetMutable<pten::SelectedRows>();
-    auto dtype = pten::TransToProtoVarType(src->dtype());
-
-    if (!tensor->value().IsInitialized()) {
-      tensor->mutable_value()->ResetHolderWithType(std::move(src->Holder()),
-                                                   dtype);
-    }
-  } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "Unsupported shared input `%s` type now when call pt kernel.",
-        framework::ToTypeName(variable->Type())));
-  }
-}
-
 void ResetTensorByArgDef(pten::DenseTensor* dst,
                          const pten::TensorArgDef& arg_def) {
   VLOG(5) << "ResetTensor by TensorArgDef.";

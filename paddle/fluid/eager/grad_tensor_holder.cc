@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/grad_tensor_holder.h"
-#include "paddle/fluid/eager/accumulation/gradient_accumulation.h"
+#include "paddle/fluid/imperative/gradient_accumulator.h"
 
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -72,17 +72,17 @@ void GradTensorHolder::add(size_t slot_id, size_t rank,
     } else {
       // Accumulation
       if (t.initialized() && buffer_tensor.initialized()) {
-        TensorAdd(t, &buffer_tensor);
+        paddle::imperative::TensorAdd<egr::EagerTensor>(t, &buffer_tensor);
       } else if (t.Var().IsInitialized() &&
                  buffer_tensor.Var().IsInitialized()) {
-        VariableAdd(t, &buffer_tensor);
+        paddle::imperative::VariableAdd(t, &buffer_tensor);
       } else if (t.Var().IsInitialized() && buffer_tensor.initialized()) {
         // TODO(jiabin): This can be merge to upper if case.
         buffer_tensor.SyncToVar();
-        VariableAdd(t, &buffer_tensor);
+        paddle::imperative::VariableAdd(t, &buffer_tensor);
       } else if (t.initialized() && buffer_tensor.Var().IsInitialized()) {
         buffer_tensor.SyncToTensor();
-        TensorAdd(t, &buffer_tensor);
+        paddle::imperative::TensorAdd<egr::EagerTensor>(t, &buffer_tensor);
       } else {
         // Should not happend case
         // 1. both not init
