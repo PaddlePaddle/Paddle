@@ -16,6 +16,7 @@
 #include <cuda_runtime.h>
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
@@ -59,7 +60,7 @@ TEST(ManagedMemoryTest, H2DTest) {
   EXPECT_EQ(sum, n_data / step);
 }
 
-TEST(UnifiledMemoryTest, D2HTest) {
+TEST(ManagedMemoryTest, D2HTest) {
   uint64_t n_data = 1024;
   uint64_t step = 1;
   AllocationPtr allocation = Alloc(platform::CUDAPlace(), n_data * sizeof(int));
@@ -82,9 +83,10 @@ TEST(UnifiledMemoryTest, D2HTest) {
   EXPECT_EQ(sum, 0);
 }
 
-TEST(UnifiledMemoryTest, OversubscribeGPUMemoryTest) {
-  // requires 16G int data with 4 bytes for each one
-  uint64_t n_data = (uint64_t(1)) << 34;
+TEST(ManagedMemoryTest, OversubscribeGPUMemoryTest) {
+  uint64_t available_mem = platform::GpuAvailableMemToAlloc();
+  uint64_t n_data =
+      available_mem * 2 / sizeof(int);  // requires 2 * available_mem bytes
   uint64_t step = 1024;
   AllocationPtr data_allocation =
       Alloc(platform::CUDAPlace(), n_data * sizeof(int));

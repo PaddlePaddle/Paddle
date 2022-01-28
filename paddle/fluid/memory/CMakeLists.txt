@@ -26,15 +26,12 @@ if (WITH_GPU)
     
     if(WITH_TESTING AND TEST stream_safe_cuda_alloc_test)
         set_tests_properties(stream_safe_cuda_alloc_test PROPERTIES 
-                             ENVIRONMENT "FLAGS_use_stream_safe_cuda_allocator=true;
-                                          FLAGS_allocator_strategy=auto_growth")
+                             ENVIRONMENT "FLAGS_use_stream_safe_cuda_allocator=true;FLAGS_allocator_strategy=auto_growth")
     endif()
 
     if(WITH_TESTING AND TEST cuda_managed_memory_test)
         set_tests_properties(cuda_managed_memory_test PROPERTIES
-                             ENVIRONMENT "FLAGS_use_cuda_managed_memory=true;
-                                          FLAGS_allocator_strategy=auto_growth"
-                             TIMEOUT 40)
+                             ENVIRONMENT "FLAGS_use_cuda_managed_memory=true;FLAGS_allocator_strategy=auto_growth")
     endif()
 endif()
 
