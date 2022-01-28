@@ -14,12 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include <string>
-#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/platform/cpu_info.h"
 
 namespace paddle {
 namespace operators {

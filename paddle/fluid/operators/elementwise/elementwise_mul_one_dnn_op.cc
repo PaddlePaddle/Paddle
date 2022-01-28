@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/elementwise/elementwise_mul_one_dnn_op.h"
-#include <memory>
 #include <string>
+
+#include "paddle/fluid/operators/elementwise/elementwise_mul_one_dnn_op.h"
 #include "paddle/fluid/platform/complex.h"
 
 namespace paddle {
