@@ -33,7 +33,7 @@ namespace f = paddle::framework;
 namespace p = paddle::platform;
 namespace m = paddle::operators::math;
 
-USE_OP(elementwise_add);
+USE_OP_ITSELF(elementwise_add);
 USE_OP_DEVICE_KERNEL(elementwise_add, NPU);
 USE_OP_DEVICE_KERNEL(c_sync_calc_stream, NPU);
 

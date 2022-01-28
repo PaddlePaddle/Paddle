@@ -217,6 +217,6 @@ TEST(Benchmark, FluidMLPCPU) {
 }  // namespace paddle
 
 USE_OP(scale);
-USE_OP(elementwise_add);
+USE_OP_ITSELF(elementwise_add);
 USE_OP(matmul_v2);
 USE_OP(reduce_sum);

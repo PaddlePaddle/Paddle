@@ -357,11 +357,18 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
   framework::KernelSignature GetExpectedPtenKernelArgs(
       const framework::ExecutionContext &ctx) const override {
     if (Type() == "elementwise_add_grad") {
-      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
-        return framework::KernelSignature(
-            "add_grad", {"X", "Y", framework::GradVarName("Out")}, {"axis"},
-            {framework::GradVarName("X"), framework::GradVarName("Y")});
-      }
+      return framework::KernelSignature(
+          "add_grad", {"X", "Y", framework::GradVarName("Out")}, {"axis"},
+          {framework::GradVarName("X"), framework::GradVarName("Y")});
+    }
+    if (Type() == "elementwise_add_grad_grad") {
+      return framework::KernelSignature(
+          "add_double_grad", {"Y", "DDX", "DDY", "DOut"}, {"axis"}, {"DDOut"});
+    }
+    if (Type() == "elementwise_add_triple_grad") {
+      return framework::KernelSignature("add_triple_grad",
+                                        {"DDX", "DDY", "D_DDOut"}, {"axis"},
+                                        {"D_DDX", "D_DDY"});
     }
 
     return framework::KernelSignature("None", {"X"}, {}, {"Out"});
@@ -469,6 +476,16 @@ class ElementwiseOpDoubleGradWithoutDXDY
                                      tensor.place(), tensor.layout());
     }
   }
+
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext &ctx) const override {
+    if (Type() == "elementwise_add_grad_grad") {
+      return framework::KernelSignature(
+          "add_double_grad", {"Y", "DDX", "DDY", "DOut"}, {"axis"}, {"DDOut"});
+    }
+
+    return framework::KernelSignature("None", {"X"}, {}, {"Out"});
+  }
 };
 
 class ElementwiseOpTripleGrad : public framework::OperatorWithKernel {
@@ -525,6 +542,16 @@ class ElementwiseOpTripleGrad : public framework::OperatorWithKernel {
       return framework::OpKernelType(expected_kernel_type.data_type_,
                                      tensor.place(), tensor.layout());
     }
+  }
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext &ctx) const override {
+    if (Type() == "elementwise_add_triple_grad") {
+      return framework::KernelSignature("add_triple_grad",
+                                        {"DDX", "DDY", "D_DDOut"}, {"axis"},
+                                        {"D_DDX", "D_DDY"});
+    }
+
+    return framework::KernelSignature("None", {"X"}, {}, {"Out"});
   }
 };
 

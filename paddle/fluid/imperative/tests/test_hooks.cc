@@ -264,5 +264,5 @@ TEST(TestHooks, TestGradVarLeafBackwardHookWithSortedGradAccmulated) {
 
 USE_OP(mul);
 USE_OP(mul_grad);
-USE_OP(elementwise_add);
-USE_OP(elementwise_add_grad);
+USE_OP_ITSELF(elementwise_add);
+USE_OP_ITSELF(elementwise_add_grad);
