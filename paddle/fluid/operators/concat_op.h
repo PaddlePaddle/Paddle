@@ -39,54 +39,6 @@ static inline int64_t ComputeAxis(int64_t axis, int64_t rank) {
   }
   return axis > 0 ? axis : 0;
 }
-
-template <typename DeviceContext, typename T>
-class ConcatKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto ins = ctx.MultiInput<framework::LoDTensor>("X");
-    framework::LoDTensor* out = ctx.Output<framework::LoDTensor>("Out");
-    PADDLE_ENFORCE_NOT_NULL(ins[0],
-                            platform::errors::NotFound(
-                                "The first input tensor is not initalized."));
-    auto axis = ctx.Attr<int>("axis");
-    bool need_resize_out_dims = false;
-    if (ctx.HasInput("AxisTensor")) {
-      auto* axis_tensor = ctx.Input<framework::Tensor>("AxisTensor");
-      axis = GetDataFromTensor<int>(axis_tensor)[0];
-      need_resize_out_dims = true;
-    }
-    axis = ComputeAxis(static_cast<int64_t>(axis),
-                       static_cast<int64_t>(ins[0]->dims().size()));
-
-    if (need_resize_out_dims) {
-      const size_t n = ins.size();
-      std::vector<framework::DDim> ins_dims(n);
-      for (size_t i = 0; i < n; i++) {
-        ins_dims[i] = ins[i]->dims();
-      }
-
-      framework::DDim out_dims =
-          pten::funcs::ComputeAndCheckShape(true, ins_dims, axis);
-      out->Resize(out_dims);
-    }
-    auto place = ctx.GetPlace();
-    out->mutable_data<T>(place);
-
-    // call new kernel
-    auto& dev_ctx = ctx.device_context<DeviceContext>();
-    std::vector<pten::DenseTensor> pt_ins;
-    for (auto& in : ins) {
-      pt_ins.push_back(*in);
-    }
-
-    pten::ConcatKernel<T>(
-        static_cast<const typename paddle::framework::ConvertToPtenContext<
-            DeviceContext>::TYPE&>(dev_ctx),
-        pt_ins, axis, out);
-  }
-};
-
 template <typename DeviceContext, typename T>
 class ConcatGradKernel : public framework::OpKernel<T> {
  public:

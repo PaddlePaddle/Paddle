@@ -253,19 +253,7 @@ REGISTER_OPERATOR(concat_grad, ops::ConcatOpGrad,
                   ops::ConcatDoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::ConcatDoubleGradOpMaker<paddle::imperative::OpBase>,
                   ops::ConcatOpGradNoNeedBufferVarInferer);
-REGISTER_OP_CPU_KERNEL(
-    concat, ops::ConcatKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::float16>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::complex<float>>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::complex<double>>);
+
 REGISTER_OP_CPU_KERNEL(
     concat_grad,
     ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, double>,

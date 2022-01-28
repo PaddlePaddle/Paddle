@@ -49,8 +49,6 @@ using DataLayout = paddle::experimental::DataLayout;
 
 class KernelContext;
 
-using KernelFn = void (*)(KernelContext* ctx);
-
 class KernelKey {
  public:
   KernelKey() = default;
@@ -208,14 +206,14 @@ class Kernel {
  */
 class KernelFactory {
  public:
-  // replaced by paddle::flat_hash_map later
-  using KernelMap = paddle::flat_hash_map<
-      std::string,
-      paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash>>;
+  using KernelKeyMap =
+      paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash>;
+
+  using KernelNameMap = paddle::flat_hash_map<std::string, KernelKeyMap>;
 
   static KernelFactory& Instance();
 
-  KernelMap& kernels() { return kernels_; }
+  KernelNameMap& kernels() { return kernels_; }
 
   bool HasCompatiblePtenKernel(const std::string& op_type) const {
     return kernels_.find(TransToPtenKernelName(op_type)) != kernels_.end();
@@ -232,13 +230,12 @@ class KernelFactory {
   Kernel SelectKernel(const std::string& kernel_name,
                       const KernelKey& kernel_key) const;
 
-  paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash> SelectKernelMap(
-      const std::string& kernel_name) const;
+  KernelKeyMap SelectKernelMap(const std::string& kernel_name) const;
 
  private:
   KernelFactory() = default;
 
-  KernelMap kernels_;
+  KernelNameMap kernels_;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const KernelKey& kernel_key) {
