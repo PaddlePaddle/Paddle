@@ -307,6 +307,12 @@ class MatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false)
         .AsExtra();
+    // use_addto
+    AddAttr<bool>("use_addto",
+                  "(bool, default false) In order to support new feature "
+                  "(inplace addto strategy) for gradient accumulation.")
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<std::string>(
         "mkldnn_data_type",
         "(string, default \"float32\"). Data type of mkldnn kernel")
@@ -392,6 +398,13 @@ class MatMulV2OpGrad : public framework::OperatorWithKernel {
 
   framework::KernelSignature GetExpectedPtenKernelArgs(
       const framework::ExecutionContext& ctx) const override {
+    bool use_addto = ctx.Attr<bool>("use_addto");
+    if (use_addto) {
+      return framework::KernelSignature(
+          "matmul_grad_use_addto", {"X", "Y", framework::GradVarName("Out")},
+          {"trans_x", "trans_y", "use_addto"},
+          {framework::GradVarName("X"), framework::GradVarName("Y")});
+    }
     return framework::KernelSignature(
         "matmul_grad", {"X", "Y", framework::GradVarName("Out")},
         {"trans_x", "trans_y"},

@@ -223,14 +223,15 @@ void CalcInputGrad(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void MatmulGradKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      const DenseTensor& y,
-                      const DenseTensor& out_grad,
-                      bool transpose_x,
-                      bool transpose_y,
-                      DenseTensor* dx,
-                      DenseTensor* dy) {
+void MatmulGradKernelImpl(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& y,
+                          const DenseTensor& out_grad,
+                          bool transpose_x,
+                          bool transpose_y,
+                          bool use_addto,
+                          DenseTensor* dx,
+                          DenseTensor* dy) {
   // get dims
   std::vector<std::int64_t> x_dims = vectorize(x.dims());
   std::vector<std::int64_t> y_dims = vectorize(y.dims());
@@ -348,7 +349,8 @@ void MatmulGradKernel(const Context& dev_ctx,
                                      dout_dims,
                                      &dx_help,
                                      true,
-                                     true);
+                                     true,
+                                     use_addto);
         if (dy)
           MatMulFunction<Context, T>(dev_ctx,
                                      out_grad,
@@ -357,7 +359,8 @@ void MatmulGradKernel(const Context& dev_ctx,
                                      x_dims,
                                      &dy_help,
                                      true,
-                                     true);
+                                     true,
+                                     use_addto);
       } else {
         // X'Y: dX = YG', dY = XG
         if (dx)
@@ -368,7 +371,8 @@ void MatmulGradKernel(const Context& dev_ctx,
                                      dout_dims,
                                      &dx_help,
                                      false,
-                                     true);
+                                     true,
+                                     use_addto);
         if (dy)
           MatMulFunction<Context, T>(dev_ctx,
                                      x_conj,
@@ -377,7 +381,8 @@ void MatmulGradKernel(const Context& dev_ctx,
                                      dout_dims,
                                      &dy_help,
                                      false,
-                                     false);
+                                     false,
+                                     use_addto);
       }
     } else {
       if (transpose_y) {
@@ -390,7 +395,8 @@ void MatmulGradKernel(const Context& dev_ctx,
                                      y_dims,
                                      &dx_help,
                                      false,
-                                     false);
+                                     false,
+                                     use_addto);
         if (dy)
           MatMulFunction<Context, T>(dev_ctx,
                                      out_grad,
@@ -399,7 +405,8 @@ void MatmulGradKernel(const Context& dev_ctx,
                                      x_dims,
                                      &dy_help,
                                      true,
-                                     false);
+                                     false,
+                                     use_addto);
       } else {
         // XY: dX = GY', dY = X'G
         if (dx)
@@ -410,7 +417,8 @@ void MatmulGradKernel(const Context& dev_ctx,
                                      y_dims,
                                      &dx_help,
                                      false,
-                                     true);
+                                     true,
+                                     use_addto);
         if (dy)
           MatMulFunction<Context, T>(dev_ctx,
                                      x_conj,
@@ -419,7 +427,8 @@ void MatmulGradKernel(const Context& dev_ctx,
                                      dout_dims,
                                      &dy_help,
                                      true,
-                                     false);
+                                     false,
+                                     use_addto);
       }
     }
 
@@ -472,6 +481,32 @@ void MatmulGradKernel(const Context& dev_ctx,
     }
     // Get the OutputGrad(out)
   }
+}
+
+template <typename T, typename Context>
+void MatmulGradKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& y,
+                      const DenseTensor& out_grad,
+                      bool transpose_x,
+                      bool transpose_y,
+                      DenseTensor* dx,
+                      DenseTensor* dy) {
+  MatmulGradKernelImpl(
+      dev_ctx, x, y, out_grad, transpose_x, transpose_y, false, dx, dy);
+}
+
+template <typename T, typename Context>
+void AddtoMatmulGradKernel(const Context& dev_ctx,
+                           const DenseTensor& x,
+                           const DenseTensor& y,
+                           const DenseTensor& out_grad,
+                           bool transpose_x,
+                           bool transpose_y,
+                           DenseTensor* dx,
+                           DenseTensor* dy) {
+  MatmulGradKernelImpl(
+      dev_ctx, x, y, out_grad, transpose_x, transpose_y, true, dx, dy);
 }
 
 template <typename T, typename Context>

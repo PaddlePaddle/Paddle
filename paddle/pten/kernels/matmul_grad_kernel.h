@@ -29,6 +29,16 @@ void MatmulGradKernel(const Context& dev_ctx,
                       DenseTensor* dx,
                       DenseTensor* dy);
 
+void AddtoMatmulGradKernel(const Context& dev_ctx,
+                           const DenseTensor& x,
+                           const DenseTensor& y,
+                           const DenseTensor& dout,
+                           bool transpose_x,
+                           bool transpose_y,
+                           bool use_addto,
+                           DenseTensor* dx,
+                           DenseTensor* dy);
+
 template <typename T, typename Context>
 void MatmulDoubleGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
