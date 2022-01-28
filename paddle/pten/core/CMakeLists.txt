@@ -11,6 +11,9 @@ endif()
 
 cc_library(errors SRCS errors.cc)
 set(pten_enforce_deps errors flags)
+if(WITH_GPU)
+  set(pten_enforce_deps ${pten_enforce_deps} external_error_proto)
+endif()
 cc_library(pten_enforce INTERFACE SRCS enforce.cc DEPS ${pten_enforce_deps})
 
 cc_library(kernel_factory SRCS kernel_factory.cc DEPS pten_enforce convert_utils)
@@ -26,7 +29,7 @@ cc_library(pten_device_context SRCS device_context.cc DEPS tensor_base )
 
 cc_library(meta_tensor SRCS meta_tensor.cc DEPS tensor_base tensor_meta dense_tensor)
 cc_library(infermeta_utils SRCS infermeta_utils.cc DEPS meta_tensor)
-cc_library(selected_rows SRCS selected_rows.cc DEPS dense_tensor mixed_vector enforce ddim)
+cc_library(selected_rows SRCS selected_rows.cc DEPS dense_tensor mixed_vector pten_enforce ddim)
 
 cc_test(unroll_array_ops_test SRCS unroll_array_ops_test.cc)
 cc_library(ddim SRCS ddim.cc DEPS eigen3 boost enforce)

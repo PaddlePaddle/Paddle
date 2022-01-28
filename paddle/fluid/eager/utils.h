@@ -94,7 +94,7 @@ class EagerUtils {
    * **/
   static AutogradMeta* autograd_meta(egr::EagerTensor* target);
 
-  static std::vector<AutogradMeta*> multi_autograd_meta(
+  static std::vector<AutogradMeta*> autograd_meta(
       std::vector<egr::EagerTensor>* targets);
 
   static std::pair<size_t, size_t> OutRankInfo(const egr::EagerTensor& target);
@@ -170,6 +170,16 @@ class EagerUtils {
 
   static void CheckAndRetainGrad(const egr::EagerTensor& tensor);
   static void CheckAndRetainGrad(const std::vector<egr::EagerTensor>& tensors);
+
+  static paddle::experimental::Tensor SyncToPtenTensors(
+      const egr::EagerTensor& tensor);
+  static std::vector<paddle::experimental::Tensor> SyncToPtenTensors(
+      const std::vector<egr::EagerTensor>& tensors);
+
+  static egr::EagerTensor CreateEagerTensorFromTensor(
+      const paddle::experimental::Tensor& tensor);
+  static std::vector<egr::EagerTensor> CreateEagerTensorFromTensor(
+      const std::vector<paddle::experimental::Tensor>& tensors);
 };
 
 }  // namespace egr

@@ -137,6 +137,10 @@ class TensorRuntimeInferVarTypeContext
         out->MutableVar()->GetMutable<paddle::framework::LoDTensor>();
         break;
       }
+      case paddle::framework::proto::VarType::SELECTED_ROWS: {
+        out->MutableVar()->GetMutable<pten::SelectedRows>();
+        break;
+      }
       default: {
         PADDLE_THROW(paddle::platform::errors::NotFound(
             "Cannot found var type: %s while running runtime InferVarType",
