@@ -129,6 +129,7 @@ PT_REGISTER_KERNEL(add_grad,
                    int,
                    int64_t,
                    paddle::platform::float16,
+                   paddle::platform::bfloat16,
                    paddle::platform::complex<float>,
                    paddle::platform::complex<double>) {}
 
@@ -141,6 +142,7 @@ PT_REGISTER_KERNEL(add_double_grad,
                    int,
                    int64_t,
                    paddle::platform::float16,
+                   paddle::platform::bfloat16,
                    paddle::platform::complex<float>,
                    paddle::platform::complex<double>) {}
 
@@ -153,6 +155,7 @@ PT_REGISTER_KERNEL(add_triple_grad,
                    int,
                    int64_t,
                    paddle::platform::float16,
+                   paddle::platform::bfloat16,
                    paddle::platform::complex<float>,
                    paddle::platform::complex<double>) {}
 
@@ -165,6 +168,7 @@ PT_REGISTER_KERNEL(subtract_grad,
                    int,
                    int64_t,
                    paddle::platform::float16,
+                   paddle::platform::bfloat16,
                    paddle::platform::complex<float>,
                    paddle::platform::complex<double>) {}
 
@@ -177,5 +181,6 @@ PT_REGISTER_KERNEL(subtract_double_grad,
                    int,
                    int64_t,
                    paddle::platform::float16,
+                   paddle::platform::bfloat16,
                    paddle::platform::complex<float>,
                    paddle::platform::complex<double>) {}
