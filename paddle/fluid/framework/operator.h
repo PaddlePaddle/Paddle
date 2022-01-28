@@ -616,9 +616,6 @@ class OperatorWithKernel : public OperatorBase {
                               platform::DeviceContext* dev_ctx,
                               pten::KernelContext* pt_kernel_context) const;
 
-  void WriteBackToOutputs(RuntimeContext* ctx,
-                          pten::KernelContext* pt_kernel_context) const;
-
   pten::KernelSignature* PtenKernelSignature() const {
     return pt_kernel_signature_.get();
   }
