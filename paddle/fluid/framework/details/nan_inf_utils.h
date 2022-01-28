@@ -17,7 +17,6 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/eager/legacy/type_def.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/imperative/type_defs.h"
