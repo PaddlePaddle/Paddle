@@ -17,11 +17,6 @@
 namespace paddle {
 namespace operators {
 namespace data {
-// FileDataReaderWrapper reader_wrapper;
-
-// // initialization static variables out of ReaderManager
-// ReaderManager *ReaderManager::rm_instance_ptr_ = nullptr;
-// std::mutex ReaderManager::m_;
 
 class FileLabelLoaderOp : public framework::OperatorWithKernel {
  public:
@@ -44,17 +39,17 @@ class FileLabelLoaderOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "Input(Indices) should be a 1-D Tensor"));
 
-    auto files = ctx->Attrs().Get<std::vector<std::string>>("files");
-    auto labels = ctx->Attrs().Get<std::vector<int>>("labels");
-    PADDLE_ENFORCE_GT(files.size(), 0,
-                      platform::errors::InvalidArgument(
-                          "length of files should be greater than 0"));
-    PADDLE_ENFORCE_GT(labels.size(), 0,
-                      platform::errors::InvalidArgument(
-                          "length of labels should be greater than 0"));
-    PADDLE_ENFORCE_EQ(files.size(), labels.size(),
-                      platform::errors::InvalidArgument(
-                          "length of labels and files should be equal"));
+    // auto files = ctx->Attrs().Get<std::vector<std::string>>("files");
+    // auto labels = ctx->Attrs().Get<std::vector<int>>("labels");
+    // PADDLE_ENFORCE_GT(files.size(), 0,
+    //                   platform::errors::InvalidArgument(
+    //                       "length of files should be greater than 0"));
+    // PADDLE_ENFORCE_GT(labels.size(), 0,
+    //                   platform::errors::InvalidArgument(
+    //                       "length of labels should be greater than 0"));
+    // PADDLE_ENFORCE_EQ(files.size(), labels.size(),
+    //                   platform::errors::InvalidArgument(
+    //                       "length of labels and files should be equal"));
   }
 
   framework::OpKernelType GetExpectedKernelType(
@@ -113,10 +108,11 @@ class FileLabelLoaderOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Indices", "The batch indices of input samples");
     AddOutput("Image", "The output image tensor of ReadFileLoader op");
     AddOutput("Label", "The output label tensor of ReadFileLoader op");
-    AddAttr<std::vector<std::string>>("files", "Path of the file to be readed.")
-        .SetDefault({});
-    AddAttr<std::vector<int>>("labels", "Path of the file to be readed.")
-        .SetDefault({});
+    AddAttr<std::string>("data_root", "Path of root directory of dataset");
+    // AddAttr<std::vector<std::string>>("files", "Path of the file to be readed.")
+    //     .SetDefault({});
+    // AddAttr<std::vector<int>>("labels", "Path of the file to be readed.")
+    //     .SetDefault({});
     AddComment(R"DOC(
 This operator read a file.
 )DOC");

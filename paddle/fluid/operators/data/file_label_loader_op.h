@@ -15,7 +15,10 @@
 #pragma once
 #include <fstream>
 #include <string>
+#include <cstring>
 #include <vector>
+#include <sys/stat.h>
+#include <dirent.h>
 
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
@@ -29,6 +32,136 @@ namespace operators {
 namespace data {
 using LoDTensor = framework::LoDTensor;
 using LoDTensorArray = framework::LoDTensorArray;
+
+// static void ParseClasses(const std::string data_root,
+//                        std::vector<std::string>* classes) {
+//   _finddata_t findData;
+//   auto handle = _findfirst(data_root, &findData);
+//   PADDLE_ENFORCE_NE(handle, -1, platform::errors::InvalidArgument(
+//                         "Cannot find files under data_root"));
+//   
+//   do {
+//     if (findData.attrib & _A_SUBDIRi && findData.name != "."
+//         && findData.name != "..") {
+//       classes->emplace_back(findData.name);
+//     }
+//   } while (_findnext(handle, &findData) == 0);
+//   
+//   std::sort(classes->begin(), classes->end());
+//   for (size_t i = 0; i < classes->size(); i++) {
+//     LOG(ERROR) << "class id " << i << ": " << classes->at(i);
+//   }
+// }
+
+// static void ParseFilesAndLabels(const std::string data_root,
+//                               std::vector<std::string>* files,
+//                               std::vector<int> labels) {
+//   std::vector<std::string> classes;
+//   ParseClasses(data_root, &classes);
+//
+//   _finddata_t findData;
+//   for (int i = 0; i < static_cast<int>(classes.size()); i++) {
+//     auto cls_dir = data_root + "/" + classes[i];
+//     auto handle = _findfirst(cls_dir, &findData);
+//     if (handle == -1) break;
+//
+//     do {
+//       if (findData.name == "." || findData.name == "..") continue;
+//       files->emplace_back(cls_dir + "/" + findData.name);
+//       labels->emplace_back(i);
+//     }
+//   }
+// }
+
+#ifdef _WIN32
+constexpr char DIR_SEP = '\\';
+#else
+constexpr char DIR_SEP = '/';
+#endif
+
+static std::string JoinPath(const std::string path1,
+                            const std::string path2) {
+  // empty check
+  if (path1.empty()) return path2;
+  if (path1.empty()) return path1;
+
+  // absolute path check
+  if (path2[0] == DIR_SEP) return path2;
+#ifdef _WIN32
+  if (path2[1] == ":") return path2;
+#endif
+
+  // concat path
+  if (path1[path1.length() - 1] == DIR_SEP) return path1 + path2;
+  return path1 + DIR_SEP + path2;
+}
+
+static void ParseFilesAndLabels(const std::string data_root,
+              std::vector<std::pair<std::string, int>>* samples) {
+  auto* dir = opendir(data_root.c_str());
+  PADDLE_ENFORCE_NE(dir, nullptr, platform::errors::InvalidArgument(
+                      "Cannot open directory %s", data_root));
+
+  // Step 1: parse classes info
+  std::vector<std::string> classes;
+  auto* entry = readdir(dir);
+  while (entry) {
+    if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+      entry = readdir(dir);
+      continue;
+    } 
+
+    auto cls_path = JoinPath(data_root, entry->d_name);
+    struct stat s;
+    int ret = stat(cls_path.c_str(), &s);
+    PADDLE_ENFORCE_EQ(ret, 0, platform::errors::InvalidArgument(
+          "Directory %s is unaccessiable.", cls_path));
+
+    if (S_ISDIR(s.st_mode)) classes.emplace_back(entry->d_name);
+
+    entry = readdir(dir);
+  }
+
+  closedir(dir);
+
+  // sort directories in alphabetic order to generate class order
+  std::sort(classes.begin(), classes.end());
+
+  // Step 2: traverse directory to generate samples
+  for (int class_id = 0; class_id < static_cast<int>(classes.size());
+      class_id++) {
+    auto cur_dir = data_root + DIR_SEP + classes[class_id]; 
+    dir = opendir(cur_dir.c_str());
+    entry = readdir(dir);
+    while (entry) {
+      if (strcmp(entry->d_name, ".") == 0
+          || strcmp(entry->d_name, "..") == 0) {
+        entry = readdir(dir);
+        continue;
+      }
+
+      auto file = cur_dir + DIR_SEP + entry->d_name;
+      samples->emplace_back(std::make_pair(file, class_id));
+
+      entry = readdir(dir);
+    }
+    closedir(dir);
+  }
+}
+
+std::map<std::string, std::vector<std::pair<std::string, int>>> root_to_samples_;
+
+static std::vector<std::pair<std::string, int>>* GetFilesAndLabelsFromCache(const std::string data_root) {
+  auto iter = root_to_samples_.find(data_root);
+  if (iter == root_to_samples_.end()) {
+    std::vector<std::pair<std::string, int>> samples;
+    ParseFilesAndLabels(data_root, &samples);
+    LOG(ERROR) << "Init samples: " << samples.size();
+    root_to_samples_[data_root] = samples;
+  }
+  
+  return &(root_to_samples_[data_root]);
+}
 
 // class FileDataReader {
 //  public:
@@ -223,8 +356,8 @@ class FileLabelLoaderCPUKernel: public framework::OpKernel<T> {
     auto* image_arr = ctx.Output<LoDTensorArray>("Image");
     auto* label_tensor = ctx.Output<LoDTensor>("Label");
 
-    auto files = ctx.Attr<std::vector<std::string>>("files");
-    auto labels = ctx.Attr<std::vector<int>>("labels");
+    auto data_root = ctx.Attr<std::string>("data_root");
+    auto* samples = GetFilesAndLabelsFromCache(data_root);
 
     auto batch_size = indices->dims()[0];
     const int64_t* indices_data = indices->data<int64_t>();
@@ -235,8 +368,10 @@ class FileLabelLoaderCPUKernel: public framework::OpKernel<T> {
         framework::make_ddim({static_cast<int64_t>(batch_size)}));
     auto* label_data = label_tensor->mutable_data<int>(platform::CPUPlace());
     for (int64_t i = 0; i < batch_size; i++) {
-      int64_t index = indices_data[i];
-      std::ifstream input(files[index].c_str(),
+      int64_t index = static_cast<int>(indices_data[i]);
+      auto file = samples->at(index).first;
+      auto label = samples->at(index).second;
+      std::ifstream input(file.c_str(),
                           std::ios::in | std::ios::binary | std::ios::ate);
       std::streamsize file_size = input.tellg();
 
@@ -251,7 +386,7 @@ class FileLabelLoaderCPUKernel: public framework::OpKernel<T> {
       input.read(reinterpret_cast<char*>(data), file_size);
 
       image_arr->emplace_back(image);
-      label_data[i] = labels[index];
+      label_data[i] = label;
     }
 
     LOG(ERROR) << "FileLabelLoaderOp RunImpl finish";

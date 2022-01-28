@@ -63,6 +63,7 @@ class DataReaderOp : public framework::OperatorBase {
     auto output_var_names = Attr<std::vector<std::string>>("output_var_names");
     auto* reader_block = Attr<BlockDesc*>("reader_block");
     auto reader_id = Attr<int64_t>("reader_id");
+    LOG(ERROR) << "DataReaderOp enter, reader_id: " << reader_id;
 
     auto output_queues = GetQueueVecFromVariableVec(output_vars);
     ReaderManager::Instance()->StartDataReader(
