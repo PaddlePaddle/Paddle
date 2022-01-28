@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/pten/common/scalar.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 namespace pten {
@@ -21,17 +22,9 @@ namespace pten {
 template <typename T, typename Context>
 void OneHotKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  int depth,
+                  const Scalar& depth,
                   int dtype,
                   bool allow_out_of_range,
                   DenseTensor* out);
-
-template <typename T, typename Context>
-void OneHotTensorKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        const DenseTensor& depth_tensor,
-                        int dtype,
-                        bool allow_out_of_range,
-                        DenseTensor* out);
 
 }  // namespace pten

@@ -77,26 +77,24 @@ struct OneHotV2OpFunctor {
 template <typename T, typename Context>
 void OneHotKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  paddle::optional<const DenseTensor&> depth_tensor,
-                  int depth,
+                  const Scalar& depth,
                   int dtype,
                   bool allow_out_of_range,
                   DenseTensor* out) {
-  if (depth_tensor) {
-    auto* depth_data = depth_tensor->data<int32_t>();
-    depth = depth_data[0];
-    auto out_dims = out->dims();
-    out_dims[out_dims.size() - 1] = depth;
+  int depth_val = depth.to<int>();
+  auto out_dims = out->dims();
+  if (out_dims[out_dims.size() - 1] == -1) {
+    out_dims[out_dims.size() - 1] = depth_val;
     out->Resize(out_dims);
   }
   out->mutable_data<T>(dev_ctx.GetPlace());
   paddle::framework::VisitDataType(
       static_cast<paddle::framework::proto::VarType::Type>(dtype),
       OneHotV2OpFunctor<Context, T>(
-          &x, out, depth, dev_ctx, allow_out_of_range));
+          &x, out, depth_val, dev_ctx, allow_out_of_range));
 }
 
 }  // namespace pten
 
-PT_REGISTER_KERNEL(one_hot, CPU, ALL_LAYOUT, pten::OneHotKernel, int, int64_t) {
-}
+PT_REGISTER_KERNEL(
+    one_hot_v2, CPU, ALL_LAYOUT, pten::OneHotKernel, int, int64_t) {}

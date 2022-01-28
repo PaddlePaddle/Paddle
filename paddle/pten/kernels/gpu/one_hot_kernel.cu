@@ -65,34 +65,23 @@ struct OneHotV2OpCUDAFunctor {
 template <typename T, typename Context>
 void OneHotKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  paddle::optional<const DenseTensor&> depth_tensor,
-                  int depth,
+                  const Scalar& depth,
                   int dtype,
                   bool allow_out_of_range,
                   DenseTensor* out) {
-  if (depth_tensor) {
-    auto* depth_data = depth_tensor->data<int32_t>();
-
-    if (paddle::platform::is_gpu_place(depth_tensor->place())) {
-      DenseTensor temp;
-      paddle::framework::TensorCopySync(
-          depth_tensor.get(), pten::CPUPlace(), &temp);
-      depth = *temp.data<int32_t>();
-    } else {
-      depth = *depth_tensor->data<int32_t>();
-    }
-    auto out_dims = out->dims();
-    out_dims[out_dims.size() - 1] = depth;
+  int depth_val = depth.to<int>();
+  auto out_dims = out->dims();
+  if (out_dims[out_dims.size() - 1] == -1) {
+    out_dims[out_dims.size() - 1] = depth_val;
     out->Resize(out_dims);
   }
-
   out->mutable_data<T>(dev_ctx.GetPlace());
   paddle::framework::VisitDataType(
       static_cast<paddle::framework::proto::VarType::Type>(dtype),
-      OneHotV2OpCUDAFunctor<Context, T>(&x, out, depth, dev_ctx));
+      OneHotV2OpCUDAFunctor<Context, T>(&x, out, depth_val, dev_ctx));
 }
 
 }  // namespace pten
 
-PT_REGISTER_KERNEL(one_hot, GPU, ALL_LAYOUT, pten::OneHotKernel, int, int64_t) {
-}
+PT_REGISTER_KERNEL(
+    one_hot_v2, GPU, ALL_LAYOUT, pten::OneHotKernel, int, int64_t) {}

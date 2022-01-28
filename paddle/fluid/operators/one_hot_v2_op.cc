@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/one_hot_v2_op.h"
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -45,9 +45,15 @@ class OneHotV2Op : public framework::OperatorWithKernel {
 
   framework::KernelSignature GetExpectedPtenKernelArgs(
       const framework::ExecutionContext& ctx) const override {
-    return framework::KernelSignature("one_hot", {"X", "depth_tensor"},
-                                      {"depth", "dtype", "allow_out_of_range"},
-                                      {"Out"});
+    if (ctx.HasInput("depth_tnsor ")) {
+      return framework::KernelSignature(
+          "one_hot_v2", {"X"}, {"depth_tensor", "dtype", "allow_out_of_range"},
+          {"Out"});
+    } else {
+      return framework::KernelSignature(
+          "one_hot_v2", {"X"}, {"depth", "dtype", "allow_out_of_range"},
+          {"Out"});
+    }
   }
 
  protected:
@@ -59,10 +65,11 @@ class OneHotV2Op : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
+      const std::string& var_name, const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "depth_tensor") {
-      return expected_kernel_type;
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     platform::CPUPlace(), tensor.layout());
     }
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    tensor.place(), tensor.layout());
@@ -125,6 +132,6 @@ REGISTER_OPERATOR(
     one_hot_v2, ops::OneHotV2Op, ops::OneHotV2OpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    one_hot_v2, ops::OneHotV2Kernel<paddle::platform::CPUDeviceContext, int>,
-    ops::OneHotV2Kernel<paddle::platform::CPUDeviceContext, int64_t>);
+// REGISTER_OP_CPU_KERNEL(
+//     one_hot_v2, ops::OneHotV2Kernel<paddle::platform::CPUDeviceContext, int>,
+//     ops::OneHotV2Kernel<paddle::platform::CPUDeviceContext, int64_t>);
