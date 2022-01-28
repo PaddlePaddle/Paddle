@@ -67,10 +67,9 @@ static void ShareVarInfoToCinnLaunch(
       subgraph.Get<Name2VarInfoMap>(paddle2cinn::kMemOptVarInfoFromMainGraph);
   const auto& cur_place_var_infos = var_infos.at(cinn_launch_op->GetScopeIdx());
 
-  // collect all MemOptVarInfos of external variables that would be eager
-  // deleted
-  // after the cinn_launch subgraph executed, and store them as attribute of the
-  // subgraph
+  // collect all MemOptVarInfos of external variables
+  // that would be eager deleted after the cinn_launch subgraph executed,
+  // and store them as attribute of the subgraph
   for (const auto& var_name : vars_to_delete) {
     auto it = cur_place_var_infos.find(var_name);
     PADDLE_ENFORCE_NE(it, cur_place_var_infos.end(),
@@ -99,14 +98,14 @@ static void TakeVarInfoFromMainGraph(
   }
 }
 
-// This pass will be applied on both the main graph and all subgraphs, and
-// it distinguishs them according to whether the graph has the
+// This pass will be applied on both the main graph and all subgraphs,
+// and it distinguishs them according to whether the graph has the
 // kMemOptVarInfoFromMainGraph attribute or not.
 // On the main graph, it finds all cinn_launch ops and shares MemOptVarInfos
 // to their subgraphs.
 // On a subgraph, it iterates each variable that will be deleted by a
-// eager_deletion op,
-// and take the MemOptVarInfo from the main graph if such one found.
+// eager_deletion op, and take the MemOptVarInfo from the main graph
+// if such one found.
 class ShareMemOptInfoToSubGraphPass : public ir::Pass {
  protected:
   void ApplyImpl(ir::Graph* graph) const override {
