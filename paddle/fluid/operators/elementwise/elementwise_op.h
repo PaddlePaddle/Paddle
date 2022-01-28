@@ -129,7 +129,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       const std::string &var_name, const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
-      // only promote inputs’s types when contains complex input
+      // only promote inputs's types when contains complex input
       return framework::OpKernelType(tensor.type(), tensor.place(),
                                      tensor.layout());
     } else {
@@ -346,7 +346,7 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
       const std::string &var_name, const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
-      // only promote inputs’s types when contains complex input
+      // only promote inputs's types when contains complex input
       return framework::OpKernelType(tensor.type(), tensor.place(),
                                      tensor.layout());
     } else {
@@ -408,7 +408,7 @@ class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
       const std::string &var_name, const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
-      // only promote inputs’s types when contains complex input
+      // only promote inputs's types when contains complex input
       return framework::OpKernelType(tensor.type(), tensor.place(),
                                      tensor.layout());
     } else {
@@ -461,7 +461,7 @@ class ElementwiseOpDoubleGradWithoutDXDY
       const std::string &var_name, const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
-      // only promote inputs’s types when contains complex input
+      // only promote inputs's types when contains complex input
       return framework::OpKernelType(tensor.type(), tensor.place(),
                                      tensor.layout());
     } else {
@@ -518,7 +518,7 @@ class ElementwiseOpTripleGrad : public framework::OperatorWithKernel {
       const std::string &var_name, const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
-      // only promote inputs’s types when contains complex input
+      // only promote inputs's types when contains complex input
       return framework::OpKernelType(tensor.type(), tensor.place(),
                                      tensor.layout());
     } else {

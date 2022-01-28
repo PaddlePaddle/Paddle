@@ -134,7 +134,7 @@ We provide [English](http://www.paddlepaddle.org.cn/documentation/docs/en/1.8/be
 
 - [User Guides](https://www.paddlepaddle.org.cn/documentation/docs/en/user_guides/index_en.html)
 
-  You might have got the hang of Beginner’s Guide, and wish to model practical problems and build your original networks.
+  You might have got the hang of Beginner's Guide, and wish to model practical problems and build your original networks.
   
 - [Advanced User Guides](https://www.paddlepaddle.org.cn/documentation/docs/en/advanced_guide/index_en.html)
 

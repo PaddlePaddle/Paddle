@@ -1630,7 +1630,7 @@ class Layer(object):
             if t.place.is_gpu_place():
                 # for gpu, minimum memory allocation unit is 256 bytes.
                 size_dtype = core.size_of_dtype(dtype)
-                # Note(zhangbo): Paddle GPU minimum memory allocation unit is 256 bytes, waiting_alloc_memory will comput ‘t’ occupied memory space.
+                # Note(zhangbo): Paddle GPU minimum memory allocation unit is 256 bytes, waiting_alloc_memory will comput 't' occupied memory space.
                 # Coefficient 1.2 is used to avoid OOM that may occur in this critical state when the memory is just enough.
                 waiting_alloc_memory = (
                     (np.prod(t.shape) * size_dtype) / 256 + 1) * 256 * 1.2

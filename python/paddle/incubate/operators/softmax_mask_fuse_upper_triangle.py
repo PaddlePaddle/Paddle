@@ -41,7 +41,7 @@ def softmax_mask_fuse_upper_triangle(x):
                         The third dimension of x must be same with the fourth dimension of x.
 
     Returns:
-        4-D Tensor. A location into which the result is stored. It’s dimension is 4D. Has same dimension with x.
+        4-D Tensor. A location into which the result is stored. It's dimension is 4D. Has same dimension with x.
 
     Examples:
         .. code-block:: python

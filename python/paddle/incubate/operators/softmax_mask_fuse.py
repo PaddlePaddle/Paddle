@@ -43,7 +43,7 @@ def softmax_mask_fuse(x, mask, name=None):
                               For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        4-D Tensor. A location into which the result is stored. It’s dimension is 4D. Has same shape with x.
+        4-D Tensor. A location into which the result is stored. It's dimension is 4D. Has same shape with x.
 
     Examples:
         .. code-block:: python

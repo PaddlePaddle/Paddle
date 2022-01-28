@@ -1877,9 +1877,12 @@ Scope* OperatorWithKernel::PreparePtenData(
                         "the size of kernel input_defs (%d).",
                         input_names.size(), input_defs.size()));
   Scope* new_scope = nullptr;
+  auto name_map = Inputs();
+
   for (size_t i = 0; i < input_defs.size(); ++i) {
     auto& in_def = input_defs.at(i);
     auto& ins_vector = ctx->inputs.at(input_names[i]);
+    auto& name_vec = name_map.at(input_names[i]);
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
       // Only tensor can be tranfer to another device.
       auto* var = ins_vector[offset];
@@ -1905,7 +1908,7 @@ Scope* OperatorWithKernel::PreparePtenData(
       }
 
       // Create new var with the same name in transfer scopes
-      auto* trans_var = new_scope->Var(input_names[i]);
+      auto* trans_var = new_scope->Var(name_vec[offset]);
       ins_vector[offset] = trans_var;
 
       // Do transfer

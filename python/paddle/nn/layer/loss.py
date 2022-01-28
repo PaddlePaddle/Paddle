@@ -1051,7 +1051,7 @@ class CTCLoss(Layer):
         labels (Tensor): The ground truth sequence with padding, which must be a 3-D Tensor. The tensor shape is [batch_size, max_label_length], where max_label_length is the longest length of label sequence. The data type must be int32.
         input_lengths (Tensor): The length for each input sequence, it should have shape [batch_size] and dtype int64.
         label_lengths (Tensor): The length for each label sequence, it should have shape [batch_size] and dtype int64.
-        norm_by_times (bool, default false) – Whether to normalize the gradients by the number of time-step, which is also the sequence’s length. There is no need to normalize the gradients if reduction mode is 'mean'.
+        norm_by_times (bool, default false) – Whether to normalize the gradients by the number of time-step, which is also the sequence's length. There is no need to normalize the gradients if reduction mode is 'mean'.
 
     Returns:
         Tensor, The Connectionist Temporal Classification (CTC) loss between ``log_probs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``log_probs``.

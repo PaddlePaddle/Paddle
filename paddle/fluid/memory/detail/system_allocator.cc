@@ -175,7 +175,7 @@ void GPUAllocator::Free(void* p, size_t size, size_t index) {
 bool GPUAllocator::UseGpu() const { return true; }
 
 // PINNED memory allows direct DMA transfers by the GPU to and from system
-// memory. It’s locked to a physical address.
+// memory. It's locked to a physical address.
 void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
   if (size <= 0) return nullptr;
 

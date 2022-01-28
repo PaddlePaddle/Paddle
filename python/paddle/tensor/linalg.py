@@ -2757,7 +2757,7 @@ def eigvalsh(x, UPLO='L', name=None):
     Args:
         x (Tensor): A tensor with shape :math:`[_, M, M]` , The data type of the input Tensor x
             should be one of float32, float64, complex64, complex128.
-        UPLO(str, optional): Lower triangular part of a (‘L’, default) or the upper triangular part (‘U’).
+        UPLO(str, optional): Lower triangular part of a ('L', default) or the upper triangular part ('U').
         name(str, optional): The default value is None.  Normally there is no need for user to set this
             property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -2830,8 +2830,8 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
             the effective rank of ``x``. If ``rcond`` is None, it will be set to max(M, N) times the 
             machine precision of x_dtype.
         driver(str, optional): The default value is None. The name of LAPACK method to be used. For 
-            CPU inputs the valid values are ‘gels’, ‘gelsy’, ‘gelsd, ‘gelss’. For CUDA input, the only 
-            valid driver is ‘gels’. If ``driver`` is None, ‘gelsy’ is used for CPU inputs and ‘gels’ 
+            CPU inputs the valid values are 'gels', 'gelsy', 'gelsd, 'gelss'. For CUDA input, the only 
+            valid driver is 'gels'. If ``driver`` is None, 'gelsy' is used for CPU inputs and 'gels' 
             for CUDA inputs.
         name(str, optional): The default value is None. Normally there is no need for user to set 
             this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -2842,9 +2842,9 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
         is a tensor with shape ``(*, K)``, meaning the squared residuals of the solutions, which is computed 
         when M > N and every matrix in ``x`` is full-rank, otherwise return an empty tensor. ``rank`` is a tensor 
         with shape ``(*)``, meaning the ranks of the matrices in ``x``, which is computed when ``driver`` in 
-        (‘gelsy’, ‘gelsd’, ‘gelss’), otherwise return an empty tensor. ``singular_values`` is a tensor with 
+        ('gelsy', 'gelsd', 'gelss'), otherwise return an empty tensor. ``singular_values`` is a tensor with 
         shape ``(*, min(M, N))``, meaning singular values of the matrices in ``x``, which is computed when 
-        ``driver`` in (‘gelsd’, ‘gelss’), otherwise return an empty tensor.
+        ``driver`` in ('gelsd', 'gelss'), otherwise return an empty tensor.
 
     Examples:
         .. code-block:: python

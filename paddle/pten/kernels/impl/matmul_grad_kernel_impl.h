@@ -1396,7 +1396,7 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
 
     if (transpose_x) {
       if (transpose_y) {
-        // dX = ddY' d_ddout’, dY = d_ddout’ ddX'
+        // dX = ddY' d_ddout', dY = d_ddout' ddX'
         if (out_d_x)
           MatMulFunction<Context, T>(dev_ctx,
                                      ddy_conj,
@@ -1438,7 +1438,7 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
       }
     } else {
       if (transpose_y) {
-        // dX = d_ddout ddY, dY = d_ddout’ ddX
+        // dX = d_ddout ddY, dY = d_ddout' ddX
         if (out_d_x)
           MatMulFunction<Context, T>(dev_ctx,
                                      d_ddout.get(),

@@ -47,7 +47,7 @@ class ElementwiseMulOp : public ElementwiseOp {
       const std::string& var_name, const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
-      // only promote inputs’s types when contains complex input
+      // only promote inputs's types when contains complex input
       return framework::OpKernelType(tensor.type(), tensor.place(),
                                      tensor.layout());
     } else {

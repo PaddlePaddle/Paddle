@@ -256,7 +256,7 @@ class ArgsortOpCUDAKernel : public framework::OpKernel<T> {
     int64_t* ids_data = indices->mutable_data<int64_t>(ctx.GetPlace());
 
     // Use thrust for parallel acceleration when the input size is equal to the
-    // length of the ‘axis’ dimension.
+    // length of the 'axis' dimension.
     // Compared to the following 'Special case for full sort', ascending sort is
     // 34 times faster and descending sort is 31 times faster.
     if (size == in_dims[axis]) {
@@ -347,7 +347,7 @@ class ArgsortGradOpCUDAKernel : public framework::OpKernel<T> {
     const auto& dev_ctx = ctx.cuda_device_context();
 
     // Parallel acceleration when the input size is equal to the length of the
-    // ‘axis’ dimension.
+    // 'axis' dimension.
     // Compared to 'special case for full sort' below, the gradient calculation
     // is 10 times faster.
     if (size == in_dims[axis]) {

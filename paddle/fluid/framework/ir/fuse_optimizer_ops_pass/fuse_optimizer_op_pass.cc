@@ -453,7 +453,7 @@ void FuseOptimizerOpPass::SortParametersAndAuxVars(
     std::vector<ir::Node *> *ops) const {
   PADDLE_ENFORCE_NE(
       aux_var_map->count(kGrad), static_cast<size_t>(0),
-      platform::errors::NotFound("The gradient variable doesn‘t exist."));
+      platform::errors::NotFound("The gradient variable doesn't exist."));
   auto &grad_vec = aux_var_map->at(kGrad);
 
   std::vector<size_t> grad_sort_idx;

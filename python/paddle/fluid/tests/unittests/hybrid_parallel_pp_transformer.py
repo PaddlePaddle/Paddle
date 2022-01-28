@@ -86,7 +86,7 @@ class TransformerNet(Layer):
         product = layers.matmul(x=q, y=k, transpose_y=True, alpha=d_model**-0.5)
 
         weights = F.softmax(product + mask)
-        # TODO(shenliang03) For save/load in PipeLineParallel, can’t support dropout temporarily.
+        # TODO(shenliang03) For save/load in PipeLineParallel, can't support dropout temporarily.
         # weights = F.dropout(weights, 0.2)
         tgt = layers.matmul(weights, v)
         residual = tgt

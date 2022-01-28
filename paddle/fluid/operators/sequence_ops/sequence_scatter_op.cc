@@ -106,14 +106,14 @@ class SequenceScatterOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           ids_lod.size(), 1,
           platform::errors::InvalidArgument(
-              "The SequenceScatter operator’s Input Ids holds wrong LoD "
+              "The SequenceScatter operator's Input Ids holds wrong LoD "
               "information. Currently SequenceScatter operator can only deal "
               "with one level LoD for input Ids, but received LoD level is %d.",
               ids_lod.size()));
       PADDLE_ENFORCE_EQ(
           updates_lod.size(), 1,
           platform::errors::InvalidArgument(
-              "The SequenceScatter operator’s Input Updates holds wrong LoD "
+              "The SequenceScatter operator's Input Updates holds wrong LoD "
               "information. Currently SequenceScatter operator can only deal "
               "with one level LoD for input Updates, but received LoD level is "
               "%d.",

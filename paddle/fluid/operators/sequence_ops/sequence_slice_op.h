@@ -65,15 +65,15 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
         n, static_cast<size_t>(length->dims()[0]),
         platform::errors::InvalidArgument(
             "Input length shape error. The length of input LoD sequence and "
-            "input length-array‘s first dimension should be equal, but the LoD "
-            "sequence length is %d, the length-array‘s first dimension is %d.",
+            "input length-array's first dimension should be equal, but the LoD "
+            "sequence length is %d, the length-array's first dimension is %d.",
             n, static_cast<size_t>(length->dims()[0])));
     PADDLE_ENFORCE_EQ(
         n, static_cast<size_t>(offset->dims()[0]),
         platform::errors::InvalidArgument(
             "Input offset shape error. The length of input LoD sequence and "
-            "input offset-array‘s first dimension should be equal, but the LoD "
-            "sequence length is %d, the offset-array‘s first dimension is %d.",
+            "input offset-array's first dimension should be equal, but the LoD "
+            "sequence length is %d, the offset-array's first dimension is %d.",
             n, static_cast<size_t>(offset->dims()[0])));
 
     const int64_t* offset_data = offset->data<int64_t>();

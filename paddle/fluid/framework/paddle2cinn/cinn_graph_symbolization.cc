@@ -122,7 +122,7 @@ CinnGraphSymbolization::GetGraphInputParameterNames() const {
   return names;
 }
 
-// Transform paddle scope to cinn, note that we only preserve the graph’s
+// Transform paddle scope to cinn, note that we only preserve the graph's
 // input parameter variable and ignore others.
 std::shared_ptr<::cinn::hlir::framework::Scope>
 CinnGraphSymbolization::CreateCinnScope(const FeedInfoMap& feed_map) {

@@ -211,7 +211,7 @@ class CumCUDAKernel : public framework::OpKernel<T> {
     const T* in_data = in->data<T>();
 
     // Use thrust for parallel acceleration when the input size is equal to the
-    // length of the ‘axis’ dimension.
+    // length of the 'axis' dimension.
     if (size == out_dims[axis]) {
       if (reverse) {
         thrust::device_ptr<const T> dev_ptr =

@@ -415,7 +415,7 @@ TEST(enforce, cuda_success) {
       "a cudaMemcpyAsync() failure.To correct: check that the hardware, an "
       "appropriate version of the driver, and the cuSolver library are "
       "correctly installed. Also, check that the memory passed as a parameter "
-      "to the routine is not being deallocated prior to the routine’s "
+      "to the routine is not being deallocated prior to the routine's "
       "completion"));
   EXPECT_TRUE(CheckCudaStatusFailure(
       CUSOLVER_STATUS_INVALID_VALUE,

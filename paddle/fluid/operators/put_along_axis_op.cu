@@ -68,7 +68,7 @@ class PutAlongAxisCUDAKernel : public framework::OpKernel<T> {
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "can not support reduce_op: '%s' for scatter kernel, only "
-          "support reduce op: 'add‘, 'assign', 'mul' and 'multiply', the "
+          "support reduce op: 'add', 'assign', 'mul' and 'multiply', the "
           "defalut reduce op is 'assign' ",
           reduce_op));
       return;
