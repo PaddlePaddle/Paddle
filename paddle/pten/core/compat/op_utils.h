@@ -67,13 +67,13 @@ class OpUtilsMap {
     return name_map_.count(op_type) || arg_mapping_fn_map_.count(op_type);
   }
 
-  void InsertApiName(std::string op_type, std::string api_name) {
+  void InsertBaseKernelName(std::string op_type, std::string base_kernel_name) {
     PADDLE_ENFORCE_EQ(
         name_map_.count(op_type),
         0UL,
         paddle::platform::errors::AlreadyExists(
             "Operator (%s)'s api name has been registered.", op_type));
-    name_map_.insert({std::move(op_type), std::move(api_name)});
+    name_map_.insert({std::move(op_type), std::move(base_kernel_name)});
   }
 
   void InsertArgumentMappingFn(std::string op_type, ArgumentMappingFn fn) {
@@ -86,7 +86,7 @@ class OpUtilsMap {
     arg_mapping_fn_map_.insert({std::move(op_type), std::move(fn)});
   }
 
-  std::string GetApiName(const std::string& op_type) const {
+  std::string GetBaseKernelName(const std::string& op_type) const {
     auto it = name_map_.find(op_type);
     if (it == name_map_.end()) {
       return "deprecated";
@@ -117,9 +117,9 @@ class OpUtilsMap {
   DISABLE_COPY_AND_ASSIGN(OpUtilsMap);
 };
 
-struct ApiNameRegistrar {
-  ApiNameRegistrar(const char* op_type, const char* api_name) {
-    OpUtilsMap::Instance().InsertApiName(op_type, api_name);
+struct BaseKernelNameRegistrar {
+  BaseKernelNameRegistrar(const char* op_type, const char* base_kernel_name) {
+    OpUtilsMap::Instance().InsertBaseKernelName(op_type, base_kernel_name);
   }
 };
 
@@ -131,21 +131,21 @@ struct ArgumentMappingFnRegistrar {
   }
 };
 
-#define PT_REGISTER_API_NAME(op_type, api_name)                             \
-  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                        \
-      pt_register_api_name_ns_check_##op_type,                              \
-      "PT_REGISTER_API_NAME must be called in global namespace.");          \
-  static const ::pten::ApiNameRegistrar __registrar_api_name_for_##op_type( \
-      #op_type, #api_name);                                                 \
-  int TouchApiNameSymbol_##op_type() { return 0; }
+#define PT_REGISTER_BASE_KERNEL_NAME(op_type, base_kernel_name)                \
+  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                           \
+      pt_register_base_kernel_name_ns_check_##op_type,                         \
+      "PT_REGISTER_BASE_KERNEL_NAME must be called in global namespace.");     \
+  static const ::pten::BaseKernelNameRegistrar                                 \
+      __registrar_base_kernel_name_for_##op_type(#op_type, #base_kernel_name); \
+  int TouchBaseKernelNameSymbol_##op_type() { return 0; }
 
-#define PT_DECLARE_API_NAME(op_type)                              \
-  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                              \
-      pt_declare_ai_name_ns_check_##op_type,                      \
-      "PT_DECLARE_API_NAME must be called in global namespace."); \
-  extern int TouchApiNameSymbol_##op_type();                      \
-  UNUSED static int __declare_api_name_symbol_for_##op_type =     \
-      TouchApiNameSymbol_##op_type()
+#define PT_DECLARE_BASE_KERNEL_NAME(op_type)                              \
+  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                      \
+      pt_declare_ai_name_ns_check_##op_type,                              \
+      "PT_DECLARE_BASE_KERNEL_NAME must be called in global namespace."); \
+  extern int TouchBaseKernelNameSymbol_##op_type();                       \
+  UNUSED static int __declare_base_kernel_name_symbol_for_##op_type =     \
+      TouchBaseKernelNameSymbol_##op_type()
 
 #define PT_REGISTER_ARG_MAPPING_FN(op_type, arg_mapping_fn)              \
   PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                     \

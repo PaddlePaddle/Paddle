@@ -2,11 +2,11 @@
 add_subdirectory(compat)
 
 if(WITH_GPU)
-  cc_library(convert_utils SRCS convert_utils.cc DEPS data_type place gpu_info)
+  cc_library(convert_utils SRCS convert_utils.cc DEPS data_type place op_utils gpu_info)
 elseif(WITH_ROCM)
-  cc_library(convert_utils SRCS convert_utils.cc DEPS data_type place gpu_info)
+  cc_library(convert_utils SRCS convert_utils.cc DEPS data_type place op_utils gpu_info)
 else()
-  cc_library(convert_utils SRCS convert_utils.cc DEPS data_type place)
+  cc_library(convert_utils SRCS convert_utils.cc DEPS data_type place op_utils)
 endif()
 
 cc_library(errors SRCS errors.cc)

@@ -31,7 +31,7 @@ namespace pten {
 using DataType = paddle::experimental::DataType;
 using DataLayout = paddle::experimental::DataLayout;
 
-const std::string& TransToPtenKernelName(const std::string& fluid_op_name);
+std::string TransToPtenKernelName(const std::string& fluid_op_name);
 
 Backend TransToPtenBackend(const paddle::platform::Place& place);
 DataType TransToPtenDataType(
