@@ -58,10 +58,9 @@ TEST(DEV_API, copy) {
   std::cout << typeid(a).name() << std::endl;
   // 2. test API
   pten::CPUContext dev_ctx;
-  dev_ctx.SetDeviceAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
-          .get());
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(paddle::platform::CPUPlace())
+                           .get());
   pten::Copy(dev_ctx, *(dense_src.get()), false, dense_dst.get());
 
   // 3. check result

@@ -155,35 +155,31 @@ inline void EmplaceDeviceContext(
           // Note: A trick method to init context, why GetAllocator interface
           // needs a stream parameter?
           cuda_ctx->PartialInitWithoutAllocator();
-          dev_ctx->SetDeviceAllocator(
-              memory::allocation::AllocatorFacade::Instance()
-                  .GetAllocator(p, cuda_ctx->stream())
-                  .get());
+          dev_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
+                                    .GetAllocator(p, cuda_ctx->stream())
+                                    .get());
           cuda_ctx->PartialInitWithAllocator();
 #endif
         } else if (is_cpu_place(p)) {
-          dev_ctx->SetDeviceAllocator(
-              memory::allocation::AllocatorFacade::Instance()
-                  .GetAllocator(p)
-                  .get());
+          dev_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
+                                    .GetAllocator(p)
+                                    .get());
 #ifdef PADDLE_WITH_MKLDNN
           auto* cpu_ctx = dynamic_cast<CPUDeviceContext*>(dev_ctx);
           cpu_ctx->Init();
 #endif
         } else if (is_xpu_place(p)) {
-          dev_ctx->SetDeviceAllocator(
-              memory::allocation::AllocatorFacade::Instance()
-                  .GetAllocator(p)
-                  .get());
+          dev_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
+                                    .GetAllocator(p)
+                                    .get());
 #ifdef PADDLE_WITH_XPU
           auto* xpu_ctx = dynamic_cast<CPUDeviceContext*>(dev_ctx);
           xpu_ctx->Init();
 #endif
         } else {
-          dev_ctx->SetDeviceAllocator(
-              memory::allocation::AllocatorFacade::Instance()
-                  .GetAllocator(p)
-                  .get());
+          dev_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
+                                    .GetAllocator(p)
+                                    .get());
         }
         dev_ctx->SetHostAllocator(
             memory::allocation::AllocatorFacade::Instance()

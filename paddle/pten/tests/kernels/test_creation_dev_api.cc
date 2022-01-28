@@ -33,10 +33,9 @@ using DDim = pten::framework::DDim;
 TEST(DEV_API, empty) {
   // 1. create input
   pten::CPUContext dev_ctx;
-  dev_ctx.SetDeviceAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
-          .get());
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(paddle::platform::CPUPlace())
+                           .get());
   dev_ctx.Init();
 
   // 2. test API
@@ -64,10 +63,9 @@ TEST(DEV_API, empty_like) {
 
   // 2. test API
   pten::CPUContext dev_ctx;
-  dev_ctx.SetDeviceAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
-          .get());
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(paddle::platform::CPUPlace())
+                           .get());
   dev_ctx.Init();
   auto out = pten::EmptyLike<float>(dev_ctx, dense_x);
 
@@ -85,10 +83,9 @@ TEST(DEV_API, full) {
 
   // 2. test API
   pten::CPUContext dev_ctx;
-  dev_ctx.SetDeviceAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
-          .get());
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(paddle::platform::CPUPlace())
+                           .get());
   dev_ctx.Init();
   auto out = pten::Full<float>(dev_ctx, {3, 2}, val, pten::DataType::FLOAT32);
 
@@ -119,10 +116,9 @@ TEST(DEV_API, full_like) {
   float val = 1.0;
 
   pten::CPUContext dev_ctx;
-  dev_ctx.SetDeviceAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
-          .get());
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(paddle::platform::CPUPlace())
+                           .get());
   dev_ctx.Init();
 
   // 2. test API

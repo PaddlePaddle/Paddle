@@ -56,10 +56,9 @@ TEST(DEV_API, flatten) {
   }
   int start_axis = 1, stop_axis = 2;
   pten::CPUContext dev_ctx;
-  dev_ctx.SetDeviceAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
-          .get());
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(paddle::platform::CPUPlace())
+                           .get());
 
   // 2. test API
   auto out = pten::Flatten<float>(dev_ctx, dense_x, start_axis, stop_axis);

@@ -144,6 +144,20 @@ class GPUContext : public DeviceContext {
 
   void SetDnnWorkspaceHandle(DnnWorkspaceHandle*);
 
+  void SetComputeCapability(int val);
+
+  void SetMaxThreadsPerMultiProcessor(int val);
+
+  void SetMultiProcessors(int val);
+
+  void SetMaxThreadsPerBlock(int val);
+
+  void SetMaxGridDimSize(const std::array<int, 3>& val);
+
+  void SetDriverVersion(int val);
+
+  void SetRuntimeVersion(int val);
+
  private:
   struct Impl;
   std::unique_ptr<Impl> impl_;

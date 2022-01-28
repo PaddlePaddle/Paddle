@@ -60,7 +60,7 @@ class DeviceContext {
    *
    * @param allocator
    */
-  void SetDeviceAllocator(const Allocator*);
+  void SetAllocator(const Allocator*);
 
   /**
    * @brief Set the host Allocator object.

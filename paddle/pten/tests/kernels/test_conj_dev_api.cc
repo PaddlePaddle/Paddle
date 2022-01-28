@@ -45,10 +45,9 @@ TEST(DEV_API, conj) {
   }
 
   pten::CPUContext dev_ctx;
-  dev_ctx.SetDeviceAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
-          .get());
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(paddle::platform::CPUPlace())
+                           .get());
 
   // 2. test API
   auto out = pten::Conj<paddle::complex64>(dev_ctx, dense_x);

@@ -23,7 +23,7 @@ struct DeviceContext::Impl {
   Impl() = default;
   ~Impl() = default;
 
-  void SetDeviceAllocator(const Allocator* allocator) {
+  void SetAllocator(const Allocator* allocator) {
     PADDLE_ENFORCE_NOT_NULL(
         allocator,
         pten::errors::InvalidArgument(
@@ -124,7 +124,7 @@ DeviceContext::DeviceContext() { impl_ = std::make_unique<Impl>(); }
 
 DeviceContext::DeviceContext(const DeviceContext& other) {
   impl_->SetHostAllocator(&other.GetHostAllocator());
-  impl_->SetDeviceAllocator(&other.GetDeviceAllocator());
+  impl_->SetAllocator(&other.GetDeviceAllocator());
   impl_->SetZeroAllocator(&other.GetZeroAllocator());
 }
 
@@ -134,8 +134,8 @@ DeviceContext::DeviceContext(DeviceContext&& other) {
 
 DeviceContext::~DeviceContext() = default;
 
-void DeviceContext::SetDeviceAllocator(const Allocator* allocator) {
-  impl_->SetDeviceAllocator(allocator);
+void DeviceContext::SetAllocator(const Allocator* allocator) {
+  impl_->SetAllocator(allocator);
 }
 
 const Allocator& DeviceContext::GetDeviceAllocator() const {

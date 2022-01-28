@@ -48,10 +48,9 @@ TEST(DEV_API, reshape) {
 
   // 2. test API
   pten::CPUContext dev_ctx;
-  dev_ctx.SetDeviceAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
-          .get());
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(paddle::platform::CPUPlace())
+                           .get());
   auto out = pten::Reshape<float>(dev_ctx, dense_x, shape);
   // 3. check result
   std::vector<int64_t> expect_shape = {12, 3};

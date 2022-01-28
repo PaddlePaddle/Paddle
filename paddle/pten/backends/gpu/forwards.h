@@ -69,16 +69,34 @@ using cufftHandle = int;
 using ncclComm_t = struct ncclComm *;
 
 /// Forward declaration of ROCM types.
+#include <cstddef>
 
 using hipDevice_t = int;
-// using hipCtx_t = struct ihipCtx_t *;
-// using hipModule_t = struct ihipModule_t *;
+using hipCtx_t = struct ihipCtx_t *;
+using hipModule_t = struct ihipModule_t *;
 using hipStream_t = struct ihipStream_t *;
 using hipEvent_t = struct ihipEvent_t *;
-// using hipFunction_t = struct ihipModuleSymbol_t *;
+using hipFunction_t = struct ihipModuleSymbol_t *;
 
 // Forward declaration of MIOpen types.
 using miopenHandle_t = struct miopenHandle *;
+using miopenAcceleratorQueue_t = hipStream_t;
+using miopenFusionOpDescriptor_t = struct miopenFusionOpDescriptor *;
+using miopenTensorDescriptor_t = struct miopenTensorDescriptor *;
+using miopenConvolutionDescriptor_t = struct miopenConvolutionDescriptor *;
+using miopenPoolingDescriptor_t = struct miopenPoolingDescriptor *;
+using miopenLRNDescriptor_t = struct miopenLRNDescriptor *;
+using miopenActivationDescriptor_t = struct miopenActivationDescriptor *;
+using miopenRNNDescriptor_t = struct miopenRNNDescriptor *;
+using miopenCTCLossDescriptor_t = struct miopenCTCLossDescriptor *;
+using miopenDropoutDescriptor_t = struct miopenDropoutDescriptor *;
+using miopenFusionPlanDescriptor_t = struct miopenFusionPlanDescriptor *;
+using miopenOperatorDescriptor_t = struct miopenOperatorDescriptor *;
+using miopenOperatorArgs_t = struct miopenOperatorArgs *;
+using miopenAllocatorFunction = void *(*)(void *context, size_t sizeBytes);
+using miopenDeallocatorFunction = void *(*)(void *context, void *memory);
+struct miopenConvAlgoPerf_t;
+struct miopenConvSolution_t;
 
 // Forward declaration of rocBLAS types.
 using rocblas_handle = struct _rocblas_handle *;

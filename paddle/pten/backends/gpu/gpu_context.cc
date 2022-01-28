@@ -771,4 +771,26 @@ void GPUContext::PartialInitWithAllocator() {
   impl_->PartialInitWithAllocator();
 }
 
+void GPUContext::SetComputeCapability(int val) {
+  impl_->compute_capability_ = val;
+}
+
+void GPUContext::SetMaxThreadsPerMultiProcessor(int val) {
+  impl_->max_threads_per_mp_ = val;
+}
+
+void GPUContext::SetMultiProcessors(int val) { impl_->multi_process_ = val; }
+
+void GPUContext::SetMaxThreadsPerBlock(int val) {
+  impl_->max_threads_per_block_ = val;
+}
+
+void GPUContext::SetMaxGridDimSize(const std::array<int, 3>& val) {
+  impl_->max_grid_dim_size_ = val;
+}
+
+void GPUContext::SetDriverVersion(int val) { impl_->driver_version_ = val; }
+
+void GPUContext::SetRuntimeVersion(int val) { impl_->runtime_version_ = val; }
+
 }  // namespace pten
