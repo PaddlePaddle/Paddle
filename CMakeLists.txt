@@ -60,7 +60,7 @@ include(generic)            # simplify cmake module
 if (WITH_GPU  AND WITH_XPU)
     message(FATAL_ERROR "Error when compile GPU and XPU at the same time")
 endif()
-if (WITH_GPU  AND WITH_XPU_KP)
+if (WITH_GPU AND WITH_XPU_KP)
     message(FATAL_ERROR "Error when compile GPU and XPU2 at the same time")
 endif()
 if (WITH_GPU AND WITH_ASCEND)
