@@ -68,6 +68,45 @@ bool DenseTensor::IsSharedWith(const DenseTensor& b) const {
   return holder_ && holder_ == b.Holder();
 }
 
+void* DenseTensor::AllocateFrom(Allocator* allocator,
+                                DataType dtype,
+                                size_t requested_size) {
+  PADDLE_ENFORCE_NOT_NULL(
+      allocator,
+      paddle::platform::errors::InvalidArgument(
+          "Required allocator shall not be nullptr, but received nullptr."));
+  if (this->dtype() != dtype) {
+    VLOG(10) << "change data type in mutbale_data, target dtype - " << dtype;
+    meta_.dtype = dtype;
+  }
+  PADDLE_ENFORCE(
+      valid(),
+      paddle::platform::errors::PreconditionNotMet(
+          "The meta data must be valid when call the mutable data function."));
+  size_t bytes = numel() * SizeOf(this->dtype());
+  if (requested_size) {
+    PADDLE_ENFORCE_GE(requested_size,
+                      bytes,
+                      paddle::platform::errors::InvalidArgument(
+                          "The reserved size %d should be enough to meet the "
+                          "volume required by metadata %d.",
+                          requested_size,
+                          bytes));
+    bytes = requested_size;
+  }
+  // TODO(paddle-dev): In case of the allocator of storage_ is different with
+  // the incoming allocator, we should re-alloc data using the incoming
+  // allocator.
+  if (!holder_ || holder_->size() < bytes + meta_.offset) {
+    meta_.offset = 0;
+    VLOG(10) << "Allocate data with bytes: " << bytes;
+    ResetHolder(allocator->Allocate(bytes));
+  }
+
+  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
+                                 meta_.offset);
+}
+
 template <typename T>
 const T* DenseTensor::data() const {
   check_memory_size();
