@@ -100,13 +100,13 @@ class MaskedSelectCUDAKernel : public framework::OpKernel<T> {
     int32_t* mask_array_data = mask_array.mutable_data<int32_t>(ctx.GetPlace());
     int32_t* mask_prefix_sum_data =
         mask_prefix_sum.mutable_data<int32_t>(ctx.GetPlace());
+
     unsigned int threads = 512;
     unsigned int maxGridDimX =
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx)
+        ctx.template device_context<platform::CUDADeviceContext>()
             .GetCUDAMaxGridDimSize()
             .x;
     unsigned int num_rows = (mask_size + threads - 1) / threads;
-    // actually, int num_rows < max_grid_size
     unsigned int grid = num_rows < maxGridDimX ? num_rows : maxGridDimX;
     auto stream = ctx.cuda_device_context().stream();
     SetMaskArray<<<grid, threads, 0, stream>>>(mask_data, mask_array_data,
@@ -147,8 +147,13 @@ class MaskedSelectGradCUDAKernel : public framework::OpKernel<T> {
     int32_t* mask_array_data = mask_array.mutable_data<int32_t>(ctx.GetPlace());
     int32_t* mask_prefix_sum_data =
         mask_prefix_sum.mutable_data<int32_t>(ctx.GetPlace());
-    int threads = 512;
-    int grid = (mask_size + threads - 1) / threads;
+    unsigned int threads = 512;
+    unsigned int maxGridDimX =
+        ctx.template device_context<platform::CUDADeviceContext>()
+            .GetCUDAMaxGridDimSize()
+            .x;
+    unsigned int num_rows = (mask_size + threads - 1) / threads;
+    unsigned int grid = num_rows < maxGridDimX ? num_rows : maxGridDimX;
     auto stream = ctx.cuda_device_context().stream();
     SetMaskArray<<<grid, threads, 0, stream>>>(mask_data, mask_array_data,
                                                mask_size);
