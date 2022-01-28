@@ -504,6 +504,9 @@ class CUDADeviceContext : public pten::GPUContext {
   /*! \brief  Wait for all operations completion in the stream. */
   void Wait() const override;
 
+  /*! \brief  Return eigen device in the device context. */
+  Eigen::GpuDevice* eigen_device() const;
+
   /*! \brief  Call cublas function safely. */
   inline void CublasCall(
       const std::function<void(cublasHandle_t)>& callback) const {
@@ -520,8 +523,9 @@ class CUDADeviceContext : public pten::GPUContext {
       const std::function<void(pten::sparseHandle_t)>& callback) const {
     if (!thread_ctx_.count(this)) {
       pten::GPUContext::CusparseCall(callback);
+      return;
     }
-    return context()->CusparseCall(callback);
+    context()->CusparseCall(callback);
   }
 #endif
 
@@ -533,7 +537,7 @@ class CUDADeviceContext : public pten::GPUContext {
       pten::GPUContext::TensorCoreCublasCallIfAvailable(callback);
       return;
     }
-    return context()->TensorCoreCublasCallIfAvailable(callback);
+    context()->TensorCoreCublasCallIfAvailable(callback);
   }
 
 /*! \brief  Return cudnn  handle in the device context. */
@@ -551,6 +555,10 @@ class CUDADeviceContext : public pten::GPUContext {
   cusparseHandle_t cusparse_handle() const;
 #endif
 
+#ifndef PADDLE_WITH_HIP
+  cusolverDnHandle_t cusolver_dn_handle() const;
+#endif
+
   /*! \brief  Return a cudnn workspace handle to call multiple cudnn
    *  functions without interrupting by other threads.
    *  Once the first cudnn function is called by the handle, a lock
@@ -563,19 +571,11 @@ class CUDADeviceContext : public pten::GPUContext {
   /*! \brief  Return cuda stream in the device context. */
   gpuStream_t stream() const;
 
-  template <typename Callback>
-  void RecordEvent(gpuEvent_t ev, Callback callback) const {
-    return context()->Stream()->RecordEvent(ev, callback);
-  }
+  void RecordEvent(gpuEvent_t ev, const std::function<void()>& callback) const;
 
-  template <typename Callback>
-  void AddStreamCallback(Callback&& callback) const {
-    return context()->Stream()->AddCallback(callback);
-  }
+  void AddStreamCallback(const std::function<void()>& callback) const;
 
-  void WaitStreamCallback() const {
-    return context()->Stream()->WaitCallback();
-  }
+  void WaitStreamCallback() const;
 
   void ResetThreadContext(const stream::Priority& priority) {
     std::lock_guard<std::mutex> guard(ctx_mtx_);
@@ -596,6 +596,8 @@ class CUDADeviceContext : public pten::GPUContext {
                                          std::shared_ptr<CUDAContext>>
       thread_ctx_;
   static thread_local std::mutex ctx_mtx_;
+
+  std::unique_ptr<StreamCallbackManager<gpuStream_t>> callback_manager_;
 
   mutable std::mutex cudnn_handle_mtx_;
 

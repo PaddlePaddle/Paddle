@@ -10,6 +10,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
+#include <functional>
 #include <memory>
 #include <set>
 #include "paddle/pten/backends/gpu/gpu_context.h"
@@ -472,9 +473,19 @@ CUDAContext::~CUDAContext() {
 }
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
-    : pten::GPUContext(place) {}
+    : pten::GPUContext(place) {
+  callback_manager_.reset(
+      new StreamCallbackManager<gpuStream_t>(pten::GPUContext::stream()));
+}
 
 CUDADeviceContext::~CUDADeviceContext() = default;
+
+Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
+  if (!thread_ctx_.count(this)) {
+    return pten::GPUContext::eigen_device();
+  }
+  return context()->EigenDevice().get();
+}
 
 void CUDADeviceContext::Wait() const {
   if (!thread_ctx_.count(this)) {
@@ -515,7 +526,39 @@ cusparseHandle_t CUDADeviceContext::cusparse_handle() const {
   }
   return context()->CusparseHandle()->GetCusparseHandle();
 }
+cusolverDnHandle_t CUDADeviceContext::cusolver_dn_handle() const {
+  if (!thread_ctx_.count(this)) {
+    return pten::GPUContext::cusolver_dn_handle();
+  }
+  return context()->CusolverDnHandle();
+}
 #endif
+
+void CUDADeviceContext::RecordEvent(
+    gpuEvent_t ev, const std::function<void()>& callback) const {
+  if (!thread_ctx_.count(this)) {
+    pten::GPUContext::RecordEvent(ev, callback);
+    return;
+  }
+  context()->Stream()->RecordEvent(ev, callback);
+}
+
+void CUDADeviceContext::AddStreamCallback(
+    const std::function<void()>& callback) const {
+  if (!thread_ctx_.count(this)) {
+    callback_manager_->AddCallback(callback);
+    return;
+  }
+  context()->Stream()->AddCallback(callback);
+}
+
+void CUDADeviceContext::WaitStreamCallback() const {
+  if (!thread_ctx_.count(this)) {
+    callback_manager_->Wait();
+    return;
+  }
+  context()->Stream()->WaitCallback();
+}
 
 CudnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
   return CudnnWorkspaceHandle(*this, &cudnn_handle_mtx_);

@@ -637,6 +637,7 @@ struct GPUContext::Impl {
     PD_CHECK(nccl_comm_ != nullptr, "the gpu nccl_comm is nullptr.");
     return nccl_comm_;
 #endif
+    return nullptr;
   }
 
   void SetNcclComm(ncclComm_t comm) {
@@ -833,9 +834,9 @@ void GPUContext::CusparseCall(
   impl_->CusparseCall(callback);
 }
 
-// void GPUContext::RecordEvent(gpuEvent_t ev, const std::function<void()>&
-// callback) const {
-//   impl_->RecordEvent(ev, callback);
-// }
+void GPUContext::RecordEvent(gpuEvent_t ev,
+                             const std::function<void()>& callback) const {
+  impl_->RecordEvent(ev, callback);
+}
 
 }  // namespace pten

@@ -114,8 +114,7 @@ class GPUContext : public DeviceContext {
   /*! \brief  Call cusparse function safely. */
   void CusparseCall(const std::function<void(sparseHandle_t)>&) const;
 
-  // template <Callback>
-  // void RecordEvent(gpuEvent_t ev, Callback callback) const
+  void RecordEvent(gpuEvent_t ev, const std::function<void()>& callback) const;
 
  public:
   /*! \brief  Return nccl communicators. */
