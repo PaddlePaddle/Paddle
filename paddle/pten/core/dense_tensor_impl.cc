@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/pten/core/dense_tensor.h"
 
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/pten/common/bfloat16.h"
 #include "paddle/pten/common/complex.h"
 #include "paddle/pten/common/float16.h"

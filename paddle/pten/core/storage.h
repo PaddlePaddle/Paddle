@@ -30,7 +30,6 @@ namespace pten {
 /// all default copy operations to ensure the integrity of the package.
 class Storage : public intrusive_ref_counter<Storage> {
  public:
-  using Place = pten::Place;
   Storage() = default;
   Storage(const Storage&) = delete;
 
@@ -82,8 +81,6 @@ class Storage : public intrusive_ref_counter<Storage> {
 
 class TensorStorage : public Storage {
  public:
-  using Place = pten::Place;
-
   explicit TensorStorage(Allocator* a) : alloc_(a) {}
 
   TensorStorage(Allocator* a, size_t size)

@@ -37,9 +37,6 @@ pten::Place TransToFluidPlace(const Backend& backend);
 paddle::framework::proto::VarType::Type TransToProtoVarType(
     const DataType& dtype);
 
-pten::LoD TransToFluidLoD(const pten::LoD& lod);
-pten::LoD TransToPtenLoD(const pten::LoD& lod);
-
 size_t DataTypeSize(DataType dtype);
 DataType String2DataType(const std::string& str);
 std::string DataType2String(DataType dtype);

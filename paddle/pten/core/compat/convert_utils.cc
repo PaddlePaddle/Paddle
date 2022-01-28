@@ -129,26 +129,6 @@ paddle::framework::proto::VarType::Type TransToProtoVarType(
   }
 }
 
-pten::LoD TransToFluidLoD(const pten::LoD& lod) {
-  pten::LoD out;
-  out.reserve(lod.size());
-
-  for (auto& elem : lod) {
-    out.emplace_back(elem);
-  }
-  return out;
-}
-
-pten::LoD TransToPtenLoD(const pten::LoD& lod) {
-  pten::LoD out;
-  out.reserve(lod.size());
-
-  for (auto& elem : lod) {
-    out.emplace_back(elem);
-  }
-  return out;
-}
-
 size_t DataTypeSize(DataType dtype) {
   switch (dtype) {
     case DataType::UNDEFINED:

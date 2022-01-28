@@ -24,10 +24,8 @@
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
 #include "paddle/pten/core/compat/convert_utils.h"
-#include "paddle/pten/core/type_defs.h"
-
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/pten/core/enforce.h"
+#include "paddle/pten/core/type_defs.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
 

@@ -27,7 +27,6 @@ namespace pten {
 class TensorBase {
  public:
   using DDim = pten::framework::DDim;
-  using Place = pten::Place;
 
   virtual ~TensorBase() = default;
 
