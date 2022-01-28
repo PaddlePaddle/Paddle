@@ -1,3 +1,5 @@
+// RUN: infrtexec -i %s | FileCheck %s
+
 func @load_tensor_map() {
   %path = infrt.get_string("@CMAKE_BINARY_DIR@/multi_fc_model")
   %map = dt.load_params(%path)
