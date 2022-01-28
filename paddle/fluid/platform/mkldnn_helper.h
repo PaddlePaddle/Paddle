@@ -195,7 +195,6 @@ inline void Reorder(mkldnn::memory src, mkldnn::memory dst,
   reorder_prim.execute(astream, src, dst);
   astream.wait();
 }
-
 inline mkldnn::memory::format_tag GetMKLDNNFormat(
     mkldnn::memory::desc mem_desc) {
   auto ndims = mem_desc.data.ndims;
@@ -271,9 +270,13 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
     if (inner_nblks == 0) {
       if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
           strides[2] >= strides[3] && strides[3] >= strides[4]) {
-        return mkldnn::memory::format_tag::ncdhw;
-      } else {
-        return mkldnn::memory::format_tag::ndhwc;
+        return mkldnn::memory::format_tag::abcde;
+      } else if (strides[0] >= strides[2] && strides[2] >= strides[1] &&
+                 strides[1] >= strides[3] && strides[3] >= strides[4]) {
+        return mkldnn::memory::format_tag::acbde;
+      } else if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
+                 strides[3] >= strides[4] && strides[4] >= strides[1]) {
+        return mkldnn::memory::format_tag::acdeb;
       }
     } else if (inner_nblks == 1) {
       if (inner_blks[0] == 8 && inner_idxs[0] == 0) {
@@ -312,6 +315,10 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
           strides[2] >= strides[3] && strides[3] >= strides[4] &&
           strides[4] >= strides[5]) {
         return mkldnn::memory::format_tag::abcdef;
+      } else if (strides[0] >= strides[2] && strides[2] >= strides[1] &&
+                 strides[1] >= strides[3] && strides[3] >= strides[4] &&
+                 strides[4] >= strides[5]) {
+        return mkldnn::memory::format_tag::acbdef;
       }
     }
   }
