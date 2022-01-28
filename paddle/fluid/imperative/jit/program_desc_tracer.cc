@@ -218,17 +218,14 @@ TracedProgramTuple ProgramDescTracer::CreateProgramDesc(
 
 void ProgramDescTracer::InsertVarIfNotExist(
     const std::shared_ptr<VarBase> &new_var, bool is_input) {
-  std::unique_lock<std::mutex> lock(vars_mutex_);
-
   PADDLE_ENFORCE_NOT_NULL(new_var, platform::errors::InvalidArgument(
                                        "The variable to insert is NULL."));
 
-  for (; vars_.count(new_var) == 0; ) {
-    if(!lock.try_lock())
-      continue;
+  for (; vars_.count(new_var) == 0;) {
+    if (!vars_mutex_.try_lock()) continue;
 
-    auto& pair = vars_[new_var];
-    lock.unlock();
+    auto &pair = vars_[new_var];
+    vars_mutex_.unlock();
 
     auto new_var_desc = new framework::VarDesc("");
     pair.reset(new_var_desc);
