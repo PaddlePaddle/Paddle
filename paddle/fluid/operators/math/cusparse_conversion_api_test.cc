@@ -24,7 +24,6 @@ void TestNNZ(const std::vector<T>& dense_data, const int correct_nnz,
              const int rows, const int cols) {
   paddle::platform::CUDADeviceContext* context =
       new paddle::platform::CUDADeviceContext(paddle::platform::CUDAPlace());
-  context->PartialInitWithoutAllocator();
   context->SetAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(paddle::platform::CUDAPlace(), context->stream())
@@ -67,7 +66,6 @@ void TestDenseToSparse(const std::vector<T>& correct_dense_data,
                        const std::string& mode) {
   paddle::platform::CUDADeviceContext* context =
       new paddle::platform::CUDADeviceContext(paddle::platform::CUDAPlace());
-  context->PartialInitWithoutAllocator();
   context->SetAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(paddle::platform::CUDAPlace(), context->stream())

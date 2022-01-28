@@ -47,7 +47,7 @@ struct DeviceContext::Impl {
     zero_allocator_ = allocator;
   }
 
-  const Allocator& GetDeviceAllocator() const {
+  const Allocator& GetAllocator() const {
     PADDLE_ENFORCE_NOT_NULL(
         device_allocator_,
         pten::errors::InvalidArgument("Required device_allocator_ shall not be "
@@ -124,7 +124,7 @@ DeviceContext::DeviceContext() { impl_ = std::make_unique<Impl>(); }
 
 DeviceContext::DeviceContext(const DeviceContext& other) {
   impl_->SetHostAllocator(&other.GetHostAllocator());
-  impl_->SetAllocator(&other.GetDeviceAllocator());
+  impl_->SetAllocator(&other.GetAllocator());
   impl_->SetZeroAllocator(&other.GetZeroAllocator());
 }
 
@@ -138,8 +138,8 @@ void DeviceContext::SetAllocator(const Allocator* allocator) {
   impl_->SetAllocator(allocator);
 }
 
-const Allocator& DeviceContext::GetDeviceAllocator() const {
-  return impl_->GetDeviceAllocator();
+const Allocator& DeviceContext::GetAllocator() const {
+  return impl_->GetAllocator();
 }
 
 void DeviceContext::SetHostAllocator(const Allocator* allocator) {

@@ -188,7 +188,6 @@ NCCLComm* NCCLCommContext::AssignNCCLComm(ncclComm_t comm, int nranks, int rank,
                                           int dev_id, int ring_id) {
   std::unique_ptr<CUDADeviceContext> dev_ctx(
       new CUDADeviceContext(CUDAPlace(dev_id)));
-  dev_ctx->PartialInitWithoutAllocator();
   dev_ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                             .GetAllocator(CUDAPlace(dev_id), dev_ctx->stream())
                             .get());

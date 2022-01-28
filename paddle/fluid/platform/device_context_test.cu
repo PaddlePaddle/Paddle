@@ -27,7 +27,6 @@ TEST(Device, Init) {
   int count = paddle::platform::GetGPUDeviceCount();
   for (int i = 0; i < count; i++) {
     CUDADeviceContext* device_context = new CUDADeviceContext(CUDAPlace(i));
-    device_context->PartialInitWithoutAllocator();
     device_context->SetAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetAllocator(CUDAPlace(i), device_context->stream())
@@ -55,7 +54,6 @@ TEST(Device, CUDADeviceContext) {
   int count = paddle::platform::GetGPUDeviceCount();
   for (int i = 0; i < count; i++) {
     CUDADeviceContext* device_context = new CUDADeviceContext(CUDAPlace(i));
-    device_context->PartialInitWithoutAllocator();
     device_context->SetAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetAllocator(CUDAPlace(i), device_context->stream())

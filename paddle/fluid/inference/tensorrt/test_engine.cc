@@ -27,7 +27,6 @@ class TensorRTEngineTest : public ::testing::Test {
  protected:
   void SetUp() override {
     ctx_ = new platform::CUDADeviceContext(platform::CUDAPlace(0));
-    ctx_->PartialInitWithoutAllocator();
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
                            .get());

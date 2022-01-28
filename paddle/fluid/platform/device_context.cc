@@ -154,29 +154,10 @@ inline void EmplaceDeviceContext(
                   "Failed to dynamic_cast dev_ctx into CUDADeviceContext."));
           // Note: A trick method to init context, why GetAllocator interface
           // needs a stream parameter?
-          LOG(INFO) << "cuda_ctx partial init without allocator";
-          cuda_ctx->PartialInitWithoutAllocator();
           dev_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
                                     .GetAllocator(p, cuda_ctx->stream())
                                     .get());
-          LOG(INFO) << "cuda_ctx partial init with allocator";
           cuda_ctx->PartialInitWithAllocator();
-#endif
-        } else if (is_cpu_place(p)) {
-          dev_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
-                                    .GetAllocator(p)
-                                    .get());
-#ifdef PADDLE_WITH_MKLDNN
-          auto* cpu_ctx = dynamic_cast<CPUDeviceContext*>(dev_ctx);
-          cpu_ctx->Init();
-#endif
-        } else if (is_xpu_place(p)) {
-          dev_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
-                                    .GetAllocator(p)
-                                    .get());
-#ifdef PADDLE_WITH_XPU
-          auto* xpu_ctx = dynamic_cast<CPUDeviceContext*>(dev_ctx);
-          xpu_ctx->Init();
 #endif
         } else {
           dev_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
@@ -274,9 +255,13 @@ DeviceContextPool::DeviceContextPool(
   }
 }
 
-CPUDeviceContext::CPUDeviceContext() : pten::CPUContext() {}
+CPUDeviceContext::CPUDeviceContext() : pten::CPUContext() {
+  pten::CPUContext::Init();
+}
 
-CPUDeviceContext::CPUDeviceContext(CPUPlace place) : pten::CPUContext(place) {}
+CPUDeviceContext::CPUDeviceContext(CPUPlace place) : pten::CPUContext(place) {
+  pten::CPUContext::Init();
+}
 
 #ifdef PADDLE_WITH_IPU
 IPUDeviceContext::IPUDeviceContext(IPUPlace place) : place_(place) {}
@@ -291,11 +276,14 @@ IPUDeviceContext::~IPUDeviceContext() {}
 
 #endif
 #ifdef PADDLE_WITH_XPU
-XPUDeviceContext::XPUDeviceContext() : pten::XPUContext() {}
+XPUDeviceContext::XPUDeviceContext() : pten::XPUContext() {
+  pten::XPUContext::Init();
+}
 
 XPUDeviceContext::~XPUDeviceContext() {}
 
 XPUDeviceContext::XPUDeviceContext(XPUPlace place) : pten::XPUContext(place) {
+  pten::XPUContext::Init();
   LOG_FIRST_N(WARNING, 1) << "Please NOTE: xpu device: "
                           << static_cast<int>(place.device);
 }
@@ -495,6 +483,7 @@ CUDAContext::~CUDAContext() {
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
     : pten::GPUContext(place) {
+  pten::GPUContext::PartialInitWithoutAllocator();
   callback_manager_.reset(
       new StreamCallbackManager<gpuStream_t>(pten::GPUContext::stream()));
 }

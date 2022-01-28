@@ -1086,7 +1086,6 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
 
     void* buf;
     platform::CPUDeviceContext ctx;
-    ctx.Init();
     size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
     if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
         platform::is_xpu_place(dev_ctx.GetPlace()) ||
@@ -1157,7 +1156,6 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
     tensor->Resize(framework::make_ddim(dims));
     void* buf;
     platform::CPUDeviceContext ctx;
-    ctx.Init();
     size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
     if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
         platform::is_xpu_place(dev_ctx.GetPlace()) ||

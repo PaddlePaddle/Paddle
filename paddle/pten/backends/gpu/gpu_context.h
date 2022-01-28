@@ -130,7 +130,7 @@ class GPUContext : public DeviceContext {
   // NOTE: External users manage resources. Used in inference scenarios.
   // The Set interface is for inference only, DeviceContext will mark the
   // resource as external, and will not delete any resource when destructing.
-  void SetStream(cudaStream_t);
+  void SetStream(gpuStream_t);
 
   void SetEigenDevice(Eigen::GpuDevice*);
 

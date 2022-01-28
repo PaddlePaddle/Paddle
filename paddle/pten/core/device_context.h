@@ -81,7 +81,7 @@ class DeviceContext {
    *
    * @return Allocator
    */
-  const Allocator& GetDeviceAllocator() const;
+  const Allocator& GetAllocator() const;
 
   /**
    * @brief Get the const device-related Allocator object.

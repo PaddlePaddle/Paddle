@@ -111,7 +111,7 @@ class EigenGpuStreamDevice : public Eigen::StreamInterface {
       semaphore_ = reinterpret_cast<unsigned int*>(scratch);
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
-          hipMemsetAsync(semaphore_, 0, sizeof(unsigned int), *stream_));
+          hipMemsetAsync(semaphore_, 0, sizeof(unsigned int), stream_));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemsetAsync(semaphore_, 0, sizeof(unsigned int), stream_));
@@ -264,7 +264,25 @@ struct GPUContext::Impl {
         << (driver_version_ % 100) / 10
         << ", Runtime API Version: " << runtime_version_ / 1000 << "."
         << (runtime_version_ % 100) / 10;
-
+#ifdef PADDLE_WITH_HIP
+    size_t miopen_major, miopen_minor, miopen_patch;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        dynload::miopenGetVersion(&miopen_major, &miopen_minor, &miopen_patch));
+    auto cudnn_dso_ver =
+        (miopen_major * 1000 + miopen_minor * 10 + miopen_patch) / 10;
+    auto compile_miopen_version = MIOPEN_VERSION / 10;
+    if (cudnn_dso_ver < static_cast<size_t>(compile_miopen_version)) {
+      LOG_FIRST_N(WARNING, 1)
+          << "WARNING: device: " << place_.device
+          << ". The installed Paddle is compiled with MIOPEN "
+          << compile_miopen_version / 100 << "." << compile_miopen_version % 100
+          << ", but MIOPEN version in your machine is " << cudnn_dso_ver / 100
+          << "." << cudnn_dso_ver % 100
+          << ", which may cause serious incompatible bug. "
+          << "Please recompile or reinstall Paddle with compatible MIOPEN "
+             "version.";
+    }
+#else
     size_t cudnn_dso_ver = dynload::cudnnGetVersion();
     LOG_FIRST_N(WARNING, 1) << "device: " << place_.device
                             << ", cuDNN Version: " << cudnn_dso_ver / 1000
@@ -286,6 +304,7 @@ struct GPUContext::Impl {
           << "Please recompile or reinstall Paddle with compatible CUDA "
              "version.";
     }
+#endif
   }
 
   void InitDnnWorkspace() {
@@ -309,7 +328,7 @@ struct GPUContext::Impl {
   void InitStream() {
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(
-        cudaStreamCreateWithPriority(&stream_, hipStreamDefault, 0));
+        hipStreamCreateWithPriority(&stream_, hipStreamDefault, 0));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(
         cudaStreamCreateWithPriority(&stream_, cudaStreamDefault, 0));
@@ -735,7 +754,10 @@ ncclComm_t GPUContext::nccl_comm() const { return impl_->GetNcclComm(); }
 
 void GPUContext::set_nccl_comm(ncclComm_t comm) { impl_->SetNcclComm(comm); }
 
-void GPUContext::Init() { impl_->Init(); }
+void GPUContext::Init() {
+  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());
+  impl_->Init();
+}
 
 void GPUContext::SetStream(gpuStream_t stream) { impl_->SetStream(stream); }
 
@@ -768,6 +790,7 @@ void GPUContext::PartialInitWithoutAllocator() {
 }
 
 void GPUContext::PartialInitWithAllocator() {
+  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());
   impl_->PartialInitWithAllocator();
 }
 

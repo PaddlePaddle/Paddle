@@ -1565,7 +1565,6 @@ All parameter, weight, gradient are variables in Paddle.
       paddle::memory::allocation::AllocatorFacade::Instance()
         .GetZeroAllocator(place)
         .get());
-    context->Init();
     return context;
                   })
       .def_static("create",
@@ -1590,7 +1589,6 @@ All parameter, weight, gradient are variables in Paddle.
         paddle::memory::allocation::AllocatorFacade::Instance()
           .GetZeroAllocator(place)
           .get());
-      context->Init();
       return context;
 #endif
                   })
@@ -1628,7 +1626,6 @@ All parameter, weight, gradient are variables in Paddle.
                  "Please recompile or reinstall Paddle with CUDA support."));
 #else
       auto* context = new paddle::platform::CUDADeviceContext(place);
-      context->PartialInitWithoutAllocator();
       context->SetAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(place, context->stream())

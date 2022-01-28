@@ -275,7 +275,6 @@ class TestFeedForward {
     output_size_ = 3 * num_head_ * dim_head_;
     input_size_ = dim_embed_;
     ctx_ = new platform::CUDADeviceContext(place_);
-    ctx_->PartialInitWithoutAllocator();
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(place_, ctx_->stream())
                            .get());

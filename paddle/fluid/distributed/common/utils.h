@@ -34,7 +34,6 @@ template <typename T>
 inline paddle::operators::math::BlasT<paddle::platform::CPUDeviceContext, T>
 GetBlas() {
   paddle::platform::CPUDeviceContext cpu_ctx;
-  cpu_ctx.Init();
   return paddle::operators::math::GetBlas<paddle::platform::CPUDeviceContext,
                                           T>(cpu_ctx);
 }

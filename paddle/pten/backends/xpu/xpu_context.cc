@@ -138,4 +138,6 @@ void XPUContext::SetBkclContext(xpu::BKCLContext_t context) {
   impl_->SetBkclContext(context);
 }
 
+void XPUContext::Init() { impl_->Init(); }
+
 }  // namespace pten

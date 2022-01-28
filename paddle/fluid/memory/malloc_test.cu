@@ -108,7 +108,6 @@ TEST(Malloc, CUDADeviceContextMultiStream) {
   for (int i = 0; i < NUM_STREAMS; ++i) {
     auto ctx = std::unique_ptr<platform::CUDADeviceContext>(
         new platform::CUDADeviceContext(place));
-    ctx->PartialInitWithoutAllocator();
     ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                           .GetAllocator(place, ctx->stream())
                           .get());
@@ -161,7 +160,6 @@ TEST(Malloc, CUDADeviceContextMultiThreadMultiStream) {
   for (int i = 0; i < NUM_STREAMS; ++i) {
     auto ctx = std::unique_ptr<platform::CUDADeviceContext>(
         new platform::CUDADeviceContext(place));
-    ctx->PartialInitWithoutAllocator();
     ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                           .GetAllocator(place, ctx->stream())
                           .get());

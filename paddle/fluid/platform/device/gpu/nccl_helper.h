@@ -85,7 +85,6 @@ struct NCCLContext {
 
   explicit NCCLContext(int dev_id) : comm_{nullptr} {
     ctx_.reset(new CUDADeviceContext(CUDAPlace(dev_id)));
-    ctx_->PartialInitWithoutAllocator();
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(CUDAPlace(dev_id), ctx_->stream())
                            .get());
