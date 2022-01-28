@@ -66,7 +66,7 @@ def approx_jacobian(f, xs, dtype, eps=1e-5, batch=False):
 
     ds = eps * np.eye(xdim, dtype=dtype)
 
-    fprimes_by_x = [(0.5 * (_f(x + d) - _f(x - d) / eps) for d in ds]
+    fprimes_by_x = [0.5 * (_f(x + d) - _f(x - d)) / eps) for d in ds]
     fprimes_by_y = np.stack(fprimes_by_x, axis=-1)
     return np.transpose(fprimes_by_y, [1, 0, 2]) if batch else fprimes_by_y
 
