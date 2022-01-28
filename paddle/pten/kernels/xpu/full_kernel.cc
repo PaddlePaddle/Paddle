@@ -22,6 +22,9 @@
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/core/kernel_registry.h"
 
+// See Note [ Why still include the fluid headers? ]
+#include "padlde/fluid/memory/memcpy.h"
+
 namespace pten {
 
 template <typename InType, typename OutType>
