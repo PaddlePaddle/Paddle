@@ -153,6 +153,15 @@ struct PADDLE_ALIGN(2) bfloat16 {
     return *this;
   }
 
+// Conversion opertors
+#ifdef PADDLE_CUDA_BF16
+  HOSTDEVICE inline __nv_bfloat16 to__nv_bfloat16() const {
+    __nv_bfloat16_raw b;
+    b.x = x;
+    return __nv_bfloat16(b);
+  }
+#endif  // PADDLE_CUDA_BF16
+
   // Conversion opertors
   HOSTDEVICE inline explicit operator float() const {
 #ifdef PADDLE_WITH_HIP

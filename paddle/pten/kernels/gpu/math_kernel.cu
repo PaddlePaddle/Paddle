@@ -92,6 +92,7 @@ DEFINE_CUDA_ELEMENTWISE_OP(Divide)
 }  // namespace pten
 
 using float16 = paddle::platform::float16;
+using bfloat16 = paddle::platform::bfloat16;
 using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
@@ -126,6 +127,7 @@ PT_REGISTER_KERNEL(divide_raw,
                    int,
                    int64_t,
                    float16,
+                   bfloat16,
                    complex64,
                    complex128) {}
 PT_REGISTER_KERNEL(multiply_raw,
