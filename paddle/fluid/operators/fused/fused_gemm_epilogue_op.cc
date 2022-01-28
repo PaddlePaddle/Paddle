@@ -131,19 +131,50 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
 class FusedGemmEpilogueOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "The input tensor X of Out = (X * Y) + bias.");
-    AddInput("Y", "The input tensor X of Out = (X * Y) + bias.");
-    AddInput("bias", "The input tensor bias of Out = (X * Y) + bias.");
+    AddInput("X", "The input tensor X of Out = Act((X * Y) + bias).");
+    AddInput("Y", "The input tensor Y of Out = Act((X * Y) + bias).");
+    AddInput("bias", "The input tensor bias of Out = Act((X * Y) + bias).");
 
-    AddOutput("out", "The output tensor X of Out = (X * Y) + bias.");
+    AddOutput("out", "The output tensor Out of Out = Act((X * Y) + bias).");
 
-    AddAttr<bool>("trans_x", "").SetDefault(false);
-    AddAttr<bool>("trans_y", "").SetDefault(false);
+    AddAttr<bool>(
+        "trans_x",
+        R"DOC((bool, default false), Whether to transpose input tensor X 
+    or not. The input tensor X coulbe be more than two dimension. When 
+    set trans_x=true, it would fully reverse X. For instant: X with shpae 
+    [d0, d1, d2, d3] -> [d3, d2, d1, d0].)DOC")
+        .SetDefault(false);
+    AddAttr<bool>(
+        "trans_y",
+        R"DOC((bool, default false), Whether to transpose input tensor Y 
+    or not. The input tensor Y should be two dimension. When 
+    set trans_y=true, it would transpose Y. For instant: Y with shpae 
+    [d0, d1] -> [d1, d0].)DOC")
+        .SetDefault(false);
 
-    AddAttr<std::string>("activation", "{noen, relu, gelu}").SetDefault("none");
-    AddAttr<std::string>("auxiliary_key", "").SetDefault("");
+    AddAttr<std::string>(
+        "activation",
+        R"DOC((string, default none), The activation function. It could be 
+    one of {none, relu, gelu}. When none is given, Act would be null 
+    operations)DOC")
+        .SetDefault("none");
+    AddAttr<std::string>(
+        "auxiliary_key",
+        R"DOC((string, default ""), The key of EpilogueSingleton to place 
+    auxiliary data pointer. It is used to pass auxiliary data pointer 
+    for fused_gemm_epilogue_grad op. If not given (empty string), the 
+    auxiliary mode would not be enable.)DOC")
+        .SetDefault("");
 
-    AddComment(R"DOC(FusedGemmEpilogue OP)DOC");
+    AddComment(R"DOC(
+FusedGemmEpilogue Operator
+This operator is used to perform Activeation(Elementwise_add(Matmul(X, Y), bias)).
+It is equal to paddle.nn.Linear + Activation (None, ReLU or GeLU).
+
+Note:
+X could be more than two dimension and would be flatten to 2D for computing.
+X with shape [d0, d1, d2, d3] -> X_2D with shape [d0*d1*d2, d3]
+)DOC");
   }
 };
 
@@ -259,21 +290,42 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
 class FusedGemmEpilogueGradOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("DOut", "The input grad tensor DOut of  Out = (X * Y) + bias.");
-    AddInput("X", "The input tensor X of Out = (X * Y) + bias.");
-    AddInput("Y", "The input tensor X of Out = (X * Y) + bias.");
+    AddInput("DOut",
+             "The input grad tensor to Out of Out = (Act(X) * Y) + bias");
+    AddInput("X", "The input tensor X of Out = (Act(X) * Y) + bias");
+    AddInput("Y", "The input tensor Y of Out = (Act(X) * Y) + bias");
 
-    AddOutput("DX", "The output grad tensor DX of Out = (X * Y) + bias.")
+    AddOutput("DX", "The output grad tensor to X of Out = (Act(X) * Y) + bias.")
         .AsDispensable();
-    AddOutput("DY", "The output grad tensor DY of Out = (X * Y) + bias.");
-    AddOutput("DBias", "The output grad tensor DBias of Out = (X * Y) + bias.")
+    AddOutput("DY",
+              "The output grad tensor to Y of Out = (Act(X) * Y) + bias.");
+    AddOutput("DBias",
+              "The output grad tensor to bias of Out = (Act(X) * Y) + bias.")
         .AsDispensable();
 
-    AddAttr<std::string>("activation_grad", "{noen, relu_grad, gelu_grad}")
+    AddAttr<std::string>(
+        "activation_grad",
+        R"DOC((string, default none), The backward activation function. It could be 
+    one of {none, relu_grad, gelu_grad}. When none is given, The backward Act would 
+    be null operations)DOC")
         .SetDefault("none");
-    AddAttr<std::string>("auxiliary_key", "").SetDefault("");
+    AddAttr<std::string>(
+        "auxiliary_key",
+        R"DOC((string, default ""), The key of EpilogueSingleton to fetch 
+    auxiliary data pointer. It is used to obtain auxiliary data pointer 
+    generated from fused_gemm_epilogue op. If not given (empty string), 
+    the activation_grad should be none.)DOC")
+        .SetDefault("");
 
-    AddComment(R"DOC(FusedGemmEpilogueGrad OP)DOC");
+    AddComment(R"DOC(
+FusedGemmEpilogueGrad Operator
+This operator is used to perform backward of Elementwise_add(Matmul(Activeation(X), Y), bias).
+It is equal to Activation (None, ReLU or GeLU) + paddle.nn.Linear.
+
+Note:
+X could be more than two dimension and would be flatten to 2D for computing.
+X with shape [d0, d1, d2, d3] -> X_2D with shape [d0*d1*d2, d3]
+)DOC");
   }
 };
 
