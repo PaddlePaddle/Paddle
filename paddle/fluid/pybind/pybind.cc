@@ -50,6 +50,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/prune.h"
+#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/save_load_util.h"
 #include "paddle/fluid/framework/scope_pool.h"
@@ -99,6 +100,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
+#include "paddle/fluid/pybind/metrics_py.h"
 #include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
 
@@ -133,9 +135,10 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
+
 #ifdef PADDLE_WITH_IPU
-#include "paddle/fluid/platform/ipu/ipu_backend.h"
-#include "paddle/fluid/platform/ipu_info.h"
+#include "paddle/fluid/platform/device/ipu/ipu_backend.h"
+#include "paddle/fluid/platform/device/ipu/ipu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_MLU
@@ -3674,8 +3677,9 @@ All parameter, weight, gradient are variables in Paddle.
   BindFleetWrapper(&m);
   BindIO(&m);
 
-#ifdef PADDLE_WITH_PSLIB
+#if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
   BindHeterWrapper(&m);
+  BindMetrics(&m);
 #endif
 #ifdef PADDLE_WITH_HETERPS
   BindPSGPUWrapper(&m);

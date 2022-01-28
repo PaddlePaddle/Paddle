@@ -124,7 +124,7 @@ def parse_output(api_name, output_config):
 
     if len(temp_list) == 1:
         out_type, out_name = parse_output_item(temp_list[0])
-        return out_type, out_name
+        return [out_type], out_name
     else:
         out_type_list = []
         out_name_list = []
@@ -133,8 +133,7 @@ def parse_output(api_name, output_config):
             out_type_list.append(out_type)
             out_name_list.append(out_name)
 
-        return "std::tuple<" + ",".join(out_type_list) + ">", ", ".join(
-            out_name_list)
+        return out_type_list, ", ".join(out_name_list)
 
 
 def gene_kernel_select(api, input_names, attrs, kernel) -> str:
@@ -241,7 +240,7 @@ def gene_kernel_select(api, input_names, attrs, kernel) -> str:
 
     if len(input_names) > 0:
         kernel_select_code = kernel_select_code + f"""
-  if (kernel_backend == Backend::UNDEFINED 
+  if (kernel_backend == Backend::UNDEFINED
         || kernel_layout == DataLayout::UNDEFINED
         || kernel_data_type == DataType::UNDEFINED ) {{
     auto kernel_key_set = ParseKernelKeyByInputArgs({kernel_select_args});
@@ -288,7 +287,21 @@ def gene_infer_meta(input_names, attr_names, infer_meta) -> str:
 """
 
 
-def get_kernel_args(input_names, attrs, kernel_param):
+def get_kernel_args(inputs, attrs, out_type_list, kernel_param):
+    input_trans_map = {
+        'const Tensor&': 'const pten::DenseTensor&',
+        'const Tensor &': 'const pten::DenseTensor&',
+        'const std::vector<Tensor>&': 'const std::vector<pten::DenseTensor>&',
+        'const std::vector<Tensor> &': 'const std::vector<pten::DenseTensor>&'
+    }
+    out_trans_map = {
+        'Tensor': 'pten::DenseTensor*',
+        'std::vector<Tensor>': 'std::vector<pten::DenseTensor*>&'
+    }
+    input_names = inputs['names']
+    input_infos = inputs['input_info']
+    kernel_args_type_list = ['const platform::DeviceContext&']
+
     input_tensor_code = ""
     for input_name in input_names:
         # set input code
@@ -303,36 +316,26 @@ def get_kernel_args(input_names, attrs, kernel_param):
     for param in kernel_param:
         if param in input_names:
             kernel_args = kernel_args + "*" + PREFIX_TENSOR_NAME + param + ", "
+            kernel_args_type_list.append(input_trans_map[input_infos[param]])
         elif param in attr_names:
             # set attr for kernel_context
             if 'ScalarArray' in attrs['attr_info'][param][0]:
+                kernel_args_type_list.append('const pten::ScalarArray&')
                 param = 'pten::ScalarArray(' + param + ')'
             elif 'Scalar' in attrs['attr_info'][param][0]:
+                kernel_args_type_list.append('const pten::Scalar&')
                 param = 'pten::Scalar(' + param + ')'
+            else:
+                kernel_args_type_list.append(attrs['attr_info'][param][0])
             kernel_args = kernel_args + param + ", "
         elif isinstance(param, bool):
             kernel_args = kernel_args + str(param).lower() + ", "
         else:
             kernel_args = kernel_args + str(param) + ", "
-    return input_tensor_code, kernel_args[:-2]
 
+    for out_type in out_type_list:
+        kernel_args_type_list.append(out_trans_map[out_type])
 
-def gene_output(output_type):
-    kernel_output = ""
-    output_create = f"""
-  {output_type} out;"""
+    kernel_signature = "void(*)(" + ", ".join(kernel_args_type_list) + ")"
 
-    if output_type == 'Tensor' or output_type == 'std::vector<Tensor>':
-        kernel_output = 'dense_out'
-        output_create = output_create + """
-  auto dense_out = SetKernelOutput(out_meta, kernel_backend, &out);"""
-    elif re.match(r'std::tuple<.*>$', output_type):
-        out_num = output_type.count('Tensor')
-        for i in range(out_num):
-            kernel_output = kernel_output + f'dense_out_{i}, '
-            output_create = output_create + f"""
-  auto dense_out_{i} = SetKernelOutput(std::get<{i}>(out_meta), kernel_backend, &std::get<{i}>(out));"""
-
-        kernel_output = kernel_output[:-2]
-
-    return kernel_output, output_create
+    return input_tensor_code, kernel_args[:-2], kernel_signature
