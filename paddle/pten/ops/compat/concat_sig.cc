@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,16 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
+#include "paddle/pten/core/compat/op_utils.h"
 
-#include "paddle/pten/api/include/tensor.h"
-#include "paddle/pten/common/backend.h"
+namespace pten {
 
-namespace paddle {
-namespace experimental {
+KernelSignature ConcatOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  if (ctx.HasInput("AxisTensor")) {
+    return KernelSignature("concat", {"X"}, {"AxisTensor"}, {"Out"});
+  }
+  return KernelSignature("concat", {"X"}, {"axis"}, {"Out"});
+}
 
-// TODO(chenweihang): Replace backend by place when place is ready
-PADDLE_API Tensor copy_to(const Tensor& x, Backend backend, bool blocking);
+}  // namespace pten
 
-}  // namespace experimental
-}  // namespace paddle
+PT_REGISTER_ARG_MAPPING_FN(concat, pten::ConcatOpArgumentMapping);
