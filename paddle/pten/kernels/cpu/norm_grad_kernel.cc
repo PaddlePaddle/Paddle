@@ -20,6 +20,8 @@
 
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
+
+#include "paddle/pten/kernels/impl/norm_kernel_util.h"
 namespace pten {
 
 template <typename T, typename Context>
@@ -36,7 +38,7 @@ void NormGradKernel(const Context& ctx,
   auto* in_norm = &norm;
   auto* out_dx = x_grad;
 
-  ctc.Alloc(out_dx);
+  ctx.template Alloc<T>(out_dx);
 
   auto xdim = in_x->dims();
   if (axis < 0) axis = xdim.size() + axis;
@@ -58,8 +60,8 @@ void NormGradKernel(const Context& ctx,
   auto dx = dx_e.reshape(shape);
 
   DenseTensor rsum;
-  rsum.resize({pre, pos});
-  ctx.Alloc(&rsum);
+  rsum.Resize({pre, post});
+  ctx.template Alloc<T>(&rsum);
   auto sum = paddle::framework::EigenTensor<T, 2>::From(rsum);
 
   Eigen::DSizes<int, 1> rdim(1);

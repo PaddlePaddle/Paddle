@@ -17,6 +17,7 @@
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
+#include "paddle/pten/kernels/impl/norm_kernel_util.h"
 
 namespace pten {
 
@@ -45,8 +46,8 @@ void NormKernel(const Context& ctx,
     out_norm = norm;
   }
 
-  ctx.Alloc(out);
-  ctx.Alloc(out_norm);
+  ctx.template Alloc<T>(out);
+  ctx.template Alloc<T>(out_norm);
 
   auto* place = ctx.eigen_device();
 

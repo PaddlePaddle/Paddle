@@ -21,11 +21,12 @@
 namespace cub = hipcub;
 #endif
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/operators/norm_op.h"
 #include "paddle/fluid/platform/bfloat16.h"
 
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
+
+#include "paddle/pten/kernels/impl/norm_kernel_util.h"
 
 namespace pten {
 
@@ -84,7 +85,7 @@ void NormGradKernel(const Context& ctx,
   auto* in_norm = &norm;
   auto* in_dy = &out_grad;
   auto* out_dx = x_grad;
-  ctx.Alloc(out_dx);
+  ctx.template Alloc<T>(out_dx);
   T* dx = out_dx->data<T>();
   const T* x_data = in_x->data<T>();
   const T* x_norm = in_norm->data<T>();
