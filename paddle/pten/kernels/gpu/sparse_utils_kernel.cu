@@ -12,15 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#if defined(PADDLE_WITH_CUDA)
-
 #include <thrust/execution_policy.h>
-#include <thrust/sort.h>
-#include <cub/cub.cuh>
+#include <thrust/remove.h>
 
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/sparse.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 
 #include "paddle/pten/api/lib/utils/allocator.h"
@@ -34,7 +29,7 @@ limitations under the License. */
 namespace pten {
 
 template <typename T>
-inline __device__ bool dev_is_zero(const T* data, const int64_t cols) {
+inline __device__ bool DevIsZero(const T* data, const int64_t cols) {
   const T zero = static_cast<T>(0);
   for (int64_t i = 0; i < cols; i++) {
     if (data[i] != zero) {
@@ -43,13 +38,12 @@ inline __device__ bool dev_is_zero(const T* data, const int64_t cols) {
   }
   return true;
 }
-
 template <typename T>
-__global__ void kernel_get_non_zero_nums(const T* dense_data,
-                                         const int rows,
-                                         const int cols,
-                                         int* non_zero_num,
-                                         int* temp_indexs) {
+__global__ void GetNonZeroNums(const T* dense_data,
+                               const int rows,
+                               const int cols,
+                               int* non_zero_num,
+                               int* temp_indexs) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   __shared__ int counter;
   if (threadIdx.x == 0) counter = 0;
@@ -57,7 +51,7 @@ __global__ void kernel_get_non_zero_nums(const T* dense_data,
 
   for (int i = tid; i < rows; i += gridDim.x * blockDim.x) {
     int index = -1;
-    if (!dev_is_zero(dense_data + i * cols, cols)) {
+    if (!DevIsZero(dense_data + i * cols, cols)) {
       atomicAdd(&counter, 1);
       index = i;
     }
@@ -68,16 +62,15 @@ __global__ void kernel_get_non_zero_nums(const T* dense_data,
     atomicAdd(non_zero_num, counter);
   }
 }
-
 template <typename T>
-__global__ void kernel_get_values_and_calc_indices(const T* dense_data,
-                                                   const int64_t sparse_dim,
-                                                   const int64_t cols,
-                                                   const int64_t* x_dims,
-                                                   const int non_zero_num,
-                                                   const int* indexs,
-                                                   int64_t* indices,
-                                                   T* sparse_data) {
+__global__ void GetNonZeroElementsAndIndices(const T* dense_data,
+                                             const int64_t sparse_dim,
+                                             const int64_t cols,
+                                             const int64_t* x_dims,
+                                             const int non_zero_num,
+                                             const int* indexs,
+                                             int64_t* indices,
+                                             T* sparse_data) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   for (int i = tid; i < non_zero_num; i += gridDim.x * blockDim.x) {
     int64_t sparse_index = indexs[i];
@@ -92,7 +85,6 @@ __global__ void kernel_get_values_and_calc_indices(const T* dense_data,
     }
   }
 }
-
 template <typename T, typename Context>
 void DenseToSparseCooKernel(const Context& dev_ctx,
                             const DenseTensor& x,
@@ -103,14 +95,14 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
   auto dims_2d = flatten_to_2d(x_dims, sparse_dim);
   const int rows = dims_2d[0];
   const int cols = dims_2d[1];
-  auto nums_meta = pten::DenseTensorMeta(DataType::INT32,
-                                         paddle::framework::make_ddim({1}),
-                                         pten::DataLayout::NCHW);
-  DenseTensor nums = pten::Empty<T, Context>(dev_ctx, std::move(nums_meta));
-  auto x_dims_meta = pten::DenseTensorMeta(
-      DataType::INT64,
-      paddle::framework::make_ddim({static_cast<int64_t>(x_dims.size())}),
-      pten::DataLayout::NCHW);
+  auto nums_meta =
+      pten::DenseTensorMeta(DataType::INT32, {1}, pten::DataLayout::NCHW);
+  DenseTensor nums =
+      pten::Empty<int64_t, Context>(dev_ctx, std::move(nums_meta));
+  auto x_dims_meta =
+      pten::DenseTensorMeta(DataType::INT64,
+                            {static_cast<int64_t>(x_dims.size())},
+                            pten::DataLayout::NCHW);
   DenseTensor d_x_dims =
       pten::Empty<T, Context>(dev_ctx, std::move(x_dims_meta));
 
@@ -118,27 +110,33 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
 
   // 1. get numbers of non zero elements, and get the index of non zero elements
   int* nums_ptr = nums.mutable_data<int>(place);
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      hipMemsetAsync(nums_ptr, 0, sizeof(int), dev_ctx.stream()));
+#else
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaMemsetAsync(nums_ptr, 0, sizeof(int), dev_ctx.stream()));
+#endif
   paddle::platform::GpuLaunchConfig config =
       paddle::platform::GetGpuLaunchConfig1D(dev_ctx, rows);
   auto temp_indexs_meta =
-      pten::DenseTensorMeta(DataType::INT32,
-                            paddle::framework::make_ddim({rows}),
-                            pten::DataLayout::NCHW);
+      pten::DenseTensorMeta(DataType::INT32, {rows}, pten::DataLayout::NCHW);
   DenseTensor temp_indexs =
       pten::Empty<T, Context>(dev_ctx, std::move(temp_indexs_meta));
   int* temp_indexs_ptr = temp_indexs.mutable_data<int>(place);
-  kernel_get_non_zero_nums<<<config.block_per_grid,
-                             config.thread_per_block,
-                             0,
-                             dev_ctx.stream()>>>(
+  GetNonZeroNums<<<config.block_per_grid,
+                   config.thread_per_block,
+                   0,
+                   dev_ctx.stream()>>>(
       x_data, rows, cols, nums_ptr, temp_indexs_ptr);
+#ifdef PADDLE_WITH_HIP
+  thrust::remove(thrust::hip::par.on(dev_ctx.stream()),
+#else
   thrust::remove(thrust::cuda::par.on(dev_ctx.stream()),
+#endif
                  temp_indexs_ptr,
                  temp_indexs_ptr + rows,
                  -1);
-
   // 2. copy non_zero_num to host, copy x_dims to device
   int non_zero_num = 0;
   paddle::memory::Copy(paddle::platform::CPUPlace(),
@@ -154,14 +152,12 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
                        x_dims.Get(),
                        x_dims.size() * sizeof(x_dims[0]),
                        dev_ctx.stream());
-  dev_ctx.Wait();
+  dev_ctx.Wait();  // wait the copy
 
   const auto values_dims = InferDenseDims(x_dims, sparse_dim, non_zero_num);
-  DenseTensorMeta indices_meta(
-      DataType::INT64,
-      paddle::framework::make_ddim(
-          {sparse_dim, static_cast<int64_t>(non_zero_num)}),
-      DataLayout::NCHW);
+  DenseTensorMeta indices_meta(DataType::INT64,
+                               {sparse_dim, static_cast<int64_t>(non_zero_num)},
+                               DataLayout::NCHW);
   DenseTensorMeta values_meta(x.meta().dtype, values_dims, x.meta().layout);
   pten::DenseTensor indices(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
@@ -173,22 +169,20 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
       std::move(values_meta));
   int64_t* indices_data = indices.mutable_data<int64_t>(place);
   T* sparse_data = values.mutable_data<T>(place);
-
   // 3. calc indices by indexs and get values by indexs
   paddle::platform::GpuLaunchConfig config2 =
       paddle::platform::GetGpuLaunchConfig1D(dev_ctx, non_zero_num);
-  kernel_get_values_and_calc_indices<<<config2.block_per_grid,
-                                       config2.thread_per_block,
-                                       0,
-                                       dev_ctx.stream()>>>(
-      x_data,
-      sparse_dim,
-      cols,
-      d_x_dims.data<int64_t>(),
-      non_zero_num,
-      temp_indexs_ptr,
-      indices_data,
-      sparse_data);
+  GetNonZeroElementsAndIndices<<<config2.block_per_grid,
+                                 config2.thread_per_block,
+                                 0,
+                                 dev_ctx.stream()>>>(x_data,
+                                                     sparse_dim,
+                                                     cols,
+                                                     d_x_dims.data<int64_t>(),
+                                                     non_zero_num,
+                                                     temp_indexs_ptr,
+                                                     indices_data,
+                                                     sparse_data);
   out->SetMember(indices, values, x_dims, true);
 }
 
@@ -255,8 +249,13 @@ void SparseCooToDenseKernel(const Context& dev_ctx,
                        sparse_dim * sizeof(int64_t),
                        dev_ctx.stream());
 
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      hipMemsetAsync(out_data, 0, sizeof(T) * out->numel(), dev_ctx.stream()));
+#else
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaMemsetAsync(out_data, 0, sizeof(T) * out->numel(), dev_ctx.stream()));
+#endif
   paddle::platform::GpuLaunchConfig config =
       paddle::platform::GetGpuLaunchConfig1D(dev_ctx, non_zero_num);
 
@@ -274,12 +273,12 @@ void SparseCooToDenseKernel(const Context& dev_ctx,
 }
 
 __global__ void kernel_get_batch_sizes(const int64_t* crows,
-                                       const int m,
+                                       const int rows,
                                        const int batchs,
                                        int* batch_sizes) {
   const int tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid < batchs) {
-    batch_sizes[tid] = crows[tid * m];
+    batch_sizes[tid] = crows[tid * (rows + 1) + rows];
   }
 }
 
@@ -292,7 +291,8 @@ __global__ void kernel_convert_csr_crows_to_coo_rows(const int64_t* crows_ptr,
   const int64_t offset = crows_offsets ? crows_offsets[b] : 0;
   const int tid = threadIdx.x + blockIdx.x * blockDim.x;
   for (int i = tid; i < rows; i += gridDim.x * blockDim.x) {
-    for (int j = crows_ptr[b * rows + i]; j < crows_ptr[b * rows + i + 1];
+    for (int j = crows_ptr[b * (rows + 1) + i];
+         j < crows_ptr[b * (rows + 1) + i + 1];
          j++) {
       rows_ptr[offset + j] = i;
       if (batch_ptr) {
@@ -347,7 +347,11 @@ void SparseCsrToCooKernel(const Context& dev_ctx,
                              config1.thread_per_block>>>(
         csr_crows_data, rows, batchs, offsets_ptr);
 
+#ifdef PADDLE_WITH_HIP
+    thrust::exclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
+#else
     thrust::exclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
+#endif
                            offsets_ptr,
                            offsets_ptr + batchs,
                            offsets_ptr);
@@ -537,14 +541,26 @@ PT_REGISTER_KERNEL(dense_to_sparse_coo,
                    ALL_LAYOUT,
                    pten::DenseToSparseCooKernel,
                    float,
-                   double) {}
+                   double,
+                   pten::dtype::float16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
 
 PT_REGISTER_KERNEL(sparse_csr_to_coo,
                    GPU,
                    ALL_LAYOUT,
                    pten::SparseCsrToCooKernel,
                    float,
-                   double) {}
+                   double,
+                   pten::dtype::float16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
 
 PT_REGISTER_KERNEL(sparse_coo_to_csr,
                    GPU,
@@ -577,5 +593,23 @@ PT_REGISTER_KERNEL(sparse_coo_to_dense,
                    ALL_LAYOUT,
                    pten::SparseCooToDenseKernel,
                    float,
-                   double) {}
-#endif
+                   double,
+                   pten::dtype::float16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
+PT_REGISTER_KERNEL(sparse_csr_to_dense,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::SparseCsrToDenseKernel,
+                   float,
+                   double,
+                   pten::dtype::float16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}

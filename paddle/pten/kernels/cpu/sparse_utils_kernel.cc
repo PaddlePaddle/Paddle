@@ -69,20 +69,14 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
 
   const auto place = dev_ctx.GetPlace();
   const auto values_dims = InferDenseDims(x_dims, sparse_dim, non_zero_num);
-  DenseTensorMeta indices_meta(
-      DataType::INT64,
-      paddle::framework::make_ddim(
-          {sparse_dim, static_cast<int64_t>(non_zero_num)}),
-      DataLayout::NCHW);
+  DenseTensorMeta indices_meta(DataType::INT64,
+                               {sparse_dim, static_cast<int64_t>(non_zero_num)},
+                               DataLayout::NCHW);
   DenseTensorMeta values_meta(x.meta().dtype, values_dims, x.meta().layout);
-  pten::DenseTensor indices(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(
-          dev_ctx.GetPlace()),
-      std::move(indices_meta));
-  pten::DenseTensor values(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(
-          dev_ctx.GetPlace()),
-      std::move(values_meta));
+  pten::DenseTensor indices =
+      pten::Empty<int64_t, Context>(dev_ctx, std::move(indices_meta));
+  pten::DenseTensor values =
+      pten::Empty<T, Context>(dev_ctx, std::move(values_meta));
   int64_t* indices_data = indices.mutable_data<int64_t>(place);
   T* values_data = values.mutable_data<T>(place);
 
@@ -192,8 +186,8 @@ void SparseCsrToCooKernel(const Context& dev_ctx,
   int index = 0;
   for (int b = 0; b < batch; b++) {
     for (int i = 0; i < rows; i++) {
-      for (int j = csr_crows_data[b * rows + i];
-           j < csr_crows_data[b * rows + i + 1];
+      for (int j = csr_crows_data[b * (rows + 1) + i];
+           j < csr_crows_data[b * (rows + 1) + i + 1];
            j++) {
         coo_rows_data[index] = i;
         if (batch_ptr) {
@@ -327,14 +321,26 @@ PT_REGISTER_KERNEL(dense_to_sparse_coo,
                    ALL_LAYOUT,
                    pten::DenseToSparseCooKernel,
                    float,
-                   double) {}
+                   double,
+                   pten::dtype::float16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
 
 PT_REGISTER_KERNEL(sparse_csr_to_coo,
                    CPU,
                    ALL_LAYOUT,
                    pten::SparseCsrToCooKernel,
                    float,
-                   double) {}
+                   double,
+                   pten::dtype::float16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
 
 PT_REGISTER_KERNEL(sparse_coo_to_csr,
                    CPU,
@@ -367,4 +373,23 @@ PT_REGISTER_KERNEL(sparse_coo_to_dense,
                    ALL_LAYOUT,
                    pten::SparseCooToDenseKernel,
                    float,
-                   double) {}
+                   double,
+                   pten::dtype::float16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
+PT_REGISTER_KERNEL(sparse_csr_to_dense,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::SparseCsrToDenseKernel,
+                   float,
+                   double,
+                   pten::dtype::float16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
