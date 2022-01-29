@@ -24,6 +24,8 @@ void UnchangedInferMetaNew(MetaConfig config,
                            const MetaTensor& x,
                            MetaTensor* out) {
   out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
   out->share_lod(x);
 }
 
@@ -305,3 +307,5 @@ DenseTensorMeta ReduceInferMeta(const DenseTensorMeta& x_meta,
 }
 
 }  // namespace pten
+
+PT_REGISTER_INFER_META_FN(sign, pten::UnchangedInferMetaNew);

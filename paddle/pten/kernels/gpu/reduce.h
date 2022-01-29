@@ -38,14 +38,13 @@ namespace cub = hipcub;
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/fluid/string/string_helper.h"
-#include "paddle/pten/core/array.h"
-#include "paddle/pten/core/enforce.h"
-#include "paddle/pten/kernels/primitive/kernel_primitives.h"
-
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/enforce.h"
+#include "paddle/pten/core/utils/array.h"
 #include "paddle/pten/kernels/funcs/elementwise_base.h"
+#include "paddle/pten/kernels/primitive/kernel_primitives.h"
 
 // Reduce split or not, Whether to use ReduceHigherDim
 #define REDUCE_SPLIT_BOUNDARY 512

@@ -15,8 +15,8 @@ limitations under the License. */
 #include <sstream>
 
 #include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/compat/op_utils.h"
-#include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_factory.h"
 
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -88,6 +88,40 @@ pten::KernelKey TransOpKernelTypeToPtenKernelKey(
   paddle::experimental::DataType dtype =
       pten::TransToPtenDataType(kernel_type.data_type_);
   return pten::KernelKey(backend, layout, dtype);
+}
+
+pten::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
+                              const pten::KernelKey& kernel_key,
+                              const framework::OperatorBase& op) {
+#ifdef PADDLE_WITH_XPU
+  if (platform::is_xpu_place(expected_kernel_key.place_) ||
+      paddle::platform::is_in_xpu_black_list(op.Type())) {
+    VLOG(3) << "pten missing XPU kernel: " << op.Type()
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+    return pten::KernelKey(pten::Backend::CPU, kernel_key.layout(),
+                           kernel_key.dtype());
+  }
+#endif
+#ifdef PADDLE_WITH_ASCEND_CL
+  if (platform::is_npu_place(expected_kernel_key.place_)) {
+    VLOG(3) << "pten missing NPU kernel: " << op.Type()
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+    return pten::KernelKey(pten::Backend::CPU, kernel_key.layout(),
+                           kernel_key.dtype());
+  }
+#endif
+#ifdef PADDLE_WITH_MLU
+  if (platform::is_mlu_place(expected_kernel_key.place_)) {
+    VLOG(3) << "pten missing MLU kernel: " << op.Type()
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+    return pten::KernelKey(pten::Backend::CPU, kernel_key.layout(),
+                           kernel_key.dtype());
+  }
+#endif
+  return pten::KernelKey();
 }
 
 const paddle::SmallVector<std::string>&

@@ -13,4 +13,4 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/pten/core/type_defs.h"
+#include "paddle/pten/core/compat/type_defs.h"
