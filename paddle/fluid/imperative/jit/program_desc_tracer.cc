@@ -221,45 +221,47 @@ void ProgramDescTracer::InsertVarIfNotExist(
   PADDLE_ENFORCE_NOT_NULL(new_var, platform::errors::InvalidArgument(
                                        "The variable to insert is NULL."));
 
-  for (; vars_.count(new_var) == 0;) {
-    if (!vars_mutex_.try_lock()) continue;
-
-    auto &pair = vars_[new_var];
+  while (!vars_mutex_.try_lock()) {
+    if (vars_.count(new_var) == 0) break;
     vars_mutex_.unlock();
-
-    auto new_var_desc = new framework::VarDesc("");
-    pair.reset(new_var_desc);
-
-    if (new_var->Persistable() || is_input) {
-      new_var_desc->SetName(new_var->Name());
-      new_var_desc->SetPersistable(new_var->Persistable());
-      if (!new_var->Persistable()) {
-        non_exist_input_vars_.insert(new_var);
-      }
-    } else {
-      new_var_desc->SetPersistable(false);
-    }
-
-    const auto &inner_var = new_var->Var();
-    PADDLE_ENFORCE_EQ(inner_var.IsInitialized(), true,
-                      platform::errors::InvalidArgument(
-                          "The variable to insert is not initialized."));
-    if (inner_var.IsType<framework::LoDTensor>()) {
-      const auto &tensor = inner_var.Get<framework::LoDTensor>();
-      new_var_desc->SetType(framework::proto::VarType::LOD_TENSOR);
-      new_var_desc->SetShape(framework::vectorize<int64_t>(tensor.dims()));
-      new_var_desc->SetLoDLevel(tensor.lod().size());
-      if (tensor.IsInitialized()) {
-        new_var_desc->SetDataType(tensor.type());
-      } else {
-        new_var_desc->SetDataType(framework::proto::VarType::FP32);
-      }
-    } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Not support variable type %s.",
-          framework::ToTypeName(inner_var.Type())));
-    }
+    return;
   }
+  auto &pair = vars_[new_var];
+  vars_mutex_.unlock();
+
+  auto new_var_desc = new framework::VarDesc("");
+  pair.reset(new_var_desc);
+
+  if (new_var->Persistable() || is_input) {
+    new_var_desc->SetName(new_var->Name());
+    new_var_desc->SetPersistable(new_var->Persistable());
+    if (!new_var->Persistable()) {
+      non_exist_input_vars_.insert(new_var);
+    }
+  } else {
+    new_var_desc->SetPersistable(false);
+  }
+
+  const auto &inner_var = new_var->Var();
+  PADDLE_ENFORCE_EQ(inner_var.IsInitialized(), true,
+                    platform::errors::InvalidArgument(
+                        "The variable to insert is not initialized."));
+  if (inner_var.IsType<framework::LoDTensor>()) {
+    const auto &tensor = inner_var.Get<framework::LoDTensor>();
+    new_var_desc->SetType(framework::proto::VarType::LOD_TENSOR);
+    new_var_desc->SetShape(framework::vectorize<int64_t>(tensor.dims()));
+    new_var_desc->SetLoDLevel(tensor.lod().size());
+    if (tensor.IsInitialized()) {
+      new_var_desc->SetDataType(tensor.type());
+    } else {
+      new_var_desc->SetDataType(framework::proto::VarType::FP32);
+    }
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Not support variable type %s.",
+        framework::ToTypeName(inner_var.Type())));
+  }
+
   return;
 }
 
