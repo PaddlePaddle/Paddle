@@ -58,6 +58,18 @@ class API:
             if 'param' not in self.infer_meta:
                 self.infer_meta['param'] = None
 
+            self.data_transform = {
+                'skip_transform': [],
+                'support_trans_dtype': []
+            }
+            if 'data_transform' in api_item_yaml:
+                if 'skip_transform' in api_item_yaml['data_transform']:
+                    self.data_transform['skip_transform'] = api_item_yaml[
+                        'data_transform']['skip_transform']
+                if 'support_trans_dtype' in api_item_yaml['data_transform']:
+                    self.data_transform['support_trans_dtype'] = api_item_yaml[
+                        'data_transform']['support_trans_dtype']
+
     def gene_api_declaration(self):
         return f"""
 PADDLE_API {self.return_type} {self.api}({self.args['args_declare']});
@@ -94,7 +106,7 @@ PADDLE_API {self.return_type} {self.api}({self.args['args_declare']});
         if self.is_base_api:
             input_tensors, kernel_args, kernel_signature = gen_utils.get_kernel_args(
                 self.args['inputs'], self.args['attrs'], self.out_type_list,
-                self.kernel['param'])
+                self.kernel['param'], self.data_transform)
             outputs_args, output_create = self.gene_output(self.out_type_list)
             return f"""
 PADDLE_API {self.return_type} {self.api}({self.args["args_define"]}) {{
@@ -139,6 +151,7 @@ def source_include(header_file_path):
 
 #include "paddle/pten/api/lib/api_registry.h"
 #include "paddle/pten/api/lib/api_utils.h"
+#include "paddle/pten/api/lib/data_transform.h"
 #include "paddle/pten/api/lib/kernel_dispatch.h"
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/kernel_registry.h"

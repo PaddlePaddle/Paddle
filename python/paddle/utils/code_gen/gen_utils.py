@@ -287,7 +287,7 @@ def gene_infer_meta(input_names, attr_names, infer_meta) -> str:
 """
 
 
-def get_kernel_args(inputs, attrs, out_type_list, kernel_param):
+def get_kernel_args(inputs, attrs, out_type_list, kernel_param, data_transform):
     input_trans_map = {
         'const Tensor&': 'const pten::DenseTensor&',
         'const Tensor &': 'const pten::DenseTensor&',
@@ -311,6 +311,22 @@ def get_kernel_args(inputs, attrs, out_type_list, kernel_param):
     attr_names = attrs['names']
     if kernel_param is None:
         kernel_param = input_names + attr_names
+
+    input_tensor_code = ""
+    for i, input_name in enumerate(input_names):
+        # set input code
+        if input_name in kernel_param:
+            trans_flag = "{}"
+            if input_name in data_transform['skip_transform']:
+                trans_flag = "{true}"
+            elif input_name in data_transform['support_trans_dtype']:
+                trans_flag = "{false, true}"
+            input_tensor_code = input_tensor_code + f"""
+  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({i}), {trans_flag});"""
+
+        else:
+            input_tensor_code = input_tensor_code + f"""
+  auto {PREFIX_TENSOR_NAME}{input_name} = TensorToDenseTensor({input_name});"""
 
     kernel_args = "*dev_ctx, "
     for param in kernel_param:

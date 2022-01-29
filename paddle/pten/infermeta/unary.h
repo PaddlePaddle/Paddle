@@ -67,4 +67,8 @@ DenseTensorMeta SumInferMeta(const DenseTensorMeta& x_meta,
                              const std::vector<int64_t>& axis,
                              DataType dtype,
                              bool keep_dim);
+
+DenseTensorMeta TransferLayoutInferMeta(const DenseTensorMeta& x_meta,
+                                        DataLayout layout);
+
 }  // namespace pten
