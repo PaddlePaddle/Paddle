@@ -62,7 +62,7 @@ add_custom_command(
   DEPENDS ${bw_api_yaml_file} ${bw_api_gen_file}
   VERBATIM)
 
-cc_library(sparse_api SRCS sparse_api.cc DEPS pten_tensor pten kernel_dispatch)
 cc_library(manual_api SRCS manual_api.cc DEPS pten_tensor pten kernel_dispatch)
+cc_library(sparse_api SRCS sparse_api.cc DEPS pten_tensor pten kernel_dispatch)
 cc_library(pten_function_api SRCS ${api_source_file} DEPS pten_tensor pten kernel_dispatch)
 cc_library(pten_bw_function_api SRCS ${bw_api_source_file} DEPS pten_tensor pten kernel_dispatch backward_infermeta pten_function_api)

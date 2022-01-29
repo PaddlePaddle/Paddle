@@ -12,16 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/kernels/sparse_utils_kernel.h"
+#include "paddle/pten/kernels/sparse/sparse_utils_kernel.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/core/tensor_meta.h"
 
 namespace pten {
+namespace sparse {
 
 template <typename T>
-inline bool is_zero(const T* data, const size_t n) {
+inline bool IsZero(const T* data, const size_t n) {
   const T zero = static_cast<T>(0);
   for (size_t i = 0; i < n; i++) {
     if (data[i] != zero) {
@@ -31,9 +32,11 @@ inline bool is_zero(const T* data, const size_t n) {
   return true;
 }
 
+// TODO(zhangkaihuo): implement a kernel to count the number of non-zero
+// elements in tensor
 template <typename T>
-inline int64_t get_non_zero_num(const DenseTensor& dense,
-                                const int64_t sparse_dim) {
+inline int64_t GetNonZeroNum(const DenseTensor& dense,
+                             const int64_t sparse_dim) {
   const auto& dims = dense.dims();
   PADDLE_ENFORCE_GE(
       dims.size(),
@@ -50,7 +53,7 @@ inline int64_t get_non_zero_num(const DenseTensor& dense,
   const T* data = dense.data<T>();
   int64_t non_zero_num = 0;
   for (int64_t i = 0; i < rows; i++) {
-    if (!is_zero(data + i * cols, cols)) {
+    if (!IsZero(data + i * cols, cols)) {
       non_zero_num = non_zero_num + 1;
     }
   }
@@ -65,7 +68,7 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
   const T* x_data = x.data<T>();
   const auto& x_dims = x.dims();
 
-  int64_t non_zero_num = get_non_zero_num<T>(x, sparse_dim);
+  int64_t non_zero_num = GetNonZeroNum<T>(x, sparse_dim);
 
   const auto place = dev_ctx.GetPlace();
   const auto values_dims = InferDenseDims(x_dims, sparse_dim, non_zero_num);
@@ -86,7 +89,7 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
 
   int index = 0;
   for (int i = 0; i < rows; i++) {
-    if (!is_zero(x_data + i * cols, cols)) {
+    if (!IsZero(x_data + i * cols, cols)) {
       int64_t sparse_index = i;
       for (int64_t j = sparse_dim - 1; j >= 0; j--) {
         indices_data[j * non_zero_num + index] = sparse_index % x_dims[j];
@@ -99,12 +102,13 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
   out->SetMember(indices, values, x_dims, true);
 }
 
+}  // namespace sparse
 }  // namespace pten
 
 PT_REGISTER_KERNEL(dense_to_sparse_coo,
                    CPU,
                    ALL_LAYOUT,
-                   pten::DenseToSparseCooKernel,
+                   pten::sparse::DenseToSparseCooKernel,
                    float,
                    double,
                    paddle::float16,

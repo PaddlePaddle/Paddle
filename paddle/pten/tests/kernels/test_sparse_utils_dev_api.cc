@@ -16,7 +16,7 @@ limitations under the License. */
 #include <memory>
 
 #include "paddle/pten/kernels/copy_kernel.h"
-#include "paddle/pten/kernels/sparse_utils_kernel.h"
+#include "paddle/pten/kernels/sparse/sparse_utils_kernel.h"
 
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
@@ -24,9 +24,6 @@ limitations under the License. */
 
 namespace pten {
 namespace tests {
-
-namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
 
 template <typename ValueT, typename IndicesT>
 inline void CheckResult(
@@ -90,7 +87,8 @@ void TestDenseToSparseCoo(const DenseTensor& dense_x,
 
   pten::CPUContext dev_ctx_cpu;
   // 1. test cpu
-  auto cpu_sparse_out = DenseToSparseCoo<T>(dev_ctx_cpu, dense_x, sparse_dim);
+  auto cpu_sparse_out =
+      sparse::DenseToSparseCoo<T>(dev_ctx_cpu, dense_x, sparse_dim);
   CheckResult<T, int64_t>(&dev_ctx_cpu,
                           cpu_sparse_out,
                           non_zero_data,
@@ -111,7 +109,8 @@ void TestDenseToSparseCoo(const DenseTensor& dense_x,
       DenseTensorMeta(dense_x.dtype(), dense_x.dims(), dense_x.layout()));
 
   pten::Copy(*dev_ctx_cuda, dense_x, true, &d_dense_x);
-  auto sparse_out = DenseToSparseCoo<T>(*dev_ctx_cuda, d_dense_x, sparse_dim);
+  auto sparse_out =
+      sparse::DenseToSparseCoo<T>(*dev_ctx_cuda, d_dense_x, sparse_dim);
   CheckResult<T, int64_t>(dev_ctx_cuda,
                           sparse_out,
                           non_zero_data,

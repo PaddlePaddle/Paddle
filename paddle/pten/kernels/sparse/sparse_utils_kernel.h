@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/pten/kernels/empty_kernel.h"
 
 namespace pten {
+namespace sparse {
 
 inline const DDim InferDenseDims(const DDim& x_dims,
                                  const int64_t sparse_dim,
@@ -56,4 +57,5 @@ SparseCooTensor DenseToSparseCoo(const Context& dev_ctx,
   return coo;
 }
 
+}  // namespace sparse
 }  // namespace pten

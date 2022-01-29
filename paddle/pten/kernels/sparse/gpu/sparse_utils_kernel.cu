@@ -16,12 +16,12 @@ limitations under the License. */
 #include <thrust/remove.h>
 
 #include "paddle/pten/backends/gpu/gpu_context.h"
-#include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/core/tensor_meta.h"
-#include "paddle/pten/kernels/sparse_utils_kernel.h"
+#include "paddle/pten/kernels/sparse/sparse_utils_kernel.h"
 
 namespace pten {
+namespace sparse {
 
 template <typename T>
 inline __device__ bool DevIsZero(const T* data, const int64_t cols) {
@@ -214,12 +214,13 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
   out->SetMember(indices, values, x_dims, true);
 }
 
+}  // namespace sparse
 }  // namespace pten
 
 PT_REGISTER_KERNEL(dense_to_sparse_coo,
                    GPU,
                    ALL_LAYOUT,
-                   pten::DenseToSparseCooKernel,
+                   pten::sparse::DenseToSparseCooKernel,
                    float,
                    double,
                    pten::dtype::float16,

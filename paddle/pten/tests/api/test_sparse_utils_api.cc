@@ -17,7 +17,7 @@ limitations under the License. */
 
 #include "paddle/pten/api/include/api.h"
 
-#include "paddle/pten/api/include/sparse_utils.h"
+#include "paddle/pten/api/include/sparse_api.h"
 
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
