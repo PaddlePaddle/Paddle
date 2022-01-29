@@ -156,18 +156,6 @@ int GetGPUMaxThreadsPerBlock(int id) {
   return count;
 }
 
-int GetGPUManagedMemorySupported(int id) {
-  PADDLE_ENFORCE_LT(id, GetGPUDeviceCount(),
-                    platform::errors::InvalidArgument(
-                        "Device id must be less than GPU count, "
-                        "but received id is: %d. GPU count is: %d.",
-                        id, GetGPUDeviceCount()));
-  int ManagedMemoryAttr;
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaDeviceGetAttribute(&ManagedMemoryAttr, cudaDevAttrManagedMemory, id));
-  return ManagedMemoryAttr;
-}
-
 int GetCurrentDeviceId() {
   int device_id;
   PADDLE_ENFORCE_GPU_SUCCESS(cudaGetDevice(&device_id));
@@ -276,5 +264,38 @@ void GpuDestroyStream(gpuStream_t stream) {
 void GpuDeviceSync() { PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize()); }
 
 gpuError_t GpuGetLastError() { return cudaGetLastError(); }
+
+// See
+// https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#um-requirements
+// for more detail about managed memory requirements
+bool IsGPUManagedMemorySupported(int id) {
+  PADDLE_ENFORCE_LT(id, GetGPUDeviceCount(),
+                    platform::errors::InvalidArgument(
+                        "Device id must be less than GPU count, "
+                        "but received id is: %d. GPU count is: %d.",
+                        id, GetGPUDeviceCount()));
+#if defined(__linux__) || defined(_WIN32)
+  int ManagedMemoryAttr;
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaDeviceGetAttribute(&ManagedMemoryAttr, cudaDevAttrManagedMemory, id));
+  return ManagedMemoryAttr != 0;
+#else
+  return false;
+#endif
+}
+
+bool IsGPUManagedMemoryOversubscriptionSupported(int id) {
+  PADDLE_ENFORCE_LT(id, GetGPUDeviceCount(),
+                    platform::errors::InvalidArgument(
+                        "Device id must be less than GPU count, "
+                        "but received id is: %d. GPU count is: %d.",
+                        id, GetGPUDeviceCount()));
+#ifdef __linux__
+  return IsGPUManagedMemorySupported(id) && GetGPUComputeCapability(id) >= 60;
+#else
+  return false;
+#endif
+}
+
 }  // namespace platform
 }  // namespace paddle

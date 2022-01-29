@@ -60,10 +60,6 @@ std::vector<int> GetSelectedDevices();
 //! Get the properties of the ith GPU device.
 const gpuDeviceProp &GetDeviceProperties(int id);
 
-//! Get whether support managed memory on the ith GPU.
-//! Return 1 if device support allocating managed memory, 0 if not.
-int GetGPUManagedMemorySupported(int id);
-
 //! Set the GPU device id for next execution.
 void SetDeviceId(int device_id);
 
@@ -151,6 +147,10 @@ bool IsGpuMallocRecorded(int dev_id);
 
 //! Empty idle cached memory held by the allocator.
 void EmptyCache(void);
+
+bool IsGPUManagedMemorySupported(int id);
+
+bool IsGPUManagedMemoryOversubscriptionSupported(int id);
 
 //! Get the primitive pointer return from cudaMalloc, just for testing
 #ifdef PADDLE_WITH_TESTING

@@ -218,18 +218,6 @@ const gpuDeviceProp &GetDeviceProperties(int id) {
   return g_device_props[id];
 }
 
-int GetGPUManagedMemorySupported(int id) {
-  PADDLE_ENFORCE_LT(id, GetGPUDeviceCount(),
-                    platform::errors::InvalidArgument(
-                        "Device id must be less than GPU count, "
-                        "but received id is: %d. GPU count is: %d.",
-                        id, GetGPUDeviceCount()));
-  int ManagedMemoryAttr;
-  PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceGetAttribute(
-      &ManagedMemoryAttr, hipDeviceAttributeManagedMemory, id));
-  return ManagedMemoryAttr;
-}
-
 void SetDeviceId(int id) {
   // TODO(qijun): find a better way to cache the cuda device count
   PADDLE_ENFORCE_LT(id, GetGPUDeviceCount(),
@@ -277,5 +265,35 @@ void GpuDestroyStream(gpuStream_t stream) {
 void GpuDeviceSync() { PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize()); }
 
 gpuError_t GpuGetLastError() { return hipGetLastError(); }
+
+bool IsGPUManagedMemorySupported(int id) {
+  PADDLE_ENFORCE_LT(id, GetGPUDeviceCount(),
+                    platform::errors::InvalidArgument(
+                        "Device id must be less than GPU count, "
+                        "but received id is: %d. GPU count is: %d.",
+                        id, GetGPUDeviceCount()));
+#if defined(__linux__) || defined(_WIN32)
+  int ManagedMemoryAttr;
+  PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceGetAttribute(
+      &ManagedMemoryAttr, hipDeviceAttributeManagedMemory, id));
+  return ManagedMemoryAttr != 0;
+#else
+  return false;
+#endif
+}
+
+bool IsGPUManagedMemoryOversubscriptionSupported(int id) {
+  PADDLE_ENFORCE_LT(id, GetGPUDeviceCount(),
+                    platform::errors::InvalidArgument(
+                        "Device id must be less than GPU count, "
+                        "but received id is: %d. GPU count is: %d.",
+                        id, GetGPUDeviceCount()));
+#ifdef(__linux__)
+  return IsGPUManagedMemorySupported(id) && GetGPUComputeCapability(id) >= 60;
+#else
+  return false;
+#endif
+}
+
 }  // namespace platform
 }  // namespace paddle

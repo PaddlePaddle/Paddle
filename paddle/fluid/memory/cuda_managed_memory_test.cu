@@ -39,9 +39,14 @@ __global__ void sum_kernel(int* data, uint64_t n, uint64_t step, int* sum) {
 }
 
 TEST(ManagedMemoryTest, H2DTest) {
+  if (!platform::IsGPUManagedMemorySupported(0)) {
+    return;
+  }
+
   uint64_t n_data = 1024;
   uint64_t step = 1;
-  AllocationPtr allocation = Alloc(platform::CUDAPlace(), n_data * sizeof(int));
+  AllocationPtr allocation =
+      Alloc(platform::CUDAPlace(0), n_data * sizeof(int));
   int* data = static_cast<int*>(allocation->ptr());
 
   memset(data, 0, n_data * sizeof(int));          // located on host memory
@@ -61,9 +66,14 @@ TEST(ManagedMemoryTest, H2DTest) {
 }
 
 TEST(ManagedMemoryTest, D2HTest) {
+  if (!platform::IsGPUManagedMemorySupported(0)) {
+    return;
+  }
+
   uint64_t n_data = 1024;
   uint64_t step = 1;
-  AllocationPtr allocation = Alloc(platform::CUDAPlace(), n_data * sizeof(int));
+  AllocationPtr allocation =
+      Alloc(platform::CUDAPlace(0), n_data * sizeof(int));
   int* data = static_cast<int*>(allocation->ptr());
 
   write_kernel<<<1, 1024>>>(data, n_data, step);  // located on device memory
@@ -84,13 +94,17 @@ TEST(ManagedMemoryTest, D2HTest) {
 }
 
 TEST(ManagedMemoryTest, OversubscribeGPUMemoryTest) {
+  if (!platform::IsGPUManagedMemoryOversubscriptionSupported(0)) {
+    return;
+  }
+
   uint64_t available_mem = platform::GpuAvailableMemToAlloc();
   uint64_t n_data =
       available_mem * 2 / sizeof(int);  // requires 2 * available_mem bytes
   uint64_t step = 1024;
   AllocationPtr data_allocation =
-      Alloc(platform::CUDAPlace(), n_data * sizeof(int));
-  AllocationPtr sum_allocation = Alloc(platform::CUDAPlace(), sizeof(int));
+      Alloc(platform::CUDAPlace(0), n_data * sizeof(int));
+  AllocationPtr sum_allocation = Alloc(platform::CUDAPlace(0), sizeof(int));
   int* data = static_cast<int*>(data_allocation->ptr());
   int* sum = static_cast<int*>(sum_allocation->ptr());
   (*sum) = 0;

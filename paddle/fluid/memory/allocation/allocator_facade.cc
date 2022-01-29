@@ -455,7 +455,7 @@ class AllocatorFacadePrivate {
               "memory by command `export FLAGS_use_cuda_managed_memory=false`",
               FLAGS_allocator_strategy));
 
-      if (!platform::GetGPUManagedMemorySupported(p.device)) {
+      if (!platform::IsGPUManagedMemorySupported(p.device)) {
         PADDLE_THROW(platform::errors::Unavailable(
             "Failed to create CUDAManagedAllocator on GPU %d.\n\n"
             "You have enabled CUDA managed memory, but the gpu device does not "

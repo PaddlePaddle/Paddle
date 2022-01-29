@@ -22,16 +22,11 @@ if (WITH_GPU)
             DEPS malloc cuda_graph_with_memory_pool)
     nv_test(cuda_managed_memory_test
             SRCS cuda_managed_memory_test.cu
-            DEPS malloc place)
+            DEPS malloc gpu_info place)
     
     if(WITH_TESTING AND TEST stream_safe_cuda_alloc_test)
         set_tests_properties(stream_safe_cuda_alloc_test PROPERTIES 
                              ENVIRONMENT "FLAGS_use_stream_safe_cuda_allocator=true;FLAGS_allocator_strategy=auto_growth")
-    endif()
-
-    if(WITH_TESTING AND TEST cuda_managed_memory_test)
-        set_tests_properties(cuda_managed_memory_test PROPERTIES
-                             ENVIRONMENT "FLAGS_use_cuda_managed_memory=true;FLAGS_allocator_strategy=auto_growth")
     endif()
 endif()
 
@@ -39,6 +34,15 @@ if (WITH_ROCM)
     hip_test(malloc_test
             SRCS malloc_test.cu
             DEPS device_context malloc)
+    hip_test(cuda_managed_memory_test
+            SRCS cuda_managed_memory_test.cu
+            DEPS malloc gpu_info place)
+endif()
+
+if(WITH_TESTING AND TEST cuda_managed_memory_test)
+set_tests_properties(cuda_managed_memory_test PROPERTIES
+                     ENVIRONMENT "FLAGS_use_cuda_managed_memory=true;FLAGS_allocator_strategy=auto_growth"
+                     TIMEOUT 30)
 endif()
 
 #if (WITH_GPU)

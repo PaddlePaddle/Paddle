@@ -68,7 +68,7 @@ pten::Allocation* CUDAAllocator::AllocateImpl(size_t size) {
   }
 
   std::string managed_memory_msg;
-  if (platform::GetGPUManagedMemorySupported(place_.device)) {
+  if (platform::IsGPUManagedMemoryOversubscriptionSupported(place_.device)) {
     managed_memory_msg = string::Sprintf(
         "If the above ways do not solve the out of memory problem, you can try "
         "to use CUDA managed memory. The command is `export "
