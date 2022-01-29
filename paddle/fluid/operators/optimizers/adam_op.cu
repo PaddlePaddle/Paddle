@@ -414,4 +414,5 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(adam, ops::AdamOpCUDAKernel<float>,
                         ops::AdamOpCUDAKernel<double>,
-                        ops::AdamOpCUDAKernel<plat::float16>);
+                        ops::AdamOpCUDAKernel<plat::float16>,
+                        ops::AdamOpCUDAKernel<plat::bfloat16>);
