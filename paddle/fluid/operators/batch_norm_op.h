@@ -47,6 +47,14 @@ class BatchNormOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override;
 
+    framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::KernelSignature("batch_norm", {"X", "Scale", "Bias", "Mean", "Variance"},
+                                      {"momentum", "epsilon", "data_layout", "is_test", 
+                                      "use_global_stats", "trainable_statistics", "fuse_with_relu"}, 
+                                      {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance", "ReserveSpace"});
+  }
+
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
