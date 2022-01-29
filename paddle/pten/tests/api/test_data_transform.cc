@@ -16,9 +16,9 @@ limitations under the License. */
 #include <memory>
 
 #include "paddle/pten/api/include/api.h"
-#include "paddle/pten/api/include/utils.h"
+#include "paddle/pten/api/include/manual_api.h"
 #include "paddle/pten/common/complex.h"
-#include "paddle/pten/core/convert_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 namespace paddle {
