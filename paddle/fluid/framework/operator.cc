@@ -1877,9 +1877,24 @@ Scope* OperatorWithKernel::PreparePtenData(
                         "the size of kernel input_defs (%d).",
                         input_names.size(), input_defs.size()));
   Scope* new_scope = nullptr;
+  auto& name_map = Inputs();
+  const std::unordered_set<std::string>* no_buffer_ins = nullptr;
+  if (info_) {
+    auto& no_buffer_inferer = info_->NoNeedBufferVarsInferer();
+    // Some op may not register NoNeedBufferVarsInferer
+    if (no_buffer_inferer) {
+      no_buffer_ins = &(no_buffer_inferer(Inputs(), Outputs(), Attrs()));
+      if (no_buffer_ins->empty()) no_buffer_ins = nullptr;
+    }
+  }
+
   for (size_t i = 0; i < input_defs.size(); ++i) {
     auto& in_def = input_defs.at(i);
     auto& ins_vector = ctx->inputs.at(input_names[i]);
+    auto& name_vec = name_map.at(input_names[i]);
+    bool should_skip_input =
+        no_buffer_ins && no_buffer_ins->count(input_names[i]) > 0;
+
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
       // Only tensor can be tranfer to another device.
       auto* var = ins_vector[offset];
@@ -1888,6 +1903,15 @@ Scope* OperatorWithKernel::PreparePtenData(
       }
 
       auto* tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
+
+      // When no_buffer_ins then checking of Tensor::holder_ is
+      // not a thread safe. And for infershape scenario checks
+      // to be omitted are not really needed
+      if (should_skip_input == true) {
+        // TODO(YuanRisheng) : There need to supplement MKLDNN code later
+        continue;
+      }
+
       if (!tensor_in->IsInitialized()) {
         continue;
       }
@@ -1905,7 +1929,7 @@ Scope* OperatorWithKernel::PreparePtenData(
       }
 
       // Create new var with the same name in transfer scopes
-      auto* trans_var = new_scope->Var(input_names[i]);
+      auto* trans_var = new_scope->Var(name_vec[offset]);
       ins_vector[offset] = trans_var;
 
       // Do transfer
