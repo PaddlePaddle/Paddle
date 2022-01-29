@@ -14,11 +14,13 @@
 
 #include "paddle/pten/kernels/cast_kernel.h"
 
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/pten/backends/xpu/xpu_context.h"
+#include "paddle/pten/common/float16.h"
+#include "paddle/pten/core/enforce.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-#include "paddle/pten/core/enforce.h"
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/platform/device/xpu/xpu_header.h"
 
 namespace pten {
 
@@ -28,7 +30,7 @@ void CastKernel(const Context& dev_ctx,
                 DataType out_dtype,
                 DenseTensor* out) {
   using XPUInTDType = typename XPUTypeTrait<T>::Type;
-  using float16 = typename XPUTypeTrait<pten::platform::float16>::Type;
+  using float16 = typename XPUTypeTrait<pten::dtype::float16>::Type;
 
   auto* in_data = x.data<T>();
   auto numel = x.numel();
@@ -47,7 +49,7 @@ void CastKernel(const Context& dev_ctx,
           dev_ctx.x_context(),
           reinterpret_cast<const XPUInTDType*>(in_data),
           reinterpret_cast<float16*>(
-              out->mutable_data<pten::platform::float16>(dev_ctx.GetPlace())),
+              out->mutable_data<pten::dtype::float16>(dev_ctx.GetPlace())),
           numel);
       break;
     case pten::DataType::INT64:
@@ -72,7 +74,7 @@ void CastKernel(const Context& dev_ctx,
           numel);
       break;
     default:
-      PADDLE_THROW(platform::errors::Unavailable(
+      PADDLE_THROW(pten::errors::Unavailable(
           "Not supported cast %d -> %d", x.dtype(), out_dtype));
   }
 
@@ -90,7 +92,7 @@ PT_REGISTER_KERNEL(cast,
                    pten::CastKernel,
                    int32_t,
                    float,
-                   pten::platform::float16,
+                   pten::dtype::float16,
                    int64_t,
                    bool) {
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);

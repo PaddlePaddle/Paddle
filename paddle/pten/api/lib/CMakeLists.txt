@@ -3,11 +3,11 @@ add_subdirectory(utils)
 cc_library(ext_compat_utils SRCS ext_compat_utils.cc DEPS place)
 
 if (WITH_GPU)
-  nv_library(pten_tensor SRCS tensor.cc DEPS tensor_base dense_tensor pten_api_utils ext_compat_utils pten_enforce utils_api pten_function_api)
+  nv_library(pten_tensor SRCS tensor.cc DEPS tensor_base dense_tensor pten_api_utils ext_compat_utils pten_enforce manual_api pten_function_api)
 elseif (WITH_ROCM)
-  hip_library(pten_tensor SRCS tensor.cc DEPS tensor_base dense_tensor pten_api_utils ext_compat_utils pten_enforce utils_api pten_function_api)
+  hip_library(pten_tensor SRCS tensor.cc DEPS tensor_base dense_tensor pten_api_utils ext_compat_utils pten_enforce manual_api pten_function_api)
 else()
-  cc_library(pten_tensor SRCS tensor.cc DEPS tensor_base dense_tensor pten_api_utils ext_compat_utils pten_enforce utils_api pten_function_api)
+  cc_library(pten_tensor SRCS tensor.cc DEPS tensor_base dense_tensor pten_api_utils ext_compat_utils pten_enforce manual_api pten_function_api)
 endif()
 
 cc_library(kernel_dispatch SRCS kernel_dispatch.cc DEPS pten_tensor pten_context kernel_factory)
@@ -62,6 +62,6 @@ add_custom_command(
   DEPENDS ${bw_api_yaml_file} ${bw_api_gen_file}
   VERBATIM)
 
-cc_library(utils_api SRCS utils.cc DEPS pten_tensor pten kernel_dispatch)
+cc_library(manual_api SRCS manual_api.cc DEPS pten_tensor pten kernel_dispatch)
 cc_library(pten_function_api SRCS ${api_source_file} DEPS pten_tensor pten kernel_dispatch)
 cc_library(pten_bw_function_api SRCS ${bw_api_source_file} DEPS pten_tensor pten kernel_dispatch backward_infermeta pten_function_api)

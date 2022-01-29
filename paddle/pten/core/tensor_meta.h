@@ -19,8 +19,6 @@ limitations under the License. */
 #include "paddle/pten/common/backend.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
-
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/pten/core/ddim.h"
 
 // Note: mixed_vector include many header now, LoD will be
