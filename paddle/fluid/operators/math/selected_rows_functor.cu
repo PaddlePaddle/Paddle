@@ -17,6 +17,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -178,6 +179,10 @@ template struct SelectedRowsAddTensor<platform::CUDADeviceContext, double>;
 template struct SelectedRowsAdd<platform::CUDADeviceContext, platform::float16>;
 template struct SelectedRowsAddTensor<platform::CUDADeviceContext,
                                       platform::float16>;
+template struct SelectedRowsAdd<platform::CUDADeviceContext,
+                                platform::bfloat16>;
+template struct SelectedRowsAddTensor<platform::CUDADeviceContext,
+                                      platform::bfloat16>;
 
 template <typename T>
 struct SelectedRowsAddTo<platform::CUDADeviceContext, T> {
@@ -225,6 +230,8 @@ template struct SelectedRowsAddTo<platform::CUDADeviceContext, int>;
 template struct SelectedRowsAddTo<platform::CUDADeviceContext, int64_t>;
 template struct SelectedRowsAddTo<platform::CUDADeviceContext,
                                   platform::float16>;
+template struct SelectedRowsAddTo<platform::CUDADeviceContext,
+                                  platform::bfloat16>;
 
 namespace {
 template <typename T, int block_size>
@@ -288,6 +295,8 @@ template struct SelectedRowsAddToTensor<platform::CUDADeviceContext, int>;
 template struct SelectedRowsAddToTensor<platform::CUDADeviceContext, int64_t>;
 template struct SelectedRowsAddToTensor<platform::CUDADeviceContext,
                                         platform::float16>;
+template struct SelectedRowsAddToTensor<platform::CUDADeviceContext,
+                                        platform::bfloat16>;
 
 namespace scatter {
 
@@ -440,6 +449,7 @@ template struct MergeAdd<platform::CUDADeviceContext, double>;
 template struct MergeAdd<platform::CUDADeviceContext, int>;
 template struct MergeAdd<platform::CUDADeviceContext, int64_t>;
 template struct MergeAdd<platform::CUDADeviceContext, platform::float16>;
+template struct MergeAdd<platform::CUDADeviceContext, platform::bfloat16>;
 template struct MergeAdd<platform::CUDADeviceContext, platform::complex<float>>;
 template struct MergeAdd<platform::CUDADeviceContext,
                          platform::complex<double>>;
