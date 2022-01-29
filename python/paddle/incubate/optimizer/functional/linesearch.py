@@ -18,6 +18,7 @@ from .bfgs_utils import vjp
 from .bfgs_utils import (StopCounter, StopCounterException, vnorm_inf, vnorm_p,
                          ternary, make_const, update_state, any_active,
                          active_state, converged_state, failed_state,
+                         is_bad_point, SearchState,
                          any_active_with_predicates, all_active_with_predicates)
 
 hz_default_params = {
@@ -80,15 +81,13 @@ def initial(state):
     return c
 
 
-def bracket(state, phi, c, iter_count):
+def bracket(state, phi, c):
     r"""Generates opposite slope interval.
         
     Args:
         state (Tensor): the search state tensor.
         phi (Callable): the restricted function on the search line.
         c (Tensor): the initial step sizes.
-        iter_count (BoundedCounter): the bounded counter that controls the  
-            maximum number of iterations.
     
     Returns:
         [a, b]: left ends and right ends of the result intervels.
@@ -109,55 +108,45 @@ def bracket(state, phi, c, iter_count):
     f0 = state.fk
 
     # The following loop repeatedly applies (B3) if condition allows
-    expanding = True
     prev_c = make_const(c, .0)
 
     # f = phi(c), g = phi'(c)
-    f, g = vjp(phi, c)
-    iter_count.increment()
-    state.nf += 1
-    state.ng += 1
+    f, g = state.func_and_deriv(phi, c)
+    minus_inf, bad_point = is_minus_inf(f), is_bad_point(f, g)
 
     # Initializes condition B3
-    B3_cond = make_const(c, True, dtype='bool')
+    B3_cond = (g < .0) & (f < f0 + epsilon_k)
 
-    while expanding:
-        # Generates the B3 condition in a boolean tensor.
-        B3_cond = B3_cond & (g < .0) & (f <= f0 + epsilon_k)
+    expanding_pred = B3_cond & ~minus_inf & ~bad_point
 
+    while any_active_with_predicates(state.state, expanding_pred):
         # Sets [prev_c, c] to [c, rho*c] if B3 is true.
-        prev_c = ternary(B3_cond, c, prev_c)
-        c = ternary(B3_cond, rho * c, c)
+        prev_c = ternary(expanding_pred, c, prev_c)
+        c = ternary(expanding_pred, rho * c, c)
         print(f'expanding  c: {c.numpy()}')
         # Calculates the function values and gradients.
-        f, g = vjp(phi, c)
-        iter_count.increment()
-        state.nf += 1
-        state.ng += 1
+        f, g = state.func_and_deriv(phi, c)
+        minus_inf, bad_point = is_minus_inf(f), is_bad_point(f, g)
+        B3_cond = (g < .0) & (f < f0 + epsilon_k)
+        expanding_pred &= B3_cond & ~minus_inf & ~bad_point
 
-        expanding = any_active_with_predicates(state.state, B3_cond)
-
-    # (TODO) Line search stops on the still expanding step sizes and exceeding 
-    # maximum iterations.
+    # Update state in case reaching -inf or bad points.
+    state.state = update_state(state.state, minus_inf, 'converged')
+    state.state = update_state(state.state, bad_point, 'failed')
 
     # Narrows down the interval by recursively bisecting it.
-    ifcond = B21_cond = g < .0
-    a, b = bisect(state, phi, make_const(c, .0), c, ifcond, iter_count)
+    B1_cond = g >= .0
+    B2_cond = ~B1_cond & (f >= f0 + epsilon_k)
+    a, b = bisect(state, phi, make_const(c, .0), c, B2_cond)
 
     # Sets [a, _] to [prev_c, _] if B1 holds, [a, _] if B2 holds
-    a = ternary(B21_cond, a, prev_c)
-
-    # Sets [_, b] to [_, c] if B1 holds, [_, b] if B2 holds
-    b = ternary(B21_cond, b, c)
-
-    # # Invalidates the state in case neither B1 nor B2 holds.
-    # # failed = 
-    # state.state = update_state(state.state, failed, 'failed')
+    a = ternary(B1_cond, prev_c, a)
+    b = ternary(B1_cond, c, b)
 
     return [a, b]
 
 
-def bisect(state, phi, a, b, ifcond, iter_count):
+def bisect(state, phi, a, b, ifcond):
     r"""Bisects to locate opposite slope interval.
     
     Args:
@@ -166,8 +155,6 @@ def bisect(state, phi, a, b, ifcond, iter_count):
         a (Tensor): holds the left ends of the intervals.
         b (Tensor): holds the right ends of the intervals.
         ifcond (Tensor): boolean tensor that holds the if-converse condition.
-        iter_count (BoundedCounter): the bounded counter that controls the  
-            maximum number of iterations.
 
     Returns:
         [a, b]: left ends and right ends of the result intervels.   
@@ -185,40 +172,35 @@ def bisect(state, phi, a, b, ifcond, iter_count):
     # c. If phi'(d) < 0 and phi(d) <= phi(0) + epsilon_k, then Bisect([d, b])
 
     # falling = make_const(f0, True, dtype='bool')
-    pred = ifcond
-    while True:
+    bisect_pred = ifcond
+    minus_inf = None
+    while any_active_with_predicates(state.state, bisect_pred):
         # d = (1.0 - theta) * a + theta * b
         d = a + theta * (b - a)
 
-        f, g = vjp(phi, d)
-        iter_count.increment()
-        state.nf += 1
-        state.ng += 1
+        f, g = state.func_and_deriv(phi, d)
+        minus_inf, bad_point = is_minus_inf(f), is_bad_point(f, g)
+    
+        falling = g < .0
+        lo = f < f0 + epsilon_k
 
-        hi = f > f0 + epsilon_k
-        falling = g < .0    
-        # falling = falling & (g < .0)
+        bisect_pred = bisect_pred & ~minus_inf & ~bad_point & falling
+        
+        print(f'f = {f.numpy()}   f0 = {f0.numpy()}   eps_k = {epsilon_k.numpy()}')
+        a = ternary(bisect_pred & lo, d, a)
+        b = ternary(bisect_pred & ~lo, d, b)
+        print(f'bisect a: {a.numpy()}    b: {b.numpy()}')
 
-        print(f'hi : {hi.numpy()}')
-        pred = pred & falling & hi
-        if any_active_with_predicates(state.state, pred):
-            print(f'f = {f.numpy()}   f0 = {f0.numpy()}   eps_k = {epsilon_k.numpy()}')
-            hi = f > f0 + epsilon_k
-            lo = ~hi
-            a = ternary(lo & pred, d, a)
-            b = ternary(hi & pred, d, b)
-            print(f'bisect a: {a.numpy()}    b: {b.numpy()}')
-        else:
-            break
-
-    # # Invalidates the state if a condition does not hold.
-    # failed = g < .0
-    # state.state = update_state(state.state, failed, 'failed')
+    # Set state to `converged` if -inf is reached.
+    if minus_inf is not None:
+        state.state = update_state(state.state, ifcond & minus_inf, 'converged')
+    # Invalidates the state if a condition does not hold.
+    state.state = update_state(state.state, ifcond & ~bisect_pred, 'failed')
 
     return [a, b]
 
 
-def secant(phi, a, b):
+def secant(state, phi, a, b):
     r"""Implements the secant function, a sub-procedure in secant2.
 
     The output value is the weighted average of the input values, where
@@ -236,8 +218,8 @@ def secant(phi, a, b):
     # secant(a, b) = ---------------------------
     #                   phi'(b)  - phi'(a)
 
-    fa, ga = vjp(phi, a)
-    fb, gb = vjp(phi, b)
+    fa, ga = state.func_and_deriv(phi, a)
+    fb, gb = state.func_and_deriv(phi, b)
 
     c = (a * gb - b * ga) / (gb - ga)
     # (TODO) Handles divide by zero
@@ -246,7 +228,7 @@ def secant(phi, a, b):
     return c
 
 
-def secant2(state, phi, a, b, ifcond, iter_count):
+def secant2(state, phi, a, b, ifcond):
     r"""Implements the secant2 procedure in the Hager-Zhang method.
 
     Args:
@@ -254,8 +236,6 @@ def secant2(state, phi, a, b, ifcond, iter_count):
         phi (Callable): the restricted function on the search line.
         a (Tensor): holds the left ends of the intervals.
         b (Tensor): holds the right ends of the intervals.
-        iter_count (BoundedCounter): the bounded counter that controls the  
-            maximum number of iterations.
 
     Returns:
         [a, b]: left ends and right ends of the result intervels. 
@@ -270,9 +250,9 @@ def secant2(state, phi, a, b, ifcond, iter_count):
     # S3. If c = A, then let c = secant(a, A), [a, b] = update(A, B, c)
     #
     # S3. Otherwise, [a, b] = [A, B]
-    c = secant(phi, a, b)
+    c = secant(state, phi, a, b)
 
-    A, B, f_A, f_B = update(state, phi, a, b, c, ifcond, iter_count)
+    A, B = update(state, phi, a, b, c, ifcond)
 
     # Boolean tensor each element of which holds the S2 condition 
     S2_cond = c == B
@@ -288,16 +268,14 @@ def secant2(state, phi, a, b, ifcond, iter_count):
     r = ternary(S3_cond, A, r)
 
     # Outputs of S2 and S3
-    a, b, f_a, f_b = update(state, phi, A, B, c, ifcond, iter_count)
+    a, b, f_a, f_b = update(state, phi, A, B, c, ifcond)
 
     # If S2 or S3, returns [a, b], otherwise returns [A, B]
     S2_or_S3 = S2_cond | S3_cond
     a = ternary(S2_or_S3, a, A)
     b = ternary(S2_or_S3, b, B)
-    f_a = ternary(S2_or_S3, f_a, f_A)
-    f_b = ternary(S2_or_S3, f_b, f_B)
 
-    return (a, b, f_a, f_b) 
+    return a, b 
 
 
 def stopping_condition(state, phi, c, phiprime_0, phi_c=None, phiprime_c=None):
@@ -325,9 +303,7 @@ def stopping_condition(state, phi, c, phiprime_0, phi_c=None, phiprime_c=None):
     phi_0 = state.fk
 
     if phi_c is None or phiprime_c is None:
-        phi_c, phiprime_c = vjp(phi, c)
-        state.nf += 1
-        state.ng += 1
+        phi_c, phiprime_c = state.func_and_deriv(phi, c)
 
     # T1 (Wolfe). 
     #   T1.1            phi(c) - phi(0) <= delta * c * phi'(0)
@@ -355,7 +331,7 @@ def stopping_condition(state, phi, c, phiprime_0, phi_c=None, phiprime_c=None):
     return stopping
 
 
-def update(state, phi, a, b, c, ifcond, iter_count):
+def update(state, phi, a, b, c, ifcond):
     r"""Performs the update procedure in the Hager-Zhang method.
 
     Args:
@@ -365,8 +341,6 @@ def update(state, phi, a, b, c, ifcond, iter_count):
         b (Tensor): holds the right ends of the intervals.
         c (Tensor): holds the new step sizes.
         ifcond (Tensor): boolean tensor for control dependence.
-        iter_count (BoundedCounter): the bounded counter that controls the  
-            maximum number of iterations.
 
     Returns:
         [a, b]: left ends and right ends of the result intervels. 
@@ -383,10 +357,7 @@ def update(state, phi, a, b, c, ifcond, iter_count):
     #
     # U3. If phi'(c) < 0 and phi(c) > phi(0) + epsilon_k,
     #     return Bisect([a, c])
-    f, g = vjp(phi, c)
-    iter_count.increment()
-    state.nf += 1
-    state.ng += 1
+    f, g = state.func_and_deriv(phi, c)
 
     # Early returns on U0
     U0_cond = (c > a) == (c > b)
@@ -405,7 +376,7 @@ def update(state, phi, a, b, c, ifcond, iter_count):
     U3_cond = ~U1_cond & (g < .0) & (f > f0 + epsilon_k)
 
     # Bisects [a, c] for the U3 condition
-    A, B = bisect(state, phi, a, c, ifcond & U3_cond, iter_count)
+    A, B = bisect(state, phi, a, c, ifcond & U3_cond)
 
     # Step 1: branches between U2 and U3 
     U23_cond = f <= f0 + epsilon_k
@@ -428,7 +399,6 @@ def hz_linesearch(state,
                   gtol,
                   xtol,
                   initial_step=None,
-                  max_iters=20,
                   params=None):
     r"""
     Implements the Hager-Zhang line search method. This method can be used as
@@ -444,8 +414,6 @@ def hz_linesearch(state,
             tolerance.
         initial_step (float, optional): the initial step size to use for the 
             line search. Default value is None.
-        max_iters (int, optional): the maximum number of trials for locating
-            the next step size. Default value is 10.
         params (Dict, optional): used to configure the HagerZhang method.
             Default is None. 
 
@@ -593,6 +561,8 @@ def hz_linesearch(state,
     if params is None:
         state.params = hz_default_params
 
+    state.ls_stop_counter.reset()
+
     # Load config parameters
     params = state.params
     gamma, Delta = params['gamma'], params['Delta']
@@ -641,9 +611,6 @@ def hz_linesearch(state,
     #
     # L3. j = j + 1, [aj, bj] = [a, b], go to L1.
 
-    # Initializes a stop counter
-    iter_count = StopCounter(max_iters)
-
     # Initializes stop flags
     stopped = make_const(fk, False, dtype='bool')
 
@@ -652,7 +619,6 @@ def hz_linesearch(state,
         # Generates initial step sizes
         c = initial(state)
         ls_stepsize = c
-        iter_count.increment()
         print(f'ls  \nc: {c.numpy()}')
 
         # Initial stopping test. Those already converged instances are likely
@@ -664,10 +630,10 @@ def hz_linesearch(state,
         while any_active_with_predicates(state.state, ~stopped):
             # Brackets to find the first interval with opposite slopes
             if a_j is None:
-                a_j, b_j = bracket(state, phi, c, iter_count)
+                a_j, b_j = bracket(state, phi, c)
 
             # Applies secant2 to the located intervals
-            a, b = secant2(state, phi, a_j, b_j, ~stopped, iter_count)
+            a, b = secant2(state, phi, a_j, b_j, ~stopped)
             print(f'secant2 a: {a.numpy()}     b: {b.numpy()}')
 
             new_stopped = ~stopped & stopping_condition(state, phi, b, deriv)
@@ -683,16 +649,16 @@ def hz_linesearch(state,
             if any_active_with_predicates(state.state, L2_cond):
                 c = 0.5 * (a + b)
 
-                A, B = update(state, phi, a, b, c, L2_cond, iter_count)
+                A, B = update(state, phi, a, b, c, L2_cond)
                 a = ternary(L2_cond, A, a)
                 b = ternary(L2_cond, B, b)
 
             # Goes to next iteration
             a_j, b_j = a, b
-    except StopCounterException:
+    except StopCounterException as count_e:
         traceback.print_exc()
         pass
-        
+    except 
 
     # Changes state due to failed line search
     state.state = update_state(state.state, ~stopped, 'failed')

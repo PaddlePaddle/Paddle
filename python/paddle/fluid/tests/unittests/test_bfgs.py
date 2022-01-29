@@ -22,8 +22,6 @@ from paddle.incubate.optimizer.functional.bfgs import (
     update_approx_inverse_hessian)
 from paddle.incubate.optimizer.functional.bfgs_utils import (vjp, vnorm_inf)
 
-import tensorflow as tf
-
 
 def jacfn_gen(f, create_graph=False):
     r"""Returns a helper function for computing the jacobians.
@@ -135,73 +133,99 @@ def quadratic_gen(shape, dtype):
     return quad, center
 
 
-class TestBFGS(unittest.TestCase):
-    def setUp(self):
-        pass
+# class TestBFGS(unittest.TestCase):
+#     def setUp(self):
+#         pass
 
-    def gen_configs(self):
-        dtypes = ['float32', 'float64']
-        shapes = {
-            '1d2v': [2],
-            '2d2v': [2, 2],
-            '1d50v': [50],
-            '10d10v': [5, 10],
-            '1d1v': [1],
-            '2d1v': [2, 1],
-        }
-        for dtype in dtypes:
-            for shape in shapes.values():
-                yield shape, dtype
+#     def gen_configs(self):
+#         dtypes = ['float32', 'float64']
+#         shapes = {
+#             '1d2v': [2],
+#             '2d2v': [2, 2],
+#             '1d50v': [50],
+#             '10d10v': [5, 10],
+#             '1d1v': [1],
+#             '2d1v': [2, 1],
+#         }
+#         for dtype in dtypes:
+#             for shape in shapes.values():
+#                 yield shape, dtype
 
-    def test_update_approx_inverse_hessian(self):
-        paddle.seed(1234)
-        for shape, dtype in self.gen_configs():
-            bat = len(shape) > 1
-            # only supports shapes with up to 2 dims.
-            f, center = quadratic_gen(shape, dtype)
-            # x0 = paddle.ones(shape, dtype=dtype)
-            x0 = paddle.rand(shape, dtype=dtype)
+#     def test_update_approx_inverse_hessian(self):
+#         paddle.seed(1234)
+#         for shape, dtype in self.gen_configs():
+#             bat = len(shape) > 1
+#             # only supports shapes with up to 2 dims.
+#             f, center = quadratic_gen(shape, dtype)
+#             # x0 = paddle.ones(shape, dtype=dtype)
+#             x0 = paddle.rand(shape, dtype=dtype)
 
-            # The true inverse hessian value at x0
-            hess = hesfn_gen(f)(x0)
-            verify_symmetric_positive_definite_matrix(hess)
-            hess_np = hess.numpy()
-            hess_np_inv = np.linalg.inv(hess_np)
-            h0 = paddle.to_tensor(hess_np_inv)
+#             # The true inverse hessian value at x0
+#             hess = hesfn_gen(f)(x0)
+#             verify_symmetric_positive_definite_matrix(hess)
+#             hess_np = hess.numpy()
+#             hess_np_inv = np.linalg.inv(hess_np)
+#             h0 = paddle.to_tensor(hess_np_inv)
 
-            verify_symmetric_positive_definite_matrix(h0)
-            f0, g0 = vjp(f, x0)
-            gnorm = vnorm_inf(f0)
-            state = SearchState(bat, x0, f0, g0, h0, gnorm)
+#             verify_symmetric_positive_definite_matrix(h0)
+#             f0, g0 = vjp(f, x0)
+#             gnorm = vnorm_inf(f0)
+#             state = SearchState(bat, x0, f0, g0, h0, gnorm)
 
-            # Verifies the two estimated invese Hessians are close
-            for _ in range(5):
-                s = paddle.rand(shape, dtype=dtype)
-                x1 = x0 + s
-                f1, g1 = vjp(f, x1)
-                y = g1 - g0
+#             # Verifies the two estimated invese Hessians are close
+#             for _ in range(5):
+#                 s = paddle.rand(shape, dtype=dtype)
+#                 x1 = x0 + s
+#                 f1, g1 = vjp(f, x1)
+#                 y = g1 - g0
 
-                h1 = update_approx_inverse_hessian(state, h0, s, y)
-                h1_strict = update_inv_hessian_strict(bat, h0, s, y)
-                verify_symmetric_positive_definite_matrix(h1)
-                verify_symmetric_positive_definite_matrix(h1_strict)
+#                 h1 = update_approx_inverse_hessian(state, h0, s, y)
+#                 h1_strict = update_inv_hessian_strict(bat, h0, s, y)
+#                 verify_symmetric_positive_definite_matrix(h1)
+#                 verify_symmetric_positive_definite_matrix(h1_strict)
 
-                self.assertTrue(True)
+#                 self.assertTrue(True)
 
-    def test_quadratic(self):
-        paddle.seed(12345)
-        for shape, dtype in self.gen_configs():
-            f, center = quadratic_gen(shape, dtype)
-            print(f'center {center}')
-            print(f'f {f(center)}')
-            x0 = paddle.ones(shape, dtype=dtype)
-            result = bfgs_minimize(f, x0, dtype=dtype, iters=100, ls_iters=100)
+#     def test_quadratic(self):
+#         paddle.seed(12345)
+#         for shape, dtype in self.gen_configs():
+#             f, center = quadratic_gen(shape, dtype)
+#             print(f'center {center}')
+#             print(f'f {f(center)}')
+#             x0 = paddle.ones(shape, dtype=dtype)
+#             result = bfgs_minimize(f, x0, dtype=dtype, iters=100, ls_iters=100)
+#             print(result)
+#             self.assertTrue(paddle.all(result.converged))
+#             self.assertTrue(paddle.allclose(result.x_location, center))
+import tensorflow as tf
+import tensorflow_probability as tfp
+
+def poly(x):
+    # df = 3(x - 1.01)(x - 0.99) = 3x^2 - 3*2x + 3*1.01*0.99
+    # f = x^3 - 3x^2 + 3*1.01*0.99x
+    return x * x * x - 3 * x * x + 3 * 1.01 * 0.99 * x
+class TestLinesearch(unittest.TestCase):
+    def test_paddle(self):
+        dtype = 'float32'
+        x_min = paddle.to_tensor([1.01], dtype=dtype)
+        for start in [-1.0, 0.5, 0.9, 0.99, 1.0, 1.01, 1.02, 1.1, 2.0]:
+            x0 = paddle.to_tensor(start, dtype=dtype)
+            result = bfgs_minimize(poly, x0, dtype=dtype)
             print(result)
-            self.assertTrue(paddle.all(result.converged))
-            self.assertTrue(paddle.allclose(result.x_location, center))
+            self.assertTrue(paddle.allclose(result.x_location, x_min))
 
+    # def test_tf(self):
+    #     def func_and_gradient(x):
+    #         return tfp.math.value_and_gradient(lambda x: tf.reduce_sum(poly(x)), x)
+    #     dtype = 'float32'
+    #     x_min = tf.constant(1.01)
+    #     for start in [-1.0, 0.5, 0.9, 0.99, 1.0, 1.01, 1.02, 1.1, 2.0]:
+    #         x0 = tf.constant([start], dtype=dtype)
+    #         result = tfp.optimizer.bfgs_minimize(func_and_gradient,
+    #                                              initial_position=x0)
+    #         print(f'converged: {result.converged}')
+    #         print(f'min_x: {result.position}')
 
-# shape = [2]
 # dtype = 'float32'
 
 # center = np.random.rand(2)

@@ -22,6 +22,7 @@ from .bfgs_utils import active_state, any_active, any_active_with_predicates
 from .bfgs_utils import converged_state, failed_state
 from .bfgs_utils import as_float_tensor, vnorm_inf
 from .bfgs_utils import StopCounter, StopCounterException
+from .bfgs_utils import SearchState
 from .linesearch import hz_linesearch as linesearch
 
 
@@ -70,70 +71,6 @@ class BfgsResult(
         return '\n'.join(
             f'{k.ljust(width)} \n   {repr(v.numpy() if isinstance(v, paddle.Tensor) else v)}\n'
             for k, v in kvs)
-
-
-class SearchState(object):
-    r"""
-    BFFS_State is used to represent intermediate and final result of
-    the BFGS minimization.
-
-    Pulic instance members:    
-        bat (Boolean): True if the input is batched.
-        k: the iteration number.
-        state (Tensor): an int tensor of shape [...], holding the set of
-            searching states for the batch inputs. For each element,
-            0 indicates active, 1 converged and 2 failed.
-        nf (Tensor): scalar valued tensor holding the number of
-            function calls made.
-        ng (Tensor): scalar valued tensor holding the number of
-            gradient calls made.
-        ak (Tensor): step size.
-        pk (Tensor): the minimizer direction.
-        Qk (Tensor): weight for averaging function values.
-        Ck (Tensor): weighted average of function values.
-        xk (Tensor): the iterate point.
-        fk (Tensor): the ``func``'s output.
-        gk (Tensor): the ``func``'s gradients. 
-        Hk (Tensor): the approximated inverse hessian of ``func``.
-    """
-
-    def __init__(self, bat, xk, fk, gk, Hk, gnorm, ak=None, k=0, nf=1, ng=1):
-        self.bat = bat
-        self.xk = xk
-        self.fk = fk
-        self.gk = gk
-        self.Hk = Hk
-        self.gnorm = gnorm
-        self.k = k
-        self.ak = ak
-        self.nf = nf
-        self.ng = ng
-        self.pk = None
-        self.state = make_state(fk)
-        self.Qk = make_const(fk, 0)
-        self.Ck = make_const(fk, 0)
-        self.params = None
-
-    def reset_grads(self):
-        for field_name in dir(self):
-            field = getattr(self, field_name)
-            if isinstance(field, paddle.Tensor):
-                field.stop_gradient = True
-
-    def result(self):
-        kw = {
-            'iterations': self.k,
-            'x_location': self.xk,
-            'converged': converged_state(self.state),
-            'linesearch_failed': failed_state(self.state),
-            'gradients': self.gk,
-            'gradient_norms': self.gnorm,
-            'function_results': self.fk,
-            'inverse_hessian': self.Hk,
-            'function_evals': self.nf,
-            'gradient_evals': self.ng,
-        }
-        return BfgsResult(**kw)
 
 
 def update_approx_inverse_hessian(state, H, s, y, enforce_curvature=False):
@@ -287,7 +224,8 @@ def iterates(func,
     # Puts the starting points in the initial state and kicks off the
     # minimization process.
     gnorm = vnorm_inf(g0)
-    state = SearchState(bat, x0, f0, g0, H0, gnorm)
+    state = SearchState(bat, x0, f0, g0, H0, gnorm,
+                        iters=iters, ls_iters=ls_iters)
 
     # Updates the state tensor on the newly converged elements.
     state.state = update_state(state.state, gnorm < gtol, 'converged')
@@ -305,7 +243,7 @@ def iterates(func,
             state.pk = pk = -einsum('...ij, ...j', Hk, gk)
 
             # Performs line search and updates the state
-            linesearch(state, func, gtol=gtol, xtol=xtol, max_iters=ls_iters)
+            linesearch(state, func, gtol=gtol, xtol=xtol)
 
             # Uses the obtained search steps to generate next iterates.
             if bat:

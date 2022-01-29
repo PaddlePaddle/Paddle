@@ -30,6 +30,11 @@ def ternary(cond, x, y):
 
     return paddle.where(cond, x, y)
 
+def is_minus_inf(f):
+    return paddle.isinf(f) & (f < 0)
+
+def is_bad_point(f, g):
+    return (paddle.isinf(f) & (f > 0)) | paddle.isnan(f) | paddle.isnan(g)
 
 def vjp(f, x, v=None, create_graph=False):
     r"""A single tensor version of VJP.
@@ -53,6 +58,89 @@ def vjp(f, x, v=None, create_graph=False):
 
     return fval, gval[0]
 
+
+class SearchState(object):
+    r"""
+    BFFS_State is used to represent intermediate and final result of
+    the BFGS minimization.
+
+    Pulic instance members:    
+        bat (Boolean): True if the input is batched.
+        k: the iteration number.
+        state (Tensor): an int tensor of shape [...], holding the set of
+            searching states for the batch inputs. For each element,
+            0 indicates active, 1 converged and 2 failed.
+        nf (Tensor): scalar valued tensor holding the number of
+            function calls made.
+        ng (Tensor): scalar valued tensor holding the number of
+            gradient calls made.
+        ak (Tensor): step size.
+        pk (Tensor): the minimizer direction.
+        Qk (Tensor): weight for averaging function values.
+        Ck (Tensor): weighted average of function values.
+        xk (Tensor): the iterate point.
+        fk (Tensor): the ``func``'s output.
+        gk (Tensor): the ``func``'s gradients. 
+        Hk (Tensor): the approximated inverse hessian of ``func``.
+    """
+
+    def __init__(self, 
+                 bat,
+                 xk,
+                 fk,
+                 gk,
+                 Hk,
+                 gnorm,
+                 ak=None,
+                 k=0,
+                 nf=1,
+                 ng=1,
+                 iters=50,
+                 ls_iters=50):
+        self.bat = bat
+        self.xk = xk
+        self.fk = fk
+        self.gk = gk
+        self.Hk = Hk
+        self.gnorm = gnorm
+        self.k = k
+        self.ak = ak
+        self.nf = nf
+        self.ng = ng
+        self.pk = None
+        self.state = make_state(fk)
+        self.Qk = make_const(fk, 0)
+        self.Ck = make_const(fk, 0)
+        self.stop_counter = StopCounter(iters)
+        self.ls_stop_counter = StopCounter(ls_iters)
+        self.params = None
+
+    def func_and_deriv(self, func, x):
+        f, g = vjp(func, x)
+        self.nf += 1
+        self.ng += 1
+        return f, g
+
+    def reset_grads(self):
+        for field_name in dir(self):
+            field = getattr(self, field_name)
+            if isinstance(field, paddle.Tensor):
+                field.stop_gradient = True
+
+    def result(self):
+        kw = {
+            'iterations': self.k,
+            'x_location': self.xk,
+            'converged': converged_state(self.state),
+            'linesearch_failed': failed_state(self.state),
+            'gradients': self.gk,
+            'gradient_norms': self.gnorm,
+            'function_results': self.fk,
+            'inverse_hessian': self.Hk,
+            'function_evals': self.nf,
+            'gradient_evals': self.ng,
+        }
+        return BfgsResult(**kw)
 
 def vnorm_p(x, p=2):
     r"""p vector norm."""
@@ -247,6 +335,9 @@ class StopCounter(object):
         self.count = 0
         assert isinstance(end, int) and end > 0
         self.end = end
+
+    def reset(self):
+        self.count = 0
 
     def increment(self):
         r"""Increments the counter."""
