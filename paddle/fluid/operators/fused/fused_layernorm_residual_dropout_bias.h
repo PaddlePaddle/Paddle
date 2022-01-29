@@ -441,7 +441,6 @@ void LaunchLayernormResidualDropoutBias(
   }
 }
 
-// todo:
 template <typename T, typename U, typename MaskType,
           bool ScaleBiasWithSameTypeX = false>
 void LaunchLayernormResidualDropoutGrad(
@@ -461,7 +460,6 @@ void LaunchLayernormResidualDropoutGrad(
   if (!is_upscale_in_train) {
     factor = static_cast<T>(1.0f);
   }
-  // call driver
   ln_bwd_1024_kernel_driver<
       T, U, LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>, MaskType>(
       dev_ctx, rows, cols, epsilon, layernorm_src, scale, mean, var, d_out,

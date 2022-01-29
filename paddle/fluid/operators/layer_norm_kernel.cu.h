@@ -386,254 +386,10 @@ __inline__ __device__ void cuLoadAddStridedInputs(
 }
 
 #ifdef PADDLE_WITH_CUDA
-// 2*sms blocks
-// 32 * 4 threads per block.
-// sum_1 =
-// sum_2 =
-// term1 =
-// dx =
-// dx: the grad of the input of layer_norm
 template <
-    typename T, typename U, typename ScaleT = U, typename MaskType = uint8_t,
-    int VecSize = 8, int WARPS_M = 4, int WARPS_N = 1, int BYTES_PER_LDG = 16,
-    int ELTS_PER_ROW = 1024, int THREADS_PER_WARP = 32,
-    int THREADS_PER_ROW = WARPS_N *THREADS_PER_WARP,
-    int THREADS_PER_CTA = WARPS_M *THREADS_PER_ROW, int ROWS_PER_CTA = WARPS_M,
-    int ELTS_PER_ROW_PER_CTA = THREADS_PER_ROW *VecSize,
-    int LDGS = ELTS_PER_ROW / ELTS_PER_ROW_PER_CTA>
-__global__ __launch_bounds__(THREADS_PER_CTA) void ln_bwd_1024_kernel(
-    const int rows, float epsilon, const T *__restrict__ x_ptr,
-    const ScaleT *__restrict__ gamma_ptr, const U *__restrict__ mean_ptr,
-    const U *__restrict__ var_ptr, const T *__restrict__ dout_ptr,
-    U *__restrict__ dgamma_temp_ptr, U *__restrict__ dbeta_temp_ptr,
-    T *__restrict__ dx_ptr) {
-  using Vec = platform::AlignedVector<T, VecSize>;
-  using Vec_scale = platform::AlignedVector<ScaleT, VecSize>;
-
-  const int tidx = threadIdx.x;
-  const int bidx = blockIdx.x;
-  const int lane = tidx % THREADS_PER_WARP;            // 0, 1, ..., 31
-  const int warp = tidx / THREADS_PER_WARP;            // 0, 1, 2, 3
-  const int warp_m = warp / WARPS_N;                   // 0, 1, 2, 3
-  const int warp_n = warp % WARPS_N;                   // 0
-  const int tid_r = warp_n * THREADS_PER_WARP + lane;  // 0, 1, ..., 31
-
-  const int r = bidx * ROWS_PER_CTA + warp_m;
-  const int c = warp_n * THREADS_PER_WARP + lane;
-
-  static_assert(LN_NUM_COLS == THREADS_PER_ROW * LDGS * VecSize, "");
-
-  // smem for column reduction
-  __shared__ U smem_[ROWS_PER_CTA * LN_NUM_COLS];
-  // todo: why compile error?
-  // extern __shared__ U smem_[];
-
-  U dgamma_sum[LDGS * VecSize];
-  U dbeta_sum[LDGS * VecSize];
-
-  memset(dgamma_sum, 0, sizeof(U) * LDGS * VecSize);
-  memset(dbeta_sum, 0, sizeof(U) * LDGS * VecSize);
-
-  // no use for WARP_N=1
-  __shared__ U smem_sum_loss1[ROWS_PER_CTA * WARPS_N];  // 4
-  __shared__ U smem_sum_loss2[ROWS_PER_CTA * WARPS_N];  // 4
-  U *sum_loss1_shared = &smem_sum_loss1[warp_m * WARPS_N];
-  U *sum_loss2_shared = &smem_sum_loss2[warp_m * WARPS_N];
-
-  // step-1: compute dx and local results of dscale and dbias
-  constexpr float rn = 1.f / static_cast<float>(LN_NUM_COLS);
-  Vec_scale gamma[LDGS];
-  int col = c;
-#pragma unroll
-  for (int it = 0; it < LDGS; it++) {
-    platform::Load<ScaleT, VecSize>(gamma_ptr + col * VecSize, &gamma[it]);
-    col += THREADS_PER_ROW;
-  }
-
-// if ROWS_PER_CTA does not divice rows, we might get divergence in the
-// last blocks with syncthreads grid stride over rows
-#pragma unroll 1
-  for (int row = r; row < rows; row += gridDim.x * ROWS_PER_CTA) {
-    const U mean_cur_row = mean_ptr[row];
-    // todo:
-    // const U var_cur_row = var_ptr[row];
-    const U var_cur_row = rsqrt_<U>(var_ptr[row] + epsilon);
-    // limin-todo:
-    // Vec dout[LDGS], x[LDGS], dx[LDGS];
-    Vec dout[LDGS], x[LDGS];
-    int col = c;
-#pragma unroll
-    for (int it = 0; it < LDGS; it++) {
-      platform::Load<T, VecSize>(dout_ptr + row * LN_NUM_COLS + col * VecSize,
-                                 &dout[it]);
-      platform::Load<T, VecSize>(x_ptr + row * LN_NUM_COLS + col * VecSize,
-                                 &x[it]);
-      col += THREADS_PER_ROW;
-    }
-
-    // local reductions
-    U dy[LDGS * VecSize];
-    U y[LDGS * VecSize];
-
-    U sum_loss1 = 0.f;
-    U sum_loss2 = 0.f;
-#pragma unroll
-    for (int it = 0; it < LDGS; it++) {
-#pragma unroll
-      for (int jt = 0; jt < VecSize; jt++) {
-        U x_tmp = x[it][jt];
-        U y_tmp = var_cur_row * (x_tmp - mean_cur_row);
-        // todo:
-        U dy_tmp = static_cast<U>(gamma[it][jt]) *
-                   static_cast<U>(dout[it][jt]);  // scale * dy
-        U dout_tmp = dout[it][jt];                // dy
-
-        // used for get dx (row reduction)
-        sum_loss1 += dy_tmp;          // gamma * dy, sum_1
-        sum_loss2 += dy_tmp * y_tmp;  // gamma * dy * y, sum_2
-
-        dy[it * VecSize + jt] = dy_tmp;  // gamma* dy
-        y[it * VecSize + jt] = y_tmp;    // y
-
-        // used for get dgamma and dbeta (column reduction)
-        dgamma_sum[it * VecSize + jt] += dout_tmp * y_tmp;  // dy * y
-        dbeta_sum[it * VecSize + jt] += dout_tmp;           // dy
-      }
-    }
-
-    // reduction across row for sum_loss1, sum_loss2
-    if (WARPS_N == 1) {  // no need to go through smem!
-#pragma unroll
-      // row reduction among 32 threads.
-      for (int it = 1; it < THREADS_PER_WARP; it *= 2) {
-        sum_loss1 += __shfl_xor_sync(uint32_t(-1), sum_loss1, it);
-        sum_loss2 += __shfl_xor_sync(uint32_t(-1), sum_loss2, it);
-      }
-      sum_loss1 *= rn;
-      sum_loss2 *= rn;
-    } else {
-#pragma unroll
-      for (int it = 16; it > 0; it /= 2) {
-        sum_loss1 += __shfl_down_sync(uint32_t(-1), sum_loss1, it);
-        sum_loss2 += __shfl_down_sync(uint32_t(-1), sum_loss2, it);
-      }
-
-      if (lane == 0) {
-        sum_loss1_shared[warp_n] = sum_loss1;
-        sum_loss2_shared[warp_n] = sum_loss2;
-      }
-
-      __syncthreads();
-      if (warp_n == 0 && lane == 0) {
-        sum_loss1 = 0.f;
-        sum_loss2 = 0.f;
-        for (int it = 0; it < WARPS_N; it++) {
-          sum_loss1 += sum_loss1_shared[it];
-          sum_loss2 += sum_loss2_shared[it];
-        }
-        sum_loss1_shared[0] = sum_loss1;
-        sum_loss2_shared[0] = sum_loss2;
-      }
-      __syncthreads();
-
-      sum_loss1 = sum_loss1_shared[0] * rn;
-      sum_loss2 = sum_loss2_shared[0] * rn;
-    }
-
-#pragma unroll
-    for (int it = 0; it < LDGS; it++) {
-#pragma unroll
-      for (int jt = 0; jt < VecSize; jt++) {
-        U dy_tmp = dy[it * VecSize + jt];  // gamma * dy
-        U y_tmp = y[it * VecSize + jt];    // y
-        // dx = var * (gamma * dy - sum_loss2 * y - sum_loss1)
-        U dx_tmp = var_cur_row * (dy_tmp - sum_loss2 * y_tmp - sum_loss1);
-        // limin-todo:
-        // dx[it][jt] = static_cast<T>(dx_tmp);
-        x[it][jt] = static_cast<T>(dx_tmp);  // reuse x[] register space.
-      }
-    }
-
-    // store dx to global memory
-    col = c;
-#pragma unroll
-    for (int it = 0; it < LDGS; it++) {
-      // limin-todo:
-      // platform::Store<T, VecSize>(dx[it], dx_ptr + row * LN_NUM_COLS + col *
-      // VecSize);
-      platform::Store<T, VecSize>(x[it],
-                                  dx_ptr + row * LN_NUM_COLS + col * VecSize);
-      col += THREADS_PER_ROW;
-    }
-  }
-
-  // step-2: column reduction of dgamma and dbeta for each cta.
-  // each block's sum: [4 * 1024] -> [1 * 1024]
-  enum { NUM_RES = LN_NUM_COLS / THREADS_PER_CTA };  // 1024/128 = 8
-  static_assert(NUM_RES * THREADS_PER_CTA == LN_NUM_COLS, "");
-
-  U *smem_write;
-
-  // tid_r: 0, 1, ..., 31 (lane id)
-  smem_write = &smem_[warp_m * LN_NUM_COLS + tid_r * VecSize];  // [4 * 1024]
-#pragma unroll
-  for (int it = 0; it < LDGS; it++) {
-#pragma unroll
-    for (int jt = 0; jt < VecSize; jt++) {
-      smem_write[jt] = dbeta_sum[it * VecSize + jt];
-    }
-    smem_write += THREADS_PER_ROW * VecSize;  // 32*8
-  }
-  __syncthreads();
-  U cta_dbeta_sum[NUM_RES];
-  memset(cta_dbeta_sum, 0, sizeof(U) * NUM_RES);
-  // column reduction for elems in smem: 4*1024 -> 1*1024.
-  for (int it = 0; it < ROWS_PER_CTA; it++) {
-    for (int jt = 0; jt < NUM_RES; jt++) {
-      cta_dbeta_sum[jt] +=
-          smem_[it * LN_NUM_COLS + tidx + jt * THREADS_PER_CTA];
-    }
-  }
-  __syncthreads();
-
-  smem_write = &smem_[warp_m * LN_NUM_COLS + tid_r * VecSize];
-#pragma unroll
-  for (int it = 0; it < LDGS; it++) {
-#pragma unroll
-    for (int jt = 0; jt < VecSize; jt++) {
-      smem_write[jt] = dgamma_sum[it * VecSize + jt];
-    }
-    smem_write += THREADS_PER_ROW * VecSize;
-  }
-  __syncthreads();
-  U cta_dgamma_sum[NUM_RES];
-  memset(cta_dgamma_sum, 0, sizeof(U) * NUM_RES);
-  for (int it = 0; it < ROWS_PER_CTA; it++) {
-    for (int jt = 0; jt < NUM_RES; jt++) {
-      cta_dgamma_sum[jt] +=
-          smem_[it * LN_NUM_COLS + tidx + jt * THREADS_PER_CTA];
-    }
-  }
-
-  // the shape of results：(#blocks, 1024)
-  U *dgamma_part =
-      static_cast<U *>(dgamma_temp_ptr) + bidx * LN_NUM_COLS + tidx;
-  for (int jt = 0; jt < NUM_RES; jt++) {
-    *dgamma_part = cta_dgamma_sum[jt];
-    dgamma_part += THREADS_PER_CTA;
-  }
-
-  U *dbeta_part = static_cast<U *>(dbeta_temp_ptr) + bidx * LN_NUM_COLS + tidx;
-  for (int jt = 0; jt < NUM_RES; jt++) {
-    *dbeta_part = cta_dbeta_sum[jt];
-    dbeta_part += THREADS_PER_CTA;
-  }
-}
-
-template <
-    typename T, typename U, typename ScaleT = U, typename MaskType = uint8_t,
-    int VecSize = 8, int WARPS_M = 4, int WARPS_N = 1, int BYTES_PER_LDG = 16,
-    bool isFusedDropoutResidualLn = false, int ELTS_PER_ROW = 1024,
+    bool isFusedDropoutResidualLn, typename T, typename U, typename ScaleT = U,
+    typename MaskType = uint8_t, int VecSize = 8, int WARPS_M = 4,
+    int WARPS_N = 1, int BYTES_PER_LDG = 16, int ELTS_PER_ROW = 1024,
     int THREADS_PER_WARP = 32, int THREADS_PER_ROW = WARPS_N *THREADS_PER_WARP,
     int THREADS_PER_CTA = WARPS_M *THREADS_PER_ROW, int ROWS_PER_CTA = WARPS_M,
     int ELTS_PER_ROW_PER_CTA = THREADS_PER_ROW *VecSize,
@@ -647,14 +403,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_1024_kernel(
     T factor = static_cast<T>(0), T *d_dropout_src_ptr = nullptr) {
   using Vec = platform::AlignedVector<T, VecSize>;
   using Vec_scale = platform::AlignedVector<ScaleT, VecSize>;
-  // limin-todo:
   using MaskLoadT = platform::AlignedVector<MaskType, VecSize>;
-
-  if (isFusedDropoutResidualLn) {
-    // static_assert(mask_ptr != nullptr, "mask_ptr != nullptr");
-    // static_assert(d_dropout_src_ptr != nullptr, "d_dropout_src_ptr !=
-    // nullptr");
-  }
 
   const int tidx = threadIdx.x;
   const int bidx = blockIdx.x;
@@ -671,8 +420,6 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_1024_kernel(
 
   // smem for column reduction
   __shared__ U smem_[ROWS_PER_CTA * LN_NUM_COLS];
-  // todo: why compile error?
-  // extern __shared__ U smem_[];
 
   U dgamma_sum[LDGS * VecSize];
   U dbeta_sum[LDGS * VecSize];
@@ -680,7 +427,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_1024_kernel(
   memset(dgamma_sum, 0, sizeof(U) * LDGS * VecSize);
   memset(dbeta_sum, 0, sizeof(U) * LDGS * VecSize);
 
-  // no use for WARP_N=1
+  // Note: it is no use for WARP_N = 1
   __shared__ U smem_sum_loss1[ROWS_PER_CTA * WARPS_N];  // 4
   __shared__ U smem_sum_loss2[ROWS_PER_CTA * WARPS_N];  // 4
   U *sum_loss1_shared = &smem_sum_loss1[warp_m * WARPS_N];
@@ -696,21 +443,12 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_1024_kernel(
     col += THREADS_PER_ROW;
   }
 
-// if ROWS_PER_CTA does not divice rows, we might get divergence in the
-// last blocks with syncthreads grid stride over rows
 #pragma unroll 1
   for (int row = r; row < rows; row += gridDim.x * ROWS_PER_CTA) {
     const U mean_cur_row = mean_ptr[row];
-    // todo:
-    // const U var_cur_row = var_ptr[row];
     const U var_cur_row = rsqrt_<U>(var_ptr[row] + epsilon);
-    // limin-todo:
-    // Vec dout[LDGS], x[LDGS], dx[LDGS];
     Vec dout[LDGS], x[LDGS];
-    // limin-todo:
-    // if (isFusedDropoutResidualLn) {
     MaskLoadT mask_vec[LDGS];
-    //}
     int col = c;
 #pragma unroll
     for (int it = 0; it < LDGS; it++) {
@@ -718,7 +456,6 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_1024_kernel(
                                  &dout[it]);
       platform::Load<T, VecSize>(x_ptr + row * LN_NUM_COLS + col * VecSize,
                                  &x[it]);
-      // limin-todo:
       if (isFusedDropoutResidualLn) {
         platform::Load<MaskType, VecSize>(
             mask_ptr + row * LN_NUM_COLS + col * VecSize, &mask_vec[it]);
@@ -739,26 +476,25 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_1024_kernel(
       for (int jt = 0; jt < VecSize; jt++) {
         U x_tmp = x[it][jt];
         U y_tmp = var_cur_row * (x_tmp - mean_cur_row);
-        // todo:
         U dy_tmp = static_cast<U>(gamma[it][jt]) *
                    static_cast<U>(dout[it][jt]);  // scale * dy
         U dout_tmp = dout[it][jt];                // dy
 
         // used for get dx (row reduction)
-        sum_loss1 += dy_tmp;          // gamma * dy, sum_1
-        sum_loss2 += dy_tmp * y_tmp;  // gamma * dy * y, sum_2
+        sum_loss1 += dy_tmp;          // scale * dy, sum_1
+        sum_loss2 += dy_tmp * y_tmp;  // scale * dy * y, sum_2
 
-        dy[it * VecSize + jt] = dy_tmp;  // gamma* dy
+        dy[it * VecSize + jt] = dy_tmp;  // scale * dy
         y[it * VecSize + jt] = y_tmp;    // y
 
-        // used for get dgamma and dbeta (column reduction)
+        // used for get dscale and dbias (column reduction)
         dgamma_sum[it * VecSize + jt] += dout_tmp * y_tmp;  // dy * y
         dbeta_sum[it * VecSize + jt] += dout_tmp;           // dy
       }
     }
 
     // reduction across row for sum_loss1, sum_loss2
-    if (WARPS_N == 1) {  // no need to go through smem!
+    if (WARPS_N == 1) {
 #pragma unroll
       // row reduction among 32 threads.
       for (int it = 1; it < THREADS_PER_WARP; it *= 2) {
@@ -800,14 +536,12 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_1024_kernel(
     for (int it = 0; it < LDGS; it++) {
 #pragma unroll
       for (int jt = 0; jt < VecSize; jt++) {
-        U dy_tmp = dy[it * VecSize + jt];  // gamma * dy
+        U dy_tmp = dy[it * VecSize + jt];  // scale * dy
         U y_tmp = y[it * VecSize + jt];    // y
-        // dx = var * (gamma * dy - sum_loss2 * y - sum_loss1)
+        // dx = var * (scale * dy - sum_loss2 * y - sum_loss1)
         U dx_tmp = var_cur_row * (dy_tmp - sum_loss2 * y_tmp - sum_loss1);
-        // limin-todo:
-        // dx[it][jt] = static_cast<T>(dx_tmp);
-        x[it][jt] = static_cast<T>(dx_tmp);  // reuse x[] register space.
-                                             // limin-todo:
+        // Note: reuse x and dout vec register to store dx and d_dropout_src.
+        x[it][jt] = static_cast<T>(dx_tmp);
         if (isFusedDropoutResidualLn) {
           dout[it][jt] = x[it][jt] * static_cast<T>(mask_vec[it][jt]) * factor;
         }
@@ -818,12 +552,8 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_1024_kernel(
     col = c;
 #pragma unroll
     for (int it = 0; it < LDGS; it++) {
-      // limin-todo:
-      // platform::Store<T, VecSize>(dx[it], dx_ptr + row * LN_NUM_COLS + col *
-      // VecSize);
       platform::Store<T, VecSize>(x[it],
                                   dx_ptr + row * LN_NUM_COLS + col * VecSize);
-      // limin-todo:
       if (isFusedDropoutResidualLn) {
         platform::Store<T, VecSize>(
             dout[it], d_dropout_src_ptr + row * LN_NUM_COLS + col * VecSize);
@@ -832,14 +562,13 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_1024_kernel(
     }
   }
 
-  // step-2: column reduction of dgamma and dbeta for each cta.
+  // step-2: column reduction of dscale and dbias for each thread block.
   // each block's sum: [4 * 1024] -> [1 * 1024]
   enum { NUM_RES = LN_NUM_COLS / THREADS_PER_CTA };  // 1024/128 = 8
   static_assert(NUM_RES * THREADS_PER_CTA == LN_NUM_COLS, "");
 
   U *smem_write;
 
-  // tid_r: 0, 1, ..., 31 (lane id)
   smem_write = &smem_[warp_m * LN_NUM_COLS + tid_r * VecSize];  // [4 * 1024]
 #pragma unroll
   for (int it = 0; it < LDGS; it++) {
@@ -895,8 +624,12 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_1024_kernel(
   }
 }
 
-// column reduction: (rows, 1024) -> (1, 1024)
-// #blocks: 32; #threads: 512
+/* This function carry out column reduction whose input is [rows, 1024] and
+ * output is [1, 1024].
+ * #blocks: 32
+ * #threads: 512
+*/
+// todo(@limin29): to think if there are better impl strategies
 template <
     typename U, typename ScaleT = U, int VecSize = 1, int WARPS_M = 16,
     int WARPS_N = 1, int BYTES_PER_LDG = 4, int ELTS_PER_ROW = 1024,
@@ -911,8 +644,6 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void ln_bwd_1024_final_kernel(
   using Vec = platform::AlignedVector<U, VecSize>;
   static_assert(VEC_COLS == LN_NUM_COLS / VecSize, "");
 
-  // static_assert(BYTES_PER_LDG == VecSize * sizeof(U), "");
-
   const int tidx = threadIdx.x;
   const int bidx = blockIdx.x;
   const int lane = tidx % THREADS_PER_WARP;
@@ -926,9 +657,6 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void ln_bwd_1024_final_kernel(
 
   __shared__ U smem_space[(WARPS_M - 1) * THREADS_PER_ROW * VecSize];
 
-  // Will probably run this with WARPS_N = 1 and grid = 1024 / (32*4) = 8, or
-  // VecSize=1 and grid = 32
-  // and WARPS_M = 4 (or 1??)
   for (int col = c; col < VEC_COLS; col += gridDim.x * THREADS_PER_ROW) {
     const U *dg_part_ptr = (dg_part_) + r * LN_NUM_COLS + col * VecSize;
     const U *db_part_ptr = (db_part_) + r * LN_NUM_COLS + col * VecSize;
@@ -953,7 +681,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void ln_bwd_1024_final_kernel(
       }
     }
 
-    // Finalize the reduction across rows of the CTA
+    // reduction across rows of the thread block
     U *smem_write;
     smem_write = smem_space + (warp_m - 1) * THREADS_PER_ROW * VecSize + tid_c;
 
@@ -1021,10 +749,17 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void ln_bwd_1024_final_kernel(
   }
 }
 
-// case-1: compute layer_norm_grad for layernorm op by setting mask_out and
-// ddropout to nullptr. Here, d_x_ptr returns the grad of layernorm input.
-// case-2: compute layer_norm_grad + residual_grad + dropout_grad for
-// dropout_residual_layernorm op. Here, dx_ptr returns d_residual.
+/* This function support two kinds of computations (only for float and fp16
+* type):
+*
+* Case-1: compute layer_norm_grad for layernorm op by setting mask_ptr and
+* d_dropout_src_ptr to nullptr. Here, d_x_ptr returns the grad of layernorm
+* input.
+*
+* Case-2: compute layer_norm_grad + residual_grad + dropout_grad for
+* fused_dropout_residual_layernorm op. Here, dx_ptr returns residual_grad.
+*
+*/
 template <typename T, typename U, typename ScaleT = U,
           typename MaskType = uint8_t>
 void ln_bwd_1024_kernel_driver(
@@ -1047,12 +782,10 @@ void ln_bwd_1024_kernel_driver(
     const int ROWS_PER_CTA = WARPS_M;
 
     // 4 * 1024 * 4
-    // what is the max smem_bytes value?
     const int SMEM_BYTES = ROWS_PER_CTA * cols * sizeof(U);
 
-    // todo:
-    // blocks数目：2*SM数目
-    const int gridx = 216;
+    // #blocks = 2 * #SM
+    const int gridx = 2 * dev_ctx.GetSMCount();
 
     // get temp space for dscale and dbias.
     framework::Tensor dscale_temp;
@@ -1065,26 +798,26 @@ void ln_bwd_1024_kernel_driver(
     dbias_temp.mutable_data<U>(dev_ctx.GetPlace());
     U *dbias_temp_ptr = dbias_temp.data<U>();
 
-    // todo: dynamic smem is wrong??
     if (mask_ptr != nullptr) {
-      // todo: assert d_dropout_src_ptr is not null.
+      if (d_dropout_src_ptr == nullptr) {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "To compute fused_dropout_residual_ln grad, d_dropout_src_ptr "
+            "can't be null"));
+      }
       fused_ln_bwd_1024_kernel<
-          T, U, ScaleT, MaskType, VecSize, WARPS_M, WARPS_N,
-          // BYTES_PER_LDG><<<gridx, THREADS_PER_CTA, SMEM_BYTES, stream>>>(
-          BYTES_PER_LDG, true><<<gridx, THREADS_PER_CTA, 0, stream>>>(
+          true, T, U, ScaleT, MaskType, VecSize, WARPS_M, WARPS_N,
+          BYTES_PER_LDG><<<gridx, THREADS_PER_CTA, 0, stream>>>(
           rows, epsilon, x_ptr, scale_ptr, mean_ptr, var_ptr, dout_ptr,
           dscale_temp_ptr, dbias_temp_ptr, dx_ptr, mask_ptr, factor,
           d_dropout_src_ptr);
 
     } else {
-      // ln_bwd_1024_kernel<
       fused_ln_bwd_1024_kernel<
-          T, U, ScaleT, MaskType, VecSize, WARPS_M, WARPS_N,
+          false, T, U, ScaleT, MaskType, VecSize, WARPS_M, WARPS_N,
           BYTES_PER_LDG><<<gridx, THREADS_PER_CTA, 0, stream>>>(
           rows, epsilon, x_ptr, scale_ptr, mean_ptr, var_ptr, dout_ptr,
           dscale_temp_ptr, dbias_temp_ptr, dx_ptr);
     }
-#if 1
     const int WARPS_M_2 = 16;
     const int WARPS_N_2 = 1;
     const int BYTES_PER_LDG_2 = 4;
@@ -1100,7 +833,7 @@ void ln_bwd_1024_kernel_driver(
     const int gridx_2 = static_cast<int>(
         std::ceil(1024 / static_cast<float>(THREADS_PER_ROW_2 * VecSize_2)));
     // #blocks: 32，#threads_per_block: 512
-    // can not support for double type.
+    // Note: it is not supported for double type.
     if (sizeof(U) > 4) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Only support float and fp16 type"));
@@ -1110,7 +843,6 @@ void ln_bwd_1024_kernel_driver(
           BYTES_PER_LDG_2><<<gridx_2, THREADS_PER_CTA_2, 0, stream>>>(
           gridx, dscale_temp_ptr, dbias_temp_ptr, dscale_ptr, dbias_ptr);
     }
-#endif
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Fast layer_norm kernel is only used when feature_size is 1024"));

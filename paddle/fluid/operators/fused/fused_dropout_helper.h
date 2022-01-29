@@ -285,8 +285,9 @@ class FusedDropoutLayerNormHelper : public FusedDropoutHelper<T, MaskType> {
                                         T* d_bias, T* d_residual) {
     using U = LayerNormParamType<T>;
     bool can_call_1024_kernel = false;
-    // fast impl for cases when #cols is 1024 and linear_bias is nullptr.
-    // In the future, we can support linear_bias is not nullptr.
+    // Fast impl for cases when cols is 1024 and linear_bias is nullptr.
+    // In fact, linear_bias is not nullptr is also feasible for impl.
+    // Here, we do not support it.
     if (this->cols_ == 1024 && d_bias == nullptr && d_scale != nullptr &&
         d_layernorm_bias != nullptr && sizeof(T) <= 4) {
       can_call_1024_kernel = true;
@@ -294,7 +295,6 @@ class FusedDropoutLayerNormHelper : public FusedDropoutHelper<T, MaskType> {
     VLOG(6) << "LaunchLayernormResidualDropoutGrad = " << can_call_1024_kernel;
 
     if (can_call_1024_kernel) {
-      // note: d_layernorm_src is not set and returned.
       LaunchLayernormResidualDropoutGrad<T, U, MaskType, is_same_type>(
           ctx, this->rows_, this->cols_, epsilon_,
           this->dropout_param_.dropout_prob,
