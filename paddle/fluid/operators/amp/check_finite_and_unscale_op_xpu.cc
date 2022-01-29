@@ -94,11 +94,11 @@ class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
         inverse_scale = 0.0;
       }
 
-      paddle::platform::XPUVersion version = dev_ctx.xpu_version();
+      auto version = platform::get_xpu_version(ctx.GetPlace().GetDeviceId());
       framework::Tensor float_x;
       framework::Tensor float_out;
       if (std::is_same<T, paddle::platform::float16>::value &&
-          (version == paddle::platform::XPUVersion::XPU1)) {
+          (version == pten::backends::xpu::XPUVersion::XPU1)) {
         float_x.mutable_data<MPDType>(dev_ctx.GetPlace(),
                                       x->numel() * sizeof(MPDType));
         float_out.mutable_data<MPDType>(dev_ctx.GetPlace(),

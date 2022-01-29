@@ -62,7 +62,7 @@ PADDLE_API Tensor scale_kernel_context(const Tensor& x,
   auto kernel_context = pten::KernelContext(dev_ctx);
 
   auto dense_x = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
-  kernel_context.EmplaceBackInput(dense_x);
+  kernel_context.EmplaceBackInput(dense_x.get());
 
   kernel_context.EmplaceBackAttr(pten::Scalar(scale));
   kernel_context.EmplaceBackAttr(bias);
@@ -73,7 +73,7 @@ PADDLE_API Tensor scale_kernel_context(const Tensor& x,
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           pten::TransToFluidPlace(kernel_backend)),
       std::move(out_meta));
-  kernel_context.EmplaceBackOutput(dense_out);
+  kernel_context.EmplaceBackOutput(dense_out.get());
 
   Tensor out;
   out.set_impl(dense_out);
@@ -101,7 +101,7 @@ static void ScaleCPU(DataType kernel_dtype,
       break;
     }
     case pten::DataType::BFLOAT16: {
-      pten::ScaleKernel<paddle::platform::bfloat16>(
+      pten::ScaleKernel<pten::dtype::bfloat16>(
           dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }

@@ -197,9 +197,8 @@ class EagerInferShapeContext : public paddle::framework::InferShapeContext {
           out_var->GetMutable<paddle::framework::LoDTensor>();
       out_lod_tensor->Resize(in_lod_tensor.dims());
     } else {
-      auto& in_sele_rows = in_var->Get<paddle::framework::SelectedRows>();
-      auto out_sele_rows =
-          out_var->GetMutable<paddle::framework::SelectedRows>();
+      auto& in_sele_rows = in_var->Get<pten::SelectedRows>();
+      auto out_sele_rows = out_var->GetMutable<pten::SelectedRows>();
       out_sele_rows->mutable_value()->Resize(in_sele_rows.value().dims());
       out_sele_rows->set_rows(in_sele_rows.rows());
       out_sele_rows->set_height(in_sele_rows.height());
@@ -222,17 +221,30 @@ class EagerInferShapeContext : public paddle::framework::InferShapeContext {
                                 paddle::framework::DataLayout::kMKLDNN));
   }
 
-  // TODO(paddle-dev): Can this be template?
   std::vector<paddle::framework::InferShapeVarPtr> GetInputVarPtrs(
       const std::string& name) const override {
-    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
-        "GetInputVarPtrs not support in dygraph runtime context"));
+    std::vector<paddle::framework::InferShapeVarPtr> res;
+    auto it = tensor_in_->find(name);
+    PADDLE_ENFORCE_NE(it, tensor_in_->end(),
+                      paddle::platform::errors::NotFound(
+                          "Can not find [%s] in inputs.", name));
+    for (auto& tensor : it->second) {
+      res.emplace_back(tensor->MutableVar());
+    }
+    return res;
   }
 
   std::vector<paddle::framework::InferShapeVarPtr> GetOutputVarPtrs(
       const std::string& name) const override {
-    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
-        "GetOutputVarPtrs not support in dygraph runtime context"));
+    std::vector<paddle::framework::InferShapeVarPtr> res;
+    auto it = tensor_out_->find(name);
+    PADDLE_ENFORCE_NE(it, tensor_out_->end(),
+                      paddle::platform::errors::NotFound(
+                          "Can not find [%s] in outputs.", name));
+    for (auto& tensor : it->second) {
+      res.emplace_back(tensor->MutableVar());
+    }
+    return res;
   }
 
   DDim GetInputDim(const std::string& name) const override {
@@ -355,8 +367,8 @@ class EagerInferShapeContext : public paddle::framework::InferShapeContext {
                                      "Input variable should not be null"));
     if (var->IsType<paddle::framework::LoDTensor>()) {
       return var->Get<paddle::framework::LoDTensor>().dims();
-    } else if (var->IsType<paddle::framework::SelectedRows>()) {
-      return var->Get<paddle::framework::SelectedRows>().GetCompleteDims();
+    } else if (var->IsType<pten::SelectedRows>()) {
+      return var->Get<pten::SelectedRows>().GetCompleteDims();
     } else {
       PADDLE_THROW(paddle::platform::errors::PermissionDenied(
           "Only LoDTensor/SelectedRows support 'GetDim', but Variables "
@@ -372,8 +384,8 @@ class EagerInferShapeContext : public paddle::framework::InferShapeContext {
   void SetDim(paddle::framework::Variable* var, const DDim& dim) {
     if (var->IsType<paddle::framework::LoDTensor>()) {
       var->GetMutable<paddle::framework::LoDTensor>()->Resize(dim);
-    } else if (var->IsType<paddle::framework::SelectedRows>()) {
-      var->GetMutable<paddle::framework::SelectedRows>()->set_height(dim[0]);
+    } else if (var->IsType<pten::SelectedRows>()) {
+      var->GetMutable<pten::SelectedRows>()->set_height(dim[0]);
     } else {
       PADDLE_THROW(paddle::platform::errors::PermissionDenied(
           "Variable type_id %s, expect LoDTensor/SelectedRows."));

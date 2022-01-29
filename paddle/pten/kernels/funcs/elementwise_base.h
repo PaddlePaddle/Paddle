@@ -14,18 +14,20 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/fluid/platform/transform.h"
 #include "paddle/pten/backends/all_context.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/kernels/empty_kernel.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/function_traits.h"
+#include "paddle/pten/kernels/primitive/kernel_primitives.h"
 
-namespace kps = paddle::operators::kernel_primitives;
+namespace kps = pten::kps;
 
 #endif
 
@@ -36,10 +38,10 @@ enum ElementwiseType { kUnary = 1, kBinary = 2, kTernary = 3, kAny = -1 };
    for supporting multiple-output feature in elementwise system.*/
 template <class T, int Num>
 using ConditionalT =
-    typename std::conditional_t<Num == 1, T, paddle::framework::Array<T, Num>>;
+    typename std::conditional_t<Num == 1, T, pten::framework::Array<T, Num>>;
 
 namespace funcs {
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
 template <typename T, typename DX_OP, typename DY_OP, typename Tout = T>
 struct ElemwiseGradNoBroadcast {
@@ -227,7 +229,7 @@ class TransformFunctor {
                    const bool is_xsize_larger = true)
       : x_(x.data<T>()),
         y_(y.data<T>()),
-        z_(z->mutable_data<OutType>()),
+        z_(ctx.template Alloc<OutType>(z)),
         nx_(x.numel()),
         ctx_(ctx),
         func_(func),
@@ -303,9 +305,9 @@ inline DDim trim_trailing_singular_dims(const DDim &dims) {
     trim_dims[i] = dims[i];
   }
   if (trim_dims.size() == 0) {
-    return DDim(paddle::framework::make_dim());
+    return DDim(pten::framework::make_dim());
   }
-  DDim actual_dims = paddle::framework::make_ddim(trim_dims);
+  DDim actual_dims = pten::framework::make_ddim(trim_dims);
   return actual_dims;
 }
 
@@ -360,6 +362,43 @@ inline void get_mid_dims(const DDim &x_dims,
   }
 }
 
+// for broadcast backwards
+static inline std::vector<int> GetReduceDim(const paddle::framework::DDim &in,
+                                            const paddle::framework::DDim &out,
+                                            int axis) {
+  axis =
+      (axis == -1 ? std::abs(static_cast<int>(out.size() - in.size())) : axis);
+  std::vector<int> dims;
+  for (int i = 0; i < axis; ++i) {
+    dims.push_back(i);
+  }
+  for (int i = 0; i < in.size(); ++i) {
+    if (out[i + axis] != in[i]) {
+      dims.push_back(i + axis);
+    }
+  }
+  for (int i = axis + in.size(); i < out.size(); ++i) {
+    dims.push_back(i);
+  }
+  return dims;
+}
+
+template <typename DeviceContext, typename T>
+static inline void GetDoubleGradSafeTensor(const DeviceContext &dev_ctx,
+                                           const DenseTensor &x,
+                                           const DenseTensor *ddx,
+                                           DenseTensor *ddx_safe) {
+  if (ddx) {
+    *ddx_safe = *ddx;
+  } else {
+    auto meta = pten::DenseTensorMeta(x.dtype(), x.dims(), x.layout());
+    *ddx_safe = pten::Empty<T, DeviceContext>(dev_ctx, std::move(meta));
+    ddx_safe->mutable_data(dev_ctx.GetPlace());
+    paddle::operators::math::SetConstant<DeviceContext, T> set_zero;
+    set_zero(dev_ctx, ddx_safe, static_cast<T>(0));
+  }
+}
+
 template <typename DeviceContext,
           typename T,
           typename DX_OP,
@@ -377,7 +416,7 @@ void ElemwiseGradComputeNoBroadcast(const DeviceContext &dev_ctx,
                                     DenseTensor *dy,
                                     DX_OP dx_op,
                                     DY_OP dy_op) {
-  size_t N = static_cast<size_t>(paddle::framework::product(x_dim));
+  size_t N = static_cast<size_t>(pten::framework::product(x_dim));
   paddle::platform::ForRange<DeviceContext> for_range(dev_ctx, N);
   for_range(ElemwiseGradNoBroadcast<T, DX_OP, DY_OP, Tout>{
       x.data<T>(),
@@ -386,8 +425,15 @@ void ElemwiseGradComputeNoBroadcast(const DeviceContext &dev_ctx,
       dout.data<Tout>(),
       dx_op,
       dy_op,
-      dx == nullptr ? nullptr : dx->mutable_data<T>(dev_ctx.GetPlace()),
-      dy == nullptr ? nullptr : dy->mutable_data<T>(dev_ctx.GetPlace())});
+      dx == nullptr ? nullptr : dev_ctx.template Alloc<T>(dx),
+      dy == nullptr ? nullptr : dev_ctx.template Alloc<T>(dy)});
+}
+
+inline void ElementwiseGradPreProcess(const DenseTensor &dout,
+                                      DenseTensor *dx) {
+  if (dx != nullptr) {
+    dx->set_lod(dout.lod());
+  }
 }
 
 #if defined(__NVCC__) || defined(__HIPCC__)
@@ -462,7 +508,7 @@ struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 3, false> {
 template <typename OutT, int VecSize, bool IsBoundary, int NumOuts>
 struct ElementwiseWriteDataCaller {
   __device__ __forceinline__ void operator()(
-      paddle::framework::Array<_ptr_ OutT *, NumOuts> outs,
+      pten::framework::Array<_ptr_ OutT *, NumOuts> outs,
       ConditionalT<OutT, NumOuts> src[VecSize],
       int block_offset,
       int num) {
@@ -485,7 +531,7 @@ struct ElementwiseWriteDataCaller {
 template <typename OutT, int VecSize, bool IsBoundary>
 struct ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, 1> {
   __device__ __forceinline__ void operator()(
-      paddle::framework::Array<_ptr_ OutT *, 1> outs,
+      pten::framework::Array<_ptr_ OutT *, 1> outs,
       OutT src[VecSize],
       int block_offset,
       int num) {
@@ -502,8 +548,8 @@ template <typename InT,
           int VecSize,
           bool IsBoundary>
 __device__ void VectorizedElementwiseKernelImpl(
-    const paddle::framework::Array<const _ptr_ InT *__restrict__, Arity> &in,
-    paddle::framework::Array<_ptr_ OutT *, NumOuts> outs,
+    const pten::framework::Array<const _ptr_ InT *__restrict__, Arity> &in,
+    pten::framework::Array<_ptr_ OutT *, NumOuts> outs,
     int num,
     int data_offset,
     Functor func) {
@@ -537,8 +583,8 @@ template <typename InT,
           int NumOuts,
           int VecSize>
 __global__ void VectorizedElementwiseKernel(
-    paddle::framework::Array<const _ptr_ InT *__restrict__, Arity> ins,
-    paddle::framework::Array<_ptr_ OutT *, NumOuts> outs,
+    pten::framework::Array<const _ptr_ InT *__restrict__, Arity> ins,
+    pten::framework::Array<_ptr_ OutT *, NumOuts> outs,
     int size,
     int main_offset,
     Functor func) {
@@ -578,14 +624,14 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
                            std::vector<DenseTensor *> *outs,
                            Functor func) {
   auto numel = ins[0]->numel();
-  paddle::framework::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
-  paddle::framework::Array<_ptr_ OutT *, NumOuts> outs_data;
+  pten::framework::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
+  pten::framework::Array<_ptr_ OutT *, NumOuts> outs_data;
 
   for (int i = 0; i < Arity; ++i) {
     ins_data[i] = ins[i]->data<InT>();
   }
   for (int i = 0; i < NumOuts; ++i) {
-    outs_data[i] = (*outs)[i]->mutable_data<OutT>();
+    outs_data[i] = ctx.Alloc<OutT>((*outs)[i]);
   }
 #ifdef PADDLE_WITH_XPU2
   int block_size = 64;

@@ -36,6 +36,7 @@ class FleetExecutor final {
  public:
   FleetExecutor() = delete;
   explicit FleetExecutor(const std::string& exe_desc_str);
+  explicit FleetExecutor(const FleetExecutorDesc& exe_desc);
   ~FleetExecutor();
   void Init(const std::string& carrier_id,
             const framework::ProgramDesc& program_desc, framework::Scope* scope,

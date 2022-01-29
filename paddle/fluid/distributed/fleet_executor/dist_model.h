@@ -17,7 +17,9 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/distributed/fleet_executor/dist_model_tensor_wrapper.h"
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor_desc.pb.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
@@ -31,6 +33,9 @@ class BlockDesc;
 }
 
 namespace distributed {
+
+class TaskNode;
+class FleetExecutor;
 
 struct DistModelConfig {
   std::string model_dir{};
@@ -47,14 +52,15 @@ struct DistModelConfig {
   int64_t mp_ring_id{-1};
   int64_t pp_upstream_ring_id{-1};
   int64_t pp_downstream_ring_id{-1};
+  bool enable_timer{false};
 };
 
 class DistModel {
  public:
   explicit DistModel(const DistModelConfig& config) : config_(config) {}
   bool Init();
-  void Run(const std::vector<paddle::framework::Tensor>& input_data,
-           std::vector<paddle::framework::Tensor>* output_data);
+  bool Run(const std::vector<DistModelTensor>& input_data,
+           std::vector<DistModelTensor>* output_data);
   ~DistModel() = default;
 
  private:
@@ -66,12 +72,31 @@ class DistModel {
   bool LoadParameters();
   bool PreparePlace();
   bool CommInit();
+  bool PrepareFeedAndFetch();
+  bool PrepareFleetExe();
   void InsertCommOp(std::string tmp_var_name, int nranks, int rank,
                     const std::vector<std::string>& peer_endpoints,
                     framework::BlockDesc* block, int ring_id);
+  bool FeedData(const std::vector<DistModelTensor>& input_data,
+                framework::Scope* scope);
+  bool FetchResults(std::vector<DistModelTensor>* output_data,
+                    framework::Scope* scope);
+  template <typename T>
+  bool FetchResult(const framework::LoDTensor& fetch,
+                   DistModelTensor* output_data);
 
+  std::string carrier_id_;
+  std::vector<framework::LoDTensor> feed_tensors_;
+  std::vector<framework::OpDesc*> feeds_;
+  std::map<std::string, int64_t> feed_names_;
+  std::map<int64_t, std::string> idx_to_feeds_;
+  std::map<std::string, DistModelDataType> feeds_to_dtype_;
+  std::vector<framework::OpDesc*> fetches_;
+  std::map<int64_t, std::string> idx_to_fetches_;
   DistModelConfig config_;
   FleetExecutorDesc executor_desc_;
+  std::shared_ptr<FleetExecutor> fleet_exe;
+  std::shared_ptr<TaskNode> task_node_;
   std::shared_ptr<framework::Scope> scope_;
   paddle::platform::Place place_;
   std::shared_ptr<framework::ProgramDesc> program_;

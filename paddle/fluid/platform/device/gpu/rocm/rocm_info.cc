@@ -266,30 +266,31 @@ void GpuDeviceSync() { PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize()); }
 
 gpuError_t GpuGetLastError() { return hipGetLastError(); }
 
-bool IsGPUManagedMemorySupported(int id) {
+bool IsGPUManagedMemorySupported(int ide_id) {
   PADDLE_ENFORCE_LT(id, GetGPUDeviceCount(),
                     platform::errors::InvalidArgument(
                         "Device id must be less than GPU count, "
                         "but received id is: %d. GPU count is: %d.",
-                        id, GetGPUDeviceCount()));
+                        dev_id, GetGPUDeviceCount()));
 #if defined(__linux__) || defined(_WIN32)
   int ManagedMemoryAttr;
   PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceGetAttribute(
-      &ManagedMemoryAttr, hipDeviceAttributeManagedMemory, id));
+      &ManagedMemoryAttr, hipDeviceAttributeManagedMemory, dev_id));
   return ManagedMemoryAttr != 0;
 #else
   return false;
 #endif
 }
 
-bool IsGPUManagedMemoryOversubscriptionSupported(int id) {
-  PADDLE_ENFORCE_LT(id, GetGPUDeviceCount(),
+bool IsGPUManagedMemoryOversubscriptionSupported(int dev_id) {
+  PADDLE_ENFORCE_LT(dev_id, GetGPUDeviceCount(),
                     platform::errors::InvalidArgument(
                         "Device id must be less than GPU count, "
                         "but received id is: %d. GPU count is: %d.",
-                        id, GetGPUDeviceCount()));
+                        dev_id, GetGPUDeviceCount()));
 #ifdef(__linux__)
-  return IsGPUManagedMemorySupported(id) && GetGPUComputeCapability(id) >= 60;
+  return IsGPUManagedMemorySupported(dev_id) &&
+         GetGPUComputeCapability(dev_id) >= 60;
 #else
   return false;
 #endif

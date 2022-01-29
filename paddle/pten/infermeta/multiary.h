@@ -14,4 +14,13 @@ limitations under the License. */
 
 #pragma once
 
-namespace pten {}  // namespace pten
+#include "paddle/pten/common/scalar.h"
+#include "paddle/pten/core/tensor_meta.h"
+namespace pten {
+
+// TODO(chentianyu03) use std::vector<DenseTensor> as InferMeta inputs
+DenseTensorMeta ConcatInferMeta(const std::vector<DenseTensorMeta>& x_meta,
+                                const Scalar& axis_scalar,
+                                bool is_runtime);
+
+}  // namespace pten

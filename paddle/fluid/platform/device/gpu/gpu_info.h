@@ -148,14 +148,13 @@ bool IsGpuMallocRecorded(int dev_id);
 //! Empty idle cached memory held by the allocator.
 void EmptyCache(void);
 
-bool IsGPUManagedMemorySupported(int id);
+bool IsGPUManagedMemorySupported(int dev_id);
 
-bool IsGPUManagedMemoryOversubscriptionSupported(int id);
+bool IsGPUManagedMemoryOversubscriptionSupported(int dev_id);
 
-//! Get the primitive pointer return from cudaMalloc, just for testing
-#ifdef PADDLE_WITH_TESTING
+//! Get the primitive pointer return from cudaMalloc, just implemented with
+//! testing, do not use for release
 void *GetGpuBasePtr(void *ptr, int dev_id);
-#endif
 
 }  // namespace platform
 }  // namespace paddle

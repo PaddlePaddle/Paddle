@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/pten/core/kernel_registry.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/common/float16.h"
 
 using float16 = paddle::platform::float16;
 
