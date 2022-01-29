@@ -20,8 +20,8 @@
 #include <string>
 #include <type_traits>
 
-#include "paddle/pten/core/array.h"
 #include "paddle/pten/core/hostdevice.h"
+#include "paddle/pten/core/utils/array.h"
 
 namespace pten {
 namespace framework {
