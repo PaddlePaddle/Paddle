@@ -171,41 +171,41 @@ if(LINUX AND WITH_MKLDNN)
 	download_quant_model(${QUANT_RESNET50_MODEL_DIR} ${QUANT_RESNET50_MODEL_ARCHIVE} ff89b934ab961c3a4a844193ece2e8a7)
 	inference_quant_int8_image_classification_test(test_quant_int8_resnet50_mkldnn ${QUANT_RESNET50_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
 
-	# # Quant ResNet101
-	# set(QUANT_RESNET101_MODEL_DIR "${QUANT_INSTALL_DIR}/ResNet101_quant")
-	# set(QUANT_RESNET101_MODEL_ARCHIVE "ResNet101_qat_model.tar.gz")
-	# download_quant_model(${QUANT_RESNET101_MODEL_DIR} ${QUANT_RESNET101_MODEL_ARCHIVE} 95c6d01e3aeba31c13efb2ba8057d558)
-	# # inference_quant_int8_image_classification_test(test_quant_int8_resnet101_mkldnn ${QUANT_RESNET101_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
+	# Quant ResNet101
+	set(QUANT_RESNET101_MODEL_DIR "${QUANT_INSTALL_DIR}/ResNet101_quant")
+	set(QUANT_RESNET101_MODEL_ARCHIVE "ResNet101_qat_model.tar.gz")
+	download_quant_model(${QUANT_RESNET101_MODEL_DIR} ${QUANT_RESNET101_MODEL_ARCHIVE} 95c6d01e3aeba31c13efb2ba8057d558)
+	# inference_quant_int8_image_classification_test(test_quant_int8_resnet101_mkldnn ${QUANT_RESNET101_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
 
-	# # Quant GoogleNet
-	# set(QUANT_GOOGLENET_MODEL_DIR "${QUANT_INSTALL_DIR}/GoogleNet_quant")
-	# set(QUANT_GOOGLENET_MODEL_ARCHIVE "GoogleNet_qat_model.tar.gz")
-	# download_quant_model(${QUANT_GOOGLENET_MODEL_DIR} ${QUANT_GOOGLENET_MODEL_ARCHIVE} 1d4a7383baa63e7d1c423e8db2b791d5)
-	# inference_quant_int8_image_classification_test(test_quant_int8_googlenet_mkldnn ${QUANT_GOOGLENET_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
+	# Quant GoogleNet
+	set(QUANT_GOOGLENET_MODEL_DIR "${QUANT_INSTALL_DIR}/GoogleNet_quant")
+	set(QUANT_GOOGLENET_MODEL_ARCHIVE "GoogleNet_qat_model.tar.gz")
+	download_quant_model(${QUANT_GOOGLENET_MODEL_DIR} ${QUANT_GOOGLENET_MODEL_ARCHIVE} 1d4a7383baa63e7d1c423e8db2b791d5)
+	inference_quant_int8_image_classification_test(test_quant_int8_googlenet_mkldnn ${QUANT_GOOGLENET_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
 
-	# # Quant MobileNetV1
-	# set(QUANT_MOBILENETV1_MODEL_DIR "${QUANT_INSTALL_DIR}/MobileNetV1_quant")
-	# set(QUANT_MOBILENETV1_MODEL_ARCHIVE "MobileNetV1_qat_model.tar.gz")
-	# download_quant_model(${QUANT_MOBILENETV1_MODEL_DIR} ${QUANT_MOBILENETV1_MODEL_ARCHIVE} 3b774d94a9fcbb604d09bdb731fc1162)
-	# inference_quant_int8_image_classification_test(test_quant_int8_mobilenetv1_mkldnn ${QUANT_MOBILENETV1_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
+	# Quant MobileNetV1
+	set(QUANT_MOBILENETV1_MODEL_DIR "${QUANT_INSTALL_DIR}/MobileNetV1_quant")
+	set(QUANT_MOBILENETV1_MODEL_ARCHIVE "MobileNetV1_qat_model.tar.gz")
+	download_quant_model(${QUANT_MOBILENETV1_MODEL_DIR} ${QUANT_MOBILENETV1_MODEL_ARCHIVE} 3b774d94a9fcbb604d09bdb731fc1162)
+	inference_quant_int8_image_classification_test(test_quant_int8_mobilenetv1_mkldnn ${QUANT_MOBILENETV1_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
 
-	# # Quant MobileNetV2
-	# set(QUANT_MOBILENETV2_MODEL_DIR "${QUANT_INSTALL_DIR}/MobileNetV2_quant")
-	# set(QUANT_MOBILENETV2_MODEL_ARCHIVE "MobileNetV2_qat_model.tar.gz")
-	# download_quant_model(${QUANT_MOBILENETV2_MODEL_DIR} ${QUANT_MOBILENETV2_MODEL_ARCHIVE} 758a99d9225d8b73e1a8765883f96cdd)
-	# inference_quant_int8_image_classification_test(test_quant_int8_mobilenetv2_mkldnn ${QUANT_MOBILENETV2_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
+	# Quant MobileNetV2
+	set(QUANT_MOBILENETV2_MODEL_DIR "${QUANT_INSTALL_DIR}/MobileNetV2_quant")
+	set(QUANT_MOBILENETV2_MODEL_ARCHIVE "MobileNetV2_qat_model.tar.gz")
+	download_quant_model(${QUANT_MOBILENETV2_MODEL_DIR} ${QUANT_MOBILENETV2_MODEL_ARCHIVE} 758a99d9225d8b73e1a8765883f96cdd)
+	inference_quant_int8_image_classification_test(test_quant_int8_mobilenetv2_mkldnn ${QUANT_MOBILENETV2_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
 
-	# # Quant VGG16
-	# set(QUANT_VGG16_MODEL_DIR "${QUANT_INSTALL_DIR}/VGG16_quant")
-	# set(QUANT_VGG16_MODEL_ARCHIVE "VGG16_qat_model.tar.gz")
-	# download_quant_model(${QUANT_VGG16_MODEL_DIR} ${QUANT_VGG16_MODEL_ARCHIVE} c37e63ca82a102f47be266f8068b0b55)
-	# # inference_quant_int8_image_classification_test(test_quant_int8_vgg16_mkldnn ${QUANT_VGG16_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
+	# Quant VGG16
+	set(QUANT_VGG16_MODEL_DIR "${QUANT_INSTALL_DIR}/VGG16_quant")
+	set(QUANT_VGG16_MODEL_ARCHIVE "VGG16_qat_model.tar.gz")
+	download_quant_model(${QUANT_VGG16_MODEL_DIR} ${QUANT_VGG16_MODEL_ARCHIVE} c37e63ca82a102f47be266f8068b0b55)
+	# inference_quant_int8_image_classification_test(test_quant_int8_vgg16_mkldnn ${QUANT_VGG16_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
 
-	# # Quant VGG19
-	# set(QUANT_VGG19_MODEL_DIR "${QUANT_INSTALL_DIR}/VGG19_quant")
-	# set(QUANT_VGG19_MODEL_ARCHIVE "VGG19_qat_model.tar.gz")
-	# download_quant_model(${QUANT_VGG19_MODEL_DIR} ${QUANT_VGG19_MODEL_ARCHIVE} 62bcd4b6c3ca2af67e8251d1c96ea18f)
-	# # inference_quant_int8_image_classification_test(test_quant_int8_vgg19_mkldnn ${QUANT_VGG19_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
+	# Quant VGG19
+	set(QUANT_VGG19_MODEL_DIR "${QUANT_INSTALL_DIR}/VGG19_quant")
+	set(QUANT_VGG19_MODEL_ARCHIVE "VGG19_qat_model.tar.gz")
+	download_quant_model(${QUANT_VGG19_MODEL_DIR} ${QUANT_VGG19_MODEL_ARCHIVE} 62bcd4b6c3ca2af67e8251d1c96ea18f)
+	# inference_quant_int8_image_classification_test(test_quant_int8_vgg19_mkldnn ${QUANT_VGG19_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
 
 	### Quant2 for image classification
 
@@ -217,83 +217,83 @@ if(LINUX AND WITH_MKLDNN)
 	set(FP32_RESNET50_MODEL_DIR "${INT8_INSTALL_DIR}/resnet50")
 	inference_quant2_int8_image_classification_test(test_quant2_int8_resnet50_mkldnn ${QUANT2_RESNET50_MODEL_DIR}/ResNet50_qat_perf/float ${FP32_RESNET50_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
 
-	# # Quant2 ResNet50 with input/output scales in `fake_quantize_range_abs_max` operators and the `out_threshold` attributes,
-	# # with weight scales in `fake_dequantize_max_abs` operators
-	# set(QUANT2_RESNET50_RANGE_MODEL_DIR "${QUANT_INSTALL_DIR}/ResNet50_quant2_range")
-	# set(QUANT2_RESNET50_RANGE_MODEL_ARCHIVE "ResNet50_qat_range.tar.gz")
-	# download_quant_model(${QUANT2_RESNET50_RANGE_MODEL_DIR} ${QUANT2_RESNET50_RANGE_MODEL_ARCHIVE} 2fdc8a139f041c0d270abec826b2d304)
-	# inference_quant2_int8_image_classification_test(test_quant2_int8_resnet50_range_mkldnn ${QUANT2_RESNET50_RANGE_MODEL_DIR}/ResNet50_qat_range ${FP32_RESNET50_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
+	# Quant2 ResNet50 with input/output scales in `fake_quantize_range_abs_max` operators and the `out_threshold` attributes,
+	# with weight scales in `fake_dequantize_max_abs` operators
+	set(QUANT2_RESNET50_RANGE_MODEL_DIR "${QUANT_INSTALL_DIR}/ResNet50_quant2_range")
+	set(QUANT2_RESNET50_RANGE_MODEL_ARCHIVE "ResNet50_qat_range.tar.gz")
+	download_quant_model(${QUANT2_RESNET50_RANGE_MODEL_DIR} ${QUANT2_RESNET50_RANGE_MODEL_ARCHIVE} 2fdc8a139f041c0d270abec826b2d304)
+	inference_quant2_int8_image_classification_test(test_quant2_int8_resnet50_range_mkldnn ${QUANT2_RESNET50_RANGE_MODEL_DIR}/ResNet50_qat_range ${FP32_RESNET50_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
 
-	# # Quant2 ResNet50 with input/output scales in `fake_quantize_range_abs_max` operators and the `out_threshold` attributes,
-	# # with weight scales in `fake_channel_wise_dequantize_max_abs` operators
-	# set(QUANT2_RESNET50_CHANNELWISE_MODEL_DIR "${QUANT_INSTALL_DIR}/ResNet50_quant2_channelwise")
-	# set(QUANT2_RESNET50_CHANNELWISE_MODEL_ARCHIVE "ResNet50_qat_channelwise.tar.gz")
-	# download_quant_model(${QUANT2_RESNET50_CHANNELWISE_MODEL_DIR} ${QUANT2_RESNET50_CHANNELWISE_MODEL_ARCHIVE} 887a1b1b0e9a4efd10f263a43764db26)
-	# inference_quant2_int8_image_classification_test(test_quant2_int8_resnet50_channelwise_mkldnn ${QUANT2_RESNET50_CHANNELWISE_MODEL_DIR}/ResNet50_qat_channelwise ${FP32_RESNET50_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
+	# Quant2 ResNet50 with input/output scales in `fake_quantize_range_abs_max` operators and the `out_threshold` attributes,
+	# with weight scales in `fake_channel_wise_dequantize_max_abs` operators
+	set(QUANT2_RESNET50_CHANNELWISE_MODEL_DIR "${QUANT_INSTALL_DIR}/ResNet50_quant2_channelwise")
+	set(QUANT2_RESNET50_CHANNELWISE_MODEL_ARCHIVE "ResNet50_qat_channelwise.tar.gz")
+	download_quant_model(${QUANT2_RESNET50_CHANNELWISE_MODEL_DIR} ${QUANT2_RESNET50_CHANNELWISE_MODEL_ARCHIVE} 887a1b1b0e9a4efd10f263a43764db26)
+	inference_quant2_int8_image_classification_test(test_quant2_int8_resnet50_channelwise_mkldnn ${QUANT2_RESNET50_CHANNELWISE_MODEL_DIR}/ResNet50_qat_channelwise ${FP32_RESNET50_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
 
-	# # Quant2 MobileNetV1
-    #     set(QUANT2_MOBILENETV1_MODEL_DIR "${QUANT_INSTALL_DIR}/MobileNetV1_quant2")
-	# set(QUANT2_MOBILENETV1_MODEL_ARCHIVE "MobileNet_qat_perf.tar.gz")
-	# download_quant_model(${QUANT2_MOBILENETV1_MODEL_DIR} ${QUANT2_MOBILENETV1_MODEL_ARCHIVE} 7f626e453db2d56fed6c2538621ffacf)
-	# set(FP32_MOBILENETV1_MODEL_DIR "${INT8_INSTALL_DIR}/mobilenetv1")
-	# inference_quant2_int8_image_classification_test(test_quant2_int8_mobilenetv1_mkldnn ${QUANT2_MOBILENETV1_MODEL_DIR}/MobileNet_qat_perf/float ${FP32_MOBILENETV1_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
+	# Quant2 MobileNetV1
+        set(QUANT2_MOBILENETV1_MODEL_DIR "${QUANT_INSTALL_DIR}/MobileNetV1_quant2")
+	set(QUANT2_MOBILENETV1_MODEL_ARCHIVE "MobileNet_qat_perf.tar.gz")
+	download_quant_model(${QUANT2_MOBILENETV1_MODEL_DIR} ${QUANT2_MOBILENETV1_MODEL_ARCHIVE} 7f626e453db2d56fed6c2538621ffacf)
+	set(FP32_MOBILENETV1_MODEL_DIR "${INT8_INSTALL_DIR}/mobilenetv1")
+	inference_quant2_int8_image_classification_test(test_quant2_int8_mobilenetv1_mkldnn ${QUANT2_MOBILENETV1_MODEL_DIR}/MobileNet_qat_perf/float ${FP32_MOBILENETV1_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
 	
-	# ### Quant2 for NLP
+	### Quant2 for NLP
 
-	# set(NLP_DATA_ARCHIVE "Ernie_dataset.tar.gz")
-	# set(NLP_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie_dataset")
-	# set(NLP_DATA_PATH "${NLP_DATA_DIR}/Ernie_dataset/1.8w.bs1")
-	# set(NLP_LABLES_PATH "${NLP_DATA_DIR}/Ernie_dataset/label.xnli.dev")
-	# download_quant_data(${NLP_DATA_DIR} ${NLP_DATA_ARCHIVE} e650ce0cbc1fadbed5cc2c01d4e734dc)
+	set(NLP_DATA_ARCHIVE "Ernie_dataset.tar.gz")
+	set(NLP_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie_dataset")
+	set(NLP_DATA_PATH "${NLP_DATA_DIR}/Ernie_dataset/1.8w.bs1")
+	set(NLP_LABLES_PATH "${NLP_DATA_DIR}/Ernie_dataset/label.xnli.dev")
+	download_quant_data(${NLP_DATA_DIR} ${NLP_DATA_ARCHIVE} e650ce0cbc1fadbed5cc2c01d4e734dc)
 
-	# # Quant2 Ernie
-	# set(QUANT2_ERNIE_MODEL_ARCHIVE "ernie_qat.tar.gz")
-	# set(QUANT2_ERNIE_MODEL_DIR "${QUANT_INSTALL_DIR}/Ernie_quant2")
-	# download_quant_model(${QUANT2_ERNIE_MODEL_DIR} ${QUANT2_ERNIE_MODEL_ARCHIVE} f7cdf4720755ecf66efbc8044e9922d9)
-	# set(FP32_ERNIE_MODEL_ARCHIVE "ernie_fp32_model.tar.gz")
-	# set(FP32_ERNIE_MODEL_DIR "${QUANT_INSTALL_DIR}/Ernie_float")
-	# download_quant_fp32_model(${FP32_ERNIE_MODEL_DIR} ${FP32_ERNIE_MODEL_ARCHIVE} 114f38804a3ef8c45e7259e68bbd838b)
-	# set(QUANT2_ERNIE_OPS_TO_QUANTIZE "fc,reshape2,transpose2,matmul,elementwise_add")
-	# inference_quant2_int8_nlp_test(test_quant2_int8_ernie_mkldnn ${QUANT2_ERNIE_MODEL_DIR}/Ernie_qat/float ${FP32_ERNIE_MODEL_DIR}/ernie_fp32_model ${NLP_DATA_PATH} ${NLP_LABLES_PATH} ${QUANT2_ERNIE_OPS_TO_QUANTIZE})
+	# Quant2 Ernie
+	set(QUANT2_ERNIE_MODEL_ARCHIVE "ernie_qat.tar.gz")
+	set(QUANT2_ERNIE_MODEL_DIR "${QUANT_INSTALL_DIR}/Ernie_quant2")
+	download_quant_model(${QUANT2_ERNIE_MODEL_DIR} ${QUANT2_ERNIE_MODEL_ARCHIVE} f7cdf4720755ecf66efbc8044e9922d9)
+	set(FP32_ERNIE_MODEL_ARCHIVE "ernie_fp32_model.tar.gz")
+	set(FP32_ERNIE_MODEL_DIR "${QUANT_INSTALL_DIR}/Ernie_float")
+	download_quant_fp32_model(${FP32_ERNIE_MODEL_DIR} ${FP32_ERNIE_MODEL_ARCHIVE} 114f38804a3ef8c45e7259e68bbd838b)
+	set(QUANT2_ERNIE_OPS_TO_QUANTIZE "fc,reshape2,transpose2,matmul,elementwise_add")
+	inference_quant2_int8_nlp_test(test_quant2_int8_ernie_mkldnn ${QUANT2_ERNIE_MODEL_DIR}/Ernie_qat/float ${FP32_ERNIE_MODEL_DIR}/ernie_fp32_model ${NLP_DATA_PATH} ${NLP_LABLES_PATH} ${QUANT2_ERNIE_OPS_TO_QUANTIZE})
 
-	# # Quant2 GRU
-	# set(QUANT2_GRU_MODEL_ARCHIVE "GRU_quant_acc.tar.gz")
-	# set(QUANT2_GRU_MODEL_DIR "${QUANT_INSTALL_DIR}/GRU_quant2")
-	# download_quant_model(${QUANT2_GRU_MODEL_DIR} ${QUANT2_GRU_MODEL_ARCHIVE} cf207f8076dcfb8b74d8b6bdddf9090c)
-	# set(QUANT2_GRU_OPS_TO_QUANTIZE "multi_gru")
+	# Quant2 GRU
+	set(QUANT2_GRU_MODEL_ARCHIVE "GRU_quant_acc.tar.gz")
+	set(QUANT2_GRU_MODEL_DIR "${QUANT_INSTALL_DIR}/GRU_quant2")
+	download_quant_model(${QUANT2_GRU_MODEL_DIR} ${QUANT2_GRU_MODEL_ARCHIVE} cf207f8076dcfb8b74d8b6bdddf9090c)
+	set(QUANT2_GRU_OPS_TO_QUANTIZE "multi_gru")
 
-	# # Quant2 LSTM
-	# set(QUANT2_LSTM_MODEL_ARCHIVE "lstm_quant.tar.gz")
-	# set(QUANT2_LSTM_MODEL_DIR "${QUANT_INSTALL_DIR}/lstm_quant_test")
-	# download_quant_model(${QUANT2_LSTM_MODEL_DIR} ${QUANT2_LSTM_MODEL_ARCHIVE} 40a693803b12ee9e251258f32559abcb)
-	# set(QUANT2_LSTM_OPS_TO_QUANTIZE "fusion_lstm")
+	# Quant2 LSTM
+	set(QUANT2_LSTM_MODEL_ARCHIVE "lstm_quant.tar.gz")
+	set(QUANT2_LSTM_MODEL_DIR "${QUANT_INSTALL_DIR}/lstm_quant_test")
+	download_quant_model(${QUANT2_LSTM_MODEL_DIR} ${QUANT2_LSTM_MODEL_ARCHIVE} 40a693803b12ee9e251258f32559abcb)
+	set(QUANT2_LSTM_OPS_TO_QUANTIZE "fusion_lstm")
 
-	# ### Save FP32 model or INT8 model from Quant model
+	### Save FP32 model or INT8 model from Quant model
         
-	# set(QUANT2_INT8_RESNET50_SAVE_PATH "${QUANT_INSTALL_DIR}/ResNet50_quant2_int8")
-	# save_quant_ic_model_test(save_quant2_model_resnet50 ${QUANT2_RESNET50_MODEL_DIR}/ResNet50_qat_perf/float ${QUANT2_INT8_RESNET50_SAVE_PATH})
+	set(QUANT2_INT8_RESNET50_SAVE_PATH "${QUANT_INSTALL_DIR}/ResNet50_quant2_int8")
+	save_quant_ic_model_test(save_quant2_model_resnet50 ${QUANT2_RESNET50_MODEL_DIR}/ResNet50_qat_perf/float ${QUANT2_INT8_RESNET50_SAVE_PATH})
 
-	# set(QUANT2_INT8_ERNIE_SAVE_PATH "${QUANT_INSTALL_DIR}/Ernie_quant2_int8")
-	# save_quant_nlp_model_test(save_quant2_model_ernie ${QUANT2_ERNIE_MODEL_DIR}/Ernie_qat/float ${QUANT2_INT8_ERNIE_SAVE_PATH} ${QUANT2_ERNIE_OPS_TO_QUANTIZE})
+	set(QUANT2_INT8_ERNIE_SAVE_PATH "${QUANT_INSTALL_DIR}/Ernie_quant2_int8")
+	save_quant_nlp_model_test(save_quant2_model_ernie ${QUANT2_ERNIE_MODEL_DIR}/Ernie_qat/float ${QUANT2_INT8_ERNIE_SAVE_PATH} ${QUANT2_ERNIE_OPS_TO_QUANTIZE})
 
-	# set(QUANT2_INT8_GRU_SAVE_PATH "${QUANT_INSTALL_DIR}/GRU_quant2_int8")
-	# save_quant_nlp_model_test(save_quant2_model_gru ${QUANT2_GRU_MODEL_DIR}/GRU_quant_acc ${QUANT2_INT8_GRU_SAVE_PATH} ${QUANT2_GRU_OPS_TO_QUANTIZE})
+	set(QUANT2_INT8_GRU_SAVE_PATH "${QUANT_INSTALL_DIR}/GRU_quant2_int8")
+	save_quant_nlp_model_test(save_quant2_model_gru ${QUANT2_GRU_MODEL_DIR}/GRU_quant_acc ${QUANT2_INT8_GRU_SAVE_PATH} ${QUANT2_GRU_OPS_TO_QUANTIZE})
 
-	# set(QUANT2_INT8_LSTM_SAVE_PATH "${QUANT_INSTALL_DIR}/lstm_quant2_int8")
-	# save_quant_nlp_model_test(save_quant2_model_lstm ${QUANT2_LSTM_MODEL_DIR}/lstm_quant ${QUANT2_INT8_LSTM_SAVE_PATH} ${QUANT2_LSTM_OPS_TO_QUANTIZE})
+	set(QUANT2_INT8_LSTM_SAVE_PATH "${QUANT_INSTALL_DIR}/lstm_quant2_int8")
+	save_quant_nlp_model_test(save_quant2_model_lstm ${QUANT2_LSTM_MODEL_DIR}/lstm_quant ${QUANT2_INT8_LSTM_SAVE_PATH} ${QUANT2_LSTM_OPS_TO_QUANTIZE})
 
-	# # Convert Quant2 model to dot and pdf files 
-	# set(QUANT2_INT8_ERNIE_DOT_SAVE_PATH "${QUANT_INSTALL_DIR}/Ernie_quant2_int8_dot_file")
-	# convert_model2dot_test(convert_model2dot_ernie ${QUANT2_ERNIE_MODEL_DIR}/Ernie_qat/float ${QUANT2_INT8_ERNIE_DOT_SAVE_PATH} "Ernie_quant2_int8")
+	# Convert Quant2 model to dot and pdf files 
+	set(QUANT2_INT8_ERNIE_DOT_SAVE_PATH "${QUANT_INSTALL_DIR}/Ernie_quant2_int8_dot_file")
+	convert_model2dot_test(convert_model2dot_ernie ${QUANT2_ERNIE_MODEL_DIR}/Ernie_qat/float ${QUANT2_INT8_ERNIE_DOT_SAVE_PATH} "Ernie_quant2_int8")
 
-	# ### PTQ INT8
+	### PTQ INT8
 
-	# # PTQ int8 lstm model
-	# set(LSTM_DATA_ARCHIVE "unittest_model_data/quant_lstm_input_data.tar.gz")
-	# download_quant_data(${QUANT2_INT8_LSTM_SAVE_PATH} ${LSTM_DATA_ARCHIVE} add84c754e9b792fea1fbd728d134ab7)
-	# set(QUANT2_FP32_LSTM_MODEL_ARCHIVE "lstm_fp32_model.tar.gz")
-	# download_lstm_model(${QUANT2_INT8_LSTM_SAVE_PATH} ${QUANT2_FP32_LSTM_MODEL_ARCHIVE} eecd9f44d69a84acc1cf2235c4b8b743)
-	# inference_quant2_int8_lstm_model_test(test_quant2_int8_lstm_mkldnn ${QUANT2_INT8_LSTM_SAVE_PATH}/lstm_fp32_model ${QUANT2_LSTM_MODEL_DIR}/lstm_quant ${QUANT2_INT8_LSTM_SAVE_PATH}/quant_lstm_input_data)
+	# PTQ int8 lstm model
+	set(LSTM_DATA_ARCHIVE "unittest_model_data/quant_lstm_input_data.tar.gz")
+	download_quant_data(${QUANT2_INT8_LSTM_SAVE_PATH} ${LSTM_DATA_ARCHIVE} add84c754e9b792fea1fbd728d134ab7)
+	set(QUANT2_FP32_LSTM_MODEL_ARCHIVE "lstm_fp32_model.tar.gz")
+	download_lstm_model(${QUANT2_INT8_LSTM_SAVE_PATH} ${QUANT2_FP32_LSTM_MODEL_ARCHIVE} eecd9f44d69a84acc1cf2235c4b8b743)
+	inference_quant2_int8_lstm_model_test(test_quant2_int8_lstm_mkldnn ${QUANT2_INT8_LSTM_SAVE_PATH}/lstm_fp32_model ${QUANT2_LSTM_MODEL_DIR}/lstm_quant ${QUANT2_INT8_LSTM_SAVE_PATH}/quant_lstm_input_data)
 
 endif()
 
@@ -347,16 +347,16 @@ set_tests_properties(test_user_defined_quantization PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_qat PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_out_scale PROPERTIES TIMEOUT 120)
 if(LINUX AND WITH_MKLDNN)
-    # set_tests_properties(test_quant2_int8_mobilenetv1_mkldnn PROPERTIES TIMEOUT 120)
-    # set_tests_properties(convert_model2dot_ernie PROPERTIES TIMEOUT 120)
-    # set_tests_properties(test_quant2_int8_resnet50_channelwise_mkldnn PROPERTIES TIMEOUT 120)
-    # set_tests_properties(test_quant_int8_mobilenetv2_mkldnn PROPERTIES TIMEOUT 120)
-    # set_tests_properties(test_quant2_int8_resnet50_range_mkldnn PROPERTIES TIMEOUT 120)
-    # set_tests_properties(save_quant2_model_resnet50 PROPERTIES TIMEOUT 120)
-    # set_tests_properties(test_quant_int8_resnet50_mkldnn PROPERTIES TIMEOUT 120)
-    # set_tests_properties(test_quant_int8_mobilenetv1_mkldnn PROPERTIES TIMEOUT 120)
-    # set_tests_properties(test_quant2_int8_ernie_mkldnn PROPERTIES TIMEOUT 120)
-    # set_tests_properties(test_quant_int8_googlenet_mkldnn PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_quant2_int8_mobilenetv1_mkldnn PROPERTIES TIMEOUT 120)
+    set_tests_properties(convert_model2dot_ernie PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_quant2_int8_resnet50_channelwise_mkldnn PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_quant_int8_mobilenetv2_mkldnn PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_quant2_int8_resnet50_range_mkldnn PROPERTIES TIMEOUT 120)
+    set_tests_properties(save_quant2_model_resnet50 PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_quant_int8_resnet50_mkldnn PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_quant_int8_mobilenetv1_mkldnn PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_quant2_int8_ernie_mkldnn PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_quant_int8_googlenet_mkldnn PROPERTIES TIMEOUT 120)
     set_tests_properties(test_quant2_int8_resnet50_mkldnn PROPERTIES TIMEOUT 120)
-	# set_tests_properties(test_quant2_int8_lstm_mkldnn PROPERTIES TIMEOUT 120)
+	set_tests_properties(test_quant2_int8_lstm_mkldnn PROPERTIES TIMEOUT 120)
 endif()
