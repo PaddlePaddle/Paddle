@@ -309,7 +309,7 @@ void SparseCsrToCooKernel(const Context& dev_ctx,
                                             sizeof(int64_t) * non_zero_num,
                                             hipMemcpyDeviceToDevice,
                                             dev_ctx.stream()));
-  PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpyAsync(cool_values_data,
+  PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpyAsync(coo_values_data,
                                             csr_values_data,
                                             sizeof(T) * non_zero_num,
                                             hipMemcpyDeviceToDevice,
