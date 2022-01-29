@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,9 +14,15 @@ limitations under the License. */
 
 #pragma once
 
-// api symbols declare, remove in the future
-#include "paddle/pten/api/lib/api_registry.h"
+#include "paddle/pten/api/include/tensor.h"
+#include "paddle/pten/common/backend.h"
 
-PT_DECLARE_API(Math);
-PT_DECLARE_API(Utils);
-PT_DECLARE_API(SparseApi);
+namespace paddle {
+namespace experimental {
+
+PADDLE_API Tensor to_sparse_coo(const Tensor& x,
+                                Backend backend,
+                                const int64_t sparse_dim);
+
+}  // namespace experimental
+}  // namespace paddle
