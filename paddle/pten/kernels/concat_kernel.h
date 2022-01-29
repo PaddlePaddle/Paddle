@@ -31,8 +31,8 @@ DenseTensor Concat(const Context& dev_ctx,
                    const std::vector<DenseTensor>& x,
                    const Scalar& axis) {
   std::vector<MetaTensor> meta_x;
-  for (auto t : x) {
-    meta_x.emplace_back(MetaTensor(t));
+  for (const auto& t : x) {
+    meta_x.emplace_back(t);
   }
 
   auto dense_out = pten::Empty<T, Context>(dev_ctx);

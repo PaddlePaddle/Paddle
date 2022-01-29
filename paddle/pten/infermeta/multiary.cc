@@ -45,7 +45,7 @@ void ConcatInferMeta(const std::vector<MetaTensor>& x,
 
   // 2. calculate out dims
   std::vector<pten::DDim> x_dims;
-  for (auto x_t : x) {
+  for (auto& x_t : x) {
     x_dims.push_back(x_t.dims());
   }
   pten::DDim out_dim =
