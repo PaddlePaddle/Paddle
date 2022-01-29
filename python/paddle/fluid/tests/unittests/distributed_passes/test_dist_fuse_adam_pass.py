@@ -77,8 +77,6 @@ class TestFuseAdamPass(DistPassTestBase):
         pass_manager.apply([main_prog], [startup_prog])
         print(pass_manager.names)
 
-        print(main_prog)
-
         op_type = []
         for op in main_prog.global_block().ops:
             op_type.append(op.type)
