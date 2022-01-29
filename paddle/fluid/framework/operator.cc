@@ -1980,23 +1980,18 @@ void OperatorWithKernel::BuildPtenKernelContext(
     size_t start_idx =
         (i == 0 ? 0 : pt_kernel_context->InputRangeAt(i - 1).second);
     size_t end_idx = start_idx + ins_vector.size();
-    if (ins_vector.size() == 0) {
-      end_idx += 1;
-      pt_kernel_context->EmplaceBackInputWithoutSetRange(nullptr);
-    } else {
-      for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
-        const framework::Tensor* tensor_in = nullptr;
-        auto* var = ins_vector[offset];
-        if (var->IsType<framework::LoDTensor>()) {
-          tensor_in = &(var->Get<framework::LoDTensor>());
-        } else {
-          PADDLE_THROW(platform::errors::Unimplemented(
-              "Unsupported input `%s` type when call pt kernel.",
-              framework::ToTypeName(var->Type())));
-        }  // TODO(zyfncg): Add support for SelectedRows
+    for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
+      const framework::Tensor* tensor_in = nullptr;
+      auto* var = ins_vector[offset];
+      if (var->IsType<framework::LoDTensor>()) {
+        tensor_in = &(var->Get<framework::LoDTensor>());
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported input `%s` type when call pt kernel.",
+            framework::ToTypeName(var->Type())));
+      }  // TODO(zyfncg): Add support for SelectedRows
 
-        pt_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
-      }
+      pt_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
     }
     pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx), i);
   }
