@@ -35,7 +35,4 @@ DenseTensorMeta CreateInferMeta(const ScalarArray& shape,
                                 DataType dtype,
                                 DataLayout layout);
 
-StringTensorMeta CreateInferMeta(const std::vector<int64_t>& shape);
-StringTensorMeta CreateInferMeta(const ScalarArray& shape);
-
 }  // namespace pten

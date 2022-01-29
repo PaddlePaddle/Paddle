@@ -27,9 +27,11 @@ void EmptyKernel(const Context& dev_ctx,
   out->ResizeAndAllocate(pten::framework::make_ddim(shape.GetData()));
 }
 
-template <typename T, typename Context>
+template <typename Context>
 void EmptyLikeKernel(const Context& dev_ctx, StringTensor* out) {
-  out->mutable_data<T>(dev_ctx.GetPlace());
+  // TODO(zhoushunjie): need to update StringTensor::mutable_data
+  // out->mutable_data<T>(dev_ctx.GetPlace());
+  out->mutable_data();
 }
 
 }  // namespace strings
@@ -46,19 +48,19 @@ PT_REGISTER_GENERAL_KERNEL(string_empty,
 PT_REGISTER_GENERAL_KERNEL(string_empty_like,
                            CPU,
                            ALL_LAYOUT,
-                           pten::strings::EmptyKernel<pten::CPUContext>,
+                           pten::strings::EmptyLikeKernel<pten::CPUContext>,
                            pstring) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PT_REGISTER_GENERAL_KERNEL(string_empty,
-                           CPU,
+                           GPU,
                            ALL_LAYOUT,
                            pten::strings::EmptyKernel<pten::GPUContext>,
                            pstring) {}
 
 PT_REGISTER_GENERAL_KERNEL(string_empty_like,
-                           CPU,
+                           GPU,
                            ALL_LAYOUT,
-                           pten::strings::EmptyKernel<pten::GPUContext>,
+                           pten::strings::EmptyLikeKernel<pten::GPUContext>,
                            pstring) {}
 #endif

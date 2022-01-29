@@ -17,8 +17,8 @@
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/string_tensor.h"
-#include "paddle/pten/infermeta/nullary.h"
-#include "paddle/pten/infermeta/unary.h"
+#include "paddle/pten/infermeta/strings/nullary.h"
+#include "paddle/pten/infermeta/strings/unary.h"
 
 namespace pten {
 namespace strings {
@@ -49,7 +49,7 @@ StringTensor Empty(const Context& dev_ctx) {
 
 template <typename Context>
 StringTensor Empty(const Context& dev_ctx, const ScalarArray& shape) {
-  auto out_meta = CreateInferMeta(shape);
+  auto out_meta = pten::strings::CreateInferMeta(shape);
   auto string_out = Empty<Context>(dev_ctx, std::move(out_meta));
   EmptyKernel<Context>(dev_ctx, shape, &string_out);
   return string_out;
@@ -57,7 +57,7 @@ StringTensor Empty(const Context& dev_ctx, const ScalarArray& shape) {
 
 template <typename Context>
 StringTensor EmptyLike(const Context& dev_ctx, const StringTensor& x) {
-  auto out_meta = UnchangedInferMeta(x.meta());
+  auto out_meta = pten::strings::UnchangedInferMeta(x.meta());
   auto string_out = Empty<Context>(dev_ctx, std::move(out_meta));
   EmptyLikeKernel<Context>(dev_ctx, &string_out);
   return string_out;

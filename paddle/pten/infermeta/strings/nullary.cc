@@ -11,24 +11,19 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/pten/infermeta/nullary.h"
+#include "paddle/pten/infermeta/strings/nullary.h"
 
 namespace pten {
+namespace strings {
 
-DenseTensorMeta CreateInferMeta(const std::vector<int64_t>& shape,
-                                DataType dtype,
-                                DataLayout layout) {
+StringTensorMeta CreateInferMeta(const std::vector<int64_t>& shape) {
   const auto& out_dims = pten::framework::make_ddim(shape);
-  return {dtype, out_dims, layout};
+  return StringTensorMeta(out_dims);
 }
-
-DenseTensorMeta CreateInferMeta(const ScalarArray& shape,
-                                DataType dtype,
-                                DataLayout layout) {
+StringTensorMeta CreateInferMeta(const ScalarArray& shape) {
   const auto& out_dims = pten::framework::make_ddim(shape.GetData());
-  return {dtype, out_dims, layout};
+  return StringTensorMeta(out_dims);
 }
 
+}  // namespace strings
 }  // namespace pten

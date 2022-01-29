@@ -12,23 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#pragma once
+
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/pten/infermeta/nullary.h"
+#include "paddle/pten/common/scalar_array.h"
+#include "paddle/pten/core/infermeta_utils.h"
+#include "paddle/pten/core/meta_tensor.h"
+#include "paddle/pten/core/tensor_meta.h"
 
 namespace pten {
+namespace strings {
+// Common InferMeta Functions of StringTensor for unary operators:
+StringTensorMeta UnchangedInferMeta(const StringTensorMeta& x_meta);
 
-DenseTensorMeta CreateInferMeta(const std::vector<int64_t>& shape,
-                                DataType dtype,
-                                DataLayout layout) {
-  const auto& out_dims = pten::framework::make_ddim(shape);
-  return {dtype, out_dims, layout};
-}
-
-DenseTensorMeta CreateInferMeta(const ScalarArray& shape,
-                                DataType dtype,
-                                DataLayout layout) {
-  const auto& out_dims = pten::framework::make_ddim(shape.GetData());
-  return {dtype, out_dims, layout};
-}
-
+}  // namespace strings
 }  // namespace pten
