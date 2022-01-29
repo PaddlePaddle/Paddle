@@ -11,6 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include "paddle/pten/common/bfloat16.h"
 #include "paddle/pten/common/float16.h"
 #include "paddle/pten/kernels/funcs/eigen/eigen_function.h"
 
@@ -73,6 +74,7 @@ struct EigenBroadcastGrad<Eigen::GpuDevice, T, Rank> {
   template struct FUNCTOR<Eigen::GpuDevice, T, 6>
 INSTANTIATION(EigenBroadcast, bool);
 INSTANTIATION(EigenBroadcast, dtype::float16);
+INSTANTIATION(EigenBroadcast, dtype::bfloat16);
 INSTANTIATION(EigenBroadcast, float);
 INSTANTIATION(EigenBroadcast, double);
 INSTANTIATION(EigenBroadcast, int);
@@ -80,11 +82,13 @@ INSTANTIATION(EigenBroadcast, int64_t);
 INSTANTIATION(EigenBroadcastGrad, bool);
 INSTANTIATION(EigenBroadcastGrad, float);
 INSTANTIATION(EigenBroadcastGrad, dtype::float16);
+INSTANTIATION(EigenBroadcastGrad, dtype::bfloat16);
 INSTANTIATION(EigenBroadcastGrad, double);
 INSTANTIATION(EigenBroadcastGrad, int);
 INSTANTIATION(EigenBroadcastGrad, int64_t);
 template struct EigenBroadcastGrad<Eigen::GpuDevice, float, 0>;
 template struct EigenBroadcastGrad<Eigen::GpuDevice, dtype::float16, 0>;
+template struct EigenBroadcastGrad<Eigen::GpuDevice, dtype::bfloat16, 0>;
 template struct EigenBroadcastGrad<Eigen::GpuDevice, double, 0>;
 template struct EigenBroadcastGrad<Eigen::GpuDevice, int, 0>;
 template struct EigenBroadcastGrad<Eigen::GpuDevice, int64_t, 0>;

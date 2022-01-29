@@ -292,6 +292,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::TileKernel<paddle::platform::CUDADeviceContext, double>,
     ops::TileKernel<paddle::platform::CUDADeviceContext,
                     paddle::platform::float16>,
+    ops::TileKernel<paddle::platform::CUDADeviceContext,
+                    paddle::platform::bfloat16>,
     ops::TileKernel<paddle::platform::CUDADeviceContext, int>,
     ops::TileKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::TileKernel<paddle::platform::CUDADeviceContext, bool>);
@@ -300,6 +302,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::TileGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::TileGradKernel<paddle::platform::CUDADeviceContext,
                         paddle::platform::float16>,
+    ops::TileGradKernel<paddle::platform::CUDADeviceContext,
+                        paddle::platform::bfloat16>,
     ops::TileGradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::TileGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
 #endif
