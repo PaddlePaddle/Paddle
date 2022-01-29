@@ -49,7 +49,7 @@ limitations under the License. */
 #include "paddle/utils/string/to_string.h"
 
 // Note: these headers for simplify demangle type string
-#include "paddle/pten/core/type_defs.h"
+#include "paddle/pten/core/compat/type_defs.h"
 
 namespace pten {
 class ErrorSummary;

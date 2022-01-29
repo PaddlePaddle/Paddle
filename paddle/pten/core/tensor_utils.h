@@ -14,31 +14,15 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/storage.h"
 #include "paddle/pten/core/tensor_meta.h"
 
 namespace pten {
 
-/**
- * In order to meet some adaptation requirements of the compatible state,
- * these class is added to provide some tool functions.
- *
- * These utility functions may be deleted in the future, It is not recommended
- * to be widely used in the framework
- */
-
-class CompatibleDenseTensorUtils {
+class DenseTensorUtils {
  public:
   static DenseTensorMeta* GetMutableMeta(DenseTensor* tensor) {
     return &(tensor->meta_);
-  }
-
-  // only can deal with SharedStorage now
-  static void ClearStorage(DenseTensor* tensor) {
-    // use static_cast to improve performance, replace by dynamic_cast later
-    tensor->MoveMemoryHolder();
   }
 
   static DenseTensor Slice(const DenseTensor& tensor,
