@@ -11,8 +11,10 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/pten/core/convert_utils.h"
+
+#include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/compat/op_utils.h"
+
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
@@ -124,26 +126,6 @@ paddle::framework::proto::VarType::Type TransToProtoVarType(
           "paddle data type.",
           dtype));
   }
-}
-
-paddle::framework::LoD TransToFluidLoD(const pten::LoD& lod) {
-  paddle::framework::LoD out;
-  out.reserve(lod.size());
-
-  for (auto& elem : lod) {
-    out.emplace_back(elem);
-  }
-  return out;
-}
-
-pten::LoD TransToPtenLoD(const paddle::framework::LoD& lod) {
-  pten::LoD out;
-  out.reserve(lod.size());
-
-  for (auto& elem : lod) {
-    out.emplace_back(elem);
-  }
-  return out;
 }
 
 size_t DataTypeSize(DataType dtype) {

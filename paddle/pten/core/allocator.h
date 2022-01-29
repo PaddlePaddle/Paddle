@@ -16,7 +16,9 @@ limitations under the License. */
 
 #include <cstdint>
 #include <functional>
-#include "paddle/fluid/platform/place.h"
+#include <memory>
+
+#include "paddle/pten/common/place.h"
 
 namespace pten {
 
@@ -26,7 +28,7 @@ namespace pten {
 /// support being inherited.
 class Allocation {
  public:
-  using Place = paddle::platform::Place;
+  using Place = pten::Place;
   using DeleterFnPtr = void (*)(Allocation*);
 
   Allocation() = default;

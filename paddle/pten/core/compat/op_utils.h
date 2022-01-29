@@ -18,12 +18,11 @@ limitations under the License. */
 #include <set>
 
 #include "paddle/pten/core/compat/arg_map_context.h"
+#include "paddle/pten/core/enforce.h"
 #include "paddle/pten/core/infermeta_utils.h"
-#include "paddle/pten/core/kernel_def.h"
 #include "paddle/pten/core/macros.h"
+#include "paddle/pten/core/type_defs.h"
 #include "paddle/utils/flat_hash_map.h"
-
-#include "paddle/fluid/platform/enforce.h"
 
 namespace pten {
 
@@ -54,7 +53,7 @@ class DefaultKernelSignatureMap {
     PADDLE_ENFORCE_NE(
         it,
         map_.end(),
-        paddle::platform::errors::NotFound(
+        pten::errors::NotFound(
             "Operator `%s`'s kernel signature is not registered.", op_type));
     return it->second;
   }
@@ -63,7 +62,7 @@ class DefaultKernelSignatureMap {
     PADDLE_ENFORCE_NE(
         Has(op_type),
         true,
-        paddle::platform::errors::AlreadyExists(
+        pten::errors::AlreadyExists(
             "Operator (%s)'s Kernel Siginature has been registered.", op_type));
     map_.insert({std::move(op_type), std::move(signature)});
   }
@@ -88,7 +87,7 @@ class OpUtilsMap {
     PADDLE_ENFORCE_EQ(
         name_map_.count(op_type),
         0UL,
-        paddle::platform::errors::AlreadyExists(
+        pten::errors::AlreadyExists(
             "Operator (%s)'s api name has been registered.", op_type));
     name_map_.insert({std::move(op_type), std::move(base_kernel_name)});
   }
@@ -97,7 +96,7 @@ class OpUtilsMap {
     PADDLE_ENFORCE_EQ(
         arg_mapping_fn_map_.count(op_type),
         0UL,
-        paddle::platform::errors::AlreadyExists(
+        pten::errors::AlreadyExists(
             "Operator (%s)'s argu,emt mapping function has been registered.",
             op_type));
     arg_mapping_fn_map_.insert({std::move(op_type), std::move(fn)});
