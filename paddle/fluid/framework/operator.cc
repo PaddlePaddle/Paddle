@@ -1890,6 +1890,9 @@ Scope* OperatorWithKernel::PreparePtenData(
 
   for (size_t i = 0; i < input_defs.size(); ++i) {
     auto& in_def = input_defs.at(i);
+    if (ctx->inputs.find(input_names[i]) == ctx->inputs.end()) {
+      continue;
+    }
     auto& ins_vector = ctx->inputs.at(input_names[i]);
     auto& name_vec = name_map.at(input_names[i]);
     bool should_skip_input =
@@ -1901,7 +1904,6 @@ Scope* OperatorWithKernel::PreparePtenData(
       if (var == nullptr || !VarIsTensor(*var)) {
         continue;
       }
-
       auto* tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
 
       // When no_buffer_ins then checking of Tensor::holder_ is
@@ -1915,7 +1917,6 @@ Scope* OperatorWithKernel::PreparePtenData(
       if (!tensor_in->IsInitialized()) {
         continue;
       }
-
       auto expected_place = pten::TransToFluidPlace(in_def.backend);
       if (platform::is_same_place(tensor_in->place(), expected_place)) {
         continue;
@@ -1974,11 +1975,17 @@ void OperatorWithKernel::BuildPtenKernelContext(
                         attr_names.size(), attr_defs.size()));
 
   for (size_t i = 0; i < input_names.size(); ++i) {
-    auto& ins_vector = ctx.inputs.at(input_names[i]);
-
-    // calcute the start and end index of the input tensors
     size_t start_idx =
         (i == 0 ? 0 : pt_kernel_context->InputRangeAt(i - 1).second);
+    if (ctx.inputs.find(input_names[i]) == ctx.inputs.end()) {
+      pt_kernel_context->EmplaceBackInputWithoutSetRange(nullptr);
+      pt_kernel_context->AssignInputRange(
+          std::make_pair(start_idx, start_idx + 1), i);
+      continue;
+    }
+
+    auto& ins_vector = ctx.inputs.at(input_names[i]);
+    // calcute the start and end index of the input tensors
     size_t end_idx = start_idx + ins_vector.size();
 
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {

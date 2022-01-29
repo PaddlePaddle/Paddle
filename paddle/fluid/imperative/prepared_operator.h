@@ -245,9 +245,14 @@ void BuildDygraphPtenKernelContext(
                         attr_names.size(), attr_defs.size()));
 
   for (size_t i = 0; i < input_names.size(); ++i) {
+    size_t start_idx = (i == 0 ? 0 : kernel_ctx->InputRangeAt(i - 1).second);
+    if (ins.find(input_names[i]) == ins.end()) {
+      kernel_ctx->EmplaceBackInputWithoutSetRange(nullptr);
+      kernel_ctx->AssignInputRange(std::make_pair(start_idx, start_idx + 1), i);
+      continue;
+    }
     auto& ins_vector = ins.at(input_names[i]);
 
-    size_t start_idx = (i == 0 ? 0 : kernel_ctx->InputRangeAt(i - 1).second);
     size_t end_idx = start_idx + ins_vector.size();
 
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
@@ -412,6 +417,9 @@ void PreparePtenData(const pten::Kernel& pt_kernel,
 
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto& in_def = input_defs.at(i);
+    if (ins.find(input_names[i]) == ins.end()) {
+      continue;
+    }
     auto& ins_vector = ins.at(input_names[i]);
 
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
