@@ -19,7 +19,6 @@
 
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/gpu/masked_select_util.h"
 #include "paddle/pten/kernels/masked_select_kernel.h"
 
 namespace pten {
