@@ -55,11 +55,6 @@ class TestFuseAdamPass(DistPassTestBase):
         dist_strategy = fleet.DistributedStrategy()
         dist_strategy.fuse_all_reduce_ops = False
         dist_strategy.without_graph_optimization = True
-        dist_strategy.amp = True
-        dist_strategy.amp_configs = {
-            "init_loss_scaling": 32768,
-            "use_dynamic_loss_scaling": True,
-        }
         fleet.init(is_collective=True, strategy=dist_strategy)
         optimizer = fleet.distributed_optimizer(optimizer)
         optimizer.minimize(loss)
@@ -82,12 +77,14 @@ class TestFuseAdamPass(DistPassTestBase):
         pass_manager.apply([main_prog], [startup_prog])
         print(pass_manager.names)
 
+        print(main_prog)
+
         op_type = []
         for op in main_prog.global_block().ops:
             op_type.append(op.type)
             if op.type == "adam":
                 self.assertTrue("@FUSEDVAR@_adam_Param_batch_norm2d_0.b_0" in
-                                op.input("Param"))
+                                op.input("Param"), op.input("Param"))
                 self.assertTrue("@FUSEDVAR@_adam_Grad_batch_norm2d_0.b_0@GRAD"
                                 in op.input("Grad"))
         self.assertTrue("coalesce_tensor" in op_type)
