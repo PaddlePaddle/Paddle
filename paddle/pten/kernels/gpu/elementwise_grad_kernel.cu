@@ -58,7 +58,6 @@ void AddDoubleGradKernel(const Context& dev_ctx,
                          const DenseTensor& dout,
                          int axis,
                          DenseTensor* ddout) {
-  LOG(INFO) << "come into --------------------";
   pten::AddDoubleGradImpl<T>(
       dev_ctx,
       y,

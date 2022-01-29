@@ -62,7 +62,6 @@ void AddDoubleGradImpl(const Context& dev_ctx,
                        GradInverseFunc grad_inverse_func) {
   // ddOut = ddx + ddy
   if (ddout) {
-    LOG(INFO) << "come into 2--------------------";
     DenseTensor ddx_safe, ddy_safe;
     funcs::GetDoubleGradSafeTensor<Context, T>(
         dev_ctx, dout, ddx.get_ptr(), &ddx_safe);
@@ -73,7 +72,6 @@ void AddDoubleGradImpl(const Context& dev_ctx,
     auto ddx_dims = ddx_safe.dims();
     auto ddy_dims = ddy_safe.dims();
     if (ddx_dims.size() >= ddy_dims.size()) {
-      LOG(INFO) << "come into 3--------------------";
       grad_func(
           dev_ctx, ddx_safe, ddy_safe, axis, funcs::AddFunctor<T>(), ddout);
     } else {
@@ -84,7 +82,6 @@ void AddDoubleGradImpl(const Context& dev_ctx,
                         funcs::InverseAddFunctor<T>(),
                         ddout);
     }
-    LOG(INFO) << "come into 4--------------------";
   }
 }
 
