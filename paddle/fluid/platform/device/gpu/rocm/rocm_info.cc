@@ -266,8 +266,8 @@ void GpuDeviceSync() { PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize()); }
 
 gpuError_t GpuGetLastError() { return hipGetLastError(); }
 
-bool IsGPUManagedMemorySupported(int ide_id) {
-  PADDLE_ENFORCE_LT(id, GetGPUDeviceCount(),
+bool IsGPUManagedMemorySupported(int dev_id) {
+  PADDLE_ENFORCE_LT(dev_id, GetGPUDeviceCount(),
                     platform::errors::InvalidArgument(
                         "Device id must be less than GPU count, "
                         "but received id is: %d. GPU count is: %d.",
