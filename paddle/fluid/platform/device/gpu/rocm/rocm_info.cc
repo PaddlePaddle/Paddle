@@ -288,7 +288,7 @@ bool IsGPUManagedMemoryOversubscriptionSupported(int dev_id) {
                         "Device id must be less than GPU count, "
                         "but received id is: %d. GPU count is: %d.",
                         dev_id, GetGPUDeviceCount()));
-#ifdef(__linux__)
+#ifdef __linux__
   return IsGPUManagedMemorySupported(dev_id) &&
          GetGPUComputeCapability(dev_id) >= 60;
 #else
