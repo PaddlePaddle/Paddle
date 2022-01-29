@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,10 +15,6 @@ limitations under the License. */
 #include <thrust/execution_policy.h>
 #include <thrust/remove.h>
 
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-
-#include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_registry.h"
@@ -30,6 +26,7 @@ namespace pten {
 template <typename T>
 inline __device__ bool DevIsZero(const T* data, const int64_t cols) {
   const T zero = static_cast<T>(0);
+  // TODO(zhangkaihuo): check the data is zero or not in parallen when cols > 1
   for (int64_t i = 0; i < cols; i++) {
     if (data[i] != zero) {
       return false;
@@ -51,7 +48,9 @@ __global__ void GetNonZeroNums(const T* dense_data,
 
   for (int i = tid; i < rows; i += gridDim.x * blockDim.x) {
     int index = -1;
+    // TODO(zhangkaihuo): when cols=1, vectorization can be used
     if (!DevIsZero(dense_data + i * cols, cols)) {
+      // use reductions?
       atomicAdd(&counter, 1);
       index = i;
     }
@@ -87,6 +86,19 @@ __global__ void GetNonZeroElementsAndIndices(const T* dense_data,
   }
 }
 
+template <typename Context>
+void GetGpuLaunchConfig1D(const Context& dev_ctx,
+                          const int64_t n,
+                          int* grid_size,
+                          int* block_size) {
+  const int MAX_BLOCK_DIM = dev_ctx.GetMaxThreadsPerBlock();
+  const int MAX_GRID_DIM = dev_ctx.GetMaxPhysicalThreadCount() / MAX_BLOCK_DIM;
+  *block_size = (n >= MAX_BLOCK_DIM) ? MAX_BLOCK_DIM
+                                     : (1 << static_cast<int>(std::log2(n)));
+  *grid_size = n / *block_size;
+  *grid_size = (*grid_size >= MAX_GRID_DIM) ? MAX_GRID_DIM : *grid_size;
+}
+
 template <typename T, typename Context>
 void DenseToSparseCooKernel(const Context& dev_ctx,
                             const DenseTensor& x,
@@ -119,17 +131,15 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaMemsetAsync(nums_ptr, 0, sizeof(int), dev_ctx.stream()));
 #endif
-  paddle::platform::GpuLaunchConfig config =
-      paddle::platform::GetGpuLaunchConfig1D(dev_ctx, rows);
+  int grid_size = 1, block_size = 1;
+  GetGpuLaunchConfig1D(dev_ctx, rows, &grid_size, &block_size);
+
   auto temp_indexs_meta =
       pten::DenseTensorMeta(DataType::INT32, {rows}, pten::DataLayout::NCHW);
   DenseTensor temp_indexs =
       pten::Empty<T, Context>(dev_ctx, std::move(temp_indexs_meta));
   int* temp_indexs_ptr = temp_indexs.mutable_data<int>(place);
-  GetNonZeroNums<<<config.block_per_grid,
-                   config.thread_per_block,
-                   0,
-                   dev_ctx.stream()>>>(
+  GetNonZeroNums<<<grid_size, block_size, 0, dev_ctx.stream()>>>(
       x_data, rows, cols, nums_ptr, temp_indexs_ptr);
 #ifdef PADDLE_WITH_HIP
   thrust::remove(thrust::hip::par.on(dev_ctx.stream()),
@@ -142,19 +152,36 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
 
   // 2. copy non_zero_num to host, copy x_dims to device
   int non_zero_num = 0;
-  paddle::memory::Copy(paddle::platform::CPUPlace(),
-                       &non_zero_num,
-                       paddle::platform::CUDAPlace(),
-                       nums_ptr,
-                       sizeof(int),
-                       dev_ctx.stream());
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpyAsync(&non_zero_num,
+                                            nums_ptr,
+                                            sizeof(int),
+                                            cudaMemcpyDeviceToHost,
+                                            dev_ctx.stream()));
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&non_zero_num,
+                                             nums_ptr,
+                                             sizeof(int),
+                                             cudaMemcpyDeviceToHost,
+                                             dev_ctx.stream()));
+#endif
 
-  paddle::memory::Copy(paddle::platform::CUDAPlace(),
-                       d_x_dims.mutable_data<int64_t>(place),
-                       paddle::platform::CPUPlace(),
-                       x_dims.Get(),
-                       x_dims.size() * sizeof(x_dims[0]),
-                       dev_ctx.stream());
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      hipMemcpyAsync(d_x_dims.mutable_data<int64_t>(place),
+                     x_dims.Get(),
+                     x_dims.size() * sizeof(x_dims[0]),
+                     cudaMemcpyHostToDevice,
+                     dev_ctx.stream()));
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaMemcpyAsync(d_x_dims.mutable_data<int64_t>(place),
+                      x_dims.Get(),
+                      x_dims.size() * sizeof(x_dims[0]),
+                      cudaMemcpyHostToDevice,
+                      dev_ctx.stream()));
+#endif
+
   dev_ctx.Wait();  // wait the copy
 
   const auto values_dims = InferDenseDims(x_dims, sparse_dim, non_zero_num);
@@ -174,19 +201,16 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
   T* sparse_data = values.mutable_data<T>(place);
 
   // 3. calc indices by indexs and get values by indexs
-  paddle::platform::GpuLaunchConfig config2 =
-      paddle::platform::GetGpuLaunchConfig1D(dev_ctx, non_zero_num);
-  GetNonZeroElementsAndIndices<<<config2.block_per_grid,
-                                 config2.thread_per_block,
-                                 0,
-                                 dev_ctx.stream()>>>(x_data,
-                                                     sparse_dim,
-                                                     cols,
-                                                     d_x_dims.data<int64_t>(),
-                                                     non_zero_num,
-                                                     temp_indexs_ptr,
-                                                     indices_data,
-                                                     sparse_data);
+  GetGpuLaunchConfig1D(dev_ctx, non_zero_num, &grid_size, &block_size);
+  GetNonZeroElementsAndIndices<<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+      x_data,
+      sparse_dim,
+      cols,
+      d_x_dims.data<int64_t>(),
+      non_zero_num,
+      temp_indexs_ptr,
+      indices_data,
+      sparse_data);
   out->SetMember(indices, values, x_dims, true);
 }
 

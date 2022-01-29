@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/api/include/sparse_utils.h"
+#include "paddle/pten/api/include/sparse_api.h"
 
 #include <memory>
 #include "glog/logging.h"
@@ -49,8 +49,8 @@ PADDLE_API Tensor to_sparse_coo(const Tensor& x,
   auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
       kernel_name, kernel_key);
 
-  VLOG(0) << "to API kernel key: " << kernel_key;
-  VLOG(0) << "to API kernel: " << kernel;
+  VLOG(6) << "to API kernel key: " << kernel_key;
+  VLOG(6) << "to API kernel: " << kernel;
 
   // 2. Get Device Context
   auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
@@ -97,4 +97,4 @@ PADDLE_API Tensor to_sparse_coo(const Tensor& x,
 }  // namespace experimental
 }  // namespace paddle
 
-PT_REGISTER_API(SparseUtils);
+PT_REGISTER_API(SparseApi);
