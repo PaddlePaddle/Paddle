@@ -104,6 +104,8 @@ static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObj
   PyThreadState *tstate = nullptr;
   try
   {{
+    VLOG(6) << "Running Eager Final State API: {}";
+
     // Get EagerTensors from args
 {}
 
@@ -129,7 +131,7 @@ static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObj
 
 """
     python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
-        fwd_api_name, get_eager_tensor_str, parse_attributes_str,
+        fwd_api_name, fwd_api_name, get_eager_tensor_str, parse_attributes_str,
         GetForwardFunctionName(fwd_api_name), dygraph_function_call_str)
 
     python_c_function_reg_str = f"{{\"final_state_{fwd_api_name}\", (PyCFunction)(void(*)(void))eager_final_state_api_{fwd_api_name}, METH_VARARGS | METH_KEYWORDS, \"C++ interface function for {fwd_api_name} in dygraph.\"}},\n"
@@ -139,50 +141,50 @@ static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObj
 
 def GenerateCoreOpsInfoMap():
     result = """
-      static PyObject * eager_get_final_state_core_ops_args_info(PyObject *self) {
-        PyThreadState *tstate = nullptr;
-        try
-        {
-          return ToPyObject(core_ops_final_state_args_info);
-        }
-        catch(...) {
-          if (tstate) {
-            PyEval_RestoreThread(tstate);
-          }
-          ThrowExceptionToPython(std::current_exception());
-          return nullptr;
-        }
+static PyObject * eager_get_final_state_core_ops_args_info(PyObject *self) {
+    PyThreadState *tstate = nullptr;
+    try
+    {
+      return ToPyObject(core_ops_final_state_args_info);
+    }
+    catch(...) {
+      if (tstate) {
+        PyEval_RestoreThread(tstate);
       }
-      
-      static PyObject * eager_get_final_state_core_ops_args_type_info(PyObject *self) {
-        PyThreadState *tstate = nullptr;
-        try
-        {
-          return ToPyObject(core_ops_final_state_args_type_info);
-        }
-        catch(...) {
-          if (tstate) {
-            PyEval_RestoreThread(tstate);
-          }
-          ThrowExceptionToPython(std::current_exception());
-          return nullptr;
-        }
+      ThrowExceptionToPython(std::current_exception());
+      return nullptr;
+    }
+}
+
+static PyObject * eager_get_final_state_core_ops_args_type_info(PyObject *self) {
+    PyThreadState *tstate = nullptr;
+    try
+    {
+      return ToPyObject(core_ops_final_state_args_type_info);
+    }
+    catch(...) {
+      if (tstate) {
+        PyEval_RestoreThread(tstate);
       }
-      
-      static PyObject * eager_get_final_state_core_ops_returns_info(PyObject *self) {
-        PyThreadState *tstate = nullptr;
-        try
-        {
-          return ToPyObject(core_ops_final_state_returns_info);
-        }
-        catch(...) {
-          if (tstate) {
-            PyEval_RestoreThread(tstate);
-          }
-          ThrowExceptionToPython(std::current_exception());
-          return nullptr;
-        }
+      ThrowExceptionToPython(std::current_exception());
+      return nullptr;
+    }
+}
+
+static PyObject * eager_get_final_state_core_ops_returns_info(PyObject *self) {
+    PyThreadState *tstate = nullptr;
+    try
+    {
+      return ToPyObject(core_ops_final_state_returns_info);
+    }
+    catch(...) {
+      if (tstate) {
+        PyEval_RestoreThread(tstate);
       }
+      ThrowExceptionToPython(std::current_exception());
+      return nullptr;
+    }
+}
     """
 
     core_ops_infos_registry = """
