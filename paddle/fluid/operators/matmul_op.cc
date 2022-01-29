@@ -692,29 +692,28 @@ class MatMulOp : public framework::OperatorWithKernel {
                                             "received %d",
                                             reshape_out_size));
 
-      // int num_negative = std::count(reshape_out.begin(), reshape_out.end(),
-      // -1);
-      // PADDLE_ENFORCE_LE(num_negative, 1,
-      //                   platform::errors::InvalidArgument(
-      //                       "The max number of -1 in fused_reshape_Out is 1 "
-      //                       "but received %d.",
-      //                       num_negative));
+      int num_negative = std::count(reshape_out.begin(), reshape_out.end(), -1);
+      PADDLE_ENFORCE_LE(num_negative, 1,
+                        platform::errors::InvalidArgument(
+                            "The max number of -1 in fused_reshape_Out is 1 "
+                            "but received %d.",
+                            num_negative));
 
-      // auto it_zero = std::find(reshape_out.begin(), reshape_out.end(), 0);
-      // if (it_zero != reshape_out.end()) {
-      //   for (uint64_t i = 0; i < reshape_out.size(); i++) {
-      //     if (reshape_out[i] == 0) {
-      //       PADDLE_ENFORCE_LT(
-      //           i, ddim_out.size(),
-      //           platform::errors::InvalidArgument(
-      //               "The index of 0 in fused_reshape_Out ",
-      //               "should be less than output dim size, ",
-      //               "but the index is %d and output dim size is %d", i,
-      //               ddim_out.size()));
-      //       reshape_out[i] = ddim_out.at(i);
-      //     }
-      //   }
-      // }
+      auto it_zero = std::find(reshape_out.begin(), reshape_out.end(), 0);
+      if (it_zero != reshape_out.end()) {
+        for (uint64_t i = 0; i < reshape_out.size(); i++) {
+          if (reshape_out[i] == 0) {
+            PADDLE_ENFORCE_LT(
+                i, ddim_out.size(),
+                platform::errors::InvalidArgument(
+                    "The index of 0 in fused_reshape_Out ",
+                    "should be less than output dim size, ",
+                    "but the index is %d and output dim size is %d", i,
+                    ddim_out.size()));
+            reshape_out[i] = ddim_out.at(i);
+          }
+        }
+      }
 
       // if "-1" is present then one of reshape dims must be infered
       auto it = std::find(reshape_out.begin(), reshape_out.end(), -1);
