@@ -14,6 +14,7 @@
 
 #pragma once
 
+namespace pten {
 __global__ void SetMaskArray(const bool* mask, int32_t* mask_array, int size) {
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
   for (; idx < size; idx += blockDim.x * gridDim.x) {
@@ -23,3 +24,5 @@ __global__ void SetMaskArray(const bool* mask, int32_t* mask_array, int size) {
       mask_array[idx] = 0;
   }
 }
+
+}  // namespace pten
