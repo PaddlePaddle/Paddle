@@ -31,4 +31,13 @@ DenseTensorMeta CreateInferMeta(const ScalarArray& shape,
   return {dtype, out_dims, layout};
 }
 
+StringTensorMeta CreateInferMeta(const std::vector<int64_t>& shape) {
+  const auto& out_dims = pten::framework::make_ddim(shape);
+  return StringTensorMeta(out_dims);
+}
+StringTensorMeta CreateInferMeta(const ScalarArray& shape) {
+  const auto& out_dims = pten::framework::make_ddim(shape.GetData());
+  return StringTensorMeta(out_dims);
+}
+
 }  // namespace pten

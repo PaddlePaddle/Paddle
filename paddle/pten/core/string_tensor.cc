@@ -87,9 +87,14 @@ void StringTensor::set_meta(StringTensorMeta&& meta) {
   meta_ = std::move(meta);
 }
 
-void StringTensor::Resize(const DDim& dims) {
+void StringTensor::ResizeAndAllocate(const DDim& dims) {
   meta_.dims = dims;
   mutable_data();
+}
+
+StringTensor& StringTensor::Resize(const DDim& dims) {
+  meta_.dims = dims;
+  return *this;
 }
 
 }  // namespace pten

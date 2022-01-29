@@ -10,45 +10,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/pten/kernels/strings/case_convert_kernel.h"
+
+#include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/common/pstring.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/strings/case_utils.h"
+#include "paddle/pten/kernels/strings/impl/case_convert_kernel_impl.h"
 
 using pstring = ::pten::dtype::pstring;
-
-namespace pten {
-namespace strings {
-
-using AsciiLowerConverter =
-    pten::strings::AsciiCaseConverter<CPUContext, pten::strings::AsciiToLower>;
-using AsciiUpperConverter =
-    pten::strings::AsciiCaseConverter<CPUContext, pten::strings::AsciiToUpper>;
-
-using UTF8LowerConverter =
-    pten::strings::UTF8CaseConverter<CPUContext, pten::strings::UTF8ToLower>;
-using UTF8UpperConverter =
-    pten::strings::UTF8CaseConverter<CPUContext, pten::strings::UTF8ToUpper>;
-
-template <typename ContextT>
-void StringLowerKernel(const ContextT& dev_ctx,
-                       const StringTensor& x,
-                       const std::string& encoding,
-                       StringTensor* out) {
-  StringCaseConvertKernel<AsciiLowerConverter, UTF8LowerConverter, ContextT>()(
-      dev_ctx, x, encoding, out);
-}
-
-template <typename ContextT>
-void StringUpperKernel(const ContextT& dev_ctx,
-                       const StringTensor& x,
-                       const std::string& encoding,
-                       StringTensor* out) {
-  StringCaseConvertKernel<AsciiUpperConverter, UTF8UpperConverter, ContextT>()(
-      dev_ctx, x, encoding, out);
-}
-
-}  // namespace strings
-}  // namespace pten
 
 PT_REGISTER_GENERAL_KERNEL(string_lower,
                            CPU,

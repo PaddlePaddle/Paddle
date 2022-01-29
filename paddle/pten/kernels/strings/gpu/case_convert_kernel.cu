@@ -8,47 +8,21 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include "paddle/pten/kernels/strings/case_convert_kernel.h"
 
 #include "paddle/fluid/platform/device/gpu/gpu_helper.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/common/pstring.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/strings/case_convert_kernel.h"
 #include "paddle/pten/kernels/strings/case_utils.h"
+#include "paddle/pten/kernels/strings/impl/case_convert_kernel_impl.h"
 #include "paddle/pten/kernels/strings/unicode.h"
 
 using pstring = ::pten::dtype::pstring;
 namespace pten {
 namespace strings {
 
-using AsciiLowerConverter =
-    pten::strings::AsciiCaseConverter<GPUContext, pten::strings::AsciiToLower>;
-using AsciiUpperConverter =
-    pten::strings::AsciiCaseConverter<GPUContext, pten::strings::AsciiToUpper>;
-
-using UTF8LowerConverter =
-    pten::strings::UTF8CaseConverter<GPUContext, pten::strings::UTF8ToLower>;
-using UTF8UpperConverter =
-    pten::strings::UTF8CaseConverter<GPUContext, pten::strings::UTF8ToUpper>;
-
-template <typename ContextT>
-void StringLowerKernel(const ContextT& dev_ctx,
-                       const StringTensor& x,
-                       const std::string& encoding,
-                       StringTensor* out) {
-  StringCaseConvertKernel<AsciiLowerConverter, UTF8LowerConverter, ContextT>()(
-      dev_ctx, x, encoding, out);
-}
-
-template <typename ContextT>
-void StringUpperKernel(const ContextT& dev_ctx,
-                       const StringTensor& x,
-                       const std::string& encoding,
-                       StringTensor* out) {
-  StringCaseConvertKernel<AsciiUpperConverter, UTF8UpperConverter, ContextT>()(
-      dev_ctx, x, encoding, out);
-}
-
+template <typename CharConverter>
 __global__ void StringCaseConvertCUDAKernel(pstring* out,
                                             const pstring* in,
                                             size_t num) {
@@ -58,29 +32,51 @@ __global__ void StringCaseConvertCUDAKernel(pstring* out,
                       in[i].begin(),
                       in[i].end(),
                       out[i].mdata(),
-                      pten::strings::AsciiToLower());
+                      CharConverter());
   }
 }
 
-template <typename AsciiCoverter, typename UTF8Converter>
-struct StringCaseConvertKernel<AsciiCoverter, UTF8Converter, GPUContext> {
-  void operator()(const GPUContext& dev_ctx,
-                  const StringTensor& x,
-                  const std::string& encoding,
-                  StringTensor* out) {
-    AsciiCoverter ascii_converter;
-    UTF8Converter utf8_converter;
-    const pstring* in_ptr = x.data();
-    pstring* out_ptr = out->mutable_data();
-    auto num = x.numel();
-    VLOG(0) << "StringCaseConvertKernel GPUContext";
-    if (encoding.empty()) {
-      StringCaseConvertCUDAKernel<<<1, 32>>>(out_ptr, in_ptr, num);
-    } else {
-      StringCaseConvertCUDAKernel<<<1, 32>>>(out_ptr, in_ptr, num);
-      // StringCaseConvertCUDAKernel<UTF8Converter><<<1, 32>>>(&dev_ctx,
-      // out_ptr, in_ptr, num);
-    }
+template <typename CharConverter>
+struct AsciiCaseConverter<pten::GPUContext, CharConverter> {
+  void operator()(const pten::GPUContext& dev_ctx,
+                  const pstring* in,
+                  pstring* out,
+                  size_t num) const {
+    StringCaseConvertCUDAKernel<CharConverter><<<1, 32>>>(out, in, num);
+  }
+};
+
+template <template <typename DeviceContextT> typename CharConverter>
+struct UTF8CaseConverter<pten::GPUContext, CharConverter> {
+  void operator()(const pten::GPUContext& dev_ctx,
+                  const pstring* in,
+                  pstring* out,
+                  size_t num) const {
+    auto unicode_flag_map =
+        strings::UnicodeFlagMap<pten::GPUContext, uint8_t>::Instance()->data();
+    auto cases_map =
+        strings::UnicodeFlagMap<pten::GPUContext, uint16_t>::Instance()->data();
+    // paddle::platform::Transform<GPUContext> trans;
+    // uint32_t unicode_len =
+    //     pten::strings::get_unicode_str_len(in.data(), in.size());
+    // thrust::device_vector<uint32_t> unicode_in(unicode_len, 0);
+    // uint32_t* unicode_raw_ptr = thrust::raw_pointer_cast(unicode_in.data());
+    // pten::strings::get_unicode_str(in.data(), unicode_raw_ptr, unicode_len);
+    // auto unicode_flag_map =
+    //     strings::UnicodeFlagMap<GPUContext, uint8_t>::Instance()->data();
+    // auto cases_map =
+    //     strings::UnicodeFlagMap<GPUContext, uint16_t>::Instance()->data();
+    // trans(dev_ctx,
+    //       unicode_in.begin(),
+    //       unicode_in.end(),
+    //       unicode_in.begin(),
+    //       CharConverter<GPUContext>(unicode_flag_map, cases_map));
+    // uint32_t utf8_len =
+    //     pten::strings::get_utf8_str_len(unicode_raw_ptr, unicode_len);
+    // thrust::device_vector<char> result(utf8_len, 0);
+    // char* result_ptr = thrust::raw_pointer_cast(result.data());
+    // pten::strings::get_utf8_str(unicode_raw_ptr, result_ptr, unicode_len);
+    // *out = result_ptr;
   }
 };
 

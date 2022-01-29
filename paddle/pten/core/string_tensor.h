@@ -120,7 +120,8 @@ class StringTensor : public TensorBase,
   /// larger than the original value, the storage area will be reallocated.
   /// \param dims The new dims of the dense tensor.
   /// \param lod The new lod of the dense tensor.
-  void Resize(const DDim& dims);
+  void ResizeAndAllocate(const DDim& dims);
+  StringTensor& Resize(const DDim& dims);
 
   /// \brief Returns the actual storage size occupied by tensor, may be larger
   /// than its shape dims.
