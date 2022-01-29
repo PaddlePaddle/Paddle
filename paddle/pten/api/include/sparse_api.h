@@ -19,10 +19,12 @@ limitations under the License. */
 
 namespace paddle {
 namespace experimental {
+namespace sparse {
 
 PADDLE_API Tensor to_sparse_coo(const Tensor& x,
                                 Backend backend,
                                 const int64_t sparse_dim);
 
+}  // namespace sparse
 }  // namespace experimental
 }  // namespace paddle

@@ -50,8 +50,8 @@ TEST(API, to_sparse_coo) {
 
   // 1. test dense_to_sparse_coo
   paddle::experimental::Tensor x(dense_x);
-  auto out =
-      paddle::experimental::to_sparse_coo(x, pten::Backend::CPU, sparse_dim);
+  auto out = paddle::experimental::sparse::to_sparse_coo(
+      x, pten::Backend::CPU, sparse_dim);
   auto coo = std::dynamic_pointer_cast<pten::SparseCooTensor>(out.impl());
   ASSERT_EQ(coo->nnz(), non_zero_num);
   int cmp_indices = memcmp(coo->non_zero_indices().data<int64_t>(),
