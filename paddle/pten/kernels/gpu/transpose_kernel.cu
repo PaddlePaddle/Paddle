@@ -22,19 +22,19 @@
 namespace pten {
 
 template <typename T, typename Context>
-void transpose(const Context& ctx,
-               const DenseTensor& x,
-               const std::vector<int>& axis,
-               DenseTensor* out) {
+void TransposeKernel(const Context& ctx,
+                     const DenseTensor& x,
+                     const std::vector<int>& axis,
+                     DenseTensor* out) {
   int rank = axis.size();
-  TransposeGPUKernelDriver<T>(ctx, rank, x, axis, out);
+  paddle::operators::TransposeGPUKernelDriver<T>(ctx, rank, x, axis, out);
 }
 }  // namespace pten
 
 PT_REGISTER_KERNEL(transpose,
                    GPU,
                    ALL_LAYOUT,
-                   pten::transpose,
+                   pten::TransposeKernel,
                    bool,
                    float,
                    double,

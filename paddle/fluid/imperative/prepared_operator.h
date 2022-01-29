@@ -432,6 +432,10 @@ void BuildDygraphPtenKernelContext(
           kernel_ctx->EmplaceBackAttr(vector_int64_attr);
         }
         // TODO(YuanRisheng) Need support vector<int64_t> attr
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::vector<int32_t>))) {
+        const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
+        kernel_ctx->EmplaceBackAttr(vector_int_attr);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported cast op attribute `%s` when construct "

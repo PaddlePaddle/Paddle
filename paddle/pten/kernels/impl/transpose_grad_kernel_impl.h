@@ -14,15 +14,23 @@
 
 #pragma once
 
-#include <vector>
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/kernels/transpose_grad_kernel.h"
+#include "paddle/pten/kernels/transpose_kernel.h"
 
 namespace pten {
 
 template <typename T, typename Context>
-void TransposeKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const std::vector<int>& axis,
-                     DenseTensor* out);
+void TransposeGradKernel(const Context& dev_ctx,
+                         const DenseTensor& out_grad,
+                         const std::vector<int>& axis,
+                         DenseTensor* x_grad) {
+  std::vector<int> reversed_axis(axis);
+
+  for (size_t i = 0; i < axis.size(); i++) {
+    reversed_axis[axis[i]] = i;
+  }
+
+  TransposeKernel<T, Context>(dev_ctx, out_grad, reversed_axis, x_grad);
+}
 
 }  // namespace pten

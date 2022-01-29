@@ -20,9 +20,9 @@
 namespace pten {
 
 template <typename T, typename Context>
-void TransposeKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const std::vector<int>& axis,
-                     DenseTensor* out);
+void TransposeGradKernel(const Context& dev_ctx,
+                         const DenseTensor& out_grad,
+                         const std::vector<int>& axis,
+                         DenseTensor* x_grad);
 
 }  // namespace pten

@@ -12,17 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/pten/kernels/transpose_grad_kernel.h"
+#include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/pten/core/kernel_registry.h"
+#include "paddle/pten/kernels/impl/transpose_grad_kernel_impl.h"
 
-#include <vector>
-#include "paddle/pten/core/dense_tensor.h"
-
-namespace pten {
-
-template <typename T, typename Context>
-void TransposeKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const std::vector<int>& axis,
-                     DenseTensor* out);
-
-}  // namespace pten
+PT_REGISTER_KERNEL(transpose_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::TransposeGradKernel,
+                   bool,
+                   float,
+                   double,
+                   int32_t,
+                   int64_t,
+                   paddle::platform::complex<float>,
+                   paddle::platform::complex<double>) {}

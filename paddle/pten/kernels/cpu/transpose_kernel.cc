@@ -22,10 +22,10 @@
 namespace pten {
 
 template <typename T, typename Context>
-void transpose(const Context& ctx,
-               const DenseTensor& x,
-               const std::vector<int>& axis,
-               DenseTensor* out) {
+void TransposeKernel(const Context& ctx,
+                     const DenseTensor& x,
+                     const std::vector<int>& axis,
+                     DenseTensor* out) {
   int rank = axis.size();
   switch (rank) {
     case 1:
@@ -63,7 +63,7 @@ void transpose(const Context& ctx,
 PT_REGISTER_KERNEL(transpose,
                    CPU,
                    ALL_LAYOUT,
-                   pten::transpose,
+                   pten::TransposeKernel,
                    bool,
                    float,
                    double,

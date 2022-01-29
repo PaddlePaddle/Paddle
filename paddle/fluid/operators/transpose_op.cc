@@ -86,6 +86,11 @@ class TransposeOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", out_dims);
   }
 
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::KernelSignature("transpose", {"X"}, {"axis"}, {"Out"});
+  }
+
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
@@ -188,6 +193,13 @@ class TransposeOpGrad : public framework::OperatorWithKernel {
     }
   }
 
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::KernelSignature("transpose_grad",
+                                      {framework::GradVarName("Out")}, {"axis"},
+                                      {framework::GradVarName("X")});
+  }
+
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
@@ -232,6 +244,11 @@ class Transpose2Op : public TransposeOp {
     }
     ctx->SetOutputDim("XShape", framework::make_ddim(x_shape_dim));
     ctx->ShareLoD("X", /*->*/ "XShape");
+  }
+
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::KernelSignature("transpose", {"X"}, {"axis"}, {"Out"});
   }
 
  protected:
@@ -316,6 +333,13 @@ class Transpose2OpGrad : public framework::OperatorWithKernel {
       ctx->SetOutputDim(framework::GradVarName("X"), x_shape_dim);
       ctx->ShareLoD("XShape", framework::GradVarName("X"));
     }
+  }
+
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::KernelSignature("transpose_grad",
+                                      {framework::GradVarName("Out")}, {"axis"},
+                                      {framework::GradVarName("X")});
   }
 
  protected:
