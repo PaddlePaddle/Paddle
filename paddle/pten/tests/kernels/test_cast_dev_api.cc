@@ -52,6 +52,7 @@ TEST(DEV_API, cast) {
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(paddle::platform::CPUPlace())
                            .get());
+  dev_ctx.Init();
 
   pten::DataType out_dtype = pten::DataType::FLOAT64;
   // 2. test API

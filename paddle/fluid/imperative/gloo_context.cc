@@ -57,7 +57,6 @@ void GLOOParallelContext::Init() {
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetZeroAllocator(platform::CPUPlace())
           .get());
-  device_->Init();
 }
 
 void GLOOParallelContext::InitWithRingID(int ring_id) {

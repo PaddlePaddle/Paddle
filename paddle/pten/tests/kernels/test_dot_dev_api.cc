@@ -61,6 +61,7 @@ TEST(DEV_API, dot) {
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(paddle::platform::CPUPlace())
                            .get());
+  dev_ctx.Init();
   auto out = pten::Dot<float>(dev_ctx, dense_x, dense_y);
 
   // 3. check result

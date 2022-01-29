@@ -61,6 +61,7 @@ TEST(DEV_API, copy) {
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(paddle::platform::CPUPlace())
                            .get());
+  dev_ctx.Init();
   pten::Copy(dev_ctx, *(dense_src.get()), false, dense_dst.get());
 
   // 3. check result
