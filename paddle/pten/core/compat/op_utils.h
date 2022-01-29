@@ -104,13 +104,12 @@ class OpUtilsMap {
   }
 
   std::string GetBaseKernelName(const std::string& op_type) const {
+    if (deprecated_op_names.count(op_type) != 0UL) {
+      return "deprecated";
+    }
     auto it = name_map_.find(op_type);
     if (it == name_map_.end()) {
-      if (deprecated_op_names.count(op_type) != 0UL) {
-        return "deprecated";
-      } else {
-        return op_type;
-      }
+      return op_type;
     } else {
       return it->second;
     }
