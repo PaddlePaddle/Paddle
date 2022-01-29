@@ -173,24 +173,6 @@ REGISTER_OPERATOR(trace, ops::TraceOp, ops::TraceOpMaker,
 
 REGISTER_OPERATOR(trace_grad, ops::TraceOpGrad,
                   ops::TraceGradNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    trace, ops::TraceKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::TraceKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::TraceKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::TraceKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::TraceKernel<paddle::platform::CPUDeviceContext,
-                     paddle::platform::complex<float>>,
-    ops::TraceKernel<paddle::platform::CPUDeviceContext,
-                     paddle::platform::complex<double>>);
-REGISTER_OP_CPU_KERNEL(
-    trace_grad, ops::TraceGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::TraceGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::TraceGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::TraceGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::TraceGradKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<float>>,
-    ops::TraceGradKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<double>>);
 
 /* ==========================  register checkpoint ===========================*/
 REGISTER_OP_VERSION(trace)
