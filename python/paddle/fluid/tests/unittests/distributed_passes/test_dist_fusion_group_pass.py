@@ -59,11 +59,7 @@ class TestFusionGroupPass(DistPassTestBase):
         dist_strategy = fleet.DistributedStrategy()
         dist_strategy.fuse_all_reduce_ops = False
         dist_strategy.without_graph_optimization = True
-        dist_strategy.amp = True
-        dist_strategy.amp_configs = {
-            "init_loss_scaling": 32768,
-            "use_dynamic_loss_scaling": True,
-        }
+
         fleet.init(is_collective=True, strategy=dist_strategy)
         optimizer = fleet.distributed_optimizer(optimizer)
         optimizer.minimize(loss)
