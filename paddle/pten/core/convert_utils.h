@@ -38,7 +38,8 @@ Backend TransToPtenBackend(const paddle::platform::Place& place);
 DataType TransToPtenDataType(
     const paddle::framework::proto::VarType::Type& dtype);
 
-paddle::platform::Place TransToFluidPlace(const Backend& backend);
+paddle::platform::Place TransToFluidPlace(const Backend& backend,
+                                          bool set_device_id = true);
 paddle::framework::proto::VarType::Type TransToProtoVarType(
     const DataType& dtype);
 
