@@ -12,8 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cuda.h>
+#ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
+#endif
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#endif
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
@@ -99,8 +104,8 @@ TEST(ManagedMemoryTest, OversubscribeGPUMemoryTest) {
   }
 
   uint64_t available_mem = platform::GpuAvailableMemToAlloc();
-  uint64_t n_data =
-      available_mem * 2 / sizeof(int);  // requires 2 * available_mem bytes
+  uint64_t n_data = available_mem * 2 / sizeof(int) +
+                    1;  // requires more than 2 * available_mem bytes
   uint64_t step = 1024;
   AllocationPtr data_allocation =
       Alloc(platform::CUDAPlace(0), n_data * sizeof(int));
@@ -118,7 +123,7 @@ TEST(ManagedMemoryTest, OversubscribeGPUMemoryTest) {
   PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
 #endif
 
-  EXPECT_EQ(*sum, n_data / step);
+  EXPECT_EQ(*sum, (n_data + step - 1) / step);
 }
 
 }  // namespace memory
