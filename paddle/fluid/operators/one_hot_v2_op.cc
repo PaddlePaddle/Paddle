@@ -45,7 +45,7 @@ class OneHotV2Op : public framework::OperatorWithKernel {
 
   framework::KernelSignature GetExpectedPtenKernelArgs(
       const framework::ExecutionContext& ctx) const override {
-    if (ctx.HasInput("depth_tnsor ")) {
+    if (ctx.HasInput("depth_tensor")) {
       return framework::KernelSignature(
           "one_hot_v2", {"X"}, {"depth_tensor", "dtype", "allow_out_of_range"},
           {"Out"});
@@ -68,8 +68,7 @@ class OneHotV2Op : public framework::OperatorWithKernel {
       const std::string& var_name, const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "depth_tensor") {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     platform::CPUPlace(), tensor.layout());
+      return expected_kernel_type;
     }
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    tensor.place(), tensor.layout());

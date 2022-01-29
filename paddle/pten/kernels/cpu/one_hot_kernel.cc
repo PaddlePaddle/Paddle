@@ -82,6 +82,7 @@ void OneHotKernel(const Context& dev_ctx,
                   bool allow_out_of_range,
                   DenseTensor* out) {
   int depth_val = depth.to<int>();
+
   auto out_dims = out->dims();
   if (out_dims[out_dims.size() - 1] == -1) {
     out_dims[out_dims.size() - 1] = depth_val;
