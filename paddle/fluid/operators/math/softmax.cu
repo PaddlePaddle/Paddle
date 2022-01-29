@@ -117,10 +117,13 @@ void SoftmaxGradCUDNNFunctor<T>::operator()(
 
 template class SoftmaxCUDNNFunctor<float>;
 template class SoftmaxCUDNNFunctor<platform::float16>;
-template class SoftmaxCUDNNFunctor<platform::bfloat16>;
 template class SoftmaxGradCUDNNFunctor<float>;
 template class SoftmaxGradCUDNNFunctor<platform::float16>;
+
+#ifdef PADDLE_CUDA_BF16
+template class SoftmaxCUDNNFunctor<platform::bfloat16>;
 template class SoftmaxGradCUDNNFunctor<platform::bfloat16>;
+#endif
 
 // MIOPEN do not support double
 #ifndef PADDLE_WITH_HIP
@@ -132,10 +135,6 @@ template class SoftmaxFunctor<platform::CUDADeviceContext, platform::float16,
                               false>;
 template class SoftmaxFunctor<platform::CUDADeviceContext, platform::float16,
                               true>;
-template class SoftmaxFunctor<platform::CUDADeviceContext, platform::bfloat16,
-                              false>;
-template class SoftmaxFunctor<platform::CUDADeviceContext, platform::bfloat16,
-                              true>;
 template class SoftmaxFunctor<platform::CUDADeviceContext, float, false>;
 template class SoftmaxFunctor<platform::CUDADeviceContext, double, false>;
 template class SoftmaxFunctor<platform::CUDADeviceContext, float, true>;
@@ -144,8 +143,15 @@ template class SoftmaxGradFunctor<platform::CUDADeviceContext, float>;
 template class SoftmaxGradFunctor<platform::CUDADeviceContext, double>;
 template class SoftmaxGradFunctor<platform::CUDADeviceContext,
                                   platform::float16>;
+
+#ifdef PADDLE_CUDA_BF16
+template class SoftmaxFunctor<platform::CUDADeviceContext, platform::bfloat16,
+                              false>;
+template class SoftmaxFunctor<platform::CUDADeviceContext, platform::bfloat16,
+                              true>;
 template class SoftmaxGradFunctor<platform::CUDADeviceContext,
                                   platform::bfloat16>;
+#endif
 
 }  // namespace math
 }  // namespace operators
