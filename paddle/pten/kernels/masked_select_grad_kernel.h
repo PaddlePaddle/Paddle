@@ -14,10 +14,7 @@
 
 #pragma once
 
-#include "paddle/pten/common/scalar.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/infermeta/unary.h"
-#include "paddle/pten/kernels/empty_kernel.h"
 namespace pten {
 
 template <typename T, typename Context>

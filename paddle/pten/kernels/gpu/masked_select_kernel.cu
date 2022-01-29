@@ -24,6 +24,16 @@
 
 namespace pten {
 
+__global__ void SetMaskArray(const bool* mask, int32_t* mask_array, int size) {
+  int idx = blockDim.x * blockIdx.x + threadIdx.x;
+  for (; idx < size; idx += blockDim.x * gridDim.x) {
+    if (mask[idx])
+      mask_array[idx] = 1;
+    else
+      mask_array[idx] = 0;
+  }
+}
+
 template <typename T>
 __global__ void SelectWithPrefixMask(const int32_t* mask_prefix_sum,
                                      const bool* mask,

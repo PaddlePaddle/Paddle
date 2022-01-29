@@ -24,6 +24,16 @@
 
 namespace pten {
 
+__global__ void SetMaskArrayT(const bool* mask, int32_t* mask_array, int size) {
+  int idx = blockDim.x * blockIdx.x + threadIdx.x;
+  for (; idx < size; idx += blockDim.x * gridDim.x) {
+    if (mask[idx])
+      mask_array[idx] = 1;
+    else
+      mask_array[idx] = 0;
+  }
+}
+
 template <typename T>
 __global__ void SelectGradWithPrefixMask(const int32_t* mask_prefix_sum,
                                          const bool* mask,
@@ -69,7 +79,7 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
   int threads = 512;
   int grid = (mask_size + threads - 1) / threads;
   auto stream = dev_ctx.stream();
-  SetMaskArray<<<grid, threads, 0, stream>>>(
+  SetMaskArrayT<<<grid, threads, 0, stream>>>(
       mask_data, mask_array_data, mask_size);
 
   thrust::device_ptr<int32_t> mask_array_dev_ptr =
