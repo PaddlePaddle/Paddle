@@ -29,7 +29,7 @@ TEST(DeviceContext, cpu_context) {
   std::cout << "test training scenarios" << std::endl;
   {
     pten::CPUContext ctx;
-    CHECK(ctx.eigen_device() != nullptr);
+    EXPECT_TRUE(ctx.eigen_device() != nullptr);
   }
 
   std::cout << "test inference scenarios" << std::endl;
@@ -37,13 +37,13 @@ TEST(DeviceContext, cpu_context) {
   {
     pten::CPUContextResource ctx_res{device};
     pten::CPUContext ctx(ctx_res);
-    CHECK(ctx.eigen_device() != nullptr);
+    EXPECT_TRUE(ctx.eigen_device() != nullptr);
   }
   {
     pten::CPUContextResource ctx_res{nullptr};
     pten::CPUContext ctx(ctx_res);
     ctx.SetEigenDevice(device);
-    CHECK(ctx.eigen_device() != nullptr);
+    EXPECT_TRUE(ctx.eigen_device() != nullptr);
   }
   delete device;
 
@@ -51,7 +51,7 @@ TEST(DeviceContext, cpu_context) {
   {
     pten::CPUContext ctx1;
     pten::CPUContext ctx2(ctx1);
-    CHECK_EQ(ctx1.eigen_device(), ctx2.eigen_device());
+    EXPECT_EQ(ctx1.eigen_device(), ctx2.eigen_device());
   }
 
   std::cout << "test move constructor" << std::endl;
@@ -60,7 +60,7 @@ TEST(DeviceContext, cpu_context) {
     auto* eigen_device1 = ctx1.eigen_device();
     pten::CPUContext ctx2(std::move(ctx1));
     auto* eigen_device2 = ctx2.eigen_device();
-    CHECK_EQ(eigen_device1, eigen_device2);
+    EXPECT_EQ(eigen_device1, eigen_device2);
   }
 }
 

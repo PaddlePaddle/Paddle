@@ -214,9 +214,37 @@ void TensorAddImpl(const framework::Tensor& src, framework::Tensor* dst,
   func(dev_ctx, src, dst);
 }
 
-void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
+std::shared_ptr<pten::DenseTensor> GetInnerDstTensor(egr::EagerTensor* dst) {
+  std::shared_ptr<pten::DenseTensor> dst_tensor =
+      std::dynamic_pointer_cast<pten::DenseTensor>(dst->impl());
+  return dst_tensor;
+}
+
+std::shared_ptr<pten::DenseTensor> GetInnerSrcTensor(
+    const egr::EagerTensor& src) {
+  std::shared_ptr<pten::DenseTensor> dst_tensor =
+      std::dynamic_pointer_cast<pten::DenseTensor>(src.impl());
+  return dst_tensor;
+}
+
+std::shared_ptr<pten::DenseTensor> GetInnerDstTensor(framework::Variable* dst) {
   auto* dst_tensor = dst->GetMutable<framework::LoDTensor>();
+  return std::make_shared<pten::DenseTensor>(*dst_tensor);
+}
+
+std::shared_ptr<pten::DenseTensor> GetInnerSrcTensor(
+    const framework::Variable& src) {
   auto& src_tensor = src.Get<framework::LoDTensor>();
+  return std::make_shared<pten::DenseTensor>(src_tensor);
+}
+
+template <typename VarType>
+void TensorAdd(const VarType& src, VarType* dst) {
+  std::shared_ptr<pten::DenseTensor> d_tensor = GetInnerDstTensor(dst);
+  std::shared_ptr<pten::DenseTensor> s_tensor = GetInnerSrcTensor(src);
+
+  auto* dst_tensor = d_tensor.get();
+  auto& src_tensor = *s_tensor.get();
 
   auto numel = src_tensor.numel();
 
@@ -242,6 +270,13 @@ void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
                         "The data type of source tensor and destination tensor "
                         "should be equal, Otherwise, the calculation results "
                         "will be incorrect."));
+
+#ifdef PADDLE_WITH_XPU
+  // if src and dst are in different place, copy dst to src's place
+  if (dst_tensor->place() != place) {
+    paddle::framework::TensorCopySync(*dst_tensor, place, dst_tensor);
+  }
+#endif
 
 #define PADDLE_TENSOR_ADD(cpp_type)                                  \
   if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) { \
@@ -329,6 +364,11 @@ void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
       framework::DataTypeToString(data_type), place));
 }
 
+template void TensorAdd<framework::Variable>(const framework::Variable& src,
+                                             framework::Variable* dst);
+template void TensorAdd<egr::EagerTensor>(const egr::EagerTensor& src,
+                                          egr::EagerTensor* dst);
+
 void SelectedRowsAddToTensor(const framework::Variable& src,
                              framework::Variable* dst) {
   auto* dst_tensor = dst->GetMutable<framework::LoDTensor>();
@@ -366,10 +406,9 @@ void SelectedRowsAddToTensor(const framework::Variable& src,
       framework::DataTypeToString(data_type)));
 }
 
-static void SelectedRowsAddTensor(
-    const framework::Variable& src_selected_rows_var,
-    const framework::Variable& src_tensor_var,
-    framework::Variable* dst_tensor_var) {
+void SelectedRowsAddTensor(const framework::Variable& src_selected_rows_var,
+                           const framework::Variable& src_tensor_var,
+                           framework::Variable* dst_tensor_var) {
   const auto& src_selected_rows =
       src_selected_rows_var.Get<pten::SelectedRows>();
   const auto& src_tensor = src_tensor_var.Get<framework::LoDTensor>();
@@ -456,13 +495,41 @@ std::shared_ptr<VariableWrapper> SelectedRowsMerge(
       framework::DataTypeToString(data_type)));
 }
 
+void VariableAdd(const egr::EagerTensor& src_tensor,
+                 egr::EagerTensor* dst_tensor) {
+  auto& src = src_tensor.Var();
+  auto* dst = dst_tensor->MutableVar();
+
+  if (dst->IsType<paddle::framework::LoDTensor>()) {
+    if (src.IsType<paddle::framework::LoDTensor>()) {
+      paddle::imperative::TensorAdd<paddle::framework::Variable>(src, dst);
+    } else if (src.IsType<pten::SelectedRows>()) {
+      paddle::imperative::SelectedRowsAddToTensor(src, dst);
+    } else {
+      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+          "Unexpected branch, output variable type is %s",
+          paddle::framework::ToTypeName(dst->Type())));
+    }
+  } else {
+    if (src.IsType<paddle::framework::LoDTensor>()) {
+      paddle::framework::Variable new_dst;
+      paddle::imperative::SelectedRowsAddTensor(*dst, src, &new_dst);
+      *dst = std::move(new_dst);
+    } else {
+      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+          "Unexpected branch, output variable type is %s",
+          paddle::framework::ToTypeName(dst->Type())));
+    }
+  }
+}
+
 void VariableWrapperAdd(std::shared_ptr<VariableWrapper> var,
                         VariableWrapper* dst_var, bool unchange_input) {
   auto& src = var->Var();
   auto* dst = dst_var->MutableVar();
   if (dst->IsType<framework::LoDTensor>()) {
     if (src.IsType<framework::LoDTensor>()) {
-      TensorAdd(src, dst);
+      TensorAdd<framework::Variable>(src, dst);
     } else if (src.IsType<pten::SelectedRows>()) {
       SelectedRowsAddToTensor(src, dst);
     } else {
@@ -529,7 +596,7 @@ void GradientAccumulator::AccumulateGrad() {
                "previous gradient.";
     if (dst->IsType<framework::LoDTensor>()) {
       if (src->IsType<framework::LoDTensor>()) {
-        TensorAdd(*src, dst);
+        TensorAdd<framework::Variable>(*src, dst);
       } else if (src->IsType<pten::SelectedRows>()) {
         SelectedRowsAddToTensor(*src, dst);
       }

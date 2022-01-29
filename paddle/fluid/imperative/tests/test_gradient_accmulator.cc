@@ -15,6 +15,7 @@
 #include <memory>
 #include <type_traits>
 #include <vector>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
@@ -27,10 +28,8 @@ namespace framework = paddle::framework;
 namespace paddle {
 namespace imperative {
 
-void TensorAdd(const framework::Variable& src, framework::Variable* dst);
-
-template <typename Place, typename T>
-int TensorddTest(Place place, T t1, T t2) {
+template <typename Place1, typename Place2, typename T>
+int TensorddTest(Place1 place1, Place2 place2, T t1, T t2) {
   framework::Variable var1;
   framework::Variable var2;
   std::vector<T> src_data(10, t1);
@@ -46,22 +45,29 @@ int TensorddTest(Place place, T t1, T t2) {
   auto* dst = var2.GetMutable<framework::LoDTensor>();
   src->Resize(framework::make_ddim(dims));
   dst->Resize(framework::make_ddim(dims));
-  auto* src_mutable = src->mutable_data<T>(place);
-  auto* dst_mutable = dst->mutable_data<T>(place);
-  if (!std::is_same<Place, platform::CUDAPlace>::value) {
-    paddle::memory::Copy(place, src_mutable, src_place, src_data.data(),
+  auto* src_mutable = src->mutable_data<T>(place1);
+  auto* dst_mutable = dst->mutable_data<T>(place2);
+
+  if (!std::is_same<Place1, platform::CUDAPlace>::value) {
+    paddle::memory::Copy(place1, src_mutable, src_place, src_data.data(),
                          sizeof(T) * src_data.size());
-    paddle::memory::Copy(place, dst_mutable, src_place, dst_data.data(),
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  } else {
+    paddle::memory::Copy(place1, src_mutable, src_place, src_data.data(),
+                         sizeof(T) * src_data.size(), 0);
+#endif
+  }
+
+  if (!std::is_same<Place2, platform::CUDAPlace>::value) {
+    paddle::memory::Copy(place2, dst_mutable, src_place, dst_data.data(),
                          sizeof(T) * dst_data.size());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   } else {
-    paddle::memory::Copy(place, src_mutable, src_place, src_data.data(),
-                         sizeof(T) * src_data.size(), 0);
-    paddle::memory::Copy(place, dst_mutable, src_place, dst_data.data(),
+    paddle::memory::Copy(place2, dst_mutable, src_place, dst_data.data(),
                          sizeof(T) * dst_data.size(), 0);
 #endif
   }
-  imperative::TensorAdd(var1, &var2);
+  imperative::TensorAdd<framework::Variable>(var1, &var2);
   framework::LoDTensor rlt;
   platform::CPUPlace rlt_place;
   framework::TensorCopySync(*dst, rlt_place, &rlt);
@@ -80,24 +86,63 @@ TEST(test_add_functor, add_functor) {
   platform::CPUPlace cpu_place;
 
   int cpu_res = 1;
-  cpu_res = TensorddTest(cpu_place, 1.0, 0.0);
+
+  // float32
+  cpu_res = TensorddTest(cpu_place, cpu_place, static_cast<float>(1.0),
+                         static_cast<float>(2.0));
   EXPECT_EQ(cpu_res, 0);
-  cpu_res = TensorddTest(cpu_place, static_cast<double>(1.0),
+  // float16
+  cpu_res =
+      TensorddTest(cpu_place, cpu_place, static_cast<platform::float16>(1.0),
+                   static_cast<platform::float16>(2.0));
+  EXPECT_EQ(cpu_res, 0);
+
+#ifndef PADDLE_WITH_XPU
+  // does not support double when compiled using xpu
+  cpu_res = TensorddTest(cpu_place, cpu_place, static_cast<double>(1.0),
                          static_cast<double>(2.0));
   EXPECT_EQ(cpu_res, 0);
-  cpu_res = TensorddTest(cpu_place, static_cast<platform::float16>(1.0),
-                         static_cast<platform::float16>(2.0));
-  EXPECT_EQ(cpu_res, 0);
+#endif
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   int gpu_res = 1;
-  gpu_res = TensorddTest(gpu_place, 1.0, 0.0);
+  gpu_res = TensorddTest(gpu_place, gpu_place, 1.0, 0.0);
   EXPECT_EQ(gpu_res, 0);
-  gpu_res = TensorddTest(gpu_place, static_cast<double>(1.0),
+  gpu_res = TensorddTest(gpu_place, gpu_place, static_cast<double>(1.0),
                          static_cast<double>(2.0));
   EXPECT_EQ(gpu_res, 0);
-  gpu_res = TensorddTest(gpu_place, static_cast<platform::float16>(1.0),
-                         static_cast<platform::float16>(2.0));
+  gpu_res =
+      TensorddTest(gpu_place, gpu_place, static_cast<platform::float16>(1.0),
+                   static_cast<platform::float16>(2.0));
   EXPECT_EQ(gpu_res, 0);
+#endif
+
+#ifdef PADDLE_WITH_XPU
+  platform::XPUPlace xpu_place(0);
+  int xpu_res = 1;
+  // normal
+  xpu_res = TensorddTest(xpu_place, xpu_place, static_cast<float>(1.0),
+                         static_cast<float>(2.0));
+  EXPECT_EQ(xpu_res, 0);
+  xpu_res =
+      TensorddTest(xpu_place, xpu_place, static_cast<platform::float16>(1.0),
+                   static_cast<platform::float16>(2.0));
+  EXPECT_EQ(xpu_res, 0);
+  // different places
+  xpu_res = TensorddTest(cpu_place, xpu_place, static_cast<float>(1.0),
+                         static_cast<float>(2.0));
+  EXPECT_EQ(xpu_res, 0);
+  xpu_res = TensorddTest(xpu_place, cpu_place, static_cast<float>(1.0),
+                         static_cast<float>(2.0));
+  EXPECT_EQ(xpu_res, 0);
+  xpu_res =
+      TensorddTest(cpu_place, xpu_place, static_cast<platform::float16>(1.0),
+                   static_cast<platform::float16>(2.0));
+  EXPECT_EQ(xpu_res, 0);
+  xpu_res =
+      TensorddTest(xpu_place, cpu_place, static_cast<platform::float16>(1.0),
+                   static_cast<platform::float16>(2.0));
+  EXPECT_EQ(xpu_res, 0);
 #endif
 }
 
@@ -106,10 +151,11 @@ TEST(test_add_functor, execption) {
   platform::CUDAPlace cuda_place(0);
   platform::CPUPlace cpu_place;
 
-  ASSERT_ANY_THROW(TensorddTest(cpu_place, 1, 0));
+  ASSERT_ANY_THROW(TensorddTest(cpu_place, cpu_place, 1, 0));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  ASSERT_ANY_THROW(TensorddTest(cuda_pinned_place, 1.0, 0.0));
-  ASSERT_ANY_THROW(TensorddTest(cuda_pinned_place,
+  ASSERT_ANY_THROW(
+      TensorddTest(cuda_pinned_place, cuda_pinned_place, 1.0, 0.0));
+  ASSERT_ANY_THROW(TensorddTest(cuda_pinned_place, cuda_pinned_place,
                                 static_cast<platform::float16>(1.0),
                                 static_cast<platform::float16>(2.0)));
 #endif

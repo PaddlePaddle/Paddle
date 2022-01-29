@@ -34,24 +34,23 @@ namespace cub = hipcub;
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/fluid/string/string_helper.h"
-#include "paddle/pten/core/array.h"
-#include "paddle/pten/core/enforce.h"
-
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/enforce.h"
+#include "paddle/pten/core/utils/array.h"
 #include "paddle/pten/kernels/funcs/elementwise_base.h"
+#include "paddle/pten/kernels/primitive/kernel_primitives.h"
 
 // Reduce split or not, Whether to use ReduceHigherDim
 #define REDUCE_SPLIT_BOUNDARY 512
 #define REDUCE_VEC_SIZE 4
 
-namespace kps = paddle::operators::kernel_primitives;
+namespace kps = pten::kps;
 
 namespace pten {
 namespace kernels {
