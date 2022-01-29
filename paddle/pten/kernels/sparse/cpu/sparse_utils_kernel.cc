@@ -102,6 +102,61 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
   out->SetMember(indices, values, x_dims, true);
 }
 
+template <typename T, typename Context>
+void SparseCsrToCooKernel(const Context& dev_ctx,
+                          const SparseCsrTensor& x,
+                          SparseCooTensor* out) {
+  const DDim& x_dims = x.dims();
+  const int64_t non_zero_num = x.non_zero_cols().numel();
+  const auto& csr_crows = x.non_zero_crows();
+  const auto& csr_cols = x.non_zero_cols();
+  const auto& csr_values = x.non_zero_elements();
+  const int64_t* csr_crows_data = csr_crows.data<int64_t>();
+  const int64_t* csr_cols_data = csr_cols.data<int64_t>();
+  const T* csr_values_data = csr_values.data<T>();
+
+  int64_t sparse_dim = 2;
+  if (x_dims.size() == 3) {
+    sparse_dim = 3;
+  }
+  const auto place = dev_ctx.GetPlace();
+  DenseTensorMeta indices_meta(
+      DataType::INT64, {sparse_dim, non_zero_num}, DataLayout::NCHW);
+  DenseTensorMeta values_meta(x.dtype(), {non_zero_num}, x.layout());
+  pten::DenseTensor indices =
+      pten::Empty<int64_t, Context>(dev_ctx, std::move(indices_meta));
+  pten::DenseTensor values =
+      pten::Empty<T, Context>(dev_ctx, std::move(values_meta));
+  int64_t* coo_indices = indices.mutable_data<int64_t>(place);
+  int64_t* batch_ptr = x_dims.size() == 2 ? nullptr : coo_indices;
+  int64_t* coo_rows_data =
+      x_dims.size() == 2 ? coo_indices : batch_ptr + non_zero_num;
+  int64_t* coo_cols_data = coo_rows_data + non_zero_num;
+  T* coo_values_data = values.mutable_data<T>(place);
+
+  int batch = x_dims.size() == 2 ? 1 : x_dims[0];
+  int rows = x_dims.size() == 2 ? x_dims[0] : x_dims[1];
+
+  int index = 0;
+  for (int b = 0; b < batch; b++) {
+    for (int i = 0; i < rows; i++) {
+      for (int j = csr_crows_data[b * (rows + 1) + i];
+           j < csr_crows_data[b * (rows + 1) + i + 1];
+           j++) {
+        coo_rows_data[index] = i;
+        if (batch_ptr) {
+          batch_ptr[index] = b;
+        }
+        ++index;
+      }
+    }
+  }
+
+  memcpy(coo_cols_data, csr_cols_data, sizeof(int64_t) * non_zero_num);
+  memcpy(coo_values_data, csr_values_data, sizeof(T) * non_zero_num);
+  out->SetMember(indices, values, x_dims, true);
+}
+
 }  // namespace sparse
 }  // namespace pten
 
@@ -109,6 +164,19 @@ PT_REGISTER_KERNEL(dense_to_sparse_coo,
                    CPU,
                    ALL_LAYOUT,
                    pten::sparse::DenseToSparseCooKernel,
+                   float,
+                   double,
+                   paddle::float16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
+PT_REGISTER_KERNEL(sparse_csr_to_coo,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::sparse::SparseCsrToCooKernel,
                    float,
                    double,
                    paddle::float16,
