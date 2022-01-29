@@ -41,4 +41,5 @@ DenseTensor Concat(const Context& dev_ctx,
   ConcatKernel<T, Context>(dev_ctx, x, axis, &dense_out);
   return dense_out;
 }
+
 }  // namespace pten

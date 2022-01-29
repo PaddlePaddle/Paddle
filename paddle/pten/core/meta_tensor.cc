@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/enforce.h"
+#include "paddle/pten/core/tensor_utils.h"
 
 namespace pten {
 
