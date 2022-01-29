@@ -20,8 +20,8 @@ limitations under the License. */
 
 #include "cuda_runtime_api.h"  // NOLINT
 #include "paddle/fluid/inference/tensorrt/helper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
 namespace inference {
@@ -42,7 +42,10 @@ void TensorRTEngine::InitNetwork() {
   }
 
   infer_builder_config_.reset(infer_builder_->createBuilderConfig());
-  optim_profile_ = infer_builder_->createOptimizationProfile();
+  // optim_profile_ = infer_builder_->createOptimizationProfile();
+  optim_profiles_.resize(max_profile_num_);
+  for (int i = 0; i < max_profile_num_; i++)
+    optim_profiles_[i] = infer_builder_->createOptimizationProfile();
 }
 
 void TensorRTEngine::Execute(int batch_size, std::vector<void *> *buffers,
@@ -54,6 +57,7 @@ void TensorRTEngine::Execute(int batch_size, std::vector<void *> *buffers,
   } else {
 #if IS_TRT_VERSION_GE(6000)
     infer_context->enqueueV2(buffers->data(), stream, nullptr);
+    GetEngineInfo();
 #endif
   }
   SetRuntimeBatch(batch_size);
@@ -198,35 +202,38 @@ void TensorRTEngine::FreezeNetwork() {
   if (with_dynamic_shape_) {
 #if IS_TRT_VERSION_GE(6000)
     LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode.";
-    for (auto &input : min_input_shape_) {
+    for (int i = 0; i < max_profile_num_; i++) {
+      for (auto &input : min_input_shape_) {
 #if IS_TRT_VERSION_LT(7000)
-      // trt6 will check all_of input > 0
-      if (!(std::all_of(input.second.begin(), input.second.end(),
-                        [](int x) { return x > 0; }) &&
-            std::all_of(max_input_shape_[input.first].begin(),
-                        max_input_shape_[input.first].end(),
-                        [](int x) { return x > 0; }) &&
-            std::all_of(optim_input_shape_[input.first].begin(),
-                        optim_input_shape_[input.first].end(),
-                        [](int x) { return x > 0; }))) {
-        continue;
-      }
+        // trt6 will check all_of input > 0
+        if (!(std::all_of(input.second.begin(), input.second.end(),
+                          [](int x) { return x > 0; }) &&
+              std::all_of(max_input_shape_[input.first].begin(),
+                          max_input_shape_[input.first].end(),
+                          [](int x) { return x > 0; }) &&
+              std::all_of(optim_input_shape_[input.first].begin(),
+                          optim_input_shape_[input.first].end(),
+                          [](int x) { return x > 0; }))) {
+          continue;
+        }
 #endif
-      VLOG(4) << "TRT dynamic_shape set " << input.first
-              << " min: " << Vec2Str(input.second)
-              << ", max: " << Vec2Str(max_input_shape_[input.first])
-              << ", opt: " << Vec2Str(optim_input_shape_[input.first]);
-      optim_profile_->setDimensions(
-          input.first.c_str(), nvinfer1::OptProfileSelector::kMIN,
-          Vec2TRT_Dims(input.second, input.first, true));
-      optim_profile_->setDimensions(
-          input.first.c_str(), nvinfer1::OptProfileSelector::kMAX,
-          Vec2TRT_Dims(max_input_shape_[input.first], input.first, true));
-      optim_profile_->setDimensions(
-          input.first.c_str(), nvinfer1::OptProfileSelector::kOPT,
-          Vec2TRT_Dims(optim_input_shape_[input.first], input.first, true));
+        VLOG(4) << "TRT dynamic_shape set " << input.first
+                << " min: " << Vec2Str(input.second)
+                << ", max: " << Vec2Str(max_input_shape_[input.first])
+                << ", opt: " << Vec2Str(optim_input_shape_[input.first]);
+
+        optim_profiles_[i]->setDimensions(
+            input.first.c_str(), nvinfer1::OptProfileSelector::kMIN,
+            Vec2TRT_Dims(input.second, input.first, true));
+        optim_profiles_[i]->setDimensions(
+            input.first.c_str(), nvinfer1::OptProfileSelector::kMAX,
+            Vec2TRT_Dims(max_input_shape_[input.first], input.first, true));
+        optim_profiles_[i]->setDimensions(
+            input.first.c_str(), nvinfer1::OptProfileSelector::kOPT,
+            Vec2TRT_Dims(optim_input_shape_[input.first], input.first, true));
+      }
+      infer_builder_config_->addOptimizationProfile(optim_profiles_[i]);
     }
-    infer_builder_config_->addOptimizationProfile(optim_profile_);
     if (WithFp16() && disable_trt_plugin_fp16()) {
       LOG(INFO) << "NOTE: In order to achieve higher accuracy, you have "
                    "disabled the fp16 mode of TRT Plugin,\n"
@@ -236,6 +243,10 @@ void TensorRTEngine::FreezeNetwork() {
     }
 #endif
   }
+#if IS_TRT_VERSION_GE(8200)
+  infer_builder_config_->setProfilingVerbosity(
+      nvinfer1::ProfilingVerbosity::kDETAILED);
+#endif
 
 #if IS_TRT_VERSION_LT(8000)
   infer_engine_.reset(infer_builder_->buildEngineWithConfig(
@@ -253,6 +264,15 @@ void TensorRTEngine::FreezeNetwork() {
       infer_engine_, platform::errors::Fatal(
                          "Build TensorRT cuda engine failed! Please recheck "
                          "you configurations related to paddle-TensorRT."));
+
+  binding_num_ = infer_engine_->getNbBindings();
+  // reset status for dynamic shape clone
+  if (max_profile_num_ > 1) {
+    infer_context_.clear();
+    cur_profile_num_ = 0;
+  }
+
+  GetEngineInfo();
 }
 
 nvinfer1::ITensor *TensorRTEngine::DeclareInput(const std::string &name,
@@ -350,7 +370,8 @@ float *TensorRTEngine::GetWeightCPUData(const std::string &name,
                         name_with_suffix));
   weight_map[name_with_suffix].reset(new framework::Tensor());
   weight_map[name_with_suffix]->Resize(weight_tensor->dims());
-  TensorCopySync(*weight_tensor, cpu_place, weight_map[name_with_suffix].get());
+  paddle::framework::TensorCopySync(*weight_tensor, cpu_place,
+                                    weight_map[name_with_suffix].get());
   float *weight_data =
       weight_map[name_with_suffix]->mutable_data<float>(cpu_place);
   name_suffix_counter += 1;

@@ -17,6 +17,7 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/eager/legacy/type_def.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/imperative/type_defs.h"
@@ -49,6 +50,19 @@ void CheckOpHasNanOrInfInDygraph(const std::string& op_type,
       auto* var = ivar->MutableVar();
       if (var == nullptr) continue;
       CheckVarHasNanOrInf(op_type, ivar->Name(), var, place);
+    }
+  }
+}
+
+template <typename TensorType>
+static void CheckOpHasNanOrInfInEager(
+    const std::string& op_type, const egr::legacy::NameMap<TensorType>& op_outs,
+    platform::Place place) {
+  for (const auto& pair : op_outs) {
+    for (const auto& tensor : pair.second) {
+      auto* var = tensor->MutableVar();
+      if (var == nullptr) continue;
+      CheckVarHasNanOrInf(op_type, tensor->name(), var, place);
     }
   }
 }

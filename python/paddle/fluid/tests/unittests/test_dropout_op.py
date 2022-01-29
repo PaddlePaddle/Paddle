@@ -333,7 +333,7 @@ class TestDropoutFAPI(unittest.TestCase):
 
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[40, 40], dtype="float32")
+            input = fluid.data(name="input", shape=[-1, -1], dtype="float32")
             res1 = paddle.nn.functional.dropout(x=input, p=0., training=False)
             res2 = paddle.nn.functional.dropout(
                 x=input, p=0., axis=0, training=True, mode='upscale_in_train')
@@ -380,7 +380,10 @@ class TestDropoutFAPI(unittest.TestCase):
                 training=False,
                 mode='upscale_in_train')
 
-            in_np = np.random.random([40, 40]).astype("float32")
+            res13 = paddle.nn.functional.dropout(
+                x=input, p=0.7, axis=1, training=True, mode='upscale_in_train')
+
+            in_np = np.ones([40, 40]).astype("float32")
             res_np = in_np
             res_np2 = np.zeros_like(in_np)
 
@@ -398,6 +401,9 @@ class TestDropoutFAPI(unittest.TestCase):
                                feed={"input": in_np},
                                fetch_list=[res10])
             self.assertTrue(np.allclose(fetches2[0], res_np2))
+            fetches3 = exe.run(fluid.default_main_program(),
+                               feed={"input": in_np},
+                               fetch_list=[res13])
 
     def test_static(self):
         for place in self.places:
@@ -470,6 +476,12 @@ class TestDropoutFAPI(unittest.TestCase):
                     p=0.,
                     axis=(0, 1),
                     training=False,
+                    mode='upscale_in_train')
+                res13 = paddle.nn.functional.dropout(
+                    x=input,
+                    p=0.5,
+                    axis=1,
+                    training=True,
                     mode='upscale_in_train')
 
             res_list = [

@@ -151,6 +151,13 @@ set(COMMON_FLAGS
     ${fsanitize}
 )
 
+if(WITH_IPU)
+    set(COMMON_FLAGS ${COMMON_FLAGS} 
+        -Wno-sign-compare # Warnings in Popart
+        -Wno-non-virtual-dtor # Warnings in Popart
+    )
+endif()
+
 if(NOT APPLE)
     if((${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.0) OR (WITH_ROCM))
         set(COMMON_FLAGS
@@ -194,6 +201,16 @@ if (APPLE)
     # On Mac OS X register class specifier is deprecated and will cause warning error on latest clang 10.0
     set (COMMON_FLAGS -Wno-deprecated-register)
 endif(APPLE)
+
+if(WITH_HETERPS AND WITH_PSLIB)
+    set(COMMON_FLAGS
+        -D_GLIBCXX_USE_CXX11_ABI=0
+        ${COMMON_FLAGS})
+
+    set(GPU_COMMON_FLAGS
+        -D_GLIBCXX_USE_CXX11_ABI=0
+        ${GPU_COMMON_FLAGS})
+endif()
 
 if(LINUX)
     set(GPU_COMMON_FLAGS

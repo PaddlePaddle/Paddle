@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/inference/analysis/dot.h"
+#include "paddle/fluid/inference/analysis/helper.h"
 
 namespace paddle {
 namespace framework {
@@ -38,6 +39,13 @@ std::string FormatName(const Node* node) {
 }  // namespace
 
 void GraphVizPass::ApplyImpl(ir::Graph* graph) const {
+  std::string optim_cache_dir;
+  if (Has("optim_cache_dir")) {
+    optim_cache_dir = Get<std::string>("optim_cache_dir");
+    if (!optim_cache_dir.empty()) {
+      paddle::inference::analysis::MakeDirIfNotExists(optim_cache_dir);
+    }
+  }
   const std::string& graph_viz_path = Get<std::string>(kGraphvizPath);
   VLOG(3) << "draw IR graph viz to " << graph_viz_path;
   std::unique_ptr<std::ostream> fout(new std::ofstream(graph_viz_path));
@@ -62,7 +70,6 @@ void GraphVizPass::ApplyImpl(ir::Graph* graph) const {
         }
       }
     }
-    const std::string& optim_cache_dir = Get<std::string>("optim_cache_dir");
     std::string program_bytes = program_desc.Proto()->SerializeAsString();
     // rename from "17_ir_fc_fuse_pass.dot" to "fc_fuse_pass.pdmodel"
     program_path =

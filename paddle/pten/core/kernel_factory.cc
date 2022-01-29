@@ -15,7 +15,7 @@
 #include "paddle/pten/core/kernel_factory.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/core/enforce.h"
 
 namespace pten {
 
@@ -37,7 +37,7 @@ KernelFactory& KernelFactory::Instance() {
   return g_op_kernel_factory;
 }
 
-Kernel KernelFactory::SelectKernel(const KernelName& kernel_name,
+Kernel KernelFactory::SelectKernel(const std::string& kernel_name,
                                    const KernelKey& kernel_key) const {
   auto iter = kernels_.find(kernel_name);
   if (iter == kernels_.end()) {
@@ -50,13 +50,22 @@ Kernel KernelFactory::SelectKernel(const KernelName& kernel_name,
   return kernel_iter->second;
 }
 
+paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash>
+KernelFactory::SelectKernelMap(const std::string& kernel_name) const {
+  auto iter = kernels_.find(kernel_name);
+  if (iter == kernels_.end()) {
+    return paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash>();
+  }
+  return iter->second;
+}
+
 const Kernel& KernelFactory::SelectKernelOrThrowError(
-    const KernelName& kernel_name, const KernelKey& kernel_key) const {
+    const std::string& kernel_name, const KernelKey& kernel_key) const {
   auto iter = kernels_.find(kernel_name);
   PADDLE_ENFORCE_NE(iter,
                     kernels_.end(),
-                    paddle::platform::errors::NotFound(
-                        "The kernel `%s` is not registered.", kernel_name));
+                    pten::errors::NotFound("The kernel `%s` is not registered.",
+                                           kernel_name));
 
   auto kernel_iter = iter->second.find(kernel_key);
   // TODO(chenweihang): polish refind impl here
@@ -69,7 +78,7 @@ const Kernel& KernelFactory::SelectKernelOrThrowError(
   PADDLE_ENFORCE_NE(
       kernel_iter,
       iter->second.end(),
-      paddle::platform::errors::NotFound(
+      pten::errors::NotFound(
           "The kernel with key %s of kernel `%s` is not registered.",
           kernel_key,
           kernel_name));
@@ -78,7 +87,7 @@ const Kernel& KernelFactory::SelectKernelOrThrowError(
 }
 
 const Kernel& KernelFactory::SelectKernelOrThrowError(
-    const KernelName& kernel_name,
+    const std::string& kernel_name,
     Backend backend,
     DataLayout layout,
     DataType dtype) const {

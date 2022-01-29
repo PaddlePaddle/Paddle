@@ -31,7 +31,7 @@ class ShardIndexOp : public framework::OperatorWithKernel {
                           "but the value given is %d.",
                           x_dims.size()));
     if (ctx->IsRuntime() || x_dims[x_dims.size() - 1] > 0) {
-      PADDLE_ENFORCE_GE(x_dims[x_dims.size() - 1], 1U,
+      PADDLE_ENFORCE_EQ(x_dims[x_dims.size() - 1], 1U,
                         platform::errors::InvalidArgument(
                             "The last dimension of Input(X) should be 1, "
                             "but the value given is %d.",

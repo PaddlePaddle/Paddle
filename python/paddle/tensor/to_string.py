@@ -255,3 +255,39 @@ def to_string(var, prefix='Tensor'):
         stop_gradient=var.stop_gradient,
         indent=' ' * indent,
         data=data)
+
+
+def eager_tensor_to_string(tensor, prefix='Tensor'):
+    indent = len(prefix) + 1
+
+    _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient},\n{indent}{data})"
+
+    if not tensor._is_initialized():
+        return "Tensor(Not initialized)"
+
+    np_tensor = tensor.numpy()
+
+    if len(tensor.shape) == 0:
+        size = 0
+    else:
+        size = 1
+        for dim in tensor.shape:
+            size *= dim
+
+    sumary = False
+    if size > DEFAULT_PRINT_OPTIONS.threshold:
+        sumary = True
+
+    max_width, signed = _get_max_width(_to_summary(np_tensor))
+
+    data = _format_tensor(
+        np_tensor, sumary, indent=indent, max_width=max_width, signed=signed)
+
+    return _template.format(
+        prefix=prefix,
+        shape=tensor.shape,
+        dtype=tensor.dtype,
+        place=tensor._place_str,
+        stop_gradient=tensor.stop_gradient,
+        indent=' ' * indent,
+        data=data)

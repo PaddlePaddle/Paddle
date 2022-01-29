@@ -21,6 +21,96 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
+from op_test import OpTest
+
+
+class TestQrOp(OpTest):
+    def setUp(self):
+        paddle.enable_static()
+        np.random.seed(4)
+        self.op_type = "qr"
+        a, q, r = self.get_input_and_output()
+        self.inputs = {"X": a}
+        self.attrs = {"mode": self.get_mode()}
+        self.outputs = {"Q": q, "R": r}
+
+    def get_dtype(self):
+        return "float64"
+
+    def get_mode(self):
+        return "reduced"
+
+    def get_shape(self):
+        return (11, 11)
+
+    def get_input_and_output(self):
+        dtype = self.get_dtype()
+        shape = self.get_shape()
+        mode = self.get_mode()
+        assert mode != "r", "Cannot be backward in r mode."
+        a = np.random.rand(*shape).astype(dtype)
+        m = a.shape[-2]
+        n = a.shape[-1]
+        min_mn = min(m, n)
+        if mode == "reduced":
+            k = min_mn
+        else:
+            k = m
+        q_shape = list(a.shape[:-2])
+        q_shape.extend([m, k])
+        r_shape = list(a.shape[:-2])
+        r_shape.extend([k, n])
+        q = np.zeros(q_shape).astype(dtype)
+        r = np.zeros(r_shape).astype(dtype)
+        batch_size = a.size // (a.shape[-1] * a.shape[-2])
+        for i in range(batch_size):
+            coord = np.unravel_index(i, a.shape[:-2])
+            tmp_q, tmp_r = np.linalg.qr(a[coord], mode=mode)
+            q[coord] = tmp_q
+            r[coord] = tmp_r
+        return a, q, r
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X'], ['Q', 'R'])
+
+
+class TestQrOpCase1(TestQrOp):
+    def get_shape(self):
+        return (10, 12)
+
+
+class TestQrOpCase2(TestQrOp):
+    def get_shape(self):
+        return (16, 15)
+
+
+class TestQrOpCase3(TestQrOp):
+    def get_shape(self):
+        return (2, 12, 16)
+
+
+class TestQrOpCase4(TestQrOp):
+    def get_shape(self):
+        return (3, 16, 15)
+
+
+class TestQrOpCase5(TestQrOp):
+    def get_mode(self):
+        return "complete"
+
+    def get_shape(self):
+        return (10, 12)
+
+
+class TestQrOpCase6(TestQrOp):
+    def get_mode(self):
+        return "complete"
+
+    def get_shape(self):
+        return (2, 10, 12)
 
 
 class TestQrAPI(unittest.TestCase):
@@ -169,5 +259,4 @@ class TestQrAPI(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()

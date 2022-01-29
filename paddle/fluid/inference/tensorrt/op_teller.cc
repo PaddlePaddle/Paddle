@@ -55,6 +55,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 // #endif
 #if IS_TRT_VERSION_GE(7000)
     teller_set.insert("tile");
+    teller_set.insert("flatten_contiguous_range");
 #endif
 #if CUDA_VERSION >= 10020
     teller_set.insert("reshape");
@@ -270,36 +271,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
 
-      if (desc.HasAttr("padding_algorithm")) {
-        auto padding_algorithm =
-            BOOST_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
-        if (padding_algorithm == "VALID") {
-          return false;
-        }
-        if (padding_algorithm == "SAME") {
-          if (desc.HasAttr("dilations")) {
-            const std::vector<int> dilations =
-                BOOST_GET_CONST(std::vector<int>, desc.GetAttr("dilations"));
-            if (dilations[0] != 1 || dilations[1] != 1) {
-              VLOG(3) << "In Same mode, Dilations must be (1, 1) for "
-                         "tensorRT, but given ("
-                      << dilations[0] << ", " << dilations[1] << ")";
-              return false;
-            }
-          }
-        }
-      }
-
-      if (use_no_calib_int8) {
-        if (desc.HasAttr("padding_algorithm")) {
-          auto padding_algorithm =
-              BOOST_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
-          if (padding_algorithm == "SAME") {
-            return false;
-          }
-        }
-      }
-
       if (desc.HasAttr("enable_int8")) {
         if (op_type == "conv2d" || op_type == "conv2d_fusion") {
           if (!desc.HasAttr("Input_scale")) {
@@ -466,10 +437,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
       int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
-      if (with_dynamic_shape) {
-        if (axis < 0) return false;
-      } else {
-        if (axis <= 0) return false;
+      if (!with_dynamic_shape) {
+        if (axis == 0) return false;
       }
       auto concat_inputs = desc.Inputs();
       if (concat_inputs.find("AxisTensor") != concat_inputs.end()) {
@@ -486,7 +455,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axis"));
       if (!with_dynamic_shape && axis[0] != 0) return false;
       if (axis.size() >= nvinfer1::Dims::MAX_DIMS) return false;
-      if (axis[0] == 0 && axis.size() == 2) return false;
 
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -498,7 +466,9 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
+      if (axis.size() != x_shape.size()) return false;
       int dims = x_shape.size();
+
       std::vector<int> perm(nvinfer1::Dims::MAX_DIMS);
       for (int i = 0; i < dims; i++) {
         perm[i] = axis[i];
@@ -517,6 +487,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (!is_valid_permutation(dims, perm)) {
         VLOG(3) << "Invalid permutation dimensions for trt transpose op "
                    "converter: duplicate or out of bound.";
+        return false;
       }
     }
     if (op_type == "flatten2" || op_type == "flatten") {
@@ -529,6 +500,37 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 #endif
         int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
         if (axis != 1) return false;
+      }
+    }
+    if (op_type == "flatten_contiguous_range") {
+      if (!with_dynamic_shape) {
+        int start_axis = BOOST_GET_CONST(int, desc.GetAttr("start_axis"));
+        int stop_axis = BOOST_GET_CONST(int, desc.GetAttr("stop_axis"));
+        auto x_var_name = desc.Input("X")[0];
+        auto* block = desc.Block();
+        if (block == nullptr) {
+          VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                     "Developers need to check whether block_desc is passed in "
+                     "the pass.";
+          return false;
+        }
+        auto* x_var_desc = block->FindVar(x_var_name);
+        const auto x_shape = x_var_desc->GetShape();
+        int dims = x_shape.size();
+        if (start_axis < 0) start_axis += dims;
+        if (start_axis == 0) {
+          VLOG(3) << "TRT flatten_contiguous_range not support the "
+                     "batch-dimension being changed";
+          return false;
+        }
+        if (stop_axis < 0) stop_axis += dims;
+        for (int i = start_axis; i <= stop_axis; ++i) {
+          if (x_shape[i] < 0) {
+            VLOG(3) << "On TRT static shape,flatten_contiguous_range input dim "
+                       "should be > 0";
+            return false;
+          }
+        }
       }
     }
 
@@ -667,42 +669,43 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "nearest_interp") {
-      std::vector<std::string> attrs{"data_layout",   "interp_method",
-                                     "align_corners", "scale",
-                                     "out_h",         "out_w"};
+      std::vector<std::string> attrs{"interp_method", "align_corners", "scale",
+                                     "out_h", "out_w"};
       for (auto const attr : attrs) {
         if (!desc.HasAttr(attr)) return false;
       }
-      auto data_layout = framework::StringToDataLayout(
-          BOOST_GET_CONST(std::string, desc.GetAttr("data_layout")));
-      if (data_layout != framework::DataLayout::kNCHW &&
-          data_layout != framework::DataLayout::kNHWC)
-        return false;
+      if (desc.HasAttr("data_layout")) {
+        auto data_layout = framework::StringToDataLayout(
+            BOOST_GET_CONST(std::string, desc.GetAttr("data_layout")));
+        if (data_layout != framework::DataLayout::kNCHW &&
+            data_layout != framework::DataLayout::kNHWC)
+          return false;
+      }
       auto interp_method =
           BOOST_GET_CONST(std::string, desc.GetAttr("interp_method"));
       if (interp_method != "nearest") return false;
-
-      if (!desc.HasAttr("scale") || !desc.HasAttr("out_h") ||
-          !desc.HasAttr("out_w")) {
-        return false;
-      } else {
-        auto scale = BOOST_GET_CONST(float, desc.GetAttr("scale"));
-        auto out_h = BOOST_GET_CONST(int, desc.GetAttr("out_h"));
-        auto out_w = BOOST_GET_CONST(int, desc.GetAttr("out_w"));
-        if (!(scale > 0.f && (out_h <= 0 && out_w <= 0))) {
-          if (out_h <= 0) {
-            VLOG(3) << "out_h must be greater than 0 if scale is not set.";
-            return false;
-          }
-          if (out_w <= 0) {
-            VLOG(3) << "out_w must be greater than 0 if scale is not set.";
-            return false;
-          }
-        }
-        if ((scale <= 0.f) && with_dynamic_shape) {
-          VLOG(3) << "dynamic shape not support scale not set.";
+      auto scale = BOOST_GET_CONST(float, desc.GetAttr("scale"));
+      auto out_h = BOOST_GET_CONST(int, desc.GetAttr("out_h"));
+      auto out_w = BOOST_GET_CONST(int, desc.GetAttr("out_w"));
+      auto align_corners = BOOST_GET_CONST(bool, desc.GetAttr("align_corners"));
+      if (!(scale > 0.f && (out_h <= 0 && out_w <= 0))) {
+        if (out_h <= 0) {
+          VLOG(3) << "out_h must be greater than 0 if scale is not set.";
           return false;
         }
+        if (out_w <= 0) {
+          VLOG(3) << "out_w must be greater than 0 if scale is not set.";
+          return false;
+        }
+      }
+      if ((scale <= 0.f) && with_dynamic_shape) {
+        VLOG(3) << "dynamic shape not support scale not set.";
+        return false;
+      }
+      // When align_corners = true, the paddle's and trt_layer's results has
+      // diff
+      if (align_corners && scale != 1) {
+        return false;
       }
     }
 
@@ -725,34 +728,13 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       auto out_h = BOOST_GET_CONST(int, desc.GetAttr("out_h"));
       auto out_w = BOOST_GET_CONST(int, desc.GetAttr("out_w"));
       if (!(out_h > 0 && out_w > 0)) {
+        if (scale.size() < 2) return false;
         if (scale[0] <= 0.f || scale[1] <= 0.f) {
           VLOG(3) << "scale factor must be greater than 0 if out_h or out_w is "
                      "not set.";
           return false;
         }
       }
-    }
-
-    if (op_type == "roi_align") {
-      if (!with_dynamic_shape) return false;
-
-      std::vector<std::string> attrs{"pooled_height", "pooled_width",
-                                     "spatial_scale", "sampling_ratio"};
-      for (auto const attr : attrs) {
-        if (!desc.HasAttr(attr)) return false;
-      }
-
-      const auto pooled_height =
-          BOOST_GET_CONST(int, desc.GetAttr("pooled_height"));
-      if (pooled_height <= 0) return false;
-
-      const auto pooled_width =
-          BOOST_GET_CONST(int, desc.GetAttr("pooled_width"));
-      if (pooled_width <= 0) return false;
-
-      const auto spatial_scale =
-          BOOST_GET_CONST(float, desc.GetAttr("spatial_scale"));
-      if (spatial_scale <= 0.f) return false;
     }
 
     if (op_type == "hard_swish") {
@@ -1281,7 +1263,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
       std::vector<std::string> attrs{"pooled_height", "pooled_width",
-                                     "spatial_scale", "sampling_ratio"};
+                                     "spatial_scale", "sampling_ratio",
+                                     "aligned"};
       for (auto const attr : attrs) {
         if (!desc.HasAttr(attr)) return false;
       }
@@ -1298,12 +1281,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           BOOST_GET_CONST(float, desc.GetAttr("spatial_scale"));
       if (spatial_scale <= 0.f) return false;
 
-      const auto sampling_ratio =
-          BOOST_GET_CONST(int, desc.GetAttr("sampling_ratio"));
-      const auto aligned = BOOST_GET_CONST(bool, desc.GetAttr("aligned"));
-
-      if (sampling_ratio == -1 && aligned == true) return false;
-
       auto roi_align_inputs = desc.Inputs();
       if (roi_align_inputs.find("RoisNum") != roi_align_inputs.end()) {
         if (desc.Input("RoisNum").size() >= 1) {
@@ -1316,6 +1293,20 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (with_dynamic_shape) {
         VLOG(3) << "You are running the TRT Dynamic Shape mode, "
                    "the shuffle_channel op does not support dynamic shape yet";
+        return false;
+      }
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto* input_desc = block->FindVar(desc.Input("X").front());
+      const auto input_shape = input_desc->GetShape();
+      if (input_shape.size() != 4) {
+        VLOG(3) << "input dims is invalid. The input "
+                   "dims size should be 4.";
         return false;
       }
     }
@@ -1485,30 +1476,48 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         VLOG(3) << "the " << op_type
                 << " does not have attr (keep_dim or dim or "
                    "reduce_all)";
-        std::cout << "attr " << desc.HasAttr("keep_dim") << " "
-                  << desc.HasAttr("dim") << " " << desc.HasAttr("reduce_all");
+        return false;
+      }
+
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
         return false;
       }
 
       // The batch size dimension cannot be reduced if it's not dynamic shape.
+      auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
       if (!with_dynamic_shape) {
         if (BOOST_GET_CONST(bool, desc.GetAttr("reduce_all"))) return false;
         std::vector<int32_t> dim =
             BOOST_GET_CONST(std::vector<int32_t>, desc.GetAttr("dim"));
+        const auto input_shape = x_var_desc->GetShape();
         for (auto x : dim) {
-          if (!x) return false;
+          if (x == 0 || (x + input_shape.size() == 0)) return false;
         }
+
       } else {
         if (BOOST_GET_CONST(bool, desc.GetAttr("reduce_all")) &&
             !BOOST_GET_CONST(bool, desc.GetAttr("keep_dim")))
           return false;
       }
-      if (desc.HasAttr("out_dtype")) {
-        int out_dtype = BOOST_GET_CONST(int32_t, desc.GetAttr("out_dtype"));
-        if (out_dtype != -1) {
-          return false;
-        }
+
+      auto dtype = x_var_desc->GetDataType();
+#if IS_TRT_VERSION_GE(7000)
+      if (dtype != framework::proto::VarType::INT32 &&
+          dtype != framework::proto::VarType::FP32) {
+        VLOG(3) << "reduce op input data type must be int32 or float32";
+        return false;
       }
+#else
+      if (dtype != framework::proto::VarType::FP32) {
+        VLOG(3)
+            << "reduce op input data type must be float32 using TensorRT < 7.0";
+        return false;
+      }
+#endif
     }
 #if IS_TRT_VERSION_GE(7000)
     if (op_type == "tile") {
@@ -1611,7 +1620,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }
 
-  VLOG(3) << "trt unsupported op " << op_type;
   return false;
 }
 

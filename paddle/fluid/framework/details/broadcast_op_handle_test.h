@@ -95,7 +95,7 @@ struct TestBroadcastOpHandle {
 #endif
     } else if (use_device_ == p::kCUDA) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-      int count = p::GetCUDADeviceCount();
+      int count = p::GetGPUDeviceCount();
       if (count <= 1) {
         LOG(WARNING) << "Cannot test multi-gpu Broadcast, because the CUDA "
                         "device count is "
@@ -237,7 +237,7 @@ struct TestBroadcastOpHandle {
     PADDLE_ENFORCE_NOT_NULL(
         var, platform::errors::NotFound("Variable %s is not found in scope.",
                                         varname));
-    auto selected_rows = var->GetMutable<f::SelectedRows>();
+    auto selected_rows = var->GetMutable<pten::SelectedRows>();
     auto value = selected_rows->mutable_value();
     value->mutable_data<float>(kDims, place_list_[input_scope_idx]);
     selected_rows->set_height(height);
@@ -256,7 +256,7 @@ struct TestBroadcastOpHandle {
     PADDLE_ENFORCE_NOT_NULL(
         var, platform::errors::NotFound("Variable %s is not found in scope.",
                                         varname));
-    auto& selected_rows = var->Get<f::SelectedRows>();
+    auto& selected_rows = var->Get<pten::SelectedRows>();
     auto rt = selected_rows.value();
     PADDLE_ENFORCE_EQ(selected_rows.height(), height,
                       platform::errors::InvalidArgument(

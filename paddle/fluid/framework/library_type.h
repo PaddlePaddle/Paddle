@@ -61,14 +61,18 @@ inline LibraryType StringToLibraryType(const char* ctype) {
     return LibraryType::kPlain;
   } else if (s == std::string("XPU")) {
     return LibraryType::kPlain;
+  } else if (s == std::string("IPU")) {
+    return LibraryType::kPlain;
   } else if (s == std::string("NPU")) {
     return LibraryType::kPlain;
   } else if (s == std::string("CUDA")) {
     return LibraryType::kPlain;
+  } else if (s == std::string("MLU")) {
+    return LibraryType::kPlain;
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unknown LibraryType string (%s), only support library type string "
-        "include PLAIN, MKLDNN, CUDNN, CPU and CUDA.",
+        "include PLAIN, MKLDNN, CUDNN, CPU, CUDA and IPU.",
         s.c_str()));
   }
 }

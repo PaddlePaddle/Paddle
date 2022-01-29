@@ -30,18 +30,22 @@ namespace plugin {
 
 class DeformableConvPlugin : public nvinfer1::IPluginV2Ext {
  public:
-  explicit DeformableConvPlugin(
-      const nvinfer1::DataType data_type, const nvinfer1::Weights& weights,
-      const std::vector<int>& kernel_dims, const std::vector<int>& strides,
-      const std::vector<int>& paddings, const std::vector<int>& dilations,
-      const int groups, const int deformable_groups, const int im2col_step);
+  explicit DeformableConvPlugin(const nvinfer1::DataType data_type,
+                                const nvinfer1::Weights& weights,
+                                const std::vector<int>& kernel_dims,
+                                const std::vector<int>& strides,
+                                const std::vector<int>& paddings,
+                                const std::vector<int>& dilations,
+                                const int groups, const int deformable_groups,
+                                const int im2col_step, const bool with_fp16);
   explicit DeformableConvPlugin(
       const nvinfer1::DataType data_type, const nvinfer1::Weights& weights,
       const std::vector<int>& kernel_dims, const std::vector<int>& strides,
       const std::vector<int>& paddings, const std::vector<int>& dilations,
       const int groups, const int deformable_groups, const int im2col_step,
       const std::vector<int>& input_dim, const std::vector<int>& offset_dim,
-      const std::vector<int>& mask_dim, const std::vector<int>& output_dim);
+      const std::vector<int>& mask_dim, const std::vector<int>& output_dim,
+      const bool with_fp16);
   DeformableConvPlugin(const void* data, size_t length);
   ~DeformableConvPlugin() override;
 
@@ -98,6 +102,7 @@ class DeformableConvPlugin : public nvinfer1::IPluginV2Ext {
                            const nvinfer1::Weights& deviceWeights) const;
   nvinfer1::Weights deserializeToDevice(const void** hostBuffer, size_t count);
 
+  bool with_fp16_;
   nvinfer1::DataType data_type_;
   nvinfer1::Weights weights_;
   std::vector<int> kernel_dims_;

@@ -310,4 +310,117 @@ TEST(DataTypeTransform, CPUTransform) {
                 static_cast<paddle::platform::bfloat16>(in_data_bool[i]).x);
     }
   }
+
+  // data type transform from/to int32
+  {
+    paddle::framework::Tensor in;
+    paddle::framework::Tensor out;
+
+    int32_t* ptr =
+        in.mutable_data<int32_t>(paddle::framework::make_ddim({2, 3}), place);
+    int data_number = 2 * 3;
+
+    for (int i = 0; i < data_number; ++i) {
+      ptr[i] = i;
+    }
+
+    // transform from int32 to other data types
+    paddle::framework::TransDataType(kernel_int32, kernel_fp32, in, &out);
+    float* out_data_float = out.data<float>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_EQ(out_data_float[i], static_cast<float>(ptr[i]));
+    }
+
+    paddle::framework::TransDataType(kernel_int32, kernel_fp64, in, &out);
+    double* out_data_double = out.data<double>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_EQ(out_data_double[i], static_cast<double>(ptr[i]));
+    }
+
+    paddle::framework::TransDataType(kernel_int32, kernel_bf16, in, &out);
+    paddle::platform::bfloat16* out_data_bf16 =
+        out.data<paddle::platform::bfloat16>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_EQ(out_data_bf16[i],
+                static_cast<paddle::platform::bfloat16>(ptr[i]));
+    }
+
+    paddle::framework::TransDataType(kernel_int32, kernel_int64, in, &out);
+    int64_t* out_data_int64 = out.data<int64_t>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_EQ(out_data_int64[i], static_cast<int64_t>(ptr[i]));
+    }
+
+    paddle::framework::TransDataType(kernel_int32, kernel_bool, in, &out);
+    bool* out_data_bool = out.data<bool>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_EQ(out_data_bool[i], static_cast<bool>(ptr[i]));
+    }
+
+    // transform float to int32
+    float* in_data_float =
+        in.mutable_data<float>(paddle::framework::make_ddim({2, 3}), place);
+    for (int i = 0; i < data_number; ++i) {
+      in_data_float[i] = i;
+    }
+
+    paddle::framework::TransDataType(kernel_fp32, kernel_int32, in, &out);
+    ptr = out.data<int32_t>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_EQ(ptr[i], static_cast<int32_t>(in_data_float[i]));
+    }
+
+    // transform double to int32
+    double* in_data_double =
+        in.mutable_data<double>(paddle::framework::make_ddim({2, 3}), place);
+    for (int i = 0; i < data_number; ++i) {
+      in_data_double[i] = i;
+    }
+
+    paddle::framework::TransDataType(kernel_fp64, kernel_int32, in, &out);
+    ptr = out.data<int32_t>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_EQ(ptr[i], static_cast<int32_t>(in_data_double[i]));
+    }
+
+    // transform bfloat16 to int32
+    paddle::platform::bfloat16* in_data_bf16 =
+        in.mutable_data<paddle::platform::bfloat16>(
+            paddle::framework::make_ddim({2, 3}), place);
+    for (int i = 0; i < data_number; ++i) {
+      in_data_bf16[i] = i;
+    }
+
+    paddle::framework::TransDataType(kernel_bf16, kernel_int32, in, &out);
+    ptr = out.data<int32_t>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_EQ(ptr[i], static_cast<int32_t>(in_data_bf16[i]));
+    }
+
+    // transform int64 to int32
+    int64_t* in_data_int64 =
+        in.mutable_data<int64_t>(paddle::framework::make_ddim({2, 3}), place);
+    for (int i = 0; i < data_number; ++i) {
+      in_data_int64[i] = i;
+    }
+
+    paddle::framework::TransDataType(kernel_int64, kernel_int32, in, &out);
+    ptr = out.data<int32_t>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_EQ(ptr[i], static_cast<int32_t>(in_data_int64[i]));
+    }
+
+    // transform bool to int32
+    bool* in_data_bool =
+        in.mutable_data<bool>(paddle::framework::make_ddim({2, 3}), place);
+    for (int i = 0; i < data_number; ++i) {
+      in_data_bool[i] = i;
+    }
+
+    paddle::framework::TransDataType(kernel_bool, kernel_int32, in, &out);
+    ptr = out.data<int32_t>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_EQ(ptr[i], static_cast<int32_t>(in_data_bool[i]));
+    }
+  }
 }

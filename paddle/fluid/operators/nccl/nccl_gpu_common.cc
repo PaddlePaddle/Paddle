@@ -50,7 +50,7 @@ void Communicator::InitAll(const std::vector<int>& gpus) {
   for (size_t i = 0; i < gpus.size(); ++i) {
     (*comm_id_map)[gpus[i]] = i;
   }
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       dynload::ncclCommInitAll(global_comms->data(), gpus.size(), gpus.data()));
   inited = true;
 }

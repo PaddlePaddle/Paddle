@@ -76,9 +76,9 @@ class ExpandMKLDNNKernel : public paddle::framework::OpKernel<T> {
  private:
   dnnl::memory::format_tag GetExtendedFormatTag(
       std::vector<int64_t>& dims, int new_size,
-      mkldnn::memory::format_tag format_tag) const {
-    mkldnn::memory::desc md(dims, paddle::platform::MKLDNNGetDataType<T>(),
-                            format_tag);
+      dnnl::memory::format_tag format_tag) const {
+    dnnl::memory::desc md(dims, paddle::platform::MKLDNNGetDataType<T>(),
+                          format_tag);
     std::vector<int64_t> new_dims(new_size, 1);
     std::copy(dims.begin(), dims.end(),
               new_dims.begin() + new_size - dims.size());
@@ -112,7 +112,7 @@ class ExpandGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
 
     auto& astream = MKLDNNDeviceContext::tls().get_stream();
     if (dout_vec_dims == dx_vec_dims) {
-      mkldnn::memory::data_type dout_type =
+      dnnl::memory::data_type dout_type =
           paddle::framework::ToMKLDNNDataType(dout->type());
       paddle::platform::ReorderMKLDNNHandler reorder_handler(
           dout_vec_dims, dout->type(), dout_type, onednn_engine);

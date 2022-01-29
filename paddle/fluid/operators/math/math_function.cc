@@ -29,6 +29,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function_impl.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/pten/kernels/funcs/eigen/common.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
@@ -50,6 +52,18 @@ template struct SetConstant<platform::CPUDeviceContext,
                             platform::complex<float>>;
 template struct SetConstant<platform::CPUDeviceContext,
                             platform::complex<double>>;
+
+template struct SetConstant<pten::CPUContext, platform::float16>;
+template struct SetConstant<pten::CPUContext, platform::bfloat16>;
+template struct SetConstant<pten::CPUContext, float>;
+template struct SetConstant<pten::CPUContext, double>;
+template struct SetConstant<pten::CPUContext, int16_t>;
+template struct SetConstant<pten::CPUContext, int>;
+template struct SetConstant<pten::CPUContext, int64_t>;
+template struct SetConstant<pten::CPUContext, bool>;
+template struct SetConstant<pten::CPUContext, uint8_t>;
+template struct SetConstant<pten::CPUContext, platform::complex<float>>;
+template struct SetConstant<pten::CPUContext, platform::complex<double>>;
 
 #ifdef PADDLE_WITH_XPU
 template struct SetConstant<platform::XPUDeviceContext, platform::float16>;
@@ -173,10 +187,24 @@ void set_constant_with_place<platform::NPUPinnedPlace>(
 }
 
 template <>
+void set_constant_with_place<platform::IPUPlace>(
+    const platform::DeviceContext& context, framework::Tensor* tensor,
+    float value) {
+  PADDLE_THROW(platform::errors::Unimplemented("IPUPlace is not supported"));
+}
+
+template <>
 void set_constant_with_place<platform::CPUPlace>(
     const platform::DeviceContext& context, framework::Tensor* tensor,
     float value) {
   framework::VisitDataType(tensor->type(), TensorSetConstantCPU(tensor, value));
+}
+
+template <>
+void set_constant_with_place<platform::MLUPlace>(
+    const platform::DeviceContext& context, framework::Tensor* tensor,
+    float value) {
+  PADDLE_THROW(platform::errors::Unimplemented("MLUPlace is not supported"));
 }
 
 template <>
@@ -205,7 +233,8 @@ void set_constant(const platform::DeviceContext& context,
                   framework::Tensor* tensor, float value) {
   TensorSetConstantWithPlace func(context, tensor, value);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  tensor->place().apply_visitor(func);
+  // tensor->place().apply_visitor(func);
+  paddle::platform::VisitPlace(tensor->place(), func);
 #else
   func(platform::CPUPlace());
 #endif

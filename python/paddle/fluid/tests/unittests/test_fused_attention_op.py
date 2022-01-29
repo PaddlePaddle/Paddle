@@ -168,17 +168,29 @@ class TestFusedAttentionOp(OpTest):
         paddle.disable_static(place=paddle.CUDAPlace(0))
         q_proj_weight = paddle.to_tensor(
             self.q_proj.weight, stop_gradient=False)
-        q_proj_bias = paddle.to_tensor(self.q_proj.bias, stop_gradient=False)
         k_proj_weight = paddle.to_tensor(
             self.k_proj.weight, stop_gradient=False)
-        k_proj_bias = paddle.to_tensor(self.k_proj.bias, stop_gradient=False)
         v_proj_weight = paddle.to_tensor(
             self.v_proj.weight, stop_gradient=False)
-        v_proj_bias = paddle.to_tensor(self.v_proj.bias, stop_gradient=False)
         out_linear_weight = paddle.to_tensor(
             self.out_proj.weight, stop_gradient=False)
-        out_linear_bias = paddle.to_tensor(
-            self.out_proj.bias, stop_gradient=False)
+
+        if self.bias_attr is False:
+            qkv_bias_tensor = None
+            out_linear_bias = None
+        else:
+            q_proj_bias = paddle.to_tensor(
+                self.q_proj.bias, stop_gradient=False)
+            k_proj_bias = paddle.to_tensor(
+                self.k_proj.bias, stop_gradient=False)
+            v_proj_bias = paddle.to_tensor(
+                self.v_proj.bias, stop_gradient=False)
+            qkv_bias = np.concatenate(
+                (q_proj_bias.numpy(), k_proj_bias.numpy(), v_proj_bias.numpy()))
+            qkv_bias = qkv_bias.reshape((3, self.num_heads, self.head_dim))
+            qkv_bias_tensor = paddle.to_tensor(qkv_bias, stop_gradient=False)
+            out_linear_bias = paddle.to_tensor(
+                self.out_proj.bias, stop_gradient=False)
 
         ln1_scale = paddle.to_tensor(self.norm1.weight, stop_gradient=False)
         ln1_bias = paddle.to_tensor(self.norm1.bias, stop_gradient=False)
@@ -193,17 +205,12 @@ class TestFusedAttentionOp(OpTest):
         qkv_weight = qkv_weight.reshape(
             (3, self.num_heads, self.head_dim, self.embed_dim))
 
-        qkv_bias = np.concatenate(
-            (q_proj_bias.numpy(), k_proj_bias.numpy(), v_proj_bias.numpy()))
-        qkv_bias = qkv_bias.reshape((3, self.num_heads, self.head_dim))
-
         x = paddle.to_tensor(self.query, stop_gradient=False)
         if self.has_attn_mask:
             attn_mask = paddle.to_tensor(self.attn_mask, stop_gradient=False)
         else:
             attn_mask = None
         qkv_weight_tensor = paddle.to_tensor(qkv_weight, stop_gradient=False)
-        qkv_bias_tensor = paddle.to_tensor(qkv_bias, stop_gradient=False)
         epsilon = 1e-05
         ln2_epsilon = 1e-05
 
@@ -217,6 +224,36 @@ class TestFusedAttentionOp(OpTest):
         paddle.autograd.backward(
             [final_out], [paddle.to_tensor(self.dout)], retain_graph=True)
         return final_out, x.grad
+
+    def test_fused_attention_op(self):
+        final_out_ref, x_grad_ref = self.GetBaselineOut()
+        final_out, x_grad = self.GetFusedAttentionOut()
+        np.testing.assert_allclose(
+            final_out_ref, final_out.numpy(), rtol=1e-5, atol=1e-4)
+        np.testing.assert_allclose(
+            x_grad_ref, x_grad.numpy(), rtol=1e-5, atol=1e-4)
+
+
+class TestFusedAttentionOpBiasIsNone(TestFusedAttentionOp):
+    def config(self):
+        self.x_type = np.float32
+        self.attn_mask_type = np.float64
+        self.pre_layer_norm = False
+        self.has_attn_mask = True
+        self.training = True
+
+        self.batch_size = 8
+        self.query_length = 128
+        self.head_dim = 64
+        self.num_heads = 16
+        self.embed_dim = self.head_dim * self.num_heads
+
+        self.dropout_prob = 0.0
+        self.attn_dropout_prob = 0.0
+        self.weight_attr = None
+        self.bias_attr = False
+        self.kdim, self.vdim = self.embed_dim, self.embed_dim
+        self.key_length, self.value_length = self.query_length, self.query_length
 
     def test_fused_attention_op(self):
         final_out_ref, x_grad_ref = self.GetBaselineOut()

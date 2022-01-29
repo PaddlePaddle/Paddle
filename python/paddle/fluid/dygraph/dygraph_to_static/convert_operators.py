@@ -248,20 +248,6 @@ def _remove_no_value_return_var(out):
 
 def _run_paddle_cond(pred, true_fn, false_fn, true_args, false_args,
                      return_vars):
-
-    return_var_ids = [id(var) for var in return_vars]
-    # NOTE 1: Returned vars of Paddle op `control_flow.cond` must be Paddle Tensors
-    # NOTE 2: Here uses id(var) not var, because `if var in return_var` use operator `==`,
-    #  which will call `fluid.layers.equal` and causes error when var in return_vars is not initialized.
-    true_args = [
-        to_static_variable(var) if id(var) in return_var_ids else var
-        for var in true_args
-    ]
-    false_args = [
-        to_static_variable(var) if id(var) in return_var_ids else var
-        for var in false_args
-    ]
-
     pred = cast_bool_if_necessary(pred)
     return control_flow.cond(pred, lambda: true_fn(*true_args),
                              lambda: false_fn(*false_args))
@@ -296,6 +282,15 @@ def convert_len(var):
                 % type(var))
     else:
         return len(var)
+
+
+def convert_zip(*args):
+    for i, arg in enumerate(args):
+        if isinstance(arg, Variable) and arg.shape[0] == -1:
+            raise RuntimeError(
+                "Not support zip(tensor, ...) when tensor.shape[0] == -1, "
+                "but found args[{}].shape[0] == -1 in 'zip'".format(str(i)))
+    return zip(*args)
 
 
 def convert_var_shape(x, idx=None, in_control_flow=False):

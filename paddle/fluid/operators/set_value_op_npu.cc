@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/set_value_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -81,7 +81,7 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
       slice_dims_for_assign = framework::make_ddim(slice_dims_with_none);
     }
 
-    TensorCopy(*in, ctx.GetPlace(), out);
+    paddle::framework::TensorCopy(*in, ctx.GetPlace(), out);
 
     auto starts_indices = std::vector<int64_t>(in_dims.size(), 0);
     auto ends_indices = std::vector<int64_t>(in_dims.size(), 0);

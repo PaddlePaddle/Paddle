@@ -25,7 +25,6 @@
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/pten/include/core.h"
 
 namespace paddle {
 namespace imperative {
@@ -184,7 +183,18 @@ class OpBase {
                   const framework::AttributeMap& default_attrs,
                   const platform::Place& place);
 
-  static pten::KernelContext* GetKernelContext() { return &pt_kernel_context_; }
+  bool HasVoidFunctionPostHook() const {
+    return !void_function_post_hooks_.empty();
+  }
+
+  void AddVoidFunctionPostHook(std::shared_ptr<std::function<void()>>&& hook) {
+    void_function_post_hooks_.emplace_back(std::move(hook));
+  }
+
+  const std::vector<std::shared_ptr<std::function<void()>>>&
+  GetVoidFunctionPostHooks() const {
+    return void_function_post_hooks_;
+  }
 
  private:
   static const std::string& UnknownOpType() {
@@ -203,6 +213,7 @@ class OpBase {
   // In order to reduce the compatibility phase
   // performance overhead, temporarily cache KernelContext
   static pten::KernelContext pt_kernel_context_;
+  std::vector<std::shared_ptr<std::function<void()>>> void_function_post_hooks_;
 };
 
 class GradOpNode {

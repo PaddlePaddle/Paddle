@@ -59,7 +59,7 @@ struct TestReduceOpHandle {
     use_gpu_ = use_gpu;
     if (use_gpu) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-      int count = p::GetCUDADeviceCount();
+      int count = p::GetGPUDeviceCount();
       if (count <= 1) {
         LOG(WARNING) << "Cannot test multi-gpu Broadcast, because the CUDA "
                         "device count is "
@@ -174,7 +174,7 @@ struct TestReduceOpHandle {
       PADDLE_ENFORCE_NOT_NULL(
           in_var, platform::errors::NotFound(
                       "Variable %s is not found in scope.", "input"));
-      auto in_selected_rows = in_var->GetMutable<f::SelectedRows>();
+      auto in_selected_rows = in_var->GetMutable<pten::SelectedRows>();
       auto value = in_selected_rows->mutable_value();
       value->mutable_data<float>(kDims, gpu_list_[input_scope_idx]);
 
@@ -190,10 +190,10 @@ struct TestReduceOpHandle {
     PADDLE_ENFORCE_NOT_NULL(out_var,
                             platform::errors::NotFound(
                                 "Variable %s is not found in scope.", "out"));
-    auto out_selected_rows = out_var->GetMutable<f::SelectedRows>();
+    auto out_selected_rows = out_var->GetMutable<pten::SelectedRows>();
 
     auto in_var = param_scopes_[output_scope_idx]->FindVar("input");
-    auto in_selected_rows = in_var->GetMutable<f::SelectedRows>();
+    auto in_selected_rows = in_var->GetMutable<pten::SelectedRows>();
 
     out_selected_rows->mutable_value()->ShareDataWith(
         in_selected_rows->value());
@@ -205,7 +205,7 @@ struct TestReduceOpHandle {
 
     p::CPUPlace cpu_place;
 
-    auto &out_select_rows = out_var->Get<f::SelectedRows>();
+    auto &out_select_rows = out_var->Get<pten::SelectedRows>();
     auto rt = out_select_rows.value();
 
     PADDLE_ENFORCE_EQ(out_select_rows.height(), height,

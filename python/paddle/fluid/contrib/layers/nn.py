@@ -968,7 +968,7 @@ def sparse_embedding(input,
                      padding_idx=None,
                      is_test=False,
                      entry=None,
-                     table_class="CommonSparseTable",
+                     table_class="MemorySparseTable",
                      param_attr=None,
                      dtype='float32'):
     r"""
@@ -1100,18 +1100,21 @@ def sparse_embedding(input,
     padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
         size[0] + padding_idx)
 
-    if table_class not in ["CommonSparseTable", "SSDSparseTable"]:
+    if table_class not in [
+            "CommonSparseTable", "SSDSparseTable", "MemorySparseTable"
+    ]:
         raise ValueError(
-            "table_class must be in [CommonSparseTable, SSDSparseTable]")
+            "table_class must be in [CommonSparseTable, SSDSparseTable, MemorySparseTable]"
+        )
 
     entry_str = "none"
 
     if entry is not None:
         if entry.__class__.__name__ not in [
-                "ProbabilityEntry", "CountFilterEntry"
+                "ProbabilityEntry", "CountFilterEntry", "ShowClickEntry"
         ]:
             raise ValueError(
-                "entry must be instance in [paddle.distributed.ProbabilityEntry, paddle.distributed.CountFilterEntry]"
+                "entry must be instance in [paddle.distributed.ProbabilityEntry, paddle.distributed.CountFilterEntry, paddle.distributed.ShowClickEntry]"
             )
         entry_str = entry._to_attr()
 

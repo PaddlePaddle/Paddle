@@ -12,24 +12,34 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/pten/infermeta/unary.h"
+
+#include <set>
+
+#include "paddle/pten/core/infermeta_utils.h"
 
 namespace pten {
 
-DenseTensorMeta UnchangedInferShape(const DenseTensorMeta& x_meta) {
+void UnchangedInferMetaNew(MetaConfig config,
+                           const MetaTensor& x,
+                           MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->share_lod(x);
+}
+
+DenseTensorMeta UnchangedInferMeta(const DenseTensorMeta& x_meta) {
   return x_meta;
 }
 
-DenseTensorMeta ReductionInferShape(const DenseTensorMeta& x_meta) {
-  const auto& out_dims = paddle::framework::make_ddim({1});
-  DenseTensorMeta return_meta(x_meta.type, out_dims, x_meta.layout);
+DenseTensorMeta ReductionInferMeta(const DenseTensorMeta& x_meta) {
+  const auto& out_dims = pten::framework::make_ddim({1});
+  DenseTensorMeta return_meta(x_meta.dtype, out_dims, x_meta.layout);
   return return_meta;
 }
 
-DenseTensorMeta FlattenInferShape(const DenseTensorMeta& x_meta,
-                                  int start_axis,
-                                  int stop_axis) {
+DenseTensorMeta FlattenInferMeta(const DenseTensorMeta& x_meta,
+                                 int start_axis,
+                                 int stop_axis) {
   auto& x_dims = x_meta.dims;
   int in_dims_size = x_dims.size();
   if (start_axis < 0) {
@@ -62,8 +72,8 @@ DenseTensorMeta FlattenInferShape(const DenseTensorMeta& x_meta,
   for (int i = stop_axis + 1; i < in_dims_size; i++) {
     out_shape.push_back(x_dims[i]);
   }
-  const auto& out_dims = paddle::framework::make_ddim(out_shape);
-  DenseTensorMeta return_meta(x_meta.type, out_dims, x_meta.layout);
+  const auto& out_dims = pten::framework::make_ddim(out_shape);
+  DenseTensorMeta return_meta(x_meta.dtype, out_dims, x_meta.layout);
 
   if (x_dims[0] == return_meta.dims[0]) {
     // Only pass LoD when the first dimension of output and Input(X)
@@ -74,18 +84,24 @@ DenseTensorMeta FlattenInferShape(const DenseTensorMeta& x_meta,
   return return_meta;
 }
 
-DenseTensorMeta FullLikeInferShape(const DenseTensorMeta& x_meta,
-                                   DataType dtype,
-                                   DataLayout layout) {
-  return {dtype == DataType::UNDEFINED ? x_meta.type : dtype,
+DenseTensorMeta CastInferMeta(const DenseTensorMeta& x_meta,
+                              const DataType out_dtype) {
+  DenseTensorMeta out_meta(out_dtype, x_meta.dims, x_meta.layout);
+  return out_meta;
+}
+
+DenseTensorMeta CreateLikeInferMeta(const DenseTensorMeta& x_meta,
+                                    DataType dtype,
+                                    DataLayout layout) {
+  return {dtype == DataType::UNDEFINED ? x_meta.dtype : dtype,
           x_meta.dims,
           layout == DataLayout::UNDEFINED ? x_meta.layout : layout};
 }
 
-static paddle::framework::DDim ValidateShape(
-    const std::vector<int> shape, const paddle::framework::DDim& in_dims) {
-  const int64_t in_size = paddle::framework::product(in_dims);
-  auto in_dims_vec = paddle::framework::vectorize(in_dims);
+static pten::framework::DDim ValidateShape(
+    const std::vector<int64_t> shape, const pten::framework::DDim& in_dims) {
+  const int64_t in_size = pten::framework::product(in_dims);
+  auto in_dims_vec = pten::framework::vectorize(in_dims);
   bool all_positive = std::all_of(in_dims_vec.cbegin(),
                                   in_dims_vec.cend(),
                                   [](int64_t i) { return i > 0; });
@@ -105,7 +121,7 @@ static paddle::framework::DDim ValidateShape(
           paddle::platform::errors::InvalidArgument(
               "Only one dimension value of 'shape' in ReshapeOp can "
               "be -1. But received shape = [%s], shape[%d] is also -1.",
-              paddle::framework::make_ddim(shape),
+              pten::framework::make_ddim(shape),
               i));
       unk_dim_idx = i;
     } else if (shape[i] == copy_dim_val) {
@@ -117,7 +133,7 @@ static paddle::framework::DDim ValidateShape(
               "the input tensor X's dimensions. "
               "But received shape = [%s], shape[%d] = 0, X's shape = [%s], "
               "X's dimensions = %d.",
-              paddle::framework::make_ddim(shape),
+              pten::framework::make_ddim(shape),
               i,
               in_dims,
               in_dims.size()));
@@ -129,7 +145,7 @@ static paddle::framework::DDim ValidateShape(
               "Each dimension value of 'shape' in ReshapeOp must not "
               "be negative except one unknown dimension. "
               "But received  shape = [%s], shape[%d] = %d.",
-              paddle::framework::make_ddim(shape),
+              pten::framework::make_ddim(shape),
               i,
               shape[i]));
     }
@@ -158,7 +174,7 @@ static paddle::framework::DDim ValidateShape(
               "'shape' is [%s], known capacity of 'shape' is %d.",
               in_dims,
               in_size,
-              paddle::framework::make_ddim(shape),
+              pten::framework::make_ddim(shape),
               capacity));
     } else {
       output_shape[unk_dim_idx] = -1;
@@ -176,7 +192,7 @@ static paddle::framework::DDim ValidateShape(
               "[%s], the capacity of 'shape' is %d.",
               in_dims,
               in_size,
-              paddle::framework::make_ddim(shape),
+              pten::framework::make_ddim(shape),
               capacity));
     }
   }
@@ -195,15 +211,15 @@ static paddle::framework::DDim ValidateShape(
             "capacity of 'Out' is %d.",
             in_dims,
             in_size,
-            paddle::framework::make_ddim(shape),
+            pten::framework::make_ddim(shape),
             capacity));
   }
 
-  return paddle::framework::make_ddim(output_shape);
+  return pten::framework::make_ddim(output_shape);
 }
 
-DenseTensorMeta InferShapeFromVecValue(const DenseTensorMeta& x_meta,
-                                       const std::vector<int>& shape) {
+DenseTensorMeta InferMetaFromVecValue(const DenseTensorMeta& x_meta,
+                                      const std::vector<int64_t>& shape) {
   PADDLE_ENFORCE_EQ(!shape.empty(),
                     true,
                     paddle::platform::errors::InvalidArgument(
@@ -211,7 +227,7 @@ DenseTensorMeta InferShapeFromVecValue(const DenseTensorMeta& x_meta,
                         "But received 'shape' is empty."));
   auto x_dims = x_meta.dims;
   auto out_dims = ValidateShape(shape, x_dims);
-  DenseTensorMeta return_meta(x_meta.type, out_dims, x_meta.layout);
+  DenseTensorMeta return_meta(x_meta.dtype, out_dims, x_meta.layout);
   if (x_dims[0] == return_meta.dims[0]) {
     // Only pass LoD when the first dimension of output and Input(X)
     // are the same.
@@ -220,4 +236,74 @@ DenseTensorMeta InferShapeFromVecValue(const DenseTensorMeta& x_meta,
   return return_meta;
 }
 
+DenseTensorMeta ReshapeInferMeta(const DenseTensorMeta& x_meta,
+                                 const ScalarArray& shape) {
+  return InferMetaFromVecValue(x_meta, shape.GetData());
+}
+
+/*  Why not use ReduceInferMeta directly?
+    Because we need make InferMetaFunction's args follow the design of api.yaml
+*/
+DenseTensorMeta SumInferMeta(const DenseTensorMeta& x_meta,
+                             const std::vector<int64_t>& axis,
+                             DataType dtype,
+                             bool keep_dim) {
+  return ReduceInferMeta(x_meta, axis, keep_dim, dtype);
+}
+
+DenseTensorMeta ReduceInferMeta(const DenseTensorMeta& x_meta,
+                                const std::vector<int64_t>& axis,
+                                bool keep_dim,
+                                DataType dtype) {
+  bool reduce_all = true;
+  std::set<int64_t> dims_set(axis.begin(), axis.end());
+  for (int64_t i = 0; i < x_meta.dims.size(); ++i) {
+    if (dims_set.find(i) == dims_set.end()) {
+      reduce_all = false;
+      break;
+    }
+  }
+
+  std::vector<int64_t> out_dim_vector;
+  if (keep_dim) {
+    for (int64_t i = 0; i < x_meta.dims.size(); ++i) {
+      if (reduce_all || dims_set.find(i) != dims_set.end()) {
+        out_dim_vector.push_back(1);
+      } else {
+        out_dim_vector.push_back(x_meta.dims.at(i));
+      }
+    }
+  } else {
+    for (int64_t i = 0; i < x_meta.dims.size(); ++i) {
+      if (reduce_all || dims_set.find(i) != dims_set.end()) {
+        continue;
+      } else {
+        out_dim_vector.push_back(x_meta.dims.at(i));
+      }
+    }
+
+    if (out_dim_vector.size() == 0) {
+      out_dim_vector.push_back(1);
+    }
+  }
+  DDim out_dim = pten::framework::make_ddim(out_dim_vector);
+
+  DataType out_dtype;
+  if (dtype != DataType::UNDEFINED) {
+    out_dtype = dtype;
+  } else {
+    if (x_meta.dtype == DataType::BOOL || x_meta.dtype == DataType::INT32 ||
+        x_meta.dtype == DataType::INT64) {
+      out_dtype = DataType::INT64;
+    } else {
+      out_dtype = x_meta.dtype;
+    }
+  }
+
+  DenseTensorMeta return_meta(out_dtype, out_dim, x_meta.layout);
+  return return_meta;
+}
+
 }  // namespace pten
+
+PT_REGISTER_INFER_META_FN(sign, pten::UnchangedInferMetaNew);

@@ -239,7 +239,7 @@ class MultinomialOpKernel<platform::CUDADeviceContext, T>
     auto* rng_data = rng_data_tensor.mutable_data<T>(
         {num_distributions, num_samples}, ctx.GetPlace());
 
-    thrust::counting_iterator<unsigned int> index_sequence_begin(0);
+    thrust::counting_iterator<int64_t> index_sequence_begin(0);
     platform::Transform<platform::CUDADeviceContext> trans;
     auto* context =
         static_cast<const platform::CUDADeviceContext*>(&ctx.device_context());

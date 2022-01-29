@@ -22,6 +22,7 @@ template <typename T>
 class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
   using MPDType = typename details::MPTypeTrait<T>::Type;
   using XPUTyp = typename XPUTypeTrait<T>::Type;
+  using float16 = typename XPUTypeTrait<paddle::platform::float16>::Type;
 
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
@@ -39,8 +40,10 @@ class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
 
     MPDType cpu_scale_data;
     if (platform::is_xpu_place(scale->place())) {
-      xpu_memcpy(&cpu_scale_data, scale_data, sizeof(MPDType),
-                 XPUMemcpyKind::XPU_DEVICE_TO_HOST);
+      memory::Copy(platform::CPUPlace(), static_cast<void*>(&cpu_scale_data),
+                   scale->place(), static_cast<const void*>(scale_data),
+                   sizeof(MPDType));
+
     } else {
       cpu_scale_data = (*scale_data);
     }
@@ -84,19 +87,18 @@ class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
           dev_ctx.Wait();
         }
         memory::Copy(platform::CPUPlace(), &cpu_found_inf_data,
-                     BOOST_GET_CONST(platform::XPUPlace, dev_ctx.GetPlace()),
-                     found_inf_data, sizeof(bool));
+                     dev_ctx.GetPlace(), found_inf_data, sizeof(bool));
       }
 
       if (cpu_found_inf_data) {
         inverse_scale = 0.0;
       }
 
-      paddle::platform::XPUVersion version = dev_ctx.xpu_version();
+      auto version = platform::get_xpu_version(ctx.GetPlace().GetDeviceId());
       framework::Tensor float_x;
       framework::Tensor float_out;
       if (std::is_same<T, paddle::platform::float16>::value &&
-          (version == paddle::platform::XPUVersion::XPU1)) {
+          (version == pten::backends::xpu::XPUVersion::XPU1)) {
         float_x.mutable_data<MPDType>(dev_ctx.GetPlace(),
                                       x->numel() * sizeof(MPDType));
         float_out.mutable_data<MPDType>(dev_ctx.GetPlace(),
@@ -139,9 +141,8 @@ class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
     if (dev_ctx.x_context()->xpu_stream) {
       dev_ctx.Wait();
     }
-    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, dev_ctx.GetPlace()),
-                 found_inf_data, platform::CPUPlace(), &cpu_found_inf_data,
-                 sizeof(bool));
+    memory::Copy(dev_ctx.GetPlace(), found_inf_data, platform::CPUPlace(),
+                 &cpu_found_inf_data, sizeof(bool));
   }
 };
 

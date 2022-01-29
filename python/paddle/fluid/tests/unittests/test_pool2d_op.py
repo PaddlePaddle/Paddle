@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 
 import paddle.fluid.core as core
-from op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTest
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
@@ -252,7 +252,7 @@ def pool2D_forward_naive(x,
     return out
 
 
-class TestPool2D_Op(OpTest):
+class TestPool2D_Op_Mixin(object):
     def setUp(self):
         self.op_type = "pool2d"
         self.use_cudnn = False
@@ -361,6 +361,10 @@ class TestPool2D_Op(OpTest):
 
     def init_adaptive(self):
         self.adaptive = False
+
+
+class TestPool2D_Op(TestPool2D_Op_Mixin, OpTest):
+    pass
 
 
 class TestCase1(TestPool2D_Op):

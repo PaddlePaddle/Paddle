@@ -324,6 +324,9 @@ def train(args, to_static):
                 if batch_id % args.log_step == 0:
                     time_end = time.time()
                     used_time = time_end - time_begin
+                    # used_time may be 0.0, cause zero division error
+                    if used_time < 1e-5:
+                        used_time = 1e-5
                     print("step: %d, ave loss: %f, speed: %f steps/s" %
                           (batch_id, avg_cost.numpy()[0],
                            args.log_step / used_time))

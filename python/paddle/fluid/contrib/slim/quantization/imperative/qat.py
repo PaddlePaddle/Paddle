@@ -22,6 +22,7 @@ import warnings
 import paddle
 import paddle.nn.quant.quant_layers as quant_layers
 from paddle.fluid import dygraph, core, framework, unique_name
+from paddle.fluid.framework import IrGraph
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.initializer import Constant
@@ -484,7 +485,16 @@ class ImperativeQuantizeOutputs(object):
                 model_filename=model_filename,
                 params_filename=params_filename))
 
-        self._gather_scales(infer_program, scope)
+        self._gather_scales(infer_program, scope, fetch_targets)
+
+        # Remove `moving_average_abs_max_scale` node in sub graphs.
+        graph = IrGraph(core.Graph(infer_program.desc), for_test=False)
+        for sub_graph in graph.all_sub_graphs():
+            for _op in sub_graph.all_op_nodes():
+                if _op.name() == "moving_average_abs_max_scale":
+                    sub_graph.safe_remove_nodes(_op)
+            sub_graph.resolve_hazard()
+        infer_program = graph.to_program()
 
         self._set_skip_quant_attr(infer_program)
 
@@ -496,7 +506,7 @@ class ImperativeQuantizeOutputs(object):
             main_program=infer_program.clone(),
             model_filename=model_filename,
             params_filename=params_filename,
-            clip_extra=True)
+            clip_extra=False)
 
         if is_dynamic_mode:
             paddle.disable_static()
@@ -520,10 +530,10 @@ class ImperativeQuantizeOutputs(object):
 
         return flag
 
-    def _gather_scales(self, program, scope):
+    def _gather_scales(self, program, scope, fetch_targets):
         """
         Get all scales from fake ops, save them into the corresponding ops
-        and delete all moving_average_abs_max_scale ops. 
+        and delete all moving_average_abs_max_scale ops.
         """
 
         def _gather_input_scale():
@@ -580,6 +590,11 @@ class ImperativeQuantizeOutputs(object):
 
                 for next_op in next_ops:
                     next_op._rename_input(out_var_name, in_var_name)
+                    # If next_op is `fetch` and out_var_name in fetch_targets,
+                    # fetch_targets must update to in_var_name when rename input.
+                    for i in range(len(fetch_targets)):
+                        if fetch_targets[i].name == out_var_name:
+                            fetch_targets[i] = block.var(in_var_name)
 
         _gather_input_scale()
         _gather_output_scale()

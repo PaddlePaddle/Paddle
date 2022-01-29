@@ -12,7 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/distributed/service/communicator.h"
+#include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
+#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -41,16 +42,24 @@ class SendOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
     auto ins = Inputs("X");
-    // auto is_sparse = Attr<int>("is_sparse");
-    // auto table_id = Attr<int>("table_id");
+    auto is_sparse = Attr<int>("is_sparse");
+    auto table_id = Attr<int>("table_id");
 
     auto send_varnames = Attr<std::vector<std::string>>("send_varnames");
 
-    auto* communicator = paddle::distributed::Communicator::GetInstance();
-    if (communicator->Check(send_varnames)) {
-      communicator->Send(ins, scope);
+    // for common_dense_table, distributed_push_sparse op for push sparse in
+    // async
+    if (is_sparse == 0 && send_varnames.size() >= 1 &&
+        send_varnames[0] != "@PS_STEP_COUNTER@") {
+      auto fleet = paddle::distributed::FleetWrapper::GetInstance();
+      std::vector<::std::future<int32_t>> status;
+      fleet->PushDenseVarsAsync(scope, table_id, ins, &status, 0, -1);
+    } else {
+      auto* communicator = paddle::distributed::Communicator::GetInstance();
+      if (communicator->Check(send_varnames)) {
+        communicator->Send(ins, scope);
+      }
     }
-
     // auto fleet = paddle::distributed::FleetWrapper::GetInstance();
     // if (is_sparse == 0) {
     //   std::vector<::std::future<int32_t>> status;

@@ -22,28 +22,27 @@ from ..utils import is_valid_list_index
 from ..utils import compute_compatible_dim_mapping
 from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
+from ..utils import set_dist_op_desc_original_id
 from paddle.fluid import core, unique_name
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.framework import Program, Parameter, Variable, program_guard
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
+from .dist_default import DistributedDefaultImpl0
 
 
 class DistributedReshape2(DistributedOperatorImplContainer):
-    def __init__(self, name):
-        super(DistributedReshape2, self).__init__()
-        self._name = name
+    def __init__(self, op_type):
+        super(DistributedReshape2, self).__init__(op_type)
 
 
-register_distributed_operator_impl_container("reshape2",
-                                             DistributedReshape2("reshape2"))
+register_distributed_operator_impl_container(DistributedReshape2("reshape2"))
 
 
 class DistributedReshapeImpl0(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedReshapeImpl0, self).__init__()
-        self._name = name
+        super(DistributedReshapeImpl0, self).__init__(name)
         self._forward_implemented = True
-        self._backward_implemented = True
+        self._backward_implemented = False
 
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
@@ -70,6 +69,33 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
             return False
 
         if is_dim_shard(out_dims_mapping[-1]):
+            return False
+
+        return True
+
+    def is_auto_compatible(self, dist_op):
+        if (not self.is_input_compatible(dist_op)) or \
+            (not self.is_output_compatible(dist_op)):
+            return False
+
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
+        x_name = op_desc.input('X')[0]
+        out_name = op_desc.output('Out')[0]
+        x_shape_name = op_desc.output('XShape')[0]
+        x_shape_dims_mapping = op_dist_attr.get_output_dims_mapping(
+            x_shape_name)
+        x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
+        out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
+
+        for idx, dim_mapping in enumerate(out_dims_mapping[:-1]):
+            if x_dims_mapping[idx] != dim_mapping:
+                return False
+
+        if x_shape_dims_mapping[0] != -1:
+            return False
+
+        if x_shape_dims_mapping[1:] != x_dims_mapping[:]:
             return False
 
         return True
@@ -151,6 +177,7 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         # create op
         new_op_desc = main_block.desc.append_op()
         new_op_desc.copy_from(src_op.desc)
+        set_dist_op_desc_original_id(new_op_desc, src_op.desc, ctx)
         new_op_desc.set_input('ShapeTensor', ShapeTensor_var_list)
         new_op_desc.set_input('Shape', Shape_var_list)
         new_op_desc.set_input('X', [X_var.name])
@@ -162,15 +189,14 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
-        pass
+        DistributedDefaultImpl0.backward(ctx, *args, **kwargs)
 
 
 class DistributedReshapeImpl1(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedReshapeImpl1, self).__init__()
-        self._name = name
+        super(DistributedReshapeImpl1, self).__init__(name)
         self._forward_implemented = True
-        self._backward_implemented = True
+        self._backward_implemented = False
 
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
@@ -197,6 +223,36 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
 
         if len(x_dims_mapping) != len(out_dims_mapping) + 1:
+            return False
+
+        return True
+
+    def is_auto_compatible(self, dist_op):
+        if (not self.is_input_compatible(dist_op)) or \
+            (not self.is_output_compatible(dist_op)):
+            return False
+
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
+        x_name = op_desc.input('X')[0]
+        out_name = op_desc.output('Out')[0]
+        x_shape_name = op_desc.output('XShape')[0]
+        x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
+        out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
+        x_shape_dims_mapping = op_dist_attr.get_output_dims_mapping(
+            x_shape_name)
+
+        if is_dim_shard(x_dims_mapping[-1]):
+            return False
+
+        for idx, item in enumerate(x_dims_mapping[:-1]):
+            if out_dims_mapping[idx] != item:
+                return False
+
+        if x_shape_dims_mapping[0] != -1:
+            return False
+
+        if x_shape_dims_mapping[1:] != x_dims_mapping[:]:
             return False
 
         return True
@@ -278,6 +334,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         # create op
         new_op_desc = main_block.desc.append_op()
         new_op_desc.copy_from(src_op.desc)
+        set_dist_op_desc_original_id(new_op_desc, src_op.desc, ctx)
         new_op_desc.set_input('ShapeTensor', ShapeTensor_var_list)
         new_op_desc.set_input('Shape', Shape_var_list)
         new_op_desc.set_input('X', [X_var.name])
@@ -289,7 +346,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
-        pass
+        DistributedDefaultImpl0.backward(ctx, *args, **kwargs)
 
 
 register_distributed_operator_impl("reshape2",

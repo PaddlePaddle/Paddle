@@ -58,12 +58,22 @@ def _start_kv_server(port, http_server_d, size):
 
 def _is_cpuonly(backend):
     check_backend(backend)
-    if backend in ['auto', 'nccl', 'bkcl'] and (core.is_compiled_with_cuda() or
-                                                core.is_compiled_with_xpu()):
+    if backend in ['auto', 'nccl', 'bkcl', 'hccl', 'heter'] and (
+            core.is_compiled_with_cuda() or core.is_compiled_with_xpu() or
+            core.is_compiled_with_npu()):
+
         # passes 'auto' and can use cuda or xpu, use the default logics. so return False
         return False
     else:
         return True
+
+
+def _check_var_exists(var_name):
+    var = os.environ.get(var_name, None)
+    if var is None:
+        raise ValueError("paddle.distributed initialize error, "
+                         "environment variable %s is needed, but not set." %
+                         var_name)
 
 
 def init_parallel_env():
@@ -142,31 +152,26 @@ def init_parallel_env():
     is_cpu_only = _is_cpuonly(backend)
     # 1. gpu xpu check, must be gpu or xpu, 
     if not (is_cpu_only or core.is_compiled_with_cuda() or
-            core.is_compiled_with_xpu()):
+            core.is_compiled_with_xpu() or core.is_compiled_with_npu()):
         raise NotImplementedError(
             "If you want to use CPU-only version, please use 'gloo' as backend")
-
-    # 2. check env
-    def _check_var_exists(var_name):
-        var = os.environ.get(var_name, None)
-        if var is None:
-            raise ValueError("paddle.distributed initialize error, "
-                             "environment variable %s is needed, but not set." %
-                             var_name)
 
     if not is_cpu_only and core.is_compiled_with_cuda():
         _check_var_exists("FLAGS_selected_gpus")
     elif not is_cpu_only and core.is_compiled_with_xpu():
         _check_var_exists('FLAGS_selected_xpus')
+    elif not is_cpu_only and core.is_compiled_with_npu():
+        _check_var_exists('FLAGS_selected_npus')
 
     _check_var_exists("PADDLE_TRAINER_ID")
     _check_var_exists("PADDLE_CURRENT_ENDPOINT")
     _check_var_exists("PADDLE_TRAINERS_NUM")
     _check_var_exists("PADDLE_TRAINER_ENDPOINTS")
 
+    node_num = set([i.split(":")[0] for i in parallel_env.trainer_endpoints])
     # 3: init gloo context (step 1: httpsever start)
     init_gloo = int(os.getenv("PADDLE_WITH_GLOO", "0"))
-    if is_cpu_only or init_gloo:
+    if is_cpu_only or init_gloo or backend == "heter":
         ep_rank_0 = parallel_env.trainer_endpoints[0].split(":")
         manager = Manager()
         # glboal dict to store status
@@ -175,6 +180,8 @@ def init_parallel_env():
         if parallel_env.rank == 0:
             # The scope for worker used by http server is '_worker'
             size = {'_worker': parallel_env.world_size}
+            if backend == "heter":
+                size = {'_worker': len(node_num)}
             http_server = Process(
                 target=_start_kv_server,
                 args=(int(ep_rank_0[1]), http_server_d, size))
@@ -204,30 +211,40 @@ def init_parallel_env():
         place = core.CUDAPlace(parallel_env.device_id)
     elif core.is_compiled_with_xpu():
         place = core.XPUPlace(parallel_env.device_id)
+    elif core.is_compiled_with_npu():
+        place = core.NPUPlace(parallel_env.device_id)
 
     _set_expected_place(place)
-    # init nccl or bkcl context
+    # init nccl or hccl or bkcl or heter context
     if is_cpu_only:
         parallel_helper._set_parallel_ctx(
             core.GLOOParallelContext(strategy, place))
+    elif (backend == "heter"):
+        parallel_helper._set_parallel_ctx(
+            core.HeterParallelContext(strategy, parallel_env.device_id))
     elif core.is_compiled_with_cuda():
         parallel_helper._set_parallel_ctx(
             core.NCCLParallelContext(strategy, place))
     elif core.is_compiled_with_xpu():
         parallel_helper._set_parallel_ctx(
             core.BKCLParallelContext(strategy, place))
+    elif core.is_compiled_with_npu():
+        parallel_helper._set_parallel_ctx(
+            core.HCCLParallelContext(strategy, place))
 
-    other_endpoints = strategy.trainer_endpoints[:]
-    other_endpoints.remove(strategy.current_endpoint)
-    if not is_cpu_only and strategy.local_rank == 0:
-        wait_server_ready(other_endpoints)
+    if backend != "heter":
+        other_endpoints = strategy.trainer_endpoints[:]
+        other_endpoints.remove(strategy.current_endpoint)
+        if not is_cpu_only and strategy.local_rank == 0:
+            wait_server_ready(other_endpoints)
 
     parallel_helper._init_parallel_ctx()
+
     # 5: init gloo context (step 2: gloo init)
     # dividing init_gloo into two part beacause nccl and gloo
     # are separately looking for free ports which sometimes
     # leads to port-conflict.
-    if is_cpu_only and parallel_env.rank == 0:
+    if (is_cpu_only or backend == "heter") and parallel_env.rank == 0:
         # compare to init_gloo, we don't need to 
         # init gloo, because we do this in _init_parallel_ctx;
         http_server_d["running"] = False

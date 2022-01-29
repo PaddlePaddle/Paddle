@@ -99,20 +99,6 @@ class FillConstantOp : public framework::OperatorWithKernel {
 
     return kt;
   }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext& ctx) const override {
-    if (!ctx.HasInput("ShapeTensor") &&
-        ctx.MultiInput<framework::Tensor>("ShapeTensorList").empty() &&
-        !ctx.HasInput("ValueTensor") &&
-        !ctx.OutputVar("Out")->IsType<framework::SelectedRows>()) {
-      const auto& str_value = ctx.Attr<std::string>("str_value");
-      std::string value = str_value.empty() ? "value" : "str_value";
-      return framework::KernelSignature("fill_constant.scalar", {}, {value},
-                                        {"Out"});
-    }
-    return framework::KernelSignature("fill_constant.unregistered", {}, {}, {});
-  }
 };
 
 class FillConstantOpVarTypeInference : public framework::VarTypeInference {

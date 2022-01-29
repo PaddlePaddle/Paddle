@@ -39,6 +39,7 @@ from .activation import softplus  # noqa: F401
 from .activation import softshrink  # noqa: F401
 from .activation import softsign  # noqa: F401
 from .activation import swish  # noqa: F401
+from .activation import mish  # noqa: F401
 from .activation import tanh  # noqa: F401
 from .activation import tanh_  # noqa: F401
 from .activation import tanhshrink  # noqa: F401
@@ -52,8 +53,10 @@ from .common import dropout3d  # noqa: F401
 from .common import alpha_dropout  # noqa: F401
 from .common import label_smooth  # noqa: F401
 from .common import pad  # noqa: F401
+from .common import zeropad2d  # noqa: F401
 from .common import cosine_similarity  # noqa: F401
 from .common import unfold  # noqa: F401
+from .common import fold
 from .common import interpolate  # noqa: F401
 from .common import upsample  # noqa: F401
 from .common import bilinear  # noqa: F401
@@ -85,6 +88,7 @@ from .loss import softmax_with_cross_entropy  # noqa: F401
 from .loss import margin_cross_entropy  # noqa: F401
 from .loss import square_error_cost  # noqa: F401
 from .loss import ctc_loss  # noqa: F401
+from .loss import hinge_embedding_loss  # noqa: F401
 from .norm import batch_norm  # noqa: F401
 from .norm import instance_norm  # noqa: F401
 from .norm import layer_norm  # noqa: F401
@@ -103,7 +107,9 @@ from .pooling import adaptive_max_pool3d  # noqa: F401
 from .pooling import adaptive_avg_pool1d  # noqa: F401
 from .pooling import adaptive_avg_pool2d  # noqa: F401
 from .pooling import adaptive_avg_pool3d  # noqa: F401
+from .pooling import max_unpool1d  # noqa: F401
 from .pooling import max_unpool2d  # noqa: F401
+from .pooling import max_unpool3d  # noqa: F401
 
 from .vision import affine_grid  # noqa: F401
 from .vision import grid_sample  # noqa: F401
@@ -146,6 +152,7 @@ __all__ = [     #noqa
            'sigmoid',
            'silu',
            'swish',
+           'mish',
            'tanh',
            'tanh_',
            'tanhshrink',
@@ -162,6 +169,7 @@ __all__ = [     #noqa
            'label_smooth',
            'linear',
            'pad',
+           'zeropad2d',
            'unfold',
            'interpolate',
            'upsample',
@@ -173,7 +181,9 @@ __all__ = [     #noqa
            'max_pool1d',
            'max_pool2d',
            'max_pool3d',
+           'max_unpool1d',
            'max_unpool2d',
+           'max_unpool3d',
            'adaptive_avg_pool1d',
            'adaptive_avg_pool2d',
            'adaptive_avg_pool3d',
@@ -198,6 +208,7 @@ __all__ = [     #noqa
            'margin_cross_entropy',
            'square_error_cost',
            'ctc_loss',
+           'hinge_embedding_loss',
            'affine_grid',
            'grid_sample',
            'local_response_norm',
@@ -212,4 +223,5 @@ __all__ = [     #noqa
            'instance_norm',
            'class_center_sample',
            'sparse_attention',
+           'fold',
 ]

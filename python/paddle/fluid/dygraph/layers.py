@@ -31,12 +31,13 @@ from .. import unique_name
 from paddle.fluid import core
 from .layer_object_helper import LayerObjectHelper
 from .layer_hooks import record_program_ops_pre_hook, set_op_customized_attrs_post_hook, LayerOpsRecoder
-from .base import program_desc_tracing_guard, param_guard
+from .base import program_desc_tracing_guard, param_guard, in_declarative_mode, _convert_into_variable
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
 from paddle.fluid.framework import _current_expected_place as _get_device
+from paddle.fluid.core import VarDesc
 from paddle.fluid.dygraph import no_grad
 import paddle.utils.deprecated as deprecated
 
@@ -78,7 +79,7 @@ class HookRemoveHelper(object):
             del hooks[self._hook_id]
 
 
-class Layer(core.Layer):
+class Layer(object):
     """
     Dynamic graph Layer based on OOD, includes the parameters of the layer, the structure of the forward graph and so on.
 
@@ -881,41 +882,39 @@ class Layer(core.Layer):
     def _build_once(self, *args, **kwargs):
         pass
 
+    def _dygraph_call_func(self, *inputs, **kwargs):
+        for forward_pre_hook in self._forward_pre_hooks.values():
+            hook_result = forward_pre_hook(self, inputs)
+            if hook_result is not None:
+                if not isinstance(hook_result, tuple):
+                    hook_result = (hook_result, )
+                inputs = hook_result
+
+        if not self._built:
+            with program_desc_tracing_guard(False):
+                self._build_once(*inputs, **kwargs)
+
+                # TODO(liuyuhui) Only xpu broadcast parameters here.
+                # The other device is to call _sync_params_buffers in DataParallel
+                # to realize the parameter synchronization among multiply cards.
+                if parallel_helper._is_data_parallel_mode(
+                ) and paddle.is_compiled_with_xpu():
+                    parallel_helper._broadcast_parameters(
+                        self._parameters.values())
+
+            self._built = True
+
+        outputs = self.forward(*inputs, **kwargs)
+
+        for forward_post_hook in self._forward_post_hooks.values():
+            hook_result = forward_post_hook(self, inputs, outputs)
+            if hook_result is not None:
+                outputs = hook_result
+
+        return outputs
+
     def __call__(self, *inputs, **kwargs):
-        # NOTE(Aurelius84): Why we still need param_guard here?
-        # In case of ControlFlow, true_fn and false_fn will contain
-        # parameters that may not trigger logic of `Operator` to create
-        # them. we add this to make sure all parameters is available.
-        with param_guard(self._parameters), param_guard(self._buffers):
-            for forward_pre_hook in self._forward_pre_hooks.values():
-                hook_result = forward_pre_hook(self, inputs)
-                if hook_result is not None:
-                    if not isinstance(hook_result, tuple):
-                        hook_result = (hook_result, )
-                    inputs = hook_result
-
-            if not self._built:
-                with program_desc_tracing_guard(False):
-                    self._build_once(*inputs, **kwargs)
-
-                    # TODO(liuyuhui) Only xpu broadcast parameters here.
-                    # The other device is to call _sync_params_buffers in DataParallel
-                    # to realize the parameter synchronization among multiply cards.
-                    if parallel_helper._is_data_parallel_mode(
-                    ) and paddle.is_compiled_with_xpu():
-                        parallel_helper._broadcast_parameters(
-                            self._parameters.values())
-
-                self._built = True
-
-            outputs = self.forward(*inputs, **kwargs)
-
-            for forward_post_hook in self._forward_post_hooks.values():
-                hook_result = forward_post_hook(self, inputs, outputs)
-                if hook_result is not None:
-                    outputs = hook_result
-
-            return outputs
+        return self._dygraph_call_func(*inputs, **kwargs)
 
     def forward(self, *inputs, **kwargs):
         """
@@ -968,7 +967,7 @@ class Layer(core.Layer):
                 for prefix, layer in model.named_sublayers():
                     print(prefix, layer)
         """
-        assert (isinstance(sublayer, core.Layer) or sublayer == None)
+        assert (isinstance(sublayer, Layer) or sublayer == None)
 
         self._sub_layers[name] = sublayer
         return sublayer
@@ -1095,6 +1094,8 @@ class Layer(core.Layer):
         if '_parameters' in self.__dict__:
             _parameters = self.__dict__['_parameters']
             if name in self._parameters:
+                if in_declarative_mode():
+                    return _convert_into_variable(self._parameters[name])
                 return self._parameters[name]
         if '_sub_layers' in self.__dict__:
             _sub_layers = self.__dict__['_sub_layers']
@@ -1103,6 +1104,8 @@ class Layer(core.Layer):
         if '_buffers' in self.__dict__:
             _buffers = self.__dict__['_buffers']
             if name in _buffers:
+                if in_declarative_mode():
+                    return _convert_into_variable(_buffers[name])
                 return _buffers[name]
         return object.__getattribute__(self, name)
 
@@ -1135,7 +1138,7 @@ class Layer(core.Layer):
             params[name] = None
         else:
             layers = self.__dict__.get('_sub_layers', None)
-            if isinstance(value, core.Layer):
+            if isinstance(value, Layer):
                 if layers is None:
                     raise ValueError(
                         "super(YourLayer, self).__init__() should be called first"
@@ -1173,11 +1176,16 @@ class Layer(core.Layer):
                         # but should all non-Variable _buffers[name] be re-assign? We
                         # should consider it in the future. I current wrote this as
                         # conservative code.
-                        if _buffers[name] is None or type(_buffers[
-                                name]) == core.VarBase:
+                        if in_declarative_mode() and _buffers[name] is None:
+                            raise RuntimeError(
+                                'In Dy2stat, self.{0} is a buffer and self.{0} is '
+                                'not allowed to be set to Variable when self.{0} is None.'.
+                                format(name))
+                        elif _buffers[name] is None or type(
+                                getattr(self, name)) == core.VarBase:
                             _buffers[name] = assign(value)
                         else:
-                            assign(value, _buffers[name])
+                            assign(value, getattr(self, name))
                     elif value is not None:
                         raise TypeError(
                             "assignment to buffers '{}' should be of type core.VarBase or None, but got '{}'"
@@ -1268,6 +1276,34 @@ class Layer(core.Layer):
         self._state_dict_hooks[hook_remove_helper._hook_id] = hook
         return hook_remove_helper
 
+    def _obtain_parameters_buffers(self,
+                                   destination=None,
+                                   include_sublayers=True,
+                                   structured_name_prefix=""):
+        """
+        The difference from state_dict() is that state_dict_hook will not be called, 
+        but the original types of parameters and buffers will be maintained.
+        """
+        if destination is None:
+            destination = collections.OrderedDict()
+        for name, data in self._parameters.items():
+            if data is not None:
+                destination[structured_name_prefix + name] = data
+        for name, buffer in self._buffers.items():
+            if buffer is not None and name not in self._non_persistable_buffer_names_set:
+                destination[structured_name_prefix + name] = buffer
+
+        if include_sublayers:
+            for layer_name, layer_item in self._sub_layers.items():
+                if layer_item is not None:
+                    destination_temp = destination.copy()
+                    destination_temp.update(
+                        layer_item._obtain_parameters_buffers(
+                            destination_temp, include_sublayers,
+                            structured_name_prefix + layer_name + "."))
+                    destination = destination_temp
+        return destination
+
     def _state_dict_impl(self,
                          destination=None,
                          include_sublayers=True,
@@ -1305,7 +1341,6 @@ class Layer(core.Layer):
                             structured_name_prefix + layer_name + ".",
                             include_non_persistable_buffer))
                     destination = destination_temp
-
         for state_dict_hook in self._state_dict_hooks.values():
             hook_result = state_dict_hook(destination)
             if hook_result is not None:
@@ -1462,23 +1497,6 @@ class Layer(core.Layer):
             for param, state in matched_param_state:
                 _set_var(param, state)
 
-    def _apply(self, func, device, dtype, blocking):
-        for layer in self.children():
-            layer._apply(func, device, dtype, blocking)
-
-        for key, param in self._parameters.items():
-            if param is not None:
-                with no_grad():
-                    param_applied = func(param, device, dtype, blocking)
-
-                if param.grad is not None:
-                    with no_grad():
-                        grad_applied = func(param._grad_ivar(), device, dtype,
-                                            blocking)
-
-        for key, buf in self._buffers.items():
-            self._buffers[key] = func(buf, device, dtype, blocking)
-
     def to(self, device=None, dtype=None, blocking=None):
         '''
         Cast the parameters and buffers of Layer by the give device, dtype and blocking.
@@ -1488,18 +1506,18 @@ class Layer(core.Layer):
             If None, the device is the same with the original Tensor. If device is string, it can be ``cpu``, ``gpu:x`` and ``xpu:x``, where ``x`` is the
             index of the GPUs or XPUs. Default: None.
 
-            dtype(str|core.VarDesc.VarType|None, optional): The type of the data. If None, the dtype is the same with the original Tensor. Default: None.
+            dtype(str|numpy.dtype|paddle.dtype|None, optional): The type of the data. If None, the dtype is the same with the original Tensor. Default: None.
 
             blocking(bool|None, optional): If False and the source is in pinned memory, the copy will be
               asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the blocking is set True. Default: None.
-
+            
         Returns:
             self
 
         Examples:
             .. code-block:: python
 
-                # required: gpu
+                # required: skip
                 import paddle
 
                 linear=paddle.nn.Linear(2, 2)
@@ -1526,6 +1544,55 @@ class Layer(core.Layer):
                 #       [[-0.04989364, -0.56889004],
                 #        [ 0.33960250,  0.96878713]])
 
+        '''
+        return self._to_impl(
+            device=device,
+            dtype=dtype,
+            blocking=blocking,
+            include_sublayers=True)
+
+    def _apply(self, func, device, dtype, blocking, include_sublayers=True):
+        if include_sublayers:
+            for layer in self.children():
+                layer._apply(func, device, dtype, blocking, include_sublayers)
+
+        for key, param in self._parameters.items():
+            if param is not None:
+                with no_grad():
+                    param_applied = func(param, device, dtype, blocking)
+
+                if param.grad is not None:
+                    with no_grad():
+                        grad_applied = func(param._grad_ivar(), device, dtype,
+                                            blocking)
+
+        for key, buf in self._buffers.items():
+            self._buffers[key] = func(buf, device, dtype, blocking)
+
+        self._dtype = dtype
+
+    def _to_impl(self,
+                 device=None,
+                 dtype=None,
+                 blocking=None,
+                 include_sublayers=True):
+        '''
+        Cast the parameters and buffers of Layer by the give device, dtype and blocking.
+
+        Parameters:
+            device(str|paddle.CPUPlace()|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|paddle.XPUPlace()|None, optional): The device of the Layer which want to be stored.
+            If None, the device is the same with the original Tensor. If device is string, it can be ``cpu``, ``gpu:x`` and ``xpu:x``, where ``x`` is the
+            index of the GPUs or XPUs. Default: None.
+
+            dtype(str|numpy.dtype|paddle.dtype|None, optional): The type of the data. If None, the dtype is the same with the original Tensor. Default: None.
+
+            blocking(bool|None, optional): If False and the source is in pinned memory, the copy will be
+              asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the blocking is set True. Default: None.
+            
+            include_sublayers(bool|True, optional): If True, deal with self and all sublayers parameters and buffers, if not only deal with self parameters and buffers. Default: True.
+
+        Returns:
+            self
 
         '''
 
@@ -1556,19 +1623,18 @@ class Layer(core.Layer):
             if dtype is None:
                 dtype = t.dtype
 
+            if type(dtype) is not VarDesc.VarType:
+                dtype = convert_np_dtype_to_dtype_(dtype)
+
             # 1. gpu place need to determine whether the memory is sufficient for allocation:
             if t.place.is_gpu_place():
-                gpu_memory_available = core.gpu_memory_available()
                 # for gpu, minimum memory allocation unit is 256 bytes.
-                if type(dtype) is str:
-                    size_dtype = core.size_of_dtype(
-                        convert_np_dtype_to_dtype_(dtype))
-                else:
-                    size_dtype = core.size_of_dtype(dtype)
+                size_dtype = core.size_of_dtype(dtype)
                 # Note(zhangbo): Paddle GPU minimum memory allocation unit is 256 bytes, waiting_alloc_memory will comput ‘t’ occupied memory space.
                 # Coefficient 1.2 is used to avoid OOM that may occur in this critical state when the memory is just enough.
                 waiting_alloc_memory = (
-                    (t.numel().numpy()[0] * size_dtype) / 256 + 1) * 256 * 1.2
+                    (np.prod(t.shape) * size_dtype) / 256 + 1) * 256 * 1.2
+                gpu_memory_available = core.gpu_memory_available()
                 if gpu_memory_available < waiting_alloc_memory:
                     # Copy param / Tensor to cpu
                     t_used = t._copy_to(paddle.CPUPlace(),
@@ -1582,26 +1648,17 @@ class Layer(core.Layer):
 
             # 2. cast param / Tensor to dtype
             if dtype is not None and dtype != t_used.dtype:
-                if isinstance(t_used, framework.ParamBase):
-                    from paddle.fluid.layer_helper import LayerHelper
-                    helper = LayerHelper("cast", **locals())
-                    t_casted = helper.create_variable_for_type_inference(
-                        dtype=dtype)
-                    framework._dygraph_tracer().trace_op(
-                        type='cast',
-                        inputs={'X': t_used},
-                        outputs={'Out': t_casted},
-                        attrs={
-                            'in_dtype': t_used.dtype,
-                            'out_dtype': convert_np_dtype_to_dtype_(dtype)
-                        })
-                else:
+                with paddle.fluid.framework._dygraph_place_guard(
+                        place=t_used.place):
                     t_casted = t_used.cast(dtype=dtype)
             else:
                 t_casted = t_used
 
             # 3. Copy casted cpu param / Tensor to device
-            new_t = t_casted._copy_to(device, blocking)
+            if device is not None and not t_casted.place._equals(device):
+                new_t = t_casted._copy_to(device, blocking)
+            else:
+                new_t = t_casted
 
             # 4. share Tensor to origin param / Tensor
             dst_tensor = t.value().get_tensor()
@@ -1612,7 +1669,7 @@ class Layer(core.Layer):
 
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=UserWarning)
-            self._apply(transform, device, dtype, blocking)
+            self._apply(transform, device, dtype, blocking, include_sublayers)
 
         self._dtype = dtype
         return self

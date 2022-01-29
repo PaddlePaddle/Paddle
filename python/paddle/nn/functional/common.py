@@ -221,7 +221,8 @@ def interpolate(x,
         ValueError: The 'mode' of image_resize can only be 'linear', 'bilinear',
                     'trilinear', 'bicubic', 'area' or 'nearest' currently.
         ValueError: 'linear' only support 3-D tensor.
-        ValueError: 'bilinear', 'bicubic' and 'nearest' only support 4-D tensor.
+        ValueError: 'bilinear' and 'bicubic' only support 4-D tensor.
+        ValueError: 'nearest' only support 4-D or 5-D tensor.
         ValueError: 'trilinear' only support 5-D tensor.
         ValueError: One of size and scale_factor must not be None.
         ValueError: size length should be 1 for input 3-D tensor.
@@ -276,9 +277,11 @@ def interpolate(x,
     if resample in ['LINEAR'] and len(x.shape) != 3:
         raise ValueError("'linear' only support 3-D tensor.")
 
-    if resample in ['BILINEAR', 'NEAREST', 'BICUBIC'] and len(x.shape) != 4:
-        raise ValueError(
-            "'bilinear', 'bicubic' and 'nearest' only support 4-D tensor.")
+    if resample in ['NEAREST'] and len(x.shape) != 4 and len(x.shape) != 5:
+        raise ValueError("'NEAREST' only support 4-D  or 5-D tensor.")
+
+    if resample in ['BILINEAR', 'BICUBIC'] and len(x.shape) != 4:
+        raise ValueError("'bilinear' and 'bicubic' only support 4-D tensor.")
     if resample == 'TRILINEAR' and len(x.shape) != 5:
         raise ValueError("'trilinear'only support 5-D tensor.")
 
@@ -940,6 +943,8 @@ def dropout(x,
 
             #get mask shape
             input_shape = x.shape
+            if not in_dygraph_mode():
+                input_shape_tensor = paddle.shape(x)
             drop_axes = [axis] if isinstance(axis, int) else list(axis)
             if min(drop_axes) < 0 or max(drop_axes) > len(input_shape) - 1:
                 raise ValueError("axis value should be greater than or equal to 0 and less than dimensions of x:{}, but get axis value:{} " \
@@ -949,8 +954,12 @@ def dropout(x,
                     "length of axis should not be greater than dimensions of x:{}, but get length of axis: {}".
                     format(len(input_shape), len(drop_axes)))
             mask_shape = [1] * len(input_shape)
-            for i in drop_axes:
-                mask_shape[i] = input_shape[i]
+            if not in_dygraph_mode():
+                for i in drop_axes:
+                    mask_shape[i] = input_shape_tensor[i]
+            else:
+                for i in drop_axes:
+                    mask_shape[i] = input_shape[i]
 
             #get mask
             random_tensor = paddle.uniform(
@@ -1365,6 +1374,46 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
     return out
 
 
+def zeropad2d(x, padding, data_format="NCHW", name=None):
+    """
+    Pads the input tensor boundaries with zero according to 'pad'.
+
+    Args:
+        x(Tensor): The input tensor with data type float16/float32/float64/int32/int64.
+        padding(int | Tensor | List[int] | Tuple[int]): The padding size with data type int.
+            The input dimension should be 4 and pad has the form (pad_left, pad_right,
+            pad_top, pad_bottom).
+        data_format(str): An string from: "NHWC", "NCHW". Specify the data format of
+            the input data. Default: "NCHW".
+        name(str, optional): The default value is None. Normally there is no need for user
+            to set this property.
+
+    Returns：Tensor，padded with 0 according to pad and data type is same as input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            import paddle.nn.functional as F
+
+            x_shape = (1, 1, 2, 3)
+            x = paddle.arange(np.prod(x_shape), dtype="float32").reshape(x_shape) + 1
+            y = F.zeropad2d(x, [1, 2, 1, 1])
+            # [[[[0. 0. 0. 0. 0. 0.]
+            #    [0. 1. 2. 3. 0. 0.]
+            #    [0. 4. 5. 6. 0. 0.]
+            #    [0. 0. 0. 0. 0. 0.]]]]
+    """
+
+    return pad(x,
+               pad=padding,
+               mode='constant',
+               value=0,
+               data_format=data_format,
+               name=name)
+
+
 def cosine_similarity(x1, x2, axis=1, eps=1e-8):
     """
     Compute cosine similarity between x1 and x2 along axis.
@@ -1717,7 +1766,7 @@ def class_center_sample(label, num_classes, num_samples, group=None):
         seed = default_main_program().random_seed
 
     if in_dygraph_mode():
-        remapped_label, sampled_class_center = core.ops.class_center_sample(
+        remapped_label, sampled_class_center = _C_ops.class_center_sample(
             label, 'num_classes', num_classes, 'num_samples', num_samples,
             'ring_id', ring_id, 'nranks', nranks, 'rank', rank, 'fix_seed',
             seed is not None, 'seed', seed if seed is not None else 0)
@@ -1748,3 +1797,130 @@ def class_center_sample(label, num_classes, num_samples, group=None):
             'seed': seed if seed is not None else 0
         })
     return remapped_label, sampled_class_center
+
+
+def fold(x,
+         output_sizes,
+         kernel_sizes,
+         strides=1,
+         paddings=0,
+         dilations=1,
+         name=None):
+    r"""
+    
+    This Op is used to combines an array of sliding local blocks into a large containing
+    tensor. also known as col2im when operated on batched 2D image tensor. Fold calculates each 
+    combined value in the resulting large tensor by summing all values from all containing blocks. 
+
+
+    For each input :math:`x` with shape [N, C_in , L], the output shape [N, C_out, H_out, W_out]
+    can be calculated as following.
+
+    .. math::
+
+        H_out &= output_size[0]
+        W_out &= output_size[1]
+        C_out &= C_in / kernel\_sizes[0] / kernel\_sizes[1]
+
+    Parameters:
+        x(Tensor):                3-D Tensor, input tensor of format [N, C, L],
+                                  data type can be float32 or float64
+        output_sizes(list):       The size of output size, should be [output_size_h, output_size_w]
+                                  or an interger o treated as [o, o].
+        kernel_sizes(int|list):   The size of convolution kernel, should be [k_h, k_w]
+                                  or an integer k treated as [k, k].
+        strides(int|list):        The strides, should be [stride_h, stride_w]
+                                  or an integer stride treated as [sride, stride].
+                                  For default, strides will be [1, 1].
+        paddings(int|list):       The paddings of each dimension, should be
+                                  [padding_top, padding_left, padding_bottom, padding_right]
+                                  or [padding_h, padding_w] or an integer padding.
+                                  If [padding_h, padding_w] was given, it will expanded to
+                                  [padding_h, padding_w, padding_h, padding_w]. If an integer
+                                  padding was given, [padding, padding, padding, padding] will
+                                  be used. For default, paddings will be [0, 0, 0, 0]
+        dilations(int|list):      the dilations of convolution kernel, should be
+                                  [dilation_h, dilation_w], or an integer dilation treated as
+                                  [dilation, dilation]. For default, it will be [1, 1].
+        name(str, optional): The default value is None.
+                             Normally there is no need for user to set this property.
+                             For more information, please refer to :ref:`api_guide_Name`
+
+
+    Returns:
+        The tensor formed by combining a group of sliding local blocks
+        The output shape is [N, Cout, H, W] as decriabled above.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+
+            x = paddle.randn([2,12,9])
+            y = F.fold(x, output_sizes=(4, 4), kernel_sizes=2)
+            # y.shape = [2,3,4,4]
+
+    """
+
+    helper = LayerHelper("fold", **locals())
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'fold')
+
+    assert len(x.shape) == 3, \
+            "input should be the format of [N, C, L]"
+
+    if isinstance(output_sizes, int):
+        output_sizes = [output_sizes, output_sizes]
+    else:
+        assert isinstance(output_sizes, list) and (len(output_sizes) == 2), \
+            "output_sizes should either be an integer or a list of two integers"
+
+    if isinstance(kernel_sizes, int):
+        kernel_sizes = [kernel_sizes, kernel_sizes]
+    else:
+        assert isinstance(kernel_sizes, list) and (len(kernel_sizes) == 2), \
+            "kernel_sizes should either be an integer or a list of two integers"
+
+    if isinstance(strides, int):
+        strides = [strides, strides]
+    else:
+        assert isinstance(strides, list) and (len(strides) == 2), \
+            "strides should either be an integer or a list of two integers"
+
+    if isinstance(dilations, int):
+        dilations = [dilations, dilations]
+    else:
+        assert isinstance(dilations, list) and (len(dilations) == 2), \
+            "dilations should either be an integer or a list of two integers"
+
+    if isinstance(paddings, int):
+        paddings = [paddings] * 4
+    elif isinstance(paddings, list):
+        if len(paddings) == 2:
+            paddings = paddings * 2
+        elif len(paddings) == 4:
+            pass
+        else:
+            raise ValueError(
+                "paddings should either be an integer or a list of 2 or 4 integers"
+            )
+    else:
+        raise ValueError(
+            "Unexpected type of paddings, it should be either an integer or a list"
+            "of 2 or 4 integers")
+
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type="fold",
+        inputs={"X": x},
+        outputs={"Y": out},
+        attrs={
+            "output_sizes": output_sizes,
+            "kernel_sizes": kernel_sizes,
+            "strides": strides,
+            "paddings": paddings,
+            "dilations": dilations
+        })
+    return out

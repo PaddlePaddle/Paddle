@@ -24,7 +24,7 @@
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/core/enforce.h"
 
 namespace pten {
 
@@ -51,45 +51,29 @@ class KernelContext {
     return static_cast<const CtxType&>(*dev_ctx_);
   }
 
-  void EmplaceBackInput(std::shared_ptr<TensorBase> input) {
-    int index = inputs_.size();
-    inputs_.emplace_back(std::move(input));
-    // Record the start and end index of the input
-    input_range_.emplace_back(std::pair<int, int>(index, index + 1));
-  }
+  void EmplaceBackInput(const TensorBase* input);
 
-  void EmplaceBackInputs(
-      paddle::SmallVector<std::shared_ptr<TensorBase>> inputs) {
-    int index = inputs_.size();
-    // Record the start and end index of the input
-    input_range_.emplace_back(
-        std::pair<int, int>(index, index + inputs.size()));
-    inputs_.insert(inputs_.end(),
-                   std::make_move_iterator(inputs.begin()),
-                   std::make_move_iterator(inputs.end()));
-  }
+  void EmplaceBackInputWithoutSetRange(const TensorBase* input);
 
-  void EmplaceBackOutput(std::shared_ptr<TensorBase> output) {
-    int index = outputs_.size();
-    outputs_.emplace_back(std::move(output));
-    // Record the start and end index of the input
-    output_range_.emplace_back(std::pair<int, int>(index, index + 1));
-  }
+  void EmplaceBackInputs(paddle::SmallVector<const TensorBase*> inputs);
 
-  void EmplaceBackOutputs(
-      paddle::SmallVector<std::shared_ptr<TensorBase>> outputs) {
-    int index = outputs_.size();
-    // Record the start and end index of the input
-    output_range_.emplace_back(
-        std::pair<int, int>(index, index + outputs.size()));
-    outputs_.insert(outputs_.end(),
-                    std::make_move_iterator(outputs.begin()),
-                    std::make_move_iterator(outputs.end()));
-  }
+  void EmplaceBackOutput(TensorBase* output);
 
-  void EmplaceBackAttr(paddle::any attr) {
-    attrs_.emplace_back(std::move(attr));
-  }
+  void EmplaceBackOutputWithoutSetRange(TensorBase* output);
+
+  void EmplaceBackOutputs(paddle::SmallVector<TensorBase*> outputs);
+
+  void SetOutputWithoutSetRange(int index, TensorBase* output);
+
+  void EmplaceBackAttr(paddle::any attr);
+
+  const std::pair<int, int>& InputRangeAt(size_t idx) const;
+
+  const std::pair<int, int>& OutputRangeAt(size_t idx) const;
+
+  std::pair<int, int>& MutableInputRangeAt(size_t idx);
+
+  std::pair<int, int>& MutableOutputRangeAt(size_t idx);
 
   template <typename TensorType>
   const TensorType& InputAt(size_t idx) const {
@@ -97,47 +81,38 @@ class KernelContext {
   }
 
   template <typename TensorType>
-  std::vector<TensorType> InputBetween(size_t start, size_t end) const {
+  paddle::optional<const TensorType&> OptionalInputAt(size_t idx) const {
+    const auto& input = inputs_.at(idx);
+    return input ? paddle::optional<const TensorType&>{static_cast<
+                       const TensorType&>(*input)}
+                 : paddle::optional<const TensorType&>{paddle::none};
+  }
+
+  template <typename TensorType>
+  std::vector<TensorType> MoveInputsBetween(size_t start, size_t end) {
     std::vector<TensorType> v;
     for (size_t i = start; i < end; ++i) {
-      auto t = std::dynamic_pointer_cast<TensorType>(inputs_.at(i));
-      v.emplace_back(std::move(*t.get()));
+      auto t = static_cast<const TensorType*>(inputs_.at(i));
+      v.emplace_back(*t);
+      inputs_.at(i) = nullptr;
     }
-
     return v;
   }
 
-  const std::pair<int, int>& InputRangeAt(size_t idx) const {
-    return input_range_.at(idx);
-  }
+  void AssignInputRange(std::pair<int, int>&& range, size_t idx);
 
-  const std::pair<int, int>& OutputRangeAt(size_t idx) const {
-    return output_range_.at(idx);
-  }
-
-  std::pair<int, int>& MutableInputRangeAt(size_t idx) {
-    return input_range_[idx];
-  }
-
-  std::pair<int, int>& MutableOutputRangeAt(size_t idx) {
-    return output_range_[idx];
-  }
-
-  template <typename TensorType>
-  TensorType* MutableInputAt(size_t idx) {
-    return static_cast<TensorType*>(inputs_.at(idx).get());
-  }
+  void AssignOutputRange(std::pair<int, int>&& range, size_t idx);
 
   template <typename TensorType>
   TensorType* MutableOutputAt(size_t idx) {
-    return static_cast<TensorType*>(outputs_.at(idx).get());
+    return static_cast<TensorType*>(outputs_.at(idx));
   }
 
   template <typename TensorType>
   std::vector<TensorType*> MutableOutputBetween(size_t start, size_t end) {
     std::vector<TensorType*> v;
     for (size_t i = start; i < end; ++i) {
-      v.emplace_back(static_cast<TensorType*>(outputs_.at(i).get()));
+      v.emplace_back(static_cast<TensorType*>(outputs_.at(i)));
     }
 
     return v;
@@ -148,31 +123,18 @@ class KernelContext {
     try {
       return paddle::any_cast<AttrType>(attrs_.at(idx));
     } catch (paddle::bad_any_cast&) {
-      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+      PADDLE_THROW(pten::errors::InvalidArgument(
           "Attribute cast error in Op Kernel Context."));
     }
   }
 
   // Temporary method: For compatible with fluid Tensor and improve performance
   // Only deal with DenseTensor now
-  void ClearData() {
-    for (auto& in : inputs_) {
-      CompatibleDenseTensorUtils::ClearStorage(
-          static_cast<DenseTensor*>(in.get()));
-    }
-    for (auto& out : outputs_) {
-      CompatibleDenseTensorUtils::ClearStorage(
-          static_cast<DenseTensor*>(out.get()));
-    }
-    attrs_.clear();
-  }
+  void ClearData();
 
   size_t InputsSize() const { return inputs_.size(); }
   size_t OutputsSize() const { return outputs_.size(); }
   size_t AttrsSize() const { return attrs_.size(); }
-
- private:
-  bool IsDuplicable() const { return input_range_.size() != inputs_.size(); }
 
  private:
   // DeviceContext base class
@@ -180,8 +142,8 @@ class KernelContext {
 
   // TODO(chenweihang): Tensor -> Tensor*, Tensor should by managed `scope`
   // Note: can't use API Tensor here, the inference don't use this API Tensor
-  paddle::SmallVector<std::shared_ptr<TensorBase>> inputs_;
-  paddle::SmallVector<std::shared_ptr<TensorBase>> outputs_;
+  paddle::SmallVector<const TensorBase*> inputs_;
+  paddle::SmallVector<TensorBase*> outputs_;
   paddle::SmallVector<paddle::any> attrs_;
 
   // Only contains input like list[Tensor] need `range`

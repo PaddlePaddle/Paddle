@@ -13,8 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
+#include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/runtime_graph.h"
+#include "paddle/fluid/distributed/fleet_executor/task_node.h"
+#include "paddle/fluid/framework/executor_gc_helper.h"
+#include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 
 namespace paddle {
@@ -24,22 +30,75 @@ FleetExecutor::FleetExecutor(const std::string& exe_desc_str) {
   bool parse_flag = exe_desc_.ParseFromString(exe_desc_str);
   PADDLE_ENFORCE(parse_flag, platform::errors::PreconditionNotMet(
                                  "Error occurs while parsing string to proto"));
+  // Message bus will be created and inited only once
+  GlobalVal<MessageBus>::Create();
+  InitMessageBus();
+}
+
+FleetExecutor::FleetExecutor(const FleetExecutorDesc& exe_desc)
+    : exe_desc_(exe_desc) {
+  // Message bus will be created and inited only once
+  GlobalVal<MessageBus>::Create();
+  InitMessageBus();
 }
 
 FleetExecutor::~FleetExecutor() {
-  // Destroy Executor
+  for (const auto& carrier_id : carrier_ids_) {
+    GlobalMap<std::string, Carrier>::Get(carrier_id)->Release();
+  }
 }
 
-void FleetExecutor::Init(const paddle::framework::ProgramDesc& program_desc) {
-  // Compile and Initialize
-  InitMessageBus();
+void FleetExecutor::Init(
+    const std::string& carrier_id, const framework::ProgramDesc& program_desc,
+    framework::Scope* scope, const platform::Place& place,
+    int64_t num_micro_batches, const std::vector<TaskNode*>& task_nodes,
+    const std::unordered_map<int64_t, int64_t>& task_id_to_rank) {
+  PADDLE_ENFORCE_GT(task_nodes.size(), 0,
+                    platform::errors::InvalidArgument(
+                        "Fleet executor is inited with empty task node"));
+  // TODO(fleet_exe devs): the unused_vars should be got from run time graph
+  std::vector<std::unique_ptr<framework::OperatorBase>> ops;
+  for (auto task_node : task_nodes) {
+    for (auto op : task_node->ops()) {
+      ops.emplace_back(std::unique_ptr<framework::OperatorBase>(op));
+    }
+  }
+  auto unused_vars = framework::GetUnusedVars(program_desc.Block(0), ops, {});
+  runtime_graph_ = std::make_shared<RuntimeGraph>();
+  std::unordered_map<int64_t, TaskNode*> interceptor_id_to_task;
+  for (auto task_node : task_nodes) {
+    task_node->SetUnusedVars(unused_vars);
+    int64_t interceptor_id = task_node->task_id();
+    interceptor_id_to_task.emplace(interceptor_id, task_node);
+  }
+  runtime_graph_->SetInterceptorIdToRank(task_id_to_rank);
+  runtime_graph_->SetInterceptorIdToNode(interceptor_id_to_task);
+  for (auto& unique_op : ops) {
+    unique_op.release();
+  }
+  VLOG(5) << runtime_graph_->DebugString();
+  Carrier* carrier =
+      GlobalMap<std::string, Carrier>::Create(carrier_id, carrier_id);
+  carrier_ids_.insert(carrier_id);
+  // Set current running carrier
+  GlobalVal<std::string>::Set(new std::string(carrier_id));
+  InitCarrier(carrier, scope, place, num_micro_batches, program_desc);
+  GlobalVal<MessageBus>::Get()->Barrier();
+}
+
+void FleetExecutor::InitCarrier(Carrier* carrier, framework::Scope* scope,
+                                const platform::Place& place,
+                                int64_t num_micro_batches,
+                                const framework::ProgramDesc& program_desc) {
+  carrier->Init(exe_desc_.cur_rank(), runtime_graph_->interceptor_id_to_rank(),
+                runtime_graph_->interceptor_id_to_node(), program_desc, scope,
+                num_micro_batches, place);
 }
 
 void FleetExecutor::InitMessageBus() {
   std::stringstream ss;
   ss << "\nThe DNS table of the message bus is: \n";
   int64_t cur_rank = exe_desc_.cur_rank();
-  std::unordered_map<int64_t, int64_t> interceptor_id_to_rank;
   std::unordered_map<int64_t, std::string> rank_to_addr;
   std::string addr;
   for (const auto& rank_info : exe_desc_.cluster_info()) {
@@ -47,8 +106,6 @@ void FleetExecutor::InitMessageBus() {
     int64_t rank = rank_info.rank();
     std::string ip_port = rank_info.ip_port();
     ss << rank << "\t->\t" << ip_port << "\n";
-    // TODO(Yuang): init interceptor_id_to_rank out of this loop
-    interceptor_id_to_rank.insert(std::make_pair(rank, rank));
     rank_to_addr.insert(std::make_pair(rank, ip_port));
     if (rank == cur_rank) {
       addr = ip_port;
@@ -56,7 +113,7 @@ void FleetExecutor::InitMessageBus() {
   }
   if (addr == "") {
     PADDLE_ENFORCE_EQ(
-        rank_to_addr.size(), 0,
+        rank_to_addr.size(), 1,
         platform::errors::NotFound("Empty address is not valid for "
                                    "paddle.distributed.launch method."));
     PADDLE_ENFORCE_EQ(
@@ -68,18 +125,17 @@ void FleetExecutor::InitMessageBus() {
   VLOG(3) << "The number of ranks are "
           << (rank_to_addr.size() == 0 ? 1 : rank_to_addr.size()) << ".";
   VLOG(5) << ss.str();
-  MessageBus& message_bus_instance = MessageBus::Instance();
-  if (!message_bus_instance.IsInit()) {
-    message_bus_instance.Init(interceptor_id_to_rank, rank_to_addr, addr);
+  GlobalVal<MessageBus>::Get()->Init(cur_rank, rank_to_addr, addr);
+}
+
+void FleetExecutor::Run(const std::string& carrier_id) {
+  Carrier* carrier = GlobalMap<std::string, Carrier>::Get(carrier_id);
+  // Set current running carrier
+  if (*GlobalVal<std::string>::Get() != carrier_id) {
+    GlobalVal<std::string>::Set(new std::string(carrier_id));
+    GlobalVal<MessageBus>::Get()->Barrier();
   }
-}
-
-void FleetExecutor::Run() {
-  // Run
-}
-
-void FleetExecutor::Release() {
-  // Release
+  carrier->Start();
 }
 
 }  // namespace distributed

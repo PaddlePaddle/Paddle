@@ -43,9 +43,11 @@ option(WITH_ONEMKL      "Compile PaddlePaddle with oneMKL"              OFF)
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
 option(WITH_TENSORRT    "Compile PaddlePaddle with NVIDIA TensorRT"     OFF)
 option(WITH_XPU         "Compile PaddlePaddle with BAIDU KUNLUN XPU"    OFF)
+option(WITH_MLU    "Compile PaddlePaddle with CAMBRICON MLU"     OFF)
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode"    OFF)
 option(WITH_ASCEND         "Compile PaddlePaddle with ASCEND"        OFF)
 option(WITH_ROCM        "Compile PaddlePaddle with ROCM platform"       OFF)
+option(WITH_IPU         "Compile PaddlePaddle with Graphcore IPU"    OFF)
 # NOTE(zhiqiu): WITH_ASCEND_CL can be compile on x86_64, so we can set WITH_ASCEND=OFF and WITH_ASCEND_CL=ON
 # to develop some acl related functionality on x86
 option(WITH_ASCEND_CL         "Compile PaddlePaddle with ASCEND CL"        ${WITH_ASCEND})
@@ -62,6 +64,9 @@ if (WITH_GPU AND WITH_ASCEND)
 endif()
 if (WITH_GPU AND WITH_ROCM)
     message(FATAL_ERROR "Error when compile CUDA and ROCM at the same time")
+endif()
+if (WITH_GPU AND WITH_MLU)
+    message(FATAL_ERROR "Error when compile GPU and MLU at the same time")
 endif()
 
 if(WITH_GPU AND NOT APPLE)
@@ -121,6 +126,8 @@ if(WIN32)
         endforeach(flag_var)
     endif()
 
+    # NOTE(zhouwei): msvc max/min macro conflict with std::min/max, define NOMINMAX globally
+    add_definitions("-DNOMINMAX")
     # windows build turn off warnings, use parallel compiling.
     foreach(flag_var
         CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
@@ -215,6 +222,7 @@ option(WITH_DGC   "Use DGC(Deep Gradient Compression) or not" ${WITH_DISTRIBUTE}
 option(SANITIZER_TYPE "Choose the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined" OFF)
 option(WITH_LITE   "Compile Paddle Fluid with Lite Engine" OFF)
 option(WITH_CINN   "Compile PaddlePaddle with CINN" OFF)
+option(WITH_INFRT  "Compile PaddlePaddle with INFRT" OFF)
 option(WITH_NCCL   "Compile PaddlePaddle with NCCL support"             ON)
 option(WITH_RCCL   "Compile PaddlePaddle with RCCL support"             ON)
 option(WITH_XPU_BKCL    "Compile PaddlePaddle with BAIDU KUNLUN XPU BKCL"   OFF)
@@ -300,6 +308,10 @@ if(WITH_GPU)
     endif()
 endif()
 
+if(WITH_MLU)
+    include(neuware)
+endif()
+
 if(WITH_ROCM)
     include(hip)
     include(miopen) # set miopen libraries, must before configure
@@ -319,6 +331,10 @@ else()
      if(WITH_ROCM)
          MESSAGE(WARNING "If the environment is multi-card, the WITH_RCCL option needs to be turned on, otherwise only a single card can be used.")
      endif()
+endif()
+
+if(WITH_HETERPS AND WITH_PSLIB)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
 endif()
 
 if(WITH_DISTRIBUTE)
@@ -414,3 +430,7 @@ add_subdirectory(paddle)
 if(WITH_PYTHON)
     add_subdirectory(python)
 endif()
+
+get_directory_property(all_inc_dirs INCLUDE_DIRECTORIES)
+list(JOIN all_inc_dirs "\r\n" all_inc_dirs)
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/includes.txt" ${all_inc_dirs})

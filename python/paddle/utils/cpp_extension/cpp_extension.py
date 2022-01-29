@@ -440,7 +440,7 @@ class BuildExtension(build_ext, object):
                 # so we add this flag to ensure the symbol names from user compiled
                 # shared library have same ABI suffix with core_(no)avx.so.
                 # See https://stackoverflow.com/questions/34571583/understanding-gcc-5s-glibcxx-use-cxx11-abi-or-the-new-abi
-                add_compile_flag(['-D_GLIBCXX_USE_CXX11_ABI=1'], cflags)
+                add_compile_flag(cflags, ['-D_GLIBCXX_USE_CXX11_ABI=1'])
                 # Append this macor only when jointly compiling .cc with .cu
                 if not is_cuda_file(src) and self.contain_cuda_file:
                     if core.is_compiled_with_rocm():

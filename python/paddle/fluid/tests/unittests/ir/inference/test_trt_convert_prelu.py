@@ -39,7 +39,8 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
         def generate_alpha(attrs: List[Dict[str, Any]], dim1, dim2, dim3):
             if attrs[0]["mode"] == "all":
                 return np.random.random(size=(1)).astype(np.float32)
-            elif attrs[0]["mode"] == "channel":
+            elif attrs[0]["mode"] == "channel" and attrs[0][
+                    "data_format"] == "NCHW":
                 shape = [1]
                 if dim1 != 0:
                     shape.append(dim1)
@@ -47,6 +48,16 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
                     shape.append(1)
                 if dim3 != 0:
                     shape.append(1)
+                return np.random.random(size=shape).astype(np.float32)
+            elif attrs[0]["mode"] == "channel" and attrs[0][
+                    "data_format"] == "NHWC":
+                shape = [1]
+                if dim1 != 0:
+                    shape.append(1)
+                if dim2 != 0:
+                    shape.append(1)
+                if dim3 != 0:
+                    shape.append(dim3)
                 return np.random.random(size=shape).astype(np.float32)
             elif attrs[0]["mode"] == "element":
                 shape = [1]
@@ -72,37 +83,45 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
                             continue
 
                         for mode in ["all", "channel", "element"]:
-                            if mode == "channel" and dim1 == 0:
-                                continue
-                            dics = [{"mode": mode}]
-                            ops_config = [{
-                                "op_type": "prelu",
-                                "op_inputs": {
-                                    "X": ["input_data"],
-                                    "Alpha": ["alpha_weight"]
-                                },
-                                "op_outputs": {
-                                    "Out": ["output_data"]
-                                },
-                                "op_attrs": dics[0]
-                            }]
-                            ops = self.generate_op_config(ops_config)
+                            for data_format in ['NCHW', 'NHWC']:
+                                if mode == "channel" and dim1 == 0 and data_format == "NCHW":
+                                    continue
+                                if mode == "channel" and dim3 == 0 and data_format == "NHWC":
+                                    continue
+                                dics = [{
+                                    "mode": mode,
+                                    "data_format": data_format
+                                }]
+                                ops_config = [{
+                                    "op_type": "prelu",
+                                    "op_inputs": {
+                                        "X": ["input_data"],
+                                        "Alpha": ["alpha_weight"]
+                                    },
+                                    "op_outputs": {
+                                        "Out": ["output_data"]
+                                    },
+                                    "op_attrs": dics[0]
+                                }]
+                                ops = self.generate_op_config(ops_config)
 
-                            program_config = ProgramConfig(
-                                ops=ops,
-                                weights={
-                                    "alpha_weight": TensorConfig(
-                                        data_gen=partial(generate_alpha, dics,
-                                                         dim1, dim2, dim3))
-                                },
-                                inputs={
-                                    "input_data": TensorConfig(
-                                        data_gen=partial(generate_input, batch,
-                                                         dim1, dim2, dim3)),
-                                },
-                                outputs=["output_data"])
+                                program_config = ProgramConfig(
+                                    ops=ops,
+                                    weights={
+                                        "alpha_weight": TensorConfig(
+                                            data_gen=partial(generate_alpha,
+                                                             dics, dim1, dim2,
+                                                             dim3))
+                                    },
+                                    inputs={
+                                        "input_data": TensorConfig(
+                                            data_gen=partial(generate_input,
+                                                             batch, dim1, dim2,
+                                                             dim3)),
+                                    },
+                                    outputs=["output_data"])
 
-                            yield program_config
+                                yield program_config
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):

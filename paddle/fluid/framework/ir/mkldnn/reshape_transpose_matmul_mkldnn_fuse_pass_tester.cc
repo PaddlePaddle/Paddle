@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/reshape_transpose_matmul_mkldnn_fuse_pass.h"
+#include "paddle/fluid/framework/ir/mkldnn/reshape_transpose_matmul_v2_mkldnn_fuse_pass.h"
 
 #include <gtest/gtest.h>
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
@@ -37,7 +38,7 @@ Scope* CreateParamScope() {
   return param_scope;
 }
 
-void TestMain(bool with_xshapes) {
+void TestMain(const std::string& op_name, bool with_xshapes) {
   // inputs          operator          output
   // -----------------------------------------------
   //  a1,w1,bias1      fc          ->    b1
@@ -46,7 +47,7 @@ void TestMain(bool with_xshapes) {
   //  a2,w2,bias2      fc          ->    b2
   //  b2             reshape       ->    c2
   //  c2            transpose      ->    d2
-  // (d1, d2)        matmul        ->    (...)
+  // (d1, d2)        matmul(_v2)   ->    (...)
   Layers layers;
   auto* a1 = layers.data("a1", {-1, 128, 768});
   auto* w1 = layers.data("w1", {768, 768}, true);
@@ -66,7 +67,11 @@ void TestMain(bool with_xshapes) {
   c2->SetShape({-1, 128, 12, 64});
   auto* d2 = layers.transpose2(c2, {0, 2, 1, 3});
   d2->SetShape({-1, 12, 128, 64});
-  layers.matmul(d1, d2);
+  if (op_name == "matmul_v2") {
+    layers.matmul_v2(d1, d2);
+  } else {
+    layers.matmul(d1, d2);
+  }
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   graph->Set("__param_scope__", CreateParamScope());
@@ -76,8 +81,8 @@ void TestMain(bool with_xshapes) {
   int total_nodes_before = graph->Nodes().size();
   VLOG(3) << DebugString(graph);
 
-  auto pass =
-      PassRegistry::Instance().Get("reshape_transpose_matmul_mkldnn_fuse_pass");
+  auto pass = PassRegistry::Instance().Get("reshape_transpose_" + op_name +
+                                           "_mkldnn_fuse_pass");
   graph.reset(pass->Apply(graph.release()));
 
   int num_reshape_nodes_after = GetNumOpNodes(graph, "reshape2");
@@ -92,7 +97,7 @@ void TestMain(bool with_xshapes) {
   int removed = 8;  // 2* reshape, reshape_out, transpose, transpose_out
   if (with_xshapes) removed += 2;  // transpose_xshape, reshape_xshape
   EXPECT_EQ(total_nodes_before - removed, total_nodes_after);
-  auto* matmul_op_desc = GetOpNodes(graph, "matmul").at(0)->Op();
+  auto* matmul_op_desc = GetOpNodes(graph, op_name).at(0)->Op();
 
   auto check = [&matmul_op_desc](std::string a) {
     std::string shape_str = "fused_reshape_" + a;
@@ -108,12 +113,22 @@ void TestMain(bool with_xshapes) {
 
 TEST(ReshapeTransposeMatmulMkldnnFusePass,
      both_matmul_inputs_reshape_transpose) {
-  TestMain(false);
+  TestMain("matmul", false);
 }
 
 TEST(ReshapeTransposeMatmulMkldnnFusePass,
      both_matmul_inputs_reshape_transpose_one_with_xshapes) {
-  TestMain(true);
+  TestMain("matmul", true);
+}
+
+TEST(ReshapeTransposeMatmulV2MkldnnFusePass,
+     both_matmulv2_inputs_reshape_transpose) {
+  TestMain("matmul_v2", false);
+}
+
+TEST(ReshapeTransposeMatmulV2MkldnnFusePass,
+     both_matmulv2_inputs_reshape_transpose_one_with_xshapes) {
+  TestMain("matmul_v2", true);
 }
 
 }  // namespace ir
@@ -121,3 +136,4 @@ TEST(ReshapeTransposeMatmulMkldnnFusePass,
 }  // namespace paddle
 
 USE_PASS(reshape_transpose_matmul_mkldnn_fuse_pass);
+USE_PASS(reshape_transpose_matmul_v2_mkldnn_fuse_pass);

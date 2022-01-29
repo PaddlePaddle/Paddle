@@ -102,8 +102,7 @@ class CholeskyGPUKernel : public framework::OpKernel<T> {
     std::vector<int> error_info;  // only for checking positive matrix
     error_info.resize(batch_count);
 
-    memory::Copy(platform::CPUPlace(), error_info.data(),
-                 BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
+    memory::Copy(platform::CPUPlace(), error_info.data(), dev_ctx.GetPlace(),
                  info_ptr, sizeof(int) * batch_count, dev_ctx.stream());
 
     for (int i = 0; i < batch_count; ++i) {
@@ -131,27 +130,26 @@ class CholeskyGPUKernel : public framework::OpKernel<T> {
                                    int lda, int* info) const {                 \
     auto handle = dev_ctx.cusolver_dn_handle();                                \
     int workspace_size = 0;                                                    \
-    PADDLE_ENFORCE_CUDA_SUCCESS(                                               \
+    PADDLE_ENFORCE_GPU_SUCCESS(                                                \
         platform::dynload::cusolverDn##C##potrf_bufferSize(                    \
             handle, uplo, n, A, lda, &workspace_size));                        \
     auto workspace = memory::Alloc(dev_ctx, workspace_size);                   \
     T* workspace_ptr = reinterpret_cast<T*>(workspace->ptr());                 \
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cusolverDn##C##potrf(       \
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDn##C##potrf(        \
         handle, uplo, n, A, lda, workspace_ptr, workspace_size, info));        \
   }
 
 FUNC_WITH_TYPES(POTRF_INSTANCE);
 
 #if CUDA_VERSION >= 9020 && !defined(_WIN32)
-#define POTRF_BATCH_INSTANCE(T, C)                                          \
-  template <>                                                               \
-  void CholeskyGPUKernel<T>::PotrfBatched(                                  \
-      const platform::CUDADeviceContext& dev_ctx, cublasFillMode_t uplo,    \
-      int n, T* Aarray[], int lda, int* info_array, int batch_size) const { \
-    auto handle = dev_ctx.cusolver_dn_handle();                             \
-    PADDLE_ENFORCE_CUDA_SUCCESS(                                            \
-        platform::dynload::cusolverDn##C##potrfBatched(                     \
-            handle, uplo, n, Aarray, lda, info_array, batch_size));         \
+#define POTRF_BATCH_INSTANCE(T, C)                                             \
+  template <>                                                                  \
+  void CholeskyGPUKernel<T>::PotrfBatched(                                     \
+      const platform::CUDADeviceContext& dev_ctx, cublasFillMode_t uplo,       \
+      int n, T* Aarray[], int lda, int* info_array, int batch_size) const {    \
+    auto handle = dev_ctx.cusolver_dn_handle();                                \
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDn##C##potrfBatched( \
+        handle, uplo, n, Aarray, lda, info_array, batch_size));                \
   }
 
 FUNC_WITH_TYPES(POTRF_BATCH_INSTANCE);

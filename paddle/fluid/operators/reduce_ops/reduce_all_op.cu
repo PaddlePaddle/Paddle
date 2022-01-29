@@ -13,8 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/reduce_ops/reduce_all_op.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
 
 REGISTER_OP_CUDA_KERNEL(
     reduce_all,
-    ops::ReduceCudaKernel<bool, paddle::operators::CustomLogicalAnd>);
+    ops::ReduceCudaKernel<bool, kps::LogicalAndFunctor, kps::IdentityFunctor>);

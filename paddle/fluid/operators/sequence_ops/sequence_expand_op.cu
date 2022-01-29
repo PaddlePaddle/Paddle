@@ -15,7 +15,7 @@ limitations under the License. */
 #include <algorithm>
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/sequence_ops/sequence_expand_op.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -98,8 +98,7 @@ static int ExpandByMemoryCopy(const platform::CUDADeviceContext& context,
   auto out_data = out->data<T>();
   auto x_data = x.data<T>();
 
-  const auto& gpu_place =
-      BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace());
+  const auto& gpu_place = context.GetPlace();
 
   int x_item_length = x.numel() / x.dims()[0];
   int out_offset = 0;

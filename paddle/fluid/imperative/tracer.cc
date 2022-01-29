@@ -32,6 +32,8 @@ namespace imperative {
 
 thread_local bool Tracer::has_grad_ = true;
 
+thread_local AmpLevel Tracer::amp_level_ = AmpLevel::O0;
+
 static std::shared_ptr<Tracer> g_current_tracer(nullptr);
 
 const std::shared_ptr<Tracer>& GetCurrentTracer() { return g_current_tracer; }
@@ -87,8 +89,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
     std::unique_ptr<framework::GarbageCollector> gc;
     if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      gc.reset(new framework::DefaultStreamGarbageCollector(
-          BOOST_GET_CONST(platform::CUDAPlace, place), 0));
+      gc.reset(new framework::DefaultStreamGarbageCollector(place, 0));
 
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
@@ -98,8 +99,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
 #endif
     } else if (platform::is_cuda_pinned_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      gc.reset(new framework::CUDAPinnedGarbageCollector(
-          BOOST_GET_CONST(platform::CUDAPinnedPlace, place), 0));
+      gc.reset(new framework::CUDAPinnedGarbageCollector(place, 0));
 
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
@@ -110,8 +110,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
 #endif
     } else if (platform::is_xpu_place(place)) {
 #if defined(PADDLE_WITH_XPU)
-      gc.reset(new framework::XPUGarbageCollector(
-          BOOST_GET_CONST(platform::XPUPlace, place), 0));
+      gc.reset(new framework::XPUGarbageCollector(place, 0));
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
       PADDLE_THROW(platform::errors::PermissionDenied(
@@ -119,19 +118,26 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
           "Please recompile or reinstall Paddle with XPU support."));
 #endif
     } else if (platform::is_cpu_place(place)) {
-      gc.reset(new framework::CPUGarbageCollector(
-          BOOST_GET_CONST(platform::CPUPlace, place), 0));
+      gc.reset(new framework::CPUGarbageCollector(place, 0));
       VLOG(10) << "Created GarbageCollector at " << place;
     } else if (platform::is_npu_place(place)) {
 #if defined(PADDLE_WITH_ASCEND_CL)
       // TODO(zhiqiu): fix bugs and enable NPUDefaultStreamGarbageCollector.
-      gc.reset(new framework::NPUUnsafeFastGarbageCollector(
-          BOOST_GET_CONST(platform::NPUPlace, place), 0));
+      gc.reset(new framework::NPUUnsafeFastGarbageCollector(place, 0));
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
       PADDLE_THROW(platform::errors::PermissionDenied(
           "Paddle can't use NPU device since it's not compiled with NPU,"
           "Please recompile or reinstall Paddle with NPU support."));
+#endif
+    } else if (platform::is_mlu_place(place)) {
+#if defined(PADDLE_WITH_MLU)
+      gc.reset(new framework::MLUDefaultStreamGarbageCollector(place, 0));
+      VLOG(10) << "Created GarbageCollector at " << place;
+#else
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Paddle can't use MLU device since it's not compiled with MLU,"
+          "Please recompile or reinstall Paddle with MLU support."));
 #endif
     } else {
       PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -187,34 +193,37 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   try {
     if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      platform::SetDeviceId(BOOST_GET_CONST(platform::CUDAPlace, place).device);
+      platform::SetDeviceId(place.device);
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with GPU if use CUDAPlace."));
 #endif
     } else if (platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
-      platform::SetXPUDeviceId(
-          BOOST_GET_CONST(platform::XPUPlace, place).device);
+      platform::SetXPUDeviceId(place.device);
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with XPU if use XPUPlace."));
 #endif
     } else if (platform::is_npu_place(place)) {
 #ifdef PADDLE_WITH_ASCEND_CL
-      platform::SetNPUDeviceId(
-          BOOST_GET_CONST(platform::NPUPlace, place).device);
+      platform::SetNPUDeviceId(place.device);
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with NPU if use NPUPlace."));
+#endif
+    } else if (platform::is_mlu_place(place)) {
+#ifdef PADDLE_WITH_MLU
+      platform::SetMLUDeviceId(place.device);
+#else
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "PaddlePaddle should compile with MLU if use MLUPlace."));
 #endif
     }
 
     OpBase::Run(*op, new_ins, outs, attrs, default_attrs, place);
   } catch (platform::EnforceNotMet& exception) {
     framework::AppendErrorOpHint(type, &exception);
-    // Compatible impl: clear pten kernel context data when throw error
-    OpBase::GetKernelContext()->ClearData();
     throw std::move(exception);
   } catch (std::exception& ex) {
     PADDLE_THROW(platform::errors::Fatal(

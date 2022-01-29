@@ -294,14 +294,14 @@ TEST(EOF_EXCEPTION, THROW_EOF) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <typename T>
 bool CheckCudaStatusSuccess(T value, const std::string& msg = "success") {
-  PADDLE_ENFORCE_CUDA_SUCCESS(value);
+  PADDLE_ENFORCE_GPU_SUCCESS(value);
   return true;
 }
 
 template <typename T>
 bool CheckCudaStatusFailure(T value, const std::string& msg) {
   try {
-    PADDLE_ENFORCE_CUDA_SUCCESS(value);
+    PADDLE_ENFORCE_GPU_SUCCESS(value);
     return false;
   } catch (paddle::platform::EnforceNotMet& error) {
     std::string ex_msg = error.what();

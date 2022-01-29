@@ -265,7 +265,7 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
     for (int g = 0; g < groups; g++) {
 #ifdef PADDLE_WITH_HIP
       auto cudnn_func = [&](void* cudnn_workspace) {
-        PADDLE_ENFORCE_CUDA_SUCCESS(
+        PADDLE_ENFORCE_GPU_SUCCESS(
             platform::dynload::miopenConvolutionBackwardData(
                 handle, &alpha, args.odesc.desc(),
                 input_data + input_offset * g, args.wdesc.desc(),
@@ -275,7 +275,7 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
       };
 #else   // PADDLE_WITH_HIP
       auto cudnn_func = [&](void* cudnn_workspace) {
-        PADDLE_ENFORCE_CUDA_SUCCESS(
+        PADDLE_ENFORCE_GPU_SUCCESS(
             platform::dynload::cudnnConvolutionBackwardData(
                 handle, &alpha, args.wdesc.desc(),
                 filter_data + filter_offset * g, args.odesc.desc(),
@@ -549,7 +549,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
       for (int g = 0; g < groups; g++) {
 #ifdef PADDLE_WITH_HIP
         auto cudnn_func = [&](void* cudnn_workspace) {
-          PADDLE_ENFORCE_CUDA_SUCCESS(
+          PADDLE_ENFORCE_GPU_SUCCESS(
               platform::dynload::miopenConvolutionForward(
                   handle, &alpha, args1.idesc.desc(),
                   output_grad_data + output_grad_offset * g, args1.wdesc.desc(),
@@ -560,13 +560,12 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
         };
 #else   // PADDLE_WITH_HIP
         auto cudnn_func = [&](void* cudnn_workspace) {
-          PADDLE_ENFORCE_CUDA_SUCCESS(
-              platform::dynload::cudnnConvolutionForward(
-                  handle, &alpha, args1.idesc.desc(),
-                  output_grad_data + output_grad_offset * g, args1.wdesc.desc(),
-                  filter_data + filter_offset * g, args1.cdesc.desc(),
-                  data_algo, cudnn_workspace, workspace_size, &beta,
-                  args1.odesc.desc(), input_grad_data + input_offset * g));
+          PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnConvolutionForward(
+              handle, &alpha, args1.idesc.desc(),
+              output_grad_data + output_grad_offset * g, args1.wdesc.desc(),
+              filter_data + filter_offset * g, args1.cdesc.desc(), data_algo,
+              cudnn_workspace, workspace_size, &beta, args1.odesc.desc(),
+              input_grad_data + input_offset * g));
         };
 #endif  // PADDLE_WITH_HIP
         workspace_handle.RunFunc(cudnn_func, workspace_size);
@@ -598,7 +597,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
       for (int g = 0; g < groups; g++) {
 #ifdef PADDLE_WITH_HIP
         auto cudnn_func = [&](void* cudnn_workspace) {
-          PADDLE_ENFORCE_CUDA_SUCCESS(
+          PADDLE_ENFORCE_GPU_SUCCESS(
               platform::dynload::miopenConvolutionBackwardWeights(
                   handle, &alpha, args2.odesc.desc(),
                   input_data + input_offset * g, args2.idesc.desc(),
@@ -609,7 +608,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
         };
 #else   // PADDLE_WITH_HIP
         auto cudnn_func = [&](void* cudnn_workspace) {
-          PADDLE_ENFORCE_CUDA_SUCCESS(
+          PADDLE_ENFORCE_GPU_SUCCESS(
               platform::dynload::cudnnConvolutionBackwardFilter(
                   handle, &alpha, args2.idesc.desc(),
                   output_grad_data + output_grad_offset * g, args2.odesc.desc(),
@@ -1054,7 +1053,7 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
 #ifdef PADDLE_WITH_HIP
           wkspace_handle.RunFunc(
               [&](void* workspace_ptr) {
-                PADDLE_ENFORCE_CUDA_SUCCESS(
+                PADDLE_ENFORCE_GPU_SUCCESS(
                     platform::dynload::miopenConvolutionBackwardData(
                         handle, &alpha, args1.odesc.desc(),
                         ddx + i * group_offset_in, args1.wdesc.desc(),
@@ -1067,7 +1066,7 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
 #else   // PADDLE_WITH_HIP
           wkspace_handle.RunFunc(
               [&](void* workspace_ptr) {
-                PADDLE_ENFORCE_CUDA_SUCCESS(
+                PADDLE_ENFORCE_GPU_SUCCESS(
                     platform::dynload::cudnnConvolutionBackwardData(
                         handle, &alpha, args1.wdesc.desc(),
                         w + i * group_offset_filter, args1.odesc.desc(),
@@ -1089,7 +1088,7 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
           T* conv_x_ddw_data = conv_x_ddw.mutable_data<T>(ctx.GetPlace());
           wkspace_handle.RunFunc(
               [&](void* workspace_ptr) {
-                PADDLE_ENFORCE_CUDA_SUCCESS(
+                PADDLE_ENFORCE_GPU_SUCCESS(
                     platform::dynload::miopenConvolutionBackwardData(
                         handle, &alpha, args2.odesc.desc(),
                         x + i * group_offset_in, args2.wdesc.desc(),
@@ -1099,7 +1098,7 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
                         workspace_size));
               },
               workspace_size);
-          PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenOpTensor(
+          PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenOpTensor(
               handle, miopenTensorOpAdd, &alpha, args2.idesc.desc(),
               transformed_ddy_channel + i * group_offset_out, &alpha,
               args2.idesc.desc(), conv_x_ddw_data + i * group_offset_out, &beta,
@@ -1108,7 +1107,7 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
 #else   // PADDLE_WITH_HIP
           wkspace_handle.RunFunc(
               [&](void* workspace_ptr) {
-                PADDLE_ENFORCE_CUDA_SUCCESS(
+                PADDLE_ENFORCE_GPU_SUCCESS(
                     platform::dynload::cudnnConvolutionBackwardData(
                         handle, &alpha, args2.wdesc.desc(),
                         ddw + i * group_offset_filter, args2.odesc.desc(),
@@ -1152,7 +1151,7 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
 #ifdef PADDLE_WITH_HIP
         wkspace_handle.RunFunc(
             [&](void* workspace_ptr) {
-              PADDLE_ENFORCE_CUDA_SUCCESS(
+              PADDLE_ENFORCE_GPU_SUCCESS(
                   platform::dynload::miopenConvolutionBackwardWeights(
                       handle, &alpha, args3.odesc.desc(),
                       ddx + i * group_offset_in, args3.idesc.desc(),
@@ -1165,7 +1164,7 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
 #else   // PADDLE_WITH_HIP
         wkspace_handle.RunFunc(
             [&](void* workspace_ptr) {
-              PADDLE_ENFORCE_CUDA_SUCCESS(
+              PADDLE_ENFORCE_GPU_SUCCESS(
                   platform::dynload::cudnnConvolutionBackwardFilter(
                       handle, &alpha, args3.idesc.desc(),
                       transformed_dy_channel + i * group_offset_out,
@@ -1185,7 +1184,7 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
 #ifdef PADDLE_WITH_HIP
         wkspace_handle.RunFunc(
             [&](void* workspace_ptr) {
-              PADDLE_ENFORCE_CUDA_SUCCESS(
+              PADDLE_ENFORCE_GPU_SUCCESS(
                   platform::dynload::miopenConvolutionForward(
                       handle, &alpha, args4.idesc.desc(),
                       transformed_dy_channel + i * group_offset_out,
@@ -1198,7 +1197,7 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
 #else   // PADDLE_WITH_HIP
         wkspace_handle.RunFunc(
             [&](void* workspace_ptr) {
-              PADDLE_ENFORCE_CUDA_SUCCESS(
+              PADDLE_ENFORCE_GPU_SUCCESS(
                   platform::dynload::cudnnConvolutionForward(
                       handle, &alpha, args4.idesc.desc(),
                       transformed_dy_channel + i * group_offset_out,

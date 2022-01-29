@@ -32,18 +32,14 @@ class TestBernoulliOp(OpTest):
     def setUp(self):
         self.op_type = "bernoulli"
         self.inputs = {"X": np.random.uniform(size=(1000, 784))}
-        self.init_attrs()
-        self.outputs = {"Out": np.zeros((1000, 784)).astype("float32")}
-
-    def init_attrs(self):
         self.attrs = {}
-        self.output_hist = output_hist
+        self.outputs = {"Out": np.zeros((1000, 784)).astype("float32")}
 
     def test_check_output(self):
         self.check_output_customized(self.verify_output)
 
     def verify_output(self, outs):
-        hist, prob = self.output_hist(np.array(outs[0]))
+        hist, prob = output_hist(np.array(outs[0]))
         self.assertTrue(
             np.allclose(
                 hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))

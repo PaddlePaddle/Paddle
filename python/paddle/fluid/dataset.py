@@ -321,19 +321,19 @@ class DatasetBase(object):
         self.dataset.set_data_feed_desc(self.desc())
         self.dataset.create_readers()
 
-    def _set_use_ps_gpu(self, use_ps_gpu):
+    def _set_use_ps_gpu(self, psgpu):
         """
         set use_ps_gpu flag
 
         Args:
             use_ps_gpu: bool
         """
-        self.use_ps_gpu = use_ps_gpu
+        self.use_ps_gpu = True
         # if not defined heterps with paddle, users will not use psgpu
         if not core._is_compiled_with_heterps():
-            self.use_ps_gpu = 0
+            self.use_ps_gpu = False
         elif self.use_ps_gpu:
-            self.psgpu = core.PSGPU()
+            self.psgpu = psgpu
 
     def _finish_to_run(self):
         self.dataset.destroy_readers()
@@ -862,8 +862,12 @@ class InMemoryDataset(DatasetBase):
             thread_num(int): shuffle thread num. Default is 12.
 
         """
+        from paddle.fluid.incubate.fleet.parameter_server.pslib import PSLib
         if fleet is not None:
-            fleet._role_maker.barrier_worker()
+            if not isinstance(fleet, PSLib):
+                fleet.barrier_worker()
+            else:
+                fleet._role_maker.barrier_worker()
             if self.trainer_num == -1:
                 self.trainer_num = fleet.worker_num()
         if self.fleet_send_batch_size is None:
@@ -875,14 +879,23 @@ class InMemoryDataset(DatasetBase):
         self.dataset.set_fleet_send_batch_size(self.fleet_send_batch_size)
         self.dataset.set_fleet_send_sleep_seconds(self.fleet_send_sleep_seconds)
         if fleet is not None:
-            fleet._role_maker.barrier_worker()
+            if not isinstance(fleet, PSLib):
+                fleet.barrier_worker()
+            else:
+                fleet._role_maker.barrier_worker()
         self.dataset.global_shuffle(thread_num)
         if fleet is not None:
-            fleet._role_maker.barrier_worker()
+            if not isinstance(fleet, PSLib):
+                fleet.barrier_worker()
+            else:
+                fleet._role_maker.barrier_worker()
         if self.merge_by_lineid:
             self.dataset.merge_by_lineid()
         if fleet is not None:
-            fleet._role_maker.barrier_worker()
+            if not isinstance(fleet, PSLib):
+                fleet.barrier_worker()
+            else:
+                fleet._role_maker.barrier_worker()
 
     @deprecated(
         since="2.0.0",
@@ -1011,10 +1024,15 @@ class InMemoryDataset(DatasetBase):
         import numpy as np
         local_data_size = self.dataset.get_shuffle_data_size()
         local_data_size = np.array([local_data_size])
+        print('global shuffle local_data_size: ', local_data_size)
         if fleet is not None:
+            from paddle.fluid.incubate.fleet.parameter_server.pslib import PSLib
             global_data_size = local_data_size * 0
-            fleet._role_maker.all_reduce_worker(local_data_size,
-                                                global_data_size)
+            if not isinstance(fleet, PSLib):
+                global_data_size = fleet.util.all_reduce(local_data_size)
+            else:
+                fleet._role_maker.all_reduce_worker(local_data_size,
+                                                    global_data_size)
             return global_data_size[0]
         return local_data_size[0]
 

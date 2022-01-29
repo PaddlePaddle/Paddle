@@ -84,13 +84,16 @@ void TransposeFlattenConcatFusePass::RunTransposeFlattenConcatFuse(
       LOG(WARNING) << "Pass in op compat failed.";
       return;
     }
+
     const int kNumFields = 5;
     const int kTransOffset = 1;
     const int kTransOutOffset = 2;
     const int kFlattenOffset = 3;
     const int kFlattenOutOffset = 4;
-    std::vector<Node *> nodes;
 
+    std::vector<Node *> nodes;
+    std::vector<int> trans_axis0;
+    int flatten_axis0;
     for (int i = 0; i < times; i++) {
       PADDLE_ENFORCE_NOT_NULL(
           subgraph.at(pattern.GetPDNode("transpose" + std::to_string(i))),
@@ -111,6 +114,33 @@ void TransposeFlattenConcatFusePass::RunTransposeFlattenConcatFuse(
           subgraph.at(input_nodes[i]),
           platform::errors::NotFound("Can not find %s in subgraph.",
                                      input_nodes[i]->name()));
+
+      if (i == 0) {
+        trans_axis0 = BOOST_GET_CONST(
+            std::vector<int>,
+            subgraph.at(pattern.GetPDNode("transpose" + std::to_string(0)))
+                ->Op()
+                ->GetAttr("axis"));
+        flatten_axis0 = BOOST_GET_CONST(
+            int, subgraph.at(pattern.GetPDNode("flatten" + std::to_string(0)))
+                     ->Op()
+                     ->GetAttr("axis"));
+      } else {
+        std::vector<int> trans_axis = BOOST_GET_CONST(
+            std::vector<int>,
+            subgraph.at(pattern.GetPDNode("transpose" + std::to_string(i)))
+                ->Op()
+                ->GetAttr("axis"));
+        // All axis of transpose should be the same
+        if (trans_axis0 != trans_axis) return;
+
+        int flatten_axis = BOOST_GET_CONST(
+            int, subgraph.at(pattern.GetPDNode("flatten" + std::to_string(0)))
+                     ->Op()
+                     ->GetAttr("axis"));
+        // All axis of flatten should be the same
+        if (flatten_axis0 != flatten_axis) return;
+      }
 
       nodes.push_back(subgraph.at(input_nodes[i]));
       nodes.push_back(

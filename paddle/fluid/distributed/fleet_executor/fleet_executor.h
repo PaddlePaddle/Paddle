@@ -14,35 +14,46 @@
 
 #pragma once
 #include <memory>
+#include <string>
 
+#include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor_desc.pb.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {
 class ProgramDesc;
+class Scope;
 }
 
 namespace distributed {
 class RuntimeGraph;
-class Carrier;
 class MessageBus;
+class TaskNode;
 
 class FleetExecutor final {
  public:
   FleetExecutor() = delete;
-  FleetExecutor(const std::string& exe_desc_str);
+  explicit FleetExecutor(const std::string& exe_desc_str);
+  explicit FleetExecutor(const FleetExecutorDesc& exe_desc);
   ~FleetExecutor();
-  void Init(const paddle::framework::ProgramDesc& program_desc);
-  void Run();
-  void Release();
-  static std::shared_ptr<Carrier> GetCarrier();
+  void Init(const std::string& carrier_id,
+            const framework::ProgramDesc& program_desc, framework::Scope* scope,
+            const platform::Place& place, int64_t num_micro_batches,
+            const std::vector<TaskNode*>& task_nodes,
+            const std::unordered_map<int64_t, int64_t>& task_id_to_rank);
+  void Run(const std::string& carrier_id);
 
  private:
   DISABLE_COPY_AND_ASSIGN(FleetExecutor);
-  FleetExecutorDesc exe_desc_;
-  std::unique_ptr<RuntimeGraph> runtime_graph_;
   void InitMessageBus();
+  void InitCarrier(Carrier* carrier, framework::Scope* scope,
+                   const platform::Place& place, int64_t num_micro_batches,
+                   const framework::ProgramDesc& program_desc);
+  FleetExecutorDesc exe_desc_;
+  std::shared_ptr<RuntimeGraph> runtime_graph_;
+  std::unordered_set<std::string> carrier_ids_;
 };
 
 }  // namespace distributed

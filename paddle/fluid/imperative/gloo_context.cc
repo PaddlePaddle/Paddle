@@ -37,7 +37,7 @@ void GLOOParallelContext::Init() {
   gloo_wrapper->SetSize(strategy_.nranks_);
   gloo_wrapper->SetRank(strategy_.local_rank_);
   gloo_wrapper->SetPrefix("");
-  gloo_wrapper->SetIface("lo");
+  gloo_wrapper->SetIface("");
   auto addr = paddle::string::Split(strategy_.trainer_endpoints_[0], ':');
   VLOG(4) << "Server is" << strategy_.trainer_endpoints_[0];
   std::string host = addr[0];
@@ -72,18 +72,18 @@ void GLOOParallelContext::AllReduceByStream(const framework::Variable &src,
     }
     AllReduce(src.Get<framework::LoDTensor>(),
               dst->GetMutable<framework::LoDTensor>());
-  } else if (src.IsType<framework::SelectedRows>()) {
+  } else if (src.IsType<pten::SelectedRows>()) {
     if (&src != dst) {
-      if (!dst->IsType<framework::SelectedRows>()) {
+      if (!dst->IsType<pten::SelectedRows>()) {
         dst->Clear();
       }
-      AllReduce(src.Get<framework::SelectedRows>(),
-                dst->GetMutable<framework::SelectedRows>());
+      AllReduce(src.Get<pten::SelectedRows>(),
+                dst->GetMutable<pten::SelectedRows>());
     } else {
       // SelectedRows cannot be allreduce in-place
       framework::Variable tmp_dst;
-      AllReduce(src.Get<framework::SelectedRows>(),
-                tmp_dst.GetMutable<framework::SelectedRows>());
+      AllReduce(src.Get<pten::SelectedRows>(),
+                tmp_dst.GetMutable<pten::SelectedRows>());
       *dst = std::move(tmp_dst);
     }
   } else {
@@ -120,8 +120,8 @@ void GLOOParallelContext::AllReduce(const framework::Tensor &src_tensor,
     break;                                                        \
   }
 
-void GLOOParallelContext::AllReduce(const framework::SelectedRows &src,
-                                    framework::SelectedRows *dst) {
+void GLOOParallelContext::AllReduce(const pten::SelectedRows &src,
+                                    pten::SelectedRows *dst) {
   // auto ;
   // int local_rank = strategy_.local_rank_;
   int nranks = strategy_.nranks_;
@@ -174,6 +174,11 @@ void GLOOParallelContext::AllReduce(const framework::SelectedRows &src,
           platform::errors::InvalidArgument("Invalid datatype for allreduce"));
     }
   }
+}
+
+void GLOOParallelContext::Broadcast(framework::Variable *src, int ring_id) {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "Unimplemented inter-broadcast for CPU now."));
 }
 
 paddle::platform::DeviceContext *GLOOParallelContext::GetDeviceContext(

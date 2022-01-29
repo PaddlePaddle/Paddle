@@ -49,21 +49,10 @@ using string::PrettyLogDetail;  // NOLINT
 
 namespace {
 
-bool validateReduceOpAttrs(const Node* node, const std::string& name) {
+bool validateReduceOpAttrs(const Node* node,
+                           const std::vector<int64_t>& x_shape,
+                           const std::string& name) {
   const auto* op = node->Op();
-  if (op->HasAttr("dim")) {
-    auto dims = BOOST_GET_CONST(std::vector<int>, op->GetAttr("dim"));
-    EXPECT_TRUE(
-        dims.size() == 1,
-        ::paddle::string::Sprintf(
-            "The LayerNorm fusion %s reduction must happen only over single "
-            "dimension.",
-            name));
-    EXPECT_TRUE(dims.front() == -1,
-                ::paddle::string::Sprintf("The LayerNorm fusion %s reduction "
-                                          "must happen over last dimension.",
-                                          name));
-  }
   if (op->HasAttr("reduce_all")) {
     EXPECT_TRUE(
         !BOOST_GET_CONST(bool, op->GetAttr("reduce_all")),
@@ -72,12 +61,21 @@ bool validateReduceOpAttrs(const Node* node, const std::string& name) {
             "reduction must have \'reduce_all\' attribute set to false.",
             name));
   }
-  if (op->HasAttr("keep_dim")) {
-    EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("keep_dim")),
-                ::paddle::string::Sprintf(
-                    "The LayerNorm fusion %s"
-                    " reduction must have \'keep_dim\' attribute set to true.",
-                    name));
+  if (op->HasAttr("dim")) {
+    auto dims = BOOST_GET_CONST(std::vector<int>, op->GetAttr("dim"));
+    if (dims.size() == x_shape.size()) return false;
+    if (1 == dims.size() && -1 == dims.front()) return true;
+
+    if (dims.back() != static_cast<int>(x_shape.size()) - 1) {
+      LOG(WARNING) << "The LayerNorm dim of mean must be end of x_input";
+      return false;
+    }
+    for (size_t i = 1; i < dims.size(); ++i) {
+      if (1 != dims[i] - dims[i - 1]) {
+        LOG(WARNING) << "The LayerNorm dim of mean must be  continuous";
+        return false;
+      }
+    }
   }
   return true;
 }
@@ -139,7 +137,6 @@ LayerNormFusePass::LayerNormFusePass() {
       .IsType<std::vector<int>>()
       .End()
       .AddAttr("keep_dim")
-      .IsBoolEQ(true)
       .End();
   AddOpCompat(OpCompat("sqrt"))
       .AddInput("X")
@@ -159,7 +156,7 @@ LayerNormFusePass::LayerNormFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
-      .IsNumEQ(1)
+      .IsIntIn({-1, 0})
       .End();
   AddOpCompat(OpCompat("elementwise_pow"))
       .AddInput("X")
@@ -172,7 +169,6 @@ LayerNormFusePass::LayerNormFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
-      .IsNumEQ(1)
       .End();
   AddOpCompat(OpCompat("elementwise_add"))
       .AddInput("X")
@@ -185,7 +181,6 @@ LayerNormFusePass::LayerNormFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
-      .IsNumEQ(1)
       .End();
   AddOpCompat(OpCompat("elementwise_div"))
       .AddInput("X")
@@ -198,7 +193,7 @@ LayerNormFusePass::LayerNormFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
-      .IsNumEQ(1)
+      .IsIntIn({-1, 0})
       .End();
   AddOpCompat(OpCompat("elementwise_mul"))
       .AddInput("X")
@@ -211,7 +206,6 @@ LayerNormFusePass::LayerNormFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
-      .IsNumEQ(1)
       .End();
 }
 
@@ -269,6 +263,7 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(shift_out, shift_out, layer_norm_pattern);
 
     auto* eps_tensor = scope->FindVar(eps->Name())->GetMutable<LoDTensor>();
+    const auto& x_shape = x->Var()->GetShape();
 
     // ------------------ subgraph node's validation ---------------------------
     CHECK_TRUE(
@@ -283,46 +278,98 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
                                   "must be of FP32 data type, but is %s.",
                                   eps_tensor->type()));
 
+    CHECK_TRUE(validateReduceOpAttrs(x_mean, x_shape, "input mean"),
+               "Validation of input mean node failed.");
+    CHECK_TRUE(validateReduceOpAttrs(std_dev, x_shape, "std_dev mean"),
+               "Validation of standard deviation node failed.");
+
+    bool keep_dim = BOOST_GET_CONST(bool, x_mean->Op()->GetAttr("keep_dim"));
+    std::vector<int> mean_dim =
+        BOOST_GET_CONST(std::vector<int>, x_mean->Op()->GetAttr("dim"));
+    std::vector<int> std_mean_dim =
+        BOOST_GET_CONST(std::vector<int>, std_dev->Op()->GetAttr("dim"));
+    if (mean_dim != std_mean_dim) {
+      LOG(WARNING) << "The LayerNorm dim of all mean must be same";
+      return;
+    }
+    if (!keep_dim) {
+      int sub_axis = BOOST_GET_CONST(int, x_sub_mean->Op()->GetAttr("axis"));
+      int div_axis = BOOST_GET_CONST(int, division->Op()->GetAttr("axis"));
+      if (sub_axis != 0 || div_axis != 0) return;
+    }
+
+    int begin_norm_axis = mean_dim.front();
+    if (begin_norm_axis < 0) begin_norm_axis += x_shape.size();
     const auto& gamma_shape = gamma->Var()->GetShape();
     const auto& beta_shape = beta->Var()->GetShape();
-    const auto& x_shape = x->Var()->GetShape();
-    int64_t x_last_dim = x_shape.back();
 
     CHECK_TRUE(
-        gamma_shape.size() == 1,
+        gamma_shape.size() == x_shape.size() - begin_norm_axis,
         ::paddle::string::Sprintf("The LayerNorm gamma (scale) tensor "
-                                  "shape must be one-dimensional, but is %s.",
+                                  "shape must be H(`begin_norm_axis` splits "
+                                  "the tensor(`X`) to a matrix [N,H]),"
+                                  "but is %s.",
                                   gamma_shape.size()));
     CHECK_TRUE(
-        beta_shape.size() == 1,
+        beta_shape.size() == x_shape.size() - begin_norm_axis,
         ::paddle::string::Sprintf("The LayerNorm beta (shift) tensor "
-                                  "shape must be one-dimensional, but is %s.",
+                                  "shape must be H(`begin_norm_axis` splits "
+                                  "the tensor(`X`) to a matrix [N,H]),"
+                                  "but is %s.",
                                   beta_shape.size()));
     CHECK_TRUE(beta_shape == gamma_shape,
                ::paddle::string::Sprintf("The LayerNorm beta and gamma tensors "
                                          "shapes' must be equal."));
     CHECK_TRUE(
-        gamma_shape.front() == x_last_dim,
-        ::paddle::string::Sprintf(
-            "The LayerNorm beta and gamma tensors "
-            "shapes' must be equal to the last input's dimension size."));
+        std::vector<int64_t>(x_shape.begin() + begin_norm_axis,
+                             x_shape.end()) == gamma_shape,
+        ::paddle::string::Sprintf("The LayerNorm beta and gamma tensors "
+                                  "shape must be H(`begin_norm_axis` splits "
+                                  "the tensor(`X`) to a matrix [N,H])."));
 
-    CHECK_TRUE(validateReduceOpAttrs(x_mean, "input mean"),
-               "Validation of input mean node failed.");
-    CHECK_TRUE(validateReduceOpAttrs(std_dev, "std_dev mean"),
-               "Validation of standard deviation node failed.");
+    // gamma/beta must be a 1-dimensional tensor of size on layer_norm
+    auto layer_norm_x_mat_dims = framework::flatten_to_2d(
+        framework::make_ddim(x_shape), begin_norm_axis);
+    auto* gamma_tensor = scope->FindVar(gamma->Name())->GetMutable<LoDTensor>();
+    VarDesc new_gamma_desc(patterns::PDNodeName("layer_norm_fuse", "Scale"));
+    new_gamma_desc.SetShape({layer_norm_x_mat_dims[1]});
+    new_gamma_desc.SetDataType(gamma_tensor->type());
+    new_gamma_desc.SetLoDLevel(gamma->Var()->GetLoDLevel());
+    new_gamma_desc.SetPersistable(true);
+    auto* new_gamma_node = g->CreateVarNode(&new_gamma_desc);
+    auto* new_gamma_tensor =
+        scope->Var(new_gamma_node->Name())->GetMutable<LoDTensor>();
+    new_gamma_tensor->Resize(framework::make_ddim({layer_norm_x_mat_dims[1]}));
+    memcpy(new_gamma_tensor->mutable_data<float>(platform::CPUPlace()),
+           gamma_tensor->mutable_data<float>(platform::CPUPlace()),
+           layer_norm_x_mat_dims[1] * sizeof(float));
+
+    auto* beta_tensor = scope->FindVar(beta->Name())->GetMutable<LoDTensor>();
+    VarDesc new_beta_desc(patterns::PDNodeName("layer_norm_fuse", "Bias"));
+    new_beta_desc.SetShape({layer_norm_x_mat_dims[1]});
+    new_beta_desc.SetDataType(beta_tensor->type());
+    new_beta_desc.SetLoDLevel(beta->Var()->GetLoDLevel());
+    new_beta_desc.SetPersistable(true);
+    auto* new_beta_node = g->CreateVarNode(&new_beta_desc);
+    auto* new_beta_tensor =
+        scope->Var(new_beta_node->Name())->GetMutable<LoDTensor>();
+
+    new_beta_tensor->Resize(framework::make_ddim({layer_norm_x_mat_dims[1]}));
+    memcpy(new_beta_tensor->mutable_data<float>(platform::CPUPlace()),
+           beta_tensor->mutable_data<float>(platform::CPUPlace()),
+           layer_norm_x_mat_dims[1] * sizeof(float));
 
     // ------------------ op creation and placement ---------------------------
 
     OpDesc ln_op_desc;
     ln_op_desc.SetType("layer_norm");
     ln_op_desc.SetInput("X", {x->Name()});
-    ln_op_desc.SetInput("Scale", {gamma->Name()});
-    ln_op_desc.SetInput("Bias", {beta->Name()});
+    ln_op_desc.SetInput("Scale", {new_gamma_node->Name()});
+    ln_op_desc.SetInput("Bias", {new_beta_node->Name()});
     ln_op_desc.SetOutput("Y", {shift_out->Name()});
     setIntermediateOut(&ln_op_desc, "Mean", scope_name_);
     setIntermediateOut(&ln_op_desc, "Variance", scope_name_);
-    ln_op_desc.SetAttr("begin_norm_axis", static_cast<int>(x_shape.size() - 1));
+    ln_op_desc.SetAttr("begin_norm_axis", begin_norm_axis);
     ln_op_desc.SetAttr("epsilon", *(eps_tensor->data<float>()));
     ln_op_desc.SetAttr("is_test", true);
 
@@ -337,15 +384,30 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
     addIntermediateOut(ln_op, "Variance", scope_name_, g);
 
     IR_NODE_LINK_TO(x, ln_op);
-    IR_NODE_LINK_TO(gamma, ln_op);
-    IR_NODE_LINK_TO(beta, ln_op);
+    IR_NODE_LINK_TO(new_gamma_node, ln_op);
+    IR_NODE_LINK_TO(new_beta_node, ln_op);
     IR_OP_VAR_LINK(ln_op, shift_out);
-    GraphSafeRemoveNodes(
-        g,
-        {x_mean, x_mean_out, x_sub_mean, x_sub_mean_out, sqr_pow,
-         x_sub_mean_sqr, x_sub_mean_sqr_out, std_dev, std_dev_out, eps,
-         std_dev_eps, std_dev_eps_out, std_dev_eps_sqrt, std_dev_eps_sqrt_out,
-         division, division_out, scale, scale_out, shift});
+    GraphSafeRemoveNodes(g, {x_mean,
+                             x_mean_out,
+                             x_sub_mean,
+                             x_sub_mean_out,
+                             sqr_pow,
+                             x_sub_mean_sqr,
+                             x_sub_mean_sqr_out,
+                             std_dev,
+                             std_dev_out,
+                             eps,
+                             std_dev_eps,
+                             std_dev_eps_out,
+                             std_dev_eps_sqrt,
+                             std_dev_eps_sqrt_out,
+                             division,
+                             division_out,
+                             scale,
+                             scale_out,
+                             shift,
+                             gamma,
+                             beta});
     found_layer_norm_count++;
   };
 

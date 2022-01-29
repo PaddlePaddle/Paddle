@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "paddle/fluid/operators/conj_op.h"
+#include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/spectral_helper.h"
 #include "paddle/fluid/operators/spectral_op.h"
 #include "paddle/fluid/operators/transpose_op.h"
@@ -96,7 +97,7 @@ static void exec_cufft_plan_raw(const FFTConfig& config, void* in_data,
                                 void* out_data, bool forward) {
   auto& plan = config.plan();
 
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cufftXtExec(
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cufftXtExec(
       plan, in_data, out_data, forward ? CUFFT_FORWARD : CUFFT_INVERSE));
 }
 
@@ -114,22 +115,19 @@ void exec_cufft_plan(const DeviceContext& ctx, const FFTConfig& config,
     math::ConjFunctor<Ti> functor(input->data<Ti>(), input->numel(),
                                   input_conj.data<Ti>());
     for_range(functor);
-    exec_cufft_plan_raw(config, input_conj.data<void>(), output->data<void>(),
-                        forward);
+    exec_cufft_plan_raw(config, input_conj.data(), output->data(), forward);
   } else if (fft_type == FFTTransformType::R2C && !forward) {
     forward = true;
     framework::Tensor out_conj(output->type());
     out_conj.mutable_data<To>(output->dims(), ctx.GetPlace());
-    exec_cufft_plan_raw(config, input->data<void>(), out_conj.data<void>(),
-                        forward);
+    exec_cufft_plan_raw(config, input->data(), out_conj.data(), forward);
 
     platform::ForRange<DeviceContext> for_range(ctx, output->numel());
     math::ConjFunctor<To> functor(out_conj.data<To>(), output->numel(),
                                   output->data<To>());
     for_range(functor);
   } else {
-    exec_cufft_plan_raw(config, input->data<void>(), output->data<void>(),
-                        forward);
+    exec_cufft_plan_raw(config, input->data(), output->data(), forward);
   }
 }
 
@@ -167,20 +165,20 @@ static void exec_hipfft_plan_raw(const FFTConfig& config, void* in_data,
   if (value_type == framework::proto::VarType::FP32) {
     switch (config.transform_type()) {
       case FFTTransformType::C2C: {
-        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::hipfftExecC2C(
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::hipfftExecC2C(
             plan, static_cast<hipfftComplex*>(in_data),
             static_cast<hipfftComplex*>(out_data),
             forward ? HIPFFT_FORWARD : HIPFFT_BACKWARD));
         return;
       }
       case FFTTransformType::R2C: {
-        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::hipfftExecR2C(
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::hipfftExecR2C(
             plan, static_cast<hipfftReal*>(in_data),
             static_cast<hipfftComplex*>(out_data)));
         return;
       }
       case FFTTransformType::C2R: {
-        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::hipfftExecC2R(
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::hipfftExecC2R(
             plan, static_cast<hipfftComplex*>(in_data),
             static_cast<hipfftReal*>(out_data)));
         return;
@@ -189,20 +187,20 @@ static void exec_hipfft_plan_raw(const FFTConfig& config, void* in_data,
   } else if (value_type == framework::proto::VarType::FP64) {
     switch (config.transform_type()) {
       case FFTTransformType::C2C: {
-        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::hipfftExecZ2Z(
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::hipfftExecZ2Z(
             plan, static_cast<hipfftDoubleComplex*>(in_data),
             static_cast<hipfftDoubleComplex*>(out_data),
             forward ? HIPFFT_FORWARD : HIPFFT_BACKWARD));
         return;
       }
       case FFTTransformType::R2C: {
-        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::hipfftExecD2Z(
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::hipfftExecD2Z(
             plan, static_cast<hipfftDoubleReal*>(in_data),
             static_cast<hipfftDoubleComplex*>(out_data)));
         return;
       }
       case FFTTransformType::C2R: {
-        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::hipfftExecZ2D(
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::hipfftExecZ2D(
             plan, static_cast<hipfftDoubleComplex*>(in_data),
             static_cast<hipfftDoubleReal*>(out_data)));
         return;
@@ -226,22 +224,19 @@ void exec_hipfft_plan(const DeviceContext& ctx, const FFTConfig& config,
     math::ConjFunctor<Ti> functor(input->data<Ti>(), input->numel(),
                                   input_conj.data<Ti>());
     for_range(functor);
-    exec_hipfft_plan_raw(config, input_conj.data<void>(), output->data<void>(),
-                         forward);
+    exec_hipfft_plan_raw(config, input_conj.data(), output->data(), forward);
   } else if (fft_type == FFTTransformType::R2C && !forward) {
     forward = true;
     framework::Tensor out_conj(output->type());
     out_conj.mutable_data<To>(output->dims(), ctx.GetPlace());
-    exec_hipfft_plan_raw(config, input->data<void>(), out_conj.data<void>(),
-                         forward);
+    exec_hipfft_plan_raw(config, input->data(), out_conj.data(), forward);
 
     platform::ForRange<DeviceContext> for_range(ctx, output->numel());
     math::ConjFunctor<To> functor(out_conj.data<To>(), output->numel(),
                                   output->data<To>());
     for_range(functor);
   } else {
-    exec_hipfft_plan_raw(config, input->data<void>(), output->data<void>(),
-                         forward);
+    exec_hipfft_plan_raw(config, input->data(), output->data(), forward);
   }
 }
 
@@ -313,7 +308,12 @@ void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
   // create plan
   FFTConfigKey key =
       create_fft_configkey(collapsed_input, collapsed_output, signal_ndim);
-  if (CUFFT_VERSION < 10200) {
+  bool using_cache = false;
+#if !defined(CUFFT_VERSION) || (CUFFT_VERSION < 10200)
+  using_cache = true;
+#endif
+
+  if (using_cache) {
     const int64_t device_id = static_cast<int64_t>(
         reinterpret_cast<const platform::CUDAPlace*>(&collapsed_input.place())
             ->GetDeviceId());
@@ -327,11 +327,11 @@ void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
   }
 
   // prepare cufft for execution
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       platform::dynload::cufftSetStream(config->plan(), ctx.stream()));
   framework::Tensor workspace_tensor;
   workspace_tensor.mutable_data<To>(tensor_place, config->workspace_size());
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cufftSetWorkArea(
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cufftSetWorkArea(
       config->plan(), workspace_tensor.data<To>()));
   // execute transform plan
   exec_cufft_plan<DeviceContext, Ti, To>(ctx, *config, &collapsed_input,
@@ -350,11 +350,11 @@ void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
   config = &(plan_cache.lookup(key));
 
   // prepare cufft for execution
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       platform::dynload::hipfftSetStream(config->plan(), ctx.stream()));
   framework::Tensor workspace_tensor;
   workspace_tensor.mutable_data<To>(tensor_place, config->workspace_size());
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::hipfftSetWorkArea(
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::hipfftSetWorkArea(
       config->plan(), workspace_tensor.data<To>()));
   // execute transform plan
   exec_hipfft_plan<DeviceContext, Ti, To>(ctx, *config, &collapsed_input,

@@ -13,8 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/gpu_launch_config.h"
+#include "paddle/pten/backends/cpu/cpu_context.h"
 
 namespace paddle {
 namespace platform {
@@ -27,9 +28,24 @@ struct ForRange {
   void operator()(Function func) const;
 };
 
+// NOTE: After the pten kernel is migrated, it needs to be deleted.
 template <>
 struct ForRange<CPUDeviceContext> {
   ForRange(const CPUDeviceContext& dev_ctx, size_t limit) : limit_(limit) {}
+
+  template <typename Function>
+  void operator()(Function func) const {
+    for (size_t i = 0; i < limit_; ++i) {
+      func(i);
+    }
+  }
+
+  size_t limit_;
+};
+
+template <>
+struct ForRange<pten::CPUContext> {
+  ForRange(const pten::CPUContext& dev_ctx, size_t limit) : limit_(limit) {}
 
   template <typename Function>
   void operator()(Function func) const {

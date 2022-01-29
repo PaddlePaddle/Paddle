@@ -11,13 +11,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 
 // reduce_max
 REGISTER_OP_CUDA_KERNEL(
-    reduce_max, ops::ReduceCudaKernel<float, paddle::operators::CustomMax>,
-    ops::ReduceCudaKernel<double, paddle::operators::CustomMax>,
-    ops::ReduceCudaKernel<int, paddle::operators::CustomMax>,
-    ops::ReduceCudaKernel<int64_t, paddle::operators::CustomMax>);
+    reduce_max,
+    ops::ReduceCudaKernel<float, kps::MaxFunctor, kps::IdentityFunctor>,
+    ops::ReduceCudaKernel<double, kps::MaxFunctor, kps::IdentityFunctor>,
+    ops::ReduceCudaKernel<int, kps::MaxFunctor, kps::IdentityFunctor>,
+    ops::ReduceCudaKernel<int64_t, kps::MaxFunctor, kps::IdentityFunctor>);

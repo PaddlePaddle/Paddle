@@ -14,19 +14,19 @@ limitations under the License. */
 
 #pragma once
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/common/bfloat16.h"
+#include "paddle/pten/common/complex.h"
+#include "paddle/pten/common/float16.h"
+
+#include "paddle/pten/api/ext/exception.h"
 
 namespace paddle {
 namespace experimental {
 
-using complex64 = ::paddle::platform::complex<float>;
-using complex128 = ::paddle::platform::complex<double>;
-using float16 = ::paddle::platform::float16;
-using bfloat16 = ::paddle::platform::bfloat16;
+using complex64 = ::pten::dtype::complex<float>;
+using complex128 = ::pten::dtype::complex<double>;
+using float16 = ::pten::dtype::float16;
+using bfloat16 = ::pten::dtype::bfloat16;
 
 enum class DataType {
   UNDEFINED = 0,
@@ -45,7 +45,9 @@ enum class DataType {
   FLOAT64,
   COMPLEX64,
   COMPLEX128,
-  NUM_DATA_TYPES
+  NUM_DATA_TYPES,
+  // See Note [ Why we need ALL in baisc kernel key member? ]
+  ALL_DTYPE = UNDEFINED,
 };
 
 inline size_t SizeOf(DataType data_type) {
@@ -71,10 +73,11 @@ inline size_t SizeOf(DataType data_type) {
     case DataType::COMPLEX128:
       return 16;
     case DataType::UNDEFINED:
+      return 0;
     case DataType::NUM_DATA_TYPES:
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Data type %d is not supported by tensor.",
-          static_cast<int>(data_type)));
+      PD_THROW("Data type `",
+               static_cast<int>(data_type),
+               "` is not supported by tensor.");
   }
   return 0;
 }
@@ -173,8 +176,7 @@ inline std::ostream& operator<<(std::ostream& os, DataType dtype) {
       os << "complex128";
       break;
     default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Invalid enum data type `%d`.", static_cast<int>(dtype)));
+      PD_THROW("Invalid enum data type `", static_cast<int>(dtype), "`.");
   }
   return os;
 }
@@ -184,4 +186,13 @@ inline std::ostream& operator<<(std::ostream& os, DataType dtype) {
 
 namespace pten {
 using DataType = paddle::experimental::DataType;
-}
+}  // namespace pten
+
+namespace paddle {
+// In order to be compatible with the original custom operator Tensor interface
+using DataType = paddle::experimental::DataType;
+using bfloat16 = paddle::experimental::bfloat16;
+using complex64 = paddle::experimental::complex64;
+using complex128 = paddle::experimental::complex128;
+using float16 = paddle::experimental::float16;
+}  // namespace paddle

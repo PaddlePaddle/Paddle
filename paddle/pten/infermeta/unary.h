@@ -15,36 +15,56 @@ limitations under the License. */
 #pragma once
 
 // See Note [ Why still include the fluid headers? ]
+#include "paddle/pten/common/scalar_array.h"
+#include "paddle/pten/core/infermeta_utils.h"
+#include "paddle/pten/core/meta_tensor.h"
 #include "paddle/pten/core/tensor_meta.h"
 
 namespace pten {
 
-// Common InferShape Functions for unary operators, The format like:
+class MetaConfig;
+
+// Common InferMeta Functions for unary operators, The format like:
 //
-//   1. DenseTensorMeta [OpName]InferShape(const DenseTensorMeta& x_meta, ...)
-//   {}
-//   2. std::pair<DenseTensorMeta, DenseTensorMeta> [OpName]InferShape(const
-//   DenseTensorMeta&
-//   x_meta, ...) {}
-//   3. std::tuple<DenseTensorMeta, DenseTensorMeta, DenseTensorMeta>
-//   [OpName]InferShape(const
-//   DenseTensorMeta& x_meta, ...)
-//  NOTE: The name "InferShape" may be not appropriate. "InferMeta" may be good.
-//  Because functions in this file
-//  not only can infer shape, but alse need infer lod or other useful data.
+//   void [OpName]InferMeta(const MetaTensor& x, ..., MetaTensor* out) {}
+//
+// NOTE: The name "InferShape" may be not appropriate. "InferMeta" may be good.
+// Because functions in this file not only can infer shape, but also need
+// infer lod or other useful data.
 
-DenseTensorMeta UnchangedInferShape(const DenseTensorMeta& x_meta);
+// TODO(chenweihang): update all InferMeta function format in next pr,
+// now add UnchangedInferMetaNew for test new format
+void UnchangedInferMetaNew(MetaConfig config,
+                           const MetaTensor& x,
+                           MetaTensor* out);
 
-DenseTensorMeta ReductionInferShape(const DenseTensorMeta& x_meta);
+DenseTensorMeta UnchangedInferMeta(const DenseTensorMeta& x_meta);
 
-DenseTensorMeta FlattenInferShape(const DenseTensorMeta& x_meta,
-                                  int start_axis,
-                                  int stop_axis);
+DenseTensorMeta ReductionInferMeta(const DenseTensorMeta& x_meta);
 
-DenseTensorMeta FullLikeInferShape(const DenseTensorMeta& x_meta,
-                                   DataType dtype,
-                                   DataLayout layout);
+DenseTensorMeta FlattenInferMeta(const DenseTensorMeta& x_meta,
+                                 int start_axis,
+                                 int stop_axis);
+DenseTensorMeta CastInferMeta(const DenseTensorMeta& x_meta,
+                              const DataType out_dtype);
 
-DenseTensorMeta InferShapeFromVecValue(const DenseTensorMeta& x_meta,
-                                       const std::vector<int>& shape);
+DenseTensorMeta CreateLikeInferMeta(const DenseTensorMeta& x_meta,
+                                    DataType dtype,
+                                    DataLayout layout);
+
+DenseTensorMeta InferMetaFromVecValue(const DenseTensorMeta& x_meta,
+                                      const std::vector<int64_t>& shape);
+
+DenseTensorMeta ReshapeInferMeta(const DenseTensorMeta& x_meta,
+                                 const ScalarArray& shape);
+
+DenseTensorMeta ReduceInferMeta(const DenseTensorMeta& x_meta,
+                                const std::vector<int64_t>& axis,
+                                bool keep_dim,
+                                DataType dtype = DataType::UNDEFINED);
+
+DenseTensorMeta SumInferMeta(const DenseTensorMeta& x_meta,
+                             const std::vector<int64_t>& axis,
+                             DataType dtype,
+                             bool keep_dim);
 }  // namespace pten

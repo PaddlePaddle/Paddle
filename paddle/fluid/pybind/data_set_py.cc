@@ -202,6 +202,8 @@ void BindDataset(py::module *m) {
       .def(py::init([](const std::string &name = "MultiSlotDataset") {
         return framework::DatasetFactory::CreateDataset(name);
       }))
+      .def("tdm_sample", &framework::Dataset::TDMSample,
+           py::call_guard<py::gil_scoped_release>())
       .def("set_filelist", &framework::Dataset::SetFileList,
            py::call_guard<py::gil_scoped_release>())
       .def("set_thread_num", &framework::Dataset::SetThreadNum,
@@ -268,6 +270,8 @@ void BindDataset(py::module *m) {
       .def("set_parse_logkey", &framework::Dataset::SetParseLogKey,
            py::call_guard<py::gil_scoped_release>())
       .def("set_merge_by_sid", &framework::Dataset::SetMergeBySid,
+           py::call_guard<py::gil_scoped_release>())
+      .def("set_shuffle_by_uid", &framework::Dataset::SetShuffleByUid,
            py::call_guard<py::gil_scoped_release>())
       .def("preprocess_instance", &framework::Dataset::PreprocessInstance,
            py::call_guard<py::gil_scoped_release>())

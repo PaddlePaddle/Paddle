@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/lookup_table_op.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
@@ -151,7 +151,8 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
       auto *ids = context.Input<LoDTensor>("Ids");
       auto *table = context.Input<LoDTensor>("W");
       auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
-      auto *d_table = context.Output<SelectedRows>(framework::GradVarName("W"));
+      auto *d_table =
+          context.Output<pten::SelectedRows>(framework::GradVarName("W"));
 
       auto *ids_data = ids->data<int64_t>();
       int64_t ids_num = ids->numel();
@@ -160,7 +161,7 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
       // copy GPU memory to CPU pinned memory
       framework::Vector<int64_t> new_rows;
       new_rows.resize(ids_num);
-      auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace());
+      auto gpu_place = context.GetPlace();
 
       // TODO(yuyang18): Strange code here.
       memory::Copy(gpu_place, new_rows.CUDAMutableData(context.GetPlace()),

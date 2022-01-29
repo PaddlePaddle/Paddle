@@ -21,7 +21,7 @@ namespace operators {
 
 template <typename T>
 struct CudaLgammaFunctor {
-  __device__ __forceinline__ T operator()(const T& x) const {
+  __device__ __forceinline__ T operator()(const T x) const {
     return Eigen::numext::lgamma(x);
   }
 };
@@ -39,8 +39,8 @@ class LgammaKernel<platform::CUDADeviceContext, T>
     std::vector<const framework::Tensor*> ins = {x};
     std::vector<framework::Tensor*> outs = {out};
     auto functor = CudaLgammaFunctor<T>();
-    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, T>(
-        dev_ctx, ins, &outs, functor);
+    paddle::operators::LaunchSameDimsElementwiseCudaKernel<
+        ElementwiseType::kUnary, T, T>(dev_ctx, ins, &outs, functor);
   }
 };
 

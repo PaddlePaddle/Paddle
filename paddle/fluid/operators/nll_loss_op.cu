@@ -13,8 +13,8 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/operators/nll_loss_op.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
-#include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/pten/core/hostdevice.h"
 
 namespace paddle {
 namespace operators {

@@ -17,6 +17,11 @@ from ... import core
 
 __all__ = ["CustomOpLists", "AutoMixedPrecisionLists"]
 
+# lookup_table fp16 is slower than fp32, though fp16 is supported.
+_extra_unsupported_fp16_list = {
+    'lookup_table', 'lookup_table_v2', 'scatter', 'scatter_grad'
+}
+
 
 class AutoMixedPrecisionLists(object):
     """
@@ -60,6 +65,8 @@ class AutoMixedPrecisionLists(object):
                 elif op_name in self.gray_list:
                     self.gray_list.remove(op_name)
                 self.white_list.add(op_name)
+                if op_name in _extra_unsupported_fp16_list:
+                    self.unsupported_list.remove(op_name)
         if self._custom_black_list:
             for op_name in self._custom_black_list:
                 if op_name in self.white_list:
@@ -170,7 +177,6 @@ else:
     _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
         'GPU', core.VarDesc.VarType.FP16)
 
-unsupported_fp16_list = {'lookup_table',
-                         'lookup_table_v2'} | _sys_unsupported_fp16_list
+unsupported_fp16_list = _extra_unsupported_fp16_list | _sys_unsupported_fp16_list
 
 CustomOpLists = AutoMixedPrecisionLists

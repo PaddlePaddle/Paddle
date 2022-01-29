@@ -154,6 +154,27 @@ class TestConv2DTransposeMKLDNNWithDilationsExplicitPad(
         self.padding_algorithm = "EXPLICIT"
 
 
+class TestMKLDNNWithGroups(TestConv2DTransposeMKLDNNOp):
+    def init_test_case(self):
+        TestConv2DTransposeMKLDNNOp.init_test_case(self)
+        self.pad = [1, 1]
+        self.groups = 2
+        self.input_size = [2, 4, 5, 5]  # NCHW
+        f_c = self.input_size[1]
+        self.filter_size = [f_c, 3, 3, 3]
+
+
+class TestMKLDNNWithGroups_NHWC(TestConv2DTransposeMKLDNNOp):
+    def init_test_case(self):
+        TestConv2DTransposeMKLDNNOp.init_test_case(self)
+        self.pad = [1, 1]
+        self.groups = 2
+        self.input_size = [2, 5, 5, 4]  # NHWC
+        f_c = self.input_size[-1]
+        self.filter_size = [f_c, 3, 3, 3]
+        self.data_format = 'NHWC'
+
+
 if __name__ == '__main__':
     enable_static()
     unittest.main()

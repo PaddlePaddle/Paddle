@@ -24,6 +24,7 @@ from .param_attr import ParamAttr
 from . import core
 from six.moves import zip
 from .layer_helper_base import LayerHelperBase
+from .dygraph_utils import _append_activation_in_dygraph
 
 
 class LayerHelper(LayerHelperBase):
@@ -145,21 +146,27 @@ class LayerHelper(LayerHelperBase):
         else:
             raise TypeError(str(act) + " should be unicode or str")
 
+        use_cudnn = None
         if 'use_cudnn' in self.kwargs and self.kwargs.get('use_cudnn'):
-            act['use_cudnn'] = self.kwargs.get('use_cudnn')
+            use_cudnn = self.kwargs.get('use_cudnn')
+            act['use_cudnn'] = use_cudnn
         use_mkldnn = self.kwargs.get(
             'use_mkldnn', _global_flags().get("FLAGS_use_mkldnn", False))
         if use_mkldnn:
             act['use_mkldnn'] = use_mkldnn
         act_type = act.pop('type')
-
-        tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
-        self.append_op(
-            type=act_type,
-            inputs={"X": [input_var]},
-            outputs={"Out": [tmp]},
-            attrs=act)
-        return tmp
+        if in_dygraph_mode():
+            res = _append_activation_in_dygraph(input_var, act_type, use_cudnn,
+                                                use_mkldnn)
+            return res
+        else:
+            tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
+            self.append_op(
+                type=act_type,
+                inputs={"X": [input_var]},
+                outputs={"Out": [tmp]},
+                attrs=act)
+            return tmp
 
     #TODO (jiabin): should we remove this since it has never be used
     def _get_default_initializer(self, dtype):

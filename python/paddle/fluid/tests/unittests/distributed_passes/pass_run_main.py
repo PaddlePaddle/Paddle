@@ -44,6 +44,10 @@ def parse_args():
         '--output_dir',
         type=str,
         help='The output directory to save the logs and output results.')
+    parser.add_argument(
+        '--model_file',
+        type=str,
+        help='The input model file which contains the dumped model function.')
     return parser.parse_args()
 
 
@@ -60,11 +64,16 @@ def run_main(args):
         kwargs = pickle.load(f)
 
     output_file = "{}/{}.bin".format(args.output_dir, rank)
+    if args.model_file:
+        with open(args.model_file, "rb") as f:
+            model = pickle.load(f)
+    else:
+        model = None
 
     try:
         test_obj.setUpClass()
         test_obj.setUp()
-        test_obj._run_gpu_main(args.apply_pass, output_file, **kwargs)
+        test_obj._run_gpu_main(model, args.apply_pass, output_file, **kwargs)
     finally:
         test_obj.tearDown()
         test_obj.tearDownClass()

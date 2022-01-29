@@ -32,8 +32,8 @@
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
-#include "paddle/fluid/framework/new_executor/workqueue.h"
-#include "paddle/fluid/framework/new_executor/workqueue_utils.h"
+#include "paddle/fluid/framework/new_executor/workqueue/workqueue.h"
+#include "paddle/fluid/framework/new_executor/workqueue/workqueue_utils.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -51,7 +51,6 @@ namespace framework {
 namespace interpreter {
 
 using AtomicVectorSizeT = std::vector<std::unique_ptr<std::atomic<size_t>>>;
-static constexpr char kFetchVarName[] = "fetch_vars";
 
 class AsyncWorkQueue {
  public:
@@ -59,15 +58,19 @@ class AsyncWorkQueue {
       : host_num_thread_(host_num_threads) {
     std::vector<WorkQueueOptions> group_options;
     // for execute host Kernel
-    group_options.emplace_back(/*num_threads*/ host_num_threads,
+    group_options.emplace_back(/*name*/ "HostTasks",
+                               /*num_threads*/ host_num_threads,
                                /*allow_spinning*/ true,
-                               /*track_task*/ true,
-                               /*queue_empty_waiter*/ waiter);
+                               /*track_task*/ false,
+                               /*detached*/ true,
+                               /*events_waiter*/ waiter);
     // for launch device Kernel
-    group_options.emplace_back(/*num_threads*/ 1,
+    group_options.emplace_back(/*name*/ "DeviceKernelLaunch",
+                               /*num_threads*/ 1,
                                /*allow_spinning*/ true,
-                               /*track_task*/ true,
-                               /*queue_empty_waiter*/ waiter);
+                               /*track_task*/ false,
+                               /*detached*/ true,
+                               /*events_waiter*/ waiter);
     queue_group_ = CreateWorkQueueGroup(group_options);
   }
 
@@ -78,9 +81,7 @@ class AsyncWorkQueue {
 
   // void WaitEmpty() { queue_group_->WaitQueueGroupEmpty(); }
 
-  void AddTask(const OpFuncType& op_func_type, std::function<void()> fn) {
-    queue_group_->AddTask(static_cast<size_t>(op_func_type), std::move(fn));
-  }
+  void AddTask(const OpFuncType& op_func_type, std::function<void()> fn);
 
   void Cancel() { queue_group_->Cancel(); }
 
@@ -94,16 +95,17 @@ class AsyncWorkQueue {
   AtomicVectorSizeT atomic_var_ref_;
 };
 
-std::string get_memcpy_type(const platform::Place& src_place,
-                            const platform::Place& dst_place);
-
 void build_variable_scope(const framework::BlockDesc& block,
-                          VariableScope* var_scope);
+                          VariableScope* var_scope,
+                          bool use_local_scope = true);
 
 void build_op_func_list(const platform::Place& place,
                         const framework::BlockDesc& block,
                         std::vector<OpFuncNode>* vec_func_list,
-                        VariableScope* var_scope);
+                        VariableScope* var_scope, bool use_local_scope = true);
+
+std::map<int, std::list<int>> build_op_downstream_map(
+    const std::vector<Instruction>& vec_instruction);
 
 void add_fetch(const std::vector<std::string>& fetch_names,
                framework::BlockDesc* block);

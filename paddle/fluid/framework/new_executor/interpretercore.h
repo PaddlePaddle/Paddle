@@ -26,8 +26,6 @@
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/new_executor/profiler.h"
 #include "paddle/fluid/framework/new_executor/stream_analyzer.h"
-#include "paddle/fluid/framework/new_executor/workqueue.h"
-#include "paddle/fluid/framework/new_executor/workqueue_utils.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
@@ -49,12 +47,16 @@ class InterpreterCore {
       const std::vector<std::string>& feed_names,
       const std::vector<framework::LoDTensor>& feed_tensors);
 
+  paddle::framework::FetchList Run(const std::vector<std::string>& feed_names);
+
   interpreter::CostInfo DryRun(
       const std::vector<std::string>& feed_names,
       const std::vector<framework::LoDTensor>& feed_tensors);
 
+  void SetCopyProgram(std::shared_ptr<ProgramDesc> prog);
+
  private:
-  void Convert();
+  void Convert(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
 
   void BuildAndCacheInstructionCtx(Instruction* instr_node);
 
@@ -70,6 +72,10 @@ class InterpreterCore {
                const std::vector<framework::LoDTensor>& feed_tensors,
                bool prepare_feed);
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  void RecordStreamForGC(const Instruction& instr);
+#endif
+
   void CheckGC(const Instruction& instr);
 
   void RunInstructionAsync(size_t instr_id);
@@ -78,17 +84,28 @@ class InterpreterCore {
 
   void BuildSkipShareLoDInfo();
 
+  void BuildOperatorDependences();
+
+  void SetFeedVarsInplaceSkip(const std::vector<std::string>& feed_names);
+
+  void ClearLoDTensorArrayInLocalScope();
+
   bool is_build_;
 
   const platform::Place& place_;
-  const BlockDesc& block_;       // not owned
+  const BlockDesc& block_;  // not owned
+  // NOTE(zhiqiu): when add fetch ops in GetInterpreterCore, we will
+  // copy a new program and block, the copy_program_ here is used to
+  // hold the program, otherwise block_ maybe not valid after the
+  // new program is deleted.
+  std::shared_ptr<ProgramDesc> copy_program_{nullptr};
+
   VariableScope* global_scope_;  // not owned
 
-  std::vector<paddle::framework::OpFuncNode> vec_func_list_;
   std::vector<Instruction> vec_instruction_;  // deconstruct before OpFuncNode
 
   std::vector<size_t> dependecy_count_;
-  std::atomic<size_t> op_run_number_{0};
+  std::atomic<size_t> unfinished_op_numer_{0};
   std::vector<std::vector<size_t>> input_var2op_info_;
 
   StreamAnalyzer stream_analyzer_;
@@ -96,9 +113,12 @@ class InterpreterCore {
   std::unique_ptr<interpreter::AsyncWorkQueue> async_work_queue_;
   details::ExceptionHolder exception_holder_;
   std::shared_ptr<EventsWaiter::EventNotifier> exception_notifier_{nullptr};
+  std::shared_ptr<EventsWaiter::EventNotifier> completion_notifier_{nullptr};
 
   std::unique_ptr<InterpreterCoreGarbageCollector> gc_;
   std::vector<paddle::platform::DeviceEvent> gc_event_;
+  bool create_local_scope_{true};
+  Scope* local_scope_{nullptr};  // not owned
 };
 }  // namespace framework
 }  // namespace paddle

@@ -278,6 +278,11 @@ if(WITH_XPU)
     list(APPEND third_party_deps extern_xpu)
 endif(WITH_XPU)
 
+if(WITH_MLU)
+    include(external/concurrentqueue) # download, build, install concurrentqueue
+    list(APPEND third_party_deps extern_concurrentqueue)
+endif(WITH_MLU)
+
 if(WITH_PSLIB)
     include(external/pslib)          # download, build, install pslib
     list(APPEND third_party_deps extern_pslib)
@@ -294,8 +299,10 @@ if(WITH_PSLIB)
 
         include(external/leveldb)
         list(APPEND third_party_deps extern_leveldb)
-        include(external/brpc)
-        list(APPEND third_party_deps extern_brpc)
+        if(NOT WITH_HETERPS)
+            include(external/brpc)
+            list(APPEND third_party_deps extern_brpc)
+        endif()
     endif()
 endif(WITH_PSLIB)
 
@@ -390,5 +397,15 @@ if (WIN32)
     include(external/dirent)
     list(APPEND third_party_deps extern_dirent)
 endif (WIN32)
+
+if (WITH_INFRT)
+    include(external/llvm)
+    list(APPEND third_party_deps ${llvm_libs})
+endif()
+
+if (WITH_IPU)
+    include(external/poplar)
+    list(APPEND third_party_deps extern_poplar)
+endif()
 
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})

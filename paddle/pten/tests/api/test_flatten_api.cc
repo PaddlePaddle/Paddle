@@ -15,32 +15,30 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/pten/api/include/manipulation.h"
+#include "paddle/pten/api/include/api.h"
 
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-PT_DECLARE_MODULE(ManipulationCPU);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_MODULE(ManipulationCUDA);
-#endif
+namespace paddle {
+namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
 // TODO(chenweihang): Remove this test after the API is used in the dygraph
 TEST(API, flatten) {
   // 1. create tensor
-  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+  const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
   auto dense_x = std::make_shared<pten::DenseTensor>(
-      alloc,
+      alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
                             framework::make_ddim({3, 2, 2, 3}),
                             pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x->mutable_data<float>();
+  auto* dense_x_data =
+      dense_x->mutable_data<float>(paddle::platform::CPUPlace());
 
   for (int i = 0; i < dense_x->numel(); i++) {
     dense_x_data[i] = i;
@@ -53,9 +51,9 @@ TEST(API, flatten) {
 
   // 3. check result
   std::vector<int> expect_shape = {3, 4, 3};
-  ASSERT_EQ(out.shape()[0], expect_shape[0]);
-  ASSERT_EQ(out.shape()[1], expect_shape[1]);
-  ASSERT_EQ(out.shape()[2], expect_shape[2]);
+  ASSERT_EQ(out.dims()[0], expect_shape[0]);
+  ASSERT_EQ(out.dims()[1], expect_shape[1]);
+  ASSERT_EQ(out.dims()[2], expect_shape[2]);
   ASSERT_EQ(out.numel(), 36);
   ASSERT_EQ(out.is_cpu(), true);
   ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
@@ -70,3 +68,6 @@ TEST(API, flatten) {
   }
   ASSERT_EQ(value_equal, true);
 }
+
+}  // namespace tests
+}  // namespace paddle

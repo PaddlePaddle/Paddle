@@ -16,7 +16,11 @@ limitations under the License. */
 #include <iostream>
 #include <sstream>
 
+#include "paddle/pten/api/ext/exception.h"
 #include "paddle/pten/common/data_type.h"
+
+namespace pten {
+namespace tests {
 
 TEST(DataType, OStream) {
   std::ostringstream oss;
@@ -61,8 +65,11 @@ TEST(DataType, OStream) {
   oss.str("");
   try {
     oss << pten::DataType::NUM_DATA_TYPES;
-  } catch (paddle::platform::EnforceNotMet &exception) {
+  } catch (const std::exception& exception) {
     std::string ex_msg = exception.what();
     EXPECT_TRUE(ex_msg.find("Invalid enum data type") != std::string::npos);
   }
 }
+
+}  // namespace tests
+}  // namespace pten

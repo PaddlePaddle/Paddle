@@ -13,94 +13,103 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
-#include "paddle/fluid/distributed/fleet_executor/message_bus.h"
+#include "paddle/fluid/distributed/fleet_executor/carrier.h"
+#include "paddle/fluid/distributed/fleet_executor/task_loop.h"
+#include "paddle/fluid/distributed/fleet_executor/task_node.h"
 
 namespace paddle {
 namespace distributed {
 
 Interceptor::Interceptor(int64_t interceptor_id, TaskNode* node)
-    : interceptor_id_(interceptor_id), node_(node) {
-  interceptor_thread_ = std::thread([this]() {
-    VLOG(3) << "Start pooling local mailbox's thread.";
-    PoolTheMailbox();
-  });
-}
+    : interceptor_id_(interceptor_id), node_(node) {}
 
-Interceptor::~Interceptor() { interceptor_thread_.join(); }
+Interceptor::~Interceptor() {
+  // FIXME(wangxi): throw in stop function
+  // std::lock_guard<std::mutex> lock(mutex_);
+  // PADDLE_ENFORCE_EQ(messages_.empty(), true,
+  //                  platform::errors::PreconditionNotMet(
+  //                      "Interceptor must destruct with messages empty"));
+}
 
 void Interceptor::RegisterMsgHandle(MsgHandle handle) { handle_ = handle; }
 
 void Interceptor::Handle(const InterceptorMessage& msg) {
-  if (handle_) {
-    handle_(msg);
+  PADDLE_ENFORCE_NOT_NULL(handle_, platform::errors::PreconditionNotMet(
+                                       "Message handle is not registered."));
+  handle_(msg);
+}
+
+void Interceptor::LoopOnce() {
+  std::deque<InterceptorMessage> tmp_messages;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    messages_.swap(tmp_messages);
+  }
+  PADDLE_ENFORCE_EQ(tmp_messages.empty(), false,
+                    platform::errors::PreconditionNotMet(
+                        "tmp_messages must not empty in task loop"));
+
+  for (auto& msg : tmp_messages) {
+    const MessageType message_type = msg.message_type();
+    VLOG(3) << "Interceptor " << interceptor_id_ << " has received a message"
+            << " from interceptor " << msg.src_id()
+            << " with message: " << message_type << ".";
+
+    Handle(msg);
   }
 }
 
-std::condition_variable& Interceptor::GetCondVar() {
-  // get the conditional var
-  return cond_var_;
+void Interceptor::StopCarrier() {
+  PADDLE_ENFORCE_NOT_NULL(carrier_, platform::errors::PreconditionNotMet(
+                                        "Carrier is not registered."));
+  carrier_->WakeUp();
 }
 
-int64_t Interceptor::GetInterceptorId() const {
-  // return the interceptor id
-  return interceptor_id_;
-}
-
-bool Interceptor::EnqueueRemoteInterceptorMessage(
-    const InterceptorMessage& interceptor_message) {
+void Interceptor::EnqueueRemoteInterceptorMessage(
+    const InterceptorMessage& message) {
   // Called by Carrier, enqueue an InterceptorMessage to remote mailbox
-  VLOG(3) << "Enqueue message: " << interceptor_message.message_type()
-          << " into " << interceptor_id_ << "'s remote mailbox.";
-  std::unique_lock<std::mutex> lock(remote_mailbox_mutex_);
-  remote_mailbox_.push(interceptor_message);
-  return true;
+  VLOG(3) << "Enqueue message: " << message.message_type() << " into "
+          << interceptor_id_ << "'s remote mailbox.";
+
+  bool empty = false;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    empty = messages_.empty();
+    messages_.emplace_back(message);
+  }
+  if (empty) {
+    loop_->QueueInLoop([this]() { LoopOnce(); });
+  }
 }
 
-void Interceptor::Send(int64_t dst_id, InterceptorMessage& msg) {
+bool Interceptor::Send(int64_t dst_id, InterceptorMessage& msg) {
+  PADDLE_ENFORCE_NOT_NULL(carrier_, platform::errors::PreconditionNotMet(
+                                        "Carrier is not registered."));
   msg.set_src_id(interceptor_id_);
   msg.set_dst_id(dst_id);
-  MessageBus::Instance().Send(msg);
+  return carrier_->Send(msg);
 }
 
-void Interceptor::PoolTheMailbox() {
-  // pool the local mailbox, parse the Message
-  while (true) {
-    if (local_mailbox_.empty()) {
-      // local mailbox is empty, fetch the remote mailbox
-      VLOG(3) << interceptor_id_ << "'s local mailbox is empty. "
-              << "Fetch the remote mailbox.";
-      PADDLE_ENFORCE_EQ(FetchRemoteMailbox(), true,
-                        platform::errors::InvalidArgument(
-                            "Error encountered when fetch remote mailbox."));
-    }
-    const InterceptorMessage interceptor_message = local_mailbox_.front();
-    local_mailbox_.pop();
-    const MessageType message_type = interceptor_message.message_type();
-    VLOG(3) << interceptor_id_ << " has received a message: " << message_type
-            << ".";
-    if (message_type == STOP) {
-      // break the pooling thread
-      break;
-    }
-
-    Handle(interceptor_message);
-  }
+static InterceptorFactory::CreateInterceptorMap& GetInterceptorMap() {
+  static InterceptorFactory::CreateInterceptorMap interceptorMap;
+  return interceptorMap;
 }
 
-bool Interceptor::FetchRemoteMailbox() {
-  // fetch all Message from remote mailbox to local mailbox
-  // return true if remote mailbox not empty, otherwise return false
-  std::unique_lock<std::mutex> lock(remote_mailbox_mutex_);
-  cond_var_.wait(lock, [this]() { return !remote_mailbox_.empty(); });
-  if (remote_mailbox_.empty()) {
-    // the thread has been unblocked accidentally
-    return false;
-  }
-  while (!remote_mailbox_.empty()) {
-    local_mailbox_.push(std::move(remote_mailbox_.front()));
-    remote_mailbox_.pop();
-  }
-  return true;
+std::unique_ptr<Interceptor> InterceptorFactory::Create(const std::string& type,
+                                                        int64_t id,
+                                                        TaskNode* node) {
+  auto& interceptor_map = GetInterceptorMap();
+  auto iter = interceptor_map.find(type);
+  PADDLE_ENFORCE_NE(
+      iter, interceptor_map.end(),
+      platform::errors::NotFound("interceptor %s is not register", type));
+  return iter->second(id, node);
+}
+
+void InterceptorFactory::Register(
+    const std::string& type, InterceptorFactory::CreateInterceptorFunc func) {
+  auto& interceptor_map = GetInterceptorMap();
+  interceptor_map.emplace(type, func);
 }
 
 }  // namespace distributed

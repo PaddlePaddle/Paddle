@@ -20,10 +20,36 @@ from .shard import Shard
 __all__ = []
 
 
+class PlaceType:
+    # sync with memcpy op, maybe not a good design
+    CPU = 0
+    CUDA = 1
+    CUDA_PINNED = 2
+    XPU = 3  # unsupport for now
+    NPU = 4
+    NPU_PINNED = 5
+
+    @staticmethod
+    def default_device():
+        if core.is_compiled_with_cuda():
+            return PlaceType.CUDA
+        elif core.is_compiled_with_npu():
+            return PlaceType.NPU
+        return PlaceType.CPU
+
+    @staticmethod
+    def default_pinned():
+        if core.is_compiled_with_cuda():
+            return PlaceType.CUDA_PINNED
+        elif core.is_compiled_with_npu():
+            return PlaceType.NPU_PINNED
+        return PlaceType.CPU
+
+
 class OffloadHelper(object):
     cpu_place_type = 0
-    cuda_place_type = 1
-    cuda_pinned_place_type = 2
+    cuda_place_type = PlaceType.default_device()
+    cuda_pinned_place_type = PlaceType.default_pinned()
 
     def __init__(self, mp_ring_id=None, dp_ring_id=None):
         self.mp_ring_id = mp_ring_id

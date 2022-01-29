@@ -8,7 +8,20 @@ function(detection_library TARGET_NAME)
     set(pybind_flag 0)
     cmake_parse_arguments(detection_library "${options}" "${oneValueArgs}"
             "${multiValueArgs}" ${ARGN})
-    op_library(${TARGET_NAME} SRCS ${detection_library_SRCS} DEPS ${common_deps} ${detection_library_DEPS})
+    set(srcs)
+    # filter cuda source file when not build with cuda/rocm
+    foreach(src ${detection_library_SRCS})
+      if (NOT WITH_GPU AND NOT WITH_ROCM)
+        if(${src} MATCHES ".*\\.cc$")
+          list(APPEND srcs ${src})
+        endif()
+      else()
+        list(APPEND srcs ${src})
+      endif()
+    endforeach()
+    
+    op_library(${TARGET_NAME} SRCS ${srcs} DEPS ${common_deps} ${detection_library_DEPS})
+
     set(LOCAL_DETECTION_LIBS
             ${TARGET_NAME}
             ${LOCAL_DETECTION_LIBS}
@@ -23,9 +36,19 @@ else()
     detection_library(density_prior_box_op SRCS density_prior_box_op.cc density_prior_box_op.cu)
 endif()
 
+if(WITH_XPU)
+  detection_library(iou_similarity_op SRCS iou_similarity_op.cc iou_similarity_op_xpu.cc)
+  detection_library(prior_box_op SRCS prior_box_op.cc prior_box_op_xpu.cc)
+elseif(WITH_ASCEND_CL)
+  detection_library(iou_similarity_op SRCS iou_similarity_op.cc iou_similarity_op_npu.cc)
+  detection_library(prior_box_op SRCS prior_box_op.cc prior_box_op.cu prior_box_op_npu.cc)
+else()
+  detection_library(iou_similarity_op SRCS iou_similarity_op.cc iou_similarity_op.cu)
+  detection_library(prior_box_op SRCS prior_box_op.cc prior_box_op.cu)
+endif()
+
 detection_library(bipartite_match_op SRCS bipartite_match_op.cc)
 detection_library(mine_hard_examples_op SRCS mine_hard_examples_op.cc)
-detection_library(prior_box_op SRCS prior_box_op.cc prior_box_op.cu)
 detection_library(anchor_generator_op SRCS anchor_generator_op.cc
 anchor_generator_op.cu)
 detection_library(target_assign_op SRCS target_assign_op.cc
@@ -60,14 +83,6 @@ else()
   detection_library(generate_proposals_v2_op SRCS generate_proposals_v2_op.cc)
   detection_library(distribute_fpn_proposals_op SRCS distribute_fpn_proposals_op.cc)
   detection_library(collect_fpn_proposals_op SRCS collect_fpn_proposals_op.cc)
-endif()
-
-if(WITH_XPU)
-  detection_library(iou_similarity_op SRCS iou_similarity_op.cc iou_similarity_op_xpu.cc)
-elseif(WITH_ASCEND_CL)
-  detection_library(iou_similarity_op SRCS iou_similarity_op.cc iou_similarity_op_npu.cc)
-else()
-  detection_library(iou_similarity_op SRCS iou_similarity_op.cc iou_similarity_op.cu)
 endif()
 
 detection_library(roi_perspective_transform_op SRCS roi_perspective_transform_op.cc roi_perspective_transform_op.cu)

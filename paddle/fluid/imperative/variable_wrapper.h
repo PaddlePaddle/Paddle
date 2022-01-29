@@ -104,8 +104,8 @@ class VariableWrapper {
       const framework::Tensor* tensor = nullptr;
       if (var_.IsType<framework::LoDTensor>()) {
         tensor = &(var_.Get<framework::LoDTensor>());
-      } else if (var_.IsType<framework::SelectedRows>()) {
-        tensor = &(var_.Get<framework::SelectedRows>().value());
+      } else if (var_.IsType<pten::SelectedRows>()) {
+        tensor = &(var_.Get<pten::SelectedRows>().value());
       } else {
         PADDLE_THROW(platform::errors::PermissionDenied(
             "Only support LoDTensor and SelectedRows for gradient var"));
@@ -153,7 +153,7 @@ class VariableWrapper {
       if (type_ == framework::proto::VarType::LOD_TENSOR) {
         tensor = &(var_.Get<framework::LoDTensor>());
       } else if (type_ == framework::proto::VarType::SELECTED_ROWS) {
-        tensor = &(var_.Get<framework::SelectedRows>().value());
+        tensor = &(var_.Get<pten::SelectedRows>().value());
       } else if (type_ == framework::proto::VarType::VOCAB) {
         const framework::Vocab* data = nullptr;
         data = &(var_.Get<framework::Vocab>());
@@ -193,7 +193,7 @@ class VariableWrapper {
       if (type_ == framework::proto::VarType::LOD_TENSOR) {
         tensor = &(var_.Get<framework::LoDTensor>());
       } else if (type_ == framework::proto::VarType::SELECTED_ROWS) {
-        tensor = &(var_.Get<framework::SelectedRows>().value());
+        tensor = &(var_.Get<pten::SelectedRows>().value());
       } else {
         VLOG(6) << "Variable " << name_ << " is not initialized";
         return place;
@@ -209,13 +209,23 @@ class VariableWrapper {
 
   uint32_t InplaceVersionSnapshot() const { return inplace_version_snapshot_; }
 
-  void ResetInplaceVersion() {
-    auto new_version = var_.CurrentInplaceVersion();
+  void ResetInplaceVersion(bool set_to_zero = false) {
+    if (!set_to_zero) {
+      auto new_version = var_.CurrentInplaceVersion();
 
-    VLOG(6) << "The wrapper version of VariableWrapper '" << name_
-            << "' will be updated from " << inplace_version_snapshot_ << "to "
-            << new_version;
-    inplace_version_snapshot_ = new_version;
+      VLOG(6) << "The wrapper version of VariableWrapper '" << name_
+              << "' will be updated from " << inplace_version_snapshot_ << "to "
+              << new_version;
+      inplace_version_snapshot_ = new_version;
+
+    } else {
+      // Reset Snapshot & InplaceVersion to zero
+      inplace_version_snapshot_ = 0;
+      auto var = this->MutableVar();
+      if (var) {
+        var->SetInplaceVersionToZero();
+      }
+    }
   }
 
   bool hasCacheKey(const paddle::framework::OpKernelType& key) {

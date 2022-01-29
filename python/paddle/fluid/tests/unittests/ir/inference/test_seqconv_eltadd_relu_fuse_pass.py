@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,128 +12,102 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
+from auto_scan_test import PassAutoScanTest, SkipReasons
+from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
-from inference_pass_test import InferencePassTest
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.core import AnalysisConfig
-from paddle.fluid.core import PassVersionChecker
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
+
+import hypothesis
+from hypothesis import given, settings, seed, example, assume
+import hypothesis.strategies as st
+from functools import reduce
 
 
-class SeqconvEltaddReluFusePassTest(InferencePassTest):
-    def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data", shape=[100, 100], dtype="float32")
-            param_attr = fluid.ParamAttr(
-                initializer=fluid.initializer.Xavier(uniform=False),
-                learning_rate=0.001)
-            conv_out = fluid.layers.sequence_conv(
-                input=data,
-                num_filters=16,
-                filter_size=4,
-                padding_start=0,
-                act="relu",
-                bias_attr=param_attr)
+class TestSeqconvEltaddReluFusePass(PassAutoScanTest):
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        return True
 
-        np_data = np.random.random((80, 100)).astype('float32')
-        x_lod_tensor = fluid.create_lod_tensor(np_data, [[10, 20, 30, 20]],
-                                               fluid.CPUPlace())
-        self.feeds = {"data": x_lod_tensor}
-        self.fetch_list = [conv_out]
-        self.enable_mkldnn = True
+    def sample_program_config(self, draw):
+        contextLength = draw(st.sampled_from([1, 2, 3, 4]))
+        contextStart = draw(st.sampled_from([1, 2, 3]))
+        contextStride = draw(st.sampled_from([1]))
+        paddingTrainable = False
+        axis = draw(st.sampled_from([1]))
+        batch_size = draw(st.integers(min_value=1, max_value=4))
 
-    def test_check_output(self):
-        self.check_output()
-        self.assertTrue(
-            PassVersionChecker.IsCompatible('seqconv_eltadd_relu_fuse_pass'))
+        def generate_input():
+            shape = [batch_size, 128, 6, 120]
+            return np.random.random(shape).astype(np.float32)
 
+        def generate_weight(shape):
+            return np.random.random(shape).astype(np.float32)
 
-class SeqconvEltaddReluFusePassTestPaddingStartPositive(InferencePassTest):
-    def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data", shape=[-1, 4], dtype="float32")
-            param_attr = fluid.ParamAttr(
-                initializer=fluid.initializer.Xavier(uniform=False),
-                learning_rate=0.001)
-            conv_out = fluid.layers.sequence_conv(
-                input=data,
-                num_filters=16,
-                filter_size=3,
-                padding_start=2,
-                act="relu",
-                bias_attr=param_attr)
+        im2sequence_op = OpConfig(
+            type="im2sequence",
+            inputs={"X": ["input_data"]},
+            outputs={"Out": ["seq_out"]},
+            attrs={
+                "kernels": [6, 1],
+                "out_stride": [1, 1],
+                "paddings": [0, 0, 0, 0],
+                "strides": [1, 1]
+            })
 
-        np_data = np.array([[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3],
-                            [4, 4, 4, 4], [5, 5, 5, 5], [6, 6, 6, 6],
-                            [7, 7, 7, 7]]).astype('float32')
-        x_lod_tensor = fluid.create_lod_tensor(np_data, [[5, 2]],
-                                               fluid.CPUPlace())
-        self.feeds = {"data": x_lod_tensor}
-        self.fetch_list = [conv_out]
-        self.enable_mkldnn = True
+        sequence_conv_op = OpConfig(
+            type="sequence_conv",
+            inputs={"X": ["seq_out"],
+                    "Filter": ["conv_weight"]},
+            outputs={"Out": ["conv_out"]},
+            attrs={
+                "contextLength": contextLength,
+                "contextStart": contextStart,
+                "contextStride": contextStride,
+                "paddingTrainable": paddingTrainable
+            })
 
-    def test_check_output(self):
-        self.check_output()
-        self.assertTrue(
-            PassVersionChecker.IsCompatible('seqconv_eltadd_relu_fuse_pass'))
+        elementwise_add_op = OpConfig(
+            type="elementwise_add",
+            inputs={"X": ["conv_out"],
+                    "Y": ["elt_weight"]},
+            outputs={"Out": ["elt_output"]},
+            attrs={'axis': axis})
 
+        relu_op = OpConfig(
+            type="relu",
+            inputs={"X": ["elt_output"]},
+            outputs={"Out": ["relu_output"]},
+            attrs={})
 
-class SeqconvEltaddReluFusePassTestPaddingStartNegative(InferencePassTest):
-    def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data", shape=[100, 100], dtype="float32")
-            param_attr = fluid.ParamAttr(
-                initializer=fluid.initializer.Xavier(uniform=False),
-                learning_rate=0.001)
-            conv_out = fluid.layers.sequence_conv(
-                input=data,
-                num_filters=16,
-                filter_size=4,
-                padding_start=-1,
-                act="relu",
-                bias_attr=param_attr)
+        model_net = [
+            im2sequence_op, sequence_conv_op, elementwise_add_op, relu_op
+        ]
 
-        np_data = np.random.random((80, 100)).astype('float32')
-        x_lod_tensor = fluid.create_lod_tensor(np_data, [[10, 20, 30, 20]],
-                                               fluid.CPUPlace())
-        self.feeds = {"data": x_lod_tensor}
-        self.fetch_list = [conv_out]
-        self.enable_mkldnn = True
+        program_config = ProgramConfig(
+            ops=model_net,
+            weights={
+                "conv_weight": TensorConfig(data_gen=partial(
+                    generate_weight, [768 * contextLength, 16])),
+                "elt_weight":
+                TensorConfig(data_gen=partial(generate_weight, [16]))
+            },
+            inputs={
+                "input_data": TensorConfig(data_gen=partial(generate_input))
+            },
+            outputs=["relu_output"])
 
-    def test_check_output(self):
-        self.check_output()
-        self.assertTrue(
-            PassVersionChecker.IsCompatible('seqconv_eltadd_relu_fuse_pass'))
+        return program_config
 
+    def sample_predictor_configs(self, program_config):
+        config = self.create_inference_config()
+        yield config, ["im2sequence", "fusion_seqconv_eltadd_relu"], (1e-5,
+                                                                      1e-5)
 
-class SeqconvEltaddReluFusePassTestPaddingStartNone(InferencePassTest):
-    def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data", shape=[100, 100], dtype="float32")
-            param_attr = fluid.ParamAttr(
-                initializer=fluid.initializer.Xavier(uniform=False),
-                learning_rate=0.001)
-            conv_out = fluid.layers.sequence_conv(
-                input=data,
-                num_filters=16,
-                filter_size=4,
-                act="relu",
-                bias_attr=param_attr)
-
-        np_data = np.random.random((80, 100)).astype('float32')
-        x_lod_tensor = fluid.create_lod_tensor(np_data, [[10, 20, 30, 20]],
-                                               fluid.CPUPlace())
-        self.feeds = {"data": x_lod_tensor}
-        self.fetch_list = [conv_out]
-        self.enable_mkldnn = True
-
-    def test_check_output(self):
-        self.check_output()
-        self.assertTrue(
-            PassVersionChecker.IsCompatible('seqconv_eltadd_relu_fuse_pass'))
+    def test(self):
+        self.run_and_statis(
+            quant=False, passes=["seqconv_eltadd_relu_fuse_pass"])
 
 
 if __name__ == "__main__":

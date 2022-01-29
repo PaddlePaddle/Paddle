@@ -48,6 +48,13 @@ class Dataset {
  public:
   Dataset() {}
   virtual ~Dataset() {}
+  // do sample
+  virtual void TDMSample(const std::string tree_name,
+                         const std::string tree_path,
+                         const std::vector<uint16_t> tdm_layer_counts,
+                         const uint16_t start_sample_layer,
+                         const bool with_hierachy, const uint16_t seed_,
+                         const uint16_t sample_slot) {}
   // set file list
   virtual void SetFileList(const std::vector<std::string>& filelist) = 0;
   // set readers' num
@@ -56,6 +63,7 @@ class Dataset {
   virtual void SetTrainerNum(int trainer_num) = 0;
   // set fleet send batch size
   virtual void SetFleetSendBatchSize(int64_t size) = 0;
+  virtual void ReleaseMemoryFun() = 0;
   // set fs name and ugi
   virtual void SetHdfsConfig(const std::string& fs_name,
                              const std::string& fs_ugi) = 0;
@@ -73,6 +81,7 @@ class Dataset {
   virtual void SetEnablePvMerge(bool enable_pv_merge) = 0;
   virtual bool EnablePvMerge() = 0;
   virtual void SetMergeBySid(bool is_merge) = 0;
+  virtual void SetShuffleByUid(bool enable_shuffle_uid) = 0;
   // set merge by ins id
   virtual void SetMergeByInsId(int merge_size) = 0;
   virtual void SetGenerateUniqueFeasign(bool gen_uni_feasigns) = 0;
@@ -161,9 +170,13 @@ template <typename T>
 class DatasetImpl : public Dataset {
  public:
   DatasetImpl();
-  virtual ~DatasetImpl() {}
-
+  virtual ~DatasetImpl() {
+    if (release_thread_ != nullptr) {
+      release_thread_->join();
+    }
+  }
   virtual void SetFileList(const std::vector<std::string>& filelist);
+  virtual void ReleaseMemoryFun();
   virtual void SetThreadNum(int thread_num);
   virtual void SetTrainerNum(int trainer_num);
   virtual void SetFleetSendBatchSize(int64_t size);
@@ -177,6 +190,7 @@ class DatasetImpl : public Dataset {
   virtual void SetParseLogKey(bool parse_logkey);
   virtual void SetEnablePvMerge(bool enable_pv_merge);
   virtual void SetMergeBySid(bool is_merge);
+  virtual void SetShuffleByUid(bool enable_shuffle_uid);
 
   virtual void SetMergeByInsId(int merge_size);
   virtual void SetGenerateUniqueFeasign(bool gen_uni_feasigns);
@@ -289,11 +303,14 @@ class DatasetImpl : public Dataset {
   int64_t fleet_send_batch_size_;
   int64_t fleet_send_sleep_seconds_;
   std::vector<std::thread> preload_threads_;
+  std::thread* release_thread_ = nullptr;
   bool merge_by_insid_;
   bool parse_ins_id_;
   bool parse_content_;
   bool parse_logkey_;
   bool merge_by_sid_;
+  bool shuffle_by_uid_;
+  bool parse_uid_;
   bool enable_pv_merge_;  // True means to merge pv
   int current_phase_;     // 1 join, 0 update
   size_t merge_size_;
@@ -311,6 +328,12 @@ class DatasetImpl : public Dataset {
 class MultiSlotDataset : public DatasetImpl<Record> {
  public:
   MultiSlotDataset() {}
+  virtual void TDMSample(const std::string tree_name,
+                         const std::string tree_path,
+                         const std::vector<uint16_t> tdm_layer_counts,
+                         const uint16_t start_sample_layer,
+                         const bool with_hierachy, const uint16_t seed_,
+                         const uint16_t sample_slot);
   virtual void MergeByInsId();
   virtual void PreprocessInstance();
   virtual void PostprocessInstance();

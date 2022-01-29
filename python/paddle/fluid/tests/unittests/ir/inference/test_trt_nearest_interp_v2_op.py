@@ -64,8 +64,8 @@ class TRTNearestInterpTest(InferencePassTest):
         self.bs = 4
         self.scale = -1
         self.channels = 3
-        self.origin_shape = (32, 32)  # HW
-        self.resize_shape = (64, 64)  # HW
+        self.origin_shape = (16, 16)  # HW
+        self.resize_shape = (32, 32)  # HW
         self.align_corners = False
         self.data_layout = 'NCHW'
 
@@ -97,8 +97,8 @@ class TRTNearestInterpTest1(TRTNearestInterpTest):
         self.bs = 4
         self.scale = 2.
         self.channels = 3
-        self.origin_shape = (32, 32)  # HW
-        self.resize_shape = (64, 64)  # HW
+        self.origin_shape = (16, 16)  # HW
+        self.resize_shape = (32, 32)  # HW
         self.align_corners = False
         self.data_layout = 'NCHW'
 
@@ -108,8 +108,8 @@ class TRTNearestInterpTest2(TRTNearestInterpTest):
         self.bs = 4
         self.scale = -1
         self.channels = 3
-        self.origin_shape = (32, 32)  # HW
-        self.resize_shape = (47, 48)  # HW
+        self.origin_shape = (16, 16)  # HW
+        self.resize_shape = (47, 12)  # HW
         self.align_corners = False
         self.data_layout = 'NCHW'
 
@@ -119,8 +119,8 @@ class TRTNearestInterpTest3(TRTNearestInterpTest):
         self.bs = 4
         self.scale = -1
         self.channels = 3
-        self.origin_shape = (32, 32)  # HW
-        self.resize_shape = (64, 64)  # HW
+        self.origin_shape = (16, 16)  # HW
+        self.resize_shape = (32, 32)  # HW
         self.align_corners = False
         self.data_layout = 'NHWC'
 
@@ -130,8 +130,8 @@ class TRTNearestInterpTest4(TRTNearestInterpTest):
         self.bs = 4
         self.scale = 2.
         self.channels = 3
-        self.origin_shape = (32, 32)  # HW
-        self.resize_shape = (64, 64)  # HW
+        self.origin_shape = (16, 16)  # HW
+        self.resize_shape = (32, 32)  # HW
         self.align_corners = False
         self.data_layout = 'NHWC'
 
@@ -141,8 +141,8 @@ class TRTNearestInterpTest5(TRTNearestInterpTest):
         self.bs = 4
         self.scale = -1
         self.channels = 3
-        self.origin_shape = (32, 32)  # HW
-        self.resize_shape = (47, 48)  # HW
+        self.origin_shape = (16, 16)  # HW
+        self.resize_shape = (47, 12)  # HW
         self.align_corners = False
         self.data_layout = 'NHWC'
 

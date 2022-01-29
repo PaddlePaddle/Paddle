@@ -32,16 +32,17 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   using DDim = framework::DDim;
 
  public:
-  DygraphInferShapeContext(const NameVarMap<VarType>* in,
-                           const NameVarMap<VarType>* out,
-                           const framework::AttributeMap* attr,
-                           const framework::AttributeMap* default_attr,
-                           const std::string op_type)
+  DygraphInferShapeContext(
+      const NameVarMap<VarType>* in, const NameVarMap<VarType>* out,
+      const framework::AttributeMap* attr,
+      const framework::AttributeMap* default_attr, const std::string op_type,
+      const framework::OpKernelType* op_kernel_type = nullptr)
       : var_base_map_in_(in),
         var_base_map_out_(out),
         attrs_(attr),
         default_attrs_(default_attr),
-        op_type_(op_type) {}
+        op_type_(op_type),
+        op_kernel_type_(op_kernel_type) {}
 
   bool HasInput(const std::string& name) const override {
     // has only one input
@@ -195,8 +196,8 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
       auto* out_lod_tensor = out_var->GetMutable<framework::LoDTensor>();
       out_lod_tensor->Resize(in_lod_tensor.dims());
     } else {
-      auto& in_sele_rows = in_var->Get<framework::SelectedRows>();
-      auto out_sele_rows = out_var->GetMutable<framework::SelectedRows>();
+      auto& in_sele_rows = in_var->Get<pten::SelectedRows>();
+      auto out_sele_rows = out_var->GetMutable<pten::SelectedRows>();
       out_sele_rows->mutable_value()->Resize(in_sele_rows.value().dims());
       out_sele_rows->set_rows(in_sele_rows.rows());
       out_sele_rows->set_height(in_sele_rows.height());
@@ -214,17 +215,35 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
 
   bool IsRuntime() const override { return true; }
 
-  // TODO(paddle-dev): Can this be template?
+  bool IsRunMKLDNNKernel() const override {
+    return (op_kernel_type_ &&
+            (op_kernel_type_->data_layout_ == framework::DataLayout::kMKLDNN));
+  }
+
   std::vector<framework::InferShapeVarPtr> GetInputVarPtrs(
-      const std::string& name) override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
-        "GetInputVarPtrs not support in dygraph runtime context"));
+      const std::string& name) const override {
+    std::vector<framework::InferShapeVarPtr> res;
+    auto it = var_base_map_in_->find(name);
+    PADDLE_ENFORCE_NE(
+        it, var_base_map_in_->end(),
+        platform::errors::NotFound("Can not find [%s] in inputs.", name));
+    for (auto& var : it->second) {
+      res.emplace_back(var->MutableVar());
+    }
+    return res;
   }
 
   std::vector<framework::InferShapeVarPtr> GetOutputVarPtrs(
-      const std::string& name) override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
-        "GetOutputVarPtrs not support in dygraph runtime context"));
+      const std::string& name) const override {
+    std::vector<framework::InferShapeVarPtr> res;
+    auto it = var_base_map_out_->find(name);
+    PADDLE_ENFORCE_NE(
+        it, var_base_map_out_->end(),
+        platform::errors::NotFound("Can not find [%s] in outputs.", name));
+    for (auto& var : it->second) {
+      res.emplace_back(var->MutableVar());
+    }
+    return res;
   }
 
   DDim GetInputDim(const std::string& name) const override {
@@ -346,8 +365,8 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
                                      "Input variable should not be null"));
     if (var->IsType<framework::LoDTensor>()) {
       return var->Get<framework::LoDTensor>().dims();
-    } else if (var->IsType<framework::SelectedRows>()) {
-      return var->Get<framework::SelectedRows>().GetCompleteDims();
+    } else if (var->IsType<pten::SelectedRows>()) {
+      return var->Get<pten::SelectedRows>().GetCompleteDims();
     } else {
       PADDLE_THROW(platform::errors::PermissionDenied(
           "Only LoDTensor/SelectedRows support 'GetDim', but Variables "
@@ -363,8 +382,8 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   void SetDim(framework::Variable* var, const DDim& dim) {
     if (var->IsType<framework::LoDTensor>()) {
       var->GetMutable<framework::LoDTensor>()->Resize(dim);
-    } else if (var->IsType<framework::SelectedRows>()) {
-      var->GetMutable<framework::SelectedRows>()->set_height(dim[0]);
+    } else if (var->IsType<pten::SelectedRows>()) {
+      var->GetMutable<pten::SelectedRows>()->set_height(dim[0]);
     } else {
       PADDLE_THROW(platform::errors::PermissionDenied(
           "Variable type_id %s, expect LoDTensor/SelectedRows."));
@@ -399,6 +418,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   const framework::AttributeMap* attrs_;
   const framework::AttributeMap* default_attrs_;
   const std::string op_type_;
+  const framework::OpKernelType* op_kernel_type_;
 };
 
 }  // namespace imperative

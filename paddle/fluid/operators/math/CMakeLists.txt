@@ -44,7 +44,11 @@ if (WITH_ASCEND_CL)
 endif()
 
 # please add new math_library in alphabetical order
+if (WITH_ASCEND_CL)
+math_library(concat_and_split DEPS npu_op_runner)
+else()
 math_library(concat_and_split)
+endif()
 math_library(context_project DEPS im2col math_function)
 math_library(cross_entropy)
 math_library(cos_sim_functor)
@@ -57,14 +61,14 @@ math_library(gru_compute DEPS activation_functions math_function)
 math_library(lstm_compute DEPS activation_functions)
 
 cc_library(blas SRCS blas.cc DEPS cblas framework_proto device_context)
-math_library(math_function DEPS blas)
+math_library(math_function DEPS blas dense_tensor tensor)
 math_library(maxouting)
 math_library(pooling)
 
 if(WITH_MKLDNN)
-    math_library(selected_rows_functor DEPS selected_rows math_function blas mkldnn_axpy_handler)
+    math_library(selected_rows_functor DEPS selected_rows_utils math_function blas mkldnn_axpy_handler)
 else()
-    math_library(selected_rows_functor DEPS selected_rows math_function blas)
+    math_library(selected_rows_functor DEPS selected_rows_utils math_function blas)
 endif()
 
 math_library(sequence2batch)
@@ -107,6 +111,15 @@ if(WITH_ROCM)
     hip_test(selected_rows_functor_gpu_test SRCS selected_rows_functor_test.cu.cc DEPS selected_rows_functor math_function)
 endif()
 cc_test(concat_test SRCS concat_test.cc DEPS concat_and_split)
+
+if(WITH_GPU AND (NOT WITH_ROCM))
+#currenty not yet support ROCM 
+#the generic conversion APIs of dense and sparse are only supported after cuda11.2
+    if((NOT ${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 11.2)) 
+        cc_test(cusparse_conversion_api_test SRCS cusparse_conversion_api_test.cc DEPS tensor)
+    endif()
+endif()
+
 cc_test(cpu_vec_test SRCS cpu_vec_test.cc DEPS blas cpu_info)
 if(WITH_TESTING AND TEST im2col_test)
     set_tests_properties(im2col_test PROPERTIES TIMEOUT 120)

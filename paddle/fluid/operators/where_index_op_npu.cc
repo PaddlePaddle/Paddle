@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/where_index_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -70,7 +70,8 @@ class NPUWhereIndexKernel : public framework::OpKernel<T> {
     sum_runner.Run(stream);
 
     Tensor local_true_num;
-    TensorCopySync(sumed_true_num, platform::CPUPlace(), &local_true_num);
+    paddle::framework::TensorCopySync(sumed_true_num, platform::CPUPlace(),
+                                      &local_true_num);
     auto true_num = *local_true_num.data<int64_t>();
 
     out->Resize(framework::make_ddim({true_num, rank}));

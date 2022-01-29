@@ -27,7 +27,8 @@ inline std::vector<T> GetDataFromTensor(const framework::Tensor* x) {
     auto* data = x->data<int>();
     framework::Tensor cpu_attr_tensor;
     if (!platform::is_cpu_place(x->place())) {
-      TensorCopySync(*x, platform::CPUPlace(), &cpu_attr_tensor);
+      paddle::framework::TensorCopySync(*x, platform::CPUPlace(),
+                                        &cpu_attr_tensor);
       data = cpu_attr_tensor.data<int>();
     }
     vec_new_data = std::vector<T>(data, data + x->numel());
@@ -35,7 +36,8 @@ inline std::vector<T> GetDataFromTensor(const framework::Tensor* x) {
     auto* data = x->data<int64_t>();
     framework::Tensor cpu_attr_tensor;
     if (!platform::is_cpu_place(x->place())) {
-      TensorCopySync(*x, platform::CPUPlace(), &cpu_attr_tensor);
+      paddle::framework::TensorCopySync(*x, platform::CPUPlace(),
+                                        &cpu_attr_tensor);
       data = cpu_attr_tensor.data<int64_t>();
     }
     // NOTE: Converting int64 to int32 may cause data overflow.
@@ -64,7 +66,7 @@ inline std::vector<T> GetDataFromTensorList(
     if (tensor->type() == framework::proto::VarType::INT32) {
       if (!platform::is_cpu_place(tensor->place())) {
         framework::Tensor temp;
-        TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_new_data.push_back(static_cast<T>(*temp.data<int>()));
       } else {
         vec_new_data.push_back(static_cast<T>(*tensor->data<int>()));
@@ -72,7 +74,7 @@ inline std::vector<T> GetDataFromTensorList(
     } else if (tensor->type() == framework::proto::VarType::INT64) {
       if (!platform::is_cpu_place(tensor->place())) {
         framework::Tensor temp;
-        TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         // NOTE: Converting int64 to int32 may cause data overflow.
         vec_new_data.push_back(static_cast<T>(*temp.data<int64_t>()));
       } else {

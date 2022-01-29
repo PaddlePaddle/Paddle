@@ -650,8 +650,9 @@ def plan_einsum(operands, g_view, g_shape, g_supports, g_count, n_bcast):
     # Down count degenerate contraction dimensions.
     for view, support in zip(g_view, g_supports):
         # To collect the down count number, we use a type casting trick
-        down_count = [int((d + 1) and (not s)) 
-           for d, s in zip(view[nout:], support[nout:])
+        down_count = [
+            int((d + 1) and (not s))
+            for d, s in zip(view[nout:], support[nout:])
         ]
         for i, count in enumerate(down_count):
             g_count[i] -= count

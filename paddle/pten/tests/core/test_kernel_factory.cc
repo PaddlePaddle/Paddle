@@ -16,22 +16,16 @@ limitations under the License. */
 #include <sstream>
 
 #include "paddle/pten/core/kernel_factory.h"
+#include "paddle/pten/core/kernel_registry.h"
 
 #include "gtest/gtest.h"
 
-// TODO(chenweihang): add more unittests later
+PT_DECLARE_KERNEL(scale, CPU, ALL_LAYOUT);
 
-TEST(KernelName, ConstructAndOStream) {
-  std::ostringstream oss;
-  oss << pten::KernelName("scale", "host");
-  EXPECT_EQ(oss.str(), "scale.host");
-  pten::KernelName kernel_name1("scale.host");
-  EXPECT_EQ(kernel_name1.name(), "scale");
-  EXPECT_EQ(kernel_name1.overload_name(), "host");
-  pten::KernelName kernel_name2("scale.host");
-  EXPECT_EQ(kernel_name2.name(), "scale");
-  EXPECT_EQ(kernel_name2.overload_name(), "host");
-}
+namespace pten {
+namespace tests {
+
+// TODO(chenweihang): add more unittests later
 
 TEST(KernelKey, ConstructAndOStream) {
   pten::KernelKey key(
@@ -42,6 +36,16 @@ TEST(KernelKey, ConstructAndOStream) {
   std::ostringstream oss;
   oss << key;
   std::cout << oss.str();
-  // EXPECT_EQ(oss.str(), "scale.host");
   oss.flush();
 }
+
+TEST(KernelFactory, SelectedKernelMap) {
+  auto kernel_map = pten::KernelFactory::Instance().SelectKernelMap("scale");
+  EXPECT_GT(kernel_map.size(), 1UL);
+  for (auto& iter : kernel_map) {
+    std::cout << iter.first << ": " << iter.second;
+  }
+}
+
+}  // namespace tests
+}  // namespace pten

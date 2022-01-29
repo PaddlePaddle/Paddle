@@ -18,8 +18,8 @@ limitations under the License. */
 #include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/distributed/service/heter_client.h"
-#include "paddle/fluid/distributed/service/heter_server.h"
+#include "paddle/fluid/distributed/ps/service/heter_client.h"
+#include "paddle/fluid/distributed/ps/service/heter_server.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace framework = paddle::framework;
@@ -52,7 +52,7 @@ framework::BlockDesc* AppendSendAndRecvBlock(framework::ProgramDesc* program) {
 
 void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
   auto w_var = scope->Var("w");
-  w_var->GetMutable<framework::SelectedRows>();
+  w_var->GetMutable<pten::SelectedRows>();
 
   auto out_var = scope->Var("out");
   out_var->GetMutable<framework::LoDTensor>();
@@ -123,7 +123,7 @@ void InitTensorsOnClient2(framework::Scope* scope, platform::CPUPlace* place,
 void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
-  auto w = scope->Var("w")->GetMutable<framework::SelectedRows>();
+  auto w = scope->Var("w")->GetMutable<pten::SelectedRows>();
   auto w_value = w->mutable_value();
   w_value->Resize({rows_numel, 10});
   for (int64_t i = 0; i < rows_numel; ++i) w->AutoGrownIndex(i, true);
@@ -194,13 +194,20 @@ TEST(SENDANDRECV, CPU) {
   b_rpc_service->WaitServerReady();
   using MicroScope =
       std::unordered_map<int, std::shared_ptr<std::vector<framework::Scope*>>>;
+  using MiniScope = std::unordered_map<int, framework::Scope*>;
+  std::shared_ptr<MiniScope> mini_scopes(new MiniScope{});
   std::shared_ptr<MicroScope> micro_scopes(new MicroScope{});
   std::shared_ptr<std::vector<framework::Scope*>> micro_scope(
       new std::vector<framework::Scope*>{});
-  (*micro_scope).push_back(new framework::Scope());
-  (*micro_scope).push_back(new framework::Scope());
+  auto* mini_scope = new framework::Scope();
+  (*mini_scopes)[0] = mini_scope;
+  auto* micro_scope_0 = &(mini_scope->NewScope());
+  auto* micro_scope_1 = &(mini_scope->NewScope());
+  (*micro_scope).push_back(micro_scope_0);
+  (*micro_scope).push_back(micro_scope_1);
   (*micro_scopes)[0] = micro_scope;
   b_rpc_service->SetMicroBatchScopes(micro_scopes);
+  b_rpc_service->SetMiniBatchScopes(mini_scopes);
 
   using TaskQueue =
       std::unordered_map<int,

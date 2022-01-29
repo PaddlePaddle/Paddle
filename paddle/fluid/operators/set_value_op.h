@@ -233,7 +233,7 @@ class SetValueKernel : public framework::OpKernel<T> {
     // be two ops points to the output in graph: op1 -> output <- set_value.
     // In this case, we have to find a way to handle the running order of
     // set_value is what we want.
-    TensorCopy(*in, place, out);
+    paddle::framework::TensorCopy(*in, place, out);
 
     Tensor slice_tensor(dtype), pad_tensor(dtype);
     slice_tensor.mutable_data<T>(slice_dims, place);
@@ -260,6 +260,9 @@ class SetValueKernel : public framework::OpKernel<T> {
       starts_indices[axis_index] = starts[i];
       ends_indices[axis_index] = ends[i];
       strides_indices[axis_index] = steps[i];
+      if (starts[i] == ends[i]) {  // slice is empty, data will not be changed
+        return;
+      }
     }
 
     out_e.stridedSlice(starts_indices, ends_indices, strides_indices)
@@ -438,7 +441,7 @@ class SetValueGradKernel : public framework::OpKernel<T> {
 
     if (grad_input) {
       // Set gradient of `Input`
-      TensorCopy(*in, context.GetPlace(), grad_input);
+      paddle::framework::TensorCopy(*in, context.GetPlace(), grad_input);
 
       auto grad_input_t =
           framework::EigenTensor<T, D, Eigen::RowMajor,

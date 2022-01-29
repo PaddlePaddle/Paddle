@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <utility>
 #include "glog/logging.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/core/enforce.h"
 
 namespace pten {
 
@@ -40,6 +40,11 @@ class intrusive_ptr {
     rhs.reset();
   }
 
+  intrusive_ptr& operator=(intrusive_ptr&& rhs) {
+    swap(rhs);
+    return *this;
+  }
+
   void reset() { this_type().swap(*this); }
 
   void reset(T* rhs) { this_type(rhs).swap(*this); }
@@ -57,7 +62,7 @@ class intrusive_ptr {
   T& operator*() const {
     PADDLE_ENFORCE_NOT_NULL(
         px,
-        paddle::platform::errors::PreconditionNotMet(
+        pten::errors::PreconditionNotMet(
             "The pointer must be non-null before the dereference operation."));
     return *px;
   }
@@ -65,7 +70,7 @@ class intrusive_ptr {
   T* operator->() const {
     PADDLE_ENFORCE_NOT_NULL(
         px,
-        paddle::platform::errors::PreconditionNotMet(
+        pten::errors::PreconditionNotMet(
             "The pointer must be non-null before the dereference operation."));
     return px;
   }

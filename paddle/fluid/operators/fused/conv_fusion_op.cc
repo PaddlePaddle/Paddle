@@ -15,9 +15,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/operators/conv_op.h"
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cudnn_helper.h"
-#endif
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace operators {
