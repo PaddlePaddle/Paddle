@@ -46,7 +46,7 @@ void MaskedSelectKernel(const Context& dev_ctx,
     if (mask_data[i]) out_size++;
   }
 
-  paddle::framework::DDim out_dim{out_size};
+  framework::DDim out_dim{out_size};
   out->Resize(out_dim);
   auto out_data = out->mutable_data<T>(paddle::platform::CPUPlace());
 
