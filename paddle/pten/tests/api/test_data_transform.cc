@@ -17,6 +17,7 @@ limitations under the License. */
 
 #include "paddle/pten/api/include/api.h"
 #include "paddle/pten/api/include/utils.h"
+#include "paddle/pten/common/complex.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 
@@ -26,13 +27,15 @@ namespace tests {
 // TODO(chenweihang): Remove this test after the API is used in the dygraph
 TEST(API, data_transform_same_place) {
   // 1. create tensor
-  auto x = paddle::experimental::full(
-      {3, 3}, 1.0, experimental::DataType::FLOAT32, experimental::Backend::CPU);
+  auto x = paddle::experimental::full({3, 3},
+                                      1.0,
+                                      experimental::DataType::COMPLEX128,
+                                      experimental::Backend::CPU);
 
   auto y = paddle::experimental::full(
       {3, 3}, 2.0, experimental::DataType::FLOAT32, experimental::Backend::CPU);
 
-  std::vector<float> sum(9, 6.0);
+  std::vector<pten::dtype::complex<double>> sum(9, 6.0);
 
   // 2. test API
   auto out = paddle::experimental::matmul(x, y, false, false);
@@ -42,14 +45,19 @@ TEST(API, data_transform_same_place) {
   ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.dims()[1], 3);
   ASSERT_EQ(out.numel(), 9);
-  ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
+  ASSERT_EQ(out.type(), pten::DataType::COMPLEX128);
   ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
   ASSERT_EQ(out.initialized(), true);
 
   auto dense_out = std::dynamic_pointer_cast<pten::DenseTensor>(out.impl());
 
   for (size_t i = 0; i < 9; i++) {
-    ASSERT_NEAR(sum[i], dense_out->data<float>()[i], 1e-6f);
+    ASSERT_NEAR(sum[i].real,
+                dense_out->data<pten::dtype::complex<double>>()[i].real,
+                1e-6f);
+    ASSERT_NEAR(sum[i].imag,
+                dense_out->data<pten::dtype::complex<double>>()[i].imag,
+                1e-6f);
   }
 }
 

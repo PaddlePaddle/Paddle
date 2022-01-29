@@ -79,9 +79,9 @@ pten::DenseTensor CastDateType(const Context& dev_ctx,
     case DataType::INT64:
       return pten::Cast<int64_t>(dev_ctx, tensor, dtype);
     case DataType::FLOAT16:
-      return pten::Cast<platform::float16>(dev_ctx, tensor, dtype);
+      return pten::Cast<pten::dtype::float16>(dev_ctx, tensor, dtype);
     case DataType::BFLOAT16:
-      return pten::Cast<platform::bfloat16>(dev_ctx, tensor, dtype);
+      return pten::Cast<pten::dtype::bfloat16>(dev_ctx, tensor, dtype);
     case DataType::BOOL:
       return pten::Cast<bool>(dev_ctx, tensor, dtype);
     case DataType::INT16:
@@ -109,7 +109,7 @@ pten::DenseTensor CastDateType(const pten::GPUContext& dev_ctx,
     case DataType::INT64:
       return pten::Cast<int64_t>(dev_ctx, tensor, dtype);
     case DataType::FLOAT16:
-      return pten::Cast<platform::float16>(dev_ctx, tensor, dtype);
+      return pten::Cast<pten::dtype::float16>(dev_ctx, tensor, dtype);
     case DataType::BOOL:
       return pten::Cast<bool>(dev_ctx, tensor, dtype);
     case DataType::INT16:
