@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <mutex>
+#include <set>
 
 #include "paddle/pten/core/compat/arg_map_context.h"
 #include "paddle/pten/core/infermeta_utils.h"
@@ -25,6 +26,22 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 
 namespace pten {
+
+/**
+ * Some fluid ops are no longer used under the corresponding official API
+ * system of 2.0. These names need to correspond to the official API names
+ * after 2.0, and can no longer be occupied by the previously abandoned ops.
+ * They are marked here uniformly.
+ */
+const std::set<std::string> deprecated_op_names({"flatten",
+                                                 "flatten_grad",
+                                                 "matmul",
+                                                 "matmul_grad",
+                                                 "matmul_grad_grad"
+                                                 "mean",
+                                                 "reshape",
+                                                 "reshape_grad",
+                                                 "sum"});
 
 class DefaultKernelSignatureMap {
  public:
@@ -89,7 +106,11 @@ class OpUtilsMap {
   std::string GetBaseKernelName(const std::string& op_type) const {
     auto it = name_map_.find(op_type);
     if (it == name_map_.end()) {
-      return "deprecated";
+      if (deprecated_op_names.count(op_type) != 0UL) {
+        return "deprecated";
+      } else {
+        return op_type;
+      }
     } else {
       return it->second;
     }
