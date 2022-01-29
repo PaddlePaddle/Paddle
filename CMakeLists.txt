@@ -43,6 +43,7 @@ option(WITH_ONEMKL      "Compile PaddlePaddle with oneMKL"              OFF)
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
 option(WITH_TENSORRT    "Compile PaddlePaddle with NVIDIA TensorRT"     OFF)
 option(WITH_XPU         "Compile PaddlePaddle with BAIDU KUNLUN XPU"    OFF)
+option(WITH_XPU_KP      "Compile PaddlePaddle with BAIDU XPU compiler " OFF)
 option(WITH_MLU    "Compile PaddlePaddle with CAMBRICON MLU"     OFF)
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode"    OFF)
 option(WITH_ASCEND         "Compile PaddlePaddle with ASCEND"        OFF)
@@ -58,6 +59,9 @@ include(generic)            # simplify cmake module
 
 if (WITH_GPU  AND WITH_XPU)
     message(FATAL_ERROR "Error when compile GPU and XPU at the same time")
+endif()
+if (WITH_GPU AND WITH_XPU_KP)
+    message(FATAL_ERROR "Error when compile GPU and XPU2 at the same time")
 endif()
 if (WITH_GPU AND WITH_ASCEND)
     message(FATAL_ERROR "Error when compile GPU and ASCEND at the same time")
@@ -273,6 +277,14 @@ if (NOT WITH_GPU AND WITH_NCCL)
         "Disable NCCL when compiling without GPU" FORCE)
 endif()
 
+# force WITH_XPU on when WITH_XPU_KP
+if (WITH_XPU_KP AND NOT WITH_XPU)
+    MESSAGE(WARNING
+        "Enable WITH_XPU when compiling with WITH_XPU_KP. Force WITH_XPU=ON.")
+    set(WITH_XPU ON CACHE STRING
+        "Enable WITH_XPU when compiling with WITH_XPU_KP" FORCE)
+endif()
+
 if (NOT WITH_XPU AND WITH_XPU_BKCL)
     MESSAGE(WARNING
         "Disable BKCL when compiling without XPU. Force WITH_XPU_BKCL=OFF.")
@@ -316,6 +328,10 @@ if(WITH_ROCM)
     include(hip)
     include(miopen) # set miopen libraries, must before configure
 endif(WITH_ROCM)
+
+if(WITH_XPU_KP)
+    include(xpu_kp)
+endif()
 
 if (NOT WITH_ROCM AND WITH_RCCL)
     MESSAGE(WARNING

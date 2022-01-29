@@ -99,6 +99,11 @@ if(WITH_XPU)
     add_definitions(-DPADDLE_WITH_XPU)
 endif()
 
+if(WITH_XPU_KP)
+    message(STATUS "Compile with XPU_KP!")
+    add_definitions(-DPADDLE_WITH_XPU_KP)
+endif()
+
 if(WITH_IPU)
     message(STATUS "Compile with IPU!")
     add_definitions(-DPADDLE_WITH_IPU)
