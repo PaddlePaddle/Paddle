@@ -280,17 +280,17 @@ template void Tracer::TraceOp<VarBase>(
     const std::string& type, const NameVarMap<VarBase>& ins,
     const NameVarMap<VarBase>& outs, framework::AttributeMap attrs,
     const platform::Place& place, bool trace_backward,
-    const std::map<std::string, std::string>& inplace_map = {},
-    paddle::framework::AttributeMap* default_attrs = nullptr,
-    bool override_default_attr_map = true);
+    const std::map<std::string, std::string>& inplace_map,
+    paddle::framework::AttributeMap* default_attrs,
+    bool override_default_attr_map);
 
 template void Tracer::TraceOp<egr::EagerTensor>(
     const std::string& type, const NameVarMap<egr::EagerTensor>& ins,
     const NameVarMap<egr::EagerTensor>& outs, framework::AttributeMap attrs,
     const platform::Place& place, bool trace_backward,
-    const std::map<std::string, std::string>& inplace_map = {},
-    paddle::framework::AttributeMap* default_attrs = nullptr,
-    bool override_default_attr_map = true);
+    const std::map<std::string, std::string>& inplace_map_,
+    paddle::framework::AttributeMap* default_attrs,
+    bool override_default_attr_map);
 
 void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                      const NameVarBaseMap& outs, framework::AttributeMap attrs,
