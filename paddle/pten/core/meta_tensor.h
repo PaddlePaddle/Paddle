@@ -16,12 +16,10 @@ limitations under the License. */
 
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
+#include "paddle/pten/core/ddim.h"
 #include "paddle/pten/core/macros.h"
 #include "paddle/pten/core/tensor_base.h"
 #include "paddle/pten/core/tensor_meta.h"
-
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/framework/ddim.h"
 
 namespace pten {
 
