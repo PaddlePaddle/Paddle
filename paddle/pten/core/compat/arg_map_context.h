@@ -75,6 +75,9 @@ class ArgumentMappingContext {
 
   virtual bool IsDenseTensorInput(const std::string& name) const = 0;
   virtual bool IsSelectedRowsInput(const std::string& name) const = 0;
+
+  virtual bool IsDenseTensorOutput(const std::string& name) const = 0;
+  virtual bool IsSelectedRowsOutput(const std::string& name) const = 0;
 };
 
 }  // namespace pten
