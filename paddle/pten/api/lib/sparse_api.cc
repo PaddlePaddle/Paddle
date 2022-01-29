@@ -30,6 +30,7 @@ PT_DECLARE_KERNEL(dense_to_sparse_coo, GPU, ALL_LAYOUT);
 
 namespace paddle {
 namespace experimental {
+namespace sparse {
 
 PADDLE_API Tensor to_sparse_coo(const Tensor& x,
                                 Backend backend,
@@ -94,6 +95,7 @@ PADDLE_API Tensor to_sparse_coo(const Tensor& x,
   return out;
 }
 
+}  // namespace sparse
 }  // namespace experimental
 }  // namespace paddle
 
