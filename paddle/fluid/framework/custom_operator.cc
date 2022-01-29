@@ -37,7 +37,7 @@ limitations under the License. */
 #include "paddle/pten/api/lib/api_declare.h"
 #include "paddle/pten/api/lib/ext_compat_utils.h"
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/core/convert_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/utils/any.h"
 
 namespace paddle {

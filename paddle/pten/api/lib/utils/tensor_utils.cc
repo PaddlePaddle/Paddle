@@ -17,7 +17,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/pten/core/compat_utils.h"
+#include "paddle/pten/core/tensor_utils.h"
 
 namespace paddle {
 namespace experimental {
@@ -201,7 +201,7 @@ pten::ScalarArray MakePtenScalarArrayFromVarList(
 void ResetTensorByArgDef(pten::DenseTensor* dst,
                          const pten::TensorArgDef& arg_def) {
   VLOG(5) << "ResetTensor by TensorArgDef.";
-  auto* meta = pten::CompatibleDenseTensorUtils::GetMutableMeta(dst);
+  auto* meta = pten::DenseTensorUtils::GetMutableMeta(dst);
   meta->dtype = arg_def.dtype;
   meta->layout = arg_def.layout;
 }
