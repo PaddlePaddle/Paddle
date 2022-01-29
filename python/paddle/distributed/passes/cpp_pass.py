@@ -39,3 +39,16 @@ class FuseBatchNormActPass(CPPPassWrapper):
 
     def _type(self):
         return PassType.FUSION_OPT
+
+
+@register_pass("fuse_bn_add_act")
+class FuseBatchNormAddActPass(CPPPassWrapper):
+    def __init__(self):
+        super(FuseBatchNormAddActPass, self).__init__()
+
+    @property
+    def cpp_name(self):
+        return "fuse_bn_add_act_pass"
+
+    def _type(self):
+        return PassType.FUSION_OPT

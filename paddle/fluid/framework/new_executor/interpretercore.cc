@@ -426,8 +426,6 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
         (*instr_node.PtenKernel())(&pt_kernel_context);
 
-        op_with_kernel->WriteBackToOutputs(
-            instr_node.InnerRuntimeContext().get(), &pt_kernel_context);
       } else {
         instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
       }

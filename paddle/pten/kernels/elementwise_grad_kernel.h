@@ -46,4 +46,22 @@ void AddTripleGradKernel(const Context& dev_ctx,
                          DenseTensor* d_ddx,
                          DenseTensor* d_ddy);
 
+template <typename T, typename Context>
+void SubtractGradKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& y,
+                        const DenseTensor& dout,
+                        int axis,
+                        DenseTensor* dx,
+                        DenseTensor* dy);
+
+template <typename T, typename Context>
+void SubtractDoubleGradKernel(const Context& dev_ctx,
+                              const DenseTensor& y,
+                              paddle::optional<const DenseTensor&> ddx,
+                              paddle::optional<const DenseTensor&> ddy,
+                              const DenseTensor& dout,
+                              int axis,
+                              DenseTensor* ddout);
+
 }  // namespace pten
