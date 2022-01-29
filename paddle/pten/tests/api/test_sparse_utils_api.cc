@@ -8,8 +8,8 @@ You may obtain a copy of the License at
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See
+the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
@@ -101,4 +101,76 @@ TEST(API, to_sparse_coo) {
                              non_zero_data.data(),
                              non_zero_data.size() * sizeof(float));
   ASSERT_EQ(cmp_elements2, 0);
+}
+
+TEST(API, to_sparse_csr) {
+  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+      paddle::platform::CPUPlace());
+
+  auto dense_x = std::make_shared<pten::DenseTensor>(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({3, 3}),
+                            pten::DataLayout::NCHW));
+
+  pten::CPUPlace cpu;
+  const int64_t sparse_dim = 2;
+  auto* dense_x_data = dense_x->mutable_data<float>(cpu);
+  float dense_data[3][3] = {{0.0, 1.0, 0.0}, {2.0, 0.0, 3.0}, {3.2, 0.0, 0.0}};
+  std::vector<float> non_zero_data = {1.0, 2.0, 3.0, 3.2};
+  std::vector<int64_t> indices_data = {0, 1, 1, 2, 1, 0, 2, 0};
+  std::vector<int64_t> cols_data = {1, 0, 2, 0};
+  std::vector<int64_t> crows_data = {0, 1, 3, 4};
+  const int64_t non_zero_num = 4;
+
+  std::copy(&dense_data[0][0], &dense_data[0][0] + 9, dense_x_data);
+
+  pten::CPUContext dev_ctx_cpu;
+
+  // 1. test dense_to_sparse_csr
+  paddle::experimental::Tensor x(dense_x);
+  auto out = paddle::experimental::sparse::to_sparse_csr(x, pten::Backend::CPU);
+  auto csr = std::dynamic_pointer_cast<pten::SparseCsrTensor>(out.impl());
+  auto check = [&](const pten::SparseCsrTensor& csr) {
+    ASSERT_EQ(csr.non_zero_cols().numel(), non_zero_num);
+    int cmp_crows = memcmp(csr.non_zero_crows().data<int64_t>(),
+                           crows_data.data(),
+                           crows_data.size() * sizeof(int64_t));
+    ASSERT_EQ(cmp_crows, 0);
+    int cmp_cols = memcmp(csr.non_zero_cols().data<int64_t>(),
+                          cols_data.data(),
+                          cols_data.size() * sizeof(int64_t));
+    ASSERT_EQ(cmp_cols, 0);
+    int cmp_elements = memcmp(csr.non_zero_elements().data<float>(),
+                              non_zero_data.data(),
+                              non_zero_data.size() * sizeof(float));
+    ASSERT_EQ(cmp_elements, 0);
+  };
+  check(*csr);
+
+  // 1. test sparse_coo_to_csr
+  auto dense_dims = pten::framework::make_ddim({3, 3});
+  pten::DenseTensorMeta indices_meta(pten::DataType::INT64,
+                                     {sparse_dim, non_zero_num},
+                                     pten::DataLayout::NCHW);
+  pten::DenseTensorMeta values_meta(
+      pten::DataType::FLOAT32, {non_zero_num}, pten::DataLayout::NCHW);
+
+  pten::CPUPlace place;
+  pten::DenseTensor indices(alloc.get(), indices_meta);
+  pten::DenseTensor values(alloc.get(), values_meta);
+  memcpy(indices.mutable_data<int64_t>(place),
+         indices_data.data(),
+         indices_data.size() * sizeof(int64_t));
+  memcpy(values.mutable_data<float>(place),
+         non_zero_data.data(),
+         non_zero_data.size() * sizeof(float));
+  auto coo =
+      std::make_shared<pten::SparseCooTensor>(indices, values, dense_dims);
+  paddle::experimental::Tensor coo_x(csr);
+  auto out2 =
+      paddle::experimental::sparse::to_sparse_csr(coo_x, pten::Backend::CPU);
+
+  auto csr2 = std::dynamic_pointer_cast<pten::SparseCsrTensor>(out.impl());
+  check(*csr2);
 }

@@ -72,5 +72,51 @@ SparseCooTensor SparseCsrToCoo(const Context& dev_ctx,
   return coo;
 }
 
+template <typename T, typename Context>
+void SparseCooToCsrKernel(const Context& dev_ctx,
+                          const SparseCooTensor& x,
+                          SparseCsrTensor* out);
+
+template <typename T, typename Context>
+SparseCsrTensor SparseCooToCsr(const Context& dev_ctx,
+                               const SparseCooTensor& x) {
+  DenseTensor non_zero_crows = pten::Empty<int64_t, Context>(dev_ctx);
+  DenseTensor non_zero_cols = pten::Empty<int64_t, Context>(dev_ctx);
+  DenseTensor non_zero_elements = pten::Empty<T, Context>(dev_ctx);
+  SparseCsrTensor csr(
+      non_zero_crows, non_zero_cols, non_zero_elements, x.dims());
+  SparseCooToCsrKernel<T, Context>(dev_ctx, x, &csr);
+  return csr;
+}
+
+template <typename T, typename Context>
+void DenseToSparseCsrKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            SparseCsrTensor* out) {
+  const auto& x_dims = x.dims();
+  bool valid = x_dims.size() == 2 || x_dims.size() == 3;
+  PADDLE_ENFORCE_EQ(valid,
+                    true,
+                    paddle::platform::errors::InvalidArgument(
+                        "SparseCsrTensor only support 2-D or 3-D Tensor."));
+  const int64_t sparse_dim = x_dims.size() == 2 ? 2 : 3;
+  DenseTensor indices = pten::Empty<T, Context>(dev_ctx);
+  DenseTensor values = pten::Empty<T, Context>(dev_ctx);
+  SparseCooTensor coo(indices, values, x.dims());
+  DenseToSparseCooKernel<T, Context>(dev_ctx, x, sparse_dim, &coo);
+  SparseCooToCsrKernel<T, Context>(dev_ctx, coo, out);
+}
+
+template <typename T, typename Context>
+SparseCsrTensor DenseToSparseCsr(const Context& dev_ctx, const DenseTensor& x) {
+  DenseTensor non_zero_crows = pten::Empty<int64_t, Context>(dev_ctx);
+  DenseTensor non_zero_cols = pten::Empty<int64_t, Context>(dev_ctx);
+  DenseTensor non_zero_elements = pten::Empty<T, Context>(dev_ctx);
+  SparseCsrTensor csr(
+      non_zero_crows, non_zero_cols, non_zero_elements, x.dims());
+  DenseToSparseCsrKernel<T, Context>(dev_ctx, x, &csr);
+  return csr;
+}
+
 }  // namespace sparse
 }  // namespace pten

@@ -157,6 +157,90 @@ void SparseCsrToCooKernel(const Context& dev_ctx,
   out->SetMember(indices, values, x_dims, true);
 }
 
+template <typename T, typename Context>
+void SparseCooToCsrKernel(const Context& dev_ctx,
+                          const SparseCooTensor& x,
+                          SparseCsrTensor* out) {
+  const auto& x_dims = x.dims();
+  bool valid = x_dims.size() == 2 || x_dims.size() == 3;
+  PADDLE_ENFORCE(valid,
+                 paddle::platform::errors::InvalidArgument(
+                     "SparseCsrTensor only support 2-D or 3-D matrix"));
+  const int64_t non_zero_num = x.nnz();
+  if (non_zero_num <= 0) return;
+
+  int batchs = x_dims.size() == 2 ? 1 : x_dims[0];
+  int rows = x_dims.size() == 2 ? x_dims[0] : x_dims[1];
+
+  const auto place = dev_ctx.GetPlace();
+  DenseTensorMeta crows_meta(
+      DataType::INT64, {batchs * (rows + 1)}, DataLayout::NCHW);
+  DenseTensorMeta cols_meta(DataType::INT64, {non_zero_num}, DataLayout::NCHW);
+  DenseTensorMeta values_meta(x.dtype(), {non_zero_num}, x.layout());
+  pten::DenseTensor non_zero_crows(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(place),
+      std::move(crows_meta));
+  pten::DenseTensor non_zero_cols(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(place),
+      std::move(cols_meta));
+  pten::DenseTensor non_zero_elements(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(place),
+      std::move(values_meta));
+  int64_t* csr_crows_data = non_zero_crows.mutable_data<int64_t>(place);
+  int64_t* csr_cols_data = non_zero_cols.mutable_data<int64_t>(place);
+  T* csr_values_data = non_zero_elements.mutable_data<T>(place);
+
+  const auto& coo_indices = x.non_zero_indices();
+  const auto& coo_values = x.non_zero_elements();
+  const int64_t* batchs_ptr = coo_indices.data<int64_t>();
+  const int64_t* coo_rows_data =
+      batchs == 1 ? batchs_ptr : batchs_ptr + non_zero_num;
+  const int64_t* coo_cols_data = coo_rows_data + non_zero_num;
+  const T* coo_values_data = coo_values.data<T>();
+
+  if (!x.coalesced()) {
+    // TODO(zhangkahuo): call coalesced() to distinct and sort the indices
+  }
+
+  std::vector<int64_t> offsets(batchs, 0);
+  if (batchs > 1) {
+    for (int i = 0; i < non_zero_num; i++) {
+      if (i == non_zero_num - 1 || batchs_ptr[i] != batchs_ptr[i + 1]) {
+        offsets[batchs_ptr[i]] = i + 1;
+      }
+    }
+  } else {
+    offsets[0] = non_zero_num;
+  }
+
+  for (int b = 0; b < batchs; b++) {
+    if (offsets[b] == 0) continue;
+    int batch_start = 0;
+    int batch_non_zero_num = offsets[b];
+    if (b > 0) {
+      batch_start = offsets[b - 1];
+      batch_non_zero_num -= batch_start;
+    }
+    auto* coo_rows_ptr = coo_rows_data + batch_start;
+    for (int i = 0; i <= coo_rows_ptr[0]; i++) {
+      csr_crows_data[b * (rows + 1) + i] = 0;
+    }
+    for (int64_t i = 1; i < batch_non_zero_num; i++) {
+      for (int j = coo_rows_ptr[i - 1]; j < coo_rows_ptr[i]; j++) {
+        csr_crows_data[b * (rows + 1) + j + 1] = i;
+      }
+    }
+    for (int64_t i = coo_rows_ptr[batch_non_zero_num - 1] + 1; i < rows + 1;
+         i++) {
+      csr_crows_data[b * (rows + 1) + i] = batch_non_zero_num;
+    }
+  }
+
+  memcpy(csr_cols_data, coo_cols_data, sizeof(int64_t) * non_zero_num);
+  memcpy(csr_values_data, coo_values_data, sizeof(T) * non_zero_num);
+  out->SetMember(non_zero_crows, non_zero_cols, non_zero_elements, x_dims);
+}
+
 }  // namespace sparse
 }  // namespace pten
 
@@ -180,6 +264,32 @@ PT_REGISTER_KERNEL(sparse_csr_to_coo,
                    float,
                    double,
                    paddle::float16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
+PT_REGISTER_KERNEL(sparse_coo_to_csr,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::sparse::SparseCooToCsrKernel,
+                   float,
+                   double,
+                   pten::dtype::float16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
+PT_REGISTER_KERNEL(dense_to_sparse_csr,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::sparse::DenseToSparseCsrKernel,
+                   float,
+                   double,
+                   pten::dtype::float16,
                    uint8_t,
                    int8_t,
                    int16_t,
