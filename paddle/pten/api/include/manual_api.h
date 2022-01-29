@@ -17,6 +17,11 @@ limitations under the License. */
 #include "paddle/pten/api/include/tensor.h"
 #include "paddle/pten/common/backend.h"
 
+/**
+ * This file stores some special APIs that are implemented manually
+ * or difficult to automatically generated.
+ */
+
 namespace paddle {
 namespace experimental {
 

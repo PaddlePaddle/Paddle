@@ -29,7 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/pten/api/include/api.h"
 #include "paddle/pten/common/data_type.h"
-#include "paddle/pten/core/convert_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 namespace paddle {
 namespace pybind {
