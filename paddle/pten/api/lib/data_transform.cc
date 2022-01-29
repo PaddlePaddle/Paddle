@@ -60,7 +60,7 @@ inline pten::DenseTensor TransDataLayout(const pten::DenseTensor& tensor,
     auto* dev_ctx = static_cast<pten::CPUContext*>(pool.Get(tensor.place()));
     return pten::TransferLayout(*dev_ctx, tensor, layout);
   } else {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
+    PADDLE_THROW(pten::errors::PreconditionNotMet(
         "Unsupported data layout cast from CPU to GPU."));
   }
 }
@@ -89,7 +89,7 @@ pten::DenseTensor CastDateType(const Context& dev_ctx,
     case DataType::UINT8:
       return pten::Cast<uint8_t>(dev_ctx, tensor, dtype);
     default:
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(pten::errors::Unimplemented(
           "Data type (%s) is not supported when casting data type.",
           tensor.dtype()));
   }
@@ -117,7 +117,7 @@ pten::DenseTensor CastDateType(const pten::GPUContext& dev_ctx,
     case DataType::UINT8:
       return pten::Cast<uint8_t>(dev_ctx, tensor, dtype);
     default:
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(pten::errors::Unimplemented(
           "Data type (%s) is not supported when casting data type.",
           tensor.dtype()));
   }
@@ -144,7 +144,7 @@ inline pten::DenseTensor TransDataType(const pten::DenseTensor& tensor,
     return CastDateType(*dev_ctx, tensor, dtype);
 #endif
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(pten::errors::Unimplemented(
         "Place type is not supported when casting data type."));
   }
   return out;
