@@ -156,7 +156,7 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpyAsync(&non_zero_num,
                                             nums_ptr,
                                             sizeof(int),
-                                            cudaMemcpyDeviceToHost,
+                                            hipMemcpyDeviceToHost,
                                             dev_ctx.stream()));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&non_zero_num,
@@ -171,7 +171,7 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
       hipMemcpyAsync(d_x_dims.mutable_data<int64_t>(place),
                      x_dims.Get(),
                      x_dims.size() * sizeof(x_dims[0]),
-                     cudaMemcpyHostToDevice,
+                     hipMemcpyHostToDevice,
                      dev_ctx.stream()));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(
