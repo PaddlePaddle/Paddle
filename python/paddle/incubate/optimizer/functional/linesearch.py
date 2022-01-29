@@ -18,7 +18,8 @@ from .bfgs_utils import vjp
 from .bfgs_utils import (StopCounter, StopCounterException, vnorm_inf, vnorm_p,
                          ternary, make_const, update_state, any_active,
                          active_state, converged_state, failed_state,
-                         is_bad_point, SearchState,
+                         is_bad_point, is_minus_inf,
+                         SearchState, LSStopException,
                          any_active_with_predicates, all_active_with_predicates)
 
 hz_default_params = {
@@ -81,7 +82,7 @@ def initial(state):
     return c
 
 
-def bracket(state, phi, c):
+def bracket(state, phi, c, stop):
     r"""Generates opposite slope interval.
         
     Args:
@@ -131,22 +132,25 @@ def bracket(state, phi, c):
         expanding_pred &= B3_cond & ~minus_inf & ~bad_point
 
     # Update state in case reaching -inf or bad points.
-    state.state = update_state(state.state, minus_inf, 'converged')
+
+    stop |= minus_inf | bad_point
+    print(f'bracket stop: {stop}')
+    # state.state = update_state(state.state, minus_inf, 'converged')
     state.state = update_state(state.state, bad_point, 'failed')
 
     # Narrows down the interval by recursively bisecting it.
     B1_cond = g >= .0
     B2_cond = ~B1_cond & (f >= f0 + epsilon_k)
-    a, b = bisect(state, phi, make_const(c, .0), c, B2_cond)
-
+    a, b, stop = bisect(state, phi, make_const(c, .0), c, B2_cond, stop)
+    print(f'after bisect stop: {stop}')
     # Sets [a, _] to [prev_c, _] if B1 holds, [a, _] if B2 holds
     a = ternary(B1_cond, prev_c, a)
     b = ternary(B1_cond, c, b)
 
-    return [a, b]
+    return a, b, stop
 
 
-def bisect(state, phi, a, b, ifcond):
+def bisect(state, phi, a, b, ifcond, stop):
     r"""Bisects to locate opposite slope interval.
     
     Args:
@@ -173,7 +177,7 @@ def bisect(state, phi, a, b, ifcond):
 
     # falling = make_const(f0, True, dtype='bool')
     bisect_pred = ifcond
-    minus_inf = None
+    minus_inf, bad_point = None, None
     while any_active_with_predicates(state.state, bisect_pred):
         # d = (1.0 - theta) * a + theta * b
         d = a + theta * (b - a)
@@ -192,12 +196,16 @@ def bisect(state, phi, a, b, ifcond):
         print(f'bisect a: {a.numpy()}    b: {b.numpy()}')
 
     # Set state to `converged` if -inf is reached.
+    # if minus_inf is not None:
+    #     state.state = update_state(state.state, ifcond & minus_inf, 'converged')
     if minus_inf is not None:
-        state.state = update_state(state.state, ifcond & minus_inf, 'converged')
+        stop |= minus_inf
+    if bad_point is not None:
+        stop |= bad_point
     # Invalidates the state if a condition does not hold.
     state.state = update_state(state.state, ifcond & ~bisect_pred, 'failed')
 
-    return [a, b]
+    return a, b, stop
 
 
 def secant(state, phi, a, b):
@@ -228,7 +236,7 @@ def secant(state, phi, a, b):
     return c
 
 
-def secant2(state, phi, a, b, ifcond):
+def secant2(state, phi, a, b, ifcond, stop):
     r"""Implements the secant2 procedure in the Hager-Zhang method.
 
     Args:
@@ -252,7 +260,7 @@ def secant2(state, phi, a, b, ifcond):
     # S3. Otherwise, [a, b] = [A, B]
     c = secant(state, phi, a, b)
 
-    A, B = update(state, phi, a, b, c, ifcond)
+    A, B, stop = update(state, phi, a, b, c, ifcond, stop)
 
     # Boolean tensor each element of which holds the S2 condition 
     S2_cond = c == B
@@ -268,14 +276,14 @@ def secant2(state, phi, a, b, ifcond):
     r = ternary(S3_cond, A, r)
 
     # Outputs of S2 and S3
-    a, b, f_a, f_b = update(state, phi, A, B, c, ifcond)
+    a, b, stop = update(state, phi, A, B, c, ifcond, stop)
 
     # If S2 or S3, returns [a, b], otherwise returns [A, B]
     S2_or_S3 = S2_cond | S3_cond
     a = ternary(S2_or_S3, a, A)
     b = ternary(S2_or_S3, b, B)
 
-    return a, b 
+    return a, b, stop
 
 
 def stopping_condition(state, phi, c, phiprime_0, phi_c=None, phiprime_c=None):
@@ -331,7 +339,7 @@ def stopping_condition(state, phi, c, phiprime_0, phi_c=None, phiprime_c=None):
     return stopping
 
 
-def update(state, phi, a, b, c, ifcond):
+def update(state, phi, a, b, c, ifcond, stop):
     r"""Performs the update procedure in the Hager-Zhang method.
 
     Args:
@@ -362,12 +370,12 @@ def update(state, phi, a, b, c, ifcond):
     # Early returns on U0
     U0_cond = (c > a) == (c > b)
     if all_active_with_predicates(state.state, ~ifcond | U0_cond):
-        return [a, b]
+        return a, b, stop
 
     # Early returns if U1 holds
     U1_cond = g >= .0
     if all_active_with_predicates(state.state, ~ifcond | (~U0_cond & U1_cond)):
-        return [a, c]
+        return a, c, stop
 
     # It's tricky to handle iterative tensor algorithms when control dependence
     # is involved. If naively running two branches in parallel before merging
@@ -376,7 +384,7 @@ def update(state, phi, a, b, c, ifcond):
     U3_cond = ~U1_cond & (g < .0) & (f > f0 + epsilon_k)
 
     # Bisects [a, c] for the U3 condition
-    A, B = bisect(state, phi, a, c, ifcond & U3_cond)
+    A, B, stop = bisect(state, phi, a, c, ifcond & U3_cond, stop)
 
     # Step 1: branches between U2 and U3 
     U23_cond = f <= f0 + epsilon_k
@@ -391,7 +399,7 @@ def update(state, phi, a, b, c, ifcond):
     A = ternary(U0_cond, a, A)
     B = ternary(U0_cond, b, B)
 
-    return [A, B]
+    return A, B, stop
 
 
 def hz_linesearch(state,
@@ -612,7 +620,7 @@ def hz_linesearch(state,
     # L3. j = j + 1, [aj, bj] = [a, b], go to L1.
 
     # Initializes stop flags
-    stopped = make_const(fk, False, dtype='bool')
+    stop = make_const(fk, False, dtype='bool')
 
     import traceback
     try:
@@ -623,33 +631,33 @@ def hz_linesearch(state,
 
         # Initial stopping test. Those already converged instances are likely
         # to succeed.
-        stopped = stopping_condition(state, phi, c, deriv)
+        stop = stopping_condition(state, phi, c, deriv)
 
         a_j, b_j = None, None
         # Continues if there's line search still active
-        while any_active_with_predicates(state.state, ~stopped):
+        while any_active_with_predicates(state.state, ~stop):
             # Brackets to find the first interval with opposite slopes
             if a_j is None:
-                a_j, b_j = bracket(state, phi, c)
+                a_j, b_j, stop = bracket(state, phi, c, stop)
 
             # Applies secant2 to the located intervals
-            a, b = secant2(state, phi, a_j, b_j, ~stopped)
+            a, b, stop = secant2(state, phi, a_j, b_j, ~stop, stop)
             print(f'secant2 a: {a.numpy()}     b: {b.numpy()}')
 
-            new_stopped = ~stopped & stopping_condition(state, phi, b, deriv)
-            stopped = stopped | new_stopped
-            ls_stepsize = ternary(new_stopped, b, ls_stepsize)
+            stop |= stopping_condition(state, phi, b, deriv)
+            ls_stepsize = ternary(stop, b, ls_stepsize)
 
+            print(f'stop {stop}')
             # If interval does not shrink enough, then applies bisect
             # repeatedly.
             L2_cond = (b - a) > gamma * (b_j - a_j)
 
-            L2_cond = ~stopped & L2_cond
+            L2_cond = ~stop & L2_cond
 
             if any_active_with_predicates(state.state, L2_cond):
                 c = 0.5 * (a + b)
 
-                A, B = update(state, phi, a, b, c, L2_cond)
+                A, B, stop = update(state, phi, a, b, c, L2_cond, stop)
                 a = ternary(L2_cond, A, a)
                 b = ternary(L2_cond, B, b)
 
@@ -657,13 +665,16 @@ def hz_linesearch(state,
             a_j, b_j = a, b
     except StopCounterException as count_e:
         traceback.print_exc()
+    except LSStopException as e:
         pass
-    except 
 
     # Changes state due to failed line search
-    state.state = update_state(state.state, ~stopped, 'failed')
+    state.state = update_state(state.state, ~stop, 'failed')
 
+    print(f'state {state.state}')
+    print(f'ak {state.ak}')
+    print(f'ls_stepsize {ls_stepsize}')
     # Writes back the obtained step size to the search state.
     state.ak = ternary(active_state(state.state), ls_stepsize, state.ak)
-
+    print(f'ak2 {state.ak}')
     return

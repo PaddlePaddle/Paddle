@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import numpy as np
 import paddle
 from paddle.autograd.functional import vjp as _vjp
@@ -57,6 +58,27 @@ def vjp(f, x, v=None, create_graph=False):
         f'tensor. However, the function result is a {type(fval)}.')
 
     return fval, gval[0]
+
+
+class BfgsResult(
+        collections.namedtuple('BfgsResult', [
+            'iterations',
+            'x_location',
+            'converged',
+            'linesearch_failed',
+            'gradients',
+            'gradient_norms',
+            'function_results',
+            'inverse_hessian',
+            'function_evals',
+            'gradient_evals',
+        ])):
+    def __repr__(self):
+        kvs = [(f, getattr(self, f)) for f in self._fields]
+        width = max(len(f) for f in self._fields)
+        return '\n'.join(
+            f'{k.ljust(width)} \n   {repr(v.numpy() if isinstance(v, paddle.Tensor) else v)}\n'
+            for k, v in kvs)
 
 
 class SearchState(object):
@@ -318,6 +340,10 @@ def as_float_tensor(input, dtype=None):
         )
 
     return output
+
+
+class LSStopException(Exception):
+    pass
 
 
 class StopCounterException(Exception):

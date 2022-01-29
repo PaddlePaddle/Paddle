@@ -52,27 +52,6 @@ def verify_symmetric_positive_definite_matrix(H):
     assert is_symmetric, (f"(Batched) matrix {H} is not symmetric.")
 
 
-class BfgsResult(
-        collections.namedtuple('BfgsResult', [
-            'iterations',
-            'x_location',
-            'converged',
-            'linesearch_failed',
-            'gradients',
-            'gradient_norms',
-            'function_results',
-            'inverse_hessian',
-            'function_evals',
-            'gradient_evals',
-        ])):
-    def __repr__(self):
-        kvs = [(f, getattr(self, f)) for f in self._fields]
-        width = max(len(f) for f in self._fields)
-        return '\n'.join(
-            f'{k.ljust(width)} \n   {repr(v.numpy() if isinstance(v, paddle.Tensor) else v)}\n'
-            for k, v in kvs)
-
-
 def update_approx_inverse_hessian(state, H, s, y, enforce_curvature=False):
     r"""Updates the approximate inverse Hessian.
     
