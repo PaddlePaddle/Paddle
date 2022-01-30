@@ -488,20 +488,6 @@ class Reshape2Op : public ReshapeOp {
 
     ReshapeOp::InferShape(ctx);
   }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext &ctx) const override {
-    std::string shape;
-    auto multi_inputs = ctx.MultiInput<framework::Tensor>("ShapeTensor");
-    if (multi_inputs.size() > 0) {
-      shape = "ShapeTensor";
-    } else if (ctx.HasInput("Shape")) {
-      shape = "Shape";
-    } else {
-      shape = "shape";
-    }
-    return framework::KernelSignature("reshape", {"X"}, {shape}, {"Out"});
-  }
 };
 
 class Reshape2OpMaker : public ReshapeOpMaker {

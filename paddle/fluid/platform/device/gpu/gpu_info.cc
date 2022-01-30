@@ -229,17 +229,20 @@ class RecordedGpuMallocHelper {
 #endif
   }
 
-#ifdef PADDLE_WITH_TESTING
   void *GetBasePtr(void *ptr) {
+#ifdef PADDLE_WITH_TESTING
     auto it = gpu_ptrs.upper_bound(ptr);
-
     if (it == gpu_ptrs.begin()) {
       return nullptr;
     }
-
     return *(--it);
-  }
+#else
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "The RecordedGpuMallocHelper::GetBasePtr is only implemented with "
+        "testing, should not use for release."));
+    return nullptr;
 #endif
+  }
 
   bool GetMemInfo(size_t *avail, size_t *total, size_t *actual_avail,
                   size_t *actual_total) {
@@ -360,11 +363,9 @@ void EmptyCache(void) {
   }
 }
 
-#ifdef PADDLE_WITH_TESTING
 void *GetGpuBasePtr(void *ptr, int dev_id) {
   return RecordedGpuMallocHelper::Instance(dev_id)->GetBasePtr(ptr);
 }
-#endif
 
 int DnnVersion() { return pten::backends::gpu::DnnVersion(); }
 

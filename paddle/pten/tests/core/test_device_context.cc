@@ -37,7 +37,7 @@ TEST(DeviceContext, cpu_context) {
   {
     pten::CPUContext ctx;
     ctx.Init();
-    CHECK(ctx.eigen_device() != nullptr);
+    EXPECT_TRUE(ctx.eigen_device() != nullptr);
   }
 
   std::cout << "test inference scenarios" << std::endl;
@@ -45,7 +45,7 @@ TEST(DeviceContext, cpu_context) {
   {
     InferenceCPUContext ctx;
     ctx.SetEigenDevice(device);
-    CHECK(ctx.eigen_device() != nullptr);
+    EXPECT_TRUE(ctx.eigen_device() != nullptr);
   }
   delete device;
 }

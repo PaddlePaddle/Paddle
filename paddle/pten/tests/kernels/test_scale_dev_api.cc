@@ -32,10 +32,11 @@ TEST(DEV_API, scale) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({3, 4}),
-                                                  pten::DataLayout::NCHW));
+  pten::DenseTensor dense_x(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({3, 4}),
+                            pten::DataLayout::NCHW));
 
   auto* dense_x_data =
       dense_x.mutable_data<float>(paddle::platform::CPUPlace());
@@ -71,10 +72,11 @@ TEST(DEV_API, scale_host) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({3, 4}),
-                                                  pten::DataLayout::NCHW));
+  pten::DenseTensor dense_x(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({3, 4}),
+                            pten::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x.mutable_data<float>(paddle::platform::CPUPlace());
   for (size_t i = 0; i < 12; ++i) {
@@ -83,7 +85,7 @@ TEST(DEV_API, scale_host) {
 
   pten::DenseTensor scale(alloc.get(),
                           pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                framework::make_ddim({1}),
+                                                pten::framework::make_ddim({1}),
                                                 pten::DataLayout::NCHW));
   scale.data<float>()[0] = 2;
   float bias = 1;
