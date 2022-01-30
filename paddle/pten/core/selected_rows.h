@@ -113,6 +113,10 @@ class SelectedRows : public TensorBase,
            bool auto_grown = false,
            bool is_test = false);
 
+  void* AllocateFrom(Allocator* allocator,
+                     DataType dtype,
+                     size_t requested_size = 0) override;
+
   /*
    * @brief Get the index of the key from id_to_index_ map. If the key not
    * exist,

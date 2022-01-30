@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+os.environ['FLAGS_use_stream_safe_cuda_allocator'] = "true"
 import sys
 import unittest
 import paddle

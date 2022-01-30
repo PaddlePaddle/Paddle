@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/common/data_type.h"
-#include "paddle/pten/core/convert_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/kernel_registry.h"
 
 // See Note [ Why still include the fluid headers? ]
@@ -215,25 +215,7 @@ void Copy(const Context& dev_ctx,
   }
 }
 
-template <typename Context>
-void CopySparse(const Context& dev_ctx,
-                const SparseCsrTensor& src,
-                bool blocking,
-                SparseCsrTensor* dst) {
-  Copy(dev_ctx, src.non_zero_crows(), blocking, dst->mutable_non_zero_crows());
-  Copy(dev_ctx, src.non_zero_cols(), blocking, dst->mutable_non_zero_cols());
-  Copy(dev_ctx,
-       src.non_zero_elements(),
-       blocking,
-       dst->mutable_non_zero_elements());
-}
-
 }  // namespace pten
 
 PT_REGISTER_GENERAL_KERNEL(
     copy, GPU, ALL_LAYOUT, pten::Copy<pten::GPUContext>, ALL_DTYPE) {}
-PT_REGISTER_GENERAL_KERNEL(copy_sparse,
-                           GPU,
-                           ALL_LAYOUT,
-                           pten::CopySparse<pten::GPUContext>,
-                           ALL_DTYPE) {}

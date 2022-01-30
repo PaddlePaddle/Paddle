@@ -32,7 +32,7 @@ limitations under the License. */
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/common/data_type.h"
-#include "paddle/pten/core/convert_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 namespace paddle {
@@ -161,9 +161,7 @@ static PyObject* eager_api_read_next_eager_tensor_list(PyObject* self,
     auto autograd_meta = egr::EagerUtils::autograd_meta(&eager_tensor);
     autograd_meta->SetPersistable(false);
     autograd_meta->SetStopGradient(true);
-    auto tmp = std::move(tensor);
-    eager_tensor.set_impl(
-        std::move(paddle::experimental::MakePtenDenseTensor(tmp)));
+    eager_tensor.set_impl(std::make_shared<pten::DenseTensor>(tensor));
     return eager_tensor;
   };
   for (auto& tensor : tensor_list) {
