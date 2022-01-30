@@ -18,6 +18,8 @@ limitations under the License. */
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device/npu/npu_info.h"
+#include "paddle/fluid/platform/device/xpu/xpu_info.h"
 
 namespace pten {
 
@@ -66,15 +68,18 @@ paddle::experimental::DataType TransToPtenDataType(
   }
 }
 
-paddle::platform::Place TransToFluidPlace(const Backend& backend) {
-  // TODO(chenweihang): add other trans cases later
+paddle::platform::Place TransToFluidPlace(const Backend& backend,
+                                          bool set_device_id) {
+  // NOTE(zhiqiu): GetCurrentDeviceId not always success, and device id is not
+  // always needed.
+  // So, add set_device_id parameter here.
   switch (backend) {
     case pten::Backend::CPU:
       return paddle::platform::CPUPlace();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     case pten::Backend::GPU:
       return paddle::platform::CUDAPlace(
-          paddle::platform::GetCurrentDeviceId());
+          set_device_id ? paddle::platform::GetCurrentDeviceId() : 0);
 #endif
 #ifdef PADDLE_WITH_MKLDNN
     case pten::Backend::MKLDNN:
@@ -83,7 +88,17 @@ paddle::platform::Place TransToFluidPlace(const Backend& backend) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     case pten::Backend::CUDNN:
       return paddle::platform::CUDAPlace(
-          paddle::platform::GetCurrentDeviceId());
+          set_device_id ? paddle::platform::GetCurrentDeviceId() : 0);
+#endif
+#if defined(PADDLE_WITH_XPU)
+    case pten::Backend::XPU:
+      return paddle::platform::XPUPlace(
+          set_device_id ? paddle::platform::GetXPUCurrentDeviceId() : 0);
+#endif
+#if defined(PADDLE_WITH_ASCEND_CL)
+    case pten::Backend::NPU:
+      return paddle::platform::NPUPlace(
+          set_device_id ? paddle::platform::GetCurrentNPUDeviceId() : 0);
 #endif
     default:
       PADDLE_THROW(paddle::platform::errors::Unimplemented(
@@ -226,6 +241,18 @@ const std::string& TransToPtenKernelName(const std::string& fluid_op_name) {
     return kernel_alias_name_map.at(fluid_op_name);
   }
   return fluid_op_name;
+}
+
+const std::string& TransToFluidOpName(const std::string& pten_kernel_name) {
+  auto it = std::find_if(kernel_alias_name_map.begin(),
+                         kernel_alias_name_map.end(),
+                         [&pten_kernel_name](const auto& pair) {
+                           return pair.second == pten_kernel_name;
+                         });
+  if (it != kernel_alias_name_map.end()) {
+    return it->first;
+  }
+  return pten_kernel_name;
 }
 
 }  // namespace pten
