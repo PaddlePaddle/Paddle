@@ -72,7 +72,7 @@ pten::Allocation* CUDAManagedAllocator::AllocateImpl(size_t size) {
 
   PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
       "\n\nOut of memory error on GPU %d. "
-      "Cannot allocate %s CUDA unified memory on GPU %d, %s memory has been "
+      "Cannot allocate %s CUDA managed memory on GPU %d, %s memory has been "
       "allocated.\n\n"
       "Please check whether there is any other process using GPU %d.\n"
       "1. If yes, please stop them, or start PaddlePaddle on another GPU.\n"
