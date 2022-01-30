@@ -200,6 +200,7 @@ class PreparedOp {
   // new pten kernel, if there is a better design in the future,
   // we may polish the implementation here
   bool run_pten_kernel_{false};
+  bool run_kp_kernel_{false};
   framework::KernelSignature pt_kernel_signature_;
   pten::Kernel pt_kernel_;
 };

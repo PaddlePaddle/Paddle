@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,9 +19,12 @@ limitations under the License. */
 
 namespace paddle {
 namespace experimental {
+namespace sparse {
 
-// TODO(chenweihang): Replace backend by place when place is ready
-PADDLE_API Tensor copy_to(const Tensor& x, Backend backend, bool blocking);
+PADDLE_API Tensor to_sparse_coo(const Tensor& x,
+                                Backend backend,
+                                const int64_t sparse_dim);
 
+}  // namespace sparse
 }  // namespace experimental
 }  // namespace paddle
