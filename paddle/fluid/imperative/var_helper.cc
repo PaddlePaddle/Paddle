@@ -76,30 +76,6 @@ void InitializeVariable(paddle::framework::Variable *var,
   }
 }
 
-void CopyVariable(const paddle::framework::Variable &src_var,
-                  paddle::framework::Variable *dst_var) {
-  // only support cpu now
-  auto cpu_place = paddle::platform::CPUPlace();
-
-  if (src_var.IsType<paddle::framework::LoDTensor>()) {
-    auto *tmp_grad_tensor = dst_var->GetMutable<paddle::framework::LoDTensor>();
-    auto &src_tensor = src_var.Get<paddle::framework::LoDTensor>();
-    tmp_grad_tensor->set_lod(src_tensor.lod());
-    paddle::framework::TensorCopy(src_tensor, cpu_place, tmp_grad_tensor);
-  } else if (src_var.IsType<pten::SelectedRows>()) {
-    auto &src_slr = src_var.Get<pten::SelectedRows>();
-    auto *tmp_grad_slr = dst_var->GetMutable<pten::SelectedRows>();
-    tmp_grad_slr->set_rows(src_slr.rows());
-    tmp_grad_slr->set_height(src_slr.height());
-    auto &src_t = src_slr.value();
-    auto *dst_t = tmp_grad_slr->mutable_value();
-    paddle::framework::TensorCopy(src_t, cpu_place, dst_t);
-  } else {
-    PADDLE_THROW(paddle::platform::errors::Unavailable(
-        "Unknown variable type to copy."));
-  }
-}
-
 /* GetPlace */
 template <typename VarType>
 const paddle::platform::Place &GetPlace(const std::shared_ptr<VarType> &var) {

@@ -260,16 +260,8 @@ void Tracer::TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
   }
 
   if (ComputeRequiredGrad(new_ins, outs, trace_backward)) {
-    if (!override_default_attr_map) {
-      PADDLE_ENFORCE_NOT_NULL(passed_default_attrs_,
-                              paddle::platform::errors::PermissionDenied(
-                                  "Detected default_attrs = nullptr."));
-      CreateGradOpNode(*op, new_ins, outs, attrs, *passed_default_attrs_, place,
-                       inplace_map);
-    } else {
-      CreateGradOpNode(*op, new_ins, outs, attrs, default_attrs, place,
-                       inplace_map);
-    }
+    CreateGradOpNode(*op, new_ins, outs, attrs, default_attrs, place,
+                     inplace_map);
   } else {
     VLOG(3) << "No Grad to track for Op: " << type;
   }
@@ -347,12 +339,7 @@ bool Tracer::ComputeRequiredGrad(const NameVarBaseMap& ins,
 bool Tracer::ComputeRequiredGrad(const NameTensorMap& ins,
                                  const NameTensorMap& outs,
                                  bool trace_backward) {
-  if (!trace_backward) {
-    return false;
-  } else {
-    VLOG(10) << "Should Not reach this in eager mode";
-    return false;
-  }
+  return false;
 }
 
 }  // namespace imperative
