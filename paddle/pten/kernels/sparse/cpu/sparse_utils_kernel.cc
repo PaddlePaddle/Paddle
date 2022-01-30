@@ -163,9 +163,10 @@ void SparseCooToCsrKernel(const Context& dev_ctx,
                           SparseCsrTensor* out) {
   const auto& x_dims = x.dims();
   bool valid = x_dims.size() == 2 || x_dims.size() == 3;
-  PADDLE_ENFORCE(valid,
-                 paddle::platform::errors::InvalidArgument(
-                     "SparseCsrTensor only support 2-D or 3-D matrix"));
+  PADDLE_ENFORCE_EQ(valid,
+                    true,
+                    paddle::platform::errors::InvalidArgument(
+                        "SparseCsrTensor only support 2-D or 3-D matrix"));
   const int64_t non_zero_num = x.nnz();
   if (non_zero_num <= 0) return;
 
