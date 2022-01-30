@@ -214,6 +214,122 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
   out->SetMember(indices, values, x_dims, true);
 }
 
+__global__ void GetBatchSizes(const int64_t* crows,
+                              const int rows,
+                              const int batchs,
+                              int* batch_sizes) {
+  const int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  if (tid < batchs) {
+    batch_sizes[tid] = crows[tid * (rows + 1) + rows];
+  }
+}
+
+__global__ void ConvertCsrCrowsToCooRows(const int64_t* crows_ptr,
+                                         const int* crows_offsets,
+                                         int64_t* rows_ptr,
+                                         int64_t* batch_ptr,
+                                         const int rows) {
+  const int b = blockIdx.y;
+  const int64_t offset = crows_offsets ? crows_offsets[b] : 0;
+  const int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  for (int i = tid; i < rows; i += gridDim.x * blockDim.x) {
+    for (int j = crows_ptr[b * (rows + 1) + i];
+         j < crows_ptr[b * (rows + 1) + i + 1];
+         j++) {
+      rows_ptr[offset + j] = i;
+      if (batch_ptr) {
+        batch_ptr[offset + j] = b;
+      }
+    }
+  }
+}
+
+template <typename T, typename Context>
+void SparseCsrToCooKernel(const Context& dev_ctx,
+                          const SparseCsrTensor& x,
+                          SparseCooTensor* out) {
+  const DDim& x_dims = x.dims();
+  const int64_t non_zero_num = x.non_zero_cols().numel();
+  const auto& csr_crows = x.non_zero_crows();
+  const auto& csr_cols = x.non_zero_cols();
+  const auto& csr_values = x.non_zero_elements();
+  const int64_t* csr_crows_data = csr_crows.data<int64_t>();
+  const int64_t* csr_cols_data = csr_cols.data<int64_t>();
+  const T* csr_values_data = csr_values.data<T>();
+
+  int64_t sparse_dim = 2;
+  if (x_dims.size() == 3) {
+    sparse_dim = 3;
+  }
+  int batchs = x_dims.size() == 2 ? 1 : x_dims[0];
+  int rows = x_dims.size() == 2 ? x_dims[0] : x_dims[1];
+
+  const auto place = dev_ctx.GetPlace();
+  DenseTensorMeta indices_meta(
+      DataType::INT64, {sparse_dim, non_zero_num}, DataLayout::NCHW);
+  DenseTensorMeta values_meta(x.dtype(), {non_zero_num}, x.layout());
+  DenseTensorMeta offsets_meta(DataType::INT32, {batchs}, DataLayout::NCHW);
+  DenseTensor indices =
+      pten::Empty<int64_t, Context>(dev_ctx, std::move(indices_meta));
+  DenseTensor values = pten::Empty<T, Context>(dev_ctx, std::move(values_meta));
+  DenseTensor offsets =
+      pten::Empty<T, Context>(dev_ctx, std::move(offsets_meta));
+  int64_t* coo_indices = indices.mutable_data<int64_t>(place);
+  int64_t* batch_ptr = x_dims.size() == 2 ? nullptr : coo_indices;
+  int64_t* coo_rows_data =
+      x_dims.size() == 2 ? coo_indices : batch_ptr + non_zero_num;
+  int64_t* coo_cols_data = coo_rows_data + non_zero_num;
+  int* offsets_ptr = batchs == 1 ? nullptr : offsets.mutable_data<int>(place);
+  T* coo_values_data = values.mutable_data<T>(place);
+
+  int grid_size = 1, block_size = 1;
+  if (batchs > 1) {
+    GetGpuLaunchConfig1D(dev_ctx, batchs, &grid_size, &block_size);
+    GetBatchSizes<<<grid_size, block_size>>>(
+        csr_crows_data, rows, batchs, offsets_ptr);
+
+#ifdef PADDLE_WITH_HIP
+    thrust::exclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
+#else
+    thrust::exclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
+#endif
+                           offsets_ptr,
+                           offsets_ptr + batchs,
+                           offsets_ptr);
+  }
+
+  GetGpuLaunchConfig1D(dev_ctx, rows, &grid_size, &block_size);
+  dim3 grids(grid_size, batchs, 1);
+  ConvertCsrCrowsToCooRows<<<grids, block_size>>>(
+      csr_crows_data, offsets_ptr, coo_rows_data, batch_ptr, rows);
+
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpyAsync(coo_cols_data,
+                                            csr_cols_data,
+                                            sizeof(int64_t) * non_zero_num,
+                                            hipMemcpyDeviceToDevice,
+                                            dev_ctx.stream()));
+  PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpyAsync(coo_values_data,
+                                            csr_values_data,
+                                            sizeof(T) * non_zero_num,
+                                            hipMemcpyDeviceToDevice,
+                                            dev_ctx.stream()));
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(coo_cols_data,
+                                             csr_cols_data,
+                                             sizeof(int64_t) * non_zero_num,
+                                             cudaMemcpyDeviceToDevice,
+                                             dev_ctx.stream()));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(coo_values_data,
+                                             csr_values_data,
+                                             sizeof(T) * non_zero_num,
+                                             cudaMemcpyDeviceToDevice,
+                                             dev_ctx.stream()));
+#endif
+
+  out->SetMember(indices, values, x_dims, true);
+}
+
 }  // namespace sparse
 }  // namespace pten
 
@@ -221,6 +337,19 @@ PT_REGISTER_KERNEL(dense_to_sparse_coo,
                    GPU,
                    ALL_LAYOUT,
                    pten::sparse::DenseToSparseCooKernel,
+                   float,
+                   double,
+                   pten::dtype::float16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
+PT_REGISTER_KERNEL(sparse_csr_to_coo,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::sparse::SparseCsrToCooKernel,
                    float,
                    double,
                    pten::dtype::float16,
