@@ -18,18 +18,19 @@ limitations under the License. */
 #include "paddle/pten/kernels/funcs/concat_funcs.h"
 namespace pten {
 
-DenseTensorMeta ConcatInferMeta(const std::vector<DenseTensorMeta>& x_meta,
-                                const Scalar& axis_scalar,
-                                bool is_runtime) {
-  PADDLE_ENFORCE_GE(x_meta.size(),
-                    0,
+void ConcatInferMeta(const std::vector<MetaTensor>& x,
+                     const Scalar& axis_scalar,
+                     MetaTensor* out,
+                     MetaConfig config) {
+  PADDLE_ENFORCE_GE(x.size(),
+                    0UL,
                     paddle::platform::errors::InvalidArgument(
                         "The size of input meta vector should be greater"
                         "than 0."));
 
   int axis = axis_scalar.to<int>();
   // 1. calculate axis
-  int rank = x_meta[0].dims.size();
+  int rank = x.at(0).dims().size();
   PADDLE_ENFORCE_EQ(
       axis >= -rank && axis < rank,
       true,
@@ -44,13 +45,15 @@ DenseTensorMeta ConcatInferMeta(const std::vector<DenseTensorMeta>& x_meta,
 
   // 2. calculate out dims
   std::vector<pten::DDim> x_dims;
-  for (auto meta : x_meta) {
-    x_dims.push_back(meta.dims);
+  for (auto& x_t : x) {
+    x_dims.push_back(x_t.dims());
   }
   pten::DDim out_dim =
-      pten::funcs::ComputeAndCheckShape(is_runtime, x_dims, axis);
+      pten::funcs::ComputeAndCheckShape(config.is_runtime, x_dims, axis);
 
-  return {x_meta[0].dtype, out_dim, x_meta[0].layout};
+  out->set_dims(out_dim);
+  out->set_dtype(x.at(0).dtype());
+  out->set_layout(x.at(0).layout());
 }
 
 }  // namespace pten
