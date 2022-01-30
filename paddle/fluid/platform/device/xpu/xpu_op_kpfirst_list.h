@@ -10,32 +10,27 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
-#ifdef PADDLE_WITH_XPU
+#ifdef PADDLE_WITH_XPU_KP
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "paddle/fluid/framework/op_kernel_type.h"
 
 namespace paddle {
 namespace platform {
 
-using pOpKernelType = paddle::framework::OpKernelType;
 using vartype = paddle::framework::proto::VarType;
-using XPUOpListMap =
-    std::unordered_map<std::string, std::vector<vartype::Type>>;
+using pOpKernelType = paddle::framework::OpKernelType;
+using XPUKernelSet =
+    std::unordered_set<pOpKernelType, paddle::framework::OpKernelType::Hash>;
+using XPUOpMap = std::unordered_map<std::string, XPUKernelSet>;
 
-bool is_xpu_support_op(const std::string& op_name, const pOpKernelType& type);
-bool is_in_xpu_black_list(const std::string& op_name);
+XPUOpMap& get_kp_ops() {
+  static XPUOpMap s_xpu_kp_kernels{};
 
-#ifdef PADDLE_WITH_XPU_KP
-bool is_xpu_kp_support_op(const std::string& op_name,
-                          const pOpKernelType& type);
-bool is_in_xpu_kpwhite_list(const std::string& op_name);
-#endif
-
-std::vector<vartype::Type> get_xpu_op_support_type(
-    const std::string& op_name, pten::backends::xpu::XPUVersion version);
-XPUOpListMap get_xpu_op_list(pten::backends::xpu::XPUVersion version);
+  return s_xpu_kp_kernels;
+}
 
 }  // namespace platform
 }  // namespace paddle
