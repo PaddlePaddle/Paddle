@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/core/unroll_array_ops.h"
+#include "paddle/pten/core/utils/unroll_array_ops.h"
 
 #include <gtest/gtest.h>
 #include <array>

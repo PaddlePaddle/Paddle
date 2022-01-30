@@ -33,17 +33,19 @@ TEST(DEV_API, add) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({3, 10}),
-                                                  pten::DataLayout::NCHW));
+  pten::DenseTensor dense_x(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({3, 10}),
+                            pten::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 
-  pten::DenseTensor dense_y(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({10}),
-                                                  pten::DataLayout::NCHW));
+  pten::DenseTensor dense_y(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({10}),
+                            pten::DataLayout::NCHW));
   auto* dense_y_data =
       dense_y.mutable_data<float>(paddle::platform::CPUPlace());
 
@@ -85,17 +87,19 @@ TEST(DEV_API, subtract) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({3, 10}),
-                                                  pten::DataLayout::NCHW));
+  pten::DenseTensor dense_x(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({3, 10}),
+                            pten::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 
-  pten::DenseTensor dense_y(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({10}),
-                                                  pten::DataLayout::NCHW));
+  pten::DenseTensor dense_y(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({10}),
+                            pten::DataLayout::NCHW));
   auto* dense_y_data =
       dense_y.mutable_data<float>(paddle::platform::CPUPlace());
 
@@ -137,17 +141,19 @@ TEST(DEV_API, divide) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({3, 10}),
-                                                  pten::DataLayout::NCHW));
+  pten::DenseTensor dense_x(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({3, 10}),
+                            pten::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 
-  pten::DenseTensor dense_y(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({10}),
-                                                  pten::DataLayout::NCHW));
+  pten::DenseTensor dense_y(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({10}),
+                            pten::DataLayout::NCHW));
   auto* dense_y_data =
       dense_y.mutable_data<float>(paddle::platform::CPUPlace());
 
@@ -189,17 +195,19 @@ TEST(DEV_API, multiply) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({3, 10}),
-                                                  pten::DataLayout::NCHW));
+  pten::DenseTensor dense_x(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({3, 10}),
+                            pten::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 
-  pten::DenseTensor dense_y(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({10}),
-                                                  pten::DataLayout::NCHW));
+  pten::DenseTensor dense_y(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({10}),
+                            pten::DataLayout::NCHW));
   auto* dense_y_data =
       dense_y.mutable_data<float>(paddle::platform::CPUPlace());
 
