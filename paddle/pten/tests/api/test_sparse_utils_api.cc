@@ -167,7 +167,7 @@ TEST(API, to_sparse_csr) {
          non_zero_data.size() * sizeof(float));
   auto coo =
       std::make_shared<pten::SparseCooTensor>(indices, values, dense_dims);
-  paddle::experimental::Tensor coo_x(csr);
+  paddle::experimental::Tensor coo_x(coo);
   auto out2 =
       paddle::experimental::sparse::to_sparse_csr(coo_x, pten::Backend::CPU);
 
