@@ -29,7 +29,6 @@
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(check_nan_inf);
-DECLARE_bool(run_pten_kernel);
 DECLARE_bool(benchmark);
 DECLARE_bool(run_kp_kernel);
 

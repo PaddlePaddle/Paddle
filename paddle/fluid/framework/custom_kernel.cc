@@ -29,8 +29,6 @@ limitations under the License. */
 #include "paddle/pten/core/kernel_context.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-DECLARE_bool(run_pten_kernel);
-
 namespace paddle {
 
 namespace framework {
@@ -279,10 +277,6 @@ static void RunKernelFunc(pten::KernelContext* ctx,
 
 void RegisterKernelWithMetaInfo(
     const std::vector<OpKernelInfo>& op_kernel_infos) {
-  PADDLE_ENFORCE_EQ(FLAGS_run_pten_kernel, true,
-                    platform::errors::Unimplemented(
-                        "Custom Kernel depends on pten kernel enabled,"));
-
   for (size_t i = 0; i < op_kernel_infos.size(); ++i) {
     auto& kernel_info = op_kernel_infos[i];
     auto op_type = OpKernelInfoHelper::GetOpName(kernel_info);
