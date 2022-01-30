@@ -288,4 +288,43 @@ void EagerUtils::CheckAndRetainGrad(
   }
 }
 
+paddle::experimental::Tensor EagerUtils::SyncToPtenTensors(
+    const egr::EagerTensor& tensor) {
+  const_cast<EagerTensor*>(&tensor)->SyncToTensor();
+  return *tensor.Tensor().get();
+}
+
+std::vector<paddle::experimental::Tensor> EagerUtils::SyncToPtenTensors(
+    const std::vector<egr::EagerTensor>& tensors) {
+  std::vector<paddle::experimental::Tensor> res;
+  size_t num = tensors.size();
+  res.reserve(num);
+  for (size_t i = 0; i < num; i++) {
+    const_cast<EagerTensor*>(&(tensors[i]))->SyncToTensor();
+    res.push_back(*tensors[i].Tensor().get());
+  }
+  return res;
+}
+
+egr::EagerTensor EagerUtils::CreateEagerTensorFromTensor(
+    const paddle::experimental::Tensor& tensor) {
+  egr::EagerTensor ret;
+  ret.set_tensor(std::make_shared<paddle::experimental::Tensor>(tensor));
+  return ret;
+}
+
+std::vector<egr::EagerTensor> EagerUtils::CreateEagerTensorFromTensor(
+    const std::vector<paddle::experimental::Tensor>& tensors) {
+  std::vector<egr::EagerTensor> res;
+  size_t num = tensors.size();
+  res.reserve(num);
+  for (size_t i = 0; i < num; i++) {
+    egr::EagerTensor tmp;
+    tmp.set_tensor(std::make_shared<paddle::experimental::Tensor>(tensors[i]));
+    res.emplace_back(std::move(tmp));
+  }
+
+  return res;
+}
+
 }  // namespace egr
