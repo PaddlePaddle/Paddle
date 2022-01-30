@@ -15,6 +15,7 @@
 import re
 
 PREFIX_TENSOR_NAME = 'dense_'
+PREFIX_META_TENSOR_NAME = 'meta_'
 
 
 def parse_args(api_name, args_str):
@@ -265,13 +266,21 @@ def gene_kernel_select(api, input_names, attrs, kernel) -> str:
     return kernel_select_code
 
 
-def gene_infer_meta(input_names, attr_names, infer_meta) -> str:
-    infer_meta_params = infer_meta['param'] if infer_meta[
-        'param'] is not None else input_names + attr_names
+def gene_infer_meta(input_names, attr_names, output_names, infer_meta) -> str:
+    infer_meta_params = infer_meta['param'] + output_names if infer_meta[
+        'param'] is not None else input_names + attr_names + output_names
+    # generate meta tensors
+    meta_tensor_code = ""
     param_code = ""
     for param in infer_meta_params:
         if param in input_names:
-            param_code = param_code + "GetDenseTensorMeta(*" + PREFIX_TENSOR_NAME + param + "), "
+            param_code = param_code + "MakeMetaTensor(*" + PREFIX_TENSOR_NAME + param + "), "
+        elif param in output_names:
+            meta_tensor_code = meta_tensor_code + "  pten::MetaTensor " + param.replace(
+                PREFIX_TENSOR_NAME,
+                PREFIX_META_TENSOR_NAME) + "(" + param + ");\n"
+            param_code = param_code + "&" + param.replace(
+                PREFIX_TENSOR_NAME, PREFIX_META_TENSOR_NAME) + ", "
         elif param in attr_names:
             param_code = param_code + param + ", "
         elif isinstance(param, str):
@@ -282,8 +291,8 @@ def gene_infer_meta(input_names, attr_names, infer_meta) -> str:
             param_code = param_code + str(param) + ", "
 
     param_code = param_code[:-2]
-    return f"""
-  auto out_meta = pten::{infer_meta['func']}({param_code});
+    return f"""{meta_tensor_code}
+  pten::{infer_meta['func']}({param_code});
 """
 
 
