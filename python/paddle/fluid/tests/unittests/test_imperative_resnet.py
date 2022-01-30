@@ -260,14 +260,9 @@ class TestDygraphResnet(unittest.TestCase):
                 train_parameters, parameter_list=resnet.parameters())
             np.random.seed(seed)
 
-            batch_py_reader = fluid.io.PyReader(capacity=1)
-            batch_py_reader.decorate_sample_list_generator(
-                paddle.batch(
-                    self.reader_decorator(
-                        paddle.dataset.flowers.train(use_xmap=False)),
-                    batch_size=batch_size,
-                    drop_last=True),
-                places=fluid.CPUPlace())
+            train_reader = paddle.batch(
+                paddle.dataset.flowers.train(use_xmap=False),
+                batch_size=batch_size)
 
             dy_param_init_value = {}
             for param in resnet.parameters():
@@ -276,12 +271,17 @@ class TestDygraphResnet(unittest.TestCase):
             helper = DyGraphProgramDescTracerTestHelper(self)
             program = None
 
-            for batch_id, data in enumerate(batch_py_reader()):
+            for batch_id, data in enumerate(train_reader()):
                 if batch_id >= batch_num:
                     break
 
-                img = data[0]
-                label = data[1]
+                dy_x_data = np.array(
+                    [x[0].reshape(3, 224, 224) for x in data]).astype('float32')
+                y_data = np.array([x[1] for x in data]).astype('int64').reshape(
+                    batch_size, 1)
+
+                img = to_variable(dy_x_data)
+                label = to_variable(y_data)
                 label.stop_gradient = True
 
                 out = None

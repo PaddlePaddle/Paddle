@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
-#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/enforce.h"
