@@ -26,7 +26,6 @@ import hypothesis.strategies as st
 
 
 class TestFCMishMkldnnFusePass(PassAutoScanTest):
-
     def sample_program_config(self, draw):
         # 1. Generate shape of input:X of fc
         x_shape = draw(
@@ -75,9 +74,10 @@ class TestFCMishMkldnnFusePass(PassAutoScanTest):
             inputs={"X": ["fc_out"]},
             outputs={"Out": ["mish_output"]},
             axis=axis,
-            scale=draw(st.floats(min_value=0, max_value=10)),
-            offset=draw(st.floats(min_value=0, max_value=10)),
-            )
+            scale=draw(st.floats(
+                min_value=0, max_value=10)),
+            offset=draw(st.floats(
+                min_value=0, max_value=10)), )
 
         ops = [fc_op, mish_op]
         program_config = ProgramConfig(
@@ -92,7 +92,6 @@ class TestFCMishMkldnnFusePass(PassAutoScanTest):
             inputs={"fc_x": TensorConfig(shape=x_shape), },
             outputs=ops[1].outputs["Out"], )
         return program_config
-
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_mkldnn=True)
