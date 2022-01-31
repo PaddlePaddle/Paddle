@@ -26,30 +26,4 @@ OpUtilsMap& OpUtilsMap::Instance() {
   return g_op_utils_map;
 }
 
-std::string OpUtilsMap::GetBaseKernelName(const std::string& op_type) const {
-  if (deprecated_op_names.find(op_type) != deprecated_op_names.end()) {
-    return "deprecated";
-  }
-  auto it = base_kernel_name_map_.find(op_type);
-  if (it == base_kernel_name_map_.end()) {
-    return op_type;
-  } else {
-    return it->second;
-  }
-}
-
-ArgumentMappingFn OpUtilsMap::GetArgumentMappingFn(
-    const std::string& op_type) const {
-  auto it = arg_mapping_fn_map_.find(op_type);
-  if (it == arg_mapping_fn_map_.end()) {
-    auto func =
-        [op_type](const ArgumentMappingContext& ctx) -> KernelSignature {
-      return DefaultKernelSignatureMap::Instance().Get(op_type);
-    };
-    return func;
-  } else {
-    return it->second;
-  }
-}
-
 }  // namespace pten

@@ -104,9 +104,30 @@ class OpUtilsMap {
     arg_mapping_fn_map_.insert({std::move(op_type), std::move(fn)});
   }
 
-  std::string GetBaseKernelName(const std::string& op_type) const;
+  std::string GetBaseKernelName(const std::string& op_type) const {
+    if (deprecated_op_names.find(op_type) != deprecated_op_names.end()) {
+      return "deprecated";
+    }
+    auto it = base_kernel_name_map_.find(op_type);
+    if (it == base_kernel_name_map_.end()) {
+      return op_type;
+    } else {
+      return it->second;
+    }
+  }
 
-  ArgumentMappingFn GetArgumentMappingFn(const std::string& op_type) const;
+  ArgumentMappingFn GetArgumentMappingFn(const std::string& op_type) const {
+    auto it = arg_mapping_fn_map_.find(op_type);
+    if (it == arg_mapping_fn_map_.end()) {
+      auto func =
+          [op_type](const ArgumentMappingContext& ctx) -> KernelSignature {
+        return DefaultKernelSignatureMap::Instance().Get(op_type);
+      };
+      return func;
+    } else {
+      return it->second;
+    }
+  }
 
   const paddle::flat_hash_map<std::string, std::string>& base_kernel_name_map()
       const {
