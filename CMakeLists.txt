@@ -230,6 +230,7 @@ option(WITH_INFRT  "Compile PaddlePaddle with INFRT" OFF)
 option(WITH_NCCL   "Compile PaddlePaddle with NCCL support"             ON)
 option(WITH_RCCL   "Compile PaddlePaddle with RCCL support"             ON)
 option(WITH_XPU_BKCL    "Compile PaddlePaddle with BAIDU KUNLUN XPU BKCL"   OFF)
+option(WITH_CNCL   "Compile PaddlePaddle with CNCL support"             OFF)
 option(WITH_CRYPTO   "Compile PaddlePaddle with crypto support"         ON)
 option(WITH_ARM   "Compile PaddlePaddle with arm support"         OFF)
 option(WITH_SW   "Compile PaddlePaddle with sw support"         OFF)
@@ -290,6 +291,13 @@ if (NOT WITH_XPU AND WITH_XPU_BKCL)
         "Disable BKCL when compiling without XPU. Force WITH_XPU_BKCL=OFF.")
     set(WITH_XPU_BKCL OFF CACHE STRING
         "Disable BKCL when compiling without XPU" FORCE)
+endif()
+
+if (NOT WITH_MLU AND WITH_CNCL)
+    MESSAGE(WARNING
+        "Disable CNCL when compiling without MLU. Force WITH_MLU=OFF.")
+    set(WITH_MLU OFF CACHE STRING
+        "Disable CNCL when compiling without MLU" FORCE)
 endif()
 
 if(WITH_NCCL)
