@@ -75,6 +75,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/lod_utils.h"
 #ifndef PADDLE_ON_INFERENCE
 #include "paddle/fluid/pybind/eager.h"
@@ -100,6 +101,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
+#include "paddle/fluid/pybind/metrics_py.h"
 #include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
 
@@ -714,21 +716,61 @@ PYBIND11_MODULE(core_noavx, m) {
   m.def("_get_use_default_grad_op_desc_maker_ops",
         [] { return OpInfoMap::Instance().GetUseDefaultGradOpDescMakerOps(); });
 
-  m.def("_get_all_register_op_kernels", [] {
-    auto &all_kernels = paddle::framework::OperatorWithKernel::AllOpKernels();
-    std::unordered_map<std::string, std::vector<std::string>> all_kernels_info;
-    for (auto &kernel_pair : all_kernels) {
-      auto op_type = kernel_pair.first;
-      std::vector<std::string> kernel_types;
-      for (auto &info_pair : kernel_pair.second) {
-        paddle::framework::OpKernelType kernel_type = info_pair.first;
-        kernel_types.push_back(
-            paddle::framework::KernelTypeToString(kernel_type));
-      }
-      all_kernels_info.emplace(op_type, kernel_types);
-    }
-    return all_kernels_info;
-  });
+  m.def(
+      "_get_all_register_op_kernels",
+      [](const std::string &lib) {
+        std::unordered_map<std::string, std::vector<std::string>>
+            all_kernels_info;
+        if (lib == "fluid" || lib == "all") {
+          auto &all_kernels =
+              paddle::framework::OperatorWithKernel::AllOpKernels();
+
+          for (auto &kernel_pair : all_kernels) {
+            auto op_type = kernel_pair.first;
+            std::vector<std::string> kernel_types;
+            for (auto &info_pair : kernel_pair.second) {
+              paddle::framework::OpKernelType kernel_type = info_pair.first;
+              kernel_types.emplace_back(
+                  paddle::framework::KernelTypeToString(kernel_type));
+            }
+            all_kernels_info.emplace(op_type, kernel_types);
+          }
+        }
+        if (lib == "pten" || lib == "all") {
+          auto pten_kernels = pten::KernelFactory::Instance().kernels();
+          for (auto &kernel_pair : pten_kernels) {
+            auto op_type = pten::TransToFluidOpName(kernel_pair.first);
+            std::vector<std::string> kernel_types;
+            for (auto &info_pair : kernel_pair.second) {
+              framework::OpKernelType kernel_type =
+                  framework::TransPtenKernelKeyToOpKernelType(info_pair.first);
+              auto kernel_type_str = framework::KernelTypeToString(kernel_type);
+              if (all_kernels_info.count(op_type)) {
+                if (std::find(all_kernels_info[op_type].begin(),
+                              all_kernels_info[op_type].end(),
+                              kernel_type_str) ==
+                    all_kernels_info[op_type].end()) {
+                  all_kernels_info[op_type].emplace_back(kernel_type_str);
+                }
+              } else {
+                kernel_types.emplace_back(kernel_type_str);
+              }
+            }
+            if (!kernel_types.empty()) {
+              all_kernels_info.emplace(op_type, kernel_types);
+            }
+          }
+        }
+
+        return all_kernels_info;
+      },
+      py::arg("lib") = "all",
+      R"DOC(
+           Return the registered kernels in paddle.
+
+           Args:
+               lib[string]: the libarary, could be 'pten', 'fluid' and 'all'.
+           )DOC");
 
   // NOTE(zjl): ctest would load environment variables at the beginning even
   // though we have not `import paddle.fluid as fluid`. So we add this API
@@ -972,7 +1014,8 @@ PYBIND11_MODULE(core_noavx, m) {
             PADDLE_ENFORCE_EQ(
                 CheckLoD(new_offset_lod, -1), true,
                 platform::errors::InvalidArgument(
-                    "The provided recursive_sequence_lengths info is invalid, "
+                    "The provided recursive_sequence_lengths info is "
+                    "invalid, "
                     "the LoD converted by recursive_sequence_lengths is %s",
                     new_lod));
             new (&instance) framework::Tensor(new_offset_lod);
@@ -1034,7 +1077,8 @@ PYBIND11_MODULE(core_noavx, m) {
              PADDLE_ENFORCE_EQ(
                  CheckLoD(new_offset_lod, vectorize(self.dims()).front()), true,
                  platform::errors::InvalidArgument(
-                     "The provided recursive_sequence_lengths info is invalid, "
+                     "The provided recursive_sequence_lengths info is "
+                     "invalid, "
                      "the LoD converted by recursive_sequence_lengths is "
                      "%s",
                      new_lod));
@@ -2109,20 +2153,20 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__str__", string::to_string<const platform::Place &>);
 
   py::class_<OperatorBase>(m, "Operator")
-      .def_static(
-          "create",
-          [](py::bytes protobin) {
-            proto::OpDesc desc;
-            PADDLE_ENFORCE_EQ(desc.ParsePartialFromString(protobin), true,
-                              platform::errors::InvalidArgument(
-                                  "Cannot parse user input to OpDesc"));
-            PADDLE_ENFORCE_EQ(
-                desc.IsInitialized(), true,
-                platform::errors::InvalidArgument(
-                    "The provided OpDesc is not initialized, the reason is: %s",
-                    desc.InitializationErrorString()));
-            return OpRegistry::CreateOp(desc);
-          })
+      .def_static("create",
+                  [](py::bytes protobin) {
+                    proto::OpDesc desc;
+                    PADDLE_ENFORCE_EQ(desc.ParsePartialFromString(protobin),
+                                      true,
+                                      platform::errors::InvalidArgument(
+                                          "Cannot parse user input to OpDesc"));
+                    PADDLE_ENFORCE_EQ(desc.IsInitialized(), true,
+                                      platform::errors::InvalidArgument(
+                                          "The provided OpDesc is not "
+                                          "initialized, the reason is: %s",
+                                          desc.InitializationErrorString()));
+                    return OpRegistry::CreateOp(desc);
+                  })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
               const platform::CPUPlace &place) {
@@ -2704,9 +2748,9 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("register_pass", [](const std::string &pass_type, py::object callable) {
     PADDLE_ENFORCE_EQ(
         framework::ir::PassRegistry::Instance().Has(pass_type), false,
-        platform::errors::AlreadyExists(
-            "Pass '%s' is registered more than once. Please use another name.",
-            pass_type));
+        platform::errors::AlreadyExists("Pass '%s' is registered more than "
+                                        "once. Please use another name.",
+                                        pass_type));
     callable.inc_ref();
     framework::ir::PassRegistry::Instance().Insert(pass_type, [pass_type,
                                                                callable]() {
@@ -3678,6 +3722,7 @@ All parameter, weight, gradient are variables in Paddle.
 
 #if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
   BindHeterWrapper(&m);
+  BindMetrics(&m);
 #endif
 #ifdef PADDLE_WITH_HETERPS
   BindPSGPUWrapper(&m);

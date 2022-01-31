@@ -192,8 +192,7 @@ void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
     if (reshape2_shape[1] != reshape1_shape[2] * reshape1_shape[1]) return;
     // trans on channel dim
     if (trans_axis[0] != 0 || trans_axis[3] != 3 || trans_axis[4] != 4) return;
-
-    if (group != 1) {
+    if (group != 1 && i_c != 1) {
       if (trans_axis[1] != 2 && trans_axis[2] != 1) {
         return;
       }
