@@ -509,13 +509,14 @@ struct ElementwiseActivation : public PatternBase {
   PATTERN_DECL_NODE(activation_out);
 };
 
-
 // MKLDNN Operator
 struct OneDNNOp : public PatternBase {
   OneDNNOp(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "OneDNN_Operator") {}
 
-  PDNode* operator()(const std::vector<PDNode*>& operator_ins, const std::vector<PDNode*>& operator_outs, const std::string& supported_operator);
+  PDNode* operator()(const std::vector<PDNode*>& operator_ins,
+                     const std::vector<PDNode*>& operator_outs,
+                     const std::string& supported_operator);
 
   // declare operator node's name
   PATTERN_DECL_NODE(op_to_replace);

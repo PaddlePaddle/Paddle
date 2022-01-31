@@ -24,7 +24,8 @@ namespace framework {
 namespace ir {
 
 /*
- * \brief   Replace PaddlePaddle operator with te custom one which supports OneDNN's specific attributes.
+ * \brief   Replace PaddlePaddle operator with te custom one which supports
+ * OneDNN's specific attributes.
  */
 class OneDNNReplacePass : public Pass {
  public:

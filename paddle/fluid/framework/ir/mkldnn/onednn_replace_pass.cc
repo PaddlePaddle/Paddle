@@ -27,39 +27,37 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void OneDNNReplacePass::ApplyImpl(Graph *graph) const {
-  const std::unordered_map<std::string, std::vector<std::string>> elementwise_io_map = {{"Inputs", {"X", "Y"}},
-                                                                                        {"Outputs", {"Out"}}};
-  const std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::string>>> in_out_map = {
-    {"elementwise_add", elementwise_io_map},
-    {"elementwise_mul", elementwise_io_map},
-    {"elementwise_sub", elementwise_io_map}
-  };
+  const std::unordered_map<std::string, std::vector<std::string>>
+      elementwise_io_map = {{"Inputs", {"X", "Y"}}, {"Outputs", {"Out"}}};
+  const std::unordered_map<
+      std::string, std::unordered_map<std::string, std::vector<std::string>>>
+      in_out_map = {{"elementwise_add", elementwise_io_map},
+                    {"elementwise_mul", elementwise_io_map},
+                    {"elementwise_sub", elementwise_io_map}};
 
-  for(const auto& op_to_replace: in_out_map)
-  {
+  for (const auto &op_to_replace : in_out_map) {
     GraphPatternDetector gpd = GraphPatternDetector();
     auto op_type = op_to_replace.first;
-    std::vector<PDNode*> inputs;
+    std::vector<PDNode *> inputs;
     auto input_names = (op_to_replace.second).at("Inputs");
-    for(const auto& input: input_names)
-      inputs.emplace_back(gpd.mutable_pattern()
-                          ->NewNode()
-                          ->AsInput()
-                          ->assert_is_op_input(op_type, input));
-    
-    std::vector<PDNode*> outputs;
-    auto output_names = (op_to_replace.second).at("Outputs");
-    for(const auto& output: output_names)
-      outputs.emplace_back(gpd.mutable_pattern()
-                          ->NewNode()
-                          ->AsOutput()
-                          ->assert_is_op_output(op_type, output));
+    for (const auto &input : input_names)
+      inputs.emplace_back(
+          gpd.mutable_pattern()->NewNode()->AsInput()->assert_is_op_input(
+              op_type, input));
 
-    patterns::OneDNNOp onednn_op_pattern(gpd.mutable_pattern(), op_type + "_onednn");
+    std::vector<PDNode *> outputs;
+    auto output_names = (op_to_replace.second).at("Outputs");
+    for (const auto &output : output_names)
+      outputs.emplace_back(
+          gpd.mutable_pattern()->NewNode()->AsOutput()->assert_is_op_output(
+              op_type, output));
+
+    patterns::OneDNNOp onednn_op_pattern(gpd.mutable_pattern(),
+                                         op_type + "_onednn");
     onednn_op_pattern(inputs, outputs, op_type);
 
-    auto handler = [op_type, onednn_op_pattern]
-                    (const GraphPatternDetector::subgraph_t &subgraph, Graph *g) {
+    auto handler = [op_type, onednn_op_pattern](
+        const GraphPatternDetector::subgraph_t &subgraph, Graph *g) {
       VLOG(4) << "Replace " << op_type << " with onednn version op.";
       // ops
       GET_IR_NODE_FROM_SUBGRAPH(op_to_replace, op_to_replace,
@@ -73,16 +71,15 @@ void OneDNNReplacePass::ApplyImpl(Graph *graph) const {
     gpd(graph, handler);
   }
 
-  //get_node_from_factory();
-  //replace_node();
+  // get_node_from_factory();
+  // replace_node();
 }
 
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(onednn_replace_pass,
-              paddle::framework::ir::OneDNNReplacePass);
+REGISTER_PASS(onednn_replace_pass, paddle::framework::ir::OneDNNReplacePass);
 REGISTER_PASS_CAPABILITY(one_dnn_replace_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()

@@ -35,7 +35,7 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
  private:
   dnnl::post_ops get_post_ops(const framework::ExecutionContext& ctx) const {
     dnnl::post_ops post_operations;
-    if(ctx.HasAttr("activation_type")) {
+    if (ctx.HasAttr("activation_type")) {
       const float scale = ctx.Attr<float>("activation_scale");
       const float alpha = ctx.Attr<float>("activation_alpha");
       const float beta = ctx.Attr<float>("activation_beta");
@@ -59,7 +59,7 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
 
       if (activation_type != algo_map.end()) {
         post_operations.append_eltwise(scale, activation_type->second, alpha,
-                                      beta);
+                                       beta);
       }
     }
     return post_operations;

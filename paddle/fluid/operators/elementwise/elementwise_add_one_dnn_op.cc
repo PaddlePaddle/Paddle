@@ -56,7 +56,7 @@ class ElementwiseAddOneDNNOpMaker : public ElementwiseOpMaker {
 
   void Make() override final {
     ElementwiseOpMaker::Make();
-    
+
     /* activation parameters */
     AddAttr<std::string>("activation_type",
                          "Activation type used in elementwise operator.")
@@ -85,7 +85,8 @@ class ElementwiseAddOneDNNOpMaker : public ElementwiseOpMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(elementwise_add_one_dnn, ops::ElementwiseAddOneDNNOp,
-                  ops::ElementwiseAddOneDNNOpMaker, ops::ElementwiseOpInferVarType);
+                  ops::ElementwiseAddOneDNNOpMaker,
+                  ops::ElementwiseOpInferVarType);
 
 REGISTER_OP_VERSION(elementwise_add_one_dnn)
     .AddCheckpoint(

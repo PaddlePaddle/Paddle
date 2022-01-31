@@ -20,7 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-
 class ElementwiseMulOneDNNOpMaker : public ElementwiseOpMaker {
  protected:
   std::string GetName() const override { return "Mul"; }
@@ -44,7 +43,7 @@ class ElementwiseMulOneDNNOpMaker : public ElementwiseOpMaker {
 
   void Make() override final {
     ElementwiseOpMaker::Make();
-    
+
     /* activation parameters */
     AddAttr<std::string>("activation_type",
                          "Activation type used in elementwise operator.")
@@ -73,7 +72,8 @@ class ElementwiseMulOneDNNOpMaker : public ElementwiseOpMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(elementwise_mul_one_dnn, ops::ElementwiseMulOneDNNOp,
-                  ops::ElementwiseMulOneDNNOpMaker, ops::ElementwiseOpInferVarType);
+                  ops::ElementwiseMulOneDNNOpMaker,
+                  ops::ElementwiseOpInferVarType);
 
 REGISTER_OP_VERSION(elementwise_mul_one_dnn)
     .AddCheckpoint(

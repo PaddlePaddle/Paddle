@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_sub_one_dnn_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_sub_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op.h"
 
 namespace paddle {
 namespace framework {
@@ -56,7 +56,7 @@ class ElementwiseSubOneDNNOpMaker : public ElementwiseOpMaker {
 
   void Make() override final {
     ElementwiseOpMaker::Make();
-    
+
     /* activation parameters */
     AddAttr<std::string>("activation_type",
                          "Activation type used in elementwise operator.")
@@ -85,7 +85,8 @@ class ElementwiseSubOneDNNOpMaker : public ElementwiseOpMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(elementwise_sub_one_dnn, ops::ElementwiseSubOneDNNOp,
-                  ops::ElementwiseSubOneDNNOpMaker, ops::ElementwiseOpInferVarType);
+                  ops::ElementwiseSubOneDNNOpMaker,
+                  ops::ElementwiseOpInferVarType);
 
 REGISTER_OP_VERSION(elementwise_sub_one_dnn)
     .AddCheckpoint(

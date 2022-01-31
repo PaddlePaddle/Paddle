@@ -84,9 +84,6 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
 
     auto *elementwise_op = elementwise->Op();
 
-    auto op_type = elementwise_op->Type();
-    std::cout << "====================================" << op_type << "====================================" << std::endl;
-
     if (elementwise_op->HasAttr("use_mkldnn")) {
       const std::string wo_elt_type =
           "The " + elt_type;  // Workaround for PP error message checking.
