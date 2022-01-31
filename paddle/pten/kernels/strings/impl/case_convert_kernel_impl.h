@@ -30,7 +30,7 @@ struct StringCaseConvertKernel {
     AsciiCoverter ascii_converter;
     UTF8Converter utf8_converter;
     const pstring* in_ptr = x.data();
-    pstring* out_ptr = out->mutable_data();
+    pstring* out_ptr = out->mutable_data(dev_ctx.GetPlace());
     auto num = x.numel();
     if (encoding.empty()) {
       ascii_converter(dev_ctx, in_ptr, out_ptr, num);

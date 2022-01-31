@@ -35,29 +35,5 @@ class DefaultAllocator : public pten::Allocator {
   paddle::platform::Place place_;
 };
 
-class StringAllocator : public pten::Allocator {
- public:
-  explicit StringAllocator(const paddle::platform::Place& place)
-      : place_(place) {}
-
-  AllocationPtr Allocate(size_t bytes_size) override {
-    paddle::memory::AllocationPtr a = memory::Alloc(place_, bytes_size);
-    void* ptr = a->ptr();
-    if (paddle::platform::is_cpu_place(place_)) {
-      std::memset(ptr, 0, bytes_size);
-    } else if (paddle::platform::is_gpu_place(place_)) {
-#ifdef PADDLE_WITH_HIP
-      hipMemset(ptr, 0, bytes_size);
-#else
-      cudaMemset(ptr, 0, bytes_size);
-#endif
-    }
-    return a;
-  }
-
- private:
-  paddle::platform::Place place_;
-};
-
 }  // namespace experimental
 }  // namespace paddle

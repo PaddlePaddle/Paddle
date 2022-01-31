@@ -29,9 +29,7 @@ void EmptyKernel(const Context& dev_ctx,
 
 template <typename Context>
 void EmptyLikeKernel(const Context& dev_ctx, StringTensor* out) {
-  // TODO(zhoushunjie): need to update StringTensor::mutable_data
-  // out->mutable_data<T>(dev_ctx.GetPlace());
-  out->mutable_data();
+  out->mutable_data(dev_ctx.GetPlace());
 }
 
 }  // namespace strings

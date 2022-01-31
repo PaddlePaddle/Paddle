@@ -40,22 +40,8 @@ class StringTensor : public TensorBase,
   /// \param meta The meta data of dense tensor.
   StringTensor(Allocator* a, StringTensorMeta&& meta);
 
-  /// \brief Use existing storage space to create dense tensor. This interface
-  /// can be used to deliberately create an uninitialized dense tensor.
-  /// \param storage The existing storage.
-  /// \param meta The meta data of dense tensor.
-  StringTensor(intrusive_ptr<Storage> storage, const StringTensorMeta& meta);
-
-  /// \brief Use existing storage space to create dense tensor. This interface
-  /// can be used to deliberately create an uninitialized dense tensor.
-  /// \param storage The existing storage.
-  /// \param meta The meta data of dense tensor.
-  StringTensor(intrusive_ptr<Storage> storage, StringTensorMeta&& meta);
-
-  /// \brief Because dense tensor is a kind of container, we give a default
-  /// constructor to use for stl container. But the dense tensor created with
-  /// the default constructor is not practical.
-  StringTensor() = default;
+  StringTensor(const std::shared_ptr<pten::Allocation>& holder,
+               const StringTensorMeta& meta);
 
   /// \brief Because dense tensor is a resource handle, we provide a default
   /// move constructor to support move semantics.
@@ -83,7 +69,7 @@ class StringTensor : public TensorBase,
 
   /// \brief Returns the data place of the tensor.
   /// \return The data place of the tensor.
-  const Place& place() const override { return storage_->place(); }
+  const Place& place() const override;
 
   /// \brief Returns the meta information of the tensor.
   /// \return The meta information of the tensor.
@@ -102,19 +88,21 @@ class StringTensor : public TensorBase,
   /// \param meta The meta information of the tensor.
   void set_meta(StringTensorMeta&& meta);
 
+  void set_meta(const StringTensorMeta& meta);
+
   /// \brief Test whether the metadata is valid.
   /// \return Whether the metadata is valid.
   bool valid() const noexcept override { return meta_.valid(); }
 
   /// \brief Test whether the storage is allocated.
   /// return Whether the storage is allocated.
-  bool initialized() const override {
-    return storage_ != nullptr && storage_->data() != nullptr;
-  }
+  bool initialized() const override { return holder_ && holder_->ptr(); }
 
   /// \brief Check if storage is shared with other objects.
   /// \return Whether the storage is shared with other objects.
   bool IsSharedWith(const StringTensor& b) const;
+
+  const std::shared_ptr<pten::Allocation>& Holder() const { return holder_; }
 
   /// \brief Change the shape information in the metadata. If the new size is
   /// larger than the original value, the storage area will be reallocated.
@@ -126,13 +114,7 @@ class StringTensor : public TensorBase,
   /// \brief Returns the actual storage size occupied by tensor, may be larger
   /// than its shape dims.
   /// \return The actual storage size occupied by tensor.
-  size_t capacity() const { return storage_->size(); }
-
-  /// \brief Release the storage area for other purposes. Because of the
-  /// destruction of encapsulation, we do not support two dense tensors directly
-  /// sharing the same intrusive pointer.
-  /// \return The rvalue of instrusize pointer releated to the released storage.
-  intrusive_ptr<Storage> release() { return std::move(storage_); }
+  size_t capacity() const { return holder_->size(); }
 
   /// \brief Get the mutable data pointer value of pstring type.
   /// Memory allocation may occur when calling this interface:
@@ -142,7 +124,8 @@ class StringTensor : public TensorBase,
   /// storage.
   /// param request_bytes The bytes to reserve the data storage.
   /// \return The mutable data pointer value of type T.
-  dtype::pstring* mutable_data(size_t request_bytes = 0);
+  dtype::pstring* mutable_data(const paddle::platform::Place& place,
+                               size_t request_bytes = 0);
 
   /// \brief Get the const data pointer value of pstring type.
   /// \return The const data pointer value of pstring type.
@@ -150,7 +133,8 @@ class StringTensor : public TensorBase,
 
  private:
   StringTensorMeta meta_;
-  intrusive_ptr<Storage> storage_;
+  std::shared_ptr<pten::Allocation> holder_;
+  void init_holder();
 };
 
 }  // namespace pten

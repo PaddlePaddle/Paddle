@@ -17,20 +17,18 @@ limitations under the License. */
 namespace pten {
 
 StringTensor::StringTensor(Allocator* a, const StringTensorMeta& meta)
-    : meta_(meta),
-      storage_(make_intrusive<TensorStorage>(a, SizeOf(dtype()) * numel())) {}
+    : meta_(meta), holder_(a->Allocate(SizeOf(dtype()) * numel())) {
+  init_holder();
+}
 
 StringTensor::StringTensor(Allocator* a, StringTensorMeta&& meta)
-    : meta_(std::move(meta)),
-      storage_(make_intrusive<TensorStorage>(a, SizeOf(dtype()) * numel())) {}
+    : meta_(std::move(meta)), holder_(a->Allocate(SizeOf(dtype()) * numel())) {
+  init_holder();
+}
 
-StringTensor::StringTensor(intrusive_ptr<Storage> storage,
+StringTensor::StringTensor(const std::shared_ptr<pten::Allocation>& holder,
                            const StringTensorMeta& meta)
-    : meta_(meta), storage_(std::move(storage)) {}
-
-StringTensor::StringTensor(intrusive_ptr<Storage> storage,
-                           StringTensorMeta&& meta)
-    : meta_(std::move(meta)), storage_(std::move(storage)) {}
+    : meta_(meta), holder_(holder) {}
 
 int64_t StringTensor::numel() const {
   if (meta_.is_scalar) {
@@ -40,43 +38,52 @@ int64_t StringTensor::numel() const {
 }
 
 bool StringTensor::IsSharedWith(const StringTensor& b) const {
-  return storage_.get() == b.storage_.get() && storage_.get() != nullptr;
+  return holder_ && holder_ == b.Holder();
 }
 
-dtype::pstring* StringTensor::mutable_data(size_t request_bytes /* = 0 */) {
-  PADDLE_ENFORCE(
-      valid(),
-      paddle::platform::errors::PreconditionNotMet(
-          "The meta data must be valid when call the mutable data function."));
+const Place& StringTensor::place() const {
   PADDLE_ENFORCE_NOT_NULL(
-      storage_,
+      holder_,
       paddle::platform::errors::PreconditionNotMet(
-          "The storage must be valid when call the mutable data function."));
-  size_t bytes = numel() * SizeOf(dtype());
-  if (request_bytes) {
-    PADDLE_ENFORCE_GE(request_bytes,
-                      bytes,
-                      paddle::platform::errors::InvalidArgument(
-                          "The reserved size %d should be enough to meet the "
-                          "volume required by metadata %d.",
-                          request_bytes,
-                          bytes));
-    bytes = request_bytes;
+          "Tensor not initialized yet when DenseTensor::place() is called."));
+  return holder_->place();
+}
+
+dtype::pstring* StringTensor::mutable_data(const paddle::platform::Place& place,
+                                           size_t request_bytes /* = 0 */) {
+  PADDLE_ENFORCE_GE(
+      numel(),
+      0,
+      paddle::platform::errors::PreconditionNotMet(
+          "The Tensor's element number must be equal or greater than zero. "
+          "The Tensor's shape is [",
+          dims(),
+          "] now"));
+  size_t size = numel() * SizeOf(dtype());
+  if (request_bytes && (request_bytes > size)) {
+    size = request_bytes;
   }
-  if (storage_->size() < bytes || storage_->size() == 0) {
-    VLOG(10) << "mutbale data realloc, original size: " << storage_->size()
-             << ", new size: " << bytes;
-    storage_->Realloc(bytes);
+
+  /* some versions of boost::variant don't have operator!= */
+  if (holder_ == nullptr || !(holder_->place() == place) ||
+      holder_->size() < size + meta_.offset) {
+    holder_.reset();
+    holder_ = paddle::memory::AllocShared(place, size);
+    // Initialize the allocated bytes
+    init_holder();
+    meta_.offset = 0;
   }
-  return reinterpret_cast<dtype::pstring*>(storage_->data());
+  return reinterpret_cast<dtype::pstring*>(
+      reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset);
 }
 
 const dtype::pstring* StringTensor::data() const {
   PADDLE_ENFORCE_NOT_NULL(
-      storage_,
+      holder_,
       paddle::platform::errors::PreconditionNotMet(
           "The storage must be valid when call the mutable data function."));
-  return reinterpret_cast<dtype::pstring*>(storage_->data());
+  return reinterpret_cast<dtype::pstring*>(
+      reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset);
 }
 
 void StringTensor::set_meta(StringTensorMeta&& meta) {
@@ -87,14 +94,41 @@ void StringTensor::set_meta(StringTensorMeta&& meta) {
   meta_ = std::move(meta);
 }
 
+void StringTensor::set_meta(const StringTensorMeta& meta) {
+  PADDLE_ENFORCE(
+      meta.valid(),
+      paddle::platform::errors::InvalidArgument(
+          "Input meta is invalid, please check the meta attribute."));
+  meta_.dims = meta.dims;
+  meta_.is_scalar = meta.is_scalar;
+  meta_.offset = meta.offset;
+}
+
 void StringTensor::ResizeAndAllocate(const DDim& dims) {
   meta_.dims = dims;
-  mutable_data();
+  if (holder_ != nullptr && place().GetType() != AllocationType::UNDEFINED) {
+    mutable_data(place());
+  }
 }
 
 StringTensor& StringTensor::Resize(const DDim& dims) {
   meta_.dims = dims;
   return *this;
+}
+// TODO(zhoushunjie): need to remove it for general space
+void StringTensor::init_holder() {
+  void* ptr = holder_->ptr();
+  auto& place = holder_->place();
+  auto bytes_size = holder_->size();
+  if (paddle::platform::is_cpu_place(place)) {
+    std::memset(ptr, 0, bytes_size);
+  } else if (paddle::platform::is_gpu_place(place)) {
+#ifdef PADDLE_WITH_HIP
+    hipMemset(ptr, 0, bytes_size);
+#else
+    cudaMemset(ptr, 0, bytes_size);
+#endif
+  }
 }
 
 }  // namespace pten

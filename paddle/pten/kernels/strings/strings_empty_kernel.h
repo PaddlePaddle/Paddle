@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/string_tensor.h"
@@ -35,10 +36,9 @@ void EmptyLikeKernel(const Context& dev_ctx, StringTensor* out);
 // all kernel api call Empty here instead of making tensor self
 template <typename Context>
 StringTensor Empty(const Context& dev_ctx, StringTensorMeta&& meta) {
-  pten::StringTensor string_out(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(
-          dev_ctx.GetPlace()),
-      std::move(meta));
+  auto allocator = std::make_unique<paddle::experimental::DefaultAllocator>(
+      dev_ctx.GetPlace());
+  pten::StringTensor string_out(allocator.get(), std::move(meta));
   return string_out;
 }
 

@@ -66,7 +66,7 @@ TEST(DEV_API, strings_cast_convert) {
   const DDim dims({1, 2});
   StringTensorMeta meta(dims);
   const auto string_allocator =
-      std::make_unique<paddle::experimental::StringAllocator>(gpu0);
+      std::make_unique<paddle::experimental::DefaultAllocator>(gpu0);
   const auto alloc = string_allocator.get();
   StringTensor dense_x(alloc, meta);
 
@@ -90,7 +90,7 @@ TEST(DEV_API, strings_cast_convert) {
   cudaMalloc(&gpu_str_arr, 2 * sizeof(char*));
   cudaMemcpy(gpu_str_arr, str_arr, 2 * sizeof(char*), cudaMemcpyHostToDevice);
 
-  pstring* dense_x_data = dense_x.mutable_data();
+  pstring* dense_x_data = dense_x.mutable_data(gpu0);
   CopyFromVec<<<1, 32>>>(dense_x_data, gpu_str_arr, 2);
   // 2. get expected results
   std::string expected_results[] = {short_str, short_str, long_str, long_str};
@@ -114,10 +114,10 @@ TEST(DEV_API, strings_cast_convert) {
   ASSERT_EQ(dense_lower_out.numel(), 2);
   ASSERT_EQ(dense_upper_out.numel(), 2);
   dense_lower_out.data()[0];
-  pstring* result_strs[] = {dense_lower_out.mutable_data(),
-                            dense_upper_out.mutable_data(),
-                            dense_lower_out.mutable_data() + 1,
-                            dense_upper_out.mutable_data() + 1};
+  pstring* result_strs[] = {dense_lower_out.mutable_data(gpu0),
+                            dense_upper_out.mutable_data(gpu0),
+                            dense_lower_out.mutable_data(gpu0) + 1,
+                            dense_upper_out.mutable_data(gpu0) + 1};
   pstring** gpu_result_strs;
   cudaMalloc(&gpu_result_strs, 4 * sizeof(pstring*));
   cudaMemcpy(gpu_result_strs,
@@ -159,7 +159,7 @@ TEST(DEV_API, strings_cast_convert) {
 //   StringTensorMeta meta(dims);
 
 //   const auto string_allocator =
-//       std::make_unique<paddle::experimental::StringAllocator>(gpu0);
+//       std::make_unique<paddle::experimental::DefaultAllocator>(gpu0);
 //   const auto alloc = string_allocator.get();
 //   StringTensor dense_x(alloc, meta);
 

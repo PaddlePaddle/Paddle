@@ -33,21 +33,21 @@ TEST(DEV_API, strings_cast_convert) {
   const DDim dims({1, 2});
   StringTensorMeta meta(dims);
   const auto string_allocator =
-      std::make_unique<paddle::experimental::StringAllocator>(
+      std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace());
   const auto alloc = string_allocator.get();
+  paddle::platform::DeviceContextPool& pool =
+      paddle::platform::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
+
   StringTensor dense_x(alloc, meta);
 
   std::string short_str = "A Short Pstring.";
   std::string long_str = "A Large Pstring Whose Length Is Longer Than 22.";
 
-  pstring* dense_x_data = dense_x.mutable_data();
+  pstring* dense_x_data = dense_x.mutable_data(dev_ctx->GetPlace());
   dense_x_data[0] = short_str;
   dense_x_data[1] = long_str;
-
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
 
   // 2. get expected results
   std::string expected_results[] = {short_str, short_str, long_str, long_str};
@@ -87,21 +87,20 @@ TEST(DEV_API, strings_cast_convert_utf8) {
   // 1. create tensor
   const DDim dims({1, 1});
   StringTensorMeta meta(dims);
+  paddle::platform::DeviceContextPool& pool =
+      paddle::platform::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
 
   const auto string_allocator =
-      std::make_unique<paddle::experimental::StringAllocator>(
+      std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace());
   const auto alloc = string_allocator.get();
   StringTensor dense_x(alloc, meta);
 
   std::string utf8_str = "óÓsscHloëË";
 
-  pstring* dense_x_data = dense_x.mutable_data();
+  pstring* dense_x_data = dense_x.mutable_data(dev_ctx->GetPlace());
   dense_x_data[0] = utf8_str;
-
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
 
   // 2. get expected results
   std::string expected_results[] = {"óósschloëë", "ÓÓSSCHLOËË"};

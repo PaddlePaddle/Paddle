@@ -26,7 +26,7 @@ TEST(string_tensor, ctor) {
   const DDim dims({1, 2});
   StringTensorMeta meta(dims);
   const auto string_allocator =
-      std::make_unique<paddle::experimental::StringAllocator>(
+      std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace());
   const auto alloc = string_allocator.get();
   auto check_string_tensor = [](const StringTensor& t,
@@ -46,7 +46,8 @@ TEST(string_tensor, ctor) {
   pstring pshort_str = pstring("A short pstring.");
   pstring plong_str =
       pstring("A large pstring whose length is longer than 22.");
-  pstring* data = tensor_0.mutable_data();
+  pstring* data = tensor_0.mutable_data(tensor_0.place());
+
   // need to init all pstrings, unless it will occur some unexpected segment
   // faults
   // memset(reinterpret_cast<char*>(data), 0, tensor_0.capacity());
