@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include <mutex>
-#include <set>
+#include <string>
+#include <unordered_set>
 
 #include "paddle/pten/core/compat/arg_map_context.h"
 #include "paddle/pten/core/enforce.h"
@@ -32,15 +32,15 @@ namespace pten {
  * after 2.0, and can no longer be occupied by the previously abandoned ops.
  * They are marked here uniformly.
  */
-const std::set<std::string> deprecated_op_names({"flatten",
-                                                 "flatten_grad",
-                                                 "matmul",
-                                                 "matmul_grad",
-                                                 "matmul_grad_grad"
-                                                 "mean",
-                                                 "reshape",
-                                                 "reshape_grad",
-                                                 "sum"});
+const std::unordered_set<std::string> deprecated_op_names({"flatten",
+                                                           "flatten_grad",
+                                                           "matmul",
+                                                           "matmul_grad",
+                                                           "matmul_grad_grad",
+                                                           "mean",
+                                                           "reshape",
+                                                           "reshape_grad",
+                                                           "sum"});
 
 class DefaultKernelSignatureMap {
  public:
@@ -102,30 +102,9 @@ class OpUtilsMap {
     arg_mapping_fn_map_.insert({std::move(op_type), std::move(fn)});
   }
 
-  std::string GetBaseKernelName(const std::string& op_type) const {
-    if (deprecated_op_names.count(op_type) != 0UL) {
-      return "deprecated";
-    }
-    auto it = name_map_.find(op_type);
-    if (it == name_map_.end()) {
-      return op_type;
-    } else {
-      return it->second;
-    }
-  }
+  std::string GetBaseKernelName(const std::string& op_type) const;
 
-  ArgumentMappingFn GetArgumentMappingFn(const std::string& op_type) const {
-    auto it = arg_mapping_fn_map_.find(op_type);
-    if (it == arg_mapping_fn_map_.end()) {
-      auto func =
-          [op_type](const ArgumentMappingContext& ctx) -> KernelSignature {
-        return DefaultKernelSignatureMap::Instance().Get(op_type);
-      };
-      return func;
-    } else {
-      return it->second;
-    }
-  }
+  ArgumentMappingFn GetArgumentMappingFn(const std::string& op_type) const;
 
  private:
   OpUtilsMap() = default;
