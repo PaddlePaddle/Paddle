@@ -48,9 +48,6 @@ class TestFCMishMkldnnFusePass(PassAutoScanTest):
             fc_bias_shape.insert(0, 1)
         fc_bias_shape = [2, ]
 
-        scale = draw(st.floats(min_value=0, max_value=10)),
-        offset = draw(st.floats(min_value=0, max_value=10))
-
         ops_config = [{
             "op_type": "fc",
             "op_inputs": {
@@ -76,8 +73,6 @@ class TestFCMishMkldnnFusePass(PassAutoScanTest):
                 "Out": ["mish_output"]
             },
             "op_attrs": {
-                "scale": scale,
-                "offset": offset
             },
         }]
 

@@ -45,8 +45,6 @@ class TestConvMishMkldnnFusePass(PassAutoScanTest):
         groups = draw(st.sampled_from([1, 2, 4]))
         paddings = draw(st.sampled_from([[0, 3], [1, 2, 3, 4]]))
         strides = draw(st.sampled_from([[1, 1], [2, 2], [1, 2]]))
-        scale = draw(st.floats(min_value=0, max_value=10))
-        offset = draw(st.floats(min_value=0, max_value=10))
         batch_size = draw(st.integers(min_value=1, max_value=4))
 
         def generate_input():
@@ -87,8 +85,6 @@ class TestConvMishMkldnnFusePass(PassAutoScanTest):
                 "Out": ["mish_output"]
             },
             "op_attrs": {
-                "scale": scale,
-                "offset": offset
             },
         }]
 
