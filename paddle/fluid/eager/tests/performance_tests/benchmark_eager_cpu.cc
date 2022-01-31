@@ -36,11 +36,6 @@
 using namespace egr;            // NOLINT
 using namespace egr_utils_api;  // NOLINT
 
-// Disable pten path
-DECLARE_bool(run_pten_kernel);
-
-TEST(Benchmark, Init) { FLAGS_run_pten_kernel = false; }
-
 TEST(Benchmark, EagerScaleCPU) {
   // Prepare Device Contexts
   eager_test::InitEnv(paddle::platform::CPUPlace());
