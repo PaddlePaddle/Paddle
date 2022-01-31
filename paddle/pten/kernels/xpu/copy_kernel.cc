@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/pten/backends/xpu/xpu_context.h"
 #include "paddle/pten/common/data_type.h"
-#include "paddle/pten/core/convert_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/kernel_registry.h"
 
 // See Note [ Why still include the fluid headers? ]
@@ -30,7 +30,7 @@ void Copy(const Context& dev_ctx,
           bool blocking,
           DenseTensor* dst) {
   auto* src_ptr = src.data();
-  auto* dst_ptr = dst->mutable_data();
+  auto* dst_ptr = dev_ctx.Alloc(dst);
   const auto& src_place = src.place();
   const auto& dst_place = dst->place();
 

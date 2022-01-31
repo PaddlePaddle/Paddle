@@ -90,9 +90,9 @@ const std::vector<GradSlotMeta>& GradNodeBase::OutputMeta() const {
   return bwd_out_meta_;
 }
 
-void GradNodeBase::SetGradInMeta(const std::vector<AutogradMeta*>& fwd_out,
+void GradNodeBase::SetGradInMeta(std::vector<AutogradMeta*>* fwd_out,
                                  size_t slot_rank) {
-  size_t slot_size = fwd_out.size();
+  size_t slot_size = fwd_out->size();
   PADDLE_ENFORCE_LE(
       slot_rank, (bwd_in_meta_.size() - 1),
       paddle::platform::errors::InvalidArgument(
@@ -108,21 +108,20 @@ void GradNodeBase::SetGradInMeta(const std::vector<AutogradMeta*>& fwd_out,
   // Init stop gradient vector before use to avoid push back
   meta.Init(slot_size);
   for (size_t i = 0; i < slot_size; i++) {
-    PADDLE_ENFORCE_NOT_NULL(fwd_out[i],
+    PADDLE_ENFORCE_NOT_NULL((*fwd_out)[i],
                             paddle::platform::errors::PreconditionNotMet(
                                 "Bwd_in_meta should only be called while "
                                 "autograd_meta is not null. If you got this "
                                 "error, it indicates bugs in framework."));
-    if (fwd_out[i]->StopGradient()) {
+    if ((*fwd_out)[i]->StopGradient()) {
       // Set Stop Gradient only when its true or non-initialized autograd_meta,
       // since all default value is false.
-      meta.SetStopGradient(i, fwd_out[i]->StopGradient());
+      meta.SetStopGradient(i, (*fwd_out)[i]->StopGradient());
     }
   }
 }
 
-void GradNodeBase::SetGradInMeta(const AutogradMeta& fwd_out,
-                                 size_t slot_rank) {
+void GradNodeBase::SetGradInMeta(AutogradMeta* fwd_out, size_t slot_rank) {
   PADDLE_ENFORCE_LE(
       slot_rank, (bwd_in_meta_.size() - 1),
       paddle::platform::errors::InvalidArgument(
@@ -138,12 +137,12 @@ void GradNodeBase::SetGradInMeta(const AutogradMeta& fwd_out,
   // Init stop gradient vector before use to avoid push back
   VLOG(7) << "Init bwd_in_meta_ with slot rank: " << slot_rank;
   meta.Init(1);
-  meta.SetStopGradient(0, fwd_out.StopGradient());
+  meta.SetStopGradient(0, fwd_out->StopGradient());
 }
 
-void GradNodeBase::SetGradOutMeta(const std::vector<AutogradMeta*>& fwd_in,
+void GradNodeBase::SetGradOutMeta(std::vector<AutogradMeta*>* fwd_in,
                                   size_t slot_rank) {
-  size_t slot_size = fwd_in.size();
+  size_t slot_size = fwd_in->size();
   PADDLE_ENFORCE_LE(
       slot_rank, (bwd_out_meta_.size() - 1),
       paddle::platform::errors::InvalidArgument(
@@ -159,20 +158,19 @@ void GradNodeBase::SetGradOutMeta(const std::vector<AutogradMeta*>& fwd_in,
   // Init stop gradient vector before use to avoid push back
   meta.Init(slot_size);
   for (size_t i = 0; i < slot_size; i++) {
-    if (!fwd_in[i]) {
+    if (!(*fwd_in)[i]) {
       meta.SetStopGradient(i, true);
       continue;
     }
-    if (fwd_in[i]->StopGradient()) {
+    if ((*fwd_in)[i]->StopGradient()) {
       // Set Stop Gradient only when its true or non-initialized autograd_meta,
       // since all default value is false.
-      meta.SetStopGradient(i, fwd_in[i]->StopGradient());
+      meta.SetStopGradient(i, (*fwd_in)[i]->StopGradient());
     }
   }
 }
 
-void GradNodeBase::SetGradOutMeta(const AutogradMeta& fwd_in,
-                                  size_t slot_rank) {
+void GradNodeBase::SetGradOutMeta(AutogradMeta* fwd_in, size_t slot_rank) {
   PADDLE_ENFORCE_LE(
       (slot_rank + 1), bwd_out_meta_.size(),
       paddle::platform::errors::InvalidArgument(
@@ -187,7 +185,11 @@ void GradNodeBase::SetGradOutMeta(const AutogradMeta& fwd_in,
                         "error, it indicates bugs in framework."));
   // Init stop gradient vector before use to avoid push back
   meta.Init(1);
-  meta.SetStopGradient(0, fwd_in.StopGradient());
+  if (fwd_in) {
+    meta.SetStopGradient(0, fwd_in->StopGradient());
+  } else {
+    meta.SetStopGradient(0, true);
+  }
 }
 
 void GradNodeBase::SetDefaultGradInOutMeta() {

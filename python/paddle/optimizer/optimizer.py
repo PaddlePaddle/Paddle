@@ -91,7 +91,7 @@ class Optimizer(object):
             loss = paddle.mean(out)
             adam = paddle.optimizer.Adam(learning_rate=0.1,
                     parameters=linear.parameters())
-            out.backward()
+            loss.backward()
             adam.step()
             adam.clear_grad()
 
@@ -114,7 +114,7 @@ class Optimizer(object):
                     'learning_rate': 0.1
                 }],
                 weight_decay=0.01)                   
-            out.backward()
+            loss.backward()
             sgd.step()
             sgd.clear_grad()
 
@@ -256,6 +256,10 @@ class Optimizer(object):
         for k, v in self._accumulators.items():
             for para_name, var_tmp in v.items():
                 state_dict[var_tmp.name] = var_tmp
+        # if has master weight and then save master weight
+        if hasattr(self, "_master_weights"):
+            if len(self._master_weights) != 0:
+                state_dict["master_weights"] = self._master_weights
         # global step if use lr decay
         if isinstance(self._learning_rate, LRScheduler):
             state_dict["LR_Scheduler"] = self._learning_rate.state_dict()
@@ -304,6 +308,10 @@ class Optimizer(object):
         state_dict = state_dict.copy()
         if "LR_Scheduler" in state_dict:
             state_dict.pop("LR_Scheduler")
+        if "master_weights" in state_dict:
+            if hasattr(self, "_master_weights"):
+                self._master_weights = state_dict["master_weights"]
+            state_dict.pop("master_weights")
         self._accumulators_holder = state_dict
         for k, v in self._accumulators.items():
             for para_name, var_tmp in v.items():
@@ -424,16 +432,21 @@ class Optimizer(object):
         self._learning_rate = float(value)
         current_lr = self._global_learning_rate()
         if current_lr is not None:
-            global_block = framework.default_main_program().global_block()
-            global_block.append_op(
-                type='fill_constant',
-                outputs={'Out': [current_lr]},
-                attrs={
-                    'dtype': current_lr.dtype,
-                    'shape': list(current_lr.shape),
-                    'value': float(value)
-                },
-                stop_gradient=True)
+            if framework.in_dygraph_mode():
+                _C_ops.fill_constant(current_lr, 'value',
+                                     float(value), 'dtype', current_lr.dtype,
+                                     'shape', list(current_lr.shape))
+            else:
+                global_block = framework.default_main_program().global_block()
+                global_block.append_op(
+                    type='fill_constant',
+                    outputs={'Out': [current_lr]},
+                    attrs={
+                        'dtype': current_lr.dtype,
+                        'shape': list(current_lr.shape),
+                        'value': float(value)
+                    },
+                    stop_gradient=True)
 
     def get_lr(self):
         """
@@ -590,7 +603,9 @@ class Optimizer(object):
             name=var_name,
             persistable=True,
             dtype=dtype or param.dtype,
-            type=param.type if type is None else type,
+            type=core.VarDesc.VarType.LOD_TENSOR
+            if framework._in_eager_mode() else (param.type
+                                                if type is None else type),
             shape=shape,
             belong_to_optimizer=True)
         if device is None:
@@ -1138,7 +1153,7 @@ class Optimizer(object):
                 adam = paddle.optimizer.Adam(learning_rate=0.1,
                         parameters=linear.parameters(),
                         weight_decay=0.01)
-                out.backward()
+                loss.backward()
                 adam.minimize(loss)
                 adam.clear_grad()
 

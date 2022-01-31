@@ -83,9 +83,9 @@ class TestBase(IPUOpTest):
             feed = self.feed_ipu if run_ipu else self.feed_cpu
             if run_ipu:
                 feed_list = self.feed_list
-                ipu_strategy = compiler.get_ipu_strategy()
-                ipu_strategy.is_training = False
-                ipu_strategy.enable_fp16 = True
+                ipu_strategy = paddle.static.IpuStrategy()
+                ipu_strategy.SetGraphConfig(is_training=False)
+                ipu_strategy.SetHalfConfig(enable_fp16=True)
                 program = compiler.IPUCompiledProgram(
                     main_prog,
                     ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)

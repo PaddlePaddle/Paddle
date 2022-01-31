@@ -26,7 +26,7 @@ void ConjKernel(const Context& dev_ctx,
                 DenseTensor* out) {
   auto numel = x.numel();
   auto* x_data = x.data<T>();
-  auto* out_data = out->mutable_data<T>();
+  auto* out_data = dev_ctx.template Alloc<T>(out);
 
   paddle::platform::ForRange<Context> for_range(dev_ctx, numel);
   paddle::operators::math::ConjFunctor<T> functor(x_data, numel, out_data);

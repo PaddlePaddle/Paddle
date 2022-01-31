@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/fill_any_like_op.h"
 
+#include "paddle/pten/kernels/full_kernel.h"
+
 namespace paddle {
 namespace operators {
 
@@ -56,13 +58,12 @@ class FillAnyLikeXPUKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx =
         context.template device_context<paddle::platform::XPUDeviceContext>();
-    auto out_data = reinterpret_cast<XPUInTDType*>(out->data<T>());
-    int ret = xpu::constant(dev_ctx.x_context(), out_data, out->numel(),
-                            static_cast<XPUInTDType>(value));
-    PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                      platform::errors::External(
-                          "XPU CONSTANT API return wrong value[%d %s].", ret,
-                          XPUAPIErrorMsg[ret]));
+
+    // call pten kernel
+    pten::FullLikeKernel<T>(
+        static_cast<const typename paddle::framework::ConvertToPtenContext<
+            paddle::platform::XPUDeviceContext>::TYPE&>(dev_ctx),
+        value, out);
   }
 };
 
