@@ -47,50 +47,50 @@ class TestFCMishMkldnnFusePass(PassAutoScanTest):
         if draw(st.booleans()):
             fc_bias_shape.insert(0, 1)
         fc_bias_shape = [2, ]
-        fc_out_shape = x_shape[:in_num_col_dims] + w_shape[1:]
-        # 4. Generate legal attr:axis/shape of elementwise_add
-        add_bias_shape = fc_out_shape[:]
-        axis = draw(st.integers(min_value=-1, max_value=0))
-        # 5. Generate legal shape of layer_norm
-        begin_norm_axis = draw(
-            st.integers(
-                min_value=1, max_value=len(fc_out_shape) - 1))
-        layer_norm_shape = [int(np.prod(fc_out_shape[begin_norm_axis:]))]
-        epsilon = 1e-5
 
-        fc_op = OpConfig(
-            "fc",
-            inputs={"Input": ["fc_x"],
-                    "W": ["fc_w"],
-                    "Bias": ["fc_bias"]},
-            outputs={"Out": ["fc_out"]},
-            in_num_col_dims=in_num_col_dims,
-            padding_weights=False,
-            activation_type="",
-            use_quantizer=False,
-            use_mkldnn=False, )
-        mish_op = OpConfig(
-            "mish",
-            inputs={"X": ["fc_out"]},
-            outputs={"Out": ["mish_output"]},
-            axis=axis,
-            scale=draw(st.floats(
-                min_value=0, max_value=10)),
-            offset=draw(st.floats(
-                min_value=0, max_value=10)), )
+        scale = draw(st.floats(min_value=0, max_value=10)),
+        offset = draw(st.floats(min_value=0, max_value=10))
 
-        ops = [fc_op, mish_op]
+        ops_config = [{
+            "op_type": "fc",
+            "op_inputs": {
+                "Input": ["fc_x"],
+                "W": ["fc_w"],
+                "Bias": ["fc_bias"]
+            },
+            "op_outputs": {
+                "Out": ["fc_out"]
+            },
+            "op_attrs": {
+                "activation_type": "",
+                "padding_weights": False,
+                "in_num_col_dims": in_num_col_dims,
+                "use_mkldnn": True
+            }
+        }, {
+            "op_type": "mish",
+            "op_inputs": {
+                "X": ["fc_out"]
+            },
+            "op_outputs": {
+                "Out": ["mish_output"]
+            },
+            "op_attrs": {
+                "scale": scale,
+                "offset": offset
+            },
+        }]
+
+        ops = self.generate_op_config(ops_config)
+
         program_config = ProgramConfig(
             ops=ops,
             weights={
                 "fc_w": TensorConfig(shape=w_shape),
                 "fc_bias": TensorConfig(shape=fc_bias_shape),
-                "add_bias": TensorConfig(shape=add_bias_shape),
-                "scale": TensorConfig(shape=layer_norm_shape),
-                "layer_norm_bias": TensorConfig(shape=layer_norm_shape),
             },
             inputs={"fc_x": TensorConfig(shape=x_shape), },
-            outputs=ops[1].outputs["Out"], )
+            outputs=["mish_output"])
         return program_config
 
     def sample_predictor_configs(self, program_config):
