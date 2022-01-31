@@ -128,6 +128,16 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext,
                               paddle::platform::complex<double>>);
 REGISTER_OP_CPU_KERNEL(
+    elementwise_add_one_dnn,
+    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext,
+                              paddle::platform::complex<float>>,
+    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext,
+                              paddle::platform::complex<double>>);
+REGISTER_OP_CPU_KERNEL(
     elementwise_add_grad,
     ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, double>,
