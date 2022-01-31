@@ -80,16 +80,18 @@ class OpUtilsMap {
   static OpUtilsMap& Instance();
 
   bool Contains(const std::string& op_type) const {
-    return name_map_.count(op_type) || arg_mapping_fn_map_.count(op_type);
+    return base_kernel_name_map_.count(op_type) ||
+           arg_mapping_fn_map_.count(op_type);
   }
 
   void InsertBaseKernelName(std::string op_type, std::string base_kernel_name) {
     PADDLE_ENFORCE_EQ(
-        name_map_.count(op_type),
+        base_kernel_name_map_.count(op_type),
         0UL,
         pten::errors::AlreadyExists(
             "Operator (%s)'s api name has been registered.", op_type));
-    name_map_.insert({std::move(op_type), std::move(base_kernel_name)});
+    base_kernel_name_map_.insert(
+        {std::move(op_type), std::move(base_kernel_name)});
   }
 
   void InsertArgumentMappingFn(std::string op_type, ArgumentMappingFn fn) {
@@ -106,10 +108,15 @@ class OpUtilsMap {
 
   ArgumentMappingFn GetArgumentMappingFn(const std::string& op_type) const;
 
+  const paddle::flat_hash_map<std::string, std::string>& base_kernel_name_map()
+      const {
+    return base_kernel_name_map_;
+  }
+
  private:
   OpUtilsMap() = default;
 
-  paddle::flat_hash_map<std::string, std::string> name_map_;
+  paddle::flat_hash_map<std::string, std::string> base_kernel_name_map_;
   paddle::flat_hash_map<std::string, ArgumentMappingFn> arg_mapping_fn_map_;
 
   DISABLE_COPY_AND_ASSIGN(OpUtilsMap);

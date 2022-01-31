@@ -30,8 +30,8 @@ std::string OpUtilsMap::GetBaseKernelName(const std::string& op_type) const {
   if (deprecated_op_names.find(op_type) != deprecated_op_names.end()) {
     return "deprecated";
   }
-  auto it = name_map_.find(op_type);
-  if (it == name_map_.end()) {
+  auto it = base_kernel_name_map_.find(op_type);
+  if (it == base_kernel_name_map_.end()) {
     return op_type;
   } else {
     return it->second;

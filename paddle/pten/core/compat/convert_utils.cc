@@ -239,12 +239,13 @@ std::string TransToPtenKernelName(const std::string& fluid_op_name) {
 }
 
 const std::string& TransToFluidOpName(const std::string& pten_kernel_name) {
-  auto it = std::find_if(kernel_alias_name_map.begin(),
-                         kernel_alias_name_map.end(),
+  auto& base_kernel_name_map = OpUtilsMap::Instance().base_kernel_name_map();
+  auto it = std::find_if(base_kernel_name_map.begin(),
+                         base_kernel_name_map.end(),
                          [&pten_kernel_name](const auto& pair) {
                            return pair.second == pten_kernel_name;
                          });
-  if (it != kernel_alias_name_map.end()) {
+  if (it != base_kernel_name_map.end()) {
     return it->first;
   }
   return pten_kernel_name;
