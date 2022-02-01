@@ -263,7 +263,7 @@ void CpuPassStrategy::EnableMKLDNN() {
              "matmul_v2_transpose_reshape_fuse_pass",         //
              // Disabled due to topology-dependent speed-up
              //  "fc_mkldnn_pass",
-             "fc_act_mkldnn_fuse_pass",
+             //  "fc_act_mkldnn_fuse_pass",
              "batch_norm_act_fuse_pass",              //
              "softplus_activation_mkldnn_fuse_pass",  //
              // TODO(intel): Please fix the bug on windows.
