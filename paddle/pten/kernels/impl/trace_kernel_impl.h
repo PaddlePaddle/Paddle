@@ -170,7 +170,7 @@ DenseTensor Diagonal(const DeviceContext& context,
 #endif
 
     // auto& dev_ctx = context.template device_context<DeviceContext>();
-    platform::ForRange<DeviceContext> for_range(context, diag.numel());
+    paddle::platform::ForRange<DeviceContext> for_range(context, diag.numel());
     DiagonalFunctor<T> functor(
         input_data, diag_arr, ret_arr, pos, dim_size, diag_data);
     for_range(functor);
@@ -230,7 +230,7 @@ void TraceGradKernelImpl(const Context& ctx,
     const auto* input_arr = input_stride.Get();
 #endif
 
-    platform::ForRange<Context> for_range(ctx, in_grad->numel());
+    paddle::platform::ForRange<Context> for_range(ctx, in_grad->numel());
     TraceGradFunctor<T> functor(out_data,
                                 output_arr,
                                 input_arr,
