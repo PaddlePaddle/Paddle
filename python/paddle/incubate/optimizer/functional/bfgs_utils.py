@@ -31,10 +31,10 @@ def ternary(cond, x, y):
 
     return paddle.where(cond, x, y)
 
-def is_minus_inf(f):
+def is_negative_inf(f):
     return paddle.isinf(f) & (f < 0)
 
-def is_bad_point(f, g):
+def is_blowup(f, g):
     return (paddle.isinf(f) & (f > 0)) | paddle.isnan(f) | paddle.isnan(g)
 
 def vjp(f, x, v=None, create_graph=False):
@@ -227,14 +227,14 @@ def any_active_with_predicates(state, *predicates):
 def active_state(state):
     return state == 0
 
-
 def converged_state(state):
     return state == 1
-
 
 def failed_state(state):
     return state == 2
 
+def blowup_state(state):
+    return state == 3
 
 def make_const(tensor_like, value, dtype=None):
     r"""Makes a tensor filled with specified constant value.
@@ -275,10 +275,12 @@ def make_state(tensor_like, value='active'):
         state = paddle.zeros_like(tensor_like, dtype='int32')
     elif value is 'converged':
         state = paddle.ones_like(tensor_like, dtype='int32')
-    else:
-        assert value is 'failed'
+    elif value is 'failed':
         state = paddle.ones_like(tensor_like, dtype='int32') + 1
-
+    elif value is 'blowup':
+        state = paddle.ones_like(tensor_like, dtype='int32') + 2
+    else:
+        assert False, f'Invalid state: {value}'
     return state
 
 
@@ -300,8 +302,12 @@ def update_state(input_state, predicate, new_state):
 
     if new_state is 'converged':
         increments = paddle.to_tensor(predicate, dtype='int32')
-    else:
+    elif new_state is 'failed':
         increments = paddle.to_tensor(predicate, dtype='int32') * 2
+    elif new_state is 'blowup':
+        increments = paddle.to_tensor(predicate, dtype='int32') * 3
+    else:
+        assert False, f'Invalid state: {new_state}'
 
     output_state = paddle.where(input_state == 0, increments, input_state)
     return output_state

@@ -18,7 +18,7 @@ from .bfgs_utils import vjp
 from .bfgs_utils import (StopCounter, StopCounterException, vnorm_inf, vnorm_p,
                          ternary, make_const, update_state, any_active,
                          active_state, converged_state, failed_state,
-                         is_bad_point, is_minus_inf,
+                         is_blowup, is_negative_inf,
                          SearchState, LSStopException,
                          any_active_with_predicates, all_active_with_predicates)
 
@@ -82,7 +82,7 @@ def initial(state):
     return c
 
 
-def bracket(state, phi, c, stop):
+def bracket(state, phi, c, stop, neg_inf, blowup):
     r"""Generates opposite slope interval.
         
     Args:
@@ -113,12 +113,13 @@ def bracket(state, phi, c, stop):
 
     # f = phi(c), g = phi'(c)
     f, g = state.func_and_deriv(phi, c)
-    minus_inf, bad_point = is_minus_inf(f), is_bad_point(f, g)
+    neg_inf |= is_negative_inf(f)
+    blowup |= is_blowup(f, g)
 
     # Initializes condition B3
     B3_cond = (g < .0) & (f < f0 + epsilon_k)
 
-    expanding_pred = B3_cond & ~minus_inf & ~bad_point
+    expanding_pred = B3_cond & ~stop & ~neg_inf & ~blowup
 
     while any_active_with_predicates(state.state, expanding_pred):
         # Sets [prev_c, c] to [c, rho*c] if B3 is true.
@@ -127,30 +128,30 @@ def bracket(state, phi, c, stop):
         print(f'expanding  c: {c.numpy()}')
         # Calculates the function values and gradients.
         f, g = state.func_and_deriv(phi, c)
-        minus_inf, bad_point = is_minus_inf(f), is_bad_point(f, g)
+        neg_inf |= is_negative_inf(f)
+        blowup |= is_blowup(f, g)
         B3_cond = (g < .0) & (f < f0 + epsilon_k)
-        expanding_pred &= B3_cond & ~minus_inf & ~bad_point
-
-    # Update state in case reaching -inf or bad points.
-
-    stop |= minus_inf | bad_point
-    print(f'bracket stop: {stop}')
-    # state.state = update_state(state.state, minus_inf, 'converged')
-    state.state = update_state(state.state, bad_point, 'failed')
+        expanding_pred &= B3_cond & ~neg_inf & ~blowup
 
     # Narrows down the interval by recursively bisecting it.
     B1_cond = g >= .0
     B2_cond = ~B1_cond & (f >= f0 + epsilon_k)
-    a, b, stop = bisect(state, phi, make_const(c, .0), c, B2_cond, stop)
-    print(f'after bisect stop: {stop}')
+    a, b, stop, neg_inf, blowup = bisect(state,
+                                         phi,
+                                         make_const(c, .0),
+                                         c,
+                                         B2_cond,
+                                         stop,
+                                         neg_inf,
+                                         blowup)
     # Sets [a, _] to [prev_c, _] if B1 holds, [a, _] if B2 holds
     a = ternary(B1_cond, prev_c, a)
     b = ternary(B1_cond, c, b)
 
-    return a, b, stop
+    return a, b, stop, neg_inf, blowup
 
 
-def bisect(state, phi, a, b, ifcond, stop):
+def bisect(state, phi, a, b, ifcond, stop, neg_inf, blowup):
     r"""Bisects to locate opposite slope interval.
     
     Args:
@@ -177,35 +178,28 @@ def bisect(state, phi, a, b, ifcond, stop):
 
     # falling = make_const(f0, True, dtype='bool')
     bisect_pred = ifcond
-    minus_inf, bad_point = None, None
-    while any_active_with_predicates(state.state, bisect_pred):
+    while any_active_with_predicates(state.state, 
+                                     bisect_pred & ~(stop | neg_inf | blowup)):
         # d = (1.0 - theta) * a + theta * b
         d = a + theta * (b - a)
 
         f, g = state.func_and_deriv(phi, d)
-        minus_inf, bad_point = is_minus_inf(f), is_bad_point(f, g)
+        neg_inf |= is_negative_inf(f)
+        blowup |= is_blowup(f, g)
     
         falling = g < .0
         lo = f < f0 + epsilon_k
 
-        bisect_pred = bisect_pred & ~minus_inf & ~bad_point & falling
-        
-        print(f'f = {f.numpy()}   f0 = {f0.numpy()}   eps_k = {epsilon_k.numpy()}')
+        # Condition a.
+        b = ternary(bisect_pred & ~falling, d, b)
+
+        # Condition b and c.
+        bisect_pred = bisect_pred & falling
         a = ternary(bisect_pred & lo, d, a)
         b = ternary(bisect_pred & ~lo, d, b)
         print(f'bisect a: {a.numpy()}    b: {b.numpy()}')
 
-    # Set state to `converged` if -inf is reached.
-    # if minus_inf is not None:
-    #     state.state = update_state(state.state, ifcond & minus_inf, 'converged')
-    if minus_inf is not None:
-        stop |= minus_inf
-    if bad_point is not None:
-        stop |= bad_point
-    # Invalidates the state if a condition does not hold.
-    state.state = update_state(state.state, ifcond & ~bisect_pred, 'failed')
-
-    return a, b, stop
+    return a, b, stop, neg_inf, blowup
 
 
 def secant(state, phi, a, b):
@@ -236,7 +230,7 @@ def secant(state, phi, a, b):
     return c
 
 
-def secant2(state, phi, a, b, ifcond, stop):
+def secant2(state, phi, a, b, stop, neg_inf, blowup):
     r"""Implements the secant2 procedure in the Hager-Zhang method.
 
     Args:
@@ -260,7 +254,8 @@ def secant2(state, phi, a, b, ifcond, stop):
     # S3. Otherwise, [a, b] = [A, B]
     c = secant(state, phi, a, b)
 
-    A, B, stop = update(state, phi, a, b, c, ifcond, stop)
+    A, B, stop, neg_inf, blowup = update(state, phi, a, b, c,
+                                         stop, neg_inf, blowup)
 
     # Boolean tensor each element of which holds the S2 condition 
     S2_cond = c == B
@@ -276,14 +271,15 @@ def secant2(state, phi, a, b, ifcond, stop):
     r = ternary(S3_cond, A, r)
 
     # Outputs of S2 and S3
-    a, b, stop = update(state, phi, A, B, c, ifcond, stop)
+    a, b, stop, neg_inf, blowup = update(state, phi, A, B, c,
+                                         stop, neg_inf, blowup)
 
     # If S2 or S3, returns [a, b], otherwise returns [A, B]
     S2_or_S3 = S2_cond | S3_cond
     a = ternary(S2_or_S3, a, A)
     b = ternary(S2_or_S3, b, B)
 
-    return a, b, stop
+    return a, b, stop, neg_inf, blowup
 
 
 def stopping_condition(state, phi, c, phiprime_0, phi_c=None, phiprime_c=None):
@@ -312,6 +308,8 @@ def stopping_condition(state, phi, c, phiprime_0, phi_c=None, phiprime_c=None):
 
     if phi_c is None or phiprime_c is None:
         phi_c, phiprime_c = state.func_and_deriv(phi, c)
+    
+    neg_inf, blowup = is_negative_inf(phi_c), is_blowup(phi_c, phiprime_c)
 
     # T1 (Wolfe). 
     #   T1.1            phi(c) - phi(0) <= delta * c * phi'(0)
@@ -336,10 +334,10 @@ def stopping_condition(state, phi, c, phiprime_0, phi_c=None, phiprime_c=None):
 
     stopping = wolfe_cond | approx_wolfe_cond
 
-    return stopping
+    return stopping, neg_inf, blowup
 
 
-def update(state, phi, a, b, c, ifcond, stop):
+def update(state, phi, a, b, c, stop, neg_inf, blowup):
     r"""Performs the update procedure in the Hager-Zhang method.
 
     Args:
@@ -367,39 +365,36 @@ def update(state, phi, a, b, c, ifcond, stop):
     #     return Bisect([a, c])
     f, g = state.func_and_deriv(phi, c)
 
+    other_cond = stop | neg_inf | blowup
     # Early returns on U0
     U0_cond = (c > a) == (c > b)
-    if all_active_with_predicates(state.state, ~ifcond | U0_cond):
-        return a, b, stop
+    if all_active_with_predicates(state.state, other_cond | U0_cond):
+        return a, b, stop, neg_inf, blowup
 
     # Early returns if U1 holds
-    U1_cond = g >= .0
-    if all_active_with_predicates(state.state, ~ifcond | (~U0_cond & U1_cond)):
-        return a, c, stop
+    U1_cond = ~U0_cond | (g >= .0)
+    b = ternary(~other_cond & U1_cond, c, b)
+    if all_active_with_predicates(state.state, other_cond | U1_cond):
+        return a, b, stop, neg_inf, blowup
 
     # It's tricky to handle iterative tensor algorithms when control dependence
     # is involved. If naively running two branches in parallel before merging
     # the two control paths, the `invalid` path may have never ended.
     # We use an if-converse predicate to overcome this issue.
-    U3_cond = ~U1_cond & (g < .0) & (f > f0 + epsilon_k)
+    U23_cond = ~U0_cond & (g < .0)
+    U3_cond = U23_cond & (f > f0 + epsilon_k)
 
+    a = ternary(~other_cond & U23_cond, c, a)
     # Bisects [a, c] for the U3 condition
-    A, B, stop = bisect(state, phi, a, c, ifcond & U3_cond, stop)
+    A, B, stop, neg_inf, blowup = bisect(state, phi, a, c, U3_cond,
+                                         stop, neg_inf, blowup)
+    other_cond = stop | neg_inf | blowup
 
-    # Step 1: branches between U2 and U3 
-    U23_cond = f <= f0 + epsilon_k
-    A = ternary(U23_cond, c, A)
-    B = ternary(U23_cond, b, B)
+    # U3 
+    a = ternary(~other_cond & U3_cond, A, a)
+    b = ternary(~other_cond & U3_cond, B, b)
 
-    # Step 2: updates for true U1
-    A = ternary(U1_cond, a, A)
-    B = ternary(U1_cond, c, B)
-
-    # Step 3: in case c is not in [a, b], keeps [a, b]
-    A = ternary(U0_cond, a, A)
-    B = ternary(U0_cond, b, B)
-
-    return A, B, stop
+    return a, b, stop, neg_inf, blowup
 
 
 def hz_linesearch(state,
@@ -603,11 +598,15 @@ def hz_linesearch(state,
     # It's also the gradient of phi    
     deriv = einsum('...i, ...i', gk, pk) if bat else dot(gk, pk)
 
-    # Marks invalid inputs
-    invalid_input = paddle.isinf(fk) | (deriv >= .0)
+    # Make early decisions in case some instances are found to be converged
+    # or failed.
+    neg_inf = is_negative_inf(fk)
+    blowup = is_blowup(fk, deriv)
     rising = deriv >= .0
+    invalid_input = blowup | rising
     print(f'deriv >= 0:  {rising.numpy()}')
     print(f'isinf : {paddle.isinf(fk).numpy()}')
+    state.state = update_state(state.state, neg_inf, 'converged')
     state.state = update_state(state.state, invalid_input, 'failed')
 
     # L0. c = initial(k), [a0, b0] = bracket(c), and j = 0
@@ -620,28 +619,41 @@ def hz_linesearch(state,
     # L3. j = j + 1, [aj, bj] = [a, b], go to L1.
 
     # Initializes stop flags
-    stop = make_const(fk, False, dtype='bool')
+    stop = None
 
     import traceback
     try:
         # Generates initial step sizes
         c = initial(state)
         ls_stepsize = c
-        print(f'ls  \nc: {c.numpy()}')
+        print(f'ls  \nInitial step size: {c.numpy()}')
 
         # Initial stopping test. Those already converged instances are likely
         # to succeed.
-        stop = stopping_condition(state, phi, c, deriv)
+        stop, neg_inf, blowup = stopping_condition(state, phi, c, deriv)
 
         a_j, b_j = None, None
         # Continues if there's line search still active
-        while any_active_with_predicates(state.state, ~stop):
-            # Brackets to find the first interval with opposite slopes
+        while any_active_with_predicates(state.state,
+                                         ~(stop | neg_inf | blowup)):
+            # Finds the first opposite-sloped bracket 
             if a_j is None:
-                a_j, b_j, stop = bracket(state, phi, c, stop)
+                a_j, b_j, stop, neg_inf, blowup = bracket(state,
+                                                          phi,
+                                                          c,
+                                                          stop,
+                                                          neg_inf,
+                                                          blowup)
 
             # Applies secant2 to the located intervals
-            a, b, stop = secant2(state, phi, a_j, b_j, ~stop, stop)
+            a, b, stop, neg_inf, blowup = secant2(state,
+                                                  phi,
+                                                  a_j,
+                                                  b_j,
+                                                  stop,
+                                                  neg_inf,
+                                                  blowup)
+
             print(f'secant2 a: {a.numpy()}     b: {b.numpy()}')
 
             stop |= stopping_condition(state, phi, b, deriv)
