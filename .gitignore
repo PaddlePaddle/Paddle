@@ -8,6 +8,7 @@ paddle/pten/api/*/api.*
 paddle/pten/api/*/backward*
 paddle/pten/include/*
 paddle/pten/extension.h
+paddle/fluid/eager/api/generated/*
 
 *.DS_Store
 *.vs

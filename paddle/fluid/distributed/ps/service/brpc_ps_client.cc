@@ -213,6 +213,7 @@ int32_t BrpcPsClient::initialize() {
   auto &profiler = CostProfiler::instance();
   profiler.register_profiler("pserver_client_pull_dense");
   profiler.register_profiler("pserver_client_pull_sparse");
+  profiler.register_profiler("pserver_client_pull_sparse_param");
   profiler.register_profiler("pserver_client_pull_sparse_local");
   profiler.register_profiler("pserver_client_push_sparse");
   profiler.register_profiler("pserver_client_push_sparse_parse");
@@ -543,6 +544,7 @@ std::future<int32_t> BrpcPsClient::pull_geo_param(size_t table_id,
   return fut;
 }
 
+// for GEO
 std::future<int32_t> BrpcPsClient::push_sparse_param(
     size_t table_id, const uint64_t *keys, const float **update_values,
     size_t num, void *done) {
@@ -558,18 +560,8 @@ std::future<int32_t> BrpcPsClient::push_sparse_param(
   ids.resize(request_call_num);
   value_ptrs.resize(request_call_num);
 
-  const auto &server_param = _config.server_param().downpour_server_param();
-  uint64_t shard_num = FLAGS_pserver_sparse_table_shard_num;
-  for (int i = 0; i < server_param.downpour_table_param_size(); ++i) {
-    const auto &table_param = server_param.downpour_table_param(i);
-    if (table_param.table_id() == table_id) {
-      shard_num = table_param.shard_num();
-      break;
-    }
-  }
-
   for (size_t i = 0; i < num; ++i) {
-    size_t pserver_idx = get_sparse_shard(shard_num, request_call_num, keys[i]);
+    size_t pserver_idx = keys[i] % request_call_num;
     ids[pserver_idx].push_back(keys[i]);
     value_ptrs[pserver_idx].push_back(update_values[i]);
   }
@@ -1003,6 +995,120 @@ std::future<int32_t> BrpcPsClient::pull_sparse(float **select_values,
   return fut;
 }
 
+// for GEO
+std::future<int32_t> BrpcPsClient::pull_sparse_param(float **select_values,
+                                                     size_t table_id,
+                                                     const uint64_t *keys,
+                                                     size_t num,
+                                                     bool is_training) {
+  auto timer = std::make_shared<CostTimer>("pserver_client_pull_sparse_param");
+  size_t request_call_num = _server_channels.size();
+
+  auto shard_sorted_kvs = std::make_shared<
+      std::vector<std::vector<std::pair<uint64_t, float *>>>>();
+  shard_sorted_kvs->resize(request_call_num);
+
+  for (size_t i = 0; i < num; ++i) {
+    size_t shard_id = keys[i] % request_call_num;
+    shard_sorted_kvs->at(shard_id).push_back({keys[i], select_values[i]});
+  }
+
+  auto *accessor = table_accessor(table_id);
+  size_t value_size = accessor->select_size();
+
+  DownpourBrpcClosure *closure = new DownpourBrpcClosure(
+      request_call_num, [shard_sorted_kvs, value_size](void *done) {
+        int ret = 0;
+        auto *closure = reinterpret_cast<DownpourBrpcClosure *>(done);
+        for (size_t i = 0; i < shard_sorted_kvs->size(); ++i) {
+          if (closure->check_response(i, PS_PULL_SPARSE_TABLE) != 0) {
+            ret = -1;
+            break;
+          }
+
+          auto &request_kvs = shard_sorted_kvs->at(i);
+          auto &res_io_buffer = closure->cntl(i)->response_attachment();
+          butil::IOBufBytesIterator io_buffer_itr(res_io_buffer);
+          uint64_t last_key = UINT64_MAX;
+          float *last_value_data = NULL;
+
+          // can remove sort&unique
+          for (size_t kv_idx = 0; kv_idx < request_kvs.size(); ++kv_idx) {
+            auto *kv_pair = &(request_kvs[kv_idx]);
+            if (kv_pair->first == last_key) {
+              memcpy(reinterpret_cast<void *>(kv_pair->second),
+                     reinterpret_cast<void *>(last_value_data), value_size);
+            } else {
+              last_key = kv_pair->first;
+              last_value_data = kv_pair->second;
+              if (value_size !=
+                  io_buffer_itr.copy_and_forward(
+                      reinterpret_cast<void *>(last_value_data), value_size)) {
+                LOG(WARNING) << "res data is lack or not in format";
+                ret = -1;
+                break;
+              }
+            }
+          }
+        }
+        closure->set_promise_value(ret);
+      });
+  closure->add_timer(timer);
+  auto promise = std::make_shared<std::promise<int32_t>>();
+  closure->add_promise(promise);
+  std::future<int> fut = promise->get_future();
+
+  for (size_t i = 0; i < request_call_num; ++i) {
+    auto &sorted_kvs = shard_sorted_kvs->at(i);
+    std::sort(sorted_kvs.begin(), sorted_kvs.end(),
+              [](const std::pair<uint64_t, float *> &k1,
+                 const std::pair<uint64_t, float *> &k2) {
+                return k1.first < k2.first;
+              });
+
+    uint64_t last_key = UINT64_MAX;
+    uint32_t kv_request_count = 0;
+    size_t sorted_kv_size = sorted_kvs.size();
+    auto &request_buffer = closure->cntl(i)->request_attachment();
+
+    request_buffer.append(reinterpret_cast<void *>(&is_training), sizeof(bool));
+    std::vector<uint32_t> keys_counter;
+    keys_counter.reserve(sorted_kv_size);
+
+    for (size_t kv_idx = 0; kv_idx < sorted_kv_size; ++kv_idx) {
+      ++kv_request_count;
+      uint32_t keys = 1;
+      last_key = sorted_kvs[kv_idx].first;
+      request_buffer.append(reinterpret_cast<void *>(&last_key),
+                            sizeof(uint64_t));
+      while (kv_idx < sorted_kv_size - 1 &&
+             last_key == sorted_kvs[kv_idx + 1].first) {
+        ++kv_idx;
+        ++keys;
+      }
+      keys_counter.push_back(keys);
+    }
+
+    request_buffer.append(reinterpret_cast<void *>(keys_counter.data()),
+                          sizeof(uint32_t) * keys_counter.size());
+
+    if (kv_request_count == 0) {
+      closure->Run();
+    } else {
+      closure->request(i)->set_cmd_id(PS_PULL_SPARSE_TABLE);
+      closure->request(i)->set_table_id(table_id);
+      closure->request(i)->set_client_id(_client_id);
+      closure->request(i)->add_params((char *)&kv_request_count,  // NOLINT
+                                      sizeof(uint32_t));
+      PsService_Stub rpc_stub(get_cmd_channel(i));
+      closure->cntl(i)->set_log_id(butil::gettimeofday_ms());
+      rpc_stub.service(closure->cntl(i), closure->request(i),
+                       closure->response(i), closure);
+    }
+  }
+  return fut;
+}
+
 std::future<int32_t> BrpcPsClient::send_client2client_msg(
     int msg_type, int to_client_id, const std::string &msg) {
   auto promise = std::make_shared<std::promise<int32_t>>();
@@ -1067,12 +1173,14 @@ int32_t BrpcPsClient::recv_and_save_table(const uint64_t table_id,
   std::string var_name = "";
   int64_t var_num = 0;
   int64_t var_shape = 0;
+  std::string table_class;
   const auto &worker_param = _config.worker_param().downpour_worker_param();
   for (size_t i = 0; i < worker_param.downpour_table_param_size(); ++i) {
     if (worker_param.downpour_table_param(i).table_id() == table_id) {
       var_name = worker_param.downpour_table_param(i).common().table_name();
       var_num = worker_param.downpour_table_param(i).common().table_num();
       var_shape = worker_param.downpour_table_param(i).common().table_dim();
+      table_class = worker_param.downpour_table_param(i).table_class();
       break;
     }
   }
@@ -1094,9 +1202,19 @@ int32_t BrpcPsClient::recv_and_save_table(const uint64_t table_id,
     save_vec.push_back(save_huge_vec.data() + i * var_shape);
   }
 
-  auto status = pull_sparse(reinterpret_cast<float **>(save_vec.data()),
-                            table_id, save_key.data(), save_key.size(), true);
-  status.wait();
+  VLOG(2) << "recv_and_save_table: table_class: " << table_class;
+  // TODO(zhaocaibei123): new GeoBrpcPSClient, move this to its
+  // recv_and_save_table
+  if (table_class == "MemorySparseGeoTable") {
+    auto status =
+        pull_sparse_param(reinterpret_cast<float **>(save_vec.data()), table_id,
+                          save_key.data(), save_key.size(), true);
+    status.wait();
+  } else {
+    auto status = pull_sparse(reinterpret_cast<float **>(save_vec.data()),
+                              table_id, save_key.data(), save_key.size(), true);
+    status.wait();
+  }
 
   // create lod tensor
   std::shared_ptr<framework::Scope> scope;
