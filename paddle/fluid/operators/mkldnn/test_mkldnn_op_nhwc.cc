@@ -92,7 +92,7 @@ TEST(test_pool2d_transpose_nhwc, cpu_place) {
                         "Computed shape does not match expected shape"));
 }
 
-TEST(test_pool2d_transpose_activation_nhwc, cpu_place) {
+TEST(test_pool2d_relu_relu_nhwc, cpu_place) {
   framework::DDim dims({1, 4, 8, 512});           // NHWC shape
   framework::DDim expected_dims({1, 512, 3, 7});  // NHWC expected shape
   platform::CPUPlace p;
@@ -117,8 +117,8 @@ TEST(test_pool2d_transpose_activation_nhwc, cpu_place) {
 
   auto &pool = platform::DeviceContextPool::Instance();
 
-  // Make pool2d(oneDNN) followed by transpose(CPU paddle) followed by
-  // activation(oneDNN)
+  // Make pool2d(oneDNN) followed by relu(CPU paddle) followed by
+  // relu(oneDNN). Second relu should make a shape rotation to NCHW
 
   auto ksize = std::vector<int>(2, 2);
   auto op_pool = framework::OpRegistry::CreateOp(
