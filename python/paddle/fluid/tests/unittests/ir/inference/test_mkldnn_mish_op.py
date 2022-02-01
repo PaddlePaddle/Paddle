@@ -50,9 +50,8 @@ class TestMkldnnMishOp(MkldnnAutoScanTest):
             ops=[mish_op],
             weights={},
             inputs={
-                "input_data":
-                TensorConfig(data_gen=partial(
-                    generate_input, *args, **kwargs)),
+                "input_data": TensorConfig(data_gen=partial(generate_input,
+                                                            *args, **kwargs)),
             },
             outputs=["output_data"])
 

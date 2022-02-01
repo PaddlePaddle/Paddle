@@ -69,8 +69,7 @@ class TestFCMishMkldnnFusePass(PassAutoScanTest):
             "op_outputs": {
                 "Out": ["mish_output"]
             },
-            "op_attrs": {
-            },
+            "op_attrs": {},
         }]
 
         ops = self.generate_op_config(ops_config)
