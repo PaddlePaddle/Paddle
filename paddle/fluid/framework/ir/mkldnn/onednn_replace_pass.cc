@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -58,7 +58,7 @@ void OneDNNReplacePass::ApplyImpl(Graph *graph) const {
 
     auto handler = [op_type, onednn_op_pattern](
         const GraphPatternDetector::subgraph_t &subgraph, Graph *g) {
-      VLOG(4) << "Replace " << op_type << " with onednn version op.";
+      VLOG(4) << "Replace " << op_type << " op with onednn version.";
       // ops
       GET_IR_NODE_FROM_SUBGRAPH(op_to_replace, op_to_replace,
                                 onednn_op_pattern);

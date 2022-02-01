@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ namespace framework {
 namespace ir {
 
 /*
- * \brief   Replace PaddlePaddle operator with te custom one which supports
+ * \brief   Replace PaddlePaddle operator with the custom one which supports
  * OneDNN's specific attributes.
  */
 class OneDNNReplacePass : public Pass {
