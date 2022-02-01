@@ -20,7 +20,7 @@
 
 namespace pten {
 
-using platform::PADDLE_CUDA_NUM_THREADS;
+using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 
 template <typename InT, typename OutT>
 __global__ void FillOutputKernel(const InT* p_in_data,
