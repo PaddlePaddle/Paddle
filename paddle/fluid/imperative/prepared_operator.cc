@@ -24,11 +24,11 @@
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 #endif
+#include "paddle/fluid/framework/library_type.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(check_nan_inf);
-DECLARE_bool(run_pten_kernel);
 DECLARE_bool(benchmark);
 DECLARE_bool(run_kp_kernel);
 
@@ -145,7 +145,6 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   auto dygraph_exe_ctx = DygraphExecutionContext<VarType>(
       op, framework::Scope(), *dev_ctx, ctx, ins, outs, attrs, default_attrs);
   auto expected_kernel_key = op.GetExpectedKernelType(dygraph_exe_ctx);
-  VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   framework::KernelSignature pt_kernel_signature;
   pten::KernelKey pt_kernel_key;
@@ -228,7 +227,31 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
     expected_kernel_key.place_ = platform::CPUPlace();
     kernel_iter = kernels.find(expected_kernel_key);
   }
+
 #endif
+
+#ifdef PADDLE_WITH_XPU_KP
+  bool use_xpu_kp_kernel_rt =
+      FLAGS_run_kp_kernel &&
+      paddle::platform::is_xpu_kp_support_op(op.Type(), expected_kernel_key);
+  bool use_xpu_kp_kernel_debug =
+      paddle::platform::is_in_xpu_kpwhite_list(op.Type());
+  if (use_xpu_kp_kernel_rt) {
+    VLOG(3) << "xpu_kp using rt mode ";
+  }
+  if (use_xpu_kp_kernel_debug) {
+    VLOG(3) << "xpu_kp using debug mode ";
+  }
+  if (paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
+      (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug)) {
+    expected_kernel_key.place_ = platform::XPUPlace();
+    expected_kernel_key.library_type_ = paddle::framework::LibraryType::kKP;
+    kernel_iter = kernels.find(expected_kernel_key);
+    VLOG(3) << "using XPU KP kernel: " << op.Type()
+            << ", using_kernel_key:" << expected_kernel_key;
+  }
+#endif
+
 #ifdef PADDLE_WITH_ASCEND_CL
   if (kernel_iter == kernels.end() &&
       paddle::platform::is_npu_place(expected_kernel_key.place_)) {
