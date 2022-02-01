@@ -27,16 +27,13 @@ import hypothesis.strategies as st
 
 class TestFCMishMkldnnFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
-        # 1. Generate shape of input:X of fc
         x_shape = draw(
             st.lists(
                 st.integers(
                     min_value=1, max_value=8), min_size=2, max_size=5))
         x_shape = [2, 1]
         x_rank = len(x_shape)
-        # 2. Generate attr:in_num_col_dims of fc
         in_num_col_dims = draw(st.integers(min_value=1, max_value=x_rank - 1))
-        # 3. Generate legal shape of input:W/bias of fc
         w_shape = draw(
             st.lists(
                 st.integers(
