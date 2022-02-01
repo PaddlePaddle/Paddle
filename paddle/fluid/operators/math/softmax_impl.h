@@ -191,7 +191,8 @@ class SoftmaxFunctor<DeviceContext, T, is_test, enable_if_CPU<DeviceContext>> {
                                    out_data);
         vec_exp<T>(num_classes, out_data, out_data);
 
-        T sum = 0;
+        T sum;
+        sum = 0;
         vec_sum<T, platform::avx>(num_classes, out_data, &sum);
         sum = static_cast<T>(1) / sum;
         vec_scal<T, platform::avx>(num_classes, sum, out_data, out_data);

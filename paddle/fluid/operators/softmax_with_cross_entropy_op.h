@@ -199,8 +199,9 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
               // only for this sample's label_idx, the label is 1, others is 0,
               // so, only compute this label_idx's class
               logit_grad_data[i * d + label_data[idx] * remain + j] =
-                  (-1 / logit_grad_data[i * d + label_data[idx] * remain + j]) *
-                  out_grad_data[idx];
+                  (static_cast<T>(-1) /
+                   (logit_grad_data[i * d + label_data[idx] * remain + j])) *
+                  (out_grad_data[idx]);
               for (int k = 0; k < axis_dim; ++k) {  // for each class id's label
                 if (k !=
                     label_data[idx]) {  // label_data[idx]: this sample's label

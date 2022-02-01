@@ -335,12 +335,15 @@ REGISTER_OPERATOR(softmax_with_cross_entropy, ops::SoftmaxWithCrossEntropyOp,
 REGISTER_OPERATOR(softmax_with_cross_entropy_grad,
                   ops::SoftmaxWithCrossEntropyOpGrad,
                   ops::SoftmaxWithCrossEntropyGradInplaceInferer);
-REGISTER_OP_CPU_KERNEL(softmax_with_cross_entropy,
-                       ops::SoftmaxWithCrossEntropyKernel<float>,
-                       ops::SoftmaxWithCrossEntropyKernel<double>);
-REGISTER_OP_CPU_KERNEL(softmax_with_cross_entropy_grad,
-                       ops::SoftmaxWithCrossEntropyGradKernel<float>,
-                       ops::SoftmaxWithCrossEntropyGradKernel<double>);
+REGISTER_OP_CPU_KERNEL(
+    softmax_with_cross_entropy, ops::SoftmaxWithCrossEntropyKernel<float>,
+    ops::SoftmaxWithCrossEntropyKernel<double>,
+    ops::SoftmaxWithCrossEntropyKernel<paddle::platform::bfloat16>);
+REGISTER_OP_CPU_KERNEL(
+    softmax_with_cross_entropy_grad,
+    ops::SoftmaxWithCrossEntropyGradKernel<float>,
+    ops::SoftmaxWithCrossEntropyGradKernel<double>,
+    ops::SoftmaxWithCrossEntropyGradKernel<paddle::platform::bfloat16>);
 
 REGISTER_OP_VERSION(softmax_with_cross_entropy)
 #if defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)

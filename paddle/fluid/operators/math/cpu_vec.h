@@ -16,7 +16,7 @@ limitations under the License. */
 #include <cmath>
 #include <functional>
 #include <string>
-
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -42,6 +42,15 @@ template <typename T>
 inline void vec_exp(const int n, const T* x, T* y) {
   for (int i = 0; i < n; ++i) {
     y[i] = std::exp(x[i]);
+  }
+}
+
+template <>
+inline void vec_exp<paddle::platform::bfloat16>(
+    const int n, const paddle::platform::bfloat16* x,
+    paddle::platform::bfloat16* y) {
+  for (int i = 0; i < n; ++i) {
+    y[i] = std::exp((float)x[i]);
   }
 }
 

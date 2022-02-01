@@ -78,8 +78,9 @@ class CrossEntropyFunctor<platform::CPUDeviceContext, T> {
           int loss_idx = i * num_remain + j;
           loss_data[loss_idx] =
               lbl == ignore_index
-                  ? 0
-                  : -math::TolerableValue<T>()(std::log(prob_data[index]));
+                  ? static_cast<T>(0)
+                  : -math::TolerableValue<T>()(static_cast<T>(
+                        std::log(static_cast<float>(prob_data[index]))));
         }
       }
     }
@@ -88,6 +89,8 @@ class CrossEntropyFunctor<platform::CPUDeviceContext, T> {
 
 template class CrossEntropyFunctor<platform::CPUDeviceContext, float>;
 template class CrossEntropyFunctor<platform::CPUDeviceContext, double>;
+template class CrossEntropyFunctor<platform::CPUDeviceContext,
+                                   paddle::platform::bfloat16>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

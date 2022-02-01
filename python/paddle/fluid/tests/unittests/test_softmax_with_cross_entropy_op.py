@@ -17,9 +17,38 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid.core as core
-
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 from test_softmax_op import stable_softmax
+
+
+def compute_numerical_grads(inputs, axis, delta):
+
+    logits = convert_uint16_to_float(inputs["Logits"])
+    labels = inputs["Label"]
+    shape = logits.shape
+
+    # loop over data of tensor
+    gradient_flat = []
+    for index in range(0, logits.size):
+        # pos
+        logits = logits.flatten()
+        origin = logits[index]
+        logits[index] = origin + delta
+        logits = logits.reshape(shape)
+        softmax = np.apply_along_axis(stable_softmax, axis, logits)
+        y_pos = cross_entropy(softmax, labels, None, axis).mean()
+        # neg
+        logits = logits.flatten()
+        logits[index] = origin - delta
+        logits = logits.reshape(shape)
+        softmax = np.apply_along_axis(stable_softmax, axis, logits)
+        y_neg = cross_entropy(softmax, labels, None, axis).mean()
+        # grad
+        gradient_flat.append((y_pos - y_neg) / delta / 2)
+        logits = logits.flatten()
+        logits[index] = origin
+        logits = logits.reshape(shape)
+    return np.array(gradient_flat).astype(np.float32).reshape(shape)
 
 
 def cross_entropy(softmax, label, soft_label, axis, ignore_index=-1):
@@ -46,8 +75,8 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
     """
     Test softmax with cross entropy operator with discreate one-hot labels.
     """
-
     def initParams(self):
+
         self.op_type = "softmax_with_cross_entropy"
         self.numeric_stable_mode = False
         self.soft_label = False
@@ -375,8 +404,8 @@ class TestSoftmaxWithCrossEntropyOpFp16(TestSoftmaxWithCrossEntropyOp):
         self.check_grad(["Logits"], "Loss", max_relative_error=0.1)
 
 
-class TestSoftmaxWithCrossEntropyOpNoCudnnFp16(
-        TestSoftmaxWithCrossEntropyOpFp16):
+class TestSoftmaxWithCrossEntropyOpNoCudnnFp16(TestSoftmaxWithCrossEntropyOpFp16
+                                               ):
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
         self.numeric_stable_mode = True
@@ -394,7 +423,6 @@ class TestSoftmaxWithCrossEntropyOp2(TestSoftmaxWithCrossEntropyOp):
     """
     Test softmax with cross entropy operator with soft labels.
     """
-
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
         self.numeric_stable_mode = True
@@ -420,7 +448,6 @@ class TestSoftmaxWithCrossEntropyOp3(TestSoftmaxWithCrossEntropyOp):
     """
     Test softmax with cross entropy operator with ignore_index.
     """
-
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
         self.numeric_stable_mode = False
@@ -449,7 +476,6 @@ class TestSoftmaxWithCrossEntropyOpAxis1(TestSoftmaxWithCrossEntropyOp):
     Test softmax with cross entropy operator with discreate one-hot labels.
     Given axis != -1
     """
-
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
         self.numeric_stable_mode = True
@@ -466,7 +492,6 @@ class TestSoftmaxWithCrossEntropyOpAxis2(TestSoftmaxWithCrossEntropyOp):
     Test softmax with cross entropy operator with discreate one-hot labels.
     Given axis != -1
     """
-
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
         self.numeric_stable_mode = True
@@ -483,7 +508,6 @@ class TestSoftmaxWithCrossEntropyOpAxis3(TestSoftmaxWithCrossEntropyOp):
     Test softmax with cross entropy operator with discreate one-hot labels.
     Given axis != -1
     """
-
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
         self.numeric_stable_mode = True
@@ -500,7 +524,6 @@ class TestSoftmaxWithCrossEntropyOpAxis4(TestSoftmaxWithCrossEntropyOp):
     Test softmax with cross entropy operator with discreate one-hot labels.
     Given axis != -1
     """
-
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
         self.numeric_stable_mode = True
@@ -512,13 +535,12 @@ class TestSoftmaxWithCrossEntropyOpAxis4(TestSoftmaxWithCrossEntropyOp):
         self.use_softmax = True
 
 
-class TestSoftmaxWithCrossEntropyOpAxisDimEqualOne(
-        TestSoftmaxWithCrossEntropyOp):
+class TestSoftmaxWithCrossEntropyOpAxisDimEqualOne(TestSoftmaxWithCrossEntropyOp
+                                                   ):
     """
     Test softmax with cross entropy operator with discreate one-hot labels.
     Given axis != -1
     """
-
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
         self.numeric_stable_mode = True
@@ -569,8 +591,8 @@ class TestSoftmaxWithCrossEntropyOpNoCudnnFp16Axis3(
         self.use_softmax = True
 
 
-class TestSoftmaxWithCrossEntropyOpSoftLabelAxis1(
-        TestSoftmaxWithCrossEntropyOp2):
+class TestSoftmaxWithCrossEntropyOpSoftLabelAxis1(TestSoftmaxWithCrossEntropyOp2
+                                                  ):
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
         self.numeric_stable_mode = True
@@ -582,8 +604,8 @@ class TestSoftmaxWithCrossEntropyOpSoftLabelAxis1(
         self.use_softmax = True
 
 
-class TestSoftmaxWithCrossEntropyOpSoftLabelAxis2(
-        TestSoftmaxWithCrossEntropyOp2):
+class TestSoftmaxWithCrossEntropyOpSoftLabelAxis2(TestSoftmaxWithCrossEntropyOp2
+                                                  ):
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
         self.numeric_stable_mode = True
@@ -595,8 +617,8 @@ class TestSoftmaxWithCrossEntropyOpSoftLabelAxis2(
         self.use_softmax = True
 
 
-class TestSoftmaxWithCrossEntropyOpSoftLabelAxis3(
-        TestSoftmaxWithCrossEntropyOp2):
+class TestSoftmaxWithCrossEntropyOpSoftLabelAxis3(TestSoftmaxWithCrossEntropyOp2
+                                                  ):
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
         self.numeric_stable_mode = True
@@ -608,8 +630,8 @@ class TestSoftmaxWithCrossEntropyOpSoftLabelAxis3(
         self.use_softmax = True
 
 
-class TestSoftmaxWithCrossEntropyOpSoftLabelAxis4(
-        TestSoftmaxWithCrossEntropyOp2):
+class TestSoftmaxWithCrossEntropyOpSoftLabelAxis4(TestSoftmaxWithCrossEntropyOp2
+                                                  ):
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
         self.numeric_stable_mode = True
@@ -678,7 +700,6 @@ class TestSoftmaxWithCrossEntropyOpBoundary0(TestSoftmaxWithCrossEntropyOp):
     Test stable softmax with cross entropy operator will not product INF
     with small logits value.
     """
-
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
         self.numeric_stable_mode = True
@@ -696,7 +717,6 @@ class TestSoftmaxWithCrossEntropyOpBoundary1(TestSoftmaxWithCrossEntropyOp):
     Test stable softmax with cross entropy operator will not product INF
     with small logits value.
     """
-
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
         self.numeric_stable_mode = True
@@ -708,6 +728,60 @@ class TestSoftmaxWithCrossEntropyOpBoundary1(TestSoftmaxWithCrossEntropyOp):
         self.logits = np.full(self.shape, 1000.0).astype(self.dtype)
         self.logits[:, :, 0, :] = -1000.0
         self.use_softmax = True
+
+
+class TestSoftmaxWithCrossEntropyOpBF16New(TestSoftmaxWithCrossEntropyOp):
+    def initParams(self):
+        self.op_type = "softmax_with_cross_entropy"
+        self.numeric_stable_mode = False
+        self.soft_label = False
+        self.shape = [2, 5, 10]
+        self.axis = -1
+        self.ignore_index = -1
+        self.dtype = np.uint16
+
+    def setUp(self):
+        self.initParams()
+        self.op_type = "softmax_with_cross_entropy"
+
+        # NOTE: numpy float16 have very low accuracy, use float32 for numpy check.
+        date_type = np.float32 if core.is_compiled_with_rocm() else np.float64
+        rr = np.random.uniform(0.1, 1.0, self.shape).astype(date_type)
+        logits = getattr(self, "logits", rr)
+        softmax = np.apply_along_axis(stable_softmax, self.axis, logits)
+
+        axis_dim = self.shape[self.axis]
+        self.shape[self.axis] = 1
+        labels = np.random.randint(0, axis_dim, self.shape, dtype="int64")
+
+        loss = cross_entropy(softmax, labels, self.soft_label, self.axis)
+        # end of reference
+
+        logits_uint16 = convert_float_to_uint16(logits)
+        softmax_uint16 = convert_float_to_uint16(softmax)
+        loss_uint16 = convert_float_to_uint16(loss)
+
+        self.inputs = {"Logits": logits_uint16, "Label": labels}
+        self.outputs = {"Softmax": softmax_uint16, "Loss": loss_uint16}
+        self.attrs = {
+            "numeric_stable_mode": self.numeric_stable_mode,
+            "soft_label": self.soft_label,
+        }
+        if self.axis != -1:
+            self.attrs['axis'] = self.axis
+
+    def test_check_output(self):
+        self.check_output(atol=1e-2)
+
+    def test_check_grad(self):
+        self.check_grad(["Logits"],
+                        "Loss",
+                        max_relative_error=0.1,
+                        user_defined_grads=[
+                            compute_numerical_grads(self.inputs, self.axis,
+                                                    0.005)
+                        ],
+                        check_dygraph=False)
 
 
 if __name__ == "__main__":

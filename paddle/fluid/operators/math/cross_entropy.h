@@ -55,6 +55,18 @@ struct TolerableValue<platform::float16> {
   }
 };
 
+template <>
+struct TolerableValue<platform::bfloat16> {
+  HOSTDEVICE platform::bfloat16 operator()(const platform::bfloat16& x) const {
+    if (platform::isfinite(x))
+      return x;
+    else if (x > static_cast<platform::bfloat16>(0))
+      return std::numeric_limits<platform::bfloat16>::max();
+    else
+      return std::numeric_limits<platform::bfloat16>::min();
+  }
+};
+
 template <typename DeviceContext, typename T>
 class CrossEntropyFunctor {
  public:

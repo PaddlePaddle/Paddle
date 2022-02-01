@@ -23,8 +23,16 @@ template class SoftmaxFunctor<platform::CPUDeviceContext, float, true>;
 template class SoftmaxFunctor<platform::CPUDeviceContext, float, false>;
 template class SoftmaxFunctor<platform::CPUDeviceContext, double, true>;
 template class SoftmaxFunctor<platform::CPUDeviceContext, double, false>;
+
+template class SoftmaxFunctor<platform::CPUDeviceContext,
+                              paddle::platform::bfloat16, true>;
+template class SoftmaxFunctor<platform::CPUDeviceContext,
+                              paddle::platform::bfloat16, false>;
+
 template class SoftmaxGradFunctor<platform::CPUDeviceContext, float>;
 template class SoftmaxGradFunctor<platform::CPUDeviceContext, double>;
+template class SoftmaxGradFunctor<platform::CPUDeviceContext,
+                                  paddle::platform::bfloat16>;
 
 }  // namespace math
 }  // namespace operators
