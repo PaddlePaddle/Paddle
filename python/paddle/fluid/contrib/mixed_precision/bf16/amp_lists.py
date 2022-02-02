@@ -91,7 +91,11 @@ bf16_list = {
 }
 
 # depends on the prev_op type
-gray_list = gray_list_fp16
+gray_list = {
+    'elementwise_add', 'elementwise_sub', 'elementwise_mul', 'elementwise_div',
+    'relu', 'layer_norm', 'slice', 'concat', 'uniform_random', 'reshape2',
+    'transpose2', 'pool2d', 'sigmoid', 'cast', 'scale', 'fill_constant', 'split'
+}
 
 _, _, _sys_unsupported_bf16_list = core.op_supported_infos(
     'CPU', core.VarDesc.VarType.BF16)
