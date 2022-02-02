@@ -95,8 +95,17 @@ void CPUQuantizePass::QuantizeInput(Graph* g, Node* op, Node* input,
   q_desc.SetAttr("Shift", shift);
   q_desc.SetAttr("is_negative_input", !is_input_unsigned);
 
-  q_desc.SetAttr("output_format",
-                 Has("data_layout") ? Get<std::string>("data_layout") : "NHWC");
+  // fix to fc format error
+  if (op->Op()->Type() == "fc" &&
+      op->Op()->GetAttrIfExists<int>("in_num_col_dims") == 2) {
+    q_desc.SetAttr("output_format", Has("data_layout")
+                                        ? Get<std::string>("data_layout")
+                                        : "NCHW");
+  } else {
+    q_desc.SetAttr("output_format", Has("data_layout")
+                                        ? Get<std::string>("data_layout")
+                                        : "NHWC");
+  }
   auto quantize_op = g->CreateOpNode(&q_desc);  // OpDesc will be copied.
 
   // update op's input
