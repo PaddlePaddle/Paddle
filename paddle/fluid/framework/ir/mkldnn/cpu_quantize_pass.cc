@@ -265,14 +265,12 @@ bool CPUQuantizePass::IsOpDequantized(const Node* node) const {
 }
 
 bool CPUQuantizePass::IsOpQuantized(const Node* node) const {
-  // Check if all the following operators are quantized
-  for (auto output : node->outputs) {
-    if (!output->IsOp() ||
-        !(output->Op()->Type() == "quantize" ||
-          platform::HasOpINT8DataType(output->Op())))
-      return false;
-  }
-  return true;
+  // return true only if all of outputs are ops and their are either quantize or
+  // have int8 data type
+  return all_of(node->outputs.begin(), node->outputs.end(), [](Node* output) {
+    return (output->IsOp() && (output->Op()->Type() == "quantize" ||
+                               platform::HasOpINT8DataType(output->Op())));
+  });
 }
 
 void CPUQuantizePass::QuantizeConv(Graph* graph,

@@ -36,7 +36,7 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
   op->SetType(type);
   op->SetAttr("use_mkldnn", use_mkldnn);
   op->SetAttr("name", name);
-  if (type != "dropout" || type != "quantize" || type != "dequantize") {
+  if (type != "dropout" && type != "quantize" && type != "dequantize") {
     op->SetAttr("mkldnn_data_type", mkldnn_data_type);
   }
 
@@ -418,11 +418,11 @@ void TestImmutableOpBetweenNonQuantizedOp(const std::string tested_op) {
 }
 
 // a->Dropout1->b
-// b->TestedOp1(not quantized)->c
+// b->TestedOp1(won't be quantized)->c
 //    c->Dropout2->d
-//    c->TestedOp2(quantized)->e
-//        e->Pool2d1(quantized)->f
-//        e->Pool2d2(quantized)->g
+//    c->TestedOp2(will be quantized)->e
+//        e->Pool2d1(will be quantized)->f
+//        e->Pool2d2(will be quantized)->g
 void TestImmutableOpWithManyOutputs(const std::string tested_op) {
   ProgramDesc prog;
   for (auto& v : variable_names_immutable_ops) {
