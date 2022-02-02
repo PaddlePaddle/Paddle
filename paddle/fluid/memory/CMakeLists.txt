@@ -42,7 +42,7 @@ endif()
 if(WITH_TESTING AND TEST cuda_managed_memory_test)
 set_tests_properties(cuda_managed_memory_test PROPERTIES
                      ENVIRONMENT "FLAGS_use_cuda_managed_memory=true;FLAGS_allocator_strategy=auto_growth"
-                     TIMEOUT 40)
+                     TIMEOUT 50)
 endif()
 
 if(WITH_GPU AND WITH_TESTING AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")       
