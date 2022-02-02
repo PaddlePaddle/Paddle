@@ -14,17 +14,17 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/fluid/operators/elementwise/elementwise_add_onednn_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_sub_one_dnn_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_sub_op.h"
 
 namespace paddle {
 namespace operators {
 
-class ElementwiseSubOneDNNOpMaker : public ElementwiseOpMaker {
+class ElementwiseAddOneDNNOpMaker : public ElementwiseOpMaker {
  protected:
-  std::string GetName() const override { return "Sub"; }
-  std::string GetEquation() const override { return "Out = X - Y"; }
+  std::string GetName() const override { return "Add"; }
+  std::string GetEquation() const override { return "Out = X + Y"; }
 
   void AddInputX() override {
     AddInput("X",
@@ -39,7 +39,7 @@ class ElementwiseSubOneDNNOpMaker : public ElementwiseOpMaker {
   }
 
   std::string GetOpFuntionality() const override {
-    return "Substract two tensors element-wise";
+    return "Add two tensors element-wise";
   }
 
   void Make() override final {
@@ -72,15 +72,16 @@ class ElementwiseSubOneDNNOpMaker : public ElementwiseOpMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(elementwise_sub_one_dnn, ops::ElementwiseSubOneDNNOp,
-                  ops::ElementwiseSubOneDNNOpMaker,
+REGISTER_OPERATOR(elementwise_add_onednn, ops::ElementwiseAddOneDNNOp,
+                  ops::ElementwiseAddOneDNNOpMaker,
                   ops::ElementwiseOpInferVarType);
 
-REGISTER_OP_VERSION(elementwise_sub_one_dnn)
+REGISTER_OP_VERSION(elementwise_add_onednn)
     .AddCheckpoint(
-        R"ROC(Register elementwise_sub for adding the attribute of Scale_y)ROC",
+        R"ROC(Register elementwise_add for adding the attribute of
+		Scale_y)ROC",
         paddle::framework::compatible::OpVersionDesc().NewAttr(
             "Scale_y",
             "In order to support the function of scaling the input Y when "
-            "using the operator of elementwise_sub.",
+            "using the operator of elementwise_add.",
             1.0f));

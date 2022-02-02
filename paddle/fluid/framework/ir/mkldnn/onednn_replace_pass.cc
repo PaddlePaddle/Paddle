@@ -65,7 +65,7 @@ void OneDNNReplacePass::ApplyImpl(Graph *graph) const {
 
       auto *replace_op = op_to_replace->Op();
 
-      replace_op->SetType(op_type + "_one_dnn");
+      replace_op->SetType(op_type + "_onednn");
     };
 
     gpd(graph, handler);
@@ -77,7 +77,7 @@ void OneDNNReplacePass::ApplyImpl(Graph *graph) const {
 }  // namespace paddle
 
 REGISTER_PASS(onednn_replace_pass, paddle::framework::ir::OneDNNReplacePass);
-REGISTER_PASS_CAPABILITY(one_dnn_replace_pass)
+REGISTER_PASS_CAPABILITY(onednn_replace_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("elementwise_add", 1)

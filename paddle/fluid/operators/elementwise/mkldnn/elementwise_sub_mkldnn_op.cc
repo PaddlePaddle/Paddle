@@ -127,7 +127,7 @@ REGISTER_OP_KERNEL(
     ops::EltwiseMKLDNNKernel<uint8_t, dnnl::algorithm::binary_sub>)
 
 REGISTER_OP_KERNEL(
-    elementwise_sub_one_dnn, MKLDNN, paddle::platform::CPUPlace,
+    elementwise_sub_onednn, MKLDNN, paddle::platform::CPUPlace,
     ops::EltwiseMKLDNNKernel<float, dnnl::algorithm::binary_sub>,
     ops::EltwiseMKLDNNKernel<paddle::platform::bfloat16,
                              dnnl::algorithm::binary_sub>,
