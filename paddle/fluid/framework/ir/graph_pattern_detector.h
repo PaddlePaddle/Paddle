@@ -986,6 +986,22 @@ struct ElementwiseAdd : public PatternBase {
   PATTERN_DECL_NODE(elementwise_add_out);
 };
 
+// ElementwiseAddOneDNN used in residual connections.
+// y_var is used and convolution output.
+// The operator is removed, when residual
+// connection fusion is on.
+struct ElementwiseAddOneDNN : public PatternBase {
+  ElementwiseAddOneDNN(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "elementwise_add_onednn") {}
+
+  PDNode* operator()(PDNode* x_var, PDNode* y_var);
+
+  PATTERN_DECL_NODE(elementwise_add_op);
+  PATTERN_DECL_NODE(elementwise_add_x);
+  PATTERN_DECL_NODE(elementwise_add_y);
+  PATTERN_DECL_NODE(elementwise_add_out);
+};
+
 // Transpose op
 // Forward pass for transpose.
 // transpose_out is a result of the operator.

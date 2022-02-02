@@ -1969,6 +1969,22 @@ PDNode *patterns::ElementwiseAdd::operator()(PDNode *x_var, PDNode *y_var) {
   return out_var;
 }
 
+PDNode *patterns::ElementwiseAddOneDNN::operator()(PDNode *x_var, PDNode *y_var) {
+  auto elementwise_add_op = pattern->NewNode(elementwise_add_op_repr())
+                                ->assert_is_op("elementwise_add_onednn");
+
+  x_var->AsInput()->assert_is_op_input("elementwise_add_onednn", "X");
+  y_var->AsInput()->assert_is_op_input("elementwise_add_onednn", "Y");
+  auto out_var = pattern->NewNode(elementwise_add_out_repr())
+                     ->AsOutput()
+                     ->assert_is_op_output("elementwise_add_onednn", "Out");
+
+  elementwise_add_op->LinksFrom({x_var, y_var});
+  elementwise_add_op->LinksTo({out_var});
+
+  return out_var;
+}
+
 PDNode *patterns::Concat::operator()() {
   auto concat_op = pattern->NewNode(concat_op_repr())->assert_is_op("concat");
 
