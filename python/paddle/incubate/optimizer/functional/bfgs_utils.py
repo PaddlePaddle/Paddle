@@ -31,11 +31,6 @@ def ternary(cond, x, y):
 
     return paddle.where(cond, x, y)
 
-def is_negative_inf(f):
-    return paddle.isinf(f) & (f < 0)
-
-def is_blowup(f, g):
-    return (paddle.isinf(f) & (f > 0)) | paddle.isnan(f) | paddle.isnan(g)
 
 def vjp(f, x, v=None, create_graph=False):
     r"""A single tensor version of VJP.
@@ -114,6 +109,7 @@ class SearchState(object):
                  Hk,
                  gnorm,
                  ak=None,
+                 lowerbound=None,
                  k=0,
                  nf=1,
                  ng=1,
@@ -129,13 +125,27 @@ class SearchState(object):
         self.ak = ak
         self.nf = nf
         self.ng = ng
+        self.lowerbound = -np.inf if lowerbound is None else lowerbound
         self.pk = None
         self.state = make_state(fk)
+        self.stop_lowerbound = make_const(fk, False, dtype='bool')
+        self.stop_blowup = make_const(fk, False, dtype='bool')
+        self.stop_wolfe = make_const(fk, False, dtype='bool')
+        self.stop = make_const(fk, False, dtype='bool')
         self.Qk = make_const(fk, 0)
         self.Ck = make_const(fk, 0)
         self.stop_counter = StopCounter(iters)
         self.ls_stop_counter = StopCounter(ls_iters)
-        self.params = None
+
+    def set_params(self, params):
+        for name, value in params.items():
+            setattr(self, f'param_{name}', value)
+
+    def is_lowerbound(self, f):
+        return f <= self.lowerbound
+
+    def is_blowup(self, f, g):
+        return (paddle.isinf(f) & (f > 0)) | paddle.isnan(f) | paddle.isnan(g)
 
     def func_and_deriv(self, func, x):
         f, g = vjp(func, x)
@@ -148,6 +158,45 @@ class SearchState(object):
             field = getattr(self, field_name)
             if isinstance(field, paddle.Tensor):
                 field.stop_gradient = True
+
+    def active_state(self):
+        return self.state == 0
+
+    def converged_state(self):
+        return self.state == 1
+
+    def failed_state(self):
+        return self.state == 2
+
+    def blowup_state(self):
+        return self.state == 3
+
+    def update_state(self, predicate, new_state):
+        r"""Updates the state on the locations where the old value is 0 and 
+        corresponding predicate is True.
+
+        Args:
+            predicate (Tensor): a tensor with the same shape of `input_state`, 
+            of boolean type, indicating which locations should be updated.
+            new_state ('failed' | 'converged'): specifies the new state, either 
+            'converged' or 'failed'.
+
+        Returns:
+            Tensor updated on the specified locations.
+        """
+        assert new_state in ('converged', 'failed')
+
+        if new_state is 'converged':
+            increments = paddle.to_tensor(predicate, dtype='int32')
+        elif new_state is 'failed':
+            increments = paddle.to_tensor(predicate, dtype='int32') * 2
+        elif new_state is 'blowup':
+            increments = paddle.to_tensor(predicate, dtype='int32') * 3
+        else:
+            assert False, f'Invalid state: {new_state}'
+
+        self.state = paddle.where(self.state == 0, increments, self.state)
+        return self.state
 
     def result(self):
         kw = {
@@ -224,18 +273,6 @@ def any_active_with_predicates(state, *predicates):
     return paddle.any(active_preds)
 
 
-def active_state(state):
-    return state == 0
-
-def converged_state(state):
-    return state == 1
-
-def failed_state(state):
-    return state == 2
-
-def blowup_state(state):
-    return state == 3
-
 def make_const(tensor_like, value, dtype=None):
     r"""Makes a tensor filled with specified constant value.
     
@@ -282,35 +319,6 @@ def make_state(tensor_like, value='active'):
     else:
         assert False, f'Invalid state: {value}'
     return state
-
-
-def update_state(input_state, predicate, new_state):
-    r"""Updates the state on the locations where the old value is 0 and 
-    corresponding predicate is True.
-
-    Args:
-        input_state (Tensor): the original state tensor.
-        predicate (Tensor): a tensor with the same shape of `input_state`, of 
-        boolean type, indicating which locations should be updated.
-        new_state ('failed' | 'converged'): specifies the new state, either 
-            'converged' or 'failed'.
-
-    Returns:
-        Tensor updated on the specified locations.
-    """
-    assert new_state in ('converged', 'failed')
-
-    if new_state is 'converged':
-        increments = paddle.to_tensor(predicate, dtype='int32')
-    elif new_state is 'failed':
-        increments = paddle.to_tensor(predicate, dtype='int32') * 2
-    elif new_state is 'blowup':
-        increments = paddle.to_tensor(predicate, dtype='int32') * 3
-    else:
-        assert False, f'Invalid state: {new_state}'
-
-    output_state = paddle.where(input_state == 0, increments, input_state)
-    return output_state
 
 
 def as_float_tensor(input, dtype=None):

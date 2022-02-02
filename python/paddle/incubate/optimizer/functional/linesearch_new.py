@@ -18,7 +18,6 @@ from .bfgs_utils import vjp
 from .bfgs_utils import (StopCounter, StopCounterException, vnorm_inf, vnorm_p,
                          ternary, make_const, update_state, any_active,
                          active_state, converged_state, failed_state,
-                         is_blowup, is_negative_inf,
                          SearchState, LSStopException,
                          any_active_with_predicates, all_active_with_predicates)
 
@@ -38,48 +37,7 @@ hz_default_params = {
 }
 
 
-def initial(state):
-    r"""Generates the initial step size.
-    
-    Args:
-        state (Tensor): the search state tensor.
 
-    Returns:
-        The tensor of initial step size.
-    """
-    params = state.params
-    psi_0, psi_1, psi_2 = params['psi_0'], params['psi_1'], params['psi_2']
-
-    # I0. if k = 0, generate the initial step size c using the following rules.
-    #     (a) If x_0 is not 0, c = psi_0 * infnorm(x_0) / infnorm(g_0)
-    #     (b) If f(x_0) is not 0, then c = psi_0 * |f(x_0)| / vnorm(g_0)^2
-    #     (c) Otherwise, c = 1
-    #
-    # I1. If QuadStep is true, phi(psi_1 * a_k-1) <= phi(0), and the
-    # quadratic interpolant
-    #     q() matches phi(0), phi'(0) and phi(psi * a_k-1) is strongly convex
-    #     with a minimizer a_q, then c = a_k
-    #
-    # I2. Otherwise, c = psi_2 * a_k-1
-    if state.k == 0:
-        x0, f0, g0, a0 = state.xk, state.fk, state.gk, state.ak
-
-        if a0 is not None:
-            return a0.broadcast_to(f0)
-
-        if paddle.all(x0 == .0):
-            c = psi_0 * paddle.abs(f0) / vnorm_p(g0)**2
-            c = ternary(f0 == 0, paddle.ones_like(f0), c)
-        else:
-            c = psi_0 * vnorm_inf(x0) / vnorm_inf(g0)
-
-        state.ak = c
-    else:
-        # (TODO) implements quadratic interpolant
-        prev_ak = state.ak
-        c = psi_2 * prev_ak
-
-    return c
 
 
 def bracket(state, phi, c, wolfe, neg_inf, blowup):
@@ -282,62 +240,6 @@ def secant2(state, phi, a, b, wolfe, neg_inf, blowup):
     return a, b, wolfe, neg_inf, blowup
 
 
-def stopping_condition(state, phi, c, phiprime_0, wolfe, net_inf,   
-                       blowup, phi_c=None, phiprime_c=None):
-    r"""Tests T1/T2 condition in the Hager-Zhang paper.
-    
-    Args:
-        state (Tensor): the search state tensor.
-        phi (Callable): the restricted function on the search line.
-        c (Tensor): the step size tensor.
-        phiprime_0 (Tensor): the derivative of `phi` at 0.
-        phi_c (Tensor, optional): the value of `phi(c)`. Default is None.
-        phiprime_c (Tensor, optional): the derivative of `phi` at `c`.
-            Default is None.
-        params (Dict, optional): used to configure the HagerZhang method.
-            Default is None.
-
-    Returns:
-        A boolean tensor holding the evaluated stopping condition for each
-        function instance.
-    """
-    params = state.params
-    delta, sigma, eps = params['delta'], params['sigma'], params['eps']
-    epsilon_k = eps * state.Ck
-
-    phi_0 = state.fk
-
-    if phi_c is None or phiprime_c is None:
-        phi_c, phiprime_c = state.func_and_deriv(phi, c)
-    
-    neg_inf, blowup = is_negative_inf(phi_c), is_blowup(phi_c, phiprime_c)
-
-    # T1 (Wolfe). 
-    #   T1.1            phi(c) - phi(0) <= delta * c * phi'(0)
-    #   T1.2            phi'(c) >= sigma * phi'(0)
-    #
-    # T2 (Approximate Wolfe).
-    #   T2.1            phi'(c) <= (2*delta - 1) * phi'(0)
-    #   T2.2            (T1.2)
-    #   T2.3            phi(c) - phi(0) <= epsilon_k
-
-    phi_diff = phi_c - phi_0
-    T11_cond = phi_diff <= delta * c * phiprime_0
-    T12_cond = phiprime_c >= sigma * phiprime_0
-
-    wolfe_cond = T11_cond & T12_cond
-
-    T21_cond = phiprime_c <= (2 * delta - 1) * phiprime_0
-    T22_cond = T12_cond
-    T23_cond = phi_diff <= epsilon_k
-
-    approx_wolfe_cond = T21_cond & T22_cond & T23_cond
-
-    wolfe = wolfe_cond | approx_wolfe_cond
-
-    return wolfe, neg_inf, blowup
-
-
 def update(state, phi, a, b, c, wolfe, neg_inf, blowup):
     r"""Performs the update procedure in the Hager-Zhang method.
 
@@ -398,28 +300,18 @@ def update(state, phi, a, b, c, wolfe, neg_inf, blowup):
     return a, b, wolfe, neg_inf, blowup
 
 
-def hz_linesearch(state,
-                  func,
-                  gtol,
-                  xtol,
-                  initial_step=None,
-                  params=None):
+class HagerZhang(SearchState):
     r"""
     Implements the Hager-Zhang line search method. This method can be used as
     a drop-in replacement of any standard line search algorithm in solving
     a non-linear optimization problem.
 
     Args:
-        state (SearchState): the search state which this line search is invoked 
-            with.
         func (Callable): the objective function for the optimization problem.
-        gtol (Tensor): a scalar tensor specifying the gradient tolerance.
-        xtol (Tensor): a scalar tensor specifying the input difference
-            tolerance.
         initial_step (float, optional): the initial step size to use for the 
             line search. Default value is None.
         params (Dict, optional): used to configure the HagerZhang method.
-            Default is None. 
+            Default is None.
 
     Reference:
         Algorithm 851: CG_DESCENT, a conjugate gradient method with guaranteed 
@@ -547,147 +439,256 @@ def hz_linesearch(state,
             return Bisect([a, c])
 
     """
+    def __init__(self,
+                 func,
+                 bat,
+                 x0,
+                 f0,
+                 g0,
+                 H0,
+                 gnorm,
+                 a0=None,
+                 lowerbound=None,
+                 iters=50,
+                 ls_iters=50,
+                 params=hz_default_params):
+        super(HagerZhang).__init__(bat,
+                                   x0,
+                                   f0,
+                                   g0,
+                                   H0,
+                                   gnorm,
+                                   ak=a0,
+                                   lowerbound=lowerbound,
+                                   iters=iters,
+                                   ls_iters=ls_iters)
+        self.func = func
+        self.set_params(params)
 
-    def phi(a):
-        r'''
-        phi is used as the objective function restricted on the line search 
-        secant.
-
+    def update_stop(self, phi, c, phiprime_0, phi_c=None, phiprime_c=None):
+        r"""Tests T1/T2 condition in the Hager-Zhang paper.
+        
         Args:
-            a (Tensor): a scalar tensor, or a tensor of shape [...] in batching 
-            mode, giving the step sizes alpha.
-        '''
-        if len(pk.shape) > 1:
-            a = paddle.unsqueeze(a, axis=-1)
+            state (Tensor): the search state tensor.
+            phi (Callable): the restricted function on the search line.
+            c (Tensor): the step size tensor.
+            phiprime_0 (Tensor): the derivative of `phi` at 0.
+            phi_c (Tensor, optional): the value of `phi(c)`. Default is None.
+            phiprime_c (Tensor, optional): the derivative of `phi` at `c`.
+                Default is None.
+            params (Dict, optional): used to configure the HagerZhang method.
+                Default is None.
 
-        return func(xk + a * pk)
+        Returns:
+            A boolean tensor holding the evaluated stopping condition for each
+            function instance.
+        """
+        delta, sigma, eps = (getattr(self, p) for p in ('delta',
+                                                        'sigma',
+                                                        'eps'))
+        epsilon_k = eps * self.Ck
 
-    if params is None:
-        state.params = hz_default_params
+        phi_0 = self.fk
 
-    state.ls_stop_counter.reset()
+        if phi_c is None or phiprime_c is None:
+            phi_c, phiprime_c = self.func_and_deriv(phi, c)
+        
+        self.stop_lowerbound |= self.is_lowerbound(phi_c)
+        self.stop_blowup |= self.is_blowup(phi_c, phiprime_c)
 
-    # Load config parameters
-    params = state.params
-    gamma, Delta = params['gamma'], params['Delta']
+        # T1 (Wolfe). 
+        #   T1.1            phi(c) - phi(0) <= delta * c * phi'(0)
+        #   T1.2            phi'(c) >= sigma * phi'(0)
+        #
+        # T2 (Approximate Wolfe).
+        #   T2.1            phi'(c) <= (2*delta - 1) * phi'(0)
+        #   T2.2            (T1.2)
+        #   T2.3            phi(c) - phi(0) <= epsilon_k
 
-    # For each line search, the input location, function value, gradients and
-    # the approximate inverse hessian are already present in the state date
-    # struture. No need to recompute.
-    bat, xk, fk, gk, Hk = state.bat, state.xk, state.fk, state.gk, state.Hk
+        phi_diff = phi_c - phi_0
+        T11_cond = phi_diff <= delta * c * phiprime_0
+        T12_cond = phiprime_c >= sigma * phiprime_0
 
-    # Updates C_k, the weighted average of the absolute function values, 
-    # used for assessing the relative change of function values over succesive
-    # iterates.
-    Qk, Ck = state.Qk, state.Ck
-    Qk = 1 + Qk * Delta
-    Ck = Ck + (paddle.abs(fk) - Ck) / Qk
-    state.Qk, state.Ck = Qk, Ck
+        wolfe_cond = T11_cond & T12_cond
 
-    # The negative inner product of approximate inverse hessian and gradient
-    # gives the line search direction p_k. Immediately after p_k is calculated,
-    # the directional derivative on p_k should be checked to make sure 
-    # the p_k is a descending direction. If that's not the case, then sets
-    # the line search state as failed for the corresponding batching element.
-    if state.pk is None:
-        pk = -einsum('...ij, ...j', Hk, gk)
-        state.pk = pk
-    else:
-        pk = state.pk
+        T21_cond = phiprime_c <= (2 * delta - 1) * phiprime_0
+        T22_cond = T12_cond
+        T23_cond = phi_diff <= epsilon_k
 
-    # deriv is the directional derivative of f at x_k on the direction of p_k.
-    # It's also the gradient of phi    
-    deriv = einsum('...i, ...i', gk, pk) if bat else dot(gk, pk)
+        approx_wolfe_cond = T21_cond & T22_cond & T23_cond
 
-    # Make early decisions in case some instances are found to be converged
-    # or failed.
-    neg_inf = is_negative_inf(fk)
-    blowup = is_blowup(fk, deriv)
-    rising = deriv >= .0
-    invalid_input = blowup | rising
-    print(f'deriv >= 0:  {rising.numpy()}')
-    print(f'isinf : {paddle.isinf(fk).numpy()}')
-    state.state = update_state(state.state, neg_inf, 'converged')
-    state.state = update_state(state.state, invalid_input, 'failed')
+        wolfe = wolfe_cond | approx_wolfe_cond
+        self.stop_wolfe |= wolfe
+        self.stop = self.stop_wolfe | self.stop_blowup | self.stop_lowerbound
 
-    # L0. c = initial(k), [a0, b0] = bracket(c), and j = 0
-    #
-    # L1. [a, b] = secant2(aj, bj)
-    #
-    # L2. If b - a > gamma * (bj - aj), 
-    #     then c = (a + b)/2 and [a, b] = update(a, b, c)
-    #
-    # L3. j = j + 1, [aj, bj] = [a, b], go to L1.
+    def should_stop(self):
+        return not any_active_with_predicates(self.state, self.stop)
 
-    # Initializes wolfe flags
-    wolfe = None
+    def initial(self):
+        r"""Generates the initial step size.
 
-    import traceback
-    try:
+        Returns:
+            The tensor of initial step size.
+        """
+        psi_0, psi_1, psi_2 = (getattr(self, p) for p in ('psi_0',
+                                                          'psi_1',
+                                                          'psi_2'))
+
+        # I0. if k = 0, generate the initial step size c using the following 
+        # rules.
+        #     (a) If x_0 is not 0, c = psi_0 * infnorm(x_0) / infnorm(g_0)
+        #     (b) If f(x_0) is not 0, then c = psi_0 * |f(x_0)| / vnorm(g_0)^2
+        #     (c) Otherwise, c = 1
+        #
+        # I1. If QuadStep is true, phi(psi_1 * a_k-1) <= phi(0), and the
+        # quadratic interpolant q() matches phi(0), phi'(0) and
+        # phi(psi * a_k-1) is strongly convex with a minimizer a_q, then c = a_k
+        #
+        # I2. Otherwise, c = psi_2 * a_k-1
+        if self.k == 0:
+            x0, f0, g0, a0 = self.xk, self.fk, self.gk, self.ak
+
+            if a0 is not None:
+                return a0.broadcast_to(f0)
+
+            if paddle.all(x0 == .0):
+                c = psi_0 * paddle.abs(f0) / vnorm_p(g0)**2
+                c = ternary(f0 == 0, paddle.ones_like(f0), c)
+            else:
+                c = psi_0 * vnorm_inf(x0) / vnorm_inf(g0)
+
+            self.ak = c
+        else:
+            # (TODO) implements quadratic interpolant
+            prev_ak = self.ak
+            c = psi_2 * prev_ak
+
+        return c
+
+    def linesearch(self):
+
+        def phi(a):
+            r'''
+            phi is the objective function projected on the direction `self.pk`.
+
+            Args:
+                a (Tensor): a scalar tensor, or a tensor of shape [...] in batching 
+                mode, giving the step sizes alpha.
+            '''
+            if len(self.pk.shape) > 1:
+                a = paddle.unsqueeze(a, axis=-1)
+
+            return self.func(self.xk + a * self.pk)
+
+        self.ls_stop_counter.reset()
+
+        gamma = getattr(self, 'gamma')
+        Delta = getattr(self, 'Delta')
+
+        # For each line search, the input location, function value, gradients 
+        # and the approximate inverse hessian are already present in the state 
+        # date struture. No need to recompute.
+        bat, xk, fk, gk, Hk = self.bat, self.xk, self.fk, self.gk, self.Hk
+
+        # Updates C_k, the weighted average of the absolute function values, 
+        # used for assessing the relative change of function values over 
+        # succesive iterates.
+        Qk, Ck = self.Qk, self.Ck
+        Qk = 1 + Qk * Delta
+        Ck = Ck + (paddle.abs(fk) - Ck) / Qk
+        self.Qk, self.Ck = Qk, Ck
+
+        # The negative inner product of approximate inverse hessian and gradient
+        # gives the line search direction p_k. Immediately after p_k is 
+        # calculated, the directional derivative on p_k should be checked to 
+        # make sure the p_k is a descending direction. If that's not the case, 
+        # then sets the line search state as failed for the corresponding 
+        # batching element.
+        if self.pk is None:
+            pk = -einsum('...ij, ...j', Hk, gk)
+            self.pk = pk
+        else:
+            pk = self.pk
+
+        # deriv is the directional derivative of f at x_k on the direction of 
+        # p_k. It's also the gradient of phi    
+        deriv = einsum('...i, ...i', gk, pk) if bat else dot(gk, pk)
+
+        # Makes early decisions in case some instances are found to be converged
+        # or failed. The status `stop_lowerbound` and `stop_blowup` are monotone
+        # w.r.t. logical_or.
+        self.stop_lowerbound |= self.is_lowerbound(fk)
+        self.stop_blowup |= self.is_blowup(fk, deriv)
+        rising = deriv >= .0
+        print(f'deriv >= 0:  {rising.numpy()}')
+        print(f'islowerbound : {fk.numpy()}')
+        self.update_state(self.stop_lowerbound, 'converged')
+        self.update_state(self.stop_blowup | rising, 'failed')
+
+        # L0. c = initial(k), [a0, b0] = bracket(c), and j = 0
+        #
+        # L1. [a, b] = secant2(aj, bj)
+        #
+        # L2. If b - a > gamma * (bj - aj),
+        #     then c = (a + b)/2 and [a, b] = update(a, b, c)
+        #
+        # L3. j = j + 1, [aj, bj] = [a, b], go to L1.
+
+        # Initializes the stopping flags. `stop_lowerbound` and `stop_blowup`
+        # are carried over from the previous linesearch.
+        self.stop_wolfe = make_const(fk, False, dtype='bool')
         # Generates initial step sizes
-        c = initial(state)
-        ls_stepsize = c
+        c = self.initial()
         print(f'ls  \nInitial step size: {c.numpy()}')
 
-        # Initial stopping test. Those already converged instances are likely
-        # to succeed.
-        wolfe, neg_inf, blowup = stopping_condition(state, phi, c, deriv)
+        import traceback
+        try:
+            # Initial stopping test. Those already converged instances are 
+            # likely to succeed.
+            self.update_stop(phi, c, deriv)
 
-        a_j, b_j = None, None
-        # Continues if there's line search still active
-        while any_active_with_predicates(state.state,
-                                         ~(wolfe | neg_inf | blowup)):
-            # Finds the first opposite-sloped bracket 
-            if a_j is None:
-                a_j, b_j, wolfe, neg_inf, blowup = bracket(state,
-                                                          phi,
-                                                          c,
-                                                          wolfe,
-                                                          neg_inf,
-                                                          blowup)
+            a_j, b_j = None, None
+            # Continues if there's line search still active
+            while not self.should_stop():
+                # Finds the first opposite-sloped bracket 
+                if a_j is None:
+                    a_j, b_j = self.bracket(phi, c)
+                                                         
 
-            # Applies secant2 to the located intervals
-            a, b, wolfe, neg_inf, blowup = secant2(state,
-                                                  phi,
-                                                  a_j,
-                                                  b_j,
-                                                  wolfe,
-                                                  neg_inf,
-                                                  blowup)
+                # Applies secant2 to the located intervals
+                a, b = self.secant2(phi, a_j, b_j)
 
-            print(f'secant2 a: {a.numpy()}     b: {b.numpy()}')
+                print(f'secant2 a: {a.numpy()}     b: {b.numpy()}')
+                next_c = a + 0.5 * (b - a)
+                c = ternary(self.stop, c, next_c)
+                
+                self.update_stop(phi, c, deriv)
 
-            stop |= stopping_condition(state, phi, b, deriv)
-            ls_stepsize = ternary(stop, b, ls_stepsize)
+                # If interval does not shrink enough, then applies bisect
+                # repeatedly.
+                L2_cond = (b - a) > gamma * (b_j - a_j)
 
-            print(f'stop {stop}')
-            # If interval does not shrink enough, then applies bisect
-            # repeatedly.
-            L2_cond = (b - a) > gamma * (b_j - a_j)
+                L2_cond = ~self.stop & L2_cond
 
-            L2_cond = ~stop & L2_cond
+                if any_active_with_predicates(self.state, L2_cond):
+                    A, B = self.update(phi, a, b, c, L2_cond)
+                    a = ternary(L2_cond, A, a)
+                    b = ternary(L2_cond, B, b)
 
-            if any_active_with_predicates(state.state, L2_cond):
-                c = 0.5 * (a + b)
+                # Goes to next iteration
+                a_j, b_j = a, b
+        except StopCounterException as count_e:
+            traceback.print_exc()
+        except LSStopException as e:
+            pass
 
-                A, B, stop = update(state, phi, a, b, c, L2_cond, stop)
-                a = ternary(L2_cond, A, a)
-                b = ternary(L2_cond, B, b)
+        # Changes state due to failed line search
+        self.update_state(~self.stop, 'failed')
 
-            # Goes to next iteration
-            a_j, b_j = a, b
-    except StopCounterException as count_e:
-        traceback.print_exc()
-    except LSStopException as e:
-        pass
-
-    # Changes state due to failed line search
-    state.state = update_state(state.state, ~stop, 'failed')
-
-    print(f'state {state.state}')
-    print(f'ak {state.ak}')
-    print(f'ls_stepsize {ls_stepsize}')
-    # Writes back the obtained step size to the search state.
-    state.ak = ternary(active_state(state.state), ls_stepsize, state.ak)
-    print(f'ak2 {state.ak}')
-    return
+        print(f'state {self.state}')
+        print(f'ak {self.ak}')
+        print(f'ls_stepsize {c}')
+        # Writes back the obtained step size to the search state.
+        self.ak = ternary(self.active_state() & self.stop, c, self.ak)
+        print(f'ak2 {self.ak}')
+        return
