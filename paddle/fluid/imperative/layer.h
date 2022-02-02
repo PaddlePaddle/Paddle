@@ -288,6 +288,12 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
     const framework::AttributeMap& default_attrs, const platform::Place& place,
     const std::map<std::string, std::string>& inplace_map);
 
+std::shared_ptr<GradOpNode> CreateGradOpNode(
+    const framework::OperatorBase& op, const NameTensorMap& ins,
+    const NameTensorMap& outs, const framework::AttributeMap& attrs,
+    const framework::AttributeMap& default_attrs, const platform::Place& place,
+    const std::map<std::string, std::string>& inplace_map);
+
 void ClearNoNeedBufferInputs(OpBase* op);
 
 }  // namespace imperative

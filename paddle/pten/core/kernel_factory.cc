@@ -50,11 +50,11 @@ Kernel KernelFactory::SelectKernel(const std::string& kernel_name,
   return kernel_iter->second;
 }
 
-paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash>
-KernelFactory::SelectKernelMap(const std::string& kernel_name) const {
+KernelKeyMap KernelFactory::SelectKernelMap(
+    const std::string& kernel_name) const {
   auto iter = kernels_.find(kernel_name);
   if (iter == kernels_.end()) {
-    return paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash>();
+    return KernelKeyMap();
   }
   return iter->second;
 }
