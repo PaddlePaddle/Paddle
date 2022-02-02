@@ -108,8 +108,6 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
     else
       elementwise_op->SetAttr("activation_type", act_type);
 
-    elementwise_op->SetAttr("use_mkldnn", true);
-
     elementwise_op->SetOutput("Out", {activation_out->Name()});
 
     IR_OP_VAR_LINK(elementwise, activation_out);

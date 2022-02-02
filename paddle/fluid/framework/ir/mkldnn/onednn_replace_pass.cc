@@ -70,9 +70,6 @@ void OneDNNReplacePass::ApplyImpl(Graph *graph) const {
 
     gpd(graph, handler);
   }
-
-  // get_node_from_factory();
-  // replace_node();
 }
 
 }  // namespace ir

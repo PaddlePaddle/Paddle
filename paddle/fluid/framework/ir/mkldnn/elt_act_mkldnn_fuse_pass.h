@@ -25,8 +25,7 @@ namespace ir {
 
 /*
  * \brief   Fuse the Elementwise and activation operators into single
- * OneDNN's
- *          Elementwize with post-op.
+ * OneDNN's Elementwize with post-op.
  */
 class ElementwiseActivationOneDNNPass : public FusePassBase {
  public:
