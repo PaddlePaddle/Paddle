@@ -50,7 +50,7 @@ TEST(ManagedMemoryTest, H2DTest) {
 
   uint64_t n_data = 1024;
   uint64_t step = 1;
-  AllocationPtr allocation =
+  allocation::AllocationPtr allocation =
       Alloc(platform::CUDAPlace(0), n_data * sizeof(int));
   int* data = static_cast<int*>(allocation->ptr());
 
@@ -68,6 +68,7 @@ TEST(ManagedMemoryTest, H2DTest) {
     sum += *(data + i);
   }
   EXPECT_EQ(sum, n_data / step);
+  allocation = nullptr;
 }
 
 TEST(ManagedMemoryTest, D2HTest) {
@@ -124,6 +125,11 @@ TEST(ManagedMemoryTest, OversubscribeGPUMemoryTest) {
 #endif
 
   EXPECT_EQ(*sum, (n_data + step - 1) / step);
+}
+
+TEST(ManagedMemoryTest, OOMExceptionTest) {
+  EXPECT_THROW(Alloc(platform::CUDAPlace(0), size_t(1) << 60),
+               memory::allocation::BadAlloc);
 }
 
 }  // namespace memory
