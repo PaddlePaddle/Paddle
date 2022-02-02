@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <memory>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/float16.h"
@@ -60,7 +61,7 @@ class SignGradMaker : public framework::SingleGradOpMaker<T> {
 namespace ops = paddle::operators;
 
 DELCARE_INFER_SHAPE_FUNCTOR(sign, SignInferShapeFunctor,
-                            PT_INFER_META(pten::UnchangedInferMetaNew));
+                            PT_INFER_META(pten::UnchangedInferMeta));
 REGISTER_OPERATOR(sign, ops::SignOp, ops::SignOpMaker<float>,
                   ops::SignGradMaker<paddle::framework::OpDesc>,
                   ops::SignGradMaker<paddle::imperative::OpBase>,
