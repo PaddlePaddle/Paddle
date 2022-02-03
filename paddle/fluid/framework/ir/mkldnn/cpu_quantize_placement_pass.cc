@@ -26,8 +26,8 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Marks operators which are to be quantized.";
   std::unordered_set<std::string> supported_op_types =
       std::unordered_set<std::string>(
-          {"concat", "conv2d", "depthwise_conv2d", "elementwise_add_onednn", "fc",
-           "matmul", "nearest_interp", "nearest_interp_v2", "pool2d",
+          {"concat", "conv2d", "depthwise_conv2d", "elementwise_add_onednn",
+           "fc", "matmul", "nearest_interp", "nearest_interp_v2", "pool2d",
            "prior_box", "reshape2", "transpose2", "fusion_gru", "fusion_lstm",
            "multi_gru", "slice"});
   const auto& excluded_ids_list =

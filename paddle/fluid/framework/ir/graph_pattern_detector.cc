@@ -920,7 +920,7 @@ PDNode *patterns::ConvActivation::operator()(
 
 PDNode *patterns::ElementwiseActivation::operator()(
     paddle::framework::ir::PDNode *elementwise_a,
-    const std::string& elementwise_type, const std::string& activation_type) {
+    const std::string &elementwise_type, const std::string &activation_type) {
   // Create Operators
   elementwise_a->assert_is_op_input(elementwise_type, "X");
   auto *elementwise_op =
@@ -1969,7 +1969,8 @@ PDNode *patterns::ElementwiseAdd::operator()(PDNode *x_var, PDNode *y_var) {
   return out_var;
 }
 
-PDNode *patterns::ElementwiseAddOneDNN::operator()(PDNode *x_var, PDNode *y_var) {
+PDNode *patterns::ElementwiseAddOneDNN::operator()(PDNode *x_var,
+                                                   PDNode *y_var) {
   auto elementwise_add_op = pattern->NewNode(elementwise_add_op_repr())
                                 ->assert_is_op("elementwise_add_onednn");
 

@@ -504,8 +504,8 @@ ProgramDesc BuildProgramDescElementwiseAdd() {
   }
   SetOp(&prog, "dequantize", "Dequantize1", {"a"}, {"b"}, true);
   SetOp(&prog, "dequantize", "Dequantize2", {"c"}, {"d"}, true);
-  SetOp(&prog, "elementwise_add_onednn", "ElementwiseAdd", {"b", "d"}, {"e"}, true,
-        "int8");
+  SetOp(&prog, "elementwise_add_onednn", "ElementwiseAdd", {"b", "d"}, {"e"},
+        true, "int8");
   SetOp(&prog, "dropout", "Dropout", {"e"}, {"f"}, true, "float32");
 
   return prog;
