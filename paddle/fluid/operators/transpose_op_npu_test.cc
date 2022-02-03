@@ -31,7 +31,7 @@ limitations under the License. */
 namespace f = paddle::framework;
 namespace p = paddle::platform;
 
-USE_OP(transpose2);
+USE_OP_ITSELF(transpose2);
 USE_OP_DEVICE_KERNEL(transpose2, NPU);
 
 template <typename T>
