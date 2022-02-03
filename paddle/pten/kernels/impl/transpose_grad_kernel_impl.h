@@ -26,6 +26,7 @@ void TransposeGradKernel(const Context& dev_ctx,
                          DenseTensor* x_grad) {
   std::vector<int> reversed_axis(axis);
 
+  x_grad->mutable_data<T>(dev_ctx.GetPlace());
   for (size_t i = 0; i < axis.size(); i++) {
     reversed_axis[axis[i]] = i;
   }

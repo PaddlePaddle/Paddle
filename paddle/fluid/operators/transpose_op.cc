@@ -363,6 +363,14 @@ class Transpose2OpGrad : public framework::OperatorWithKernel {
   }
 };
 
+class TransposeGradInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    ctx->SyncTypeAndDataType(framework::GradVarName("Out"),
+                             framework::GradVarName("X"));
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -371,7 +379,8 @@ REGISTER_OPERATOR(
     transpose, ops::TransposeOp, ops::TransposeOpMaker,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
-REGISTER_OPERATOR(transpose_grad, ops::TransposeOpGrad);
+REGISTER_OPERATOR(transpose_grad, ops::TransposeOpGrad,
+                  ops::TransposeGradInferVarType);
 
 REGISTER_OP_CPU_KERNEL(
     transpose, ops::TransposeKernel<paddle::platform::CPUDeviceContext, bool>,
@@ -399,6 +408,7 @@ REGISTER_OPERATOR(transpose2, ops::Transpose2Op, ops::Transpose2OpMaker,
                   ops::Transpose2GradMaker<paddle::framework::OpDesc>,
                   ops::Transpose2GradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(transpose2_grad, ops::Transpose2OpGrad,
+                  ops::TransposeGradInferVarType,
                   ops::Transpose2DoubleGradMaker<paddle::framework::OpDesc>,
                   ops::Transpose2DoubleGradMaker<paddle::imperative::OpBase>);
 

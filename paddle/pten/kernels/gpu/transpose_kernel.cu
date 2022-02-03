@@ -27,6 +27,7 @@ void TransposeKernel(const Context& ctx,
                      const std::vector<int>& axis,
                      DenseTensor* out) {
   int rank = axis.size();
+  out->mutable_data<T>(ctx.GetPlace());
   paddle::operators::TransposeGPUKernelDriver<T>(ctx, rank, x, axis, out);
 }
 }  // namespace pten
