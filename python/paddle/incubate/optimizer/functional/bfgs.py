@@ -23,7 +23,7 @@ from .bfgs_utils import converged_state, failed_state
 from .bfgs_utils import as_float_tensor, vnorm_inf
 from .bfgs_utils import StopCounter, StopCounterException
 from .bfgs_utils import SearchState
-from .linesearch import hz_linesearch as linesearch
+from .linesearch_new import HagerZhang
 
 
 def verify_symmetric_positive_definite_matrix(H):
@@ -88,7 +88,7 @@ def update_approx_inverse_hessian(state, H, s, y, enforce_curvature=False):
         if enforce_curvature:
             assert not any_active_with_predicates(rho <= 0)
         else:
-            update_state(state.state, rho <= 0, 'failed')
+            state.update_state(rho <= 0, 'failed')
 
         # By expanding the updating formula we obtain a sum of tensor products
         #
@@ -205,18 +205,18 @@ def iterates(func,
     gnorm = vnorm_inf(g0)
     # state = SearchState(bat, x0, f0, g0, H0, gnorm,
     #                     iters=iters, ls_iters=ls_iters)
-    ZH = HagerZhang(func, bat, x0, f0, g0, H0, gnorm)
+    HZ = HagerZhang(func, bat, x0, f0, g0, H0, gnorm)
 
     # Updates the state tensor on the newly converged elements.
-    state.state = update_state(state.state, gnorm < gtol, 'converged')
+    HZ.update_state(gnorm < gtol, 'converged')
 
     try:
         # Starts to count the number of iterations.
         iter_count = StopCounter(iters)
         iter_count.increment()
 
-        while any_active(state.state):
-            k, xk, fk, gk, Hk = state.k, state.xk, state.fk, state.gk, state.Hk
+        while HZ.any_active():
+            k, xk, fk, gk, Hk = HZ.k, HZ.xk, HZ.fk, HZ.gk, HZ.Hk
 
             # The negative product of inverse Hessian and gradients - H_k * g_k
             # is used as the line search direction. 
@@ -226,16 +226,16 @@ def iterates(func,
             # checked to make sure the p_k is a descending direction. If that's 
             # not the case, then sets the line search state as failed for the 
             # corresponding batching element.
-            state.pk = pk = -einsum('...ij, ...j', Hk, gk)
+            pk = -einsum('...ij, ...j', Hk, gk)
 
             # Performs line search and updates the state
-            a = HZ.linesearch(pk)
+            ak = HZ.linesearch(pk)
 
             # Uses the obtained search steps to generate next iterates.
             if bat:
-                next_xk = xk + state.ak.unsqueeze(-1) * pk
+                next_xk = xk + ak.unsqueeze(-1) * pk
             else:
-                next_xk = xk + state.ak * pk
+                next_xk = xk + ak * pk
             # Calculates displacement s_k = x_k+1 - x_k
 
             sk = next_xk - xk
@@ -247,30 +247,29 @@ def iterates(func,
             yk = next_gk - gk
 
             # Updates the approximate inverse hessian
-            next_Hk = update_approx_inverse_hessian(state, Hk, sk, yk)
+            next_Hk = update_approx_inverse_hessian(HZ, Hk, sk, yk)
 
             # Calculates the gradient norms
             next_gnorm = vnorm_inf(next_gk)
 
             # Finally transitions to the next state
-            p = active_state(state.state)
-            state.xk = ternary(p, next_xk, xk)
-            state.fk = ternary(p, next_fk, fk)
-            state.gk = ternary(p, next_gk, gk)
-            state.Hk = ternary(p, next_Hk, Hk)
-            state.gnorm = ternary(p, next_gnorm, state.gnorm)
+            p = HZ.active_state()
+            HZ.xk = ternary(p, next_xk, xk)
+            HZ.fk = ternary(p, next_fk, fk)
+            HZ.gk = ternary(p, next_gk, gk)
+            HZ.Hk = ternary(p, next_Hk, Hk)
+            HZ.gnorm = ternary(p, next_gnorm, HZ.gnorm)
 
             # Updates the state on the newly converged elements.
-            state.state = update_state(state.state, state.gnorm < gtol,
-                                       'converged')
-            state.reset_grads()
+            HZ.update_state(HZ.gnorm < gtol, 'converged')
 
-            state.k = k + 1
+            HZ.reset_grads()
+            HZ.k = k + 1
 
             # Counts iterations
             iter_count.increment()
 
-            yield state
+            yield HZ
     except StopCounterException:
         pass
     finally:
