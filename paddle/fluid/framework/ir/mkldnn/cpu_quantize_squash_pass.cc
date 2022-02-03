@@ -113,15 +113,19 @@ bool CPUQuantizeSquashPass::IsDequantizeInputUint8(
   if (dequant_in->inputs[0]->IsOp()) {
     auto prev_op = dequant_in->inputs[0]->Op();
     std::string act_name;
-    if (prev_op->Type() == "conv2d") {
-      act_name = "fuse_activation";
-    } else if (prev_op->Type() == "fc") {
-      act_name = "activation_type";
-    }
-    if (!act_name.empty()) {
-      auto act = prev_op->GetAttrIfExists<std::string>(act_name);
-      if (act == "relu" || act == "relu6") {
-        return true;
+    if (prev_op->Type() == "relu") {
+      return true;
+    } else {
+      if (prev_op->Type() == "conv2d") {
+        act_name = "fuse_activation";
+      } else if (prev_op->Type() == "fc") {
+        act_name = "activation_type";
+      }
+      if (!act_name.empty()) {
+        auto act = prev_op->GetAttrIfExists<std::string>(act_name);
+        if (act == "relu" || act == "relu6") {
+          return true;
+        }
       }
     }
   }
