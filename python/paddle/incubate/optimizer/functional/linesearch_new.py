@@ -15,11 +15,8 @@
 import paddle
 from paddle import dot, einsum
 from .bfgs_utils import vjp
-from .bfgs_utils import (StopCounter, StopCounterException, vnorm_inf, vnorm_p,
-                         ternary, make_const, update_state, any_active,
-                         active_state, converged_state, failed_state,
-                         SearchState, LSStopException,
-                         any_active_with_predicates, all_active_with_predicates)
+from .bfgs_utils import (StepCounter, StepCounterException, vnorm_inf, vnorm_p,
+                         ternary, make_const, SearchState)
 
 hz_default_params = {
     'eps': 1e-6,
@@ -35,17 +32,6 @@ hz_default_params = {
     'psi_1': .1,
     'psi_2': 2
 }
-
-
-
-
-
-
-
-
-
-
-
 
 
 class HagerZhang(SearchState):
@@ -197,7 +183,6 @@ class HagerZhang(SearchState):
                  gnorm,
                  a0=None,
                  lowerbound=None,
-                 iters=50,
                  ls_iters=50,
                  params=hz_default_params):
         super(HagerZhang).__init__(bat,
@@ -208,7 +193,6 @@ class HagerZhang(SearchState):
                                    gnorm,
                                    ak=a0,
                                    lowerbound=lowerbound,
-                                   iters=iters,
                                    ls_iters=ls_iters)
         self.func = func
         self.phi = None
@@ -271,7 +255,7 @@ class HagerZhang(SearchState):
         self.stop = self.stop_wolfe | self.stop_blowup | self.stop_lowerbound
 
     def should_stop(self):
-        return not any_active_with_predicates(self.state, self.stop)
+        return not self.any_active_with_predicates(self.stop)
 
     def initial(self):
         r"""Generates the initial step size.
@@ -338,7 +322,7 @@ class HagerZhang(SearchState):
 
         # falling = make_const(f0, True, dtype='bool')
         bisect_pred = ifcond
-        while any_active_with_predicates(self.state, bisect_pred & ~self.stop):
+        while self.any_active_with_predicates(bisect_pred & ~self.stop):
             # d = (1.0 - theta) * a + theta * b
             d = a + theta * (b - a)
 
@@ -399,7 +383,7 @@ class HagerZhang(SearchState):
 
         expanding_pred = B3_cond & ~self.stop
 
-        while any_active_with_predicates(self.state, expanding_pred):
+        while self.any_active_with_predicates(expanding_pred):
             # Sets [prev_c, c] to [c, rho*c] if B3 is true.
             prev_c = ternary(expanding_pred, c, prev_c)
             c = ternary(expanding_pred, rho * c, c)
@@ -552,7 +536,7 @@ class HagerZhang(SearchState):
         # For each line search, the input location, function value, gradients 
         # and the approximate inverse hessian are already present in the state 
         # date struture. No need to recompute.
-        bat, xk, fk, gk, Hk = self.bat, self.xk, self.fk, self.gk, self.Hk
+        bat, xk, fk, gk = self.bat, self.xk, self.fk, self.gk
 
         # Updates C_k, the weighted average of the absolute function values, 
         # used for assessing the relative change of function values over 
@@ -564,7 +548,7 @@ class HagerZhang(SearchState):
     
         def phi(a):
             r'''
-            phi is the objective function projected on the direction `self.pk`.
+            phi is the objective function projected on the direction `pk`.
 
             Args:
                 a (Tensor): a scalar tensor, or a tensor of shape [...] in batching 
@@ -582,7 +566,7 @@ class HagerZhang(SearchState):
         self.phi = phi
         self.phiprime0 = deriv
 
-        self.ls_stop_counter.reset()
+        self.ls_step_counter.reset()
 
         # Makes early decisions in case some instances are found to be converged
         # or failed. The status `stop_lowerbound` and `stop_blowup` are monotone
@@ -593,7 +577,8 @@ class HagerZhang(SearchState):
         print(f'deriv >= 0:  {rising.numpy()}')
         print(f'islowerbound : {fk.numpy()}')
         self.update_state(self.stop_lowerbound, 'converged')
-        self.update_state(self.stop_blowup | rising, 'failed')
+        self.update_state(self.stop_blowup, 'blowup')
+        self.update_state(rising, 'failed')
 
         # L0. c = initial(k), [a0, b0] = bracket(c), and j = 0
         #
@@ -636,16 +621,15 @@ class HagerZhang(SearchState):
 
                 selected_L2 = ~self.stop & L2_cond
 
-                if any_active_with_predicates(selected_L2):
+                if self.any_active_with_predicates(selected_L2):
                     A, B = self.update(a, b, c, selected_L2)
                     a = ternary(selected_L2, A, a)
                     b = ternary(selected_L2, B, b)
 
                 # Goes to next iteration
                 a_j, b_j = a, b
-        except StopCounterException as count_e:
-            traceback.print_exc()
-        except LSStopException as e:
+        except StepCounterException as count_e:
+            # traceback.print_exc()
             pass
 
         # Changes state due to failed line search

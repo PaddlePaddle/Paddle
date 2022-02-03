@@ -59,8 +59,7 @@ class BfgsResult(
         collections.namedtuple('BfgsResult', [
             'iterations',
             'x_location',
-            'converged',
-            'linesearch_failed',
+            'result_status',
             'gradients',
             'gradient_norms',
             'function_results',
@@ -92,7 +91,6 @@ class SearchState(object):
         ng (Tensor): scalar valued tensor holding the number of
             gradient calls made.
         ak (Tensor): step size.
-        pk (Tensor): the minimizer direction.
         Qk (Tensor): weight for averaging function values.
         Ck (Tensor): weighted average of function values.
         xk (Tensor): the iterate point.
@@ -113,7 +111,6 @@ class SearchState(object):
                  k=0,
                  nf=1,
                  ng=1,
-                 iters=50,
                  ls_iters=50):
         self.bat = bat
         self.xk = xk
@@ -126,7 +123,6 @@ class SearchState(object):
         self.nf = nf
         self.ng = ng
         self.lowerbound = -np.inf if lowerbound is None else lowerbound
-        self.pk = None
         self.state = make_state(fk)
         self.stop_lowerbound = make_const(fk, False, dtype='bool')
         self.stop_blowup = make_const(fk, False, dtype='bool')
@@ -134,8 +130,7 @@ class SearchState(object):
         self.stop = make_const(fk, False, dtype='bool')
         self.Qk = make_const(fk, 0)
         self.Ck = make_const(fk, 0)
-        self.stop_counter = StopCounter(iters)
-        self.ls_stop_counter = StopCounter(ls_iters)
+        self.ls_step_counter = StepCounter(ls_iters)
 
     def set_params(self, params):
         for name, value in params.items():
@@ -151,6 +146,7 @@ class SearchState(object):
         f, g = vjp(func, x)
         self.nf += 1
         self.ng += 1
+        self.ls_step_counter.increment()
         return f, g
 
     def reset_grads(self):
@@ -199,7 +195,7 @@ class SearchState(object):
         return self.state
 
     def all_active_with_predicates(self, *predicates):
-        r"""Tests whether all active states also satisfies the predicates.
+        r"""Tests whether all active states also satisfies `*predicates`.
         
         Args:
             predicates (List[Tensor]): a list of boolean typed tensors of the
@@ -233,16 +229,27 @@ class SearchState(object):
 
         return paddle.any(active_preds)
 
+    def any_active(self):
+        return paddle.any(self.state == 0)
+
+    def result_status(self):
+        raw = self.state.numpy()
+        status = np.array(raw, dtype='<U9')
+        status[raw == 0] = 'stopped'
+        status[raw == 1] = 'converged'
+        status[raw == 2] = 'failed'
+        status[raw == 3] = 'blowup'
+        return status
+
     def result(self):
         kw = {
             'iterations': self.k,
-            'x_location': self.xk,
-            'converged': converged_state(self.state),
-            'linesearch_failed': failed_state(self.state),
-            'gradients': self.gk,
-            'gradient_norms': self.gnorm,
-            'function_results': self.fk,
-            'inverse_hessian': self.Hk,
+            'x_location': self.xk.numpy(),
+            'result_status': self.result_status(),
+            'gradients': self.gk.numpy(),
+            'gradient_norms': self.gnorm.numpy(),
+            'function_results': self.fk.numpy(),
+            'inverse_hessian': self.Hk.numpy(),
             'function_evals': self.nf,
             'gradient_evals': self.ng,
         }
@@ -261,10 +268,6 @@ def vnorm_inf(x):
 def matnorm(x):
     r"""Matrix norm."""
     return paddle.norm(x, 'fro')
-
-
-def any_active(state):
-    return paddle.any(state == 0)
 
 
 def make_const(tensor_like, value, dtype=None):
@@ -350,18 +353,14 @@ def as_float_tensor(input, dtype=None):
     return output
 
 
-class LSStopException(Exception):
-    pass
-
-
-class StopCounterException(Exception):
+class StepCounterException(Exception):
     r"""raises this Exception on the event that increments a stopped 
-    StopCounter.
+    StepCounter.
     """
     pass
 
 
-class StopCounter(object):
+class StepCounter(object):
     r"""Defines a counter with a predefined end count.
     """
 
@@ -374,10 +373,10 @@ class StopCounter(object):
         self.count = 0
 
     def increment(self):
-        r"""Increments the counter."""
+        r"""Increments the step counter."""
 
         if self.count < self.end:
             self.count += 1
         else:
             print(f'Count stops at {self.count}!')
-            raise StopCounterException()
+            raise StepCounterException()

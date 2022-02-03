@@ -21,7 +21,7 @@ from .bfgs_utils import make_state, make_const, update_state
 from .bfgs_utils import active_state, any_active, any_active_with_predicates
 from .bfgs_utils import converged_state, failed_state
 from .bfgs_utils import as_float_tensor, vnorm_inf
-from .bfgs_utils import StopCounter, StopCounterException
+from .bfgs_utils import StepCounter, StepCounterException
 from .bfgs_utils import SearchState
 from .linesearch_new import HagerZhang
 
@@ -205,14 +205,14 @@ def iterates(func,
     gnorm = vnorm_inf(g0)
     # state = SearchState(bat, x0, f0, g0, H0, gnorm,
     #                     iters=iters, ls_iters=ls_iters)
-    HZ = HagerZhang(func, bat, x0, f0, g0, H0, gnorm)
+    HZ = HagerZhang(func, bat, x0, f0, g0, H0, gnorm, ls_iters=ls_iters)
 
     # Updates the state tensor on the newly converged elements.
     HZ.update_state(gnorm < gtol, 'converged')
 
     try:
         # Starts to count the number of iterations.
-        iter_count = StopCounter(iters)
+        iter_count = StepCounter(iters)
         iter_count.increment()
 
         while HZ.any_active():
@@ -262,6 +262,8 @@ def iterates(func,
 
             # Updates the state on the newly converged elements.
             HZ.update_state(HZ.gnorm < gtol, 'converged')
+            HZ.update_state(HZ.stop_lowerbound, 'converged')
+            HZ.update_state(HZ.stop_blowup, 'blowup')
 
             HZ.reset_grads()
             HZ.k = k + 1
@@ -270,7 +272,7 @@ def iterates(func,
             iter_count.increment()
 
             yield HZ
-    except StopCounterException:
+    except StepCounterException:
         pass
     finally:
         return
