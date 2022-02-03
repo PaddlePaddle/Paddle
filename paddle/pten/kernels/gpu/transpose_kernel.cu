@@ -28,6 +28,10 @@ void TransposeKernel(const Context& ctx,
                      DenseTensor* out) {
   int rank = axis.size();
   out->mutable_data<T>(ctx.GetPlace());
+
+  if (out->numel() == 0) {
+    return;
+  }
   paddle::operators::TransposeGPUKernelDriver<T>(ctx, rank, x, axis, out);
 }
 }  // namespace pten

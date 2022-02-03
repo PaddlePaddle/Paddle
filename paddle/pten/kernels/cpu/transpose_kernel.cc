@@ -27,6 +27,9 @@ void TransposeKernel(const Context& ctx,
                      const std::vector<int>& axis,
                      DenseTensor* out) {
   out->mutable_data<T>(ctx.GetPlace());
+  if (out->numel() == 0) {
+    return;
+  }
   int rank = axis.size();
   switch (rank) {
     case 1:
