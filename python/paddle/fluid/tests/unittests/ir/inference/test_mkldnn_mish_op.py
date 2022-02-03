@@ -12,16 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import MkldnnAutoScanTest, SkipReasons
+from auto_scan_test import MkldnnAutoScanTest
 from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
-import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
-
-import hypothesis
-from hypothesis import given, settings, seed, example, assume
+from hypothesis import given
 import hypothesis.strategies as st
 
 
@@ -61,9 +57,6 @@ class TestMkldnnMishOp(MkldnnAutoScanTest):
         config = self.create_inference_config(use_mkldnn=True)
         yield config, (1e-5, 1e-5)
 
-    def add_skip_pass_case(self):
-        pass
-
     @given(
         mode=st.sampled_from(['all', 'channel', 'element']),
         data_format=st.sampled_from(['NCHW', 'NHWC']),
@@ -71,7 +64,6 @@ class TestMkldnnMishOp(MkldnnAutoScanTest):
             st.integers(
                 min_value=1, max_value=32), min_size=1, max_size=4))
     def test(self, *args, **kwargs):
-        self.add_skip_pass_case()
         self.run_test(quant=False, *args, **kwargs)
 
 

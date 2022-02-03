@@ -12,24 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest, SkipReasons
+from auto_scan_test import PassAutoScanTest
 from program_config import TensorConfig, ProgramConfig
 import numpy as np
-import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
-
-import hypothesis
-from hypothesis import given, settings, seed, example, assume
 import hypothesis.strategies as st
 
 
 class TestConvMishMkldnnFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            op.attrs for op in program_config.ops
         ]
         # If the problem has been fixed, the judgment
         # needs to be deleted!!!
