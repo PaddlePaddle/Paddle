@@ -203,8 +203,9 @@ def iterates(func,
     # Puts the starting points in the initial state and kicks off the
     # minimization process.
     gnorm = vnorm_inf(g0)
-    state = SearchState(bat, x0, f0, g0, H0, gnorm,
-                        iters=iters, ls_iters=ls_iters)
+    # state = SearchState(bat, x0, f0, g0, H0, gnorm,
+    #                     iters=iters, ls_iters=ls_iters)
+    ZH = HagerZhang(func, bat, x0, f0, g0, H0, gnorm)
 
     # Updates the state tensor on the newly converged elements.
     state.state = update_state(state.state, gnorm < gtol, 'converged')
@@ -219,10 +220,16 @@ def iterates(func,
 
             # The negative product of inverse Hessian and gradients - H_k * g_k
             # is used as the line search direction. 
+            # The negative inner product of approximate inverse hessian and 
+            # gradient gives the line search direction p_k. Immediately after 
+            # p_k is calculated, the directional derivative on p_k should be 
+            # checked to make sure the p_k is a descending direction. If that's 
+            # not the case, then sets the line search state as failed for the 
+            # corresponding batching element.
             state.pk = pk = -einsum('...ij, ...j', Hk, gk)
 
             # Performs line search and updates the state
-            linesearch(state, func, gtol=gtol, xtol=xtol)
+            a = HZ.linesearch(pk)
 
             # Uses the obtained search steps to generate next iterates.
             if bat:

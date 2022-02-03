@@ -198,6 +198,41 @@ class SearchState(object):
         self.state = paddle.where(self.state == 0, increments, self.state)
         return self.state
 
+    def all_active_with_predicates(self, *predicates):
+        r"""Tests whether all active states also satisfies the predicates.
+        
+        Args:
+            predicates (List[Tensor]): a list of boolean typed tensors of the
+                same shape with `state`.
+        
+        Returns:
+            A scalar boolean tensor. True if the predicates are true for every
+            active state. Otherwise False.
+        """
+        active_preds = active = self.active_state()
+        for p in predicates:
+            active_preds = paddle.logical_and(active_preds, p)
+
+        return paddle.all(active == active_preds)
+
+    def any_active_with_predicates(self, *predicates):
+        r"""Tests whether there's any active state also satisfies all the
+        predicates.
+        
+        Args:
+            predicates (List[Tensor]): a list of boolean typed tensors of the
+                same shape with `state`.
+        
+        Returns:
+            A scalar boolean tensor. True if any element in `state` is active and
+            the corresponding predicate values are all True. Otherwise False.
+        """
+        active_preds = self.active_state()
+        for p in predicates:
+            active_preds = paddle.logical_and(active_preds, p)
+
+        return paddle.any(active_preds)
+
     def result(self):
         kw = {
             'iterations': self.k,
@@ -230,47 +265,6 @@ def matnorm(x):
 
 def any_active(state):
     return paddle.any(state == 0)
-
-
-def all_active_with_predicates(state, *predicates):
-    r"""Tests whether all active states also satisfies the predicates.
-    
-    Args:
-        state (Tensor): the search state of dtype int. For each element, 0 
-            represents active state.
-        predicates (List[Tensor]): a list of boolean typed tensors of the
-            same shape with `state`.
-    
-    Returns:
-        A scalar boolean tensor. True if the predicates are true for every
-        active state. Otherwise False.
-    """
-    active_preds = active = active_state(state)
-    for p in predicates:
-        active_preds = paddle.logical_and(active_preds, p)
-
-    return paddle.all(active == active_preds)
-
-
-def any_active_with_predicates(state, *predicates):
-    r"""Tests whether there's any active state also satisfies all the
-    predicates.
-    
-    Args:
-        state (Tensor): the search state of dtype int. For each element, 0 
-            represents active state.
-        predicates (List[Tensor]): a list of boolean typed tensors of the
-            same shape with `state`.
-    
-    Returns:
-        A scalar boolean tensor. True if any element in `state` is active and
-        the corresponding predicate values are all True. Otherwise False.
-    """
-    active_preds = active_state(state)
-    for p in predicates:
-        active_preds = paddle.logical_and(active_preds, p)
-
-    return paddle.any(active_preds)
 
 
 def make_const(tensor_like, value, dtype=None):

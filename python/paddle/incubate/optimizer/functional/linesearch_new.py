@@ -40,264 +40,12 @@ hz_default_params = {
 
 
 
-def bracket(state, phi, c, wolfe, neg_inf, blowup):
-    r"""Generates opposite slope interval.
-        
-    Args:
-        state (Tensor): the search state tensor.
-        phi (Callable): the restricted function on the search line.
-        c (Tensor): the initial step sizes.
-    
-    Returns:
-        [a, b]: left ends and right ends of the result intervels.
-    """
-    # B0. Initialize j = 0, c_0 = c
-    #
-    # B1. If phi'(c_j) >= 0, then return [c_j-1, c_j]
-    #
-    # B2. If phi'(c_j) < 0 and phi(c_j) > phi(0) + epsilon_k,
-    #     then return Bisect([0, c_j])
-    #
-    # B3. Otherwise, c_j = c, c_j+1 = rho * c, j = j + 1, goto B1
-    params = state.params
-    eps, rho = params['eps'], params['rho']
-    epsilon_k = eps * state.Ck
-
-    # f0 = phi(0)
-    f0 = state.fk
-
-    # The following loop repeatedly applies (B3) if condition allows
-    prev_c = make_const(c, .0)
-
-    # f = phi(c), g = phi'(c)
-    f, g = state.func_and_deriv(phi, c)
-    neg_inf |= is_negative_inf(f)
-    blowup |= is_blowup(f, g)
-
-    # Initializes condition B3
-    B3_cond = (g < .0) & (f < f0 + epsilon_k)
-
-    expanding_pred = B3_cond & ~wolfe & ~neg_inf & ~blowup
-
-    while any_active_with_predicates(state.state, expanding_pred):
-        # Sets [prev_c, c] to [c, rho*c] if B3 is true.
-        prev_c = ternary(expanding_pred, c, prev_c)
-        c = ternary(expanding_pred, rho * c, c)
-        print(f'expanding  c: {c.numpy()}')
-        # Calculates the function values and gradients.
-        f, g = state.func_and_deriv(phi, c)
-        neg_inf |= is_negative_inf(f)
-        blowup |= is_blowup(f, g)
-        B3_cond = (g < .0) & (f < f0 + epsilon_k)
-        expanding_pred &= B3_cond & ~neg_inf & ~blowup
-
-    # Narrows down the interval by recursively bisecting it.
-    B1_cond = g >= .0
-    B2_cond = ~B1_cond & (f >= f0 + epsilon_k)
-    a, b, wolfe, neg_inf, blowup = bisect(state,
-                                         phi,
-                                         make_const(c, .0),
-                                         c,
-                                         B2_cond,
-                                         wolfe,
-                                         neg_inf,
-                                         blowup)
-    # Sets [a, _] to [prev_c, _] if B1 holds, [a, _] if B2 holds
-    a = ternary(B1_cond, prev_c, a)
-    b = ternary(B1_cond, c, b)
-
-    return a, b, wolfe, neg_inf, blowup
 
 
-def bisect(state, phi, a, b, ifcond, wolfe, neg_inf, blowup):
-    r"""Bisects to locate opposite slope interval.
-    
-    Args:
-        state (Tensor): the search state tensor.
-        phi (Callable): the restricted function on the search line.
-        a (Tensor): holds the left ends of the intervals.
-        b (Tensor): holds the right ends of the intervals.
-        ifcond (Tensor): boolean tensor that holds the if-converse condition.
-
-    Returns:
-        [a, b]: left ends and right ends of the result intervels.   
-    """
-    params = state.params
-    theta, eps = params['theta'], params['eps']
-    epsilon_k = eps * state.Ck
-
-    f0 = state.fk
-
-    # a. Let d = (1 - theta)*a + theta*b, if phi'(d) >= 0, then return [a, d]
-    #
-    # b. If phi'(d) < 0 and phi(d) > phi(0) + epsilon_k, then Bisect([a, d])
-    #
-    # c. If phi'(d) < 0 and phi(d) <= phi(0) + epsilon_k, then Bisect([d, b])
-
-    # falling = make_const(f0, True, dtype='bool')
-    bisect_pred = ifcond
-    while any_active_with_predicates(state.state, 
-                                     bisect_pred & ~(wolfe | neg_inf | blowup)):
-        # d = (1.0 - theta) * a + theta * b
-        d = a + theta * (b - a)
-
-        f, g = state.func_and_deriv(phi, d)
-        neg_inf |= is_negative_inf(f)
-        blowup |= is_blowup(f, g)
-    
-        falling = g < .0
-        lo = f < f0 + epsilon_k
-
-        # Condition a.
-        b = ternary(bisect_pred & ~falling, d, b)
-
-        # Condition b and c.
-        bisect_pred = bisect_pred & falling
-        a = ternary(bisect_pred & lo, d, a)
-        b = ternary(bisect_pred & ~lo, d, b)
-        print(f'bisect a: {a.numpy()}    b: {b.numpy()}')
-
-    return a, b, wolfe, neg_inf, blowup
 
 
-def secant(state, phi, a, b):
-    r"""Implements the secant function, a sub-procedure in secant2.
-
-    The output value is the weighted average of the input values, where
-    the weights are given by the slopes of `phi` at the inputs values. 
-
-    Args:
-        phi (Callable): the restricted function on the search line.
-        a (Tensor): holds the left ends of the intervals.
-        b (Tensor): holds the right ends of the intervals.
-
-    Returns:
-        [a, b]: left ends and right ends of the result intervels. 
-    """
-    #                 a * phi'(b) - b * phi'(a)
-    # secant(a, b) = ---------------------------
-    #                   phi'(b)  - phi'(a)
-
-    fa, ga = state.func_and_deriv(phi, a)
-    fb, gb = state.func_and_deriv(phi, b)
-
-    c = (a * gb - b * ga) / (gb - ga)
-    # (TODO) Handles divide by zero
-    # if paddle.any(paddle.isinf(c)):
-    #     c = ternary(paddle.isinf(c), paddle.zeros_like(c), c)
-    return c
 
 
-def secant2(state, phi, a, b, wolfe, neg_inf, blowup):
-    r"""Implements the secant2 procedure in the Hager-Zhang method.
-
-    Args:
-        state (Tensor): the search state tensor.
-        phi (Callable): the restricted function on the search line.
-        a (Tensor): holds the left ends of the intervals.
-        b (Tensor): holds the right ends of the intervals.
-
-    Returns:
-        [a, b]: left ends and right ends of the result intervels. 
-    """
-    # This step uses a function called secant which generates a new point
-    # from two existing points using the slopes at the two points.
-    #
-    # S1. Let c = secant(a, b) and [A, B] = update(a, b, c)
-    #
-    # S2. If c = B, then let c = secant(b, B), [a, b] = update(A, B, c)
-    #
-    # S3. If c = A, then let c = secant(a, A), [a, b] = update(A, B, c)
-    #
-    # S3. Otherwise, [a, b] = [A, B]
-    c = secant(state, phi, a, b)
-
-    A, B, wolfe, neg_inf, blowup = update(state, phi, a, b, c,
-                                         wolfe, neg_inf, blowup)
-
-    # Boolean tensor each element of which holds the S2 condition 
-    S2_cond = c == B
-
-    # Boolean tensor each element of which holds the S3 condition 
-    S3_cond = c == A
-
-    # Generates secant's input in S2 and S3
-    l = ternary(S2_cond, b, A)
-    r = B
-
-    l = ternary(S3_cond, a, l)
-    r = ternary(S3_cond, A, r)
-
-    # Outputs of S2 and S3
-    a, b, wolfe, neg_inf, blowup = update(state, phi, A, B, c,
-                                         wolfe, neg_inf, blowup)
-
-    # If S2 or S3, returns [a, b], otherwise returns [A, B]
-    S2_or_S3 = S2_cond | S3_cond
-    a = ternary(S2_or_S3, a, A)
-    b = ternary(S2_or_S3, b, B)
-
-    return a, b, wolfe, neg_inf, blowup
-
-
-def update(state, phi, a, b, c, wolfe, neg_inf, blowup):
-    r"""Performs the update procedure in the Hager-Zhang method.
-
-    Args:
-        state (Tensor): the search state tensor.
-        phi (Callable): the restricted function on the search line.
-        a (Tensor): holds the left ends of the intervals.
-        b (Tensor): holds the right ends of the intervals.
-        c (Tensor): holds the new step sizes.
-        ifcond (Tensor): boolean tensor for control dependence.
-
-    Returns:
-        [a, b]: left ends and right ends of the result intervels. 
-    """
-    eps = state.params['eps']
-    f0 = state.fk
-    epsilon_k = eps * state.Ck
-
-    # U0. If c is outside of (a, b), then return [a, b]
-    #
-    # U1. If phi'(c) >= 0, then return [a, c]
-    #
-    # U2. If phi'(c) < 0 and phi(c) <= phi(0) + epsilon_k, return [c, b]
-    #
-    # U3. If phi'(c) < 0 and phi(c) > phi(0) + epsilon_k,
-    #     return Bisect([a, c])
-    f, g = state.func_and_deriv(phi, c)
-
-    other_cond = wolfe | neg_inf | blowup
-    # Early returns on U0
-    U0_cond = (c > a) == (c > b)
-    if all_active_with_predicates(state.state, other_cond | U0_cond):
-        return a, b, wolfe, neg_inf, blowup
-
-    # Early returns if U1 holds
-    U1_cond = ~U0_cond | (g >= .0)
-    b = ternary(~other_cond & U1_cond, c, b)
-    if all_active_with_predicates(state.state, other_cond | U1_cond):
-        return a, b, wolfe, neg_inf, blowup
-
-    # It's tricky to handle iterative tensor algorithms when control dependence
-    # is involved. If naively running two branches in parallel before merging
-    # the two control paths, the `invalid` path may have never ended.
-    # We use an if-converse predicate to overcome this issue.
-    U23_cond = ~U0_cond & (g < .0)
-    U3_cond = U23_cond & (f > f0 + epsilon_k)
-
-    a = ternary(~other_cond & U23_cond, c, a)
-    # Bisects [a, c] for the U3 condition
-    A, B, wolfe, neg_inf, blowup = bisect(state, phi, a, c, U3_cond,
-                                         wolfe, neg_inf, blowup)
-    other_cond = wolfe | neg_inf | blowup
-
-    # U3 
-    a = ternary(~other_cond & U3_cond, A, a)
-    b = ternary(~other_cond & U3_cond, B, b)
-
-    return a, b, wolfe, neg_inf, blowup
 
 
 class HagerZhang(SearchState):
@@ -463,14 +211,14 @@ class HagerZhang(SearchState):
                                    iters=iters,
                                    ls_iters=ls_iters)
         self.func = func
+        self.phi = None
+        self.deriv = None
         self.set_params(params)
 
-    def update_stop(self, phi, c, phiprime_0, phi_c=None, phiprime_c=None):
+    def update_stop(self, c, phi_c=None, phiprime_c=None):
         r"""Tests T1/T2 condition in the Hager-Zhang paper.
         
         Args:
-            state (Tensor): the search state tensor.
-            phi (Callable): the restricted function on the search line.
             c (Tensor): the step size tensor.
             phiprime_0 (Tensor): the derivative of `phi` at 0.
             phi_c (Tensor, optional): the value of `phi(c)`. Default is None.
@@ -489,9 +237,10 @@ class HagerZhang(SearchState):
         epsilon_k = eps * self.Ck
 
         phi_0 = self.fk
+        phiprime_0 = self.phiprime0
 
         if phi_c is None or phiprime_c is None:
-            phi_c, phiprime_c = self.func_and_deriv(phi, c)
+            phi_c, phiprime_c = self.func_and_deriv(self.phi, c)
         
         self.stop_lowerbound |= self.is_lowerbound(phi_c)
         self.stop_blowup |= self.is_blowup(phi_c, phiprime_c)
@@ -565,23 +314,238 @@ class HagerZhang(SearchState):
 
         return c
 
-    def linesearch(self):
+    def bisect(self, a, b, ifcond):
+        r"""Bisects to locate opposite slope interval.
 
-        def phi(a):
-            r'''
-            phi is the objective function projected on the direction `self.pk`.
+        Args:
+            a (Tensor): holds the left ends of the intervals.
+            b (Tensor): holds the right ends of the intervals.
+            ifcond (Tensor): boolean tensor that holds the if-converse condition.
 
-            Args:
-                a (Tensor): a scalar tensor, or a tensor of shape [...] in batching 
-                mode, giving the step sizes alpha.
-            '''
-            if len(self.pk.shape) > 1:
-                a = paddle.unsqueeze(a, axis=-1)
+        Returns:
+            [a, b]: left ends and right ends of the result intervels.   
+        """
+        theta, eps = (getattr(self, p) for p in ('theta', 'eps'))
+        epsilon_k = eps * self.Ck
 
-            return self.func(self.xk + a * self.pk)
+        f0 = self.fk
 
-        self.ls_stop_counter.reset()
+        # a. Let d = (1 - theta)*a + theta*b, if phi'(d) >= 0, then return [a, d]
+        #
+        # b. If phi'(d) < 0 and phi(d) > phi(0) + epsilon_k, then Bisect([a, d])
+        #
+        # c. If phi'(d) < 0 and phi(d) <= phi(0) + epsilon_k, then Bisect([d, b])
 
+        # falling = make_const(f0, True, dtype='bool')
+        bisect_pred = ifcond
+        while any_active_with_predicates(self.state, bisect_pred & ~self.stop):
+            # d = (1.0 - theta) * a + theta * b
+            d = a + theta * (b - a)
+
+            f, g = self.func_and_deriv(self.phi, d)
+
+            falling = g < .0
+            lo = f < f0 + epsilon_k
+
+            # Condition a.
+            b = ternary(bisect_pred & ~falling, d, b)
+
+            # Condition b and c.
+            bisect_pred = bisect_pred & falling
+            a = ternary(bisect_pred & lo, d, a)
+            b = ternary(bisect_pred & ~lo, d, b)
+            print(f'bisect a: {a.numpy()}    b: {b.numpy()}')
+            
+            self.update_stop(a)
+            self.update_stop(b)
+        return a, b
+
+    def bracket(self, phi, c, phi_c=None, phiprime_c=None):
+        r"""Generates opposite slope interval.
+            
+        Args:
+            phi (Callable): the restricted function on the search line.
+            c (Tensor): the initial step sizes.
+        
+        Returns:
+            [a, b]: left ends and right ends of the result intervels.
+        """
+        # B0. Initialize j = 0, c_0 = c
+        #
+        # B1. If phi'(c_j) >= 0, then return [c_j-1, c_j]
+        #
+        # B2. If phi'(c_j) < 0 and phi(c_j) > phi(0) + epsilon_k,
+        #     then return Bisect([0, c_j])
+        #
+        # B3. Otherwise, c_j = c, c_j+1 = rho * c, j = j + 1, goto B1
+        eps, rho = (getattr(self, p) for p in ('eps', 'rho'))
+        epsilon_k = eps * self.Ck
+
+        # f0 = phi(0)
+        f0 = self.fk
+
+        # The following loop repeatedly applies (B3) if condition allows
+        prev_c = make_const(c, .0)
+
+        # f = phi(c), g = phi'(c)
+        if phi_c is None or phiprime_c is None:
+            f, g = self.func_and_deriv(phi, c)
+            self.update_stop(c, f, g)
+        else:
+            f, g = phi_c, phiprime_c
+        
+        # Initializes condition B3
+        B3_cond = (g < .0) & (f < f0 + epsilon_k)
+
+        expanding_pred = B3_cond & ~self.stop
+
+        while any_active_with_predicates(self.state, expanding_pred):
+            # Sets [prev_c, c] to [c, rho*c] if B3 is true.
+            prev_c = ternary(expanding_pred, c, prev_c)
+            c = ternary(expanding_pred, rho * c, c)
+            print(f'expanding  c: {c.numpy()}')
+            # Calculates the function values and gradients.
+            f, g = self.func_and_deriv(self.phi, c)
+            self.update_stop(c, f, g)
+            B3_cond = (g < .0) & (f < f0 + epsilon_k)
+            expanding_pred &= B3_cond & ~self.stop
+
+        # Narrows down the interval by recursively bisecting it.
+        B1_cond = g >= .0
+        B2_cond = ~B1_cond & (f >= f0 + epsilon_k)
+        a, b = self.bisect(make_const(c, .0), c, B2_cond)
+        # Sets [a, _] to [prev_c, _] if B1 holds, [a, _] if B2 holds
+        a = ternary(B1_cond, prev_c, a)
+        b = ternary(B1_cond, c, b)
+        return a, b
+
+    def secant(self, a, b):
+        r"""Implements the secant function, a sub-procedure in secant2.
+    
+        The output value is the weighted average of the input values, where
+        the weights are given by the slopes of `phi` at the inputs values. 
+    
+        Args:
+            a (Tensor): holds the left ends of the intervals.
+            b (Tensor): holds the right ends of the intervals.
+    
+        Returns:
+            [a, b]: left ends and right ends of the result intervels. 
+        """
+        #                 a * phi'(b) - b * phi'(a)
+        # secant(a, b) = ---------------------------
+        #                   phi'(b)  - phi'(a)
+    
+        fa, ga = self.func_and_deriv(self.phi, a)
+        fb, gb = self.func_and_deriv(self.phi, b)
+    
+        c = (a * gb - b * ga) / (gb - ga)
+
+        self.update_stop(c)
+        return c
+    
+    def update(self, a, b, c, ifcond):
+        r"""Performs the update procedure in the Hager-Zhang method.
+    
+        Args:
+            a (Tensor): holds the left ends of the intervals.
+            b (Tensor): holds the right ends of the intervals.
+            c (Tensor): holds the new step sizes.
+
+        Returns:
+            [a, b]: left ends and right ends of the result intervels. 
+        """
+        eps = getattr(self, 'eps')
+        f0 = self.fk
+        epsilon_k = eps * self.Ck
+    
+        # U0. If c is outside of (a, b), then return [a, b]
+        #
+        # U1. If phi'(c) >= 0, then return [a, c]
+        #
+        # U2. If phi'(c) < 0 and phi(c) <= phi(0) + epsilon_k, return [c, b]
+        #
+        # U3. If phi'(c) < 0 and phi(c) > phi(0) + epsilon_k,
+        #     return Bisect([a, c])
+        f, g = self.func_and_deriv(self.phi, c)
+    
+        # Early returns on U0
+        U0_cond = (c > a) == (c > b)
+        selected0 = ifcond & U0_cond
+        selected0_c = ifcond & ~U0_cond
+        if not self.any_active_with_predicates(selected0_c):
+            return a, b
+    
+        # Early returns if U1 holds
+        U1_cond = (g >= .0)
+        selected1 = selected0_c & U1_cond
+        selected1_c = selected0_c & ~U1_cond
+        b = ternary(selected1, c, b)
+        if not self.any_active_with_predicates(selected1_c):
+            return a, b
+    
+        # It's tricky to handle iterative tensor algorithms when control 
+        # dependence is involved. If naively running two branches in parallel 
+        # before merging the two control paths, the `invalid` path may have 
+        # never ended. We use an if-converse predicate to overcome this issue.
+        U2_cond = f > f0 + epsilon_k
+        selected2 = selected1_c & U2_cond
+        selected2_c = selected1_c & ~U2_cond
+        a = ternary(selected2, c, a)
+        if not self.any_active_with_predicates(selected2_c):
+            return a, b
+
+        # Bisects [a, c] for the U3 condition
+        selected3 = selected2_c
+        A, B = self.bisect(a, c, selected3)
+    
+        # U3 
+        a = ternary(selected3, A, a)
+        b = ternary(selected3, B, b)
+        return a, b
+
+    def secant2(self, a, b):
+        r"""Implements the secant2 procedure in the Hager-Zhang method.
+    
+        Args:
+            a (Tensor): holds the left ends of the intervals.
+            b (Tensor): holds the right ends of the intervals.
+    
+        Returns:
+            [a, b]: left ends and right ends of the result intervels. 
+        """
+        # This step uses a function called secant which generates a new point
+        # from two existing points using the slopes at the two points.
+        #
+        # S1. Let c = secant(a, b) and [A, B] = update(a, b, c)
+        #
+        # S2. If c = B, then let c = secant(b, B), [a, b] = update(A, B, c)
+        #
+        # S3. If c = A, then let c = secant(a, A), [a, b] = update(A, B, c)
+        #
+        # S3. Otherwise, [a, b] = [A, B]
+        c = self.secant(a, b)
+    
+        A, B = self.update(a, b, c, ~self.stop)
+    
+        # Boolean tensor each element of which holds the S2 condition 
+        S2_cond = c == B
+        S3_cond = c == A
+        selected_S2 = ~self.stop & S2_cond
+        selected_S3 = ~self.stop & S3_cond
+        selected_S23 =  ~self.stop & (S2_cond | S3_cond)
+        c = ternary(selected_S2, self.secant(b, c), c)
+        c = ternary(selected_S3, self.secant(a, c), c)
+    
+        a, b = self.update(A, B, c, selected_S2 | selected_S3)
+
+        a = ternary(selected_S23, a, A)
+        b = ternary(selected_S23, b, B)
+
+        return a, b
+    
+
+    def linesearch(self, pk):
         gamma = getattr(self, 'gamma')
         Delta = getattr(self, 'Delta')
 
@@ -597,22 +561,28 @@ class HagerZhang(SearchState):
         Qk = 1 + Qk * Delta
         Ck = Ck + (paddle.abs(fk) - Ck) / Qk
         self.Qk, self.Ck = Qk, Ck
+    
+        def phi(a):
+            r'''
+            phi is the objective function projected on the direction `self.pk`.
 
-        # The negative inner product of approximate inverse hessian and gradient
-        # gives the line search direction p_k. Immediately after p_k is 
-        # calculated, the directional derivative on p_k should be checked to 
-        # make sure the p_k is a descending direction. If that's not the case, 
-        # then sets the line search state as failed for the corresponding 
-        # batching element.
-        if self.pk is None:
-            pk = -einsum('...ij, ...j', Hk, gk)
-            self.pk = pk
-        else:
-            pk = self.pk
+            Args:
+                a (Tensor): a scalar tensor, or a tensor of shape [...] in batching 
+                mode, giving the step sizes alpha.
+            '''
+            if len(pk.shape) > 1:
+                a = paddle.unsqueeze(a, axis=-1)
+
+            return self.func(xk + a * pk)
 
         # deriv is the directional derivative of f at x_k on the direction of 
         # p_k. It's also the gradient of phi    
         deriv = einsum('...i, ...i', gk, pk) if bat else dot(gk, pk)
+
+        self.phi = phi
+        self.phiprime0 = deriv
+
+        self.ls_stop_counter.reset()
 
         # Makes early decisions in case some instances are found to be converged
         # or failed. The status `stop_lowerbound` and `stop_blowup` are monotone
@@ -645,35 +615,31 @@ class HagerZhang(SearchState):
         try:
             # Initial stopping test. Those already converged instances are 
             # likely to succeed.
-            self.update_stop(phi, c, deriv)
+            self.update_stop(c)
 
-            a_j, b_j = None, None
+            # Finds the first opposite-sloped bracket 
+            a_j, b_j = self.bracket(phi, c)
             # Continues if there's line search still active
             while not self.should_stop():
-                # Finds the first opposite-sloped bracket 
-                if a_j is None:
-                    a_j, b_j = self.bracket(phi, c)
-                                                         
-
                 # Applies secant2 to the located intervals
-                a, b = self.secant2(phi, a_j, b_j)
+                a, b = self.secant2(a_j, b_j)
 
                 print(f'secant2 a: {a.numpy()}     b: {b.numpy()}')
                 next_c = a + 0.5 * (b - a)
                 c = ternary(self.stop, c, next_c)
-                
-                self.update_stop(phi, c, deriv)
+
+                self.update_stop(c)
 
                 # If interval does not shrink enough, then applies bisect
                 # repeatedly.
                 L2_cond = (b - a) > gamma * (b_j - a_j)
 
-                L2_cond = ~self.stop & L2_cond
+                selected_L2 = ~self.stop & L2_cond
 
-                if any_active_with_predicates(self.state, L2_cond):
-                    A, B = self.update(phi, a, b, c, L2_cond)
-                    a = ternary(L2_cond, A, a)
-                    b = ternary(L2_cond, B, b)
+                if any_active_with_predicates(selected_L2):
+                    A, B = self.update(a, b, c, selected_L2)
+                    a = ternary(selected_L2, A, a)
+                    b = ternary(selected_L2, B, b)
 
                 # Goes to next iteration
                 a_j, b_j = a, b
@@ -689,6 +655,6 @@ class HagerZhang(SearchState):
         print(f'ak {self.ak}')
         print(f'ls_stepsize {c}')
         # Writes back the obtained step size to the search state.
-        self.ak = ternary(self.active_state() & self.stop, c, self.ak)
-        print(f'ak2 {self.ak}')
-        return
+        next_ak = ternary(self.active_state() & self.stop, c, self.ak)
+        print(f'ak2 {next_ak}')
+        return next_ak
