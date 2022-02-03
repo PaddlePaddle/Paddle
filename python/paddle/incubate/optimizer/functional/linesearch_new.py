@@ -252,7 +252,9 @@ class HagerZhang(SearchState):
 
         wolfe = wolfe_cond | approx_wolfe_cond
         self.stop_wolfe |= wolfe
-        self.stop = self.stop_wolfe | self.stop_blowup | self.stop_lowerbound
+        stop = self.stop_wolfe | self.stop_blowup | self.stop_lowerbound
+        self.ak = ternary(self.active_state() & ~self.stop & stop, c, self.ak)
+        self.stop = stop
 
     def should_stop(self):
         return not self.any_active_with_predicates(self.stop)
@@ -594,6 +596,7 @@ class HagerZhang(SearchState):
         self.stop_wolfe = make_const(fk, False, dtype='bool')
         # Generates initial step sizes
         c = self.initial()
+        self.ak = c
         print(f'ls  \nInitial step size: {c.numpy()}')
 
         import traceback
@@ -637,8 +640,4 @@ class HagerZhang(SearchState):
 
         print(f'state {self.state}')
         print(f'ak {self.ak}')
-        print(f'ls_stepsize {c}')
-        # Writes back the obtained step size to the search state.
-        next_ak = ternary(self.active_state() & self.stop, c, self.ak)
-        print(f'ak2 {next_ak}')
-        return next_ak
+        return self.ak
