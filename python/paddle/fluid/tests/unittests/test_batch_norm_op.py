@@ -373,6 +373,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
             'scale@GRAD', 'bias@GRAD'
         ]
 
+
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         np.allclose(np.array(tensor), np_array, atol=atol)
 
@@ -495,7 +496,8 @@ class TestBatchNormOpTraining(unittest.TestCase):
                     grad_var.set_dtype(core.VarDesc.VarType.FP32)
 
                 program._sync_with_cpp()
-
+                
+                #print( program )
                 exe = fluid.Executor(place)
                 out = exe.run(program,
                               feed={
@@ -517,7 +519,10 @@ class TestBatchNormOpTraining(unittest.TestCase):
 
         places = [core.CPUPlace()]
 
-        if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
+        # if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
+        #     places.append(core.CUDAPlace(0))
+
+        if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
 
         for place in places:
@@ -716,4 +721,6 @@ class TestDygraphBatchNormOpenReserveSpace(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    import paddle  
+    paddle.enable_static()
     unittest.main()

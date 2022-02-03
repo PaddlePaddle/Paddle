@@ -1001,4 +1001,6 @@ create_test_cudnn_channel_last_fp16_class(
     TestWithDilation_AsyPadding, grad_check=False)
 
 if __name__ == '__main__':
+    import paddle 
+    paddle.enable_static()
     unittest.main()

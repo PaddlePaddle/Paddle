@@ -47,7 +47,7 @@ class BatchNormOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override;
 
-    framework::KernelSignature GetExpectedPtenKernelArgs(
+  framework::KernelSignature GetExpectedPtenKernelArgs(
       const framework::ExecutionContext &ctx) const override {
     return framework::KernelSignature("batch_norm", {"X", "Scale", "Bias", "Mean", "Variance"},
                                       {"momentum", "epsilon", "data_layout", "is_test", 
@@ -68,6 +68,16 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override;
+
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::KernelSignature("batch_norm_grad", {framework::GradVarName("Y")  ,"X", "Scale", "Bias", "SavedMean", "SavedVariance", \
+                                      "ReserveSpace", "Mean", "Variance" },
+                                      {"momentum", "epsilon", "data_layout", "is_test", 
+                                      "use_global_stats", "trainable_statistics", "fuse_with_relu"}, 
+                                      { framework::GradVarName("X"), framework::GradVarName("Scale"), \
+                                      framework::GradVarName("Bias")    });
+  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(

@@ -18,22 +18,22 @@ template <typename T>
 using ConstEigenVectorArrayMap =
     Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, 1>>;
 
+
 template <typename T, typename Context>
-void BatchNormGradKernel(const Context& dev_ctx,  const DenseTensor& y_grad,
+void BatchNormGradRawKernel(const Context& ctx,  const DenseTensor& y_grad,
                     const DenseTensor& x, \
                     const DenseTensor& scale, const DenseTensor& bias,
                     const DenseTensor& saved_mean, const DenseTensor& saved_variance,
                     paddle::optional<const DenseTensor&> reserve_space,
                     paddle::optional<const DenseTensor&> mean,
                     paddle::optional<const DenseTensor&> variance,
-                    float momentum, float epsilon, string data_layout,
+                    float momentum, float epsilon, const std::string& data_layout_str,
                     bool is_test, bool use_global_stats, bool trainable_statistics,
-                    bool fuse_with_relu,
+                    bool fuse_with_relu, bool is_inplace,
                     DenseTensor* x_grad, DenseTensor* scale_grad, DenseTensor* bias_grad )
 {
-    const auto *d_y = &y_grad;
-        
-    const std::string data_layout_str = data_layout    
+    const auto *d_y = &y_grad;        
+    
     DataLayout data_layout = paddle::framework::StringToDataLayout(data_layout_str);
 
     auto *d_x = x_grad;
@@ -47,16 +47,22 @@ void BatchNormGradKernel(const Context& dev_ctx,  const DenseTensor& y_grad,
     // with inplace as true only take Y as input and X should be calculate
     // by inverse operation of batch_norm on Y
     
-    bool is_inplace;
-    
-    
-    
-    is_inplace = false;
+        
+    if( is_inplace )
+    {
+      if (d_x) {
+        PADDLE_ENFORCE_EQ(
+            d_x, d_y, platform::errors::InvalidArgument(
+                          "X@GRAD and Y@GRAD inplaced in non-inplace mode"));
+      }
+    }
+    else{
       if (d_x) {
         PADDLE_ENFORCE_NE(
             d_x, d_y, platform::errors::InvalidArgument(
                           "X@GRAD and Y@GRAD inplaced in non-inplace mode"));
       }
+    }
     
 
     // Get the size for each dimension.
@@ -91,12 +97,12 @@ void BatchNormGradKernel(const Context& dev_ctx,  const DenseTensor& y_grad,
       d_x->mutable_data<T>(ctx.GetPlace());
     }
 
-    const T *mean_data = saved_mean->data<T>();
-    const T *inv_var_data = saved_inv_variance->data<T>();
-    Tensor inv_var_tensor;
+    const T *mean_data = saved_mean.data<T>();
+    const T *inv_var_data = saved_variance.data<T>();
+    DenseTensor inv_var_tensor;
     if (use_global_stats) {
-      const auto *running_mean = mean.GetPtr();
-      const auto *running_variance = variance.GetPtr();
+      const auto *running_mean = mean.get_ptr();
+      const auto *running_variance = variance.get_ptr();
       mean_data = running_mean->data<T>();
       inv_var_tensor.Resize({C});
       T *running_inv_var_data = inv_var_tensor.mutable_data<T>(ctx.GetPlace());
@@ -107,8 +113,8 @@ void BatchNormGradKernel(const Context& dev_ctx,  const DenseTensor& y_grad,
       inv_var_data = running_inv_var_data;
     }
 
-    ConstEigenVectorArrayMap<T> scale_arr(scale->data<T>(), C);
-    ConstEigenVectorArrayMap<T> bias_arr(bias->data<T>(), C);
+    ConstEigenVectorArrayMap<T> scale_arr(scale.data<T>(), C);
+    ConstEigenVectorArrayMap<T> bias_arr(bias.data<T>(), C);
     ConstEigenVectorArrayMap<T> mean_arr(mean_data, C);
     ConstEigenVectorArrayMap<T> inv_var_arr(inv_var_data, C);
 
@@ -134,20 +140,20 @@ void BatchNormGradKernel(const Context& dev_ctx,  const DenseTensor& y_grad,
     }
 
     if (d_x && (N * sample_size) == 1 && !use_global_stats) {
-      framework::TensorCopy(*d_y, ctx.GetPlace(), d_x);
+      paddle::framework::TensorCopy(*d_y, ctx.GetPlace(), d_x);
       return;
     }
 
     int scale_coefff = use_global_stats ? 1 : N * sample_size;
     const auto scale_inv_var_nhw = scale_arr * inv_var_arr / scale_coefff;
 
-    Tensor dy_sum;
+    DenseTensor dy_sum;
     dy_sum.Resize({C});
     dy_sum.mutable_data<T>(ctx.GetPlace());
     EigenVectorArrayMap<T> dy_sum_arr(dy_sum.mutable_data<T>(ctx.GetPlace()),
                                       C);
 
-    Tensor dy_mul_x_sub_mean_mul_invstd_sum;
+    DenseTensor dy_mul_x_sub_mean_mul_invstd_sum;
     dy_mul_x_sub_mean_mul_invstd_sum.Resize({C});
     dy_mul_x_sub_mean_mul_invstd_sum.mutable_data<T>(ctx.GetPlace());
     EigenVectorArrayMap<T> dy_mul_x_sub_mean_mul_invstd_sum_arr(
@@ -166,17 +172,17 @@ void BatchNormGradKernel(const Context& dev_ctx,  const DenseTensor& y_grad,
     switch (data_layout) {
       case DataLayout::kNCHW: {
         if (is_inplace) {
-          auto px = *x;
+          auto px = x;
           EigenArrayMap<T> x_data(px.mutable_data<T>(ctx.GetPlace()),
                                   sample_size, N * C);
-          ConstEigenArrayMap<T> y_data(x->data<T>(), sample_size, N * C);
+          ConstEigenArrayMap<T> y_data(x.data<T>(), sample_size, N * C);
           for (int nc = 0; nc < N * C; ++nc) {
             x_data.col(nc) = (y_data.col(nc) - bias_arr(nc % C)) /
                                  scale_inv_var_nhw(nc % C) / scale_coefff +
                              mean_arr(nc % C);
           }
         }
-        ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
+        ConstEigenArrayMap<T> x_arr(x.data<T>(), sample_size, N * C);
         ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), sample_size, N * C);
 
         for (int nc = 0; nc < N * C; ++nc) {
@@ -216,17 +222,17 @@ void BatchNormGradKernel(const Context& dev_ctx,  const DenseTensor& y_grad,
       }
       case DataLayout::kNHWC: {
         if (is_inplace) {
-          auto px = *x;
+          auto px = x;
           EigenArrayMap<T> x_data(px.mutable_data<T>(ctx.GetPlace()), C,
                                   N * sample_size);
-          ConstEigenArrayMap<T> y_data(x->data<T>(), C, N * sample_size);
+          ConstEigenArrayMap<T> y_data(x.data<T>(), C, N * sample_size);
           for (int nhw = 0; nhw < N * sample_size; nhw++) {
             x_data.col(nhw) = (y_data.col(nhw) - bias_arr) / scale_inv_var_nhw /
                                   scale_coefff +
                               mean_arr;
           }
         }
-        ConstEigenArrayMap<T> x_arr(x->data<T>(), C, N * sample_size);
+        ConstEigenArrayMap<T> x_arr(x.data<T>(), C, N * sample_size);
         ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), C, N * sample_size);
 
         for (int nhw = 0; nhw < N * sample_size; ++nhw) {
@@ -266,4 +272,34 @@ void BatchNormGradKernel(const Context& dev_ctx,  const DenseTensor& y_grad,
    
 }
 
+template <typename T, typename Context>
+void BatchNormGradKernel(const Context& dev_ctx,  const DenseTensor& y_grad,
+                    const DenseTensor& x, \
+                    const DenseTensor& scale, const DenseTensor& bias,
+                    const DenseTensor& saved_mean, const DenseTensor& saved_variance,
+                    paddle::optional<const DenseTensor&> reserve_space,
+                    paddle::optional<const DenseTensor&> mean,
+                    paddle::optional<const DenseTensor&> variance,
+                    float momentum, float epsilon, const std::string& data_layout,
+                    bool is_test, bool use_global_stats, bool trainable_statistics,
+                    bool fuse_with_relu,
+                    DenseTensor* x_grad, DenseTensor* scale_grad, DenseTensor* bias_grad )
+{
+    BatchNormGradRawKernel<T, Context>( dev_ctx, y_grad,
+                x, scale, bias,
+                saved_mean, saved_variance,
+                reserve_space, mean, variance,
+                momentum, epsilon, data_layout,
+                is_test, use_global_stats, trainable_statistics,
+                fuse_with_relu, false,
+                x_grad, scale_grad, bias_grad);
+}
+
+
 } //namespace pten
+
+
+
+PT_REGISTER_KERNEL(batch_norm_grad, CPU, ALL_LAYOUT, pten::BatchNormGradKernel, float, double) {}
+
+PT_REGISTER_KERNEL(batch_norm_grad_raw, CPU, ALL_LAYOUT, pten::BatchNormGradRawKernel, float, double) {}

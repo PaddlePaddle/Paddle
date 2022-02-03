@@ -43,19 +43,12 @@ static void ParseArgs(const OpKernelInfo& op_kernel_info,
   auto& attribute_defs = OpKernelInfoHelper::GetAttributeDefs(op_kernel_info);
 
   for (auto& input : input_defs) {
-    auto type_index =
-        input.is_vector
-            ? std::type_index(typeid(const std::vector<pten::DenseTensor>&))
-            : std::type_index(typeid(const pten::DenseTensor&));
+    auto type_index = input.is_vector ? std::type_index(typeid(const std::vector<pten::DenseTensor>&)) : std::type_index(typeid(const pten::DenseTensor&) );
     args_def->AppendInput(input.backend, input.layout, input.dtype, type_index);
   }
   for (auto& output : output_defs) {
-    auto type_index =
-        output.is_vector
-            ? std::type_index(typeid(const std::vector<pten::DenseTensor>&))
-            : std::type_index(typeid(const pten::DenseTensor&));
-    args_def->AppendOutput(output.backend, output.layout, output.dtype,
-                           type_index);
+    auto type_index = output.is_vector ? std::type_index(typeid(const std::vector<pten::DenseTensor>&)) : std::type_index(typeid(const pten::DenseTensor&) );
+    args_def->AppendOutput(output.backend, output.layout, output.dtype, type_index);
   }
   for (auto& attr : attribute_defs) {
     args_def->AppendAttribute(attr.type_index);

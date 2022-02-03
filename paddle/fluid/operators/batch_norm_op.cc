@@ -409,6 +409,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+
   }
 };
 
@@ -862,10 +863,10 @@ REGISTER_OPERATOR(batch_norm_grad, ops::BatchNormGradOp,
 REGISTER_OPERATOR(batch_norm_grad_grad, ops::BatchNormDoubleGradOp,
                   ops::BatchNormDoubleGradOpInplaceInferer);
 
-REGISTER_OP_CPU_KERNEL(
-    batch_norm_grad,
-    ops::BatchNormGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::BatchNormGradKernel<paddle::platform::CPUDeviceContext, double>);
+// REGISTER_OP_CPU_KERNEL(
+//     batch_norm_grad,
+//     ops::BatchNormGradKernel<paddle::platform::CPUDeviceContext, float>,
+//     ops::BatchNormGradKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     batch_norm_grad_grad,
     ops::BatchNormDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
