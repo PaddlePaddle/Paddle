@@ -24,7 +24,6 @@
 PADDLE_DEFINE_EXPORTED_bool(
     new_executor_sequential_run, false,
     "Enable sequential execution for standalone executor, used for debug");
-DECLARE_bool(run_pten_kernel);
 
 namespace paddle {
 namespace framework {

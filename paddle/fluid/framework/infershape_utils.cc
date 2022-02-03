@@ -186,6 +186,14 @@ class CompatMetaTensor : public pten::MetaTensor {
     }
   }
 
+  void share_meta(const MetaTensor& meta_tensor) override {
+    set_dims(meta_tensor.dims());
+    set_dtype(meta_tensor.dtype());
+    // VarDesc doesn't contains layout, so we cannot share layout
+    // set_layout(meta_tensor.layout());
+    share_lod(meta_tensor);
+  }
+
  private:
   const LoD& GetRuntimeLoD() const {
     auto* var = BOOST_GET_CONST(Variable*, var_);
