@@ -207,21 +207,30 @@ void InitDefaultKernelSignatureMap() {
   });
 }
 
-void SetAllocationForOutputTenosr(pten::DenseTensor* tensor,
+void SetAllocationForOutputTenosr(pten::TensorBase* tensor,
                                   const platform::Place& place) {
-  if (!tensor->IsInitialized() || !(tensor->place() == place)) {
-    int dtype_size = tensor->dtype() == DataType::UNDEFINED
-                         ? 0
-                         : experimental::SizeOf(tensor->dtype());
-    int64_t numels = product(tensor->dims());
-    numels = numels < 0 ? 0 : numels;
-    auto tmp_allocation_ptr = memory::Alloc(place, numels * dtype_size);
-    auto& deleter = tmp_allocation_ptr.get_deleter();
-    auto* allocation_ptr = tmp_allocation_ptr.release();
-    auto shared_allocation =
-        std::shared_ptr<pten::Allocation>(allocation_ptr, deleter);
+  if (pten::DenseTensor::classof(tensor)) {
+    auto* dense_tensor = static_cast<pten::DenseTensor*>(tensor);
+    if (!dense_tensor->IsInitialized() || !(dense_tensor->place() == place)) {
+      int dtype_size = dense_tensor->dtype() == DataType::UNDEFINED
+                           ? 0
+                           : experimental::SizeOf(dense_tensor->dtype());
+      int64_t numels = product(dense_tensor->dims());
+      numels = numels < 0 ? 0 : numels;
+      auto tmp_allocation_ptr = memory::Alloc(place, numels * dtype_size);
+      auto& deleter = tmp_allocation_ptr.get_deleter();
+      auto* allocation_ptr = tmp_allocation_ptr.release();
+      auto shared_allocation =
+          std::shared_ptr<pten::Allocation>(allocation_ptr, deleter);
 
-    tensor->ResetHolder(shared_allocation);
+      dense_tensor->ResetHolder(shared_allocation);
+    }
+  } else if (pten::SelectedRows::classof(tensor)) {
+    VLOG(0) << "Set allocation for SelectedRows";
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unsupported tensor type is received when setting allocation for "
+        "output tensor."));
   }
 }
 
