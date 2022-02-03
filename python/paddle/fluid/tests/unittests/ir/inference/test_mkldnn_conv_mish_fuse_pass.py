@@ -22,9 +22,7 @@ import hypothesis.strategies as st
 
 class TestConvMishMkldnnFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        attrs = [
-            op.attrs for op in program_config.ops
-        ]
+        attrs = [op.attrs for op in program_config.ops]
         # If the problem has been fixed, the judgment
         # needs to be deleted!!!
         if attrs[0]['data_format'] == "NHWC":
