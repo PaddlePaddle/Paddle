@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/im2col.h"
 
 #include "paddle/fluid/operators/math/im2col_cfo_cpu.h"
+#include "paddle/pten/backends/cpu/cpu_context.h"
 
 namespace paddle {
 namespace platform {
@@ -37,6 +38,43 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
  public:
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& im, const std::vector<int>& dilation,
+                  const std::vector<int>& stride,
+                  const std::vector<int>& padding, framework::Tensor* col,
+                  const DataLayout data_layout) {
+    PADDLE_ENFORCE_EQ(im.dims().size(), 3,
+                      platform::errors::InvalidArgument(
+                          "The dimension of tensor 'im' should be 3. But got "
+                          "the dims of tensor 'im' is [%s].",
+                          im.dims()));
+    PADDLE_ENFORCE_EQ(col->dims().size(), 5,
+                      platform::errors::InvalidArgument(
+                          "The dimension of tensor 'col' should be 5. But got "
+                          "the dims of tensor 'col' is [%s].",
+                          col->dims()));
+
+    if (stride[0] == 1 && stride[1] == 1 && dilation[0] == 1 &&
+        dilation[1] == 1) {
+      if (padding[0] == 0 && padding[1] == 0 && padding[2] == 0 &&
+          padding[3] == 0) {
+        im2col_sh1sw1dh1dw1ph0pw0<T>(im, col, data_layout);
+        return;
+      } else if (padding[0] == 1 && padding[1] == 1 && padding[2] == 1 &&
+                 padding[3] == 1) {
+        im2col_sh1sw1dh1dw1ph1pw1<T>(im, col, data_layout);
+        return;
+      }
+      // TODO(TJ): complete padding >=2
+    }
+    im2col_common<T>(im, dilation, stride, padding, col, data_layout);
+  }
+};
+
+template <class T>
+class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO, pten::CPUContext,
+                    T> {
+ public:
+  void operator()(const pten::CPUContext& context, const framework::Tensor& im,
+                  const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding, framework::Tensor* col,
                   const DataLayout data_layout) {
@@ -151,14 +189,100 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
   }
 };
 
+template <class T>
+class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO, pten::CPUContext,
+                    T> {
+ public:
+  void operator()(const pten::CPUContext& context, const framework::Tensor& col,
+                  const std::vector<int>& dilation,
+                  const std::vector<int>& stride,
+                  const std::vector<int>& padding, framework::Tensor* im,
+                  const DataLayout data_layout) {
+    PADDLE_ENFORCE_EQ(im->dims().size(), 3,
+                      platform::errors::InvalidArgument(
+                          "The dimension of tensor 'im' should be 3. But got "
+                          "the dims of tensor 'im' is [%s].",
+                          im->dims()));
+    PADDLE_ENFORCE_EQ(col.dims().size(), 5,
+                      platform::errors::InvalidArgument(
+                          "The dimension of tensor 'col' should be 5. But got "
+                          "the dims of tensor 'col' is [%s].",
+                          col.dims()));
+    int im_channels =
+        (data_layout != DataLayout::kNHWC ? im->dims()[0] : im->dims()[2]);
+    int im_height =
+        (data_layout != DataLayout::kNHWC ? im->dims()[1] : im->dims()[0]);
+    int im_width =
+        (data_layout != DataLayout::kNHWC ? im->dims()[2] : im->dims()[1]);
+    int filter_height = col.dims()[1];
+    int filter_width = col.dims()[2];
+    int col_height = col.dims()[3];
+    int col_width = col.dims()[4];
+
+    PADDLE_ENFORCE_EQ((im_height + padding[0] + padding[2] -
+                       ((dilation[0] * (filter_height - 1) + 1))) /
+                              stride[0] +
+                          1,
+                      col_height, platform::errors::InvalidArgument(
+                                      "Output_height and padding(padding_up, "
+                                      "padding_down) are inconsistent."));
+    PADDLE_ENFORCE_EQ((im_width + padding[1] + padding[3] -
+                       ((dilation[1] * (filter_width - 1) + 1))) /
+                              stride[1] +
+                          1,
+                      col_width, platform::errors::InvalidArgument(
+                                     "Output_height and padding(padding_up, "
+                                     "padding_down) are inconsistent."));
+
+    int channels_col = im_channels * filter_height * filter_width;
+
+    T* im_data = im->data<T>();
+    const T* col_data = col.data<T>();
+
+    for (int c = 0; c < channels_col; ++c) {
+      int w_offset = c % filter_width;
+      int h_offset = (c / filter_width) % filter_height;
+      int c_im = c / (filter_width * filter_height);
+      for (int h = 0; h < col_height; ++h) {
+        int im_row_idx = h * stride[0] - padding[0] + h_offset * dilation[0];
+        for (int w = 0; w < col_width; ++w) {
+          int im_col_idx = w * stride[1] - padding[1] + w_offset * dilation[1];
+          if ((im_row_idx) >= 0 && (im_row_idx) < im_height &&
+              (im_col_idx) >= 0 && (im_col_idx) < im_width) {
+            int im_offset;
+            if (data_layout != DataLayout::kNHWC) {
+              im_offset =
+                  (c_im * im_height + im_row_idx) * im_width + im_col_idx;
+            } else {
+              im_offset =
+                  (im_row_idx * im_width + im_col_idx) * im_channels + c_im;
+            }
+            im_data[im_offset] +=
+                col_data[(c * col_height + h) * col_width + w];
+          }
+        }
+      }
+    }
+  }
+};
+
 template class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
                              platform::CPUDeviceContext, float>;
 template class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
                              platform::CPUDeviceContext, double>;
+template class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
+                             pten::CPUContext, float>;
+template class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
+                             pten::CPUContext, double>;
+
 template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
                              platform::CPUDeviceContext, float>;
 template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
                              platform::CPUDeviceContext, double>;
+template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
+                             pten::CPUContext, float>;
+template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
+                             pten::CPUContext, double>;
 
 /*
  * im = [input_channels, input_height, input_width]

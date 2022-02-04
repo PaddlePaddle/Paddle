@@ -1281,7 +1281,8 @@ class OpTest(unittest.TestCase):
                 # see details: https://stackoverflow.com/questions/38331703/why-does-numpys-broadcasting-sometimes-allow-comparing-arrays-of-different-leng
                 if expect_t.size == 0:
                     self.assertTrue(actual_t.size == 0)
-
+                print("act", actual_t)
+                print("exp ", expect_t)
                 self.assertTrue(
                     np.allclose(
                         actual_t,
