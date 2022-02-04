@@ -14,15 +14,9 @@ limitations under the License. */
 
 #include "paddle/pten/core/compat/op_utils.h"
 
-namespace pten {
+namespace pten {}  // namespace pten
 
-KernelSignature FillAnyLikeOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("full_like", {}, {"value"}, {"Out"});
-}
-
-}  // namespace pten
-
-PT_REGISTER_BASE_KERNEL_NAME(fill_any_like, full_like);
-
-PT_REGISTER_ARG_MAPPING_FN(fill_any_like, pten::FillAnyLikeOpArgumentMapping);
+PT_REGISTER_BASE_KERNEL_NAME(matmul_v2, matmul);
+PT_REGISTER_BASE_KERNEL_NAME(matmul_v2_grad, matmul_grad);
+PT_REGISTER_BASE_KERNEL_NAME(matmul_v2_grad_grad, matmul_double_grad);
+PT_REGISTER_BASE_KERNEL_NAME(matmul_v2_triple_grad, matmul_triple_grad);
