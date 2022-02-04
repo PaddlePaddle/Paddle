@@ -24,20 +24,14 @@ class TestFCMishMkldnnFusePass(PassAutoScanTest):
         x_shape = draw(
             st.lists(
                 st.integers(
-                    min_value=1, max_value=8), min_size=2, max_size=5))
-        x_shape = [2, 1]
-        x_rank = len(x_shape)
-        in_num_col_dims = draw(st.integers(min_value=1, max_value=x_rank - 1))
+                    min_value=1, max_value=128), min_size=2, max_size=3))
+        in_num_col_dims = len(x_shape) - 1
         w_shape = draw(
             st.lists(
                 st.integers(
-                    min_value=1, max_value=8), min_size=2, max_size=2))
+                    min_value=1, max_value=128), min_size=2, max_size=2))
         w_shape[0] = int(np.prod(x_shape[in_num_col_dims:]))
-        w_shape = [1, 2]
-        fc_bias_shape = [w_shape[1], ]
-        if draw(st.booleans()):
-            fc_bias_shape.insert(0, 1)
-        fc_bias_shape = [2, ]
+        fc_bias_shape = [w_shape[1]]
 
         ops_config = [{
             "op_type": "fc",
