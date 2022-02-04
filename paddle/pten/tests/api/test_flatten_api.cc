@@ -35,7 +35,7 @@ TEST(API, flatten) {
   auto dense_x = std::make_shared<pten::DenseTensor>(
       alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            framework::make_ddim({3, 2, 2, 3}),
+                            pten::framework::make_ddim({3, 2, 2, 3}),
                             pten::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x->mutable_data<float>(paddle::platform::CPUPlace());
