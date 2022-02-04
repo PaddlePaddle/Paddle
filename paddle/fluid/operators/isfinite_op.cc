@@ -28,7 +28,6 @@ class OpBase;
 }  // namespace imperative
 namespace platform {
 class CPUDeviceContext;
-struct CPUPlace;
 }  // namespace platform
 }  // namespace paddle
 
@@ -56,8 +55,8 @@ class OverflowOp : public framework::OperatorWithKernel {
     auto *x_var = ctx.InputVar("X");
     if (x_var->IsType<framework::LoDTensor>()) {
       dtype = x_var->Get<framework::LoDTensor>().type();
-    } else if (x_var->IsType<framework::SelectedRows>()) {
-      dtype = x_var->Get<framework::SelectedRows>().value().type();
+    } else if (x_var->IsType<pten::SelectedRows>()) {
+      dtype = x_var->Get<pten::SelectedRows>().value().type();
     } else {
       PADDLE_ENFORCE_EQ(
           true, false,

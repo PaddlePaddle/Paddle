@@ -15,8 +15,10 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/pten/include/math.h"
+#include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/pten/kernels/complex_kernel.h"
 
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
@@ -25,29 +27,32 @@ namespace pten {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
 TEST(DEV_API, conj) {
   // 1. create tensor
-  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+  const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc,
-                            pten::DenseTensorMeta(pten::DataType::COMPLEX64,
-                                                  framework::make_ddim({3, 4}),
-                                                  pten::DataLayout::NCHW));
+  pten::DenseTensor dense_x(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::COMPLEX64,
+                            pten::framework::make_ddim({3, 4}),
+                            pten::DataLayout::NCHW));
 
-  auto* dense_x_data = dense_x.mutable_data<paddle::complex64>();
+  auto* dense_x_data =
+      dense_x.mutable_data<paddle::complex64>(paddle::platform::CPUPlace());
   for (size_t i = 0; i < 12; ++i) {
     dense_x_data[i] = paddle::complex64(i * 1.0, i * 1.0);
   }
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
+  pten::CPUContext dev_ctx;
+  dev_ctx.SetDeviceAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
 
   // 2. test API
-  auto out = pten::Conj<paddle::complex64>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)), dense_x);
+  auto out = pten::Conj<paddle::complex64>(dev_ctx, dense_x);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);

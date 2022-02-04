@@ -21,7 +21,7 @@ from paddle.framework import core
 from paddle.fluid import unique_name
 from .pass_base import PassBase, register_pass
 from paddle.distributed.fleet.meta_optimizers.common import is_backward_op, is_optimizer_op
-from paddle.distributed.auto_parallel.process_group import get_world_process_groups, new_process_group
+from paddle.distributed.auto_parallel.process_group import new_process_group
 from paddle.distributed.auto_parallel.operators.common import is_parameter_related
 from paddle.distributed.auto_parallel.utils import _get_comm_group, naive_set_dist_op_attr_for_program_by_mesh_and_mapping, set_var_dist_attr
 

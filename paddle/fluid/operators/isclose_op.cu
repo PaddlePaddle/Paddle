@@ -25,8 +25,7 @@ struct GetTensorValue<platform::CUDADeviceContext, T> {
                const framework::Tensor& tensor) const {
     const T* data = tensor.data<T>();
     T value;
-    const auto gpu_place =
-        BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace());
+    const auto gpu_place = dev_ctx.GetPlace();
     memory::Copy(platform::CPUPlace(), &value, gpu_place, data, sizeof(T),
                  dev_ctx.stream());
     return value;

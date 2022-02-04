@@ -36,8 +36,9 @@ TEST(GradTensorHolder, Constructor) {
   pten::DenseTensorMeta meta = pten::DenseTensorMeta(
       pten::DataType::FLOAT32, paddle::framework::make_ddim({2, 2}));
   std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace()),
+      std::make_unique<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CPUPlace())
+          .get(),
       meta);
   EagerTensor et = EagerTensor(dt);
 
@@ -52,17 +53,19 @@ TEST(GradTensorHolder, Interfaces) {
   pten::DenseTensorMeta meta = pten::DenseTensorMeta(
       pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 1}));
   std::shared_ptr<pten::DenseTensor> dt0 = std::make_shared<pten::DenseTensor>(
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace()),
+      std::make_unique<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CPUPlace())
+          .get(),
       meta);
-  dt0->mutable_data<float>()[0] = 10.0;
+  dt0->mutable_data<float>(paddle::platform::CPUPlace())[0] = 10.0;
   EagerTensor et0 = EagerTensor(dt0);
 
   std::shared_ptr<pten::DenseTensor> dt1 = std::make_shared<pten::DenseTensor>(
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace()),
+      std::make_unique<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CPUPlace())
+          .get(),
       meta);
-  dt1->mutable_data<float>()[0] = 20.0;
+  dt1->mutable_data<float>(paddle::platform::CPUPlace())[0] = 20.0;
   EagerTensor et1 = EagerTensor(dt1);
 
   // Constructor empty GradTensorHolder

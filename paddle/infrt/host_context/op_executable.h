@@ -14,19 +14,18 @@
 
 #pragma once
 #include <llvm/ADT/ArrayRef.h>
-
+#include <mlir/IR/BuiltinTypes.h>
+#include <mlir/IR/Region.h>
 #include <memory>
 #include <string>
 #include <unordered_map>
-
-#include "mlir/IR/Function.h"
-#include "mlir/IR/Region.h"
 
 namespace mlir {
 class FuncOp;
 }  // namespace mlir
 
-namespace infrt::host_context {
+namespace infrt {
+namespace host_context {
 
 class SymbolTable;
 class KernelRegistry;
@@ -89,4 +88,5 @@ class OpExecutableBuilder : public OpExecutable {
       function_defs_t* function_defs);
 };
 
-}  // namespace infrt::host_context
+}  // namespace host_context
+}  // namespace infrt

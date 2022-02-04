@@ -13,27 +13,25 @@
 // limitations under the License.
 
 #include "paddle/infrt/dialect/tensorrt/trt_ops.h"
-#include "mlir/IR/Matchers.h"
-#include "mlir/IR/OpImplementation.h"
-#include "mlir/IR/PatternMatch.h"
-#include "mlir/Interfaces/CallInterfaces.h"
-#include "mlir/Interfaces/SideEffectInterfaces.h"
+#include <mlir/IR/Matchers.h>
+#include <mlir/IR/OpImplementation.h>
+#include <mlir/IR/PatternMatch.h>
+#include <mlir/Interfaces/CallInterfaces.h>
+#include <mlir/Interfaces/SideEffectInterfaces.h>
 
 namespace infrt {
 namespace trt {
 
-TensorRTDialect::TensorRTDialect(::mlir::MLIRContext *context)
-    : ::mlir::Dialect("trt", context, ::mlir::TypeID::get<TensorRTDialect>()) {
+TensorRTDialect::TensorRTDialect(mlir::MLIRContext *context)
+    : mlir::Dialect("trt", context, mlir::TypeID::get<TensorRTDialect>()) {
   addOperations<
 #define GET_OP_LIST
 #include "paddle/infrt/dialect/tensorrt/trt_ops.cpp.inc"  // NOLINT
       >();
-#undef GET_OP_LIST
 }
-
-#define GET_OP_CLASSES
-#include "paddle/infrt/dialect/tensorrt/trt_ops.cpp.inc"  // NOLINT
-#undef GET_OP_CLASSES
 
 }  // namespace trt
 }  // namespace infrt
+
+#define GET_OP_CLASSES
+#include "paddle/infrt/dialect/tensorrt/trt_ops.cpp.inc"  // NOLINT

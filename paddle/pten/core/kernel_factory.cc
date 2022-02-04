@@ -15,7 +15,7 @@
 #include "paddle/pten/core/kernel_factory.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/core/enforce.h"
 
 namespace pten {
 
@@ -50,26 +50,35 @@ Kernel KernelFactory::SelectKernel(const std::string& kernel_name,
   return kernel_iter->second;
 }
 
+KernelKeyMap KernelFactory::SelectKernelMap(
+    const std::string& kernel_name) const {
+  auto iter = kernels_.find(kernel_name);
+  if (iter == kernels_.end()) {
+    return KernelKeyMap();
+  }
+  return iter->second;
+}
+
 const Kernel& KernelFactory::SelectKernelOrThrowError(
     const std::string& kernel_name, const KernelKey& kernel_key) const {
   auto iter = kernels_.find(kernel_name);
   PADDLE_ENFORCE_NE(iter,
                     kernels_.end(),
-                    paddle::platform::errors::NotFound(
-                        "The kernel `%s` is not registered.", kernel_name));
+                    pten::errors::NotFound("The kernel `%s` is not registered.",
+                                           kernel_name));
 
   auto kernel_iter = iter->second.find(kernel_key);
   // TODO(chenweihang): polish refind impl here
   if (kernel_iter == iter->second.end() &&
-      kernel_key.layout() != pten::DataLayout::ANY) {
+      kernel_key.layout() != pten::DataLayout::ALL_LAYOUT) {
     pten::KernelKey any_layout_kernel_key(
-        kernel_key.backend(), pten::DataLayout::ANY, kernel_key.dtype());
+        kernel_key.backend(), pten::DataLayout::ALL_LAYOUT, kernel_key.dtype());
     kernel_iter = iter->second.find(any_layout_kernel_key);
   }
   PADDLE_ENFORCE_NE(
       kernel_iter,
       iter->second.end(),
-      paddle::platform::errors::NotFound(
+      pten::errors::NotFound(
           "The kernel with key %s of kernel `%s` is not registered.",
           kernel_key,
           kernel_name));

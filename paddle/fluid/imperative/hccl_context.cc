@@ -86,7 +86,7 @@ void HCCLParallelContext::Init() {
   }
   BcastHCCLId(hccl_ids, 0, server_fd);
 
-  int npu_id = BOOST_GET_CONST(platform::NPUPlace, place_).device;
+  int npu_id = place_.device;
   for (int ring_id = 0; ring_id < strategy_.nrings_; ring_id++) {
     VLOG(0) << "init hccl context nranks: " << strategy_.nranks_
             << " local rank: " << strategy_.local_rank_ << " npu id: " << npu_id
@@ -96,10 +96,10 @@ void HCCLParallelContext::Init() {
         &hccl_ids[ring_id], strategy_.nranks_, strategy_.local_rank_, npu_id,
         ring_id);
 
-    compute_events_.emplace_back(platform::NpuEventResourcePool::Instance().New(
-        BOOST_GET_CONST(platform::NPUPlace, place_).device));
-    comm_events_.emplace_back(platform::NpuEventResourcePool::Instance().New(
-        BOOST_GET_CONST(platform::NPUPlace, place_).device));
+    compute_events_.emplace_back(
+        platform::NpuEventResourcePool::Instance().New(place_.device));
+    comm_events_.emplace_back(
+        platform::NpuEventResourcePool::Instance().New(place_.device));
   }
 }
 
@@ -117,7 +117,7 @@ void HCCLParallelContext::InitWithRingID(int ring_id) {
   }
   BcastHCCLId(hccl_ids, 0, server_fd);
 
-  int npu_id = BOOST_GET_CONST(platform::NPUPlace, place_).device;
+  int npu_id = place_.device;
   VLOG(0) << "init hccl context nranks: " << strategy_.nranks_
           << " local rank: " << strategy_.local_rank_ << " npu id: " << npu_id
           << " ring id: " << ring_id;
@@ -125,10 +125,10 @@ void HCCLParallelContext::InitWithRingID(int ring_id) {
   platform::HCCLCommContext::Instance().CreateHCCLComm(
       &hccl_ids[0], strategy_.nranks_, strategy_.local_rank_, npu_id, ring_id);
 
-  compute_events_.emplace_back(platform::NpuEventResourcePool::Instance().New(
-      BOOST_GET_CONST(platform::NPUPlace, place_).device));
-  comm_events_.emplace_back(platform::NpuEventResourcePool::Instance().New(
-      BOOST_GET_CONST(platform::NPUPlace, place_).device));
+  compute_events_.emplace_back(
+      platform::NpuEventResourcePool::Instance().New(place_.device));
+  comm_events_.emplace_back(
+      platform::NpuEventResourcePool::Instance().New(place_.device));
 }
 
 void HCCLParallelContext::AllReduceByStream(const framework::Variable &src,

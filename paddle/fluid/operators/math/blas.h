@@ -20,7 +20,6 @@
 namespace paddle {
 namespace framework {
 class ExecutionContext;
-class Tensor;
 }  // namespace framework
 }  // namespace paddle
 

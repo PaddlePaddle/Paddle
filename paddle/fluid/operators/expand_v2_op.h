@@ -33,18 +33,21 @@ inline std::vector<int> get_expand_shape(
     auto* shape_data = shape_tensor->data<int>();
     framework::Tensor cpu_shape_tensor;
     if (platform::is_gpu_place(shape_tensor->place())) {
-      TensorCopySync(*shape_tensor, platform::CPUPlace(), &cpu_shape_tensor);
+      paddle::framework::TensorCopySync(*shape_tensor, platform::CPUPlace(),
+                                        &cpu_shape_tensor);
       shape_data = cpu_shape_tensor.data<int>();
     }
 #ifdef PADDLE_WITH_ASCEND_CL
     if (platform::is_npu_place(shape_tensor->place())) {
-      TensorCopySync(*shape_tensor, platform::CPUPlace(), &cpu_shape_tensor);
+      paddle::framework::TensorCopySync(*shape_tensor, platform::CPUPlace(),
+                                        &cpu_shape_tensor);
       shape_data = cpu_shape_tensor.data<int>();
     }
 #endif
 #ifdef PADDLE_WITH_XPU
     if (platform::is_xpu_place(shape_tensor->place())) {
-      TensorCopySync(*shape_tensor, platform::CPUPlace(), &cpu_shape_tensor);
+      paddle::framework::TensorCopySync(*shape_tensor, platform::CPUPlace(),
+                                        &cpu_shape_tensor);
       shape_data = cpu_shape_tensor.data<int>();
     }
 #endif
@@ -62,20 +65,20 @@ inline std::vector<int> get_expand_shape(
       auto tensor = list_expand_shapes_tensor[i];
       if (platform::is_gpu_place(tensor->place())) {
         framework::Tensor temp;
-        TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_epxand_shape.push_back(*temp.data<int32_t>());
       }
 #ifdef PADDLE_WITH_ASCEND_CL
       else if (platform::is_npu_place(tensor->place())) {  // NOLINT
         framework::Tensor temp;
-        TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_epxand_shape.push_back(*temp.data<int32_t>());
       }
 #endif
 #ifdef PADDLE_WITH_XPU
       else if (platform::is_xpu_place(tensor->place())) {  // NOLINT
         framework::Tensor temp;
-        TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_epxand_shape.push_back(*temp.data<int32_t>());
       }
 #endif

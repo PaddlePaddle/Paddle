@@ -187,7 +187,7 @@ class CReduceOpASCENDKernel : public framework::OpKernel<T> {
         reinterpret_cast<void*>(stream)));
 
     if (rank_id != root_id) {
-      auto npu_place = BOOST_GET_CONST(platform::NPUPlace, place);
+      auto npu_place = place;
       memory::Copy(npu_place, reinterpret_cast<void*>(out->data<T>()),
                    npu_place,
                    reinterpret_cast<void*>(const_cast<T*>(in->data<T>())),

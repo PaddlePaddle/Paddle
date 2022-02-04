@@ -15,8 +15,10 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
+#include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/kernels/math_kernel.h"
 
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
@@ -25,23 +27,27 @@ namespace pten {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
 TEST(DEV_API, add) {
   // 1. create tensor
-  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+  const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc,
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({3, 10}),
-                                                  pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x.mutable_data<float>();
+  pten::DenseTensor dense_x(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({3, 10}),
+                            pten::DataLayout::NCHW));
+  auto* dense_x_data =
+      dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 
-  pten::DenseTensor dense_y(alloc,
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({10}),
-                                                  pten::DataLayout::NCHW));
-  auto* dense_y_data = dense_y.mutable_data<float>();
+  pten::DenseTensor dense_y(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({10}),
+                            pten::DataLayout::NCHW));
+  auto* dense_y_data =
+      dense_y.mutable_data<float>(paddle::platform::CPUPlace());
 
   float sum[3][10] = {0.0};
   for (size_t i = 0; i < 3; ++i) {
@@ -53,17 +59,14 @@ TEST(DEV_API, add) {
   for (size_t i = 0; i < 10; ++i) {
     dense_y_data[i] = i * 2.0;
   }
-  int axis = 1;
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
 
   // 2. test API
-  auto dense_out = pten::Add<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
-      dense_x,
-      dense_y,
-      axis);
+  pten::CPUContext dev_ctx;
+  dev_ctx.SetDeviceAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
+  auto dense_out = pten::Add<float>(dev_ctx, dense_x, dense_y);
 
   // 3. check result
   ASSERT_EQ(dense_out.dims().size(), 2);
@@ -82,19 +85,23 @@ TEST(DEV_API, add) {
 
 TEST(DEV_API, subtract) {
   // 1. create tensor
-  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+  const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc,
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({3, 10}),
-                                                  pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x.mutable_data<float>();
+  pten::DenseTensor dense_x(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({3, 10}),
+                            pten::DataLayout::NCHW));
+  auto* dense_x_data =
+      dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 
-  pten::DenseTensor dense_y(alloc,
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({10}),
-                                                  pten::DataLayout::NCHW));
-  auto* dense_y_data = dense_y.mutable_data<float>();
+  pten::DenseTensor dense_y(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({10}),
+                            pten::DataLayout::NCHW));
+  auto* dense_y_data =
+      dense_y.mutable_data<float>(paddle::platform::CPUPlace());
 
   float sub[3][10] = {0.0};
   for (size_t i = 0; i < 3; ++i) {
@@ -106,17 +113,14 @@ TEST(DEV_API, subtract) {
   for (size_t i = 0; i < 10; ++i) {
     dense_y_data[i] = i * 2.0;
   }
-  int axis = 1;
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
 
   // 2. test API
-  auto dense_out = pten::Subtract<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
-      dense_x,
-      dense_y,
-      axis);
+  pten::CPUContext dev_ctx;
+  dev_ctx.SetDeviceAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
+  auto dense_out = pten::Subtract<float>(dev_ctx, dense_x, dense_y);
 
   // 3. check result
   ASSERT_EQ(dense_out.dims().size(), 2);
@@ -135,19 +139,23 @@ TEST(DEV_API, subtract) {
 
 TEST(DEV_API, divide) {
   // 1. create tensor
-  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+  const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc,
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({3, 10}),
-                                                  pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x.mutable_data<float>();
+  pten::DenseTensor dense_x(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({3, 10}),
+                            pten::DataLayout::NCHW));
+  auto* dense_x_data =
+      dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 
-  pten::DenseTensor dense_y(alloc,
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({10}),
-                                                  pten::DataLayout::NCHW));
-  auto* dense_y_data = dense_y.mutable_data<float>();
+  pten::DenseTensor dense_y(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({10}),
+                            pten::DataLayout::NCHW));
+  auto* dense_y_data =
+      dense_y.mutable_data<float>(paddle::platform::CPUPlace());
 
   float div[3][10] = {0.0};
   for (size_t i = 0; i < 3; ++i) {
@@ -159,17 +167,14 @@ TEST(DEV_API, divide) {
   for (size_t i = 0; i < 10; ++i) {
     dense_y_data[i] = i * 2.0 + 1;
   }
-  int axis = 1;
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
 
   // 2. test API
-  auto dense_out = pten::Divide<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
-      dense_x,
-      dense_y,
-      axis);
+  pten::CPUContext dev_ctx;
+  dev_ctx.SetDeviceAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
+  auto dense_out = pten::Divide<float>(dev_ctx, dense_x, dense_y);
 
   // 3. check result
   ASSERT_EQ(dense_out.dims().size(), 2);
@@ -188,19 +193,23 @@ TEST(DEV_API, divide) {
 
 TEST(DEV_API, multiply) {
   // 1. create tensor
-  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+  const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc,
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({3, 10}),
-                                                  pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x.mutable_data<float>();
+  pten::DenseTensor dense_x(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({3, 10}),
+                            pten::DataLayout::NCHW));
+  auto* dense_x_data =
+      dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 
-  pten::DenseTensor dense_y(alloc,
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({10}),
-                                                  pten::DataLayout::NCHW));
-  auto* dense_y_data = dense_y.mutable_data<float>();
+  pten::DenseTensor dense_y(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({10}),
+                            pten::DataLayout::NCHW));
+  auto* dense_y_data =
+      dense_y.mutable_data<float>(paddle::platform::CPUPlace());
 
   float mul[3][10] = {0.0};
   for (size_t i = 0; i < 3; ++i) {
@@ -212,17 +221,14 @@ TEST(DEV_API, multiply) {
   for (size_t i = 0; i < 10; ++i) {
     dense_y_data[i] = i * 2.0;
   }
-  int axis = 1;
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
 
   // 2. test API
-  auto dense_out = pten::Multiply<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
-      dense_x,
-      dense_y,
-      axis);
+  pten::CPUContext dev_ctx;
+  dev_ctx.SetDeviceAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
+  auto dense_out = pten::Multiply<float>(dev_ctx, dense_x, dense_y);
 
   // 3. check result
   ASSERT_EQ(dense_out.dims().size(), 2);

@@ -18,19 +18,38 @@
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-#define REGISTER_OVERFLOW_CUDA_KERNEL(op_type, functor)                       \
-  REGISTER_OP_CUDA_KERNEL(                                                    \
-      op_type, ops::OverflowKernel<paddle::platform::CUDADeviceContext, int,  \
-                                   ops::functor>,                             \
-      ops::OverflowKernel<paddle::platform::CUDADeviceContext, int64_t,       \
-                          ops::functor>,                                      \
-      ops::OverflowKernel<paddle::platform::CUDADeviceContext, float,         \
-                          ops::functor>,                                      \
-      ops::OverflowKernel<paddle::platform::CUDADeviceContext, double,        \
-                          ops::functor>,                                      \
-      ops::OverflowKernel<paddle::platform::CUDADeviceContext, plat::float16, \
-                          ops::functor>);
+REGISTER_OP_CUDA_KERNEL(isnan_v2,
+                        ops::OverflowKernel<paddle::platform::CUDADeviceContext,
+                                            int, ops::NANV2Functor>,
+                        ops::OverflowKernel<paddle::platform::CUDADeviceContext,
+                                            int64_t, ops::NANV2Functor>,
+                        ops::OverflowKernel<paddle::platform::CUDADeviceContext,
+                                            float, ops::NANV2Functor>,
+                        ops::OverflowKernel<paddle::platform::CUDADeviceContext,
+                                            double, ops::NANV2Functor>,
+                        ops::OverflowKernel<paddle::platform::CUDADeviceContext,
+                                            plat::float16, ops::NANV2Functor>);
 
-REGISTER_OVERFLOW_CUDA_KERNEL(isinf_v2, InfinityV2Functor);
-REGISTER_OVERFLOW_CUDA_KERNEL(isnan_v2, NANV2Functor);
-REGISTER_OVERFLOW_CUDA_KERNEL(isfinite_v2, IsfiniteV2Functor);
+REGISTER_OP_CUDA_KERNEL(
+    isinf_v2, ops::OverflowKernel<paddle::platform::CUDADeviceContext, int,
+                                  ops::InfinityV2Functor>,
+    ops::OverflowKernel<paddle::platform::CUDADeviceContext, int64_t,
+                        ops::InfinityV2Functor>,
+    ops::OverflowKernel<paddle::platform::CUDADeviceContext, float,
+                        ops::InfinityV2Functor>,
+    ops::OverflowKernel<paddle::platform::CUDADeviceContext, double,
+                        ops::InfinityV2Functor>,
+    ops::OverflowKernel<paddle::platform::CUDADeviceContext, plat::float16,
+                        ops::InfinityV2Functor>);
+
+REGISTER_OP_CUDA_KERNEL(
+    isfinite_v2, ops::OverflowKernel<paddle::platform::CUDADeviceContext, int,
+                                     ops::IsfiniteV2Functor>,
+    ops::OverflowKernel<paddle::platform::CUDADeviceContext, int64_t,
+                        ops::IsfiniteV2Functor>,
+    ops::OverflowKernel<paddle::platform::CUDADeviceContext, float,
+                        ops::IsfiniteV2Functor>,
+    ops::OverflowKernel<paddle::platform::CUDADeviceContext, double,
+                        ops::IsfiniteV2Functor>,
+    ops::OverflowKernel<paddle::platform::CUDADeviceContext, plat::float16,
+                        ops::IsfiniteV2Functor>);

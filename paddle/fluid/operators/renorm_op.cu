@@ -42,7 +42,7 @@ struct UnsignedPowFunctor {
   HOSTDEVICE explicit inline UnsignedPowFunctor(float porder) {
     this->porder = porder;
   }
-  HOSTDEVICE inline Ty operator()(const Tx& x) const {
+  HOSTDEVICE inline Ty operator()(const Tx x) const {
     return static_cast<Ty>(inline_pow(inline_abs(x), static_cast<Tx>(porder)));
   }
   float porder;
@@ -151,8 +151,8 @@ class CUDARenormKernel : public framework::OpKernel<T> {
     const auto& cuda_ctx =
         context.template device_context<platform::CUDADeviceContext>();
 
-    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, MT, T,
-                                        UnsignedPowFunctor<MT, T>>(
+    paddle::operators::LaunchSameDimsElementwiseCudaKernel<
+        ElementwiseType::kUnary, MT, T, UnsignedPowFunctor<MT, T>>(
         cuda_ctx, ins, &outs, func);
     std::vector<int> reduce_axis = {0, 2};
     TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(

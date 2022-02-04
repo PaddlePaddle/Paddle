@@ -14,34 +14,34 @@ limitations under the License. */
 
 #include "paddle/pten/kernels/matmul_grad_kernel.h"
 
-#include "paddle/fluid/platform/complex.h"
+#include "paddle/pten/common/complex.h"
 #include "paddle/pten/core/kernel_registry.h"
 
 #include "paddle/pten/kernels/impl/matmul_grad_kernel_impl.h"
 
-PT_REGISTER_CTX_KERNEL(matmul_grad,
-                       CPU,
-                       ALL_LAYOUT,
-                       pten::MatmulGradKernel,
-                       float,
-                       double,
-                       paddle::platform::complex<float>,
-                       paddle::platform::complex<double>) {}
+PT_REGISTER_KERNEL(matmul_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::MatmulGradKernel,
+                   float,
+                   double,
+                   paddle::platform::complex<float>,
+                   paddle::platform::complex<double>) {}
 
-PT_REGISTER_CTX_KERNEL(matmul_double_grad,
-                       CPU,
-                       ALL_LAYOUT,
-                       pten::MatmulDoubleGradKernel,
-                       float,
-                       double,
-                       paddle::platform::complex<float>,
-                       paddle::platform::complex<double>) {}
+PT_REGISTER_KERNEL(matmul_double_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::MatmulDoubleGradKernel,
+                   float,
+                   double,
+                   paddle::platform::complex<float>,
+                   paddle::platform::complex<double>) {}
 
-PT_REGISTER_CTX_KERNEL(matmul_triple_grad,
-                       CPU,
-                       ALL_LAYOUT,
-                       pten::MatmulTripleGradKernel,
-                       float,
-                       double,
-                       paddle::platform::complex<float>,
-                       paddle::platform::complex<double>) {}
+PT_REGISTER_KERNEL(matmul_triple_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::MatmulTripleGradKernel,
+                   float,
+                   double,
+                   paddle::platform::complex<float>,
+                   paddle::platform::complex<double>) {}

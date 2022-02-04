@@ -66,7 +66,7 @@ class ReverseKernel : public framework::OpKernel<T> {
         auto* out_tensor = &out_array->at(out_offset);
 
         out_tensor->set_lod(x_tensor.lod());
-        TensorCopy(x_tensor, context.GetPlace(), out_tensor);
+        paddle::framework::TensorCopy(x_tensor, context.GetPlace(), out_tensor);
       }
       return;
     }

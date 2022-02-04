@@ -101,8 +101,8 @@ class Carrier final {
   std::mutex running_mutex_;
   std::condition_variable cond_var_;
   std::vector<framework::Scope*> microbatch_scopes_;
-  framework::Scope* root_scope_;
-  framework::Scope* minibatch_scope_;
+  framework::Scope* root_scope_{nullptr};
+  framework::Scope* minibatch_scope_{nullptr};
   paddle::platform::Place place_;
   paddle::platform::DeviceContext* dev_ctx_{nullptr};
   int64_t rank_;

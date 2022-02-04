@@ -523,23 +523,26 @@ def mode(x, axis=-1, keepdim=False, name=None):
     return values, indices
 
 
-def where(condition, x, y, name=None):
+def where(condition, x=None, y=None, name=None):
     r"""
     Return a tensor of elements selected from either $x$ or $y$, depending on $condition$.
+
+    **Note**:
+        ``paddle.where(condition)`` is identical to ``paddle.nonzero(condition, as_tuple=True)``.
 
     .. math::
 
       out_i =
-      \\begin{cases}
-      x_i, \quad  \\text{if}  \\ condition_i \\  is \\ True \\\\
-      y_i, \quad  \\text{if}  \\ condition_i \\  is \\ False \\\\
-      \\end{cases}
+      \begin{cases}
+      x_i, \quad  \text{if}  \ condition_i \  is \ True \\
+      y_i, \quad  \text{if}  \ condition_i \  is \ False \\
+      \end{cases}
 
 
     Args:
         condition(Tensor): The condition to choose x or y.
-        x(Tensor): x is a Tensor with data type float32, float64, int32, int64.
-        y(Tensor): y is a Tensor with data type float32, float64, int32, int64.
+        x(Tensor, optional): x is a Tensor with data type float32, float64, int32, int64. Either both or neither of x and y should be given.
+        y(Tensor, optional): y is a Tensor with data type float32, float64, int32, int64. Either both or neither of x and y should be given.
 
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
@@ -559,7 +562,19 @@ def where(condition, x, y, name=None):
 
           print(out)
           #out: [1.0, 1.0, 3.2, 1.2]
+
+          out = paddle.where(x>1)
+          print(out)
+          #out: (Tensor(shape=[2, 1], dtype=int64, place=CPUPlace, stop_gradient=True,
+          #            [[2],
+          #             [3]]),)
     """
+    if x is None and y is None:
+        return nonzero(condition, as_tuple=True)
+
+    if x is None or y is None:
+        raise ValueError("either both or neither of x and y should be given")
+
     if not in_dygraph_mode():
         check_variable_and_dtype(condition, 'condition', ['bool'], 'where')
         check_variable_and_dtype(
@@ -570,26 +585,49 @@ def where(condition, x, y, name=None):
     condition_shape = list(condition.shape)
     x_shape = list(x.shape)
     y_shape = list(y.shape)
-    if x_shape == y_shape and condition_shape == x_shape:
-        if in_dygraph_mode():
-            return _C_ops.where(condition, x, y)
-        else:
-            helper = LayerHelper("where", **locals())
-            out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-            helper.append_op(
-                type='where',
-                inputs={'Condition': condition,
-                        'X': x,
-                        'Y': y},
-                outputs={'Out': [out]})
-            return out
+    if x_shape == y_shape and condition_shape == x_shape:
+        broadcast_condition = condition
+        broadcast_x = x
+        broadcast_y = y
     else:
-        cond_int = layers.cast(condition, x.dtype)
-        cond_not_int = layers.cast(layers.logical_not(condition), x.dtype)
-        out1 = layers.elementwise_mul(x, cond_int)
-        out2 = layers.elementwise_mul(y, cond_not_int)
-        out = layers.elementwise_add(out1, out2)
+        if core.is_compiled_with_xpu():
+            cond_int = layers.cast(condition, x.dtype)
+            cond_not_int = layers.cast(layers.logical_not(condition), x.dtype)
+            out1 = layers.elementwise_mul(x, cond_int)
+            out2 = layers.elementwise_mul(y, cond_not_int)
+            out = layers.elementwise_add(out1, out2)
+            return out
+
+        zeros_like_x = layers.zeros_like(x)
+        zeros_like_y = layers.zeros_like(y)
+        zeros_like_condition = layers.zeros_like(condition)
+        zeros_like_condition = layers.cast(zeros_like_condition, x.dtype)
+        cast_cond = layers.cast(condition, x.dtype)
+
+        broadcast_zeros = layers.elementwise_add(zeros_like_x, zeros_like_y)
+        broadcast_zeros = layers.elementwise_add(broadcast_zeros,
+                                                 zeros_like_condition)
+        broadcast_x = layers.elementwise_add(x, broadcast_zeros)
+        broadcast_y = layers.elementwise_add(y, broadcast_zeros)
+        broadcast_condition = layers.elementwise_add(cast_cond, broadcast_zeros)
+        broadcast_condition = layers.cast(broadcast_condition, 'bool')
+
+    if in_dygraph_mode():
+        return _C_ops.where(broadcast_condition, broadcast_x, broadcast_y)
+    else:
+        helper = LayerHelper("where", **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+        helper.append_op(
+            type='where',
+            inputs={
+                'Condition': broadcast_condition,
+                'X': broadcast_x,
+                'Y': broadcast_y
+            },
+            outputs={'Out': [out]})
+
         return out
 
 
