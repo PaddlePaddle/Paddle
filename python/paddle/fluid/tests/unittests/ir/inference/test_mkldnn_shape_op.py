@@ -27,7 +27,8 @@ class TestMkldnnShapeOp(MkldnnAutoScanTest):
 
     def sample_program_configs(self, *args, **kwargs):
         def generate_input(*args, **kwargs):
-            return np.random.random(kwargs['in_shape']).astype(kwargs['in_dtype'])
+            return np.random.random(kwargs['in_shape']).astype(kwargs[
+                'in_dtype'])
 
         shape_op = OpConfig(
             type="shape",
@@ -54,7 +55,6 @@ class TestMkldnnShapeOp(MkldnnAutoScanTest):
             st.integers(
                 min_value=1, max_value=3), min_size=1, max_size=9),
         in_dtype=st.sampled_from([np.float32, np.uint16, np.int8, np.uint8]))
-
     def test(self, *args, **kwargs):
         self.run_test(quant=False, *args, **kwargs)
 
