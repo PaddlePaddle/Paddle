@@ -69,4 +69,9 @@ void SumInferMeta(const MetaTensor& x,
                   DataType dtype,
                   bool keep_dim,
                   MetaTensor* out);
+
+void TransferLayoutInferMeta(const MetaTensor& x,
+                             DataLayout layout,
+                             MetaTensor* out);
+
 }  // namespace pten
