@@ -101,6 +101,12 @@ class GPUContext : public DeviceContext {
 
   void RecordEvent(gpuEvent_t ev, const std::function<void()>& callback) const;
 
+  void RecordEvent(gpuEvent_t ev) const;
+
+  void AddStreamCallback(const std::function<void()>& callback) const;
+
+  void WaitStreamCallback() const;
+
  public:
   /*! \brief  Return nccl communicators. */
   ncclComm_t nccl_comm() const;

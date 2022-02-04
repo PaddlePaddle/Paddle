@@ -14,6 +14,7 @@ limitations under the License. */
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include <array>
 #include <functional>
+#include <future>
 #include <memory>
 #include <mutex>
 
@@ -130,6 +131,25 @@ class EigenGpuStreamDevice : public Eigen::StreamInterface {
   mutable std::mutex mtx_;  // to protect allocations_
   mutable std::unordered_map<void*, Allocator::AllocationPtr> allocations_;
 };
+
+#ifdef PADDLE_WITH_HIP
+static void StreamCallbackFunc(gpuStream_t stream,
+                               gpuError_t status,
+                               void* user_data)
+#endif
+#ifdef PADDLE_WITH_CUDA
+#if CUDA_VERSION >= 10000
+    static void CUDART_CB StreamCallbackFunc(void* user_data)
+#else
+    static void CUDART_CB
+    StreamCallbackFunc(cudaStream_t stream, cudaError_t status, void* user_data)
+#endif
+#endif
+{
+  std::unique_ptr<std::function<void()>> func(
+      reinterpret_cast<std::function<void()>*>(user_data));
+  (*func)();
+}
 
 }  // namespace internal
 
@@ -633,11 +653,49 @@ struct GPUContext::Impl {
 
   void RecordEvent(gpuEvent_t ev, const std::function<void()>& callback) const {
     callback();
+    RecordEvent(ev);
+  }
+
+  void RecordEvent(gpuEvent_t ev) const {
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(ev, stream_));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(ev, stream_));
 #endif
+  }
+
+  void AddStreamCallback(const std::function<void()>& callback) const {
+    // TODO(wilber): Do we need ThreadPool?
+    auto* func = new std::function<void()>([this, callback] {
+      std::lock_guard<std::mutex> lock(stream_call_back_mtx_);
+      last_future_ = std::async(std::launch::deferred, [&]() { callback(); });
+    });
+
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        hipStreamAddCallback(stream_, internal::StreamCallbackFunc, func, 0));
+#endif
+#ifdef PADDLE_WITH_CUDA
+#if CUDA_VERSION >= 10000
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaLaunchHostFunc(stream_, internal::StreamCallbackFunc, func));
+#else
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaStreamAddCallback(stream_, internal::StreamCallbackFunc, func, 0));
+#endif
+#endif
+  }
+
+  void WaitStreamCallback() const {
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUDA)
+    pten::backends::gpu::GpuStreamSync(stream_);
+#endif
+    {
+      std::lock_guard<std::mutex> lock(stream_call_back_mtx_);
+      if (last_future_.valid()) {
+        last_future_.wait();
+      }
+    }
   }
 
   bool owned_{false};
@@ -676,6 +734,8 @@ struct GPUContext::Impl {
   mutable std::mutex blas_tensor_core_mtx_;
   mutable std::mutex blas_tf32_mtx_;
   mutable std::mutex sparse_mtx_;
+  mutable std::mutex stream_call_back_mtx_;
+  mutable std::future<void> last_future_;
 
   Allocator* allocator_{nullptr};  // external resource.
   // A internal resouce to initinalize eigen_device.
@@ -760,6 +820,15 @@ void GPUContext::RecordEvent(gpuEvent_t ev,
                              const std::function<void()>& callback) const {
   impl_->RecordEvent(ev, callback);
 }
+
+void GPUContext::RecordEvent(gpuEvent_t ev) const { impl_->RecordEvent(ev); }
+
+void GPUContext::AddStreamCallback(
+    const std::function<void()>& callback) const {
+  impl_->AddStreamCallback(callback);
+}
+
+void GPUContext::WaitStreamCallback() const { impl_->WaitStreamCallback(); }
 
 ncclComm_t GPUContext::nccl_comm() const { return impl_->GetNcclComm(); }
 
