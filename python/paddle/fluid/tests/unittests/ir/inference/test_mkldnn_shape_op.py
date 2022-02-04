@@ -21,7 +21,7 @@ from hypothesis import given
 import hypothesis.strategies as st
 
 
-class TestMkldnnMishOp(MkldnnAutoScanTest):
+class TestMkldnnShapeOp(MkldnnAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
