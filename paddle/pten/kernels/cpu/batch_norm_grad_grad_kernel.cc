@@ -17,6 +17,7 @@
 #include "paddle/pten/kernels/batch_norm_kernel.h"
 #include "paddle/pten/kernels/funcs/eigen/common.h"
 
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/pten/kernels/gpu/batch_norm_utils.h"
 
 namespace pten {

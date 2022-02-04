@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/transpose.h"
 
 namespace pten {
 
