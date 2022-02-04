@@ -20,7 +20,6 @@ namespace paddle {
 namespace operators {
 
 using paddle::framework::Tensor;
-using paddle::framework::LoDTensor;
 
 template <typename T>
 class ShapeMKLDNNKernel : public ShapeKernel<T> {
