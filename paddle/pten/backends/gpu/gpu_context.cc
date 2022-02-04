@@ -221,17 +221,18 @@ struct GPUContext::Impl {
 
   ~Impl() {
     backends::gpu::GPUDeviceGuard guard(place_.device);
-    DestoryInternalStream();
-    DestroyInternalBlasHandle();
-    DestroyInternalDnnHandle();
-    DestroyInternalSolverHandle();
-    DestroyInternalSparseHandle();
     DestoryInternalWorkspace();
+    DestoryInternalEigenDevice();
+    DestroyInternalSparseHandle();
+    DestroyInternalSolverHandle();
+    DestroyInternalDnnHandle();
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     if (nccl_comm_) {
       PADDLE_ENFORCE_GPU_SUCCESS(dynload::ncclCommDestroy(nccl_comm_));
     }
 #endif
+    DestroyInternalBlasHandle();
+    DestoryInternalStream();
   }
 
   const Place& GetPlace() const { return place_; }
@@ -257,7 +258,7 @@ struct GPUContext::Impl {
 
     // TODO(wilber): glog may be replaced in the future?
     LOG_FIRST_N(WARNING, 1)
-        << "Please NOTE: device: " << place_.device
+        << "Please NOTE: device: " << static_cast<int>(place_.device)
         << ", GPU Compute Capability: " << compute_capability_ / 10 << "."
         << compute_capability_ % 10
         << ", Driver API Version: " << driver_version_ / 1000 << "."
@@ -273,7 +274,7 @@ struct GPUContext::Impl {
     auto compile_miopen_version = MIOPEN_VERSION / 10;
     if (cudnn_dso_ver < static_cast<size_t>(compile_miopen_version)) {
       LOG_FIRST_N(WARNING, 1)
-          << "WARNING: device: " << place_.device
+          << "WARNING: device: " << static_cast<int>(place_.device)
           << ". The installed Paddle is compiled with MIOPEN "
           << compile_miopen_version / 100 << "." << compile_miopen_version % 100
           << ", but MIOPEN version in your machine is " << cudnn_dso_ver / 100
@@ -284,7 +285,7 @@ struct GPUContext::Impl {
     }
 #else
     size_t cudnn_dso_ver = dynload::cudnnGetVersion();
-    LOG_FIRST_N(WARNING, 1) << "device: " << place_.device
+    LOG_FIRST_N(WARNING, 1) << "device: " << static_cast<int>(place_.device)
                             << ", cuDNN Version: " << cudnn_dso_ver / 1000
                             << "." << (cudnn_dso_ver % 1000) / 100 << ".";
 
@@ -295,7 +296,7 @@ struct GPUContext::Impl {
         (CUDA_VERSION / 1000) * 10 + (CUDA_VERSION % 100) / 10;
     if (local_cuda_version < compile_cuda_version) {
       LOG_FIRST_N(WARNING, 1)
-          << "WARNING: device: " << place_.device
+          << "WARNING: device: " << static_cast<int>(place_.device)
           << ". The installed Paddle is compiled with CUDA "
           << compile_cuda_version / 10 << "." << compile_cuda_version % 10
           << ", but CUDA runtime version in your machine is "
@@ -580,9 +581,17 @@ struct GPUContext::Impl {
     PADDLE_ENFORCE_GPU_SUCCESS(e_sync);
   }
 
+  void WaitEvent(gpuEvent_t ev) const {
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(stream_, ev, 0));
+#else
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(stream_, ev, 0));
+#endif
+  }
+
   ncclComm_t GetNcclComm() const {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    PD_CHECK(nccl_comm_ != nullptr, "the gpu nccl_comm is nullptr.");
+    // PD_CHECK(nccl_comm_ != nullptr, "the gpu nccl_comm is nullptr.");
     return nccl_comm_;
 #endif
     return nullptr;
@@ -699,6 +708,8 @@ sparseHandle_t GPUContext::cusparse_handle() const {
 }
 
 void GPUContext::Wait() const { impl_->Wait(); }
+
+void GPUContext::WaitEvent(gpuEvent_t ev) const { impl_->WaitEvent(ev); }
 
 bool GPUContext::tensor_core_available() const {
   return impl_->IsTensorCoreAvailable();

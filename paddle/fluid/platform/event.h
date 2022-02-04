@@ -141,6 +141,8 @@ class CudaEvent {
     hipEventCreateWithFlags(&event_, flags_);
 #else
     cudaEventCreateWithFlags(&event_, flags_);
+// LOG(INFO) << "cudaEventCreateWithFlags event is " <<
+// reinterpret_cast<void*>(event_) << " flag is " << flags_;
 #endif
   }
 
@@ -152,11 +154,15 @@ class CudaEvent {
 #endif
   }
 
-  void Record(const paddle::platform::stream::CUDAStream &stream) {
+  void Record(gpuStream_t stream) {
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event_, stream.raw_stream()));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event_, stream));
 #else
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event_, stream.raw_stream()));
+    // LOG(INFO) << "cudaEventRecord (event, stream), event is " <<
+    // reinterpret_cast<void*>(event_) << ", stream is " <<
+    // reinterpret_cast<void*>(stream);
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event_, stream));
+// LOG(INFO) << "--- cudaEventQuery(event_) is " << cudaEventQuery(event_);
 #endif
   }
 

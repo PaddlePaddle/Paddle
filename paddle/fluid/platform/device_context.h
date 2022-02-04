@@ -582,12 +582,17 @@ class CUDADeviceContext : public pten::GPUContext {
     thread_ctx_[this].reset(new CUDAContext(this->GetPlace(), priority));
   }
 
-  std::shared_ptr<CUDAContext> context() const { return thread_ctx_.at(this); }
+  std::shared_ptr<CUDAContext> context() const;
 
   // Note: Can only be used under thread_local semantics.
   void SetThreadLocalStream(const gpuStream_t stream) {
     thread_ctx_.at(this)->SetStream(stream);
   }
+
+  // NOTE: Just for compatibility with the past, please delete if there is an
+  // elegant way.
+  stream::CUDAStream* GetCudaStream() const;
+  stream::CUDAStream* SetCudaStream(stream::CUDAStream*);
 
  private:
   // The thread_local static variable will be released before the
@@ -600,6 +605,10 @@ class CUDADeviceContext : public pten::GPUContext {
   std::unique_ptr<StreamCallbackManager<gpuStream_t>> callback_manager_;
 
   mutable std::mutex cudnn_handle_mtx_;
+
+  // NOTE: Just for compatibility with the past, please delete if there is an
+  // elegant way.
+  std::unique_ptr<stream::CUDAStream> cuda_stream_;
 
   DISABLE_COPY_AND_ASSIGN(CUDADeviceContext);
 };

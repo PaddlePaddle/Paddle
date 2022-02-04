@@ -55,6 +55,9 @@ class GPUContext : public DeviceContext {
   /*! \brief  Wait for all operations completion in the stream. */
   void Wait() const override;
 
+  /*! \brief  Wait for event in the stream. */
+  void WaitEvent(gpuEvent_t ev) const;
+
   /*! \brief  Check whether tensor core is supported */
   bool tensor_core_available() const;
 

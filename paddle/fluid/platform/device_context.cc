@@ -14,6 +14,7 @@ limitations under the License. */
 #include <memory>
 #include <set>
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/stream/cuda_stream.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -486,23 +487,25 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
   pten::GPUContext::PartialInitWithoutAllocator();
   callback_manager_.reset(
       new StreamCallbackManager<gpuStream_t>(pten::GPUContext::stream()));
+  cuda_stream_.reset(
+      new stream::CUDAStream(pten::GPUContext::stream(), this->GetPlace()));
 }
 
 CUDADeviceContext::~CUDADeviceContext() = default;
 
 Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
-  if (!thread_ctx_.count(this)) {
-    return pten::GPUContext::eigen_device();
+  if (thread_ctx_.count(this)) {
+    return context()->EigenDevice().get();
   }
-  return context()->EigenDevice().get();
+  return pten::GPUContext::eigen_device();
 }
 
 void CUDADeviceContext::Wait() const {
-  if (!thread_ctx_.count(this)) {
-    pten::GPUContext::Wait();
+  if (thread_ctx_.count(this)) {
+    context()->Stream()->Wait();
     return;
   }
-  context()->Stream()->Wait();
+  pten::GPUContext::Wait();
 }
 
 #ifdef PADDLE_WITH_HIP
@@ -510,64 +513,64 @@ miopenHandle_t CUDADeviceContext::cudnn_handle() const {
 #else
 cudnnHandle_t CUDADeviceContext::cudnn_handle() const {
 #endif
-  if (!thread_ctx_.count(this)) {
-    return pten::GPUContext::cudnn_handle();
+  if (thread_ctx_.count(this)) {
+    return context()->CudnnHandle();
   }
-  return context()->CudnnHandle();
+  return pten::GPUContext::cudnn_handle();
 }
 
 #ifdef PADDLE_WITH_HIP
 rocblas_handle CUDADeviceContext::cublas_handle() const {
-  if (!thread_ctx_.count(this)) {
-    return pten::GPUContext::cublas_handle();
+  if (thread_ctx_.count(this)) {
+    return context()->CublasHandle()->GetCublasHandle();
   }
-  return context()->CublasHandle()->GetCublasHandle();
+  return pten::GPUContext::cublas_handle();
 }
 #else
 cublasHandle_t CUDADeviceContext::cublas_handle() const {
-  if (!thread_ctx_.count(this)) {
-    return pten::GPUContext::cublas_handle();
+  if (thread_ctx_.count(this)) {
+    return context()->CublasHandle()->GetCublasHandle();
   }
-  return context()->CublasHandle()->GetCublasHandle();
+  return pten::GPUContext::cublas_handle();
 }
 cusparseHandle_t CUDADeviceContext::cusparse_handle() const {
-  if (!thread_ctx_.count(this)) {
-    return pten::GPUContext::cusparse_handle();
+  if (thread_ctx_.count(this)) {
+    return context()->CusparseHandle()->GetCusparseHandle();
   }
-  return context()->CusparseHandle()->GetCusparseHandle();
+  return pten::GPUContext::cusparse_handle();
 }
 cusolverDnHandle_t CUDADeviceContext::cusolver_dn_handle() const {
-  if (!thread_ctx_.count(this)) {
-    return pten::GPUContext::cusolver_dn_handle();
+  if (thread_ctx_.count(this)) {
+    return context()->CusolverDnHandle();
   }
-  return context()->CusolverDnHandle();
+  return pten::GPUContext::cusolver_dn_handle();
 }
 #endif
 
 void CUDADeviceContext::RecordEvent(
     gpuEvent_t ev, const std::function<void()>& callback) const {
-  if (!thread_ctx_.count(this)) {
-    pten::GPUContext::RecordEvent(ev, callback);
+  if (thread_ctx_.count(this)) {
+    context()->Stream()->RecordEvent(ev, callback);
     return;
   }
-  context()->Stream()->RecordEvent(ev, callback);
+  pten::GPUContext::RecordEvent(ev, callback);
 }
 
 void CUDADeviceContext::AddStreamCallback(
     const std::function<void()>& callback) const {
-  if (!thread_ctx_.count(this)) {
-    callback_manager_->AddCallback(callback);
+  if (thread_ctx_.count(this)) {
+    context()->Stream()->AddCallback(callback);
     return;
   }
-  context()->Stream()->AddCallback(callback);
+  callback_manager_->AddCallback(callback);
 }
 
 void CUDADeviceContext::WaitStreamCallback() const {
-  if (!thread_ctx_.count(this)) {
-    callback_manager_->Wait();
+  if (thread_ctx_.count(this)) {
+    context()->Stream()->WaitCallback();
     return;
   }
-  context()->Stream()->WaitCallback();
+  callback_manager_->Wait();
 }
 
 CudnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
@@ -575,11 +578,30 @@ CudnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
 }
 
 gpuStream_t CUDADeviceContext::stream() const {
-  if (!thread_ctx_.count(this)) {
-    return pten::GPUContext::stream();
-  } else {
+  if (thread_ctx_.count(this)) {
     return context()->RawStream();
   }
+  return pten::GPUContext::stream();
+}
+
+std::shared_ptr<CUDAContext> CUDADeviceContext::context() const {
+  if (!thread_ctx_.count(this)) {
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "CUDADeviceContext call context() failed, make sure in the "
+        "thread_local semantic."));
+  }
+  return thread_ctx_.at(this);
+}
+
+stream::CUDAStream* CUDADeviceContext::GetCudaStream() const {
+  return cuda_stream_.get();
+}
+
+stream::CUDAStream* CUDADeviceContext::SetCudaStream(
+    stream::CUDAStream* new_stream_ptr) {
+  auto* old_stream_ptr = cuda_stream_.release();
+  cuda_stream_.reset(new_stream_ptr);
+  return old_stream_ptr;
 }
 
 CUDAPinnedDeviceContext::CUDAPinnedDeviceContext() {

@@ -52,6 +52,10 @@ class CUDAStream final {
                       const StreamFlag& flag = StreamFlag::kDefaultFlag) {
     Init(place, priority, flag);
   }
+  explicit CUDAStream(gpuStream_t stream, const Place& place)
+      : place_(place), stream_(stream) {
+    callback_manager_.reset(new StreamCallbackManager<gpuStream_t>(stream_));
+  }
   virtual ~CUDAStream() { Destroy(); }
 
   bool Init(const Place& place, const Priority& priority = Priority::kNormal,
@@ -149,6 +153,7 @@ class CUDAStream final {
 };
 
 CUDAStream* get_current_stream(int deviceId);
+// NOTE: There is a problem with the interface and needs to be fixed
 CUDAStream* set_current_stream(CUDAStream* stream);
 
 }  // namespace stream
