@@ -307,6 +307,14 @@ void ReduceInferMeta(const MetaTensor& x,
   ReduceInferMeta(x, axis, keep_dim, DataType::UNDEFINED, out);
 }
 
+void TransferLayoutInferMeta(const MetaTensor& x,
+                             DataLayout layout,
+                             MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+  out->set_layout(layout);
+}
+
 }  // namespace pten
 
 PT_REGISTER_INFER_META_FN(sign, pten::UnchangedInferMeta);
