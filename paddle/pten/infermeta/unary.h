@@ -31,11 +31,6 @@ class MetaConfig;
 // Because functions in this file not only can infer shape, but also need
 // infer lod or other useful data.
 
-// TODO(chenweihang): to avoid conflit, remove this function in next PR
-void UnchangedInferMetaNew(MetaConfig config,
-                           const MetaTensor& x,
-                           MetaTensor* out);
-
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void FlattenInferMeta(const MetaTensor& x,

@@ -21,16 +21,6 @@ limitations under the License. */
 
 namespace pten {
 
-void UnchangedInferMetaNew(MetaConfig config,
-                           const MetaTensor& x,
-                           MetaTensor* out) {
-  out->share_meta(x);
-}
-
-DenseTensorMeta UnchangedInferMeta(const DenseTensorMeta& x_meta) {
-  return x_meta;
-}
-
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->share_meta(x);
 }
@@ -319,4 +309,4 @@ void ReduceInferMeta(const MetaTensor& x,
 
 }  // namespace pten
 
-PT_REGISTER_INFER_META_FN(sign, pten::UnchangedInferMetaNew);
+PT_REGISTER_INFER_META_FN(sign, pten::UnchangedInferMeta);
