@@ -151,9 +151,9 @@ void CPUQuantizeSquashPass::DequantQuantSquash(
     GET_IR_NODE_FROM_SUBGRAPH(quant_out, quant_out, squash_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(next_op, next_op, squash_pattern);
 
-    // Since quantize always assumes int8 then if dequantize is uint8,
-    // squash shouldn't happen.
-    if (IsDequantizeInputUint8(dequant_in)) {
+    // Don't squash when dequantize is uint8 and quantize is int8 (concat)
+    if (IsDequantizeInputUint8(dequant_in) &&
+        quant_op->Op()->GetAttrIfExists<bool>("is_negative_input")) {
       return;
     }
 
