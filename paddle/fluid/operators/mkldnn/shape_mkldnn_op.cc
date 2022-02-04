@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,27 +23,14 @@ using paddle::framework::Tensor;
 using paddle::framework::LoDTensor;
 
 template <typename T>
-class ShapeMKLDNNKernel : public framework::OpKernel<T> {
+class ShapeMKLDNNKernel : public ShapeKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const auto* in_var = ctx.InputVar("Input");
+    ShapeKernel<T>::Compute(ctx);
+
     auto* out = ctx.Output<Tensor>("Out");
-
-    framework::DDim in_dims;
-    if (in_var->IsType<SelectedRows>()) {
-      in_dims = in_var->Get<SelectedRows>().value().dims();
-    } else {
-      in_dims = in_var->Get<LoDTensor>().dims();
-    }
-
-    out->Resize({in_dims.size()});
-    auto out_data = out->mutable_data<int32_t>(platform::CPUPlace());
-    for (int i = 0; i < in_dims.size(); ++i) {
-      out_data[i] = in_dims[i];
-    }
-
     out->set_layout(framework::DataLayout::kMKLDNN);
-    out->set_format(platform::GetPlainMKLDNNFormat(in_dims.size()));
+    out->set_format(platform::GetPlainMKLDNNFormat(out->dims().size()));
   }
 };
 }  // namespace operators
