@@ -845,7 +845,6 @@ def GenerateNodeHFile(filepath, node_declaration_str):
     file_contents = """
 #pragma once
 #include "paddle/fluid/eager/tensor_wrapper.h"
-#include "paddle/fluid/eager/legacy/op_runner.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 
 """
@@ -860,7 +859,6 @@ def GenerateForwardCCFile(filepath, forward_definition_str):
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.h"
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
-#include "paddle/fluid/eager/legacy/op_runner.h"
 
 """
     file_contents += forward_definition_str
