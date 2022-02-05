@@ -507,7 +507,9 @@ static void inline CreateVariableIfNotExit(
         var = const_cast<framework::Scope *>(&scope)->Var(para_name);
         auto *tensor_temp = var->GetMutable<framework::LoDTensor>();
         tensor_temp->Resize(framework::make_ddim(var_desc.GetShape()));
-        tensor_temp->mutable_data(exe->GetPlace(), var_desc.GetDataType());
+        tensor_temp->mutable_data(
+            exe->GetPlace(),
+            framework::TransToPtenDataType(var_desc.GetDataType()));
       }
     }
   } else {
@@ -822,33 +824,39 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::CPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
+             return reinterpret_cast<uintptr_t>(self.mutable_data(
+                 place, framework::TransToPtenDataType(type)));
            })
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::XPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
+             return reinterpret_cast<uintptr_t>(self.mutable_data(
+                 place, framework::TransToPtenDataType(type)));
            })
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::CUDAPlace &place,
               paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
+             return reinterpret_cast<uintptr_t>(self.mutable_data(
+                 place, framework::TransToPtenDataType(type)));
            })
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::CUDAPinnedPlace &place,
               paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
+             return reinterpret_cast<uintptr_t>(self.mutable_data(
+                 place, framework::TransToPtenDataType(type)));
            })
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::MLUPlace &place,
               paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
+             return reinterpret_cast<uintptr_t>(self.mutable_data(
+                 place, framework::TransToPtenDataType(type)));
            })
       .def("_clear", &framework::Tensor::clear)
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::NPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
+             return reinterpret_cast<uintptr_t>(self.mutable_data(
+                 place, framework::TransToPtenDataType(type)));
            })
       .def("_copy_from", &TensorCopyFrom<paddle::platform::CPUPlace>,
            py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)

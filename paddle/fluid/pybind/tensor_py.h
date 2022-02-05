@@ -544,21 +544,21 @@ inline framework::Tensor *_getTensor(const framework::Tensor &self,
   output->Resize(ddim);
   auto place = self.place();
   if (platform::is_cpu_place(place)) {
-    output->mutable_data(place, self.type());
+    output->mutable_data(place, self.dtype());
   } else if (platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
-    output->mutable_data(place, self.type());
+    output->mutable_data(place, self.dtype());
 #endif
   } else if (platform::is_mlu_place(place)) {
 #ifdef PADDLE_WITH_MLU
-    output->mutable_data(place, self.type());
+    output->mutable_data(place, self.dtype());
 #endif
   } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_cuda_pinned_place(place)) {
-      output->mutable_data(place, self.type());
+      output->mutable_data(place, self.dtype());
     } else if ((platform::is_gpu_place(place))) {
-      output->mutable_data(place, self.type());
+      output->mutable_data(place, self.dtype());
     }
 #endif
   }
