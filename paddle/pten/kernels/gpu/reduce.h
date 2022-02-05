@@ -43,6 +43,7 @@ namespace cub = hipcub;
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/enforce.h"
 #include "paddle/pten/core/utils/array.h"
+#include "paddle/pten/kernels/cast_kernel.h"
 #include "paddle/pten/kernels/funcs/elementwise_base.h"
 #include "paddle/pten/kernels/primitive/kernel_primitives.h"
 
@@ -1233,6 +1234,7 @@ void Reduce(const GPUContext& dev_ctx,
   gpuStream_t stream = dev_ctx.stream();
 
   if (out_dtype != pten::DataType::UNDEFINED && out_dtype != x.dtype()) {
+    auto tmp_tensor = pten::Cast<T>(dev_ctx, x, out_dtype);
     PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_3_TYPES(
         pten::DataType::INT32,
         pten::DataType::INT64,
@@ -1245,7 +1247,7 @@ void Reduce(const GPUContext& dev_ctx,
                                                  data_t,
                                                  ReduceOp,
                                                  TransformOp<data_t, MPType>>(
-              x,
+              tmp_tensor,
               out,
               TransformOp<data_t, MPType>(reduce_num),
               reduce_dims,
