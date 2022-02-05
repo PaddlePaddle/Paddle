@@ -43,6 +43,10 @@ inline void DealTensorArray(const framework::ExecutionContext& ctx,
   end = std::max(end, static_cast<int64_t>(0));
   end = std::min(end, in_size);
 
+  if (starts[0] == -1 && end == 0) {
+    end = start + 1;
+  }
+
   PADDLE_ENFORCE_GT(end, start,
                     platform::errors::InvalidArgument(
                         "Attr(ends) should be greater than attr(starts) in "
@@ -330,7 +334,7 @@ class SliceGradKernel : public framework::OpKernel<T> {
     auto decrease_axis = ctx.Attr<std::vector<int>>("decrease_axis");
     auto decrease_size = decrease_axis.size();
     if (decrease_size > 0) {
-      if (decrease_size == (size_t)in_dims.size()) {
+      if (decrease_size == static_cast<size_t>(in_dims.size())) {
         // all dims decrease
         std::vector<int> origin_out_shape(decrease_size, 1);
         out_dims = framework::make_ddim(std::vector<int>(decrease_size, 1));

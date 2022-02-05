@@ -34,24 +34,23 @@ namespace cub = hipcub;
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/fluid/string/string_helper.h"
-#include "paddle/pten/core/array.h"
-
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/enforce.h"
+#include "paddle/pten/core/utils/array.h"
 #include "paddle/pten/kernels/funcs/elementwise_base.h"
+#include "paddle/pten/kernels/primitive/kernel_primitives.h"
 
 // Reduce split or not, Whether to use ReduceHigherDim
 #define REDUCE_SPLIT_BOUNDARY 512
 #define REDUCE_VEC_SIZE 4
 
-namespace kps = paddle::operators::kernel_primitives;
+namespace kps = pten::kps;
 
 namespace pten {
 namespace kernels {
@@ -94,7 +93,7 @@ static inline void CheckReduceRank(int reduce_rank, int rank) {
   if (rank % 2 == 0) {
     PADDLE_ENFORCE_EQ(reduce_rank,
                       rank / 2,
-                      paddle::platform::errors::InvalidArgument(
+                      pten::errors::InvalidArgument(
                           "ReduceOp: invalid reduce rank. When rank = %d, "
                           "reduce_rank must be %d, but got %d.",
                           rank,
@@ -106,7 +105,7 @@ static inline void CheckReduceRank(int reduce_rank, int rank) {
     PADDLE_ENFORCE_EQ(
         reduce_rank == lower_rank || reduce_rank == upper_rank,
         true,
-        paddle::platform::errors::InvalidArgument(
+        pten::errors::InvalidArgument(
             "ReduceOp: invalid reduce rank. When rank = %d, reduce_rank "
             "must be %d or %d, but got %d.",
             rank,
@@ -122,7 +121,7 @@ static inline pten::framework::Array<T, ElementCount> VectorToArray(
     const VectorLikeType& vec) {
   PADDLE_ENFORCE_LE(vec.size(),
                     ElementCount,
-                    paddle::platform::errors::InvalidArgument(
+                    pten::errors::InvalidArgument(
                         "Cub reduce Array: size not match. Received "
                         "vec.size() %d > ElementCount %d.",
                         vec.size(),
@@ -149,7 +148,7 @@ static inline std::vector<int> GetReduceDim(const std::vector<int64_t>& dims,
     for (auto e : dims) {
       PADDLE_ENFORCE_LT(e,
                         dim_size,
-                        paddle::platform::errors::InvalidArgument(
+                        pten::errors::InvalidArgument(
                             "ReduceOp: invalid axis, when x_dims is %d, "
                             "axis[i] should less than x_dims, but got %d.",
                             dim_size,
@@ -1057,7 +1056,7 @@ static
                                int reduce_num,
                                const paddle::platform::Place& place,
                                gpuStream_t stream) {
-  PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+  PADDLE_THROW(pten::errors::InvalidArgument(
       "Tx should not be float16 when using cub::DeviceReduce::Reduce()."));
 }
 

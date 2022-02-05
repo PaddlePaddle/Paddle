@@ -27,7 +27,7 @@ from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.partitioner import Partitioner
-from paddle.distributed.auto_parallel.reshard import reshard
+from paddle.distributed.auto_parallel.reshard import reshard, HAS_SENT, HAS_RECV, HAS_ALLGATHER
 from paddle.distributed.auto_parallel.process_group import _g_process_group_map
 from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 
@@ -143,7 +143,11 @@ def mlp_forward(train_program, start_program):
     return loss, train_program, start_program
 
 
-def get_dist_prog(train_program, startup_program, dist_context, rank_id):
+def get_dist_prog(train_program,
+                  startup_program,
+                  dist_context,
+                  rank_id,
+                  change_process_mesh=False):
     loss, train_program, startup_program = mlp_forward(train_program,
                                                        startup_program)
 
@@ -156,6 +160,12 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     completer = Completer(dist_context)
     complete_train_program = completer.complete_forward_annotation(
         train_program)
+
+    if change_process_mesh:
+        global PP_MESH_1
+        dist_context.get_tensor_dist_attr_for_program(
+            train_program.global_block().vars[
+                "gelu_0.tmp_0"]).process_mesh = PP_MESH_1
 
     params_grads = parallelizer._generate_backward(
         complete_train_program,
@@ -173,7 +183,7 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     partitioned_optimize_ops = parallelizer._apply_optimize(
         auto_parallel_main_prog, auto_parallel_startup_prog, dist_params_grads)
 
-    return auto_parallel_main_prog, auto_parallel_startup_prog
+    return auto_parallel_main_prog, auto_parallel_startup_prog, dist_params_grads
 
 
 def check_backward_dist_attr(dist_context, dist_main_prog, op_need_check):
@@ -267,7 +277,7 @@ class TestMLPReshard(unittest.TestCase):
         startup_program = paddle.static.Program()
         dist_context = DistributedContext()
         rank_id = 0
-        dist_main_prog, dist_startup_prog = get_dist_prog(
+        dist_main_prog, dist_startup_prog, dist_params_grads = get_dist_prog(
             train_program, startup_program, dist_context, 0)
 
         op_need_check = None
@@ -296,16 +306,37 @@ class TestMLPReshard(unittest.TestCase):
         startup_program = paddle.static.Program()
         dist_context = DistributedContext()
         rank_id = 1
-        dist_main_prog, dist_startup_prog = get_dist_prog(
+        dist_main_prog, dist_startup_prog, dist_params_grads = get_dist_prog(
             train_program, startup_program, dist_context, rank_id)
         for key in list(_g_process_group_map.keys()):
             del _g_process_group_map[key]
-        reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context)
+        reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context,
+                dist_params_grads)
 
         # check send and recv result
         self.assertTrue(check_send_recv_result(dist_main_prog, rank_id))
 
         # parameter initialization of every rank should be different in the pipeline scene
+        self.assertTrue(check_initialization(dist_startup_prog, rank_id))
+
+    def test_mlp_pp_diff_process_mesh(self):
+        HAS_SENT.clear()
+        HAS_RECV.clear()
+        HAS_ALLGATHER.clear()
+        train_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        dist_context = DistributedContext()
+        rank_id = 1
+        dist_main_prog, dist_startup_prog, dist_params_grads = get_dist_prog(
+            train_program, startup_program, dist_context, rank_id, True)
+        for key in list(_g_process_group_map.keys()):
+            del _g_process_group_map[key]
+        reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context,
+                dist_params_grads)
+        print_program_with_dist_attr(dist_main_prog, dist_context)
+
+        # check send and recv result
+        self.assertTrue(check_send_recv_result(dist_main_prog, rank_id))
         self.assertTrue(check_initialization(dist_startup_prog, rank_id))
 
     def test_mlp_dp(self):
@@ -318,9 +349,10 @@ class TestMLPReshard(unittest.TestCase):
         startup_program = paddle.static.Program()
         dist_context = DistributedContext()
         rank_id = 0
-        dist_main_prog, dist_startup_prog = get_dist_prog(
+        dist_main_prog, dist_startup_prog, dist_params_grads = get_dist_prog(
             train_program, startup_program, dist_context, rank_id)
-        reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context)
+        reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context,
+                dist_params_grads)
         # send and recv should not exist in dp scene.
         self.assertFalse(check_send_recv_result(dist_main_prog, rank_id))
 

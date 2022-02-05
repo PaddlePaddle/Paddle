@@ -50,6 +50,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/prune.h"
+#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/save_load_util.h"
 #include "paddle/fluid/framework/scope_pool.h"
@@ -74,6 +75,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/lod_utils.h"
 #ifndef PADDLE_ON_INFERENCE
 #include "paddle/fluid/pybind/eager.h"
@@ -99,6 +101,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
+#include "paddle/fluid/pybind/metrics_py.h"
 #include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
 
@@ -133,9 +136,10 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
+
 #ifdef PADDLE_WITH_IPU
-#include "paddle/fluid/platform/ipu/ipu_backend.h"
-#include "paddle/fluid/platform/ipu_info.h"
+#include "paddle/fluid/platform/device/ipu/ipu_backend.h"
+#include "paddle/fluid/platform/device/ipu/ipu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_MLU
@@ -712,21 +716,61 @@ PYBIND11_MODULE(core_noavx, m) {
   m.def("_get_use_default_grad_op_desc_maker_ops",
         [] { return OpInfoMap::Instance().GetUseDefaultGradOpDescMakerOps(); });
 
-  m.def("_get_all_register_op_kernels", [] {
-    auto &all_kernels = paddle::framework::OperatorWithKernel::AllOpKernels();
-    std::unordered_map<std::string, std::vector<std::string>> all_kernels_info;
-    for (auto &kernel_pair : all_kernels) {
-      auto op_type = kernel_pair.first;
-      std::vector<std::string> kernel_types;
-      for (auto &info_pair : kernel_pair.second) {
-        paddle::framework::OpKernelType kernel_type = info_pair.first;
-        kernel_types.push_back(
-            paddle::framework::KernelTypeToString(kernel_type));
-      }
-      all_kernels_info.emplace(op_type, kernel_types);
-    }
-    return all_kernels_info;
-  });
+  m.def(
+      "_get_all_register_op_kernels",
+      [](const std::string &lib) {
+        std::unordered_map<std::string, std::vector<std::string>>
+            all_kernels_info;
+        if (lib == "fluid" || lib == "all") {
+          auto &all_kernels =
+              paddle::framework::OperatorWithKernel::AllOpKernels();
+
+          for (auto &kernel_pair : all_kernels) {
+            auto op_type = kernel_pair.first;
+            std::vector<std::string> kernel_types;
+            for (auto &info_pair : kernel_pair.second) {
+              paddle::framework::OpKernelType kernel_type = info_pair.first;
+              kernel_types.emplace_back(
+                  paddle::framework::KernelTypeToString(kernel_type));
+            }
+            all_kernels_info.emplace(op_type, kernel_types);
+          }
+        }
+        if (lib == "pten" || lib == "all") {
+          auto pten_kernels = pten::KernelFactory::Instance().kernels();
+          for (auto &kernel_pair : pten_kernels) {
+            auto op_type = pten::TransToFluidOpName(kernel_pair.first);
+            std::vector<std::string> kernel_types;
+            for (auto &info_pair : kernel_pair.second) {
+              framework::OpKernelType kernel_type =
+                  framework::TransPtenKernelKeyToOpKernelType(info_pair.first);
+              auto kernel_type_str = framework::KernelTypeToString(kernel_type);
+              if (all_kernels_info.count(op_type)) {
+                if (std::find(all_kernels_info[op_type].begin(),
+                              all_kernels_info[op_type].end(),
+                              kernel_type_str) ==
+                    all_kernels_info[op_type].end()) {
+                  all_kernels_info[op_type].emplace_back(kernel_type_str);
+                }
+              } else {
+                kernel_types.emplace_back(kernel_type_str);
+              }
+            }
+            if (!kernel_types.empty()) {
+              all_kernels_info.emplace(op_type, kernel_types);
+            }
+          }
+        }
+
+        return all_kernels_info;
+      },
+      py::arg("lib") = "all",
+      R"DOC(
+           Return the registered kernels in paddle.
+
+           Args:
+               lib[string]: the libarary, could be 'pten', 'fluid' and 'all'.
+           )DOC");
 
   // NOTE(zjl): ctest would load environment variables at the beginning even
   // though we have not `import paddle.fluid as fluid`. So we add this API
@@ -974,7 +1018,8 @@ PYBIND11_MODULE(core_noavx, m) {
             PADDLE_ENFORCE_EQ(
                 CheckLoD(new_offset_lod, -1), true,
                 platform::errors::InvalidArgument(
-                    "The provided recursive_sequence_lengths info is invalid, "
+                    "The provided recursive_sequence_lengths info is "
+                    "invalid, "
                     "the LoD converted by recursive_sequence_lengths is %s",
                     new_lod));
             new (&instance) framework::Tensor(new_offset_lod);
@@ -1036,7 +1081,8 @@ PYBIND11_MODULE(core_noavx, m) {
              PADDLE_ENFORCE_EQ(
                  CheckLoD(new_offset_lod, vectorize(self.dims()).front()), true,
                  platform::errors::InvalidArgument(
-                     "The provided recursive_sequence_lengths info is invalid, "
+                     "The provided recursive_sequence_lengths info is "
+                     "invalid, "
                      "the LoD converted by recursive_sequence_lengths is "
                      "%s",
                      new_lod));
@@ -1220,23 +1266,27 @@ PYBIND11_MODULE(core_noavx, m) {
           }));
 #endif
 
-  py::class_<SelectedRows>(m, "SelectedRows")
+  py::class_<pten::SelectedRows>(m, "SelectedRows")
       .def("__init__",
-           [](SelectedRows &instance) { new (&instance) SelectedRows(); })
+           [](pten::SelectedRows &instance) {
+             new (&instance) pten::SelectedRows();
+           })
       .def("__init__",
-           [](SelectedRows &instance, const std::vector<int64_t> rows,
+           [](pten::SelectedRows &instance, const std::vector<int64_t> rows,
               const int64_t &height) {
-             new (&instance) SelectedRows(rows, height);
+             new (&instance) pten::SelectedRows(rows, height);
            })
       .def("get_tensor",
-           [](SelectedRows &self) { return self.mutable_value(); },
+           [](pten::SelectedRows &self) { return self.mutable_value(); },
            py::return_value_policy::reference)
       .def("numel",
-           [](SelectedRows &self) -> int64_t { return self.value().numel(); })
-      .def("set_height", &SelectedRows::set_height)
-      .def("height", &SelectedRows::height)
+           [](pten::SelectedRows &self) -> int64_t {
+             return self.value().numel();
+           })
+      .def("set_height", &pten::SelectedRows::set_height)
+      .def("height", &pten::SelectedRows::height)
       .def("set_rows",
-           [](SelectedRows &self, std::vector<int64_t> rows) {
+           [](pten::SelectedRows &self, std::vector<int64_t> rows) {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
              self.set_rows(rows);
 #else
@@ -1244,8 +1294,9 @@ PYBIND11_MODULE(core_noavx, m) {
         self.set_rows(new_rows);
 #endif
            })
-      .def("sync_index", [](SelectedRows &instance) { instance.SyncIndex(); })
-      .def("rows", [](SelectedRows &self) {
+      .def("sync_index",
+           [](pten::SelectedRows &instance) { instance.SyncIndex(); })
+      .def("rows", [](pten::SelectedRows &self) {
         auto rows = self.rows();
         std::vector<int64_t> new_rows;
         new_rows.reserve(rows.size());
@@ -1294,8 +1345,8 @@ All parameter, weight, gradient are variables in Paddle.
            [](Variable &self) { return self.GetMutable<LoDRankTable>(); },
            py::return_value_policy::reference)
       .def("get_selected_rows",
-           [](Variable &self) -> SelectedRows * {
-             return self.GetMutable<SelectedRows>();
+           [](Variable &self) -> pten::SelectedRows * {
+             return self.GetMutable<pten::SelectedRows>();
            },
            py::return_value_policy::reference)
       .def("get_lod_tensor_array",
@@ -1760,27 +1811,30 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__repr__", string::to_string<const platform::XPUPlace &>)
       .def("__str__", string::to_string<const platform::XPUPlace &>);
 #ifdef PADDLE_WITH_XPU
-  py::enum_<platform::XPUVersion>(m, "XPUVersion", py::arithmetic())
-      .value("XPU1", platform::XPUVersion::XPU1)
-      .value("XPU2", platform::XPUVersion::XPU2)
+  py::enum_<pten::backends::xpu::XPUVersion>(m, "XPUVersion", py::arithmetic())
+      .value("XPU1", pten::backends::xpu::XPUVersion::XPU1)
+      .value("XPU2", pten::backends::xpu::XPUVersion::XPU2)
       .export_values();
   m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
   m.def("get_xpu_device_version",
         [](int device_id) { return platform::get_xpu_version(device_id); });
-  m.def("get_xpu_device_op_support_types",
-        [](const std::string &op_name, platform::XPUVersion version) {
-          return platform::get_xpu_op_support_type(op_name, version);
-        });
-  m.def("get_xpu_device_op_list", [](platform::XPUVersion version) {
+  m.def(
+      "get_xpu_device_op_support_types",
+      [](const std::string &op_name, pten::backends::xpu::XPUVersion version) {
+        return platform::get_xpu_op_support_type(op_name, version);
+      });
+  m.def("get_xpu_device_op_list", [](pten::backends::xpu::XPUVersion version) {
     return platform::get_xpu_op_list(version);
   });
   m.def("is_float16_supported", [](const platform::XPUPlace &place) -> bool {
     // XPUs with Compute Capability > xpu2 support float16 and bfloat16
-    return platform::get_xpu_version(place.device) > platform::XPUVersion::XPU1;
+    return platform::get_xpu_version(place.device) >
+           pten::backends::xpu::XPUVersion::XPU1;
   });
   m.def("is_bfloat16_supported", [](const platform::XPUPlace &place) -> bool {
     // XPUs with Compute Capability > xpu2 support float16 and bfloat16
-    return platform::get_xpu_version(place.device) > platform::XPUVersion::XPU1;
+    return platform::get_xpu_version(place.device) >
+           pten::backends::xpu::XPUVersion::XPU1;
   });
 #endif
 
@@ -2103,20 +2157,20 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__str__", string::to_string<const platform::Place &>);
 
   py::class_<OperatorBase>(m, "Operator")
-      .def_static(
-          "create",
-          [](py::bytes protobin) {
-            proto::OpDesc desc;
-            PADDLE_ENFORCE_EQ(desc.ParsePartialFromString(protobin), true,
-                              platform::errors::InvalidArgument(
-                                  "Cannot parse user input to OpDesc"));
-            PADDLE_ENFORCE_EQ(
-                desc.IsInitialized(), true,
-                platform::errors::InvalidArgument(
-                    "The provided OpDesc is not initialized, the reason is: %s",
-                    desc.InitializationErrorString()));
-            return OpRegistry::CreateOp(desc);
-          })
+      .def_static("create",
+                  [](py::bytes protobin) {
+                    proto::OpDesc desc;
+                    PADDLE_ENFORCE_EQ(desc.ParsePartialFromString(protobin),
+                                      true,
+                                      platform::errors::InvalidArgument(
+                                          "Cannot parse user input to OpDesc"));
+                    PADDLE_ENFORCE_EQ(desc.IsInitialized(), true,
+                                      platform::errors::InvalidArgument(
+                                          "The provided OpDesc is not "
+                                          "initialized, the reason is: %s",
+                                          desc.InitializationErrorString()));
+                    return OpRegistry::CreateOp(desc);
+                  })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
               const platform::CPUPlace &place) {
@@ -2698,9 +2752,9 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("register_pass", [](const std::string &pass_type, py::object callable) {
     PADDLE_ENFORCE_EQ(
         framework::ir::PassRegistry::Instance().Has(pass_type), false,
-        platform::errors::AlreadyExists(
-            "Pass '%s' is registered more than once. Please use another name.",
-            pass_type));
+        platform::errors::AlreadyExists("Pass '%s' is registered more than "
+                                        "once. Please use another name.",
+                                        pass_type));
     callable.inc_ref();
     framework::ir::PassRegistry::Instance().Insert(pass_type, [pass_type,
                                                                callable]() {
@@ -3670,8 +3724,9 @@ All parameter, weight, gradient are variables in Paddle.
   BindFleetWrapper(&m);
   BindIO(&m);
 
-#ifdef PADDLE_WITH_PSLIB
+#if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
   BindHeterWrapper(&m);
+  BindMetrics(&m);
 #endif
 #ifdef PADDLE_WITH_HETERPS
   BindPSGPUWrapper(&m);

@@ -17,6 +17,7 @@ limitations under the License. */
 
 #include "paddle/pten/kernels/math_kernel.h"
 
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
@@ -31,10 +32,11 @@ TEST(DEV_API, mean) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({3, 4}),
-                                                  pten::DataLayout::NCHW));
+  pten::DenseTensor dense_x(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({3, 4}),
+                            pten::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 
@@ -47,6 +49,10 @@ TEST(DEV_API, mean) {
 
   // 2. test API
   pten::CPUContext dev_ctx;
+  dev_ctx.SetDeviceAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
   auto out = pten::Mean<float>(dev_ctx, dense_x, dims, false);
 
   // 3. check result

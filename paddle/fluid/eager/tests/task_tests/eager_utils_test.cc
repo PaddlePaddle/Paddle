@@ -51,7 +51,6 @@ TEST(EagerUtils, AutoGradMeta) {
 
   // unsafe_autograd_meta()
   // autograd_meta()
-  // multi_autograd_meta()
   AutogradMeta* autograd_meta0 = EagerUtils::autograd_meta(&et0);
   AutogradMeta* autograd_meta1 = EagerUtils::autograd_meta(&et1);
 
@@ -59,8 +58,7 @@ TEST(EagerUtils, AutoGradMeta) {
       EagerUtils::unsafe_autograd_meta(et0);
   CHECK_NOTNULL(unsafe_autograd_meta_after);
 
-  std::vector<AutogradMeta*> autograd_metas =
-      EagerUtils::multi_autograd_meta(&ets);
+  std::vector<AutogradMeta*> autograd_metas = EagerUtils::autograd_meta(&ets);
   std::vector<AutogradMeta*> unsafe_autograd_metas =
       EagerUtils::unsafe_autograd_meta(ets);
   CHECK_NOTNULL(unsafe_autograd_metas[0]);
