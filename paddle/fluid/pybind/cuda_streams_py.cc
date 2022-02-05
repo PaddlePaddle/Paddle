@@ -318,7 +318,6 @@ void BindCudaStream(py::module *m_ptr) {
       .def("record",
            [](paddle::platform::CudaEvent &self,
               paddle::platform::stream::CUDAStream *stream) {
-             // TODO(wilber): how?
              if (stream == nullptr) {
                stream = paddle::platform::stream::get_current_stream(-1);
              }

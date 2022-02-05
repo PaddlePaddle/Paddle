@@ -602,8 +602,6 @@ class CUDADeviceContext : public pten::GPUContext {
       thread_ctx_;
   static thread_local std::mutex ctx_mtx_;
 
-  std::unique_ptr<StreamCallbackManager<gpuStream_t>> callback_manager_;
-
   mutable std::mutex cudnn_handle_mtx_;
 
   // NOTE: Just for compatibility with the past, please delete if there is an

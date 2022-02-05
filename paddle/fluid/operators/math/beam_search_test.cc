@@ -131,6 +131,7 @@ void TestBeamSearch() {
   delete context;
 }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
 void TestBeamSearch<paddle::platform::CUDADeviceContext,
                     paddle::platform::CUDAPlace>() {
@@ -205,6 +206,7 @@ void TestBeamSearch<paddle::platform::CUDADeviceContext,
   delete place;
   delete context;
 }
+#endif
 
 TEST(BeamSearch, CPU) {
   TestBeamSearch<paddle::platform::CPUDeviceContext,

@@ -443,6 +443,7 @@ void TestConcatMain() {
   delete context;
 }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
 void TestConcatMain<paddle::platform::CUDADeviceContext,
                     paddle::platform::CUDAPlace>() {
@@ -465,6 +466,7 @@ void TestConcatMain<paddle::platform::CUDADeviceContext,
 
   delete context;
 }
+#endif
 
 TEST(math, concat) {
   TestConcatMain<paddle::platform::CPUDeviceContext,

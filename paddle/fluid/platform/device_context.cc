@@ -485,8 +485,6 @@ CUDAContext::~CUDAContext() {
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
     : pten::GPUContext(place) {
   pten::GPUContext::PartialInitWithoutAllocator();
-  callback_manager_.reset(
-      new StreamCallbackManager<gpuStream_t>(pten::GPUContext::stream()));
   cuda_stream_.reset(
       new stream::CUDAStream(pten::GPUContext::stream(), this->GetPlace()));
 }
@@ -562,7 +560,7 @@ void CUDADeviceContext::AddStreamCallback(
     context()->Stream()->AddCallback(callback);
     return;
   }
-  callback_manager_->AddCallback(callback);
+  pten::GPUContext::AddStreamCallback(callback);
 }
 
 void CUDADeviceContext::WaitStreamCallback() const {
@@ -570,7 +568,7 @@ void CUDADeviceContext::WaitStreamCallback() const {
     context()->Stream()->WaitCallback();
     return;
   }
-  callback_manager_->Wait();
+  pten::GPUContext::WaitStreamCallback();
 }
 
 CudnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {

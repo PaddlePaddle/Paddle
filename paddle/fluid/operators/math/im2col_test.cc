@@ -167,6 +167,7 @@ void testIm2col() {
   delete context;
 }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
 void testIm2col<paddle::platform::CUDADeviceContext,
                 paddle::platform::CUDAPlace>() {
@@ -323,6 +324,7 @@ void testIm2col<paddle::platform::CUDADeviceContext,
   delete place;
   delete context;
 }
+#endif
 
 TEST(math, im2col) {
   testIm2col<paddle::platform::CPUDeviceContext, paddle::platform::CPUPlace>();

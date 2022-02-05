@@ -124,6 +124,7 @@ void testVol2col() {
   delete context;
 }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
 void testVol2col<paddle::platform::CUDADeviceContext,
                  paddle::platform::CUDAPlace>() {
@@ -134,12 +135,10 @@ void testVol2col<paddle::platform::CUDADeviceContext,
 
   auto* place = new paddle::platform::CUDAPlace();
   auto* context = new paddle::platform::CUDADeviceContext(*place);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   context->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                             .GetAllocator(*place, context->stream())
                             .get());
   context->PartialInitWithAllocator();
-#endif
 
   /**
    * input = [[0, 1, 2,
@@ -241,6 +240,7 @@ void testVol2col<paddle::platform::CUDADeviceContext,
   delete place;
   delete context;
 }
+#endif
 
 TEST(math, vol2col) {
   testVol2col<paddle::platform::CPUDeviceContext, paddle::platform::CPUPlace>();
