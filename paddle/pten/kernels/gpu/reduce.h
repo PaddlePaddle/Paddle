@@ -1233,18 +1233,23 @@ void Reduce(const GPUContext& dev_ctx,
   gpuStream_t stream = dev_ctx.stream();
 
   if (out_dtype != pten::DataType::UNDEFINED && out_dtype != x.dtype()) {
-    PD_DISPATCH_FLOATING_AND_COMPLEX_AND_2_TYPES(
+    PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_3_TYPES(
         pten::DataType::INT32,
         pten::DataType::INT64,
+        pten::DataType::FLOAT16,
         out_dtype,
         "TensorReduceFunctorImpl",
         ([&] {
           using MPType = typename kps::details::MPTypeTrait<data_t>::Type;
-          pten::kernels::TensorReduceFunctorImpl<T,
+          pten::kernels::TensorReduceFunctorImpl<data_t,
                                                  data_t,
                                                  ReduceOp,
-                                                 TransformOp<T, MPType>>(
-              x, out, TransformOp<T, MPType>(reduce_num), reduce_dims, stream);
+                                                 TransformOp<data_t, MPType>>(
+              x,
+              out,
+              TransformOp<data_t, MPType>(reduce_num),
+              reduce_dims,
+              stream);
         }));
   } else {
     using MPType = typename kps::details::MPTypeTrait<T>::Type;
