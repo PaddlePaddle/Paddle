@@ -54,6 +54,7 @@ class CUDAStream final {
   }
   explicit CUDAStream(gpuStream_t stream, const Place& place)
       : place_(place), stream_(stream) {
+    owned_stream_ = false;
     callback_manager_.reset(new StreamCallbackManager<gpuStream_t>(stream_));
   }
   virtual ~CUDAStream() { Destroy(); }
