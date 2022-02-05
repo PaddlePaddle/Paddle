@@ -34,10 +34,8 @@ void SetLoD(DstLoD* dst, const SrcLoD& src) {
 std::unique_ptr<pten::DenseTensor> MakePtenDenseTensorBase(
     const paddle::framework::Tensor& src) {
   VLOG(3) << "MakePtenDenseTensor based Tensor.";
-  pten::DenseTensorMeta meta{pten::TransToPtenDataType(src.type()),
-                             src.dims(),
-                             src.layout(),
-                             src.offset()};
+  pten::DenseTensorMeta meta{
+      src.dtype(), src.dims(), src.layout(), src.offset()};
   if (!src.IsInitialized()) {
     return std::make_unique<pten::DenseTensor>(
         std::move(pten::make_intrusive<SharedStorage>(src.place())),
@@ -91,35 +89,35 @@ pten::Scalar MakePtenScalar(const paddle::framework::Tensor& src) {
                         "The Scalar only supports Tensor with 1 element, "
                         "but now Tensor has %d element.",
                         src.numel()));
-  switch (src.type()) {
-    case paddle::framework::proto::VarType::FP32:
+  switch (src.dtype()) {
+    case framework::experimental::DataType::FP32:
       return {src.template data<float>()[0]};
-    case paddle::framework::proto::VarType::FP64:
+    case framework::experimental::DataType::FP64:
       return {src.template data<double>()[0]};
-    case paddle::framework::proto::VarType::FP16:
+    case framework::experimental::DataType::FP16:
       return {src.template data<float16>()[0]};
-    case paddle::framework::proto::VarType::BF16:
+    case framework::experimental::DataType::F16:
       return {src.template data<bfloat16>()[0]};
-    case paddle::framework::proto::VarType::INT32:
+    case framework::experimental::DataType::INT32:
       return {src.template data<int32_t>()[0]};
-    case paddle::framework::proto::VarType::INT64:
+    case framework::experimental::DataType::INT64:
       return {src.template data<int64_t>()[0]};
-    case paddle::framework::proto::VarType::INT16:
+    case framework::experimental::DataType::INT16:
       return {src.template data<int16_t>()[0]};
-    case paddle::framework::proto::VarType::INT8:
+    case framework::experimental::DataType::INT8:
       return {src.template data<int8_t>()[0]};
-    case paddle::framework::proto::VarType::UINT8:
+    case framework::experimental::DataType::UINT8:
       return {src.template data<uint8_t>()[0]};
-    case paddle::framework::proto::VarType::BOOL:
+    case framework::experimental::DataType::BOOL:
       return {src.template data<bool>()[0]};
-    case paddle::framework::proto::VarType::COMPLEX64:
+    case framework::experimental::DataType::COMPLEX64:
       return {src.template data<complex64>()[0]};
-    case paddle::framework::proto::VarType::COMPLEX128:
+    case framework::experimental::DataType::COMPLEX128:
       return {src.template data<complex128>()[0]};
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
           "Data type error. Don't support casting a %d LoDTensor to Scalar.",
-          src.type()));
+          src.dtype()));
   }
 }
 
@@ -143,16 +141,16 @@ pten::Scalar MakePtenScalarFromVar(const framework::Variable& variable) {
 }
 
 pten::ScalarArray MakePtenScalarArray(const paddle::framework::Tensor& src) {
-  if (src.type() == paddle::framework::proto::VarType::INT64) {
+  if (src.dtype() == framework::experimental::DataType::INT64) {
     return {src.data<int64_t>(), src.numel()};
-  } else if (src.type() == paddle::framework::proto::VarType::INT32) {
+  } else if (src.dtype() == framework::experimental::DataType::INT32) {
     return {src.data<int32_t>(), src.numel()};
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "Data type error. When cast a LoDTensor to ScalarArray, "
         "the data type of LoDTensor must be int32 or int64, "
         "but now data type is %s.",
-        src.type()));
+        src.dtype()));
   }
 }
 
@@ -183,11 +181,11 @@ pten::ScalarArray MakePtenScalarArrayFromVarList(
   }
   auto expected_place = pten::TransToFluidPlace(pten::Backend::CPU);
 
-  paddle::framework::proto::VarType::Type data_type;
+  framework::experimental::DataType data_type;
   auto* first_var = variable_list.front();
   if (first_var->IsType<framework::LoDTensor>()) {
     const auto& tensor = first_var->Get<framework::LoDTensor>();
-    data_type = tensor.type();
+    data_type = tensor.dtype();
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unsupport casting input `%s` type to VectorTensor when call pt "
@@ -198,7 +196,7 @@ pten::ScalarArray MakePtenScalarArrayFromVarList(
   std::vector<int64_t> vector_data;
   vector_data.reserve(variable_list.size());
 
-  if (data_type == paddle::framework::proto::VarType::INT64) {
+  if (data_type == framework::experimental::DataType::INT64) {
     for (auto* var : variable_list) {
       if (var->IsType<framework::LoDTensor>()) {
         const auto& tensor = var->Get<framework::LoDTensor>();
@@ -217,7 +215,7 @@ pten::ScalarArray MakePtenScalarArrayFromVarList(
       }
     }
 
-  } else if (data_type == paddle::framework::proto::VarType::INT32) {
+  } else if (data_type == framework::experimental::DataType::INT32) {
     for (auto* var : variable_list) {
       if (var->IsType<framework::LoDTensor>()) {
         const auto& tensor = var->Get<framework::LoDTensor>();
@@ -348,7 +346,7 @@ void ReMakePtenDenseTensorBase(const paddle::framework::Tensor& src,
   VLOG(3) << "ReMakePtenDenseTensor based Tensor.";
   auto* meta = pten::CompatibleDenseTensorUtils::GetMutableMeta(dst);
   meta->dims = src.dims();
-  meta->dtype = pten::TransToPtenDataType(src.type());
+  meta->dtype = src.dtype();
   meta->layout = src.layout();
   meta->offset = src.offset();
   dst->ResetHolder(src.Holder());

@@ -262,7 +262,9 @@ void TensorDataShare(framework::LoDTensor* dst, paddle::lite_api::Tensor* src) {
       src_raw_data, memory_size, GetNativePlace(src->target())));
   dst->Resize(paddle::framework::make_ddim(src->shape()));
   SetLoD(dst->mutable_lod(), src->lod());
-  dst->ResetHolderWithType(holder, GetNativePrecisionType(src->precision()));
+  dst->ResetHolderWithType(
+      holder,
+      framework::TransToPtenDataType(GetNativePrecisionType(src->precision())));
 }
 
 }  // namespace utils

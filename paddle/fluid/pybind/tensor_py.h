@@ -308,7 +308,7 @@ void SetTensorFromPyArrayT(
     if (zero_copy) {
       auto holder = std::make_shared<details::NumpyAllocation<T>>(array);
       auto type = framework::ToDataType(std::type_index(typeid(T)));
-      self->ResetHolderWithType(holder, type);
+      self->ResetHolderWithType(holder, framework::TransToPtenDataType(type));
     } else {
       auto dst = self->mutable_data<T>(place);
       std::memcpy(dst, array.data(), array.nbytes());
@@ -332,7 +332,7 @@ void SetTensorFromPyArrayT(
     if (zero_copy) {
       auto holder = std::make_shared<details::NumpyAllocation<T>>(array);
       auto type = framework::ToDataType(std::type_index(typeid(T)));
-      self->ResetHolderWithType(holder, type);
+      self->ResetHolderWithType(holder, framework::TransToPtenDataType(type));
     } else {
       auto dst = self->mutable_data<T>(place);
       std::memcpy(dst, array.data(), array.nbytes());
