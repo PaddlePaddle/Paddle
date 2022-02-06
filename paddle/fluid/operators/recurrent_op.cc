@@ -475,7 +475,7 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
             }
             // Alloc outside memory
             outside->Resize(PrependDims(seq_len, inside.dims()));
-            outside->mutable_data(place, inside.type());
+            outside->mutable_data(place, inside.dtype());
 
             auto dst = outside->Slice(seq_offset, seq_offset + 1);
             framework::TensorCopy(inside, place, dev_ctx, &dst);
@@ -493,7 +493,7 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
             [&](const framework::LoDTensor &inside,
                 framework::LoDTensor *outside) {
               outside->Resize(inside.dims());
-              outside->mutable_data(place, inside.type());
+              outside->mutable_data(place, inside.dtype());
               framework::TensorCopy(inside, place, dev_ctx, outside);
             },
             true /*is_backward*/);

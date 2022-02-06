@@ -37,7 +37,7 @@ private:
 
 /* @jim19930609: Remove dependency on protobuf after Tensor Unification.
 */
-explicit DenseTensor(paddle::framework::proto::VarType::Type dtype);
+explicit DenseTensor(paddle::experimental::DataType dtype);
 
 /// \brief Use existing storage space to create dense tensor. This interface
 /// can be used to deliberately create an uninitialized dense tensor.
@@ -80,7 +80,7 @@ void* mutable_data(const paddle::platform::Place& place,
 
 /* @jim19930609: Remove dependency on protobuf after Tensor Unification.
 */
-paddle::framework::proto::VarType::Type type() const;
+paddle::experimental::DataType type() const;
 
 /* @jim19930609: Remove dependency on protobuf after Tensor Unification.
 */
@@ -120,7 +120,7 @@ std::shared_ptr<pten::Allocation> MoveMemoryHolder() {
 void ResetHolder(const std::shared_ptr<pten::Allocation>& holder);
 
 void ResetHolderWithType(const std::shared_ptr<pten::Allocation>& holder,
-                        paddle::framework::proto::VarType::Type type);
+                        paddle::experimental::DataType type);
 
 void set_type(paddle::experimental::DataType type);
 

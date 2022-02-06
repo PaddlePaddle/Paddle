@@ -31,6 +31,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -644,7 +645,7 @@ inline framework::Tensor *_sliceAndConcat(const framework::Tensor &self,
 
 inline framework::Tensor *_sliceTensor(const framework::Tensor &self,
                                        py::object obj, int dim) {
-  auto src_type = self.type();
+  auto src_type = framework::TransToProtoVarType(self.dtype());
   switch (src_type) {
     case framework::proto::VarType::FP16:
       return _sliceAndConcat<paddle::platform::float16>(self, obj, dim);

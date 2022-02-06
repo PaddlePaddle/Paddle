@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
@@ -122,7 +123,7 @@ T *Tensor::data(PlaceType *place, int *size) const {
 
 DataType Tensor::type() const {
   EAGER_GET_TENSOR(paddle::framework::LoDTensor);
-  auto type = tensor->type();
+  auto type = paddle::framework::TransToProtoVarType(tensor->dtype());
   if (type == paddle::framework::proto::VarType::FP32) {
     return DataType::FLOAT32;
   } else if (type == paddle::framework::proto::VarType::FP16) {

@@ -19,6 +19,7 @@
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #endif
+#include "paddle/fluid/framework/convert_utils.h"
 
 namespace paddle {
 namespace framework {

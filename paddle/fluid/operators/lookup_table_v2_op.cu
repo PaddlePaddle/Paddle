@@ -98,7 +98,8 @@ class LookupTableV2CUDAKernel : public framework::OpKernel<T> {
 
     const int64_t *ids_p = nullptr;
 
-    if (ids_t->type() == framework::proto::VarType::INT32) {
+    if (framework::TransToProtoVarType(ids_t->dtype()) ==
+        framework::proto::VarType::INT32) {
       InputTypeCovert<
           int><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
           ids_t->data<int>(), K, ids.MutableData(context.GetPlace()));
@@ -165,7 +166,8 @@ class LookupTableV2GradCUDAKernel : public framework::OpKernel<T> {
       new_rows.resize(ids_num);
       auto gpu_place = context.GetPlace();
 
-      if (ids->type() == framework::proto::VarType::INT32) {
+      if (framework::TransToProtoVarType(ids->dtype()) ==
+          framework::proto::VarType::INT32) {
         InputTypeCovert<
             int><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
             ids->data<int>(), ids_num,
@@ -213,7 +215,8 @@ class LookupTableV2GradCUDAKernel : public framework::OpKernel<T> {
 
       const int64_t *ids_p = nullptr;
 
-      if (ids_t->type() == framework::proto::VarType::INT32) {
+      if (framework::TransToProtoVarType(ids_t->dtype()) ==
+          framework::proto::VarType::INT32) {
         InputTypeCovert<
             int><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
             ids_t->data<int>(), K, ids.MutableData(context.GetPlace()));

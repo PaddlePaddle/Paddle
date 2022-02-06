@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <random>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"

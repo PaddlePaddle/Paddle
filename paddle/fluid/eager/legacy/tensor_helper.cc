@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/eager/legacy/tensor_helper.h"
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -88,9 +89,11 @@ void CopyVariable(const paddle::framework::Variable &src_var,
 paddle::framework::proto::VarType::Type GetDtypeFromVar(
     const paddle::framework::Variable &var) {
   if (var.IsType<paddle::framework::LoDTensor>()) {
-    return var.Get<paddle::framework::LoDTensor>().type();
+    return paddle::framework::TransToProtoVarType(
+        var.Get<paddle::framework::LoDTensor>().type());
   } else if (var.IsType<pten::SelectedRows>()) {
-    return var.Get<pten::SelectedRows>().value().type();
+    return paddle::framework::TransToProtoVarType(
+        var.Get<pten::SelectedRows>().value().type());
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "Variable type is %s, expect LoDTensor or SelectedRows.",

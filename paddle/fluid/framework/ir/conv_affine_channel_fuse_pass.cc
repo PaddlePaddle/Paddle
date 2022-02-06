@@ -16,6 +16,7 @@
 
 #include <cmath>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace pten {

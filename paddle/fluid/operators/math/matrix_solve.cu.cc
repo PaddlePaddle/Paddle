@@ -65,7 +65,7 @@ class MatrixSolveFunctor<platform::CUDADeviceContext, T> {
     // copy input A to a temporary tensor tmp_a,
     // LU factorization, written back to original matrix A, so in the beginning,
     // it's necessary to create a temporary tensor tmp_a.
-    Tensor tmp_a(a.type());
+    Tensor tmp_a(a.dtype());
     tmp_a.Resize(a.dims());
     tmp_a.mutable_data<T>(context.GetPlace());
     framework::TensorCopy(a, context.GetPlace(), &tmp_a);

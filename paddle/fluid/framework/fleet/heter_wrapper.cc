@@ -28,6 +28,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/fleet/heter_wrapper.h"
 #ifdef PADDLE_WITH_PSLIB
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/device_worker.h"
 
 namespace paddle {

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <sstream>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/pten/core/compat/op_utils.h"
 #include "paddle/pten/core/convert_utils.h"
@@ -59,7 +60,7 @@ class KernelArgsNameMakerByOpProto : public KernelArgsNameMaker {
 OpKernelType TransPtenKernelKeyToOpKernelType(
     const pten::KernelKey& kernel_key) {
   proto::VarType::Type data_type =
-      pten::TransToProtoVarType(kernel_key.dtype());
+      paddle::framework::TransToProtoVarType(kernel_key.dtype());
   platform::Place place = pten::TransToFluidPlace(kernel_key.backend());
   DataLayout data_layout = kernel_key.layout();
   LibraryType library_type = LibraryType::kPlain;
@@ -86,7 +87,7 @@ pten::KernelKey TransOpKernelTypeToPtenKernelKey(
   }
   paddle::experimental::DataLayout layout = kernel_type.data_layout_;
   paddle::experimental::DataType dtype =
-      pten::TransToPtenDataType(kernel_type.data_type_);
+      paddle::framework::TransToPtenDataType(kernel_type.data_type_);
   return pten::KernelKey(backend, layout, dtype);
 }
 

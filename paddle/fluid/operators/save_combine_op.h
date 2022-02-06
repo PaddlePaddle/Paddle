@@ -21,6 +21,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/lod_tensor.h"

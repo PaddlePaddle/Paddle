@@ -21,6 +21,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/details/async_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/bind_threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
@@ -876,7 +877,7 @@ void ParallelExecutor::BCastParamsToDevices(
 
         auto copy_memory = [&] {
           t->Resize(dims);
-          t->mutable_data(cpu, main_tensor.dtype);
+          t->mutable_data(cpu, main_tensor.dtype());
           paddle::framework::TensorCopy(main_tensor, cpu, t);
         };
 

@@ -94,7 +94,8 @@ class PoolingMKLDNNHandler
 
     const auto is_test = ctx.Attr<bool>("is_test");
 
-    const auto dt = framework::ToMKLDNNDataType(input->type());
+    const auto dt = framework::ToMKLDNNDataType(
+        framework::TransToProtoVarType(input->dtype()));
 
     const auto exclude_padding = ctx.Attr<bool>("exclusive");
 
@@ -183,7 +184,8 @@ class PoolingMKLDNNHandler
     auto diff_src_tz = paddle::framework::vectorize<int64_t>(in_x_grad->dims());
     auto diff_dst_tz = paddle::framework::vectorize<int64_t>(out_grad->dims());
 
-    const auto dt = framework::ToMKLDNNDataType(in_x->type());
+    const auto dt = framework::ToMKLDNNDataType(
+        framework::TransToProtoVarType(in_x->dtype()));
     auto src_md = dnnl::memory::desc(src_tz, dt, in_x->format());
     auto dst_md = dnnl::memory::desc(diff_dst_tz, dt, MKLDNNMemoryFormat::any);
     auto diff_dst_md = dnnl::memory::desc(

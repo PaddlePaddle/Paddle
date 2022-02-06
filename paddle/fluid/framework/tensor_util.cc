@@ -19,6 +19,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/complex.h"
@@ -70,9 +71,11 @@ void TensorCopyImpl(const TENSOR& src, const platform::Place& dst_place,
 #ifdef PADDLE_WITH_MKLDNN
   auto size = src.layout() == DataLayout::kMKLDNN
                   ? src.memory_size()
-                  : src.numel() * SizeOfType(src.type());
+                  : src.numel() *
+                        SizeOfType(framework::TransToProtoVarType(src.dtype()));
 #else
-  auto size = src.numel() * SizeOfType(src.type());
+  auto size =
+      src.numel() * SizeOfType(framework::TransToProtoVarType(src.dtype()));
 #endif
 
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
@@ -419,7 +422,8 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
     return;
   }
 
-  auto size = src.numel() * SizeOfType(src.type());
+  auto size =
+      src.numel() * SizeOfType(framework::TransToProtoVarType(src.dtype()));
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
@@ -1423,13 +1427,14 @@ std::ostream& operator<<(std::ostream& os, const pten::DenseTensor& t) {
     dev_ctx.Wait();
   }
 
-#define PrintTensorCallback(cpp_type, proto_type)                       \
-  do {                                                                  \
-    if (framework::TransToProtoVarType(tensor.dtype()) == proto_type) { \
-      os << "  - dtype: " << proto_type << "\n";                        \
-      paddle::framework::print_tensor<cpp_type>(os, tensor);            \
-      return os;                                                        \
-    }                                                                   \
+#define PrintTensorCallback(cpp_type, proto_type)                 \
+  do {                                                            \
+    if (paddle::framework::TransToProtoVarType(tensor.dtype()) == \
+        proto_type) {                                             \
+      os << "  - dtype: " << proto_type << "\n";                  \
+      paddle::framework::print_tensor<cpp_type>(os, tensor);      \
+      return os;                                                  \
+    }                                                             \
   } while (0)
 
   _ForEachDataType_(PrintTensorCallback);

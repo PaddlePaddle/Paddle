@@ -140,7 +140,7 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
   for (auto *t : src_lodtensors) {
     if (t->numel() && t->IsInitialized()) {
       check_dim = t->dims();
-      new_type = t->type();
+      new_type = paddle::framework::TransToProtoVarType(t->dtype());
       new_layout = t->layout();
       break;
     }

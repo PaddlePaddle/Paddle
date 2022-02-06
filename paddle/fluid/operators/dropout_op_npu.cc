@@ -56,8 +56,8 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
 
     // only achive the default `upscale_in_train` method
     if (!is_test) {
-      Tensor tmp_x(x->type());
-      Tensor tmp_out(out->type());
+      Tensor tmp_x(x->dtype());
+      Tensor tmp_out(out->dtype());
       tmp_x.ShareDataWith(*x);
       tmp_out.ShareDataWith(*out);
       if (x->dims().size() == 1) {
@@ -80,7 +80,7 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
         seed = ctx.Attr<bool>("fix_seed") ? ctx.Attr<int>("seed") : 0;
       }
 
-      Tensor keep_prob_tensor(x->type());
+      Tensor keep_prob_tensor(x->dtype());
       keep_prob_tensor.mutable_data<T>({1}, ctx.GetPlace());
       FillNpuTensorWithConstant<T>(&keep_prob_tensor,
                                    static_cast<T>(keep_prob));
@@ -119,14 +119,16 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
       Tensor cast_mask(framework::proto::VarType::BOOL);
       cast_mask.Resize(mask->dims());
       cast_mask.mutable_data<bool>(ctx.GetPlace());
-      auto dst_dtype_bool = ConvertToNpuDtype(cast_mask.type());
+      auto dst_dtype_bool =
+          ConvertToNpuDtype(framework::TransToProtoVarType(cast_mask.dtype()));
       const auto& runner_cast_mask_bool =
           NpuOpRunner("Cast", {*out}, {cast_mask},
                       {{"dst_type", static_cast<int>(dst_dtype_bool)}});
       runner_cast_mask_bool.Run(stream);
 
       // cast cast_mask from bool to uint8
-      auto dst_dtype_uint8 = ConvertToNpuDtype(mask->type());
+      auto dst_dtype_uint8 =
+          ConvertToNpuDtype(framework::TransToProtoVarType(mask->dtype()));
       const auto& runner_cast_mask_uint8 =
           NpuOpRunner("Cast", {cast_mask}, {*mask},
                       {{"dst_type", static_cast<int>(dst_dtype_uint8)}});
@@ -167,10 +169,11 @@ class DropoutGradNPUKernel : public framework::OpKernel<T> {
     }
 
     // cast mask from uint8 to float32/float16
-    Tensor cast_mask(dx->type());
+    Tensor cast_mask(dx->dtype());
     cast_mask.Resize(mask->dims());
     cast_mask.mutable_data<T>(ctx.GetPlace());
-    auto dst_dtype = ConvertToNpuDtype(dx->type());
+    auto dst_dtype =
+        ConvertToNpuDtype(framework::TransToProtoVarType(dx->dtype()));
     const auto& runner_cast_mask =
         NpuOpRunner("Cast", {*mask}, {cast_mask},
                     {{"dst_type", static_cast<int>(dst_dtype)}});

@@ -14,13 +14,13 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/pten/core/compat/arg_map_context.h"
 #include "paddle/pten/core/compat/op_utils.h"
 #include "paddle/pten/core/compat_utils.h"
-#include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/infermeta_utils.h"
 #include "paddle/pten/core/meta_tensor.h"
@@ -107,7 +107,7 @@ class CompatMetaTensor : public pten::MetaTensor {
       return var->Get<LoDTensor>().dtype();
     } else {
       auto* var = BOOST_GET_CONST(VarDesc*, var_);
-      return pten::TransToPtenDataType(var->GetDataType());
+      return paddle::framework::TransToPtenDataType(var->GetDataType());
     }
   }
 
@@ -143,7 +143,7 @@ class CompatMetaTensor : public pten::MetaTensor {
           ->dtype = dtype;
     } else {
       auto* var = BOOST_GET(VarDesc*, var_);
-      var->SetDataType(pten::TransToProtoVarType(dtype));
+      var->SetDataType(paddle::framework::TransToProtoVarType(dtype));
     }
   }
 

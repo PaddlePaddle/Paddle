@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include "paddle/pten/kernels/copy_kernel.h"
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/common/data_type.h"
-#include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_registry.h"
 
 // See Note [ Why still include the fluid headers? ]
@@ -47,8 +47,9 @@ void Copy(const Context& dev_ctx,
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
   CHECK(dst->layout() == src.layout());
 
-  auto size = src.numel() *
-              paddle::framework::SizeOfType(TransToProtoVarType(src.dtype()));
+  auto size =
+      src.numel() * paddle::framework::SizeOfType(
+                        paddle::framework::TransToProtoVarType(src.dtype()));
 
   if (paddle::platform::is_cpu_place(src_place)) {
     paddle::memory::Copy(src_place, dst_ptr, src_place, src_ptr, size);

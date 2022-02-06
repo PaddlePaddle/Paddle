@@ -19,8 +19,8 @@ limitations under the License. */
 #include "paddle/pten/common/complex.h"
 #include "paddle/pten/common/float16.h"
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/pten/api/lib/utils/storage.h"
-#include "paddle/pten/core/convert_utils.h"
 
 namespace pten {
 /* --------------------------- */
@@ -31,8 +31,8 @@ DenseTensor::DenseTensor() {
   meta_.offset = 0;
 }
 
-DenseTensor::DenseTensor(paddle::framework::proto::VarType::Type dtype) {
-  meta_.dtype = TransToPtenDataType(dtype);
+DenseTensor::DenseTensor(paddle::experimental::DataType dtype) {
+  meta_.dtype = dtype;
   meta_.offset = 0;
 }
 
@@ -65,12 +65,10 @@ const paddle::platform::Place& DenseTensor::place() const {
   return holder_->place();
 }
 
-paddle::framework::proto::VarType::Type DenseTensor::type() const {
-  return TransToProtoVarType(meta_.dtype);
-}
+paddle::experimental::DataType DenseTensor::type() const { return meta_.dtype; }
 
 paddle::framework::proto::VarType::Type DenseTensor::saved_type() const {
-  return TransToProtoVarType(meta_.dtype);
+  return paddle::framework::TransToProtoVarType(meta_.dtype);
 }
 
 void DenseTensor::set_layout(const paddle::framework::DataLayout layout) {
@@ -107,7 +105,7 @@ void DenseTensor::ResetHolderWithType(
 }
 
 void DenseTensor::set_type(paddle::experimental::DataType type) {
-  meta_.dtype = type
+  meta_.dtype = type;
 }
 
 void* DenseTensor::mutable_data(const paddle::platform::Place& place,
@@ -189,7 +187,9 @@ inline T* DenseTensor::mutable_data(const paddle::platform::Place& place,
                                     size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
   return reinterpret_cast<T*>(
-      mutable_data(place, CppTypeToDataType<T>::Type(), requested_size));
+      mutable_data(place,
+                   paddle::experimental::CppTypeToDataType<T>::Type(),
+                   requested_size));
 }
 
 void DenseTensor::ShareBufferWith(const DenseTensor& tensor) {

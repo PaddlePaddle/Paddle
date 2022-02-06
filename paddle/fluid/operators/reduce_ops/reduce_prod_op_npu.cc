@@ -41,7 +41,7 @@ class ReduceProdNPUKernel : public framework::OpKernel<T> {
       cast_out_dtype = static_cast<framework::proto::VarType::Type>(out_dtype);
     }
 
-    if (x->type() != cast_out_dtype) {
+    if (framework::TransToProtoVarType(x->dtype()) != cast_out_dtype) {
       if (cast_out_dtype == framework::proto::VarType::FP32) {
         out->mutable_data<float>(place);
       } else if (cast_out_dtype == framework::proto::VarType::FP16) {
@@ -81,8 +81,9 @@ class ReduceProdNPUKernel : public framework::OpKernel<T> {
         NpuOpRunner("ReduceProdD", {*x}, {cast_out}, attr_input);
     runner.Run(stream);
 
-    if (x->type() != cast_out_dtype) {
-      auto dst_dtype = ConvertToNpuDtype(cast_out_dtype);
+    if (framework::TransToProtoVarType(x->dtype()) != cast_out_dtype) {
+      auto dst_dtype =
+          framework::TransToProtoVarType(ConvertToNpuDtype(cast_out_dtype));
       const auto& runner_cast =
           NpuOpRunner("Cast", {cast_out}, {*out},
                       {{"dst_type", static_cast<int>(dst_dtype)}});

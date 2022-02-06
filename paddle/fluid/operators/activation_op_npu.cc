@@ -666,7 +666,8 @@ class HardSwishGradNPUKernel : public framework::OpKernel<T> {
     runner_less.Run(stream);
     Tensor tmp4(x->type());
     tmp4.mutable_data<T>(x->dims(), place);
-    auto dst_dtype = ConvertToNpuDtype(x->type());
+    auto dst_dtype =
+        ConvertToNpuDtype(framework::TransToProtoVarType(x->type()));
     const auto& runner_cast =
         NpuOpRunner("Cast", {tmp_bool}, {tmp4},
                     {{"dst_type", static_cast<int>(dst_dtype)}});

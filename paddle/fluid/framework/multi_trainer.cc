@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/trainer.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"

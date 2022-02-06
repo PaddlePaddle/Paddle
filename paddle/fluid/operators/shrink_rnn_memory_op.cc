@@ -79,8 +79,7 @@ class ShrinkRNNMemoryOp : public ArrayOp {
     }
 
     if (dst_num_rows != 0) {
-      out_tensor.mutable_data(place,
-                              framework::TransToProtoVarType(x_tensor.dtype()));
+      out_tensor.mutable_data(place, x_tensor.dtype());
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
       framework::TensorCopy(x_tensor.Slice(0, height), place, *dev_ctx,
                             &out_tensor);
@@ -150,8 +149,7 @@ class ShrinkRNNMemoryGradOp : public ArrayOp {
     auto &x_tensor = x_var->Get<framework::LoDTensor>();
     auto &dx_tensor = *dx_var->GetMutable<framework::LoDTensor>();
     dx_tensor.Resize(x_tensor.dims());
-    dx_tensor.mutable_data(x_tensor.place(),
-                           framework::TransToProtoVarType(x_tensor.dtype()));
+    dx_tensor.mutable_data(x_tensor.place(), x_tensor.dtype());
 
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();

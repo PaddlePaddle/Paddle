@@ -48,7 +48,8 @@ class LookupTableV2Kernel : public framework::OpKernel<T> {
     std::vector<int64_t> ids;
     ids.reserve(ids_numel);
 
-    if (ids_t->type() == framework::proto::VarType::INT32) {
+    if (framework::TransToProtoVarType(ids_t->dtype()) ==
+        framework::proto::VarType::INT32) {
       std::transform(ids_t->data<int>(), ids_t->data<int>() + ids_numel,
                      std::back_inserter(ids),
                      [&](int id) { return static_cast<int64_t>(id); });
@@ -91,7 +92,8 @@ class LookupTableV2Kernel : public framework::OpKernel<T> {
       int64_t row_width = table_t.value().dims()[1];
       const auto *table = table_t.value().data<T>();
       auto *output = output_t->mutable_data<T>(context.GetPlace());
-      auto input_data_type = table_t.value().type();
+      auto input_data_type =
+          framework::TransToProtoVarType(table_t.value().dtype());
 
       for (int64_t i = 0; i < ids_numel; ++i) {
         if (padding_idx != kNoPadding && ids[i] == padding_idx) {
@@ -155,7 +157,8 @@ class LookupTableV2GradKernel : public framework::OpKernel<T> {
       std::vector<int64_t> ids;
       ids.reserve(ids_num);
 
-      if (ids_t->type() == framework::proto::VarType::INT32) {
+      if (framework::TransToProtoVarType(ids_t->dtype()) ==
+          framework::proto::VarType::INT32) {
         std::transform(ids_t->data<int>(), ids_t->data<int>() + ids_num,
                        std::back_inserter(ids),
                        [&](int id) { return static_cast<int64_t>(id); });
@@ -196,7 +199,8 @@ class LookupTableV2GradKernel : public framework::OpKernel<T> {
       std::vector<int64_t> ids;
       ids.reserve(ids_num);
 
-      if (ids_t->type() == framework::proto::VarType::INT32) {
+      if (framework::TransToProtoVarType(ids_t->dtype()) ==
+          framework::proto::VarType::INT32) {
         std::transform(ids_t->data<int>(), ids_t->data<int>() + ids_num,
                        std::back_inserter(ids),
                        [&](int id) { return static_cast<int64_t>(id); });

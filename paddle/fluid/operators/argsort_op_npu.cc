@@ -78,7 +78,8 @@ class ArgsortNPUKernel : public framework::OpKernel<T> {
     Tensor indices_tmp(framework::proto::VarType::INT32);
     indices_tmp.Resize(indices->dims());
 
-    if (input->type() == framework::proto::VarType::INT64) {
+    if (framework::TransToProtoVarType(input->dtype()) ==
+        framework::proto::VarType::INT64) {
       Tensor input_fp32(framework::proto::VarType::FP32);
       input_fp32.Resize(input->dims());
       CastToFP32(ctx, stream, *input, &input_fp32);

@@ -59,9 +59,10 @@ class SequenceMaskNPUKernel : public framework::OpKernel<T> {
 
     Tensor cast_x;
     cast_x.mutable_data<int32_t>(x->dims(), ctx.GetPlace());
-    const auto& cast1_runner =
-        NpuOpRunner("Cast", {*x}, {cast_x},
-                    {{"dst_type", ConvertToNpuDtype(cast_x.type())}});
+    const auto& cast1_runner = NpuOpRunner(
+        "Cast", {*x}, {cast_x},
+        {{"dst_type",
+          ConvertToNpuDtype(framework::TransToProtoVarType(cast_x.dtype()))}});
     cast1_runner.Run(dev_ctx.stream());
 
     Tensor tmp;
@@ -121,7 +122,9 @@ class SequenceMaskNPUKernel : public framework::OpKernel<T> {
     }
 
     const auto& cast2_runner = NpuOpRunner(
-        "Cast", {y_tmp}, {*y}, {{"dst_type", ConvertToNpuDtype(out_dtype)}});
+        "Cast", {y_tmp}, {*y},
+        {{"dst_type",
+          ConvertToNpuDtype(framework::TransToProtoVarType(out_dtype))}});
     cast2_runner.Run(dev_ctx.stream());
   }
 };

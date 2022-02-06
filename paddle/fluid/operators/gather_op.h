@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/gather.h"
@@ -48,7 +49,7 @@ class GatherOpKernel : public framework::OpKernel<T> {
       }
     }
     const auto &place = ctx.GetPlace();
-    const auto &index_type = index->type();
+    const auto &index_type = framework::TransToProtoVarType(index->dtype());
     if (axis != 0) {
       if (index_type == framework::proto::VarType::INT32) {
         GatherV2Function<T, int32_t>(x, index, axis, output, place);
@@ -91,7 +92,7 @@ class GatherGradientOpKernel : public framework::OpKernel<T> {
         axis = static_cast<int>(axis_tensor->data<int64_t>()[0]);
       }
     }
-    const auto &index_type = index->type();
+    const auto &index_type = framework::TransToProtoVarType(index->dtype());
 
     if (axis != 0) {
       if (index_type == framework::proto::VarType::INT32) {

@@ -38,7 +38,7 @@ void SetValueCompute(const framework::ExecutionContext& ctx,
   std::vector<int64_t> decrease_axes = {};
   std::vector<int64_t> none_axes = {};
 
-  auto dtype = in->type();
+  auto dtype = framework::TransToProtoVarType(in->dtype());
 
   auto in_dims = in->dims();
   CheckAndUpdateSliceAttrs<int64_t>(in_dims, axes, starts, ends, &steps);
@@ -88,7 +88,8 @@ void SetValueCompute(const framework::ExecutionContext& ctx,
   // set_value is what we want.
   paddle::framework::TensorCopy(*in, place, out);
 
-  Tensor slice_tensor(dtype), pad_tensor(dtype);
+  Tensor slice_tensor(framework::TransToPtenDataType(dtype)),
+      pad_tensor(framework::TransToPtenDataType(dtype));
   slice_tensor.mutable_data<T>(slice_dims, place);
   pad_tensor.mutable_data<T>(in_dims, place);
 
@@ -146,7 +147,7 @@ void SetValueCompute(const framework::ExecutionContext& ctx,
     ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
         ctx, &slice_tensor, value_tensor, -1, SubFunctor<T>(), &slice_tensor);
   } else {
-    Tensor value_t(dtype);
+    Tensor value_t(framework::TransToPtenDataType(dtype));
     auto value_dims = framework::make_ddim(shape);
     CheckIsDimsMatch(slice_dims_for_assign, value_dims);
 

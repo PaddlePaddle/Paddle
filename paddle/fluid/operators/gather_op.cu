@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/gather.cu.h"
 #include "paddle/fluid/operators/gather_op.h"
@@ -47,7 +48,7 @@ class GatherOpCUDAKernel : public framework::OpKernel<T> {
       }
     }
     const auto &place = ctx.GetPlace();
-    const auto &index_type = index->type();
+    const auto &index_type = framework::TransToProtoVarType(index->dtype());
     if (axis != 0) {
       if (index_type == framework::proto::VarType::INT32) {
         GatherV2CUDAFunction<T, int32_t>(x, index, axis, output, place, ctx);
@@ -92,7 +93,7 @@ class GatherGradOpCUDAKernel : public framework::OpKernel<T> {
       }
     }
 
-    const auto &index_type = index->type();
+    const auto &index_type = framework::TransToProtoVarType(index->dtype());
     if (axis != 0) {
       if (index_type == framework::proto::VarType::INT32) {
         GatherV2GradCUDAFunction<T, int32_t>(dO, index, axis, dX,

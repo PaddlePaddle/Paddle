@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
 #include "paddle/fluid/memory/memcpy.h"
@@ -226,8 +227,10 @@ static bool IsEqualVar(const framework::Variable& var1,
 
   auto* t1_p = t1.data();
   auto* t2_p = t2.data();
-  return std::memcmp(t1_p, t2_p,
-                     t1.numel() * framework::SizeOfType(t1.type())) == 0;
+  return std::memcmp(
+             t1_p, t2_p,
+             t1.numel() * framework::SizeOfType(
+                              framework::TransToProtoVarType(t1.dtype()))) == 0;
 }
 
 template <typename T>

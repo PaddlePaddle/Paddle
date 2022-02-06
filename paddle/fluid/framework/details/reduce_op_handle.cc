@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
@@ -150,7 +151,8 @@ void ReduceOpHandle::RunImpl() {
         if (!FLAGS_cpu_deterministic) {
           ReduceLoDTensor func(lod_tensors,
                                out_var->GetMutable<framework::LoDTensor>());
-          VisitDataType(lod_tensors[0]->type(), func);
+          VisitDataType(framework::TransToProtoVarType(lod_tensors[0]->dtype()),
+                        func);
         } else {
           // We sum lod_tensors to reduce_sum_trg which is in local_scopes_0
           // here, but it doesn't mean reduce_sum_trg must be in local_scopes_0.
@@ -158,7 +160,8 @@ void ReduceOpHandle::RunImpl() {
                                       ->FindVar(out_var_handle->name())
                                       ->GetMutable<framework::LoDTensor>();
           ReduceLoDTensor func(lod_tensors, &reduce_sum_trg);
-          VisitDataType(lod_tensors[0]->type(), func);
+          VisitDataType(framework::TransToProtoVarType(lod_tensors[0]->dtype()),
+                        func);
 
           auto trg = out_var->GetMutable<framework::LoDTensor>();
           if (reduce_sum_trg.data() != trg->data()) {
@@ -192,7 +195,7 @@ void ReduceOpHandle::RunImpl() {
         }
 
         int type = platform::ToNCCLDataType(
-            framework::TransToProtoVarType(in_tensor.dtype()));
+            framework::TransToProtoVarType(lod_tensor.dtype()));
         size_t numel = static_cast<size_t>(lod_tensor.numel());
         all_reduce_calls.emplace_back(
             [buffer, recvbuffer, type, numel, root_id, &nccl_ctx] {
@@ -239,7 +242,7 @@ void ReduceOpHandle::RunImpl() {
         }
 
         int type = platform::ToBKCLDataType(
-            framework::TransToProtoVarType(in_tensor.dtype()));
+            framework::TransToProtoVarType(lod_tensor.dtype()));
         size_t numel = static_cast<size_t>(lod_tensor.numel());
         all_reduce_calls.emplace_back([buffer, recvbuffer, type, numel, root_id,
                                        &bkcl_ctx] {

@@ -28,6 +28,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_type_transform.h"
@@ -954,7 +955,10 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("_set_double_element", TensorSetElement<double>)
       .def("_get_double_element", TensorGetElement<double>)
       .def("_place", [](framework::Tensor &self) { return self.place(); })
-      .def("_dtype", [](framework::Tensor &self) { return self.type(); })
+      .def("_dtype",
+           [](framework::Tensor &self) {
+             return framework::TransToProtoVarType(self.type());
+           })
       .def("_layout",
            [](framework::Tensor &self) {
              return DataLayoutToString(self.layout());

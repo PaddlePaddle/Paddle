@@ -66,11 +66,13 @@ class ScaleNPUKernel : public framework::OpKernel<T> {
       adds_runner.Run(dev_ctx.stream());
     };
 
-    if (x->type() == framework::proto::VarType::INT32) {
+    if (framework::TransToProtoVarType(x->dtype()) ==
+        framework::proto::VarType::INT32) {
       NpuOpRunner::TypeAdapter({*x}, {*out}, attrs, dev_ctx, op_func,
                                {framework::proto::VarType::INT32},
                                {framework::proto::VarType::INT32});
-    } else if (x->type() == framework::proto::VarType::INT64) {
+    } else if (framework::TransToProtoVarType(x->dtype()) ==
+               framework::proto::VarType::INT64) {
       NpuOpRunner::TypeAdapter({*x}, {*out}, attrs, dev_ctx, op_func,
                                {framework::proto::VarType::INT32},
                                {framework::proto::VarType::INT32});

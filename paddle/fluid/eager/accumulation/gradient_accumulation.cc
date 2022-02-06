@@ -36,6 +36,7 @@
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #endif
+#include "paddle/fluid/framework/convert_utils.h"
 
 namespace egr {
 template <typename T>
@@ -206,10 +207,11 @@ void TensorAdd(const egr::EagerTensor& src, egr::EagerTensor* dst) {
           "%zu and the number of elements of destination tensor is %zu.",
           numel, dst_tensor->numel()));
 
-  auto data_type = pten::TransToProtoVarType(src_tensor->dtype());
+  auto data_type = paddle::framework::TransToProtoVarType(src_tensor->dtype());
   auto place = src_tensor->place();
 
-  PADDLE_ENFORCE_EQ(pten::TransToProtoVarType(dst_tensor->dtype()), data_type,
+  PADDLE_ENFORCE_EQ(paddle::framework::TransToProtoVarType(dst_tensor->dtype()),
+                    data_type,
                     paddle::platform::errors::PreconditionNotMet(
                         "The data type of source tensor and destination tensor "
                         "should be equal, Otherwise, the calculation results "

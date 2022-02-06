@@ -17,6 +17,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/pten/core/compat_utils.h"
 
 namespace paddle {
@@ -90,29 +91,29 @@ pten::Scalar MakePtenScalar(const paddle::framework::Tensor& src) {
                         "but now Tensor has %d element.",
                         src.numel()));
   switch (src.dtype()) {
-    case framework::experimental::DataType::FP32:
+    case paddle::experimental::DataType::FLOAT32:
       return {src.template data<float>()[0]};
-    case framework::experimental::DataType::FP64:
+    case paddle::experimental::DataType::FLOAT64:
       return {src.template data<double>()[0]};
-    case framework::experimental::DataType::FP16:
+    case paddle::experimental::DataType::FLOAT16:
       return {src.template data<float16>()[0]};
-    case framework::experimental::DataType::F16:
+    case paddle::experimental::DataType::BFLOAT16:
       return {src.template data<bfloat16>()[0]};
-    case framework::experimental::DataType::INT32:
+    case paddle::experimental::DataType::INT32:
       return {src.template data<int32_t>()[0]};
-    case framework::experimental::DataType::INT64:
+    case paddle::experimental::DataType::INT64:
       return {src.template data<int64_t>()[0]};
-    case framework::experimental::DataType::INT16:
+    case paddle::experimental::DataType::INT16:
       return {src.template data<int16_t>()[0]};
-    case framework::experimental::DataType::INT8:
+    case paddle::experimental::DataType::INT8:
       return {src.template data<int8_t>()[0]};
-    case framework::experimental::DataType::UINT8:
+    case paddle::experimental::DataType::UINT8:
       return {src.template data<uint8_t>()[0]};
-    case framework::experimental::DataType::BOOL:
+    case paddle::experimental::DataType::BOOL:
       return {src.template data<bool>()[0]};
-    case framework::experimental::DataType::COMPLEX64:
+    case paddle::experimental::DataType::COMPLEX64:
       return {src.template data<complex64>()[0]};
-    case framework::experimental::DataType::COMPLEX128:
+    case paddle::experimental::DataType::COMPLEX128:
       return {src.template data<complex128>()[0]};
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
@@ -141,9 +142,9 @@ pten::Scalar MakePtenScalarFromVar(const framework::Variable& variable) {
 }
 
 pten::ScalarArray MakePtenScalarArray(const paddle::framework::Tensor& src) {
-  if (src.dtype() == framework::experimental::DataType::INT64) {
+  if (src.dtype() == paddle::experimental::DataType::INT64) {
     return {src.data<int64_t>(), src.numel()};
-  } else if (src.dtype() == framework::experimental::DataType::INT32) {
+  } else if (src.dtype() == paddle::experimental::DataType::INT32) {
     return {src.data<int32_t>(), src.numel()};
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
@@ -181,7 +182,7 @@ pten::ScalarArray MakePtenScalarArrayFromVarList(
   }
   auto expected_place = pten::TransToFluidPlace(pten::Backend::CPU);
 
-  framework::experimental::DataType data_type;
+  paddle::experimental::DataType data_type;
   auto* first_var = variable_list.front();
   if (first_var->IsType<framework::LoDTensor>()) {
     const auto& tensor = first_var->Get<framework::LoDTensor>();
@@ -196,7 +197,7 @@ pten::ScalarArray MakePtenScalarArrayFromVarList(
   std::vector<int64_t> vector_data;
   vector_data.reserve(variable_list.size());
 
-  if (data_type == framework::experimental::DataType::INT64) {
+  if (data_type == paddle::experimental::DataType::INT64) {
     for (auto* var : variable_list) {
       if (var->IsType<framework::LoDTensor>()) {
         const auto& tensor = var->Get<framework::LoDTensor>();
@@ -215,7 +216,7 @@ pten::ScalarArray MakePtenScalarArrayFromVarList(
       }
     }
 
-  } else if (data_type == framework::experimental::DataType::INT32) {
+  } else if (data_type == paddle::experimental::DataType::INT32) {
     for (auto* var : variable_list) {
       if (var->IsType<framework::LoDTensor>()) {
         const auto& tensor = var->Get<framework::LoDTensor>();
@@ -312,7 +313,7 @@ void MovesStorageBase(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
   dst->Resize(src->dims());
   dst->set_type(src->dtype());
   auto storage = src->MoveMemoryHolder();
-  dst->ResetHolderWithType(storage, pten::TransToProtoVarType(src->dtype()));
+  dst->ResetHolderWithType(storage, src->dtype());
   dst->set_offset(src->meta().offset);
 }
 
@@ -331,8 +332,7 @@ void SharesStorageBase(pten::DenseTensor* src, paddle::framework::Tensor* dst) {
       platform::errors::InvalidArgument(
           "The destination Tensor is nullptr when move allocation."));
   dst->Resize(src->dims());
-  dst->ResetHolderWithType(src->Holder(),
-                           pten::TransToProtoVarType(src->dtype()));
+  dst->ResetHolderWithType(src->Holder(), src->dtype());
   dst->set_offset(src->meta().offset);
 }
 
@@ -389,7 +389,7 @@ void MakeVariableFromPtenTensor(pten::DenseTensor* src,
 
   } else if (variable->IsType<pten::SelectedRows>()) {
     auto* tensor = variable->GetMutable<pten::SelectedRows>();
-    auto dtype = pten::TransToProtoVarType(src->dtype());
+    auto dtype = src->dtype();
 
     if (!tensor->value().IsInitialized()) {
       tensor->mutable_value()->ResetHolderWithType(std::move(src->Holder()),

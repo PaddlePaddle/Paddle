@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/reader/buffered_reader.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -127,7 +128,9 @@ void BufferedReader::ReadAsync(size_t i) {
             cuda_pinned_ptrs[i] =
                 cuda[i].mutable_data(cuda_pinned_place, cpu[i].type());
             auto size =
-                cpu[i].numel() * paddle::framework::SizeOfType(cpu[i].type());
+                cpu[i].numel() *
+                paddle::framework::SizeOfType(
+                    paddle::framework::TransToProtoVarType(cpu[i].dtype()));
 
             memory::Copy(cuda_pinned_place, cuda_pinned_ptrs[i], cpu[i].place(),
                          cpu[i].data(), size);
@@ -174,8 +177,9 @@ void BufferedReader::ReadAsync(size_t i) {
           auto cpu_place = cpu[i].place();
           auto cpu_ptr = cpu[i].data();
           auto gpu_ptr = gpu_ptrs[i];
-          auto size =
-              cpu[i].numel() * paddle::framework::SizeOfType(cpu[i].type());
+          auto size = cpu[i].numel() *
+                      paddle::framework::SizeOfType(
+                          framework::TransToProtoVarType(cpu[i].dtype()));
           if (platform::is_cuda_pinned_place(cpu_place)) {
             memory::Copy(place_, gpu_ptr, cpu_place, cpu_ptr, size,
                          stream_.get());

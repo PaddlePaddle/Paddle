@@ -21,6 +21,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 #include "gflags/gflags.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {

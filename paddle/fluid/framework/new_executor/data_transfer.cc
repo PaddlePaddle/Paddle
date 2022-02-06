@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/new_executor/data_transfer.h"
+#include "paddle/fluid/framework/convert_utils.h"
 
 namespace paddle {
 namespace framework {

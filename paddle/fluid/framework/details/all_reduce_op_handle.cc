@@ -13,6 +13,7 @@
 // limitations under the License.
 #include "paddle/fluid/framework/details/all_reduce_op_handle.h"
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/platform/place.h"
@@ -227,14 +228,15 @@ void AllReduceOpHandle::AllReduceFunc(
 
     // Reduce All Tensor to trg in CPU
     ReduceBufferData func(lod_tensor_data, trg.data(), numel);
-    VisitDataType(trg.type(), func);
+    VisitDataType(framework::TransToProtoVarType(trg.dtype()), func);
 
     for (size_t i = 1; i < local_exec_scopes_.size(); ++i) {
       auto &scope = local_exec_scopes_[i];
       auto &p = places[i];
       auto *var = scope->FindVar(out_var_names[i]);
 
-      size_t size = numel * SizeOfType(trg.type());
+      size_t size =
+          numel * SizeOfType(framework::TransToProtoVarType(trg.dtype()));
       RunAndRecordEvent(p, [&trg, var, p, size] {
         auto dst_ptr = var->GetMutable<framework::LoDTensor>()->data();
         platform::CPUPlace cpu_place;

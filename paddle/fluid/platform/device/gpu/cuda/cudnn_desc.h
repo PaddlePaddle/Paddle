@@ -23,6 +23,7 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/device/gpu/cuda/cudnn_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 

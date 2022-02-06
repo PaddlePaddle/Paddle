@@ -77,7 +77,7 @@ struct UniqueOpFunctor {
       // init count_data to 0
       memset(count_data, 0, uniq.size() * sizeof(IndexT));
 
-      const auto& index_type = index_->type();
+      const auto& index_type = framework::TransToProtoVarType(index_->dtype());
       bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                               index_type == framework::proto::VarType::INT64;
       PADDLE_ENFORCE_EQ(index_type_match, true,

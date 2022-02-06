@@ -33,7 +33,7 @@ class ScaleMLUKernel : public framework::OpKernel<T> {
       framework::Tensor float_scale_tensor =
           *ctx.Input<framework::Tensor>("ScaleTensor");
       if (framework::TransToProtoVarType(float_scale_tensor.dtype()) !=
-          in->type()) {
+          framework::TransToProtoVarType(in->dtype())) {
         scale_tensor = ctx.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
         MLUCnnlTensorDesc float_scale_desc(float_scale_tensor);
         MLUCnnlTensorDesc final_scale_desc(scale_tensor);
@@ -85,13 +85,15 @@ class ScaleMLUKernel : public framework::OpKernel<T> {
           ctx.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
       MLUCnnlTensorDesc new_bias_desc(new_bias_tensor);
 
-      MLUCnnlOpTensorDesc mul_op_desc(CNNL_OP_TENSOR_MUL,
-                                      ToCnnlDataType(in->type()),
-                                      CNNL_NOT_PROPAGATE_NAN);
+      MLUCnnlOpTensorDesc mul_op_desc(
+          CNNL_OP_TENSOR_MUL,
+          ToCnnlDataType(framework::TransToProtoVarType(in->dtype())),
+          CNNL_NOT_PROPAGATE_NAN);
       MLUCnnl::OpTensor(
           ctx, mul_op_desc.get(), scale_desc.get(), GetBasePtr(&scale_tensor),
           bias_desc.get(), GetBasePtr(&bias_tensor), new_bias_desc.get(),
-          GetBasePtr(&new_bias_tensor), ToCnnlDataType(in->type()));
+          GetBasePtr(&new_bias_tensor),
+          ToCnnlDataType(framework::TransToProtoVarType(in->dtype())));
       MLUCnnl::Scale(ctx, axis, input_desc.get(), GetBasePtr(in),
                      scale_desc.get(), GetBasePtr(&scale_tensor),
                      new_bias_desc.get(), GetBasePtr(&new_bias_tensor),

@@ -185,9 +185,11 @@ void InitDstTensor(paddle::lite_api::Tensor* dst,
   // the input tensor.
   constexpr int empty_size = 0;
   dst->Resize({empty_size});
-  GetLiteTensorDataPtr(dst, GetLitePrecisionType(src.type()),
-                       GetLiteTargetType(src.place()));
-  dst->SetPrecision(GetLitePrecisionType(src.type()));
+  GetLiteTensorDataPtr(
+      dst, GetLitePrecisionType(framework::TransToProtoVarType(src.dtype())),
+      GetLiteTargetType(src.place()));
+  dst->SetPrecision(
+      GetLitePrecisionType(framework::TransToProtoVarType(src.dtype())));
   paddle::lite::LoD lite_lod;
   SetLoD(&lite_lod, src.lod());
   dst->SetLoD(lite_lod);
@@ -209,14 +211,17 @@ void TensorCopyAsync(paddle::lite_api::Tensor* dst,
   const platform::Place& src_place = src.place();
   const platform::Place& dst_place = GetNativePlace(dst->target());
   const size_t bytes =
-      static_cast<size_t>(src.numel()) * framework::SizeOfType(src.type());
+      static_cast<size_t>(src.numel()) *
+      framework::SizeOfType(framework::TransToProtoVarType(src.dtype()));
   dst->Resize(framework::vectorize(src.dims()));
   const void* src_data = src.data();
   void* dst_data{nullptr};
-  dst_data = GetLiteTensorDataPtr(dst, GetLitePrecisionType(src.type()),
-                                  GetLiteTargetType(src.place()));
+  dst_data = GetLiteTensorDataPtr(
+      dst, GetLitePrecisionType(framework::TransToProtoVarType(src.dtype())),
+      GetLiteTargetType(src.place()));
   VLOG(3) << "[CopyAsync fluid -> lite] Bytes = " << bytes << ", src = " << &src
-          << ", dst = " << dst << ", src_type = " << src.type();
+          << ", dst = " << dst
+          << ", src_type = " framework::TransToProtoVarType(<< src.dtype());
   MemoryCopyAsync(dst_place, dst_data, src_place, src_data, bytes, ctx);
   VLOG(3) << "[Lite memory size] Bytes = " << bytes;
 }
@@ -230,12 +235,15 @@ void TensorCopyAsync(framework::LoDTensor* dst,
   const platform::Place& src_place = GetNativePlace(src.target());
   const platform::Place& dst_place = dst->place();
   int64_t src_numel = GetLiteTensorNumel(src);
-  const size_t bytes = src_numel * framework::SizeOfType(dst->type());
+  const size_t bytes =
+      src_numel *
+      framework::SizeOfType(framework::TransToProtoVarType(dst->dtype()));
   const void* src_data = src.data<void>();
   // When Lite is ready, the source type needs to be modified here.
   void* dst_data = dst->mutable_data(dst_place, dst->dtype());
   VLOG(3) << "[CopyAsync lite -> fluid] Bytes = " << bytes << ", src = " << &src
-          << ", dst = " << dst << ", src_type = " << dst->type();
+          << ", dst = " << dst
+          << ", src_type = " framework::TransToProtoVarType(<< dst->dtype());
   MemoryCopyAsync(dst_place, dst_data, src_place, src_data, bytes, ctx);
   VLOG(3) << "[Lite memory size] Bytes = " << bytes;
 }

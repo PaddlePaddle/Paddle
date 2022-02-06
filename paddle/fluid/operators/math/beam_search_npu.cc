@@ -70,7 +70,8 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
 
     // cast ids and pre_ids from int to float32
     Tensor ids_int32(framework::proto::VarType::INT32);
-    if (ids->type() != framework::proto::VarType::INT32) {
+    if (framework::TransToProtoVarType(ids->dtype()) !=
+        framework::proto::VarType::INT32) {
       ids_int32.Resize(ids->dims());
       ids_int32.mutable_data<int>(ctx.GetPlace());
       auto dst_dtype_ids_int32 = ConvertToNpuDtype(ids_int32.type());
@@ -83,7 +84,8 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     }
 
     Tensor pre_ids_int32(framework::proto::VarType::INT32);
-    if (pre_ids->type() != framework::proto::VarType::INT32) {
+    if (framework::TransToProtoVarType(pre_ids->dtype()) !=
+        framework::proto::VarType::INT32) {
       pre_ids_int32.Resize(pre_ids->dims());
       pre_ids_int32.mutable_data<int>(ctx.GetPlace());
       auto dst_dtype_pre_ids_int32 = ConvertToNpuDtype(pre_ids_int32.type());
@@ -185,7 +187,8 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     Tensor cast_pos_tensors_bool(framework::proto::VarType::BOOL);
     cast_pos_tensors_bool.Resize(pos_tensors.dims());
     cast_pos_tensors_bool.mutable_data<bool>(ctx.GetPlace());
-    auto dst_dtype = ConvertToNpuDtype(cast_pos_tensors_bool.type());
+    auto dst_dtype = ConvertToNpuDtype(
+        framework::TransToProtoVarType(cast_pos_tensors_bool.type()));
     const auto& runner_cast_pos_tensors =
         NpuOpRunner("Cast", {pos_tensors}, {cast_pos_tensors_bool},
                     {{"dst_type", static_cast<int>(dst_dtype)}});
@@ -299,8 +302,8 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     Tensor cast_tmp_indices(framework::proto::VarType::FP32);
     cast_tmp_indices.Resize(tmp_indices.dims());
     cast_tmp_indices.mutable_data<float>(ctx.GetPlace());
-    auto dst_dtype_tmp_indices_fp32 =
-        ConvertToNpuDtype(cast_tmp_indices.type());
+    auto dst_dtype_tmp_indices_fp32 = ConvertToNpuDtype(
+        framework::TransToProtoVarType(cast_tmp_indices.type()));
     const auto& runner_cast_tmp_indices = NpuOpRunner(
         "Cast", {tmp_indices}, {cast_tmp_indices},
         {{"dst_type", static_cast<int>(dst_dtype_tmp_indices_fp32)}});
@@ -322,8 +325,8 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     Tensor cast_sort_tmp_indices(framework::proto::VarType::INT32);
     cast_sort_tmp_indices.Resize(sorted_tmp_indices.dims());
     cast_sort_tmp_indices.mutable_data<int>(ctx.GetPlace());
-    auto dst_dtype_tmp_indices_int32 =
-        ConvertToNpuDtype(cast_sort_tmp_indices.type());
+    auto dst_dtype_tmp_indices_int32 = ConvertToNpuDtype(
+        framework::TransToProtoVarType(cast_sort_tmp_indices.type()));
     const auto& runner_cast_sort_tmp_indices = NpuOpRunner(
         "Cast", {sorted_tmp_indices}, {cast_sort_tmp_indices},
         {{"dst_type", static_cast<int>(dst_dtype_tmp_indices_int32)}});
@@ -413,7 +416,8 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     runner_gather_nd_ids.Run(stream);
 
     // cast topk_ids from int to int64 to get selected_ids
-    auto dst_dtype_selected_ids = ConvertToNpuDtype(selected_ids->type());
+    auto dst_dtype_selected_ids =
+        ConvertToNpuDtype(framework::TransToProtoVarType(selected_ids->type()));
     const auto& runner_cast_selected_ids =
         NpuOpRunner("Cast", {topk_ids}, {*selected_ids},
                     {{"dst_type", static_cast<int>(dst_dtype_selected_ids)}});
@@ -450,7 +454,8 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     Tensor cast_batch_ids(framework::proto::VarType::FP32);
     cast_batch_ids.Resize(batch_ids.dims());
     cast_batch_ids.mutable_data<float>(ctx.GetPlace());
-    auto dst_dtype1 = ConvertToNpuDtype(cast_batch_ids.type());
+    auto dst_dtype1 = ConvertToNpuDtype(
+        framework::TransToProtoVarType(cast_batch_ids.type()));
     const auto& runner_cast_batch_ids =
         NpuOpRunner("Cast", {batch_ids}, {cast_batch_ids},
                     {{"dst_type", static_cast<int>(dst_dtype1)}});
@@ -471,7 +476,8 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     Tensor cast_scale_batch_ids(framework::proto::VarType::INT32);
     cast_scale_batch_ids.Resize(scale_batch_ids.dims());
     cast_scale_batch_ids.mutable_data<int>(ctx.GetPlace());
-    auto dst_dtype2 = ConvertToNpuDtype(cast_scale_batch_ids.type());
+    auto dst_dtype2 = ConvertToNpuDtype(
+        framework::TransToProtoVarType(cast_scale_batch_ids.type()));
     const auto& runner_cast_scale_batch_ids =
         NpuOpRunner("Cast", {scale_batch_ids}, {cast_scale_batch_ids},
                     {{"dst_type", static_cast<int>(dst_dtype2)}});
@@ -486,7 +492,8 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     runner_add_beam_id.Run(stream);
 
     // cast tmp_parent_idx from int to int64 to get parent_idx
-    auto dst_dtype_parent_idx = ConvertToNpuDtype(parent_idx->type());
+    auto dst_dtype_parent_idx =
+        ConvertToNpuDtype(framework::TransToProtoVarType(parent_idx->type()));
     const auto& runner_cast_parent_idx =
         NpuOpRunner("Cast", {tmp_parent_idx}, {*parent_idx},
                     {{"dst_type", static_cast<int>(dst_dtype_parent_idx)}});

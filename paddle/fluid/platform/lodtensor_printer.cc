@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/lodtensor_printer.h"
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/scope.h"
 
 namespace pten {

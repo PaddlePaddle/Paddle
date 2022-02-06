@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/truncated_gaussian_random_op.h"
 #include <memory>
 #include <string>
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {

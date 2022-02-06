@@ -43,7 +43,8 @@ struct DensityPriorBoxFunction {
     runner.Run(stream);
   }
   void Cast(const Tensor* x, Tensor* y) {
-    auto dst_dtype = ConvertToNpuDtype(y->type());
+    auto dst_dtype =
+        ConvertToNpuDtype(framework::TransToProtoVarType(y->type()));
     const auto& runner = NpuOpRunner(
         "Cast", {*x}, {*y}, {{"dst_type", static_cast<int>(dst_dtype)}});
     runner.Run(stream);
@@ -164,7 +165,7 @@ class DensityPriorBoxOpNPUKernel : public framework::OpKernel<T> {
     int layer_w = input->dims()[3];
     int layer_h = input->dims()[2];
 
-    auto _type = input->type();
+    auto _type = framework::TransToProtoVarType(input->dtype());
     auto place = ctx.GetPlace();
     DensityPriorBoxFunction<T> F(ctx);
 

@@ -30,6 +30,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/eager/api/all.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/scope_guard.h"
 #include "paddle/fluid/imperative/all_reduce.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
@@ -789,7 +790,9 @@ void BindImperative(py::module *m_ptr) {
                                                    platform::CPUPlace(), true);
           // 3. allocate shared memory
           void *data_ptr = t.data();
-          size_t data_size = t.numel() * framework::SizeOfType(t.type());
+          size_t data_size =
+              t.numel() *
+              framework::SizeOfType(framework::TransToProtoVarType(t.dtype()));
           auto shared_writer_holder =
               memory::allocation::AllocateMemoryMapWriterAllocation(data_size);
           // 4. maintain mmap fd set & backup ipc_name
@@ -824,7 +827,9 @@ void BindImperative(py::module *m_ptr) {
                                                    platform::CPUPlace(), true);
           // 3. allocate shared memory
           void *data_ptr = t.data();
-          size_t data_size = t.numel() * framework::SizeOfType(t.type());
+          size_t data_size =
+              t.numel() *
+              framework::SizeOfType(framework::TransToProtoVarType(t.dtype()));
           auto shared_writer_holder =
               memory::allocation::AllocateMemoryMapWriterAllocation(data_size);
           // 4. maintain mmap fd set & backup ipc_name
@@ -1853,7 +1858,9 @@ void BindImperative(py::module *m_ptr) {
              auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
              // 2. allocate shared memory
              void *data_ptr = t->data();
-             size_t data_size = t->numel() * framework::SizeOfType(t->type());
+             size_t data_size =
+                 t->numel() * framework::SizeOfType(
+                                  framework::TransToProtoVarType(t->dtype()));
              auto shared_writer_holder =
                  memory::allocation::AllocateMemoryMapWriterAllocation(
                      data_size);

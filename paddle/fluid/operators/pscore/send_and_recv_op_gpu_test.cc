@@ -96,11 +96,12 @@ void InitTensorsOnClient(framework::Scope* scope, int64_t rows_numel,
   std::vector<float> temp_vec{0};
   float* temp_ptr = temp_vec.data();
 
-  memory::Copy(
-      place, reinterpret_cast<void*>(micro_id_ptr), platform::CPUPlace(),
-      reinterpret_cast<void*>(temp_ptr),
-      micro_id_var->numel() * framework::SizeOfType(micro_id_var->type()),
-      stream);
+  memory::Copy(place, reinterpret_cast<void*>(micro_id_ptr),
+               platform::CPUPlace(), reinterpret_cast<void*>(temp_ptr),
+               micro_id_var->numel() *
+                   framework::SizeOfType(
+                       framework::TransToProtoVarType(micro_id_var->dtype())),
+               stream);
 
   auto x_var = scope->Var("x")->GetMutable<framework::LoDTensor>();
   float* x_ptr =
@@ -108,9 +109,12 @@ void InitTensorsOnClient(framework::Scope* scope, int64_t rows_numel,
   std::vector<float> x_vec;
   for (int64_t i = 0; i < rows_numel; ++i) x_vec.push_back(1.0);
   float* x_vec_ptr = x_vec.data();
-  memory::Copy(place, reinterpret_cast<void*>(x_ptr), platform::CPUPlace(),
-               reinterpret_cast<void*>(x_vec_ptr),
-               x_var->numel() * framework::SizeOfType(x_var->type()), stream);
+  memory::Copy(
+      place, reinterpret_cast<void*>(x_ptr), platform::CPUPlace(),
+      reinterpret_cast<void*>(x_vec_ptr),
+      x_var->numel() *
+          framework::SizeOfType(framework::TransToProtoVarType(x_var->dtype())),
+      stream);
 
   // auto res_var = scope->Var("res")->GetMutable<framework::LoDTensor>();
   // float* res_ptr =

@@ -112,7 +112,7 @@ void BincountCUDAInner(const framework::ExecutionContext& context) {
                                          PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
         input_data, input_numel, has_weights, weights_data, output_data);
   } else {
-    const auto& weights_type = weights->type();
+    const auto& weights_type = framework::TransToProtoVarType(weights->dtype());
 
     if (weights_type == framework::proto::VarType::FP32) {
       float* output_data = output->mutable_data<float>(context.GetPlace());
@@ -141,7 +141,7 @@ class BincountCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const Tensor* input = context.Input<framework::Tensor>("X");
-    const auto& input_type = input->type();
+    const auto& input_type = framework::TransToProtoVarType(input->dtype());
 
     if (input_type == framework::proto::VarType::INT32) {
       BincountCUDAInner<DeviceContext, T, int>(context);

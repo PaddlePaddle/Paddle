@@ -162,10 +162,11 @@ class TensorRuntimeInferVarTypeContext
 
   paddle::framework::proto::VarType::Type GetInputDataType(
       const std::string& name, const int& index = 0) const override {
-    return inputs_.at(name)[index]
-        ->Var()
-        .Get<paddle::framework::LoDTensor>()
-        .type();
+    return paddle::framework::TransToProtoVarType(
+        inputs_.at(name)[index]
+            ->Var()
+            .Get<paddle::framework::LoDTensor>()
+            .type());
   }
 
   void SetOutputDataType(const std::string& name,

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/cast_op.h"
 #include <memory>
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/float16.h"
 #ifdef PADDLE_WITH_MLU
@@ -102,7 +103,9 @@ class CastOp : public framework::OperatorWithKernel {
       return true;
     };
 
-    if (this->CanMKLDNNBeUsed(ctx, tensor->dtype()) && MKLDNNSupportsCast()) {
+    if (this->CanMKLDNNBeUsed(
+            ctx, framework::TransToProtoVarType(tensor->dtype())) &&
+        MKLDNNSupportsCast()) {
       return framework::OpKernelType(
           framework::TransToProtoVarType(tensor->dtype()), ctx.GetPlace(),
           framework::DataLayout::kMKLDNN, framework::LibraryType::kMKLDNN);

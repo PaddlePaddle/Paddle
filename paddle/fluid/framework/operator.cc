@@ -19,7 +19,6 @@ limitations under the License. */
 #include <string>
 
 #include "gflags/gflags.h"
-#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
@@ -1681,7 +1680,8 @@ void OperatorWithKernel::ParseInputDataType(
             platform::errors::InvalidArgument("The %s Op's Input Variable `%s` "
                                               "contains uninitialized Tensor.",
                                               Type(), name));
-        proto::VarType::Type tmp = t->type();
+        proto::VarType::Type tmp =
+            paddle::framework::TransToProtoVarType(t->dtype());
         PADDLE_ENFORCE(tmp == *data_type || *data_type == default_data_type,
                        platform::errors::InvalidArgument(
                            "The DataType of %s Op's duplicable or different "
@@ -1780,8 +1780,8 @@ proto::VarType::Type OperatorWithKernel::IndicateOrPromoteVarDataTypes(
   auto* tensor_b = GetTensorFormInputSafely(ctx, name2);
 
   // 2. Get two input types
-  auto type_a = tensor_a->type();
-  auto type_b = tensor_b->type();
+  auto type_a = framework::TransToProtoVarType(tensor_a->dtype());
+  auto type_b = framework::TransToProtoVarType(tensor_b->dtype());
 
   // 3. Get first input type or promote complex types
   auto target_type = PromoteTypesIfComplexExists(type_a, type_b);
@@ -2026,7 +2026,7 @@ void OperatorWithKernel::BuildPtenKernelContext(
         pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(pten::DataType))) {
-        auto data_type = pten::TransToPtenDataType(
+        auto data_type = paddle::framework::TransToPtenDataType(
             static_cast<framework::proto::VarType::Type>(
                 BOOST_GET_CONST(int, attr)));
         pt_kernel_context->EmplaceBackAttr(data_type);

@@ -15,6 +15,7 @@
 #include "paddle/fluid/eager/grad_tensor_holder.h"
 #include "paddle/fluid/eager/accumulation/gradient_accumulation.h"
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
@@ -105,7 +106,7 @@ void GradTensorHolder::add(size_t slot_id, size_t rank,
           auto t_ftensor = t.Var().Get<paddle::framework::LoDTensor>();
           FillUnderlyingVariableWithValue(
               1.0, t_ftensor.dims(), t_ftensor.place(),
-              framework::TransToProtoVarType(t_ftensor.dtype()),
+              paddle::framework::TransToProtoVarType(t_ftensor.dtype()),
               &buffer_tensor);
           break;
         }
