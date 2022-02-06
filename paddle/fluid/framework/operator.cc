@@ -1922,7 +1922,6 @@ Scope* OperatorWithKernel::PreparePtenData(
     if (it == ctx->inputs.end()) {
       continue;
     }
-
     auto& ins_vector = it->second;
     auto& name_vec = name_map.at(input_names[i]);
     bool should_skip_input =
@@ -2014,9 +2013,7 @@ void OperatorWithKernel::BuildPtenKernelContext(
         (i == 0 ? 0 : pt_kernel_context->InputRangeAt(i - 1).second);
 
     // deal with optional here
-    if ((it == ctx.inputs.end()) &&
-        (input_defs[i].type_index ==
-         std::type_index(typeid(paddle::optional<const pten::DenseTensor&>)))) {
+    if (it == ctx.inputs.end()) {
       pt_kernel_context->EmplaceBackInputWithoutSetRange(nullptr);
       auto end_idx = start_idx + 1;
       pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx),
@@ -2038,9 +2035,11 @@ void OperatorWithKernel::BuildPtenKernelContext(
             framework::ToTypeName(var->Type())));
       }
 
-      pt_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
+        pt_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
+      }
+      pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx),
+                                          i);
     }
-    pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx), i);
   }
 
   for (size_t i = 0; i < output_names.size(); ++i) {
@@ -2081,8 +2080,16 @@ void OperatorWithKernel::BuildPtenKernelContext(
       SetAllocationForOutputTenosr(
           tensor_out, pten::TransToPtenPlace(output_defs.at(i).backend));
 
-      pt_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
-    }
+      for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
+        framework::Tensor* tensor_out = nullptr;
+        auto* var = outs_vector[offset];
+        if (var->template IsType<framework::LoDTensor>()) {
+          tensor_out = var->template GetMutable<framework::LoDTensor>();
+        } else {
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "Unsupported output `%s` type when call pt kernel.",
+              framework::ToTypeName(var->Type())));
+        }  // TODO(zyfncg): Add support for SelectedRows
 
     pt_kernel_context->AssignOutputRange(std::make_pair(start_idx, end_idx), i);
   }

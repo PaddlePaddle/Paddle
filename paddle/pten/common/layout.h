@@ -27,6 +27,9 @@ enum class DataLayout {
   NHWC,
   NCHW,
   MKLDNN,
+  NCDHW,
+  DHWC,
+  NDHWC,
   SPARSE_COO,
   SPARSE_CSR,
   NUM_DATA_LAYOUTS,
@@ -43,6 +46,7 @@ enum class DataLayout {
   kNHWC = NHWC,
   kNCHW = NCHW,
   kMKLDNN = MKLDNN,  // all layouts supported by MKLDNN internally
+  kDHWC = DHWC,
 };
 
 }  // namespace experimental

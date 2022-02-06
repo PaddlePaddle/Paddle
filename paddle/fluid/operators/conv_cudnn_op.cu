@@ -50,313 +50,7 @@ static inline bool IsVoltaOrLater(const platform::CUDADeviceContext& dev_ctx) {
 template <typename T>
 class CUDNNConvOpKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()), true,
-        paddle::platform::errors::PreconditionNotMet("It must use CUDAPlace."));
-    const Tensor* input = ctx.Input<Tensor>("Input");
-    auto* filter = ctx.Input<Tensor>("Filter");
-    auto* output = ctx.Output<Tensor>("Output");
-    output->mutable_data<T>(ctx.GetPlace());
-    const std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
-    std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
-    std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
-    int groups = ctx.Attr<int>("groups");
-
-    bool exhaustive_search =
-        FLAGS_cudnn_exhaustive_search || (ctx.HasAttr("exhaustive_search") &&
-                                          ctx.Attr<bool>("exhaustive_search"));
-    bool deterministic = FLAGS_cudnn_deterministic;
-    auto exhaustive_deterministic = exhaustive_search && deterministic;
-    PADDLE_ENFORCE_EQ(exhaustive_deterministic, false,
-                      platform::errors::InvalidArgument(
-                          "Cann't set exhaustive_search True and "
-                          "FLAGS_cudnn_deterministic True at same time."));
-
-    const std::string padding_algorithm =
-        ctx.Attr<std::string>("padding_algorithm");
-    const std::string data_format = ctx.Attr<std::string>("data_format");
-    const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
-
-    auto dtype = platform::CudnnDataType<T>::type;
-
-#ifdef PADDLE_WITH_HIP
-    // HIP MIOPEN ONLY SUPPORT NCHW format
-    auto compute_format = DataLayout::kNCHW;
-#else
-    // Tensor Core introduced from Volta GPUs supports more faster conv op
-    // with FP16 in NHWC data format.
-    const bool compute_in_nhwc =
-        dtype == CUDNN_DATA_HALF && IsVoltaOrLater(dev_ctx);
-    // We will only do data format conversion from NHWC to NCHW.
-    // cudnn will convert NCHW to NHWC automatically on Tensor Core.
-    auto compute_format =
-        compute_in_nhwc && channel_last ? DataLayout::kNHWC : DataLayout::kNCHW;
-#endif
-    VLOG(3) << "Compute ConvOp with cuDNN:"
-            << " data_format=" << data_format << " compute_format="
-            << (compute_format == DataLayout::kNHWC ? "NHWC" : "NCHW");
-
-    // ------------ transformed tensor -----------
-    Tensor transformed_input_channel(input->type());
-    Tensor transformed_output(output->type());
-    Tensor transformed_filter_channel(filter->type());
-    T* output_data = nullptr;
-    if (channel_last && compute_format == DataLayout::kNCHW) {
-      VLOG(3) << "Transform input tensor from NHWC to NCHW.";
-      ResizeToChannelFirst<platform::CUDADeviceContext, T>(
-          ctx, input, &transformed_input_channel);
-      TransToChannelFirst<platform::CUDADeviceContext, T>(
-          ctx, input, &transformed_input_channel);
-
-      ResizeToChannelFirst<platform::CUDADeviceContext, T>(ctx, output,
-                                                           &transformed_output);
-
-    } else {
-      transformed_input_channel.ShareDataWith(*input);
-      transformed_output.ShareDataWith(*output);
-    }
-    if (compute_format == DataLayout::kNHWC) {
-      VLOG(3) << "Transform filter tensor from NCHW to NHWC.";
-      ResizeToChannelLast<platform::CUDADeviceContext, T>(
-          ctx, filter, &transformed_filter_channel);
-      TransToChannelLast<platform::CUDADeviceContext, T>(
-          ctx, filter, &transformed_filter_channel);
-    } else {
-      transformed_filter_channel.ShareDataWith(*filter);
-    }
-    output_data = transformed_output.data<T>();
-
-    // update padding and dilation
-    auto in_dims = transformed_input_channel.dims();
-    auto filter_dims = transformed_filter_channel.dims();
-    framework::DDim in_data_dims;
-    framework::DDim filter_data_dims;
-
-    if (compute_format == DataLayout::kNCHW) {
-      in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
-      filter_data_dims =
-          framework::slice_ddim(filter_dims, 2, filter_dims.size());
-    } else {
-      in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
-      filter_data_dims =
-          framework::slice_ddim(filter_dims, 1, filter_dims.size() - 1);
-    }
-
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
-    UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
-                             in_data_dims, strides, ksize);
-
-    int data_dim = strides.size();  // 2d or 3d
-    bool is_sys_pad = math::IsSymmetricPadding(paddings, data_dim);
-
-    Tensor transformed_input;
-    std::vector<int> padding_common(data_dim, 0);
-    if (!is_sys_pad) {
-      std::vector<int> padding_diff(data_dim);
-      std::vector<int> new_input_shape_vec(data_dim + 2);
-      new_input_shape_vec[0] = transformed_input_channel.dims()[0];
-
-      if (compute_format == DataLayout::kNCHW) {
-        new_input_shape_vec[1] = transformed_input_channel.dims()[1];
-      } else {
-        new_input_shape_vec[data_dim + 1] =
-            transformed_input_channel.dims()[data_dim + 1];
-      }
-
-      std::vector<int> input_pad(transformed_input_channel.dims().size() * 2,
-                                 0);
-      for (size_t i = 0; i < data_dim; ++i) {
-        padding_diff[i] = std::abs(paddings[2 * i] - paddings[2 * i + 1]);
-        padding_common[i] = std::min(paddings[2 * i], paddings[2 * i + 1]);
-        if (compute_format == DataLayout::kNCHW) {
-          new_input_shape_vec[i + 2] =
-              transformed_input_channel.dims()[i + 2] + padding_diff[i];
-        } else {
-          new_input_shape_vec[i + 1] =
-              transformed_input_channel.dims()[i + 1] + padding_diff[i];
-        }
-        if (compute_format == DataLayout::kNCHW) {
-          input_pad[2 * i + 4] = paddings[2 * i] - padding_common[i];
-          input_pad[2 * i + 4 + 1] = paddings[2 * i + 1] - padding_common[i];
-        } else {
-          input_pad[2 * i + 2] = paddings[2 * i] - padding_common[i];
-          input_pad[2 * i + 2 + 1] = paddings[2 * i + 1] - padding_common[i];
-        }
-      }
-      framework::DDim new_input_shape(
-          framework::make_ddim(new_input_shape_vec));
-      transformed_input.Resize(new_input_shape);
-      auto& dev_ctx =
-          ctx.template device_context<paddle::platform::CUDADeviceContext>();
-
-      transformed_input =
-          ctx.AllocateTmpTensor<T, paddle::platform::CUDADeviceContext>(
-              new_input_shape, dev_ctx);
-      const int rank = transformed_input_channel.dims().size();
-      T pad_value(0.0);
-      switch (rank) {
-        case 4: {
-          math::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
-              ctx, input_pad, transformed_input_channel, pad_value,
-              &transformed_input);
-        } break;
-        case 5: {
-          math::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
-              ctx, input_pad, transformed_input_channel, pad_value,
-              &transformed_input);
-        } break;
-        default:
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "ConvOp only support tensors with 4 or 5 dimensions."));
-      }
-
-    } else {
-      transformed_input.ShareDataWith(transformed_input_channel);
-      if (paddings.size() == data_dim) {
-        for (size_t i = 0; i < data_dim; ++i) {
-          padding_common[i] = paddings[i];
-        }
-      } else {
-        for (size_t i = 0; i < data_dim; ++i) {
-          padding_common[i] = paddings[2 * i];
-        }
-      }
-    }
-
-    const T* input_data = transformed_input.data<T>();
-    const T* filter_data = transformed_filter_channel.data<T>();
-
-    // ------------------- cudnn descriptors ---------------------
-    ConvArgs args{&transformed_input,
-                  &transformed_filter_channel,
-                  &transformed_output,
-                  strides,
-                  padding_common,
-                  dilations,
-                  dtype};
-
-    auto handle = dev_ctx.cudnn_handle();
-    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
-    DataLayout layout = compute_format == DataLayout::kNHWC ? DataLayout::kNHWC
-                                                            : DataLayout::kNCHW;
-    if (transformed_input.dims().size() == 5) {
-      layout = compute_format == DataLayout::kNHWC ? DataLayout::kNDHWC
-                                                   : DataLayout::kNCDHW;
-    }
-    auto layout_format = GetCudnnTensorFormat(layout);
-
-    args.handle = handle;
-
-#ifdef PADDLE_WITH_HIP
-    // MIOPEN need to set groups in cdesc in miopen_desc.h
-    args.cdesc.set(dtype, padding_common, strides, dilations,
-                   platform::AllowTF32Cudnn(), groups);
-#else
-    args.cdesc.set(dtype, padding_common, strides, dilations,
-                   platform::AllowTF32Cudnn());
-#endif
-
-#if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION_MIN(7, 0, 1)
-    // cudnn 7 can support groups, no need to do it manually
-    // FIXME(typhoonzero): find a better way to disable groups
-    // rather than setting it to 1.
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetConvolutionGroupCount(
-        args.cdesc.desc(), groups));
-    groups = 1;
-#endif
-#ifdef PADDLE_WITH_HIP
-    // MIOPEN do not set groups in wdesc after set groups in cdesc
-    groups = 1;
-#endif
-    args.idesc.set(transformed_input, layout_format);
-    args.wdesc.set(transformed_filter_channel, layout_format, groups);
-    args.odesc.set(transformed_output, layout_format);
-    int i_n, i_c, i_d, i_h, i_w;
-    int o_n, o_c, o_d, o_h, o_w;
-
-    if (compute_format == DataLayout::kNHWC) {
-      GetNCDHW(transformed_input.dims(), DataLayout::kNHWC, &i_n, &i_c, &i_d,
-               &i_h, &i_w);
-      GetNCDHW(transformed_output.dims(), DataLayout::kNHWC, &o_n, &o_c, &o_d,
-               &o_h, &o_w);
-    } else {
-      GetNCDHW(transformed_input.dims(), DataLayout::kNCHW, &i_n, &i_c, &i_d,
-               &i_h, &i_w);
-      GetNCDHW(transformed_output.dims(), DataLayout::kNCHW, &o_n, &o_c, &o_d,
-               &o_h, &o_w);
-    }
-
-    int group_offset_in = i_c / groups * i_h * i_w * i_d;
-    int group_offset_out = o_c / groups * o_h * o_w * o_d;
-    int group_offset_filter = transformed_filter_channel.numel() / groups;
-    // ------------------- cudnn conv workspace ---------------------
-    size_t workspace_size = 0;  // final workspace to allocate.
-// ------------------- cudnn conv algorithm ---------------------
-#ifdef PADDLE_WITH_HIP
-    miopenConvFwdAlgorithm_t algo{};
-    using search = SearchAlgorithm<miopenConvFwdAlgorithm_t>;
-    workspace_size = search::GetWorkspaceSize(args);
-    algo = search::Find<T>(args, exhaustive_search, deterministic,
-                           workspace_size, ctx);
-#else
-    cudnnConvolutionFwdAlgo_t algo{};
-    using search = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
-    algo = search::Find<T>(args, exhaustive_search, deterministic, ctx);
-    workspace_size = search::GetWorkspaceSize(args, algo);
-#endif
-
-#if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION_MIN(7, 0, 1)
-    // when groups > 1, SearchAlgorithm find algo is CUDNN_CONVOLUTION_\
-    // FWD_ALGO_WINOGRAD_NONFUSED, but this kind of algorithm is unstable
-    // in forward computation, so change the algorithm to CUDNN_CONVOLUTION_\
-    // FWD_ALGO_IMPLICIT_GEMM manually.
-    if (ctx.Attr<int>("groups") > 1) {
-      algo = static_cast<cudnnConvolutionFwdAlgo_t>(0);
-    }
-#endif
-
-    // ------------------- cudnn conv forward ---------------------
-    ScalingParamType<T> alpha = 1.0f;
-    ScalingParamType<T> beta = 0.0f;
-
-// NOTE(zhiqiu): inplace addto is not supportted in double grad yet.
-// ScalingParamType<T> beta = ctx.Attr<bool>("use_addto") ? 1.0f : 0.0f;
-// VLOG(4) << "Conv: use_addto = " << ctx.Attr<bool>("use_addto");
-
-#ifdef PADDLE_WITH_HIP
-    workspace_handle.RunFunc(
-        [&](void* workspace_ptr) {
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              platform::dynload::miopenConvolutionForward(
-                  handle, &alpha, args.idesc.desc(), input_data,
-                  args.wdesc.desc(), filter_data, args.cdesc.desc(), algo,
-                  &beta, args.odesc.desc(), output_data, workspace_ptr,
-                  workspace_size));
-        },
-        workspace_size);
-#else
-    for (int i = 0; i < groups; i++) {
-      workspace_handle.RunFunc(
-          [&](void* workspace_ptr) {
-            PADDLE_ENFORCE_GPU_SUCCESS(
-                platform::dynload::cudnnConvolutionForward(
-                    handle, &alpha, args.idesc.desc(),
-                    input_data + i * group_offset_in, args.wdesc.desc(),
-                    filter_data + i * group_offset_filter, args.cdesc.desc(),
-                    algo, workspace_ptr, workspace_size, &beta,
-                    args.odesc.desc(), output_data + i * group_offset_out));
-          },
-          workspace_size);
-    }
-#endif
-
-    if (channel_last && compute_format == DataLayout::kNCHW) {
-      TransToChannelLast<paddle::platform::CUDADeviceContext, T>(
-          ctx, &transformed_output, output);
-    }
-  }
+  void Compute(const framework::ExecutionContext& ctx) const override {}
 };
 
 template <typename T>
@@ -1130,7 +824,9 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
                                      workspace_size, ctx);
 #else
         using search1 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
-        fwd_algo1 = search1::Find<T>(args1, exhaustive_search, false, ctx);
+        fwd_algo1 = search1::Find<T>(
+            args1, exhaustive_search, false,
+            ctx.template device_context<platform::CUDADeviceContext>());
         workspace_size = search1::GetWorkspaceSize(args1, fwd_algo1);
 #endif
       }
@@ -1152,7 +848,9 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
                                      workspace_size, ctx);
 #else
         using search2 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
-        fwd_algo2 = search2::Find<T>(args2, exhaustive_search, false, ctx);
+        fwd_algo2 = search2::Find<T>(
+            args2, exhaustive_search, false,
+            ctx.template device_context<platform::CUDADeviceContext>());
         workspace_size = std::max(workspace_size,
                                   search2::GetWorkspaceSize(args2, fwd_algo2));
 #endif
@@ -1176,8 +874,9 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
                                      workspace_size, ctx);
 #else
       using search3 = SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
-      filter_algo =
-          search3::Find<T>(args3, exhaustive_search, deterministic, ctx);
+      filter_algo = search3::Find<T>(
+          args3, exhaustive_search, deterministic,
+          ctx.template device_context<platform::CUDADeviceContext>());
       workspace_size = std::max(workspace_size,
                                 search3::GetWorkspaceSize(args3, filter_algo));
 #endif
@@ -1201,8 +900,9 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
                                    workspace_size, ctx);
 #else
       using search4 = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
-      data_algo =
-          search4::Find<T>(args4, exhaustive_search, deterministic, ctx);
+      data_algo = search4::Find<T>(
+          args4, exhaustive_search, deterministic,
+          ctx.template device_context<platform::CUDADeviceContext>());
       workspace_size =
           std::max(workspace_size, search4::GetWorkspaceSize(args4, data_algo));
 #endif
@@ -1368,10 +1068,12 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
         }
         if (X->dims().size() == 4) {
           RemovePaddingSlice<paddle::platform::CUDADeviceContext, T, 4>(
-              ctx, &transformed_dX, &transformed_dX_channel, starts, axes);
+              ctx.template device_context<platform::CUDADeviceContext>(),
+              &transformed_dX, &transformed_dX_channel, starts, axes);
         } else {
           RemovePaddingSlice<paddle::platform::CUDADeviceContext, T, 5>(
-              ctx, &transformed_dX, &transformed_dX_channel, starts, axes);
+              ctx.template device_context<platform::CUDADeviceContext>(),
+              &transformed_dX, &transformed_dX_channel, starts, axes);
         }
       }
       if (channel_last) {

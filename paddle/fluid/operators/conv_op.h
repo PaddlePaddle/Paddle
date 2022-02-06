@@ -180,11 +180,21 @@ class ConvOp : public framework::OperatorWithKernel {
 
   framework::KernelSignature GetExpectedPtenKernelArgs(
       const framework::ExecutionContext& ctx) const override {
-    return framework::KernelSignature(
-        "conv2d", {"Input", "Filter"},
-        {"strides", "padddings", "padding_algorithm", "groups", "dilations",
-         "data_format", "use_addto", "workspace_size_MB", "exhaustive_search"},
-        {"Output"});
+    if (ctx.Attr<bool>("use_cudnn")) {
+      return framework::KernelSignature(
+          "conv2d_cudnn", {"Input", "Filter"},
+          {"strides", "paddings", "padding_algorithm", "groups", "dilations",
+           "data_format", "use_addto", "workspace_size_MB",
+           "exhaustive_search"},
+          {"Output"});
+    } else {
+      return framework::KernelSignature(
+          "conv2d", {"Input", "Filter"},
+          {"strides", "paddings", "padding_algorithm", "groups", "dilations",
+           "data_format", "use_addto", "workspace_size_MB",
+           "exhaustive_search"},
+          {"Output"});
+    }
   }
 
  protected:
@@ -203,6 +213,26 @@ class ConvOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override;
+
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext& ctx) const override {
+    if (ctx.Attr<bool>("use_cudnn")) {
+      return framework::KernelSignature(
+          "conv2d_cudnn_grad",
+          {framework::GradVarName("Output"), "Input", "Filter"},
+          {"strides", "paddings", "padding_algorithm", "groups", "dilations",
+           "data_format", "use_addto", "workspace_size_MB",
+           "exhaustive_search"},
+          {framework::GradVarName("Input"), framework::GradVarName("Filter")});
+    } else {
+      return framework::KernelSignature(
+          "conv2d_grad", {framework::GradVarName("Output"), "Input", "Filter"},
+          {"strides", "paddings", "padding_algorithm", "groups", "dilations",
+           "data_format", "use_addto", "workspace_size_MB",
+           "exhaustive_search"},
+          {framework::GradVarName("Input"), framework::GradVarName("Filter")});
+    }
+  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
