@@ -29,8 +29,18 @@ void AssignTensorImpl(const Tensor& src, Tensor* dst) {
                     true,
                     pten::errors::Unavailable(
                         "Now only supported DenseTensor in Custom Operator."));
+  PADDLE_ENFORCE_EQ(
+      src.initialized(),
+      true,
+      pten::errors::Unavailable(
+          "The Custom OpKernel calculate output is not initialized."));
+  PADDLE_ENFORCE_EQ(dst->defined(),
+                    true,
+                    pten::errors::Unavailable(
+                        "The Custom OpKernel origin output is not defined."));
+  auto& dense_src = static_cast<const pten::DenseTensor&>(*src.impl());
   auto* dense_dst = static_cast<pten::DenseTensor*>(dst->impl().get());
-  *dense_dst = *std::dynamic_pointer_cast<pten::DenseTensor>(src.impl());
+  *dense_dst = dense_src;
 }
 
 ////////////////////// Kernel Context //////////////////////

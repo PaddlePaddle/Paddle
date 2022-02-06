@@ -185,6 +185,8 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
   }
 
   VLOG(3) << "Custom Operator: push outputs into CustomOpKernelContext.";
+  // cache the target tensor pointers
+  std::vector<Tensor*> true_out_ptrs;
   for (size_t i = 0; i < outputs.size(); ++i) {
     auto out_name = outputs[i];
     if (detail::IsDuplicableVar(out_name)) {
@@ -205,7 +207,9 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
             platform::errors::NotFound(
                 "The %d-th tensor in output vector<tensor> (%s) is nullptr.", j,
                 out_name));
+        true_out_ptrs.emplace_back(out);
         paddle::experimental::Tensor custom_t;
+        // here only can copy the output tensor into context
         custom_t.set_impl(std::make_shared<pten::DenseTensor>(*out));
         custom_vec_out.emplace_back(custom_t);
       }
@@ -215,7 +219,9 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
       PADDLE_ENFORCE_NOT_NULL(
           out, platform::errors::NotFound("Output tensor (%s) is nullptr.",
                                           out_name));
+      true_out_ptrs.emplace_back(out);
       paddle::experimental::Tensor custom_out;
+      // here only can copy the output tensor into context
       custom_out.set_impl(std::make_shared<pten::DenseTensor>(*out));
       kernel_ctx.EmplaceBackOutput(std::move(custom_out));
     }
@@ -224,6 +230,31 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
   try {
     VLOG(3) << "Custom Operator: Run ComputeFunc.";
     func(&kernel_ctx);
+
+    // sync output tensor data into original output
+    auto* calc_outs = kernel_ctx.AllMutableOutput();
+    PADDLE_ENFORCE_EQ(
+        true_out_ptrs.size(), calc_outs->size(),
+        platform::errors::InvalidArgument(
+            "The number of element in custom operator outputs is wrong, "
+            "expected contains %d Tensors, but actually contains %d "
+            "Tensors.",
+            true_out_ptrs.size(), calc_outs->size()));
+    for (size_t i = 0; i < true_out_ptrs.size(); ++i) {
+      auto* true_out = true_out_ptrs.at(i);
+      auto calc_out =
+          std::dynamic_pointer_cast<pten::DenseTensor>(calc_outs->at(i).impl());
+      // assgin meta info
+      auto* true_out_meta = pten::DenseTensorUtils::GetMutableMeta(true_out);
+      true_out_meta->dims = calc_out->dims();
+      true_out_meta->dtype = calc_out->dtype();
+      true_out_meta->layout = calc_out->layout();
+      // lod and offset no need to be reset
+      // reset holder if needed
+      if (true_out->Holder() != calc_out->Holder()) {
+        true_out->ResetHolder(calc_out->Holder());
+      }
+    }
   } catch (platform::EnforceNotMet& exception) {
     throw std::move(exception);
   } catch (std::exception& ex) {

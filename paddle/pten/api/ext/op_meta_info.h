@@ -125,17 +125,16 @@ class CustomOpKernelContext {
 // Record Op kernel core function
 using KernelFunc = void (*)(CustomOpKernelContext*);
 
-#define PD_SPECIALIZE_ComputeCallHelper(attr_type)                       \
-  template <typename... Tail>                                            \
-  struct ComputeCallHelper<attr_type, Tail...> {                         \
-    template <int in_idx, int attr_idx, typename... PreviousArgs>        \
-    static void Compute(CustomOpKernelContext* ctx,                      \
-                        const PreviousArgs&... pargs) {                  \
-      attr_type arg = ctx->AttrAt<attr_type>(attr_idx);                  \
-      return ComputeCallHelper<Tail...>::template Compute<in_idx,        \
-                                                          attr_idx + 1>( \
-          ctx, pargs..., arg);                                           \
-    }                                                                    \
+#define PD_SPECIALIZE_ComputeCallHelper(attr_type)                        \
+  template <typename... Tail>                                             \
+  struct ComputeCallHelper<attr_type, Tail...> {                          \
+    template <int in_idx, int attr_idx, typename... PreviousArgs>         \
+    static void Compute(CustomOpKernelContext* ctx,                       \
+                        const PreviousArgs&... pargs) {                   \
+      attr_type arg = ctx->AttrAt<attr_type>(attr_idx);                   \
+      ComputeCallHelper<Tail...>::template Compute<in_idx, attr_idx + 1>( \
+          ctx, pargs..., arg);                                            \
+    }                                                                     \
   }
 
 template <typename T>
@@ -147,8 +146,7 @@ struct KernelFuncImpl;
 template <typename Return, typename... Args, Return (*impl_fn)(Args...)>
 struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   static void Compute(CustomOpKernelContext* ctx) {
-    return ComputeCallHelper<Args..., TypeTag<int>>::template Compute<0, 0>(
-        ctx);
+    ComputeCallHelper<Args..., TypeTag<int>>::template Compute<0, 0>(ctx);
   }
 
  private:
@@ -162,7 +160,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
                         const PreviousArgs&... pargs) {
       auto& range = ctx->InputRangeAt(in_idx);
       auto& arg = ctx->InputAt(range.first);
-      return ComputeCallHelper<Tail...>::template Compute<in_idx + 1, attr_idx>(
+      ComputeCallHelper<Tail...>::template Compute<in_idx + 1, attr_idx>(
           ctx, pargs..., arg);
     }
   };
@@ -174,7 +172,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
                         const PreviousArgs&... pargs) {
       auto& range = ctx->InputRangeAt(in_idx);
       auto arg = ctx->InputsBetween(range.first, range.second);
-      return ComputeCallHelper<Tail...>::template Compute<in_idx + 1, attr_idx>(
+      ComputeCallHelper<Tail...>::template Compute<in_idx + 1, attr_idx>(
           ctx, pargs..., arg);
     }
   };
@@ -222,8 +220,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
                "The number of element in custom operator outputs is wrong, "
                "expected contains ",
                orig_outs->size(),
-               " Tensors, but actually "
-               "contains ",
+               " Tensors, but actually contains ",
                outs.size(),
                " Tensors.");
       for (size_t i = 0; i < outs.size(); ++i) {
