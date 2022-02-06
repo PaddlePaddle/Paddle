@@ -17,9 +17,7 @@ import collections
 import paddle
 from paddle import dot, einsum
 from .bfgs_utils import vjp, ternary
-from .bfgs_utils import make_state, make_const, update_state
-from .bfgs_utils import active_state, any_active, any_active_with_predicates
-from .bfgs_utils import converged_state, failed_state
+from .bfgs_utils import make_state, make_const
 from .bfgs_utils import as_float_tensor, vnorm_inf
 from .bfgs_utils import StepCounter, StepCounterException
 from .bfgs_utils import SearchState
@@ -86,9 +84,9 @@ def update_approx_inverse_hessian(state, H, s, y, enforce_curvature=False):
 
         # Enforces the curvature condition before updating the inverse Hessian.
         if enforce_curvature:
-            assert not any_active_with_predicates(rho <= 0)
+            assert not state.any_active_with_predicates(rho <= 0)
         else:
-            state.update_state(rho <= 0, 'failed')
+            state.update_state(~state.stop & (rho <= 0), 'failed')
 
         # By expanding the updating formula we obtain a sum of tensor products
         #

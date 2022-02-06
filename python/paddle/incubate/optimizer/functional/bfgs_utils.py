@@ -134,7 +134,7 @@ class SearchState(object):
 
     def set_params(self, params):
         for name, value in params.items():
-            setattr(self, f'param_{name}', value)
+            setattr(self, name, value)
 
     def is_lowerbound(self, f):
         return f <= self.lowerbound
@@ -180,7 +180,7 @@ class SearchState(object):
         Returns:
             Tensor updated on the specified locations.
         """
-        assert new_state in ('converged', 'failed')
+        assert new_state in ('converged', 'failed', 'blowup')
 
         if new_state is 'converged':
             increments = paddle.to_tensor(predicate, dtype='int32')

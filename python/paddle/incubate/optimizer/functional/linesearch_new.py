@@ -185,15 +185,15 @@ class HagerZhang(SearchState):
                  lowerbound=None,
                  ls_iters=50,
                  params=hz_default_params):
-        super(HagerZhang).__init__(bat,
-                                   x0,
-                                   f0,
-                                   g0,
-                                   H0,
-                                   gnorm,
-                                   ak=a0,
-                                   lowerbound=lowerbound,
-                                   ls_iters=ls_iters)
+        super().__init__(bat,
+                         x0,
+                         f0,
+                         g0,
+                         H0,
+                         gnorm,
+                         ak=a0,
+                         lowerbound=lowerbound,
+                         ls_iters=ls_iters)
         self.func = func
         self.phi = None
         self.deriv = None
@@ -257,7 +257,7 @@ class HagerZhang(SearchState):
         self.stop = stop
 
     def should_stop(self):
-        return not self.any_active_with_predicates(self.stop)
+        return self.all_active_with_predicates(self.stop)
 
     def initial(self):
         r"""Generates the initial step size.
