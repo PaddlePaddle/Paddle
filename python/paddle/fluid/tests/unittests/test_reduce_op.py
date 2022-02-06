@@ -740,7 +740,10 @@ class API_TestSumOp(unittest.TestCase):
         if np_axis is None:
             np_axis = attr_axis
 
-        for place in [fluid.CPUPlace(), fluid.CUDAPlace(0)]:
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for place in places:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 data = fluid.data("data", shape=shape, dtype=x_dtype)
                 result_sum = paddle.sum(x=data,
