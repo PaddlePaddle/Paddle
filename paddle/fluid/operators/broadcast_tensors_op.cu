@@ -90,8 +90,8 @@ class CUDABroadcastTensorsGradOpKernel : public framework::OpKernel<T> {
         // reduce_sum implementation on CUDA
         auto stream = context.cuda_device_context().stream();
         TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-            *input_tensor, output_tensor, kps::IdentityFunctor<T>(),
-            reduce_dims_vec, stream);
+            context.cuda_device_context(), *input_tensor, output_tensor,
+            kps::IdentityFunctor<T>(), reduce_dims_vec, stream);
       }
     }
   }
