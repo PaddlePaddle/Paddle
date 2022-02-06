@@ -77,6 +77,13 @@ struct ConvertToPtenContext<platform::CPUDeviceContext> {
   using TYPE = pten::CPUContext;
 };
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+template <>
+struct ConvertToPtenContext<platform::CUDADeviceContext> {
+  using TYPE = pten::GPUContext;
+};
+#endif
+
 #ifdef PADDLE_WITH_XPU
 template <>
 struct ConvertToPtenContext<platform::XPUDeviceContext> {

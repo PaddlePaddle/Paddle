@@ -1155,7 +1155,7 @@ void GeoCommunicator::SendDense(const CommContext &send_ctx) {
     auto &t_latest = var_latest->Get<framework::LoDTensor>();
     auto t_timestamp = var_timestamp->GetMutable<framework::LoDTensor>();
 
-    auto cpu_ctx = paddle::platform::CPUDeviceContext();
+    paddle::platform::CPUDeviceContext cpu_ctx;
     auto *var_delta = delta_scope_->Var(varname);
     auto *t_delta = var_delta->GetMutable<framework::LoDTensor>();
     t_delta->mutable_data<float>(t_latest.dims(), cpu_ctx.GetPlace());
@@ -1185,7 +1185,7 @@ void GeoCommunicator::RecvDense(const CommContext &send_ctx) {
   RpcRecvDense(varnames, table_id, pserver_scope_.get());
 
   // 2.1 pserver - old => delta; 2.2 latest + old => latest 2.3 old => pserver
-  auto cpu_ctx = paddle::platform::CPUDeviceContext();
+  paddle::platform::CPUDeviceContext cpu_ctx;
   for (auto &varname : varnames) {
     auto *var_latest = recv_scope_->FindVar(varname);
     auto t_latest = var_latest->GetMutable<framework::LoDTensor>();
@@ -1292,7 +1292,7 @@ void GeoCommunicator::SendSparse(const std::string &varname,
   auto *t_old = var_old->GetMutable<framework::LoDTensor>();
 
   auto dims1 = t_latest.dims()[1];
-  auto cpu_ctx = paddle::platform::CPUDeviceContext();
+  paddle::platform::CPUDeviceContext cpu_ctx;
 
   auto *var_delta = delta_scope_->Var(varname);
   auto *t_delta = var_delta->GetMutable<pten::SelectedRows>();
@@ -1370,7 +1370,7 @@ void GeoCommunicator::RecvSparse(const std::string &varname, int table_id,
   std::vector<float> v_delta;
   v_delta.resize(numel);
 
-  auto cpu_ctx = paddle::platform::CPUDeviceContext();
+  paddle::platform::CPUDeviceContext cpu_ctx;
   auto blas =
       paddle::operators::math::GetBlas<platform::CPUDeviceContext, float>(
           cpu_ctx);
