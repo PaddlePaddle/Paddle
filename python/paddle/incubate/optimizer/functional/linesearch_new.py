@@ -425,7 +425,10 @@ class HagerZhang(SearchState):
         fa, ga = self.func_and_deriv(self.phi, a)
         fb, gb = self.func_and_deriv(self.phi, b)
     
-        c = (a * gb - b * ga) / (gb - ga)
+        delta = gb - ga
+        mean = a + 0.5 * (b - a)
+        weighted_mean = (a * gb - b * ga) / delta
+        c = paddle.where(delta == 0.0, mean, weighted_mean)
 
         self.update_stop(c)
         return c
@@ -636,8 +639,5 @@ class HagerZhang(SearchState):
             pass
 
         # Changes state due to failed line search
-        self.update_state(~self.stop, 'failed')
-
-        print(f'state {self.state}')
         print(f'ak {self.ak}')
         return self.ak

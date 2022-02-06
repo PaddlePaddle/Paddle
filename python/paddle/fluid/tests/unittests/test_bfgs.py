@@ -207,19 +207,40 @@ def poly(x):
 class TestLinesearch(unittest.TestCase):
     def test_paddle(self):
         dtype = 'float32'
-        x_min = paddle.to_tensor([1.01], dtype=dtype)
-        for start in [-1.0, 0.5, 0.9, 0.99, 1.0, 1.01, 1.02, 1.1, 2.0]:
+        x_min = 1.01
+        for start in [100.0]:
             x0 = paddle.to_tensor(start, dtype=dtype)
             result = bfgs_minimize(poly, x0, dtype=dtype)
             print(result)
-            self.assertTrue(paddle.allclose(result.x_location, x_min))
+            self.assertTrue(np.allclose(result.function_results, -np.inf))
+        for start in [-1.0, 0.98]:
+            x0 = paddle.to_tensor(start, dtype=dtype)
+            result = bfgs_minimize(poly, x0, dtype=dtype)
+            print(result)
+            self.assertTrue(np.allclose(result.function_results, -np.inf))
+        for start in [1.0]:
+            x0 = paddle.to_tensor(start, dtype=dtype)
+            result = bfgs_minimize(poly, x0, dtype=dtype)
+            print(result)
+            self.assertTrue(np.allclose(result.x_location, x_min))
+        for start in [1.01]:
+            x0 = paddle.to_tensor(start, dtype=dtype)
+            result = bfgs_minimize(poly, x0, dtype=dtype)
+            print(result)
+            self.assertTrue(np.allclose(result.x_location, x_min))
+        for start in [1.1]:
+            x0 = paddle.to_tensor(start, dtype=dtype)
+            result = bfgs_minimize(poly, x0, dtype=dtype)
+            print(result)
+            self.assertTrue(np.allclose(result.x_location, x_min))
 
     # def test_tf(self):
     #     def func_and_gradient(x):
     #         return tfp.math.value_and_gradient(lambda x: tf.reduce_sum(poly(x)), x)
     #     dtype = 'float32'
     #     x_min = tf.constant(1.01)
-    #     for start in [-1.0, 0.5, 0.9, 0.99, 1.0, 1.01, 1.02, 1.1, 2.0]:
+    #     # for start in [-1.0, 0.98, 1.0, 1.01, 1.1, 100.0]:
+    #     for start in [100.0]:
     #         x0 = tf.constant([start], dtype=dtype)
     #         result = tfp.optimizer.bfgs_minimize(func_and_gradient,
     #                                              initial_position=x0)
