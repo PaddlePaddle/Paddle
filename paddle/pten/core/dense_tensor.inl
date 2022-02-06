@@ -82,10 +82,6 @@ void* mutable_data(const paddle::platform::Place& place,
 */
 paddle::experimental::DataType type() const;
 
-/* @jim19930609: Remove dependency on protobuf after Tensor Unification.
-*/
-paddle::framework::proto::VarType::Type saved_type() const;
-
 // memory size returns the holding memory size in byte.
 size_t memory_size() const;
 

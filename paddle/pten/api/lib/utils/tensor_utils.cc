@@ -17,8 +17,8 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/pten/core/compat_utils.h"
+#include "paddle/pten/core/convert_utils.h"
 
 namespace paddle {
 namespace experimental {

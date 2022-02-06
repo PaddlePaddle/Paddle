@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/operators/layer_norm_kernel.cu.h"
 #include "paddle/fluid/operators/layer_norm_op.h"
 #include "paddle/fluid/platform/float16.h"
@@ -207,7 +208,7 @@ class LayerNormGradKernel<platform::CUDADeviceContext, T>
       // data type of the d_scale and d_bias if scale == nullptr.
       auto *bias = ctx.Input<Tensor>("Bias");
       if (bias != nullptr) {
-        scale_bias_dtype = bias->saved_type();
+        scale_bias_dtype = framework::TransToProtoVarType(bias->dtype());
       } else {
         scale_bias_dtype = x_dtype;
       }

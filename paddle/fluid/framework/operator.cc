@@ -19,6 +19,7 @@ limitations under the License. */
 #include <string>
 
 #include "gflags/gflags.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
@@ -1466,7 +1467,7 @@ void OperatorWithKernel::HandleComplexGradToRealGrad(
           platform::errors::Unavailable(
               "Forward tensor is nullptr when handle complex data to real."));
       // only need record type, the allocation may have been released
-      auto dst_type = tensor->saved_type();
+      auto dst_type = framework::TransToProtoVarType(tensor->dtype());
       // only focus on real dtype and need casting
       if (IsComplexType(dst_type)) {
         continue;

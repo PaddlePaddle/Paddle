@@ -19,7 +19,6 @@ limitations under the License. */
 #include "paddle/pten/common/complex.h"
 #include "paddle/pten/common/float16.h"
 
-#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/pten/api/lib/utils/storage.h"
 
 namespace pten {
@@ -66,10 +65,6 @@ const paddle::platform::Place& DenseTensor::place() const {
 }
 
 paddle::experimental::DataType DenseTensor::type() const { return meta_.dtype; }
-
-paddle::framework::proto::VarType::Type DenseTensor::saved_type() const {
-  return paddle::framework::TransToProtoVarType(meta_.dtype);
-}
 
 void DenseTensor::set_layout(const paddle::framework::DataLayout layout) {
   meta_.layout = layout;

@@ -391,7 +391,7 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
           platform::errors::Unavailable(
               "Forward tensor is nullptr when handle complex data to real."));
       // only need record type, the allocation may have been released
-      auto dst_type = tensor->saved_type();
+      auto dst_type = framework::TransToProtoVarType(tensor->dtype());
       // only focus on real dtype and need casting
       if (framework::IsComplexType(dst_type)) {
         continue;
