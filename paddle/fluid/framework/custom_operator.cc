@@ -61,27 +61,27 @@ static T* DynLoad(void* handle, std::string name) {
   return func;
 }
 
-inline bool IsGradVar(const std::string& var_name) {
+inline static bool IsGradVar(const std::string& var_name) {
   std::string suffix = kGradVarSuffix;
   return var_name.rfind(suffix) != std::string::npos;
 }
 
-inline bool IsDuplicableVar(const std::string& var_name) {
+inline static bool IsDuplicableVar(const std::string& var_name) {
   std::string suffix = kTensorVectorSuffix;
   return var_name.rfind(suffix) != std::string::npos;
 }
 
-inline std::string NoGrad(const std::string& var_name) {
+inline static std::string NoGrad(const std::string& var_name) {
   std::string suffix = kGradVarSuffix;
   return var_name.substr(0, var_name.size() - kGradVarSuffixSize);
 }
 
-inline bool IsMemberOf(const std::vector<std::string>& vec,
-                       const std::string& name) {
+inline static bool IsMemberOf(const std::vector<std::string>& vec,
+                              const std::string& name) {
   return std::find(vec.cbegin(), vec.cend(), name) != vec.cend();
 }
 
-std::vector<std::string> ParseAttrStr(const std::string& attr) {
+static std::vector<std::string> ParseAttrStr(const std::string& attr) {
   auto split_pos = attr.find_first_of(":");
   PADDLE_ENFORCE_NE(split_pos, std::string::npos,
                     platform::errors::InvalidArgument(
@@ -563,44 +563,57 @@ class CustomGradOpMaker<imperative::OpBase>
 
 //////////// Operator and Kernel Register //////////////
 
-void RegisterOperatorKernelWithPlace(const std::string& name,
-                                     const paddle::KernelFunc& kernel_func,
-                                     const proto::VarType::Type type,
-                                     const PlaceType& place,
-                                     const std::vector<std::string>& inputs,
-                                     const std::vector<std::string>& outputs,
-                                     const std::vector<std::string>& attrs) {
+static void RegisterOperatorKernelWithPlace(
+    const std::string& name,
+    const OperatorWithKernel::OpKernelFunc& op_kernel_func,
+    const proto::VarType::Type type, const PlaceType& place) {
   OpKernelType key(type, experimental::ConvertExtPlaceToInnerPlace(place));
   VLOG(3) << "Custom Operator: op kernel key: " << key;
-  OperatorWithKernel::AllOpKernels()[name][key] =
-      [kernel_func, inputs, outputs,
-       attrs](const framework::ExecutionContext& ctx) {
-        VLOG(3) << "Custom Operator: run custom kernel func in lambda.";
-        RunKernelFunc(ctx, kernel_func, inputs, outputs, attrs);
-      };
+  OperatorWithKernel::AllOpKernels()[name][key] = op_kernel_func;
 }
 
-void RegisterOperatorKernel(const std::string& name,
-                            const paddle::KernelFunc& kernel_func,
-                            const std::vector<std::string>& inputs,
-                            const std::vector<std::string>& outputs,
-                            const std::vector<std::string>& attrs) {
+static void RegisterOperatorKernel(const std::string& name,
+                                   const paddle::KernelFunc& kernel_func,
+                                   const std::vector<std::string>& inputs,
+                                   const std::vector<std::string>& outputs,
+                                   const std::vector<std::string>& attrs,
+                                   void* dso_handle) {
   VLOG(3) << "Custom Operator: op name in kernel: " << name;
   // NOTE [ Dummy Op Kernel Key ]
   // TODO(chenweihang): Because execute engine need get device context based
   // op_kernel_key.place_, so we should register kernel for each
   // device. But this is not entirely correct, if user only give a cpu kernel,
   // but call api in gpu device, it will cause error.
-  RegisterOperatorKernelWithPlace(name, kernel_func, proto::VarType::RAW,
-                                  PlaceType::kCPU, inputs, outputs, attrs);
+  OperatorWithKernel::OpKernelFunc op_kernel_func;
+  if (kernel_func) {
+    VLOG(3) << "Register custom operator " << name << " with kernel func";
+    op_kernel_func = [kernel_func, inputs, outputs,
+                      attrs](const framework::ExecutionContext& ctx) {
+      VLOG(3) << "Custom Operator: run custom kernel func in lambda.";
+      RunKernelFunc(ctx, kernel_func, inputs, outputs, attrs);
+    };
+  } else {
+    VLOG(3) << "Register custom operator " << name
+            << " with raw op kernel func";
+    PADDLE_ENFORCE_NOT_NULL(
+        dso_handle,
+        platform::errors::InvalidArgument(
+            "The dso handle must be provided if kernel_func is nullptr."));
+    using OpKernelFuncPtr = void(const framework::ExecutionContext&);
+    auto symbol_name = "PD_" + name + "_raw_op_kernel_func";
+    auto* func = detail::DynLoad<OpKernelFuncPtr>(dso_handle, symbol_name);
+    op_kernel_func = func;
+  }
+  RegisterOperatorKernelWithPlace(name, op_kernel_func, proto::VarType::RAW,
+                                  PlaceType::kCPU);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  RegisterOperatorKernelWithPlace(name, kernel_func, proto::VarType::RAW,
-                                  PlaceType::kGPU, inputs, outputs, attrs);
+  RegisterOperatorKernelWithPlace(name, op_kernel_func, proto::VarType::RAW,
+                                  PlaceType::kGPU);
 #endif
 }
 
-void RegisterOperatorWithMetaInfo(
-    const std::vector<OpMetaInfo>& op_meta_infos) {
+void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
+                                  void* dso_handle) {
   /* Op register */
   OpInfo info;
 
@@ -753,7 +766,8 @@ void RegisterOperatorWithMetaInfo(
   }
 
   // Kernel func
-  RegisterOperatorKernel(op_name, kernel_fn, op_inputs, op_outputs, op_attrs);
+  RegisterOperatorKernel(op_name, kernel_fn, op_inputs, op_outputs, op_attrs,
+                         dso_handle);
 
   // If grad op or double grad op exists
   std::string cur_op_name = op_name;
@@ -861,7 +875,7 @@ void RegisterOperatorWithMetaInfo(
 
     // Kernel func
     RegisterOperatorKernel(grad_op_name, grad_kernel_fn, grad_op_inputs,
-                           grad_op_outputs, grad_op_attrs);
+                           grad_op_outputs, grad_op_attrs, dso_handle);
 
     // update current info
     OpInfoMap::Instance().Insert(cur_op_name, info);
@@ -873,14 +887,14 @@ void RegisterOperatorWithMetaInfo(
 }
 
 void RegisterOperatorWithMetaInfoMap(
-    const paddle::OpMetaInfoMap& op_meta_info_map) {
+    const paddle::OpMetaInfoMap& op_meta_info_map, void* dso_handle) {
   auto& meta_info_map = op_meta_info_map.GetMap();
   VLOG(3) << "Custom Operator: size of op meta info map - "
           << meta_info_map.size();
   // pair: {op_type, OpMetaInfo}
   for (auto& pair : meta_info_map) {
     VLOG(3) << "Custom Operator: pair first -> op name: " << pair.first;
-    RegisterOperatorWithMetaInfo(pair.second);
+    RegisterOperatorWithMetaInfo(pair.second, dso_handle);
   }
 }
 
@@ -895,7 +909,7 @@ void LoadOpMetaInfoAndRegisterOp(const std::string& dso_name) {
       detail::DynLoad<get_op_meta_info_map_t>(handle, "PD_GetOpMetaInfoMap");
   auto& op_meta_info_map = get_op_meta_info_map();
 
-  RegisterOperatorWithMetaInfoMap(op_meta_info_map);
+  RegisterOperatorWithMetaInfoMap(op_meta_info_map, handle);
 }
 
 }  // namespace framework
