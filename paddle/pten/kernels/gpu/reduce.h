@@ -1065,7 +1065,8 @@ template <typename Tx,
           typename Ty,
           template <typename> class ReduceOp,
           typename TransformOp>
-void TensorReduceFunctorImpl(const pten::DenseTensor& x,
+void TensorReduceFunctorImpl(const pten::GPUContext& dev_ctx,
+                             const pten::DenseTensor& x,
                              pten::DenseTensor* y,
                              const TransformOp& transform,
                              const std::vector<int>& origin_reduce_dims,
@@ -1089,13 +1090,11 @@ void TensorReduceFunctorImpl(const pten::DenseTensor& x,
   auto x_data = x.data<Tx>();
   auto y_data = y->data<Ty>();
 
-  auto* dev_ctx = static_cast<paddle::platform::CUDADeviceContext*>(
-      paddle::platform::DeviceContextPool::Instance().Get(x.place()));
   if (config.reduce_num == 1) {
     std::vector<const DenseTensor*> inputs = {&x};
     std::vector<DenseTensor*> outputs = {y};
     funcs::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, Tx, Ty>(
-        *dev_ctx, inputs, &outputs, transform);
+        dev_ctx, inputs, &outputs, transform);
     return;
   }
 
@@ -1247,6 +1246,7 @@ void Reduce(const GPUContext& dev_ctx,
                                                  data_t,
                                                  ReduceOp,
                                                  TransformOp<data_t, MPType>>(
+              dev_ctx,
               tmp_tensor,
               out,
               TransformOp<data_t, MPType>(reduce_num),
@@ -1257,7 +1257,12 @@ void Reduce(const GPUContext& dev_ctx,
     using MPType = typename kps::details::MPTypeTrait<T>::Type;
     pten::kernels::
         TensorReduceFunctorImpl<T, T, ReduceOp, TransformOp<T, MPType>>(
-            x, out, TransformOp<T, MPType>(reduce_num), reduce_dims, stream);
+            dev_ctx,
+            x,
+            out,
+            TransformOp<T, MPType>(reduce_num),
+            reduce_dims,
+            stream);
   }
 }
 }  // namespace pten
