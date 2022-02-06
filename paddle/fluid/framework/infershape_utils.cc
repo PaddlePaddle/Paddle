@@ -93,14 +93,7 @@ class CompatMetaTensor : public pten::MetaTensor {
   int64_t numel() const override {
     if (is_runtime_) {
       auto* var = BOOST_GET_CONST(Variable*, var_);
-      if (var->IsType<pten::DenseTensor>()) {
-        return var->Get<pten::DenseTensor>().numel();
-      } else if (var->IsType<pten::SelectedRows>()) {
-        return var->Get<pten::SelectedRows>().numel();
-      } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Currently, only can get numel from DenseTensor or SelectedRows."));
-      }
+      return var->Get<Tensor>().numel();
     } else {
       auto* var = BOOST_GET_CONST(VarDesc*, var_);
       return var->ElementSize();
@@ -144,15 +137,7 @@ class CompatMetaTensor : public pten::MetaTensor {
   DataLayout layout() const override {
     if (is_runtime_) {
       auto* var = BOOST_GET_CONST(Variable*, var_);
-      if (var->IsType<pten::DenseTensor>()) {
-        return var->Get<pten::DenseTensor>().layout();
-      } else if (var->IsType<pten::SelectedRows>()) {
-        return var->Get<pten::SelectedRows>().layout();
-      } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Currently, only can get layout from DenseTensor or "
-            "SelectedRows."));
-      }
+      return var->Get<LoDTensor>().layout();
     } else {
       // NOTE(chenweihang): do nothing
       // Unsupported get layout for VarDesc now
@@ -201,17 +186,10 @@ class CompatMetaTensor : public pten::MetaTensor {
   void set_layout(DataLayout layout) override {
     if (is_runtime_) {
       auto* var = BOOST_GET(Variable*, var_);
-      if (var->IsType<pten::DenseTensor>()) {
-        auto* tensor = var->GetMutable<pten::DenseTensor>();
-        pten::DenseTensorUtils::GetMutableMeta(tensor)->layout = layout;
-      } else if (var->IsType<pten::SelectedRows>()) {
-        auto* tensor = var->GetMutable<pten::SelectedRows>()->mutable_value();
-        pten::DenseTensorUtils::GetMutableMeta(tensor)->layout = layout;
-      } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Currently, only can set layout from DenseTensor or "
-            "SelectedRows."));
-      }
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      pten::DenseTensorUtils::GetMutableMeta(
+          static_cast<pten::DenseTensor*>(tensor))
+          ->layout = layout;
     } else {
       // NOTE(chenweihang): do nothing
       // Unsupported set layout for VarDesc now
