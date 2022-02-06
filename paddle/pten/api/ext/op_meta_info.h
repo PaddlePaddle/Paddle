@@ -77,7 +77,7 @@ inline std::string Vec(const std::string& t_name) {
   return result;
 }
 
-void AssignTensorImpl(const Tensor& src, Tensor* dst);
+PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst);
 
 ////////////////////// Kernel Context ////////////////////////
 

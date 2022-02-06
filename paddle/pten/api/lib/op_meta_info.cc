@@ -24,7 +24,7 @@ limitations under the License. */
 
 namespace paddle {
 
-void AssignTensorImpl(const Tensor& src, Tensor* dst) {
+PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst) {
   PADDLE_ENFORCE_EQ(src.is_dense_tensor() && dst->is_dense_tensor(),
                     true,
                     pten::errors::Unavailable(
