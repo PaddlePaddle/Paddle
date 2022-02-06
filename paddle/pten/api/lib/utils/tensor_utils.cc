@@ -207,7 +207,11 @@ void ResetTensorDtypeAndLayoutByArgDef(pten::TensorBase* dst,
     meta->dtype = arg_def.dtype;
     meta->layout = arg_def.layout;
   } else if (pten::SelectedRows::classof(dst)) {
-    VLOG(0) << "Reset SelectedRows by TensorArgDef.";
+    auto* selected_rows = static_cast<pten::SelectedRows*>(dst);
+    auto* meta =
+        pten::DenseTensorUtils::GetMutableMeta(selected_rows->mutable_value());
+    meta->dtype = arg_def.dtype;
+    meta->layout = arg_def.layout;
   } else {
     PADDLE_THROW(pten::errors::Unimplemented(
         "Unsupported tensor type is received when reseting tensor dtype and "
