@@ -26,6 +26,5 @@ PT_REGISTER_KERNEL(transpose_grad,
                    double,
                    int32_t,
                    int64_t,
-                   pten::dtype::bfloat16,
                    paddle::platform::complex<float>,
                    paddle::platform::complex<double>) {}
