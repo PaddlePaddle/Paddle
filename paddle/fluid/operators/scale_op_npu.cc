@@ -12,11 +12,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/scale_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
+
+template <typename T>
+static inline T GetAttrFromTensor(const framework::Tensor* tensor) {
+  const auto* tensor_data = tensor->data<T>();
+  framework::Tensor cpu_tensor;
+  if (platform::is_gpu_place(tensor->place()) ||
+      platform::is_npu_place(tensor->place())) {
+    paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(),
+                                      &cpu_tensor);
+    tensor_data = cpu_tensor.data<T>();
+  }
+  return tensor_data[0];
+}
 
 template <typename T>
 class ScaleNPUKernel : public framework::OpKernel<T> {
