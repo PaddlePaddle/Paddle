@@ -35,7 +35,7 @@ class DeviceTraceEventNode {
   // destructor
   ~DeviceTraceEventNode() {}
   // getter
-  std::string name() const { return device_event_.name; }
+  std::string Name() const { return device_event_.name; }
   TracerEventType type() const { return device_event_.type; }
   uint64_t start_ns() const { return device_event_.start_ns; }
   uint64_t end_ns() const { return device_event_.end_ns; }
@@ -87,7 +87,7 @@ class CudaRuntimeTraceEventNode {
   // destructor
   ~CudaRuntimeTraceEventNode();
   // getter
-  std::string name() const { return runtime_event_.name; }
+  std::string Name() const { return runtime_event_.name; }
   TracerEventType type() const { return runtime_event_.type; }
   uint64_t start_ns() const { return runtime_event_.start_ns; }
   uint64_t end_ns() const { return runtime_event_.end_ns; }
@@ -124,7 +124,7 @@ class HostTraceEventNode {
   ~HostTraceEventNode();
 
   // getter
-  std::string name() const { return host_event_.name; }
+  std::string Name() const { return host_event_.name; }
   TracerEventType type() const { return host_event_.type; }
   uint64_t start_ns() const { return host_event_.start_ns; }
   uint64_t end_ns() const { return host_event_.end_ns; }

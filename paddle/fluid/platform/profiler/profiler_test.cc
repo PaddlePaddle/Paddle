@@ -44,10 +44,11 @@ TEST(ProfilerTest, TestHostTracer) {
   }
   auto nodetree = profiler->Stop();
   std::set<std::string> host_events;
-  for (const auto pair : nodetree->Traverse(true))
+  for (const auto pair : nodetree->Traverse(true)) {
     for (const auto evt : pair.second) {
-      host_events.insert(evt->name());
+      host_events.insert(evt->Name());
     }
+  }
   EXPECT_EQ(host_events.count("TestTraceLevel_record1"), 1u);
   EXPECT_EQ(host_events.count("TestTraceLevel_record2"), 0u);
 }
@@ -71,8 +72,16 @@ TEST(ProfilerTest, TestCudaTracer) {
   hipStreamCreate(&stream);
   hipStreamSynchronize(stream);
 #endif
-  auto collector = profiler->Stop();
+  auto nodetree = profiler->Stop();
+  std::vector<std::string> runtime_events;
+  for (const auto pair : nodetree->Traverse(true)) {
+    for (const auto host_node : pair.second) {
+      for (auto runtime_node : host_node->GetRuntimeTraceEventNodes()) {
+        runtime_events.push_back(runtime_node->Name());
+      }
+    }
+  }
 #ifdef PADDLE_WITH_CUPTI
-  EXPECT_GT(collector.RuntimeEvents().size(), 0u);
+  EXPECT_GT(runtime_events.size(), 0u);
 #endif
 }

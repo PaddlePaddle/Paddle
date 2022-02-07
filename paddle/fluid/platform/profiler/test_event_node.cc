@@ -29,6 +29,7 @@ using paddle::platform::TracerEventType;
 using paddle::platform::KernelEventInfo;
 using paddle::platform::MemcpyEventInfo;
 using paddle::platform::MemsetEventInfo;
+
 TEST(NodeTreesTest, LogMe) {
   std::list<HostTraceEvent> host_events;
   std::list<RuntimeTraceEvent> runtime_events;
@@ -76,16 +77,16 @@ TEST(NodeTreesTest, LogMe) {
   std::vector<HostTraceEventNode*> thread1_nodes = nodes[10];
   std::vector<HostTraceEventNode*> thread2_nodes = nodes[11];
   for (auto it = thread1_nodes.begin(); it != thread1_nodes.end(); it++) {
-    if ((*it)->name() == "root node") {
+    if ((*it)->Name() == "root node") {
       EXPECT_EQ((*it)->GetChildren().size(), 3u);
     }
-    if ((*it)->name() == "op1") {
+    if ((*it)->Name() == "op1") {
       EXPECT_EQ((*it)->GetChildren().size(), 0u);
       EXPECT_EQ((*it)->GetRuntimeTraceEventNodes().size(), 2u);
     }
   }
   for (auto it = thread2_nodes.begin(); it != thread2_nodes.end(); it++) {
-    if ((*it)->name() == "op3") {
+    if ((*it)->Name() == "op3") {
       EXPECT_EQ((*it)->GetChildren().size(), 0u);
       EXPECT_EQ((*it)->GetRuntimeTraceEventNodes().size(), 2u);
     }
@@ -127,16 +128,16 @@ TEST(NodeTreesTest, HandleTrees) {
   std::vector<HostTraceEventNode*> thread1_nodes = nodes[10];
   std::vector<HostTraceEventNode*> thread2_nodes = nodes[11];
   for (auto it = thread1_nodes.begin(); it != thread1_nodes.end(); it++) {
-    if ((*it)->name() == "root node") {
+    if ((*it)->Name() == "root node") {
       EXPECT_EQ((*it)->GetChildren().size(), 1u);
     }
-    if ((*it)->name() == "op1") {
+    if ((*it)->Name() == "op1") {
       EXPECT_EQ((*it)->GetChildren().size(), 1u);
       EXPECT_EQ((*it)->GetRuntimeTraceEventNodes().size(), 1u);
     }
   }
   for (auto it = thread2_nodes.begin(); it != thread2_nodes.end(); it++) {
-    if ((*it)->name() == "op3") {
+    if ((*it)->Name() == "op3") {
       EXPECT_EQ((*it)->GetChildren().size(), 0u);
       EXPECT_EQ((*it)->GetRuntimeTraceEventNodes().size(), 1u);
     }
