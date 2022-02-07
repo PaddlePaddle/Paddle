@@ -52,6 +52,7 @@ struct CPUContext::Impl {
 
 CPUContext::CPUContext()
     : DeviceContext(), impl_(std::make_unique<CPUContext::Impl>()) {}
+CPUContext::CPUContext(CPUContext&&) = default;
 
 CPUContext::CPUContext(const Place& place)
     : DeviceContext(), impl_(std::make_unique<CPUContext::Impl>(place)) {}

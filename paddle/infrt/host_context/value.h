@@ -28,9 +28,10 @@
 #include "paddle/infrt/tensor/dense_tensor_view.h"
 #include "paddle/infrt/tensor/tensor_map.h"
 #include "paddle/infrt/tensor/tensor_shape.h"
-// Disabled temporarily for failed compile, will enable latter.
-// #include "paddle/pten/backends/cpu/cpu_context.h"
-// #include "paddle/pten/core/dense_tensor.h"
+#ifdef INFRT_WITH_PTEN
+#include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/pten/core/dense_tensor.h"
+#endif  // INFRT_WITH_PTEN
 
 namespace infrt {
 namespace host_context {
@@ -48,8 +49,10 @@ using ValueVariantType = Variant<int16_t,
                                  tensor::DenseHostTensor,
                                  MlirFunctionExecutable*,
                                  tensor::TensorMap,
-                                 // pten::CPUContext,
-                                 // pten::DenseTensor,
+#ifdef INFRT_WITH_PTEN
+                                 pten::CPUContext,
+                                 pten::DenseTensor,
+#endif
                                  std::vector<int16_t>,
                                  std::vector<int32_t>,
                                  std::vector<int64_t>,

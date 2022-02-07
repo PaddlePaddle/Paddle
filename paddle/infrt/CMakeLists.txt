@@ -1,5 +1,4 @@
-#TO DO:remove fluid
-include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
+option(INFRT_WITH_PTEN  "Compile PaddlePaddle InfRT with Paddle Tensor Library." ON)
 
 if (NOT WITH_INFRT)
     return()
@@ -18,6 +17,15 @@ set(INFRT_TEST_TARGETS CACHE INTERNAL "")
 include(infrt_lib)
 
 set(infrt_src CACHE INTERNAL "" FORCE)
+
+if (INFRT_WITH_PTEN)
+  add_definitions("-DINFRT_WITH_PTEN")
+endif()
+
+if (INFRT_WITH_PTEN)
+  #TO DO:remove fluid
+  include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
+endif()
 
 # Gather headers for library publish.
 function(core_gather_headers)
@@ -68,6 +76,7 @@ endif()
 
 
 add_subdirectory(api)
+add_subdirectory(backends)
 add_subdirectory(common)
 add_subdirectory(dialect)
 add_subdirectory(host_context)
@@ -93,8 +102,14 @@ set(infrt_mlir_incs
         )
 message(STATUS "infrt srcs:\n${infrt_src}")
 
+if (INFRT_WITH_PTEN)
+cc_library(infrt SHARED SRCS ${infrt_src} DEPS glog boost ${mlir_libs} paddle_framework_proto pten dense_tensor)
+cc_library(infrt_static SRCS ${infrt_src} DEPS glog boost ${mlir_libs} paddle_framework_proto pten dense_tensor)
+add_dependencies(infrt ${infrt_mlir_incs})
+else()
 cc_library(infrt SHARED SRCS ${infrt_src} DEPS glog boost ${mlir_libs} paddle_framework_proto)
 cc_library(infrt_static SRCS ${infrt_src} DEPS glog boost ${mlir_libs} paddle_framework_proto)
 add_dependencies(infrt ${infrt_mlir_incs})
+endif()
 
 add_custom_target(test_infrt_exec DEPENDS ${INFRT_TEST_TARGETS})
