@@ -31,8 +31,8 @@ void registerCinnDialects(mlir::DialectRegistry &registry) {  // NOLINT
                   dt::DTDialect,
                   mlir::pd::PaddleDialect,
 #ifdef INFRT_WITH_PTEN
-                  dialect::PTENDenseTensorDialect,
-                  dialect::PTENDialect
+                  pten::PTENDenseTensorDialect,
+                  pten::PTENDialect
 #endif
                   >();
 }

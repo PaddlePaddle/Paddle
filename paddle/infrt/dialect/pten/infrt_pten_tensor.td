@@ -7,12 +7,18 @@ include "mlir/Interfaces/SideEffectInterfaces.td"
 include "mlir/IR/OpBase.td"
 include "paddle/infrt/dialect/infrt_base.td"
 
+def PTEN_DenseTensorDialect : Dialect {
+  let name = "pten_dt";
+
+  let description = [{
+    The PTEN DenseTensor dialect.
+  }];
+
+  let cppNamespace = "::infrt::pten";
+}
+
 // PTEN DenseTensor related Op.
 class PDT_Op<string mnemonic, list<OpTrait> traits = []> : Op<PTEN_DenseTensorDialect, mnemonic, !listconcat(traits, [IsolatedFromAbove])> {
-  // Each registered op needs to provide all of a printer, parser and verifier.
-  // let printer = [{ return infrt::dialect::print(p, *this); }];
-  // let verifier = [{ return infrt::dialect::verify(*this); }];
-  // let parser = [{ return infrt::dialect::parse$cppClass(parser, result); }];
 }
 
 class CreateUninitTensorOp<string dtype>
@@ -89,8 +95,8 @@ class FillTensorWithConstantOp<string dtype> :
 }
 
 foreach dtype = ["ui8", "ui16", "ui32", "ui64", "i32", "f32", "f64", "i64"] in {
-    def PDT_FillTensorWithConstantOp_#dtype : FillTensorWithConstantOp<dtype>;
     def PDT_CreateUninitTensorOp_#dtype : CreateUninitTensorOp<dtype>;
+    def PDT_FillTensorWithConstantOp_#dtype : FillTensorWithConstantOp<dtype>;
 }
 
 def PDT_FillTensor_f32: FillTensor<"f32", F32ArrayAttr>;

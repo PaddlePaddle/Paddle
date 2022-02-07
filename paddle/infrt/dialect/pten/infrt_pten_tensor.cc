@@ -20,13 +20,17 @@
 #include "paddle/infrt/dialect/pten/infrt_pten_tensorTypes.cpp.inc"
 
 namespace infrt {
-namespace dialect {
+namespace pten {
 
-void PTENDenseTensorDialect::initialize() {}
+void PTENDenseTensorDialect::initialize() {
+#define GET_OP_LIST
+  addOperations<
+#include "paddle/infrt/dialect/pten/infrt_pten_tensor.cpp.inc"
+      >();
+}
 
-}  // namespace dialect
+}  // namespace pten
 }  // namespace infrt
 
-// NOLINT
 #define GET_OP_CLASSES
-#include "paddle/infrt/dialect/pten/infrt_pten_tensor.cpp.inc"
+#include "paddle/infrt/dialect/pten/infrt_pten_tensor.cpp.inc"  // NOLINT

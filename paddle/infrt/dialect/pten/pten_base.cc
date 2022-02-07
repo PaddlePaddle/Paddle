@@ -17,21 +17,32 @@
 #include "paddle/infrt/common/global.h"
 #include "paddle/infrt/dialect/pten/infrt_pten_base.cpp.inc"
 #include "paddle/infrt/dialect/pten/infrt_pten_baseDialect.cpp.inc"
-#include "paddle/infrt/dialect/pten/infrt_pten_baseTypes.cpp.inc"
 
 namespace infrt {
-namespace dialect {
+namespace pten {
 
 void PTENDialect::printType(::mlir::Type type,
                             mlir::DialectAsmPrinter& os) const {
   Dialect::printType(type, os);
 }
 
-void PTENDialect::initialize() {}
+void PTENDialect::initialize() {
+  addOperations<
+#define GET_OP_LIST
+#include "paddle/infrt/dialect/pten/infrt_pten_base.cpp.inc"  // NOLINT
+      >();
+  addTypes<
+#define GET_TYPEDEF_LIST
+#include "paddle/infrt/dialect/pten/infrt_pten_baseTypes.cpp.inc"  // NOLINT
+      >();
+}
 
 mlir::Type PTENDialect::parseType(mlir::DialectAsmParser& parser) const {
   return Dialect::parseType(parser);
 }
 
-}  // namespace dialect
+}  // namespace pten
 }  // namespace infrt
+
+#define GET_TYPEDEF_CLASSES
+#include "paddle/infrt/dialect/pten/infrt_pten_baseTypes.cpp.inc"  // NOLINT
