@@ -13,19 +13,14 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/eager/legacy/type_def.h"
-#include "paddle/fluid/imperative/jit/program_desc_tracer.h"
-#include "paddle/pten/core/tensor_meta.h"
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
-namespace egr {
-namespace legacy {
+#ifdef PADDLE_WITH_HIP
+#include "paddle/pten/backends/gpu/rocm/rocm_helper.h"
+#else
+#include "paddle/pten/backends/gpu/cuda/cuda_helper.h"
+#endif
 
-void RunOp(const std::string& type, const NameTensorMap& ins,
-           const NameTensorMap& outs, paddle::framework::AttributeMap attrs,
-           const paddle::platform::Place& place,
-           paddle::framework::AttributeMap* default_attrs,
-           bool override_default_attr_map,
-           const std::map<std::string, std::string>& inplace_map = {});
+#define CUDA_KERNEL_LOOP(i, num) CUDA_KERNEL_LOOP_TYPE(i, num, int)
 
-}  // namespace legacy
-}  // namespace egr
+#endif

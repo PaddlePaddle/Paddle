@@ -535,11 +535,11 @@ class OperatorWithKernel : public OperatorBase {
   bool SupportGPU() const override {
     auto pten_kernels = pten::KernelFactory::Instance().SelectKernelMap(
         pten::TransToPtenKernelName(type_));
-    auto has_pten_kernel = std::any_of(
-        pten_kernels.begin(), pten_kernels.end(),
-        [](pten::KernelFactory::KernelKeyMap::const_reference kern_pair) {
-          return kern_pair.first.backend() == pten::Backend::GPU;
-        });
+    auto has_pten_kernel =
+        std::any_of(pten_kernels.begin(), pten_kernels.end(),
+                    [](pten::KernelKeyMap::const_reference kern_pair) {
+                      return kern_pair.first.backend() == pten::Backend::GPU;
+                    });
     if (has_pten_kernel) {
       return true;
     } else {

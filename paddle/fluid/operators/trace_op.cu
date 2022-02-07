@@ -40,7 +40,8 @@ class TraceCUDAKernel : public framework::OpKernel<T> {
       std::vector<int> reduce_dims;
       reduce_dims.push_back(out->dims().size());
       TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          diag, out, kps::IdentityFunctor<T>(), reduce_dims, stream);
+          context.cuda_device_context(), diag, out, kps::IdentityFunctor<T>(),
+          reduce_dims, stream);
     } else {
       math::SetConstant<DeviceContext, T> functor;
       functor(context.device_context<DeviceContext>(), out, static_cast<T>(0));
