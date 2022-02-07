@@ -230,7 +230,7 @@ def cast(x, dtype):
         x(Tensor): An input N-D Tensor with data type bool, float16,
             float32, float64, int32, int64, uint8.
         dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output:
-            bool, float16, float32, float64, int8, int32, int64, uint8, bfloat16.
+            bool, float16, float32, float64, int8, int32, int64, uint8.
 
     Returns:
         Tensor: A Tensor with the same shape as input's.
