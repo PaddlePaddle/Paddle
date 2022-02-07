@@ -50,11 +50,11 @@ Kernel KernelFactory::SelectKernel(const std::string& kernel_name,
   return kernel_iter->second;
 }
 
-paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash>
-KernelFactory::SelectKernelMap(const std::string& kernel_name) const {
+KernelKeyMap KernelFactory::SelectKernelMap(
+    const std::string& kernel_name) const {
   auto iter = kernels_.find(kernel_name);
   if (iter == kernels_.end()) {
-    return paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash>();
+    return KernelKeyMap();
   }
   return iter->second;
 }
@@ -70,9 +70,9 @@ const Kernel& KernelFactory::SelectKernelOrThrowError(
   auto kernel_iter = iter->second.find(kernel_key);
   // TODO(chenweihang): polish refind impl here
   if (kernel_iter == iter->second.end() &&
-      kernel_key.layout() != pten::DataLayout::ANY) {
+      kernel_key.layout() != pten::DataLayout::ALL_LAYOUT) {
     pten::KernelKey any_layout_kernel_key(
-        kernel_key.backend(), pten::DataLayout::ANY, kernel_key.dtype());
+        kernel_key.backend(), pten::DataLayout::ALL_LAYOUT, kernel_key.dtype());
     kernel_iter = iter->second.find(any_layout_kernel_key);
   }
   PADDLE_ENFORCE_NE(

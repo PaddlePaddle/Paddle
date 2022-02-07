@@ -47,7 +47,7 @@ void DigammaGradKernel(const Context& ctx,
   auto* x_data = x.data<T>();
   auto* dx_data = x_grad->data<T>();
   auto numel = out_grad.numel();
-  platform::ForRange<Context> for_range(ctx, numel);
+  paddle::platform::ForRange<Context> for_range(ctx, numel);
   DigammaGradFunctor<T> functor(dout_data, x_data, dx_data, numel);
   for_range(functor);
 }
