@@ -413,7 +413,12 @@ __device__ __forceinline__ void Reduce(T* out,
     }
   }
 }
-template <typename InT, typename OutT, int NX, int NY, int BlockSize,
+
+template <typename InT,
+          typename OutT,
+          int NX,
+          int NY,
+          int BlockSize,
           class OpFunc>
 __device__ __forceinline__ void ElementwiseFillConst(OutT* out,
                                                      OpFunc compute) {
