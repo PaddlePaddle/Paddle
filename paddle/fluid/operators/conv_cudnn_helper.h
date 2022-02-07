@@ -26,8 +26,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/pten/backends/gpu/gpu_context.h"
 
 namespace paddle {
 namespace operators {
@@ -288,9 +286,8 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
     } else {
       auto& dev_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();
-      auto* workspace_handle = dev_ctx.cudnn_workspace_handle();
+      auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
-      // auto& temp = ctx.cuda_device_context();
       AlgorithmsCache<algo_t>& algo_cache =
           *(framework::ConvSearchCache::Instance().GetForward());
 
@@ -317,8 +314,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
                       perf_stat.data(), cudnn_workspace_ptr,
                       workspace_size_limit));
             };
-            workspace_handle->RunFuncSync(cudnn_find_func,
-                                          workspace_size_limit);
+            workspace_handle.RunFuncSync(cudnn_find_func, workspace_size_limit);
 
             VLOG(3) << "FwdAlgo Perf result: (algo: stat, time, memory)";
             for (int i = 0; i < returned_algo_count; ++i) {
@@ -419,7 +415,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
     } else {
       auto& dev_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();
-      auto* workspace_handle = dev_ctx.cudnn_workspace_handle();
+      auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
       AlgorithmsCache<algo_t>& algo_cache =
           *(framework::ConvSearchCache::Instance().GetBackwardData());
@@ -449,8 +445,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
                           perf_stat.data(), cudnn_workspace_ptr,
                           workspace_size_limit));
             };
-            workspace_handle->RunFuncSync(cudnn_find_func,
-                                          workspace_size_limit);
+            workspace_handle.RunFuncSync(cudnn_find_func, workspace_size_limit);
 
             VLOG(3) << "BwdDataAlgo Perf result: (algo: stat, time, memory)";
             for (int i = 0; i < returned_algo_count; ++i) {
@@ -541,7 +536,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
     } else {
       auto& dev_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();
-      auto* workspace_handle = dev_ctx.cudnn_workspace_handle();
+      auto workspace_handle = dev_ctx.cudnn_workspace_handle();
       AlgorithmsCache<algo_t>& algo_cache =
           *(framework::ConvSearchCache::Instance().GetBackwardFilter());
 
@@ -569,8 +564,8 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
                             perf_stat.data(), cudnn_workspace_ptr,
                             workspace_size_limit));
               };
-              workspace_handle->RunFuncSync(cudnn_find_func,
-                                            workspace_size_limit);
+              workspace_handle.RunFuncSync(cudnn_find_func,
+                                           workspace_size_limit);
 
               VLOG(3)
                   << "BwdFilterAlgo Perf result: (algo: stat, time, memory)";

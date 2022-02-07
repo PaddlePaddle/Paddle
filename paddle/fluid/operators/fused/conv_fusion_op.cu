@@ -184,7 +184,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
 
     miopenConvFwdAlgorithm_t algo;
     auto handle = dev_ctx.cudnn_handle();
-    auto* workspace_handle = dev_ctx.cudnn_workspace_handle();
+    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
     auto x_dims = framework::vectorize(transformed_input.dims());
     auto f_dims = framework::vectorize(filter->dims());
@@ -204,7 +204,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
               kNUM_CUDNN_FWD_ALGS, &find_count, &find_result,
               cudnn_workspace_ptr, workspace_size, false));
     };
-    workspace_handle->RunFuncSync(cudnn_find_func, workspace_size);
+    workspace_handle.RunFuncSync(cudnn_find_func, workspace_size);
     algo = find_result.fwd_algo;
     VLOG(3) << "cuDNN forward algo " << algo;
 
@@ -216,7 +216,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
             filter_data, cudnn_conv_desc, algo, &beta, cudnn_output_desc,
             output_data, cudnn_workspace, workspace_size));
       };
-      workspace_handle->RunFunc(cudnn_func, workspace_size);
+      workspace_handle.RunFunc(cudnn_func, workspace_size);
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::miopenConvolutionForwardBias(
               handle, &alpha, cudnn_bias_desc, bias_data, &beta,
@@ -266,7 +266,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
     // ------------------- cudnn conv algorithm ---------------------
     cudnnConvolutionFwdAlgo_t algo;
     auto handle = dev_ctx.cudnn_handle();
-    auto* workspace_handle = dev_ctx.cudnn_workspace_handle();
+    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetConvolutionMathType(
         cudnn_conv_desc, CUDNN_DEFAULT_MATH));
@@ -320,7 +320,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
                   kNUM_CUDNN_FWD_ALGS, &returned_algo_count,
                   fwd_perf_stat.data(), cudnn_workspace, workspace_size_limit));
         };
-        workspace_handle->RunFuncSync(cudnn_find_func, workspace_size_limit);
+        workspace_handle.RunFuncSync(cudnn_find_func, workspace_size_limit);
         VLOG(3) << "Perf result: (algo: stat, time, memory)";
         for (int i = 0; i < returned_algo_count; ++i) {
           const auto& stat = fwd_perf_stat[i];
@@ -374,7 +374,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
             filter_data, cudnn_conv_desc, algo, cudnn_workspace,
             workspace_size_in_bytes, &beta, cudnn_output_desc, output_data));
       };
-      workspace_handle->RunFunc(cudnn_func, workspace_size_in_bytes);
+      workspace_handle.RunFunc(cudnn_func, workspace_size_in_bytes);
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnAddTensor(
           handle, &alpha, cudnn_bias_desc, bias_data, &alpha, cudnn_output_desc,
           output_data));
@@ -394,7 +394,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
                 cudnn_output_desc, residual_data, cudnn_bias_desc, bias_data,
                 cudnn_act_desc, cudnn_output_desc, output_data));
       };
-      workspace_handle->RunFunc(cudnn_func, workspace_size_in_bytes);
+      workspace_handle.RunFunc(cudnn_func, workspace_size_in_bytes);
     }
 #endif
     std::vector<int> channels = ctx.Attr<std::vector<int>>("split_channels");

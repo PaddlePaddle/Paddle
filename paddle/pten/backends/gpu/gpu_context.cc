@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/pten/backends/gpu/gpu_context.h"
+#include <algorithm>
 #include <array>
 #include <functional>
 #include <future>
@@ -300,9 +301,15 @@ struct GPUContext::Impl {
     }
   }
 
-  DnnWorkspaceHandle* GetDnnWorkspace() {
-    PD_CHECK(workspace_ != nullptr, "the gpu cudnn workspace is nullptr.");
-    return workspace_;
+  // TODO(wilber): The return type is a pointer, to be modified later.
+  // DnnWorkspaceHandle* GetDnnWorkspace() {
+  //   PD_CHECK(workspace_ != nullptr, "the gpu cudnn workspace is nullptr.");
+  //   return workspace_;
+  // }
+  DnnWorkspaceHandle GetDnnWorkspace() {
+    PD_CHECK(allocator_ != nullptr,
+             "the device allocator for gpu context is nullptr.");
+    return DnnWorkspaceHandle(allocator_);
   }
 
   void InitStream() {
@@ -756,7 +763,7 @@ Eigen::GpuDevice* GPUContext::eigen_device() const {
   return impl_->eigen_device();
 }
 
-DnnWorkspaceHandle* GPUContext::cudnn_workspace_handle() const {
+DnnWorkspaceHandle GPUContext::cudnn_workspace_handle() const {
   return impl_->GetDnnWorkspace();
 }
 

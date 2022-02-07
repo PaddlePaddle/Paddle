@@ -28,7 +28,9 @@ namespace pten {
 class DnnWorkspaceHandle {
  public:
   explicit inline DnnWorkspaceHandle(Allocator* allocator)
-      : allocator_(allocator) {}
+      : allocator_(allocator) {
+    mtx_.reset(new std::mutex());
+  }
 
   inline void RunFunc(const std::function<void(void*)>& cudnn_func,
                       size_t required_workspace_bytes) {
@@ -36,7 +38,7 @@ class DnnWorkspaceHandle {
       ReallocWorkspace(required_workspace_bytes);
     }
     {
-      std::lock_guard<std::mutex> guard(mtx_);
+      std::lock_guard<std::mutex> guard(*mtx_);
       cudnn_func(allocation_ ? allocation_->ptr() : nullptr);
     }
   }
@@ -62,13 +64,13 @@ class DnnWorkspaceHandle {
 
   void ReallocWorkspace(size_t required_workspace_bytes);
 
-  DnnWorkspaceHandle(const DnnWorkspaceHandle&) = delete;
+  DnnWorkspaceHandle(DnnWorkspaceHandle&&) = default;
   DnnWorkspaceHandle& operator=(DnnWorkspaceHandle&&) = delete;
 
  private:
   Allocator::AllocationPtr allocation_{nullptr};
   Allocator* allocator_{nullptr};
-  std::mutex mtx_;
+  std::unique_ptr<std::mutex> mtx_;
 };
 
 class GPUContext : public DeviceContext {
@@ -130,7 +132,8 @@ class GPUContext : public DeviceContext {
    *  would be acquired to prevent other threads from accessing the
    *  workspace. Once the handle is destructed, the lock would be released.
    */
-  DnnWorkspaceHandle* cudnn_workspace_handle() const;
+  // TODO(wilber): The return type is a pointer, to be modified later.
+  DnnWorkspaceHandle cudnn_workspace_handle() const;
 
  public:
   /*! \brief  Call cublas function safely. */

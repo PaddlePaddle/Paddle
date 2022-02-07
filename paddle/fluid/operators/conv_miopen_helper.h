@@ -132,7 +132,7 @@ struct SearchAlgorithm<miopenConvFwdAlgorithm_t> {
     algo_t algo;
 
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    auto* workspace_handle = dev_ctx.cudnn_workspace_handle();
+    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
     int find_count;
     miopenConvAlgoPerf_t find_result;
@@ -146,7 +146,7 @@ struct SearchAlgorithm<miopenConvFwdAlgorithm_t> {
               cudnn_workspace_ptr, workspace_size, false));
     };
 
-    workspace_handle->RunFuncSync(cudnn_find_func, workspace_size);
+    workspace_handle.RunFuncSync(cudnn_find_func, workspace_size);
     algo = find_result.fwd_algo;
     VLOG(3) << "choose algo " << algo;
     return algo;
@@ -174,7 +174,7 @@ struct SearchAlgorithm<miopenConvBwdDataAlgorithm_t> {
     algo_t algo;
 
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    auto* workspace_handle = dev_ctx.cudnn_workspace_handle();
+    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
     int find_count;
     miopenConvAlgoPerf_t find_result;
@@ -188,7 +188,7 @@ struct SearchAlgorithm<miopenConvBwdDataAlgorithm_t> {
               cudnn_workspace_ptr, workspace_size, false));
     };
 
-    workspace_handle->RunFuncSync(cudnn_find_func, workspace_size);
+    workspace_handle.RunFuncSync(cudnn_find_func, workspace_size);
     algo = find_result.bwd_data_algo;
     VLOG(3) << "choose algo " << algo;
     return algo;
@@ -216,7 +216,7 @@ struct SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t> {
     algo_t algo;
 
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    auto* workspace_handle = dev_ctx.cudnn_workspace_handle();
+    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
     int find_count;
     miopenConvAlgoPerf_t find_result;
@@ -230,7 +230,7 @@ struct SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t> {
               cudnn_workspace_ptr, workspace_size, false));
     };
 
-    workspace_handle->RunFuncSync(cudnn_find_func, workspace_size);
+    workspace_handle.RunFuncSync(cudnn_find_func, workspace_size);
     algo = find_result.bwd_weights_algo;
     VLOG(3) << "choose algo " << algo;
     return algo;

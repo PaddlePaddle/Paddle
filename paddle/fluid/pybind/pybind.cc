@@ -2668,7 +2668,7 @@ All parameter, weight, gradient are variables in Paddle.
     for (int dev_id : platform::GetSelectedDevices()) {
       auto *dev_ctx = platform::DeviceContextPool::Instance().GetByPlace(
           platform::CUDAPlace(dev_id));
-      dev_ctx->cudnn_workspace_handle()->ResetWorkspace();
+      dev_ctx->cudnn_workspace_handle().ResetWorkspace();
     }
     platform::EmptyCache();
   });

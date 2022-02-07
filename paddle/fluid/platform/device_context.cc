@@ -575,9 +575,13 @@ void CUDADeviceContext::WaitStreamCallback() const {
   pten::GPUContext::WaitStreamCallback();
 }
 
-pten::DnnWorkspaceHandle* CUDADeviceContext::cudnn_workspace_handle() const {
+pten::DnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
   if (thread_ctx_.count(this)) {
-    return workspace_.get();
+    // return workspace_.get();
+    return pten::DnnWorkspaceHandle(
+        memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(GetPlace(), pten::GPUContext::stream())
+            .get());
   }
   return pten::GPUContext::cudnn_workspace_handle();
 }
