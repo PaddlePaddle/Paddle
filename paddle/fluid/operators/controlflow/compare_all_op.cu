@@ -65,7 +65,8 @@ class CompareReduceOpKernel
       auto stream = context.cuda_device_context().stream();
       TensorReduceFunctorImpl<bool, bool, BitwiseAdd,
                               kps::IdentityFunctor<bool>>(
-          tmp, z, kps::IdentityFunctor<bool>(), reduce_dims, stream);
+          context.cuda_device_context(), tmp, z, kps::IdentityFunctor<bool>(),
+          reduce_dims, stream);
     }
   }
 };

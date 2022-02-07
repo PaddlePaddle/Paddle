@@ -461,11 +461,11 @@ class ExecutionArgumentMappingContext : public pten::ArgumentMappingContext {
   }
 
   size_t InputSize(const std::string& name) const override {
-    return ctx_.InputSize(name);
+    return ctx_.MultiInputVar(name).size();
   }
 
   size_t OutputSize(const std::string& name) const override {
-    return ctx_.OutputSize(name);
+    return ctx_.MultiOutputVar(name).size();
   }
 
   bool IsDenseTensorInput(const std::string& name) const override {
@@ -474,6 +474,14 @@ class ExecutionArgumentMappingContext : public pten::ArgumentMappingContext {
 
   bool IsSelectedRowsInput(const std::string& name) const override {
     return ctx_.InputVar(name)->IsType<pten::SelectedRows>();
+  }
+
+  bool IsDenseTensorOutput(const std::string& name) const override {
+    return ctx_.OutputVar(name)->IsType<framework::LoDTensor>();
+  }
+
+  bool IsSelectedRowsOutput(const std::string& name) const override {
+    return ctx_.OutputVar(name)->IsType<pten::SelectedRows>();
   }
 
  private:
@@ -527,11 +535,11 @@ class OperatorWithKernel : public OperatorBase {
   bool SupportGPU() const override {
     auto pten_kernels = pten::KernelFactory::Instance().SelectKernelMap(
         pten::TransToPtenKernelName(type_));
-    auto has_pten_kernel = std::any_of(
-        pten_kernels.begin(), pten_kernels.end(),
-        [](pten::KernelFactory::KernelKeyMap::const_reference kern_pair) {
-          return kern_pair.first.backend() == pten::Backend::GPU;
-        });
+    auto has_pten_kernel =
+        std::any_of(pten_kernels.begin(), pten_kernels.end(),
+                    [](pten::KernelKeyMap::const_reference kern_pair) {
+                      return kern_pair.first.backend() == pten::Backend::GPU;
+                    });
     if (has_pten_kernel) {
       return true;
     } else {
@@ -682,6 +690,7 @@ class OperatorWithKernel : public OperatorBase {
   // new pten kernel, if there is a better design in the future,
   // we may polish the implementation here
   mutable bool run_pten_kernel_ = false;
+  mutable bool run_kp_kernel = false;
   mutable std::unique_ptr<pten::KernelSignature> pt_kernel_signature_;
   mutable std::unique_ptr<pten::Kernel> pt_kernel_;
 };
