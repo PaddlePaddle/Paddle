@@ -31,7 +31,7 @@ namespace kps = pten::kps;
 
 #endif
 
-#define BASE_SIZE 1  // To avoid running errors when k = 0
+#define BASE_SIZE 1  // To avoid running errors when Arity == 0 in args[Arity]
 
 namespace pten {
 
