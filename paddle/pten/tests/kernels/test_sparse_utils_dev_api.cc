@@ -43,7 +43,7 @@ inline void CheckResult(
 
 #if defined(PADDLE_WITH_CUDA)
   if (coo.place() == pten::GPUPlace()) {
-    const auto* dev_ctx_cuda = static_cast<const pten::GPUContext*>(dev_ctx);
+    const auto* dev_ctx_gpu = static_cast<const pten::GPUContext*>(dev_ctx);
     DenseTensor indices(
         alloc.get(),
         DenseTensorMeta(
@@ -53,8 +53,8 @@ inline void CheckResult(
                          DenseTensorMeta(real_elements.dtype(),
                                          real_elements.dims(),
                                          real_elements.layout()));
-    pten::Copy(*dev_ctx_cuda, real_indices, true, &indices);
-    pten::Copy(*dev_ctx_cuda, real_elements, true, &elements);
+    pten::Copy(*dev_ctx_gpu, real_indices, true, &indices);
+    pten::Copy(*dev_ctx_gpu, real_elements, true, &elements);
 
     int cmp_indices = memcmp(indices.data<IndicesT>(),
                              non_zero_indices.data(),
@@ -103,9 +103,6 @@ void TestDenseToSparseCoo(const DenseTensor& dense_x,
 
 // 2. test cuda
 #if defined(PADDLE_WITH_CUDA)
-  // paddle::platform::DeviceContextPool& pool =
-  //     paddle::platform::DeviceContextPool::Instance();
-  // auto* dev_ctx_cuda = pool.GetByPlace(paddle::platform::CUDAPlace());
   pten::GPUContext dev_ctx_gpu;
   dev_ctx_gpu.PartialInitWithoutAllocator();
   dev_ctx_gpu.SetAllocator(
@@ -327,8 +324,6 @@ void TestSparseCsrToCoo(const DDim& dense_dims,
   const auto cuda_alloc =
       std::make_shared<paddle::experimental::DefaultAllocator>(
           paddle::platform::CUDAPlace());
-  // auto& pool = paddle::platform::DeviceContextPool::Instance();
-  // auto* dev_ctx_cuda = pool.GetByPlace(paddle::platform::CUDAPlace());
   pten::DenseTensor d_crows(cuda_alloc.get(), crows_meta);
   pten::DenseTensor d_cols(cuda_alloc.get(), cols_meta);
   pten::DenseTensor d_values(cuda_alloc.get(), values_meta);
@@ -398,8 +393,7 @@ inline void CheckCsrResult(
 
 #if defined(PADDLE_WITH_CUDA)
   if (csr.place() == paddle::platform::CUDAPlace()) {
-    const auto* dev_ctx_cuda =
-        static_cast<const paddle::platform::CUDADeviceContext*>(dev_ctx);
+    const auto* dev_ctx_gpu = static_cast<const pten::GPUContext*>(dev_ctx);
     DenseTensor crows(
         alloc.get(),
         DenseTensorMeta(
@@ -412,9 +406,9 @@ inline void CheckCsrResult(
                          DenseTensorMeta(real_elements.dtype(),
                                          real_elements.dims(),
                                          real_elements.layout()));
-    pten::Copy(*dev_ctx_cuda, real_crows, true, &crows);
-    pten::Copy(*dev_ctx_cuda, real_cols, true, &cols);
-    pten::Copy(*dev_ctx_cuda, real_elements, true, &elements);
+    pten::Copy(*dev_ctx_gpu, real_crows, true, &crows);
+    pten::Copy(*dev_ctx_gpu, real_cols, true, &cols);
+    pten::Copy(*dev_ctx_gpu, real_elements, true, &elements);
 
     int cmp_crows = memcmp(crows.data<IndicesT>(),
                            non_zero_crows.data(),
@@ -493,15 +487,24 @@ void TestCooToCsr(const DDim& dense_dims,
   const auto cuda_alloc =
       std::make_shared<paddle::experimental::DefaultAllocator>(
           paddle::platform::CUDAPlace());
-  auto& pool = paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx_cuda = pool.GetByPlace(paddle::platform::CUDAPlace());
+  pten::GPUContext dev_ctx_gpu;
+  dev_ctx_gpu.PartialInitWithoutAllocator();
+  dev_ctx_gpu.SetAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(dev_ctx_gpu.GetPlace(), dev_ctx_gpu.stream())
+          .get());
+  dev_ctx_gpu.SetHostAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(pten::CPUPlace())
+          .get());
+  dev_ctx_gpu.PartialInitWithAllocator();
   pten::DenseTensor d_indices(cuda_alloc.get(), indices_meta);
   pten::DenseTensor d_values(cuda_alloc.get(), values_meta);
-  pten::Copy(*dev_ctx_cuda, indices, true, &d_indices);
-  pten::Copy(*dev_ctx_cuda, values, true, &d_values);
+  pten::Copy(dev_ctx_gpu, indices, true, &d_indices);
+  pten::Copy(dev_ctx_gpu, values, true, &d_values);
   pten::SparseCooTensor d_coo(d_indices, d_values, dense_dims);
-  auto cuda_sparse_out = sparse::SparseCooToCsr<T>(*dev_ctx_cuda, d_coo);
-  CheckCsrResult<T, int64_t>(dev_ctx_cuda,
+  auto cuda_sparse_out = sparse::SparseCooToCsr<T>(dev_ctx_gpu, d_coo);
+  CheckCsrResult<T, int64_t>(&dev_ctx_gpu,
                              cuda_sparse_out,
                              non_zero_data,
                              crows_data,
@@ -579,12 +582,21 @@ void TestDenseToSparseCsr(const DenseTensor& dense_x,
       cuda_alloc.get(),
       DenseTensorMeta(dense_x.dtype(), dense_x.dims(), dense_x.layout()));
 
-  auto& pool = paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx_cuda = pool.GetByPlace(paddle::platform::CUDAPlace());
-  pten::Copy(*dev_ctx_cuda, dense_x, true, &d_dense_x);
-  auto sparse_out = sparse::DenseToSparseCsr<T>(*dev_ctx_cuda, d_dense_x);
+  pten::GPUContext dev_ctx_gpu;
+  dev_ctx_gpu.PartialInitWithoutAllocator();
+  dev_ctx_gpu.SetAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(dev_ctx_gpu.GetPlace(), dev_ctx_gpu.stream())
+          .get());
+  dev_ctx_gpu.SetHostAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(pten::CPUPlace())
+          .get());
+  dev_ctx_gpu.PartialInitWithAllocator();
+  pten::Copy(dev_ctx_gpu, dense_x, true, &d_dense_x);
+  auto sparse_out = sparse::DenseToSparseCsr<T>(dev_ctx_gpu, d_dense_x);
 
-  CheckCsrResult<T, int64_t>(dev_ctx_cuda,
+  CheckCsrResult<T, int64_t>(&dev_ctx_gpu,
                              sparse_out,
                              non_zero_data,
                              crows_data,
