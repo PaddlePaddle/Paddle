@@ -41,6 +41,10 @@ def prepare_module_path():
     sys.path.append(os.path.join(site_dir, custom_egg_path[0]))
 
 
+# FIXME(zengjinle): do not know how to get the _compile_dir argument
+# on Windows CI when compiling the custom op. Skip it on Windows CI
+# temporarily.
+@unittest.skipIf(os.name == "nt", "Windows does not support yet.")
 class TestCustomRawReluOp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
