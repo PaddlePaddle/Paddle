@@ -20,8 +20,8 @@ limitations under the License. */
 #include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/distributed/service/heter_client.h"
-#include "paddle/fluid/distributed/service/heter_server.h"
+#include "paddle/fluid/distributed/ps/service/heter_client.h"
+#include "paddle/fluid/distributed/ps/service/heter_server.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
@@ -222,6 +222,10 @@ TEST(SENDANDRECV, GPU) {
   framework::Scope* scope = (*micro_scope)[0];
   platform::CUDAPlace place;
   platform::CUDADeviceContext ctx(place);
+  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                       .GetAllocator(place, ctx.stream())
+                       .get());
+  ctx.PartialInitWithAllocator();
 
   framework::Executor exe(place);
   // create var on local scope

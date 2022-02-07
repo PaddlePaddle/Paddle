@@ -252,9 +252,6 @@ class ReduceKernel : public framework::OpKernel<T> {
         dev_ctx.GetPlace(),
         static_cast<framework::proto::VarType::Type>(cast_out_dtype));
 
-    auto pt_x = paddle::experimental::MakePtenDenseTensor(*input);
-    auto pt_out = paddle::experimental::MakePtenDenseTensor(*output);
-
     std::vector<int64_t> tmp_dims(dims.begin(), dims.end());
 
     // call new kernel
@@ -262,8 +259,8 @@ class ReduceKernel : public framework::OpKernel<T> {
                  T, Functor>(
         static_cast<const typename framework::ConvertToPtenContext<
             DeviceContext>::TYPE&>(dev_ctx),
-        *pt_x.get(), reduce_all, tmp_dims, keep_dim,
-        pten::TransToPtenDataType(cast_out_dtype), pt_out.get());
+        *input, reduce_all, tmp_dims, keep_dim,
+        pten::TransToPtenDataType(cast_out_dtype), output);
   }
 };
 template <typename DeviceContext, typename OutT, typename Functor>
@@ -557,7 +554,7 @@ class ReduceOp : public framework::OperatorWithKernel {
       if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
         if (!reduce_all) {
           return framework::KernelSignature(
-              "sum", {"X"}, {"dim", "keep_dim", "out_dtype"}, {"Out"});
+              "sum", {"X"}, {"dim", "out_dtype", "keep_dim"}, {"Out"});
         }
         return framework::KernelSignature(
             "sum_raw", {"X"}, {"dim", "keep_dim", "reduce_all", "out_dtype"},
@@ -724,16 +721,13 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
           static_cast<framework::proto::VarType::Type>(input->type()));
     }
 
-    auto pt_x = paddle::experimental::MakePtenDenseTensor(*input);
-    auto pt_out = paddle::experimental::MakePtenDenseTensor(*output);
     std::vector<int64_t> dims_int64{dims.begin(), dims.end()};
 
     auto pt_out_dtype = pten::TransToPtenDataType(
         static_cast<framework::proto::VarType::Type>(out_dtype));
 
-    pten::Reduce<T, ReduceOp, TransformOp>(dev_ctx, *pt_x.get(), reduce_all,
-                                           dims_int64, false, pt_out_dtype,
-                                           pt_out.get());
+    pten::Reduce<T, ReduceOp, TransformOp>(
+        dev_ctx, *input, reduce_all, dims_int64, false, pt_out_dtype, output);
   }
 };
 #endif

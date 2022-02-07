@@ -25,7 +25,8 @@ namespace paddle {
 namespace framework {
 
 InterpreterCoreEventGarbageCollector::InterpreterCoreEventGarbageCollector() {
-  WorkQueueOptions options(/*num_threads*/ 1, /*allow_spinning*/ true,
+  WorkQueueOptions options(/*name*/ "GarbageCollector", /*num_threads*/ 1,
+                           /*allow_spinning*/ true,
                            /*track_task*/ false);
   queue_ = CreateSingleThreadedWorkQueue(options);
 }

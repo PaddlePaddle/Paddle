@@ -15,7 +15,8 @@ limitations under the License. */
 #include <sstream>
 
 #include "paddle/fluid/framework/pten_utils.h"
-#include "paddle/pten/core/convert_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
+#include "paddle/pten/core/compat/op_utils.h"
 #include "paddle/pten/core/kernel_factory.h"
 
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -59,7 +60,8 @@ OpKernelType TransPtenKernelKeyToOpKernelType(
     const pten::KernelKey& kernel_key) {
   proto::VarType::Type data_type =
       pten::TransToProtoVarType(kernel_key.dtype());
-  platform::Place place = pten::TransToFluidPlace(kernel_key.backend());
+  // no need to set current device id here
+  platform::Place place = pten::TransToFluidPlace(kernel_key.backend(), false);
   DataLayout data_layout = kernel_key.layout();
   LibraryType library_type = LibraryType::kPlain;
   if (kernel_key.backend() == pten::Backend::MKLDNN) {
@@ -89,46 +91,38 @@ pten::KernelKey TransOpKernelTypeToPtenKernelKey(
   return pten::KernelKey(backend, layout, dtype);
 }
 
-KernelSignatureMap* KernelSignatureMap::kernel_signature_map_ = nullptr;
-std::once_flag KernelSignatureMap::init_flag_;
-
-KernelSignatureMap& KernelSignatureMap::Instance() {
-  std::call_once(init_flag_, [] {
-    kernel_signature_map_ = new KernelSignatureMap();
-    for (const auto& pair : OpInfoMap::Instance().map()) {
-      const auto& op_type = pair.first;
-      const auto* op_proto = pair.second.proto_;
-      if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type) &&
-          op_proto) {
-        KernelArgsNameMakerByOpProto maker(op_proto);
-        VLOG(10) << "Register kernel signature for " << op_type;
-        auto success = kernel_signature_map_->map_
-                           .emplace(pten::TransToPtenKernelName(op_type),
-                                    std::move(maker.GetKernelSignature()))
-                           .second;
-        PADDLE_ENFORCE_EQ(
-            success, true,
-            platform::errors::PermissionDenied(
-                "Kernel signature of the operator %s has been registered.",
-                op_type));
-      }
-    }
-  });
-  return *kernel_signature_map_;
-}
-
-bool KernelSignatureMap::Has(const std::string& op_type) const {
-  return map_.find(op_type) != map_.end();
-}
-
-const KernelSignature& KernelSignatureMap::Get(
-    const std::string& op_type) const {
-  auto it = map_.find(op_type);
-  PADDLE_ENFORCE_NE(
-      it, map_.end(),
-      platform::errors::NotFound(
-          "Operator `%s`'s kernel signature is not registered.", op_type));
-  return it->second;
+pten::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
+                              const pten::KernelKey& kernel_key,
+                              const framework::OperatorBase& op) {
+#ifdef PADDLE_WITH_XPU
+  if (platform::is_xpu_place(expected_kernel_key.place_) ||
+      paddle::platform::is_in_xpu_black_list(op.Type())) {
+    VLOG(3) << "pten missing XPU kernel: " << op.Type()
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+    return pten::KernelKey(pten::Backend::CPU, kernel_key.layout(),
+                           kernel_key.dtype());
+  }
+#endif
+#ifdef PADDLE_WITH_ASCEND_CL
+  if (platform::is_npu_place(expected_kernel_key.place_)) {
+    VLOG(3) << "pten missing NPU kernel: " << op.Type()
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+    return pten::KernelKey(pten::Backend::CPU, kernel_key.layout(),
+                           kernel_key.dtype());
+  }
+#endif
+#ifdef PADDLE_WITH_MLU
+  if (platform::is_mlu_place(expected_kernel_key.place_)) {
+    VLOG(3) << "pten missing MLU kernel: " << op.Type()
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+    return pten::KernelKey(pten::Backend::CPU, kernel_key.layout(),
+                           kernel_key.dtype());
+  }
+#endif
+  return pten::KernelKey();
 }
 
 const paddle::SmallVector<std::string>&
@@ -191,9 +185,26 @@ KernelArgsNameMakerByOpProto::GetAttrsArgsNames() {
 }
 
 KernelSignature KernelArgsNameMakerByOpProto::GetKernelSignature() {
-  return KernelSignature(pten::TransToPtenKernelName(op_proto_->type()),
-                         GetInputArgsNames(), GetAttrsArgsNames(),
-                         GetOutputArgsNames());
+  return KernelSignature(op_proto_->type(), GetInputArgsNames(),
+                         GetAttrsArgsNames(), GetOutputArgsNames());
+}
+
+std::once_flag kernel_sig_map_init_flag;
+
+void InitDefaultKernelSignatureMap() {
+  std::call_once(kernel_sig_map_init_flag, [] {
+    for (const auto& pair : paddle::framework::OpInfoMap::Instance().map()) {
+      const auto& op_type = pair.first;
+      const auto* op_proto = pair.second.proto_;
+      if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type) &&
+          op_proto) {
+        paddle::framework::KernelArgsNameMakerByOpProto maker(op_proto);
+        VLOG(10) << "Register kernel signature for " << op_type;
+        pten::DefaultKernelSignatureMap::Instance().Insert(
+            op_type, std::move(maker.GetKernelSignature()));
+      }
+    }
+  });
 }
 
 void SetAllocationForOutputTenosr(pten::DenseTensor* tensor,
