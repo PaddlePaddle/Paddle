@@ -10,6 +10,9 @@ if(WITH_GPU OR APPLE)
     set_tests_properties(test_custom_relu_model PROPERTIES TIMEOUT 180)
 endif()
 
+py_test(test_custom_raw_op_kernel_op SRCS test_custom_raw_op_kernel_op.py)
+set_tests_properties(test_custom_raw_op_kernel_op PROPERTIES TIMEOUT 180)
+
 # CPU custom op tests: only compile .cc file
 py_test(test_dispatch_jit SRCS test_dispatch_jit.py)
 py_test(test_multi_out_jit SRCS test_multi_out_jit.py)
