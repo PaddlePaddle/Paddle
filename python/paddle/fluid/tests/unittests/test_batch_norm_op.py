@@ -342,12 +342,10 @@ class TestFP16BatchNormOpInference(TestBatchNormOpInference):
 
     def test_check_output(self):
         places = []
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
             place = core.CUDAPlace(0)
-            #if core.is_float16_supported(place):
-            print("!!!!!!!!!!!!!!!!!!")
-            places.append(place)
-        print("size ", len(places))
+            if core.is_float16_supported(place):
+                places.append(place)
         for place in places:
             for data_format in ["NCHW", "NHWC"]:
                 self.check_with_place(place, data_format, self.dtype,
