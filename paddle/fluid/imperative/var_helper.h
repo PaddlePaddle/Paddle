@@ -38,8 +38,6 @@ void InitializeVariable(paddle::framework::Variable* var,
                         paddle::framework::proto::VarType::Type var_type);
 template <typename VarType>
 const paddle::platform::Place& GetPlace(const std::shared_ptr<VarType>& var);
-void CopyVariable(const paddle::framework::Variable& src_var,
-                  paddle::framework::Variable* dst_var);
 template <typename VarType>
 const std::string& GetNameFromVar(std::shared_ptr<VarType> var);
 

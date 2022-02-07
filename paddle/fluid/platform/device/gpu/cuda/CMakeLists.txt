@@ -1,4 +1,3 @@
-nv_library(cuda_info SRCS cuda_info.cc DEPS gflags glog enforce monitor dynload_cuda)
 nv_library(cuda_graph SRCS cuda_graph.cc DEPS enforce allocator_facade)
 nv_library(cuda_profiler SRCS cuda_profiler.cc DEPS enforce)
 

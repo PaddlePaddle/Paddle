@@ -16,17 +16,18 @@
 // Created by Jiabin on 2019-08-16.
 //
 
-#include <paddle/fluid/framework/op_registry.h>
-
 #include <memory>
 #include <set>
 #include <string>
 #include <vector>
 
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/basic_engine.h"
+#include "paddle/fluid/imperative/execution_context.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace imperative = paddle::imperative;
 namespace platform = paddle::platform;
@@ -529,6 +530,20 @@ TEST(test_tracer, test_var_op_destruction) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   TestVarOpDestructionMain(platform::CUDAPlace(0));
 #endif
+}
+
+TEST(test_tracer, test_execution_context) {
+  auto op = framework::OpRegistry::CreateOp("mul", {}, {}, {}, false);
+  framework::Scope scope;
+  auto ctx = framework::RuntimeContext({}, {});
+  NameVarBaseMap ins = {{"X", {nullptr}}, {"Y", {nullptr}}};
+  NameVarBaseMap outs = {{"Out", {nullptr}}};
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(platform::CPUPlace());
+  auto dy_ctx = DygraphExecutionContext<VarBase>(
+      (*op.get()), scope, *dev_ctx, ctx, ins, outs, framework::AttributeMap{},
+      framework::AttributeMap{});
+  ASSERT_EQ(dy_ctx.OutputName("Out"), framework::kEmptyVarName);
 }
 
 }  // namespace imperative
