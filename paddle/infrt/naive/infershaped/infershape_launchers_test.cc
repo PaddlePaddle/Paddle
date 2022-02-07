@@ -14,9 +14,9 @@
 
 #include <gtest/gtest.h>
 
-#include "paddle/infrt/naive/infershape/infershape_launcher.h"
-#include "paddle/infrt/naive/infershape/infershape_launchers.h"
-#include "paddle/infrt/naive/infershape/infershape_registry.h"
+#include "paddle/infrt/naive/infershaped/infershaped_kernel_launcher.h"
+#include "paddle/infrt/naive/infershaped/infershaped_kernel_launchers.h"
+#include "paddle/infrt/naive/infershaped/infershaped_registry.h"
 #include "paddle/infrt/tensor/dense_host_tensor.h"
 
 namespace infrt {

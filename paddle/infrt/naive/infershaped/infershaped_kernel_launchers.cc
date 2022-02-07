@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/naive/infershape/infershape_launchers.h"
+#include "paddle/infrt/naive/infershaped/infershaped_kernel_launchers.h"
 
-#include "paddle/infrt/naive/infershape/elementwise_add.h"
-#include "paddle/infrt/naive/infershape/infershape_registry.h"
+#include "paddle/infrt/naive/infershaped/elementwise_add.h"
+#include "paddle/infrt/naive/infershaped/infershaped_registry.h"
 namespace infrt {
 namespace naive {
 

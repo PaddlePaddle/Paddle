@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/naive/infershape/infershape_registry.h"
+#include "paddle/infrt/naive/infershaped/infershaped_registry.h"
 
 #include <unordered_map>
 
-#include "paddle/infrt/naive/infershape/infershape_launcher.h"
+#include "paddle/infrt/naive/infershaped/infershaped_kernel_launcher.h"
 
 namespace infrt {
 namespace naive {

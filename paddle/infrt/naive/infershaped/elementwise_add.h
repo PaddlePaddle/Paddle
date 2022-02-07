@@ -14,8 +14,9 @@
 #pragma once
 
 #include <llvm/ADT/SmallVector.h>
+
 #include "paddle/infrt/host_context/kernel_utils.h"
-#include "paddle/infrt/naive/infershape/infershape_launcher.h"
+#include "paddle/infrt/naive/infershaped/infershaped_kernel_launcher.h"
 
 // This file contains a example of the infershape ElementwiseAdd kernel.
 // Some of the following code should be generated from PTEN by script.
