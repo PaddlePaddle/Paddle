@@ -91,7 +91,7 @@ class Optimizer(object):
             loss = paddle.mean(out)
             adam = paddle.optimizer.Adam(learning_rate=0.1,
                     parameters=linear.parameters())
-            out.backward()
+            loss.backward()
             adam.step()
             adam.clear_grad()
 
@@ -114,7 +114,7 @@ class Optimizer(object):
                     'learning_rate': 0.1
                 }],
                 weight_decay=0.01)                   
-            out.backward()
+            loss.backward()
             sgd.step()
             sgd.clear_grad()
 
@@ -1153,7 +1153,7 @@ class Optimizer(object):
                 adam = paddle.optimizer.Adam(learning_rate=0.1,
                         parameters=linear.parameters(),
                         weight_decay=0.01)
-                out.backward()
+                loss.backward()
                 adam.minimize(loss)
                 adam.clear_grad()
 

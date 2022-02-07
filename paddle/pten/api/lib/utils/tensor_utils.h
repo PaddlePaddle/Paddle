@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
-#include "paddle/pten/core/convert_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_factory.h"
 
@@ -42,11 +42,6 @@ pten::ScalarArray MakePtenScalarArrayFromVar(
 
 pten::ScalarArray MakePtenScalarArrayFromVarList(
     const std::vector<framework::Variable*>& variable_list);
-
-void SharesStorage(pten::DenseTensor* src, paddle::framework::Tensor* dst);
-
-void MakeVariableFromPtenTensor(pten::DenseTensor* src,
-                                framework::Variable* variable);
 
 void ResetTensorByArgDef(pten::DenseTensor* dst,
                          const pten::TensorArgDef& arg_def);
