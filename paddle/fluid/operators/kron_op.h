@@ -306,11 +306,11 @@ struct KronGradOpFunctor {
     auto stream = dev_ctx.stream();  // it is a cuda device_context
     if (dx) {
       TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          dout_x, dx, kps::IdentityFunctor<T>(), {1}, stream);
+          dev_ctx, dout_x, dx, kps::IdentityFunctor<T>(), {1}, stream);
     }
     if (dy) {
       TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          dout_y, dy, kps::IdentityFunctor<T>(), {1}, stream);
+          dev_ctx, dout_y, dy, kps::IdentityFunctor<T>(), {1}, stream);
     }
 #else
     auto* place = dev_ctx.eigen_device();
