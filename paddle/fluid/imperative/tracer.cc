@@ -192,8 +192,6 @@ void Tracer::TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
     VLOG(5) << "Auto mixed precision run operator: " << type;
     if (amp_dtype_ == AmpDtype::D1) {
       new_ins = AutoCastInputs<VarType>(type, ins);
-    } else if (amp_dtype_ == AmpDtype::D2) {
-      VLOG(5) << "skip " << type;
     }
   } else if (amp_level_ == AmpLevel::O2) {
     VLOG(5) << "Pure fp16 run operator: " << type;
