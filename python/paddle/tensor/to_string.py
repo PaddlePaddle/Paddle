@@ -247,7 +247,7 @@ def to_string(var, prefix='Tensor'):
     data = _format_tensor(
         np_var, summary, indent=indent, max_width=max_width, signed=signed)
 
-    _template = _template.format(
+    return _template.format(
         prefix=prefix,
         shape=var.shape,
         dtype=convert_dtype(var.dtype),
@@ -255,11 +255,6 @@ def to_string(var, prefix='Tensor'):
         stop_gradient=var.stop_gradient,
         indent=' ' * indent,
         data=data)
-
-    if var.dtype == paddle.fluid.core.VarDesc.VarType.BF16:
-        _template = _template + "\nthis data real dtype is bfloat16, you can use paddle.cast to cast it to float32 and get it's float data."
-
-    return _template
 
 
 def eager_tensor_to_string(tensor, prefix='Tensor'):

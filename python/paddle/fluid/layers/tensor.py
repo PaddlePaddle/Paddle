@@ -245,8 +245,6 @@ def cast(x, dtype):
     """
     if in_dygraph_mode():
         if not isinstance(dtype, core.VarDesc.VarType):
-            if dtype == 'bfloat16':
-                dtype = 'uint16'
             dtype = convert_np_dtype_to_dtype_(dtype)
         out = _C_ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
         return out

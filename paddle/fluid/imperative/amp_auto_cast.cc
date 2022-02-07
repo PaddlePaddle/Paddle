@@ -295,6 +295,7 @@ template NameVarMap<VarBase> AutoCastInputs<VarBase>(
     const std::string& op_type, const NameVarMap<VarBase>& ins);
 template NameVarMap<egr::EagerTensor> AutoCastInputs<egr::EagerTensor>(
     const std::string& op_type, const NameVarMap<egr::EagerTensor>& ins);
+
 template <typename VarType>
 NameVarMap<VarType> CastPureFp16Inputs(const std::string& op_type,
                                        const NameVarMap<VarType>& ins) {
