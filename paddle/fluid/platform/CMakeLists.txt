@@ -138,6 +138,7 @@ if(WITH_CNCL)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
+    target_link_libraries(device_context gpu_info gpu_context pten_gpu_info)
     target_link_libraries(device_context gpu_resource_pool)
 endif()
 
