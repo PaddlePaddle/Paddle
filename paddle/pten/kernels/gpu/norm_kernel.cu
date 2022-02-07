@@ -21,7 +21,7 @@
 namespace cub = hipcub;
 #endif
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/pten/common/float16.h"
 
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
@@ -30,8 +30,8 @@ namespace cub = hipcub;
 
 namespace pten {
 
-__device__ __forceinline__ platform::float16 square_root(platform::float16 x) {
-  return static_cast<platform::float16>(sqrtf(static_cast<float>(x)));
+__device__ __forceinline__ dtype::float16 square_root(dtype::float16 x) {
+  return static_cast<dtype::float16>(sqrtf(static_cast<float>(x)));
 }
 
 __device__ __forceinline__ float square_root(float x) { return sqrtf(x); }
