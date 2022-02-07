@@ -45,8 +45,10 @@ using ValueVariantType = Variant<int16_t,
                                  tensor::DenseHostTensor,
                                  MlirFunctionExecutable*,
                                  tensor::TensorMap,
-                                 // pten::CPUContext,
-                                 // pten::DenseTensor,
+#ifdef INFRT_WITH_PTEN
+                                 pten::CPUContext,
+                                 pten::DenseTensor,
+#endif
                                  std::vector<int16_t>,
                                  std::vector<int32_t>,
                                  std::vector<int64_t>,

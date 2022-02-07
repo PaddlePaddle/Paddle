@@ -1,11 +1,8 @@
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -24,37 +21,30 @@ limitations under the License. */
 
 namespace pten {
 
-struct CPUContextResource {
-  Eigen::DefaultDevice* device{nullptr};
-};
-
 class CPUContext : public DeviceContext {
  public:
-  // NOTE: DeviceContext hold resources. Used in training scenarios.
   CPUContext();
-
-  // NOTE: Share the same underlying resources, please ensure that resources are
-  // not released.
-  CPUContext(const CPUContext&);
-
   CPUContext(CPUContext&&);
-
-  ~CPUContext();
-
+  explicit CPUContext(const Place&);
+  virtual ~CPUContext();
   Eigen::DefaultDevice* eigen_device() const;
-
-  // TODO(wilber): Whether the interface should be preserved.
   Place GetPlace() const override;
 
  public:
-  // NOTE: External users manage resources. Used in inference scenarios.
-  explicit CPUContext(const CPUContextResource& ctx_res);
+  // NOTE: DeviceContext hold resources. Used in training scenarios.
+  // The interface used by the training scene, DeviceContext will initialize
+  // all resources and delete them when destructing.
+  void Init();
 
+ protected:
+  // NOTE: External users manage resources. Used in inference scenarios.
+  // The Set interface is for inference only, DeviceContext will mark the
+  // resource as external, and will not delete any resource when destructing.
   void SetEigenDevice(Eigen::DefaultDevice* device);
 
  private:
-  struct CPUImpl;
-  std::unique_ptr<CPUImpl> cpu_impl_;
+  struct Impl;
+  std::unique_ptr<Impl> impl_;
 };
 
 }  // namespace pten
