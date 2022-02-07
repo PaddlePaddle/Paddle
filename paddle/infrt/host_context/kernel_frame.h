@@ -31,7 +31,7 @@ namespace host_context {
 class KernelFrame {
  public:
   int GetNumArgs() const { return num_arguments_; }
-  int GetNumResults() const { return num_results_; }
+  int GetNumResults() const { return num_results_ == -1 ? 0 : num_results_; }
   int GetNumAttributes() const {
     return value_or_attrs_.size() - num_arguments_ -
            (num_results_ == -1 ? 0 : num_results_);
