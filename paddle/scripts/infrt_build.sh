@@ -100,7 +100,17 @@ function infrt_gen_and_build() {
     echo "ipipe_log_param_Infrt_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/infrt_summary.txt
 }
 
+function create_fake_models() {
+    cd ${PADDLE_ROOT}/build
+    # create multi_fc model, this will generate "multi_fc_model"
+    python3 -m pip uninstall -y paddlepaddle
+    python3 -m pip install paddlepaddle
+    python3 ${PADDLE_ROOT}/tools/infrt/fake_models/multi_fc.py
+}
+
 function test_infrt() {
+    create_fake_models
+
     # install llvm-lit toolkit
     python3 -m pip install lit
 
