@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include "paddle/pten/core/compat/arg_map_context.h"
 
-#include "paddle/fluid/string/string_helper.h"
 #include "paddle/pten/core/enforce.h"
+#include "paddle/utils/string/string_helper.h"
 
 namespace pten {
 std::ostream& operator<<(std::ostream& os, KernelSignature signature) {

@@ -156,7 +156,8 @@ class CUDARenormKernel : public framework::OpKernel<T> {
         cuda_ctx, ins, &outs, func);
     std::vector<int> reduce_axis = {0, 2};
     TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-        pow_value, &dim_value, kps::IdentityFunctor<T>(), reduce_axis, stream);
+        cuda_ctx, pow_value, &dim_value, kps::IdentityFunctor<T>(), reduce_axis,
+        stream);
     RenormKernelFunc3<T><<<grid2, block2, 0, stream>>>(
         numel, dim_value.mutable_data<T>(context.GetPlace()), p, max_norm);
     RenormKernelFunc4<T><<<grid, block, 0, stream>>>(
@@ -213,10 +214,11 @@ class CUDAGradRenormKernel : public framework::OpKernel<T> {
         dim_divisor);
     std::vector<int> reduce_axis = {0, 2};
     TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-        pow_value, &dim_value, kps::IdentityFunctor<T>(), reduce_axis, stream);
+        ctx.cuda_device_context(), pow_value, &dim_value,
+        kps::IdentityFunctor<T>(), reduce_axis, stream);
     TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-        mul_value, &weight_derivative, kps::IdentityFunctor<T>(), reduce_axis,
-        stream);
+        ctx.cuda_device_context(), mul_value, &weight_derivative,
+        kps::IdentityFunctor<T>(), reduce_axis, stream);
     RenormGradKernelFunc2<T><<<grid, block, 0, stream>>>(
         x_data, dout_data, dx_data, numel,
         dim_value.mutable_data<T>(ctx.GetPlace()),

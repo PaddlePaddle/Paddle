@@ -66,6 +66,13 @@ KernelSignature ElementwiseDivOpArgumentMapping(
 
 }  // namespace pten
 
+PT_REGISTER_BASE_KERNEL_NAME(elementwise_add, add_raw);
+PT_REGISTER_BASE_KERNEL_NAME(elementwise_sub, subtract_raw);
+PT_REGISTER_BASE_KERNEL_NAME(elementwise_mul, muliply_raw);
+PT_REGISTER_BASE_KERNEL_NAME(elementwise_div, divide_raw);
+PT_REGISTER_BASE_KERNEL_NAME(elementwise_add_grad, add_grad);
+PT_REGISTER_BASE_KERNEL_NAME(elementwise_sub_grad, subtract_grad);
+
 PT_REGISTER_ARG_MAPPING_FN(elementwise_add,
                            pten::ElementwiseAddOpArgumentMapping);
 PT_REGISTER_ARG_MAPPING_FN(elementwise_sub,

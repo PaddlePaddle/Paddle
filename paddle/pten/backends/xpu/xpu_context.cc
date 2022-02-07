@@ -13,8 +13,11 @@
 // limitations under the License.
 
 #include "paddle/pten/backends/xpu/xpu_context.h"
+
 #include <memory>
+
 #include "paddle/pten/api/ext/exception.h"
+#include "paddle/pten/common/place.h"
 
 #include "xpu/runtime.h"
 #include "xpu/runtime_ex.h"
@@ -24,12 +27,11 @@ namespace xpu = baidu::xpu::api;
 
 namespace pten {
 
-struct XPUContext::XPUImpl {
-  void SetL3Cache() {
+struct XPUContext::Impl {
+  void SetL3Cache(int l3_size = 14155776) {
     const int MAX_XPU_NUM = 16;
     static void* l3ptrs[MAX_XPU_NUM] = {nullptr};
 
-    int l3_size = 13.5 * 1024 * 1024;
     if (std::getenv("XPU_PADDLE_L3_SIZE") != nullptr) {
       l3_size = atoi(std::getenv("XPU_PADDLE_L3_SIZE"));
     }
@@ -52,48 +54,28 @@ struct XPUContext::XPUImpl {
     }
   }
 
-  XPUImpl() {
-    context_ = xpu::create_context();
-    xpu_version_ = backends::xpu::get_xpu_version(place_.device);
-  }
+  Impl() : place_(XPUPlace()) {}
 
-  explicit XPUImpl(XPUPlace place) : place_(place) {
-    backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
+  explicit Impl(const Place& place) : place_(place) {}
 
-    LOG_FIRST_N(WARNING, 1) << "Please NOTE: xpu device: "
-                            << static_cast<int>(place_.device);
-
-    context_ = xpu::create_context();
-    xpu_version_ = backends::xpu::get_xpu_version(place_.device);
-    SetL3Cache();
-  }
-
-  // Users need to manage external resources.
-  explicit XPUImpl(const XPUContextResource& ctx_res,
-                   const XPUPlace& place = XPUPlace(0))
-      : res_(ctx_res), place_(place) {
-    context_ = res_.context;
-    xpu_version_ = backends::xpu::get_xpu_version(place_.device);
-    SetL3Cache();
-  }
-
-  ~XPUImpl() {
-    if (res_.context == nullptr && context_ != nullptr) {
+  ~Impl() {
+    if (owned_ && context_ != nullptr) {
       xpu::destroy_context(context_);
       context_ = nullptr;
     }
   }
 
-  Place GetPlace() const { return place_; }
-
-  backends::xpu::XPUVersion GetXpuVersion() const { return xpu_version_; }
+  const Place& GetPlace() const { return place_; }
 
   xpu::Context* GetXContext() const {
     PD_CHECK(context_ != nullptr, "the xpu context is nullptr.");
     return context_;
   }
 
-  xpu::BKCLContext_t GetBkclContext() const { return bkcl_context_; }
+  xpu::BKCLContext_t GetBkclContext() const {
+    PD_CHECK(bkcl_context_ != nullptr, "the xpu bkcl_context is nullptr.");
+    return bkcl_context_;
+  }
 
   void Wait() const {
     backends::xpu::SetXPUDeviceId(place_.GetDeviceId());
@@ -101,53 +83,41 @@ struct XPUContext::XPUImpl {
     xpu_wait(context_->xpu_stream);
   }
 
-  void SetXContext(xpu::Context* context) {
-    if (context == nullptr) {
-      return;
-    }
-    res_.context = context;
-    context_ = context;
+  void Init() {
+    owned_ = true;
+    backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
+    LOG_FIRST_N(WARNING, 1) << "Please NOTE: xpu device: "
+                            << static_cast<int>(place_.device);
+    context_ = xpu::create_context();
+    xpu_version_ = backends::xpu::get_xpu_version(place_.device);
+    SetL3Cache();
   }
+
+  void SetXContext(xpu::Context* context) { context_ = context; }
 
   void SetBkclContext(xpu::BKCLContext_t context) { bkcl_context_ = context; }
 
-  XPUContextResource res_;
-  XPUPlace place_;
+  bool owned_{false};
+  Place place_;
   backends::xpu::XPUVersion xpu_version_;
   xpu::Context* context_{nullptr};
+
   // NOTE: Distributed communicator, distributed framework manages its
   // resources, XPUContext only holds references.
   xpu::BKCLContext_t bkcl_context_{nullptr};
 };
 
-XPUContext::XPUContext() : DeviceContext() {
-  impl_ = std::make_unique<XPUImpl>();
-}
+XPUContext::XPUContext() : DeviceContext(), impl_(std::make_unique<Impl>()) {}
 
-XPUContext::XPUContext(const XPUPlace& place) {
-  impl_ = std::make_unique<XPUImpl>(place);
-}
-
-XPUContext::XPUContext(const XPUContext& other) : DeviceContext() {
-  impl_ = std::make_unique<XPUImpl>();
-  impl_->SetXContext(other.x_context());
-  impl_->SetBkclContext(other.bkcl_context());
-}
-
-XPUContext::XPUContext(XPUContext&& other) : DeviceContext() {
-  impl_ = std::move(other.impl_);
-}
+XPUContext::XPUContext(const XPUPlace& place)
+    : DeviceContext(), impl_(std::make_unique<Impl>(place)) {}
 
 XPUContext::~XPUContext() = default;
 
-XPUContext::XPUContext(const XPUContextResource& ctx_res) : DeviceContext() {
-  impl_ = std::make_unique<XPUImpl>(ctx_res);
-}
-
-Place XPUContext::GetPlace() const { return impl_->GetPlace(); }
+const Place& XPUContext::GetPlace() const { return impl_->GetPlace(); }
 
 backends::xpu::XPUVersion XPUContext::xpu_version() const {
-  return impl_->GetXpuVersion();
+  return impl_->xpu_version_;
 }
 
 xpu::Context* XPUContext::x_context() const { return impl_->GetXContext(); }
@@ -158,12 +128,16 @@ xpu::BKCLContext_t XPUContext::bkcl_context() const {
 
 void XPUContext::Wait() const { impl_->Wait(); }
 
-void XPUContext::set_x_context(xpu::Context* context) {
+void XPUContext::SetXContext(xpu::Context* context) {
   impl_->SetXContext(context);
 }
 
-void XPUContext::set_bkcl_context(xpu::BKCLContext_t context) {
+void XPUContext::SetL3Cache(int l3_size) { impl_->SetL3Cache(l3_size); }
+
+void XPUContext::SetBkclContext(xpu::BKCLContext_t context) {
   impl_->SetBkclContext(context);
 }
+
+void XPUContext::Init() { impl_->Init(); }
 
 }  // namespace pten
