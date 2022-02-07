@@ -15,8 +15,8 @@ limitations under the License. */
 #include <sstream>
 
 #include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/compat/op_utils.h"
-#include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_factory.h"
 
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -60,7 +60,8 @@ OpKernelType TransPtenKernelKeyToOpKernelType(
     const pten::KernelKey& kernel_key) {
   proto::VarType::Type data_type =
       pten::TransToProtoVarType(kernel_key.dtype());
-  platform::Place place = pten::TransToFluidPlace(kernel_key.backend());
+  // no need to set current device id here
+  platform::Place place = pten::TransToFluidPlace(kernel_key.backend(), false);
   DataLayout data_layout = kernel_key.layout();
   LibraryType library_type = LibraryType::kPlain;
   if (kernel_key.backend() == pten::Backend::MKLDNN) {
@@ -184,9 +185,8 @@ KernelArgsNameMakerByOpProto::GetAttrsArgsNames() {
 }
 
 KernelSignature KernelArgsNameMakerByOpProto::GetKernelSignature() {
-  return KernelSignature(pten::TransToPtenKernelName(op_proto_->type()),
-                         GetInputArgsNames(), GetAttrsArgsNames(),
-                         GetOutputArgsNames());
+  return KernelSignature(op_proto_->type(), GetInputArgsNames(),
+                         GetAttrsArgsNames(), GetOutputArgsNames());
 }
 
 std::once_flag kernel_sig_map_init_flag;

@@ -83,8 +83,21 @@ struct NCCLContext {
   std::unique_ptr<CUDADeviceContext> ctx_;
   ncclComm_t comm_;
 
-  explicit NCCLContext(int dev_id)
-      : ctx_(new CUDADeviceContext(CUDAPlace(dev_id))), comm_{nullptr} {}
+  explicit NCCLContext(int dev_id) : comm_{nullptr} {
+    ctx_.reset(new CUDADeviceContext(CUDAPlace(dev_id)));
+    ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(CUDAPlace(dev_id), ctx_->stream())
+                           .get());
+    ctx_->SetHostAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CPUPlace())
+            .get());
+    ctx_->SetZeroAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetZeroAllocator(CUDAPlace(dev_id))
+            .get());
+    ctx_->PartialInitWithAllocator();
+  }
 
   gpuStream_t stream() const { return ctx_->stream(); }
   ncclComm_t comm() const { return comm_; }

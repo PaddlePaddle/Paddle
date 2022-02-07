@@ -1220,7 +1220,8 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
 
         // According to op_proto->attrs()
 
-        egr::legacy::RunOp("op_type", ins, outs, attr_map,
+        Controller.Instance().GetCurrentTracer()->TraceOp("op_type", ins, outs,
+  attr_map,
   Controller.Instance().GetExpectedPlace(), {});
 
         // According to fwd_outputs_names
@@ -1401,7 +1402,8 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   const char* FWD_TRACE_OP_TEMPLATE =
       "  paddle::framework::AttributeMap attrs = attr_map;\n"
       "  paddle::framework::AttributeMap default_attrs;\n"
-      "  egr::legacy::RunOp(\"%s\", ins, outs, attrs, \n"
+      "  egr::Controller::Instance().GetCurrentTracer()->TraceOp(\"%s\", ins, "
+      "outs, attrs, \n"
       "     egr::Controller::Instance().GetExpectedPlace(),\n"
       "     &default_attrs, true, {});\n";
   std::string trace_op_str =
@@ -1712,7 +1714,8 @@ static std::string GenerateSingleOpBase(
       "  // Pass the entire attribute map to TraceOp\n"
       "  // The underlying kernel will pickup whatever attribute they need "
       "at runtime\n"
-      "  egr::legacy::RunOp(\"%s\", %s, %s, %s,\n"
+      "  egr::Controller::Instance().GetCurrentTracer()->TraceOp(\"%s\", %s, "
+      "%s, %s,\n"
       "      egr::Controller::Instance().GetExpectedPlace(),\n"
       "      &this->default_attr_map_, false, {});\n";
   std::string trace_opbase_str = paddle::string::Sprintf(
@@ -1822,7 +1825,8 @@ static std::string GenerateGradNodeCCContents(
     // Visit each OpBase
     for(auto iter = "grad_node->begin()"; iter < "grad_node->end()"; iter++) {
         // Simply pass entire attribute map to kernels
-        egr::legacy::RunOp("iter->Type()", ins, outs, this->attr_map_,
+        Controller.Instance().GetCurrentTracer()->TraceOp("iter->Type()", ins,
+  outs, this->attr_map_,
             egr::Controller::Instance().ExpectedPlace(), false, {});
     }
 
@@ -2054,6 +2058,7 @@ static std::string GenerateDygraphHFileIncludes() {
       "#include \"paddle/fluid/eager/autograd_meta.h\"\n"
       "#include \"paddle/pten/api/all.h\"\n"
       "#include \"paddle/fluid/eager/utils.h\"\n"
+      "#include \"paddle/fluid/imperative/tracer.h\"\n"
       "#include \"paddle/fluid/framework/op_registry.h\"\n\n";
 
   dygraph_forward_api_includes_str +=
@@ -2084,8 +2089,7 @@ static void GenerateForwardDygraphFile(const std::string& forward_cc_path,
       "dygraph_forward_api.h\"\n"
       "#include "
       "\"paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes.h\"\n\n"
-      "#include \"paddle/fluid/eager/api/utils/global_utils.h\"\n"
-      "#include \"paddle/fluid/eager/legacy/op_runner.h\"\n";
+      "#include \"paddle/fluid/eager/api/utils/global_utils.h\"\n";
   std::string forward_cc_include_str =
       paddle::string::Sprintf(FORWARD_INCLUDE_TEMPLATE);
   std::ofstream forward_cc_stream(forward_cc_path, std::ios::out);
@@ -2099,7 +2103,7 @@ static void GenerateNodeHFile(const std::string& node_h_path,
   std::string node_h_include_str =
       "#pragma once\n"
       "#include \"paddle/fluid/eager/tensor_wrapper.h\"\n"
-      "#include \"paddle/fluid/eager/legacy/op_runner.h\"\n"
+      "#include \"paddle/fluid/imperative/tracer.h\"\n"
       "#include \"paddle/fluid/eager/grad_node_info.h\"\n\n";
   std::ofstream node_h_stream(node_h_path, std::ios::out);
   node_h_stream << node_h_include_str;

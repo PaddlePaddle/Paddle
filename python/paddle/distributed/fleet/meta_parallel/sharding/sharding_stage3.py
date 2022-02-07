@@ -506,7 +506,13 @@ class ShardingStage3(nn.Layer):
             else:
                 opt_step()
 
+        def _opt_minimize(self):
+            raise RuntimeError(
+                "optimizer.minimize() not support now, please use optimizer.step()"
+            )
+
         self._optim.step = MethodType(_opt_step, self._optim)
+        self._optim.minimize = MethodType(_opt_minimize, self._optim)
 
     def _redefine_opt_clear(self):
         clear_func = self._clear_gradients

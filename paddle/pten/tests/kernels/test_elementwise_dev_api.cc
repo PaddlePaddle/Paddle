@@ -33,17 +33,19 @@ TEST(DEV_API, add) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({3, 10}),
-                                                  pten::DataLayout::NCHW));
+  pten::DenseTensor dense_x(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({3, 10}),
+                            pten::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 
-  pten::DenseTensor dense_y(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({10}),
-                                                  pten::DataLayout::NCHW));
+  pten::DenseTensor dense_y(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({10}),
+                            pten::DataLayout::NCHW));
   auto* dense_y_data =
       dense_y.mutable_data<float>(paddle::platform::CPUPlace());
 
@@ -60,10 +62,10 @@ TEST(DEV_API, add) {
 
   // 2. test API
   pten::CPUContext dev_ctx;
-  dev_ctx.SetDeviceAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
-          .get());
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(paddle::platform::CPUPlace())
+                           .get());
+  dev_ctx.Init();
   auto dense_out = pten::Add<float>(dev_ctx, dense_x, dense_y);
 
   // 3. check result
@@ -85,17 +87,19 @@ TEST(DEV_API, subtract) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({3, 10}),
-                                                  pten::DataLayout::NCHW));
+  pten::DenseTensor dense_x(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({3, 10}),
+                            pten::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 
-  pten::DenseTensor dense_y(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({10}),
-                                                  pten::DataLayout::NCHW));
+  pten::DenseTensor dense_y(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({10}),
+                            pten::DataLayout::NCHW));
   auto* dense_y_data =
       dense_y.mutable_data<float>(paddle::platform::CPUPlace());
 
@@ -112,10 +116,10 @@ TEST(DEV_API, subtract) {
 
   // 2. test API
   pten::CPUContext dev_ctx;
-  dev_ctx.SetDeviceAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
-          .get());
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(paddle::platform::CPUPlace())
+                           .get());
+  dev_ctx.Init();
   auto dense_out = pten::Subtract<float>(dev_ctx, dense_x, dense_y);
 
   // 3. check result
@@ -137,17 +141,19 @@ TEST(DEV_API, divide) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({3, 10}),
-                                                  pten::DataLayout::NCHW));
+  pten::DenseTensor dense_x(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({3, 10}),
+                            pten::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 
-  pten::DenseTensor dense_y(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({10}),
-                                                  pten::DataLayout::NCHW));
+  pten::DenseTensor dense_y(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({10}),
+                            pten::DataLayout::NCHW));
   auto* dense_y_data =
       dense_y.mutable_data<float>(paddle::platform::CPUPlace());
 
@@ -164,10 +170,10 @@ TEST(DEV_API, divide) {
 
   // 2. test API
   pten::CPUContext dev_ctx;
-  dev_ctx.SetDeviceAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
-          .get());
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(paddle::platform::CPUPlace())
+                           .get());
+  dev_ctx.Init();
   auto dense_out = pten::Divide<float>(dev_ctx, dense_x, dense_y);
 
   // 3. check result
@@ -189,17 +195,19 @@ TEST(DEV_API, multiply) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({3, 10}),
-                                                  pten::DataLayout::NCHW));
+  pten::DenseTensor dense_x(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({3, 10}),
+                            pten::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 
-  pten::DenseTensor dense_y(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({10}),
-                                                  pten::DataLayout::NCHW));
+  pten::DenseTensor dense_y(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({10}),
+                            pten::DataLayout::NCHW));
   auto* dense_y_data =
       dense_y.mutable_data<float>(paddle::platform::CPUPlace());
 
@@ -216,10 +224,10 @@ TEST(DEV_API, multiply) {
 
   // 2. test API
   pten::CPUContext dev_ctx;
-  dev_ctx.SetDeviceAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
-          .get());
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(paddle::platform::CPUPlace())
+                           .get());
+  dev_ctx.Init();
   auto dense_out = pten::Multiply<float>(dev_ctx, dense_x, dense_y);
 
   // 3. check result
