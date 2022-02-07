@@ -28,6 +28,10 @@
 #include "paddle/infrt/tensor/dense_tensor_view.h"
 #include "paddle/infrt/tensor/tensor_map.h"
 #include "paddle/infrt/tensor/tensor_shape.h"
+#ifdef INFRT_WITH_PTEN
+#include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/pten/core/dense_tensor.h"
+#endif  // INFRT_WITH_PTEN
 
 namespace infrt {
 namespace host_context {
