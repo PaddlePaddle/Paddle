@@ -29,7 +29,7 @@ TEST(MetaFunctionMap, InferMetaFnExists) {
   pten::MetaTensor meta_x(&dense_x);
   pten::DenseTensor dense_out1;
   pten::MetaTensor meta_out(&dense_out1);
-  pten::UnchangedInferMetaNew(/*is_runtime=*/true, meta_x, &meta_out);
+  pten::UnchangedInferMeta(meta_x, &meta_out);
 
   auto shared_meat_x = std::make_shared<pten::MetaTensor>(&dense_x);
   pten::DenseTensor dense_out2;
