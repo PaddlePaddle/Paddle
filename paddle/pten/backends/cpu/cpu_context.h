@@ -27,6 +27,7 @@ namespace pten {
 class CPUContext : public DeviceContext {
  public:
   CPUContext();
+  CPUContext(CPUContext&&);
   explicit CPUContext(const Place&);
   virtual ~CPUContext();
   Eigen::DefaultDevice* eigen_device() const;
