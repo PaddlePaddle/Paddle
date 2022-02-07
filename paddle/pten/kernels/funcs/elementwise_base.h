@@ -23,8 +23,8 @@ limitations under the License. */
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/fluid/platform/aligned_vector.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/function_traits.h"
+#include "paddle/pten/backends/gpu/gpu_launch_config.h"
 #include "paddle/pten/kernels/primitive/kernel_primitives.h"
 
 namespace kps = pten::kps;
@@ -646,7 +646,8 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
                               VecSize><<<grid_size, block_size, 0, stream>>>(
       ins_data, outs_data, numel, main_offset, func);
 #else
-  auto gpu_config = GetGpuLaunchConfig1D(ctx, numel, VecSize);
+  auto gpu_config =
+      pten::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, VecSize);
   int main_offset = (numel / (VecSize * gpu_config.GetBlockSize())) * VecSize *
                     gpu_config.GetBlockSize();
   auto stream = ctx.stream();
