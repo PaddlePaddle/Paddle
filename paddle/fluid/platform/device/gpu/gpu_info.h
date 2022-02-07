@@ -14,6 +14,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #include <stddef.h>
+#include <array>
 #include <string>
 #include <vector>
 
@@ -52,7 +53,7 @@ int GetGPUMaxThreadsPerBlock(int id);
 int GetCurrentDeviceId();
 
 //! Get the maximum GridDim size for GPU buddy allocator.
-dim3 GetGpuMaxGridDimSize(int);
+std::array<int, 3> GetGpuMaxGridDimSize(int);
 
 //! Get a list of device ids from environment variable or use all.
 std::vector<int> GetSelectedDevices();
@@ -110,7 +111,7 @@ void GpuStreamSync(gpuStream_t stream);
 void GpuDestroyStream(gpuStream_t stream);
 
 // ! Blocks until device has completed all operations.
-void GpuDeviceync();
+void GpuDeviceSync();
 
 //! CudaMalloc with recorded info
 gpuError_t RecordedGpuMalloc(void **ptr, size_t size, int dev_id);
@@ -145,10 +146,9 @@ bool IsGpuMallocRecorded(int dev_id);
 //! Empty idle cached memory held by the allocator.
 void EmptyCache(void);
 
-//! Get the primitive pointer return from cudaMalloc, just for testing
-#ifdef PADDLE_WITH_TESTING
+//! Get the primitive pointer return from cudaMalloc, just implemented with
+//! testing, do not use for release
 void *GetGpuBasePtr(void *ptr, int dev_id);
-#endif
 
 }  // namespace platform
 }  // namespace paddle

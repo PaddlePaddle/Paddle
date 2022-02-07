@@ -194,7 +194,7 @@ static void InclusiveScanInnerDim(const T *x, T *y, size_t outer_dim,
   constexpr size_t kThreadNumY = 32;
 
   size_t grid_dim = (outer_dim + kThreadNumY - 1) / kThreadNumY;
-  grid_dim = std::min<size_t>(grid_dim, dev_ctx.GetCUDAMaxGridDimSize().x);
+  grid_dim = std::min<size_t>(grid_dim, dev_ctx.GetCUDAMaxGridDimSize()[0]);
   dim3 thread_dims(kThreadNumX, kThreadNumY);
   if (reverse) {
     InclusiveScanInnerDimCUDAKernel<
