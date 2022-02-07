@@ -413,7 +413,7 @@ bool DistModel::PrepareFleetExe() {
   // In generation inference model, there is while op and fetch op,
   // add upstream/downstream will result in hang.
   // Q (fleet exe dev): For classification inference, are upstream
-  // and downstream needed?
+  // and downstream needed, since it can fit pipeline sched?
   task_node_->SetType("Compute");
   task_node_->Init();
   executor_desc_ = FleetExecutorDesc();
