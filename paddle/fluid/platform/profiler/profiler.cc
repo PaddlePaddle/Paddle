@@ -64,14 +64,17 @@ void Profiler::Start() {
   }
 }
 
-TraceEventCollector Profiler::Stop() {
+NodeTrees* Profiler::Stop() {
   SynchronizeAllDevice();
   TraceEventCollector collector;
   for (auto& tracer : tracers_) {
     tracer.Get().StopTracing();
     tracer.Get().CollectTraceData(&collector);
   }
-  return collector;
+  NodeTrees* tree =
+      new NodeTrees(collector.HostEvents(), collector.RuntimeEvents(),
+                    collector.DeviceEvents());
+  return tree;
 }
 
 }  // namespace platform
