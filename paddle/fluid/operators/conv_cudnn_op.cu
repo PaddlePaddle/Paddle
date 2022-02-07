@@ -238,7 +238,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
                   dtype};
 
     auto handle = dev_ctx.cudnn_handle();
-    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
+    auto* workspace_handle = dev_ctx.cudnn_workspace_handle();
     DataLayout layout = compute_format == DataLayout::kNHWC ? DataLayout::kNHWC
                                                             : DataLayout::kNCHW;
     if (transformed_input.dims().size() == 5) {
@@ -326,7 +326,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
 // VLOG(4) << "Conv: use_addto = " << ctx.Attr<bool>("use_addto");
 
 #ifdef PADDLE_WITH_HIP
-    workspace_handle.RunFunc(
+    workspace_handle->RunFunc(
         [&](void* workspace_ptr) {
           PADDLE_ENFORCE_GPU_SUCCESS(
               platform::dynload::miopenConvolutionForward(
@@ -338,7 +338,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
         workspace_size);
 #else
     for (int i = 0; i < groups; i++) {
-      workspace_handle.RunFunc(
+      workspace_handle->RunFunc(
           [&](void* workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(
                 platform::dynload::cudnnConvolutionForward(
@@ -607,7 +607,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
                                                    : DataLayout::kNCDHW;
     }
     auto layout_tensor = GetCudnnTensorFormat(layout);
-    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
+    auto* workspace_handle = dev_ctx.cudnn_workspace_handle();
 
     int i_n, i_c, i_d, i_h, i_w;
     int o_n, o_c, o_d, o_h, o_w;
@@ -719,7 +719,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
         Tensor temp_tensor(transformed_input_grad.type());
         temp_tensor.Resize(transformed_input_grad.dims());
         T* temp_tensor_data = temp_tensor.mutable_data<T>(ctx.GetPlace());
-        workspace_handle.RunFunc(
+        workspace_handle->RunFunc(
             [&](void* cudnn_workspace_ptr) {
               PADDLE_ENFORCE_GPU_SUCCESS(
                   platform::dynload::miopenConvolutionBackwardData(
@@ -735,7 +735,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
             temp_tensor_data, &beta, args1.idesc.desc(),
             transformed_input_grad_data));
       } else {
-        workspace_handle.RunFunc(
+        workspace_handle->RunFunc(
             [&](void* cudnn_workspace_ptr) {
               PADDLE_ENFORCE_GPU_SUCCESS(
                   platform::dynload::miopenConvolutionBackwardData(
@@ -750,7 +750,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
 
 #else
       for (int i = 0; i < groups; i++) {
-        workspace_handle.RunFunc(
+        workspace_handle->RunFunc(
             [&](void* cudnn_workspace_ptr) {
               PADDLE_ENFORCE_GPU_SUCCESS(
                   platform::dynload::cudnnConvolutionBackwardData(
@@ -797,7 +797,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     if (filter_grad) {
 // Because beta is zero, it is unnecessary to reset filter_grad.
 #ifdef PADDLE_WITH_HIP
-      workspace_handle.RunFunc(
+      workspace_handle->RunFunc(
           [&](void* cudnn_workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(
                 platform::dynload::miopenConvolutionBackwardWeights(
@@ -809,7 +809,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
           workspace_size);
 #else
       for (int i = 0; i < groups; i++) {
-        workspace_handle.RunFunc(
+        workspace_handle->RunFunc(
             [&](void* cudnn_workspace_ptr) {
               PADDLE_ENFORCE_GPU_SUCCESS(
                   platform::dynload::cudnnConvolutionBackwardFilter(
