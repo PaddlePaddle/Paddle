@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <sstream>
 #include <string>
+#include "boost/lexical_cast.hpp"
 #include "paddle/fluid/framework/ir/fusion_group/operation.h"
 
 namespace paddle {
@@ -56,7 +57,12 @@ static std::string RefineTemplateWithAttr(const std::string& op_type,
   // for example in fill_constant str_value
   std::stringstream str_cvt;
   auto IsNumber = [exp_definition]() -> bool {
-    return exp_definition.find_first_not_of("0123456789") == std::string::npos;
+    try {
+      (void)boost::lexical_cast<double>(exp_definition);
+      return true;
+    } catch (boost::bad_lexical_cast&) {
+      return false;
+    }
   };
 
   if (!IsNumber()) {

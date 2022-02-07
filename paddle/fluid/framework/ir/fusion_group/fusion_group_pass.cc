@@ -50,9 +50,20 @@ void FusionGroupPass::ApplyImpl(ir::Graph* graph) const {
   }
 }
 
+static int GetCurrentDeviceId() {
+  auto dev_ids = platform::GetSelectedDevices();
+  auto cur_dev_id = platform::GetCurrentDeviceId();
+  for (auto dev_id : dev_ids) {
+    if (cur_dev_id == dev_id) {
+      return dev_id;
+    }
+  }
+  return dev_ids[0];
+}
+
 int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
   // TODO(liuyiqun): supported different places
-  platform::CUDAPlace place = platform::CUDAPlace(0);
+  platform::CUDAPlace place = platform::CUDAPlace(GetCurrentDeviceId());
   int index = platform::DeviceCodePool::Init({place}).size(place);
 
   std::vector<std::vector<Node*>> subgraphs =
@@ -84,7 +95,7 @@ bool FusionGroupPass::GenerateCode(fusion_group::SubGraph* subgraph) const {
   VLOG(4) << code_str;
 
   // TODO(liuyiqun): supported different places
-  platform::CUDAPlace place = platform::CUDAPlace(0);
+  platform::CUDAPlace place = platform::CUDAPlace(GetCurrentDeviceId());
   std::unique_ptr<platform::CUDADeviceCode> device_code(
       new platform::CUDADeviceCode(place, subgraph->GetFuncName(), code_str));
   bool is_compiled = device_code->Compile();
