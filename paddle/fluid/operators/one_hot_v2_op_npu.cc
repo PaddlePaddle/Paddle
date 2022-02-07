@@ -18,6 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 
 template <typename T>
 class OneHotV2NPUKernel : public framework::OpKernel<T> {
