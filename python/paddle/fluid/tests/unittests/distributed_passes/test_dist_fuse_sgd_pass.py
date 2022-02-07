@@ -40,8 +40,8 @@ class DemoNet(nn.Layer):
 
 class TestFuseAdamPass(DistPassTestBase):
     def init(self):
-        self.atol = 1e-4
-        self.rtol = 1e-4
+        self.atol = 0.0
+        self.rtol = 0.0
 
     def get_model(self, place, batch_size=32, image_shape=[224, 224, 3]):
         image = paddle.static.data(
