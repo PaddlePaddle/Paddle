@@ -23,9 +23,11 @@ import gen_utils
 class BackwardAPI:
     def __init__(self, backward_item_yaml):
         self.backward_api = backward_item_yaml['backward_api']
-        self.args, self.output_type, self.return_comment = self.parse_and_check_args(
+        self.args, self.output_type_list, self.return_comment = self.parse_and_check_args(
             backward_item_yaml['forward'], backward_item_yaml['args'],
             backward_item_yaml['output'])
+        self.return_type = self.output_type_list[0] if len(
+            self.output_type_list) == 1 else "std::vector<std::vector<Tensor>>"
 
         self.is_base_api = True
         if 'invoke' in backward_item_yaml:
@@ -47,6 +49,20 @@ class BackwardAPI:
             if 'param' not in self.infer_meta or len(self.infer_meta[
                     'param']) == 0:
                 self.infer_meta['param'] = None
+
+            self.data_transform = {
+                'skip_transform': [],
+                'support_trans_dtype': []
+            }
+            if 'data_transform' in backward_item_yaml:
+                if 'skip_transform' in backward_item_yaml['data_transform']:
+                    self.data_transform['skip_transform'] = backward_item_yaml[
+                        'data_transform']['skip_transform']
+                if 'support_trans_dtype' in backward_item_yaml[
+                        'data_transform']:
+                    self.data_transform[
+                        'support_trans_dtype'] = backward_item_yaml[
+                            'data_transform']['support_trans_dtype']
 
     def parse_forward_config(self, forward_config):
         # api_name (const Tensor& input, ... , int attr, ...) -> Tensor(out)
@@ -81,44 +97,82 @@ class BackwardAPI:
                  Please check the args of {self.backward_api} in yaml."
 
         # check the output of backward
-        output_type, return_comment = gen_utils.parse_output(self.backward_api,
-                                                             output_config)
-        assert output_type.count('Tensor') <= len(fw_inputs['names']), \
+        out_type_list, return_comment = gen_utils.parse_output(
+            self.backward_api, output_config)
+        assert len(out_type_list) <= len(fw_inputs['names']), \
             f"{self.backward_api} : Output error: The number of ouputs should be less then the number of inputs of forward api. \
              Please check the output of {self.backward_api} in yaml."
 
-        return bw_args, output_type, return_comment
+        return bw_args, out_type_list, return_comment
 
     def gene_api_declaration(self):
         if self.return_comment:
             return f"""
 // {self.return_comment}
-{self.output_type} {self.backward_api}({self.args['args_declare']});
+{self.return_type} {self.backward_api}({self.args['args_declare']});
 """
 
         else:
             return f"""
-{self.output_type} {self.backward_api}({self.args['args_declare']});
+{self.return_type} {self.backward_api}({self.args['args_declare']});
 """
+
+    def gene_output(self, output_type_list):
+        kernel_output = ""
+        output_names = []
+        output_create = ""
+
+        if len(output_type_list) == 1:
+            kernel_output = 'dense_out'
+            output_names.append('dense_out')
+            output_create = f"""
+  {self.return_type} out;
+  auto dense_out = SetKernelOutput(kernel_backend, &out);"""
+
+        elif len(output_type_list) > 1:
+            output_create = f"""
+  {self.return_type} out({len(output_type_list)});"""
+
+            for i, out_type_item in enumerate(output_type_list):
+                kernel_output = kernel_output + f'dense_out_{i}, '
+                output_names.append(f'dense_out_{i}')
+                if out_type_item == 'Tensor':
+                    get_out_code = f'&out[{i}][0]'
+                    output_create = output_create + f"""
+  out[{i}].emplace_back();"""
+
+                else:
+                    get_out_code = f'&out[{i}]'
+                output_create = output_create + f"""
+  auto dense_out_{i} = SetKernelOutput(kernel_backend, {get_out_code});"""
+
+            kernel_output = kernel_output[:-2]
+        else:
+            raise ValueError(
+                "{} : Output error: the output should not be empty.".format(
+                    self.backward_api))
+
+        return kernel_output, output_names, output_create
 
     def gene_api_code(self):
         if self.is_base_api:
-            input_tensors, kernel_args = gen_utils.get_kernel_args(
-                self.args['inputs']['names'], self.args['attrs'],
-                self.kernel['param'])
-            outputs_args, output_create = gen_utils.gene_output(
-                self.output_type)
+            input_tensors, kernel_args, kernel_signature = gen_utils.get_kernel_args(
+                self.args['inputs'], self.args['attrs'], self.output_type_list,
+                self.kernel['param'], self.data_transform)
+            outputs_args, output_names, output_create = self.gene_output(
+                self.output_type_list)
             return f"""
 // {self.return_comment}
-{self.output_type} {self.backward_api}({self.args["args_define"]}) {{
+{self.return_type} {self.backward_api}({self.args["args_define"]}) {{
 {gen_utils.gene_kernel_select(self.backward_api, self.args['inputs']['names'], self.args['attrs'], self.kernel)}
 
   auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
 {input_tensors}
-{gen_utils.gene_infer_meta(self.args['inputs']['names'], self.args['attrs']['names'], self.infer_meta)}
 {output_create}
+{gen_utils.gene_infer_meta(self.args['inputs']['names'], self.args['attrs']['names'], output_names, self.infer_meta)}
 
-  auto* kernel_fn = kernel.GetVariadicKernelFn<pten::{self.backward_api}_kernel>();
+  using kernel_signature = {kernel_signature};
+  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
   (*kernel_fn)({kernel_args}, {outputs_args});
 
   return out;
@@ -143,7 +197,7 @@ class BackwardAPI:
                 params_code = self.args["args_define"]
             return f"""
 // {self.return_comment}
-{self.output_type} {self.backward_api}({params_code}) {{
+{self.return_type} {self.backward_api}({params_code}) {{
   return {invoke_code};
 }}
 """
@@ -166,9 +220,9 @@ def source_include(header_file_path):
 
 #include "glog/logging.h"
 
-#include "paddle/pten/api/include/kernel_signature.h"
 #include "paddle/pten/api/lib/api_registry.h"
 #include "paddle/pten/api/lib/api_utils.h"
+#include "paddle/pten/api/lib/data_transform.h"
 #include "paddle/pten/api/lib/kernel_dispatch.h"
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/kernel_registry.h"

@@ -17,20 +17,16 @@
 #include <iterator>
 #include <utility>
 
-#include "paddle/pten/core/compat_utils.h"
+#include "paddle/pten/core/device_context.h"
+#include "paddle/pten/core/enforce.h"
 #include "paddle/pten/core/tensor_base.h"
+#include "paddle/pten/core/tensor_utils.h"
 #include "paddle/utils/any.h"
 #include "paddle/utils/small_vector.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
-
 namespace pten {
 
-using DeviceContext = paddle::platform::DeviceContext;
-using DataType = paddle::experimental::DataType;
-using DataLayout = paddle::experimental::DataLayout;
+using DeviceContext = pten::DeviceContext;
 
 /**
  * Note: KernelContext doesn't manage the life if DeviceContext and Tensor
@@ -123,7 +119,7 @@ class KernelContext {
     try {
       return paddle::any_cast<AttrType>(attrs_.at(idx));
     } catch (paddle::bad_any_cast&) {
-      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+      PADDLE_THROW(pten::errors::InvalidArgument(
           "Attribute cast error in Op Kernel Context."));
     }
   }

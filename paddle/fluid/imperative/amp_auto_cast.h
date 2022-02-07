@@ -95,14 +95,15 @@ class AutoCastGuard {
   AmpLevel pre_amp_level_;
 };
 
-NameVarBaseMap AutoCastInputs(const std::string& op_type,
-                              const NameVarBaseMap& ins);
-
-NameVarBaseMap CastPureFp16Inputs(const std::string& op_type,
-                                  const NameVarBaseMap& ins);
-
-NameVarBaseMap CastPureBf16Inputs(const std::string& op_type,
-                                  const NameVarBaseMap& ins);
+template <typename VarType>
+NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
+                                   const NameVarMap<VarType>& ins);
+template <typename VarType>
+NameVarMap<VarType> CastPureFp16Inputs(const std::string& op_type,
+                                       const NameVarMap<VarType>& ins);
+template <typename VarType>
+NameVarMap<VarType> CastPureBf16Inputs(const std::string& op_type,
+                                       const NameVarMap<VarType>& ins);
 
 }  // namespace imperative
 }  // namespace paddle

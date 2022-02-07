@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/os_info.h"
 #include <functional>
-#include <mutex>
 #include <sstream>
 #include <thread>
 #include <vector>
@@ -24,91 +23,17 @@ limitations under the License. */
 #include <unistd.h>
 #elif defined(_MSC_VER)
 #include <processthreadsapi.h>
+#else
+#include <unistd.h>
 #endif
+#include "paddle/fluid/framework/new_executor/workqueue/thread_data_registry.h"
 #include "paddle/fluid/platform/macros.h"  // import DISABLE_COPY_AND_ASSIGN
 
 namespace paddle {
 namespace platform {
 namespace internal {
 
-static uint64_t main_tid =
-    std::hash<std::thread::id>()(std::this_thread::get_id());
-
-template <typename T>
-class ThreadDataRegistry {
-  class ThreadDataHolder;
-
- public:
-  // Singleton
-  static ThreadDataRegistry& GetInstance() {
-    static ThreadDataRegistry instance;
-    return instance;
-  }
-
-  const T& GetCurrentThreadData() { return CurrentThreadData(); }
-
-  void SetCurrentThreadData(const T& val) {
-    std::lock_guard<std::mutex> lock(lock_);
-    CurrentThreadData() = val;
-  }
-
-  // Returns current snapshot of all threads. Make sure there is no thread
-  // create/destory when using it.
-  template <typename = std::enable_if_t<std::is_copy_constructible<T>::value>>
-  std::unordered_map<uint64_t, T> GetAllThreadDataByValue() {
-    std::unordered_map<uint64_t, T> data_copy;
-    std::lock_guard<std::mutex> lock(lock_);
-    data_copy.reserve(tid_map_.size());
-    for (auto& kv : tid_map_) {
-      data_copy.emplace(kv.first, kv.second->GetData());
-    }
-    return std::move(data_copy);
-  }
-
-  void RegisterData(uint64_t tid, ThreadDataHolder* tls_obj) {
-    std::lock_guard<std::mutex> lock(lock_);
-    tid_map_[tid] = tls_obj;
-  }
-
-  void UnregisterData(uint64_t tid) {
-    if (tid == main_tid) {
-      return;
-    }
-    std::lock_guard<std::mutex> lock(lock_);
-    tid_map_.erase(tid);
-  }
-
- private:
-  class ThreadDataHolder {
-   public:
-    ThreadDataHolder() {
-      tid_ = std::hash<std::thread::id>()(std::this_thread::get_id());
-      ThreadDataRegistry::GetInstance().RegisterData(tid_, this);
-    }
-
-    ~ThreadDataHolder() {
-      ThreadDataRegistry::GetInstance().UnregisterData(tid_);
-    }
-
-    T& GetData() { return data_; }
-
-   private:
-    uint64_t tid_;
-    T data_;
-  };
-
-  ThreadDataRegistry() = default;
-
-  DISABLE_COPY_AND_ASSIGN(ThreadDataRegistry);
-
-  T& CurrentThreadData() {
-    static thread_local ThreadDataHolder thread_data;
-    return thread_data.GetData();
-  }
-
-  std::mutex lock_;
-  std::unordered_map<uint64_t, ThreadDataHolder*> tid_map_;  // not owned
-};
+using framework::ThreadDataRegistry;
 
 class InternalThreadId {
  public:

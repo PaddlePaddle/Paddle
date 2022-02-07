@@ -37,7 +37,7 @@ namespace pten {
                        const DenseTensor& y,                                \
                        int axis,                                            \
                        DenseTensor* out) {                                  \
-    out->mutable_data<T>();                                                 \
+    dev_ctx.template Alloc<T>(out);                                         \
     if (x.dims() == y.dims()) {                                             \
       SameDimsElementwiseCompute<SameDims##name##Functor<CPUContext, T>>()( \
           dev_ctx, x, y, out);                                              \
@@ -85,7 +85,7 @@ void DivideRawKernel(const Context& dev_ctx,
                      int axis,
                      DenseTensor* out) {
   // allocate memory for out
-  out->mutable_data<T>();
+  dev_ctx.template Alloc<T>(out);
   if (x.dims() == y.dims() && std::is_floating_point<T>::value) {
     SameDimsElementwiseCompute<SameDimsDivideFunctor<CPUContext, T>>()(
         dev_ctx, x, y, out);

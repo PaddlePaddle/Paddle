@@ -33,7 +33,7 @@ void ScaleKernel(const Context& dev_ctx,
                  bool bias_after_scale,
                  DenseTensor* out) {
   // calc
-  out->mutable_data<T>();
+  dev_ctx.template Alloc<T>(out);
   auto eigen_out = pten::EigenVector<T>::Flatten(*out);
   auto eigen_x = pten::EigenVector<T>::Flatten(x);
   auto& dev = *dev_ctx.eigen_device();
@@ -57,7 +57,7 @@ PT_REGISTER_KERNEL(scale,
                    pten::ScaleKernel,
                    float,
                    double,
-                   paddle::platform::bfloat16,
+                   pten::dtype::bfloat16,
                    uint8_t,
                    int8_t,
                    int16_t,

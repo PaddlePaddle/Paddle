@@ -73,7 +73,7 @@ struct DotGradFunction<DeviceContext,
       auto dout = EigenMatrix<T>::From(*tensor_dout);
 
       if (tensor_dx) {
-        tensor_dx->mutable_data<T>();
+        ctx.template Alloc<T>(tensor_dx);
         auto y = EigenMatrix<T>::From(*tensor_y);
         auto& dev = *ctx.eigen_device();
         Eigen::DSizes<int, 2> size(1, tensor_dx->dims()[1]);
@@ -85,7 +85,7 @@ struct DotGradFunction<DeviceContext,
       }
 
       if (tensor_dy) {
-        tensor_dy->mutable_data<T>();
+        ctx.template Alloc<T>(tensor_dy);
         auto x = EigenMatrix<T>::From(*tensor_x);
         auto& dev = *ctx.eigen_device();
         Eigen::DSizes<int, 2> size(1, tensor_dy->dims()[1]);
@@ -100,7 +100,7 @@ struct DotGradFunction<DeviceContext,
     const auto* data_dout = tensor_dout->data<T>();
 
     if (tensor_dx) {
-      auto* data_dx = tensor_dx->mutable_data<T>();
+      auto* data_dx = ctx.template Alloc<T>(tensor_dx);
       const auto* data_y = tensor_y->data<T>();
       const DDim& dim = tensor_x->dims();
       size_t N = static_cast<size_t>(pten::framework::product(dim));
@@ -115,7 +115,7 @@ struct DotGradFunction<DeviceContext,
     }
 
     if (tensor_dy) {
-      auto* data_dy = tensor_dy->mutable_data<T>();
+      auto* data_dy = ctx.template Alloc<T>(tensor_dy);
       const auto* data_x = tensor_x->data<T>();
       const DDim& dim = tensor_y->dims();
       size_t N = static_cast<size_t>(pten::framework::product(dim));
@@ -164,7 +164,7 @@ struct DotGradFunction<DeviceContext,
       auto dout = EigenMatrix<T>::From(*tensor_dout);
 
       if (tensor_dx) {
-        tensor_dx->mutable_data<T>();
+        ctx.template Alloc<T>(tensor_dx);
         auto y = EigenMatrix<T>::From(*tensor_y);
         auto dx = EigenMatrix<T>::From(*tensor_dx);
         auto& dev = *ctx.eigen_device();
@@ -173,7 +173,7 @@ struct DotGradFunction<DeviceContext,
       }
 
       if (tensor_dy) {
-        tensor_dy->mutable_data<T>();
+        ctx.template Alloc<T>(tensor_dy);
         auto x = EigenMatrix<T>::From(*tensor_x);
         auto dy = EigenMatrix<T>::From(*tensor_dy);
         auto& dev = *ctx.eigen_device();
@@ -189,7 +189,7 @@ struct DotGradFunction<DeviceContext,
     auto const B = d[d.size() - 1];
 
     if (tensor_dx) {
-      auto* dx = tensor_dx->mutable_data<T>();
+      auto* dx = ctx.template Alloc<T>(tensor_dx);
       for (auto j = 0; j < N / B; ++j) {
         auto const ss = dz[j];
         for (auto i = 0; i < B; ++i) *dx++ = *y++ * ss;
@@ -197,7 +197,7 @@ struct DotGradFunction<DeviceContext,
     }
 
     if (tensor_dy) {
-      auto* dy = tensor_dy->mutable_data<T>();
+      auto* dy = ctx.template Alloc<T>(tensor_dy);
       for (auto j = 0; j < N / B; ++j) {
         auto const ss = dz[j];
         for (auto i = 0; i < B; i++) *dy++ = *x++ * ss;
@@ -272,7 +272,7 @@ struct DotDoubleGradFunction<DeviceContext,
     const auto* data_dout = tensor_dout->data<T>();
 
     if (tensor_dx) {
-      auto* data_dx = tensor_dx->mutable_data<T>();
+      auto* data_dx = ctx.template Alloc<T>(tensor_dx);
       const auto* data_ddy = tensor_ddy->data<T>();
       const DDim& dim = tensor_dx->dims();
       size_t N = static_cast<size_t>(product(dim));
@@ -287,7 +287,7 @@ struct DotDoubleGradFunction<DeviceContext,
     }
 
     if (tensor_dy) {
-      auto* data_dy = tensor_dy->mutable_data<T>();
+      auto* data_dy = ctx.template Alloc<T>(tensor_dy);
       const auto* data_ddx = tensor_ddx->data<T>();
       const DDim& dim = tensor_dy->dims();
       size_t N = static_cast<size_t>(product(dim));
@@ -302,7 +302,7 @@ struct DotDoubleGradFunction<DeviceContext,
     }
 
     if (tensor_ddout) {
-      auto* data_ddout = tensor_ddout->mutable_data<T>();
+      auto* data_ddout = ctx.template Alloc<T>(tensor_ddout);
       auto* data_x = tensor_x->data<T>();
       auto* data_y = tensor_y->data<T>();
       auto* data_ddx = tensor_ddx->data<T>();
@@ -351,7 +351,7 @@ struct DotDoubleGradFunction<DeviceContext,
       auto& dev = *ctx.eigen_device();
       auto dout = EigenVector<T>::Flatten(*tensor_dout);
       if (tensor_dx) {
-        tensor_dx->mutable_data<T>();
+        ctx.template Alloc<T>(tensor_dx);
         auto ddy = EigenVector<T>::Flatten(*tensor_ddy);
         Eigen::DSizes<int, 1> size(tensor_ddy->numel());
         auto dx = EigenVector<T>::Flatten(*tensor_dx);
@@ -359,7 +359,7 @@ struct DotDoubleGradFunction<DeviceContext,
       }
 
       if (tensor_dy) {
-        tensor_dy->mutable_data<T>();
+        ctx.template Alloc<T>(tensor_dy);
         auto ddx = EigenVector<T>::Flatten(*tensor_ddx);
         Eigen::DSizes<int, 1> size(tensor_ddx->numel());
 
@@ -368,7 +368,7 @@ struct DotDoubleGradFunction<DeviceContext,
       }
 
       if (tensor_ddout) {
-        tensor_ddout->mutable_data<T>();
+        ctx.template Alloc<T>(tensor_ddout);
         auto x = EigenVector<T>::Flatten(*tensor_x);
         auto y = EigenVector<T>::Flatten(*tensor_y);
         auto ddx = EigenVector<T>::Flatten(*tensor_ddx);
@@ -381,7 +381,7 @@ struct DotDoubleGradFunction<DeviceContext,
     const auto* data_dout = tensor_dout->data<T>();
 
     if (tensor_dx) {
-      auto* data_dx = tensor_dx->mutable_data<T>();
+      auto* data_dx = ctx.template Alloc<T>(tensor_dx);
       const auto* data_ddy = tensor_ddy->data<T>();
       const DDim& dim = tensor_dx->dims();
       size_t N = static_cast<size_t>(product(dim));
@@ -396,7 +396,7 @@ struct DotDoubleGradFunction<DeviceContext,
     }
 
     if (tensor_dy) {
-      auto* data_dy = tensor_dy->mutable_data<T>();
+      auto* data_dy = ctx.template Alloc<T>(tensor_dy);
       const auto* data_ddx = tensor_ddx->data<T>();
       const DDim& dim = tensor_dy->dims();
       size_t N = static_cast<size_t>(product(dim));
@@ -411,7 +411,7 @@ struct DotDoubleGradFunction<DeviceContext,
     }
 
     if (tensor_ddout) {
-      auto* data_ddout = tensor_ddout->mutable_data<T>();
+      auto* data_ddout = ctx.template Alloc<T>(tensor_ddout);
       auto* data_x = tensor_x->data<T>();
       auto* data_y = tensor_y->data<T>();
       auto* data_ddx = tensor_ddx->data<T>();
@@ -552,7 +552,7 @@ struct DotTripleGradFunction<DeviceContext,
     const auto* data_d_ddout = in_tensor_d_ddout->data<T>();
 
     if (out_tensor_d_x) {
-      auto* data_d_x = out_tensor_d_x->mutable_data<T>();
+      auto* data_d_x = ctx.template Alloc<T>(out_tensor_d_x);
       const auto* data_ddy = in_tensor_ddy->data<T>();
 
       const DDim& dim = out_tensor_d_x->dims();
@@ -567,7 +567,7 @@ struct DotTripleGradFunction<DeviceContext,
     }
 
     if (out_tensor_d_y) {
-      auto* data_d_y = out_tensor_d_y->mutable_data<T>();
+      auto* data_d_y = ctx.template Alloc<T>(out_tensor_d_y);
       const auto* data_ddx = in_tensor_ddx->data<T>();
 
       const DDim& dim = out_tensor_d_y->dims();
@@ -582,7 +582,7 @@ struct DotTripleGradFunction<DeviceContext,
     }
 
     if (out_tensor_d_dout) {
-      auto* data_d_dout = out_tensor_d_dout->mutable_data<T>();
+      auto* data_d_dout = ctx.template Alloc<T>(out_tensor_d_dout);
       auto* data_ddx = in_tensor_ddx->data<T>();
       auto* data_ddy = in_tensor_ddy->data<T>();
       auto* data_d_dx = in_tensor_d_dx->data<T>();
@@ -613,7 +613,7 @@ struct DotTripleGradFunction<DeviceContext,
     }
 
     if (out_tensor_d_ddx) {
-      auto* data_d_ddx = out_tensor_d_ddx->mutable_data<T>();
+      auto* data_d_ddx = ctx.template Alloc<T>(out_tensor_d_ddx);
       auto* data_dout = in_tensor_dout->data<T>();
       auto* data_d_dy = in_tensor_d_dy->data<T>();
       auto* data_y = in_tensor_y->data<T>();
@@ -633,7 +633,7 @@ struct DotTripleGradFunction<DeviceContext,
     }
 
     if (out_tensor_d_ddy) {
-      auto* data_d_ddy = out_tensor_d_ddy->mutable_data<T>();
+      auto* data_d_ddy = ctx.template Alloc<T>(out_tensor_d_ddy);
       auto* data_dout = in_tensor_dout->data<T>();
       auto* data_d_dx = in_tensor_d_dx->data<T>();
       auto* data_x = in_tensor_x->data<T>();
@@ -678,7 +678,7 @@ struct DotTripleGradFunction<DeviceContext,
       auto& dev = *ctx.eigen_device();
       auto d_ddout = EigenVector<T>::Flatten(*in_tensor_d_ddout);
       if (out_tensor_d_x) {
-        out_tensor_d_x->mutable_data<T>();
+        ctx.template Alloc<T>(out_tensor_d_x);
         auto ddy = EigenVector<T>::Flatten(*in_tensor_ddy);
         Eigen::DSizes<int, 1> size(in_tensor_ddy->numel());
         auto d_x = EigenVector<T>::Flatten(*out_tensor_d_x);
@@ -686,7 +686,7 @@ struct DotTripleGradFunction<DeviceContext,
       }
 
       if (out_tensor_d_y) {
-        out_tensor_d_y->mutable_data<T>();
+        ctx.template Alloc<T>(out_tensor_d_y);
         auto ddx = EigenVector<T>::Flatten(*in_tensor_ddx);
         Eigen::DSizes<int, 1> size(in_tensor_ddx->numel());
 
@@ -695,7 +695,7 @@ struct DotTripleGradFunction<DeviceContext,
       }
 
       if (out_tensor_d_dout) {
-        out_tensor_d_dout->mutable_data<T>();
+        ctx.template Alloc<T>(out_tensor_d_dout);
         auto ddx = EigenVector<T>::Flatten(*in_tensor_ddx);
         auto ddy = EigenVector<T>::Flatten(*in_tensor_ddy);
         auto d_dx = EigenVector<T>::Flatten(*in_tensor_d_dx);
@@ -705,7 +705,7 @@ struct DotTripleGradFunction<DeviceContext,
       }
 
       if (out_tensor_d_ddx) {
-        out_tensor_d_ddx->mutable_data<T>();
+        ctx.template Alloc<T>(out_tensor_d_ddx);
         auto dout = EigenVector<T>::Flatten(*in_tensor_dout);
         auto y = EigenVector<T>::Flatten(*in_tensor_y);
         auto d_ddout = EigenVector<T>::Flatten(*in_tensor_d_ddout);
@@ -717,7 +717,7 @@ struct DotTripleGradFunction<DeviceContext,
       }
 
       if (out_tensor_d_ddy) {
-        out_tensor_d_ddy->mutable_data<T>();
+        ctx.template Alloc<T>(out_tensor_d_ddy);
         auto dout = EigenVector<T>::Flatten(*in_tensor_dout);
         auto x = EigenVector<T>::Flatten(*in_tensor_x);
         auto d_ddout = EigenVector<T>::Flatten(*in_tensor_d_ddout);
@@ -732,7 +732,7 @@ struct DotTripleGradFunction<DeviceContext,
     const auto* data_d_ddout = in_tensor_d_ddout->data<T>();
 
     if (out_tensor_d_x) {
-      auto* data_d_x = out_tensor_d_x->mutable_data<T>();
+      auto* data_d_x = ctx.template Alloc<T>(out_tensor_d_x);
       const auto* data_ddy = in_tensor_ddy->data<T>();
 
       const DDim& dim = out_tensor_d_x->dims();
@@ -747,7 +747,7 @@ struct DotTripleGradFunction<DeviceContext,
     }
 
     if (out_tensor_d_y) {
-      auto* data_d_y = out_tensor_d_y->mutable_data<T>();
+      auto* data_d_y = ctx.template Alloc<T>(out_tensor_d_y);
       const auto* data_ddx = in_tensor_ddx->data<T>();
 
       const DDim& dim = out_tensor_d_y->dims();
@@ -762,7 +762,7 @@ struct DotTripleGradFunction<DeviceContext,
     }
 
     if (out_tensor_d_dout) {
-      auto* data_d_dout = out_tensor_d_dout->mutable_data<T>();
+      auto* data_d_dout = ctx.template Alloc<T>(out_tensor_d_dout);
       auto* data_ddx = in_tensor_ddx->data<T>();
       auto* data_ddy = in_tensor_ddy->data<T>();
       auto* data_d_dx = in_tensor_d_dx->data<T>();
@@ -790,7 +790,7 @@ struct DotTripleGradFunction<DeviceContext,
     }
 
     if (out_tensor_d_ddx) {
-      auto* data_d_ddx = out_tensor_d_ddx->mutable_data<T>();
+      auto* data_d_ddx = ctx.template Alloc<T>(out_tensor_d_ddx);
       auto* data_dout = in_tensor_dout->data<T>();
       auto* data_d_dy = in_tensor_d_dy->data<T>();
       auto* data_y = in_tensor_y->data<T>();
@@ -809,7 +809,7 @@ struct DotTripleGradFunction<DeviceContext,
     }
 
     if (out_tensor_d_ddy) {
-      auto* data_d_ddy = out_tensor_d_ddy->mutable_data<T>();
+      auto* data_d_ddy = ctx.template Alloc<T>(out_tensor_d_ddy);
       auto* data_dout = in_tensor_dout->data<T>();
       auto* data_d_dx = in_tensor_d_dx->data<T>();
       auto* data_x = in_tensor_x->data<T>();
@@ -838,10 +838,10 @@ void DotGradKernel(const Context& dev_ctx,
                    DenseTensor* dx,
                    DenseTensor* dy) {
   if (dx) {
-    dx->mutable_data<T>();
+    dev_ctx.template Alloc<T>(dx);
   }
   if (dy) {
-    dy->mutable_data<T>();
+    dev_ctx.template Alloc<T>(dy);
   }
   DotGradFunction<Context, T>()(dev_ctx, &x, &y, &dout, dx, dy);
 }
@@ -857,13 +857,13 @@ void DotDoubleGradKernel(const Context& dev_ctx,
                          DenseTensor* dy,
                          DenseTensor* ddout) {
   if (dx) {
-    dx->mutable_data<T>();
+    dev_ctx.template Alloc<T>(dx);
   }
   if (dy) {
-    dy->mutable_data<T>();
+    dev_ctx.template Alloc<T>(dy);
   }
   if (ddout) {
-    ddout->mutable_data<T>();
+    dev_ctx.template Alloc<T>(ddout);
   }
   DotDoubleGradFunction<Context, T>()(
       dev_ctx, &x, &y, &dout, ddx, ddy, dx, dy, ddout);
@@ -885,19 +885,19 @@ void DotTripleGradKernel(const Context& dev_ctx,
                          DenseTensor* d_ddy,
                          DenseTensor* d_dout) {
   if (d_x) {
-    d_x->mutable_data<T>();
+    dev_ctx.template Alloc<T>(d_x);
   }
   if (d_y) {
-    d_y->mutable_data<T>();
+    dev_ctx.template Alloc<T>(d_y);
   }
   if (d_ddx) {
-    d_ddx->mutable_data<T>();
+    dev_ctx.template Alloc<T>(d_ddx);
   }
   if (d_ddy) {
-    d_ddy->mutable_data<T>();
+    dev_ctx.template Alloc<T>(d_ddy);
   }
   if (d_dout) {
-    d_dout->mutable_data<T>();
+    dev_ctx.template Alloc<T>(d_dout);
   }
 
   DotTripleGradFunction<Context, T>()(dev_ctx,

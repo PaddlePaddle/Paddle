@@ -36,7 +36,7 @@ struct TransposeNormal<CPUContext, T> {
     auto in_stride = pten::framework::stride(in.dims());
     auto out_stride = pten::framework::stride(out->dims());
     const T* in_ptr = in.data<T>();
-    T* out_ptr = out->mutable_data<T>();
+    T* out_ptr = dev_ctx.template Alloc<T>(out);
 
     auto transpose_helper = [&](int64_t beg, int64_t end) {
       for (int64_t out_idx = beg; out_idx < end; ++out_idx) {
@@ -63,11 +63,8 @@ DEFINE_CPU_TRANS_NORMAL(bool);
 DEFINE_CPU_TRANS_NORMAL(int8_t);
 DEFINE_CPU_TRANS_NORMAL(uint8_t);
 DEFINE_CPU_TRANS_NORMAL(int16_t);
-DEFINE_CPU_TRANS_NORMAL(uint16_t);
 DEFINE_CPU_TRANS_NORMAL(int32_t);
-DEFINE_CPU_TRANS_NORMAL(uint32_t);
 DEFINE_CPU_TRANS_NORMAL(int64_t);
-DEFINE_CPU_TRANS_NORMAL(uint64_t);
 DEFINE_CPU_TRANS_NORMAL(float);
 DEFINE_CPU_TRANS_NORMAL(double);
 DEFINE_CPU_TRANS_NORMAL(paddle::platform::float16);

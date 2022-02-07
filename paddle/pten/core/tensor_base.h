@@ -14,22 +14,19 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/place.h"
 #include "paddle/pten/common/backend.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
+#include "paddle/pten/common/place.h"
+#include "paddle/pten/core/allocator.h"
 #include "paddle/pten/core/ddim.h"
-#include "paddle/pten/core/storage.h"
 #include "paddle/pten/core/utils/type_registry.h"
 
 namespace pten {
 
 class TensorBase {
  public:
-  using DataType = paddle::experimental::DataType;
-  using DataLayout = paddle::experimental::DataLayout;
   using DDim = pten::framework::DDim;
-  using Place = paddle::platform::Place;
 
   virtual ~TensorBase() = default;
 
@@ -60,6 +57,16 @@ class TensorBase {
   /// \brief Test whether the storage is allocated.
   /// return Whether the storage is allocated.
   virtual bool initialized() const = 0;
+
+  // TODO(Aurelius84): This interface is under intermediate state now.
+  // We will remove DataType argument in the future. Please DO NOT
+  // rely on Datatype to much when design and implement other feature.
+
+  /// \brief Allocate memory with requested size from allocator.
+  /// \return The mutable data pointer value of type T.
+  virtual void* AllocateFrom(Allocator* allocator,
+                             DataType dtype,
+                             size_t requested_size = 0) = 0;
 
   /// \brief Return the type information of the derived class to support
   /// safely downcast in non-rtti environment.

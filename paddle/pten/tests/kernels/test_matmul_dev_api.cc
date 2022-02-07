@@ -17,6 +17,7 @@ limitations under the License. */
 
 #include "paddle/pten/kernels/matmul_kernel.h"
 
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
@@ -33,16 +34,18 @@ TEST(DEV_API, dot) {
       paddle::platform::CPUPlace());
   DenseTensor dense_x(alloc.get(),
                       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                            framework::make_ddim({3, 3}),
+                                            pten::framework::make_ddim({3, 3}),
                                             pten::DataLayout::NCHW));
 
-  auto* dense_x_data = dense_x.mutable_data<float>();
+  auto* dense_x_data =
+      dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 
   DenseTensor dense_y(alloc.get(),
                       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                            framework::make_ddim({3, 3}),
+                                            pten::framework::make_ddim({3, 3}),
                                             pten::DataLayout::NCHW));
-  auto* dense_y_data = dense_y.mutable_data<float>();
+  auto* dense_y_data =
+      dense_y.mutable_data<float>(paddle::platform::CPUPlace());
 
   for (size_t i = 0; i < 9; ++i) {
     dense_x_data[i] = 1.0;
@@ -52,6 +55,10 @@ TEST(DEV_API, dot) {
 
   // 2. test API
   pten::CPUContext dev_ctx;
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(paddle::platform::CPUPlace())
+                           .get());
+  dev_ctx.Init();
   auto out = Matmul<float, CPUContext>(dev_ctx, dense_x, dense_y, false, false);
 
   // 3. check result

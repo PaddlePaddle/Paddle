@@ -29,7 +29,7 @@ void DotKernel(const Context& dev_ctx,
                DenseTensor* out) {
   auto const *x_ptr = x.data<T>(), *x_ptr_ = &x_ptr[0];
   auto const *y_ptr = y.data<T>(), *y_ptr_ = &y_ptr[0];
-  auto* z = out->mutable_data<T>();
+  T* z = dev_ctx.template Alloc<T>(out);
 
   // Loop over the total N elements of both operands while sum-reducing every
   // B pairs along the way where B is the dimension of the least ordered axis

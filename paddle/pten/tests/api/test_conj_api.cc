@@ -35,9 +35,10 @@ TEST(API, conj) {
   auto dense_x = std::make_shared<pten::DenseTensor>(
       alloc.get(),
       pten::DenseTensorMeta(pten::DataType::COMPLEX64,
-                            framework::make_ddim({3, 10}),
+                            pten::framework::make_ddim({3, 10}),
                             pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x->mutable_data<paddle::complex64>();
+  auto* dense_x_data =
+      dense_x->mutable_data<paddle::complex64>(paddle::platform::CPUPlace());
 
   for (size_t i = 0; i < 3; ++i) {
     for (size_t j = 0; j < 10; ++j) {
