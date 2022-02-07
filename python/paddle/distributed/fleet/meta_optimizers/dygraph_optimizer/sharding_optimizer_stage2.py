@@ -70,7 +70,7 @@ class ShardingOptimizerStage2(Optimizer):
                  device="gpu",
                  **kw):
 
-        # super().__init__(optim._learning_rate, params, kw)
+        super().__init__(optim._learning_rate, params, kw)
 
         # Segmentation information
         self._dtype_rank_params = OrderedDict(
@@ -362,6 +362,10 @@ class ShardingOptimizerStage2(Optimizer):
 
         # Synchronize all the updated shards in between the ranks
         self._broadcast_params()
+
+    def minimize(self):
+        raise RuntimeError(
+            "optimizer.minimize() not support now, please use optimizer.step()")
 
     def _clear_cache(self):
         self.__segment_params.clear()

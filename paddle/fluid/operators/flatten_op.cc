@@ -333,18 +333,6 @@ class FlattenContiguousRangeOp : public framework::OperatorWithKernel {
 
     return out_shape;
   }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext &ctx) const override {
-    if (ctx.HasOutput("XShape")) {
-      return framework::KernelSignature("flatten_with_xshape", {"X"},
-                                        {"start_axis", "stop_axis"},
-                                        {"Out", "XShape"});
-    } else {
-      return framework::KernelSignature("flatten", {"X"},
-                                        {"start_axis", "stop_axis"}, {"Out"});
-    }
-  }
 };
 
 class FlattenContiguousRangeOpMaker : public FlattenOpMaker {
