@@ -1224,13 +1224,13 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
     // ScalingParamType<T> beta = ctx.Attr<bool>("use_addto") ? 1.0f :
     // 0.0f;
     // VLOG(4) << "Conv_grad_grad: use_addto = " << ctx.Attr<bool>("use_addto");
-    auto wkspace_handle = dev_ctx.cudnn_workspace_handle();
+    auto* wkspace_handle = dev_ctx.cudnn_workspace_handle();
 
     if (ddO) {
       if (ddX) {
         ddx = transformed_ddX.data<T>();
 #ifdef PADDLE_WITH_HIP
-        wkspace_handle.RunFunc(
+        wkspace_handle->RunFunc(
             [&](void* workspace_ptr) {
               PADDLE_ENFORCE_GPU_SUCCESS(
                   platform::dynload::miopenConvolutionForward(
@@ -1242,7 +1242,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
             workspace_size);
 #else
         for (int i = 0; i < groups; i++) {
-          wkspace_handle.RunFunc(
+          wkspace_handle->RunFunc(
               [&](void* workspace_ptr) {
                 PADDLE_ENFORCE_GPU_SUCCESS(
                     platform::dynload::cudnnConvolutionForward(
@@ -1260,7 +1260,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
       if (ddW) {
 #ifdef PADDLE_WITH_HIP
         // MIOPEN ONLY support beta to be 0.0f
-        wkspace_handle.RunFunc(
+        wkspace_handle->RunFunc(
             [&](void* workspace_ptr) {
               PADDLE_ENFORCE_GPU_SUCCESS(
                   platform::dynload::miopenConvolutionForward(
@@ -1272,7 +1272,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
             workspace_size);
 #else
         for (int i = 0; i < groups; i++) {
-          wkspace_handle.RunFunc(
+          wkspace_handle->RunFunc(
               [&](void* workspace_ptr) {
                 PADDLE_ENFORCE_GPU_SUCCESS(
                     platform::dynload::cudnnConvolutionForward(
@@ -1296,7 +1296,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
     if (dW && ddX) {
       ddx = transformed_ddX.data<T>();
 #ifdef PADDLE_WITH_HIP
-      wkspace_handle.RunFunc(
+      wkspace_handle->RunFunc(
           [&](void* workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(
                 platform::dynload::miopenConvolutionBackwardWeights(
@@ -1308,7 +1308,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
           workspace_size);
 #else
       for (int i = 0; i < groups; i++) {
-        wkspace_handle.RunFunc(
+        wkspace_handle->RunFunc(
             [&](void* workspace_ptr) {
               PADDLE_ENFORCE_GPU_SUCCESS(
                   platform::dynload::cudnnConvolutionBackwardFilter(
@@ -1327,7 +1327,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
     if (dX && ddW) {
       ddw = ddW->data<T>();
 #ifdef PADDLE_WITH_HIP
-      wkspace_handle.RunFunc(
+      wkspace_handle->RunFunc(
           [&](void* workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(
                 platform::dynload::miopenConvolutionBackwardData(
@@ -1339,7 +1339,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
           workspace_size);
 #else
       for (int i = 0; i < groups; i++) {
-        wkspace_handle.RunFunc(
+        wkspace_handle->RunFunc(
             [&](void* workspace_ptr) {
               PADDLE_ENFORCE_GPU_SUCCESS(
                   platform::dynload::cudnnConvolutionBackwardData(

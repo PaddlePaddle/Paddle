@@ -153,55 +153,14 @@ static void StreamCallbackFunc(gpuStream_t stream,
 
 }  // namespace internal
 
-class DnnWorkspaceHandle {
- public:
-  explicit inline DnnWorkspaceHandle(Allocator* allocator)
-      : allocator_(allocator) {}
+void DnnWorkspaceHandle::ResetWorkspace() { allocation_ = nullptr; }
 
-  inline void RunFunc(const std::function<void(void*)>& cudnn_func,
-                      size_t required_workspace_bytes) {
-    if (required_workspace_bytes > WorkspaceSize()) {
-      ReallocWorkspace(required_workspace_bytes);
-    }
-    VLOG(2) << "Cudnn workspace size at RunFunc: "
-            << static_cast<double>(WorkspaceSize()) / (1 << 20) << " MB";
-    {
-      std::lock_guard<std::mutex> guard(mtx_);
-      cudnn_func(allocation_ ? allocation_->ptr() : nullptr);
-    }
-  }
-
-  /*! \brief Thread which call RunFuncSync() would release gpu memory after
-   *  running the function. Currently this function is only used when cudnn
-   *  exhaustive searching and callers have to guarantee that the input function
-   *  is host blocking */
-  inline void RunFuncSync(const std::function<void(void*)>& cudnn_func,
-                          size_t required_workspace_bytes) {
-    RunFunc(cudnn_func, required_workspace_bytes);
-    ResetWorkspace();
-  }
-
-  inline size_t WorkspaceSize() {
-    if (allocation_ == nullptr) {
-      return 0;
-    }
-    return allocation_->size();
-  }
-
-  void ResetWorkspace() { allocation_ = nullptr; }
-
-  void ReallocWorkspace(size_t required_workspace_bytes) {
-    if (required_workspace_bytes <= WorkspaceSize()) return;
-    // reset allocation first before re-allocate to save memory
-    allocation_.reset();
-    allocation_ = allocator_->Allocate(required_workspace_bytes);
-  }
-
- private:
-  Allocator::AllocationPtr allocation_{nullptr};
-  Allocator* allocator_{nullptr};
-  std::mutex mtx_;
-};
+void DnnWorkspaceHandle::ReallocWorkspace(size_t required_workspace_bytes) {
+  if (required_workspace_bytes <= WorkspaceSize()) return;
+  // reset allocation first before re-allocate to save memory
+  allocation_.reset();
+  allocation_ = allocator_->Allocate(required_workspace_bytes);
+}
 
 struct GPUContext::Impl {
   void Init() {
@@ -797,7 +756,7 @@ Eigen::GpuDevice* GPUContext::eigen_device() const {
   return impl_->eigen_device();
 }
 
-DnnWorkspaceHandle* GPUContext::cudnn_workspace_handle() {
+DnnWorkspaceHandle* GPUContext::cudnn_workspace_handle() const {
   return impl_->GetDnnWorkspace();
 }
 

@@ -190,7 +190,7 @@ class CudnnNormConvolution {
     fwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_YSUM, sum_ptr);
     fwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_YSQSUM, sum_of_squares_ptr);
 
-    ctx.cudnn_workspace_handle().RunFunc(
+    ctx.cudnn_workspace_handle()->RunFunc(
         [&](void *workspace_ptr) {
           // workspace ptr
           fwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_WORKSPACE, workspace_ptr);
@@ -298,7 +298,7 @@ class CudnnNormConvolutionGrad {
     wgrad_op->SetOpVariantParamAttrPtr(
         CUDNN_SCALAR_SIZE_T_WORKSPACE_SIZE_IN_BYTES, &workspace_size);
 
-    ctx.cudnn_workspace_handle().RunFunc(
+    ctx.cudnn_workspace_handle()->RunFunc(
         [&](void *workspace_ptr) {
           // workspace ptr
           wgrad_op->SetOpVariantParamAttrPtr(CUDNN_PTR_WORKSPACE,
@@ -317,7 +317,7 @@ class CudnnNormConvolutionGrad {
     // Convolution dgrad followed optionally by batchnorm dgrad
     ScalingParamType<T> alpha = 1.0f;
     ScalingParamType<T> beta = use_addto ? 1.0f : 0.0f;
-    ctx.cudnn_workspace_handle().RunFunc(
+    ctx.cudnn_workspace_handle()->RunFunc(
         [&](void *cudnn_workspace_ptr) {
           PADDLE_ENFORCE_GPU_SUCCESS(
               platform::dynload::cudnnConvolutionBackwardData(

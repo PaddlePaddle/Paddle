@@ -245,8 +245,8 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
                 static_cast<const void*>(bias[i]->data<T>()), cudnn_act_desc,
                 out_desc[i], out_datas[i]));
       };
-      auto workspace_handle = dev_ctx.cudnn_workspace_handle();
-      workspace_handle.RunFunc(func, workspace_size_in_bytes);
+      auto* workspace_handle = dev_ctx.cudnn_workspace_handle();
+      workspace_handle->RunFunc(func, workspace_size_in_bytes);
     }
 
     cudnnTensorDescriptor_t x_desc;

@@ -113,7 +113,7 @@ class CudnnScaleBiasAddRelu {
     ForwardInit(ctx);
     auto handle = ctx.cudnn_handle();
     auto place = ctx.GetPlace();
-    auto workspace_handle = ctx.cudnn_workspace_handle();
+    auto *workspace_handle = ctx.cudnn_workspace_handle();
     fwd_workspace_byte_ = fwd_op_.GetWorkspaceSizeInBytes(handle);
     // Set variant_param
     // input ptr
@@ -146,7 +146,7 @@ class CudnnScaleBiasAddRelu {
     fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_YDATA, out_ptr);
     fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_ACTIVATION_BITMASK, bitmask_ptr);
 
-    workspace_handle.RunFunc(
+    workspace_handle->RunFunc(
         [&](void *workspace_ptr) {
           // workspace ptr
           fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_WORKSPACE, workspace_ptr);
@@ -164,7 +164,7 @@ class CudnnScaleBiasAddRelu {
     BackwardInit(ctx);
     auto handle = ctx.cudnn_handle();
     auto place = ctx.GetPlace();
-    auto workspace_handle = ctx.cudnn_workspace_handle();
+    auto *workspace_handle = ctx.cudnn_workspace_handle();
     bwd_workspace_byte_ = bwd_op_.GetWorkspaceSizeInBytes(handle);
     // Set variant_param
     // input ptr
@@ -203,7 +203,7 @@ class CudnnScaleBiasAddRelu {
       bwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_DZDATA, dz_ptr);
     }
 
-    workspace_handle.RunFunc(
+    workspace_handle->RunFunc(
         [&](void *workspace_ptr) {
           // workspace ptr
           bwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_WORKSPACE, workspace_ptr);

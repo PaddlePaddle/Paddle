@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/stream/cuda_stream.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
+#include "paddle/pten/core/allocator.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
@@ -485,8 +486,11 @@ CUDAContext::~CUDAContext() {
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
     : pten::GPUContext(place) {
   pten::GPUContext::PartialInitWithoutAllocator();
-  cuda_stream_.reset(
-      new stream::CUDAStream(pten::GPUContext::stream(), this->GetPlace()));
+  cuda_stream_.reset(new stream::CUDAStream(pten::GPUContext::stream(), place));
+  workspace_.reset(new pten::DnnWorkspaceHandle(
+      memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(place, pten::GPUContext::stream())
+          .get()));
 }
 
 CUDADeviceContext::~CUDADeviceContext() = default;
@@ -571,8 +575,11 @@ void CUDADeviceContext::WaitStreamCallback() const {
   pten::GPUContext::WaitStreamCallback();
 }
 
-CudnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
-  return CudnnWorkspaceHandle(*this, &cudnn_handle_mtx_);
+pten::DnnWorkspaceHandle* CUDADeviceContext::cudnn_workspace_handle() const {
+  if (thread_ctx_.count(this)) {
+    return workspace_.get();
+  }
+  return pten::GPUContext::cudnn_workspace_handle();
 }
 
 gpuStream_t CUDADeviceContext::stream() const {
