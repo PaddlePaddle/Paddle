@@ -26,18 +26,21 @@ class GradNodeAccumulation : public GradNodeBase {
   ~GradNodeAccumulation() override = default;
 
   // Functor: perform backward computations
-  virtual std::vector<std::vector<egr::EagerTensor>> operator()(
-      const std::vector<std::vector<egr::EagerTensor>>& grads) override;
+  virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
+      const std::vector<std::vector<paddle::experimental::Tensor>>& grads)
+      override;
 
-  void RetainGrad(
-      const std::function<egr::EagerTensor(const egr::EagerTensor&)>& hook);
+  void RetainGrad(const std::function<paddle::experimental::Tensor(
+                      const paddle::experimental::Tensor&)>& hook);
 
-  egr::EagerTensor* Grad() { return &accumulated_grad; }
+  paddle::experimental::Tensor* Grad() { return &accumulated_grad; }
 
  private:
-  egr::EagerTensor accumulated_grad;
+  paddle::experimental::Tensor accumulated_grad;
 
-  std::function<egr::EagerTensor(const egr::EagerTensor&)> retain_grad_hook_;
+  std::function<paddle::experimental::Tensor(
+      const paddle::experimental::Tensor&)>
+      retain_grad_hook_;
 };
 
 }  // namespace egr

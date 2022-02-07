@@ -31,6 +31,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/memory/memcpy.h"
 
+namespace egr {
+class EagerTensor;
+}  // namespace egr
 namespace pten {
 class SelectedRows : public TensorBase,
                      public TypeInfoTraits<TensorBase, SelectedRows> {
@@ -197,6 +200,7 @@ class SelectedRows : public TensorBase,
   std::unique_ptr<DenseTensor> value_{nullptr};
   int64_t height_;  // height indicates the underline tensor's height
   std::unique_ptr<RWLock> rwlock_{nullptr};
+  friend class egr::EagerTensor;
 };
 
 }  // namespace pten
