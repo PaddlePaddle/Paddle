@@ -247,9 +247,10 @@ struct MinGradYFunctor {
 
 template <typename InT, typename OutT>
 struct MinGradXYFunctor {
-  inline HOSTDEVICE pten::framework::Array<OutT, 2> operator()(
-      const InT x, const InT y, const InT dout) {
-    pten::frcamework::Array<OutT, 2> outs;
+  inline HOSTDEVICE pten::framework::Array<OutT, 2> operator()(const InT x,
+                                                               const InT y,
+                                                               const InT dout) {
+    pten::framework::Array<OutT, 2> outs;
     // dx = dout * (x < y)
     outs[0] = static_cast<OutT>(dout * static_cast<InT>(x < y));
     // dy = dout * (x >= y)
@@ -316,8 +317,9 @@ struct MaxGradYFunctor {
 
 template <typename InT, typename OutT>
 struct MaxGradXYFunctor {
-  inline HOSTDEVICE pten::framework::Array<OutT, 2> operator()(
-      const InT x, const InT y, const InT dout) {
+  inline HOSTDEVICE pten::framework::Array<OutT, 2> operator()(const InT x,
+                                                               const InT y,
+                                                               const InT dout) {
     pten::framework::Array<OutT, 2> outs;
     // dx = dout * (x > y)
     outs[0] = static_cast<OutT>(dout * static_cast<InT>(x > y));
