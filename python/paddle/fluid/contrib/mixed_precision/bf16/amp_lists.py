@@ -83,15 +83,18 @@ class AutoMixedPrecisionListsBF16(object):
 bf16_initializer_list = {'fill_constant', 'uniform_random'}
 
 # always bf16
-bf16_list = {'elementwise_add', 'mul'}
+bf16_list = {
+    'conv2d',
+    'matmul',
+    'matmul_v2',
+    'mul',
+}
 
 # depends on the prev_op type
 gray_list = {
-    'cast',
-    'fill_constant',
-    'reduce_mean',
-    'reshape2',
-    'scale',
+    'elementwise_add', 'elementwise_sub', 'elementwise_mul', 'elementwise_div',
+    'relu', 'layer_norm', 'slice', 'concat', 'uniform_random', 'reshape2',
+    'transpose2', 'pool2d', 'sigmoid', 'cast', 'scale', 'fill_constant', 'split'
 }
 
 _, _, _sys_unsupported_bf16_list = core.op_supported_infos(
