@@ -37,3 +37,6 @@ generate_unify_header(backends)
 generate_unify_header(core)
 generate_unify_header(infermeta)
 generate_unify_header(kernels SKIP_SUFFIX grad_kernel)
+
+add_executable(print_pten_kernels print_pten_kernels.cc)
+target_link_libraries(print_pten_kernels pten math_kernel)
