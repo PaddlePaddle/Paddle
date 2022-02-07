@@ -185,9 +185,8 @@ KernelArgsNameMakerByOpProto::GetAttrsArgsNames() {
 }
 
 KernelSignature KernelArgsNameMakerByOpProto::GetKernelSignature() {
-  return KernelSignature(pten::TransToPtenKernelName(op_proto_->type()),
-                         GetInputArgsNames(), GetAttrsArgsNames(),
-                         GetOutputArgsNames());
+  return KernelSignature(op_proto_->type(), GetInputArgsNames(),
+                         GetAttrsArgsNames(), GetOutputArgsNames());
 }
 
 std::once_flag kernel_sig_map_init_flag;

@@ -110,7 +110,7 @@ void ComputeFullArg(const platform::CUDADeviceContext& ctx, const Tensor& input,
     return block_size;
   };
 
-  int64_t max_grid_dimx = ctx.GetCUDAMaxGridDimSize().x;
+  int64_t max_grid_dimx = ctx.GetCUDAMaxGridDimSize()[0];
   int64_t height = pre * post;
   int64_t width = n;
   int64_t grid_size = height < max_grid_dimx ? height : max_grid_dimx;
