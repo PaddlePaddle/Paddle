@@ -758,6 +758,10 @@ PYBIND11_MODULE(core_noavx, m) {
   framework_tensor
       .def("__array__",
            [](framework::Tensor &self) { return TensorToPyArray(self); })
+      .def("_ptr",
+           [](const framework::Tensor &self) {
+             return reinterpret_cast<uintptr_t>(self.data());
+           })
       .def("_is_initialized",
            [](const framework::Tensor &self) { return self.IsInitialized(); })
       .def("_get_dims",
