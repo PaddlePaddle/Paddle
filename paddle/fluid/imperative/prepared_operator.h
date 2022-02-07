@@ -268,15 +268,14 @@ void BuildDygraphPtenKernelContext(
 
     size_t start_idx = (i == 0 ? 0 : kernel_ctx->InputRangeAt(i - 1).second);
 
-    if( ( it == ins.end() ) && ( input_defs[i].type_index == 
-                          std::type_index(typeid(paddle::optional<const pten::DenseTensor&>))  ) )
-    {
-        LOG( ERROR) << "found empty tensor " << input_names[i];
-        kernel_ctx->EmplaceBackInputWithoutSetRange(nullptr);
-        auto end_idx = start_idx + 1;
-        kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
-    }
-    else{
+    if ((it == ins.end()) &&
+        (input_defs[i].type_index ==
+         std::type_index(typeid(paddle::optional<const pten::DenseTensor&>)))) {
+      // LOG(ERROR) << "found empty tensor " << input_names[i];
+      kernel_ctx->EmplaceBackInputWithoutSetRange(nullptr);
+      auto end_idx = start_idx + 1;
+      kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
+    } else {
       auto ins_vector = it->second;
       size_t end_idx = start_idx + ins_vector.size();
 
@@ -456,6 +455,8 @@ void PreparePtenData(const pten::Kernel& pt_kernel,
     auto& in_def = input_defs.at(i);
     auto it = ins.find(input_names[i]);
     if (it == ins.end()) {
+      // LOG( ERROR ) << "can not find " << pt_kernel_signature.name << "\t" <<
+      // input_names[i];
       continue;
     }
     auto& ins_vector = ins.at(input_names[i]);

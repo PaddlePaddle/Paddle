@@ -2013,8 +2013,6 @@ void OperatorWithKernel::BuildPtenKernelContext(
     // calcute the start and end index of the input tensors
     size_t start_idx =
         (i == 0 ? 0 : pt_kernel_context->InputRangeAt(i - 1).second);
-    
-
     // deal with optional here
     if( ( it == ctx.inputs.end() ) && ( input_defs[i].type_index == 
                           std::type_index(typeid(paddle::optional<const pten::DenseTensor&>))  ) )
@@ -2049,13 +2047,12 @@ void OperatorWithKernel::BuildPtenKernelContext(
     size_t start_idx =
         (i == 0 ? 0 : pt_kernel_context->OutputRangeAt(i - 1).second);
 
-    if( it == ctx.outputs.end() )
-    {
-       pt_kernel_context->EmplaceBackInputWithoutSetRange(nullptr);
-        auto end_idx = start_idx + 1;
-        pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx), i);
-    }
-    else{
+    if (it == ctx.outputs.end()) {
+      pt_kernel_context->EmplaceBackOutputWithoutSetRange(nullptr);
+      auto end_idx = start_idx + 1;
+      pt_kernel_context->AssignOutputRange(std::make_pair(start_idx, end_idx),
+                                           i);
+    } else {
       auto& outs_vector = it->second;
 
           size_t end_idx = start_idx + outs_vector.size();

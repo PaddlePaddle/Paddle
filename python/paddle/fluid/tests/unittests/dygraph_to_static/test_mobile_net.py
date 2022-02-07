@@ -520,6 +520,7 @@ def predict_static(args, data):
     paddle.enable_static()
     exe = fluid.Executor(args.place)
     # load inference model
+
     [inference_program, feed_target_names,
      fetch_targets] = fluid.io.load_inference_model(
          args.model_save_dir,
@@ -616,6 +617,7 @@ class TestMobileNet(unittest.TestCase):
         self.assert_same_loss("MobileNetV1")
         # MobileNet-V2
         self.assert_same_loss("MobileNetV2")
+        print("assert mobile fin")
 
         self.verify_predict()
 

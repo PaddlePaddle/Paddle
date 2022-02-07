@@ -48,11 +48,13 @@ class BatchNormOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override;
 
   framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext &ctx) const override {
-    return framework::KernelSignature("batch_norm", {"X", "Scale", "Bias", "Mean", "Variance"},
-                                      {"momentum", "epsilon", "data_layout", "is_test", 
-                                      "use_global_stats", "trainable_statistics", "fuse_with_relu"}, 
-                                      {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance", "ReserveSpace"});
+      const framework::ExecutionContext& ctx) const override {
+    return framework::KernelSignature(
+        "batch_norm", {"X", "Scale", "Bias", "Mean", "Variance"},
+        {"momentum", "epsilon", "data_layout", "is_test", "use_global_stats",
+         "trainable_statistics", "fuse_with_relu"},
+        {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
+         "ReserveSpace"});
   }
 
  protected:
@@ -70,13 +72,15 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override;
 
   framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext &ctx) const override {
-    return framework::KernelSignature("batch_norm_grad", {framework::GradVarName("Y")  ,"X", "Scale", "Bias", "SavedMean", "SavedVariance", \
-                                      "ReserveSpace", "Mean", "Variance" },
-                                      {"momentum", "epsilon", "data_layout", "is_test", 
-                                      "use_global_stats", "trainable_statistics", "fuse_with_relu"}, 
-                                      { framework::GradVarName("X"), framework::GradVarName("Scale"), \
-                                      framework::GradVarName("Bias")    });
+      const framework::ExecutionContext& ctx) const override {
+    return framework::KernelSignature(
+        "batch_norm_grad",
+        {framework::GradVarName("Y"), "X", "Scale", "Bias", "SavedMean",
+         "SavedVariance", "ReserveSpace", "Mean", "Variance"},
+        {"momentum", "epsilon", "data_layout", "is_test", "use_global_stats",
+         "trainable_statistics", "fuse_with_relu"},
+        {framework::GradVarName("X"), framework::GradVarName("Scale"),
+         framework::GradVarName("Bias")});
   }
 
  protected:
@@ -92,6 +96,17 @@ class BatchNormDoubleGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override;
+
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::KernelSignature(
+        "batch_norm_grad_grad",
+        {"DDX", "DDScale", "DDBias", "DY", "X", "Scale", "SavedMean",
+         "SavedVariance", "Mean", "Variance"},
+        {"momentum", "epsilon", "data_layout", "is_test", "use_global_stats",
+         "trainable_statistics", "fuse_with_relu"},
+        {"DX", "DScale", "DDY"});
+  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
