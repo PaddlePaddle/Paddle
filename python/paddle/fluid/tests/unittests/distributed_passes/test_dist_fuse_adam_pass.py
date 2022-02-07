@@ -82,7 +82,7 @@ class TestFuseAdamPass(DistPassTestBase):
             op_type.append(op.type)
             if op.type == "adam":
                 self.assertTrue("@FUSEDVAR@_adam_Param_batch_norm2d_0.b_0" in
-                                op.input("Param"), op.input("Param"))
+                                op.input("Param"))
                 self.assertTrue("@FUSEDVAR@_adam_Grad_batch_norm2d_0.b_0@GRAD"
                                 in op.input("Grad"))
         self.assertTrue("coalesce_tensor" in op_type)
