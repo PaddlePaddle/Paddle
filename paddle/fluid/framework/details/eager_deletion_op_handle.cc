@@ -112,14 +112,12 @@ static bool CanBeErased(ir::MemOptVarInfo *var_info) {
       !var_info->DecreaseRefCnt()) {
     return false;
   }
-  auto parent_info = var_info->ParentHolder();
-  if (parent_info && (parent_info->IsSkippedAllMemoryOptimization() ||
-                      !parent_info->DecreaseRefCnt())) {
-    VLOG(4) << "Skip eager_deletion on var:" << var_info->Name()
-            << " due to parent_info";
-    return false;
+  auto parent_holder = var_info->ParentHolder();
+  // if parent_holder exists, it should meet deletion condition too.
+  if (!parent_holder || CanBeErased(parent_holder.get())) {
+    return true;
   }
-  return true;
+  return false;
 }
 
 void EagerDeletionOpHandle::RunImpl() {

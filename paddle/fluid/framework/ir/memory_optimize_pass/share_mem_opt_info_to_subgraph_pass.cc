@@ -21,6 +21,7 @@
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/operators/cinn/cinn_launch_op.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -60,6 +61,9 @@ static void ShareVarInfoToCinnLaunch(
     VLOG(4) << "No var to be deleted after this cinn_launch op";
     return;
   }
+  VLOG(4) << "Variables would be deleted by eager_deletion_op"
+          << " following the cinn_launch:"
+          << paddle::string::join_strings(vars_to_delete, ',');
 
   const auto& subgraph = paddle2cinn::CinnCompiler::GetInstance()->FindGraph(
       cinn_launch_op->GetOp()->Attr<std::string>(operators::kCompilationKey));
@@ -74,7 +78,7 @@ static void ShareVarInfoToCinnLaunch(
     auto it = cur_place_var_infos.find(var_name);
     PADDLE_ENFORCE_NE(it, cur_place_var_infos.end(),
                       platform::errors::NotFound(
-                          "MemOptVarInfo of Var[%s] not found", var_name));
+                          "MemOptVarInfo of var[%s] not found", var_name));
     varinfo_from_maingraph.emplace(var_name, it->second);
   }
 }
@@ -89,10 +93,10 @@ static void TakeVarInfoFromMainGraph(
     auto cur_it = cur_place_var_infos.find(var_name);
     PADDLE_ENFORCE_NE(cur_it, cur_place_var_infos.end(),
                       platform::errors::NotFound(
-                          "MemOptVarInfo of Var[%s] not found", var_name));
+                          "MemOptVarInfo of var[%s] not found", var_name));
     auto parent_it = parent_var_infos.find(var_name);
     if (parent_it != parent_var_infos.end()) {
-      VLOG(4) << "Var[" << var_name << "] set parent holder";
+      VLOG(4) << "MemOptVarInfo of var[" << var_name << "] set parent holder";
       cur_it->second->SetParentHolder(parent_it->second);
     }
   }

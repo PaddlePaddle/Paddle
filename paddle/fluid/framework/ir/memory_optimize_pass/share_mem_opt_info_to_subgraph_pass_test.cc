@@ -96,19 +96,6 @@ TEST(ShareMemInfoToSubGraphPassTest, test_main_graph_share_var_info) {
   // build test data and apply pass
   auto context = std::make_unique<TestPassContext>(
       BuildProgramWithCinnLaunchOp(compilation_key));
-  LOG(INFO) << "context constructed";
-  ir::MemOptVarInfoMapList mem_opt_var_infos(1);
-  auto& var_infos = mem_opt_var_infos.front();
-  var_infos = {
-      {"var1", std::make_shared<ir::MemOptVarInfo>("var1", 1)},
-      {"var2", std::make_shared<ir::MemOptVarInfo>("var2", 2)},
-      {"var4", std::make_shared<ir::MemOptVarInfo>("var4", 2)},
-      {"var5", std::make_shared<ir::MemOptVarInfo>("var5", 1)},
-  };
-  auto share_pass =
-      ir::PassRegistry::Instance().Get("share_mem_opt_info_to_subgraph_pass");
-  share_pass->SetNotOwned(ir::kMemOptVarInfoMapList, &mem_opt_var_infos);
-  share_pass->Apply(context->graph.get());
 
   // check result
   const auto& result_subgraph =
@@ -118,8 +105,8 @@ TEST(ShareMemInfoToSubGraphPassTest, test_main_graph_share_var_info) {
   ASSERT_EQ(shared_var_infos.size(), 4);
   EXPECT_EQ(shared_var_infos.count("var1"), 1);
   EXPECT_EQ(shared_var_infos.count("var5"), 1);
-  EXPECT_EQ(var_infos.at("var1").get(), shared_var_infos.at("var1").get());
-  EXPECT_EQ(var_infos.at("var5").get(), shared_var_infos.at("var5").get());
+  EXPECT_EQ(shared_var_infos.at("var1").use_count(), 2);
+  EXPECT_EQ(shared_var_infos.at("var5").use_count(), 2);
 }
 
 TEST(ShareMemInfoToSubGraphPassTest, test_sub_graph_take_var_info) {
