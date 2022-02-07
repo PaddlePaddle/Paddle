@@ -143,7 +143,8 @@ TEST(test_layer, test_runtime_context) {
 
   ctx->SyncTypeAndDataType("X", "Out");
 
-  ASSERT_EQ(framework::proto::VarType::FP32, vout->DataType());
+  // Remove DataType check, because it doesn't make sense of set dtype in
+  // dygraph
 
   ASSERT_EQ(framework::proto::VarType::LOD_TENSOR, ctx->GetOutputType("Out"));
 
@@ -157,8 +158,8 @@ TEST(test_layer, test_runtime_context) {
                          framework::ALL_ELEMENTS);
   ctx->SetOutputDataType("Out", framework::proto::VarType::INT8);
 
-  ASSERT_EQ(framework::proto::VarType::INT8, vout->DataType());
-  ASSERT_EQ(framework::proto::VarType::FP64, vout_b->DataType());
+  // Remove DataType check, because it doesn't make sense of set dtype in
+  // dygraph
 
   // no throw, but do nothing
   ASSERT_NO_THROW(

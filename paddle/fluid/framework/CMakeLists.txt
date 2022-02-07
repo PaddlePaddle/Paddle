@@ -118,7 +118,9 @@ cc_test(var_type_traits_test SRCS var_type_traits_test.cc DEPS var_type_traits)
 
 set(BRPC_DEPS "")
 if(WITH_PSLIB OR WITH_PSCORE)
-    set(BRPC_DEPS brpc ssl crypto)
+    if(NOT WITH_HETERPS)
+        set(BRPC_DEPS brpc ssl crypto)
+    endif()
     if(WITH_PSLIB_BRPC)
         set(BRPC_DEPS pslib_brpc)
     endif()
@@ -291,7 +293,7 @@ if(WITH_DISTRIBUTE)
     ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
     pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
     device_context scope framework_proto trainer_desc_proto glog fs shell 
-    fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer
+    fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper metrics lodtensor_printer
     lod_rank_table feed_fetch_method collective_helper ${GLOB_DISTRIBUTE_DEPS}
     graph_to_program_pass variable_helper data_feed_proto timer monitor
     heter_service_proto fleet_executor ${BRPC_DEP})
@@ -313,7 +315,7 @@ if(WITH_DISTRIBUTE)
             pull_dense_worker.cc section_worker.cc heter_section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
             device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
             index_sampler index_wrapper sampler index_dataset_proto
-            lod_rank_table fs shell fleet_wrapper heter_wrapper box_wrapper lodtensor_printer feed_fetch_method
+            lod_rank_table fs shell fleet_wrapper heter_wrapper box_wrapper metrics lodtensor_printer feed_fetch_method
             graph_to_program_pass variable_helper timer monitor heter_service_proto fleet heter_server brpc fleet_executor)
     set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
@@ -334,7 +336,7 @@ if(WITH_DISTRIBUTE)
             ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
             pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
             device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
-            lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
+            lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper metrics lodtensor_printer feed_fetch_method
             graph_to_program_pass variable_helper timer monitor fleet_executor)
   endif()
 elseif(WITH_PSLIB)
@@ -435,11 +437,12 @@ message(STATUS "branch: ${PADDLE_BRANCH}")
 configure_file(commit.h.in commit.h)
 
 cc_library(custom_operator SRCS custom_operator.cc DEPS tensor attribute framework_proto op_registry operator dynamic_loader string_helper pten_tensor op_meta_info pten_api)
-
+cc_library(custom_kernel SRCS custom_kernel.cc DEPS
+           tensor attribute framework_proto op_registry operator dynamic_loader string_helper pten_tensor op_kernel_info pten_api)
 #cc_binary(test_executor SRCS test_executor.cc DEPS executor op_registry ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} )
 #cc_binary(new_executor SRCS new_exec_test.cc DEPS operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} profiler)
 
-set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer dynamic_loader custom_operator)
+set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer dynamic_loader custom_operator custom_kernel)
 
 cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
 
@@ -449,3 +452,4 @@ endif()
 
 cc_test(scope_guard_test SRCS scope_guard_test.cc)
 cc_test(pten_utils_test SRCS pten_utils_test.cc DEPS pten_utils)
+cc_test(custom_kernel_test SRCS custom_kernel_test.cc DEPS custom_kernel pten_tensor)

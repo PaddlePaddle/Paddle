@@ -124,8 +124,17 @@ def train_mlp():
             avg_loss.backward()
             oss_optimizer.step()
 
-    # oss_optimizer clear cache
-    oss_optimizer._clear_cache()
+            # oss_optimizer clear cache
+            oss_optimizer._clear_cache()
+
+            # check optimizer.minimize() error
+            try:
+                oss_optimizer.minimize()
+            except:
+                print(
+                    "====== Find sharding_stage2_optimizer.minimize() error ======"
+                )
+            return
 
 
 if __name__ == '__main__':

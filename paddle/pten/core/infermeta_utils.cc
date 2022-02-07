@@ -70,4 +70,9 @@ MetaTensor* InferMetaContext::MutableOutputAt(size_t idx) {
   return outputs_.at(idx).get();
 }
 
+MetaFunctionMap& MetaFunctionMap::Instance() {
+  static MetaFunctionMap g_meta_fn_map;
+  return g_meta_fn_map;
+}
+
 }  // namespace pten

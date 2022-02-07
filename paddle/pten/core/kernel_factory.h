@@ -23,11 +23,9 @@
 #include "paddle/pten/common/backend.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
-#include "paddle/pten/core/convert_utils.h"
-#include "paddle/pten/core/kernel_def.h"
-
-// See Note [ Why still include the fluid headers? ]
+#include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/enforce.h"
+#include "paddle/pten/core/type_defs.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
 
@@ -48,8 +46,6 @@ using DataLayout = paddle::experimental::DataLayout;
  */
 
 class KernelContext;
-
-using KernelFn = void (*)(KernelContext* ctx);
 
 class KernelKey {
  public:
@@ -200,6 +196,10 @@ class Kernel {
   KernelArgsDef args_def_;
 };
 
+using KernelKeyMap = paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash>;
+
+using KernelNameMap = paddle::flat_hash_map<std::string, KernelKeyMap>;
+
 /**
  * Note: Each Computation need a basic kernel map that named by kernel_name.
  *       Such as for scale op, KernelMap contains a `scale` kernel map,
@@ -208,11 +208,6 @@ class Kernel {
  */
 class KernelFactory {
  public:
-  using KernelKeyMap =
-      paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash>;
-
-  using KernelNameMap = paddle::flat_hash_map<std::string, KernelKeyMap>;
-
   static KernelFactory& Instance();
 
   KernelNameMap& kernels() { return kernels_; }

@@ -13,45 +13,119 @@
 // limitations under the License.
 
 #include "paddle/pten/core/device_context.h"
-#include "paddle/pten/api/ext/exception.h"
+#include "paddle/pten/core/enforce.h"
+#include "paddle/pten/core/tensor_base.h"
 
 namespace pten {
+using DataType = paddle::experimental::DataType;
 
 struct DeviceContext::Impl {
   Impl() = default;
   ~Impl() = default;
 
-  void SetDeviceAllocator(Allocator* allocator) {
+  void SetAllocator(const Allocator* allocator) {
+    PADDLE_ENFORCE_NOT_NULL(
+        allocator,
+        pten::errors::InvalidArgument(
+            "Required allocator shall not be nullptr, but received nullptr."));
     device_allocator_ = allocator;
   }
 
-  void SetHostAllocator(Allocator* allocator) { host_allocator_ = allocator; }
+  void SetHostAllocator(const Allocator* allocator) {
+    PADDLE_ENFORCE_NOT_NULL(
+        allocator,
+        pten::errors::InvalidArgument(
+            "Required allocator shall not be nullptr, but received nullptr."));
+    host_allocator_ = allocator;
+  }
 
-  const Allocator& GetDeviceAllocator() const {
-    PD_CHECK(device_allocator_ != nullptr, "the device_allocator is nullptr.");
+  void SetZeroAllocator(const Allocator* allocator) {
+    PADDLE_ENFORCE_NOT_NULL(
+        allocator,
+        pten::errors::InvalidArgument(
+            "Required allocator shall not be nullptr, but received nullptr."));
+    zero_allocator_ = allocator;
+  }
+
+  const Allocator& GetAllocator() const {
+    PADDLE_ENFORCE_NOT_NULL(
+        device_allocator_,
+        pten::errors::InvalidArgument("Required device_allocator_ shall not be "
+                                      "nullptr, but received nullptr."));
     return *device_allocator_;
   }
 
   const Allocator& GetHostAllocator() const {
-    PD_CHECK(host_allocator_ != nullptr, "the host_allocator is nullptr.");
+    PADDLE_ENFORCE_NOT_NULL(
+        host_allocator_,
+        pten::errors::InvalidArgument("Required host_allocator_ shall not be "
+                                      "nullptr, but received nullptr."));
     return *host_allocator_;
   }
 
-  // TODO(Wilber): Add impl. It seems that tensorbase not have interface to
-  // communicate with allocator.
-  void HostAlloc(TensorBase* tensor) {}
-  void DeviceAlloc(TensorBase* tensor) {}
+  const Allocator& GetZeroAllocator() const {
+    PADDLE_ENFORCE_NOT_NULL(
+        zero_allocator_,
+        pten::errors::InvalidArgument("Required host_allocator_ shall not be "
+                                      "nullptr, but received nullptr."));
+    return *zero_allocator_;
+  }
 
-  Allocator* device_allocator_{nullptr};
-  Allocator* host_allocator_{nullptr};
+  void* Alloc(TensorBase* tensor,
+              DataType dtype = DataType::UNDEFINED,
+              size_t requested_size = 0) const {
+    PADDLE_ENFORCE_NOT_NULL(
+        tensor,
+        pten::errors::InvalidArgument(
+            "Required tensor shall not be nullptr, but received nullptr."));
+    if (dtype == DataType::UNDEFINED) {
+      dtype = tensor->dtype();
+    }
+    auto* allocator =
+        tensor->numel() == 0 ? zero_allocator_ : device_allocator_;
+    return tensor->AllocateFrom(
+        const_cast<Allocator*>(allocator), dtype, requested_size);
+  }
+
+  template <typename T>
+  T* Alloc(TensorBase* tensor, size_t requested_size = 0) const {
+    DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
+    return static_cast<T*>(Alloc(tensor, dtype, requested_size));
+  }
+
+  void* HostAlloc(TensorBase* tensor,
+                  DataType dtype = DataType::UNDEFINED,
+                  size_t requested_size = 0) const {
+    PADDLE_ENFORCE_NOT_NULL(
+        tensor,
+        pten::errors::InvalidArgument(
+            "Required tensor shall not be nullptr, but received nullptr."));
+    if (dtype == DataType::UNDEFINED) {
+      dtype = tensor->dtype();
+    }
+    auto* allocator = tensor->numel() == 0 ? zero_allocator_ : host_allocator_;
+    return tensor->AllocateFrom(
+        const_cast<Allocator*>(allocator), dtype, requested_size);
+  }
+
+  template <typename T>
+  T* HostAlloc(pten::TensorBase* tensor, size_t requested_size = 0) const {
+    DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
+    return static_cast<T*>(HostAlloc(tensor, dtype, requested_size));
+  }
+
+ private:
+  const Allocator* device_allocator_{nullptr};
+  const Allocator* host_allocator_{nullptr};
+  const Allocator* zero_allocator_{nullptr};
 };
 
 DeviceContext::DeviceContext() { impl_ = std::make_unique<Impl>(); }
 
 DeviceContext::DeviceContext(const DeviceContext& other) {
-  impl_->SetDeviceAllocator(
-      const_cast<Allocator*>(&other.GetDeviceAllocator()));
-  impl_->SetHostAllocator(const_cast<Allocator*>(&other.GetHostAllocator()));
+  impl_->SetHostAllocator(&other.GetHostAllocator());
+  impl_->SetAllocator(&other.GetAllocator());
+  impl_->SetZeroAllocator(&other.GetZeroAllocator());
 }
 
 DeviceContext::DeviceContext(DeviceContext&& other) {
@@ -60,26 +134,71 @@ DeviceContext::DeviceContext(DeviceContext&& other) {
 
 DeviceContext::~DeviceContext() = default;
 
-void DeviceContext::SetHostAllocator(Allocator* allocator) {
-  impl_->SetHostAllocator(allocator);
+void DeviceContext::SetAllocator(const Allocator* allocator) {
+  impl_->SetAllocator(allocator);
 }
 
-void DeviceContext::SetDeviceAllocator(Allocator* allocator) {
-  impl_->SetDeviceAllocator(allocator);
+const Allocator& DeviceContext::GetAllocator() const {
+  return impl_->GetAllocator();
+}
+
+void DeviceContext::SetHostAllocator(const Allocator* allocator) {
+  impl_->SetHostAllocator(allocator);
 }
 
 const Allocator& DeviceContext::GetHostAllocator() const {
   return impl_->GetHostAllocator();
 }
 
-const Allocator& DeviceContext::GetDeviceAllocator() const {
-  return impl_->GetDeviceAllocator();
+void DeviceContext::SetZeroAllocator(const Allocator* allocator) {
+  impl_->SetZeroAllocator(allocator);
 }
 
-void DeviceContext::HostAlloc(TensorBase* tensor) { impl_->HostAlloc(tensor); }
-
-void DeviceContext::DeviceAlloc(TensorBase* tensor) {
-  impl_->DeviceAlloc(tensor);
+const Allocator& DeviceContext::GetZeroAllocator() const {
+  return impl_->GetZeroAllocator();
 }
+
+void* DeviceContext::Alloc(TensorBase* tensor,
+                           DataType dtype,
+                           size_t requested_size) const {
+  return impl_->Alloc(tensor, dtype, requested_size);
+}
+
+template <typename T>
+T* DeviceContext::Alloc(TensorBase* tensor, size_t requested_size) const {
+  return impl_->Alloc<T>(tensor, requested_size);
+}
+
+void* DeviceContext::HostAlloc(TensorBase* tensor,
+                               DataType dtype,
+                               size_t requested_size) const {
+  return impl_->HostAlloc(tensor, dtype, requested_size);
+}
+
+template <typename T>
+T* DeviceContext::HostAlloc(TensorBase* tensor, size_t requested_size) const {
+  return impl_->HostAlloc<T>(tensor, requested_size);
+}
+
+#define DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(dtype)              \
+  template dtype* DeviceContext::Alloc(TensorBase* tensor,           \
+                                       size_t requested_size) const; \
+  template dtype* DeviceContext::HostAlloc(TensorBase* tensor,       \
+                                           size_t requested_size) const;
+
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(bool)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(int8_t)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(uint8_t)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(int16_t)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(int32_t)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(int64_t)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(float)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(double)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::bfloat16)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::float16)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex64)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex128)
+
+#undef DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION
 
 }  // namespace pten

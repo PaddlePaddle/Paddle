@@ -441,5 +441,30 @@ void LaunchLayernormResidualDropoutBias(
   }
 }
 
+template <typename T, typename U, typename MaskType,
+          bool ScaleBiasWithSameTypeX = false>
+void LaunchLayernormResidualDropoutGrad(
+    const platform::CUDADeviceContext &dev_ctx, const uint32_t rows,
+    const uint32_t cols, const float epsilon, const float dropout_prob,
+    const bool is_upscale_in_train, const T *d_out, const T *layernorm_src,
+    const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *scale,
+    const LayerNormParamType<T> *mean, const LayerNormParamType<T> *var,
+    const MaskType *mask_data,
+    LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *d_scale,
+    LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *d_layernorm_bias,
+    T *d_residual, T *d_dropout_src) {
+  const T zero = static_cast<T>(0.0f);
+  auto factor = dropout_prob == static_cast<float>(1.0f)
+                    ? zero
+                    : static_cast<T>(1.0f / (1.0f - dropout_prob));
+  if (!is_upscale_in_train) {
+    factor = static_cast<T>(1.0f);
+  }
+  ln_bwd_1024_kernel_driver<
+      T, U, LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>, MaskType>(
+      dev_ctx, rows, cols, epsilon, layernorm_src, scale, mean, var, d_out,
+      d_residual, d_scale, d_layernorm_bias, mask_data, factor, d_dropout_src);
+}
+
 }  // namespace operators
 }  // namespace paddle

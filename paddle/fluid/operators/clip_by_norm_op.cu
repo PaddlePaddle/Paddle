@@ -77,7 +77,7 @@ class ClipByNormKernel<platform::CUDADeviceContext, platform::float16>
         {1}, dev_ctx);
     TensorReduceFunctorImpl<platform::float16, float, kps::AddFunctor,
                             kps::SquareFunctor<platform::float16, float>>(
-        *input, &tmp, kps::SquareFunctor<platform::float16, float>(),
+        dev_ctx, *input, &tmp, kps::SquareFunctor<platform::float16, float>(),
         reduce_dims, dev_ctx.stream());
     auto tmp_eigen = EigenVector<float>::Flatten(tmp);
     auto x_norm = tmp_eigen.sqrt();

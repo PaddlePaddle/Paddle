@@ -30,6 +30,7 @@ from copy import copy
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle.fluid.framework import _in_eager_mode
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.backward import append_backward
 from paddle.fluid.op import Operator
@@ -1831,11 +1832,21 @@ class OpTest(unittest.TestCase):
                 for no_grad_val in no_grad_set:
                     del (inputs[no_grad_val])
 
-                grad_inputs = paddle.grad(
-                    outputs=fluid.layers.utils.flatten(outputs),
-                    inputs=fluid.layers.utils.flatten(inputs),
-                    grad_outputs=grad_outputs)
-                return [grad.numpy() for grad in grad_inputs]
+                if _in_eager_mode():
+                    core.eager.run_backward(
+                        fluid.layers.utils.flatten(outputs), grad_outputs,
+                        False)
+                    grad_inputs = []
+                    for inputs_list in inputs.values():
+                        for inp in inputs_list:
+                            grad_inputs.append(inp.grad.numpy())
+                    return grad_inputs
+                else:
+                    grad_inputs = paddle.grad(
+                        outputs=fluid.layers.utils.flatten(outputs),
+                        inputs=fluid.layers.utils.flatten(inputs),
+                        grad_outputs=grad_outputs)
+                    return [grad.numpy() for grad in grad_inputs]
 
     @staticmethod
     def _numpy_to_lod_tensor(np_value, lod, place):
