@@ -17,9 +17,9 @@
 namespace infrt {
 namespace naive {
 
-struct InferShapeRegistry;
+struct InferShapedKernelRegistry;
 
-void RegisterInferShapeLaunchers(InferShapeRegistry* registry);
+void RegisterInferShapeLaunchers(InferShapedKernelRegistry* registry);
 
 }  // namespace naive
 }  // namespace infrt

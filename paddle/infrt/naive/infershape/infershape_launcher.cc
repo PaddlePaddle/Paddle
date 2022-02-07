@@ -17,7 +17,7 @@
 namespace infrt {
 namespace naive {
 
-void InferShapeLauncher::CreateKernelFrameForInferShape(
+void InferShapedKernelLauncher::CreateKernelFrameForInferShape(
     host_context::KernelFrame* frame) {
   for (host_context::Value* value :
        frame->GetValues(0, frame->GetNumElements())) {
@@ -31,8 +31,8 @@ void InferShapeLauncher::CreateKernelFrameForInferShape(
   }
 }
 
-void InferShapeLauncher::BuildInferShapeCache(const uint16_t* input_indices,
-                                              const uint16_t num_inputs) {
+void InferShapedKernelLauncher::BuildInferShapeCache(
+    const uint16_t* input_indices, const uint16_t num_inputs) {
   tensor_shape_cache.resize(num_inputs);
   for (uint16_t i = 0; i < num_inputs; i++) {
     tensor_shape_cache[i] =
@@ -42,8 +42,8 @@ void InferShapeLauncher::BuildInferShapeCache(const uint16_t* input_indices,
   }
 }
 
-bool InferShapeLauncher::IsShapeChanged(const uint16_t* input_indices,
-                                        const uint16_t num_inputs) const {
+bool InferShapedKernelLauncher::IsShapeChanged(
+    const uint16_t* input_indices, const uint16_t num_inputs) const {
   if (tensor_shape_cache.empty() && !infershape_kernel_frame_builder.IsEmpty())
     return true;
 

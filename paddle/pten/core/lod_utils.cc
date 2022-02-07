@@ -14,14 +14,14 @@
 
 #include "paddle/pten/core/lod_utils.h"
 
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/core/enforce.h"
 
 namespace pten {
 
 void AppendLoD(LoD *lod, const LoD &lod_length) {
   PADDLE_ENFORCE(
       lod->empty() || lod->size() == lod_length.size(),
-      paddle::platform::errors::InvalidArgument(
+      pten::errors::InvalidArgument(
           "The input LoD length should be equal to the appended LoD size, but "
           "received input LoD length is %d, actual LoD size is %d.",
           lod_length.size(),

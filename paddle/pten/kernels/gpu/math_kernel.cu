@@ -29,7 +29,7 @@ namespace cub = hipcub;
 
 #include "paddle/pten/common/complex.h"
 #include "paddle/pten/common/float16.h"
-#include "paddle/pten/core/convert_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/enforce.h"
 #include "paddle/pten/core/kernel_registry.h"
 

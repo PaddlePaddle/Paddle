@@ -67,7 +67,7 @@ class FakeQuantAbsMax(layers.Layer):
         if quant_on_weight:
             scale_attr = ParamAttr(
                 name=self._scale_name,
-                initializer=Constant(0.0),
+                initializer=Constant(0.001),
                 trainable=False)
             self._scale = self.create_parameter(
                 shape=[1], attr=scale_attr, dtype=self._dtype)

@@ -20,14 +20,14 @@
 namespace infrt {
 namespace naive {
 
-struct InferShapeLauncher;
+struct InferShapedKernelLauncher;
 
-class InferShapeRegistry {
+class InferShapedKernelRegistry {
  public:
-  using InferShapeLauncherHandle = std::unique_ptr<InferShapeLauncher>;
+  using InferShapeLauncherHandle = std::unique_ptr<InferShapedKernelLauncher>;
   using InferShapeLauncherCreator = std::function<InferShapeLauncherHandle()>;
 
-  InferShapeRegistry();
+  InferShapedKernelRegistry();
 
   void AddKernel(const std::string& key, InferShapeLauncherCreator&& creator);
 
@@ -35,7 +35,7 @@ class InferShapeRegistry {
 
   size_t size() const;
 
-  ~InferShapeRegistry();
+  ~InferShapedKernelRegistry();
 
  private:
   struct Impl;
@@ -44,12 +44,13 @@ class InferShapeRegistry {
 };
 
 //! The global infershape registry.
-InferShapeRegistry* GetInferShapeRegistry();
+InferShapedKernelRegistry* GetInferShapeRegistry();
 
 }  // namespace naive
 }  // namespace infrt
 
-#define INFERSHAPE_CREATOR(infershape_launcher_class_)                   \
-  []() -> ::infrt::naive::InferShapeRegistry::InferShapeLauncherHandle { \
-    return std::make_unique<infershape_launcher_class_>();               \
-  }
+#define INFERSHAPED_KERNEL_CREATOR(infershape_launcher_class_)                 \
+  []()                                                                         \
+      -> ::infrt::naive::InferShapedKernelRegistry::InferShapeLauncherHandle { \
+        return std::make_unique<infershape_launcher_class_>();                 \
+      }

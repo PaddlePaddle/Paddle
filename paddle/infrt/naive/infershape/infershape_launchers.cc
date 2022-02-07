@@ -19,9 +19,9 @@
 namespace infrt {
 namespace naive {
 
-void RegisterInferShapeLaunchers(InferShapeRegistry* registry) {
+void RegisterInferShapeLaunchers(InferShapedKernelRegistry* registry) {
   registry->AddKernel("elementwise_add",
-                      INFERSHAPE_CREATOR(ElementwiseAddInferShapeLauncher));
+                      INFERSHAPED_KERNEL_CREATOR(ElementwiseAddLauncher));
 }
 
 }  // namespace naive

@@ -21,34 +21,35 @@
 namespace infrt {
 namespace naive {
 
-struct InferShapeRegistry::Impl {
+struct InferShapedKernelRegistry::Impl {
   std::unordered_map<std::string, InferShapeLauncherCreator> data;
 };
 
-InferShapeRegistry::InferShapeRegistry() : impl_(std::make_unique<Impl>()) {}
+InferShapedKernelRegistry::InferShapedKernelRegistry()
+    : impl_(std::make_unique<Impl>()) {}
 
-void InferShapeRegistry::AddKernel(
+void InferShapedKernelRegistry::AddKernel(
     const std::string& key,
-    InferShapeRegistry::InferShapeLauncherCreator&& creator) {
+    InferShapedKernelRegistry::InferShapeLauncherCreator&& creator) {
   CHECK(!impl_->data.count(key)) << "Item called " << key << " duplicates";
   impl_->data.emplace(key, std::move(creator));
 }
 
-const InferShapeRegistry::InferShapeLauncherCreator&
-InferShapeRegistry::GetKernel(const std::string& key) const {
+const InferShapedKernelRegistry::InferShapeLauncherCreator&
+InferShapedKernelRegistry::GetKernel(const std::string& key) const {
   auto it = impl_->data.find(key);
   CHECK(it != impl_->data.end()) << "No item called " << key << " exists";
   return it->second;
 }
 
-size_t InferShapeRegistry::size() const { return impl_->data.size(); }
+size_t InferShapedKernelRegistry::size() const { return impl_->data.size(); }
 
-InferShapeRegistry* GetInferShapeRegistry() {
-  static auto registry = std::make_unique<InferShapeRegistry>();
+InferShapedKernelRegistry* GetInferShapeRegistry() {
+  static auto registry = std::make_unique<InferShapedKernelRegistry>();
   return registry.get();
 }
 
-InferShapeRegistry::~InferShapeRegistry() {}
+InferShapedKernelRegistry::~InferShapedKernelRegistry() {}
 
 }  // namespace naive
 }  // namespace infrt

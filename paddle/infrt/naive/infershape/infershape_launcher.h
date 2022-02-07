@@ -23,10 +23,10 @@
 namespace infrt {
 namespace naive {
 
-struct InferShapeLauncher {
+struct InferShapedKernelLauncher {
   virtual void Invoke(host_context::KernelFrame* frame) = 0;
 
-  virtual ~InferShapeLauncher() = default;
+  virtual ~InferShapedKernelLauncher() = default;
 
  protected:
   //! Initialize the kernel frame for InferShape kernel.

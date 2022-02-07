@@ -23,7 +23,7 @@ namespace infrt {
 namespace naive {
 
 TEST(ElementwiseAdd, registry) {
-  InferShapeRegistry registry;
+  InferShapedKernelRegistry registry;
   RegisterInferShapeLaunchers(&registry);
   ASSERT_EQ(registry.size(), 1UL);
   auto creator = registry.GetKernel("elementwise_add");
