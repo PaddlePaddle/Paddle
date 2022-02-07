@@ -9,7 +9,7 @@ func @load_tensor_map() {
   %tensor_name = infrt.get_string("fc_bias")
   %a = dt.tensor_map_get_tensor(%map, %tensor_name) -> !infrt.tensor<X86, NCHW, F32>
 
-  // CHECK: tensor: shape=shape[64]
+  // CHECK: tensor: shape=shape[2], values=[0, 0]
   dt.print_tensor (%a : !infrt.tensor<X86, NCHW, F32>)
 
   infrt.return
