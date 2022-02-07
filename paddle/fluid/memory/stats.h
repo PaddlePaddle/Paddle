@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,6 +14,18 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/memory/stats.h"
+#include <string>
+
+namespace paddle {
+namespace memory {
+
+// Supported STAT types : "Allocated" , "Reserved"
+extern int64_t StatGetCurrentValue(const std::string& stat_type, int dev_id);
+
+extern int64_t StatGetPeakValue(const std::string& stat_type, int dev_id);
+
+extern void StatUpdate(const std::string& stat_type, int dev_id,
+                       int64_t increment);
+
+}  // namespace memory
+}  // namespace paddle

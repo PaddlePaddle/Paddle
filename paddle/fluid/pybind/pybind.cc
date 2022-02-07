@@ -2358,6 +2358,8 @@ All parameter, weight, gradient are variables in Paddle.
     }
     return stats_map;
   });
+  m.def("get_current_memory_stat", memory::StatGetCurrentValue);
+  m.def("get_peak_memory_stat", memory::StatGetPeakValue);
   m.def("run_cmd",
         [](const std::string &cmd, int time_out = -1,
            int sleep_inter = -1) -> const std::string {

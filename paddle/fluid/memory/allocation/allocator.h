@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/inlined_vector.h"
+#include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
@@ -148,10 +149,10 @@ class Allocator : public pten::Allocator {
  public:
   static void AllocationDeleter(pten::Allocation* allocation) {
     if (platform::is_gpu_place(allocation->place())) {
-      int dev_id = allocation->place().GetDeviceId();
-      STAT_INT_SUB("STAT_gpu" + std::to_string(dev_id) + "_alloc_size",
-                   allocation->size());
+      StatUpdate("Allocated", allocation->place().GetDeviceId(),
+                 -allocation->size());
     }
+
     Allocator* allocator =
         static_cast<Allocation*>(allocation)->TopDecoratedAllocator();
     allocator->Free(allocation);

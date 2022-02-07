@@ -32,6 +32,7 @@
 #include "paddle/fluid/memory/allocation/pinned_allocator.h"
 #include "paddle/fluid/memory/allocation/stream_safe_cuda_allocator.h"
 #include "paddle/fluid/memory/allocation/thread_local_allocator.h"
+#include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
 
@@ -845,12 +846,7 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
 
   AllocationPtr allocation = m_->GetAllocator(place, size)->Allocate(size);
   if (platform::is_gpu_place(place)) {
-    int dev_id = place.GetDeviceId();
-    int64_t alloc_size =
-        STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id) + "_alloc_size",
-                     allocation->size());
-    STAT_INT_UPDATE_MAXIMUM(
-        "STAT_gpu" + std::to_string(dev_id) + "_max_alloc_size", alloc_size);
+    StatUpdate("Allocated", place.GetDeviceId(), allocation->size());
   }
 
   return allocation;

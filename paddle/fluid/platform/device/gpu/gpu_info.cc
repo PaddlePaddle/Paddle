@@ -197,10 +197,13 @@ class RecordedGpuMallocHelper {
 #endif
     if (result == gpuSuccess) {
       cur_size_.fetch_add(size);
-      int64_t mem_size = STAT_INT_ADD(
-          "STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
-      STAT_INT_UPDATE_MAXIMUM(
-          "STAT_gpu" + std::to_string(dev_id_) + "_max_mem_size", mem_size);
+      STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
+/*
+int64_t mem_size = STAT_INT_ADD(
+    "STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
+STAT_INT_UPDATE_MAXIMUM(
+    "STAT_gpu" + std::to_string(dev_id_) + "_max_mem_size", mem_size);
+*/
 #ifdef PADDLE_WITH_TESTING
       gpu_ptrs.insert(*ptr);
 #endif
@@ -235,7 +238,7 @@ class RecordedGpuMallocHelper {
 #endif
       PADDLE_ENFORCE_GPU_SUCCESS(err);
       cur_size_.fetch_sub(size);
-      STAT_INT_SUB("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
+      // STAT_INT_SUB("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
     } else {
       platform::GpuGetLastError();  // clear the error flag when
                                     // cudaErrorCudartUnloading /
