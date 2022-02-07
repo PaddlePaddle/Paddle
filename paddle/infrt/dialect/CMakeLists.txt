@@ -13,6 +13,7 @@ gather_srcs(infrt_src SRCS
     pd_types.cc
     pd_ops.cc
     )
+
 mlir_tablegen_on(basic_kernels)
 mlir_tablegen_on(test_kernels)
 mlir_tablegen_on(infrt_base DIALECT infrt)

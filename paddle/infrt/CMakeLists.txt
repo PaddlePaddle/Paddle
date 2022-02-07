@@ -7,6 +7,10 @@ option(INFRT_WITH_PTEN  "Compile INFRT with PTEN"    ON)
 #TODO(xiaowei) remove fluid
 include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
 
+if (INFRT_WITH_PTEN)
+    add_definitions("-DINFRT_WITH_PTEN")
+endif()
+
 # compile flags
 set(INFRT_FLAGS -Wno-comment)
 foreach(flag ${INFRT_FLAGS})
@@ -93,7 +97,12 @@ set(infrt_mlir_incs
         rewrite_inc
         trt_ops_inc
         )
-message(STATUS "infrt srcs:\n${infrt_src}")
+if (INFRT_WITH_PTEN)
+    set(infrt_mlir_incs ${infrt_mlir_incs}
+        MLIRinfrt_pten_tensorIncGen
+        MLIRinfrt_pten_baseIncGen
+        )
+endif()
 
 cc_library(infrt SHARED SRCS ${infrt_src} DEPS glog boost ${mlir_libs} paddle_framework_proto)
 cc_library(infrt_static SRCS ${infrt_src} DEPS glog boost ${mlir_libs} paddle_framework_proto)

@@ -12,26 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/dialect/pten/pten_base.h"
+#include "paddle/infrt/dialect/pten/infrt_pten_tensor.h"
 
-#include "paddle/infrt/common/global.h"
-#include "paddle/infrt/dialect/pten/infrt_pten_base.cpp.inc"
-#include "paddle/infrt/dialect/pten/infrt_pten_baseDialect.cpp.inc"
-#include "paddle/infrt/dialect/pten/infrt_pten_baseTypes.cpp.inc"
+#include <mlir/IR/BuiltinTypes.h>
+
+#include "paddle/infrt/dialect/pten/infrt_pten_tensorDialect.cpp.inc"
+#include "paddle/infrt/dialect/pten/infrt_pten_tensorTypes.cpp.inc"
 
 namespace infrt {
 namespace dialect {
 
-void PTENDialect::printType(::mlir::Type type,
-                            mlir::DialectAsmPrinter& os) const {
-  Dialect::printType(type, os);
-}
-
-void PTENDialect::initialize() {}
-
-mlir::Type PTENDialect::parseType(mlir::DialectAsmParser& parser) const {
-  return Dialect::parseType(parser);
-}
+void PTENDenseTensorDialect::initialize() {}
 
 }  // namespace dialect
 }  // namespace infrt
+
+// NOLINT
+#define GET_OP_CLASSES
+#include "paddle/infrt/dialect/pten/infrt_pten_tensor.cpp.inc"
