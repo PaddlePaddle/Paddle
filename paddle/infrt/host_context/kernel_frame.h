@@ -37,6 +37,14 @@ class KernelFrame {
            (num_results_ == -1 ? 0 : num_results_);
   }
 
+  //! Get something at a specific position \p index. The element might be an
+  //! argument, an attribute or a result.
+  template <typename T>
+  T& GetElementAt(int index) {
+    CHECK_LT(index, GetNumArgs() + GetNumAttributes() + GetNumResults());
+    return value_or_attrs_[index]->template get_or_default<T>();
+  }
+
   template <typename T>
   T& GetArgAt(int index) {
     CHECK_LT(index, GetNumArgs());

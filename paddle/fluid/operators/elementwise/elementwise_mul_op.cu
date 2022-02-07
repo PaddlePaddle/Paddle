@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
@@ -51,8 +52,8 @@ class ElementwiseMulKernel<platform::CUDADeviceContext, T>
       auto pt_x = paddle::experimental::MakePtenDenseTensor(*x_lod);
       auto pt_y = paddle::experimental::MakePtenDenseTensor(*y_lod);
       auto pt_z = paddle::experimental::MakePtenDenseTensor(*z_lod);
-      pten::MultiplyRawKernel<T>(cuda_ctx, *pt_x.get(), *pt_y.get(), axis,
-                                 pt_z.get());
+      pten::MultiplyRawKernel<T>(static_cast<const pten::GPUContext&>(cuda_ctx),
+                                 *pt_x.get(), *pt_y.get(), axis, pt_z.get());
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "X's type[%s] is not supported by elementwise_op. X's type should be "

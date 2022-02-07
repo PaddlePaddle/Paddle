@@ -1,0 +1,16 @@
+// RUN: infrtexec -i %s | FileCheck %s
+
+func @load_tensor_map() {
+  %path = infrt.get_string("@CMAKE_BINARY_DIR@/multi_fc_model")
+  %map = dt.load_params(%path)
+  %size = dt.tensor_map_get_size(%map) -> i32
+  infrt.print.i32 %size
+
+  %tensor_name = infrt.get_string("fc_bias")
+  %a = dt.tensor_map_get_tensor(%map, %tensor_name) -> !infrt.tensor<X86, NCHW, F32>
+
+  // CHECK: tensor: shape=shape[2], values=[0, 0]
+  dt.print_tensor (%a : !infrt.tensor<X86, NCHW, F32>)
+
+  infrt.return
+}
