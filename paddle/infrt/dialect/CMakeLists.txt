@@ -30,7 +30,7 @@ target_link_libraries(infrtopt infrt)
 add_executable(print-ir print_ir.cc)
 target_link_libraries(print-ir infrt ${mlir_libs})
 add_dependencies(print-ir pd_ops_inc)
-
 cc_test_tiny(test_infrt_mlir_loader SRCS mlir_loader_test.cc DEPS infrt ${MLIR_IR_LIBS})
 
+add_subdirectory(infrt)
 add_subdirectory(tensorrt)
