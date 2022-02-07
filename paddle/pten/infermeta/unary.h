@@ -75,13 +75,9 @@ void TransferLayoutInferMeta(const MetaTensor& x,
                              DataLayout layout,
                              MetaTensor* out);
 
-DenseTensorMeta SumInferMeta(const DenseTensorMeta& x_meta,
-                             const std::vector<int64_t>& axis,
-                             DataType dtype,
-                             bool keep_dim);
-
-std::vector<DenseTensorMeta> SplitInferMeta(const DenseTensorMeta& x_meta,
-                                            const ScalarArray& num_or_sections,
-                                            const Scalar& axis,
-                                            bool is_runtime);
+void SplitInferMeta(const MetaTensor& x_meta,
+                    const ScalarArray& num_or_sections,
+                    const Scalar& axis,
+                    std::vector<MetaTensor>* out,
+                    MetaConfig config = MetaConfig());
 }  // namespace pten

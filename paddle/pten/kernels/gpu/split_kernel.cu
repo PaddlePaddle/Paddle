@@ -29,11 +29,11 @@ void SplitKernel(const Context& dev_ctx,
                  std::vector<DenseTensor*> outs) {
   // need to infershape output
   if (num_or_sections.IsInitByTensor() || axis_scalar.IsInitByTensor()) {
-    auto out_metas =
-        pten::SplitInferMeta(x.meta(), num_or_sections, axis_scalar, true);
+    std::vector<MetaTensor> out_metas;
+    pten::SplitInferMeta(x, num_or_sections, axis_scalar, &out_metas, true);
 
     for (size_t i = 0; i < out_metas.size(); ++i) {
-      outs[i]->Resize(out_metas[i].dims);
+      outs[i]->Resize(out_metas[i].dims());
     }
   }
 

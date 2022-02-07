@@ -315,12 +315,13 @@ void TransferLayoutInferMeta(const MetaTensor& x,
   out->set_layout(layout);
 }
 
-std::vector<DenseTensorMeta> SplitInferMeta(const DenseTensorMeta& x_meta,
-                                            const ScalarArray& num_or_sections,
-                                            const Scalar& axis,
-                                            bool is_runtime) {
+void SplitInferMeta(const MetaTensor& x,
+                    const ScalarArray& num_or_sections,
+                    const Scalar& axis,
+                    std::vector<MetaTensor>* out,
+                    MetaConfig config) {
   int axis_value = axis.to<int>();
-  int rank = x_meta.dims.size();
+  int rank = x.dims().size();
   PADDLE_ENFORCE_EQ(
       axis_value >= -rank && axis_value < rank,
       true,
@@ -333,7 +334,7 @@ std::vector<DenseTensorMeta> SplitInferMeta(const DenseTensorMeta& x_meta,
     axis_value = axis_value + rank;
   }
 
-  auto input_axis_dim = x_meta.dims.at(axis_value);
+  auto input_axis_dim = x.dims().at(axis_value);
   auto num_or_sections_data = num_or_sections.GetData();
   // step1: get formated sections
   std::vector<int64_t> sections;
@@ -349,7 +350,7 @@ std::vector<DenseTensorMeta> SplitInferMeta(const DenseTensorMeta& x_meta,
                           "But received Attr(num_or_sections) "
                           "= %d, input(X)'s shape = [%s], Attr(dim) = %d.",
                           num,
-                          x_meta.dims,
+                          x.dims(),
                           axis_value));
 
     for (int i = 0; i < num; ++i) {
@@ -373,7 +374,7 @@ std::vector<DenseTensorMeta> SplitInferMeta(const DenseTensorMeta& x_meta,
       }
     }
 
-    if (is_runtime) {
+    if (config.is_runtime) {
       PADDLE_ENFORCE_LE(num_of_unknow,
                         1,
                         paddle::platform::errors::InvalidArgument(
@@ -397,10 +398,10 @@ std::vector<DenseTensorMeta> SplitInferMeta(const DenseTensorMeta& x_meta,
               "along the split dimension. But received Attr(num_or_sections) "
               "= [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
               pten::framework::make_ddim(num_or_sections_data),
-              x_meta.dims,
+              x.dims(),
               axis_value));
 
-      if (is_runtime) {
+      if (config.is_runtime) {
         sections[unknow_dim_idx] = input_axis_dim - sum_of_section;
       }
     } else {
@@ -413,14 +414,14 @@ std::vector<DenseTensorMeta> SplitInferMeta(const DenseTensorMeta& x_meta,
               "along the split dimension. But received Attr(num_or_sections)"
               " = [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
               pten::framework::make_ddim(num_or_sections_data),
-              x_meta.dims,
+              x.dims(),
               axis_value));
     }
   }
 
   // setp2: fill out dims
-  std::vector<pten::DDim> out_dims(sections.size(), x_meta.dims);
-  if (is_runtime || input_axis_dim > 0) {
+  std::vector<pten::DDim> out_dims(sections.size(), x.dims());
+  if (config.is_runtime || input_axis_dim > 0) {
     for (size_t i = 0; i < sections.size(); ++i) {
       out_dims[i][axis_value] = sections[i];
     }
@@ -430,20 +431,25 @@ std::vector<DenseTensorMeta> SplitInferMeta(const DenseTensorMeta& x_meta,
     }
   }
 
-  std::vector<DenseTensorMeta> out_metas;
-  out_metas.reserve(sections.size());
+  out->reserve(out_dims.size());
   for (size_t i = 0; i < sections.size(); ++i) {
-    DenseTensorMeta tmp_meta;
+    MetaTensor tmp;
     if (axis_value != 0) {
       // Only pass LoD when not spliting along the first dim.
-      tmp_meta = {x_meta.dtype, out_dims[i], x_meta.layout};
+      tmp.set_dtype(x.dtype());
+      tmp.set_dims(out_dims[i]);
+      tmp.set_layout(x.layout());
+      out->push_back(tmp);
     } else {
-      tmp_meta = {x_meta.dtype, out_dims[i], x_meta.layout, x_meta.lod};
+      tmp.set_dtype(x.dtype());
+      tmp.set_dims(out_dims[i]);
+      tmp.set_layout(x.layout());
+      tmp.share_lod(x);
+      out->push_back(tmp);
     }
-    out_metas.emplace_back(std::move(tmp_meta));
   }
 
-  return out_metas;
+  return;
 }
 
 }  // namespace pten

@@ -35,7 +35,8 @@ std::vector<DenseTensor> Split(const Context& dev_ctx,
                                const DenseTensor& x,
                                const ScalarArray& num_or_sections,
                                const Scalar& axis) {
-  auto out_meta = SplitInferMeta(x.meta(), num_or_sections, axis, true);
+  std::vector<MetaTensor> out_meta;
+  SplitInferMeta(x, num_or_sections, axis, &out_meta, true);
 
   std::vector<DenseTensor> result;
   result.reserve(out_meta.size());
