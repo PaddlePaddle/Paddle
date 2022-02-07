@@ -41,3 +41,4 @@ void ReduceGrad(const GPUContext& dev_ctx,
       }));
 }
 }  // namespace pten
+#endif
