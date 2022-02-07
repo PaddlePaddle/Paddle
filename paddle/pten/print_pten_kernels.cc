@@ -13,10 +13,12 @@
 // limitations under the License.
 
 #include "paddle/pten/core/kernel_factory.h"
+#include "paddle/pten/core/kernel_registry.h"
 
 #include <iostream>
 #include <string>
 
+PT_DECLARE_KERNEL(scale, CPU, ALL_LAYOUT);
 
 int main(int argc, char** argv) {
   
