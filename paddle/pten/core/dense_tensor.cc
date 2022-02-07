@@ -110,8 +110,9 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
 template <typename T>
 const T* DenseTensor::data() const {
   check_memory_size();
-  PADDLE_ENFORCE(
-      (dtype() == paddle::experimental::CppTypeToDataType<T>::Type()),
+  PADDLE_ENFORCE_EQ(
+      dtype(),
+      paddle::experimental::CppTypeToDataType<T>::Type(),
       paddle::platform::errors::InvalidArgument(
           "The type of data we are trying to retrieve does not match the "
           "type of data currently contained in the container."));

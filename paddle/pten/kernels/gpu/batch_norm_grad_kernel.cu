@@ -951,11 +951,13 @@ PT_REGISTER_KERNEL(batch_norm_grad,
                    ALL_LAYOUT,
                    pten::BatchNormGradKernel,
                    float,
-                   double) {}
+                   double,
+                   pten::dtype::float16) {}
 
 PT_REGISTER_KERNEL(batch_norm_grad_raw,
                    GPU,
                    ALL_LAYOUT,
                    pten::BatchNormGradRawKernel,
                    float,
-                   double) {}
+                   double,
+                   pten::dtype::float16) {}

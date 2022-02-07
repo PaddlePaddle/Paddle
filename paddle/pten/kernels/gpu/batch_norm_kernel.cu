@@ -655,5 +655,10 @@ void BatchNormKernel(const Context &ctx,
 
 }  // namespace pten
 
-PT_REGISTER_KERNEL(
-    batch_norm, GPU, ALL_LAYOUT, pten::BatchNormKernel, float, double) {}
+PT_REGISTER_KERNEL(batch_norm,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::BatchNormKernel,
+                   float,
+                   double,
+                   pten::dtype::float16) {}
