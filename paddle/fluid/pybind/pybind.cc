@@ -184,6 +184,14 @@ bool IsCompiledWithCUDA() {
 #endif
 }
 
+bool IsCompiledWithNCCL() {
+#ifdef PADDLE_WITH_NCCL
+  return true;
+#else
+  return false;
+#endif
+}
+
 bool IsCompiledWithROCM() {
 #ifndef PADDLE_WITH_HIP
   return false;
@@ -2346,6 +2354,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_ipu", IsCompiledWithIPU);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
+  m.def("is_compiled_with_nccl", IsCompiledWithNCCL);
   m.def("is_compiled_with_cinn", IsCompiledWithCINN);
   m.def("is_compiled_with_mlu", IsCompiledWithMLU);
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
