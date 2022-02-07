@@ -13,12 +13,35 @@ def PTEN_Dialect : Dialect {
   let cppNamespace = "::infrt::dialect";
 }
 
-def AllocatorType :
-    Type<CPred<"$_self.isa<::infrt::pten::AllocatorType>()">, "!pten.allocator type">,
-    BuildableType<"$_builder.getType<::infrt::pten::AllocatorType>()">;
 
-def ContextType :
-    Type<CPred<"$_self.isa<::infrt::pten::ContextType>()">, "!pten.context type">,
-    BuildableType<"$_builder.getType<::infrt::pten::ContextType>()">;
+def PTEN_DenseTensorDialect : Dialect {
+  let name = "pten_dt";
+
+  let description = [{
+    The PTEN DenseTensor dialect.
+  }];
+
+  let cppNamespace = "::infrt::dialect";
+}
+
+
+class AllocatorType<string place, list<Trait> traits=[]>:
+    TypeDef<PTEN_Dialect, place, traits> {
+    let summary = !strconcat("!pten.allocator_", place, " type");
+}
+
+class ContextType<string place, list<Trait> traits=[]>:
+    TypeDef<PTEN_Dialect, place, traits> {
+    let summary = !strconcat("!pten.context_", place, " type");
+}
+
+def CPU_AllocatorType : AllocatorType<"CPU">;
+def GPU_AllocatorType : AllocatorType<"GPU">;
+
+def CPU_ContextType : ContextType<"CPU">;
+def GPU_ContextType : ContextType<"GPU">;
+
+def AllocatorType : AnyTypeOf<[CPU_AllocatorType, GPU_AllocatorType], "Allocator type">;
+def ContextType : AnyTypeOf<[CPU_ContextType, GPU_ContextType], "Context type">;
 
 #endif
