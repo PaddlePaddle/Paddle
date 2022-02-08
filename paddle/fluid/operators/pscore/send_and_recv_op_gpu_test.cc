@@ -35,7 +35,7 @@ namespace memory = paddle::memory;
 using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
 using VarMsg = ::paddle::distributed::VariableMessage;
 
-USE_OP(scale);
+USE_OP_ITSELF(scale);
 USE_OP(send_and_recv);
 
 std::shared_ptr<distributed::HeterServer> b_rpc_service2;
@@ -222,6 +222,10 @@ TEST(SENDANDRECV, GPU) {
   framework::Scope* scope = (*micro_scope)[0];
   platform::CUDAPlace place;
   platform::CUDADeviceContext ctx(place);
+  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                       .GetAllocator(place, ctx.stream())
+                       .get());
+  ctx.PartialInitWithAllocator();
 
   framework::Executor exe(place);
   // create var on local scope

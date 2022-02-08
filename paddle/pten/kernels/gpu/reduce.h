@@ -43,6 +43,7 @@ namespace cub = hipcub;
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/enforce.h"
 #include "paddle/pten/core/utils/array.h"
+#include "paddle/pten/kernels/cast_kernel.h"
 #include "paddle/pten/kernels/funcs/elementwise_base.h"
 #include "paddle/pten/kernels/primitive/kernel_primitives.h"
 
@@ -1064,7 +1065,8 @@ template <typename Tx,
           typename Ty,
           template <typename> class ReduceOp,
           typename TransformOp>
-void TensorReduceFunctorImpl(const pten::DenseTensor& x,
+void TensorReduceFunctorImpl(const pten::GPUContext& dev_ctx,
+                             const pten::DenseTensor& x,
                              pten::DenseTensor* y,
                              const TransformOp& transform,
                              const std::vector<int>& origin_reduce_dims,
@@ -1088,13 +1090,11 @@ void TensorReduceFunctorImpl(const pten::DenseTensor& x,
   auto x_data = x.data<Tx>();
   auto y_data = y->data<Ty>();
 
-  auto* dev_ctx = static_cast<paddle::platform::CUDADeviceContext*>(
-      paddle::platform::DeviceContextPool::Instance().Get(x.place()));
   if (config.reduce_num == 1) {
     std::vector<const DenseTensor*> inputs = {&x};
     std::vector<DenseTensor*> outputs = {y};
     funcs::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, Tx, Ty>(
-        *dev_ctx, inputs, &outputs, transform);
+        dev_ctx, inputs, &outputs, transform);
     return;
   }
 
@@ -1233,24 +1233,36 @@ void Reduce(const GPUContext& dev_ctx,
   gpuStream_t stream = dev_ctx.stream();
 
   if (out_dtype != pten::DataType::UNDEFINED && out_dtype != x.dtype()) {
-    PD_DISPATCH_FLOATING_AND_COMPLEX_AND_2_TYPES(
+    auto tmp_tensor = pten::Cast<T>(dev_ctx, x, out_dtype);
+    PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_3_TYPES(
         pten::DataType::INT32,
         pten::DataType::INT64,
+        pten::DataType::FLOAT16,
         out_dtype,
         "TensorReduceFunctorImpl",
         ([&] {
           using MPType = typename kps::details::MPTypeTrait<data_t>::Type;
-          pten::kernels::TensorReduceFunctorImpl<T,
+          pten::kernels::TensorReduceFunctorImpl<data_t,
                                                  data_t,
                                                  ReduceOp,
-                                                 TransformOp<T, MPType>>(
-              x, out, TransformOp<T, MPType>(reduce_num), reduce_dims, stream);
+                                                 TransformOp<data_t, MPType>>(
+              dev_ctx,
+              tmp_tensor,
+              out,
+              TransformOp<data_t, MPType>(reduce_num),
+              reduce_dims,
+              stream);
         }));
   } else {
     using MPType = typename kps::details::MPTypeTrait<T>::Type;
     pten::kernels::
         TensorReduceFunctorImpl<T, T, ReduceOp, TransformOp<T, MPType>>(
-            x, out, TransformOp<T, MPType>(reduce_num), reduce_dims, stream);
+            dev_ctx,
+            x,
+            out,
+            TransformOp<T, MPType>(reduce_num),
+            reduce_dims,
+            stream);
   }
 }
 }  // namespace pten
