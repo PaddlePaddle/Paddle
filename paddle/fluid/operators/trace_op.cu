@@ -39,7 +39,7 @@ class TraceCUDAKernel : public framework::OpKernel<T> {
       auto stream = context.cuda_device_context().stream();
       std::vector<int> reduce_dims;
       reduce_dims.push_back(out->dims().size());
-      TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+      TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
           context.cuda_device_context(), diag, out, kps::IdentityFunctor<T>(),
           reduce_dims, stream);
     } else {
