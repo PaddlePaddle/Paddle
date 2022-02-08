@@ -951,6 +951,21 @@ struct ElementwiseAdd : public PatternBase {
   PATTERN_DECL_NODE(elementwise_add_out);
 };
 
+// ElementwiseMul op
+// Forward pass for element-wise multiplication
+// elementwise_mul_out is the result of the operator
+struct ElementwiseMul : public PatternBase {
+  ElementwiseMul(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "elementwise_mul") {}
+
+  PDNode* operator()(PDNode* x_var, PDNode* y_var);
+
+  PATTERN_DECL_NODE(elementwise_mul_op);
+  PATTERN_DECL_NODE(elementwise_mul_x);
+  PATTERN_DECL_NODE(elementwise_mul_y);
+  PATTERN_DECL_NODE(elementwise_mul_out);
+};
+
 // Transpose op
 // Forward pass for transpose.
 // transpose_out is a result of the operator.
