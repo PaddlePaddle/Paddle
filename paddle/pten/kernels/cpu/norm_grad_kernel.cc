@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "pdddle/pten/kernels/norm_grad_kernel.h"
+#include "paddle/pten/kernels/norm_grad_kernel.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/pten/kernels/funcs/eigen/eigen_function.h"
 
@@ -21,7 +21,7 @@
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-#include "paddle/pten/kernels/impl/norm_kernel_util.h"
+#include "paddle/pten/kernels/funcs/common_shape.h"
 namespace pten {
 
 template <typename T, typename Context>
@@ -43,7 +43,7 @@ void NormGradKernel(const Context& ctx,
   auto xdim = in_x->dims();
   if (axis < 0) axis = xdim.size() + axis;
   int pre, n, post;
-  GetDims(xdim, axis, &pre, &n, &post);
+  funcs::GetPrePostNumel(xdim, axis, &pre, &n, &post);
 
   auto* place = ctx.eigen_device();
 

@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/impl/norm_kernel_util.h"
 
 namespace pten {
 

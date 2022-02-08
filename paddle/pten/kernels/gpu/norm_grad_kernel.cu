@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include <algorithm>
-#include "pdddle/pten/kernels/norm_grad_kernel.h"
+#include "paddle/pten/kernels/norm_grad_kernel.h"
 #ifdef __NVCC__
 #include "cub/cub.cuh"
 #endif
@@ -95,7 +95,7 @@ void NormGradKernel(const Context& ctx,
   auto xdim = in_x->dims();
   if (axis < 0) axis = xdim.size() + axis;
   int pre, n, post;
-  GetDims(xdim, axis, &pre, &n, &post);
+  funcs::GetPrePostNumel(xdim, axis, &pre, &n, &post);
 
 #ifdef __HIPCC__
   const int block = 256;

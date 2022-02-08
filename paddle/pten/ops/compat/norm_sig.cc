@@ -23,9 +23,9 @@ KernelSignature NormOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature NormGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("norm_grad",
-                         {framework::GradVarName("Out"), "X", "Norm"},
+                         {GradVarName("Out"), "X", "Norm"},
                          {"axis", "epsilon", "is_test"},
-                         {framework::GradVarName("X")});
+                         {GradVarName("X")});
 }
 
 }  // namespace pten

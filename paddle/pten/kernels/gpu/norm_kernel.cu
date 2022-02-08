@@ -108,7 +108,7 @@ void NormKernel(const Context& ctx,
   T* norm_ptr = out_norm->data<T>();
 
   int pre, n, post;
-  GetPrePostNumel(xdim, axis, &pre, &n, &post);
+  funcs::GetPrePostNumel(xdim, axis, &pre, &n, &post);
 
 #ifdef __HIPCC__
   const int block = 256;
