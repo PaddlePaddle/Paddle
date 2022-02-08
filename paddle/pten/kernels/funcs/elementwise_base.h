@@ -31,6 +31,8 @@ namespace kps = pten::kps;
 
 #endif
 
+#define BASE_SIZE 1  // To avoid running errors when Arity == 0 in args[Arity]
+
 namespace pten {
 
 enum ElementwiseType { kUnary = 1, kBinary = 2, kTernary = 3, kAny = -1 };
@@ -476,6 +478,15 @@ struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, Arity, true> {
 };
 
 template <typename InT, typename OutT, int VecSize, typename Functor>
+struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 0, false> {
+  __device__ inline void operator()(Functor func,
+                                    InT (*args)[VecSize],
+                                    OutT *result) {
+    kps::ElementwiseFillConst<InT, OutT, VecSize, 1, 1, Functor>(result, func);
+  }
+};
+
+template <typename InT, typename OutT, int VecSize, typename Functor>
 struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 1, false> {
   __device__ inline void operator()(Functor func,
                                     InT (*args)[VecSize],
@@ -548,12 +559,14 @@ template <typename InT,
           int VecSize,
           bool IsBoundary>
 __device__ void VectorizedElementwiseKernelImpl(
-    const pten::framework::Array<const _ptr_ InT *__restrict__, Arity> &in,
+
+    const pten::framework::Array<const _ptr_ InT *__restrict__,
+                                 Arity + BASE_SIZE> &in,
     pten::framework::Array<_ptr_ OutT *, NumOuts> outs,
     int num,
     int data_offset,
     Functor func) {
-  InT args[Arity][VecSize];
+  InT args[Arity + BASE_SIZE][VecSize];
   ConditionalT<OutT, NumOuts> result[VecSize];
 
 #pragma unroll
@@ -583,7 +596,8 @@ template <typename InT,
           int NumOuts,
           int VecSize>
 __global__ void VectorizedElementwiseKernel(
-    pten::framework::Array<const _ptr_ InT *__restrict__, Arity> ins,
+    pten::framework::Array<const _ptr_ InT *__restrict__, Arity + BASE_SIZE>
+        ins,
     pten::framework::Array<_ptr_ OutT *, NumOuts> outs,
     int size,
     int main_offset,
@@ -623,8 +637,9 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
                            const std::vector<const DenseTensor *> &ins,
                            std::vector<DenseTensor *> *outs,
                            Functor func) {
-  auto numel = ins[0]->numel();
-  pten::framework::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
+  auto numel = (*outs)[0]->numel();
+  pten::framework::Array<const _ptr_ InT *__restrict__, Arity + BASE_SIZE>
+      ins_data;
   pten::framework::Array<_ptr_ OutT *, NumOuts> outs_data;
 
   for (int i = 0; i < Arity; ++i) {
