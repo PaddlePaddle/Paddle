@@ -103,7 +103,8 @@ OpKernelType TransPtenKernelKeyToOpKernelType(
   proto::VarType::Type data_type =
       pten::TransToProtoVarType(kernel_key.dtype());
   // no need to set current device id here
-  platform::Place place = pten::TransToFluidPlace(kernel_key.backend(), false);
+  platform::Place place =
+      paddle::framework::TransToFluidPlace(kernel_key.backend(), false);
   DataLayout data_layout = kernel_key.layout();
   LibraryType library_type = LibraryType::kPlain;
   if (kernel_key.backend() == pten::Backend::MKLDNN) {
