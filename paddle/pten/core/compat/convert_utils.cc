@@ -13,8 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/pten/core/compat/convert_utils.h"
-
-#include "paddle/pten/core/compat/kernel_alias_name.h"
+#include "paddle/pten/core/compat/op_utils.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
@@ -235,21 +234,18 @@ std::string DataType2String(DataType dtype) {
   }
 }
 
-const std::string& TransToPtenKernelName(const std::string& fluid_op_name) {
-  if (kernel_alias_name_map.find(fluid_op_name) !=
-      kernel_alias_name_map.end()) {
-    return kernel_alias_name_map.at(fluid_op_name);
-  }
-  return fluid_op_name;
+std::string TransToPtenKernelName(const std::string& fluid_op_name) {
+  return OpUtilsMap::Instance().GetBaseKernelName(fluid_op_name);
 }
 
 const std::string& TransToFluidOpName(const std::string& pten_kernel_name) {
-  auto it = std::find_if(kernel_alias_name_map.begin(),
-                         kernel_alias_name_map.end(),
+  auto& base_kernel_name_map = OpUtilsMap::Instance().base_kernel_name_map();
+  auto it = std::find_if(base_kernel_name_map.begin(),
+                         base_kernel_name_map.end(),
                          [&pten_kernel_name](const auto& pair) {
                            return pair.second == pten_kernel_name;
                          });
-  if (it != kernel_alias_name_map.end()) {
+  if (it != base_kernel_name_map.end()) {
     return it->first;
   }
   return pten_kernel_name;

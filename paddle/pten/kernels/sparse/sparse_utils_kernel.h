@@ -57,5 +57,20 @@ SparseCooTensor DenseToSparseCoo(const Context& dev_ctx,
   return coo;
 }
 
+template <typename T, typename Context>
+void SparseCsrToCooKernel(const Context& dev_ctx,
+                          const SparseCsrTensor& x,
+                          SparseCooTensor* out);
+
+template <typename T, typename Context>
+SparseCooTensor SparseCsrToCoo(const Context& dev_ctx,
+                               const SparseCsrTensor& x) {
+  DenseTensor indices = pten::Empty<T, Context>(dev_ctx);
+  DenseTensor values = pten::Empty<T, Context>(dev_ctx);
+  SparseCooTensor coo(indices, values, x.dims());
+  SparseCsrToCooKernel<T, Context>(dev_ctx, x, &coo);
+  return coo;
+}
+
 }  // namespace sparse
 }  // namespace pten

@@ -47,6 +47,7 @@ TEST(API, to_sparse_coo) {
   std::copy(&dense_data[0][0], &dense_data[0][0] + 9, dense_x_data);
 
   pten::CPUContext dev_ctx_cpu;
+  dev_ctx_cpu.Init();
 
   // 1. test dense_to_sparse_coo
   paddle::experimental::Tensor x(dense_x);
@@ -62,4 +63,43 @@ TEST(API, to_sparse_coo) {
                             non_zero_data.data(),
                             non_zero_data.size() * sizeof(float));
   ASSERT_EQ(cmp_elements, 0);
+
+  // 1. test sparse_csr_to_coo
+  auto dense_dims = pten::framework::make_ddim({3, 3});
+  pten::DenseTensorMeta crows_meta(
+      pten::DataType::INT64, {dense_dims[0] + 1}, pten::DataLayout::NCHW);
+  pten::DenseTensorMeta cols_meta(
+      pten::DataType::INT64, {non_zero_num}, pten::DataLayout::NCHW);
+  pten::DenseTensorMeta values_meta(
+      pten::DataType::FLOAT32, {non_zero_num}, pten::DataLayout::NCHW);
+
+  pten::CPUPlace place;
+  pten::DenseTensor crows(alloc.get(), crows_meta);
+  pten::DenseTensor cols(alloc.get(), cols_meta);
+  pten::DenseTensor values(alloc.get(), values_meta);
+  memcpy(crows.mutable_data<int64_t>(place),
+         crows_data.data(),
+         crows_data.size() * sizeof(int64_t));
+  memcpy(cols.mutable_data<int64_t>(place),
+         cols_data.data(),
+         cols_data.size() * sizeof(int64_t));
+  memcpy(values.mutable_data<float>(place),
+         non_zero_data.data(),
+         non_zero_data.size() * sizeof(float));
+  auto csr =
+      std::make_shared<pten::SparseCsrTensor>(crows, cols, values, dense_dims);
+  paddle::experimental::Tensor csr_x(csr);
+  auto out2 = paddle::experimental::sparse::to_sparse_coo(
+      csr_x, pten::Backend::CPU, sparse_dim);
+
+  auto coo2 = std::dynamic_pointer_cast<pten::SparseCooTensor>(out.impl());
+  ASSERT_EQ(coo2->nnz(), non_zero_num);
+  int cmp_indices2 = memcmp(coo2->non_zero_indices().data<int64_t>(),
+                            indices_data.data(),
+                            indices_data.size() * sizeof(int64_t));
+  ASSERT_EQ(cmp_indices2, 0);
+  int cmp_elements2 = memcmp(coo2->non_zero_elements().data<float>(),
+                             non_zero_data.data(),
+                             non_zero_data.size() * sizeof(float));
+  ASSERT_EQ(cmp_elements2, 0);
 }

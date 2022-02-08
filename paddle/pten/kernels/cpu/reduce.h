@@ -220,22 +220,15 @@ void Reduce(const DeviceContext& dev_ctx,
 
   // no need to cast dtype
   if (out_dtype == pten::DataType::UNDEFINED || out_dtype == x.dtype()) {
-    if (out_dtype == pten::DataType::UNDEFINED) {
-      out_dtype = x.dtype();
-    }
     // do reduce sum
     PD_VISIT_ALL_TYPES(
-        out_dtype, "ReduceKernelImpl", ([&] {
+        x.dtype(), "ReduceKernelImpl", ([&] {
           pten::ReduceKernelImpl<DeviceContext, T, data_t, Functor>(
               dev_ctx, x, out, dims, keep_dim, reduce_all);
         }));
   } else {
-    pten::DenseTensor tmp_tensor = pten::DenseTensor(
-        pten::make_intrusive<paddle::experimental::SharedStorage>(x.place()),
-        pten::DenseTensorMeta(out_dtype, x.dims(), x.layout()));
-
     // cast x tensor to out_dtype
-    pten::CastKernel<T, DeviceContext>(dev_ctx, x, out_dtype, &tmp_tensor);
+    auto tmp_tensor = pten::Cast<T, DeviceContext>(dev_ctx, x, out_dtype);
 
     // do reduce sum
     PD_VISIT_ALL_TYPES(

@@ -23,4 +23,6 @@ KernelSignature FillAnyLikeOpArgumentMapping(
 
 }  // namespace pten
 
+PT_REGISTER_BASE_KERNEL_NAME(fill_any_like, full_like);
+
 PT_REGISTER_ARG_MAPPING_FN(fill_any_like, pten::FillAnyLikeOpArgumentMapping);
