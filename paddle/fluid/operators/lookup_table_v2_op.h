@@ -65,13 +65,13 @@ struct LookupTableV2CPUFunctor {
     auto ids = CopyIdsToVector<IdT, int64_t>(*ids_t_);
     auto ids_numel = static_cast<int64_t>(ids.size());
 
-    if (table_var->IsType<LoDTensor>()) {
-      auto *table_t = context_.Input<LoDTensor>("W");
-      int64_t row_number = table_t->dims()[0];
-      int64_t row_width = table_t->dims()[1];
+    if (table_var->template IsType<LoDTensor>()) {
+      const auto &table_t = table_var->template Get<LoDTensor>();
+      int64_t row_number = table_t.dims()[0];
+      int64_t row_width = table_t.dims()[1];
 
-      auto *table = table_t->data<T>();
-      auto *output = output_t->mutable_data<T>(context_.GetPlace());
+      auto *table = table_t.template data<T>();
+      auto *output = output_t->template mutable_data<T>(context_.GetPlace());
 
       for (int64_t i = 0; i < ids_numel; ++i) {
         if (padding_idx != kNoPadding && ids[i] == padding_idx) {
@@ -95,11 +95,11 @@ struct LookupTableV2CPUFunctor {
                  row_width * sizeof(T));
         }
       }
-    } else if (table_var->IsType<pten::SelectedRows>()) {
-      const auto &table_t = table_var->Get<pten::SelectedRows>();
+    } else if (table_var->template IsType<pten::SelectedRows>()) {
+      const auto &table_t = table_var->template Get<pten::SelectedRows>();
       int64_t row_width = table_t.value().dims()[1];
-      const auto *table = table_t.value().data<T>();
-      auto *output = output_t->mutable_data<T>(context_.GetPlace());
+      const auto *table = table_t.value().template data<T>();
+      auto *output = output_t->template mutable_data<T>(context_.GetPlace());
       auto input_data_type = table_t.value().type();
 
       for (int64_t i = 0; i < ids_numel; ++i) {
@@ -157,9 +157,9 @@ struct LookupTableV2GradCPUFunctor {
   void apply() {
     auto *table_var = context_.InputVar("W");
     DDim table_dim;
-    if (table_var->IsType<LoDTensor>()) {
+    if (table_var->template IsType<LoDTensor>()) {
       table_dim = context_.Input<LoDTensor>("W")->dims();
-    } else if (table_var->IsType<pten::SelectedRows>()) {
+    } else if (table_var->template IsType<pten::SelectedRows>()) {
       auto *table_t = context_.Input<pten::SelectedRows>("W");
       table_dim = table_t->value().dims();
     } else {
@@ -186,12 +186,12 @@ struct LookupTableV2GradCPUFunctor {
       auto *d_table_value = d_table->mutable_value();
       d_table_value->Resize({ids_num, table_dim[1]});
 
-      d_table_value->mutable_data<T>(context_.GetPlace());
+      d_table_value->template mutable_data<T>(context_.GetPlace());
 
       d_table->set_height(table_dim[0]);
 
-      auto *d_output_data = d_output->data<T>();
-      auto *d_table_data = d_table_value->data<T>();
+      auto *d_output_data = d_output->template data<T>();
+      auto *d_table_data = d_table_value->template data<T>();
 
       auto d_output_dims = d_output->dims();
       auto d_output_dims_2d =
@@ -213,8 +213,9 @@ struct LookupTableV2GradCPUFunctor {
       int64_t N = table_dim[0];
       int64_t D = table_dim[1];
 
-      auto *d_output_data = d_output->data<T>();
-      auto *d_table_data = d_table->mutable_data<T>(context_.GetPlace());
+      auto *d_output_data = d_output->template data<T>();
+      auto *d_table_data =
+          d_table->template mutable_data<T>(context_.GetPlace());
 
       memset(d_table_data, 0, d_table->numel() * sizeof(T));
 

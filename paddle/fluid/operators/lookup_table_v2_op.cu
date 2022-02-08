@@ -84,9 +84,9 @@ struct LookupTableV2CUDAFunctor {
     dim3 threads(256, 4);
     dim3 grids(80, 1);
 
-    const auto *table = table_t->data<T>();
-    const auto *ids = ids_t_->data<IdT>();
-    auto *output = output_t->mutable_data<T>(context_.GetPlace());
+    const auto *table = table_t->template data<T>();
+    const auto *ids = ids_t_->template data<IdT>();
+    auto *output = output_t->template mutable_data<T>(context_.GetPlace());
     auto stream = context_.cuda_device_context().stream();
 
     if (padding_idx == -1) {
@@ -142,7 +142,7 @@ struct LookupTableV2GradCUDAFunctor {
       auto *d_table =
           context_.Output<pten::SelectedRows>(framework::GradVarName("W"));
 
-      const auto *ids_data = ids_t_->data<IdT>();
+      const auto *ids_data = ids_t_->template data<IdT>();
       int64_t ids_num = ids_t_->numel();
       dim3 threads(128, 8);
       dim3 grids(8, 1);
@@ -153,7 +153,7 @@ struct LookupTableV2GradCUDAFunctor {
 
       if (!std::is_same<IdT, int64_t>::value) {
         InputTypeConvert<<<grids, threads, 0, stream>>>(
-            ids_t_->data<int>(), ids_num, new_rows.MutableData(gpu_place));
+            ids_data, ids_num, new_rows.MutableData(gpu_place));
       } else {
         memory::Copy(gpu_place, new_rows.CUDAMutableData(gpu_place), gpu_place,
                      ids_data, ids_num * sizeof(int64_t), stream);
@@ -163,10 +163,10 @@ struct LookupTableV2GradCUDAFunctor {
 
       auto *d_table_value = d_table->mutable_value();
       d_table_value->Resize({ids_num, table->dims()[1]});
-      d_table_value->mutable_data<T>(gpu_place);
+      d_table_value->template mutable_data<T>(gpu_place);
 
-      auto *d_table_data = d_table_value->data<T>();
-      auto *d_output_data = d_output->data<T>();
+      auto *d_table_data = d_table_value->template data<T>();
+      auto *d_output_data = d_output->template data<T>();
       auto d_output_dims = d_output->dims();
       auto d_output_dims_2d =
           framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
@@ -192,8 +192,8 @@ struct LookupTableV2GradCUDAFunctor {
 
       dim3 threads(128, 8);
       dim3 grids(8, 1);
-      const T *d_output = d_output_t->data<T>();
-      const auto *ids = ids_t_->data<IdT>();
+      const T *d_output = d_output_t->template data<T>();
+      const auto *ids = ids_t_->template data<IdT>();
       T *d_table = d_table_t->mutable_data<T>(context_.GetPlace());
 
       auto t = framework::EigenVector<T>::Flatten(*d_table_t);
