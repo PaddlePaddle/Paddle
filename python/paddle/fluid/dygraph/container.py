@@ -79,7 +79,7 @@ class Sequential(Layer):
                 name += len(self._sub_layers)
             elif name < -len(self._sub_layers):
                 raise IndexError('index {} is out of range'.format(name))
-            return self._sub_layers[str(name)]
+            return list(self._sub_layers.values())[name]
 
     def __setitem__(self, name, layer):
         assert isinstance(layer, Layer)
