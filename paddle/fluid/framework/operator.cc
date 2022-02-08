@@ -1909,7 +1909,7 @@ Scope* OperatorWithKernel::PreparePtenData(
     if (it == ctx->inputs.end()) {
       continue;
     }
-    // auto& ins_vector = ctx->inputs.at(input_names[i]);
+
     auto& ins_vector = it->second;
     auto& name_vec = name_map.at(input_names[i]);
     bool should_skip_input =
@@ -1994,7 +1994,6 @@ void OperatorWithKernel::BuildPtenKernelContext(
                         attr_names.size(), attr_defs.size()));
 
   for (size_t i = 0; i < input_names.size(); ++i) {
-    // auto& ins_vector = ctx.inputs.at(input_names[i]);
     auto it = ctx.inputs.find(input_names[i]);
 
     // calcute the start and end index of the input tensors
@@ -2060,7 +2059,7 @@ void OperatorWithKernel::BuildPtenKernelContext(
               framework::ToTypeName(var->Type())));
         }  // TODO(zyfncg): Add support for SelectedRows
 
-        // experimental::ResetTensorByArgDef(tensor_out, output_defs.at(i));
+        experimental::ResetTensorByArgDef(tensor_out, output_defs.at(i));
         SetAllocationForOutputTenosr(
             tensor_out, pten::TransToFluidPlace(output_defs.at(i).backend));
 
