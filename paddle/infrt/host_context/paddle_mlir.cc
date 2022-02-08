@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/infrt/host_context/paddle_mlir.h"
+#include "paddle/infrt/dialect/pd_ops_info.h"
 
 MLIRModelGenImpl::MLIRModelGenImpl()
     : context_(infrt::Global::getMLIRContext()), builder_(context_) {
@@ -210,6 +211,7 @@ void MLIRModelGenImpl::buildOperation(
     const infrt::paddle::framework_proto::OpDesc &op_) {
   const std::string &op_name = "pd." + op_.type();
   mlir::Location loc = mlir::UnknownLoc::get(context_);
+
   llvm::SmallVector<mlir::Value, 4> operands = GetOpInputValue(op_);
   llvm::SmallVector<mlir::Type, 4> resultTypes = GetOpOutputType(op_);
   llvm::SmallVector<mlir::NamedAttribute, 4> attrs = GetOpAttributes(op_);
@@ -221,10 +223,16 @@ void MLIRModelGenImpl::buildOperation(
 llvm::SmallVector<mlir::Value, 4> MLIRModelGenImpl::GetOpInputValue(
     const infrt::paddle::framework_proto::OpDesc &op_) {
   llvm::SmallVector<mlir::Value, 4> operands;
-  // op inputs
+
+  std::vector<std::string> inputs_info = {};
+  if (pd_dialect_inputs_info_map_.count(op_.type()))
+    inputs_info = pd_dialect_inputs_info_map_.at(op_.type());
+
   for (int var_idx = 0; var_idx < op_.inputs_size(); ++var_idx) {
     auto &var = op_.inputs(var_idx);
     if (!var.arguments().empty()) {
+      if (!std::count(inputs_info.begin(), inputs_info.end(), var.parameter()))
+        continue;
       operands.push_back((params_map_[var.arguments()[0]]));
     }
   }
@@ -234,9 +242,20 @@ llvm::SmallVector<mlir::Value, 4> MLIRModelGenImpl::GetOpInputValue(
 llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetOpOutputType(
     const infrt::paddle::framework_proto::OpDesc &op_) {
   llvm::SmallVector<mlir::Type, 4> resultTypes;
+
+  std::vector<std::string> pd_dialect_outputs_info = {};
+  if (pd_dialect_outputs_info_map_.count(op_.type()))
+    pd_dialect_outputs_info = pd_dialect_outputs_info_map_.at(op_.type());
+
   // update op outputs info
   for (int var_idx = 0; var_idx < op_.outputs_size(); ++var_idx) {
     auto &var_name = op_.outputs(var_idx).arguments()[0];
+
+    if (!std::count(pd_dialect_outputs_info.begin(),
+                    pd_dialect_outputs_info.end(),
+                    op_.outputs(var_idx).parameter()))
+      continue;
+
     // update persistable tensors
     for (int i = 0; i < main_block_.vars_size(); i++) {
       auto var_desc = main_block_.vars(i);
@@ -292,11 +311,19 @@ llvm::SmallVector<mlir::NamedAttribute, 4> MLIRModelGenImpl::GetOpAttributes(
     break;                                                              \
   }
 
+  // get registered attributes
+  const std::string &op_name = "pd." + op_.type();
+  mlir::RegisteredOperationName registered_op_name_ =
+      mlir::RegisteredOperationName::lookup(op_name, context_).getValue();
+  llvm::ArrayRef<mlir::StringAttr> attr_names_ =
+      registered_op_name_.getAttributeNames();
+  std::vector<mlir::StringAttr> attr_names_vec_ = attr_names_.vec();
+
   // update attrs
   for (int attrs_num = 0; attrs_num < op_.attrs_size(); attrs_num++) {
     auto attr_name_ = op_.attrs(attrs_num).name();
     auto type = op_.attrs(attrs_num).type();
-    if (std::count(skipped_attrs_.begin(), skipped_attrs_.end(), attr_name_))
+    if (!std::count(attr_names_vec_.begin(), attr_names_vec_.end(), attr_name_))
       continue;
     switch (type) {
       ATTR_IMPL_CASE(FLOAT, f, getF32FloatAttr);

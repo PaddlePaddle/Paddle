@@ -86,19 +86,6 @@ class MLIRModelGenImpl {
   infrt::paddle::framework_proto::BlockDesc main_block_;
 
   std::map<std::string, mlir::Value> params_map_;
-
-  const std::vector<std::string> skipped_attrs_{"trainable_statistics",
-                                                "use_global_stats",
-                                                "is_test",
-                                                "use_mkldnn",
-                                                "use_cudnn",
-                                                "op_device",
-                                                "op_namescope",
-                                                "op_role",
-                                                "mkldnn_data_type",
-                                                "with_quant_attr",
-                                                "use_quantizer",
-                                                "op_callstack"};
 };
 
 // convert protobuf repeated to std::vector.
