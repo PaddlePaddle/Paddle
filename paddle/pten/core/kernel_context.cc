@@ -48,10 +48,6 @@ void KernelContext::EmplaceBackOutputWithoutSetRange(TensorBase* output) {
   outputs_.emplace_back(output);
 }
 
-void KernelContext::SetOutputWithoutSetRange(int index, TensorBase* output) {
-  outputs_.at(index) = output;
-}
-
 void KernelContext::EmplaceBackOutputs(
     paddle::SmallVector<TensorBase*> outputs) {
   int index = outputs_.size();
@@ -103,15 +99,4 @@ const std::pair<int, int>& KernelContext::OutputRangeAt(size_t idx) const {
   return output_range_.at(idx);
 }
 
-std::pair<int, int>& KernelContext::MutableInputRangeAt(size_t idx) {
-  return input_range_[idx];
-}
-
-std::pair<int, int>& KernelContext::MutableOutputRangeAt(size_t idx) {
-  return output_range_[idx];
-}
-
-// Temporary method: For compatible with fluid Tensor and improve performance
-// Only deal with DenseTensor now
-void KernelContext::ClearData() { attrs_.clear(); }
 }  // namespace pten
