@@ -36,7 +36,6 @@ void AddtoMatmulGradKernel(const Context& dev_ctx,
                            const DenseTensor& dout,
                            bool transpose_x,
                            bool transpose_y,
-                           bool use_addto,
                            DenseTensor* dx,
                            DenseTensor* dy);
 
