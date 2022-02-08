@@ -37,10 +37,6 @@ void DTDialect::initialize() {
 #define GET_OP_LIST
 #include "paddle/infrt/dialect/dense_tensor.cpp.inc"
       >();
-
-  addTypes<::infrt::dt::TensorType,
-           ::infrt::dt::TensorMapType,
-           ::infrt::dt::StringType>();
 }
 
 llvm::Optional<TargetType> GetTargetType(mlir::StringRef key) {
