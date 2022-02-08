@@ -494,7 +494,7 @@ void MatmulGradKernel(const Context& dev_ctx,
                       bool transpose_y,
                       DenseTensor* dx,
                       DenseTensor* dy) {
-  MatmulGradKernelImpl(
+  MatmulGradKernelImpl<T, Context>(
       dev_ctx, x, y, out_grad, transpose_x, transpose_y, false, dx, dy);
 }
 
@@ -507,7 +507,7 @@ void AddtoMatmulGradKernel(const Context& dev_ctx,
                            bool transpose_y,
                            DenseTensor* dx,
                            DenseTensor* dy) {
-  MatmulGradKernelImpl(
+  MatmulGradKernelImpl<T, Context>(
       dev_ctx, x, y, out_grad, transpose_x, transpose_y, true, dx, dy);
 }
 
