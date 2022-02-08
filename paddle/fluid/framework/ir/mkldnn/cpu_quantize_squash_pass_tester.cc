@@ -26,7 +26,8 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
            const std::vector<std::string>& outputs, bool use_mkldnn,
            const std::vector<float> scale = {}, float bias = 0.0,
            const std::string& mkldnn_data_type = "float32",
-           bool bias_after_scale = false, int groups = 1) {
+           bool bias_after_scale = false, int groups = 1,
+           bool is_negative_input = true) {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
   op->SetAttr("use_mkldnn", use_mkldnn);
@@ -53,6 +54,7 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     op->SetInput("Input", {inputs[0]});
     op->SetOutput("Output", {outputs[0]});
     op->SetAttr("Scale", scale[0]);
+    op->SetAttr("is_negative_input", is_negative_input);
   } else if (type == "dequantize") {
     op->SetInput("Input", {inputs[0]});
     op->SetOutput("Output", {outputs[0]});
@@ -216,6 +218,28 @@ ProgramDesc BuildConvMultiRequantProgramDesc(bool use_mkldnn, float scale_out,
         {scale_out, scale1});
   SetOp(&prog, "requantize", "Requant2", {"b"}, {"d"}, use_mkldnn,
         {scale_out, scale2});
+  return prog;
+}
+
+// a->Dequant->d(s8)->Quant->g-\
+// b->Dequant->e(u8)->Quant->h--Concat1->x
+// c->Dequant->f(s8)->Quant->i-/
+ProgramDesc BuildConvS8U8S8ConcatProgramDesc(float scale_out, float scale) {
+  ProgramDesc prog;
+  for (auto& v : variable_names) {
+    prog.MutableBlock(0)->Var(v);
+  }
+  SetOp(&prog, "dequantize", "Dequant1", {"a"}, {"d"}, true,
+        {scale, scale_out});
+  SetOp(&prog, "dequantize", "Dequant2", {"b"}, {"e"}, true,
+        {scale, scale_out});
+  SetOp(&prog, "dequantize", "Dequant3", {"c"}, {"f"}, true,
+        {scale, scale_out});
+  SetOp(&prog, "quantize", "Quant1", {"d"}, {"g"}, true, {scale, scale_out});
+  SetOp(&prog, "quantize", "Quant2", {"e"}, {"h"}, true, {scale, scale_out},
+        0.0, "float32", false, 1, false);
+  SetOp(&prog, "quantize", "Quant3", {"f"}, {"i"}, true, {scale, scale_out});
+  SetOp(&prog, "concat", "Concat1", {"g,h,i"}, {"x"}, true);
   return prog;
 }
 
@@ -762,6 +786,13 @@ TEST(CpuQuantizeSquashPass, quant_bf16_conv2d) {
   CountNodeTest(
       BuildQuantConv2dProgramDesc(use_mkldnn, quant_scale, mkldnn_data_type),
       remove_nodes);
+}
+
+TEST(CpuQuantizeSquashPass, dont_squash_u8_dequant_s8_quant_input_to_concat) {
+  // added 2 requantize
+  // removed 2 quantize and 2 dequantize and 2 intermediate variables
+  auto remove_nodes = 4;
+  CountNodeTest(BuildConvS8U8S8ConcatProgramDesc(1.2f, 1.2f), remove_nodes);
 }
 
 }  // namespace ir
