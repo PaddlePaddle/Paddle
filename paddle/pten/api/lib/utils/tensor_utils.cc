@@ -203,6 +203,9 @@ void ResetTensorDtypeAndLayoutByArgDef(pten::TensorBase* dst,
   VLOG(5) << "ResetTensor by TensorArgDef.";
   if (pten::DenseTensor::classof(dst)) {
     auto* dense_t = static_cast<pten::DenseTensor*>(dst);
+    if (dense_t->initialized()) {
+      return;
+    }
     auto* meta = pten::DenseTensorUtils::GetMutableMeta(dense_t);
     meta->dtype = arg_def.dtype;
     meta->layout = arg_def.layout;
