@@ -19,6 +19,7 @@ nv_library(tensorrt_converter
                 conv3d_op.cc
                 mish_op.cc
                 nearest_interp_v2_op.cc
+                bilinear_interp_op.cc
                 pool3d_op.cc
                 deformable_conv_op.cc
            DEPS tensorrt_engine tensorrt_plugin operator scope framework_proto op_registry)
