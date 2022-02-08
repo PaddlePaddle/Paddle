@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid.core as core
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
 import paddle
 import paddle.static as static
 import paddle.fluid as fluid
@@ -231,6 +231,31 @@ class TestFP16DropoutOp2(TestFP16DropoutOp):
         self.input_size = [32, 64, 3]
         self.prob = 0.75
         self.fix_seed = False
+
+
+class TestBF16DropoutOp(OpTest):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.dtype = np.uint16
+
+        x = np.random.random((32, 64)).astype("float32")
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.attrs = {'dropout_prob': 1.0, 'fix_seed': True, 'is_test': False}
+        self.outputs = {
+            'Out':
+            convert_float_to_uint16(np.zeros((32, 64)).astype('float32')),
+            'Mask': np.zeros((32, 64)).astype('uint8')
+        }
+
+    def test_check_output(self):
+        if not core.is_compiled_with_cuda():
+            return
+        self.check_output_with_place(core.CUDAPlace(0))
+
+    def test_check_grad_normal(self):
+        if not core.is_compiled_with_cuda():
+            return
+        self.check_grad_with_place(core.CUDAPlace(0), ['X'], 'Out')
 
 
 class TestDropoutOpWithSeedOnCPUPlace(unittest.TestCase):
