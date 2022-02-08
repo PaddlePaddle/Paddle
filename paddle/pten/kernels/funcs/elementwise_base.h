@@ -22,14 +22,16 @@ limitations under the License. */
 #include "paddle/pten/kernels/empty_kernel.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/platform/aligned_vector.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/function_traits.h"
+#include "paddle/pten/backends/gpu/gpu_launch_config.h"
+#include "paddle/pten/kernels/primitive/kernel_primitives.h"
 
-namespace kps = paddle::operators::kernel_primitives;
+namespace kps = pten::kps;
 
 #endif
+
+#define BASE_SIZE 1  // To avoid running errors when Arity == 0 in args[Arity]
 
 namespace pten {
 
@@ -229,7 +231,7 @@ class TransformFunctor {
                    const bool is_xsize_larger = true)
       : x_(x.data<T>()),
         y_(y.data<T>()),
-        z_(z->mutable_data<OutType>(ctx.GetPlace())),
+        z_(ctx.template Alloc<OutType>(z)),
         nx_(x.numel()),
         ctx_(ctx),
         func_(func),
@@ -425,8 +427,8 @@ void ElemwiseGradComputeNoBroadcast(const DeviceContext &dev_ctx,
       dout.data<Tout>(),
       dx_op,
       dy_op,
-      dx == nullptr ? nullptr : dx->mutable_data<T>(dev_ctx.GetPlace()),
-      dy == nullptr ? nullptr : dy->mutable_data<T>(dev_ctx.GetPlace())});
+      dx == nullptr ? nullptr : dev_ctx.template Alloc<T>(dx),
+      dy == nullptr ? nullptr : dev_ctx.template Alloc<T>(dy)});
 }
 
 inline void ElementwiseGradPreProcess(const DenseTensor &dout,
@@ -472,6 +474,15 @@ struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, Arity, true> {
                                     OutT *result) {
     kps::ElementwiseAny<InT, OutT, VecSize, 1, 1, Arity, Functor>(
         result, args, func);
+  }
+};
+
+template <typename InT, typename OutT, int VecSize, typename Functor>
+struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 0, false> {
+  __device__ inline void operator()(Functor func,
+                                    InT (*args)[VecSize],
+                                    OutT *result) {
+    kps::ElementwiseFillConst<InT, OutT, VecSize, 1, 1, Functor>(result, func);
   }
 };
 
@@ -548,12 +559,14 @@ template <typename InT,
           int VecSize,
           bool IsBoundary>
 __device__ void VectorizedElementwiseKernelImpl(
-    const pten::framework::Array<const _ptr_ InT *__restrict__, Arity> &in,
+
+    const pten::framework::Array<const _ptr_ InT *__restrict__,
+                                 Arity + BASE_SIZE> &in,
     pten::framework::Array<_ptr_ OutT *, NumOuts> outs,
     int num,
     int data_offset,
     Functor func) {
-  InT args[Arity][VecSize];
+  InT args[Arity + BASE_SIZE][VecSize];
   ConditionalT<OutT, NumOuts> result[VecSize];
 
 #pragma unroll
@@ -583,7 +596,8 @@ template <typename InT,
           int NumOuts,
           int VecSize>
 __global__ void VectorizedElementwiseKernel(
-    pten::framework::Array<const _ptr_ InT *__restrict__, Arity> ins,
+    pten::framework::Array<const _ptr_ InT *__restrict__, Arity + BASE_SIZE>
+        ins,
     pten::framework::Array<_ptr_ OutT *, NumOuts> outs,
     int size,
     int main_offset,
@@ -623,15 +637,16 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
                            const std::vector<const DenseTensor *> &ins,
                            std::vector<DenseTensor *> *outs,
                            Functor func) {
-  auto numel = ins[0]->numel();
-  pten::framework::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
+  auto numel = (*outs)[0]->numel();
+  pten::framework::Array<const _ptr_ InT *__restrict__, Arity + BASE_SIZE>
+      ins_data;
   pten::framework::Array<_ptr_ OutT *, NumOuts> outs_data;
 
   for (int i = 0; i < Arity; ++i) {
     ins_data[i] = ins[i]->data<InT>();
   }
   for (int i = 0; i < NumOuts; ++i) {
-    outs_data[i] = (*outs)[i]->mutable_data<OutT>(ctx.GetPlace());
+    outs_data[i] = ctx.Alloc<OutT>((*outs)[i]);
   }
 #ifdef PADDLE_WITH_XPU2
   int block_size = 64;
@@ -646,7 +661,8 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
                               VecSize><<<grid_size, block_size, 0, stream>>>(
       ins_data, outs_data, numel, main_offset, func);
 #else
-  auto gpu_config = GetGpuLaunchConfig1D(ctx, numel, VecSize);
+  auto gpu_config =
+      pten::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, VecSize);
   int main_offset = (numel / (VecSize * gpu_config.GetBlockSize())) * VecSize *
                     gpu_config.GetBlockSize();
   auto stream = ctx.stream();

@@ -92,6 +92,38 @@ void AddTripleGradKernel(const Context& dev_ctx,
       dev_ctx, ddx, ddy, d_ddout, axis, d_ddx, d_ddy, AddGradFunc<T>);
 }
 
+template <typename T, typename Context>
+void SubtractGradKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& y,
+                        const DenseTensor& dout,
+                        int axis,
+                        DenseTensor* dx,
+                        DenseTensor* dy) {
+  // skip out
+  auto* out = &dout;
+  elementwise_sub_grad<T>(dev_ctx, x, y, *out, dout, dx, dy, axis);
+}
+
+template <typename T, typename Context>
+void SubtractDoubleGradKernel(const Context& dev_ctx,
+                              const DenseTensor& y,
+                              paddle::optional<const DenseTensor&> ddx,
+                              paddle::optional<const DenseTensor&> ddy,
+                              const DenseTensor& dout,
+                              int axis,
+                              DenseTensor* ddout) {
+  pten::SubtractDoubleGradImpl<T>(
+      dev_ctx,
+      y,
+      ddx,
+      ddy,
+      dout,
+      axis,
+      ddout,
+      ElementwiseCompute<funcs::SubtractFunctor<T>, T>);
+}
+
 }  // namespace pten
 
 PT_REGISTER_KERNEL(add_grad,
@@ -120,6 +152,28 @@ PT_REGISTER_KERNEL(add_triple_grad,
                    CPU,
                    ALL_LAYOUT,
                    pten::AddTripleGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   paddle::platform::complex<float>,
+                   paddle::platform::complex<double>) {}
+
+PT_REGISTER_KERNEL(subtract_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::SubtractGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   paddle::platform::complex<float>,
+                   paddle::platform::complex<double>) {}
+
+PT_REGISTER_KERNEL(subtract_double_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::SubtractDoubleGradKernel,
                    float,
                    double,
                    int,

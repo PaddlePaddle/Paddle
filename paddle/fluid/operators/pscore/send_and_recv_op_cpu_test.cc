@@ -19,8 +19,8 @@ limitations under the License. */
 #include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/distributed/service/heter_client.h"
-#include "paddle/fluid/distributed/service/heter_server.h"
+#include "paddle/fluid/distributed/ps/service/heter_client.h"
+#include "paddle/fluid/distributed/ps/service/heter_server.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
@@ -31,7 +31,7 @@ namespace distributed = paddle::distributed;
 using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
 using VarMsg = ::paddle::distributed::VariableMessage;
 
-USE_OP(scale);
+USE_OP_ITSELF(scale);
 USE_OP(send_and_recv);
 
 std::shared_ptr<distributed::HeterServer> b_rpc_service;

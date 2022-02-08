@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/common/data_type.h"
-#include "paddle/pten/core/convert_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/kernel_registry.h"
 
 // See Note [ Why still include the fluid headers? ]
@@ -87,9 +87,7 @@ void Copy(const Context& dev_ctx,
                           ctx_gpu_place));
     auto stream =
         blocking ? nullptr
-                 : reinterpret_cast<const paddle::platform::CUDADeviceContext&>(
-                       dev_ctx)
-                       .stream();
+                 : reinterpret_cast<const pten::GPUContext&>(dev_ctx).stream();
     paddle::memory::Copy(
         dst_cpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
   } else if (paddle::platform::is_cpu_place(src_place) &&  // NOLINT
@@ -113,9 +111,7 @@ void Copy(const Context& dev_ctx,
                           ctx_gpu_place));
     auto stream =
         blocking ? nullptr
-                 : reinterpret_cast<const paddle::platform::CUDADeviceContext&>(
-                       dev_ctx)
-                       .stream();
+                 : reinterpret_cast<const pten::GPUContext&>(dev_ctx).stream();
     paddle::memory::Copy(
         dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, stream);
   } else if (paddle::platform::is_gpu_place(src_place) &&  // NOLINT
@@ -140,9 +136,7 @@ void Copy(const Context& dev_ctx,
                           ctx_gpu_place.device));
     auto stream =
         blocking ? nullptr
-                 : reinterpret_cast<const paddle::platform::CUDADeviceContext&>(
-                       dev_ctx)
-                       .stream();
+                 : reinterpret_cast<const pten::GPUContext&>(dev_ctx).stream();
     paddle::memory::Copy(
         dst_cuda_pinned_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
   } else if (paddle::platform::is_cuda_pinned_place(src_place) &&  // NOLINT
@@ -167,9 +161,7 @@ void Copy(const Context& dev_ctx,
                           ctx_gpu_place.device));
     auto stream =
         blocking ? nullptr
-                 : reinterpret_cast<const paddle::platform::CUDADeviceContext&>(
-                       dev_ctx)
-                       .stream();
+                 : reinterpret_cast<const pten::GPUContext&>(dev_ctx).stream();
     paddle::memory::Copy(
         dst_gpu_place, dst_ptr, src_cuda_pinned_place, src_ptr, size, stream);
   } else if (paddle::platform::is_gpu_place(src_place) &&  // NOLINT
@@ -185,9 +177,7 @@ void Copy(const Context& dev_ctx,
             ctx_place));
     auto stream =
         blocking ? nullptr
-                 : reinterpret_cast<const paddle::platform::CUDADeviceContext&>(
-                       dev_ctx)
-                       .stream();
+                 : reinterpret_cast<const pten::GPUContext&>(dev_ctx).stream();
     if (paddle::platform::is_same_place(src_place, dst_place)) {
       paddle::memory::Copy(
           dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);

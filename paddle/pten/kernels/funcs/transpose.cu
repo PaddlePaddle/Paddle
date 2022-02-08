@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/ddim.h"
@@ -61,7 +62,7 @@ struct TransposeNormal<GPUContext, T> {
     auto in_stride = pten::framework::stride(in.dims());
     auto out_stride = pten::framework::stride(out->dims());
     auto* in_ptr = in.data<T>();
-    auto* out_ptr = out->mutable_data<T>(dev_ctx.GetPlace());
+    T* out_ptr = dev_ctx.template Alloc<T>(out);
 
     // copy in_stride, out_stride, axis to gpu device
     const paddle::platform::CUDAPlace& cuda_place = dev_ctx.GetPlace();

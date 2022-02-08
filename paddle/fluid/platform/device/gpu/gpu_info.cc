@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include <array>
 #include <cstdlib>
 #include <mutex>
 #include <set>
@@ -39,11 +40,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/split.h"
 
+#include "paddle/pten/backends/gpu/gpu_info.h"
+
 DECLARE_double(fraction_of_gpu_memory_to_use);
 DECLARE_uint64(initial_gpu_memory_in_mb);
 DECLARE_uint64(reallocate_gpu_memory_in_mb);
 DECLARE_bool(enable_cublas_tensor_op_math);
-DECLARE_string(selected_gpus);
 DECLARE_uint64(gpu_memory_limit_mb);
 
 constexpr static float fraction_reserve_gpu_memory = 0.05f;
@@ -51,23 +53,6 @@ constexpr static float fraction_reserve_gpu_memory = 0.05f;
 USE_GPU_MEM_STAT;
 namespace paddle {
 namespace platform {
-//! Get a list of device ids from environment variable or use all.
-std::vector<int> GetSelectedDevices() {
-  // use user specified GPUs in single-node multi-process mode.
-  std::vector<int> devices;
-  if (!FLAGS_selected_gpus.empty()) {
-    auto devices_str = paddle::string::Split(FLAGS_selected_gpus, ',');
-    for (auto id : devices_str) {
-      devices.push_back(atoi(id.c_str()));
-    }
-  } else {
-    int count = GetGPUDeviceCount();
-    for (int i = 0; i < count; ++i) {
-      devices.push_back(i);
-    }
-  }
-  return devices;
-}
 
 void GpuMemoryUsage(size_t *available, size_t *total) {
   size_t actual_available, actual_total;
@@ -182,18 +167,28 @@ class RecordedGpuMallocHelper {
    * or cudaSuccess would be returned, and the cudaGetLastError() flag
    * would be clear.
    */
-  gpuError_t Malloc(void **ptr, size_t size) {
+  gpuError_t Malloc(void **ptr, size_t size,
+                    bool malloc_managed_memory = false) {
     LockGuardPtr<std::mutex> lock(mtx_);
     if (UNLIKELY(NeedRecord() && cur_size_.load() + size > limit_size_)) {
       return gpuErrorOutOfMemory;
     }
 
     CUDADeviceGuard guard(dev_id_);
+    gpuError_t result;
 #ifdef PADDLE_WITH_HIP
-    auto result = hipMalloc(ptr, size);
+    if (UNLIKELY(malloc_managed_memory)) {
+      result = hipMallocManaged(ptr, size);
+    } else {
+      result = hipMalloc(ptr, size);
+    }
 #else
     CUDAGraphCaptureModeGuard capture_mode_guard;
-    auto result = cudaMalloc(ptr, size);
+    if (UNLIKELY(malloc_managed_memory)) {
+      result = cudaMallocManaged(ptr, size);
+    } else {
+      result = cudaMalloc(ptr, size);
+    }
 #endif
     if (result == gpuSuccess) {
       cur_size_.fetch_add(size);
@@ -244,17 +239,20 @@ class RecordedGpuMallocHelper {
 #endif
   }
 
-#ifdef PADDLE_WITH_TESTING
   void *GetBasePtr(void *ptr) {
+#ifdef PADDLE_WITH_TESTING
     auto it = gpu_ptrs.upper_bound(ptr);
-
     if (it == gpu_ptrs.begin()) {
       return nullptr;
     }
-
     return *(--it);
-  }
+#else
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "The RecordedGpuMallocHelper::GetBasePtr is only implemented with "
+        "testing, should not use for release."));
+    return nullptr;
 #endif
+  }
 
   bool GetMemInfo(size_t *avail, size_t *total, size_t *actual_avail,
                   size_t *actual_total) {
@@ -330,8 +328,10 @@ std::once_flag RecordedGpuMallocHelper::once_flag_;
 std::vector<std::unique_ptr<RecordedGpuMallocHelper>>
     RecordedGpuMallocHelper::instances_;
 
-gpuError_t RecordedGpuMalloc(void **ptr, size_t size, int dev_id) {
-  return RecordedGpuMallocHelper::Instance(dev_id)->Malloc(ptr, size);
+gpuError_t RecordedGpuMalloc(void **ptr, size_t size, int dev_id,
+                             bool malloc_managed_memory) {
+  return RecordedGpuMallocHelper::Instance(dev_id)->Malloc(
+      ptr, size, malloc_managed_memory);
 }
 
 void RecordedGpuFree(void *p, size_t size, int dev_id) {
@@ -364,6 +364,10 @@ uint64_t RecordedGpuMallocSize(int dev_id) {
   return RecordedGpuMallocHelper::Instance(dev_id)->RecordedSize();
 }
 
+uint64_t RecordedGpuLimitSize(int dev_id) {
+  return RecordedGpuMallocHelper::Instance(dev_id)->LimitSize();
+}
+
 bool IsGpuMallocRecorded(int dev_id) {
   return RecordedGpuMallocHelper::Instance(dev_id)->NeedRecord();
 }
@@ -375,11 +379,104 @@ void EmptyCache(void) {
   }
 }
 
-#ifdef PADDLE_WITH_TESTING
+bool IsGPUManagedMemorySupported(int dev_id) {
+  return pten::backends::gpu::IsGPUManagedMemorySupported(dev_id);
+}
+
+bool IsGPUManagedMemoryOversubscriptionSupported(int dev_id) {
+  return pten::backends::gpu::IsGPUManagedMemoryOversubscriptionSupported(
+      dev_id);
+}
+
 void *GetGpuBasePtr(void *ptr, int dev_id) {
   return RecordedGpuMallocHelper::Instance(dev_id)->GetBasePtr(ptr);
 }
-#endif
+
+int DnnVersion() { return pten::backends::gpu::DnnVersion(); }
+
+int GetGPUDeviceCount() { return pten::backends::gpu::GetGPUDeviceCount(); }
+
+int GetGPUComputeCapability(int id) {
+  return pten::backends::gpu::GetGPUComputeCapability(id);
+}
+
+int GetGPURuntimeVersion(int id) {
+  return pten::backends::gpu::GetGPURuntimeVersion(id);
+}
+
+int GetGPUDriverVersion(int id) {
+  return pten::backends::gpu::GetGPUDriverVersion(id);
+}
+
+bool TensorCoreAvailable() {
+  return pten::backends::gpu::TensorCoreAvailable();
+}
+
+int GetGPUMultiProcessors(int id) {
+  return pten::backends::gpu::GetGPUMultiProcessors(id);
+}
+
+int GetGPUMaxThreadsPerMultiProcessor(int id) {
+  return pten::backends::gpu::GetGPUMaxThreadsPerMultiProcessor(id);
+}
+
+int GetGPUMaxThreadsPerBlock(int id) {
+  return pten::backends::gpu::GetGPUMaxThreadsPerBlock(id);
+}
+
+int GetCurrentDeviceId() { return pten::backends::gpu::GetCurrentDeviceId(); }
+
+std::array<int, 3> GetGpuMaxGridDimSize(int id) {
+  return pten::backends::gpu::GetGpuMaxGridDimSize(id);
+}
+
+std::vector<int> GetSelectedDevices() {
+  return pten::backends::gpu::GetSelectedDevices();
+}
+
+const gpuDeviceProp &GetDeviceProperties(int id) {
+  return pten::backends::gpu::GetDeviceProperties(id);
+}
+
+void SetDeviceId(int device_id) { pten::backends::gpu::SetDeviceId(device_id); }
+
+gpuError_t GpuGetLastError() { return pten::backends::gpu::GpuGetLastError(); }
+
+void GpuStreamSync(gpuStream_t stream) {
+  pten::backends::gpu::GpuStreamSync(stream);
+}
+
+void GpuDestroyStream(gpuStream_t stream) {
+  pten::backends::gpu::GpuDestroyStream(stream);
+}
+
+void GpuDeviceSync() { pten::backends::gpu::GpuDeviceSync(); }
+
+void GpuMemcpyAsync(void *dst, const void *src, size_t count,
+                    gpuMemcpyKind kind, gpuStream_t stream) {
+  pten::backends::gpu::GpuMemcpyAsync(dst, src, count, kind, stream);
+}
+
+void GpuMemcpySync(void *dst, const void *src, size_t count,
+                   gpuMemcpyKind kind) {
+  pten::backends::gpu::GpuMemcpySync(dst, src, count, kind);
+}
+
+void GpuMemcpyPeerAsync(void *dst, int dst_device, const void *src,
+                        int src_device, size_t count, gpuStream_t stream) {
+  pten::backends::gpu::GpuMemcpyPeerAsync(dst, dst_device, src, src_device,
+                                          count, stream);
+}
+
+void GpuMemcpyPeerSync(void *dst, int dst_device, const void *src,
+                       int src_device, size_t count) {
+  pten::backends::gpu::GpuMemcpyPeerSync(dst, dst_device, src, src_device,
+                                         count);
+}
+
+void GpuMemsetAsync(void *dst, int value, size_t count, gpuStream_t stream) {
+  pten::backends::gpu::GpuMemsetAsync(dst, value, count, stream);
+}
 
 }  // namespace platform
 }  // namespace paddle

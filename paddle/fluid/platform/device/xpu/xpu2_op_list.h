@@ -292,6 +292,10 @@ XPUOpMap& get_kl2_ops() {
                               pOpKernelType(vartype::INT64, XPUPlace())})},
       {"scatter", XPUKernelSet({pOpKernelType(vartype::INT64, XPUPlace()),
                                 pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"sigmoid_cross_entropy_with_logits_grad",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"sigmoid_cross_entropy_with_logits",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"shape", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                               pOpKernelType(vartype::INT64, XPUPlace())})},
       {"sigmoid", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
@@ -303,8 +307,8 @@ XPUOpMap& get_kl2_ops() {
       {"slice", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                               pOpKernelType(vartype::FP16, XPUPlace()),
                               pOpKernelType(vartype::INT32, XPUPlace())})},
-      {"softmax_grad",
-       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"softmax", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                                pOpKernelType(vartype::FP16, XPUPlace())})},
       {"softmax_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
@@ -313,9 +317,6 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::FP16, XPUPlace())})},
       {"softmax_with_cross_entropy",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
-      {"softmax", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
-      {"softmax", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
-                                pOpKernelType(vartype::FP16, XPUPlace())})},
       {"split", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                               pOpKernelType(vartype::INT32, XPUPlace())})},
       {"squeeze2_grad",
@@ -382,6 +383,10 @@ XPUOpMap& get_kl2_ops() {
                               pOpKernelType(vartype::FP32, XPUPlace())})},
 
       // AddMore
+      {"sequence_conv",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"sequence_conv_grad",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
   };
 
   return s_xpu2_kernels;
