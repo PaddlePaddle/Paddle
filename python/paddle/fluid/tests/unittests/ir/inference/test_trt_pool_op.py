@@ -119,7 +119,7 @@ class TensorRTAvgPoolTest(TensorRTPoolTest):
         self.exclusive = False
 
 
-class TensorRTAvgPoolTest(TensorRTPoolTest):
+class TensorRTAvgCeilPoolTest(TensorRTPoolTest):
     def set_extra_config(self):
         self.pool_size = 2
         self.pool_type = 'avg'
