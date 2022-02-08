@@ -104,15 +104,6 @@ class ConcatOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    tensor.place(), tensor.layout());
   }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext &ctx) const override {
-    if (ctx.HasInput("AxisTensor")) {
-      return framework::KernelSignature("concat", {"X"}, {"AxisTensor"},
-                                        {"Out"});
-    }
-    return framework::KernelSignature("concat", {"X"}, {"axis"}, {"Out"});
-  }
 };
 
 class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {

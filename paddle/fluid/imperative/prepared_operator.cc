@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/imperative/prepared_operator.h"
 
+#include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/imperative/infer_shape_context.h"
@@ -24,11 +25,11 @@
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 #endif
+#include "paddle/fluid/framework/library_type.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(check_nan_inf);
-DECLARE_bool(run_pten_kernel);
 DECLARE_bool(benchmark);
 DECLARE_bool(run_kp_kernel);
 
@@ -56,7 +57,7 @@ const framework::Tensor* GetTensorFromVar(const framework::Variable& var) {
 }
 
 template <typename VarType>
-static void HandleComplexGradToRealGrad(const NameVarMap<VarType>& outs) {
+void HandleComplexGradToRealGrad(const NameVarMap<VarType>& outs) {
   for (auto& pair : outs) {
     for (auto& var : pair.second) {
       if (var == nullptr) {
@@ -85,6 +86,12 @@ static void HandleComplexGradToRealGrad(const NameVarMap<VarType>& outs) {
       }
     }
   }
+}
+
+template <>
+void HandleComplexGradToRealGrad<egr::EagerTensor>(
+    const NameVarMap<egr::EagerTensor>& outs) {
+  // TODO(jiabin): Support Complex here.
 }
 
 PreparedOp::PreparedOp(const framework::OperatorBase& op,
@@ -145,7 +152,6 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   auto dygraph_exe_ctx = DygraphExecutionContext<VarType>(
       op, framework::Scope(), *dev_ctx, ctx, ins, outs, attrs, default_attrs);
   auto expected_kernel_key = op.GetExpectedKernelType(dygraph_exe_ctx);
-  VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   framework::KernelSignature pt_kernel_signature;
   pten::KernelKey pt_kernel_key;
@@ -228,7 +234,31 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
     expected_kernel_key.place_ = platform::CPUPlace();
     kernel_iter = kernels.find(expected_kernel_key);
   }
+
 #endif
+
+#ifdef PADDLE_WITH_XPU_KP
+  bool use_xpu_kp_kernel_rt =
+      FLAGS_run_kp_kernel &&
+      paddle::platform::is_xpu_kp_support_op(op.Type(), expected_kernel_key);
+  bool use_xpu_kp_kernel_debug =
+      paddle::platform::is_in_xpu_kpwhite_list(op.Type());
+  if (use_xpu_kp_kernel_rt) {
+    VLOG(3) << "xpu_kp using rt mode ";
+  }
+  if (use_xpu_kp_kernel_debug) {
+    VLOG(3) << "xpu_kp using debug mode ";
+  }
+  if (paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
+      (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug)) {
+    expected_kernel_key.place_ = platform::XPUPlace();
+    expected_kernel_key.library_type_ = paddle::framework::LibraryType::kKP;
+    kernel_iter = kernels.find(expected_kernel_key);
+    VLOG(3) << "using XPU KP kernel: " << op.Type()
+            << ", using_kernel_key:" << expected_kernel_key;
+  }
+#endif
+
 #ifdef PADDLE_WITH_ASCEND_CL
   if (kernel_iter == kernels.end() &&
       paddle::platform::is_npu_place(expected_kernel_key.place_)) {
@@ -282,6 +312,15 @@ PreparedOp PreparedOp::Prepare(const NameVarMap<VariableWrapper>& ins,
                                       default_attrs);
 }
 
+PreparedOp PreparedOp::Prepare(const NameVarMap<egr::EagerTensor>& ins,
+                               const NameVarMap<egr::EagerTensor>& outs,
+                               const framework::OperatorWithKernel& op,
+                               const platform::Place& place,
+                               const framework::AttributeMap& attrs,
+                               const framework::AttributeMap& default_attrs) {
+  return PrepareImpl<egr::EagerTensor>(ins, outs, op, place, attrs,
+                                       default_attrs);
+}
 template <typename VarType>
 static void PreparedOpRunImpl(
     const framework::OperatorBase& op, const framework::RuntimeContext& ctx,
@@ -409,6 +448,21 @@ void PreparedOp::Run(const NameVarMap<VariableWrapper>& ins,
   } else {
     PreparedOpRunImpl<VariableWrapper>(op_, ctx_, kernel_type_, func_, dev_ctx_,
                                        ins, outs, attrs, default_attrs);
+  }
+}
+
+void PreparedOp::Run(const NameVarMap<egr::EagerTensor>& ins,
+                     const NameVarMap<egr::EagerTensor>& outs,
+                     const framework::AttributeMap& attrs,
+                     const framework::AttributeMap& default_attrs) {
+  if (run_pten_kernel_) {
+    PreparedOpRunPtImpl<egr::EagerTensor>(
+        op_, kernel_type_, pt_kernel_signature_, pt_kernel_, dev_ctx_, ins,
+        outs, attrs, default_attrs);
+  } else {
+    PreparedOpRunImpl<egr::EagerTensor>(op_, ctx_, kernel_type_, func_,
+                                        dev_ctx_, ins, outs, attrs,
+                                        default_attrs);
   }
 }
 

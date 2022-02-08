@@ -56,7 +56,6 @@ DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
 PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism, 0,
                              "number of threads for inner op");
-DECLARE_bool(run_pten_kernel);
 DECLARE_bool(run_kp_kernel);
 
 namespace paddle {
@@ -1386,6 +1385,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
   auto expected_kernel_key = InnerGetExpectedKernelType(ctx);
 
   auto kernel_iter = kernels.find(expected_kernel_key);
+
 #ifdef PADDLE_WITH_MKLDNN
   // workaround for missing MKLDNN kernel when FLAGS_use_mkldnn env var is set
   if (kernel_iter == kernels.end() &&
@@ -1408,6 +1408,22 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
     kernel_iter = kernels.find(expected_kernel_key);
   }
 #endif
+
+#ifdef PADDLE_WITH_XPU_KP
+  bool use_xpu_kp_kernel_rt =
+      FLAGS_run_kp_kernel &&
+      paddle::platform::is_xpu_kp_support_op(type_, expected_kernel_key);
+  bool use_xpu_kp_kernel_debug =
+      paddle::platform::is_in_xpu_kpwhite_list(type_);
+  if (platform::is_xpu_place(expected_kernel_key.place_) &&
+      (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug)) {
+    expected_kernel_key.library_type_ = LibraryType::kKP;
+    kernel_iter = kernels.find(expected_kernel_key);
+    VLOG(3) << "using XPU KP kernel: " << type_
+            << ", using_kernel_key:" << expected_kernel_key;
+  }
+#endif
+
 #ifdef PADDLE_WITH_IPU
   if (kernel_iter == kernels.end() &&
       platform::is_ipu_place(expected_kernel_key.place_)) {
@@ -1877,6 +1893,7 @@ Scope* OperatorWithKernel::PreparePtenData(
                         "the size of kernel input_defs (%d).",
                         input_names.size(), input_defs.size()));
   Scope* new_scope = nullptr;
+  auto& name_map = Inputs();
   const std::unordered_set<std::string>* no_buffer_ins = nullptr;
   if (info_) {
     auto& no_buffer_inferer = info_->NoNeedBufferVarsInferer();
@@ -1890,6 +1907,7 @@ Scope* OperatorWithKernel::PreparePtenData(
   for (size_t i = 0; i < input_defs.size(); ++i) {
     auto& in_def = input_defs.at(i);
     auto& ins_vector = ctx->inputs.at(input_names[i]);
+    auto& name_vec = name_map.at(input_names[i]);
     bool should_skip_input =
         no_buffer_ins && no_buffer_ins->count(input_names[i]) > 0;
 
@@ -1927,7 +1945,7 @@ Scope* OperatorWithKernel::PreparePtenData(
       }
 
       // Create new var with the same name in transfer scopes
-      auto* trans_var = new_scope->Var(input_names[i]);
+      auto* trans_var = new_scope->Var(name_vec[offset]);
       ins_vector[offset] = trans_var;
 
       // Do transfer
@@ -1980,16 +1998,17 @@ void OperatorWithKernel::BuildPtenKernelContext(
     size_t end_idx = start_idx + ins_vector.size();
 
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
-      const framework::Tensor* tensor_in = nullptr;
+      const pten::TensorBase* tensor_in = nullptr;
       auto* var = ins_vector[offset];
-      if (var->IsType<framework::LoDTensor>()) {
-        tensor_in = &(var->Get<framework::LoDTensor>());
+      if (var->IsType<pten::DenseTensor>()) {
+        tensor_in = &(var->Get<pten::DenseTensor>());
+      } else if (var->IsType<pten::SelectedRows>()) {
+        tensor_in = &(var->Get<pten::SelectedRows>());
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported input `%s` type when call pt kernel.",
             framework::ToTypeName(var->Type())));
-      }  // TODO(zyfncg): Add support for SelectedRows
-
+      }
       pt_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
     }
     pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx), i);
@@ -2003,17 +2022,20 @@ void OperatorWithKernel::BuildPtenKernelContext(
     size_t end_idx = start_idx + outs_vector.size();
 
     for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
-      framework::Tensor* tensor_out = nullptr;
+      pten::TensorBase* tensor_out = nullptr;
       auto* var = outs_vector[offset];
-      if (var->template IsType<framework::LoDTensor>()) {
-        tensor_out = var->template GetMutable<framework::LoDTensor>();
+      if (var->template IsType<pten::DenseTensor>()) {
+        tensor_out = var->template GetMutable<pten::DenseTensor>();
+      } else if (var->template IsType<pten::SelectedRows>()) {
+        tensor_out = var->template GetMutable<pten::SelectedRows>();
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported output `%s` type when call pt kernel.",
             framework::ToTypeName(var->Type())));
-      }  // TODO(zyfncg): Add support for SelectedRows
+      }
 
-      experimental::ResetTensorByArgDef(tensor_out, output_defs.at(i));
+      experimental::ResetTensorDtypeAndLayoutByArgDef(tensor_out,
+                                                      output_defs.at(i));
       SetAllocationForOutputTenosr(
           tensor_out, pten::TransToFluidPlace(output_defs.at(i).backend));
 
