@@ -420,8 +420,7 @@ template <typename InT,
           int NY,
           int BlockSize,
           class OpFunc>
-__device__ __forceinline__ void ElementwiseFillConst(OutT* out,
-                                                     OpFunc compute) {
+__device__ __forceinline__ void ElementwiseConstant(OutT* out, OpFunc compute) {
 #pragma unroll
   for (int idx = 0; idx < NX * NY; idx++) {
     out[idx] = static_cast<OutT>(compute());
