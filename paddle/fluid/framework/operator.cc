@@ -2021,27 +2021,26 @@ void OperatorWithKernel::BuildPtenKernelContext(
       auto end_idx = start_idx + 1;
       pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx),
                                           i);
-    } else {
-      auto ins_vector = it->second;
-      size_t end_idx = start_idx + ins_vector.size();
-      for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
-        const pten::TensorBase* tensor_in = nullptr;
-        auto* var = ins_vector[offset];
-        if (var->IsType<framework::LoDTensor>()) {
-          tensor_in = &(var->Get<framework::LoDTensor>());
-        } else if (var->IsType<pten::SelectedRows>()) {
-          tensor_in = &(var->Get<pten::SelectedRows>());
-        } else {
-          PADDLE_THROW(platform::errors::Unimplemented(
-              "Unsupported input `%s` type when call pt kernel.",
-              framework::ToTypeName(var->Type())));
-        }  // TODO(zyfncg): Add support for SelectedRows
-
-        pt_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
-      }
-      pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx),
-                                          i);
+      continue;
     }
+    auto ins_vector = it->second;
+    size_t end_idx = start_idx + ins_vector.size();
+    for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
+      const pten::TensorBase* tensor_in = nullptr;
+      auto* var = ins_vector[offset];
+      if (var->IsType<framework::LoDTensor>()) {
+        tensor_in = &(var->Get<framework::LoDTensor>());
+      } else if (var->IsType<pten::SelectedRows>()) {
+        tensor_in = &(var->Get<pten::SelectedRows>());
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported input `%s` type when call pt kernel.",
+            framework::ToTypeName(var->Type())));
+      }
+
+      pt_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
+    }
+    pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx), i);
   }
 
   for (size_t i = 0; i < output_names.size(); ++i) {
@@ -2049,48 +2048,43 @@ void OperatorWithKernel::BuildPtenKernelContext(
     size_t start_idx =
         (i == 0 ? 0 : pt_kernel_context->OutputRangeAt(i - 1).second);
 
-    if (it == ctx.outputs.end()) {
+    if (it == ctx.outputs.end() || it->second.empty()) {
+      // Deal with the case that some outputs are not found or be NULL when run
+      // the kernel.
+      // For example : the outputs of matmul_grad are dx and dy,
+      // sometimes dx or dy may be NULL.
       pt_kernel_context->EmplaceBackOutputWithoutSetRange(nullptr);
       auto end_idx = start_idx + 1;
       pt_kernel_context->AssignOutputRange(std::make_pair(start_idx, end_idx),
                                            i);
-    } else {
-      auto& outs_vector = it->second;
-
-      size_t end_idx = start_idx + outs_vector.size();
-
-      for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
-        pten::TensorBase* tensor_out = nullptr;
-        auto* var = outs_vector[offset];
-        if (var->template IsType<framework::LoDTensor>()) {
-          tensor_out = var->template GetMutable<framework::LoDTensor>();
-        } else if (var->template IsType<pten::SelectedRows>()) {
-          tensor_out = var->template GetMutable<pten::SelectedRows>();
-        } else {
-          PADDLE_THROW(platform::errors::Unimplemented(
-              "Unsupported output `%s` type when call pt kernel.",
-              framework::ToTypeName(var->Type())));
-        }  // TODO(zyfncg): Add support for SelectedRows
-
-        experimental::ResetTensorDtypeAndLayoutByArgDef(tensor_out,
-                                                        output_defs.at(i));
-        SetAllocationForOutputTenosr(
-            tensor_out, pten::TransToFluidPlace(output_defs.at(i).backend));
-
-        pt_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
-      }
-
-      // Deal with the case that some outputs are NULL when run the kernel.
-      // For example : the outputs of matmul_grad are dx and dy,
-      // sometimes dx or dy may be NULL.
-      if (outs_vector.empty()) {
-        pt_kernel_context->EmplaceBackOutputWithoutSetRange({nullptr});
-        end_idx = start_idx + 1;
-      }
-
-      pt_kernel_context->AssignOutputRange(std::make_pair(start_idx, end_idx),
-                                           i);
+      continue;
     }
+    auto& outs_vector = it->second;
+
+    size_t end_idx = start_idx + outs_vector.size();
+
+    for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
+      pten::TensorBase* tensor_out = nullptr;
+      auto* var = outs_vector[offset];
+      if (var->template IsType<framework::LoDTensor>()) {
+        tensor_out = var->template GetMutable<framework::LoDTensor>();
+      } else if (var->template IsType<pten::SelectedRows>()) {
+        tensor_out = var->template GetMutable<pten::SelectedRows>();
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported output `%s` type when call pt kernel.",
+            framework::ToTypeName(var->Type())));
+      }
+
+      experimental::ResetTensorDtypeAndLayoutByArgDef(tensor_out,
+                                                      output_defs.at(i));
+      SetAllocationForOutputTenosr(
+          tensor_out, pten::TransToFluidPlace(output_defs.at(i).backend));
+
+      pt_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
+    }
+
+    pt_kernel_context->AssignOutputRange(std::make_pair(start_idx, end_idx), i);
   }
 
   for (size_t i = 0; i < attr_names.size(); ++i) {
