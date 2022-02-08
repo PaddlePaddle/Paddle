@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci
+import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid.op import Operator
@@ -44,15 +45,33 @@ class TestLookupTableOp(OpTest):
     def setUp(self):
         self.op_type = "lookup_table_v2"
         table = np.random.random((17, 31)).astype("float64")
-        ids = np.random.randint(0, 17, 4).astype("int64")
+        ids = np.random.randint(0, 17, 4).astype(self.id_dtype())
         self.inputs = {'W': table, 'Ids': ids}
         self.outputs = {'Out': table[ids]}
+
+    def id_dtype(self):
+        return "int64"
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['W'], 'Out', no_grad_set=set('Ids'))
+
+
+class TestLookupTableOpInt16(OpTest):
+    def id_dtype(self):
+        return "int16"
+
+
+class TestLookupTableOpInt8(OpTest):
+    def id_dtype(self):
+        return "int8"
+
+
+class TestLookupTableOpUInt8(OpTest):
+    def id_dtype(self):
+        return "uint8"
 
 
 class TestLookupTableOpWithTensorIds(OpTest):
@@ -256,4 +275,5 @@ class TestEmbedOpError(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()
