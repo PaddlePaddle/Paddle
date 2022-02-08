@@ -43,11 +43,11 @@ class EpiloguePassActivationCache {
   EpiloguePassActivationCache(EpiloguePassActivationCache const &) = delete;
   void operator=(EpiloguePassActivationCache const &) = delete;
 
-  bool HasFusedActivation(std::string key) {
+  bool HasFusedActivation(std::string const &key) {
     return fused_activation_keys.count(key);
   }
 
-  void InsertFusedActivation(std::string key) {
+  void InsertFusedActivation(std::string const &key) {
     if (!HasFusedActivation(key)) {
       mtx.lock();
       fused_activation_keys.insert(key);
@@ -78,8 +78,8 @@ class FuseGemmEpiloguePass : public FusePassBase {
       const std::unordered_set<std::string> &act_grad_types) const;
 
  private:
-  bool IsGemmFromLinear_(std::vector<int64_t> x_shape,
-                         std::vector<int64_t> w_shape,
+  bool IsGemmFromLinear_(std::vector<int64_t> const &x_shape,
+                         std::vector<int64_t> const &w_shape,
                          OpDesc *matmul_v2_op) const;
 };
 

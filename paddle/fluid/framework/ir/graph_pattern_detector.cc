@@ -1528,7 +1528,8 @@ PDNode *patterns::ElewiseAddAct::operator()(
 
 PDNode *patterns::LinearAct::operator()(
     paddle::framework::ir::PDNode *linear_x_var,
-    std::unordered_set<std::string> act_types, bool with_grad_link = false) {
+    std::unordered_set<std::string> const &act_types,
+    bool with_grad_link = false) {
   auto *matmul_w_var =
       pattern->NewNode(matmul_w_repr())->assert_is_op_input("matmul_v2", "Y");
 
@@ -1568,14 +1569,15 @@ PDNode *patterns::LinearAct::operator()(
 
     act->LinksFrom({ele_out_var}).LinksTo({act_out_var});
     return act_out_var;
-  } else {
-    return ele_out_var;
   }
+
+  return ele_out_var;
 }
 
 PDNode *patterns::ElewiseAddMatmulAct::operator()(
     paddle::framework::ir::PDNode *dout_var,
-    std::unordered_set<std::string> act_grad_types, bool is_first_matmul) {
+    std::unordered_set<std::string> const &act_grad_types,
+    bool is_first_matmul) {
   auto *ele_grad_bias_var =
       pattern->NewNode(ele_grad_bias_repr())
           ->assert_is_op_input("elementwise_add_grad", "Y");
@@ -1626,9 +1628,9 @@ PDNode *patterns::ElewiseAddMatmulAct::operator()(
     act_grad->LinksFrom({matmul_grad_dx_var, act_grad_x_var})
         .LinksTo({act_grad_dx_var});
     return act_grad;
-  } else {
-    return matmul_grad;
   }
+
+  return matmul_grad;
 }
 
 // conv_type: conv2d, conv3d, conv2d_transpose

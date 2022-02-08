@@ -873,7 +873,8 @@ struct LinearAct : public PatternBase {
   LinearAct(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "linear_act") {}
 
-  PDNode* operator()(PDNode* x, std::unordered_set<std::string> act_types,
+  PDNode* operator()(PDNode* x,
+                     std::unordered_set<std::string> const& act_types,
                      bool with_grad_link);
 
   // declare operator node's name
@@ -900,7 +901,8 @@ struct ElewiseAddMatmulAct : public PatternBase {
   ElewiseAddMatmulAct(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "elewiseadd_matmul_act") {}
 
-  PDNode* operator()(PDNode* x, std::unordered_set<std::string> act_grad_types,
+  PDNode* operator()(PDNode* x,
+                     std::unordered_set<std::string> const& act_grad_types,
                      bool is_first_matmul);
 
   // declare operator node's name

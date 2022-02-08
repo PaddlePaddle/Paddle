@@ -415,9 +415,9 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
   return graph;
 }
 
-bool FuseGemmEpiloguePass::IsGemmFromLinear_(std::vector<int64_t> x_shape,
-                                             std::vector<int64_t> w_shape,
-                                             OpDesc *matmul_v2_op) const {
+bool FuseGemmEpiloguePass::IsGemmFromLinear_(
+    std::vector<int64_t> const &x_shape, std::vector<int64_t> const &w_shape,
+    OpDesc *matmul_v2_op) const {
   if (w_shape.size() != 2 || x_shape.size() < 2) return false;
   for (auto attr_name :
        {"fused_reshape_Out", "fused_reshape_X", "fused_reshape_Y",
