@@ -518,7 +518,7 @@ class Reshape2GradMaker : public framework::SingleGradOpMaker<T> {
 
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("reshape2_grad");
-    grad_op->SetInput("XShape", this->Output("XShape"));
+    grad_op->SetInput("X", this->Input("X"));
     grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     grad_op->SetAttrMap(this->Attrs());
@@ -548,13 +548,10 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("XShape"), true,
-        platform::errors::InvalidArgument("Input(XShape) shouldn't be null."));
     PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
                       platform::errors::InvalidArgument(
                           "Input(Out@GRAD) shouldn't be null."));
-    auto xshape_dims = ctx->GetInputDim("XShape");
+    auto xshape_dims = ctx->GetInputDim("X");
     auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
     ctx->ShareLoD("XShape", framework::GradVarName("X"));
@@ -633,6 +630,7 @@ DECLARE_INPLACE_OP_INFERER(ReshapeGradInplaceInferer,
                            {framework::GradVarName("Out"),
                             framework::GradVarName("X")});
 DECLARE_INPLACE_OP_INFERER(ReshapeDoubleGradInplaceInferer, {"DDX", "DDOut"});
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(Reshape2NoNeedBufferVarInferer, "X");
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(ReshapeDoubleGradOpNoNeedBufferVarInferer,
                                     "DOut");
 
@@ -659,7 +657,8 @@ REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape_grad, float, ops::ReshapeGradKernel,
 REGISTER_OPERATOR(reshape2, ops::Reshape2Op, ops::Reshape2OpMaker,
                   ops::Reshape2GradMaker<paddle::framework::OpDesc>,
                   ops::Reshape2GradMaker<paddle::imperative::OpBase>,
-                  ops::ReshapeOpInplaceInferer);
+                  ops::ReshapeOpInplaceInferer,
+                  ops::Reshape2NoNeedBufferVarInferer);
 REGISTER_OPERATOR(reshape2_grad, ops::Reshape2GradOp,
                   ops::Reshape2DoubleGradMaker<paddle::framework::OpDesc>,
                   ops::Reshape2DoubleGradMaker<paddle::imperative::OpBase>,
