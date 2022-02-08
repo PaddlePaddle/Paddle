@@ -2025,7 +2025,7 @@ void OperatorWithKernel::BuildPtenKernelContext(
       auto ins_vector = it->second;
       size_t end_idx = start_idx + ins_vector.size();   
       for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
-        const framework::Tensor* tensor_in = nullptr;
+        const pten::TensorBase* tensor_in = nullptr;
         auto* var = ins_vector[offset];
         if (var->IsType<framework::LoDTensor>()) {
           tensor_in = &(var->Get<framework::LoDTensor>());
@@ -2058,7 +2058,7 @@ void OperatorWithKernel::BuildPtenKernelContext(
           size_t end_idx = start_idx + outs_vector.size();
 
       for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
-        framework::Tensor* tensor_out = nullptr;
+        pten::TensorBase* tensor_out = nullptr;
         auto* var = outs_vector[offset];
         if (var->template IsType<framework::LoDTensor>()) {
           tensor_out = var->template GetMutable<framework::LoDTensor>();
