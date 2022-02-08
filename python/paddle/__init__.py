@@ -51,7 +51,6 @@ import paddle.optimizer  # noqa: F401
 import paddle.metric  # noqa: F401
 import paddle.regularizer  # noqa: F401
 import paddle.incubate  # noqa: F401
-import paddle.multiprocessing  # noqa: F401
 import paddle.autograd  # noqa: F401
 import paddle.device  # noqa: F401
 

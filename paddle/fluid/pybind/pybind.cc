@@ -1353,8 +1353,10 @@ PYBIND11_MODULE(core_noavx, m) {
 
                // copy data & reset holder
                if (platform::is_cuda_pinned_place(holder->place())) {
+#ifdef PADDLE_WITH_CUDA
                  memory::Copy(platform::CPUPlace(), shared_holder->ptr(),
                               platform::CUDAPinnedPlace(), data_ptr, data_size);
+#endif
                } else {
                  memory::Copy(platform::CPUPlace(), shared_holder->ptr(),
                               platform::CPUPlace(), data_ptr, data_size);
