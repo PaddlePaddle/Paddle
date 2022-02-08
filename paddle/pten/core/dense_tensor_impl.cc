@@ -76,13 +76,8 @@ void DenseTensor::set_layout(const paddle::framework::DataLayout layout) {
   meta_.layout = layout;
 }
 
+// Note: When you reset holder, you need to reset the offset at the same time
 void DenseTensor::ResetHolder(const std::shared_ptr<pten::Allocation>& holder) {
-  PADDLE_ENFORCE_EQ(
-      meta_.offset,
-      0,
-      paddle::platform::errors::Fatal(
-          "Only the offset is supported to zero when the holder is reset."));
-
   if (holder_) {
     // TODO(zyfncg): The change of static_cast<> in check will recover back
     // when SetAllocationForOutputTenosr is deleted.
