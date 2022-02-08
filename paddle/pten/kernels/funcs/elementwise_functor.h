@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/pten/common/float16.h"
+#include "paddle/pten/core/enforce.h"
 #include "paddle/pten/core/hostdevice.h"
 
 namespace pten {

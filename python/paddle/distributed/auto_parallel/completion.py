@@ -325,10 +325,8 @@ class Completer:
 
     def complete_forward_annotation(self, serial_main_program):
         """ Complete annotation for the partial annotated serial_main_program.
-
         Arguments:
             serial_main_program: partial annotated serial_main_program.
-
         Returns:
             serial_main_program: completed annotated serial_main_program.
         """
@@ -442,6 +440,33 @@ class Completer:
                     ops[:first_backward_op_idx],
                     dist_op_context.grad_op_id_to_op_id[grad_op.desc.id()])
                 assert forward_op is not None
+
+                if grad_op.type == "concat" and forward_op.type == "split":
+                    forward_op_dist_attr = dist_context.get_op_dist_attr_for_program(
+                        forward_op)
+                    output_var = vars[grad_op.desc.output('Out')[0]]
+                    split_input_var_name = forward_op.input("X")[0]
+                    ref_dims_mapping = forward_op_dist_attr.get_input_dims_mapping(
+                        split_input_var_name)
+                    ref_mesh = forward_op_dist_attr.process_mesh
+
+                    grad_op_dist_attr = OperatorDistributedAttribute()
+                    for input_name in grad_op.input_arg_names:
+                        grad_op_dist_attr.set_input_dims_mapping(
+                            input_name, ref_dims_mapping)
+
+                    output_var_dist_attr = TensorDistributedAttribute()
+                    output_var_dist_attr.dims_mapping = ref_dims_mapping
+                    output_var_dist_attr.process_mesh = ref_mesh
+                    dist_context.set_tensor_dist_attr_for_program(
+                        output_var, output_var_dist_attr)
+
+                    grad_op_dist_attr.set_output_dims_mapping(output_var.name,
+                                                              ref_dims_mapping)
+                    grad_op_dist_attr.process_mesh = ref_mesh
+                    dist_context.set_op_dist_attr_for_program(grad_op,
+                                                              grad_op_dist_attr)
+                    continue
 
                 # op dist attr
                 forward_op_dist_attr = self._dist_context.get_op_dist_attr_for_program(

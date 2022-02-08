@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/pten/api/include/api.h"
 
 #include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/copy_kernel.h"
@@ -35,17 +36,19 @@ TEST(API, matmul_cpu) {
   auto dense_x = std::make_shared<pten::DenseTensor>(
       alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            framework::make_ddim({3, 3}),
+                            pten::framework::make_ddim({3, 3}),
                             pten::DataLayout::NCHW));
 
-  auto* dense_x_data = dense_x->mutable_data<float>();
+  auto* dense_x_data =
+      dense_x->mutable_data<float>(paddle::platform::CPUPlace());
 
   auto dense_y = std::make_shared<pten::DenseTensor>(
       alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            framework::make_ddim({3, 3}),
+                            pten::framework::make_ddim({3, 3}),
                             pten::DataLayout::NCHW));
-  auto* dense_y_data = dense_y->mutable_data<float>();
+  auto* dense_y_data =
+      dense_y->mutable_data<float>(paddle::platform::CPUPlace());
 
   for (size_t i = 0; i < 9; ++i) {
     dense_x_data[i] = 1.0;
@@ -84,17 +87,17 @@ TEST(API, matmul_cuda) {
   auto ref_x = std::make_shared<pten::DenseTensor>(
       alloc_cpu.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            framework::make_ddim({3, 3}),
+                            pten::framework::make_ddim({3, 3}),
                             pten::DataLayout::NCHW));
 
-  auto* ref_x_data = ref_x->mutable_data<float>();
+  auto* ref_x_data = ref_x->mutable_data<float>(paddle::platform::CPUPlace());
 
   auto ref_y = std::make_shared<pten::DenseTensor>(
       alloc_cpu.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            framework::make_ddim({3, 3}),
+                            pten::framework::make_ddim({3, 3}),
                             pten::DataLayout::NCHW));
-  auto* ref_y_data = ref_y->mutable_data<float>();
+  auto* ref_y_data = ref_y->mutable_data<float>(paddle::platform::CPUPlace());
 
   for (size_t i = 0; i < 9; ++i) {
     ref_x_data[i] = 1.0;
@@ -109,18 +112,18 @@ TEST(API, matmul_cuda) {
   auto dense_x = std::make_shared<pten::DenseTensor>(
       alloc_cuda.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            framework::make_ddim({3, 3}),
+                            pten::framework::make_ddim({3, 3}),
                             pten::DataLayout::NCHW));
 
   auto dense_y = std::make_shared<pten::DenseTensor>(
       alloc_cuda.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            framework::make_ddim({3, 3}),
+                            pten::framework::make_ddim({3, 3}),
                             pten::DataLayout::NCHW));
 
   auto& pool = paddle::platform::DeviceContextPool::Instance();
   auto place = paddle::platform::CUDAPlace();
-  auto* dev_ctx = pool.GetByPlace(place);
+  auto* dev_ctx = static_cast<const pten::GPUContext*>(pool.GetByPlace(place));
 
   pten::Copy(*dev_ctx, *ref_x.get(), false, dense_x.get());
   pten::Copy(*dev_ctx, *ref_y.get(), false, dense_y.get());

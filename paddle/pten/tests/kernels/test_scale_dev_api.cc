@@ -17,6 +17,7 @@ limitations under the License. */
 
 #include "paddle/pten/kernels/scale_kernel.h"
 
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
@@ -31,12 +32,14 @@ TEST(DEV_API, scale) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({3, 4}),
-                                                  pten::DataLayout::NCHW));
+  pten::DenseTensor dense_x(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({3, 4}),
+                            pten::DataLayout::NCHW));
 
-  auto* dense_x_data = dense_x.mutable_data<float>();
+  auto* dense_x_data =
+      dense_x.mutable_data<float>(paddle::platform::CPUPlace());
   for (size_t i = 0; i < 12; ++i) {
     dense_x_data[i] = i * 1.0;
   }
@@ -46,6 +49,11 @@ TEST(DEV_API, scale) {
 
   // 2. test API
   pten::CPUContext dev_ctx;
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(paddle::platform::CPUPlace())
+                           .get());
+  dev_ctx.Init();
+
   auto out =
       pten::Scale<float>(dev_ctx, dense_x, scale, bias, bias_after_scale);
 
@@ -64,25 +72,32 @@ TEST(DEV_API, scale_host) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({3, 4}),
-                                                  pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x.mutable_data<float>();
+  pten::DenseTensor dense_x(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({3, 4}),
+                            pten::DataLayout::NCHW));
+  auto* dense_x_data =
+      dense_x.mutable_data<float>(paddle::platform::CPUPlace());
   for (size_t i = 0; i < 12; ++i) {
     dense_x_data[i] = i * 1.0;
   }
 
   pten::DenseTensor scale(alloc.get(),
                           pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                framework::make_ddim({1}),
+                                                pten::framework::make_ddim({1}),
                                                 pten::DataLayout::NCHW));
-  scale.mutable_data<float>()[0] = 2;
+  scale.data<float>()[0] = 2;
   float bias = 1;
   bool bias_after_scale = true;
 
   // 2. test API
   pten::CPUContext dev_ctx;
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(paddle::platform::CPUPlace())
+                           .get());
+  dev_ctx.Init();
+
   auto out =
       pten::Scale<float>(dev_ctx, dense_x, scale, bias, bias_after_scale);
 

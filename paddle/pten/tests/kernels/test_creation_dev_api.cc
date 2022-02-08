@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/pten/kernels/empty_kernel.h"
 #include "paddle/pten/kernels/full_kernel.h"
 
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
@@ -32,6 +33,10 @@ using DDim = pten::framework::DDim;
 TEST(DEV_API, empty) {
   // 1. create input
   pten::CPUContext dev_ctx;
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(paddle::platform::CPUPlace())
+                           .get());
+  dev_ctx.Init();
 
   // 2. test API
   auto out = pten::Empty<float>(dev_ctx, {3, 2}, pten::DataType::INT32);
@@ -48,15 +53,21 @@ TEST(DEV_API, empty_like) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({3, 2}),
-                                                  pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x.mutable_data<float>();
+  pten::DenseTensor dense_x(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({3, 2}),
+                            pten::DataLayout::NCHW));
+  auto* dense_x_data =
+      dense_x.mutable_data<float>(paddle::platform::CPUPlace());
   dense_x_data[0] = 0;
 
   // 2. test API
   pten::CPUContext dev_ctx;
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(paddle::platform::CPUPlace())
+                           .get());
+  dev_ctx.Init();
   auto out = pten::EmptyLike<float>(dev_ctx, dense_x);
 
   // 3. check result
@@ -73,6 +84,10 @@ TEST(DEV_API, full) {
 
   // 2. test API
   pten::CPUContext dev_ctx;
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(paddle::platform::CPUPlace())
+                           .get());
+  dev_ctx.Init();
   auto out = pten::Full<float>(dev_ctx, {3, 2}, val, pten::DataType::FLOAT32);
 
   // 3. check result
@@ -92,15 +107,21 @@ TEST(DEV_API, full_like) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({3, 2}),
-                                                  pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x.mutable_data<float>();
+  pten::DenseTensor dense_x(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({3, 2}),
+                            pten::DataLayout::NCHW));
+  auto* dense_x_data =
+      dense_x.mutable_data<float>(paddle::platform::CPUPlace());
   dense_x_data[0] = 0;
   float val = 1.0;
 
   pten::CPUContext dev_ctx;
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(paddle::platform::CPUPlace())
+                           .get());
+  dev_ctx.Init();
 
   // 2. test API
   auto out = pten::FullLike<float>(dev_ctx, dense_x, val);

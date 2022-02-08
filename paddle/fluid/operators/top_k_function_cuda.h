@@ -411,7 +411,7 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
   };
   int block_size = ComputeBlockSize(num_cols);
 
-  unsigned int maxGridDimX = ctx.GetCUDAMaxGridDimSize().x;
+  unsigned int maxGridDimX = ctx.GetCUDAMaxGridDimSize()[0];
   // actually, int num_rows < max_grid_size
   unsigned int grid_size = num_rows < maxGridDimX
                                ? static_cast<unsigned int>(num_rows)

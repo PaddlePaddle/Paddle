@@ -29,7 +29,7 @@ void EmptyKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void EmptyLikeKernel(const Context& dev_ctx, DenseTensor* out) {
-  out->mutable_data<T>();
+  dev_ctx.template Alloc<T>(out);
 }
 
 }  // namespace pten

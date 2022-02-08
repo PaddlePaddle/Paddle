@@ -27,10 +27,10 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/pten/common/complex.h"
 #include "paddle/pten/common/float16.h"
-#include "paddle/pten/core/convert_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
+#include "paddle/pten/core/enforce.h"
 #include "paddle/pten/core/kernel_registry.h"
 
 namespace pten {
@@ -47,7 +47,7 @@ namespace pten {
     inputs.emplace_back(&x);                                         \
     inputs.emplace_back(&y);                                         \
     outputs.emplace_back(out);                                       \
-    out->mutable_data<T>();                                          \
+    dev_ctx.template Alloc<T>(out);                                  \
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(     \
         dev_ctx, inputs, &outputs, axis, funcs::name##Functor<T>()); \
   }

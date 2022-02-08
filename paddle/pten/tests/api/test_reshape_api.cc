@@ -35,9 +35,10 @@ TEST(API, reshape) {
   auto dense_x = std::make_shared<pten::DenseTensor>(
       alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            framework::make_ddim({3, 2, 2, 3}),
+                            pten::framework::make_ddim({3, 2, 2, 3}),
                             pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x->mutable_data<float>();
+  auto* dense_x_data =
+      dense_x->mutable_data<float>(paddle::platform::CPUPlace());
 
   for (int i = 0; i < dense_x->numel(); i++) {
     dense_x_data[i] = i;
@@ -69,14 +70,15 @@ TEST(API, reshape) {
 TEST(Tensor, old_reshape) {
   paddle::experimental::Tensor x(paddle::PlaceType::kCPU);
   x.reshape({3, 4});
+  x.mutable_data<float>(paddle::PlaceType::kCPU);
 
   ASSERT_EQ(x.shape()[0], 3);
   ASSERT_EQ(x.shape()[1], 4);
   ASSERT_EQ(x.numel(), 12);
   ASSERT_EQ(x.is_cpu(), true);
-  ASSERT_EQ(x.type(), pten::DataType::UNDEFINED);
+  ASSERT_EQ(x.type(), pten::DataType::FLOAT32);
   ASSERT_EQ(x.layout(), pten::DataLayout::NCHW);
-  ASSERT_EQ(x.initialized(), false);
+  ASSERT_EQ(x.initialized(), true);
 }
 
 }  // namespace tests

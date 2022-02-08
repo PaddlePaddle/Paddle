@@ -119,7 +119,7 @@ void GetShuffledInput(const DeviceContext& dev_ctx,
   GetShuffledDim(input.dims(), &shuffled_dims, dims, &perm_axis);
 
   shuffled_input->ResizeAndAllocate(shuffled_dims);
-  shuffled_input->mutable_data<OutT>();
+  dev_ctx.template Alloc<OutT>(shuffled_input);
 
   pten::math::TransposeNormal<DeviceContext, OutT> trans;
   trans(dev_ctx, input, shuffled_input, perm_axis);
@@ -158,7 +158,7 @@ void ReduceKernelImpl(const DeviceContext& dev_ctx,
                       const std::vector<int64_t>& dims,
                       bool keep_dim,
                       bool reduce_all) {
-  output->mutable_data<OutT>();
+  dev_ctx.template Alloc<OutT>(output);
 
   if (reduce_all) {
     // Flatten and reduce 1-D tensor
@@ -220,22 +220,15 @@ void Reduce(const DeviceContext& dev_ctx,
 
   // no need to cast dtype
   if (out_dtype == pten::DataType::UNDEFINED || out_dtype == x.dtype()) {
-    if (out_dtype == pten::DataType::UNDEFINED) {
-      out_dtype = x.dtype();
-    }
     // do reduce sum
     PD_VISIT_ALL_TYPES(
-        out_dtype, "ReduceKernelImpl", ([&] {
+        x.dtype(), "ReduceKernelImpl", ([&] {
           pten::ReduceKernelImpl<DeviceContext, T, data_t, Functor>(
               dev_ctx, x, out, dims, keep_dim, reduce_all);
         }));
   } else {
-    pten::DenseTensor tmp_tensor = pten::DenseTensor(
-        pten::make_intrusive<paddle::experimental::SharedStorage>(x.place()),
-        pten::DenseTensorMeta(out_dtype, x.dims(), x.layout()));
-
     // cast x tensor to out_dtype
-    pten::CastKernel<T, DeviceContext>(dev_ctx, x, out_dtype, &tmp_tensor);
+    auto tmp_tensor = pten::Cast<T, DeviceContext>(dev_ctx, x, out_dtype);
 
     // do reduce sum
     PD_VISIT_ALL_TYPES(

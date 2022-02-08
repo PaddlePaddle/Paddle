@@ -21,12 +21,12 @@
 #include <typeinfo>
 #include <vector>
 
-#include "paddle/pten/core/kernel_def.h"
 #include "paddle/pten/core/kernel_factory.h"
 #include "paddle/pten/core/kernel_utils.h"
 #include "paddle/pten/core/macros.h"
+#include "paddle/pten/core/type_defs.h"
 
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/core/enforce.h"
 
 namespace pten {
 
@@ -74,11 +74,17 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
                  std::type_index(typeid(const std::vector<DenseTensor>&))) {
         args_def->AppendInput(
             default_key.backend(), default_tensor_layout, default_key.dtype());
+      } else if (arg_type == std::type_index(typeid(const SelectedRows&))) {
+        args_def->AppendInput(
+            default_key.backend(), default_tensor_layout, default_key.dtype());
       } else if (arg_type == std::type_index(typeid(DenseTensor*))) {
         args_def->AppendOutput(
             default_key.backend(), default_tensor_layout, default_key.dtype());
       } else if (arg_type ==
                  std::type_index(typeid(std::vector<DenseTensor*>))) {
+        args_def->AppendOutput(
+            default_key.backend(), default_tensor_layout, default_key.dtype());
+      } else if (arg_type == std::type_index(typeid(SelectedRows*))) {
         args_def->AppendOutput(
             default_key.backend(), default_tensor_layout, default_key.dtype());
       } else {
@@ -130,6 +136,13 @@ struct KernelRegistrar {
     for (size_t dtype = static_cast<size_t>(DataType::BOOL);
          dtype != static_cast<size_t>(DataType::NUM_DATA_TYPES);
          dtype++) {
+      // NOTE(zhiqiu): why skip these types, because fluid kernel has no kernel
+      // of these type.
+      if (dtype == static_cast<size_t>(DataType::UINT32) ||
+          dtype == static_cast<size_t>(DataType::UINT64) ||
+          dtype == static_cast<size_t>(DataType::UINT16)) {
+        continue;
+      }
       ConstructKernel(kernel_name_cstr,
                       backend,
                       layout,

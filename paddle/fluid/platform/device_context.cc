@@ -10,8 +10,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
+#include <functional>
 #include <memory>
 #include <set>
+#include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/stream/cuda_stream.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
@@ -21,10 +25,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/mlu/device_context.h"
 #include "paddle/fluid/platform/device/mlu/device_context_allocator.h"
 #endif
-#ifdef PADDLE_WITH_IPU
-#include "paddle/fluid/platform/ipu/ipu_backend.h"
-#endif
 #include "glog/logging.h"
+#include "paddle/fluid/framework/expect.h"
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -138,11 +141,40 @@ inline void EmplaceDeviceContext(
         map_ptr,
     platform::Place p) {
   using PtrType = std::unique_ptr<DeviceContext>;
-  map_ptr->emplace(p, std::async(std::launch::deferred, [=] {
-                     // lazy evaluation. i.e., only create device context at
-                     // first `Get`
-                     return PtrType(new DevCtx(p));
-                   }));
+  map_ptr->emplace(
+      p, std::async(std::launch::deferred, [=] {
+        // lazy evaluation. i.e., only create device context at
+        // first `Get`
+        auto* dev_ctx = new DevCtx(p);
+        if (is_gpu_place(p)) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+          auto* cuda_ctx = dynamic_cast<CUDADeviceContext*>(dev_ctx);
+          PADDLE_ENFORCE_NOT_NULL(
+              cuda_ctx,
+              platform::errors::InvalidArgument(
+                  "Failed to dynamic_cast dev_ctx into CUDADeviceContext."));
+          // Note: A trick method to init context, why GetAllocator interface
+          // needs a stream parameter?
+          dev_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
+                                    .GetAllocator(p, cuda_ctx->stream())
+                                    .get());
+          cuda_ctx->PartialInitWithAllocator();
+#endif
+        } else {
+          dev_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
+                                    .GetAllocator(p)
+                                    .get());
+        }
+        dev_ctx->SetHostAllocator(
+            memory::allocation::AllocatorFacade::Instance()
+                .GetAllocator(platform::CPUPlace())
+                .get());
+        dev_ctx->SetZeroAllocator(
+            memory::allocation::AllocatorFacade::Instance()
+                .GetZeroAllocator(p)
+                .get());
+        return PtrType(dev_ctx);
+      }));
 }
 
 DeviceContextPool::DeviceContextPool(
@@ -224,19 +256,19 @@ DeviceContextPool::DeviceContextPool(
   }
 }
 
-CPUDeviceContext::CPUDeviceContext() : pten::CPUContext() {}
-
-CPUDeviceContext::CPUDeviceContext(CPUPlace place) : pten::CPUContext() {}
-
-#ifdef PADDLE_WITH_IPU
-IPUDeviceContext::IPUDeviceContext(IPUPlace place) : place_(place) {
-  int id = place.GetDeviceId();
-  std::shared_ptr<platform::ipu::IpuBackend> ipu_backend =
-      platform::ipu::IpuBackend::GetInstance();
-  device_ = ipu_backend->GetDevice(id);
+CPUDeviceContext::CPUDeviceContext() : pten::CPUContext() {
+  pten::CPUContext::Init();
 }
 
-Place IPUDeviceContext::GetPlace() const { return place_; }
+CPUDeviceContext::CPUDeviceContext(CPUPlace place) : pten::CPUContext(place) {
+  pten::CPUContext::Init();
+}
+
+#ifdef PADDLE_WITH_IPU
+IPUDeviceContext::IPUDeviceContext(IPUPlace place) : place_(place) {}
+
+const Place& IPUDeviceContext::GetPlace() const { return place_; }
+
 void IPUDeviceContext::Wait() const {
   /*! \brief  Wait for all operations completion in the stream. */
 }
@@ -245,52 +277,17 @@ IPUDeviceContext::~IPUDeviceContext() {}
 
 #endif
 #ifdef PADDLE_WITH_XPU
-XPUDeviceContext::XPUDeviceContext() {
-  context_ = xpu::create_context();
-  xpu_version_ = get_xpu_version(place_.device);
+XPUDeviceContext::XPUDeviceContext() : pten::XPUContext() {
+  pten::XPUContext::Init();
 }
 
 XPUDeviceContext::~XPUDeviceContext() {}
 
-XPUDeviceContext::XPUDeviceContext(XPUPlace place) : place_(place) {
-  platform::XPUDeviceGuard guard(place.device);
-
+XPUDeviceContext::XPUDeviceContext(XPUPlace place) : pten::XPUContext(place) {
+  pten::XPUContext::Init();
   LOG_FIRST_N(WARNING, 1) << "Please NOTE: xpu device: "
-                          << static_cast<int>(place_.device);
-
-  context_ = xpu::create_context();
-  const int MAX_XPU_NUM = 16;
-  static void* l3ptrs[MAX_XPU_NUM] = {nullptr};
-
-  int l3_size = 13.5 * 1024 * 1024;
-  if (std::getenv("XPU_PADDLE_L3_SIZE") != nullptr) {
-    l3_size = atoi(std::getenv("XPU_PADDLE_L3_SIZE"));
-  }
-
-  auto selected_xpus = GetXPUSelectedDevices();
-  for (unsigned int i = 0; i < selected_xpus.size(); i++) {
-    if (place.device == selected_xpus[i]) {
-      if (l3ptrs[place.device] == nullptr) {
-        xpu_malloc(static_cast<void**>(&l3ptrs[place.device]), l3_size,
-                   XPU_MEM_L3);
-      }
-      if (l3ptrs[place.device] != nullptr) {
-        context_->_l3_mgr.set(l3ptrs[place.device], l3_size);
-        VLOG(3) << "xpu place " << place.device << " set l3 size " << l3_size;
-      }
-      break;
-    }
-  }
+                          << static_cast<int>(place.device);
 }
-
-void XPUDeviceContext::Wait() const {
-  platform::SetXPUDeviceId(place_.device);
-  xpu_wait(context_->xpu_stream);
-}
-
-Place XPUDeviceContext::GetPlace() const { return place_; }
-
-xpu::Context* XPUDeviceContext::x_context() const { return context_; }
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -317,7 +314,7 @@ void NPUDeviceContext::Wait() const {
 
 aclrtStream NPUDeviceContext::stream() const { return stream_->raw_stream(); }
 
-Place NPUDeviceContext::GetPlace() const { return place_; }
+const Place& NPUDeviceContext::GetPlace() const { return place_; }
 
 aclrtContext NPUDeviceContext::context() const { return context_; }
 
@@ -334,7 +331,7 @@ Eigen::DefaultDevice* NPUPinnedDeviceContext::eigen_device() const {
   return eigen_device_.get();
 }
 
-Place NPUPinnedDeviceContext::GetPlace() const { return place_; }
+const Place& NPUPinnedDeviceContext::GetPlace() const { return place_; }
 
 #endif
 
@@ -485,102 +482,28 @@ CUDAContext::~CUDAContext() {
 #endif
 }
 
-CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
-  CUDADeviceGuard guard(place_.device);
-  compute_capability_ = GetGPUComputeCapability(place_.device);
-  multi_process_ = GetGPUMultiProcessors(place_.device);
-  max_threads_per_mp_ = GetGPUMaxThreadsPerMultiProcessor(place_.device);
-  max_grid_dim_size_ = GetGpuMaxGridDimSize(place_.device);
-  max_threads_per_block_ = GetGPUMaxThreadsPerBlock(place_.device);
-
-  driver_version_ = GetGPUDriverVersion(place_.device);
-  runtime_version_ = GetGPURuntimeVersion(place_.device);
-
-  LOG_FIRST_N(WARNING, 1) << "Please NOTE: device: "
-                          << static_cast<int>(place_.device)
-                          << ", GPU Compute Capability: "
-                          << compute_capability_ / 10 << "."
-                          << compute_capability_ % 10
-                          << ", Driver API Version: " << driver_version_ / 1000
-                          << "." << (driver_version_ % 100) / 10
-                          << ", Runtime API Version: "
-                          << runtime_version_ / 1000 << "."
-                          << (runtime_version_ % 100) / 10;
-#ifdef PADDLE_WITH_HIP
-  size_t version_major, version_minor, version_patch;
-  PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenGetVersion(
-      &version_major, &version_minor, &version_patch));
-  LOG_FIRST_N(WARNING, 1) << "device: " << static_cast<int>(place_.device)
-                          << ", MIOpen Version: " << version_major << "."
-                          << version_minor << "." << version_patch;
-#else
-  size_t cudnn_dso_ver = dynload::cudnnGetVersion();
-  LOG_FIRST_N(WARNING, 1) << "device: " << static_cast<int>(place_.device)
-                          << ", cuDNN Version: " << cudnn_dso_ver / 1000 << "."
-                          << (cudnn_dso_ver % 1000) / 100 << ".";
-#endif
-  {
-    // Check CUDA/CUDNN version compatiblity
-    auto local_cuda_version =
-        (driver_version_ / 1000) * 10 + (driver_version_ % 100) / 10;
-#ifdef PADDLE_WITH_HIP
-    auto compile_cuda_version = (HIP_VERSION / 100) * 10 + (HIP_VERSION % 10);
-#else
-    auto compile_cuda_version =
-        (CUDA_VERSION / 1000) * 10 + (CUDA_VERSION % 100) / 10;
-#endif
-    if (local_cuda_version < compile_cuda_version) {
-      LOG_FIRST_N(WARNING, 1)
-          << "WARNING: device: " << static_cast<int>(place_.device)
-          << ". The installed Paddle is compiled with CUDA "
-          << compile_cuda_version / 10 << "." << compile_cuda_version % 10
-          << ", but CUDA runtime version in your machine is "
-          << local_cuda_version / 10 << "." << local_cuda_version % 10
-          << ", which may cause serious incompatible bug. "
-          << "Please recompile or reinstall Paddle with compatible CUDA "
-             "version.";
-    }
-  }
-  default_ctx_.reset(new CUDAContext(place_));
+CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
+    : pten::GPUContext(place) {
+  pten::GPUContext::PartialInitWithoutAllocator();
+  cuda_stream_.reset(
+      new stream::CUDAStream(pten::GPUContext::stream(), this->GetPlace()));
 }
 
-CUDADeviceContext::~CUDADeviceContext() {
-  SetDeviceId(place_.device);
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  if (nccl_comm_) {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::ncclCommDestroy(nccl_comm_));
-  }
-#endif
-}
-
-Place CUDADeviceContext::GetPlace() const { return place_; }
-
-void CUDADeviceContext::Wait() const { context()->Stream()->Wait(); }
-
-int CUDADeviceContext::GetComputeCapability() const {
-  return compute_capability_;
-}
-
-int CUDADeviceContext::GetMaxPhysicalThreadCount() const {
-  return multi_process_ * max_threads_per_mp_;
-}
-
-int CUDADeviceContext::GetSMCount() const { return multi_process_; }
-
-int CUDADeviceContext::GetMaxThreadsPerBlock() const {
-  return max_threads_per_block_;
-}
+CUDADeviceContext::~CUDADeviceContext() = default;
 
 Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
-  return context()->EigenDevice().get();
+  if (thread_ctx_.count(this)) {
+    return context()->EigenDevice().get();
+  }
+  return pten::GPUContext::eigen_device();
 }
 
-bool CUDADeviceContext::tensor_core_available() const {
-  return context()->CublasTensorCoreHandle() != nullptr;
-}
-
-dim3 CUDADeviceContext::GetCUDAMaxGridDimSize() const {
-  return max_grid_dim_size_;
+void CUDADeviceContext::Wait() const {
+  if (thread_ctx_.count(this)) {
+    context()->Stream()->Wait();
+    return;
+  }
+  pten::GPUContext::Wait();
 }
 
 #ifdef PADDLE_WITH_HIP
@@ -588,33 +511,96 @@ miopenHandle_t CUDADeviceContext::cudnn_handle() const {
 #else
 cudnnHandle_t CUDADeviceContext::cudnn_handle() const {
 #endif
-  return context()->CudnnHandle();
+  if (thread_ctx_.count(this)) {
+    return context()->CudnnHandle();
+  }
+  return pten::GPUContext::cudnn_handle();
 }
 
 #ifdef PADDLE_WITH_HIP
 rocblas_handle CUDADeviceContext::cublas_handle() const {
-  return context()->CublasHandle()->GetCublasHandle();
+  if (thread_ctx_.count(this)) {
+    return context()->CublasHandle()->GetCublasHandle();
+  }
+  return pten::GPUContext::cublas_handle();
 }
 #else
 cublasHandle_t CUDADeviceContext::cublas_handle() const {
-  return context()->CublasHandle()->GetCublasHandle();
+  if (thread_ctx_.count(this)) {
+    return context()->CublasHandle()->GetCublasHandle();
+  }
+  return pten::GPUContext::cublas_handle();
 }
 cusparseHandle_t CUDADeviceContext::cusparse_handle() const {
-  return context()->CusparseHandle()->GetCusparseHandle();
+  if (thread_ctx_.count(this)) {
+    return context()->CusparseHandle()->GetCusparseHandle();
+  }
+  return pten::GPUContext::cusparse_handle();
+}
+cusolverDnHandle_t CUDADeviceContext::cusolver_dn_handle() const {
+  if (thread_ctx_.count(this)) {
+    return context()->CusolverDnHandle();
+  }
+  return pten::GPUContext::cusolver_dn_handle();
 }
 #endif
+
+void CUDADeviceContext::RecordEvent(
+    gpuEvent_t ev, const std::function<void()>& callback) const {
+  if (thread_ctx_.count(this)) {
+    context()->Stream()->RecordEvent(ev, callback);
+    return;
+  }
+  pten::GPUContext::RecordEvent(ev, callback);
+}
+
+void CUDADeviceContext::AddStreamCallback(
+    const std::function<void()>& callback) const {
+  if (thread_ctx_.count(this)) {
+    context()->Stream()->AddCallback(callback);
+    return;
+  }
+  pten::GPUContext::AddStreamCallback(callback);
+}
+
+void CUDADeviceContext::WaitStreamCallback() const {
+  if (thread_ctx_.count(this)) {
+    context()->Stream()->WaitCallback();
+    return;
+  }
+  pten::GPUContext::WaitStreamCallback();
+}
 
 CudnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
   return CudnnWorkspaceHandle(*this, &cudnn_handle_mtx_);
 }
 
-#ifndef PADDLE_WITH_HIP
-cusolverDnHandle_t CUDADeviceContext::cusolver_dn_handle() const {
-  return context()->CusolverDnHandle();
+gpuStream_t CUDADeviceContext::stream() const {
+  if (thread_ctx_.count(this)) {
+    return context()->RawStream();
+  }
+  return pten::GPUContext::stream();
 }
-#endif
 
-gpuStream_t CUDADeviceContext::stream() const { return context()->RawStream(); }
+std::shared_ptr<CUDAContext> CUDADeviceContext::context() const {
+  if (!thread_ctx_.count(this)) {
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "CUDADeviceContext call context() failed, make sure in the "
+        "thread_local semantic."));
+  }
+  return thread_ctx_.at(this);
+}
+
+stream::CUDAStream* CUDADeviceContext::GetCudaStream() const {
+  return cuda_stream_.get();
+}
+
+stream::CUDAStream* CUDADeviceContext::SetCudaStream(
+    stream::CUDAStream* new_stream_ptr) {
+  auto* old_stream_ptr = cuda_stream_.release();
+  cuda_stream_.reset(new_stream_ptr);
+  return old_stream_ptr;
+}
 
 CUDAPinnedDeviceContext::CUDAPinnedDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());
@@ -629,7 +615,7 @@ Eigen::DefaultDevice* CUDAPinnedDeviceContext::eigen_device() const {
   return eigen_device_.get();
 }
 
-Place CUDAPinnedDeviceContext::GetPlace() const { return place_; }
+const Place& CUDAPinnedDeviceContext::GetPlace() const { return place_; }
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -840,15 +826,6 @@ unsigned int MKLDNNDeviceContext::GetCachedObjectsNumber(void) const {
   }
   return num_entries;
 }
-
-// TODO(jczaja): Replace with C++20 equivalents when applicable
-#ifdef _WIN32
-#define likely(expr) (expr)
-#define unlikely(expr) (expr)
-#else
-#define likely(expr) (__builtin_expect(!!(expr), 1))
-#define unlikely(expr) (__builtin_expect(!!(expr), 0))
-#endif
 
 MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
     const std::string& name) const {

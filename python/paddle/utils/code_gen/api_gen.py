@@ -27,11 +27,17 @@ class API:
         # args:
         #   inputs:
         #     names : [], list of input names
+        #     input_info : {input_name : type}
         #   attrs:
         #     names : [], list of attribute names
         #     attr_info : { attr_name : (type, default_values)}
         self.args = gen_utils.parse_args(self.api, api_item_yaml['args'])
-        self.output = api_item_yaml['output']
+        self.out_type_list, _ = gen_utils.parse_output(self.api,
+                                                       api_item_yaml['output'])
+        self.return_type = self.out_type_list[0] if len(
+            self.out_type_list) == 1 else "std::tuple<" + ",".join(
+                self.out_type_list) + ">"
+
         self.is_base_api = True
         if 'invoke' in api_item_yaml:
             self.is_base_api = False
@@ -52,28 +58,70 @@ class API:
             if 'param' not in self.infer_meta:
                 self.infer_meta['param'] = None
 
+            self.data_transform = {
+                'skip_transform': [],
+                'support_trans_dtype': []
+            }
+            if 'data_transform' in api_item_yaml:
+                if 'skip_transform' in api_item_yaml['data_transform']:
+                    self.data_transform['skip_transform'] = api_item_yaml[
+                        'data_transform']['skip_transform']
+                if 'support_trans_dtype' in api_item_yaml['data_transform']:
+                    self.data_transform['support_trans_dtype'] = api_item_yaml[
+                        'data_transform']['support_trans_dtype']
+
     def gene_api_declaration(self):
         return f"""
-PADDLE_API {self.output} {self.api}({self.args['args_declare']});
+PADDLE_API {self.return_type} {self.api}({self.args['args_declare']});
 """
+
+    def gene_output(self, output_type_list):
+        kernel_output = ""
+        output_names = []
+        output_create = ""
+
+        if len(output_type_list) == 1:
+            kernel_output = 'dense_out'
+            output_names.append('dense_out')
+            output_create = f"""
+  {self.return_type} out;
+  auto dense_out = SetKernelOutput(kernel_backend, &out);"""
+
+        elif len(output_type_list) > 1:
+            output_create = f"""
+  {self.return_type} out;"""
+
+            for i in range(len(output_type_list)):
+                kernel_output = kernel_output + f'dense_out_{i}, '
+                output_names.append(f'dense_out_{i}')
+                output_create = output_create + f"""
+  auto dense_out_{i} = SetKernelOutput(kernel_backend, &std::get<{i}>(out));"""
+
+            kernel_output = kernel_output[:-2]
+        else:
+            raise ValueError(
+                "{} : Output error: the output should not be empty.".format(
+                    self.api))
+
+        return kernel_output, output_names, output_create
 
     def gene_api_code(self):
         if self.is_base_api:
-            input_tensors, kernel_args = gen_utils.get_kernel_args(
-                self.args['inputs']['names'], self.args['attrs'],
-                self.kernel['param'])
-            out_type, _ = gen_utils.parse_output(self.api, self.output)
-            outputs_args, output_create = gen_utils.gene_output(out_type)
+            input_tensors, kernel_args, kernel_signature = gen_utils.get_kernel_args(
+                self.args['inputs'], self.args['attrs'], self.out_type_list,
+                self.kernel['param'], self.data_transform)
+            outputs_args, output_names, output_create = self.gene_output(
+                self.out_type_list)
             return f"""
-PADDLE_API {self.output} {self.api}({self.args["args_define"]}) {{
+PADDLE_API {self.return_type} {self.api}({self.args["args_define"]}) {{
 {gen_utils.gene_kernel_select(self.api, self.args['inputs']['names'], self.args['attrs'], self.kernel)}
 
   auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
 {input_tensors}
-{gen_utils.gene_infer_meta(self.args['inputs']['names'], self.args['attrs']['names'], self.infer_meta)}
 {output_create}
-
-  auto* kernel_fn = kernel.GetVariadicKernelFn<pten::{self.api}_kernel>();
+{gen_utils.gene_infer_meta(self.args['inputs']['names'], self.args['attrs']['names'], output_names, self.infer_meta)}
+  using kernel_signature = {kernel_signature};
+  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
   (*kernel_fn)({kernel_args}, {outputs_args});
 
   return out;
@@ -82,7 +130,7 @@ PADDLE_API {self.output} {self.api}({self.args["args_define"]}) {{
 
         else:
             return f"""
-PADDLE_API {self.output} {self.api}({self.args["args_define"]}) {{
+PADDLE_API {self.return_type} {self.api}({self.args["args_define"]}) {{
   return {self.invoke};
 }}
 """
@@ -105,9 +153,9 @@ def source_include(header_file_path):
 
 #include "glog/logging.h"
 
-#include "paddle/pten/api/include/kernel_signature.h"
 #include "paddle/pten/api/lib/api_registry.h"
 #include "paddle/pten/api/lib/api_utils.h"
+#include "paddle/pten/api/lib/data_transform.h"
 #include "paddle/pten/api/lib/kernel_dispatch.h"
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/kernel_registry.h"

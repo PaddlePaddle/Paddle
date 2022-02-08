@@ -31,11 +31,22 @@ namespace host_context {
 class KernelFrame {
  public:
   int GetNumArgs() const { return num_arguments_; }
-  int GetNumResults() const { return num_results_; }
+  int GetNumResults() const { return num_results_ == -1 ? 0 : num_results_; }
   int GetNumAttributes() const {
     return value_or_attrs_.size() - num_arguments_ -
            (num_results_ == -1 ? 0 : num_results_);
   }
+
+  //! Get something at a specific position \p index. The element might be an
+  //! argument, an attribute or a result.
+  template <typename T>
+  T& GetElementAt(int index) {
+    CHECK_LT(index, GetNumArgs() + GetNumAttributes() + GetNumResults());
+    return value_or_attrs_[index]->template get_or_default<T>();
+  }
+
+  // Get number of elements, either input, attributes or results.
+  size_t GetNumElements() const { return value_or_attrs_.size(); }
 
   template <typename T>
   T& GetArgAt(int index) {
@@ -109,6 +120,8 @@ class KernelFrame {
     if (length == 0) return {};
     return llvm::makeMutableArrayRef(&value_or_attrs_[from], length);
   }
+
+  bool IsEmpty() const { return value_or_attrs_.empty(); }
 
  protected:
   int num_arguments_{};

@@ -17,6 +17,7 @@ limitations under the License. */
 
 #include "paddle/pten/kernels/reshape_kernel.h"
 
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
@@ -35,9 +36,10 @@ TEST(DEV_API, reshape) {
   pten::DenseTensor dense_x(
       alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            framework::make_ddim({3, 2, 2, 3}),
+                            pten::framework::make_ddim({3, 2, 2, 3}),
                             pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x.mutable_data<float>();
+  auto* dense_x_data =
+      dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 
   for (int i = 0; i < dense_x.numel(); i++) {
     dense_x_data[i] = i;
@@ -46,6 +48,10 @@ TEST(DEV_API, reshape) {
 
   // 2. test API
   pten::CPUContext dev_ctx;
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(paddle::platform::CPUPlace())
+                           .get());
+  dev_ctx.Init();
   auto out = pten::Reshape<float>(dev_ctx, dense_x, shape);
   // 3. check result
   std::vector<int64_t> expect_shape = {12, 3};

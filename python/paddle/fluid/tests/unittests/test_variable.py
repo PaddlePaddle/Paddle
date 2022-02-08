@@ -63,6 +63,12 @@ class TestVariable(unittest.TestCase):
         self.assertRaises(ValueError,
                           lambda: b.create_var(name="fc.w", shape=(24, 100)))
 
+        w = b.create_var(
+            dtype=paddle.fluid.core.VarDesc.VarType.STRINGS,
+            shape=[1],
+            name="str_var")
+        self.assertEqual(None, w.lod_level)
+
     def test_element_size(self):
         with fluid.program_guard(Program(), Program()):
             x = paddle.static.data(name='x1', shape=[2], dtype='bool')
