@@ -877,6 +877,75 @@ void CPUQuantizePass::QuantizeElementwiseAdd(Graph* graph) const {
                   quantize_elementwise_add_count);
 }
 
+void CPUQuantizePass::QuantizeElementwiseMul(Graph* graph) const {
+  GraphPatternDetector gpd;
+  auto pattern = gpd.mutable_pattern();
+  patterns::ElementwiseMul elementwise_mul_pattern{pattern, name_scope_};
+
+  elementwise_mul_pattern(
+      pattern->NewNode(elementwise_mul_pattern.elementwise_mul_x_repr()),
+      pattern->NewNode(elementwise_mul_pattern.elementwise_mul_y_repr()));
+
+  int quantize_elementwise_mul_count = 0;
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* g) {
+    VLOG(4) << "Quantize elementwise_mul op";
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise_mul_op, elementwise_mul_op,
+                              elementwise_mul_pattern);
+
+    // skip if should not be quantized
+    if (!platform::HasOpINT8DataType(elementwise_mul_op->Op())) {
+      LogQuantizationDisabled(elementwise_mul_op);
+      return;
+    }
+
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise_mul_x, elementwise_mul_x,
+                              elementwise_mul_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise_mul_y, elementwise_mul_y,
+                              elementwise_mul_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise_mul_out, elementwise_mul_out,
+                              elementwise_mul_pattern);
+
+    if (!AreScalesPresentForNodes(
+            {elementwise_mul_x, elementwise_mul_y, elementwise_mul_out})) {
+      LogCannotQuantizeOp(elementwise_mul_op);
+      return;
+    }
+
+    bool is_x_unsigned{false}, is_y_unsigned{false};
+    auto input_x_scale =
+        GetScaleValueForNode(elementwise_mul_x, &is_x_unsigned);
+    auto input_y_scale =
+        GetScaleValueForNode(elementwise_mul_y, &is_y_unsigned);
+
+    // TODO(sfraczek): mul support for different signness
+    if (is_x_unsigned != is_y_unsigned) {
+      LogCannotQuantizeOp(elementwise_mul_op,
+                          "ElementwiseMul inputs must be of the same type.");
+      return;
+    }
+
+    QuantizeInput(g, elementwise_mul_op, elementwise_mul_x, "X", input_x_scale,
+                  is_x_unsigned, "Scale_x");
+    QuantizeInput(g, elementwise_mul_op, elementwise_mul_y, "Y", input_y_scale,
+                  is_y_unsigned, "Scale_y");
+
+    bool is_output_unsigned{false};
+    auto output_scale =
+        GetScaleValueForNode(elementwise_mul_out, &is_output_unsigned);
+
+    DequantizeOutput(g, elementwise_mul_op, elementwise_mul_out, "Out",
+                     output_scale, is_output_unsigned, "Scale_out");
+
+    ++quantize_elementwise_mul_count;
+  };
+  gpd(graph, handler);
+  AddStatis(quantize_elementwise_mul_count);
+
+  PrettyLogDetail("---    quantized %d elementwise_mul ops",
+                  quantize_elementwise_mul_count);
+}
+
 void CPUQuantizePass::QuantizeFusionGru(Graph* graph) const {
   GraphPatternDetector gpd;
   patterns::FusionGru pattern{gpd.mutable_pattern(), name_scope_};
@@ -1147,6 +1216,7 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizeReshape(graph);
   QuantizeMatmul(graph);
   QuantizeElementwiseAdd(graph);
+  QuantizeElementwiseMul(graph);
   QuantizeFusionGru(graph);
   QuantizeMultiGru(graph);
   QuantizeFusionLSTM(graph);
