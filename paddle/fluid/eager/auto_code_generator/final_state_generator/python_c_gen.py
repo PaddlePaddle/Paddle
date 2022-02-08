@@ -210,6 +210,7 @@ def GeneratePythonCWrappers(python_c_function_str, python_c_function_reg_str):
 
     python_c_function_str += core_ops_infos_definition
     python_c_function_reg_str += core_ops_infos_registry
+    python_c_function_reg_str += "\n {nullptr,nullptr,0,nullptr}"
 
     PYTHON_C_WRAPPER_TEMPLATE = """
 #pragma once
@@ -288,12 +289,12 @@ if __name__ == "__main__":
         python_c_function_reg_list.append(python_c_function_reg_str)
         print("Generated Python-C Function: ", python_c_function_str)
 
-    python_c_function_reg_list.append("{nullptr,nullptr,0,nullptr}")
     python_c_functions_str = "\n".join(python_c_function_list)
     python_c_functions_reg_str = ",\n".join(python_c_function_reg_list)
 
     python_c_str = GeneratePythonCWrappers(python_c_functions_str,
                                            python_c_functions_reg_str)
+
     print("Generated Python-C Codes: ", python_c_str)
 
     output_path = args.output_path
