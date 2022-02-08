@@ -23,6 +23,7 @@
 #include "paddle/infrt/common/object.h"
 #include "paddle/infrt/common/shared.h"
 #include "paddle/infrt/host_context/function.h"
+#include "paddle/infrt/naive/meta_tensor.h"
 #include "paddle/infrt/support/variant.h"
 #include "paddle/infrt/tensor/dense_host_tensor.h"
 #include "paddle/infrt/tensor/dense_tensor_view.h"
@@ -50,6 +51,7 @@ using ValueVariantType = Variant<int16_t,
                                  tensor::TensorMap,
                                  // pten::CPUContext,
                                  // pten::DenseTensor,
+                                 naive::MetaTensor,
                                  std::vector<int16_t>,
                                  std::vector<int32_t>,
                                  std::vector<int64_t>,
@@ -82,6 +84,7 @@ class Value : public common::Object {
   explicit Value(tensor::TensorShape&& x) : data(std::move(x)) {}
   explicit Value(tensor::DenseHostTensor&& x) : data(std::move(x)) {}
   explicit Value(MlirFunctionExecutable* x) : data(x) {}
+  explicit Value(naive::MetaTensor&& x) : data(std::move(x)) {}
 
   template <typename T>
   const T& get() const {
@@ -113,6 +116,11 @@ class Value : public common::Object {
 
   bool valid() const { return true; }
 
+  template <typename T>
+  bool is_type() const {
+    return data.template is<T>();
+  }
+
   const char* type_info() const override;
 
   friend void CopyTo(const Value& from, Value* to);
@@ -134,6 +142,7 @@ class ValueRef : common::Shared<Value> {
   explicit ValueRef(float val);
   explicit ValueRef(double val);
   explicit ValueRef(bool val);
+  explicit ValueRef(naive::MetaTensor&& val);
 
   using common::Shared<Value>::get;
   using common::Shared<Value>::Reset;
