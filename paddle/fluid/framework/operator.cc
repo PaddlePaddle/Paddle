@@ -1918,11 +1918,15 @@ Scope* OperatorWithKernel::PreparePtenData(
 
   for (size_t i = 0; i < input_defs.size(); ++i) {
     auto& in_def = input_defs.at(i);
+<<<<<<< 265e88ac77105e40741c918ca7ad974b6fa63147
     auto it = ctx->inputs.find(input_names[i]);
     if (it == ctx->inputs.end()) {
       continue;
     }
     auto& ins_vector = it->second;
+=======
+    auto& ins_vector = ctx->inputs.at(input_names[i]);
+>>>>>>> update
     auto& name_vec = name_map.at(input_names[i]);
     bool should_skip_input =
         no_buffer_ins && no_buffer_ins->count(input_names[i]) > 0;
@@ -2006,12 +2010,18 @@ void OperatorWithKernel::BuildPtenKernelContext(
                         attr_names.size(), attr_defs.size()));
 
   for (size_t i = 0; i < input_names.size(); ++i) {
+<<<<<<< 265e88ac77105e40741c918ca7ad974b6fa63147
     auto it = ctx.inputs.find(input_names[i]);
+=======
+    auto& ins_vector = ctx.inputs.at(input_names[i]);
+>>>>>>> update
 
     // calcute the start and end index of the input tensors
     size_t start_idx =
         (i == 0 ? 0 : pt_kernel_context->InputRangeAt(i - 1).second);
+    size_t end_idx = start_idx + ins_vector.size();
 
+<<<<<<< 265e88ac77105e40741c918ca7ad974b6fa63147
     // deal with optional here
     if (it == ctx.inputs.end()) {
       pt_kernel_context->EmplaceBackInputWithoutSetRange(nullptr);
@@ -2027,23 +2037,34 @@ void OperatorWithKernel::BuildPtenKernelContext(
       auto* var = ins_vector[offset];
       if (var->IsType<framework::LoDTensor>()) {
         tensor_in = &(var->Get<framework::LoDTensor>());
+=======
+    for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
+      const pten::TensorBase* tensor_in = nullptr;
+      auto* var = ins_vector[offset];
+      if (var->IsType<pten::DenseTensor>()) {
+        tensor_in = &(var->Get<pten::DenseTensor>());
+>>>>>>> update
       } else if (var->IsType<pten::SelectedRows>()) {
         tensor_in = &(var->Get<pten::SelectedRows>());
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported input `%s` type when call pt kernel.",
             framework::ToTypeName(var->Type())));
+<<<<<<< 265e88ac77105e40741c918ca7ad974b6fa63147
       }
 
         pt_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
+=======
+>>>>>>> update
       }
-      pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx),
-                                          i);
+      pt_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
     }
+    pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx), i);
   }
 
   for (size_t i = 0; i < output_names.size(); ++i) {
-    auto it = ctx.outputs.find(output_names[i]);
+    auto& outs_vector = ctx.outputs.at(output_names[i]);
+
     size_t start_idx =
         (i == 0 ? 0 : pt_kernel_context->OutputRangeAt(i - 1).second);
 
@@ -2163,9 +2184,6 @@ void OperatorWithKernel::BuildPtenKernelContext(
       } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
         pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
       } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(std::string))) {
-        pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(std::string, attr));
-      } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(pten::DataType))) {
         auto data_type = pten::TransToPtenDataType(
             static_cast<framework::proto::VarType::Type>(
@@ -2183,10 +2201,6 @@ void OperatorWithKernel::BuildPtenKernelContext(
         }
         // TODO(YuanRisheng) Need support vector<int64_t> attr
 
-      } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(std::vector<int32_t>))) {
-        const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
-        pt_kernel_context->EmplaceBackAttr(vector_int_attr);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported cast op attribute `%s` when construct "
