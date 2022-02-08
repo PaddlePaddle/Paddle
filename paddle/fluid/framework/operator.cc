@@ -2008,7 +2008,6 @@ void OperatorWithKernel::BuildPtenKernelContext(
                         attr_names.size(), attr_defs.size()));
 
   for (size_t i = 0; i < input_names.size(); ++i) {
-
     auto it = ctx.inputs.find(input_names[i]);
 
     // calcute the start and end index of the input tensors
@@ -2020,6 +2019,9 @@ void OperatorWithKernel::BuildPtenKernelContext(
     if ((it == ctx.inputs.end()) &&
         (input_defs[i].type_index ==
          std::type_index(typeid(paddle::optional<const pten::DenseTensor&>)))) {
+
+    if (it == ctx.inputs.end()) {
+
       pt_kernel_context->EmplaceBackInputWithoutSetRange(nullptr);
       auto end_idx = start_idx + 1;
       pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx),
@@ -2035,23 +2037,8 @@ void OperatorWithKernel::BuildPtenKernelContext(
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported input `%s` type when call pt kernel.",
             framework::ToTypeName(var->Type())));
-    } else {
-      auto ins_vector = it->second;
-      size_t end_idx = start_idx + ins_vector.size();
-      for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
-        const pten::TensorBase* tensor_in = nullptr;
-        auto* var = ins_vector[offset];
-        if (var->IsType<framework::LoDTensor>()) {
-          tensor_in = &(var->Get<framework::LoDTensor>());
-        } else if (var->IsType<pten::SelectedRows>()) {
-          tensor_in = &(var->Get<pten::SelectedRows>());
-        } else {
-          PADDLE_THROW(platform::errors::Unimplemented(
-              "Unsupported input `%s` type when call pt kernel.",
-              framework::ToTypeName(var->Type())));
-        }  // TODO(zyfncg): Add support for SelectedRows
 
-        pt_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
+  
       }
       pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx),
                                           i);

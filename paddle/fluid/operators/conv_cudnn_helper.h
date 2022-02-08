@@ -170,8 +170,7 @@ void ChooseAlgo(const std::vector<PerfType>& perf_results,
 
 using framework::ConvSearchCache;
 
-static void SetConvMathType(const platform::CUDADeviceContext& ctx,
-                            cudnnDataType_t dtype,
+static void SetConvMathType(const pten::GPUContext& ctx, cudnnDataType_t dtype,
                             const platform::ConvolutionDescriptor& cdesc) {
 #if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
   auto& dev_ctx = ctx;
@@ -230,8 +229,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
 
   template <typename T>
   static algo_t Find(const ConvArgs& args, bool exhaustive_search,
-                     bool deterministic,
-                     const platform::CUDADeviceContext& ctx) {
+                     bool deterministic, const pten::GPUContext& ctx) {
     auto dtype = platform::CudnnDataType<T>::type;
     bool has_got_workspace_size = true;
     size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
@@ -344,8 +342,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
 
   template <typename T>
   static algo_t Find(const ConvArgs& args, bool exhaustive_search,
-                     bool deterministic,
-                     const platform::CUDADeviceContext& ctx) {
+                     bool deterministic, const pten::GPUContext& ctx) {
     auto dtype = platform::CudnnDataType<T>::type;
     size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
     size_t workspace_size = 0;
@@ -475,8 +472,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
 
   template <typename T>
   static algo_t Find(const ConvArgs& args, bool exhaustive_search,
-                     bool deterministic,
-                     const platform::CUDADeviceContext& ctx) {
+                     bool deterministic, const pten::GPUContext& ctx) {
     platform::CUDAGraphCaptureModeGuard guard;
     auto dtype = platform::CudnnDataType<T>::type;
     size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
