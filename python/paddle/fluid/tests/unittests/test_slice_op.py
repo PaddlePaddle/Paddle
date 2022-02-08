@@ -514,8 +514,7 @@ class TestBF16(OpTest):
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
         if core.is_compiled_with_cuda():
-            self.check_grad_with_place(
-                place, ['Input'], 'Out', max_relative_error=0.006)
+            self.check_grad_with_place(place, ['Input'], 'Out')
 
 
 # Test python API
