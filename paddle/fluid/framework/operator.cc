@@ -599,6 +599,17 @@ std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
 }
 
 bool OpSupportGPU(const std::string& op_type) {
+  // check in new Function kernel first
+  auto& kernel_factory = pten::KernelFactory::Instance();
+  auto kernel_key_map =
+      kernel_factory.SelectKernelMap(pten::TransToPtenKernelName(op_type));
+  for (auto& kernel : kernel_key_map) {
+    if (platform::is_gpu_place(
+            pten::TransToFluidPlace(kernel.first.backend()))) {
+      return true;
+    }
+  }
+
   auto& all_kernels = OperatorWithKernel::AllOpKernels();
   auto it = all_kernels.find(op_type);
   if (it == all_kernels.end()) {
@@ -607,17 +618,6 @@ bool OpSupportGPU(const std::string& op_type) {
   }
   for (auto& kern_pair : it->second) {
     if (platform::is_gpu_place(kern_pair.first.place_)) {
-      return true;
-    }
-  }
-
-  // check in new Function kernel
-  auto& kernel_factory = pten::KernelFactory::Instance();
-  auto kernel_key_map =
-      kernel_factory.SelectKernelMap(pten::TransToPtenKernelName(op_type));
-  for (auto& kernel : kernel_key_map) {
-    if (platform::is_gpu_place(
-            pten::TransToFluidPlace(kernel.first.backend()))) {
       return true;
     }
   }
