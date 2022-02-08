@@ -29,9 +29,11 @@ class CollectiveController(Controller):
     def build_job(self):
 
         self.job.replicas = self.ctx.args.np or 1
+        self.job.id = self.ctx.args.id
 
     def build_pod(self):
         self.pod.replicas = self.pod_replicas()
+        self.pod.rank = self.ctx.args.rank
 
         data = json.dumps({
             'name': self.pod.name,
@@ -40,11 +42,11 @@ class CollectiveController(Controller):
             'dtype': self.ctx.node.device.dtype,
         })
 
-        peer_list, rank = self.store.allgather(
-            '/info',
-            self.pod.name,
-            data,
-            self.job.replicas, )
+        peer_list, rank = self.master.allgather(
+            '/{}/info'.format(self.job.id), self.pod.name, data,
+            self.job.replicas, self.pod.rank)
+
+        print(peer_list)
 
         peer_list = [json.loads(i) for i in peer_list]
 
@@ -55,7 +57,7 @@ class CollectiveController(Controller):
 
         for i in range(self.pod.replicas):
             e = {
-                "PADDLE_MASTER": self.store.master,
+                "PADDLE_MASTER": self.master.endpoint,
                 "PADDLE_GLOBAL_SIZE": "{}".format(global_size),
                 "PADDLE_LOCAL_SIZE": "{}".format(self.pod.replicas),
                 "PADDLE_GLOBAL_RANK": "{}".format(i + rank_offset),
@@ -76,7 +78,7 @@ class CollectiveController(Controller):
             for p in self.ctx.node.get_free_ports(self.pod.replicas)
         ]
 
-        eps, _ = self.store.allgather(
+        eps, _ = self.master.allgather(
             '/workers',
             self.pod.name,
             ",".join(self.pod.endpoints),

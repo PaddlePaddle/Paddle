@@ -24,6 +24,7 @@ class Job(object):
         self.replicas = 0
         self.elastic = False
         self.mode = JobMode.COLLECTIVE
+        self.id = 'default'
 
         self.ips = []
         self.ports = []

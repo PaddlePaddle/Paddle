@@ -79,12 +79,15 @@ class Context(object):
             default=os.environ.get('PADDLE_DISTRI_BACKEND', 'auto'),
             help="Specifize the backend, can be gloo|nccl|bkcl|auto|hccl|heter. "
             "Default value is auto which perfers nccl or bkcl.")
-        base_group.add_argument(
-            "--run_mode",
-            type=str,
-            default=None,
-            help="run mode of job, can be:collective/ps/ps-heter")
         '''
+        base_group.add_argument(
+            "--mode",
+            type=str,
+            default="collective",
+            help="run mode of job, can be:collective/ps/ps-heter")
+
+        base_group.add_argument(
+            "--id", type=str, default="default", help="job unique id")
 
         base_group.add_argument(
             "--gpus",
@@ -192,7 +195,6 @@ class Context(object):
         elastic_group.add_argument(
             "--elastic_pre_hook", type=str, help="elastic pre_hook shell cmd")
 
-        elastic_group.add_argument("--job_id", type=str, help="job unique id")
         elastic_group.add_argument(
             "--np", type=int, help="number of peer, job pod/node number")
         elastic_group.add_argument(

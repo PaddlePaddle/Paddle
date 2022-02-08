@@ -45,6 +45,8 @@ Parameter Server Mode
 
 Case 1: 1 node, 2 ps, 2 worker
 
+# python -m paddle.distributed.run --mode ps train.py
+
 # python -m paddle.distributed.run --server_num=2 --worker_num=2 train.py
 
 Case 2: 2 node, 2 ps, 2 worker per node

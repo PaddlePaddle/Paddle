@@ -35,7 +35,7 @@ class PodSepc(object):
         self.containers: List[Container] = []
         self.resource: Resource = None
         self.status: Status = None
-        self.rank = 0
+        self.rank = -1
         self.replicas = 0  # number of containers
         self.init_timeout = 120  # 2 min timeout for each init container
 

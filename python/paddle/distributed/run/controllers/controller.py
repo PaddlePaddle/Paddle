@@ -19,7 +19,7 @@ from paddle.distributed.run.job import Job
 from paddle.distributed.run.job import Pod
 from paddle.distributed.run.job import Container
 
-from .store import Store
+from .master import Master
 
 import time
 
@@ -32,7 +32,7 @@ class ControllerBase(object):
 
         self.ctx = ctx
 
-        self.store = Store(self.ctx)
+        self.master = Master.factory(self.ctx)
 
         self.job = Job()
         self.pod = Pod()
@@ -52,7 +52,7 @@ class ControllerBase(object):
 
     def tach(self):
         self.pod.join()
-        self.store.stop_server()
+        self.master.stop()
 
     def run(self):
         self.ctx.logger.debug("Run pod {}".format(self.pod))
@@ -64,7 +64,7 @@ class ControllerBase(object):
         self.pod.deploy()
 
     def stop(self, sigint=None):
-        self.store.stop_server()
+        self.master.stop()
         self.pod.stop(sigint)
 
 
