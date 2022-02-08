@@ -34,11 +34,6 @@
 #include "gperftools/profiler.h"
 #endif
 
-// Disable pten path
-DECLARE_bool(run_pten_kernel);
-
-TEST(Benchmark, Init) { FLAGS_run_pten_kernel = false; }
-
 namespace paddle {
 namespace imperative {
 

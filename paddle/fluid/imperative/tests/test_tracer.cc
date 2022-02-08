@@ -16,17 +16,18 @@
 // Created by Jiabin on 2019-08-16.
 //
 
-#include <paddle/fluid/framework/op_registry.h>
-
 #include <memory>
 #include <set>
 #include <string>
 #include <vector>
 
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/basic_engine.h"
+#include "paddle/fluid/imperative/execution_context.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace imperative = paddle::imperative;
 namespace platform = paddle::platform;
@@ -71,11 +72,11 @@ TEST(test_tracer, test_trace_op) {
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap mul_attr_map;
   mul_attr_map["use_mkldnn"] = false;
-  tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true);
+  tracer.TraceOp<VarBase>("mul", ins, outs, mul_attr_map, place, true);
 
 #ifndef PADDLE_WITH_XPU
-  ASSERT_THROW(tracer.TraceOp("mul", ins, outs, mul_attr_map,
-                              platform::XPUPlace(0), true);
+  ASSERT_THROW(tracer.TraceOp<VarBase>("mul", ins, outs, mul_attr_map,
+                                       platform::XPUPlace(0), true);
                , platform::EnforceNotMet);
 #endif
 
@@ -117,7 +118,7 @@ TEST(test_tracer, test_trace_op_with_backward) {
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap mul_attr_map;
   mul_attr_map["use_mkldnn"] = false;
-  tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true);
+  tracer.TraceOp<VarBase>("mul", ins, outs, mul_attr_map, place, true);
   const auto& out_tensor = vout->Var().Get<framework::LoDTensor>();
   for (int i = 0; i < vout->Var().Get<framework::LoDTensor>().numel(); i++) {
     ASSERT_EQ(out_tensor.data<float>()[i], 20.0);
@@ -157,7 +158,7 @@ TEST(test_tracer, test_track_backward_output) {
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap mul_attr_map;
   mul_attr_map["use_mkldnn"] = false;
-  tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true);
+  tracer.TraceOp<VarBase>("mul", ins, outs, mul_attr_map, place, true);
   ASSERT_EQ(x_in->GradVarBase()->GradOpNum(), 0UL);
   ASSERT_EQ(y_in->GradVarBase()->GradOpNum(), 0UL);
   ASSERT_EQ(vout->GradVarBase()->GradOpNum(), 1UL);
@@ -196,7 +197,7 @@ TEST(test_tracer, test_track_backward_input) {
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap mul_attr_map;
   mul_attr_map["use_mkldnn"] = false;
-  tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true);
+  tracer.TraceOp<VarBase>("mul", ins, outs, mul_attr_map, place, true);
 
   ASSERT_EQ(x_in->GradVarBase()->GradOpNum(), 0UL);
   ASSERT_EQ(y_in->GradVarBase()->GradOpNum(), 0UL);
@@ -237,7 +238,8 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap mul_attr_map;
   mul_attr_map["use_mkldnn"] = false;
-  tracer.TraceOp("elementwise_add", ins, outs, mul_attr_map, gpu_place, true);
+  tracer.TraceOp<VarBase>("elementwise_add", ins, outs, mul_attr_map, gpu_place,
+                          true);
 
   // run reduce sum
   std::shared_ptr<imperative::VarBase> reduce_sum_out(
@@ -247,8 +249,8 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   imperative::NameVarBaseMap reduce_in = {reduce_sum_in_pair};
   imperative::NameVarBaseMap reduce_out = {reduce_sum_out_pair};
   framework::AttributeMap reduce_attr_map;
-  tracer.TraceOp("reduce_sum", reduce_in, reduce_out, reduce_attr_map,
-                 gpu_place, true);
+  tracer.TraceOp<VarBase>("reduce_sum", reduce_in, reduce_out, reduce_attr_map,
+                          gpu_place, true);
   imperative::BasicEngine engine;
 
   std::vector<std::shared_ptr<imperative::VarBase>> tensors{reduce_sum_out};
@@ -368,7 +370,7 @@ TEST(test_tracer, test_var_without_grad_var) {
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap mul_attr_map;
   mul_attr_map["use_mkldnn"] = false;
-  tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true);
+  tracer.TraceOp<VarBase>("mul", ins, outs, mul_attr_map, place, true);
 
   const auto& out_tensor = vout->Var().Get<framework::LoDTensor>();
   for (int i = 0; i < vout->Var().Get<framework::LoDTensor>().numel(); i++) {
@@ -439,9 +441,9 @@ static void TestVarOpDestructionMain(const platform::Place& place,
       size_t op_base_num = op_bases.size();
 
       auto z = std::make_shared<VarBase>("z_" + std::to_string(i));
-      tracer.TraceOp("mul", NameVarBaseMap{{"X", {x}}, {"Y", {y}}},
-                     NameVarBaseMap{{"Out", {z}}}, framework::AttributeMap{},
-                     place, true);
+      tracer.TraceOp<VarBase>("mul", NameVarBaseMap{{"X", {x}}, {"Y", {y}}},
+                              NameVarBaseMap{{"Out", {z}}},
+                              framework::AttributeMap{}, place, true);
 
       ASSERT_EQ(z->GradOpNum(), 0UL);
       ASSERT_EQ(z->GradVarBase()->GradOpNum(), 1UL);
@@ -528,6 +530,20 @@ TEST(test_tracer, test_var_op_destruction) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   TestVarOpDestructionMain(platform::CUDAPlace(0));
 #endif
+}
+
+TEST(test_tracer, test_execution_context) {
+  auto op = framework::OpRegistry::CreateOp("mul", {}, {}, {}, false);
+  framework::Scope scope;
+  auto ctx = framework::RuntimeContext({}, {});
+  NameVarBaseMap ins = {{"X", {nullptr}}, {"Y", {nullptr}}};
+  NameVarBaseMap outs = {{"Out", {nullptr}}};
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(platform::CPUPlace());
+  auto dy_ctx = DygraphExecutionContext<VarBase>(
+      (*op.get()), scope, *dev_ctx, ctx, ins, outs, framework::AttributeMap{},
+      framework::AttributeMap{});
+  ASSERT_EQ(dy_ctx.OutputName("Out"), framework::kEmptyVarName);
 }
 
 }  // namespace imperative
