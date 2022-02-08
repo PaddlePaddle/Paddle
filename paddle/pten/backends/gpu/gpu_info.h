@@ -104,6 +104,10 @@ void GpuDeviceSync();
 
 gpuError_t GpuGetLastError();
 
+bool IsGPUManagedMemorySupported(int dev_id);
+
+bool IsGPUManagedMemoryOversubscriptionSupported(int dev_id);
+
 class GPUDeviceGuard {
  public:
   explicit inline GPUDeviceGuard(int dev_id) {

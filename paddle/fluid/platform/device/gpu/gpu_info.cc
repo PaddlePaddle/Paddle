@@ -167,18 +167,28 @@ class RecordedGpuMallocHelper {
    * or cudaSuccess would be returned, and the cudaGetLastError() flag
    * would be clear.
    */
-  gpuError_t Malloc(void **ptr, size_t size) {
+  gpuError_t Malloc(void **ptr, size_t size,
+                    bool malloc_managed_memory = false) {
     LockGuardPtr<std::mutex> lock(mtx_);
     if (UNLIKELY(NeedRecord() && cur_size_.load() + size > limit_size_)) {
       return gpuErrorOutOfMemory;
     }
 
     CUDADeviceGuard guard(dev_id_);
+    gpuError_t result;
 #ifdef PADDLE_WITH_HIP
-    auto result = hipMalloc(ptr, size);
+    if (UNLIKELY(malloc_managed_memory)) {
+      result = hipMallocManaged(ptr, size);
+    } else {
+      result = hipMalloc(ptr, size);
+    }
 #else
     CUDAGraphCaptureModeGuard capture_mode_guard;
-    auto result = cudaMalloc(ptr, size);
+    if (UNLIKELY(malloc_managed_memory)) {
+      result = cudaMallocManaged(ptr, size);
+    } else {
+      result = cudaMalloc(ptr, size);
+    }
 #endif
     if (result == gpuSuccess) {
       cur_size_.fetch_add(size);
@@ -318,8 +328,10 @@ std::once_flag RecordedGpuMallocHelper::once_flag_;
 std::vector<std::unique_ptr<RecordedGpuMallocHelper>>
     RecordedGpuMallocHelper::instances_;
 
-gpuError_t RecordedGpuMalloc(void **ptr, size_t size, int dev_id) {
-  return RecordedGpuMallocHelper::Instance(dev_id)->Malloc(ptr, size);
+gpuError_t RecordedGpuMalloc(void **ptr, size_t size, int dev_id,
+                             bool malloc_managed_memory) {
+  return RecordedGpuMallocHelper::Instance(dev_id)->Malloc(
+      ptr, size, malloc_managed_memory);
 }
 
 void RecordedGpuFree(void *p, size_t size, int dev_id) {
@@ -352,6 +364,10 @@ uint64_t RecordedGpuMallocSize(int dev_id) {
   return RecordedGpuMallocHelper::Instance(dev_id)->RecordedSize();
 }
 
+uint64_t RecordedGpuLimitSize(int dev_id) {
+  return RecordedGpuMallocHelper::Instance(dev_id)->LimitSize();
+}
+
 bool IsGpuMallocRecorded(int dev_id) {
   return RecordedGpuMallocHelper::Instance(dev_id)->NeedRecord();
 }
@@ -361,6 +377,15 @@ void EmptyCache(void) {
   for (auto device : devices) {
     memory::Release(CUDAPlace(device));
   }
+}
+
+bool IsGPUManagedMemorySupported(int dev_id) {
+  return pten::backends::gpu::IsGPUManagedMemorySupported(dev_id);
+}
+
+bool IsGPUManagedMemoryOversubscriptionSupported(int dev_id) {
+  return pten::backends::gpu::IsGPUManagedMemoryOversubscriptionSupported(
+      dev_id);
 }
 
 void *GetGpuBasePtr(void *ptr, int dev_id) {
