@@ -11,20 +11,17 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-#include "paddle/pten/core/kernel_factory.h"
-#include "paddle/pten/core/kernel_registry.h"
-
 #include <iostream>
 #include <string>
 
-PT_DECLARE_KERNEL(scale, CPU, ALL_LAYOUT);
+#include "paddle/pten/core/kernel_factory.h"
+#include "paddle/pten/core/kernel_registry.h"
+#include "paddle/pten/kernels/declarations.h"
+
+// PT_DECLARE_KERNEL(scale, CPU, ALL_LAYOUT);
+// PT_DECLARE_KERNEL(flatten, CPU, ALL_LAYOUT);
 
 int main(int argc, char** argv) {
-  
-  std::cout << "xxxx test here\n" 
-            << "xxxx kernel nums:" << pten::KernelFactory::Instance().kernels().size()
-            << "\n\n" << pten::KernelFactory::Instance()
-            << std::endl;
+  std::cout << pten::KernelFactory::Instance().DumpKernels() << std::endl;
   return 0;
 }

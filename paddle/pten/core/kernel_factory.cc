@@ -95,6 +95,65 @@ const Kernel& KernelFactory::SelectKernelOrThrowError(
                                   KernelKey(backend, layout, dtype));
 }
 
+std::string Kernel::DumpKernel() const {
+  std::ostringstream os;
+
+  // input
+  os << "{\"input\":[";
+  bool need_comma = false;
+  for (auto& in_def : args_def_.input_defs()) {
+    if (need_comma) os << ",";
+    os << "\"" << in_def.backend << ", " << in_def.layout << ", "
+       << in_def.dtype << "\"";
+    need_comma = true;
+  }
+  os << "],";
+
+  // output
+  os << "\"output\":[";
+  need_comma = false;
+  for (auto& out_def : args_def_.output_defs()) {
+    if (need_comma) os << ",";
+    os << "\"" << out_def.backend << ", " << out_def.layout << ", "
+       << out_def.dtype << "\"";
+    need_comma = true;
+  }
+  os << "],";
+
+  // attr
+  os << "\"attribute\":[";
+  need_comma = false;
+  for (auto& arg_def : args_def_.attribute_defs()) {
+    if (need_comma) os << ",";
+    os << "\"" << arg_def.type_index.name() << "\"";
+    need_comma = true;
+  }
+  os << "]}";
+
+  return os.str();
+}
+
+std::string KernelFactory::DumpKernels() {
+  std::ostringstream os;
+  os << "{";
+  bool need_comma_kernels = false;
+  for (const auto& op_kernel_pair : kernels_) {
+    if (need_comma_kernels) os << ",";
+    os << "\"" << op_kernel_pair.first << "\":[";
+    bool need_comma_per_kernel = false;
+    for (const auto& kernel_pair : op_kernel_pair.second) {
+      if (need_comma_per_kernel) os << ",";
+      os << "{\"" << kernel_pair.first
+         << "\":" << kernel_pair.second.DumpKernel() << "}";
+      need_comma_per_kernel = true;
+    }
+    os << "]";
+    need_comma_kernels = true;
+  }
+  os << "}";
+  return os.str();
+}
+
 std::ostream& operator<<(std::ostream& os, const Kernel& kernel) {
   os << "InputNum(" << kernel.args_def().input_defs().size() << "): [";
   for (auto& in_def : kernel.args_def().input_defs()) {
