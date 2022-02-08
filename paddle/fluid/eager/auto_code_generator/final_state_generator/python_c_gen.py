@@ -215,6 +215,7 @@ if __name__ == "__main__":
         python_c_function_reg_list.append(python_c_function_reg_str)
         print("Generated Python-C Function: ", python_c_function_str)
 
+    python_c_function_reg_list.append("{nullptr,nullptr,0,nullptr}")
     python_c_functions_str = "\n".join(python_c_function_list)
     python_c_functions_reg_str = ",\n".join(python_c_function_reg_list)
 
