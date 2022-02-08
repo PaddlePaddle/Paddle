@@ -605,7 +605,7 @@ bool OpSupportGPU(const std::string& op_type) {
       kernel_factory.SelectKernelMap(pten::TransToPtenKernelName(op_type));
   for (auto& kernel : kernel_key_map) {
     if (platform::is_gpu_place(
-            pten::TransToFluidPlace(kernel.first.backend()))) {
+            paddle::framework::TransToFluidPlace(kernel.first.backend()))) {
       return true;
     }
   }
