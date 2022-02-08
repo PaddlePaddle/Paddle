@@ -14,6 +14,12 @@
 
 #include "paddle/infrt/dialect/pten/pten_base.h"
 
+#include <mlir/IR/Builders.h>
+#include <mlir/IR/Dialect.h>
+#include <mlir/IR/DialectImplementation.h>
+#include <mlir/IR/MLIRContext.h>
+#include <mlir/IR/TypeUtilities.h>
+#include <mlir/IR/Types.h>
 #include "paddle/infrt/common/global.h"
 #include "paddle/infrt/dialect/pten/infrt_pten_base.cpp.inc"
 #include "paddle/infrt/dialect/pten/infrt_pten_baseDialect.cpp.inc"
@@ -38,7 +44,19 @@ void PTENDialect::initialize() {
 }
 
 mlir::Type PTENDialect::parseType(mlir::DialectAsmParser& parser) const {
-  return Dialect::parseType(parser);
+  llvm::StringRef keyword;
+  if (parser.parseKeyword(&keyword)) return mlir::Type();
+  if (keyword == "allocator_CPU") {
+    return CPUAllocatorType::get(parser.getContext());
+  } else if (keyword == "allocator_GPU") {
+    return GPUAllocatorType::get(parser.getContext());
+  } else if (keyword == "context_CPU") {
+    return CPUContextType::get(parser.getContext());
+  } else if (keyword == "context_GPU") {
+    return GPUContextType::get(parser.getContext());
+  }
+
+  return mlir::Type();
 }
 
 }  // namespace pten

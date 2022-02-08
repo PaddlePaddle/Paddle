@@ -14,22 +14,22 @@ def PTEN_Dialect : Dialect {
 }
 
 class AllocatorTypeOf<string place, list<Trait> traits=[]>:
-    TypeDef<PTEN_Dialect, place # "AllocatorType", traits> {
+    TypeDef<PTEN_Dialect, place # "Allocator", traits> {
     let summary = !strconcat("!pten.allocator_", place, " type");
 }
 
 class ContextTypeOf<string place, list<Trait> traits=[]>:
-    TypeDef<PTEN_Dialect, place # "ContextType", traits> {
+    TypeDef<PTEN_Dialect, place # "Context", traits> {
     let summary = !strconcat("!pten.context_", place, " type");
 }
 
-def CPU_AllocatorType : AllocatorTypeOf<"CPU">;
-def GPU_AllocatorType : AllocatorTypeOf<"GPU">;
+def CPU_Allocator : AllocatorTypeOf<"CPU">;
+def GPU_Allocator : AllocatorTypeOf<"GPU">;
 
-def CPU_ContextType : ContextTypeOf<"CPU">;
-def GPU_ContextType : ContextTypeOf<"GPU">;
+def CPU_Context : ContextTypeOf<"CPU">;
+def GPU_Context : ContextTypeOf<"GPU">;
 
-def AllocatorType : AnyTypeOf<[CPU_AllocatorType, GPU_AllocatorType], "Allocator type">;
-def ContextType : AnyTypeOf<[CPU_ContextType, GPU_ContextType], "Context type">;
+def Allocator : AnyTypeOf<[CPU_Allocator, GPU_Allocator], "Allocator type">;
+def Context : AnyTypeOf<[CPU_Context, GPU_Context], "Context type">;
 
 #endif

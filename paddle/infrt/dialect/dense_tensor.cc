@@ -37,6 +37,10 @@ void DTDialect::initialize() {
 #define GET_OP_LIST
 #include "paddle/infrt/dialect/dense_tensor.cpp.inc"
       >();
+
+  addTypes<::infrt::dt::TensorType,
+           ::infrt::dt::TensorMapType,
+           ::infrt::dt::StringType>();
 }
 
 llvm::Optional<TargetType> GetTargetType(mlir::StringRef key) {
@@ -207,5 +211,4 @@ static void printSetTensorOp(mlir::OpAsmPrinter &p, SetTensorOp op) {  // NOLINT
 
 #define GET_OP_CLASSES
 #include "paddle/infrt/dialect/dense_tensor.cpp.inc"  // NOLINT
-
 #include "paddle/infrt/dialect/dense_tensor_dialect.cpp.inc"
