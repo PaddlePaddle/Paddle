@@ -27,13 +27,15 @@ namespace distributed {
 
 class SocketOptions {
  public:
-  void set_connect_timeout(std::chrono::seconds timeout) {
+  void set_connect_timeout(std::chrono::milliseconds timeout) {
     _connect_timeout = timeout;
   }
-  std::chrono::seconds get_connect_timeout() const { return _connect_timeout; }
+  std::chrono::milliseconds get_connect_timeout() const {
+    return _connect_timeout;
+  }
 
  private:
-  std::chrono::seconds _connect_timeout{30};
+  std::chrono::milliseconds _connect_timeout{30};
 };
 
 class Socket {
@@ -45,6 +47,7 @@ class Socket {
   static Socket connect(const std::string& host, std::uint16_t port,
                         const SocketOptions& opts = {});
   Socket accept() const;
+  explicit Socket(int sock) : _sock(sock) {}
 
   template <typename T>
   void sendValue(const T& value);
@@ -55,7 +58,6 @@ class Socket {
   int get_socket_fd() const { return _sock; }
 
  private:
-  explicit Socket(int sock) : _sock(sock) {}
   int _sock;
 
   template <typename T>

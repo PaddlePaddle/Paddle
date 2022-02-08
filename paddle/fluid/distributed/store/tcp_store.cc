@@ -14,6 +14,7 @@
 
 #include <chrono>
 #include <iostream>
+#include <thread>
 
 #include "paddle/fluid/distributed/socket/tcp_utils.h"
 #include "paddle/fluid/distributed/store/tcp_store.h"
@@ -25,17 +26,19 @@ namespace distributed {
 namespace detail {
 
 std::unique_ptr<TCPServer> TCPServer::create(uint16_t port) {
-  auto socket = Socket::listen(port);
-  return std::make_unique<TCPClient>(std::move(socket));
+  // auto socket = Socket::listen(port);
+  // return std::make_unique<TCPServer>(std::move(socket));
+  return std::make_unique<TCPServer>(port);
 }
 
 std::unique_ptr<TCPClient> TCPClient::connect(
     const std::string host, uint16_t port,
-    const std::chrono::seconds& timeout) {
+    const std::chrono::milliseconds& timeout) {
   SocketOptions sock_opt{};
   sock_opt.set_connect_timeout(timeout);
   const Socket socket = Socket::connect(host, port, sock_opt);
-  return std::make_unique<TCPClient>(std::move(socket));
+  // return std::make_unique<TCPClient>(std::move(socket));
+  return std::make_unique<TCPClient>(socket);
 }
 
 void TCPClient::sendCommandForKey(Command type, const std::string& key) {
@@ -70,9 +73,8 @@ void TCPClient::sendStrings(std::vector<std::string> strings) {
 
 }  // namespace detail
 
-TCPStore::TCPStore(std::string host, uint16_t port = kDefaultPort,
-                   bool is_master = false, size_t num_workers = 1,
-                   std::chrono::milliseconds timeout = Store::kDefaultTimeout)
+TCPStore::TCPStore(std::string host, uint16_t port, bool is_master,
+                   size_t num_workers, std::chrono::milliseconds timeout)
     : Store(timeout),
       _host(host),
       _port(port),
@@ -97,7 +99,7 @@ void TCPStore::waitWorkers() {
   if (_server) {
     do {
       auto value = get(_init_key);
-      int completed = std::stoi(std::string(value.begin(), value.size()));
+      int completed = std::stoi(std::string(value.begin(), value.end()));
       if (completed >= _num_workers) {
         break;
       }
@@ -119,9 +121,9 @@ void TCPStore::set(const std::string& key, const std::vector<uint8_t>& value) {
 
 std::vector<uint8_t> TCPStore::get(const std::string& key) {
   const std::lock_guard<std::mutex> lock(_lock);
-  doWait(key, _timeout);
+  doWait(std::vector<std::string>{key}, _timeout);
   _client->sendCommandForKey(Command::GET, _key_prefix + key);
-  return _client->receiveBytes();
+  return _client->recvBytes();
 }
 
 int64_t TCPStore::add(const std::string& key, int64_t value) {
@@ -131,7 +133,7 @@ int64_t TCPStore::add(const std::string& key, int64_t value) {
   return _client->recvValue<std::int64_t>();
 }
 
-bool TCPStore::removeKey(const std::string& key) override {
+bool TCPStore::removeKey(const std::string& key) {
   const std::lock_guard<std::mutex> lock(_lock);
   _client->sendCommandForKey(Command::REMOVE, _key_prefix + key);
   auto num_removed = _client->recvValue<std::int64_t>();
@@ -153,17 +155,17 @@ void TCPStore::wait(const std::vector<std::string>& keys,
 
 void TCPStore::doWait(const std::vector<std::string>& keys,
                       const std::chrono::milliseconds& timeout) {
-  auto pre_timeout = _client->getTimeout();
+  // auto pre_timeout = _client->getTimeout();
   _client->sendCommand(Command::WAIT);
   _client->sendStrings(keys);
 
-  _client->setTimeout(timeout);
+  // _client->setTimeout(timeout);
   auto reply = _client->recvValue<WaitReplyType>();
   PADDLE_ENFORCE_EQ(static_cast<int>(reply),
                     static_cast<int>(WaitReplyType::STOP_WAIT),
                     platform::errors::InvalidArgument(
                         "The call to doWait must reply with STOP_WAITING."));
-  _client->setTimeout(pre_timeout);
+  // _client->setTimeout(pre_timeout);
 }
 
 }  // namespace distributed

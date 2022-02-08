@@ -57,7 +57,7 @@ void freeAddrInfo(::addrinfo* info) {
 }
 
 int tcpConnect(const std::string host, const std::string service, int family,
-               std::chrono::seconds timeout) {
+               std::chrono::milliseconds timeout) {
   int ai_flags = AI_NUMERICSERV | AI_V4MAPPED | AI_ALL;
   ::addrinfo* res = getAddrInfo(host, service, ai_flags, family);
 

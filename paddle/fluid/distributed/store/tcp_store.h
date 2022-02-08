@@ -40,10 +40,11 @@ class TCPServer {
 
 class TCPClient {
  public:
-  explicit TCPClient(Socket&& socket) : _socket{std::move(socket)} {}
+  // TCPClient(Socket&& socket) : _socket{std::move(socket)} {}
+  explicit TCPClient(Socket socket) : _socket{socket} {}
   static std::unique_ptr<TCPClient> connect(
       const std::string host, uint16_t port,
-      const std::chrono::seconds& timeout);
+      const std::chrono::milliseconds& timeout);
   void sendCommandForKey(Command type, const std::string& key);
   void sendCommand(Command type);
   void sendStrings(std::vector<std::string> strings);
@@ -60,7 +61,7 @@ class TCPClient {
   }
 
   template <typename T>
-  T recvValue(const T& value) {
+  T recvValue() {
     int sock_fd = _socket.get_socket_fd();
     return tcputils::recvValue<T>(sock_fd);
   }

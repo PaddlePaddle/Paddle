@@ -27,14 +27,15 @@ namespace distributed {
 namespace tcputils {
 
 constexpr int LISTENQ = 2048;
-constexpr std::chrono::seconds kNoTimeOut = std::chrono::seconds::zero();
+constexpr std::chrono::milliseconds kNoTimeOut =
+    std::chrono::milliseconds::zero();
 
 std::error_code getSocketError();
 ::addrinfo* getAddrInfo(const std::string host, const std::string service,
                         int ai_flags, int family);
 void freeAddrInfo(::addrinfo*);
 int tcpConnect(const std::string host, const std::string service, int family,
-               std::chrono::seconds timeout);
+               std::chrono::milliseconds timeout);
 int tcpListen(const std::string host, const std::string service, int family);
 int tcpAccept(int sock);
 void setSockOpt(int sock, int level, int optname, const char* value,
