@@ -18,23 +18,13 @@ limitations under the License. */
 #include <utility>
 
 #include "paddle/pten/core/enforce.h"
-#include "paddle/pten/core/kernel_def.h"
 #include "paddle/pten/core/macros.h"
 #include "paddle/pten/core/meta_tensor.h"
+#include "paddle/pten/core/type_defs.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
 
 namespace pten {
-
-// TODO(chenweihang): add other flags if needed
-struct MetaConfig {
-  bool is_runtime{true};
-
-  MetaConfig() = default;
-
-  // supporting implicit construction is easier to use
-  MetaConfig(bool is_runtime) : is_runtime(is_runtime) {}  // NOLINT
-};
 
 class InferMetaContext {
  public:
