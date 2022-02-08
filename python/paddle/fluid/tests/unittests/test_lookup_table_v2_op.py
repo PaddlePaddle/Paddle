@@ -26,19 +26,23 @@ import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 
-class TestDygraphEmbeddingAPIError(unittest.TestCase):
-    def test_errors(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            dict_size = 20
-            layer = fluid.dygraph.nn.Embedding(
-                size=[dict_size, 32], param_attr='emb.w', is_sparse=False)
-            # the input must be Variable.
-            x0 = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
-            self.assertRaises(TypeError, layer, x0)
-            # the input dtype must be int64
-            data_t = fluid.data(name='word', shape=[1], dtype='int32')
-            self.assertRaises(TypeError, layer, data_t)
+class TestStaticGraphSupportMultipleInt(unittest.TestCase):
+    def test_main(self):
+        dtypes = ['uint8', 'int8', 'int16', 'int32', 'int64']
+        if paddle.in_dynamic_mode():
+            paddle.enable_static()
+            disable_static = True
+        else:
+            disable_static = False
+        for i, dtype in enumerate(dtypes):
+            with paddle.static.program_guard(paddle.static.Program(),
+                                             paddle.static.Program()):
+                x = paddle.static.data(name='x', shape=[-1, 7, 30], dtype=dtype)
+                emb = paddle.nn.Embedding(10, 20)
+                y = emb(x)
+
+        if disable_static:
+            paddle.disable_static()
 
 
 class TestLookupTableOp(OpTest):
