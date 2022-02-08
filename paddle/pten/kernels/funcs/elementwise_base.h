@@ -633,7 +633,8 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
                            const std::vector<const DenseTensor *> &ins,
                            std::vector<DenseTensor *> *outs,
                            Functor func) {
-  auto numel = (*outs)[0]->numel();
+  auto numel =
+      (*outs)[0]->numel();  // To avoid running errors when ins.size()== 0
   pten::framework::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
   pten::framework::Array<_ptr_ OutT *, NumOuts> outs_data;
 
