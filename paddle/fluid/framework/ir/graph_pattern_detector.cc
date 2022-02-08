@@ -1910,6 +1910,22 @@ PDNode *patterns::ElementwiseAdd::operator()(PDNode *x_var, PDNode *y_var) {
   return out_var;
 }
 
+PDNode *patterns::ElementwiseMul::operator()(PDNode *x_var, PDNode *y_var) {
+  auto elementwise_mul_op = pattern->NewNode(elementwise_mul_op_repr())
+                                ->assert_is_op("elementwise_mul");
+
+  x_var->AsInput()->assert_is_op_input("elementwise_mul", "X");
+  y_var->AsInput()->assert_is_op_input("elementwise_mul", "Y");
+  auto out_var = pattern->NewNode(elementwise_mul_out_repr())
+                     ->AsOutput()
+                     ->assert_is_op_output("elementwise_mul", "Out");
+
+  elementwise_mul_op->LinksFrom({x_var, y_var});
+  elementwise_mul_op->LinksTo({out_var});
+
+  return out_var;
+}
+
 PDNode *patterns::Concat::operator()() {
   auto concat_op = pattern->NewNode(concat_op_repr())->assert_is_op("concat");
 
