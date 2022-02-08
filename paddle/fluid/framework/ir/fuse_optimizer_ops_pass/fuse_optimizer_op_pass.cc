@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/ir/fuse_optimizer_ops_pass/fuse_optimizer_op_pass.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/pten/core/kernel_factory.h"
 
 namespace paddle {
 namespace framework {
@@ -268,12 +269,29 @@ bool FuseOptimizerOpPass::HasVarDepsBetweenOps(
 
 bool FuseOptimizerOpPass::OpWithKernelSupportCPUAndGPU(
     const std::string &op_type) const {
+  bool support_cpu = false;
+  bool support_gpu = false;
+  bool has_op_kernel = false;
+  auto &kernel_factory = pten::KernelFactory::Instance();
+  auto kernel_key_map =
+      kernel_factory.SelectKernelMap(pten::TransToPtenKernelName(op_type));
+  for (auto &kernel : kernel_key_map) {
+    has_op_kernel = true;
+    if (platform::is_gpu_place(
+            pten::TransToFluidPlace(kernel.first.backend()))) {
+      support_gpu = true;
+    }
+    if (platform::is_cpu_place(
+            pten::TransToFluidPlace(kernel.first.backend()))) {
+      support_cpu = true;
+    }
+  }
+
   auto &all_kernels = OperatorWithKernel::AllOpKernels();
   auto it = all_kernels.find(op_type);
   // skip op not has kernel
   if (it != all_kernels.end()) {
-    bool support_cpu = false;
-    bool support_gpu = false;
+    has_op_kernel = true;
     for (auto &kernel_pair : it->second) {
       if (platform::is_cpu_place(kernel_pair.first.place_)) {
         support_cpu = true;
@@ -282,11 +300,10 @@ bool FuseOptimizerOpPass::OpWithKernelSupportCPUAndGPU(
         support_gpu = true;
       }
     }
-    VLOG(6) << "Op check: " << op_type << ", support CPU: " << support_cpu
-            << ", support GPU: " << support_gpu;
-    return support_cpu && support_gpu;
   }
-  return true;
+  VLOG(6) << "Op check: " << op_type << ", support CPU: " << support_cpu
+          << ", support GPU: " << support_gpu;
+  return has_op_kernel ? (support_cpu && support_gpu) : true;
 }
 
 bool FuseOptimizerOpPass::GradGeneratedOpKernelCheck(
