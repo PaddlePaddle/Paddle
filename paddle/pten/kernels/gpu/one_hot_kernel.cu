@@ -83,5 +83,5 @@ void OneHotKernel(const Context& dev_ctx,
 
 }  // namespace pten
 
-PT_REGISTER_KERNEL(
-    one_hot_v2, GPU, ALL_LAYOUT, pten::OneHotKernel, int, int64_t) {}
+PT_REGISTER_KERNEL(one_hot, GPU, ALL_LAYOUT, pten::OneHotKernel, int, int64_t) {
+}
