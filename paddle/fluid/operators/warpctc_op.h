@@ -22,7 +22,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/sequence_scale.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/dynload/warpctc.h"
-#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -167,7 +166,6 @@ class WarpCTCFunctor {
       options_.stream = reinterpret_cast<const platform::CUDADeviceContext&>(
                             ctx.device_context())
                             .stream();
-      options_.params.costs_loc = CTC_GPU;
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "[warpctc init] GPU is not enabled."));
@@ -285,7 +283,6 @@ class WarpCTCKernel : public framework::OpKernel<T> {
 
     SequenceLengthInfo seq_info;
     if (ctx.HasInput("LogitsLength") && ctx.HasInput("LabelLength")) {
-      platform::RecordEvent event("has_logits_labels_length");
       // When input LogitsLength and LabelLength are set, logits and labels are
       // stored in transposed padding format.
       auto* logits_length = ctx.Input<framework::Tensor>("LogitsLength");
@@ -293,7 +290,6 @@ class WarpCTCKernel : public framework::OpKernel<T> {
       seq_info.ParseFromPaddingTensor(*logits, *label, *logits_length,
                                       *labels_length);
     } else {
-      platform::RecordEvent event("no_logits_labels_length");
       // When input LogitsLength and LabelLength are set, logits and labels are
       // in sequence format. The lengths are saved in logits and label's lod.
       seq_info.ParseFromSequenceTensor(*logits, *label);
@@ -306,8 +302,6 @@ class WarpCTCKernel : public framework::OpKernel<T> {
          static_cast<int64_t>(seq_info.num_sequences),
          static_cast<int64_t>(seq_info.sequence_width)});
     if (!ctx.HasInput("LogitsLength")) {
-      platform::RecordEvent event("padding_lod_tensor");
-
       auto& dev_ctx = ctx.template device_context<DeviceContext>();
       Tensor warpctc_logits_tmp =
           ctx.AllocateTmpTensor<T, DeviceContext>(warpctc_logits_dims, dev_ctx);
@@ -346,8 +340,6 @@ class WarpCTCKernel : public framework::OpKernel<T> {
     // warpctc accesses labels in CPU memory
     LoDTensor warpctc_label;
     if (ctx.HasInput("LabelLength")) {
-      platform::RecordEvent event("unpadding_labels");
-
       framework::Vector<size_t> label_lod;
       label_lod.push_back(0);
       for (size_t i = 0; i < seq_info.cpu_labels_length.size(); ++i) {
@@ -383,21 +375,28 @@ class WarpCTCKernel : public framework::OpKernel<T> {
                                           &warpctc_label);
       }
     } else {
-      platform::RecordEvent event("copy_label_cpu");
       paddle::framework::TensorCopySync(*label, platform::CPUPlace(),
                                         &warpctc_label);
     }
     const int* warpctc_label_data = warpctc_label.data<int>();
 
+    // warpctc stores loss in CPU memory
+    Tensor warpctc_loss;
     auto loss_dims =
         framework::make_ddim({static_cast<int64_t>(seq_info.num_sequences), 1});
-    T* loss_data = loss->mutable_data<T>(loss_dims, ctx.GetPlace());
+    T* warpctc_loss_data =
+        warpctc_loss.mutable_data<T>(loss_dims, platform::CPUPlace());
 
     const size_t blank = static_cast<size_t>(ctx.Attr<int>("blank"));
     WarpCTCFunctor<DeviceContext, T>()(
         ctx, warpctc_logits_data, warpctc_grad_data, warpctc_label_data,
         seq_info.cpu_labels_length.data(), seq_info.cpu_logits_length.data(),
-        seq_info.sequence_width, seq_info.num_sequences, blank, loss_data);
+        seq_info.sequence_width, seq_info.num_sequences, blank,
+        warpctc_loss_data);
+
+    // Copy the loss back
+    paddle::framework::TensorCopy(warpctc_loss, ctx.GetPlace(),
+                                  ctx.device_context(), loss);
   }
 };
 
