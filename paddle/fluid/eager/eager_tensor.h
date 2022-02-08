@@ -18,10 +18,10 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
 // pten deps
-#include "paddle/pten/api/all.h"
+#include "paddle/pten/api/include/tensor.h"
 #include "paddle/pten/api/lib/api_declare.h"
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/core/convert_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 /**
  * This class is used by Eager mode for now. It's painful to do this in Eager
  * Mode, the better

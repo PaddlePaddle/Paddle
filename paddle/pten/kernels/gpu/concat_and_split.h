@@ -237,12 +237,11 @@ __global__ void SplitKernel(const T* input_data,
   SplitKernelDetail<T>(input_data, in_row, in_col, fixed_out_col, outputs_data);
 }
 
-static inline void GetBlockDims(
-    const paddle::platform::CUDADeviceContext& context,
-    int64_t num_rows,
-    int64_t num_cols,
-    dim3* block_dims,
-    dim3* grid_dims) {
+static inline void GetBlockDims(const pten::GPUContext& context,
+                                int64_t num_rows,
+                                int64_t num_cols,
+                                dim3* block_dims,
+                                dim3* grid_dims) {
   // Set the thread block and grid according to CurrentDeviceId
   const int kThreadsPerBlock = 1024;
   int block_cols = kThreadsPerBlock;
