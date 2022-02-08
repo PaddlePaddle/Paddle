@@ -17,11 +17,12 @@ from __future__ import print_function
 import unittest
 import numpy as np
 
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler
 from paddle.static import Program, program_guard
+import paddle.fluid.core as core
 
 
 # situation 1: have shape( list, no tensor), no actual shape(Tensor)
@@ -46,6 +47,37 @@ class TestReshapeOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out")
+
+
+class TestReshapeBF16Op(OpTest):
+    def setUp(self):
+        self.init_data()
+        self.op_type = "reshape2"
+        self.dtype = np.uint16
+        x = np.random.random(self.ori_shape).astype("float32")
+        out = x.reshape(self.infered_shape)
+        self.inputs = {"X": convert_float_to_uint16(x)}
+        self.attrs = {"shape": self.new_shape}
+        self.outputs = {
+            "Out": convert_float_to_uint16(out),
+            'XShape': convert_float_to_uint16(
+                np.random.random(self.ori_shape).astype("float32"))
+        }
+
+    def init_data(self):
+        self.ori_shape = (2, 60)
+        self.new_shape = (12, 10)
+        self.infered_shape = (12, 10)
+
+    def test_check_output(self):
+        if not core.is_compiled_with_cuda():
+            return
+        self.check_output_with_place(core.CUDAPlace(0), no_check_set=['XShape'])
+
+    def test_check_grad(self):
+        if not core.is_compiled_with_cuda():
+            return
+        self.check_grad_with_place(core.CUDAPlace(0), ["X"], "Out")
 
 
 class TestReshapeOpDimInfer1(TestReshapeOp):
