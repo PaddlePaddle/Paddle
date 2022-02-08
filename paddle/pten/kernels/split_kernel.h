@@ -35,15 +35,26 @@ std::vector<DenseTensor> Split(const Context& dev_ctx,
                                const DenseTensor& x,
                                const ScalarArray& num_or_sections,
                                const Scalar& axis) {
-  std::vector<MetaTensor> out_meta;
-  SplitInferMeta(x, num_or_sections, axis, &out_meta, true);
-
-  std::vector<DenseTensor> result;
-  result.reserve(out_meta.size());
-  for (size_t i = 0; i < out_meta.size(); ++i) {
-    auto dense_out = pten::Empty<T, Context>(dev_ctx, std::move(out_meta[i]));
-    result.push_back(dense_out);
+  size_t out_number;
+  if (num_or_sections.GetData().size() == 1) {
+    out_number = num_or_sections.GetData()[0];
+  } else {
+    out_number = num_or_sections.GetData().size();
   }
+
+  std::vector<MetaTensor> out_meta;
+  out_meta.reserve(out_number);
+  std::vector<DenseTensor> result;
+  result.reserve(out_number);
+
+  for (size_t i = 0; i < out_number; ++i) {
+    auto dense_out = pten::Empty<T, Context>(dev_ctx);
+    MetaTensor tmp_meta(&dense_out);
+
+    result.push_back(dense_out);
+    out_meta.push_back(&result.back());
+  }
+  SplitInferMeta(x, num_or_sections, axis, &out_meta);
 
   std::vector<DenseTensor*> outs;
   outs.reserve(out_meta.size());

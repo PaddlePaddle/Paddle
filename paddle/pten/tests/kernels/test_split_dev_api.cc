@@ -17,10 +17,12 @@ limitations under the License. */
 
 #include "paddle/pten/kernels/split_kernel.h"
 
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
+#include "paddle/pten/api/include/manual_api.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
-
 namespace pten {
 namespace tests {
 
@@ -30,13 +32,17 @@ using DDim = pten::framework::DDim;
 TEST(DEV_API, split) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
-      pten::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({4, 10}),
-                                                  pten::DataLayout::NCHW));
+      pten::CPUPlace());
+  pten::DenseTensor dense_x(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({4, 10}),
+                            pten::DataLayout::NCHW));
   pten::CPUContext dev_ctx;
-  dev_ctx.SetDeviceAllocator(alloc.get());
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(paddle::platform::CPUPlace())
+                           .get());
+  dev_ctx.Init();
 
   auto* dense_x_data = dev_ctx.Alloc<float>(&dense_x);
   for (size_t i = 0; i < 4; ++i) {

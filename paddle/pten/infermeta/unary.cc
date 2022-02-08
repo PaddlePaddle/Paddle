@@ -431,21 +431,17 @@ void SplitInferMeta(const MetaTensor& x,
     }
   }
 
-  out->reserve(out_dims.size());
   for (size_t i = 0; i < sections.size(); ++i) {
-    MetaTensor tmp;
     if (axis_value != 0) {
       // Only pass LoD when not spliting along the first dim.
-      tmp.set_dtype(x.dtype());
-      tmp.set_dims(out_dims[i]);
-      tmp.set_layout(x.layout());
-      out->push_back(tmp);
+      (*out)[i].set_dtype(x.dtype());
+      (*out)[i].set_dims(out_dims[i]);
+      (*out)[i].set_layout(x.layout());
     } else {
-      tmp.set_dtype(x.dtype());
-      tmp.set_dims(out_dims[i]);
-      tmp.set_layout(x.layout());
-      tmp.share_lod(x);
-      out->push_back(tmp);
+      (*out)[i].set_dtype(x.dtype());
+      (*out)[i].set_dims(out_dims[i]);
+      (*out)[i].set_layout(x.layout());
+      (*out)[i].share_lod(x);
     }
   }
 

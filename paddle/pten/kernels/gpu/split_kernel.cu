@@ -30,6 +30,10 @@ void SplitKernel(const Context& dev_ctx,
   // need to infershape output
   if (num_or_sections.IsInitByTensor() || axis_scalar.IsInitByTensor()) {
     std::vector<MetaTensor> out_metas;
+    for (size_t i = 0; i < outs.size(); ++i) {
+      out_metas.push_back(outs[i]);
+    }
+
     pten::SplitInferMeta(x, num_or_sections, axis_scalar, &out_metas, true);
 
     for (size_t i = 0; i < out_metas.size(); ++i) {
