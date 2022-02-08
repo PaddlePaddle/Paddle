@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/pten/common/data_type.h"
-#include "paddle/pten/core/convert_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "pybind11/detail/internals.h"
 #include "pybind11/numpy.h"
@@ -130,7 +130,7 @@ void InitEagerTensorWithNumpyValue(EagerTensorObject* self,
         "Place should be one of "
         "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace"));
   }
-  paddle::experimental::ReMakePtenDenseTensor(temp_tensor, impl_ptr);
+  *impl_ptr = temp_tensor;
 }
 
 void InitEagerTensorWithEagerTensor(EagerTensorObject* self,
@@ -164,23 +164,10 @@ void InitEagerTensorWithFrameworkTensor(EagerTensorObject* self,
                                         const std::string& name) {
   self->eager_tensor.set_name(name);
   if (place == src.place()) {
-    std::shared_ptr<pten::DenseTensor> dense_tensor =
-        std::make_shared<pten::DenseTensor>(
-            pten::make_intrusive<paddle::experimental::SharedStorage>(place),
-            pten::DenseTensorMeta(pten::TransToPtenDataType(src.type()),
-                                  src.dims()));
-    paddle::experimental::ReMakePtenDenseTensor(src, dense_tensor.get());
-    self->eager_tensor.set_impl(dense_tensor);
+    self->eager_tensor.set_impl(std::make_shared<pten::DenseTensor>(src));
     VLOG(4) << "Same place, do ShareDataWith";
   } else {
-    std::shared_ptr<pten::DenseTensor> dense_tensor =
-        std::make_shared<pten::DenseTensor>(
-            pten::make_intrusive<paddle::experimental::SharedStorage>(
-                src.place()),
-            pten::DenseTensorMeta(pten::TransToPtenDataType(src.type()),
-                                  src.dims()));
-    paddle::experimental::ReMakePtenDenseTensor(src, dense_tensor.get());
-    auto temp = egr::EagerTensor(dense_tensor);
+    auto temp = egr::EagerTensor(std::make_shared<pten::DenseTensor>(src));
     self->eager_tensor.set_impl(
         temp.copy_to(pten::TransToPtenBackend(place), true).impl());
     VLOG(4) << "Different place, do TensorCopy";

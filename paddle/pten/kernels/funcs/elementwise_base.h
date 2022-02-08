@@ -22,12 +22,12 @@ limitations under the License. */
 #include "paddle/pten/kernels/empty_kernel.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/platform/aligned_vector.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/function_traits.h"
+#include "paddle/pten/backends/gpu/gpu_launch_config.h"
+#include "paddle/pten/kernels/primitive/kernel_primitives.h"
 
-namespace kps = paddle::operators::kernel_primitives;
+namespace kps = pten::kps;
 
 #endif
 
@@ -229,7 +229,7 @@ class TransformFunctor {
                    const bool is_xsize_larger = true)
       : x_(x.data<T>()),
         y_(y.data<T>()),
-        z_(z->mutable_data<OutType>(ctx.GetPlace())),
+        z_(ctx.template Alloc<OutType>(z)),
         nx_(x.numel()),
         ctx_(ctx),
         func_(func),
@@ -425,8 +425,8 @@ void ElemwiseGradComputeNoBroadcast(const DeviceContext &dev_ctx,
       dout.data<Tout>(),
       dx_op,
       dy_op,
-      dx == nullptr ? nullptr : dx->mutable_data<T>(dev_ctx.GetPlace()),
-      dy == nullptr ? nullptr : dy->mutable_data<T>(dev_ctx.GetPlace())});
+      dx == nullptr ? nullptr : dev_ctx.template Alloc<T>(dx),
+      dy == nullptr ? nullptr : dev_ctx.template Alloc<T>(dy)});
 }
 
 inline void ElementwiseGradPreProcess(const DenseTensor &dout,
@@ -631,7 +631,7 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
     ins_data[i] = ins[i]->data<InT>();
   }
   for (int i = 0; i < NumOuts; ++i) {
-    outs_data[i] = (*outs)[i]->mutable_data<OutT>(ctx.GetPlace());
+    outs_data[i] = ctx.Alloc<OutT>((*outs)[i]);
   }
 #ifdef PADDLE_WITH_XPU2
   int block_size = 64;
@@ -646,7 +646,8 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
                               VecSize><<<grid_size, block_size, 0, stream>>>(
       ins_data, outs_data, numel, main_offset, func);
 #else
-  auto gpu_config = GetGpuLaunchConfig1D(ctx, numel, VecSize);
+  auto gpu_config =
+      pten::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, VecSize);
   int main_offset = (numel / (VecSize * gpu_config.GetBlockSize())) * VecSize *
                     gpu_config.GetBlockSize();
   auto stream = ctx.stream();

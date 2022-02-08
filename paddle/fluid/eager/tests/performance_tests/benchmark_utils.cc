@@ -214,7 +214,7 @@ void benchmark_fluid_scale(const std::shared_ptr<imperative::VarBase>& X,
          {std::shared_ptr<imperative::VarBase>(
              new imperative::VarBase(true, "Out"))}}};
 
-    tracer.TraceOp("scale", ins, outs, attrs, place, true);
+    tracer.TraceOp<VarBase>("scale", ins, outs, attrs, place, true);
 
     tmp_out = outs["Out"][0];
   }
@@ -250,7 +250,7 @@ void benchmark_fluid_matmul(const std::shared_ptr<imperative::VarBase>& X,
          {std::shared_ptr<imperative::VarBase>(
              new imperative::VarBase(true, "Out"))}}};
 
-    tracer.TraceOp("matmul_v2", ins, outs, attrs, place, true);
+    tracer.TraceOp<VarBase>("matmul_v2", ins, outs, attrs, place, true);
 
     tmp_out = outs["Out"][0];
   }
@@ -288,7 +288,7 @@ void benchmark_fluid_mlp(
              {std::shared_ptr<imperative::VarBase>(
                  new imperative::VarBase(true, "Out"))}}};
 
-    tracer.TraceOp("matmul_v2", ins, outs, attrs, place, true);
+    tracer.TraceOp<VarBase>("matmul_v2", ins, outs, attrs, place, true);
 
     // EW-Add0
     ins = {{"X", outs["Out"]}, {"Y", {Bs[i]}}};
@@ -296,7 +296,7 @@ void benchmark_fluid_mlp(
              {std::shared_ptr<imperative::VarBase>(
                  new imperative::VarBase(true, "Out"))}}};
 
-    tracer.TraceOp("elementwise_add", ins, outs, attrs, place, true);
+    tracer.TraceOp<VarBase>("elementwise_add", ins, outs, attrs, place, true);
     input0 = outs["Out"][0];
   }
 
@@ -307,7 +307,7 @@ void benchmark_fluid_mlp(
                new imperative::VarBase(true, "Out"))}}};
   attrs = {{"reduce_all", true}};
 
-  tracer.TraceOp("reduce_sum", ins, outs, attrs, place, true);
+  tracer.TraceOp<VarBase>("reduce_sum", ins, outs, attrs, place, true);
 
   auto* engine = tracer.GetEngine();
   std::vector<std::shared_ptr<imperative::VarBase>> grad_tensors{nullptr};
