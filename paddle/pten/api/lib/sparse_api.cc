@@ -76,11 +76,11 @@ PADDLE_API Tensor to_sparse_coo(const Tensor& x,
   // create empty SparseCooTensor
   pten::DenseTensor non_zero_indices(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
-          pten::TransToFluidPlace(backend)),
+          pten::TransToPtenPlace(backend)),
       std::move(indices_meta));
   pten::DenseTensor non_zero_elements(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
-          pten::TransToFluidPlace(backend)),
+          pten::TransToPtenPlace(backend)),
       std::move(elements_meta));
   auto coo = std::make_shared<pten::SparseCooTensor>(
       non_zero_indices, non_zero_elements, x.dims());

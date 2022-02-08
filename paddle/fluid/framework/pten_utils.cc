@@ -15,18 +15,60 @@ limitations under the License. */
 #include <sstream>
 
 #include "paddle/fluid/framework/pten_utils.h"
-#include "paddle/pten/core/compat/convert_utils.h"
-#include "paddle/pten/core/compat/op_utils.h"
-#include "paddle/pten/core/kernel_factory.h"
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device/npu/npu_info.h"
+#include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/pten/core/compat/convert_utils.h"
+#include "paddle/pten/core/compat/op_utils.h"
+#include "paddle/pten/core/kernel_factory.h"
 
 namespace paddle {
 namespace framework {
+
+paddle::platform::Place TransToFluidPlace(const pten::Backend& backend,
+                                          bool set_device_id) {
+  // NOTE(zhiqiu): GetCurrentDeviceId not always success, and device id is not
+  // always needed.
+  // So, add set_device_id parameter here.
+  switch (backend) {
+    case pten::Backend::CPU:
+      return paddle::platform::CPUPlace();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    case pten::Backend::GPU:
+      return paddle::platform::CUDAPlace(
+          set_device_id ? paddle::platform::GetCurrentDeviceId() : 0);
+#endif
+#ifdef PADDLE_WITH_MKLDNN
+    case pten::Backend::MKLDNN:
+      return paddle::platform::CPUPlace();
+#endif
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    case pten::Backend::CUDNN:
+      return paddle::platform::CUDAPlace(
+          set_device_id ? paddle::platform::GetCurrentDeviceId() : 0);
+#endif
+#if defined(PADDLE_WITH_XPU)
+    case pten::Backend::XPU:
+      return paddle::platform::XPUPlace(
+          set_device_id ? paddle::platform::GetXPUCurrentDeviceId() : 0);
+#endif
+#if defined(PADDLE_WITH_ASCEND_CL)
+    case pten::Backend::NPU:
+      return paddle::platform::NPUPlace(
+          set_device_id ? paddle::platform::GetCurrentNPUDeviceId() : 0);
+#endif
+    default:
+      PADDLE_THROW(paddle::platform::errors::Unimplemented(
+          "Unsupported backend `%s` when casting it to paddle place type.",
+          backend));
+  }
+}
 
 class KernelArgsNameMakerByOpProto : public KernelArgsNameMaker {
  public:
