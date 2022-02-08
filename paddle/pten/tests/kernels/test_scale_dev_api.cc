@@ -49,10 +49,11 @@ TEST(DEV_API, scale) {
 
   // 2. test API
   pten::CPUContext dev_ctx;
-  dev_ctx.SetDeviceAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
-          .get());
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(paddle::platform::CPUPlace())
+                           .get());
+  dev_ctx.Init();
+
   auto out =
       pten::Scale<float>(dev_ctx, dense_x, scale, bias, bias_after_scale);
 
@@ -92,10 +93,11 @@ TEST(DEV_API, scale_host) {
 
   // 2. test API
   pten::CPUContext dev_ctx;
-  dev_ctx.SetDeviceAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
-          .get());
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(paddle::platform::CPUPlace())
+                           .get());
+  dev_ctx.Init();
+
   auto out =
       pten::Scale<float>(dev_ctx, dense_x, scale, bias, bias_after_scale);
 

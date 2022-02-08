@@ -60,7 +60,7 @@ class DeviceContext {
    *
    * @param allocator
    */
-  void SetDeviceAllocator(const Allocator*);
+  void SetAllocator(const Allocator*);
 
   /**
    * @brief Set the host Allocator object.
@@ -81,7 +81,7 @@ class DeviceContext {
    *
    * @return Allocator
    */
-  const Allocator& GetDeviceAllocator() const;
+  const Allocator& GetAllocator() const;
 
   /**
    * @brief Get the const device-related Allocator object.
@@ -114,7 +114,7 @@ class DeviceContext {
 
   // TODO(wilber): Just for the convenience of migrating the code, it will be
   // modified or removed later.
-  virtual Place GetPlace() const = 0;
+  virtual const Place& GetPlace() const = 0;
   // TODO(wilber): The fluid framework uses wait() in many places, how to delete
   // this API interface.
   virtual void Wait() const {}

@@ -59,10 +59,10 @@ TEST(DEV_API, concat) {
 
   // 2. test API
   pten::CPUContext dev_ctx;
-  dev_ctx.SetDeviceAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
-          .get());
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(paddle::platform::CPUPlace())
+                           .get());
+  dev_ctx.Init();
   auto out = pten::Concat<float>(dev_ctx, inputs, 0);
 
   // 3. check result
