@@ -31,13 +31,10 @@ class CreateUninitTensorOp<string dtype>
 
   let arguments = (ins I64ArrayAttr:$shape);
   let results = (outs TensorType:$output);
-
-  // let parser  = [{ return infrt::pten::parseCreateUninitTensorOp(parser, result); }];
-  // let printer = [{ return infrt::pten::printCreateUninitTensorOp(p, *this); }];
 }
 
 class CreateInitedTensorOp<string dtype, Attr array_attr>
-      : PDT_Op<"create_Inited_tensor." #dtype, [NoSideEffect]> {
+      : PDT_Op<"create_inited_tensor." #dtype, [NoSideEffect]> {
   let summary = "pdt.create_inited_tensor operation";
 
   let description = [{
