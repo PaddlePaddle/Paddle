@@ -23,5 +23,5 @@ cc_test_tiny(test_infrt_mlir_to_runtime_translate SRCS mlir_to_runtime_translate
 
 add_executable(paddle-mlir-convert paddle_mlir.cc paddle_mlir_converter.cc)
 target_link_libraries(paddle-mlir-convert infrt ${MLIR_IR_LIBS})
-add_executable(infrt-exec mlir_exec.cc)
-target_link_libraries(infrt-exec infrt ${MLIR_IR_LIBS})
+add_executable(infrtexec mlir_exec.cc)
+target_link_libraries(infrtexec infrt ${MLIR_IR_LIBS})
