@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <algorithm>
+#include "pdddle/pten/kernels/norm_grad_kernel.h"
 #ifdef __NVCC__
 #include "cub/cub.cuh"
 #endif
@@ -21,12 +22,12 @@
 namespace cub = hipcub;
 #endif
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/pten/common/bfloat16.h"
 
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-#include "paddle/pten/kernels/impl/norm_kernel_util.h"
+#include "paddle/pten/kernels/funcs/common_shape.h"
 
 namespace pten {
 

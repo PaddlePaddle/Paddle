@@ -12,22 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/pten/core/ddim.h"
+#include "paddle/pten/core/compat/op_utils.h"
 
 namespace pten {
-inline void GetDims(
-    const framework::DDim& dim, int axis, int* pre, int* n, int* post) {
-  *pre = 1;
-  *post = 1;
-  *n = dim[axis];
-  for (int i = 0; i < axis; ++i) {
-    (*pre) *= dim[i];
-  }
-  for (int i = axis + 1; i < dim.size(); ++i) {
-    (*post) *= dim[i];
-  }
+
+KernelSignature NormOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "norm", {"X"}, {"axis", "epsilon", "is_test"}, {"Out", "Norm"});
+}
+
+KernelSignature NormGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("norm_grad",
+                         {framework::GradVarName("Out"), "X", "Norm"},
+                         {"axis", "epsilon", "is_test"},
+                         {framework::GradVarName("X")});
 }
 
 }  // namespace pten
+
+PT_REGISTER_ARG_MAPPING_FN(norm, pten::NormOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(norm_grad, pten::NormGradOpArgumentMapping);

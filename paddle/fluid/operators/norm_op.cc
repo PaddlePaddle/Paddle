@@ -72,12 +72,6 @@ class NormOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim("Norm", xdim);
     }
   }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::KernelSignature(
-        "norm", {"X"}, {"axis", "epsilon", "is_test"}, {"Out", "Norm"});
-  }
 };
 
 class NormOpGrad : public framework::OperatorWithKernel {
@@ -88,13 +82,6 @@ class NormOpGrad : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Input",
                    "X@GRAD", "NormOpGrad");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
-  }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::KernelSignature(
-        "norm_grad", {framework::GradVarName("Out"), "X", "Norm"},
-        {"axis", "epsilon", "is_test"}, {framework::GradVarName("X")});
   }
 };
 

@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "pdddle/pten/kernels/norm_grad_kernel.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/pten/kernels/norm_kernel.h"
+#include "paddle/pten/kernels/funcs/eigen/eigen_function.h"
 
 #include "paddle/pten/kernels/funcs/eigen/common.h"
 

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <algorithm>
+#include "paddle/pten/kernels/norm_kernel.h"
 #ifdef __NVCC__
 #include "cub/cub.cuh"
 #endif
@@ -26,7 +27,7 @@ namespace cub = hipcub;
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-#include "paddle/pten/kernels/impl/norm_kernel_util.h"
+#include "paddle/pten/kernels/funcs/common_shape.h"
 
 namespace pten {
 
@@ -107,7 +108,7 @@ void NormKernel(const Context& ctx,
   T* norm_ptr = out_norm->data<T>();
 
   int pre, n, post;
-  GetDims(xdim, axis, &pre, &n, &post);
+  GetPrePostNumel(xdim, axis, &pre, &n, &post);
 
 #ifdef __HIPCC__
   const int block = 256;
