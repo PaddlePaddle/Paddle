@@ -129,13 +129,13 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
     cublasLtHandle_t lt_handle = dev_ctx.cublaslt_handle();
     size_t workspace_size = 4 * 1024 * 1024;
     const cublasLtMatmulAlgo_t* algo = nullptr;
-    cudaStream_t stream = 0;
+    cudaStream_t stream = dev_ctx.stream();
     memory::allocation::AllocationPtr workspace =
         memory::Alloc(dev_ctx, workspace_size);
 
     double alpha64 = 1.0, beta64 = 0.0;
     float alpha32 = 1.0f, beta32 = 0.0f;
-    void *alpha, *beta;
+    void *alpha = nullptr, *beta = nullptr;
     if (std::is_same<T, double>::value) {
       alpha = &alpha64;
       beta = &beta64;
@@ -151,7 +151,7 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
   }
 
  private:
-  static cublasLtEpilogue_t get_epilogue_type_(std::string activation,
+  static cublasLtEpilogue_t get_epilogue_type_(std::string const& activation,
                                                bool enable_auxiliary) {
     if (activation == "relu") {
       return enable_auxiliary ? CUBLASLT_EPILOGUE_RELU_AUX_BIAS
@@ -214,11 +214,11 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
     cublasLtHandle_t lt_handle = dev_ctx.cublaslt_handle();
     size_t workspace_size = 4 * 1024 * 1024;
     const cublasLtMatmulAlgo_t* algo = nullptr;
-    cudaStream_t stream = 0;
+    cudaStream_t stream = dev_ctx.stream();
 
     double alpha64 = 1.0, beta64 = 0.0;
     float alpha32 = 1.0f, beta32 = 0.0f;
-    void *alpha, *beta;
+    void *alpha = nullptr, *beta = nullptr;
     if (std::is_same<T, double>::value) {
       alpha = &alpha64;
       beta = &beta64;
@@ -331,7 +331,8 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
   }
 
  private:
-  static cublasLtEpilogue_t get_epilogue_type_(std::string activation_grad) {
+  static cublasLtEpilogue_t get_epilogue_type_(
+      std::string const& activation_grad) {
     if (activation_grad == "relu_grad") {
       return CUBLASLT_EPILOGUE_DRELU;
     } else if (activation_grad == "gelu_grad") {

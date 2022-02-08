@@ -119,10 +119,11 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
       for (int i = 0; i < x_dims.size() - 1; ++i) out_dims.push_back(x_dims[i]);
     }
 
-    if (trans_y)
+    if (trans_y) {
       out_dims.push_back(y_dims[0]);
-    else
+    } else {
       out_dims.push_back(y_dims[1]);
+    }
 
     ctx->SetOutputDim("out", framework::make_ddim(out_dims));
   }
@@ -271,16 +272,11 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim("DX", framework::make_ddim(dx_dims));
     }
 
-    std::vector<int64_t> dy_dims;
-    dy_dims.reserve(static_cast<size_t>(y_dims.size()));
-    for (int i = 0; i < y_dims.size(); ++i) {
-      dy_dims.push_back(y_dims[i]);
-    }
+    std::vector<int64_t> dy_dims(y_dims.Get(), y_dims.Get() + y_dims.size());
     ctx->SetOutputDim("DY", framework::make_ddim(dy_dims));
 
     if (ctx->HasOutput("DBias")) {
       std::vector<int64_t> dbias_dims;
-      dbias_dims.reserve(1);
       dbias_dims.push_back(y_dims[1]);
       ctx->SetOutputDim("DBias", framework::make_ddim(dbias_dims));
     }
