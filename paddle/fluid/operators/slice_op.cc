@@ -464,6 +464,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SliceKernel<paddle::platform::CUDADeviceContext,
                      paddle::platform::float16>,
     ops::SliceKernel<paddle::platform::CUDADeviceContext,
+                     paddle::platform::bfloat16>,
+    ops::SliceKernel<paddle::platform::CUDADeviceContext,
                      paddle::platform::complex<float>>,
     ops::SliceKernel<paddle::platform::CUDADeviceContext,
                      paddle::platform::complex<double>>);
@@ -476,6 +478,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SliceGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::SliceGradKernel<paddle::platform::CUDADeviceContext,
                          paddle::platform::float16>,
+    ops::SliceGradKernel<paddle::platform::CUDADeviceContext,
+                         paddle::platform::bfloat16>,
     ops::SliceGradKernel<paddle::platform::CUDADeviceContext,
                          paddle::platform::complex<float>>,
     ops::SliceGradKernel<paddle::platform::CUDADeviceContext,
