@@ -118,12 +118,12 @@ class NsightRunnerForModelAnalyse(object):
     Use Nsight System tool to analyse performance of Model.
     """
 
-    def run(self, stdout, args):
+    def run(self, stdout, profile_start_step, profile_end_step):
         """
         parse logs to analyse performance and print the report.
         """
-        parse_status, scheduling_time_dict = self._parse_logs(
-            stdout.split("\n"), args)
+        parse_status, scheduling_time_dict = self.parse_logs(
+            stdout.split("\n"), profile_start_step, profile_end_step)
         if parse_status:
             self._print_scheduling_time(scheduling_time_dict)
             return
@@ -135,7 +135,7 @@ class NsightRunnerForModelAnalyse(object):
         gpu_time = float(infos[1].replace(",", "")) * 1E-6
         return gpu_time / percent
 
-    def _parse_logs(self, logs, args):
+    def parse_logs(self, logs, profile_start_step, profile_end_step):
         kernel_line_from = None
         kernel_line_to = None
         memcpy_line_from = None
@@ -143,7 +143,7 @@ class NsightRunnerForModelAnalyse(object):
         nvtx_line_from = None
         total_step_time = 0.0
         step_count = 0
-        num_step = args.profile_end_step - args.profile_start_step
+        num_step = profile_end_step - profile_start_step
 
         scheduling_time_dict = {}
 
@@ -191,8 +191,8 @@ class NsightRunnerForModelAnalyse(object):
 
             # step time
             if nvtx_range_type.isdigit() and int(
-                    nvtx_range_type) > args.profile_start_step and int(
-                        nvtx_range_type) < args.profile_end_step - 1:
+                    nvtx_range_type) > profile_start_step and int(
+                        nvtx_range_type) < profile_end_step - 1:
                 step_count += 1
                 step_time = float(infos[1].replace(",", ""))
                 total_step_time += step_time
@@ -241,12 +241,12 @@ class NsightRunnerForOpAnalyse(object):
     Use Nsight System tool to analyse performance of OP.
     """
 
-    def run(self, stdout, args):
+    def run(self, stdout, profile_start_step, profile_end_step):
         """
         parse logs to analyse performance and print the report.
         """
-        parse_status, op_type_list, scheduling_time_dict = self._parse_logs(
-            stdout.split("\n"), args)
+        parse_status, op_type_list, scheduling_time_dict = self.parse_logs(
+            stdout.split("\n"), profile_start_step, profile_end_step)
         if parse_status:
             self._print_scheduling_time(op_type_list, scheduling_time_dict)
             return
@@ -281,14 +281,14 @@ class NsightRunnerForOpAnalyse(object):
             return round(outside_time - inside_time, 2)
         return None
 
-    def _parse_logs(self, logs, args):
+    def parse_logs(self, logs, profile_start_step, profile_end_step):
         flag_nvtx_time_start = False
         parse_status = False
         nvtx_time_start_step = 0
         total_step_time = 0.0
         total_op_call_time_per_step = 0.0
         # num step of using profile
-        num_step = args.profile_end_step - args.profile_start_step
+        num_step = profile_end_step - profile_start_step
         # Profile data in start_step and end_step may be not correct,
         # so we need to select some reliable data. Number of reliable
         # step data is step_count.
@@ -339,8 +339,8 @@ class NsightRunnerForOpAnalyse(object):
 
             # step time
             if nvtx_range_type.isdigit() and int(
-                    nvtx_range_type) > args.profile_start_step and int(
-                        nvtx_range_type) < args.profile_end_step - 1:
+                    nvtx_range_type) > profile_start_step and int(
+                        nvtx_range_type) < profile_end_step - 1:
                 step_count += 1
                 step_time = self._to_float(infos[1])
                 total_step_time += step_time
@@ -623,10 +623,12 @@ def perf_analyse():
         if exit_code == 0:
             if args.mode == 'model' or args.mode == 'all':
                 runner = NsightRunnerForModelAnalyse()
-                runner.run(stdout, args)
+                runner.run(stdout, args.profile_start_step,
+                           args.profile_end_step)
             if args.mode == 'op' or args.mode == 'all':
                 runner = NsightRunnerForOpAnalyse()
-                runner.run(stdout, args)
+                runner.run(stdout, args.profile_start_step,
+                           args.profile_end_step)
         else:
             print("Running Error:\n {}".format(stdout))
 
