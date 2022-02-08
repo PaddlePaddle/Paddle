@@ -1998,16 +1998,17 @@ void OperatorWithKernel::BuildPtenKernelContext(
     size_t end_idx = start_idx + ins_vector.size();
 
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
-      const framework::Tensor* tensor_in = nullptr;
+      const pten::TensorBase* tensor_in = nullptr;
       auto* var = ins_vector[offset];
-      if (var->IsType<framework::LoDTensor>()) {
-        tensor_in = &(var->Get<framework::LoDTensor>());
+      if (var->IsType<pten::DenseTensor>()) {
+        tensor_in = &(var->Get<pten::DenseTensor>());
+      } else if (var->IsType<pten::SelectedRows>()) {
+        tensor_in = &(var->Get<pten::SelectedRows>());
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported input `%s` type when call pt kernel.",
             framework::ToTypeName(var->Type())));
-      }  // TODO(zyfncg): Add support for SelectedRows
-
+      }
       pt_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
     }
     pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx), i);
@@ -2021,17 +2022,20 @@ void OperatorWithKernel::BuildPtenKernelContext(
     size_t end_idx = start_idx + outs_vector.size();
 
     for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
-      framework::Tensor* tensor_out = nullptr;
+      pten::TensorBase* tensor_out = nullptr;
       auto* var = outs_vector[offset];
-      if (var->template IsType<framework::LoDTensor>()) {
-        tensor_out = var->template GetMutable<framework::LoDTensor>();
+      if (var->template IsType<pten::DenseTensor>()) {
+        tensor_out = var->template GetMutable<pten::DenseTensor>();
+      } else if (var->template IsType<pten::SelectedRows>()) {
+        tensor_out = var->template GetMutable<pten::SelectedRows>();
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported output `%s` type when call pt kernel.",
             framework::ToTypeName(var->Type())));
-      }  // TODO(zyfncg): Add support for SelectedRows
+      }
 
-      experimental::ResetTensorByArgDef(tensor_out, output_defs.at(i));
+      experimental::ResetTensorDtypeAndLayoutByArgDef(tensor_out,
+                                                      output_defs.at(i));
       SetAllocationForOutputTenosr(
           tensor_out, pten::TransToFluidPlace(output_defs.at(i).backend));
 

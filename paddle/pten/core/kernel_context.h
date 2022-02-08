@@ -26,10 +26,8 @@
 
 namespace pten {
 
-using DeviceContext = pten::DeviceContext;
-
 /**
- * Note: KernelContext doesn't manage the life if DeviceContext and Tensor
+ * Note: KernelContext doesn't manage the life of DeviceContext and Tensor
  *
  * Note: KernelContext does not couple the concept of framework,
  *       its constructor can only take the members it needs as parameters,
@@ -59,17 +57,15 @@ class KernelContext {
 
   void EmplaceBackOutputs(paddle::SmallVector<TensorBase*> outputs);
 
-  void SetOutputWithoutSetRange(int index, TensorBase* output);
-
   void EmplaceBackAttr(paddle::any attr);
 
   const std::pair<int, int>& InputRangeAt(size_t idx) const;
 
   const std::pair<int, int>& OutputRangeAt(size_t idx) const;
 
-  std::pair<int, int>& MutableInputRangeAt(size_t idx);
+  void AssignInputRange(std::pair<int, int>&& range, size_t idx);
 
-  std::pair<int, int>& MutableOutputRangeAt(size_t idx);
+  void AssignOutputRange(std::pair<int, int>&& range, size_t idx);
 
   template <typename TensorType>
   const TensorType& InputAt(size_t idx) const {
@@ -90,14 +86,10 @@ class KernelContext {
     for (size_t i = start; i < end; ++i) {
       auto t = static_cast<const TensorType*>(inputs_.at(i));
       v.emplace_back(*t);
-      inputs_.at(i) = nullptr;
+      inputs_[i] = nullptr;
     }
     return v;
   }
-
-  void AssignInputRange(std::pair<int, int>&& range, size_t idx);
-
-  void AssignOutputRange(std::pair<int, int>&& range, size_t idx);
 
   template <typename TensorType>
   TensorType* MutableOutputAt(size_t idx) {
@@ -110,7 +102,6 @@ class KernelContext {
     for (size_t i = start; i < end; ++i) {
       v.emplace_back(static_cast<TensorType*>(outputs_.at(i)));
     }
-
     return v;
   }
 
@@ -124,25 +115,17 @@ class KernelContext {
     }
   }
 
-  // Temporary method: For compatible with fluid Tensor and improve performance
-  // Only deal with DenseTensor now
-  void ClearData();
-
   size_t InputsSize() const { return inputs_.size(); }
   size_t OutputsSize() const { return outputs_.size(); }
   size_t AttrsSize() const { return attrs_.size(); }
 
  private:
-  // DeviceContext base class
   DeviceContext* dev_ctx_;
 
-  // TODO(chenweihang): Tensor -> Tensor*, Tensor should by managed `scope`
-  // Note: can't use API Tensor here, the inference don't use this API Tensor
   paddle::SmallVector<const TensorBase*> inputs_;
   paddle::SmallVector<TensorBase*> outputs_;
   paddle::SmallVector<paddle::any> attrs_;
 
-  // Only contains input like list[Tensor] need `range`
   paddle::SmallVector<std::pair<int, int>> input_range_;
   paddle::SmallVector<std::pair<int, int>> output_range_;
 };
