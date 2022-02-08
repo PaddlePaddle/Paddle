@@ -107,6 +107,65 @@ def get_all_ops_desc():
     return all_op_protos_dict
 
 
+def generate_all_ops_inputs_outputs_map(op_descs):
+    # 1. Collect input and output name information of each Op
+    original_ops_ = get_original_ops()
+    ops_inputs_map = {}
+    ops_outputs_map = {}
+    for op_type, op_proto in op_descs.items():
+        if op_type not in original_ops_:
+            continue
+        inputs = list()
+        outpus = list()
+        for input_ in op_proto[INPUTS]:
+            if op_proto[INPUTS][input_][EXTRA] != True and op_proto[INPUTS][
+                    input_][INTERMEDIATE] != True:
+                inputs.append(input_)
+        for output_ in op_proto[OUTPUTS]:
+            if op_proto[OUTPUTS][output_][EXTRA] != True and op_proto[OUTPUTS][
+                    output_][INTERMEDIATE] != True:
+                outpus.append(output_)
+        ops_inputs_map[op_type] = inputs
+        ops_outputs_map[op_type] = outpus
+
+    # 2. Generate Cpp style map str
+    cpp_style_ops_inputs_map_str = ""
+    start_ = "#include <map>\n#include <vector>\n#include <string>\n" + \
+            "const std::map<std::string, std::vector<std::string>> pd_dialect_inputs_info_map_  = {\n"
+    ops_inputs_str = ""
+    for ele in ops_inputs_map.items():
+        pair = '{left_brace}"{op_name}", {op_inputs}{right_brace},\n'.format(
+            left_brace="{",
+            op_name=str(ele[0]),
+            op_inputs=str(ele[1]).replace("'", "\"").replace("[", "{").replace(
+                "]", "}"),
+            right_brace="}")
+        ops_inputs_str = ops_inputs_str + "    " + pair
+    ops_inputs_str = ops_inputs_str[:-2]
+    cpp_style_ops_inputs_map_str = start_ + ops_inputs_str + "\n};"
+
+    cpp_style_ops_outputs_map_str = ""
+    start_ = "const std::map<std::string, std::vector<std::string>> pd_dialect_inputs_info_map_  = {\n"
+    ops_outputs_str = ""
+    for ele in ops_outputs_map.items():
+        pair = '{left_brace}"{op_name}", {op_outputs}{right_brace},\n'.format(
+            left_brace="{",
+            op_name=str(ele[0]),
+            op_outputs=str(ele[1]).replace("'", "\"").replace("[", "{").replace(
+                "]", "}"),
+            right_brace="}")
+        ops_outputs_str = ops_outputs_str + "    " + pair
+    ops_outputs_str = ops_outputs_str[:-2]
+    cpp_style_ops_outputs_map_str = start_ + ops_outputs_str + "\n};"
+
+    # 3. Write to header file
+    dst_head_file = "../../paddle/infrt/dialect/pd_ops_info.h"
+    with open(dst_head_file, 'w') as ops_inputs_outputs_head_file:
+        ops_inputs_outputs_head_file.write(cpp_style_ops_inputs_map_str)
+        ops_inputs_outputs_head_file.write("\n\n")
+        ops_inputs_outputs_head_file.write(cpp_style_ops_outputs_map_str)
+
+
 # funtion to generate paddle op dialect file
 def convert_op_proto_into_mlir(op_descs):
     dst_dialect_file = "../../paddle/infrt/dialect/pd_ops.td"
@@ -155,17 +214,18 @@ def convert_op_proto_into_mlir(op_descs):
             continue
         automatically_generated_op_dialect.append(op_type)
         # 2.1 OpDef
-        HEAD = "def PD_" + op_type.capitalize(
-        ) + "Op : PD_Op<\"" + op_type + "\", [NoSideEffect]> {\n"
-        SUMMARY = "  let summary = \"" + op_type + " op\";\n"
+        HEAD = 'def PD_{op_type}Op : PD_Op<"{op_type}", [NoSideEffect]> {left_brace}\n'.format(
+            op_type=op_type.capitalize(), left_brace="{")
+        SUMMARY = '  let summary = "{} op";\n'.format(op_type)
         CANONICALIZATION = "let hasCanonicalizer = 1;" if op_type in ops_having_canonicalization else ""
 
         # 2.2 Description
-        DESCRIPTION = "  let description = [{\n"
-        contents = (op_proto[COMMENT]).split("\n")
-        for line_ in contents:
-            DESCRIPTION = DESCRIPTION + "    " + line_ + "\n"
-        DESCRIPTION += "  }];\n"
+        contents = ""
+        origin_contents = (op_proto[COMMENT]).split("\n")
+        for line_ in origin_contents:
+            contents = contents + "    {}\n".format(line_)
+        DESCRIPTION = "  let description = [{left_brace}\n{description}  {right_brace}];\n".format(
+            left_brace="{", description=contents, right_brace="}")
 
         # 2.3 arguments info
         ARGUMENTS = ""
@@ -243,17 +303,17 @@ def convert_op_proto_into_mlir(op_descs):
         # 2.4 results info
         RESULTS = ""
         if (len(op_proto[OUTPUTS]) > 0):
-            RESULTS = "\n  let results = (outs "
+            outputs = ""
             for output_ in op_proto[OUTPUTS]:
                 if op_proto[OUTPUTS][output_][EXTRA] != True and op_proto[
                         OUTPUTS][output_][INTERMEDIATE] != True:
                     if op_proto[OUTPUTS][output_][DUPLICABLE] != "true":
-                        RESULTS = RESULTS + "PD_Tensor:$" + output_ + ","
+                        outputs = outputs + "PD_Tensor:${},".format(output_)
                     else:
-                        RESULTS = RESULTS + "PD_Tensor_Array:$" + output_ + ","
-                        print(HEAD + " PD_Tensor_Array:$" + output_ + ",")
+                        outputs = outputs + "PD_Tensor_Array:${},".format(
+                            output_)
+            RESULTS = "\n  let results = (outs {});\n".format(outputs[:-1])
 
-            RESULTS = RESULTS[:-1] + ");\n"
         with open(dst_dialect_file, 'a') as ops_mlir_file:
             ops_mlir_file.write(HEAD)
             ops_mlir_file.write(SUMMARY)
@@ -279,4 +339,5 @@ def convert_op_proto_into_mlir(op_descs):
 
 if __name__ == "__main__":
     all_op_protos_dict = get_all_ops_desc()
+    generate_all_ops_inputs_outputs_map(all_op_protos_dict)
     convert_op_proto_into_mlir(all_op_protos_dict)
