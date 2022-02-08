@@ -55,21 +55,15 @@ void RetainGradForTensor(const egr::EagerTensor& tensor) {
             // Simply Copy impl() to grad_tensor
             grad_tensor->set_impl(t.impl());
             return *grad_tensor.get();
-          } else {
+          } else if (t.Var().IsInitialized()) {
             VLOG(7) << "Set Var for RetainGrad Hook for tensor: " << t.name();
-            PADDLE_ENFORCE_EQ(
-                t.Var().IsInitialized(), true,
-                paddle::platform::errors::Fatal(
-                    "Detected uninitialized variable, causing segmentation "
-                    "fault "
-                    "inside the hook."
-                    "Variable %s has to be initialized while we need to set it."
-                    "please check tensor initialization status.",
-                    t.name()));
             grad_tensor->MutableVar()
                 ->GetMutable<paddle::framework::LoDTensor>()
                 ->ShareDataWith(t.Var().Get<paddle::framework::LoDTensor>());
             return *grad_tensor.get();
+          } else {
+            VLOG(7) << "Retain NULL EagerTensor in Grad Hook";
+            return EagerTensor();
           }
         } else {
           VLOG(7) << "Retain NULL EagerTensor in Grad Hook";

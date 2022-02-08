@@ -1166,11 +1166,13 @@ static std::string GenerateGradNodeCreationContent(
           SET_GRAD_IN_META_TEMPLATE, output_autograd_name, output_position);
     }
 
-    VLOG(6) << "Generated Call RetainGradForTensor";
-    const char* RETAIN_GRAD_TEMPLATE =
-        "    egr::EagerUtils::CheckAndRetainGrad(%s);\n";
-    grad_node_creation_str +=
-        paddle::string::Sprintf(RETAIN_GRAD_TEMPLATE, output_name);
+    if (!output.intermediate()) {
+      VLOG(6) << "Generated Call RetainGradForTensor";
+      const char* RETAIN_GRAD_TEMPLATE =
+          "    egr::EagerUtils::CheckAndRetainGrad(%s);\n";
+      grad_node_creation_str +=
+          paddle::string::Sprintf(RETAIN_GRAD_TEMPLATE, output_name);
+    }
   }
   VLOG(6) << "Generated SetGradIn/OutMeta";
 
@@ -1553,12 +1555,25 @@ static std::string GenerateSingleOpBase(
   const std::string& attrs_name = "attrs_map" + std::to_string(*outs_size);
 
   // [Generation] Get Ins Map
+  std::unordered_set<std::string> dispensable_input_name_set;
+  for (const auto& in : in_vars) {
+    if (in.dispensable()) dispensable_input_name_set.insert(in.name());
+  }
+  std::unordered_set<std::string> duplicable_input_name_set;
+  for (const auto& in : in_vars) {
+    if (in.duplicable()) duplicable_input_name_set.insert(in.name());
+  }
   std::string ins_contents_str = "";
   for (auto iter : grad_ins) {
     const std::string& grad_input_name = iter.first;
 
     if (grad_ins_fwd_slotname_map.count(grad_input_name)) {
       // Fwd Tensor
+      const std::string& fwd_name =
+          grad_ins_fwd_slotname_map.at(grad_input_name);
+      if (dispensable_input_name_set.count(fwd_name)) {
+        continue;
+      }
       std::string struct_fwd_input_name =
           grad_ins_fwd_slotname_map.at(grad_input_name) + "_";
       const char* GRAD_INS_FWD_CONTENT_TEMPLATE =
@@ -1598,14 +1613,41 @@ static std::string GenerateSingleOpBase(
       paddle::string::Sprintf(BWD_INS_MAP_TEMPLATE, ins_name, ins_contents_str);
   generated_grad_function_body += ins_map_str;
 
+  for (auto iter : grad_ins) {
+    const std::string& grad_input_name = iter.first;
+
+    if (grad_ins_fwd_slotname_map.count(grad_input_name)) {
+      // Fwd Tensor
+      const std::string& fwd_name =
+          grad_ins_fwd_slotname_map.at(grad_input_name);
+      if (dispensable_input_name_set.count(fwd_name)) {
+        std::string struct_fwd_input_name =
+            grad_ins_fwd_slotname_map.at(grad_input_name) + "_";
+        if (duplicable_input_name_set.count(fwd_name)) {
+          const char* DISPENSABLE_GRAD_INS_FWD_CONTENT_TEMPLATE =
+              "  if(this->%s.size() > 0) %s[\"%s\"] = "
+              "egr::EagerUtils::SyncToVars(egr::EagerUtils::"
+              "RecoverTensorWrapper(&this->%s, nullptr));\n";
+          generated_grad_function_body += paddle::string::Sprintf(
+              DISPENSABLE_GRAD_INS_FWD_CONTENT_TEMPLATE, struct_fwd_input_name,
+              ins_name, grad_input_name, struct_fwd_input_name);
+        } else {
+          const char* DISPENSABLE_GRAD_INS_FWD_CONTENT_TEMPLATE =
+              "  auto %s = egr::EagerUtils::RecoverTensorWrapper(&this->%s, "
+              "nullptr);\n  if(%s.safe_initialized()) %s[\"%s\"] = "
+              "egr::EagerUtils::SyncToVars(%s);\n";
+          generated_grad_function_body += paddle::string::Sprintf(
+              DISPENSABLE_GRAD_INS_FWD_CONTENT_TEMPLATE, grad_input_name,
+              struct_fwd_input_name, grad_input_name, ins_name, grad_input_name,
+              grad_input_name);
+        }
+      }
+    }
+  }
+
   VLOG(6) << "Generated Ins Map";
 
   // [Generation] Get Outs Map
-  std::unordered_set<std::string> duplicable_input_name_set;
-  for (const auto& in : in_vars) {
-    if (in.duplicable()) duplicable_input_name_set.insert(in.name());
-  }
-
   std::string outs_contents_str = "";
   for (auto iter : grad_outs) {
     const std::string& grad_output_name = iter.first;

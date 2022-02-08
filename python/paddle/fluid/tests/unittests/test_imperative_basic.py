@@ -953,8 +953,7 @@ class TestMetaclass(unittest.TestCase):
         self.assertNotEqual(type(MyLayer).__name__, 'pybind11_type')
         if core._in_eager_mode():
             self.assertEqual(
-                type(paddle.fluid.core.eager.EagerTensor).__name__,
-                'pybind11_type')
+                type(paddle.fluid.core.eager.EagerTensor).__name__, 'type')
         else:
             self.assertEqual(
                 type(paddle.fluid.core.VarBase).__name__, 'pybind11_type')

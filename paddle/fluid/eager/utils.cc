@@ -135,8 +135,7 @@ std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::SyncToVars(
     const egr::EagerTensor& tensor) {
   // TODO(jiabin): No const cast here. We should call SyncToVar in Python_C
   // wrapper
-  const_cast<EagerTensor*>(&tensor)->SyncToVar(
-      paddle::framework::proto::VarType_Type_LOD_TENSOR);
+  const_cast<EagerTensor*>(&tensor)->SyncToVar();
   return {std::make_shared<EagerTensor>(tensor)};
 }
 
@@ -148,8 +147,7 @@ std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::SyncToVars(
   size_t num = tensors.size();
   res.reserve(num);
   for (size_t i = 0; i < num; i++) {
-    const_cast<EagerTensor*>(&(tensors[i]))
-        ->SyncToVar(paddle::framework::proto::VarType_Type_LOD_TENSOR);
+    const_cast<EagerTensor*>(&(tensors[i]))->SyncToVar();
     res.emplace_back(new EagerTensor(tensors[i]));
   }
   return res;
@@ -158,7 +156,7 @@ std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::SyncToVars(
 static std::shared_ptr<egr::EagerTensor> TrySyncToVar(
     egr::EagerTensor* tensor) {
   if (tensor->initialized() || tensor->Var().IsInitialized()) {
-    tensor->SyncToVar(paddle::framework::proto::VarType_Type_LOD_TENSOR);
+    tensor->SyncToVar();
   }
   return std::shared_ptr<egr::EagerTensor>(tensor,
                                            [&](egr::EagerTensor* ptr) {});
@@ -271,8 +269,10 @@ std::vector<EagerTensor> EagerUtils::RecoverTensorWrapper(
 void EagerUtils::CheckAndRetainGrad(const egr::EagerTensor& tensor) {
   VLOG(6) << "Check RetainGradForTensor: " << tensor.name();
   if (FLAGS_retain_grad_for_all_tensor) {
-    VLOG(6) << "RetainGradForTensor: " << tensor.name();
-    egr::egr_utils_api::RetainGradForTensor(tensor);
+    if (tensor.initialized() || tensor.Var().IsInitialized()) {
+      VLOG(6) << "RetainGradForTensor: " << tensor.name();
+      egr::egr_utils_api::RetainGradForTensor(tensor);
+    }
   }
 }
 
@@ -280,8 +280,10 @@ void EagerUtils::CheckAndRetainGrad(
     const std::vector<egr::EagerTensor>& tensors) {
   if (FLAGS_retain_grad_for_all_tensor) {
     for (auto& tensor : tensors) {
-      VLOG(6) << "RetainGradForTensor: " << tensor.name();
-      egr::egr_utils_api::RetainGradForTensor(tensor);
+      if (tensor.initialized() || tensor.Var().IsInitialized()) {
+        VLOG(6) << "RetainGradForTensor: " << tensor.name();
+        egr::egr_utils_api::RetainGradForTensor(tensor);
+      }
     }
   }
 }
