@@ -151,7 +151,7 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
   }
 
  private:
-  static cublasLtEpilogue_t get_epilogue_type_(std::string const& activation,
+  static cublasLtEpilogue_t get_epilogue_type_(const std::string& activation,
                                                bool enable_auxiliary) {
     if (activation == "relu") {
       return enable_auxiliary ? CUBLASLT_EPILOGUE_RELU_AUX_BIAS
@@ -332,7 +332,7 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
 
  private:
   static cublasLtEpilogue_t get_epilogue_type_(
-      std::string const& activation_grad) {
+      const std::string& activation_grad) {
     if (activation_grad == "relu_grad") {
       return CUBLASLT_EPILOGUE_DRELU;
     } else if (activation_grad == "gelu_grad") {

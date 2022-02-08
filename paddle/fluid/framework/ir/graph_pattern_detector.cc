@@ -1528,7 +1528,7 @@ PDNode *patterns::ElewiseAddAct::operator()(
 
 PDNode *patterns::LinearAct::operator()(
     paddle::framework::ir::PDNode *linear_x_var,
-    std::unordered_set<std::string> const &act_types,
+    const std::unordered_set<std::string> &act_types,
     bool with_grad_link = false) {
   auto *matmul_w_var =
       pattern->NewNode(matmul_w_repr())->assert_is_op_input("matmul_v2", "Y");
@@ -1576,7 +1576,7 @@ PDNode *patterns::LinearAct::operator()(
 
 PDNode *patterns::ElewiseAddMatmulAct::operator()(
     paddle::framework::ir::PDNode *dout_var,
-    std::unordered_set<std::string> const &act_grad_types,
+    const std::unordered_set<std::string> &act_grad_types,
     bool is_first_matmul) {
   auto *ele_grad_bias_var =
       pattern->NewNode(ele_grad_bias_repr())

@@ -416,7 +416,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
 }
 
 bool FuseGemmEpiloguePass::IsGemmFromLinear_(
-    std::vector<int64_t> const &x_shape, std::vector<int64_t> const &w_shape,
+    const std::vector<int64_t> &x_shape, const std::vector<int64_t> &w_shape,
     OpDesc *matmul_v2_op) const {
   if (w_shape.size() != 2 || x_shape.size() < 2) return false;
   for (auto attr_name :
