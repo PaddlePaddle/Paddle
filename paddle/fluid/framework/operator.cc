@@ -2068,7 +2068,7 @@ void OperatorWithKernel::BuildPtenKernelContext(
               framework::ToTypeName(var->Type())));
         }  // TODO(zyfncg): Add support for SelectedRows
 
-        experimental::ResetTensorByArgDef(tensor_out, output_defs.at(i));
+        // experimental::ResetTensorByArgDef(tensor_out, output_defs.at(i));
         SetAllocationForOutputTenosr(
             tensor_out, pten::TransToFluidPlace(output_defs.at(i).backend));
 
