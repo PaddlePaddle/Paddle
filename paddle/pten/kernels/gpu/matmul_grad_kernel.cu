@@ -29,15 +29,15 @@ PT_REGISTER_KERNEL(matmul_grad,
                    paddle::platform::complex<float>,
                    paddle::platform::complex<double>) {}
 
-PT_REGISTER_CTX_KERNEL(addto_matmul_grad,
-                       GPU,
-                       ALL_LAYOUT,
-                       pten::AddtoMatmulGradKernel,
-                       float,
-                       double,
-                       paddle::platform::float16,
-                       paddle::platform::complex<float>,
-                       paddle::platform::complex<double>) {}
+PT_REGISTER_KERNEL(addto_matmul_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::AddtoMatmulGradKernel,
+                   float,
+                   double,
+                   paddle::platform::float16,
+                   paddle::platform::complex<float>,
+                   paddle::platform::complex<double>) {}
 
 PT_REGISTER_KERNEL(matmul_double_grad,
                    GPU,
