@@ -290,6 +290,43 @@ void GpuDeviceSync() { PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize()); }
 
 gpuError_t GpuGetLastError() { return cudaGetLastError(); }
 
+// See
+// https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#um-requirements
+// for more detail about managed memory requirements
+bool IsGPUManagedMemorySupported(int dev_id) {
+  PADDLE_ENFORCE_LT(dev_id,
+                    GetGPUDeviceCount(),
+                    paddle::platform::errors::InvalidArgument(
+                        "Device id must be less than GPU count, "
+                        "but received id is: %d. GPU count is: %d.",
+                        dev_id,
+                        GetGPUDeviceCount()));
+#if defined(__linux__) || defined(_WIN32)
+  int ManagedMemoryAttr;
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceGetAttribute(
+      &ManagedMemoryAttr, cudaDevAttrManagedMemory, dev_id));
+  return ManagedMemoryAttr != 0;
+#else
+  return false;
+#endif
+}
+
+bool IsGPUManagedMemoryOversubscriptionSupported(int dev_id) {
+  PADDLE_ENFORCE_LT(dev_id,
+                    GetGPUDeviceCount(),
+                    paddle::platform::errors::InvalidArgument(
+                        "Device id must be less than GPU count, "
+                        "but received id is: %d. GPU count is: %d.",
+                        dev_id,
+                        GetGPUDeviceCount()));
+#ifdef __linux__
+  return IsGPUManagedMemorySupported(dev_id) &&
+         GetGPUComputeCapability(dev_id) >= 60;
+#else
+  return false;
+#endif
+}
+
 }  // namespace gpu
 }  // namespace backends
 }  // namespace pten

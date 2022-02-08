@@ -29,7 +29,7 @@ namespace distributed = paddle::distributed;
 using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
 using VarMsg = ::paddle::distributed::VariableMessage;
 
-USE_OP(scale);
+USE_OP_ITSELF(scale);
 
 std::shared_ptr<distributed::HeterServer> b_rpc_service;
 
