@@ -78,7 +78,6 @@ from .transpiler import DistributeTranspiler, \
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
 from . import clip
 from . import profiler
-from . import perf_analyse
 from . import unique_name
 from . import parallel_executor
 from .parallel_executor import *
@@ -139,7 +138,6 @@ __all__ = framework.__all__ + executor.__all__ + \
         'DataFeeder',
         'clip',
         'profiler',
-        'perf_analyse',
         'unique_name',
         'Scope',
         'install_check',

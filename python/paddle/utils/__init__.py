@@ -16,6 +16,7 @@ from . import gast
 from .profiler import ProfilerOptions  # noqa: F401
 from .profiler import Profiler  # noqa: F401
 from .profiler import get_profiler  # noqa: F401
+from .perf_analyse import perf_analyse  # noqa: F401
 from .deprecated import deprecated  # noqa: F401
 from .lazy_import import try_import  # noqa: F401
 from .op_version import OpLastCheckpointChecker  # noqa: F401
