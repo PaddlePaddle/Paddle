@@ -64,6 +64,11 @@ static bool IgnoreGradAttribute(const std::string& op_type,
     }
   }
 
+  // Only allow SumOp
+  if (op_type != "sum") {
+    return true;
+  }
+
   return false;
 }
 
@@ -1693,7 +1698,7 @@ static std::string GenerateSingleOpBase(
   VLOG(6) << "Generated Outs Map";
 
   // [Generation] Get Attrs Map
-  const char* ATTRS_TEMPLATE = "  auto %s = this->attr_map_;\n";
+  const char* ATTRS_TEMPLATE = "  auto& %s = this->attr_map_;\n";
   std::string grad_attrs_str =
       paddle::string::Sprintf(ATTRS_TEMPLATE, attrs_name);
   for (const auto& iter : grad_attrs) {
