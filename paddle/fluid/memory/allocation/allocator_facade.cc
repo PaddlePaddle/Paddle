@@ -907,7 +907,7 @@ uint64_t AllocatorFacade::Release(const platform::Place& place) {
 }
 
 std::shared_ptr<pten::Allocation> AllocatorFacade::AllocShared(
-    const platform::Place& place, size_t size, const platform::Stream& stream) {
+    const platform::Place& place, size_t size, const pten::Stream& stream) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_EQ(
       FLAGS_use_stream_safe_cuda_allocator, true,
@@ -932,7 +932,7 @@ std::shared_ptr<pten::Allocation> AllocatorFacade::AllocShared(
 
 bool AllocatorFacade::InSameStream(
     const std::shared_ptr<pten::Allocation>& allocation,
-    const platform::Stream& stream) {
+    const pten::Stream& stream) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_EQ(
       FLAGS_use_stream_safe_cuda_allocator, true,
