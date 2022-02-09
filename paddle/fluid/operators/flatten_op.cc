@@ -103,12 +103,14 @@ class FlattenOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1);
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<std::string>(
         "mkldnn_data_type",
         "(string, default \"float32\"). Data type of mkldnn kernel")
         .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"});
+        .InEnum({"float32", "bfloat16"})
+        .AsExtra();
     AddComment(R"DOC(
 Flatten Operator
 

@@ -28,4 +28,8 @@ KernelSignature ReshapeOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 }  // namespace pten
 
+PT_REGISTER_BASE_KERNEL_NAME(reshape2, reshape);
+PT_REGISTER_BASE_KERNEL_NAME(reshape2_grad, reshape_grad);
+PT_REGISTER_BASE_KERNEL_NAME(reshape2_grad_grad, reshape_double_grad);
+
 PT_REGISTER_ARG_MAPPING_FN(reshape2, pten::ReshapeOpArgumentMapping);

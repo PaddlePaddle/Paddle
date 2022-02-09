@@ -63,7 +63,7 @@ class KernelArgsNameMaker {
 
 void InitDefaultKernelSignatureMap();
 
-void SetAllocationForOutputTenosr(pten::DenseTensor* tensor,
+void SetAllocationForOutputTenosr(pten::TensorBase* tensor,
                                   const platform::Place& place);
 
 // TODO(Wilber): support others device context.
@@ -76,6 +76,13 @@ template <>
 struct ConvertToPtenContext<platform::CPUDeviceContext> {
   using TYPE = pten::CPUContext;
 };
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+template <>
+struct ConvertToPtenContext<platform::CUDADeviceContext> {
+  using TYPE = pten::GPUContext;
+};
+#endif
 
 #ifdef PADDLE_WITH_XPU
 template <>

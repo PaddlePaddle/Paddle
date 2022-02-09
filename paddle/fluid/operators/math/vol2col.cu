@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/vol2col.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
 
 namespace paddle {
 namespace operators {
@@ -82,93 +83,91 @@ __global__ void vol2col(int num_kernels, const T* data_vol, int depth,
  *   [input_channels, filter_depth, filter_height, filter_width,
  *                    output_depth, output_height, output_width]
  */
-template <class T>
-class Vol2ColFunctor<platform::CUDADeviceContext, T> {
- public:
-  void operator()(const platform::CUDADeviceContext& context,
-                  const framework::Tensor& vol,
-                  const std::vector<int>& dilations,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings, framework::Tensor* col,
-                  const DataLayout data_layout) const {
-    PADDLE_ENFORCE_EQ(vol.dims().size(), 4,
-                      platform::errors::InvalidArgument(
-                          "The dimension of  vol should be 4, but received %d.",
-                          vol.dims().size()));
-    PADDLE_ENFORCE_EQ(col->dims().size(), 7,
-                      platform::errors::InvalidArgument(
-                          "The dimension of col should be 7, but received %d.",
-                          col->dims().size()));
+// template <class DeviceContext, class T>
+// class Vol2ColFunctor {
+//  public:
+template <class DeviceContext, class T>
+void Vol2ColFunctor<DeviceContext, T>::operator()(
+    const DeviceContext& context, const framework::Tensor& vol,
+    const std::vector<int>& dilations, const std::vector<int>& strides,
+    const std::vector<int>& paddings, framework::Tensor* col,
+    const DataLayout data_layout) const {
+  PADDLE_ENFORCE_EQ(vol.dims().size(), 4,
+                    platform::errors::InvalidArgument(
+                        "The dimension of  vol should be 4, but received %d.",
+                        vol.dims().size()));
+  PADDLE_ENFORCE_EQ(col->dims().size(), 7,
+                    platform::errors::InvalidArgument(
+                        "The dimension of col should be 7, but received %d.",
+                        col->dims().size()));
 
-    int input_channels =
-        (data_layout != DataLayout::kNHWC ? vol.dims()[0] : vol.dims()[3]);
-    int input_depth =
-        (data_layout != DataLayout::kNHWC ? vol.dims()[1] : vol.dims()[0]);
-    int input_height =
-        (data_layout != DataLayout::kNHWC ? vol.dims()[2] : vol.dims()[1]);
-    int input_width =
-        (data_layout != DataLayout::kNHWC ? vol.dims()[3] : vol.dims()[2]);
-    int filter_depth = col->dims()[1];
-    int filter_height = col->dims()[2];
-    int filter_width = col->dims()[3];
-    int output_depth = col->dims()[4];
-    int output_height = col->dims()[5];
-    int output_width = col->dims()[6];
+  int input_channels =
+      (data_layout != DataLayout::kNHWC ? vol.dims()[0] : vol.dims()[3]);
+  int input_depth =
+      (data_layout != DataLayout::kNHWC ? vol.dims()[1] : vol.dims()[0]);
+  int input_height =
+      (data_layout != DataLayout::kNHWC ? vol.dims()[2] : vol.dims()[1]);
+  int input_width =
+      (data_layout != DataLayout::kNHWC ? vol.dims()[3] : vol.dims()[2]);
+  int filter_depth = col->dims()[1];
+  int filter_height = col->dims()[2];
+  int filter_width = col->dims()[3];
+  int output_depth = col->dims()[4];
+  int output_height = col->dims()[5];
+  int output_width = col->dims()[6];
 
-    bool paddings_size_is_6 = (paddings.size() == 6);
-    int pad_d_forth = paddings_size_is_6 ? paddings[0] : paddings[0];
-    int pad_d_back = paddings_size_is_6 ? paddings[1] : paddings[0];
-    int pad_h_up = paddings_size_is_6 ? paddings[2] : paddings[1];
-    int pad_h_down = paddings_size_is_6 ? paddings[3] : paddings[1];
-    int pad_w_left = paddings_size_is_6 ? paddings[4] : paddings[2];
-    int pad_w_right = paddings_size_is_6 ? paddings[5] : paddings[2];
-    auto input_depth_tmp = (input_depth + pad_d_forth + pad_d_back -
-                            ((dilations[0] * (filter_depth - 1) + 1))) /
-                               strides[0] +
-                           1;
-    PADDLE_ENFORCE_EQ(
-        input_depth_tmp, output_depth,
-        platform::errors::InvalidArgument(
-            "input_depth(%d) and output_depth(%d) are mismatching.",
-            input_depth_tmp, output_depth));
-    auto input_height_tmp = (input_height + pad_h_up + pad_h_down -
-                             ((dilations[1] * (filter_height - 1) + 1))) /
-                                strides[1] +
-                            1;
-    PADDLE_ENFORCE_EQ(
-        input_height_tmp, output_height,
-        platform::errors::InvalidArgument(
-            "input_height(%d) and output_height(%d) are mismatching.",
-            input_height_tmp, output_height));
-    auto input_width_tmp = (input_width + pad_w_left + pad_w_right -
-                            ((dilations[2] * (filter_width - 1) + 1))) /
-                               strides[2] +
-                           1;
-    PADDLE_ENFORCE_EQ(
-        input_width_tmp, output_width,
-        platform::errors::InvalidArgument(
-            "input_width(%d) and output_width(%d) are mismatching.",
-            input_width_tmp, output_width));
+  bool paddings_size_is_6 = (paddings.size() == 6);
+  int pad_d_forth = paddings_size_is_6 ? paddings[0] : paddings[0];
+  int pad_d_back = paddings_size_is_6 ? paddings[1] : paddings[0];
+  int pad_h_up = paddings_size_is_6 ? paddings[2] : paddings[1];
+  int pad_h_down = paddings_size_is_6 ? paddings[3] : paddings[1];
+  int pad_w_left = paddings_size_is_6 ? paddings[4] : paddings[2];
+  int pad_w_right = paddings_size_is_6 ? paddings[5] : paddings[2];
+  auto input_depth_tmp = (input_depth + pad_d_forth + pad_d_back -
+                          ((dilations[0] * (filter_depth - 1) + 1))) /
+                             strides[0] +
+                         1;
+  PADDLE_ENFORCE_EQ(input_depth_tmp, output_depth,
+                    platform::errors::InvalidArgument(
+                        "input_depth(%d) and output_depth(%d) are mismatching.",
+                        input_depth_tmp, output_depth));
+  auto input_height_tmp = (input_height + pad_h_up + pad_h_down -
+                           ((dilations[1] * (filter_height - 1) + 1))) /
+                              strides[1] +
+                          1;
+  PADDLE_ENFORCE_EQ(
+      input_height_tmp, output_height,
+      platform::errors::InvalidArgument(
+          "input_height(%d) and output_height(%d) are mismatching.",
+          input_height_tmp, output_height));
+  auto input_width_tmp = (input_width + pad_w_left + pad_w_right -
+                          ((dilations[2] * (filter_width - 1) + 1))) /
+                             strides[2] +
+                         1;
+  PADDLE_ENFORCE_EQ(input_width_tmp, output_width,
+                    platform::errors::InvalidArgument(
+                        "input_width(%d) and output_width(%d) are mismatching.",
+                        input_width_tmp, output_width));
 
-    int num_outputs =
-        input_channels * output_depth * output_height * output_width;
+  int num_outputs =
+      input_channels * output_depth * output_height * output_width;
 
-    int max_threads = 1024;
+  int max_threads = 1024;
 #ifdef WITH_NV_JETSON
-    platform::ChangeThreadNum(context, &max_threads);
+  platform::ChangeThreadNum(context, &max_threads);
 #endif
 
-    const int threads = max_threads;
-    const int blocks = (num_outputs + max_threads - 1) / max_threads;
+  const int threads = max_threads;
+  const int blocks = (num_outputs + max_threads - 1) / max_threads;
 
-    vol2col<T><<<blocks, threads, 0, context.stream()>>>(
-        num_outputs, vol.data<T>(), input_depth, input_height, input_width,
-        dilations[0], dilations[1], dilations[2], filter_depth, filter_height,
-        filter_width, strides[0], strides[1], strides[2], pad_d_forth, pad_h_up,
-        pad_w_left, output_depth, output_height, output_width, col->data<T>(),
-        data_layout);
-  }
-};
+  vol2col<T><<<blocks, threads, 0, context.stream()>>>(
+      num_outputs, vol.data<T>(), input_depth, input_height, input_width,
+      dilations[0], dilations[1], dilations[2], filter_depth, filter_height,
+      filter_width, strides[0], strides[1], strides[2], pad_d_forth, pad_h_up,
+      pad_w_left, output_depth, output_height, output_width, col->data<T>(),
+      data_layout);
+}
+// };
 
 template <class T>
 __global__ void col2vol(int num_kernels, const T* data_col, int depth,
@@ -249,98 +248,101 @@ __global__ void col2vol(int num_kernels, const T* data_col, int depth,
  *   [input_channels, filter_depth, filter_height, filter_width,
  *                    output_depth, output_height, output_width]
  */
-template <class T>
-class Col2VolFunctor<platform::CUDADeviceContext, T> {
- public:
-  void operator()(const platform::CUDADeviceContext& context,
-                  const framework::Tensor& col,
-                  const std::vector<int>& dilations,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings, framework::Tensor* vol,
-                  const DataLayout data_layout) const {
-    PADDLE_ENFORCE_EQ(vol->dims().size(), 4,
-                      platform::errors::InvalidArgument(
-                          "The dimension of vol  should be 4, but received %d.",
-                          vol->dims().size()));
-    PADDLE_ENFORCE_EQ(col.dims().size(), 7,
-                      platform::errors::InvalidArgument(
-                          "The dimension of col  should be 7, but received %d.",
-                          col.dims().size()));
+// template <class DeviceContext, class T>
+// class Col2VolFunctor<DeviceContext, T> {
+//  public:
+template <class DeviceContext, class T>
+void Col2VolFunctor<DeviceContext, T>::operator()(
+    const DeviceContext& context, const framework::Tensor& col,
+    const std::vector<int>& dilations, const std::vector<int>& strides,
+    const std::vector<int>& paddings, framework::Tensor* vol,
+    const DataLayout data_layout) const {
+  PADDLE_ENFORCE_EQ(vol->dims().size(), 4,
+                    platform::errors::InvalidArgument(
+                        "The dimension of vol  should be 4, but received %d.",
+                        vol->dims().size()));
+  PADDLE_ENFORCE_EQ(col.dims().size(), 7,
+                    platform::errors::InvalidArgument(
+                        "The dimension of col  should be 7, but received %d.",
+                        col.dims().size()));
 
-    int input_channels =
-        (data_layout != DataLayout::kNHWC ? vol->dims()[0] : vol->dims()[3]);
-    int input_depth =
-        (data_layout != DataLayout::kNHWC ? vol->dims()[1] : vol->dims()[0]);
-    int input_height =
-        (data_layout != DataLayout::kNHWC ? vol->dims()[2] : vol->dims()[1]);
-    int input_width =
-        (data_layout != DataLayout::kNHWC ? vol->dims()[3] : vol->dims()[2]);
-    int filter_depth = col.dims()[1];
-    int filter_height = col.dims()[2];
-    int filter_width = col.dims()[3];
-    int output_depth = col.dims()[4];
-    int output_height = col.dims()[5];
-    int output_width = col.dims()[6];
+  int input_channels =
+      (data_layout != DataLayout::kNHWC ? vol->dims()[0] : vol->dims()[3]);
+  int input_depth =
+      (data_layout != DataLayout::kNHWC ? vol->dims()[1] : vol->dims()[0]);
+  int input_height =
+      (data_layout != DataLayout::kNHWC ? vol->dims()[2] : vol->dims()[1]);
+  int input_width =
+      (data_layout != DataLayout::kNHWC ? vol->dims()[3] : vol->dims()[2]);
+  int filter_depth = col.dims()[1];
+  int filter_height = col.dims()[2];
+  int filter_width = col.dims()[3];
+  int output_depth = col.dims()[4];
+  int output_height = col.dims()[5];
+  int output_width = col.dims()[6];
 
-    bool paddings_size_is_6 = (paddings.size() == 6);
-    int pad_d_forth = paddings_size_is_6 ? paddings[0] : paddings[0];
-    int pad_d_back = paddings_size_is_6 ? paddings[1] : paddings[0];
-    int pad_h_up = paddings_size_is_6 ? paddings[2] : paddings[1];
-    int pad_h_down = paddings_size_is_6 ? paddings[3] : paddings[1];
-    int pad_w_left = paddings_size_is_6 ? paddings[4] : paddings[2];
-    int pad_w_right = paddings_size_is_6 ? paddings[5] : paddings[2];
+  bool paddings_size_is_6 = (paddings.size() == 6);
+  int pad_d_forth = paddings_size_is_6 ? paddings[0] : paddings[0];
+  int pad_d_back = paddings_size_is_6 ? paddings[1] : paddings[0];
+  int pad_h_up = paddings_size_is_6 ? paddings[2] : paddings[1];
+  int pad_h_down = paddings_size_is_6 ? paddings[3] : paddings[1];
+  int pad_w_left = paddings_size_is_6 ? paddings[4] : paddings[2];
+  int pad_w_right = paddings_size_is_6 ? paddings[5] : paddings[2];
 
-    auto input_depth_tmp = (input_depth + pad_d_forth + pad_d_back -
-                            ((dilations[0] * (filter_depth - 1) + 1))) /
-                               strides[0] +
-                           1;
-    PADDLE_ENFORCE_EQ(
-        input_depth_tmp, output_depth,
-        platform::errors::InvalidArgument(
-            "input_depth(%d) and output_depth(%d) are mismatching.",
-            input_depth_tmp, output_depth));
-    auto input_height_tmp = (input_height + pad_h_up + pad_h_down -
-                             ((dilations[1] * (filter_height - 1) + 1))) /
-                                strides[1] +
-                            1;
-    PADDLE_ENFORCE_EQ(
-        input_height_tmp, output_height,
-        platform::errors::InvalidArgument(
-            "input_height(%d) and output_height(%d) are mismatching.",
-            input_height_tmp, output_height));
-    auto input_width_tmp = (input_width + pad_w_left + pad_w_right -
-                            ((dilations[2] * (filter_width - 1) + 1))) /
-                               strides[2] +
-                           1;
-    PADDLE_ENFORCE_EQ(
-        input_width_tmp, output_width,
-        platform::errors::InvalidArgument(
-            "input_width(%d) and output_width(%d) are mismatching.",
-            input_width_tmp, output_width));
+  auto input_depth_tmp = (input_depth + pad_d_forth + pad_d_back -
+                          ((dilations[0] * (filter_depth - 1) + 1))) /
+                             strides[0] +
+                         1;
+  PADDLE_ENFORCE_EQ(input_depth_tmp, output_depth,
+                    platform::errors::InvalidArgument(
+                        "input_depth(%d) and output_depth(%d) are mismatching.",
+                        input_depth_tmp, output_depth));
+  auto input_height_tmp = (input_height + pad_h_up + pad_h_down -
+                           ((dilations[1] * (filter_height - 1) + 1))) /
+                              strides[1] +
+                          1;
+  PADDLE_ENFORCE_EQ(
+      input_height_tmp, output_height,
+      platform::errors::InvalidArgument(
+          "input_height(%d) and output_height(%d) are mismatching.",
+          input_height_tmp, output_height));
+  auto input_width_tmp = (input_width + pad_w_left + pad_w_right -
+                          ((dilations[2] * (filter_width - 1) + 1))) /
+                             strides[2] +
+                         1;
+  PADDLE_ENFORCE_EQ(input_width_tmp, output_width,
+                    platform::errors::InvalidArgument(
+                        "input_width(%d) and output_width(%d) are mismatching.",
+                        input_width_tmp, output_width));
 
-    int num_kernels = input_channels * input_depth * input_height * input_width;
+  int num_kernels = input_channels * input_depth * input_height * input_width;
 
-    int max_threads = 1024;
+  int max_threads = 1024;
 #ifdef WITH_NV_JETSON
-    platform::ChangeThreadNum(context, &max_threads);
+  platform::ChangeThreadNum(context, &max_threads);
 #endif
 
-    const int threads = max_threads;
-    const int blocks = (num_kernels + max_threads - 1) / max_threads;
+  const int threads = max_threads;
+  const int blocks = (num_kernels + max_threads - 1) / max_threads;
 
-    col2vol<T><<<blocks, threads, 0, context.stream()>>>(
-        num_kernels, col.data<T>(), input_depth, input_height, input_width,
-        dilations[0], dilations[1], dilations[2], filter_depth, filter_height,
-        filter_width, strides[0], strides[1], strides[2], pad_d_forth, pad_h_up,
-        pad_w_left, output_depth, output_height, output_width, vol->data<T>(),
-        data_layout);
-  }
-};
+  col2vol<T><<<blocks, threads, 0, context.stream()>>>(
+      num_kernels, col.data<T>(), input_depth, input_height, input_width,
+      dilations[0], dilations[1], dilations[2], filter_depth, filter_height,
+      filter_width, strides[0], strides[1], strides[2], pad_d_forth, pad_h_up,
+      pad_w_left, output_depth, output_height, output_width, vol->data<T>(),
+      data_layout);
+}
+// };
 
 template class Vol2ColFunctor<platform::CUDADeviceContext, float>;
 template class Vol2ColFunctor<platform::CUDADeviceContext, double>;
+template class Vol2ColFunctor<pten::GPUContext, float>;
+template class Vol2ColFunctor<pten::GPUContext, double>;
+
 template class Col2VolFunctor<platform::CUDADeviceContext, float>;
 template class Col2VolFunctor<platform::CUDADeviceContext, double>;
+template class Col2VolFunctor<pten::GPUContext, float>;
+template class Col2VolFunctor<pten::GPUContext, double>;
 
 }  // namespace math
 }  // namespace operators

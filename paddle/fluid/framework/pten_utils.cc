@@ -60,7 +60,8 @@ OpKernelType TransPtenKernelKeyToOpKernelType(
     const pten::KernelKey& kernel_key) {
   proto::VarType::Type data_type =
       pten::TransToProtoVarType(kernel_key.dtype());
-  platform::Place place = pten::TransToFluidPlace(kernel_key.backend());
+  // no need to set current device id here
+  platform::Place place = pten::TransToFluidPlace(kernel_key.backend(), false);
   DataLayout data_layout = kernel_key.layout();
   LibraryType library_type = LibraryType::kPlain;
   if (kernel_key.backend() == pten::Backend::MKLDNN) {
@@ -184,9 +185,8 @@ KernelArgsNameMakerByOpProto::GetAttrsArgsNames() {
 }
 
 KernelSignature KernelArgsNameMakerByOpProto::GetKernelSignature() {
-  return KernelSignature(pten::TransToPtenKernelName(op_proto_->type()),
-                         GetInputArgsNames(), GetAttrsArgsNames(),
-                         GetOutputArgsNames());
+  return KernelSignature(op_proto_->type(), GetInputArgsNames(),
+                         GetAttrsArgsNames(), GetOutputArgsNames());
 }
 
 std::once_flag kernel_sig_map_init_flag;
@@ -207,21 +207,40 @@ void InitDefaultKernelSignatureMap() {
   });
 }
 
-void SetAllocationForOutputTenosr(pten::DenseTensor* tensor,
-                                  const platform::Place& place) {
-  if (!tensor->IsInitialized() || !(tensor->place() == place)) {
-    int dtype_size = tensor->dtype() == DataType::UNDEFINED
-                         ? 0
-                         : experimental::SizeOf(tensor->dtype());
-    int64_t numels = product(tensor->dims());
-    numels = numels < 0 ? 0 : numels;
-    auto tmp_allocation_ptr = memory::Alloc(place, numels * dtype_size);
-    auto& deleter = tmp_allocation_ptr.get_deleter();
-    auto* allocation_ptr = tmp_allocation_ptr.release();
-    auto shared_allocation =
-        std::shared_ptr<pten::Allocation>(allocation_ptr, deleter);
+static void SetAllocationForUninitializedDenseTensor(
+    pten::DenseTensor* dense_tensor, const platform::Place& place) {
+  int dtype_size = dense_tensor->dtype() == DataType::UNDEFINED
+                       ? 0
+                       : experimental::SizeOf(dense_tensor->dtype());
+  int64_t numels = product(dense_tensor->dims());
+  numels = numels < 0 ? 0 : numels;
+  auto tmp_allocation_ptr = memory::Alloc(place, numels * dtype_size);
+  auto& deleter = tmp_allocation_ptr.get_deleter();
+  auto* allocation_ptr = tmp_allocation_ptr.release();
+  auto shared_allocation =
+      std::shared_ptr<pten::Allocation>(allocation_ptr, deleter);
 
-    tensor->ResetHolder(shared_allocation);
+  dense_tensor->ResetHolder(shared_allocation);
+}
+
+void SetAllocationForOutputTenosr(pten::TensorBase* tensor,
+                                  const platform::Place& place) {
+  if (pten::DenseTensor::classof(tensor)) {
+    auto* dense_tensor = static_cast<pten::DenseTensor*>(tensor);
+    if (!dense_tensor->IsInitialized() || !(dense_tensor->place() == place)) {
+      SetAllocationForUninitializedDenseTensor(dense_tensor, place);
+    }
+  } else if (pten::SelectedRows::classof(tensor)) {
+    auto* selected_rows = static_cast<pten::SelectedRows*>(tensor);
+    if (!selected_rows->value().IsInitialized() ||
+        !(selected_rows->place() == place)) {
+      SetAllocationForUninitializedDenseTensor(selected_rows->mutable_value(),
+                                               place);
+    }
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unsupported tensor type is received when setting allocation for "
+        "output tensor."));
   }
 }
 

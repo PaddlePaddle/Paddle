@@ -53,12 +53,61 @@ TensorMap LoadParams(const std::string &path) {
   return *(infrt::tensor::LoadParams(path));
 }
 
-DenseHostTensor GetParam(TensorMap map, Attribute<std::string> nameAttr) {
-  auto &name = nameAttr.get();
-  return *(map[name]);
+void TensorMapGetTensor(TensorMap map,
+                        const std::string &name,
+                        DenseHostTensor *out) {
+  auto it = map.find(name);
+  CHECK(it != map.end()) << "No tensor called " << name << " in the TensorMap";
+  *out = *it->second;
 }
 
+int32_t TensorMapGetSize(TensorMap map) { return map.size(); }
+
 DenseHostTensor ShallowCopyTensor(DenseHostTensor v) { return v; }
+
+template <typename T>
+void NaiveElementwiseAdd(const DenseHostTensor &x,
+                         const DenseHostTensor &y,
+                         DenseHostTensor *out) {
+  CHECK_EQ(x.shape().GetNumElements(), y.shape().GetNumElements());
+
+  // Infer shape
+  *out = DenseHostTensor(x.shape(), GetDType<T>());
+
+  const T *x_data = static_cast<T *>(x.raw_data());
+  const T *y_data = static_cast<T *>(y.raw_data());
+  T *out_data = static_cast<T *>(out->raw_data());
+  for (size_t i = 0, n = x.shape().GetNumElements(); i < n; i++) {
+    out_data[i] = x_data[i] + y_data[i];
+  }
+}
+
+//! A naive implementation for x matmul w
+template <typename T>
+void NaiveMatmul(const DenseHostTensor &x,
+                 const DenseHostTensor &w,
+                 DenseHostTensor *out) {
+  CHECK_EQ(x.shape().GetRank(), 2);
+  CHECK_EQ(w.shape().GetRank(), 2);
+  CHECK_EQ(x.shape().GetDim(x.shape().GetRank() - 1), w.shape().GetDim(0));
+  std::vector<int64_t> out_dims({x.shape().GetDim(0), w.shape().GetDim(1)});
+  *out = DenseHostTensor(TensorShape(out_dims), GetDType<T>());
+
+  auto *out_data = static_cast<T *>(out->raw_data());
+  auto *x_data = static_cast<const T *>(x.raw_data());
+  auto *w_data = static_cast<const T *>(w.raw_data());
+
+  const int M = x.shape().GetDim(0);
+  const int K = x.shape().GetDim(1);
+  const int N = w.shape().GetDim(1);
+  for (int i = 0; i < M; i++) {
+    for (int j = 0; j < N; j++) {
+      for (int k = 0; k < K; k++) {
+        out_data[i * N + j] += x_data[i * K + k] * w_data[k * N + j];
+      }
+    }
+  }
+}
 
 /// ===== Kernel end ====
 
@@ -71,10 +120,20 @@ void RegisterTensorKernels(host_context::KernelRegistry *registry) {
                       INFRT_KERNEL(FillTensorWithConstant<float>));
   registry->AddKernel("dt.fill_tensor_with_constant.f64",
                       INFRT_KERNEL(FillTensorWithConstant<double>));
+
+  // TensorMap related methods.
   registry->AddKernel("dt.load_params", INFRT_KERNEL(LoadParams));
-  registry->AddKernel("dt.get_param", INFRT_KERNEL(GetParam));
+  registry->AddKernel("dt.tensor_map_get_tensor",
+                      INFRT_KERNEL(TensorMapGetTensor));
+  registry->AddKernel("dt.tensor_map_get_size", INFRT_KERNEL(TensorMapGetSize));
+
   registry->AddKernel("dt.shallow_copy_tensor",
                       INFRT_KERNEL(ShallowCopyTensor));
+
+  // Naive kernels.
+  registry->AddKernel("dt.naive_elementwise_add.f32",
+                      INFRT_KERNEL(NaiveElementwiseAdd<float>));
+  registry->AddKernel("dt.naive_matmul.f32", INFRT_KERNEL(NaiveMatmul<float>));
 }
 
 }  // namespace kernel
