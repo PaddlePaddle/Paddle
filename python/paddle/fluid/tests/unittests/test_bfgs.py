@@ -210,6 +210,7 @@ def quadruple(x):
 
 class TestLinesearch(unittest.TestCase):
     def test_paddle(self):
+        np.set_printoptions(precision=2)
         dtype = 'float32'
         x_min = 1.01
         # for start in [-1.0, 0.98, 1.01]:
@@ -220,7 +221,7 @@ class TestLinesearch(unittest.TestCase):
         #     print(result)
             # self.assertTrue(np.allclose(result.function_results, -np.inf))
         # for start in [1.05, 1.1, 2.0, 100.0]:
-        x0s = np.arange(-1.0, 4.0, 0.1)
+        x0s = np.arange(-1.0, 4.0, 0.1, dtype='float32')
         xs = np.zeros_like(x0s)
         ys = np.zeros_like(xs)
         rs = ['']*len(x0s)
@@ -228,15 +229,15 @@ class TestLinesearch(unittest.TestCase):
             # print(f'===========c=========================')
             # print(f'starting at {start}')
             x0 = paddle.to_tensor(start, dtype=dtype)
-            result = bfgs_minimize(poly, x0, dtype=dtype, ls_iters=100)
-            # result = bfgs_minimize(quadruple, x0, dtype=dtype, iters=100, ls_iters=100)
+            # result = bfgs_minimize(poly, x0, dtype=dtype, ls_iters=100)
+            result = bfgs_minimize(quadruple, x0, dtype=dtype, iters=100, ls_iters=100)
             # print(result)
             ys[i] = result.function_results[0]
             status = result.result_status[0]
             rs[i] = status
             # self.assertTrue(np.allclose(result.x_location, x_min, atol=1e-3, rtol=1e-3))
         for x0, y, r in zip(x0s, ys, rs):
-            print(f'[{x0}, {y}, {r}],')
+            print(f'{x0:.2}, {y:1.2}, {r}')
 
     # def test_tf(self):
     #     def func_and_gradient(x):
