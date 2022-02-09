@@ -1217,7 +1217,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                 pt_kernel_name, pt_cpu_kernel_key)));
 
         dev_ctx = pool.Get(platform::CPUPlace());
-
         if (pt_kernel_->IsValid()) {
           VLOG(6) << "Static mode PrepareImpl - kernel name: " << pt_kernel_name
                   << " | kernel key: " << pt_cpu_kernel_key
@@ -1919,7 +1918,12 @@ Scope* OperatorWithKernel::PreparePtenData(
 
   for (size_t i = 0; i < input_defs.size(); ++i) {
     auto& in_def = input_defs.at(i);
-    auto& ins_vector = ctx->inputs.at(input_names[i]);
+    auto it = ctx->inputs.find(input_names[i]);
+    if (it == ctx->inputs.end()) {
+      continue;
+    }
+
+    auto& ins_vector = it->second;
     auto& name_vec = name_map.at(input_names[i]);
     bool should_skip_input =
         no_buffer_ins && no_buffer_ins->count(input_names[i]) > 0;
@@ -2003,18 +2007,29 @@ void OperatorWithKernel::BuildPtenKernelContext(
                         attr_names.size(), attr_defs.size()));
 
   for (size_t i = 0; i < input_names.size(); ++i) {
-    auto& ins_vector = ctx.inputs.at(input_names[i]);
+    auto it = ctx.inputs.find(input_names[i]);
 
     // calcute the start and end index of the input tensors
     size_t start_idx =
         (i == 0 ? 0 : pt_kernel_context->InputRangeAt(i - 1).second);
-    size_t end_idx = start_idx + ins_vector.size();
 
+    // deal with optional here
+    if ((it == ctx.inputs.end()) &&
+        (input_defs[i].type_index ==
+         std::type_index(typeid(paddle::optional<const pten::DenseTensor&>)))) {
+      pt_kernel_context->EmplaceBackInputWithoutSetRange(nullptr);
+      auto end_idx = start_idx + 1;
+      pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx),
+                                          i);
+      continue;
+    }
+    auto ins_vector = it->second;
+    size_t end_idx = start_idx + ins_vector.size();
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
       const pten::TensorBase* tensor_in = nullptr;
       auto* var = ins_vector[offset];
-      if (var->IsType<pten::DenseTensor>()) {
-        tensor_in = &(var->Get<pten::DenseTensor>());
+      if (var->IsType<framework::LoDTensor>()) {
+        tensor_in = &(var->Get<framework::LoDTensor>());
       } else if (var->IsType<pten::SelectedRows>()) {
         tensor_in = &(var->Get<pten::SelectedRows>());
       } else {
@@ -2022,23 +2037,37 @@ void OperatorWithKernel::BuildPtenKernelContext(
             "Unsupported input `%s` type when call pt kernel.",
             framework::ToTypeName(var->Type())));
       }
+
       pt_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
     }
     pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx), i);
   }
 
   for (size_t i = 0; i < output_names.size(); ++i) {
-    auto& outs_vector = ctx.outputs.at(output_names[i]);
-
+    auto it = ctx.outputs.find(output_names[i]);
     size_t start_idx =
         (i == 0 ? 0 : pt_kernel_context->OutputRangeAt(i - 1).second);
+
+    if (it == ctx.outputs.end() || it->second.empty()) {
+      // Deal with the case that some outputs are not found or be NULL when run
+      // the kernel.
+      // For example : the outputs of matmul_grad are dx and dy,
+      // sometimes dx or dy may be NULL.
+      pt_kernel_context->EmplaceBackOutputWithoutSetRange(nullptr);
+      auto end_idx = start_idx + 1;
+      pt_kernel_context->AssignOutputRange(std::make_pair(start_idx, end_idx),
+                                           i);
+      continue;
+    }
+    auto& outs_vector = it->second;
+
     size_t end_idx = start_idx + outs_vector.size();
 
     for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
       pten::TensorBase* tensor_out = nullptr;
       auto* var = outs_vector[offset];
-      if (var->template IsType<pten::DenseTensor>()) {
-        tensor_out = var->template GetMutable<pten::DenseTensor>();
+      if (var->template IsType<framework::LoDTensor>()) {
+        tensor_out = var->template GetMutable<framework::LoDTensor>();
       } else if (var->template IsType<pten::SelectedRows>()) {
         tensor_out = var->template GetMutable<pten::SelectedRows>();
       } else {
@@ -2053,14 +2082,6 @@ void OperatorWithKernel::BuildPtenKernelContext(
           tensor_out, pten::TransToFluidPlace(output_defs.at(i).backend));
 
       pt_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
-    }
-
-    // Deal with the case that some outputs are NULL when run the kernel.
-    // For example : the outputs of matmul_grad are dx and dy,
-    // sometimes dx or dy may be NULL.
-    if (outs_vector.empty()) {
-      pt_kernel_context->EmplaceBackOutputWithoutSetRange({nullptr});
-      end_idx = start_idx + 1;
     }
 
     pt_kernel_context->AssignOutputRange(std::make_pair(start_idx, end_idx), i);
@@ -2139,6 +2160,9 @@ void OperatorWithKernel::BuildPtenKernelContext(
       } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
         pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
       } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::string))) {
+        pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(std::string, attr));
+      } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(pten::DataType))) {
         auto data_type = pten::TransToPtenDataType(
             static_cast<framework::proto::VarType::Type>(
@@ -2156,6 +2180,10 @@ void OperatorWithKernel::BuildPtenKernelContext(
         }
         // TODO(YuanRisheng) Need support vector<int64_t> attr
 
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::vector<int32_t>))) {
+        const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
+        pt_kernel_context->EmplaceBackAttr(vector_int_attr);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported cast op attribute `%s` when construct "
