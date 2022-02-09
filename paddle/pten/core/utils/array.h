@@ -104,13 +104,10 @@ class Array<T, 0> {
   HOSTDEVICE inline T *GetMutable() { return nullptr; }
 
   HOSTDEVICE inline T &operator[](size_t) {
-#if defined(__HIPCC__)
-    // HIP will have compile error, if use "obj()"
+#if defined(__HIPCC__) || defined(__CUDA_ARCH__)
+    // HIP and CUDA will have compile error, if use "obj()"
     // function declared in block scope cannot have 'static' storage class
     static T obj{};
-    return obj;
-#elif defined(__CUDA_ARCH__)
-    static T obj();
     return obj;
 #else
     PADDLE_THROW(pten::errors::Unavailable("Array<T, 0> has no element."));
@@ -118,13 +115,10 @@ class Array<T, 0> {
   }
 
   HOSTDEVICE inline const T &operator[](size_t) const {
-#if defined(__HIPCC__)
-    // HIP will have compile error, if use "obj()"
+#if defined(__HIPCC__) || defined(__CUDA_ARCH__)
+    // HIP and CUDA will have compile error, if use "obj()"
     // function declared in block scope cannot have 'static' storage class
     static const T obj{};
-    return obj;
-#elif defined(__CUDA_ARCH__)
-    static const T obj();
     return obj;
 #else
     PADDLE_THROW(pten::errors::Unavailable("Array<T, 0> has no element."));

@@ -185,7 +185,7 @@ class CUDAPReluGradKernel : public framework::OpKernel<T> {
       reduce_dims.push_back(i);
     }
 
-    TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+    TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
         context.cuda_device_context(), dalpha_tmp, dalpha,
         kps::IdentityFunctor<T>(), reduce_dims, stream);
   }
