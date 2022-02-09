@@ -12,24 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# refer to PaddleRec/models/rank/dnn/benchmark.yaml
+# refer to PaddleRec/models/rank/dnn/config_gpubox.yaml
 
 hyper_parameters:
   optimizer:
     class: Adam
-    learning_rate: 0.0001
-    adam_lazy_mode: True
+    learning_rate: 0.001
+    strategy: async
   sparse_inputs_slots: 27
-  sparse_feature_number: 1000001
-  sparse_feature_dim: 10
+  sparse_feature_number: 1024
+  sparse_feature_dim: 11
   dense_input_dim: 13
-  fc_sizes: [400, 400, 400]
+  fc_sizes: [512, 256, 128, 32]
+  distributed_embedding: 0
 
 runner:
   geo_step: 400
-  sync_mode: "async"  # sync / async / geo / heter
+  sync_mode: "gpubox"
   thread_num: 16
-  use_gpu: 0
+  use_gpu: 1
   
   model_path: "../ps_dnn_model.py"
 
