@@ -73,7 +73,7 @@ void FakeDot(const paddle::CPUContext& dev_ctx, const paddle::Tensor& x,
   assert(fake_attr_float == 2);
   assert(fake_attr_double == 3);
   assert(fake_attr_int64 == 4);
-  assert(fake_attr_f16 == 5);
+  assert(fake_attr_f16 == pten::dtype::float16(5));
   assert(fake_attr_dtype == pten::DataType::UINT32);
   assert(fake_attr_int64_vec.size() == 0);
   assert(fake_attr_int_vec.size() == 0);
@@ -212,11 +212,13 @@ TEST(CustomKernel, custom_kernel_dot) {
   kernel_context.EmplaceBackAttr(fake_attr_int64_vec);
   kernel_context.EmplaceBackAttr(fake_attr_int_vec);
 
-  auto out_meta = pten::DotInferMeta(dense_x->meta(), dense_y->meta());
   auto dense_out = std::make_shared<pten::DenseTensor>(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           pten::TransToFluidPlace(backend)),
-      std::move(out_meta));
+      pten::DenseTensorMeta());
+
+  pten::MetaTensor meta_out(dense_out.get());
+  pten::DotInferMeta(*dense_x, *dense_y, &meta_out);
   kernel_context.EmplaceBackOutput(dense_out.get());  // idx:0 index:[0,1)
 
   // fake_input_vec: idx:1, index:[1,3)

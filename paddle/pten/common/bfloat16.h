@@ -82,7 +82,7 @@ struct PADDLE_ALIGN(2) bfloat16 {
 
 #if defined(PADDLE_CUDA_BF16)
   HOSTDEVICE inline explicit bfloat16(const __nv_bfloat16& val) {
-    x = *reinterpret_cast<const unsigned short*>(&val);
+    x = *reinterpret_cast<const unsigned short*>(&val);  // NOLINT
   }
 #endif
 
@@ -93,7 +93,7 @@ struct PADDLE_ALIGN(2) bfloat16 {
 // Assignment operators
 #if defined(PADDLE_CUDA_BF16)
   HOSTDEVICE inline bfloat16& operator=(const __nv_bfloat16& val) {
-    x = *reinterpret_cast<const unsigned short*>(&val);
+    x = *reinterpret_cast<const unsigned short*>(&val);  // NOLINT
     return *this;
   }
 #endif
@@ -311,7 +311,7 @@ HOSTDEVICE inline bool(isfinite)(const bfloat16& a) {
 }
 
 inline std::ostream& operator<<(std::ostream& os, const bfloat16& a) {
-  os << a.x;
+  os << static_cast<float>(a);
   return os;
 }
 

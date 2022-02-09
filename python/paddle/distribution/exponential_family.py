@@ -33,6 +33,8 @@ class ExponentialFamily(Distribution):
     where :math:`\theta` denotes the natural parameters, :math:`t(x)` denotes 
     the sufficient statistic, :math:`F(\theta)` is the log normalizer function 
     for a given family and :math:`k(x)` is the carrier measure.
+
+    Distribution belongs to exponential family referring to https://en.wikipedia.org/wiki/Exponential_family
     """
 
     @property

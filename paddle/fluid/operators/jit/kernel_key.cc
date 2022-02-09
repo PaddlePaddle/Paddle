@@ -63,6 +63,11 @@ int64_t JitCodeKey<sgd_attr_t>(const sgd_attr_t& attr) {
   return attr.grad_width;
 }
 
+template <>
+int64_t JitCodeKey<adam_attr_t>(const adam_attr_t& attr) {
+  return static_cast<int64_t>(attr.beta1 + attr.beta2);
+}
+
 }  // namespace jit
 }  // namespace operators
 }  // namespace paddle

@@ -40,8 +40,9 @@ DenseTensor Flatten(const Context& dev_ctx,
                     const DenseTensor& x,
                     int start_axis,
                     int stop_axis) {
-  auto out_meta = FlattenInferMeta(x.meta(), start_axis, stop_axis);
-  auto dense_out = Empty<T, Context>(dev_ctx, std::move(out_meta));
+  auto dense_out = Empty<T, Context>(dev_ctx);
+  MetaTensor meta_out(&dense_out);
+  FlattenInferMeta(x, start_axis, stop_axis, &meta_out);
   FlattenKernel<T, Context>(dev_ctx, x, start_axis, stop_axis, &dense_out);
   return dense_out;
 }

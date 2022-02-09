@@ -1085,7 +1085,7 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
     is.seekg(seekg, is.cur);
 
     void* buf;
-    auto ctx = platform::CPUDeviceContext();
+    platform::CPUDeviceContext ctx;
     size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
     if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
         platform::is_xpu_place(dev_ctx.GetPlace()) ||
@@ -1155,7 +1155,7 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
     std::copy(desc.dims().begin(), desc.dims().end(), std::back_inserter(dims));
     tensor->Resize(framework::make_ddim(dims));
     void* buf;
-    auto ctx = platform::CPUDeviceContext();
+    platform::CPUDeviceContext ctx;
     size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
     if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
         platform::is_xpu_place(dev_ctx.GetPlace()) ||
@@ -1432,4 +1432,4 @@ std::ostream& operator<<(std::ostream& os, const pten::DenseTensor& t) {
   VLOG(1) << "PrintVar: unrecognized data type:" << t.type();
   return os;
 }
-}
+}  // namespace pten

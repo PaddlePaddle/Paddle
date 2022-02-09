@@ -275,6 +275,11 @@ inline std::ostream& operator<<(std::ostream& os,
   return os;
 }
 
+inline std::ostream& operator<<(std::ostream& os, const adam_attr_t& attr) {
+  os << "beta1[" << attr.beta1 << "],beta2[" << attr.beta2 << "]";
+  return os;
+}
+
 inline std::ostream& operator<<(std::ostream& os, const sgd_attr_t& attr) {
   os << "param_height[" << attr.param_height << "],param_width["
      << attr.param_width << "],grad_height[" << attr.grad_height

@@ -33,10 +33,11 @@ TEST(DEV_API, conj) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::COMPLEX64,
-                                                  framework::make_ddim({3, 4}),
-                                                  pten::DataLayout::NCHW));
+  pten::DenseTensor dense_x(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::COMPLEX64,
+                            pten::framework::make_ddim({3, 4}),
+                            pten::DataLayout::NCHW));
 
   auto* dense_x_data =
       dense_x.mutable_data<paddle::complex64>(paddle::platform::CPUPlace());
@@ -45,10 +46,10 @@ TEST(DEV_API, conj) {
   }
 
   pten::CPUContext dev_ctx;
-  dev_ctx.SetDeviceAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
-          .get());
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(paddle::platform::CPUPlace())
+                           .get());
+  dev_ctx.Init();
 
   // 2. test API
   auto out = pten::Conj<paddle::complex64>(dev_ctx, dense_x);
