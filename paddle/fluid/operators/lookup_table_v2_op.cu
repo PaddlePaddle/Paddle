@@ -204,7 +204,7 @@ struct LookupTableV2GradCUDAFunctor {
       t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
 
       // todo(@limin): need to set to false when test performance.
-      if (FLAGS_lookup_table_deterministic) {
+      if (FLAGS_lookup_table_v2_deterministic) {
         LookupTableV2Grad<T, IdT, 128, 1,
                           1><<<grids, threads, 0, dev_ctx.stream()>>>(
             d_table, d_output, ids, N, K, D);
