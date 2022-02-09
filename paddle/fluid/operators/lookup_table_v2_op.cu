@@ -228,8 +228,17 @@ class LookupTableV2GradCUDAKernel : public framework::OpKernel<T> {
       auto t = framework::EigenVector<T>::Flatten(*d_table_t);
       t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
 
-      LookupTableV2Grad<T, 128, 8, 8><<<grids, threads, 0, dev_ctx.stream()>>>(
-          d_table, d_output, ids_p, N, K, D);
+      // todo(@limin): need to set to false when test performance.
+      bool is_determine_result = true;
+      if (is_determine_result) {
+        LookupTableV2Grad<T, 128, 1,
+                          1><<<grids, threads, 0, dev_ctx.stream()>>>(
+            d_table, d_output, ids_p, N, K, D);
+      } else {
+        LookupTableV2Grad<T, 128, 8,
+                          8><<<grids, threads, 0, dev_ctx.stream()>>>(
+            d_table, d_output, ids_p, N, K, D);
+      }
     }
   }
 };
