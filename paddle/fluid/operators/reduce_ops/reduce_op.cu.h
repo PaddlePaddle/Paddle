@@ -39,11 +39,11 @@ namespace operators {
 
 template <typename Tx, typename Ty, template <typename> class ReduceOp,
           typename TransformOp>
-void TensorReduceFunctorImpl(const platform::CUDADeviceContext& dev_ctx,
-                             const framework::Tensor& x, framework::Tensor* y,
-                             const TransformOp& transform,
-                             const std::vector<int>& origin_reduce_dims,
-                             gpuStream_t stream) {
+void TensorReduceImpl(const platform::CUDADeviceContext& dev_ctx,
+                      const framework::Tensor& x, framework::Tensor* y,
+                      const TransformOp& transform,
+                      const std::vector<int>& origin_reduce_dims,
+                      gpuStream_t stream) {
   y->mutable_data<Ty>(x.place());
 
   pten::kernels::TensorReduceFunctorImpl<Tx, Ty, ReduceOp, TransformOp>(
