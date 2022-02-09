@@ -25,6 +25,8 @@ PADDLE_API Tensor to_sparse_coo(const Tensor& x,
                                 Backend backend,
                                 const int64_t sparse_dim);
 
+PADDLE_API Tensor to_sparse_csr(const Tensor& x, Backend backend);
+
 }  // namespace sparse
 }  // namespace experimental
 }  // namespace paddle

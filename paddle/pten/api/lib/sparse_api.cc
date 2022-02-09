@@ -23,9 +23,15 @@ limitations under the License. */
 #include "paddle/pten/infermeta/unary.h"
 
 PT_DECLARE_KERNEL(dense_to_sparse_coo, CPU, ALL_LAYOUT);
+PT_DECLARE_KERNEL(sparse_csr_to_coo, CPU, ALL_LAYOUT);
+PT_DECLARE_KERNEL(dense_to_sparse_csr, CPU, ALL_LAYOUT);
+PT_DECLARE_KERNEL(sparse_coo_to_csr, CPU, ALL_LAYOUT);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PT_DECLARE_KERNEL(dense_to_sparse_coo, GPU, ALL_LAYOUT);
+PT_DECLARE_KERNEL(sparse_csr_to_coo, GPU, ALL_LAYOUT);
+PT_DECLARE_KERNEL(dense_to_sparse_csr, GPU, ALL_LAYOUT);
+PT_DECLARE_KERNEL(sparse_coo_to_csr, GPU, ALL_LAYOUT);
 #endif
 
 namespace paddle {
@@ -95,6 +101,71 @@ PADDLE_API Tensor to_sparse_coo(const Tensor& x,
   return out;
 }
 
+PADDLE_API Tensor to_sparse_csr(const Tensor& x, Backend backend) {
+  if (x.layout() == pten::DataLayout::SPARSE_CSR) {
+    return x;
+  }
+  // 1. Get kernel signature and kernel
+  auto kernel_key_set = ParseKernelKeyByInputArgs(x);
+  kernel_key_set.backend_set = kernel_key_set.backend_set | BackendSet(backend);
+  auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
+  std::string kernel_name = "dense_to_sparse_csr";
+  if (x.layout() == pten::DataLayout::SPARSE_COO) {
+    kernel_name = "sparse_coo_to_csr";
+  }
+
+  auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
+      kernel_name, kernel_key);
+
+  VLOG(6) << "to API kernel key: " << kernel_key;
+  VLOG(6) << "to API kernel: " << kernel;
+
+  // 2. Get Device Context
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
+  auto kernel_context = pten::KernelContext(dev_ctx);
+
+  // 3. Auto data transform
+  if (x.layout() == pten::DataLayout::SPARSE_COO) {
+    auto input = std::dynamic_pointer_cast<pten::SparseCooTensor>(x.impl());
+    kernel_context.EmplaceBackInput(input.get());
+  } else {
+    auto input = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
+    kernel_context.EmplaceBackInput(input.get());
+  }
+
+  // 4. InferMeta
+  auto crows_meta = pten::DenseTensorMeta(
+      pten::DataType::INT64, {-1}, pten::DataLayout::NCHW);
+  auto cols_meta = pten::DenseTensorMeta(
+      pten::DataType::INT64, {-1}, pten::DataLayout::NCHW);
+  auto elements_meta = pten::DenseTensorMeta(x.dtype(), {-1}, x.layout());
+
+  // 5. Prepare outputs
+  // create empty SparseCooTensor
+  pten::DenseTensor non_zero_crows(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
+          pten::TransToFluidPlace(backend)),
+      std::move(crows_meta));
+  pten::DenseTensor non_zero_cols(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
+          pten::TransToFluidPlace(backend)),
+      std::move(cols_meta));
+  pten::DenseTensor non_zero_elements(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
+          pten::TransToFluidPlace(backend)),
+      std::move(elements_meta));
+  auto csr = std::make_shared<pten::SparseCsrTensor>(
+      non_zero_crows, non_zero_cols, non_zero_elements, x.dims());
+
+  kernel_context.EmplaceBackOutput(csr.get());
+  Tensor out;
+  out.set_impl(csr);
+
+  // 6. Call kernel
+  kernel(&kernel_context);
+
+  return out;
+}
 }  // namespace sparse
 }  // namespace experimental
 }  // namespace paddle
