@@ -76,8 +76,10 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
                                {sparse_dim, static_cast<int64_t>(non_zero_num)},
                                DataLayout::NCHW);
   DenseTensorMeta values_meta(x.meta().dtype, values_dims, x.meta().layout);
-  pten::DenseTensor indices = pten::Empty(dev_ctx, std::move(indices_meta));
-  pten::DenseTensor values = pten::Empty(dev_ctx, std::move(values_meta));
+  pten::DenseTensor indices =
+      pten::Empty<int64_t, Context>(dev_ctx, std::move(indices_meta));
+  pten::DenseTensor values =
+      pten::Empty<T, Context>(dev_ctx, std::move(values_meta));
   int64_t* indices_data = indices.mutable_data<int64_t>(place);
   T* values_data = values.mutable_data<T>(place);
 
@@ -121,8 +123,10 @@ void SparseCsrToCooKernel(const Context& dev_ctx,
   DenseTensorMeta indices_meta(
       DataType::INT64, {sparse_dim, non_zero_num}, DataLayout::NCHW);
   DenseTensorMeta values_meta(x.dtype(), {non_zero_num}, x.layout());
-  pten::DenseTensor indices = pten::Empty(dev_ctx, std::move(indices_meta));
-  pten::DenseTensor values = pten::Empty(dev_ctx, std::move(values_meta));
+  pten::DenseTensor indices =
+      pten::Empty<int64_t, Context>(dev_ctx, std::move(indices_meta));
+  pten::DenseTensor values =
+      pten::Empty<T, Context>(dev_ctx, std::move(values_meta));
   int64_t* coo_indices = indices.mutable_data<int64_t>(place);
   int64_t* batch_ptr = x_dims.size() == 2 ? nullptr : coo_indices;
   int64_t* coo_rows_data =

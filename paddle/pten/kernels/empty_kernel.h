@@ -32,7 +32,7 @@ void EmptyLikeKernel(const Context& dev_ctx, DenseTensor* out);
 
 // TODO(chenweihang): the tensor creation method need to be replaced later,
 // all kernel api call Empty here instead of making tensor self
-template <typename Context>
+template <typename T, typename Context>
 DenseTensor Empty(const Context& dev_ctx, DenseTensorMeta&& meta) {
   pten::DenseTensor dense_out(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
@@ -43,10 +43,10 @@ DenseTensor Empty(const Context& dev_ctx, DenseTensorMeta&& meta) {
 
 template <typename T, typename Context>
 DenseTensor Empty(const Context& dev_ctx) {
-  return Empty(dev_ctx,
-               {paddle::experimental::CppTypeToDataType<T>::Type(),
-                {-1},
-                DataLayout::NCHW});
+  return Empty<T, Context>(dev_ctx,
+                           {paddle::experimental::CppTypeToDataType<T>::Type(),
+                            {-1},
+                            DataLayout::NCHW});
 }
 
 template <typename T, typename Context>

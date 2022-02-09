@@ -111,12 +111,14 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
   const int cols = dims_2d[1];
   auto nums_meta =
       pten::DenseTensorMeta(DataType::INT32, {1}, pten::DataLayout::NCHW);
-  DenseTensor nums = pten::Empty(dev_ctx, std::move(nums_meta));
+  DenseTensor nums =
+      pten::Empty<int64_t, Context>(dev_ctx, std::move(nums_meta));
   auto x_dims_meta =
       pten::DenseTensorMeta(DataType::INT64,
                             {static_cast<int64_t>(x_dims.size())},
                             pten::DataLayout::NCHW);
-  DenseTensor d_x_dims = pten::Empty(dev_ctx, std::move(x_dims_meta));
+  DenseTensor d_x_dims =
+      pten::Empty<T, Context>(dev_ctx, std::move(x_dims_meta));
 
   const auto place = dev_ctx.GetPlace();
 
@@ -134,7 +136,8 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
 
   auto temp_indexs_meta =
       pten::DenseTensorMeta(DataType::INT32, {rows}, pten::DataLayout::NCHW);
-  DenseTensor temp_indexs = pten::Empty(dev_ctx, std::move(temp_indexs_meta));
+  DenseTensor temp_indexs =
+      pten::Empty<T, Context>(dev_ctx, std::move(temp_indexs_meta));
   int* temp_indexs_ptr = temp_indexs.mutable_data<int>(place);
   GetNonZeroNums<<<grid_size, block_size, 0, dev_ctx.stream()>>>(
       x_data, rows, cols, nums_ptr, temp_indexs_ptr);
@@ -266,9 +269,11 @@ void SparseCsrToCooKernel(const Context& dev_ctx,
       DataType::INT64, {sparse_dim, non_zero_num}, DataLayout::NCHW);
   DenseTensorMeta values_meta(x.dtype(), {non_zero_num}, x.layout());
   DenseTensorMeta offsets_meta(DataType::INT32, {batchs}, DataLayout::NCHW);
-  DenseTensor indices = pten::Empty(dev_ctx, std::move(indices_meta));
-  DenseTensor values = pten::Empty(dev_ctx, std::move(values_meta));
-  DenseTensor offsets = pten::Empty(dev_ctx, std::move(offsets_meta));
+  DenseTensor indices =
+      pten::Empty<int64_t, Context>(dev_ctx, std::move(indices_meta));
+  DenseTensor values = pten::Empty<T, Context>(dev_ctx, std::move(values_meta));
+  DenseTensor offsets =
+      pten::Empty<T, Context>(dev_ctx, std::move(offsets_meta));
   int64_t* coo_indices = indices.mutable_data<int64_t>(place);
   int64_t* batch_ptr = x_dims.size() == 2 ? nullptr : coo_indices;
   int64_t* coo_rows_data =
