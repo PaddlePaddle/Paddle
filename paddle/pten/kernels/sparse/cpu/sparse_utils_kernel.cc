@@ -76,10 +76,8 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
                                {sparse_dim, static_cast<int64_t>(non_zero_num)},
                                DataLayout::NCHW);
   DenseTensorMeta values_meta(x.meta().dtype, values_dims, x.meta().layout);
-  pten::DenseTensor indices =
-      pten::Empty<int64_t, Context>(dev_ctx, std::move(indices_meta));
-  pten::DenseTensor values =
-      pten::Empty<T, Context>(dev_ctx, std::move(values_meta));
+  pten::DenseTensor indices = pten::Empty(dev_ctx, std::move(indices_meta));
+  pten::DenseTensor values = pten::Empty(dev_ctx, std::move(values_meta));
   int64_t* indices_data = indices.mutable_data<int64_t>(place);
   T* values_data = values.mutable_data<T>(place);
 
@@ -123,10 +121,8 @@ void SparseCsrToCooKernel(const Context& dev_ctx,
   DenseTensorMeta indices_meta(
       DataType::INT64, {sparse_dim, non_zero_num}, DataLayout::NCHW);
   DenseTensorMeta values_meta(x.dtype(), {non_zero_num}, x.layout());
-  pten::DenseTensor indices =
-      pten::Empty<int64_t, Context>(dev_ctx, std::move(indices_meta));
-  pten::DenseTensor values =
-      pten::Empty<T, Context>(dev_ctx, std::move(values_meta));
+  pten::DenseTensor indices = pten::Empty(dev_ctx, std::move(indices_meta));
+  pten::DenseTensor values = pten::Empty(dev_ctx, std::move(values_meta));
   int64_t* coo_indices = indices.mutable_data<int64_t>(place);
   int64_t* batch_ptr = x_dims.size() == 2 ? nullptr : coo_indices;
   int64_t* coo_rows_data =
@@ -242,6 +238,49 @@ void SparseCooToCsrKernel(const Context& dev_ctx,
   out->SetMember(non_zero_crows, non_zero_cols, non_zero_elements, x_dims);
 }
 
+template <typename T, typename Context>
+void SparseCooToDenseKernel(const Context& dev_ctx,
+                            const SparseCooTensor& x,
+                            DenseTensor* out) {
+  const auto non_zero_num = x.nnz();
+  const auto dense_dims = x.dims();
+  const auto indices = x.non_zero_indices();
+  const auto values = x.non_zero_elements();
+  const auto indices_dims = indices.dims();
+  int64_t sparse_dim = indices_dims[0];
+  if (indices_dims.size() == 1) {
+    sparse_dim = 1;
+  }
+  const int64_t dense_dim = values.dims().size() - 1;
+
+  const auto place = dev_ctx.GetPlace();
+  const T* x_data = values.data<T>();
+  T* out_data = out->mutable_data<T>(place);
+  int64_t base_offset = 1;
+  for (int64_t i = 0; i < dense_dim; i++) {
+    base_offset *= dense_dims[sparse_dim + i];
+  }
+  std::vector<int64_t> sparse_offsets(sparse_dim);
+  int64_t offset = 1;
+  for (int i = sparse_dim - 1; i >= 0; i--) {
+    sparse_offsets[i] = offset;
+    offset *= dense_dims[i];
+  }
+
+  memset(out_data, 0, sizeof(T) * out->numel());
+  for (auto i = 0; i < non_zero_num; i++) {
+    int64_t index = 0;
+    for (int j = 0; j < sparse_dim; j++) {
+      index +=
+          indices.data<int64_t>()[j * non_zero_num + i] * sparse_offsets[j];
+    }
+
+    for (int j = 0; j < base_offset; j++) {
+      out_data[index * base_offset + j] = x_data[i * base_offset + j];
+    }
+  }
+}
+
 }  // namespace sparse
 }  // namespace pten
 
@@ -288,6 +327,32 @@ PT_REGISTER_KERNEL(dense_to_sparse_csr,
                    CPU,
                    ALL_LAYOUT,
                    pten::sparse::DenseToSparseCsrKernel,
+                   float,
+                   double,
+                   pten::dtype::float16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
+PT_REGISTER_KERNEL(sparse_coo_to_dense,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::sparse::SparseCooToDenseKernel,
+                   float,
+                   double,
+                   pten::dtype::float16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
+PT_REGISTER_KERNEL(sparse_csr_to_dense,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::sparse::SparseCsrToDenseKernel,
                    float,
                    double,
                    pten::dtype::float16,
