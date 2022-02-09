@@ -153,6 +153,8 @@ class ValueAccessor {
   }
 
   virtual float get_field(float* value, const std::string& name) { return 0.0; }
+#define DEFINE_GET_INDEX(class, field) \
+  virtual int get_##field##_index() override { return class ::field##_index(); }
 
  protected:
   size_t _value_size;

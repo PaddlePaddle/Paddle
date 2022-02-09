@@ -17,8 +17,7 @@ limitations under the License. */
 #include <cstdint>
 #include <memory>
 
-namespace paddle {
-namespace platform {
+namespace pten {
 
 using StreamId = uint64_t;
 class Stream final {
@@ -30,5 +29,4 @@ class Stream final {
   StreamId id_;
 };
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace pten
