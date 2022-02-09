@@ -63,30 +63,9 @@ static std::vector<int> CalcOutputSize(const std::vector<int>& input_shape,
 
 class PoolPlugin : public PluginTensorRT {
  public:
-  size_t getSerializationSize() const TRT_NOEXCEPT override {
-    return getBaseSerializationSize() + SerializedSize(ceil_mode_) +
-           SerializedSize(pool_type_) + SerializedSize(adaptive_) +
-           SerializedSize(exclusive_) + SerializedSize(ksize_) +
-           SerializedSize(strides_) + SerializedSize(paddings_) +
-           SerializedSize(real_paddings_) + SerializedSize(input_shape_) +
-           SerializedSize(output_shape_);
-  }
+  size_t getSerializationSize() const TRT_NOEXCEPT override;
 
-  // TRT will call this func when we need to serialize the configuration of
-  // tensorrt.
-  void serialize(void* buffer) const TRT_NOEXCEPT override {
-    serializeBase(buffer);
-    SerializeValue(&buffer, ceil_mode_);
-    SerializeValue(&buffer, pool_type_);
-    SerializeValue(&buffer, adaptive_);
-    SerializeValue(&buffer, exclusive_);
-    SerializeValue(&buffer, ksize_);
-    SerializeValue(&buffer, strides_);
-    SerializeValue(&buffer, paddings_);
-    SerializeValue(&buffer, real_paddings_);
-    SerializeValue(&buffer, input_shape_);
-    SerializeValue(&buffer, output_shape_);
-  }
+  void serialize(void* buffer) const TRT_NOEXCEPT override;
 
   enum class PoolType {
     max = 0,
