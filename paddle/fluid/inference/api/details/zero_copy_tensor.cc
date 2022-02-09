@@ -429,8 +429,9 @@ std::vector<int> Tensor::shape() const {
   PADDLE_ENFORCE_NOT_NULL(
       tensor_, paddle::platform::errors::PreconditionNotMet(
                    "Not found tensor called %s in the scope", name_));
-  // mkldnn may does layout transform internally, so need to reorder before
-  // return
+// mkldnn may does layout transform internally, so need to reorder before
+// return
+#ifdef PADDLE_WITH_MKLDNN
   if (tensor->layout() == paddle::framework::DataLayout::kMKLDNN) {
     paddle::framework::DataLayout out_layout =
         paddle::platform::MKLDNNDeviceContext::tls()
@@ -453,9 +454,9 @@ std::vector<int> Tensor::shape() const {
     } else {
       return paddle::framework::vectorize<int>(tensor->dims());
     }
-  } else {
-    return paddle::framework::vectorize<int>(tensor->dims());
   }
+#endif
+  return paddle::framework::vectorize<int>(tensor->dims());
 }
 
 void Tensor::SetLoD(const std::vector<std::vector<size_t>> &x) {
