@@ -128,13 +128,10 @@ class TestStackBF16Op(OpTest):
         self.attrs = {'axis': self.axis}
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            self.check_output_with_place(core.CUDAPlace(0))
+        self.check_output()
 
     def test_check_grad(self):
-        if core.is_compiled_with_cuda():
-            self.check_grad_with_place(
-                core.CUDAPlace(0), self.get_x_names(), 'Y')
+        self.check_grad(self.get_x_names(), 'Y')
 
 
 class TestStackAPIWithLoDTensorArray(unittest.TestCase):

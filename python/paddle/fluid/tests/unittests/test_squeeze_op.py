@@ -62,12 +62,10 @@ class TestSqueezeBF16Op(OpTest):
         self.outputs = {"Out": convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            self.check_output_with_place(core.CUDAPlace(0))
+        self.check_output()
 
     def test_check_grad(self):
-        if core.is_compiled_with_cuda():
-            self.check_grad_with_place(core.CUDAPlace(0), ["X"], "Out")
+        self.check_grad(["X"], "Out")
 
     def init_test_case(self):
         self.ori_shape = (1, 3, 1, 40)
