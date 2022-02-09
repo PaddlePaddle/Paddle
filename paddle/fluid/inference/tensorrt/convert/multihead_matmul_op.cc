@@ -109,7 +109,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
           PADDLE_ENFORCE_EQ(
               op_desc.HasAttr("fc_out_threshold"), true,
               platform::errors::InvalidArgument(
-                  "must have out threshold in multihead layers in int8 mode"));
+                  "must have out_threshold in multihead layers in int8 mode"));
           float out_scale =
               BOOST_GET_CONST(float, op_desc.GetAttr("fc_out_threshold"));
           engine_->SetTensorDynamicRange(fc_layer->getOutput(0), out_scale);
