@@ -194,8 +194,6 @@ struct LookupTableV2GradCUDAFunctor {
       int D = d_table_t->dims()[1];
       int K = ids_t_->numel();
 
-      dim3 threads(128, 8);
-      dim3 grids(8, 1);
       const T *d_output = d_output_t->template data<T>();
       const auto *ids = ids_t_->template data<IdT>();
       T *d_table = d_table_t->mutable_data<T>(context_.GetPlace());
@@ -203,13 +201,18 @@ struct LookupTableV2GradCUDAFunctor {
       auto t = framework::EigenVector<T>::Flatten(*d_table_t);
       t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
 
-      // todo(@limin): need to set to false when test performance.
+      // The true config is used to check precision. Need to set to false when
+      // test performance.
       if (FLAGS_lookup_table_v2_deterministic) {
+        dim3 threads(128, 1);
+        dim3 grids(1, 1);
         LookupTableV2Grad<T, IdT, 128, 1,
                           1><<<grids, threads, 0, dev_ctx.stream()>>>(
             d_table, d_output, ids, N, K, D);
 
       } else {
+        dim3 threads(128, 8);
+        dim3 grids(8, 1);
         LookupTableV2Grad<T, IdT, 128, 8,
                           8><<<grids, threads, 0, dev_ctx.stream()>>>(
             d_table, d_output, ids, N, K, D);
