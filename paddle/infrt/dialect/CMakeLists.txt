@@ -13,6 +13,7 @@ gather_srcs(infrt_src SRCS
     pd_types.cc
     pd_ops.cc
     )
+
 mlir_tablegen_on(basic_kernels)
 mlir_tablegen_on(test_kernels)
 mlir_tablegen_on(infrt_base DIALECT infrt)
@@ -34,3 +35,7 @@ add_dependencies(print-ir pd_ops_inc)
 cc_test_tiny(test_infrt_mlir_loader SRCS mlir_loader_test.cc DEPS infrt ${MLIR_IR_LIBS})
 
 add_subdirectory(tensorrt)
+
+if (INFRT_WITH_PTEN)
+    add_subdirectory(pten)
+endif()
