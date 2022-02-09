@@ -72,15 +72,15 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
 }
 
 void RunBackwardHooks(
-    const std::vector<std::vector<egr::EagerTensor>>& grad_tensors,
+    const std::vector<std::vector<paddle::experimental::Tensor>>& grad_tensors,
     egr::GradNodeBase* grad_node) {
   grad_node->ApplyGradientHooks(grad_tensors);
   VLOG(6) << "Apply Reduce Hooks for node";
   grad_node->ApplyReduceHooks();
 }
 
-void RunBackward(const std::vector<egr::EagerTensor>& tensors,
-                 const std::vector<egr::EagerTensor>& grad_tensors,
+void RunBackward(const std::vector<paddle::experimental::Tensor>& tensors,
+                 const std::vector<paddle::experimental::Tensor>& grad_tensors,
                  bool retain_graph) {
   VLOG(6) << "Start Backward";
   // *Gradient Hook should happen at node-level
@@ -94,7 +94,7 @@ void RunBackward(const std::vector<egr::EagerTensor>& tensors,
   std::unordered_map<GradNodeBase*, std::unique_ptr<GradTensorHolder>>
       node_input_buffers_dict;
   for (size_t i = 0; i < tensors.size(); i++) {
-    const egr::EagerTensor& tensor = tensors[i];
+    const paddle::experimental::Tensor& tensor = tensors[i];
 
     AutogradMeta* auto_grad_meta = EagerUtils::unsafe_autograd_meta(tensor);
     // Get grad input info from target tensors
@@ -180,7 +180,7 @@ void RunBackward(const std::vector<egr::EagerTensor>& tensors,
     // TODO(jiabin): Support post hook here and make hook run in seperate
     // operator
     // Run Pre Backward Node and get outputs
-    std::vector<std::vector<egr::EagerTensor>> grad_output_tensors =
+    std::vector<std::vector<paddle::experimental::Tensor>> grad_output_tensors =
         (*node)(node_input_buffer->Buffers());
     // TODO(jiabin): Should we erase it or find a more efficient way.
     node_input_buffers_dict.erase(node);
@@ -218,16 +218,14 @@ void RunBackward(const std::vector<egr::EagerTensor>& tensors,
                 "grad_output_tensors[i].size(), which is: %d. This error may "
                 "indicate autoprune or autograd api error. ",
                 grad_output_tensors.size()));
-        egr::EagerTensor& grad_output_tensor = grad_output_tensors[i][j];
+        paddle::experimental::Tensor& grad_output_tensor =
+            grad_output_tensors[i][j];
 
         if ((!grad_output_tensor.defined() ||
              !grad_output_tensor.initialized())) {
-          if (!grad_output_tensor.Var().IsInitialized()) {
-            VLOG(6)
-                << "We get grad_output_tensor with slot: " << i
-                << ", rank: " << j
-                << " as uninitialized or undefined in both tensor and variable";
-          }
+          VLOG(6)
+              << "We get grad_output_tensor with slot: " << i << ", rank: " << j
+              << " as uninitialized or undefined in both tensor and variable";
         }
         VLOG(6) << "Get Edge and grad_output_tensor with slot: " << i
                 << ", rank: " << j
