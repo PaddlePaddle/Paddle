@@ -47,10 +47,11 @@ TEST(DEV_API, sum) {
 
   std::vector<int64_t> axis = {0, 1};
   pten::CPUContext dev_ctx;
-  dev_ctx.SetDeviceAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
-          .get());
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(paddle::platform::CPUPlace())
+                           .get());
+  dev_ctx.Init();
+
   // 2. test API
   auto out =
       pten::Sum<float>(dev_ctx, dense_x, axis, pten::DataType::FLOAT32, false);

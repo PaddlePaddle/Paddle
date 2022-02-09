@@ -27,7 +27,7 @@ limitations under the License. */
 
 namespace pten {
 
-const std::string& TransToPtenKernelName(const std::string& fluid_op_name);
+std::string TransToPtenKernelName(const std::string& fluid_op_name);
 const std::string& TransToFluidOpName(const std::string& pten_kernel_name);
 
 Backend TransToPtenBackend(const pten::Place& place);
