@@ -392,7 +392,7 @@ static inline void GetDoubleGradSafeTensor(const DeviceContext &dev_ctx,
     *ddx_safe = *ddx;
   } else {
     auto meta = pten::DenseTensorMeta(x.dtype(), x.dims(), x.layout());
-    *ddx_safe = pten::Empty<T, DeviceContext>(dev_ctx, std::move(meta));
+    *ddx_safe = pten::Empty(dev_ctx, std::move(meta));
     ddx_safe->mutable_data(dev_ctx.GetPlace());
     paddle::operators::math::SetConstant<DeviceContext, T> set_zero;
     set_zero(dev_ctx, ddx_safe, static_cast<T>(0));
