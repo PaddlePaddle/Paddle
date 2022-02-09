@@ -19,8 +19,8 @@ namespace paddle {
 namespace pybind {
 
 typedef struct {
-  PyObject_HEAD egr::EagerTensor eager_tensor;
-} EagerTensorObject;
+  PyObject_HEAD paddle::experimental::Tensor tensor;
+} TensorObject;
 
 int TensorDtype2NumpyDtype(pten::DataType dtype);
 
@@ -32,13 +32,13 @@ int CastPyArg2AttrInt(PyObject* obj, ssize_t arg_pos);
 int64_t CastPyArg2AttrLong(PyObject* obj, ssize_t arg_pos);
 float CastPyArg2AttrFloat(PyObject* obj, ssize_t arg_pos);
 std::string CastPyArg2AttrString(PyObject* obj, ssize_t arg_pos);
-egr::EagerTensor CastPyArg2EagerTensor(PyObject* obj, ssize_t arg_pos);
-std::vector<egr::EagerTensor> CastPyArg2VectorOfEagerTensor(PyObject* obj,
-                                                            ssize_t arg_pos);
+paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj, ssize_t arg_pos);
+std::vector<paddle::experimental::Tensor> CastPyArg2VectorOfTensor(
+    PyObject* obj, ssize_t arg_pos);
 platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos);
 framework::Tensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos);
-std::vector<framework::LoDTensor> CastPyArg2VectorOfTensor(PyObject* obj,
-                                                           ssize_t arg_pos);
+std::vector<framework::LoDTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
+                                                               ssize_t arg_pos);
 std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos);
 framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
                                                     ssize_t arg_pos);
@@ -49,13 +49,13 @@ PyObject* ToPyObject(float value);
 PyObject* ToPyObject(double value);
 PyObject* ToPyObject(const char* value);
 PyObject* ToPyObject(const std::string& value);
-PyObject* ToPyObject(const egr::EagerTensor& value);
+PyObject* ToPyObject(const paddle::experimental::Tensor& value);
 PyObject* ToPyObject(const std::vector<bool>& value);
 PyObject* ToPyObject(const std::vector<int>& value);
 PyObject* ToPyObject(const std::vector<int64_t>& value);
 PyObject* ToPyObject(const std::vector<float>& value);
 PyObject* ToPyObject(const std::vector<double>& value);
-PyObject* ToPyObject(const std::vector<egr::EagerTensor>& value);
+PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value);
 PyObject* ToPyObject(const platform::Place& value);
 PyObject* ToPyObject(const framework::LoDTensor* value);
 PyObject* ToPyObject(const paddle::framework::proto::VarType::Type& dtype);
@@ -89,19 +89,18 @@ PyObject* ToPyObject(const std::tuple<Args...>& out) {
   return result;
 }
 
-egr::EagerTensor& GetEagerTensorFromArgs(const std::string& op_type,
-                                         const std::string& arg_name,
-                                         PyObject* args, ssize_t arg_idx,
-                                         bool dispensable = false);
-std::vector<egr::EagerTensor> GetEagerTensorListFromArgs(
+paddle::experimental::Tensor& GetTensorFromArgs(const std::string& op_type,
+                                                const std::string& arg_name,
+                                                PyObject* args, ssize_t arg_idx,
+                                                bool dispensable = false);
+std::vector<paddle::experimental::Tensor> GetTensorListFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable = false);
 
-egr::EagerTensor* GetEagerTensorPtrFromArgs(const std::string& op_type,
-                                            const std::string& arg_name,
-                                            PyObject* args, ssize_t arg_idx,
-                                            bool dispensable = false);
-std::vector<egr::EagerTensor*> GetEagerTensorPtrListFromArgs(
+paddle::experimental::Tensor* GetEagerTensorPtrFromArgs(
+    const std::string& op_type, const std::string& arg_name, PyObject* args,
+    ssize_t arg_idx, bool dispensable = false);
+std::vector<paddle::experimental::Tensor*> GetEagerTensorPtrListFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable = false);
 
