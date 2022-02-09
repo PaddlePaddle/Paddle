@@ -204,49 +204,62 @@ def poly(x):
     # df = 3(x - 1.01)(x - 0.99) = 3x^2 - 3*2x + 3*1.01*0.99
     # f = x^3 - 3x^2 + 3*1.01*0.99x
     return x * x * x - 3 * x * x + 3 * 1.01 * 0.99 * x
+
+def quadruple(x):
+    return 0.25 * x * x * x * x -  x * x * x + 0.4 * x * x
+
 class TestLinesearch(unittest.TestCase):
     def test_paddle(self):
         dtype = 'float32'
         x_min = 1.01
-        for start in [100.0]:
+        # for start in [-1.0, 0.98, 1.01]:
+        #     print(f'====================================')
+        #     print(f'starting at {start}')
+        #     x0 = paddle.to_tensor(start, dtype=dtype)
+        #     result = bfgs_minimize(poly, x0, dtype=dtype, ls_iters=100)
+        #     print(result)
+            # self.assertTrue(np.allclose(result.function_results, -np.inf))
+        # for start in [1.05, 1.1, 2.0, 100.0]:
+        x0s = np.arange(-1.0, 4.0, 0.1)
+        xs = np.zeros_like(x0s)
+        ys = np.zeros_like(xs)
+        rs = ['']*len(x0s)
+        for i, start in enumerate(x0s):
+            # print(f'===========c=========================')
+            # print(f'starting at {start}')
             x0 = paddle.to_tensor(start, dtype=dtype)
-            result = bfgs_minimize(poly, x0, dtype=dtype)
-            print(result)
-            self.assertTrue(np.allclose(result.function_results, -np.inf))
-        for start in [-1.0, 0.98]:
-            x0 = paddle.to_tensor(start, dtype=dtype)
-            result = bfgs_minimize(poly, x0, dtype=dtype)
-            print(result)
-            self.assertTrue(np.allclose(result.function_results, -np.inf))
-        for start in [1.0]:
-            x0 = paddle.to_tensor(start, dtype=dtype)
-            result = bfgs_minimize(poly, x0, dtype=dtype)
-            print(result)
-            self.assertTrue(np.allclose(result.x_location, x_min))
-        for start in [1.01]:
-            x0 = paddle.to_tensor(start, dtype=dtype)
-            result = bfgs_minimize(poly, x0, dtype=dtype)
-            print(result)
-            self.assertTrue(np.allclose(result.x_location, x_min))
-        for start in [1.1]:
-            x0 = paddle.to_tensor(start, dtype=dtype)
-            result = bfgs_minimize(poly, x0, dtype=dtype)
-            print(result)
-            self.assertTrue(np.allclose(result.x_location, x_min))
+            result = bfgs_minimize(poly, x0, dtype=dtype, ls_iters=100)
+            # result = bfgs_minimize(quadruple, x0, dtype=dtype, iters=100, ls_iters=100)
+            # print(result)
+            ys[i] = result.function_results[0]
+            status = result.result_status[0]
+            rs[i] = status
+            # self.assertTrue(np.allclose(result.x_location, x_min, atol=1e-3, rtol=1e-3))
+        for x0, y, r in zip(x0s, ys, rs):
+            print(f'[{x0}, {y}, {r}],')
 
     # def test_tf(self):
     #     def func_and_gradient(x):
-    #         return tfp.math.value_and_gradient(lambda x: tf.reduce_sum(poly(x)), x)
+    #         # return tfp.math.value_and_gradient(lambda x: tf.reduce_sum(poly(x)), x)
+    #         return tfp.math.value_and_gradient(lambda x: tf.reduce_sum(quadruple(x)), x)
     #     dtype = 'float32'
     #     x_min = tf.constant(1.01)
+    #     x0s = np.arange(1.0, 4.0, 0.1)
+    #     xs = np.zeros_like(x0s)
+    #     ys = np.zeros_like(xs)
+    #     rs = ['']*len(x0s)
     #     # for start in [-1.0, 0.98, 1.0, 1.01, 1.1, 100.0]:
-    #     for start in [100.0]:
+    #     for i, start in enumerate(x0s):
+    #     # for start in [1.05]:
     #         x0 = tf.constant([start], dtype=dtype)
     #         result = tfp.optimizer.bfgs_minimize(func_and_gradient,
     #                                              initial_position=x0)
-    #         print(f'converged: {result.converged}')
-    #         print(f'min_x: {result.position}')
-
+    #         # print(f'converged: {result.converged}')
+    #         # print(f'min_x: {result.position}')
+    #         ys[i] = result.objective_value.numpy()
+    #         rs[i] = result.converged.numpy()
+    #     for x0, y, r in zip(x0s, ys, rs):
+    #         print(f'[{x0}, {y}, {r}],')
 # dtype = 'float32'
 
 # center = np.random.rand(2)

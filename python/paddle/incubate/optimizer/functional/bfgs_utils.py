@@ -270,6 +270,10 @@ def matnorm(x):
     return paddle.norm(x, 'fro')
 
 
+def normalize(x, bat):
+    norm = vnorm_p(x).unsqueeze(-1) if bat else vnorm_p(x)
+    return x / norm
+
 def make_const(tensor_like, value, dtype=None):
     r"""Makes a tensor filled with specified constant value.
     

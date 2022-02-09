@@ -16,7 +16,7 @@ import paddle
 from paddle import dot, einsum
 from .bfgs_utils import vjp
 from .bfgs_utils import (StepCounter, StepCounterException, vnorm_inf, vnorm_p,
-                         ternary, make_const, SearchState)
+                         normalize, ternary, make_const, SearchState)
 
 hz_default_params = {
     'eps': 1e-6,
@@ -290,7 +290,8 @@ class HagerZhang(SearchState):
                 c = psi_0 * paddle.abs(f0) / vnorm_p(g0)**2
                 c = ternary(f0 == 0, paddle.ones_like(f0), c)
             else:
-                c = psi_0 * vnorm_inf(x0) / vnorm_inf(g0)
+                # c = psi_0 * vnorm_inf(x0) / vnorm_inf(g0)
+                c = make_const(f0, 1.0)
 
             self.ak = c
         else:
@@ -324,9 +325,10 @@ class HagerZhang(SearchState):
 
         # falling = make_const(f0, True, dtype='bool')
         bisect_pred = ifcond
+        span = paddle.abs(b - a)
         while self.any_active_with_predicates(bisect_pred & ~self.stop):
-            # d = (1.0 - theta) * a + theta * b
-            d = a + theta * (b - a)
+            d = (1.0 - theta) * a + theta * b
+            # d = a + theta * (b - a)
 
             f, g = self.func_and_deriv(self.phi, d)
 
@@ -337,11 +339,14 @@ class HagerZhang(SearchState):
             b = ternary(bisect_pred & ~falling, d, b)
 
             # Condition b and c.
-            bisect_pred = bisect_pred & falling
+            bisect_pred &= falling
             a = ternary(bisect_pred & lo, d, a)
             b = ternary(bisect_pred & ~lo, d, b)
-            print(f'bisect a: {a.numpy()}    b: {b.numpy()}')
+            # print(f'bisect a: {a.numpy()}    b: {b.numpy()}')
             
+            new_span = paddle.abs(b - a)
+            bisect_pred &= (new_span < span)
+            span = new_span 
             self.update_stop(a)
             self.update_stop(b)
         return a, b
@@ -389,7 +394,7 @@ class HagerZhang(SearchState):
             # Sets [prev_c, c] to [c, rho*c] if B3 is true.
             prev_c = ternary(expanding_pred, c, prev_c)
             c = ternary(expanding_pred, rho * c, c)
-            print(f'expanding  c: {c.numpy()}')
+            # print(f'expanding  c: {c.numpy()}')
             # Calculates the function values and gradients.
             f, g = self.func_and_deriv(self.phi, c)
             self.update_stop(c, f, g)
@@ -426,7 +431,8 @@ class HagerZhang(SearchState):
         fb, gb = self.func_and_deriv(self.phi, b)
     
         delta = gb - ga
-        mean = a + 0.5 * (b - a)
+        # mean = a + 0.5 * (b - a)
+        mean = 0.5 * (a + b)
         weighted_mean = (a * gb - b * ga) / delta
         c = paddle.where(delta == 0.0, mean, weighted_mean)
 
@@ -551,6 +557,8 @@ class HagerZhang(SearchState):
         Ck = Ck + (paddle.abs(fk) - Ck) / Qk
         self.Qk, self.Ck = Qk, Ck
     
+        # pk = normalize(pk, bat)
+
         def phi(a):
             r'''
             phi is the objective function projected on the direction `pk`.
@@ -579,8 +587,7 @@ class HagerZhang(SearchState):
         self.stop_lowerbound |= self.is_lowerbound(fk)
         self.stop_blowup |= self.is_blowup(fk, deriv)
         rising = deriv >= .0
-        print(f'deriv >= 0:  {rising.numpy()}')
-        print(f'islowerbound : {fk.numpy()}')
+        # print(f'phiprime0: {deriv}   rising: {rising}')
         self.update_state(self.stop_lowerbound, 'converged')
         self.update_state(self.stop_blowup, 'blowup')
         self.update_state(rising, 'failed')
@@ -600,7 +607,7 @@ class HagerZhang(SearchState):
         # Generates initial step sizes
         c = self.initial()
         self.ak = c
-        print(f'ls  \nInitial step size: {c.numpy()}')
+        # print(f'ls  \nInitial step size: {c.numpy()}')
 
         import traceback
         try:
@@ -610,15 +617,18 @@ class HagerZhang(SearchState):
 
             # Finds the first opposite-sloped bracket 
             a_j, b_j = self.bracket(phi, c)
+            bracket_span = b_j - a_j
+            shrunk = bracket_span > 0.0
             # Continues if there's line search still active
-            while not self.should_stop():
+            while self.any_active_with_predicates(shrunk & ~self.stop):
                 # Applies secant2 to the located intervals
                 a, b = self.secant2(a_j, b_j)
 
-                print(f'secant2 a: {a.numpy()}     b: {b.numpy()}')
-                next_c = a + 0.5 * (b - a)
+                # print(f'secant2 a: {a.numpy()}     b: {b.numpy()}')
+                # next_c = a + 0.5 * (b - a)
+                next_c = 0.5 * (a + b)
                 c = ternary(self.stop, c, next_c)
-
+                # print(f'next_c: {c}')
                 self.update_stop(c)
 
                 # If interval does not shrink enough, then applies bisect
@@ -634,10 +644,14 @@ class HagerZhang(SearchState):
 
                 # Goes to next iteration
                 a_j, b_j = a, b
+                new_span = b_j - a_j
+                shrunk = new_span < bracket_span
+                bracket_span = new_span
+
         except StepCounterException as count_e:
             # traceback.print_exc()
             pass
 
         # Changes state due to failed line search
-        print(f'ak {self.ak}')
+        # print(f'ak {self.ak}')
         return self.ak

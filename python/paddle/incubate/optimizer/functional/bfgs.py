@@ -86,6 +86,7 @@ def update_approx_inverse_hessian(state, H, s, y, enforce_curvature=False):
         if enforce_curvature:
             assert not state.any_active_with_predicates(rho <= 0)
         else:
+            # print(f'Curvature condition failed:  rho={rho}')
             state.update_state(~state.stop & (rho <= 0), 'failed')
 
         # By expanding the updating formula we obtain a sum of tensor products
@@ -207,7 +208,7 @@ def iterates(func,
 
     # Updates the state tensor on the newly converged elements.
     HZ.update_state(gnorm < gtol, 'converged')
-
+    yield HZ
     try:
         # Starts to count the number of iterations.
         iter_count = StepCounter(iters)
@@ -244,6 +245,9 @@ def iterates(func,
             # Calculates the gradient difference y_k = g_k+1 - g_k
             yk = next_gk - gk
 
+            # print(f'next_xk: {next_xk}')
+            # print(f'sk: {sk}')
+            # print(f'yk: {yk}')
             # Updates the approximate inverse hessian
             next_Hk = update_approx_inverse_hessian(HZ, Hk, sk, yk)
 
@@ -262,6 +266,7 @@ def iterates(func,
             HZ.update_state(HZ.gnorm < gtol, 'converged')
             HZ.update_state(HZ.stop_lowerbound, 'converged')
             HZ.update_state(HZ.stop_blowup, 'blowup')
+
 
             HZ.reset_grads()
             HZ.k = k + 1
