@@ -145,7 +145,7 @@ HostTraceEventNode* NodeTrees::BuildTreeRelationship(
   // root node, top level
   auto root_node = new HostTraceEventNode(
       HostTraceEvent(std::string("root node"), TracerEventType::UserDefined, 0,
-                     LLONG_MAX, 0, 0));
+                     ULLONG_MAX, 0, 0));
   // push root node into node_stack
   node_stack.push_back(root_node);
   // handle host_event_nodes
