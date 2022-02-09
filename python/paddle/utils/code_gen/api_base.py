@@ -191,7 +191,7 @@ class BaseAPI(object):
 
     def gene_api_declaration(self):
         api_declaration = f"""
-{self.outputs['return_type']} {self.api}({self.args_str['args_declare']});
+PADDLE_API {self.outputs['return_type']} {self.api}({self.args_str['args_declare']});
 """
 
         return api_declaration
@@ -448,7 +448,7 @@ class BaseAPI(object):
             outputs_args, kernel_output_names, output_create = self.gene_output(
                 self.outputs['types'])
             return f"""
-{self.outputs['return_type']} {self.api}({self.args_str["args_define"]}) {{
+PADDLE_API {self.outputs['return_type']} {self.api}({self.args_str["args_define"]}) {{
 {self.gene_kernel_select()}
 
   auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
