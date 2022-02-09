@@ -241,7 +241,7 @@ void TensorCopyAsync(framework::LoDTensor* dst,
   void* dst_data = dst->mutable_data(dst_place, dst->dtype());
   VLOG(3) << "[CopyAsync lite -> fluid] Bytes = " << bytes << ", src = " << &src
           << ", dst = " << dst
-          << ", src_type = " framework::TransToProtoVarType(<< dst->dtype());
+          << ", src_type = " << framework::TransToProtoVarType(<< dst->dtype());
   MemoryCopyAsync(dst_place, dst_data, src_place, src_data, bytes, ctx);
   VLOG(3) << "[Lite memory size] Bytes = " << bytes;
 }
