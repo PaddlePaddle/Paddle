@@ -21,7 +21,7 @@ import sys
 import argparse
 from argparse import ArgumentParser, REMAINDER
 
-__all__ = ['perf_analyse']
+__all__ = []
 
 
 def _parse_args():
@@ -136,6 +136,9 @@ class NsightRunnerForModelAnalyse(object):
         return gpu_time / percent
 
     def parse_logs(self, logs, profile_start_step, profile_end_step):
+        """
+        parse logs to analyse performance.
+        """
         kernel_line_from = None
         kernel_line_to = None
         memcpy_line_from = None
@@ -252,6 +255,37 @@ class NsightRunnerForOpAnalyse(object):
             return
         print("Parse Error:\n {}".format(stdout))
 
+    def _preprocess_logs(self, logs, op_type_list, _nvtx_meta_data_dict):
+        """
+        get the op_type counted in the profile.
+        get the scheduling list that needs to be analyse.
+        """
+        flag_nvtx_time_start = False
+        nvtx_time_start_step = 0
+
+        for i in range(len(logs)):
+            line = _parse_string(logs[i])
+            if flag_nvtx_time_start:
+                infos = line.strip().split()
+                if not infos:
+                    continue
+                nvtx_range_type = infos[-1]
+                if nvtx_range_type in ['pybind_imperative_func', 'compute']:
+                    op_type = infos[-2]
+                    if op_type not in op_type_list and '_grad' not in op_type:
+                        op_type_list.append(op_type)
+                        _nvtx_meta_data_dict[op_type +
+                                             ' pybind_imperative_func'] = None
+                        _nvtx_meta_data_dict[op_type] = None
+                        _nvtx_meta_data_dict[op_type + ' compute'] = None
+                        _nvtx_meta_data_dict[op_type + '_grad'] = None
+                        _nvtx_meta_data_dict[op_type + '_grad compute'] = None
+            if not flag_nvtx_time_start and 'NVTX Push-Pop Range Statistics:' in line:
+                flag_nvtx_time_start = True
+                nvtx_time_start_step = i
+
+        return nvtx_time_start_step
+
     def _to_float(self, s):
         return float(s.replace(',', ''))
 
@@ -260,8 +294,8 @@ class NsightRunnerForOpAnalyse(object):
         Within a step, the same OP may be executed multiple times. When the information
          within the OP is analyzed, each OP needs to be statistics separately.
         """
-        total_time = self._to_float(l[1])
-        max_time = self._to_float(l[5])
+        total_time = self._to_float(l[1]) * 1E-6
+        max_time = self._to_float(l[5]) * 1E-6
         num_calls = self._to_float(l[2]) - 1
         return (total_time - max_time) / num_calls
 
@@ -272,19 +306,49 @@ class NsightRunnerForOpAnalyse(object):
          as a whole in a step. 
         """
         # The same op may appear multiple times within a step.
-        total_time = self._to_float(l[1])
-        max_time = self._to_float(l[5])
+        total_time = self._to_float(l[1]) * 1E-6
+        max_time = self._to_float(l[5]) * 1E-6
         return (total_time - max_time) / (num_step - 1)
 
     def _calculate_scheduling_time(self, outside_time, inside_time):
+        """
+        make sure that neither outside_time nor inside_time is None.
+        """
         if outside_time and inside_time:
-            return round(outside_time - inside_time, 2)
+            return round(outside_time - inside_time, 6)
         return None
 
+    def _get_scheduling_time_from_meta_data(self, op_type, meta_data_dict):
+        tmp_op_time_dict = {}
+        tmp_op_time_dict['imperative_avg_time'] = meta_data_dict[
+            op_type + ' pybind_imperative_func']
+        tmp_op_time_dict['fwd_trace_op_avg_time'] = meta_data_dict[op_type]
+        tmp_op_time_dict['fwd_op_compute_avg_time'] = meta_data_dict[op_type +
+                                                                     ' compute']
+        tmp_op_time_dict['bwd_trace_op_avg_time'] = meta_data_dict[op_type +
+                                                                   '_grad']
+        tmp_op_time_dict['bwd_op_compute_avg_time'] = meta_data_dict[
+            op_type + '_grad compute']
+
+        tmp_op_time_dict[
+            'imperative_call_time'] = self._calculate_scheduling_time(
+                tmp_op_time_dict['imperative_avg_time'],
+                tmp_op_time_dict['fwd_trace_op_avg_time'])
+        tmp_op_time_dict[
+            'fwd_trace_op_call_time'] = self._calculate_scheduling_time(
+                tmp_op_time_dict['fwd_trace_op_avg_time'],
+                tmp_op_time_dict['fwd_op_compute_avg_time'])
+        tmp_op_time_dict[
+            'bwd_trace_op_call_time'] = self._calculate_scheduling_time(
+                tmp_op_time_dict['bwd_trace_op_avg_time'],
+                tmp_op_time_dict['bwd_op_compute_avg_time'])
+        return tmp_op_time_dict
+
     def parse_logs(self, logs, profile_start_step, profile_end_step):
-        flag_nvtx_time_start = False
+        """
+        parse logs to analyse performance.
+        """
         parse_status = False
-        nvtx_time_start_step = 0
         total_step_time = 0.0
         total_op_call_time_per_step = 0.0
         # num step of using profile
@@ -304,28 +368,10 @@ class NsightRunnerForOpAnalyse(object):
         _nvtx_meta_data_dict = {}
         scheduling_time_dict = {}
 
-        # get the op_type counted in the profile.
-        # get the scheduling list that needs to be analyse.
-        for i in range(len(logs)):
-            line = _parse_string(logs[i])
-            if flag_nvtx_time_start:
-                infos = line.strip().split()
-                if not infos:
-                    continue
-                nvtx_range_type = infos[-1]
-                if nvtx_range_type == 'pybind_imperative_func' or nvtx_range_type == 'compute':
-                    op_type = infos[-2]
-                    if op_type not in op_type_list and '_grad' not in op_type:
-                        op_type_list.append(op_type)
-                        _nvtx_meta_data_dict[op_type +
-                                             ' pybind_imperative_func'] = None
-                        _nvtx_meta_data_dict[op_type] = None
-                        _nvtx_meta_data_dict[op_type + ' compute'] = None
-                        _nvtx_meta_data_dict[op_type + '_grad'] = None
-                        _nvtx_meta_data_dict[op_type + '_grad compute'] = None
-            if not flag_nvtx_time_start and 'NVTX Push-Pop Range Statistics:' in line:
-                flag_nvtx_time_start = True
-                nvtx_time_start_step = i
+        # preprocess logs to get op_type appeared in logs and
+        # initialize data in _nvtx_meta_data_dict to None.
+        nvtx_time_start_step = self._preprocess_logs(logs, op_type_list,
+                                                     _nvtx_meta_data_dict)
 
         # parse report to get meta scheduling time
         for i in range(nvtx_time_start_step, len(logs)):
@@ -334,7 +380,7 @@ class NsightRunnerForOpAnalyse(object):
             if not infos:
                 continue
             nvtx_range_type = infos[-1]
-            if nvtx_range_type == 'pybind_imperative_func' or nvtx_range_type == 'compute':
+            if nvtx_range_type in ['pybind_imperative_func', 'compute']:
                 nvtx_range_type = infos[-2] + ' ' + nvtx_range_type
 
             # step time
@@ -342,12 +388,13 @@ class NsightRunnerForOpAnalyse(object):
                     nvtx_range_type) > profile_start_step and int(
                         nvtx_range_type) < profile_end_step - 1:
                 step_count += 1
-                step_time = self._to_float(infos[1])
+                step_time = self._to_float(infos[1]) * 1E-6
                 total_step_time += step_time
 
+            # nvtx time
             if nvtx_range_type in _nvtx_meta_data_dict:
                 avg_time = self._calculate_avg_time_per_op(infos)
-                _nvtx_meta_data_dict[nvtx_range_type] = round(avg_time, 2)
+                _nvtx_meta_data_dict[nvtx_range_type] = round(avg_time, 6)
 
                 if '_grad' in nvtx_range_type and 'compute' not in nvtx_range_type or 'pybind_imperative_func' in nvtx_range_type:
                     total_op_call_time_per_step += self._calculate_avg_time_per_step(
@@ -355,40 +402,17 @@ class NsightRunnerForOpAnalyse(object):
 
         # analyse scheduling time
         scheduling_time_dict['step_time'] = round(
-            total_step_time / step_count, 2) if step_count != 0 else None
+            total_step_time / step_count, 6) if step_count != 0 else None
         scheduling_time_dict['op_call_time_per_step'] = round(
-            total_op_call_time_per_step, 2)
+            total_op_call_time_per_step, 6)
         scheduling_time_dict[
             'python_call_time'] = self._calculate_scheduling_time(
                 scheduling_time_dict['step_time'],
                 scheduling_time_dict['op_call_time_per_step'])
         for op_type in op_type_list:
-            tmp_op_time_dict = {}
-            tmp_op_time_dict['imperative_avg_time'] = _nvtx_meta_data_dict[
-                op_type + ' pybind_imperative_func']
-            tmp_op_time_dict['fwd_trace_op_avg_time'] = _nvtx_meta_data_dict[
-                op_type]
-            tmp_op_time_dict['fwd_op_compute_avg_time'] = _nvtx_meta_data_dict[
-                op_type + ' compute']
-            tmp_op_time_dict['bwd_trace_op_avg_time'] = _nvtx_meta_data_dict[
-                op_type + '_grad']
-            tmp_op_time_dict['bwd_op_compute_avg_time'] = _nvtx_meta_data_dict[
-                op_type + '_grad compute']
-
-            tmp_op_time_dict[
-                'imperative_call_time'] = self._calculate_scheduling_time(
-                    tmp_op_time_dict['imperative_avg_time'],
-                    tmp_op_time_dict['fwd_trace_op_avg_time'])
-            tmp_op_time_dict[
-                'fwd_trace_op_call_time'] = self._calculate_scheduling_time(
-                    tmp_op_time_dict['fwd_trace_op_avg_time'],
-                    tmp_op_time_dict['fwd_op_compute_avg_time'])
-            tmp_op_time_dict[
-                'bwd_trace_op_call_time'] = self._calculate_scheduling_time(
-                    tmp_op_time_dict['bwd_trace_op_avg_time'],
-                    tmp_op_time_dict['bwd_op_compute_avg_time'])
-
-            scheduling_time_dict[op_type] = tmp_op_time_dict
+            scheduling_time_dict[
+                op_type] = self._get_scheduling_time_from_meta_data(
+                    op_type, _nvtx_meta_data_dict)
 
         parse_status = True
         return parse_status, op_type_list, scheduling_time_dict
@@ -396,7 +420,7 @@ class NsightRunnerForOpAnalyse(object):
     def _print_scheduling_time(self, op_type_list, time_dict):
         print('\n')
         print('{:*^80}'.format('OP Dygraph Scheduling Profiling Report'))
-        print('Time unit: ns\n')
+        print('Time unit: ms\n')
         print('{:^70}  {:^10}'.format('dygraph scheduling process', 'time'))
 
         for op_type in op_type_list:
@@ -439,9 +463,9 @@ class NsightRunnerForOpAnalyse(object):
         print('\n')
 
 
-def perf_analyse():
+def _perf_analysis():
     """
-    Automatically analyze dygraph scheduling performance ``python -m paddle.fluid.perf_analyse``.
+    Automatically analyze dygraph scheduling performance ``python -m paddle.utils.launch_perf_analysis``.
 
     Used to analyze the scheduling overhead during dygraph execution from the report generated by
      the profile tool. Currently only supports ``Nsight System`` performance analysis tool. Make sure
@@ -450,7 +474,7 @@ def perf_analyse():
     Usage:
         .. code-block:: bash
 
-            python -m paddle.fluid.perf_analyse [-h] [--tool {nsys}] [--mode {model,op,all}]
+            python -m paddle.utils.launch_perf_analysis [-h] [--tool {nsys}] [--mode {model,op,all}]
                                         [--profile_start_step PROFILE_START_STEP]
                                         [--profile_end_step PROFILE_END_STEP] [-o OUTPUT]
                                         [-f {true,false}]
@@ -521,7 +545,7 @@ def perf_analyse():
     Examples 1 (model mode):
         .. code-block:: bash
 
-            python -m paddle.fluid.perf_analyse --mode model --profile_start_step 10 --profile_end_step 110 test_matmul.py
+            python -m paddle.utils.launch_perf_analysis --mode model --profile_start_step 10 --profile_end_step 110 test_matmul.py
 
             
             # The following information is output: 
@@ -533,21 +557,21 @@ def perf_analyse():
             Time unit: ms
 
             ======================================Step======================================
-            average time in a step                                                0.122781
+            average time in a step                                                0.109621
             ======================================CUDA======================================
-            cuda kernel time in a step                                            0.00339739
+            cuda kernel time in a step                                            0.00354393
             cuda memcpy time in a step                                            0.0
             --------------------------------------------------------------------------------
-            average time on cuda side in a step                                   0.00339739
+            average time on cuda side in a step                                   0.00354393
             =====================================Blank======================================
-            blank time in a step                                                  0.119383
-            percentage of blank time (%)                                          97.233
+            blank time in a step                                                  0.106077
+            percentage of blank time (%)                                          96.7671
 
 
     Examples 2 (op mode):
         .. code-block:: bash
 
-            python -m paddle.fluid.perf_analyse --mode op --profile_start_step 10 --profile_end_step 110 test_matmul.py
+            python -m paddle.utils.launch_perf_analysis --mode op --profile_start_step 10 --profile_end_step 110 test_matmul.py
 
             
             # The following information is output:
@@ -556,18 +580,18 @@ def perf_analyse():
 
 
             *********************OP Dygraph Scheduling Profiling Report*********************
-            Time unit: ns
+            Time unit: ms
 
                                 dygraph scheduling process                           time
 
 
             ==================================matmul_v2 op==================================
                                             [Forward]
-            scheduling time of [imperative_op method in Pybind]                    11956.07
-            scheduling time of [TraceOP] other than Run OP                         21632.19
-            scheduling time of [OP Compute method] when OP is executed             36613.59
+            scheduling time of [imperative_op method in Pybind]                    0.008472
+            scheduling time of [TraceOP] other than Run OP                         0.015009
+            scheduling time of [OP Compute method] when OP is executed             0.023645
             --------------------------------------------------------------------------------
-            overall scheduling time of [Forward OP]                                70201.85
+            overall scheduling time of [Forward OP]                                0.047126
                                             [Backward]
             scheduling time of [TraceOP] other than Run Grad OP                    None
             scheduling time of [OP Compute method] when Grad OP is executed        None
@@ -577,11 +601,11 @@ def perf_analyse():
 
             ===============================elementwise_add op===============================
                                             [Forward]
-            scheduling time of [imperative_op method in Pybind]                    12921.39
-            scheduling time of [TraceOP] other than Run OP                         20388.43
-            scheduling time of [OP Compute method] when OP is executed             31837.75
+            scheduling time of [imperative_op method in Pybind]                    0.008631
+            scheduling time of [TraceOP] other than Run OP                         0.013468
+            scheduling time of [OP Compute method] when OP is executed             0.019308
             --------------------------------------------------------------------------------
-            overall scheduling time of [Forward OP]                                65147.57
+            overall scheduling time of [Forward OP]                                0.041407
                                             [Backward]
             scheduling time of [TraceOP] other than Run Grad OP                    None
             scheduling time of [OP Compute method] when Grad OP is executed        None
@@ -590,15 +614,15 @@ def perf_analyse():
 
 
             ====================================Summary=====================================
-            overall scheduling time of [Forward and Backward OP]                   135349.41
-            [Python API Call Time] and Overhead of [Pybind Binding C++ OP] etc.    24619.26
-            average time for a [Step]                                              159968.67
+            overall scheduling time of [Forward and Backward OP]                   0.088533
+            [Python API Call Time] and Overhead of [Pybind Binding C++ OP] etc.    0.021088
+            average time for a [Step]                                              0.109621
 
 
     Examples 3 (all mode):
         .. code-block:: bash
 
-            python -m paddle.fluid.perf_analyse --mode all --profile_start_step 10 --profile_end_step 110 test_matmul.py
+            python -m paddle.utils.launch_perf_analysis --mode all --profile_start_step 10 --profile_end_step 110 test_matmul.py
 
             
             # output all information including `model` and `op` mode 
@@ -621,17 +645,13 @@ def perf_analyse():
                                 " ".join(args.running_script_args))
         stdout, exit_code = _nsys_cmd(cmd, args)
         if exit_code == 0:
-            if args.mode == 'model' or args.mode == 'all':
+            if args.mode in ['model', 'all']:
                 runner = NsightRunnerForModelAnalyse()
                 runner.run(stdout, args.profile_start_step,
                            args.profile_end_step)
-            if args.mode == 'op' or args.mode == 'all':
+            if args.mode in ['op', 'all']:
                 runner = NsightRunnerForOpAnalyse()
                 runner.run(stdout, args.profile_start_step,
                            args.profile_end_step)
         else:
             print("Running Error:\n {}".format(stdout))
-
-
-if __name__ == "__main__":
-    perf_analyse()
