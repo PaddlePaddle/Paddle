@@ -48,7 +48,7 @@ size_t PoolPlugin::getSerializationSize() const TRT_NOEXCEPT {
 // TRT will call this func when we need to serialize the configuration of
 // tensorrt.
 void PoolPlugin::serialize(void *buffer) const TRT_NOEXCEPT {
-  std::cout << "#############test_ser############" << std::endl;
+  std::cout << "#############test_serialize############" << std::endl;
   serializeBase(buffer);
   SerializeValue(&buffer, ceil_mode_);
   SerializeValue(&buffer, pool_type_);
