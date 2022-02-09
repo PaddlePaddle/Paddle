@@ -70,14 +70,10 @@ class TestReshapeBF16Op(OpTest):
         self.infered_shape = (12, 10)
 
     def test_check_output(self):
-        if not core.is_compiled_with_cuda():
-            return
-        self.check_output_with_place(core.CUDAPlace(0), no_check_set=['XShape'])
+        self.check_output(no_check_set=['XShape'])
 
     def test_check_grad(self):
-        if not core.is_compiled_with_cuda():
-            return
-        self.check_grad_with_place(core.CUDAPlace(0), ["X"], "Out")
+        self.check_grad(["X"], "Out")
 
 
 class TestReshapeOpDimInfer1(TestReshapeOp):

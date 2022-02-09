@@ -507,14 +507,10 @@ class TestBF16(OpTest):
         self.infer_flags = [1, 1, 1]
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
-        if core.is_compiled_with_cuda():
-            self.check_output_with_place(place)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        place = core.CUDAPlace(0)
-        if core.is_compiled_with_cuda():
-            self.check_grad_with_place(place, ['Input'], 'Out')
+        self.check_grad(['Input'], 'Out')
 
 
 # Test python API

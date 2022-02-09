@@ -248,14 +248,10 @@ class TestBF16DropoutOp(OpTest):
         }
 
     def test_check_output(self):
-        if not core.is_compiled_with_cuda():
-            return
-        self.check_output_with_place(core.CUDAPlace(0))
+        self.check_output()
 
     def test_check_grad_normal(self):
-        if not core.is_compiled_with_cuda():
-            return
-        self.check_grad_with_place(core.CUDAPlace(0), ['X'], 'Out')
+        self.check_grad(['X'], 'Out')
 
 
 class TestDropoutOpWithSeedOnCPUPlace(unittest.TestCase):
