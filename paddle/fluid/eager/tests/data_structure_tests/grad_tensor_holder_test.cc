@@ -40,9 +40,9 @@ TEST(GradTensorHolder, Constructor) {
           paddle::platform::CPUPlace())
           .get(),
       meta);
-  EagerTensor et = EagerTensor(dt);
+  paddle::experimental::Tensor et = paddle::experimental::Tensor(dt);
 
-  std::vector<std::vector<EagerTensor>> inputs;
+  std::vector<std::vector<paddle::experimental::Tensor>> inputs;
   inputs.push_back({et});
 
   GradTensorHolder grad_tensor_holder4 = GradTensorHolder(std::move(inputs));
@@ -57,16 +57,16 @@ TEST(GradTensorHolder, Interfaces) {
           paddle::platform::CPUPlace())
           .get(),
       meta);
-  dt0->mutable_data<float>()[0] = 10.0;
-  EagerTensor et0 = EagerTensor(dt0);
+  dt0->mutable_data<float>(paddle::platform::CPUPlace())[0] = 10.0;
+  paddle::experimental::Tensor et0 = paddle::experimental::Tensor(dt0);
 
   std::shared_ptr<pten::DenseTensor> dt1 = std::make_shared<pten::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
           .get(),
       meta);
-  dt1->mutable_data<float>()[0] = 20.0;
-  EagerTensor et1 = EagerTensor(dt1);
+  dt1->mutable_data<float>(paddle::platform::CPUPlace())[0] = 20.0;
+  paddle::experimental::Tensor et1 = paddle::experimental::Tensor(dt1);
 
   // Constructor empty GradTensorHolder
   GradSlotMeta slot_meta;

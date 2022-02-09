@@ -145,7 +145,7 @@ void TestHcomRecvOp(f::Scope* scope, const p::DeviceContext& ctx) {
   }
   VLOG(3) << "Run op recv_v2";
   std::vector<float> out_vec;
-  TensorToVector(*tensor_out, ctx, &out_vec);
+  paddle::framework::TensorToVector(*tensor_out, ctx, &out_vec);
   ctx.Wait();
   std::vector<float> init(num * num, 1.0 * atoi(getenv("DEST_RANK")));
   EXPECT_EQ(out_vec == init, true);

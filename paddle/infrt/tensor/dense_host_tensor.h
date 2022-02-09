@@ -24,7 +24,8 @@ namespace infrt {
 class Buffer;
 }  // namespace infrt
 
-namespace infrt::tensor {
+namespace infrt {
+namespace tensor {
 
 enum class DeviceKind {
   kCPU = 0,
@@ -36,6 +37,7 @@ class Tensor {
   virtual ~Tensor() = default;
 
   const TensorMetadata& metadata() const { return metadata_; }
+  TensorMetadata* mutable_metadata() { return &metadata_; }
 
  protected:
   Tensor() = default;
@@ -70,9 +72,11 @@ class DenseHostTensor : public HostTensor {
  public:
   DenseHostTensor() = default;
   DenseHostTensor(const TensorShape& shape, DType dtype);
+  DenseHostTensor(std::initializer_list<int64_t>&& list, DType dtype);
 
   void Init(const std::vector<int64_t>& shape, DType dtype);
   const TensorShape& shape() const;
+  TensorShape* mutable_shape();
 
   const Buffer* buffer() const;
 
@@ -89,4 +93,5 @@ class DenseHostTensor : public HostTensor {
   std::shared_ptr<Buffer> buffer_;
 };
 
-}  // namespace infrt::tensor
+}  // namespace tensor
+}  // namespace infrt

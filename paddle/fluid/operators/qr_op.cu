@@ -74,7 +74,7 @@ class QrGPUKernel : public framework::OpKernel<T> {
         context.GetPlace(), size_t(batch_size * m * n * sizeof(math::Real<T>)));
     // BatchedGeqrf performs computation in-place and 'qr' must be a copy of
     // input
-    TensorCopy(x, context.GetPlace(), &qr);
+    paddle::framework::TensorCopy(x, context.GetPlace(), &qr);
 
     // Prepare tau
     auto tau_dims_vec = framework::vectorize<int>(x_dims);

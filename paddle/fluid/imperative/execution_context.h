@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/imperative/var_helper.h"
 
 namespace paddle {
 namespace imperative {
@@ -33,34 +34,35 @@ class DygraphExecutionContext : public framework::ExecutionContext {
                           const framework::Scope& scope,
                           const platform::DeviceContext& device_context,
                           const framework::RuntimeContext& ctx,
-                          const NameVarMap<VarType>& var_base_map_in,
-                          const NameVarMap<VarType>& var_base_map_out,
+                          const NameVarMap<VarType>& var_map_in,
+                          const NameVarMap<VarType>& var_map_out,
                           const framework::AttributeMap& attrs,
                           const framework::AttributeMap& default_attrs)
       : ExecutionContext(op, scope, device_context, ctx),
-        var_base_map_in_(var_base_map_in),
-        var_base_map_out_(var_base_map_out),
+        var_map_in_(var_map_in),
+        var_map_out_(var_map_out),
         attrs_(attrs),
         default_attrs_(default_attrs) {}
 
   std::string InputName(const std::string& name) const override {
-    auto it = var_base_map_in_.find(name);
-    PADDLE_ENFORCE_NE(it, var_base_map_in_.end(),
+    auto it = var_map_in_.find(name);
+    PADDLE_ENFORCE_NE(it, var_map_in_.end(),
                       platform::errors::PreconditionNotMet(
                           "Can not find [%s] in Input", name));
-    return it->second[0] ? it->second[0]->Name() : framework::kEmptyVarName;
+    return it->second[0] ? GetNameFromVar(it->second[0])
+                         : framework::kEmptyVarName;
   }
 
   std::vector<std::string> InputNames(const std::string& name) const override {
-    auto it = var_base_map_in_.find(name);
+    auto it = var_map_in_.find(name);
     PADDLE_ENFORCE_NE(
-        it, var_base_map_in_.end(),
+        it, var_map_in_.end(),
         platform::errors::NotFound("Can not find [%s] in Input", name));
     std::vector<std::string> vec_res;
     vec_res.reserve(it->second.size());
     for (size_t i = 0; i < it->second.size(); ++i) {
       if (it->second[i]) {
-        vec_res.push_back(it->second[i]->Name());
+        vec_res.push_back(GetNameFromVar(it->second[i]));
       } else {
         vec_res.push_back(framework::kEmptyVarName);
       }
@@ -69,23 +71,24 @@ class DygraphExecutionContext : public framework::ExecutionContext {
   }
 
   std::string OutputName(const std::string& name) const override {
-    auto it = var_base_map_out_.find(name);
+    auto it = var_map_out_.find(name);
     PADDLE_ENFORCE_NE(
-        it, var_base_map_out_.end(),
+        it, var_map_out_.end(),
         platform::errors::NotFound("Can not find [%s] in Output", name));
-    return it->second[0] ? it->second[0]->Name() : framework::kEmptyVarName;
+    return it->second[0] ? GetNameFromVar(it->second[0])
+                         : framework::kEmptyVarName;
   }
 
   std::vector<std::string> OutputNames(const std::string& name) const override {
-    auto it = var_base_map_out_.find(name);
+    auto it = var_map_out_.find(name);
     PADDLE_ENFORCE_NE(
-        it, var_base_map_out_.end(),
+        it, var_map_out_.end(),
         platform::errors::NotFound("Can not find [%s] in Output", name));
     std::vector<std::string> vec_res;
     vec_res.reserve(it->second.size());
     for (size_t i = 0; i < it->second.size(); ++i) {
       if (it->second[i]) {
-        vec_res.push_back(it->second[i]->Name());
+        vec_res.push_back(GetNameFromVar(it->second[i]));
       } else {
         vec_res.push_back(framework::kEmptyVarName);
       }
@@ -116,9 +119,9 @@ class DygraphExecutionContext : public framework::ExecutionContext {
 
   std::vector<std::string> InNameList() const override {
     std::vector<std::string> vec_temp;
-    vec_temp.reserve(var_base_map_in_.size());
+    vec_temp.reserve(var_map_in_.size());
 
-    for (auto& v : var_base_map_in_) {
+    for (auto& v : var_map_in_) {
       vec_temp.push_back(v.first);
     }
 
@@ -126,13 +129,13 @@ class DygraphExecutionContext : public framework::ExecutionContext {
   }
 
   bool HasInput(const std::string& name) const override {
-    auto it = var_base_map_in_.find(name);
-    return (it != var_base_map_in_.end() && it->second.size() > 0);
+    auto it = var_map_in_.find(name);
+    return (it != var_map_in_.end() && it->second.size() > 0);
   }
 
   bool HasOutput(const std::string& name) const override {
-    auto it = var_base_map_out_.find(name);
-    return (it != var_base_map_out_.end() && it->second.size() > 0);
+    auto it = var_map_out_.find(name);
+    return (it != var_map_out_.end() && it->second.size() > 0);
   }
 
   size_t InputSize(const std::string& name) const override {
@@ -144,8 +147,8 @@ class DygraphExecutionContext : public framework::ExecutionContext {
   }
 
   const Variable* InputVar(const std::string& name) const override {
-    auto it = var_base_map_in_.find(name);
-    if (it == var_base_map_in_.end()) {
+    auto it = var_map_in_.find(name);
+    if (it == var_map_in_.end()) {
       return nullptr;
     }
 
@@ -155,8 +158,8 @@ class DygraphExecutionContext : public framework::ExecutionContext {
   }
 
   Variable* OutputVar(const std::string& name) const override {
-    auto it = var_base_map_out_.find(name);
-    if (it == var_base_map_out_.end()) {
+    auto it = var_map_out_.find(name);
+    if (it == var_map_out_.end()) {
       return nullptr;
     }
 
@@ -167,8 +170,8 @@ class DygraphExecutionContext : public framework::ExecutionContext {
 
   const std::vector<Variable*> MultiInputVar(
       const std::string& name) const override {
-    auto it = var_base_map_in_.find(name);
-    if (it == var_base_map_in_.end()) {
+    auto it = var_map_in_.find(name);
+    if (it == var_map_in_.end()) {
       return {};
     }
     std::vector<Variable*> vec_res;
@@ -182,8 +185,8 @@ class DygraphExecutionContext : public framework::ExecutionContext {
 
   std::vector<Variable*> MultiOutputVar(
       const std::string& name) const override {
-    auto it = var_base_map_out_.find(name);
-    if (it == var_base_map_out_.end()) {
+    auto it = var_map_out_.find(name);
+    if (it == var_map_out_.end()) {
       return {};
     }
     std::vector<Variable*> vec_res;
@@ -196,8 +199,8 @@ class DygraphExecutionContext : public framework::ExecutionContext {
   }
 
  private:
-  const NameVarMap<VarType>& var_base_map_in_;
-  const NameVarMap<VarType>& var_base_map_out_;
+  const NameVarMap<VarType>& var_map_in_;
+  const NameVarMap<VarType>& var_map_out_;
   const framework::AttributeMap& attrs_;
   const framework::AttributeMap& default_attrs_;
 };

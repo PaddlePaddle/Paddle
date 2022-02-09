@@ -121,6 +121,8 @@ class OpBase {
   const framework::AttributeMap& DefaultAttrsMap() { return *default_attrs_; }
 
   bool HasAttr(const std::string& name) const {
+    VLOG(6) << "Default attrs: " << default_attrs_;
+    VLOG(6) << "attrs: " << &attrs_;
     return attrs_.count(name) > 0 || default_attrs_->count(name) > 0;
   }
 
@@ -182,6 +184,12 @@ class OpBase {
                   const framework::AttributeMap& attrs,
                   const framework::AttributeMap& default_attrs,
                   const platform::Place& place);
+  static void Run(const framework::OperatorBase& op,
+                  const NameVarMap<egr::EagerTensor>& ins,
+                  const NameVarMap<egr::EagerTensor>& outs,
+                  const framework::AttributeMap& attrs,
+                  const framework::AttributeMap& default_attrs,
+                  const platform::Place& place);
 
   bool HasVoidFunctionPostHook() const {
     return !void_function_post_hooks_.empty();
@@ -210,6 +218,9 @@ class OpBase {
   std::unique_ptr<framework::OperatorBase> op_;
   platform::Place place_;
   size_t id_{-1UL};
+  // In order to reduce the compatibility phase
+  // performance overhead, temporarily cache KernelContext
+  static pten::KernelContext pt_kernel_context_;
   std::vector<std::shared_ptr<std::function<void()>>> void_function_post_hooks_;
 };
 

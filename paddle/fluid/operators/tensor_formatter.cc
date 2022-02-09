@@ -124,7 +124,7 @@ void TensorFormatter::FormatData(const framework::LoDTensor& print_tensor,
     data = print_tensor.data<T>();
   } else {
     platform::CPUPlace cpu_place;
-    TensorCopy(print_tensor, cpu_place, &cpu_tensor);
+    paddle::framework::TensorCopy(print_tensor, cpu_place, &cpu_tensor);
 #ifdef PADDLE_WITH_ASCEND_CL
     if (platform::is_npu_place(print_tensor.place())) {
       platform::DeviceContextPool::Instance().Get(print_tensor.place())->Wait();

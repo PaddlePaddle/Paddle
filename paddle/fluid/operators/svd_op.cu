@@ -55,7 +55,7 @@ class SvdGPUKernel : public framework::OpKernel<T> {
     // then view A as n x m and do A^T SVD, we can avoid transpose
     // Must Copy X once, because the gesvdj will change the origin input matrix
     Tensor x_tmp;
-    TensorCopy(*x, context.GetPlace(), &x_tmp);
+    paddle::framework::TensorCopy(*x, context.GetPlace(), &x_tmp);
     auto info = memory::Alloc(dev_ctx, sizeof(int) * batch_count);
     int* info_ptr = reinterpret_cast<int*>(info->ptr());
 

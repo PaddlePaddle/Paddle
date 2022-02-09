@@ -32,10 +32,6 @@ if os.path.exists(legacy_core):
     except Exception as e:
         raise e
 
-# Patch LoDTensor
-from . import core
-core.LoDTensor = core.Tensor
-
 # import all class inside framework into fluid module
 from . import framework
 from .framework import *

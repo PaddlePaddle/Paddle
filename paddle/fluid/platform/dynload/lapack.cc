@@ -13,14 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/dynload/lapack.h"
-#include <mutex>
 
 namespace paddle {
 namespace platform {
 namespace dynload {
-
-std::once_flag lapack_dso_flag;
-void* lapack_dso_handle = nullptr;
 
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
