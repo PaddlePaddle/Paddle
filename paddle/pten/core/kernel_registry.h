@@ -60,6 +60,10 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
           ||
           arg_type == std::type_index(typeid(const GPUContext&))) {
 #else
+#if defined(PADDLE_WITH_XPU)
+          ||
+          arg_type == std::type_index(typeid(const XPUContext&))) {
+#else
               ) {
 #endif
         // do nothing, skip context arg now
