@@ -21,7 +21,6 @@ import paddle.nn.functional as F
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.tensor as tensor
-import paddle
 
 
 class TestTraceOp(OpTest):
@@ -87,5 +86,4 @@ class TestTraceAPICase(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()
