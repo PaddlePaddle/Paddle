@@ -1,0 +1,2 @@
+add_executable(print_pten_kernels print_pten_kernels.cc)
+target_link_libraries(print_pten_kernels pten math_kernel)
