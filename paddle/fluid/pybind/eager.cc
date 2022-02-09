@@ -18,13 +18,13 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/utils.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/pten/common/data_type.h"
-#include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "pybind11/detail/internals.h"
 #include "pybind11/numpy.h"
@@ -79,7 +79,8 @@ void EmptyEagerTensorInitializer(
     std::shared_ptr<pten::DenseTensor> dense_tensor =
         std::make_shared<pten::DenseTensor>(
             pten::make_intrusive<paddle::experimental::SharedStorage>(place),
-            pten::DenseTensorMeta(pten::TransToPtenDataType(dtype), ddims));
+            pten::DenseTensorMeta(paddle::framework::TransToPtenDataType(dtype),
+                                  ddims));
     dense_tensor->mutable_data(place);
     self->eager_tensor.set_impl(dense_tensor);
   } else {
@@ -167,8 +168,7 @@ void InitEagerTensorWithFrameworkTensor(EagerTensorObject* self,
     std::shared_ptr<pten::DenseTensor> dense_tensor =
         std::make_shared<pten::DenseTensor>(
             pten::make_intrusive<paddle::experimental::SharedStorage>(place),
-            pten::DenseTensorMeta(pten::TransToPtenDataType(src.type()),
-                                  src.dims()));
+            pten::DenseTensorMeta(src.dtype(), src.dims()));
     paddle::experimental::ReMakePtenDenseTensor(src, dense_tensor.get());
     self->eager_tensor.set_impl(dense_tensor);
     VLOG(4) << "Same place, do ShareDataWith";
@@ -177,8 +177,7 @@ void InitEagerTensorWithFrameworkTensor(EagerTensorObject* self,
         std::make_shared<pten::DenseTensor>(
             pten::make_intrusive<paddle::experimental::SharedStorage>(
                 src.place()),
-            pten::DenseTensorMeta(pten::TransToPtenDataType(src.type()),
-                                  src.dims()));
+            pten::DenseTensorMeta(src.dtype(), src.dims()));
     paddle::experimental::ReMakePtenDenseTensor(src, dense_tensor.get());
     auto temp = egr::EagerTensor(dense_tensor);
     self->eager_tensor.set_impl(
