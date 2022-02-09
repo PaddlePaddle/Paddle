@@ -107,23 +107,22 @@ class Tracer(core.Tracer):
                         # Replaced outputs by function returns
                         if isinstance(returns[i], list):
                             for j in range(len(returns[i])):
-                                outputs[retname][j].reconstruct_from_(
-                                    returns[i][j], False)
+                                outputs[retname][j].reconstruct_from_(returns[i]
+                                                                      [j])
                         else:
-                            outputs[retname][0].reconstruct_from_(returns[i],
-                                                                  False)
+                            outputs[retname][0].reconstruct_from_(returns[i])
             elif isinstance(returns, list):
                 assert len(outputs.keys()) == 1
                 key = list(outputs.keys())[0]
                 for j in range(len(returns)):
-                    outputs[key][j].reconstruct_from_(returns[j], False)
+                    outputs[key][j].reconstruct_from_(returns[j])
             else:
                 assert len(outputs.keys()) == 1
                 key = list(outputs.keys())[0]
                 if isinstance(outputs[key], list):
-                    outputs[key][0].reconstruct_from_(returns, False)
+                    outputs[key][0].reconstruct_from_(returns)
                 else:
-                    outputs[key].reconstruct_from_(returns, False)
+                    outputs[key].reconstruct_from_(returns)
         else:
             self.trace(type, inputs, outputs, attrs,
                        framework._current_expected_place(), self._has_grad and
