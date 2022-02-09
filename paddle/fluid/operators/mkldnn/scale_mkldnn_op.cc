@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/mkldnn_reuse.h"
-
+#include "paddle/pten/kernels/scale_kernel.h"
 namespace paddle {
 namespace operators {
 
@@ -29,33 +29,21 @@ class ScaleMKLDNNKernel : public framework::OpKernel<T> {
   void RunKernel(const framework::ExecutionContext& ctx) const {
     const auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
-    const auto& mkldnn_engine = dev_ctx.GetEngine();
-
     auto* x = ctx.Input<Tensor>("X");
     auto* out = ctx.Output<Tensor>("Out");
 
-    bool is_inplaced = x->IsSharedBufferWith(*out);
-
-    platform::ActivationMKLDNNHandler<T> handler(
-        dnnl::algorithm::eltwise_linear, ctx, mkldnn_engine, ctx.GetPlace(), x);
-
-    auto src_memory_p = handler.AcquireSrcMemory(x);
-    std::shared_ptr<dnnl::memory> dst_memory_p = nullptr;
-    if (is_inplaced) {
-      dst_memory_p = src_memory_p;
-      out->mutable_data<T>(ctx.GetPlace());
+    bool bias_after_scale = ctx.Attr<bool>("bias_after_scale");
+    float scale;
+    if (ctx.HasInput("ScaleTensor")) {
+      auto* scale_tensor = ctx.Input<Tensor>("ScaleTensor");
+      scale = static_cast<float>(*(scale_tensor->data<T>()));
     } else {
-      dst_memory_p = handler.AcquireDstMemory(out);
+      scale = ctx.Attr<float>("scale");
     }
-    auto activation_p = handler.AcquireForwardPrimitive();
 
-    auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
-    activation_p->execute(astream, {{DNNL_ARG_FROM, *src_memory_p},
-                                    {DNNL_ARG_TO, *dst_memory_p}});
-    astream.wait();
+    auto bias = ctx.Attr<float>("bias");
 
-    out->set_layout(framework::DataLayout::kMKLDNN);
-    out->set_format(platform::GetMKLDNNFormat(*dst_memory_p));
+    pten::ScaleKernel<T>(dev_ctx, *x, scale, bias, bias_after_scale, out);
   }
 };
 }  // namespace operators
