@@ -189,10 +189,10 @@ def get_feed_data_reader():
 class TestTransformer(TestParallelExecutorBase):
     def test_main(self):
         if core.is_compiled_with_cuda():
-            # self.check_network_convergence(
-            #     transformer,
-            #     use_device=DeviceType.CUDA,
-            #     feed_data_reader=get_feed_data_reader())
+            self.check_network_convergence(
+                transformer,
+                use_device=DeviceType.CUDA,
+                feed_data_reader=get_feed_data_reader())
             self.check_network_convergence(
                 transformer,
                 use_device=DeviceType.CUDA,

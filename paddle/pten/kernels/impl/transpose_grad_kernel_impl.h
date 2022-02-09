@@ -14,10 +14,53 @@
 
 #pragma once
 
+#include "paddle/pten/kernels/funcs/transpose.h"
 #include "paddle/pten/kernels/transpose_grad_kernel.h"
 #include "paddle/pten/kernels/transpose_kernel.h"
 
 namespace pten {
+
+template <typename T, typename Context>
+void TransposeKernelImpl(const Context& ctx,
+                         const DenseTensor& x,
+                         const std::vector<int>& axis,
+                         DenseTensor* out) {
+  out->mutable_data<T>(ctx.GetPlace());
+  if (out->numel() == 0) {
+    return;
+  }
+  int rank = axis.size();
+  switch (rank) {
+    case 1:
+      math::Transpose<Context, T, 1> trans1;
+      trans1(ctx, x, out, axis);
+      break;
+    case 2:
+      math::Transpose<Context, T, 2> trans2;
+      trans2(ctx, x, out, axis);
+      break;
+    case 3:
+      math::Transpose<Context, T, 3> trans3;
+      trans3(ctx, x, out, axis);
+      break;
+    case 4:
+      math::Transpose<Context, T, 4> trans4;
+      trans4(ctx, x, out, axis);
+      break;
+    case 5:
+      math::Transpose<Context, T, 5> trans5;
+      trans5(ctx, x, out, axis);
+      break;
+    case 6:
+      math::Transpose<Context, T, 6> trans6;
+      trans6(ctx, x, out, axis);
+      break;
+    default:
+      // for rank >= 7 situation
+      math::TransposeNormal<Context, T> trans_normal;
+      trans_normal(ctx, x, out, axis);
+  }
+}
 
 template <typename T, typename Context>
 void TransposeGradKernel(const Context& dev_ctx,
@@ -31,7 +74,7 @@ void TransposeGradKernel(const Context& dev_ctx,
     reversed_axis[axis[i]] = i;
   }
 
-  TransposeKernel<T, Context>(dev_ctx, out_grad, reversed_axis, x_grad);
+  TransposeKernelImpl<T, Context>(dev_ctx, out_grad, reversed_axis, x_grad);
 }
 
 }  // namespace pten

@@ -14,10 +14,11 @@
 
 #include "paddle/pten/kernels/transpose_kernel.h"
 #include <vector>
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
+#include "paddle/pten/kernels/funcs/transpose.h"
+#include "paddle/pten/kernels/impl/transpose_grad_kernel_impl.h"
 
 namespace pten {
 
@@ -26,41 +27,7 @@ void TransposeKernel(const Context& ctx,
                      const DenseTensor& x,
                      const std::vector<int>& axis,
                      DenseTensor* out) {
-  out->mutable_data<T>(ctx.GetPlace());
-  if (out->numel() == 0) {
-    return;
-  }
-  int rank = axis.size();
-  switch (rank) {
-    case 1:
-      paddle::operators::math::Transpose<Context, T, 1> trans1;
-      trans1(ctx, x, out, axis);
-      break;
-    case 2:
-      paddle::operators::math::Transpose<Context, T, 2> trans2;
-      trans2(ctx, x, out, axis);
-      break;
-    case 3:
-      paddle::operators::math::Transpose<Context, T, 3> trans3;
-      trans3(ctx, x, out, axis);
-      break;
-    case 4:
-      paddle::operators::math::Transpose<Context, T, 4> trans4;
-      trans4(ctx, x, out, axis);
-      break;
-    case 5:
-      paddle::operators::math::Transpose<Context, T, 5> trans5;
-      trans5(ctx, x, out, axis);
-      break;
-    case 6:
-      paddle::operators::math::Transpose<Context, T, 6> trans6;
-      trans6(ctx, x, out, axis);
-      break;
-    default:
-      // for rank >= 7 situation
-      paddle::operators::math::TransposeNormal<Context, T> trans_normal;
-      trans_normal(ctx, x, out, axis);
-  }
+  TransposeKernelImpl<T>(ctx, x, axis, out);
 }
 }  // namespace pten
 

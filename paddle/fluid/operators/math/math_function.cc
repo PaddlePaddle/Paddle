@@ -81,35 +81,23 @@ template struct SetConstant<platform::XPUDeviceContext,
                             platform::complex<double>>;
 #endif
 
-#define DEFINE_CPU_TRANS(RANK)                                                 \
-  template struct Transpose<platform::CPUDeviceContext, platform::float16,     \
-                            RANK>;                                             \
-  template struct Transpose<platform::CPUDeviceContext, platform::bfloat16,    \
-                            RANK>;                                             \
-  template struct Transpose<platform::CPUDeviceContext, float, RANK>;          \
-  template struct Transpose<platform::CPUDeviceContext, double, RANK>;         \
-  template struct Transpose<platform::CPUDeviceContext, int, RANK>;            \
-  template struct Transpose<platform::CPUDeviceContext, int64_t, RANK>;        \
-  template struct Transpose<platform::CPUDeviceContext, bool, RANK>;           \
-  template struct Transpose<platform::CPUDeviceContext, int16_t, RANK>;        \
-  template struct Transpose<platform::CPUDeviceContext, uint8_t, RANK>;        \
-  template struct Transpose<platform::CPUDeviceContext, int8_t, RANK>;         \
-  template struct Transpose<platform::CPUDeviceContext,                        \
-                            platform::complex<float>, RANK>;                   \
-  template struct Transpose<platform::CPUDeviceContext,                        \
-                            platform::complex<double>, RANK>;                  \
-  template struct Transpose<pten::CPUContext, platform::float16, RANK>;        \
-  template struct Transpose<pten::CPUContext, platform::bfloat16, RANK>;       \
-  template struct Transpose<pten::CPUContext, float, RANK>;                    \
-  template struct Transpose<pten::CPUContext, double, RANK>;                   \
-  template struct Transpose<pten::CPUContext, int, RANK>;                      \
-  template struct Transpose<pten::CPUContext, int64_t, RANK>;                  \
-  template struct Transpose<pten::CPUContext, bool, RANK>;                     \
-  template struct Transpose<pten::CPUContext, int16_t, RANK>;                  \
-  template struct Transpose<pten::CPUContext, uint8_t, RANK>;                  \
-  template struct Transpose<pten::CPUContext, int8_t, RANK>;                   \
-  template struct Transpose<pten::CPUContext, platform::complex<float>, RANK>; \
-  template struct Transpose<pten::CPUContext, platform::complex<double>, RANK>;
+#define DEFINE_CPU_TRANS(RANK)                                              \
+  template struct Transpose<platform::CPUDeviceContext, platform::float16,  \
+                            RANK>;                                          \
+  template struct Transpose<platform::CPUDeviceContext, platform::bfloat16, \
+                            RANK>;                                          \
+  template struct Transpose<platform::CPUDeviceContext, float, RANK>;       \
+  template struct Transpose<platform::CPUDeviceContext, double, RANK>;      \
+  template struct Transpose<platform::CPUDeviceContext, int, RANK>;         \
+  template struct Transpose<platform::CPUDeviceContext, int64_t, RANK>;     \
+  template struct Transpose<platform::CPUDeviceContext, bool, RANK>;        \
+  template struct Transpose<platform::CPUDeviceContext, int16_t, RANK>;     \
+  template struct Transpose<platform::CPUDeviceContext, uint8_t, RANK>;     \
+  template struct Transpose<platform::CPUDeviceContext, int8_t, RANK>;      \
+  template struct Transpose<platform::CPUDeviceContext,                     \
+                            platform::complex<float>, RANK>;                \
+  template struct Transpose<platform::CPUDeviceContext,                     \
+                            platform::complex<double>, RANK>;
 
 DEFINE_CPU_TRANS(1);
 DEFINE_CPU_TRANS(2);
@@ -146,39 +134,9 @@ struct TransposeNormal<platform::CPUDeviceContext, T> {
   }
 };
 
-template <typename T>
-struct TransposeNormal<pten::CPUContext, T> {
-  void operator()(const pten::CPUContext& context, const framework::Tensor& in,
-                  framework::Tensor* out, const std::vector<int>& axis) {
-    const int rank = axis.size();
-    auto in_stride = framework::stride(in.dims());
-    auto out_stride = framework::stride(out->dims());
-    const T* in_ptr = in.data<T>();
-    T* out_ptr = out->data<T>();
-
-    auto transpose_helper = [&](int64_t beg, int64_t end) {
-      for (int64_t out_idx = beg; out_idx < end; ++out_idx) {
-        int64_t in_idx = 0;
-        int64_t tmp_idx = out_idx;
-        // calculate the input index
-        for (int i = 0; i < rank; ++i) {
-          const int64_t coordinate = tmp_idx / out_stride[i];
-          tmp_idx -= coordinate * out_stride[i];
-          in_idx += coordinate * in_stride[axis[i]];
-        }
-        out_ptr[out_idx] = in_ptr[in_idx];
-      }
-    };
-    transpose_helper(0, out->numel());
-  }
-};
-
 // define transpose normal
 #define DEFINE_CPU_TRANS_NORMAL(TYPE) \
   template struct TransposeNormal<platform::CPUDeviceContext, TYPE>
-
-#define DEFINE_CPU_TRANS_NORMAL_PTEN(TYPE) \
-  template struct TransposeNormal<pten::CPUContext, TYPE>
 
 DEFINE_CPU_TRANS_NORMAL(platform::float16);
 DEFINE_CPU_TRANS_NORMAL(platform::bfloat16);
@@ -192,19 +150,6 @@ DEFINE_CPU_TRANS_NORMAL(uint8_t);
 DEFINE_CPU_TRANS_NORMAL(int8_t);
 DEFINE_CPU_TRANS_NORMAL(platform::complex<float>);
 DEFINE_CPU_TRANS_NORMAL(platform::complex<double>);
-
-DEFINE_CPU_TRANS_NORMAL_PTEN(platform::float16);
-DEFINE_CPU_TRANS_NORMAL_PTEN(platform::bfloat16);
-DEFINE_CPU_TRANS_NORMAL_PTEN(float);
-DEFINE_CPU_TRANS_NORMAL_PTEN(double);
-DEFINE_CPU_TRANS_NORMAL_PTEN(int);
-DEFINE_CPU_TRANS_NORMAL_PTEN(int64_t);
-DEFINE_CPU_TRANS_NORMAL_PTEN(bool);
-DEFINE_CPU_TRANS_NORMAL_PTEN(int16_t);
-DEFINE_CPU_TRANS_NORMAL_PTEN(uint8_t);
-DEFINE_CPU_TRANS_NORMAL_PTEN(int8_t);
-DEFINE_CPU_TRANS_NORMAL_PTEN(platform::complex<float>);
-DEFINE_CPU_TRANS_NORMAL_PTEN(platform::complex<double>);
 
 struct TensorSetConstantCPU {
   TensorSetConstantCPU(framework::Tensor* tensor, float value)

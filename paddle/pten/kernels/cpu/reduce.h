@@ -80,7 +80,7 @@ void ReduceFunctor(const DeviceContext& context,
 inline void GetShuffledDim(const DDim& src_dims,
                            DDim* dst_dims,
                            const std::vector<int64_t>& reduced_dims,
-                           std::vector<int64_t>* perm_axis) {
+                           std::vector<int>* perm_axis) {
   // check if it's a reduced dim
   std::vector<bool> src_dims_check(src_dims.size(), false);
   size_t src_size = src_dims.size();
@@ -115,7 +115,7 @@ void GetShuffledInput(const DeviceContext& dev_ctx,
                       pten::DenseTensor* shuffled_input,
                       const std::vector<int64_t>& dims) {
   DDim shuffled_dims(input.dims());
-  std::vector<int64_t> perm_axis(input.dims().size());
+  std::vector<int> perm_axis(input.dims().size());
   GetShuffledDim(input.dims(), &shuffled_dims, dims, &perm_axis);
 
   shuffled_input->ResizeAndAllocate(shuffled_dims);

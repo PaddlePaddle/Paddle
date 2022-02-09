@@ -57,7 +57,7 @@ struct TransposeNormal<GPUContext, T> {
   void operator()(const GPUContext& dev_ctx,
                   const pten::DenseTensor& in,
                   pten::DenseTensor* out,
-                  const std::vector<int64_t>& axis) {
+                  const std::vector<int>& axis) {
     const int rank = axis.size();
     auto in_stride = pten::framework::stride(in.dims());
     auto out_stride = pten::framework::stride(out->dims());
