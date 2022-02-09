@@ -467,6 +467,96 @@ void SparseCooToCsrKernel(const Context& dev_ctx,
   out->SetMember(non_zero_crows, non_zero_cols, non_zero_elements, x_dims);
 }
 
+template <typename ValueT, typename IndicesT>
+__global__ void KernelSparseCooToDense(const IndicesT* indices,
+                                       const IndicesT* sparse_offsets,
+                                       const ValueT* data,
+                                       ValueT* dense_data,
+                                       const IndicesT non_zero_num,
+                                       const int64_t base_offset,
+                                       const int64_t sparse_dim) {
+  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  for (int i = tid; i < non_zero_num; i += gridDim.x * blockDim.x) {
+    int64_t index = 0;
+    for (int j = 0; j < sparse_dim; j++) {
+      index += indices[j * non_zero_num + i] * sparse_offsets[j];
+    }
+
+    for (int j = 0; j < base_offset; j++) {
+      dense_data[index * base_offset + j] = data[i * base_offset + j];
+    }
+  }
+}
+
+template <typename T, typename Context>
+void SparseCooToDenseKernel(const Context& dev_ctx,
+                            const SparseCooTensor& x,
+                            DenseTensor* out) {
+  const auto non_zero_num = x.nnz();
+  const auto dense_dims = x.dims();
+  const auto indices = x.non_zero_indices();
+  const auto values = x.non_zero_elements();
+  const auto indices_dims = indices.dims();
+  int64_t sparse_dim = indices_dims[0];
+  if (indices_dims.size() == 1) {
+    sparse_dim = 1;
+  }
+  const int64_t dense_dim = values.dims().size() - 1;
+
+  const auto place = dev_ctx.GetPlace();
+  const T* x_data = values.data<T>();
+  T* out_data = out->mutable_data<T>(place);
+  int64_t base_offset = 1;
+  for (int64_t i = 0; i < dense_dim; i++) {
+    base_offset *= dense_dims[sparse_dim + i];
+  }
+  std::vector<int64_t> sparse_offsets(sparse_dim);
+  int64_t offset = 1;
+  for (int i = sparse_dim - 1; i >= 0; i--) {
+    sparse_offsets[i] = offset;
+    offset *= dense_dims[i];
+  }
+
+  auto sparse_offset_meta = pten::DenseTensorMeta(
+      DataType::INT64, {sparse_dim}, pten::DataLayout::NCHW);
+  DenseTensor d_sparse_offsets =
+      pten::Empty<T, Context>(dev_ctx, std::move(sparse_offset_meta));
+
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      hipMemcpyAsync(d_sparse_offsets.mutable_data<int64_t>(place),
+                     sparse_offsets.data(),
+                     sparse_dim * sizeof(int64_t),
+                     hipMemcpyHostToDevice,
+                     dev_ctx.stream()));
+
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      hipMemsetAsync(out_data, 0, sizeof(T) * out->numel(), dev_ctx.stream()));
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaMemcpyAsync(d_sparse_offsets.mutable_data<int64_t>(place),
+                      sparse_offsets.data(),
+                      sparse_dim * sizeof(int64_t),
+                      cudaMemcpyHostToDevice,
+                      dev_ctx.stream()));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaMemsetAsync(out_data, 0, sizeof(T) * out->numel(), dev_ctx.stream()));
+#endif
+  int grid_size = 1, block_size = 1;
+  GetGpuLaunchConfig1D(dev_ctx, non_zero_num, &grid_size, &block_size);
+
+  KernelSparseCooToDense<
+      T,
+      int64_t><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+      indices.data<int64_t>(),
+      d_sparse_offsets.data<int64_t>(),
+      x_data,
+      out_data,
+      non_zero_num,
+      base_offset,
+      sparse_dim);
+}
+
 }  // namespace sparse
 }  // namespace pten
 
@@ -513,6 +603,32 @@ PT_REGISTER_KERNEL(dense_to_sparse_csr,
                    GPU,
                    ALL_LAYOUT,
                    pten::sparse::DenseToSparseCsrKernel,
+                   float,
+                   double,
+                   pten::dtype::float16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
+PT_REGISTER_KERNEL(sparse_coo_to_dense,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::sparse::SparseCooToDenseKernel,
+                   float,
+                   double,
+                   pten::dtype::float16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
+PT_REGISTER_KERNEL(sparse_csr_to_dense,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::sparse::SparseCsrToDenseKernel,
                    float,
                    double,
                    pten::dtype::float16,

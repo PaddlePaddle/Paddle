@@ -19,6 +19,7 @@
 #include <tuple>
 #include <unordered_set>
 
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/type_defs.h"
 
 namespace paddle {
@@ -31,6 +32,11 @@ enum class AmpLevel {
   O2,      // almost fp16
   O3,      // fp16
 };
+
+std::tuple<std::unordered_set<std::string>, std::unordered_set<std::string>,
+           std::unordered_set<std::string>>
+OpSupportedInfos(const std::string& place,
+                 framework::proto::VarType::Type dtype);
 
 class Tracer;
 
