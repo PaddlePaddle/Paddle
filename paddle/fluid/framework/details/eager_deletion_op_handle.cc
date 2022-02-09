@@ -112,12 +112,14 @@ static bool CanBeErased(ir::MemOptVarInfo *var_info) {
       !var_info->DecreaseRefCnt()) {
     return false;
   }
-  auto parent_holder = var_info->ParentHolder();
+#ifdef PADDLE_WITH_CINN
   // if parent_holder exists, it should meet deletion condition too.
-  if (!parent_holder || CanBeErased(parent_holder.get())) {
-    return true;
+  std::shared_ptr<ir::MemOptVarInfo> parent_holder = var_info->ParentHolder();
+  if (parent_holder && !CanBeErased(parent_holder.get())) {
+    return false;
   }
-  return false;
+#endif
+  return true;
 }
 
 void EagerDeletionOpHandle::RunImpl() {

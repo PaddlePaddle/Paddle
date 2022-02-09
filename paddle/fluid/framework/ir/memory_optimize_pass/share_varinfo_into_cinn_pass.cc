@@ -23,20 +23,18 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/string_helper.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 using Name2VarInfoMap =
     std::unordered_map<std::string, std::shared_ptr<MemOptVarInfo>>;
 
 static details::EagerDeletionOpHandle* FindFollowedEagerDeletionOp(
     details::ComputationOpHandle* compute_op) {
-  for (auto* var : compute_op->Outputs()) {
+  for (details::VarHandleBase* var : compute_op->Outputs()) {
     if (!var->Node()->IsCtrlVar()) {
       continue;
     }
-    for (auto* op : var->PendingOps()) {
+    for (details::OpHandleBase* op : var->PendingOps()) {
       auto* eager_deletion_op =
           dynamic_cast<details::EagerDeletionOpHandle*>(op);
       if (eager_deletion_op) {
@@ -48,90 +46,93 @@ static details::EagerDeletionOpHandle* FindFollowedEagerDeletionOp(
 }
 
 static void ShareVarInfoToCinnLaunch(
-    const MemOptVarInfoMapList& var_infos,
+    const MemOptVarInfoMapList& varinfo_maps,
     details::ComputationOpHandle* cinn_launch_op) {
-  auto* followed_eager_deletion_op =
+  details::EagerDeletionOpHandle* followed_eager_deletion_op =
       FindFollowedEagerDeletionOp(cinn_launch_op);
   if (!followed_eager_deletion_op) {
     VLOG(4) << "No eager_deletion op found after this cinn_launch op";
     return;
   }
-  auto vars_to_delete = followed_eager_deletion_op->VarsToDelete();
+
+  std::vector<std::string> vars_to_delete =
+      followed_eager_deletion_op->VarsToDelete();
   if (vars_to_delete.empty()) {
     VLOG(4) << "No var to be deleted after this cinn_launch op";
     return;
   }
-  VLOG(4) << "Variables would be deleted by eager_deletion_op"
+  VLOG(4) << "Variables would be deleted by the eager_deletion_op"
           << " following the cinn_launch:"
           << paddle::string::join_strings(vars_to_delete, ',');
 
-  const auto& subgraph = paddle2cinn::CinnCompiler::GetInstance()->FindGraph(
+  const Graph& subgraph = paddle2cinn::CinnCompiler::GetInstance()->FindGraph(
       cinn_launch_op->GetOp()->Attr<std::string>(operators::kCompilationKey));
-  auto& varinfo_from_maingraph =
+  auto& dst_varinfo_map =
       subgraph.Get<Name2VarInfoMap>(paddle2cinn::kMemOptVarInfoFromMainGraph);
-  const auto& cur_place_var_infos = var_infos.at(cinn_launch_op->GetScopeIdx());
+  const Name2VarInfoMap& src_varinfo_map =
+      varinfo_maps.at(cinn_launch_op->GetScopeIdx());
 
   // collect all MemOptVarInfos of external variables
   // that would be eager deleted after the cinn_launch subgraph executed,
   // and store them as attribute of the subgraph
   for (const auto& var_name : vars_to_delete) {
-    auto it = cur_place_var_infos.find(var_name);
-    PADDLE_ENFORCE_NE(it, cur_place_var_infos.end(),
+    auto it = src_varinfo_map.find(var_name);
+    PADDLE_ENFORCE_NE(it, src_varinfo_map.end(),
                       platform::errors::NotFound(
                           "MemOptVarInfo of var[%s] not found", var_name));
-    varinfo_from_maingraph.emplace(var_name, it->second);
+    dst_varinfo_map.emplace(var_name, it->second);
   }
 }
 
 static void TakeVarInfoFromMainGraph(
-    const Name2VarInfoMap& parent_var_infos,
-    const MemOptVarInfoMapList& var_infos,
+    const Name2VarInfoMap& src_varinfo_map,
+    const MemOptVarInfoMapList& varinfo_maps,
     details::EagerDeletionOpHandle* eager_deletion_op) {
-  const auto& cur_place_var_infos =
-      var_infos.at(eager_deletion_op->GetScopeIdx());
+  const Name2VarInfoMap& dst_varinfo_map =
+      varinfo_maps.at(eager_deletion_op->GetScopeIdx());
   for (auto&& var_name : eager_deletion_op->VarsToDelete()) {
-    auto cur_it = cur_place_var_infos.find(var_name);
-    PADDLE_ENFORCE_NE(cur_it, cur_place_var_infos.end(),
+    auto dst_it = dst_varinfo_map.find(var_name);
+    PADDLE_ENFORCE_NE(dst_it, dst_varinfo_map.end(),
                       platform::errors::NotFound(
                           "MemOptVarInfo of var[%s] not found", var_name));
-    auto parent_it = parent_var_infos.find(var_name);
-    if (parent_it != parent_var_infos.end()) {
+    auto src_it = src_varinfo_map.find(var_name);
+    if (src_it != src_varinfo_map.end()) {
       VLOG(4) << "MemOptVarInfo of var[" << var_name << "] set parent holder";
-      cur_it->second->SetParentHolder(parent_it->second);
+      dst_it->second->SetParentHolder(src_it->second);
     }
   }
 }
 
-// This pass will be applied on both the main graph and all subgraphs,
+// This pass will be applied on both the main graph and all cinn subgraphs,
 // and it distinguishs them according to whether the graph has the
 // kMemOptVarInfoFromMainGraph attribute or not.
 // On the main graph, it finds all cinn_launch ops and shares MemOptVarInfos
 // to their subgraphs.
-// On a subgraph, it iterates each variable that will be deleted by a
+// On a cinn subgraph, it iterates each variable that will be deleted by a
 // eager_deletion op, and take the MemOptVarInfo from the main graph
 // if such one found.
 class ShareMemOptInfoToSubGraphPass : public ir::Pass {
  protected:
   void ApplyImpl(ir::Graph* graph) const override {
     auto all_ops = ir::FilterByNodeWrapper<details::OpHandleBase>(*graph);
-    const auto& var_infos = Get<MemOptVarInfoMapList>(kMemOptVarInfoMapList);
+    const auto& varinfo_maps = Get<MemOptVarInfoMapList>(kMemOptVarInfoMapList);
 
     // the main graph
     if (!graph->Has(paddle2cinn::kMemOptVarInfoFromMainGraph)) {
-      for (auto* op : all_ops) {
+      for (details::OpHandleBase* op : all_ops) {
         auto compute_op = dynamic_cast<details::ComputationOpHandle*>(op);
         if (compute_op && compute_op->Name() == "cinn_launch") {
-          ShareVarInfoToCinnLaunch(var_infos, compute_op);
+          ShareVarInfoToCinnLaunch(varinfo_maps, compute_op);
         }
       }
-    } else {  // a subgraph
-      const auto& parent_var_infos =
+    } else {  // a cinn subgraph
+      const auto& parent_varinfo_map =
           graph->Get<Name2VarInfoMap>(paddle2cinn::kMemOptVarInfoFromMainGraph);
-      for (auto* op : all_ops) {
+      for (details::OpHandleBase* op : all_ops) {
         auto eager_deletion_op =
             dynamic_cast<details::EagerDeletionOpHandle*>(op);
         if (eager_deletion_op) {
-          TakeVarInfoFromMainGraph(parent_var_infos, var_infos,
+          TakeVarInfoFromMainGraph(parent_varinfo_map, varinfo_maps,
                                    eager_deletion_op);
         }
       }
@@ -139,10 +140,8 @@ class ShareMemOptInfoToSubGraphPass : public ir::Pass {
   }
 };
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
-REGISTER_PASS(share_mem_opt_info_to_subgraph_pass,
+REGISTER_PASS(share_varinfo_into_cinn_pass,
               paddle::framework::ir::ShareMemOptInfoToSubGraphPass)
     .RequirePassAttr(paddle::framework::ir::kMemOptVarInfoMapList);

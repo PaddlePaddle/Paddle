@@ -27,8 +27,7 @@
 USE_OP(mul);
 USE_OP(cinn_launch);
 USE_OP(elementwise_add);
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 using Name2VarInfoMap =
     std::unordered_map<std::string, std::shared_ptr<ir::MemOptVarInfo>>;
@@ -85,12 +84,12 @@ struct TestPassContext {
   std::unique_ptr<ParallelExecutor> executor;
 };
 
-TEST(ShareMemInfoToSubGraphPassTest, test_main_graph_share_var_info) {
+TEST(ShareMemInfoToSubGraphPassTest, test_main_graph_share_varinfo) {
   // add a subgraph to CinnCompiler
   auto subgraph = std::make_unique<ir::Graph>(BuildProgramInsideCinnLaunchOp());
   subgraph->GetOrInit<Name2VarInfoMap>(
       paddle2cinn::kMemOptVarInfoFromMainGraph);
-  auto compilation_key =
+  std::string compilation_key =
       paddle2cinn::CinnCompiler::GetInstance()->AddGraph(std::move(subgraph));
 
   // build test data and apply pass
@@ -98,47 +97,46 @@ TEST(ShareMemInfoToSubGraphPassTest, test_main_graph_share_var_info) {
       BuildProgramWithCinnLaunchOp(compilation_key));
 
   // check result
-  const auto& result_subgraph =
+  const ir::Graph& result_subgraph =
       paddle2cinn::CinnCompiler::GetInstance()->FindGraph(compilation_key);
-  const auto& shared_var_infos = result_subgraph.Get<Name2VarInfoMap>(
+  const auto& dst_varinfo_map = result_subgraph.Get<Name2VarInfoMap>(
       paddle2cinn::kMemOptVarInfoFromMainGraph);
-  ASSERT_EQ(shared_var_infos.size(), 4);
-  EXPECT_EQ(shared_var_infos.count("var1"), 1);
-  EXPECT_EQ(shared_var_infos.count("var5"), 1);
-  EXPECT_EQ(shared_var_infos.at("var1").use_count(), 2);
-  EXPECT_EQ(shared_var_infos.at("var5").use_count(), 2);
+  ASSERT_EQ(dst_varinfo_map.size(), 4);
+  EXPECT_EQ(dst_varinfo_map.count("var1"), 1);
+  EXPECT_EQ(dst_varinfo_map.count("var5"), 1);
+  EXPECT_EQ(dst_varinfo_map.at("var1").use_count(), 2);
+  EXPECT_EQ(dst_varinfo_map.at("var5").use_count(), 2);
 }
 
-TEST(ShareMemInfoToSubGraphPassTest, test_sub_graph_take_var_info) {
+TEST(ShareMemInfoToSubGraphPassTest, test_subgraph_take_varinfo) {
   // build test data and apply pass
   auto context =
       std::make_unique<TestPassContext>(BuildProgramInsideCinnLaunchOp());
-  auto& var_infos_shared = context->graph->GetOrInit<Name2VarInfoMap>(
+  auto& varinfo_map_shared = context->graph->GetOrInit<Name2VarInfoMap>(
       paddle2cinn::kMemOptVarInfoFromMainGraph);
-  var_infos_shared = {
+  varinfo_map_shared = {
       {"var1", std::make_shared<ir::MemOptVarInfo>("var1", 1)},
       {"var2", std::make_shared<ir::MemOptVarInfo>("var2", 2)},
   };
 
-  ir::MemOptVarInfoMapList mem_opt_var_infos(1);
-  auto& var_infos = mem_opt_var_infos.front();
-  var_infos = {{"var1", std::make_shared<ir::MemOptVarInfo>("var1", 1)},
-               {"var2", std::make_shared<ir::MemOptVarInfo>("var2", 1)},
-               {"var3", std::make_shared<ir::MemOptVarInfo>("var3", 1)},
-               {"var4", std::make_shared<ir::MemOptVarInfo>("var4", 1)},
-               {"var5", std::make_shared<ir::MemOptVarInfo>("var5", 1)}};
+  ir::MemOptVarInfoMapList varinfo_maps(1);
+  auto& dst_varinfo_map = varinfo_maps.front();
+  dst_varinfo_map = {{"var1", std::make_shared<ir::MemOptVarInfo>("var1", 1)},
+                     {"var2", std::make_shared<ir::MemOptVarInfo>("var2", 1)},
+                     {"var3", std::make_shared<ir::MemOptVarInfo>("var3", 1)},
+                     {"var4", std::make_shared<ir::MemOptVarInfo>("var4", 1)},
+                     {"var5", std::make_shared<ir::MemOptVarInfo>("var5", 1)}};
   auto share_pass =
-      ir::PassRegistry::Instance().Get("share_mem_opt_info_to_subgraph_pass");
-  share_pass->SetNotOwned(ir::kMemOptVarInfoMapList, &mem_opt_var_infos);
+      ir::PassRegistry::Instance().Get("share_varinfo_into_cinn_pass");
+  share_pass->SetNotOwned(ir::kMemOptVarInfoMapList, &varinfo_maps);
   share_pass->Apply(context->graph.get());
 
   // check result
-  ASSERT_NE(var_infos.at("var1")->ParentHolder(), nullptr);
-  ASSERT_NE(var_infos.at("var2")->ParentHolder(), nullptr);
-  ASSERT_EQ(var_infos.at("var3")->ParentHolder(), nullptr);
-  ASSERT_EQ(var_infos.at("var4")->ParentHolder(), nullptr);
-  ASSERT_EQ(var_infos.at("var5")->ParentHolder(), nullptr);
+  ASSERT_NE(dst_varinfo_map.at("var1")->ParentHolder(), nullptr);
+  ASSERT_NE(dst_varinfo_map.at("var2")->ParentHolder(), nullptr);
+  ASSERT_EQ(dst_varinfo_map.at("var3")->ParentHolder(), nullptr);
+  ASSERT_EQ(dst_varinfo_map.at("var4")->ParentHolder(), nullptr);
+  ASSERT_EQ(dst_varinfo_map.at("var5")->ParentHolder(), nullptr);
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
