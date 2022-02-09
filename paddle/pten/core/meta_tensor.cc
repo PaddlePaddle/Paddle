@@ -14,10 +14,9 @@ limitations under the License. */
 
 #include "paddle/pten/core/meta_tensor.h"
 
-#include "paddle/pten/core/compat_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
-
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/core/enforce.h"
+#include "paddle/pten/core/tensor_utils.h"
 
 namespace pten {
 
@@ -31,46 +30,42 @@ DataLayout MetaTensor::layout() const { return tensor_->layout(); }
 
 void MetaTensor::set_dims(const DDim& dims) {
   if (pten::DenseTensor::classof(tensor_)) {
-    CompatibleDenseTensorUtils::GetMutableMeta(
-        static_cast<DenseTensor*>(tensor_))
-        ->dims = dims;
+    DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))->dims =
+        dims;
   } else {
-    PADDLE_THROW(paddle::platform::errors::Unimplemented(
+    PADDLE_THROW(pten::errors::Unimplemented(
         "Unsupported setting dims for `%s`.", tensor_->type_info().name()));
   }
 }
 
 void MetaTensor::set_dtype(DataType dtype) {
   if (pten::DenseTensor::classof(tensor_)) {
-    CompatibleDenseTensorUtils::GetMutableMeta(
-        static_cast<DenseTensor*>(tensor_))
+    DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))
         ->dtype = dtype;
   } else {
-    PADDLE_THROW(paddle::platform::errors::Unimplemented(
+    PADDLE_THROW(pten::errors::Unimplemented(
         "Unsupported settting dtype for `%s`.", tensor_->type_info().name()));
   }
 }
 
 void MetaTensor::set_layout(DataLayout layout) {
   if (pten::DenseTensor::classof(tensor_)) {
-    CompatibleDenseTensorUtils::GetMutableMeta(
-        static_cast<DenseTensor*>(tensor_))
+    DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))
         ->layout = layout;
   } else {
-    PADDLE_THROW(paddle::platform::errors::Unimplemented(
+    PADDLE_THROW(pten::errors::Unimplemented(
         "Unsupported settting layout for `%s`.", tensor_->type_info().name()));
   }
 }
 
 void MetaTensor::share_lod(const MetaTensor& meta_tensor) {
   if (pten::DenseTensor::classof(tensor_)) {
-    CompatibleDenseTensorUtils::GetMutableMeta(
-        static_cast<DenseTensor*>(tensor_))
-        ->lod = meta_tensor.lod();
+    DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))->lod =
+        meta_tensor.lod();
   } else {
-    PADDLE_THROW(paddle::platform::errors::Unimplemented(
-        "Unsupported share lod inplace for `%s`.",
-        tensor_->type_info().name()));
+    PADDLE_THROW(
+        pten::errors::Unimplemented("Unsupported sharing lod inplace for `%s`.",
+                                    tensor_->type_info().name()));
   }
 }
 
@@ -78,8 +73,20 @@ const LoD& MetaTensor::lod() const {
   if (pten::DenseTensor::classof(tensor_)) {
     return static_cast<DenseTensor*>(tensor_)->lod();
   } else {
-    PADDLE_THROW(paddle::platform::errors::Unimplemented(
-        "Unsupported setting dims for `%s`.", tensor_->type_info().name()));
+    PADDLE_THROW(pten::errors::Unimplemented("Unsupported getting lod of `%s`.",
+                                             tensor_->type_info().name()));
+  }
+}
+
+void MetaTensor::share_meta(const MetaTensor& meta_tensor) {
+  if (pten::DenseTensor::classof(tensor_)) {
+    set_dims(meta_tensor.dims());
+    set_dtype(meta_tensor.dtype());
+    set_layout(meta_tensor.layout());
+    share_lod(meta_tensor);
+  } else {
+    PADDLE_THROW(pten::errors::Unimplemented(
+        "Unsupported sharing meta for `%s`.", tensor_->type_info().name()));
   }
 }
 

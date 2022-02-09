@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/place.h"
 
 /**
  * case 1:
@@ -440,6 +442,31 @@ void TestConcatMain() {
 
   delete context;
 }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+template <>
+void TestConcatMain<paddle::platform::CUDADeviceContext,
+                    paddle::platform::CUDAPlace>() {
+  auto* context =
+      new paddle::platform::CUDADeviceContext(paddle::platform::CUDAPlace());
+  context->SetAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CUDAPlace(), context->stream())
+          .get());
+  context->PartialInitWithAllocator();
+
+  ConcatCase1<paddle::platform::CUDADeviceContext, paddle::platform::CUDAPlace>(
+      context);
+  ConcatCase2<paddle::platform::CUDADeviceContext, paddle::platform::CUDAPlace>(
+      context);
+  ConcatCase3<paddle::platform::CUDADeviceContext, paddle::platform::CUDAPlace>(
+      context);
+  ConcatCase4<paddle::platform::CUDADeviceContext, paddle::platform::CUDAPlace>(
+      context);
+
+  delete context;
+}
+#endif
 
 TEST(math, concat) {
   TestConcatMain<paddle::platform::CPUDeviceContext,

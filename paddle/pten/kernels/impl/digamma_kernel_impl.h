@@ -41,7 +41,7 @@ void DigammaKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   auto* x_data = x.data<T>();
   auto* out_data = out->data<T>();
   auto numel = x.numel();
-  platform::ForRange<Context> for_range(ctx, numel);
+  paddle::platform::ForRange<Context> for_range(ctx, numel);
   DigammaFunctor<T> functor(x_data, out_data, numel);
   for_range(functor);
 }

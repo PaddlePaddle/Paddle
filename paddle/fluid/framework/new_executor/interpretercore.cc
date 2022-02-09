@@ -393,7 +393,8 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
     platform::RecordEvent infershape_event("InferShape");
     // If it is OperatorBase, InferShape do nothing.
     if (op_with_kernel != nullptr)
-      op_with_kernel->InferShape(instr_node.InnerInferShapeContext().get());
+      op_with_kernel->Info().infer_shape_(
+          instr_node.InnerInferShapeContext().get());
   }
 
   if (op_with_kernel != nullptr &&

@@ -14,13 +14,12 @@ limitations under the License. */
 
 #include "paddle/pten/core/dense_tensor.h"
 
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/pten/common/bfloat16.h"
 #include "paddle/pten/common/complex.h"
 #include "paddle/pten/common/float16.h"
 
 #include "paddle/pten/api/lib/utils/storage.h"
-#include "paddle/pten/core/convert_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 
 namespace pten {
 /* --------------------------- */
@@ -145,7 +144,7 @@ void* DenseTensor::mutable_data(const paddle::platform::Place& place,
 
 void* DenseTensor::mutable_data(const paddle::platform::Place& place,
                                 paddle::framework::proto::VarType::Type type,
-                                const paddle::platform::Stream& stream) {
+                                const pten::Stream& stream) {
   set_type(type);
   PADDLE_ENFORCE_GE(
       numel(),

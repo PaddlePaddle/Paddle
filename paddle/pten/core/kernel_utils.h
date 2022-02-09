@@ -18,14 +18,12 @@
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/enforce.h"
 #include "paddle/pten/core/kernel_context.h"
-#include "paddle/pten/core/kernel_def.h"
 #include "paddle/pten/core/selected_rows.h"
 #include "paddle/pten/core/sparse_coo_tensor.h"
 #include "paddle/pten/core/sparse_csr_tensor.h"
-
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/pten/core/enforce.h"
+#include "paddle/pten/core/type_defs.h"
 
 namespace pten {
 
@@ -236,9 +234,11 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(paddle::platform::float16);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const Scalar&);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataType);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataLayout);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<int64_t>&);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const ScalarArray&);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<int>&);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::string&);
 
   /* Output Helpers */
 
