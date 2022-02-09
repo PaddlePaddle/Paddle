@@ -515,7 +515,7 @@ void SparseCooToDenseKernel(const Context& dev_ctx,
   auto sparse_offset_meta = pten::DenseTensorMeta(
       DataType::INT64, {sparse_dim}, pten::DataLayout::NCHW);
   DenseTensor d_sparse_offsets =
-      pten::Empty<T, Context>(dev_ctx, std::move(sparse_offset_meta));
+      pten::Empty(dev_ctx, std::move(sparse_offset_meta));
 
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(
