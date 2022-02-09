@@ -223,6 +223,7 @@ PADDLE_API Tensor to_dense(const Tensor& x, Backend backend) {
 
   return out;
 }
+
 }  // namespace sparse
 }  // namespace experimental
 }  // namespace paddle
