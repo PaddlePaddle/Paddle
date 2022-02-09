@@ -259,14 +259,19 @@ void BuildDygraphPtenKernelContext(
                         attr_names.size(), attr_defs.size()));
 
   for (size_t i = 0; i < input_names.size(); ++i) {
+    auto it = ins.find(input_names[i]);
+
     size_t start_idx = (i == 0 ? 0 : kernel_ctx->InputRangeAt(i - 1).second);
-    if (ins.find(input_names[i]) == ins.end()) {
+
+    if ((it == ins.end()) &&
+        (input_defs[i].type_index ==
+         std::type_index(typeid(paddle::optional<const pten::DenseTensor&>)))) {
       kernel_ctx->EmplaceBackInputWithoutSetRange(nullptr);
-      kernel_ctx->AssignInputRange(std::make_pair(start_idx, start_idx + 1), i);
+      auto end_idx = start_idx + 1;
+      kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
       continue;
     }
-    auto& ins_vector = ins.at(input_names[i]);
-
+    auto ins_vector = it->second;
     size_t end_idx = start_idx + ins_vector.size();
 
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
@@ -341,6 +346,10 @@ void BuildDygraphPtenKernelContext(
                    std::type_index(typeid(std::vector<int32_t>))) {
           kernel_ctx->EmplaceBackAttr(std::move(
               pten::ScalarArray(BOOST_GET_CONST(std::vector<int32_t>, attr))));
+        } else if (attr_defs[i].type_index ==
+                   std::type_index(typeid(std::vector<int32_t>))) {
+          const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
+          kernel_ctx->EmplaceBackAttr(vector_int_attr);
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported cast op attribute `%s` to VectorTensor when "
@@ -403,6 +412,9 @@ void BuildDygraphPtenKernelContext(
         kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(float, attr));
       } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
         kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::string))) {
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(std::string, attr));
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(pten::DataType))) {
         auto data_type = pten::TransToPtenDataType(
