@@ -476,6 +476,15 @@ struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, Arity, true> {
 };
 
 template <typename InT, typename OutT, int VecSize, typename Functor>
+struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 0, false> {
+  __device__ inline void operator()(Functor func,
+                                    InT (*args)[VecSize],
+                                    OutT *result) {
+    kps::ElementwiseConstant<InT, OutT, VecSize, 1, 1, Functor>(result, func);
+  }
+};
+
+template <typename InT, typename OutT, int VecSize, typename Functor>
 struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 1, false> {
   __device__ inline void operator()(Functor func,
                                     InT (*args)[VecSize],
@@ -548,12 +557,13 @@ template <typename InT,
           int VecSize,
           bool IsBoundary>
 __device__ void VectorizedElementwiseKernelImpl(
+
     const pten::framework::Array<const _ptr_ InT *__restrict__, Arity> &in,
     pten::framework::Array<_ptr_ OutT *, NumOuts> outs,
     int num,
     int data_offset,
     Functor func) {
-  InT args[Arity][VecSize];
+  InT args[Arity > 1 ? Arity : 1][VecSize];
   ConditionalT<OutT, NumOuts> result[VecSize];
 
 #pragma unroll
@@ -623,7 +633,8 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
                            const std::vector<const DenseTensor *> &ins,
                            std::vector<DenseTensor *> *outs,
                            Functor func) {
-  auto numel = ins[0]->numel();
+  auto numel =
+      (*outs)[0]->numel();  // To avoid running errors when ins.size()== 0
   pten::framework::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
   pten::framework::Array<_ptr_ OutT *, NumOuts> outs_data;
 

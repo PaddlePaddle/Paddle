@@ -37,7 +37,7 @@ TEST(GradNodeInfo, GradNodeBase) {
   auto grad_test_node0 = std::make_shared<eager_test::GradTestNode>(
       /* val */ 5.0, /* in_num */ 2, /* out_num */ 2);
   auto grad_test_node1 = std::make_shared<eager_test::GradTestNode>();
-  std::vector<std::vector<egr::EagerTensor>> grads;
+  std::vector<std::vector<paddle::experimental::Tensor>> grads;
   pten::DenseTensorMeta meta = pten::DenseTensorMeta(
       pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 1}));
   std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
@@ -47,7 +47,7 @@ TEST(GradNodeInfo, GradNodeBase) {
       meta);
   auto* dt_ptr = dt->mutable_data<float>(paddle::platform::CPUPlace());
   dt_ptr[0] = 5.0f;
-  egr::EagerTensor et1(dt);
+  paddle::experimental::Tensor et1(dt);
   grads = {{et1}};
   VLOG(6) << "Test Grad Node Call";
   auto res = (*grad_test_node0)(grads);
@@ -93,8 +93,9 @@ TEST(GradNodeInfo, GradNodeBase) {
   CHECK_EQ(grad_test_node2->OutputMeta()[0].Size(), 1);
 
   VLOG(6) << "Test Gradient Hook";
-  auto gradient_hook = [](const egr::EagerTensor& et) -> egr::EagerTensor {
-    egr::EagerTensor res;
+  auto gradient_hook = [](
+      const paddle::experimental::Tensor& et) -> paddle::experimental::Tensor {
+    paddle::experimental::Tensor res;
     pten::DenseTensorMeta meta = pten::DenseTensorMeta(
         pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 1}));
     std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
