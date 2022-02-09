@@ -62,10 +62,9 @@ void FullLikeKernel(const ContextT& dev_ctx,
   auto value = val.to<float>();
   using CommonType = typename std::common_type<
       float,
-      typename std::conditional<
-          std::is_same<T, paddle::platform::float16>::value,
-          float,
-          T>::type>::type;
+      typename std::conditional<std::is_same<T, pten::dtype::float16>::value,
+                                float,
+                                T>::type>::type;
 
   auto common_type_value = static_cast<CommonType>(value);
 
@@ -75,7 +74,7 @@ void FullLikeKernel(const ContextT& dev_ctx,
           (common_type_value <=
            static_cast<CommonType>(std::numeric_limits<T>::max())),
       true,
-      paddle::platform::errors::InvalidArgument(
+      pten::errors::InvalidArgument(
           "The filled value is out of range for target type, "
           "current kernel type is %s, the range should between %f "
           "and %f, but now value is %f.",
