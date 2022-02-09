@@ -31,6 +31,7 @@ std::string TransToPtenKernelName(const std::string& fluid_op_name);
 const std::string& TransToFluidOpName(const std::string& pten_kernel_name);
 
 Backend TransToPtenBackend(const paddle::platform::Place& place);
-paddle::platform::Place TransToFluidPlace(const Backend& backend);
+paddle::platform::Place TransToFluidPlace(const Backend& backend,
+                                          bool set_device_id = true);
 
 }  // namespace pten

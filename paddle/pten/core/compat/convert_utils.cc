@@ -33,8 +33,11 @@ Backend TransToPtenBackend(const paddle::platform::Place& place) {
   }
 }
 
-paddle::platform::Place TransToFluidPlace(const Backend& backend) {
-  // TODO(chenweihang): add other trans cases later
+paddle::platform::Place TransToFluidPlace(const Backend& backend,
+                                          bool set_device_id) {
+  // NOTE(zhiqiu): GetCurrentDeviceId not always success, and device id is not
+  // always needed.
+  // So, add set_device_id parameter here.
   switch (backend) {
     case pten::Backend::CPU:
       return paddle::platform::CPUPlace();
