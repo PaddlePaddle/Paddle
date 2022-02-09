@@ -633,6 +633,63 @@ __global__ void KeBilinearInterpBwShareMemory(
 }
 
 template <typename T>
+__global__ void KeBilinearInterpNCHWBw(
+    T* in, const size_t in_img_h, const size_t in_img_w,
+    const T* __restrict__ out, const size_t out_img_h, const size_t out_img_w,
+    const size_t nc, const float ratio_h, const float ratio_w,
+    const bool align_corners, const int align_mode) {
+  int out_img_idx = threadIdx.x + blockIdx.x * blockDim.x;
+  int out_img_idy = threadIdx.y + blockIdx.y * blockDim.y;
+  int nc_id = threadIdx.z + blockIdx.z * blockDim.z;
+  int nc_stride = blockDim.z * gridDim.z;
+  bool align_flag = (align_mode == 0 && !align_corners);
+
+  int in_img_idy =
+      align_flag ? ratio_h * (out_img_idy + 0.5) - 0.5 : ratio_h * out_img_idy;
+  in_img_idy = (in_img_idy > 0) ? in_img_idy : 0;
+  int h_id = (in_img_idy < in_img_h - 1) ? 1 : 0;
+  T src_h = ratio_h * (out_img_idy + 0.5) - 0.5;
+  src_h = (src_h > 0) ? src_h : 0;
+  T h1lambda =
+      align_flag ? src_h - in_img_idy : ratio_h * out_img_idy - in_img_idy;
+  T h2lambda = 1.f - h1lambda;
+
+  int in_img_idx =
+      align_flag ? ratio_w * (out_img_idx + 0.5) - 0.5 : ratio_w * out_img_idx;
+  in_img_idx = (in_img_idx > 0) ? in_img_idx : 0;
+  int w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;
+  T src_w = ratio_w * (out_img_idx + 0.5) - 0.5;
+  src_w = (src_w > 0) ? src_w : 0;
+  T w1lambda =
+      align_flag ? src_w - in_img_idx : ratio_w * out_img_idx - in_img_idx;
+  T w2lambda = 1.f - w1lambda;
+
+  int in_index = (nc_id * in_img_h + in_img_idy) * in_img_w + in_img_idx;
+  int in_index_stride = nc_stride * in_img_h * in_img_w;
+
+  int out_index = (nc_id * out_img_h + out_img_idy) * out_img_w + out_img_idx;
+  int out_index_stride = nc_stride * out_img_h * out_img_w;
+
+  // prevent from multiple threads writing
+  if (out_img_idx < out_img_w && out_img_idy < out_img_h) {
+    while (nc_id < nc) {
+      T* in_pos = &in[in_index];
+      const T* out_pos = &out[out_index];
+      platform::CudaAtomicAdd(&in_pos[0], h2lambda * w2lambda * out_pos[0]);
+      platform::CudaAtomicAdd(&in_pos[w_id], h2lambda * w1lambda * out_pos[0]);
+      platform::CudaAtomicAdd(&in_pos[h_id * in_img_w],
+                              h1lambda * w2lambda * out_pos[0]);
+      platform::CudaAtomicAdd(&in_pos[h_id * in_img_w + w_id],
+                              h1lambda * w1lambda * out_pos[0]);
+
+      in_index += in_index_stride;
+      out_index += out_index_stride;
+      nc_id += nc_stride;
+    }
+  }
+}
+
+template <typename T>
 __global__ void KeBilinearInterpBw(T* in, const int in_h, const int in_w,
                                    const T* __restrict__ out, const int out_h,
                                    const int out_w, const int n,
@@ -656,9 +713,9 @@ __global__ void KeBilinearInterpBw(T* in, const int in_h, const int in_w,
       int channel_id = out_id_w / out_img_size;
       int out_img_idy = (out_id_w % out_img_size) / out_w;
       int out_img_idx = tid % out_w;
+
       int in_img_idx, in_img_idy, w_id, h_id;
       T w1lambda, h1lambda, w2lambda, h2lambda;
-
       T src_w = ratio_w * (out_img_idx + align_type_value) - align_type_value;
       T src_h = ratio_h * (out_img_idy + align_type_value) - align_type_value;
       PreCalculatorForInputIndex(&in_img_idx, &in_img_idy, &w_id, &h_id,
@@ -1836,6 +1893,16 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
                ctx.cuda_device_context().stream()>>>(
           input_grad_data, in_h, in_w, output_grad_data, out_h, out_w, n, c,
           ratio_h, ratio_w, align_type_value, is_nchw);
+    } else if (!optimize_flag & is_nchw) {
+      // get launch 3D config
+      int nc = n * c;
+      platform::GpuLaunchConfig config_3d =
+          GetGpuLaunchConfig3D(ctx.cuda_device_context(), nc, out_h, out_w);
+      KeBilinearInterpNCHWBw<
+          T><<<config_3d.block_per_grid, config_3d.thread_per_block, 0,
+               ctx.cuda_device_context().stream()>>>(
+          input_grad_data, in_h, in_w, output_grad_data, out_h, out_w, nc,
+          ratio_h, ratio_w, align_corners, align_mode);
     } else {
       KeBilinearInterpBw<T><<<config.block_per_grid, config.thread_per_block, 0,
                               ctx.cuda_device_context().stream()>>>(
