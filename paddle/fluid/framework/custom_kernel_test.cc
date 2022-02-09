@@ -76,7 +76,7 @@ void FakeDot(const paddle::CPUContext& dev_ctx, const paddle::Tensor& x,
   assert(fake_attr_float == 2);
   assert(fake_attr_double == 3);
   assert(fake_attr_int64 == 4);
-  assert(fake_attr_f16 == 5);
+  assert(fake_attr_f16 == pten::dtype::float16(5));
   assert(fake_attr_dtype == pten::DataType::UINT32);
   assert(fake_attr_int64_vec.size() == 0);
   assert(fake_attr_int_vec.size() == 0);

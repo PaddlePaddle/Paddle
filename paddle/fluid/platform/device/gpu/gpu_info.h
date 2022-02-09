@@ -114,7 +114,8 @@ void GpuDestroyStream(gpuStream_t stream);
 void GpuDeviceSync();
 
 //! CudaMalloc with recorded info
-gpuError_t RecordedGpuMalloc(void **ptr, size_t size, int dev_id);
+gpuError_t RecordedGpuMalloc(void **ptr, size_t size, int dev_id,
+                             bool malloc_managed_memory = false);
 
 //! CudaFree with recorded info
 void RecordedGpuFree(void *p, size_t size, int dev_id);
@@ -141,10 +142,16 @@ bool RecordedGpuMemGetInfo(size_t *avail, size_t *total, size_t *actual_avail,
 //! Get recorded cudaMalloc size. If record is disabled, return 0.
 uint64_t RecordedGpuMallocSize(int dev_id);
 
+uint64_t RecordedGpuLimitSize(int dev_id);
+
 bool IsGpuMallocRecorded(int dev_id);
 
 //! Empty idle cached memory held by the allocator.
 void EmptyCache(void);
+
+bool IsGPUManagedMemorySupported(int dev_id);
+
+bool IsGPUManagedMemoryOversubscriptionSupported(int dev_id);
 
 //! Get the primitive pointer return from cudaMalloc, just implemented with
 //! testing, do not use for release

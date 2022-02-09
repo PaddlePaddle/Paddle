@@ -29,6 +29,9 @@
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/var_helper.h"
 
+#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/selected_rows.h"
+
 DECLARE_bool(use_mkldnn);
 
 namespace paddle {
@@ -262,7 +265,17 @@ void BuildDygraphPtenKernelContext(
     size_t end_idx = start_idx + ins_vector.size();
 
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
-      const auto* tensor_in = GetTensorFromVar(ins_vector[offset]->Var());
+      const pten::TensorBase* tensor_in = nullptr;
+      auto& var = ins_vector[offset]->Var();
+      if (var.template IsType<pten::DenseTensor>()) {
+        tensor_in = &(var.template Get<pten::DenseTensor>());
+      } else if (var.template IsType<pten::SelectedRows>()) {
+        tensor_in = &(var.template Get<pten::SelectedRows>());
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported input `%s` type when call pt kernel.",
+            framework::ToTypeName(var.Type())));
+      }
       kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
     }
     kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
@@ -287,17 +300,21 @@ void BuildDygraphPtenKernelContext(
         kernel_ctx->EmplaceBackOutputWithoutSetRange({nullptr});
         continue;
       }
+
+      pten::TensorBase* tensor_out = nullptr;
       auto* var = outs_vector[offset]->MutableVar();
-      framework::Tensor* tensor_out = nullptr;
-      if (var->template IsType<framework::LoDTensor>()) {
-        tensor_out = var->template GetMutable<framework::LoDTensor>();
+      if (var->template IsType<pten::DenseTensor>()) {
+        tensor_out = var->template GetMutable<pten::DenseTensor>();
+      } else if (var->template IsType<pten::SelectedRows>()) {
+        tensor_out = var->template GetMutable<pten::SelectedRows>();
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported output `%s` type when call pt kernel.",
             framework::ToTypeName(var->Type())));
-      }  // TODO(zyfncg): Add support for SelectedRows
+      }
 
-      experimental::ResetTensorByArgDef(tensor_out, output_defs.at(i));
+      experimental::ResetTensorDtypeAndLayoutByArgDef(tensor_out,
+                                                      output_defs.at(i));
       framework::SetAllocationForOutputTenosr(
           tensor_out, pten::TransToFluidPlace(output_defs.at(i).backend));
 

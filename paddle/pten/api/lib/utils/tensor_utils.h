@@ -43,8 +43,8 @@ pten::ScalarArray MakePtenScalarArrayFromVar(
 pten::ScalarArray MakePtenScalarArrayFromVarList(
     const std::vector<framework::Variable*>& variable_list);
 
-void ResetTensorByArgDef(pten::DenseTensor* dst,
-                         const pten::TensorArgDef& arg_def);
+void ResetTensorDtypeAndLayoutByArgDef(pten::TensorBase* dst,
+                                       const pten::TensorArgDef& arg_def);
 
 }  // namespace experimental
 }  // namespace paddle
