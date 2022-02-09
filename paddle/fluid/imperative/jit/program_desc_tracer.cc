@@ -141,6 +141,13 @@ void ProgramDescTracer::InsertOp(const std::string &type,
   }
 }
 
+void ProgramDescTracer::InsertOp(const std::string &type,
+                                 const NameTensorMap &inputs,
+                                 const NameTensorMap &outputs,
+                                 const framework::AttributeMap &attrs) {
+  // TODO(jiabin): Support this later.
+}
+
 TracedProgramTuple ProgramDescTracer::CreateProgramDesc(
     const std::vector<std::shared_ptr<VarBase>> &feed_vars,
     const std::string &feed_prefix,

@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 
 namespace pten {
 namespace tests {

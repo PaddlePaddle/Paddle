@@ -539,7 +539,7 @@ inline void retry_sleep(unsigned milliseconds) {
         ::paddle::platform::details::ExternalApiType<                   \
             __CUDA_STATUS_TYPE__>::kSuccess;                            \
     while (UNLIKELY(__cond__ != __success_type__) && retry_count < 5) { \
-      retry_sleep(FLAGS_gpu_allocator_retry_time);                      \
+      paddle::platform::retry_sleep(FLAGS_gpu_allocator_retry_time);    \
       __cond__ = (COND);                                                \
       ++retry_count;                                                    \
     }                                                                   \
@@ -727,7 +727,7 @@ inline void retry_sleep(unsigned millisecond) {
         ::paddle::platform::details::ExternalApiType<                   \
             __CUDA_STATUS_TYPE__>::kSuccess;                            \
     while (UNLIKELY(__cond__ != __success_type__) && retry_count < 5) { \
-      retry_sleep(FLAGS_gpu_allocator_retry_time);                      \
+      ::paddle::platform::retry_sleep(FLAGS_gpu_allocator_retry_time);  \
       __cond__ = (COND);                                                \
       ++retry_count;                                                    \
     }                                                                   \

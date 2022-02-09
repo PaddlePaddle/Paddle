@@ -63,7 +63,8 @@ class FillConstantMLUKernel : public framework::OpKernel<T> {
       framework::Tensor mlu_tensor;
       auto tmp_place = value_tensor->place();
       if (platform::is_mlu_place(tmp_place)) {
-        TensorCopySync(*value_tensor, platform::CPUPlace(), &mlu_tensor);
+        framework::TensorCopySync(*value_tensor, platform::CPUPlace(),
+                                  &mlu_tensor);
         tensor_data = mlu_tensor.data<T>();
       }
       value = tensor_data[0];

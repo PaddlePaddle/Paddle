@@ -26,8 +26,9 @@ limitations under the License. */
 
 // new pten apis
 #include "paddle/pten/api/include/api.h"
+#include "paddle/pten/api/include/manual_api.h"
+#include "paddle/pten/api/include/sparse_api.h"
 #include "paddle/pten/api/include/tensor.h"
-#include "paddle/pten/api/include/utils.h"
 
 // pten common headers
 #include "paddle/pten/common/backend.h"
@@ -40,6 +41,7 @@ limitations under the License. */
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/api/ext/dll_decl.h"
 #include "paddle/pten/api/ext/exception.h"
+#include "paddle/pten/api/ext/op_kernel_info.h"
 #include "paddle/pten/api/ext/op_meta_info.h"
 #include "paddle/pten/api/ext/place.h"
 #include "paddle/pten/api/ext/tensor_compat.h"

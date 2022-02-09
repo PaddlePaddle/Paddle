@@ -23,14 +23,15 @@
 #include "paddle/infrt/common/object.h"
 #include "paddle/infrt/common/shared.h"
 #include "paddle/infrt/host_context/function.h"
+#include "paddle/infrt/naive/meta_tensor.h"
 #include "paddle/infrt/support/variant.h"
 #include "paddle/infrt/tensor/dense_host_tensor.h"
 #include "paddle/infrt/tensor/dense_tensor_view.h"
 #include "paddle/infrt/tensor/tensor_map.h"
 #include "paddle/infrt/tensor/tensor_shape.h"
-
-#include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/core/dense_tensor.h"
+// Disabled temporarily for failed compile, will enable latter.
+// #include "paddle/pten/backends/cpu/cpu_context.h"
+// #include "paddle/pten/core/dense_tensor.h"
 
 namespace infrt {
 namespace host_context {
@@ -48,8 +49,9 @@ using ValueVariantType = Variant<int16_t,
                                  tensor::DenseHostTensor,
                                  MlirFunctionExecutable*,
                                  tensor::TensorMap,
-                                 pten::CPUContext,
-                                 pten::DenseTensor,
+                                 // pten::CPUContext,
+                                 // pten::DenseTensor,
+                                 naive::MetaTensor,
                                  std::vector<int16_t>,
                                  std::vector<int32_t>,
                                  std::vector<int64_t>,
@@ -82,14 +84,27 @@ class Value : public common::Object {
   explicit Value(tensor::TensorShape&& x) : data(std::move(x)) {}
   explicit Value(tensor::DenseHostTensor&& x) : data(std::move(x)) {}
   explicit Value(MlirFunctionExecutable* x) : data(x) {}
+  explicit Value(naive::MetaTensor&& x) : data(std::move(x)) {}
 
   template <typename T>
   const T& get() const {
+    CHECK(data.template is<T>());
     return data.get<T>();
   }
+
   template <typename T>
   T& get() {
+    CHECK(data.template is<T>());
     return data.get<T>();
+  }
+
+  //! Get the value if assigned before or return a default value instead.
+  template <class T>
+  T& get_or_default() {
+    if (!data.template is<T>()) {
+      this->set(T{});
+    }
+    return get<T>();
   }
 
   template <typename T>
@@ -100,6 +115,11 @@ class Value : public common::Object {
   void set(Value* v) { data = std::move(v->data); }
 
   bool valid() const { return true; }
+
+  template <typename T>
+  bool is_type() const {
+    return data.template is<T>();
+  }
 
   const char* type_info() const override;
 
@@ -122,11 +142,13 @@ class ValueRef : common::Shared<Value> {
   explicit ValueRef(float val);
   explicit ValueRef(double val);
   explicit ValueRef(bool val);
+  explicit ValueRef(naive::MetaTensor&& val);
 
   using common::Shared<Value>::get;
   using common::Shared<Value>::Reset;
   using common::Shared<Value>::operator->;
   using common::Shared<Value>::operator*;
+
   //! Get a readonly data.
   template <typename T>
   const T& get() const {

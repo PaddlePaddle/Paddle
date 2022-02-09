@@ -1365,7 +1365,7 @@ void ParallelExecutor::PrepareNCCLCommunicator(Scope *global_scope) {
       auto *dev_ctx = static_cast<platform::XPUDeviceContext *>(
           pool.Get(member_->places_[dev_id]));
       auto &bkcl_ctx = bkcl_ctxs->at(member_->places_[dev_id]);
-      dev_ctx->set_bkcl_context(bkcl_ctx.comm());
+      dev_ctx->SetBkclContext(bkcl_ctx.comm());
     }
 #else
     PADDLE_THROW(

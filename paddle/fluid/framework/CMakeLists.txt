@@ -118,7 +118,9 @@ cc_test(var_type_traits_test SRCS var_type_traits_test.cc DEPS var_type_traits)
 
 set(BRPC_DEPS "")
 if(WITH_PSLIB OR WITH_PSCORE)
-    set(BRPC_DEPS brpc ssl crypto)
+    if(NOT WITH_HETERPS)
+        set(BRPC_DEPS brpc ssl crypto)
+    endif()
     if(WITH_PSLIB_BRPC)
         set(BRPC_DEPS pslib_brpc)
     endif()
@@ -185,9 +187,16 @@ cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute device_co
 cc_test(no_need_buffer_vars_inference_test SRCS no_need_buffer_vars_inference_test.cc DEPS no_need_buffer_vars_inference layer)
 
 cc_library(transfer_scope_cache SRCS transfer_scope_cache.cc DEPS scope framework_proto device_context)
-cc_library(op_kernel_type SRCS op_kernel_type.cc DEPS device_context place)
 
 cc_library(unused_var_check SRCS unused_var_check.cc DEPS glog no_need_buffer_vars_inference)
+
+cc_library(op_kernel_type SRCS op_kernel_type.cc DEPS device_context place)
+
+IF(WITH_XPU)
+cc_library(pten_utils SRCS pten_utils.cc DEPS lod_tensor selected_rows_utils place pten var_type_traits pten_api_utils op_info xpu_op_list)
+ELSE()
+cc_library(pten_utils SRCS pten_utils.cc DEPS lod_tensor selected_rows_utils place pten var_type_traits pten_api_utils op_info)
+ENDIF()
 
 IF(WITH_XPU)
 cc_library(operator SRCS operator.cc DEPS xpu_op_list op_info device_context tensor scope glog trainer_desc_proto data_feed_proto
@@ -284,7 +293,7 @@ if(WITH_DISTRIBUTE)
     ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
     pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
     device_context scope framework_proto trainer_desc_proto glog fs shell 
-    fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer
+    fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper metrics lodtensor_printer
     lod_rank_table feed_fetch_method collective_helper ${GLOB_DISTRIBUTE_DEPS}
     graph_to_program_pass variable_helper data_feed_proto timer monitor
     heter_service_proto fleet_executor ${BRPC_DEP})
@@ -306,7 +315,7 @@ if(WITH_DISTRIBUTE)
             pull_dense_worker.cc section_worker.cc heter_section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
             device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
             index_sampler index_wrapper sampler index_dataset_proto
-            lod_rank_table fs shell fleet_wrapper heter_wrapper box_wrapper lodtensor_printer feed_fetch_method
+            lod_rank_table fs shell fleet_wrapper heter_wrapper box_wrapper metrics lodtensor_printer feed_fetch_method
             graph_to_program_pass variable_helper timer monitor heter_service_proto fleet heter_server brpc fleet_executor)
     set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
@@ -327,7 +336,7 @@ if(WITH_DISTRIBUTE)
             ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
             pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
             device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
-            lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
+            lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper metrics lodtensor_printer feed_fetch_method
             graph_to_program_pass variable_helper timer monitor fleet_executor)
   endif()
 elseif(WITH_PSLIB)
@@ -403,8 +412,8 @@ cc_library(save_load_util SRCS save_load_util.cc DEPS tensor scope layer)
 cc_test(save_load_util_test SRCS save_load_util_test.cc DEPS save_load_util tensor scope layer)
 cc_library(generator SRCS generator.cc DEPS enforce place)
 
-cc_library(pten_utils SRCS pten_utils.cc DEPS lod_tensor selected_rows_utils place pten var_type_traits pten_api_utils op_info)
-cc_library(infershape_utils SRCS infershape_utils.cc DEPS pten_utils attribute shape_inference op_utils)
+cc_library(infershape_utils SRCS infershape_utils.cc DEPS lod_tensor selected_rows_utils attribute place pten var_type_traits pten pten_api_utils op_info shape_inference)
+
 
 # Get the current working branch
 execute_process(
@@ -428,11 +437,12 @@ message(STATUS "branch: ${PADDLE_BRANCH}")
 configure_file(commit.h.in commit.h)
 
 cc_library(custom_operator SRCS custom_operator.cc DEPS tensor attribute framework_proto op_registry operator dynamic_loader string_helper pten_tensor op_meta_info pten_api)
-
+cc_library(custom_kernel SRCS custom_kernel.cc DEPS
+           tensor attribute framework_proto op_registry operator dynamic_loader string_helper pten_tensor op_kernel_info pten_api)
 #cc_binary(test_executor SRCS test_executor.cc DEPS executor op_registry ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} )
 #cc_binary(new_executor SRCS new_exec_test.cc DEPS operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} profiler)
 
-set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer dynamic_loader custom_operator)
+set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer dynamic_loader custom_operator custom_kernel)
 
 cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
 
@@ -443,10 +453,9 @@ endif()
 cc_test(scope_guard_test SRCS scope_guard_test.cc)
 cc_test(pten_utils_test SRCS pten_utils_test.cc DEPS pten_utils)
 
-if(WITH_GPU)
-  cc_library(fluid_convert_utils SRCS convert_utils.cc DEPS data_type place gpu_info)
-elseif(WITH_ROCM)
+if(WITH_GPU OR WITH_ROCM)
   cc_library(fluid_convert_utils SRCS convert_utils.cc DEPS data_type place gpu_info)
 else()
   cc_library(fluid_convert_utils SRCS convert_utils.cc DEPS data_type place)
 endif()
+cc_test(custom_kernel_test SRCS custom_kernel_test.cc DEPS custom_kernel pten_tensor)

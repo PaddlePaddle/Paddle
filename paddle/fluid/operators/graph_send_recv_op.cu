@@ -197,7 +197,7 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(
 #endif
   int64_t n = slice_size * index_size;
   const auto& dev_ctx = ctx.cuda_device_context();
-  int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize().x;
+  int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int64_t grid_tmp = (n + block - 1) / block;
   int64_t grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
   int64_t input_size = src_dims[0];
@@ -320,7 +320,7 @@ void GraphSendRecvGradOpCUDAKernelLaunchHelper(
 #endif
   int64_t n = slice_size * index_size;
   const auto& dev_ctx = ctx.cuda_device_context();
-  int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize().x;
+  int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int64_t grid_tmp = (n + block - 1) / block;
   int64_t grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
   int64_t input_size = src_dims[0];

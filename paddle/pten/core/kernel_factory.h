@@ -23,11 +23,9 @@
 #include "paddle/pten/common/backend.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
-#include "paddle/pten/core/convert_utils.h"
-#include "paddle/pten/core/kernel_def.h"
-
-// See Note [ Why still include the fluid headers? ]
+#include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/enforce.h"
+#include "paddle/pten/core/type_defs.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
 
@@ -48,8 +46,6 @@ using DataLayout = paddle::experimental::DataLayout;
  */
 
 class KernelContext;
-
-using KernelFn = void (*)(KernelContext* ctx);
 
 class KernelKey {
  public:
@@ -200,6 +196,10 @@ class Kernel {
   KernelArgsDef args_def_;
 };
 
+using KernelKeyMap = paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash>;
+
+using KernelNameMap = paddle::flat_hash_map<std::string, KernelKeyMap>;
+
 /**
  * Note: Each Computation need a basic kernel map that named by kernel_name.
  *       Such as for scale op, KernelMap contains a `scale` kernel map,
@@ -208,14 +208,9 @@ class Kernel {
  */
 class KernelFactory {
  public:
-  // replaced by paddle::flat_hash_map later
-  using KernelMap = paddle::flat_hash_map<
-      std::string,
-      paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash>>;
-
   static KernelFactory& Instance();
 
-  KernelMap& kernels() { return kernels_; }
+  KernelNameMap& kernels() { return kernels_; }
 
   bool HasCompatiblePtenKernel(const std::string& op_type) const {
     return kernels_.find(TransToPtenKernelName(op_type)) != kernels_.end();
@@ -232,13 +227,12 @@ class KernelFactory {
   Kernel SelectKernel(const std::string& kernel_name,
                       const KernelKey& kernel_key) const;
 
-  paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash> SelectKernelMap(
-      const std::string& kernel_name) const;
+  KernelKeyMap SelectKernelMap(const std::string& kernel_name) const;
 
  private:
   KernelFactory() = default;
 
-  KernelMap kernels_;
+  KernelNameMap kernels_;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const KernelKey& kernel_key) {

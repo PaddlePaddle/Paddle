@@ -27,6 +27,9 @@
 #include "paddle/fluid/pybind/pybind.h"
 #include "paddle/fluid/string/string_helper.h"
 
+// pten
+#include "paddle/pten/kernels/declarations.h"
+
 #define NUM_CREATED_DUP_INPUTS 4
 
 namespace paddle {
@@ -59,6 +62,11 @@ static bool IgnoreGradAttribute(const std::string& op_type,
     if (operators_with_attrs[op_type].count(attr_name)) {
       return true;
     }
+  }
+
+  // Only allow SumOp
+  if (op_type != "sum") {
+    return true;
   }
 
   return false;
@@ -535,7 +543,8 @@ static bool CheckOpProto(proto::OpProto* op_proto) {
   // Skip ooerator which is not inherit form OperatorWithKernel, like while,
   // since only OperatorWithKernel can run in dygraph mode.
   auto& all_kernels = paddle::framework::OperatorWithKernel::AllOpKernels();
-  if (!all_kernels.count(op_type)) {
+  if (!all_kernels.count(op_type) &&
+      !pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
     return false;
   }
 
@@ -1010,7 +1019,7 @@ static std::string GenerateGradNodeCreationContent(
     if (output.duplicable()) {
       const char* GET_MULTI_AUTOGRAD_META_TEMPLATE =
           "  std::vector<egr::AutogradMeta*> %s = "
-          "egr::EagerUtils::multi_autograd_meta(&%s);\n";
+          "egr::EagerUtils::autograd_meta(&%s);\n";
       get_autograd_meta_str += paddle::string::Sprintf(
           GET_MULTI_AUTOGRAD_META_TEMPLATE, output_autograd_name, output_name);
 
@@ -1103,7 +1112,7 @@ static std::string GenerateGradNodeCreationContent(
       size_t input_position = fwd_inputs_name_pos_map.at(input_name);
 
       const char* SET_GRAD_OUT_META_TEMPLATE =
-          "    grad_node->SetGradOutMeta(%s, %d);\n";
+          "    grad_node->SetGradOutMeta(&%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
           SET_GRAD_OUT_META_TEMPLATE, input_autograd_name, input_position);
 
@@ -1134,6 +1143,11 @@ static std::string GenerateGradNodeCreationContent(
       grad_node_creation_str +=
           paddle::string::Sprintf(SET_HISTORY_TEMPLATE, output_autograd_name);
 
+      const char* SET_GRAD_IN_META_TEMPLATE =
+          "    grad_node->SetGradInMeta(&%s, %d);\n";
+      grad_node_creation_str += paddle::string::Sprintf(
+          SET_GRAD_IN_META_TEMPLATE, output_autograd_name, output_position);
+
     } else {
       pass_stop_gradient_args += ", " + output_autograd_name;
       const char* SET_OUT_RANK_TEMPLATE =
@@ -1145,12 +1159,12 @@ static std::string GenerateGradNodeCreationContent(
           "    egr::EagerUtils::SetHistory(%s, grad_node);\n";
       grad_node_creation_str +=
           paddle::string::Sprintf(SET_HISTORY_TEMPLATE, output_autograd_name);
-    }
 
-    const char* SET_GRAD_IN_META_TEMPLATE =
-        "    grad_node->SetGradInMeta(%s, %d);\n";
-    grad_node_creation_str += paddle::string::Sprintf(
-        SET_GRAD_IN_META_TEMPLATE, output_autograd_name, output_position);
+      const char* SET_GRAD_IN_META_TEMPLATE =
+          "    grad_node->SetGradInMeta(%s, %d);\n";
+      grad_node_creation_str += paddle::string::Sprintf(
+          SET_GRAD_IN_META_TEMPLATE, output_autograd_name, output_position);
+    }
 
     VLOG(6) << "Generated Call RetainGradForTensor";
     const char* RETAIN_GRAD_TEMPLATE =
@@ -1211,7 +1225,8 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
 
         // According to op_proto->attrs()
 
-        egr::legacy::RunOp("op_type", ins, outs, attr_map,
+        Controller.Instance().GetCurrentTracer()->TraceOp("op_type", ins, outs,
+  attr_map,
   Controller.Instance().GetExpectedPlace(), {});
 
         // According to fwd_outputs_names
@@ -1392,7 +1407,8 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   const char* FWD_TRACE_OP_TEMPLATE =
       "  paddle::framework::AttributeMap attrs = attr_map;\n"
       "  paddle::framework::AttributeMap default_attrs;\n"
-      "  egr::legacy::RunOp(\"%s\", ins, outs, attrs, \n"
+      "  egr::Controller::Instance().GetCurrentTracer()->TraceOp(\"%s\", ins, "
+      "outs, attrs, \n"
       "     egr::Controller::Instance().GetExpectedPlace(),\n"
       "     &default_attrs, true, {});\n";
   std::string trace_op_str =
@@ -1682,7 +1698,7 @@ static std::string GenerateSingleOpBase(
   VLOG(6) << "Generated Outs Map";
 
   // [Generation] Get Attrs Map
-  const char* ATTRS_TEMPLATE = "  auto %s = this->attr_map_;\n";
+  const char* ATTRS_TEMPLATE = "  auto& %s = this->attr_map_;\n";
   std::string grad_attrs_str =
       paddle::string::Sprintf(ATTRS_TEMPLATE, attrs_name);
   for (const auto& iter : grad_attrs) {
@@ -1703,7 +1719,8 @@ static std::string GenerateSingleOpBase(
       "  // Pass the entire attribute map to TraceOp\n"
       "  // The underlying kernel will pickup whatever attribute they need "
       "at runtime\n"
-      "  egr::legacy::RunOp(\"%s\", %s, %s, %s,\n"
+      "  egr::Controller::Instance().GetCurrentTracer()->TraceOp(\"%s\", %s, "
+      "%s, %s,\n"
       "      egr::Controller::Instance().GetExpectedPlace(),\n"
       "      &this->default_attr_map_, false, {});\n";
   std::string trace_opbase_str = paddle::string::Sprintf(
@@ -1813,7 +1830,8 @@ static std::string GenerateGradNodeCCContents(
     // Visit each OpBase
     for(auto iter = "grad_node->begin()"; iter < "grad_node->end()"; iter++) {
         // Simply pass entire attribute map to kernels
-        egr::legacy::RunOp("iter->Type()", ins, outs, this->attr_map_,
+        Controller.Instance().GetCurrentTracer()->TraceOp("iter->Type()", ins,
+  outs, this->attr_map_,
             egr::Controller::Instance().ExpectedPlace(), false, {});
     }
 
@@ -2045,6 +2063,7 @@ static std::string GenerateDygraphHFileIncludes() {
       "#include \"paddle/fluid/eager/autograd_meta.h\"\n"
       "#include \"paddle/pten/api/all.h\"\n"
       "#include \"paddle/fluid/eager/utils.h\"\n"
+      "#include \"paddle/fluid/imperative/tracer.h\"\n"
       "#include \"paddle/fluid/framework/op_registry.h\"\n\n";
 
   dygraph_forward_api_includes_str +=
@@ -2075,8 +2094,7 @@ static void GenerateForwardDygraphFile(const std::string& forward_cc_path,
       "dygraph_forward_api.h\"\n"
       "#include "
       "\"paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes.h\"\n\n"
-      "#include \"paddle/fluid/eager/api/utils/global_utils.h\"\n"
-      "#include \"paddle/fluid/eager/legacy/op_runner.h\"\n";
+      "#include \"paddle/fluid/eager/api/utils/global_utils.h\"\n";
   std::string forward_cc_include_str =
       paddle::string::Sprintf(FORWARD_INCLUDE_TEMPLATE);
   std::ofstream forward_cc_stream(forward_cc_path, std::ios::out);
@@ -2090,7 +2108,7 @@ static void GenerateNodeHFile(const std::string& node_h_path,
   std::string node_h_include_str =
       "#pragma once\n"
       "#include \"paddle/fluid/eager/tensor_wrapper.h\"\n"
-      "#include \"paddle/fluid/eager/legacy/op_runner.h\"\n"
+      "#include \"paddle/fluid/imperative/tracer.h\"\n"
       "#include \"paddle/fluid/eager/grad_node_info.h\"\n\n";
   std::ofstream node_h_stream(node_h_path, std::ios::out);
   node_h_stream << node_h_include_str;

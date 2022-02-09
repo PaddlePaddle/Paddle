@@ -449,6 +449,39 @@ void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
   }
 }
 
+template <typename T>
+void SetUVATensorFromPyArray(
+    const std::shared_ptr<paddle::imperative::VarBase> &self,
+    const py::array_t<T> &array, int device_id) {
+#if defined(PADDLE_WITH_CUDA)
+  auto *self_tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
+  std::vector<int64_t> dims;
+  dims.reserve(array.ndim());
+  int64_t numel = 1;
+  for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
+    dims.emplace_back(static_cast<int>(array.shape()[i]));
+    numel *= static_cast<int>(array.shape()[i]);
+  }
+  self_tensor->Resize(framework::make_ddim(dims));
+
+  auto data_type = framework::ToDataType(std::type_index(typeid(T)));
+  const auto &need_allocate_size = numel * framework::SizeOfType(data_type);
+  T *data_ptr;
+  cudaHostAlloc(reinterpret_cast<void **>(&data_ptr), need_allocate_size,
+                cudaHostAllocWriteCombined | cudaHostAllocMapped);
+  std::memcpy(data_ptr, array.data(), array.nbytes());
+
+  void *cuda_device_pointer = nullptr;
+  cudaHostGetDevicePointer(reinterpret_cast<void **>(&cuda_device_pointer),
+                           reinterpret_cast<void *>(data_ptr), 0);
+  std::shared_ptr<memory::allocation::Allocation> holder =
+      std::make_shared<memory::allocation::Allocation>(
+          cuda_device_pointer, need_allocate_size,
+          platform::CUDAPlace(device_id));
+  self_tensor->ResetHolderWithType(holder, data_type);
+#endif
+}
+
 template <typename T, size_t D>
 void _sliceCompute(const framework::Tensor *in, framework::Tensor *out,
                    const platform::CPUDeviceContext &ctx,

@@ -58,7 +58,6 @@ class SplitMLUKernel : public framework::OpKernel<T> {
     std::vector<void*> vct_tensor;
     std::vector<MLUCnnlTensorDesc> output_descs;
     std::vector<cnnlTensorDescriptor_t> desc_vector;
-    auto place = ctx.GetPlace();
     for (size_t i = 0; i < outs.size(); i++) {
       outs[i]->mutable_data<T>(ctx.GetPlace());
       output_descs.emplace_back(MLUCnnlTensorDesc(

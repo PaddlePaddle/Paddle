@@ -33,6 +33,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/pybind/pybind.h"
+
+// pten
+#include "paddle/pten/kernels/declarations.h"
 namespace paddle {
 namespace framework {
 
