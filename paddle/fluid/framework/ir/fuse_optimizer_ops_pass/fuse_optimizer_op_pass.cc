@@ -274,6 +274,7 @@ bool FuseOptimizerOpPass::OpWithKernelSupportCPUAndGPU(
   auto &all_kernels = OperatorWithKernel::AllOpKernels();
   auto it = all_kernels.find(op_type);
   // skip op not has kernel
+  bool find_context_kernel = false;
   if (it != all_kernels.end()) {
     bool support_cpu = false;
     bool support_gpu = false;
@@ -286,6 +287,31 @@ bool FuseOptimizerOpPass::OpWithKernelSupportCPUAndGPU(
       }
     }
     VLOG(6) << "Op check: " << op_type << ", support CPU: " << support_cpu
+            << ", support GPU: " << support_gpu;
+    find_context_kernel = support_cpu && support_gpu;
+    if (find_context_kernel) {
+      return true;
+    }
+
+    // try to find in new kernel factory
+    auto &kernel_factory = pten::KernelFactory::Instance();
+    auto kernel_key_map =
+        kernel_factory.SelectKernelMap(pten::TransToPtenKernelName(op_type));
+    for (auto &kernel : kernel_key_map) {
+      if (platform::is_cpu_place(
+              pten::TransToFluidPlace(kernel.first.backend()))) {
+        support_cpu = true;
+        continue;
+      }
+
+      if (platform::is_gpu_place(
+              pten::TransToFluidPlace(kernel.first.backend()))) {
+        support_gpu = true;
+        continue;
+      }
+    }
+    VLOG(6) << "Op check in pten kernels: " << op_type
+            << ", support CPU: " << support_cpu
             << ", support GPU: " << support_gpu;
     return support_cpu && support_gpu;
   }

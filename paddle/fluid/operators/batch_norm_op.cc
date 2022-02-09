@@ -293,7 +293,6 @@ The required data format for this layer is one of the following:
 )DOC");
 }
 
-
 void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
   // check input
   OP_INOUT_CHECK(ctx->HasInput("Scale"), "Input", "Scale", "BatchNormGrad");
@@ -408,9 +407,7 @@ template <typename T>
 class BatchNormGradKernel<platform::CPUDeviceContext, T>
     : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-
-  }
+  void Compute(const framework::ExecutionContext &ctx) const override {}
 };
 
 template <typename T>
@@ -862,12 +859,3 @@ REGISTER_OPERATOR(batch_norm_grad, ops::BatchNormGradOp,
                   ops::BatchNormDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(batch_norm_grad_grad, ops::BatchNormDoubleGradOp,
                   ops::BatchNormDoubleGradOpInplaceInferer);
-
-// REGISTER_OP_CPU_KERNEL(
-//     batch_norm_grad,
-//     ops::BatchNormGradKernel<paddle::platform::CPUDeviceContext, float>,
-//     ops::BatchNormGradKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    batch_norm_grad_grad,
-    ops::BatchNormDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::BatchNormDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);
