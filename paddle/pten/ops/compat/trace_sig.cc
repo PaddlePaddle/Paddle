@@ -12,19 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/compat/op_utils.h"
 
 namespace pten {
 
-template <typename T, typename Context>
-void TraceGradKernel(const Context& ctx,
-                     const DenseTensor& out_grad,
-                     const DenseTensor& x,
-                     int offset,
-                     int axis1,
-                     int axis2,
-                     DenseTensor* in_grad);
+KernelSignature TraceOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "trace", {"Input"}, {"offset", "axis1", "axis2"}, {"Out"});
+}
+
+KernelSignature TraceGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("trace_grad",
+                         {framework::GradVarName("Out"), "Input"},
+                         {"offset", "axis1", "axis2"},
+                         {framework::GradVarName("Input")});
+}
 
 }  // namespace pten
+
+PT_REGISTER_ARG_MAPPING_FN(trace, pten::TraceOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(trace_grad, pten::TraceGradOpArgumentMapping);

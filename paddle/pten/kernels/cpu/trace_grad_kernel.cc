@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/pten/kernels/trace_grad_kernel.h"
+#include "paddle/pten/kernels/impl/trace_kernel_impl.h"
 
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"

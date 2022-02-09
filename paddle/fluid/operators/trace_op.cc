@@ -72,12 +72,6 @@ class TraceOp : public framework::OperatorWithKernel {
     }
     ctx->SetOutputDim("Out", framework::make_ddim(sizes));
   }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext &ctx) const override {
-    return framework::KernelSignature("trace", {"Input"},
-                                      {"offset", "axis1", "axis2"}, {"Out"});
-  }
 };
 
 class TraceOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -128,13 +122,6 @@ class TraceOpGrad : public framework::OperatorWithKernel {
                           "Output(Input@GRAD) of TraceGradOp is not found."));
     ctx->SetOutputDim(framework::GradVarName("Input"),
                       ctx->GetInputDim("Input"));
-  }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext &ctx) const override {
-    return framework::KernelSignature(
-        "trace_grad", {framework::GradVarName("Out"), "Input"},
-        {"offset", "axis1", "axis2"}, {framework::GradVarName("Input")});
   }
 
  protected:

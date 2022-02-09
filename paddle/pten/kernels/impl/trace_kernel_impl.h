@@ -181,13 +181,13 @@ DenseTensor Diagonal(const DeviceContext& context,
 }
 
 template <typename T, typename Context>
-void TraceGradKernelImpl(const Context& ctx,
-                         const DenseTensor& out_grad,
-                         const DenseTensor& x,
-                         int offset,
-                         int axis1,
-                         int axis2,
-                         DenseTensor* in_grad) {
+void TraceGradKernel(const Context& ctx,
+                     const DenseTensor& out_grad,
+                     const DenseTensor& x,
+                     int offset,
+                     int axis1,
+                     int axis2,
+                     DenseTensor* in_grad) {
   auto input_dims = in_grad->dims();
   auto input_stride = framework::stride(input_dims);
   auto output_dims = out_grad.dims();
