@@ -73,6 +73,39 @@ class TestSigmoidCrossEntropyWithLogitsOp1(XPUOpTest):
         self.dtype = np.float32
 
 
+class TestSigmoidCrossEntropyWithLogitsOp2(
+        TestSigmoidCrossEntropyWithLogitsOp1):
+    """Test sigmoid_cross_entropy_with_logit_op with probabalistic label
+    """
+
+    def setUp(self):
+        self.op_type = "sigmoid_cross_entropy_with_logits"
+        self.set_xpu()
+        self.init_dtype()
+
+        batch_size = 64
+        num_classes = 20
+        ignore_index = -1
+        self.inputs = {
+            'X': logit(
+                np.random.uniform(0, 1, (batch_size, num_classes))
+                .astype(self.dtype)),
+            'Label': np.random.randint(-1, 2, (batch_size, num_classes))
+            .astype(self.dtype)
+        }
+        self.attrs = {'ignore_index': ignore_index, }
+
+        # Fw Pass is implemented as elementwise sigmoid followed by
+        # elementwise logistic loss
+        # Label * -log(sigmoid(X)) + (1 - label) * -log(1 - sigmoid(X))
+        sigmoid_X = expit(self.inputs['X'])
+        term1 = self.inputs['Label'] * np.log(sigmoid_X)
+        term2 = (1 - self.inputs['Label']) * np.log(1 - sigmoid_X)
+        out = -term1 - term2
+        out[np.where(self.inputs['Label'] == ignore_index)] = 0
+        self.outputs = {'Out': out}
+
+
 class TestSigmoidCrossEntropyWithLogitsOp3(
         TestSigmoidCrossEntropyWithLogitsOp1):
     """Test sigmoid_cross_entropy_with_logit_op with probabalistic label
@@ -102,6 +135,42 @@ class TestSigmoidCrossEntropyWithLogitsOp3(
         self.outputs = {'Out': -term1 - term2}
 
 
+class TestSigmoidCrossEntropyWithLogitsOp4(
+        TestSigmoidCrossEntropyWithLogitsOp1):
+    """Test sigmoid_cross_entropy_with_logit_op with probabalistic label
+    """
+
+    def setUp(self):
+        self.op_type = "sigmoid_cross_entropy_with_logits"
+        self.set_xpu()
+        self.init_dtype()
+
+        batch_size = 64
+        num_classes = 20
+        ignore_index = -1
+        self.inputs = {
+            'X': logit(
+                np.random.uniform(0, 1, (batch_size, num_classes))
+                .astype(self.dtype)),
+            'Label': np.random.randint(-1, 2, (batch_size, num_classes))
+            .astype(self.dtype)
+        }
+        self.attrs = {'ignore_index': ignore_index, 'normalize': True}
+
+        # Fw Pass is implemented as elementwise sigmoid followed by
+        # elementwise logistic loss
+        # Label * -log(sigmoid(X)) + (1 - label) * -log(1 - sigmoid(X))
+        sigmoid_X = expit(self.inputs['X'])
+        term1 = self.inputs['Label'] * np.log(sigmoid_X)
+        term2 = (1 - self.inputs['Label']) * np.log(1 - sigmoid_X)
+        out = -term1 - term2
+        out[np.where(self.inputs['Label'] == ignore_index)] = 0
+        if self.attrs['normalize']:
+            out = out / float(
+                np.where(self.inputs['Label'] != ignore_index)[0].size)
+        self.outputs = {'Out': out}
+
+
 class TestSigmoidCrossEntropyWithLogitsOp5(
         TestSigmoidCrossEntropyWithLogitsOp1):
     """Test sigmoid_cross_entropy_with_logit_op with probabalistic label
@@ -129,6 +198,42 @@ class TestSigmoidCrossEntropyWithLogitsOp5(
         term1 = self.inputs['Label'] * np.log(sigmoid_X)
         term2 = (1 - self.inputs['Label']) * np.log(1 - sigmoid_X)
         self.outputs = {'Out': -term1 - term2}
+
+
+class TestSigmoidCrossEntropyWithLogitsNorm(
+        TestSigmoidCrossEntropyWithLogitsOp1):
+    """Test sigmoid_cross_entropy_with_logit_op with probabalistic label
+    """
+
+    def setUp(self):
+        self.op_type = "sigmoid_cross_entropy_with_logits"
+        self.set_xpu()
+        self.init_dtype()
+
+        batch_size = [10, 10]
+        num_classes = 20
+        ignore_index = -1
+        self.inputs = {
+            'X': logit(
+                np.random.uniform(0, 1, tuple(batch_size + [num_classes]))
+                .astype(self.dtype)),
+            'Label': np.random.randint(-1, 2, tuple(batch_size + [num_classes]))
+            .astype(self.dtype)
+        }
+        self.attrs = {'ignore_index': ignore_index, 'normalize': True}
+
+        # Fw Pass is implemented as elementwise sigmoid followed by
+        # elementwise logistic loss
+        # Label * -log(sigmoid(X)) + (1 - label) * -log(1 - sigmoid(X))
+        sigmoid_X = expit(self.inputs['X'])
+        term1 = self.inputs['Label'] * np.log(sigmoid_X)
+        term2 = (1 - self.inputs['Label']) * np.log(1 - sigmoid_X)
+        out = -term1 - term2
+        out[np.where(self.inputs['Label'] == ignore_index)] = 0
+        if self.attrs['normalize']:
+            out = out / float(
+                np.where(self.inputs['Label'] != ignore_index)[0].size)
+        self.outputs = {'Out': out}
 
 
 class TestSigmoidCrossEntropyWithLogitsOp6(

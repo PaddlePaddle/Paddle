@@ -50,7 +50,7 @@ class LoadOpKernel : public framework::OpKernel<T> {
 
     if (out_var->IsType<framework::LoDTensor>()) {
       LoadLodTensor(fin, place, out_var, ctx);
-    } else if (out_var->IsType<framework::SelectedRows>()) {
+    } else if (out_var->IsType<pten::SelectedRows>()) {
       LoadSelectedRows(fin, place, out_var);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -75,9 +75,10 @@ class LoadOpKernel : public framework::OpKernel<T> {
                         platform::errors::InvalidArgument(
                             "seek witn tensor must great than or equal to 0"));
       auto shape = ctx.Attr<std::vector<int64_t>>("shape");
-      DeserializeFromStream(fin, tensor, dev_ctx, seek, shape);
+      paddle::framework::DeserializeFromStream(fin, tensor, dev_ctx, seek,
+                                               shape);
     } else {
-      DeserializeFromStream(fin, tensor, dev_ctx);
+      paddle::framework::DeserializeFromStream(fin, tensor, dev_ctx);
     }
 
     auto load_as_fp16 = ctx.Attr<bool>("load_as_fp16");
@@ -104,7 +105,7 @@ class LoadOpKernel : public framework::OpKernel<T> {
 
   void LoadSelectedRows(std::istream &fin, const platform::Place &place,
                         framework::Variable *var) const {
-    auto *selectedRows = var->GetMutable<framework::SelectedRows>();
+    auto *selectedRows = var->GetMutable<pten::SelectedRows>();
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);

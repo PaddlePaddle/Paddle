@@ -387,17 +387,9 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 Tensor* dst) {
   TensorCopyImpl<Tensor>(src, dst_place, dst);
 }
-void TensorCopy(const pten::DenseTensor& src, const platform::Place& dst_place,
-                pten::DenseTensor* dst) {
-  TensorCopyImpl<pten::DenseTensor>(src, dst_place, dst);
-}
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 const platform::DeviceContext& ctx, Tensor* dst) {
   TensorCopyImpl<Tensor>(src, dst_place, ctx, dst);
-}
-void TensorCopy(const pten::DenseTensor& src, const platform::Place& dst_place,
-                const platform::DeviceContext& ctx, pten::DenseTensor* dst) {
-  TensorCopyImpl<pten::DenseTensor>(src, dst_place, ctx, dst);
 }
 
 void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
@@ -1093,7 +1085,7 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
     is.seekg(seekg, is.cur);
 
     void* buf;
-    auto ctx = platform::CPUDeviceContext();
+    platform::CPUDeviceContext ctx;
     size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
     if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
         platform::is_xpu_place(dev_ctx.GetPlace()) ||
@@ -1163,7 +1155,7 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
     std::copy(desc.dims().begin(), desc.dims().end(), std::back_inserter(dims));
     tensor->Resize(framework::make_ddim(dims));
     void* buf;
-    auto ctx = platform::CPUDeviceContext();
+    platform::CPUDeviceContext ctx;
     size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
     if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
         platform::is_xpu_place(dev_ctx.GetPlace()) ||
@@ -1394,45 +1386,50 @@ std::ostream& operator<<(std::ostream& os, const LoD& lod) {
   return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const Tensor& t) {
+}  // namespace framework
+}  // namespace paddle
+
+namespace pten {
+
+std::ostream& operator<<(std::ostream& os, const pten::DenseTensor& t) {
   if (t.lod().size() > 0) {
     os << "  - lod: " << t.lod() << "\n";
   }
 
   os << "  - place: " << t.place() << "\n";
   os << "  - shape: [" << t.dims() << "]\n";
-  os << "  - layout: " << DataLayoutToString(t.layout()) << "\n";
+  os << "  - layout: " << paddle::framework::DataLayoutToString(t.layout())
+     << "\n";
 
 #ifdef PADDLE_WITH_MKLDNN
   os << "  - format: "
      << dnnl_fmt_tag2str(static_cast<dnnl_format_tag_t>(t.format())) << "\n";
 #endif
 
-  Tensor tensor;
+  DenseTensor tensor;
   tensor.Resize(t.dims());
-  if (platform::is_cpu_place(t.place())) {
+  if (paddle::platform::is_cpu_place(t.place())) {
     tensor.ShareDataWith(t);
   } else {
-    platform::CPUPlace place;
-    framework::TensorCopy(t, place, &tensor);
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    paddle::platform::CPUPlace place;
+    paddle::framework::TensorCopy(t, place, &tensor);
+    paddle::platform::DeviceContextPool& pool =
+        paddle::platform::DeviceContextPool::Instance();
     auto& dev_ctx = *pool.Get(t.place());
     dev_ctx.Wait();
   }
 
-#define PrintTensorCallback(cpp_type, proto_type) \
-  do {                                            \
-    if (tensor.type() == proto_type) {            \
-      os << "  - dtype: " << proto_type << "\n";  \
-      print_tensor<cpp_type>(os, tensor);         \
-      return os;                                  \
-    }                                             \
+#define PrintTensorCallback(cpp_type, proto_type)            \
+  do {                                                       \
+    if (tensor.type() == proto_type) {                       \
+      os << "  - dtype: " << proto_type << "\n";             \
+      paddle::framework::print_tensor<cpp_type>(os, tensor); \
+      return os;                                             \
+    }                                                        \
   } while (0)
 
   _ForEachDataType_(PrintTensorCallback);
   VLOG(1) << "PrintVar: unrecognized data type:" << t.type();
   return os;
 }
-
-}  // namespace framework
-}  // namespace paddle
+}  // namespace pten

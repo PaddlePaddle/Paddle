@@ -12,10 +12,12 @@
 #include <atomic>
 #include <cstdlib>
 #include <vector>
+#include "glog/logging.h"
 #include "paddle/fluid/framework/new_executor/workqueue/event_count.h"
 #include "paddle/fluid/framework/new_executor/workqueue/run_queue.h"
 #include "paddle/fluid/framework/new_executor/workqueue/thread_environment.h"
 #include "paddle/fluid/platform/os_info.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace framework {
@@ -26,7 +28,7 @@ class ThreadPoolTempl {
   typedef typename Environment::Task Task;
   typedef RunQueue<Task, 1024> Queue;
 
-  ThreadPoolTempl(int num_threads, bool allow_spinning,
+  ThreadPoolTempl(const std::string& name, int num_threads, bool allow_spinning,
                   Environment env = Environment())
       : env_(env),
         allow_spinning_(allow_spinning),
@@ -38,7 +40,8 @@ class ThreadPoolTempl {
         cancelled_(false),
         ec_(num_threads),
         num_threads_(num_threads),
-        thread_data_(num_threads) {
+        thread_data_(num_threads),
+        name_(name) {
     // Calculate coprimes of all numbers [1, num_threads].
     // Coprimes are used for random walks over all threads in Steal
     // and NonEmptyQueueIndex. Iteration is based on the fact that if we take
@@ -240,9 +243,13 @@ class ThreadPoolTempl {
   EventCount ec_;
   const int num_threads_;
   std::vector<ThreadData> thread_data_;
+  std::string name_;
 
   // Main worker thread loop.
   void WorkerLoop(int thread_id) {
+    std::string thr_name = name_ + "_thread_" + std::to_string(thread_id);
+    VLOG(1) << thr_name << " started ";
+    platform::SetCurrentThreadName(thr_name);
     PerThread* pt = GetPerThread();
     pt->pool = this;
     pt->rand = GlobalThreadIdHash();
@@ -401,6 +408,7 @@ class ThreadPoolTempl {
       ec_.Notify(true);
       return false;
     }
+    platform::RecordEvent("SleepWaitForWork");
     ec_.CommitWait(waiter);
     blocked_--;
     return true;

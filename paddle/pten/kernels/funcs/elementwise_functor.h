@@ -14,14 +14,15 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/pten/common/float16.h"
+#include "paddle/pten/core/enforce.h"
+#include "paddle/pten/core/hostdevice.h"
 
 namespace pten {
 namespace funcs {
 
 // Define the binary functors used in elementwise ops.
+// Note: InverseXxxFunctor is needed when calling ElementwiseComputeEx on CPU.
 
 // Add
 template <typename T>
@@ -48,9 +49,21 @@ template <typename T>
 struct MultiplyFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const { return a * b; }
 };
+template <>
+struct MultiplyFunctor<bool> {
+  inline HOSTDEVICE bool operator()(const bool a, const bool b) const {
+    return a && b;
+  }
+};
 template <typename T>
 struct InverseMultiplyFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const { return b * a; }
+};
+template <>
+struct InverseMultiplyFunctor<bool> {
+  inline HOSTDEVICE bool operator()(const bool a, const bool b) const {
+    return b && a;
+  }
 };
 
 // Divide

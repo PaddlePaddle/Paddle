@@ -24,9 +24,6 @@ class Variable;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-struct float16;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {

@@ -23,11 +23,9 @@
 #include "paddle/pten/common/backend.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
-#include "paddle/pten/core/convert_utils.h"
-#include "paddle/pten/core/kernel_def.h"
-
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/core/compat/convert_utils.h"
+#include "paddle/pten/core/enforce.h"
+#include "paddle/pten/core/type_defs.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
 
@@ -48,8 +46,6 @@ using DataLayout = paddle::experimental::DataLayout;
  */
 
 class KernelContext;
-
-using KernelFn = void (*)(KernelContext* ctx);
 
 class KernelKey {
  public:
@@ -99,9 +95,16 @@ struct TensorArgDef {
   Backend backend;
   DataLayout layout;
   DataType dtype;
+  std::type_index type_index;
 
-  TensorArgDef(Backend in_backend, DataLayout in_layout, DataType in_dtype)
-      : backend(in_backend), layout(in_layout), dtype(in_dtype) {}
+  TensorArgDef(Backend in_backend,
+               DataLayout in_layout,
+               DataType in_dtype,
+               std::type_index in_type_index)
+      : backend(in_backend),
+        layout(in_layout),
+        dtype(in_dtype),
+        type_index(in_type_index) {}
 
   TensorArgDef& SetBackend(Backend in_backend) {
     backend = in_backend;
@@ -130,12 +133,18 @@ class KernelArgsDef {
  public:
   KernelArgsDef() = default;
 
-  void AppendInput(Backend backend, DataLayout layout, DataType dtype) {
-    input_defs_.emplace_back(TensorArgDef(backend, layout, dtype));
+  void AppendInput(Backend backend,
+                   DataLayout layout,
+                   DataType dtype,
+                   std::type_index type_index) {
+    input_defs_.emplace_back(TensorArgDef(backend, layout, dtype, type_index));
   }
 
-  void AppendOutput(Backend backend, DataLayout layout, DataType dtype) {
-    output_defs_.emplace_back(TensorArgDef(backend, layout, dtype));
+  void AppendOutput(Backend backend,
+                    DataLayout layout,
+                    DataType dtype,
+                    std::type_index type_index) {
+    output_defs_.emplace_back(TensorArgDef(backend, layout, dtype, type_index));
   }
 
   void AppendAttribute(std::type_index type_index) {
@@ -200,6 +209,10 @@ class Kernel {
   KernelArgsDef args_def_;
 };
 
+using KernelKeyMap = paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash>;
+
+using KernelNameMap = paddle::flat_hash_map<std::string, KernelKeyMap>;
+
 /**
  * Note: Each Computation need a basic kernel map that named by kernel_name.
  *       Such as for scale op, KernelMap contains a `scale` kernel map,
@@ -208,14 +221,9 @@ class Kernel {
  */
 class KernelFactory {
  public:
-  // replaced by paddle::flat_hash_map later
-  using KernelMap = paddle::flat_hash_map<
-      std::string,
-      paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash>>;
-
   static KernelFactory& Instance();
 
-  KernelMap& kernels() { return kernels_; }
+  KernelNameMap& kernels() { return kernels_; }
 
   bool HasCompatiblePtenKernel(const std::string& op_type) const {
     return kernels_.find(TransToPtenKernelName(op_type)) != kernels_.end();
@@ -232,13 +240,12 @@ class KernelFactory {
   Kernel SelectKernel(const std::string& kernel_name,
                       const KernelKey& kernel_key) const;
 
-  paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash> SelectKernelMap(
-      const std::string& kernel_name) const;
+  KernelKeyMap SelectKernelMap(const std::string& kernel_name) const;
 
  private:
   KernelFactory() = default;
 
-  KernelMap kernels_;
+  KernelNameMap kernels_;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const KernelKey& kernel_key) {

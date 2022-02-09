@@ -54,7 +54,7 @@ bool SortKthvalue(const platform::CUDADeviceContext& ctx,
   input_indices.mutable_data<int64_t>(ctx.GetPlace());
   size_t temp_storage_bytes = -1;
   int block_size = getBlockSize(num_cols);
-  unsigned int maxGridDimX = ctx.GetCUDAMaxGridDimSize().x;
+  unsigned int maxGridDimX = ctx.GetCUDAMaxGridDimSize()[0];
   unsigned int grid_size = num_rows < maxGridDimX
                                ? static_cast<unsigned int>(num_rows)
                                : maxGridDimX;

@@ -17,13 +17,11 @@ limitations under the License. */
 #include <cstddef>
 
 #include "boost/intrusive_ptr.hpp"
+#include "paddle/pten/common/place.h"
+#include "paddle/pten/core/allocator.h"
 #include "paddle/pten/core/utils/intrusive_ptr.h"
 #include "paddle/pten/core/utils/intrusive_ref_counter.h"
 #include "paddle/pten/core/utils/type_info.h"
-
-#include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/place.h"
-#include "paddle/pten/core/allocator.h"
 
 namespace pten {
 
@@ -32,7 +30,6 @@ namespace pten {
 /// all default copy operations to ensure the integrity of the package.
 class Storage : public intrusive_ref_counter<Storage> {
  public:
-  using Place = paddle::platform::Place;
   Storage() = default;
   Storage(const Storage&) = delete;
 
@@ -43,11 +40,11 @@ class Storage : public intrusive_ref_counter<Storage> {
 
   /*   --------- shared_ptr<Allocation> -------- */
   // Initialize a Storage with unique Allocation
-  explicit Storage(std::shared_ptr<paddle::memory::Allocation>&& data)
+  explicit Storage(std::shared_ptr<pten::Allocation>&& data)
       : data_(std::move(data)) {}
 
   // Initialize a Storage shareing Allocation with another storage
-  explicit Storage(const std::shared_ptr<paddle::memory::Allocation>& data)
+  explicit Storage(const std::shared_ptr<pten::Allocation>& data)
       : data_(data) {}
 
   void* data() const {
@@ -56,21 +53,15 @@ class Storage : public intrusive_ref_counter<Storage> {
                  : nullptr;
   }
 
-  const std::shared_ptr<paddle::memory::Allocation> data_shared() const {
-    return data_;
-  }
+  const std::shared_ptr<pten::Allocation>& data_shared() const { return data_; }
 
   virtual void set_data_shared(
-      const std::shared_ptr<paddle::memory::Allocation>& holder) {
-    data_ = holder;
-  }
+      const std::shared_ptr<pten::Allocation>& holder) = 0;
 
-  std::shared_ptr<paddle::memory::Allocation> move_data_shared() {
-    return std::move(data_);
-  }
+  virtual std::shared_ptr<pten::Allocation>&& move_data_shared() = 0;
 
   virtual void ReallocShared(size_t n) {
-    PADDLE_THROW(paddle::platform::errors::Unimplemented(
+    PADDLE_THROW(pten::errors::Unimplemented(
         "ReallocShared has not been overrided by the current Storage"));
   }
   /* --------- shared_ptr<Allocation> -------- */
@@ -85,13 +76,11 @@ class Storage : public intrusive_ref_counter<Storage> {
   virtual void Realloc(size_t n) = 0;
 
  protected:
-  std::shared_ptr<paddle::memory::Allocation> data_;
+  std::shared_ptr<pten::Allocation> data_;
 };
 
 class TensorStorage : public Storage {
  public:
-  using Place = paddle::platform::Place;
-
   explicit TensorStorage(Allocator* a) : alloc_(a) {}
 
   TensorStorage(Allocator* a, size_t size)
@@ -114,7 +103,7 @@ class TensorStorage : public Storage {
 
   const Place& place() const override {
     if (!data_) {
-      PADDLE_THROW(paddle::platform::errors::Unimplemented(
+      PADDLE_THROW(pten::errors::Unimplemented(
           "Unable to visit place: either data_ or alloc_ has to be initialized "
           "first."));
     }
@@ -122,6 +111,18 @@ class TensorStorage : public Storage {
   }
 
   bool OwnsMemory() const noexcept override { return true; }
+
+  void set_data_shared(
+      const std::shared_ptr<pten::Allocation>& holder) override {
+    CHECK(holder);
+    data_ = holder;
+    size_ = holder->size();
+  }
+
+  std::shared_ptr<pten::Allocation>&& move_data_shared() override {
+    size_ = 0;
+    return std::move(data_);
+  }
 
  private:
   Allocator* alloc_;

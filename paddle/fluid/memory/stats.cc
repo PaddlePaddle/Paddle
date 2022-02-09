@@ -16,6 +16,7 @@ limitations under the License. */
 #include <atomic>
 #include <map>
 #include <string>
+#include "paddle/fluid/framework/new_executor/workqueue/thread_data_registry.h"
 #include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
@@ -25,12 +26,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/variant.h"
 
 // "thread_data", "atomic", "monitor"
-PADDLE_DEFINE_EXPORTED_string(memory_stats_opt, "thread_data", "None");
+PADDLE_DEFINE_EXPORTED_string(memory_stats_opt, "thread", "None");
 
 namespace paddle {
 namespace memory {
 
-using platform::internal::ThreadDataRegistry;
+using framework::ThreadDataRegistry;
 
 struct ThreadLocalStatBase {
   int64_t current{0};
@@ -80,6 +81,7 @@ class Stat : public StatBase {
       while (prev_value < current &&
              !peak_.compare_exchange_weak(prev_value, current)) {
       }
+      return;
     }
 
     ThreadLocalStatType thread_local_stat =

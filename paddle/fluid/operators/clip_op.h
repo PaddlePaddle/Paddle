@@ -64,7 +64,8 @@ class ClipKernel : public framework::OpKernel<T> {
       auto* max_t = context.Input<Tensor>("Max");
       auto* max_data = max_t->data<T>();
       if (platform::is_gpu_place(max_t->place())) {
-        TensorCopySync(*max_t, platform::CPUPlace(), &max_cpu);
+        paddle::framework::TensorCopySync(*max_t, platform::CPUPlace(),
+                                          &max_cpu);
         max_data = max_cpu.data<T>();
       }
       max = max_data[0];
@@ -77,7 +78,8 @@ class ClipKernel : public framework::OpKernel<T> {
       auto* min_t = context.Input<Tensor>("Min");
       auto* min_data = min_t->data<T>();
       if (platform::is_gpu_place(min_t->place())) {
-        TensorCopySync(*min_t, platform::CPUPlace(), &min_cpu);
+        paddle::framework::TensorCopySync(*min_t, platform::CPUPlace(),
+                                          &min_cpu);
         min_data = min_cpu.data<T>();
       }
       min = min_data[0];
@@ -101,7 +103,8 @@ class ClipKernel : public framework::OpKernel<T> {
         std::vector<const framework::Tensor*> ins = {x};
         std::vector<framework::Tensor*> outs = {out};
         auto functor = ClipFunctor<T>(min, max);
-        LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, T>(
+        paddle::operators::LaunchSameDimsElementwiseCudaKernel<
+            ElementwiseType::kUnary, T, T>(
             context.template device_context<platform::CUDADeviceContext>(), ins,
             &outs, functor);
 #endif
@@ -110,9 +113,9 @@ class ClipKernel : public framework::OpKernel<T> {
         trans(context.template device_context<DeviceContext>(), x_data,
               x_data + numel, out_data, ClipFunctor<T>(min, max));
       }
-    } else if (x_var->IsType<framework::SelectedRows>()) {
-      auto* x = context.Input<framework::SelectedRows>("X");
-      auto* out = context.Output<framework::SelectedRows>("Out");
+    } else if (x_var->IsType<pten::SelectedRows>()) {
+      auto* x = context.Input<pten::SelectedRows>("X");
+      auto* out = context.Output<pten::SelectedRows>("Out");
       PADDLE_ENFORCE_NE(x, out, platform::errors::InvalidArgument(
                                     "Inplace clip is not allowed "
                                     "when x is SelectedRows"));
@@ -141,7 +144,8 @@ class ClipGradKernel : public framework::OpKernel<T> {
       auto* max_t = context.Input<Tensor>("Max");
       auto* max_data = max_t->data<T>();
       if (platform::is_gpu_place(max_t->place())) {
-        TensorCopySync(*max_t, platform::CPUPlace(), &max_cpu);
+        paddle::framework::TensorCopySync(*max_t, platform::CPUPlace(),
+                                          &max_cpu);
         max_data = max_cpu.data<T>();
       }
       max = max_data[0];
@@ -154,7 +158,8 @@ class ClipGradKernel : public framework::OpKernel<T> {
       auto* min_t = context.Input<Tensor>("Min");
       auto* min_data = min_t->data<T>();
       if (platform::is_gpu_place(min_t->place())) {
-        TensorCopySync(*min_t, platform::CPUPlace(), &min_cpu);
+        paddle::framework::TensorCopySync(*min_t, platform::CPUPlace(),
+                                          &min_cpu);
         min_data = min_cpu.data<T>();
       }
       min = min_data[0];
@@ -167,6 +172,15 @@ class ClipGradKernel : public framework::OpKernel<T> {
         context.Output<framework::LoDTensor>(framework::GradVarName("X"));
     if (d_x != nullptr) {
       auto* x = context.Input<framework::LoDTensor>("X");
+#if defined(__NVCC__) || defined(__HIPCC__)
+      std::vector<const framework::Tensor*> ins = {d_out, x};
+      std::vector<framework::Tensor*> outs = {d_x};
+      auto functor = ClipGradFunctor<T>(min, max);
+      d_x->mutable_data<T>(context.GetPlace());
+      LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+          context.template device_context<platform::CUDADeviceContext>(), ins,
+          &outs, functor);
+#else
       int64_t numel = d_out->numel();
       auto* d_x_data = d_x->mutable_data<T>(context.GetPlace());
       const T* d_out_data = d_out->data<T>();
@@ -174,6 +188,7 @@ class ClipGradKernel : public framework::OpKernel<T> {
       Transform<DeviceContext> trans;
       trans(context.template device_context<DeviceContext>(), d_out_data,
             d_out_data + numel, x_data, d_x_data, ClipGradFunctor<T>(min, max));
+#endif
     }
   }
 };

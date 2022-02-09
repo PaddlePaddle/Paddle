@@ -275,7 +275,7 @@ FetchResultType ParallelSSAGraphExecutor::Run(
       }
       if (lodtensor_ptrs.size() != 0) {
         LoDTensor var;
-        var.MergeLoDTensor(lodtensor_ptrs, platform::CPUPlace());
+        MergeLoDTensor(&var, lodtensor_ptrs, platform::CPUPlace());
         ret.emplace_back(var);
       } else {
         LoDTensorArray var_array(lodtensorarray_ptrs[0]->size());
@@ -285,7 +285,7 @@ FetchResultType ParallelSSAGraphExecutor::Run(
           for (size_t j = 0; j < lodtensorarray_ptrs.size(); ++j) {
             ptrs.push_back(&(lodtensorarray_ptrs[j]->at(i)));
           }
-          var.MergeLoDTensor(ptrs, platform::CPUPlace());
+          MergeLoDTensor(&var, ptrs, platform::CPUPlace());
           var_array[i] = std::move(var);
         }
         ret.emplace_back(var_array);

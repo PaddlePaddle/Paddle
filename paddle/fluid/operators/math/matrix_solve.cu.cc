@@ -68,7 +68,7 @@ class MatrixSolveFunctor<platform::CUDADeviceContext, T> {
     Tensor tmp_a(a.type());
     tmp_a.Resize(a.dims());
     tmp_a.mutable_data<T>(context.GetPlace());
-    TensorCopy(a, context.GetPlace(), &tmp_a);
+    framework::TensorCopy(a, context.GetPlace(), &tmp_a);
 
     // copy input B to a temporary tensor tmp_b, and transpose tmp_b,
     // because cuBlas assumes column-major while Paddle uses row-majar.

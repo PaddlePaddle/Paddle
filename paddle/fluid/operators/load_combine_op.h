@@ -106,7 +106,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
         auto *tensor = out_vars[i]->GetMutable<framework::LoDTensor>();
 
         // Get data from fin to tensor
-        DeserializeFromStream(*buffer, tensor, dev_ctx);
+        paddle::framework::DeserializeFromStream(*buffer, tensor, dev_ctx);
 
         auto in_dtype = tensor->type();
         auto out_dtype =

@@ -19,7 +19,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
+#include "paddle/fluid/operators/distribution_helper.h"
 #include "paddle/fluid/operators/fill_constant_op.h"
+
+DECLARE_bool(use_curand);
 
 namespace paddle {
 namespace operators {
@@ -65,7 +68,10 @@ class GPUGaussianRandomKernel : public framework::OpKernel<T> {
     thrust::counting_iterator<int64_t> index_sequence_begin(0);
     auto shape = GetShape(context);
     tensor->Resize(shape);
-    T* data = tensor->mutable_data<T>(context.GetPlace());
+
+    auto& dev_cxt =
+        context.template device_context<platform::CUDADeviceContext>();
+    T* data = tensor->mutable_data<T>(dev_cxt.GetPlace());
 
     int64_t size = tensor->numel();
 
@@ -73,12 +79,20 @@ class GPUGaussianRandomKernel : public framework::OpKernel<T> {
     auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
 
     if (gen_cuda->GetIsInitPy() && seed_flag) {
-      auto seed_offset = gen_cuda->IncrementOffset(1);
-      int64_t gen_offset = size * seed_offset.second;
-      thrust::transform(
-          index_sequence_begin, index_sequence_begin + size,
-          thrust::device_ptr<T>(data),
-          GaussianGenerator<T>(mean, std, seed_offset.first, gen_offset));
+      if (FLAGS_use_curand) {
+        using MT = typename details::MPTypeTrait<T>::Type;
+        distribution::normal_distribution<MT> dist;
+        distribution::normal_transform<MT> trans(mean, std);
+        distribution::distribution_and_transform<T>(dev_cxt, tensor, dist,
+                                                    trans);
+      } else {
+        auto seed_offset = gen_cuda->IncrementOffset(1);
+        int64_t gen_offset = size * seed_offset.second;
+        thrust::transform(
+            index_sequence_begin, index_sequence_begin + size,
+            thrust::device_ptr<T>(data),
+            GaussianGenerator<T>(mean, std, seed_offset.first, gen_offset));
+      }
     } else {
       thrust::transform(index_sequence_begin, index_sequence_begin + size,
                         thrust::device_ptr<T>(data),

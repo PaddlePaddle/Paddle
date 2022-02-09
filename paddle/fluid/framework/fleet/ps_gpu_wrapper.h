@@ -29,7 +29,7 @@ limitations under the License. */
 #include <gloo/broadcast.h>
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
-#include "paddle/fluid/distributed/thirdparty/round_robin.h"
+#include "paddle/fluid/distributed/ps/thirdparty/round_robin.h"
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/fleet/heter_context.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps_base.h"
@@ -43,7 +43,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_PSCORE
-#include "paddle/fluid/distributed/service/communicator.h"
+#include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #endif
 
 namespace paddle {
@@ -108,8 +108,6 @@ class PSGPUWrapper {
     running_ = false;
     VLOG(3) << "begin stop pre_build_threads_";
     pre_build_threads_.join();
-    VLOG(3) << "begin stop build_threads_";
-    build_threads_.join();
     s_instance_ = nullptr;
     VLOG(3) << "PSGPUWrapper Finalize Finished.";
   }
@@ -362,7 +360,6 @@ class PSGPUWrapper {
           paddle::framework::MakeChannel<std::shared_ptr<HeterContext>>();
   std::shared_ptr<HeterContext> current_task_ = nullptr;
   std::thread pre_build_threads_;
-  std::thread build_threads_;
   bool running_ = false;
 
  protected:

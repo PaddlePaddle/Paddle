@@ -20,9 +20,11 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
+#include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/operators/math/algorithm.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -33,11 +35,13 @@ static inline float GetAttrFromTensor(const framework::Tensor* tensor) {
   const float* tensor_data = tensor->data<float>();
   framework::Tensor cpu_tensor;
   if (platform::is_gpu_place(tensor->place())) {
-    TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+    paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(),
+                                      &cpu_tensor);
     tensor_data = cpu_tensor.data<float>();
   }
   if (platform::is_xpu_place(tensor->place())) {
-    TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+    paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(),
+                                      &cpu_tensor);
     tensor_data = cpu_tensor.data<float>();
   }
   return tensor_data[0];
@@ -431,8 +435,8 @@ class AdamOpKernel : public framework::OpKernel<T> {
                             "Input(SkipUpdate) size must be 1, but get %d",
                             skip_update_tensor->numel()));
       std::vector<bool> skip_update_vec;
-      TensorToVector(*skip_update_tensor, ctx.device_context(),
-                     &skip_update_vec);
+      paddle::framework::TensorToVector(*skip_update_tensor,
+                                        ctx.device_context(), &skip_update_vec);
       skip_update = skip_update_vec[0];
     }
     // skip_update=true, just copy input to output, and TensorCopy will call
@@ -504,23 +508,60 @@ class AdamOpKernel : public framework::OpKernel<T> {
                           beta2_pow_out->numel()));
 
     if (grad_var->IsType<framework::LoDTensor>()) {
-      auto* grad = ctx.Input<LoDTensor>("Grad");
+      T beta1_p = beta1_pow->data<T>()[0];
+      T beta2_p = beta2_pow->data<T>()[0];
 
-      AdamFunctor<T, CPUAdam> functor(
-          beta1, beta2, epsilon, beta1_pow->data<T>(), beta2_pow->data<T>(),
-          mom1->data<T>(), mom1_out->mutable_data<T>(ctx.GetPlace()),
-          mom2->data<T>(), mom2_out->mutable_data<T>(ctx.GetPlace()),
-          lr->data<T>(), grad->data<T>(), param->data<T>(),
-          param_out->mutable_data<T>(ctx.GetPlace()));
-      functor(param->numel());
       if (!use_global_beta_pow) {
         beta1_pow_out->mutable_data<T>(ctx.GetPlace())[0] =
             beta1 * beta1_pow->data<T>()[0];
         beta2_pow_out->mutable_data<T>(ctx.GetPlace())[0] =
             beta2 * beta2_pow->data<T>()[0];
       }
-    } else if (grad_var->IsType<framework::SelectedRows>()) {
-      auto* grad = ctx.Input<framework::SelectedRows>("Grad");
+
+      auto* grad = ctx.Input<LoDTensor>("Grad");
+
+      T* param_out_ptr = param_out->mutable_data<T>(ctx.GetPlace());
+      T* mom1_out_ptr = mom1_out->mutable_data<T>(ctx.GetPlace());
+      T* mom2_out_ptr = mom2_out->mutable_data<T>(ctx.GetPlace());
+
+      T learning_rate = lr->data<T>()[0] * (sqrt(1 - beta2_p) / (1 - beta1_p));
+      T eps = epsilon * sqrt(1 - beta2_p);
+
+      jit::adam_attr_t attr(beta1, beta2);
+      int64_t numel = param->numel();
+
+      const T* param_ptr = param->data<T>();
+      const T* mom1_ptr = mom1->data<T>();
+      const T* mom2_ptr = mom2->data<T>();
+      const T* grad_ptr = grad->data<T>();
+
+      auto adam =
+          jit::KernelFuncs<jit::AdamTuple<T>, platform::CPUPlace>::Cache().At(
+              attr);
+
+      static constexpr int64_t chunk_size = 512;
+
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+      for (int64_t i = 0; i < numel / chunk_size; ++i) {
+        const int64_t offset = i * chunk_size;
+        adam(beta1, beta2, -learning_rate, eps, chunk_size, grad_ptr + offset,
+             mom1_ptr + offset, mom2_ptr + offset, param_ptr + offset,
+             mom1_out_ptr + offset, mom2_out_ptr + offset,
+             param_out_ptr + offset);
+      }
+
+      if (numel % chunk_size != 0) {
+        const int64_t offset = (numel / chunk_size) * chunk_size;
+        const int64_t tail_numel = numel % chunk_size;
+        adam(beta1, beta2, -learning_rate, eps, tail_numel, grad_ptr + offset,
+             mom1_ptr + offset, mom2_ptr + offset, param_ptr + offset,
+             mom1_out_ptr + offset, mom2_out_ptr + offset,
+             param_out_ptr + offset);
+      }
+    } else if (grad_var->IsType<pten::SelectedRows>()) {
+      auto* grad = ctx.Input<pten::SelectedRows>("Grad");
       if (grad->rows().size() == 0) {
         VLOG(3) << "grad row size is 0!!";
         return;
@@ -535,8 +576,8 @@ class AdamOpKernel : public framework::OpKernel<T> {
         }
       }
 
-      framework::SelectedRows tmp_grad_merge;
-      const framework::SelectedRows* grad_merge_ptr;
+      pten::SelectedRows tmp_grad_merge;
+      const pten::SelectedRows* grad_merge_ptr;
       if (is_strict_sorted) {
         grad_merge_ptr = grad;
       } else {

@@ -26,9 +26,9 @@ class AutogradMetaTest : public AbstractAutogradMeta {
   int val_ = 0;
 };
 }
-TEST(EagerTensor, Constructor) {
-  egr::EagerTensor et1 = egr::EagerTensor();
-  egr::EagerTensor et2 = egr::EagerTensor("et2");
+TEST(Tensor, Constructor) {
+  paddle::experimental::Tensor et1 = paddle::experimental::Tensor();
+  paddle::experimental::Tensor et2 = paddle::experimental::Tensor("et2");
 
   CHECK_EQ(et1.defined(), false);
   CHECK_EQ(et2.name(), "et2");
@@ -40,29 +40,29 @@ TEST(EagerTensor, Constructor) {
           paddle::platform::CPUPlace())
           .get(),
       meta);
-  auto* dt_ptr = dt->mutable_data<float>();
+  auto* dt_ptr = dt->mutable_data<float>(paddle::platform::CPUPlace());
   dt_ptr[0] = 5.0f;
   dt_ptr[1] = 10.0f;
-  egr::EagerTensor et3 = egr::EagerTensor(dt);
+  paddle::experimental::Tensor et3 = paddle::experimental::Tensor(dt);
   auto* et3_ptr =
       std::dynamic_pointer_cast<pten::DenseTensor>(et3.impl())->data<float>();
   CHECK_EQ(et3_ptr[0], 5.0f);
   CHECK_EQ(et3_ptr[1], 10.0f);
   // copy constructor
-  egr::EagerTensor et4(et3);
+  paddle::experimental::Tensor et4(et3);
   auto* et4_ptr =
       std::dynamic_pointer_cast<pten::DenseTensor>(et4.impl())->data<float>();
   CHECK_EQ(et4_ptr[0], 5.0f);
   CHECK_EQ(et4_ptr[1], 10.0f);
-  egr::EagerTensor et5(std::move(et4));
+  paddle::experimental::Tensor et5(std::move(et4));
   auto* et5_ptr =
       std::dynamic_pointer_cast<pten::DenseTensor>(et5.impl())->data<float>();
   CHECK_EQ(et5_ptr[0], 5.0f);
   CHECK_EQ(et5_ptr[1], 10.0f);
 }
 
-TEST(EagerTensor, MemberFunction) {
-  egr::EagerTensor et3;
+TEST(Tensor, MemberFunction) {
+  paddle::experimental::Tensor et3;
   pten::DenseTensorMeta meta = pten::DenseTensorMeta(
       pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 2}));
   std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
@@ -70,7 +70,7 @@ TEST(EagerTensor, MemberFunction) {
           paddle::platform::CPUPlace())
           .get(),
       meta);
-  auto* dt_ptr = dt->mutable_data<float>();
+  auto* dt_ptr = dt->mutable_data<float>(paddle::platform::CPUPlace());
   dt_ptr[0] = 5.0f;
   dt_ptr[1] = 10.0f;
   VLOG(6) << "Make Dense Tensor";
@@ -85,16 +85,16 @@ TEST(EagerTensor, MemberFunction) {
   CHECK_EQ(et3.is_cuda(), false);
   CHECK_EQ(et3.numel(), 2);
   auto expected_dim = paddle::framework::make_ddim({1, 2});
-  CHECK_EQ(et3.shape(), expected_dim);
+  CHECK_EQ(et3.dims(), expected_dim);
   CHECK_EQ(et3.type(), paddle::experimental::DataType::FLOAT32);
   CHECK_EQ(et3.layout(), paddle::experimental::DataLayout::NCHW);
-  CHECK(paddle::platform::is_cpu_place(et3.place()));
+  CHECK(paddle::platform::is_cpu_place(et3.inner_place()));
   VLOG(6) << "Get impl";
   auto* dt3_ptr =
       std::dynamic_pointer_cast<pten::DenseTensor>(et3.impl())->data<float>();
   CHECK_EQ(dt3_ptr[0], 5.0f);
   CHECK_EQ(dt3_ptr[1], 10.0f);
-  egr::EagerTensor et4 = et3;
+  paddle::experimental::Tensor et4 = et3;
   VLOG(6) << "copy =";
   CHECK(et4.initialized() == true);
   auto* dt4_ptr =
@@ -102,7 +102,7 @@ TEST(EagerTensor, MemberFunction) {
   CHECK_EQ(dt4_ptr[0], 5.0f);
   CHECK_EQ(dt4_ptr[1], 10.0f);
   VLOG(6) << "move =";
-  egr::EagerTensor et5 = std::move(et4);
+  paddle::experimental::Tensor et5 = std::move(et4);
   auto* dt5_ptr =
       std::dynamic_pointer_cast<pten::DenseTensor>(et5.impl())->data<float>();
   CHECK_EQ(dt5_ptr[0], 5.0f);
@@ -113,22 +113,43 @@ TEST(EagerTensor, MemberFunction) {
   auto* tmp_autograd_meta_test =
       static_cast<eager_test::AutogradMetaTest*>(et3.get_autograd_meta());
   CHECK_EQ(tmp_autograd_meta_test->val_, 2);
+}
+
+TEST(EagerTensor, Constructor) {
+  paddle::experimental::Tensor t3;
+  pten::DenseTensorMeta meta = pten::DenseTensorMeta(
+      pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 2}));
+  std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
+      std::make_unique<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CPUPlace())
+          .get(),
+      meta);
+  auto* dt_ptr = dt->mutable_data<float>(paddle::platform::CPUPlace());
+  dt_ptr[0] = 5.0f;
+  dt_ptr[1] = 10.0f;
+  VLOG(6) << "Make Dense Tensor";
+  t3.set_name("t3");
+  VLOG(6) << "Set Name";
+  CHECK_EQ(t3.name(), "t3");
+  CHECK_EQ(t3.defined(), false);
+  t3.set_impl(dt);
+
+  egr::EagerTensor et3 = egr::EagerTensor(t3);
   VLOG(6) << "SyncToVar";
-  et3.SyncToVar();
   CHECK_EQ(et3.Var().Get<paddle::framework::LoDTensor>().data<float>()[0],
            5.0f);
   CHECK_EQ(et3.Var().Get<paddle::framework::LoDTensor>().data<float>()[1],
            10.0f);
   VLOG(6) << "SyncToTensor";
-  CHECK(et3.initialized() == true);
-  et3.SyncToTensor();
-  CHECK(et3.initialized() == true);
+  paddle::experimental::Tensor t4;
+  t4.set_impl(et3.GetTensorBase());
+  CHECK(t4.initialized() == true);
   VLOG(6) << "Check Tensor";
   auto* dt3_tmp_ptr =
-      std::dynamic_pointer_cast<pten::DenseTensor>(et3.impl())->data<float>();
+      std::dynamic_pointer_cast<pten::DenseTensor>(t4.impl())->data<float>();
   CHECK_EQ(dt3_tmp_ptr[0], 5.0f);
   CHECK_EQ(dt3_tmp_ptr[1], 10.0f);
-  et3.reset();
-  CHECK(et3.defined() == false);
+  t4.reset();
+  CHECK(t4.defined() == false);
   VLOG(6) << "Finish";
 }

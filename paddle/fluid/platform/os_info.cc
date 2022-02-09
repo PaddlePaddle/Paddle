@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/os_info.h"
 #include <functional>
 #include <sstream>
+#include <thread>
 #include <vector>
 #if defined(__linux__)
 #include <sys/syscall.h>
@@ -22,11 +23,17 @@ limitations under the License. */
 #include <unistd.h>
 #elif defined(_MSC_VER)
 #include <processthreadsapi.h>
+#else
+#include <unistd.h>
 #endif
+#include "paddle/fluid/framework/new_executor/workqueue/thread_data_registry.h"
+#include "paddle/fluid/platform/macros.h"  // import DISABLE_COPY_AND_ASSIGN
 
 namespace paddle {
 namespace platform {
 namespace internal {
+
+using framework::ThreadDataRegistry;
 
 class InternalThreadId {
  public:

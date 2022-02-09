@@ -21,11 +21,12 @@
 #include <typeinfo>
 #include <vector>
 
-#include "paddle/pten/core/kernel_def.h"
 #include "paddle/pten/core/kernel_factory.h"
 #include "paddle/pten/core/kernel_utils.h"
+#include "paddle/pten/core/macros.h"
+#include "paddle/pten/core/type_defs.h"
 
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/core/enforce.h"
 
 namespace pten {
 
@@ -63,23 +64,43 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
 #endif
         // do nothing, skip context arg now
       } else if (arg_type == std::type_index(typeid(const DenseTensor&))) {
-        args_def->AppendInput(
-            default_key.backend(), default_tensor_layout, default_key.dtype());
+        args_def->AppendInput(default_key.backend(),
+                              default_tensor_layout,
+                              default_key.dtype(),
+                              arg_type);
       } else if (arg_type == std::type_index(typeid(
                                  paddle::optional<const DenseTensor&>))) {
-        args_def->AppendInput(
-            default_key.backend(), default_tensor_layout, default_key.dtype());
+        args_def->AppendInput(default_key.backend(),
+                              default_tensor_layout,
+                              default_key.dtype(),
+                              arg_type);
       } else if (arg_type ==
                  std::type_index(typeid(const std::vector<DenseTensor>&))) {
-        args_def->AppendInput(
-            default_key.backend(), default_tensor_layout, default_key.dtype());
+        args_def->AppendInput(default_key.backend(),
+                              default_tensor_layout,
+                              default_key.dtype(),
+                              arg_type);
+      } else if (arg_type == std::type_index(typeid(const SelectedRows&))) {
+        args_def->AppendInput(default_key.backend(),
+                              default_tensor_layout,
+                              default_key.dtype(),
+                              arg_type);
       } else if (arg_type == std::type_index(typeid(DenseTensor*))) {
-        args_def->AppendOutput(
-            default_key.backend(), default_tensor_layout, default_key.dtype());
+        args_def->AppendOutput(default_key.backend(),
+                               default_tensor_layout,
+                               default_key.dtype(),
+                               arg_type);
       } else if (arg_type ==
                  std::type_index(typeid(std::vector<DenseTensor*>))) {
-        args_def->AppendOutput(
-            default_key.backend(), default_tensor_layout, default_key.dtype());
+        args_def->AppendOutput(default_key.backend(),
+                               default_tensor_layout,
+                               default_key.dtype(),
+                               arg_type);
+      } else if (arg_type == std::type_index(typeid(SelectedRows*))) {
+        args_def->AppendOutput(default_key.backend(),
+                               default_tensor_layout,
+                               default_key.dtype(),
+                               arg_type);
       } else {
         // Attribute deal with
         // TODO(chenweihang): now here allow any types of attribute, maybe
@@ -129,6 +150,13 @@ struct KernelRegistrar {
     for (size_t dtype = static_cast<size_t>(DataType::BOOL);
          dtype != static_cast<size_t>(DataType::NUM_DATA_TYPES);
          dtype++) {
+      // NOTE(zhiqiu): why skip these types, because fluid kernel has no kernel
+      // of these type.
+      if (dtype == static_cast<size_t>(DataType::UINT32) ||
+          dtype == static_cast<size_t>(DataType::UINT64) ||
+          dtype == static_cast<size_t>(DataType::UINT16)) {
+        continue;
+      }
       ConstructKernel(kernel_name_cstr,
                       backend,
                       layout,
@@ -157,33 +185,6 @@ struct KernelRegistrar {
     KernelFactory::Instance().kernels()[kernel_name][kernel_key] = kernel;
   }
 };
-
-#define PT_STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg) \
-  _PT_STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg)
-
-#define _PT_STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg)                    \
-  struct __test_global_namespace_##uniq_name##__ {};                          \
-  static_assert(std::is_same<::__test_global_namespace_##uniq_name##__,       \
-                             __test_global_namespace_##uniq_name##__>::value, \
-                msg)
-
-#ifdef __COUNTER__
-#define PT_ID __COUNTER__
-#else
-#define PT_ID __LINE__
-#endif
-
-#if defined(_WIN32)
-#define UNUSED
-#define __builtin_expect(EXP, C) (EXP)
-#else
-#define UNUSED __attribute__((unused))
-#endif
-
-#define PT_CONCATENATE(arg1, arg2) PT_CONCATENATE1(arg1, arg2)
-#define PT_CONCATENATE1(arg1, arg2) PT_CONCATENATE2(arg1, arg2)
-#define PT_CONCATENATE2(arg1, arg2) arg1##arg2
-#define PT_EXPAND(x) x
 
 /**
  * Reference:
@@ -834,6 +835,9 @@ struct KernelRegistrar {
  * to avoid being removed by linker
  */
 #define PT_DECLARE_KERNEL(kernel_name, backend, layout)                   \
+  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                      \
+      pt_declare_tp_kernel_ns_check_##kernel_name##_##backend##_##layout, \
+      "PT_DECLARE_KERNEL must be called in global namespace.");           \
   extern int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout(); \
   UNUSED static int                                                       \
       __declare_kernel_symbol_for_##kernel_name##_##backend##_##layout =  \
