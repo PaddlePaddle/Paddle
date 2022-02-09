@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/pten/core/ddim.h"
+
 #include <set>
 
 namespace pten {
-namespace platform = paddle::platform;
 namespace framework {
 
 DDim make_ddim(std::initializer_list<int64_t> dims) {
@@ -84,7 +84,7 @@ DDim slice_ddim(const DDim& dim, int begin, int end) {
   PADDLE_ENFORCE_EQ(
       (begin >= 0 && end <= dim.size()),
       true,
-      platform::errors::InvalidArgument(
+      pten::errors::InvalidArgument(
           "[begin(%d), end(%d)) must be inside [0, %d) in ddim slice.",
           begin,
           end,
@@ -111,30 +111,30 @@ std::ostream& operator<<(std::ostream& os, const DDim& ddim) {
 }
 
 DDim flatten_to_3d(const DDim& src, int num_row_dims, int num_col_dims) {
-  PADDLE_ENFORCE_GE(src.size(),
-                    3,
-                    platform::errors::InvalidArgument(
-                        "The rank of src dim should be at least 3 "
-                        "in flatten_to_3d, but received %d.",
-                        src.size()));
-  PADDLE_ENFORCE_EQ((num_row_dims >= 1 && num_row_dims < src.size()),
-                    true,
-                    platform::errors::InvalidArgument(
-                        "The num_row_dims should be inside [1, %d] "
-                        "in flatten_to_3d, but received %d.",
-                        src.size() - 1,
-                        num_row_dims));
-  PADDLE_ENFORCE_EQ((num_col_dims >= 2 && num_col_dims <= src.size()),
-                    true,
-                    platform::errors::InvalidArgument(
-                        "The num_col_dims should be inside [2, %d] "
-                        "in flatten_to_3d, but received %d.",
-                        src.size(),
-                        num_col_dims));
+  PADDLE_ENFORCE_GE(
+      src.size(),
+      3,
+      pten::errors::InvalidArgument("The rank of src dim should be at least 3 "
+                                    "in flatten_to_3d, but received %d.",
+                                    src.size()));
+  PADDLE_ENFORCE_EQ(
+      (num_row_dims >= 1 && num_row_dims < src.size()),
+      true,
+      pten::errors::InvalidArgument("The num_row_dims should be inside [1, %d] "
+                                    "in flatten_to_3d, but received %d.",
+                                    src.size() - 1,
+                                    num_row_dims));
+  PADDLE_ENFORCE_EQ(
+      (num_col_dims >= 2 && num_col_dims <= src.size()),
+      true,
+      pten::errors::InvalidArgument("The num_col_dims should be inside [2, %d] "
+                                    "in flatten_to_3d, but received %d.",
+                                    src.size(),
+                                    num_col_dims));
   PADDLE_ENFORCE_GE(
       num_col_dims,
       num_row_dims,
-      platform::errors::InvalidArgument(
+      pten::errors::InvalidArgument(
           "The num_row_dims should be less than num_col_dims in flatten_to_3d,"
           "but received num_row_dims = %d, num_col_dims = %d.",
           num_row_dims,
@@ -181,7 +181,7 @@ DDim DDim::reshape(const std::vector<int>& shape) const {
     if (shape[i] == copy_dim_val) {
       PADDLE_ENFORCE_LT(static_cast<int>(i),
                         in_dims.size(),
-                        platform::errors::InvalidArgument(
+                        pten::errors::InvalidArgument(
                             "Index %d of shape under which the value of 0 "
                             "is stored, must be lower than the number of "
                             "old dimensions. But received shape[%d] = 0, "
@@ -205,22 +205,22 @@ DDim DDim::transpose(const std::vector<int>& axis) const {
   auto axis_set = std::set<int>(axis.begin(), axis.end());
   PADDLE_ENFORCE_EQ(axis_set.size(),
                     axis_size,
-                    platform::errors::InvalidArgument(
+                    pten::errors::InvalidArgument(
                         "In an axis array, elements must be unique."));
 
   PADDLE_ENFORCE_EQ(
       in_rank,
       axis_size,
-      platform::errors::InvalidArgument("The input dimension's size "
-                                        "should be equal to the axis's size. "
-                                        "But received dimension is %d, "
-                                        "axis's size is %d",
-                                        in_rank,
-                                        axis_size));
+      pten::errors::InvalidArgument("The input dimension's size "
+                                    "should be equal to the axis's size. "
+                                    "But received dimension is %d, "
+                                    "axis's size is %d",
+                                    in_rank,
+                                    axis_size));
 
   PADDLE_ENFORCE_LT(*std::max_element(axis.begin(), axis.end()),
                     axis_size,
-                    platform::errors::InvalidArgument(
+                    pten::errors::InvalidArgument(
                         "Axis values must be ranging from 0 to (dims - 1)."));
 
   DDim out_dims(in_dims);

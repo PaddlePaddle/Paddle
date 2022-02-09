@@ -8,7 +8,20 @@ function(detection_library TARGET_NAME)
     set(pybind_flag 0)
     cmake_parse_arguments(detection_library "${options}" "${oneValueArgs}"
             "${multiValueArgs}" ${ARGN})
-    op_library(${TARGET_NAME} SRCS ${detection_library_SRCS} DEPS ${common_deps} ${detection_library_DEPS})
+    set(srcs)
+    # filter cuda source file when not build with cuda/rocm
+    foreach(src ${detection_library_SRCS})
+      if (NOT WITH_GPU AND NOT WITH_ROCM)
+        if(${src} MATCHES ".*\\.cc$")
+          list(APPEND srcs ${src})
+        endif()
+      else()
+        list(APPEND srcs ${src})
+      endif()
+    endforeach()
+    
+    op_library(${TARGET_NAME} SRCS ${srcs} DEPS ${common_deps} ${detection_library_DEPS})
+
     set(LOCAL_DETECTION_LIBS
             ${TARGET_NAME}
             ${LOCAL_DETECTION_LIBS}

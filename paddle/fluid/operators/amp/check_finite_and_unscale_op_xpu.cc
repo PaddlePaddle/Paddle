@@ -94,7 +94,7 @@ class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
         inverse_scale = 0.0;
       }
 
-      auto version = dev_ctx.xpu_version();
+      auto version = platform::get_xpu_version(ctx.GetPlace().GetDeviceId());
       framework::Tensor float_x;
       framework::Tensor float_out;
       if (std::is_same<T, paddle::platform::float16>::value &&

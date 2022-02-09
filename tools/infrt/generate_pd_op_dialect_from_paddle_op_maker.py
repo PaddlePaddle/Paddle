@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,12 +16,15 @@ import paddle.fluid.framework as framework
 from paddle.fluid import core
 from paddle import compat as cpt
 
+ops_having_canonicalization = {"elementwise_add", }
+
 
 # collect original ops: op which has both inference and grid defination
 def get_original_ops():
     all_ops, _, _ = core.op_supported_infos('CPU', core.VarDesc.VarType.FP16)
     grad_ops = []
     original_ops = []
+    necessary_ops = ["scale"]
 
     for op in all_ops:
         if op.endswith("_grad"):
@@ -30,6 +33,8 @@ def get_original_ops():
             grad_ops.append(op)
     for op in all_ops:
         if str(op + "_grad") in grad_ops:
+            original_ops.append(op)
+        elif op in necessary_ops:
             original_ops.append(op)
 
     print("Grad ops num: " + str(len(grad_ops)))
@@ -108,6 +113,7 @@ def get_all_ops_desc():
 # funtion to generate paddle op dialect file
 def convert_op_proto_into_mlir(op_descs):
     dst_dialect_file = "../../paddle/infrt/dialect/pd_ops.td"
+    dialect_info_file = "../../paddle/infrt/dialect/pd_ops_info.h"
     custom_dialect_file = "custom_pdop.td"
 
     # 1. Head files
@@ -120,7 +126,18 @@ def convert_op_proto_into_mlir(op_descs):
 |*                                                                            *|\n\
 \*===----------------------------------------------------------------------===*/\n"
 
-    start_ = comment_ + "#ifndef PD_OPS\n#define PD_OPS\ninclude \"mlir/Interfaces/InferTypeOpInterface.td\"\ninclude \"mlir/Interfaces/LoopLikeInterface.td\"\ninclude \"mlir/IR/OpBase.td\"\ninclude \"paddle/infrt/dialect/pd_op_base.td\"\n\n"
+    lines = [
+        "#ifndef PD_OPS",
+        "#define PD_OPS",
+        "include \"mlir/Interfaces/InferTypeOpInterface.td\"",
+        "include \"mlir/Interfaces/LoopLikeInterface.td\"",
+        "include \"mlir/IR/OpBase.td\"",
+        "include \"paddle/infrt/dialect/pd_op_base.td\"",
+        "",
+    ]
+
+    start_ = comment_ + "\n".join(lines)
+
     with open(dst_dialect_file, 'w') as ops_mlir_file:
         ops_mlir_file.write(start_)
 
@@ -131,11 +148,14 @@ def convert_op_proto_into_mlir(op_descs):
         "while", "conditional_block", "set_value", "run_program"
     ]
     skipped_attr_list = [
-        "trainable_statistics", "use_global_stats", "is_test", "use_mkldnn",
-        "use_cudnn"
+        "trainable_statistics", "use_global_stats", "is_test", "use_quantizer"
     ]
+
     original_ops_ = get_original_ops()
     automatically_generated_op_dialect = []
+    ops_inputs_map_ = {}
+    ops_outputs_map_ = {}
+
     for op_type, op_proto in op_descs.items():
         if (op_type in skipped_op_list) or (op_type not in original_ops_):
             continue
@@ -144,6 +164,7 @@ def convert_op_proto_into_mlir(op_descs):
         HEAD = "def PD_" + op_type.capitalize(
         ) + "Op : PD_Op<\"" + op_type + "\", [NoSideEffect]> {\n"
         SUMMARY = "  let summary = \"" + op_type + " op\";\n"
+        CANONICALIZATION = "let hasCanonicalizer = 1;" if op_type in ops_having_canonicalization else ""
 
         # 2.2 Description
         DESCRIPTION = "  let description = [{\n"
@@ -157,13 +178,16 @@ def convert_op_proto_into_mlir(op_descs):
         if (len(op_proto[INPUTS]) > 0 or len(op_proto[ATTRS]) > 0):
             ARGUMENTS = "  let arguments = (ins "
             # 2.3.1 inputs
+            ins_cache_list_ = []
             for input_ in op_proto[INPUTS]:
                 if op_proto[INPUTS][input_][EXTRA] != True and op_proto[INPUTS][
                         input_][INTERMEDIATE] != True:
+                    ins_cache_list_.append(input_)
                     if op_proto[INPUTS][input_][DUPLICABLE] != "true":
                         ARGUMENTS = ARGUMENTS + " PD_Tensor:$" + input_ + ","
                     else:
                         ARGUMENTS = ARGUMENTS + " PD_Tensor_Array:$" + input_ + ","
+            ops_inputs_map_[op_type] = ins_cache_list_
             # unsupported:   BLOCK = 8;  BLOCKS = 10;
             attr_mlir_converter = {
                 0: 'SI32Attr',
@@ -229,15 +253,17 @@ def convert_op_proto_into_mlir(op_descs):
         RESULTS = ""
         if (len(op_proto[OUTPUTS]) > 0):
             RESULTS = "\n  let results = (outs "
+            outs_cache_list_ = []
             for output_ in op_proto[OUTPUTS]:
                 if op_proto[OUTPUTS][output_][EXTRA] != True and op_proto[
                         OUTPUTS][output_][INTERMEDIATE] != True:
+                    outs_cache_list_.append(output_)
                     if op_proto[OUTPUTS][output_][DUPLICABLE] != "true":
                         RESULTS = RESULTS + "PD_Tensor:$" + output_ + ","
                     else:
                         RESULTS = RESULTS + "PD_Tensor_Array:$" + output_ + ","
                         print(HEAD + " PD_Tensor_Array:$" + output_ + ",")
-
+            ops_outputs_map_[op_type] = outs_cache_list_
             RESULTS = RESULTS[:-1] + ");\n"
         with open(dst_dialect_file, 'a') as ops_mlir_file:
             ops_mlir_file.write(HEAD)
@@ -245,11 +271,35 @@ def convert_op_proto_into_mlir(op_descs):
             ops_mlir_file.write(DESCRIPTION)
             ops_mlir_file.write(ARGUMENTS)
             ops_mlir_file.write(RESULTS)
+            ops_mlir_file.write(CANONICALIZATION)
             ops_mlir_file.write("}\n")
 
     print("Skipped ops num: " + str(len(skipped_op_list)))
     print("Automatically generated op dialects num: " + str(
         len(automatically_generated_op_dialect)))
+
+    with open(dialect_info_file, 'w') as pd_ops_info_file:
+        pd_ops_info_file.write(
+            "#include<map>\n#include<string>\n#include<vector>\n")
+        pd_ops_info_file.write(
+            "const std::map<std::string, std::vector<std::string>> pd_dialect_inputs_info_map_ = {\n"
+        )
+        for data_ in ops_inputs_map_:
+            pd_ops_info_file.write("  {\"" + data_ + "\", {")
+            for var_ in ops_inputs_map_[data_]:
+                pd_ops_info_file.write("\"" + var_ + "\",")
+            pd_ops_info_file.write("}},\n")
+        pd_ops_info_file.write("};\n")
+
+        pd_ops_info_file.write(
+            "const std::map<std::string, std::vector<std::string>> pd_dialect_outputs_info_map_ = {\n"
+        )
+        for data_ in ops_outputs_map_:
+            pd_ops_info_file.write("  {\"" + data_ + "\", {")
+            for var_ in ops_outputs_map_[data_]:
+                pd_ops_info_file.write("\"" + var_ + "\",")
+            pd_ops_info_file.write("}},\n")
+        pd_ops_info_file.write("};\n")
 
     # 3. custom op dialect and end of file
     with open(dst_dialect_file, 'a') as ops_mlir_file:

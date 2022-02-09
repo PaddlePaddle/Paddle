@@ -19,3 +19,4 @@ limitations under the License. */
 
 PT_DECLARE_API(Math);
 PT_DECLARE_API(Utils);
+PT_DECLARE_API(SparseApi);

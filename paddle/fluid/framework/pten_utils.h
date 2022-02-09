@@ -24,11 +24,17 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
+
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/core/compat/arg_map_context.h"
 #include "paddle/pten/core/kernel_factory.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
+
+#ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -41,6 +47,9 @@ OpKernelType TransPtenKernelKeyToOpKernelType(
     const pten::KernelKey& kernel_key);
 pten::KernelKey TransOpKernelTypeToPtenKernelKey(
     const OpKernelType& kernel_type);
+pten::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
+                              const pten::KernelKey& kernel_key,
+                              const framework::OperatorBase& op);
 
 /* Kernel Args parse */
 
@@ -54,7 +63,7 @@ class KernelArgsNameMaker {
 
 void InitDefaultKernelSignatureMap();
 
-void SetAllocationForOutputTenosr(pten::DenseTensor* tensor,
+void SetAllocationForOutputTenosr(pten::TensorBase* tensor,
                                   const platform::Place& place);
 
 // TODO(Wilber): support others device context.
@@ -67,6 +76,13 @@ template <>
 struct ConvertToPtenContext<platform::CPUDeviceContext> {
   using TYPE = pten::CPUContext;
 };
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+template <>
+struct ConvertToPtenContext<platform::CUDADeviceContext> {
+  using TYPE = pten::GPUContext;
+};
+#endif
 
 #ifdef PADDLE_WITH_XPU
 template <>

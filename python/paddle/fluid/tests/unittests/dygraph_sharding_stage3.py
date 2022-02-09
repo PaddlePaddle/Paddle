@@ -83,7 +83,8 @@ def train_mlp(model,
               accumulate_grad=False,
               batch_size=100,
               opt_group=False,
-              recompute=False):
+              recompute=False,
+              test_minimize=False):
     group = paddle.distributed.new_group([0, 1])
     if opt_group:
         optimizer = optimizer_setting(
@@ -113,6 +114,15 @@ def train_mlp(model,
             accumulate_grads=batch_size == 20,
             sync_comm=recompute)
 
+    # check optimizer.minimize() error
+    if test_minimize:
+        try:
+            optimizer.minimize()
+        except:
+            print(
+                "====== Find sharding_stage3_optimizer.minimize() error ======")
+        return
+
     train_reader = paddle.batch(
         reader_decorator(), batch_size=batch_size, drop_last=True)
 
@@ -135,6 +145,10 @@ def train_mlp(model,
                 loss = paddle.nn.functional.cross_entropy(
                     input=out, label=label)
             avg_loss = paddle.mean(x=loss.cast(dtype=paddle.float32))
+
+            if batch_size == 20:
+                avg_loss = avg_loss / 5
+
             if not use_pure_fp16:
                 avg_loss.backward()
             else:
@@ -160,8 +174,8 @@ def train_mlp(model,
 
 
 def test_stage2_stage3():
-    mlp, mlp1, mlp2, mlp3, mlp4, mlp5, mlp6, mlp7, mlp8 = MLP(), MLP(), MLP(
-    ), MLP(), MLP(), MLP(), MLP(), MLP(), MLP()
+    mlp, mlp1, mlp2, mlp3, mlp4, mlp5, mlp6, mlp7, mlp8, mlp9 = MLP(), MLP(
+    ), MLP(), MLP(), MLP(), MLP(), MLP(), MLP(), MLP(), MLP()
     state_dict = mlp.state_dict()
     mlp1.set_state_dict(state_dict)
     mlp2.set_state_dict(state_dict)
@@ -171,6 +185,8 @@ def test_stage2_stage3():
     mlp6.set_state_dict(state_dict)
     mlp7.set_state_dict(state_dict)
     mlp8.set_state_dict(state_dict)
+    mlp9.set_state_dict(state_dict)
+
     # fp32 
     stage2_params = train_mlp(
         mlp1, sharding_stage=2, use_pure_fp16=False, opt_group=False)
@@ -203,7 +219,7 @@ def test_stage2_stage3():
             stage3_params[i].numpy(),
             stage3_params_add[i].numpy(),
             rtol=1e-6,
-            atol=1e-6)
+            atol=1e-4)
 
     # fp16
     stage2_params = train_mlp(
@@ -229,7 +245,14 @@ def test_stage2_stage3():
     for i in range(len(stage3_params)):
         np.testing.assert_allclose(
             stage3_params[i].numpy(), stage3_params_re[i].numpy(), rtol=1e-6)
-    return
+
+    # check optimizer.minimize() error
+    train_mlp(
+        mlp9,
+        sharding_stage=3,
+        use_pure_fp16=False,
+        opt_group=False,
+        test_minimize=True)
 
 
 if __name__ == '__main__':
