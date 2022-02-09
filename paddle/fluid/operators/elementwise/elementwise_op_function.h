@@ -174,18 +174,7 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
                           const framework::Tensor *y, int axis, Functor func,
                           framework::Tensor *z) {
   z->mutable_data<OutType>(ctx.GetPlace());
-  if (platform::is_gpu_place(ctx.GetPlace())) {
-#if defined(__NVCC__) || defined(__HIPCC__)
-    const auto &dev_ctx =
-        ctx.template device_context<platform::CUDADeviceContext>();
-    pten::ElementwiseCompute<Functor, T, OutType>(dev_ctx, *x, *y, axis, func,
-                                                  z);
-
-#endif
-    return;
-  }
-  const auto &dev_ctx =
-      ctx.template device_context<platform::CPUDeviceContext>();
+  auto &dev_ctx = ctx.device_context<DeviceContext>();
   pten::ElementwiseCompute<Functor, T, OutType>(dev_ctx, *x, *y, axis, func, z);
 }
 
@@ -1140,8 +1129,7 @@ void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
     if (bcast_y) {  // Y should be broadcast.
       // In this case,
       // for 'f2(y)', the shape of intermediate_out should be equal to the
-      // shape
-      // of Y.
+      // shape of Y.
       // for 'f2(x, y)', the shape of intermediate_out should be equal to the
       // shape of Out.
       // the shape of Out should be equal to the shape of X.
@@ -1153,8 +1141,7 @@ void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
     } else {
       // In this case,
       // for 'f2(y)', the shape of intermediate_out should be equal to the
-      // shape
-      // of Out.
+      // shape of Out.
       // for 'f2(x, y)', the shape of intermediate_out should be equal to the
       // shape of Out.
       // the shape of Out should be equal to the shape of Y.

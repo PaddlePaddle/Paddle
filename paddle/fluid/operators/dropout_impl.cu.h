@@ -30,11 +30,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/dropout_impl_util.h"
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-#include "paddle/pten/kernels/funcs/cuda_kernel_config.h"
 
 namespace paddle {
 namespace operators {
@@ -278,6 +276,31 @@ void DropoutGradGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     } else {
       dX.device(place) = dY * M.cast<T>();
     }
+  }
+}
+
+inline void GetSeedDataAndIncrement(const platform::CUDADeviceContext& dev_ctx,
+                                    const framework::Tensor* seed,
+                                    const bool is_fix_seed, const int seed_val,
+                                    const int offset, uint64_t* seed_data,
+                                    uint64_t* increment) {
+  int device_id = dev_ctx.GetPlace().GetDeviceId();
+  auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
+
+  if (seed) {
+    framework::Tensor seed_cpu_tensor;
+    paddle::framework::TensorCopySync(*seed, platform::CPUPlace(),
+                                      &seed_cpu_tensor);
+    *seed_data = static_cast<uint64_t>(seed_cpu_tensor.data<int>()[0]);
+    *increment = offset;
+  } else if (gen_cuda->GetIsInitPy() && (!is_fix_seed)) {
+    auto seed_offset = gen_cuda->IncrementOffset(offset);
+    *seed_data = seed_offset.first;
+    *increment = seed_offset.second;
+  } else {
+    std::random_device rnd;
+    *seed_data = is_fix_seed ? seed_val : rnd();
+    *increment = offset;
   }
 }
 
