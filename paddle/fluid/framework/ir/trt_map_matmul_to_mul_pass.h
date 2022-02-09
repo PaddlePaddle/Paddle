@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,36 +23,24 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-/*
- * Map matmul to mul, so the optimization can use fc_fuse_pass.
- * The mul op must satisfy the following conditions:
- * 1. the transpose_X and transpose_Y attrs are false
- * 2. the alpha attr is 1.0
- * 3. the rank of input X and Y is 2
- * 4. the next op of matmul is only elementwise_add
- *
- * Notice:
- *  the rank of input activation is obtained from var_desc,
- *  it maybe change in runtime.
- */
 class Graph;
 
-class MapMatmul2MulPass : public FusePassBase {
+class TrtMapMatmul2MulPass : public FusePassBase {
  public:
-  MapMatmul2MulPass();
-  virtual ~MapMatmul2MulPass() {}
+  TrtMapMatmul2MulPass();
+  virtual ~TrtMapMatmul2MulPass() {}
 
  protected:
   void ApplyImpl(Graph* graph) const override;
 };
 
 /*
- * Map matmul_v2 to mul, the same as MapMatmul2MulPass.
+ * Map matmul_v2 to mul, the same as TrtMapMatmul2MulPass.
  */
-class MapMatmulV2ToMulPass : public FusePassBase {
+class TrtMapMatmulV2ToMulPass : public FusePassBase {
  public:
-  MapMatmulV2ToMulPass();
-  virtual ~MapMatmulV2ToMulPass() {}
+  TrtMapMatmulV2ToMulPass();
+  virtual ~TrtMapMatmulV2ToMulPass() {}
 
  protected:
   void ApplyImpl(Graph* graph) const override;
@@ -61,10 +49,10 @@ class MapMatmulV2ToMulPass : public FusePassBase {
 /*
  * Map matmul_v2 to matmul, not supoort broadcast.
  */
-class MapMatmulV2ToMatmulPass : public FusePassBase {
+class TrtMapMatmulV2ToMatmulPass : public FusePassBase {
  public:
-  MapMatmulV2ToMatmulPass();
-  virtual ~MapMatmulV2ToMatmulPass() {}
+  TrtMapMatmulV2ToMatmulPass();
+  virtual ~TrtMapMatmulV2ToMatmulPass() {}
 
  protected:
   void ApplyImpl(Graph* graph) const override;
@@ -89,10 +77,10 @@ class MapMatmulV2ToMatmulPass : public FusePassBase {
  *  the above passes to reduce the impact on other models.
  */
 
-class Squeeze2MatmulFusePass : public FusePassBase {
+class TrtSqueeze2MatmulFusePass : public FusePassBase {
  public:
-  Squeeze2MatmulFusePass();
-  virtual ~Squeeze2MatmulFusePass() {}
+  TrtSqueeze2MatmulFusePass();
+  virtual ~TrtSqueeze2MatmulFusePass() {}
 
  protected:
   void ApplyImpl(Graph* graph) const override;
@@ -119,19 +107,19 @@ class Squeeze2MatmulFusePass : public FusePassBase {
  *  the above passes to reduce the impact on other models.
  */
 
-class Reshape2MatmulFusePass : public FusePassBase {
+class TrtReshape2MatmulFusePass : public FusePassBase {
  public:
-  Reshape2MatmulFusePass();
-  virtual ~Reshape2MatmulFusePass() {}
+  TrtReshape2MatmulFusePass();
+  virtual ~TrtReshape2MatmulFusePass() {}
 
  protected:
   void ApplyImpl(Graph* graph) const override;
 };
 
-class Flatten2MatmulFusePass : public FusePassBase {
+class TrtFlatten2MatmulFusePass : public FusePassBase {
  public:
-  Flatten2MatmulFusePass();
-  virtual ~Flatten2MatmulFusePass() {}
+  TrtFlatten2MatmulFusePass();
+  virtual ~TrtFlatten2MatmulFusePass() {}
 
  protected:
   void ApplyImpl(Graph* graph) const override;
