@@ -1246,13 +1246,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         VLOG(3) << "mish op does not support input's dim is 1 in tensorrt.";
         return false;
       }
-
-      if (!with_dynamic_shape) {
-        if (x_shape.size() == 2) {
-          VLOG(3) << "mish op does not support input's dim is 2 in tensorrt.";
-          return false;
-        }
-      }
     }
 
     if (op_type == "roi_align") {
