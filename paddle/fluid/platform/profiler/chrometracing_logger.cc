@@ -134,9 +134,9 @@ void ChromeTracingLogger::LogHostTraceEventNode(
     }
   },
   )JSON"),
-      host_node.name().c_str(), host_node.process_id(), host_node.thread_id(),
-      nsToUs(host_node.start_ns()), nsToUs(host_node.duration()),
-      categary_name_[static_cast<int>(host_node.type())]);
+      host_node.Name().c_str(), host_node.ProcessId(), host_node.ThreadId(),
+      nsToUs(host_node.StartNs()), nsToUs(host_node.Duration()),
+      categary_name_[static_cast<int>(host_node.Type())]);
 }
 
 void ChromeTracingLogger::LogRuntimeTraceEventNode(
@@ -156,11 +156,11 @@ void ChromeTracingLogger::LogRuntimeTraceEventNode(
     }
   },
   )JSON"),
-      runtime_node.name().c_str(), runtime_node.process_id(),
-      runtime_node.thread_id(), nsToUs(runtime_node.start_ns()),
-      nsToUs(runtime_node.duration()),
-      categary_name_[static_cast<int>(runtime_node.type())],
-      runtime_node.correlation_id());
+      runtime_node.Name().c_str(), runtime_node.ProcessId(),
+      runtime_node.ThreadId(), nsToUs(runtime_node.StartNs()),
+      nsToUs(runtime_node.Duration()),
+      categary_name_[static_cast<int>(runtime_node.Type())],
+      runtime_node.CorrelationId());
 }
 
 void ChromeTracingLogger::LogDeviceTraceEventNode(
@@ -168,7 +168,7 @@ void ChromeTracingLogger::LogDeviceTraceEventNode(
   if (!output_file_stream_) {
     return;
   }
-  switch (device_node.type()) {
+  switch (device_node.Type()) {
     case TracerEventType::Kernel:
       HandleTypeKernel(device_node);
       break;
@@ -184,14 +184,14 @@ void ChromeTracingLogger::LogDeviceTraceEventNode(
 
 void ChromeTracingLogger::HandleTypeKernel(
     const DeviceTraceEventNode& device_node) {
-  KernelEventInfo kernel_info = device_node.kernel_info();
+  KernelEventInfo kernel_info = device_node.KernelInfo();
   constexpr int threads_per_warp = 32;
   float blocks_per_sm = 0.0;
   float warps_per_sm = 0.0;
   float occupancy = 0.0;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   const gpuDeviceProp& device_property =
-      GetDeviceProperties(device_node.device_id());
+      GetDeviceProperties(device_node.DeviceId());
   blocks_per_sm =
       (kernel_info.grid_x * kernel_info.grid_y * kernel_info.grid_z) /
       device_property.multiProcessorCount;
@@ -220,13 +220,12 @@ void ChromeTracingLogger::HandleTypeKernel(
     }
   },
   )JSON"),
-      device_node.name().c_str(), device_node.device_id(),
-      device_node.stream_id(), nsToUs(device_node.start_ns()),
-      nsToUs(device_node.duration()),
-      categary_name_[static_cast<int>(device_node.type())],
-      device_node.device_id(), device_node.context_id(),
-      device_node.stream_id(), device_node.correlation_id(),
-      kernel_info.registers_per_thread,
+      device_node.Name().c_str(), device_node.DeviceId(),
+      device_node.StreamId(), nsToUs(device_node.StartNs()),
+      nsToUs(device_node.Duration()),
+      categary_name_[static_cast<int>(device_node.Type())],
+      device_node.DeviceId(), device_node.ContextId(), device_node.StreamId(),
+      device_node.CorrelationId(), kernel_info.registers_per_thread,
       kernel_info.static_shared_memory + kernel_info.dynamic_shared_memory,
       blocks_per_sm, warps_per_sm, kernel_info.grid_x, kernel_info.grid_y,
       kernel_info.grid_z, kernel_info.block_x, kernel_info.block_y,
@@ -235,10 +234,10 @@ void ChromeTracingLogger::HandleTypeKernel(
 
 void ChromeTracingLogger::HandleTypeMemcpy(
     const DeviceTraceEventNode& device_node) {
-  MemcpyEventInfo memcpy_info = device_node.memcpy_info();
+  MemcpyEventInfo memcpy_info = device_node.MemcpyInfo();
   float memory_bandwidth = 0;
-  if (device_node.duration() > 0) {
-    memory_bandwidth = memcpy_info.num_bytes * 1.0 / device_node.duration();
+  if (device_node.Duration() > 0) {
+    memory_bandwidth = memcpy_info.num_bytes * 1.0 / device_node.Duration();
   }
   output_file_stream_ << string_format(
       std::string(
@@ -253,17 +252,17 @@ void ChromeTracingLogger::HandleTypeMemcpy(
     }
   },
   )JSON"),
-      device_node.name().c_str(), device_node.device_id(),
-      device_node.stream_id(), nsToUs(device_node.start_ns()),
-      nsToUs(device_node.duration()),
-      categary_name_[static_cast<int>(device_node.type())],
-      device_node.stream_id(), device_node.correlation_id(),
+      device_node.Name().c_str(), device_node.DeviceId(),
+      device_node.StreamId(), nsToUs(device_node.StartNs()),
+      nsToUs(device_node.Duration()),
+      categary_name_[static_cast<int>(device_node.Type())],
+      device_node.StreamId(), device_node.CorrelationId(),
       memcpy_info.num_bytes, memory_bandwidth);
 }
 
 void ChromeTracingLogger::HandleTypeMemset(
     const DeviceTraceEventNode& device_node) {
-  MemsetEventInfo memset_info = device_node.memset_info();
+  MemsetEventInfo memset_info = device_node.MemsetInfo();
   output_file_stream_ << string_format(
       std::string(
           R"JSON(
@@ -278,13 +277,12 @@ void ChromeTracingLogger::HandleTypeMemset(
     }
   },
   )JSON"),
-      device_node.name().c_str(), device_node.device_id(),
-      device_node.stream_id(), nsToUs(device_node.start_ns()),
-      nsToUs(device_node.duration()),
-      categary_name_[static_cast<int>(device_node.type())],
-      device_node.device_id(), device_node.context_id(),
-      device_node.stream_id(), device_node.correlation_id(),
-      memset_info.num_bytes, memset_info.value);
+      device_node.Name().c_str(), device_node.DeviceId(),
+      device_node.StreamId(), nsToUs(device_node.StartNs()),
+      nsToUs(device_node.Duration()),
+      categary_name_[static_cast<int>(device_node.Type())],
+      device_node.DeviceId(), device_node.ContextId(), device_node.StreamId(),
+      device_node.CorrelationId(), memset_info.num_bytes, memset_info.value);
 }
 
 void ChromeTracingLogger::StartLog() {
