@@ -393,7 +393,8 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
     platform::RecordEvent infershape_event("InferShape");
     // If it is OperatorBase, InferShape do nothing.
     if (op_with_kernel != nullptr)
-      op_with_kernel->InferShape(instr_node.InnerInferShapeContext().get());
+      op_with_kernel->Info().infer_shape_(
+          instr_node.InnerInferShapeContext().get());
   }
 
   if (op_with_kernel != nullptr &&
@@ -418,15 +419,14 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
         VLOG(4) << "Run pten kernel: " << op->Type();
         VLOG(4) << instr_node.InnerRuntimeContext().get() << " "
                 << &instr_node.DeviceContext();
+        pten::KernelContext pt_kernel_context;
         op_with_kernel->BuildPtenKernelContext(
             *instr_node.InnerRuntimeContext().get(),
-            const_cast<platform::DeviceContext*>(&instr_node.DeviceContext()));
+            const_cast<platform::DeviceContext*>(&instr_node.DeviceContext()),
+            &pt_kernel_context);
 
-        (*instr_node.PtenKernel())(instr_node.PtenKernelContext());
+        (*instr_node.PtenKernel())(&pt_kernel_context);
 
-        op_with_kernel->WriteBackToOutputs(
-            instr_node.InnerRuntimeContext().get());
-        instr_node.PtenKernelContext()->ClearData();
       } else {
         instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
       }
@@ -675,8 +675,9 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
                    operators::reader::
                        OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {
       // do nothing
-    } else if (var->IsType<SelectedRows>()) {
-      TensorRecordStream(*(var->GetMutable<SelectedRows>()->mutable_value()));
+    } else if (var->IsType<pten::SelectedRows>()) {
+      TensorRecordStream(
+          *(var->GetMutable<pten::SelectedRows>()->mutable_value()));
     } else if (var->IsType<LoDTensorArray>()) {
       auto* tensor_arr = var->GetMutable<LoDTensorArray>();
       for (auto& tensor : *tensor_arr) {

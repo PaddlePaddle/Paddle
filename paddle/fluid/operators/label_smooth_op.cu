@@ -28,7 +28,7 @@ struct LabelSmoothFunctor {
     label_dim = static_cast<T>(label_dim_data);
   }
 
-  __device__ __forceinline__ T operator()(const T& x) const {
+  __device__ __forceinline__ T operator()(const T x) const {
     return (static_cast<T>(1 - epsilon) * x +
             static_cast<T>(epsilon / label_dim));
   }
@@ -42,7 +42,7 @@ struct LabelSmoothGradFunctor {
     epsilon = static_cast<T>(epsilon_data);
   }
 
-  __device__ __forceinline__ T operator()(const T& x) const {
+  __device__ __forceinline__ T operator()(const T x) const {
     return static_cast<T>(1 - epsilon) * x;
   }
 };
@@ -87,8 +87,8 @@ class LabelSmoothGPUKernel : public framework::OpKernel<T> {
       std::vector<const framework::Tensor*> ins = {in_t};
       std::vector<framework::Tensor*> outs = {out_t};
       auto functor = LabelSmoothFunctor<T>(epsilon, label_dim);
-      LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, T>(
-          dev_ctx, ins, &outs, functor);
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<
+          ElementwiseType::kUnary, T, T>(dev_ctx, ins, &outs, functor);
     }
   }
 };
@@ -107,8 +107,8 @@ class LabelSmoothGradGPUKernel : public framework::OpKernel<T> {
     std::vector<const framework::Tensor*> ins = {d_out_t};
     std::vector<framework::Tensor*> outs = {d_in_t};
     auto functor = LabelSmoothGradFunctor<T>(epsilon);
-    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, T>(
-        dev_ctx, ins, &outs, functor);
+    paddle::operators::LaunchSameDimsElementwiseCudaKernel<
+        ElementwiseType::kUnary, T, T>(dev_ctx, ins, &outs, functor);
   }
 };
 }  // namespace operators

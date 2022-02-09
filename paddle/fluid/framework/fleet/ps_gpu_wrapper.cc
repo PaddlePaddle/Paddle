@@ -791,7 +791,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
         "Warning:: CPUPlace is not supported in GpuPs now."));
   } else if (platform::is_gpu_place(place)) {
     VLOG(3) << "Begin copy keys, key_num[" << total_length << "]";
-    int device_id = BOOST_GET_CONST(platform::CUDAPlace, place).GetDeviceId();
+    int device_id = place.GetDeviceId();
     int devid_2_index = HeterPs_->get_index_by_devid(device_id);
     LoDTensor& total_keys_tensor = keys_tensor[devid_2_index];
     uint64_t* total_keys = reinterpret_cast<uint64_t*>(
@@ -859,7 +859,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
     PADDLE_THROW(platform::errors::Unimplemented(
         "Warning:: CPUPlace is not supported in GPUPS now."));
   } else if (platform::is_gpu_place(place)) {
-    int device_id = BOOST_GET_CONST(platform::CUDAPlace, place).GetDeviceId();
+    int device_id = place.GetDeviceId();
     int devid_2_index = HeterPs_->get_index_by_devid(device_id);
     LoDTensor& cached_total_keys_tensor = keys_tensor[devid_2_index];
     uint64_t* total_keys =

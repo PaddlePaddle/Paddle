@@ -26,6 +26,7 @@
 
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/split.h"
+#include "paddle/pten/common/place.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
@@ -790,25 +791,25 @@ size_t Usage::operator()(const platform::CUDAPinnedPlace &cuda_pinned) const {
 
 namespace allocation {
 
-Allocation *NaiveBestFitAllocator::AllocateImpl(size_t size) {
-  void *ptr = boost::apply_visitor(legacy::AllocVisitor(size), place_);
+pten::Allocation *NaiveBestFitAllocator::AllocateImpl(size_t size) {
+  void *ptr = paddle::platform::VisitPlace(place_, legacy::AllocVisitor(size));
   auto *tmp_alloc = new Allocation(ptr, size, place_);
   platform::MemEvenRecorder::Instance().PushMemRecord(
       static_cast<void *>(tmp_alloc), place_, size);
   return tmp_alloc;
 }
 
-void NaiveBestFitAllocator::FreeImpl(Allocation *allocation) {
-  boost::apply_visitor(
-      legacy::FreeVisitor(allocation->ptr(), allocation->size()),
-      allocation->place());
+void NaiveBestFitAllocator::FreeImpl(pten::Allocation *allocation) {
+  paddle::platform::VisitPlace(
+      allocation->place(),
+      legacy::FreeVisitor(allocation->ptr(), allocation->size()));
   platform::MemEvenRecorder::Instance().PopMemRecord(
       static_cast<void *>(allocation), place_);
   delete allocation;
 }
 
 uint64_t NaiveBestFitAllocator::ReleaseImpl(const platform::Place &place) {
-  return boost::apply_visitor(legacy::ReleaseVisitor(), place);
+  return paddle::platform::VisitPlace(place, legacy::ReleaseVisitor());
 }
 
 }  // namespace allocation

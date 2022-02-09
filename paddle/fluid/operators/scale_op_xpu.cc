@@ -14,9 +14,9 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/scale_op.h"
 #include <string>
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/pten/kernels/scale_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -32,30 +32,21 @@ class ScaleXPUKernel : public framework::OpKernel<T> {
     auto bias = static_cast<float>(ctx.Attr<float>("bias"));
     auto bias_after_scale = ctx.Attr<bool>("bias_after_scale");
     auto* out_var = ctx.OutputVar("Out");
-    if (in_var->IsType<framework::SelectedRows>() && in_var != out_var) {
-      auto& in_slr = in_var->Get<framework::SelectedRows>();
-      auto* out_slr = out_var->GetMutable<framework::SelectedRows>();
+    if (in_var->IsType<pten::SelectedRows>() && in_var != out_var) {
+      auto& in_slr = in_var->Get<pten::SelectedRows>();
+      auto* out_slr = out_var->GetMutable<pten::SelectedRows>();
       out_slr->set_rows(in_slr.rows());
       out_slr->set_height(in_slr.height());
     }
     auto* out =
         framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(out_var);
     out->mutable_data<T>(in->place());
-    PADDLE_ENFORCE_EQ(
-        in->dims(), out->dims(),
-        platform::errors::InvalidArgument("In and out should have the same dim,"
-                                          " expected %s, but got %s.",
-                                          in->dims().to_str().c_str(),
-                                          out->dims().to_str().c_str()));
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    int r = xpu::scale(dev_ctx.x_context(),
-                       reinterpret_cast<const XPUType*>(in->data<T>()),
-                       reinterpret_cast<XPUType*>(out->data<T>()), in->numel(),
-                       bias_after_scale, scale, bias);
-    PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
-        platform::errors::External("XPU scale kernel return wrong value[%d %s]",
-                                   r, XPUAPIErrorMsg[r]));
+    // call pten kernel
+    pten::ScaleKernel<T>(
+        static_cast<const typename framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *in, scale, bias, bias_after_scale, out);
   }
 };
 

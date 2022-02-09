@@ -152,11 +152,11 @@ class CudaEvent {
 #endif
   }
 
-  void Record(const paddle::platform::stream::CUDAStream &stream) {
+  void Record(gpuStream_t stream) {
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event_, stream.raw_stream()));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event_, stream));
 #else
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event_, stream.raw_stream()));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event_, stream));
 #endif
   }
 
@@ -199,40 +199,6 @@ class CudaEvent {
 #endif
   gpuEvent_t event_;
 #endif
-};
-
-struct CommonEvent {
- public:
-  CommonEvent(const char *name, uint64_t start_ns, uint64_t end_ns,
-              EventRole role)
-      : name(name), start_ns(start_ns), end_ns(end_ns), role(role) {}
-
-  CommonEvent(std::function<void *(size_t)> &arena_allocator,
-              const std::string &name_str, uint64_t start_ns, uint64_t end_ns,
-              EventRole role, const std::string &attr_str)
-      : start_ns(start_ns), end_ns(end_ns), role(role) {
-    auto buf = static_cast<char *>(arena_allocator(name_str.length() + 1));
-    strncpy(buf, name_str.c_str(), name_str.length() + 1);
-    name = buf;
-    buf = static_cast<char *>(arena_allocator(attr_str.length() + 1));
-    strncpy(buf, attr_str.c_str(), attr_str.length() + 1);
-    attr = buf;
-  }
-
-  CommonEvent(const std::function<void *(size_t)> &arena_allocator,
-              const std::string &name_str, uint64_t start_ns, uint64_t end_ns,
-              EventRole role)
-      : start_ns(start_ns), end_ns(end_ns), role(role) {
-    auto buf = static_cast<char *>(arena_allocator(name_str.length() + 1));
-    strncpy(buf, name_str.c_str(), name_str.length() + 1);
-    name = buf;
-  }
-
-  const char *name = nullptr;  // not owned, designed for performance
-  uint64_t start_ns = 0;
-  uint64_t end_ns = 0;
-  EventRole role = EventRole::kOrdinary;
-  const char *attr = nullptr;  // not owned, designed for performance
 };
 
 }  // namespace platform

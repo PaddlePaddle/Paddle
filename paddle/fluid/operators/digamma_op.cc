@@ -64,6 +64,13 @@ class DigammaGradOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim(framework::GradVarName("X"), dout_dims);
     ctx->ShareLoD(framework::GradVarName("Out"), framework::GradVarName("X"));
   }
+
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::KernelSignature("digamma_grad",
+                                      {framework::GradVarName("Out"), "X"}, {},
+                                      {framework::GradVarName("X")});
+  }
 };
 
 template <typename T>
@@ -89,12 +96,3 @@ REGISTER_OPERATOR(digamma, ops::DigammaOp, ops::DigammaOpMaker,
                   ops::DigammaGradOpMaker<paddle::framework::OpDesc>,
                   ops::DigammaGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(digamma_grad, ops::DigammaGradOp);
-
-REGISTER_OP_CPU_KERNEL(
-    digamma, ops::DigammaKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::DigammaKernel<paddle::platform::CPUDeviceContext, double>);
-
-REGISTER_OP_CPU_KERNEL(
-    digamma_grad,
-    ops::DigammaGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::DigammaGradKernel<paddle::platform::CPUDeviceContext, double>);

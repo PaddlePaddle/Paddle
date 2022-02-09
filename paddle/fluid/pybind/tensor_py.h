@@ -223,20 +223,27 @@ T TensorGetElement(const framework::Tensor &self, size_t offset) {
   } else if (platform::is_xpu_place(self.place())) {
 #ifdef PADDLE_WITH_XPU
     const T *a = self.data<T>();
-    auto p = BOOST_GET_CONST(platform::XPUPlace, self.place());
+    auto p = self.place();
     paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T));
 #endif
   } else if (platform::is_gpu_place(self.place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     const T *a = self.data<T>();
-    auto p = BOOST_GET_CONST(platform::CUDAPlace, self.place());
+    auto p = self.place();
+    paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T),
+                         nullptr);
+#endif
+  } else if (platform::is_mlu_place(self.place())) {
+#ifdef PADDLE_WITH_MLU
+    const T *a = self.data<T>();
+    auto p = self.place();
     paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T),
                          nullptr);
 #endif
   } else if (platform::is_npu_place(self.place())) {
 #if defined(PADDLE_WITH_ASCEND_CL)
     const T *a = self.data<T>();
-    auto p = BOOST_GET_CONST(platform::NPUPlace, self.place());
+    auto p = self.place();
     paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T),
                          nullptr);
 #endif
@@ -257,20 +264,27 @@ void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
     self->mutable_data<T>(self->place())[offset] = elem;
   } else if (platform::is_xpu_place(self->place())) {
 #ifdef PADDLE_WITH_XPU
-    auto p = BOOST_GET_CONST(platform::XPUPlace, self->place());
+    auto p = self->place();
     T *a = self->mutable_data<T>(p);
     paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T));
 #endif
   } else if (platform::is_gpu_place(self->place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    auto p = BOOST_GET_CONST(platform::CUDAPlace, self->place());
+    auto p = self->place();
+    T *a = self->mutable_data<T>(p);
+    paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T),
+                         nullptr);
+#endif
+  } else if (platform::is_mlu_place(self->place())) {
+#ifdef PADDLE_WITH_MLU
+    auto p = self->place();
     T *a = self->mutable_data<T>(p);
     paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T),
                          nullptr);
 #endif
   } else if (platform::is_npu_place(self->place())) {
 #if defined(PADDLE_WITH_ASCEND_CL)
-    auto p = BOOST_GET_CONST(platform::NPUPlace, self->place());
+    auto p = self->place();
     T *a = self->mutable_data<T>(p);
     paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T),
                          nullptr);
@@ -304,11 +318,9 @@ void SetTensorFromPyArrayT(
     // NOTE(wangxi): When copying data to the accelerator card,
     // we need set_device(dev_id) first.
     platform::Place tmp_place = place;
-    platform::XPUDeviceGuard guard(
-        BOOST_GET_CONST(platform::XPUPlace, tmp_place).device);
+    platform::XPUDeviceGuard guard(tmp_place.device);
     auto dst = self->mutable_data<T>(place);
-    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, tmp_place),
-                 static_cast<void *>(dst), platform::CPUPlace(),
+    memory::Copy(tmp_place, static_cast<void *>(dst), platform::CPUPlace(),
                  static_cast<const void *>(array.data()), array.nbytes());
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
@@ -333,8 +345,7 @@ void SetTensorFromPyArrayT(
   } else if (paddle::platform::is_npu_place(place)) {
 #ifdef PADDLE_WITH_ASCEND_CL
     platform::Place tmp_place = place;
-    platform::NPUDeviceGuard guard(
-        BOOST_GET_CONST(platform::NPUPlace, tmp_place).device);
+    platform::NPUDeviceGuard guard(tmp_place.device);
     auto dst = self->mutable_data<T>(place);
     platform::NPUMemcpySync(dst, array.data(), array.nbytes(),
                             ACL_MEMCPY_HOST_TO_DEVICE);
@@ -349,8 +360,7 @@ void SetTensorFromPyArrayT(
   } else if (paddle::platform::is_mlu_place(place)) {
 #ifdef PADDLE_WITH_MLU
     platform::Place tmp_place = place;
-    platform::MLUDeviceGuard guard(
-        BOOST_GET_CONST(platform::MLUPlace, tmp_place).device);
+    platform::MLUDeviceGuard guard(tmp_place.device);
     auto dst = self->mutable_data<T>(place);
     paddle::platform::MLUMemcpyH2DSync(dst, array.data(), array.nbytes());
 #else
@@ -363,9 +373,7 @@ void SetTensorFromPyArrayT(
     if (paddle::platform::is_gpu_place(place)) {
       // NOTE(wangxi): When copying data to the accelerator card,
       // we need set_device(dev_id) first.
-      platform::Place tmp_place = place;
-      platform::CUDADeviceGuard guard(
-          BOOST_GET_CONST(platform::CUDAPlace, tmp_place).device);
+      platform::CUDADeviceGuard guard(place.device);
       auto dst = self->mutable_data<T>(place);
 #ifdef PADDLE_WITH_HIP
       paddle::platform::GpuMemcpySync(dst, array.data(), array.nbytes(),
@@ -440,13 +448,45 @@ void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
   }
 }
 
+template <typename T>
+void SetUVATensorFromPyArray(
+    const std::shared_ptr<paddle::imperative::VarBase> &self,
+    const py::array_t<T> &array, int device_id) {
+#if defined(PADDLE_WITH_CUDA)
+  auto *self_tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
+  std::vector<int64_t> dims;
+  dims.reserve(array.ndim());
+  int64_t numel = 1;
+  for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
+    dims.emplace_back(static_cast<int>(array.shape()[i]));
+    numel *= static_cast<int>(array.shape()[i]);
+  }
+  self_tensor->Resize(framework::make_ddim(dims));
+
+  auto data_type = framework::ToDataType(std::type_index(typeid(T)));
+  const auto &need_allocate_size = numel * framework::SizeOfType(data_type);
+  T *data_ptr;
+  cudaHostAlloc(reinterpret_cast<void **>(&data_ptr), need_allocate_size,
+                cudaHostAllocWriteCombined | cudaHostAllocMapped);
+  std::memcpy(data_ptr, array.data(), array.nbytes());
+
+  void *cuda_device_pointer = nullptr;
+  cudaHostGetDevicePointer(reinterpret_cast<void **>(&cuda_device_pointer),
+                           reinterpret_cast<void *>(data_ptr), 0);
+  std::shared_ptr<memory::allocation::Allocation> holder =
+      std::make_shared<memory::allocation::Allocation>(
+          cuda_device_pointer, need_allocate_size,
+          platform::CUDAPlace(device_id));
+  self_tensor->ResetHolderWithType(holder, data_type);
+#endif
+}
+
 template <typename T, size_t D>
 void _sliceCompute(const framework::Tensor *in, framework::Tensor *out,
                    const platform::CPUDeviceContext &ctx,
                    const std::vector<int> &axes,
                    const std::vector<int> &starts) {
   auto &eigen_place = *ctx.eigen_device();
-  auto place = in->place();
   auto out_dims = out->dims();
   auto in_dims = in->dims();
 
@@ -537,21 +577,21 @@ inline framework::Tensor *_getTensor(const framework::Tensor &self,
   output->Resize(ddim);
   auto place = self.place();
   if (platform::is_cpu_place(place)) {
-    output->mutable_data(BOOST_GET_CONST(platform::CPUPlace, place),
-                         self.type());
+    output->mutable_data(place, self.type());
   } else if (platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
-    output->mutable_data(BOOST_GET_CONST(platform::XPUPlace, place),
-                         self.type());
+    output->mutable_data(place, self.type());
+#endif
+  } else if (platform::is_mlu_place(place)) {
+#ifdef PADDLE_WITH_MLU
+    output->mutable_data(place, self.type());
 #endif
   } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_cuda_pinned_place(place)) {
-      output->mutable_data(BOOST_GET_CONST(platform::CUDAPinnedPlace, place),
-                           self.type());
+      output->mutable_data(place, self.type());
     } else if ((platform::is_gpu_place(place))) {
-      output->mutable_data(BOOST_GET_CONST(platform::CUDAPlace, place),
-                           self.type());
+      output->mutable_data(place, self.type());
     }
 #endif
   }
@@ -770,7 +810,7 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
             "or double free would occur"));
 
     size_t copy_bytes = sizeof_dtype * numel;
-    auto p = BOOST_GET_CONST(platform::XPUPlace, tensor.place());
+    auto p = tensor.place();
     paddle::memory::Copy(platform::CPUPlace(), py_arr.mutable_data(), p,
                          tensor_buf_ptr, copy_bytes);
     return py_arr;
@@ -793,7 +833,7 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
             "or double free would occur"));
 
     size_t copy_bytes = sizeof_dtype * numel;
-    auto p = BOOST_GET_CONST(platform::CUDAPlace, tensor.place());
+    auto p = tensor.place();
     paddle::memory::Copy(platform::CPUPlace(), py_arr.mutable_data(), p,
                          tensor_buf_ptr, copy_bytes, nullptr);
     return py_arr;
@@ -816,7 +856,7 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
             "or double free would occur"));
 
     size_t copy_bytes = sizeof_dtype * numel;
-    auto p = BOOST_GET_CONST(platform::NPUPlace, tensor.place());
+    auto p = tensor.place();
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &ctx = *pool.Get(tensor.place());
     paddle::memory::Copy(
@@ -844,9 +884,14 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
             "or double free would occur"));
 
     size_t copy_bytes = sizeof_dtype * numel;
-    auto p = BOOST_GET_CONST(platform::MLUPlace, tensor.place());
-    paddle::memory::Copy(platform::CPUPlace(), py_arr.mutable_data(), p,
-                         tensor_buf_ptr, copy_bytes, nullptr);
+    auto p = tensor.place();
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &ctx = *pool.Get(tensor.place());
+    paddle::memory::Copy(
+        platform::CPUPlace(), py_arr.mutable_data(), p, tensor_buf_ptr,
+        copy_bytes,
+        reinterpret_cast<const platform::MLUDeviceContext &>(ctx).stream());
+    ctx.Wait();
     return py_arr;
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(

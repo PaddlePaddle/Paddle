@@ -22,7 +22,7 @@ namespace framework {
 size_t OpKernelType::Hash::operator()(const OpKernelType& key) const {
   int cur_loc = 0;
 
-  int place = key.place_.which();
+  int place = static_cast<int>(key.place_.GetType());
   cur_loc += OpKernelType::kPlaceBits;
 
   int data_type = static_cast<int>(key.data_type_) << cur_loc;

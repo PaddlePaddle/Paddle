@@ -17,17 +17,17 @@
 #include <llvm/ADT/STLExtras.h>
 #include <mlir/IR/Attributes.h>
 #include <mlir/IR/Builders.h>
-#include <mlir/IR/Function.h>
-#include <mlir/IR/Module.h>
+#include <mlir/IR/BuiltinOps.h>
+#include <mlir/IR/BuiltinTypes.h>
 #include <mlir/IR/OpDefinition.h>
 #include <mlir/IR/OpImplementation.h>
-#include <mlir/IR/StandardTypes.h>
 #include <mlir/IR/TypeUtilities.h>
 #include <mlir/Support/LogicalResult.h>
 
 #include "paddle/infrt/dialect/dense_tensor.h"
 
-namespace infrt::dialect {
+namespace infrt {
+namespace dialect {
 using namespace mlir;  // NOLINT
 
 static ParseResult parseCallOp(OpAsmParser &parser,       // NOLINT
@@ -71,12 +71,12 @@ static ParseResult parseConstantF64Op(OpAsmParser &parser,       // NOLINT
 static ParseResult parseConstantI32Op(OpAsmParser &parser,       // NOLINT
                                       OperationState &result) {  // NOLINT
   return parseConstantOp(
-      IntegerType::get(32, result.getContext()), parser, result);
+      IntegerType::get(result.getContext(), 32), parser, result);
 }
 static ParseResult parseConstantI64Op(OpAsmParser &parser,       // NOLINT
                                       OperationState &result) {  // NOLINT
   return parseConstantOp(
-      IntegerType::get(64, result.getContext()), parser, result);
+      IntegerType::get(result.getContext(), 64), parser, result);
 }
 
 static ParseResult parseReturnOp(OpAsmParser &parser,       // NOLINT
@@ -90,10 +90,10 @@ static ParseResult parseReturnOp(OpAsmParser &parser,       // NOLINT
 }
 
 static void print(OpAsmPrinter &p, CallOp op) {  // NOLINT
-  p << "infrt.call " << op.getAttr("callee") << "(";
+  p << "infrt.call " << op->getAttr("callee") << "(";
   p.printOperands(op.getOperands());
   p << ")";
-  p.printOptionalAttrDict(op.getAttrs(), {"callee"});
+  p.printOptionalAttrDict(op->getAttrs(), {"callee"});
   p << " : ";
 }
 
@@ -145,7 +145,7 @@ static LogicalResult verify(ConstantF64Op op) { return success(); }
 static LogicalResult verify(ConstantI64Op op) { return success(); }
 
 static LogicalResult verify(ReturnOp op) {
-  auto function = dyn_cast<FuncOp>(op.getParentOp());
+  auto function = dyn_cast<FuncOp>(op->getParentOp());
 
   if (!function) return success();
 
@@ -157,8 +157,8 @@ static LogicalResult verify(ReturnOp op) {
 
   return success();
 }
+}  // namespace dialect
+}  // namespace infrt
 
 #define GET_OP_CLASSES
 #include "paddle/infrt/dialect/basic_kernels.cpp.inc"
-
-}  // namespace infrt::dialect

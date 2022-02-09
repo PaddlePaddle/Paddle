@@ -134,5 +134,27 @@ class FCHardSwishOneDnnFusePassTest(InferencePassTest):
         self.assertTrue(PassVersionChecker.IsCompatible(self.pass_name))
 
 
+class FCMishOneDnnFusePassTest(InferencePassTest):
+    def setUp(self):
+        self.set_params()
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(
+                name="data", shape=[-1, 128, 768], dtype="float32")
+            fc_out = fluid.layers.fc(input=data, size=3072, num_flatten_dims=2)
+            mish_out = fluid.layers.mish(fc_out)
+
+        self.feeds = {"data": np.random.random((1, 128, 768)).astype("float32")}
+
+        self.fetch_list = [mish_out]
+        self.enable_mkldnn = True
+
+    def set_params(self):
+        self.pass_name = "fc_act_mkldnn_fuse_pass"
+
+    def test_check_output(self):
+        self.check_output()
+        self.assertTrue(PassVersionChecker.IsCompatible(self.pass_name))
+
+
 if __name__ == "__main__":
     unittest.main()

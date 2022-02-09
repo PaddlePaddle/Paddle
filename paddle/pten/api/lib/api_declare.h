@@ -17,8 +17,6 @@ limitations under the License. */
 // api symbols declare, remove in the future
 #include "paddle/pten/api/lib/api_registry.h"
 
-PT_DECLARE_API(Creation);
-PT_DECLARE_API(Linalg);
-PT_DECLARE_API(Manipulation);
 PT_DECLARE_API(Math);
 PT_DECLARE_API(Utils);
+PT_DECLARE_API(SparseApi);

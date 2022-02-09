@@ -19,8 +19,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/platform/eigen_ext.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/kernels/funcs/eigen/extensions.h"
 
 #define ARITHMETIC_KERNEL(op_type, sign)                                 \
   __global__ void op_type(const half *in1, const half *in2, half *out) { \
@@ -328,6 +328,10 @@ TEST(float16, lod_tensor_on_gpu) {
   // CPU LoDTensor to GPU LoDTensor
   CUDAPlace gpu_place(0);
   CUDADeviceContext gpu_ctx(gpu_place);
+  gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(gpu_place, gpu_ctx.stream())
+                           .get());
+  gpu_ctx.PartialInitWithAllocator();
   framework::TensorCopy(src_tensor, gpu_place, gpu_ctx, &gpu_tensor);
 
   // GPU LoDTensor to CPU LoDTensor

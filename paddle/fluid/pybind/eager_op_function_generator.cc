@@ -32,6 +32,9 @@
 #endif
 #include "paddle/fluid/pybind/op_function_generator.h"
 
+// pten
+#include "paddle/pten/kernels/declarations.h"
+
 // clang-format off
 const char* OUT_INITIALIZER_TEMPLATE =
     R"({"%s", {std::shared_ptr<imperative::VarBase>(new imperative::VarBase("auto_"+std::to_string(VarBaseUniqueNameID++)+"_"))}})";
@@ -70,10 +73,10 @@ const char* OUT_VAR_TYPE = R"(std::shared_ptr<imperative::VarBase>)";
 const char* OUT_VAR_LIST_TYPE = R"(std::vector<std::shared_ptr<imperative::VarBase>>)";
 
 const char* CAST_VAR_TEMPLATE = R"(
-    auto& %s = GetEagerTensorFromArgs("%s", "%s", args, %d, %s);)";
+    auto& %s = GetTensorFromArgs("%s", "%s", args, %d, %s);)";
 
 const char* CAST_VAR_LIST_TEMPLATE = R"(
-    auto %s = GetEagerTensorListFromArgs("%s", "%s", args, %d, %s);)";
+    auto %s = GetTensorListFromArgs("%s", "%s", args, %d, %s);)";
 
 const char* CAST_VAR_PTR_TEMPLATE = R"(
     auto %s = GetEagerTensorPtrFromArgs("%s", "%s", args, %d, %s);)";
@@ -313,6 +316,21 @@ static std::string GenerateCoreOpsInfoMap() {
       "  }\n"
       "}\n"
       "\n"
+      "static PyObject * eager_get_core_ops_args_type_info(PyObject *self) {\n"
+      "  PyThreadState *tstate = nullptr;\n"
+      "  try\n"
+      "  {\n"
+      "    return ToPyObject(core_ops_args_type_info);\n"
+      "  }\n"
+      "  catch(...) {\n"
+      "    if (tstate) {\n"
+      "      PyEval_RestoreThread(tstate);\n"
+      "    }\n"
+      "    ThrowExceptionToPython(std::current_exception());\n"
+      "    return nullptr;\n"
+      "  }\n"
+      "}\n"
+      "\n"
       "static PyObject * eager_get_core_ops_returns_info(PyObject *self) {\n"
       "  PyThreadState *tstate = nullptr;\n"
       "  try\n"
@@ -399,6 +417,10 @@ int main(int argc, char* argv[]) {
       "{\"get_core_ops_args_info\", "
       "(PyCFunction)(void(*)(void))eager_get_core_ops_args_info, METH_NOARGS, "
       "\"C++ interface function for eager_get_core_ops_args_info.\"},\n"
+      "{\"get_core_ops_args_type_info\", "
+      "(PyCFunction)(void(*)(void))eager_get_core_ops_args_type_info, "
+      "METH_NOARGS, "
+      "\"C++ interface function for eager_get_core_ops_args_type_info.\"},\n"
       "  {\"get_core_ops_returns_info\", "
       "(PyCFunction)(void(*)(void))eager_get_core_ops_returns_info, "
       "METH_NOARGS, \"C++ interface function for "

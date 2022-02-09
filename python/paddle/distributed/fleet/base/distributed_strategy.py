@@ -102,6 +102,10 @@ class DistributedJobInfo(object):
         self.job_info.strategy = dist_strategy
 
 
+ReduceStrategyFluid = paddle.fluid.BuildStrategy.ReduceStrategy
+ReduceStrategyFleet = int
+
+
 class DistributedStrategy(object):
     __lock_attr = False
 
@@ -239,8 +243,10 @@ class DistributedStrategy(object):
         build_strategy = paddle.fluid.BuildStrategy()
         fields = self.strategy.build_strategy.DESCRIPTOR.fields
         for f in fields:
-            setattr(build_strategy, f.name,
-                    getattr(self.strategy.build_strategy, f.name))
+            value = getattr(self.strategy.build_strategy, f.name)
+            if f.name == 'reduce_strategy':
+                value = ReduceStrategyFluid(value)
+            setattr(build_strategy, f.name, value)
         return build_strategy
 
     @build_strategy.setter
@@ -249,8 +255,10 @@ class DistributedStrategy(object):
         fields = self.strategy.build_strategy.DESCRIPTOR.fields
         for f in fields:
             if f.label == 1 or f.label == 2:  # optional and required field
-                setattr(self.strategy.build_strategy, f.name,
-                        getattr(strategy, f.name))
+                value = getattr(strategy, f.name)
+                if f.name == 'reduce_strategy':
+                    value = ReduceStrategyFleet(value)
+                setattr(self.strategy.build_strategy, f.name, value)
             elif f.label == 3:  # repeated field
                 getattr(self.strategy.build_strategy,
                         f.name).extend(getattr(strategy, f.name))
