@@ -124,12 +124,12 @@ AmpOperators::AmpOperators()
   auto unsupported_ops_npu = std::get<2>(
       OpSupportedInfos("NPU", paddle::framework::proto::VarType::FP16));
   unsupported_fp16_ops_->insert(unsupported_ops_npu.begin(),
-                                unsupported_ops_gpu.end());
+                                unsupported_ops_npu.end());
 #elif defined(PADDLE_WITH_XPU)
   auto unsupported_ops_xpu = std::get<2>(
       OpSupportedInfos("XPU", paddle::framework::proto::VarType::FP16));
   unsupported_fp16_ops_->insert(unsupported_ops_xpu.begin(),
-                                unsupported_ops_gpu.end());
+                                unsupported_ops_xpu.end());
 #endif
   VLOG(4) << allow_ops_->size() << " " << block_ops_->size() << " "
           << unsupported_fp16_ops_->size();
