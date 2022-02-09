@@ -95,13 +95,11 @@ const Kernel& KernelFactory::SelectKernelOrThrowError(
                                   KernelKey(backend, layout, dtype));
 }
 
-std::string Kernel::DumpKernel() const {
-  std::ostringstream os;
-
+std::ostream& operator<<(std::ostream& os, const Kernel& kernel) {
   // input
   os << "{\"input\":[";
   bool need_comma = false;
-  for (auto& in_def : args_def_.input_defs()) {
+  for (auto& in_def : kernel.args_def().input_defs()) {
     if (need_comma) os << ",";
     os << "\"" << in_def.backend << ", " << in_def.layout << ", "
        << in_def.dtype << "\"";
@@ -112,7 +110,7 @@ std::string Kernel::DumpKernel() const {
   // output
   os << "\"output\":[";
   need_comma = false;
-  for (auto& out_def : args_def_.output_defs()) {
+  for (auto& out_def : kernel.args_def().output_defs()) {
     if (need_comma) os << ",";
     os << "\"" << out_def.backend << ", " << out_def.layout << ", "
        << out_def.dtype << "\"";
@@ -123,56 +121,33 @@ std::string Kernel::DumpKernel() const {
   // attr
   os << "\"attribute\":[";
   need_comma = false;
-  for (auto& arg_def : args_def_.attribute_defs()) {
+  for (auto& arg_def : kernel.args_def().attribute_defs()) {
     if (need_comma) os << ",";
     os << "\"" << arg_def.type_index.name() << "\"";
     need_comma = true;
   }
   os << "]}";
 
-  return os.str();
+  return os;
 }
 
-std::string KernelFactory::DumpKernels() {
-  std::ostringstream os;
+std::ostream& operator<<(std::ostream& os, KernelFactory& kernel_factory) {
   os << "{";
   bool need_comma_kernels = false;
-  for (const auto& op_kernel_pair : kernels_) {
+  for (const auto& op_kernel_pair : kernel_factory.kernels()) {
     if (need_comma_kernels) os << ",";
     os << "\"" << op_kernel_pair.first << "\":[";
     bool need_comma_per_kernel = false;
     for (const auto& kernel_pair : op_kernel_pair.second) {
       if (need_comma_per_kernel) os << ",";
-      os << "{\"" << kernel_pair.first
-         << "\":" << kernel_pair.second.DumpKernel() << "}";
+      os << "{\"" << kernel_pair.first << "\":" << kernel_pair.second << "}";
       need_comma_per_kernel = true;
     }
     os << "]";
     need_comma_kernels = true;
   }
   os << "}";
-  return os.str();
-}
 
-std::ostream& operator<<(std::ostream& os, const Kernel& kernel) {
-  os << "InputNum(" << kernel.args_def().input_defs().size() << "): [";
-  for (auto& in_def : kernel.args_def().input_defs()) {
-    os << "<" << in_def.backend << ", " << in_def.layout << ", " << in_def.dtype
-       << ">";
-  }
-  os << "]), AttributeNum(" << kernel.args_def().attribute_defs().size()
-     << "), OutputNum(" << kernel.args_def().output_defs().size() << ")";
-  return os;
-}
-
-std::ostream& operator<<(std::ostream& os, KernelFactory& kernel_factory) {
-  for (const auto& op_kernel_pair : kernel_factory.kernels()) {
-    os << "- kernel name: " << op_kernel_pair.first << "\n";
-    for (const auto& kernel_pair : op_kernel_pair.second) {
-      os << "\t- kernel key: " << kernel_pair.first << " | "
-         << "kernel: " << kernel_pair.second << "\n";
-    }
-  }
   return os;
 }
 

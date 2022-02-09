@@ -190,8 +190,6 @@ class Kernel {
 
   bool IsValid() { return fn_ != nullptr; }
 
-  std::string DumpKernel() const;
-
  private:
   KernelFn fn_{nullptr};
   void* variadic_fn_ = nullptr;
@@ -230,8 +228,6 @@ class KernelFactory {
                       const KernelKey& kernel_key) const;
 
   KernelKeyMap SelectKernelMap(const std::string& kernel_name) const;
-
-  std::string DumpKernels();
 
  private:
   KernelFactory() = default;
