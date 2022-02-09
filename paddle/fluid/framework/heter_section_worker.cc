@@ -42,9 +42,7 @@ void SetMicroId(paddle::framework::Scope* scope,
   if (platform::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
     std::vector<char> temp;
-    temp.resize(
-        tensor->numel() *
-        framework::SizeOfType(framework::TransToProtoVarType(tensor->dtype())));
+    temp.resize(tensor->numel() * framework::DataTypeSize(tensor->dtype()));
     char* temp_ptr = temp.data();
     float* temp_ptr_float = reinterpret_cast<float*>(temp_ptr);
     temp_ptr_float[0] = micro_id;

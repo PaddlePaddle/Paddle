@@ -109,12 +109,10 @@ void InitTensorsOnClient(framework::Scope* scope, int64_t rows_numel,
   std::vector<float> x_vec;
   for (int64_t i = 0; i < rows_numel; ++i) x_vec.push_back(1.0);
   float* x_vec_ptr = x_vec.data();
-  memory::Copy(
-      place, reinterpret_cast<void*>(x_ptr), platform::CPUPlace(),
-      reinterpret_cast<void*>(x_vec_ptr),
-      x_var->numel() *
-          framework::SizeOfType(framework::TransToProtoVarType(x_var->dtype())),
-      stream);
+  memory::Copy(place, reinterpret_cast<void*>(x_ptr), platform::CPUPlace(),
+               reinterpret_cast<void*>(x_vec_ptr),
+               x_var->numel() * framework::DataTypeSize(x_var->dtype()),
+               stream);
 
   // auto res_var = scope->Var("res")->GetMutable<framework::LoDTensor>();
   // float* res_ptr =

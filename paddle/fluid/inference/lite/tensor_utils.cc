@@ -211,8 +211,7 @@ void TensorCopyAsync(paddle::lite_api::Tensor* dst,
   const platform::Place& src_place = src.place();
   const platform::Place& dst_place = GetNativePlace(dst->target());
   const size_t bytes =
-      static_cast<size_t>(src.numel()) *
-      framework::SizeOfType(framework::TransToProtoVarType(src.dtype()));
+      static_cast<size_t>(src.numel()) * framework::DataTypeSize(src.dtype());
   dst->Resize(framework::vectorize(src.dims()));
   const void* src_data = src.data();
   void* dst_data{nullptr};
@@ -235,9 +234,7 @@ void TensorCopyAsync(framework::LoDTensor* dst,
   const platform::Place& src_place = GetNativePlace(src.target());
   const platform::Place& dst_place = dst->place();
   int64_t src_numel = GetLiteTensorNumel(src);
-  const size_t bytes =
-      src_numel *
-      framework::SizeOfType(framework::TransToProtoVarType(dst->dtype()));
+  const size_t bytes = src_numel * framework::DataTypeSize(dst->dtype());
   const void* src_data = src.data<void>();
   // When Lite is ready, the source type needs to be modified here.
   void* dst_data = dst->mutable_data(dst_place, dst->dtype());

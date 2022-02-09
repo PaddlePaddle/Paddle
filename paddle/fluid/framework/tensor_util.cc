@@ -947,9 +947,7 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
     os.write(out.data(), size);
   }
   {  // the 3rd field, tensor data
-    uint64_t size =
-        tensor.numel() *
-        framework::SizeOfType(framework::TransToProtoVarType(tensor.dtype()));
+    uint64_t size = tensor.numel() * framework::DataTypeSize(tensor.dtype());
 
     auto* data_ptr = tensor.data();
     PADDLE_ENFORCE_LT(size, (std::numeric_limits<std::streamsize>::max)(),

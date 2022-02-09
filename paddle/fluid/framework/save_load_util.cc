@@ -295,8 +295,7 @@ bool SaveTensorToDisk(const std::string& file_name,
 
     // save tensor
     uint64_t data_size =
-        tensor->numel() *
-        framework::SizeOfType(framework::TransToProtoVarType(tensor->dtype()));
+        tensor->numel() * framework::DataTypeSize(tensor->dtype());
     auto* data_ptr = tensor->data();
     if (platform::is_gpu_place(tensor->place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

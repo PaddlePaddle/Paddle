@@ -125,11 +125,9 @@ void NPUGetIdsEmbedding(const framework::ExecutionContext &context) {
   framework::LoDTensor table_t_pad;
 
   size_t mem_size =
-      table_t->numel() *
-      framework::SizeOfType(framework::TransToProtoVarType(table_t->dtype()));
+      table_t->numel() * framework::DataTypeSize(table_t->dtype());
   size_t line_mem_size =
-      table_t->dims()[1] *
-      framework::SizeOfType(framework::TransToProtoVarType(table_t->dtype()));
+      table_t->dims()[1] * framework::DataTypeSize(table_t->dtype());
   PADDLE_ENFORCE_EQ(line_mem_size % 64, 0,
                     platform::errors::InvalidArgument(
                         "NPU only accept the second dim must align by 64"));
@@ -219,14 +217,12 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
 
   // copy table_t_pad to table_t
   T *dst = table_grad_t->mutable_data<T>(table_t->dims(), context.GetPlace());
-  const size_t mem_size = table_grad_t->numel() *
-                          framework::SizeOfType(framework::TransToProtoVarType(
-                              table_grad_t->dtype()));
+  const size_t mem_size =
+      table_grad_t->numel() * framework::DataTypeSize(table_grad_t->dtype());
 
   // check align
-  size_t line_mem_size = table_grad_t->dims()[1] *
-                         framework::SizeOfType(framework::TransToProtoVarType(
-                             table_grad_t->dtype()));
+  size_t line_mem_size =
+      table_grad_t->dims()[1] * framework::DataTypeSize(table_grad_t->dtype());
   PADDLE_ENFORCE_EQ(line_mem_size % 64, 0,
                     platform::errors::InvalidArgument(
                         "NPU only accept the second dim must align by 64"));

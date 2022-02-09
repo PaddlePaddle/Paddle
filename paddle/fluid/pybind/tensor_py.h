@@ -478,7 +478,8 @@ void SetUVATensorFromPyArray(
       std::make_shared<memory::allocation::Allocation>(
           cuda_device_pointer, need_allocate_size,
           platform::CUDAPlace(device_id));
-  self_tensor->ResetHolderWithType(holder, data_type);
+  self_tensor->ResetHolderWithType(holder,
+                                   framework::TransToPtenDataType(data_type));
 #endif
 }
 

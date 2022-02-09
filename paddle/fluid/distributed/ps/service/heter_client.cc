@@ -41,17 +41,13 @@ int GetMicroId(const platform::DeviceContext& ctx,
   } else {
 #ifdef PADDLE_WITH_CUDA
     std::vector<char> temp;
-    temp.resize(
-        tensor->numel() *
-        framework::SizeOfType(framework::TransToProtoVarType(tensor->dtype())));
+    temp.resize(tensor->numel() * framework::DataTypeSize(tensor->dtype()));
     char* temp_ptr = temp.data();
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
     memory::Copy(
         platform::CPUPlace(), temp_ptr, tensor->place(), tensor->data(),
-        tensor->numel() * framework::SizeOfType(
-                              framework::TransToProtoVarType(tensor->dtype())),
-        stream);
+        tensor->numel() * framework::DataTypeSize(tensor->dtype()), stream);
     float* temp_ptr_float = reinterpret_cast<float*>(temp_ptr);
     micro_id = static_cast<int>(temp_ptr_float[0]);
 #endif

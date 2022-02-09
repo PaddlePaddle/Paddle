@@ -144,7 +144,8 @@ class LookupTableV2Kernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     const auto *ids = context.Input<Tensor>("Ids");
     LookupTableV2CPUFunctor<T> functor(context, ids);
-    framework::VisitIntDataType(ids->type(), functor);
+    framework::VisitIntDataType(framework::TransToProtoVarType(ids->dtype()),
+                                functor);
   }
 };
 
@@ -258,7 +259,8 @@ class LookupTableV2GradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     const auto *ids = context.Input<Tensor>("Ids");
     LookupTableV2GradCPUFunctor<T> functor(context, ids);
-    framework::VisitIntDataType(ids->type(), functor);
+    framework::VisitIntDataType(framework::TransToProtoVarType(ids->dtype()),
+                                functor);
   }
 };
 
