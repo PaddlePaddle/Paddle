@@ -249,7 +249,8 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
       true_out_meta->dims = calc_out->dims();
       true_out_meta->dtype = calc_out->dtype();
       true_out_meta->layout = calc_out->layout();
-      // lod and offset no need to be reset
+      true_out_meta->offset = calc_out->offset();
+      // lod no need to be reset
       // reset holder if needed
       if (true_out->Holder() != calc_out->Holder()) {
         true_out->ResetHolder(calc_out->Holder());

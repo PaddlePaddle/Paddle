@@ -348,5 +348,18 @@ __device__ __forceinline__ void Reduce(T* out,
   }
 }
 
+template <typename InT,
+          typename OutT,
+          int NX,
+          int NY,
+          int BlockSize,
+          class OpFunc>
+__device__ __forceinline__ void ElementwiseConstant(OutT* out, OpFunc compute) {
+#pragma unroll
+  for (int idx = 0; idx < NX * NY; idx++) {
+    out[idx] = static_cast<OutT>(compute());
+  }
+}
+
 }  // namespace kps
 }  // namespace pten
