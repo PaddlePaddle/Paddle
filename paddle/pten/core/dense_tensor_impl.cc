@@ -144,7 +144,7 @@ void* DenseTensor::mutable_data(const paddle::platform::Place& place,
 
 void* DenseTensor::mutable_data(const paddle::platform::Place& place,
                                 paddle::framework::proto::VarType::Type type,
-                                const paddle::platform::Stream& stream) {
+                                const pten::Stream& stream) {
   set_type(type);
   PADDLE_ENFORCE_GE(
       numel(),
