@@ -160,8 +160,7 @@ void SerializeSelectedRows(framework::Variable* var,
 #ifdef PADDLE_WITH_CUDA
     char* temp_ptr =
         new char[tensor->numel() *
-                 framework::DataTypeSize(
-                     tensor->dtype()))];  // NOLINT
+                 framework::DataTypeSize(tensor->dtype())];  // NOLINT
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
     memory::Copy(

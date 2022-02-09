@@ -16,6 +16,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/inference/lite/engine.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
