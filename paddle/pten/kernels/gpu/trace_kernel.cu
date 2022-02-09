@@ -35,7 +35,7 @@ void TraceKernel(const Context& ctx,
     reduce_dims.push_back(out->dims().size());
     kernels::
         TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-            diag, out, kps::IdentityFunctor<T>(), reduce_dims, stream);
+            ctx, diag, out, kps::IdentityFunctor<T>(), reduce_dims, stream);
   } else {
     paddle::operators::math::SetConstant<Context, T> functor;
     functor(ctx, out, static_cast<T>(0));

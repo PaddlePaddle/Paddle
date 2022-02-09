@@ -23,9 +23,9 @@ KernelSignature TraceOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature TraceGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("trace_grad",
-                         {framework::GradVarName("Out"), "Input"},
+                         {GradVarName("Out"), "Input"},
                          {"offset", "axis1", "axis2"},
-                         {framework::GradVarName("Input")});
+                         {GradVarName("Input")});
 }
 
 }  // namespace pten
