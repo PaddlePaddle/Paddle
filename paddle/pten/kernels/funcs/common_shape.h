@@ -89,5 +89,18 @@ inline void GetBroadcastDimsArrays(const DDim &x_dims,
   }
 }
 
+inline void GetPrePostNumel(
+    const framework::DDim &dim, int axis, int *pre, int *n, int *post) {
+  *pre = 1;
+  *post = 1;
+  *n = dim[axis];
+  for (int i = 0; i < axis; ++i) {
+    (*pre) *= dim[i];
+  }
+  for (int i = axis + 1; i < dim.size(); ++i) {
+    (*post) *= dim[i];
+  }
+}
+
 }  // namespace funcs
 }  // namespace pten
