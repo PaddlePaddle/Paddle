@@ -36,6 +36,7 @@ nvinfer1::Dims PoolPlugin::getOutputDimensions(int index,
 }
 
 size_t PoolPlugin::getSerializationSize() const TRT_NOEXCEPT {
+  std::cout << "#############test_get############" << std::endl;
   return getBaseSerializationSize() + SerializedSize(ceil_mode_) +
          SerializedSize(pool_type_) + SerializedSize(adaptive_) +
          SerializedSize(exclusive_) + SerializedSize(ksize_) +
@@ -47,6 +48,7 @@ size_t PoolPlugin::getSerializationSize() const TRT_NOEXCEPT {
 // TRT will call this func when we need to serialize the configuration of
 // tensorrt.
 void PoolPlugin::serialize(void *buffer) const TRT_NOEXCEPT {
+  std::cout << "#############test_ser############" << std::endl;
   serializeBase(buffer);
   SerializeValue(&buffer, ceil_mode_);
   SerializeValue(&buffer, pool_type_);
