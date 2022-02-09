@@ -249,7 +249,6 @@ class TestReduceMinOpWithOutDtype_fp64(TestNPUReduceMinOp):
 @skip_check_grad_ci(
     reason="reduce_min is discontinuous non-derivable function,"
     " its gradient check is not supported by unittest framework.")
-@unittest.skipIf(True, "tmp")
 class TestReduceMinOpWithOutDtype_fp32_2(TestNPUReduceMinOp):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 

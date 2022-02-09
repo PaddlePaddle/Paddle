@@ -23,7 +23,6 @@ template <typename DeviceContext, typename T>
 class ReduceMinNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    LOG(WARNING) << "Here in ReduceMinNPUKernel::Compute";
     auto* x = ctx.Input<Tensor>("X");
     auto* out = ctx.Output<Tensor>("Out");
     auto dims = ctx.Attr<std::vector<int>>("dim");
