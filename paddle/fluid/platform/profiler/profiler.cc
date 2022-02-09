@@ -25,6 +25,7 @@ limitations under the License. */
 #endif
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/host_tracer.h"
+#include "paddle/fluid/platform/profiler/trace_event_collector.h"
 
 namespace paddle {
 namespace platform {
@@ -62,16 +63,16 @@ void Profiler::Start() {
   }
 }
 
-NodeTrees* Profiler::Stop() {
+std::unique_ptr<NodeTrees> Profiler::Stop() {
   SynchronizeAllDevice();
   TraceEventCollector collector;
   for (auto& tracer : tracers_) {
     tracer.Get().StopTracing();
     tracer.Get().CollectTraceData(&collector);
   }
-  NodeTrees* tree =
-      new NodeTrees(collector.HostEvents(), collector.RuntimeEvents(),
-                    collector.DeviceEvents());
+  std::unique_ptr<NodeTrees> tree(new NodeTrees(collector.HostEvents(),
+                                                collector.RuntimeEvents(),
+                                                collector.DeviceEvents()));
   return tree;
 }
 

@@ -29,7 +29,7 @@ using paddle::platform::TracerEventType;
 using paddle::platform::KernelEventInfo;
 using paddle::platform::MemcpyEventInfo;
 using paddle::platform::MemsetEventInfo;
-TEST(NodeTreesTest, LogMe) {
+TEST(NodeTreesTest, LogMe_case0) {
   std::list<HostTraceEvent> host_events;
   std::list<RuntimeTraceEvent> runtime_events;
   std::list<DeviceTraceEvent> device_events;
@@ -67,7 +67,7 @@ TEST(NodeTreesTest, LogMe) {
   device_events.push_back(
       DeviceTraceEvent(std::string("memset1"), TracerEventType::Memset, 66000,
                        69000, 0, 10, 11, 5, MemsetEventInfo()));
-  ChromeTracingLogger logger("test_nodetrees_logme.json");
+  ChromeTracingLogger logger("test_nodetrees_logme_case0.json");
   NodeTrees tree(host_events, runtime_events, device_events);
   std::map<uint64_t, std::vector<HostTraceEventNode*>> nodes =
       tree.Traverse(true);
@@ -93,7 +93,58 @@ TEST(NodeTreesTest, LogMe) {
   tree.LogMe(&logger);
 }
 
-TEST(NodeTreesTest, HandleTrees) {
+TEST(NodeTreesTest, LogMe_case1) {
+  std::list<HostTraceEvent> host_events;
+  std::list<RuntimeTraceEvent> runtime_events;
+  std::list<DeviceTraceEvent> device_events;
+  runtime_events.push_back(RuntimeTraceEvent(std::string("cudalaunch1"), 15000,
+                                             17000, 10, 10, 1, 0));
+  runtime_events.push_back(RuntimeTraceEvent(std::string("cudalaunch2"), 25000,
+                                             35000, 10, 10, 2, 0));
+  runtime_events.push_back(RuntimeTraceEvent(std::string("cudalaunch3"), 33000,
+                                             37000, 10, 11, 3, 0));
+  runtime_events.push_back(RuntimeTraceEvent(std::string("cudaMemcpy1"), 18000,
+                                             19000, 10, 10, 4, 0));
+  runtime_events.push_back(RuntimeTraceEvent(std::string("cudaMemset1"), 38000,
+                                             39000, 10, 11, 5, 0));
+  device_events.push_back(
+      DeviceTraceEvent(std::string("kernel1"), TracerEventType::Kernel, 40000,
+                       55000, 0, 10, 10, 1, KernelEventInfo()));
+  device_events.push_back(
+      DeviceTraceEvent(std::string("kernel2"), TracerEventType::Kernel, 70000,
+                       95000, 0, 10, 10, 2, KernelEventInfo()));
+  device_events.push_back(
+      DeviceTraceEvent(std::string("kernel3"), TracerEventType::Kernel, 60000,
+                       65000, 0, 10, 11, 3, KernelEventInfo()));
+  device_events.push_back(
+      DeviceTraceEvent(std::string("memcpy1"), TracerEventType::Memcpy, 56000,
+                       59000, 0, 10, 10, 4, MemcpyEventInfo()));
+  device_events.push_back(
+      DeviceTraceEvent(std::string("memset1"), TracerEventType::Memset, 66000,
+                       69000, 0, 10, 11, 5, MemsetEventInfo()));
+  ChromeTracingLogger logger("test_nodetrees_logme_case1.json");
+  NodeTrees tree(host_events, runtime_events, device_events);
+  std::map<uint64_t, std::vector<HostTraceEventNode*>> nodes =
+      tree.Traverse(true);
+  EXPECT_EQ(nodes[10].size(), 1u);
+  EXPECT_EQ(nodes[11].size(), 1u);
+  std::vector<HostTraceEventNode*> thread1_nodes = nodes[10];
+  std::vector<HostTraceEventNode*> thread2_nodes = nodes[11];
+  for (auto it = thread1_nodes.begin(); it != thread1_nodes.end(); it++) {
+    if ((*it)->name() == "root node") {
+      EXPECT_EQ((*it)->GetRuntimeTraceEventNodes().size(), 3u);
+    }
+  }
+  for (auto it = thread2_nodes.begin(); it != thread2_nodes.end(); it++) {
+    if ((*it)->name() == "root node") {
+      EXPECT_EQ((*it)->GetChildren().size(), 0u);
+      EXPECT_EQ((*it)->GetRuntimeTraceEventNodes().size(), 2u);
+    }
+  }
+  tree.LogMe(&logger);
+}
+
+TEST(NodeTreesTest, HandleTrees_case0) {
   std::list<HostTraceEvent> host_events;
   std::list<RuntimeTraceEvent> runtime_events;
   std::list<DeviceTraceEvent> device_events;
@@ -118,7 +169,7 @@ TEST(NodeTreesTest, HandleTrees) {
   device_events.push_back(
       DeviceTraceEvent(std::string("kernel3"), TracerEventType::Kernel, 60000,
                        75000, 0, 10, 11, 3, KernelEventInfo()));
-  ChromeTracingLogger logger("test_nodetrees_handletrees.json");
+  ChromeTracingLogger logger("test_nodetrees_handletrees_case0.json");
   NodeTrees tree(host_events, runtime_events, device_events);
   std::map<uint64_t, std::vector<HostTraceEventNode*>> nodes =
       tree.Traverse(true);

@@ -9,12 +9,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/platform/profiler/event_node.h"
 #include <limits.h>
 #include <algorithm>
 #include <deque>
 #include <stack>
-
-#include "paddle/fluid/platform/profiler/event_node.h"
+#include "glog/logging.h"
 
 namespace paddle {
 namespace platform {
@@ -124,6 +124,16 @@ void NodeTrees::BuildTrees(
     thread_event_trees_map_[it->first] = BuildTreeRelationship(
         it->second, thread2runtime_event_nodes[it->first]);
   }
+  // In case there is no host event node in one thread, but just runtime event
+  // nodes, we put these runtime event nodes into root node
+  for (auto it = thread2runtime_event_nodes.begin();
+       it != thread2runtime_event_nodes.end(); ++it) {
+    if (thread2host_event_nodes.find(it->first) ==
+        thread2host_event_nodes.end()) {
+      thread_event_trees_map_[it->first] =
+          BuildTreeRelationship(thread2host_event_nodes[it->first], it->second);
+    }
+  }
 }
 
 HostTraceEventNode* NodeTrees::BuildTreeRelationship(
@@ -133,15 +143,14 @@ HostTraceEventNode* NodeTrees::BuildTreeRelationship(
   auto node_stack = std::vector<HostTraceEventNode*>();
   // root node, top level
   auto root_node = new HostTraceEventNode(
-      HostTraceEvent(std::string("root node"), TracerEventType::UserDefined,
-                     LLONG_MIN, LLONG_MAX, 0, 0));
+      HostTraceEvent(std::string("root node"), TracerEventType::UserDefined, 0,
+                     LLONG_MAX, 0, 0));
   // push root node into node_stack
   node_stack.push_back(root_node);
   // handle host_event_nodes
   for (auto it = host_event_nodes.begin(); it != host_event_nodes.end(); ++it) {
     while (true) {
       auto stack_top_node = node_stack.back();
-
       if ((*it)->start_ns() < stack_top_node->end_ns()) {
         // current node is the child of stack_top_node
         PADDLE_ENFORCE_LE(
@@ -273,9 +282,11 @@ void NodeTrees::HandleTrees(
       thread2host_event_nodes = Traverse(true);
   for (auto it = thread2host_event_nodes.begin();
        it != thread2host_event_nodes.end(); ++it) {
-    for (auto hostnode = it->second.begin() + 1; hostnode != it->second.end();
-         ++hostnode) {  // skip root node
-      host_event_node_handle(*hostnode);
+    for (auto hostnode = it->second.begin(); hostnode != it->second.end();
+         ++hostnode) {
+      if (hostnode != it->second.begin()) {  // skip root node
+        host_event_node_handle(*hostnode);
+      }
       for (auto runtimenode = (*hostnode)->GetRuntimeTraceEventNodes().begin();
            runtimenode != (*hostnode)->GetRuntimeTraceEventNodes().end();
            ++runtimenode) {

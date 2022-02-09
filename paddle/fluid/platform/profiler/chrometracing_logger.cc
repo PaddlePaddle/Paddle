@@ -97,9 +97,11 @@ void ChromeTracingLogger::LogNodeTrees(const NodeTrees& node_trees) {
       thread2host_event_nodes = node_trees.Traverse(true);
   for (auto it = thread2host_event_nodes.begin();
        it != thread2host_event_nodes.end(); ++it) {
-    for (auto hostnode = it->second.begin() + 1; hostnode != it->second.end();
-         ++hostnode) {  // skip root node
-      (*hostnode)->LogMe(this);
+    for (auto hostnode = it->second.begin(); hostnode != it->second.end();
+         ++hostnode) {
+      if (hostnode != it->second.begin()) {  // skip root node
+        (*hostnode)->LogMe(this);
+      }
       for (auto runtimenode = (*hostnode)->GetRuntimeTraceEventNodes().begin();
            runtimenode != (*hostnode)->GetRuntimeTraceEventNodes().end();
            ++runtimenode) {
