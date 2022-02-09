@@ -20,7 +20,8 @@ namespace pten {
 using DataType = paddle::experimental::DataType;
 
 struct DeviceContext::Impl {
-  Impl() = default;
+  Impl(DeviceContext* dev_ctx):dev_ctx_(dev_ctx){}
+
   ~Impl() = default;
 
   void SetAllocator(const Allocator* allocator) {
@@ -83,6 +84,12 @@ struct DeviceContext::Impl {
     }
     auto* allocator =
         tensor->numel() == 0 ? zero_allocator_ : device_allocator_;
+    // NOTE(paddle-dev): In case of the allocator of storage_ is different with
+    // the incoming allocator, we will clear the old memory and re-alloc data
+    // using the incoming allocator.
+    if(tensor->initialized() && tensor->place() != dev_ctx_->GetPlace()){
+      tensor->clear();
+    }
     return tensor->AllocateFrom(
         const_cast<Allocator*>(allocator), dtype, requested_size);
   }
@@ -118,9 +125,10 @@ struct DeviceContext::Impl {
   const Allocator* device_allocator_{nullptr};
   const Allocator* host_allocator_{nullptr};
   const Allocator* zero_allocator_{nullptr};
+  DeviceContext* dev_ctx_{nullptr};
 };
 
-DeviceContext::DeviceContext() { impl_ = std::make_unique<Impl>(); }
+DeviceContext::DeviceContext() { impl_ = std::make_unique<Impl>(this); }
 
 DeviceContext::DeviceContext(const DeviceContext& other) {
   impl_->SetHostAllocator(&other.GetHostAllocator());

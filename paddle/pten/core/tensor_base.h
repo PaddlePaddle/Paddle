@@ -58,9 +58,11 @@ class TensorBase {
   /// return Whether the storage is allocated.
   virtual bool initialized() const = 0;
 
+  virtual void clear(){}
+
   // TODO(Aurelius84): This interface is under intermediate state now.
   // We will remove DataType argument in the future. Please DO NOT
-  // rely on Datatype to much when design and implement other feature.
+  // rely on DataType too much while designing and implementing other feature.
 
   /// \brief Allocate memory with requested size from allocator.
   /// \return The mutable data pointer value of type T.
