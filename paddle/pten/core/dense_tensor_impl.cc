@@ -76,13 +76,8 @@ void DenseTensor::set_layout(const paddle::framework::DataLayout layout) {
   meta_.layout = layout;
 }
 
+// Note: When you reset holder, you need to ensure the offset is correct
 void DenseTensor::ResetHolder(const std::shared_ptr<pten::Allocation>& holder) {
-  PADDLE_ENFORCE_EQ(
-      meta_.offset,
-      0,
-      paddle::platform::errors::Fatal(
-          "Only the offset is supported to zero when the holder is reset."));
-
   if (holder_) {
     // TODO(zyfncg): The change of static_cast<> in check will recover back
     // when SetAllocationForOutputTenosr is deleted.
@@ -90,7 +85,7 @@ void DenseTensor::ResetHolder(const std::shared_ptr<pten::Allocation>& holder) {
     // compare with a data with unsigned long type, this will make checking
     // failed, so it's a temporary solution to deal with this problem.
     PADDLE_ENFORCE_LE(
-        numel() * static_cast<int64_t>(SizeOf(dtype())),
+        numel() * static_cast<int64_t>(SizeOf(dtype())) + meta_.offset,
         static_cast<int64_t>(holder->size()),
         paddle::platform::errors::InvalidArgument(
             "The size of Holder is not enough to store the Tensor."));
