@@ -75,20 +75,20 @@ class AutogradMeta : public AbstractAutogradMeta {
 
   ~AutogradMeta() override = default;
 
-  const egr::EagerTensor& Grad() const {
+  const paddle::experimental::Tensor& Grad() const {
     PADDLE_ENFORCE_NOT_NULL(
         grad_.get(),
         paddle::platform::errors::InvalidArgument(
             "Should Not get NULL from Grad pointer, since "
-            "we should have default EagerTensor once we init AutoGradMeta. "
+            "we should have default Tensor once we init AutoGradMeta. "
             "if you got this error may indicates framework error in "
             "PaddlePaddle"));
     return *(grad_.get());
   }
 
-  egr::EagerTensor* MutableGrad() { return grad_.get(); }
+  paddle::experimental::Tensor* MutableGrad() { return grad_.get(); }
 
-  std::weak_ptr<egr::EagerTensor> WeakGrad() { return grad_; }
+  std::weak_ptr<paddle::experimental::Tensor> WeakGrad() { return grad_; }
 
   void SetGradNode(const std::shared_ptr<GradNodeBase>& grad_node) {
     PADDLE_ENFORCE_NOT_NULL(
@@ -137,8 +137,9 @@ class AutogradMeta : public AbstractAutogradMeta {
 
  private:
   // TODO(jiabin) :Should we use pointer instead of object?
-  std::shared_ptr<egr::EagerTensor> grad_{std::make_shared<egr::EagerTensor>(
-      egr::Controller::Instance().GenerateUniqueName("@grad"))};
+  std::shared_ptr<paddle::experimental::Tensor> grad_{
+      std::make_shared<paddle::experimental::Tensor>(
+          egr::Controller::Instance().GenerateUniqueName("@grad"))};
 
   // GradNodeBase is base class of all grad op which is a
   // wrapper for grad op. This class will make grad op easy
