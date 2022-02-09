@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/utils.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -51,7 +52,8 @@ static PyObject* eager_tensor_method_numpy(EagerTensorObject* self,
           self->eager_tensor.name()));
   auto tensor_dims = self->eager_tensor.shape();
   auto numpy_dtype = TensorDtype2NumpyDtype(self->eager_tensor.type());
-  auto sizeof_dtype = pten::DataTypeSize(self->eager_tensor.type());
+  auto sizeof_dtype =
+      paddle::framework::DataTypeSize(self->eager_tensor.type());
   Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];
   Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];
   size_t numel = 1;
@@ -83,7 +85,8 @@ static PyObject* eager_tensor_method_numpy(EagerTensorObject* self,
 
     paddle::platform::GpuMemcpySync(
         pybind11::detail::array_proxy(array)->data, dense_tensor->data(),
-        pten::DataTypeSize(dense_tensor->dtype()) * dense_tensor->numel(),
+        paddle::framework::DataTypeSize(dense_tensor->dtype()) *
+            dense_tensor->numel(),
         cudaMemcpyDeviceToHost);
 #endif
   } else {
