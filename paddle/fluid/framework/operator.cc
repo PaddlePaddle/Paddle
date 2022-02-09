@@ -1171,28 +1171,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   std::string pt_kernel_name;
   if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(type_)) {
     if (pt_kernel_signature_ == nullptr || pt_kernel_ == nullptr) {
-      pt_kernel_signature_.reset(new KernelSignature(
-          std::move(this->GetExpectedPtenKernelArgs(exe_ctx))));
-      VLOG(6) << *pt_kernel_signature_.get();
-
-      kernel_type_.reset(
-          new OpKernelType(std::move(InnerGetExpectedKernelType(exe_ctx))));
-      dev_ctx = pool.Get(kernel_type_->place_);
-
-      pt_kernel_name = pt_kernel_signature_->name;
-      pt_kernel_key = TransOpKernelTypeToPtenKernelKey(*kernel_type_.get());
-      pt_kernel_.reset(
-          new pten::Kernel(pten::KernelFactory::Instance().SelectKernel(
-              pt_kernel_name, pt_kernel_key)));
-
-      if (pt_kernel_->IsValid()) {
-        VLOG(6) << "Static mode ChoosePtenKernel - kernel name: "
-                << pt_kernel_name << " | kernel key: " << pt_kernel_key
-                << " | kernel: " << *pt_kernel_;
-      } else {
-        VLOG(6) << "Static mode ChoosePtenKernel - kernel `" << pt_kernel_name
-                << "` not found.";
-      }
+      pt_kernel_key = ChoosePtenKernel(exe_ctx);
+      pt_kernel_name = PtenKernelSignature()->name;
     }
     if (pt_kernel_->IsValid()) {
       run_pten_kernel_ = true;
@@ -1360,7 +1340,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 pten::KernelKey OperatorWithKernel::ChoosePtenKernel(
     const ExecutionContext& ctx) const {
   pt_kernel_signature_.reset(
-      new KernelSignature(std::move(this->GetExpectedPtenKernelArgs(ctx))));
+      new KernelSignature(std::move(GetExpectedPtenKernelArgs(ctx))));
   VLOG(6) << *pt_kernel_signature_.get();
 
   kernel_type_.reset(

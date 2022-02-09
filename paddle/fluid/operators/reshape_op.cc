@@ -579,13 +579,6 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    tensor.place(), tensor.layout());
   }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext &ctx) const override {
-    return framework::KernelSignature("reshape_grad",
-                                      {framework::GradVarName("Out")}, {},
-                                      {framework::GradVarName("X")});
-  }
 };
 
 class Reshape2DoubleGradOp : public framework::OperatorWithKernel {
@@ -621,11 +614,6 @@ class Reshape2DoubleGradOp : public framework::OperatorWithKernel {
     }
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    tensor.place(), tensor.layout());
-  }
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext &ctx) const override {
-    return framework::KernelSignature("reshape_double_grad", {"DDX"}, {},
-                                      {"DDOut"});
   }
 };
 
