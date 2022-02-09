@@ -16,8 +16,8 @@
 #include <iostream>
 #include <thread>
 
-#include "paddle/fluid/distributed/socket/tcp_utils.h"
 #include "paddle/fluid/distributed/store/tcp_store.h"
+#include "paddle/fluid/distributed/store/tcp_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -55,6 +55,23 @@ void TCPClient::sendCommand(Command type) { sendCommandForKey(type, ""); }
 void TCPClient::sendBytes(const std::vector<std::uint8_t>& bytes) {
   int sock_fd = _socket.get_socket_fd();
   tcputils::sendVector<std::uint8_t>(sock_fd, bytes);
+}
+
+std::vector<uint8_t> TCPClient::recvBytes() {
+  int sock_fd = _socket.get_socket_fd();
+  return tcputils::recvVector<std::uint8_t>(sock_fd);
+}
+
+template <typename T>
+void TCPClient::sendValue(const T& value) {
+  int sock_fd = _socket.get_socket_fd();
+  tcputils::sendValue<T>(sock_fd, value);
+}
+
+template <typename T>
+T TCPClient::recvValue() {
+  int sock_fd = _socket.get_socket_fd();
+  return tcputils::recvValue<T>(sock_fd);
 }
 
 void TCPClient::sendStrings(std::vector<std::string> strings) {

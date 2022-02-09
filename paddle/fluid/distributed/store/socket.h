@@ -20,8 +20,6 @@
 #include <iostream>
 #include <string>
 
-#include "paddle/fluid/distributed/socket/tcp_utils.h"
-
 namespace paddle {
 namespace distributed {
 
@@ -49,10 +47,10 @@ class Socket {
   Socket accept() const;
   explicit Socket(int sock) : _sock(sock) {}
 
-  template <typename T>
-  void sendValue(const T& value);
-  template <typename T>
-  T recvValue();
+  // template <typename T>
+  // void sendValue(const T& value);
+  // template <typename T>
+  // T recvValue();
 
   std::uint16_t getPort() const;
   int get_socket_fd() const { return _sock; }
@@ -60,10 +58,10 @@ class Socket {
  private:
   int _sock;
 
-  template <typename T>
-  void sendBytes(const T* buffer, size_t len);
-  template <typename T>
-  void recvBytes(T* buffer, size_t len);
+  // template <typename T>
+  // void sendBytes(const T* buffer, size_t len);
+  // template <typename T>
+  // void recvBytes(T* buffer, size_t len);
 };
 
 }  // namespace distributed

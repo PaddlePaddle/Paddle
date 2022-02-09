@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/socket/socket.h"
+#include "paddle/fluid/distributed/store/socket.h"
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <chrono>
 #include <cstring>
 #include <iostream>
+#include "paddle/fluid/distributed/store/tcp_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -57,25 +58,25 @@ Socket Socket::accept() const {
   return Socket(sock);
 }
 
-template <typename T>
-void Socket::sendBytes(const T* buffer, size_t len) {
-  tcputils::sendBytes<T>(_sock, buffer, len);
-}
-
-template <typename T>
-void Socket::recvBytes(T* buffer, size_t len) {
-  tcputils::recvBytes<T>(_sock, buffer, len);
-}
-
-template <typename T>
-void Socket::sendValue(const T& value) {
-  tcputils::sendValue<T>(_sock, value);
-}
-
-template <typename T>
-T Socket::recvValue() {
-  return tcputils::recvValue<T>(_sock);
-}
+// template <typename T>
+// void Socket::sendBytes(const T* buffer, size_t len) {
+//   tcputils::sendBytes<T>(_sock, buffer, len);
+// }
+//
+// template <typename T>
+// void Socket::recvBytes(T* buffer, size_t len) {
+//   tcputils::recvBytes<T>(_sock, buffer, len);
+// }
+//
+// template <typename T>
+// void Socket::sendValue(const T& value) {
+//   tcputils::sendValue<T>(_sock, value);
+// }
+//
+// template <typename T>
+// T Socket::recvValue() {
+//   return tcputils::recvValue<T>(_sock);
+// }
 
 }  // namespace distributed
 }  // namespace paddle

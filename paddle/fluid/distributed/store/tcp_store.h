@@ -17,7 +17,7 @@
 #include <iostream>
 #include <memory>
 #include <mutex>
-#include "paddle/fluid/distributed/socket/socket.h"
+#include "paddle/fluid/distributed/store/socket.h"
 #include "paddle/fluid/distributed/store/store.h"
 
 namespace paddle {
@@ -49,22 +49,13 @@ class TCPClient {
   void sendCommand(Command type);
   void sendStrings(std::vector<std::string> strings);
   void sendBytes(const std::vector<std::uint8_t>& bytes);
-  std::vector<uint8_t> recvBytes() {
-    int sock_fd = _socket.get_socket_fd();
-    return tcputils::recvVector<std::uint8_t>(sock_fd);
-  }
+  std::vector<uint8_t> recvBytes();
 
   template <typename T>
-  void sendValue(const T& value) {
-    int sock_fd = _socket.get_socket_fd();
-    tcputils::sendValue<T>(sock_fd, value);
-  }
+  void sendValue(const T& value);
 
   template <typename T>
-  T recvValue() {
-    int sock_fd = _socket.get_socket_fd();
-    return tcputils::recvValue<T>(sock_fd);
-  }
+  T recvValue();
 
  private:
   Socket _socket;
