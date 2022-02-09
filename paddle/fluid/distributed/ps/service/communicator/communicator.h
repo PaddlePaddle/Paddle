@@ -179,7 +179,7 @@ inline void MergeVars(const std::string &var_name,
     }
 
     // set output tensor to 0.
-    auto cpu_ctx = paddle::platform::CPUDeviceContext();
+    paddle::platform::CPUDeviceContext cpu_ctx;
     paddle::operators::math::SetConstant<paddle::platform::CPUDeviceContext, T>
         constant_functor;
     constant_functor(cpu_ctx, out_t, static_cast<T>(0));
@@ -204,7 +204,7 @@ inline void MergeVars(const std::string &var_name,
     for (auto &var : vars) {
       inputs.push_back(&var->Get<pten::SelectedRows>());
     }
-    auto dev_ctx = paddle::platform::CPUDeviceContext();
+    paddle::platform::CPUDeviceContext dev_ctx;
     if (merge_add) {
       paddle::operators::math::scatter::MergeAdd<
           paddle::platform::CPUDeviceContext, T>

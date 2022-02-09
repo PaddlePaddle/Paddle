@@ -15,6 +15,9 @@ cc_library(kernel_dispatch SRCS kernel_dispatch.cc DEPS pten_tensor pten_context
 cc_library(op_meta_info SRCS op_meta_info.cc DEPS pten_tensor)
 cc_library(op_kernel_info SRCS op_kernel_info.cc DEPS pten_tensor)
 
+
+set(api_gen_utils ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/gen_utils.py)
+
 # forward api file
 set(api_gen_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/api_gen.py)
 set(api_yaml_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/api.yaml)
@@ -46,7 +49,7 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_header_file_tmp} ${api_header_file}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_source_file_tmp} ${api_source_file}
   COMMENT "copy_if_different ${api_header_file} ${api_source_file}"
-  DEPENDS ${api_yaml_file} ${api_gen_file}
+  DEPENDS ${api_yaml_file} ${api_gen_file} ${api_gen_utils}
   VERBATIM)
 
 # generate backward api
@@ -59,10 +62,11 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${bw_api_header_file_tmp} ${bw_api_header_file}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${bw_api_source_file_tmp} ${bw_api_source_file}
   COMMENT "copy_if_different ${bw_api_header_file} ${bw_api_source_file}"
-  DEPENDS ${bw_api_yaml_file} ${bw_api_gen_file}
+  DEPENDS ${bw_api_yaml_file} ${bw_api_gen_file} ${api_gen_utils}
   VERBATIM)
 
+cc_library(pten_data_transform SRCS data_transform.cc DEPS pten_tensor transfer_layout_kernel cast_kernel data_device_transform)
 cc_library(manual_api SRCS manual_api.cc DEPS pten_tensor pten kernel_dispatch)
-cc_library(sparse_api SRCS sparse_api.cc DEPS pten_tensor pten kernel_dispatch)
-cc_library(pten_function_api SRCS ${api_source_file} DEPS pten_tensor pten kernel_dispatch)
-cc_library(pten_bw_function_api SRCS ${bw_api_source_file} DEPS pten_tensor pten kernel_dispatch backward_infermeta pten_function_api)
+cc_library(sparse_api SRCS sparse_api.cc DEPS pten_tensor pten kernel_dispatch pten_data_transform)
+cc_library(pten_function_api SRCS ${api_source_file} DEPS pten_tensor pten kernel_dispatch pten_data_transform)
+cc_library(pten_bw_function_api SRCS ${bw_api_source_file} DEPS pten_tensor pten kernel_dispatch backward_infermeta pten_data_transform pten_function_api)

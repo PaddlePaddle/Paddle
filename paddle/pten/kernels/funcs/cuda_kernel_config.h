@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
 
 #ifdef __HIPCC__
 #define ELEMENTWISE_BLOCK_SIZE 256
@@ -31,7 +32,7 @@ namespace funcs {
 * 2x~4x) than number of SMs. Hence, SM count is took into account within
 * this function to determine the right number of threads per block.
 */
-inline int GetThreadsConfig(const paddle::platform::CUDADeviceContext &ctx,
+inline int GetThreadsConfig(const pten::GPUContext &ctx,
                             int64_t numel,
                             int vec_size) {
   int threads = ELEMENTWISE_BLOCK_SIZE;

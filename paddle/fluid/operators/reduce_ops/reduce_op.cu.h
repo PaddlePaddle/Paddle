@@ -20,15 +20,6 @@
 #include <set>
 #include <vector>
 
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
 #include "paddle/fluid/framework/tensor.h"
 
 #include "paddle/pten/core/dense_tensor.h"
@@ -39,14 +30,16 @@ namespace operators {
 
 template <typename Tx, typename Ty, template <typename> class ReduceOp,
           typename TransformOp>
-void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
-                             const TransformOp& transform,
-                             const std::vector<int>& origin_reduce_dims,
-                             gpuStream_t stream) {
+void TensorReduceImpl(const platform::CUDADeviceContext& dev_ctx,
+                      const framework::Tensor& x, framework::Tensor* y,
+                      const TransformOp& transform,
+                      const std::vector<int>& origin_reduce_dims,
+                      gpuStream_t stream) {
   y->mutable_data<Ty>(x.place());
 
-  pten::kernels::TensorReduceFunctorImpl<Tx, Ty, ReduceOp, TransformOp>(
-      x, y, transform, origin_reduce_dims, stream);
+  pten::kernels::TensorReduceImpl<Tx, Ty, ReduceOp, TransformOp>(
+      static_cast<const pten::GPUContext&>(dev_ctx), x, y, transform,
+      origin_reduce_dims, stream);
 }
 
 }  // namespace operators

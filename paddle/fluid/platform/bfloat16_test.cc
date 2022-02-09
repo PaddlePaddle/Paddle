@@ -132,7 +132,11 @@ TEST(bfloat16, floating) {
 
 TEST(bfloat16, print) {
   bfloat16 a = bfloat16(1.0f);
-  std::cout << a << std::endl;
+  std::cout << "a:" << a << std::endl;
+  std::stringstream ss1, ss2;
+  ss1 << a;
+  ss2 << 1.0f;
+  EXPECT_EQ(ss1.str(), ss2.str());
 }
 
 // CPU test
