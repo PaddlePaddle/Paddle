@@ -105,19 +105,19 @@ class PnormCUDAKernel : public framework::OpKernel<T> {
 
     using MT = typename details::MPTypeTrait<T>::Type;
     if (porder == 0) {
-      TensorReduceFunctorImpl<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
+      TensorReduceImpl<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
           ctx.cuda_device_context(), *in_x, out_norm, NonzeroFunctor<T>(),
           reduce_axis, stream);
     } else if (porder == INFINITY) {
-      TensorReduceFunctorImpl<T, T, kps::MaxFunctor, AbsFunctor<T>>(
+      TensorReduceImpl<T, T, kps::MaxFunctor, AbsFunctor<T>>(
           ctx.cuda_device_context(), *in_x, out_norm, AbsFunctor<T>(),
           reduce_axis, stream);
     } else if (porder == -INFINITY) {
-      TensorReduceFunctorImpl<T, T, kps::MinFunctor, AbsFunctor<T>>(
+      TensorReduceImpl<T, T, kps::MinFunctor, AbsFunctor<T>>(
           ctx.cuda_device_context(), *in_x, out_norm, AbsFunctor<T>(),
           reduce_axis, stream);
     } else {
-      TensorReduceFunctorImpl<T, T, kps::AddFunctor, UnsignedPowFunctor<T>>(
+      TensorReduceImpl<T, T, kps::AddFunctor, UnsignedPowFunctor<T>>(
           ctx.cuda_device_context(), *in_x, out_norm,
           UnsignedPowFunctor<T>(porder), reduce_axis, stream);
 

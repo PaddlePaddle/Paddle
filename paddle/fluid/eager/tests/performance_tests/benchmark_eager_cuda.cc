@@ -185,7 +185,7 @@ TEST(Benchmark, EagerIntermediateMLPCUDA) {
   }
 }
 
-USE_OP(scale);
+USE_OP_ITSELF(scale);
 USE_OP(matmul_v2);
 USE_OP(reduce_sum);
 USE_OP(reduce_sum_grad);
