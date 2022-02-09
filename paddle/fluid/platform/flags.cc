@@ -545,6 +545,8 @@ PADDLE_DEFINE_EXPORTED_double(
  */
 PADDLE_DEFINE_EXPORTED_bool(use_mkldnn, false, "Use MKLDNN to run");
 
+PADDLE_DEFINE_EXPORTED_bool(use_curand, false, "Random OP use CURAND");
+
 /**
  * Debug related FLAG
  * Name: FLAGS_call_stack_level
@@ -652,6 +654,9 @@ PADDLE_DEFINE_EXPORTED_bool(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PADDLE_DEFINE_EXPORTED_bool(conv2d_disable_cudnn, false,
                             "Disable cudnn in conv2d");
+
+PADDLE_DEFINE_EXPORTED_bool(use_fast_math, false,
+                            "Whether to use fast math GPU functions.");
 #endif
 
 /**
@@ -683,28 +688,16 @@ PADDLE_DEFINE_EXPORTED_bool(
     "It controls whether to apply IR pass to program when using Fleet APIs");
 
 /**
- * Pt kernel related FLAG
- * Name: FLAGS_run_pten_kernel
- * Since Version: 2.3.0
- * Value Range: bool, default=false
- * Example: FLAGS_run_pten_kernel=true would use the pt kernel to compute in the
- * Op.
- * Note:
- */
-PADDLE_DEFINE_EXPORTED_bool(run_pten_kernel, true,
-                            "It controls whether to use pten kernel");
-
-/**
- * Pt kernel related FLAG
+ * KP kernel related FLAG
  * Name: FLAGS_run_kp_kernel
  * Since Version: 2.3.0
  * Value Range: bool, default=false
- * Example: FLAGS_run_kp_kernel=true would use the kp kernel to compute in
- * the Op for XPU2.
+ * Example: FLAGS_run_kp_kernel=true would use the kp kernel to compute in the
+ * Op.
  * Note:
  */
-PADDLE_DEFINE_EXPORTED_bool(run_kp_kernel, true,
-                            "It controls whether to use kp kernel for xpu2");
+PADDLE_DEFINE_EXPORTED_bool(run_kp_kernel, false,
+                            "It controls whether to run PaddlePaddle using KP");
 
 /**
  * Distributed related FLAG

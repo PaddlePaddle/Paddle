@@ -32,7 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/memory/malloc.h"
@@ -40,7 +40,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/variant.h"
 #include "paddle/utils/flat_hash_map.h"
 
-#include "paddle/pten/core/arg_map_context.h"
+#include "paddle/pten/core/compat/arg_map_context.h"
+#include "paddle/pten/core/compat/op_utils.h"
 #include "paddle/pten/core/kernel_context.h"
 #include "paddle/pten/core/kernel_factory.h"
 
@@ -117,7 +118,7 @@ inline std::string GradOriginalVarName(const std::string& grad_var_name) {
 }
 
 inline bool VarIsTensor(const Variable& var) {
-  return var.IsType<LoDTensor>() || var.IsType<SelectedRows>();
+  return var.IsType<LoDTensor>() || var.IsType<pten::SelectedRows>();
 }
 
 const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var);
@@ -454,25 +455,33 @@ class ExecutionArgumentMappingContext : public pten::ArgumentMappingContext {
     return ctx_.HasOutput(name);
   }
 
-  bool HasAttr(const std::string& name) const override {
-    return ctx_.HasAttr(name);
+  paddle::any Attr(const std::string& name) const override {
+    auto& attr = ctx_.GetAttr(name);
+    return GetAttrValue(attr);
   }
 
   size_t InputSize(const std::string& name) const override {
-    return ctx_.InputSize(name);
+    return ctx_.MultiInputVar(name).size();
   }
 
   size_t OutputSize(const std::string& name) const override {
-    return ctx_.OutputSize(name);
+    return ctx_.MultiOutputVar(name).size();
   }
 
   bool IsDenseTensorInput(const std::string& name) const override {
-    return ctx_.InputVar(name)->IsType<framework::Tensor>() ||
-           ctx_.InputVar(name)->IsType<framework::LoDTensor>();
+    return ctx_.InputVar(name)->IsType<framework::LoDTensor>();
   }
 
   bool IsSelectedRowsInput(const std::string& name) const override {
-    return ctx_.InputVar(name)->IsType<framework::SelectedRows>();
+    return ctx_.InputVar(name)->IsType<pten::SelectedRows>();
+  }
+
+  bool IsDenseTensorOutput(const std::string& name) const override {
+    return ctx_.OutputVar(name)->IsType<framework::LoDTensor>();
+  }
+
+  bool IsSelectedRowsOutput(const std::string& name) const override {
+    return ctx_.OutputVar(name)->IsType<pten::SelectedRows>();
   }
 
  private:
@@ -524,13 +533,27 @@ class OperatorWithKernel : public OperatorBase {
   }
 
   bool SupportGPU() const override {
-    auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
-    return std::any_of(op_kernels.begin(), op_kernels.end(),
-                       [](OpKernelMap::const_reference kern_pair) {
-                         return platform::is_gpu_place(kern_pair.first.place_);
-                       });
+    auto pten_kernels = pten::KernelFactory::Instance().SelectKernelMap(
+        pten::TransToPtenKernelName(type_));
+    auto has_pten_kernel =
+        std::any_of(pten_kernels.begin(), pten_kernels.end(),
+                    [](pten::KernelKeyMap::const_reference kern_pair) {
+                      return kern_pair.first.backend() == pten::Backend::GPU;
+                    });
+    if (has_pten_kernel) {
+      return true;
+    } else {
+      auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
+      return std::any_of(
+          op_kernels.begin(), op_kernels.end(),
+          [](OpKernelMap::const_reference kern_pair) {
+            return platform::is_gpu_place(kern_pair.first.place_);
+          });
+    }
   }
+
   bool SupportNPU() const override {
+    // TODO(zhiqiu): support pten if needed?
     auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
     return std::any_of(op_kernels.begin(), op_kernels.end(),
                        [](OpKernelMap::const_reference kern_pair) {
@@ -538,6 +561,7 @@ class OperatorWithKernel : public OperatorBase {
                        });
   }
   bool SupportMLU() const override {
+    // TODO(zhiqiu): support pten if needed?
     auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
     return std::any_of(op_kernels.begin(), op_kernels.end(),
                        [](OpKernelMap::const_reference kern_pair) {
@@ -549,7 +573,7 @@ class OperatorWithKernel : public OperatorBase {
   bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                        proto::VarType::Type data_type) const;
 
-  virtual void InferShape(InferShapeContext* ctx) const = 0;
+  virtual void InferShape(InferShapeContext* ctx) const;
 
   void RuntimeInferShape(const Scope& scope, const platform::Place& place,
                          const RuntimeContext& ctx) const override;
@@ -582,20 +606,33 @@ class OperatorWithKernel : public OperatorBase {
     * When selecting Kernel during Op execution, select the arguments of the
     * original Op according to the GetExpectedPtenKernelArgs returned arguments.
     */
-  virtual KernelSignature GetExpectedPtenKernelArgs(
+  virtual pten::KernelSignature GetExpectedPtenKernelArgs(
       const ExecutionContext& ctx) const;
 
   /* member functions for adapting to pten lib */
-  void ChoosePtenKernel(const ExecutionContext& ctx) const;
+  pten::KernelKey ChoosePtenKernel(const ExecutionContext& ctx) const;
+
+  /**
+   * Transfer data place for pten kernel
+   * Is this really needed?
+   */
+  Scope* PreparePtenData(const Scope& scope, const pten::Kernel& pt_kernel,
+                         const pten::KernelSignature& pt_kernel_signature,
+                         RuntimeContext* ctx) const;
 
   void BuildPtenKernelContext(const RuntimeContext& ctx,
                               platform::DeviceContext* dev_ctx,
                               pten::KernelContext* pt_kernel_context) const;
 
-  void WriteBackToOutputs(RuntimeContext* ctx,
-                          pten::KernelContext* pt_kernel_context) const;
+  pten::KernelSignature* PtenKernelSignature() const {
+    return pt_kernel_signature_.get();
+  }
 
   pten::Kernel* PtenKernel() const { return pt_kernel_.get(); }
+
+  void ResetPtenKernel(pten::Kernel* kernel) const {
+    return pt_kernel_.reset(kernel);
+  }
 
   const OpKernelType* kernel_type() const { return kernel_type_.get(); }
 
@@ -653,7 +690,8 @@ class OperatorWithKernel : public OperatorBase {
   // new pten kernel, if there is a better design in the future,
   // we may polish the implementation here
   mutable bool run_pten_kernel_ = false;
-  mutable std::unique_ptr<KernelSignature> pt_kernel_signature_;
+  mutable bool run_kp_kernel = false;
+  mutable std::unique_ptr<pten::KernelSignature> pt_kernel_signature_;
   mutable std::unique_ptr<pten::Kernel> pt_kernel_;
 };
 

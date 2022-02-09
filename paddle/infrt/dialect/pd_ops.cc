@@ -20,18 +20,23 @@
 
 #define GET_OP_CLASSES
 #include "paddle/infrt/dialect/pd_ops.cpp.inc"  // NOLINT
+#define GET_OP_CLASSES
+#include "paddle/infrt/dialect/pd_extra_ops.cpp.inc"  // NOLINT
 
 #include "paddle/infrt/dialect/rewrite.hpp.inc"  // NOLINT
 
 namespace mlir {
 namespace pd {
+
 PaddleDialect::PaddleDialect(MLIRContext *context)
     : Dialect("pd", context, TypeID::get<PaddleDialect>()) {
   addOperations<
 #define GET_OP_LIST
 #include "paddle/infrt/dialect/pd_ops.cpp.inc"  // NOLINT
+      ,
+#define GET_OP_LIST
+#include "paddle/infrt/dialect/pd_extra_ops.cpp.inc"  // NOLINT
       >();
-#undef GET_OP_LIST
 }
 
 mlir::Operation *PaddleDialect::materializeConstant(mlir::OpBuilder &builder,
@@ -69,7 +74,7 @@ mlir::OpFoldResult ConstantOp::fold(
     ::llvm::ArrayRef<mlir::Attribute> operands) {
   return value();
 }
-
+/*
 LogicalResult ElementwiseAdd::inferReturnTypes(
     MLIRContext *context,
     Optional<Location> location,
@@ -80,11 +85,14 @@ LogicalResult ElementwiseAdd::inferReturnTypes(
   inferredReturnTypes.push_back(operands[0].getType());
   return success();
 }
-void ElementwiseAdd::getCanonicalizationPatterns(
+*/
+
+void Elementwise_addOp::getCanonicalizationPatterns(
     mlir::OwningRewritePatternList &results, mlir::MLIRContext *context) {
   results.insert<FuseMulAdd>(context);
 }
 
+/*
 mlir::OpFoldResult ElementwiseAdd::fold(
     llvm::ArrayRef<mlir::Attribute> operands) {
   if (getElementTypeOrSelf(getType()).isa<FloatType>()) {
@@ -165,7 +173,7 @@ void FusedRepeatedFCRelu::getCanonicalizationPatterns(
 void BatchNormOp::getCanonicalizationPatterns(
     mlir::OwningRewritePatternList &results, mlir::MLIRContext *context) {
   results.insert<FuseBatchNormWithConvPattern>(context);
-}
+}*/
 
 }  // namespace pd
 }  // namespace mlir

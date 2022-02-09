@@ -17,15 +17,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/stream/stream.h"
 
-namespace paddle {
-namespace platform {
-class DeviceContext;
-}  // namespace platform
-}  // namespace paddle
+namespace pten {
+class DenseTensor;
+}  // namespace pten
 
 namespace paddle {
 namespace framework {
-class Tensor;
 class Variable;
 class SelectedRows;
 }  // namespace framework
@@ -62,7 +59,7 @@ class MemcpyH2DFunctor {
     out_tensor.set_lod(lod_tensor.lod());
   }
 
-  void operator()(const framework::SelectedRows &rows) const {
+  void operator()(const pten::SelectedRows &rows) const {
     // (JZ-LIANG) to support SelectedRows
     PADDLE_THROW(platform::errors::Unimplemented(
         "Memcpy for SelectedRows is NOT support yet."));

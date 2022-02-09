@@ -29,7 +29,6 @@ class OpBase;
 }  // namespace imperative
 namespace platform {
 class CPUDeviceContext;
-struct CPUPlace;
 }  // namespace platform
 }  // namespace paddle
 
@@ -67,8 +66,8 @@ REGISTER_OP_CPU_KERNEL(
     elementwise_mod,
     ops::ElementwiseModKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwiseModKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ElementwiseModFPKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseModFPKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::ElementwiseModKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ElementwiseModKernel<paddle::platform::CPUDeviceContext, double>);
 
 REGISTER_OP_VERSION(elementwise_mod)
     .AddCheckpoint(

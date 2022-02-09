@@ -377,6 +377,14 @@ class MKLDNNHandlerT {
     if (bwd_pd_ == nullptr) {
       return false;
     } else {
+      if (std::is_same<TBackward_params, mkldnn_dummy_primitive>::value ==
+          false) {
+        const std::string key_bw_w_pd = key_ + "@bwd_w_pd";
+        bwd_w_pd_ =
+            std::static_pointer_cast<typename TBackward_params::primitive_desc>(
+                dev_ctx_.GetBlob(key_bw_w_pd));
+      }
+
       // When BWD is cached then still we need to Get FWD PD
       const std::string key_fpd = key_ + "@fwd_pd";
       fwd_pd_ = std::static_pointer_cast<typename TForward::primitive_desc>(
@@ -643,11 +651,21 @@ class BinaryMKLDNNHandler
       std::vector<int64_t> dims1_ex(rankdiff, 1);
       dims1_ex.insert(next(dims1_ex.begin(), (axis == -1 ? rankdiff : axis)),
                       src_y_tz.begin(), src_y_tz.end());
+      // For broadcasting for NHWC we need rotate extended shape
+      if (MKLDNNDeviceContext::tls().get_cur_paddle_data_layout() ==
+          framework::DataLayout::kNHWC) {
+        std::rotate(dims1_ex.begin() + 1, dims1_ex.end() - 1, dims1_ex.end());
+      }
       src1_md = src1_md.reshape(dims1_ex);
     } else if (rankdiff < 0) {  // First input is of smaller than second
       std::vector<int64_t> dims0_ex(-rankdiff, 1);
       dims0_ex.insert(next(dims0_ex.begin(), (axis == -1 ? -rankdiff : axis)),
                       src_x_tz.begin(), src_x_tz.end());
+      // For broadcasting for NHWC we need rotate extended shape
+      if (MKLDNNDeviceContext::tls().get_cur_paddle_data_layout() ==
+          framework::DataLayout::kNHWC) {
+        std::rotate(dims0_ex.begin() + 1, dims0_ex.end() - 1, dims0_ex.end());
+      }
       src0_md = src0_md.reshape(dims0_ex);
     }
     const auto dst_md = memory::desc(dst_tz, platform::MKLDNNGetDataType<T>(),

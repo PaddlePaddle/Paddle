@@ -21,9 +21,9 @@ limitations under the License. */
 #include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/ps.pb.h"
-#include "paddle/fluid/distributed/table/common_sparse_table.h"
-#include "paddle/fluid/distributed/table/depends/large_scale_kv.h"
-#include "paddle/fluid/distributed/table/table.h"
+#include "paddle/fluid/distributed/ps/table/common_sparse_table.h"
+#include "paddle/fluid/distributed/ps/table/depends/large_scale_kv.h"
+#include "paddle/fluid/distributed/ps/table/table.h"
 
 namespace paddle {
 namespace distributed {
