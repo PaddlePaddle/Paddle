@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
-#include "paddle/pten/core/dim.h"
+#include "paddle/pten/core/utils/dim.h"
 
 namespace paddle {
 namespace framework {

@@ -35,7 +35,7 @@ static inline int64_t ComputeAxis(int64_t axis, int64_t rank) {
 }
 
 static inline pten::DDim ComputeAndCheckShape(
-    const bool is_runtime,
+    bool is_runtime,
     const std::vector<pten::DDim>& inputs_dims,
     const size_t axis) {
   const size_t n = inputs_dims.size();

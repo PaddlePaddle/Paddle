@@ -63,17 +63,33 @@ class Tracer {
 
   ~Tracer() = default;
 
-  void TraceOp(const std::string& type, const NameVarBaseMap& ins,
-               const NameVarBaseMap& outs, framework::AttributeMap attrs,
-               const platform::Place& place, bool trace_bacward,
-               const std::map<std::string, std::string>& inplace_map = {});
+  template <typename VarType>
+  void TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
+               const NameVarMap<VarType>& outs, framework::AttributeMap attrs,
+               const platform::Place& place, bool trace_backward,
+               const std::map<std::string, std::string>& inplace_map = {},
+               paddle::framework::AttributeMap* passed_default_attrs_ = nullptr,
+               bool override_default_attr_map = true);
 
   void TraceOp(const std::string& type, const NameVarBaseMap& ins,
                const NameVarBaseMap& outs, framework::AttributeMap attrs,
+               const std::map<std::string, std::string>& inplace_map = {});
+
+  void TraceOp(const std::string& type, const NameTensorMap& ins,
+               const NameTensorMap& outs, paddle::framework::AttributeMap attrs,
+               const std::map<std::string, std::string>& inplace_map = {});
+
+  void TraceOp(const std::string& type, const NameTensorMap& ins,
+               const NameTensorMap& outs, paddle::framework::AttributeMap attrs,
+               const paddle::platform::Place& place,
+               paddle::framework::AttributeMap* default_attrs,
+               bool override_default_attr_map,
                const std::map<std::string, std::string>& inplace_map = {});
 
   bool ComputeRequiredGrad(const NameVarBaseMap& ins,
                            const NameVarBaseMap& outs, bool trace_backward);
+  bool ComputeRequiredGrad(const NameTensorMap& ins, const NameTensorMap& outs,
+                           bool trace_backward);
 
   void SetEnableProgramDescTracing(bool enabled) {
     enable_program_desc_tracing_ = enabled;
@@ -126,7 +142,7 @@ class Tracer {
   platform::Place expected_place_;
   GarbageCollectorMap gcs_;
   static thread_local bool has_grad_;
-  AmpLevel amp_level_{AmpLevel::O0};
+  static thread_local AmpLevel amp_level_;
 };
 
 // To access static variable current_tracer

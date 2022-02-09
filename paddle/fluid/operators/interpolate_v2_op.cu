@@ -12,11 +12,11 @@
 #include <algorithm>
 #include <string>
 #include "paddle/fluid/operators/interpolate_v2_op.h"
-#include "paddle/fluid/operators/math/math_cuda_utils.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/fast_divmod.h"
+#include "paddle/pten/kernels/funcs/math_cuda_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -45,11 +45,11 @@ inline platform::GpuLaunchConfig GetGpuLaunchConfig3D(
   int block_y = std::min(GetLastPow2(height), max_threads / block_x);
   int block_z = std::min(num_img, max_threads / block_x / block_y);
 
-  dim3 max_grid_dim = context.GetCUDAMaxGridDimSize();
-  int grid_x = std::min<int>(max_grid_dim.x, platform::DivUp(width, block_x));
-  int grid_y = std::min<int>(max_grid_dim.y, platform::DivUp(height, block_y));
+  auto max_grid_dim = context.GetCUDAMaxGridDimSize();
+  int grid_x = std::min<int>(max_grid_dim[0], platform::DivUp(width, block_x));
+  int grid_y = std::min<int>(max_grid_dim[1], platform::DivUp(height, block_y));
   int grid_z =
-      std::min<int>(max_grid_dim.z, platform::DivUp(num_img, block_z * 4));
+      std::min<int>(max_grid_dim[2], platform::DivUp(num_img, block_z * 4));
 
   const int capability = context.GetComputeCapability();
   platform::GpuLaunchConfig config;
@@ -532,7 +532,7 @@ __inline__ __device__ T PartialBlockMin(T val, size_t threads_num_in_block,
 
   if (threadIdx.x < threshold) {
     shared_last_idx = (threshold >> 5) - 1;
-    val = math::warpReduceMin(val, mask);
+    val = pten::funcs::warpReduceMin(val, mask);
     if (lane == 0) {
       shared[wid] = val;
     }
@@ -547,7 +547,7 @@ __inline__ __device__ T PartialBlockMin(T val, size_t threads_num_in_block,
   if (threadIdx.x < threshold) {
     val = (lane <= shared_last_idx) ? shared[lane]
                                     : std::numeric_limits<T>::max();
-    val = math::warpReduceMin(val, mask);
+    val = pten::funcs::warpReduceMin(val, mask);
     shared_last_val = val;
   }
   __syncthreads();
@@ -599,12 +599,15 @@ __global__ void KeBilinearInterpBwShareMemory(
     s_data[0][threadIdx.x] = 0.f;
     s_data[1][threadIdx.x] = 0.f;
     int remain = nthreads - (tid & (-blockDim.x));
-    int in_top_max_index = math::blockReduceMax(top_right_index, FINAL_MASK);
-    int in_bot_max_index = math::blockReduceMax(bot_right_index, FINAL_MASK);
+    int in_top_max_index =
+        pten::funcs::blockReduceMax(top_right_index, FINAL_MASK);
+    int in_bot_max_index =
+        pten::funcs::blockReduceMax(bot_right_index, FINAL_MASK);
 
     if (remain > blockDim.x) {
-      in_top_min_index = math::blockReduceMin(input_index, FINAL_MASK);
-      in_bot_min_index = math::blockReduceMin(bot_left_index, FINAL_MASK);
+      in_top_min_index = pten::funcs::blockReduceMin(input_index, FINAL_MASK);
+      in_bot_min_index =
+          pten::funcs::blockReduceMin(bot_left_index, FINAL_MASK);
     } else {
       in_top_min_index = PartialBlockMin(input_index, remain, FINAL_MASK);
       in_bot_min_index = PartialBlockMin(bot_left_index, remain, FINAL_MASK);

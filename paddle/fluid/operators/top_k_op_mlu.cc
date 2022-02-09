@@ -33,8 +33,7 @@ class TopkMLUKernel : public framework::OpKernel<T> {
       auto k_t_ptr = static_cast<const void*>(k_t->data<int>());
       auto size = k_t->numel() * sizeof(int);
       memory::Copy(platform::CPUPlace(), reinterpret_cast<void*>(&k),
-                   BOOST_GET_CONST(platform::MLUPlace, k_t->place()), k_t_ptr,
-                   size, nullptr);
+                   k_t->place(), k_t_ptr, size, nullptr);
       framework::DDim output_dims = output->dims();
       output_dims[output_dims.size() - 1] = k;
       output->Resize(output_dims);

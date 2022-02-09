@@ -340,6 +340,7 @@ InMemoryDataFeed<T>::InMemoryDataFeed() {
   this->thread_id_ = 0;
   this->thread_num_ = 1;
   this->parse_ins_id_ = false;
+  this->parse_uid_ = false;
   this->parse_content_ = false;
   this->parse_logkey_ = false;
   this->enable_pv_merge_ = false;
@@ -496,6 +497,11 @@ void InMemoryDataFeed<T>::SetCurrentPhase(int current_phase) {
 template <typename T>
 void InMemoryDataFeed<T>::SetParseInsId(bool parse_ins_id) {
   parse_ins_id_ = parse_ins_id;
+}
+
+template <typename T>
+void InMemoryDataFeed<T>::SetParseUid(bool parse_uid) {
+  parse_uid_ = parse_uid;
 }
 
 template <typename T>
@@ -1047,6 +1053,7 @@ void MultiSlotInMemoryDataFeed::Init(
       use_slots_shape_.push_back(local_shape);
     }
   }
+  uid_slot_ = multi_slot_desc.uid_slot();
   feed_vec_.resize(use_slots_.size());
   const int kEstimatedFeasignNumPerSlot = 5;  // Magic Number
   for (size_t i = 0; i < all_slot_num; i++) {
@@ -1160,6 +1167,19 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
               "\nWe detect the feasign number of this slot is %d, "
               "which is illegal.",
               str, i, num));
+#ifdef PADDLE_WITH_PSLIB
+      if (parse_uid_ && all_slots_[i] == uid_slot_) {
+        PADDLE_ENFORCE(num == 1 && all_slots_type_[i][0] == 'u',
+                       platform::errors::PreconditionNotMet(
+                           "The uid has to be uint64 and single.\n"
+                           "please check this error line: %s",
+                           str));
+
+        char* uidptr = endptr;
+        uint64_t feasign = (uint64_t)strtoull(uidptr, &uidptr, 10);
+        instance->uid_ = feasign;
+      }
+#endif
       if (idx != -1) {
         if (all_slots_type_[i][0] == 'f') {  // float
           for (int j = 0; j < num; ++j) {

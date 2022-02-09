@@ -66,11 +66,11 @@ llvm::Optional<PrecisionType> GetPrecisionType(mlir::StringRef key) {
     return llvm::None;
 }
 
-TensorType TensorType::get(TargetType target,
+TensorType TensorType::get(mlir::MLIRContext *ctx,
+                           TargetType target,
                            LayoutType layout,
                            PrecisionType precision) {
-  return Base::get(
-      ::infrt::Global::getMLIRContext(), target, layout, precision);
+  return Base::get(ctx, target, layout, precision);
 }
 
 TargetType TensorType::target() { return getImpl()->target_; }
@@ -207,5 +207,4 @@ static void printSetTensorOp(mlir::OpAsmPrinter &p, SetTensorOp op) {  // NOLINT
 
 #define GET_OP_CLASSES
 #include "paddle/infrt/dialect/dense_tensor.cpp.inc"  // NOLINT
-
 #include "paddle/infrt/dialect/dense_tensor_dialect.cpp.inc"
