@@ -221,7 +221,7 @@ void TensorCopyAsync(paddle::lite_api::Tensor* dst,
       GetLiteTargetType(src.place()));
   VLOG(3) << "[CopyAsync fluid -> lite] Bytes = " << bytes << ", src = " << &src
           << ", dst = " << dst
-          << ", src_type = " framework::TransToProtoVarType(<< src.dtype());
+          << ", src_type = " << framework::TransToProtoVarType(src.dtype());
   MemoryCopyAsync(dst_place, dst_data, src_place, src_data, bytes, ctx);
   VLOG(3) << "[Lite memory size] Bytes = " << bytes;
 }
@@ -241,7 +241,7 @@ void TensorCopyAsync(framework::LoDTensor* dst,
   void* dst_data = dst->mutable_data(dst_place, dst->dtype());
   VLOG(3) << "[CopyAsync lite -> fluid] Bytes = " << bytes << ", src = " << &src
           << ", dst = " << dst
-          << ", src_type = " << framework::TransToProtoVarType(<< dst->dtype());
+          << ", src_type = " << framework::TransToProtoVarType(dst->dtype());
   MemoryCopyAsync(dst_place, dst_data, src_place, src_data, bytes, ctx);
   VLOG(3) << "[Lite memory size] Bytes = " << bytes;
 }
@@ -251,7 +251,8 @@ void TensorDataShare(paddle::lite_api::Tensor* dst, framework::LoDTensor* src) {
   dst->Resize(framework::vectorize(src->dims()));
   dst->ShareExternalMemory(src->data(), src->memory_size(),
                            GetLiteTargetType(src->place()));
-  dst->SetPrecision(GetLitePrecisionType(src->type()));
+  dst->SetPrecision(
+      GetLitePrecisionType(framework::TransToProtoVarType(src->dtype())));
   paddle::lite::LoD lite_lod;
   SetLoD(&lite_lod, src->lod());
   dst->SetLoD(lite_lod);
