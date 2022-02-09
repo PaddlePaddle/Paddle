@@ -64,6 +64,8 @@ class CinnLaunchContext {
   // Finalize all execution arguments and return them
   const std::map<std::string, cinn_pod_value_t>& FinalizeArguments() const;
 
+  cinn_buffer_t* GetCinnBufferOfVar(const std::string& paddle_var_name);
+
  private:
   // Get CinnTensor with CINN variable name
   CinnTensor GetCinnTensor(const std::string& var_name);
@@ -84,7 +86,9 @@ class CinnLaunchContext {
   std::unique_ptr<framework::Scope> cached_temp_scope_ = nullptr;
 
   // a variable name map from paddle to cinn
-  const std::unordered_map<std::string, std::string>& paddle2cinn_varmap_;
+  std::unordered_map<std::string, std::string> paddle2cinn_varmap_;
+  // a variable name map from cinn to paddle
+  std::unordered_map<std::string, std::string> cinn2paddle_varmap_;
   // the variable scope of cinn
   const std::shared_ptr<CinnScope> cinn_scope_;
 

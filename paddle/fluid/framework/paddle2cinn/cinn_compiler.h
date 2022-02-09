@@ -47,6 +47,7 @@ struct CinnCompiledObject {
   std::shared_ptr<::cinn::hlir::framework::Scope> scope;
   std::unordered_map<std::string, std::string> paddle2cinn_varmap;
   std::unique_ptr<operators::details::CinnLaunchContext> launch_context;
+  std::int64_t cached_index;
 };
 
 // Entrance to use CINN.
@@ -69,6 +70,8 @@ class CinnCompiler {
       const std::string& compilation_key,
       const std::map<std::string, const LoDTensor*>& input_tensors,
       const ::cinn::common::Target& target, void* stream = nullptr);
+
+  const CinnCompiledObject& GetCompiledObject(int64_t cached_index) const;
 
   std::string AddGraph(std::unique_ptr<ir::Graph> graph);
 
@@ -95,12 +98,12 @@ class CinnCompiler {
       void* stream = nullptr) const;
 
   std::unordered_map<std::string, std::unique_ptr<ir::Graph>> graphs_;
-  std::unordered_map<CinnCacheKeyByAddress, CinnCompiledObject*,
-                     CinnCacheKey::Hash>
+  std::unordered_map<CinnCacheKeyByAddress, std::int64_t, CinnCacheKey::Hash>
       cache_by_address_;
-  std::unordered_map<CinnCacheKeyByStructure,
-                     std::unique_ptr<CinnCompiledObject>, CinnCacheKey::Hash>
+  std::unordered_map<CinnCacheKeyByStructure, std::int64_t, CinnCacheKey::Hash>
       cache_by_struct_;
+  std::unordered_map<std::int64_t, std::unique_ptr<CinnCompiledObject>>
+      index2cache_;
   std::atomic_int64_t real_compiled_num_{0};
   mutable pten::RWLock rwlock_;
 
