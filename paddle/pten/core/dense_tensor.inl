@@ -76,7 +76,7 @@ void* mutable_data(const paddle::platform::Place& place,
 
 void* mutable_data(const paddle::platform::Place& place,
                     paddle::experimental::DataType type,
-                    const paddle::platform::Stream& stream);
+                    const pten::Stream& stream);
 
 /* @jim19930609: Remove dependency on protobuf after Tensor Unification.
 */

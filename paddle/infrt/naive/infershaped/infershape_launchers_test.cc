@@ -17,10 +17,23 @@
 #include "paddle/infrt/naive/infershaped/infershaped_kernel_launcher.h"
 #include "paddle/infrt/naive/infershaped/infershaped_kernel_launchers.h"
 #include "paddle/infrt/naive/infershaped/infershaped_registry.h"
+#include "paddle/infrt/naive/infershaped/infershaped_utils.h"
 #include "paddle/infrt/tensor/dense_host_tensor.h"
 
 namespace infrt {
 namespace naive {
+
+namespace {
+static void ElementwiseAddTest(const tensor::DenseHostTensor& a,
+                               const tensor::DenseHostTensor& b,
+                               tensor::DenseHostTensor* c);
+}
+
+TEST(utils, registry) {
+  constexpr uint8_t count =
+      InferShapeHelper<decltype(&ElementwiseAddTest)>::count;
+  CHECK_EQ(count, 2U);
+}
 
 TEST(ElementwiseAdd, registry) {
   InferShapedKernelRegistry registry;
@@ -35,6 +48,7 @@ TEST(ElementwiseAdd, registry) {
   tensor::DenseHostTensor c({2, 8}, GetDType<float>());
 
   host_context::KernelFrameBuilder kernel_frame_builder;
+  kernel_frame_builder.AddArgument(new host_context::Value(0));
   kernel_frame_builder.AddArgument(new host_context::Value(std::move(a)));
   kernel_frame_builder.AddArgument(new host_context::Value(std::move(b)));
   kernel_frame_builder.SetResults({new host_context::Value(std::move(c))});

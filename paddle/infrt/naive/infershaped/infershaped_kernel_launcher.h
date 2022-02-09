@@ -39,12 +39,10 @@ struct InferShapedKernelLauncher {
 
   //! Build or update the infer-shape cache using the latest shape from
   //! InferShapeFrame.
-  void BuildInferShapeCache(const uint16_t* input_indices,
-                            const uint16_t num_inputs);
+  void BuildInferShapeCache(const uint16_t num_inputs);
 
   //! Compare the latest shape with the shape cache.
-  bool IsShapeChanged(const uint16_t* input_indices,
-                      const uint16_t num_inputs) const;
+  bool IsShapeChanged(const uint16_t num_inputs) const;
 
   // values to hold the TensorMeta.
   llvm::SmallVector<host_context::ValueRef, 3> values;

@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/stream/stream.h"
+#include "paddle/pten/core/stream.h"
 
 namespace pten {
 class DenseTensor;
@@ -47,7 +47,7 @@ class MemcpyH2DFunctor {
 #endif
     out_tensor.mutable_data(
         dev_ctx_.GetPlace(), lod_tensor.dtype(),
-        platform::Stream(reinterpret_cast<platform::StreamId>(stream)));
+        pten::Stream(reinterpret_cast<pten::StreamId>(stream)));
 
     if (dst_place_type_ == 0 || dst_place_type_ == 1) {
       framework::TensorCopy(lod_tensor, dev_ctx_.GetPlace(), dev_ctx_,

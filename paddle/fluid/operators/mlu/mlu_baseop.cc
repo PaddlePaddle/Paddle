@@ -874,9 +874,11 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
     const cnnlTensorDescriptor_t a_desc, const void* a,
     const cnnlTensorDescriptor_t b_desc, const void* b,
     const cnnlTensorDescriptor_t output_desc, void* output,
-    const cnnlDataType_t dtype) {
-  static const int alpha1_int = 1, alpha2_int = 1, beta_int = 0;
-  static const float alpha1_float = 1.f, alpha2_float = 1.f, beta_float = 0.f;
+    const cnnlDataType_t dtype, const float alpha1_float,
+    const float alpha2_float, const float beta_float) {
+  const int alpha1_int = static_cast<const int>(alpha1_float);
+  const int alpha2_int = static_cast<const int>(alpha2_float);
+  const int beta_int = static_cast<const int>(beta_float);
 
   const void* alpha1_ptr = static_cast<const void*>(&alpha1_float);
   const void* alpha2_ptr = static_cast<const void*>(&alpha2_float);
