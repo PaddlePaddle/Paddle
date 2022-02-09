@@ -59,8 +59,7 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
           ||
           arg_type == std::type_index(typeid(const GPUContext&))) {
-#else
-#if defined(PADDLE_WITH_XPU)
+#elif defined(PADDLE_WITH_XPU)
           ||
           arg_type == std::type_index(typeid(const XPUContext&))) {
 #else
