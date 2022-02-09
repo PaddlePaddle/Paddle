@@ -258,7 +258,7 @@ ProgramDesc BuildConvS8U8S8ConcatProgramDesc(float scale_out, float scale) {
         0.0, "float32", false, 1, false);
   SetOp(&prog, "quantize", "Quant3", {"k"}, {"l"}, true, {scale, scale_out});
 
-  SetOp(&prog, "concat", "Concat1", {"d,h,l"}, {"x"}, true);
+  SetOp(&prog, "concat", "Concat1", {"d", "h", "l"}, {"x"}, true);
   return prog;
 }
 
@@ -490,7 +490,7 @@ void CheckNodesTest(const ProgramDesc& prog,
     }
   }
   for (auto const& pair : expected_operators) {
-    EXPECT_EQ(pair.second, 0);
+    EXPECT_EQ(pair.second, 0) << " " << pair.first;
   }
 }
 
@@ -833,9 +833,8 @@ TEST(CpuQuantizeSquashPass, quant_bf16_conv2d) {
 }
 
 TEST(CpuQuantizeSquashPass, dont_squash_u8_dequant_s8_quant_input_to_concat) {
-  // added 2 requantize
-  // removed 2 quantize and 2 dequantize and 2 intermediate variables
-  auto remove_nodes = 4;
+  // removed 2 x 4 (dequantize_op, dequantize_out, quantize, quantize_out)
+  auto remove_nodes = 8;
   std::unordered_map<std::string, int> expected_operators = {{"concat", 1},
                                                              {"quantize", 1},
                                                              {"dequantize", 1},

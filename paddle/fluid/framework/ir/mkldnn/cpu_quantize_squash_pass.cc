@@ -113,6 +113,9 @@ bool CPUQuantizeSquashPass::IsDequantizeInputUint8(
   if (dequant_in->inputs[0]->IsOp()) {
     auto prev_op = dequant_in->inputs[0]->Op();
     std::string act_name;
+    std::cout << "prev_op->Type(): " << prev_op->Type() << std::endl;
+    std::cout << "dequant_in->inputs[0]->Name(): "
+              << dequant_in->inputs[0]->Name() << std::endl;
     if (prev_op->Type() == "relu") {
       return true;
     } else {
@@ -151,9 +154,9 @@ void CPUQuantizeSquashPass::DequantQuantSquash(
     GET_IR_NODE_FROM_SUBGRAPH(quant_out, quant_out, squash_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(next_op, next_op, squash_pattern);
 
-    // Don't squash when dequantize is uint8 and quantize is int8 (concat)
+    // Don't squash if e.g. just one concat input is unsigned
     if (IsDequantizeInputUint8(dequant_in) &&
-        quant_op->Op()->GetAttrIfExists<bool>("is_negative_input")) {
+        !quant_op->Op()->GetAttrIfExists<bool>("is_negative_input")) {
       return;
     }
 
