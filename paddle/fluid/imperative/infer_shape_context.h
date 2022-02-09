@@ -371,7 +371,8 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     } else {
       PADDLE_THROW(platform::errors::PermissionDenied(
           "Only LoDTensor/SelectedRows support 'GetDim', but Variables "
-          "type_id is xx."));
+          "type_id is: %s.",
+          framework::ToTypeName(var->Type())));
     }
   }
 
