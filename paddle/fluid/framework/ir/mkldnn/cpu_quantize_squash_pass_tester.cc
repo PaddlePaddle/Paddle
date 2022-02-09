@@ -234,9 +234,10 @@ ProgramDesc BuildConvMultiRequantProgramDesc(bool use_mkldnn, float scale_out,
   return prog;
 }
 
-// a->pool2d->b->Dequant->c(s8)->Quant->d-\
-// e->relu->f->Dequant->g(u8)->Quant->h--Concat1->x
-// i->pool2d->j->Dequant->k(s8)->Quant->l-/
+/* a->pool2d->b->Dequant->c(s8)->Quant->d-\
+ * e->relu->f->Dequant->g(u8)->Quant->h--Concat1->x
+ * i->pool2d->j->Dequant->k(s8)->Quant->l-/
+ */
 ProgramDesc BuildConvS8U8S8ConcatProgramDesc(float scale_out, float scale) {
   ProgramDesc prog;
   for (auto& v : variable_names) {
