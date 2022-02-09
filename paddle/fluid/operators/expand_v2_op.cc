@@ -219,6 +219,13 @@ class ExpandV2GradOp : public framework::OperatorWithKernel {
     }
   }
 
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::KernelSignature(
+        "expand_grad", {framework::GradVarName("Out")}, {},
+        {framework::GradVarName("X")});
+  }
+
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
@@ -296,33 +303,3 @@ REGISTER_OPERATOR(expand_v2_grad, ops::ExpandV2GradOp,
                   ops::ExpandV2DoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::ExpandV2DoubleGradOpMaker<paddle::imperative::OpBase>,
                   ops::ExpandV2GradNoNeedBufVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    expand_v2, ops::ExpandV2Kernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ExpandV2Kernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ExpandV2Kernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ExpandV2Kernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ExpandV2Kernel<paddle::platform::CPUDeviceContext, bool>);
-REGISTER_OP_CPU_KERNEL(
-    expand_v2_grad,
-    ops::ExpandV2GradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ExpandV2GradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ExpandV2GradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ExpandV2GradKernel<paddle::platform::CPUDeviceContext, int64_t>);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-REGISTER_OP_CUDA_KERNEL(
-    expand_v2, ops::ExpandV2Kernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ExpandV2Kernel<paddle::platform::CUDADeviceContext, double>,
-    ops::ExpandV2Kernel<paddle::platform::CUDADeviceContext,
-                        paddle::platform::float16>,
-    ops::ExpandV2Kernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ExpandV2Kernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::ExpandV2Kernel<paddle::platform::CUDADeviceContext, bool>);
-REGISTER_OP_CUDA_KERNEL(
-    expand_v2_grad,
-    ops::ExpandV2GradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ExpandV2GradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::ExpandV2GradKernel<paddle::platform::CUDADeviceContext,
-                            paddle::platform::float16>,
-    ops::ExpandV2GradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ExpandV2GradKernel<paddle::platform::CUDADeviceContext, int64_t>);
-#endif
