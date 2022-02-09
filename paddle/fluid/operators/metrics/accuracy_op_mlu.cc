@@ -39,10 +39,11 @@ class AccuracyMLUKernel : public framework::OpKernel<T> {
     Tensor label_int32(VT::INT32);
     if (indices->type() != VT::INT32) {
       PADDLE_ENFORCE_EQ(MLUSupportsCast(indices->type(), VT::INT32), true,
-                        "In accuracy mlu kernel, cast indices from [%s] to "
-                        "[%s] is not supported.",
-                        framework::DataTypeToString(indices->type()),
-                        framework::DataTypeToString(VT::FP32));
+                        platform::errors::Unavailable(
+                            "In accuracy mlu kernel, cast indices from [%s] to "
+                            "[%s] is not supported.",
+                            framework::DataTypeToString(indices->type()),
+                            framework::DataTypeToString(VT::INT32)));
       indices_int32.Resize(indices->dims());
       indices_int32.mutable_data<int>(ctx.GetPlace());
       MLUCnnlTensorDesc org_indices_desc(*indices);
@@ -55,11 +56,13 @@ class AccuracyMLUKernel : public framework::OpKernel<T> {
       indices_int32.ShareDataWith(*indices);
     }
     if (label->type() != VT::INT32) {
-      PADDLE_ENFORCE_EQ(MLUSupportsCast(label->type(), VT::INT32), true,
-                        "In accuracy mlu kernel, cast label from [%s] to [%s] "
-                        "is not supported.",
-                        framework::DataTypeToString(label->type()),
-                        framework::DataTypeToString(VT::FP32));
+      PADDLE_ENFORCE_EQ(
+          MLUSupportsCast(label->type(), VT::INT32), true,
+          platform::errors::Unavailable(
+              "In accuracy mlu kernel, cast label from [%s] to [%s] "
+              "is not supported.",
+              framework::DataTypeToString(label->type()),
+              framework::DataTypeToString(VT::INT32)));
       label_int32.Resize(label->dims());
       label_int32.mutable_data<int>(ctx.GetPlace());
       MLUCnnlTensorDesc org_label_desc(*label);
