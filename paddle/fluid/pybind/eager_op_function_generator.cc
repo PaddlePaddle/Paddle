@@ -73,10 +73,10 @@ const char* OUT_VAR_TYPE = R"(std::shared_ptr<imperative::VarBase>)";
 const char* OUT_VAR_LIST_TYPE = R"(std::vector<std::shared_ptr<imperative::VarBase>>)";
 
 const char* CAST_VAR_TEMPLATE = R"(
-    auto& %s = GetEagerTensorFromArgs("%s", "%s", args, %d, %s);)";
+    auto& %s = GetTensorFromArgs("%s", "%s", args, %d, %s);)";
 
 const char* CAST_VAR_LIST_TEMPLATE = R"(
-    auto %s = GetEagerTensorListFromArgs("%s", "%s", args, %d, %s);)";
+    auto %s = GetTensorListFromArgs("%s", "%s", args, %d, %s);)";
 
 const char* CAST_VAR_PTR_TEMPLATE = R"(
     auto %s = GetEagerTensorPtrFromArgs("%s", "%s", args, %d, %s);)";

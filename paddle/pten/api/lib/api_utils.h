@@ -16,8 +16,9 @@ limitations under the License. */
 
 #include "paddle/pten/api/include/tensor.h"
 #include "paddle/pten/api/lib/utils/storage.h"
-#include "paddle/pten/core/convert_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/meta_tensor.h"
 #include "paddle/pten/core/selected_rows.h"
 
 namespace paddle {
@@ -63,44 +64,38 @@ inline std::unique_ptr<std::vector<pten::SelectedRows>> TensorToSelectedRows(
 
 /* ----------------- for infer_meta --------------------- */
 
-inline const pten::DenseTensorMeta& GetDenseTensorMeta(
-    const pten::DenseTensor& tensor) {
-  return tensor.meta();
+inline pten::MetaTensor MakeMetaTensor(const pten::DenseTensor& tensor) {
+  return pten::MetaTensor(tensor);
 }
 
-inline std::vector<pten::DenseTensorMeta> GetDenseTensorMeta(
+inline std::vector<pten::MetaTensor> MakeMetaTensor(
     const std::vector<pten::DenseTensor>& tensors) {
-  std::vector<pten::DenseTensorMeta> metas;
-  metas.reserve(tensors.size());
+  std::vector<pten::MetaTensor> meta_tensors;
+  meta_tensors.reserve(tensors.size());
   for (const auto& t : tensors) {
-    metas.push_back(t.meta());
+    meta_tensors.emplace_back(t);
   }
-  return metas;
+  return meta_tensors;
 }
 
 /* ------------------ for output ----------------------- */
 
-inline pten::DenseTensor* SetKernelOutput(const pten::DenseTensorMeta& meta,
-                                          Backend backend,
-                                          Tensor* out) {
+inline pten::DenseTensor* SetKernelOutput(Backend backend, Tensor* out) {
   auto dense_tensor = std::make_shared<pten::DenseTensor>(
       pten::make_intrusive<SharedStorage>(pten::TransToFluidPlace(backend)),
-      meta);
+      pten::DenseTensorMeta());
   out->set_impl(dense_tensor);
   return dense_tensor.get();
 }
 
 inline std::vector<pten::DenseTensor*> SetKernelOutput(
-    const std::vector<pten::DenseTensorMeta>& metas,
-    Backend backend,
-    std::vector<Tensor>* out) {
-  size_t n = metas.size();
-  out->reserve(n);
-  std::vector<pten::DenseTensor*> results(n);
-  for (size_t i = 0; i < n; ++i) {
+    size_t out_size, Backend backend, std::vector<Tensor>* out) {
+  out->reserve(out_size);
+  std::vector<pten::DenseTensor*> results(out_size);
+  for (size_t i = 0; i < out_size; ++i) {
     auto tensor_ptr = std::make_shared<pten::DenseTensor>(
         pten::make_intrusive<SharedStorage>(pten::TransToFluidPlace(backend)),
-        metas[i]);
+        pten::DenseTensorMeta());
     results[i] = tensor_ptr.get();
     out->emplace_back();
     out->back().set_impl(tensor_ptr);

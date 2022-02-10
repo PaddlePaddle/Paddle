@@ -22,13 +22,12 @@ namespace egr_utils_api {
 
 // If and only if the tensor holds an AccumulationNode
 // Then it's treated as a leaf tensor
-bool IsLeafTensor(const egr::EagerTensor& target);
+bool IsLeafTensor(const paddle::experimental::Tensor& target);
 
-egr::EagerTensor CreateTensorWithValue(const pten::DDim& ddim,
-                                       const paddle::platform::Place& place,
-                                       const pten::DataType& dtype,
-                                       const pten::DataLayout& layout,
-                                       float value, bool is_leaf = true);
+paddle::experimental::Tensor CreateTensorWithValue(
+    const pten::DDim& ddim, const paddle::platform::Place& place,
+    const pten::DataType& dtype, const pten::DataLayout& layout, float value,
+    bool is_leaf = true);
 
 }  // namespace egr_utils_api
 }  // namespace egr

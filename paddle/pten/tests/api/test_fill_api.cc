@@ -35,7 +35,7 @@ TEST(API, full_like) {
   auto dense_x = std::make_shared<pten::DenseTensor>(
       alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            framework::make_ddim({3, 2}),
+                            pten::framework::make_ddim({3, 2}),
                             pten::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x->mutable_data<float>(paddle::platform::CPUPlace());
@@ -71,7 +71,7 @@ TEST(API, zeros_like) {
   auto dense_x = std::make_shared<pten::DenseTensor>(
       alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            framework::make_ddim({3, 2}),
+                            pten::framework::make_ddim({3, 2}),
                             pten::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x->mutable_data<float>(paddle::platform::CPUPlace());
@@ -105,7 +105,7 @@ TEST(API, ones_like) {
   auto dense_x = std::make_shared<pten::DenseTensor>(
       alloc.get(),
       pten::DenseTensorMeta(pten::DataType::INT32,
-                            framework::make_ddim({3, 2}),
+                            pten::framework::make_ddim({3, 2}),
                             pten::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x->mutable_data<int32_t>(paddle::platform::CPUPlace());
@@ -140,7 +140,7 @@ TEST(API, full1) {
   auto dense_shape = std::make_shared<pten::DenseTensor>(
       alloc.get(),
       pten::DenseTensorMeta(pten::DataType::INT64,
-                            framework::make_ddim({2}),
+                            pten::framework::make_ddim({2}),
                             pten::DataLayout::NCHW));
   auto* shape_data =
       dense_shape->mutable_data<int64_t>(paddle::platform::CPUPlace());
@@ -150,7 +150,7 @@ TEST(API, full1) {
   auto dense_scalar = std::make_shared<pten::DenseTensor>(
       alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            framework::make_ddim({1}),
+                            pten::framework::make_ddim({1}),
                             pten::DataLayout::NCHW));
   dense_scalar->mutable_data<float>(paddle::platform::CPUPlace())[0] = 1.0;
 
@@ -187,7 +187,7 @@ TEST(API, full2) {
   auto dense_scalar = std::make_shared<pten::DenseTensor>(
       alloc.get(),
       pten::DenseTensorMeta(pten::DataType::INT32,
-                            framework::make_ddim({1}),
+                            pten::framework::make_ddim({1}),
                             pten::DataLayout::NCHW));
   dense_scalar->mutable_data<int>(paddle::platform::CPUPlace())[0] = 2;
 

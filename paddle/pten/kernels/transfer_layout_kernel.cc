@@ -25,15 +25,15 @@ std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to) {
   PADDLE_ENFORCE_NE(
       from,
       to,
-      paddle::platform::errors::InvalidArgument(
+      pten::errors::InvalidArgument(
           "Layout transform should transform between different layout."));
   if (from == DataLayout::NCHW && to == DataLayout::NHWC) {
     return {0, 2, 3, 1};
   } else if (from == DataLayout::NHWC && to == DataLayout::NCHW) {
     return {0, 3, 1, 2};
   } else {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "Unsupported layout transform."));
+    PADDLE_THROW(
+        pten::errors::InvalidArgument("Unsupported layout transform."));
   }
 }
 
@@ -61,7 +61,7 @@ void TransferLayoutKernel(const Context& dev_ctx,
     dst_dim[i] = src_dim[axis[i]];
   }
 
-  out->ResizeAndAllocate(paddle::framework::make_ddim(dst_dim));
+  out->ResizeAndAllocate(framework::make_ddim(dst_dim));
 
   PD_VISIT_ALL_TYPES(x.dtype(), "CastDataLayout", ([&] {
                        CastDataLayout<data_t, Context>(dev_ctx, x, axis, out);

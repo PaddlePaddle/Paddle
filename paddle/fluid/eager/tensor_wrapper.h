@@ -33,7 +33,7 @@ namespace egr {
 class TensorWrapper {
  public:
   TensorWrapper() = default;
-  explicit TensorWrapper(const egr::EagerTensor& tensor,
+  explicit TensorWrapper(const paddle::experimental::Tensor& tensor,
                          bool full_reserved = false) {
     /**
      * Normally, we should fully reserved all non-output or non-leaf fwd tensor
@@ -49,7 +49,6 @@ class TensorWrapper {
 
     // shallow copy tensor_impl here
     intermidiate_tensor_.set_impl(tensor.impl());
-    intermidiate_tensor_.ResetVar(tensor.Var());
     intermidiate_tensor_.set_name(tensor.name() + "@Saved");
     PADDLE_ENFORCE_NOT_NULL(
         EagerUtils::unsafe_autograd_meta(tensor),
@@ -61,12 +60,13 @@ class TensorWrapper {
     out_rank_info_ = EagerUtils::OutRankInfo(tensor);
   }
 
-  egr::EagerTensor recover(const std::shared_ptr<GradNodeBase>& grad_node) {
-    VLOG(6) << "Recover tensor for wrapper";
-    if ((!intermidiate_tensor_.defined()) &&
-        (!intermidiate_tensor_.Var().IsInitialized())) {
+  paddle::experimental::Tensor recover(
+      const std::shared_ptr<GradNodeBase>& grad_node) {
+    VLOG(6) << "Recover tensor: " << intermidiate_tensor_.name()
+            << " for wrapper";
+    if (!intermidiate_tensor_.defined()) {
       VLOG(6) << "Return NULL tensor Here. ";
-      return egr::EagerTensor();
+      return paddle::experimental::Tensor();
     }
 
     // if it's full_reserved just return the full copy of tensor
@@ -86,6 +86,6 @@ class TensorWrapper {
  private:
   bool full_reserved_ = false;
   std::pair<size_t, size_t> out_rank_info_;
-  egr::EagerTensor intermidiate_tensor_;
+  paddle::experimental::Tensor intermidiate_tensor_;
 };
 }  // namespace egr

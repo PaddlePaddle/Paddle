@@ -25,11 +25,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/pten/api/ext/op_kernel_info.h"
-#include "paddle/pten/core/convert_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/kernel_context.h"
 #include "paddle/pten/core/kernel_registry.h"
-
-DECLARE_bool(run_pten_kernel);
 
 namespace paddle {
 
@@ -45,10 +43,19 @@ static void ParseArgs(const OpKernelInfo& op_kernel_info,
   auto& attribute_defs = OpKernelInfoHelper::GetAttributeDefs(op_kernel_info);
 
   for (auto& input : input_defs) {
-    args_def->AppendInput(input.backend, input.layout, input.dtype);
+    auto type_index =
+        input.is_vector
+            ? std::type_index(typeid(const std::vector<pten::DenseTensor>&))
+            : std::type_index(typeid(const pten::DenseTensor&));
+    args_def->AppendInput(input.backend, input.layout, input.dtype, type_index);
   }
   for (auto& output : output_defs) {
-    args_def->AppendOutput(output.backend, output.layout, output.dtype);
+    auto type_index =
+        output.is_vector
+            ? std::type_index(typeid(const std::vector<pten::DenseTensor>&))
+            : std::type_index(typeid(const pten::DenseTensor&));
+    args_def->AppendOutput(output.backend, output.layout, output.dtype,
+                           type_index);
   }
   for (auto& attr : attribute_defs) {
     args_def->AppendAttribute(attr.type_index);
@@ -279,10 +286,6 @@ static void RunKernelFunc(pten::KernelContext* ctx,
 
 void RegisterKernelWithMetaInfo(
     const std::vector<OpKernelInfo>& op_kernel_infos) {
-  PADDLE_ENFORCE_EQ(FLAGS_run_pten_kernel, true,
-                    platform::errors::Unimplemented(
-                        "Custom Kernel depends on pten kernel enabled,"));
-
   for (size_t i = 0; i < op_kernel_infos.size(); ++i) {
     auto& kernel_info = op_kernel_infos[i];
     auto op_type = OpKernelInfoHelper::GetOpName(kernel_info);

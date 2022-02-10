@@ -106,10 +106,10 @@ class PrintOp<string suffix, Type type> : INFRT_Op<"print." # suffix> {
   let verifier = ?;
 }
 
-//def PrintI32Op : PrintOp<"i32", I32>;
-//def PrintI64Op : PrintOp<"i64", I64>;
+def PrintI32Op : PrintOp<"i32", I32>;
+def PrintI64Op : PrintOp<"i64", I64>;
 def PrintF32Op : PrintOp<"f32", F32>;
-//def PrintF64Op : PrintOp<"f64", F64>;
+def PrintF64Op : PrintOp<"f64", F64>;
 
 def GetStringOp : INFRT_Op<"get_string"> {
   let summary = "infrt.get_string";

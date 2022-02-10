@@ -30,14 +30,16 @@ template <typename T, typename Context>
 DenseTensor Concat(const Context& dev_ctx,
                    const std::vector<DenseTensor>& x,
                    const Scalar& axis) {
-  std::vector<DenseTensorMeta> x_meta;
-  for (auto t : x) {
-    x_meta.push_back(t.meta());
+  std::vector<MetaTensor> meta_x;
+  for (const auto& t : x) {
+    meta_x.emplace_back(t);
   }
 
-  auto out_meta = ConcatInferMeta(x_meta, axis.to<int>(), true);
-  auto dense_out = pten::Empty<T, Context>(dev_ctx, std::move(out_meta));
+  auto dense_out = pten::Empty<T, Context>(dev_ctx);
+  MetaTensor meta_out(&dense_out);
+  ConcatInferMeta(meta_x, axis.to<int>(), &meta_out, /*is_runtime=*/true);
   ConcatKernel<T, Context>(dev_ctx, x, axis, &dense_out);
   return dense_out;
 }
+
 }  // namespace pten

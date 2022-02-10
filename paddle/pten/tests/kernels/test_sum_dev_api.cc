@@ -31,10 +31,11 @@ TEST(DEV_API, sum) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({3, 4}),
-                                                  pten::DataLayout::NCHW));
+  pten::DenseTensor dense_x(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({3, 4}),
+                            pten::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 
@@ -46,10 +47,11 @@ TEST(DEV_API, sum) {
 
   std::vector<int64_t> axis = {0, 1};
   pten::CPUContext dev_ctx;
-  dev_ctx.SetDeviceAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
-          .get());
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(paddle::platform::CPUPlace())
+                           .get());
+  dev_ctx.Init();
+
   // 2. test API
   auto out =
       pten::Sum<float>(dev_ctx, dense_x, axis, pten::DataType::FLOAT32, false);

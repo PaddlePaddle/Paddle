@@ -26,26 +26,15 @@ namespace xpu = baidu::xpu::api;
 
 namespace pten {
 
-struct XPUContextResource {
-  xpu::Context* context{nullptr};
-};
-
 class XPUContext : public DeviceContext {
  public:
-  // NOTE: DeviceContext hold resources. Used in training scenarios.
   XPUContext();
 
   explicit XPUContext(const XPUPlace&);
 
-  // NOTE: Share the same underlying resources, please ensure that resources are
-  // not released.
-  XPUContext(const XPUContext&);
-
-  XPUContext(XPUContext&&);
-
   virtual ~XPUContext();
 
-  Place GetPlace() const override;
+  const Place& GetPlace() const override;
 
   backends::xpu::XPUVersion xpu_version() const;
 
@@ -53,21 +42,28 @@ class XPUContext : public DeviceContext {
 
   // Return bkcl context.
   xpu::BKCLContext_t bkcl_context() const;
+  void SetBkclContext(xpu::BKCLContext_t context);
 
   // Wait for all operations completion in the stream.
   void Wait() const override;
 
  public:
+  // NOTE: DeviceContext hold resources. Used in training scenarios.
+  // The interface used by the training scene, DeviceContext will initialize
+  // all resources and delete them when destructing.
+  void Init();
+
+ public:
   // NOTE: External users manage resources. Used in inference scenarios.
-  explicit XPUContext(const XPUContextResource&);
+  // The Set interface is for inference only, DeviceContext will mark the
+  // resource as external, and will not delete any resource when destructing.
+  void SetXContext(xpu::Context*);
 
-  void set_x_context(xpu::Context*);
-
-  void set_bkcl_context(xpu::BKCLContext_t context);
+  void SetL3Cache(int l3_size = 14155776);
 
  private:
-  struct XPUImpl;
-  std::unique_ptr<XPUImpl> impl_;
+  struct Impl;
+  std::unique_ptr<Impl> impl_;
 };
 
 }  // namespace pten

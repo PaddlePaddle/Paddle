@@ -52,3 +52,31 @@ class FuseBatchNormAddActPass(CPPPassWrapper):
 
     def _type(self):
         return PassType.FUSION_OPT
+
+
+@register_pass("fuse_relu_depthwise_conv")
+class FuseReluDepthwiseConvPass(CPPPassWrapper):
+    def __init__(self):
+        super(FuseReluDepthwiseConvPass, self).__init__()
+
+    @property
+    def cpp_name(self):
+        return "fuse_relu_depthwise_conv_pass"
+
+    def _type(self):
+        return PassType.FUSION_OPT
+
+
+@register_pass("fuse_optimizer")
+class FuseOptimizerPass(CPPPassWrapper):
+    def __init__(self):
+        super(FuseOptimizerPass, self).__init__()
+
+    @property
+    def cpp_name(self):
+        return [
+            "fuse_adam_op_pass", "fuse_sgd_op_pass", "fuse_momentum_op_pass"
+        ]
+
+    def _type(self):
+        return PassType.FUSION_OPT

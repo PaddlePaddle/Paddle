@@ -30,6 +30,7 @@ limitations under the License. */
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/distributed/ps/service/communicator/communicator_common.h"
+#include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/framework/variable_helper.h"
@@ -178,7 +179,7 @@ inline void MergeVars(const std::string &var_name,
     }
 
     // set output tensor to 0.
-    auto cpu_ctx = paddle::platform::CPUDeviceContext();
+    paddle::platform::CPUDeviceContext cpu_ctx;
     paddle::operators::math::SetConstant<paddle::platform::CPUDeviceContext, T>
         constant_functor;
     constant_functor(cpu_ctx, out_t, static_cast<T>(0));
@@ -203,7 +204,7 @@ inline void MergeVars(const std::string &var_name,
     for (auto &var : vars) {
       inputs.push_back(&var->Get<pten::SelectedRows>());
     }
-    auto dev_ctx = paddle::platform::CPUDeviceContext();
+    paddle::platform::CPUDeviceContext dev_ctx;
     if (merge_add) {
       paddle::operators::math::scatter::MergeAdd<
           paddle::platform::CPUDeviceContext, T>
@@ -626,9 +627,8 @@ class GeoCommunicator : public AsyncCommunicator {
   // parameter on pserver
   std::shared_ptr<Scope> pserver_scope_;
 
-  std::unordered_map<
-      std::string,
-      std::shared_ptr<BlockingQueue<std::shared_ptr<std::vector<int64_t>>>>>
+  std::unordered_map<std::string, paddle::framework::Channel<
+                                      std::shared_ptr<std::vector<int64_t>>>>
       sparse_id_queues_;
 };
 

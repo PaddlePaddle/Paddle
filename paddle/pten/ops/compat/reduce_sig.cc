@@ -45,5 +45,8 @@ KernelSignature ReduceMeanOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 }  // namespace pten
 
+PT_REGISTER_BASE_KERNEL_NAME(reduce_sum, sum);
+PT_REGISTER_BASE_KERNEL_NAME(reduce_mean, mean);
+
 PT_REGISTER_ARG_MAPPING_FN(reduce_sum, pten::ReduceSumOpArgumentMapping);
 PT_REGISTER_ARG_MAPPING_FN(reduce_mean, pten::ReduceMeanOpArgumentMapping);

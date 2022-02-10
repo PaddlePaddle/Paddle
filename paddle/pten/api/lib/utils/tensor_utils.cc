@@ -17,7 +17,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/pten/core/compat_utils.h"
+#include "paddle/pten/core/tensor_utils.h"
 
 namespace paddle {
 namespace experimental {
@@ -198,12 +198,25 @@ pten::ScalarArray MakePtenScalarArrayFromVarList(
   return {vector_data};
 }
 
-void ResetTensorByArgDef(pten::DenseTensor* dst,
-                         const pten::TensorArgDef& arg_def) {
+void ResetTensorDtypeAndLayoutByArgDef(pten::TensorBase* dst,
+                                       const pten::TensorArgDef& arg_def) {
   VLOG(5) << "ResetTensor by TensorArgDef.";
-  auto* meta = pten::CompatibleDenseTensorUtils::GetMutableMeta(dst);
-  meta->dtype = arg_def.dtype;
-  meta->layout = arg_def.layout;
+  if (pten::DenseTensor::classof(dst)) {
+    auto* dense_t = static_cast<pten::DenseTensor*>(dst);
+    auto* meta = pten::DenseTensorUtils::GetMutableMeta(dense_t);
+    meta->dtype = arg_def.dtype;
+    meta->layout = arg_def.layout;
+  } else if (pten::SelectedRows::classof(dst)) {
+    auto* selected_rows = static_cast<pten::SelectedRows*>(dst);
+    auto* meta =
+        pten::DenseTensorUtils::GetMutableMeta(selected_rows->mutable_value());
+    meta->dtype = arg_def.dtype;
+    meta->layout = arg_def.layout;
+  } else {
+    PADDLE_THROW(pten::errors::Unimplemented(
+        "Unsupported tensor type is received when reseting tensor dtype and "
+        "layout by argument definition."));
+  }
 }
 
 }  // namespace experimental
