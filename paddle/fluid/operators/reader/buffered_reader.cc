@@ -238,7 +238,7 @@ void BufferedReader::ReadAsync(size_t i) {
         auto cpu_ptr = cpu[i].data();
         auto npu_ptr = npu_ptrs[i];
         auto size =
-            cpu[i].numel() * paddle::framework::SizeOfType(cpu[i].type());
+            cpu[i].numel() * paddle::framework::DataTypeSize(cpu[i].dtype());
         if ((platform::is_npu_place(cpu_place))) {
           memory::Copy(place_, npu_ptr, cpu_place, cpu_ptr, size,
                        stream_.get());
