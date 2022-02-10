@@ -15,8 +15,8 @@ limitations under the License. */
 #include <sstream>
 
 #include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/compat/op_utils.h"
-#include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/kernel_factory.h"
 
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -60,7 +60,8 @@ OpKernelType TransPtenKernelKeyToOpKernelType(
     const pten::KernelKey& kernel_key) {
   proto::VarType::Type data_type =
       pten::TransToProtoVarType(kernel_key.dtype());
-  platform::Place place = pten::TransToFluidPlace(kernel_key.backend());
+  // no need to set current device id here
+  platform::Place place = pten::TransToFluidPlace(kernel_key.backend(), false);
   DataLayout data_layout = kernel_key.layout();
   LibraryType library_type = LibraryType::kPlain;
   if (kernel_key.backend() == pten::Backend::MKLDNN) {
@@ -88,6 +89,40 @@ pten::KernelKey TransOpKernelTypeToPtenKernelKey(
   paddle::experimental::DataType dtype =
       pten::TransToPtenDataType(kernel_type.data_type_);
   return pten::KernelKey(backend, layout, dtype);
+}
+
+pten::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
+                              const pten::KernelKey& kernel_key,
+                              const framework::OperatorBase& op) {
+#ifdef PADDLE_WITH_XPU
+  if (platform::is_xpu_place(expected_kernel_key.place_) ||
+      paddle::platform::is_in_xpu_black_list(op.Type())) {
+    VLOG(3) << "pten missing XPU kernel: " << op.Type()
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+    return pten::KernelKey(pten::Backend::CPU, kernel_key.layout(),
+                           kernel_key.dtype());
+  }
+#endif
+#ifdef PADDLE_WITH_ASCEND_CL
+  if (platform::is_npu_place(expected_kernel_key.place_)) {
+    VLOG(3) << "pten missing NPU kernel: " << op.Type()
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+    return pten::KernelKey(pten::Backend::CPU, kernel_key.layout(),
+                           kernel_key.dtype());
+  }
+#endif
+#ifdef PADDLE_WITH_MLU
+  if (platform::is_mlu_place(expected_kernel_key.place_)) {
+    VLOG(3) << "pten missing MLU kernel: " << op.Type()
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+    return pten::KernelKey(pten::Backend::CPU, kernel_key.layout(),
+                           kernel_key.dtype());
+  }
+#endif
+  return pten::KernelKey();
 }
 
 const paddle::SmallVector<std::string>&
@@ -150,9 +185,8 @@ KernelArgsNameMakerByOpProto::GetAttrsArgsNames() {
 }
 
 KernelSignature KernelArgsNameMakerByOpProto::GetKernelSignature() {
-  return KernelSignature(pten::TransToPtenKernelName(op_proto_->type()),
-                         GetInputArgsNames(), GetAttrsArgsNames(),
-                         GetOutputArgsNames());
+  return KernelSignature(op_proto_->type(), GetInputArgsNames(),
+                         GetAttrsArgsNames(), GetOutputArgsNames());
 }
 
 std::once_flag kernel_sig_map_init_flag;
@@ -173,21 +207,40 @@ void InitDefaultKernelSignatureMap() {
   });
 }
 
-void SetAllocationForOutputTenosr(pten::DenseTensor* tensor,
-                                  const platform::Place& place) {
-  if (!tensor->IsInitialized() || !(tensor->place() == place)) {
-    int dtype_size = tensor->dtype() == DataType::UNDEFINED
-                         ? 0
-                         : experimental::SizeOf(tensor->dtype());
-    int64_t numels = product(tensor->dims());
-    numels = numels < 0 ? 0 : numels;
-    auto tmp_allocation_ptr = memory::Alloc(place, numels * dtype_size);
-    auto& deleter = tmp_allocation_ptr.get_deleter();
-    auto* allocation_ptr = tmp_allocation_ptr.release();
-    auto shared_allocation =
-        std::shared_ptr<pten::Allocation>(allocation_ptr, deleter);
+static void SetAllocationForUninitializedDenseTensor(
+    pten::DenseTensor* dense_tensor, const platform::Place& place) {
+  int dtype_size = dense_tensor->dtype() == DataType::UNDEFINED
+                       ? 0
+                       : experimental::SizeOf(dense_tensor->dtype());
+  int64_t numels = product(dense_tensor->dims());
+  numels = numels < 0 ? 0 : numels;
+  auto tmp_allocation_ptr = memory::Alloc(place, numels * dtype_size);
+  auto& deleter = tmp_allocation_ptr.get_deleter();
+  auto* allocation_ptr = tmp_allocation_ptr.release();
+  auto shared_allocation =
+      std::shared_ptr<pten::Allocation>(allocation_ptr, deleter);
 
-    tensor->ResetHolder(shared_allocation);
+  dense_tensor->ResetHolder(shared_allocation);
+}
+
+void SetAllocationForOutputTenosr(pten::TensorBase* tensor,
+                                  const platform::Place& place) {
+  if (pten::DenseTensor::classof(tensor)) {
+    auto* dense_tensor = static_cast<pten::DenseTensor*>(tensor);
+    if (!dense_tensor->IsInitialized() || !(dense_tensor->place() == place)) {
+      SetAllocationForUninitializedDenseTensor(dense_tensor, place);
+    }
+  } else if (pten::SelectedRows::classof(tensor)) {
+    auto* selected_rows = static_cast<pten::SelectedRows*>(tensor);
+    if (!selected_rows->value().IsInitialized() ||
+        !(selected_rows->place() == place)) {
+      SetAllocationForUninitializedDenseTensor(selected_rows->mutable_value(),
+                                               place);
+    }
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unsupported tensor type is received when setting allocation for "
+        "output tensor."));
   }
 }
 

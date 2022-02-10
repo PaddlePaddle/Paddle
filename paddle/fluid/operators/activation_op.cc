@@ -128,6 +128,26 @@ class ActivationOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return GetKernelType(ctx, *this, "X");
   }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const {
+#ifdef PADDLE_WITH_MKLDNN
+    // When activation is first oneDNN op (there was some non oneDNN op
+    // previously)
+    // then we also need to rotate shape NHWC -> NCWH
+    if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+        (tensor.layout() != framework::DataLayout::kMKLDNN) &&
+        paddle::platform::MKLDNNDeviceContext::tls()
+                .get_cur_paddle_data_layout() == framework::DataLayout::kNHWC) {
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(),
+                                     framework::DataLayout::kNHWC);
+    }
+#endif
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
+  }
 };
 
 class ActivationOpInferVarType

@@ -57,7 +57,7 @@ MLUDeviceContext::MLUDeviceContext(MLUPlace place) : place_(place) {
 
 MLUDeviceContext::~MLUDeviceContext() {}
 
-Place MLUDeviceContext::GetPlace() const { return place_; }
+const Place& MLUDeviceContext::GetPlace() const { return place_; }
 
 void MLUDeviceContext::Wait() const { context()->Stream()->Wait(); }
 

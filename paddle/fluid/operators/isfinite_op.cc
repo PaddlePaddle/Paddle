@@ -132,4 +132,33 @@ namespace ops = paddle::operators;
 REGISTER_OP_MAKER(isinf, "isinf(X)");
 REGISTER_OP_MAKER(isnan, "isnan(X)");
 REGISTER_OP_MAKER(isfinite, "isfinite(X)");
-FOR_EACH_KERNEL_FUNCTOR(REGISTER_OVERFLOW_CPU_KERNEL);
+
+REGISTER_OP_CPU_KERNEL(isinf,
+                       ops::OverflowKernel<paddle::platform::CPUDeviceContext,
+                                           int, ops::InfinityFunctor>,
+                       ops::OverflowKernel<paddle::platform::CPUDeviceContext,
+                                           int64_t, ops::InfinityFunctor>,
+                       ops::OverflowKernel<paddle::platform::CPUDeviceContext,
+                                           float, ops::InfinityFunctor>,
+                       ops::OverflowKernel<paddle::platform::CPUDeviceContext,
+                                           double, ops::InfinityFunctor>);
+
+REGISTER_OP_CPU_KERNEL(isnan,
+                       ops::OverflowKernel<paddle::platform::CPUDeviceContext,
+                                           int, ops::NANFunctor>,
+                       ops::OverflowKernel<paddle::platform::CPUDeviceContext,
+                                           int64_t, ops::NANFunctor>,
+                       ops::OverflowKernel<paddle::platform::CPUDeviceContext,
+                                           float, ops::NANFunctor>,
+                       ops::OverflowKernel<paddle::platform::CPUDeviceContext,
+                                           double, ops::NANFunctor>);
+
+REGISTER_OP_CPU_KERNEL(isfinite,
+                       ops::OverflowKernel<paddle::platform::CPUDeviceContext,
+                                           int, ops::IsfiniteFunctor>,
+                       ops::OverflowKernel<paddle::platform::CPUDeviceContext,
+                                           int64_t, ops::IsfiniteFunctor>,
+                       ops::OverflowKernel<paddle::platform::CPUDeviceContext,
+                                           float, ops::IsfiniteFunctor>,
+                       ops::OverflowKernel<paddle::platform::CPUDeviceContext,
+                                           double, ops::IsfiniteFunctor>);
