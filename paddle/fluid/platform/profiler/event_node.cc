@@ -9,12 +9,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/platform/profiler/event_node.h"
+
 #include <limits.h>
 #include <algorithm>
 #include <deque>
+#include <set>
 #include <stack>
-
-#include "paddle/fluid/platform/profiler/event_node.h"
 
 namespace paddle {
 namespace platform {
@@ -62,21 +63,21 @@ void NodeTrees::BuildTrees(
                                           // correlation id and runtime node
   // construct thread2host_event_nodes
   for (auto it = host_event_nodes.begin(); it != host_event_nodes.end(); ++it) {
-    thread2host_event_nodes[(*it)->thread_id()].push_back(*it);
+    thread2host_event_nodes[(*it)->ThreadId()].push_back(*it);
   }
   // construct thread2runtime_event_nodes and
   // correlation_id2runtime_event_node
   for (auto it = runtime_event_nodes.begin(); it != runtime_event_nodes.end();
        ++it) {
-    thread2runtime_event_nodes[(*it)->thread_id()].push_back(*it);
-    correlation_id2runtime_event_node[(*it)->correlation_id()] = *it;
+    thread2runtime_event_nodes[(*it)->ThreadId()].push_back(*it);
+    correlation_id2runtime_event_node[(*it)->CorrelationId()] = *it;
   }
   // associate CudaRuntimeTraceEventNode and DeviceTraceEventNode
   // construct correlation_id2device_event_nodes
   for (auto it = device_event_nodes.begin(); it != device_event_nodes.end();
        ++it) {
     auto dst_iter =
-        correlation_id2runtime_event_node.find((*it)->correlation_id());
+        correlation_id2runtime_event_node.find((*it)->CorrelationId());
     PADDLE_ENFORCE_NE(
         dst_iter, correlation_id2runtime_event_node.end(),
         platform::errors::NotFound("Unknown device events, "
@@ -92,11 +93,11 @@ void NodeTrees::BuildTrees(
        it != thread2host_event_nodes.end(); ++it) {
     std::sort(it->second.begin(), it->second.end(),
               [](HostTraceEventNode* node1, HostTraceEventNode* node2) {
-                if (node1->start_ns() < node2->start_ns()) {
+                if (node1->StartNs() < node2->StartNs()) {
                   return true;
                 }
-                if ((node1->start_ns() == node2->start_ns()) &&
-                    (node1->end_ns() > node2->end_ns())) {
+                if ((node1->StartNs() == node2->StartNs()) &&
+                    (node1->EndNs() > node2->EndNs())) {
                   return true;
                 }
                 return false;
@@ -107,11 +108,11 @@ void NodeTrees::BuildTrees(
     std::sort(
         it->second.begin(), it->second.end(),
         [](CudaRuntimeTraceEventNode* node1, CudaRuntimeTraceEventNode* node2) {
-          if (node1->start_ns() < node2->start_ns()) {
+          if (node1->StartNs() < node2->StartNs()) {
             return true;
           }
-          if ((node1->start_ns() == node2->start_ns()) &&
-              (node1->end_ns() > node2->end_ns())) {
+          if ((node1->StartNs() == node2->StartNs()) &&
+              (node1->EndNs() > node2->EndNs())) {
             return true;
           }
           return false;
@@ -119,10 +120,20 @@ void NodeTrees::BuildTrees(
   }
 
   // construct trees
+  std::set<uint64_t> thread_set;
   for (auto it = thread2host_event_nodes.begin();
        it != thread2host_event_nodes.end(); ++it) {
-    thread_event_trees_map_[it->first] = BuildTreeRelationship(
-        it->second, thread2runtime_event_nodes[it->first]);
+    thread_set.insert(it->first);
+  }
+
+  for (auto it = thread2runtime_event_nodes.begin();
+       it != thread2runtime_event_nodes.end(); ++it) {
+    thread_set.insert(it->first);
+  }
+
+  for (auto it = thread_set.begin(); it != thread_set.end(); ++it) {
+    thread_event_trees_map_[*it] = BuildTreeRelationship(
+        thread2host_event_nodes[*it], thread2runtime_event_nodes[*it]);
   }
 }
 
@@ -133,19 +144,18 @@ HostTraceEventNode* NodeTrees::BuildTreeRelationship(
   auto node_stack = std::vector<HostTraceEventNode*>();
   // root node, top level
   auto root_node = new HostTraceEventNode(
-      HostTraceEvent(std::string("root node"), TracerEventType::UserDefined,
-                     LLONG_MIN, LLONG_MAX, 0, 0));
+      HostTraceEvent(std::string("root node"), TracerEventType::UserDefined, 0,
+                     ULLONG_MAX, 0, 0));
   // push root node into node_stack
   node_stack.push_back(root_node);
   // handle host_event_nodes
   for (auto it = host_event_nodes.begin(); it != host_event_nodes.end(); ++it) {
     while (true) {
       auto stack_top_node = node_stack.back();
-
-      if ((*it)->start_ns() < stack_top_node->end_ns()) {
+      if ((*it)->StartNs() < stack_top_node->EndNs()) {
         // current node is the child of stack_top_node
         PADDLE_ENFORCE_LE(
-            (*it)->end_ns(), stack_top_node->end_ns(),
+            (*it)->EndNs(), stack_top_node->EndNs(),
             platform::errors::Fatal(
                 "should not have time range intersection within one thread"));
         stack_top_node->AddChild(*it);
@@ -161,8 +171,8 @@ HostTraceEventNode* NodeTrees::BuildTreeRelationship(
         bool hasenter = false;
         for (auto runtimenode = runtime_event_nodes.begin();
              runtimenode != runtime_event_nodes.end(); ++runtimenode) {
-          if (((*runtimenode)->start_ns() >= stack_top_node->start_ns()) &&
-              ((*runtimenode)->end_ns() <= stack_top_node->end_ns())) {
+          if (((*runtimenode)->StartNs() >= stack_top_node->StartNs()) &&
+              ((*runtimenode)->EndNs() <= stack_top_node->EndNs())) {
             if (!hasenter) {
               firstposition = runtimenode;
               hasenter = true;
@@ -171,7 +181,7 @@ HostTraceEventNode* NodeTrees::BuildTreeRelationship(
           } else {
             // from this runtime node, not within stack_top_node, erase the
             // nodes from runtime_event_nodes
-            if ((*runtimenode)->start_ns() > stack_top_node->end_ns()) {
+            if ((*runtimenode)->StartNs() > stack_top_node->EndNs()) {
               lastposition = runtimenode;
               break;
             }
@@ -194,8 +204,8 @@ HostTraceEventNode* NodeTrees::BuildTreeRelationship(
     bool hasenter = false;
     for (auto runtimenode = runtime_event_nodes.begin();
          runtimenode != runtime_event_nodes.end(); ++runtimenode) {
-      if (((*runtimenode)->start_ns() >= stack_top_node->start_ns()) &&
-          ((*runtimenode)->end_ns() <= stack_top_node->end_ns())) {
+      if (((*runtimenode)->StartNs() >= stack_top_node->StartNs()) &&
+          ((*runtimenode)->EndNs() <= stack_top_node->EndNs())) {
         if (!hasenter) {
           firstposition = runtimenode;
           hasenter = true;
@@ -204,7 +214,7 @@ HostTraceEventNode* NodeTrees::BuildTreeRelationship(
       } else {
         // from this runtime node, not within stack_top_node, erase the
         // nodes from runtime_event_nodes
-        if ((*runtimenode)->start_ns() > stack_top_node->end_ns()) {
+        if ((*runtimenode)->StartNs() > stack_top_node->EndNs()) {
           lastposition = runtimenode;
           break;
         }
@@ -273,9 +283,11 @@ void NodeTrees::HandleTrees(
       thread2host_event_nodes = Traverse(true);
   for (auto it = thread2host_event_nodes.begin();
        it != thread2host_event_nodes.end(); ++it) {
-    for (auto hostnode = it->second.begin() + 1; hostnode != it->second.end();
-         ++hostnode) {  // skip root node
-      host_event_node_handle(*hostnode);
+    for (auto hostnode = it->second.begin(); hostnode != it->second.end();
+         ++hostnode) {
+      if (hostnode != it->second.begin()) {  // skip root node
+        host_event_node_handle(*hostnode);
+      }
       for (auto runtimenode = (*hostnode)->GetRuntimeTraceEventNodes().begin();
            runtimenode != (*hostnode)->GetRuntimeTraceEventNodes().end();
            ++runtimenode) {
