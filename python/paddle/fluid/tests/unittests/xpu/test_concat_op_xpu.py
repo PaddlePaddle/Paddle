@@ -23,6 +23,7 @@ import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard, core
 import paddle
+from op_test import OpTest, skip_check_grad_ci
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
@@ -114,6 +115,31 @@ class XPUTestConcatOp(XPUOpTestWrapper):
     class TestConcatOpAxisNeg3XPU(TestConcatOp):
         def init_axis(self):
             self.axis = -3
+
+    @skip_check_grad_ci(
+        reason="The function 'check_grad' for large inputs is too slow.")
+    class TestConcatOp3(TestConcatOp):
+        def set_inputs(self):
+            self.x0 = np.random.random((1, 256, 170, 256)).astype(self.dtype)
+            self.x1 = np.random.random((1, 128, 170, 256)).astype(self.dtype)
+            self.x2 = np.random.random((1, 128, 170, 256)).astype(self.dtype)
+            self.axis = 1
+
+        def test_check_grad(self):
+            pass
+
+    @skip_check_grad_ci(
+        reason="This test will meet fetch error when there is a null grad. The detailed information is in PR#17015."
+    )
+    class TestConcatOp4(TestConcatOp):
+        def set_inputs(self):
+            self.x0 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
+            self.x1 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
+            self.x2 = np.random.random((0, 3, 4, 5)).astype(self.dtype)
+            self.axis = 0
+
+        def test_check_grad(self):
+            pass
 
 
 support_types = get_xpu_op_support_types('concat')
