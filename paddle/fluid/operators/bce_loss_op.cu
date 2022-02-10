@@ -31,7 +31,7 @@ struct BCELossFunctor {
     neg_100 = static_cast<T>(-100.);
   }
 
-  HOSTDEVICE inline T operator()(const T& x, const T& label) const {
+  HOSTDEVICE inline T operator()(const T x, const T label) const {
     PADDLE_ENFORCE(
         (x >= static_cast<T>(0)) && (x <= one),
         "Input is expected to be within the interval [0, 1], but recieved %f.",
@@ -52,8 +52,7 @@ struct BCELossGradFunctor {
     eps = static_cast<T>(1e-12);
   }
 
-  HOSTDEVICE inline T operator()(const T& x, const T& label,
-                                 const T& dout) const {
+  HOSTDEVICE inline T operator()(const T x, const T label, const T dout) const {
     T term1 = max((one - x) * x, eps);
     return (dout * (x - label) / term1);
   }
@@ -73,8 +72,8 @@ class BCELossCUDAKernel : public framework::OpKernel<T> {
     std::vector<framework::Tensor*> outs = {out};
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto functor = BCELossFunctor<T>();
-    paddle::operators::LaunchSameDimsElementwiseCudaKernel<
-        ElementwiseType::kBinary, T, T>(dev_ctx, ins, &outs, functor);
+    paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins,
+                                                              &outs, functor);
   }
 };
 

@@ -25,7 +25,6 @@ namespace framework {
 template <typename T, size_t N>
 class Array {
  public:
-  using ELEMENT_TYPE = T;
   static constexpr size_t kSize = N;
 
   HOSTDEVICE inline Array() {}
@@ -93,7 +92,6 @@ class Array {
 template <typename T>
 class Array<T, 0> {
  public:
-  using ELEMENT_TYPE = T;
   static constexpr size_t kSize = 0;
 
   HOSTDEVICE inline Array() {}

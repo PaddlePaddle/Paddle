@@ -45,7 +45,7 @@ template <typename T>
 class ClipGradFunctor {
  public:
   explicit ClipGradFunctor(const T min, const T max) : min_(min), max_(max) {}
-  HOSTDEVICE T operator()(const T& x, const T& y) const {
+  HOSTDEVICE T operator()(const T x, const T y) const {
     return (y > min_ && y < max_) ? x : static_cast<T>(0);
   }
 
@@ -176,7 +176,7 @@ class ClipGradKernel : public framework::OpKernel<T> {
       std::vector<framework::Tensor*> outs = {d_x};
       auto functor = ClipGradFunctor<T>(min, max);
       d_x->mutable_data<T>(context.GetPlace());
-      LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+      LaunchSameDimsElementwiseCudaKernel<T>(
           context.template device_context<platform::CUDADeviceContext>(), ins,
           &outs, functor);
 #else

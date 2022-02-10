@@ -55,7 +55,7 @@ class CompareReduceOpKernel
           context.template device_context<platform::CUDADeviceContext>();
       std::vector<const framework::Tensor*> ins = {x, y};
       std::vector<framework::Tensor*> outs = {&tmp};
-      paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<bool>(
           cuda_ctx, ins, &outs, Functor());
 
       // Reduce by 'bitwise and' operator

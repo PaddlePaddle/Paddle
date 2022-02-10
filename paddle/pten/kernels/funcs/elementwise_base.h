@@ -40,16 +40,6 @@ template <class T, int Num>
 using ConditionalT =
     typename std::conditional_t<Num == 1, T, pten::framework::Array<T, Num>>;
 
-template <typename T, int N>
-struct ArrayTraits {
-  using type = typename T::ELEMENT_TYPE;
-};
-
-template <typename T>
-struct ArrayTraits<T, 1> {
-  using type = T;
-};
-
 namespace funcs {
 using DDim = pten::framework::DDim;
 
@@ -589,18 +579,18 @@ struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 3, false> {
 };
 
 namespace detail {
-template <class F, class Tuple, std::size_t... INDEX>
+template <class F, class Tuple, std::size_t... Index>
 // GCC/Clang need the decltype() return type
-HOSTDEVICE constexpr decltype(auto) apply_impl(F &&f,
-                                               Tuple &&t,
-                                               std::index_sequence<INDEX...>) {
-  return std::forward<F>(f)(std::get<INDEX>(std::forward<Tuple>(t))...);
+HOSTDEVICE constexpr decltype(auto) ApplyImpl(F &&f,
+                                              Tuple &&t,
+                                              std::index_sequence<Index...>) {
+  return std::forward<F>(f)(std::get<Index>(std::forward<Tuple>(t))...);
 }
 }  // namespace detail
 
 template <class F, class Tuple>
-HOSTDEVICE constexpr decltype(auto) apply(F &&f, Tuple &&t) {
-  return detail::apply_impl(
+HOSTDEVICE constexpr decltype(auto) Apply(F &&f, Tuple &&t) {
+  return detail::ApplyImpl(
       std::forward<F>(f),
       std::forward<Tuple>(t),
       std::make_index_sequence<
@@ -616,7 +606,7 @@ struct SameDimsElementwisePrimitiveCaller {
   __device__ inline void operator()(Functor func, ArgsT *args, OutT *result) {
 #pragma unroll
     for (int idx = 0; idx < VecSize; ++idx) {
-      result[idx] = static_cast<OutT>(apply(func, args[idx]));
+      result[idx] = static_cast<OutT>(Apply(func, args[idx]));
     }
   }
 };
@@ -664,12 +654,14 @@ template <typename OutT,
           bool IsBoundary>
 __device__ void VectorizedElementwiseKernelImpl(
 
-    const pten::framework::Array<const _ptr_ InT *__restrict__, Arity> &in,
+    const pten::framework::Array<const _ptr_ char *__restrict__, Arity> &in,
     pten::framework::Array<_ptr_ OutT *, NumOuts> outs,
     int num,
     int data_offset,
     Functor func) {
-  InT args[Arity > 1 ? Arity : 1][VecSize];
+  using Traits = paddle::platform::FunctionTraits<Functor>;
+  using ArgsT = typename Traits::ArgsTuple;
+  ArgsT args[VecSize];
   ConditionalT<OutT, NumOuts> result[VecSize];
 
   Unroller<Loader, VecSize, Arity>::step(
@@ -722,7 +714,7 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
                            Functor func) {
   auto numel =
       (*outs)[0]->numel();  // To avoid running errors when ins.size()== 0
-  pten::framework::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
+  pten::framework::Array<const _ptr_ char *__restrict__, Arity> ins_data;
   pten::framework::Array<_ptr_ OutT *, NumOuts> outs_data;
 
   Unroller<InputSetter, VecSize, Arity>::step(ins, &ins_data);

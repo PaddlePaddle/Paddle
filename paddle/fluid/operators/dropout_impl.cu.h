@@ -278,7 +278,8 @@ void DropoutGradGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
         std::vector<const framework::Tensor*> ins = {&grad_y, &mask};
         std::vector<framework::Tensor*> outs = {grad_x};
         auto functor = CudaDropoutGradFunctor<T, uint8_t>(factor);
-        LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins, &outs, functor);
+        paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
+            dev_ctx, ins, &outs, functor);
       }
     } else {
       dX.device(place) = dY * M.cast<T>();
