@@ -11,6 +11,17 @@
 
 namespace paddle {
 namespace framework {
+
+void WorkQueueOptions::Validate() const {
+  PADDLE_ENFORCE_GT(name.size(), 0,
+                    platform::errors::InvalidArgument(
+                        "WorkQueueOptions.name must be nonempty"));
+  PADDLE_ENFORCE_EQ(
+      name.find('_'), std::string::npos,
+      platform::errors::InvalidArgument(
+          "WorkQueueOptions.name shouldn't contain an underline"));
+}
+
 namespace {
 
 using TaskTracker = TaskTracker<EventsWaiter::EventNotifier>;
@@ -30,7 +41,7 @@ class WorkQueueImpl : public WorkQueue {
       destruct_notifier_ =
           options.events_waiter->RegisterEvent(kQueueDestructEvent);
     }
-    queue_ = new NonblockingThreadPool(options_.num_threads,
+    queue_ = new NonblockingThreadPool(options_.name, options_.num_threads,
                                        options_.allow_spinning);
   }
 
@@ -121,8 +132,8 @@ WorkQueueGroupImpl::WorkQueueGroupImpl(
       destruct_notifier_ =
           options.events_waiter->RegisterEvent(kQueueDestructEvent);
     }
-    queues_[idx] = new (&queues_storage_[idx])
-        NonblockingThreadPool(options.num_threads, options.allow_spinning);
+    queues_[idx] = new (&queues_storage_[idx]) NonblockingThreadPool(
+        options.name, options.num_threads, options.allow_spinning);
   }
 }
 
@@ -182,6 +193,8 @@ void WorkQueueGroupImpl::Cancel() {
 
 std::unique_ptr<WorkQueue> CreateSingleThreadedWorkQueue(
     const WorkQueueOptions& options) {
+  options.Validate();
+  // extra check
   PADDLE_ENFORCE_EQ(options.num_threads, 1u,
                     platform::errors::InvalidArgument(
                         "For a SingleThreadedWorkQueue, "
@@ -192,6 +205,8 @@ std::unique_ptr<WorkQueue> CreateSingleThreadedWorkQueue(
 
 std::unique_ptr<WorkQueue> CreateMultiThreadedWorkQueue(
     const WorkQueueOptions& options) {
+  options.Validate();
+  // extra check
   PADDLE_ENFORCE_GT(
       options.num_threads, 1u,
       platform::errors::InvalidArgument("For a MultiThreadedWorkQueue, "
@@ -207,6 +222,9 @@ std::unique_ptr<WorkQueueGroup> CreateWorkQueueGroup(
                     platform::errors::InvalidArgument(
                         "For a WorkQueueGroup, the number of WorkQueueOptions "
                         "must be greater than 1."));
+  for (const auto& opts : queues_options) {
+    opts.Validate();
+  }
   std::unique_ptr<WorkQueueGroup> ptr(new WorkQueueGroupImpl(queues_options));
   return ptr;
 }

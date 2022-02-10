@@ -209,7 +209,8 @@ class AutoParallelizer:
 
         make_data_unshard(dist_main_prog, dist_startup_prog, self._dist_context)
 
-        reshard(dist_main_prog, dist_startup_prog, rank, self._dist_context)
+        reshard(dist_main_prog, dist_startup_prog, rank, self._dist_context,
+                dist_params_grads)
 
         self._apply_post_optimization_passes(dist_main_prog, dist_startup_prog,
                                              rank, dist_params_grads)

@@ -12,15 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/pten/infermeta/binary.h"
 #include "paddle/pten/kernels/funcs/common_shape.h"
 
 namespace pten {
 
-DenseTensorMeta DotInferMeta(const DenseTensorMeta& x_meta,
-                             const DenseTensorMeta& y_meta) {
-  auto x_dims = x_meta.dims;
+void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
+  auto x_dims = x.dims();
   auto x_rank = static_cast<size_t>(x_dims.size());
   PADDLE_ENFORCE_EQ(true,
                     1 == x_rank || 2 == x_rank,
@@ -29,10 +27,10 @@ DenseTensorMeta DotInferMeta(const DenseTensorMeta& x_meta,
                         "should be 1 or 2",
                         x_dims.to_str()));
 
-  auto y_dims = y_meta.dims;
+  auto y_dims = y.dims();
   PADDLE_ENFORCE_EQ(
       true,
-      x_rank == (size_t)y_dims.size(),
+      x_rank == static_cast<size_t>(y_dims.size()),
       paddle::platform::errors::PreconditionNotMet(
           "ShapeError: The shape of input tensor Y: %s should match with "
           "input tenosr X: %s",
@@ -56,25 +54,27 @@ DenseTensorMeta DotInferMeta(const DenseTensorMeta& x_meta,
                         y_dims.to_str()));
 
   x_dims[x_dims.size() - 1] = 1;
-  DenseTensorMeta return_meta(x_meta.dtype, x_dims, x_meta.layout);
-  return return_meta;
+  out->set_dims(x_dims);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
 }
 
-DenseTensorMeta MatmulInferMeta(const DenseTensorMeta& x_meta,
-                                const DenseTensorMeta& y_meta,
-                                bool trans_x,
-                                bool trans_y) {
-  std::vector<int64_t> dims_x = pten::framework::vectorize(x_meta.dims);
-  std::vector<int64_t> dims_y = pten::framework::vectorize(y_meta.dims);
+void MatmulInferMeta(const MetaTensor& x,
+                     const MetaTensor& y,
+                     bool trans_x,
+                     bool trans_y,
+                     MetaTensor* out) {
+  std::vector<int64_t> dims_x = pten::framework::vectorize(x.dims());
+  std::vector<int64_t> dims_y = pten::framework::vectorize(y.dims());
   auto ndims_x = dims_x.size();
   auto ndims_y = dims_y.size();
   PADDLE_ENFORCE_GT(ndims_x,
-                    0,
+                    0UL,
                     paddle::platform::errors::InvalidArgument(
                         "The Input(x) dims size must be greater than 0,"
                         " but reviced dims size is 0. "));
   PADDLE_ENFORCE_GT(ndims_y,
-                    0,
+                    0UL,
                     paddle::platform::errors::InvalidArgument(
                         "The Input(y) dims size must be greater than 0,"
                         " but reviced dims size is 0. "));
@@ -127,16 +127,24 @@ DenseTensorMeta MatmulInferMeta(const DenseTensorMeta& x_meta,
 
   auto ddim_out = pten::framework::make_ddim(new_dims);
 
-  return {x_meta.dtype, ddim_out, x_meta.layout};
+  out->set_dims(ddim_out);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
 }
 
-DenseTensorMeta ElementwiseInferMeta(const DenseTensorMeta& x_meta,
-                                     const DenseTensorMeta& y_meta,
-                                     int axis) {
-  DenseTensorMeta return_meta(x_meta.dtype, x_meta.dims, x_meta.layout);
-  if (x_meta.dims != y_meta.dims) {
-    auto x_dims = x_meta.dims;
-    auto y_dims = y_meta.dims;
+void ElementwiseInferMeta(const MetaTensor& x,
+                          const MetaTensor& y,
+                          MetaTensor* out) {
+  return ElementwiseRawInferMeta(x, y, -1, std::move(out));
+}
+
+void ElementwiseRawInferMeta(const MetaTensor& x,
+                             const MetaTensor& y,
+                             int axis,
+                             MetaTensor* out) {
+  if (x.dims() != y.dims()) {
+    auto x_dims = x.dims();
+    auto y_dims = y.dims();
     int max_dim = std::max(x_dims.size(), y_dims.size());
     if (x_dims.size() == y_dims.size()) {
       PADDLE_ENFORCE_EQ((axis == -1) || (axis == 0),
@@ -169,10 +177,15 @@ DenseTensorMeta ElementwiseInferMeta(const DenseTensorMeta& x_meta,
                                   out_dims_array.data(),
                                   max_dim,
                                   axis);
-    return_meta.dims = pten::framework::make_ddim(out_dims_array);
+    auto out_dims = pten::framework::make_ddim(out_dims_array);
+    out->set_dims(out_dims);
+  } else {
+    out->set_dims(x.dims());
   }
-  return_meta.lod = x_meta.lod;
-  return return_meta;
+
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+  out->share_lod(x);
 }
 
 }  // namespace pten

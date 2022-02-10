@@ -47,7 +47,7 @@ void ConcatCpuKernel(const std::vector<paddle::Tensor>& ins,
   int64_t out_cols = 0;
   auto ins_cols = GetCols(ins, out_rows, &out_cols);
 
-  auto* out_data = out->mutable_data<data_t>(paddle::PlaceType::kCPU);
+  auto* out_data = out->mutable_data<data_t>();
   int64_t col_idx = 0;
   for (size_t i = 0; i < num; ++i) {
     int64_t col_len = ins_cols[i];
@@ -76,9 +76,7 @@ void SplitCpuKernel(const paddle::Tensor& in,
     int64_t col_idx = 0;
     for (size_t j = 0; j < num; ++j) {
       int64_t col_len = out_cols[j];
-      auto* out_data =
-          outs->at(j).mutable_data<data_t>(paddle::PlaceType::kCPU) +
-          i * col_len;
+      auto* out_data = outs->at(j).mutable_data<data_t>() + i * col_len;
       std::memcpy(out_data, in_data + col_idx, sizeof(data_t) * col_len);
       col_idx += col_len;
     }

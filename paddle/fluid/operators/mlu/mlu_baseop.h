@@ -678,7 +678,10 @@ class MLUCnnl {
                        const cnnlTensorDescriptor_t a_desc, const void* a,
                        const cnnlTensorDescriptor_t b_desc, const void* b,
                        const cnnlTensorDescriptor_t output_desc, void* output,
-                       const cnnlDataType_t dtype);
+                       const cnnlDataType_t dtype,
+                       const float alpha1_float = 1.f,
+                       const float alpha2_float = 1.f,
+                       const float beta_float = 0.f);
 
   static void BiasAddGrad(const ExecutionContext& ctx, const int axis,
                           const cnnlTensorDescriptor_t out_backprop_desc,
@@ -1136,6 +1139,29 @@ class MLUCnnl {
                          const cnnlTensorDescriptor_t output_desc,
                          void* output);
 };
+
+template <typename T>
+inline void TransposeFromMLUTensor(const ExecutionContext& ctx,
+                                   const std::vector<int> perm,
+                                   const Tensor* transformed_input,
+                                   Tensor* transformed_output,
+                                   bool need_reshape_or_alloc) {
+  auto in_dims_vec = framework::vectorize(transformed_input->dims());
+  if (need_reshape_or_alloc) {
+    transformed_output->mutable_data<T>(
+        {in_dims_vec[perm[0]], in_dims_vec[perm[1]], in_dims_vec[perm[2]],
+         in_dims_vec[perm[3]]},
+        ctx.GetPlace());
+  }
+  MLUCnnlTensorDesc trans_in_desc(*transformed_input, CNNL_LAYOUT_ARRAY,
+                                  ToCnnlDataType<T>());
+  MLUCnnlTensorDesc trans_out_desc(*transformed_output, CNNL_LAYOUT_ARRAY,
+                                   ToCnnlDataType<T>());
+
+  MLUCnnl::Transpose(ctx, perm, in_dims_vec.size(), trans_in_desc.get(),
+                     GetBasePtr(transformed_input), trans_out_desc.get(),
+                     GetBasePtr(transformed_output));
+}
 
 }  // namespace operators
 }  // namespace paddle

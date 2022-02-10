@@ -19,15 +19,15 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
-#include "paddle/pten/api/include/utils.h"
+#include "paddle/pten/api/include/manual_api.h"
 #include "paddle/pten/api/lib/ext_compat_utils.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/api/lib/utils/storage.h"
-#include "paddle/pten/core/compat_utils.h"
-#include "paddle/pten/core/convert_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/tensor_base.h"
 #include "paddle/pten/core/tensor_meta.h"
+#include "paddle/pten/core/tensor_utils.h"
 
 /**
  * [ Why still include the fluid headers? ]
@@ -77,17 +77,22 @@ Tensor::Tensor(const PlaceType &place)
           std::move(pten::make_intrusive<SharedStorage>(
               ConvertExtPlaceToInnerPlace(place))),
           std::move(pten::DenseTensorMeta(pten::DataType::UNDEFINED,
-                                          framework::make_ddim({}),
-                                          pten::DataLayout::NCHW))))) {}
+                                          pten::framework::make_ddim({}),
+                                          pten::DataLayout::NCHW))))),
+      place_{place} {}
 
 Tensor::Tensor(const PlaceType &place, const std::vector<int64_t> &shape)
     : impl_(std::move(std::make_shared<pten::DenseTensor>(
           std::move(pten::make_intrusive<SharedStorage>(
               ConvertExtPlaceToInnerPlace(place))),
           std::move(pten::DenseTensorMeta(pten::DataType::UNDEFINED,
-                                          framework::make_ddim(shape),
-                                          pten::DataLayout::NCHW))))) {}
+                                          pten::framework::make_ddim(shape),
+                                          pten::DataLayout::NCHW))))),
+      place_{place} {}
 
+Tensor::Tensor(std::shared_ptr<pten::TensorBase> tensor_impl,
+               const std::string &name)
+    : impl_(std::move(tensor_impl)), name_(std::move(name)) {}
 /* Part 2: Dimension, DataType and DataLayout methods */
 
 int64_t Tensor::numel() const { return impl_->numel(); }
@@ -111,7 +116,7 @@ void Tensor::reshape(const std::vector<int64_t> &shape) {
                   "the tensor to remain constant.";
   if (is_dense_tensor()) {
     std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->set_meta(
-        pten::DenseTensorMeta(dtype(), framework::make_ddim(shape)));
+        pten::DenseTensorMeta(dtype(), pten::framework::make_ddim(shape)));
   } else {
     PADDLE_THROW(pten::errors::Unimplemented(
         "Only support reshape operation on DenseTensor now."));
@@ -131,17 +136,23 @@ bool Tensor::is_dense_tensor() const {
 /* Part 3: Device and Backend methods */
 
 PlaceType Tensor::place() const {
-  return ConvertInnerPlaceToExtPlace(impl_->place());
+  if (!impl_->initialized()) {
+    return place_;
+  } else {
+    return ConvertInnerPlaceToExtPlace(impl_->place());
+  }
 }
 
-paddle::platform::Place Tensor::inner_place() const { return impl_->place(); }
+paddle::platform::Place Tensor::inner_place() const {
+  return ConvertExtPlaceToInnerPlace(place());
+}
 
 bool Tensor::is_cpu() const {
-  return paddle::platform::is_cpu_place(impl_->place());
+  return paddle::platform::is_cpu_place(inner_place());
 }
 
 bool Tensor::is_cuda() const {
-  return paddle::platform::is_gpu_place(impl_->place());
+  return paddle::platform::is_gpu_place(inner_place());
 }
 
 /* Part 4: Data Access methods */
@@ -262,7 +273,7 @@ Tensor::data<paddle::platform::float16>();
 Tensor Tensor::slice(int64_t begin_idx, int64_t end_idx) const {
   if (is_dense_tensor()) {
     return Tensor(std::make_shared<pten::DenseTensor>(
-        std::move(pten::CompatibleDenseTensorUtils::Slice(
+        std::move(pten::DenseTensorUtils::Slice(
             *(std::dynamic_pointer_cast<pten::DenseTensor>(impl_).get()),
             begin_idx,
             end_idx))));
@@ -369,12 +380,16 @@ void Tensor::reset() { impl_.reset(); }
 Tensor &Tensor::operator=(const Tensor &x) & {
   impl_ = x.impl_;
   autograd_meta_ = x.autograd_meta_;
+  name_ = x.name_;
+  place_ = x.place_;
   return *this;
 }
 
 Tensor &Tensor::operator=(Tensor &&x) & {
   impl_ = std::move(x.impl_);
   autograd_meta_ = std::move(x.autograd_meta_);
+  name_ = std::move(x.name_);
+  place_ = std::move(x.place_);
   return *this;
 }
 
