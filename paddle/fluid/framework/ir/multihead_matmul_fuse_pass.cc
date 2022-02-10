@@ -905,8 +905,10 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
         multihead_op_desc.SetAttr("dp_probs", qkv_plugin_scale);
       }
     }
-    multihead_op_desc.SetAttr("out_threshold",
-                              reshape2_qkv->Op()->GetAttr("out_threshold"));
+    if (reshape2_qkv->Op()->HasAttr("out_threshold")) {
+        multihead_op_desc.SetAttr("out_threshold",
+                                reshape2_qkv->Op()->GetAttr("out_threshold"));
+    }
     auto* multihead = graph->CreateOpNode(&multihead_op_desc);
 
     IR_NODE_LINK_TO(input0, multihead);
