@@ -53,11 +53,11 @@ struct SetConstant {
 };
 
 template <typename Place>
-void set_constant_with_place(const platform::DeviceContext& context,
+void set_constant_with_place(const paddle::platform::DeviceContext& context,
                              paddle::framework::Tensor* tensor,
                              float value);
 
-void set_constant(const platform::DeviceContext& context,
+void set_constant(const paddle::platform::DeviceContext& context,
                   paddle::framework::Tensor* tensor,
                   float value);
 

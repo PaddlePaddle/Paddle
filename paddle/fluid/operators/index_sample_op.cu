@@ -27,10 +27,10 @@ namespace operators {
 
 namespace {
 void LimitGridDim(const framework::ExecutionContext& ctx, dim3* grid_dim) {
-  dim3 max_grid_dim = ctx.template device_context<platform::CUDADeviceContext>()
+  auto max_grid_dim = ctx.template device_context<platform::CUDADeviceContext>()
                           .GetCUDAMaxGridDimSize();
-  grid_dim->x = grid_dim->x < max_grid_dim.x ? grid_dim->x : max_grid_dim.x;
-  grid_dim->y = grid_dim->y < max_grid_dim.y ? grid_dim->y : max_grid_dim.y;
+  grid_dim->x = grid_dim->x < max_grid_dim[0] ? grid_dim->x : max_grid_dim[0];
+  grid_dim->y = grid_dim->y < max_grid_dim[1] ? grid_dim->y : max_grid_dim[1];
 }
 }
 

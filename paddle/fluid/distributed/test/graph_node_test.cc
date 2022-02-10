@@ -46,8 +46,8 @@ namespace operators = paddle::operators;
 namespace memory = paddle::memory;
 namespace distributed = paddle::distributed;
 
-void testSampleNodes(std::shared_ptr<paddle::distributed::GraphBrpcClient>&
-                         worker_ptr_) {  // NOLINT
+void testSampleNodes(
+    std::shared_ptr<paddle::distributed::GraphBrpcClient>& worker_ptr_) {
   std::vector<uint64_t> ids;
   auto pull_status = worker_ptr_->random_sample_nodes(0, 0, 6, ids);
   std::unordered_set<uint64_t> s;
@@ -105,8 +105,7 @@ void testFeatureNodeSerializeFloat64() {
 }
 
 void testSingleSampleNeighboor(
-    std::shared_ptr<paddle::distributed::GraphBrpcClient>&
-        worker_ptr_) {  // NOLINT
+    std::shared_ptr<paddle::distributed::GraphBrpcClient>& worker_ptr_) {
   std::vector<std::vector<uint64_t>> vs;
   std::vector<std::vector<float>> vs1;
   auto pull_status = worker_ptr_->batch_sample_neighbors(
@@ -144,15 +143,15 @@ void testSingleSampleNeighboor(
   ASSERT_EQ(vs.size(), 2);
 }
 
-void testAddNode(std::shared_ptr<paddle::distributed::GraphBrpcClient>&
-                     worker_ptr_) {  // NOLINT
+void testAddNode(
+    std::shared_ptr<paddle::distributed::GraphBrpcClient>& worker_ptr_) {
   worker_ptr_->clear_nodes(0);
   int total_num = 270000;
   uint64_t id;
   std::unordered_set<uint64_t> id_set;
   for (int i = 0; i < total_num; i++) {
-    while (id_set.find(id = rand()) != id_set.end()) {  // NOLINT
-    }
+    while (id_set.find(id = rand()) != id_set.end())
+      ;
     id_set.insert(id);
   }
   std::vector<uint64_t> id_list(id_set.begin(), id_set.end());
@@ -173,10 +172,9 @@ void testAddNode(std::shared_ptr<paddle::distributed::GraphBrpcClient>&
   }
   std::vector<uint64_t> remove_ids;
   for (auto p : id_set_check) {
-    if (remove_ids.size() == 0) {
+    if (remove_ids.size() == 0)
       remove_ids.push_back(p);
-    } else if (remove_ids.size() < total_num / 2 &&
-               rand() % 2 == 1) {  // NOLINT
+    else if (remove_ids.size() < total_num / 2 && rand() % 2 == 1) {
       remove_ids.push_back(p);
     }
   }
@@ -197,8 +195,7 @@ void testAddNode(std::shared_ptr<paddle::distributed::GraphBrpcClient>&
   }
 }
 void testBatchSampleNeighboor(
-    std::shared_ptr<paddle::distributed::GraphBrpcClient>&
-        worker_ptr_) {  // NOLINT
+    std::shared_ptr<paddle::distributed::GraphBrpcClient>& worker_ptr_) {
   std::vector<std::vector<uint64_t>> vs;
   std::vector<std::vector<float>> vs1;
   std::vector<std::uint64_t> v = {37, 96};
@@ -229,7 +226,7 @@ void testBatchSampleNeighboor(
 void testCache();
 void testGraphToBuffer();
 
-std::vector<std::string> edges = {
+std::string edges[] = {
     std::string("37\t45\t0.34"),  std::string("37\t145\t0.31"),
     std::string("37\t112\t0.21"), std::string("96\t48\t1.4"),
     std::string("96\t247\t0.31"), std::string("96\t111\t1.21"),
@@ -238,7 +235,7 @@ std::vector<std::string> edges = {
     std::string("97\t247\t0.31"), std::string("97\t111\t0.21")};
 char edge_file_name[] = "edges.txt";
 
-std::vector<std::string> nodes = {
+std::string nodes[] = {
     std::string("user\t37\ta 0.34\tb 13 14\tc hello\td abc"),
     std::string("user\t96\ta 0.31\tb 15 10\tc 96hello\td abcd"),
     std::string("user\t59\ta 0.11\tb 11 14"),
@@ -261,11 +258,11 @@ void prepare_file(char file_name[], bool load_edge) {
   std::ofstream ofile;
   ofile.open(file_name);
   if (load_edge) {
-    for (auto& x : edges) {
+    for (auto x : edges) {
       ofile << x << std::endl;
     }
   } else {
-    for (auto& x : nodes) {
+    for (auto x : nodes) {
       ofile << x << std::endl;
     }
   }
@@ -336,8 +333,7 @@ void GetDownpourSparseTableProto(
 
 /*-------------------------------------------------------------------------*/
 
-const char ip_[] = "127.0.0.1";
-const char ip2[] = "127.0.0.1";
+std::string ip_ = "127.0.0.1", ip2 = "127.0.0.1";
 uint32_t port_ = 5209, port2 = 5210;
 
 std::vector<std::string> host_sign_list_;
@@ -383,10 +379,9 @@ void RunServer2() {
   pserver_ptr2->build_peer2peer_connection(1);
 }
 
-void RunClient(std::map<uint64_t, std::vector<paddle::distributed::Region>>&
-                   dense_regions,  // NOLINT
-               int index,
-               paddle::distributed::PsBaseService* service) {
+void RunClient(
+    std::map<uint64_t, std::vector<paddle::distributed::Region>>& dense_regions,
+    int index, paddle::distributed::PsBaseService* service) {
   ::paddle::distributed::PSParameter worker_proto = GetWorkerProto();
   paddle::distributed::PaddlePSEnvironment _ps_env;
   auto servers_ = host_sign_list_.size();
@@ -604,7 +599,7 @@ void RunBrpcPushSparse() {
   node_feat =
       client1.get_node_feat(std::string("user"), node_ids, feature_names);
   VLOG(0) << "get_node_feat: " << node_feat[1][0];
-  ASSERT_EQ(node_feat[1][0], "helloworld");
+  ASSERT_TRUE(node_feat[1][0] == "helloworld");
 
   // Test string
   node_ids.clear();
@@ -643,7 +638,7 @@ void testCache() {
                                    ::paddle::distributed::SampleResult>
       st(1, 2, 4);
   char* str = new char[7];
-  strcpy(str, "54321");  // NOLINT
+  strcpy(str, "54321");
   ::paddle::distributed::SampleResult* result =
       new ::paddle::distributed::SampleResult(5, str);
   ::paddle::distributed::SampleKey skey = {6, 1, false};
@@ -657,31 +652,31 @@ void testCache() {
   for (int i = 0; i < st.get_ttl(); i++) {
     st.query(0, &skey, 1, r);
     ASSERT_EQ((int)r.size(), 1);
-    char* p = static_cast<char*>(r[0].second.buffer.get());
+    char* p = (char*)r[0].second.buffer.get();
     for (int j = 0; j < r[0].second.actual_size; j++) ASSERT_EQ(p[j], str[j]);
     r.clear();
   }
   st.query(0, &skey, 1, r);
   ASSERT_EQ((int)r.size(), 0);
   str = new char[10];
-  strcpy(str, "54321678");  // NOLINT
+  strcpy(str, "54321678");
   result = new ::paddle::distributed::SampleResult(strlen(str), str);
   st.insert(0, &skey, result, 1);
   for (int i = 0; i < st.get_ttl() / 2; i++) {
     st.query(0, &skey, 1, r);
     ASSERT_EQ((int)r.size(), 1);
-    char* p = static_cast<char*>(r[0].second.buffer.get());
+    char* p = (char*)r[0].second.buffer.get();
     for (int j = 0; j < r[0].second.actual_size; j++) ASSERT_EQ(p[j], str[j]);
     r.clear();
   }
   str = new char[18];
-  strcpy(str, "343332d4321");  // NOLINT
+  strcpy(str, "343332d4321");
   result = new ::paddle::distributed::SampleResult(strlen(str), str);
   st.insert(0, &skey, result, 1);
   for (int i = 0; i < st.get_ttl(); i++) {
     st.query(0, &skey, 1, r);
     ASSERT_EQ((int)r.size(), 1);
-    char* p = static_cast<char*>(r[0].second.buffer.get());
+    char* p = (char*)r[0].second.buffer.get();
     for (int j = 0; j < r[0].second.actual_size; j++) ASSERT_EQ(p[j], str[j]);
     r.clear();
   }
@@ -694,10 +689,9 @@ void testGraphToBuffer() {
   s.set_feature(0, std::string("hhhh"));
   s.set_id(65);
   int size = s.get_size(true);
-  std::vector<char> str;
-  str.reserve(size);
-  s.to_buffer(str.data(), true);
-  s1.recover_from_buffer(str.data());
+  char str[size];
+  s.to_buffer(str, true);
+  s1.recover_from_buffer(str);
   ASSERT_EQ(s.get_id(), s1.get_id());
   VLOG(0) << s.get_feature(0);
   VLOG(0) << s1.get_feature(0);

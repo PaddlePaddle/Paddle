@@ -307,8 +307,8 @@ XPUOpMap& get_kl2_ops() {
       {"slice", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                               pOpKernelType(vartype::FP16, XPUPlace()),
                               pOpKernelType(vartype::INT32, XPUPlace())})},
-      {"softmax_grad",
-       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"softmax", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                                pOpKernelType(vartype::FP16, XPUPlace())})},
       {"softmax_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
@@ -317,9 +317,6 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::FP16, XPUPlace())})},
       {"softmax_with_cross_entropy",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
-      {"softmax", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
-      {"softmax", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
-                                pOpKernelType(vartype::FP16, XPUPlace())})},
       {"split", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                               pOpKernelType(vartype::INT32, XPUPlace())})},
       {"squeeze2_grad",
@@ -386,6 +383,10 @@ XPUOpMap& get_kl2_ops() {
                               pOpKernelType(vartype::FP32, XPUPlace())})},
 
       // AddMore
+      {"sequence_conv",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"sequence_conv_grad",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
   };
 
   return s_xpu2_kernels;

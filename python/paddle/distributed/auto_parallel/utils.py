@@ -1002,7 +1002,7 @@ def set_grad_var_shape(program, dist_context):
         if op.type in ["check_finite_and_unscale", "update_loss_scaling"]:
             break
 
-        if op.type in ["sum"]:
+        if op.type in ["sum", "concat"]:
             continue
         if int(op.attr('op_role')) == int(OpRole.Backward):
             op_dist_attr = dist_context.get_op_dist_attr_for_program(op)

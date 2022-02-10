@@ -14,13 +14,12 @@ limitations under the License. */
 
 #include "paddle/pten/core/dense_tensor.h"
 
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/pten/common/bfloat16.h"
 #include "paddle/pten/common/complex.h"
 #include "paddle/pten/common/float16.h"
 
 #include "paddle/pten/api/lib/utils/storage.h"
-#include "paddle/pten/core/convert_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 
 namespace pten {
 /* --------------------------- */
@@ -77,13 +76,8 @@ void DenseTensor::set_layout(const paddle::framework::DataLayout layout) {
   meta_.layout = layout;
 }
 
+// Note: When you reset holder, you need to ensure the offset is correct
 void DenseTensor::ResetHolder(const std::shared_ptr<pten::Allocation>& holder) {
-  PADDLE_ENFORCE_EQ(
-      meta_.offset,
-      0,
-      paddle::platform::errors::Fatal(
-          "Only the offset is supported to zero when the holder is reset."));
-
   if (holder_) {
     // TODO(zyfncg): The change of static_cast<> in check will recover back
     // when SetAllocationForOutputTenosr is deleted.
@@ -91,7 +85,7 @@ void DenseTensor::ResetHolder(const std::shared_ptr<pten::Allocation>& holder) {
     // compare with a data with unsigned long type, this will make checking
     // failed, so it's a temporary solution to deal with this problem.
     PADDLE_ENFORCE_LE(
-        numel() * static_cast<int64_t>(SizeOf(dtype())),
+        numel() * static_cast<int64_t>(SizeOf(dtype())) + meta_.offset,
         static_cast<int64_t>(holder->size()),
         paddle::platform::errors::InvalidArgument(
             "The size of Holder is not enough to store the Tensor."));
@@ -145,7 +139,7 @@ void* DenseTensor::mutable_data(const paddle::platform::Place& place,
 
 void* DenseTensor::mutable_data(const paddle::platform::Place& place,
                                 paddle::framework::proto::VarType::Type type,
-                                const paddle::platform::Stream& stream) {
+                                const pten::Stream& stream) {
   set_type(type);
   PADDLE_ENFORCE_GE(
       numel(),

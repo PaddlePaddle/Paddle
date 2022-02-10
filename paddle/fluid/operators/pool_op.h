@@ -206,10 +206,9 @@ class PoolKernel : public framework::OpKernel<T> {
               adaptive) {  // for adaptive_avg_pool2d && output_size == 1
 #if defined(__HIPCC__) || defined(__NVCC__)
             auto stream = dev_ctx.stream();
-            TensorReduceFunctorImpl<T, T, kps::AddFunctor,
-                                    kps::DivideFunctor<T>>(
-                *in_x, out, kps::DivideFunctor<T>(reduce_num), reduce_dim,
-                stream);
+            TensorReduceImpl<T, T, kps::AddFunctor, kps::DivideFunctor<T>>(
+                dev_ctx, *in_x, out, kps::DivideFunctor<T>(reduce_num),
+                reduce_dim, stream);
 #else  // for cpu
             paddle::operators::math::Pool2dFunctor<
                 DeviceContext, paddle::operators::math::AvgPool<T>, T>

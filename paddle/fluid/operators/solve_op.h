@@ -45,8 +45,9 @@ void ReduceSumForSolve(const Tensor* input, Tensor* output,
                        const paddle::framework::ExecutionContext& ctx) {
 #if defined(__NVCC__) || defined(__HIPCC__)
   auto stream = ctx.cuda_device_context().stream();
-  TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-      *input, output, kps::IdentityFunctor<T>(), reduce_dims, stream);
+  TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+      ctx.cuda_device_context(), *input, output, kps::IdentityFunctor<T>(),
+      reduce_dims, stream);
 #else
   ReduceKernelFunctor<DeviceContext, T, ops::SumFunctor>(
       input, output, reduce_dims, keep_dim, false, ctx)

@@ -57,8 +57,7 @@ void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
   auto x_var = scope->Var("x")->GetMutable<framework::LoDTensor>();
   float* x_ptr =
       x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
-  for (int64_t i = 0; i < rows_numel; ++i)
-    x_ptr[i] = 1.0 * static_cast<float>(i);
+  for (int64_t i = 0; i < rows_numel; ++i) x_ptr[i] = 1.0 * (float)i;
 }
 
 void GetDownpourDenseTableProto(
@@ -142,7 +141,7 @@ void GetDownpourDenseTableProto(
 
 /*-------------------------------------------------------------------------*/
 
-const char ip_[] = "127.0.0.1";
+std::string ip_ = "127.0.0.1";
 uint32_t port_ = 4214;
 
 std::vector<std::string> host_sign_list_;
@@ -237,7 +236,7 @@ void RunBrpcPushDense() {
   pull_status.wait();
 
   for (size_t idx = 0; idx < tensor->numel(); ++idx) {
-    EXPECT_FLOAT_EQ(w[idx], static_cast<float>(idx));
+    EXPECT_FLOAT_EQ(w[idx], float(idx));
   }
 
   /*-----------------------Test Push Grad----------------------------------*/
@@ -266,7 +265,7 @@ void RunBrpcPushDense() {
   pull_update_status.wait();
 
   for (size_t idx = 0; idx < tensor->numel(); ++idx) {
-    EXPECT_FLOAT_EQ(w[idx], static_cast<float>(idx) - 1.0);
+    EXPECT_FLOAT_EQ(w[idx], float(idx) - 1.0);
   }
 
   LOG(INFO) << "Run stop_server";

@@ -42,6 +42,9 @@ struct MLUStatusType {};
 DEFINE_MLU_STATUS_TYPE(cnrtStatus, cnrtSuccess, CNRT);
 DEFINE_MLU_STATUS_TYPE(cnnlStatus, CNNL_STATUS_SUCCESS, CNNL);
 DEFINE_MLU_STATUS_TYPE(cnStatus, CN_SUCCESS, CN);
+#ifdef PADDLE_WITH_CNCL
+DEFINE_MLU_STATUS_TYPE(cnclStatus, CNCL_RET_SUCCESS, CNCL);
+#endif
 
 }  // namespace details
 
@@ -79,6 +82,17 @@ inline std::string build_mlu_error_msg(cnStatus stat) {
        << " : " << error_string << ". ";
   return sout.str();
 }
+
+/*************** CNCL ERROR ***************/
+#ifdef PADDLE_WITH_CNCL
+inline bool is_error(cnclStatus e) { return e != CNCL_RET_SUCCESS; }
+
+inline std::string build_mlu_error_msg(cnclStatus e) {
+  std::ostringstream sout;
+  sout << "MLU CNCL error(" << e << "), " << cnclGetErrorStr(e) << ". ";
+  return sout.str();
+}
+#endif
 
 #define PADDLE_ENFORCE_MLU_SUCCESS(COND)                       \
   do {                                                         \

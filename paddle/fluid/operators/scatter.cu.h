@@ -183,8 +183,7 @@ void GPUScatterGradForX(const platform::DeviceContext& ctx, const Tensor& index,
 
   int64_t max_grid_dimx =
       reinterpret_cast<const platform::CUDADeviceContext&>(ctx)
-          .GetCUDAMaxGridDimSize()
-          .x;
+          .GetCUDAMaxGridDimSize()[0];
   int64_t grid = height < max_grid_dimx ? height : max_grid_dimx;
 
   ScatterInitCUDAKernel<T, IndexT><<<

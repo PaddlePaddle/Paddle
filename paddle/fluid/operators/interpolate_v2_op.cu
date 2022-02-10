@@ -45,11 +45,11 @@ inline platform::GpuLaunchConfig GetGpuLaunchConfig3D(
   int block_y = std::min(GetLastPow2(height), max_threads / block_x);
   int block_z = std::min(num_img, max_threads / block_x / block_y);
 
-  dim3 max_grid_dim = context.GetCUDAMaxGridDimSize();
-  int grid_x = std::min<int>(max_grid_dim.x, platform::DivUp(width, block_x));
-  int grid_y = std::min<int>(max_grid_dim.y, platform::DivUp(height, block_y));
+  auto max_grid_dim = context.GetCUDAMaxGridDimSize();
+  int grid_x = std::min<int>(max_grid_dim[0], platform::DivUp(width, block_x));
+  int grid_y = std::min<int>(max_grid_dim[1], platform::DivUp(height, block_y));
   int grid_z =
-      std::min<int>(max_grid_dim.z, platform::DivUp(num_img, block_z * 4));
+      std::min<int>(max_grid_dim[2], platform::DivUp(num_img, block_z * 4));
 
   const int capability = context.GetComputeCapability();
   platform::GpuLaunchConfig config;
