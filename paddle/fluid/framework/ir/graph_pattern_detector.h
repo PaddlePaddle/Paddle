@@ -577,6 +577,24 @@ struct FCActOneDNN : public PatternBase {
   PATTERN_DECL_NODE(act_out);
 };
 
+// Fuse softplus with activation
+// ops: softplus + activation
+// nodes:
+// softplus, softplus_out,
+// activation, activation_out
+struct SoftplusActivation : public PatternBase {
+  SoftplusActivation(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "softplus_activation") {}
+
+  PDNode* operator()(std::string activation_type);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(softplus);
+  PATTERN_DECL_NODE(activation);
+  PATTERN_DECL_NODE(softplus_out);
+  PATTERN_DECL_NODE(activation_out);
+};
+
 // Embedding
 struct Embedding : public PatternBase {
   Embedding(PDPattern* pattern, const std::string& name_scope)
@@ -945,7 +963,6 @@ struct Transpose : public PatternBase {
   PATTERN_DECL_NODE(transpose_in);
   PATTERN_DECL_NODE(transpose_op);
   PATTERN_DECL_NODE(transpose_out);
-  PATTERN_DECL_NODE(next_op);
 };
 
 // Reshape op
@@ -960,7 +977,33 @@ struct Reshape : public PatternBase {
   PATTERN_DECL_NODE(reshape_in);
   PATTERN_DECL_NODE(reshape_op);
   PATTERN_DECL_NODE(reshape_out);
-  PATTERN_DECL_NODE(next_op);
+};
+// Slice op
+// Forward pass for slice.
+// slice_out is a result of the operator.
+struct Slice : public PatternBase {
+  Slice(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "slice") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(prev_op);
+  PATTERN_DECL_NODE(slice_in);
+  PATTERN_DECL_NODE(slice_op);
+  PATTERN_DECL_NODE(slice_out);
+};
+
+// Nearest Interp op
+// Forward pass for nearest_interp.
+// nearest_interp_out is a result of the operator.
+struct NearestInterp : public PatternBase {
+  NearestInterp(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "nearest_interp") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(prev_op);
+  PATTERN_DECL_NODE(nearest_interp_in);
+  PATTERN_DECL_NODE(nearest_interp_op);
+  PATTERN_DECL_NODE(nearest_interp_out);
 };
 
 // Matmul op
@@ -974,6 +1017,60 @@ struct Matmul : public PatternBase {
   PATTERN_DECL_NODE(matmul_in_y);
   PATTERN_DECL_NODE(matmul_op);
   PATTERN_DECL_NODE(matmul_out);
+};
+
+// MatmulV2: tensor * weight
+struct MatmulV2Weight : public PatternBase {
+  MatmulV2Weight(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "matmul_v2_weight") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(matmul_v2_in_x);
+  PATTERN_DECL_NODE(matmul_v2_in_y);
+  PATTERN_DECL_NODE(matmul_v2_op);
+  PATTERN_DECL_NODE(matmul_v2_out);
+};
+
+// MatmulV2: tensor * tensor or tensor * weight
+struct MatmulV2 : public PatternBase {
+  MatmulV2(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "matmul_v2") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(matmul_v2_in_x);
+  PATTERN_DECL_NODE(matmul_v2_in_y);
+  PATTERN_DECL_NODE(matmul_v2_op);
+  PATTERN_DECL_NODE(matmul_v2_out);
+};
+
+// Matmul + scale
+// Forward pass.
+struct MatmulScale : public PatternBase {
+  MatmulScale(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "matmul_scale") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(matmul_in_x);
+  PATTERN_DECL_NODE(matmul_in_y);
+  PATTERN_DECL_NODE(matmul_op);
+  PATTERN_DECL_NODE(scale_in_x);
+  PATTERN_DECL_NODE(scale_op);
+  PATTERN_DECL_NODE(scale_out);
+};
+
+// Matmul_v2 + scale
+// Forward pass.
+struct MatmulV2Scale : public PatternBase {
+  MatmulV2Scale(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "matmul_v2_scale") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(matmul_v2_in_x);
+  PATTERN_DECL_NODE(matmul_v2_in_y);
+  PATTERN_DECL_NODE(matmul_v2_op);
+  PATTERN_DECL_NODE(scale_in_x);
+  PATTERN_DECL_NODE(scale_op);
+  PATTERN_DECL_NODE(scale_out);
 };
 
 // Squeeze2 + Matmul
@@ -1345,6 +1442,7 @@ struct Bfloat16Placement : public PatternBase {
   PDNode* operator()(
       const std::unordered_set<std::string>& bfloat16_enabled_op_types);
 
+  PATTERN_DECL_NODE(op_in);
   PATTERN_DECL_NODE(op);
 };
 
@@ -1358,6 +1456,16 @@ struct OrphanedBfloat16 : public PatternBase {
   PATTERN_DECL_NODE(op);
   PATTERN_DECL_NODE(op_out);
   PATTERN_DECL_NODE(next_op);
+};
+
+struct UnsupportedBfloat16 : public PatternBase {
+  UnsupportedBfloat16(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "unsupported_bfloat16") {}
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(prev_op);
+  PATTERN_DECL_NODE(prev_out);
+  PATTERN_DECL_NODE(op);
 };
 
 struct LastBfloat16Ops : public PatternBase {
@@ -1481,14 +1589,12 @@ struct DeleteQuantDequantOpPattern : public PatternBase {
   DeleteQuantDequantOpPattern(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "delete_quantdequant_op_pattern") {}
 
-  void operator()();
+  void operator()(PDNode* input_node, const std::string& quantdequant_types);
 
-  PATTERN_DECL_NODE(any_op_out);
   PATTERN_DECL_NODE(quant_dequant_op_inscale);
   PATTERN_DECL_NODE(quant_dequant_op);
   PATTERN_DECL_NODE(quant_dequant_op_outscale);
   PATTERN_DECL_NODE(quant_dequant_op_out);
-  PATTERN_DECL_NODE(any_op2);
 };
 
 struct DeleteQuantDequantFilterOpPattern : public PatternBase {
@@ -1516,7 +1622,8 @@ struct ReshapeTransposeMatmulPattern : public PatternBase {
                                 const std::string& name_scope)
       : PatternBase(pattern, name_scope, "reshape_transpose_matmul") {}
 
-  PDNode* operator()(bool with_reshape_xshape, bool with_transpose_xshape);
+  PDNode* operator()(const std::string& op_name, bool with_reshape_xshape,
+                     bool with_transpose_xshape);
 
   PATTERN_DECL_NODE(reshape_in);
   PATTERN_DECL_NODE(reshape_op);
@@ -1535,7 +1642,7 @@ struct MatmulTransposeReshapePattern : public PatternBase {
                                 const std::string& name_scope)
       : PatternBase(pattern, name_scope, "matmul_transpose_reshape") {}
 
-  PDNode* operator()();
+  PDNode* operator()(const std::string& op_name);
 
   PATTERN_DECL_NODE(matmul_op);
   PATTERN_DECL_NODE(matmul_out);
@@ -1682,6 +1789,18 @@ struct LayerNorm : public PatternBase {
   PATTERN_DECL_NODE(beta);
   PATTERN_DECL_NODE(shift);
   PATTERN_DECL_NODE(shift_out);
+};
+
+// Add support int8 flag
+struct AddSupportInt8 : public PatternBase {
+  AddSupportInt8(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "Add_support_int8") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(prev_op);
+  PATTERN_DECL_NODE(prev_out);
+  PATTERN_DECL_NODE(quant_op);
+  PATTERN_DECL_NODE(quant_out);
 };
 
 }  // namespace patterns

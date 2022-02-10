@@ -1,4 +1,5 @@
 #   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2021 NVIDIA Corporation. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,6 +14,7 @@
 # limitations under the License.
 
 from . import amp  # noqa: F401
+from . import sparsity  # noqa: F401
 from . import nn  # noqa: F401
 from .io import save_inference_model  # noqa: F401
 from .io import load_inference_model  # noqa: F401
@@ -33,6 +35,8 @@ from ..fluid.backward import append_backward  # noqa: F401
 from ..fluid.backward import gradients  # noqa: F401
 from ..fluid.compiler import BuildStrategy  # noqa: F401
 from ..fluid.compiler import CompiledProgram  # noqa: F401
+from ..fluid.compiler import IpuCompiledProgram  # noqa: F401
+from ..fluid.compiler import IpuStrategy  # noqa: F401
 from ..fluid.compiler import ExecutionStrategy  # noqa: F401
 from ..fluid.framework import default_main_program  # noqa: F401
 from ..fluid.framework import default_startup_program  # noqa: F401
@@ -43,11 +47,15 @@ from ..fluid.framework import program_guard  # noqa: F401
 from ..fluid.framework import cpu_places  # noqa: F401
 from ..fluid.framework import cuda_places  # noqa: F401
 from ..fluid.framework import xpu_places  # noqa: F401
+from ..fluid.framework import mlu_places  # noqa: F401
+from ..fluid.framework import npu_places  # noqa: F401
 from ..fluid.framework import Variable  # noqa: F401
+from ..fluid.framework import ipu_shard_guard  # noqa: F401
 from ..fluid.layers.control_flow import Print  # noqa: F401
 from ..fluid.layers.nn import py_func  # noqa: F401
 from ..fluid.parallel_executor import ParallelExecutor  # noqa: F401
 from ..fluid.param_attr import WeightNormParamAttr  # noqa: F401
+from ..fluid.optimizer import ExponentialMovingAverage  # noqa: F401
 from ..fluid.io import save  # noqa: F401
 from ..fluid.io import load  # noqa: F401
 from ..fluid.io import load_program_state  # noqa: F401
@@ -69,6 +77,9 @@ __all__ = [     #noqa
            'scope_guard',
            'BuildStrategy',
            'CompiledProgram',
+           'ipu_shard_guard',
+           'IpuCompiledProgram',
+           'IpuStrategy',
            'Print',
            'py_func',
            'ExecutionStrategy',
@@ -76,6 +87,7 @@ __all__ = [     #noqa
            'ParallelExecutor',
            'program_guard',
            'WeightNormParamAttr',
+           'ExponentialMovingAverage',
            'default_main_program',
            'default_startup_program',
            'Program',
@@ -97,6 +109,8 @@ __all__ = [     #noqa
            'cpu_places',
            'cuda_places',
            'xpu_places',
+           'npu_places',
+           'mlu_places',
            'Variable',
            'create_global_var',
            'accuracy',

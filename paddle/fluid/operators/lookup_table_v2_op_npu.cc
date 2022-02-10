@@ -16,10 +16,13 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
+
+using Tensor = framework::Tensor;
+constexpr int64_t kNoPadding = -1;
 
 template <typename DeviceContext, typename T>
 class LookupTableV2NPUKernel : public framework::OpKernel<T> {
@@ -35,13 +38,52 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument("npu only accept LoDTensor"));
     output_t->mutable_data<T>(ctx.GetPlace());
 
-    NpuOpRunner runner;
-    runner.SetType("GatherV2")
-        .AddInput(*table_t)
-        .AddInput(*ids_t)
-        .AddInput(std::vector<int32_t>{0})
-        .AddOutput(*output_t);
-    runner.Run();
+    int64_t padding_idx = ctx.Attr<int64_t>("padding_idx");
+    if (padding_idx == kNoPadding) {
+      NpuOpRunner runner;
+      runner.SetType("GatherV2")
+          .AddInput(*table_t)
+          .AddInput(*ids_t)
+          .AddInput(std::vector<int32_t>{0})
+#if (CANN_VERSION_CODE >= 503003)
+          .AddAttrs({{"batch_dims", 0}})
+#endif
+          .AddOutput(*output_t);
+      runner.Run();
+    } else {
+      Tensor tmp_table_t(table_t->type());
+      tmp_table_t.mutable_data<T>(table_t->dims(), ctx.GetPlace());
+
+      Tensor index;
+      index.mutable_data<int32_t>({1, 1}, ctx.GetPlace());
+      FillNpuTensorWithConstant<int32_t>(&index,
+                                         static_cast<int32_t>(padding_idx));
+
+      auto updata_dim = framework::make_ddim({1, table_t->dims()[1]});
+      Tensor update;
+      update.mutable_data<T>(updata_dim, ctx.GetPlace());
+      FillNpuTensorWithConstant<T>(&update, static_cast<T>(0));
+      update.Resize(updata_dim);
+
+      NpuOpRunner update_runner;
+      update_runner.SetType("TensorScatterUpdate")
+          .AddInput(*table_t)
+          .AddInput(index)
+          .AddInput(update)
+          .AddOutput(tmp_table_t);
+      update_runner.Run();
+
+      NpuOpRunner runner;
+      runner.SetType("GatherV2")
+          .AddInput(tmp_table_t)
+          .AddInput(*ids_t)
+          .AddInput(std::vector<int32_t>{0})
+#if (CANN_VERSION_CODE >= 503003)
+          .AddAttrs({{"batch_dims", 0}})
+#endif
+          .AddOutput(*output_t);
+      runner.Run();
+    }
   }
 };
 
@@ -59,6 +101,7 @@ class LookupTableV2GradNPUKernel : public framework::OpKernel<T> {
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
+    int64_t padding_idx = ctx.Attr<int64_t>("padding_idx");
 
     /* EmbeddingDenseGrad has bug on large shape, temporarily disable it.
 
@@ -81,13 +124,34 @@ class LookupTableV2GradNPUKernel : public framework::OpKernel<T> {
         NpuOpRunner("ZerosLike", {*table_grad_t}, {*table_grad_t});
     runner_zeros.Run(stream);
 
-    // NOTE(zhiqiu): It seems in cann 20.1, the first input and output
-    // can be different tensor, but in cann 20.2+, it does inplace operation.
-    // Thus, the first input and output should be same tensor.
-    const auto &runner_scatter =
-        NpuOpRunner("ScatterAdd", {*table_grad_t, *ids_t, *output_grad_t},
-                    {*table_grad_t}, {{"use_locking", true}});
-    runner_scatter.Run(stream);
+    if (padding_idx == kNoPadding) {
+      // NOTE(zhiqiu): It seems in cann 20.1, the first input and output
+      // can be different tensor, but in cann 20.2+, it does inplace operation.
+      // Thus, the first input and output should be same tensor.
+      const auto &runner_scatter =
+          NpuOpRunner("ScatterAdd", {*table_grad_t, *ids_t, *output_grad_t},
+                      {*table_grad_t}, {{"use_locking", true}});
+      runner_scatter.Run(stream);
+    } else {
+      Tensor casted_ids_t;
+      if (ids_t->type() != framework::proto::VarType::INT32) {
+        casted_ids_t.mutable_data<int32_t>(ids_t->dims(), ctx.GetPlace());
+        const auto &cast_runner = NpuOpRunner("Cast", {*ids_t}, {casted_ids_t},
+                                              {{"dst_type", ACL_INT32}});
+        cast_runner.Run(stream);
+      } else {
+        casted_ids_t.ShareDataWith(*ids_t);
+      }
+      auto table_grad_dims = table_grad_t->dims();
+
+      NpuOpRunner runner;
+      runner.SetType("UnsortedSegmentSum")
+          .AddInput(*output_grad_t)
+          .AddInput(casted_ids_t)
+          .AddInput(std::vector<int64_t>{table_grad_dims[0]})
+          .AddOutput(*table_grad_t);
+      runner.Run(stream);
+    }
   }
 };
 }  // namespace operators

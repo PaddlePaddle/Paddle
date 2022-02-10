@@ -36,7 +36,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/hccl_helper.h"
+#include "paddle/fluid/platform/device/npu/hccl_helper.h"
 #endif
 
 namespace f = paddle::framework;
@@ -64,7 +64,7 @@ bool Check(T value, int size = 2 * 512 * 8192) {
     init.push_back(static_cast<T>(value));
   }
 
-  TensorFromVector(init, ctx, tensor_x);
+  paddle::framework::TensorFromVector(init, ctx, tensor_x);
   bool result = paddle::operators::ContainsNan(ctx, ctx.stream(), tensor_x);
   return result;
 }

@@ -21,7 +21,7 @@ PaddlePaddle is originated from industrial practices with dedication and commitm
 
 ## Installation
 
-### Latest PaddlePaddle Release: [v2.1](https://github.com/PaddlePaddle/Paddle/tree/release/2.1)
+### Latest PaddlePaddle Release: [v2.2](https://github.com/PaddlePaddle/Paddle/tree/release/2.2)
 
 Our vision is to enable deep learning for everyone via PaddlePaddle.
 Please refer to our [release announcement](https://github.com/PaddlePaddle/Paddle/releases) to track the latest features of PaddlePaddle.
@@ -85,7 +85,7 @@ We provide [English](https://www.paddlepaddle.org.cn/documentation/docs/en/guide
 ## Communication
 
 - [Github Issues](https://github.com/PaddlePaddle/Paddle/issues): bug reports, feature requests, install issues, usage issues, etc.
-- QQ discussion group: 793866180 (PaddlePaddle).
+- QQ discussion group: 441226485 (PaddlePaddle).
 - [Forums](https://ai.baidu.com/forum/topic/list/168?pageNo=1): discuss implementations, research, etc.
     
 ## Courses

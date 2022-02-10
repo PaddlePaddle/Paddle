@@ -20,8 +20,8 @@ limitations under the License. */
 
 #include "cuda_runtime_api.h"  // NOLINT
 #include "paddle/fluid/inference/tensorrt/helper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
 namespace inference {
@@ -42,7 +42,10 @@ void TensorRTEngine::InitNetwork() {
   }
 
   infer_builder_config_.reset(infer_builder_->createBuilderConfig());
-  optim_profile_ = infer_builder_->createOptimizationProfile();
+  // optim_profile_ = infer_builder_->createOptimizationProfile();
+  optim_profiles_.resize(max_profile_num_);
+  for (int i = 0; i < max_profile_num_; i++)
+    optim_profiles_[i] = infer_builder_->createOptimizationProfile();
 }
 
 void TensorRTEngine::Execute(int batch_size, std::vector<void *> *buffers,
@@ -54,6 +57,7 @@ void TensorRTEngine::Execute(int batch_size, std::vector<void *> *buffers,
   } else {
 #if IS_TRT_VERSION_GE(6000)
     infer_context->enqueueV2(buffers->data(), stream, nullptr);
+    GetEngineInfo();
 #endif
   }
   SetRuntimeBatch(batch_size);
@@ -135,12 +139,6 @@ void TensorRTEngine::FreezeNetwork() {
         }
         for (int j = 0; j < layer->getNbOutputs(); j++) {
           auto *temp_out = layer->getOutput(j);
-          if (temp_out->isNetworkOutput()) {
-            VLOG(1) << "Layer(Name: " << layer->getName()
-                    << ") is set to float32 because its output("
-                    << temp_out->getName() << ") is the output of the network.";
-            return false;
-          }
           if (!temp_out->dynamicRangeIsSet()) {
             VLOG(1) << "Layer(Name: " << layer->getName()
                     << ") is set to float32 because its output("
@@ -154,11 +152,20 @@ void TensorRTEngine::FreezeNetwork() {
       // and outputs have scales,
       // this layer's precision and output type are set to float32.
       // This step has no effect if this layer is fused during TRT optimization.
+      int layers_no_int8 = 0;
       for (int i = 0; i < network()->getNbLayers(); i++) {
         auto layer = network()->getLayer(i);
         if (!is_layer_int8(layer)) {
           layer->setPrecision(nvinfer1::DataType::kFLOAT);
+          ++layers_no_int8;
         }
+      }
+      // Disable int8 or build engine failed if all layers aren't int8
+      if (layers_no_int8 == network()->getNbLayers()) {
+        nvinfer1::BuilderFlags flags = infer_builder_config_->getFlags();
+        flags = flags & ~(1U << static_cast<int>(nvinfer1::BuilderFlag::kINT8));
+        // reset flags
+        infer_builder_config_->setFlags(flags);
       }
 #else
       LOG(WARNING) << "If your TensorRT version is lower than 5.1.2.2, you "
@@ -195,22 +202,38 @@ void TensorRTEngine::FreezeNetwork() {
   if (with_dynamic_shape_) {
 #if IS_TRT_VERSION_GE(6000)
     LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode.";
-    for (auto &input : min_input_shape_) {
-      VLOG(4) << "TRT dynamic_shape set " << input.first
-              << " min: " << Vec2Str(input.second)
-              << ", max: " << Vec2Str(max_input_shape_[input.first])
-              << ", opt: " << Vec2Str(optim_input_shape_[input.first]);
-      optim_profile_->setDimensions(
-          input.first.c_str(), nvinfer1::OptProfileSelector::kMIN,
-          Vec2TRT_Dims(input.second, input.first, true));
-      optim_profile_->setDimensions(
-          input.first.c_str(), nvinfer1::OptProfileSelector::kMAX,
-          Vec2TRT_Dims(max_input_shape_[input.first], input.first, true));
-      optim_profile_->setDimensions(
-          input.first.c_str(), nvinfer1::OptProfileSelector::kOPT,
-          Vec2TRT_Dims(optim_input_shape_[input.first], input.first, true));
+    for (int i = 0; i < max_profile_num_; i++) {
+      for (auto &input : min_input_shape_) {
+#if IS_TRT_VERSION_LT(7000)
+        // trt6 will check all_of input > 0
+        if (!(std::all_of(input.second.begin(), input.second.end(),
+                          [](int x) { return x > 0; }) &&
+              std::all_of(max_input_shape_[input.first].begin(),
+                          max_input_shape_[input.first].end(),
+                          [](int x) { return x > 0; }) &&
+              std::all_of(optim_input_shape_[input.first].begin(),
+                          optim_input_shape_[input.first].end(),
+                          [](int x) { return x > 0; }))) {
+          continue;
+        }
+#endif
+        VLOG(4) << "TRT dynamic_shape set " << input.first
+                << " min: " << Vec2Str(input.second)
+                << ", max: " << Vec2Str(max_input_shape_[input.first])
+                << ", opt: " << Vec2Str(optim_input_shape_[input.first]);
+
+        optim_profiles_[i]->setDimensions(
+            input.first.c_str(), nvinfer1::OptProfileSelector::kMIN,
+            Vec2TRT_Dims(input.second, input.first, true));
+        optim_profiles_[i]->setDimensions(
+            input.first.c_str(), nvinfer1::OptProfileSelector::kMAX,
+            Vec2TRT_Dims(max_input_shape_[input.first], input.first, true));
+        optim_profiles_[i]->setDimensions(
+            input.first.c_str(), nvinfer1::OptProfileSelector::kOPT,
+            Vec2TRT_Dims(optim_input_shape_[input.first], input.first, true));
+      }
+      infer_builder_config_->addOptimizationProfile(optim_profiles_[i]);
     }
-    infer_builder_config_->addOptimizationProfile(optim_profile_);
     if (WithFp16() && disable_trt_plugin_fp16()) {
       LOG(INFO) << "NOTE: In order to achieve higher accuracy, you have "
                    "disabled the fp16 mode of TRT Plugin,\n"
@@ -220,22 +243,36 @@ void TensorRTEngine::FreezeNetwork() {
     }
 #endif
   }
+#if IS_TRT_VERSION_GE(8200)
+  infer_builder_config_->setProfilingVerbosity(
+      nvinfer1::ProfilingVerbosity::kDETAILED);
+#endif
 
 #if IS_TRT_VERSION_LT(8000)
   infer_engine_.reset(infer_builder_->buildEngineWithConfig(
       *network(), *infer_builder_config_));
 #else
-  infer_ptr<nvinfer1::IHostMemory> plan(infer_builder_->buildSerializedNetwork(
+  infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kSPARSE_WEIGHTS);
+  ihost_memory_.reset(infer_builder_->buildSerializedNetwork(
       *network(), *infer_builder_config_));
   infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
-  infer_engine_.reset(
-      runtime->deserializeCudaEngine(plan->data(), plan->size()));
+  infer_engine_.reset(runtime->deserializeCudaEngine(ihost_memory_->data(),
+                                                     ihost_memory_->size()));
 #endif
 
   PADDLE_ENFORCE_NOT_NULL(
       infer_engine_, platform::errors::Fatal(
                          "Build TensorRT cuda engine failed! Please recheck "
                          "you configurations related to paddle-TensorRT."));
+
+  binding_num_ = infer_engine_->getNbBindings();
+  // reset status for dynamic shape clone
+  if (max_profile_num_ > 1) {
+    infer_context_.clear();
+    cur_profile_num_ = 0;
+  }
+
+  GetEngineInfo();
 }
 
 nvinfer1::ITensor *TensorRTEngine::DeclareInput(const std::string &name,
@@ -333,7 +370,8 @@ float *TensorRTEngine::GetWeightCPUData(const std::string &name,
                         name_with_suffix));
   weight_map[name_with_suffix].reset(new framework::Tensor());
   weight_map[name_with_suffix]->Resize(weight_tensor->dims());
-  TensorCopySync(*weight_tensor, cpu_place, weight_map[name_with_suffix].get());
+  paddle::framework::TensorCopySync(*weight_tensor, cpu_place,
+                                    weight_map[name_with_suffix].get());
   float *weight_data =
       weight_map[name_with_suffix]->mutable_data<float>(cpu_place);
   name_suffix_counter += 1;
@@ -353,6 +391,13 @@ nvinfer1::IPluginV2Layer *TensorRTEngine::AddPluginV2Ext(
     nvinfer1::ITensor *const *inputs, int num_inputs,
     plugin::PluginTensorRTV2Ext *plugin) {
   owned_plugin_v2ext_.emplace_back(plugin);
+  return network()->addPluginV2(inputs, num_inputs, *plugin);
+}
+
+nvinfer1::IPluginV2Layer *TensorRTEngine::AddPluginV2IOExt(
+    nvinfer1::ITensor *const *inputs, int num_inputs,
+    nvinfer1::IPluginV2IOExt *plugin) {
+  owned_plugin_v2ioext_.emplace_back(plugin);
   return network()->addPluginV2(inputs, num_inputs, *plugin);
 }
 

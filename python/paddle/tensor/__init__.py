@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .attribute import is_complex  # noqa: F401
+from .attribute import is_integer  # noqa: F401
 from .attribute import rank  # noqa: F401
 from .attribute import shape  # noqa: F401
 from .attribute import real  # noqa: F401
 from .attribute import imag  # noqa: F401
+from .attribute import is_floating_point  # noqa: F401
 from .creation import to_tensor  # noqa: F401
 from .creation import diag  # noqa: F401
 from .creation import diagflat  # noqa: F401
@@ -33,18 +36,35 @@ from .creation import tril  # noqa: F401
 from .creation import meshgrid  # noqa: F401
 from .creation import empty  # noqa: F401
 from .creation import empty_like  # noqa: F401
+from .creation import complex  # noqa: F401
 from .linalg import matmul  # noqa: F401
 from .linalg import dot  # noqa: F401
+from .linalg import cov  # noqa: F401
 from .linalg import norm  # noqa: F401
+from .linalg import cond  # noqa: F401
 from .linalg import transpose  # noqa: F401
+from .linalg import lstsq  # noqa: F401
 from .linalg import dist  # noqa: F401
 from .linalg import t  # noqa: F401
 from .linalg import cross  # noqa: F401
 from .linalg import cholesky  # noqa: F401
 from .linalg import bmm  # noqa: F401
 from .linalg import histogram  # noqa: F401
+from .linalg import bincount  # noqa: F401
 from .linalg import mv  # noqa: F401
+from .linalg import eig  # noqa: F401
 from .linalg import matrix_power  # noqa: F401
+from .linalg import qr  # noqa: F401
+from .linalg import eigvals  # noqa: F401
+from .linalg import multi_dot  # noqa: F401
+from .linalg import svd  # noqa: F401
+from .linalg import eigvalsh  # noqa: F401
+from .linalg import eigh  # noqa: F401
+from .linalg import pinv  # noqa: F401
+from .linalg import solve  # noqa: F401
+from .linalg import cholesky_solve  # noqa: F401
+from .linalg import lu  # noqa: F401
+from .linalg import lu_unpack  # noqa: F401
 from .logic import equal  # noqa: F401
 from .logic import greater_equal  # noqa: F401
 from .logic import greater_than  # noqa: F401
@@ -61,6 +81,7 @@ from .logic import bitwise_xor  # noqa: F401
 from .logic import bitwise_not  # noqa: F401
 from .logic import not_equal  # noqa: F401
 from .logic import allclose  # noqa: F401
+from .logic import isclose  # noqa: F401
 from .logic import equal_all  # noqa: F401
 from .logic import is_tensor  # noqa: F401
 from .manipulation import cast  # noqa: F401
@@ -94,9 +115,18 @@ from .manipulation import unsqueeze  # noqa: F401
 from .manipulation import unsqueeze_  # noqa: F401
 from .manipulation import unstack  # noqa: F401
 from .manipulation import flip  # noqa: F401
+from .manipulation import rot90  # noqa: F401
 from .manipulation import unbind  # noqa: F401
 from .manipulation import roll  # noqa: F401
 from .manipulation import chunk  # noqa: F401
+from .manipulation import tensordot  # noqa: F401
+from .manipulation import as_complex  # noqa: F401
+from .manipulation import take_along_axis  # noqa: F401
+from .manipulation import put_along_axis  # noqa: F401
+from .manipulation import put_along_axis_  # noqa: F401
+from .manipulation import as_real  # noqa: F401
+from .manipulation import moveaxis  # noqa: F401
+from .manipulation import repeat_interleave  # noqa: F401
 from .math import abs  # noqa: F401
 from .math import acos  # noqa: F401
 from .math import asin  # noqa: F401
@@ -108,6 +138,7 @@ from .math import tan  # noqa: F401
 from .math import cosh  # noqa: F401
 from .math import cumsum  # noqa: F401
 from .math import cumprod  # noqa: F401
+from .math import logit  # noqa: F401
 from .math import exp  # noqa: F401
 from .math import exp_  # noqa: F401
 from .math import expm1  # noqa: F401
@@ -133,12 +164,15 @@ from .math import sqrt_  # noqa: F401
 from .math import square  # noqa: F401
 from .math import stanh  # noqa: F401
 from .math import sum  # noqa: F401
+from .math import nansum  # noqa: F401
 from .math import tanh  # noqa: F401
 from .math import tanh_  # noqa: F401
 from .math import add_n  # noqa: F401
 from .math import max  # noqa: F401
+from .math import amax  # noqa: F401
 from .math import maximum  # noqa: F401
 from .math import min  # noqa: F401
+from .math import amin  # noqa: F401
 from .math import minimum  # noqa: F401
 from .math import mm  # noqa: F401
 from .math import divide  # noqa: F401
@@ -176,6 +210,23 @@ from .math import digamma  # noqa: F401
 from .math import neg  # noqa: F401
 from .math import lgamma  # noqa: F401
 from .math import diagonal  # noqa: F401
+from .math import acosh  # noqa: F401
+from .math import asinh  # noqa: F401
+from .math import atanh  # noqa: F401
+from .math import lerp  # noqa: F401
+from .math import lerp_  # noqa: F401
+from .math import erfinv  # noqa: F401
+from .math import erfinv_  # noqa: F401
+from .math import rad2deg  # noqa: F401
+from .math import deg2rad  # noqa: F401
+from .math import gcd  # noqa: F401
+from .math import lcm  # noqa: F401
+from .math import diff  # noqa: F401
+from .math import angle  # noqa: F401
+from .math import fmax  # noqa: F401
+from .math import fmin  # noqa: F401
+from .math import inner  # noqa: F401
+from .math import outer  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -185,7 +236,10 @@ from .random import uniform_  # noqa: F401
 from .random import randn  # noqa: F401
 from .random import rand  # noqa: F401
 from .random import randint  # noqa: F401
+from .random import randint_like  # noqa: F401
 from .random import randperm  # noqa: F401
+from .random import poisson  # noqa: F401
+from .random import exponential_  # noqa: F401
 from .search import argmax  # noqa: F401
 from .search import argmin  # noqa: F401
 from .search import argsort  # noqa: F401
@@ -197,11 +251,16 @@ from .search import nonzero  # noqa: F401
 from .search import sort  # noqa: F401
 from .search import index_sample  # noqa: F401
 from .search import masked_select  # noqa: F401
+from .search import kthvalue  # noqa: F401
+from .search import mode  # noqa: F401
+
 from .stat import mean  # noqa: F401
 from .stat import std  # noqa: F401
 from .stat import var  # noqa: F401
 from .stat import numel  # noqa: F401
 from .stat import median  # noqa: F401
+from .stat import quantile  # noqa: F401
+
 from .to_string import set_printoptions  # noqa: F401
 
 from .array import array_length  # noqa: F401
@@ -215,16 +274,23 @@ from .einsum import einsum  # noqa: F401
 tensor_method_func  = [ #noqa
            'matmul',
            'dot',
+           'cov',
            'norm',
+           'cond',
            'transpose',
+           'lstsq',
            'dist',
            't',
            'cross',
            'cholesky',
            'bmm',
            'histogram',
+           'bincount',
            'mv',
            'matrix_power',
+           'qr',
+           'eigvals',
+           'eigvalsh',
            'abs',
            'acos',
            'all',
@@ -237,6 +303,7 @@ tensor_method_func  = [ #noqa
            'cosh',
            'cumsum',
            'cumprod',
+           'logit',
            'exp',
            'exp_',
            'floor',
@@ -265,14 +332,21 @@ tensor_method_func  = [ #noqa
            'square',
            'stanh',
            'sum',
+           'nansum',
            'tanh',
            'tanh_',
            'add_n',
            'max',
+           'amax',
            'maximum',
            'min',
+           'amin',
            'minimum',
+           'fmax',
+           'fmin',
            'mm',
+           'inner',
+           'outer',
            'divide',
            'floor_divide',
            'remainder',
@@ -293,6 +367,7 @@ tensor_method_func  = [ #noqa
            'clip_',
            'trace',
            'kron',
+           'kthvalue',
            'isfinite',
            'isinf',
            'isnan',
@@ -313,6 +388,7 @@ tensor_method_func  = [ #noqa
            'logical_xor',
            'not_equal',
            'allclose',
+           'isclose',
            'is_tensor',
            'cast',
            'concat',
@@ -334,6 +410,7 @@ tensor_method_func  = [ #noqa
            'slice',
            'split',
            'chunk',
+           'tensordot',
            'squeeze',
            'squeeze_',
            'stack',
@@ -345,6 +422,7 @@ tensor_method_func  = [ #noqa
            'unsqueeze_',
            'unstack',
            'flip',
+           'rot90',
            'unbind',
            'roll',
            'tile',
@@ -363,10 +441,14 @@ tensor_method_func  = [ #noqa
            'var',
            'numel',
            'median',
+           'quantile',
+           'is_complex',
+           'is_integer',
            'rank',
            'shape',
            'real',
            'imag',
+           'is_floating_point',
            'digamma',
            'diagonal',
            'trunc',
@@ -375,7 +457,36 @@ tensor_method_func  = [ #noqa
            'bitwise_xor',
            'bitwise_not',
            'broadcast_tensors',
+           'eig',
            'uniform_',
+           'multi_dot',
+           'solve',
+           'cholesky_solve',
+           'triangular_solve',
+           'asinh',
+           'atanh',
+           'acosh',
+           'lu',
+           'lu_unpack',
+           'as_complex',
+           'as_real',
+           'rad2deg',
+           'deg2rad',
+           'gcd',
+           'lcm',
+           'diff',
+           "mode",
+           'lerp',
+           'lerp_',
+           'erfinv',
+           'erfinv_',
+           'angle',
+           'moveaxis',
+           'repeat_interleave',
+           'take_along_axis',
+           'put_along_axis',
+           'put_along_axis_',
+           'exponential_',
 ]
 
 #this list used in math_op_patch.py for magic_method bind

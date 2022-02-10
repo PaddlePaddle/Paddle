@@ -22,7 +22,7 @@ from six.moves import zip, range, xrange
 import multiprocessing
 import warnings
 
-from .framework import Variable, default_main_program, _current_expected_place, in_dygraph_mode
+from .framework import Variable, default_main_program, _current_expected_place, in_dygraph_mode, _in_eager_mode
 from .framework import _cpu_num, _cuda_ids
 __all__ = ['DataFeeder']
 
@@ -93,21 +93,29 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
     if in_dygraph_mode():
         return
 
-    from .dygraph.dygraph_to_static.program_translator import in_declarative_mode
     # NOTE: `in_declarative_mode` is used to determined whether this op is called under
     # @declarative in transformation from dygrah to static layer. We add VarBase in
     # expected_type to skip checking because varBase may be created and used in unusual way.
+    from .dygraph.base import in_declarative_mode
     # Need a better design to be fix this.
     if in_declarative_mode():
         if not isinstance(expected_type, tuple):
             expected_type = (expected_type, )
         expected_type += (core.VarBase, )
+        #  TODO(jiabin): uncomment it when we support declarative mode in eager
+        # if _in_eager_mode():
+        #     expected_type += (core.eager.EagerTensor, )
     elif isinstance(input, core.VarBase):
         raise TypeError(
             "Please use `with fluid.dygraph.guard()` as context or `fluid.enable_dygraph()` to switch to imperative mode firstly. "
             "Because received '{}' in {} is a imperative Variable.".format(
                 input_name, op_name))
-
+    elif hasattr(core, "eager"):
+        if isinstance(input, core.eager.EagerTensor):
+            raise TypeError(
+                "Please use `with fluid.dygraph.guard()` as context or `fluid.enable_dygraph()` to switch to imperative mode firstly. "
+                "Because received '{}' in {} is a imperative Variable.".format(
+                    input_name, op_name))
     if not isinstance(input, expected_type):
         raise TypeError(
             "The type of '%s' in %s must be %s, but received %s. %s" %

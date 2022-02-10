@@ -29,15 +29,15 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/distributed/common/sparse_sharding_merge.h"
-#include "paddle/fluid/distributed/communicator_common.h"
-#include "paddle/fluid/distributed/fleet.h"
 #include "paddle/fluid/distributed/index_dataset/index_sampler.h"
 #include "paddle/fluid/distributed/index_dataset/index_wrapper.h"
-#include "paddle/fluid/distributed/service/communicator.h"
-#include "paddle/fluid/distributed/service/env.h"
-#include "paddle/fluid/distributed/service/graph_brpc_client.h"
-#include "paddle/fluid/distributed/service/graph_py_service.h"
-#include "paddle/fluid/distributed/service/heter_client.h"
+#include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
+#include "paddle/fluid/distributed/ps/service/communicator/communicator_common.h"
+#include "paddle/fluid/distributed/ps/service/env.h"
+#include "paddle/fluid/distributed/ps/service/graph_brpc_client.h"
+#include "paddle/fluid/distributed/ps/service/heter_client.h"
+#include "paddle/fluid/distributed/ps/service/ps_service/graph_py_service.h"
+#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 
 namespace py = pybind11;
 using paddle::distributed::CommContext;
@@ -76,7 +76,9 @@ void BindDistFleetWrapper(py::module* m) {
       .def("stop_server", &FleetWrapper::StopServer)
       .def("stop_worker", &FleetWrapper::FinalizeWorker)
       .def("barrier", &FleetWrapper::BarrierWithTable)
-      .def("shrink_sparse_table", &FleetWrapper::ShrinkSparseTable);
+      .def("shrink_sparse_table", &FleetWrapper::ShrinkSparseTable)
+      .def("create_client2client_connection",
+           &FleetWrapper::CreateClient2ClientConnection);
 }
 
 void BindPSHost(py::module* m) {
@@ -158,16 +160,22 @@ void BindDistCommunicator(py::module* m) {
       .def("start", &Communicator::Start)
       .def("push_sparse_param", &Communicator::RpcSendSparseParam)
       .def("is_running", &Communicator::IsRunning)
-      .def("init_params", &Communicator::InitParams);
-  //  .def("recv", &Communicator::RecvNoBarrier);
+      .def("init_params", &Communicator::InitParams)
+      .def("pull_dense", &Communicator::PullDense)
+      .def("create_client_to_client_connection",
+           &Communicator::CreateC2CConnection)
+      .def("get_client_info", &Communicator::GetClientInfo)
+      .def("set_clients", &Communicator::SetClients);
 }
 
 void BindHeterClient(py::module* m) {
   py::class_<HeterClient, std::shared_ptr<HeterClient>>(*m, "HeterClient")
-      .def(py::init(
-          [](const std::vector<std::string>& endpoint, const int& trainer_id) {
-            return HeterClient::GetInstance(endpoint, trainer_id);
-          }))
+      .def(py::init([](const std::vector<std::string>& endpoints,
+                       const std::vector<std::string>& previous_endpoints,
+                       const int& trainer_id) {
+        return HeterClient::GetInstance(endpoints, previous_endpoints,
+                                        trainer_id);
+      }))
       .def("stop", &HeterClient::Stop);
 }
 
@@ -204,7 +212,10 @@ void BindGraphPyClient(py::module* m) {
       .def("add_table_feat_conf", &GraphPyClient::add_table_feat_conf)
       .def("pull_graph_list", &GraphPyClient::pull_graph_list)
       .def("start_client", &GraphPyClient::start_client)
-      .def("batch_sample_neighboors", &GraphPyClient::batch_sample_neighboors)
+      .def("batch_sample_neighboors", &GraphPyClient::batch_sample_neighbors)
+      .def("batch_sample_neighbors", &GraphPyClient::batch_sample_neighbors)
+      .def("use_neighbors_sample_cache",
+           &GraphPyClient::use_neighbors_sample_cache)
       .def("remove_graph_node", &GraphPyClient::remove_graph_node)
       .def("random_sample_nodes", &GraphPyClient::random_sample_nodes)
       .def("stop_server", &GraphPyClient::stop_server)
@@ -309,6 +320,5 @@ void BindIndexSampler(py::module* m) {
       .def("init_beamsearch_conf", &IndexSampler::init_beamsearch_conf)
       .def("sample", &IndexSampler::sample);
 }
-
 }  // end namespace pybind
 }  // namespace paddle

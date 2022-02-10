@@ -129,6 +129,7 @@ class TestGroupNormAPIV2_With_General_Dimensions(unittest.TestCase):
         paddle.disable_static()
         shapes = [(2, 6), (2, 6, 4), (2, 6, 4, 4), (2, 6, 6, 6, 2), (2, 6, 6, 6,
                                                                      2, 3)]
+        np.random.seed(10)
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
             places.append(fluid.CUDAPlace(0))

@@ -19,6 +19,7 @@ limitations under the License. */
 #include <tuple>
 
 #include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/process_mesh_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -81,7 +82,10 @@ void BindProgramDesc(pybind11::module *m) {
            },
            pybind11::arg("version") = pd::kCurProgramVersion)
       .def("_version",
-           [](pd::ProgramDesc &self) -> int64_t { return self.Version(); });
+           [](pd::ProgramDesc &self) -> int64_t { return self.Version(); })
+      .def("get_op_deps", [](const framework::ProgramDesc &program) {
+        return framework::ir::GetOpDependencies(program);
+      });
 }
 
 void BindProcessMeshDesc(pybind11::module *m) {
@@ -175,6 +179,8 @@ void BindVarDsec(pybind11::module *m) {
            pybind11::return_value_policy::reference)
       .def("dtype", &pd::VarDesc::GetDataType,
            pybind11::return_value_policy::reference)
+      .def("element_size", &pd::VarDesc::ElementSize,
+           pybind11::return_value_policy::reference)
       .def("dtypes", &pd::VarDesc::GetDataTypes,
            pybind11::return_value_policy::reference)
       .def("lod_level", &pd::VarDesc::GetLoDLevel)
@@ -202,6 +208,8 @@ void BindVarDsec(pybind11::module *m) {
       .def("_set_attr", &pd::VarDesc::SetAttr)
       .def("remove_attr", &pd::VarDesc::RemoveAttr)
       .def("id", &pd::VarDesc::Id)
+      .def("original_id", &pd::VarDesc::OriginalId)
+      .def("set_original_id", &pd::VarDesc::SetOriginalId)
       .def("attr", &pd::VarDesc::GetAttr);
 
   pybind11::enum_<pd::proto::VarType::Type> vartype(var_desc, "VarType", "");
@@ -227,7 +235,10 @@ void BindVarDsec(pybind11::module *m) {
       .value("LOD_TENSOR_ARRAY", pd::proto::VarType::LOD_TENSOR_ARRAY)
       .value("PLACE_LIST", pd::proto::VarType::PLACE_LIST)
       .value("READER", pd::proto::VarType::READER)
-      .value("RAW", pd::proto::VarType::RAW);
+      .value("RAW", pd::proto::VarType::RAW)
+      .value("STRING", pd::proto::VarType::STRING)
+      .value("STRINGS", pd::proto::VarType::STRINGS)
+      .value("VOCAB", pd::proto::VarType::VOCAB);
 }
 
 void BindOpDesc(pybind11::module *m) {
@@ -267,6 +278,7 @@ void BindOpDesc(pybind11::module *m) {
              self.SetOutput(name, vec_var_name);
            })
       .def("remove_output", &pd::OpDesc::RemoveOutput)
+      .def("remove_input", &pd::OpDesc::RemoveInput)
       .def("input_arg_names", &pd::OpDesc::InputArgumentNames)
       .def("output_arg_names", &pd::OpDesc::OutputArgumentNames)
       .def("_rename_input", &pd::OpDesc::RenameInput)
@@ -295,6 +307,8 @@ void BindOpDesc(pybind11::module *m) {
       .def("block", [](pd::OpDesc &self) { return self.Block(); },
            pybind11::return_value_policy::reference)
       .def("id", &pd::OpDesc::Id)
+      .def("original_id", &pd::OpDesc::OriginalId)
+      .def("set_original_id", &pd::OpDesc::SetOriginalId)
       .def("inputs", &pd::OpDesc::Inputs)
       .def("outputs", &pd::OpDesc::Outputs);
 }

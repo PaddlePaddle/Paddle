@@ -42,7 +42,7 @@ static void CubInclusiveScan(InputIterator x_iter, OutputIterator y_iter,
   void *temp_storage = nullptr;
   size_t temp_storage_bytes = 0;
   for (size_t i = 0; i < 2; ++i) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(cub::DeviceScan::InclusiveScan(
+    PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceScan::InclusiveScan(
         temp_storage, temp_storage_bytes, x_iter, y_iter, op,
         static_cast<int>(n),  // Maybe overflow?
         dev_ctx.stream()));
@@ -194,7 +194,7 @@ static void InclusiveScanInnerDim(const T *x, T *y, size_t outer_dim,
   constexpr size_t kThreadNumY = 32;
 
   size_t grid_dim = (outer_dim + kThreadNumY - 1) / kThreadNumY;
-  grid_dim = std::min<size_t>(grid_dim, dev_ctx.GetCUDAMaxGridDimSize().x);
+  grid_dim = std::min<size_t>(grid_dim, dev_ctx.GetCUDAMaxGridDimSize()[0]);
   dim3 thread_dims(kThreadNumX, kThreadNumY);
   if (reverse) {
     InclusiveScanInnerDimCUDAKernel<

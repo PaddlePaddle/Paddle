@@ -22,12 +22,11 @@
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
-class SelectedRows;
 
 namespace details {
 struct VarHandle;
@@ -41,9 +40,9 @@ struct NCCLContextMap;
 }  // namespace platform
 }  // namespace paddle
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #elif defined(PADDLE_WITH_XPU_BKCL)
-#include "paddle/fluid/platform/bkcl_helper.h"
+#include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #endif
 
 namespace paddle {
@@ -131,11 +130,11 @@ struct ReduceOpHandle : public OpHandleBase {
     defined PADDLE_WITH_DISTRIBUTE
   template <typename DevCtx, typename DataType>
   void GatherSelectedRows(
-      const std::vector<const SelectedRows *> &src_selecte_rows_,
+      const std::vector<const pten::SelectedRows *> &src_selecte_rows_,
       const std::vector<platform::Place> &in_places,
       const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
       VarHandle *out_var_handle, const platform::Place &out_place,
-      SelectedRows *dst_selecte_rows);
+      pten::SelectedRows *dst_selecte_rows);
 #endif
 
   void Wait(

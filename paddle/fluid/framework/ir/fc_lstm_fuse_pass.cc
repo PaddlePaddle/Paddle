@@ -68,13 +68,13 @@ MulLstmFusePass::MulLstmFusePass() {
       .IsType<bool>()
       .End()
       .AddAttr("gate_activation")
-      .IsStringIn({"sigmoid", "tanh", "relu", "identity"})
+      .IsStringIn({"sigmoid"})
       .End()
       .AddAttr("cell_activation")
-      .IsStringIn({"sigmoid", "tanh", "relu", "identity"})
+      .IsStringIn({"tanh", "relu", "identity"})
       .End()
       .AddAttr("candidate_activation")
-      .IsStringIn({"sigmoid", "tanh", "relu", "identity"})
+      .IsStringIn({"tanh", "relu", "identity"})
       .End();
   AddOpCompat(OpCompat("mul"))
       .AddInput("X")
@@ -349,9 +349,9 @@ void FCLstmFusePass::ApplyImpl(ir::Graph* graph) const {
       BuildFusion(graph, name_scope_, param_scope(), true /*with_fc_bias*/);
 
   AddStatis(fusion_count);
-
-  string::PrettyLogDetail("---    fused %d pairs of fc lstm patterns",
-                          fusion_count);
+  if (!Has("disable_logs") || !Get<bool>("disable_logs"))
+    string::PrettyLogDetail("---    fused %d pairs of fc lstm patterns",
+                            fusion_count);
 }
 
 }  // namespace ir

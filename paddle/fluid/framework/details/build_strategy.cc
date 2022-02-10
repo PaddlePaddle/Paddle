@@ -19,8 +19,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_printer.h"
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/multi_devices_graph_pass.h"
 
-DECLARE_bool(use_mkldnn);
 DECLARE_bool(convert_all_blocks);
+DECLARE_bool(use_mkldnn);
+#ifdef PADDLE_WITH_CINN
+DECLARE_bool(use_cinn);
+#endif
 
 namespace paddle {
 namespace framework {
@@ -49,6 +52,15 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     ResolveOptionConfliction();
 
     AppendPrintGraphPass("graph_viz_pass", "_original_graph");
+
+#ifdef PADDLE_WITH_CINN
+    if (FLAGS_use_cinn) {
+      // Note: This pass is used to enable cinn.
+      AppendPass("build_cinn_pass");
+      AppendPrintGraphPass("graph_viz_pass", "_build_cinn_graph");
+    }
+#endif
+
     AppendPassWithCheck(strategy_.enable_sequential_execution_,
                         "sequential_execution_pass");
     AppendPassWithCheck(strategy_.sync_batch_norm_, "sync_batch_norm_pass");
@@ -226,6 +238,9 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
         case BuildStrategy::ReduceStrategy::kReduce:
           multi_devices_pass =
               AppendPass("reduce_mode_multi_devices_pass").get();
+          break;
+        case BuildStrategy::ReduceStrategy::kNoReduce:
+          multi_devices_pass = AppendPass("no_reduce_multi_devices_pass").get();
           break;
         default:
           PADDLE_THROW(
@@ -463,6 +478,7 @@ USE_PASS(fuse_bn_act_pass);
 USE_PASS(fuse_bn_add_act_pass);
 USE_PASS(graph_viz_pass);
 USE_PASS(multi_batch_merge_pass);
+USE_PASS(no_reduce_multi_devices_pass);
 USE_PASS(reduce_mode_multi_devices_pass);
 USE_PASS(all_reduce_mode_multi_devices_pass);
 USE_PASS(dist_multi_devices_pass);
@@ -481,6 +497,9 @@ USE_PASS(fuse_momentum_op_pass);
 USE_PASS(fuse_all_reduce_op_pass);
 USE_PASS(runtime_context_cache_pass);
 USE_PASS(add_reader_dependency_pass);
+#ifdef PADDLE_WITH_CINN
+USE_PASS(build_cinn_pass);
+#endif
 #ifdef PADDLE_WITH_MKLDNN
 USE_PASS(mkldnn_placement_pass);
 #endif

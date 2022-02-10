@@ -25,6 +25,7 @@ from .clip import ClipGradByNorm  # noqa: F401
 from .clip import ClipGradByValue  # noqa: F401
 from .decode import BeamSearchDecoder  # noqa: F401
 from .decode import dynamic_decode  # noqa: F401
+from .layer.activation import CELU  # noqa: F401
 from .layer.activation import ELU  # noqa: F401
 from .layer.activation import GELU  # noqa: F401
 from .layer.activation import Tanh  # noqa: F401
@@ -45,12 +46,14 @@ from .layer.activation import Softplus  # noqa: F401
 from .layer.activation import Softshrink  # noqa: F401
 from .layer.activation import Softsign  # noqa: F401
 from .layer.activation import Swish  # noqa: F401
+from .layer.activation import Mish  # noqa: F401
 from .layer.activation import Tanhshrink  # noqa: F401
 from .layer.activation import ThresholdedReLU  # noqa: F401
 from .layer.activation import LogSoftmax  # noqa: F401
 from .layer.activation import Maxout  # noqa: F401
 from .layer.common import Pad1D  # noqa: F401
 from .layer.common import Pad2D  # noqa: F401
+from .layer.common import ZeroPad2D  # noqa: F401
 from .layer.common import Pad3D  # noqa: F401
 from .layer.common import CosineSimilarity  # noqa: F401
 from .layer.common import Embedding  # noqa: F401
@@ -66,6 +69,7 @@ from .layer.common import Dropout2D  # noqa: F401
 from .layer.common import Dropout3D  # noqa: F401
 from .layer.common import AlphaDropout  # noqa: F401
 from .layer.common import Unfold  # noqa: F401
+from .layer.common import Fold  # noqa: F401
 
 from .layer.pooling import AvgPool1D  # noqa: F401
 from .layer.pooling import AvgPool2D  # noqa: F401
@@ -73,7 +77,9 @@ from .layer.pooling import AvgPool3D  # noqa: F401
 from .layer.pooling import MaxPool1D  # noqa: F401
 from .layer.pooling import MaxPool2D  # noqa: F401
 from .layer.pooling import MaxPool3D  # noqa: F401
+from .layer.pooling import MaxUnPool1D  # noqa: F401
 from .layer.pooling import MaxUnPool2D  # noqa: F401
+from .layer.pooling import MaxUnPool3D  # noqa: F401
 from .layer.pooling import AdaptiveAvgPool1D  # noqa: F401
 from .layer.pooling import AdaptiveAvgPool2D  # noqa: F401
 from .layer.pooling import AdaptiveAvgPool3D  # noqa: F401
@@ -99,6 +105,7 @@ from .layer.loss import KLDivLoss  # noqa: F401
 from .layer.loss import MarginRankingLoss  # noqa: F401
 from .layer.loss import CTCLoss  # noqa: F401
 from .layer.loss import SmoothL1Loss  # noqa: F401
+from .layer.loss import HingeEmbeddingLoss  # noqa: F401
 from .layer.norm import BatchNorm  # noqa: F401
 from .layer.norm import SyncBatchNorm  # noqa: F401
 from .layer.norm import GroupNorm  # noqa: F401
@@ -185,6 +192,7 @@ def weight_norm(*args):
 
 __all__ = [     #noqa
            'BatchNorm',
+           'CELU',
            'GroupNorm',
            'LayerNorm',
            'SpectralNorm',
@@ -211,6 +219,7 @@ __all__ = [     #noqa
            'Bilinear',
            'AlphaDropout',
            'Unfold',
+           'Fold',
            'RNNCellBase',
            'SimpleRNNCell',
            'LSTMCell',
@@ -288,8 +297,14 @@ __all__ = [     #noqa
            'LogSoftmax',
            'Sigmoid',
            'Swish',
+           'Mish',
            'PixelShuffle',
            'ELU',
            'ReLU6',
-           'LayerDict'
+           'LayerDict',
+           'ZeroPad2D',
+           'MaxUnPool1D',
+           'MaxUnPool2D',
+           'MaxUnPool3D',
+           'HingeEmbeddingLoss',
 ]

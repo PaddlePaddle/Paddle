@@ -445,12 +445,12 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
       for_range_index(range_functor);
 
       size_t temp_storage_bytes = 0;
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           (cub::DeviceRadixSort::SortPairs<IndexT, IndexT>(
               nullptr, temp_storage_bytes, nullptr, nullptr, nullptr, nullptr,
               static_cast<int>(num_index))));
       auto d_temp_storage = memory::Alloc(ctx.GetPlace(), temp_storage_bytes);
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           (cub::DeviceRadixSort::SortPairs<IndexT, IndexT>(
               d_temp_storage->ptr(), temp_storage_bytes, index->data<IndexT>(),
               sorted_index_ptr, sort_value_ptr, grad_index_ptr,

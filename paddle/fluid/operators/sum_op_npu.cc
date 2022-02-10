@@ -16,8 +16,8 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/operators/sum_op.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -38,7 +38,7 @@ class SumNPUKernel : public framework::OpKernel<T> {
 
       int n = static_cast<int>(x.size());
       if (n == 1) {
-        TensorCopy(*x[0], place, out);
+        paddle::framework::TensorCopy(*x[0], place, out);
         return;
       }
 

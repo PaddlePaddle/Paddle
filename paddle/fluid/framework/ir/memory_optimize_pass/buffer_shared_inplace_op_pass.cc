@@ -283,7 +283,8 @@ void BufferSharedInplaceOpPass::ApplyImpl(ProgramDesc *main_program,
     op->SetInput("X", inputs);
     op->SetOutput("Out", outputs);
     op->SetOutput("XOut", inputs);  // add necessary dependency
-    op->SetAttr("share_dims", std::vector<bool>(inputs.size(), false));
+    op->SetAttr("share_dims_and_dtype",
+                std::vector<bool>(inputs.size(), false));
   }
   block->Flush();
 }

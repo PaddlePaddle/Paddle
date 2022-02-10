@@ -3,7 +3,7 @@
 | abhinavarora | Abhinav Arora |
 | andreazanetti | Andrea Zanetti |
 | arlesniak | Artur Lesniak |
-| arogowie-intel | Adam Osewski |
+| [arogowie-intel](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg) | Adam Osewski |
 | backyes | Yan-Fei Wang |
 | baiyfbupt | Yi-Fan Bai |
 | beckett1124 | Bin Qi |
@@ -25,8 +25,8 @@
 | hedaoyuan | Dao-Yuan He |
 | helinwang | He-Lin Wang |
 | jacquesqiao | Long-Fei Qiao |
-| jakpiase | Jakub Piasecki |
-| [jczaja](https://raw.githubusercontent.com/jczaja/Paddle/paddle-poland-team/doc/images/paddle_poland_team.jpg) | Jacek Czaja |
+| [jakpiase](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg) | Jakub Piasecki |
+| [jczaja](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg) | Jacek Czaja |
 | JiayiFeng | Jia-Yi Feng |
 | kbinias | Krzysztof Binias |
 | kexinzhao | Ke-Xin Zhao |
@@ -47,7 +47,8 @@
 | pakchoi | Chuan-Jiang Song |
 | panyx0718 | Xin Pan |
 | pengli09 | Peng Li |
-| pmajchrzak |Piotr Majchrzak |
+| [piotrekobiIntel](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg) | Piotr Paturej |
+| [pmajchrzak](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg) | Piotr Majchrzak |
 | pkuyym | Ya-Ming Yang |
 | pzelazko-intel | Pawel Zelazko |
 | [pawelpiotrowicz](https://raw.githubusercontent.com/jczaja/Paddle/paddle-poland-team/doc/images/paddle_poland_team.jpg)  | Pawel Piotrowicz |
@@ -55,12 +56,13 @@
 | qingqing01 | Qing-Qing Dang |
 | reyoung | Yang Yu |
 | [Sand3r-](https://raw.githubusercontent.com/jczaja/Paddle/paddle-poland-team/doc/images/paddle_poland_team.jpg)| Michal Gallus |
-| [sfraczek](https://raw.githubusercontent.com/jczaja/Paddle/paddle-poland-team/doc/images/paddle_poland_team.jpg)| Sylwester Fraczek |
+| [sfraczek](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg)| Sylwester Fraczek |
 | sneaxiy | Jin-Le Zeng |
 | Superjom | Chun-Wei Yan |
 | tensor-tang | Jian Tang |
 | tianbingsz | Tian-Bing Xu |
 | tpatejko | Tomasz Patejko |
+| [tsocha](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg) | Tomasz Socha |
 | typhoonzero | Yi Wu |
 | velconia | Qi-Yang Min |
 | wanghaoshuang | Hao-Shuang Wang |
@@ -68,7 +70,7 @@
 | wangzhen-nlp | Zhen Wang |
 | wen-bo-yang | Wen-Bo Yang |
 | wojtuss | Wojciech Uss |
-| wozna | Joanna Wozna |
+| [wozna](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg)| Joanna Wozna |
 | wwhu | Wei-Wei Hu |
 | xinghai-sun | Xing-Hai Sun |
 | Xreki | Yi-Qun Liu |

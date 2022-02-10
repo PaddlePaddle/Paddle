@@ -67,6 +67,7 @@ class SliceInfo:
     def __init__(self):
         self.pre_shape = None
         self.indexes = []
+        self.dtype = None
 
     def update(self, index):
         if is_list_tuple(index, int) or isinstance(index, (
@@ -74,6 +75,14 @@ class SliceInfo:
             # convert index to Tensor
             if not isinstance(index, paddle.fluid.Variable):
                 index = paddle.assign(index)
+
+            if self.dtype is None:
+                self.dtype = index.dtype
+            else:
+                if index.dtype != self.dtype:
+                    raise IndexError(
+                        "Data type of Tensor/List index should be same. The current data type is {}, but the previous data type is {}.".
+                        format(index.dtype, self.dtype))
 
             self.indexes.append(index)
 
@@ -195,7 +204,8 @@ def replace_ellipsis(var, item):
 
     # Remove Variable to skip bug when counting Ellipsis
     item_remove_var = [
-        ele for ele in item if not isinstance(ele, (Variable, np.ndarray))
+        ele for ele in item
+        if not isinstance(ele, (Variable, np.ndarray)) and ele is not None
     ]
     ell_count = item_remove_var.count(Ellipsis)
     if ell_count == 0:
@@ -209,9 +219,19 @@ def replace_ellipsis(var, item):
         return item[:-1]
     else:
         item[ell_idx:ell_idx + 1] = [slice(None)] * (
-            len(var.shape) - len(item) + 1)
+            len(var.shape) - len(item) + item.count(None) + 1)
 
     return item
+
+
+def replace_ndarray(item):
+    new_item = []
+    for slice_item in item:
+        if isinstance(slice_item, np.ndarray):
+            new_item.append(paddle.assign(slice_item))
+        else:
+            new_item.append(slice_item)
+    return new_item
 
 
 def replace_none(item):
@@ -278,8 +298,9 @@ def _getitem_impl_(var, item):
     reverse_axes = []
 
     use_strided_slice = False
-    item, none_axes = replace_none(item)
+    item = replace_ndarray(item)
     item = replace_ellipsis(var, item)
+    item, none_axes = replace_none(item)
     slice_info = SliceInfo()
 
     for dim, slice_item in enumerate(item):
@@ -361,9 +382,6 @@ def _getitem_impl_(var, item):
             idx = assign(np.array(slice_item).astype("int32"))
             return index_select(var, index=idx, axis=0)
 
-        elif isinstance(slice_item, np.ndarray):
-            slice_info.update(slice_item)
-            continue
         elif isinstance(slice_item, (Variable)):
             if len(item) == 1:
 
@@ -499,8 +517,9 @@ def _setitem_impl_(var, item, value):
     ends = []
     steps = []
 
-    item, none_axes = replace_none(item)
+    item = replace_ndarray(item)
     item = replace_ellipsis(var, item)
+    item, none_axes = replace_none(item)
     slice_info = SliceInfo()
     dim = 0
     for _, slice_item in enumerate(item):
@@ -555,10 +574,6 @@ def _setitem_impl_(var, item, value):
             from .layers import assign
             idx_tensor = assign(slice_item)
             return set_value_for_bool_tensor(var, idx_tensor, value)
-
-        elif isinstance(slice_item, np.ndarray):
-            slice_info.update(slice_item)
-            continue
 
         elif isinstance(slice_item, Variable):
             if slice_item.dtype == core.VarDesc.VarType.BOOL:
@@ -650,23 +665,22 @@ def _setitem_impl_(var, item, value):
             "paddle.Tensor to a paddle.Tensor, but received {}".format(
                 type(value)))
 
+    if paddle.fluid.framework.in_dygraph_mode():
+        var._bump_inplace_version()
+
     cur_block = default_main_program().current_block()
     cur_block.append_op(
-        type="set_value", inputs=inputs, outputs={'Out': var}, attrs=attrs)
+        type="set_value",
+        inputs=inputs,
+        outputs={'Out': var},
+        attrs=attrs,
+        inplace_map={"Input": "Out"})
 
     return var
 
 
 # the item is a tensor of bool 
 def set_value_for_bool_tensor(var, item, value):
-
-    # TODO(zyfncg): Now scatter_nd_add only support float32 and float64 tensor, 
-    # so in the current version we also only support float32 and float64 tensor, 
-    # this problem will be fixed in the future.
-    if var.dtype != core.VarDesc.VarType.FP32 and var.dtype != core.VarDesc.VarType.FP64:
-        raise TypeError("Only support float and double tensor for bool index, "
-                        "but received {}.".format(var.dtype))
-
     if len(item.shape) > len(var.shape):
         raise IndexError("The dims of bool index doesn't match indexed array, "
                          "the dims of bool index except to be equal or less "

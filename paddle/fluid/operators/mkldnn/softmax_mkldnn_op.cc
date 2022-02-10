@@ -32,15 +32,15 @@ using platform::to_void_cast;
 
 template <typename T>
 class SoftmaxMKLDNNHandler
-    : public platform::MKLDNNHandlerNoCachingT<T, mkldnn::softmax_forward,
-                                               mkldnn::softmax_backward> {
+    : public platform::MKLDNNHandlerNoCachingT<T, dnnl::softmax_forward,
+                                               dnnl::softmax_backward> {
  public:
-  SoftmaxMKLDNNHandler(const mkldnn::engine mkldnn_engine,
+  SoftmaxMKLDNNHandler(const dnnl::engine mkldnn_engine,
                        platform::Place cpu_place, const Tensor* input,
                        Tensor* output, const int axis)
-      : platform::MKLDNNHandlerNoCachingT<T, mkldnn::softmax_forward,
-                                          mkldnn::softmax_backward>(
-            mkldnn_engine, cpu_place) {
+      : platform::MKLDNNHandlerNoCachingT<T, dnnl::softmax_forward,
+                                          dnnl::softmax_backward>(mkldnn_engine,
+                                                                  cpu_place) {
     PADDLE_ENFORCE_EQ(
         input->dims(), output->dims(),
         platform::errors::InvalidArgument(
@@ -55,13 +55,13 @@ class SoftmaxMKLDNNHandler
   }
 
   SoftmaxMKLDNNHandler(const framework::ExecutionContext& ctx,
-                       const mkldnn::engine mkldnn_engine,
+                       const dnnl::engine mkldnn_engine,
                        platform::Place cpu_place, const Tensor* out,
                        const Tensor* out_grad, Tensor* in_x_grad,
                        const std::string& unique_name)
-      : platform::MKLDNNHandlerNoCachingT<T, mkldnn::softmax_forward,
-                                          mkldnn::softmax_backward>(
-            mkldnn_engine, cpu_place) {
+      : platform::MKLDNNHandlerNoCachingT<T, dnnl::softmax_forward,
+                                          dnnl::softmax_backward>(mkldnn_engine,
+                                                                  cpu_place) {
     PADDLE_ENFORCE_EQ(out_grad->dims(), in_x_grad->dims(),
                       platform::errors::InvalidArgument(
                           "The shape of softmax_grad's input "
@@ -103,9 +103,13 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
 
     auto softmax_src_memory_p = handler.AcquireSrcMemory(input);
     // For Inplace src and and dst are the same memory object
-    auto softmax_dst_memory_p =
-        is_inplaced ? softmax_src_memory_p : handler.AcquireDstMemory(output);
-
+    std::shared_ptr<dnnl::memory> softmax_dst_memory_p = nullptr;
+    if (is_inplaced) {
+      softmax_dst_memory_p = softmax_src_memory_p;
+      output->mutable_data<T>(ctx.GetPlace());
+    } else {
+      softmax_dst_memory_p = handler.AcquireDstMemory(output);
+    }
     auto softmax_p = handler.AcquireForwardPrimitive();
 
     auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
@@ -150,10 +154,9 @@ class SoftmaxMKLDNNGradKernel : public paddle::framework::OpKernel<T> {
     auto softmax_bwd_p = handler.AcquireBackwardPrimitive();
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-    softmax_bwd_p->execute(astream,
-                           {{MKLDNN_ARG_DST, *dst_memory_p},
-                            {MKLDNN_ARG_DIFF_DST, *diff_dst_memory_p},
-                            {MKLDNN_ARG_DIFF_SRC, *diff_src_memory_p}});
+    softmax_bwd_p->execute(astream, {{DNNL_ARG_DST, *dst_memory_p},
+                                     {DNNL_ARG_DIFF_DST, *diff_dst_memory_p},
+                                     {DNNL_ARG_DIFF_SRC, *diff_src_memory_p}});
     astream.wait();
 
     in_x_grad->set_layout(framework::DataLayout::kMKLDNN);

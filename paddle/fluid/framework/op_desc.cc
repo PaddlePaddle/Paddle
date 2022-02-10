@@ -200,7 +200,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   }
 
   std::vector<InferShapeVarPtr> GetInputVarPtrs(
-      const std::string &name) override {
+      const std::string &name) const override {
     const std::vector<std::string> arg_names = Inputs(name);
     std::vector<InferShapeVarPtr> res;
     res.reserve(arg_names.size());
@@ -212,7 +212,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   }
 
   std::vector<InferShapeVarPtr> GetOutputVarPtrs(
-      const std::string &name) override {
+      const std::string &name) const override {
     const std::vector<std::string> arg_names = Outputs(name);
     std::vector<InferShapeVarPtr> res;
     res.reserve(arg_names.size());
@@ -239,6 +239,8 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   }
 
   bool IsRuntime() const override;
+
+  bool IsRunMKLDNNKernel() const override;
 
   std::vector<proto::VarType::Type> GetInputsVarType(
       const std::string &name) const override {
@@ -352,15 +354,9 @@ void OpDesc::CopyFrom(const OpDesc &op_desc) {
   inputs_ = op_desc.inputs_;
   outputs_ = op_desc.outputs_;
   attrs_ = op_desc.attrs_;
+  // The record of original_id_ is only for auto parallel.
+  original_id_ = op_desc.original_id_;
   need_update_ = true;
-  // When creating graph from program, the creation of op node will create a new
-  // OpDesc instead of
-  // referring to the original one. To find the original OpDesc of the op node,
-  // the id have to be
-  // copied to the new OpDesc. The var node has the same situation, but the
-  // default copy constructor
-  // can copy the id automatically.
-  id_ = op_desc.id_;
 }
 
 OpDesc::OpDesc(const proto::OpDesc &desc, BlockDesc *block)
@@ -457,6 +453,11 @@ void OpDesc::SetOutput(const std::string &param_name,
 
 void OpDesc::RemoveOutput(const std::string &name) {
   outputs_.erase(name);
+  need_update_ = true;
+}
+
+void OpDesc::RemoveInput(const std::string &name) {
+  inputs_.erase(name);
   need_update_ = true;
 }
 
@@ -930,6 +931,8 @@ void CompileTimeInferShapeContext::SetRepeatedDims(
 }
 
 bool CompileTimeInferShapeContext::IsRuntime() const { return false; }
+
+bool CompileTimeInferShapeContext::IsRunMKLDNNKernel() const { return false; }
 
 proto::VarType::Type CompileTimeInferShapeContext::GetVarType(
     const std::string &name) const {

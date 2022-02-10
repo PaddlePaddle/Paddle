@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_max_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_npu.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {

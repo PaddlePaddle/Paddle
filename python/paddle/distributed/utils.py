@@ -25,12 +25,13 @@ import subprocess
 from contextlib import closing
 import socket
 from paddle.fluid import core
+from paddle.distributed.fleet.launch_utils import get_backend_by_compile_flag
 from distutils.util import strtobool
 
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
-
+from paddle import _C_ops
 
 __all__ = [     #noqa
            'get_host_name_ip',
@@ -59,20 +60,45 @@ def global_scatter(x,
                    group=None,
                    use_calc_stream=True):
     """
-    Scatter data in x which has been put together belong to one expert 
-    to n_expert * world_size exeperts according to local_count and receive tensors 
-    from n_expert * world_size experts according
-    to global_count.
+    The global_scatter operator distributes the data of x to n_expert * world_size experts according to local_count, 
+    and then receives data according to global_count. The expert refers to a user-defined expert network, 
+    n_expert refers to the number of expert networks owned by each card, and world_size refers to the number of graphics cards running the network.
     
+    As shown below, the value of the world size is 2, n_expert 2, the batch size of the x 4 and local_count is [2, 0, 2, 0].
+    The global_count of the rank 0 is [2, 0, , ], rank 1 is [2, 0, ,](Due to the limited space, only the data calculated on rank 0 is shown here).
+    In the global_scatter operator, local_count[i] represents sending local_count[i] data to the (i % n_expert)th expert of the (i // n_expert)th card,
+    global_count[i] represents receiving global_count[i] data from the (i // n_expert)th card to the (i % n_expert)th expert of this card. The rank in the
+    figure respresent the rank of the current card in all cards.
+
+    The process of global_scatter sending data is as follows:
+
+    local_count[0] represents taking out 2 batches from x and sending 2 batches to the 0th expert of the 0th card;
+
+    local_count[1] represents taking out 0 batches from x and sending 0 batches to the 1th expert of the 0th card;
+
+    local_count[2] represents taking out 2 batches from x and sending 2 batches to the 0th expert of the 1th card;
+
+    local_count[3] represents taking out 0 batches from x and sending 0 batches to the 1th expert of the 1th card;
+
+    Therefore, the global_count[0] of the 0th card is equal to 2, which means that 2 batches of data are received from the 0th card to the 0th expert;
+
+    the global_count[1] of the 0th card is equal to 0, which means that 0 batches of data are received from the 0th card to the 1th expert;
+
+    the global_count[0] of the 1th card is equal to 2, which means that 2 batches of data are received from the 0th card to the 0th expert;
+
+    the global_count[1] of the 1th card is equal to 0, which means that 0 batches of data are received from the 0th card to the 1th expert.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/global_scatter_gather.png
+        :width: 800
+        :alt: global_scatter_gather
+        :align: center
+
     Args:
-        x (Tensor): Tensor. Every element in the list must be a Tensor whose data type
-            should be float16, float32, float64, int32 or int64.
+        x (Tensor): Tensor. The tensor data type should be float16, float32, float64, int32 or int64.
         local_count (Tensor): Tensor which have n_expert * world_size elements that indicates
-            how many data needed to be sent. Every element in the list must be a Tensor whose 
-            data type should be int64.
+            how many data needed to be sent. The tensor data type should be int64.
         global_count (Tensor): Tensor which have n_expert * world_size elements that indicates
-            how many data needed to be received. Every element in the list must be a Tensor whose 
-            data type should be int64.
+            how many data needed to be received. The tensor data type should be int64.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
         use_calc_stream (bool, optional): Wether to use calculation stream (True) or communication stream. Default: True.
     
@@ -120,7 +146,7 @@ def global_scatter(x,
 
     ring_id = 0 if group is None else group.id
     if in_dygraph_mode():
-        return core.ops.global_scatter(x, local_count, \
+        return _C_ops.global_scatter(x, local_count, \
                                     global_count,  \
                                     'use_calc_stream', use_calc_stream, \
                                     'ring_id', ring_id)
@@ -156,24 +182,42 @@ def global_gather(x,
                   group=None,
                   use_calc_stream=True):
     """
-    Gather data in x to n_expert * world_size exeperts according to
-    local_count and receive tensors from n_expert * world_size experts according
-    to global_count.
+    The global_gather operator gathers the data of x into n_expert * world_size experts according to global_count, and then receives data according to local_count.
+    The expert refers to a user-defined expert network, n_expert refers to the number of expert networks owned by each card, and world_size refers to the number of graphics cards running the network.
+
+    As shown below, the value of the world size is 2, n_expert 2, the batch size of the x 4 and local_count is [2, 0, 2, 0].
+    The global_count of the rank 0 is [2, 0, , ], rank 1 is [2, 0, ,](Due to the limited space, only the data calculated on rank 0 is shown here).
+    In the global_gather operator, the meaning of the global_count and local_count is opposed to global_scatter, global_count[i] represents sending global_count[i] data to the (i % n_expert)th expert of the (i // n_expert)th card,
+    local_count[i] represents receiving local_count[i] data from the (i // n_expert)th card to the (i % n_expert)th expert of this card. The data sent will be arranged according to the experts of each card.
+    The rank in the figure respresent the rank of the current card in all cards.
+
+    The process of global_gather sending data is as follows:
+
+    The global_count[0] of the 0th card represents sending 2 data to the 0th expert of the 0th card;
+    
+    The global_count[1] of the 0th card represents sending 0 data to the 1th expert of the 0th card;
+    
+    The global_count[0] of the 1th card represents sending 2 data to the 0th expert of the 0th card;
+    
+    The global_count[1] of the 1th card represents sending 0 data to the 1th expert of the 0th card.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/global_scatter_gather.png
+        :width: 800
+        :alt: global_scatter_gather
+        :align: center
+
 
     Args:
-        x (Tensor): Tensor. Every element in the list must be a Tensor whose data type
-            should be float16, float32, float64, int32 or int64.
+        x (Tensor): Tensor. Tensor whose data type should be float16, float32, float64, int32 or int64.
         local_count (Tensor): Tensor which have n_expert * world_size elements that indicates
-            how many data needed to be received. Every element in the list must be a Tensor whose 
-            data type should be int64.
+            how many data needed to be received. Tensor data type should be int64.
         global_count (Tensor): Tensor which have n_expert * world_size elements that indicates
-            how many data needed to be sent. Every element in the list must be a Tensor whose 
-            data type should be int64.
+            how many data needed to be sent. Tensor data type should be int64.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
         use_calc_stream (bool, optional): Wether to use calculation stream (True) or communication stream. Default: True.
     
     Returns:
-        None.
+        out (Tensor): The data received from all experts. 
     
     Examples:
         .. code-block:: python
@@ -214,7 +258,7 @@ def global_gather(x,
 
     ring_id = 0 if group is None else group.id
     if in_dygraph_mode():
-        return core.ops.global_gather(x, local_count, \
+        return _C_ops.global_gather(x, local_count, \
                                     global_count, \
                                     'use_calc_stream', use_calc_stream, \
                                     'ring_id', ring_id)
@@ -489,9 +533,6 @@ class Pod(object):
     def parse_response(self, res_pods):
         pass
 
-    def rank(self):
-        return self.rank
-
     def get_visible_gpus(self):
         r = ""
         for g in self.gpus:
@@ -622,8 +663,10 @@ def find_free_ports(num):
     return None
 
 
-def _prepare_trainer_env(cluster, trainer):
-    if core.is_compiled_with_xpu():
+def _prepare_trainer_env(cluster, trainer, backend=None):
+    if backend is None:
+        backend = get_backend_by_compile_flag()  # for compatibility
+    if backend == 'bkcl':
         proc_env = {
             "FLAGS_selected_xpus":
             "%s" % ",".join([str(g) for g in trainer.gpus]),
@@ -632,7 +675,7 @@ def _prepare_trainer_env(cluster, trainer):
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
         }
-    elif core.is_compiled_with_cuda():
+    elif backend == 'nccl':
         proc_env = {
             "FLAGS_selected_gpus":
             "%s" % ",".join([str(g) for g in trainer.gpus]),
@@ -641,6 +684,19 @@ def _prepare_trainer_env(cluster, trainer):
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
         }
+    elif backend == 'gloo':
+        # NOTE (xiongkun) default fall back into cpu only
+        proc_env = {
+            "PADDLE_TRAINER_ID": "%d" % trainer.rank,
+            "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
+            "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
+            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
+            "PADDLE_DISTRI_BACKEND":
+            backend,  # only add here, other will be auto
+        }
+    else:
+        raise ValueError("backend must be one of 'gloo, nccl, bkcl'")
+
     return proc_env
 
 

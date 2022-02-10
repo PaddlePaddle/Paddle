@@ -41,24 +41,24 @@ function add_failed(){
 api_params_diff=`python ${PADDLE_ROOT}/tools/check_api_compatible.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec` 
 api_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.api  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.api` 
 if [ "$api_spec_diff" != "" -o "${api_params_diff}" != "" ]; then
-    echo_line="You must have one RD (XiaoguangHu01 or lanxianghit) approval for API change.\n"
+    echo_line="You must have one RD (XiaoguangHu01, lanxianghit or Superjomn) approval for API change.\n"
     echo_line="${echo_line} and one TPM approval for API change: \n"
-    echo_line="${echo_line} jzhang533/ZhangJun, dingjiaweiww/DingJiaWei, Heeenrrry/LiKunLun, TCChenlong/ChenLong for general APIs\n"
-    echo_line="${echo_line} PangHua/XiangHui for distributed related APIs\n"
-    echo_line="${echo_line} twismon/WangYunKai, CheQiXiao/CheQiXiao for inference related APIs.\n"
+    echo_line="${echo_line} jzhang533/ZhangJun, dingjiaweiww/DingJiaWei, TCChenlong/ChenLong, Ligoml/LiMengLiu for general APIs.\n"
+    echo_line="${echo_line} PangHua/XiangHui for distributed related APIs.\n"
+    echo_line="${echo_line} leiqing1/LeiQing for inference related APIs.\n"
 
-    check_approval 1 46782768 47554610
-    check_approval 1 29231 23093488 28379894 11935832 2682285 12050047 50894398
+    check_approval 1 46782768 47554610 328693
+    check_approval 1 29231 23093488 11935832 39876205 2682285 54695910
 fi
 
 api_doc_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.doc  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.doc` 
 if [ "$api_doc_spec_diff" != "" ]; then
     echo_line="You must have  one TPM approval for API documents change: \n"
-    echo_line="${echo_line} jzhang533/ZhangJun, dingjiaweiww/DingJiaWei, Heeenrrry/LiKunLun, TCChenlong/ChenLong for general API docs\n"
-    echo_line="${echo_line} PangHua/XiangHui for distributed related API docs\n"
-    echo_line="${echo_line} twismon/WangYunKai, CheQiXiao/CheQiXiao for inference related API docs.\n"
+    echo_line="${echo_line} jzhang533/ZhangJun, dingjiaweiww/DingJiaWei, TCChenlong/ChenLong, Ligoml/LiMengLiu for general API docs.\n"
+    echo_line="${echo_line} PangHua/XiangHui for distributed related API docs.\n"
+    echo_line="${echo_line} leiqing1/LeiQing for inference related API docs.\n"
 
-    check_approval 1 29231 23093488 28379894 11935832 2682285 12050047 50894398
+    check_approval 1 29231 23093488 11935832 39876205 2682285 54695910
 fi
 
 api_src_spec_diff=`python ${PADDLE_ROOT}/tools/check_api_source_without_core_ops.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.source.md5  ${PADDLE_ROOT}/paddle/fluid/API_PR.source.md5` 
@@ -76,9 +76,21 @@ if [ "$op_type_spec_diff" != "" ]; then
 fi
 
 op_desc_diff=`python ${PADDLE_ROOT}/tools/check_op_desc.py ${PADDLE_ROOT}/paddle/fluid/OP_DESC_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/OP_DESC_PR.spec`
+inference_approve=`echo "$op_desc_diff" | grep "need inference to review" -`
+slim_approve=`echo "$op_desc_diff" | grep "need slim to review" -`
 if [ "$op_desc_diff" != "" ]; then
-    echo_line="You must have one RD (cyj1986, Superjomn) approval for the changes of Inputs/Output/Attrs of OPs. The changes of OPs will cause that the new version inference fails to load model trained by the old version. Please modify your code. \n For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/OP-Input-Output-Attribute-Compatibility-Modification].\n${op_desc_diff}\n"
-    check_approval 1 39645414 328693
+    echo_line="You must have one RD (inference[ Superjomn(Recommend), Shixiaowei02, cyj1986 ] or slim[ wanghaoshuang(Recommend), qingqing01 ]) approval for the changes of Inputs/Output/Attrs of OPs. The changes of OPs will cause that the new version inference fails to load model trained by the old version. Please modify your code. \n For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/OP-Input-Output-Attribute-Compatibility-Modification].\n${op_desc_diff}\n"
+    check_approval 1 39645414 328693 39303645 7534971 7845005
+fi
+
+if [ "$slim_approve" != "" ]; then
+    echo_line="You must have one RD (wanghaoshuang(Recommend), qingqing01) approval for the changes of `quant` Inputs/Output/Attrs of OPs. \n For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/OP-Input-Output-Attribute-Compatibility-Modification].\n${slim_approve}\n"
+    check_approval 1 7534971 7845005
+fi
+
+if [ "$inference_approve" != "" ]; then
+    echo_line="You must have one RD (Superjomn(Recommend), Shixiaowei02, cyj1986) approval for the changes of `def` Inputs/Output/Attrs of OPs. \n For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/OP-Input-Output-Attribute-Compatibility-Modification].\n${inference_approve}\n"
+    check_approval 1 39645414 328693 39303645
 fi
 
 DEV_OP_USE_DEFAULT_GRAD_MAKER_SPEC=${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_DEV.spec

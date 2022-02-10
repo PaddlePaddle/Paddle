@@ -24,7 +24,8 @@ class Shard(object):
         self.global_params = set([])
         self.worker_idx = -1
         self.worker_num = -1
-        self.global_param2device = {}
+        self.global_param2device = dict()
+        self.device2global_params = dict()
 
     def setup(self, params_grads, worker_idx, worker_num):
         # param names of all devices
@@ -33,8 +34,9 @@ class Shard(object):
         self.worker_idx = worker_idx
         self.worker_num = worker_num
         # global_param2device contains fp32 params and fp16 params
-        self.global_param2device = self._split_params(params_grads, worker_idx,
-                                                      worker_num)
+        # device2global_params only contains fp32 params
+        self.global_param2device, self.device2global_params \
+            = self._split_params(params_grads, worker_idx, worker_num)
 
     def has_param(self, var_name):
         return var_name in self.global_param2device and \
@@ -64,7 +66,7 @@ class Shard(object):
             device2params[device_idx].append(param_name)
             param2device[param_name] = device_idx
             mem_accu += mem
-        return param2device
+        return param2device, device2params
 
     def _var_device_id(self, var_name):
         if var_name in self.global_param2device:

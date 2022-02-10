@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/operators/fused/fused_dropout_common.h"
-#include "paddle/fluid/operators/layer_norm_kernel.cu.h"
 
 namespace paddle {
 namespace operators {
@@ -24,13 +23,15 @@ namespace operators {
  * @brief The fused function called by every thread
  * VecSize can be 1, 2, 4 or 8
  */
-template <typename T, typename MaskType, int VecSize, bool ComputeLayerNorm>
+template <typename T, typename MaskType, int VecSize, bool ComputeLayerNorm,
+          bool Activation, typename Functor>
 __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
     const int row_id, const int col_id, const int cols,
     curandStatePhilox4_32_10_t *state, const float dropout_prob, const T factor,
-    const T *src, const T *residual, const T *bias, T *dst, MaskType *mask,
-    const bool is_test, typename details::MPTypeTrait<T>::Type *mean_val,
-    typename details::MPTypeTrait<T>::Type *var_val) {
+    const T *__restrict__ src, const T *__restrict__ residual,
+    const T *__restrict__ bias, T *dst, MaskType *mask, const bool is_test,
+    typename details::MPTypeTrait<T>::Type *mean_val,
+    typename details::MPTypeTrait<T>::Type *var_val, Functor act_func) {
   using LoadT = platform::AlignedVector<T, VecSize>;
   using StoreT = platform::AlignedVector<T, VecSize>;
   using MaskStoreT = platform::AlignedVector<MaskType, VecSize>;
@@ -42,10 +43,14 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
 #pragma unroll
   for (int ii = 0; ii < VecSize; ii++) {
     bias_vec[ii] = static_cast<T>(0);
+    residual_vec[ii] = static_cast<T>(0);
   }
   // vectorize load data from global
   platform::Load<T, VecSize>(&src[row_id * cols + col_id], &src_vec);
-  platform::Load<T, VecSize>(&residual[row_id * cols + col_id], &residual_vec);
+  if (residual) {
+    platform::Load<T, VecSize>(&residual[row_id * cols + col_id],
+                               &residual_vec);
+  }
 
   if (bias) {
     platform::Load<T, VecSize>(&bias[col_id], &bias_vec);
@@ -54,7 +59,7 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
   MaskStoreT mask_vec;
   if (!is_test) {
     float rand[VecSize];
-    RandVec(state, rand, VecSize);
+    RandVec<VecSize>(state, rand);
 #pragma unroll
     for (int ii = 0; ii < VecSize; ii++) {
       mask_vec[ii] = static_cast<MaskType>(rand[ii] >= dropout_prob);
@@ -70,9 +75,12 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
 
 #pragma unroll
   for (int ii = 0; ii < VecSize; ii++) {
+    T tmp = src_vec[ii] + bias_vec[ii];
+    if (Activation) {
+      tmp = act_func(tmp);
+    }
     dest_vec[ii] =
-        (src_vec[ii] + bias_vec[ii]) * static_cast<T>(mask_vec[ii]) * factor +
-        residual_vec[ii];
+        tmp * static_cast<T>(mask_vec[ii]) * factor + residual_vec[ii];
     if (ComputeLayerNorm) {
       U tmp = static_cast<U>(dest_vec[ii]);
       *mean_val += tmp;
@@ -97,31 +105,24 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
 template <typename T, typename MaskType, int VecSize>
 __global__ void FusedResidualDropoutBias(
     const size_t rows, const size_t cols, uint64_t seed,
-    const float dropout_prob, const bool is_upscale_in_train, const T *src,
-    const T *residual, const T *bias, MaskType *mask, T *dst,
-    uint64_t increment, const bool is_test) {
+    const float dropout_prob, const bool is_upscale_in_train,
+    const T *__restrict__ src, const T *__restrict__ residual,
+    const T *__restrict__ bias, MaskType *mask, T *dst, uint64_t increment,
+    const bool is_test) {
   int col_id = blockDim.x * blockIdx.x + threadIdx.x;
   int row_id = blockIdx.y;
   int idx = row_id * cols + col_id;
   curandStatePhilox4_32_10_t state;
   curand_init(seed, idx, increment, &state);
-
-  T factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
-  if (!is_upscale_in_train) {
-    factor = static_cast<T>(1.0f);
-  }
-  if (is_test) {
-    factor = static_cast<T>(1.0f - dropout_prob);
-    if (is_upscale_in_train) {
-      factor = static_cast<T>(1.0f);
-    }
-  }
+  const T factor = GetFactor<T>(dropout_prob, is_upscale_in_train, is_test);
+  math::ReluFunctor<T> relu;
   for (int r = row_id; r < rows; r += blockDim.y * gridDim.y) {
     for (int i = col_id * VecSize; i < cols;
          i += blockDim.x * gridDim.x * VecSize) {
-      FusedResidualDropoutBiasOneThread<T, MaskType, VecSize, false>(
+      FusedResidualDropoutBiasOneThread<T, MaskType, VecSize, false, false,
+                                        math::ReluFunctor<T>>(
           r, i, cols, &state, dropout_prob, factor, src, residual, bias, dst,
-          mask, is_test, nullptr, nullptr);
+          mask, is_test, nullptr, nullptr, relu);
     }
   }
 }
@@ -140,12 +141,11 @@ void LaunchResidualDropoutBias(const uint32_t rows, const uint32_t cols,
   // dropout_prob == 1.0f
   if (std::abs(dropout_prob - 1.0f) < 1e-5) {
     if (residual == dst) return;
-    auto cuda_place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+    auto cuda_place = ctx.GetPlace();
     memory::Copy(cuda_place, dst, cuda_place, residual, rows * cols * sizeof(T),
                  ctx.stream());
     if (!is_test) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemsetAsync(
-          mask_data, 0, rows * cols * sizeof(MaskType), ctx.stream()));
+      SetZero<MaskType>(ctx, mask_data, rows * cols);
     }
     return;
   }
@@ -234,36 +234,7 @@ __global__ void FusedResidualDropoutBiasGrad(const T *dout,
     }
   }
 
-  // save temporary sum to cache and do transpose
-  __shared__ T cache[BlockSizeX * VecSize][BlockSizeY];
-  for (int i = 0; i < VecSize; i++) {
-    cache[threadIdx.x * VecSize + i][threadIdx.y] = tmp_sum[i];
-  }
-  __syncthreads();
-
-  // reduce sum
-  T sum = static_cast<T>(0);
-  int tid = threadIdx.y * blockDim.x + threadIdx.x;
-  int x = tid >> 5;  // warp id
-  int y = tid & 31;  // thread id on warp 0~31
-
-  // need BlockSizeX * VecSize warps
-  if (x < BlockSizeX * VecSize) {
-// reduce 128 to 32
-#pragma unroll
-    for (int i = 0; i < (BlockSizeY >> 5); i++) {
-      sum += cache[x][y + i * 32];
-    }
-  }
-
-  // reduce 32 to 1
-  sum = WarpReduceSum(sum);
-
-  // save sum to dbias
-  int bias_id = blockIdx.x * blockDim.x * VecSize + x;
-  if (y == 0 && x < VecSize * BlockSizeX && bias_id < cols) {
-    dbias[bias_id] = sum;
-  }
+  CalculateDBias<T, VecSize, BlockSizeX, BlockSizeY>(tmp_sum, dbias, cols);
 }
 
 /**
@@ -287,9 +258,9 @@ void LaunchResidualDropoutBiasGrad(const T *dout, const MaskType *mask,
   const int VecSize = MAX_CACHE_BYTES / sizeof(T);
   int real_vec_size = cols % VecSize == 0 ? VecSize : 1;
   if (dbias != nullptr) {
-    auto threads = std::min(cols / real_vec_size, static_cast<uint32_t>(8));
-    auto blocks =
-        std::max((uint32_t)1, (cols / real_vec_size + threads - 1) / threads);
+    const auto threads = 8;
+    auto blocks = std::max(static_cast<uint32_t>(1),
+                           (cols / real_vec_size + threads - 1) / threads);
     dim3 block_dim(threads, 128, 1);
     dim3 grid_dim(blocks, 1, 1);
     if (cols % VecSize == 0) {

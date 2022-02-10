@@ -40,3 +40,13 @@ REGISTER_OP_CUDA_KERNEL(
                                   paddle::platform::complex<float>>,
     ops::MatMulV2DoubleGradKernel<paddle::platform::CUDADeviceContext,
                                   paddle::platform::complex<double>>);
+
+REGISTER_OP_CUDA_KERNEL(
+    matmul_v2_triple_grad,
+    ops::MatMulV2TripleGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::MatMulV2TripleGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::MatMulV2TripleGradKernel<plf::CUDADeviceContext, plf::float16>,
+    ops::MatMulV2TripleGradKernel<paddle::platform::CUDADeviceContext,
+                                  paddle::platform::complex<float>>,
+    ops::MatMulV2TripleGradKernel<paddle::platform::CUDADeviceContext,
+                                  paddle::platform::complex<double>>);

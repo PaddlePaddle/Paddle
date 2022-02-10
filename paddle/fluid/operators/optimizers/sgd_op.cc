@@ -15,6 +15,9 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/operators/optimizers/sgd_op.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -67,6 +70,26 @@ class SGDOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Param");
+
+#ifdef PADDLE_WITH_MKLDNN
+    using dnnl::memory;
+    if (this->CanMKLDNNBeUsed(ctx, data_type)) {
+      const auto *param_var = ctx.InputVar("Param");
+      const auto *grad_var = ctx.InputVar("Grad");
+
+      // supported cases
+      bool dense_param_sparse_grad =
+          param_var->IsType<framework::LoDTensor>() &&
+          grad_var->IsType<pten::SelectedRows>();
+      bool dense_param_and_grad = param_var->IsType<framework::LoDTensor>() &&
+                                  grad_var->IsType<framework::LoDTensor>();
+
+      if (dense_param_sparse_grad || dense_param_and_grad)
+        return framework::OpKernelType(data_type, ctx.GetPlace(),
+                                       framework::DataLayout::kMKLDNN,
+                                       framework::LibraryType::kMKLDNN);
+    }
+#endif
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 
@@ -103,9 +126,24 @@ class SGDOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Param", "(Tensor or SelectedRows) Input parameter");
     AddInput("LearningRate", "(Tensor) Learning rate of SGD");
     AddInput("Grad", "(Tensor or SelectedRows) Input gradient");
+    AddInput("MasterParam", "FP32 master weight for AMP.").AsDispensable();
     AddOutput("ParamOut",
               "(Tensor or SelectedRows, same with Param) "
               "Output parameter, should share the same memory with Param");
+    AddOutput("MasterParamOut",
+              "The updated FP32 master weight for AMP. "
+              "It shared memory with Input(MasterParam).")
+        .AsDispensable();
+
+    AddAttr<bool>(
+        "use_mkldnn",
+        "(bool, default false) Indicates if MKL-DNN kernel will be used")
+        .SetDefault(false);
+    AddAttr<bool>("multi_precision",
+                  "(bool, default false) "
+                  "Whether to use multi-precision during weight updating.")
+        .SetDefault(false);
+
     AddComment(R"DOC(
 
 SGD operator

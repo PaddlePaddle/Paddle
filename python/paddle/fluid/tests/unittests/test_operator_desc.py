@@ -81,6 +81,8 @@ class TestOperator(unittest.TestCase):
         self.assertEqual(mul_op.attr("y_num_col_dims"), 1)
         self.assertEqual(mul_op.idx, 0)
         self.assertEqual(mul_out.op, mul_op)
+        mul_op.desc.remove_input("X")
+        self.assertEqual(mul_op.input_names, ["Y"])
 
     def test_mult_input(self):
         program = Program()

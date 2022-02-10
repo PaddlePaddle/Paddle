@@ -1,8 +1,11 @@
 /* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -10,161 +13,209 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/argsort_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+using Tensor = framework::Tensor;
+using NPUDeviceContext = platform::NPUDeviceContext;
+
+template <typename T>
+static void TranposeNPU(const framework::ExecutionContext& ctx,
+                        const aclrtStream& stream, std::vector<int64_t>* perm,
+                        const Tensor& in, Tensor* out) {
+  out->mutable_data<T>(ctx.GetPlace());
+  NpuOpRunner runner;
+  runner.SetType("Transpose")
+      .AddInput(in)
+      .AddInput(std::move(*perm))
+      .AddOutput(*out)
+      .Run(stream);
+}
+
+static void CastToInt64(const framework::ExecutionContext& ctx,
+                        const aclrtStream& stream, const Tensor& in,
+                        Tensor* out) {
+  out->mutable_data<int64_t>(ctx.GetPlace());
+  NpuOpRunner runner;
+  runner.SetType("Cast")
+      .AddInput(in)
+      .AddOutput(*out)
+      .AddAttr("dst_type", ACL_INT64)
+      .Run(stream);
+}
+
+static void CastToFP32(const framework::ExecutionContext& ctx,
+                       const aclrtStream& stream, const Tensor& in,
+                       Tensor* out) {
+  out->mutable_data<float>(ctx.GetPlace());
+  NpuOpRunner runner;
+  runner.SetType("Cast")
+      .AddInput(in)
+      .AddOutput(*out)
+      .AddAttr("dst_type", ACL_FLOAT)
+      .Run(stream);
+}
+
+template <typename T>
 class ArgsortNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<framework::Tensor>("X");
     auto* output = ctx.Output<framework::Tensor>("Out");
-    output->mutable_data<T>(ctx.GetPlace());
     auto* indices = ctx.Output<framework::Tensor>("Indices");
-    indices->mutable_data<int32_t>(ctx.GetPlace());
-
-    int32_t axis = ctx.Attr<int>("axis");
-    auto in_dims = indices->dims();
-    axis = (axis < 0) ? (in_dims.size() + axis) : axis;
+    int axis = ctx.Attr<int>("axis");
     bool descending = ctx.Attr<bool>("descending");
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    framework::NPUAttributeMap sort_attr_input = {
-        {"axis", static_cast<int32_t>(-1)}, {"descending", descending}};
 
-    if (axis == -1 || axis + 1 == in_dims.size()) {
-      const auto& sort_runner =
-          NpuOpRunner("Sort", {*input}, {*output, *indices}, sort_attr_input);
-      sort_runner.Run(stream);
+    auto in_dims = input->dims();
+    axis = (axis < 0) ? (in_dims.size() + axis) : axis;
+
+    auto stream = ctx.template device_context<NPUDeviceContext>().stream();
+    framework::NPUAttributeMap attr = {{"axis", -1},
+                                       {"descending", descending}};
+
+    Tensor indices_tmp(framework::proto::VarType::INT32);
+    indices_tmp.Resize(indices->dims());
+
+    if (input->type() == framework::proto::VarType::INT64) {
+      Tensor input_fp32(framework::proto::VarType::FP32);
+      input_fp32.Resize(input->dims());
+      CastToFP32(ctx, stream, *input, &input_fp32);
+
+      Tensor output_fp32(framework::proto::VarType::FP32);
+      output_fp32.Resize(output->dims());
+
+      if (axis == -1 || axis + 1 == in_dims.size()) {
+        output_fp32.mutable_data<float>(ctx.GetPlace());
+        indices_tmp.mutable_data<int32_t>(ctx.GetPlace());
+        const auto& runner =
+            NpuOpRunner("Sort", {input_fp32}, {output_fp32, indices_tmp}, attr);
+        runner.Run(stream);
+
+        CastToInt64(ctx, stream, output_fp32, output);
+      } else {
+        std::vector<int64_t> perm;
+        for (int64_t i = 0; i < in_dims.size(); i++) {
+          perm.emplace_back(i);
+        }
+        std::swap(perm[axis], perm[in_dims.size() - 1]);
+
+        std::vector<int64_t> shape;
+        for (size_t i = 0; i < perm.size(); i++) {
+          shape.emplace_back(in_dims[perm[i]]);
+        }
+        auto trans_dims = framework::make_ddim(shape);
+
+        Tensor trans_input(input_fp32.type());
+        trans_input.Resize(trans_dims);
+        TranposeNPU<float>(ctx, stream, &perm, input_fp32, &trans_input);
+
+        Tensor trans_output(input_fp32.type());
+        Tensor trans_indices(framework::proto::VarType::INT32);
+        trans_output.mutable_data<float>(trans_dims, ctx.GetPlace());
+        trans_indices.mutable_data<int32_t>(trans_dims, ctx.GetPlace());
+
+        const auto& runner = NpuOpRunner("Sort", {trans_input},
+                                         {trans_output, trans_indices}, attr);
+        runner.Run(stream);
+
+        TranposeNPU<float>(ctx, stream, &perm, trans_output, &output_fp32);
+        TranposeNPU<int32_t>(ctx, stream, &perm, trans_indices, &indices_tmp);
+
+        CastToInt64(ctx, stream, output_fp32, output);
+      }
     } else {
-      // transpose
-      std::vector<int> trans;
-      for (int i = 0; i < axis; i++) {
-        trans.push_back(i);
+      if (axis == -1 || axis + 1 == in_dims.size()) {
+        output->mutable_data<T>(ctx.GetPlace());
+        indices_tmp.mutable_data<int32_t>(ctx.GetPlace());
+        const auto& runner =
+            NpuOpRunner("Sort", {*input}, {*output, indices_tmp}, attr);
+        runner.Run(stream);
+      } else {
+        std::vector<int64_t> perm;
+        for (int64_t i = 0; i < in_dims.size(); i++) {
+          perm.emplace_back(i);
+        }
+        std::swap(perm[axis], perm[in_dims.size() - 1]);
+
+        std::vector<int64_t> shape;
+        for (size_t i = 0; i < perm.size(); i++) {
+          shape.emplace_back(in_dims[perm[i]]);
+        }
+        auto trans_dims = framework::make_ddim(shape);
+
+        Tensor trans_input(input->type());
+        trans_input.Resize(trans_dims);
+        TranposeNPU<T>(ctx, stream, &perm, *input, &trans_input);
+
+        Tensor trans_output(input->type());
+        Tensor trans_indices(framework::proto::VarType::INT32);
+        trans_output.mutable_data<T>(trans_dims, ctx.GetPlace());
+        trans_indices.mutable_data<int32_t>(trans_dims, ctx.GetPlace());
+
+        const auto& runner = NpuOpRunner("Sort", {trans_input},
+                                         {trans_output, trans_indices}, attr);
+        runner.Run(stream);
+
+        TranposeNPU<T>(ctx, stream, &perm, trans_output, output);
+        TranposeNPU<int32_t>(ctx, stream, &perm, trans_indices, &indices_tmp);
       }
-      trans.push_back(in_dims.size() - 1);
-      for (int i = axis + 1; i < in_dims.size() - 1; i++) {
-        trans.push_back(i);
-      }
-      trans.push_back(axis);
-      framework::DDim trans_dims(in_dims);
-      for (size_t i = 0; i < trans.size(); i++) {
-        trans_dims[i] = in_dims[trans[i]];
-      }
-      framework::NPUAttributeMap trans_attr_input = {{"perm", trans}};
-      Tensor trans_input;
-      trans_input.mutable_data<T>(trans_dims, ctx.GetPlace());
-      const auto& trans_input_runner =
-          NpuOpRunner("TransposeD", {*input}, {trans_input}, trans_attr_input);
-      trans_input_runner.Run(stream);
-      Tensor trans_indices;
-      trans_indices.mutable_data<int32_t>(trans_dims, ctx.GetPlace());
-      const auto& trans_indice_runner = NpuOpRunner(
-          "TransposeD", {*indices}, {trans_indices}, trans_attr_input);
-      trans_indice_runner.Run(stream);
-      Tensor trans_output;
-      trans_output.mutable_data<T>(trans_dims, ctx.GetPlace());
-      const auto& trans_output_runner = NpuOpRunner(
-          "TransposeD", {*output}, {trans_output}, trans_attr_input);
-      trans_output_runner.Run(stream);
-      const auto& sort_runner =
-          NpuOpRunner("Sort", {trans_input}, {trans_output, trans_indices},
-                      sort_attr_input);
-      sort_runner.Run(stream);
-      // transpose back
-      const auto& trans_indices_back_runner = NpuOpRunner(
-          "TransposeD", {trans_indices}, {*indices}, trans_attr_input);
-      trans_indices_back_runner.Run(stream);
-      const auto& trans_output_back_runner = NpuOpRunner(
-          "TransposeD", {trans_output}, {*output}, trans_attr_input);
-      trans_output_back_runner.Run(stream);
     }
+
+    CastToInt64(ctx, stream, indices_tmp, indices);
   }
 };
 
-template <typename Type>
-static void ReshapeNPU(const framework::Tensor* input,
-                       const std::vector<Type>& input_shapes,
-                       framework::Tensor* output) {
-  output->ShareDataWith(*input);
-  output->Resize(framework::make_ddim(std::move(input_shapes)));
-}
-
 template <typename T, typename Type>
 static void FullAssignNPU(const framework::ExecutionContext& ctx,
-                          Type ind_lastdim, Type outer_dim,
-                          const framework::DDim& trans_dims,
-                          const framework::Tensor* input,
-                          const framework::Tensor* indices,
-                          framework::Tensor* t_out) {
-  // reshape input
-  Type input_shape = ind_lastdim * outer_dim;
-  std::vector<Type> input_shapes = {input_shape};
-  Tensor input_reshape_tensor(input->type());
-  ReshapeNPU<Type>(input, input_shapes, &input_reshape_tensor);
-  // reshape index
-  std::vector<Type> index_shapes = {outer_dim, ind_lastdim};
-  framework::DDim ind_2d = framework::make_ddim({outer_dim, ind_lastdim});
-  Tensor ind_2d_tensor(indices->type());
-  ReshapeNPU<Type>(indices, index_shapes, &ind_2d_tensor);
-  // range_flatten_index
-  std::vector<int32_t> range_flatten_index;
-  for (Type i = 0; i < input_shape; i += ind_lastdim) {
-    range_flatten_index.push_back(static_cast<int32_t>(i));
-  }
-  Tensor range_flatten_index_tensor(framework::proto::VarType::INT32);
-  range_flatten_index_tensor.Resize(framework::make_ddim({outer_dim}));
-  range_flatten_index_tensor.mutable_data<int32_t>(
-      {static_cast<int>(range_flatten_index.size())}, ctx.GetPlace());
-  TensorFromVector(range_flatten_index, ctx.device_context(),
-                   &range_flatten_index_tensor);
-  Tensor range_flatten_index_expand_tensor(range_flatten_index_tensor.type());
-  std::vector<Type> flatten_shape = {outer_dim, 1};
-  ReshapeNPU<Type>(&range_flatten_index_tensor, flatten_shape,
-                   &range_flatten_index_expand_tensor);
-  auto stream =
-      ctx.template device_context<paddle::platform::NPUDeviceContext>()
-          .stream();
-  Tensor ind_2d_add_tensor;
-  ind_2d_add_tensor.mutable_data<int32_t>(ind_2d, ctx.GetPlace());
-  const auto& runner_ind_2d_tensor = NpuOpRunner(
-      std::string("Add"), {ind_2d_tensor, range_flatten_index_expand_tensor},
-      {ind_2d_add_tensor}, {});
-  runner_ind_2d_tensor.Run(stream);
-  Tensor ind_reshape_tensor(ind_2d_add_tensor.type());
-  ReshapeNPU<Type>(&ind_2d_add_tensor, input_shapes, &ind_reshape_tensor);
-  Tensor ind_reshape_expand_tensor(ind_reshape_tensor.type());
-  std::vector<Type> ind_shape = {input_shape, 1};
-  ReshapeNPU<Type>(&ind_reshape_tensor, ind_shape, &ind_reshape_expand_tensor);
-  // expand_index
-  Tensor input_scatter_tensor;
-  input_scatter_tensor.Resize({input_shape});
-  input_scatter_tensor.mutable_data<T>(ctx.GetPlace());
-  Tensor input_scatter_tensor_ori;
-  input_scatter_tensor_ori.Resize({input_shape});
-  input_scatter_tensor_ori.mutable_data<T>(ctx.GetPlace());
-  std::vector<Type> trans_shapes;
+                          const aclrtStream& stream,
+                          const framework::DDim in_dims, const Tensor& input,
+                          const Tensor& indices, Tensor* t_out) {
+  const int64_t input_height =
+      framework::product(framework::slice_ddim(in_dims, 0, in_dims.size() - 1));
+  const int64_t input_width = in_dims[in_dims.size() - 1];
 
-  for (int i = 0; i < trans_dims.size(); i++) {
-    trans_shapes.push_back(trans_dims[i]);
+  Tensor input_tmp;
+  input_tmp.ShareDataWith(input);
+  input_tmp.Resize(
+      framework::make_ddim(std::vector<int64_t>{input_height * input_width}));
+
+  Tensor indices_tmp;
+  indices_tmp.ShareDataWith(indices);
+  indices_tmp.Resize(
+      framework::make_ddim(std::vector<int64_t>{input_height, input_width}));
+
+  std::vector<int64_t> indexs_value;
+  for (Type i = 0; i < input_height; i++) {
+    indexs_value.push_back(i * input_width);
   }
-  NpuOpRunner runner_scatter;
-  runner_scatter.SetType("TensorScatterUpdate")
-      .AddInput(input_scatter_tensor_ori)
-      .AddInput(ind_reshape_expand_tensor)
-      .AddInput(input_reshape_tensor)
-      .AddOutput(input_scatter_tensor);
-  runner_scatter.Run(stream);
-  framework::TensorCopy(input_scatter_tensor, ctx.GetPlace(),
-                        ctx.template device_context<platform::DeviceContext>(),
-                        t_out);
-  t_out->Resize(framework::make_ddim(trans_shapes));
+  Tensor indexs_tmp(indices.type());
+  framework::TensorFromVector<int64_t>(indexs_value, ctx.device_context(),
+                                       &indexs_tmp);
+  indexs_tmp.Resize(
+      framework::make_ddim(std::vector<int64_t>{input_height, 1}));
+
+  Tensor indices_index(indices.type());
+  indices_index.mutable_data<int64_t>(indices_tmp.dims(), ctx.GetPlace());
+  const auto& runner_add =
+      NpuOpRunner("Add", {indices_tmp, indexs_tmp}, {indices_index}, {});
+  runner_add.Run(stream);
+
+  indices_index.Resize(
+      framework::make_ddim(std::vector<int64_t>{input_height * input_width}));
+
+  t_out->mutable_data<T>(ctx.GetPlace());
+  Tensor out_tmp(t_out->type());
+  out_tmp.ShareDataWith(*t_out);
+
+  const auto& runner =
+      NpuOpRunner("TensorScatterUpdate", {input_tmp, indices_index, input_tmp},
+                  {out_tmp}, {});
+  runner.Run(stream);
 }
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class ArgsortGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -172,75 +223,42 @@ class ArgsortGradNPUKernel : public framework::OpKernel<T> {
     auto* dX = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dO = ctx.Input<Tensor>(framework::GradVarName("Out"));
     int axis = ctx.Attr<int>("axis");
+
     auto in_dims = indices->dims();
     axis = (axis < 0) ? (in_dims.size() + axis) : axis;
-    auto place = ctx.GetPlace();
-
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    dX->mutable_data<T>(ctx.GetPlace());
-    Tensor dxt;
-    dxt.mutable_data<T>(dX->dims(), place);
-    const auto& runner_flatten =
-        NpuOpRunner(std::string("Flatten"), {*dX}, {dxt}, {});
-    runner_flatten.Run(stream);
-    FillNpuTensorWithConstant<T>(&dxt, static_cast<T>(0));
     if (dO->numel() == 0) return;
-    // Do full assig  n
+
+    auto stream = ctx.template device_context<NPUDeviceContext>().stream();
+
     if (axis == -1 || axis + 1 == in_dims.size()) {
-      const int64_t outer_dim = framework::product(
-          framework::slice_ddim(in_dims, 0, in_dims.size() - 1));
-      const int64_t ind_lastdim = in_dims[in_dims.size() - 1];
-      FullAssignNPU<T, int64_t>(ctx, ind_lastdim, outer_dim, in_dims, dO,
-                                indices, dX);
-
+      FullAssignNPU<T, int64_t>(ctx, stream, in_dims, *dO, *indices, dX);
     } else {
-      // If not full assign do transpose
-      std::vector<int> trans;
-      for (int i = 0; i < axis; i++) {
-        trans.push_back(i);
+      std::vector<int64_t> perm;
+      for (int64_t i = 0; i < in_dims.size(); i++) {
+        perm.emplace_back(i);
       }
-      trans.push_back(in_dims.size() - 1);
-      for (int i = axis + 1; i < in_dims.size() - 1; i++) {
-        trans.push_back(i);
+      std::swap(perm[axis], perm[in_dims.size() - 1]);
+
+      std::vector<int64_t> shape;
+      for (size_t i = 0; i < perm.size(); i++) {
+        shape.emplace_back(in_dims[perm[i]]);
       }
-      trans.push_back(axis);
-      framework::DDim trans_dims(in_dims);
-      for (size_t i = 0; i < trans.size(); i++) {
-        trans_dims[i] = in_dims[trans[i]];
-      }
-      std::vector<int> axis;
-      for (size_t i = 0; i < trans.size(); i++) {
-        axis.push_back(in_dims[trans[i]]);
-      }
-      framework::NPUAttributeMap attr_input = {{"perm", trans}};
-      Tensor trans_dO;
-      trans_dO.mutable_data<T>(trans_dims, ctx.GetPlace());
-      Tensor trans_ind;
-      trans_ind.mutable_data<int32_t>(trans_dims, ctx.GetPlace());
-      // Do transpose
-      const auto& runner_transpose_dx = NpuOpRunner(
-          std::string("TransposeD"), {*dO}, {trans_dO}, {attr_input});
-      runner_transpose_dx.Run(stream);
-      const auto& runner_transpose_ind = NpuOpRunner(
-          std::string("TransposeD"), {*indices}, {trans_ind}, {attr_input});
-      runner_transpose_ind.Run(stream);
+      auto trans_dims = framework::make_ddim(shape);
 
-      const int64_t outer_dim = framework::product(
-          framework::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
-      const int64_t ind_lastdim = trans_dims[trans_dims.size() - 1];
+      Tensor trans_dout(dO->type());
+      Tensor trans_ids(indices->type());
+      trans_dout.Resize(trans_dims);
+      trans_ids.Resize(trans_dims);
 
-      Tensor tmp_out;
-      tmp_out.mutable_data<T>(trans_dims, ctx.GetPlace());
+      TranposeNPU<T>(ctx, stream, &perm, *dO, &trans_dout);
+      TranposeNPU<int64_t>(ctx, stream, &perm, *indices, &trans_ids);
 
-      FullAssignNPU<T, int64_t>(ctx, ind_lastdim, outer_dim, trans_dims,
-                                &trans_dO, &trans_ind, &tmp_out);
+      Tensor trans_dx(dO->type());
+      trans_dx.Resize(trans_dims);
+      FullAssignNPU<T, int64_t>(ctx, stream, trans_dims, trans_dout, trans_ids,
+                                &trans_dx);
 
-      // transpose back
-      const auto& runner_transpose_out = NpuOpRunner(
-          std::string("TransposeD"), {tmp_out}, {*dX}, {attr_input});
-      runner_transpose_out.Run(stream);
+      TranposeNPU<T>(ctx, stream, &perm, trans_dx, dX);
     }
   }
 };
@@ -251,11 +269,11 @@ class ArgsortGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(
-    argsort, ops::ArgsortNPUKernel<plat::NPUDeviceContext, float>,
-    ops::ArgsortNPUKernel<plat::NPUDeviceContext, plat::float16>);
+REGISTER_OP_NPU_KERNEL(argsort, ops::ArgsortNPUKernel<float>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+                       ops::ArgsortNPUKernel<int64_t>,
+#endif
+                       ops::ArgsortNPUKernel<plat::float16>);
 
-REGISTER_OP_NPU_KERNEL(argsort_grad,
-                       ops::ArgsortGradNPUKernel<plat::NPUDeviceContext, float>,
-                       ops::ArgsortGradNPUKernel<plat::NPUDeviceContext,
-                                                 paddle::platform::float16>);
+REGISTER_OP_NPU_KERNEL(argsort_grad, ops::ArgsortGradNPUKernel<float>,
+                       ops::ArgsortGradNPUKernel<paddle::platform::float16>);

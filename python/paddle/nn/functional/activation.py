@@ -31,13 +31,63 @@ from paddle import _C_ops
 __all__ = []
 
 
+def celu(x, alpha=1.0, name=None):
+    r"""
+    celu activation.
+
+    .. math::
+
+        celu(x) = max(0, x) + min(0, \alpha * (e^{x/\alpha}-1))
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, float64.
+        alpha (float, optional): The 'alpha' value of the CELU formulation. Default is 1.0.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+            x = paddle.to_tensor([[-1., 6.], [1., 15.6]])
+            out = F.celu(x, alpha=0.2)
+            # [[-0.19865242,  6.        ],
+            #  [ 1.        , 15.60000038]]
+    """
+    if alpha == 0:
+        raise ZeroDivisionError("alpha cannot be 0 for celu")
+
+    if in_dygraph_mode():
+        return _C_ops.celu(x, 'alpha', alpha)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'celu')
+    helper = LayerHelper("celu", **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='celu',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'alpha': alpha})
+    return out
+
+
 def elu(x, alpha=1.0, name=None):
     r"""
     elu activation.
 
     .. math::
 
-        elu(x) = max(0, x) + min(0, \alpha * (e^{x}-1))
+        elu(x)=
+            \left\{
+                \begin{array}{lcl}
+                x,& &\text{if } \ x > 0 \\
+                alpha * (e^{x} - 1),& &\text{if } \ x <= 0
+                \end{array}
+            \right.
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
@@ -80,6 +130,7 @@ def elu_(x, alpha=1.0, name=None):
     Inplace version of ``elu`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_nn_cn_elu`.
     """
+    assert alpha >= 0., "elu_ only support alpha >= 0, please use elu instead."
     return _C_ops.elu_(x, 'alpha', alpha)
 
 
@@ -391,7 +442,7 @@ def leaky_relu(x, negative_slope=0.01, name=None):
     return out
 
 
-def prelu(x, weight, name=None):
+def prelu(x, weight, data_format="NCHW", name=None):
     """
     prelu activation.
 
@@ -405,6 +456,8 @@ def prelu(x, weight, name=None):
             The weight shape is [1] or [in], where `in` is the input channel of ``x``.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
+        data_format(str, optional): Data format that specifies the layout of input.
+            It may be "NC", "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default: "NCHW".
 
     Returns:
         A Tensor with the same data type and shape as ``x`` .
@@ -439,19 +492,34 @@ def prelu(x, weight, name=None):
     assert len(weight.shape
                ) == 1, "The dim count of weight shape should be 1 in prelu()."
 
-    # NOTE(): The input of this API should be ``N,C,...`` format,
-    # which means x.shape[0] is batch_size and x.shape[0] is channel.
     mode = 'all'
     if weight.shape[0] > 1:
+
+        true_data_format = [
+            'NC', 'NCL', 'NCHW', 'NCDHW', 'NLC', 'NHWC', 'NDHWC'
+        ]
+        if data_format not in true_data_format:
+            raise ValueError(
+                "data_format must be one of 'NC', 'NCL', 'NCHW', 'NCDHW', "
+                "'NLC', 'NHWC', 'NDHWC' but receive {}".format(data_format))
+
+        data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
+
         assert len(
             x.shape
         ) > 1, "The dim count of x should be equal or larger than 2 in prelu() when weight shape is not [1]."
-        assert weight.shape[0] == x.shape[
-            1], "The weight size should be equal to x input channel in prelu() when weight shape is not [1]."
+
+        #NOTE(GuoxiaWang): support NHWC data format
+        if data_format == 'NHWC':
+            assert weight.shape[0] == x.shape[
+                -1], "The weight size should be equal to x input channel in prelu() when weight shape is not [1]."
+        else:
+            assert weight.shape[0] == x.shape[
+                1], "The weight size should be equal to x input channel in prelu() when weight shape is not [1]."
         mode = 'channel'
 
     if in_dygraph_mode():
-        return _C_ops.prelu(x, weight, 'mode', mode)
+        return _C_ops.prelu(x, weight, 'mode', mode, 'data_format', data_format)
 
     helper = LayerHelper('prelu', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
@@ -460,7 +528,8 @@ def prelu(x, weight, name=None):
         inputs={"X": x,
                 "Alpha": weight},
         outputs={"Out": out},
-        attrs={"mode": mode})
+        attrs={"mode": mode,
+               "data_format": data_format})
     return out
 
 
@@ -1105,6 +1174,46 @@ def swish(x, name=None):
     return out
 
 
+def mish(x, name=None):
+    r"""
+    mish activation.
+
+    ..  math::
+
+        softplus(x) = \begin{cases}
+                x, \text{if } x > \text{threshold} \\
+                \ln(1 + e^{x}),  \text{otherwise}
+            \end{cases}
+
+        mish(x) = x * \tanh(softplus(x))
+    
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+
+            x = paddle.to_tensor([-5., 0., 5.])
+            out = F.mish(x) # [-0.03357624, 0., 4.99955208]
+    """
+    if in_dygraph_mode():
+        return _C_ops.mish(x)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'mish')
+    helper = LayerHelper('mish', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(type='mish', inputs={'X': x}, outputs={'Out': out})
+    return out
+
+
 def tanhshrink(x, name=None):
     """
     tanhshrink activation
@@ -1328,4 +1437,79 @@ def glu(x, axis=-1, name=None):
     a, b = chunk(x, 2, axis=axis, name=name)
     gate = sigmoid(b, name=name)
     out = paddle.multiply(a, gate, name=name)
+    return out
+
+
+def gumbel_softmax(x, temperature=1.0, hard=False, axis=-1, name=None):
+    r"""
+    Samples from the Gumbel-Softmax distribution and optionally discretizes.
+    temperature is denoted by t. The calculation process is as follows:
+
+    First, generate gumbel noise:
+
+    .. math::
+
+        G_i = -log(-log(U_i)), U_i \sim U(0,1)
+
+    Second, add noise to ``x``:
+
+    .. math::
+
+        v = [x_1 + G_1,...,x_n + G_n]
+
+    Finally, calculate gumbel_softmax and generate samples:
+
+    .. math::
+        gumbel\_softmax(v_i)=\frac{e^{v_i/t}}{\sum_{j=1}^n{e^{v_j/t}}},i=1,2,3...n
+
+    Parameters:
+        x (Tensor): An N-D Tensor, the first N - 1 dimensions index into a batch 
+            of independent distributions and the last dimension represents 
+            a vector of probabilities with datatype float32, float64.
+        temperature (float, optional): non-negative scalar temperature.
+            Default is 1.0.
+        hard (bool, optional): if True, the returned samples will be discretized as 
+            one-hot vectors, but will be differentiated as if it is the soft sample 
+            in autograd. Default is False.
+        axis (int, optional): The axis along will be calculated softmax value. 
+            Default is -1.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+    
+    Returns:
+        Sampled tensor of same shape as ``x`` from the Gumbel-Softmax distribution. 
+        If ``hard = True``, the returned samples will be one-hot, otherwise they will be 
+        probability distributions that sum to 1 across ``axis``.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+
+            logits = paddle.randn([4, 6])
+            temperature = 0.01
+            gumbel_softmax = F.gumbel_softmax(logits, temperature)
+            print(gumbel_softmax)
+            # out's value is as follows:
+            # [[0.00000001, 1.        , 0.00000000, 0.00000000, 0.00000006, 0.00000000],
+            # [0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 1.        ],
+            # [0.00000062, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.99999940],
+            # [0.00000000, 0.00000000, 0.00000000, 0.00001258, 0.99998736, 0.00000000]]
+        
+    """
+    if in_dygraph_mode():
+        return _C_ops.gumbel_softmax(x, 'temperature', temperature, 'hard',
+                                     hard, 'axis', axis)
+
+    helper = LayerHelper("gumbel_softmax", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'gumbel_softmax')
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='gumbel_softmax',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'temperature': temperature,
+               'hard': hard,
+               'axis': axis})
     return out

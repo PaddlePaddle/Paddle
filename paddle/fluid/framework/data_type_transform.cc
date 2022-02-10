@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type_transform.h"
 
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/platform/transform.h"
 
 namespace paddle {
@@ -65,11 +65,24 @@ struct CastDataType {
 void TransDataType(const OpKernelType& kernel_type_for_var,
                    const OpKernelType& expected_kernel_type, const Tensor& in,
                    Tensor* out) {
+  PADDLE_ENFORCE_EQ(in.type(), kernel_type_for_var.data_type_,
+                    platform::errors::InvalidArgument(
+                        "The src dtype(%s) of input tensor and kernel_type(%s) "
+                        "are not conststent.",
+                        DataTypeToString(in.type()),
+                        DataTypeToString(kernel_type_for_var.data_type_)));
+  auto dst_type = expected_kernel_type.data_type_;
+  TransDataType(in, dst_type, out);
+}
+
+void TransDataType(const Tensor& in,
+                   const paddle::framework::proto::VarType::Type& type,
+                   Tensor* out) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
 
   out->Resize(in.dims());
-  auto src_type = kernel_type_for_var.data_type_;
-  auto dst_type = expected_kernel_type.data_type_;
+  auto src_type = in.type();
+  auto dst_type = type;
   auto ctx = pool.Get(in.place());
 
   switch (src_type) {

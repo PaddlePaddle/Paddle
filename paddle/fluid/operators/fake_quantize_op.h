@@ -20,16 +20,17 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/platform/hostdevice.h"
 #include "paddle/fluid/platform/transform.h"
+#include "paddle/pten/core/hostdevice.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename T>
 inline HOSTDEVICE T inverse(T s) {
-  T eps = 1e-6;
-  return s <= 1e-30 ? 1.0 / (s + eps) : 1.0 / s;
+  T eps = static_cast<T>(1e-6);
+  T one = static_cast<T>(1.0);
+  return s <= static_cast<T>(1e-30) ? one / (s + eps) : one / s;
 }
 
 template <typename DeviceContext, typename T>

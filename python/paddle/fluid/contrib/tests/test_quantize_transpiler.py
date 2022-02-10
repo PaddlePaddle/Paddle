@@ -258,8 +258,11 @@ class TestQuantizeTranspiler(unittest.TestCase):
             # Convert parameter to 8-bit.
             quant_transpiler.convert_to_int8(test_program, place)
             # Save the 8-bit parameter and model file.
-            fluid.io.save_inference_model('model_8bit', ['image', 'label'],
-                                          [loss], exe, test_program)
+            fluid.io.save_inference_model(
+                'model_8bit', ['image', 'label'], [loss],
+                exe,
+                test_program,
+                clip_extra=True)
             # Test whether the 8-bit parameter and model file can be loaded successfully.
             [infer, feed, fetch] = fluid.io.load_inference_model('model_8bit',
                                                                  exe)

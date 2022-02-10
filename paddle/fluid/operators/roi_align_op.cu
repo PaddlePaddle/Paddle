@@ -15,8 +15,8 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/roi_align_op.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
-#include "paddle/fluid/platform/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -26,6 +26,7 @@ using LoDTensor = framework::LoDTensor;
 
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaxinumNumBlocks = 4096;
+static constexpr int kROISize = 4;
 
 static inline int NumBlocks(const int N) {
   return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
@@ -270,7 +271,7 @@ class GPUROIAlignOpKernel : public framework::OpKernel<T> {
     auto cplace = platform::CPUPlace();
     int* roi_batch_id_data = roi_batch_id_list.mutable_data<int>(cplace);
     auto& dev_ctx = ctx.cuda_device_context();
-    auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+    auto gplace = ctx.GetPlace();
     if (ctx.HasInput("RoisNum")) {
       auto* rois_num_t = ctx.Input<Tensor>("RoisNum");
       int rois_batch_size = rois_num_t->numel();
@@ -364,7 +365,7 @@ class GPUROIAlignGradOpKernel : public framework::OpKernel<T> {
     int* roi_batch_id_data = roi_batch_id_list.mutable_data<int>(cplace);
 
     auto& dev_ctx = ctx.cuda_device_context();
-    auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+    auto gplace = ctx.GetPlace();
     if (ctx.HasInput("RoisNum")) {
       auto* rois_num_t = ctx.Input<Tensor>("RoisNum");
       int rois_batch_size = rois_num_t->numel();

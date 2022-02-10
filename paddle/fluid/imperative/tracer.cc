@@ -32,6 +32,8 @@ namespace imperative {
 
 thread_local bool Tracer::has_grad_ = true;
 
+thread_local AmpLevel Tracer::amp_level_ = AmpLevel::O0;
+
 static std::shared_ptr<Tracer> g_current_tracer(nullptr);
 
 const std::shared_ptr<Tracer>& GetCurrentTracer() { return g_current_tracer; }
@@ -87,8 +89,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
     std::unique_ptr<framework::GarbageCollector> gc;
     if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      gc.reset(new framework::DefaultStreamGarbageCollector(
-          BOOST_GET_CONST(platform::CUDAPlace, place), 0));
+      gc.reset(new framework::DefaultStreamGarbageCollector(place, 0));
 
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
@@ -98,8 +99,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
 #endif
     } else if (platform::is_cuda_pinned_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      gc.reset(new framework::CUDAPinnedGarbageCollector(
-          BOOST_GET_CONST(platform::CUDAPinnedPlace, place), 0));
+      gc.reset(new framework::CUDAPinnedGarbageCollector(place, 0));
 
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
@@ -110,8 +110,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
 #endif
     } else if (platform::is_xpu_place(place)) {
 #if defined(PADDLE_WITH_XPU)
-      gc.reset(new framework::XPUGarbageCollector(
-          BOOST_GET_CONST(platform::XPUPlace, place), 0));
+      gc.reset(new framework::XPUGarbageCollector(place, 0));
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
       PADDLE_THROW(platform::errors::PermissionDenied(
@@ -119,19 +118,26 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
           "Please recompile or reinstall Paddle with XPU support."));
 #endif
     } else if (platform::is_cpu_place(place)) {
-      gc.reset(new framework::CPUGarbageCollector(
-          BOOST_GET_CONST(platform::CPUPlace, place), 0));
+      gc.reset(new framework::CPUGarbageCollector(place, 0));
       VLOG(10) << "Created GarbageCollector at " << place;
     } else if (platform::is_npu_place(place)) {
 #if defined(PADDLE_WITH_ASCEND_CL)
       // TODO(zhiqiu): fix bugs and enable NPUDefaultStreamGarbageCollector.
-      gc.reset(new framework::NPUUnsafeFastGarbageCollector(
-          BOOST_GET_CONST(platform::NPUPlace, place), 0));
+      gc.reset(new framework::NPUUnsafeFastGarbageCollector(place, 0));
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
       PADDLE_THROW(platform::errors::PermissionDenied(
           "Paddle can't use NPU device since it's not compiled with NPU,"
           "Please recompile or reinstall Paddle with NPU support."));
+#endif
+    } else if (platform::is_mlu_place(place)) {
+#if defined(PADDLE_WITH_MLU)
+      gc.reset(new framework::MLUDefaultStreamGarbageCollector(place, 0));
+      VLOG(10) << "Created GarbageCollector at " << place;
+#else
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Paddle can't use MLU device since it's not compiled with MLU,"
+          "Please recompile or reinstall Paddle with MLU support."));
 #endif
     } else {
       PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -143,10 +149,14 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
   return gcs_.at(place).get();
 }
 
-void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
-                     const NameVarBaseMap& outs, framework::AttributeMap attrs,
+template <typename VarType>
+void Tracer::TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
+                     const NameVarMap<VarType>& outs,
+                     framework::AttributeMap attrs,
                      const platform::Place& place, bool trace_backward,
-                     const std::map<std::string, std::string>& inplace_map) {
+                     const std::map<std::string, std::string>& inplace_map,
+                     paddle::framework::AttributeMap* passed_default_attrs_,
+                     bool override_default_attr_map) {
   platform::RecordEvent op_type_record_event(type);
   platform::ScopedFlushDenormal flush;
   VLOG(1) << "Trace Op: " << type;
@@ -175,39 +185,59 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
       attr_checker == nullptr ? empty_attrs_map
                               : attr_checker->GetDefaultAttrMap();
 
-  NameVarBaseMap new_ins = ins;
-  if (enable_autocast_) {
+  NameVarMap<VarType> new_ins = ins;
+  if (amp_level_ == AmpLevel::O1) {
     VLOG(5) << "Auto mixed precision run operator: " << type;
-    new_ins = AutoCastInputs(type, ins);
+    new_ins = AutoCastInputs<VarType>(type, ins);
+  } else if (amp_level_ == AmpLevel::O2) {
+    VLOG(5) << "Pure fp16 run operator: " << type;
+    new_ins = CastPureFp16Inputs<VarType>(type, ins);
   }
 
   try {
     if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      platform::SetDeviceId(BOOST_GET_CONST(platform::CUDAPlace, place).device);
+      platform::SetDeviceId(place.device);
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with GPU if use CUDAPlace."));
 #endif
     } else if (platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
-      platform::SetXPUDeviceId(
-          BOOST_GET_CONST(platform::XPUPlace, place).device);
+      platform::SetXPUDeviceId(place.device);
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with XPU if use XPUPlace."));
 #endif
     } else if (platform::is_npu_place(place)) {
 #ifdef PADDLE_WITH_ASCEND_CL
-      platform::SetNPUDeviceId(
-          BOOST_GET_CONST(platform::NPUPlace, place).device);
+      platform::SetNPUDeviceId(place.device);
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with NPU if use NPUPlace."));
 #endif
+    } else if (platform::is_mlu_place(place)) {
+#ifdef PADDLE_WITH_MLU
+      platform::SetMLUDeviceId(place.device);
+#else
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "PaddlePaddle should compile with MLU if use MLUPlace."));
+#endif
     }
-
-    OpBase::Run(*op, new_ins, outs, attrs, default_attrs, place);
+    if (!override_default_attr_map) {
+      PADDLE_ENFORCE_NOT_NULL(passed_default_attrs_,
+                              paddle::platform::errors::PermissionDenied(
+                                  "Detected default_attrs = nullptr."));
+      VLOG(6) << "Use passed in default attrs";
+      OpBase::Run(*op, new_ins, outs, attrs, (*passed_default_attrs_), place);
+    } else {
+      VLOG(6) << "Use Checker's default attrs";
+      if (passed_default_attrs_) {
+        // TODO(jiabin): Update this without copy
+        *passed_default_attrs_ = default_attrs;
+      }
+      OpBase::Run(*op, new_ins, outs, attrs, default_attrs, place);
+    }
   } catch (platform::EnforceNotMet& exception) {
     framework::AppendErrorOpHint(type, &exception);
     throw std::move(exception);
@@ -230,18 +260,66 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   }
 
   if (ComputeRequiredGrad(new_ins, outs, trace_backward)) {
-    CreateGradOpNode(*op, new_ins, outs, attrs, default_attrs, place,
-                     inplace_map);
+    if (!override_default_attr_map) {
+      PADDLE_ENFORCE_NOT_NULL(passed_default_attrs_,
+                              paddle::platform::errors::PermissionDenied(
+                                  "Detected default_attrs = nullptr."));
+      CreateGradOpNode(*op, new_ins, outs, attrs, *passed_default_attrs_, place,
+                       inplace_map);
+    } else {
+      CreateGradOpNode(*op, new_ins, outs, attrs, default_attrs, place,
+                       inplace_map);
+    }
   } else {
     VLOG(3) << "No Grad to track for Op: " << type;
   }
+  VLOG(6) << "Finish Trace Op: " << type;
 }
+
+template void Tracer::TraceOp<VarBase>(
+    const std::string& type, const NameVarMap<VarBase>& ins,
+    const NameVarMap<VarBase>& outs, framework::AttributeMap attrs,
+    const platform::Place& place, bool trace_backward,
+    const std::map<std::string, std::string>& inplace_map,
+    paddle::framework::AttributeMap* default_attrs,
+    bool override_default_attr_map);
+
+template void Tracer::TraceOp<egr::EagerTensor>(
+    const std::string& type, const NameVarMap<egr::EagerTensor>& ins,
+    const NameVarMap<egr::EagerTensor>& outs, framework::AttributeMap attrs,
+    const platform::Place& place, bool trace_backward,
+    const std::map<std::string, std::string>& inplace_map_,
+    paddle::framework::AttributeMap* default_attrs,
+    bool override_default_attr_map);
 
 void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                      const NameVarBaseMap& outs, framework::AttributeMap attrs,
                      const std::map<std::string, std::string>& inplace_map) {
-  TraceOp(type, ins, outs, std::move(attrs), expected_place_, has_grad_,
-          inplace_map);
+  TraceOp<VarBase>(type, ins, outs, std::move(attrs), expected_place_,
+                   has_grad_, inplace_map);
+}
+
+void Tracer::TraceOp(const std::string& type, const NameTensorMap& ins,
+                     const NameTensorMap& outs,
+                     paddle::framework::AttributeMap attrs,
+                     const paddle::platform::Place& place,
+                     paddle::framework::AttributeMap* default_attrs,
+                     bool override_default_attr_map,
+                     const std::map<std::string, std::string>& inplace_map) {
+  VLOG(6) << "Running On Eager TraceOp with override_default_attr_map: "
+          << override_default_attr_map;
+  TraceOp<egr::EagerTensor>(type, ins, outs, std::move(attrs), place, false,
+                            inplace_map, default_attrs,
+                            override_default_attr_map);
+}
+
+void Tracer::TraceOp(const std::string& type, const NameTensorMap& ins,
+                     const NameTensorMap& outs,
+                     paddle::framework::AttributeMap attrs,
+                     const std::map<std::string, std::string>& inplace_map) {
+  VLOG(6) << "Running On Eager TraceOp(less): ";
+  TraceOp<egr::EagerTensor>(type, ins, outs, std::move(attrs), expected_place_,
+                            false, inplace_map, nullptr, true);
 }
 
 void Tracer::SetExpectedPlace(platform::Place place) {
@@ -263,6 +341,12 @@ bool Tracer::ComputeRequiredGrad(const NameVarBaseMap& ins,
       }
     }
   }
+  return false;
+}
+
+bool Tracer::ComputeRequiredGrad(const NameTensorMap& ins,
+                                 const NameTensorMap& outs,
+                                 bool trace_backward) {
   return false;
 }
 

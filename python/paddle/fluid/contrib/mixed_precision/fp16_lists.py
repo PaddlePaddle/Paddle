@@ -17,6 +17,11 @@ from ... import core
 
 __all__ = ["CustomOpLists", "AutoMixedPrecisionLists"]
 
+# lookup_table fp16 is slower than fp32, though fp16 is supported.
+_extra_unsupported_fp16_list = {
+    'lookup_table', 'lookup_table_v2', 'scatter', 'scatter_grad'
+}
+
 
 class AutoMixedPrecisionLists(object):
     """
@@ -60,6 +65,8 @@ class AutoMixedPrecisionLists(object):
                 elif op_name in self.gray_list:
                     self.gray_list.remove(op_name)
                 self.white_list.add(op_name)
+                if op_name in _extra_unsupported_fp16_list:
+                    self.unsupported_list.remove(op_name)
         if self._custom_black_list:
             for op_name in self._custom_black_list:
                 if op_name in self.white_list:
@@ -104,7 +111,7 @@ black_list = {
     'reduce_sum',
 }
 
-# This set contains two types of ops. All ops supported fp16 calculation. One 
+# This set contains two types of ops. All ops supported fp16 calculation. One
 # of two types is considered numerically-safe, but may be made unsafe by an
 # upstream blacklist op. Another type do not have numerically-significant
 # effects, like stack, flatten2.
@@ -153,6 +160,8 @@ gray_list = {
     'c_allreduce_sum',
     'concat',
     'split',
+    'fused_feedforward',
+    'fused_attention',
 }
 
 # The set of ops that don't support fp16 calculation
@@ -168,7 +177,6 @@ else:
     _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
         'GPU', core.VarDesc.VarType.FP16)
 
-unsupported_fp16_list = {'lookup_table',
-                         'lookup_table_v2'} | _sys_unsupported_fp16_list
+unsupported_fp16_list = _extra_unsupported_fp16_list | _sys_unsupported_fp16_list
 
 CustomOpLists = AutoMixedPrecisionLists

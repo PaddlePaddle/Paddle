@@ -28,9 +28,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/profiler.pb.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
+
 namespace paddle {
 namespace platform {
 
@@ -124,33 +127,6 @@ struct MemEvenRecorder {
   DISABLE_COPY_AND_ASSIGN(MemEvenRecorder);
 };
 
-struct RecordEvent {
-  RecordEvent(const std::string& name,
-              const EventRole role = EventRole::kOrdinary,
-              const std::string attr = "none");
-
-  ~RecordEvent();
-
-  bool is_enabled_{false};
-  bool is_pushed_{false};
-  uint64_t start_ns_;
-  // Event name
-  std::string name_;
-  // Need to distinguish name by op type, block_id, program_id and perhaps
-  // different kernel invocations within an op.
-  std::string full_name_;
-  EventRole role_{EventRole::kOrdinary};
-};
-
-class RecordRPCEvent {
- public:
-  explicit RecordRPCEvent(const std::string& name);
-  ~RecordRPCEvent() {}
-
- private:
-  std::unique_ptr<RecordEvent> event_;
-};
-
 struct RecordBlock {
   explicit RecordBlock(int block_id);
   ~RecordBlock();
@@ -215,6 +191,11 @@ void EnableProfiler(ProfilerState state);
 void ResetProfiler();
 void DisableProfiler(EventSortingKey sorted_key,
                      const std::string& profile_path);
+// Disable profiler but return events instead of print it.
+void CompleteProfilerEvents(proto::Profile* tracer_profile,
+                            std::vector<std::vector<Event>>* time_events,
+                            std::vector<std::vector<MemEvent>>* mem_events);
+
 // Test if the profiler is currently enabled.
 bool IsProfileEnabled();
 // Whether the trainer should send profiling state to PS.
@@ -233,6 +214,11 @@ int64_t ListenerId();
 
 void NvprofEnableRecordEvent();
 void NvprofDisableRecordEvent();
+
+void EnableHostEventRecorder();
+
+// Defined for UT
+std::string PrintHostEvents();
 
 }  // namespace platform
 }  // namespace paddle

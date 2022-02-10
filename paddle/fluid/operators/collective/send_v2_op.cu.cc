@@ -16,7 +16,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
 namespace paddle {
@@ -62,7 +62,7 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
         auto& x = x_array.at(idx);
         int numel = x.numel();
         ncclDataType_t dtype = platform::ToNCCLDataType(x.type());
-        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclSend(
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
             x.data<T>(), numel, dtype, peer, comm->comm(), stream));
         VLOG(3) << "rank " << comm->rank() << " send "
                 << framework::product(x.dims()) << " to " << peer;
@@ -73,7 +73,7 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
     int numel = x->numel();
 
     ncclDataType_t dtype = platform::ToNCCLDataType(x->type());
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclSend(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
         x->data<T>(), numel, dtype, peer, comm->comm(), stream));
     VLOG(3) << "rank " << comm->rank() << " send "
             << framework::product(x->dims()) << " to " << peer;

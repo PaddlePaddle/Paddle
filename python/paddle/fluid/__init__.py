@@ -69,8 +69,9 @@ from .input import embedding, one_hot
 from . import distribute_lookup_table
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
+
 from .core import LoDTensor, LoDTensorArray, Scope, _Scope
-from .core import CPUPlace, XPUPlace, CUDAPlace, CUDAPinnedPlace, NPUPlace
+from .core import CPUPlace, XPUPlace, CUDAPlace, CUDAPinnedPlace, NPUPlace, IPUPlace, MLUPlace
 from .incubate import fleet
 from .transpiler import DistributeTranspiler, \
     memory_optimize, release_memory, DistributeTranspilerConfig
@@ -93,7 +94,7 @@ from .dygraph.varbase_patch_methods import monkey_patch_varbase
 from . import generator
 from .core import _cuda_synchronize
 from .generator import Generator
-from .trainer_desc import TrainerDesc, DistMultiTrainer, PipelineTrainer, MultiTrainer, HeterXpuTrainer
+from .trainer_desc import TrainerDesc, DistMultiTrainer, PipelineTrainer, HeterPipelineTrainer, MultiTrainer, HeterXpuTrainer
 from .transpiler import HashName, RoundRobin
 from .backward import append_backward
 
@@ -129,6 +130,8 @@ __all__ = framework.__all__ + executor.__all__ + \
         'CUDAPlace',
         'CUDAPinnedPlace',
         'NPUPlace',
+        'IPUPlace',
+        'MLUPlace',
         'Tensor',
         'ParamAttr',
         'WeightNormParamAttr',
@@ -176,82 +179,28 @@ def __bootstrap__():
         print('PLEASE USE OMP_NUM_THREADS WISELY.', file=sys.stderr)
 
     os.environ['OMP_NUM_THREADS'] = str(num_threads)
-    sysstr = platform.system()
+
+    flag_prefix = "FLAGS_"
     read_env_flags = [
-        'check_nan_inf',
-        'convert_all_blocks',
-        'benchmark',
-        'eager_delete_scope',
-        'fraction_of_cpu_memory_to_use',
-        'initial_cpu_memory_in_mb',
-        'init_allocated_mem',
-        'paddle_num_threads',
-        'dist_threadpool_size',
-        'eager_delete_tensor_gb',
-        'fast_eager_deletion_mode',
-        'memory_fraction_of_eager_deletion',
-        'allocator_strategy',
-        'reader_queue_speed_test_mode',
-        'print_sub_graph_dir',
-        'pe_profile_fname',
-        'inner_op_parallelism',
-        'enable_parallel_graph',
-        'fuse_parameter_groups_size',
-        'multiple_of_cupti_buffer_size',
-        'fuse_parameter_memory_size',
-        'tracer_profile_fname',
-        'dygraph_debug',
-        'use_system_allocator',
-        'enable_unused_var_check',
-        'free_idle_chunk',
-        'free_when_no_cache_hit',
-        'call_stack_level',
-        'sort_sum_gradient',
-        'max_inplace_grad_add',
-        'apply_pass_to_program',
+        key[len(flag_prefix):] for key in core.globals().keys()
+        if key.startswith(flag_prefix)
     ]
-    if 'Darwin' not in sysstr:
-        read_env_flags.append('use_pinned_memory')
 
-    if os.name != 'nt':
-        read_env_flags.append('cpu_deterministic')
+    def remove_flag_if_exists(name):
+        if name in read_env_flags:
+            read_env_flags.remove(name)
 
-    if core.is_compiled_with_mkldnn():
-        read_env_flags.append('use_mkldnn')
-        read_env_flags.append('tracer_mkldnn_ops_on')
-        read_env_flags.append('tracer_mkldnn_ops_off')
+    sysstr = platform.system()
+    if 'Darwin' in sysstr:
+        remove_flag_if_exists('use_pinned_memory')
 
-    if core.is_compiled_with_cuda():
-        read_env_flags += [
-            'fraction_of_gpu_memory_to_use',
-            'initial_gpu_memory_in_mb',
-            'reallocate_gpu_memory_in_mb',
-            'cudnn_deterministic',
-            'enable_cublas_tensor_op_math',
-            'conv_workspace_size_limit',
-            'cudnn_exhaustive_search',
-            'selected_gpus',
-            'sync_nccl_allreduce',
-            'cudnn_batchnorm_spatial_persistent',
-            'gpu_allocator_retry_time',
-            'local_exe_sub_scope_limit',
-            'gpu_memory_limit_mb',
-            'conv2d_disable_cudnn',
-            'get_host_by_name_time',
-        ]
+    if os.name == 'nt':
+        remove_flag_if_exists('cpu_deterministic')
 
-    if core.is_compiled_with_npu():
-        read_env_flags += [
-            'selected_npus',
-            'fraction_of_gpu_memory_to_use',
-            'initial_gpu_memory_in_mb',
-            'reallocate_gpu_memory_in_mb',
-            'gpu_memory_limit_mb',
-            'npu_config_path',
-            'get_host_by_name_time',
-            'hccl_check_nan',
-            'min_loss_scaling',
-        ]
+    if core.is_compiled_with_ipu():
+        # Currently we request all ipu available for training and testing
+        #   finer control of pod of IPUs will be added later
+        read_env_flags += []
 
     core.init_gflags(["--tryfromenv=" + ",".join(read_env_flags)])
     # Note(zhouwei25): sys may not have argv in some cases, 

@@ -807,6 +807,7 @@ PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
     // Bias
     eltwise_y_in_var = pattern->NewNode(eltwise_y_in_repr())
                            ->assert_is_op_input("elementwise_add", "Y")
+                           ->assert_is_persistable_var()
                            ->AsInput();
     eltwise_out_var = pattern->NewNode(eltwise_out_repr())
                           ->AsIntermediate()
@@ -923,6 +924,7 @@ PDNode *patterns::SeqConvEltAddRelu::operator()(
   seqconv_input->assert_is_op_input("sequence_conv", "X");
   auto *seqconv_op = pattern->NewNode(seqconv_repr())
                          ->assert_is_op("sequence_conv")
+                         ->assert_has_n_inputs(2)
                          ->assert_op_attr<bool>("paddingTrainable", false)
                          ->assert_op_attr<int>("contextStride", 1);
 
@@ -1059,6 +1061,27 @@ PDNode *patterns::FCActOneDNN::operator()(const std::string &act_type) {
   act->LinksFrom({fc_out}).LinksTo({act_out});
 
   return act_out;
+}
+
+PDNode *patterns::SoftplusActivation::operator()(std::string activation_type) {
+  // Create Operators
+  auto *softplus_op =
+      pattern->NewNode(softplus_repr())->assert_is_op("softplus");
+  auto *activation_op =
+      pattern->NewNode(activation_repr())->assert_is_op(activation_type);
+  // intermediate variable, will be removed in the IR after fuse.
+  auto *softplus_out = pattern->NewNode(softplus_out_repr())
+                           ->AsIntermediate()
+                           ->assert_is_only_output_of_op("softplus")
+                           ->assert_is_op_input(activation_type);
+  // output
+  auto *activation_out = pattern->NewNode(activation_out_repr())
+                             ->AsOutput()
+                             ->assert_is_op_output(activation_type);
+
+  softplus_op->LinksTo({softplus_out});
+  activation_op->LinksFrom({softplus_out}).LinksTo({activation_out});
+  return activation_out;
 }
 
 PDNode *patterns::Embedding::operator()(PDNode *x) {
@@ -1569,11 +1592,8 @@ PDNode *patterns::Transpose::operator()() {
                            ->AsOutput()
                            ->assert_is_op_output("transpose2", "Out");
 
-  auto next_op = pattern->NewNode(next_op_repr())->assert_is_op();
-
   prev_op->LinksTo({transpose_in});
   transpose_op->LinksFrom({transpose_in}).LinksTo({transpose_out});
-  next_op->LinksFrom({transpose_out});
   return transpose_out;
 }
 
@@ -1590,12 +1610,49 @@ PDNode *patterns::Reshape::operator()() {
                          ->AsOutput()
                          ->assert_is_op_output("reshape2", "Out");
 
-  auto next_op = pattern->NewNode(next_op_repr())->assert_is_op();
-
   prev_op->LinksTo({reshape_in});
   reshape_op->LinksFrom({reshape_in}).LinksTo({reshape_out});
-  next_op->LinksFrom({reshape_out});
   return reshape_out;
+}
+
+PDNode *patterns::Slice::operator()() {
+  auto prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
+
+  auto slice_op = pattern->NewNode(slice_op_repr())->assert_is_op("slice");
+
+  auto slice_in = pattern->NewNode(slice_in_repr())
+                      ->AsInput()
+                      ->assert_is_op_input("slice", "Input");
+  auto slice_out = pattern->NewNode(slice_out_repr())
+                       ->AsOutput()
+                       ->assert_is_op_output("slice", "Out");
+
+  prev_op->LinksTo({slice_in});
+  slice_op->LinksFrom({slice_in}).LinksTo({slice_out});
+  return slice_out;
+}
+
+PDNode *patterns::NearestInterp::operator()() {
+  auto prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
+
+  auto nearest_interp_op =
+      pattern->NewNode(nearest_interp_op_repr())
+          ->assert_is_ops({"nearest_interp", "nearest_interp_v2"});
+
+  auto nearest_interp_in =
+      pattern->NewNode(nearest_interp_in_repr())
+          ->AsInput()
+          ->assert_is_ops_input({"nearest_interp", "nearest_interp_v2"}, "X");
+  auto nearest_interp_out =
+      pattern->NewNode(nearest_interp_out_repr())
+          ->AsOutput()
+          ->assert_is_ops_output({"nearest_interp", "nearest_interp_v2"},
+                                 "Out");
+
+  prev_op->LinksTo({nearest_interp_in});
+  nearest_interp_op->LinksFrom({nearest_interp_in})
+      .LinksTo({nearest_interp_out});
+  return nearest_interp_out;
 }
 
 PDNode *patterns::Matmul::operator()() {
@@ -1606,6 +1663,7 @@ PDNode *patterns::Matmul::operator()() {
                          ->assert_is_op_input("matmul", "X");
   auto matmul_in_y = pattern->NewNode(matmul_in_y_repr())
                          ->AsInput()
+                         ->assert_is_persistable_var()
                          ->assert_is_op_input("matmul", "Y");
   auto matmul_out = pattern->NewNode(matmul_out_repr())
                         ->AsOutput()
@@ -1613,6 +1671,90 @@ PDNode *patterns::Matmul::operator()() {
 
   matmul_op->LinksFrom({matmul_in_x, matmul_in_y}).LinksTo({matmul_out});
   return matmul_out;
+}
+
+// MatmulV2: tensor * weight
+PDNode *patterns::MatmulV2Weight::operator()() {
+  auto matmul_v2_op =
+      pattern->NewNode(matmul_v2_op_repr())->assert_is_op("matmul_v2");
+
+  auto matmul_v2_in_x = pattern->NewNode(matmul_v2_in_x_repr())
+                            ->AsInput()
+                            ->assert_is_op_input("matmul_v2", "X");
+  auto matmul_v2_in_y = pattern->NewNode(matmul_v2_in_y_repr())
+                            ->AsInput()
+                            ->assert_is_persistable_var()  // Y is weight
+                            ->assert_is_op_input("matmul_v2", "Y");
+  auto matmul_v2_out = pattern->NewNode(matmul_v2_out_repr())
+                           ->AsOutput()
+                           ->assert_is_op_output("matmul_v2", "Out");
+
+  matmul_v2_op->LinksFrom({matmul_v2_in_x, matmul_v2_in_y})
+      .LinksTo({matmul_v2_out});
+  return matmul_v2_out;
+}
+
+// MatmulV2: tensor * tensor or tensor * weight
+PDNode *patterns::MatmulV2::operator()() {
+  auto matmul_v2_op =
+      pattern->NewNode(matmul_v2_op_repr())->assert_is_op("matmul_v2");
+
+  auto matmul_v2_in_x = pattern->NewNode(matmul_v2_in_x_repr())
+                            ->AsInput()
+                            ->assert_is_op_input("matmul_v2", "X");
+  auto matmul_v2_in_y = pattern->NewNode(matmul_v2_in_y_repr())
+                            ->AsInput()
+                            ->assert_is_op_input("matmul_v2", "Y");
+  auto matmul_v2_out = pattern->NewNode(matmul_v2_out_repr())
+                           ->AsOutput()
+                           ->assert_is_op_output("matmul_v2", "Out");
+
+  matmul_v2_op->LinksFrom({matmul_v2_in_x, matmul_v2_in_y})
+      .LinksTo({matmul_v2_out});
+  return matmul_v2_out;
+}
+
+PDNode *patterns::MatmulScale::operator()() {
+  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
+  auto matmul_in_x = pattern->NewNode(matmul_in_x_repr())
+                         ->AsInput()
+                         ->assert_is_op_input("matmul", "X");
+  auto matmul_in_y = pattern->NewNode(matmul_in_y_repr())
+                         ->AsInput()
+                         ->assert_is_op_input("matmul", "Y");
+  auto scale_op = pattern->NewNode(scale_op_repr())->assert_is_op("scale");
+  auto scale_in_x = pattern->NewNode(scale_in_x_repr())
+                        ->assert_is_op_output("matmul", "Out")
+                        ->assert_is_op_input("scale", "X");
+  auto scale_out = pattern->NewNode(scale_out_repr())
+                       ->AsOutput()
+                       ->assert_is_op_output("scale", "Out");
+  matmul_op->LinksFrom({matmul_in_x, matmul_in_y}).LinksTo({scale_in_x});
+  scale_op->LinksFrom({scale_in_x}).LinksTo({scale_out});
+  return scale_out;
+}
+
+PDNode *patterns::MatmulV2Scale::operator()() {
+  auto matmul_v2_op =
+      pattern->NewNode(matmul_v2_op_repr())->assert_is_op("matmul_v2");
+  auto matmul_v2_in_x = pattern->NewNode(matmul_v2_in_x_repr())
+                            ->AsInput()
+                            ->assert_is_op_input("matmul_v2", "X");
+  auto matmul_v2_in_y = pattern->NewNode(matmul_v2_in_y_repr())
+                            ->AsInput()
+                            ->assert_is_persistable_var()  // Y is weight
+                            ->assert_is_op_input("matmul_v2", "Y");
+  auto scale_op = pattern->NewNode(scale_op_repr())->assert_is_op("scale");
+  auto scale_in_x = pattern->NewNode(scale_in_x_repr())
+                        ->assert_is_op_output("matmul_v2", "Out")
+                        ->assert_is_op_input("scale", "X");
+  auto scale_out = pattern->NewNode(scale_out_repr())
+                       ->AsOutput()
+                       ->assert_is_op_output("scale", "Out");
+  matmul_v2_op->LinksFrom({matmul_v2_in_x, matmul_v2_in_y})
+      .LinksTo({scale_in_x});
+  scale_op->LinksFrom({scale_in_x}).LinksTo({scale_out});
+  return scale_out;
 }
 
 PDNode *patterns::Squeeze2Matmul::operator()() {
@@ -2248,38 +2390,52 @@ PDNode *patterns::MultipleQuantize::operator()() {
 
 PDNode *patterns::QuantizePlacement::operator()(
     const std::unordered_set<std::string> &quantize_enabled_op_types) {
-  std::unordered_set<std::string> supported_op_types =
-      std::unordered_set<std::string>({"concat", "conv2d", "elementwise_add",
-                                       "fc", "matmul", "pool2d", "prior_box",
-                                       "reshape2", "transpose2", "fusion_gru",
-                                       "fusion_lstm", "multi_gru"});
-  if (!quantize_enabled_op_types.empty()) {
-    supported_op_types = quantize_enabled_op_types;
-  }
-  auto *op = pattern->NewNode(op_repr())->assert_is_ops(supported_op_types);
+  auto *op =
+      pattern->NewNode(op_repr())->assert_is_ops(quantize_enabled_op_types);
   return op;
 }
 
 PDNode *patterns::Bfloat16Placement::operator()(
     const std::unordered_set<std::string> &bfloat16_enabled_op_types) {
   std::unordered_set<std::string> supported_op_types =
-      std::unordered_set<std::string>(
-          {"concat",          "conv2d",          "conv2d_transpose",
-           "elementwise_add", "elementwise_mul", "fc",
-           "fusion_gru",      "fusion_lstm",     "gelu",
-           "layer_norm",      "matmul",          "matmul_v2",
-           "pool2d",          "prelu",           "relu",
-           "reshape2",        "softmax",         "split",
-           "squeeze",         "squeeze2",        "sum",
-           "transpose2"});
+      std::unordered_set<std::string>({"cast",
+                                       "clip",
+                                       "concat",
+                                       "conv2d",
+                                       "conv2d_transpose",
+                                       "elementwise_add",
+                                       "elementwise_mul",
+                                       "expand_v2",
+                                       "fc",
+                                       "fusion_gru",
+                                       "fusion_lstm",
+                                       "gelu",
+                                       "layer_norm",
+                                       "matmul",
+                                       "matmul_v2",
+                                       "pool2d",
+                                       "prelu",
+                                       "relu",
+                                       "reshape2",
+                                       "scale",
+                                       "sigmoid",
+                                       "slice",
+                                       "softmax",
+                                       "split",
+                                       "squeeze",
+                                       "squeeze2",
+                                       "sum",
+                                       "transpose2"});
   if (!bfloat16_enabled_op_types.empty()) {
     supported_op_types = bfloat16_enabled_op_types;
   }
+  auto *op_in = pattern->NewNode(op_in_repr())->AsInput();
   auto *op = pattern->NewNode(op_repr())->assert_is_ops(supported_op_types);
   op->assert_more([&](Node *node) {
     return node->Op()->GetAttrIfExists<bool>("use_mkldnn") ||
            node->Op()->Type() == "reshape2";
   });
+  op->LinksFrom({op_in});
   return op;
 }
 
@@ -2308,6 +2464,23 @@ PDNode *patterns::OrphanedBfloat16::operator()() {
   op->LinksFrom({prev_out}).LinksTo({op_out});
   next_op->LinksFrom({op_out});
   return next_op;
+}
+
+PDNode *patterns::UnsupportedBfloat16::operator()() {
+  auto *prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
+  prev_op->assert_more([&](Node *node) {
+    return node->Op()->HasAttr("mkldnn_data_type") == false;
+  });
+  auto *prev_out = pattern->NewNode(prev_out_repr())->AsOutput();
+
+  auto *op = pattern->NewNode(op_repr())->assert_is_op();
+  op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
+           "bfloat16";
+  });
+  prev_op->LinksTo({prev_out});
+  op->LinksFrom({prev_out});
+  return op;
 }
 
 PDNode *patterns::LastBfloat16Ops::operator()() {
@@ -2547,39 +2720,28 @@ void patterns::ShuffleChannelPattern::operator()(PDNode *reshape1_in) {
   reshape2_out->LinksFrom({reshape2_op});
 }
 
-void patterns::DeleteQuantDequantOpPattern::operator()() {
-  auto any_op_out =
-      pattern->NewNode(any_op_out_repr())
-          ->assert_is_op_input(
-              "fake_quantize_dequantize_moving_average_abs_max", "X")
-          ->AsInput();
-
+void patterns::DeleteQuantDequantOpPattern::operator()(
+    PDNode *input_node, const std::string &quantdequant_types) {
   auto quant_dequant_op_inscale =
       pattern->NewNode(quant_dequant_op_inscale_repr())
-          ->assert_is_op_input(
-              "fake_quantize_dequantize_moving_average_abs_max", "InScale")
+          ->assert_is_op_input(quantdequant_types, "InScale")
           ->AsInput();
-  auto quant_dequant_op =
-      pattern->NewNode(quant_dequant_op_repr())
-          ->assert_is_op("fake_quantize_dequantize_moving_average_abs_max");
+  auto quant_dequant_op = pattern->NewNode(quant_dequant_op_repr())
+                              ->assert_is_op(quantdequant_types);
 
-  auto quant_dequant_out =
+  auto quant_dequant_op_out =
       pattern->NewNode(quant_dequant_op_out_repr())
-          ->assert_is_op_output(
-              "fake_quantize_dequantize_moving_average_abs_max", "Out")
-          ->AsIntermediate();
+          ->assert_is_op_output(quantdequant_types, "Out")
+          ->AsOutput();
 
   auto quant_dequant_op_outscale =
       pattern->NewNode(quant_dequant_op_outscale_repr())
-          ->assert_is_op_output(
-              "fake_quantize_dequantize_moving_average_abs_max", "OutScale")
+          ->assert_is_op_output(quantdequant_types, "OutScale")
           ->AsOutput();
-  auto any_op2 = pattern->NewNode(any_op2_repr())->assert_is_op()->AsOutput();
 
-  quant_dequant_op->LinksFrom({any_op_out, quant_dequant_op_inscale});
+  quant_dequant_op->LinksFrom({quant_dequant_op_inscale, input_node});
   quant_dequant_op_outscale->LinksFrom({quant_dequant_op});
-  quant_dequant_out->LinksFrom({quant_dequant_op});
-  any_op2->LinksFrom({quant_dequant_out});
+  quant_dequant_op_out->LinksFrom({quant_dequant_op});
 }
 
 void patterns::DeleteQuantDequantFilterOpPattern::operator()() {
@@ -2620,12 +2782,13 @@ void patterns::DeleteQuantDequantFilterOpPattern::operator()() {
 }
 
 PDNode *patterns::ReshapeTransposeMatmulPattern::operator()(
-    bool with_reshape_xshape, bool with_transpose_xshape) {
+    const std::string &op_name, bool with_reshape_xshape,
+    bool with_transpose_xshape) {
   auto reshape_op =
       pattern->NewNode(reshape_op_repr())->assert_is_op("reshape2");
   auto transpose_op =
       pattern->NewNode(transpose_op_repr())->assert_is_op("transpose2");
-  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
+  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op(op_name);
 
   auto reshape_in = pattern->NewNode(reshape_in_repr())
                         ->AsInput()
@@ -2646,7 +2809,7 @@ PDNode *patterns::ReshapeTransposeMatmulPattern::operator()(
 
   auto transpose_out = pattern->NewNode(transpose_out_repr())
                            ->AsIntermediate()
-                           ->assert_is_op_input("matmul")
+                           ->assert_is_op_input(op_name)
                            ->assert_is_op_output("transpose2", "Out");
   if (!with_transpose_xshape)
     transpose_out->assert_is_only_output_of_op("transpose2");
@@ -2660,7 +2823,7 @@ PDNode *patterns::ReshapeTransposeMatmulPattern::operator()(
 
   auto matmul_out = pattern->NewNode(matmul_out_repr())
                         ->AsOutput()
-                        ->assert_is_op_output("matmul", "Out");
+                        ->assert_is_op_output(op_name, "Out");
 
   reshape_op->LinksFrom({reshape_in}).LinksTo({reshape_out});
   if (with_reshape_xshape) reshape_op->LinksTo({reshape_xshape});
@@ -2670,16 +2833,18 @@ PDNode *patterns::ReshapeTransposeMatmulPattern::operator()(
   return matmul_out;
 }
 
-PDNode *patterns::MatmulTransposeReshapePattern::operator()() {
+// shared function for matmul and matmul_v2
+PDNode *patterns::MatmulTransposeReshapePattern::operator()(
+    const std::string &op_name) {
   auto reshape_op =
       pattern->NewNode(reshape_op_repr())->assert_is_op("reshape2");
   auto transpose_op =
       pattern->NewNode(transpose_op_repr())->assert_is_op("transpose2");
-  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
+  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op(op_name);
 
   auto matmul_out = pattern->NewNode(matmul_out_repr())
                         ->AsInput()
-                        ->assert_is_op_output("matmul", "Out")
+                        ->assert_is_op_output(op_name, "Out")
                         ->assert_is_op_input("transpose2", "X");
 
   auto transpose_out = pattern->NewNode(transpose_out_repr())
@@ -2976,6 +3141,29 @@ PDNode *patterns::LayerNorm::operator()() {
   shift->LinksFrom({scale_out, beta}).LinksTo({shift_out});
 
   return shift_out;
+}
+
+// Add support int8 flag
+PDNode *patterns::AddSupportInt8::operator()() {
+  auto prev_op =
+      pattern->NewNode(prev_op_repr())
+          ->assert_is_op()
+          ->assert_more([&](Node *node) {
+            return node->Op()->HasAttr("out_threshold") ? true : false;
+          });
+  auto prev_out = pattern->NewNode(prev_out_repr())->assert_is_var();
+  auto quant_op =
+      pattern->NewNode(quant_op_repr())
+          ->assert_is_op()
+          ->assert_more([&](Node *node) {
+            return node->Op()->HasAttr("out_threshold") ? true : false;
+          });
+  auto quant_out =
+      pattern->NewNode(quant_out_repr())->assert_is_var()->AsOutput();
+  prev_op->LinksTo({prev_out});
+  prev_out->LinksTo({quant_op});
+  quant_op->LinksTo({quant_out});
+  return quant_out;
 }
 
 }  // namespace ir

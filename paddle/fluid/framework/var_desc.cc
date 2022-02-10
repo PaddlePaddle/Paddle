@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_desc.h"
 
 #include "glog/logging.h"
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -116,6 +117,10 @@ proto::VarType::Type VarDesc::GetDataType() const {
   return tensor_desc().data_type();
 }
 
+size_t VarDesc::ElementSize() const {
+  return framework::SizeOfType(GetDataType());
+}
+
 std::vector<proto::VarType::Type> VarDesc::GetDataTypes() const {
   std::vector<proto::VarType::TensorDesc> descs = tensor_descs();
   std::vector<proto::VarType::Type> res;
@@ -209,6 +214,10 @@ const proto::VarType::TensorDesc &VarDesc::tensor_desc() const {
       return desc_.type().lod_tensor().tensor();
     case proto::VarType::LOD_TENSOR_ARRAY:
       return desc_.type().tensor_array().tensor();
+    case proto::VarType::STRINGS:
+      return desc_.type().strings();
+    case proto::VarType::VOCAB:
+      return desc_.type().vocab();
     default:
       PADDLE_THROW(platform::errors::Unavailable(
           "Getting 'tensor_desc' is not supported by the %s type variable.",
@@ -249,6 +258,10 @@ proto::VarType::TensorDesc *VarDesc::mutable_tensor_desc() {
       return desc_.mutable_type()->mutable_lod_tensor()->mutable_tensor();
     case proto::VarType::LOD_TENSOR_ARRAY:
       return desc_.mutable_type()->mutable_tensor_array()->mutable_tensor();
+    case proto::VarType::STRINGS:
+      return desc_.mutable_type()->mutable_strings();
+    case proto::VarType::VOCAB:
+      return desc_.mutable_type()->mutable_vocab();
     default:
       PADDLE_THROW(
           platform::errors::Unavailable("Getting 'mutable_tensor_desc' is not "

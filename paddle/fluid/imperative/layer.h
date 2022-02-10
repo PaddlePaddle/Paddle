@@ -25,6 +25,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/var_type.h"
@@ -36,7 +37,6 @@
 #include "paddle/fluid/imperative/variable_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
-
 namespace paddle {
 namespace framework {
 class Variable;
@@ -211,6 +211,8 @@ class VarBase {
 
   framework::proto::VarType::Type DataType() const { return var_->DataType(); }
 
+  size_t ElementSize() const { return framework::SizeOfType(var_->DataType()); }
+
   void SetForwardDataType(framework::proto::VarType::Type data_type) {
     var_->SetForwardDataType(data_type);
   }
@@ -221,7 +223,10 @@ class VarBase {
 
   const platform::Place Place() const { return var_->Place(); }
 
-  void ClearGradient();
+  void ClearGradient(bool set_to_zero = true);
+
+  void _GradientSetEmpty(bool is_empty = true);
+  bool _IsGradientSetEmpty();
 
   std::shared_ptr<VarBase> NewVarBase(const platform::Place& dst_place,
                                       const bool blocking) const;
@@ -229,6 +234,8 @@ class VarBase {
   void CopyFrom(const imperative::VarBase& src, bool blocking);
 
   void BumpInplaceVersion();
+
+  void _CopyGradientFrom(const imperative::VarBase& src);
 
   /* Hook related method: now only used for GradVarBase */
   bool HasVariableWrapperHook() const { return var_->HasVariableWrapperHook(); }
@@ -275,19 +282,15 @@ class VarBase {
   static ThreadSafeNameSet name_set_;
 };
 
-class Layer {
- public:
-  virtual ~Layer() {}
-
-  virtual std::vector<std::shared_ptr<VarBase>> Forward(
-      const std::vector<std::shared_ptr<VarBase>>& inputs) {
-    return {};
-  }
-};
-
 std::shared_ptr<GradOpNode> CreateGradOpNode(
     const framework::OperatorBase& op, const NameVarBaseMap& ins,
     const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
+    const framework::AttributeMap& default_attrs, const platform::Place& place,
+    const std::map<std::string, std::string>& inplace_map);
+
+std::shared_ptr<GradOpNode> CreateGradOpNode(
+    const framework::OperatorBase& op, const NameTensorMap& ins,
+    const NameTensorMap& outs, const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs, const platform::Place& place,
     const std::map<std::string, std::string>& inplace_map);
 

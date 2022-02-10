@@ -344,6 +344,13 @@ def conv1d(x,
         l_type = 'depthwise_conv2d'
         use_cudnn = False
 
+    # NPU only supports depthwise_conv2d when  "input_channel = output_channel = groups"
+    if core.is_compiled_with_npu():
+        if (num_channels == groups and num_channels == num_filters):
+            l_type = 'depthwise_conv2d'
+        else:
+            l_type = 'conv2d'
+
     squeeze_aixs = -2 if channel_last else -1
     x = unsqueeze(x, axis=[squeeze_aixs])
     weight = unsqueeze(weight, axis=[-1])
@@ -561,6 +568,13 @@ def conv2d(x,
             use_cudnn = True
         else:
             use_cudnn = False
+
+    # NPU only supports depthwise_conv2d when  "input_channel = output_channel = groups"
+    if core.is_compiled_with_npu():
+        if (num_channels == groups and num_channels == num_filters):
+            l_type = 'depthwise_conv2d'
+        else:
+            l_type = 'conv2d'
 
     if (core.is_compiled_with_cuda() and get_flags("FLAGS_conv2d_disable_cudnn")
         ["FLAGS_conv2d_disable_cudnn"]):

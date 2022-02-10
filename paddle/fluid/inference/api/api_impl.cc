@@ -192,14 +192,7 @@ std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone() {
     LOG(ERROR) << "fail to call Init";
     return nullptr;
   }
-
-#ifdef __clang__
-  // fix clang compile error
   return cls;
-#else
-  // fix manylinux compile error.
-  return std::move(cls);
-#endif
 }
 
 bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
@@ -250,7 +243,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
           platform::DeviceContextPool::Instance();
       auto *dev_ctx =
           static_cast<const platform::CUDADeviceContext *>(pool.Get(place_));
-      auto dst_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
+      auto dst_gpu_place = place_;
       memory::Copy(dst_gpu_place, static_cast<void *>(input_ptr),
                    platform::CPUPlace(), inputs[i].data.data(),
                    inputs[i].data.length(), dev_ctx->stream());
@@ -260,7 +253,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
 #endif
     } else if (platform::is_xpu_place(place_)) {
 #ifdef PADDLE_WITH_XPU
-      auto dst_xpu_place = BOOST_GET_CONST(platform::XPUPlace, place_);
+      auto dst_xpu_place = place_;
       memory::Copy(dst_xpu_place, static_cast<void *>(input_ptr),
                    platform::CPUPlace(), inputs[i].data.data(),
                    inputs[i].data.length());
@@ -274,7 +267,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
           platform::DeviceContextPool::Instance();
       auto *dev_ctx =
           static_cast<const platform::NPUDeviceContext *>(pool.Get(place_));
-      auto dst_npu_place = BOOST_GET_CONST(platform::NPUPlace, place_);
+      auto dst_npu_place = place_;
       memory::Copy(dst_npu_place, static_cast<void *>(input_ptr),
                    platform::CPUPlace(), inputs[i].data.data(),
                    inputs[i].data.length(), dev_ctx->stream());
@@ -390,12 +383,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   if (!dynamic_cast<NativePaddlePredictor *>(predictor.get())->Init(nullptr)) {
     return nullptr;
   }
-#ifdef __clang__
-  // fix clang compile error
   return predictor;
-#else
-  return std::move(predictor);
-#endif
 }
 
 template <>

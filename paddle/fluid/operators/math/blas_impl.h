@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
+#include "paddle/pten/backends/cpu/cpu_context.h"
 #ifdef PADDLE_WITH_MKLML
 #include <mkl.h>
 #endif
@@ -434,6 +435,17 @@ struct CBlas<platform::complex<float>> {
                                    a_, lda, b_, ldb, &beta, c_, ldc);
   }
 
+  static void TRSM(CBLAS_LAYOUT layout, CBLAS_SIDE side, CBLAS_UPLO uplo,
+                   CBLAS_TRANSPOSE trans_a, CBLAS_DIAG diag, int M, int N,
+                   paddle::platform::complex<float> alpha,
+                   const paddle::platform::complex<float> *A, int lda,
+                   paddle::platform::complex<float> *B, int ldb) {
+    const void *a_ = (const void *)(A);
+    void *b_ = static_cast<void *>(B);
+    platform::dynload::cblas_ctrsm(layout, side, uplo, trans_a, diag, M, N,
+                                   &alpha, a_, lda, b_, ldb);
+  }
+
   template <typename... ARGS>
   static void GEMM_BATCH(CBLAS_LAYOUT layout, CBLAS_TRANSPOSE *trans_a,
                          CBLAS_TRANSPOSE *trans_b, int *M, int *N, int *K,
@@ -562,6 +574,17 @@ struct CBlas<platform::complex<double>> {
                                    a_, lda, b_, ldb, &beta, c_, ldc);
   }
 
+  static void TRSM(CBLAS_LAYOUT layout, CBLAS_SIDE side, CBLAS_UPLO uplo,
+                   CBLAS_TRANSPOSE trans_a, CBLAS_DIAG diag, int M, int N,
+                   paddle::platform::complex<double> alpha,
+                   const paddle::platform::complex<double> *A, int lda,
+                   paddle::platform::complex<double> *B, int ldb) {
+    const void *a_ = (const void *)(A);
+    void *b_ = static_cast<void *>(B);
+    platform::dynload::cblas_ztrsm(layout, side, uplo, trans_a, diag, M, N,
+                                   &alpha, a_, lda, b_, ldb);
+  }
+
   template <typename... ARGS>
   static void GEMM_BATCH(CBLAS_LAYOUT layout, CBLAS_TRANSPOSE *trans_a,
                          CBLAS_TRANSPOSE *trans_b, int *M, int *N, int *K,
@@ -682,6 +705,15 @@ struct CBlas<platform::complex<float>> {
     cblas_cgemm(layout, TransA, TransB, M, N, K, &alpha, A, lda, B, ldb, &beta,
                 C, ldc);
   }
+
+  static void TRSM(const CBLAS_LAYOUT layout, const CBLAS_SIDE side,
+                   const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE transA,
+                   const CBLAS_DIAG diag, const int M, const int N,
+                   const paddle::platform::complex<float> alpha,
+                   const paddle::platform::complex<float> *A, const int lda,
+                   paddle::platform::complex<double> *B, const int ldb) {
+    cblas_ctrsm(layout, side, uplo, transA, diag, M, N, &alpha, A, lda, B, ldb);
+  }
 };
 
 template <>
@@ -719,6 +751,15 @@ struct CBlas<platform::complex<double>> {
                    paddle::platform::complex<double> *C, const int ldc) {
     cblas_zgemm(layout, TransA, TransB, M, N, K, &alpha, A, lda, B, ldb, &beta,
                 C, ldc);
+  }
+
+  static void TRSM(const CBLAS_LAYOUT layout, const CBLAS_SIDE side,
+                   const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE transA,
+                   const CBLAS_DIAG diag, const int M, const int N,
+                   const paddle::platform::complex<double> alpha,
+                   const paddle::platform::complex<double> *A, const int lda,
+                   paddle::platform::complex<double> *B, const int ldb) {
+    cblas_ztrsm(layout, side, uplo, transA, diag, M, N, &alpha, A, lda, B, ldb);
   }
 };
 
@@ -779,6 +820,12 @@ T *Blas<platform::CPUDeviceContext>::GEMM_ALLOC(const CBLAS_IDENTIFIER id,
                                                 const int K) const {
   return CBlas<T>::GEMM_ALLOC(id, M, N, K);
 }
+template <>
+template <typename T>
+T *Blas<pten::CPUContext>::GEMM_ALLOC(const CBLAS_IDENTIFIER id, const int M,
+                                      const int N, const int K) const {
+  return CBlas<T>::GEMM_ALLOC(id, M, N, K);
+}
 
 template <>
 template <typename T>
@@ -787,6 +834,15 @@ void Blas<platform::CPUDeviceContext>::GEMM_PACK(const CBLAS_IDENTIFIER id,
                                                  int M, int N, int K,
                                                  const T alpha, const T *src,
                                                  const int ld, T *dst) const {
+  CBlas<T>::GEMM_PACK(CblasRowMajor, id, trans, M, N, K, alpha, src, ld, dst);
+}
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::GEMM_PACK(const CBLAS_IDENTIFIER id,
+                                       const CBLAS_TRANSPOSE trans, int M,
+                                       int N, int K, const T alpha,
+                                       const T *src, const int ld,
+                                       T *dst) const {
   CBlas<T>::GEMM_PACK(CblasRowMajor, id, trans, M, N, K, alpha, src, ld, dst);
 }
 
@@ -798,10 +854,24 @@ void Blas<platform::CPUDeviceContext>::GEMM_COMPUTE(
   CBlas<T>::GEMM_COMPUTE(CblasRowMajor, transA, transB, M, N, K, A, lda, B, ldb,
                          beta, C, ldc);
 }
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::GEMM_COMPUTE(int transA, int transB, int M, int N,
+                                          int K, const T *A, const int lda,
+                                          const T *B, const int ldb, T beta,
+                                          T *C, const int ldc) const {
+  CBlas<T>::GEMM_COMPUTE(CblasRowMajor, transA, transB, M, N, K, A, lda, B, ldb,
+                         beta, C, ldc);
+}
 
 template <>
 template <typename T>
 void Blas<platform::CPUDeviceContext>::GEMM_FREE(T *data) const {
+  CBlas<T>::GEMM_FREE(data);
+}
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::GEMM_FREE(T *data) const {
   CBlas<T>::GEMM_FREE(data);
 }
 #endif
@@ -812,6 +882,18 @@ void Blas<platform::CPUDeviceContext>::GEMM(CBLAS_TRANSPOSE transA,
                                             CBLAS_TRANSPOSE transB, int M,
                                             int N, int K, T alpha, const T *A,
                                             const T *B, T beta, T *C) const {
+  int lda = (transA == CblasNoTrans) ? K : M;
+  int ldb = (transB == CblasNoTrans) ? N : K;
+  int ldc = N;
+  CBlas<T>::GEMM(CblasRowMajor, transA, transB, M, N, K, alpha, A, lda, B, ldb,
+                 beta, C, ldc);
+}
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
+                                  CBLAS_TRANSPOSE transB, int M, int N, int K,
+                                  T alpha, const T *A, const T *B, T beta,
+                                  T *C) const {
   int lda = (transA == CblasNoTrans) ? K : M;
   int ldb = (transB == CblasNoTrans) ? N : K;
   int ldc = N;
@@ -829,6 +911,15 @@ void Blas<platform::CPUDeviceContext>::GEMM(bool transA, bool transB, int M,
                  transB == false ? CblasNoTrans : CblasTrans, M, N, K, alpha, A,
                  lda, B, ldb, beta, C, ldc);
 }
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::GEMM(bool transA, bool transB, int M, int N, int K,
+                                  T alpha, const T *A, int lda, const T *B,
+                                  int ldb, T beta, T *C, int ldc) const {
+  CBlas<T>::GEMM(CblasRowMajor, transA == false ? CblasNoTrans : CblasTrans,
+                 transB == false ? CblasNoTrans : CblasTrans, M, N, K, alpha, A,
+                 lda, B, ldb, beta, C, ldc);
+}
 
 template <>
 template <typename T>
@@ -837,6 +928,15 @@ void Blas<platform::CPUDeviceContext>::GEMM(CBLAS_TRANSPOSE transA,
                                             int N, int K, T alpha, const T *A,
                                             int lda, const T *B, int ldb,
                                             T beta, T *C, int ldc) const {
+  CBlas<T>::GEMM(CblasRowMajor, transA, transB, M, N, K, alpha, A, lda, B, ldb,
+                 beta, C, ldc);
+}
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
+                                  CBLAS_TRANSPOSE transB, int M, int N, int K,
+                                  T alpha, const T *A, int lda, const T *B,
+                                  int ldb, T beta, T *C, int ldc) const {
   CBlas<T>::GEMM(CblasRowMajor, transA, transB, M, N, K, alpha, A, lda, B, ldb,
                  beta, C, ldc);
 }
@@ -880,10 +980,20 @@ void Blas<platform::CPUDeviceContext>::AXPY(int n, T alpha, const T *x,
                                             T *y) const {
   CBlas<T>::AXPY(n, alpha, x, 1, y, 1);
 }
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::AXPY(int n, T alpha, const T *x, T *y) const {
+  CBlas<T>::AXPY(n, alpha, x, 1, y, 1);
+}
 
 template <>
 template <typename T>
 void Blas<platform::CPUDeviceContext>::VCOPY(int n, const T *x, T *y) const {
+  CBlas<T>::VCOPY(n, x, 1, y, 1);
+}
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::VCOPY(int n, const T *x, T *y) const {
   CBlas<T>::VCOPY(n, x, 1, y, 1);
 }
 
@@ -891,6 +1001,20 @@ template <>
 template <typename T>
 void Blas<platform::CPUDeviceContext>::VADD(int n, const T *x, const T *y,
                                             T *z) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VADD(n, x, y, z);
+#else
+  if (x == z) {
+    this->template AXPY<T>(n, (T)(1.), y, z);
+  } else {
+    this->template VCOPY<T>(n, y, z);
+    this->template AXPY<T>(n, (T)(1.), x, z);
+  }
+#endif
+}
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::VADD(int n, const T *x, const T *y, T *z) const {
 #ifdef PADDLE_WITH_MKLML
   CBlas<T>::VADD(n, x, y, z);
 #else
@@ -916,11 +1040,35 @@ void Blas<platform::CPUDeviceContext>::VSUB(int n, const T *x, const T *y,
   }
 #endif
 }
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::VSUB(int n, const T *x, const T *y, T *z) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VSUB(n, x, y, z);
+#else
+  // try to find if openblas support vsub
+  for (int i = 0; i < n; ++i) {
+    z[i] = x[i] - y[i];
+  }
+#endif
+}
 
 template <>
 template <typename T>
 void Blas<platform::CPUDeviceContext>::VMUL(int n, const T *x, const T *y,
                                             T *z) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VMUL(n, x, y, z);
+#else
+  // try to find if openblas support vmul
+  for (int i = 0; i < n; ++i) {
+    z[i] = x[i] * y[i];
+  }
+#endif
+}
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::VMUL(int n, const T *x, const T *y, T *z) const {
 #ifdef PADDLE_WITH_MKLML
   CBlas<T>::VMUL(n, x, y, z);
 #else
@@ -944,10 +1092,34 @@ void Blas<platform::CPUDeviceContext>::VDIV(int n, const T *x, const T *y,
   }
 #endif
 }
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::VDIV(int n, const T *x, const T *y, T *z) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VDIV(n, x, y, z);
+#else
+  // try to find if openblas support vdiv
+  for (int i = 0; i < n; ++i) {
+    z[i] = x[i] / y[i];
+  }
+#endif
+}
 
 template <>
 template <typename T>
 void Blas<platform::CPUDeviceContext>::VEXP(int n, const T *x, T *y) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VEXP(n, x, y);
+#else
+  // try to find if openblas support vexp
+  for (int i = 0; i < n; ++i) {
+    y[i] = std::exp(x[i]);
+  }
+#endif
+}
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::VEXP(int n, const T *x, T *y) const {
 #ifdef PADDLE_WITH_MKLML
   CBlas<T>::VEXP(n, x, y);
 #else
@@ -969,6 +1141,17 @@ void Blas<platform::CPUDeviceContext>::VSQUARE(int n, const T *x, T *y) const {
   }
 #endif
 }
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::VSQUARE(int n, const T *x, T *y) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VSQUARE(n, x, y);
+#else
+  for (int i = 0; i < n; ++i) {
+    y[i] = x[i] * x[i];
+  }
+#endif
+}
 
 template <>
 template <typename T>
@@ -982,10 +1165,35 @@ void Blas<platform::CPUDeviceContext>::VPOW(int n, const T *x, T a,
   }
 #endif
 }
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::VPOW(int n, const T *x, T a, T *y) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VPOW(n, x, a, y);
+#else
+  for (int i = 0; i < n; ++i) {
+    y[i] = std::pow(x[i], a);
+  }
+#endif
+}
 
 template <>
 template <typename T>
 T Blas<platform::CPUDeviceContext>::DOT(int n, const T *x, const T *y) const {
+#ifdef PADDLE_WITH_MKLML
+  return CBlas<T>::DOT(n, x, 1, y, 1);
+#else
+  // try to find if openblas support cblas_dot
+  T sum = 0;
+  for (int i = 0; i < n; ++i) {
+    sum += x[i] * y[i];
+  }
+  return sum;
+#endif
+}
+template <>
+template <typename T>
+T Blas<pten::CPUContext>::DOT(int n, const T *x, const T *y) const {
 #ifdef PADDLE_WITH_MKLML
   return CBlas<T>::DOT(n, x, 1, y, 1);
 #else
@@ -1010,10 +1218,36 @@ void Blas<platform::CPUDeviceContext>::SCAL(int n, const T a, T *x) const {
   }
 #endif
 }
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::SCAL(int n, const T a, T *x) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::SCAL(n, a, x, 1);
+#else
+  // try to find if openblas support cblas_scal
+  for (int i = 0; i < n; ++i) {
+    x[i] = a * x[i];
+  }
+#endif
+}
 
 template <>
 template <typename T>
 T Blas<platform::CPUDeviceContext>::ASUM(int n, T *x, int inc) const {
+  auto sum = static_cast<T>(0.0);
+#ifdef PADDLE_WITH_MKLML
+  sum = CBlas<T>::ASUM(n, x, inc);
+#else
+  // TODO(jczaja): check if openblas does provide cblas_sasum/cblas_dasum
+  for (int c = 0; c < n; ++c) {
+    sum += x[c];
+  }
+#endif
+  return sum;
+}
+template <>
+template <typename T>
+T Blas<pten::CPUContext>::ASUM(int n, T *x, int inc) const {
   auto sum = static_cast<T>(0.0);
 #ifdef PADDLE_WITH_MKLML
   sum = CBlas<T>::ASUM(n, x, inc);
@@ -1034,6 +1268,13 @@ void Blas<platform::CPUDeviceContext>::GEMV(bool trans_a, int M, int N, T alpha,
   CBLAS_TRANSPOSE transA = !trans_a ? CblasNoTrans : CblasTrans;
   CBlas<T>::GEMV(CblasRowMajor, transA, M, N, alpha, A, N, B, 1, beta, C, 1);
 }
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::GEMV(bool trans_a, int M, int N, T alpha,
+                                  const T *A, const T *B, T beta, T *C) const {
+  CBLAS_TRANSPOSE transA = !trans_a ? CblasNoTrans : CblasTrans;
+  CBlas<T>::GEMV(CblasRowMajor, transA, M, N, alpha, A, N, B, 1, beta, C, 1);
+}
 
 template <>
 template <typename T>
@@ -1041,6 +1282,45 @@ void Blas<platform::CPUDeviceContext>::BatchedGEMM(
     CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
     T alpha, const T *A, const T *B, T beta, T *C, int batchCount,
     int64_t strideA, int64_t strideB) const {
+  PADDLE_ENFORCE_NOT_NULL(
+      A, platform::errors::InvalidArgument("Pointer A should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(
+      B, platform::errors::InvalidArgument("Pointer B should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(
+      C, platform::errors::InvalidArgument("Pointer C should not be null."));
+#ifdef PADDLE_WITH_MKLML
+  int lda = (transA == CblasNoTrans) ? K : M;
+  int ldb = (transB == CblasNoTrans) ? N : K;
+  int ldc = N;
+  auto a_array = std::vector<const T *>(batchCount);
+  auto b_array = std::vector<const T *>(batchCount);
+  auto c_array = std::vector<T *>(batchCount);
+  for (int k = 0; k < batchCount; ++k) {
+    a_array[k] = &A[k * strideA];
+    b_array[k] = &B[k * strideB];
+    c_array[k] = &C[k * M * N];
+  }
+
+  CBlas<T>::GEMM_BATCH(CblasRowMajor, &transA, &transB, &M, &N, &K, &alpha,
+                       a_array.data(), &lda, b_array.data(), &ldb, &beta,
+                       c_array.data(), &ldc, 1 /* group_count */, &batchCount);
+#else
+  for (int k = 0; k < batchCount; ++k) {
+    auto *Ak = &A[k * strideA];
+    auto *Bk = &B[k * strideB];
+    auto *Ck = &C[k * M * N];
+    this->template GEMM<T>(transA, transB, M, N, K, alpha, Ak, Bk, beta, Ck);
+  }
+#endif
+}
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
+                                         CBLAS_TRANSPOSE transB, int M, int N,
+                                         int K, T alpha, const T *A, const T *B,
+                                         T beta, T *C, int batchCount,
+                                         int64_t strideA,
+                                         int64_t strideB) const {
   PADDLE_ENFORCE_NOT_NULL(
       A, platform::errors::InvalidArgument("Pointer A should not be null."));
   PADDLE_ENFORCE_NOT_NULL(
@@ -1092,12 +1372,102 @@ void Blas<platform::CPUDeviceContext>::BatchedGEMM(
   }
 #endif
 }
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
+                                         CBLAS_TRANSPOSE transB, int M, int N,
+                                         int K, T alpha, const T **A,
+                                         const T **B, T beta, T **C,
+                                         int batchCount) const {
+#ifdef PADDLE_WITH_MKLML
+  const int lda = (std::max)((transA == CblasNoTrans) ? K : M, 1);
+  const int ldb = (std::max)((transB == CblasNoTrans) ? N : K, 1);
+  const int ldc = (std::max)(N, 1);
+  CBlas<T>::GEMM_BATCH(CblasRowMajor, &transA, &transB, &M, &N, &K, &alpha, A,
+                       &lda, B, &ldb, &beta, C, &ldc, 1 /* group_count */,
+                       &batchCount);
+#else
+  for (int k = 0; k < batchCount; ++k) {
+    this->template GEMM<T>(transA, transB, M, N, K, alpha, A[k], B[k], beta,
+                           C[k]);
+  }
+#endif
+}
 
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
     !defined(PADDLE_WITH_HIP)  // @{ Group Blas MKLML: BatchedGEMMWithHead
 template <>
 template <typename T>
 void Blas<platform::CPUDeviceContext>::BatchedGEMMWithHead(
+    CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int W1, int H1, int W2,
+    int H2, T alpha, const T *A, const T *B, T beta, T *C, int batchCount,
+    int64_t strideA, int64_t strideB, int64_t head_number,
+    bool split_b_vertical) const {
+  int lda = (transA == CblasNoTrans) ? W1 : H1;
+  int ldb = (transB == CblasNoTrans) ? W2 : H2;
+  auto a_array = std::vector<const T *>(batchCount);
+  auto b_array = std::vector<const T *>(batchCount);
+  auto c_array = std::vector<T *>(batchCount);
+
+  if (split_b_vertical) {
+    int ldc = W2;
+    int sub_width = W2 / head_number;
+
+    for (int i = 0; i < head_number; i++) {
+      int sub_matA_offset = (transA == CblasNoTrans)
+                                ? i * (W1 / head_number)
+                                : i * (W1 / head_number) * H1;
+      int sub_matB_offset = (transB == CblasNoTrans)
+                                ? i * (W2 / head_number)
+                                : i * (W2 / head_number) * H2;
+      int sub_matC_offset = i * W2 / head_number;
+      for (int k = 0; k < batchCount; ++k) {
+        a_array[k] = &A[k * strideA] + sub_matA_offset;
+        b_array[k] = &B[k * strideB] + sub_matB_offset;
+        c_array[k] = &C[k * H1 * W2] + sub_matC_offset;
+      }
+
+      CBlas<T>::GEMM_BATCH(CblasRowMajor, &transA, &transB, &H1, &sub_width,
+                           &H2, &alpha, a_array.data(), &lda, b_array.data(),
+                           &ldb, &beta, c_array.data(), &ldc,
+                           1 /* group_count */, &batchCount);
+    }
+
+  } else {
+    PADDLE_ENFORCE_EQ(
+        W1, H2,
+        platform::errors::InvalidArgument(
+            "The fisrt matrix width should be same as second matrix height,"
+            "but received fisrt matrix width %d"
+            ", second matrix height %d",
+            W1, H2));
+    int ldc = W2 * head_number;
+    int sub_width = W1 / head_number;
+
+    for (int i = 0; i < head_number; i++) {
+      int sub_matA_offset = (transA == CblasNoTrans)
+                                ? i * (W1 / head_number)
+                                : i * (W1 / head_number) * H1;
+      int sub_matB_offset = (transB == CblasNoTrans)
+                                ? i * (W1 / head_number) * W2
+                                : i * (W1 / head_number);
+      int sub_matC_offset = i * W2;
+      for (int k = 0; k < batchCount; ++k) {
+        a_array[k] = &A[k * strideA] + sub_matA_offset;
+        b_array[k] = &B[k * strideB] + sub_matB_offset;
+        c_array[k] = &C[k * H1 * head_number * W2] + sub_matC_offset;
+      }
+
+      CBlas<T>::GEMM_BATCH(CblasRowMajor, &transA, &transB, &H1, &W2,
+                           &sub_width, &alpha, a_array.data(), &lda,
+                           b_array.data(), &ldb, &beta, c_array.data(), &ldc,
+                           1 /* group_count */, &batchCount);
+    }
+  }
+}
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::BatchedGEMMWithHead(
     CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int W1, int H1, int W2,
     int H2, T alpha, const T *A, const T *B, T beta, T *C, int batchCount,
     int64_t strideA, int64_t strideB, int64_t head_number,
@@ -1201,6 +1571,31 @@ void Blas<platform::CPUDeviceContext>::MatMul(const int M, const int N,
   CBlas<T>::GEMM(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K,
                  static_cast<T>(1), A, K, B, N, static_cast<T>(0), C, N);
 }
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::MatMul(const int M, const int N, const int K,
+                                    const T *A, const T *B, T *C) const {
+#ifdef PADDLE_WITH_LIBXSMM
+  // Refer to https://github.com/hfp/libxsmm/blob/master/README.md
+  // But the threshold is custom constexpr int LIBXSMM_THRESHOLD = 20 * 20 * 20;
+
+  // Since the matrix is very small,
+  // so the unit of calculation is already very fast,
+  // and the if( M*N*K < LIBXSMM_THRESHOLD) would be overhead,
+  // use xsmm directly.
+  // Note: SMM use ColMajor
+  const char transa = 'N';
+  const char transb = 'N';
+  const T alpha = static_cast<T>(1);
+  const T beta = static_cast<T>(0);
+  CBlas<T>::SMM_GEMM(&transa, &transb, &N, &M, &K, &alpha, B, &N, A, &K, &beta,
+                     C, &N);
+  return;
+#endif
+
+  CBlas<T>::GEMM(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K,
+                 static_cast<T>(1), A, K, B, N, static_cast<T>(0), C, N);
+}
 
 template <typename DeviceContext>
 template <typename T>
@@ -1209,6 +1604,15 @@ void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
                                  const framework::Tensor &mat_b,
                                  const MatDescriptor &dim_b, T alpha,
                                  framework::Tensor *mat_out, T beta) const {
+  MatMul(mat_a.data<T>(), dim_a, mat_b.data<T>(), dim_b, alpha,
+         mat_out->data<T>(), beta);
+}
+
+template <typename DeviceContext>
+template <typename T>
+void Blas<DeviceContext>::MatMul(const T *mat_a, const MatDescriptor &dim_a,
+                                 const T *mat_b, const MatDescriptor &dim_b,
+                                 T alpha, T *mat_out, T beta) const {
   PADDLE_ENFORCE_EQ(
       dim_a.width_, dim_b.height_,
       platform::errors::InvalidArgument(
@@ -1221,8 +1625,7 @@ void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
   CBLAS_TRANSPOSE transB = !dim_b.trans_ ? CblasNoTrans : CblasTrans;
   if (dim_a.batch_size_ == 0 && dim_b.batch_size_ == 0) {
     this->template GEMM<T>(transA, transB, dim_a.height_, dim_b.width_,
-                           dim_a.width_, alpha, mat_a.data<T>(),
-                           mat_b.data<T>(), beta, mat_out->data<T>());
+                           dim_a.width_, alpha, mat_a, mat_b, beta, mat_out);
   } else {
     PADDLE_ENFORCE_EQ(
         dim_a.batch_size_ == dim_b.batch_size_ || dim_a.batch_size_ == 0 ||
@@ -1233,8 +1636,8 @@ void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
                   "But got dim_a.batch_size = %d, dim_b.batch_size = %d.",
                   dim_a.batch_size_, dim_b.batch_size_));
     this->template BatchedGEMM<T>(
-        transA, transB, dim_a.height_, dim_b.width_, dim_a.width_, alpha,
-        mat_a.data<T>(), mat_b.data<T>(), beta, mat_out->data<T>(),
+        transA, transB, dim_a.height_, dim_b.width_, dim_a.width_, alpha, mat_a,
+        mat_b, beta, mat_out,
         dim_a.batch_size_ == 0 ? dim_b.batch_size_ : dim_a.batch_size_,
         dim_a.stride_, dim_b.stride_);
   }
@@ -1395,6 +1798,18 @@ void Blas<platform::CPUDeviceContext>::VMERF(int n, const T *a, T *y,
   }
 #endif
 }
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::VMERF(int n, const T *a, T *y,
+                                   int64_t mode) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VMERF(n, a, y, mode);
+#else
+  for (int i = 0; i < n; ++i) {
+    y[i] = std::erf(a[i]);
+  }
+#endif
+}
 
 #ifdef PADDLE_WITH_MKLML
 template <>
@@ -1407,6 +1822,17 @@ void Blas<platform::CPUDeviceContext>::CSRMM(
   CBlas<T>::CSRMM(transa, m, n, k, alpha, matdescra, val, indx, pntrb, pntre, b,
                   ldb, beta, c, ldc);
 }
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::CSRMM(const char *transa, const int *m,
+                                   const int *n, const int *k, const T *alpha,
+                                   const char *matdescra, const T *val,
+                                   const int *indx, const int *pntrb,
+                                   const int *pntre, const T *b, const int *ldb,
+                                   const T *beta, T *c, const int *ldc) const {
+  CBlas<T>::CSRMM(transa, m, n, k, alpha, matdescra, val, indx, pntrb, pntre, b,
+                  ldb, beta, c, ldc);
+}
 #endif
 
 template <>
@@ -1416,6 +1842,15 @@ void Blas<platform::CPUDeviceContext>::TRSM(CBLAS_SIDE side, CBLAS_UPLO uplo,
                                             CBLAS_DIAG diag, int M, int N,
                                             T alpha, const T *A, int lda, T *B,
                                             int ldb) const {
+  CBlas<T>::TRSM(CblasRowMajor, side, uplo, transA, diag, M, N, alpha, A, lda,
+                 B, ldb);
+}
+template <>
+template <typename T>
+void Blas<pten::CPUContext>::TRSM(CBLAS_SIDE side, CBLAS_UPLO uplo,
+                                  CBLAS_TRANSPOSE transA, CBLAS_DIAG diag,
+                                  int M, int N, T alpha, const T *A, int lda,
+                                  T *B, int ldb) const {
   CBlas<T>::TRSM(CblasRowMajor, side, uplo, transA, diag, M, N, alpha, A, lda,
                  B, ldb);
 }

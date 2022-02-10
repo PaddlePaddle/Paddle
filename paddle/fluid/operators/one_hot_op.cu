@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/one_hot_op.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -68,7 +68,8 @@ class OneHotCUDAKernel : public framework::OpKernel<T> {
       auto* depth_tensor = context.Input<framework::Tensor>("depth_tensor");
       if (platform::is_gpu_place(depth_tensor->place())) {
         framework::Tensor temp;
-        TensorCopySync(*depth_tensor, platform::CPUPlace(), &temp);
+        paddle::framework::TensorCopySync(*depth_tensor, platform::CPUPlace(),
+                                          &temp);
         depth = *temp.data<int32_t>();
       } else {
         depth = *depth_tensor->data<int32_t>();

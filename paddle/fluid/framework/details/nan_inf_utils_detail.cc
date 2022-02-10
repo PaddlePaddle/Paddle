@@ -17,7 +17,7 @@
 #include "paddle/fluid/framework/op_proto_maker.h"
 
 #ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #endif
 
 namespace paddle {
@@ -321,8 +321,8 @@ void CheckVarHasNanOrInf(const std::string& op_type,
   const Tensor* tensor{nullptr};
   if (var->IsType<framework::LoDTensor>()) {
     tensor = &var->Get<framework::LoDTensor>();
-  } else if (var->IsType<framework::SelectedRows>()) {
-    tensor = &var->Get<framework::SelectedRows>().value();
+  } else if (var->IsType<pten::SelectedRows>()) {
+    tensor = &var->Get<pten::SelectedRows>().value();
   } else {
     VLOG(10) << var_name << " var_name need not to check";
     return;
@@ -353,8 +353,10 @@ void CheckVarHasNanOrInf(const std::string& op_type,
     }
 
     float* cpu_data = new float[tensor->numel()];
-    xpu_memcpy(cpu_data, tensor->data<float>(), tensor->numel() * sizeof(float),
-               XPU_DEVICE_TO_HOST);
+    memory::Copy(platform::CPUPlace(), static_cast<void*>(cpu_data),
+                 tensor->place(),
+                 static_cast<const void*>(tensor->data<float>()),
+                 tensor->numel() * sizeof(float));
     bool flag = false;
     for (int i = 0; i < tensor->numel(); i++) {
       if (isnan(cpu_data[i]) || isinf(cpu_data[i])) {
@@ -407,7 +409,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
 }
 
 void CheckVarHasNanOrInf(const std::string& op_type,
-                         const framework::Scope& scope,
+                         const framework::ScopeBase& scope,
                          const std::string& var_name,
                          const platform::Place& place) {
   auto* var = scope.FindVar(var_name);
@@ -440,7 +442,7 @@ static framework::Tensor& npu_float_status() {
 }
 
 void NPUAllocAndClearFloatStatus(const framework::OperatorBase& op,
-                                 const framework::Scope& scope,
+                                 const framework::ScopeBase& scope,
                                  const platform::Place& place) {
   if (!platform::is_npu_place(place)) return;
 
@@ -466,8 +468,8 @@ void PrintNpuVarInfo(const std::string& op_type, const std::string& var_name,
   const Tensor* tensor{nullptr};
   if (var->IsType<framework::LoDTensor>()) {
     tensor = &var->Get<framework::LoDTensor>();
-  } else if (var->IsType<framework::SelectedRows>()) {
-    tensor = &var->Get<framework::SelectedRows>().value();
+  } else if (var->IsType<pten::SelectedRows>()) {
+    tensor = &var->Get<pten::SelectedRows>().value();
   } else {
     VLOG(10) << var_name << " var_name need not to check";
     return;
@@ -505,7 +507,7 @@ void PrintNpuVarInfo(const std::string& op_type, const std::string& var_name,
 }
 
 void PrintNPUOpValueInfo(const framework::OperatorBase& op,
-                         const framework::Scope& scope,
+                         const framework::ScopeBase& scope,
                          const platform::Place& place) {
   LOG(WARNING) << "There are `nan` or `inf` in operator (" << op.Type()
                << "), here we print some tensor value info of this op.";
@@ -523,7 +525,7 @@ void PrintNPUOpValueInfo(const framework::OperatorBase& op,
 }
 
 static void NPUCheckOpHasNanOrInf(const framework::OperatorBase& op,
-                                  const framework::Scope& scope,
+                                  const framework::ScopeBase& scope,
                                   const platform::Place& place) {
   if (!platform::is_npu_place(place)) return;
 
@@ -551,14 +553,13 @@ static void NPUCheckOpHasNanOrInf(const framework::OperatorBase& op,
 
   if (sum >= 1.0) PrintNPUOpValueInfo(op, scope, place);
 
-  PADDLE_ENFORCE_LT(
-      sum, 1.0, platform::errors::PreconditionNotMet(
-                    "Operator %s contains Nan/Inf.", op.DebugStringEx(&scope)));
+  PADDLE_ENFORCE_LT(sum, 1.0, platform::errors::PreconditionNotMet(
+                                  "Operator %s contains Nan/Inf.", op.Type()));
 }
 #endif
 
 void CheckOpHasNanOrInf(const framework::OperatorBase& op,
-                        const framework::Scope& exec_scope,
+                        const framework::ScopeBase& exec_scope,
                         const platform::Place& place) {
   std::call_once(white_list_init_flag, InitWhiteListFormEnv);
 

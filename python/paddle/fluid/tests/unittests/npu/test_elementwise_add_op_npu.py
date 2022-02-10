@@ -65,7 +65,7 @@ class TestElementwiseAddOp(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad_normal(self):
-        if self.dtype == np.float16:
+        if self.dtype == np.float16 or self.dtype == np.int64:
             return
 
         self.check_grad_with_place(
@@ -75,7 +75,7 @@ class TestElementwiseAddOp(OpTest):
             max_relative_error=0.006, )
 
     def test_check_grad_ingore_x(self):
-        if self.dtype == np.float16:
+        if self.dtype == np.float16 or self.dtype == np.int64:
             return
 
         self.check_grad_with_place(
@@ -86,7 +86,7 @@ class TestElementwiseAddOp(OpTest):
             max_relative_error=0.006, )
 
     def test_check_grad_ingore_y(self):
-        if self.dtype == np.float16:
+        if self.dtype == np.float16 or self.dtype == np.int64:
             return
 
         self.check_grad_with_place(
@@ -100,6 +100,11 @@ class TestElementwiseAddOp(OpTest):
 class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
     def init_dtype(self):
         self.dtype = np.float16
+
+
+class TestINT64ElementwiseAddOp(TestElementwiseAddOp):
+    def init_dtype(self):
+        self.dtype = np.int64
 
 
 @skip_check_grad_ci(
@@ -507,8 +512,8 @@ class TestAddApi(unittest.TestCase):
 
     def test_dygraph(self):
         with fluid.dygraph.guard(paddle.NPUPlace(0)):
-            np_x = np.array([2, 3, 4]).astype('float64')
-            np_y = np.array([1, 5, 2]).astype('float64')
+            np_x = np.array([2, 3, 4]).astype('float32')
+            np_y = np.array([1, 5, 2]).astype('float32')
             x = fluid.dygraph.to_variable(np_x)
             y = fluid.dygraph.to_variable(np_y)
             z = self._executed_api(x, y)

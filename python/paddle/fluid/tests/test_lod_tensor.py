@@ -149,6 +149,13 @@ class TestLoDTensor(unittest.TestCase):
                     np.array(gtensor_from_dlpack),
                     np.array([[1], [2], [3], [4]]).astype('int')))
 
+    def test_as_type(self):
+        tensor = fluid.create_lod_tensor(
+            np.array([[1], [2], [3], [4]]).astype('int'), [[1, 3]],
+            fluid.CPUPlace())
+        fp32_tensor = tensor._as_type(core.VarDesc.VarType.FP32)
+        print(fp32_tensor)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -120,7 +120,7 @@ TEST(PD_Config, use_gpu) {
                                 FALSE, FALSE);
   bool trt_enable = PD_ConfigTensorRtEngineEnabled(config);
   EXPECT_TRUE(trt_enable);
-  PD_ConfigEnableMemoryOptim(config);
+  PD_ConfigEnableMemoryOptim(config, true);
   bool memory_optim_enable = PD_ConfigMemoryOptimEnabled(config);
   EXPECT_TRUE(memory_optim_enable);
   PD_ConfigEnableProfile(config);

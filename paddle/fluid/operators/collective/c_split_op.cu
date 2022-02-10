@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_split_op.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {

@@ -322,6 +322,8 @@ def concat(input, axis=0, name=None):
         if isinstance(axis, Variable):
             axis = axis.numpy()
             axis = axis.item(0)
+        if not isinstance(input, Variable):
+            input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, 'axis', axis)
 
     check_type(input, 'input', (list, tuple, Variable), 'concat')
@@ -614,6 +616,11 @@ def assign(input, output=None):
         helper.append_op(
             type='assign', inputs={'X': [input]}, outputs={'Out': [output]})
     elif isinstance(input, numpy.ndarray):
+        # Not support [var, var, ...] currently.
+        if len(input.shape) > 0 and any(isinstance(x, Variable) for x in input):
+            raise TypeError(
+                "Required type(input) numpy.ndarray, but found `list(Variable)` in input."
+            )
         dtype = convert_np_dtype_to_dtype_(input.dtype)
         if dtype == VarDesc.VarType.FP64:
             # Setting FP64 numpy data is not supported in Paddle, so we
@@ -1431,7 +1438,9 @@ def range(start, end, step, dtype, name=None):
         step = cast(step, dtype)
 
     if in_dygraph_mode():
-        return _C_ops.range(start, end, step)
+        out = _C_ops.range(start, end, step)
+        out.stop_gradient = True
+        return out
 
     out_shape = None
     if not isinstance(start, Variable) and not isinstance(

@@ -54,25 +54,7 @@ def attach_error_data(error, in_runtime=False):
 
     setattr(error, ERROR_DATA, error_data)
 
-    remove_static_file()
     return error
-
-
-def remove_static_file():
-    """
-    Removes temporary files created during the transformation of dygraph to static graph.
-    """
-    del_files = set()
-    for loc in global_origin_info_map:
-        static_filepath = loc[0]
-        del_files.add(static_filepath)
-
-        filename, extension = os.path.splitext(static_filepath)
-        del_files.add(filename + ".pyc")
-
-    for filepath in del_files:
-        if os.path.exists(filepath):
-            os.remove(filepath)
 
 
 class TraceBackFrame(OriginInfo):
@@ -140,7 +122,24 @@ class TraceBackFrameRange(OriginInfo):
         msg = ' ' * BLANK_COUNT_BEFORE_FILE_STR + 'File "{}", line {}, in {}\n'.format(
             self.location.filepath, self.location.lineno, self.function_name)
         # add empty line after range code
-        return msg + '\n'.join(self.source_code) + '\n'
+        return msg + '\n'.join(self.source_code)
+
+
+class SuggestionDict(object):
+    def __init__(self):
+        # {(keywords): (suggestions)}
+        self.suggestion_dict = {
+            ('is not initialized.', 'Hint:', 'IsInitialized'):
+            ("Please ensure all your sublayers are inheritted from nn.Layer.",
+             "Please ensure there is no tensor created explicitly depended on external data, we suggest to register it as buffer tensor. See https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/04_dygraph_to_static/export_model/principle_cn.html#parameters-buffers for details"
+             )
+        }
+
+    def keys(self):
+        return self.suggestion_dict.keys()
+
+    def __getitem__(self, key):
+        return self.suggestion_dict[key]
 
 
 class ErrorData(object):
@@ -155,6 +154,7 @@ class ErrorData(object):
         self.origin_traceback = origin_traceback
         self.origin_info_map = origin_info_map
         self.in_runtime = False
+        self.suggestion_dict = SuggestionDict()
 
     def create_exception(self):
         message = self.create_message()
@@ -183,24 +183,39 @@ class ErrorData(object):
             return '\n'.join(message_lines)
 
         # Step2: Optimizes stack information with source code information of dygraph from user.
-        whether_source_range = True
-        for filepath, lineno, funcname, code in self.origin_traceback[::-1]:
-            loc = Location(filepath, lineno)
-            dygraph_func_info = self.origin_info_map.get(loc.line_location,
+        user_code_traceback_index = []
+        for i, (filepath, lineno, funcname,
+                code) in enumerate(self.origin_traceback):
+            dygraph_func_info = self.origin_info_map.get((filepath, lineno),
                                                          None)
             if dygraph_func_info:
-                if whether_source_range:
-                    traceback_frame = TraceBackFrameRange(
-                        dygraph_func_info.location,
-                        dygraph_func_info.function_name)
-                    whether_source_range = False
-                else:
-                    traceback_frame = TraceBackFrame(
-                        dygraph_func_info.location,
-                        dygraph_func_info.function_name,
-                        dygraph_func_info.source_code)
-                # Two elements already exist in message_lines: "In transformed code:" and "", so insert in index 2
-                message_lines.insert(2, traceback_frame.formated_message())
+                user_code_traceback_index.append(i)
+
+        # Add user code traceback
+        for i in user_code_traceback_index:
+            filepath, lineno, funcname, code = self.origin_traceback[i]
+            dygraph_func_info = self.origin_info_map.get((filepath, lineno),
+                                                         None)
+            if i == user_code_traceback_index[-1]:
+                traceback_frame = TraceBackFrameRange(
+                    dygraph_func_info.location, dygraph_func_info.function_name)
+            else:
+                traceback_frame = TraceBackFrame(
+                    dygraph_func_info.location, dygraph_func_info.function_name,
+                    dygraph_func_info.source_code)
+
+            message_lines.append(traceback_frame.formated_message())
+        message_lines.append("")
+
+        # Add paddle traceback after user code traceback
+        paddle_traceback_start_index = user_code_traceback_index[
+            -1] + 1 if user_code_traceback_index else 0
+        for filepath, lineno, funcname, code in self.origin_traceback[
+                paddle_traceback_start_index:]:
+            traceback_frame = TraceBackFrame(
+                Location(filepath, lineno), funcname, code)
+            message_lines.append(traceback_frame.formated_message())
+        message_lines.append("")
 
         # Step3: Adds error message like "TypeError: dtype must be int32, but received float32".
         # NOTE: `format_exception` is a list, its length is 1 in most cases, but sometimes its length
@@ -214,6 +229,22 @@ class ErrorData(object):
         message_lines.extend(error_message)
 
         return '\n'.join(message_lines)
+
+    def _create_revise_suggestion(self, bottom_error_message):
+        revise_suggestions = [
+            '', ' ' * BLANK_COUNT_BEFORE_FILE_STR + 'Revise suggestion: '
+        ]
+        for keywords in self.suggestion_dict.keys():
+            contain_keywords = [
+                True for i in keywords if i in ''.join(bottom_error_message)
+            ]
+            if len(contain_keywords) == len(
+                    keywords):  # all keywords should be in bottom_error_message
+                for suggestion in self.suggestion_dict[keywords]:
+                    suggestion_msg = ' ' * BLANK_COUNT_BEFORE_FILE_STR * 2 + '{}. {}'.format(
+                        str(len(revise_suggestions) - 1), suggestion)
+                    revise_suggestions.append(suggestion_msg)
+        return revise_suggestions if len(revise_suggestions) > 2 else []
 
     def _simplify_error_value(self):
         """
@@ -240,9 +271,11 @@ class ErrorData(object):
         # use empty line to locate the bottom_error_message
         empty_line_idx = error_value_lines_strip.index('')
         bottom_error_message = error_value_lines[empty_line_idx + 1:]
+        revise_suggestion = self._create_revise_suggestion(bottom_error_message)
 
-        filepath = ''
-        error_from_user_code = []
+        user_filepath = ''
+        error_traceback = []
+        user_code_traceback_index = []
         pattern = 'File "(?P<filepath>.+)", line (?P<lineno>.+), in (?P<function_name>.+)'
         for i in range(0, len(error_value_lines_strip), 2):
             if error_value_lines_strip[i].startswith("File "):
@@ -251,24 +284,38 @@ class ErrorData(object):
                 code = error_value_lines_strip[i + 1] if i + 1 < len(
                     error_value_lines_strip) else ''
                 if i == 0:
-                    filepath = tmp_filepath
-                if tmp_filepath == filepath:
-                    error_from_user_code.append(
-                        (tmp_filepath, int(lineno_str), function_name, code))
+                    user_filepath = tmp_filepath
+                if tmp_filepath == user_filepath:
+                    user_code_traceback_index.append(len(error_traceback))
+
+                error_traceback.append(
+                    (tmp_filepath, int(lineno_str), function_name, code))
 
         error_frame = []
-        whether_source_range = True
-        for filepath, lineno, funcname, code in error_from_user_code[::-1]:
-            loc = Location(filepath, lineno)
-            if whether_source_range:
-                traceback_frame = TraceBackFrameRange(loc, funcname)
-                whether_source_range = False
+        # Add user code traceback
+        for i in user_code_traceback_index:
+            filepath, lineno, funcname, code = error_traceback[i]
+            if i == user_code_traceback_index[-1]:
+                traceback_frame = TraceBackFrameRange(
+                    Location(filepath, lineno), funcname)
             else:
-                traceback_frame = TraceBackFrame(loc, funcname, code)
+                traceback_frame = TraceBackFrame(
+                    Location(filepath, lineno), funcname, code)
+            error_frame.append(traceback_frame.formated_message())
+        error_frame.append("")
 
-            error_frame.insert(0, traceback_frame.formated_message())
+        # Add paddle traceback after user code traceback
+        paddle_traceback_start_index = user_code_traceback_index[
+            -1] + 1 if user_code_traceback_index else 0
+        for filepath, lineno, funcname, code in error_traceback[
+                paddle_traceback_start_index:]:
+            traceback_frame = TraceBackFrame(
+                Location(filepath, lineno), funcname, code)
+            error_frame.append(traceback_frame.formated_message())
+        error_frame.append("")
 
         error_frame.extend(bottom_error_message)
+        error_frame.extend(revise_suggestion)
         error_value_str = '\n'.join(error_frame)
         self.error_value = self.error_type(error_value_str)
 

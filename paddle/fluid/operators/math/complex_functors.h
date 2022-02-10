@@ -17,7 +17,7 @@ limitations under the License. */
 #include <type_traits>
 
 #include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/pten/core/hostdevice.h"
 
 namespace paddle {
 namespace operators {
@@ -309,6 +309,29 @@ struct ImagToComplexFunctor<T, Complex<T, Real<T>>> {
   }
 
   const Real<T>* input_;
+  T* output_;
+  int64_t numel_;
+};
+
+template <typename T, typename Enable = void>
+struct RealImagToComplexFunctor;
+
+template <typename T>
+struct RealImagToComplexFunctor<T, Complex<T, Real<T>>> {
+  RealImagToComplexFunctor(const Real<T>* input_real, const Real<T>* input_imag,
+                           T* output, int64_t numel)
+      : input_real_(input_real),
+        input_imag_(input_imag),
+        output_(output),
+        numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    output_[idx].real = input_real_[idx];
+    output_[idx].imag = input_imag_[idx];
+  }
+
+  const Real<T>* input_real_;
+  const Real<T>* input_imag_;
   T* output_;
   int64_t numel_;
 };

@@ -20,13 +20,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_version_registry.h"
 
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cudnn_helper.h"
-#endif
-
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/miopen_helper.h"
-#endif
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -50,11 +44,20 @@ std::vector<int64_t> ConvOp::ComputeOutputShape(
       ctx->Attrs().Get<std::string>("padding_algorithm");
   int groups = ctx->Attrs().Get<int>("groups");
   std::vector<int> dilations = ctx->Attrs().Get<std::vector<int>>("dilations");
+  int dilation_size = dilations.size();
+  for (int i = 0; i < dilation_size; ++i) {
+    PADDLE_ENFORCE_GT(
+        dilations[i], 0,
+        platform::errors::InvalidArgument(
+            "The dilation of Op(Conv) should be larget than 0, but received "
+            "dilation is %d.",
+            dilations[i]));
+  }
   const std::string data_format = ctx->Attrs().Get<std::string>("data_format");
 
   // MKL-DNN Kernels are using NCHW order of dims description
   // so we ignore data_format consideration for MKL-DNN kernel
-  const bool channel_last = (this->IsMKLDNNType() == false) &&
+  const bool channel_last = (ctx->IsRunMKLDNNKernel() == false) &&
                             (data_format == "NHWC" || data_format == "NDHWC");
 
   PADDLE_ENFORCE_EQ(
@@ -116,10 +119,13 @@ std::vector<int64_t> ConvOp::ComputeOutputShape(
           "the output channels is %d, the filter's shape is [%s], "
           "the groups is %d.",
           filter_dims[0], filter_dims, groups));
-  PADDLE_ENFORCE_GT(
-      filter_dims[0], 0,
-      platform::errors::InvalidArgument(
-          "the size of filter at axis 0 should be greater than 0"));
+
+  if (ctx->IsRuntime()) {
+    PADDLE_ENFORCE_GT(
+        filter_dims[0], 0,
+        platform::errors::InvalidArgument(
+            "the size of filter at axis 0 should be greater than 0"));
+  }
 
   framework::DDim in_data_dims;
   if (channel_last) {
@@ -210,7 +216,7 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
   if (input_data_type == framework::proto::VarType::BF16 &&
       library == framework::LibraryType::kCUDNN) {
     PADDLE_ENFORCE_GE(
-        platform::CudnnVersion(), 8100,
+        platform::DnnVersion(), 8100,
         platform::errors::InvalidArgument(
             "bfloat16 can only be used when CUDNN_VERSION >= 8100"));
   }

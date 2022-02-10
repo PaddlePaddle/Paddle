@@ -42,7 +42,11 @@ taskkill /f /im nvcc.exe /t 2>NUL
 taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
 taskkill /f /im op_function_generator.exe /t 2>NUL
+taskkill /f /im eager_generator.exe /t 2>NUL
+taskkill /f /im eager_op_function_generator.exe /t 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
+wmic process where name="eager_generator.exe" call terminate 2>NUL
+wmic process where name="eager_op_function_generator.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
 wmic process where name="cl.exe" call terminate 2>NUL
@@ -76,6 +80,8 @@ if not defined NIGHTLY_MODE set PRECISION_TEST=OFF
 if not defined retry_times set retry_times=3
 if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
 if not defined BUILD_DIR set BUILD_DIR=build
+set task_name=%1
+set UPLOAD_TP_FILE=OFF
 
 rem ------initialize the python environment------
 set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
@@ -84,10 +90,11 @@ if "%WITH_PYTHON%" == "ON" (
     where python
     where pip
     pip install wheel --user
+    pip install pyyaml --user
     pip install -r %work_dir%\python\requirements.txt --user
     if !ERRORLEVEL! NEQ 0 (
         echo pip install requirements.txt failed!
-        exit /b 7
+        exit /b 5
     )
 )
 
@@ -136,6 +143,17 @@ if %day_now% NEQ %day_before% (
     echo %day_now% > %cache_dir%\day.txt
     type %cache_dir%\day.txt
     rmdir %BUILD_DIR% /s/q
+
+    : clear third party cache every once in a while
+    if %day_now% EQU 21 (
+        rmdir %cache_dir%\third_party /s/q
+    )
+    if %day_now% EQU 11 (
+        rmdir %cache_dir%\third_party /s/q
+    )
+    if %day_now% EQU 01 (
+        rmdir %cache_dir%\third_party /s/q
+    )
     goto :mkbuild
 )
 
@@ -209,13 +227,14 @@ set WITH_MKL=ON
 set WITH_GPU=ON
 set WITH_AVX=ON
 set MSVC_STATIC_CRT=OFF
-set ON_INFER=ON
+set ON_INFER=OFF
+set WITH_TENSORRT=ON
 
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
 call :test_unit || goto test_unit_error
-call :test_inference || goto test_inference_error
+:: call :test_inference || goto test_inference_error
 :: call :check_change_of_unittest || goto check_change_of_unittest_error
 goto:success
 
@@ -233,6 +252,25 @@ call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
 call :test_unit || goto test_unit_error
 :: call :test_inference || goto test_inference_error
+:: call :check_change_of_unittest || goto check_change_of_unittest_error
+goto:success
+
+rem ------PR CI windows check for unittests and inference in CUDA11-MKL-AVX----------
+:CASE_wincheck_inference
+set WITH_MKL=ON
+set WITH_GPU=ON
+set WITH_AVX=ON
+set MSVC_STATIC_CRT=ON
+set ON_INFER=ON
+set WITH_TESTING=ON
+set WITH_TENSORRT=ON
+set WITH_INFERENCE_API_TEST=ON
+
+call :cmake || goto cmake_error
+call :build || goto build_error
+call :test_whl_pacakage || goto test_whl_pacakage_error
+call :test_unit || goto test_unit_error
+::call :test_inference || goto test_inference_error
 :: call :check_change_of_unittest || goto check_change_of_unittest_error
 goto:success
 
@@ -288,8 +326,14 @@ echo    ========================================
 echo    Step 1. Cmake ...
 echo    ========================================
 
+rem set vs language to english to block showIncludes, this need vs has installed English language package.
+set VSLANG=1033
 rem Configure the environment for 64-bit builds. 'DISTUTILS_USE_SDK' indicates that the user has selected the compiler.
-call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
+echo %task_name%|findstr wincheck_inference >nul && (
+    call "D:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
+) || (
+    call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
+)
 set DISTUTILS_USE_SDK=1
 rem Windows 10 Kit bin dir
 set PATH=C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x64;%PATH%
@@ -307,7 +351,7 @@ if %GENERATOR% == "Ninja" (
     pip install ninja
     if %errorlevel% NEQ 0 (
         echo pip install ninja failed!
-        exit /b 7
+        exit /b 5
     )
 )
 
@@ -331,27 +375,6 @@ rem set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
 rem clcache.exe -M 21474836480
 
 rem ------set third_party cache dir------
-: clear third party cache every once in a while
-for /F %%# in ('wmic os get localdatetime^|findstr 20') do set datetime=%%#
-set day_now=%datetime:~6,2%
-set day_before=-1
-set /p day_before=< %cache_dir%\day.txt
-if %day_now% NEQ %day_before% (
-    echo %day_now% > %cache_dir%\day.txt
-    type %cache_dir%\day.txt
-    if %day_now% EQU 21 (
-        rmdir %cache_dir%\third_party_GPU /s/q
-        rmdir %cache_dir%\third_party /s/q
-    )
-    if %day_now% EQU 11 (
-        rmdir %cache_dir%\third_party_GPU /s/q
-        rmdir %cache_dir%\third_party /s/q
-    )
-    if %day_now% EQU 01 (
-        rmdir %cache_dir%\third_party_GPU /s/q
-        rmdir %cache_dir%\third_party /s/q
-    )
-)
 
 if "%WITH_TPCACHE%"=="OFF" (
     set THIRD_PARTY_PATH=%work_dir:\=/%/%BUILD_DIR%/third_party
@@ -366,12 +389,49 @@ echo echo ${md5_content}^>md5.txt >> cache.sh
 %cache_dir%\tools\busybox64.exe bash cache.sh
 
 set /p md5=< md5.txt
-if "%WITH_GPU%"=="ON" (
-    set THIRD_PARTY_HOME=%cache_dir:\=/%/third_party_GPU
-) else (
+echo %task_name%|findstr build >nul && (
     set THIRD_PARTY_HOME=%cache_dir:\=/%/third_party
+    set THIRD_PARTY_PATH=!THIRD_PARTY_HOME!/%md5%
+    echo %task_name% is a whl-build task, will only reuse local third_party cache.
+    goto :cmake_impl
+) || ( 
+    echo %task_name% is a PR-CI-Windows task, will try to reuse bos and local third_party cache both. 
 )
+
+if "%WITH_GPU%"=="ON" (
+    for /F %%# in ('dir /b /d "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\"') do set cuda_version=%%#
+    set cuda_version=!cuda_version:~-4!
+    set sub_dir=cuda!cuda_version:.=!
+) else (
+    set sub_dir=cpu
+)
+set THIRD_PARTY_HOME=%cache_dir:\=/%/third_party/%sub_dir%
 set THIRD_PARTY_PATH=%THIRD_PARTY_HOME%/%md5%
+
+if not exist %THIRD_PARTY_PATH% (
+    echo There is no usable third_party cache in %THIRD_PARTY_PATH%, will download from bos.
+    pip install wget
+    if not exist %THIRD_PARTY_HOME% mkdir "%THIRD_PARTY_HOME%"
+    cd /d %THIRD_PARTY_HOME%
+    echo Getting third party: downloading ...
+    %PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/third_party/%sub_dir%/%md5%.tar.gz')" 2>nul
+    if !ERRORLEVEL! EQU 0 (
+        echo Getting third party: extracting ...
+        tar -xf %md5%.tar.gz
+        if !ERRORLEVEL! EQU 0 ( 
+            echo Get third party from bos successfully.
+        ) else (
+            echo Get third party failed, reason: extract failed, will build locally.
+        )
+        del %md5%.tar.gz
+    ) else (
+        echo Get third party failed, reason: download failed, will build locally.
+    )
+    if not exist %THIRD_PARTY_PATH% set UPLOAD_TP_FILE=ON
+    cd /d %work_dir%\%BUILD_DIR%
+) else (
+    echo Found reusable third_party cache in %THIRD_PARTY_PATH%, will reuse it.
+)
 
 :cmake_impl
 echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
@@ -399,7 +459,7 @@ rem ----------------------------------------------------------------------------
 :build
 @ECHO OFF
 echo    ========================================
-echo    Step 2. Buile Paddle ...
+echo    Step 2. Build Paddle ...
 echo    ========================================
 
 for /F %%# in ('wmic cpu get NumberOfLogicalProcessors^|findstr [0-9]') do set /a PARALLEL_PROJECT_COUNT=%%#*4/5
@@ -453,8 +513,12 @@ taskkill /f /im nvcc.exe /t 2>NUL
 taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
 taskkill /f /im op_function_generator.exe /t 2>NUL
-wmic process where name="cmake.exe" call terminate 2>NUL
+taskkill /f /im eager_generator.exe /t 2>NUL
+taskkill /f /im eager_op_function_generator.exe /t 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
+wmic process where name="eager_generator.exe" call terminate 2>NUL
+wmic process where name="eager_op_function_generator.exe" call terminate 2>NUL
+wmic process where name="cmake.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
 wmic process where name="cl.exe" call terminate 2>NUL
@@ -483,6 +547,41 @@ if %ERRORLEVEL% NEQ 0 (
         echo Build Paddle failed, will retry!
         goto :build_paddle
     )
+)
+
+if "%UPLOAD_TP_FILE%"=="ON" (
+    set BCE_FILE=%cache_dir%\bce-python-sdk-0.8.33\BosClient.py
+    echo Uploading third_party: checking bce ...
+    if not exist %cache_dir%\bce-python-sdk-0.8.33 (
+        echo There is no bce in this PC, will install bce.
+        cd /d %cache_dir%
+        echo Download package from https://paddle-windows.bj.bcebos.com/bce-python-sdk-0.8.33.tar.gz
+        %PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/bce-python-sdk-0.8.33.tar.gz')"
+        %PYTHON_ROOT%\python.exe -c "import shutil;shutil.unpack_archive('bce-python-sdk-0.8.33.tar.gz', extract_dir='./',format='gztar')"
+        cd /d %cache_dir%\bce-python-sdk-0.8.33
+        %PYTHON_ROOT%\python.exe setup.py install 1>nul
+        del %cache_dir%\bce-python-sdk-0.8.33.tar.gz
+    )
+    if !errorlevel! EQU 0 (
+        cd /d %THIRD_PARTY_HOME%
+        echo Uploading third_party: compressing ...
+        tar -zcf %md5%.tar.gz %md5%
+        if !errorlevel! EQU 0 (
+            echo Uploading third_party: uploading ...
+            %PYTHON_ROOT%\python.exe !BCE_FILE! %md5%.tar.gz paddle-windows/third_party/%sub_dir% 1>nul
+            if !errorlevel! EQU 0 (
+                echo Upload third party %md5% to bos paddle-windows/third_party/%sub_dir% successfully.
+            ) else (
+                echo Failed upload third party to bos, reason: upload failed.
+            )
+        ) else (
+            echo Failed upload third party to bos, reason: compress failed.
+        )
+        del %md5%.tar.gz
+    ) else (
+        echo Failed upload third party to bos, reason: install bce failed.
+    )
+    cd /d %work_dir%\%BUILD_DIR%
 )
 
 echo Build Paddle successfully!
@@ -556,13 +655,14 @@ git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
 pip install -r %work_dir%\python\unittest_py\requirements.txt --user
 if %ERRORLEVEL% NEQ 0 (
     echo pip install unittest requirements.txt failed!
-    exit /b 7
+    exit /b 5
 )
 
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
 set start=%start:~4,10%
 
 set FLAGS_call_stack_level=2
+set FLAGS_use_curand=True
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\lib
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\bin
 dir %THIRD_PARTY_PATH:/=\%\install\zlib\bin
@@ -577,9 +677,22 @@ set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\inst
 %THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;%PATH%
 
 if "%WITH_GPU%"=="ON" (
-    goto:parallel_test_base_gpu
+    call:parallel_test_base_gpu
 ) else (
-    goto:parallel_test_base_cpu
+    call:parallel_test_base_cpu
+)
+
+set error_code=%ERRORLEVEL%
+
+for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
+set end=%end:~4,10%
+call :timestamp "%start%" "%end%" "1 card TestCases Total"
+call :timestamp "%start%" "%end%" "TestCases Total"
+
+if %error_code% NEQ 0 (
+    exit /b 8
+) else ( 
+    goto:eof 
 )
 
 :parallel_test_base_gpu
@@ -595,13 +708,14 @@ setlocal enabledelayedexpansion
 :: for /F %%# in ('cmd /C nvidia-smi -L ^|find "GPU" /C') do set CUDA_DEVICE_COUNT=%%#
 set CUDA_DEVICE_COUNT=1
 
+:: For hypothesis tests(mkldnn op and inference pass), we set use 'ci' profile
+set HYPOTHESIS_TEST_PROFILE=ci
 echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DON_INFER=%ON_INFER% ^
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
 -DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT="%TENSORRT_ROOT%" -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
 -DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% >> %work_dir%\win_cmake.sh
-set FLAGS_fraction_of_gpu_memory_to_use=0.92
 
 %cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\run_unittests.sh %NIGHTLY_MODE% %PRECISION_TEST% %WITH_GPU%
 
@@ -612,6 +726,8 @@ echo    ========================================
 echo    Running CPU unit tests in parallel way ...
 echo    ========================================
 
+:: For hypothesis tests(mkldnn op and inference pass), we set use 'ci' profile
+set HYPOTHESIS_TEST_PROFILE=ci
 %cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\run_unittests.sh %NIGHTLY_MODE% %PRECISION_TEST% %WITH_GPU%
 
 goto:eof
@@ -619,10 +735,6 @@ goto:eof
 :test_unit_error
 :: echo 8 > %cache_dir%\error_code.txt
 :: type %cache_dir%\error_code.txt
-for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
-set end=%end:~4,10%
-call :timestamp "%start%" "%end%" "1 card TestCases Total"
-call :timestamp "%start%" "%end%" "TestCases Total"
 echo Running unit tests failed, will exit!
 exit /b 8
 
@@ -633,11 +745,6 @@ echo    ========================================
 echo    Step 5. Testing fluid library for inference ...
 echo    ========================================
 
-for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
-set end=%end:~4,10%
-call :timestamp "%start%" "%end%" "1 card TestCases Total"
-call :timestamp "%start%" "%end%" "TestCases Total"
-
 tree /F %cd%\paddle_inference_install_dir\paddle
 %cache_dir%\tools\busybox64.exe du -h -d 0 -k %cd%\paddle_inference_install_dir\paddle\lib > lib_size.txt
 set /p libsize=< lib_size.txt
@@ -647,8 +754,8 @@ for /F %%i in ("%libsize%") do (
     echo ipipe_log_param_Windows_Paddle_Inference_Size: !libsize_m!M
 )
 
-cd %work_dir%\paddle\fluid\inference\api\demo_ci
-%cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %TENSORRT_ROOT%/include %TENSORRT_ROOT%/lib %MSVC_STATIC_CRT%
+cd /d %work_dir%\paddle\fluid\inference\api\demo_ci
+%cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %WITH_TENSORRT% %TENSORRT_ROOT% %MSVC_STATIC_CRT%
 goto:eof
 
 :test_inference_error
@@ -747,7 +854,7 @@ echo    ========================================
 echo    Step 7. Testing fluid library with infer_ut for inference ...
 echo    ========================================
 
-cd %work_dir%\paddle\fluid\inference\tests\infer_ut
+cd /d %work_dir%\paddle\fluid\inference\tests\infer_ut
 %cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %TENSORRT_ROOT% %MSVC_STATIC_CRT%
 goto:eof
 
@@ -874,7 +981,11 @@ taskkill /f /im nvcc.exe /t 2>NUL
 taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
 taskkill /f /im op_function_generator.exe /t 2>NUL
+taskkill /f /im eager_generator.exe /t 2>NUL
+taskkill /f /im eager_op_function_generator.exe /t 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
+wmic process where name="eager_generator.exe" call terminate 2>NUL
+wmic process where name="eager_op_function_generator.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
 wmic process where name="cl.exe" call terminate 2>NUL

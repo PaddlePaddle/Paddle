@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/core/dense_tensor.h"
 
 namespace paddle {
 namespace operators {
@@ -97,9 +98,8 @@ struct TensorSetConstantXPU {
     int numel = tensor_->numel();
     std::unique_ptr<T[]> data_cpu(new T[numel]);
     std::fill(data_cpu.get(), data_cpu.get() + numel, static_cast<T>(value_));
-    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, place_), begin,
-                 platform::CPUPlace(), static_cast<void*>(data_cpu.get()),
-                 numel * sizeof(T));
+    memory::Copy(place_, begin, platform::CPUPlace(),
+                 static_cast<void*>(data_cpu.get()), numel * sizeof(T));
   }
   framework::Tensor* tensor_;
   U value_;

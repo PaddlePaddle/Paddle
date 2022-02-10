@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/pten/core/hostdevice.h"
 
 namespace paddle {
 namespace operators {
@@ -82,6 +82,9 @@ static inline void clip(const platform::CPUDeviceContext& ctx,
       auto grid_abs = grid_slice_t.abs();
       auto extra = grid_abs - (grid_abs / double_range).floor() * double_range;
       grid_slice_t.device(place) = extra.cwiseMin(double_range - extra);
+      if (max_val == 0) {
+        grid_slice_t.device(place) = grid_slice_t.constant(static_cast<T>(0));
+      }
     } else {
       auto double_range = static_cast<T>((max_val + 1) * 2);
       auto grid_abs = (grid_slice_t + static_cast<T>(0.5)).abs();
@@ -128,6 +131,9 @@ static inline void clipWithMask(const platform::CPUDeviceContext& ctx,
           grid_scale_t * ((is_neg == one_more_flip).template cast<T>() -
                           (is_neg != one_more_flip).template cast<T>());
       grid_slice_t.device(place) = extra.cwiseMin(double_range - extra);
+      if (max_val == 0) {
+        grid_slice_t.device(place) = grid_slice_t.constant(static_cast<T>(0));
+      }
     } else {
       auto double_range = static_cast<T>((max_val + 1) * 2);
       auto grid_abs = (grid_slice_t + static_cast<T>(0.5)).abs();

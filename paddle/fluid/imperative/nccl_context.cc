@@ -20,6 +20,14 @@
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 #endif
 
+#ifdef PADDLE_WITH_NCCL
+#include <nccl.h>
+#include "paddle/fluid/platform/dynload/nccl.h"
+#endif
+
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -69,7 +77,7 @@ void NCCLParallelContext::Init() {
   }
   BcastNCCLId(nccl_ids, 0, server_fd);
 
-  int gpu_id = BOOST_GET_CONST(platform::CUDAPlace, place_).device;
+  int gpu_id = place_.device;
   for (int ring_id = 0; ring_id < strategy_.nrings_; ring_id++) {
     VLOG(0) << "init nccl context nranks: " << strategy_.nranks_
             << " local rank: " << strategy_.local_rank_ << " gpu id: " << gpu_id
@@ -80,10 +88,9 @@ void NCCLParallelContext::Init() {
         ring_id);
 
     compute_events_.emplace_back(
-        platform::CudaEventResourcePool::Instance().New(
-            BOOST_GET_CONST(platform::CUDAPlace, place_).device));
-    comm_events_.emplace_back(platform::CudaEventResourcePool::Instance().New(
-        BOOST_GET_CONST(platform::CUDAPlace, place_).device));
+        platform::CudaEventResourcePool::Instance().New(place_.device));
+    comm_events_.emplace_back(
+        platform::CudaEventResourcePool::Instance().New(place_.device));
   }
 }
 
@@ -103,7 +110,7 @@ void NCCLParallelContext::InitWithRingID(int ring_id) {
   }
   BcastNCCLId(nccl_ids, 0, server_fd);
 
-  int gpu_id = BOOST_GET_CONST(platform::CUDAPlace, place_).device;
+  int gpu_id = place_.device;
   VLOG(0) << "init nccl context nranks: " << strategy_.nranks_
           << " local rank: " << strategy_.local_rank_ << " gpu id: " << gpu_id
           << " ring id: " << ring_id;
@@ -111,10 +118,10 @@ void NCCLParallelContext::InitWithRingID(int ring_id) {
   platform::NCCLCommContext::Instance().CreateComm(
       &nccl_ids[0], strategy_.nranks_, strategy_.local_rank_, gpu_id, ring_id);
 
-  compute_events_.emplace_back(platform::CudaEventResourcePool::Instance().New(
-      BOOST_GET_CONST(platform::CUDAPlace, place_).device));
-  comm_events_.emplace_back(platform::CudaEventResourcePool::Instance().New(
-      BOOST_GET_CONST(platform::CUDAPlace, place_).device));
+  compute_events_.emplace_back(
+      platform::CudaEventResourcePool::Instance().New(place_.device));
+  comm_events_.emplace_back(
+      platform::CudaEventResourcePool::Instance().New(place_.device));
 }
 
 void NCCLParallelContext::AllReduceByStream(const framework::Variable &src,
@@ -125,6 +132,20 @@ void NCCLParallelContext::AllReduceByStream(const framework::Variable &src,
       platform::errors::Unimplemented(
           "Dynamic graph mode does not support multi-CPU training yet."));
   AllReduce(src, dst, strategy_, ring_id, use_calc_stream);
+}
+
+void NCCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
+  VLOG(3) << "/// DEBUG /// start inter broadcast with ring_id: " << ring_id;
+  framework::Tensor *src_tensor = src->GetMutable<framework::LoDTensor>();
+  const auto &place = src_tensor->place();
+  platform::NCCLComm *comm =
+      platform::NCCLCommContext::Instance().Get(ring_id, place);
+  gpuStream_t stream = comm->stream();
+
+  void *src_ptr = src_tensor->data();
+  auto nccl_dtype = platform::ToNCCLDataType(src_tensor->type());
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
+      src_ptr, src_tensor->numel(), nccl_dtype, 0, comm->comm(), stream));
 }
 
 paddle::platform::DeviceContext *NCCLParallelContext::GetDeviceContext(
@@ -153,11 +174,11 @@ void NCCLParallelContext::WaitCompute(int ring_id) {
 
 // compute_stream-->event-->comm_stream
 #ifdef PADDLE_WITH_HIP
-  PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(event, compute_stream));
-  PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamWaitEvent(comm_stream, event, 0));
+  PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event, compute_stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(comm_stream, event, 0));
 #else
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event, compute_stream));
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamWaitEvent(comm_stream, event, 0));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event, compute_stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(comm_stream, event, 0));
 #endif
 }
 
@@ -179,11 +200,11 @@ void NCCLParallelContext::WaitComm(int ring_id) {
 
 // comm_stream-->event-->compute_stream
 #ifdef PADDLE_WITH_HIP
-  PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(event, comm_stream));
-  PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamWaitEvent(compute_stream, event, 0));
+  PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event, comm_stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(compute_stream, event, 0));
 #else
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event, comm_stream));
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamWaitEvent(compute_stream, event, 0));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event, comm_stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(compute_stream, event, 0));
 #endif
 }
 

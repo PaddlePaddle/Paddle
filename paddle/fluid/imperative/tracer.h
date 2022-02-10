@@ -23,6 +23,7 @@
 #include <vector>
 #include "ThreadPool.h"
 #include "paddle/fluid/framework/garbage_collector.h"
+#include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/jit/program_desc_tracer.h"
 #include "paddle/fluid/imperative/layer.h"
@@ -30,6 +31,8 @@
 
 namespace paddle {
 namespace imperative {
+
+enum class AmpLevel;
 
 using GarbageCollectorMap =
     std::map<platform::Place,
@@ -60,17 +63,33 @@ class Tracer {
 
   ~Tracer() = default;
 
-  void TraceOp(const std::string& type, const NameVarBaseMap& ins,
-               const NameVarBaseMap& outs, framework::AttributeMap attrs,
-               const platform::Place& place, bool trace_bacward,
-               const std::map<std::string, std::string>& inplace_map = {});
+  template <typename VarType>
+  void TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
+               const NameVarMap<VarType>& outs, framework::AttributeMap attrs,
+               const platform::Place& place, bool trace_backward,
+               const std::map<std::string, std::string>& inplace_map = {},
+               paddle::framework::AttributeMap* passed_default_attrs_ = nullptr,
+               bool override_default_attr_map = true);
 
   void TraceOp(const std::string& type, const NameVarBaseMap& ins,
                const NameVarBaseMap& outs, framework::AttributeMap attrs,
+               const std::map<std::string, std::string>& inplace_map = {});
+
+  void TraceOp(const std::string& type, const NameTensorMap& ins,
+               const NameTensorMap& outs, paddle::framework::AttributeMap attrs,
+               const std::map<std::string, std::string>& inplace_map = {});
+
+  void TraceOp(const std::string& type, const NameTensorMap& ins,
+               const NameTensorMap& outs, paddle::framework::AttributeMap attrs,
+               const paddle::platform::Place& place,
+               paddle::framework::AttributeMap* default_attrs,
+               bool override_default_attr_map,
                const std::map<std::string, std::string>& inplace_map = {});
 
   bool ComputeRequiredGrad(const NameVarBaseMap& ins,
                            const NameVarBaseMap& outs, bool trace_backward);
+  bool ComputeRequiredGrad(const NameTensorMap& ins, const NameTensorMap& outs,
+                           bool trace_backward);
 
   void SetEnableProgramDescTracing(bool enabled) {
     enable_program_desc_tracing_ = enabled;
@@ -105,9 +124,12 @@ class Tracer {
 
   void SetHasGrad(bool has_grad) { has_grad_ = has_grad; }
 
-  void SetEnableAutoCast(bool enabled) { enable_autocast_ = enabled; }
+  void SetAmpLevel(AmpLevel level) {
+    VLOG(4) << "set amp_level to " << static_cast<unsigned int>(level);
+    amp_level_ = level;
+  }
 
-  bool IsAutoCastEnabled() const { return enable_autocast_; }
+  AmpLevel GetAmpLevel() const { return amp_level_; }
 
   paddle::framework::GarbageCollector* MutableGarbageCollectorIfNotExists(
       const platform::Place& place);
@@ -118,9 +140,9 @@ class Tracer {
   bool enable_program_desc_tracing_{false};
   std::unique_ptr<UniqueNameGenerator> generator_;
   platform::Place expected_place_;
-  bool enable_autocast_{false};
   GarbageCollectorMap gcs_;
   static thread_local bool has_grad_;
+  static thread_local AmpLevel amp_level_;
 };
 
 // To access static variable current_tracer

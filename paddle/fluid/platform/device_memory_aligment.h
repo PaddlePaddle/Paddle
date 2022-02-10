@@ -17,14 +17,10 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/place.h"
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/gpu_info.h"
-#elif defined(PADDLE_WITH_ASCEND_CL)
-#include "paddle/fluid/platform/npu_info.h"
-#endif
 #if defined(PADDLE_WITH_ASCEND_CL)
-#include "paddle/fluid/platform/npu_info.h"
+#include "paddle/fluid/platform/device/npu/npu_info.h"
 #endif
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 namespace paddle {
 namespace platform {

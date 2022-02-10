@@ -50,6 +50,36 @@ class TensorFillDiagonal_Test(unittest.TestCase):
                     (y.grad.numpy().astype('float32') == expected_grad).all(),
                     True)
 
+    def test_offset(self):
+        expected_np = np.array(
+            [[2, 2, 1], [2, 2, 2], [2, 2, 2]]).astype('float32')
+        expected_grad = np.array(
+            [[1, 1, 0], [1, 1, 1], [1, 1, 1]]).astype('float32')
+
+        typelist = ['float32', 'float64', 'int32', 'int64']
+        places = [fluid.CPUPlace()]
+        if fluid.core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+
+        for idx, p in enumerate(places):
+            if idx == 0:
+                paddle.set_device('cpu')
+            else:
+                paddle.set_device('gpu')
+            for dtype in typelist:
+                x = paddle.ones((3, 3), dtype=dtype)
+                x.stop_gradient = False
+                y = x * 2
+                y.fill_diagonal_(1, offset=2, wrap=True)
+                loss = y.sum()
+                loss.backward()
+
+                self.assertEqual(
+                    (y.numpy().astype('float32') == expected_np).all(), True)
+                self.assertEqual(
+                    (y.grad.numpy().astype('float32') == expected_grad).all(),
+                    True)
+
     def test_bool(self):
         expected_np = np.array(
             [[False, True, True], [True, False, True], [True, True, False]])

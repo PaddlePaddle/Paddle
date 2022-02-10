@@ -48,6 +48,34 @@ namespace paddle {
 class AnalysisPredictor;
 struct MkldnnQuantizerConfig;
 
+struct LiteNNAdapterConfig {
+  bool use_nnadapter{false};
+  std::string nnadapter_model_cache_dir;
+  std::map<std::string, std::vector<char>> nnadapter_model_cache_buffers;
+  std::vector<std::string> nnadapter_device_names;
+  std::string nnadapter_context_properties;
+  std::string nnadapter_subgraph_partition_config_path;
+  std::string nnadapter_subgraph_partition_config_buffer;
+
+  LiteNNAdapterConfig& SetDeviceNames(const std::vector<std::string>& names);
+
+  LiteNNAdapterConfig& SetContextProperties(const std::string& properties);
+
+  LiteNNAdapterConfig& SetModelCacheDir(const std::string& dir);
+
+  LiteNNAdapterConfig& SetModelCacheBuffers(
+      const std::string& model_cache_token,
+      const std::vector<char>& model_cache_buffer);
+
+  LiteNNAdapterConfig& SetSubgraphPartitionConfigPath(const std::string& path);
+
+  LiteNNAdapterConfig& SetSubgraphPartitionConfigBuffer(
+      const std::string& buffer);
+
+  LiteNNAdapterConfig& Enable();
+  LiteNNAdapterConfig& Disable();
+};
+
 ///
 /// \brief configuration manager for AnalysisPredictor.
 /// \since 1.7.0
@@ -202,6 +230,30 @@ struct PD_INFER_DECL AnalysisConfig {
                  bool autotune = true, const std::string& autotune_file = "",
                  const std::string& precision = "int16",
                  bool adaptive_seqlen = false);
+
+  ///
+  /// \brief Turn on IPU.
+  ///
+  /// \param device_num The number of IPUs.
+  /// \param ipu_enable_pipelining Enable data pipelining between subgraphs,
+  /// each subgraph is settled on an IPU. (This feature requires the number of
+  /// IPUs > 1.)
+  /// \param ipu_batches_per_step The number of micro_batch_size per run. (This
+  /// feature requires to enable pipelining.)
+  /// \param ipu_batch_size The micro_batch_size which is the batch_size in the
+  /// graph.
+  /// \param ipu_need_avg_shard Enable the auto graph sharding. (This feature
+  /// requires the number of IPUs > 1.)
+  ///
+  void EnableIpu(int device_num = 1, bool ipu_enable_pipelining = false,
+                 int ipu_batches_per_step = 1, int ipu_batch_size = 1,
+                 bool ipu_need_avg_shard = false);
+  ///
+  /// \brief Set XPU device id.
+  ///
+  /// \param device_id the XPU card to use (default is 0).
+  ///
+  void SetXpuDeviceId(int device_id = 0);
   ///
   /// \brief Turn on NPU.
   ///
@@ -226,6 +278,11 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return bool Whether the NPU is turned on.
   ///
   bool use_npu() const { return use_npu_; }
+  /// \brief A boolean state telling whether the IPU is turned on.
+  ///
+  /// \return bool Whether the IPU is turned on.
+  ///
+  bool use_ipu() const { return use_ipu_; }
   ///
   /// \brief Get the GPU device id.
   ///
@@ -244,6 +301,11 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return int The NPU device id.
   ///
   int npu_device_id() const { return npu_device_id_; }
+  /// \brief Get the the number of IPU device .
+  ///
+  /// \return int The number of IPU device.
+  ///
+  int ipu_device_num() const { return ipu_device_num_; }
   ///
   /// \brief Get the initial size in MB of the GPU memory pool.
   ///
@@ -686,6 +748,8 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   std::string Summary();
 
+  LiteNNAdapterConfig& NNAdapter() { return nnadapter_config_; }
+
  protected:
   // Update the config.
   void Update();
@@ -732,6 +796,7 @@ struct PD_INFER_DECL AnalysisConfig {
   bool trt_use_static_engine_{false};
   bool trt_use_calib_mode_{true};
   bool trt_use_oss_{false};
+  bool trt_with_interleaved_{false};
   bool trt_use_dla_{false};
   int trt_dla_core_{0};
   std::map<std::string, std::vector<int>> min_input_shape_{};
@@ -787,12 +852,15 @@ struct PD_INFER_DECL AnalysisConfig {
   // XPU related.
   bool use_xpu_{false};
   int xpu_device_id_{0};
-  int xpu_l3_workspace_size_;
+  int xpu_l3_workspace_size_{0};
   bool xpu_locked_;
   bool xpu_autotune_;
   std::string xpu_autotune_file_;
   std::string xpu_precision_;
   bool xpu_adaptive_seqlen_;
+
+  // NNAdapter related
+  LiteNNAdapterConfig nnadapter_config_;
 
   // mkldnn related.
   int mkldnn_cache_capacity_{10};
@@ -801,12 +869,22 @@ struct PD_INFER_DECL AnalysisConfig {
   bool use_mkldnn_bfloat16_{false};
   std::unordered_set<std::string> bfloat16_enabled_op_types_;
 
+  // ipu related.
+  bool use_ipu_{false};
+  int ipu_device_num_{1};
+
+  bool ipu_enable_pipelining_{false};
+  int ipu_batches_per_step_{1};
+  int ipu_batch_size_{1};
+  bool ipu_need_avg_shard_{false};
+
   // If the config is already used on a predictor, it becomes invalid.
   // Any config can only be used with one predictor.
   // Variables held by config can take up a lot of memory in some cases.
   // So we release the memory when the predictor is set up.
   mutable bool is_valid_{true};
   std::string opt_cache_dir_;
+  friend class paddle_infer::experimental::InternalUtils;
 };
 
 }  // namespace paddle

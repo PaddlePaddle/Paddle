@@ -58,11 +58,8 @@ static Tensor FoldFirstAndLastDims(const MKLDNNDeviceContext& dev_ctx,
 
   memory::data_type input_type =
       paddle::framework::ToMKLDNNDataType(input->type());
-  std::string key = paddle::platform::CreateKey(
-      dev_ctx, input_dims, input->format(), input->format(), input_type);
   paddle::platform::ReorderMKLDNNHandler reorder_handler(
-      output_dims, input->type(), input_type, dev_ctx, dev_ctx.GetEngine(),
-      key);
+      output_dims, input->type(), input_type, dev_ctx.GetEngine());
 
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
       memory::format_tag::abc,
@@ -111,7 +108,7 @@ template <typename XT, typename YT, typename OT>
 class MatMulMKLDNNHandler
     : public paddle::platform::MKLDNNHandlerNoCachingT<XT, dnnl::matmul> {
  public:
-  MatMulMKLDNNHandler(const mkldnn::engine engine,
+  MatMulMKLDNNHandler(const dnnl::engine engine,
                       paddle::platform::Place cpu_place, Tensor* x,
                       bool trans_x, Tensor* y, bool trans_y, Tensor* out,
                       float scale)
@@ -151,11 +148,10 @@ class MatMulMKLDNNHandler
     this->AcquireForwardPrimitiveDescriptor(attrs, x_md, y_md, out_md);
   }
   // Constructor for FWD MatMul
-  MatMulMKLDNNHandler(const mkldnn::engine engine, const ExecutionContext& ctx,
+  MatMulMKLDNNHandler(const dnnl::engine engine, const ExecutionContext& ctx,
                       float scale)
       : paddle::platform::MKLDNNHandlerNoCachingT<XT, dnnl::matmul>(
-            engine, ctx.GetPlace()),
-        matmul_dims_(GetMatmulDims(ctx)) {
+            engine, ctx.GetPlace()) {
     dnnl::primitive_attr attr;
     float scale_out = ComputeOutputScale(ctx);
     if (scale_out != 1.0f) {
@@ -163,6 +159,7 @@ class MatMulMKLDNNHandler
       attr.set_output_scales(tensor_wide_scale, {scale_out});
     }
 
+    auto matmul_dims_ = GetMatmulDims(ctx);
     auto x_md = memory::desc(matmul_dims_.x_dims, MKLDNNGetDataType<XT>(),
                              matmul_dims_.x_strides);
     auto y_md = memory::desc(matmul_dims_.y_dims, MKLDNNGetDataType<YT>(),
@@ -205,9 +202,9 @@ class MatMulMKLDNNHandler
       weights_memory_p->set_data_handle(y_ptr);
       dst_memory_p->set_data_handle(out_ptr);
       matmul_p->execute(astream, {
-                                     {MKLDNN_ARG_SRC, *src_memory_p},
-                                     {MKLDNN_ARG_WEIGHTS, *weights_memory_p},
-                                     {MKLDNN_ARG_DST, *dst_memory_p},
+                                     {DNNL_ARG_SRC, *src_memory_p},
+                                     {DNNL_ARG_WEIGHTS, *weights_memory_p},
+                                     {DNNL_ARG_DST, *dst_memory_p},
                                  });
       x_ptr = static_cast<char*>(x_ptr) + std::get<0>(offsets);
       y_ptr = static_cast<char*>(y_ptr) + std::get<1>(offsets);
@@ -221,7 +218,7 @@ class MatMulMKLDNNHandler
     out->set_layout(DataLayout::kMKLDNN);
   }
 
-  std::shared_ptr<mkldnn::memory> AcquireDstMemory(
+  std::shared_ptr<dnnl::memory> AcquireDstMemory(
       paddle::framework::Tensor* output) {
     // We cannot use base AcquireDstMemory as it makes an allocation request
     // base on DST memory primitive size. This is fine in general, but in MatMul
@@ -248,6 +245,36 @@ class MatMulMKLDNNHandler
     auto input_dims = ctx.Input<Tensor>(input_name)->dims();
     auto new_dims = input_dims;
     if (!shape.empty() && !axis.empty()) {
+      auto it_zero = std::find(shape.begin(), shape.end(), 0);
+      if (it_zero != shape.end()) {
+        for (uint64_t i = 0; i < shape.size(); i++) {
+          if (shape[i] == 0) {
+            PADDLE_ENFORCE_LT(
+                i, input_dims.size(),
+                paddle::platform::errors::InvalidArgument(
+                    "The index of 0 in fused_reshape_%s ",
+                    "should be less than output dim size, ",
+                    "but the index is %d and output dim size is %d", input_name,
+                    i, input_dims.size()));
+            shape[i] = input_dims.at(i);
+          }
+        }
+      }
+
+      // if "-1" is present then one of reshape dims must be infered
+      auto it_negative = std::find(shape.begin(), shape.end(), -1);
+      if (it_negative != shape.end()) {
+        int64_t dim_product = 1;
+        for (int i = 0; i < input_dims.size(); i++) {
+          dim_product *= input_dims.at(i);
+        }
+
+        int64_t shape_product = std::accumulate(shape.begin(), shape.end(), -1,
+                                                std::multiplies<int>());
+        int index = std::distance(shape.begin(), it_negative);
+        shape[index] = dim_product / shape_product;
+      }
+
       new_dims = input_dims.reshape(shape).transpose(axis);
     }
 
@@ -392,7 +419,6 @@ class MatMulMKLDNNHandler
   }
 
  private:
-  MatMulDims matmul_dims_;
   uint32_t x_offset_;
   uint32_t y_offset_;
   uint32_t out_offset_;
@@ -521,7 +547,7 @@ void MatMulGradMKLDNNKernel<T>::Compute(const ExecutionContext& ctx) const {
 template <typename T>
 void MatMulGradMKLDNNKernel<T>::ExecuteMatMulGrad(
     const ExecutionContext& ctx, const MKLDNNDeviceContext& dev_ctx,
-    const mkldnn::engine& engine, Tensor* x, bool trans_x,
+    const dnnl::engine& engine, Tensor* x, bool trans_x,
     bool is_fold_init_dims_x, Tensor* y, bool trans_y, bool is_fold_init_dims_y,
     Tensor* out) const {
   // gradient is calculated in a different way when broadcasting is used

@@ -22,11 +22,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_code.h"
 #include "paddle/fluid/platform/float16.h"
 
-namespace paddle {
-namespace framework {
-class LoDTensor;
-}  // namespace framework
-}  // namespace paddle
+namespace pten {
+class DenseTensor;
+}  // namespace pten
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
@@ -206,9 +204,11 @@ void TestMainImpl(std::string func_name, std::string code_str,
         for (int64_t i = 0; i < cpu_tensors[id].numel(); ++i) {
           tmp_cpu_ptr[i] = paddle::platform::float16(cpu_ptr[i]);
         }
-        TensorCopySync(tmp_cpu_tensors[id], place, &gpu_tensors[id]);
+        paddle::framework::TensorCopySync(tmp_cpu_tensors[id], place,
+                                          &gpu_tensors[id]);
       } else {
-        TensorCopySync(cpu_tensors[id], place, &gpu_tensors[id]);
+        paddle::framework::TensorCopySync(cpu_tensors[id], place,
+                                          &gpu_tensors[id]);
       }
       args.push_back(&gpu_ptrs[id]);
     }
@@ -234,8 +234,8 @@ void TestMainImpl(std::string func_name, std::string code_str,
       paddle::platform::float16* tmp_cpu_ptr =
           tmp_cpu_tensors[id].mutable_data<paddle::platform::float16>(
               cpu_tensors[id].dims(), paddle::platform::CPUPlace());
-      TensorCopySync(gpu_tensors[id], paddle::platform::CPUPlace(),
-                     &tmp_cpu_tensors[id]);
+      paddle::framework::TensorCopySync(
+          gpu_tensors[id], paddle::platform::CPUPlace(), &tmp_cpu_tensors[id]);
 
       float* cpu_ptr = cpu_tensors[id].mutable_data<float>(
           cpu_tensors[id].dims(), paddle::platform::CPUPlace());
@@ -243,8 +243,8 @@ void TestMainImpl(std::string func_name, std::string code_str,
         cpu_ptr[i] = static_cast<float>(tmp_cpu_ptr[i]);
       }
     } else {
-      TensorCopySync(gpu_tensors[id], paddle::platform::CPUPlace(),
-                     &cpu_tensors[id]);
+      paddle::framework::TensorCopySync(
+          gpu_tensors[id], paddle::platform::CPUPlace(), &cpu_tensors[id]);
     }
   }
 }

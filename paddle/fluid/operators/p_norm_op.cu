@@ -20,7 +20,13 @@ limitations under the License. */
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
 #endif
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
+#include "paddle/fluid/operators/fc_op.h"
 #include "paddle/fluid/operators/p_norm_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -30,12 +36,23 @@ __device__ __forceinline__ int sgn(T val) {
   return (T(0) < val) - (val < T(0));
 }
 
+__device__ __forceinline__ platform::float16 inline_abs(platform::float16 x) {
+  return static_cast<platform::float16>(abs(static_cast<float>(x)));
+}
 __device__ __forceinline__ float inline_abs(float x) { return abs(x); }
 __device__ __forceinline__ double inline_abs(double x) { return abs(x); }
 
+__device__ __forceinline__ int inline_sign(platform::float16 x) {
+  return sgn<platform::float16>(x);
+}
 __device__ __forceinline__ int inline_sign(float x) { return sgn<float>(x); }
 __device__ __forceinline__ int inline_sign(double x) { return sgn<double>(x); }
 
+__device__ __forceinline__ platform::float16 inline_pow(
+    platform::float16 base, platform::float16 exponent) {
+  return static_cast<platform::float16>(
+      pow(static_cast<float>(base), static_cast<float>(exponent)));
+}
 __device__ __forceinline__ float inline_pow(float base, float exponent) {
   return pow(base, exponent);
 }
@@ -43,84 +60,32 @@ __device__ __forceinline__ double inline_pow(double base, double exponent) {
   return pow(base, exponent);
 }
 
-template <typename T, int BlockDim>
-__global__ void Pnorm(const T* x, const int pre,
-                      const int axis_n,  // dim in axis
-                      const int post, float porder, T* out_norm) {
-  typedef cub::BlockReduce<T, BlockDim> BlockReduce;
-  __shared__ typename BlockReduce::TempStorage temp_storage;
-  int num = pre * post;
-  auto porder_t = static_cast<T>(porder);
-  auto porder_inv = static_cast<T>(1.0 / porder);
-
-  for (int i = blockIdx.x; i < num; i += gridDim.x) {
-    int base = (i / post) * post * axis_n + (i % post);
-    T sum = 0.0;
-    for (int j = threadIdx.x; j < axis_n; j += blockDim.x) {
-      const T x_ij = x[base + j * post];
-      sum += inline_pow(inline_abs(x_ij), porder_t);
-    }
-    T reduce_result = BlockReduce(temp_storage).Sum(sum);
-    if (threadIdx.x == 0) out_norm[i] = inline_pow(reduce_result, porder_inv);
+template <typename T>
+struct NonzeroFunctor {
+  HOSTDEVICE explicit inline NonzeroFunctor() {}
+  HOSTDEVICE inline T operator()(const T x) const {
+    return static_cast<T>(static_cast<double>(x) != 0);
   }
-}
+};
 
-template <typename T, int BlockDim>
-__global__ void ZeorNorm(const T* x, const int pre,
-                         const int axis_n,  // dim in axis
-                         const int post, T* out_norm) {
-  typedef cub::BlockReduce<T, BlockDim> BlockReduce;
-  __shared__ typename BlockReduce::TempStorage temp_storage;
-  int num = pre * post;
-  for (int i = blockIdx.x; i < num; i += gridDim.x) {
-    int base = (i / post) * post * axis_n + (i % post);
-    T sum = 0.0;
-    for (int j = threadIdx.x; j < axis_n; j += blockDim.x) {
-      const T x_ij = x[base + j * post];
-      sum += static_cast<T>(x_ij != 0);
-    }
-    T reduce_result = BlockReduce(temp_storage).Sum(sum);
-    if (threadIdx.x == 0) out_norm[i] = reduce_result;
+template <typename T>
+struct AbsFunctor {
+  HOSTDEVICE explicit inline AbsFunctor() {}
+  HOSTDEVICE inline T operator()(const T x) const {
+    return static_cast<T>(inline_abs(x));
   }
-}
+};
 
-template <typename T, int BlockDim>
-__global__ void InfNorm(const T* x, const int pre,
-                        const int axis_n,  // dim in axis
-                        const int post, T* out_norm) {
-  typedef cub::BlockReduce<T, BlockDim> BlockReduce;
-  __shared__ typename BlockReduce::TempStorage temp_storage;
-  int num = pre * post;
-  for (int i = blockIdx.x; i < num; i += gridDim.x) {
-    int base = (i / post) * post * axis_n + (i % post);
-    T cur_max = inline_abs(x[base]);
-    for (int j = threadIdx.x; j < axis_n; j += blockDim.x) {
-      T x_ij_abs = inline_abs(x[base + j * post]);
-      if (cur_max < x_ij_abs) cur_max = x_ij_abs;
-    }
-    T reduce_result = BlockReduce(temp_storage).Reduce(cur_max, cub::Max());
-    if (threadIdx.x == 0) out_norm[i] = reduce_result;
+template <typename T>
+struct UnsignedPowFunctor {
+  HOSTDEVICE explicit inline UnsignedPowFunctor(float porder) {
+    this->porder = porder;
   }
-}
-
-template <typename T, int BlockDim>
-__global__ void NegInfNorm(const T* x, const int pre,
-                           const int axis_n,  // dim in axis
-                           const int post, T* out_norm) {
-  typedef cub::BlockReduce<T, BlockDim> BlockReduce;
-  __shared__ typename BlockReduce::TempStorage temp_storage;
-  int num = pre * post;
-  for (int i = blockIdx.x; i < num; i += gridDim.x) {
-    int base = (i / post) * post * axis_n + (i % post);
-    T cur_min = inline_abs(x[base]);
-    for (int j = threadIdx.x; j < axis_n; j += blockDim.x) {
-      T x_ij_abs = inline_abs(x[base + j * post]);
-      if (cur_min > x_ij_abs) cur_min = x_ij_abs;
-    }
-    T reduce_result = BlockReduce(temp_storage).Reduce(cur_min, cub::Min());
-    if (threadIdx.x == 0) out_norm[i] = reduce_result;
+  HOSTDEVICE inline T operator()(const T x) const {
+    return static_cast<T>(inline_pow(inline_abs(x), static_cast<T>(porder)));
   }
-}
+  float porder;
+};
 
 template <typename DeviceContext, typename T>
 class PnormCUDAKernel : public framework::OpKernel<T> {
@@ -130,99 +95,70 @@ class PnormCUDAKernel : public framework::OpKernel<T> {
     auto* out_norm = ctx.Output<framework::Tensor>("Out");
     const T* x = in_x->data<T>();
     T* norm = out_norm->mutable_data<T>(ctx.GetPlace());
-
     auto xdim = in_x->dims();
-    auto ndim = out_norm->dims();
     float porder = ctx.Attr<float>("porder");
-    int axis = ctx.Attr<int>("axis");
     bool asvector = ctx.Attr<bool>("asvector");
-    if (axis < 0) axis = xdim.size() + axis;
-    int pre, n, post;
-    GetDims(xdim, axis, &pre, &n, &post, asvector);
+    int axis = ctx.Attr<int>("axis");
+    std::vector<int> reduce_axis = {axis};
+    reduce_axis = GetReduceDim(reduce_axis, xdim.size(), asvector);
+    auto stream = ctx.cuda_device_context().stream();
 
-    auto& dev_ctx = ctx.cuda_device_context();
-
-#ifdef __HIPCC__
-    const int block = 256;
-#else
-    const int block = 512;
-#endif
-
-    int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
-    const int max_blocks = std::max(max_threads / block, 1);
-    int grid = std::min(max_blocks, pre * post);
+    using MT = typename details::MPTypeTrait<T>::Type;
     if (porder == 0) {
-      ZeorNorm<T, block><<<grid, block, 0, dev_ctx.stream()>>>(x, pre, n, post,
-                                                               norm);
+      TensorReduceImpl<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
+          ctx.cuda_device_context(), *in_x, out_norm, NonzeroFunctor<T>(),
+          reduce_axis, stream);
     } else if (porder == INFINITY) {
-      InfNorm<T, block><<<grid, block, 0, dev_ctx.stream()>>>(x, pre, n, post,
-                                                              norm);
+      TensorReduceImpl<T, T, kps::MaxFunctor, AbsFunctor<T>>(
+          ctx.cuda_device_context(), *in_x, out_norm, AbsFunctor<T>(),
+          reduce_axis, stream);
     } else if (porder == -INFINITY) {
-      NegInfNorm<T, block><<<grid, block, 0, dev_ctx.stream()>>>(x, pre, n,
-                                                                 post, norm);
+      TensorReduceImpl<T, T, kps::MinFunctor, AbsFunctor<T>>(
+          ctx.cuda_device_context(), *in_x, out_norm, AbsFunctor<T>(),
+          reduce_axis, stream);
     } else {
-      Pnorm<T, block><<<grid, block, 0, dev_ctx.stream()>>>(x, pre, n, post,
-                                                            porder, norm);
+      TensorReduceImpl<T, T, kps::AddFunctor, UnsignedPowFunctor<T>>(
+          ctx.cuda_device_context(), *in_x, out_norm,
+          UnsignedPowFunctor<T>(porder), reduce_axis, stream);
+
+      const framework::Tensor* tmp_norm = out_norm;
+      std::vector<const framework::Tensor*> ins = {tmp_norm};
+      std::vector<framework::Tensor*> outs = {out_norm};
+      const auto& cuda_ctx =
+          ctx.template device_context<platform::CUDADeviceContext>();
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<
+          ElementwiseType::kUnary, T, T, UnsignedPowFunctor<T>>(
+          cuda_ctx, ins, &outs, UnsignedPowFunctor<T>(1. / porder));
     }
   }
 };
 
-template <typename T, int BlockDim>
-__global__ void PnormGradient(const T* x, const T* x_norm, const T* y_grad,
-                              const float porder, const int pre,
-                              const int axis_n, const int post, const T eps,
-                              T* x_grad) {
-  // dx = (x/pnorm_broadcast).pow(p-1) * norm_dy.broadcast * sign(x)
-  int num = pre * post;
-  auto porder_grad = static_cast<T>(porder - 1.0f);
-  for (int i = blockIdx.x; i < num; i += gridDim.x) {
-    __shared__ T pnorm_i;
-    __shared__ T yout_i;
-
-    auto base = (i / post) * post * axis_n + (i % post);
-
-    if (threadIdx.x == 0) {
-      pnorm_i = x_norm[i];
-      yout_i = y_grad[i];
-    }
-    __syncthreads();
-
-    for (int j = threadIdx.x; j < axis_n; j += blockDim.x) {
-      int index = base + j * post;
-      const T x_ij = inline_abs(x[index]);
-      x_grad[index] = inline_pow(x_ij, porder_grad) /
-                      (inline_pow(pnorm_i, porder_grad) + eps) * yout_i *
-                      inline_sign(x[index]);
-    }
+template <typename T>
+struct AbsMaxAndMinGradFunctor {
+  template <typename DeviceContext, typename X, typename Y, typename DX,
+            typename DY, typename Dim>
+  void operator()(const DeviceContext& place, X* x, Y* y, DX* dx, DY* dy,
+                  const Dim& dim, int size) {
+    dx->device(place) = dy->broadcast(dim) * (*x).sign() *
+                        ((*x).abs() == y->broadcast(dim)).template cast<T>();
   }
-}
+};
 
-template <typename T, int BlockDim>
-__global__ void InfNormGradient(const T* x, const T* x_norm, const T* y_grad,
-                                const int pre, const int axis_n, const int post,
-                                T* x_grad) {
-  int num = pre * post;
-  for (int i = blockIdx.x; i < num; i += gridDim.x) {
-    __shared__ T pnorm_i;
-    __shared__ T yout_i;
-    auto base = (i / post) * post * axis_n + (i % post);
-    if (threadIdx.x == 0) {
-      pnorm_i = x_norm[i];
-      yout_i = y_grad[i];
-    }
-    __syncthreads();
-
-    for (int j = threadIdx.x; j < axis_n; j += blockDim.x) {
-      int index = base + j * post;
-      const T x_ij = inline_abs(x[index]);
-      if (x_ij == pnorm_i) {
-        x_grad[index] = inline_sign(x[index]) * yout_i;
-      } else {
-        x_grad[index] = static_cast<T>(0);
-      }
-    }
+template <typename T>
+struct PNormGradFunctor {
+  HOSTDEVICE explicit inline PNormGradFunctor(float porder) {
+    this->porder = static_cast<T>(porder - 1.);
   }
-}
+  template <typename DeviceContext, typename X, typename Y, typename DX,
+            typename DY, typename Dim>
+  void operator()(const DeviceContext& place, X* x, Y* y, DX* dx, DY* dy,
+                  const Dim& dim, int size) {
+    dx->device(place) = (*x).abs().pow(this->porder) * (*x).sign() *
+                        dy->broadcast(dim) *
+                        (*y).pow(-this->porder).broadcast(dim);
+  }
+  T porder;
+};
 
 template <typename DeviceContext, typename T, typename AttrType = T>
 class PnormGradCUDAKernel : public framework::OpKernel<T> {
@@ -234,40 +170,27 @@ class PnormGradCUDAKernel : public framework::OpKernel<T> {
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* out_dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     T* dx = out_dx->mutable_data<T>(ctx.GetPlace());
-    const T* x = in_x->data<T>();
-    const T* x_norm = in_norm->data<T>();
-    const T* norm_dy = in_norm_dy->data<T>();
 
     auto xdim = in_x->dims();
     float porder = ctx.Attr<float>("porder");
-    T eps = static_cast<T>(ctx.Attr<float>("epsilon"));
     int axis = ctx.Attr<int>("axis");
-    bool asvector = ctx.Attr<bool>("asvector");
+    bool reduce_all = (in_norm->numel() == 1);
     if (axis < 0) axis = xdim.size() + axis;
-    int pre, n, post;
-    GetDims(xdim, axis, &pre, &n, &post, asvector);
+    const std::vector<int> dims = {axis};
 
-    auto& dev_ctx = ctx.cuda_device_context();
+    auto& cuda_ctx = ctx.template device_context<DeviceContext>();
 
-#ifdef __HIPCC__
-    const int block = 256;
-#else
-    const int block = 512;
-#endif
-
-    int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
-    const int max_blocks = std::max(max_threads / block, 1);
-    int grid = std::min(max_blocks, pre * post);
     if (porder == 0) {
       math::SetConstant<DeviceContext, T> set_zero;
-      auto& dev_ctx = ctx.template device_context<DeviceContext>();
-      set_zero(dev_ctx, out_dx, static_cast<T>(0));
+      set_zero(cuda_ctx, out_dx, static_cast<T>(0));
     } else if (porder == INFINITY || porder == -INFINITY) {
-      InfNormGradient<T, block><<<grid, block, 0, dev_ctx.stream()>>>(
-          x, x_norm, norm_dy, pre, n, post, dx);
+      AbsMaxAndMinGradFunctor<T> functor;
+      LaunchReduceGradKernel<DeviceContext, T, AbsMaxAndMinGradFunctor<T>>(
+          ctx, in_x, in_norm, in_norm_dy, out_dx, functor, dims, reduce_all);
     } else {
-      PnormGradient<T, block><<<grid, block, 0, dev_ctx.stream()>>>(
-          x, x_norm, norm_dy, porder, pre, n, post, eps, dx);
+      auto functor = PNormGradFunctor<T>(porder);
+      LaunchReduceGradKernel<DeviceContext, T, PNormGradFunctor<T>>(
+          ctx, in_x, in_norm, in_norm_dy, out_dx, functor, dims, reduce_all);
     }
   }
 };
@@ -278,7 +201,11 @@ class PnormGradCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 using CUDA = paddle::platform::CUDADeviceContext;
 
-REGISTER_OP_CUDA_KERNEL(p_norm, ops::PnormCUDAKernel<CUDA, float>,
+REGISTER_OP_CUDA_KERNEL(p_norm,
+                        ops::PnormCUDAKernel<CUDA, paddle::platform::float16>,
+                        ops::PnormCUDAKernel<CUDA, float>,
                         ops::PnormCUDAKernel<CUDA, double>);
-REGISTER_OP_CUDA_KERNEL(p_norm_grad, ops::PnormGradCUDAKernel<CUDA, float>,
-                        ops::PnormGradCUDAKernel<CUDA, double>);
+REGISTER_OP_CUDA_KERNEL(
+    p_norm_grad, ops::PnormGradCUDAKernel<CUDA, paddle::platform::float16>,
+    ops::PnormGradCUDAKernel<CUDA, float>,
+    ops::PnormGradCUDAKernel<CUDA, double>);

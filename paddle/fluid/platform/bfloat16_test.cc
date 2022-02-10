@@ -10,7 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/eigen_ext.h"
+#include "paddle/pten/kernels/funcs/eigen/extensions.h"
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "gtest/gtest.h"
@@ -132,7 +132,11 @@ TEST(bfloat16, floating) {
 
 TEST(bfloat16, print) {
   bfloat16 a = bfloat16(1.0f);
-  std::cout << a << std::endl;
+  std::cout << "a:" << a << std::endl;
+  std::stringstream ss1, ss2;
+  ss1 << a;
+  ss2 << 1.0f;
+  EXPECT_EQ(ss1.str(), ss2.str());
 }
 
 // CPU test

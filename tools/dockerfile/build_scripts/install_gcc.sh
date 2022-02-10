@@ -30,7 +30,7 @@ else
 fi
 
 if [ "$1" == "gcc82" ]; then
-  wget -q https://paddle-ci.gz.bcebos.com/gcc-8.2.0.tar.xz 
+  wget -q --no-proxy https://paddle-ci.gz.bcebos.com/gcc-8.2.0.tar.xz 
   tar -xvf gcc-8.2.0.tar.xz && \
   cd gcc-8.2.0 && \
   unset LIBRARY_PATH CPATH C_INCLUDE_PATH PKG_CONFIG_PATH CPLUS_INCLUDE_PATH INCLUDE && \
@@ -44,7 +44,7 @@ if [ "$1" == "gcc82" ]; then
   ln -s /usr/local/gcc-8.2/lib64/libstdc++.so.6 ${lib_so_6} && \
   cp /usr/local/gcc-8.2/lib64/libstdc++.so.6.0.25 ${lib_path}
 elif [ "$1" == "gcc54" ]; then
-  wget -q https://paddle-ci.gz.bcebos.com/gcc-5.4.0.tar.gz
+  wget -q --no-proxy https://paddle-ci.gz.bcebos.com/gcc-5.4.0.tar.gz
   tar -xzf gcc-5.4.0.tar.gz && \
   cd gcc-5.4.0 && \
   unset LIBRARY_PATH CPATH C_INCLUDE_PATH PKG_CONFIG_PATH CPLUS_INCLUDE_PATH INCLUDE && \

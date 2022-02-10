@@ -243,6 +243,7 @@ void LiteSubgraphPass::SetUpEngine(
   bool use_gpu = Get<bool>("use_gpu");
   bool enable_int8 = Get<bool>("enable_int8");
   bool use_xpu = Get<bool>("use_xpu");
+  int xpu_device_id = Get<int>("xpu_device_id");
   int xpu_l3_workspace_size = Get<int>("xpu_l3_workspace_size");
   int cpu_math_library_num_threads = Get<int>("cpu_math_library_num_threads");
   bool locked = Get<bool>("locked");
@@ -250,12 +251,32 @@ void LiteSubgraphPass::SetUpEngine(
   std::string autotune_file = Get<std::string>("autotune_file");
   std::string precision = Get<std::string>("precision");
   bool adaptive_seqlen = Get<bool>("adaptive_seqlen");
+  // NNAdapter Related
+  bool use_nnadapter = Get<bool>("use_nnadapter");
+  std::string nnadapter_model_cache_dir =
+      Get<std::string>("nnadapter_model_cache_dir");
+  auto nnadapter_device_names =
+      Get<std::vector<std::string>>("nnadapter_device_names");
+  std::string nnadapter_context_properties =
+      Get<std::string>("nnadapter_context_properties");
+  std::string nnadapter_subgraph_partition_config_buffer =
+      Get<std::string>("nnadapter_subgraph_partition_config_buffer");
+  std::string nnadapter_subgraph_partition_config_path =
+      Get<std::string>("nnadapter_subgraph_partition_config_path");
+  auto nnadapter_model_cache_buffer =
+      Get<std::vector<std::vector<char>>>("nnadapter_model_cache_buffer");
+  auto nnadapter_model_cache_token =
+      Get<std::vector<std::string>>("nnadapter_model_cache_token");
 
   lite_api::TargetType target_type;
   if (use_gpu) {
     target_type = TARGET(kCUDA);
   } else if (use_xpu) {
     target_type = TARGET(kXPU);
+  } else if (use_nnadapter) {
+#ifdef LITE_WITH_NNADAPTER
+    target_type = TARGET(kNNAdapter);
+#endif
   } else {
 #ifdef PADDLE_WITH_ARM
     target_type = TARGET(kARM);
@@ -287,11 +308,23 @@ void LiteSubgraphPass::SetUpEngine(
   };
   config.cpu_math_library_num_threads = cpu_math_library_num_threads;
   config.xpu_l3_workspace_size = xpu_l3_workspace_size;
+  config.device_id = xpu_device_id;
   config.locked = locked;
   config.autotune = autotune;
   config.autotune_file = autotune_file;
   config.precision = precision;
   config.adaptive_seqlen = adaptive_seqlen;
+  // NNAdapter Related
+  config.nnadapter_model_cache_dir = nnadapter_model_cache_dir;
+  config.nnadapter_device_names = nnadapter_device_names;
+  config.nnadapter_context_properties = nnadapter_context_properties;
+  config.nnadapter_subgraph_partition_config_buffer =
+      nnadapter_subgraph_partition_config_buffer;
+  config.nnadapter_subgraph_partition_config_path =
+      nnadapter_subgraph_partition_config_path;
+  config.nnadapter_model_cache_buffer = nnadapter_model_cache_buffer;
+  config.nnadapter_model_cache_token = nnadapter_model_cache_token;
+
   if (dump_model) {
     lite::StrToBinaryFile("./model.bin", config.model);
     lite::StrToBinaryFile("./param.bin", config.param);

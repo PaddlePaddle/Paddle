@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#include <functional>
 #include <future>  // NOLINT
 #include <memory>
 #include <mutex>  // NOLINT
@@ -18,26 +19,34 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/platform/device/gpu/gpu_types.h"
+#include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/pten/backends/gpu/gpu_decls.h"
+#include "paddle/pten/core/device_context.h"
+
 #include "paddle/fluid/memory/malloc.h"
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cuda_helper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_helper.h"
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/dynload/cusolver.h"
+#include "paddle/fluid/platform/dynload/cusparse.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/cuda_helper.h"  // NOLINT
+#include "paddle/fluid/platform/device/gpu/gpu_helper.h"  // NOLINT
 #include "paddle/fluid/platform/dynload/miopen.h"
 #include "paddle/fluid/platform/dynload/rocblas.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"  // NOLINT
 #if !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/dynload/rccl.h"
 #endif
-#include "paddle/fluid/platform/gpu_info.h"  // NOLINT
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"  // NOLINT
 #endif
 
 #if defined(PADDLE_WITH_XPU_BKCL)
@@ -45,7 +54,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
-#include "mkldnn.hpp"
+#include "dnnl.hpp"
 #include "paddle/fluid/framework/data_layout.h"
 #endif
 
@@ -58,7 +67,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/stream/cuda_stream.h"
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/platform/stream/npu_stream.h"
+#include "paddle/fluid/platform/device/npu/enforce_npu.h"
+#include "paddle/fluid/platform/device/npu/npu_stream.h"
 #endif
 #include "unsupported/Eigen/CXX11/Tensor"
 
@@ -68,13 +78,14 @@ struct GpuDevice;
 }  // namespace Eigen
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/xpu/xpu_header.h"
-#include "paddle/fluid/platform/xpu/xpu_info.h"
+#include "paddle/fluid/platform/device/xpu/xpu_header.h"
+#include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#include "paddle/pten/backends/xpu/xpu_context.h"
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "acl/acl.h"
-#include "paddle/fluid/platform/npu_info.h"
+#include "paddle/fluid/platform/device/npu/npu_info.h"
 #endif
 
 namespace paddle {
@@ -97,8 +108,10 @@ enum DeviceType {
   CUDA = 1,
   XPU = 2,
   NPU = 3,
+  IPU = 4,
+  MLU = 5,
 
-  MAX_DEVICE_TYPES = 4,
+  MAX_DEVICE_TYPES = 6,
 };
 
 DeviceType Place2DeviceType(const platform::Place& place);
@@ -107,27 +120,18 @@ constexpr DeviceType kCPU = DeviceType::CPU;
 constexpr DeviceType kCUDA = DeviceType::CUDA;
 constexpr DeviceType kXPU = DeviceType::XPU;
 constexpr DeviceType kNPU = DeviceType::NPU;
+constexpr DeviceType kIPU = DeviceType::IPU;
+constexpr DeviceType kMLU = DeviceType::MLU;
 
-class DeviceContext {
- public:
-  virtual ~DeviceContext() PADDLE_MAY_THROW {}
-  virtual Place GetPlace() const = 0;
+using DeviceContext = pten::DeviceContext;
 
-  virtual void Wait() const {}
-};
-
-class CPUDeviceContext : public DeviceContext {
+// using CPUDeviceContext = pten::CPUContext;
+// TODO(wilber): The place constructor is used in many places, it is more
+// difficult to use CPUDeviceContext = pten::CPUContext directly.
+class CPUDeviceContext : public pten::CPUContext {
  public:
   CPUDeviceContext();
   explicit CPUDeviceContext(CPUPlace place);
-
-  Eigen::DefaultDevice* eigen_device() const;
-
-  Place GetPlace() const override;
-
- private:
-  CPUPlace place_;
-  std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
 };
 
 template <typename Place>
@@ -138,41 +142,42 @@ struct DefaultDeviceContextType<platform::CPUPlace> {
   using TYPE = CPUDeviceContext;
 };
 
+// Graphcore IPU
+#ifdef PADDLE_WITH_IPU
+class IPUDeviceContext : public DeviceContext {
+ public:
+  IPUDeviceContext() = delete;
+  explicit IPUDeviceContext(IPUPlace place);
+  virtual ~IPUDeviceContext();
+  Eigen::DefaultDevice* eigen_device() const { return nullptr; }
+  const Place& GetPlace() const override;
+  /*! \brief  Wait for all operations completion in the stream. */
+  void Wait() const override;
+
+ private:
+  IPUPlace place_;
+};
+template <>
+struct DefaultDeviceContextType<platform::IPUPlace> {
+  using TYPE = IPUDeviceContext;
+};
+#endif
+
+#ifdef PADDLE_WITH_MLU
+class MLUDeviceContext;
+
+template <>
+struct DefaultDeviceContextType<platform::MLUPlace>;
+#endif
+
 #ifdef PADDLE_WITH_XPU
 namespace xpu = baidu::xpu::api;
-class XPUDeviceContext : public DeviceContext {
+class XPUDeviceContext : public pten::XPUContext {
  public:
   XPUDeviceContext();
   explicit XPUDeviceContext(XPUPlace place);
   virtual ~XPUDeviceContext();
   Eigen::DefaultDevice* eigen_device() const { return nullptr; }
-  XPUVersion xpu_version() const { return xpu_version_; }
-  Place GetPlace() const override;
-  xpu::Context* x_context() const;
-
-  /*! \brief  Wait for all operations completion in the stream. */
-  void Wait() const override;
-
-#ifdef PADDLE_WITH_XPU_BKCL
-  /*! \brief  Return bkcl context. */
-  BKCLContext_t bkcl_context() const { return bkcl_context_; }
-
-  /*! \brief  Set bkcl context. */
-  void set_bkcl_context(BKCLContext_t context) { bkcl_context_ = context; }
-#endif
-
- private:
-  XPUPlace place_;
-  XPUVersion xpu_version_;
-  xpu::Context* context_;
-#ifdef PADDLE_WITH_XPU_BKCL
-  BKCLContext_t bkcl_context_;
-#endif
-
-  // Need to be the same with other DeviceContext,
-  // Eventhough eigen_device_ is not used in XPU
-  std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
-  DISABLE_COPY_AND_ASSIGN(XPUDeviceContext);
 };
 
 template <>
@@ -187,7 +192,7 @@ class NPUDeviceContext : public DeviceContext {
   explicit NPUDeviceContext(NPUPlace place);
   virtual ~NPUDeviceContext();
   Eigen::DefaultDevice* eigen_device() const { return nullptr; }
-  Place GetPlace() const override;
+  const Place& GetPlace() const override;
   aclrtContext context() const;
 
   /*! \brief  Wait for all operations completion in the stream. */
@@ -247,7 +252,7 @@ class NPUPinnedDeviceContext : public DeviceContext {
   NPUPinnedDeviceContext();
   explicit NPUPinnedDeviceContext(NPUPinnedPlace place);
 
-  Place GetPlace() const override;
+  const Place& GetPlace() const override;
 
   Eigen::DefaultDevice* eigen_device() const;
 
@@ -272,7 +277,8 @@ class CUDAContext {
   CUDAContext() = default;
   explicit CUDAContext(
       const CUDAPlace& place,
-      const stream::Priority& priority = stream::Priority::kNormal);
+      const stream::Priority& priority = stream::Priority::kNormal,
+      const stream::StreamFlag& flag = stream::StreamFlag::kDefaultFlag);
 
   ~CUDAContext();
 
@@ -287,6 +293,14 @@ class CUDAContext {
   }
 
   const std::unique_ptr<stream::CUDAStream>& Stream() const { return stream_; }
+
+  stream::CUDAStream* SetStream(stream::CUDAStream* new_stream_ptr) {
+    auto* old_stream_ptr = stream_.release();
+    stream_.reset(new_stream_ptr);
+    return old_stream_ptr;
+  }
+
+  void SetStream(gpuStream_t stream);
 
   const gpuStream_t& RawStream() { return stream_->raw_stream(); }
 
@@ -310,27 +324,41 @@ class CUDAContext {
     return cublas_tensor_core_handle_;
   }
 
+#ifndef PADDLE_WITH_HIP
+  const std::unique_ptr<CusparseHandleHolder>& CusparseHandle() const {
+    return cusparse_handle_;
+  }
+#endif
+
   /*! \brief  Call cublas function safely. */
-  template <typename Callback>
-  inline void CublasCall(Callback&& callback) const {
+  inline void CublasCall(
+      const std::function<void(blasHandle_t)>& callback) const {
     if (cublas_tf32_tensor_core_handle_) {
-      cublas_tf32_tensor_core_handle_->Call(std::forward<Callback>(callback));
+      cublas_tf32_tensor_core_handle_->Call(callback);
     } else {
-      cublas_handle_->Call(std::forward<Callback>(callback));
+      cublas_handle_->Call(callback);
     }
   }
+
+#ifndef PADDLE_WITH_HIP
+  /*! \brief  Call cusparse function safely. */
+  inline void CusparseCall(
+      const std::function<void(pten::sparseHandle_t)>& callback) const {
+    cusparse_handle_->Call(callback);
+  }
+#endif
 
   /*! \brief  Check whether tensor core is supported */
   bool tensor_core_available() const;
 
   /*! \brief  Call cublas function with Tensor Core safely. If
       Tensor Core is not available, use DEFAULT_MATH instead. */
-  template <typename Callback>
-  inline void TensorCoreCublasCallIfAvailable(Callback&& callback) const {
+  inline void TensorCoreCublasCallIfAvailable(
+      const std::function<void(blasHandle_t)>& callback) const {
     if (cublas_tensor_core_handle_) {
-      cublas_tensor_core_handle_->Call(std::forward<Callback>(callback));
+      cublas_tensor_core_handle_->Call(callback);
     } else {
-      cublas_handle_->Call(std::forward<Callback>(callback));
+      cublas_handle_->Call(callback);
     }
   }
 
@@ -358,11 +386,17 @@ class CUDAContext {
   }
 #endif
 
+#ifndef PADDLE_WITH_HIP
+  void InitCuSparseContext() {
+    cusparse_handle_.reset(new CusparseHandleHolder(RawStream()));
+  }
+#endif
+
   void InitCuDNNContext() {
     if (dynload::HasCUDNN()) {
 #ifdef PADDLE_WITH_HIP
       size_t miopen_major, miopen_minor, miopen_patch;
-      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenGetVersion(
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenGetVersion(
           &miopen_major, &miopen_minor, &miopen_patch));
       auto local_miopen_version =
           (miopen_major * 1000 + miopen_minor * 10 + miopen_patch) / 10;
@@ -379,8 +413,8 @@ class CUDAContext {
             << "Please recompile or reinstall Paddle with compatible MIOPEN "
                "version.";
       }
-      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenCreate(&cudnn_handle_));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenCreate(&cudnn_handle_));
+      PADDLE_ENFORCE_GPU_SUCCESS(
           dynload::miopenSetStream(cudnn_handle_, RawStream()));
 #else
       auto local_cudnn_version = dynload::cudnnGetVersion() / 100;
@@ -416,9 +450,9 @@ class CUDAContext {
   void DestoryCuDNNContext() {
     if (cudnn_handle_) {
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenDestroy(cudnn_handle_));
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenDestroy(cudnn_handle_));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroy(cudnn_handle_));
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnDestroy(cudnn_handle_));
 #endif
     }
     cudnn_handle_ = nullptr;
@@ -431,9 +465,13 @@ class CUDAContext {
   }
 
 #ifndef PADDLE_WITH_HIP
+  void DestoryCuSparseContext() { cusparse_handle_.reset(); }
+#endif
+
+#ifndef PADDLE_WITH_HIP
   void DestoryCuSolverContext() {
     if (cusolver_dn_handle_) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           dynload::cusolverDnDestroy(cusolver_dn_handle_));
     }
   }
@@ -453,11 +491,12 @@ class CUDAContext {
   std::unique_ptr<CublasHandleHolder> cublas_tf32_tensor_core_handle_;
 #ifndef PADDLE_WITH_HIP
   cusolverDnHandle_t cusolver_dn_handle_;
+  std::unique_ptr<CusparseHandleHolder> cusparse_handle_;
 #endif
   DISABLE_COPY_AND_ASSIGN(CUDAContext);
 };
 
-class CUDADeviceContext : public DeviceContext {
+class CUDADeviceContext : public pten::GPUContext {
  public:
   explicit CUDADeviceContext(CUDAPlace place);
   virtual ~CUDADeviceContext();
@@ -465,41 +504,40 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Wait for all operations completion in the stream. */
   void Wait() const override;
 
-  /*! \brief  Return place in the device context. */
-  Place GetPlace() const override;
-
-  /*! \brief  Return compute capability in the device context. */
-  int GetComputeCapability() const;
-
-  /*! \brief  Return the max physical thread count in the device context */
-  int GetMaxPhysicalThreadCount() const;
-
-  /*! \brief  Return the SM count in the device context */
-  int GetSMCount() const;
-
-  /*! \brief  Return the Max thread num of block in the device context */
-  int GetMaxThreadsPerBlock() const;
-
-  /*! \brief  Return the max grid dim size in the device context */
-  dim3 GetCUDAMaxGridDimSize() const;
-
   /*! \brief  Return eigen device in the device context. */
   Eigen::GpuDevice* eigen_device() const;
 
   /*! \brief  Call cublas function safely. */
-  template <typename Callback>
-  inline void CublasCall(Callback&& callback) const {
+  inline void CublasCall(
+      const std::function<void(blasHandle_t)>& callback) const {
+    if (!thread_ctx_.count(this)) {
+      pten::GPUContext::CublasCall(callback);
+      return;
+    }
     return context()->CublasCall(callback);
   }
 
-  /*! \brief  Check whether tensor core is supported */
-  bool tensor_core_available() const;
+#ifndef PADDLE_WITH_HIP
+  /*! \brief  Call cusparse function safely. */
+  inline void CusparseCall(
+      const std::function<void(pten::sparseHandle_t)>& callback) const {
+    if (!thread_ctx_.count(this)) {
+      pten::GPUContext::CusparseCall(callback);
+      return;
+    }
+    context()->CusparseCall(callback);
+  }
+#endif
 
   /*! \brief  Call cublas function with Tensor Core safely. If
       Tensor Core is not available, use DEFAULT_MATH instead. */
-  template <typename Callback>
-  inline void TensorCoreCublasCallIfAvailable(Callback&& callback) const {
-    return context()->TensorCoreCublasCallIfAvailable(callback);
+  inline void TensorCoreCublasCallIfAvailable(
+      const std::function<void(blasHandle_t)>& callback) const {
+    if (!thread_ctx_.count(this)) {
+      pten::GPUContext::TensorCoreCublasCallIfAvailable(callback);
+      return;
+    }
+    context()->TensorCoreCublasCallIfAvailable(callback);
   }
 
 /*! \brief  Return cudnn  handle in the device context. */
@@ -514,6 +552,11 @@ class CUDADeviceContext : public DeviceContext {
   rocblas_handle cublas_handle() const;
 #else
   cublasHandle_t cublas_handle() const;
+  cusparseHandle_t cusparse_handle() const;
+#endif
+
+#ifndef PADDLE_WITH_HIP
+  cusolverDnHandle_t cusolver_dn_handle() const;
 #endif
 
   /*! \brief  Return a cudnn workspace handle to call multiple cudnn
@@ -523,57 +566,35 @@ class CUDADeviceContext : public DeviceContext {
    *  workspace. Once the handle is destructed, the lock would be released.
    *  CudnnWorkspaceHandle is an RAII object to implement thread-safe
    *  sequential cudnn function calls. */
-  CudnnWorkspaceHandle cudnn_workspace_handle() const;
-
-#ifndef PADDLE_WITH_HIP
-  cusolverDnHandle_t cusolver_dn_handle() const;
-#endif
+  pten::DnnWorkspaceHandle cudnn_workspace_handle() const;
 
   /*! \brief  Return cuda stream in the device context. */
   gpuStream_t stream() const;
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  /*! \brief  Return nccl communicators. */
-  ncclComm_t nccl_comm() const { return nccl_comm_; }
+  void RecordEvent(gpuEvent_t ev, const std::function<void()>& callback) const;
 
-  /*! \brief  Set nccl communicators. */
-  void set_nccl_comm(ncclComm_t comm) { nccl_comm_ = comm; }
-#endif
+  void AddStreamCallback(const std::function<void()>& callback) const;
 
-  template <typename Callback>
-  void RecordEvent(gpuEvent_t ev, Callback callback) const {
-    return context()->Stream()->RecordEvent(ev, callback);
-  }
-
-  template <typename Callback>
-  void AddStreamCallback(Callback&& callback) const {
-    return context()->Stream()->AddCallback(callback);
-  }
-
-  void WaitStreamCallback() const {
-    return context()->Stream()->WaitCallback();
-  }
-
-  void ResetDefaultContext(const stream::Priority& priority) {
-    default_ctx_.reset(new CUDAContext(place_, priority));
-  }
+  void WaitStreamCallback() const;
 
   void ResetThreadContext(const stream::Priority& priority) {
     std::lock_guard<std::mutex> guard(ctx_mtx_);
-    thread_ctx_[this].reset(new CUDAContext(place_, priority));
+    thread_ctx_[this].reset(new CUDAContext(this->GetPlace(), priority));
   }
 
-  std::shared_ptr<CUDAContext> context() const {
-    if (!thread_ctx_.count(this)) {
-      return default_ctx_;
-    }
-    return thread_ctx_.at(this);
+  std::shared_ptr<CUDAContext> context() const;
+
+  // Note: Can only be used under thread_local semantics.
+  void SetThreadLocalStream(const gpuStream_t stream) {
+    thread_ctx_.at(this)->SetStream(stream);
   }
+
+  // NOTE: Just for compatibility with the past, please delete if there is an
+  // elegant way.
+  stream::CUDAStream* GetCudaStream() const;
+  stream::CUDAStream* SetCudaStream(stream::CUDAStream*);
 
  private:
-  CUDAPlace place_;
-  std::shared_ptr<CUDAContext> default_ctx_;
-
   // The thread_local static variable will be released before the
   // global static variable, so avoid using it in dtor.
   static thread_local std::unordered_map<const CUDADeviceContext*,
@@ -583,22 +604,10 @@ class CUDADeviceContext : public DeviceContext {
 
   mutable std::mutex cudnn_handle_mtx_;
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  // NCCL communicator (single process version) for NCCL collective operations.
-  // NCCL collective operations provides fast collectives over multiple GPUs
-  // both within and across nodes.
-  // But, this collectives is used for collectives over multiple GPUs within
-  // nodes.
-  ncclComm_t nccl_comm_{nullptr};
-#endif
-
-  int compute_capability_;
-  int runtime_version_;
-  int driver_version_;
-  int multi_process_;
-  int max_threads_per_mp_;
-  int max_threads_per_block_;
-  dim3 max_grid_dim_size_;
+  // NOTE: Just for compatibility with the past, please delete if there is an
+  // elegant way.
+  std::unique_ptr<stream::CUDAStream> cuda_stream_;
+  std::unique_ptr<pten::DnnWorkspaceHandle> workspace_{nullptr};
 
   DISABLE_COPY_AND_ASSIGN(CUDADeviceContext);
 };
@@ -663,7 +672,7 @@ class CUDAPinnedDeviceContext : public DeviceContext {
   CUDAPinnedDeviceContext();
   explicit CUDAPinnedDeviceContext(CUDAPinnedPlace place);
 
-  Place GetPlace() const override;
+  const Place& GetPlace() const override;
 
   Eigen::DefaultDevice* eigen_device() const;
 
@@ -698,8 +707,8 @@ class MKLDNNDeviceContextThreadLocals {
     // know for converting MKL-DNN Tensor to non MKL-DNN
     paddle::framework::DataLayout cur_paddle_data_layout;
     // MKL-DNN stream used for execution of primitives (per-thread)
-    mkldnn::engine cur_engine;
-    mkldnn::stream cur_stream;
+    dnnl::engine cur_engine;
+    dnnl::stream cur_stream;
     std::string key_suffix;  // Key identifying current Executor
     bool key_attach_thread_id = true;
     void* exec_ptr_ = nullptr;
@@ -713,8 +722,8 @@ class MKLDNNDeviceContextThreadLocals {
     void set_cur_paddle_data_layout(framework::DataLayout dl);
     framework::DataLayout get_cur_paddle_data_layout(void);
     void log_lib_version(void);
-    const mkldnn::engine& get_engine(void);
-    mkldnn::stream& get_stream(void);
+    const dnnl::engine& get_engine(void);
+    dnnl::stream& get_stream(void);
     void set_key_suffix(const std::string& suffix) { key_suffix = suffix; }
     const std::string& get_key_suffix(void) const { return key_suffix; }
     void disable_tid_in_key(void) { key_attach_thread_id = false; }
@@ -768,7 +777,7 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   explicit MKLDNNDeviceContext(CPUPlace place);
 
   /* \brief  Get the active engine */
-  const mkldnn::engine& GetEngine() const { return tls().get_engine(); }
+  const dnnl::engine& GetEngine() const { return tls().get_engine(); }
 
   // Register object to currently used executor's map
   void LinkEntryWithExecutor(BlobPtr_t<KeyBlob>, KeyBlob::iterator) const;

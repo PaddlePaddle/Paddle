@@ -20,7 +20,7 @@ import paddle.fluid as fluid
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
-class TestModelParallelLayer(TestMultipleGpus):
+class TestDataParallelLayer(TestMultipleGpus):
     def test_parallel_dygraph_dataparallel_no_sync(self):
         self.run_mnist_2gpu('parallel_dygraph_no_sync_gradient_check.py')
 

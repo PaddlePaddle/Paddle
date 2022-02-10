@@ -20,7 +20,7 @@ import threading, time
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.contrib import sparsity
+from paddle.static import sparsity
 from paddle.fluid.contrib.sparsity.asp import ASPHelper
 import numpy as np
 
@@ -129,7 +129,7 @@ class TestASPHelper(unittest.TestCase):
         feeder = fluid.DataFeeder(feed_list=[self.img, self.label], place=place)
 
         exe.run(self.startup_program)
-        sparsity.prune_model(place, self.main_program)
+        sparsity.prune_model(self.main_program)
 
         data = (np.random.randn(64, 3, 32, 32), np.random.randint(
             10, size=(64, 1)))
@@ -139,7 +139,9 @@ class TestASPHelper(unittest.TestCase):
             if ASPHelper._is_supported_layer(self.main_program, param.name):
                 mat = np.array(fluid.global_scope().find_var(param.name)
                                .get_tensor())
-                self.assertTrue(sparsity.check_sparsity(mat.T, n=2, m=4))
+                self.assertTrue(
+                    paddle.fluid.contrib.sparsity.check_sparsity(
+                        mat.T, n=2, m=4))
 
     def test_asp_training_with_amp(self):
         if core.is_compiled_with_cuda():
@@ -155,7 +157,7 @@ class TestASPHelper(unittest.TestCase):
                 feed_list=[self.img, self.label], place=place)
 
             exe.run(self.startup_program)
-            sparsity.prune_model(place, self.main_program)
+            sparsity.prune_model(self.main_program)
 
             data = (np.random.randn(64, 3, 32, 32), np.random.randint(
                 10, size=(64, 1)))
@@ -165,7 +167,9 @@ class TestASPHelper(unittest.TestCase):
                 if ASPHelper._is_supported_layer(self.main_program, param.name):
                     mat = np.array(fluid.global_scope().find_var(param.name)
                                    .get_tensor())
-                    self.assertTrue(sparsity.check_sparsity(mat.T, n=2, m=4))
+                    self.assertTrue(
+                        paddle.fluid.contrib.sparsity.check_sparsity(
+                            mat.T, n=2, m=4))
 
     def __get_param_names(self, params):
         param_names = []

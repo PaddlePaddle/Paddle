@@ -12,11 +12,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/tile_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
-template <typename DeviceContext, typename T>
+
+using Tensor = framework::Tensor;
+using NPUDeviceContext = platform::NPUDeviceContext;
+
+template <typename T>
 class TileNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -92,18 +96,21 @@ class TileNPUKernel : public framework::OpKernel<T> {
 
     std::vector<int> temp(repeat_times.size(), 1);
     if (repeat_times == temp) {
-      framework::TensorCopy(
-          *in0, context.GetPlace(),
-          context.template device_context<platform::DeviceContext>(), out0);
+      framework::TensorCopy(*in0, context.GetPlace(),
+                            context.template device_context<NPUDeviceContext>(),
+                            out0);
       return;
     }
 
-    const auto& runner =
-        NpuOpRunner("TileD", {*in0}, {*out0}, {{"multiples", repeat_times}});
-    auto stream =
-        context.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    runner.Run(stream);
+    // const auto& runner =
+    //     NpuOpRunner("TileD", {*in0}, {*out0}, {{"multiples", repeat_times}});
+    auto stream = context.template device_context<NPUDeviceContext>().stream();
+    NpuOpRunner runner;
+    runner.SetType("Tile")
+        .AddInput(*in0)
+        .AddInput(std::move(repeat_times))
+        .AddOutput(*out0)
+        .Run(stream);
   }
 };
 
@@ -111,8 +118,9 @@ class TileNPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_NPU_KERNEL(
-    tile, ops::TileNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::TileNPUKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::TileNPUKernel<paddle::platform::NPUDeviceContext,
-                       paddle::platform::float16>);
+REGISTER_OP_NPU_KERNEL(tile, ops::TileNPUKernel<float>, ops::TileNPUKernel<int>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+                       ops::TileNPUKernel<int64_t>,
+#endif
+                       ops::TileNPUKernel<bool>,
+                       ops::TileNPUKernel<paddle::platform::float16>);

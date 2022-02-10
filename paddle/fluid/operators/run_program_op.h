@@ -46,7 +46,7 @@ using ProgramDesc = framework::ProgramDesc;
 
 using Variable = framework::Variable;
 using LoDTensor = framework::LoDTensor;
-using SelectedRows = framework::SelectedRows;
+using SelectedRows = pten::SelectedRows;
 
 namespace details {
 
@@ -86,21 +86,21 @@ static void CheckOutputVarStatus(const Variable &src_var,
                           "RunProgram(Grad)Op's internal "
                           "scope is not initialized.",
                           var_name));
-  } else if (dst_var.IsType<SelectedRows>()) {
+  } else if (dst_var.IsType<pten::SelectedRows>()) {
     PADDLE_ENFORCE_EQ(
-        src_var.IsType<SelectedRows>(), true,
+        src_var.IsType<pten::SelectedRows>(), true,
         platform::errors::InvalidArgument(
             "The output variable %s get from "
             "RunProgram(Grad)Op's internal scope holds "
             "wrong type. Expect type is SelectedRows, but receive type is %s.",
             var_name,
             platform::demangle(framework::ToTypeName(src_var.Type()))));
-    PADDLE_ENFORCE_EQ(src_var.Get<SelectedRows>().value().IsInitialized(), true,
-                      platform::errors::InvalidArgument(
-                          "The tensor in output variable %s get from "
-                          "RunProgram(Grad)Op's "
-                          "internal scope is not initialized.",
-                          var_name));
+    PADDLE_ENFORCE_EQ(src_var.Get<pten::SelectedRows>().value().IsInitialized(),
+                      true, platform::errors::InvalidArgument(
+                                "The tensor in output variable %s get from "
+                                "RunProgram(Grad)Op's "
+                                "internal scope is not initialized.",
+                                var_name));
 
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -118,12 +118,12 @@ static void VariableShare(const Variable &src_var, Variable *dst_var) {
     auto *lod_tensor = dst_var->GetMutable<LoDTensor>();
     lod_tensor->ShareDataWith(src_var.Get<LoDTensor>());
     lod_tensor->set_lod(src_var.Get<LoDTensor>().lod());
-  } else if (src_var.IsType<SelectedRows>()) {
-    auto *selected_rows = dst_var->GetMutable<SelectedRows>();
+  } else if (src_var.IsType<pten::SelectedRows>()) {
+    auto *selected_rows = dst_var->GetMutable<pten::SelectedRows>();
     selected_rows->mutable_value()->ShareDataWith(
-        src_var.Get<SelectedRows>().value());
-    selected_rows->set_rows(src_var.Get<SelectedRows>().rows());
-    selected_rows->set_height(src_var.Get<SelectedRows>().height());
+        src_var.Get<pten::SelectedRows>().value());
+    selected_rows->set_rows(src_var.Get<pten::SelectedRows>().rows());
+    selected_rows->set_height(src_var.Get<pten::SelectedRows>().height());
   }
 }
 
@@ -142,10 +142,15 @@ static void ShareVarsIntoScope(const std::vector<Variable *> &vars,
 
 static void ShareVarsFromScope(const std::vector<Variable *> &vars,
                                const std::vector<std::string> &var_names,
+                               const BlockDesc &global_block,
                                framework::Scope *scope) {
   for (size_t i = 0; i < vars.size(); ++i) {
+    // NOTE: In case of setting out_tmp.stop_gradient = True in model code, all
+    // parameters before generating out_tmp have no @GRAD, it will raise error
+    // because we can't findthem in scope. So we skip sharing these vars or
+    // var@GRAD if they don't appear in global block.
     if (var_names[i] == framework::kEmptyVarName ||
-        var_names[i] == "Fake_var") {
+        var_names[i] == "Fake_var" || !global_block.HasVar(var_names[i])) {
       VLOG(2) << "find variable name is " << var_names[i] << ", skip it!";
       continue;
     }
@@ -214,8 +219,10 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     details::ShareVarsIntoScope(input_vars, input_var_names, &scope);
     details::ShareVarsIntoScope(param_vars, param_names, &scope);
 
+    auto *global_block = ctx.Attr<BlockDesc *>("global_block");
+
     if (end_op_index > start_op_index) {
-      auto *program = ctx.Attr<BlockDesc *>("global_block")->Program();
+      auto *program = global_block->Program();
       auto cache_info = framework::GetExecutorInfoFromCache(
           *program, ctx.GetPlace(), start_op_index, end_op_index,
           /*is_grad=*/false, program_id, &scope);
@@ -240,8 +247,10 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
       parallel_executor->RunWithoutFetch(skip_eager_delete_vars);
     }
     // Step 4. Get Output
-    details::ShareVarsFromScope(output_vars, output_var_names, &scope);
-    details::ShareVarsFromScope(dout_vars, dout_var_names, &scope);
+    details::ShareVarsFromScope(output_vars, output_var_names, *global_block,
+                                &scope);
+    details::ShareVarsFromScope(dout_vars, dout_var_names, *global_block,
+                                &scope);
 
     // Debug info: scope info when run end
     VLOG(3) << framework::GenScopeTreeDebugInfo(out_scope_vec->front());
@@ -252,7 +261,7 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     VLOG(2) << "The number of sub scopes after forward: "
             << out_scope_vec->front()->kids().size();
 #ifdef PADDLE_WITH_MKLDNN
-    if (FLAGS_use_mkldnn) DontClearMKLDNNCache(ctx.GetPlace());
+    if (FLAGS_use_mkldnn) platform::DontClearMKLDNNCache(ctx.GetPlace());
 #endif
   }
 };
@@ -307,10 +316,11 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
                           "least one sub scope."));
 
     auto &scope = *(global_inner_scope->kids().front());
+    auto *global_block = ctx.Attr<BlockDesc *>("global_block");
 
     if (end_op_index > start_op_index) {
       // Step 2. prepare executor and scope
-      auto *program = ctx.Attr<BlockDesc *>("global_block")->Program();
+      auto *program = global_block->Program();
       auto cache_info = framework::GetExecutorInfoFromCache(
           *program, ctx.GetPlace(), start_op_index, end_op_index,
           /*is_grad*/ true, program_id, &scope);
@@ -341,8 +351,10 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
     }
 
     // Step 4. get outputs
-    details::ShareVarsFromScope(input_grad_vars, input_grad_var_names, &scope);
-    details::ShareVarsFromScope(param_grad_vars, param_grad_names, &scope);
+    details::ShareVarsFromScope(input_grad_vars, input_grad_var_names,
+                                *global_block, &scope);
+    details::ShareVarsFromScope(param_grad_vars, param_grad_names,
+                                *global_block, &scope);
 
     // Step5. drop current scope
     global_inner_scope->DeleteScope(&scope);

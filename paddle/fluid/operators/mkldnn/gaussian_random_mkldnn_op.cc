@@ -43,7 +43,7 @@ class GaussianMKLDNNKernel : public paddle::framework::OpKernel<T> {
     }
 
     tensor->set_layout(DataLayout::kMKLDNN);
-    tensor->set_format(mkldnn::memory::format_tag::oihw);
+    tensor->set_format(dnnl::memory::format_tag::oihw);
   }
 };
 }  // namespace operators

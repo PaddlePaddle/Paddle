@@ -1,10 +1,10 @@
-#  Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#    http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,30 +20,31 @@ import sys
 sys.path.append("..")
 from op_test import OpTest
 import paddle
+import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
 
 
 class BaseTestCase(OpTest):
-    def initTestCase(self):
-        self.op_type = 'arg_max'
-        self.dims = (3, 4)
-        self.dtype = 'float32'
-        self.axis = 1
-
-    def setUp(self):
-        self.initTestCase()
+    def set_npu(self):
         self.__class__.use_npu = True
         self.place = paddle.NPUPlace(0)
-        np.random.seed(2021)
-        self.x = (np.random.random(self.dims)).astype(self.dtype)
+
+    def initTestCase(self):
+        self.op_type = 'arg_max'
+        self.dims = (3, 4, 5)
+        self.dtype = 'float32'
+        self.axis = 0
+
+    def setUp(self):
+        self.set_npu()
+        self.initTestCase()
+        self.x = (1000 * np.random.random(self.dims)).astype(self.dtype)
         self.inputs = {'X': self.x}
         self.attrs = {'axis': self.axis}
-        if self.op_type == "arg_min":
-            self.outputs = {'Out': np.argmin(self.x, axis=self.axis)}
-        else:
-            self.outputs = {'Out': np.argmax(self.x, axis=self.axis)}
+        self.outputs = {'Out': np.argmax(self.x, axis=self.axis)}
 
     def test_check_output(self):
         self.check_output_with_place(self.place)
@@ -209,6 +210,64 @@ class TestArgMaxFloat32Case10(BaseTestCase):
         self.dims = (3, )
         self.dtype = 'float32'
         self.axis = 0
+
+
+class BaseTestComplex1_1(OpTest):
+    def set_npu(self):
+        self.__class__.use_npu = True
+        self.place = paddle.NPUPlace(0)
+
+    def initTestCase(self):
+        self.op_type = 'arg_max'
+        self.dims = (4, 5, 6)
+        self.dtype = 'float32'
+        self.axis = 2
+
+    def setUp(self):
+        self.set_npu()
+        self.initTestCase()
+        self.x = (np.random.random(self.dims)).astype(self.dtype)
+        self.inputs = {'X': self.x}
+        self.attrs = {
+            'axis': self.axis,
+            'dtype': int(core.VarDesc.VarType.INT32)
+        }
+        self.outputs = {
+            'Out': np.argmax(
+                self.x, axis=self.axis).astype("int32")
+        }
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+
+class BaseTestComplex1_2(OpTest):
+    def set_npu(self):
+        self.__class__.use_npu = True
+        self.place = paddle.NPUPlace(0)
+
+    def initTestCase(self):
+        self.op_type = 'arg_max'
+        self.dims = (4, 5, 6)
+        self.dtype = 'float16'
+        self.axis = 2
+
+    def setUp(self):
+        self.set_npu()
+        self.initTestCase()
+        self.x = (np.random.random(self.dims)).astype(self.dtype)
+        self.inputs = {'X': self.x}
+        self.attrs = {
+            'axis': self.axis,
+            'dtype': int(core.VarDesc.VarType.INT32)
+        }
+        self.outputs = {
+            'Out': np.argmax(
+                self.x, axis=self.axis).astype("int32")
+        }
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
 
 
 class TestArgMaxAPI(unittest.TestCase):

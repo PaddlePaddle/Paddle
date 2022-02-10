@@ -15,43 +15,19 @@ limitations under the License. */
 #include <thrust/fill.h>
 #include "paddle/fluid/operators/controlflow/compare_all_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
-#include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
-
-namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename T>
-struct IdentityFunctor {
-  HOSTDEVICE explicit inline IdentityFunctor() {}
-  HOSTDEVICE inline T operator()(const T& x) const { return x; }
-};
-
 struct BitwiseAdd {
   // Bitwise add operator, returns <tt>a + b</tt>
-  template <typename T>
+  inline T initial() { return static_cast<T>(true); }
+
   __host__ __device__ __forceinline__ T operator()(const T& a,
                                                    const T& b) const {
     return a & b;
-  }
-};
-
-template <typename T, typename Enable = void>
-struct CudaEqualReduceFunctor {
-  using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T args[]) const {
-    return (args[0] == args[1]);
-  }
-};
-
-template <typename T>
-struct CudaEqualReduceFunctor<
-    T, typename std::enable_if<std::is_floating_point<T>::value>::type> {
-  using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T args[]) const {
-    return fabs(static_cast<double>(args[0] - args[1])) < 1e-8;
   }
 };
 
@@ -79,23 +55,26 @@ class CompareReduceOpKernel
           context.template device_context<platform::CUDADeviceContext>();
       std::vector<const framework::Tensor*> ins = {x, y};
       std::vector<framework::Tensor*> outs = {&tmp};
-      LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, T, bool>(
-          cuda_ctx, ins, &outs, Functor());
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<
+          ElementwiseType::kBinary, T, bool>(cuda_ctx, ins, &outs, Functor());
 
       // Reduce by 'bitwise and' operator
       std::vector<int> reduce_dims;
       reduce_dims.resize(tmp.dims().size());
       for (int i = 0; i < reduce_dims.size(); ++i) reduce_dims[i] = i;
       auto stream = context.cuda_device_context().stream();
-      TensorReduce<bool, bool, BitwiseAdd, IdentityFunctor<bool>>(
-          tmp, z, reduce_dims, true, BitwiseAdd(), IdentityFunctor<bool>(),
-          stream);
+      TensorReduceImpl<bool, bool, BitwiseAdd, kps::IdentityFunctor<bool>>(
+          context.cuda_device_context(), tmp, z, kps::IdentityFunctor<bool>(),
+          reduce_dims, stream);
     }
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
+
+namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
 #define REGISTER_COMPARE_REDUCE_CUDA_KERNEL(op_type, functor)                  \
   REGISTER_OP_CUDA_KERNEL(                                                     \
@@ -109,5 +88,5 @@ class CompareReduceOpKernel
       ops::CompareReduceOpKernel<plat::CUDADeviceContext,                      \
                                  ops::functor<double>>);
 
-REGISTER_COMPARE_REDUCE_CUDA_KERNEL(equal_all, CudaEqualReduceFunctor)
+REGISTER_COMPARE_REDUCE_CUDA_KERNEL(equal_all, EqualReduceFunctor)
 #undef REGISTER_COMPARE_REDUCE_CUDA_KERNEL

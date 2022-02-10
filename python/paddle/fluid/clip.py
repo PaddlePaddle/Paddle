@@ -28,6 +28,8 @@ from .dygraph import base as imperative_base
 from .data_feeder import check_variable_and_dtype
 from .framework import in_dygraph_mode
 from .layer_helper import LayerHelper
+from .framework import default_main_program
+from paddle import _C_ops
 
 __all__ = [
     'set_gradient_clip', 'ErrorClipByValue', 'ClipGradByValue',
@@ -46,7 +48,7 @@ def _squared_l2_norm(x):
         return sum_square
 
     if in_dygraph_mode():
-        return core.ops.squared_l2_norm(x)
+        return _C_ops.squared_l2_norm(x)
 
     op_type = 'squared_l2_norm'
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], op_type)
@@ -370,6 +372,20 @@ class ClipGradByNorm(ClipGradBase):
         return param, new_grad
 
 
+_allow_pure_fp16_global_norm_clip_flag = False
+
+
+def _allow_pure_fp16_global_norm_clip(*args):
+    global _allow_pure_fp16_global_norm_clip_flag
+    if len(args) == 0:
+        return _allow_pure_fp16_global_norm_clip_flag
+    else:
+        assert len(args) == 1 and isinstance(args[0], bool)
+        old_value = _allow_pure_fp16_global_norm_clip_flag
+        _allow_pure_fp16_global_norm_clip_flag = args[0]
+        return old_value
+
+
 class ClipGradByGlobalNorm(ClipGradBase):
     r"""
     Given a list of Tensor :math:`t\_list` , calculate the global norm for the elements of all tensors in 
@@ -435,6 +451,8 @@ class ClipGradByGlobalNorm(ClipGradBase):
     def _dygraph_clip(self, params_grads):
         params_and_grads = []
         sum_square_list = []
+        sum_square_list_fp16 = []
+        sum_square_list_fp32 = []
         for p, g in params_grads:
             if g is None:
                 continue
@@ -446,21 +464,45 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
 
             sum_square = _squared_l2_norm(merge_grad)
-            sum_square_list.append(sum_square)
+            if sum_square.dtype == core.VarDesc.VarType.FP16:
+                sum_square_list_fp16.append(sum_square)
+            elif sum_square.dtype == core.VarDesc.VarType.FP32:
+                sum_square_list_fp32.append(sum_square)
+            else:
+                sum_square_list.append(sum_square)
 
         # all parameters have been filterd out
-        if len(sum_square_list) == 0:
+        if len(sum_square_list) + len(sum_square_list_fp16) + len(
+                sum_square_list_fp32) == 0:
             return params_grads
 
-        global_norm_var = layers.concat(sum_square_list)
-        global_norm_var = layers.reduce_sum(global_norm_var)
+        sum_dtype = 'float64' if len(sum_square_list) > 0 else "float32"
+        global_norm_var = []
+        if len(sum_square_list_fp16) > 0:
+            global_norm_var_fp16 = paddle.add_n(sum_square_list_fp16)
+            global_norm_var.append(global_norm_var_fp16.astype(sum_dtype))
+        if len(sum_square_list_fp32) > 0:
+            global_norm_var_fp32 = paddle.add_n(sum_square_list_fp32)
+            if sum_dtype == 'float32':
+                global_norm_var.append(global_norm_var_fp32)
+            else:
+                global_norm_var.append(global_norm_var_fp32.astype(sum_dtype))
+        if len(sum_square_list) > 0:
+            global_norm_var_fp64 = paddle.add_n(sum_square_list)
+            global_norm_var.append(global_norm_var_fp64)
+        global_norm_var = paddle.add_n(global_norm_var)
         global_norm_var = layers.sqrt(global_norm_var)
         max_global_norm = layers.fill_constant(
             shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm)
-        clip_var = layers.elementwise_div(
-            x=max_global_norm,
-            y=layers.elementwise_max(
-                x=global_norm_var, y=max_global_norm))
+
+        # only when global_norm_var > max_global_norm, grad need clip
+        need_clip = False
+        if global_norm_var > max_global_norm:
+            need_clip = True
+
+        if need_clip:
+            clip_var = layers.elementwise_div(
+                x=max_global_norm, y=global_norm_var)
         for p, g in params_grads:
             if g is None:
                 continue
@@ -468,8 +510,14 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 params_and_grads.append((p, g))
                 continue
             # TODO(wangxi): use inplace elementwise_mul
-            new_grad = layers.elementwise_mul(x=g, y=clip_var)
-            params_and_grads.append((p, new_grad))
+            if need_clip:
+                clip_input = (clip_var.astype('float16')
+                              if g.dtype == core.VarDesc.VarType.FP16 else
+                              clip_var)
+                new_grad = layers.elementwise_mul(x=g, y=clip_input)
+                params_and_grads.append((p, new_grad))
+            else:
+                params_and_grads.append((p, g))
 
         return params_and_grads
 
@@ -509,8 +557,12 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 global_norm_var = []
                 if len(sum_square_list_fp16) > 0:
                     global_norm_var_fp16 = layers.sums(sum_square_list_fp16)
-                    global_norm_var.append(
-                        global_norm_var_fp16.astype(sum_dtype))
+                    if sum_square_list_fp32 or sum_square_list or not _allow_pure_fp16_global_norm_clip(
+                    ):
+                        global_norm_var.append(
+                            global_norm_var_fp16.astype(sum_dtype))
+                    else:
+                        global_norm_var.append(global_norm_var_fp16)
                 if len(sum_square_list_fp32) > 0:
                     global_norm_var_fp32 = layers.sums(sum_square_list_fp32)
                     if sum_dtype == 'float32':
@@ -522,7 +574,9 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     # fp64
                     global_norm_var_other_dtype = layers.sums(sum_square_list)
                     global_norm_var.append(global_norm_var_other_dtype)
-                global_norm_var = layers.sums(global_norm_var)
+
+                global_norm_var = layers.sums(global_norm_var) if len(
+                    global_norm_var) > 1 else global_norm_var[0]
                 global_norm_var = layers.sqrt(x=global_norm_var)
                 max_global_norm = layers.fill_constant(
                     shape=[1],
@@ -543,9 +597,15 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 with p.block.program._optimized_guard([p, g]):
                     # inplace
                     scale_input = (scale_var.astype('float16')
-                                   if g.dtype == core.VarDesc.VarType.FP16 else
-                                   scale_var)
-                    p.block.append_op(
+                                   if g.dtype == core.VarDesc.VarType.FP16 and
+                                   scale_var.dtype != core.VarDesc.VarType.FP16
+                                   else scale_var)
+                    # NOTE(Yuang Liu): For pure dp with gradient merge, the p and g
+                    # will be in different blocks with the gradient clip related ops.
+                    # We need to handle the correct block, otherwise will encounter
+                    # a 'NotFoundError' during compile time.
+                    block = default_main_program().current_block()
+                    block.append_op(
                         type='elementwise_mul',
                         inputs={'X': g,
                                 'Y': scale_input},

@@ -210,9 +210,14 @@ include(external/threadpool)# download threadpool
 include(external/dlpack)    # download dlpack
 include(external/xxhash)    # download, build, install xxhash
 include(external/warpctc)   # download, build, install warpctc
+include(external/utf8proc)   # download, build, install utf8proc
 
 list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog extern_boost extern_xxhash)
-list(APPEND third_party_deps extern_zlib extern_dlpack extern_warpctc extern_threadpool)
+list(APPEND third_party_deps extern_zlib extern_dlpack extern_warpctc extern_threadpool extern_utf8proc)
+include(external/lapack)    # download, build, install lapack
+
+list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog extern_boost extern_xxhash)
+list(APPEND third_party_deps extern_zlib extern_dlpack extern_warpctc extern_threadpool extern_lapack)
 
 include(cblas)              	# find first, then download, build, install openblas
 
@@ -250,8 +255,8 @@ if(WITH_GPU)
         include(external/cub)       # download cub
         list(APPEND third_party_deps extern_cub)
     endif()
-    set(URL  "https://paddlepaddledeps.bj.bcebos.com/externalErrorMsg.tar.gz" CACHE STRING "" FORCE)
-    file_download_and_uncompress(${URL} "externalError" MD5 c0749523ebb536eb7382487d645d9cd4)   # download file externalErrorMsg.tar.gz
+    set(URL  "https://paddlepaddledeps.bj.bcebos.com/externalErrorMsg_20210928.tar.gz" CACHE STRING "" FORCE)
+    file_download_and_uncompress(${URL} "externalError" MD5 a712a49384e77ca216ad866712f7cafa)   # download file externalErrorMsg.tar.gz
     if(WITH_TESTING)
         # copy externalErrorMsg.pb, just for unittest can get error message correctly.
         set(SRC_DIR ${THIRD_PARTY_PATH}/externalError/data)
@@ -273,6 +278,11 @@ if(WITH_XPU)
     list(APPEND third_party_deps extern_xpu)
 endif(WITH_XPU)
 
+if(WITH_MLU)
+    include(external/concurrentqueue) # download, build, install concurrentqueue
+    list(APPEND third_party_deps extern_concurrentqueue)
+endif(WITH_MLU)
+
 if(WITH_PSLIB)
     include(external/pslib)          # download, build, install pslib
     list(APPEND third_party_deps extern_pslib)
@@ -289,8 +299,10 @@ if(WITH_PSLIB)
 
         include(external/leveldb)
         list(APPEND third_party_deps extern_leveldb)
-        include(external/brpc)
-        list(APPEND third_party_deps extern_brpc)
+        if(NOT WITH_HETERPS)
+            include(external/brpc)
+            list(APPEND third_party_deps extern_brpc)
+        endif()
     endif()
 endif(WITH_PSLIB)
 
@@ -326,7 +338,7 @@ if (WITH_PSCORE)
 
     include(external/libmct)     # download, build, install libmct
     list(APPEND third_party_deps extern_libmct)
-    
+
     if (WITH_HETERPS)
         include(external/rocksdb)     # download, build, install libmct
         list(APPEND third_party_deps extern_rocksdb)
@@ -355,10 +367,45 @@ if (WITH_LITE)
     include(external/lite)
 endif (WITH_LITE)
 
+if (WITH_CINN)
+    message(STATUS "Compile Paddle with CINN.")
+    include(external/cinn)
+    add_definitions(-DPADDLE_WITH_CINN)
+    if (WITH_GPU)
+        add_definitions(-DCINN_WITH_CUDA)
+        add_definitions(-DCINN_WITH_CUDNN)
+    endif (WITH_GPU)
+    if (WITH_MKL)
+        add_definitions(-DCINN_WITH_MKL_CBLAS)
+        add_definitions(-DCINN_WITH_MKLDNN)
+    endif (WITH_MKL)
+endif (WITH_CINN)
+
 if (WITH_CRYPTO)
     include(external/cryptopp)   # download, build, install cryptopp
     list(APPEND third_party_deps extern_cryptopp)
     add_definitions(-DPADDLE_WITH_CRYPTO)
 endif (WITH_CRYPTO)
+
+if (WITH_POCKETFFT)
+    include(external/pocketfft)
+    list(APPEND third_party_deps extern_pocketfft)
+    add_definitions(-DPADDLE_WITH_POCKETFFT)
+endif (WITH_POCKETFFT)
+
+if (WIN32)
+    include(external/dirent)
+    list(APPEND third_party_deps extern_dirent)
+endif (WIN32)
+
+if (WITH_INFRT)
+    include(external/llvm)
+    list(APPEND third_party_deps ${llvm_libs})
+endif()
+
+if (WITH_IPU)
+    include(external/poplar)
+    list(APPEND third_party_deps extern_poplar)
+endif()
 
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})

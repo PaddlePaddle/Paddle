@@ -115,6 +115,20 @@ for model_name in $unknown_download_list; do
     download $url_prefix $model_name
 done
 
+# ernie int8 quant with matmul
+unknown_nlp_download_list='quant_post_model_xnli_predict_matmul'
+for model_name in $unknown_nlp_download_list; do
+    url_prefix="https://paddle-qa.bj.bcebos.com/inference_model/unknown/nlp"
+    download $url_prefix $model_name
+done
+
+# mobilnetv1 with prune op attribute
+dev_class_download_list='MobileNetV1'
+for model_name in $dev_class_download_list; do
+    url_prefix="https://paddle-qa.bj.bcebos.com/inference_model/2021-09-16/class"
+    download $url_prefix $model_name
+done
+
 function compile_test() {
     mkdir -p ${build_dir}
     cd ${build_dir}
@@ -252,6 +266,31 @@ ${exe_dir}/test_resnet50_quant \
     --gtest_output=xml:${log_dir}/test_resnet50_quant.xml
 if [ $? -ne 0 ]; then
     echo "${RED} test_resnet50_quant runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+    EXIT_CODE=8
+fi
+
+printf "${YELLOW} start test_ernie_xnli_int8 ${NC} \n";
+compile_test "test_ernie_xnli_int8"
+ernie_qat_model="quant_post_model_xnli_predict_matmul"
+${exe_dir}/test_ernie_xnli_int8 \
+    --modeldir=$DATA_DIR/$ernie_qat_model/$ernie_qat_model \
+    --datadir=$DATA_DIR/$ernie_qat_model/$ernie_qat_model/xnli_var_len \
+    --truth_data=$DATA_DIR/$ernie_qat_model/$ernie_qat_model/truth_data \
+    --gtest_filter=${test_suite_list} \
+    --gtest_output=xml:${log_dir}/test_ernie_xnli_int8.xml
+if [ $? -ne 0 ]; then
+    echo "${RED} test_ernie_xnli_int8 runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+    EXIT_CODE=8
+fi
+
+printf "${YELLOW} start test_mobilnetv1 ${NC} \n";
+compile_test "test_mobilnetv1"
+${exe_dir}/test_mobilnetv1 \
+    --modeldir=$DATA_DIR/MobileNetV1/MobileNetV1 \
+    --gtest_filter=${test_suite_list} \
+    --gtest_output=xml:${log_dir}/test_mobilnetv1.xml
+if [ $? -ne 0 ]; then
+    echo "${RED} test_mobilnetv1 runs failed ${NC}" >> ${exe_dir}/test_summary.txt
     EXIT_CODE=8
 fi
 

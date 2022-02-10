@@ -365,5 +365,63 @@ class TestNewVarCreateInOneBranch(unittest.TestCase):
         self.assertEqual(paddle.jit.to_static(case_func)(True), -2)
 
 
+class TestDy2StIfElseRetInt1(unittest.TestCase):
+    def setUp(self):
+        self.x = np.random.random([5]).astype('float32')
+        self.dyfunc = dyfunc_ifelse_ret_int1
+        self.out = self.get_dy2stat_out()
+
+    def get_dy2stat_out(self):
+        ProgramTranslator().enable(True)
+        static_func = paddle.jit.to_static(self.dyfunc)
+        out = static_func(self.x)
+        ProgramTranslator().enable(False)
+        return out
+
+    def test_ast_to_func(self):
+        self.assertIsInstance(self.out[0], paddle.Tensor)
+        self.assertIsInstance(self.out[1], int)
+
+
+class TestDy2StIfElseRetInt2(TestDy2StIfElseRetInt1):
+    def setUp(self):
+        self.x = np.random.random([5]).astype('float32')
+        self.dyfunc = dyfunc_ifelse_ret_int2
+        self.out = self.get_dy2stat_out()
+
+    def test_ast_to_func(self):
+        self.assertIsInstance(self.out[0], paddle.Tensor)
+        self.assertIsInstance(self.out[1], paddle.Tensor)
+
+
+class TestDy2StIfElseRetInt3(TestDy2StIfElseRetInt1):
+    def setUp(self):
+        self.x = np.random.random([5]).astype('float32')
+        self.dyfunc = dyfunc_ifelse_ret_int3
+        self.out = self.get_dy2stat_out()
+
+    def test_ast_to_func(self):
+        self.assertIsInstance(self.out, paddle.Tensor)
+
+
+class TestDy2StIfElseRetInt4(TestDy2StIfElseRetInt1):
+    def setUp(self):
+        self.x = np.random.random([5]).astype('float32')
+        self.dyfunc = dyfunc_ifelse_ret_int4
+
+    def test_ast_to_func(self):
+        ProgramTranslator().enable(True)
+        with self.assertRaises(TypeError):
+            static_func = paddle.jit.to_static(self.dyfunc)
+            out = static_func(self.x)
+        # Why need set `_in_declarative_mode_` here? 
+        # In Dy2St we use `with _switch_declarative_mode_guard_()` to indicate 
+        # that the code block is under @to_static, but in this UT 
+        # an exception is thrown during Dy2St, making the `_in_declarative_mode_` 
+        # a wrong value. So We need set `_in_declarative_mode_` to False manually.
+        paddle.fluid.dygraph.base._in_declarative_mode_ = False
+        ProgramTranslator().enable(False)
+
+
 if __name__ == '__main__':
     unittest.main()

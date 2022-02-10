@@ -46,6 +46,10 @@ TEST(math_function, notrans_mul_trans_fp32) {
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
   paddle::platform::CUDADeviceContext context(gpu_place);
+  context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(gpu_place, context.stream())
+                           .get());
+  context.PartialInitWithAllocator();
 
   float* input1_ptr = input1.mutable_data<float>({2, 3}, cpu_place);
   float arr[6] = {0, 1, 2, 3, 4, 5};
@@ -78,6 +82,10 @@ TEST(math_function, notrans_mul_trans_fp16) {
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
   paddle::platform::CUDADeviceContext context(gpu_place);
+  context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(gpu_place, context.stream())
+                           .get());
+  context.PartialInitWithAllocator();
 
   // fp16 GEMM in cublas requires GPU compute capability >= 53
   if (context.GetComputeCapability() < 53) {
@@ -117,6 +125,10 @@ TEST(math_function, trans_mul_notrans_fp32) {
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
   paddle::platform::CUDADeviceContext context(gpu_place);
+  context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(gpu_place, context.stream())
+                           .get());
+  context.PartialInitWithAllocator();
 
   float* input1_ptr = input1.mutable_data<float>({2, 3}, cpu_place);
   float arr[6] = {0, 1, 2, 3, 4, 5};
@@ -155,6 +167,10 @@ TEST(math_function, trans_mul_notrans_fp16) {
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
   paddle::platform::CUDADeviceContext context(gpu_place);
+  context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(gpu_place, context.stream())
+                           .get());
+  context.PartialInitWithAllocator();
 
   // fp16 GEMM in cublas requires GPU compute capability >= 53
   if (context.GetComputeCapability() < 53) {
@@ -200,6 +216,10 @@ TEST(math_function, gemm_notrans_cublas_fp32) {
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
   paddle::platform::CUDADeviceContext context(gpu_place);
+  context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(gpu_place, context.stream())
+                           .get());
+  context.PartialInitWithAllocator();
 
   int m = 2;
   int n = 3;
@@ -254,6 +274,10 @@ TEST(math_function, gemm_notrans_cublas_fp16) {
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
   paddle::platform::CUDADeviceContext context(gpu_place);
+  context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(gpu_place, context.stream())
+                           .get());
+  context.PartialInitWithAllocator();
 
   // fp16 GEMM in cublas requires GPU compute capability >= 53
   if (context.GetComputeCapability() < 53) {
@@ -316,6 +340,10 @@ TEST(math_function, gemm_trans_cublas_fp32) {
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
   paddle::platform::CUDADeviceContext context(gpu_place);
+  context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(gpu_place, context.stream())
+                           .get());
+  context.PartialInitWithAllocator();
 
   int m = 2;
   int n = 3;
@@ -364,6 +392,10 @@ TEST(math_function, gemm_trans_cublas_fp16) {
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
   paddle::platform::CUDADeviceContext context(gpu_place);
+  context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(gpu_place, context.stream())
+                           .get());
+  context.PartialInitWithAllocator();
 
   // fp16 GEMM in cublas requires GPU compute capability >= 53
   if (context.GetComputeCapability() < 53) {
@@ -418,6 +450,10 @@ void GemvTest(int m, int n, bool trans) {
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
   paddle::platform::CUDADeviceContext context(gpu_place);
+  context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(gpu_place, context.stream())
+                           .get());
+  context.PartialInitWithAllocator();
 
   T* data_a = mat_a.mutable_data<T>({m, n}, cpu_place);
   T* data_b = vec_b.mutable_data<T>({trans ? m : n}, cpu_place);

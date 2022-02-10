@@ -27,7 +27,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/fleet/heter_context.h"
-//#include "paddle/fluid/framework/fleet/heter_wrapper.h"
 #include "paddle/fluid/framework/heter_util.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -35,13 +34,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/trainer_desc.pb.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/reader/blocking_queue.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/pten/backends/dynload/port.h"
 
 namespace paddle {
 namespace framework {
 
 class Dataset;
-class LoDTensor;
 class ProgramDesc;
 class PullDenseWorker;
 class Scope;
@@ -72,6 +70,7 @@ class TrainerBase {
   virtual Scope* GetWorkerScope(int thread_id) = 0;
   virtual void InitDumpEnv() = 0;
   virtual void DumpWork(int tid);
+  virtual void ResetDataset(Dataset* dataset_ptr) {}
 
  protected:
   virtual std::string GetDumpPath(int tid) = 0;
@@ -156,7 +155,7 @@ class DistMultiTrainer : public MultiTrainer {
 
 #if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_HIP || \
      defined PADDLE_WITH_XPU) &&                            \
-    (defined PADDLE_WITH_PSLIB)
+    (defined PADDLE_WITH_PSLIB) && (!defined(PADDLE_WITH_HETERPS))
 class HeterServiceContext {
  public:
   HeterServiceContext() {}
@@ -258,13 +257,12 @@ class PSGPUTrainer : public TrainerBase {
   virtual void Run();
   virtual void Finalize();
   virtual void RegisterHeterCallback();
-  virtual void DumpWork(int tid);
   virtual Scope* GetWorkerScope(int thread_id);
   virtual void CacheProgram(const ProgramDesc& main_program) {
     new (&program_) ProgramDesc(main_program);
   }
-  virtual std::string GetDumpPath(int tid) { return ""; }
-  virtual void InitDumpEnv() {}
+  virtual std::string GetDumpPath(int tid);
+  void InitDumpEnv() override;
   virtual void MergeDenseParam();
 
   template <typename T>
@@ -286,6 +284,9 @@ class PSGPUTrainer : public TrainerBase {
   std::vector<std::thread> threads_;
   int use_ps_gpu_;
   int thread_num_;
+  int mpi_rank_;
+  int mpi_size_;
+  int dump_file_num_;
 };
 #endif
 
@@ -320,6 +321,52 @@ class PipelineTrainer : public TrainerBase {
 
   void CopyParameters(int microbatch_id, const ProgramDesc& program,
                       const platform::Place& place);
+};
+#endif
+
+#if defined(PADDLE_WITH_PSCORE)
+class HeterPipelineTrainer : public TrainerBase {
+ public:
+  HeterPipelineTrainer() {}
+  ~HeterPipelineTrainer() override {}
+  void Initialize(const TrainerDesc& trainer_desc, Dataset* data_set) override;
+  void InitTrainerEnv(const ProgramDesc& main_program,
+                      const platform::Place& place) override;
+  void InitOtherEnv(const ProgramDesc& main_program) override;
+  void Run() override;
+  void Finalize() override;
+  Scope* GetWorkerScope(int thread_id) override;
+  void InitDumpEnv() override;
+  std::string GetDumpPath(int tid) override;
+  void ResetDataset(Dataset* dataset_ptr) override;
+
+ protected:
+  int trainer_id_;             // stage_trainer_id
+  std::vector<int> trainers_;  //  std::vector<int> trainers
+  int thread_num_;
+  std::vector<std::thread> threads_;
+
+  int num_microbatches_;
+  platform::Place place_;
+  TrainerDesc trainer_desc_;
+
+  int num_pipeline_stages_;
+  int pipeline_stage_;
+  std::unordered_map<int, std::shared_ptr<paddle::framework::DeviceWorker>>
+      workers_;
+
+  std::shared_ptr<std::unordered_map<
+      int, std::shared_ptr<::paddle::framework::BlockingQueue<
+               std::pair<std::string, int>>>>>
+      task_queue_;
+
+  platform::DeviceContext* dev_ctx_ = nullptr;
+
+  std::shared_ptr<std::unordered_map<int, Scope*>> mini_scopes_;
+  std::shared_ptr<std::unordered_map<int, std::shared_ptr<std::vector<Scope*>>>>
+      micro_scopes_;
+
+  std::unique_ptr<std::thread> listen_ptr_ = nullptr;
 };
 #endif
 

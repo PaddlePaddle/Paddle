@@ -1042,7 +1042,7 @@ def load_params(executor, dirname, main_program=None, filename=None):
 def load_persistables(executor, dirname, main_program=None, filename=None):
     """
     :api_attr: Static Graph
-    
+
     This API filters out all variables with ``persistable==True`` from the
     given ``main_program`` and then tries to load these variables from the
     directory ``dirname`` or the file ``filename``.
@@ -1251,7 +1251,8 @@ def save_inference_model(dirname,
                          model_filename=None,
                          params_filename=None,
                          export_for_deployment=True,
-                         program_only=False):
+                         program_only=False,
+                         clip_extra=False):
     """
     :api_attr: Static Graph
 
@@ -1372,15 +1373,9 @@ def save_inference_model(dirname,
             )
             break
 
-    # fix the bug that the activation op's output as target will be pruned.
-    # will affect the inference performance.
-    # TODO(Superjomn) add an IR pass to remove 1-scale op.
     with program_guard(main_program):
         uniq_target_vars = []
         for i, var in enumerate(target_vars):
-            if isinstance(var, Variable) and var.dtype != paddle.bool:
-                var = layers.scale(
-                    var, 1., name="save_infer_model/scale_{}".format(i))
             uniq_target_vars.append(var)
         target_vars = uniq_target_vars
     target_var_name_list = [var.name for var in target_vars]
@@ -1426,20 +1421,30 @@ def save_inference_model(dirname,
         main_program = main_program._inference_optimize(prune_read_op=True)
         fetch_var_names = [v.name for v in target_vars]
 
+        for target_v in target_vars:
+            if not main_program.global_block().has_var(target_v.name):
+                main_program.global_block().create_var(
+                    name=target_v.name,
+                    shape=target_v.shape,
+                    dtype=target_v.dtype,
+                    persistable=target_v.persistable)
+
         prepend_feed_ops(main_program, feeded_var_names)
         append_fetch_ops(main_program, fetch_var_names)
 
         main_program.desc._set_version()
         paddle.fluid.core.save_op_version_info(main_program.desc)
         with open(model_basename, "wb") as f:
-            f.write(main_program._remove_training_info()
-                    .desc.serialize_to_string())
+            f.write(
+                main_program._remove_training_info(clip_extra=clip_extra)
+                .desc.serialize_to_string())
     else:
         # TODO(panyx0718): Save more information so that it can also be used
         # for training and more flexible post-processing.
         with open(model_basename + ".main_program", "wb") as f:
-            f.write(main_program._remove_training_info()
-                    .desc.serialize_to_string())
+            f.write(
+                main_program._remove_training_info(clip_extra=clip_extra)
+                .desc.serialize_to_string())
 
     if program_only:
         warnings.warn(
@@ -2095,6 +2100,10 @@ def load(program, model_path, executor=None, var_list=None):
             p = paddle.fluid.core.Place()
             p.set_place(t._place())
             place = paddle.fluid.NPUPlace(p.npu_device_id())
+        elif p.is_mlu_place():
+            p = paddle.fluid.core.Place()
+            p.set_place(t._place())
+            place = paddle.fluid.MLUPlace(p.mlu_device_id())
         else:
             p = paddle.fluid.core.Place()
             p.set_place(t._place())
@@ -2389,6 +2398,10 @@ def set_program_state(program, state_dict):
                 p = paddle.fluid.core.Place()
                 p.set_place(ten_place)
                 py_place = paddle.fluid.NPUPlace(p.npu_device_id())
+            elif ten_place.is_mlu_place():
+                p = paddle.fluid.core.Place()
+                p.set_place(ten_place)
+                py_place = paddle.fluid.MLUPlace(p.mlu_device_id())
 
             ten.set(new_para_np, py_place)
 

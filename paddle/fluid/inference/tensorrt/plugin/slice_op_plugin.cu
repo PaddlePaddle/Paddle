@@ -65,6 +65,7 @@ SlicePlugin::SlicePlugin(void const *serial_data, size_t serial_length) {
   DeserializeValue(&serial_data, &serial_length, &starts_);
   DeserializeValue(&serial_data, &serial_length, &ends_);
   DeserializeValue(&serial_data, &serial_length, &axes_);
+  DeserializeValue(&serial_data, &serial_length, &with_fp16_);
   cudaEventCreate(&copy_event_);
   cudaStreamCreate(&copy_stream_);
 }
@@ -187,17 +188,17 @@ int SlicePlugin::enqueue(int batch_size, const void *const *inputs,
 }
 
 size_t SlicePlugin::getSerializationSize() const TRT_NOEXCEPT {
-  return getBaseSerializationSize() + SerializedSize(getPluginType()) +
-         SerializedSize(starts_) + SerializedSize(ends_) +
-         SerializedSize(axes_);
+  return getBaseSerializationSize() + SerializedSize(starts_) +
+         SerializedSize(ends_) + SerializedSize(axes_) +
+         SerializedSize(with_fp16_);
 }
 
 void SlicePlugin::serialize(void *buffer) const TRT_NOEXCEPT {
-  SerializeValue(&buffer, getPluginType());
   serializeBase(buffer);
   SerializeValue(&buffer, starts_);
   SerializeValue(&buffer, ends_);
   SerializeValue(&buffer, axes_);
+  SerializeValue(&buffer, with_fp16_);
 }
 
 // Dynamic Plugin below.

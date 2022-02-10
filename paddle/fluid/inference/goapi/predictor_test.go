@@ -17,7 +17,9 @@ package paddle
 import (
 	"io/ioutil"
 	"os"
+	"runtime"
 	"testing"
+	"time"
 )
 
 func TestNewPredictor(t *testing.T) {
@@ -104,6 +106,52 @@ func TestFromBuffer(t *testing.T) {
 	outData := make([]float32, numElements(outShape))
 	outHandle.CopyToCpu(outData)
 	t.Log(outData)
+}
+
+func TestCollectShapeInfo(t *testing.T) {
+	config := NewConfig()
+	config.SetModel("./mobilenetv1/inference.pdmodel", "./mobilenetv1/inference.pdiparams")
+	config.CollectShapeRangeInfo("shape_range_info.pbtxt")
+	config.EnableUseGpu(100, 0)
+	t.Logf("ShapeRangeInfoCollected:%+v", config.ShapeRangeInfoCollected())
+	t.Logf("ShapeRangeInfoPath:%+v", config.ShapeRangeInfoPath())
+	predictor := NewPredictor(config)
+	inNames := predictor.GetInputNames()
+	outNames := predictor.GetOutputNames()
+	inHandle := predictor.GetInputHandle(inNames[0])
+	inHandle.Reshape([]int32{1, 3, 224, 224})
+
+	data := make([]float32, numElements([]int32{1, 3, 224, 224}))
+	for i := 0; i < int(numElements([]int32{1, 3, 224, 224})); i++ {
+		data[i] = float32(i%255) * 0.1
+	}
+	inHandle.CopyFromCpu(data)
+
+	predictor.Run()
+
+	outHandle := predictor.GetOutputHandle(outNames[0])
+	outShape := outHandle.Shape()
+	outData := make([]float32, numElements(outShape))
+	outHandle.CopyToCpu(outData)
+	// Go is a GC language, so we must wait for gc to get shape_range_info.pbtxt
+	predictor = nil
+	runtime.GC()
+	time.Sleep(2 * time.Second)
+
+	trt_config := NewConfig()
+	trt_config.SetModel("./mobilenetv1/inference.pdmodel", "./mobilenetv1/inference.pdiparams")
+	trt_config.EnableUseGpu(100, 0)
+	trt_config.EnableTensorRtEngine(102400, 4, 3, PrecisionFloat32, false, false)
+	trt_config.EnableTunedTensorRtDynamicShape("shape_range_info.pbtxt", true)
+	trt_predictor := NewPredictor(trt_config)
+	trt_inNames := trt_predictor.GetInputNames()
+	trt_inHandle := trt_predictor.GetInputHandle(trt_inNames[0])
+	trt_inHandle.Reshape([]int32{1, 3, 224, 224})
+
+	trt_inHandle.CopyFromCpu(data)
+
+	trt_predictor.Run()
+
 }
 
 func numElements(shape []int32) int32 {

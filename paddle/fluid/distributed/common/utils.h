@@ -33,7 +33,7 @@ namespace distributed {
 template <typename T>
 inline paddle::operators::math::BlasT<paddle::platform::CPUDeviceContext, T>
 GetBlas() {
-  auto cpu_ctx = paddle::platform::CPUDeviceContext();
+  paddle::platform::CPUDeviceContext cpu_ctx;
   return paddle::operators::math::GetBlas<paddle::platform::CPUDeviceContext,
                                           T>(cpu_ctx);
 }
@@ -49,6 +49,20 @@ template <typename T>
 inline void ADD(int n, const T* x, const T y, T* z) {
   for (int i = 0; i < n; ++i) {
     z[i] = x[i] + y;
+  }
+}
+
+template <typename T>
+inline void DIV(int n, const T x, const T* y, T* z) {
+  for (int i = 0; i < n; ++i) {
+    z[i] = x / y[i];
+  }
+}
+
+template <typename T>
+inline void ELE_MUL(int n, const T* x, const T* y, T* z) {
+  for (int i = 0; i < n; ++i) {
+    z[i] = x[i] * y[i];
   }
 }
 
@@ -91,5 +105,6 @@ inline double GetCurrentUS() {
   gettimeofday(&time, NULL);
   return 1e+6 * time.tv_sec + time.tv_usec;
 }
+
 }  // namespace distributed
 }  // namespace paddle

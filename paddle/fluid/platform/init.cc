@@ -17,7 +17,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
-#include "paddle/fluid/platform/npu_info.h"
+#include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/fluid/string/split.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -30,22 +30,36 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/xpu/xpu_header.h"
-#include "paddle/fluid/platform/xpu/xpu_info.h"
+#include "paddle/fluid/platform/device/xpu/xpu_header.h"
+#include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#endif
+
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/device/mlu/mlu_info.h"
 #endif
 
 #ifdef WITH_WIN_DUMP_DBG
 #include <stdio.h>
 #include <time.h>
+#ifndef NOMINMAX
+#define NOMINMAX  // msvc max/min macro conflict with std::min/max
+#endif
 #include <windows.h>
 
 #include "DbgHelp.h"
 #endif
 
+#ifdef PADDLE_WITH_IPU
+#include "paddle/fluid/platform/device/ipu/ipu_info.h"
+#endif
+
+#include "paddle/fluid/framework/custom_kernel.h"
+
 DECLARE_int32(paddle_num_threads);
-DEFINE_int32(multiple_of_cupti_buffer_size, 1,
-             "Multiple of the CUPTI device buffer size. If the timestamps have "
-             "been dropped when you are profiling, try increasing this value.");
+PADDLE_DEFINE_EXPORTED_int32(
+    multiple_of_cupti_buffer_size, 1,
+    "Multiple of the CUPTI device buffer size. If the timestamps have "
+    "been dropped when you are profiling, try increasing this value.");
 
 namespace paddle {
 namespace platform {
@@ -161,6 +175,23 @@ void InitDevices() {
         << "Compiled with PADDLE_WITH_ASCEND_CL, but no NPU found in runtime.";
   }
 #endif
+#ifdef PADDLE_WITH_IPU
+  try {
+    // use user specified IPUs.
+    devices = platform::GetSelectedIPUDevices();
+  } catch (const std::exception &exp) {
+    LOG(WARNING)
+        << "Compiled with PADDLE_WITH_IPU, but no IPU found in runtime.";
+  }
+#endif
+#ifdef PADDLE_WITH_MLU
+  try {
+    // use user specified MLUs in single-node multi-process mode.
+    devices = platform::GetMLUSelectedDevices();
+  } catch (const std::exception &exp) {
+    LOG(WARNING) << "Compiled with WITH_MLU, but no MLU found in runtime.";
+  }
+#endif
   InitDevices(devices);
 }
 
@@ -181,14 +212,32 @@ void InitDevices(const std::vector<int> devices) {
 #ifdef PADDLE_WITH_XPU
     places.emplace_back(platform::XPUPlace(devices[i]));
 #endif
+#ifdef PADDLE_WITH_IPU
+    places.emplace_back(platform::IPUPlace(devices[i]));
+#endif
 #ifdef PADDLE_WITH_ASCEND_CL
     places.emplace_back(platform::NPUPlace(devices[i]));
+#endif
+#ifdef PADDLE_WITH_MLU
+    places.emplace_back(platform::MLUPlace(devices[i]));
 #endif
   }
   places.emplace_back(platform::CPUPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   places.emplace_back(platform::CUDAPinnedPlace());
 #endif
+  const char *custom_kernel_root_p = std::getenv("CUSTOM_DEVICE_ROOT");
+  if (!custom_kernel_root_p) {
+    VLOG(3) << "Env [CUSTOM_DEVICE_ROOT] is not set.";
+  } else {
+    std::string custom_kernel_root(custom_kernel_root_p);
+    if (!custom_kernel_root.empty()) {
+      LOG(INFO) << "ENV [CUSTOM_DEVICE_ROOT]=" << custom_kernel_root;
+      framework::LoadCustomKernel(custom_kernel_root);
+    } else {
+      VLOG(3) << "ENV [CUSTOM_DEVICE_ROOT] is empty.";
+    }
+  }
   platform::DeviceContextPool::Init(places);
 
 #ifndef PADDLE_WITH_MKLDNN

@@ -43,15 +43,33 @@ void Tensor::Reshape(const std::vector<int> &shape) {
   tensor->Resize(paddle::framework::make_ddim(shape));
 }
 
-#define EAGER_GET_TENSOR    \
-  if (!tensor_) {           \
-    tensor_ = FindTensor(); \
-  }                         \
-  auto *tensor = static_cast<paddle::framework::LoDTensor *>(tensor_);
+void Tensor::ReshapeStrings(const size_t &shape) {
+  PADDLE_ENFORCE_EQ(
+      name_.empty(), false,
+      paddle::platform::errors::PreconditionNotMet(
+          "Need to SetName first, so that the corresponding tensor can "
+          "be retrieved."));
+  PADDLE_ENFORCE_EQ(input_or_output_, true,
+                    paddle::platform::errors::PermissionDenied(
+                        "Can't reshape the output tensor, it is readonly"));
+  auto *scope = static_cast<paddle::framework::Scope *>(scope_);
+  auto *var = scope->FindVar(name_);
+  PADDLE_ENFORCE_NOT_NULL(
+      var, paddle::platform::errors::PreconditionNotMet(
+               "No tensor called [%s] in the runtime scope", name_));
+  paddle_infer::Strings *tensor = var->GetMutable<paddle_infer::Strings>();
+  tensor->resize(shape);
+}
+
+#define EAGER_GET_TENSOR(tensor_type)    \
+  if (!tensor_) {                        \
+    tensor_ = FindTensor<tensor_type>(); \
+  }                                      \
+  auto *tensor = static_cast<tensor_type *>(tensor_);
 
 template <typename T>
 T *Tensor::mutable_data(PlaceType place) {
-  EAGER_GET_TENSOR;
+  EAGER_GET_TENSOR(paddle::framework::LoDTensor);
   PADDLE_ENFORCE_GT(
       tensor->numel(), 0,
       paddle::platform::errors::PreconditionNotMet(
@@ -83,7 +101,7 @@ T *Tensor::mutable_data(PlaceType place) {
 
 template <typename T>
 T *Tensor::data(PlaceType *place, int *size) const {
-  EAGER_GET_TENSOR;
+  EAGER_GET_TENSOR(paddle::framework::LoDTensor);
   auto *res = tensor->data<T>();
 
   if (paddle::platform::is_cpu_place(tensor->place())) {
@@ -103,7 +121,7 @@ T *Tensor::data(PlaceType *place, int *size) const {
 }
 
 DataType Tensor::type() const {
-  EAGER_GET_TENSOR;
+  EAGER_GET_TENSOR(paddle::framework::LoDTensor);
   auto type = tensor->type();
   if (type == paddle::framework::proto::VarType::FP32) {
     return DataType::FLOAT32;
@@ -125,7 +143,7 @@ PlaceType Tensor::place() const { return place_; }
 
 template <typename T>
 void Tensor::CopyFromCpu(const T *data) {
-  EAGER_GET_TENSOR;
+  EAGER_GET_TENSOR(paddle::framework::LoDTensor);
   PADDLE_ENFORCE_GE(tensor->numel(), 0,
                     paddle::platform::errors::PreconditionNotMet(
                         "You should call Tensor::Reshape(const "
@@ -186,18 +204,29 @@ void Tensor::CopyFromCpu(const T *data) {
   }
 }
 
+void Tensor::CopyStringsFromCpu(const paddle_infer::Strings *data) {
+  EAGER_GET_TENSOR(paddle_infer::Strings);
+  PADDLE_ENFORCE_GE(tensor->size(), 0,
+                    paddle::platform::errors::PreconditionNotMet(
+                        "You should call Tensor::Reshape(const "
+                        "std::size_t &shape)function before copying"
+                        "the string data from cpu."));
+  *tensor = *data;
+}
+
 template <typename T>
 void Tensor::CopyToCpuImpl(T *data, void *exec_stream, CallbackFunc cb,
                            void *cb_params) const {
-  EAGER_GET_TENSOR;
+  EAGER_GET_TENSOR(paddle::framework::LoDTensor);
   auto ele_num = tensor->numel();
   auto *t_data = tensor->data<T>();
   auto t_place = tensor->place();
 
   paddle::framework::Tensor out;
-  auto mem_allocation = std::make_shared<paddle::memory::Allocation>(
-      static_cast<void *>(data), ele_num * sizeof(T),
-      paddle::platform::CPUPlace());
+  auto mem_allocation =
+      std::make_shared<paddle::memory::allocation::Allocation>(
+          static_cast<void *>(data), ele_num * sizeof(T),
+          paddle::platform::CPUPlace());
   out.ResetHolder(mem_allocation);
 
   if (paddle::platform::is_cpu_place(t_place)) {
@@ -212,11 +241,19 @@ void Tensor::CopyToCpuImpl(T *data, void *exec_stream, CallbackFunc cb,
 #else
     std::memcpy(static_cast<void *>(data), t_data, ele_num * sizeof(T));
 #endif
+  } else if (paddle::platform::is_ipu_place(t_place)) {
+#ifdef PADDLE_WITH_IPU
+    std::memcpy(static_cast<void *>(data), t_data, ele_num * sizeof(T));
+#else
+    PADDLE_THROW(paddle::platform::errors::Unavailable(
+        "Can not create tensor with IPU place because paddle is not compiled "
+        "with IPU."));
+#endif
   } else if (place_ == PlaceType::kGPU) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     paddle::platform::DeviceContextPool &pool =
         paddle::platform::DeviceContextPool::Instance();
-    auto gpu_place = BOOST_GET_CONST(paddle::platform::CUDAPlace, t_place);
+    auto gpu_place = t_place;
     auto *dev_ctx = static_cast<const paddle::platform::CUDADeviceContext *>(
         pool.Get(gpu_place));
     paddle::memory::Copy(paddle::platform::CPUPlace(),
@@ -243,7 +280,7 @@ void Tensor::CopyToCpuImpl(T *data, void *exec_stream, CallbackFunc cb,
 #endif
   } else if (place_ == PlaceType::kXPU) {
 #ifdef PADDLE_WITH_XPU
-    auto xpu_place = BOOST_GET_CONST(paddle::platform::XPUPlace, t_place);
+    auto xpu_place = t_place;
     paddle::memory::Copy(paddle::platform::CPUPlace(),
                          static_cast<void *>(data), xpu_place, t_data,
                          ele_num * sizeof(T));
@@ -256,13 +293,13 @@ void Tensor::CopyToCpuImpl(T *data, void *exec_stream, CallbackFunc cb,
 #ifdef PADDLE_WITH_ASCEND_CL
     paddle::platform::DeviceContextPool &pool =
         paddle::platform::DeviceContextPool::Instance();
-    auto npu_place = BOOST_GET_CONST(paddle::platform::NPUPlace, t_place);
+    auto npu_place = t_place;
     auto *dev_ctx = static_cast<const paddle::platform::NPUDeviceContext *>(
         pool.Get(npu_place));
     paddle::memory::Copy(paddle::platform::CPUPlace(),
                          static_cast<void *>(data), npu_place, t_data,
                          ele_num * sizeof(T), dev_ctx->stream());
-    aclrtSynchronizeStream(dev_ctx->stream());
+    paddle::platform::NPUStreamSync(dev_ctx->stream());
 #else
     PADDLE_THROW(paddle::platform::errors::Unavailable(
         "Can not create tensor with NPU place because paddle is not compiled "
@@ -371,6 +408,7 @@ Tensor::Tensor(void *scope) : scope_{scope} {
                               "set to the pointer of scope."));
 }
 
+template <typename T>
 void *Tensor::FindTensor() const {
   PADDLE_ENFORCE_EQ(
       name_.empty(), false,
@@ -382,12 +420,12 @@ void *Tensor::FindTensor() const {
   PADDLE_ENFORCE_NOT_NULL(
       var, paddle::platform::errors::PreconditionNotMet(
                "No tensor called [%s] in the runtime scope", name_));
-  auto *tensor = var->GetMutable<paddle::framework::LoDTensor>();
+  auto *tensor = var->GetMutable<T>();
   return tensor;
 }
 
 std::vector<int> Tensor::shape() const {
-  EAGER_GET_TENSOR;
+  EAGER_GET_TENSOR(paddle::framework::LoDTensor);
   PADDLE_ENFORCE_NOT_NULL(
       tensor_, paddle::platform::errors::PreconditionNotMet(
                    "Not found tensor called %s in the scope", name_));
@@ -395,7 +433,7 @@ std::vector<int> Tensor::shape() const {
 }
 
 void Tensor::SetLoD(const std::vector<std::vector<size_t>> &x) {
-  EAGER_GET_TENSOR;
+  EAGER_GET_TENSOR(paddle::framework::LoDTensor);
   paddle::framework::LoD lod;
   for (auto &level : x) {
     lod.emplace_back(level);
@@ -404,7 +442,7 @@ void Tensor::SetLoD(const std::vector<std::vector<size_t>> &x) {
 }
 
 std::vector<std::vector<size_t>> Tensor::lod() const {
-  EAGER_GET_TENSOR;
+  EAGER_GET_TENSOR(paddle::framework::LoDTensor);
   std::vector<std::vector<size_t>> res;
   for (auto &level : tensor->lod()) {
     res.emplace_back(level);

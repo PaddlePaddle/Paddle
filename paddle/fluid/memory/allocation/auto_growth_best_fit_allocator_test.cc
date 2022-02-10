@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator.h"
-
 #include <cstdlib>
+
+#include "paddle/fluid/memory/allocation/aligned_allocator.h"
+#include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator.h"
 
 #include "gtest/gtest.h"
 
@@ -27,12 +28,12 @@ namespace allocation {
 
 class RecordedAllocator : public Allocator {
  protected:
-  Allocation *AllocateImpl(size_t size) override {
+  pten::Allocation *AllocateImpl(size_t size) override {
     allocated_size_ += size;
     return new Allocation(malloc(size), size, platform::CPUPlace());
   }
 
-  void FreeImpl(Allocation *allocation) {
+  void FreeImpl(pten::Allocation *allocation) {
     allocated_size_ -= allocation->size();
     free(allocation->ptr());
     delete allocation;
@@ -50,10 +51,13 @@ static void TestFreeIdleChunk(bool free_idle_chunk,
   FLAGS_free_idle_chunk = free_idle_chunk;
   FLAGS_free_when_no_cache_hit = free_when_no_cache_hit;
   auto recorded_allocator = std::make_shared<RecordedAllocator>();
+
   size_t alignment = 4096;
   size_t memory_size = 8192;
+  auto underlying_allocator =
+      std::make_shared<AlignedAllocator>(recorded_allocator, alignment);
   auto ag_allocator = std::make_shared<AutoGrowthBestFitAllocator>(
-      recorded_allocator, alignment);
+      underlying_allocator, alignment);
 
   for (size_t i = 0; i < 10; ++i) {
     auto allocation = ag_allocator->Allocate(memory_size);
@@ -75,7 +79,7 @@ class LimitedResourceAllocator : public Allocator {
   size_t AllocatedSize() const { return allocated_size_; }
 
  protected:
-  Allocation *AllocateImpl(size_t size) override {
+  pten::Allocation *AllocateImpl(size_t size) override {
     if (allocated_size_ + size > capacity_) {
       throw BadAlloc("", __FILE__, __LINE__);
     }
@@ -84,7 +88,7 @@ class LimitedResourceAllocator : public Allocator {
     return new Allocation(malloc(size), size, platform::CPUPlace());
   }
 
-  void FreeImpl(Allocation *allocation) {
+  void FreeImpl(pten::Allocation *allocation) {
     allocated_size_ -= allocation->size();
     free(allocation->ptr());
     delete allocation;
@@ -131,8 +135,10 @@ static void TestFreeWhenNoCacheHit(bool free_when_no_cache_hit) {
 
   auto underlying_allocator =
       std::make_shared<LimitedResourceAllocator>(memory_capacity);
+  auto aligned_allocator =
+      std::make_shared<AlignedAllocator>(underlying_allocator, alignment);
   auto ag_allocator = std::make_shared<AutoGrowthBestFitAllocator>(
-      underlying_allocator, alignment);
+      aligned_allocator, alignment);
 
   ag_allocator->Allocate(allocate_size[0]);
   ASSERT_EQ(underlying_allocator->AllocatedSize(),

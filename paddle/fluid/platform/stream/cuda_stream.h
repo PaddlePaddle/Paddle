@@ -15,9 +15,11 @@ limitations under the License. */
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/stream_callback_manager.h"
@@ -33,54 +35,67 @@ enum class Priority : uint8_t {
   kHigh = 0x1,
   kNormal = 0x2,
 };
+
+enum class StreamFlag : uint8_t {
+  kDefaultFlag = 0x0,
+  kStreamNonBlocking = 0x1,
+};
+
 #endif
 class CUDAStream final {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
  public:
   CUDAStream() = default;
   explicit CUDAStream(const Place& place,
-                      const Priority& priority = Priority::kNormal) {
-    Init(place, priority);
+                      const Priority& priority = Priority::kNormal,
+                      const StreamFlag& flag = StreamFlag::kDefaultFlag) {
+    Init(place, priority, flag);
+  }
+  explicit CUDAStream(gpuStream_t stream, const Place& place)
+      : place_(place), stream_(stream) {
+    owned_stream_ = false;
+    callback_manager_.reset(new StreamCallbackManager<gpuStream_t>(stream_));
   }
   virtual ~CUDAStream() { Destroy(); }
 
-  bool Init(const Place& place, const Priority& priority = Priority::kNormal);
+  bool Init(const Place& place, const Priority& priority = Priority::kNormal,
+            const StreamFlag& flag = StreamFlag::kDefaultFlag);
 
-  template <typename Callback>
-  void AddCallback(Callback&& callback) const {
+  void AddCallback(std::function<void()> callback) const {
     callback_manager_->AddCallback(callback);
   }
 
-  template <typename Callback>
 #ifdef PADDLE_WITH_HIP
-  void RecordEvent(hipEvent_t ev, Callback callback) const {
+  void RecordEvent(hipEvent_t ev, const std::function<void()>& callback) const {
     callback();
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(ev, stream_));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(ev, stream_));
   }
 #else
-  void RecordEvent(cudaEvent_t ev, Callback callback) const {
+  void RecordEvent(cudaEvent_t ev,
+                   const std::function<void()>& callback) const {
     callback();
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(ev, stream_));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(ev, stream_));
   }
 #endif
 
 #ifdef PADDLE_WITH_HIP
   void RecordEvent(hipEvent_t ev) const {
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(ev, stream_));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(ev, stream_));
   }
 #else
   void RecordEvent(cudaEvent_t ev) const {
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(ev, stream_));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(ev, stream_));
   }
 #endif
 
 #ifdef PADDLE_WITH_HIP
   void WaitEvent(hipEvent_t ev) const {
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamWaitEvent(stream_, ev, 0));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(stream_, ev, 0));
   }
 #else
   void WaitEvent(cudaEvent_t ev) const {
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamWaitEvent(stream_, ev, 0));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(stream_, ev, 0));
   }
 #endif
 
@@ -113,20 +128,20 @@ class CUDAStream final {
     }
 #endif
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(err);
+    PADDLE_ENFORCE_GPU_SUCCESS(err);
     return false;
   }
 
-  void Synchronize() const {
-#ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream_));
-#else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream_));
-#endif
-  }
+  void Synchronize() const { platform::GpuStreamSync(stream_); }
+
+  const Place& GetPlace() const { return place_; }
+
+  // Note: Can only be used under thread_local semantics.
+  void SetStream(gpuStream_t stream);
 
  private:
   Place place_;
+  bool owned_stream_{true};
 #ifdef PADDLE_WITH_HIP
   hipStream_t stream_{nullptr};
 #else
@@ -139,6 +154,8 @@ class CUDAStream final {
 };
 
 CUDAStream* get_current_stream(int deviceId);
+// NOTE: There is a problem with the interface and needs to be fixed
+CUDAStream* set_current_stream(CUDAStream* stream);
 
 }  // namespace stream
 }  // namespace platform

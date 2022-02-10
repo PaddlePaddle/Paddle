@@ -132,6 +132,24 @@ void TransQKVWithBias(const int batch, const int seq_len, const int head_size,
   }
 }
 
+inline int round_up(int seq_len, int multiple = 32) {
+  PADDLE_ENFORCE_GT(
+      multiple, 0,
+      platform::errors::InvalidArgument(
+          "multiple should be a positive number，but it's (%d)", multiple));
+  return ((seq_len + multiple - 1) / multiple) * multiple;
+}
+
+template <typename T>
+__global__ void broadcast(const T *src, T *dst, const int seq_len,
+                          const int head_num) {
+  int batch_id = blockIdx.x / (head_num * seq_len);
+  int dst_offset = blockIdx.x * seq_len;
+  if (threadIdx.x < seq_len) {
+    dst[threadIdx.x + dst_offset] = src[threadIdx.x + batch_id * seq_len];
+  }
+}
+
 template <typename DeviceContext, typename T>
 class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
  public:
@@ -152,6 +170,7 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
     int head_number = context.Attr<int>("head_number");
     // compute q*k with eltadd
     auto &device_ctx = context.template device_context<DeviceContext>();
+    auto stream = device_ctx.stream();
     // should be (B * S * hidden)
     auto input_dims = input->dims();
     // shouble be (hidden * 3 * all_head_size)
@@ -159,7 +178,17 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
     int batch = input_dims[0];
     int seq_len = input_dims[1];
     int hidden = input_dims[2];
-
+    Tensor temp_bias_tensor;
+    // if bias_qk is[batch, 1, 1, seq_len], the bias_qk_d need to be broadcasted
+    if (bias_qk.numel() == (batch * seq_len)) {
+      temp_bias_tensor.Resize({batch * head_number * seq_len * seq_len});
+      auto *temp_qk_bias = temp_bias_tensor.mutable_data<T>(context.GetPlace());
+      int grid = batch * head_number * seq_len;
+      int block = round_up(seq_len);
+      broadcast<<<grid, block, 0, stream>>>(bias_qk_d, temp_qk_bias, seq_len,
+                                            head_number);
+      bias_qk_d = static_cast<const T *>(temp_qk_bias);
+    }
     int all_head_size = w_dims[2];
     int head_size = all_head_size / head_number;
 
@@ -196,7 +225,6 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
     auto *qkptr = multihead_temp_data;
     auto *tptr = multihead_temp_data + scratch_size;
 
-    auto stream = device_ctx.stream();
     // Do the transpose with bias.
     // BxSx3xNxH => tptr: 3xBxNxSxH.
     TransQKVWithBias(batch, seq_len, head_size, head_number, temp_out_data,

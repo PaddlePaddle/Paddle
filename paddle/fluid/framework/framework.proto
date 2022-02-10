@@ -147,6 +147,11 @@ message VarType {
     // in operators like nccl_op
     RAW = 17;
     TUPLE = 18;
+
+    STRING = 25;
+    STRINGS = 26;
+    VOCAB = 27;
+    FEED_LIST = 28;
   }
 
   required Type type = 1;
@@ -175,6 +180,10 @@ message VarType {
 
   message Tuple { repeated Type element_type = 1; }
   optional Tuple tuple = 7;
+
+  optional TensorDesc string = 8;
+  optional TensorDesc strings = 9;
+  optional TensorDesc vocab = 10;
 }
 
 message VarDesc {

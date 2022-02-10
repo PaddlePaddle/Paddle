@@ -18,29 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 using Tensor = framework::Tensor;
-template <typename Tx, typename Ty = Tx>
-struct SquareTransformer {
-  HOSTDEVICE explicit inline SquareTransformer(int n) {}
-
-  HOSTDEVICE inline Ty operator()(const Tx& x) const {
-    return static_cast<Ty>(x) * static_cast<Ty>(x);
-  }
-
-  HOSTDEVICE inline Ty operator()(const Tx* x) const {
-    return static_cast<Ty>(x[0]) * static_cast<Ty>(x[0]);
-  }
-};
-
-template <typename Tx, typename Ty = Tx>
-struct SquareSum {
-  using Transformer = SquareTransformer<Tx, Ty>;
-
-  inline Ty initial() { return static_cast<Ty>(0.0f); }
-
-  __device__ __forceinline__ Ty operator()(const Ty& a, const Ty& b) const {
-    return b + a;
-  }
-};
 
 template <>
 class ClipByNormKernel<platform::CUDADeviceContext, platform::float16>
@@ -59,21 +36,22 @@ class ClipByNormKernel<platform::CUDADeviceContext, platform::float16>
 
       output = context.Output<Tensor>("Out");
       output->mutable_data<platform::float16>(context.GetPlace());
-    } else if (in_var->IsType<SelectedRows>()) {
-      auto* x = context.Input<SelectedRows>("X");
+    } else if (in_var->IsType<pten::SelectedRows>()) {
+      auto* x = context.Input<pten::SelectedRows>("X");
 
       // merge ids in selected rows first
       math::scatter::MergeAdd<platform::CUDADeviceContext, platform::float16>
           merge_func;
-      SelectedRows* merged_input =
+      pten::SelectedRows* merged_input =
           const_cast<framework::Scope&>(context.scope())
               .Var()
-              ->GetMutable<SelectedRows>();
+              ->GetMutable<pten::SelectedRows>();
       merge_func(context.template device_context<platform::CUDADeviceContext>(),
                  *x, merged_input);
       input = &(merged_input->value());
 
-      SelectedRows* output_selected_rows = context.Output<SelectedRows>("Out");
+      pten::SelectedRows* output_selected_rows =
+          context.Output<pten::SelectedRows>("Out");
       output_selected_rows->set_rows(merged_input->rows());
       output_selected_rows->set_height(merged_input->height());
       output = output_selected_rows->mutable_value();
@@ -97,8 +75,10 @@ class ClipByNormKernel<platform::CUDADeviceContext, platform::float16>
     }
     Tensor tmp = context.AllocateTmpTensor<float, platform::CUDADeviceContext>(
         {1}, dev_ctx);
-    TensorReduceFunctorImpl<platform::float16, float, SquareSum>(
-        *input, &tmp, reduce_dims, dev_ctx.stream());
+    TensorReduceImpl<platform::float16, float, kps::AddFunctor,
+                     kps::SquareFunctor<platform::float16, float>>(
+        dev_ctx, *input, &tmp, kps::SquareFunctor<platform::float16, float>(),
+        reduce_dims, dev_ctx.stream());
     auto tmp_eigen = EigenVector<float>::Flatten(tmp);
     auto x_norm = tmp_eigen.sqrt();
 

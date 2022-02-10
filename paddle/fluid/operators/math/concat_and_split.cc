@@ -14,14 +14,21 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/concat_and_split.h"
 
+#include "paddle/pten/kernels/cpu/concat_and_split.h"
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#endif
+#include "paddle/pten/common/bfloat16.h"
+#include "paddle/pten/common/float16.h"
+
+namespace pten {
+class DenseTensor;
+}  // namespace pten
+
 namespace paddle {
-namespace framework {
-class Tensor;
-}  // namespace framework
+namespace framework {}  // namespace framework
 namespace platform {
 class CPUDeviceContext;
-struct bfloat16;
-struct float16;
 }  // namespace platform
 }  // namespace paddle
 
@@ -39,36 +46,9 @@ class ConcatFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& context,
                   const std::vector<framework::Tensor>& input, int axis,
                   framework::Tensor* output) {
-    // TODO(zcd): Add input data validity checking
-    size_t num = input.size();
-
-    int64_t rows = 1;
-    auto dim_0 = input[0].dims();
-    for (int i = 0; i < axis; ++i) {
-      rows *= dim_0[i];
-    }
-    int64_t out_rows = rows, out_cols = 0;
-
-    std::vector<int64_t> input_cols(input.size());
-    for (size_t i = 0; i < num; ++i) {
-      int64_t t_cols = input[i].numel() / rows;
-      out_cols += t_cols;
-      input_cols[i] = t_cols;
-    }
-    auto cpu_place = BOOST_GET_CONST(platform::CPUPlace, context.GetPlace());
-
-    // computation
-    auto output_data = output->data<T>();
-    int64_t col_idx = 0;
-    for (size_t j = 0; j < num; ++j) {
-      int64_t col_len = input_cols[j];
-      auto input_data = input[j].data<T>();
-      for (int64_t k = 0; k < out_rows; ++k) {
-        memory::Copy(cpu_place, output_data + k * out_cols + col_idx, cpu_place,
-                     input_data + k * col_len, sizeof(T) * col_len);
-      }
-      col_idx += col_len;
-    }
+    std::vector<pten::DenseTensor> pt_input{input.begin(), input.end()};
+    pten::ConcatImpl<T, platform::CPUDeviceContext>(context, pt_input, axis,
+                                                    output);
   }
 };
 
@@ -83,46 +63,12 @@ class SplitFunctor<platform::CPUDeviceContext, T> {
                   const framework::Tensor& input,
                   const std::vector<const framework::Tensor*>& ref_inputs,
                   const int axis, std::vector<framework::Tensor*>* outputs) {
-    // NOTE(zhiqiu): split a tensor of shape [0,3,4] at axis=1, result in 3
-    // tensors of shape [0,1,4]
-    if (input.numel() == 0) {
-      return;
-    }
-
-    // TODO(zcd): Add input data validity checking
-    size_t num = outputs->size();
-
-    int input_rows = 1;
-    auto dim_0 = ref_inputs[0]->dims();
-    for (int i = 0; i < axis; ++i) {
-      input_rows *= dim_0[i];
-    }
-
-    int input_cols = 0;
-
-    std::vector<int64_t> output_cols(outputs->size());
-    for (size_t i = 0; i < num; ++i) {
-      int t_cols = ref_inputs[i]->numel() / input_rows;
-      input_cols += t_cols;
-      output_cols[i] = t_cols;
-    }
-    auto cpu_place = BOOST_GET_CONST(platform::CPUPlace, context.GetPlace());
-
-    // computation
-    for (int k = 0; k < input_rows; ++k) {
-      const T* src_ptr = input.data<T>() + k * input_cols;
-      int col_idx = 0;
-      for (size_t j = 0; j < num; ++j) {
-        int col_len = output_cols[j];
-        auto* out_tensor = outputs->at(j);
-        if (out_tensor != nullptr) {
-          T* dst_ptr = out_tensor->data<T>() + k * col_len;
-          memory::Copy(cpu_place, dst_ptr, cpu_place, src_ptr + col_idx,
-                       sizeof(T) * col_len);
-        }
-        col_idx += col_len;
-      }
-    }
+    std::vector<const pten::DenseTensor*> pt_ref_inputs{ref_inputs.begin(),
+                                                        ref_inputs.end()};
+    std::vector<pten::DenseTensor*> pt_outputs{outputs->begin(),
+                                               outputs->end()};
+    pten::SplitImpl<T, platform::CPUDeviceContext>(
+        context, input, pt_ref_inputs, axis, &pt_outputs);
   }
 };
 
@@ -137,8 +83,7 @@ class ConcatFunctor<platform::XPUDeviceContext, T> {
   void operator()(const platform::XPUDeviceContext& context,
                   const std::vector<framework::Tensor>& input, int axis,
                   framework::Tensor* output) {
-    int dev_id =
-        BOOST_GET_CONST(platform::XPUPlace, context.GetPlace()).GetDeviceId();
+    int dev_id = context.GetPlace().GetDeviceId();
     platform::XPUDeviceGuard guard(dev_id);
 
     int num = input.size();
@@ -176,8 +121,7 @@ class SplitFunctor<platform::XPUDeviceContext, T> {
                   const framework::Tensor& input,
                   const std::vector<const framework::Tensor*>& ref_inputs,
                   const int axis, std::vector<framework::Tensor*>* outputs) {
-    int dev_id =
-        BOOST_GET_CONST(platform::XPUPlace, context.GetPlace()).GetDeviceId();
+    int dev_id = context.GetPlace().GetDeviceId();
     platform::XPUDeviceGuard guard(dev_id);
 
     auto& ins = ref_inputs;
@@ -215,6 +159,78 @@ class SplitFunctor<platform::XPUDeviceContext, T> {
 };
 #endif
 
+#ifdef PADDLE_WITH_ASCEND_CL
+template <typename T>
+class ConcatFunctor<platform::NPUDeviceContext, T> {
+ public:
+  void operator()(const platform::NPUDeviceContext& context,
+                  const std::vector<framework::Tensor>& input, int axis,
+                  framework::Tensor* output) {
+    int dev_id = context.GetPlace().GetDeviceId();
+    platform::NPUDeviceGuard guard(dev_id);
+
+    std::vector<std::string> names;
+    for (size_t i = 0; i < input.size(); ++i) {
+      names.push_back("x" + std::to_string(i));
+    }
+    NpuOpRunner runner{
+        "ConcatD",
+        {input},
+        {*output},
+        {{"concat_dim", axis}, {"N", static_cast<int>(input.size())}}};
+    runner.AddInputNames(names);
+    runner.Run(context.stream());
+  }
+};
+
+template <typename T>
+class SplitFunctor<platform::NPUDeviceContext, T> {
+ public:
+  void operator()(const platform::NPUDeviceContext& context,
+                  const framework::Tensor& input,
+                  const std::vector<const framework::Tensor*>& ref_inputs,
+                  const int axis, std::vector<framework::Tensor*>* outputs) {
+    if (input.numel() == 0) {
+      return;
+    }
+
+    size_t num = outputs->size();
+
+    int input_rows = 1;
+    auto dim_0 = ref_inputs[0]->dims();
+    for (int i = 0; i < axis; ++i) {
+      input_rows *= dim_0[i];
+    }
+
+    int input_cols = 0;
+
+    std::vector<int64_t> output_cols(outputs->size());
+    for (size_t i = 0; i < num; ++i) {
+      int t_cols = ref_inputs[i]->numel() / input_rows;
+      input_cols += t_cols;
+      output_cols[i] = t_cols;
+    }
+    auto npu_place = context.GetPlace();
+
+    // computation
+    for (int k = 0; k < input_rows; ++k) {
+      const T* src_ptr = input.data<T>() + k * input_cols;
+      int col_idx = 0;
+      for (size_t j = 0; j < num; ++j) {
+        int col_len = output_cols[j];
+        auto* out_tensor = outputs->at(j);
+        if (out_tensor != nullptr) {
+          T* dst_ptr = out_tensor->data<T>() + k * col_len;
+          memory::Copy(npu_place, dst_ptr, npu_place, src_ptr + col_idx,
+                       sizeof(T) * col_len, context.stream());
+        }
+        col_idx += col_len;
+      }
+    }
+  }
+};
+#endif
+
 #define DEFINE_FUNCTOR(type)                                      \
   template class ConcatFunctor<platform::CPUDeviceContext, type>; \
   template class SplitFunctor<platform::CPUDeviceContext, type>;
@@ -227,6 +243,14 @@ FOR_ALL_TYPES(DEFINE_FUNCTOR);
   template class SplitFunctor<platform::XPUDeviceContext, type>;
 
 DEFINE_XPU_FUNCTOR(float)
+#endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+#define DEFINE_NPU_FUNCTOR(type)                                  \
+  template class ConcatFunctor<platform::NPUDeviceContext, type>; \
+  template class SplitFunctor<platform::NPUDeviceContext, type>;
+
+FOR_ALL_TYPES(DEFINE_NPU_FUNCTOR)
 #endif
 
 }  // namespace math

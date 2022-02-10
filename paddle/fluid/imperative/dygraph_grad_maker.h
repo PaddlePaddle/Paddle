@@ -236,6 +236,7 @@ class TracedGradOp {
 
     if (kRole == TracedVarRole::kBackward) {
       for (auto& var : vars) {
+        VLOG(6) << "SetIutput var name: " << var->Name();
         if (var && !var->OverridedStopGradient()) {
           var->SetGraphIsFreed(false);
           auto dirty_grad_node = var->GradNode();
@@ -267,11 +268,22 @@ class TracedGradOp {
         return;
       } else {
         for (auto& var : vars) {
+          VLOG(6) << "SetOutput var name: " << var->Name();
           if (var && !var->OverridedStopGradient() && var->GradNode()) {
             if (map_dirty_grad_node_.find(var) != map_dirty_grad_node_.end()) {
+              // Because inplace var isn't a leaf var, it should have
+              // dirty_grad_node.
               node_->InsertGradPendingNode(map_dirty_grad_node_[var]);
-            } else {
+              VLOG(6) << (*node_.get())[0].Type() << " insertGradPendingNode "
+                      << (*(map_dirty_grad_node_[var].get()))[0].Type();
+            } else if (node_ != var->GradNode()) {
+              // For non-inplace var.
+              // Special case: `set_value` is inplace op, and it can change
+              // the var with `stop_gradient=True` to the var with
+              // `stop_gradient=False`.
               node_->InsertGradPendingNode(var->GradNode());
+              VLOG(6) << (*node_.get())[0].Type() << " insertGradPendingNode "
+                      << (*(var->GradNode().get()))[0].Type();
             }
           }
         }
@@ -347,15 +359,28 @@ class TracedGradOp {
     //  Use original var_wrapper if its inplace_version is not
     //  changed. Otherwise, it will affect the accuracy of the model
     //  results and affect double grad.
-    if (!var_wrapper->MutableVar()->IsInitialized() ||
-        var_wrapper->InplaceVersionSnapshot() ==
-            var_wrapper->MutableVar()->CurrentInplaceVersion()) {
+    if (!var_wrapper->MutableVar()->IsInitialized()) {
       return var_wrapper;
-    } else {
-      VariableWrapper new_var_wrapper = *var_wrapper.get();
-      new_var_wrapper.ResetInplaceVersion();
-      return std::make_shared<VariableWrapper>(new_var_wrapper);
+    } else if (var_wrapper->InplaceVersionSnapshot() ==
+               var_wrapper->MutableVar()->CurrentInplaceVersion()) {
+      return var_wrapper;
+    } else if (var_wrapper->MutableVar()->IsType<framework::LoDTensor>() ||
+               var_wrapper->MutableVar()->IsType<pten::SelectedRows>()) {
+      auto* tensor =
+          var_wrapper->MutableVar()->IsType<framework::LoDTensor>()
+              ? var_wrapper->MutableVar()->GetMutable<framework::LoDTensor>()
+              : var_wrapper->MutableVar()
+                    ->GetMutable<pten::SelectedRows>()
+                    ->mutable_value();
+      if (!tensor->IsInitialized()) {
+        return var_wrapper;
+      }
     }
+
+    auto new_var_wrapper =
+        std::make_shared<VariableWrapper>(*var_wrapper.get());
+    new_var_wrapper->ResetInplaceVersion();
+    return new_var_wrapper;
   }
 
  private:

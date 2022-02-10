@@ -95,6 +95,26 @@ class TestXPUTanh(TestXPUActivation):
             self.check_grad_with_place(place, ['X'], 'Out')
 
 
+class TestXPUTanhFP16(TestXPUActivation):
+    def setUp(self):
+        self.op_type = "tanh"
+        self.init_dtype()
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
+        out = np.tanh(x)
+
+        self.attrs = {'use_xpu': True}
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def test_check_grad(self):
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(place, ['X'], 'Out')
+
+
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestXPUSqrt(TestXPUActivation):
@@ -134,6 +154,11 @@ class TestXPUAbs(TestXPUActivation):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
 
+    def test_check_grad(self):
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(place, ['X'], 'Out')
+
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
@@ -170,6 +195,27 @@ class TestXPUGelu(TestXPUActivation):
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
         self.attrs = {"approximate": approximate, 'use_xpu': True}
+
+    def test_check_grad(self):
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(place, ['X'], 'Out')
+
+
+class TestXPUGelu(TestXPUActivation):
+    def setUp(self):
+        self.op_type = "gelu"
+        self.init_dtype()
+        approximate = False
+        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+        out = gelu(x, approximate)
+
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+        self.attrs = {"approximate": approximate, 'use_xpu': True}
+
+    def init_dtype(self):
+        self.dtype = np.float16
 
     def test_check_grad(self):
         if paddle.is_compiled_with_xpu():
@@ -291,6 +337,25 @@ def leaky_relu(x, alpha):
     else:
         y_ref = np.minimum(x, alpha * x)
     return y_ref.astype(x.dtype)
+
+
+class TestXPUReciprocal(TestXPUActivation):
+    def setUp(self):
+        self.op_type = "reciprocal"
+        self.init_dtype()
+
+        np.random.seed(1024)
+        x = np.random.uniform(1, 2, [1111, 1117]).astype(self.dtype)
+        out = np.reciprocal(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {'use_xpu': True}
+
+    def test_check_grad(self):
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(place, ['X'], 'Out')
 
 
 if __name__ == "__main__":

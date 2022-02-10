@@ -15,42 +15,38 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-import sys
-sys.path.append("..")
 import paddle
 import paddle.nn as nn
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from op_test import OpTest, skip_check_grad_ci
+import sys
+sys.path.append("..")
+from op_test import OpTest
 
 from test_conv2d_transpose_op import conv2dtranspose_forward_naive
 
 paddle.enable_static()
 
 
-@skip_check_grad_ci(
-    reason='''Inference only, it doesn't need to call check_grad.''')
 class TestConv2DTransposeOp(OpTest):
     def set_npu(self):
         self.__class__.use_npu = True
         self.place = paddle.NPUPlace(0)
 
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def init_data_format(self):
-        self.data_format = "NCHW"
-
     def setUp(self):
-        self.init_op_type()
-        self.init_dtype()
+        # init as conv transpose
         self.set_npu()
-        self.init_data_format()
+        self.dtype = np.float32
+        self.need_check_grad = True
+        self.is_test = False
+        self.output_size = None
         self.output_padding = []
+        self.data_format = "NCHW"
         self.pad = [0, 0]
         self.padding_algorithm = "EXPLICIT"
+        self.init_op_type()
         self.init_test_case()
-        self.output_size = None
+        self.init_dtype()
 
         input_ = np.random.random(self.input_size).astype(self.dtype)
         filter_ = np.random.random(self.filter_size).astype(self.dtype)
@@ -80,6 +76,32 @@ class TestConv2DTransposeOp(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place, atol=1e-2)
 
+    def test_check_grad_no_input(self):
+        if self.need_check_grad:
+            self.check_grad_with_place(
+                self.place, ['Filter'],
+                'Output',
+                no_grad_set=set(['Input']),
+                numeric_place=paddle.CPUPlace())
+
+    def test_check_grad_no_filter(self):
+        if self.need_check_grad:
+            self.check_grad_with_place(
+                self.place, ['Input'],
+                'Output',
+                no_grad_set=set(['Filter']),
+                max_relative_error=0.006,
+                numeric_place=paddle.CPUPlace())
+
+    def test_check_grad(self):
+        if self.need_check_grad:
+            self.check_grad_with_place(
+                self.place,
+                set(['Input', 'Filter']),
+                'Output',
+                max_relative_error=0.02,
+                numeric_place=paddle.CPUPlace())
+
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -91,17 +113,6 @@ class TestConv2DTransposeOp(OpTest):
 
     def init_op_type(self):
         self.op_type = "conv2d_transpose"
-
-
-class TestWithSymmetricPad_FP32(TestConv2DTransposeOp):
-    def init_test_case(self):
-        self.pad = [1, 1]
-        self.stride = [1, 1]
-        self.dilations = [1, 1]
-        self.groups = 1
-        self.input_size = [2, 3, 5, 5]  # NCHW
-        f_c = self.input_size[1]
-        self.filter_size = [f_c, 6, 3, 3]
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -118,18 +129,10 @@ class TestWithSymmetricPad(TestConv2DTransposeOp):
         self.filter_size = [f_c, 6, 3, 3]
 
 
-class TestWithAsymmetricPad_FP32(TestConv2DTransposeOp):
-    def init_test_case(self):
-        self.pad = [1, 0, 1, 2]
-        self.stride = [1, 1]
-        self.dilations = [1, 1]
-        self.groups = 1
-        self.input_size = [2, 3, 5, 5]  # NCHW
-        f_c = self.input_size[1]
-        self.filter_size = [f_c, 6, 3, 3]
-
+class TestWithSymmetricPad_FP16(TestWithSymmetricPad):
     def init_dtype(self):
-        self.dtype = np.float32
+        self.dtype = np.float16
+        self.need_check_grad = False
 
 
 class TestWithAsymmetricPad(TestConv2DTransposeOp):
@@ -143,18 +146,10 @@ class TestWithAsymmetricPad(TestConv2DTransposeOp):
         self.filter_size = [f_c, 6, 3, 3]
 
 
-class TestWithSAMEPad_FP32(TestConv2DTransposeOp):
-    def init_test_case(self):
-        self.stride = [2, 1]
-        self.dilations = [1, 2]
-        self.groups = 1
-        self.input_size = [2, 3, 6, 5]  # NCHW
-        f_c = self.input_size[1]
-        self.filter_size = [f_c, 6, 4, 3]
-        self.padding_algorithm = 'SAME'
-
+class TestWithAsymmetricPad_FP16(TestWithAsymmetricPad):
     def init_dtype(self):
-        self.dtype = np.float32
+        self.dtype = np.float16
+        self.need_check_grad = False
 
 
 class TestWithSAMEPad(TestConv2DTransposeOp):
@@ -168,18 +163,10 @@ class TestWithSAMEPad(TestConv2DTransposeOp):
         self.padding_algorithm = 'SAME'
 
 
-class TestWithVALIDPad_FP32(TestConv2DTransposeOp):
-    def init_test_case(self):
-        self.stride = [1, 1]
-        self.dilations = [1, 1]
-        self.groups = 1
-        self.input_size = [2, 3, 5, 5]  # NCHW
-        f_c = self.input_size[1]
-        self.filter_size = [f_c, 6, 3, 3]
-        self.padding_algorithm = 'VALID'
-
+class TestWithSAMEPad_FP16(TestWithSAMEPad):
     def init_dtype(self):
-        self.dtype = np.float32
+        self.dtype = np.float16
+        self.need_check_grad = False
 
 
 class TestWithVALIDPad(TestConv2DTransposeOp):
@@ -193,18 +180,10 @@ class TestWithVALIDPad(TestConv2DTransposeOp):
         self.padding_algorithm = 'VALID'
 
 
-class TestWithGroups_FP32(TestConv2DTransposeOp):
-    def init_test_case(self):
-        self.pad = [1, 1]
-        self.stride = [1, 1]
-        self.dilations = [1, 1]
-        self.groups = 2
-        self.input_size = [2, 4, 5, 5]  # NCHW
-        f_c = self.input_size[1]
-        self.filter_size = [f_c, 3, 3, 3]
-
+class TestWithVALIDPad_FP16(TestWithVALIDPad):
     def init_dtype(self):
-        self.dtype = np.float32
+        self.dtype = np.float16
+        self.need_check_grad = False
 
 
 class TestWithGroups(TestConv2DTransposeOp):
@@ -218,18 +197,10 @@ class TestWithGroups(TestConv2DTransposeOp):
         self.filter_size = [f_c, 3, 3, 3]
 
 
-class TestWithStride_FP32(TestConv2DTransposeOp):
-    def init_test_case(self):
-        self.pad = [1, 1]
-        self.stride = [2, 2]
-        self.dilations = [1, 1]
-        self.groups = 1
-        self.input_size = [2, 3, 5, 5]  # NCHW
-        f_c = self.input_size[1]
-        self.filter_size = [f_c, 6, 3, 3]
-
+class TestWithGroups_FP16(TestWithGroups):
     def init_dtype(self):
-        self.dtype = np.float32
+        self.dtype = np.float16
+        self.need_check_grad = False
 
 
 class TestWithStride(TestConv2DTransposeOp):
@@ -243,18 +214,10 @@ class TestWithStride(TestConv2DTransposeOp):
         self.filter_size = [f_c, 6, 3, 3]
 
 
-class TestWithDilation_FP32(TestConv2DTransposeOp):
-    def init_test_case(self):
-        self.pad = [1, 1]
-        self.stride = [1, 1]
-        self.groups = 1
-        self.dilations = [2, 2]
-        self.input_size = [2, 3, 5, 5]  # NCHW
-        f_c = self.input_size[1]
-        self.filter_size = [f_c, 6, 3, 3]
-
+class TestWithStride_FP16(TestWithStride):
     def init_dtype(self):
-        self.dtype = np.float32
+        self.dtype = np.float16
+        self.need_check_grad = False
 
 
 class TestWithDilation(TestConv2DTransposeOp):
@@ -268,19 +231,10 @@ class TestWithDilation(TestConv2DTransposeOp):
         self.filter_size = [f_c, 6, 3, 3]
 
 
-class TestWithEvenUpsample_FP32(TestConv2DTransposeOp):
-    def init_test_case(self):
-        self.pad = [2, 2]
-        self.stride = [2, 2]
-        self.groups = 1
-        self.dilations = [1, 1]
-        self.output_size = [14, 14]
-        self.input_size = [2, 3, 7, 7]  # NCHW
-        f_c = self.input_size[1]
-        self.filter_size = [f_c, 6, 5, 5]
-
+class TestWithDilation_FP16(TestWithDilation):
     def init_dtype(self):
-        self.dtype = np.float32
+        self.dtype = np.float16
+        self.need_check_grad = False
 
 
 class TestWithEvenUpsample(TestConv2DTransposeOp):
@@ -295,19 +249,10 @@ class TestWithEvenUpsample(TestConv2DTransposeOp):
         self.filter_size = [f_c, 6, 5, 5]
 
 
-class TestWithEvenUpsampleOutputPadding_FP32(TestConv2DTransposeOp):
-    def init_test_case(self):
-        self.pad = [2, 2]
-        self.stride = [2, 2]
-        self.groups = 1
-        self.dilations = [1, 1]
-        self.output_padding = [1, 1]
-        self.input_size = [2, 3, 7, 7]  # NCHW
-        f_c = self.input_size[1]
-        self.filter_size = [f_c, 6, 5, 5]
-
+class TestWithEvenUpsample_FP16(TestWithEvenUpsample):
     def init_dtype(self):
-        self.dtype = np.float32
+        self.dtype = np.float16
+        self.need_check_grad = False
 
 
 class TestWithEvenUpsampleOutputPadding(TestConv2DTransposeOp):
@@ -322,19 +267,10 @@ class TestWithEvenUpsampleOutputPadding(TestConv2DTransposeOp):
         self.filter_size = [f_c, 6, 5, 5]
 
 
-class Test_NHWC_FP32(TestConv2DTransposeOp):
-    def init_test_case(self):
-        self.pad = [0, 0]
-        self.stride = [1, 1]
-        self.dilations = [1, 1]
-        self.groups = 1
-        self.input_size = [2, 5, 5, 3]  # NHWC
-        f_c = self.input_size[-1]
-        self.filter_size = [f_c, 6, 3, 3]
-        self.data_format = 'NHWC'
-
+class TestWithEvenUpsampleOutputPadding_FP16(TestWithEvenUpsampleOutputPadding):
     def init_dtype(self):
-        self.dtype = np.float32
+        self.dtype = np.float16
+        self.need_check_grad = False
 
 
 class Test_NHWC(TestConv2DTransposeOp):
@@ -349,19 +285,10 @@ class Test_NHWC(TestConv2DTransposeOp):
         self.data_format = 'NHWC'
 
 
-class TestWithSymmetricPad_NHWC_FP32(TestConv2DTransposeOp):
-    def init_test_case(self):
-        self.pad = [1, 1]
-        self.stride = [1, 1]
-        self.dilations = [1, 1]
-        self.groups = 1
-        self.input_size = [2, 5, 5, 3]  # NHWC
-        f_c = self.input_size[-1]
-        self.filter_size = [f_c, 6, 3, 3]
-        self.data_format = 'NHWC'
-
+class Test_NHWC_FP16(Test_NHWC):
     def init_dtype(self):
-        self.dtype = np.float32
+        self.dtype = np.float16
+        self.need_check_grad = False
 
 
 class TestWithSymmetricPad_NHWC(TestConv2DTransposeOp):
@@ -376,19 +303,10 @@ class TestWithSymmetricPad_NHWC(TestConv2DTransposeOp):
         self.data_format = 'NHWC'
 
 
-class TestWithAsymmetricPad_NHWC_FP32(TestConv2DTransposeOp):
-    def init_test_case(self):
-        self.pad = [1, 0, 1, 2]
-        self.stride = [1, 1]
-        self.dilations = [1, 1]
-        self.groups = 1
-        self.input_size = [2, 5, 5, 3]  # NHWC
-        f_c = self.input_size[-1]
-        self.filter_size = [f_c, 6, 3, 3]
-        self.data_format = 'NHWC'
-
+class TestWithSymmetricPad_NHWC_FP16(TestWithSymmetricPad_NHWC):
     def init_dtype(self):
-        self.dtype = np.float32
+        self.dtype = np.float16
+        self.need_check_grad = False
 
 
 class TestWithAsymmetricPad_NHWC(TestConv2DTransposeOp):
@@ -403,19 +321,10 @@ class TestWithAsymmetricPad_NHWC(TestConv2DTransposeOp):
         self.data_format = 'NHWC'
 
 
-class TestWithGroups_NHWC_FP32(TestConv2DTransposeOp):
-    def init_test_case(self):
-        self.pad = [1, 1]
-        self.stride = [1, 1]
-        self.dilations = [1, 1]
-        self.groups = 2
-        self.input_size = [2, 5, 5, 4]  # NHWC
-        f_c = self.input_size[-1]
-        self.filter_size = [f_c, 3, 3, 3]
-        self.data_format = 'NHWC'
-
+class TestWithAsymmetricPad_NHWC_FP16(TestWithAsymmetricPad_NHWC):
     def init_dtype(self):
-        self.dtype = np.float32
+        self.dtype = np.float16
+        self.need_check_grad = False
 
 
 class TestWithGroups_NHWC(TestConv2DTransposeOp):
@@ -430,19 +339,10 @@ class TestWithGroups_NHWC(TestConv2DTransposeOp):
         self.data_format = 'NHWC'
 
 
-class TestWithStride_NHWC_FP32(TestConv2DTransposeOp):
-    def init_test_case(self):
-        self.pad = [1, 1]
-        self.stride = [2, 2]
-        self.dilations = [1, 1]
-        self.groups = 1
-        self.input_size = [2, 5, 5, 3]  # NCHW
-        f_c = self.input_size[-1]
-        self.filter_size = [f_c, 6, 3, 3]
-        self.data_format = 'NHWC'
-
+class TestWithGroups_NHWC_FP16(TestWithGroups_NHWC):
     def init_dtype(self):
-        self.dtype = np.float32
+        self.dtype = np.float16
+        self.need_check_grad = False
 
 
 class TestWithStride_NHWC(TestConv2DTransposeOp):
@@ -457,19 +357,10 @@ class TestWithStride_NHWC(TestConv2DTransposeOp):
         self.data_format = 'NHWC'
 
 
-class TestWithDilation_NHWC_FP32(TestConv2DTransposeOp):
-    def init_test_case(self):
-        self.pad = [1, 1]
-        self.stride = [1, 1]
-        self.groups = 1
-        self.dilations = [2, 2]
-        self.input_size = [2, 5, 5, 3]  # NHWC
-        f_c = self.input_size[-1]
-        self.filter_size = [f_c, 6, 3, 3]
-        self.data_format = 'NHWC'
-
+class TestWithStride_NHWC_FP16(TestWithStride_NHWC):
     def init_dtype(self):
-        self.dtype = np.float32
+        self.dtype = np.float16
+        self.need_check_grad = False
 
 
 class TestWithDilation_NHWC(TestConv2DTransposeOp):
@@ -484,20 +375,10 @@ class TestWithDilation_NHWC(TestConv2DTransposeOp):
         self.data_format = 'NHWC'
 
 
-class TestWithEvenUpsample_NHWC_FP32(TestConv2DTransposeOp):
-    def init_test_case(self):
-        self.pad = [2, 2]
-        self.stride = [2, 2]
-        self.groups = 1
-        self.dilations = [1, 1]
-        self.output_size = [14, 14]
-        self.input_size = [2, 7, 7, 3]  # NHWC
-        f_c = self.input_size[-1]
-        self.filter_size = [f_c, 6, 5, 5]
-        self.data_format = 'NHWC'
-
+class TestWithDilation_NHWC_FP16(TestWithDilation_NHWC):
     def init_dtype(self):
-        self.dtype = np.float32
+        self.dtype = np.float16
+        self.need_check_grad = False
 
 
 class TestWithEvenUpsample_NHWC(TestConv2DTransposeOp):
@@ -513,20 +394,10 @@ class TestWithEvenUpsample_NHWC(TestConv2DTransposeOp):
         self.data_format = 'NHWC'
 
 
-class TestWithEvenUpsample_NHWC_output_padding_FP32(TestConv2DTransposeOp):
-    def init_test_case(self):
-        self.pad = [2, 2]
-        self.stride = [2, 2]
-        self.groups = 1
-        self.dilations = [1, 1]
-        self.output_padding = [1, 1]
-        self.input_size = [2, 7, 7, 3]  # NHWC
-        f_c = self.input_size[-1]
-        self.filter_size = [f_c, 6, 5, 5]
-        self.data_format = 'NHWC'
-
+class TestWithEvenUpsample_NHWC_FP16(TestWithEvenUpsample_NHWC):
     def init_dtype(self):
-        self.dtype = np.float32
+        self.dtype = np.float16
+        self.need_check_grad = False
 
 
 class TestWithEvenUpsample_NHWC_output_padding(TestConv2DTransposeOp):
@@ -540,6 +411,13 @@ class TestWithEvenUpsample_NHWC_output_padding(TestConv2DTransposeOp):
         f_c = self.input_size[-1]
         self.filter_size = [f_c, 6, 5, 5]
         self.data_format = 'NHWC'
+
+
+class TestWithEvenUpsample_NHWC_output_padding_FP16(
+        TestWithEvenUpsample_NHWC_output_padding):
+    def init_dtype(self):
+        self.dtype = np.float16
+        self.need_check_grad = False
 
 
 class TestConv2DTransposeAPI(unittest.TestCase):
@@ -615,71 +493,6 @@ class TestConv2DTransposeAPI(unittest.TestCase):
         self.assertIsNotNone(results[4])
         self.assertIsNotNone(results[5])
         self.assertIsNotNone(results[6])
-
-
-class TestConv2DTransposeOpException(unittest.TestCase):
-    def test_exception(self):
-        data = fluid.layers.data(name='data', shape=[3, 5, 5], dtype="float32")
-
-        def attr_data_format():
-            out = fluid.layers.conv2d_transpose(
-                input=data,
-                groups=1,
-                num_filters=6,
-                filter_size=3,
-                data_format="NCDHW")
-
-        self.assertRaises(ValueError, attr_data_format)
-
-        def attr_padding_str():
-            out = fluid.layers.conv2d_transpose(
-                input=data,
-                groups=1,
-                num_filters=6,
-                filter_size=3,
-                padding='Vald')
-
-        self.assertRaises(ValueError, attr_padding_str)
-
-        def attr_padding_list():
-            out = fluid.layers.conv2d_transpose(
-                input=data,
-                groups=1,
-                num_filters=6,
-                filter_size=3,
-                padding=[[1, 1], [1, 1], [0, 0], [0, 0]])
-
-        self.assertRaises(ValueError, attr_padding_list)
-
-        def attr_padding_with_data_format():
-            out = fluid.layers.conv2d_transpose(
-                input=data,
-                groups=1,
-                num_filters=6,
-                filter_size=3,
-                padding=[[1, 1], [0, 0], [0, 0], [1, 1]],
-                data_format='NHWC')
-
-        self.assertRaises(ValueError, attr_padding_with_data_format)
-
-        error_input = fluid.layers.data(
-            name='error_data', shape=[1], dtype="float32")
-
-        def error_input_size():
-            out = fluid.layers.conv2d_transpose(
-                input=error_input, groups=1, num_filters=6, filter_size=3)
-
-        self.assertRaises(ValueError, error_input_size)
-
-        def error_groups():
-            out = fluid.layers.conv2d_transpose(
-                input=data,
-                groups=0,
-                num_filters=6,
-                filter_size=3,
-                data_format='NHWC')
-
-        self.assertRaises(ValueError, error_groups)
 
 
 class TestConv2DTransposeRepr(unittest.TestCase):

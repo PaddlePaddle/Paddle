@@ -30,6 +30,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+#define GELU_CONSTANT 0.044715
+
 template <typename T>
 struct GeluFunctor {
   template <typename Device, typename X, typename Out>
@@ -41,14 +43,14 @@ struct GeluFunctor {
         auto casted_x = x.template cast<float>();
         auto temp =
             (static_cast<float>(M_2_SQRTPI * M_SQRT1_2) *
-             (casted_x + static_cast<float>(0.044715) * casted_x.cube()))
+             (casted_x + static_cast<float>(GELU_CONSTANT) * casted_x.cube()))
                 .tanh();
         out.device(d) = (casted_x * static_cast<float>(0.5) *
                          (static_cast<float>(1) + temp))
                             .template cast<T>();
       } else {
         auto temp = (static_cast<T>(M_2_SQRTPI * M_SQRT1_2) *
-                     (x + static_cast<T>(0.044715) * x.cube()))
+                     (x + static_cast<T>(GELU_CONSTANT) * x.cube()))
                         .tanh();
         out.device(d) = x * static_cast<T>(0.5) * (static_cast<T>(1) + temp);
       }
@@ -101,10 +103,10 @@ struct GeluGradFunctor {
 
         const float kAlpha = static_cast<float>(M_2_SQRTPI * M_SQRT1_2);
         const float kBeta =
-            kAlpha * static_cast<float>(0.044715) * static_cast<float>(3);
+            kAlpha * static_cast<float>(GELU_CONSTANT) * static_cast<float>(3);
         const auto y =
             (kAlpha *
-             ((static_cast<float>(0.044715) * casted_x.cube()) + casted_x))
+             ((static_cast<float>(GELU_CONSTANT) * casted_x.cube()) + casted_x))
                 .tanh();
         dx.device(d) = (static_cast<float>(0.5) * casted_dout *
                         (static_cast<float>(1) + y +
@@ -113,9 +115,10 @@ struct GeluGradFunctor {
                            .template cast<T>();
       } else {
         const T kAlpha = static_cast<T>(M_2_SQRTPI * M_SQRT1_2);
-        const T kBeta = kAlpha * static_cast<T>(0.044715) * static_cast<T>(3);
+        const T kBeta =
+            kAlpha * static_cast<T>(GELU_CONSTANT) * static_cast<T>(3);
         const auto y =
-            (kAlpha * ((static_cast<T>(0.044715) * x.cube()) + x)).tanh();
+            (kAlpha * ((static_cast<T>(GELU_CONSTANT) * x.cube()) + x)).tanh();
         dx.device(d) = static_cast<T>(0.5) * dout *
                        (static_cast<T>(1) + y +
                         (x - x * y.square()) * (kAlpha + kBeta * x.square()));

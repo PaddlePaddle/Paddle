@@ -37,4 +37,12 @@ elif [[ "$1" == "cudnn811" && "$VERSION" == "10.2" ]]; then
   cp -r lib64 /usr && cd ../ && \
   rm -f cudnn-10.2-linux-x64-v8.1.1.33.tgz && \
   rm -rf cuda
+elif [[ "$1" == "cudnn821" && "$VERSION" == "11.2" ]]; then
+  wget -q https://paddle-ci.gz.bcebos.com/cudnn/cudnn-11.3-linux-x64-v8.2.1.32.tgz --no-check-certificate
+  tar -xzf cudnn-11.3-linux-x64-v8.2.1.32.tgz && \
+  cd cuda && \
+  cp -r include /usr && \
+  cp -r lib64 /usr && cd ../ && \
+  rm -f cudnn-11.3-linux-x64-v8.2.1.32.tgz && \
+  rm -rf cuda
 fi

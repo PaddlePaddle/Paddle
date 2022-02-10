@@ -14,6 +14,8 @@
 
 STATIC_MODE_TESTING_LIST = [
     'test_affine_channel_op',
+    'test_transfer_dtype_op',
+    'test_transfer_layout_op',
     'test_concat_op',
     'test_elementwise_add_op',
     'test_elementwise_sub_op',
@@ -173,6 +175,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_elementwise_nn_grad',
     'test_elementwise_pow_op',
     'test_ema',
+    'test_ema_fleet',
     'test_embedding_id_stop_gradient',
     'test_empty_like_op',
     'test_entry_attr',
@@ -298,7 +301,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_layer_norm_mkldnn_op',
     'test_layer_norm_bf16_mkldnn_op',
     'test_layer_norm_op_v2',
-    'test_layer_norm_fuse_pass',
     'test_learning_rate_scheduler',
     'test_linear_interp_op',
     'test_linear_interp_v2_op',
@@ -609,6 +611,8 @@ STATIC_MODE_TESTING_LIST = [
     'test_dequantize_mkldnn_op',
     'test_elementwise_add_mkldnn_op',
     'test_elementwise_add_bf16_mkldnn_op',
+    'test_elementwise_div_mkldnn_op',
+    'test_elementwise_sub_mkldnn_op',
     'test_elementwise_mul_mkldnn_op',
     'test_elementwise_mul_bf16_mkldnn_op',
     'test_fc_mkldnn_op',
@@ -722,5 +726,8 @@ STATIC_MODE_TESTING_LIST = [
     'test_c_embedding_op',
     'test_class_center_sample_op',
     'test_fill_diagonal_tensor_op',
+    'test_fill_any_op',
+    'test_lu_op',
     'test_margin_cross_entropy_op',
+    'test_pull_gpups_sparse_op',
 ]

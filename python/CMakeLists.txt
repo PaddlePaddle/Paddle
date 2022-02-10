@@ -6,10 +6,14 @@ set(PY_FILES paddle/__init__.py
 
 if(WITH_GPU)
   SET(PACKAGE_NAME "paddlepaddle-gpu")
+elseif(WITH_MLU)
+  SET(PACKAGE_NAME "paddlepaddle-mlu")
 elseif(WITH_ROCM)
   SET(PACKAGE_NAME "paddlepaddle-rocm")
 elseif(WITH_ASCEND_CL)
   SET(PACKAGE_NAME "paddlepaddle-npu")
+elseif(WITH_XPU)
+  SET(PACKAGE_NAME "paddlepaddle-xpu")
 else()
   SET(PACKAGE_NAME "paddlepaddle")
 endif()
@@ -88,14 +92,14 @@ IF(WIN32)
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/python/paddle ${PADDLE_BINARY_DIR}/python/paddle/
     COMMAND ${CMAKE_COMMAND} -E env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
     COMMENT "Packing whl packages------>>>"
-    DEPENDS copy_paddle_pybind ${FLUID_CORE} framework_py_proto profiler_py_proto ${PY_FILES})
+    DEPENDS copy_paddle_pybind ${FLUID_CORE} framework_py_proto profiler_py_proto pass_desc_py_proto ${PY_FILES})
 ELSE(WIN32)
   add_custom_command(OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
     COMMAND touch stub.cc
     COMMAND cp -r ${PADDLE_SOURCE_DIR}/python/paddle ${PADDLE_BINARY_DIR}/python
     COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
     COMMENT "Packing whl packages------>>>"
-    DEPENDS copy_paddle_pybind ${FLUID_CORE} framework_py_proto profiler_py_proto ${PY_FILES})
+    DEPENDS copy_paddle_pybind ${FLUID_CORE} framework_py_proto profiler_py_proto pass_desc_py_proto ${PY_FILES})
 ENDIF()
 
 add_custom_target(paddle_python ALL DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp)

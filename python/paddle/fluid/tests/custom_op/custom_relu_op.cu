@@ -37,20 +37,15 @@ __global__ void relu_cuda_backward_kernel(const data_t* dy,
 }
 
 std::vector<paddle::Tensor> relu_cuda_forward(const paddle::Tensor& x) {
-  auto out = paddle::Tensor(paddle::PlaceType::kGPU);
+  auto out = paddle::Tensor(paddle::PlaceType::kGPU, x.shape());
 
-  out.reshape(x.shape());
   int numel = x.size();
   int block = 512;
   int grid = (numel + block - 1) / block;
   PD_DISPATCH_FLOATING_AND_HALF_TYPES(
       x.type(), "relu_cuda_forward_kernel", ([&] {
-        auto cpu_input = x.copy_to<data_t>(paddle::PlaceType::kCPU);
-        auto gpu_input = cpu_input.copy_to<data_t>(paddle::PlaceType::kGPU);
         relu_cuda_forward_kernel<data_t><<<grid, block, 0, x.stream()>>>(
-            gpu_input.data<data_t>(),
-            out.mutable_data<data_t>(x.place()),
-            numel);
+            x.data<data_t>(), out.mutable_data<data_t>(x.place()), numel);
       }));
 
   return {out};
@@ -59,8 +54,7 @@ std::vector<paddle::Tensor> relu_cuda_forward(const paddle::Tensor& x) {
 std::vector<paddle::Tensor> relu_cuda_backward(const paddle::Tensor& x,
                                                const paddle::Tensor& out,
                                                const paddle::Tensor& grad_out) {
-  auto grad_x = paddle::Tensor(paddle::PlaceType::kGPU);
-  grad_x.reshape(x.shape());
+  auto grad_x = paddle::Tensor(paddle::PlaceType::kGPU, x.shape());
 
   int numel = out.size();
   int block = 512;
@@ -75,4 +69,51 @@ std::vector<paddle::Tensor> relu_cuda_backward(const paddle::Tensor& x,
       }));
 
   return {grad_x};
+}
+
+std::vector<paddle::Tensor> relu_cuda_backward_without_x(
+    const paddle::Tensor& out, const paddle::Tensor& grad_out) {
+  auto grad_x = paddle::Tensor(paddle::PlaceType::kGPU, out.shape());
+
+  int numel = out.size();
+  int block = 512;
+  int grid = (numel + block - 1) / block;
+  PD_DISPATCH_FLOATING_AND_HALF_TYPES(
+      out.type(), "relu_cuda_backward_kernel", ([&] {
+        relu_cuda_backward_kernel<data_t><<<grid, block, 0, out.stream()>>>(
+            grad_out.data<data_t>(),
+            out.data<data_t>(),
+            grad_x.mutable_data<data_t>(out.place()),
+            numel);
+      }));
+
+  return {grad_x};
+}
+
+void relu_cuda_forward_out(const paddle::Tensor& x, paddle::Tensor* out) {
+  int numel = x.size();
+  int block = 512;
+  int grid = (numel + block - 1) / block;
+  PD_DISPATCH_FLOATING_AND_HALF_TYPES(
+      x.type(), "relu_cuda_forward_kernel", ([&] {
+        relu_cuda_forward_kernel<data_t><<<grid, block, 0, x.stream()>>>(
+            x.data<data_t>(), out->mutable_data<data_t>(x.place()), numel);
+      }));
+}
+
+void relu_cuda_backward_out(const paddle::Tensor& x,
+                            const paddle::Tensor& out,
+                            const paddle::Tensor& grad_out,
+                            paddle::Tensor* grad_x) {
+  int numel = out.size();
+  int block = 512;
+  int grid = (numel + block - 1) / block;
+  PD_DISPATCH_FLOATING_AND_HALF_TYPES(
+      out.type(), "relu_cuda_backward_kernel", ([&] {
+        relu_cuda_backward_kernel<data_t><<<grid, block, 0, x.stream()>>>(
+            grad_out.data<data_t>(),
+            out.data<data_t>(),
+            grad_x->mutable_data<data_t>(x.place()),
+            numel);
+      }));
 }

@@ -30,14 +30,20 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
+#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/variant.h"
 #include "paddle/utils/flat_hash_map.h"
+
+#include "paddle/pten/core/compat/arg_map_context.h"
+#include "paddle/pten/core/compat/op_utils.h"
+#include "paddle/pten/core/kernel_context.h"
+#include "paddle/pten/core/kernel_factory.h"
 
 namespace paddle {
 namespace framework {
@@ -111,6 +117,10 @@ inline std::string GradOriginalVarName(const std::string& grad_var_name) {
   }
 }
 
+inline bool VarIsTensor(const Variable& var) {
+  return var.IsType<LoDTensor>() || var.IsType<pten::SelectedRows>();
+}
+
 const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var);
 Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);
 
@@ -151,11 +161,12 @@ class OperatorBase {
   virtual void Stop() {}
 
   /// if scope is not null, also show dimensions of arguments
-  virtual std::string DebugStringEx(const Scope* scope) const;
+  virtual std::string DebugStringEx(const ScopeBase* scope) const;
   std::string DebugString() const { return DebugStringEx(nullptr); }
 
   virtual bool SupportGPU() const { return false; }
   virtual bool SupportNPU() const { return false; }
+  virtual bool SupportMLU() const { return false; }
 
   const std::string& Type() const { return type_; }
 
@@ -401,8 +412,8 @@ class ExecutionContext {
     auto tmp_allocation_ptr = memory::Alloc(dev_ctx, product(dim) * sizeof(T));
     auto& deleter = tmp_allocation_ptr.get_deleter();
     auto* allocation_ptr = tmp_allocation_ptr.release();
-    auto shared_allocation = std::shared_ptr<memory::allocation::Allocation>(
-        allocation_ptr, deleter);
+    auto shared_allocation =
+        std::shared_ptr<pten::Allocation>(allocation_ptr, deleter);
 
     PADDLE_ENFORCE_GE(
         allocation_ptr->size(), framework::product(dim) * sizeof(T),
@@ -430,15 +441,56 @@ class ExecutionContext {
   const RuntimeContext& ctx_;
 };
 
-template <>
-const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const;
+// TODO(chenweihang): split impl based OpProto or Dygraph if needed
+class ExecutionArgumentMappingContext : public pten::ArgumentMappingContext {
+ public:
+  explicit ExecutionArgumentMappingContext(const ExecutionContext& ctx)
+      : ctx_(ctx) {}
+
+  bool HasInput(const std::string& name) const override {
+    return ctx_.HasInput(name);
+  }
+
+  bool HasOutput(const std::string& name) const override {
+    return ctx_.HasOutput(name);
+  }
+
+  paddle::any Attr(const std::string& name) const override {
+    auto& attr = ctx_.GetAttr(name);
+    return GetAttrValue(attr);
+  }
+
+  size_t InputSize(const std::string& name) const override {
+    return ctx_.MultiInputVar(name).size();
+  }
+
+  size_t OutputSize(const std::string& name) const override {
+    return ctx_.MultiOutputVar(name).size();
+  }
+
+  bool IsDenseTensorInput(const std::string& name) const override {
+    return ctx_.InputVar(name)->IsType<framework::LoDTensor>();
+  }
+
+  bool IsSelectedRowsInput(const std::string& name) const override {
+    return ctx_.InputVar(name)->IsType<pten::SelectedRows>();
+  }
+
+  bool IsDenseTensorOutput(const std::string& name) const override {
+    return ctx_.OutputVar(name)->IsType<framework::LoDTensor>();
+  }
+
+  bool IsSelectedRowsOutput(const std::string& name) const override {
+    return ctx_.OutputVar(name)->IsType<pten::SelectedRows>();
+  }
+
+ private:
+  const ExecutionContext& ctx_;
+};
 
 template <>
 const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
     const std::string& name) const;
-
-template <>
-Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const;
 
 template <>
 std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
@@ -480,23 +532,40 @@ class OperatorWithKernel : public OperatorBase {
     return g_all_op_kernels;
   }
 
-  bool IsMKLDNNType() const {
-    return ((this->kernel_type_) && (this->kernel_type_->data_layout_ ==
-                                     framework::DataLayout::kMKLDNN));
+  bool SupportGPU() const override {
+    auto pten_kernels = pten::KernelFactory::Instance().SelectKernelMap(
+        pten::TransToPtenKernelName(type_));
+    auto has_pten_kernel =
+        std::any_of(pten_kernels.begin(), pten_kernels.end(),
+                    [](pten::KernelKeyMap::const_reference kern_pair) {
+                      return kern_pair.first.backend() == pten::Backend::GPU;
+                    });
+    if (has_pten_kernel) {
+      return true;
+    } else {
+      auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
+      return std::any_of(
+          op_kernels.begin(), op_kernels.end(),
+          [](OpKernelMap::const_reference kern_pair) {
+            return platform::is_gpu_place(kern_pair.first.place_);
+          });
+    }
   }
 
-  bool SupportGPU() const override {
-    auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
-    return std::any_of(op_kernels.begin(), op_kernels.end(),
-                       [](OpKernelMap::const_reference kern_pair) {
-                         return platform::is_gpu_place(kern_pair.first.place_);
-                       });
-  }
   bool SupportNPU() const override {
+    // TODO(zhiqiu): support pten if needed?
     auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
     return std::any_of(op_kernels.begin(), op_kernels.end(),
                        [](OpKernelMap::const_reference kern_pair) {
                          return platform::is_npu_place(kern_pair.first.place_);
+                       });
+  }
+  bool SupportMLU() const override {
+    // TODO(zhiqiu): support pten if needed?
+    auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
+    return std::any_of(op_kernels.begin(), op_kernels.end(),
+                       [](OpKernelMap::const_reference kern_pair) {
+                         return platform::is_mlu_place(kern_pair.first.place_);
                        });
   }
   bool SupportsMKLDNN(proto::VarType::Type data_type) const;
@@ -504,7 +573,7 @@ class OperatorWithKernel : public OperatorBase {
   bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                        proto::VarType::Type data_type) const;
 
-  virtual void InferShape(InferShapeContext* ctx) const = 0;
+  virtual void InferShape(InferShapeContext* ctx) const;
 
   void RuntimeInferShape(const Scope& scope, const platform::Place& place,
                          const RuntimeContext& ctx) const override;
@@ -529,6 +598,44 @@ class OperatorWithKernel : public OperatorBase {
     return kernel_type_->place_;
   }
 
+  /* member functions for adapting to pten lib */
+  /** In the Tensor calculation library, the new Kernel adopts a clearer and
+    * more streamlined design. The arguments of the Kernel and the input and
+    * output arguments registered in the original OpMaker do not match in some
+    * cases, so we use map to record the arguments required by the kernel.
+    * When selecting Kernel during Op execution, select the arguments of the
+    * original Op according to the GetExpectedPtenKernelArgs returned arguments.
+    */
+  virtual pten::KernelSignature GetExpectedPtenKernelArgs(
+      const ExecutionContext& ctx) const;
+
+  /* member functions for adapting to pten lib */
+  pten::KernelKey ChoosePtenKernel(const ExecutionContext& ctx) const;
+
+  /**
+   * Transfer data place for pten kernel
+   * Is this really needed?
+   */
+  Scope* PreparePtenData(const Scope& scope, const pten::Kernel& pt_kernel,
+                         const pten::KernelSignature& pt_kernel_signature,
+                         RuntimeContext* ctx) const;
+
+  void BuildPtenKernelContext(const RuntimeContext& ctx,
+                              platform::DeviceContext* dev_ctx,
+                              pten::KernelContext* pt_kernel_context) const;
+
+  pten::KernelSignature* PtenKernelSignature() const {
+    return pt_kernel_signature_.get();
+  }
+
+  pten::Kernel* PtenKernel() const { return pt_kernel_.get(); }
+
+  void ResetPtenKernel(pten::Kernel* kernel) const {
+    return pt_kernel_.reset(kernel);
+  }
+
+  const OpKernelType* kernel_type() const { return kernel_type_.get(); }
+
  private:
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
   void RunImpl(const Scope& scope, const platform::Place& place,
@@ -550,8 +657,9 @@ class OperatorWithKernel : public OperatorBase {
                                const std::vector<std::string>& inplace_vars,
                                const Scope& exec_scope) const;
 
-  void ChooseKernel(const RuntimeContext& ctx, const Scope& scope,
-                    const platform::Place& place) const;
+  OpKernelType InnerGetExpectedKernelType(const ExecutionContext& ctx) const;
+
+  void ChooseKernel(const ExecutionContext& ctx) const;
 
   void HandleComplexGradToRealGrad(const Scope& scope,
                                    RuntimeContext* ctx) const;
@@ -561,8 +669,9 @@ class OperatorWithKernel : public OperatorBase {
   // By default all input data must be same.
   proto::VarType::Type IndicateDataType(const ExecutionContext& ctx) const;
   // used for IndicateDataType
-  void ParseInputDataType(const ExecutionContext& ctx, const std::string& name,
-                          proto::VarType::Type* type) const;
+  void ParseInputDataType(const std::vector<Variable*>& vars,
+                          const std::string& name,
+                          proto::VarType::Type* data_type) const;
   // used for IndicateOrPromoteVarDataTypes
   Tensor* GetTensorFormInputSafely(const ExecutionContext& ctx,
                                    const std::string& name) const;
@@ -577,6 +686,13 @@ class OperatorWithKernel : public OperatorBase {
   mutable bool all_kernels_must_compute_runtime_shape_ = false;
   mutable std::mutex cache_update_mutex_;
   mutable bool enable_cache_transfer_scope_ = false;
+  // NOTE(chenweihang): Similar op members are used to adapt to
+  // new pten kernel, if there is a better design in the future,
+  // we may polish the implementation here
+  mutable bool run_pten_kernel_ = false;
+  mutable bool run_kp_kernel = false;
+  mutable std::unique_ptr<pten::KernelSignature> pt_kernel_signature_;
+  mutable std::unique_ptr<pten::Kernel> pt_kernel_;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

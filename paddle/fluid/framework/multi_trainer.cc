@@ -15,9 +15,10 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/trainer.h"
+#include "paddle/fluid/platform/lodtensor_printer.h"
 
 #if defined PADDLE_WITH_PSCORE
-#include "paddle/fluid/distributed/service/communicator.h"
+#include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #endif
 
 namespace paddle {
@@ -135,7 +136,7 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
         if (!root_var) {
           continue;
         }
-        if (root_var->IsType<SelectedRows>()) {
+        if (root_var->IsType<pten::SelectedRows>()) {
           continue;
         }
         LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
@@ -153,7 +154,20 @@ void MultiTrainer::InitOtherEnv(const ProgramDesc& main_program) {
   if (need_dump_field_ || need_dump_param_) {
     InitDumpEnv();
   }
-  VLOG(3) << "init other env done.";
+
+#ifdef PADDLE_WITH_PSCORE
+  // pull dense param first
+  auto communicator = paddle::distributed::Communicator::GetInstance();
+  // for unittest which call train_from_dataset but does not call
+  // fleet.init_worker() first
+  if (communicator == nullptr) {
+    VLOG(0) << "MultiTrainer::InitOtherEnv Communicator is null!";
+  } else {
+    auto& recv_ctx = communicator->GetRecvCtxMap();
+    communicator->PullDense(recv_ctx);
+    VLOG(3) << "init other env done.";
+  }
+#endif
 }
 
 Scope* MultiTrainer::GetWorkerScope(int thread_id) {
@@ -214,7 +228,7 @@ void MultiTrainer::Finalize() {
   if (need_dump_field_ || need_dump_param_) {
     FinalizeDumpEnv();
   }
-#ifdef PADDLE_WITH_HETERPS
+
   for (size_t i = 0; i < need_merge_var_names_.size(); i++) {
     Variable* root_var = root_scope_->FindVar(need_merge_var_names_[i]);
     if (root_var == nullptr) {
@@ -222,7 +236,11 @@ void MultiTrainer::Finalize() {
     }
     LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
 
+#ifdef PADDLE_WITH_HETERPS
     for (size_t j = 0; j < places_.size(); j++) {
+#else
+    for (int j = 1; j < thread_num_; j++) {
+#endif
       Scope* cur_thread_scope = workers_[j]->GetThreadScope();
       Variable* thread_var =
           cur_thread_scope->FindVar(need_merge_var_names_[i]);
@@ -246,8 +264,19 @@ void MultiTrainer::Finalize() {
       _ForEachDataType_(MergeCallback);
     }
   }
+#ifdef PADDLE_WITH_HETERPS
   MergeDenseParam();
+#endif
 
+#if defined PADDLE_WITH_PSCORE
+  auto communicator = paddle::distributed::Communicator::GetInstance();
+  // for unittest which does not call fleet.init_worker() first
+  if (communicator == nullptr) {
+    VLOG(0) << "MultiTrainer::Finalize communicator is null!";
+  } else {
+    communicator->_worker_ptr->flush();
+    VLOG(1) << "MultiTrainer::Finalize ps client flush done";
+  }
 #endif
   root_scope_->DropKids();
 }

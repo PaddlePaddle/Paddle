@@ -17,8 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/edit_distance_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -135,8 +135,8 @@ class EditDistanceGPUKernel : public framework::OpKernel<T> {
         if (normalized) {
           distance = distance / n;
         }
-        memory::Copy(BOOST_GET_CONST(Place, ctx.GetPlace()), out + num,
-                     platform::CPUPlace(), &distance, sizeof(T), stream);
+        memory::Copy(ctx.GetPlace(), out + num, platform::CPUPlace(), &distance,
+                     sizeof(T), stream);
       } else {
         framework::Tensor dist_t;
         dist_t.Resize({m + 1, n + 1});

@@ -16,12 +16,7 @@ limitations under the License. */
 
 #include <memory>
 
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/miopen_helper.h"
-#endif
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cudnn_helper.h"
-#endif
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace operators {
@@ -125,17 +120,6 @@ class WarpCTCOpMaker : public framework::OpProtoAndCheckerMaker {
                   "normalize the gradients by the number of time-step, "
                   "which is also the sequence's length.")
         .SetDefault(false);
-    AddAttr<bool>(
-        "norm_by_batchsize",
-        "(bool, default: false), normalize the loss by the batch size."
-        "If True, supersedes norm_by_times")
-        .SetDefault(false);
-    AddAttr<bool>(
-        "norm_by_total_logits_len",
-        "(bool, default: false), normalize the loss by the total number of "
-        "frames"
-        "in the batch. If True, supersedes norm_by_batchsize and norm_by_times")
-        .SetDefault(false);
     AddComment(R"DOC(
 An operator integrating the open-source
 [warp-ctc](https://github.com/baidu-research/warp-ctc) library, which is used in
@@ -217,21 +201,3 @@ REGISTER_OP_CPU_KERNEL(
     warpctc_grad,
     ops::WarpCTCGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::WarpCTCGradKernel<paddle::platform::CPUDeviceContext, double>);
-
-REGISTER_OP_VERSION(warpctc)
-    .AddCheckpoint(
-        R"ROC(
-              Upgrade warpctc add a new attribute [norm_by_batchsize] and [norm_by_total_logits_len])ROC",
-        paddle::framework::compatible::OpVersionDesc()
-            .NewAttr(
-                "norm_by_batchsize",
-                "(bool, default: false), normalize the loss by the batch size."
-                "If True, supersedes norm_by_times",
-                false)
-            .NewAttr("norm_by_total_logits_len",
-                     "(bool, default: false), normalize the loss by the total "
-                     "number of "
-                     "frames"
-                     "in the batch. If True, supersedes norm_by_batchsize and "
-                     "norm_by_times",
-                     false));

@@ -17,6 +17,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -157,7 +158,7 @@ bool SimplifyWithBasicOpsPass::SimplifyDropout(
     float scale =
         1.0f - BOOST_GET_CONST(float, dropout_op_desc->GetAttr("dropout_prob"));
 
-    framework::OpDesc new_op_desc;
+    framework::OpDesc new_op_desc(dropout_op_desc->Block());
     new_op_desc.SetType("scale");
     new_op_desc.SetInput("X", {dropout_x->Name()});
     new_op_desc.SetOutput("Out", {dropout_out->Name()});
@@ -231,3 +232,7 @@ void SimplifyWithBasicOpsPass::ReplaceOutputVar(Node* op, Node* old_var,
 
 REGISTER_PASS(simplify_with_basic_ops_pass,
               paddle::framework::ir::SimplifyWithBasicOpsPass);
+REGISTER_PASS_CAPABILITY(simplify_with_basic_ops_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination().EQ(
+            "scale", 0));

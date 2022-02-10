@@ -223,12 +223,18 @@ def _format_tensor(var, summary, indent=0, max_width=0, signed=False):
 def to_string(var, prefix='Tensor'):
     indent = len(prefix) + 1
 
+    dtype = convert_dtype(var.dtype)
+    if var.dtype == core.VarDesc.VarType.BF16:
+        dtype = 'bfloat16'
+
     _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient},\n{indent}{data})"
 
     tensor = var.value().get_tensor()
     if not tensor._is_initialized():
         return "Tensor(Not initialized)"
 
+    if var.dtype == core.VarDesc.VarType.BF16:
+        var = var.astype('float32')
     np_var = var.numpy()
 
     if len(var.shape) == 0:
@@ -250,8 +256,44 @@ def to_string(var, prefix='Tensor'):
     return _template.format(
         prefix=prefix,
         shape=var.shape,
-        dtype=convert_dtype(var.dtype),
+        dtype=dtype,
         place=var._place_str,
         stop_gradient=var.stop_gradient,
+        indent=' ' * indent,
+        data=data)
+
+
+def eager_tensor_to_string(tensor, prefix='Tensor'):
+    indent = len(prefix) + 1
+
+    _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient},\n{indent}{data})"
+
+    if not tensor._is_initialized():
+        return "Tensor(Not initialized)"
+
+    np_tensor = tensor.numpy()
+
+    if len(tensor.shape) == 0:
+        size = 0
+    else:
+        size = 1
+        for dim in tensor.shape:
+            size *= dim
+
+    sumary = False
+    if size > DEFAULT_PRINT_OPTIONS.threshold:
+        sumary = True
+
+    max_width, signed = _get_max_width(_to_summary(np_tensor))
+
+    data = _format_tensor(
+        np_tensor, sumary, indent=indent, max_width=max_width, signed=signed)
+
+    return _template.format(
+        prefix=prefix,
+        shape=tensor.shape,
+        dtype=tensor.dtype,
+        place=tensor._place_str,
+        stop_gradient=tensor.stop_gradient,
         indent=' ' * indent,
         data=data)

@@ -439,9 +439,8 @@ TEST(IndicateVarDataTypeTest, lodtensor) {
     std::string ex_msg = err.what();
     EXPECT_TRUE(
         ex_msg.find(
-            "The Tensor in the indicate_lod_tensor_data_type_test Op's "
-            "Input Variable LoDTensor(lodtensor_1) is not initialized") !=
-        std::string::npos);
+            "The indicate_lod_tensor_data_type_test Op's Input Variable "
+            "`LoDTensor` contains uninitialized Tensor.") != std::string::npos);
   }
   ASSERT_TRUE(caught);
 }
@@ -457,7 +456,7 @@ TEST(IndicateVarDataTypeTest, selectedrows) {
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   auto* var = scope.Var("selected_rows_1");
-  var->GetMutable<paddle::framework::SelectedRows>();
+  var->GetMutable<pten::SelectedRows>();
 
   bool caught = false;
   try {
@@ -466,9 +465,9 @@ TEST(IndicateVarDataTypeTest, selectedrows) {
     caught = true;
     std::string ex_msg = err.what();
     EXPECT_TRUE(
-        ex_msg.find("The Tensor in the indicate_selected_rows_data_type_test "
-                    "Op's Input Variable SelectedRows(selected_rows_1) is not "
-                    "initialized") != std::string::npos);
+        ex_msg.find("The indicate_selected_rows_data_type_test Op's "
+                    "Input Variable `SelectedRows` contains uninitialized "
+                    "Tensor.") != std::string::npos);
   }
   ASSERT_TRUE(caught);
 }

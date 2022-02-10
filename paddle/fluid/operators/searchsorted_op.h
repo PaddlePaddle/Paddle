@@ -30,13 +30,37 @@ using Tensor = framework::Tensor;
 template <typename T1, typename T2, typename OutType>
 class GpuAndCpuSearchSortedCompute {
  public:
-  static HOSTDEVICE bool IsNan(float x) { return ::isnan(x); }
-  static HOSTDEVICE bool IsNan(double x) { return ::isnan(x); }
+  static HOSTDEVICE bool IsNan(float x) {
+#ifdef __NVCC__
+    return ::isnan(x);
+#else
+    return std::isnan(x);
+#endif
+  }
+  static HOSTDEVICE bool IsNan(double x) {
+#ifdef __NVCC__
+    return ::isnan(x);
+#else
+    return std::isnan(x);
+#endif
+  }
   static HOSTDEVICE bool IsNan(int x) { return false; }
   static HOSTDEVICE bool IsNan(int64_t x) { return false; }
 
-  static HOSTDEVICE bool IsInf(float x) { return ::isinf(x); }
-  static HOSTDEVICE bool IsInf(double x) { return ::isinf(x); }
+  static HOSTDEVICE bool IsInf(float x) {
+#ifdef __NVCC__
+    return ::isinf(x);
+#else
+    return std::isinf(x);
+#endif
+  }
+  static HOSTDEVICE bool IsInf(double x) {
+#ifdef __NVCC__
+    return ::isinf(x);
+#else
+    return std::isinf(x);
+#endif
+  }
   static HOSTDEVICE bool IsInf(int x) { return false; }
   static HOSTDEVICE bool IsInf(int64_t x) { return false; }
 

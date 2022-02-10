@@ -102,24 +102,6 @@ class LayerNormOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    // By default, the type of the scale, bias, mean,
-    // and var tensors should both be float. (For float or float16 input tensor)
-    // or double (For double input tensor).
-    auto ln_param_type = framework::proto::VarType::FP32;
-    if (input_data_type == framework::proto::VarType::FP64) {
-      ln_param_type = framework::proto::VarType::FP64;
-    }
-    if (ctx.HasInput("Scale")) {
-      PADDLE_ENFORCE_EQ(ln_param_type, ctx.Input<Tensor>("Scale")->type(),
-                        platform::errors::InvalidArgument(
-                            "Scale input should be of float type"));
-    }
-    if (ctx.HasInput("Bias")) {
-      PADDLE_ENFORCE_EQ(ln_param_type, ctx.Input<Tensor>("Bias")->type(),
-                        platform::errors::InvalidArgument(
-                            "Bias input should be of float type"));
-    }
-
     framework::LibraryType library = framework::LibraryType::kPlain;
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 

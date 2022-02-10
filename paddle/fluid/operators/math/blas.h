@@ -20,7 +20,6 @@
 namespace paddle {
 namespace framework {
 class ExecutionContext;
-class Tensor;
 }  // namespace framework
 }  // namespace paddle
 
@@ -226,6 +225,10 @@ class Blas {
               T alpha, framework::Tensor* mat_out, T beta) const;
 
   template <typename T>
+  void MatMul(const T* mat_a, const MatDescriptor& dim_a, const T* mat_b,
+              const MatDescriptor& dim_b, T alpha, T* mat_out, T beta) const;
+
+  template <typename T>
   void VINV(int n, const T* a, T* y) const;
 
   template <typename T>
@@ -247,6 +250,18 @@ class Blas {
   template <typename T>
   void BatchedMatInv(int n, const T** a, T** a_inv, int* info,
                      int batch_size) const;
+
+  // cuBlas solve
+  template <typename T>
+  void BatchedGETRS(CBLAS_TRANSPOSE trans, int n, int nrhs, const T** a,
+                    int lda, int* ipiv, T** b, int ldb, int* info,
+                    int batch_size) const;
+
+  // cuBlas triangular_solve
+  template <typename T>
+  void BatchedTRSM(CBLAS_SIDE side, CBLAS_UPLO uplo, CBLAS_TRANSPOSE transA,
+                   CBLAS_DIAG diag, int M, int N, T alpha, const T** a, int lda,
+                   T** b, int ldb, int batch_size) const;
 #endif
 
  private:
@@ -401,6 +416,18 @@ class BlasT : private Blas<DeviceContext> {
   template <typename... ARGS>
   void BatchedMatInv(ARGS... args) const {
     Base()->template BatchedMatInv<T>(args...);
+  }
+
+  // solve
+  template <typename... ARGS>
+  void BatchedGETRS(ARGS... args) const {
+    Base()->template BatchedGETRS<T>(args...);
+  }
+
+  // triangular_solve
+  template <typename... ARGS>
+  void BatchedTRSM(ARGS... args) const {
+    Base()->template BatchedTRSM<T>(args...);
   }
 #endif
 

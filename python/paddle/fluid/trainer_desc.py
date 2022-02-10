@@ -17,7 +17,7 @@ import sys
 import os
 __all__ = [
     'TrainerDesc', 'MultiTrainer', 'DistMultiTrainer', 'PipelineTrainer',
-    'HeterXpuTrainer'
+    'HeterXpuTrainer', 'HeterPipelineTrainer'
 ]
 
 
@@ -117,6 +117,13 @@ class TrainerDesc(object):
 
     def _set_program(self, program):
         self._program = program
+
+    def _set_trainer_id(self, trainer_id):
+        self.proto_desc.trainer_id = trainer_id
+
+    def _set_trainers(self, trainers):
+        for trainer_num in trainers:
+            self.proto_desc.trainers.append(trainer_num)
 
     def _set_use_cvm(self, use_cvm=False):
         self.proto_desc.use_cvm = use_cvm
@@ -367,6 +374,30 @@ class PSGPUTrainer(TrainerDesc):
     def _gen_trainer_desc(self):
         super(PSGPUTrainer, self)._gen_trainer_desc()
         self.proto_desc.class_name = "PSGPUTrainer"
+        if self._program == None:
+            raise RuntimeError("None Program")
+        self._device_worker._set_infer(self._infer)
+        self._device_worker._set_program(self._program)
+        self._device_worker._gen_worker_desc(self.proto_desc)
+
+
+class HeterPipelineTrainer(TrainerDesc):
+    """
+    Implement of HeterPipelineTrainer.
+    It's for HeterPS Pipeline training.
+    """
+
+    def __init__(self):
+        super(HeterPipelineTrainer, self).__init__()
+        pass
+
+    def _set_program(self, program):
+        super(HeterPipelineTrainer, self)._set_program(program)
+        self._program = program
+
+    def _gen_trainer_desc(self):
+        super(HeterPipelineTrainer, self)._gen_trainer_desc()
+        self.proto_desc.class_name = "HeterPipelineTrainer"
         if self._program == None:
             raise RuntimeError("None Program")
         self._device_worker._set_infer(self._infer)

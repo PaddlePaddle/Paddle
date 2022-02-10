@@ -38,23 +38,18 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/reader/blocking_queue.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/timer.h"
+#include "paddle/pten/backends/dynload/port.h"
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
 class ProgramDesc;
 class Scope;
-class Tensor;
 }  // namespace framework
-namespace platform {
-class DeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
 namespace paddle {
@@ -66,7 +61,7 @@ bool CheckValidOutput(LoDTensor* tensor, size_t batch_size);
 
 class FleetWrapper;
 
-#ifdef PADDLE_WITH_PSLIB
+#if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
 class HeterWrapper;
 #endif
 
@@ -364,7 +359,7 @@ class DownpourWorkerOpt : public DownpourWorker {
   uint64_t async_tid_ = 0;
 };
 
-#ifdef PADDLE_WITH_PSLIB
+#if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
 class HeterCpuWorker : public HogwildWorker {
  public:
   HeterCpuWorker() {}
@@ -454,7 +449,6 @@ class PSGPUWorker : public HogwildWorker {
   virtual void Initialize(const TrainerDesc& desc);
   virtual void TrainFiles();
   virtual void TrainFilesWithProfiler();
-  virtual void SetNeedDump(bool need_dump_field);
   virtual void SetChannelWriter(ChannelObject<std::string>* queue);
   virtual void SetWorkerNum(int num) { worker_num_ = num; }
   virtual void CacheProgram(const ProgramDesc& main_program) {
@@ -467,7 +461,6 @@ class PSGPUWorker : public HogwildWorker {
 
  protected:
   void PushGradients();
-  void DumpParam();
   void CopySparseTable();
   void CopyDenseTable();
   void CopyDenseVars();
@@ -475,18 +468,12 @@ class PSGPUWorker : public HogwildWorker {
  private:
   int mpi_rank_;
   std::mutex mutex_;
-  std::vector<std::string> send_var_list_;
   int worker_num_;
   ProgramDesc program_;
   HeterObjectPool<HeterTask> object_pool_;
-  bool need_dump_param_;
-  std::vector<std::string> dump_param_;
   bool need_to_push_dense_;
-  bool need_dump_field_;
   bool dump_slot_;
   bool need_to_push_sparse_;
-  std::vector<std::string> dump_fields_;
-  ChannelWriter<std::string> writer_;
   DownpourWorkerParameter param_;
   float scale_datanorm_;
   // just save the value in param_ for easy access
@@ -601,12 +588,106 @@ class SectionWorker : public DeviceWorker {
   std::vector<std::string> backward_send_vars_;
 
   std::vector<std::unique_ptr<OperatorBase>> ops_;
+  std::vector<OperatorBase*> forward_and_lr_ops_;
+  std::vector<OperatorBase*> forward_ops_;
+  std::vector<OperatorBase*> backward_ops_;
+  std::vector<OperatorBase*> optimizer_ops_;
   std::shared_ptr<framework::ProgramDesc> program_;
   std::unordered_map<const OperatorBase*, std::vector<std::string>>
       unused_vars_;
   static uint64_t batch_id_;
 
   platform::DeviceContext* dev_ctx_ = nullptr;
+};
+#endif
+
+#if defined(PADDLE_WITH_PSCORE)
+class HeterSectionWorker : public DeviceWorker {
+ public:
+  HeterSectionWorker() {}
+  ~HeterSectionWorker() override {}
+
+  void Initialize(const TrainerDesc& desc) override;
+  void CreateDeviceResource(const ProgramDesc& main_prog) override{};
+
+  void TrainFiles() override;
+  void TrainFilesWithProfiler() override;
+
+  void BindingDataFeedMemory() override {}
+  void BindingDataFeedMemory(int micro_id);
+  void PrintFetchVars() override;
+  const platform::Place& place() const { return place_; }
+
+  void SetDeviceIndex(int tid) override { thread_id_ = tid; }
+  void SetThreadNum(int thread_num) { thread_num_ = thread_num; }
+  void SetMicrobatchNum(int num) { num_microbatches_ = num; }
+  void SetPipelineStageNum(int num) { num_pipeline_stages_ = num; }
+  void SetPipelineStage(int stage) { pipeline_stage_ = stage; }
+  std::shared_ptr<std::vector<Scope*>> GetMicrobatchScopes() {
+    return microbatch_scopes_;
+  }
+  void SetMicrobatchScopes(
+      std::shared_ptr<std::vector<Scope*>> microbatch_scopes) {
+    microbatch_scopes_ = microbatch_scopes;
+  }
+  using SHARED_THREAD_QUEUE = std::shared_ptr<
+      ::paddle::framework::BlockingQueue<std::pair<std::string, int>>>;
+
+  SHARED_THREAD_QUEUE GetThreadQueue() { return thread_queue_; }
+  void SetThreadQueue(SHARED_THREAD_QUEUE thread_queue) {
+    thread_queue_ = thread_queue;
+  }
+  void CopyParameters(int microbatch_id, const ProgramDesc& program,
+                      const platform::Place& place);
+  void SetMinibatchScope(Scope* scope) { minibatch_scope_ = scope; }
+  void SetTrainerId(int trainer_id) { this->trainer_id_ = trainer_id; }
+  void SetTrainers(int trainers) { this->trainers_ = trainers; }
+  void CreateMicrobatchScopes();
+  void RunForward(int micro_id);
+  void RunBackward(int micro_id);
+  void RunListen();
+  void MiniBatchBarrier();
+  void Run();
+  void BatchPostProcess();
+  void SetDebug(bool debug) { debug_ = debug; }
+  Scope* GetThreadScope() override { return minibatch_scope_; }
+
+  // multi-stream
+  // #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  //  void SetStream(const gpuStream_t stream) override {}
+  //  void SetEvent(const gpuEvent_t event) override {}
+  // #endif
+
+ protected:
+  int trainer_id_;
+  int trainers_;
+  int thread_num_;
+  int thread_id_;
+  int num_microbatches_;
+  int num_pipeline_stages_;
+  int pipeline_stage_;
+  bool epoch_finish_;
+
+  std::shared_ptr<std::vector<Scope*>> microbatch_scopes_;
+  Scope* minibatch_scope_;
+  std::vector<int> micro_ids_{};
+  std::unique_ptr<OperatorBase> listen_op_{nullptr};
+  std::vector<std::unique_ptr<OperatorBase>> forward_ops_;
+  std::vector<std::unique_ptr<OperatorBase>> backward_ops_;
+  std::shared_ptr<framework::ProgramDesc> program_;
+  std::shared_ptr<
+      ::paddle::framework::BlockingQueue<std::pair<std::string, int>>>
+      thread_queue_;
+  static uint64_t batch_id_;
+  uint64_t total_ins_num_ = 0;
+  platform::DeviceContext* dev_ctx_ = nullptr;
+
+  bool debug_ = false;
+  std::vector<double> op_total_time_;
+  std::vector<std::string> op_name_;
+  platform::Timer timeline_;
+  double total_time_ = 0.0;
+  double read_time_ = 0.0;
 };
 #endif
 

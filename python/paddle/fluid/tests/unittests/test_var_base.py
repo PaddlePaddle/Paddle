@@ -68,19 +68,19 @@ class TestVarBase(unittest.TestCase):
                     np.array_equal(x.grad.numpy(),
                                    np.array([2.4]).astype('float32')))
                 y = x.cpu()
-                self.assertEqual(y.place.__repr__(), "CPUPlace")
+                self.assertEqual(y.place.__repr__(), "Place(cpu)")
                 if core.is_compiled_with_cuda():
                     y = x.pin_memory()
-                    self.assertEqual(y.place.__repr__(), "CUDAPinnedPlace")
+                    self.assertEqual(y.place.__repr__(), "Place(gpu_pinned)")
                     y = x.cuda()
                     y = x.cuda(None)
-                    self.assertEqual(y.place.__repr__(), "CUDAPlace(0)")
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
                     y = x.cuda(device_id=0)
-                    self.assertEqual(y.place.__repr__(), "CUDAPlace(0)")
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
                     y = x.cuda(blocking=False)
-                    self.assertEqual(y.place.__repr__(), "CUDAPlace(0)")
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
                     y = x.cuda(blocking=True)
-                    self.assertEqual(y.place.__repr__(), "CUDAPlace(0)")
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
                     with self.assertRaises(ValueError):
                         y = x.cuda("test")
 
@@ -271,17 +271,17 @@ class TestVarBase(unittest.TestCase):
             with paddle.fluid.dygraph.guard(core.CPUPlace()):
                 a = paddle.to_tensor(a_np, place=paddle.CUDAPinnedPlace())
                 a = paddle.to_tensor(a)
-                self.assertEqual(a.place.__repr__(), "CPUPlace")
+                self.assertEqual(a.place.__repr__(), "Place(cpu)")
 
             with paddle.fluid.dygraph.guard(core.CUDAPlace(0)):
                 a = paddle.to_tensor(a_np, place=paddle.CUDAPinnedPlace())
                 a = paddle.to_tensor(a)
-                self.assertEqual(a.place.__repr__(), "CUDAPlace(0)")
+                self.assertEqual(a.place.__repr__(), "Place(gpu:0)")
 
             with paddle.fluid.dygraph.guard(core.CUDAPlace(0)):
                 a = paddle.to_tensor(a_np, place=paddle.CPUPlace())
                 a = paddle.to_tensor(a, place=paddle.CUDAPinnedPlace())
-                self.assertEqual(a.place.__repr__(), "CUDAPinnedPlace")
+                self.assertEqual(a.place.__repr__(), "Place(gpu_pinned)")
 
     def test_to_tensor_with_lodtensor(self):
         if core.is_compiled_with_cuda():
@@ -297,7 +297,7 @@ class TestVarBase(unittest.TestCase):
                 lod_tensor.set(a_np, core.CUDAPlace(0))
                 a = paddle.to_tensor(lod_tensor, place=core.CPUPlace())
                 self.assertTrue(np.array_equal(a_np, a.numpy()))
-                self.assertTrue(a.place.__repr__(), "CPUPlace")
+                self.assertTrue(a.place.__repr__(), "Place(cpu)")
 
     def test_to_variable(self):
         with fluid.dygraph.guard():
@@ -391,6 +391,11 @@ class TestVarBase(unittest.TestCase):
             self.assertTrue(cmp_float(x.grad.numpy(), [20.0]))
             self.assertTrue(cmp_float(detach_x.grad.numpy(), [60.0]))
 
+            with self.assertRaises(ValueError):
+                detach_x[:] = 5.0
+
+            detach_x.stop_gradient = True
+
             # Due to sharing of data with origin Tensor, There are some unsafe operations:
             with self.assertRaises(RuntimeError):
                 y = 2**x
@@ -438,9 +443,10 @@ class TestVarBase(unittest.TestCase):
             self.assertTrue(np.array_equal(y.numpy(), y_copy.numpy()))
 
             self.assertNotEqual(id(x), id(x_copy))
-            x_copy[:] = 5.
-            self.assertTrue(np.array_equal(x_copy.numpy(), [5.]))
             self.assertTrue(np.array_equal(x.numpy(), [2.]))
+
+            with self.assertRaises(ValueError):
+                x_copy[:] = 5.
 
             with self.assertRaises(RuntimeError):
                 copy.deepcopy(z)
@@ -490,6 +496,41 @@ class TestVarBase(unittest.TestCase):
         with fluid.dygraph.guard():
             var = fluid.dygraph.to_variable(self.array)
             self.assertTrue(isinstance(str(var), str))
+
+    def test_element_size(self):
+        with fluid.dygraph.guard():
+            x = paddle.to_tensor(1, dtype='bool')
+            self.assertEqual(x.element_size(), 1)
+
+            x = paddle.to_tensor(1, dtype='float16')
+            self.assertEqual(x.element_size(), 2)
+
+            x = paddle.to_tensor(1, dtype='float32')
+            self.assertEqual(x.element_size(), 4)
+
+            x = paddle.to_tensor(1, dtype='float64')
+            self.assertEqual(x.element_size(), 8)
+
+            x = paddle.to_tensor(1, dtype='int8')
+            self.assertEqual(x.element_size(), 1)
+
+            x = paddle.to_tensor(1, dtype='int16')
+            self.assertEqual(x.element_size(), 2)
+
+            x = paddle.to_tensor(1, dtype='int32')
+            self.assertEqual(x.element_size(), 4)
+
+            x = paddle.to_tensor(1, dtype='int64')
+            self.assertEqual(x.element_size(), 8)
+
+            x = paddle.to_tensor(1, dtype='uint8')
+            self.assertEqual(x.element_size(), 1)
+
+            x = paddle.to_tensor(1, dtype='complex64')
+            self.assertEqual(x.element_size(), 8)
+
+            x = paddle.to_tensor(1, dtype='complex128')
+            self.assertEqual(x.element_size(), 16)
 
     def test_backward(self):
         with fluid.dygraph.guard():
@@ -562,10 +603,12 @@ class TestVarBase(unittest.TestCase):
         var14 = var[1:-1, 0:2, ::-1]
         var15 = var[::-1, ::-1, ::-1]
         var16 = var[-4:4]
+        var17 = var[:, 0, 0:0]
+        var18 = var[:, 1:1:2]
 
         vars = [
             var, var1, var2, var3, var4, var5, var6, var7, var8, var9, var10,
-            var11, var12, var13, var14, var15, var16
+            var11, var12, var13, var14, var15, var16, var17, var18
         ]
         local_out = [var.numpy() for var in vars]
 
@@ -594,6 +637,8 @@ class TestVarBase(unittest.TestCase):
         self.assertTrue(
             np.array_equal(local_out[15], tensor_array[::-1, ::-1, ::-1]))
         self.assertTrue(np.array_equal(local_out[16], tensor_array[-4:4]))
+        self.assertTrue(np.array_equal(local_out[17], tensor_array[:, 0, 0:0]))
+        self.assertTrue(np.array_equal(local_out[18], tensor_array[:, 1:1:2]))
 
     def _test_slice_for_tensor_attr(self):
         tensor_array = np.array(
@@ -696,6 +741,11 @@ class TestVarBase(unittest.TestCase):
         assert_getitem_ellipsis_index(var_fp32, np_fp32_value)
         assert_getitem_ellipsis_index(var_int, np_int_value)
 
+        # test 1 dim tensor
+        var_one_dim = paddle.to_tensor([1, 2, 3, 4])
+        self.assertTrue(
+            np.array_equal(var_one_dim[..., 0].numpy(), np.array([1])))
+
     def _test_none_index(self):
         shape = (8, 64, 5, 256)
         np_value = np.random.random(shape).astype('float32')
@@ -712,6 +762,7 @@ class TestVarBase(unittest.TestCase):
             var_tensor[None].numpy(),
             var_tensor[0, 0, None, 0, 0, None].numpy(),
             var_tensor[None, None, 0, ..., None].numpy(),
+            var_tensor[..., None, :, None].numpy(),
             var_tensor[0, 1:10:2, None, None, ...].numpy(),
         ]
 
@@ -727,11 +778,12 @@ class TestVarBase(unittest.TestCase):
             np.array_equal(var[8], np_value[0, 0, None, 0, 0, None]))
         self.assertTrue(
             np.array_equal(var[9], np_value[None, None, 0, ..., None]))
+        self.assertTrue(np.array_equal(var[10], np_value[..., None, :, None]))
 
         # TODO(zyfncg) there is a bug of dimensions when slice step > 1 and 
         #              indexs has int type 
         # self.assertTrue(
-        #     np.array_equal(var[10], np_value[0, 1:10:2, None, None, ...]))
+        #     np.array_equal(var[11], np_value[0, 1:10:2, None, None, ...]))
 
     def _test_bool_index(self):
         shape = (4, 2, 5, 64)
@@ -805,13 +857,18 @@ class TestVarBase(unittest.TestCase):
         # case2:
         tensor_x = paddle.to_tensor(
             np.zeros(12).reshape(2, 6).astype(np.float32))
-        tensor_y1 = paddle.zeros([1]) + 2
-        tensor_y2 = paddle.zeros([1]) + 5
+        tensor_y1 = paddle.zeros([1], dtype='int32') + 2
+        tensor_y2 = paddle.zeros([1], dtype='int32') + 5
         tensor_x[:, tensor_y1:tensor_y2] = 42
         res = tensor_x.numpy()
         exp = np.array([[0., 0., 42., 42., 42., 0.],
                         [0., 0., 42., 42., 42., 0.]])
         self.assertTrue(np.array_equal(res, exp))
+
+        # case3:
+        row = np.array([0, 1, 2])
+        col = np.array([2, 1, 3])
+        self.assertTrue(np.array_equal(array[row, col], x[row, col].numpy()))
 
     def test_slice(self):
         with fluid.dygraph.guard():
@@ -833,6 +890,10 @@ class TestVarBase(unittest.TestCase):
 
             with self.assertRaises(IndexError):
                 y = var[0 - self.shape[0] - 1]
+
+            with self.assertRaises(IndexError):
+                mask = np.array([1, 0, 1, 0], dtype=bool)
+                var[paddle.to_tensor([0, 1]), mask]
 
     def test_var_base_to_np(self):
         with fluid.dygraph.guard():
@@ -923,7 +984,7 @@ class TestVarBase(unittest.TestCase):
         paddle.set_printoptions(4, 100, 3)
         a_str = str(a)
 
-        expected = '''Tensor(shape=[10, 20], dtype=float32, place=CPUPlace, stop_gradient=True,
+        expected = '''Tensor(shape=[10, 20], dtype=float32, place=Place(cpu), stop_gradient=True,
        [[0.2727, 0.5489, 0.8655, ..., 0.2916, 0.8525, 0.9000],
         [0.3806, 0.8996, 0.0928, ..., 0.9535, 0.8378, 0.6409],
         [0.1484, 0.4038, 0.8294, ..., 0.0148, 0.6520, 0.4250],
@@ -940,7 +1001,7 @@ class TestVarBase(unittest.TestCase):
         a = paddle.to_tensor([[1.5111111, 1.0], [0, 0]])
         a_str = str(a)
 
-        expected = '''Tensor(shape=[2, 2], dtype=float32, place=CPUPlace, stop_gradient=True,
+        expected = '''Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
        [[1.5111, 1.    ],
         [0.    , 0.    ]])'''
 
@@ -952,7 +1013,7 @@ class TestVarBase(unittest.TestCase):
         a = paddle.to_tensor([[-1.5111111, 1.0], [0, -0.5]])
         a_str = str(a)
 
-        expected = '''Tensor(shape=[2, 2], dtype=float32, place=CPUPlace, stop_gradient=True,
+        expected = '''Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
        [[-1.5111,  1.    ],
         [ 0.    , -0.5000]])'''
 
@@ -964,7 +1025,7 @@ class TestVarBase(unittest.TestCase):
         a = paddle.to_tensor(np.array(False))
         a_str = str(a)
 
-        expected = '''Tensor(shape=[], dtype=bool, place=CPUPlace, stop_gradient=True,
+        expected = '''Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
        False)'''
 
         self.assertEqual(a_str, expected)
@@ -976,7 +1037,7 @@ class TestVarBase(unittest.TestCase):
         y = paddle.fluid.layers.where(x == 0)
         a_str = str(y)
 
-        expected = '''Tensor(shape=[0, 2], dtype=int64, place=CPUPlace, stop_gradient=True,
+        expected = '''Tensor(shape=[0, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
        [])'''
 
         self.assertEqual(a_str, expected)
@@ -990,7 +1051,7 @@ class TestVarBase(unittest.TestCase):
             precision=4, threshold=1000, edgeitems=3, linewidth=80)
         a_str = str(x)
 
-        expected = '''Tensor(shape=[128], dtype=float32, place=CPUPlace, stop_gradient=True,
+        expected = '''Tensor(shape=[128], dtype=float32, place=Place(cpu), stop_gradient=True,
        [0.3759, 0.0278, 0.2489, 0.3110, 0.9105, 0.7381, 0.1905, 0.4726, 0.2435,
         0.9142, 0.3367, 0.7243, 0.7664, 0.9915, 0.2921, 0.1363, 0.8096, 0.2915,
         0.9564, 0.9972, 0.2573, 0.2597, 0.3429, 0.2484, 0.9579, 0.7003, 0.4126,
@@ -1017,7 +1078,7 @@ class TestVarBase(unittest.TestCase):
         paddle.set_printoptions(precision=4, linewidth=160, sci_mode=True)
         a_str = str(x)
 
-        expected = '''Tensor(shape=[128], dtype=float32, place=CPUPlace, stop_gradient=True,
+        expected = '''Tensor(shape=[128], dtype=float32, place=Place(cpu), stop_gradient=True,
        [3.7587e-01, 2.7798e-02, 2.4891e-01, 3.1097e-01, 9.1053e-01, 7.3811e-01, 1.9045e-01, 4.7258e-01, 2.4354e-01, 9.1415e-01, 3.3666e-01, 7.2428e-01,
         7.6640e-01, 9.9146e-01, 2.9215e-01, 1.3625e-01, 8.0957e-01, 2.9153e-01, 9.5642e-01, 9.9718e-01, 2.5732e-01, 2.5973e-01, 3.4292e-01, 2.4841e-01,
         9.5794e-01, 7.0029e-01, 4.1260e-01, 4.2737e-01, 7.3788e-03, 9.6863e-01, 9.9102e-01, 1.4416e-02, 6.5640e-01, 2.9318e-01, 7.1136e-01, 9.3008e-01,
@@ -1029,6 +1090,20 @@ class TestVarBase(unittest.TestCase):
         7.5211e-01, 3.6094e-01, 4.7034e-01, 1.7355e-01, 8.9763e-01, 7.6165e-01, 3.7557e-01, 2.4157e-01, 2.9074e-01, 3.2458e-01, 4.3049e-01, 5.7171e-01,
         7.3509e-02, 3.6087e-02, 5.5341e-01, 4.3993e-01, 9.2601e-01, 6.5248e-01, 3.0640e-01, 4.5727e-01, 9.2104e-01, 8.2688e-01, 2.4243e-01, 7.4937e-01,
         8.9448e-01, 7.0981e-01, 8.0783e-01, 4.7065e-01, 5.7154e-01, 7.2319e-01, 4.6777e-01, 5.0465e-01])'''
+
+        self.assertEqual(a_str, expected)
+        paddle.enable_static()
+
+    def test_tensor_str_bf16(self):
+        paddle.disable_static(paddle.CPUPlace())
+        a = paddle.to_tensor([[1.5, 1.0], [0, 0]])
+        a = paddle.cast(a, dtype=core.VarDesc.VarType.BF16)
+        paddle.set_printoptions(precision=4)
+        a_str = str(a)
+
+        expected = '''Tensor(shape=[2, 2], dtype=bfloat16, place=Place(cpu), stop_gradient=True,
+       [[1.5000, 1.    ],
+        [0.    , 0.    ]])'''
 
         self.assertEqual(a_str, expected)
         paddle.enable_static()
@@ -1137,6 +1212,148 @@ class TestVarBaseInplaceVersion(unittest.TestCase):
 
         var._bump_inplace_version()
         self.assertEqual(var.inplace_version, 2)
+
+
+class TestVarBaseSlice(unittest.TestCase):
+    def test_slice(self):
+        paddle.disable_static()
+        np_x = np.random.random((3, 8, 8))
+        x = paddle.to_tensor(np_x, dtype="float64")
+        actual_x = x._slice(0, 1)
+        actual_x = paddle.to_tensor(actual_x)
+        self.assertEqual(actual_x.numpy().all(), np_x[0:1].all())
+
+
+class TestVarBaseClear(unittest.TestCase):
+    def test_clear(self):
+        paddle.disable_static()
+        np_x = np.random.random((3, 8, 8))
+        x = paddle.to_tensor(np_x, dtype="float64")
+        x._clear()
+        self.assertEqual(str(x), "Tensor(Not initialized)")
+
+
+class TestVarBaseOffset(unittest.TestCase):
+    def test_offset(self):
+        paddle.disable_static()
+        np_x = np.random.random((3, 8, 8))
+        x = paddle.to_tensor(np_x, dtype="float64")
+        expected_offset = 0
+        actual_x = x._slice(expected_offset, 1)
+        actual_x = paddle.to_tensor(actual_x)
+        self.assertEqual(actual_x._offset(), expected_offset)
+
+
+class TestVarBaseShareBufferTo(unittest.TestCase):
+    def test_share_buffer_To(self):
+        paddle.disable_static()
+        np_src = np.random.random((3, 8, 8))
+        src = paddle.to_tensor(np_src, dtype="float64")
+        # empty_var
+        dst = core.VarBase()
+        src._share_buffer_to(dst)
+        self.assertEqual(src._is_shared_buffer_with(dst), True)
+
+
+class TestVarBaseTo(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.np_x = np.random.random((3, 8, 8))
+        self.x = paddle.to_tensor(self.np_x, dtype="float32")
+
+    def test_to_api(self):
+        x_double = self.x._to(dtype='double')
+        self.assertEqual(x_double.dtype, paddle.fluid.core.VarDesc.VarType.FP64)
+        self.assertTrue(np.allclose(self.np_x, x_double))
+
+        x_ = self.x._to()
+        self.assertEqual(self.x.dtype, paddle.fluid.core.VarDesc.VarType.FP64)
+        self.assertTrue(np.allclose(self.np_x, x_))
+
+        if paddle.fluid.is_compiled_with_cuda():
+            x_gpu = self.x._to(device=paddle.CUDAPlace(0))
+            self.assertTrue(x_gpu.place.is_gpu_place())
+            self.assertEqual(x_gpu.place.gpu_device_id(), 0)
+
+            x_gpu0 = self.x._to(device='gpu:0')
+            self.assertTrue(x_gpu0.place.is_gpu_place())
+            self.assertEqual(x_gpu0.place.gpu_device_id(), 0)
+
+            x_gpu1 = self.x._to(device='gpu:0', dtype="float64")
+            self.assertTrue(x_gpu1.place.is_gpu_place())
+            self.assertEqual(x_gpu1.place.gpu_device_id(), 0)
+            self.assertEqual(x_gpu1.dtype,
+                             paddle.fluid.core.VarDesc.VarType.FP64)
+
+            x_gpu2 = self.x._to(device='gpu:0', dtype="float16")
+            self.assertTrue(x_gpu2.place.is_gpu_place())
+            self.assertEqual(x_gpu2.place.gpu_device_id(), 0)
+            self.assertEqual(x_gpu2.dtype,
+                             paddle.fluid.core.VarDesc.VarType.FP16)
+
+        x_cpu = self.x._to(device=paddle.CPUPlace())
+        self.assertTrue(x_cpu.place.is_cpu_place())
+
+        x_cpu0 = self.x._to(device='cpu')
+        self.assertTrue(x_cpu0.place.is_cpu_place())
+
+        x_cpu1 = self.x._to(device=paddle.CPUPlace(), dtype="float64")
+        self.assertTrue(x_cpu1.place.is_cpu_place())
+        self.assertEqual(x_cpu1.dtype, paddle.fluid.core.VarDesc.VarType.FP64)
+
+        x_cpu2 = self.x._to(device='cpu', dtype="float16")
+        self.assertTrue(x_cpu2.place.is_cpu_place())
+        self.assertEqual(x_cpu2.dtype, paddle.fluid.core.VarDesc.VarType.FP16)
+
+        self.assertRaises(ValueError, self.x._to, device=1)
+        self.assertRaises(AssertionError, self.x._to, blocking=1)
+
+
+class TestVarBaseInitVarBaseFromTensorWithDevice(unittest.TestCase):
+    def test_varbase_init(self):
+        paddle.disable_static()
+        t = fluid.Tensor()
+        np_x = np.random.random((3, 8, 8))
+        t.set(np_x, fluid.CPUPlace())
+
+        if paddle.fluid.is_compiled_with_cuda():
+            device = paddle.CUDAPlace(0)
+            tmp = fluid.core.VarBase(t, device)
+            self.assertTrue(tmp.place.is_gpu_place())
+            self.assertEqual(tmp.numpy().all(), np_x.all())
+
+        device = paddle.CPUPlace()
+        tmp = fluid.core.VarBase(t, device)
+        self.assertEqual(tmp.numpy().all(), np_x.all())
+
+
+class TestVarBaseNumel(unittest.TestCase):
+    def test_numel_normal(self):
+        paddle.disable_static()
+        np_x = np.random.random((3, 8, 8))
+        x = paddle.to_tensor(np_x, dtype="float64")
+        x_actual_numel = x._numel()
+        x_expected_numel = np.product((3, 8, 8))
+        self.assertEqual(x_actual_numel, x_expected_numel)
+
+    def test_numel_without_holder(self):
+        paddle.disable_static()
+        x_without_holder = core.VarBase()
+        x_actual_numel = x_without_holder._numel()
+        self.assertEqual(x_actual_numel, 0)
+
+
+class TestVarBaseCopyGradientFrom(unittest.TestCase):
+    def test_copy_gradient_from(self):
+        paddle.disable_static()
+        np_x = np.random.random((2, 2))
+        np_y = np.random.random((2, 2))
+        x = paddle.to_tensor(np_x, dtype="float64", stop_gradient=False)
+        y = paddle.to_tensor(np_y, dtype="float64")
+        out = x + x
+        out.backward()
+        x._copy_gradient_from(y)
+        self.assertEqual(x.grad.numpy().all(), np_y.all())
 
 
 if __name__ == '__main__':

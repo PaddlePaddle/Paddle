@@ -20,7 +20,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import os
-from paddle.fluid.contrib import sparsity
+from paddle.static import sparsity
 from paddle.fluid.contrib.sparsity.asp import ASPHelper
 import numpy as np
 cuda_visible_devices = os.getenv('CUDA_VISIBLE_DEVICES')
@@ -73,7 +73,7 @@ class TestFleetWithASP(unittest.TestCase):
         feeder = fluid.DataFeeder(feed_list=[input_x, input_y], place=place)
         exe.run(startup_prog)
 
-        sparsity.prune_model(place, train_prog)
+        sparsity.prune_model(train_prog)
 
         data = (np.random.randn(64, 32), np.random.randint(2, size=(64, 1)))
         exe.run(train_prog, feed=feeder.feed([data]))
@@ -82,7 +82,9 @@ class TestFleetWithASP(unittest.TestCase):
             if ASPHelper._is_supported_layer(train_prog, param.name):
                 mat = np.array(fluid.global_scope().find_var(param.name)
                                .get_tensor())
-                self.assertTrue(sparsity.check_sparsity(mat.T, n=2, m=4))
+                self.assertTrue(
+                    paddle.fluid.contrib.sparsity.check_sparsity(
+                        mat.T, n=2, m=4))
 
 
 if __name__ == "__main__":

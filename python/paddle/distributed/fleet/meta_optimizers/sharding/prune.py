@@ -117,21 +117,28 @@ class ProgramDeps(object):
                     var_name] == []:
                 self._block._remove_var(var_name, sync=False)
 
-    def remove_op(self, op_idx):
+    def remove_op(self, op_idx, reserved_vars=None):
         # update deps
         op = self._block.ops[op_idx]
         for input_name in op.desc.input_arg_names():
+            if reserved_vars is not None and input_name in reserved_vars:
+                continue
             self.crop_input_var_from_op(op_idx, input_name)
         for output_name in op.desc.output_arg_names():
+            if reserved_vars is not None and output_name in reserved_vars:
+                continue
             self.crop_output_var_from_op(op_idx, output_name)
         self._block._remove_op(op_idx, sync=False)
 
     def should_remove_op(self, op_idx):
         op = self._block.ops[op_idx]
-        # TODO (JZ-LIANG) revise this for uniform mixed parallelism
-        # remove check_finite_and_unscale op if its input 'X' is empty
-        if op.type == 'check_finite_and_unscale' and len(op.input('X')) == 0:
-            return True
+
+        # NOTE: At present, it is found that the OP without output is
+        # only send_v2 and partial_send op, which will be used in
+        # all device
+        if len(op.desc.output_arg_names()) == 0:
+            return False
+
         for output_name in op.desc.output_arg_names():
             if output_name not in self._should_removed_var:
                 return False

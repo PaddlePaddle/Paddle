@@ -24,6 +24,7 @@ import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from paddle.fluid.tests.unittests.op_test import (
     OpTest, convert_float_to_uint16, convert_uint16_to_float)
+from paddle import _C_ops
 
 
 class TestSumOp(OpTest):
@@ -382,11 +383,11 @@ class TestSumOpError(unittest.TestCase):
     def test_errors(self):
         def test_empty_list_input():
             with fluid.dygraph.guard():
-                fluid.core.ops.sum([])
+                fluid._C_ops.sum([])
 
         def test_list_of_none_input():
             with fluid.dygraph.guard():
-                fluid.core.ops.sum([None])
+                fluid._C_ops.sum([None])
 
         self.assertRaises(Exception, test_empty_list_input)
         self.assertRaises(Exception, test_list_of_none_input)

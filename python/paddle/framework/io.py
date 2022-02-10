@@ -43,7 +43,10 @@ def _build_saved_state_dict(state_dict):
     name_table = {}
     for key, value in state_dict.items():
         if isinstance(value, (Variable, core.VarBase)):
-            save_dict[key] = value.numpy()
+            if value.type == core.VarDesc.VarType.VOCAB:
+                save_dict[key] = value.value().get_map_tensor()
+            else:
+                save_dict[key] = value.numpy()
             name_table[key] = value.name
         else:
             save_dict[key] = value
@@ -250,7 +253,7 @@ def _pickle_save(obj, f, protocol):
         dispatch_table_layer[layer.__class__] = reduce_Layer
         return layer
 
-    _parse_every_object(obj, lambda v: isinstance(v, core.Layer),
+    _parse_every_object(obj, lambda v: isinstance(v, fluid.Layer),
                         create_layer_dispatch_table)
 
     def add_dispatch_table():
@@ -313,7 +316,7 @@ def _is_state_dict(obj):
     if isinstance(obj, dict):
 
         def condition(obj):
-            return isinstance(obj, (core.Layer, Program, core.VarBase,
+            return isinstance(obj, (fluid.Layer, Program, core.VarBase,
                                     core.LoDTensor, core.SelectedRows))
 
         # If the value of a dict is a core.VarBase/LoDTensor or a dict 
@@ -419,7 +422,7 @@ def _parse_every_object(obj, condition_func, convert_func):
 
 def _parse_load_result(obj, return_numpy):
     def is_layer(obj):
-        return isinstance(obj, core.Layer)
+        return isinstance(obj, fluid.Layer)
 
     def parse_layer(obj):
         temp_dict = _parse_load_result(obj.__dict__, False)
@@ -938,8 +941,9 @@ def load(path, **configs):
                     if "StructuredToParameterName@@" in load_result:
 
                         for key in load_result["StructuredToParameterName@@"]:
-                            load_result[key] = _ndarray_to_tensor(
-                                load_result[key], config.return_numpy)
+                            if isinstance(load_result[key], np.ndarray):
+                                load_result[key] = _ndarray_to_tensor(
+                                    load_result[key], config.return_numpy)
 
                         if not config.keep_name_table and "StructuredToParameterName@@" in load_result:
                             del load_result["StructuredToParameterName@@"]

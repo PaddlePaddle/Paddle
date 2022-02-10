@@ -33,9 +33,9 @@ static void GetTensors(Variable *var,
                        std::unordered_set<Tensor *> *tensor_set) {
   if (var->IsType<LoDTensor>() && var->Get<LoDTensor>().IsInitialized()) {
     tensor_set->insert(var->GetMutable<LoDTensor>());
-  } else if (var->IsType<SelectedRows>() &&
-             var->Get<SelectedRows>().value().IsInitialized()) {
-    tensor_set->insert(var->GetMutable<SelectedRows>()->mutable_value());
+  } else if (var->IsType<pten::SelectedRows>() &&
+             var->Get<pten::SelectedRows>().value().IsInitialized()) {
+    tensor_set->insert(var->GetMutable<pten::SelectedRows>()->mutable_value());
   } else if (var->IsType<LoDTensorArray>()) {
     auto *tensor_arr = var->GetMutable<LoDTensorArray>();
     for (auto &t : *tensor_arr) {

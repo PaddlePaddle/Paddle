@@ -57,6 +57,8 @@ def func_to_test3():
     h = None
     i = False
     j = None + 1
+    k: float = 1.0
+    l: paddle.Tensor = paddle.to_tensor([1, 2])
 
 
 result_var_type3 = {
@@ -69,7 +71,9 @@ result_var_type3 = {
     'g': {NodeVarType.STRING},
     'h': {NodeVarType.NONE},
     'i': {NodeVarType.BOOLEAN},
-    'j': {NodeVarType.UNKNOWN}
+    'j': {NodeVarType.UNKNOWN},
+    'k': {NodeVarType.FLOAT},
+    'l': {NodeVarType.PADDLE_RETURN_TYPES}
 }
 
 
@@ -139,13 +143,25 @@ result_var_type6 = {
     'add': {NodeVarType.INT}
 }
 
+
+def func_to_test7(a: int, b: float, c: paddle.Tensor, d: float='diff'):
+    a = True
+
+
+result_var_type7 = {
+    'a': {NodeVarType.BOOLEAN},
+    'b': {NodeVarType.FLOAT},
+    'c': {NodeVarType.TENSOR},
+    'd': {NodeVarType.STRING}
+}
+
 test_funcs = [
     func_to_test1, func_to_test2, func_to_test3, func_to_test4, func_to_test5,
-    func_to_test6
+    func_to_test6, func_to_test7
 ]
 result_var_type = [
     result_var_type1, result_var_type2, result_var_type3, result_var_type4,
-    result_var_type5, result_var_type6
+    result_var_type5, result_var_type6, result_var_type7
 ]
 
 

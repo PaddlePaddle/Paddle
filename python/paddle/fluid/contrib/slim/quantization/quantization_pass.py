@@ -51,6 +51,7 @@ _out_scale_op_list = [
     "depthwise_conv2d",
     "mul",
     "matmul",
+    "matmul_v2",
     "relu",
     "leaky_relu",
     "relu6",
@@ -91,6 +92,7 @@ _op_real_in_out_name = {
     "conv2d_transpose": [["Input", "Filter"], ["Output"]],
     "mul": [["X", "Y"], ["Out"]],
     "matmul": [["X", "Y"], ["Out"]],
+    "matmul_v2": [["X", "Y"], ["Out"]],
     "pool2d": [["X"], ["Out"]],
     "elementwise_add": [["X", "Y"], ["Out"]],
     "concat": [["X"], ["Out"]],
@@ -134,12 +136,14 @@ _op_real_in_out_name = {
     "flatten": [["X"], ["Out"]],
     "flatten2": [["X"], ["Out"]],
     "unsqueeze2": [["X"], ["Out"]],
-    "flatten_contiguous_range": [['X'], ["Out", "XShape"]],
+    "flatten_contiguous_range": [['X'], ["Out"]],
 }
 
 _conv_ops = ['conv2d', 'depthwise_conv2d', 'conv2d_transpose']
 
-_channelwise_quant_axis1_ops = ['conv2d_transpose', 'mul']
+_channelwise_quant_axis1_ops = [
+    'conv2d_transpose', 'mul', 'matmul', 'matmul_v2'
+]
 
 
 def _get_op_input_var_names(op):
@@ -268,7 +272,8 @@ class QuantizationTransformPass(object):
     the quantized ops's inputs.
     """
     _supported_quantizable_op_type = [
-        'conv2d', 'depthwise_conv2d', 'conv2d_transpose', 'mul', 'matmul'
+        'conv2d', 'depthwise_conv2d', 'conv2d_transpose', 'mul', 'matmul',
+        'matmul_v2'
     ]
 
     def __init__(self,
@@ -516,6 +521,16 @@ class QuantizationTransformPass(object):
                     dequant_var_node = dequantized_vars[var_node.name()]
                     graph.update_input_link(var_node, dequant_var_node, op)
 
+        def _has_weight(op):
+            has_weight = False
+            for var_node in op.inputs:
+                if var_node.name() not in op.input_arg_names():
+                    continue
+                name = var_node.name()
+                if var_node.name() in persistable_vars:
+                    has_weight = True
+            return has_weight
+
         if not self._is_test:
             self._create_global_step(graph)
         ops = graph.all_op_nodes()
@@ -531,11 +546,11 @@ class QuantizationTransformPass(object):
         # The loop for transforming the forward graph:
         for op in ops:
             if op.name() in self._quantizable_ops:
-                if not self._is_skip_quant(graph, op):
+                if not self._is_skip_quant(graph, op) and _has_weight(op):
                     _transform_forward(graph, op)
         # The loop for renaming the inputs of backward op.
         for op in ops:
-            if op.name() in self._quantizable_grad_ops:
+            if op.name() in self._quantizable_grad_ops and _has_weight(op):
                 _transform_backward(graph, op)
         graph.resolve_hazard()
         return graph
@@ -1205,6 +1220,8 @@ class QuantizationFreezePass(object):
             if op_node_desc.has_attr("quantization_type") and \
                 op_node_desc.attr("quantization_type") == "qat_with_weight":
                 if self._weight_quantize_type == 'channel_wise_abs_max':
+                    quant_axis = 1 if op_node.name() in \
+                        _channelwise_quant_axis1_ops else 0
                     self._insert_post_channel_dequant_op(graph, op_node,
                                                          quant_axis)
                 else:
@@ -1277,10 +1294,11 @@ class QuantizationFreezePass(object):
             var_type=output_var_node.type(),
             shape=output_var_node.shape(),
             var_dtype=output_var_node.dtype())
+        x_num_col_dims = 1
+        if op_node.name() in ['matmul', 'matmul_v2', 'mul']:
+            x_num_col_dims = len(op_node.outputs[0].shape()) - 1
         if op_node.op().has_attr("x_num_col_dims"):
             x_num_col_dims = op_node.op().attr("x_num_col_dims")
-        else:
-            x_num_col_dims = 1
         dequant_op_node = graph.create_op_node(
             op_type='fake_channel_wise_dequantize_max_abs',
             attrs={
@@ -1785,7 +1803,8 @@ class AddQuantDequantPass(object):
         "bilinear_interp", "nearest_interp", "trilinear_interp", "slice",
         "squeeze", "elementwise_sub", "mul", "matmul", "relu", "relu6",
         "leaky_relu", "tanh", "swish", "scale", "transpose", "transpose2",
-        "sigmoid", "pad2d", "flatten", "flatten2", "batch_norm", "layer_norm"
+        "sigmoid", "pad2d", "flatten", "flatten2", "batch_norm", "layer_norm",
+        "matmul_v2"
     ]
 
     # To be compatible with PaddleSlim, not remove _activation_type for now

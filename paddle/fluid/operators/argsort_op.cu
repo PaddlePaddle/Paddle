@@ -26,8 +26,8 @@ namespace cub = hipcub;
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/argsort_op.h"
 #include "paddle/fluid/operators/transpose_op.h"
-#include "paddle/fluid/platform/cuda_device_function.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 #ifdef __HIPCC__
 namespace rocprim {
@@ -131,7 +131,7 @@ void ArgFullSort(const platform::CUDADeviceContext& ctx, const Tensor* input,
 
   int block_size = ComputeBlockSize(num_cols);
 
-  int maxGridDimX = ctx.GetCUDAMaxGridDimSize().x;
+  int maxGridDimX = ctx.GetCUDAMaxGridDimSize()[0];
   // actually, int num_rows < max_grid_size
   int grid_size = num_rows < maxGridDimX ? num_rows : maxGridDimX;
   // Init a index array
@@ -169,7 +169,7 @@ void ArgFullSort(const platform::CUDADeviceContext& ctx, const Tensor* input,
         num_rows, segment_offsets_t, segment_offsets_t + 1, 0, sizeof(T) * 8,
         cu_stream);
   }
-  PADDLE_ENFORCE_CUDA_SUCCESS(err);
+  PADDLE_ENFORCE_GPU_SUCCESS(err);
 
   Tensor temp_storage;
   temp_storage.mutable_data<uint8_t>(ctx.GetPlace(), temp_storage_bytes);
@@ -188,7 +188,7 @@ void ArgFullSort(const platform::CUDADeviceContext& ctx, const Tensor* input,
         cu_stream);
   }
 
-  PADDLE_ENFORCE_CUDA_SUCCESS(err);
+  PADDLE_ENFORCE_GPU_SUCCESS(err);
 }
 
 template <typename T, typename IndType>
@@ -212,7 +212,7 @@ void ArgFullAssign(const platform::CUDADeviceContext& ctx, const Tensor* dO,
 
   int block_size = ComputeBlockSize(num_cols);
 
-  int maxGridDimX = ctx.GetCUDAMaxGridDimSize().x;
+  int maxGridDimX = ctx.GetCUDAMaxGridDimSize()[0];
   // actually, int num_rows < max_grid_size
   int grid_size = num_rows < maxGridDimX ? num_rows : maxGridDimX;
   FillGrad<<<grid_size, block_size, 0, cu_stream>>>(

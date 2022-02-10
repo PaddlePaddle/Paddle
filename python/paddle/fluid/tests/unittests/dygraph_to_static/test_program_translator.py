@@ -26,6 +26,7 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.dygraph.nn import Linear
+from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
 
 from ifelse_simple_func import dyfunc_with_if_else
 
@@ -64,7 +65,7 @@ def get_source_code(func):
 class StaticCode1():
     def dyfunc_with_if_else(x_v, label=None):
         __return_value_init_0 = paddle.fluid.layers.fill_constant(
-            shape=[1], dtype='float64', value=0.0)
+            shape=[1], dtype='float64', value=0.0, name='__return_value_init_0')
         __return_value_0 = __return_value_init_0
 
         def true_fn_0(x_v):
@@ -116,7 +117,7 @@ class StaticCode2():
     # TODO: Transform return statement
     def dyfunc_with_if_else(x_v, label=None):
         __return_value_init_1 = paddle.fluid.layers.fill_constant(
-            shape=[1], dtype='float64', value=0.0)
+            shape=[1], dtype='float64', value=0.0, name='__return_value_init_1')
         __return_value_1 = __return_value_init_1
 
         def true_fn_3(x_v):
@@ -295,6 +296,66 @@ class TestErrorWithInitFromStaticMode(unittest.TestCase):
         with self.assertRaisesRegexp(RuntimeError,
                                      "only available in dynamic mode"):
             self.program_translator.get_program(net.forward, self.x)
+
+
+class SwitchModeNet(paddle.nn.Layer):
+    def __init__(self):
+        super(SwitchModeNet, self).__init__()
+
+    @paddle.jit.to_static
+    def forward(self, x):
+        return x + 1
+
+    @paddle.jit.to_static
+    def foo(self):
+        return True
+
+
+@paddle.jit.to_static
+def switch_mode_funciton():
+    return True
+
+
+class TestFunctionTrainEvalMode(unittest.TestCase):
+    def test_switch_mode(self):
+        paddle.disable_static()
+        switch_mode_funciton.eval()
+        switch_mode_funciton()
+        self.assertEqual(switch_mode_funciton._training, False)
+        _, partial_layer = switch_mode_funciton.program_cache.last()[-1]
+        self.assertEqual(partial_layer.training, False)
+
+        switch_mode_funciton.train()
+        switch_mode_funciton()
+        self.assertEqual(switch_mode_funciton._training, True)
+        _, partial_layer = switch_mode_funciton.program_cache.last()[-1]
+        self.assertEqual(partial_layer.training, True)
+
+    def test_raise_error(self):
+        paddle.disable_static()
+        net = SwitchModeNet()
+
+        self.assertEqual(net.training, True)
+        with self.assertRaises(RuntimeError):
+            net.forward.eval()
+
+        net.eval()
+        self.assertEqual(net.training, False)
+        with self.assertRaises(RuntimeError):
+            net.foo.train()
+
+
+class TestRemoveCommentInDy2St(unittest.TestCase):
+    def func_with_comment(self):
+        # Comment1
+        x = paddle.to_tensor([1, 2, 3])
+        # Comment2
+        # Comment3
+        y = paddle.to_tensor([4, 5, 6])
+
+    def test_remove_comment(self):
+        code_string = func_to_source_code(self.func_with_comment)
+        self.assertEqual('#' not in code_string, True)
 
 
 if __name__ == '__main__':

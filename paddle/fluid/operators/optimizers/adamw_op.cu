@@ -20,32 +20,32 @@ namespace operators {
 
 template <typename T, typename MT>
 __global__ void AdamWKernelREG(MT beta1, MT beta2, MT epsilon, MT coeff,
-                               MT beta1_pow_, MT beta2_pow_, const MT* moment1,
-                               MT* moment1_out, const MT* moment2,
-                               MT* moment2_out, const MT* lr_, const T* grad,
-                               const T* param, T* param_out,
-                               const MT* master_param, MT* master_param_out,
-                               int ndim) {
-  MT lr = *lr_;
+                               MT lr_ratio, MT beta1_pow_, MT beta2_pow_,
+                               const MT* moment1, MT* moment1_out,
+                               const MT* moment2, MT* moment2_out,
+                               const MT* lr_, const T* grad, const T* param,
+                               T* param_out, const MT* master_param,
+                               MT* master_param_out, int ndim) {
+  MT lr = *lr_ * lr_ratio;
   MT beta1_pow = beta1_pow_;
   MT beta2_pow = beta2_pow_;
-
-  MT wd = static_cast<MT>(1.0) - coeff * lr;
-  lr *= sqrt(static_cast<MT>(1.0) - beta2_pow) /
-        (static_cast<MT>(1.0) - beta1_pow);
 
   int id = blockIdx.x * blockDim.x + threadIdx.x;
 
   for (; id < ndim; id += gridDim.x * blockDim.x) {
     MT p = master_param ? master_param[id] : static_cast<MT>(param[id]);
     MT g = static_cast<MT>(grad[id]);
-    MT mom1 = moment1[id];
-    MT mom2 = moment2[id];
+    MT mom1 = static_cast<MT>(moment1[id]);
+    MT mom2 = static_cast<MT>(moment2[id]);
+
+    p *= (static_cast<MT>(1.0) - lr * coeff);
+
     mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
     mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
-    p = wd * p -
-        lr * (mom1 /
-              (sqrt(mom2) + epsilon * sqrt(static_cast<MT>(1.0) - beta2_pow)));
+
+    MT denom = (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
+
+    p += (mom1 / denom) * (-(lr / (static_cast<MT>(1.0) - beta1_pow)));
 
     moment1_out[id] = mom1;
     moment2_out[id] = mom2;
@@ -57,20 +57,14 @@ __global__ void AdamWKernelREG(MT beta1, MT beta2, MT epsilon, MT coeff,
 }
 
 template <typename T, typename MT>
-__global__ void AdamWKernelMEM(MT beta1, MT beta2, MT epsilon, MT coeff,
-                               const MT* beta1_pow_, const MT* beta2_pow_,
-                               const MT* moment1, MT* moment1_out,
-                               const MT* moment2, MT* moment2_out,
-                               const MT* lr_, const T* grad, const T* param,
-                               T* param_out, const MT* master_param,
-                               MT* master_param_out, int ndim) {
-  MT lr = *lr_;
+__global__ void AdamWKernelMEM(
+    MT beta1, MT beta2, MT epsilon, MT coeff, MT lr_ratio, const MT* beta1_pow_,
+    const MT* beta2_pow_, const MT* moment1, MT* moment1_out, const MT* moment2,
+    MT* moment2_out, const MT* lr_, const T* grad, const T* param, T* param_out,
+    const MT* master_param, MT* master_param_out, int ndim) {
+  MT lr = *lr_ * lr_ratio;
   MT beta1_pow = *beta1_pow_;
   MT beta2_pow = *beta2_pow_;
-
-  MT wd = static_cast<MT>(1.0) - coeff * lr;
-  lr *= sqrt(static_cast<MT>(1.0) - beta2_pow) /
-        (static_cast<MT>(1.0) - beta1_pow);
 
   int id = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -79,11 +73,15 @@ __global__ void AdamWKernelMEM(MT beta1, MT beta2, MT epsilon, MT coeff,
     MT g = static_cast<MT>(grad[id]);
     MT mom1 = static_cast<MT>(moment1[id]);
     MT mom2 = static_cast<MT>(moment2[id]);
+
+    p *= (static_cast<MT>(1.0) - lr * coeff);
+
     mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
     mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
-    p = wd * p -
-        lr * (mom1 /
-              (sqrt(mom2) + epsilon * sqrt(static_cast<MT>(1.0) - beta2_pow)));
+
+    MT denom = (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
+
+    p += (mom1 / denom) * (-(lr / (static_cast<MT>(1.0) - beta1_pow)));
 
     moment1_out[id] = mom1;
     moment2_out[id] = mom2;
@@ -103,18 +101,14 @@ __global__ void UpdateAdamWBetaPow(T beta1, T beta2, const T* beta1_pow_,
 
 template <typename T, typename MT>
 __global__ void SparseAdamWCUDAKernelREG(
-    MT beta1, MT beta2, MT epsilon, MT coeff, const MT beta1_pow,
+    MT beta1, MT beta2, MT epsilon, MT coeff, MT lr_ratio, const MT beta1_pow,
     const MT beta2_pow, const MT* mom1_, MT* mom1_out_, const MT* mom2_,
     MT* mom2_out_, const MT* lr_, const T* grad_, const T* param_,
     T* param_out_, const MT* master_param, MT* master_param_out,
     const int64_t* rows_, int64_t row_numel, int64_t row_count, bool lazy_mode,
     int ndim) {
   int id = blockIdx.x * blockDim.x + threadIdx.x;
-  MT lr = *lr_;
-
-  MT wd = static_cast<MT>(1.0) - coeff * lr;
-  lr *= sqrt(static_cast<MT>(1.0) - beta2_pow) /
-        (static_cast<MT>(1.0) - beta1_pow);
+  MT lr = *lr_ * lr_ratio;
 
   for (; id < ndim; id += blockDim.x * gridDim.x) {
     auto row_idx =
@@ -122,17 +116,23 @@ __global__ void SparseAdamWCUDAKernelREG(
     if (lazy_mode && row_idx < 0) {
       return;
     } else {
-      MT mom1 = mom1_[id];
-      MT mom2 = mom2_[id];
+      MT mom1 = static_cast<MT>(mom1_[id]);
+      MT mom2 = static_cast<MT>(mom2_[id]);
+
       MT p = master_param ? master_param[id] : static_cast<MT>(param_[id]);
       MT g = row_idx >= 0
                  ? static_cast<MT>(grad_[row_idx * row_numel + id % row_numel])
                  : static_cast<MT>(0);
+
+      p *= (static_cast<MT>(1.0) - lr * coeff);
+
       mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
       mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
-      p = wd * p -
-          lr * (mom1 / (sqrt(mom2) +
-                        epsilon * sqrt(static_cast<MT>(1.0) - beta2_pow)));
+
+      MT denom =
+          (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
+
+      p += (mom1 / denom) * (-(lr / (static_cast<MT>(1.0) - beta1_pow)));
 
       // Write back to global memory
       mom1_out_[id] = mom1;
@@ -165,7 +165,9 @@ class AdamWOpCUDAKernel : public framework::OpKernel<T> {
     bool lazy_mode = ctx.Attr<bool>("lazy_mode");
     bool use_global_beta_pow = ctx.Attr<bool>("use_global_beta_pow");
     VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
-    float coeff = ctx.Attr<float>("coeff");
+
+    MPDType coeff = static_cast<MPDType>(ctx.Attr<float>("coeff"));
+    MPDType lr_ratio = static_cast<MPDType>(ctx.Attr<float>("lr_ratio"));
 
     auto* param = ctx.Input<LoDTensor>("Param");
     auto* grad_var = ctx.InputVar("Grad");
@@ -190,8 +192,8 @@ class AdamWOpCUDAKernel : public framework::OpKernel<T> {
                             "Input(SkipUpdate) size must be 1, but get %d",
                             skip_update_tensor->numel()));
       std::vector<bool> skip_update_vec;
-      TensorToVector(*skip_update_tensor, ctx.device_context(),
-                     &skip_update_vec);
+      paddle::framework::TensorToVector(*skip_update_tensor,
+                                        ctx.device_context(), &skip_update_vec);
       skip_update = skip_update_vec[0];
     }
 
@@ -301,7 +303,7 @@ class AdamWOpCUDAKernel : public framework::OpKernel<T> {
           beta2_pow->place() == platform::CPUPlace()) {
         // Compute with betapow in REG
         AdamWKernelREG<T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
-            beta1, beta2, epsilon, coeff, *beta1_pow->data<MPDType>(),
+            beta1, beta2, epsilon, coeff, lr_ratio, *beta1_pow->data<MPDType>(),
             *beta2_pow->data<MPDType>(), mom1->data<MPDType>(),
             mom1_out->mutable_data<MPDType>(ctx.GetPlace()),
             mom2->data<MPDType>(),
@@ -318,7 +320,7 @@ class AdamWOpCUDAKernel : public framework::OpKernel<T> {
         }
       } else {
         AdamWKernelMEM<T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
-            beta1, beta2, epsilon, coeff, beta1_pow->data<MPDType>(),
+            beta1, beta2, epsilon, coeff, lr_ratio, beta1_pow->data<MPDType>(),
             beta2_pow->data<MPDType>(), mom1->data<MPDType>(),
             mom1_out->mutable_data<MPDType>(ctx.GetPlace()),
             mom2->data<MPDType>(),
@@ -335,8 +337,8 @@ class AdamWOpCUDAKernel : public framework::OpKernel<T> {
               beta2_pow_out->mutable_data<MPDType>(ctx.GetPlace()));
         }
       }
-    } else if (grad_var->IsType<framework::SelectedRows>()) {
-      auto* grad = ctx.Input<framework::SelectedRows>("Grad");
+    } else if (grad_var->IsType<pten::SelectedRows>()) {
+      auto* grad = ctx.Input<pten::SelectedRows>("Grad");
       if (grad->rows().size() == 0) {
         VLOG(3) << "grad row size is 0!!";
         return;
@@ -351,8 +353,8 @@ class AdamWOpCUDAKernel : public framework::OpKernel<T> {
         }
       }
 
-      framework::SelectedRows tmp_grad_merge;
-      const framework::SelectedRows* grad_merge_ptr;
+      pten::SelectedRows tmp_grad_merge;
+      const pten::SelectedRows* grad_merge_ptr;
       if (is_strict_sorted) {
         grad_merge_ptr = grad;
       } else {
@@ -377,7 +379,7 @@ class AdamWOpCUDAKernel : public framework::OpKernel<T> {
 
         SparseAdamWCUDAKernelREG<
             T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
-            beta1, beta2, epsilon, coeff, *beta1_pow->data<MPDType>(),
+            beta1, beta2, epsilon, coeff, lr_ratio, *beta1_pow->data<MPDType>(),
             *beta2_pow->data<MPDType>(), mom1->data<MPDType>(),
             mom1_out->mutable_data<MPDType>(ctx.GetPlace()),
             mom2->data<MPDType>(),
@@ -395,7 +397,7 @@ class AdamWOpCUDAKernel : public framework::OpKernel<T> {
         }
       } else {
         SparseAdamWFunctor<T, GPUAdamW, MPDType> functor(
-            beta1, beta2, epsilon, coeff, beta1_pow->data<MPDType>(),
+            beta1, beta2, epsilon, coeff, lr_ratio, beta1_pow->data<MPDType>(),
             beta2_pow->data<MPDType>(), mom1->data<MPDType>(),
             mom1_out->mutable_data<MPDType>(ctx.GetPlace()),
             mom2->data<MPDType>(),

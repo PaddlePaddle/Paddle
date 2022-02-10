@@ -46,13 +46,12 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
     dev_ctx_ = reinterpret_cast<platform::CUDADeviceContext *>(
         platform::DeviceContextPool::Instance().Get(place));
     if (dynamic_cast<StreamGarbageCollector *>(gc_)) {
-      platform::CUDADeviceGuard guard(
-          BOOST_GET_CONST(platform::CUDAPlace, place).device);
+      platform::CUDADeviceGuard guard(place.device);
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           hipEventCreateWithFlags(&event_, hipEventDisableTiming));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           cudaEventCreateWithFlags(&event_, cudaEventDisableTiming));
 #endif
       PADDLE_ENFORCE_NOT_NULL(event_, platform::errors::InvalidArgument(
@@ -72,12 +71,12 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
 EagerDeletionOpHandle::~EagerDeletionOpHandle() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (event_) {
-    auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, dev_ctx_->GetPlace());
+    auto gpu_place = dev_ctx_->GetPlace();
     platform::CUDADeviceGuard guard(gpu_place.device);
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventDestroy(event_));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(event_));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(event_));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(event_));
 #endif
   }
 #endif
@@ -85,8 +84,7 @@ EagerDeletionOpHandle::~EagerDeletionOpHandle() {
 
 void EagerDeletionOpHandle::InitCUDA() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  int dev_id =
-      BOOST_GET_CONST(platform::CUDAPlace, dev_ctxes_.begin()->first).device;
+  int dev_id = dev_ctxes_.begin()->first.device;
   events_[dev_id] = nullptr;
 #endif
 }
@@ -131,9 +129,10 @@ void EagerDeletionOpHandle::RunImpl() {
 
     if (var->IsType<LoDTensor>()) {
       garbages.emplace_back(var->GetMutable<LoDTensor>()->MoveMemoryHolder());
-    } else if (var->IsType<SelectedRows>()) {
-      garbages.emplace_back(
-          var->GetMutable<SelectedRows>()->mutable_value()->MoveMemoryHolder());
+    } else if (var->IsType<pten::SelectedRows>()) {
+      garbages.emplace_back(var->GetMutable<pten::SelectedRows>()
+                                ->mutable_value()
+                                ->MoveMemoryHolder());
     } else if (var->IsType<LoDTensorArray>()) {
       auto *tensor_arr = var->GetMutable<LoDTensorArray>();
       for (auto &t : *tensor_arr) {
@@ -160,12 +159,12 @@ void EagerDeletionOpHandle::ClearGarbages(
         reinterpret_cast<StreamGarbageCollector *>(gc_)->stream();
     auto callback_func = [=]() {
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(event_, compute_stream));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event_, compute_stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(
           hipStreamWaitEvent(callback_stream, event_, 0));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event_, compute_stream));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event_, compute_stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(
           cudaStreamWaitEvent(callback_stream, event_, 0));
 #endif
     };

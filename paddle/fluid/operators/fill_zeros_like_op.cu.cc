@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/fill_zeros_like_op.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
@@ -25,7 +26,11 @@ REGISTER_OP_CUDA_KERNEL(
     ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, double>,
     ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext,
                              paddle::platform::float16>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, bool>);
+    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, bool>,
+    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext,
+                             paddle::platform::complex<float>>,
+    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext,
+                             paddle::platform::complex<double>>);
 
 REGISTER_OP_CUDA_KERNEL(
     fill_zeros_like2,
@@ -35,4 +40,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, double>,
     ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext,
                              paddle::platform::float16>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, bool>);
+    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, bool>,
+    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext,
+                             paddle::platform::complex<float>>,
+    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext,
+                             paddle::platform::complex<double>>);

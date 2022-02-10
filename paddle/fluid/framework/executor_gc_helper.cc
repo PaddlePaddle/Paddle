@@ -31,6 +31,36 @@
 namespace paddle {
 namespace framework {
 
+void OpInOutInfo::Build(const OperatorBase *op) {
+  is_built_ = true;
+  auto &inferer = op->Info().NoNeedBufferVarsInferer();
+  if (inferer) {
+    no_need_buffer_ins_ = inferer(op->Inputs(), op->Outputs(), op->Attrs());
+
+    if (no_need_buffer_ins_.empty()) return;
+
+    for (auto &in_name_pair : op->Inputs()) {
+      if (no_need_buffer_ins_.count(in_name_pair.first) != 0) {
+        continue;
+      }
+
+      for (auto &in_arg_name : in_name_pair.second) {
+        other_args_set_.insert(in_arg_name);
+      }
+    }
+
+    for (auto &out_name_pair : op->Outputs()) {
+      for (auto &out_arg_name : out_name_pair.second) {
+        other_args_set_.insert(out_arg_name);
+      }
+    }
+  }
+}
+
+bool OpInOutInfo::IsInArgBufferNeeded(const std::string &in_arg_name) const {
+  return no_need_buffer_ins_.empty() || other_args_set_.count(in_arg_name) != 0;
+}
+
 static bool VarCanBeDeleted(const std::string &name, const BlockDesc &block,
                             const std::unordered_set<std::string> &skip_vars) {
   if (skip_vars.count(name) != 0) {
@@ -117,14 +147,16 @@ void DeleteUnusedTensors(const Scope &scope,
     VLOG(2) << "Erase variable " << var_name;
     if (var->IsType<LoDTensor>()) {
       garbages.emplace_back(var->GetMutable<LoDTensor>()->MoveMemoryHolder());
-    } else if (var->IsType<SelectedRows>()) {
-      garbages.emplace_back(
-          var->GetMutable<SelectedRows>()->mutable_value()->MoveMemoryHolder());
+    } else if (var->IsType<pten::SelectedRows>()) {
+      garbages.emplace_back(var->GetMutable<pten::SelectedRows>()
+                                ->mutable_value()
+                                ->MoveMemoryHolder());
     } else if (var->IsType<LoDTensorArray>()) {
       auto *lod_tensor_arr = var->GetMutable<LoDTensorArray>();
       for (auto &t : *lod_tensor_arr) {
         garbages.emplace_back(t.MoveMemoryHolder());
       }
+    } else if (var->IsType<Strings>()) {
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Type %s of variable %s is not supported eager deletion.",

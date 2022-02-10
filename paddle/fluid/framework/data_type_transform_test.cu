@@ -21,7 +21,10 @@ TEST(DataTypeTransform, GPUTransform) {
   auto cpu_place = paddle::platform::CPUPlace();
   auto gpu_place = paddle::platform::CUDAPlace(0);
   paddle::platform::CUDADeviceContext context(gpu_place);
-
+  context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(gpu_place, context.stream())
+                           .get());
+  context.PartialInitWithAllocator();
   auto kernel_fp16 = paddle::framework::OpKernelType(
       paddle::framework::proto::VarType::FP16, gpu_place,
       paddle::framework::DataLayout::kAnyLayout,

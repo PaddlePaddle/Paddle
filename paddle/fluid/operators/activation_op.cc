@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/mkldnn/mkldnn_activation_op.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/pten/backends/dynload/port.h"
 
 DECLARE_bool(use_mkldnn);
 
@@ -77,12 +77,12 @@ class ActivationGradOpMaker : public framework::SingleGradOpMaker<T> {
         FLAGS_use_mkldnn ||
         (op->HasAttr("use_mkldnn") &&
          BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")))) {
-      op->SetInput("X", this->Input("X"));
+      op->SetInput("X", this->Input("X"));  // x
     }
 
     if (static_cast<int>(kDepValue) &
         static_cast<int>(ActBwdOpFwdDeps::kDepOut)) {
-      op->SetInput("Out", this->Output("Out"));
+      op->SetInput("Out", this->Output("Out"));  // out
     }
   }
 };
@@ -127,6 +127,26 @@ class ActivationOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return GetKernelType(ctx, *this, "X");
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const {
+#ifdef PADDLE_WITH_MKLDNN
+    // When activation is first oneDNN op (there was some non oneDNN op
+    // previously)
+    // then we also need to rotate shape NHWC -> NCWH
+    if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+        (tensor.layout() != framework::DataLayout::kMKLDNN) &&
+        paddle::platform::MKLDNNDeviceContext::tls()
+                .get_cur_paddle_data_layout() == framework::DataLayout::kNHWC) {
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(),
+                                     framework::DataLayout::kNHWC);
+    }
+#endif
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
   }
 };
 
@@ -281,6 +301,27 @@ UNUSED constexpr char CoshDoc[] = R"DOC(
 Cosh Activation Operator.
 
 $$out = cosh(x)$$
+
+)DOC";
+
+UNUSED constexpr char AsinhDoc[] = R"DOC(
+Asinh Activation Operator.
+
+$$out = asinh(x)$$
+
+)DOC";
+
+UNUSED constexpr char AcoshDoc[] = R"DOC(
+Acosh Activation Operator.
+
+$$out = acosh(x)$$
+
+)DOC";
+
+UNUSED constexpr char AtanhDoc[] = R"DOC(
+Atanh Activation Operator.
+
+$$out = atanh(x)$$
 
 )DOC";
 
@@ -447,6 +488,26 @@ class SoftplusOpMaker : public framework::OpProtoAndCheckerMaker {
         "(bool, default false) Only used in cudnn kernel, need install cudnn.")
         .SetDefault(false)
         .AsExtra();
+    AddAttr<std::string>(
+        "fuse_activation_type",
+        "Fused activation type used in softplus OneDNN kernel.")
+        .SetDefault("")
+        .AsExtra();
+    AddAttr<float>(
+        "fuse_activation_alpha",
+        "Fused activation alpha parameter type used in softplus OneDNN kernel.")
+        .SetDefault(0.0f)
+        .AsExtra();
+    AddAttr<float>(
+        "fuse_activation_beta",
+        "Fused activation beta parameter type used in softplus OneDNN kernel.")
+        .SetDefault(0.0f)
+        .AsExtra();
+    AddAttr<float>(
+        "fuse_activation_scale",
+        "Fused activation scale parameter type used in softplus OneDNN kernel.")
+        .SetDefault(1.0f)
+        .AsExtra();
     AddComment(R"DOC(
 :strong:`Softplus Activation Operator`
 
@@ -548,6 +609,10 @@ class ELUOpMaker : public framework::OpProtoAndCheckerMaker {
               "The output is a multi-dimensional Tensor which has same "
               "dimension and data type as the ``x``.");
     AddAttr<float>("alpha", "The alpha value of ELU").SetDefault(1.0f);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false)
+        .AsExtra();
     AddComment(R"DOC(
 ELU Activation Operator.
 
@@ -555,6 +620,77 @@ Applies the following element-wise computation on the input according to
 https://arxiv.org/abs/1511.07289.
 
 $$out = \max(0, x) + \min(0, \alpha * (e^x - 1))$$
+
+)DOC");
+  }
+};
+
+template <typename T>
+class ELUGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("elu_grad");
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetInput("Out", this->Output("Out"));
+    op->SetInput("X", this->Input("X"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
+
+class LogitOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "Input of Logit operator");
+    AddOutput("Out", "Output of Logit operator");
+    AddAttr<float>("eps",
+                   "(float, default 1e-6f) the epsilon for input clamp bound")
+        .SetDefault(1e-6f);
+    AddComment(R"DOC(
+Logit Operator. 
+
+this function is defined as follow:
+$ logit=ln\left ( {\frac {x} {1-x}} \right ) $
+
+)DOC");
+  }
+};
+
+template <typename T>
+class LogitGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("logit_grad");
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
+class CELUOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X",
+             "The input is a multi-dimensional Tensor. The data type is "
+             "float32 or float64.");
+    AddOutput("Out",
+              "The output is a multi-dimensional Tensor which has same "
+              "dimension and data type as the ``x``.");
+    AddAttr<float>("alpha", "The alpha value of CELU").SetDefault(1.0f);
+    AddComment(R"DOC(
+CELU Activation Operator.
+
+Applies the following element-wise computation on the input according to
+https://arxiv.org/abs/1704.07483.
+
+$$out = \max(0, x) + \min(0, \alpha * (e^(x/\alpha) - 1))$$
 
 )DOC");
   }
@@ -690,6 +826,36 @@ $$out = \\frac{x}{1 + e^{- \beta \ x}}$$
   }
 };
 
+class MishOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "Input of Mish operator");
+    AddOutput("Out", "Output of Mish operator");
+    AddAttr<float>(
+        "threshold",
+        "Constant threshold of softplus in Mish operator. Approximate value "
+        "of softplus will be used if absolute value of input is greater than "
+        ":attr:`threshold`")
+        .SetDefault(20.f);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false)
+        .AsExtra();
+    AddComment(R"DOC(
+Mish Activation Operator.
+
+..  math::
+    softplus(x) = \begin{cases}
+            x, \text{if } x > \text{threshold} \\
+            \ln(1 + e^{x}),  \text{otherwise}
+          \end{cases}
+
+    out = x * \tanh(softplus(x))
+
+)DOC");
+  }
+};
+
 class HardSwishOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -701,6 +867,10 @@ class HardSwishOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(6.0f);
     AddAttr<float>("offset", "The offset parameter of HardSwish operator")
         .SetDefault(3.0f);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false)
+        .AsExtra();
     AddComment(R"DOC(
 HardSwish Activation Operator.
 
@@ -733,6 +903,9 @@ REGISTER_ACTIVATION_OP_MAKER(Tan, TanDoc);
 REGISTER_ACTIVATION_OP_MAKER(Sin, SinDoc);
 REGISTER_ACTIVATION_OP_MAKER(Sinh, SinhDoc);
 REGISTER_ACTIVATION_OP_MAKER(Cosh, CoshDoc);
+REGISTER_ACTIVATION_OP_MAKER(Acosh, AcoshDoc);
+REGISTER_ACTIVATION_OP_MAKER(Asinh, AsinhDoc);
+REGISTER_ACTIVATION_OP_MAKER(Atanh, AtanhDoc);
 REGISTER_ACTIVATION_OP_MAKER(Round, RoundDoc);
 REGISTER_ACTIVATION_OP_MAKER(Reciprocal, ReciprocalDoc);
 REGISTER_ACTIVATION_OP_MAKER(Log, LogDoc);
@@ -766,6 +939,10 @@ class ActivationOpDoubleGrad : public framework::OperatorWithKernel {
       if (ctx->HasOutput("DDOut")) {
         ctx->ShareDim("Out", "DDOut");
         ctx->ShareLoD("Out", "DDOut");
+      }
+      if (ctx->HasOutput("DOutNew")) {
+        ctx->ShareDim("Out", "DOutNew");
+        ctx->ShareLoD("Out", "DOutNew");
       }
     }
   }
@@ -804,6 +981,45 @@ class ActivationOpDoubleGrad2 : public framework::OperatorWithKernel {
   }
 };
 
+template <ActBwdOpFwdDeps kDepValue>
+class ActivationOpTripleGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    if (static_cast<int>(kDepValue) & static_cast<int>(kDepX)) {
+      if (ctx->HasOutput("DX")) {
+        ctx->ShareDim("X", "DX");
+        ctx->ShareLoD("X", "DX");
+      }
+      if (ctx->HasOutput("DDOut")) {
+        ctx->ShareDim("X", "DDOut");
+        ctx->ShareLoD("X", "DDOut");
+      }
+    }
+    if (static_cast<int>(kDepValue) & static_cast<int>(kDepOut)) {
+      if (ctx->HasOutput("D_DOut")) {
+        ctx->ShareDim("Out", "D_DOut");
+        ctx->ShareLoD("Out", "D_DOut");
+      }
+      if (ctx->HasOutput("D_OutNew")) {
+        ctx->ShareDim("Out", "D_OutNew");
+        ctx->ShareLoD("Out", "D_OutNew");
+      }
+      if (ctx->HasOutput("D_DDx")) {
+        ctx->ShareDim("DDX", "D_DDx");
+        ctx->ShareLoD("DDX", "D_DDx");
+      }
+    }
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return GetKernelType(ctx, *this, "DDX");
+  }
+};
+
 template <typename T>
 class SigmoidDoubleGradMaker
     : public ::paddle::framework::SingleGradOpMaker<T> {
@@ -822,6 +1038,36 @@ class SigmoidDoubleGradMaker
     // output: ddy
     op->SetOutput("DOutNew", this->InputGrad("Out"));
     op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+  }
+};
+
+template <typename T>
+class SigmoidTripleGradMaker
+    : public ::paddle::framework::SingleGradOpMaker<T> {
+ public:
+  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("sigmoid_triple_grad");
+    // Out, DDX, DOut, D_DDOut, D_DOut_New   // input
+    // D_OutNew, D_DOut, D_DDx               // output
+    // input1: Out
+    op->SetInput("Out", this->Input("Out"));
+    // input2: ddx
+    op->SetInput("DDX", this->Input("DDX"));
+    // input3: dout
+    op->SetInput("DOut", this->Input("DOut"));
+    // input4: d_ddout
+    op->SetInput("D_DDOut", this->OutputGrad("DDOut"));
+    // input5: d_dout_new
+    op->SetInput("D_DOut_New", this->OutputGrad("DOutNew"));
+    op->SetAttrMap(this->Attrs());
+
+    // output: d_dOut, d_OutNew, d_ddx
+    op->SetOutput("D_OutNew", this->InputGrad("Out"));
+    op->SetOutput("D_DOut", this->InputGrad("DOut"));
+    op->SetOutput("D_DDx", this->InputGrad("DDX"));
   }
 };
 
@@ -845,6 +1091,34 @@ class TanhDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
   }
 };
 
+template <typename T>
+class TanhTripleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
+ public:
+  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("tanh_triple_grad");
+    // Out, DDX, DOut, D_DDOut, D_DOut_New   // input
+    // D_OutNew, D_DOut, D_DDx               // output
+    // input1: Out
+    op->SetInput("Out", this->Input("Out"));
+    // input2: ddx
+    op->SetInput("DDX", this->Input("DDX"));
+    // input3: dout
+    op->SetInput("DOut", this->Input("DOut"));
+    // input4: d_ddout
+    op->SetInput("D_DDOut", this->OutputGrad("DDOut"));
+    // input5: d_dout_new
+    op->SetInput("D_DOut_New", this->OutputGrad("DOutNew"));
+    op->SetAttrMap(this->Attrs());
+
+    // output: d_dOut, d_OutNew, d_ddx
+    op->SetOutput("D_OutNew", this->InputGrad("Out"));
+    op->SetOutput("D_DOut", this->InputGrad("DOut"));
+    op->SetOutput("D_DDx", this->InputGrad("DDX"));
+  }
+};
 // ReluGrad: dx = dy if y >= 0 else 0
 // ReluGradGrad: ddy = ddx if y >= 0 else 0
 template <typename T>
@@ -896,6 +1170,29 @@ class ELUDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
  protected:
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("elu_grad_grad");
+
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
+    // X@GRAD@GRAD: ddx
+    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
+    op->SetAttrMap(this->Attrs());
+
+    // Out@GRAD@GRAD: ddy
+    op->SetOutput("DX", this->InputGrad("X"));
+    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+  }
+};
+
+// celu grad: dx=dy if y>0 else dy*(x/alpha).exp()
+// celu gradgrad: ddx=ddy if y>0 else ddy*(x/alpha).exp()/alpha
+template <typename T>
+class CELUDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
+ public:
+  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("celu_grad_grad");
 
     op->SetInput("X", this->Input("X"));
     op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
@@ -995,10 +1292,73 @@ class LogDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
 };
 
 DECLARE_INPLACE_OP_INFERER(ActivationGradOpInplaceInferer,
-                           {framework::GradVarName("Out"),
-                            framework::GradVarName("X")});
+                           {framework::GradVarName("Out"),  // dout
+                            framework::GradVarName("X")});  // dx
 DECLARE_INPLACE_OP_INFERER(ActivationDoubleGradOpInplaceInferer,
                            {"DDX", "DDOut"});
+DECLARE_INPLACE_OP_INFERER(ActivationTripleGradOpInplaceInferer,
+                           {"DDX", "D_DOut"});
+
+class LogitOp : public framework::OperatorWithKernel {
+ public:
+  LogitOp(const std::string& type, const framework::VariableNameMap& inputs,
+          const framework::VariableNameMap& outputs,
+          const framework::AttributeMap& attrs)
+      : OperatorWithKernel(type, inputs, outputs, attrs) {}
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(%s) of LogitOp should not be null.", "X"));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      platform::errors::InvalidArgument(
+                          "Output(%s) of LogitOp should not be null.", "Out"));
+
+    ctx->ShareDim("X", /*->*/ "Out");
+    ctx->ShareLoD("X", /*->*/ "Out");
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    framework::LibraryType library{framework::LibraryType::kPlain};
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+  }
+};
+
+class LogitGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput(framework::GradVarName("Out")), true,
+        platform::errors::InvalidArgument(
+            "Input(%s) of LogitGradOp should not be null.", "DOut"));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(%s) of LogitGradOp should not be null.", "X"));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput(framework::GradVarName("X")), true,
+        platform::errors::InvalidArgument(
+            "Output(%s) of LogitGradOp should not be null.", "DX"));
+    auto x_grad_name = framework::GradVarName("X");
+    ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("X"));
+    ctx->ShareLoD("X", /*->*/ x_grad_name);
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    framework::LibraryType library{framework::LibraryType::kPlain};
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+  }
+};
 
 template <typename T>
 class PowGradOpMaker : public framework::SingleGradOpMaker<T> {
@@ -1121,13 +1481,21 @@ REGISTER_OPERATOR(
 REGISTER_OPERATOR(sigmoid_grad, ops::ActivationOpGrad,
                   ops::ActivationGradOpInplaceInferer,
                   ops::SigmoidDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::SigmoidDoubleGradMaker<paddle::imperative::OpBase>)
+                  ops::SigmoidDoubleGradMaker<paddle::imperative::OpBase>);
 
 // 3. Register Sigmoid DoubleGrad Operator
 REGISTER_OPERATOR(
     sigmoid_grad_grad,
-    ops::ActivationOpDoubleGrad<ops::SigmoidGradFunctor<float>::FwdDeps()>,
-    ops::ActivationDoubleGradOpInplaceInferer);
+    ops::ActivationOpDoubleGrad<ops::SigmoidGradGradFunctor<float>::FwdDeps()>,
+    ops::ActivationDoubleGradOpInplaceInferer,
+    ops::SigmoidTripleGradMaker<paddle::framework::OpDesc>,
+    ops::SigmoidTripleGradMaker<paddle::imperative::OpBase>);
+
+// 4. Register Sigmoid TripleGrad Operator
+REGISTER_OPERATOR(sigmoid_triple_grad,
+                  ops::ActivationOpTripleGrad<
+                      ops::SigmoidTripleGradFunctor<float>::FwdDeps()>,
+                  ops::ActivationTripleGradOpInplaceInferer);
 
 // Register Sigmoid/GradSigmoid Kernels
 REGISTER_ACTIVATION_CPU_KERNEL(sigmoid, Sigmoid, SigmoidFunctor,
@@ -1142,6 +1510,16 @@ REGISTER_OP_CPU_KERNEL(
                                  ops::SigmoidGradGradFunctor<double>>,
     ops::SigmoidDoubleGradKernel<plat::CPUDeviceContext,
                                  ops::SigmoidGradGradFunctor<plat::float16>>);
+
+// Register TripleGrad Kernel
+REGISTER_OP_CPU_KERNEL(
+    sigmoid_triple_grad,
+    ops::SigmoidTripleGradKernel<plat::CPUDeviceContext,
+                                 ops::SigmoidTripleGradFunctor<float>>,
+    ops::SigmoidTripleGradKernel<plat::CPUDeviceContext,
+                                 ops::SigmoidTripleGradFunctor<double>>,
+    ops::SigmoidTripleGradKernel<plat::CPUDeviceContext,
+                                 ops::SigmoidTripleGradFunctor<plat::float16>>);
 
 /* ========================================================================== */
 
@@ -1161,7 +1539,14 @@ REGISTER_OPERATOR(tanh_grad, ops::ActivationOpGrad,
 REGISTER_OPERATOR(
     tanh_grad_grad,
     ops::ActivationOpDoubleGrad<ops::TanhGradFunctor<float>::FwdDeps()>,
-    ops::ActivationDoubleGradOpInplaceInferer);
+    ops::ActivationDoubleGradOpInplaceInferer,
+    ops::TanhTripleGradMaker<paddle::framework::OpDesc>,
+    ops::TanhTripleGradMaker<paddle::imperative::OpBase>);
+
+REGISTER_OPERATOR(
+    tanh_triple_grad,
+    ops::ActivationOpTripleGrad<ops::TanhTripleGradFunctor<float>::FwdDeps()>,
+    ops::ActivationTripleGradOpInplaceInferer);
 
 REGISTER_ACTIVATION_CPU_KERNEL(tanh, Tanh, TanhFunctor, TanhGradFunctor);
 REGISTER_OP_CPU_KERNEL(
@@ -1171,6 +1556,15 @@ REGISTER_OP_CPU_KERNEL(
                               ops::TanhGradGradFunctor<double>>,
     ops::TanhDoubleGradKernel<plat::CPUDeviceContext,
                               ops::TanhGradGradFunctor<plat::float16>>);
+// Register TripleGrad Kernel
+REGISTER_OP_CPU_KERNEL(
+    tanh_triple_grad,
+    ops::TanhTripeGradKernel<plat::CPUDeviceContext,
+                             ops::TanhTripleGradFunctor<float>>,
+    ops::TanhTripeGradKernel<plat::CPUDeviceContext,
+                             ops::TanhTripleGradFunctor<double>>,
+    ops::TanhTripeGradKernel<plat::CPUDeviceContext,
+                             ops::TanhTripleGradFunctor<plat::float16>>);
 /* ========================================================================== */
 
 /* ==========================    relu register  ============================= */
@@ -1233,13 +1627,11 @@ REGISTER_OP_CPU_KERNEL(
 /* ========================================================================== */
 
 /* ========================    elu  register     ============================ */
-REGISTER_OPERATOR(
-    elu, ops::ActivationOp, ops::ELUOpMaker, ops::ActivationOpInferVarType,
-    ops::ActivationGradOpMaker<ops::ELUGradFunctor<float>::FwdDeps(),
-                               paddle::framework::OpDesc>,
-    ops::ActivationGradOpMaker<ops::ELUGradFunctor<float>::FwdDeps(),
-                               paddle::imperative::OpBase>,
-    ops::ActFwdInplaceInferer);
+REGISTER_OPERATOR(elu, ops::ActivationOp, ops::ELUOpMaker,
+                  ops::ActivationOpInferVarType,
+                  ops::ELUGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ELUGradOpMaker<paddle::imperative::OpBase>,
+                  ops::ActFwdInplaceInferer);
 REGISTER_OPERATOR(elu_grad, ops::ActivationOpGrad,
                   ops::ActivationGradOpInplaceInferer,
                   ops::ELUDoubleGradMaker<paddle::framework::OpDesc>,
@@ -1249,7 +1641,14 @@ REGISTER_OPERATOR(
     ops::ActivationOpDoubleGrad<ops::ELUGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInferer);
 
-REGISTER_ACTIVATION_CPU_KERNEL(elu, ELU, ELUFunctor, ELUGradFunctor);
+REGISTER_OP_CPU_KERNEL(elu,
+                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
+                                             ops::ELUFunctor<float>>,
+                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
+                                             ops::ELUFunctor<double>>);
+REGISTER_OP_CPU_KERNEL(
+    elu_grad, ops::ELUGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ELUGradKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     elu_grad_grad, ops::ELUDoubleGradKernel<plat::CPUDeviceContext,
                                             ops::ELUGradGradFunctor<float>>,
@@ -1257,6 +1656,49 @@ REGISTER_OP_CPU_KERNEL(
                              ops::ELUGradGradFunctor<double>>,
     ops::ELUDoubleGradKernel<plat::CPUDeviceContext,
                              ops::ELUGradGradFunctor<plat::float16>>);
+
+/* ========================================================================== */
+
+/* ========================    logit  register     ============================
+ */
+REGISTER_OPERATOR(logit, ops::LogitOp, ops::LogitOpMaker,
+                  ops::LogitGradOpMaker<paddle::framework::OpDesc>,
+                  ops::LogitGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(logit_grad, ops::LogitGradOp);
+REGISTER_OP_CPU_KERNEL(
+    logit, ops::LogitKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::LogitKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    logit_grad, ops::LogitGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::LogitGradKernel<paddle::platform::CPUDeviceContext, double>);
+/* ========================================================================== */
+
+/* ========================    celu  register     ============================
+ */
+REGISTER_OPERATOR(
+    celu, ops::ActivationOp, ops::CELUOpMaker, ops::ActivationOpInferVarType,
+    ops::ActivationGradOpMaker<ops::CELUGradFunctor<float>::FwdDeps(),
+                               paddle::framework::OpDesc>,
+    ops::ActivationGradOpMaker<ops::CELUGradFunctor<float>::FwdDeps(),
+                               paddle::imperative::OpBase>,
+    ops::ActFwdInplaceInferer);
+REGISTER_OPERATOR(celu_grad, ops::ActivationOpGrad,
+                  ops::ActivationGradOpInplaceInferer,
+                  ops::CELUDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::CELUDoubleGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(
+    celu_grad_grad,
+    ops::ActivationOpDoubleGrad<ops::CELUGradFunctor<float>::FwdDeps()>,
+    ops::ActivationDoubleGradOpInplaceInferer);
+
+REGISTER_ACTIVATION_CPU_KERNEL(celu, CELU, CELUFunctor, CELUGradFunctor);
+REGISTER_OP_CPU_KERNEL(
+    celu_grad_grad, ops::CELUDoubleGradKernel<plat::CPUDeviceContext,
+                                              ops::CELUGradGradFunctor<float>>,
+    ops::CELUDoubleGradKernel<plat::CPUDeviceContext,
+                              ops::CELUGradGradFunctor<double>>,
+    ops::CELUDoubleGradKernel<plat::CPUDeviceContext,
+                              ops::CELUGradGradFunctor<plat::float16>>);
 
 /* ========================================================================== */
 
@@ -1508,5 +1950,12 @@ REGISTER_OP_VERSION(softplus)
             .NewAttr("beta", "The beta value of the new formula", 1.0f)
             .NewAttr("threshold", "The threshold value of the new formula",
                      20.0f));
+
+REGISTER_OP_VERSION(mish)
+    .AddCheckpoint(
+        R"ROC(add new attributes [use_mkldnn], and when computing softplus the formula is changed as the new veriosn of softplus)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "use_mkldnn", "(bool, default false) Only used in mkldnn kernel",
+            false));
 
 /* ========================================================================== */

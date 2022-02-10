@@ -24,8 +24,10 @@ import warnings
 from paddle.distributed.utils import _print_arguments
 from paddle.distributed.utils import _prepare_trainer_env
 from paddle.distributed.utils import get_host_name_ip
-from paddle.distributed.cloud_utils import get_cluster_and_pod
+from paddle.distributed.cloud_utils import get_cluster_and_pod, _get_trainers_num
+from paddle.distributed.fleet.launch import get_cluster_from_args
 from paddle.distributed.fleet.cloud_utils import use_paddlecloud
+from paddle.distributed.fleet.launch_utils import DeviceMode, check_backend, block_windows_and_macos
 from paddle.device import get_device
 
 # deprecated module import
@@ -71,7 +73,9 @@ def _py_supported_check():
 
 def _options_valid_check(options):
     # `print_config` keeped as a debug options, not show to users
-    supported_options = ['start_method', 'ips', 'gpus', 'xpus', 'print_config']
+    supported_options = [
+        'start_method', 'ips', 'gpus', 'xpus', 'print_config', 'backend'
+    ]
     deprecated_options = [
         'selected_devices', 'started_port', 'cluster_node_ips', 'node_ip',
         'use_paddlecloud'
@@ -95,6 +99,22 @@ def _get_default_nprocs():
         return core.get_cuda_device_count()
     elif 'xpu' in device:
         return core.get_xpu_device_count()
+    elif 'cpu' in device:
+        return multiprocessing.cpu_count()
+    else:
+        raise RuntimeError(
+            "`paddle.distributed.spawn` does not support parallel training on device `{}` now.".
+            format(device))
+
+
+def _get_default_backend():
+    device = get_device()
+    if 'gpu' in device:
+        return 'nccl'
+    elif 'xpu' in device:
+        return 'bkcl'
+    elif 'cpu' in device:
+        return 'gloo'
     else:
         raise RuntimeError(
             "`paddle.distributed.spawn` does not support parallel training on device `{}` now.".
@@ -112,6 +132,16 @@ def _get_node_ip(ips):
 
 
 def _get_subprocess_env_list(nprocs, options):
+    # NOTE (xiongkun03) Why put backend deduction  here ? 
+    # Becase _get_subprocess_env_list is used by many testcases. 
+    # So for campability, we put backend deduction here 
+
+    # logic for handle backend option
+    if 'backend' not in options or options['backend'] == 'auto':
+        options['backend'] = _get_default_backend()
+    check_backend(options['backend'])
+    block_windows_and_macos(options['backend'])
+
     # contruct processes env list
     processes_env_list = []
 
@@ -133,7 +163,7 @@ def _get_subprocess_env_list(nprocs, options):
     # if we set FLAGS_selected_gpus or FLAGS_selected_xpus to be `0,1,2,3`, it may cause error
     # when using `ParallelEnv`
     # NOTE(chenweihang): use absolute gpu or xpu card id
-    if core.is_compiled_with_cuda():
+    if options['backend'] == 'nccl':
         args.selected_devices = options.get('gpus', None)
         if args.selected_devices is None:
             args.selected_devices = options.get('selected_devices', None)
@@ -168,7 +198,7 @@ def _get_subprocess_env_list(nprocs, options):
                                      "CUDA_VISIBLE_DEVICES (%s)." %
                                      (card_id, ",".join(env_devices_list)))
 
-    elif core.is_compiled_with_xpu():
+    elif options['backend'] == 'bkcl':
         args.selected_devices = options.get('xpus', None)
         if args.selected_devices is None:
             args.selected_devices = options.get('selected_devices', None)
@@ -202,6 +232,23 @@ def _get_subprocess_env_list(nprocs, options):
                     raise ValueError("The selected xpu card %s cannot found in "
                                      "XPU_VISIBLE_DEVICES (%s)." %
                                      (card_id, ",".join(env_devices_list)))
+    elif options['backend'] == 'gloo':
+        # TODO check gpu / xpu flag must not exist
+        warnings.warn(
+            "Your model will be trained under CPUONLY mode by using GLOO,"
+            "because CPUPlace is specified manually or your installed PaddlePaddle only support CPU Device."
+        )
+        args.paddle_cpuonly = True
+        args.selected_devices = None
+        args.ips = args.cluster_node_ips
+        assert options.get(
+            'use_paddlecloud',
+            None) is None, "CPUONLY spawn doesn't support use paddle cloud"
+        assert len(
+            args.cluster_node_ips.split(',')
+        ) <= 1, "CPUONLY spawn only support single trainer, that is len(ips)=1, but got %s."
+        assert _get_trainers_num(
+        ) == 1, "CPUONLY spawn doesn't support multi-trainer"
 
     # set other inner args
     args.node_ip = options.get('node_ip', None)
@@ -215,11 +262,17 @@ def _get_subprocess_env_list(nprocs, options):
         args.use_paddlecloud = use_paddlecloud()
 
     # get cluster and pod config
-    cluster, pod = get_cluster_and_pod(args)
+    if options['backend'] == 'gloo':
+        devices_per_proc = [x for x in range(0, nprocs)]
+        cluster, pod = get_cluster_from_args(args, DeviceMode.CPU,
+                                             devices_per_proc)
+    else:
+        cluster, pod = get_cluster_and_pod(args)
 
     # prepare subprocess env list
     for trainer in pod.trainers:
-        processes_env_list.append(_prepare_trainer_env(cluster, trainer))
+        processes_env_list.append(
+            _prepare_trainer_env(cluster, trainer, options['backend']))
 
     # [Debug] print config
     args.print_config = options.get('print_config', False)
@@ -236,27 +289,35 @@ def _remove_risky_env():
     os.environ.pop("https_proxy", None)
 
 
-def _set_trainer_env(env_dict):
+def _set_trainer_env(env_dict, backend):
     # NOTE(chenweihang): [ Why need set FLAGS_selected_gpus or FLAGS_selected_xpus here? ]
     # When the child process starts, it will inherit the configuration of the 
     # main process and set the FLAGS once, but the environment variable has 
     # not been set at this time, which leads to the FLAGS_selected_gpus or FLAGS_selected_xpus
     # is keep same with mainprocess(usually empty), so manually update the flags here
-    if core.is_compiled_with_cuda():
+
+    # NOTE(xiongkun): why put backend here?  because if gloo, we shouldn't set FLAGS_selectedXXX
+    #
+
+    if backend == 'nccl':
         set_flags({'FLAGS_selected_gpus': env_dict['FLAGS_selected_gpus']})
-    elif core.is_compiled_with_xpu():
+    elif backend == 'bkcl':
         set_flags({'FLAGS_selected_xpus': env_dict['FLAGS_selected_xpus']})
     else:
-        raise ValueError("PaddlePaddle should be compiled with XPU or CUDA.")
+        #NOTE(xiongkun) why not raise Error ? 
+        # So far, we added support for CPU parallel, and will be applied when paddle is not 
+        # compiled with cuda or xp. just do nothing.
+        pass
+
     for var_name in env_dict:
         os.environ[var_name] = env_dict[var_name]
 
 
-def _func_wrapper(func, args, error_queue, return_queue, env_dict):
+def _func_wrapper(func, args, error_queue, return_queue, env_dict, backend):
     try:
         # config subprocess environment variables
         _remove_risky_env()
-        _set_trainer_env(env_dict)
+        _set_trainer_env(env_dict, backend)
         # execute function
         result = func(*args)
         # record function return value
@@ -487,7 +548,8 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
         return_queue = mp.SimpleQueue()
         process = mp.Process(
             target=_func_wrapper,
-            args=(func, args, error_queue, return_queue, procs_env_list[i]))
+            args=(func, args, error_queue, return_queue, procs_env_list[i],
+                  options['backend']))
         process.daemon = daemon
         process.start()
         error_queues.append(error_queue)

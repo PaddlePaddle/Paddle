@@ -142,8 +142,6 @@ class SplitOpKernel : public framework::OpKernel<T> {
       }
     }
 
-    auto place = ctx.GetPlace();
-
     std::vector<const framework::Tensor*> shape_refer;
     for (size_t j = 0; j < outs.size(); ++j) {
       outs[j]->mutable_data<T>(ctx.GetPlace());

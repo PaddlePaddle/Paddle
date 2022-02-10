@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+
 #include <Eigen/src/Core/util/Constants.h>
 #include <Eigen/Dense>
 #include <Eigen/SVD>
@@ -24,7 +25,7 @@
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/functors.h"
+#include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/for_range.h"
@@ -36,6 +37,9 @@ using Tensor = framework::Tensor;
 using InTensors = std::vector<const Tensor*>;
 using OutTensors = std::vector<Tensor*>;
 using OpName = std::string;
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 template <typename T>
 void EigenSvd(const T* X, T* U, T* VH, T* S, int rows, int cols,
@@ -79,7 +83,7 @@ void BatchSvd(const T* X, T* U, T* VH, T* S, int rows, int cols, int batches,
 
 template <typename T>
 struct PowFunctor {
-  PowFunctor(const T* input, T* output, int64_t numel, float exp)
+  PowFunctor(const T* input, T* output, int64_t numel, T exp)
       : input_(input), output_(output), numel_(numel), exp_(exp) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
@@ -88,7 +92,21 @@ struct PowFunctor {
   const T* input_;
   T* output_;
   int64_t numel_;
-  float exp_;
+  T exp_;
+};
+
+template <typename T>
+struct RealMulComplexFunctor {
+  // x: complex number (a+bj)
+  // y: complex number (c+0j) pretend to be a real number
+  // out: complex number (ac+bcj)
+  inline HOSTDEVICE T operator()(T x, T y) {
+    PADDLE_ENFORCE_LT(y.imag, 1e-6, platform::errors::InvalidArgument(
+                                        "The image part of y must to be 0"
+                                        "but got [%d]",
+                                        y.imag));
+    return platform::complex<Real<T>>(x.real * y.real, x.imag * y.real);
+  }
 };
 
 static std::vector<int> GetBroadcastShape(InTensors ins) {
@@ -127,6 +145,93 @@ static std::vector<int> GetBroadcastShape(InTensors ins) {
   return broadcast_shape;
 }
 
+static inline framework::DDim ComputeAndCheckShapeForConcatOp(
+    const bool is_runtime, const std::vector<framework::DDim>& inputs_dims,
+    const size_t axis) {
+  const size_t n = inputs_dims.size();
+  auto out_dims = inputs_dims[0];
+  size_t in_zero_dims_size = out_dims.size();
+  for (size_t i = 1; i < n; i++) {
+    PADDLE_ENFORCE_EQ(inputs_dims[i].size(), out_dims.size(),
+                      platform::errors::InvalidArgument(
+                          "The shape of input[0] and input[%d] "
+                          "is expected to be equal."
+                          "But received input[0]'s shape = "
+                          "[%s], input[%d]'s shape = [%s].",
+                          i, inputs_dims[0], i, inputs_dims[i]));
+    for (size_t j = 0; j < in_zero_dims_size; j++) {
+      if (j == axis) {
+        if (is_runtime) {
+          out_dims[axis] += inputs_dims[i][j];
+        } else {
+          if (inputs_dims[i][j] == -1 || out_dims[j] == -1) {
+            out_dims[axis] = -1;
+          } else {
+            out_dims[axis] += inputs_dims[i][j];
+          }
+        }
+      } else {
+        bool check_shape =
+            is_runtime || (inputs_dims[0][j] > 0 && inputs_dims[i][j] > 0);
+        if (check_shape) {
+          // check all shape in run time
+          PADDLE_ENFORCE_EQ(inputs_dims[0][j], inputs_dims[i][j],
+                            platform::errors::InvalidArgument(
+                                "The %d-th dimension of input[0] and input[%d] "
+                                "is expected to be equal."
+                                "But received input[0]'s shape = "
+                                "[%s], input[%d]'s shape = [%s].",
+                                j, i, inputs_dims[0], i, inputs_dims[i]));
+        }
+        if (!is_runtime && out_dims[j] == -1 && inputs_dims[i][j] > 0) {
+          out_dims[j] = inputs_dims[i][j];
+        }
+      }
+    }
+  }
+  return out_dims;
+}
+
+static inline int64_t ComputeAxisForConcatOp(int64_t axis, int64_t rank) {
+  PADDLE_ENFORCE_EQ(
+      axis >= -rank && axis < rank, true,
+      platform::errors::InvalidArgument(
+          "The axis is expected to be in range of [%d, %d), but got %d", -rank,
+          rank, axis));
+  if (axis < 0) {
+    axis = axis + rank;
+  }
+  return axis > 0 ? axis : 0;
+}
+
+// Prepared for the broadcast operation
+static std::vector<int64_t> get_broadcast_batch_portion(
+    std::vector<int64_t> x, std::vector<int64_t> y) {
+  size_t size_x = x.size();
+  size_t size_y = y.size();
+  size_t size = std::max(size_x, size_y);
+  std::vector<int64_t> batchPortion(size);
+
+  ptrdiff_t i = (ptrdiff_t)size - 1;
+  for (; i >= 0; --i) {
+    ptrdiff_t offset = size - i - 1;
+    ptrdiff_t dim_x = size_x - offset - 1;
+    ptrdiff_t dim_y = size_y - offset - 1;
+    int64_t x_size = (dim_x >= 0) ? x[dim_x] : 1;
+    int64_t y_size = (dim_y >= 0) ? y[dim_y] : 1;
+
+    PADDLE_ENFORCE_EQ(
+        (x_size == y_size || x_size == 1 || y_size == 1), true,
+        platform::errors::PreconditionNotMet(
+            "The size of tensor x (%d) must match the size of tensor y "
+            "(%d) at non-singleton dimension %d.",
+            x_size, y_size, i));
+
+    batchPortion[i] = x_size != 1 ? x_size : y_size;
+  }
+  return batchPortion;
+}
+
 #define DITO_TRANSPOSE_RANK_CASE(N)             \
   case N: {                                     \
     math::Transpose<DeviceContext, T, N> trans; \
@@ -140,7 +245,42 @@ static std::vector<int> GetBroadcastShape(InTensors ins) {
     break;                                           \
   }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename ValueType>
+struct DiagAndFillFunctor {
+  DiagAndFillFunctor(const int m, const int n, const int num_lower_diags,
+                     const int num_upper_diags, const ValueType* scale,
+                     const T* input, T* output)
+      : m_(m),
+        n_(n),
+        num_lower_diags_(num_lower_diags),
+        num_upper_diags_(num_upper_diags),
+        scale_(scale),
+        input_(input),
+        output_(output) {}
+
+  HOSTDEVICE void operator()(size_t index) const {
+    const int col = index % n_;
+    const int row = (index / n_) % m_;
+    const int band_start = (num_lower_diags_ < 0 ? 0 : row - num_lower_diags_);
+    const int band_end =
+        (num_upper_diags_ < 0 ? n_ : row + num_upper_diags_ + 1);
+    if (col < band_start || col >= band_end) {
+      output_[index] = input_[index];
+    } else if (col == band_end - 1) {
+      output_[index] = static_cast<T>(scale_[index % m_]);
+    } else {
+      output_[index] = input_[index];
+    }
+  }
+
+ private:
+  const int m_, n_, num_lower_diags_, num_upper_diags_;
+  const ValueType* scale_;
+  const T* input_;
+  T* output_;
+};
+
+template <typename DeviceContext, typename T, typename ValueType = T>
 struct DeviceIndependenceTensorOperations {
   // 1. Device indenpendence, for kernel reuse.
   // 2. Input and output is always tensor type.
@@ -156,7 +296,7 @@ struct DeviceIndependenceTensorOperations {
       const framework::ExecutionContext& context)
       : context(context) {}
 
-  framework::Tensor Pow(const framework::Tensor& x, float exp) {
+  framework::Tensor Pow(const framework::Tensor& x, T exp) {
     framework::Tensor out;
     auto for_range = GetForRange(x.numel());
     int numel = x.numel();
@@ -246,13 +386,62 @@ struct DeviceIndependenceTensorOperations {
     for_range(DiagFunctor<T>(x.data<T>(), x.numel(), output));
     return ret;
   }
-  framework::Tensor Div(const framework::Tensor& x,
-                        const framework::Tensor& y) {
+
+  // batch_diag for CPU only
+  Tensor BatchDiag(const Tensor& x, int batch) {
+    Tensor out;
+    auto* x_data = x.data<math::Real<T>>();
+    auto numel = x.numel();
+    auto* out_data = out.mutable_data<math::Real<T>>(
+        x.dims(), context.GetPlace(),
+        static_cast<size_t>(numel * sizeof(math::Real<T>)));
+
+    auto x_dims = x.dims();
+    int num_dims = x_dims.size();
+    std::vector<int> out_shape;
+
+    for (int i = 0; i < num_dims - 1; ++i) {
+      out_shape.push_back(x.dims()[i]);
+    }
+    out.Resize(framework::make_ddim(out_shape));
+    int order = x.dims()[num_dims - 1];
+    int stride_out = order * order;
+    int stride_in = order + 1;
+    for (int i = 0; i < batch; ++i) {
+      for (int j = 0; j < order; ++j) {
+        out_data[i * order + j] = x_data[stride_out * i + stride_in * j];
+      }
+    }
+    return out;
+  }
+
+  // a complex number x times a real number y, which is represented as (a+0j)
+  Tensor RealMulComplex(const Tensor& x, const Tensor& y) {
     framework::Tensor ret;
     std::vector<int> out_shape = GetBroadcastShape({&x, &y});
     ret.Resize(framework::make_ddim(out_shape));
-    ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
-        context, &x, &y, -1, DivFunctor<T>(), &ret);
+    ElementwiseComputeEx<RealMulComplexFunctor<T>, DeviceContext, T>(
+        context, &x, &y, -1, RealMulComplexFunctor<T>(), &ret);
+    return ret;
+  }
+
+  framework::Tensor Div(const framework::Tensor& x,
+                        const framework::Tensor& y) {
+    framework::Tensor ret;
+    if (x.type() != y.type()) {
+      ret.mutable_data<T>(x.dims(), context.GetPlace());
+      auto x_vector = EigenVector<T>::Flatten(x);
+      auto y_vector = EigenVector<ValueType>::Flatten(y);
+      auto out_vector = EigenVector<T>::Flatten(ret);
+      auto& place =
+          *context.template device_context<DeviceContext>().eigen_device();
+      out_vector.device(place) = x_vector / y_vector;
+    } else {
+      std::vector<int> out_shape = GetBroadcastShape({&x, &y});
+      ret.Resize(framework::make_ddim(out_shape));
+      ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
+          context, &x, &y, -1, DivFunctor<T>(), &ret);
+    }
     return ret;
   }
   framework::Tensor Add(const framework::Tensor& x,
@@ -290,20 +479,30 @@ struct DeviceIndependenceTensorOperations {
     NameInTensorMap inputs({{"X", {&x}}});
     return CreateOpRunAndReturnTensor("reduce_max", inputs, attrs, out_dim);
   }
-
+  // Support float and complex type subtraction，the default is T type
+  template <typename InT = T>
   framework::Tensor Sub(const framework::Tensor& x,
                         const framework::Tensor& y) {
     framework::Tensor ret;
     std::vector<int> out_shape = GetBroadcastShape({&x, &y});
     ret.Resize(framework::make_ddim(out_shape));
-    if (x.dims().size() >= y.dims().size()) {
-      ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
-          context, &x, &y, -1, SubFunctor<T>(), &ret);
+    if (platform::is_gpu_place(context.GetPlace())) {
+#if defined(__NVCC__) || defined(__HIPCC__)
+      // For GPU, there is no need to define XxxInverseFunctor and call
+      // ElementwiseComputeEx in two branches.
+      ElementwiseComputeEx<SubFunctor<InT>, DeviceContext, InT>(
+          context, &x, &y, -1, SubFunctor<InT>(), &ret);
+#endif
     } else {
-      ElementwiseComputeEx<InverseSubFunctor<T>, DeviceContext, T>(
-          // This is copyed from elementwise_sub, which means we
-          // need reverse will xrank < yrank
-          context, &x, &y, -1, InverseSubFunctor<T>(), &ret);
+      if (x.dims().size() >= y.dims().size()) {
+        ElementwiseComputeEx<SubFunctor<InT>, DeviceContext, InT>(
+            context, &x, &y, -1, SubFunctor<InT>(), &ret);
+      } else {
+        // This is copyed from elementwise_sub, which means we
+        // need reverse will xrank < yrank
+        ElementwiseComputeEx<InverseSubFunctor<InT>, DeviceContext, InT>(
+            context, &x, &y, -1, InverseSubFunctor<InT>(), &ret);
+      }
     }
     return ret;
   }
@@ -387,6 +586,103 @@ struct DeviceIndependenceTensorOperations {
       }
     }
     return ret;
+  }
+
+  framework::Tensor TrilTriu(const framework::Tensor& x, int diagonal,
+                             bool lower) {
+    framework::AttributeMap attrs;
+    attrs["diagonal"] = diagonal;
+    attrs["lower"] = lower;
+    NameInTensorMap inputs({{"X", {&x}}});
+    int x_rank = x.dims().size();
+    PADDLE_ENFORCE_GE(x_rank, 2, platform::errors::InvalidArgument(
+                                     "Rank must be at least 2."));
+    std::vector<int> out_shape = framework::vectorize<int>(x.dims());
+    return CreateOpRunAndReturnTensor("tril_triu", inputs, attrs, out_shape);
+  }
+
+  framework::Tensor TriangularSolve(const framework::Tensor& x,
+                                    const framework::Tensor& y, bool upper,
+                                    bool transpose, bool unitriangular) {
+    framework::AttributeMap attrs;
+    attrs["upper"] = upper;
+    attrs["transpose"] = transpose;
+    attrs["unitriangular"] = unitriangular;
+    NameInTensorMap inputs({{"X", {&x}}, {"Y", {&y}}});
+    auto x_dims = x.dims();
+    auto y_dims = y.dims();
+    auto y_dims_n = y_dims.size();
+    std::vector<int64_t> x_dims_vec =
+        paddle::framework::vectorize<int64_t>(x_dims);
+    std::vector<int64_t> y_dims_vec =
+        paddle::framework::vectorize<int64_t>(y_dims);
+    std::vector<int64_t> x_dims_vec_cut(x_dims_vec.begin(),
+                                        x_dims_vec.end() - 2);
+    std::vector<int64_t> y_dims_vec_cut(y_dims_vec.begin(),
+                                        y_dims_vec.end() - 2);
+    std::vector<int64_t> expand_batch_portion =
+        get_broadcast_batch_portion(x_dims_vec_cut, y_dims_vec_cut);
+    std::vector<int64_t> y_broadcast_dims({expand_batch_portion});
+    y_broadcast_dims.insert(y_broadcast_dims.end(), {y_dims_vec[y_dims_n - 2],
+                                                     y_dims_vec[y_dims_n - 1]});
+    std::vector<int> out_shape(y_broadcast_dims.begin(),
+                               y_broadcast_dims.end());
+    return CreateOpRunAndReturnTensor("triangular_solve", inputs, attrs,
+                                      out_shape);
+  }
+
+  framework::Tensor ConcatTwoTensors(const framework::Tensor& x,
+                                     const framework::Tensor& y, int axis) {
+    framework::AttributeMap attrs;
+    attrs["axis"] = axis;
+    std::vector<framework::DDim> inputs_dims({x.dims(), y.dims()});
+    NameInTensorMap inputs({{"X", {&x, &y}}});
+    size_t axis_ =
+        ComputeAxisForConcatOp(static_cast<int64_t>(axis),
+                               static_cast<int64_t>(inputs_dims[0].size()));
+    framework::DDim out_dims =
+        ComputeAndCheckShapeForConcatOp(true, inputs_dims, axis_);
+    if (out_dims[axis_] < 0) {
+      out_dims[axis_] = -1;
+    }
+    std::vector<int> out_shape = framework::vectorize<int>(out_dims);
+    return CreateOpRunAndReturnTensor("concat", inputs, attrs, out_shape);
+  }
+
+  Tensor Conj(const Tensor& x) {
+    Tensor out;
+    auto* out_data = out.mutable_data<T>(x.dims(), context.GetPlace());
+    auto* x_data = x.data<T>();
+    auto for_range = GetForRange(x.numel());
+    math::ConjFunctor<T> functor(x_data, x.numel(), out_data);
+    for_range(functor);
+    return out;
+  }
+
+  Tensor Real(const Tensor& x) {
+    Tensor out;
+    auto numel = x.numel();
+    auto* out_data = out.mutable_data<math::Real<T>>(
+        x.dims(), context.GetPlace(),
+        static_cast<size_t>(numel * sizeof(math::Real<T>)));
+    auto* x_data = x.data<T>();
+    auto for_range = GetForRange(numel);
+    math::RealFunctor<T> functor(x_data, out_data, numel);
+    for_range(functor);
+    return out;
+  }
+
+  Tensor DiagFill(const int m, const int n, const int num_lower_diags,
+                  const int num_upper_diags, const Tensor& scale,
+                  const Tensor& input) {
+    Tensor out;
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    platform::ForRange<DeviceContext> for_range(dev_ctx, input.numel());
+    DiagAndFillFunctor<T, ValueType> diag_and_copy_functor(
+        m, n, num_lower_diags, num_upper_diags, scale.data<ValueType>(),
+        input.data<T>(), out.mutable_data<T>(input.dims(), input.place()));
+    for_range(diag_and_copy_functor);
+    return out;
   }
 
  private:

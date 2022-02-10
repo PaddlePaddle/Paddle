@@ -14,6 +14,8 @@
 
 from __future__ import print_function
 
+import six
+import abc
 import unittest
 import numpy as np
 from scipy.special import expit, erf
@@ -24,15 +26,19 @@ from paddle.fluid.tests.unittests.test_gelu_op import gelu
 
 
 @OpTestTool.skip_if_not_cpu_bf16()
-class TestMKLDNNSigmoidBF16Op(TestActivation):
+@six.add_metaclass(abc.ABCMeta)
+class MKLDNNBF16ActivationOp(object):
+    @abc.abstractmethod
     def config(self):
-        self.op_type = "sigmoid"
+        pass
 
+    @abc.abstractmethod
     def op_forward(self, x):
-        return 1 / (1 + np.exp(-x))
+        pass
 
+    @abc.abstractmethod
     def op_grad(self, dout, x):
-        return dout * self.op_forward(x) * (1 - self.op_forward(x))
+        pass
 
     def set_attrs(self):
         self.attrs = {"use_mkldnn": True}
@@ -65,7 +71,32 @@ class TestMKLDNNSigmoidBF16Op(TestActivation):
             user_defined_grad_outputs=[convert_float_to_uint16(self.out)])
 
 
-class TestMKLDNNGeluErfBF16Op(TestMKLDNNSigmoidBF16Op):
+class TestMKLDNNSigmoidBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+    def config(self):
+        self.op_type = "sigmoid"
+
+    def op_forward(self, x):
+        return 1 / (1 + np.exp(-x))
+
+    def op_grad(self, dout, x):
+        return dout * self.op_forward(x) * (1 - self.op_forward(x))
+
+
+class TestMKLDNNSqrtBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+    def config(self):
+        self.op_type = "sqrt"
+
+    def init_data(self):
+        self.x = np.random.uniform(1, 2, [2, 4, 3, 5]).astype(np.float32)
+
+    def op_forward(self, x):
+        return np.sqrt(x)
+
+    def op_grad(self, dout, x):
+        return dout / (2 * np.sqrt(x))
+
+
+class TestMKLDNNGeluErfBF16Op(MKLDNNBF16ActivationOp, TestActivation):
     def config(self):
         self.op_type = "gelu"
 
@@ -83,7 +114,7 @@ class TestMKLDNNGeluErfDim2BF16Op(TestMKLDNNGeluErfBF16Op):
         self.x = np.random.uniform(-1, 1, [11, 17]).astype(np.float32)
 
 
-class TestMKLDNNGeluTanhBF16Op(TestMKLDNNSigmoidBF16Op):
+class TestMKLDNNGeluTanhBF16Op(MKLDNNBF16ActivationOp, TestActivation):
     def config(self):
         self.op_type = "gelu"
 
@@ -104,3 +135,32 @@ class TestMKLDNNGeluTanhBF16Op(TestMKLDNNSigmoidBF16Op):
 class TestMKLDNNGeluTanhDim2BF16Op(TestMKLDNNGeluTanhBF16Op):
     def init_data(self):
         self.x = np.random.uniform(-1, 1, [11, 17]).astype(np.float32)
+
+
+class TestMKLDNNReluBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+    def config(self):
+        self.op_type = "relu"
+
+    def op_forward(self, x):
+        return np.maximum(x, 0)
+
+    def op_grad(self, dout, x):
+        return dout
+
+
+class TestMKLDNNMishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+    def config(self):
+        self.op_type = "mish"
+
+    def op_forward(self, x):
+        return x * np.tanh(np.log(1 + np.exp(x)))
+
+    def op_grad(self, dout, x):
+        omega = np.exp(3 * x) + 4 * np.exp(2 * x) + np.exp(x) * (4 * x + 6
+                                                                 ) + 4 * (x + 1)
+        delta = np.exp(2 * x) + 2 * np.exp(x) + 2
+        return dout * ((np.exp(x) * omega) / delta**2)
+
+
+if __name__ == '__main__':
+    unittest.main()

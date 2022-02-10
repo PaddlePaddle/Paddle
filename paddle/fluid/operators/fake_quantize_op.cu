@@ -15,7 +15,7 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/fake_quantize_op.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -216,14 +216,14 @@ __global__ void ClipAndQuantDequantKernel(const T* in, const T* scale,
   int tid = threadIdx.x;
 
   T s = scale[0];
+  T inv_s = inverse(s);
   T bin_cnt_t = static_cast<T>(bin_cnt);
 
   for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
     T x = in[i];
     x = x > s ? s : x;
     x = x < -s ? -s : x;
-    x = (bin_cnt_t / s) * x;
-
+    x = bin_cnt_t * inv_s * x;
     x = static_cast<T>(round(static_cast<float>(x)));
     out[i] = (x * s) / bin_cnt_t;
   }
@@ -377,7 +377,7 @@ struct FindRangeAbsMaxFunctor<platform::CUDADeviceContext, T> {
                   const framework::Tensor& last_scale,
                   const framework::Tensor& iter, const int window_size,
                   framework::Tensor* scales_arr, framework::Tensor* out_scale) {
-    const auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+    const auto gpu_place = ctx.GetPlace();
 
     T* scale_arr = scales_arr->mutable_data<T>(gpu_place);
     T* out_scale_data = out_scale->mutable_data<T>(gpu_place);
@@ -414,7 +414,7 @@ struct FindMovingAverageAbsMaxFunctor<platform::CUDADeviceContext, T> {
                   const framework::Tensor& in_state, const T* cur_scale,
                   const float rate, framework::Tensor* out_state,
                   framework::Tensor* out_accum, framework::Tensor* out_scale) {
-    const auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+    const auto gpu_place = ctx.GetPlace();
 
     T accum;
     T state;

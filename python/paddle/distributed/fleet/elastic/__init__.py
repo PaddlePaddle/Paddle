@@ -18,14 +18,20 @@ import os, sys
 from .manager import ElasticManager
 from .manager import ElasticStatus
 from .manager import ELASTIC_EXIT_CODE
+from .manager import ElasticLevel
 from .collective import CollectiveLauncher
 
 from paddle.distributed.fleet.launch_utils import DistributeMode
 
 
 def enable_elastic(args, distribute_mode):
-    if distribute_mode != DistributeMode.COLLECTIVE:
-        return False
+    #elastic_level = os.getenv('PADDLE_ELASTIC_FAULT_TOLERANC_LEVEL')
+    #if not elastic_level and (elastic_level != ElasticLevel.FAULT_TOLERANCE and
+    #                          elastic_level != ElasticLevel.ELASTIC):
+    #    return False
+
+    #if distribute_mode != DistributeMode.COLLECTIVE:
+    #    return False
 
     if not args.elastic_server and not os.getenv('PADDLE_ELASTIC_SERVER'):
         return False
@@ -33,7 +39,7 @@ def enable_elastic(args, distribute_mode):
     if not args.job_id and not os.getenv('PADDLE_ELASTIC_JOB_ID'):
         return False
 
-    if not args.np and not int(os.getenv('PADDLE_ELASTIC_NP', 0)):
+    if not args.np and not os.getenv('PADDLE_ELASTIC_NP'):
         return False
 
     return True
@@ -41,7 +47,11 @@ def enable_elastic(args, distribute_mode):
 
 def launch_elastic(args, distribute_mode):
 
-    elastic = ElasticManager(args)
+    server = args.elastic_server or os.getenv('PADDLE_ELASTIC_SERVER')
+    srv, port = server.split(':')
+    import etcd3
+    etcd_client = etcd3.client(host=srv, port=port)
+    elastic = ElasticManager(args, etcd_client)
 
     signal.signal(signal.SIGTERM, elastic.signal_handler)
     signal.signal(signal.SIGABRT, elastic.signal_handler)
@@ -51,6 +61,9 @@ def launch_elastic(args, distribute_mode):
 
         # wait for all nodes ready to run
         elastic.wait()
+
+        # execute pre hook action, eg: run shell
+        elastic.pre_hook()
 
         # run self with specified launcher
         elastic.run(CollectiveLauncher)

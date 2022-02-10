@@ -50,6 +50,7 @@ class ElementwiseWeightOpConverter : public OpConverter {
                                         op_desc.Input("Y").front().c_str()));
     auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
     float* weight_data = nullptr;
+    auto output_name = op_desc.Output("Out")[0];
     weight_data =
         engine_->GetWeightCPUData(op_desc.Input("Y").front(), Y_t, false);
     nvinfer1::Dims dims_x = X->getDimensions();
@@ -80,11 +81,15 @@ class ElementwiseWeightOpConverter : public OpConverter {
         expand_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *X);
         expand_layer->setReshapeDimensions(expand_shape);
         X = expand_layer->getOutput(0);
+        expand_layer->getOutput(0)->setName(
+            ("elementwise_reshape_out: " + output_name).c_str());
+        expand_layer->setName(
+            ("Elewise: Shuffle: (Output: " + output_name + ")").c_str());
       }
       if (op_type_ == "add") {
         nvinfer1::IScaleLayer* scale_layer = TRT_ENGINE_ADD_LAYER(
-            engine_, Scale, *X, scale_mode, shift_weights.get(),
-            scale_weights.get(), power_weights.get());
+            engine_, ScaleNd, *X, scale_mode, shift_weights.get(),
+            scale_weights.get(), power_weights.get(), dynamic_shape_offset);
         layer = scale_layer;
       } else if (op_type_ == "mul") {
         nvinfer1::IScaleLayer* scale_layer = TRT_ENGINE_ADD_LAYER(
@@ -101,11 +106,12 @@ class ElementwiseWeightOpConverter : public OpConverter {
         squeeze_layer =
             TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *(layer->getOutput(0)));
         squeeze_layer->setReshapeDimensions(squeeze_shape);
-        layer = static_cast<nvinfer1::ILayer*>(squeeze_layer);
+        RreplenishLayerAndOutput(squeeze_layer, "elementwise_" + op_type_,
+                                 {output_name}, test_mode);
+      } else {
+        RreplenishLayerAndOutput(layer, "elementwise_" + op_type_,
+                                 {output_name}, test_mode);
       }
-      auto output_name = op_desc.Output("Out")[0];
-      RreplenishLayerAndOutput(layer, "elementwise_" + op_type_, {output_name},
-                               test_mode);
       if (op_desc.HasAttr("enable_int8")) {
 #if IS_TRT_VERSION_GE(5000)
         CHECK(op_desc.HasAttr("X_scale"));
@@ -228,7 +234,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
       }
     };
 
-    if (CheckDims(dims_x, dims_y)) {
+    if (dims_x.nbDims == dims_y.nbDims) {
       // The two input tensor should have the same dims
       VLOG(3) << "Convert a fluid elementwise op to TensorRT IElementWiseLayer";
       nvinfer1::IElementWiseLayer* elet_layer =

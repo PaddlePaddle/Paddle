@@ -174,6 +174,14 @@ class PD_INFER_DECL ZeroCopyTensor : public paddle_infer::Tensor {
   void copy_from_cpu(const T* data) {
     return CopyFromCpu(data);
   }
+
+  /// \brief Experimental interface.
+  /// It's usually used to set the input tensor data with Strings data type.
+  /// \param data The pointer of the data, from which the tensor will copy.
+  void copy_strings_from_cpu(const paddle_infer::Strings* data) {
+    return CopyStringsFromCpu(data);
+  }
+
   /// \brief Copy the tensor data to the host memory.
   /// It's usually used to get the output tensor data.
   /// \param[out] data The tensor will copy the data to the address.
@@ -397,3 +405,24 @@ PD_INFER_DECL std::shared_ptr<framework::Cipher> MakeCipher(
     const std::string& config_file);
 
 }  // namespace paddle
+
+// forward declation
+using cudaStream_t = struct CUstream_st*;
+using hipStream_t = struct ihipStream_t*;
+
+namespace paddle_infer {
+class Predictor;
+using Config = paddle::AnalysisConfig;
+namespace experimental {
+class PD_INFER_DECL InternalUtils {
+ public:
+  // Note: Can only be used under thread_local semantics.
+  static bool RunWithExternalStream(paddle_infer::Predictor* pred,
+                                    cudaStream_t stream);
+  static bool RunWithExternalStream(paddle_infer::Predictor* pred,
+                                    hipStream_t stream);
+  static void UpdateConfigInterleaved(paddle_infer::Config* c,
+                                      bool with_interleaved);
+};
+}  // namespace experimental
+}  // namespace paddle_infer

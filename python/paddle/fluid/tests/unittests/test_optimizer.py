@@ -25,6 +25,8 @@ import numpy as np
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, program_guard, convert_np_dtype_to_dtype_
 import paddle
+from paddle.io import Dataset
+import numpy
 paddle.enable_static()
 
 
@@ -619,7 +621,7 @@ class TestLookaheadOptimizer(unittest.TestCase):
 
 
 class TestRecomputeOptimizer(unittest.TestCase):
-    def net(self, return_input=False, with_dropout=False):
+    def net(self, return_input=False, with_dropout=False, with_seed=False):
         program = framework.Program()
         block = program.global_block()
         mul_x = block.create_parameter(
@@ -628,7 +630,8 @@ class TestRecomputeOptimizer(unittest.TestCase):
             dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
         mul_out = block.create_var(
             dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
-        if with_dropout == True:
+
+        if with_dropout is True:
             mul_out_drop = block.create_var(
                 dtype="float32",
                 shape=[5, 8],
@@ -636,6 +639,10 @@ class TestRecomputeOptimizer(unittest.TestCase):
                 name="mul.out.dropout")
             mul_out_mask = block.create_var(
                 dtype="uint8", shape=[5, 8], lod_level=0, name="mul.out.mask")
+            if with_seed is True:
+                seed_out = block.create_var(
+                    dtype="int32", shape=[1], name="seed.out")
+
         b1 = block.create_parameter(
             dtype="float32", shape=[5, 8], lod_level=0, name="b1")
         b1_out = block.create_var(
@@ -652,10 +659,23 @@ class TestRecomputeOptimizer(unittest.TestCase):
                     "Y": mul_y},
             outputs={"Out": mul_out},
             attrs={"x_num_col_dims": 1})
-        if with_dropout == True:
+
+        if with_dropout is True:
+            dropout_inputs = {'X': [mul_out]}
+            if with_seed is True:
+                block.append_op(
+                    type='seed',
+                    outputs={'Out': seed_out},
+                    attrs={
+                        'deterministic': True,
+                        'rng_name': 'rng0',
+                        'force_cpu': True
+                    })
+                dropout_inputs = {'X': [mul_out], 'Seed': [seed_out]}
+
             block.append_op(
                 type='dropout',
-                inputs={'X': [mul_out]},
+                inputs=dropout_inputs,
                 outputs={'Out': [mul_out_drop],
                          'Mask': [mul_out_mask]},
                 attrs={'dropout_prob': 0.5, })
@@ -670,6 +690,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
                 inputs={"X": mul_out,
                         "Y": b1},
                 outputs={"Out": b1_out})
+
         block.append_op(
             type="elementwise_add",
             inputs={"X": b1_out,
@@ -851,6 +872,27 @@ class TestRecomputeOptimizer(unittest.TestCase):
         self.assertEqual(
             [op.type for op in mean_out.block.ops],
             ["mul", "dropout", "elementwise_add", "elementwise_add", "mean"])
+        sgd_optimizer = optimizer.SGD(learning_rate=1.0)
+        recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
+        recompute_optimizer._set_checkpoints([b1_out])
+        opts, params_grads = recompute_optimizer.minimize(mean_out)
+
+        self.assertEqual(len(mean_out.block.ops), 17)
+        self.assertEqual([op.type for op in mean_out.block.ops], [
+            "mul", "seed", "dropout", "elementwise_add", "elementwise_add",
+            "mean", "fill_constant", "mean_grad", "elementwise_add_grad", "mul",
+            "dropout", "elementwise_add_grad", "dropout_grad", "mul_grad",
+            "sgd", "sgd", "sgd"
+        ])
+
+    def test_dropout_with_determinate_seed(self):
+        mul_out, b1_out, b2_out, mean_out = self.net(with_dropout=True,
+                                                     with_seed=True)
+        self.assertEqual(len(mean_out.block.ops), 6)
+        self.assertEqual([op.type for op in mean_out.block.ops], [
+            "mul", "seed", "dropout", "elementwise_add", "elementwise_add",
+            "mean"
+        ])
         sgd_optimizer = optimizer.SGD(learning_rate=1.0)
         recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
         recompute_optimizer._set_checkpoints([b1_out])
@@ -1071,6 +1113,91 @@ class TestOptimizerDtype(unittest.TestCase):
 
     def test_float32(self):
         self.check_with_dtype('float32')
+
+
+class TestMasterWeightSaveForFP16(unittest.TestCase):
+    '''
+    For Amp-O2, some optimizer(Momentum, Adam ...) will create master weights for parameters to to improve the accuracy.
+    Master weights will be saved by optimizer::state_dict.
+    '''
+
+    def check_with_opt_state_dict(self, use_save_load=True):
+        paddle.seed(100)
+        numpy.random.seed(100)
+
+        class SimpleNet(paddle.nn.Layer):
+            def __init__(self, input_size, output_size):
+                super(SimpleNet, self).__init__()
+                self.linears = paddle.nn.LayerList([
+                    paddle.nn.Linear(input_size, output_size) for i in range(1)
+                ])
+
+            def forward(self, x):
+                for i, l in enumerate(self.linears):
+                    x = self.linears[i](x)
+                return x
+
+        input_size = 2  # 设为较大的值
+        output_size = 2  # 设为较大的值
+        batch_size = 2  # batch_size 为8的倍数
+        nums_batch = 10
+
+        class RandomDataset(Dataset):
+            def __init__(self, num_samples):
+                self.num_samples = num_samples
+
+            def __getitem__(self, idx):
+                data = numpy.random.random([input_size]).astype('float16')
+                label = numpy.random.random([output_size]).astype('float16')
+                return data, label
+
+            def __len__(self):
+                return self.num_samples
+
+        dataset = RandomDataset(nums_batch * batch_size)
+        loader = paddle.io.DataLoader(
+            dataset,
+            batch_size=batch_size,
+            shuffle=False,
+            drop_last=True,
+            num_workers=0)
+
+        mse = paddle.nn.MSELoss()
+        model = SimpleNet(input_size, output_size)  # 定义模型
+        optimizer = paddle.optimizer.Momentum(
+            learning_rate=0.0001,
+            parameters=model.parameters(),
+            multi_precision=True)  # 定义优化器
+        scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+        model = paddle.amp.decorate(models=model, level='O2')
+
+        for i, (data, label) in enumerate(loader):
+            with paddle.amp.auto_cast(level='O2'):
+                output = model(data)
+                loss = mse(output, label)
+            scaled = scaler.scale(loss)
+            scaled.backward()
+            scaler.step(optimizer)
+            scaler.update()
+            optimizer.clear_grad(set_to_zero=False)
+
+            if use_save_load and i == 5:
+                paddle.save(model.state_dict(), "model.pdparams")
+                paddle.save(optimizer.state_dict(), "opt.pdopt")
+                model.set_state_dict(paddle.load("model.pdparams"))
+                optimizer.set_state_dict(paddle.load("opt.pdopt"))
+
+        return loss.numpy()
+
+    def test_with_state_dict(self):
+        if core.is_compiled_with_cuda():
+            with fluid.dygraph.guard():
+                out_use_state_dict = self.check_with_opt_state_dict(
+                    use_save_load=True)
+                out_no_state_dict = self.check_with_opt_state_dict(
+                    use_save_load=False)
+            self.assertTrue(
+                np.array_equal(out_use_state_dict, out_no_state_dict))
 
 
 if __name__ == '__main__':

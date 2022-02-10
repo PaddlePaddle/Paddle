@@ -43,25 +43,25 @@ void Compare1(f::Scope* scope, const p::DeviceContext& ctx,
   auto var_x = scope->Var("tmp");
   auto x = var_x->GetMutable<f::LoDTensor>();
   std::vector<T> main_x = {1.0};
-  TensorFromVector(main_x, ctx, x);
+  paddle::framework::TensorFromVector(main_x, ctx, x);
 
   auto var_id = scope->Var("Id");
   auto id = var_id->GetMutable<f::LoDTensor>();
   std::vector<int64_t> main_id = {1};
-  TensorFromVector(main_id, ctx, id);
+  paddle::framework::TensorFromVector(main_id, ctx, id);
   for (int i = 0; i < 3; i++) {
     auto& child_scope = scope->NewScope();
     auto child_var = child_scope.Var("tmp");
     auto tensor_x = child_var->GetMutable<f::LoDTensor>();
     std::vector<T> init_x = {static_cast<T>(i)};
-    TensorFromVector(init_x, ctx, tensor_x);
+    paddle::framework::TensorFromVector(init_x, ctx, tensor_x);
   }
 
   ctx.Wait();
 
   // run
   f::AttributeMap attrs = {{"to_main_scope", false}, {"num_micro_batches", 3}};
-  std::map<std::string, std::vector<std::string>> output;
+  f::VariableNameMap output;
   auto op = f::OpRegistry::CreateOp(op_type, {{"X", {"tmp"}}, {"Id", {"Id"}}},
                                     output, attrs);
 
@@ -78,7 +78,7 @@ void Compare1(f::Scope* scope, const p::DeviceContext& ctx,
   auto* tensor_out = dst_var->GetMutable<f::LoDTensor>();
 
   std::vector<T> out_vec;
-  TensorToVector(*tensor_out, ctx, &out_vec);
+  paddle::framework::TensorToVector(*tensor_out, ctx, &out_vec);
 
   int expected = 1;
   EXPECT_EQ(static_cast<int>(out_vec[0]), expected);
@@ -91,25 +91,25 @@ void Compare2(f::Scope* scope, const p::DeviceContext& ctx,
   auto var_x = scope->Var("tmp");
   auto x = var_x->GetMutable<f::LoDTensor>();
   std::vector<T> main_x = {1.0};
-  TensorFromVector(main_x, ctx, x);
+  paddle::framework::TensorFromVector(main_x, ctx, x);
 
   auto var_id = scope->Var("Id");
   auto id = var_id->GetMutable<f::LoDTensor>();
   std::vector<int64_t> main_id = {0};
-  TensorFromVector(main_id, ctx, id);
+  paddle::framework::TensorFromVector(main_id, ctx, id);
   for (int i = 0; i < 3; i++) {
     auto& child_scope = scope->NewScope();
     auto child_var = child_scope.Var("tmp");
     auto tensor_x = child_var->GetMutable<f::LoDTensor>();
     std::vector<T> init_x = {static_cast<T>(i)};
-    TensorFromVector(init_x, ctx, tensor_x);
+    paddle::framework::TensorFromVector(init_x, ctx, tensor_x);
   }
 
   ctx.Wait();
 
   // run
   f::AttributeMap attrs = {{"to_main_scope", true}, {"num_micro_batches", 3}};
-  std::map<std::string, std::vector<std::string>> output;
+  f::VariableNameMap output;
   auto op = f::OpRegistry::CreateOp(op_type, {{"X", {"tmp"}}, {"Id", {"Id"}}},
                                     output, attrs);
 
@@ -121,7 +121,7 @@ void Compare2(f::Scope* scope, const p::DeviceContext& ctx,
   auto* tensor_out = dst_var->GetMutable<f::LoDTensor>();
 
   std::vector<T> out_vec;
-  TensorToVector(*tensor_out, ctx, &out_vec);
+  paddle::framework::TensorToVector(*tensor_out, ctx, &out_vec);
 
   int expected = 0;
   EXPECT_EQ(static_cast<int>(out_vec[0]), expected);
@@ -131,12 +131,20 @@ void Compare2(f::Scope* scope, const p::DeviceContext& ctx,
 TEST(copy_cross_scope, CUDA_fp32) {
   f::Scope scope;
   p::CUDADeviceContext ctx(p::CUDAPlace(0));
+  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                       .GetAllocator(p::CUDAPlace(0), ctx.stream())
+                       .get());
+  ctx.PartialInitWithAllocator();
   Compare1<float>(&scope, ctx, "copy_cross_scope");
 }
 
 TEST(copy_cross_scope_to_main_scope, CUDA_fp32) {
   f::Scope scope;
   p::CUDADeviceContext ctx(p::CUDAPlace(0));
+  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                       .GetAllocator(p::CUDAPlace(0), ctx.stream())
+                       .get());
+  ctx.PartialInitWithAllocator();
   Compare2<float>(&scope, ctx, "copy_cross_scope");
 }
 #elif PADDLE_WITH_ASCEND_CL

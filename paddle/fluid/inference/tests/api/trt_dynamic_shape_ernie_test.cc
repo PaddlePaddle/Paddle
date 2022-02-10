@@ -280,14 +280,16 @@ void run(paddle_infer::Predictor* predictor, std::vector<float>* out_data) {
 
 TEST(AnalysisPredictor, ernie_varlen) {
 #if IS_TRT_VERSION_GE(7234)
-  auto predictor = InitPredictor();
-  std::vector<float> out_data;
-  run(predictor.get(), &out_data);
-  std::vector<float> ref_data{0.59814,  0.219882, 0.181978,
-                              0.359796, 0.577414, 0.0627908};
-  float near_tolerance = 1e-3;
-  for (size_t i = 0; i < out_data.size(); i++) {
-    EXPECT_NEAR(ref_data[i], out_data[i], near_tolerance);
+  if (platform::GetGPUComputeCapability(0) >= 75) {
+    auto predictor = InitPredictor();
+    std::vector<float> out_data;
+    run(predictor.get(), &out_data);
+    std::vector<float> ref_data{0.59814,  0.219882, 0.181978,
+                                0.359796, 0.577414, 0.0627908};
+    float near_tolerance = 1e-3;
+    for (size_t i = 0; i < out_data.size(); i++) {
+      EXPECT_NEAR(ref_data[i], out_data[i], near_tolerance);
+    }
   }
 #endif
 }

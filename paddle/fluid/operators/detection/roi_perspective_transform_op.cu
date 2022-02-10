@@ -15,7 +15,7 @@ limitations under the License. */
 #include <algorithm>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
 using paddle::platform::PADDLE_CUDA_NUM_THREADS;
@@ -384,7 +384,8 @@ class CUDAROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
         roi2image_data[j] = i;
       }
     }
-    TensorCopySync(roi2image, ctx.GetPlace(), &roi2image_dev);
+    paddle::framework::TensorCopySync(roi2image, ctx.GetPlace(),
+                                      &roi2image_dev);
 
     int out_size = rois_num * transformed_height * transformed_width * channels;
     auto stream = ctx.cuda_device_context().stream();

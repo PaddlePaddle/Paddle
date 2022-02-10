@@ -20,8 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/hostdevice.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/pten/core/hostdevice.h"
 
 namespace paddle {
 namespace operators {
@@ -68,8 +68,9 @@ class AvgPool {
 template <class T>
 class MaxPoolGrad {
  public:
-  DEVICE inline void compute(const T& x, const T& y, const T& dy, T scale,
-                             T* dx) {
+  static constexpr bool use_x = true;
+  HOSTDEVICE inline void compute(const T& x, const T& y, const T& dy, T scale,
+                                 T* dx) {
     *dx += dy * static_cast<T>(x == y);
   }
 };
@@ -77,8 +78,9 @@ class MaxPoolGrad {
 template <class T>
 class AvgPoolGrad {
  public:
-  DEVICE inline void compute(const T& x, const T& y, const T& dy, T scale,
-                             T* dx) {
+  static constexpr bool use_x = false;
+  HOSTDEVICE inline void compute(const T& x, const T& y, const T& dy, T scale,
+                                 T* dx) {
     *dx += (scale * dy);
   }
 };
@@ -184,6 +186,20 @@ class MaxPool2dGradFunctor {
                   const std::vector<int>& paddings,
                   const std::string data_format, framework::Tensor* input_grad);
 };
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+template <typename PoolProcess, typename T>
+class Pool3dDirectCUDAFunctor {
+ public:
+  void operator()(const T* input, const std::vector<int>& input_shape,
+                  const std::vector<int>& output_shape,
+                  const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings, bool exclusive,
+                  bool adaptive, T* output, gpuStream_t stream,
+                  PoolProcess pool_compute);
+};
+#endif
 
 template <typename DeviceContext, typename PoolProcess, typename T>
 class Pool3dFunctor {

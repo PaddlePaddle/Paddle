@@ -62,9 +62,12 @@ def prepare_context(strategy=None):
         elif isinstance(place, core.XPUPlace):
             parallel_helper._set_parallel_ctx(
                 core.BKCLParallelContext(strategy, place))
+        elif isinstance(place, core.NPUPlace):
+            parallel_helper._set_parallel_ctx(
+                core.HCCLParallelContext(strategy, place))
         else:
             # TODO(Yancey1989): add Gloo Parallel Context to support CPU parallel computation
-            assert ("Only support CUDAPlace or XPUPlace for now.")
+            assert ("Only support CUDAPlace or XPUPlace or NPUPlace for now.")
         parallel_helper._init_parallel_ctx()
     return strategy
 
@@ -122,6 +125,9 @@ class ParallelEnv(object):
         elif core.is_compiled_with_xpu():
             selected_xpus = os.getenv("FLAGS_selected_xpus", "0").split(",")
             self._device_id = int(selected_xpus[0])
+        elif core.is_compiled_with_npu():
+            selected_npus = os.getenv("FLAGS_selected_npus", "0").split(",")
+            self._device_id = int(selected_npus[0])
 
         self._trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
                                             "").split(",")
@@ -350,14 +356,22 @@ def sync_params_buffers(model,
                         src_rank=0,
                         is_model_parallel=False):
     model_vars = []
-    for _, param in model.state_dict().items():
+    for _, param in model._obtain_parameters_buffers().items():
         if not isinstance(param, core.VarBase):
             raise TypeError("The data type of '%s' must be Varbase" %
                             param.name)
+
         # is_distributed param not need to sync when in mp mode
-        if is_model_parallel and isinstance(param, ParamBase):
-            if param.is_distributed:
+        if isinstance(param, ParamBase):
+            if is_model_parallel and param.is_distributed:
                 continue
+
+            # NOTE(shenliang03): Support situations that do not require synchronization parameters, 
+            # such as moe's expert parameters
+            if getattr(param, "no_sync", False):
+                continue
+        if param.type == core.VarDesc.VarType.VOCAB:
+            continue
 
         model_vars.append(param.detach())
     if len(model_vars) == 0:
@@ -426,8 +440,10 @@ class DataParallel(layers.Layer):
         Layer: The data paralleled module.
 
     Examples:
+
         .. code-block:: python
-        
+            :name: dp-example
+
             # required: distributed
             import paddle
             import paddle.nn as nn
@@ -471,6 +487,72 @@ class DataParallel(layers.Layer):
                 dist.spawn(train, nprocs=2)
                 # 2. start by ``paddle.distributed.launch``
                 # train()
+
+
+    .. note::
+        ``PyLayer`` is not supported in DataParallel. To solve problems of this kind, 
+        it's recommended to skip gradient synchronization among multiple cards by 'no_sync', 
+        and manually implement 'all_reduce' before model optimization. There is an example 
+        showing specific implemetation processing.
+
+    Examples:
+
+        .. code-block:: python
+            :name: dp-pylayer-example
+
+            # required: distributed
+            import numpy
+            import paddle
+            import paddle.distributed as dist
+            from paddle.autograd import PyLayer
+            from paddle.distributed.fleet.utils.hybrid_parallel_util import fused_allreduce_gradients
+
+            class cus_tanh(PyLayer):
+                @staticmethod
+                def forward(ctx, x):
+                    y = paddle.tanh(x)
+                    ctx.save_for_backward(y)
+                    return y
+
+                @staticmethod
+                def backward(ctx, dy):
+                    y, = ctx.saved_tensor()
+                    grad = dy * (1 - paddle.square(y))
+                    return grad
+
+            class SimpleNet(paddle.nn.Layer):
+                def __init__(self):
+                    super(SimpleNet, self).__init__()
+                    self.linear = paddle.nn.Linear(2, 2)
+
+                def forward(self, inputs):
+                    inputs = cus_tanh.apply(inputs)
+                    return self.linear(inputs)
+
+            if __name__ == '__main__':
+                dist.init_parallel_env()
+
+                model = SimpleNet()
+                model = paddle.DataParallel(model)
+                opt = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
+
+                for step in range(10):
+                    x_data = numpy.random.randn(2, 2).astype(numpy.float32)
+                    x = paddle.to_tensor(x_data)
+                    x.stop_gradient = False
+
+                    # step 1 : skip gradient synchronization by 'no_sync'
+                    with model.no_sync():
+                        y_pred = model(x)
+                        loss = y_pred.mean()
+                        loss.backward()
+
+                    # step 2 : fuse + allreduce manually before optimization
+                    fused_allreduce_gradients(list(model.parameters()), None)
+
+                    opt.step()
+                    opt.clear_grad()
+
     """
 
     def __init__(self,

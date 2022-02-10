@@ -32,7 +32,7 @@
 #include "paddle/fluid/operators/deformable_psroi_pooling_op.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -245,7 +245,7 @@ class DeformablePSROIPoolCUDAKernel : public framework::OpKernel<T> {
     int bytes = roi_batch_id_list.numel() * sizeof(int);
     auto roi_ptr = memory::Alloc(dev_ctx, bytes);
     int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
-    const auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+    const auto gplace = ctx.GetPlace();
     memory::Copy(gplace, roi_id_data, cplace, roi_batch_id_data, bytes,
                  dev_ctx.stream());
 
@@ -516,7 +516,7 @@ class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T> {
     int bytes = roi_batch_id_list.numel() * sizeof(int);
     auto roi_ptr = memory::Alloc(dev_ctx, bytes);
     int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
-    const auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+    const auto gplace = ctx.GetPlace();
     memory::Copy(gplace, roi_id_data, cplace, roi_batch_id_data, bytes,
                  dev_ctx.stream());
 

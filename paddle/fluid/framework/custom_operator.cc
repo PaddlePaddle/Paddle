@@ -25,15 +25,19 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/extension/include/ext_tensor.h"
 #include "paddle/fluid/framework/attribute.h"
-#include "paddle/fluid/framework/custom_tensor_utils.h"
 #include "paddle/fluid/framework/op_meta_info_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/pten/api/all.h"
+#include "paddle/pten/api/lib/api_declare.h"
+#include "paddle/pten/api/lib/ext_compat_utils.h"
+#include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/utils/any.h"
 
 namespace paddle {
@@ -57,27 +61,27 @@ static T* DynLoad(void* handle, std::string name) {
   return func;
 }
 
-inline bool IsGradVar(const std::string& var_name) {
+inline static bool IsGradVar(const std::string& var_name) {
   std::string suffix = kGradVarSuffix;
   return var_name.rfind(suffix) != std::string::npos;
 }
 
-inline bool IsDuplicableVar(const std::string& var_name) {
+inline static bool IsDuplicableVar(const std::string& var_name) {
   std::string suffix = kTensorVectorSuffix;
   return var_name.rfind(suffix) != std::string::npos;
 }
 
-inline std::string NoGrad(const std::string& var_name) {
+inline static std::string NoGrad(const std::string& var_name) {
   std::string suffix = kGradVarSuffix;
   return var_name.substr(0, var_name.size() - kGradVarSuffixSize);
 }
 
-inline bool IsMemberOf(const std::vector<std::string>& vec,
-                       const std::string& name) {
+inline static bool IsMemberOf(const std::vector<std::string>& vec,
+                              const std::string& name) {
   return std::find(vec.cbegin(), vec.cend(), name) != vec.cend();
 }
 
-std::vector<std::string> ParseAttrStr(const std::string& attr) {
+static std::vector<std::string> ParseAttrStr(const std::string& attr) {
   auto split_pos = attr.find_first_of(":");
   PADDLE_ENFORCE_NE(split_pos, std::string::npos,
                     platform::errors::InvalidArgument(
@@ -90,7 +94,7 @@ std::vector<std::string> ParseAttrStr(const std::string& attr) {
   // 2. type
   rlt.emplace_back(string::trim_spaces(attr.substr(split_pos + 1)));
 
-  VLOG(1) << "attr name: " << rlt[0] << ", attr type str: " << rlt[1];
+  VLOG(3) << "attr name: " << rlt[0] << ", attr type str: " << rlt[1];
 
   return rlt;
 }
@@ -105,18 +109,18 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                           const std::vector<std::string>& inputs,
                           const std::vector<std::string>& outputs,
                           const std::vector<std::string>& attrs) {
-  VLOG(1) << "Custom Operator: Start run KernelFunc.";
-  std::vector<paddle::Tensor> custom_ins;
-  std::vector<std::vector<paddle::Tensor>> custom_vec_ins;
+  VLOG(3) << "Custom Operator: Start run KernelFunc.";
+  // prepare CustomOpKernelContext
+  paddle::CustomOpKernelContext kernel_ctx;
   for (auto& in_name : inputs) {
-    VLOG(1) << "Custom Operator: input name - " << in_name;
+    VLOG(3) << "Custom Operator: input name - " << in_name;
     if (detail::IsDuplicableVar(in_name)) {
       // return const std::vector<const Tensor*>
       auto vec_x = ctx.MultiInput<Tensor>(in_name);
       PADDLE_ENFORCE_NE(vec_x.empty(), true,
                         platform::errors::NotFound(
                             "Input vector<tensor> (%s) is empty.", in_name));
-      std::vector<paddle::Tensor> custom_vec_in;
+      std::vector<paddle::experimental::Tensor> custom_vec_in;
       for (size_t i = 0; i < vec_x.size(); ++i) {
         auto* x = vec_x[i];
         PADDLE_ENFORCE_NOT_NULL(
@@ -128,13 +132,11 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                               "The %d-th tensor in input vector<tensor> (%s) "
                               "is not initialized.",
                               i, in_name));
-        auto custom_t = paddle::Tensor(
-            CustomTensorUtils::ConvertInnerPlaceToEnumPlace(x->place()));
-        CustomTensorUtils::ShareDataFrom(static_cast<const void*>(x), custom_t);
-        CustomTensorUtils::SetTensorCurrentStream(&custom_t, ctx.GetPlace());
+        paddle::experimental::Tensor custom_t;
+        custom_t.set_impl(std::make_shared<pten::DenseTensor>(*x));
         custom_vec_in.emplace_back(custom_t);
       }
-      custom_vec_ins.emplace_back(custom_vec_in);
+      kernel_ctx.EmplaceBackInputs(std::move(custom_vec_in));
     } else {
       auto* x = ctx.Input<Tensor>(in_name);
       PADDLE_ENFORCE_NOT_NULL(x, platform::errors::NotFound(
@@ -142,37 +144,34 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
       PADDLE_ENFORCE_EQ(x->IsInitialized(), true,
                         platform::errors::InvalidArgument(
                             "Input tensor (%s) is not initialized.", in_name));
-      auto custom_in = paddle::Tensor(
-          CustomTensorUtils::ConvertInnerPlaceToEnumPlace(x->place()));
-      CustomTensorUtils::ShareDataFrom(static_cast<const void*>(x), custom_in);
-      CustomTensorUtils::SetTensorCurrentStream(&custom_in, ctx.GetPlace());
-      custom_ins.emplace_back(custom_in);
+      paddle::experimental::Tensor custom_in;
+      custom_in.set_impl(std::make_shared<pten::DenseTensor>(*x));
+      kernel_ctx.EmplaceBackInput(std::move(custom_in));
     }
   }
 
-  std::vector<paddle::any> custom_attrs;
   for (auto& attr_str : attrs) {
     auto attr_name_and_type = detail::ParseAttrStr(attr_str);
     auto attr_name = attr_name_and_type[0];
     auto attr_type_str = attr_name_and_type[1];
     if (attr_type_str == "bool") {
-      custom_attrs.emplace_back(ctx.Attr<bool>(attr_name));
+      kernel_ctx.EmplaceBackAttr(ctx.Attr<bool>(attr_name));
     } else if (attr_type_str == "int") {
-      custom_attrs.emplace_back(ctx.Attr<int>(attr_name));
+      kernel_ctx.EmplaceBackAttr(ctx.Attr<int>(attr_name));
     } else if (attr_type_str == "float") {
-      custom_attrs.emplace_back(ctx.Attr<float>(attr_name));
+      kernel_ctx.EmplaceBackAttr(ctx.Attr<float>(attr_name));
     } else if (attr_type_str == "int64_t") {
-      custom_attrs.emplace_back(ctx.Attr<int64_t>(attr_name));
+      kernel_ctx.EmplaceBackAttr(ctx.Attr<int64_t>(attr_name));
     } else if (attr_type_str == "std::string") {
-      custom_attrs.emplace_back(ctx.Attr<std::string>(attr_name));
+      kernel_ctx.EmplaceBackAttr(ctx.Attr<std::string>(attr_name));
     } else if (attr_type_str == "std::vector<int>") {
-      custom_attrs.emplace_back(ctx.Attr<std::vector<int>>(attr_name));
+      kernel_ctx.EmplaceBackAttr(ctx.Attr<std::vector<int>>(attr_name));
     } else if (attr_type_str == "std::vector<float>") {
-      custom_attrs.emplace_back(ctx.Attr<std::vector<float>>(attr_name));
+      kernel_ctx.EmplaceBackAttr(ctx.Attr<std::vector<float>>(attr_name));
     } else if (attr_type_str == "std::vector<int64_t>") {
-      custom_attrs.emplace_back(ctx.Attr<std::vector<int64_t>>(attr_name));
+      kernel_ctx.EmplaceBackAttr(ctx.Attr<std::vector<int64_t>>(attr_name));
     } else if (attr_type_str == "std::vector<std::string>") {
-      custom_attrs.emplace_back(ctx.Attr<std::vector<std::string>>(attr_name));
+      kernel_ctx.EmplaceBackAttr(ctx.Attr<std::vector<std::string>>(attr_name));
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Unsupported `%s` type value as custom attribute now. "
@@ -185,33 +184,76 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
     }
   }
 
-  VLOG(1) << "Custom Operator: Run ComputeFunc.";
-  try {
-    auto outs = func(custom_ins, custom_vec_ins, custom_attrs);
+  VLOG(3) << "Custom Operator: push outputs into CustomOpKernelContext.";
+  // cache the target tensor pointers
+  std::vector<Tensor*> true_out_ptrs;
+  for (size_t i = 0; i < outputs.size(); ++i) {
+    auto out_name = outputs[i];
+    if (detail::IsDuplicableVar(out_name)) {
+      PADDLE_ENFORCE(i == 0UL && outputs.size() == 1UL,
+                     platform::errors::PreconditionNotMet(
+                         "If custom operator's outputs contains `paddle::Vec("
+                         ")` type, "
+                         "it only can hold one output."));
+      auto vec_out = ctx.MultiOutput<Tensor>(out_name);
+      PADDLE_ENFORCE_NE(vec_out.empty(), true,
+                        platform::errors::NotFound(
+                            "Output vector<tensor> (%s) is empty.", out_name));
+      std::vector<paddle::experimental::Tensor> custom_vec_out;
+      for (size_t j = 0; j < vec_out.size(); ++j) {
+        auto* out = vec_out[j];
+        PADDLE_ENFORCE_NOT_NULL(
+            out,
+            platform::errors::NotFound(
+                "The %d-th tensor in output vector<tensor> (%s) is nullptr.", j,
+                out_name));
+        true_out_ptrs.emplace_back(out);
+        paddle::experimental::Tensor custom_t;
+        // here only can copy the output tensor into context
+        custom_t.set_impl(std::make_shared<pten::DenseTensor>(*out));
+        custom_vec_out.emplace_back(custom_t);
+      }
+      kernel_ctx.EmplaceBackOutputs(std::move(custom_vec_out));
+    } else {
+      auto* out = ctx.Output<Tensor>(out_name);
+      PADDLE_ENFORCE_NOT_NULL(
+          out, platform::errors::NotFound("Output tensor (%s) is nullptr.",
+                                          out_name));
+      true_out_ptrs.emplace_back(out);
+      paddle::experimental::Tensor custom_out;
+      // here only can copy the output tensor into context
+      custom_out.set_impl(std::make_shared<pten::DenseTensor>(*out));
+      kernel_ctx.EmplaceBackOutput(std::move(custom_out));
+    }
+  }
 
-    VLOG(1) << "Custom Operator: Share outputs into ExecutionContext.";
-    for (size_t i = 0; i < outputs.size(); ++i) {
-      auto out_name = outputs[i];
-      if (detail::IsDuplicableVar(out_name)) {
-        PADDLE_ENFORCE(i == 0UL && outputs.size() == 1UL,
-                       platform::errors::PreconditionNotMet(
-                           "If custom operator's outputs contains `paddle::Vec("
-                           ")` type, "
-                           "it only can hold one output."));
-        auto vec_true_outs = ctx.MultiOutput<Tensor>(out_name);
-        PADDLE_ENFORCE_EQ(
-            vec_true_outs.size(), outs.size(),
-            platform::errors::InvalidArgument(
-                "The number of element in custom operator outputs is wrong, "
-                "expected contains %d Tensors, but actually contains %d "
-                "Tensors.",
-                vec_true_outs.size(), outs.size()));
-        for (size_t j = 0; j < vec_true_outs.size(); ++j) {
-          CustomTensorUtils::ShareDataTo(outs.at(j), vec_true_outs.at(j));
-        }
-      } else {
-        auto* true_out = ctx.Output<Tensor>(out_name);
-        CustomTensorUtils::ShareDataTo(outs.at(i), true_out);
+  try {
+    VLOG(3) << "Custom Operator: Run ComputeFunc.";
+    func(&kernel_ctx);
+
+    // sync output tensor data into original output
+    auto* calc_outs = kernel_ctx.AllMutableOutput();
+    PADDLE_ENFORCE_EQ(
+        true_out_ptrs.size(), calc_outs->size(),
+        platform::errors::InvalidArgument(
+            "The number of element in custom operator outputs is wrong, "
+            "expected contains %d Tensors, but actually contains %d "
+            "Tensors.",
+            true_out_ptrs.size(), calc_outs->size()));
+    for (size_t i = 0; i < true_out_ptrs.size(); ++i) {
+      auto* true_out = true_out_ptrs.at(i);
+      auto calc_out =
+          std::dynamic_pointer_cast<pten::DenseTensor>(calc_outs->at(i).impl());
+      // assgin meta info
+      auto* true_out_meta = pten::DenseTensorUtils::GetMutableMeta(true_out);
+      true_out_meta->dims = calc_out->dims();
+      true_out_meta->dtype = calc_out->dtype();
+      true_out_meta->layout = calc_out->layout();
+      true_out_meta->offset = calc_out->offset();
+      // lod no need to be reset
+      // reset holder if needed
+      if (true_out->Holder() != calc_out->Holder()) {
+        true_out->ResetHolder(calc_out->Holder());
       }
     }
   } catch (platform::EnforceNotMet& exception) {
@@ -224,6 +266,95 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
   }
 }
 
+static void RunInferShapeFunc(framework::InferShapeContext* ctx,
+                              const paddle::InferShapeFunc& func,
+                              const std::vector<std::string>& inputs,
+                              const std::vector<std::string>& outputs,
+                              const std::vector<std::string>& attrs) {
+  std::vector<std::vector<int64_t>> input_shapes;
+  std::vector<std::vector<std::vector<int64_t>>> vec_input_shapes;
+
+  VLOG(3) << "Custom Operator: InferShape - get input ddim.";
+  for (auto& in_name : inputs) {
+    if (detail::IsDuplicableVar(in_name)) {
+      OP_INOUT_CHECK(ctx->HasInputs(in_name), "Input", in_name, "Custom");
+      auto vec_ddim = ctx->GetInputsDim(in_name);
+      std::vector<std::vector<int64_t>> vec_shape;
+      vec_shape.reserve(vec_ddim.size());
+      std::transform(vec_ddim.begin(), vec_ddim.end(),
+                     std::back_inserter(vec_shape),
+                     [&](const DDim& ddim) -> std::vector<int64_t> {
+                       return framework::vectorize(ddim);
+                     });
+      vec_input_shapes.emplace_back(vec_shape);
+    } else {
+      OP_INOUT_CHECK(ctx->HasInput(in_name), "Input", in_name, "Custom");
+      auto ddim = ctx->GetInputDim(in_name);
+      input_shapes.emplace_back(framework::vectorize(ddim));
+    }
+  }
+
+  std::vector<paddle::any> custom_attrs;
+  for (auto& attr_str : attrs) {
+    auto attr_name_and_type = detail::ParseAttrStr(attr_str);
+    auto attr_name = attr_name_and_type[0];
+    auto attr_type_str = attr_name_and_type[1];
+    if (attr_type_str == "bool") {
+      custom_attrs.emplace_back(ctx->Attrs().Get<bool>(attr_name));
+    } else if (attr_type_str == "int") {
+      custom_attrs.emplace_back(ctx->Attrs().Get<int>(attr_name));
+    } else if (attr_type_str == "float") {
+      custom_attrs.emplace_back(ctx->Attrs().Get<float>(attr_name));
+    } else if (attr_type_str == "int64_t") {
+      custom_attrs.emplace_back(ctx->Attrs().Get<int64_t>(attr_name));
+    } else if (attr_type_str == "std::string") {
+      custom_attrs.emplace_back(ctx->Attrs().Get<std::string>(attr_name));
+    } else if (attr_type_str == "std::vector<int>") {
+      custom_attrs.emplace_back(ctx->Attrs().Get<std::vector<int>>(attr_name));
+    } else if (attr_type_str == "std::vector<float>") {
+      custom_attrs.emplace_back(
+          ctx->Attrs().Get<std::vector<float>>(attr_name));
+    } else if (attr_type_str == "std::vector<int64_t>") {
+      // NOTE(chenweihang): InferShape can't support std::vector<int64_t>
+      // attr type, because the input type is std::vector<int64_t>, only
+      // can use one rule to parse std::vector<int64_t> parameter
+      continue;
+    } else if (attr_type_str == "std::vector<std::string>") {
+      custom_attrs.emplace_back(
+          ctx->Attrs().Get<std::vector<std::string>>(attr_name));
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported `%s` type value as custom attribute now. "
+          "Supported data types include `bool`, `int`, `float`, "
+          "`int64_t`, `std::string`, `std::vector<int>`, "
+          "`std::vector<float>`, `std::vector<std::string>`, "
+          "Please check whether the attribute data type and "
+          "data type string are matched.",
+          attr_type_str));
+    }
+  }
+
+  VLOG(3) << "Custom Operator: InferShape - calc output ddim.";
+  auto output_shapes = func(input_shapes, vec_input_shapes, custom_attrs);
+
+  VLOG(3) << "Custom Operator: InferShape - set output ddim.";
+  for (size_t i = 0; i < outputs.size(); ++i) {
+    auto out_name = outputs[i];
+    if (detail::IsDuplicableVar(out_name)) {
+      std::vector<DDim> vec_ddim;
+      vec_ddim.reserve(output_shapes.size());
+      std::transform(output_shapes.begin(), output_shapes.end(),
+                     std::back_inserter(vec_ddim),
+                     [&](const std::vector<int64_t>& shape) -> DDim {
+                       return framework::make_ddim(shape);
+                     });
+      ctx->SetOutputsDim(out_name, vec_ddim);
+    } else {
+      ctx->SetOutputDim(out_name, framework::make_ddim(output_shapes[i]));
+    }
+  }
+}
+
 //////////////////// Operator Define /////////////////
 
 class CustomOperator : public OperatorWithKernel {
@@ -233,7 +364,7 @@ class CustomOperator : public OperatorWithKernel {
   // Dummy infershape
   // Because it is a pure virtual function, it must be implemented
   void InferShape(framework::InferShapeContext* ctx) const override {
-    VLOG(1) << "Custom Operator: Dummy infer shape of custom operator.";
+    VLOG(3) << "Custom Operator: Dummy infer shape of custom operator.";
   }
 
   /**
@@ -375,7 +506,7 @@ class CustomGradOpMaker<OpDesc> : public SingleGradOpMaker<OpDesc> {
     auto fwd_op_outputs = this->OutputNames();
 
     for (auto& in_name : inputs_) {
-      VLOG(1) << "Custom Operator: GradOpDescMaker - input: " << in_name;
+      VLOG(3) << "Custom Operator: GradOpDescMaker - input: " << in_name;
       if (!detail::IsGradVar(in_name)) {
         if (detail::IsMemberOf(fwd_op_inputs, in_name)) {
           grad_op->SetInput(in_name, this->Input(in_name));
@@ -392,7 +523,7 @@ class CustomGradOpMaker<OpDesc> : public SingleGradOpMaker<OpDesc> {
       }
     }
     for (auto& out_name : outputs_) {
-      VLOG(1) << "Custom Operator: GradOpDescMaker - output: " << out_name;
+      VLOG(3) << "Custom Operator: GradOpDescMaker - output: " << out_name;
       if (detail::IsDuplicableVar(out_name)) {
         grad_op->SetOutput(out_name,
                            this->InputGrad(detail::NoGrad(out_name),
@@ -441,7 +572,7 @@ class CustomGradOpMaker<imperative::OpBase>
     auto fwd_op_outputs = this->OutputNames();
 
     for (auto& in_name : inputs_) {
-      VLOG(1) << "Custom Operator: GradOpBaseMaker - input: " << in_name;
+      VLOG(3) << "Custom Operator: GradOpBaseMaker - input: " << in_name;
       if (!detail::IsGradVar(in_name)) {
         if (detail::IsMemberOf(fwd_op_inputs, in_name)) {
           grad_op->SetInput(in_name, this->Input(in_name));
@@ -458,7 +589,7 @@ class CustomGradOpMaker<imperative::OpBase>
       }
     }
     for (auto& out_name : outputs_) {
-      VLOG(1) << "Custom Operator: GradOpBaseMaker - output: " << out_name;
+      VLOG(3) << "Custom Operator: GradOpBaseMaker - output: " << out_name;
       grad_op->SetOutput(out_name, this->InputGrad(detail::NoGrad(out_name)));
     }
     grad_op->SetAttrMap(this->Attrs());
@@ -472,45 +603,57 @@ class CustomGradOpMaker<imperative::OpBase>
 
 //////////// Operator and Kernel Register //////////////
 
-void RegisterOperatorKernelWithPlace(const std::string& name,
-                                     const paddle::KernelFunc& kernel_func,
-                                     const proto::VarType::Type type,
-                                     const PlaceType& place,
-                                     const std::vector<std::string>& inputs,
-                                     const std::vector<std::string>& outputs,
-                                     const std::vector<std::string>& attrs) {
-  OpKernelType key(type,
-                   CustomTensorUtils::ConvertEnumPlaceToInnerPlace(place));
-  VLOG(1) << "Custom Operator: op kernel key: " << key;
-  OperatorWithKernel::AllOpKernels()[name][key] =
-      [kernel_func, inputs, outputs,
-       attrs](const framework::ExecutionContext& ctx) {
-        VLOG(1) << "Custom Operator: run custom kernel func in lambda.";
-        RunKernelFunc(ctx, kernel_func, inputs, outputs, attrs);
-      };
+static void RegisterOperatorKernelWithPlace(
+    const std::string& name,
+    const OperatorWithKernel::OpKernelFunc& op_kernel_func,
+    const proto::VarType::Type type, const PlaceType& place) {
+  OpKernelType key(type, experimental::ConvertExtPlaceToInnerPlace(place));
+  VLOG(3) << "Custom Operator: op kernel key: " << key;
+  OperatorWithKernel::AllOpKernels()[name][key] = op_kernel_func;
 }
 
-void RegisterOperatorKernel(const std::string& name,
-                            const paddle::KernelFunc& kernel_func,
-                            const std::vector<std::string>& inputs,
-                            const std::vector<std::string>& outputs,
-                            const std::vector<std::string>& attrs) {
-  VLOG(1) << "Custom Operator: op name in kernel: " << name;
+static void RegisterOperatorKernel(const std::string& name,
+                                   const paddle::KernelFunc& kernel_func,
+                                   const std::vector<std::string>& inputs,
+                                   const std::vector<std::string>& outputs,
+                                   const std::vector<std::string>& attrs,
+                                   void* dso_handle) {
+  VLOG(3) << "Custom Operator: op name in kernel: " << name;
   // NOTE [ Dummy Op Kernel Key ]
   // TODO(chenweihang): Because execute engine need get device context based
   // op_kernel_key.place_, so we should register kernel for each
   // device. But this is not entirely correct, if user only give a cpu kernel,
   // but call api in gpu device, it will cause error.
-  RegisterOperatorKernelWithPlace(name, kernel_func, proto::VarType::RAW,
-                                  PlaceType::kCPU, inputs, outputs, attrs);
-#ifdef PADDLE_WITH_CUDA
-  RegisterOperatorKernelWithPlace(name, kernel_func, proto::VarType::RAW,
-                                  PlaceType::kGPU, inputs, outputs, attrs);
+  OperatorWithKernel::OpKernelFunc op_kernel_func;
+  if (kernel_func) {
+    VLOG(3) << "Register custom operator " << name << " with kernel func";
+    op_kernel_func = [kernel_func, inputs, outputs,
+                      attrs](const framework::ExecutionContext& ctx) {
+      VLOG(3) << "Custom Operator: run custom kernel func in lambda.";
+      RunKernelFunc(ctx, kernel_func, inputs, outputs, attrs);
+    };
+  } else {
+    VLOG(3) << "Register custom operator " << name
+            << " with raw op kernel func";
+    PADDLE_ENFORCE_NOT_NULL(
+        dso_handle,
+        platform::errors::InvalidArgument(
+            "The dso handle must be provided if kernel_func is nullptr."));
+    using OpKernelFuncPtr = void(const framework::ExecutionContext&);
+    auto symbol_name = "PD_" + name + "_raw_op_kernel_func";
+    auto* func = detail::DynLoad<OpKernelFuncPtr>(dso_handle, symbol_name);
+    op_kernel_func = func;
+  }
+  RegisterOperatorKernelWithPlace(name, op_kernel_func, proto::VarType::RAW,
+                                  PlaceType::kCPU);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  RegisterOperatorKernelWithPlace(name, op_kernel_func, proto::VarType::RAW,
+                                  PlaceType::kGPU);
 #endif
 }
 
-void RegisterOperatorWithMetaInfo(
-    const std::vector<OpMetaInfo>& op_meta_infos) {
+void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
+                                  void* dso_handle) {
   /* Op register */
   OpInfo info;
 
@@ -519,7 +662,7 @@ void RegisterOperatorWithMetaInfo(
   auto op_name = OpMetaInfoHelper::GetOpName(base_op_meta);
 
   if (OpInfoMap::Instance().Has(op_name)) {
-    LOG(WARNING) << "Operator (" << op_name << ")has been registered.";
+    LOG(WARNING) << "Operator (" << op_name << ") has been registered.";
     return;
   }
 
@@ -530,12 +673,12 @@ void RegisterOperatorWithMetaInfo(
   auto& infer_shape_func = OpMetaInfoHelper::GetInferShapeFn(base_op_meta);
   auto& infer_dtype_func = OpMetaInfoHelper::GetInferDtypeFn(base_op_meta);
 
-  VLOG(1) << "Custom Operator: forward, op name: " << op_name;
-  VLOG(1) << "Custom Operator: forward, op inputs: "
+  VLOG(3) << "Custom Operator: forward, op name: " << op_name;
+  VLOG(3) << "Custom Operator: forward, op inputs: "
           << string::join_strings(op_inputs, ',');
-  VLOG(1) << "Custom Operator: forward, op outputs: "
+  VLOG(3) << "Custom Operator: forward, op outputs: "
           << string::join_strings(op_outputs, ',');
-  VLOG(1) << "Custom Operator: forward, op attrs: "
+  VLOG(3) << "Custom Operator: forward, op attrs: "
           << string::join_strings(op_attrs, ',');
 
   // Op
@@ -583,96 +726,13 @@ void RegisterOperatorWithMetaInfo(
               "Please set the InferShapeFn of custom "
               "operator by .SetInferShapeFn(PD_INFER_SHAPE(...))"));
 
-      VLOG(1) << "Custom Operator: Default InferShape - share ddim.";
+      VLOG(3) << "Custom Operator: Default InferShape - share ddim.";
       ctx->ShareDim(op_inputs[0], op_outputs[0]);
     };
   } else {
     info.infer_shape_ = [op_inputs, op_outputs, op_attrs,
                          infer_shape_func](InferShapeContext* ctx) {
-      std::vector<std::vector<int64_t>> input_shapes;
-      std::vector<std::vector<std::vector<int64_t>>> vec_input_shapes;
-
-      VLOG(1) << "Custom Operator: InferShape - get input ddim.";
-      for (auto& in_name : op_inputs) {
-        if (detail::IsDuplicableVar(in_name)) {
-          OP_INOUT_CHECK(ctx->HasInputs(in_name), "Input", in_name, "Custom");
-          auto vec_ddim = ctx->GetInputsDim(in_name);
-          std::vector<std::vector<int64_t>> vec_shape;
-          vec_shape.reserve(vec_ddim.size());
-          std::transform(vec_ddim.begin(), vec_ddim.end(),
-                         std::back_inserter(vec_shape),
-                         [&](const DDim& ddim) -> std::vector<int64_t> {
-                           return framework::vectorize(ddim);
-                         });
-          vec_input_shapes.emplace_back(vec_shape);
-        } else {
-          OP_INOUT_CHECK(ctx->HasInput(in_name), "Input", in_name, "Custom");
-          auto ddim = ctx->GetInputDim(in_name);
-          input_shapes.emplace_back(framework::vectorize(ddim));
-        }
-      }
-
-      std::vector<paddle::any> custom_attrs;
-      for (auto& attr_str : op_attrs) {
-        auto attr_name_and_type = detail::ParseAttrStr(attr_str);
-        auto attr_name = attr_name_and_type[0];
-        auto attr_type_str = attr_name_and_type[1];
-        if (attr_type_str == "bool") {
-          custom_attrs.emplace_back(ctx->Attrs().Get<bool>(attr_name));
-        } else if (attr_type_str == "int") {
-          custom_attrs.emplace_back(ctx->Attrs().Get<int>(attr_name));
-        } else if (attr_type_str == "float") {
-          custom_attrs.emplace_back(ctx->Attrs().Get<float>(attr_name));
-        } else if (attr_type_str == "int64_t") {
-          custom_attrs.emplace_back(ctx->Attrs().Get<int64_t>(attr_name));
-        } else if (attr_type_str == "std::string") {
-          custom_attrs.emplace_back(ctx->Attrs().Get<std::string>(attr_name));
-        } else if (attr_type_str == "std::vector<int>") {
-          custom_attrs.emplace_back(
-              ctx->Attrs().Get<std::vector<int>>(attr_name));
-        } else if (attr_type_str == "std::vector<float>") {
-          custom_attrs.emplace_back(
-              ctx->Attrs().Get<std::vector<float>>(attr_name));
-        } else if (attr_type_str == "std::vector<int64_t>") {
-          // NOTE(chenweihang): InferShape can't support std::vector<int64_t>
-          // attr type, because the input type is std::vector<int64_t>, only
-          // can use one rule to parse std::vector<int64_t> parameter
-          continue;
-        } else if (attr_type_str == "std::vector<std::string>") {
-          custom_attrs.emplace_back(
-              ctx->Attrs().Get<std::vector<std::string>>(attr_name));
-        } else {
-          PADDLE_THROW(platform::errors::Unimplemented(
-              "Unsupported `%s` type value as custom attribute now. "
-              "Supported data types include `bool`, `int`, `float`, "
-              "`int64_t`, `std::string`, `std::vector<int>`, "
-              "`std::vector<float>`, `std::vector<std::string>`, "
-              "Please check whether the attribute data type and "
-              "data type string are matched.",
-              attr_type_str));
-        }
-      }
-
-      VLOG(1) << "Custom Operator: InferShape - calc output ddim.";
-      auto output_shapes =
-          infer_shape_func(input_shapes, vec_input_shapes, custom_attrs);
-
-      VLOG(1) << "Custom Operator: InferShape - set output ddim.";
-      for (size_t i = 0; i < op_outputs.size(); ++i) {
-        auto out_name = op_outputs[i];
-        if (detail::IsDuplicableVar(out_name)) {
-          std::vector<DDim> vec_ddim;
-          vec_ddim.reserve(output_shapes.size());
-          std::transform(output_shapes.begin(), output_shapes.end(),
-                         std::back_inserter(vec_ddim),
-                         [&](const std::vector<int64_t>& shape) -> DDim {
-                           return framework::make_ddim(shape);
-                         });
-          ctx->SetOutputsDim(out_name, vec_ddim);
-        } else {
-          ctx->SetOutputDim(out_name, framework::make_ddim(output_shapes[i]));
-        }
-      }
+      RunInferShapeFunc(ctx, infer_shape_func, op_inputs, op_outputs, op_attrs);
     };
   }
 
@@ -701,7 +761,7 @@ void RegisterOperatorWithMetaInfo(
               "Please set the InferDtypeFn of custom "
               "operator by .SetInferDtypeFn(PD_INFER_DTYPE(...))"));
 
-      VLOG(1) << "Custom Operator: InferDtype - share dtype.";
+      VLOG(3) << "Custom Operator: InferDtype - share dtype.";
       auto dtype = ctx->GetInputDataType(op_inputs[0]);
       ctx->SetOutputDataType(op_outputs[0], dtype);
     };
@@ -711,46 +771,43 @@ void RegisterOperatorWithMetaInfo(
       std::vector<DataType> input_dtypes;
       std::vector<std::vector<DataType>> vec_input_dtypes;
 
-      VLOG(1) << "Custom Operator: InferDtype - get input dtype.";
+      VLOG(3) << "Custom Operator: InferDtype - get input dtype.";
       for (auto& in_name : op_inputs) {
         if (detail::IsDuplicableVar(in_name)) {
           std::vector<DataType> vec_custom_dtype;
           for (size_t i = 0; i < ctx->InputSize(in_name); ++i) {
             auto dtype = ctx->GetInputDataType(in_name, i);
-            vec_custom_dtype.emplace_back(
-                CustomTensorUtils::ConvertInnerDTypeToEnumDType(dtype));
+            vec_custom_dtype.emplace_back(pten::TransToPtenDataType(dtype));
           }
           vec_input_dtypes.emplace_back(vec_custom_dtype);
         } else {
           auto dtype = ctx->GetInputDataType(in_name);
-          input_dtypes.emplace_back(
-              CustomTensorUtils::ConvertInnerDTypeToEnumDType(dtype));
+          input_dtypes.emplace_back(pten::TransToPtenDataType(dtype));
         }
       }
 
-      VLOG(1) << "Custom Operator: InferDtype - infer output dtype.";
+      VLOG(3) << "Custom Operator: InferDtype - infer output dtype.";
       auto output_dtypes = infer_dtype_func(input_dtypes, vec_input_dtypes);
 
-      VLOG(1) << "Custom Operator: InferDtype - set output dtype.";
+      VLOG(3) << "Custom Operator: InferDtype - set output dtype.";
       for (size_t i = 0; i < op_outputs.size(); ++i) {
         auto out_name = op_outputs[i];
         if (detail::IsDuplicableVar(out_name)) {
           for (size_t j = 0; j < output_dtypes.size(); ++j) {
-            auto dtype = CustomTensorUtils::ConvertEnumDTypeToInnerDType(
-                output_dtypes[i]);
+            auto dtype = pten::TransToProtoVarType(output_dtypes[i]);
             ctx->SetOutputDataType(out_name, dtype, j);
           }
         } else {
-          ctx->SetOutputDataType(
-              out_name, CustomTensorUtils::ConvertEnumDTypeToInnerDType(
-                            output_dtypes[i]));
+          ctx->SetOutputDataType(out_name,
+                                 pten::TransToProtoVarType(output_dtypes[i]));
         }
       }
     };
   }
 
   // Kernel func
-  RegisterOperatorKernel(op_name, kernel_fn, op_inputs, op_outputs, op_attrs);
+  RegisterOperatorKernel(op_name, kernel_fn, op_inputs, op_outputs, op_attrs,
+                         dso_handle);
 
   // If grad op or double grad op exists
   std::string cur_op_name = op_name;
@@ -762,11 +819,12 @@ void RegisterOperatorWithMetaInfo(
     auto& grad_op_outputs = OpMetaInfoHelper::GetOutputs(cur_grad_op);
     auto& grad_op_attrs = OpMetaInfoHelper::GetAttrs(cur_grad_op);
     auto& grad_kernel_fn = OpMetaInfoHelper::GetKernelFn(cur_grad_op);
+    auto& grad_infer_shape_fn = OpMetaInfoHelper::GetInferShapeFn(cur_grad_op);
 
-    VLOG(1) << "Custom Operator: backward, op name: " << grad_op_name;
-    VLOG(1) << "Custom Operator: backward, op inputs: "
+    VLOG(3) << "Custom Operator: backward, op name: " << grad_op_name;
+    VLOG(3) << "Custom Operator: backward, op inputs: "
             << string::join_strings(grad_op_inputs, ',');
-    VLOG(1) << "Custom Operator: backward, op outputs: "
+    VLOG(3) << "Custom Operator: backward, op outputs: "
             << string::join_strings(grad_op_outputs, ',');
 
     // GradOpDescMaker
@@ -808,44 +866,56 @@ void RegisterOperatorWithMetaInfo(
     };
 
     // Grad InferShape
-    grad_info.infer_shape_ = [grad_op_inputs,
-                              grad_op_outputs](InferShapeContext* ctx) {
-      // 1. if forward input exists, gradient's shape is same with forward input
-      // default
-      //    [Suitable for most situations]
-      // 2. if forward input not exists, and only contains one grad input and
-      // output,
-      //    use grad input shape as grad output shape
-      //    [Suitable for the situation that forward input is not used as
-      //    backward input]
-      // TODO(chenweihang): support set grad op infershape func if needed
-      for (auto& out_name : grad_op_outputs) {
-        auto fwd_name = detail::NoGrad(out_name);
-        if (detail::IsDuplicableVar(fwd_name)) {
-          // Duplicable forward var must as backward input
-          ctx->ShareDim(fwd_name, out_name);
-        } else {
-          if (ctx->HasInput(fwd_name)) {
+    if (grad_infer_shape_fn == nullptr) {
+      grad_info.infer_shape_ = [grad_op_inputs,
+                                grad_op_outputs](InferShapeContext* ctx) {
+        // 1. if forward input exists, gradient's shape is same with forward
+        // input
+        // default
+        //    [Suitable for most situations]
+        // 2. if forward input not exists, and only contains one grad input and
+        // output,
+        //    use grad input shape as grad output shape
+        //    [Suitable for the situation that forward input is not used as
+        //    backward input]
+        for (auto& out_name : grad_op_outputs) {
+          auto fwd_name = detail::NoGrad(out_name);
+          if (detail::IsDuplicableVar(fwd_name)) {
+            // Duplicable forward var must as backward input
             ctx->ShareDim(fwd_name, out_name);
           } else {
-            PADDLE_ENFORCE_EQ(
-                grad_op_inputs.size() == 1UL && grad_op_outputs.size() == 1UL,
-                true,
-                platform::errors::Unavailable(
-                    "Custom grad operator infershape error. "
-                    "If a custom grad operator contains only one input and "
-                    "only one output, the input shape will be directly set to "
-                    "the output shape. Otherwise, Please set the forward input "
-                    "as the grad operator's input."));
-            ctx->ShareDim(grad_op_inputs[0], out_name);
+            if (ctx->HasInput(fwd_name)) {
+              ctx->ShareDim(fwd_name, out_name);
+            } else {
+              PADDLE_ENFORCE_EQ(
+                  grad_op_inputs.size() == 1UL && grad_op_outputs.size() == 1UL,
+                  true,
+                  platform::errors::Unavailable(
+                      "Custom grad operator infershape error. "
+                      "If a custom grad operator contains only one input and "
+                      "only one output, the input shape will be directly set "
+                      "to "
+                      "the output shape. Otherwise, Please set the forward "
+                      "input "
+                      "as the grad operator's input or  set the InferShapeFn "
+                      "of custom grad operator by "
+                      ".SetInferShapeFn(PD_INFER_SHAPE(...))"));
+              ctx->ShareDim(grad_op_inputs[0], out_name);
+            }
           }
         }
-      }
-    };
+      };
+    } else {
+      grad_info.infer_shape_ = [grad_op_inputs, grad_op_outputs, grad_op_attrs,
+                                grad_infer_shape_fn](InferShapeContext* ctx) {
+        RunInferShapeFunc(ctx, grad_infer_shape_fn, grad_op_inputs,
+                          grad_op_outputs, grad_op_attrs);
+      };
+    }
 
     // Kernel func
     RegisterOperatorKernel(grad_op_name, grad_kernel_fn, grad_op_inputs,
-                           grad_op_outputs, grad_op_attrs);
+                           grad_op_outputs, grad_op_attrs, dso_handle);
 
     // update current info
     OpInfoMap::Instance().Insert(cur_op_name, info);
@@ -857,14 +927,14 @@ void RegisterOperatorWithMetaInfo(
 }
 
 void RegisterOperatorWithMetaInfoMap(
-    const paddle::OpMetaInfoMap& op_meta_info_map) {
+    const paddle::OpMetaInfoMap& op_meta_info_map, void* dso_handle) {
   auto& meta_info_map = op_meta_info_map.GetMap();
-  VLOG(1) << "Custom Operator: size of op meta info map - "
+  VLOG(3) << "Custom Operator: size of op meta info map - "
           << meta_info_map.size();
   // pair: {op_type, OpMetaInfo}
   for (auto& pair : meta_info_map) {
-    VLOG(1) << "Custom Operator: pair first -> op name: " << pair.first;
-    RegisterOperatorWithMetaInfo(pair.second);
+    VLOG(3) << "Custom Operator: pair first -> op name: " << pair.first;
+    RegisterOperatorWithMetaInfo(pair.second, dso_handle);
   }
 }
 
@@ -873,13 +943,13 @@ void RegisterOperatorWithMetaInfoMap(
 // load op api
 void LoadOpMetaInfoAndRegisterOp(const std::string& dso_name) {
   void* handle = paddle::platform::dynload::GetOpDsoHandle(dso_name);
-  VLOG(1) << "load custom_op lib: " << dso_name;
+  VLOG(3) << "load custom_op lib: " << dso_name;
   typedef OpMetaInfoMap& get_op_meta_info_map_t();
   auto* get_op_meta_info_map =
       detail::DynLoad<get_op_meta_info_map_t>(handle, "PD_GetOpMetaInfoMap");
   auto& op_meta_info_map = get_op_meta_info_map();
 
-  RegisterOperatorWithMetaInfoMap(op_meta_info_map);
+  RegisterOperatorWithMetaInfoMap(op_meta_info_map, handle);
 }
 
 }  // namespace framework

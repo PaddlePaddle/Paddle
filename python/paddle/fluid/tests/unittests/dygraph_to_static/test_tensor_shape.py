@@ -217,6 +217,12 @@ def dyfunc_change_shape_after_assign(x):
     return res
 
 
+def dyfunc_len_paddle_shape():
+    x = paddle.to_tensor([1, 2, 3])
+    if len(paddle.shape(x)) > 0:
+        print(x)
+
+
 # 1. Basic tests without control flow
 class TestTensorShapeBasic(unittest.TestCase):
     def setUp(self):
@@ -580,6 +586,12 @@ class TestFindStatiConvertVarShapeSuffixVar(unittest.TestCase):
         func = paddle.jit.to_static(dyfunc_with_if_2, input_spec=[x_spec])
         # Call this function to trigger program translation.
         func.concrete_program
+
+
+class TestPaddleShape(unittest.TestCase):
+    def test_paddle_shape(self):
+        func = paddle.jit.to_static(dyfunc_len_paddle_shape)
+        self.assertEqual('paddle.shape(x)' in func.code, True)
 
 
 if __name__ == '__main__':

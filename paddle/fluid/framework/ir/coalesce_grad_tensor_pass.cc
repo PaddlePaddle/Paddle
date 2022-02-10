@@ -25,13 +25,14 @@ class VarDesc;
 }  // namespace framework
 }  // namespace paddle
 
-DEFINE_double(fuse_parameter_memory_size, -1.0,  // MBytes
-              "fuse_parameter_memory_size is up limited memory size(MB)"
-              "of one group parameters' gradient which is the input "
-              "of communication calling(e.g NCCLAllReduce). "
-              "The default value is 0, it means that "
-              "not set group according to memory_size.");
-DEFINE_int32(
+PADDLE_DEFINE_EXPORTED_double(
+    fuse_parameter_memory_size, -1.0,  // MBytes
+    "fuse_parameter_memory_size is up limited memory size(MB)"
+    "of one group parameters' gradient which is the input "
+    "of communication calling(e.g NCCLAllReduce). "
+    "The default value is 0, it means that "
+    "not set group according to memory_size.");
+PADDLE_DEFINE_EXPORTED_int32(
     fuse_parameter_groups_size, 1,
     "fuse_parameter_groups_size is the up limited size of one group "
     "parameters' gradient. "

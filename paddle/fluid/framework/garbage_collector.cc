@@ -53,6 +53,15 @@ void XPUGarbageCollector::ClearCallback(const std::function<void()> &callback) {
 }
 #endif
 
+#ifdef PADDLE_WITH_IPU
+IPUGarbageCollector::IPUGarbageCollector(const platform::IPUPlace &place,
+                                         size_t max_memory_size)
+    : GarbageCollector(place, max_memory_size) {}
+void IPUGarbageCollector::ClearCallback(const std::function<void()> &callback) {
+  callback();
+}
+#endif
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 UnsafeFastGPUGarbageCollector::UnsafeFastGPUGarbageCollector(
     const platform::CUDAPlace &place, size_t max_memory_size)
@@ -83,24 +92,19 @@ StreamGarbageCollector::StreamGarbageCollector(const platform::CUDAPlace &place,
     : GarbageCollector(place, max_memory_size) {
   platform::CUDADeviceGuard guard(place.device);
 #ifdef PADDLE_WITH_HIP
-  PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamCreate(&stream_));
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&stream_));
 #else
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream_));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&stream_));
   callback_manager_.reset(
       new platform::StreamCallbackManager<gpuStream_t>(stream_));
 #endif
 }
 
 StreamGarbageCollector::~StreamGarbageCollector() {
-  auto place = BOOST_GET_CONST(platform::CUDAPlace, this->dev_ctx_->GetPlace());
+  auto place = this->dev_ctx_->GetPlace();
   platform::CUDADeviceGuard guard(place.device);
-#ifdef PADDLE_WITH_HIP
-  PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream_));
-  PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamDestroy(stream_));
-#else
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream_));
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(stream_));
-#endif
+  platform::GpuStreamSync(stream_);
+  platform::GpuDestroyStream(stream_);
 }
 
 gpuStream_t StreamGarbageCollector::stream() const { return stream_; }
@@ -146,6 +150,56 @@ void NPUUnsafeFastGarbageCollector::ClearCallback(
   callback();
 }
 
+#endif
+
+#ifdef PADDLE_WITH_MLU
+MLUDefaultStreamGarbageCollector::MLUDefaultStreamGarbageCollector(
+    const platform::MLUPlace &place, size_t max_memory_size)
+    : GarbageCollector(place, max_memory_size) {}
+
+void MLUDefaultStreamGarbageCollector::Wait() const {
+  static_cast<platform::MLUDeviceContext *>(this->dev_ctx_)
+      ->WaitStreamCallback();
+}
+
+void MLUDefaultStreamGarbageCollector::ClearCallback(
+    const std::function<void()> &callback) {
+  static_cast<platform::MLUDeviceContext *>(this->dev_ctx_)
+      ->AddStreamCallback(callback);
+}
+MLUUnsafeFastGarbageCollector::MLUUnsafeFastGarbageCollector(
+    const platform::MLUPlace &place, size_t max_memory_size)
+    : GarbageCollector(place, max_memory_size) {}
+
+void MLUUnsafeFastGarbageCollector::ClearCallback(
+    const std::function<void()> &callback) {
+  callback();
+}
+
+MLUStreamGarbageCollector::MLUStreamGarbageCollector(
+    const platform::MLUPlace &place, size_t max_memory_size)
+    : GarbageCollector(place, max_memory_size) {
+  platform::MLUDeviceGuard guard(place.device);
+  PADDLE_ENFORCE_MLU_SUCCESS(cnrtQueueCreate(&stream_));
+  callback_manager_.reset(
+      new platform::StreamCallbackManager<mluStream>(stream_));
+}
+
+MLUStreamGarbageCollector::~MLUStreamGarbageCollector() {
+  auto place = this->dev_ctx_->GetPlace();
+  platform::MLUDeviceGuard guard(place.device);
+  PADDLE_ENFORCE_MLU_SUCCESS(cnrtQueueSync(stream_));
+  PADDLE_ENFORCE_MLU_SUCCESS(cnrtQueueDestroy(stream_));
+}
+
+mluStream MLUStreamGarbageCollector::stream() const { return stream_; }
+
+void MLUStreamGarbageCollector::Wait() const { callback_manager_->Wait(); }
+
+void MLUStreamGarbageCollector::ClearCallback(
+    const std::function<void()> &callback) {
+  callback_manager_->AddCallback(callback);
+}
 #endif
 
 int64_t GetEagerDeletionThreshold() {

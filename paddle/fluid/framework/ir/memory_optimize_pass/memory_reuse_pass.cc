@@ -329,7 +329,7 @@ bool MemoryReusePass::IsVarPairReusable(
 void MemoryReusePass::AddReuseVar(details::ComputationOpHandle *op,
                                   details::VarHandle *in_var,
                                   details::VarHandle *out_var,
-                                  bool share_dims) const {
+                                  bool share_dims_and_dtype) const {
   PADDLE_ENFORCE_GT(
       (*var_infos_)[op->GetScopeIdx()].count(in_var->Name()), 0,
       platform::errors::NotFound("Var(%s) does not in mem opt var infos.",
@@ -349,8 +349,8 @@ void MemoryReusePass::AddReuseVar(details::ComputationOpHandle *op,
     share_buffer_op->AddInput(in_var);
   }
 
-  if (share_dims) {
-    share_buffer_op->SetShareDims(true);
+  if (share_dims_and_dtype) {
+    share_buffer_op->SetShareDimsAndDtype(true);
   }
 
   share_buffer_op->AddReuseVarPair(

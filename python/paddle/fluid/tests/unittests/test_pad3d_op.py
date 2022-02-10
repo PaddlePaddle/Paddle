@@ -732,6 +732,15 @@ class TestPad3dOpError(unittest.TestCase):
                       mode='circular',
                       data_format="NCDHW")
 
+        def test_replicate_1():
+            input_shape = (1, 2, 0, 4, 5)
+            data = np.random.rand(*input_shape).astype(np.float32)
+            x = paddle.to_tensor(data)
+            y = F.pad(x,
+                      pad=[1, 1, 1, 1, 2, 3],
+                      mode='replicate',
+                      data_format="NCDHW")
+
         paddle.disable_static()
         for place in self.places:
             self.assertRaises(ValueError, test_variable)
@@ -739,6 +748,7 @@ class TestPad3dOpError(unittest.TestCase):
             self.assertRaises(Exception, test_reflect_2)
             self.assertRaises(Exception, test_reflect_3)
             self.assertRaises(Exception, test_circular_1)
+            self.assertRaises(Exception, test_replicate_1)
         paddle.enable_static()
 
 

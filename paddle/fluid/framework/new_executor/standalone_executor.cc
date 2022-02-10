@@ -23,81 +23,82 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     : place_(place),
       startup_prog_(startup_prog),
       main_prog_(main_prog),
-      outer_scope_(scope) {
-  paddle::framework::InitDevices();
-
-  // init scope
-  BuildVariableOuterScope(startup_prog, &global_scope_, scope);
-
-  if (outer_scope_ != nullptr) {
-    auto name_list = outer_scope_->LocalVarNames();
+      global_scope_(VariableScope(scope)) {
+  // NOTE(zhiqiu): it is needed to sync thhe variables in scope to
+  // variable_scope,
+  // since the some variable only exists in startup program, e.g,
+  // lod_tensor_blocking_queue_0 used in dataloader.
+  // These variables may be created in scope during runing startup program with
+  // original executor.
+  if (scope) {
+    auto name_list = scope->LocalVarNames();
     for (auto name : name_list) {
-      auto v = outer_scope_->Var(name);
-      if (global_scope_.name2id.find(name) == global_scope_.name2id.end()) {
-        global_scope_.name2id[name] = global_scope_.var_list.size();
+      VLOG(4) << "Sync Variable from variable scope: " << name;
+      auto v = scope->Var(name);
+      if (!global_scope_.HasVar(name)) {
+        global_scope_.AddVar(name, *v);
       }
-
-      global_scope_.var_list.push_back(v);
-
-      VariableMetaInfo info;
-      info.var_ref_count_ = 0;
-      info.vardesc_ = nullptr;
-      global_scope_.vec_meta_info_.push_back(info);
     }
   }
 
-  // run startup program
-  std::vector<paddle::framework::OpFuncNode> vec_func_list;
-  std::vector<paddle::framework::OperatorBase*> op_list;
-  paddle::framework::interpretercore::build_op_func_list(
-      place_, startup_prog, &op_list, &vec_func_list, &global_scope_);
+  // NOTE(zhiqiu): for startup_program, initialize scope and run once
+  // if startup_program is empty, the scope is initialize during first run
+  if (startup_prog.Block(0).AllOps().size() > 0) {
+    VLOG(4) << "Run startup program";
+    // init scope
+    BuildVariableScope(startup_prog, &global_scope_);
+    std::vector<paddle::framework::OpFuncNode> vec_func_list;
+    // No need to use_local_scope for startup_program, its variables are
+    // persistable
+    paddle::framework::interpreter::build_op_func_list(
+        place_, startup_prog.Block(0), &vec_func_list, &global_scope_, false);
+  }
 }
 
 paddle::framework::FetchList StandaloneExecutor::Run(
     const std::vector<std::string>& feed_names,
-    const std::vector<framework::Tensor>& feed_tensors,
+    const std::vector<framework::LoDTensor>& feed_tensors,
     const std::vector<std::string>& fetch_names) {
-  auto core = GetInterpreterCore(feed_names, fetch_names);
+  auto core = GetInterpreterCore(feed_names, fetch_names, true);
 
-  return core->Run(feed_tensors);
+  return core->Run(feed_names, feed_tensors);
 }
 
-const CostInfo& StandaloneExecutor::DryRun(
+paddle::framework::FetchList StandaloneExecutor::Run(
     const std::vector<std::string>& feed_names,
-    const std::vector<framework::Tensor>& feed_tensors) {
-  auto core = GetInterpreterCore(feed_names, {});
-
-  auto& cost_info = core->DryRun(feed_tensors);
-  return cost_info;
+    const std::vector<std::string>& fetch_names) {
+  auto core = GetInterpreterCore(feed_names, fetch_names, false);
+  VLOG(4) << "StandaloneExecutor: " << this << ", InterpreterCore: " << core;
+  return core->Run(feed_names);
 }
 
-void StandaloneExecutor::BuildVariableOuterScope(
-    const framework::ProgramDesc& pdesc, VariableScope* var_scope,
-    Scope* outer_scope) {
+framework::interpreter::CostInfo StandaloneExecutor::DryRun(
+    const std::vector<std::string>& feed_names,
+    const std::vector<framework::LoDTensor>& feed_tensors) {
+  auto core = GetInterpreterCore(feed_names, {}, true);
+
+  return core->DryRun(feed_names, feed_tensors);
+}
+
+void StandaloneExecutor::BuildVariableScope(const framework::ProgramDesc& pdesc,
+                                            VariableScope* var_scope) {
   auto& global_block = pdesc.Block(0);
 
   for (auto& var : global_block.AllVars()) {
     if (var->Name() == framework::kEmptyVarName) {
       continue;
     }
-
-    if (var_scope->name2id.find(var->Name()) == var_scope->name2id.end()) {
-      var_scope->name2id[var->Name()] = var_scope->var_list.size();
-      auto v = outer_scope->Var(var->Name());
-      InitializeVariable(v, var->GetType());
-      var_scope->var_list.push_back(v);
-
-      VariableMetaInfo info;
-      info.var_ref_count_ = 0;
-      info.vardesc_ = var;
-      var_scope->vec_meta_info_.push_back(info);
+    if (!var_scope->HasVar(var->Name())) {
+      VLOG(4) << "Create variable from startup_prog: "
+              << var->Proto()->SerializeAsString();
+      var_scope->AddVar(var->Name(), var);
     }
   }
 }
 
 std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
     const std::vector<std::string>& feed_names,
-    const std::vector<std::string>& fetch_names) {
+    const std::vector<std::string>& fetch_names, bool add_fetch_op) {
   std::ostringstream oss;
   oss << "feed:";
   for (auto& feedname : feed_names) {
@@ -112,8 +113,22 @@ std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
 
   if (iter == interpretercores_.end()) {
     VLOG(3) << "create interpreter_core for " << oss.str();
-    auto core = std::make_shared<InterpreterCore>(
-        place_, main_prog_, &global_scope_, feed_names, fetch_names);
+    VLOG(3) << "add fetch op: " << add_fetch_op;
+    std::shared_ptr<InterpreterCore> core = nullptr;
+    if (add_fetch_op) {
+      // NOTE(Aurelius84): `add_fetch` will modify BlockDesc, so we should copy
+      // a
+      // new program.
+      auto new_prog = std::make_shared<framework::ProgramDesc>(main_prog_);
+      auto* block = new_prog->MutableBlock(0);
+      interpreter::add_fetch(fetch_names, block);
+
+      core = std::make_shared<InterpreterCore>(place_, *block, &global_scope_);
+      core->SetCopyProgram(new_prog);
+    } else {
+      core = std::make_shared<InterpreterCore>(place_, main_prog_.Block(0),
+                                               &global_scope_);
+    }
     interpretercores_.emplace(oss.str(), core);
     return core;
   } else {

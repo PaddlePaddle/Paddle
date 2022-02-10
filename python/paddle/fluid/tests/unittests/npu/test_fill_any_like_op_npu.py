@@ -57,6 +57,12 @@ class TestFillAnyLikeNPUOpInt32(TestFillAnyLikeNPUOp):
         self.value = -1
 
 
+class TestFillAnyLikeNPUOpInt64(TestFillAnyLikeNPUOp):
+    def init(self):
+        self.dtype = np.int64
+        self.value = -1
+
+
 class TestFillAnyLikeNPUOpFloat32(TestFillAnyLikeNPUOp):
     def init(self):
         self.dtype = np.float32

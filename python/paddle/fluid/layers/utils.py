@@ -363,7 +363,7 @@ def convert_shape_to_list(shape):
     """
     if isinstance(shape, (list, tuple)):
         shape = list(
-            map(lambda x: x.numpy()[0] if isinstance(x, Variable) else x,
+            map(lambda x: x.numpy().flat[0] if isinstance(x, Variable) else x,
                 shape))
     else:
         shape = shape.numpy().astype(int).tolist()

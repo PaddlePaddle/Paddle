@@ -13,18 +13,28 @@
 # limitations under the License.
 
 from paddle.fluid.dygraph.amp import AmpScaler
+from paddle.fluid.dygraph.amp import OptimizerState
+from collections import defaultdict
 
 __all__ = []
+
+
+def _refresh_optimizer_state():
+    return {"state": OptimizerState.INIT}
 
 
 class GradScaler(AmpScaler):
     """
     GradScaler is used for Auto-Mixed-Precision training in dynamic graph mode. 
     It controls the scaling of loss, helps avoiding numerical overflow.
-    The object of this class has two methods `scale()`, `minimize()`.
+    The object of this class has nineteen methods `scale()`, `unscale_()`, `minimize()`, `step()`, `update()` and `get`/`set` api of parameters.
 
     `scale()` is used to multiply the loss by a scale ratio.
-    `minimize()` is similar as `optimizer.minimize()`, performs parameters updating.
+    `unscale_()` is used to unscale the gradients of parameters, multiplies the gradients of parameters by 1/(scale ratio)
+    `minimize()` is similar as `optimizer.minimize()`, performs parameters updating, and it will update the loss_scaling, it equal to `step()` + `update()`.
+    `step()` is similar as `optimizer.step()`, which performs parameters updating.
+    `update` is used to update the loss_scaling.
+
 
     Commonly, it is used together with `paddle.amp.auto_cast` to achieve Auto-Mixed-Precision in 
     dynamic graph mode.
@@ -115,7 +125,7 @@ class GradScaler(AmpScaler):
         This function is similar as `optimizer.minimize()`, which performs parameters updating.
         
         If the scaled gradients of parameters contains NAN or INF, the parameters updating is skipped.
-        Otherwise, it first unscales the scaled gradients of parameters, then updates the parameters.
+        Otherwise, if `unscale_()` has not been called, it first unscales the scaled gradients of parameters, then updates the parameters.
 
         Finally, the loss scaling ratio is updated.
 
@@ -151,16 +161,18 @@ class GradScaler(AmpScaler):
         This function is similar as `optimizer.step()`, which performs parameters updating.
         
         If the scaled gradients of parameters contains NAN or INF, the parameters updating is skipped.
-        Otherwise, it first unscales the scaled gradients of parameters, then updates the parameters.
+        Otherwise, if `unscale_()` has not been called, it first unscales the scaled gradients of parameters, then updates the parameters.
 
         Args:
             optimizer(Optimizer):  The optimizer used to update parameters.
 
         Examples:
+
             .. code-block:: python
             
                 # required: gpu
                 import paddle
+
                 model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
                 optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
@@ -170,14 +182,21 @@ class GradScaler(AmpScaler):
                     loss = paddle.mean(conv)
                 scaled = scaler.scale(loss)  # scale the loss 
                 scaled.backward()            # do backward
-                scaler.step(optimizer)
+                scaler.step(optimizer)       # update parameters
+                scaler.update()              # update the loss scaling ratio
                 optimizer.clear_grad()
         """
         if not self._enable:
             return optimizer.step()
 
+        optimizer_state = self._optimizer_states[id(optimizer)]
+        if optimizer_state["state"] is OptimizerState.STEPPED:
+            raise RuntimeError(
+                "step() has already been called since the last update().")
+
         #  unscale the grad
-        self._unscale(optimizer)
+        if optimizer_state["state"] is OptimizerState.INIT:
+            self._unscale(optimizer)
 
         if self._found_inf:
             self._cache_founf_inf = True
@@ -185,9 +204,75 @@ class GradScaler(AmpScaler):
             optimizer.step()
             self._cache_founf_inf = False
 
+        optimizer_state["state"] = OptimizerState.STEPPED
+
+        if not self._use_dynamic_loss_scaling:
+            self._optimizer_states = defaultdict(_refresh_optimizer_state)
+
+    def update(self):
+        """
+        Updates the loss_scaling.
+        
+        Examples:
+
+            .. code-block:: python
+            
+                # required: gpu
+                import paddle
+
+                model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
+                optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
+                scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+                data = paddle.rand([10, 3, 32, 32])
+                with paddle.amp.auto_cast():
+                    conv = model(data)
+                    loss = paddle.mean(conv)
+                scaled = scaler.scale(loss)     # scale the loss 
+                scaled.backward()               # do backward
+                scaler.step(optimizer)          # update parameters
+                scaler.update()                 # update the loss scaling ratio
+                optimizer.clear_grad() 
+        """
+        if not self._enable:
+            return
         if self._use_dynamic_loss_scaling:
-            # uopdate the scale
             self._update()
+            self._optimizer_states = defaultdict(_refresh_optimizer_state)
+        return
+
+    def unscale_(self, optimizer):
+        """
+        Unscale the gradients of parameters, multiplies the gradients of parameters by 1/(loss scaling ratio).  
+        If this instance of :class:`GradScaler` is not enabled, output are returned unmodified.
+
+        Args:
+            optimizer(Optimizer):  The optimizer used to update parameters.
+
+        Returns:
+            The unscaled parameters or original parameters.
+        
+        Examples:
+
+            .. code-block:: python
+
+                # required: gpu
+                import paddle
+
+                model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
+                optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
+                scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+                data = paddle.rand([10, 3, 32, 32])
+                with paddle.amp.auto_cast():
+                    conv = model(data)
+                    loss = paddle.mean(conv)
+                scaled = scaler.scale(loss)  # scale the loss 
+                scaled.backward()            # do backward
+                scaler.unscale_(optimizer)    # unscale the parameter
+                scaler.step(optimizer)
+                scaler.update()  
+                optimizer.clear_grad() 
+        """
+        return super(GradScaler, self)._unscale(optimizer)
 
     def is_enable(self):
         """
@@ -494,11 +579,15 @@ class GradScaler(AmpScaler):
 
         Reurns:
             A dict of scaler includes:
-            init_loss_scaling (float, optional): The initial loss scaling factor.
-            incr_ratio(float, optional): The multiplier to use when increasing the loss scaling.
-            decr_ratio(float, optional): The less-than-one-multiplier to use when decreasing the loss scaling.
-            incr_every_n_steps(int, optional): Increases loss scaling every n consecutive steps with finite gradients.
-            decr_every_n_nan_or_inf(int, optional): Decreases loss scaling every n accumulated steps with nan or inf gradients.
+            scale (tensor): The loss scaling factor.
+            incr_ratio(float): The multiplier to use when increasing the loss scaling.
+            decr_ratio(float): The less-than-one-multiplier to use when decreasing the loss scaling.
+            incr_every_n_steps(int): Increases loss scaling every n consecutive steps with finite gradients.
+            decr_every_n_nan_or_inf(int): Decreases loss scaling every n accumulated steps with nan or inf gradients.
+            incr_count(int): The number of recent consecutive unskipped steps.
+            decr_count(int): The number of recent consecutive skipped steps.
+            use_dynamic_loss_scaling(bool): Whether to use dynamic loss scaling. If False, fixed loss_scaling is used. If True, the loss scaling is updated dynamicly. Default is True.
+
         
         Examples:
 

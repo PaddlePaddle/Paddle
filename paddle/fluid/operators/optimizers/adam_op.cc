@@ -236,6 +236,10 @@ class AdamWOpMaker : public AdamOpMaker {
  public:
   void Make() {
     AdamOpMaker::Make();
+    AddAttr<float>("lr_ratio",
+                   "(float, default 1.0) "
+                   "layerwise learning rate decay")
+        .SetDefault(1.0f);
     AddAttr<float>("coeff",
                    "(float, default 0.01) "
                    "coeff of the weight decay")

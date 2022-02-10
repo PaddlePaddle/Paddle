@@ -359,8 +359,9 @@ class Upsample(Layer):
         ValueError: The 'mode' of image_resize can only be 'linear', 'bilinear',
                     'trilinear', 'bicubic', or 'nearest' currently.
         ValueError: 'linear' only support 3-D tensor.
-        ValueError: 'bilinear', 'bicubic' and 'nearest' only support 4-D tensor.
+        ValueError: 'bilinear' and 'bicubic'  only support 4-D tensor.
         ValueError: 'trilinear' only support 5-D tensor.
+        ValueError: 'nearest' only support 4-D or 5-D tensor.
         ValueError: One of size and scale_factor must not be None.
         ValueError: size length should be 1 for input 3-D tensor.
         ValueError: size length should be 2 for input 4-D tensor.
@@ -1108,6 +1109,72 @@ class Pad2D(Layer):
             self._pad, self._mode, self._value, self._data_format, name_str)
 
 
+class ZeroPad2D(Layer):
+    """
+    This interface is used to construct a callable object of the ``ZeroPad2D`` class.
+    Pads the input tensor boundaries with zero.
+
+    Parameters:
+        padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
+            same padding in all dimensions. Else [len(padding)/2] dimensions of input will be padded.
+            The pad has the form (pad_left, pad_right, pad_top, pad_bottom).
+        data_format (str): An string from: "NCHW", "NHWC". Specify the data format of the input data.
+           Default is  "NCHW"
+        name (str, optional) : The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - x(Tensor): The input tensor of zeropad2d operator, which is a 4-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of zeropad2d operator, which is a 4-D tensor.
+          The data type is same as input x.
+
+    Examples:
+        Examples are as follows.
+
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn as nn
+            import numpy as np
+
+            input_shape = (1, 1, 2, 3)
+            pad = [1, 0, 1, 2]
+            data = paddle.arange(np.prod(input_shape), dtype="float32").reshape(input_shape) + 1
+
+            my_pad = nn.ZeroPad2D(padding=pad)
+            result = my_pad(data)
+
+            print(result)
+            # [[[[0. 0. 0. 0.]
+            #    [0. 1. 2. 3.]
+            #    [0. 4. 5. 6.]
+            #    [0. 0. 0. 0.]
+            #    [0. 0. 0. 0.]]]]
+    """
+
+    def __init__(self, padding, data_format="NCHW", name=None):
+        super(ZeroPad2D, self).__init__()
+        self._pad = _npairs(padding, 2)
+        self._mode = 'constant'
+        self._value = 0.
+        self._data_format = data_format
+        self._name = name
+
+    def forward(self, x):
+        return F.pad(x,
+                     pad=self._pad,
+                     mode=self._mode,
+                     value=self._value,
+                     data_format=self._data_format,
+                     name=self._name)
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'padding={}, data_format={}{}'.format(
+            self._pad, self._data_format, name_str)
+
+
 class Pad3D(Layer):
     """
     This interface is used to construct a callable object of the ``Pad3D`` class.
@@ -1390,7 +1457,8 @@ class Embedding(Layer):
             is_bias=False)
 
         if in_dygraph_mode() and padding_idx != -1:
-            self.weight[padding_idx] = 0.0
+            with paddle.no_grad():
+                self.weight[padding_idx] = 0.0
 
     def forward(self, x):
         return F.embedding(
@@ -1454,7 +1522,7 @@ class Unfold(Layer):
             unfold = nn.Unfold(kernel_sizes=[3, 3])
             result = unfold(x)
             print(result)
-   """
+    """
 
     def __init__(self,
                  kernel_sizes,
@@ -1473,6 +1541,95 @@ class Unfold(Layer):
     def forward(self, input):
         return F.unfold(
             input,
+            kernel_sizes=self.kernel_sizes,
+            strides=self.strides,
+            paddings=self.paddings,
+            dilations=self.dilations,
+            name=self.name)
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'kernel_size={}, dilation={}, padding={}, stride={}{}'.\
+                format(self.kernel_sizes, self.dilations, self.paddings, self.strides, name_str)
+
+
+class Fold(Layer):
+    """
+
+    This Op is used to combines an array of sliding local blocks into a large containing
+    tensor. also known as col2im when operated on batched 2D image tensor. Fold calculates each 
+    combined value in the resulting large tensor by summing all values from all containing blocks. 
+
+
+    For each input :math:`x` with shape [N, C_in , L], the output shape [N, C_out, H_out, W_out]
+    can be calculated as following.
+
+    .. math::
+
+        H_out &= output_size[0]
+        W_out &= output_size[1]
+        C_out &= C_in / kernel\_sizes[0] / kernel\_sizes[1]
+
+    Parameters:
+        output_sizes(list):       The size of output size, should be [output_size_h, output_size_w]
+                                  or an interger o treated as [o, o].
+        kernel_sizes(int|list):   The size of convolution kernel, should be [k_h, k_w]
+                                  or an integer k treated as [k, k].
+        strides(int|list):        The strides, should be [stride_h, stride_w]
+                                  or an integer stride treated as [sride, stride].
+                                  For default, strides will be [1, 1].
+        paddings(int|list):       The paddings of each dimension, should be
+                                  [padding_top, padding_left, padding_bottom, padding_right]
+                                  or [padding_h, padding_w] or an integer padding.
+                                  If [padding_h, padding_w] was given, it will expanded to
+                                  [padding_h, padding_w, padding_h, padding_w]. If an integer
+                                  padding was given, [padding, padding, padding, padding] will
+                                  be used. For default, paddings will be [0, 0, 0, 0]
+        dilations(int|list):      the dilations of convolution kernel, should be
+                                  [dilation_h, dilation_w], or an integer dilation treated as
+                                  [dilation, dilation]. For default, it will be [1, 1].
+        name(str, optional): The default value is None.
+                             Normally there is no need for user to set this property.
+                             For more information, please refer to :ref:`api_guide_Name`
+
+
+    Returns:
+        The tensor formed by combining a group of sliding local blocks
+        The output shape is [N, Cout, H, W] as decriabled above.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn as nn
+
+            x = paddle.randn([2,12,9])
+            fold = nn.Fold(output_sizes=(4, 4), kernel_sizes=2)
+            y = fold(x)
+            # y.shape = [2,3,4,4]
+   """
+
+    def __init__(self,
+                 output_sizes,
+                 kernel_sizes,
+                 dilations=1,
+                 paddings=0,
+                 strides=1,
+                 name=None):
+        super(Fold, self).__init__()
+
+        self.output_sizes = output_sizes
+        self.kernel_sizes = kernel_sizes
+        self.dilations = dilations
+        self.paddings = paddings
+        self.strides = strides
+        self.name = name
+
+    def forward(self, input):
+        return F.fold(
+            input,
+            output_sizes=self.output_sizes,
             kernel_sizes=self.kernel_sizes,
             strides=self.strides,
             paddings=self.paddings,

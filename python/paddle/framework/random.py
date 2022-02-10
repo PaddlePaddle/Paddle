@@ -122,3 +122,11 @@ def _manual_program_seed(seed):
     fluid.default_startup_program().random_seed = seed
     program = fluid.Program()
     program.global_seed(seed)
+
+
+def set_random_seed_generator(name, seed):
+    core.set_random_seed_generator(name, seed)
+
+
+def get_random_seed_generator(name):
+    return core.get_random_seed_generator(name)

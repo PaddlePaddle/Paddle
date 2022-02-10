@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/truncated_gaussian_random_op.h"
 #include <memory>
 #include <string>
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -31,7 +31,8 @@ class TruncatedGaussianRandomNPUKernel : public framework::OpKernel<T> {
     Tensor shape_tensor(framework::proto::VarType::INT32);
     shape_tensor.mutable_data<int32_t>({static_cast<int>(shape.size())},
                                        ctx.GetPlace());
-    TensorFromVector(shape, ctx.device_context(), &shape_tensor);
+    paddle::framework::TensorFromVector(shape, ctx.device_context(),
+                                        &shape_tensor);
     float mean = ctx.Attr<float>("mean");
     Tensor mean_tensor(framework::proto::VarType::FP32);
     mean_tensor.mutable_data<float>({1}, ctx.GetPlace());

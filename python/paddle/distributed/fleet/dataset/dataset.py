@@ -141,6 +141,23 @@ class DatasetBase(object):
     def _set_input_type(self, input_type):
         self.proto_desc.input_type = input_type
 
+    def _set_uid_slot(self, uid_slot):
+        """
+        Set user slot name.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetBase()
+              dataset._set_uid_slot('6048')
+
+        Args:
+            set_uid_slot(string): user slot name
+        """
+        multi_slot = self.proto_desc.multi_slot_desc
+        multi_slot.uid_slot = uid_slot
+
     def _set_use_var(self, var_list):
         """
         Set Variables which you will use.
@@ -738,6 +755,23 @@ class InMemoryDataset(DatasetBase):
         self.merge_by_lineid = True
         self.parse_ins_id = True
 
+    def _set_shuffle_by_uid(self, enable_shuffle_uid):
+        """
+        Set if Dataset need to shuffle by uid.
+
+        Args:
+            set_shuffle_by_uid(bool): if shuffle according to uid or not
+
+        Examples:
+            .. code-block:: python
+
+              import paddle
+              paddle.enable_static()
+              dataset = paddle.distributed.InMemoryDataset()
+              dataset._set_shuffle_by_uid(True)
+        """
+        self.dataset.set_shuffle_by_uid(enable_shuffle_uid)
+
     def _set_generate_unique_feasigns(self, generate_uni_feasigns, shard_num):
         self.dataset.set_generate_unique_feasigns(generate_uni_feasigns)
         self.gen_uni_feasigns = generate_uni_feasigns
@@ -747,6 +781,48 @@ class InMemoryDataset(DatasetBase):
                                       consume_thread_num, shard_num):
         self.dataset.generate_local_tables_unlock(
             table_id, fea_dim, read_thread_num, consume_thread_num, shard_num)
+
+    def set_date(self, date):
+        """
+        :api_attr: Static Graph
+
+        Set training date for pull sparse parameters, saving and loading model. Only used in psgpu
+
+        Args:
+            date(str): training date(format : YYMMDD). eg.20211111
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                paddle.enable_static()
+
+                dataset = paddle.distributed.InMemoryDataset()
+                slots = ["slot1", "slot2", "slot3", "slot4"]
+                slots_vars = []
+                for slot in slots:
+                    var = paddle.static.data(
+                        name=slot, shape=[None, 1], dtype="int64", lod_level=1)
+                    slots_vars.append(var)
+                dataset.init(
+                    batch_size=1,
+                    thread_num=2,
+                    input_type=1,
+                    pipe_command="cat",
+                    use_var=slots_vars)
+                dataset.set_date("20211111")
+        """
+        year = int(date[:4])
+        month = int(date[4:6])
+        day = int(date[6:])
+        if self.use_ps_gpu and core._is_compiled_with_heterps():
+            self.psgpu.set_date(year, month, day)
+
+    def tdm_sample(self, tree_name, tree_path, tdm_layer_counts,
+                   start_sample_layer, with_hierachy, seed, id_slot):
+        self.dataset.tdm_sample(tree_name, tree_path, tdm_layer_counts,
+                                start_sample_layer, with_hierachy, seed,
+                                id_slot)
 
     def load_into_memory(self, is_shuffle=False):
         """

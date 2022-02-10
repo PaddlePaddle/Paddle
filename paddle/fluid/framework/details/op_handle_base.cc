@@ -35,9 +35,9 @@ OpHandleBase::~OpHandleBase() PADDLE_MAY_THROW {
   for (auto &ev : events_) {
     if (ev.second) {
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipEventDestroy(ev.second));
+      PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(ev.second));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(ev.second));
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(ev.second));
 #endif
     }
   }
@@ -47,13 +47,13 @@ OpHandleBase::~OpHandleBase() PADDLE_MAY_THROW {
 void OpHandleBase::InitCUDA() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   for (auto &p : dev_ctxes_) {
-    int dev_id = BOOST_GET_CONST(platform::CUDAPlace, p.first).device;
+    int dev_id = p.first.device;
     platform::SetDeviceId(dev_id);
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         hipEventCreateWithFlags(&events_[dev_id], hipEventDisableTiming));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         cudaEventCreateWithFlags(&events_[dev_id], cudaEventDisableTiming));
 #endif
   }
@@ -61,9 +61,7 @@ void OpHandleBase::InitCUDA() {
     for (auto &out_var : outputs_) {
       auto *out_var_handle = dynamic_cast<VarHandle *>(out_var);
       if (out_var_handle) {
-        int dev_id =
-            BOOST_GET_CONST(platform::CUDAPlace, out_var_handle->place())
-                .device;
+        int dev_id = out_var_handle->place().device;
         out_var_handle->SetGenerateEvent(events_.at(dev_id));
       }
     }
@@ -74,7 +72,7 @@ void OpHandleBase::InitCUDA() {
             "Operator %s should have only one dev_ctx, but got %d.", Name(),
             dev_ctxes_.size()));
     auto &place = dev_ctxes_.begin()->first;
-    int dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
+    int dev_id = place.device;
     for (auto &out_var : outputs_) {
       auto *out_var_handle = dynamic_cast<VarHandle *>(out_var);
       if (out_var_handle) {
@@ -109,10 +107,8 @@ void OpHandleBase::InitXPU() {
                       platform::errors::InvalidArgument(
                           "%s should have only one dev_ctx.", Name()));
     auto &place = dev_ctxes_.begin()->first;
-    int dev_id = BOOST_GET_CONST(platform::XPUPlace, place).device;
-    PADDLE_ENFORCE_EQ(
-        xpu_set_device(dev_id), XPU_SUCCESS,
-        platform::errors::PreconditionNotMet("xpu_set_device failed"));
+    int dev_id = place.device;
+    platform::SetXPUDeviceId(dev_id);
     for (auto &out_var : outputs_) {
       auto *out_var_handle = dynamic_cast<VarHandle *>(out_var);
       if (out_var_handle) {
@@ -182,9 +178,9 @@ void OpHandleBase::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
         static_cast<platform::CUDADeviceContext *>(waited_ctx)->stream();
     for (auto &ev : events_) {
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamWaitEvent(stream, ev.second, 0));
+      PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(stream, ev.second, 0));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamWaitEvent(stream, ev.second, 0));
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(stream, ev.second, 0));
 #endif
     }
   }
@@ -221,10 +217,10 @@ void OpHandleBase::WaitInputVarGenerated(bool wait_for_feed) {
               static_cast<platform::CUDADeviceContext *>(dev_ctxes_.at(place))
                   ->stream();
 #ifdef PADDLE_WITH_HIP
-          PADDLE_ENFORCE_CUDA_SUCCESS(
+          PADDLE_ENFORCE_GPU_SUCCESS(
               hipStreamWaitEvent(stream, in_var_handle->GetEvent(), 0));
 #else
-          PADDLE_ENFORCE_CUDA_SUCCESS(
+          PADDLE_ENFORCE_GPU_SUCCESS(
               cudaStreamWaitEvent(stream, in_var_handle->GetEvent(), 0));
 #endif
 #else
@@ -250,11 +246,7 @@ void OpHandleBase::WaitInputVarGenerated(bool wait_for_feed) {
             auto stream =
                 static_cast<platform::CUDADeviceContext *>(pool.Get(place))
                     ->stream();
-#ifdef PADDLE_WITH_HIP
-            PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream));
-#else
-            PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
-#endif
+            platform::GpuStreamSync(stream);
 #else
             PADDLE_THROW(platform::errors::PreconditionNotMet(
                 "Not compiled with CUDA."));
@@ -279,10 +271,10 @@ void OpHandleBase::WaitInputVarGenerated(const platform::Place &place) {
                             dev_ctxes_.at(in_var_handle->place()))
                             ->stream();
 #ifdef PADDLE_WITH_HIP
-          PADDLE_ENFORCE_CUDA_SUCCESS(
+          PADDLE_ENFORCE_GPU_SUCCESS(
               hipStreamWaitEvent(stream, in_var_handle->GetEvent(), 0));
 #else
-          PADDLE_ENFORCE_CUDA_SUCCESS(
+          PADDLE_ENFORCE_GPU_SUCCESS(
               cudaStreamWaitEvent(stream, in_var_handle->GetEvent(), 0));
 #endif
 #else
@@ -315,14 +307,14 @@ void OpHandleBase::RunAndRecordEvent(const std::function<void()> &callback) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (!events_.empty()) {  // Use event
     for (auto &p : dev_ctxes_) {
-      auto dev_id = BOOST_GET_CONST(platform::CUDAPlace, p.first).device;
+      auto dev_id = p.first.device;
       auto *cuda_dev_ctx = static_cast<platform::CUDADeviceContext *>(p.second);
       VLOG(10) << "cudadevicecontext:" << cuda_dev_ctx << ", dev_id:" << dev_id;
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           hipEventRecord(events_.at(dev_id), cuda_dev_ctx->stream()));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           cudaEventRecord(events_.at(dev_id), cuda_dev_ctx->stream()));
 #endif
     }
@@ -338,8 +330,7 @@ void OpHandleBase::RunAndRecordEvent(platform::Place p,
   } else {
     auto *ctx = dev_ctxes_.at(p);
     auto *cuda_ctx = static_cast<platform::CUDADeviceContext *>(ctx);
-    cuda_ctx->RecordEvent(
-        events_.at(BOOST_GET_CONST(platform::CUDAPlace, p).device), callback);
+    cuda_ctx->RecordEvent(events_.at(p.device), callback);
   }
 #else
   callback();

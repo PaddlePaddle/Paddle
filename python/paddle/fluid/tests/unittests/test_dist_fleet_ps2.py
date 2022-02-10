@@ -167,6 +167,15 @@ class TestPSPassWithBow(unittest.TestCase):
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
+
+        configs = {}
+        configs['__emb__'] = {
+            "table_parameters.__emb__.accessor.embed_sgd_param.name":
+            "SparseNaiveSGDRule",
+            "table_parameters.__emb__.accessor.embedx_sgd_param.name":
+            "SparseAdamSGDRule",
+        }
+        strategy.sparse_table_configs = configs
         optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(loss)

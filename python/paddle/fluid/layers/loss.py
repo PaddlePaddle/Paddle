@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import numpy as np
 from functools import partial, reduce
+import paddle
 from paddle.utils import deprecated
 from . import nn
 from .layer_function_generator import templatedoc
@@ -478,9 +479,7 @@ def warpctc(input,
             blank=0,
             norm_by_times=False,
             input_length=None,
-            label_length=None,
-            norm_by_batchsize=False,
-            norm_by_total_logits_len=False):
+            label_length=None):
     """
     An operator integrating the open source Warp-CTC library
     (https://github.com/baidu-research/warp-ctc)
@@ -517,12 +516,6 @@ def warpctc(input,
          of Tensor type, it should have shape `[batch_size]` and dtype int64.
        label_length(Variable): The length for each label sequence if it is
          of Tensor type, it should have shape `[batch_size]` and dtype int64.
-       norm_by_batchsize (bool): normalize the loss by the batch size. 
-            If `True`, supersedes  `norm_by_times`
-            (default: `False`)
-       norm_by_total_logits_len (bool): normalize the loss by the total number of frames
-            in the batch. If `True`, supersedes `norm_by_batchsize` and `norm_by_times`
-            (default: `False`)
 
     Returns:
         Variable: The Connectionist Temporal Classification (CTC) loss,
@@ -610,12 +603,15 @@ def warpctc(input,
                 "input_length and label_length must not be None in dygraph mode!"
             )
         grad, loss_out = _C_ops.warpctc(
-            input, label, input_length, label_length, 'blank', blank,
-            'norm_by_times', norm_by_times, 'norm_by_batchsize',
-            norm_by_batchsize, 'norm_by_total_logits_len',
-            norm_by_total_logits_len)
+            input,
+            label,
+            input_length,
+            label_length,
+            'blank',
+            blank,
+            'norm_by_times',
+            norm_by_times, )
         return loss_out
-
     helper = LayerHelper('warpctc', **locals())
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], "warpctc")
     check_variable_and_dtype(label, 'label', ['int32'], "warpctc")
@@ -639,8 +635,6 @@ def warpctc(input,
         attrs={
             'blank': blank,
             'norm_by_times': norm_by_times,
-            'norm_by_batchsize': norm_by_batchsize,
-            'norm_by_total_logits_len': norm_by_total_logits_len,
         })
     return loss_out
 
@@ -1293,7 +1287,7 @@ def softmax_with_cross_entropy(logits,
     loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
 
     outputs = {'Softmax': softmax, 'Loss': loss}
-    if core.is_compiled_with_npu():
+    if core.is_compiled_with_npu() or core.is_compiled_with_mlu():
         backprop = helper.create_variable_for_type_inference(dtype=logits.dtype)
         outputs['Backprop'] = backprop
     helper.append_op(
@@ -1717,7 +1711,7 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
     batch_size = labels.shape[0]
 
     labels = nn.reshape(labels, shape=[batch_size, 1])
-    labels = nn.expand(labels, expand_times=[1, batch_size])
+    labels = paddle.tile(labels, repeat_times=[1, batch_size])
 
     labels = equal(labels, nn.transpose(labels, perm=[1, 0])).astype('float32')
     labels = labels / nn.reduce_sum(labels, dim=1, keep_dim=True)
@@ -1726,7 +1720,7 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
              + nn.reduce_mean(nn.reduce_sum(square(positive), 1))
     l2loss = l2loss * Beta * l2_reg
 
-    similarity_matrix = nn.matmul(
+    similarity_matrix = paddle.matmul(
         anchor, positive, transpose_x=False, transpose_y=True)
     softmax_ce = softmax_with_cross_entropy(
         logits=similarity_matrix, label=labels, soft_label=True)

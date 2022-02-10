@@ -19,15 +19,28 @@
 #include <tuple>
 #include <unordered_set>
 
-#include "paddle/fluid/imperative/tracer.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/type_defs.h"
 
 namespace paddle {
 namespace imperative {
 
-// Singleton implementation with C++ 11
+// NOTE(zhiqiu): only O1 and O2 are valid now
+enum class AmpLevel {
+  O0 = 0,  // fp32
+  O1,      // amp, mixed fp32-fp16
+  O2,      // almost fp16
+  O3,      // fp16
+};
+
+std::tuple<std::unordered_set<std::string>, std::unordered_set<std::string>,
+           std::unordered_set<std::string>>
+OpSupportedInfos(const std::string& place,
+                 framework::proto::VarType::Type dtype);
+
 class Tracer;
 
+// Singleton implementation with C++ 11
 class AmpOperators {
  public:
   ~AmpOperators();
@@ -63,15 +76,9 @@ std::ostream& operator<<(std::ostream& os, AmpOperators& ops);
 // NOTE(zhiqiu): AutoCastGuard is used for RAII.
 class AutoCastGuard {
  public:
-  AutoCastGuard(std::shared_ptr<Tracer> tracer, bool guard_mode)
-      : tracer_(tracer) {
-    pre_mode_ = tracer_->IsAutoCastEnabled();
-    if (pre_mode_ != guard_mode) {
-      tracer_->SetEnableAutoCast(guard_mode);
-    }
-  }
+  AutoCastGuard(std::shared_ptr<Tracer> tracer, AmpLevel guard_level);
 
-  ~AutoCastGuard() { tracer_->SetEnableAutoCast(pre_mode_); }
+  ~AutoCastGuard();
 
   // forbid copy and operator=
   AutoCastGuard(const AutoCastGuard& guard) = delete;
@@ -79,11 +86,15 @@ class AutoCastGuard {
 
  private:
   std::shared_ptr<Tracer> tracer_;
-  bool pre_mode_;
+  AmpLevel pre_amp_level_;
 };
 
-NameVarBaseMap AutoCastInputs(const std::string& op_type,
-                              const NameVarBaseMap& ins);
+template <typename VarType>
+NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
+                                   const NameVarMap<VarType>& ins);
+template <typename VarType>
+NameVarMap<VarType> CastPureFp16Inputs(const std::string& op_type,
+                                       const NameVarMap<VarType>& ins);
 
 }  // namespace imperative
 }  // namespace paddle

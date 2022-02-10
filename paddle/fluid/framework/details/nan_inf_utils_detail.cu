@@ -40,7 +40,7 @@ static std::vector<std::mutex>& multi_op_var2gpu_str_mutex() {
 }
 
 static void InitMultiGPUOpVarMap() {
-  int dev_count = platform::GetCUDADeviceCount();
+  int dev_count = platform::GetGPUDeviceCount();
   PADDLE_ENFORCE_GT(dev_count, 0,
                     platform::errors::NotFound(
                         "cuda device must > 0, now dev_count=%d", dev_count));
@@ -132,7 +132,7 @@ void TensorCheckerVisitor<platform::CUDADeviceContext>::apply(
 
   auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
       platform::DeviceContextPool::Instance().Get(tensor_.place()));
-  int dev_id = BOOST_GET_CONST(platform::CUDAPlace, tensor_.place()).device;
+  int dev_id = tensor_.place().device;
   PADDLE_ENFORCE_EQ(
       (dev_id >= 0 && dev_id < multi_op_var2gpu_str_mutex().size()), true,
       platform::errors::OutOfRange("GPU dev_id must >=0 and < dev_count=%d",
@@ -161,11 +161,11 @@ void TensorCheckerVisitor<platform::CUDADeviceContext>::apply(
                             op_var));
 
 #ifdef __HIPCC__
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           hipMemcpyAsync(gpu_str_ptr, iter->first.c_str(), op_var.length() + 1,
                          hipMemcpyHostToDevice, dev_ctx->stream()));
 #else
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemcpyAsync(gpu_str_ptr, iter->first.c_str(), op_var.length() + 1,
                           cudaMemcpyHostToDevice, dev_ctx->stream()));
 #endif

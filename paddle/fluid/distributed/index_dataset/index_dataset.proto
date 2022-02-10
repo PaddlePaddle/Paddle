@@ -19,6 +19,7 @@ message IndexNode {
   required uint64 id = 1;
   required bool is_leaf = 2;
   required float probability = 3;
+  optional string item_name = 4;
 }
 
 message TreeMeta {

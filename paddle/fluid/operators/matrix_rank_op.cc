@@ -27,7 +27,7 @@ namespace operators {
 using DDim = framework::DDim;
 
 namespace detail {
-static DDim GetInputBatchDim(const DDim& dim_x) {
+static DDim CheckAndGetOutputDim(const DDim& dim_x) {
   auto x_vec = framework::vectorize(dim_x);
   if (x_vec.size() == 2) {
     return framework::make_ddim({1});
@@ -58,11 +58,8 @@ class MatrixRankeOp : public framework::OperatorWithKernel {
                             "if hermitian == true, matrix should be n*n"));
     }
 
-    DDim dim_x_batch = detail::GetInputBatchDim(dim_x);
-    if (ctx->Attrs().Get<bool>(
-            "use_default_tol")) {  // user not input TolTensor and tol
-      ctx->SetOutputDim("Out", dim_x_batch);
-    } else if (ctx->HasInput("TolTensor")) {
+    DDim dim_x_batch = detail::CheckAndGetOutputDim(dim_x);
+    if (ctx->HasInput("TolTensor")) {
       auto dim_tol = ctx->GetInputDim("TolTensor");
       if (dim_x_batch == dim_tol) {
         ctx->SetOutputDim("Out", dim_x_batch);
@@ -75,9 +72,6 @@ class MatrixRankeOp : public framework::OperatorWithKernel {
         GetBroadcastDimsArrays(dim_x_batch, dim_tol, x_batch_dims_array.data(),
                                tol_dims_array.data(), out_dims_array.data(),
                                max_dim, axis);
-        for (auto& it : out_dims_array) {
-          VLOG(3) << "out dims: " << it;
-        }
         ctx->SetOutputDim("Out", framework::make_ddim(out_dims_array));
       }
     } else {
@@ -100,7 +94,9 @@ class MatrixRankeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "(Tensor), The input tensor of matrix_rank op.");
-    AddInput("TolTensor", "(optional) Tol tensor, shape is same as X batch.")
+    AddInput("TolTensor",
+             "(optional) Tol tensor, shape is same as X batch or can broadcast "
+             "with X batch.")
         .AsDispensable();
     AddOutput("Out", "(Tensor), The output tensor of matrix_rank op.");
     AddAttr<float>("tol", "(float, optional). tol").SetDefault(0.0f);
@@ -223,18 +219,20 @@ class MatrixRankCPUKernel : public framework::OpKernel<T> {
     tol_tensor.Resize(detail::NewAxisDim(tol_tensor.dims(), 1));
 
     Tensor compare_result;
-    compare_result.mutable_data<int>(detail::NewAxisDim(dim_out, k),
-                                     context.GetPlace());
+    compare_result.mutable_data<int64_t>(detail::NewAxisDim(dim_out, k),
+                                         context.GetPlace());
 
     int axis = -1;
     if (eigenvalue_tensor.dims().size() >= tol_tensor.dims().size()) {
-      ElementwiseComputeEx<GreaterThanFunctor<T>, platform::CPUDeviceContext, T,
-                           int>(context, &eigenvalue_tensor, &tol_tensor, axis,
-                                GreaterThanFunctor<T>(), &compare_result);
+      ElementwiseComputeEx<GreaterThanFunctor<T, int64_t>,
+                           platform::CPUDeviceContext, T, int>(
+          context, &eigenvalue_tensor, &tol_tensor, axis,
+          GreaterThanFunctor<T, int64_t>(), &compare_result);
     } else {
-      ElementwiseComputeEx<LessThanFunctor<T>, platform::CPUDeviceContext, T,
-                           int>(context, &eigenvalue_tensor, &tol_tensor, axis,
-                                LessThanFunctor<T>(), &compare_result);
+      ElementwiseComputeEx<LessThanFunctor<T, int64_t>,
+                           platform::CPUDeviceContext, T, int>(
+          context, &eigenvalue_tensor, &tol_tensor, axis,
+          LessThanFunctor<T, int64_t>(), &compare_result);
     }
     auto dito_int =
         math::DeviceIndependenceTensorOperations<platform::CPUDeviceContext,

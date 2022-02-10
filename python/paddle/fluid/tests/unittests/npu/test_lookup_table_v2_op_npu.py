@@ -33,14 +33,15 @@ class TestLookupTableV2(OpTest):
         self.place = paddle.NPUPlace(0)
 
         self.init_dtype()
-        self.init_dim()
+        self.init_dims()
+        self.init_padding_idx()
         np.random.seed(SEED)
-        bsz = 6
-        seqlen = 8
-        vocab = 10
-        w = np.ones([vocab, self.dim]).astype(self.dtype)
-        x = np.random.randint(0, vocab, size=(bsz, seqlen)).astype(np.int32)
-        out = np.ones([bsz, seqlen, self.dim]).astype(self.dtype)
+        w = np.random.random([self.vocab, self.dim]).astype(self.dtype)
+        x = np.random.randint(
+            0, self.vocab, size=(self.bsz, self.seqlen)).astype(self.ids_dtype)
+        out = w[x]
+        if self.padding_idx != -1:
+            out[np.squeeze(x == self.padding_idx)] = np.zeros(self.dim)
 
         self.inputs = {
             'W': OpTest.np_dtype_to_fluid_dtype(w),
@@ -50,7 +51,7 @@ class TestLookupTableV2(OpTest):
             'is_sparse': False,
             'is_distributed': False,
             'remote_prefetch': False,
-            'padding_idx': -1
+            'padding_idx': self.padding_idx
         }
         self.outputs = {'Out': out}
 
@@ -59,10 +60,17 @@ class TestLookupTableV2(OpTest):
 
     def init_dtype(self):
         self.dtype = np.float32
+        self.ids_dtype = np.int32
 
-    def init_dim(self):
+    def init_dims(self):
+        self.bsz = 6
+        self.seqlen = 8
+        self.vocab = 10
         # embedding_dim is not multiple of 32
         self.dim = 20
+
+    def init_padding_idx(self):
+        self.padding_idx = -1
 
     def test_check_output(self):
         self.check_output_with_place(self.place)
@@ -78,6 +86,7 @@ class TestLookupTableV2FP16(TestLookupTableV2):
 
     def init_dtype(self):
         self.dtype = np.float16
+        self.ids_dtype = np.int32
 
     def set_npu(self):
         self.__class__.use_npu = True
@@ -85,7 +94,10 @@ class TestLookupTableV2FP16(TestLookupTableV2):
 
 
 class TestLookupTableV2Dim32(TestLookupTableV2):
-    def init_dim(self):
+    def init_dims(self):
+        self.bsz = 6
+        self.seqlen = 8
+        self.vocab = 10
         # embedding_dim is multiple of 32
         self.dim = 64
 
@@ -95,13 +107,31 @@ class TestLookupTableV2Dim32FP16(TestLookupTableV2):
 
     def init_dtype(self):
         self.dtype = np.float16
+        self.ids_dtype = np.int64
 
-    def init_dim(self):
+    def init_dims(self):
+        self.bsz = 6
+        self.seqlen = 8
+        self.vocab = 10
         self.dim = 64
 
     def set_npu(self):
         self.__class__.use_npu = True
         self.__class__.no_need_check_grad = True
+
+
+class TestLookupTableV2WithPadding(TestLookupTableV2):
+    def init_padding_idx(self):
+        self.padding_idx = np.random.randint(0, self.vocab)
+
+
+class TestLookupTableV2WithPadding1(TestLookupTableV2):
+    def init_padding_idx(self):
+        self.padding_idx = np.random.randint(0, self.vocab)
+
+    def init_dtype(self):
+        self.dtype = np.float32
+        self.ids_dtype = np.int64
 
 
 if __name__ == '__main__':

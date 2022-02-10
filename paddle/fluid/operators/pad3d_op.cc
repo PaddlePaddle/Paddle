@@ -565,13 +565,11 @@ class Pad3dCPUKernel : public framework::OpKernel<T> {
                             " in reflect mode"
                             ", but received depth(%d) and pad_right(%d).",
                             in_width, pads[1]));
-    }
-
-    if (mode == "circular") {
-      PADDLE_ENFORCE_NE(
-          in_depth * in_height * in_width, 0,
-          platform::errors::InvalidArgument(
-              "The input tensor size can not be 0 for circular padding mode."));
+    } else if (mode == "circular" || mode == "replicate") {
+      PADDLE_ENFORCE_NE(in_depth * in_height * in_width, 0,
+                        platform::errors::InvalidArgument(
+                            "The input tensor size can not be 0 for circular "
+                            "or replicate padding mode."));
     }
 
     const int pad_left = pads[0];

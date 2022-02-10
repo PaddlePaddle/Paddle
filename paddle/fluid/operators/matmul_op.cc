@@ -1,11 +1,8 @@
 /* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -336,6 +333,8 @@ framework::DDim GetDimForInput(const framework::InferShapeContext &ctx,
                         "The Input(%s) has not been initialized properly. The "
                         "shape of Input(%s) = [%s].",
                         dim));
+
+  // if mkldnn reshape+transpose+matmul fuse activated
   if (!shape.empty() && !axis.empty()) {
     PADDLE_ENFORCE_GE(
         shape.size(), 2,
@@ -355,6 +354,43 @@ framework::DDim GetDimForInput(const framework::InferShapeContext &ctx,
             "Ranks of shape_%s and axis_%s attributes of MatMulOp "
             "must be equal.",
             input_name, input_name));
+
+    int num_negative = std::count(shape.begin(), shape.end(), -1);
+    PADDLE_ENFORCE_LE(num_negative, 1,
+                      platform::errors::InvalidArgument(
+                          "The max number of -1 in fused_reshape_%s is 1 "
+                          "but received %d.",
+                          input_name, num_negative));
+
+    auto it_zero = std::find(shape.begin(), shape.end(), 0);
+    if (it_zero != shape.end()) {
+      for (uint64_t i = 0; i < shape.size(); i++) {
+        if (shape[i] == 0) {
+          PADDLE_ENFORCE_LT(i, dim.size(),
+                            platform::errors::InvalidArgument(
+                                "The index of 0 in fused_reshape_%s ",
+                                "should be less than output dim size, ",
+                                "but the index is %d and output dim size is %d",
+                                input_name, i, dim.size()));
+          shape[i] = dim.at(i);
+        }
+      }
+    }
+
+    // if "-1" is present then one of reshape dims must be infered
+    auto it_negative = std::find(shape.begin(), shape.end(), -1);
+    if (it_negative != shape.end()) {
+      int64_t dim_product = 1;
+      for (int i = 0; i < dim.size(); i++) {
+        dim_product *= dim.at(i);
+      }
+
+      int64_t shape_product = std::accumulate(shape.begin(), shape.end(), -1,
+                                              std::multiplies<int>());
+      int index = std::distance(shape.begin(), it_negative);
+      shape[index] = dim_product / shape_product;
+    }
+
     dim = dim.reshape(shape).transpose(axis);
   }
   return dim;
@@ -655,6 +691,47 @@ class MatMulOp : public framework::OperatorWithKernel {
           platform::errors::InvalidArgument("reshape_out supported rank is 3, "
                                             "received %d",
                                             reshape_out_size));
+
+      // int num_negative = std::count(reshape_out.begin(), reshape_out.end(),
+      // -1);
+      // PADDLE_ENFORCE_LE(num_negative, 1,
+      //                   platform::errors::InvalidArgument(
+      //                       "The max number of -1 in fused_reshape_Out is 1 "
+      //                       "but received %d.",
+      //                       num_negative));
+
+      // auto it_zero = std::find(reshape_out.begin(), reshape_out.end(), 0);
+      // if (it_zero != reshape_out.end()) {
+      //   for (uint64_t i = 0; i < reshape_out.size(); i++) {
+      //     if (reshape_out[i] == 0) {
+      //       PADDLE_ENFORCE_LT(
+      //           i, ddim_out.size(),
+      //           platform::errors::InvalidArgument(
+      //               "The index of 0 in fused_reshape_Out ",
+      //               "should be less than output dim size, ",
+      //               "but the index is %d and output dim size is %d", i,
+      //               ddim_out.size()));
+      //       reshape_out[i] = ddim_out.at(i);
+      //     }
+      //   }
+      // }
+
+      // if "-1" is present then one of reshape dims must be infered
+      auto it = std::find(reshape_out.begin(), reshape_out.end(), -1);
+      if (it != reshape_out.end()) {
+        int index = std::distance(reshape_out.begin(), it);
+
+        auto ddim_out_vec = framework::vectorize(ddim_out);
+
+        int ddim_out_product =
+            std::accumulate(ddim_out_vec.begin(), ddim_out_vec.end(), 1,
+                            std::multiplies<int>());
+        int reshape_out_product = std::accumulate(
+            reshape_out.begin(), reshape_out.end(), -1, std::multiplies<int>());
+
+        reshape_out[index] = ddim_out_product / reshape_out_product;
+      }
+
       framework::DDim shape_out =
           ddim_out.transpose(transpose_out).reshape(reshape_out);
       context->SetOutputDim("Out", shape_out);
@@ -673,7 +750,7 @@ class MatMulOp : public framework::OperatorWithKernel {
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
 
 #ifdef PADDLE_WITH_MKLDNN
-    using mkldnn::memory;
+    using dnnl::memory;
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
@@ -783,17 +860,13 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
 #endif
     AddComment(R"DOC(
 MatMul Operator.
-
-
 This operator is used to perform (batched) matrix multiplication
 over the last two dimensions of the input tensors `X` and `Y`.
-
 If a transpose flag is specified, the last two dimensions of the
 tensor are transposed. If the tensor is rank-1 of shape [D], then
 for `X` it is treated as [1, D] in nontransposed form and as [D, 1]
 in transposed form, whereas for `Y` it is the opposite: It is treated
 as [D, 1] in nontransposed form and as [1, D] in transposed form.
-
 Examples without transpose:
 - X: [K], Y: [K] => Out: [1]
 - X: [K], Y: [K, N] => Out: [N]
@@ -801,10 +874,8 @@ Examples without transpose:
 - X: [M, K], Y: [B, K, N] => Out: [B, M, N]
 - X: [B, M, K], Y: [B, K, N] => Out: [B, M, N]
 - X: [B, ..., M, K], Y: [B, ..., K, N] => Out: [B, ..., M, N]
-
 Example of matrix multiplication with head_number of H
 - X: [B, M, K], Y: [B, K, N] => Out: [B, M, H * N]
-
 The behavior is designed to be similar to the `numpy.matmul` function.
 The differences are:
 - When the rank of the input data is less than or equal to 3, it
@@ -815,10 +886,8 @@ The differences are:
 - We add `head_number` attribute, which is used to multiple two matrixes head
   by head, and eventually concatenates the output of several (head_number)
   small matrixes multiplication.
-
 Both the input `X` and `Y` can carry the LoD (Level of Details) information,
 or not. But the output only shares the LoD information with input `X`.
-
 )DOC");
   }
 };

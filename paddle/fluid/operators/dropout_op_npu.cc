@@ -10,7 +10,7 @@ Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
-limitations under the Licnse. */
+limitations under the License. */
 
 #include <memory>
 #include <string>
@@ -18,7 +18,7 @@ limitations under the Licnse. */
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/dropout_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -73,7 +73,8 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
       float keep_prob = 1. - dropout_prob;
       if (seed_tensor) {
         std::vector<int> seed_data;
-        TensorToVector(*seed_tensor, ctx.device_context(), &seed_data);
+        paddle::framework::TensorToVector(*seed_tensor, ctx.device_context(),
+                                          &seed_data);
         seed = seed_data[0];
       } else {
         seed = ctx.Attr<bool>("fix_seed") ? ctx.Attr<int>("seed") : 0;

@@ -1,4 +1,5 @@
 # Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 NVIDIA Corporation. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,6 +21,7 @@ import warnings
 import functools
 from collections import OrderedDict
 import inspect
+import threading
 
 import six
 import paddle
@@ -525,6 +527,105 @@ def _build_load_path_and_config(path, config):
     return model_path, config
 
 
+_save_pre_hooks_lock = threading.Lock()
+_save_pre_hooks = []
+
+
+class HookRemoveHelper(object):
+    """ A HookRemoveHelper that can be used to remove hook. """
+
+    def __init__(self, hook):
+        self._hook = hook
+
+    def remove(self):
+        _remove_save_pre_hook(self._hook)
+
+
+def _register_save_pre_hook(hook):
+    """
+    Register a save pre-hook for `paddle.jit.save`.
+    This hook will be executed before `save` function has been invoked.
+
+    hook(layer, input_spec, configs) -> None
+    - layer (Layer|function): This argument is corresponding to `layer` in `paddle.jit.save`.
+    - input_spec (list or tuple[InputSpec|Tensor|Python built-in variable]): This argument is corresponding to `input_spec` in `paddle.jit.save`.
+    - configs (dict): This argument is corresponding to `configs` in `paddle.jit.save`.
+
+    Args:
+        hook(function): a function registered as a save pre-hook
+
+    Returns:
+        HookRemoveHelper: a HookRemoveHelper object that can be used to remove the added hook by calling `hook_remove_helper.remove()`.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            IMAGE_SIZE = 256
+            CLASS_NUM = 10
+
+            class LinearNet(paddle.nn.Layer):
+                def __init__(self):
+                    super(LinearNet, self).__init__()
+                    self._linear = paddle.nn.Linear(IMAGE_SIZE, CLASS_NUM)
+
+                def forward(self, x):
+                    return self._linear(x)
+
+            saving_count = 0
+            def save_pre_hook(layer, input_spec, configs):
+                global saving_count
+                saving_count += 1
+
+            remove_handler = paddle.jit.register_save_pre_hook(save_pre_hook)
+
+            layer = LinearNet()
+            paddle.jit.save(layer, "/tmp", [paddle.static.InputSpec(shape=[-1, IMAGE_SIZE])])
+            # saving_count == 1
+
+            remove_handler.remove()
+            paddle.jit.save(layer, "/tmp", [paddle.static.InputSpec(shape=[-1, IMAGE_SIZE])])
+            # saving_count == 1
+    """
+    global _save_pre_hooks_lock
+    global _save_pre_hooks
+    _save_pre_hooks_lock.acquire()
+    if hook not in _save_pre_hooks:
+        _save_pre_hooks.append(hook)
+    _save_pre_hooks_lock.release()
+    return HookRemoveHelper(hook)
+
+
+def _clear_save_pre_hooks():
+    global _save_pre_hooks_lock
+    global _save_pre_hooks
+    _save_pre_hooks_lock.acquire()
+    _save_pre_hooks.clear()
+    _save_pre_hooks_lock.release()
+
+
+def _remove_save_pre_hook(hook):
+    global _save_pre_hooks_lock
+    global _save_pre_hooks
+    _save_pre_hooks_lock.acquire()
+    if hook in _save_pre_hooks:
+        _save_pre_hooks.remove(hook)
+    _save_pre_hooks_lock.release()
+
+
+def _run_save_pre_hooks(func):
+    def wrapper(layer, path, input_spec=None, **configs):
+        global _save_pre_hooks
+        for hook in _save_pre_hooks:
+            hook(layer, input_spec, configs)
+        func(layer, path, input_spec, **configs)
+
+    return wrapper
+
+
+@_run_save_pre_hooks
 @switch_to_static_graph
 def save(layer, path, input_spec=None, **configs):
     """
@@ -779,10 +880,11 @@ def save(layer, path, input_spec=None, **configs):
 
         dygraph_state_dict = None
         if isinstance(inner_layer, Layer):
-            dygraph_state_dict = inner_layer.state_dict()
+            dygraph_state_dict = inner_layer.to_static_state_dict()
         elif isinstance(attr_func, StaticFunction):
             if attr_func._class_instance:
-                dygraph_state_dict = attr_func._class_instance.state_dict()
+                dygraph_state_dict = attr_func._class_instance.to_static_state_dict(
+                )
 
         if dygraph_state_dict:
             # NOTE(chenweihang): we maintain the mapping of variable name to
@@ -790,16 +892,25 @@ def save(layer, path, input_spec=None, **configs):
             # saved to inference program may not need by dygraph Layer,
             # we only record the state_dict variable's structured name
             state_names_dict = dict()
+            state_var_dict = dict()
             for structured_name, var in six.iteritems(dygraph_state_dict):
                 state_names_dict[var.name] = structured_name
+                state_var_dict[var.name] = var
 
             # 3. share parameters from Layer to scope & record var info
             for param_or_buffer in concrete_program.parameters:
                 # share to scope
-                param_or_buffer_tensor = scope.var(
-                    param_or_buffer.name).get_tensor()
-                src_tensor = param_or_buffer.value().get_tensor()
-                param_or_buffer_tensor._share_data_with(src_tensor)
+                if param_or_buffer.type == core.VarDesc.VarType.VOCAB:
+                    scr_tensor = param_or_buffer.value().get_map_tensor()
+                    tgt_var = scope.var(param_or_buffer.name)
+                    tgt_var.set_vocab(scr_tensor)
+                else:
+                    param_or_buffer_tensor = scope.var(
+                        param_or_buffer.name).get_tensor()
+                    #src_tensor = param_or_buffer.value().get_tensor()
+                    src_tensor = state_var_dict[param_or_buffer.name].value(
+                    ).get_tensor()
+                    param_or_buffer_tensor._share_data_with(src_tensor)
                 # record var info
                 if param_or_buffer.name not in extra_var_info:
                     extra_info_dict = dict()
@@ -855,7 +966,8 @@ def save(layer, path, input_spec=None, **configs):
                 model_filename=model_filename,
                 params_filename=params_filename,
                 export_for_deployment=configs._export_for_deployment,
-                program_only=configs._program_only)
+                program_only=configs._program_only,
+                clip_extra=False)
 
     # NOTE(chenweihang): [ Save extra variable info ]
     # save_inference_model will lose some important variable information, including:
@@ -1061,6 +1173,7 @@ def load(path, **configs):
                 batch_size=BATCH_SIZE,
                 shuffle=True,
                 drop_last=True,
+                return_list=False,
                 num_workers=2)
 
             # 1. train and save inference model
@@ -1342,7 +1455,7 @@ class TracedLayer(object):
             return self._run(self._build_feed(inputs))
 
     @switch_to_static_graph
-    def save_inference_model(self, path, feed=None, fetch=None):
+    def save_inference_model(self, path, feed=None, fetch=None, **kwargs):
         """
         Save the TracedLayer to a model for inference. The saved
         inference model can be loaded by C++ inference APIs.
@@ -1360,6 +1473,7 @@ class TracedLayer(object):
                 saved inference model. If None, all output variables of the
                 TracedLayer object would be the outputs of the saved inference
                 model. Default None.
+            kwargs: Supported keys including 'clip_extra'.set to True if you want to clip extra information for every operator.
 
         Returns:
             None
@@ -1409,7 +1523,7 @@ class TracedLayer(object):
             for f in fetch:
                 check_type(f, "each element of fetch", int,
                            "fluid.dygraph.jit.TracedLayer.save_inference_model")
-
+        clip_extra = kwargs.get('clip_extra', False)
         # path check
         file_prefix = os.path.basename(path)
         if file_prefix == "":
@@ -1449,4 +1563,5 @@ class TracedLayer(object):
                 executor=self._exe,
                 main_program=self._program.clone(),
                 model_filename=model_filename,
-                params_filename=params_filename)
+                params_filename=params_filename,
+                clip_extra=clip_extra)

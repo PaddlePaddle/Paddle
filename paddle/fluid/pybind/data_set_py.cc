@@ -202,6 +202,8 @@ void BindDataset(py::module *m) {
       .def(py::init([](const std::string &name = "MultiSlotDataset") {
         return framework::DatasetFactory::CreateDataset(name);
       }))
+      .def("tdm_sample", &framework::Dataset::TDMSample,
+           py::call_guard<py::gil_scoped_release>())
       .def("set_filelist", &framework::Dataset::SetFileList,
            py::call_guard<py::gil_scoped_release>())
       .def("set_thread_num", &framework::Dataset::SetThreadNum,
@@ -269,6 +271,8 @@ void BindDataset(py::module *m) {
            py::call_guard<py::gil_scoped_release>())
       .def("set_merge_by_sid", &framework::Dataset::SetMergeBySid,
            py::call_guard<py::gil_scoped_release>())
+      .def("set_shuffle_by_uid", &framework::Dataset::SetShuffleByUid,
+           py::call_guard<py::gil_scoped_release>())
       .def("preprocess_instance", &framework::Dataset::PreprocessInstance,
            py::call_guard<py::gil_scoped_release>())
       .def("postprocess_instance", &framework::Dataset::PostprocessInstance,
@@ -309,8 +313,6 @@ void BindDataset(py::module *m) {
            &framework::Dataset::SetFleetSendSleepSeconds,
            py::call_guard<py::gil_scoped_release>())
       .def("enable_pv_merge", &framework::Dataset::EnablePvMerge,
-           py::call_guard<py::gil_scoped_release>())
-      .def("set_heter_ps", &framework::Dataset::SetHeterPs,
            py::call_guard<py::gil_scoped_release>());
 
   py::class_<IterableDatasetWrapper>(*m, "IterableDatasetWrapper")

@@ -18,7 +18,7 @@ limitations under the License. */
 #include "math/math_function.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
@@ -183,8 +183,7 @@ void GPUScatterGradForX(const platform::DeviceContext& ctx, const Tensor& index,
 
   int64_t max_grid_dimx =
       reinterpret_cast<const platform::CUDADeviceContext&>(ctx)
-          .GetCUDAMaxGridDimSize()
-          .x;
+          .GetCUDAMaxGridDimSize()[0];
   int64_t grid = height < max_grid_dimx ? height : max_grid_dimx;
 
   ScatterInitCUDAKernel<T, IndexT><<<
@@ -221,7 +220,7 @@ void GPUScatterNdAdd(const framework::ExecutionContext& context,
   // put output_dims int CUDA
   // gplace and cplace
   const auto& ctx = context.template device_context<DeviceContext>();
-  const auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+  const auto gplace = ctx.GetPlace();
   auto cplace = platform::CPUPlace();
 
   std::vector<int64_t> v_output_dims(output_dims_size);

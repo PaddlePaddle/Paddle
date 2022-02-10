@@ -204,6 +204,7 @@ def add_error_cases(suite):
     suite.addTest(
         Conv1DErrorTestCase(
             methodName='runTest', padding=[1, 2, 3, 4, 5]))
+    suite.addTest(Conv1DErrorTestCase(methodName='runTest', dilation=-10))
 
 
 def load_tests(loader, standard_tests, pattern):

@@ -74,16 +74,9 @@ class SoftmaxKernel : public framework::OpKernel<T> {
     Tensor X_2d, Out_2d;
     X_2d.ShareDataWith(*X).Resize({n, d});
     Out_2d.ShareDataWith(*Out).Resize({n, d});
-
-#ifdef PADDLE_ON_INFERENCE
-    math::SoftmaxFunctor<DeviceContext, T, true>()(
-        context.template device_context<DeviceContext>(), axis_dim, &X_2d,
-        &Out_2d);
-#else
     math::SoftmaxFunctor<DeviceContext, T, false>()(
         context.template device_context<DeviceContext>(), axis_dim, &X_2d,
         &Out_2d);
-#endif
   }
 };
 

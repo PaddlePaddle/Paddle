@@ -16,11 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/operators/math/softmax_impl.h"
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/miopen_helper.h"
-#else
-#include "paddle/fluid/platform/cudnn_helper.h"
-#endif
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace operators {
@@ -54,7 +50,7 @@ void SoftmaxCUDNNFunctor<T>::operator()(
       xDesc.descriptor<T>(layout, cudnn_tensor_dims);
   miopenTensorDescriptor_t cudnn_y_desc =
       xDesc.descriptor<T>(layout, cudnn_tensor_dims);
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSoftmaxForward_V2(
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSoftmaxForward_V2(
       context.cudnn_handle(), CudnnDataType<T>::kOne(), cudnn_x_desc,
       X->data<T>(), CudnnDataType<T>::kZero(), cudnn_y_desc,
       Y->mutable_data<T>(context.GetPlace()), MIOPEN_SOFTMAX_ACCURATE,
@@ -64,7 +60,7 @@ void SoftmaxCUDNNFunctor<T>::operator()(
       xDesc.descriptor<T>(layout, cudnn_tensor_dims);
   cudnnTensorDescriptor_t cudnn_y_desc =
       xDesc.descriptor<T>(layout, cudnn_tensor_dims);
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxForward(
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSoftmaxForward(
       context.cudnn_handle(), CUDNN_SOFTMAX_ACCURATE,
       CUDNN_SOFTMAX_MODE_INSTANCE, CudnnDataType<T>::kOne(), cudnn_x_desc,
       X->data<T>(), CudnnDataType<T>::kZero(), cudnn_y_desc,
@@ -97,7 +93,7 @@ void SoftmaxGradCUDNNFunctor<T>::operator()(
       dxDesc.descriptor<T>(layout, cudnn_tensor_dims);
   miopenTensorDescriptor_t cudnn_ygrad_desc =
       dyDesc.descriptor<T>(layout, cudnn_tensor_dims);
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSoftmaxBackward_V2(
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSoftmaxBackward_V2(
       context.cudnn_handle(), CudnnDataType<T>::kOne(), cudnn_y_desc,
       Y->data<T>(), cudnn_ygrad_desc, YGrad->data<T>(),
       CudnnDataType<T>::kZero(), cudnn_xgrad_desc,
@@ -110,7 +106,7 @@ void SoftmaxGradCUDNNFunctor<T>::operator()(
       dxDesc.descriptor<T>(layout, cudnn_tensor_dims);
   cudnnTensorDescriptor_t cudnn_ygrad_desc =
       dyDesc.descriptor<T>(layout, cudnn_tensor_dims);
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxBackward(
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSoftmaxBackward(
       context.cudnn_handle(), CUDNN_SOFTMAX_ACCURATE,
       CUDNN_SOFTMAX_MODE_INSTANCE, CudnnDataType<T>::kOne(), cudnn_y_desc,
       Y->data<T>(), cudnn_ygrad_desc, YGrad->data<T>(),

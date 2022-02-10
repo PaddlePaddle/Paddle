@@ -203,6 +203,14 @@ class Conv2D(layers.Layer):
         else:
             self._l_type = 'conv2d'
 
+        # NPU only supports depthwise_conv2d when  "input_channel = output_channel = groups"
+        if core.is_compiled_with_npu():
+            if (self._num_channels == self._groups and
+                    self._num_channels == self._num_filters):
+                self._l_type = 'depthwise_conv2d'
+            else:
+                self._l_type = 'conv2d'
+
         self._num_channels = num_channels
         if self._groups is None:
             num_filter_channels = self._num_channels
@@ -1644,7 +1652,9 @@ class Embedding(layers.Layer):
                 'is_distributed', self._is_distributed, 'remote_prefetch',
                 self._remote_prefetch, 'padding_idx', self._padding_idx)
 
-        check_variable_and_dtype(input, 'input', ['int64'], 'Embedding')
+        check_variable_and_dtype(input, 'input',
+                                 ['uint8', 'int8', 'int16', 'int32', 'int64'],
+                                 'Embedding')
         attrs = {
             'is_sparse': self._is_sparse,
             'is_distributed': self._is_distributed,

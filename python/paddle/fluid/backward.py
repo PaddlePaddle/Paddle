@@ -27,6 +27,7 @@ from . import unique_name
 from . import log_helper
 import paddle.fluid
 from .data_feeder import check_type
+import warnings
 __all__ = [
     'append_backward',
     'gradients',
@@ -174,9 +175,13 @@ class ProgramStats(object):
             return
 
         op_idx = 0
-        while (op_idx < len(self.ops)):
+        while op_idx < len(self.ops):
             op = self.ops[op_idx]
             if op.desc.type() != "dropout":
+                op_idx += 1
+                continue
+            # already insert seed op before dropout
+            if op.input('Seed') is not None and len(op.input('Seed')) == 1:
                 op_idx += 1
                 continue
             # add a seed op so that the two dropout op can generate same output
@@ -197,13 +202,18 @@ class ProgramStats(object):
             if op.desc.has_attr(op_device_attr_name):
                 op_device = op.desc.attr(op_device_attr_name)
 
+            # Setting the force_cpu of seed to true will make the output of seed in cpu memory,
+            # reduce the synchronous copy from GPU to CPU in dropout, and reduce the communication hang
             added_op = self.block._insert_op(
                 index=op.idx,
                 type='seed',
                 inputs={},
                 outputs={'Out': [added_var]},
-                attrs={'seed': seed,
-                       'op_device': op_device})
+                attrs={
+                    'seed': seed,
+                    'op_device': op_device,
+                    'force_cpu': True
+                })
             self.ops.insert(op_idx, added_op)
             # modify dropout op desc so that it accept a seed var as input
             op.desc.set_input("Seed", [var_unique_name])
@@ -366,6 +376,10 @@ def _infer_var_data_type_shape_(grad_var_name, block):
         grad_var.set_dtype(fwd_var.dtype())
         grad_var.set_shape(fwd_var.shape())
     else:
+        # TODO(jiabin): Maybe we should not to this to cause some unexpected error on dtype
+        warnings.warn(
+            "Set grad var: {} dtype to default FP32, since we can't find its related forward var".
+            format(grad_var_name))
         grad_var.set_dtype(core.VarDesc.VarType.FP32)
 
 
@@ -403,7 +417,9 @@ def _strip_grad_suffix_(name):
     """
     name = cpt.to_text(name)
     pos = name.find(core.grad_var_suffix())
-    return name[:pos] if pos != -1 else name
+    new_name = name[:pos] if pos != -1 else name
+    new_pos = name.rfind('grad/')
+    return new_name[new_pos + 5:] if new_pos != -1 else new_name
 
 
 def _append_grad_suffix_(name):
@@ -941,7 +957,7 @@ def _append_backward_ops_with_checkpoints_(
         # added_descs should be in grad_op_descs because it is backward op desc
         grad_op_descs.extend(buffer_descs)
 
-        # 3.c. add backward ops for all ops in current segment 
+        # 3.c. add backward ops for all ops in current segment
         for op_desc in reversed(added_descs):
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op_desc, cpt.to_text(no_grad_dict[block.idx]), [])
@@ -1035,7 +1051,8 @@ def _append_backward_ops_(block,
                           grad_to_var,
                           callbacks=None,
                           input_grad_names_set=None,
-                          op_path_dict=None):
+                          op_path_dict=None,
+                          distop_context=None):
     """
     Create all grad ops, and insert them into given block
 
@@ -1092,6 +1109,11 @@ def _append_backward_ops_(block,
         # Getting op's corresponding grad_op
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
             op.desc, cpt.to_text(no_grad_dict[block.idx]), grad_sub_block_list)
+        # Build the mapping between the forward op and bacckward op (Only for auto parallel)
+        if distop_context is not None:
+            for op_desc in grad_op_desc:
+                assert op_desc.id() not in distop_context.grad_op_id_to_op_id
+                distop_context.grad_op_id_to_op_id[op_desc.id()] = op.desc.id()
 
         # Set device for grad_op according to forward Op
         device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
@@ -1110,10 +1132,10 @@ def _append_backward_ops_(block,
         # So rename here before _addup_repetitive_outputs_.
         if program._appending_grad_times > 1:
             for op_desc in grad_op_desc:
-                if not _is_grad_op_(op):
-                    for name in op_desc.input_arg_names():
-                        if name in rename_var_map:
-                            op_desc._rename_input(name, rename_var_map[name])
+                forward_op_inputs = op.desc.input_arg_names()
+                for name in op_desc.input_arg_names():
+                    if name in rename_var_map and name not in forward_op_inputs:
+                        op_desc._rename_input(name, rename_var_map[name])
                 for name in op_desc.output_arg_names():
                     if "@GRAD" not in name:
                         continue
@@ -1176,6 +1198,12 @@ def _append_backward_ops_(block,
     for op_desc in grad_op_descs:
         new_op_desc = target_block.desc.append_op()
         new_op_desc.copy_from(op_desc)
+        # Rebuild the mapping because new_op_desc has a differnt id (Only for auto parallel)
+        if distop_context is not None:
+            if op_desc.id() in distop_context.grad_op_id_to_op_id:
+                distop_context.grad_op_id_to_op_id[new_op_desc.id(
+                )] = distop_context.grad_op_id_to_op_id[op_desc.id()]
+                distop_context.grad_op_id_to_op_id.pop(op_desc.id())
         new_op_desc._set_attr(op_role_attr_name, backward)
         grad_to_var["__current_op_desc__"] = new_op_desc
         if callbacks is not None:
@@ -1386,7 +1414,8 @@ def append_backward(loss,
                     parameter_list=None,
                     no_grad_set=None,
                     callbacks=None,
-                    checkpoints=None):
+                    checkpoints=None,
+                    distop_context=None):
     """
     :api_attr: Static Graph
 
@@ -1601,7 +1630,8 @@ def append_backward(loss,
                 grad_to_var,
                 callbacks,
                 input_grad_names_set=input_grad_names_set,
-                op_path_dict=op_path_dict)
+                op_path_dict=op_path_dict,
+                distop_context=distop_context, )
 
     grad_info_map = dict()
 

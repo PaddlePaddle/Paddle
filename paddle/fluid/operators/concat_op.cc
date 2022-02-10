@@ -14,9 +14,12 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/concat_op.h"
 
+#include <paddle/fluid/platform/complex.h>
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "paddle/pten/kernels/funcs/concat_funcs.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include <paddle/fluid/platform/mkldnn_helper.h>
@@ -55,8 +58,8 @@ class ConcatOp : public framework::OperatorWithKernel {
       size_t axis =
           ComputeAxis(static_cast<int64_t>(ctx->Attrs().Get<int>("axis")),
                       static_cast<int64_t>(inputs_dims[0].size()));
-      framework::DDim out_dims =
-          ComputeAndCheckShape(ctx->IsRuntime(), inputs_dims, axis);
+      framework::DDim out_dims = pten::funcs::ComputeAndCheckShape(
+          ctx->IsRuntime(), inputs_dims, axis);
       if (out_dims[axis] < 0) {
         out_dims[axis] = -1;
       }
@@ -168,9 +171,21 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.GetPlace());
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
+
+#ifdef PADDLE_WITH_MKLDNN
+    // extra checking if attr "use_mkldnn" exist is needed because
+    // test_reverse_op is calling concat_grad kernel without setting
+    // "use_mkldnn" to any value
+    if (ctx.HasAttr("use_mkldnn") &&
+        this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
@@ -229,15 +244,7 @@ REGISTER_OPERATOR(concat_grad, ops::ConcatOpGrad,
                   ops::ConcatDoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::ConcatDoubleGradOpMaker<paddle::imperative::OpBase>,
                   ops::ConcatOpGradNoNeedBufferVarInferer);
-REGISTER_OP_CPU_KERNEL(
-    concat, ops::ConcatKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::float16>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext, uint8_t>);
+
 REGISTER_OP_CPU_KERNEL(
     concat_grad,
     ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, double>,
@@ -247,4 +254,8 @@ REGISTER_OP_CPU_KERNEL(
     ops::ConcatGradKernel<paddle::platform::CPUDeviceContext,
                           paddle::platform::float16>,
     ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, uint8_t>);
+    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, uint8_t>,
+    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext,
+                          paddle::platform::complex<float>>,
+    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext,
+                          paddle::platform::complex<double>>);

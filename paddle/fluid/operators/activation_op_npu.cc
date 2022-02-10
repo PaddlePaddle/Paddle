@@ -19,7 +19,7 @@ limitations under the Licnse. */
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/activation_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -456,6 +456,80 @@ class SigmoidGradNPUKernel : public framework::OpKernel<T> {
     const auto& runner_dx =
         NpuOpRunner("SigmoidGrad", {*out, *dout}, {*dx}, {});
     runner_dx.Run(stream);
+  }
+};
+
+// Swish = x * sigmoid(beta * x)
+template <typename T>
+class SwishNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
+    float beta = ctx.Attr<float>("beta");
+
+    out->mutable_data<T>(ctx.GetPlace());
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+
+    const auto& muls_runner =
+        NpuOpRunner("Muls", {*x}, {*out}, {{"value", beta}});
+    muls_runner.Run(stream);
+
+    const auto& sigmoid_runner = NpuOpRunner("Sigmoid", {*out}, {*out}, {});
+    sigmoid_runner.Run(stream);
+
+    const auto& mul_runner = NpuOpRunner("Mul", {*x, *out}, {*out});
+    mul_runner.Run(stream);
+  }
+};
+
+template <typename T>
+class SwishGradNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<Tensor>("X");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    float beta = ctx.Attr<float>("beta");
+
+    dx->mutable_data<T>(ctx.GetPlace());
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+
+    Tensor beta_x, sigmoid_out, swish_out;
+    beta_x.mutable_data<T>(x->dims(), ctx.GetPlace());
+    sigmoid_out.mutable_data<T>(x->dims(), ctx.GetPlace());
+    swish_out.mutable_data<T>(x->dims(), ctx.GetPlace());
+    const auto& muls_runner =
+        NpuOpRunner("Muls", {*x}, {beta_x}, {{"value", beta}});
+    muls_runner.Run(stream);
+
+    const auto& sigmoid_runner =
+        NpuOpRunner("Sigmoid", {beta_x}, {sigmoid_out}, {});
+    sigmoid_runner.Run(stream);
+
+    const auto& mul_runner =
+        NpuOpRunner("Mul", {sigmoid_out, *x}, {swish_out}, {});
+    mul_runner.Run(stream);
+    const auto& muls_runner2 =
+        NpuOpRunner("Muls", {swish_out}, {swish_out}, {{"value", beta}});
+    muls_runner2.Run(stream);
+
+    const auto& mul_runner1 =
+        NpuOpRunner("Mul", {sigmoid_out, swish_out}, {*dx}, {});
+    mul_runner1.Run(stream);
+
+    const auto& sub_runner = NpuOpRunner("Sub", {swish_out, *dx}, {*dx}, {});
+    sub_runner.Run(stream);
+
+    const auto& add_runner = NpuOpRunner("Add", {sigmoid_out, *dx}, {*dx}, {});
+    add_runner.Run(stream);
+
+    const auto& mul_runner2 = NpuOpRunner("Mul", {*dout, *dx}, {*dx}, {});
+    mul_runner2.Run(stream);
   }
 };
 
@@ -935,6 +1009,12 @@ REGISTER_OP_NPU_KERNEL(
     ops::SigmoidGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::SigmoidGradNPUKernel<paddle::platform::NPUDeviceContext,
                               paddle::platform::float16>);
+
+REGISTER_OP_NPU_KERNEL(swish, ops::SwishNPUKernel<float>,
+                       ops::SwishNPUKernel<paddle::platform::float16>);
+
+REGISTER_OP_NPU_KERNEL(swish_grad, ops::SwishGradNPUKernel<float>,
+                       ops::SwishGradNPUKernel<paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(hard_swish, ops::HardSwishNPUKernel<float>,
                        ops::HardSwishNPUKernel<paddle::platform::float16>);

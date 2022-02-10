@@ -24,8 +24,26 @@ import unittest
 import math
 import sys
 import os
+import struct
 
 paddle.enable_static()
+
+
+def convert_uint16_to_float(in_list):
+    in_list = numpy.asarray(in_list)
+    out = numpy.vectorize(
+        lambda x: struct.unpack('<f', struct.pack('<I', x << 16))[0],
+        otypes=[numpy.float32])(in_list.flat)
+    return numpy.reshape(out, in_list.shape)
+
+
+def convert_float_to_uint16(in_list):
+    out = []
+    for x in numpy.nditer(in_list):
+        out.append(
+            numpy.uint16(struct.unpack('<I', struct.pack('<f', x))[0] >> 16))
+    out = numpy.reshape(out, in_list.shape).view(numpy.uint16)
+    return out
 
 
 def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
@@ -84,10 +102,14 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
                 avg_loss_value, = exe.run(main_program,
                                           feed=feeder.feed(data),
                                           fetch_list=[avg_cost])
+                if avg_loss_value.dtype == numpy.uint16:
+                    avg_loss_value = convert_uint16_to_float(avg_loss_value)
                 if avg_loss_value[0] < 10.0:
                     if save_dirname is not None:
-                        paddle.static.save_inference_model(save_dirname, [x],
-                                                           [y_predict], exe)
+                        paddle.static.save_inference_model(
+                            save_dirname, [x], [y_predict],
+                            exe,
+                            clip_extra=False)
                     return
                 if math.isnan(float(avg_loss_value)):
                     sys.exit("got NaN loss, training failed.")
@@ -145,6 +167,10 @@ def infer(use_cuda, save_dirname=None, use_bf16=False):
         test_data = next(test_reader())
         test_feat = numpy.array(
             [data[0] for data in test_data]).astype("float32")
+
+        if use_bf16:
+            test_feat = convert_float_to_uint16(test_feat)
+
         test_label = numpy.array(
             [data[1] for data in test_data]).astype("float32")
 
@@ -152,6 +178,8 @@ def infer(use_cuda, save_dirname=None, use_bf16=False):
         results = exe.run(inference_program,
                           feed={feed_target_names[0]: numpy.array(test_feat)},
                           fetch_list=fetch_targets)
+        if results[0].dtype == numpy.uint16:
+            results[0] = convert_uint16_to_float(results[0])
         print("infer shape: ", results[0].shape)
         print("infer results: ", results[0])
         print("ground truth: ", test_label)
