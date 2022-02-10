@@ -159,7 +159,7 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : scale
+    func : scale, scale_sr
 
 - api : subtract
   args : (const Tensor& x, const Tensor& y)

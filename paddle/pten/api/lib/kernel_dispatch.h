@@ -38,8 +38,15 @@ std::size_t CountLeadingZeros(uint64_t val);
 
 pten::DeviceContext* GetDeviceContextByBackend(pten::Backend backend);
 
+enum class KernelType {
+  DENSE_TENSOR_KENREL,  // kernel for DenseTensor
+  SELECTED_ROWS_KENREL  // kernel for SelectedRows
+};
+
 // TODO(chenweihang): support DataLayout and DataType selected
 struct KernelKeySet {
+  KernelType kernel_type{KernelType::DENSE_TENSOR_KENREL};
+
   BackendSet backend_set{Backend::UNDEFINED};
   DataLayout layout{DataLayout::UNDEFINED};
   DataType dtype{DataType::UNDEFINED};
@@ -89,6 +96,9 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   void operator()(const Tensor& x) {
     key_set.backend_set = key_set.backend_set | detail::GetTensorBackendSet(x);
     // TODO(chenweihang): selecte multi layout and dtype
+    if (pten::SelectedRows::classof(x.impl().get())) {
+      key_set.kernel_type = KernelType::SELECTED_ROWS_KENREL;
+    }
     key_set.layout = x.layout();
     key_set.dtype = x.type();
     dtype_set = dtype_set | DataTypeSet(x.dtype());

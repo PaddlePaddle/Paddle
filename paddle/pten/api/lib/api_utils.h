@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/selected_rows.h"
 
 namespace paddle {
 namespace experimental {
@@ -37,6 +38,24 @@ inline std::unique_ptr<std::vector<pten::DenseTensor>> TensorToDenseTensor(
   for (const auto& t : tensors) {
     pt_tensors->push_back(
         *std::dynamic_pointer_cast<pten::DenseTensor>(t.impl()));
+  }
+
+  return std::move(pt_tensors);
+}
+
+inline std::shared_ptr<pten::SelectedRows> TensorToSelectedRows(
+    const Tensor& tensor) {
+  return std::dynamic_pointer_cast<pten::SelectedRows>(tensor.impl());
+}
+
+inline std::unique_ptr<std::vector<pten::SelectedRows>> TensorToSelectedRows(
+    const std::vector<Tensor>& tensors) {
+  auto pt_tensors = std::make_unique<std::vector<pten::SelectedRows>>();
+  pt_tensors->reserve(tensors.size());
+
+  for (const auto& t : tensors) {
+    pt_tensors->push_back(
+        *std::dynamic_pointer_cast<pten::SelectedRows>(t.impl()));
   }
 
   return std::move(pt_tensors);
