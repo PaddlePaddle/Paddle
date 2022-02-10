@@ -19,6 +19,7 @@
 #include <tuple>
 #include <unordered_set>
 
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/type_defs.h"
 
 namespace paddle {
@@ -31,6 +32,11 @@ enum class AmpLevel {
   O2,      // almost fp16
   O3,      // fp16
 };
+
+std::tuple<std::unordered_set<std::string>, std::unordered_set<std::string>,
+           std::unordered_set<std::string>>
+OpSupportedInfos(const std::string& place,
+                 framework::proto::VarType::Type dtype);
 
 class Tracer;
 
@@ -83,11 +89,12 @@ class AutoCastGuard {
   AmpLevel pre_amp_level_;
 };
 
-NameVarBaseMap AutoCastInputs(const std::string& op_type,
-                              const NameVarBaseMap& ins);
-
-NameVarBaseMap CastPureFp16Inputs(const std::string& op_type,
-                                  const NameVarBaseMap& ins);
+template <typename VarType>
+NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
+                                   const NameVarMap<VarType>& ins);
+template <typename VarType>
+NameVarMap<VarType> CastPureFp16Inputs(const std::string& op_type,
+                                       const NameVarMap<VarType>& ins);
 
 }  // namespace imperative
 }  // namespace paddle

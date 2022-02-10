@@ -389,7 +389,8 @@ class ReshapeKernel {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
-      pten::ReshapeKernel(dev_ctx, *in, pt_scalar_shape, out);
+      pten::ReshapeKernel(static_cast<const pten::GPUContext &>(dev_ctx), *in,
+                          pt_scalar_shape, out);
     }
 #endif
 #ifdef PADDLE_WITH_XPU
@@ -417,7 +418,8 @@ class ReshapeGradKernel {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
-      pten::ReshapeGradKernel(dev_ctx, *d_out, d_x);
+      pten::ReshapeGradKernel(static_cast<const pten::GPUContext &>(dev_ctx),
+                              *d_out, d_x);
     }
 #endif
 #ifdef PADDLE_WITH_XPU
@@ -445,7 +447,8 @@ class ReshapeDoubleGradKernel {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
-      pten::ReshapeDoubleGradKernel(dev_ctx, *dd_x, dd_out);
+      pten::ReshapeDoubleGradKernel(
+          static_cast<const pten::GPUContext &>(dev_ctx), *dd_x, dd_out);
     }
 #endif
 #ifdef PADDLE_WITH_XPU
@@ -485,20 +488,6 @@ class Reshape2Op : public ReshapeOp {
 
     ReshapeOp::InferShape(ctx);
   }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext &ctx) const override {
-    std::string shape;
-    auto multi_inputs = ctx.MultiInput<framework::Tensor>("ShapeTensor");
-    if (multi_inputs.size() > 0) {
-      shape = "ShapeTensor";
-    } else if (ctx.HasInput("Shape")) {
-      shape = "Shape";
-    } else {
-      shape = "shape";
-    }
-    return framework::KernelSignature("reshape", {"X"}, {shape}, {"Out"});
-  }
 };
 
 class Reshape2OpMaker : public ReshapeOpMaker {
@@ -518,7 +507,8 @@ class Reshape2OpMaker : public ReshapeOpMaker {
         "mkldnn_data_type",
         "(string, default \"float32\"). Data type of mkldnn kernel")
         .SetDefault("float32")
-        .InEnum({"float32", "int8", "bfloat16"});
+        .InEnum({"float32", "int8", "bfloat16"})
+        .AsExtra();
   }
 };
 

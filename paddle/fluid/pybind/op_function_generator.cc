@@ -32,6 +32,9 @@
 #include "paddle/fluid/framework/fleet/ascend_wrapper.h"
 #endif
 
+// pten
+#include "paddle/pten/kernels/declarations.h"
+
 // NOTE(pangyoki): Inplace OP with duplicable input.
 // The set includes inplace ops that have duplicable input.
 // The first Varbase in input needs to be specified for the inplace strategy
@@ -123,6 +126,7 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
   PyThreadState *tstate = nullptr;
   try
   {
+    platform::RecordEvent op_type_record_event("%s pybind_imperative_func");
     %s
     framework::AttributeMap attrs;
     ConstructAttrMapFromPyArgs("%s", args, %d, PyTuple_GET_SIZE(args) , attrs);
@@ -371,8 +375,8 @@ std::string GenerateOpFunctionsBody(
 
   // generate op funtcion body
   auto op_function_str = paddle::string::Sprintf(
-      OP_FUNCTION_TEMPLATE, func_name, ins_cast_str, op_type, input_args_num,
-      inplace_strategy_str, outs_initializer, ins_initializer,
+      OP_FUNCTION_TEMPLATE, func_name, op_type, ins_cast_str, op_type,
+      input_args_num, inplace_strategy_str, outs_initializer, ins_initializer,
       ins_initializer_with_null + outs_initializer_with_null +
           view_strategy_str,
       op_type, inplace_mapping_str, return_str);
@@ -394,7 +398,7 @@ GenerateOpFunctions() {
       continue;
     }
     auto& op_type = op_proto->type();
-    // Skip ooerator which is not inherit form OperatorWithKernel, like while,
+    // Skip operator which is not inherit form OperatorWithKernel, like while,
     // since only OperatorWithKernel can run in dygraph mode.
     // if the pten lib contains op kernel, we still generate ops method
     if (!all_kernels.count(op_type) &&
@@ -461,6 +465,7 @@ int main(int argc, char* argv[]) {
 #endif
 
   std::vector<std::string> headers{"\"paddle/fluid/imperative/tracer.h\"",
+                                   "\"paddle/fluid/platform/profiler.h\"",
                                    "\"pybind11/detail/common.h\"",
                                    "<Python.h>"};
 

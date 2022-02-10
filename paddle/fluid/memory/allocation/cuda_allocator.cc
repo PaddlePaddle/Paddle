@@ -67,16 +67,24 @@ pten::Allocation* CUDAAllocator::AllocateImpl(size_t size) {
         limit_size, limit_size);
   }
 
+  std::string managed_memory_msg;
+  if (platform::IsGPUManagedMemoryOversubscriptionSupported(place_.device)) {
+    managed_memory_msg = string::Sprintf(
+        "If the above ways do not solve the out of memory problem, you can try "
+        "to use CUDA managed memory. The command is `export "
+        "FLAGS_use_cuda_managed_memory=false`.");
+  }
+
   PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
       "\n\nOut of memory error on GPU %d. "
       "Cannot allocate %s memory on GPU %d, %s memory has been allocated and "
       "available memory is only %s.\n\n"
       "Please check whether there is any other process using GPU %d.\n"
       "1. If yes, please stop them, or start PaddlePaddle on another GPU.\n"
-      "2. If no, please decrease the batch size of your model. %s\n\n",
+      "2. If no, please decrease the batch size of your model. %s\n%s\n",
       place_.device, string::HumanReadableSize(size), place_.device,
       string::HumanReadableSize(allocated), string::HumanReadableSize(avail),
-      place_.device, err_msg));
+      place_.device, err_msg, managed_memory_msg));
 }
 
 }  // namespace allocation

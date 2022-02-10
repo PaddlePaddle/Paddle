@@ -28,8 +28,6 @@ namespace framework = paddle::framework;
 namespace paddle {
 namespace imperative {
 
-void TensorAdd(const framework::Variable& src, framework::Variable* dst);
-
 template <typename Place1, typename Place2, typename T>
 int TensorddTest(Place1 place1, Place2 place2, T t1, T t2) {
   framework::Variable var1;
@@ -69,7 +67,7 @@ int TensorddTest(Place1 place1, Place2 place2, T t1, T t2) {
                          sizeof(T) * dst_data.size(), 0);
 #endif
   }
-  imperative::TensorAdd(var1, &var2);
+  imperative::TensorAdd<framework::Variable>(var1, &var2);
   framework::LoDTensor rlt;
   platform::CPUPlace rlt_place;
   framework::TensorCopySync(*dst, rlt_place, &rlt);
