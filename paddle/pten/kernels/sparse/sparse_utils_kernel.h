@@ -118,5 +118,37 @@ SparseCsrTensor DenseToSparseCsr(const Context& dev_ctx, const DenseTensor& x) {
   return csr;
 }
 
+template <typename T, typename Context>
+void SparseCooToDenseKernel(const Context& dev_ctx,
+                            const SparseCooTensor& x,
+                            DenseTensor* out);
+
+template <typename T, typename Context>
+DenseTensor SparseCooToDense(const Context& dev_ctx, const SparseCooTensor& x) {
+  DenseTensorMeta meta(x.dtype(), x.dims(), x.layout());
+  DenseTensor dense = pten::Empty(dev_ctx, std::move(meta));
+  SparseCooToDenseKernel<T, Context>(dev_ctx, x, &dense);
+  return dense;
+}
+
+template <typename T, typename Context>
+void SparseCsrToDenseKernel(const Context& dev_ctx,
+                            const SparseCsrTensor& x,
+                            DenseTensor* out) {
+  DenseTensor indices = pten::Empty<T, Context>(dev_ctx);
+  DenseTensor values = pten::Empty<T, Context>(dev_ctx);
+  SparseCooTensor coo(indices, values, x.dims());
+  SparseCsrToCooKernel<T, Context>(dev_ctx, x, &coo);
+  SparseCooToDenseKernel<T, Context>(dev_ctx, coo, out);
+}
+
+template <typename T, typename Context>
+DenseTensor SparseCsrToDense(const Context& dev_ctx, const SparseCsrTensor& x) {
+  DenseTensorMeta meta(x.dtype(), x.dims(), x.layout());
+  DenseTensor dense = pten::Empty(dev_ctx, std::move(meta));
+  SparseCsrToDenseKernel<T, Context>(dev_ctx, x, &dense);
+  return dense;
+}
+
 }  // namespace sparse
 }  // namespace pten
