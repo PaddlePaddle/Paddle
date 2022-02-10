@@ -27,6 +27,8 @@ namespace cub = hipcub;
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
+DECLARE_bool(mlperf_bert_deterministic);
+
 namespace paddle {
 namespace operators {
 
@@ -173,14 +175,14 @@ __inline__ __device__ half rsqrt_(const half val) {
 #endif
 
 #ifdef PADDLE_WITH_CUDA
-template <typename T, typename U, typename ScaleT = U, int VecSize = 8,
-          int WARPS_M = 4, int WARPS_N = 1, int BYTES_PER_LDG = 16,
-          int ELTS_PER_ROW = 1024, int THREADS_PER_WARP = 32,
-          int THREADS_PER_ROW = WARPS_N *THREADS_PER_WARP,
-          int THREADS_PER_CTA = WARPS_M *THREADS_PER_ROW,
-          int ROWS_PER_CTA = WARPS_M,
-          int ELTS_PER_ROW_PER_CTA = THREADS_PER_ROW *VecSize,
-          int LDGS = ELTS_PER_ROW / ELTS_PER_ROW_PER_CTA>
+template <
+    typename T, typename U, typename ScaleT = U, int VecSize = 8,
+    int WARPS_M = 4, int WARPS_N = 1, int BYTES_PER_LDG = 16,
+    int ELTS_PER_ROW = 1024, bool deterministic = false,
+    int THREADS_PER_WARP = 32, int THREADS_PER_ROW = WARPS_N *THREADS_PER_WARP,
+    int THREADS_PER_CTA = WARPS_M *THREADS_PER_ROW, int ROWS_PER_CTA = WARPS_M,
+    int ELTS_PER_ROW_PER_CTA = THREADS_PER_ROW *VecSize,
+    int LDGS = ELTS_PER_ROW / ELTS_PER_ROW_PER_CTA>
 __global__ __launch_bounds__(THREADS_PER_CTA) void ln_fwd_1024_kernel(
     int rows, int cols, const float epsilon, const T *__restrict__ x_ptr,
     const ScaleT *__restrict__ gamma_ptr, const ScaleT *__restrict__ beta_ptr,
@@ -263,14 +265,17 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void ln_fwd_1024_kernel(
     for (int it = 0; it < LDGS; it++) {
 #pragma unroll
       for (int jt = 0; jt < VecSize; jt++) {
-        // use fp16 to compute
-        // ScaleT tmp = static_cast<ScaleT>(rsigma * (xf[it * VecSize + jt] -
-        // mu_local));
-        // x[it][jt] = gamma[it][jt] *  tmp + beta[it][jt];
-        // cast to fp32 to compute
-        U tmp = (rsigma * (static_cast<U>(xf[it * VecSize + jt]) - mu_local));
-        x[it][jt] = static_cast<T>(static_cast<U>(gamma[it][jt]) * tmp +
-                                   static_cast<U>(beta[it][jt]));
+        if (deterministic) {
+          // use fp16 to compute, to be consistent with apex fast layer_norm
+          ScaleT tmp =
+              static_cast<ScaleT>(rsigma * (xf[it * VecSize + jt] - mu_local));
+          x[it][jt] = gamma[it][jt] * tmp + beta[it][jt];
+        } else {
+          // cast to fp32 to compute
+          U tmp = (rsigma * (static_cast<U>(xf[it * VecSize + jt]) - mu_local));
+          x[it][jt] = static_cast<T>(static_cast<U>(gamma[it][jt]) * tmp +
+                                     static_cast<U>(beta[it][jt]));
+        }
       }
     }
 
@@ -390,7 +395,8 @@ template <
     bool isFusedDropoutResidualLn, typename T, typename U, typename ScaleT = U,
     typename MaskType = uint8_t, int VecSize = 8, int WARPS_M = 4,
     int WARPS_N = 1, int BYTES_PER_LDG = 16, int ELTS_PER_ROW = 1024,
-    int THREADS_PER_WARP = 32, int THREADS_PER_ROW = WARPS_N *THREADS_PER_WARP,
+    bool deterministic = false, int THREADS_PER_WARP = 32,
+    int THREADS_PER_ROW = WARPS_N *THREADS_PER_WARP,
     int THREADS_PER_CTA = WARPS_M *THREADS_PER_ROW, int ROWS_PER_CTA = WARPS_M,
     int ELTS_PER_ROW_PER_CTA = THREADS_PER_ROW *VecSize,
     int LDGS = ELTS_PER_ROW / ELTS_PER_ROW_PER_CTA>
@@ -476,6 +482,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_1024_kernel(
       for (int jt = 0; jt < VecSize; jt++) {
         U x_tmp = x[it][jt];
         U y_tmp = var_cur_row * (x_tmp - mean_cur_row);
+        // todo(@limin29): how to be consistent with nv fast ln?
         U dy_tmp = static_cast<U>(gamma[it][jt]) *
                    static_cast<U>(dout[it][jt]);  // scale * dy
         U dout_tmp = dout[it][jt];                // dy
@@ -804,17 +811,19 @@ void ln_bwd_1024_kernel_driver(
             "To compute fused_dropout_residual_ln grad, d_dropout_src_ptr "
             "can't be null"));
       }
-      fused_ln_bwd_1024_kernel<
-          true, T, U, ScaleT, MaskType, VecSize, WARPS_M, WARPS_N,
-          BYTES_PER_LDG><<<gridx, THREADS_PER_CTA, 0, stream>>>(
+      fused_ln_bwd_1024_kernel<true, T, U, ScaleT, MaskType, VecSize, WARPS_M,
+                               WARPS_N, BYTES_PER_LDG, 1024,
+                               FLAGS_mlperf_bert_deterministic><<<
+          gridx, THREADS_PER_CTA, 0, stream>>>(
           rows, epsilon, x_ptr, scale_ptr, mean_ptr, var_ptr, dout_ptr,
           dscale_temp_ptr, dbias_temp_ptr, dx_ptr, mask_ptr, factor,
           d_dropout_src_ptr);
 
     } else {
-      fused_ln_bwd_1024_kernel<
-          false, T, U, ScaleT, MaskType, VecSize, WARPS_M, WARPS_N,
-          BYTES_PER_LDG><<<gridx, THREADS_PER_CTA, 0, stream>>>(
+      fused_ln_bwd_1024_kernel<false, T, U, ScaleT, MaskType, VecSize, WARPS_M,
+                               WARPS_N, BYTES_PER_LDG, 1024,
+                               FLAGS_mlperf_bert_deterministic><<<
+          gridx, THREADS_PER_CTA, 0, stream>>>(
           rows, epsilon, x_ptr, scale_ptr, mean_ptr, var_ptr, dout_ptr,
           dscale_temp_ptr, dbias_temp_ptr, dx_ptr);
     }
