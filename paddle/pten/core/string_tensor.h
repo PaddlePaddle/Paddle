@@ -131,6 +131,10 @@ class StringTensor : public TensorBase,
   /// \return The const data pointer value of pstring type.
   const dtype::pstring* data() const;
 
+  void* AllocateFrom(Allocator* allocator,
+                     DataType dtype,
+                     size_t requested_size = 0);
+
  private:
   StringTensorMeta meta_;
   std::shared_ptr<pten::Allocation> holder_;

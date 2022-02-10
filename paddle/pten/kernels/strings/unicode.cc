@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/pten/kernels/strings/unicode.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
+#include "paddle/pten/backends/gpu/gpu_info.h"
 #include "paddle/pten/kernels/strings/charcases_flag.h"
 #include "paddle/pten/kernels/strings/unicode_flag.h"
 
@@ -40,11 +40,11 @@ UnicodeFlagMap<GPUContext, uint8_t>::UnicodeFlagMap(uint8_t* flag_map) {
 // StatRegistry
 #ifdef __HIPCC__
   hipMalloc(reinterpret_cast<void**>(&m_charcases_map), gUMapSize);
-  paddle::platform::GpuMemcpySync(
+  pten::backends::gpu::GpuMemcpySync(
       m_charcases_map, flag_map, gUMapSize, hipMemcpyHostToDevice);
 #else
   cudaMalloc(reinterpret_cast<void**>(&m_charcases_map), gUMapSize);
-  paddle::platform::GpuMemcpySync(
+  pten::backends::gpu::GpuMemcpySync(
       m_charcases_map, flag_map, gUMapSize, cudaMemcpyHostToDevice);
 #endif
 }
@@ -54,11 +54,11 @@ UnicodeFlagMap<GPUContext, uint16_t>::UnicodeFlagMap(uint16_t* flag_map) {
   uint32_t gCMapSize = sizeof(CHARCASES_MAP);
 #ifdef __HIPCC__
   hipMalloc(reinterpret_cast<void**>(&m_charcases_map), gCMapSize);
-  paddle::platform::GpuMemcpySync(
+  pten::backends::gpu::GpuMemcpySync(
       m_charcases_map, flag_map, gCMapSize, hipMemcpyHostToDevice);
 #else
   cudaMalloc(reinterpret_cast<void**>(&m_charcases_map), gCMapSize);
-  paddle::platform::GpuMemcpySync(
+  pten::backends::gpu::GpuMemcpySync(
       m_charcases_map, flag_map, gCMapSize, cudaMemcpyHostToDevice);
 #endif
 }

@@ -36,7 +36,7 @@ namespace pten {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 using pstring = ::pten::dtype::pstring;
 using paddle::platform::CPUPlace;
 using paddle::platform::CUDAPlace;

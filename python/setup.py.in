@@ -269,6 +269,9 @@ packages=['paddle',
           'paddle.dataset',
           'paddle.reader',
           'paddle.distributed',
+          'paddle.distributed.metric',
+          'paddle.distributed.ps',
+          'paddle.distributed.ps.utils',
           'paddle.incubate',
           'paddle.incubate.optimizer',
           'paddle.incubate.checkpoint',
@@ -519,6 +522,10 @@ if '${WITH_XPU_BKCL}' == 'ON':
     shutil.copy('${XPU_BKCL_LIB}', libs_path)
     package_data['paddle.libs']+=['${XPU_BKCL_LIB_NAME}']
 
+if '${WITH_IPU}' == 'ON':
+    shutil.copy('${PADDLE_IPU_LIB}', libs_path)
+    package_data['paddle.libs'] += ['libpaddle_ipu' + ext_name]
+
 # remove unused paddle/libs/__init__.py
 if os.path.isfile(libs_path+'/__init__.py'):
     os.remove(libs_path+'/__init__.py')
@@ -562,14 +569,17 @@ def find_files(pattern, root, recursive=False):
             break
 
 headers = (
+    # paddle level api headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle')) +
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pten/api')) +  # pten unify api header
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pten/api/ext')) +  # custom op api
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pten/api/include')) +  # pten api
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pten/common')) +  # pten common headers
-    # For paddle uew custom op, only copy data type headers from `paddle/fluid/platform`
-    # to `paddle/pten/api/ext`,
-    ['@PADDLE_SOURCE_DIR@/paddle/utils/any.h'])
+    # pten level api headers (low level api)
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pten/core', recursive=True)) +  # pten core headers
+    # utila api headers
+    ['@PADDLE_SOURCE_DIR@/paddle/utils/any.h'] +
+    ['@PADDLE_SOURCE_DIR@/paddle/utils/small_vector.h'])
 
 if '${WITH_MKLDNN}' == 'ON':
     headers += list(find_files('*', '${MKLDNN_INSTALL_DIR}/include')) # mkldnn
@@ -614,8 +624,6 @@ class InstallHeaders(Command):
         elif 'third_party' not in header:
             # paddle headers
             install_dir = re.sub('@PADDLE_SOURCE_DIR@/', '', header)
-            if 'fluid' in install_dir:
-                install_dir = "paddle/pten/common/"
         else:
             # third_party
             install_dir = re.sub('${THIRD_PARTY_PATH}', 'third_party', header)

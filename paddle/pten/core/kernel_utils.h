@@ -18,12 +18,13 @@
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/kernel_context.h"
-#include "paddle/pten/core/kernel_def.h"
-#include "paddle/pten/core/string_tensor.h"
-
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/pten/core/enforce.h"
+#include "paddle/pten/core/kernel_context.h"
+#include "paddle/pten/core/selected_rows.h"
+#include "paddle/pten/core/sparse_coo_tensor.h"
+#include "paddle/pten/core/sparse_csr_tensor.h"
+#include "paddle/pten/core/string_tensor.h"
+#include "paddle/pten/core/type_defs.h"
 
 namespace pten {
 
@@ -214,11 +215,20 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(DenseTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(DenseTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(DenseTensor);
+
   PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(StringTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(StringTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(StringTensor);
-  // TODO(chenweihang): adapt SelectedRows
-  // PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SelectedRowsTensor);
+
+  PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SelectedRows);
+
+  PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SparseCooTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SparseCooTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(SparseCooTensor);
+
+  PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SparseCsrTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SparseCsrTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(SparseCsrTensor);
 
   /* Attribute Helpers */
 
@@ -230,6 +240,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(paddle::platform::float16);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const Scalar&);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataType);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataLayout);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<int64_t>&);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const ScalarArray&);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<int>&);
@@ -238,10 +249,17 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
 
   PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(DenseTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(DenseTensor);
+
   PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(StringTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(StringTensor);
-  // TODO(chenweihang): adapt SelectedRows
-  // PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SelectedRowsTensor);
+
+  PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SelectedRows);
+
+  PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SparseCooTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(SparseCooTensor);
+
+  PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SparseCsrTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(SparseCsrTensor);
 
   /* End case */
   template <typename T>

@@ -25,7 +25,7 @@ namespace pten {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 using pstring = ::pten::dtype::pstring;
 
 TEST(DEV_API, strings_cast_convert) {

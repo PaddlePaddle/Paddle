@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/pten/core/string_tensor.h"
+#include "paddle/fluid/memory/malloc.h"
 
 namespace pten {
 
@@ -129,6 +130,12 @@ void StringTensor::init_holder() {
     cudaMemset(ptr, 0, bytes_size);
 #endif
   }
+}
+void* StringTensor::AllocateFrom(Allocator* allocator,
+                                 DataType dtype,
+                                 size_t requested_size) {
+  // TODO(zhoushunjie): implement it later.
+  return nullptr;
 }
 
 }  // namespace pten
