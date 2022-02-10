@@ -14,31 +14,15 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/cinn/cinn_instruction_run_op.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/device_context.h"
 
-namespace paddle::operators {
-namespace details {
+template <typename DeviceContext, typename T>
+using CinnInstructionRunOpKernel =
+    paddle::operators::CinnInstructionRunOpKernel<DeviceContext, T>;
+using CUDADeviceContext = paddle::platform::CUDADeviceContext;
 
-#ifdef PADDLE_WITH_CUDA
-template <>
-void* GetStream<platform::CUDADeviceContext>(
-    const framework::ExecutionContext& ctx) {
-  const auto& dev_ctx =
-      ctx.template device_context<platform::CUDADeviceContext>();
-  return dev_ctx.stream();
-}
-#endif
-
-}  // namespace details
-}  // namespace paddle::operators
-
-namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    cinn_instruction_run,
-    ops::CinnInstructionRunOpKernel<paddle::platform::CUDADeviceContext, bool>,
-    ops::CinnInstructionRunOpKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::CinnInstructionRunOpKernel<paddle::platform::CUDADeviceContext,
-                                    int64_t>,
-    ops::CinnInstructionRunOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::CinnInstructionRunOpKernel<paddle::platform::CUDADeviceContext,
-                                    double>);
+REGISTER_OP_CUDA_KERNEL(cinn_instruction_run,
+                        CinnInstructionRunOpKernel<CUDADeviceContext, bool>,
+                        CinnInstructionRunOpKernel<CUDADeviceContext, int>,
+                        CinnInstructionRunOpKernel<CUDADeviceContext, int64_t>,
+                        CinnInstructionRunOpKernel<CUDADeviceContext, float>,
+                        CinnInstructionRunOpKernel<CUDADeviceContext, double>);

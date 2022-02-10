@@ -23,32 +23,13 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
+#include "paddle/fluid/operators/cinn/cinn_op_helper.h"
 
 namespace paddle::operators {
-
-constexpr char kX[] = "X";
-constexpr char kOutputs[] = "Out";
-constexpr char kCachedIndex[] = "cached_index";
-constexpr char kInstructionIndex[] = "instruction_index";
 
 using CinnInstruction = ::cinn::hlir::framework::Instruction;
 using CinnCompiledObject = framework::paddle2cinn::CinnCompiledObject;
 using CinnCompiler = framework::paddle2cinn::CinnCompiler;
-
-namespace details {
-
-template <typename DeviceContext>
-void* GetStream(const framework::ExecutionContext& ctx) {
-  return nullptr;
-}
-
-#ifdef PADDLE_WITH_CUDA
-template <>
-void* GetStream<platform::CUDADeviceContext>(
-    const framework::ExecutionContext& ctx);
-#endif
-
-}  // namespace details
 
 template <typename DeviceContext, typename T>
 class CinnInstructionRunOpKernel : public framework::OpKernel<T> {

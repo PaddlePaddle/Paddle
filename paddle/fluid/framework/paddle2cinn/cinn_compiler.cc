@@ -117,7 +117,13 @@ const CinnCompiledObject& CinnCompiler::Compile(
 }
 
 const CinnCompiledObject& CinnCompiler::GetCompiledObject(
-    int64_t cached_index) const {}
+    int64_t cached_index) const {
+  auto res = index2cache_.find(cached_index);
+  PADDLE_ENFORCE_NE(res, index2cache_.end(),
+                    platform::errors::InvalidArgument(
+                        "Index(%ld) not found in cache", cached_index));
+  return *res->second;
+}
 
 std::string CinnCompiler::AddGraph(std::unique_ptr<Graph> graph) {
   std::string graph_key;
@@ -206,6 +212,7 @@ void CinnCompiler::Clear() {
     graphs_.clear();
     cache_by_address_.clear();
     cache_by_struct_.clear();
+    index2cache_.clear();
   }
   real_compiled_num_.store(0);
 }
