@@ -24,19 +24,6 @@ namespace platform {
 
 #define CREATE_SHFL_MASK(mask, predicate) mask = __ballot((predicate))
 
-inline static int RoundToPowerOfTwo(int dim) {
-  // HIP results in error or nan if > 256
-  if (dim > 128) {
-    return 256;
-  } else if (dim > 64) {
-    return 128;
-  } else if (dim > 32) {
-    return 64;
-  } else {
-    return 32;
-  }
-}
-
 #define CUDA_LAUNCH_KERNEL_BASE(dim, ...)  \
   case (dim): {                            \
     constexpr auto kPowerOfTwoDim = (dim); \

@@ -15,9 +15,11 @@ limitations under the License. */
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/stream_callback_manager.h"
@@ -50,24 +52,28 @@ class CUDAStream final {
                       const StreamFlag& flag = StreamFlag::kDefaultFlag) {
     Init(place, priority, flag);
   }
+  explicit CUDAStream(gpuStream_t stream, const Place& place)
+      : place_(place), stream_(stream) {
+    owned_stream_ = false;
+    callback_manager_.reset(new StreamCallbackManager<gpuStream_t>(stream_));
+  }
   virtual ~CUDAStream() { Destroy(); }
 
   bool Init(const Place& place, const Priority& priority = Priority::kNormal,
             const StreamFlag& flag = StreamFlag::kDefaultFlag);
 
-  template <typename Callback>
-  void AddCallback(Callback&& callback) const {
+  void AddCallback(std::function<void()> callback) const {
     callback_manager_->AddCallback(callback);
   }
 
-  template <typename Callback>
 #ifdef PADDLE_WITH_HIP
-  void RecordEvent(hipEvent_t ev, Callback callback) const {
+  void RecordEvent(hipEvent_t ev, const std::function<void()>& callback) const {
     callback();
     PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(ev, stream_));
   }
 #else
-  void RecordEvent(cudaEvent_t ev, Callback callback) const {
+  void RecordEvent(cudaEvent_t ev,
+                   const std::function<void()>& callback) const {
     callback();
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(ev, stream_));
   }
@@ -130,8 +136,12 @@ class CUDAStream final {
 
   const Place& GetPlace() const { return place_; }
 
+  // Note: Can only be used under thread_local semantics.
+  void SetStream(gpuStream_t stream);
+
  private:
   Place place_;
+  bool owned_stream_{true};
 #ifdef PADDLE_WITH_HIP
   hipStream_t stream_{nullptr};
 #else
@@ -144,6 +154,7 @@ class CUDAStream final {
 };
 
 CUDAStream* get_current_stream(int deviceId);
+// NOTE: There is a problem with the interface and needs to be fixed
 CUDAStream* set_current_stream(CUDAStream* stream);
 
 }  // namespace stream

@@ -348,7 +348,7 @@ class DeviceTracerImpl : public DeviceTracer {
   }
 
   void AddCPURecords(const std::string &anno, uint64_t start_ns,
-                     uint64_t end_ns, int64_t device_id, int64_t thread_id) {
+                     uint64_t end_ns, int64_t device_id, uint64_t thread_id) {
     if (anno.empty()) {
       VLOG(1) << "Empty timeline annotation.";
       return;
@@ -383,7 +383,7 @@ class DeviceTracerImpl : public DeviceTracer {
 
   void AddMemInfoRecord(uint64_t start_ns, uint64_t end_ns, size_t bytes,
                         const Place &place, const std::string &alloc_in,
-                        const std::string &free_in, int64_t thread_id) {
+                        const std::string &free_in, uint64_t thread_id) {
     if (0 == start_ns || 0 == end_ns) {
       VLOG(3) << alloc_in << ", " << free_in << " Cannot be traced.";
       return;
@@ -643,8 +643,7 @@ class DeviceTracerImpl : public DeviceTracer {
           event->set_place(proto::MemEvent::CPUPlace);
         } else if (platform::is_gpu_place(r.place)) {
           event->set_place(proto::MemEvent::CUDAPlace);
-          event->set_device_id(
-              BOOST_GET_CONST(platform::CUDAPlace, r.place).GetDeviceId());
+          event->set_device_id(r.place.GetDeviceId());
         } else if (platform::is_cuda_pinned_place(r.place)) {
           event->set_place(proto::MemEvent::CUDAPinnedPlace);
         } else if (platform::is_npu_place(r.place)) {

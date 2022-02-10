@@ -36,21 +36,22 @@ class ClipByNormKernel<platform::CUDADeviceContext, platform::float16>
 
       output = context.Output<Tensor>("Out");
       output->mutable_data<platform::float16>(context.GetPlace());
-    } else if (in_var->IsType<SelectedRows>()) {
-      auto* x = context.Input<SelectedRows>("X");
+    } else if (in_var->IsType<pten::SelectedRows>()) {
+      auto* x = context.Input<pten::SelectedRows>("X");
 
       // merge ids in selected rows first
       math::scatter::MergeAdd<platform::CUDADeviceContext, platform::float16>
           merge_func;
-      SelectedRows* merged_input =
+      pten::SelectedRows* merged_input =
           const_cast<framework::Scope&>(context.scope())
               .Var()
-              ->GetMutable<SelectedRows>();
+              ->GetMutable<pten::SelectedRows>();
       merge_func(context.template device_context<platform::CUDADeviceContext>(),
                  *x, merged_input);
       input = &(merged_input->value());
 
-      SelectedRows* output_selected_rows = context.Output<SelectedRows>("Out");
+      pten::SelectedRows* output_selected_rows =
+          context.Output<pten::SelectedRows>("Out");
       output_selected_rows->set_rows(merged_input->rows());
       output_selected_rows->set_height(merged_input->height());
       output = output_selected_rows->mutable_value();
@@ -74,9 +75,9 @@ class ClipByNormKernel<platform::CUDADeviceContext, platform::float16>
     }
     Tensor tmp = context.AllocateTmpTensor<float, platform::CUDADeviceContext>(
         {1}, dev_ctx);
-    TensorReduceFunctorImpl<platform::float16, float, kps::AddFunctor,
-                            kps::SquareFunctor<platform::float16, float>>(
-        *input, &tmp, kps::SquareFunctor<platform::float16, float>(),
+    TensorReduceImpl<platform::float16, float, kps::AddFunctor,
+                     kps::SquareFunctor<platform::float16, float>>(
+        dev_ctx, *input, &tmp, kps::SquareFunctor<platform::float16, float>(),
         reduce_dims, dev_ctx.stream());
     auto tmp_eigen = EigenVector<float>::Flatten(tmp);
     auto x_norm = tmp_eigen.sqrt();

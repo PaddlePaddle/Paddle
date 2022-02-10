@@ -23,20 +23,45 @@ namespace {
 using OperatorBase = TaskNode::OperatorBase;
 }
 
-TaskNode::TaskNode(const framework::ProgramDesc& program, int64_t rank,
+TaskNode::TaskNode(paddle::framework::ProgramDesc* program, int64_t rank,
                    int64_t max_run_times, int64_t max_slot_nums)
     : program_(program),
       rank_(rank),
       max_run_times_(max_run_times),
       max_slot_nums_(max_slot_nums) {
   // Should be serially invoked, not thread-safe
+  // NOTE: when instantiate TaskNode with program, won't init task node
+  // immediately, since the provided program may be updated later (with
+  // high probability) by adding_feed_fetch_ops or by RuntimeGraph.
+  // So, delay the init part to the Init() function.
   static int64_t task_node_cnt = 0;
   task_id_ = task_node_cnt++;
-  for (const auto& op_desc : program.Block(0).AllOps()) {
-    ops_vec_.emplace_back(framework::OpRegistry::CreateOp(*op_desc));
-  }
-  for (const auto& op : ops_vec_) {
-    ops_.emplace_back(op.get());
+}
+
+TaskNode::TaskNode(paddle::framework::ProgramDesc* program, int64_t rank)
+    : program_(program), rank_(rank), task_id_(rank) {
+  max_run_times_ = 1;
+  max_slot_nums_ = 1;
+  LOG(INFO)
+      << "Constructing TaskNode for DistModelInf. The TaskNode's id is: "
+      << rank
+      << ". And the TaskNode's max_run_time and max_slot_num will be set to 1.";
+}
+
+void TaskNode::SetProgram(paddle::framework::ProgramDesc* program) {
+  program_ = program;
+}
+
+void TaskNode::Init() {
+  if (ops_.empty()) {
+    // Q (for fleet executor dev): should we need another reset funct?
+    VLOG(3) << "Task node will be inited by calling Init().";
+    for (const auto& op_desc : program_->Block(0).AllOps()) {
+      ops_vec_.emplace_back(framework::OpRegistry::CreateOp(*op_desc));
+    }
+    for (const auto& op : ops_vec_) {
+      ops_.emplace_back(op.get());
+    }
   }
 }
 
@@ -52,6 +77,7 @@ TaskNode::TaskNode(int32_t role,
   if (op_descs.empty()) {
     return;
   }
+  VLOG(3) << "Task node will be inited by providing list of ops.";
   for (const auto& desc : op_descs) {
     ops_vec_.emplace_back(framework::OpRegistry::CreateOp(*desc));
   }

@@ -164,11 +164,11 @@ void ComputeBatchNormForward(const platform::CUDADeviceContext &ctx,
       scope.Var("ReserveSpace")->GetMutable<framework::LoDTensor>();
 
   auto place = ctx.GetPlace();
-  TensorCopySync(cpu_x, place, x);
-  TensorCopySync(cpu_scale, place, scale);
-  TensorCopySync(cpu_bias, place, bias);
-  TensorCopySync(*cpu_mean, place, mean);
-  TensorCopySync(*cpu_var, place, var);
+  paddle::framework::TensorCopySync(cpu_x, place, x);
+  paddle::framework::TensorCopySync(cpu_scale, place, scale);
+  paddle::framework::TensorCopySync(cpu_bias, place, bias);
+  paddle::framework::TensorCopySync(*cpu_mean, place, mean);
+  paddle::framework::TensorCopySync(*cpu_var, place, var);
 
   int64_t channels = x->dims()[3];
   scale->Resize({channels});
@@ -195,11 +195,13 @@ void ComputeBatchNormForward(const platform::CUDADeviceContext &ctx,
       attrs);
   op->Run(scope, ctx.GetPlace());
 
-  TensorCopySync(*y, platform::CPUPlace(), cpu_y);
-  TensorCopySync(*mean, platform::CPUPlace(), cpu_mean);
-  TensorCopySync(*var, platform::CPUPlace(), cpu_var);
-  TensorCopySync(*saved_mean, platform::CPUPlace(), cpu_saved_mean);
-  TensorCopySync(*saved_var, platform::CPUPlace(), cpu_saved_var);
+  paddle::framework::TensorCopySync(*y, platform::CPUPlace(), cpu_y);
+  paddle::framework::TensorCopySync(*mean, platform::CPUPlace(), cpu_mean);
+  paddle::framework::TensorCopySync(*var, platform::CPUPlace(), cpu_var);
+  paddle::framework::TensorCopySync(*saved_mean, platform::CPUPlace(),
+                                    cpu_saved_mean);
+  paddle::framework::TensorCopySync(*saved_var, platform::CPUPlace(),
+                                    cpu_saved_var);
   // reserved_space will stay on GPU and used in grad op.
   saved_reserve_space->ShareDataWith(*reserve_space);
 }
@@ -226,12 +228,12 @@ void ComputeFusedBNAddReluForward(const platform::CUDADeviceContext &ctx,
       scope.Var("ReserveSpace")->GetMutable<framework::LoDTensor>();
 
   auto place = ctx.GetPlace();
-  TensorCopySync(cpu_x, place, x);
-  TensorCopySync(cpu_z, place, z);
-  TensorCopySync(cpu_scale, place, scale);
-  TensorCopySync(cpu_bias, place, bias);
-  TensorCopySync(*cpu_mean, place, mean);
-  TensorCopySync(*cpu_var, place, var);
+  paddle::framework::TensorCopySync(cpu_x, place, x);
+  paddle::framework::TensorCopySync(cpu_z, place, z);
+  paddle::framework::TensorCopySync(cpu_scale, place, scale);
+  paddle::framework::TensorCopySync(cpu_bias, place, bias);
+  paddle::framework::TensorCopySync(*cpu_mean, place, mean);
+  paddle::framework::TensorCopySync(*cpu_var, place, var);
 
   int64_t channels = x->dims()[3];
   scale->Resize({channels});
@@ -253,11 +255,13 @@ void ComputeFusedBNAddReluForward(const platform::CUDADeviceContext &ctx,
       attrs);
   op->Run(scope, ctx.GetPlace());
 
-  TensorCopySync(*y, platform::CPUPlace(), cpu_y);
-  TensorCopySync(*mean, platform::CPUPlace(), cpu_mean);
-  TensorCopySync(*var, platform::CPUPlace(), cpu_var);
-  TensorCopySync(*saved_mean, platform::CPUPlace(), cpu_saved_mean);
-  TensorCopySync(*saved_var, platform::CPUPlace(), cpu_saved_var);
+  paddle::framework::TensorCopySync(*y, platform::CPUPlace(), cpu_y);
+  paddle::framework::TensorCopySync(*mean, platform::CPUPlace(), cpu_mean);
+  paddle::framework::TensorCopySync(*var, platform::CPUPlace(), cpu_var);
+  paddle::framework::TensorCopySync(*saved_mean, platform::CPUPlace(),
+                                    cpu_saved_mean);
+  paddle::framework::TensorCopySync(*saved_var, platform::CPUPlace(),
+                                    cpu_saved_var);
   // reserved_space will stay on GPU and used in grad op.
   saved_reserve_space->ShareDataWith(*reserve_space);
 }
@@ -285,13 +289,13 @@ void ComputeFusedBNAddReluBackward(
   auto *dbias = scope.Var("Bias@GRAD")->GetMutable<framework::LoDTensor>();
 
   auto place = ctx.GetPlace();
-  TensorCopySync(cpu_x, place, x);
-  TensorCopySync(cpu_y, place, y);
-  TensorCopySync(cpu_dy, place, dy);
-  TensorCopySync(cpu_scale, place, scale);
-  TensorCopySync(cpu_bias, place, bias);
-  TensorCopySync(cpu_saved_mean, place, saved_mean);
-  TensorCopySync(cpu_saved_var, place, saved_var);
+  paddle::framework::TensorCopySync(cpu_x, place, x);
+  paddle::framework::TensorCopySync(cpu_y, place, y);
+  paddle::framework::TensorCopySync(cpu_dy, place, dy);
+  paddle::framework::TensorCopySync(cpu_scale, place, scale);
+  paddle::framework::TensorCopySync(cpu_bias, place, bias);
+  paddle::framework::TensorCopySync(cpu_saved_mean, place, saved_mean);
+  paddle::framework::TensorCopySync(cpu_saved_var, place, saved_var);
   reserve_space->ShareDataWith(saved_reserve_space);
 
   int64_t channels = x->dims()[3];
@@ -324,10 +328,10 @@ void ComputeFusedBNAddReluBackward(
       attrs);
   op->Run(scope, ctx.GetPlace());
 
-  TensorCopySync(*dx, platform::CPUPlace(), cpu_dx);
-  TensorCopySync(*dz, platform::CPUPlace(), cpu_dz);
-  TensorCopySync(*dscale, platform::CPUPlace(), cpu_dscale);
-  TensorCopySync(*dbias, platform::CPUPlace(), cpu_dbias);
+  paddle::framework::TensorCopySync(*dx, platform::CPUPlace(), cpu_dx);
+  paddle::framework::TensorCopySync(*dz, platform::CPUPlace(), cpu_dz);
+  paddle::framework::TensorCopySync(*dscale, platform::CPUPlace(), cpu_dscale);
+  paddle::framework::TensorCopySync(*dbias, platform::CPUPlace(), cpu_dbias);
 }
 
 template <typename T>
@@ -527,10 +531,10 @@ class CudnnBNAddReluTester {
     ComputeSumAndSquareSum<T>(cpu_x, &cpu_sum, &cpu_sum_of_square);
 
     auto place = ctx.GetPlace();
-    TensorCopySync(cpu_sum, place, sum);
-    TensorCopySync(cpu_sum_of_square, place, sum_of_square);
-    TensorCopySync(cpu_bn_scale, place, bn_scale);
-    TensorCopySync(cpu_bn_bias, place, bn_bias);
+    paddle::framework::TensorCopySync(cpu_sum, place, sum);
+    paddle::framework::TensorCopySync(cpu_sum_of_square, place, sum_of_square);
+    paddle::framework::TensorCopySync(cpu_bn_scale, place, bn_scale);
+    paddle::framework::TensorCopySync(cpu_bn_bias, place, bn_bias);
 
     bn_scale->Resize({1, 1, 1, channels_});
     bn_bias->Resize({1, 1, 1, channels_});
@@ -572,9 +576,9 @@ class CudnnBNAddReluTester {
     framework::Tensor bn_bias_z;
 
     auto place = ctx.GetPlace();
-    TensorCopySync(cpu_x_, place, &x);
+    paddle::framework::TensorCopySync(cpu_x_, place, &x);
     if (fuse_add_ || has_shortcut_) {
-      TensorCopySync(cpu_z_, place, &z);
+      paddle::framework::TensorCopySync(cpu_z_, place, &z);
     }
 
     framework::Tensor mean_x;
@@ -595,12 +599,12 @@ class CudnnBNAddReluTester {
     framework::Tensor bitmask;
 
     InitMeanVar(cpu_mean_x, cpu_var_x, cpu_saved_mean_x, cpu_saved_var_x);
-    TensorCopySync(*cpu_mean_x, place, &mean_x);
-    TensorCopySync(*cpu_var_x, place, &var_x);
+    paddle::framework::TensorCopySync(*cpu_mean_x, place, &mean_x);
+    paddle::framework::TensorCopySync(*cpu_var_x, place, &var_x);
     if (has_shortcut_) {
       InitMeanVar(cpu_mean_z, cpu_var_z, cpu_saved_mean_z, cpu_saved_var_z);
-      TensorCopySync(*cpu_mean_z, place, &mean_z);
-      TensorCopySync(*cpu_var_z, place, &var_z);
+      paddle::framework::TensorCopySync(*cpu_mean_z, place, &mean_z);
+      paddle::framework::TensorCopySync(*cpu_var_z, place, &var_z);
     }
 
     // 1. BN Stats Finalize
@@ -634,18 +638,24 @@ class CudnnBNAddReluTester {
     sbar_op.Forward(ctx, x, equiv_scale_x, equiv_bias_x, &z, &equiv_scale_z,
                     &equiv_bias_z, &y, &bitmask);
 
-    TensorCopySync(mean_x, platform::CPUPlace(), cpu_mean_x);
-    TensorCopySync(var_x, platform::CPUPlace(), cpu_var_x);
-    TensorCopySync(saved_mean_x, platform::CPUPlace(), cpu_saved_mean_x);
-    TensorCopySync(saved_var_x, platform::CPUPlace(), cpu_saved_var_x);
+    paddle::framework::TensorCopySync(mean_x, platform::CPUPlace(), cpu_mean_x);
+    paddle::framework::TensorCopySync(var_x, platform::CPUPlace(), cpu_var_x);
+    paddle::framework::TensorCopySync(saved_mean_x, platform::CPUPlace(),
+                                      cpu_saved_mean_x);
+    paddle::framework::TensorCopySync(saved_var_x, platform::CPUPlace(),
+                                      cpu_saved_var_x);
     if (has_shortcut_) {
-      TensorCopySync(mean_z, platform::CPUPlace(), cpu_mean_z);
-      TensorCopySync(var_z, platform::CPUPlace(), cpu_var_z);
-      TensorCopySync(saved_mean_z, platform::CPUPlace(), cpu_saved_mean_z);
-      TensorCopySync(saved_var_z, platform::CPUPlace(), cpu_saved_var_z);
+      paddle::framework::TensorCopySync(mean_z, platform::CPUPlace(),
+                                        cpu_mean_z);
+      paddle::framework::TensorCopySync(var_z, platform::CPUPlace(), cpu_var_z);
+      paddle::framework::TensorCopySync(saved_mean_z, platform::CPUPlace(),
+                                        cpu_saved_mean_z);
+      paddle::framework::TensorCopySync(saved_var_z, platform::CPUPlace(),
+                                        cpu_saved_var_z);
     }
-    TensorCopySync(y, platform::CPUPlace(), cpu_y);
-    TensorCopySync(bitmask, platform::CPUPlace(), cpu_bitmask);
+    paddle::framework::TensorCopySync(y, platform::CPUPlace(), cpu_y);
+    paddle::framework::TensorCopySync(bitmask, platform::CPUPlace(),
+                                      cpu_bitmask);
   }
 
   // Get backward results of CudnnBNStatsFinalize + CudnnScaleBiasAddRelu
@@ -664,13 +674,13 @@ class CudnnBNAddReluTester {
     framework::Tensor dbias;
 
     auto place = ctx.GetPlace();
-    TensorCopySync(cpu_dy_, place, &dy);
-    TensorCopySync(cpu_x_, place, &x);
-    TensorCopySync(cpu_bn_scale_x_, place, &bn_scale);
-    TensorCopySync(cpu_bn_bias_x_, place, &bn_bias);
-    TensorCopySync(cpu_saved_mean_x_, place, &saved_mean);
-    TensorCopySync(cpu_saved_var_x_, place, &saved_var);
-    TensorCopySync(cpu_bitmask_, place, &bitmask);
+    paddle::framework::TensorCopySync(cpu_dy_, place, &dy);
+    paddle::framework::TensorCopySync(cpu_x_, place, &x);
+    paddle::framework::TensorCopySync(cpu_bn_scale_x_, place, &bn_scale);
+    paddle::framework::TensorCopySync(cpu_bn_bias_x_, place, &bn_bias);
+    paddle::framework::TensorCopySync(cpu_saved_mean_x_, place, &saved_mean);
+    paddle::framework::TensorCopySync(cpu_saved_var_x_, place, &saved_var);
+    paddle::framework::TensorCopySync(cpu_bitmask_, place, &bitmask);
 
     bn_scale.Resize({1, 1, 1, channels_});
     bn_bias.Resize({1, 1, 1, channels_});
@@ -692,10 +702,10 @@ class CudnnBNAddReluTester {
     sbar_op.Backward(ctx, dy, x, bn_scale, bn_bias, saved_mean, saved_var,
                      &bitmask, &dx, &dz, &dscale, &dbias, eps_);
 
-    TensorCopySync(dx, platform::CPUPlace(), cpu_dx);
-    TensorCopySync(dz, platform::CPUPlace(), cpu_dz);
-    TensorCopySync(dscale, platform::CPUPlace(), cpu_dscale);
-    TensorCopySync(dbias, platform::CPUPlace(), cpu_dbias);
+    paddle::framework::TensorCopySync(dx, platform::CPUPlace(), cpu_dx);
+    paddle::framework::TensorCopySync(dz, platform::CPUPlace(), cpu_dz);
+    paddle::framework::TensorCopySync(dscale, platform::CPUPlace(), cpu_dscale);
+    paddle::framework::TensorCopySync(dbias, platform::CPUPlace(), cpu_dbias);
   }
 
  private:

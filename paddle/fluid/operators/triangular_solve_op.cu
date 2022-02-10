@@ -19,7 +19,8 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-struct MatrixReduceSumFunctor<platform::CUDADeviceContext, T> {
+class MatrixReduceSumFunctor<platform::CUDADeviceContext, T> {
+ public:
   void operator()(const Tensor& in, Tensor* out,
                   const framework::ExecutionContext& ctx) {
     // For example: in's dim = [5, 3, 2, 7, 3] ; out's dim = [3, 1, 7, 3]
@@ -43,8 +44,9 @@ struct MatrixReduceSumFunctor<platform::CUDADeviceContext, T> {
       }
     }
     gpuStream_t stream = ctx.cuda_device_context().stream();
-    TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-        in, out, kps::IdentityFunctor<T>(), out_reduce_dims, stream);
+    TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+        ctx.cuda_device_context(), in, out, kps::IdentityFunctor<T>(),
+        out_reduce_dims, stream);
   }
 };
 

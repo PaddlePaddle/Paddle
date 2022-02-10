@@ -43,6 +43,10 @@ inline void DealTensorArray(const framework::ExecutionContext& ctx,
   end = std::max(end, static_cast<int64_t>(0));
   end = std::min(end, in_size);
 
+  if (starts[0] == -1 && end == 0) {
+    end = start + 1;
+  }
+
   PADDLE_ENFORCE_GT(end, start,
                     platform::errors::InvalidArgument(
                         "Attr(ends) should be greater than attr(starts) in "
@@ -59,7 +63,7 @@ inline void DealTensorArray(const framework::ExecutionContext& ctx,
       auto in_tensor = in_array->at(i + start);
       out_tensor->set_lod(in_tensor.lod());
       if (in_tensor.memory_size() > 0) {
-        TensorCopy(in_tensor, ctx.GetPlace(), out_tensor);
+        paddle::framework::TensorCopy(in_tensor, ctx.GetPlace(), out_tensor);
       } else {
         VLOG(10) << "WARNING: The input tensor 'x_tensor' holds no memory, so "
                     "nothing has been written to output array["
@@ -69,7 +73,7 @@ inline void DealTensorArray(const framework::ExecutionContext& ctx,
   } else {
     auto out = ctx.Output<Tensor>("Out");
     auto in_tensor = in_array->at(start);
-    TensorCopy(in_tensor, ctx.GetPlace(), out);
+    paddle::framework::TensorCopy(in_tensor, ctx.GetPlace(), out);
   }
 }
 
@@ -309,12 +313,13 @@ class SliceGradKernel : public framework::OpKernel<T> {
             ctx.Input<LoDTensorArray>(framework::GradVarName("Out"));
         int d_out_size = d_out_arr->size();
         for (int i = 0; i < d_out_size; ++i) {
-          TensorCopy(d_out_arr->at(i), ctx.GetPlace(),
-                     &(d_in_arr->at(start + i)));
+          paddle::framework::TensorCopy(d_out_arr->at(i), ctx.GetPlace(),
+                                        &(d_in_arr->at(start + i)));
         }
       } else {
         auto* d_out = ctx.Input<Tensor>(framework::GradVarName("Out"));
-        TensorCopy(*d_out, ctx.GetPlace(), &(d_in_arr->at(start)));
+        paddle::framework::TensorCopy(*d_out, ctx.GetPlace(),
+                                      &(d_in_arr->at(start)));
       }
       return;
     }
@@ -329,7 +334,7 @@ class SliceGradKernel : public framework::OpKernel<T> {
     auto decrease_axis = ctx.Attr<std::vector<int>>("decrease_axis");
     auto decrease_size = decrease_axis.size();
     if (decrease_size > 0) {
-      if (decrease_size == (size_t)in_dims.size()) {
+      if (decrease_size == static_cast<size_t>(in_dims.size())) {
         // all dims decrease
         std::vector<int> origin_out_shape(decrease_size, 1);
         out_dims = framework::make_ddim(std::vector<int>(decrease_size, 1));

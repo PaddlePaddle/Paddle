@@ -81,6 +81,30 @@ def is_complex(x):
 
 
 def is_floating_point(x):
+    """
+    Returns whether the dtype of `x` is one of paddle.float64, paddle.float32, paddle.float16, and paddle.bfloat16.
+
+    Args:
+        x (Tensor): The input tensor.
+
+    Returns:
+        bool: True if the dtype of `x` is floating type, otherwise false.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.arange(1., 5., dtype='float32')
+            y = paddle.arange(1, 5, dtype='int32')
+            print(paddle.is_floating_point(x))
+            # True
+            print(paddle.is_floating_point(y))
+            # False
+    """
+    if not isinstance(x, (paddle.Tensor, paddle.static.Variable)):
+        raise TypeError("Expected Tensor, but received type of x: {}".format(
+            type(x)))
     dtype = x.dtype
     is_fp_dtype = (dtype == core.VarDesc.VarType.FP32 or
                    dtype == core.VarDesc.VarType.FP64 or

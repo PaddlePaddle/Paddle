@@ -665,9 +665,16 @@ def _setitem_impl_(var, item, value):
             "paddle.Tensor to a paddle.Tensor, but received {}".format(
                 type(value)))
 
+    if paddle.fluid.framework.in_dygraph_mode():
+        var._bump_inplace_version()
+
     cur_block = default_main_program().current_block()
     cur_block.append_op(
-        type="set_value", inputs=inputs, outputs={'Out': var}, attrs=attrs)
+        type="set_value",
+        inputs=inputs,
+        outputs={'Out': var},
+        attrs=attrs,
+        inplace_map={"Input": "Out"})
 
     return var
 

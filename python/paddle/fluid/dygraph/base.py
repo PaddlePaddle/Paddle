@@ -25,7 +25,7 @@ from .tracer import Tracer
 import logging
 from ..data_feeder import convert_dtype
 import warnings
-from ..framework import _get_paddle_place
+from ..framework import _get_paddle_place, _in_eager_mode
 import paddle
 
 __all__ = [
@@ -720,10 +720,16 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
             if value.dtype != dtype:
                 value = value.astype(dtype)
 
-        py_var = core.VarBase(
-            value=value,
-            place=framework._current_expected_place(),
-            persistable=False,
-            zero_copy=zero_copy,
-            name=name if name else '')
-        return py_var
+        if _in_eager_mode():
+            return core.eager.EagerTensor(value,
+                                          framework._current_expected_place(),
+                                          False, zero_copy, name
+                                          if name else None, True)
+        else:
+            py_var = core.VarBase(
+                value=value,
+                place=framework._current_expected_place(),
+                persistable=False,
+                zero_copy=zero_copy,
+                name=name if name else '')
+            return py_var

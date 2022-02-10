@@ -459,12 +459,10 @@ __pd_give PD_OneDimArrayCstr* PD_ConfigAllPasses(
   std::vector<std::string> passes = config->pass_builder()->AllPasses();
   return paddle_infer::CvtVecToOneDimArrayCstr(passes);
 }
-const char* PD_ConfigSummary(__pd_keep PD_Config* pd_config) {
+__pd_give PD_Cstr* PD_ConfigSummary(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   auto sum_str = config->Summary();
-  char* c = reinterpret_cast<char*>(malloc(sum_str.length() + 1));
-  snprintf(c, sum_str.length() + 1, "%s", sum_str.c_str());
-  return c;
+  return paddle_infer::CvtStrToCstr(sum_str);
 }
 
 }  // extern "C"

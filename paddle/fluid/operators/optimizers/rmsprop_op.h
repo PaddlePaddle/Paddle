@@ -143,14 +143,14 @@ class RmspropOpKernel : public framework::OpKernel<T> {
     auto &lr_tensor = *ctx.Input<LoDTensor>("LearningRate");
     auto &mom_tensor = *ctx.Input<LoDTensor>("Moment");
 
-    PADDLE_ENFORCE_EQ(&p_tensor, param_out,
+    PADDLE_ENFORCE_EQ(p_tensor.IsSharedBufferWith(*param_out), true,
                       platform::errors::InvalidArgument(
                           "Param and ParamOut must be the same Tensor"));
-    PADDLE_ENFORCE_EQ(&mom_tensor, moment_out,
+    PADDLE_ENFORCE_EQ(mom_tensor.IsSharedBufferWith(*moment_out), true,
                       platform::errors::InvalidArgument(
                           "Moment and MomentOut must be the same Tensor"));
     PADDLE_ENFORCE_EQ(
-        &ms_tensor, mean_square_out,
+        ms_tensor.IsSharedBufferWith(*mean_square_out), true,
         platform::errors::InvalidArgument(
             "MeanSquare and MeanSquareOut must be the same Tensor"));
 
@@ -218,10 +218,10 @@ class RmspropOpKernel : public framework::OpKernel<T> {
               rho, epsilon, momentum, grad_func));
         }
       }
-    } else if (grad_var->IsType<framework::SelectedRows>()) {
-      auto &grad = grad_var->Get<framework::SelectedRows>();
-      framework::SelectedRows tmp_merged_grad;
-      framework::SelectedRows *merged_grad = &tmp_merged_grad;
+    } else if (grad_var->IsType<pten::SelectedRows>()) {
+      auto &grad = grad_var->Get<pten::SelectedRows>();
+      pten::SelectedRows tmp_merged_grad;
+      pten::SelectedRows *merged_grad = &tmp_merged_grad;
       math::scatter::MergeAdd<DeviceContext, T> merge_func;
       merge_func(dev_ctx, grad, merged_grad);
 

@@ -79,6 +79,49 @@ def bernoulli(x, name=None):
     return out
 
 
+def poisson(x, name=None):
+    """
+    This OP returns a tensor filled with random number from a Poisson Distribution.
+
+    .. math::
+
+        out_i \sim Poisson (lambda = x_i)
+
+    Args:
+        x(Tensor):  A tensor with rate parameter of poisson Distribution. The data type 
+            should be float32, float64.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+    Returns: 
+        Tensor: A Tensor filled with random number with the same shape and dtype as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.set_device('cpu')
+            paddle.seed(100)
+
+            x = paddle.uniform([2,3], min=1.0, max=5.0)
+            out = paddle.poisson(x)
+            #[[2., 5., 0.],
+            # [5., 1., 3.]]
+
+    """
+
+    if in_dygraph_mode():
+        return _C_ops.poisson(x)
+
+    check_variable_and_dtype(x, "x", ["float32", "float64"], "poisson")
+
+    helper = LayerHelper("poisson", **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='poisson', inputs={'X': x}, outputs={'Out': out}, attrs={})
+    return out
+
+
 def multinomial(x, num_samples=1, replacement=False, name=None):
     """
     This OP returns a Tensor filled with random values sampled from a Multinomical
@@ -555,8 +598,8 @@ def uniform_(x, min=-1.0, max=1.0, seed=0, name=None):
             #  [-0.34646994, -0.45116323, -0.09902662, -0.11397249], # random
             #  [ 0.433519,    0.39483607, -0.8660099,   0.83664286]] # random
     """
-    return core.ops.uniform_random_inplace_(x, 'min', min, 'max', max, 'seed',
-                                            seed)
+    return _C_ops.uniform_random_inplace_(x, 'min', min, 'max', max, 'seed',
+                                          seed)
 
 
 def randint(low=0, high=None, shape=[1], dtype=None, name=None):
@@ -937,3 +980,49 @@ def rand(shape, dtype=None, name=None):
 
     """
     return uniform(shape, dtype, min=0.0, max=1.0, name=name)
+
+
+def exponential_(x, lam=1.0, name=None):
+    """
+    This inplace OP fill input Tensor ``x`` with random number from a Exponential Distribution.
+
+    ``lam`` is :math:`\lambda` parameter of Exponential Distribution. 
+    
+    .. math::
+
+        f(x) = \lambda e^{-\lambda x}
+
+    Args:
+        x(Tensor):  Input tensor. The data type should be float32, float64.
+        lam(float, optional): :math:`\lambda` parameter of Exponential Distribution. Default, 1.0.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+    Returns: 
+        Tensor: Input Tensor ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.set_device('cpu')
+            paddle.seed(100)
+
+            x = paddle.empty([2,3])
+            x.exponential_()
+            # [[0.80643415, 0.23211166, 0.01169797],
+            #  [0.72520673, 0.45208144, 0.30234432]]
+
+    """
+    if in_dygraph_mode():
+        return _C_ops.exponential_(x, "lambda", lam)
+
+    check_variable_and_dtype(x, "x", ["float32", "float64"], "exponential")
+
+    helper = LayerHelper("exponential", **locals())
+    helper.append_op(
+        type='exponential',
+        inputs={"X": x},
+        outputs={'Out': x},
+        attrs={"lambda": lam})
+    return x

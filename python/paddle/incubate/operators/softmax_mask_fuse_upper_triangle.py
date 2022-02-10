@@ -17,6 +17,7 @@ from __future__ import print_function
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid import core
+from paddle import _C_ops
 
 
 def softmax_mask_fuse_upper_triangle(x):
@@ -58,7 +59,7 @@ def softmax_mask_fuse_upper_triangle(x):
             #     ... ]]]
     """
     if in_dygraph_mode():
-        out = core.ops.fused_softmax_mask_upper_triangle(x)
+        out = _C_ops.fused_softmax_mask_upper_triangle(x)
         return out
 
     helper = LayerHelper('fused_softmax_mask_upper_triangle', **locals())

@@ -15,7 +15,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/pten/api/include/utils.h"
+#include "paddle/pten/api/include/manual_api.h"
 
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
@@ -25,17 +25,18 @@ namespace paddle {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
 paddle::experimental::Tensor CreateInputTensor() {
-  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+  const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
   auto dense_x = std::make_shared<pten::DenseTensor>(
-      alloc,
+      alloc.get(),
       pten::DenseTensorMeta(pten::DataType::INT64,
-                            framework::make_ddim({3, 4}),
+                            pten::framework::make_ddim({3, 4}),
                             pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x->mutable_data<int64_t>();
+  auto* dense_x_data =
+      dense_x->mutable_data<int64_t>(paddle::platform::CPUPlace());
 
   for (int64_t i = 0; i < 12; ++i) {
     dense_x_data[i] = i;
@@ -64,7 +65,7 @@ TEST(API, copy_to) {
 
 // 2. test API
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  auto tmp = paddle::experimental::copy_to(x, pten::Backend::CUDA, false);
+  auto tmp = paddle::experimental::copy_to(x, pten::Backend::GPU, false);
   auto out = paddle::experimental::copy_to(tmp, pten::Backend::CPU, true);
 #else
   auto out = paddle::experimental::copy_to(x, pten::Backend::CPU, false);
@@ -80,7 +81,7 @@ TEST(Tensor, copy_to) {
 
 // 2. test API
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  auto tmp = x.copy_to(pten::Backend::CUDA, false);
+  auto tmp = x.copy_to(pten::Backend::GPU, false);
   auto out = tmp.copy_to(pten::Backend::CPU, true);
 #else
   auto out = x.copy_to(pten::Backend::CPU, false);

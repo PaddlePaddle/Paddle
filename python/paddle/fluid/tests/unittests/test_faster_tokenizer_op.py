@@ -24,6 +24,7 @@ import paddle.nn as nn
 from paddle.dataset.common import DATA_HOME
 from paddle.fluid.framework import core, in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
+from paddle import _C_ops
 
 import sys
 sys.path.append("./tokenizer")
@@ -75,7 +76,7 @@ class FasterTokenizer(nn.Layer):
                 is_split_into_words=False,
                 pad_to_max_seq_len=False):
         if in_dygraph_mode():
-            input_ids, seg_ids = core.ops.faster_tokenizer(
+            input_ids, seg_ids = _C_ops.faster_tokenizer(
                 self.vocab, text, text_pair, "do_lower_case", do_lower_case,
                 "max_seq_len", max_seq_len, "pad_to_max_seq_len",
                 pad_to_max_seq_len, "is_split_into_words", is_split_into_words)

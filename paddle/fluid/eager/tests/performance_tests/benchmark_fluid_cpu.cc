@@ -34,11 +34,6 @@
 #include "gperftools/profiler.h"
 #endif
 
-// Disable pten path
-DECLARE_bool(run_pten_kernel);
-
-TEST(Benchmark, Init) { FLAGS_run_pten_kernel = false; }
-
 namespace paddle {
 namespace imperative {
 
@@ -216,7 +211,7 @@ TEST(Benchmark, FluidMLPCPU) {
 }  // namespace imperative
 }  // namespace paddle
 
-USE_OP(scale);
+USE_OP_ITSELF(scale);
 USE_OP(elementwise_add);
 USE_OP(matmul_v2);
 USE_OP(reduce_sum);

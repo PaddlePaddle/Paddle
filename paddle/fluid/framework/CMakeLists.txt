@@ -55,28 +55,20 @@ proto_library(trainer_desc_proto SRCS trainer_desc.proto DEPS framework_proto
 
 cc_library(string_array SRCS string_array.cc DEPS utf8proc)
 
-cc_library(ddim SRCS ddim.cc DEPS eigen3 boost enforce)
-cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
-if(WITH_GPU)
-  nv_test(dim_test SRCS dim_test.cu DEPS ddim)
-elseif(WITH_ROCM)
-  hip_test(dim_test SRCS dim_test.cu DEPS ddim)
-endif()
-cc_test(unroll_array_ops_test SRCS unroll_array_ops_test.cc)
 cc_library(data_type SRCS data_type.cc DEPS framework_proto ddim device_context)
 cc_test(data_type_test SRCS data_type_test.cc DEPS data_type place tensor)
 if(WITH_GPU)
   if (WIN32)
     windows_symbolic(tensor_util SRCS tensor_util.cu)
-    nv_library(tensor SRCS tensor.cc .tensor_util.cu DEPS place memory data_type device_context)
+    nv_library(tensor SRCS tensor.cc .tensor_util.cu DEPS place memory data_type device_context dense_tensor)
     add_dependencies(tensor tensor_util)
   else()
-    nv_library(tensor SRCS tensor.cc tensor_util.cu DEPS place memory data_type device_context profiler)
+    nv_library(tensor SRCS tensor.cc tensor_util.cu DEPS place memory data_type device_context profiler dense_tensor)
   endif(WIN32)
 elseif(WITH_ROCM)
-  hip_library(tensor SRCS tensor.cc tensor_util.cu DEPS place memory data_type device_context profiler)
+  hip_library(tensor SRCS tensor.cc tensor_util.cu DEPS place memory data_type device_context profiler dense_tensor)
 else()
-  cc_library(tensor SRCS tensor.cc tensor_util.cc DEPS place memory data_type device_context profiler)
+  cc_library(tensor SRCS tensor.cc tensor_util.cc DEPS place memory data_type device_context profiler dense_tensor)
 endif()
 
 cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)
@@ -91,17 +83,18 @@ endif()
 cc_test(copy_same_tensor_test SRCS copy_same_tensor_test.cc DEPS tensor)
 
 cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
+cc_library(mixed_vector SRCS mixed_vector.cc DEPS device_context place memory)
 
 if(WITH_GPU)
-  nv_test(mixed_vector_test SRCS mixed_vector_test.cc mixed_vector_test.cu DEPS place memory device_context tensor)
+  nv_test(mixed_vector_test SRCS mixed_vector_test.cc mixed_vector_test.cu DEPS mixed_vector place memory device_context tensor)
 elseif(WITH_ROCM)
-  hip_test(mixed_vector_test SRCS mixed_vector_test.cc mixed_vector_test.cu DEPS place memory device_context tensor)
+  hip_test(mixed_vector_test SRCS mixed_vector_test.cc mixed_vector_test.cu DEPS mixed_vector place memory device_context tensor)
 else()
-  cc_test(mixed_vector_test SRCS mixed_vector_test.cc DEPS place memory device_context tensor)
+  cc_test(mixed_vector_test SRCS mixed_vector_test.cc DEPS mixed_vector place memory device_context tensor)
 endif()
-cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto version)
+cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim mixed_vector place tensor framework_proto version)
 
-cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor memory)
+cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_utils lod_tensor memory)
 
 if(WITH_GPU)
   nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
@@ -117,7 +110,7 @@ cc_test(reader_test SRCS reader_test.cc DEPS reader)
 cc_library(threadpool SRCS threadpool.cc DEPS enforce)
 cc_test(threadpool_test SRCS threadpool_test.cc DEPS threadpool)
 
-cc_library(var_type_traits SRCS var_type_traits.cc DEPS lod_tensor selected_rows framework_proto scope)
+cc_library(var_type_traits SRCS var_type_traits.cc DEPS lod_tensor selected_rows_utils framework_proto scope)
 if (WITH_GPU)
   target_link_libraries(var_type_traits dynload_cuda)
 endif()
@@ -125,7 +118,9 @@ cc_test(var_type_traits_test SRCS var_type_traits_test.cc DEPS var_type_traits)
 
 set(BRPC_DEPS "")
 if(WITH_PSLIB OR WITH_PSCORE)
-    set(BRPC_DEPS brpc ssl crypto)
+    if(NOT WITH_HETERPS)
+        set(BRPC_DEPS brpc ssl crypto)
+    endif()
     if(WITH_PSLIB_BRPC)
         set(BRPC_DEPS pslib_brpc)
     endif()
@@ -171,9 +166,10 @@ cc_library(data_layout_transform SRCS data_layout_transform.cc DEPS tensor math_
 cc_test(data_layout_transform_test SRCS data_layout_transform_test.cc DEPS data_layout_transform)
 
 cc_library(data_transform SRCS data_transform.cc DEPS math_function tensor
-        framework_proto selected_rows data_device_transform data_type_transform data_layout_transform)
+        framework_proto selected_rows_utils data_device_transform data_type_transform data_layout_transform)
 
 cc_library(attribute SRCS attribute.cc DEPS framework_proto boost enforce)
+cc_test(attribute_test SRCS attribute_test.cc DEPS attribute framework_proto proto_desc)
 cc_test(program_desc_test SRCS program_desc_test.cc DEPS proto_desc
 device_context)
 
@@ -191,18 +187,25 @@ cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute device_co
 cc_test(no_need_buffer_vars_inference_test SRCS no_need_buffer_vars_inference_test.cc DEPS no_need_buffer_vars_inference layer)
 
 cc_library(transfer_scope_cache SRCS transfer_scope_cache.cc DEPS scope framework_proto device_context)
-cc_library(op_kernel_type SRCS op_kernel_type.cc DEPS device_context place)
 
 cc_library(unused_var_check SRCS unused_var_check.cc DEPS glog no_need_buffer_vars_inference)
+
+cc_library(op_kernel_type SRCS op_kernel_type.cc DEPS device_context place)
+
+IF(WITH_XPU)
+cc_library(pten_utils SRCS pten_utils.cc DEPS lod_tensor selected_rows_utils place pten var_type_traits pten_api_utils op_info xpu_op_list)
+ELSE()
+cc_library(pten_utils SRCS pten_utils.cc DEPS lod_tensor selected_rows_utils place pten var_type_traits pten_api_utils op_info)
+ENDIF()
 
 IF(WITH_XPU)
 cc_library(operator SRCS operator.cc DEPS xpu_op_list op_info device_context tensor scope glog trainer_desc_proto data_feed_proto
     shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check nan_inf_utils
-    pten pten_utils kernel_factory)
+    pten pten_utils kernel_factory infershape_utils op_utils)
 ELSE()
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog trainer_desc_proto data_feed_proto
     shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check nan_inf_utils
-    pten pten_utils kernel_factory)
+    pten pten_utils kernel_factory infershape_utils op_utils)
 ENDIF()
 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
@@ -274,7 +277,11 @@ cc_library(lod_rank_table SRCS lod_rank_table.cc DEPS lod_tensor)
 cc_library(feed_fetch_method SRCS feed_fetch_method.cc DEPS lod_tensor scope glog)
 cc_library(variable_helper SRCS variable_helper.cc DEPS lod_tensor)
 
+if (TENSORRT_FOUND)
+cc_library(naive_executor SRCS naive_executor.cc DEPS op_registry denormal device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass variable_helper tensorrt_engine_op)
+else()
 cc_library(naive_executor SRCS naive_executor.cc DEPS op_registry denormal device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass variable_helper)
+endif(TENSORRT_FOUND)
 
 cc_library(executor_gc_helper SRCS executor_gc_helper.cc DEPS scope proto_desc operator garbage_collector op_registry while_op_helper recurrent_op_helper conditional_block_op_helper)
 if(WITH_DISTRIBUTE)
@@ -286,7 +293,7 @@ if(WITH_DISTRIBUTE)
     ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
     pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
     device_context scope framework_proto trainer_desc_proto glog fs shell 
-    fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer
+    fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper metrics lodtensor_printer
     lod_rank_table feed_fetch_method collective_helper ${GLOB_DISTRIBUTE_DEPS}
     graph_to_program_pass variable_helper data_feed_proto timer monitor
     heter_service_proto fleet_executor ${BRPC_DEP})
@@ -308,7 +315,7 @@ if(WITH_DISTRIBUTE)
             pull_dense_worker.cc section_worker.cc heter_section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
             device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
             index_sampler index_wrapper sampler index_dataset_proto
-            lod_rank_table fs shell fleet_wrapper heter_wrapper box_wrapper lodtensor_printer feed_fetch_method
+            lod_rank_table fs shell fleet_wrapper heter_wrapper box_wrapper metrics lodtensor_printer feed_fetch_method
             graph_to_program_pass variable_helper timer monitor heter_service_proto fleet heter_server brpc fleet_executor)
     set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
@@ -329,7 +336,7 @@ if(WITH_DISTRIBUTE)
             ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
             pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
             device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
-            lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
+            lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper metrics lodtensor_printer feed_fetch_method
             graph_to_program_pass variable_helper timer monitor fleet_executor)
   endif()
 elseif(WITH_PSLIB)
@@ -385,8 +392,8 @@ cc_library(prune SRCS prune.cc DEPS framework_proto boost)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
 cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
         proto_desc)
-cc_library(selected_rows SRCS selected_rows.cc DEPS tensor)
-cc_test(selected_rows_test SRCS selected_rows_test.cc DEPS selected_rows)
+cc_library(selected_rows_utils SRCS selected_rows_utils.cc DEPS selected_rows)
+cc_test(selected_rows_utils_test SRCS selected_rows_utils_test.cc DEPS selected_rows_utils)
 
 cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_context framework_proto op_kernel_type)
 cc_test(cow_ptr_tests SRCS details/cow_ptr_test.cc)
@@ -394,10 +401,6 @@ cc_test(cow_ptr_tests SRCS details/cow_ptr_test.cc)
 cc_test(tuple_test SRCS tuple_test.cc )
 
 cc_test(inlined_vector_test SRCS inlined_vector_test.cc)
-
-if (NOT WIN32)
-cc_test(rw_lock_test SRCS rw_lock_test.cc)
-endif (NOT WIN32)
 
 cc_library(dlpack_tensor SRCS dlpack_tensor.cc DEPS tensor dlpack)
 cc_test(dlpack_tensor_test SRCS dlpack_tensor_test.cc DEPS dlpack_tensor glog)
@@ -409,7 +412,8 @@ cc_library(save_load_util SRCS save_load_util.cc DEPS tensor scope layer)
 cc_test(save_load_util_test SRCS save_load_util_test.cc DEPS save_load_util tensor scope layer)
 cc_library(generator SRCS generator.cc DEPS enforce place)
 
-cc_library(pten_utils SRCS pten_utils.cc DEPS lod_tensor selected_rows place pten var_type_traits pten_api_utils op_info)
+cc_library(infershape_utils SRCS infershape_utils.cc DEPS lod_tensor selected_rows_utils attribute place pten var_type_traits pten pten_api_utils op_info shape_inference)
+
 
 # Get the current working branch
 execute_process(
@@ -433,17 +437,19 @@ message(STATUS "branch: ${PADDLE_BRANCH}")
 configure_file(commit.h.in commit.h)
 
 cc_library(custom_operator SRCS custom_operator.cc DEPS tensor attribute framework_proto op_registry operator dynamic_loader string_helper pten_tensor op_meta_info pten_api)
-
+cc_library(custom_kernel SRCS custom_kernel.cc DEPS
+           tensor attribute framework_proto op_registry operator dynamic_loader string_helper pten_tensor op_kernel_info pten_api)
 #cc_binary(test_executor SRCS test_executor.cc DEPS executor op_registry ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} )
 #cc_binary(new_executor SRCS new_exec_test.cc DEPS operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} profiler)
 
-set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer dynamic_loader custom_operator)
+set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer dynamic_loader custom_operator custom_kernel)
 
 cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
 
-if(WITH_TESTING AND TEST selected_rows_test)
-  set_tests_properties(selected_rows_test PROPERTIES TIMEOUT 120)
+if(WITH_TESTING AND TEST selected_rows_utils_test)
+  set_tests_properties(selected_rows_utils_test PROPERTIES TIMEOUT 120)
 endif()
 
 cc_test(scope_guard_test SRCS scope_guard_test.cc)
 cc_test(pten_utils_test SRCS pten_utils_test.cc DEPS pten_utils)
+cc_test(custom_kernel_test SRCS custom_kernel_test.cc DEPS custom_kernel pten_tensor)

@@ -29,7 +29,7 @@ SEED = 2021
                  "core is not compiled with IPU")
 class TestConvNet(unittest.TestCase):
     def test_training(self):
-        ipu_strategy = compiler.get_ipu_strategy()
+        ipu_strategy = paddle.static.IpuStrategy()
 
         assert ipu_strategy.num_ipus == 1, "Default num_ipus must be 1"
         assert ipu_strategy.is_training == True, "Default is_training is True"
@@ -38,17 +38,16 @@ class TestConvNet(unittest.TestCase):
         assert ipu_strategy.enable_manual_shard == False, \
             "Default enable_manual_shard is False"
 
-        ipu_strategy.num_ipus = 2
+        ipu_strategy.SetGraphConfig(
+            num_ipus=2, is_training=False, enable_manual_shard=True)
+        ipu_strategy.SetPipeliningConfig(enable_pipelining=True)
         assert ipu_strategy.num_ipus == 2, "Set num_ipus Failed"
 
-        ipu_strategy.is_training = False
         assert ipu_strategy.is_training == False, "Set is_training Failed"
 
-        ipu_strategy.enable_pipelining = True
         assert ipu_strategy.enable_pipelining == True, \
             "Set enable_pipelining Failed"
 
-        ipu_strategy.enable_manual_shard = True
         assert ipu_strategy.enable_manual_shard == True, \
             "Set enable_manual_shard Failed"
 

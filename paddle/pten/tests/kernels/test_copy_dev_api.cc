@@ -15,9 +15,11 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
+#include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/cpu/utils.h"
+#include "paddle/pten/kernels/copy_kernel.h"
 
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/dense_tensor.h"
 
@@ -25,26 +27,26 @@ namespace pten {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
 // TODO(YuanRisheng): This TEST file need to be refactored after 'copy' realized
-// in
-// 'paddle/api',
+// in 'paddle/api'
 TEST(DEV_API, copy) {
   // 1. create tensor
-  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
+  const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
   auto dense_src = std::make_shared<pten::DenseTensor>(
-      alloc,
+      alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            framework::make_ddim({2, 3}),
+                            pten::framework::make_ddim({2, 3}),
                             pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_src->mutable_data<float>();
+  auto* dense_x_data =
+      dense_src->mutable_data<float>(paddle::platform::CPUPlace());
 
   auto dense_dst = std::make_shared<pten::DenseTensor>(
-      alloc,
+      alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            framework::make_ddim({2, 3}),
+                            pten::framework::make_ddim({2, 3}),
                             pten::DataLayout::NCHW));
 
   for (size_t i = 0; i < 2; ++i) {
@@ -55,9 +57,12 @@ TEST(DEV_API, copy) {
   const auto& a = paddle::platform::CPUPlace();
   std::cout << typeid(a).name() << std::endl;
   // 2. test API
-  auto& pool = paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.GetByPlace(paddle::platform::CPUPlace());
-  pten::Copy(*dev_ctx, *(dense_src.get()), false, dense_dst.get());
+  pten::CPUContext dev_ctx;
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(paddle::platform::CPUPlace())
+                           .get());
+  dev_ctx.Init();
+  pten::Copy(dev_ctx, *(dense_src.get()), false, dense_dst.get());
 
   // 3. check result
   for (int64_t i = 0; i < dense_src->numel(); i++) {

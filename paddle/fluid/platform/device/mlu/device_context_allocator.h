@@ -55,7 +55,7 @@ class MLUDeviceContextAllocation : public Allocation {
             << p_allocation;
     dev_ctx_->AddStreamCallback([p_allocation] {
       VLOG(4) << "Delete MLUDeviceContextAllocation at " << p_allocation;
-      AllocationDeleter()(p_allocation);
+      Allocator::AllocationDeleter(p_allocation);
     });
   }
 
@@ -91,7 +91,7 @@ class MLUDeviceContextAllocator : public Allocator {
   }
 
  protected:
-  Allocation *AllocateImpl(size_t size) override {
+  pten::Allocation *AllocateImpl(size_t size) override {
     PADDLE_ENFORCE_NOT_NULL(
         default_stream_,
         platform::errors::PreconditionNotMet(
@@ -105,7 +105,7 @@ class MLUDeviceContextAllocator : public Allocator {
     return allocation;
   }
 
-  void FreeImpl(Allocation *allocation) override { delete allocation; }
+  void FreeImpl(pten::Allocation *allocation) override { delete allocation; }
 
  private:
   platform::MLUPlace place_;
@@ -128,8 +128,7 @@ class MLUDeviceContextAllocatorPool {
   }
 
   AllocationPtr Alloc(const platform::MLUDeviceContext &dev_ctx, size_t size) {
-    auto iter = allocators_.find(
-        BOOST_GET_CONST(platform::MLUPlace, dev_ctx.GetPlace()));
+    auto iter = allocators_.find(dev_ctx.GetPlace());
     PADDLE_ENFORCE_NE(
         iter, allocators_.end(),
         platform::errors::NotFound("No allocator found for MLUPlace."));

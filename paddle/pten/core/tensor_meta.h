@@ -19,18 +19,17 @@ limitations under the License. */
 #include "paddle/pten/common/backend.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
+#include "paddle/pten/core/ddim.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/framework/ddim.h"
 // Note: mixed_vector include many header now, LoD will be
 // used on CUDA device? Can we use small_vector here?
-// #include "paddle/fluid/framework/mixed_vector.h"
+// @zhanlve: Rollback to original LoD for now
+#include "paddle/fluid/framework/mixed_vector.h"
 
 namespace pten {
 
-using DDim = paddle::framework::DDim;
-using LoD = std::vector<std::vector<size_t>>;
-
+using DDim = pten::framework::DDim;
+using LoD = std::vector<paddle::framework::Vector<size_t>>;
 /// \brief The meta data of dense tensor. Take the structure type
 /// and use all default operations.
 ///
@@ -40,18 +39,20 @@ struct DenseTensorMeta {
 
   DenseTensorMeta() = default;
   DenseTensorMeta(DataType dtype, const DDim& dims);
-  DenseTensorMeta(DataType dtype, const DDim& dims, DataLayout layout);
   DenseTensorMeta(DataType dtype,
                   const DDim& dims,
                   DataLayout layout,
-                  const std::vector<std::vector<size_t>>& lod);
+                  size_t offset = 0);
+  DenseTensorMeta(DataType dtype,
+                  const DDim& dims,
+                  DataLayout layout,
+                  const LoD& lod,
+                  size_t offset = 0);
 
   /// \brief Test whether the metadata is valid. Does not throw exceptions.
   /// \return Whether the metadata is valid.
   bool valid() const noexcept;
 
-  /// During the entire life cycle of a DenseTensor, the following attributes
-  /// marked with `const` are expected to remain unchanged.
   bool is_scalar{false};
   DDim dims;
   DataType dtype{DataType::UNDEFINED};
@@ -59,5 +60,11 @@ struct DenseTensorMeta {
   LoD lod;
   size_t offset{0};
 };
+
+inline bool operator==(const DenseTensorMeta& lhs, const DenseTensorMeta& rhs) {
+  return (lhs.is_scalar == rhs.is_scalar) && (lhs.dims == rhs.dims) &&
+         (lhs.dtype == rhs.dtype) && (lhs.layout == rhs.layout) &&
+         (lhs.lod == rhs.lod) && (lhs.offset == rhs.offset);
+}
 
 }  // namespace pten

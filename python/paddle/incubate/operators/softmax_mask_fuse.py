@@ -17,6 +17,7 @@ from __future__ import print_function
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid import core
+from paddle import _C_ops
 
 
 def softmax_mask_fuse(x, mask, name=None):
@@ -58,7 +59,7 @@ def softmax_mask_fuse(x, mask, name=None):
             # [[[[0.02404429, 0.04658398, 0.02746007, ..., 0.01489375, 0.02397441, 0.02851614] ... ]]]
     """
     if in_dygraph_mode():
-        out = core.ops.fused_softmax_mask(x, mask)
+        out = _C_ops.fused_softmax_mask(x, mask)
         return out
     helper = LayerHelper('fused_softmax_mask', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)

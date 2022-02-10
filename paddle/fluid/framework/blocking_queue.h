@@ -75,6 +75,22 @@ class BlockingQueue {
     return ret;
   }
 
+  void PopAll(std::deque<T> *empty_queue) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    cv_.wait(lock, [this] { return !q_.empty(); });
+    std::swap(*empty_queue, q_);
+  }
+
+  std::deque<T> PopAll() {
+    std::deque<T> ret;
+    {
+      std::unique_lock<std::mutex> lock(mutex_);
+      cv_.wait(lock, [this] { return !q_.empty(); });
+      std::swap(ret, q_);
+    }
+    return ret;
+  }
+
   T Pop() {
     std::unique_lock<std::mutex> lock(mutex_);
     cv_.wait(lock, [=] { return !q_.empty(); });

@@ -212,6 +212,7 @@ struct Argument {
                       bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_calib_mode, TensorRtUseCalibMode, bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_oss, TensorRtUseOSS, bool);
+  DECL_ARGUMENT_FIELD(tensorrt_with_interleaved, TensorRtWithInterleaved, bool);
   DECL_ARGUMENT_FIELD(tensorrt_shape_range_info_path,
                       TensorRtShapeRangeInfoPath, std::string);
   DECL_ARGUMENT_FIELD(tensorrt_tuned_dynamic_shape, TensorRtTunedDynamicShape,
@@ -280,6 +281,10 @@ struct Argument {
   DECL_ARGUMENT_FIELD(ipu_batches_per_step, IpuBatchesPerStep, int);
   DECL_ARGUMENT_FIELD(ipu_batch_size, IpuBatchSize, int);
   DECL_ARGUMENT_FIELD(ipu_need_avg_shard, IpuNeedAvgShard, bool);
+
+  // npu related
+  DECL_ARGUMENT_FIELD(use_npu, UseNpu, bool);
+  DECL_ARGUMENT_FIELD(npu_device_id, NPUDeviceId, int);
 
  private:
   std::unordered_set<std::string> valid_fields_;

@@ -154,7 +154,7 @@ class TestMLPSearcher(unittest.TestCase):
         ops = train_program.global_block().ops
         vars = train_program.global_block().vars
         from paddle.distributed.auto_parallel.operators.common import get_distributed_operator_impl_container
-        from paddle.distributed.auto_parallel.completion import is_elementwise_like_op
+        from paddle.distributed.auto_parallel.operators.common import is_elementwise_op
         from paddle.distributed.auto_parallel.dist_op import DistributedOperator
 
         for op in ops:
@@ -163,7 +163,7 @@ class TestMLPSearcher(unittest.TestCase):
             if dist_op_impl_container is None:
                 op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
                 dist_op = DistributedOperator(op, op_dist_attr)
-                if is_elementwise_like_op(op.type):
+                if is_elementwise_op(op.type):
                     changed = update_op_dims_mapping_by_elementwise_like_dist_impl(
                         dist_op)
                     self.assertFalse(changed)
@@ -211,41 +211,6 @@ class TestMLPSearcher(unittest.TestCase):
             check_pipeline_enumerater(train_program, process_mesh_topology))
         self.assertTrue(
             check_nonpipeline_enumerater(train_program, process_mesh_topology))
-
-    def test_get_dist_programs(self):
-        train_program = paddle.static.Program()
-        startup_program = paddle.static.Program()
-        loss, train_program, startup_program = mlp_forward(train_program,
-                                                           startup_program)
-        process_mesh_topology = [4]
-        optimizer = paddle.optimizer.Adam(
-            learning_rate=0.00001,
-            beta1=0.9,
-            beta2=0.999,
-            epsilon=1e-08,
-            grad_clip=None)
-        valid_dist_attr_dict, pipeline_process_meshes, global_process_mesh = PlanSpace.enum_valid_dist_attr_for_program(
-            train_program, process_mesh_topology, False)
-        from test_auto_parallel_cluster import cluster_json
-        cluster_json_file = ""
-        cluster_json_object = json.loads(cluster_json)
-        with open("./auto_parallel_cluster.json", "w") as cluster_json_file:
-            json.dump(cluster_json_object, cluster_json_file)
-        cluster = Cluster()
-        cluster.build_from_file("./auto_parallel_cluster.json")
-        os.remove("./auto_parallel_cluster.json")
-
-        ops = train_program.global_block().ops
-        vars = train_program.global_block().vars
-        new_dist_context = DistributedContext()
-        set_default_dist_attr(train_program, new_dist_context,
-                              global_process_mesh)
-
-        serial_program_info = SerialProgramInfo(train_program, startup_program,
-                                                loss, optimizer, cluster)
-        result = get_all_distributed_main_program(serial_program_info,
-                                                  new_dist_context)
-        self.assertEqual(len(result), 4)
 
 
 if __name__ == "__main__":

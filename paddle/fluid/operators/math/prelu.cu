@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/prelu.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -110,15 +111,15 @@ void PreluScalarDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
 }
 
 template class PreluChannelWiseDirectCUDAFunctor<float>;
-template class PreluChannelWiseDirectCUDAFunctor<paddle::platform::float16>;
+template class PreluChannelWiseDirectCUDAFunctor<platform::float16>;
 template class PreluChannelWiseDirectCUDAFunctor<double>;
 
 template class PreluElementWiseDirectCUDAFunctor<float>;
-template class PreluElementWiseDirectCUDAFunctor<paddle::platform::float16>;
+template class PreluElementWiseDirectCUDAFunctor<platform::float16>;
 template class PreluElementWiseDirectCUDAFunctor<double>;
 
 template class PreluScalarDirectCUDAFunctor<float>;
-template class PreluScalarDirectCUDAFunctor<paddle::platform::float16>;
+template class PreluScalarDirectCUDAFunctor<platform::float16>;
 template class PreluScalarDirectCUDAFunctor<double>;
 
 }  // namespace math

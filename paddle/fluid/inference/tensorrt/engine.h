@@ -36,12 +36,6 @@ limitations under the License. */
 #include "paddle/utils/any.h"
 
 namespace paddle {
-namespace framework {
-class Tensor;
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -128,7 +122,19 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
       dims.d[0] = shape[1];
       return dims;
     }
-    return nvinfer1::Dims3(shape[1], 1, 1);
+    // static shape doesn't support 1D op so far.
+    PADDLE_ENFORCE_NE(shape.size(), 1UL,
+                      platform::errors::InvalidArgument(
+                          "The input [%s] shape of trt subgraph is %s."
+                          "it's not supported by trt so far",
+                          input, ShapeStr(shape)));
+
+    nvinfer1::Dims dims;
+    dims.nbDims = shape.size() - 1;
+    for (size_t i = 1; i < shape.size(); i++) {
+      dims.d[i - 1] = shape[i];
+    }
+    return dims;
   } else {
     if (shape.size() == 4UL) {
       return nvinfer1::Dims4(shape[0], shape[1], shape[2], shape[3]);
@@ -253,10 +259,38 @@ class TensorRTEngine {
           infer_engine_,
           platform::errors::InvalidArgument(
               "You should build engine first and then set the context."));
+      // We may see trt warning: Profile 0 has been chosen by another
+      // IExecutionContext...
+      // It's ok. We will set it later.
       infer_context_[tid].reset(infer_engine_->createExecutionContext());
+      if (with_dynamic_shape_) {
+        // need new profile if it's not the first
+        if (cur_profile_num_ > 0) {
+          infer_context_[tid]->setOptimizationProfile(cur_profile_num_);
+        }
+        profile_index_[tid] = cur_profile_num_;
+        ++cur_profile_num_;
+      }
     }
     return infer_context_[tid].get();
   }
+
+  int GetProfileIndex() {
+    if (max_profile_num_ > 1) {
+      std::unique_lock<std::mutex> lock(mutex_);
+      const std::thread::id tid = std::this_thread::get_id();
+      return profile_index_[tid];
+    } else {
+      return 0;
+    }
+  }
+
+  int GetBindingsOffset() {
+    return (binding_num_ / max_profile_num_) * GetProfileIndex();
+  }
+
+  int GetNbBindings() { return binding_num_; }
+
   void ResetContext() {
     std::unique_lock<std::mutex> lock(mutex_);
     const std::thread::id tid = std::this_thread::get_id();
@@ -322,6 +356,7 @@ class TensorRTEngine {
             "generating serialization file and doing inference are "
             "consistent."));
 
+    binding_num_ = infer_engine_->getNbBindings();
     GetEngineInfo();
   }
 
@@ -378,6 +413,9 @@ class TensorRTEngine {
   void SetUseDLA(bool use_dla) { use_dla_ = use_dla; }
   void SetDLACore(int dla_core) { dla_core_ = dla_core; }
   void SetWithErnie(bool with_ernie) { with_ernie_ = with_ernie; }
+  void SetWithInterleaved(bool with_interleaved) {
+    with_interleaved_ = with_interleaved;
+  }
 
   void ClearWeights() {
     for (auto& weight_pair : weight_map) {
@@ -451,6 +489,7 @@ class TensorRTEngine {
 
   bool use_oss() { return use_oss_; }
   bool with_ernie() { return with_ernie_; }
+  bool with_interleaved() { return with_interleaved_; }
   bool disable_trt_plugin_fp16() { return disable_trt_plugin_fp16_; }
   bool with_dynamic_shape() { return with_dynamic_shape_; }
   AnalysisConfig::Precision precision() { return precision_; }
@@ -540,6 +579,7 @@ class TensorRTEngine {
     }
   }
 
+  void SetProfileNum(int num) { max_profile_num_ = num; }
   void GetEngineInfo() {
 #if IS_TRT_VERSION_GE(8200)
     std::unique_ptr<nvinfer1::IEngineInspector> infer_inspector(
@@ -571,6 +611,9 @@ class TensorRTEngine {
   int batch_size_{-1};
 
   int device_id_;
+  int max_profile_num_{1};
+  int cur_profile_num_{0};
+  std::unordered_map<std::thread::id, int> profile_index_;
   ShapeMapType min_input_shape_;
   ShapeMapType max_input_shape_;
   ShapeMapType optim_input_shape_;
@@ -579,6 +622,7 @@ class TensorRTEngine {
   bool use_dla_{false};
   int dla_core_{0};
   bool with_ernie_{false};
+  bool with_interleaved_{false};
   nvinfer1::ILogger& logger_;
 
   // max data size for the buffers.
@@ -614,8 +658,9 @@ class TensorRTEngine {
   // For dynamic shape
   bool with_dynamic_shape_{false};
 #if IS_TRT_VERSION_GE(6000)
+  int binding_num_;
   infer_ptr<nvinfer1::IBuilderConfig> infer_builder_config_;
-  nvinfer1::IOptimizationProfile* optim_profile_;
+  std::vector<nvinfer1::IOptimizationProfile*> optim_profiles_;
   std::vector<std::unique_ptr<plugin::DynamicPluginTensorRT>> owned_pluginv2_;
 #endif
   std::mutex mutex_;
