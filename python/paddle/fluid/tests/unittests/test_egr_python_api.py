@@ -109,7 +109,7 @@ class EagerDtypeTestCase(unittest.TestCase):
                                         core.VarDesc.VarType.COMPLEX128)
 
 
-class EagerTensorPropertiesAndMethodsTestCase(unittest.TestCase):
+class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
     def constructor(self, place):
         egr_tensor = core.eager.Tensor()
         self.assertEqual(egr_tensor.persistable, False)

@@ -131,17 +131,17 @@ void EagerUtils::SetOutRankWithSlot(AutogradMeta* target, size_t slot_id) {
   target->SetSingleOutRankWithSlot(slot_id, 0);
 }
 
-std::shared_ptr<egr::EagerTensor> EagerUtils::TrySyncToVar(
+std::shared_ptr<egr::EagerVariable> EagerUtils::TrySyncToVar(
     const paddle::experimental::Tensor& tensor) {
-  return std::make_shared<egr::EagerTensor>(tensor);
+  return std::make_shared<egr::EagerVariable>(tensor);
 }
 
-std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::TrySyncToVars(
+std::vector<std::shared_ptr<egr::EagerVariable>> EagerUtils::TrySyncToVars(
     const paddle::experimental::Tensor& tensor) {
   return {TrySyncToVar(tensor)};
 }
 
-std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::TrySyncToVars(
+std::vector<std::shared_ptr<egr::EagerVariable>> EagerUtils::TrySyncToVars(
     paddle::experimental::Tensor* tensor) {
   PADDLE_ENFORCE_NOT_NULL(
       tensor,
@@ -151,9 +151,9 @@ std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::TrySyncToVars(
   return {TrySyncToVar(*tensor)};
 }
 
-std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::TrySyncToVars(
+std::vector<std::shared_ptr<egr::EagerVariable>> EagerUtils::TrySyncToVars(
     const std::vector<paddle::experimental::Tensor*>& tensors) {
-  std::vector<std::shared_ptr<EagerTensor>> res;
+  std::vector<std::shared_ptr<EagerVariable>> res;
   size_t num = tensors.size();
   res.reserve(num);
   for (size_t i = 0; i < num; i++) {
@@ -169,9 +169,9 @@ std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::TrySyncToVars(
   return res;
 }
 
-std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::TrySyncToVars(
+std::vector<std::shared_ptr<egr::EagerVariable>> EagerUtils::TrySyncToVars(
     const std::vector<paddle::experimental::Tensor>& tensors) {
-  std::vector<std::shared_ptr<EagerTensor>> res;
+  std::vector<std::shared_ptr<EagerVariable>> res;
   size_t num = tensors.size();
   res.reserve(num);
   for (size_t i = 0; i < num; i++) {
@@ -180,19 +180,19 @@ std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::TrySyncToVars(
   return res;
 }
 
-std::vector<std::shared_ptr<EagerTensor>> EagerUtils::CreateVars(
+std::vector<std::shared_ptr<EagerVariable>> EagerUtils::CreateVars(
     const size_t num) {
-  std::vector<std::shared_ptr<EagerTensor>> res;
+  std::vector<std::shared_ptr<EagerVariable>> res;
   res.reserve(num);
   for (size_t i = 0; i < num; i++) {
     res.emplace_back(
-        new EagerTensor(egr::Controller::Instance().GenerateUniqueName()));
+        new EagerVariable(egr::Controller::Instance().GenerateUniqueName()));
   }
   return res;
 }
 
 std::vector<paddle::experimental::Tensor> EagerUtils::GetOutputs(
-    const std::vector<std::shared_ptr<EagerTensor>>& outs) {
+    const std::vector<std::shared_ptr<EagerVariable>>& outs) {
   std::vector<paddle::experimental::Tensor> res;
   res.reserve(outs.size());
   for (const auto& out : outs) {
@@ -209,7 +209,7 @@ std::vector<paddle::experimental::Tensor> EagerUtils::GetOutputs(
 }
 
 paddle::experimental::Tensor EagerUtils::GetOutput(
-    const std::shared_ptr<EagerTensor>& out) {
+    const std::shared_ptr<EagerVariable>& out) {
   PADDLE_ENFORCE_NOT_NULL(
       out.get(), paddle::platform::errors::Fatal(
                      "Eager Tensor %s is null and cannot be copied. We "
@@ -219,7 +219,7 @@ paddle::experimental::Tensor EagerUtils::GetOutput(
   return paddle::experimental::Tensor(out->GetTensorBase(), out->name());
 }
 
-void EagerUtils::OverwriteOutputs(const std::shared_ptr<EagerTensor>& out,
+void EagerUtils::OverwriteOutputs(const std::shared_ptr<EagerVariable>& out,
                                   paddle::experimental::Tensor* tensor) {
   PADDLE_ENFORCE_NOT_NULL(
       tensor, paddle::platform::errors::Fatal(
@@ -231,7 +231,7 @@ void EagerUtils::OverwriteOutputs(const std::shared_ptr<EagerTensor>& out,
 }
 
 void EagerUtils::OverwriteOutputs(
-    const std::vector<std::shared_ptr<EagerTensor>>& outs,
+    const std::vector<std::shared_ptr<EagerVariable>>& outs,
     const std::vector<paddle::experimental::Tensor*>& tensors) {
   PADDLE_ENFORCE_EQ(
       outs.size(), tensors.size(),

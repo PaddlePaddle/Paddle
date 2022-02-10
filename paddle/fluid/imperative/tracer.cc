@@ -281,9 +281,9 @@ template void Tracer::TraceOp<VarBase>(
     const std::map<std::string, std::string>& inplace_map,
     paddle::framework::AttributeMap* default_attrs, bool use_default_attr_map);
 
-template void Tracer::TraceOp<egr::EagerTensor>(
-    const std::string& type, const NameVarMap<egr::EagerTensor>& ins,
-    const NameVarMap<egr::EagerTensor>& outs, framework::AttributeMap attrs,
+template void Tracer::TraceOp<egr::EagerVariable>(
+    const std::string& type, const NameVarMap<egr::EagerVariable>& ins,
+    const NameVarMap<egr::EagerVariable>& outs, framework::AttributeMap attrs,
     const platform::Place& place, bool trace_backward,
     const std::map<std::string, std::string>& inplace_map_,
     paddle::framework::AttributeMap* default_attrs, bool use_default_attr_map);
@@ -304,8 +304,8 @@ void Tracer::TraceOp(const std::string& type, const NameTensorMap& ins,
                      const std::map<std::string, std::string>& inplace_map) {
   VLOG(6) << "Running On Eager TraceOp with use_default_attr_map: "
           << use_default_attr_map;
-  TraceOp<egr::EagerTensor>(type, ins, outs, std::move(attrs), place, false,
-                            inplace_map, default_attrs, use_default_attr_map);
+  TraceOp<egr::EagerVariable>(type, ins, outs, std::move(attrs), place, false,
+                              inplace_map, default_attrs, use_default_attr_map);
 }
 
 void Tracer::TraceOp(const std::string& type, const NameTensorMap& ins,
@@ -313,8 +313,9 @@ void Tracer::TraceOp(const std::string& type, const NameTensorMap& ins,
                      paddle::framework::AttributeMap attrs,
                      const std::map<std::string, std::string>& inplace_map) {
   VLOG(6) << "Running On Eager TraceOp(less): ";
-  TraceOp<egr::EagerTensor>(type, ins, outs, std::move(attrs), expected_place_,
-                            false, inplace_map, nullptr, true);
+  TraceOp<egr::EagerVariable>(type, ins, outs, std::move(attrs),
+                              expected_place_, false, inplace_map, nullptr,
+                              true);
 }
 
 void Tracer::SetExpectedPlace(platform::Place place) {

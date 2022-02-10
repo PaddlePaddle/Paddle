@@ -62,8 +62,8 @@ void SetForwardDataTypeOfGradVar<VarBase>(const std::shared_ptr<VarBase>& var) {
 }
 
 template <>
-void SetForwardDataTypeOfGradVar<egr::EagerTensor>(
-    const std::shared_ptr<egr::EagerTensor>& var) {
+void SetForwardDataTypeOfGradVar<egr::EagerVariable>(
+    const std::shared_ptr<egr::EagerVariable>& var) {
   VLOG(10) << "Var in Eager dose not support SetForwardDataTypeOfGradVar: "
            << var->name();
   // TODO(jiabin): SetForwardDataType of Grad var is not supported yet in
@@ -170,8 +170,8 @@ class PreparedOp {
                             const framework::AttributeMap& attrs,
                             const framework::AttributeMap& default_attrs);
 
-  static PreparedOp Prepare(const NameVarMap<egr::EagerTensor>& ins,
-                            const NameVarMap<egr::EagerTensor>& outs,
+  static PreparedOp Prepare(const NameVarMap<egr::EagerVariable>& ins,
+                            const NameVarMap<egr::EagerVariable>& outs,
                             const framework::OperatorWithKernel& op,
                             const platform::Place& place,
                             const framework::AttributeMap& attrs,
@@ -186,8 +186,8 @@ class PreparedOp {
            const framework::AttributeMap& attrs,
            const framework::AttributeMap& default_attrs);
 
-  void Run(const NameVarMap<egr::EagerTensor>& ins,
-           const NameVarMap<egr::EagerTensor>& outs,
+  void Run(const NameVarMap<egr::EagerVariable>& ins,
+           const NameVarMap<egr::EagerVariable>& outs,
            const framework::AttributeMap& attrs,
            const framework::AttributeMap& default_attrs);
 
