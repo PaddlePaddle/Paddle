@@ -236,6 +236,11 @@ static void RunKernelFunc(pten::KernelContext* ctx,
   auto& backend = OpKernelInfoHelper::GetBackend(op_kernel_info);
   if (backend == pten::Backend::CPU) {
     // do nothing
+  } else if (backend == pten::Backend::ASCEND) {
+    // Ascend needs stream to execute operators
+    auto& ascend_ctx =
+        ctx->GetDeviceContext<paddle::platform::NPUDeviceContext>();
+    dev_ctx.set_stream(ascend_ctx.stream());
   } else {
     LOG(ERROR) << "[CUSTOM KERNEL] Unsupported kernel backend: " << backend
                << " with compiled Paddle.";

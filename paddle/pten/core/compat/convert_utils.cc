@@ -28,6 +28,9 @@ Backend TransToPtenBackend(const paddle::platform::Place& place) {
     return Backend::CPU;
   } else if (paddle::platform::is_gpu_place(place)) {
     return Backend::GPU;
+    // TODO(Aganlengzi): is_custom_place and map with dev_type
+  } else if (paddle::platform::is_npu_place(place)) {
+    return Backend::ASCEND;
   } else {
     return Backend::UNDEFINED;
   }
@@ -99,6 +102,10 @@ paddle::platform::Place TransToFluidPlace(const Backend& backend,
       return paddle::platform::NPUPlace(
           set_device_id ? paddle::platform::GetCurrentNPUDeviceId() : 0);
 #endif
+    // TODO(Aganlengzi): Trans to CustomPlace mapping with Backends
+    case pten::Backend::ASCEND:
+      return paddle::platform::NPUPlace(
+          set_device_id ? paddle::platform::GetCurrentNPUDeviceId() : 0);
     default:
       PADDLE_THROW(paddle::platform::errors::Unimplemented(
           "Unsupported backend `%s` when casting it to paddle place type.",

@@ -25,6 +25,11 @@ platform::Place ConvertExtPlaceToInnerPlace(PlaceType p) {
   } else if (p == PlaceType::kGPU) {
     return platform::Place(platform::CUDAPlace(platform::GetCurrentDeviceId()));
 #endif
+    // TODO(Aganlengzi): have to do PlaceType trans because using
+    // paddle::Tensor.
+    // To CustomPlace mapping with PlaceType.
+  } else if (p == PlaceType::kASCEND) {
+    return platform::Place(platform::NPUPlace());
   } else {
     PADDLE_THROW(
         platform::errors::Unimplemented("Unsupported place type code(%d) when "
@@ -37,10 +42,15 @@ platform::Place ConvertExtPlaceToInnerPlace(PlaceType p) {
 PlaceType ConvertInnerPlaceToExtPlace(const platform::Place& p) {
   if (platform::is_cpu_place(p)) {
     return PlaceType::kCPU;
-  } else if (platform::is_gpu_place(p)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  } else if (platform::is_gpu_place(p)) {
     return PlaceType::kGPU;
 #endif
+    // TODO(Aganlengzi): have to do PlaceType trans because using
+    // paddle::Tensor.
+    // is_custom_place to PlaceType mapping with dev_type.
+  } else if (platform::is_npu_place(p)) {
+    return PlaceType::kASCEND;
   } else {
     PADDLE_THROW(
         platform::errors::Unimplemented("Unsupported place type `%s` when "

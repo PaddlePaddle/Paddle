@@ -51,6 +51,9 @@ enum class Backend : uint8_t {
   MKLDNN,
   CUDNN,
 
+  // various custom backends
+  ASCEND,
+
   // end of backend types
   NUM_BACKENDS,
 
@@ -113,6 +116,9 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
       break;
     case Backend::CUDNN:
       os << "CUDNN";
+      break;
+    case Backend::ASCEND:
+      os << "ASCEND";
       break;
     default:
       PD_THROW("Invalid enum backend type `", static_cast<int>(backend), "`.");

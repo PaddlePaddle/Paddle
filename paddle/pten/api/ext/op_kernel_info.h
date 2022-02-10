@@ -61,6 +61,7 @@ class DeviceContext {
   void* stream_;
 };
 class CPUContext : public DeviceContext {};
+class CustomDeviceContext : public DeviceContext {};
 
 // TODO(Aganlengzi): Use paddle::Tensor before DenseTensor is exposed
 using Tensor = paddle::experimental::Tensor;
@@ -356,6 +357,7 @@ struct CustomKernelFuncImpl<Return (*)(DevCtx, Args...), impl_fn> {
 
   /* DeviceContext Helpers */
   PD_SPECIALIZE_KernelCallHelper_FOR_DEV_CONTEXT(CPUContext);
+  PD_SPECIALIZE_KernelCallHelper_FOR_DEV_CONTEXT(CustomDeviceContext);
 
   /* Input Helpers */
   PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(Tensor);
@@ -550,6 +552,9 @@ struct CustomKernelArgsParseFunctor<Return_ (*)(Args_...)> {
     for (auto arg_type : args_type) {
       if (arg_type == std::type_index(typeid(const CPUContext&))) {
         // do nothing, skip context arg now
+      } else if (arg_type ==
+                 std::type_index(typeid(const CustomDeviceContext&))) {
+        // do nothing, skip context arg now
       } else if (arg_type == std::type_index(typeid(const Tensor&))) {
         op_kernel_info->AppendInput(backend, default_tensor_layout, dtype);
       } else if (arg_type ==
@@ -674,106 +679,165 @@ void LoadCustomKernelLib(const std::string& dso_name);
   STATIC_ASSERT_GLOBAL_NAMESPACE(                                              \
       _reg_custom_kernel_ns_check_##kernel_name##_##backend##_##layout,        \
       "PD_REGISTER_KERNEL must be called in global namespace.");               \
-  _PD_REGISTER_2TA_KERNEL(                                                     \
-      kernel_name, backend, layout, func, cpp_dtype, ##__VA_ARGS__)
+  _PD_REGISTER_2TA_KERNEL(kernel_name,                                         \
+                          backend,                                             \
+                          ::paddle::backend##Context,                          \
+                          layout,                                              \
+                          func,                                                \
+                          cpp_dtype,                                           \
+                          ##__VA_ARGS__)
+
+#define PD_REGISTER_CUSTOM_KERNEL(                                      \
+    kernel_name, backend, layout, func, cpp_dtype, ...)                 \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                       \
+      _reg_custom_kernel_ns_check_##kernel_name##_##backend##_##layout, \
+      "PD_REGISTER_KERNEL must be called in global namespace.");        \
+  _PD_REGISTER_2TA_KERNEL(kernel_name,                                  \
+                          backend,                                      \
+                          ::paddle::CustomDeviceContext,                \
+                          layout,                                       \
+                          func,                                         \
+                          cpp_dtype,                                    \
+                          ##__VA_ARGS__)
 
 // WIN32 is not supported
-#define _PD_REGISTER_2TA_KERNEL(                                              \
-    kernel_name, backend, layout, meta_kernel_fn, cpp_dtype, ...)             \
-  PD_KERNEL_INSTANTIATION(meta_kernel_fn, backend, cpp_dtype, ##__VA_ARGS__); \
-  static void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(   \
-      ::paddle::OpKernelInfo* kernel);                                        \
-  PD_KERNEL_REGISTRAR_INIT(                                                   \
-      kernel_name,                                                            \
-      backend,                                                                \
-      layout,                                                                 \
-      &__PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout,          \
-      meta_kernel_fn,                                                         \
-      cpp_dtype,                                                              \
-      ##__VA_ARGS__);                                                         \
-  void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(          \
+#define _PD_REGISTER_2TA_KERNEL(                                            \
+    kernel_name, backend, context, layout, meta_kernel_fn, cpp_dtype, ...)  \
+  PD_KERNEL_INSTANTIATION(                                                  \
+      meta_kernel_fn, backend, context, cpp_dtype, ##__VA_ARGS__);          \
+  static void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
+      ::paddle::OpKernelInfo* kernel);                                      \
+  PD_KERNEL_REGISTRAR_INIT(                                                 \
+      kernel_name,                                                          \
+      backend,                                                              \
+      context,                                                              \
+      layout,                                                               \
+      &__PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout,        \
+      meta_kernel_fn,                                                       \
+      cpp_dtype,                                                            \
+      ##__VA_ARGS__);                                                       \
+  void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(        \
       ::paddle::OpKernelInfo* kernel)
 
-#define PD_KERNEL_INSTANTIATION(meta_kernel_fn, backend, cpp_dtype, ...) \
-  _PD_KERNEL_INSTANTIATION(PD_NARGS(cpp_dtype, ##__VA_ARGS__),           \
-                           meta_kernel_fn,                               \
-                           backend,                                      \
-                           cpp_dtype,                                    \
+#define PD_KERNEL_INSTANTIATION(                               \
+    meta_kernel_fn, backend, context, cpp_dtype, ...)          \
+  _PD_KERNEL_INSTANTIATION(PD_NARGS(cpp_dtype, ##__VA_ARGS__), \
+                           meta_kernel_fn,                     \
+                           backend,                            \
+                           context,                            \
+                           cpp_dtype,                          \
                            ##__VA_ARGS__)
 
-#define _PD_KERNEL_INSTANTIATION(N, meta_kernel_fn, backend, cpp_dtype, ...) \
-  PD_CONCATENATE(_PD_KERNEL_INSTANTIATION_, N)                               \
-  (meta_kernel_fn, backend, cpp_dtype, ##__VA_ARGS__)
+#define _PD_KERNEL_INSTANTIATION(                        \
+    N, meta_kernel_fn, backend, context, cpp_dtype, ...) \
+  PD_CONCATENATE(_PD_KERNEL_INSTANTIATION_, N)           \
+  (meta_kernel_fn, backend, context, cpp_dtype, ##__VA_ARGS__)
 
-#define _PD_KERNEL_INSTANTIATION_1(meta_kernel_fn, backend, cpp_dtype, ...) \
-  template decltype(meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>)  \
-      meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>
-#define _PD_KERNEL_INSTANTIATION_2(meta_kernel_fn, backend, cpp_dtype, ...) \
-  template decltype(meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>)  \
-      meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>;                \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_1(meta_kernel_fn, backend, ##__VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_3(meta_kernel_fn, backend, cpp_dtype, ...) \
-  template decltype(meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>)  \
-      meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>;                \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_2(meta_kernel_fn, backend, ##__VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_4(meta_kernel_fn, backend, cpp_dtype, ...) \
-  template decltype(meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>)  \
-      meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>;                \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_3(meta_kernel_fn, backend, ##__VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_5(meta_kernel_fn, backend, cpp_dtype, ...) \
-  template decltype(meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>)  \
-      meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>;                \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_4(meta_kernel_fn, backend, ##__VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_6(meta_kernel_fn, backend, cpp_dtype, ...) \
-  template decltype(meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>)  \
-      meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>;                \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_5(meta_kernel_fn, backend, ##__VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_7(meta_kernel_fn, backend, cpp_dtype, ...) \
-  template decltype(meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>)  \
-      meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>;                \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_6(meta_kernel_fn, backend, ##__VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_8(meta_kernel_fn, backend, cpp_dtype, ...) \
-  template decltype(meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>)  \
-      meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>;                \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_7(meta_kernel_fn, backend, ##__VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_9(meta_kernel_fn, backend, cpp_dtype, ...) \
-  template decltype(meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>)  \
-      meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>;                \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_8(meta_kernel_fn, backend, ##__VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_10(meta_kernel_fn, backend, cpp_dtype, ...) \
-  template decltype(meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>)   \
-      meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>;                 \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_9(meta_kernel_fn, backend, ##__VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_11(meta_kernel_fn, backend, cpp_dtype, ...) \
-  template decltype(meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>)   \
-      meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>;                 \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_10(meta_kernel_fn, backend, ##__VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_12(meta_kernel_fn, backend, cpp_dtype, ...) \
-  template decltype(meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>)   \
-      meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>;                 \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_11(meta_kernel_fn, backend, ##__VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_13(meta_kernel_fn, backend, cpp_dtype, ...) \
-  template decltype(meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>)   \
-      meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>;                 \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_12(meta_kernel_fn, backend, ##__VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_14(meta_kernel_fn, backend, cpp_dtype, ...) \
-  template decltype(meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>)   \
-      meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>;                 \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_13(meta_kernel_fn, backend, ##__VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_15(meta_kernel_fn, backend, cpp_dtype, ...) \
-  template decltype(meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>)   \
-      meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>;                 \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_14(meta_kernel_fn, backend, ##__VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_1(                   \
+    meta_kernel_fn, backend, context, cpp_dtype, ...) \
+  template decltype(                                  \
+      meta_kernel_fn<cpp_dtype, context>) meta_kernel_fn<cpp_dtype, context>
+#define _PD_KERNEL_INSTANTIATION_2(                                           \
+    meta_kernel_fn, backend, context, cpp_dtype, ...)                         \
+  template decltype(                                                          \
+      meta_kernel_fn<cpp_dtype, context>) meta_kernel_fn<cpp_dtype, context>; \
+  PD_EXPAND(_PD_KERNEL_INSTANTIATION_1(                                       \
+      meta_kernel_fn, backend, context, ##__VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_3(                                           \
+    meta_kernel_fn, backend, context, cpp_dtype, ...)                         \
+  template decltype(                                                          \
+      meta_kernel_fn<cpp_dtype, context>) meta_kernel_fn<cpp_dtype, context>; \
+  PD_EXPAND(_PD_KERNEL_INSTANTIATION_2(                                       \
+      meta_kernel_fn, backend, context, ##__VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_4(                                           \
+    meta_kernel_fn, backend, context, cpp_dtype, ...)                         \
+  template decltype(                                                          \
+      meta_kernel_fn<cpp_dtype, context>) meta_kernel_fn<cpp_dtype, context>; \
+  PD_EXPAND(_PD_KERNEL_INSTANTIATION_3(                                       \
+      meta_kernel_fn, backend, context, ##__VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_5(                                           \
+    meta_kernel_fn, backend, context, cpp_dtype, ...)                         \
+  template decltype(                                                          \
+      meta_kernel_fn<cpp_dtype, context>) meta_kernel_fn<cpp_dtype, context>; \
+  PD_EXPAND(_PD_KERNEL_INSTANTIATION_4(                                       \
+      meta_kernel_fn, backend, context, ##__VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_6(                                           \
+    meta_kernel_fn, backend, context, cpp_dtype, ...)                         \
+  template decltype(                                                          \
+      meta_kernel_fn<cpp_dtype, context>) meta_kernel_fn<cpp_dtype, context>; \
+  PD_EXPAND(_PD_KERNEL_INSTANTIATION_5(                                       \
+      meta_kernel_fn, backend, context, ##__VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_7(                                           \
+    meta_kernel_fn, backend, context, cpp_dtype, ...)                         \
+  template decltype(                                                          \
+      meta_kernel_fn<cpp_dtype, context>) meta_kernel_fn<cpp_dtype, context>; \
+  PD_EXPAND(_PD_KERNEL_INSTANTIATION_6(                                       \
+      meta_kernel_fn, backend, context, ##__VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_8(                                           \
+    meta_kernel_fn, backend, context, cpp_dtype, ...)                         \
+  template decltype(                                                          \
+      meta_kernel_fn<cpp_dtype, context>) meta_kernel_fn<cpp_dtype, context>; \
+  PD_EXPAND(_PD_KERNEL_INSTANTIATION_7(                                       \
+      meta_kernel_fn, backend, context, ##__VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_9(                                           \
+    meta_kernel_fn, backend, context, cpp_dtype, ...)                         \
+  template decltype(                                                          \
+      meta_kernel_fn<cpp_dtype, context>) meta_kernel_fn<cpp_dtype, context>; \
+  PD_EXPAND(_PD_KERNEL_INSTANTIATION_8(                                       \
+      meta_kernel_fn, backend, context, ##__VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_10(                                          \
+    meta_kernel_fn, backend, context, cpp_dtype, ...)                         \
+  template decltype(                                                          \
+      meta_kernel_fn<cpp_dtype, context>) meta_kernel_fn<cpp_dtype, context>; \
+  PD_EXPAND(_PD_KERNEL_INSTANTIATION_9(                                       \
+      meta_kernel_fn, backend, context, ##__VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_11(                                          \
+    meta_kernel_fn, backend, context, cpp_dtype, ...)                         \
+  template decltype(                                                          \
+      meta_kernel_fn<cpp_dtype, context>) meta_kernel_fn<cpp_dtype, context>; \
+  PD_EXPAND(_PD_KERNEL_INSTANTIATION_10(                                      \
+      meta_kernel_fn, backend, context, ##__VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_12(                                          \
+    meta_kernel_fn, backend, context, cpp_dtype, ...)                         \
+  template decltype(                                                          \
+      meta_kernel_fn<cpp_dtype, context>) meta_kernel_fn<cpp_dtype, context>; \
+  PD_EXPAND(_PD_KERNEL_INSTANTIATION_11(                                      \
+      meta_kernel_fn, backend, context, ##__VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_13(                                          \
+    meta_kernel_fn, backend, context, cpp_dtype, ...)                         \
+  template decltype(                                                          \
+      meta_kernel_fn<cpp_dtype, context>) meta_kernel_fn<cpp_dtype, context>; \
+  PD_EXPAND(_PD_KERNEL_INSTANTIATION_12(                                      \
+      meta_kernel_fn, backend, context, ##__VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_14(                                          \
+    meta_kernel_fn, backend, context, cpp_dtype, ...)                         \
+  template decltype(                                                          \
+      meta_kernel_fn<cpp_dtype, context>) meta_kernel_fn<cpp_dtype, context>; \
+  PD_EXPAND(_PD_KERNEL_INSTANTIATION_13(                                      \
+      meta_kernel_fn, backend, context, ##__VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_15(                                          \
+    meta_kernel_fn, backend, context, cpp_dtype, ...)                         \
+  template decltype(                                                          \
+      meta_kernel_fn<cpp_dtype, context>) meta_kernel_fn<cpp_dtype, context>; \
+  PD_EXPAND(_PD_KERNEL_INSTANTIATION_14(                                      \
+      meta_kernel_fn, backend, context, ##__VA_ARGS__))
 
-#define PD_KERNEL_REGISTRAR_INIT(                                              \
-    kernel_name, backend, layout, args_def_fn, meta_kernel_fn, cpp_dtype, ...) \
-  _PD_KERNEL_REGISTRAR_INIT(PD_NARGS(cpp_dtype, ##__VA_ARGS__),                \
-                            kernel_name,                                       \
-                            backend,                                           \
-                            layout,                                            \
-                            args_def_fn,                                       \
-                            meta_kernel_fn,                                    \
-                            cpp_dtype,                                         \
+#define PD_KERNEL_REGISTRAR_INIT(kernel_name,                   \
+                                 backend,                       \
+                                 context,                       \
+                                 layout,                        \
+                                 args_def_fn,                   \
+                                 meta_kernel_fn,                \
+                                 cpp_dtype,                     \
+                                 ...)                           \
+  _PD_KERNEL_REGISTRAR_INIT(PD_NARGS(cpp_dtype, ##__VA_ARGS__), \
+                            kernel_name,                        \
+                            backend,                            \
+                            context,                            \
+                            layout,                             \
+                            args_def_fn,                        \
+                            meta_kernel_fn,                     \
+                            cpp_dtype,                          \
                             ##__VA_ARGS__)
 
 // clang-format off
@@ -783,6 +847,7 @@ void LoadCustomKernelLib(const std::string& dso_name);
 #define _PD_KERNEL_REGISTRAR_INIT(N,              \
                                   kernel_name,    \
                                   backend,        \
+                                  context,        \
                                   layout,         \
                                   args_def_fn,    \
                                   meta_kernel_fn, \
@@ -791,470 +856,470 @@ void LoadCustomKernelLib(const std::string& dso_name);
   PD_CONCATENATE(_PD_KERNEL_REGISTRAR_INIT_, N) ( \
     kernel_name,                                  \
     backend,                                      \
+    context,                                      \
     layout,                                       \
     PD_ID,                                        \
     args_def_fn,                                  \
     meta_kernel_fn,                               \
     cpp_dtype,                                    \
     ##__VA_ARGS__)
-
 // clang-format on
 
-#define _PD_KERNEL_REGISTRAR_INIT_1(kernel_name,                        \
-                                    backend,                            \
-                                    layout,                             \
-                                    registrar_id,                       \
-                                    args_def_fn,                        \
-                                    meta_kernel_fn,                     \
-                                    cpp_dtype,                          \
-                                    ...)                                \
-  static ::paddle::OpKernelInfoBuilder PD_CONCATENATE(                  \
-      custom_kernel_info_##kernel_name##_##backend##_##layout##_,       \
-      registrar_id) =                                                   \
-      ::paddle::OpKernelInfoBuilder(                                    \
-          #kernel_name,                                                 \
-          PD_BACKEND(backend),                                          \
-          PD_DATALAYOUT(layout),                                        \
-          ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type()) \
-          .SetKernelFn(PD_PT_KERNEL(                                    \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .SetVariadicKernelFn(PD_PT_VARIADIC_KERNEL(                   \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .ArgsParse(PD_PT_ARGS_PARSE(                                  \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
+#define _PD_KERNEL_REGISTRAR_INIT_1(kernel_name,                           \
+                                    backend,                               \
+                                    context,                               \
+                                    layout,                                \
+                                    registrar_id,                          \
+                                    args_def_fn,                           \
+                                    meta_kernel_fn,                        \
+                                    cpp_dtype,                             \
+                                    ...)                                   \
+  static ::paddle::OpKernelInfoBuilder PD_CONCATENATE(                     \
+      custom_kernel_info_##kernel_name##_##backend##_##layout##_,          \
+      registrar_id) =                                                      \
+      ::paddle::OpKernelInfoBuilder(                                       \
+          #kernel_name,                                                    \
+          PD_BACKEND(backend),                                             \
+          PD_DATALAYOUT(layout),                                           \
+          ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type())    \
+          .SetKernelFn(PD_PT_KERNEL(meta_kernel_fn<cpp_dtype, context>))   \
+          .SetVariadicKernelFn(                                            \
+              PD_PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>))   \
+          .ArgsParse(PD_PT_ARGS_PARSE(meta_kernel_fn<cpp_dtype, context>)) \
           .ArgsDef(args_def_fn);
 
-#define _PD_KERNEL_REGISTRAR_INIT_2(kernel_name,                        \
-                                    backend,                            \
-                                    layout,                             \
-                                    registrar_id,                       \
-                                    args_def_fn,                        \
-                                    meta_kernel_fn,                     \
-                                    cpp_dtype,                          \
-                                    ...)                                \
-  static ::paddle::OpKernelInfoBuilder PD_CONCATENATE(                  \
-      custom_kernel_info_##kernel_name##_##backend##_##layout##_,       \
-      registrar_id) =                                                   \
-      ::paddle::OpKernelInfoBuilder(                                    \
-          #kernel_name,                                                 \
-          PD_BACKEND(backend),                                          \
-          PD_DATALAYOUT(layout),                                        \
-          ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type()) \
-          .SetKernelFn(PD_PT_KERNEL(                                    \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .SetVariadicKernelFn(PD_PT_VARIADIC_KERNEL(                   \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .ArgsParse(PD_PT_ARGS_PARSE(                                  \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .ArgsDef(args_def_fn);                                        \
-  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_1(kernel_name,                    \
-                                        backend,                        \
-                                        layout,                         \
-                                        PD_ID,                          \
-                                        args_def_fn,                    \
-                                        meta_kernel_fn,                 \
+#define _PD_KERNEL_REGISTRAR_INIT_2(kernel_name,                           \
+                                    backend,                               \
+                                    context,                               \
+                                    layout,                                \
+                                    registrar_id,                          \
+                                    args_def_fn,                           \
+                                    meta_kernel_fn,                        \
+                                    cpp_dtype,                             \
+                                    ...)                                   \
+  static ::paddle::OpKernelInfoBuilder PD_CONCATENATE(                     \
+      custom_kernel_info_##kernel_name##_##backend##_##layout##_,          \
+      registrar_id) =                                                      \
+      ::paddle::OpKernelInfoBuilder(                                       \
+          #kernel_name,                                                    \
+          PD_BACKEND(backend),                                             \
+          PD_DATALAYOUT(layout),                                           \
+          ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type())    \
+          .SetKernelFn(PD_PT_KERNEL(meta_kernel_fn<cpp_dtype, context>))   \
+          .SetVariadicKernelFn(                                            \
+              PD_PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>))   \
+          .ArgsParse(PD_PT_ARGS_PARSE(meta_kernel_fn<cpp_dtype, context>)) \
+          .ArgsDef(args_def_fn);                                           \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_1(kernel_name,                       \
+                                        backend,                           \
+                                        context,                           \
+                                        layout,                            \
+                                        PD_ID,                             \
+                                        args_def_fn,                       \
+                                        meta_kernel_fn,                    \
                                         ##__VA_ARGS__))
 
-#define _PD_KERNEL_REGISTRAR_INIT_3(kernel_name,                        \
-                                    backend,                            \
-                                    layout,                             \
-                                    registrar_id,                       \
-                                    args_def_fn,                        \
-                                    meta_kernel_fn,                     \
-                                    cpp_dtype,                          \
-                                    ...)                                \
-  static ::paddle::OpKernelInfoBuilder PD_CONCATENATE(                  \
-      custom_kernel_info_##kernel_name##_##backend##_##layout##_,       \
-      registrar_id) =                                                   \
-      ::paddle::OpKernelInfoBuilder(                                    \
-          #kernel_name,                                                 \
-          PD_BACKEND(backend),                                          \
-          PD_DATALAYOUT(layout),                                        \
-          ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type()) \
-          .SetKernelFn(PD_PT_KERNEL(                                    \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .SetVariadicKernelFn(PD_PT_VARIADIC_KERNEL(                   \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .ArgsParse(PD_PT_ARGS_PARSE(                                  \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .ArgsDef(args_def_fn);                                        \
-  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_2(kernel_name,                    \
-                                        backend,                        \
-                                        layout,                         \
-                                        PD_ID,                          \
-                                        args_def_fn,                    \
-                                        meta_kernel_fn,                 \
+#define _PD_KERNEL_REGISTRAR_INIT_3(kernel_name,                           \
+                                    backend,                               \
+                                    context,                               \
+                                    layout,                                \
+                                    registrar_id,                          \
+                                    args_def_fn,                           \
+                                    meta_kernel_fn,                        \
+                                    cpp_dtype,                             \
+                                    ...)                                   \
+  static ::paddle::OpKernelInfoBuilder PD_CONCATENATE(                     \
+      custom_kernel_info_##kernel_name##_##backend##_##layout##_,          \
+      registrar_id) =                                                      \
+      ::paddle::OpKernelInfoBuilder(                                       \
+          #kernel_name,                                                    \
+          PD_BACKEND(backend),                                             \
+          PD_DATALAYOUT(layout),                                           \
+          ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type())    \
+          .SetKernelFn(PD_PT_KERNEL(meta_kernel_fn<cpp_dtype, context>))   \
+          .SetVariadicKernelFn(                                            \
+              PD_PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>))   \
+          .ArgsParse(PD_PT_ARGS_PARSE(meta_kernel_fn<cpp_dtype, context>)) \
+          .ArgsDef(args_def_fn);                                           \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_2(kernel_name,                       \
+                                        backend,                           \
+                                        context,                           \
+                                        layout,                            \
+                                        PD_ID,                             \
+                                        args_def_fn,                       \
+                                        meta_kernel_fn,                    \
                                         ##__VA_ARGS__))
 
-#define _PD_KERNEL_REGISTRAR_INIT_4(kernel_name,                        \
-                                    backend,                            \
-                                    layout,                             \
-                                    registrar_id,                       \
-                                    args_def_fn,                        \
-                                    meta_kernel_fn,                     \
-                                    cpp_dtype,                          \
-                                    ...)                                \
-  static ::paddle::OpKernelInfoBuilder PD_CONCATENATE(                  \
-      custom_kernel_info_##kernel_name##_##backend##_##layout##_,       \
-      registrar_id) =                                                   \
-      ::paddle::OpKernelInfoBuilder(                                    \
-          #kernel_name,                                                 \
-          PD_BACKEND(backend),                                          \
-          PD_DATALAYOUT(layout),                                        \
-          ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type()) \
-          .SetKernelFn(PD_PT_KERNEL(                                    \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .SetVariadicKernelFn(PD_PT_VARIADIC_KERNEL(                   \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .ArgsParse(PD_PT_ARGS_PARSE(                                  \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .ArgsDef(args_def_fn);                                        \
-  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_3(kernel_name,                    \
-                                        backend,                        \
-                                        layout,                         \
-                                        PD_ID,                          \
-                                        args_def_fn,                    \
-                                        meta_kernel_fn,                 \
+#define _PD_KERNEL_REGISTRAR_INIT_4(kernel_name,                           \
+                                    backend,                               \
+                                    context,                               \
+                                    layout,                                \
+                                    registrar_id,                          \
+                                    args_def_fn,                           \
+                                    meta_kernel_fn,                        \
+                                    cpp_dtype,                             \
+                                    ...)                                   \
+  static ::paddle::OpKernelInfoBuilder PD_CONCATENATE(                     \
+      custom_kernel_info_##kernel_name##_##backend##_##layout##_,          \
+      registrar_id) =                                                      \
+      ::paddle::OpKernelInfoBuilder(                                       \
+          #kernel_name,                                                    \
+          PD_BACKEND(backend),                                             \
+          PD_DATALAYOUT(layout),                                           \
+          ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type())    \
+          .SetKernelFn(PD_PT_KERNEL(meta_kernel_fn<cpp_dtype, context>))   \
+          .SetVariadicKernelFn(                                            \
+              PD_PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>))   \
+          .ArgsParse(PD_PT_ARGS_PARSE(meta_kernel_fn<cpp_dtype, context>)) \
+          .ArgsDef(args_def_fn);                                           \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_3(kernel_name,                       \
+                                        backend,                           \
+                                        context,                           \
+                                        layout,                            \
+                                        PD_ID,                             \
+                                        args_def_fn,                       \
+                                        meta_kernel_fn,                    \
                                         ##__VA_ARGS__))
 
-#define _PD_KERNEL_REGISTRAR_INIT_5(kernel_name,                        \
-                                    backend,                            \
-                                    layout,                             \
-                                    registrar_id,                       \
-                                    args_def_fn,                        \
-                                    meta_kernel_fn,                     \
-                                    cpp_dtype,                          \
-                                    ...)                                \
-  static ::paddle::OpKernelInfoBuilder PD_CONCATENATE(                  \
-      custom_kernel_info_##kernel_name##_##backend##_##layout##_,       \
-      registrar_id) =                                                   \
-      ::paddle::OpKernelInfoBuilder(                                    \
-          #kernel_name,                                                 \
-          PD_BACKEND(backend),                                          \
-          PD_DATALAYOUT(layout),                                        \
-          ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type()) \
-          .SetKernelFn(PD_PT_KERNEL(                                    \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .SetVariadicKernelFn(PD_PT_VARIADIC_KERNEL(                   \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .ArgsParse(PD_PT_ARGS_PARSE(                                  \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .ArgsDef(args_def_fn);                                        \
-  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_4(kernel_name,                    \
-                                        backend,                        \
-                                        layout,                         \
-                                        PD_ID,                          \
-                                        args_def_fn,                    \
-                                        meta_kernel_fn,                 \
+#define _PD_KERNEL_REGISTRAR_INIT_5(kernel_name,                           \
+                                    backend,                               \
+                                    context,                               \
+                                    layout,                                \
+                                    registrar_id,                          \
+                                    args_def_fn,                           \
+                                    meta_kernel_fn,                        \
+                                    cpp_dtype,                             \
+                                    ...)                                   \
+  static ::paddle::OpKernelInfoBuilder PD_CONCATENATE(                     \
+      custom_kernel_info_##kernel_name##_##backend##_##layout##_,          \
+      registrar_id) =                                                      \
+      ::paddle::OpKernelInfoBuilder(                                       \
+          #kernel_name,                                                    \
+          PD_BACKEND(backend),                                             \
+          PD_DATALAYOUT(layout),                                           \
+          ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type())    \
+          .SetKernelFn(PD_PT_KERNEL(meta_kernel_fn<cpp_dtype, context>))   \
+          .SetVariadicKernelFn(                                            \
+              PD_PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>))   \
+          .ArgsParse(PD_PT_ARGS_PARSE(meta_kernel_fn<cpp_dtype, context>)) \
+          .ArgsDef(args_def_fn);                                           \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_4(kernel_name,                       \
+                                        backend,                           \
+                                        context,                           \
+                                        layout,                            \
+                                        PD_ID,                             \
+                                        args_def_fn,                       \
+                                        meta_kernel_fn,                    \
                                         ##__VA_ARGS__))
 
-#define _PD_KERNEL_REGISTRAR_INIT_6(kernel_name,                        \
-                                    backend,                            \
-                                    layout,                             \
-                                    registrar_id,                       \
-                                    args_def_fn,                        \
-                                    meta_kernel_fn,                     \
-                                    cpp_dtype,                          \
-                                    ...)                                \
-  static ::paddle::OpKernelInfoBuilder PD_CONCATENATE(                  \
-      custom_kernel_info_##kernel_name##_##backend##_##layout##_,       \
-      registrar_id) =                                                   \
-      ::paddle::OpKernelInfoBuilder(                                    \
-          #kernel_name,                                                 \
-          PD_BACKEND(backend),                                          \
-          PD_DATALAYOUT(layout),                                        \
-          ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type()) \
-          .SetKernelFn(PD_PT_KERNEL(                                    \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .SetVariadicKernelFn(PD_PT_VARIADIC_KERNEL(                   \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .ArgsParse(PD_PT_ARGS_PARSE(                                  \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .ArgsDef(args_def_fn);                                        \
-  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_5(kernel_name,                    \
-                                        backend,                        \
-                                        layout,                         \
-                                        PD_ID,                          \
-                                        args_def_fn,                    \
-                                        meta_kernel_fn,                 \
+#define _PD_KERNEL_REGISTRAR_INIT_6(kernel_name,                           \
+                                    backend,                               \
+                                    context,                               \
+                                    layout,                                \
+                                    registrar_id,                          \
+                                    args_def_fn,                           \
+                                    meta_kernel_fn,                        \
+                                    cpp_dtype,                             \
+                                    ...)                                   \
+  static ::paddle::OpKernelInfoBuilder PD_CONCATENATE(                     \
+      custom_kernel_info_##kernel_name##_##backend##_##layout##_,          \
+      registrar_id) =                                                      \
+      ::paddle::OpKernelInfoBuilder(                                       \
+          #kernel_name,                                                    \
+          PD_BACKEND(backend),                                             \
+          PD_DATALAYOUT(layout),                                           \
+          ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type())    \
+          .SetKernelFn(PD_PT_KERNEL(meta_kernel_fn<cpp_dtype, context>))   \
+          .SetVariadicKernelFn(                                            \
+              PD_PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>))   \
+          .ArgsParse(PD_PT_ARGS_PARSE(meta_kernel_fn<cpp_dtype, context>)) \
+          .ArgsDef(args_def_fn);                                           \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_5(kernel_name,                       \
+                                        backend,                           \
+                                        context,                           \
+                                        layout,                            \
+                                        PD_ID,                             \
+                                        args_def_fn,                       \
+                                        meta_kernel_fn,                    \
                                         ##__VA_ARGS__))
 
-#define _PD_KERNEL_REGISTRAR_INIT_7(kernel_name,                        \
-                                    backend,                            \
-                                    layout,                             \
-                                    registrar_id,                       \
-                                    args_def_fn,                        \
-                                    meta_kernel_fn,                     \
-                                    cpp_dtype,                          \
-                                    ...)                                \
-  static ::paddle::OpKernelInfoBuilder PD_CONCATENATE(                  \
-      custom_kernel_info_##kernel_name##_##backend##_##layout##_,       \
-      registrar_id) =                                                   \
-      ::paddle::OpKernelInfoBuilder(                                    \
-          #kernel_name,                                                 \
-          PD_BACKEND(backend),                                          \
-          PD_DATALAYOUT(layout),                                        \
-          ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type()) \
-          .SetKernelFn(PD_PT_KERNEL(                                    \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .SetVariadicKernelFn(PD_PT_VARIADIC_KERNEL(                   \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .ArgsParse(PD_PT_ARGS_PARSE(                                  \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .ArgsDef(args_def_fn);                                        \
-  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_6(kernel_name,                    \
-                                        backend,                        \
-                                        layout,                         \
-                                        PD_ID,                          \
-                                        args_def_fn,                    \
-                                        meta_kernel_fn,                 \
+#define _PD_KERNEL_REGISTRAR_INIT_7(kernel_name,                           \
+                                    backend,                               \
+                                    context,                               \
+                                    layout,                                \
+                                    registrar_id,                          \
+                                    args_def_fn,                           \
+                                    meta_kernel_fn,                        \
+                                    cpp_dtype,                             \
+                                    ...)                                   \
+  static ::paddle::OpKernelInfoBuilder PD_CONCATENATE(                     \
+      custom_kernel_info_##kernel_name##_##backend##_##layout##_,          \
+      registrar_id) =                                                      \
+      ::paddle::OpKernelInfoBuilder(                                       \
+          #kernel_name,                                                    \
+          PD_BACKEND(backend),                                             \
+          PD_DATALAYOUT(layout),                                           \
+          ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type())    \
+          .SetKernelFn(PD_PT_KERNEL(meta_kernel_fn<cpp_dtype, context>))   \
+          .SetVariadicKernelFn(                                            \
+              PD_PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>))   \
+          .ArgsParse(PD_PT_ARGS_PARSE(meta_kernel_fn<cpp_dtype, context>)) \
+          .ArgsDef(args_def_fn);                                           \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_6(kernel_name,                       \
+                                        backend,                           \
+                                        context,                           \
+                                        layout,                            \
+                                        PD_ID,                             \
+                                        args_def_fn,                       \
+                                        meta_kernel_fn,                    \
                                         ##__VA_ARGS__))
 
-#define _PD_KERNEL_REGISTRAR_INIT_8(kernel_name,                        \
-                                    backend,                            \
-                                    layout,                             \
-                                    registrar_id,                       \
-                                    args_def_fn,                        \
-                                    meta_kernel_fn,                     \
-                                    cpp_dtype,                          \
-                                    ...)                                \
-  static ::paddle::OpKernelInfoBuilder PD_CONCATENATE(                  \
-      custom_kernel_info_##kernel_name##_##backend##_##layout##_,       \
-      registrar_id) =                                                   \
-      ::paddle::OpKernelInfoBuilder(                                    \
-          #kernel_name,                                                 \
-          PD_BACKEND(backend),                                          \
-          PD_DATALAYOUT(layout),                                        \
-          ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type()) \
-          .SetKernelFn(PD_PT_KERNEL(                                    \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .SetVariadicKernelFn(PD_PT_VARIADIC_KERNEL(                   \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .ArgsParse(PD_PT_ARGS_PARSE(                                  \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .ArgsDef(args_def_fn);                                        \
-  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_7(kernel_name,                    \
-                                        backend,                        \
-                                        layout,                         \
-                                        PD_ID,                          \
-                                        args_def_fn,                    \
-                                        meta_kernel_fn,                 \
+#define _PD_KERNEL_REGISTRAR_INIT_8(kernel_name,                           \
+                                    backend,                               \
+                                    context,                               \
+                                    layout,                                \
+                                    registrar_id,                          \
+                                    args_def_fn,                           \
+                                    meta_kernel_fn,                        \
+                                    cpp_dtype,                             \
+                                    ...)                                   \
+  static ::paddle::OpKernelInfoBuilder PD_CONCATENATE(                     \
+      custom_kernel_info_##kernel_name##_##backend##_##layout##_,          \
+      registrar_id) =                                                      \
+      ::paddle::OpKernelInfoBuilder(                                       \
+          #kernel_name,                                                    \
+          PD_BACKEND(backend),                                             \
+          PD_DATALAYOUT(layout),                                           \
+          ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type())    \
+          .SetKernelFn(PD_PT_KERNEL(meta_kernel_fn<cpp_dtype, context>))   \
+          .SetVariadicKernelFn(                                            \
+              PD_PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>))   \
+          .ArgsParse(PD_PT_ARGS_PARSE(meta_kernel_fn<cpp_dtype, context>)) \
+          .ArgsDef(args_def_fn);                                           \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_7(kernel_name,                       \
+                                        backend,                           \
+                                        context,                           \
+                                        layout,                            \
+                                        PD_ID,                             \
+                                        args_def_fn,                       \
+                                        meta_kernel_fn,                    \
                                         ##__VA_ARGS__))
 
-#define _PD_KERNEL_REGISTRAR_INIT_9(kernel_name,                        \
-                                    backend,                            \
-                                    layout,                             \
-                                    registrar_id,                       \
-                                    args_def_fn,                        \
-                                    meta_kernel_fn,                     \
-                                    cpp_dtype,                          \
-                                    ...)                                \
-  static ::paddle::OpKernelInfoBuilder PD_CONCATENATE(                  \
-      custom_kernel_info_##kernel_name##_##backend##_##layout##_,       \
-      registrar_id) =                                                   \
-      ::paddle::OpKernelInfoBuilder(                                    \
-          #kernel_name,                                                 \
-          PD_BACKEND(backend),                                          \
-          PD_DATALAYOUT(layout),                                        \
-          ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type()) \
-          .SetKernelFn(PD_PT_KERNEL(                                    \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .SetVariadicKernelFn(PD_PT_VARIADIC_KERNEL(                   \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .ArgsParse(PD_PT_ARGS_PARSE(                                  \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .ArgsDef(args_def_fn);                                        \
-  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_8(kernel_name,                    \
-                                        backend,                        \
-                                        layout,                         \
-                                        PD_ID,                          \
-                                        args_def_fn,                    \
-                                        meta_kernel_fn,                 \
+#define _PD_KERNEL_REGISTRAR_INIT_9(kernel_name,                           \
+                                    backend,                               \
+                                    context,                               \
+                                    layout,                                \
+                                    registrar_id,                          \
+                                    args_def_fn,                           \
+                                    meta_kernel_fn,                        \
+                                    cpp_dtype,                             \
+                                    ...)                                   \
+  static ::paddle::OpKernelInfoBuilder PD_CONCATENATE(                     \
+      custom_kernel_info_##kernel_name##_##backend##_##layout##_,          \
+      registrar_id) =                                                      \
+      ::paddle::OpKernelInfoBuilder(                                       \
+          #kernel_name,                                                    \
+          PD_BACKEND(backend),                                             \
+          PD_DATALAYOUT(layout),                                           \
+          ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type())    \
+          .SetKernelFn(PD_PT_KERNEL(meta_kernel_fn<cpp_dtype, context>))   \
+          .SetVariadicKernelFn(                                            \
+              PD_PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>))   \
+          .ArgsParse(PD_PT_ARGS_PARSE(meta_kernel_fn<cpp_dtype, context>)) \
+          .ArgsDef(args_def_fn);                                           \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_8(kernel_name,                       \
+                                        backend,                           \
+                                        context,                           \
+                                        layout,                            \
+                                        PD_ID,                             \
+                                        args_def_fn,                       \
+                                        meta_kernel_fn,                    \
                                         ##__VA_ARGS__))
 
-#define _PD_KERNEL_REGISTRAR_INIT_10(kernel_name,                       \
-                                     backend,                           \
-                                     layout,                            \
-                                     registrar_id,                      \
-                                     args_def_fn,                       \
-                                     meta_kernel_fn,                    \
-                                     cpp_dtype,                         \
-                                     ...)                               \
-  static ::paddle::OpKernelInfoBuilder PD_CONCATENATE(                  \
-      custom_kernel_info_##kernel_name##_##backend##_##layout##_,       \
-      registrar_id) =                                                   \
-      ::paddle::OpKernelInfoBuilder(                                    \
-          #kernel_name,                                                 \
-          PD_BACKEND(backend),                                          \
-          PD_DATALAYOUT(layout),                                        \
-          ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type()) \
-          .SetKernelFn(PD_PT_KERNEL(                                    \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .SetVariadicKernelFn(PD_PT_VARIADIC_KERNEL(                   \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .ArgsParse(PD_PT_ARGS_PARSE(                                  \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .ArgsDef(args_def_fn);                                        \
-  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_9(kernel_name,                    \
-                                        backend,                        \
-                                        layout,                         \
-                                        PD_ID,                          \
-                                        args_def_fn,                    \
-                                        meta_kernel_fn,                 \
+#define _PD_KERNEL_REGISTRAR_INIT_10(kernel_name,                          \
+                                     backend,                              \
+                                     context,                              \
+                                     layout,                               \
+                                     registrar_id,                         \
+                                     args_def_fn,                          \
+                                     meta_kernel_fn,                       \
+                                     cpp_dtype,                            \
+                                     ...)                                  \
+  static ::paddle::OpKernelInfoBuilder PD_CONCATENATE(                     \
+      custom_kernel_info_##kernel_name##_##backend##_##layout##_,          \
+      registrar_id) =                                                      \
+      ::paddle::OpKernelInfoBuilder(                                       \
+          #kernel_name,                                                    \
+          PD_BACKEND(backend),                                             \
+          PD_DATALAYOUT(layout),                                           \
+          ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type())    \
+          .SetKernelFn(PD_PT_KERNEL(meta_kernel_fn<cpp_dtype, context>))   \
+          .SetVariadicKernelFn(                                            \
+              PD_PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>))   \
+          .ArgsParse(PD_PT_ARGS_PARSE(meta_kernel_fn<cpp_dtype, context>)) \
+          .ArgsDef(args_def_fn);                                           \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_9(kernel_name,                       \
+                                        backend,                           \
+                                        context,                           \
+                                        layout,                            \
+                                        PD_ID,                             \
+                                        args_def_fn,                       \
+                                        meta_kernel_fn,                    \
                                         ##__VA_ARGS__))
 
-#define _PD_KERNEL_REGISTRAR_INIT_11(kernel_name,                       \
-                                     backend,                           \
-                                     layout,                            \
-                                     registrar_id,                      \
-                                     args_def_fn,                       \
-                                     meta_kernel_fn,                    \
-                                     cpp_dtype,                         \
-                                     ...)                               \
-  static ::paddle::OpKernelInfoBuilder PD_CONCATENATE(                  \
-      custom_kernel_info_##kernel_name##_##backend##_##layout##_,       \
-      registrar_id) =                                                   \
-      ::paddle::OpKernelInfoBuilder(                                    \
-          #kernel_name,                                                 \
-          PD_BACKEND(backend),                                          \
-          PD_DATALAYOUT(layout),                                        \
-          ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type()) \
-          .SetKernelFn(PD_PT_KERNEL(                                    \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .SetVariadicKernelFn(PD_PT_VARIADIC_KERNEL(                   \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .ArgsParse(PD_PT_ARGS_PARSE(                                  \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .ArgsDef(args_def_fn);                                        \
-  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_10(kernel_name,                   \
-                                         backend,                       \
-                                         layout,                        \
-                                         PD_ID,                         \
-                                         args_def_fn,                   \
-                                         meta_kernel_fn,                \
+#define _PD_KERNEL_REGISTRAR_INIT_11(kernel_name,                          \
+                                     backend,                              \
+                                     context,                              \
+                                     layout,                               \
+                                     registrar_id,                         \
+                                     args_def_fn,                          \
+                                     meta_kernel_fn,                       \
+                                     cpp_dtype,                            \
+                                     ...)                                  \
+  static ::paddle::OpKernelInfoBuilder PD_CONCATENATE(                     \
+      custom_kernel_info_##kernel_name##_##backend##_##layout##_,          \
+      registrar_id) =                                                      \
+      ::paddle::OpKernelInfoBuilder(                                       \
+          #kernel_name,                                                    \
+          PD_BACKEND(backend),                                             \
+          PD_DATALAYOUT(layout),                                           \
+          ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type())    \
+          .SetKernelFn(PD_PT_KERNEL(meta_kernel_fn<cpp_dtype, context>))   \
+          .SetVariadicKernelFn(                                            \
+              PD_PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>))   \
+          .ArgsParse(PD_PT_ARGS_PARSE(meta_kernel_fn<cpp_dtype, context>)) \
+          .ArgsDef(args_def_fn);                                           \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_10(kernel_name,                      \
+                                         backend,                          \
+                                         context,                          \
+                                         layout,                           \
+                                         PD_ID,                            \
+                                         args_def_fn,                      \
+                                         meta_kernel_fn,                   \
                                          ##__VA_ARGS__))
 
-#define _PD_KERNEL_REGISTRAR_INIT_12(kernel_name,                       \
-                                     backend,                           \
-                                     layout,                            \
-                                     registrar_id,                      \
-                                     args_def_fn,                       \
-                                     meta_kernel_fn,                    \
-                                     cpp_dtype,                         \
-                                     ...)                               \
-  static ::paddle::OpKernelInfoBuilder PD_CONCATENATE(                  \
-      custom_kernel_info_##kernel_name##_##backend##_##layout##_,       \
-      registrar_id) =                                                   \
-      ::paddle::OpKernelInfoBuilder(                                    \
-          #kernel_name,                                                 \
-          PD_BACKEND(backend),                                          \
-          PD_DATALAYOUT(layout),                                        \
-          ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type()) \
-          .SetKernelFn(PD_PT_KERNEL(                                    \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .SetVariadicKernelFn(PD_PT_VARIADIC_KERNEL(                   \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .ArgsParse(PD_PT_ARGS_PARSE(                                  \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .ArgsDef(args_def_fn);                                        \
-  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_11(kernel_name,                   \
-                                         backend,                       \
-                                         layout,                        \
-                                         PD_ID,                         \
-                                         args_def_fn,                   \
-                                         meta_kernel_fn,                \
+#define _PD_KERNEL_REGISTRAR_INIT_12(kernel_name,                          \
+                                     backend,                              \
+                                     context,                              \
+                                     layout,                               \
+                                     registrar_id,                         \
+                                     args_def_fn,                          \
+                                     meta_kernel_fn,                       \
+                                     cpp_dtype,                            \
+                                     ...)                                  \
+  static ::paddle::OpKernelInfoBuilder PD_CONCATENATE(                     \
+      custom_kernel_info_##kernel_name##_##backend##_##layout##_,          \
+      registrar_id) =                                                      \
+      ::paddle::OpKernelInfoBuilder(                                       \
+          #kernel_name,                                                    \
+          PD_BACKEND(backend),                                             \
+          PD_DATALAYOUT(layout),                                           \
+          ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type())    \
+          .SetKernelFn(PD_PT_KERNEL(meta_kernel_fn<cpp_dtype, context>))   \
+          .SetVariadicKernelFn(                                            \
+              PD_PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>))   \
+          .ArgsParse(PD_PT_ARGS_PARSE(meta_kernel_fn<cpp_dtype, context>)) \
+          .ArgsDef(args_def_fn);                                           \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_11(kernel_name,                      \
+                                         backend,                          \
+                                         context,                          \
+                                         layout,                           \
+                                         PD_ID,                            \
+                                         args_def_fn,                      \
+                                         meta_kernel_fn,                   \
                                          ##__VA_ARGS__))
 
-#define _PD_KERNEL_REGISTRAR_INIT_13(kernel_name,                       \
-                                     backend,                           \
-                                     layout,                            \
-                                     registrar_id,                      \
-                                     args_def_fn,                       \
-                                     meta_kernel_fn,                    \
-                                     cpp_dtype,                         \
-                                     ...)                               \
-  static ::paddle::OpKernelInfoBuilder PD_CONCATENATE(                  \
-      custom_kernel_info_##kernel_name##_##backend##_##layout##_,       \
-      registrar_id) =                                                   \
-      ::paddle::OpKernelInfoBuilder(                                    \
-          #kernel_name,                                                 \
-          PD_BACKEND(backend),                                          \
-          PD_DATALAYOUT(layout),                                        \
-          ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type()) \
-          .SetKernelFn(PD_PT_KERNEL(                                    \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .SetVariadicKernelFn(PD_PT_VARIADIC_KERNEL(                   \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .ArgsParse(PD_PT_ARGS_PARSE(                                  \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .ArgsDef(args_def_fn);                                        \
-  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_12(kernel_name,                   \
-                                         backend,                       \
-                                         layout,                        \
-                                         PD_ID,                         \
-                                         args_def_fn,                   \
-                                         meta_kernel_fn,                \
+#define _PD_KERNEL_REGISTRAR_INIT_13(kernel_name,                          \
+                                     backend,                              \
+                                     context,                              \
+                                     layout,                               \
+                                     registrar_id,                         \
+                                     args_def_fn,                          \
+                                     meta_kernel_fn,                       \
+                                     cpp_dtype,                            \
+                                     ...)                                  \
+  static ::paddle::OpKernelInfoBuilder PD_CONCATENATE(                     \
+      custom_kernel_info_##kernel_name##_##backend##_##layout##_,          \
+      registrar_id) =                                                      \
+      ::paddle::OpKernelInfoBuilder(                                       \
+          #kernel_name,                                                    \
+          PD_BACKEND(backend),                                             \
+          PD_DATALAYOUT(layout),                                           \
+          ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type())    \
+          .SetKernelFn(PD_PT_KERNEL(meta_kernel_fn<cpp_dtype, context>))   \
+          .SetVariadicKernelFn(                                            \
+              PD_PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>))   \
+          .ArgsParse(PD_PT_ARGS_PARSE(meta_kernel_fn<cpp_dtype, context>)) \
+          .ArgsDef(args_def_fn);                                           \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_12(kernel_name,                      \
+                                         backend,                          \
+                                         context,                          \
+                                         layout,                           \
+                                         PD_ID,                            \
+                                         args_def_fn,                      \
+                                         meta_kernel_fn,                   \
                                          ##__VA_ARGS__))
 
-#define _PD_KERNEL_REGISTRAR_INIT_14(kernel_name,                       \
-                                     backend,                           \
-                                     layout,                            \
-                                     registrar_id,                      \
-                                     args_def_fn,                       \
-                                     meta_kernel_fn,                    \
-                                     cpp_dtype,                         \
-                                     ...)                               \
-  static ::paddle::OpKernelInfoBuilder PD_CONCATENATE(                  \
-      custom_kernel_info_##kernel_name##_##backend##_##layout##_,       \
-      registrar_id) =                                                   \
-      ::paddle::OpKernelInfoBuilder(                                    \
-          #kernel_name,                                                 \
-          PD_BACKEND(backend),                                          \
-          PD_DATALAYOUT(layout),                                        \
-          ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type()) \
-          .SetKernelFn(PD_PT_KERNEL(                                    \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .SetVariadicKernelFn(PD_PT_VARIADIC_KERNEL(                   \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .ArgsParse(PD_PT_ARGS_PARSE(                                  \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .ArgsDef(args_def_fn);                                        \
-  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_13(kernel_name,                   \
-                                         backend,                       \
-                                         layout,                        \
-                                         PD_ID,                         \
-                                         args_def_fn,                   \
-                                         meta_kernel_fn,                \
+#define _PD_KERNEL_REGISTRAR_INIT_14(kernel_name,                          \
+                                     backend,                              \
+                                     context,                              \
+                                     layout,                               \
+                                     registrar_id,                         \
+                                     args_def_fn,                          \
+                                     meta_kernel_fn,                       \
+                                     cpp_dtype,                            \
+                                     ...)                                  \
+  static ::paddle::OpKernelInfoBuilder PD_CONCATENATE(                     \
+      custom_kernel_info_##kernel_name##_##backend##_##layout##_,          \
+      registrar_id) =                                                      \
+      ::paddle::OpKernelInfoBuilder(                                       \
+          #kernel_name,                                                    \
+          PD_BACKEND(backend),                                             \
+          PD_DATALAYOUT(layout),                                           \
+          ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type())    \
+          .SetKernelFn(PD_PT_KERNEL(meta_kernel_fn<cpp_dtype, context>))   \
+          .SetVariadicKernelFn(                                            \
+              PD_PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>))   \
+          .ArgsParse(PD_PT_ARGS_PARSE(meta_kernel_fn<cpp_dtype, context>)) \
+          .ArgsDef(args_def_fn);                                           \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_13(kernel_name,                      \
+                                         backend,                          \
+                                         context,                          \
+                                         layout,                           \
+                                         PD_ID,                            \
+                                         args_def_fn,                      \
+                                         meta_kernel_fn,                   \
                                          ##__VA_ARGS__))
 
-#define _PD_KERNEL_REGISTRAR_INIT_15(kernel_name,                       \
-                                     backend,                           \
-                                     layout,                            \
-                                     registrar_id,                      \
-                                     args_def_fn,                       \
-                                     meta_kernel_fn,                    \
-                                     cpp_dtype,                         \
-                                     ...)                               \
-  static ::paddle::OpKernelInfoBuilder PD_CONCATENATE(                  \
-      custom_kernel_info_##kernel_name##_##backend##_##layout##_,       \
-      registrar_id) =                                                   \
-      ::paddle::OpKernelInfoBuilder(                                    \
-          #kernel_name,                                                 \
-          PD_BACKEND(backend),                                          \
-          PD_DATALAYOUT(layout),                                        \
-          ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type()) \
-          .SetKernelFn(PD_PT_KERNEL(                                    \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .SetVariadicKernelFn(PD_PT_VARIADIC_KERNEL(                   \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .ArgsParse(PD_PT_ARGS_PARSE(                                  \
-              meta_kernel_fn<cpp_dtype, ::paddle::backend##Context>))   \
-          .ArgsDef(args_def_fn);                                        \
-  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_14(kernel_name,                   \
-                                         backend,                       \
-                                         layout,                        \
-                                         PD_ID,                         \
-                                         args_def_fn,                   \
-                                         meta_kernel_fn,                \
+#define _PD_KERNEL_REGISTRAR_INIT_15(kernel_name,                          \
+                                     backend,                              \
+                                     context,                              \
+                                     layout,                               \
+                                     registrar_id,                         \
+                                     args_def_fn,                          \
+                                     meta_kernel_fn,                       \
+                                     cpp_dtype,                            \
+                                     ...)                                  \
+  static ::paddle::OpKernelInfoBuilder PD_CONCATENATE(                     \
+      custom_kernel_info_##kernel_name##_##backend##_##layout##_,          \
+      registrar_id) =                                                      \
+      ::paddle::OpKernelInfoBuilder(                                       \
+          #kernel_name,                                                    \
+          PD_BACKEND(backend),                                             \
+          PD_DATALAYOUT(layout),                                           \
+          ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type())    \
+          .SetKernelFn(PD_PT_KERNEL(meta_kernel_fn<cpp_dtype, context>))   \
+          .SetVariadicKernelFn(                                            \
+              PD_PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>))   \
+          .ArgsParse(PD_PT_ARGS_PARSE(meta_kernel_fn<cpp_dtype, context>)) \
+          .ArgsDef(args_def_fn);                                           \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_14(kernel_name,                      \
+                                         backend,                          \
+                                         context,                          \
+                                         layout,                           \
+                                         PD_ID,                            \
+                                         args_def_fn,                      \
+                                         meta_kernel_fn,                   \
                                          ##__VA_ARGS__))
+
 }  // namespace paddle
