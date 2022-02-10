@@ -82,7 +82,7 @@ def GeneratePythonCFunction(fwd_api_name, forward_inputs_position_map,
     dygraph_function_call_list = ["" for i in range(num_args)]
     get_eager_tensor_str = ""
     for name, (ttype, pos) in forward_inputs_position_map.items():
-        get_eager_tensor_str += f"    auto& {name} = GetEagerTensorFromArgs(\"{fwd_api_name}\", \"{name}\", args, {pos}, false);\n"
+        get_eager_tensor_str += f"    auto& {name} = GetTensorFromArgs(\"{fwd_api_name}\", \"{name}\", args, {pos}, false);\n"
         dygraph_function_call_list[pos] = f"{name}"
 
     parse_attributes_str = "    paddle::framework::AttributeMap attrs;\n"
@@ -226,7 +226,6 @@ namespace pybind {{
 
 {}
 
-
 static PyMethodDef EagerFinalStateMethods[] = {{
     {}
 }};
@@ -289,6 +288,7 @@ if __name__ == "__main__":
         python_c_function_reg_list.append(python_c_function_reg_str)
         print("Generated Python-C Function: ", python_c_function_str)
 
+    python_c_function_reg_list.append("{nullptr,nullptr,0,nullptr}")
     python_c_functions_str = "\n".join(python_c_function_list)
     python_c_functions_reg_str = ",\n".join(python_c_function_reg_list)
 
