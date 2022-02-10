@@ -94,6 +94,7 @@ It accomplishes the execution of the instruction according to the following step
 }  // namespace paddle::operators
 
 namespace ops = paddle::operators;
+using CPUDeviceContext = paddle::platform::CPUDeviceContext;
 REGISTER_OPERATOR(
     cinn_instruction_run, ops::CinnInstructionRunOp,
     ops::CinnInstructionRunOpMaker,
@@ -101,10 +102,8 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     cinn_instruction_run,
-    ops::CinnInstructionRunOpKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::CinnInstructionRunOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::CinnInstructionRunOpKernel<paddle::platform::CPUDeviceContext,
-                                    int64_t>,
-    ops::CinnInstructionRunOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CinnInstructionRunOpKernel<paddle::platform::CPUDeviceContext,
-                                    double>);
+    ops::CinnInstructionRunOpKernel<CPUDeviceContext, bool>,
+    ops::CinnInstructionRunOpKernel<CPUDeviceContext, int>,
+    ops::CinnInstructionRunOpKernel<CPUDeviceContext, int64_t>,
+    ops::CinnInstructionRunOpKernel<CPUDeviceContext, float>,
+    ops::CinnInstructionRunOpKernel<CPUDeviceContext, double>);
