@@ -40,7 +40,8 @@ const std::unordered_set<std::string> deprecated_op_names({"flatten",
                                                            "mean",
                                                            "reshape",
                                                            "reshape_grad",
-                                                           "sum"});
+                                                           "sum",
+                                                           "one_hot"});
 
 class DefaultKernelSignatureMap {
  public:

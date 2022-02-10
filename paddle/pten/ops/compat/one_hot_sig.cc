@@ -18,16 +18,17 @@ namespace pten {
 
 KernelSignature OneHotOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.HasInput("depth_tensor")) {
-    return KernelSignature("one_hot_v2",
+    return KernelSignature("one_hot",
                            {"X"},
                            {"depth_tensor", "dtype", "allow_out_of_range"},
                            {"Out"});
   } else {
     return KernelSignature(
-        "one_hot_v2", {"X"}, {"depth", "dtype", "allow_out_of_range"}, {"Out"});
+        "one_hot", {"X"}, {"depth", "dtype", "allow_out_of_range"}, {"Out"});
   }
 }
 
 }  // namespace pten
 
+PT_REGISTER_BASE_KERNEL_NAME(one_hot_v2, one_hot);
 PT_REGISTER_ARG_MAPPING_FN(one_hot_v2, pten::OneHotOpArgumentMapping);
