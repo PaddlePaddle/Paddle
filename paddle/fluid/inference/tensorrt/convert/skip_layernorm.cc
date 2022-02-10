@@ -75,8 +75,7 @@ class SkipLayerNormOpConverter : public OpConverter {
         nvinfer1::PluginFieldCollection* pluginPtr =
             static_cast<nvinfer1::PluginFieldCollection*>(
                 malloc(sizeof(*pluginPtr) +
-                       fields.size() *
-                           sizeof(nvinfer1::PluginField)));  // remember to free
+                       fields.size() * sizeof(nvinfer1::PluginField)));
         pluginPtr->nbFields = static_cast<int>(fields.size());
         pluginPtr->fields = fields.data();
 
