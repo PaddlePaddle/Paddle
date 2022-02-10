@@ -11,6 +11,7 @@ limitations under the License. */
 #pragma once
 
 #include <Python.h>
+#include "paddle/pten/core/dense_tensor.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 
@@ -36,6 +37,8 @@ std::vector<egr::EagerTensor> CastPyArg2VectorOfEagerTensor(PyObject* obj,
                                                             ssize_t arg_pos);
 platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos);
 framework::Tensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos);
+std::vector<framework::LoDTensor> CastPyArg2VectorOfTensor(PyObject* obj,
+                                                           ssize_t arg_pos);
 std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos);
 framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
                                                     ssize_t arg_pos);
@@ -54,7 +57,9 @@ PyObject* ToPyObject(const std::vector<float>& value);
 PyObject* ToPyObject(const std::vector<double>& value);
 PyObject* ToPyObject(const std::vector<egr::EagerTensor>& value);
 PyObject* ToPyObject(const platform::Place& value);
+PyObject* ToPyObject(const framework::LoDTensor* value);
 PyObject* ToPyObject(const paddle::framework::proto::VarType::Type& dtype);
+PyObject* ToPyObject(const paddle::framework::proto::VarType& type);
 PyObject* ToPyObject(const void* value);
 PyObject* ToPyObject(
     const std::unordered_map<std::string, std::vector<std::string>>& value);

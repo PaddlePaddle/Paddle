@@ -108,6 +108,8 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("enable_int8", new bool(enable_int8));
       pass->Set("use_calib_mode", new bool(use_calib_mode));
       pass->Set("use_oss", new bool(argument->tensorrt_use_oss()));
+      pass->Set("with_interleaved",
+                new bool(argument->tensorrt_with_interleaved()));
       pass->Set("precision_mode",
                 new AnalysisConfig::Precision(precision_mode));
 

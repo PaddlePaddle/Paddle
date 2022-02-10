@@ -35,10 +35,6 @@
 using namespace egr;            // NOLINT
 using namespace egr_utils_api;  // NOLINT
 
-DECLARE_bool(run_pten_kernel);
-
-TEST(Benchmark, Init) { FLAGS_run_pten_kernel = false; }
-
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 TEST(Benchmark, EagerScaleCUDA) {
@@ -189,7 +185,7 @@ TEST(Benchmark, EagerIntermediateMLPCUDA) {
   }
 }
 
-USE_OP(scale);
+USE_OP_ITSELF(scale);
 USE_OP(matmul_v2);
 USE_OP(reduce_sum);
 USE_OP(reduce_sum_grad);

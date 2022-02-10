@@ -36,8 +36,8 @@ class EpilogueSingleton {
     return instance;
   }
 
-  EpilogueSingleton(EpilogueSingleton const&) = delete;
-  void operator=(EpilogueSingleton const&) = delete;
+  EpilogueSingleton(const EpilogueSingleton&) = delete;
+  void operator=(const EpilogueSingleton&) = delete;
 
   EpilogueMetaData& Data(const std::string& str) { return map_[str]; }
 

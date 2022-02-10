@@ -19,10 +19,10 @@
 #include <vector>
 
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/device_event_base.h"
 #include "paddle/fluid/platform/event.h"
+#include "paddle/pten/core/utils/rw_lock.h"
 
 // When in inference scenario, the scopes will not be written by two threads in
 // a mean time, but a scope may be read by multiple threads concurrently, and
@@ -83,6 +83,8 @@ class InterpretercoreInferShapeContext : public InferShapeContext {
                    size_t j = 0) const override;
 
   bool IsRuntime() const override;
+
+  bool IsRunMKLDNNKernel() const override;
 
   // TODO(paddle-dev): Can this be template?
   std::vector<InferShapeVarPtr> GetInputVarPtrs(
@@ -297,8 +299,7 @@ struct OpFuncNode {
   platform::DeviceContext* dev_ctx_;  // not owned
 
   // fit for pten kernel
-  pten::Kernel* pt_kernel_{nullptr};                 // not owned
-  pten::KernelContext* pt_kernel_context_{nullptr};  // not onwed
+  pten::Kernel* pt_kernel_{nullptr};  // not owned
 
   OpFuncType type_;
 };
@@ -319,8 +320,6 @@ class Instruction {
   OpKernelComputeFunc KernelFunc() const;
 
   pten::Kernel* PtenKernel() const;
-
-  pten::KernelContext* PtenKernelContext() const;
 
   OpFuncType KernelType() const;
 

@@ -23,7 +23,6 @@ class OpBase;
 }  // namespace imperative
 namespace platform {
 class CPUDeviceContext;
-struct CPUPlace;
 }  // namespace platform
 }  // namespace paddle
 

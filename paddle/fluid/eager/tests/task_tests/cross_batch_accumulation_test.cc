@@ -58,12 +58,15 @@ TEST(CrossBatchAccumulation, SingleScaleNode) {
     auto_grad_meta->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(scale_node_ptr));
     auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
+    auto_grad_meta->SetStopGradient(false);
     egr_utils_api::RetainGradForTensor(target_tensor);  // result: 1.0
 
     auto meta = AutogradMeta();
     meta.SetSingleOutRankWithSlot(0, 0);
+    meta.SetStopGradient(false);
     meta.SetGradNode(acc_node_ptr);
-    scale_node_ptr->AddEdges({&meta}, 0);
+    std::vector<egr::AutogradMeta*> res = {&meta};
+    scale_node_ptr->AddEdges(&res, 0);
 
     AutogradMeta* auto_grad_meta1 = EagerUtils::autograd_meta(&leaf_tensor);
     auto_grad_meta1->SetGradNode(

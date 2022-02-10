@@ -165,8 +165,6 @@ inline GpuLaunchConfig GetGpuLaunchConfig2D(
   return config;
 }
 
-// TODO(wangchaochaohu): 3D will add later
-
 }  // namespace platform
 }  // namespace paddle
 

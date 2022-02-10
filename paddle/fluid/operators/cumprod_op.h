@@ -101,7 +101,7 @@ class CumprodGradOpCPUKernel : public framework::OpKernel<T> {
     auto* out_data = out->data<T>();
     auto* d_x_data = d_x->mutable_data<T>(context.GetPlace());
 
-    auto place = BOOST_GET_CONST(platform::CPUPlace, context.GetPlace());
+    auto place = context.GetPlace();
     const auto& dev_ctx =
         context.template device_context<platform::CPUDeviceContext>();
 

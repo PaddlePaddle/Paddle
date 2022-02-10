@@ -19,6 +19,7 @@ import six
 from collections import defaultdict
 from paddle.fluid import core
 from paddle.fluid import framework
+from paddle import _C_ops
 
 
 class Tracer(core.Tracer):
@@ -46,9 +47,87 @@ class Tracer(core.Tracer):
                  attrs,
                  stop_gradient=False,
                  inplace_map=None):
-        self.trace(type, inputs, outputs, attrs,
-                   framework._current_expected_place(), self._has_grad and
-                   not stop_gradient, inplace_map if inplace_map else {})
+        if framework._in_eager_mode():
+            # inputs : {"sum": [tensor], ...}
+            # outputs : {"sum": [tensor], ...}
+
+            function_ptr = _C_ops.__dict__[type]
+
+            core_ops_args_info = _C_ops.get_core_ops_args_info()
+            core_ops_args_type_info = _C_ops.get_core_ops_args_type_info()
+            core_ops_returns_info = _C_ops.get_core_ops_returns_info()
+
+            op_args = core_ops_args_info[type]
+            op_args_type = core_ops_args_type_info[type]
+            op_returns = core_ops_returns_info[type]
+
+            arg_list = []
+            for i in range(len(op_args)):
+                arg_name = op_args[i]
+                arg_type = op_args_type[i]
+                if arg_name in inputs.keys():
+                    arg_to_append = inputs[arg_name]
+                elif arg_name in outputs.keys():
+                    arg_to_append = outputs[arg_name]
+                else:
+                    if "Num" in arg_name:
+                        # Remove "Num" suffix to get out_name
+                        out_name = arg_name[:-3]
+                        assert out_name in outputs.keys()
+                        num_outs = len(outputs[out_name])
+                        arg_to_append = num_outs
+                    else:
+                        arg_to_append = None
+
+                if arg_to_append is None:
+                    arg_list.append(arg_to_append)
+                elif arg_type == "tensor":
+                    if isinstance(arg_to_append, list):
+                        arg_list.append(arg_to_append[0])
+                    else:
+                        arg_list.append(arg_to_append)
+                elif arg_type == "list":
+                    assert isinstance(arg_to_append, list)
+                    arg_list.append(arg_to_append)
+                else:
+                    assert arg_type == "int"
+                    assert isinstance(arg_to_append, int)
+                    arg_list.append(arg_to_append)
+
+            attrs_list = []
+            for k, v in attrs.items():
+                attrs_list.append(k)
+                attrs_list.append(v)
+            returns = function_ptr(*arg_list, *attrs_list)
+
+            if isinstance(returns, tuple):
+                for i in range(len(op_returns)):
+                    retname = op_returns[i]
+                    if retname in outputs.keys():
+                        # Replaced outputs by function returns
+                        if isinstance(returns[i], list):
+                            for j in range(len(returns[i])):
+                                outputs[retname][j].reconstruct_from_(
+                                    returns[i][j], False)
+                        else:
+                            outputs[retname][0].reconstruct_from_(returns[i],
+                                                                  False)
+            elif isinstance(returns, list):
+                assert len(outputs.keys()) == 1
+                key = list(outputs.keys())[0]
+                for j in range(len(returns)):
+                    outputs[key][j].reconstruct_from_(returns[j], False)
+            else:
+                assert len(outputs.keys()) == 1
+                key = list(outputs.keys())[0]
+                if isinstance(outputs[key], list):
+                    outputs[key][0].reconstruct_from_(returns, False)
+                else:
+                    outputs[key].reconstruct_from_(returns, False)
+        else:
+            self.trace(type, inputs, outputs, attrs,
+                       framework._current_expected_place(), self._has_grad and
+                       not stop_gradient, inplace_map if inplace_map else {})
 
     def train_mode(self):
         self._train_mode = True

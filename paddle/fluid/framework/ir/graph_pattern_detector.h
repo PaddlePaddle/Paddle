@@ -1020,7 +1020,6 @@ struct Transpose : public PatternBase {
   PATTERN_DECL_NODE(transpose_in);
   PATTERN_DECL_NODE(transpose_op);
   PATTERN_DECL_NODE(transpose_out);
-  PATTERN_DECL_NODE(next_op);
 };
 
 // Reshape op
@@ -1035,7 +1034,6 @@ struct Reshape : public PatternBase {
   PATTERN_DECL_NODE(reshape_in);
   PATTERN_DECL_NODE(reshape_op);
   PATTERN_DECL_NODE(reshape_out);
-  PATTERN_DECL_NODE(next_op);
 };
 // Slice op
 // Forward pass for slice.
@@ -1049,7 +1047,6 @@ struct Slice : public PatternBase {
   PATTERN_DECL_NODE(slice_in);
   PATTERN_DECL_NODE(slice_op);
   PATTERN_DECL_NODE(slice_out);
-  PATTERN_DECL_NODE(next_op);
 };
 
 // Nearest Interp op
@@ -1064,7 +1061,6 @@ struct NearestInterp : public PatternBase {
   PATTERN_DECL_NODE(nearest_interp_in);
   PATTERN_DECL_NODE(nearest_interp_op);
   PATTERN_DECL_NODE(nearest_interp_out);
-  PATTERN_DECL_NODE(next_op);
 };
 
 // Matmul op

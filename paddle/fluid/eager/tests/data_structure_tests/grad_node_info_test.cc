@@ -41,10 +41,11 @@ TEST(GradNodeInfo, GradNodeBase) {
   pten::DenseTensorMeta meta = pten::DenseTensorMeta(
       pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 1}));
   std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace()),
+      std::make_unique<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CPUPlace())
+          .get(),
       meta);
-  auto* dt_ptr = dt->mutable_data<float>();
+  auto* dt_ptr = dt->mutable_data<float>(paddle::platform::CPUPlace());
   dt_ptr[0] = 5.0f;
   egr::EagerTensor et1(dt);
   grads = {{et1}};
@@ -56,15 +57,17 @@ TEST(GradNodeInfo, GradNodeBase) {
   VLOG(6) << "Test Add Edges";
   egr::Edge edge0(grad_test_node1, 1, 2);
   auto auto_grad0 = std::make_shared<egr::AutogradMeta>(edge0);
+  auto_grad0->SetStopGradient(false);
   egr::Edge edge1(grad_test_node1, 3, 4);
   auto auto_grad1 = std::make_shared<egr::AutogradMeta>(edge1);
+  auto_grad1->SetStopGradient(false);
   grad_test_node0->AddEdges(auto_grad0.get(), 0);
   CHECK_EQ(grad_test_node0->GetEdges()[0][0].GetEdgeRankInfo().first,
            size_t(1));
   CHECK_EQ(grad_test_node0->GetEdges()[0][0].GetEdgeRankInfo().second,
            size_t(2));
   std::vector<egr::AutogradMeta*> metas = {auto_grad1.get()};
-  grad_test_node0->AddEdges(metas, 1);
+  grad_test_node0->AddEdges(&metas, 1);
   CHECK_EQ(grad_test_node0->GetEdges()[1][0].GetEdgeRankInfo().first,
            size_t(3));
   CHECK_EQ(grad_test_node0->GetEdges()[1][0].GetEdgeRankInfo().second,
@@ -72,10 +75,10 @@ TEST(GradNodeInfo, GradNodeBase) {
 
   VLOG(6) << "Test Set Meta and Get Meta";
   auto_grad1->SetStopGradient(true);
-  grad_test_node0->SetGradInMeta(metas, 0);
-  grad_test_node0->SetGradInMeta(*auto_grad1.get(), 1);
-  grad_test_node0->SetGradOutMeta(metas, 0);
-  grad_test_node0->SetGradOutMeta(*auto_grad1.get(), 1);
+  grad_test_node0->SetGradInMeta(&metas, 0);
+  grad_test_node0->SetGradInMeta(auto_grad1.get(), 1);
+  grad_test_node0->SetGradOutMeta(&metas, 0);
+  grad_test_node0->SetGradOutMeta(auto_grad1.get(), 1);
   CHECK_EQ(grad_test_node0->InputMeta()[0].Size(), 1);
   CHECK_EQ(grad_test_node0->InputMeta()[1].Size(), 1);
   CHECK(grad_test_node0->OutputMeta()[0].IsStopGradient(0));
@@ -95,10 +98,11 @@ TEST(GradNodeInfo, GradNodeBase) {
     pten::DenseTensorMeta meta = pten::DenseTensorMeta(
         pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 1}));
     std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
-        std::make_shared<paddle::experimental::DefaultAllocator>(
-            paddle::platform::CPUPlace()),
+        std::make_unique<paddle::experimental::DefaultAllocator>(
+            paddle::platform::CPUPlace())
+            .get(),
         meta);
-    auto* dt_ptr = dt->mutable_data<float>();
+    auto* dt_ptr = dt->mutable_data<float>(paddle::platform::CPUPlace());
     dt_ptr[0] = 6.0f;
     auto* et_ptr =
         std::dynamic_pointer_cast<pten::DenseTensor>(et.impl())->data<float>();
@@ -117,8 +121,8 @@ TEST(GradNodeInfo, GradNodeBase) {
 
   VLOG(6) << "Test Reduce Hook";
   auto reduce_hook = [&](void) -> void {
-    auto* et_ptr = std::dynamic_pointer_cast<pten::DenseTensor>(et1.impl())
-                       ->mutable_data<float>();
+    auto* et_ptr =
+        std::dynamic_pointer_cast<pten::DenseTensor>(et1.impl())->data<float>();
     et_ptr[0] = 100.0;
     VLOG(6) << "Running Reduce Hook";
   };
@@ -145,7 +149,7 @@ TEST(GradNodeInfo, Edge) {
   auto auto_grad1 = std::make_shared<egr::AutogradMeta>();
   std::vector<egr::AutogradMeta*> metas = {auto_grad1.get()};
   // Uninitialized AutogradMeta indicates
-  mt_grad_node->SetGradInMeta(metas, 0);
+  mt_grad_node->SetGradInMeta(&metas, 0);
   CHECK(grad_node->InputMeta()[0].IsStopGradient(0) == true);
   VLOG(6) << "Test Get/Set Edge Rank Info";
   CHECK_EQ(edge2.GetEdgeRankInfo().first, size_t(1));

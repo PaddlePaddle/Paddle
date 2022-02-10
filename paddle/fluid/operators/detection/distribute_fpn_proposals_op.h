@@ -33,7 +33,8 @@ inline std::vector<size_t> GetLodFromRoisNum(const Tensor* rois_num) {
   auto* rois_num_data = rois_num->data<int>();
   Tensor cpu_tensor;
   if (platform::is_gpu_place(rois_num->place())) {
-    TensorCopySync(*rois_num, platform::CPUPlace(), &cpu_tensor);
+    paddle::framework::TensorCopySync(*rois_num, platform::CPUPlace(),
+                                      &cpu_tensor);
     rois_num_data = cpu_tensor.data<int>();
   }
   rois_lod.push_back(static_cast<size_t>(0));

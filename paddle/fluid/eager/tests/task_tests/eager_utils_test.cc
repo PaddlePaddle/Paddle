@@ -31,17 +31,19 @@ TEST(EagerUtils, AutoGradMeta) {
   pten::DenseTensorMeta meta = pten::DenseTensorMeta(
       pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 1}));
   std::shared_ptr<pten::DenseTensor> dt0 = std::make_shared<pten::DenseTensor>(
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace()),
+      std::make_unique<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CPUPlace())
+          .get(),
       meta);
-  dt0->mutable_data<float>()[0] = 10.0;
+  dt0->mutable_data<float>(paddle::platform::CPUPlace())[0] = 10.0;
   EagerTensor et0 = EagerTensor(dt0);
 
   std::shared_ptr<pten::DenseTensor> dt1 = std::make_shared<pten::DenseTensor>(
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace()),
+      std::make_unique<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CPUPlace())
+          .get(),
       meta);
-  dt1->mutable_data<float>()[0] = 20.0;
+  dt1->mutable_data<float>(paddle::platform::CPUPlace())[0] = 20.0;
   EagerTensor et1 = EagerTensor(dt1);
 
   std::vector<EagerTensor> ets = {et0, et1};
@@ -49,7 +51,6 @@ TEST(EagerUtils, AutoGradMeta) {
 
   // unsafe_autograd_meta()
   // autograd_meta()
-  // multi_autograd_meta()
   AutogradMeta* autograd_meta0 = EagerUtils::autograd_meta(&et0);
   AutogradMeta* autograd_meta1 = EagerUtils::autograd_meta(&et1);
 
@@ -57,8 +58,7 @@ TEST(EagerUtils, AutoGradMeta) {
       EagerUtils::unsafe_autograd_meta(et0);
   CHECK_NOTNULL(unsafe_autograd_meta_after);
 
-  std::vector<AutogradMeta*> autograd_metas =
-      EagerUtils::multi_autograd_meta(&ets);
+  std::vector<AutogradMeta*> autograd_metas = EagerUtils::autograd_meta(&ets);
   std::vector<AutogradMeta*> unsafe_autograd_metas =
       EagerUtils::unsafe_autograd_meta(ets);
   CHECK_NOTNULL(unsafe_autograd_metas[0]);
@@ -106,10 +106,11 @@ egr::EagerTensor CreateTestCPUTensor(T val,
       pten::DenseTensorMeta(pten::DataType::FLOAT32, ddim);
   egr::EagerTensor tensor;
   std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace()),
+      std::make_unique<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CPUPlace())
+          .get(),
       meta);
-  auto* dt_ptr = dt->mutable_data<T>();
+  auto* dt_ptr = dt->mutable_data<T>(paddle::platform::CPUPlace());
   for (int64_t i = 0; i < dt->numel(); i++) {
     dt_ptr[i] = val;
   }

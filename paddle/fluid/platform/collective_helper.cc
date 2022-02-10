@@ -15,6 +15,7 @@
 #include "paddle/fluid/platform/collective_helper.h"
 #include <utility>
 
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
 
@@ -32,9 +33,7 @@ class NCCLCommImpl : public NCCLComm {
   void set_rank(int rank) { rank_ = rank; }
   int rank() const override { return rank_; }
 
-  int device_id() const override {
-    return BOOST_GET_CONST(CUDAPlace, dev_ctx_->GetPlace()).device;
-  }
+  int device_id() const override { return dev_ctx_->GetPlace().device; }
 
   void set_comm(ncclComm_t comm) { comm_ = comm; }
   ncclComm_t comm() const override { return comm_; }
@@ -189,6 +188,18 @@ NCCLComm* NCCLCommContext::AssignNCCLComm(ncclComm_t comm, int nranks, int rank,
                                           int dev_id, int ring_id) {
   std::unique_ptr<CUDADeviceContext> dev_ctx(
       new CUDADeviceContext(CUDAPlace(dev_id)));
+  dev_ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetAllocator(CUDAPlace(dev_id), dev_ctx->stream())
+                            .get());
+  dev_ctx->SetHostAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
+  dev_ctx->SetZeroAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(CUDAPlace(dev_id))
+          .get());
+  dev_ctx->PartialInitWithAllocator();
 
   std::shared_ptr<platform::CudaEventObject> compute_event(
       platform::CudaEventResourcePool::Instance().New(dev_id));
@@ -246,9 +257,7 @@ class BKCLCommImpl : public BKCLComm {
   void set_rank(int rank) { rank_ = rank; }
   int rank() const override { return rank_; }
 
-  int device_id() const override {
-    return BOOST_GET_CONST(XPUPlace, dev_ctx_->GetPlace()).device;
-  }
+  int device_id() const override { return dev_ctx_->GetPlace().device; }
 
   void set_comm(BKCLContext_t comm) { comm_ = comm; }
   BKCLContext_t comm() const override { return comm_; }
@@ -333,7 +342,7 @@ BKCLComm* BKCLCommContext::AssignBKCLComm(BKCLContext_t comm, int nranks,
     auto* dev_ctx = static_cast<platform::XPUDeviceContext*>(
         platform::DeviceContextPool::Instance().Get(
             platform::XPUPlace(dev_id)));
-    dev_ctx->set_bkcl_context(comm);
+    dev_ctx->SetBkclContext(comm);
   }
 
   return comm_map_[ring_id][dev_id].get();

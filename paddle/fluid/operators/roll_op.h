@@ -100,7 +100,8 @@ class RollKernel : public framework::OpKernel<T> {
     std::vector<int64_t> dims = context.Attr<std::vector<int64_t>>("axis");
 
     std::vector<T> out_vec;
-    TensorToVector(input, context.device_context(), &out_vec);
+    paddle::framework::TensorToVector(input, context.device_context(),
+                                      &out_vec);
 
     size_t nums = shifts.size();
     DDim input_dim = input.dims();
@@ -143,7 +144,8 @@ class RollGradKernel : public framework::OpKernel<T> {
     std::vector<int64_t> dims = context.Attr<std::vector<int64_t>>("axis");
 
     std::vector<T> out_vec;
-    TensorToVector(input, context.device_context(), &out_vec);
+    paddle::framework::TensorToVector(input, context.device_context(),
+                                      &out_vec);
 
     size_t nums = shifts.size();
     DDim input_dim = input.dims();
