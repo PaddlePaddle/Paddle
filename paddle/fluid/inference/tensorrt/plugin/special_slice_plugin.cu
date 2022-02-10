@@ -113,32 +113,38 @@ nvinfer1::DataType SpecialSlicePluginDynamic::getOutputDataType(
 template <typename T>
 __global__ void SpecialSliceKernel(const T* slice_input,
                                    const int32_t* cu_seqlens, T* output) {
-  const int hidden = blockDim.x;
+  const int hidden = blockDim.x * gridDim.y;
   const int batch = blockIdx.x;
+  const int local_idx = blockIdx.y * blockDim.y + threadIdx.x;
 
-  output[batch * hidden + threadIdx.x] =
-      slice_input[cu_seqlens[batch] * hidden + threadIdx.x];
+  output[batch * hidden + local_idx] =
+      slice_input[cu_seqlens[batch] * hidden + local_idx];
 }
 
 int SpecialSlicePluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc* input_desc,
     const nvinfer1::PluginTensorDesc* output_desc, const void* const* inputs,
     void* const* outputs, void* workspace, cudaStream_t stream) TRT_NOEXCEPT {
-  auto input_dims = input_desc[0].dims;  // (sum(S), 768, 1, 1)
-  auto out_dims = output_desc[0].dims;   // (batch, 768, 1, 1)
+  auto input_dims = input_desc[0].dims;  // (sum(S), hidden, 1, 1)
+  auto out_dims = output_desc[0].dims;   // (batch, hidden, 1, 1)
 
-  assert(input_desc[0].type == nvinfer1::DataType::kHALF);
+  PADDLE_ENFORCE_EQ(
+      input_desc[0].type, nvinfer1::DataType::kHALF,
+      platform::errors::InvalidArgument("Type of input should be half."));
 
   const int32_t hidden = input_dims.d[1];
-  const int num_blocks = out_dims.d[0];  // batch size
-  const int num_threads = hidden;
+  PADDLE_ENFORCE_EQ(hidden % 128, 0, platform::errors::InvalidArgument(
+                                         "hidden should be multiple of 128."));
+
+  constexpr int num_threads = 128;
+  const dim3 blocks(out_dims.d[0], hidden / num_threads);
 
   const half* slice_input = static_cast<const half*>(inputs[0]);
   const int32_t* cu_seqlens = static_cast<const int32_t*>(inputs[1]);
   half* output = static_cast<half*>(outputs[0]);
 
-  SpecialSliceKernel<<<num_blocks, num_threads, 0, stream>>>(
-      slice_input, cu_seqlens, output);
+  SpecialSliceKernel<<<blocks, num_threads, 0, stream>>>(slice_input,
+                                                         cu_seqlens, output);
 
   return cudaGetLastError() != cudaSuccess;
 }

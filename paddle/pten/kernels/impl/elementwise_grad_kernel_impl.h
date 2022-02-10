@@ -85,4 +85,27 @@ void AddDoubleGradImpl(const Context& dev_ctx,
   }
 }
 
+template <typename T, typename Context, typename GradFunc>
+void SubtractDoubleGradImpl(const Context& dev_ctx,
+                            const DenseTensor& y,
+                            const paddle::optional<const DenseTensor&>& ddx,
+                            const paddle::optional<const DenseTensor&>& ddy,
+                            const DenseTensor& dout,
+                            int axis,
+                            DenseTensor* ddout,
+                            GradFunc grad_func) {
+  // DDOut = ddx - ddy
+  if (ddout) {
+    DenseTensor ddx_safe, ddy_safe;
+    funcs::GetDoubleGradSafeTensor<Context, T>(
+        dev_ctx, dout, ddx.get_ptr(), &ddx_safe);
+    funcs::GetDoubleGradSafeTensor<Context, T>(
+        dev_ctx, y, ddy.get_ptr(), &ddy_safe);
+
+    ddout->mutable_data<T>(dev_ctx.GetPlace());
+    grad_func(
+        dev_ctx, ddx_safe, ddy_safe, axis, funcs::SubtractFunctor<T>(), ddout);
+  }
+}
+
 }  // namespace pten

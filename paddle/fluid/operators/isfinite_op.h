@@ -73,8 +73,3 @@ class OverflowKernel : public framework::OpKernel<T> {
 
 }  // namespace operators
 }  // namespace paddle
-
-#define FOR_EACH_KERNEL_FUNCTOR(__macro) \
-  __macro(isinf, InfinityFunctor);       \
-  __macro(isnan, NANFunctor);            \
-  __macro(isfinite, IsfiniteFunctor);

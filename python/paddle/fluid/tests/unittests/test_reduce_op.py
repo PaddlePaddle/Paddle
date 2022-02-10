@@ -740,17 +740,24 @@ class API_TestSumOp(unittest.TestCase):
         if np_axis is None:
             np_axis = attr_axis
 
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data = fluid.data("data", shape=shape, dtype=x_dtype)
-            result_sum = paddle.sum(x=data, axis=attr_axis, dtype=attr_dtype)
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for place in places:
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                data = fluid.data("data", shape=shape, dtype=x_dtype)
+                result_sum = paddle.sum(x=data,
+                                        axis=attr_axis,
+                                        dtype=attr_dtype)
 
-            exe = fluid.Executor(fluid.CPUPlace())
-            input_data = np.random.rand(*shape).astype(x_dtype)
-            res, = exe.run(feed={"data": input_data}, fetch_list=[result_sum])
+                exe = fluid.Executor(place)
+                input_data = np.random.rand(*shape).astype(x_dtype)
+                res, = exe.run(feed={"data": input_data},
+                               fetch_list=[result_sum])
 
-        self.assertTrue(
-            np.allclose(
-                res, np.sum(input_data.astype(attr_dtype), axis=np_axis)))
+            self.assertTrue(
+                np.allclose(
+                    res, np.sum(input_data.astype(attr_dtype), axis=np_axis)))
 
     def test_static(self):
         shape = [10, 10]
@@ -759,10 +766,12 @@ class API_TestSumOp(unittest.TestCase):
         self.run_static(shape, "bool", axis, attr_dtype=None)
         self.run_static(shape, "bool", axis, attr_dtype="int32")
         self.run_static(shape, "bool", axis, attr_dtype="int64")
+        self.run_static(shape, "bool", axis, attr_dtype="float16")
 
         self.run_static(shape, "int32", axis, attr_dtype=None)
         self.run_static(shape, "int32", axis, attr_dtype="int32")
         self.run_static(shape, "int32", axis, attr_dtype="int64")
+        self.run_static(shape, "int32", axis, attr_dtype="float64")
 
         self.run_static(shape, "int64", axis, attr_dtype=None)
         self.run_static(shape, "int64", axis, attr_dtype="int64")
@@ -771,6 +780,7 @@ class API_TestSumOp(unittest.TestCase):
         self.run_static(shape, "float32", axis, attr_dtype=None)
         self.run_static(shape, "float32", axis, attr_dtype="float32")
         self.run_static(shape, "float32", axis, attr_dtype="float64")
+        self.run_static(shape, "float32", axis, attr_dtype="int64")
 
         self.run_static(shape, "float64", axis, attr_dtype=None)
         self.run_static(shape, "float64", axis, attr_dtype="float32")

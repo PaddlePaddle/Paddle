@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include "paddle/fluid/platform/event.h"
+#include "paddle/fluid/platform/profiler/trace_event.h"
 
 namespace paddle {
 namespace platform {
@@ -24,8 +25,8 @@ namespace platform {
 // associated with it. For example, thread starts working.
 // Chrome Trace Viewer Format: Instant Event
 struct RecordInstantEvent {
-  explicit RecordInstantEvent(const char* name,
-                              const EventRole role = EventRole::kOrdinary);
+  explicit RecordInstantEvent(const char* name, TracerEventType type,
+                              uint32_t level = 1);
 };
 
 // CPU event tracing. A trace starts when an object of this clas is created and
@@ -34,13 +35,15 @@ struct RecordInstantEvent {
 class RecordEvent {
  public:
   explicit RecordEvent(const std::string& name,
-                       const EventRole role = EventRole::kOrdinary);
+                       const EventRole role = EventRole::kOrdinary,
+                       uint32_t level = 1);
 
   explicit RecordEvent(const char* name,
-                       const EventRole role = EventRole::kOrdinary);
+                       const EventRole role = EventRole::kOrdinary,
+                       uint32_t level = 1);
 
   RecordEvent(const std::string& name, const EventRole role,
-              const std::string& attr);
+              const std::string& attr, uint32_t level = 1);
 
   // Stop event tracing explicitly before the object goes out of scope.
   // Sometimes it's inconvenient to use RAII

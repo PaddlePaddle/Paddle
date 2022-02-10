@@ -28,7 +28,6 @@ from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage3 import Shar
 from paddle.distributed.fleet.meta_parallel.sharding.sharding_utils import ShardingScaler
 
 epoch = 10
-batch_size = 32
 paddle.seed(2022)
 np.random.seed(2022)
 base_lr = 0.1
@@ -80,6 +79,7 @@ def train_mlp(model,
               use_pure_fp16=False,
               accumulate_grad=False,
               offload=False,
+              batch_size=100,
               convert2cpu=False):
     group = paddle.distributed.new_group([0, 1])
     optimizer = optimizer_setting(model=model, use_pure_fp16=use_pure_fp16)
@@ -91,7 +91,11 @@ def train_mlp(model,
         scaler = ShardingScaler(scaler)
 
     model = ShardingStage3(
-        model, optimizer=optimizer, group=group, offload=offload)
+        model,
+        optimizer=optimizer,
+        group=group,
+        offload=offload,
+        accumulate_grads=accumulate_grad)
 
     train_reader = paddle.batch(
         reader_decorator(), batch_size=batch_size, drop_last=True)
@@ -115,10 +119,15 @@ def train_mlp(model,
                 loss = paddle.nn.functional.cross_entropy(
                     input=out, label=label)
             avg_loss = paddle.mean(x=loss.cast(dtype=paddle.float32))
+
+            if accumulate_grad:
+                avg_loss = avg_loss / 5
+
             if not use_pure_fp16:
                 avg_loss.backward()
             else:
                 scaler.scale(avg_loss).backward()
+
             if not accumulate_grad:
                 if not use_pure_fp16:
                     optimizer.step()
@@ -172,12 +181,14 @@ def test_stage3_offload():
             atol=1e-2)
 
     # fp32 accumulate grad offload
-    stage3_params = train_mlp(mlp5, use_pure_fp16=False, accumulate_grad=True)
+    stage3_params = train_mlp(
+        mlp5, use_pure_fp16=False, batch_size=20, accumulate_grad=True)
     stage3_params_offload = train_mlp(
         mlp6,
         use_pure_fp16=False,
         accumulate_grad=True,
         offload=True,
+        batch_size=20,
         convert2cpu=True)
     for i in range(len(stage3_params)):
         np.testing.assert_allclose(

@@ -15,6 +15,7 @@
 #include "paddle/fluid/platform/device_event.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "paddle/fluid/platform/place.h"
 
 using ::paddle::platform::kCUDA;
 using ::paddle::platform::kCPU;
@@ -38,9 +39,11 @@ TEST(DeviceEvent, CUDA) {
   // case 1. test for event_creator
   DeviceEvent event(place);
   ASSERT_NE(event.GetEvent().get(), nullptr);
+  bool status = event.Query();
+  ASSERT_EQ(status, true);
   // case 2. test for event_recorder
   event.Record(context);
-  bool status = event.Query();
+  status = event.Query();
   ASSERT_EQ(status, false);
   // case 3. test for event_finisher
   event.Finish();

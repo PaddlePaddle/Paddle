@@ -22,7 +22,7 @@
 #include "paddle/pten/api/lib/utils/allocator.h"
 
 TEST(AutogradMeta, Constructor) {
-  egr::EagerTensor et1;
+  paddle::experimental::Tensor et1;
   auto auto_grad = std::make_shared<egr::AutogradMeta>();
   et1.set_autograd_meta(auto_grad);
   auto* tmp_auto = static_cast<egr::AutogradMeta*>(et1.get_autograd_meta());
@@ -32,7 +32,7 @@ TEST(AutogradMeta, Constructor) {
 }
 
 TEST(AutogradMeta, MemberFunction) {
-  egr::EagerTensor et1;
+  paddle::experimental::Tensor et1;
   auto auto_grad = std::make_shared<egr::AutogradMeta>();
   et1.set_autograd_meta(auto_grad);
   auto* tmp_auto = static_cast<egr::AutogradMeta*>(et1.get_autograd_meta());

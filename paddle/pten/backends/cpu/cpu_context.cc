@@ -15,75 +15,59 @@
 #include "paddle/pten/backends/cpu/cpu_context.h"
 
 #include "paddle/pten/api/ext/exception.h"
+#include "paddle/pten/common/place.h"
 
 // NOTE: The paddle framework should add WITH_EIGEN option to support compile
 // without eigen.
+#include "paddle/pten/core/device_context.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace pten {
 
-struct CPUContext::CPUImpl {
-  CPUImpl() { device_ = new Eigen::DefaultDevice(); }
+struct CPUContext::Impl {
+  Impl() : place_(CPUPlace()) {}
 
-  // Users need to manage external resources.
-  explicit CPUImpl(const CPUContextResource& ctx_res) : res_(ctx_res) {
-    device_ = res_.device;
+  explicit Impl(const Place& place) : place_(place) {}
+
+  ~Impl() {
+    if (owned_) {
+      delete eigen_device_;
+    }
   }
 
-  ~CPUImpl() {
-    if (res_.device == nullptr && device_ != nullptr) {
-      delete device_;
-      device_ = nullptr;
-    }
+  void Init() {
+    owned_ = true;
+    eigen_device_ = new Eigen::DefaultDevice();
   }
 
   Eigen::DefaultDevice* GetEigenDevice() const {
-    PD_CHECK(device_ != nullptr, "the eigen_device is nullptr.");
-    return device_;
+    PD_CHECK(eigen_device_ != nullptr, "the cpu eigen_device is nullptr.");
+    return eigen_device_;
   }
 
-  void SetEigenDevice(Eigen::DefaultDevice* device) {
-    if (device == nullptr) {
-      return;
-    }
-    res_.device = device;
-    device_ = device;
-  }
-
-  Place GetPlace() const { return place_; }
-
-  Eigen::DefaultDevice* device_{nullptr};
-  CPUContextResource res_;
-  CPUPlace place_;
+  bool owned_{false};
+  Eigen::DefaultDevice* eigen_device_{nullptr};
+  Place place_;
 };
 
-CPUContext::CPUContext() : DeviceContext() {
-  cpu_impl_ = std::make_unique<CPUImpl>();
-}
+CPUContext::CPUContext()
+    : DeviceContext(), impl_(std::make_unique<CPUContext::Impl>()) {}
 
-CPUContext::CPUContext(const CPUContext& other) : DeviceContext() {
-  cpu_impl_ = std::make_unique<CPUImpl>();
-  cpu_impl_->SetEigenDevice(other.eigen_device());
-}
-
-CPUContext::CPUContext(CPUContext&& other) : DeviceContext() {
-  cpu_impl_ = std::move(other.cpu_impl_);
-}
+CPUContext::CPUContext(const Place& place)
+    : DeviceContext(), impl_(std::make_unique<CPUContext::Impl>(place)) {}
 
 CPUContext::~CPUContext() = default;
 
-CPUContext::CPUContext(const CPUContextResource& ctx_res) : DeviceContext() {
-  cpu_impl_ = std::make_unique<CPUImpl>(ctx_res);
-}
+void CPUContext::Init() { impl_->Init(); }
 
 Eigen::DefaultDevice* CPUContext::eigen_device() const {
-  return cpu_impl_->GetEigenDevice();
+  return impl_->GetEigenDevice();
 }
+
+const Place& CPUContext::GetPlace() const { return impl_->place_; }
 
 void CPUContext::SetEigenDevice(Eigen::DefaultDevice* device) {
-  cpu_impl_->SetEigenDevice(device);
+  impl_->eigen_device_ = device;
 }
-
-Place CPUContext::GetPlace() const { return cpu_impl_->GetPlace(); }
 
 }  // namespace pten
