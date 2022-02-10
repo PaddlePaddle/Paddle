@@ -73,8 +73,6 @@ void ScaleKernel(const Context& dev_ctx,
                  DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
 
-  // const auto& mkldnn_engine = dev_ctx.GetEngine();
-
   bool is_inplaced = x.IsSharedBufferWith(*out);
 
   ScaleMKLDNNHandler<T, Context> handler(dnnl::algorithm::eltwise_linear,
