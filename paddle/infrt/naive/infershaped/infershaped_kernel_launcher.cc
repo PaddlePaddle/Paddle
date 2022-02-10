@@ -20,7 +20,7 @@ namespace naive {
 void InferShapedKernelLauncher::CreateKernelFrameForInferShape(
     host_context::KernelFrame* frame) {
   for (host_context::Value* value :
-       frame->GetValues(0, frame->GetNumElements())) {
+       frame->GetValues(1, frame->GetNumElements() - 1)) {
     // TODO(Superjomn) To extend this.
     if (value->is_type<tensor::DenseHostTensor>()) {
       values.emplace_back(MetaTensor{&value->get<tensor::DenseHostTensor>()});
@@ -32,27 +32,24 @@ void InferShapedKernelLauncher::CreateKernelFrameForInferShape(
 }
 
 void InferShapedKernelLauncher::BuildInferShapeCache(
-    const uint16_t* input_indices, const uint16_t num_inputs) {
+    const uint16_t num_inputs) {
   tensor_shape_cache.resize(num_inputs);
   for (uint16_t i = 0; i < num_inputs; i++) {
     tensor_shape_cache[i] =
-        infershape_kernel_frame_builder.GetArgAt(input_indices[i])
-            ->get<MetaTensor>()
-            .shape();
+        infershape_kernel_frame_builder.GetArgAt(i)->get<MetaTensor>().shape();
   }
 }
 
 bool InferShapedKernelLauncher::IsShapeChanged(
-    const uint16_t* input_indices, const uint16_t num_inputs) const {
+    const uint16_t num_inputs) const {
   if (tensor_shape_cache.empty() && !infershape_kernel_frame_builder.IsEmpty())
     return true;
 
   bool changed = false;
   for (uint16_t i = 0; i < num_inputs && !changed; i++) {
-    changed = changed || (tensor_shape_cache[i] !=
-                          infershape_kernel_frame_builder
-                              .GetArgAt<MetaTensor>(input_indices[i])
-                              .shape());
+    changed = changed ||
+              (tensor_shape_cache[i] !=
+               infershape_kernel_frame_builder.GetArgAt<MetaTensor>(i).shape());
   }
   return changed;
 }

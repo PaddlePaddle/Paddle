@@ -90,6 +90,9 @@ Tensor::Tensor(const PlaceType &place, const std::vector<int64_t> &shape)
                                           pten::DataLayout::NCHW))))),
       place_{place} {}
 
+Tensor::Tensor(std::shared_ptr<pten::TensorBase> tensor_impl,
+               const std::string &name)
+    : impl_(std::move(tensor_impl)), name_(std::move(name)) {}
 /* Part 2: Dimension, DataType and DataLayout methods */
 
 int64_t Tensor::numel() const { return impl_->numel(); }
@@ -377,12 +380,16 @@ void Tensor::reset() { impl_.reset(); }
 Tensor &Tensor::operator=(const Tensor &x) & {
   impl_ = x.impl_;
   autograd_meta_ = x.autograd_meta_;
+  name_ = x.name_;
+  place_ = x.place_;
   return *this;
 }
 
 Tensor &Tensor::operator=(Tensor &&x) & {
   impl_ = std::move(x.impl_);
   autograd_meta_ = std::move(x.autograd_meta_);
+  name_ = std::move(x.name_);
+  place_ = std::move(x.place_);
   return *this;
 }
 
