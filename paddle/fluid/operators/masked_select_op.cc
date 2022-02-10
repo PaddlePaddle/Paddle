@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/masked_select_op.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -106,16 +105,3 @@ REGISTER_OPERATOR(masked_select, ops::MaskedSelectOp, ops::MaskedSelectOpMaker,
                   ops::MaskedSelectGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(masked_select_grad, ops::MaskedSelectOpGrad,
                   ops::MaskedSelectedGradNoNeedBufferVarsInferer);
-
-REGISTER_OP_CPU_KERNEL(
-    masked_select,
-    ops::MaskedSelectKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MaskedSelectKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::MaskedSelectKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::MaskedSelectKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    masked_select_grad,
-    ops::MaskedSelectGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MaskedSelectGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::MaskedSelectGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::MaskedSelectGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
