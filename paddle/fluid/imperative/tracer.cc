@@ -268,8 +268,16 @@ void Tracer::TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
   }
 
   if (ComputeRequiredGrad(new_ins, outs, trace_backward)) {
-    CreateGradOpNode(*op, new_ins, outs, attrs, default_attrs, place,
-                     inplace_map);
+    if (!override_default_attr_map) {
+      PADDLE_ENFORCE_NOT_NULL(passed_default_attrs_,
+                              paddle::platform::errors::PermissionDenied(
+                                  "Detected default_attrs = nullptr."));
+      CreateGradOpNode(*op, new_ins, outs, attrs, *passed_default_attrs_, place,
+                       inplace_map);
+    } else {
+      CreateGradOpNode(*op, new_ins, outs, attrs, default_attrs, place,
+                       inplace_map);
+    }
   } else {
     VLOG(3) << "No Grad to track for Op: " << type;
   }

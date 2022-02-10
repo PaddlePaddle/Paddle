@@ -23,8 +23,9 @@ namespace egr {
 namespace egr_utils_api {
 
 void RegisterGradientHookForTensor(
-    const egr::EagerTensor& tensor,
-    std::function<egr::EagerTensor(const egr::EagerTensor&)>& hook) {
+    const paddle::experimental::Tensor& tensor,
+    std::function<paddle::experimental::Tensor(
+        const paddle::experimental::Tensor&)>& hook) {
   // Find grad_node and out_rank from AutogradMeta
   std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(tensor);
   auto rank_info = EagerUtils::unsafe_autograd_meta(tensor)->OutRankInfo();
@@ -32,7 +33,7 @@ void RegisterGradientHookForTensor(
   grad_node->RegisterGradientHook(rank_info.first, rank_info.second, hook);
 }
 
-void RegisterReduceHookForTensor(const egr::EagerTensor& tensor,
+void RegisterReduceHookForTensor(const paddle::experimental::Tensor& tensor,
                                  const std::function<void(void)>& hook) {
   // Find grad_node and out_rank from AutogradMeta
   std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(tensor);
@@ -40,14 +41,16 @@ void RegisterReduceHookForTensor(const egr::EagerTensor& tensor,
   grad_node->RegisterReduceHook(hook);
 }
 
-void RetainGradForTensor(const egr::EagerTensor& tensor) {
+void RetainGradForTensor(const paddle::experimental::Tensor& tensor) {
   // TODO(jiabin): Support More Tensor type here
   AutogradMeta* meta = EagerUtils::unsafe_autograd_meta(tensor);
-  std::weak_ptr<egr::EagerTensor> weak_grad_tensor = meta->WeakGrad();
+  std::weak_ptr<paddle::experimental::Tensor> weak_grad_tensor =
+      meta->WeakGrad();
 
   // Define Hook
-  std::function<egr::EagerTensor(const egr::EagerTensor&)> hook =
-      [weak_grad_tensor](const egr::EagerTensor& t) {
+  std::function<paddle::experimental::Tensor(
+      const paddle::experimental::Tensor&)>
+      hook = [weak_grad_tensor](const paddle::experimental::Tensor& t) {
         if (!weak_grad_tensor.expired()) {
           auto grad_tensor = weak_grad_tensor.lock();
           if (t.defined()) {
@@ -56,24 +59,16 @@ void RetainGradForTensor(const egr::EagerTensor& tensor) {
             grad_tensor->set_impl(t.impl());
             return *grad_tensor.get();
           } else {
-            VLOG(7) << "Set Var for RetainGrad Hook for tensor: " << t.name();
-            PADDLE_ENFORCE_EQ(
-                t.Var().IsInitialized(), true,
-                paddle::platform::errors::Fatal(
-                    "Detected uninitialized variable, causing segmentation "
-                    "fault "
-                    "inside the hook."
-                    "Variable %s has to be initialized while we need to set it."
-                    "please check tensor initialization status.",
-                    t.name()));
-            grad_tensor->MutableVar()
-                ->GetMutable<paddle::framework::LoDTensor>()
-                ->ShareDataWith(t.Var().Get<paddle::framework::LoDTensor>());
-            return *grad_tensor.get();
+            PADDLE_THROW(paddle::platform::errors::Fatal(
+                "Detected uninitialized variable, causing segmentation "
+                "fault "
+                "inside the hook."
+                "Tensor has to be initialized while we need to set it."
+                "please check tensor initialization status."));
           }
         } else {
-          VLOG(7) << "Retain NULL EagerTensor in Grad Hook";
-          return EagerTensor();
+          VLOG(7) << "Retain NULL paddle::experimental::Tensor in Grad Hook";
+          return paddle::experimental::Tensor();
         }
       };
 

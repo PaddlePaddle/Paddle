@@ -59,6 +59,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/trainer.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/version.h"
+#include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
@@ -185,6 +186,14 @@ bool IsCompiledWithCUDA() {
 #endif
 }
 
+bool IsCompiledWithNCCL() {
+#ifdef PADDLE_WITH_NCCL
+  return true;
+#else
+  return false;
+#endif
+}
+
 bool IsCompiledWithROCM() {
 #ifndef PADDLE_WITH_HIP
   return false;
@@ -294,66 +303,6 @@ bool SupportsVNNI() {
 #else
   return platform::MayIUse(platform::cpu_isa_t::avx512_core_vnni);
 #endif
-}
-
-// According to the input `place` and `dtype`, this function returns a tuple
-// consists of three sets:
-// 1) All operators registered in the Paddle framework.
-// 2) All operators supported for `place` and `dtype`.
-// 3) All operators unsupported for `place` and `dtype`.
-// The input `place` is a type of string, which can only be `GPU` or `CPU`.
-// The input `dtype` is a type of paddle::framework::proto::VarType::Type,
-// which can be paddle::framework::proto::VarType::FP16,
-// paddle::framework::proto::VarType::FP32 and so on.
-std::tuple<std::unordered_set<std::string>, std::unordered_set<std::string>,
-           std::unordered_set<std::string>>
-OpSupportedInfos(const std::string &place,
-                 framework::proto::VarType::Type dtype) {
-  std::string query_place;
-  std::transform(place.begin(), place.end(), std::back_inserter(query_place),
-                 [](unsigned char c) { return std::toupper(c); });
-  using fn_type = std::add_pointer<bool(const platform::Place &)>::type;
-  std::unordered_map<std::string, fn_type> is_target_place{
-      {"GPU", &platform::is_gpu_place}, {"CPU", &platform::is_cpu_place},
-      {"XPU", &platform::is_xpu_place}, {"NPU", &platform::is_npu_place},
-      {"MLU", &platform::is_mlu_place},
-  };
-  PADDLE_ENFORCE_NE(
-      is_target_place.count(query_place), 0,
-      platform::errors::InvalidArgument(
-          "The argument `place` should be 'GPU' or 'CPU', but get '%s'.",
-          place));
-
-  std::unordered_set<std::string> all_ops;
-  const auto &op_info = framework::OpInfoMap::Instance().map();
-  for (auto it = op_info.begin(); it != op_info.end(); it++) {
-    all_ops.emplace(it->first);
-  }
-
-  std::unordered_set<std::string> supported_ops;
-  auto &all_kernels = framework::OperatorWithKernel::AllOpKernels();
-  for (auto it = all_kernels.begin(); it != all_kernels.end(); it++) {
-    for (auto &kernel_type : it->second) {
-      if (is_target_place[query_place](kernel_type.first.place_) &&
-          kernel_type.first.data_type_ == dtype) {
-        supported_ops.emplace(it->first);
-      }
-    }
-  }
-
-  std::unordered_set<std::string> unsupported_ops;
-  for (auto &op : all_ops) {
-    if (!supported_ops.count(op)) {
-      unsupported_ops.emplace(op);
-    }
-  }
-
-  VLOG(4) << "-- The size of all_ops: " << all_ops.size() << " --";
-  VLOG(4) << "-- The size of supported_ops: " << supported_ops.size() << " --";
-  VLOG(4) << "-- The size of unsupported_ops: " << unsupported_ops.size()
-          << " --";
-  return std::make_tuple(std::move(all_ops), std::move(supported_ops),
-                         std::move(unsupported_ops));
 }
 
 bool IsCompiledWithBrpc() {
@@ -799,6 +748,10 @@ PYBIND11_MODULE(core_noavx, m) {
   framework_tensor
       .def("__array__",
            [](framework::Tensor &self) { return TensorToPyArray(self); })
+      .def("_ptr",
+           [](const framework::Tensor &self) {
+             return reinterpret_cast<uintptr_t>(self.data());
+           })
       .def("_is_initialized",
            [](const framework::Tensor &self) { return self.IsInitialized(); })
       .def("_get_dims",
@@ -2429,6 +2382,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_ipu", IsCompiledWithIPU);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
+  m.def("is_compiled_with_nccl", IsCompiledWithNCCL);
   m.def("is_compiled_with_cinn", IsCompiledWithCINN);
   m.def("is_compiled_with_mlu", IsCompiledWithMLU);
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
@@ -2436,7 +2390,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
   m.def("supports_int8", SupportsInt8);
   m.def("supports_vnni", SupportsVNNI);
-  m.def("op_supported_infos", OpSupportedInfos);
+  m.def("op_supported_infos", imperative::OpSupportedInfos);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
   m.def("_cuda_synchronize", [](const platform::CUDAPlace &place) {

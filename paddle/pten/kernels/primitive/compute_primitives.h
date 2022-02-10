@@ -118,7 +118,7 @@ __device__ __forceinline__ T BlockXReduce(T val, ReduceOp reducer) {
  */
 template <typename T, typename ReduceOp>
 __device__ __forceinline__ T BlockYReduce(T val, ReduceOp reducer) {
-  __shared__ T shared_memory[details::kReduceMaxThread];
+  __shared__ T shared_memory[1024];
   shared_memory[SharedMemoryIndex(0)] = val;
   for (int stride = blockDim.y / 2; stride > 0; stride >>= 1) {
     __syncthreads();
@@ -128,7 +128,8 @@ __device__ __forceinline__ T BlockYReduce(T val, ReduceOp reducer) {
     }
     shared_memory[SharedMemoryIndex(0)] = val;
   }
-  return val;
+  __syncthreads();
+  return shared_memory[threadIdx.x];
 }
 
 }  // namespace details
@@ -411,6 +412,19 @@ __device__ __forceinline__ void Reduce(T* out,
         out[i] = reducer(out[i], in[i * NX + j]);
       }
     }
+  }
+}
+
+template <typename InT,
+          typename OutT,
+          int NX,
+          int NY,
+          int BlockSize,
+          class OpFunc>
+__device__ __forceinline__ void ElementwiseConstant(OutT* out, OpFunc compute) {
+#pragma unroll
+  for (int idx = 0; idx < NX * NY; idx++) {
+    out[idx] = static_cast<OutT>(compute());
   }
 }
 

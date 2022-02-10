@@ -63,9 +63,13 @@ void TransformData(const OpKernelType &expected_kernel_type,
         out.ShareDataWith(input_tensor);
         // For NHWC data we need reshape of tensors as MKL-DNN
         // is expecting NHWC dims description order
-        platform::MatchShapeToLayout(&out, lin, lout);
-        paddle::platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
-            lin);
+        if (lin == DataLayout::kNHWC) {
+          platform::MatchShapeToLayout(&out, lin, lout);
+          // We register only NHWC assuming that model is consistent e.g. either
+          // NHWC or NCHW
+          paddle::platform::MKLDNNDeviceContext::tls()
+              .set_cur_paddle_data_layout(lin);
+        }
         out.set_layout(DataLayout::kMKLDNN);
         out.set_format(out_format);
       } else {
