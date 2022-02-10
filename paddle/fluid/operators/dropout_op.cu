@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/dropout_impl.cu.h"
 #include "paddle/fluid/operators/dropout_op.h"
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
@@ -84,8 +85,10 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     dropout, ops::GPUDropoutKernel<plat::CUDADeviceContext, float>,
     ops::GPUDropoutKernel<plat::CUDADeviceContext, plat::float16>,
+    ops::GPUDropoutKernel<plat::CUDADeviceContext, plat::bfloat16>,
     ops::GPUDropoutKernel<plat::CUDADeviceContext, double>);
 REGISTER_OP_CUDA_KERNEL(
     dropout_grad, ops::GPUDropoutGradKernel<plat::CUDADeviceContext, float>,
     ops::GPUDropoutGradKernel<plat::CUDADeviceContext, plat::float16>,
+    ops::GPUDropoutGradKernel<plat::CUDADeviceContext, plat::bfloat16>,
     ops::GPUDropoutGradKernel<plat::CUDADeviceContext, double>);
