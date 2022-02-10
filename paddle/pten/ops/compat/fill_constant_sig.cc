@@ -62,6 +62,52 @@ KernelSignature FillConstantOpArgumentMapping(
         }
       }
     }
+  } else if (ctx.IsDenseTensorOutput("Out")) {
+    if (ctx.HasInput("ShapeTensor")) {
+      if (ctx.HasInput("ValueTensor")) {
+        return KernelSignature(
+            "full_sr", {}, {"ShapeTensor", "ValueTensor"}, {"Out"});
+      } else {
+        const auto& str_value =
+            paddle::any_cast<std::string>(ctx.Attr("str_value"));
+        if (str_value.empty()) {
+          return KernelSignature(
+              "full_sr", {}, {"ShapeTensor", "value"}, {"Out"});
+        } else {
+          return KernelSignature(
+              "full_sr", {}, {"ShapeTensor", "str_value"}, {"Out"});
+        }
+      }
+    } else if (ctx.InputSize("ShapeTensorList") > 0) {
+      if (ctx.HasInput("ValueTensor")) {
+        return KernelSignature(
+            "full_sr", {}, {"ShapeTensorList", "ValueTensor"}, {"Out"});
+      } else {
+        const auto& str_value =
+            paddle::any_cast<std::string>(ctx.Attr("str_value"));
+        if (str_value.empty()) {
+          return KernelSignature(
+              "full_sr", {}, {"ShapeTensorList", "value"}, {"Out"});
+        } else {
+          return KernelSignature(
+              "full_sr", {}, {"ShapeTensorList", "str_value"}, {"Out"});
+        }
+      }
+    } else {
+      if (ctx.HasInput("ValueTensor")) {
+        return KernelSignature(
+            "full_sr", {}, {"shape", "ValueTensor"}, {"Out"});
+      } else {
+        const auto& str_value =
+            paddle::any_cast<std::string>(ctx.Attr("str_value"));
+        if (str_value.empty()) {
+          return KernelSignature("full_sr", {}, {"shape", "value"}, {"Out"});
+        } else {
+          return KernelSignature(
+              "full_sr", {}, {"shape", "str_value"}, {"Out"});
+        }
+      }
+    }
   }
   return KernelSignature("unregistered", {}, {}, {});
 }

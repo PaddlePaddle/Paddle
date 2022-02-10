@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,49 +19,49 @@ limitations under the License. */
 #include "paddle/pten/core/kernel_registry.h"
 
 #include "paddle/pten/common/bfloat16.h"
+#include "paddle/pten/common/complex.h"
+
 namespace pten {
 
 template <typename T, typename Context>
-void ScaleSR(const Context& dev_ctx,
-             const SelectedRows& x,
-             const Scalar& scale,
-             float bias,
-             bool bias_after_scale,
-             SelectedRows* out) {
-  if (x.value().data() != out->value().data()) {
-    out->set_rows(x.rows());
-    out->set_height(x.height());
-  }
-  pten::ScaleKernel<T>(
-      dev_ctx, x.value(), scale, bias, bias_after_scale, out->mutable_value());
+void FullSR(const Context& dev_ctx,
+            const ScalarArray& shape,
+            const Scalar& val,
+            SelectedRows* out) {
+  pten::FullKernel<T>(dev_ctx, shape, val, out->mutable_value());
 }
 
 }  // namespace pten
 
-PT_REGISTER_KERNEL(scale_sr,
+PT_REGISTER_KERNEL(full_sr,
                    CPU,
                    ALL_LAYOUT,
-                   pten::ScaleSR,
+                   pten::FullSR,
                    float,
                    double,
-                   pten::dtype::bfloat16,
                    uint8_t,
-                   int8_t,
                    int16_t,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   bool,
+                   paddle::platform::float16,
+                   paddle::platform::bfloat16,
+                   paddle::platform::complex<float>,
+                   paddle::platform::complex<double>) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_REGISTER_KERNEL(scale_sr,
+PT_REGISTER_KERNEL(full_sr,
                    GPU,
                    ALL_LAYOUT,
-                   pten::ScaleSR,
+                   pten::FullSR,
                    float,
                    double,
-                   pten::dtype::float16,
                    uint8_t,
-                   int8_t,
                    int16_t,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   bool,
+                   paddle::platform::float16,
+                   paddle::platform::complex<float>,
+                   paddle::platform::complex<double>) {}
 #endif
