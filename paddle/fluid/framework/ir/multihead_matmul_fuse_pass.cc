@@ -314,6 +314,7 @@ PDNode* MultiHeadMatmulPattern::operator()() {
       pattern->NewNode(reshape2_qkv_repr())->assert_is_op("reshape2");
   auto* reshape2_qkv_out_var = pattern->NewNode(reshape2_qkv_out_repr())
                                    ->assert_is_op_output("reshape2");
+  reshape2_qkv_out_var->assert_is_op_input("mul");
 
   // Second path to matmul
   auto* mul1 = pattern->NewNode(mul1_repr())->assert_is_op("mul");
@@ -499,7 +500,7 @@ PDNode* MultiHeadMatmulV3Pattern::operator()() {
       pattern->NewNode(reshape2_qkv_repr())->assert_is_op("reshape2");
   auto* reshape2_qkv_out_var = pattern->NewNode(reshape2_qkv_out_repr())
                                    ->assert_is_op_output("reshape2");
-
+  reshape2_qkv_out_var->assert_is_ops_input(matmul_ops);
   // Second path to matmul
   auto* mul1 = pattern->NewNode(mul1_repr())->assert_is_ops(matmul_ops);
   auto* mul1_w_var = pattern->NewNode(mul1_w_repr())
