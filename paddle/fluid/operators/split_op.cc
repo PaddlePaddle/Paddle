@@ -103,39 +103,6 @@ class SplitOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    tensor.place(), tensor.layout());
   }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext &ctx) const override {
-    // priority:  num > SectionsTensorList > sections
-    // priority: AxisTensor > axis
-    if (ctx.Attr<int>("num") > 0) {
-      if (ctx.HasInput("AxisTensor")) {
-        return framework::KernelSignature("split", {"X"}, {"num", "AxisTensor"},
-                                          {"Out"});
-      } else {
-        return framework::KernelSignature("split", {"X"}, {"num", "axis"},
-                                          {"Out"});
-      }
-    }
-
-    if (ctx.MultiInputVar("SectionsTensorList").size() > 0) {
-      if (ctx.HasInput("AxisTensor")) {
-        return framework::KernelSignature(
-            "split", {"X"}, {"SectionsTensorList", "AxisTensor"}, {"Out"});
-      } else {
-        return framework::KernelSignature(
-            "split", {"X"}, {"SectionsTensorList", "axis"}, {"Out"});
-      }
-    }
-
-    if (ctx.HasInput("AxisTensor")) {
-      return framework::KernelSignature("split", {"X"},
-                                        {"sections", "AxisTensor"}, {"Out"});
-    } else {
-      return framework::KernelSignature("split", {"X"}, {"sections", "axis"},
-                                        {"Out"});
-    }
-  }
 };
 
 class SplitOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -205,11 +172,3 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(split, ops::SplitOp, ops::SplitOpMaker,
                   ops::SplitGradMaker<paddle::framework::OpDesc>,
                   ops::SplitGradMaker<paddle::imperative::OpBase>);
-namespace plat = paddle::platform;
-REGISTER_OP_CPU_KERNEL(
-    split, ops::SplitOpKernel<plat::CPUDeviceContext, double>,
-    ops::SplitOpKernel<plat::CPUDeviceContext, float>,
-    ops::SplitOpKernel<plat::CPUDeviceContext, int64_t>,
-    ops::SplitOpKernel<plat::CPUDeviceContext, int>,
-    ops::SplitOpKernel<plat::CPUDeviceContext, bool>,
-    ops::SplitOpKernel<plat::CPUDeviceContext, plat::float16>);

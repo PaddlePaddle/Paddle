@@ -106,56 +106,6 @@ static inline std::vector<framework::DDim> UpdateOutsDims(
   }
   return outs_dims;
 }
-template <typename DeviceContext, typename T>
-class SplitOpKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<framework::Tensor>("X");
-    auto outs = ctx.MultiOutput<framework::Tensor>("Out");
-    int num = ctx.Attr<int>("num");
-    std::vector<int> sections = ctx.Attr<std::vector<int>>("sections");
-    int axis = ctx.Attr<int>("axis");
-
-    auto in_dims = in->dims();
-    auto outs_number = outs.size();
-
-    bool need_resize_outs_dims = false;
-    if (ctx.HasInput("AxisTensor")) {
-      auto* axis_tensor = ctx.Input<framework::Tensor>("AxisTensor");
-      axis = GetDataFromTensor(axis_tensor)[0];
-      need_resize_outs_dims = true;
-    }
-    auto sections_tensor_list =
-        ctx.MultiInput<framework::Tensor>("SectionsTensorList");
-    if (sections_tensor_list.size() > 0) {
-      sections = GetDataFromTensorList(sections_tensor_list);
-      need_resize_outs_dims = true;
-    }
-
-    if (need_resize_outs_dims) {
-      std::vector<framework::DDim> outs_dims =
-          UpdateOutsDims(true, true, in_dims, num, sections, axis, outs_number);
-      for (size_t j = 0; j < outs.size(); ++j) {
-        outs[j]->Resize(outs_dims[j]);
-      }
-    }
-
-    for (size_t j = 0; j < outs.size(); ++j) {
-      outs[j]->mutable_data<T>(ctx.GetPlace());
-    }
-
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
-
-    if (num > 0) {
-      sections = {num};
-    }
-    // call pten kernel
-    pten::SplitKernel<T>(
-        static_cast<const typename paddle::framework::ConvertToPtenContext<
-            DeviceContext>::TYPE&>(dev_ctx),
-        *in, sections, axis, outs);
-  }
-};
 
 template <typename T>
 class SplitGradMaker : public framework::SingleGradOpMaker<T> {
