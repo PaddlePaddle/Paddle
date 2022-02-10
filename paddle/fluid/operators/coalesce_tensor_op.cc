@@ -23,6 +23,7 @@
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #endif
+#include "paddle/fluid/framework/convert_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -193,7 +194,8 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
     void *fused_tensor_ptr =
         fused_tensor
             ->Resize(framework::make_ddim({static_cast<int64_t>(numel)}))
-            .mutable_data(context.GetPlace(), dtype);
+            .mutable_data(context.GetPlace(),
+                          framework::TransToPtenDataType(dtype));
     VLOG(10) << "Fused tensor addr " << fused_tensor_ptr;
 
     // Init the continuous space

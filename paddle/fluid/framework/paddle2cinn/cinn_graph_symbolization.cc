@@ -27,6 +27,7 @@ limitations under the License. */
 
 #include "cinn/frontend/op_mappers/use_op_mappers.h"
 #include "cinn/frontend/var_type_utils.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 

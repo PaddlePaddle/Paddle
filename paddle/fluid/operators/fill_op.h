@@ -17,6 +17,7 @@ limitations under the License. */
 #include <vector>
 
 #include <algorithm>
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -48,9 +49,10 @@ class FillKernel : public framework::OpKernel<T> {
     out.Resize(framework::make_ddim(ctx.Attr<std::vector<int>>("shape")));
     auto dtype =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
+    auto pten_dtype = framework::TransToPtenDataType(dtype);
     platform::CPUPlace cpu;
     auto force_cpu = ctx.Attr<bool>("force_cpu");
-    out.mutable_data(force_cpu ? cpu : ctx.GetPlace(), dtype);
+    out.mutable_data(force_cpu ? cpu : ctx.GetPlace(), pten_dtype);
 
     framework::LoDTensor tensor;
 
@@ -59,7 +61,7 @@ class FillKernel : public framework::OpKernel<T> {
     } else {
       // Always make tensor in CPU memory.
       tensor.Resize(out.dims());
-      tensor.mutable_data(cpu, dtype);
+      tensor.mutable_data(cpu, pten_dtype);
     }
 
     framework::VisitDataType(
