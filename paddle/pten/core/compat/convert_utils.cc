@@ -97,8 +97,6 @@ Backend TransToPtenBackend(const pten::Place& place) {
     return Backend::CPU;
   } else if (place.GetType() == pten::AllocationType::GPU) {
     return Backend::GPU;
-  } else if (place.GetType() == pten::AllocationType::XPU) {
-    return Backend::XPU;
   } else {
     return Backend::UNDEFINED;
   }
