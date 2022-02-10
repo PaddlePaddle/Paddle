@@ -82,7 +82,6 @@ PT_REGISTER_BASE_KERNEL_NAME(elementwise_sub, subtract);
 PT_REGISTER_BASE_KERNEL_NAME(elementwise_mul, multiply);
 PT_REGISTER_BASE_KERNEL_NAME(elementwise_div, divide);
 PT_REGISTER_BASE_KERNEL_NAME(elementwise_add_grad, add_grad);
-PT_REGISTER_BASE_KERNEL_NAME(elementwise_sub_grad, subtract_grad);
 
 PT_REGISTER_ARG_MAPPING_FN(elementwise_add,
                            pten::ElementwiseAddOpArgumentMapping);
