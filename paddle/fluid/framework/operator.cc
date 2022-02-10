@@ -1918,13 +1918,12 @@ Scope* OperatorWithKernel::PreparePtenData(
 
   for (size_t i = 0; i < input_defs.size(); ++i) {
     auto& in_def = input_defs.at(i);
-
     auto it = ctx->inputs.find(input_names[i]);
     if (it == ctx->inputs.end()) {
       continue;
     }
-    auto& ins_vector = it->second;
 
+    auto& ins_vector = it->second;
     auto& name_vec = name_map.at(input_names[i]);
     bool should_skip_input =
         no_buffer_ins && no_buffer_ins->count(input_names[i]) > 0;
@@ -2013,7 +2012,6 @@ void OperatorWithKernel::BuildPtenKernelContext(
     // calcute the start and end index of the input tensors
     size_t start_idx =
         (i == 0 ? 0 : pt_kernel_context->InputRangeAt(i - 1).second);
-
 
     // deal with optional here
     if ((it == ctx.inputs.end()) &&

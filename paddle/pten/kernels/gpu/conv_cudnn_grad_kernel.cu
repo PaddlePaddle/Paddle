@@ -333,7 +333,10 @@ void ConvCudnnGradKernel(const Context& ctx,
   cudnnConvolutionBwdFilterAlgo_t filter_algo =
       static_cast<cudnnConvolutionBwdFilterAlgo_t>(0);
 #endif
-  size_t workspace_size = 0;
+  // input data workspace_size
+  size_t workspace_size_d = 0;
+  // weight workspace_size
+  size_t workspace_size_w = 0;
   int iwo_groups = groups;
   int c_groups = 1;
 
@@ -360,15 +363,16 @@ void ConvCudnnGradKernel(const Context& ctx,
 
 #ifdef PADDLE_WITH_HIP
     using search1 = SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
-    workspace_size = std::max(workspace_size, search1::GetWorkspaceSize(args1));
+    workspace_size_d =
+        std::max(workspace_size_d, search1::GetWorkspaceSize(args1));
     data_algo = search1::Find<T>(
-        args1, exhaustive_search, deterministic, workspace_size, ctx);
+        args1, exhaustive_search, deterministic, workspace_size_d, ctx);
 #else
     using search1 =
         paddle::operators::SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
     data_algo = search1::Find<T>(args1, exhaustive_search, deterministic, ctx);
-    workspace_size =
-        std::max(workspace_size, search1::GetWorkspaceSize(args1, data_algo));
+    workspace_size_d =
+        std::max(workspace_size_d, search1::GetWorkspaceSize(args1, data_algo));
 #endif
   }
 
@@ -387,16 +391,17 @@ void ConvCudnnGradKernel(const Context& ctx,
                     c_groups);
 #ifdef PADDLE_WITH_HIP
     using search2 = SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t>;
-    workspace_size = std::max(workspace_size, search2::GetWorkspaceSize(args2));
+    workspace_size_w =
+        std::max(workspace_size_w, search2::GetWorkspaceSize(args2));
     filter_algo = search2::Find<T>(
-        args2, exhaustive_search, deterministic, workspace_size, ctx);
+        args2, exhaustive_search, deterministic, workspace_size_w, ctx);
 #else
     using search2 =
         paddle::operators::SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
     filter_algo =
         search2::Find<T>(args2, exhaustive_search, deterministic, ctx);
-    workspace_size =
-        std::max(workspace_size, search2::GetWorkspaceSize(args2, filter_algo));
+    workspace_size_w = std::max(workspace_size_w,
+                                search2::GetWorkspaceSize(args2, filter_algo));
 #endif
   }
 
@@ -435,9 +440,9 @@ void ConvCudnnGradKernel(const Context& ctx,
                     args1.idesc.desc(),
                     temp_tensor_data,
                     cudnn_workspace_ptr,
-                    workspace_size));
+                    workspace_size_d));
           },
-          workspace_size);
+          workspace_size_d);
       PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::miopenOpTensor(
           handle,
           miopenTensorOpAdd,
@@ -467,9 +472,9 @@ void ConvCudnnGradKernel(const Context& ctx,
                     args1.idesc.desc(),
                     transformed_input_grad_data,
                     cudnn_workspace_ptr,
-                    workspace_size));
+                    workspace_size_d));
           },
-          workspace_size);
+          workspace_size_d);
     }
 
 #else
@@ -487,12 +492,12 @@ void ConvCudnnGradKernel(const Context& ctx,
                     args1.cdesc.desc(),
                     data_algo,
                     cudnn_workspace_ptr,
-                    workspace_size,
+                    workspace_size_d,
                     &beta,
                     args1.idesc.desc(),
                     transformed_input_grad_data + i * group_offset_in));
           },
-          workspace_size);
+          workspace_size_d);
     }
 #endif
     if (!is_sys_pad) {
@@ -550,9 +555,9 @@ void ConvCudnnGradKernel(const Context& ctx,
                   args2.wdesc.desc(),
                   filter_grad_data,
                   cudnn_workspace_ptr,
-                  workspace_size));
+                  workspace_size_w));
         },
-        workspace_size);
+        workspace_size_w);
 #else
     for (int i = 0; i < groups; i++) {
       workspace_handle.RunFunc(
@@ -568,12 +573,12 @@ void ConvCudnnGradKernel(const Context& ctx,
                     args2.cdesc.desc(),
                     filter_algo,
                     cudnn_workspace_ptr,
-                    workspace_size,
+                    workspace_size_w,
                     &beta_filter,
                     args2.wdesc.desc(),
                     filter_grad_data + i * group_offset_filter));
           },
-          workspace_size);
+          workspace_size_w);
     }
 #endif
 
