@@ -30,6 +30,7 @@ limitations under the License. */
 
 #if defined(__HIPCC__) || defined(__NVCC__)
 #include "paddle/pten/kernels/gpu/reduce.h"
+#include "paddle/pten/kernels/gpu/reduce_grad.h"
 #endif
 
 namespace paddle {
@@ -620,11 +621,12 @@ class ReduceGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    int in_dtype = ctx.Attr<int>("in_dtype");
+    int out_dtype = ctx.Attr<int>("out_dtype");
     auto input_data_type =
-        (in_dtype >= 0) ? static_cast<framework::proto::VarType::Type>(in_dtype)
-                        : OperatorWithKernel::IndicateVarDataType(
-                              ctx, framework::GradVarName("Out"));
+        (out_dtype >= 0)
+            ? static_cast<framework::proto::VarType::Type>(out_dtype)
+            : OperatorWithKernel::IndicateVarDataType(
+                  ctx, framework::GradVarName("Out"));
 #ifdef PADDLE_WITH_MKLDNN
     auto CanMKLDNNReduceGradBeUsed = [&]() {
       auto dx_dims = ctx.Input<Tensor>("X")->dims();
@@ -728,6 +730,55 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
 
     pten::Reduce<T, ReduceOp, TransformOp>(
         dev_ctx, *input, reduce_all, dims_int64, false, pt_out_dtype, output);
+  }
+};
+
+template <typename T, template <typename, typename> class TransformOp>
+class ReduceCudaGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    bool reduce_all = context.Attr<bool>("reduce_all");
+    std::vector<int> dims = context.Attr<std::vector<int>>("dim");
+    auto* in_x = context.Input<Tensor>("X");
+    auto* d_out =
+        context.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* d_x = context.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto out_dtype = context.Attr<int>("in_dtype");
+    // get reduce_dim and reduce_num for reduce_mean_grad
+    int dim_size = in_x->dims().size();
+    std::vector<int> reduce_dims = GetReduceDim(dims, dim_size, reduce_all);
+    auto update_dims = vectorize(d_x->dims());
+    int reduce_num = 1;
+    for (auto i : reduce_dims) {
+      reduce_num *= (in_x->dims())[i];
+      update_dims[i] = 1;
+    }
+    // make new tensor
+    framework::Tensor new_d_out(d_out->type());
+    new_d_out.ShareDataWith(*d_out);
+    new_d_out.Resize(paddle::framework::make_ddim(update_dims));
+    auto& dev_ctx = context.cuda_device_context();
+    if (out_dtype > 0) {
+      d_x->mutable_data(
+          dev_ctx.GetPlace(),
+          static_cast<framework::proto::VarType::Type>(out_dtype));
+    } else {
+      d_x->mutable_data(
+          dev_ctx.GetPlace(),
+          static_cast<framework::proto::VarType::Type>(d_out->type()));
+    }
+    auto pt_d_out = paddle::experimental::MakePtenDenseTensor(new_d_out);
+    auto pt_d_x = paddle::experimental::MakePtenDenseTensor(*d_x);
+    auto pt_out_dtype = pten::TransToPtenDataType(
+        static_cast<framework::proto::VarType::Type>(out_dtype));
+    if (out_dtype <= 0) {
+      pt_out_dtype = pten::TransToPtenDataType(
+          static_cast<framework::proto::VarType::Type>(d_out->type()));
+    }
+    using MPType = typename kps::details::MPTypeTrait<T>::Type;
+    pten::ReduceGrad<T, TransformOp<T, MPType>>(
+        dev_ctx, pt_d_out.get(), pt_d_x.get(), pt_out_dtype,
+        TransformOp<T, MPType>(reduce_num));
   }
 };
 #endif
