@@ -222,7 +222,18 @@ TType* GetInnerMutableTensor(framework::Variable* dst) {
 
 template <typename TType>
 TType* GetInnerMutableTensor(paddle::experimental::Tensor* dst) {
+  if (dst->defined()) {
+    auto* dst_tensor = static_cast<TType*>(dst->impl().get());
+    return dst_tensor;
+  }
+  dst->set_impl(std::make_shared<TType>());
   auto* dst_tensor = static_cast<TType*>(dst->impl().get());
+  return dst_tensor;
+}
+
+template <typename TType>
+TType* GetInnerMutableTensor(paddle::imperative::VariableWrapper* dst) {
+  auto* dst_tensor = dst->MutableVar()->GetMutable<TType>();
   return dst_tensor;
 }
 
@@ -469,13 +480,14 @@ template void SelectedRowsAddTensor(
 // Note(chenweihang): when two selected rows need to be added,
 //   adding one to another is not equal to merging two selected rows
 //   to one then add it to a empty selected rows, the after is correct
-// Note(chenweihang): when two selected rows need to be added,
-//   adding one to another is not equal to merging two selected rows
-//   to one then add it to a empty selected rows, the after is correct
-std::shared_ptr<VariableWrapper> SelectedRowsMerge(
-    const framework::Variable& src1, const framework::Variable& src2) {
-  auto& src_selected_rows1 = src1.Get<pten::SelectedRows>();
-  auto& src_selected_rows2 = src2.Get<pten::SelectedRows>();
+template <typename ReturnVarType, typename VarType>
+std::shared_ptr<ReturnVarType> SelectedRowsMerge(const VarType& src1,
+                                                 const VarType& src2) {
+  const pten::SelectedRows& src_selected_rows1 =
+      GetInnerTensor<pten::SelectedRows>(src1);
+  const pten::SelectedRows& src_selected_rows2 =
+      GetInnerTensor<pten::SelectedRows>(src2);
+
   auto place = src_selected_rows1.value().place();
   auto data_type = src_selected_rows1.value().type();
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
@@ -483,9 +495,10 @@ std::shared_ptr<VariableWrapper> SelectedRowsMerge(
   std::vector<const pten::SelectedRows*> src_selected_rows;
   src_selected_rows.emplace_back(&src_selected_rows1);
   src_selected_rows.emplace_back(&src_selected_rows2);
-  auto dst_var = std::make_shared<VariableWrapper>("Temp");
-  auto* dst_selected_rows =
-      dst_var->MutableVar()->GetMutable<pten::SelectedRows>();
+
+  auto dst_var = std::make_shared<ReturnVarType>("Temp");
+  pten::SelectedRows* dst_selected_rows =
+      GetInnerMutableTensor<pten::SelectedRows>(dst_var.get());
 
 #define PADDLE_SELECTED_ROWS_ADD(dev_ctx_type, cpp_type)                  \
   if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) {      \
@@ -510,11 +523,16 @@ std::shared_ptr<VariableWrapper> SelectedRowsMerge(
 #endif
 
 #undef PADDLE_SELECTED_ROWS_ADD
-
   PADDLE_THROW(platform::errors::InvalidArgument(
       "Not supported data type %s for SelectedRowsMerge",
       framework::DataTypeToString(data_type)));
 }
+
+template std::shared_ptr<paddle::experimental::Tensor> SelectedRowsMerge(
+    const paddle::experimental::Tensor& src1,
+    const paddle::experimental::Tensor& src2);
+template std::shared_ptr<paddle::imperative::VariableWrapper> SelectedRowsMerge(
+    const framework::Variable& src1, const framework::Variable& src2);
 
 void VariableWrapperAdd(std::shared_ptr<VariableWrapper> var,
                         VariableWrapper* dst_var, bool unchange_input) {
@@ -542,7 +560,7 @@ void VariableWrapperAdd(std::shared_ptr<VariableWrapper> var,
         *dst = std::move(*(var->MutableVar()));
       }
     } else if (src.IsType<pten::SelectedRows>()) {
-      auto temp = SelectedRowsMerge(src, *dst);
+      auto temp = SelectedRowsMerge<VariableWrapper>(src, *dst);
       *dst = std::move(*(temp->MutableVar()));
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -598,7 +616,7 @@ void GradientAccumulator::AccumulateGrad() {
         SelectedRowsAddToTensor(*dst, src);
         *dst = std::move(*src);
       } else if (src->IsType<pten::SelectedRows>()) {
-        auto temp = SelectedRowsMerge(*src, *dst);
+        auto temp = SelectedRowsMerge<VariableWrapper>(*src, *dst);
         *dst = std::move(*(temp->MutableVar()));
       }
     } else {
