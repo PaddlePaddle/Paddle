@@ -805,28 +805,36 @@ void ln_bwd_1024_kernel_driver(
     dbias_temp.mutable_data<U>(dev_ctx.GetPlace());
     U *dbias_temp_ptr = dbias_temp.data<U>();
 
+#define PADDLE_LAUNCH_LAYERNORM_1024_BWD(is_fused, is_deterministic)  \
+  do {                                                                \
+    fused_ln_bwd_1024_kernel<                                         \
+        is_fused, T, U, ScaleT, MaskType, VecSize, WARPS_M, WARPS_N,  \
+        BYTES_PER_LDG, 1024,                                          \
+        is_deterministic><<<gridx, THREADS_PER_CTA, 0, stream>>>(     \
+        rows, epsilon, x_ptr, scale_ptr, mean_ptr, var_ptr, dout_ptr, \
+        dscale_temp_ptr, dbias_temp_ptr, dx_ptr, mask_ptr, factor,    \
+        d_dropout_src_ptr);                                           \
+  } while (0)
+
     if (mask_ptr != nullptr) {
       if (d_dropout_src_ptr == nullptr) {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "To compute fused_dropout_residual_ln grad, d_dropout_src_ptr "
             "can't be null"));
       }
-      fused_ln_bwd_1024_kernel<true, T, U, ScaleT, MaskType, VecSize, WARPS_M,
-                               WARPS_N, BYTES_PER_LDG, 1024,
-                               FLAGS_mlperf_bert_deterministic><<<
-          gridx, THREADS_PER_CTA, 0, stream>>>(
-          rows, epsilon, x_ptr, scale_ptr, mean_ptr, var_ptr, dout_ptr,
-          dscale_temp_ptr, dbias_temp_ptr, dx_ptr, mask_ptr, factor,
-          d_dropout_src_ptr);
-
+      if (FLAGS_mlperf_bert_deterministic) {
+        PADDLE_LAUNCH_LAYERNORM_1024_BWD(true, true);
+      } else {
+        PADDLE_LAUNCH_LAYERNORM_1024_BWD(true, false);
+      }
     } else {
-      fused_ln_bwd_1024_kernel<false, T, U, ScaleT, MaskType, VecSize, WARPS_M,
-                               WARPS_N, BYTES_PER_LDG, 1024,
-                               FLAGS_mlperf_bert_deterministic><<<
-          gridx, THREADS_PER_CTA, 0, stream>>>(
-          rows, epsilon, x_ptr, scale_ptr, mean_ptr, var_ptr, dout_ptr,
-          dscale_temp_ptr, dbias_temp_ptr, dx_ptr);
+      if (FLAGS_mlperf_bert_deterministic) {
+        PADDLE_LAUNCH_LAYERNORM_1024_BWD(false, true);
+      } else {
+        PADDLE_LAUNCH_LAYERNORM_1024_BWD(false, false);
+      }
     }
+#undef PADDLE_LAUNCH_LAYERNORM_1024_BWD
     const int WARPS_M_2 = 16;
     const int WARPS_N_2 = 1;
     const int BYTES_PER_LDG_2 = 4;

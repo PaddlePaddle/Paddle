@@ -16,6 +16,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/layer_norm_op.h"
 #include "paddle/fluid/platform/float16.h"
 
+DECLARE_bool(mlperf_bert_deterministic);
+
 namespace paddle {
 namespace operators {
 
@@ -113,6 +115,18 @@ class LayerNormKernel<platform::CUDADeviceContext, T>
   } while (0)
 
 #ifdef PADDLE_WITH_CUDA
+
+#define PADDLE_LAUNCH_LAYERNORM_1024_FWD(ScaleBiasT, is_deterministic)        \
+  do {                                                                        \
+    ln_fwd_1024_kernel<                                                       \
+        T, U, ScaleBiasT, VecSize, WARPS_M, WARPS_N, BYTES_PER_LDG, 1024,     \
+        is_deterministic><<<grid, THREADS_PER_CTA, 0, stream>>>(              \
+        batch_size, feature_size, epsilon, x_data,                            \
+        static_cast<const ScaleBiasT *>(void_scale_data),                     \
+        static_cast<const ScaleBiasT *>(void_bias_data), mean_data, var_data, \
+        y_data);                                                              \
+  } while (0)
+
     bool can_call_1024_kernel = false;
     if (feature_size == 1024 && scale != nullptr && bias != nullptr) {
       can_call_1024_kernel = true;
@@ -130,19 +144,17 @@ class LayerNormKernel<platform::CUDADeviceContext, T>
       const int grid = static_cast<int>(
           std::ceil(batch_size / static_cast<float>(ROWS_PER_CTA)));
       if (is_scale_bias_same_dtype_with_x) {
-        ln_fwd_1024_kernel<T, U, T, VecSize, WARPS_M, WARPS_N,
-                           BYTES_PER_LDG><<<grid, THREADS_PER_CTA, 0, stream>>>(
-            batch_size, feature_size, epsilon, x_data,
-            static_cast<const T *>(void_scale_data),
-            static_cast<const T *>(void_bias_data), mean_data, var_data,
-            y_data);
+        if (FLAGS_mlperf_bert_deterministic) {
+          PADDLE_LAUNCH_LAYERNORM_1024_FWD(T, true);
+        } else {
+          PADDLE_LAUNCH_LAYERNORM_1024_FWD(T, false);
+        }
       } else {
-        ln_fwd_1024_kernel<T, U, U, VecSize, WARPS_M, WARPS_N,
-                           BYTES_PER_LDG><<<grid, THREADS_PER_CTA, 0, stream>>>(
-            batch_size, feature_size, epsilon, x_data,
-            static_cast<const U *>(void_scale_data),
-            static_cast<const U *>(void_bias_data), mean_data, var_data,
-            y_data);
+        if (FLAGS_mlperf_bert_deterministic) {
+          PADDLE_LAUNCH_LAYERNORM_1024_FWD(U, true);
+        } else {
+          PADDLE_LAUNCH_LAYERNORM_1024_FWD(U, false);
+        }
       }
     } else {
 #endif
@@ -151,6 +163,7 @@ class LayerNormKernel<platform::CUDADeviceContext, T>
       } else {
         PADDLE_LAUNCH_LAYERNORM_FWD(U, false);
       }
+#undef PADDLE_LAUNCH_LAYERNORM_1024_FWD
 #ifdef PADDLE_WITH_CUDA
     }
 #endif
