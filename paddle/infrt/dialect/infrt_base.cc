@@ -85,7 +85,8 @@ mlir::Type INFRTDialect::parseType(mlir::DialectAsmParser &parser) const {
     // parse ">"
     if (parser.parseGreater()) return mlir::Type();
 
-    return infrt::dt::TensorType::get(*targetType, *layoutType, *precisionType);
+    return infrt::dt::TensorType::get(
+        parser.getContext(), *targetType, *layoutType, *precisionType);
   }
   // parse TensorMapType, for example: !infrt.tensor_map
   if (keyword == "tensor_map") {

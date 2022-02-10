@@ -14,8 +14,10 @@
 
 #pragma once
 
+#include <functional>
 #include <mutex>  // NOLINT
 
+#include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
@@ -96,8 +98,7 @@ class CublasHandleHolder {
     PADDLE_RETRY_CUDA_SUCCESS(dynload::cublasDestroy(handle_));
   }
 
-  template <typename Callback>
-  inline void Call(Callback&& callback) const {
+  inline void Call(const std::function<void(blasHandle_t)>& callback) const {
     std::lock_guard<std::mutex> guard(mtx_);
     callback(handle_);
   }

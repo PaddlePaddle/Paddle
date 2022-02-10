@@ -68,7 +68,9 @@ class TensorType : public mlir::Type::TypeBase<TensorType,
                                                detail::TensorTypeStorage> {
  public:
   using Base::Base;
-  static TensorType get(TargetType target,
+
+  static TensorType get(mlir::MLIRContext *ctx,
+                        TargetType target,
                         LayoutType layout,
                         PrecisionType precision);
 

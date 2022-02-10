@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/transform.h"
@@ -57,6 +58,10 @@ TEST(Transform, CPUUnary) {
 TEST(Transform, GPUUnary) {
   CUDAPlace gpu0(0);
   CUDADeviceContext ctx(gpu0);
+  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                       .GetAllocator(gpu0, ctx.stream())
+                       .get());
+  ctx.PartialInitWithAllocator();
   float cpu_buf[4] = {0.1, 0.2, 0.3, 0.4};
   auto gpu_allocation = Alloc(gpu0, sizeof(float) * 4);
   float* gpu_buf = static_cast<float*>(gpu_allocation->ptr());
@@ -84,6 +89,10 @@ TEST(Transform, GPUBinary) {
   int buf[4] = {1, 2, 3, 4};
   CUDAPlace gpu0(0);
   CUDADeviceContext ctx(gpu0);
+  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                       .GetAllocator(gpu0, ctx.stream())
+                       .get());
+  ctx.PartialInitWithAllocator();
   auto gpu_allocation = Alloc(gpu0, sizeof(buf));
   int* gpu_buf = static_cast<int*>(gpu_allocation->ptr());
   Copy(gpu0, gpu_buf, CPUPlace(), buf, sizeof(buf), ctx.stream());

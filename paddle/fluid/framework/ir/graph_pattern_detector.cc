@@ -1592,11 +1592,8 @@ PDNode *patterns::Transpose::operator()() {
                            ->AsOutput()
                            ->assert_is_op_output("transpose2", "Out");
 
-  auto next_op = pattern->NewNode(next_op_repr())->assert_is_op();
-
   prev_op->LinksTo({transpose_in});
   transpose_op->LinksFrom({transpose_in}).LinksTo({transpose_out});
-  next_op->LinksFrom({transpose_out});
   return transpose_out;
 }
 
@@ -1613,11 +1610,8 @@ PDNode *patterns::Reshape::operator()() {
                          ->AsOutput()
                          ->assert_is_op_output("reshape2", "Out");
 
-  auto next_op = pattern->NewNode(next_op_repr())->assert_is_op();
-
   prev_op->LinksTo({reshape_in});
   reshape_op->LinksFrom({reshape_in}).LinksTo({reshape_out});
-  next_op->LinksFrom({reshape_out});
   return reshape_out;
 }
 
@@ -1633,11 +1627,8 @@ PDNode *patterns::Slice::operator()() {
                        ->AsOutput()
                        ->assert_is_op_output("slice", "Out");
 
-  auto next_op = pattern->NewNode(next_op_repr())->assert_is_op();
-
   prev_op->LinksTo({slice_in});
   slice_op->LinksFrom({slice_in}).LinksTo({slice_out});
-  next_op->LinksFrom({slice_out});
   return slice_out;
 }
 
@@ -1658,12 +1649,9 @@ PDNode *patterns::NearestInterp::operator()() {
           ->assert_is_ops_output({"nearest_interp", "nearest_interp_v2"},
                                  "Out");
 
-  auto next_op = pattern->NewNode(next_op_repr())->assert_is_op();
-
   prev_op->LinksTo({nearest_interp_in});
   nearest_interp_op->LinksFrom({nearest_interp_in})
       .LinksTo({nearest_interp_out});
-  next_op->LinksFrom({nearest_interp_out});
   return nearest_interp_out;
 }
 

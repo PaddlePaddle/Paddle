@@ -30,7 +30,7 @@
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/stream/stream.h"
+#include "paddle/pten/core/stream.h"
 
 namespace paddle {
 namespace memory {
@@ -70,9 +70,9 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
       PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&stream));
 #endif
 
-      std::shared_ptr<Allocation> allocation = AllocShared(
-          place_, workspace_size_,
-          platform::Stream(reinterpret_cast<platform::StreamId>(stream)));
+      std::shared_ptr<Allocation> allocation =
+          AllocShared(place_, workspace_size_,
+                      pten::Stream(reinterpret_cast<pten::StreamId>(stream)));
 #ifdef PADDLE_WITH_CUDA
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemset(allocation->ptr(), 0, allocation->size()));
@@ -286,9 +286,9 @@ TEST(StreamSafeCUDAAllocInterfaceTest, GetStreamInterfaceTest) {
   PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&new_stream));
 #endif
 
-  std::shared_ptr<Allocation> allocation_new_stream = AllocShared(
-      place, alloc_size,
-      platform::Stream(reinterpret_cast<platform::StreamId>(new_stream)));
+  std::shared_ptr<Allocation> allocation_new_stream =
+      AllocShared(place, alloc_size,
+                  pten::Stream(reinterpret_cast<pten::StreamId>(new_stream)));
   EXPECT_EQ(GetStream(allocation_new_stream), new_stream);
 
 #ifdef PADDLE_WITH_CUDA
@@ -315,10 +315,10 @@ TEST(StreamSafeCUDAAllocInterfaceTest, CUDAGraphExceptionTest) {
   EXPECT_THROW(Release(place), paddle::platform::EnforceNotMet);
   EXPECT_THROW(allocation::AllocatorFacade::Instance().GetAllocator(place),
                paddle::platform::EnforceNotMet);
-  EXPECT_THROW(AllocShared(place, alloc_size,
-                           platform::Stream(
-                               reinterpret_cast<platform::StreamId>(nullptr))),
-               paddle::platform::EnforceNotMet);
+  EXPECT_THROW(
+      AllocShared(place, alloc_size,
+                  pten::Stream(reinterpret_cast<pten::StreamId>(nullptr))),
+      paddle::platform::EnforceNotMet);
   EXPECT_THROW(Alloc(place, alloc_size, nullptr),
                paddle::platform::EnforceNotMet);
   EXPECT_THROW(Release(place, nullptr), paddle::platform::EnforceNotMet);
