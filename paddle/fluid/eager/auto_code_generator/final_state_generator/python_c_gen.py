@@ -82,7 +82,7 @@ def GeneratePythonCFunction(fwd_api_name, forward_inputs_position_map,
     dygraph_function_call_list = ["" for i in range(num_args)]
     get_eager_tensor_str = ""
     for name, (ttype, pos) in forward_inputs_position_map.items():
-        get_eager_tensor_str += f"    auto& {name} = GetEagerTensorPtrFromArgs(\"{fwd_api_name}\", \"{name}\", args, {pos}, false);\n"
+        get_eager_tensor_str += f"    auto& {name} = GetTensorFromArgs(\"{fwd_api_name}\", \"{name}\", args, {pos}, false);\n"
         dygraph_function_call_list[pos] = f"{name}"
 
     parse_attributes_str = "    paddle::framework::AttributeMap attrs;\n"
