@@ -41,6 +41,10 @@ class InferShapeArgumentMappingContext : public pten::ArgumentMappingContext {
     return ctx_.HasOutput(name);
   }
 
+  bool HasAttr(const std::string& name) const override {
+    return ctx_.HasAttr(name);
+  }
+
   paddle::any Attr(const std::string& name) const override {
     auto& attr = ctx_.Attrs().GetAttr(name);
     return GetAttrValue(attr);
@@ -278,21 +282,40 @@ pten::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
   pten::InferMetaContext infer_meta_context(ctx->IsRuntime());
 
   auto& input_names = std::get<0>(signature.args);
+  auto& attr_names = std::get<1>(signature.args);
   auto& output_names = std::get<2>(signature.args);
-  // TODO(chenweihang): support attrs in next pr
-  // auto& attr_names = std::get<1>(signature.args);
 
-  // TODO(chenweihang): support multiple inputs and outputs
+  // TODO(chenweihang): support multiple inputs and outputs later
   pten::InferMetaContext infer_mete_context;
   for (auto& in_name : input_names) {
-    infer_meta_context.EmplaceBackInput(std::make_shared<CompatMetaTensor>(
-        ctx->GetInputVarPtrs(in_name)[0], ctx->IsRuntime()));
+    if (ctx->HasInput(in_name)) {
+      infer_meta_context.EmplaceBackInput(std::make_shared<CompatMetaTensor>(
+          ctx->GetInputVarPtrs(in_name)[0], ctx->IsRuntime()));
+    } else {
+      infer_meta_context.EmplaceBackInput({nullptr});
+    }
+  }
+  // TODO(chenweihang): support other attr type later
+  auto attr_reader = ctx->Attrs();
+  for (auto& attr_name : attr_names) {
+    auto& attr = attr_reader.GetAttr(attr_name);
+    if (std::type_index(attr.type()) == std::type_index(typeid(bool))) {
+      infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported cast op attribute `%s` when "
+          "construct InferMetaContext.",
+          attr_name));
+    }
   }
   for (auto& out_name : output_names) {
-    infer_meta_context.EmplaceBackOutput(std::make_shared<CompatMetaTensor>(
-        ctx->GetOutputVarPtrs(out_name)[0], ctx->IsRuntime()));
+    if (ctx->HasOutput(out_name)) {
+      infer_meta_context.EmplaceBackOutput(std::make_shared<CompatMetaTensor>(
+          ctx->GetOutputVarPtrs(out_name)[0], ctx->IsRuntime()));
+    } else {
+      infer_meta_context.EmplaceBackOutput({nullptr});
+    }
   }
-  // TODO(chenweihang): support attrs later
 
   return infer_meta_context;
 }

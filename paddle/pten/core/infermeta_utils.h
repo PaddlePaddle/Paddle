@@ -85,7 +85,8 @@ class InferMetaContext {
                     "InferMeta's Attributes should appear before Outputs.");   \
       attr_type arg = ctx->AttrAt<attr_type>(attr_idx);                        \
       InferMetaFnCallHelper<                                                   \
-          Tail...>::template Call<in_idx, attr_idx + 1, out_idx>(pargs...,     \
+          Tail...>::template Call<in_idx, attr_idx + 1, out_idx>(ctx,          \
+                                                                 pargs...,     \
                                                                  arg);         \
     }                                                                          \
   }
@@ -123,6 +124,9 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
                                                                  arg);
     }
   };
+
+  // TODO(chenweihang): support other attr type later
+  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(bool);
 
   // TODO(chenweihang): support vector<MetaTensor> input later
 
