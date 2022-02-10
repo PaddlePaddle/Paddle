@@ -16,64 +16,19 @@ import os
 import yaml
 import argparse
 
-import gen_utils
+from api_base import BaseAPI
 
 
-class API:
+class ForwardAPI(BaseAPI):
     prefix_tensor_name = 'dense_'
 
     def __init__(self, api_item_yaml):
-        self.api = api_item_yaml['api']
-        # args:
-        #   inputs:
-        #     names : [], list of input names
-        #     input_info : {input_name : type}
-        #   attrs:
-        #     names : [], list of attribute names
-        #     attr_info : { attr_name : (type, default_values)}
-        self.args = gen_utils.parse_args(self.api, api_item_yaml['args'])
-        self.out_type_list, _ = gen_utils.parse_output(self.api,
-                                                       api_item_yaml['output'])
-        self.return_type = self.out_type_list[0] if len(
-            self.out_type_list) == 1 else "std::tuple<" + ",".join(
-                self.out_type_list) + ">"
+        super(ForwardAPI, self).__init__(api_item_yaml)
 
-        self.is_base_api = True
-        if 'invoke' in api_item_yaml:
-            self.is_base_api = False
-            self.invoke = api_item_yaml['invoke']
-        else:
-            self.kernel = api_item_yaml['kernel']
-            if 'backend' not in self.kernel or len(self.kernel['backend']) == 0:
-                self.kernel['backend'] = None
-            if 'layout' not in self.kernel or len(self.kernel['layout']) == 0:
-                self.kernel['layout'] = None
-            if 'data_type' not in self.kernel or len(self.kernel[
-                    'data_type']) == 0:
-                self.kernel['data_type'] = None
-            if 'param' not in self.kernel:
-                self.kernel['param'] = None
-
-            self.infer_meta = api_item_yaml['infer_meta']
-            if 'param' not in self.infer_meta:
-                self.infer_meta['param'] = None
-
-            self.data_transform = {
-                'skip_transform': [],
-                'support_trans_dtype': []
-            }
-            if 'data_transform' in api_item_yaml:
-                if 'skip_transform' in api_item_yaml['data_transform']:
-                    self.data_transform['skip_transform'] = api_item_yaml[
-                        'data_transform']['skip_transform']
-                if 'support_trans_dtype' in api_item_yaml['data_transform']:
-                    self.data_transform['support_trans_dtype'] = api_item_yaml[
-                        'data_transform']['support_trans_dtype']
-
-    def gene_api_declaration(self):
-        return f"""
-PADDLE_API {self.return_type} {self.api}({self.args['args_declare']});
-"""
+    def get_return_type(self, out_type_list):
+        return out_type_list[0] if len(
+            out_type_list) == 1 else "std::tuple<" + ",".join(
+                out_type_list) + ">"
 
     def gene_output(self, output_type_list):
         kernel_output = ""
@@ -84,12 +39,12 @@ PADDLE_API {self.return_type} {self.api}({self.args['args_declare']});
             kernel_output = 'dense_out'
             output_names.append('dense_out')
             output_create = f"""
-  {self.return_type} out;
+  {self.outputs['return_type']} out;
   auto dense_out = SetKernelOutput(kernel_backend, &out);"""
 
         elif len(output_type_list) > 1:
             output_create = f"""
-  {self.return_type} out;"""
+  {self.outputs['return_type']} out;"""
 
             for i in range(len(output_type_list)):
                 kernel_output = kernel_output + f'dense_out_{i}, '
@@ -104,36 +59,6 @@ PADDLE_API {self.return_type} {self.api}({self.args['args_declare']});
                     self.api))
 
         return kernel_output, output_names, output_create
-
-    def gene_api_code(self):
-        if self.is_base_api:
-            input_tensors, kernel_args, kernel_signature = gen_utils.get_kernel_args(
-                self.args['inputs'], self.args['attrs'], self.out_type_list,
-                self.kernel['param'], self.data_transform)
-            outputs_args, output_names, output_create = self.gene_output(
-                self.out_type_list)
-            return f"""
-PADDLE_API {self.return_type} {self.api}({self.args["args_define"]}) {{
-{gen_utils.gene_kernel_select(self.api, self.args['inputs']['names'], self.args['attrs'], self.kernel)}
-
-  auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
-{input_tensors}
-{output_create}
-{gen_utils.gene_infer_meta(self.args['inputs']['names'], self.args['attrs']['names'], output_names, self.infer_meta)}
-  using kernel_signature = {kernel_signature};
-  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-  (*kernel_fn)({kernel_args}, {outputs_args});
-
-  return out;
-}}
-"""
-
-        else:
-            return f"""
-PADDLE_API {self.return_type} {self.api}({self.args["args_define"]}) {{
-  return {self.invoke};
-}}
-"""
 
     def gene_infer_meta_register(self):
         if self.is_base_api:
@@ -214,7 +139,7 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
     infer_meta_register_code = ''
 
     for api in apis:
-        api_code = API(api)
+        api_code = ForwardAPI(api)
         print(api_code.gene_api_declaration())
         header_file.write(api_code.gene_api_declaration())
         source_file.write(api_code.gene_api_code())
