@@ -483,9 +483,18 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_1024_kernel(
         U x_tmp = x[it][jt];
         U y_tmp = var_cur_row * (x_tmp - mean_cur_row);
         // todo(@limin29): how to be consistent with nv fast ln?
-        U dy_tmp = static_cast<U>(gamma[it][jt]) *
+        U dy_tmp = static_cast<U>(0);
+        if (deterministic) {
+          using PromoteT =
+              typename std::conditional<std::is_same<ScaleT, T>::value, T,
+                                        ScaleT>::type;
+          dy_tmp = static_cast<PromoteT>(gamma[it][jt]) *
+                   static_cast<PromoteT>(dout[it][jt]);
+        } else {
+          dy_tmp = static_cast<U>(gamma[it][jt]) *
                    static_cast<U>(dout[it][jt]);  // scale * dy
-        U dout_tmp = dout[it][jt];                // dy
+        }
+        U dout_tmp = dout[it][jt];  // dy
 
         // used for get dx (row reduction)
         sum_loss1 += dy_tmp;          // scale * dy, sum_1
