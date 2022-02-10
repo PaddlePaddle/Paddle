@@ -44,7 +44,7 @@ void CastCUDAKernelImpl(const GPUContext& dev_ctx,
   inputs.emplace_back(&x);
   outputs.emplace_back(out);
   dev_ctx.Alloc<OutT>(out);
-  pten::funcs::LaunchSameDimsElementwiseCudaKernel(
+  pten::funcs::LaunchSameDimsElementwiseCudaKernel<OutT>(
       dev_ctx, inputs, &outputs, CastFuctor<InT, OutT>());
 }
 

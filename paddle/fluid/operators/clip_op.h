@@ -103,7 +103,7 @@ class ClipKernel : public framework::OpKernel<T> {
         std::vector<const framework::Tensor*> ins = {x};
         std::vector<framework::Tensor*> outs = {out};
         auto functor = ClipFunctor<T>(min, max);
-        paddle::operators::LaunchSameDimsElementwiseCudaKernel(
+        paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
             context.template device_context<platform::CUDADeviceContext>(), ins,
             &outs, functor);
 #endif

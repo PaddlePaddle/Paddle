@@ -50,8 +50,8 @@ class AbsKernel<platform::CUDADeviceContext, T>
     std::vector<const framework::Tensor*> ins = {x};
     std::vector<framework::Tensor*> outs = {out};
     auto functor = CudaAbsFunctor<T>();
-    paddle::operators::LaunchSameDimsElementwiseCudaKernel(dev_ctx, ins, &outs,
-                                                   functor);
+    paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins,
+                                                              &outs, functor);
   }
 };
 

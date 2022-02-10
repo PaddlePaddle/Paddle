@@ -754,15 +754,13 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
 #endif
 }
 
-template <typename Functor, int NumOuts = 1>
+template <typename OutT, typename Functor, int NumOuts = 1>
 void LaunchSameDimsElementwiseCudaKernel(
     const KPDevice &ctx,
     const std::vector<const DenseTensor *> &ins,
     std::vector<DenseTensor *> *outs,
     Functor func) {
   using Traits = paddle::platform::FunctionTraits<Functor>;
-  using RetType = typename Traits::RetType;
-  using OutT = typename ArrayTraits<RetType, NumOuts>::type;
   const int kArity = Traits::arity;
   PADDLE_ENFORCE_EQ(ins.size(),
                     kArity,

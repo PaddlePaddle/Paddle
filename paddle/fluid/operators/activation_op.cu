@@ -1367,12 +1367,14 @@ class ELUGradCudaKernel : public framework::OpKernel<T> {
     if (alpha > 0) {
       CudaELUGradFunctor<T> functor;
       functor.alpha = alpha;
-      paddle::operators::LaunchSameDimsElementwiseCudaKernel(dev_ctx, ins, &outs, functor);
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins,
+                                                                &outs, functor);
     } else {
       CudaELUGradNegativeAlphaFunctor<T> functor;
       functor.alpha = alpha;
       ins.push_back(x);
-      paddle::operators::LaunchSameDimsElementwiseCudaKernel(dev_ctx, ins, &outs, functor);
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins,
+                                                                &outs, functor);
     }
   }
 };
@@ -1448,7 +1450,8 @@ class ActivationCudaKernel
     for (auto& attr : attrs) {
       *attr.second = ctx.Attr<float>(attr.first);
     }
-    paddle::operators::LaunchSameDimsElementwiseCudaKernel(dev_ctx, ins, &outs, functor);
+    paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins,
+                                                              &outs, functor);
   }
 };
 
@@ -1477,14 +1480,17 @@ class ActivationGradCudaKernel
     if (static_cast<int>(Functor::FwdDeps()) == static_cast<int>(kDepOut)) {
       // Only need forward output Out
       ins.push_back(out);
-      paddle::operators::LaunchSameDimsElementwiseCudaKernel(dev_ctx, ins, &outs, functor);
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins,
+                                                                &outs, functor);
     } else if (static_cast<int>(Functor::FwdDeps()) ==
                static_cast<int>(kDepX)) {
       // Only need forward input X
       ins.push_back(x);
-      paddle::operators::LaunchSameDimsElementwiseCudaKernel(dev_ctx, ins, &outs, functor);
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins,
+                                                                &outs, functor);
     } else {
-      paddle::operators::LaunchSameDimsElementwiseCudaKernel(dev_ctx, ins, &outs, functor);
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins,
+                                                                &outs, functor);
     }
   }
 };
