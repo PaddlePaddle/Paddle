@@ -260,7 +260,7 @@ def convert_float_to_uint16(float_list, data_format="NCHW"):
         float_list = np.transpose(float_list, [0, 3, 1, 2])
 
     new_output = []
-    for x in np.nditer(float_list):
+    for x in np.nditer(float_list, order='C'):
         new_output.append(np.uint16(copy_bits_from_float_to_uint16(x)))
     new_output = np.reshape(new_output, float_list.shape).view(np.uint16)
 
