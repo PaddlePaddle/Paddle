@@ -188,7 +188,7 @@ void ChromeTracingLogger::HandleTypeKernel(
   float blocks_per_sm = 0.0;
   float warps_per_sm = 0.0;
   float occupancy = 0.0;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA)
   constexpr int threads_per_warp = 32;
   const gpuDeviceProp& device_property =
       GetDeviceProperties(device_node.DeviceId());
@@ -295,7 +295,7 @@ void ChromeTracingLogger::StartLog() {
   )JSON"),
                                        kSchemaVersion, num_span);
 // add device property information
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA)
   output_file_stream_ << std::string(R"JSON(
     "deviceProperties": [
   )JSON");
