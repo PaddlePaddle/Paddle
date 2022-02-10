@@ -18,9 +18,6 @@
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/declarations.h"
 
-// PT_DECLARE_KERNEL(scale, CPU, ALL_LAYOUT);
-// PT_DECLARE_KERNEL(flatten, CPU, ALL_LAYOUT);
-
 int main(int argc, char** argv) {
   std::cout << pten::KernelFactory::Instance() << std::endl;
   return 0;

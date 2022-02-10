@@ -95,6 +95,13 @@ const Kernel& KernelFactory::SelectKernelOrThrowError(
                                   KernelKey(backend, layout, dtype));
 }
 
+// print kernel info with json format:
+// {
+//   "(CPU, Undefined(AnyLayout), complex64)": {
+//   "input": ["CPU, NCHW, complex64", "CPU, NCHW, complex64"],
+//   "output": ["CPU, NCHW, complex64"],
+//   "attribute": ["i"]
+// }
 std::ostream& operator<<(std::ostream& os, const Kernel& kernel) {
   // input
   os << "{\"input\":[";
@@ -131,6 +138,21 @@ std::ostream& operator<<(std::ostream& os, const Kernel& kernel) {
   return os;
 }
 
+// print all kernels info with json format:
+// {
+//  "kernel_name1":
+//      [
+//        {
+//          "(CPU, Undefined(AnyLayout), complex64)": {
+//          "input": ["CPU, NCHW, complex64", "CPU, NCHW, complex64"],
+//          "output": ["CPU, NCHW, complex64"],
+//          "attribute": ["i"]
+//        },
+//        ...
+//      ],
+//    "kernel_name2": []
+//    ...
+// }
 std::ostream& operator<<(std::ostream& os, KernelFactory& kernel_factory) {
   os << "{";
   bool need_comma_kernels = false;
