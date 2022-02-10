@@ -295,19 +295,21 @@ pten::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
       infer_meta_context.EmplaceBackInput({nullptr});
     }
   }
-  // TODO(chenweihang): support other attr type later
+
   auto attr_reader = ctx->Attrs();
   for (auto& attr_name : attr_names) {
     auto& attr = attr_reader.GetAttr(attr_name);
     if (std::type_index(attr.type()) == std::type_index(typeid(bool))) {
       infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
+    } else if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
+      infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(float, attr));
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Unsupported cast op attribute `%s` when "
-          "construct InferMetaContext.",
-          attr_name));
+      // do nothing, skip useless attrs now
+      // TODO(chenweihang): support other attr type later and throw error
+      // if attr is cannot parsed
     }
   }
+
   for (auto& out_name : output_names) {
     if (ctx->HasOutput(out_name)) {
       infer_meta_context.EmplaceBackOutput(std::make_shared<CompatMetaTensor>(
