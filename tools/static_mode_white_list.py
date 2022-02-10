@@ -732,5 +732,5 @@ STATIC_MODE_TESTING_LIST = [
     'test_margin_cross_entropy_op',
     'test_pull_gpups_sparse_op',
     'test_fused_gemm_epilogue_op',
-    'test_fused_gemm_epilogue_grad_op'
+    'test_fused_gemm_epilogue_grad_op',
 ]

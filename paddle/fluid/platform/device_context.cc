@@ -448,9 +448,11 @@ CUDAContext::CUDAContext(const CUDAPlace& place,
   stream_.reset(new stream::CUDAStream(place, priority, flag));
   InitEigenContext();
   InitCuBlasContext();
-  InitCuBlasLtContext();
   InitCuDNNContext();
 #ifndef PADDLE_WITH_HIP
+#if CUDA_VERSION >= 11060
+  InitCuBlasLtContext();
+#endif
   InitCuSparseContext();
   InitCuSolverContext();
 #endif
@@ -461,8 +463,10 @@ void CUDAContext::SetStream(gpuStream_t stream) {
     CUDADeviceGuard guard(place_.device);
     DestoryCuDNNContext();
     DestoryCuBlasContext();
-    DestoryCuBlasLtContext();
 #ifndef PADDLE_WITH_HIP
+#if CUDA_VERSION >= 11060
+    DestoryCuBlasLtContext();
+#endif
     DestoryCuSolverContext();
 #endif
 
@@ -470,9 +474,11 @@ void CUDAContext::SetStream(gpuStream_t stream) {
 
     InitEigenContext();
     InitCuBlasContext();
-    InitCuBlasLtContext();
     InitCuDNNContext();
 #ifndef PADDLE_WITH_HIP
+#if CUDA_VERSION >= 11060
+    InitCuBlasLtContext();
+#endif
     InitCuSolverContext();
 #endif
   }
@@ -482,8 +488,10 @@ CUDAContext::~CUDAContext() {
   CUDADeviceGuard guard(place_.device);
   DestoryCuDNNContext();
   DestoryCuBlasContext();
-  DestoryCuBlasLtContext();
 #ifndef PADDLE_WITH_HIP
+#if CUDA_VERSION >= 11060
+  InitCuBlasLtContext();
+#endif
   DestoryCuSparseContext();
   DestoryCuSolverContext();
 #endif
@@ -541,13 +549,14 @@ cublasHandle_t CUDADeviceContext::cublas_handle() const {
   }
   return pten::GPUContext::cublas_handle();
 }
+#if CUDA_VERSION >= 11060
 cublasLtHandle_t CUDADeviceContext::cublaslt_handle() const {
   if (thread_ctx_.count(this)) {
     return context()->CublasLtHandle()->GetCublasLtHandle();
   }
   return pten::GPUContext::cublaslt_handle();
-  // return context()->CublasLtHandle();
 }
+#endif
 cusparseHandle_t CUDADeviceContext::cusparse_handle() const {
   if (thread_ctx_.count(this)) {
     return context()->CusparseHandle()->GetCusparseHandle();

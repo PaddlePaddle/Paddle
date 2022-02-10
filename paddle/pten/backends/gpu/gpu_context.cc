@@ -1,4 +1,5 @@
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+Copyright (c) 2022 NVIDIA Corporation. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -421,10 +422,16 @@ struct GPUContext::Impl {
 
   void SetBlasHandle(blasHandle_t blas) { blas_handle_ = blas; }
 
-  void InitBlasLtHandle() { pten::dynload::cublasLtCreate(&blaslt_handle_); }
+  void InitBlasLtHandle() {
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+    pten::dynload::cublasLtCreate(&blaslt_handle_);
+#endif
+  }
 
   void DestroyInternalBlasLtHandle() {
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
     pten::dynload::cublasLtDestroy(blaslt_handle_);
+#endif
   }
 
   void SetBlasLtHandle(blasLtHandle_t blaslt) { blaslt_handle_ = blaslt; }

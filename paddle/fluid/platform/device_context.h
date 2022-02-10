@@ -323,15 +323,17 @@ class CUDAContext {
     return cublas_handle_;
   }
 
-  const std::unique_ptr<CublasLtHandleHolder>& CublasLtHandle() const {
-    return cublaslt_handle_;
-  }
-
   const std::unique_ptr<CublasHandleHolder>& CublasTensorCoreHandle() const {
     return cublas_tensor_core_handle_;
   }
 
 #ifndef PADDLE_WITH_HIP
+#if CUDA_VERSION >= 11060
+  const std::unique_ptr<CublasLtHandleHolder>& CublasLtHandle() const {
+    return cublaslt_handle_;
+  }
+#endif
+
   const std::unique_ptr<CusparseHandleHolder>& CusparseHandle() const {
     return cusparse_handle_;
   }
@@ -347,13 +349,15 @@ class CUDAContext {
     }
   }
 
+#ifndef PADDLE_WITH_HIP
+#if CUDA_VERSION >= 11060
   /*! \brief  Call cublasLt function safely. */
-  inline void CublasCall(
+  inline void CublasLtCall(
       const std::function<void(blasLtHandle_t)>& callback) const {
     cublaslt_handle_->Call(callback);
   }
+#endif
 
-#ifndef PADDLE_WITH_HIP
   /*! \brief  Call cusparse function safely. */
   inline void CusparseCall(
       const std::function<void(pten::sparseHandle_t)>& callback) const {
@@ -399,11 +403,13 @@ class CUDAContext {
   }
 #endif
 
+#ifndef PADDLE_WITH_HIP
+#if CUDA_VERSION >= 11060
   void InitCuBlasLtContext() {
     cublaslt_handle_.reset(new CublasLtHandleHolder());
   }
+#endif
 
-#ifndef PADDLE_WITH_HIP
   void InitCuSparseContext() {
     cusparse_handle_.reset(new CusparseHandleHolder(RawStream()));
   }
@@ -481,9 +487,11 @@ class CUDAContext {
     cublas_tf32_tensor_core_handle_.reset();
   }
 
-  void DestoryCuBlasLtContext() { cublaslt_handle_.reset(); }
-
 #ifndef PADDLE_WITH_HIP
+#if CUDA_VERSION >= 11060
+  void DestoryCuBlasLtContext() { cublaslt_handle_.reset(); }
+#endif
+
   void DestoryCuSparseContext() { cusparse_handle_.reset(); }
 #endif
 
@@ -508,8 +516,10 @@ class CUDAContext {
   std::unique_ptr<CublasHandleHolder> cublas_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_tensor_core_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_tf32_tensor_core_handle_;
-  std::unique_ptr<CublasLtHandleHolder> cublaslt_handle_;
 #ifndef PADDLE_WITH_HIP
+#if CUDA_VERSION >= 11060
+  std::unique_ptr<CublasLtHandleHolder> cublaslt_handle_;
+#endif
   cusolverDnHandle_t cusolver_dn_handle_;
   std::unique_ptr<CusparseHandleHolder> cusparse_handle_;
 #endif
