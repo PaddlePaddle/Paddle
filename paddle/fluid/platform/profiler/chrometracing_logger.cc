@@ -185,11 +185,11 @@ void ChromeTracingLogger::LogDeviceTraceEventNode(
 void ChromeTracingLogger::HandleTypeKernel(
     const DeviceTraceEventNode& device_node) {
   KernelEventInfo kernel_info = device_node.KernelInfo();
-  constexpr int threads_per_warp = 32;
   float blocks_per_sm = 0.0;
   float warps_per_sm = 0.0;
   float occupancy = 0.0;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  constexpr int threads_per_warp = 32;
   const gpuDeviceProp& device_property =
       GetDeviceProperties(device_node.DeviceId());
   blocks_per_sm =
