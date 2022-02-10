@@ -18,9 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
-PADDLE_DEFINE_EXPORTED_bool(
-    lookup_table_v2_deterministic, false,
-    "Whether to run the deterministic lookup_table_v2 op.");
+DECLARE_bool(mlperf_bert_deterministic);
 
 namespace paddle {
 namespace operators {
@@ -203,7 +201,7 @@ struct LookupTableV2GradCUDAFunctor {
 
       // The true config is used to check precision. Need to set to false when
       // test performance.
-      if (FLAGS_lookup_table_v2_deterministic) {
+      if (FLAGS_mlperf_bert_deterministic) {
         dim3 threads(128, 1);
         dim3 grids(1, 1);
         LookupTableV2Grad<T, IdT, 128, 1,

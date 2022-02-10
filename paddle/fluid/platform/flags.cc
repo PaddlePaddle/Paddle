@@ -49,6 +49,19 @@ PADDLE_DEFINE_EXPORTED_int32(paddle_num_threads, 1,
                              "Number of threads for each paddle instance.");
 
 /**
+ * Make mlperf bert deterministic related FLAG
+ * Name: FLAGS_mlperf_bert_deterministic
+ * Since Version: 2.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: whether to make the results of paddle mlperf bert deterministic. If
+ * true, the performance will decrease.
+ */
+PADDLE_DEFINE_EXPORTED_bool(
+    mlperf_bert_deterministic, false,
+    "Whether to run the deterministic lookup_table_v2 op.");
+
+/**
  * Operator related FLAG
  * Name: FLAGS_check_nan_inf
  * Since Version: 0.13.0
