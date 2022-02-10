@@ -79,10 +79,10 @@ const char* CAST_VAR_LIST_TEMPLATE = R"(
     auto %s = GetTensorListFromArgs("%s", "%s", args, %d, %s);)";
 
 const char* CAST_VAR_PTR_TEMPLATE = R"(
-    auto %s = GetEagerTensorPtrFromArgs("%s", "%s", args, %d, %s);)";
+    auto %s = GetTensorPtrFromArgs("%s", "%s", args, %d, %s);)";
 
 const char* CAST_VAR_PTR_LIST_TEMPLATE = R"(
-    auto %s = GetEagerTensorPtrListFromArgs("%s", "%s", args, %d, %s);)";
+    auto %s = GetTensorPtrListFromArgs("%s", "%s", args, %d, %s);)";
 
 const char* CAST_SIZE_T_TEMPLATE = R"(
     auto %s = GetUnsignedLongFromArgs("%s", "%s", args, %d, %s);)";

@@ -144,9 +144,8 @@ static PyObject* eager_api_tensor_copy(PyObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static PyObject* eager_api_read_next_eager_tensor_list(PyObject* self,
-                                                       PyObject* args,
-                                                       PyObject* kwargs) {
+static PyObject* eager_api_read_next_tensor_list(PyObject* self, PyObject* args,
+                                                 PyObject* kwargs) {
   EAGER_TRY
   auto tensor_base_list =
       CastPyArg2VectorOfTensorBase(PyTuple_GET_ITEM(args, 0), 0);
@@ -181,8 +180,8 @@ PyMethodDef variable_functions[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"tensor_copy", (PyCFunction)(void (*)(void))eager_api_tensor_copy,
      METH_VARARGS | METH_KEYWORDS, NULL},
-    {"read_next_eager_tensor_list",
-     (PyCFunction)(void (*)(void))eager_api_read_next_eager_tensor_list,
+    {"read_next_tensor_list",
+     (PyCFunction)(void (*)(void))eager_api_read_next_tensor_list,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {NULL, NULL, 0, NULL}};
 
