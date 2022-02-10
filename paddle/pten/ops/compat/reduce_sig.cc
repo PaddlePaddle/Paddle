@@ -21,7 +21,7 @@ KernelSignature ReduceSumOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorInput("X")) {
     if (!reduce_all) {
       return KernelSignature(
-          "sum", {"X"}, {"dim", "keep_dim", "out_dtype"}, {"Out"});
+          "sum", {"X"}, {"dim", "out_dtype", "keep_dim"}, {"Out"});
     }
     return KernelSignature("sum_raw",
                            {"X"},
