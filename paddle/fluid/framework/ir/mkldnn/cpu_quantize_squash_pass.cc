@@ -113,9 +113,6 @@ bool CPUQuantizeSquashPass::IsDequantizeInputUint8(
   if (dequant_in->inputs[0]->IsOp()) {
     auto prev_op = dequant_in->inputs[0]->Op();
     std::string act_name;
-    std::cout << "prev_op->Type(): " << prev_op->Type() << std::endl;
-    std::cout << "dequant_in->inputs[0]->Name(): "
-              << dequant_in->inputs[0]->Name() << std::endl;
     if (prev_op->Type() == "relu") {
       return true;
     } else {
