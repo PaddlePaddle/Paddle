@@ -211,7 +211,7 @@ PADDLE_API Tensor to_dense(const Tensor& x, Backend backend) {
   // create empty SparseCooTensor
   auto dense_out = std::make_shared<pten::DenseTensor>(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
-          pten::TransToFluidPlace(backend)),
+          pten::TransToPtenPlace(backend)),
       std::move(dense_meta));
 
   kernel_context.EmplaceBackOutput(dense_out.get());
