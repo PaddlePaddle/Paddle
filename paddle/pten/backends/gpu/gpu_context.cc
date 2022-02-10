@@ -757,7 +757,7 @@ Eigen::GpuDevice* GPUContext::eigen_device() const {
   return impl_->eigen_device();
 }
 
-DnnWorkspaceHandle GPUContext::cudnn_workspace_handle() const {
+DnnWorkspaceHandle* GPUContext::cudnn_workspace_handle() const {
   return impl_->GetDnnWorkspace();
 }
 
