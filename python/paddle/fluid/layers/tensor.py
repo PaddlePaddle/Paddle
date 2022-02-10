@@ -651,8 +651,7 @@ def assign(input, output=None):
             raise ValueError("The size of input is too big. Please consider "
                              "saving it to file and 'load_op' to load it")
         if output is None:
-            output = helper.create_variable_for_type_inference(
-                dtype=input.dtype)
+            output = helper.create_variable_for_type_inference(dtype=dtype)
         helper.append_op(
             type='assign_value',
             outputs={'Out': [output]},
