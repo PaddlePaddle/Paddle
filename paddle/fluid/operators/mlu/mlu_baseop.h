@@ -678,7 +678,10 @@ class MLUCnnl {
                        const cnnlTensorDescriptor_t a_desc, const void* a,
                        const cnnlTensorDescriptor_t b_desc, const void* b,
                        const cnnlTensorDescriptor_t output_desc, void* output,
-                       const cnnlDataType_t dtype);
+                       const cnnlDataType_t dtype,
+                       const float alpha1_float = 1.f,
+                       const float alpha2_float = 1.f,
+                       const float beta_float = 0.f);
 
   static void BiasAddGrad(const ExecutionContext& ctx, const int axis,
                           const cnnlTensorDescriptor_t out_backprop_desc,
