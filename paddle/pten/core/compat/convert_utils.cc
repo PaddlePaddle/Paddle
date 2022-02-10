@@ -101,11 +101,11 @@ paddle::platform::Place TransToFluidPlace(const Backend& backend,
     case pten::Backend::NPU:
       return paddle::platform::NPUPlace(
           set_device_id ? paddle::platform::GetCurrentNPUDeviceId() : 0);
-#endif
     // TODO(Aganlengzi): Trans to CustomPlace mapping with Backends
     case pten::Backend::ASCEND:
       return paddle::platform::NPUPlace(
           set_device_id ? paddle::platform::GetCurrentNPUDeviceId() : 0);
+#endif
     default:
       PADDLE_THROW(paddle::platform::errors::Unimplemented(
           "Unsupported backend `%s` when casting it to paddle place type.",
