@@ -266,7 +266,6 @@ class Lamb(Optimizer):
             self._used_master_weights[p_name] = master_weight.name
         else:
             master_weight = None
-
         found_inf = self._get_auxiliary_var('found_inf')
 
         if framework.in_dygraph_mode():
