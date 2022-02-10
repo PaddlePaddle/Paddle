@@ -208,6 +208,9 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
 #ifdef PADDLE_WITH_XPU
   PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(XPUContext);
 #endif
+#ifdef PADDLE_WITH_MKLDNN
+  PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(MKLDNNContext);
+#endif
 
   /* Input Helpers */
 

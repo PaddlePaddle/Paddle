@@ -17,6 +17,8 @@
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 #include "paddle/pten/backends/mkldnn/mkldnn_context.h"
+#include "paddle/pten/core/kernel_registry.h"
+
 namespace pten {
 
 template <typename T, typename Context>
@@ -36,12 +38,12 @@ class ScaleMKLDNNHandler
                                                   dnnl::eltwise_backward>(
             dev_ctx.GetEngine(), dev_ctx.GetPlace()) {
     float alpha = scale.to<float>();
-    float beta = bias
-        // if bias_after_scale == true
-        //   out = scale*X + bias
-        // else
-        //   out = scale*(X + bias) = scale*X + scale*bias
-        if (!bias_after_scale) {
+    float beta = bias;
+    // if bias_after_scale == true
+    //   out = scale*X + bias
+    // else
+    //   out = scale*(X + bias) = scale*X + scale*bias
+    if (!bias_after_scale) {
       beta *= alpha;
     }
 
@@ -52,7 +54,8 @@ class ScaleMKLDNNHandler
                                     x.dims().size()));
 
     auto src_tz = pten::framework::vectorize<int64_t>(x.dims());
-    auto src_fmt = src_tz.size() == 2 ? MKLDNNMemoryFormat::nc : x.format();
+    auto src_fmt =
+        src_tz.size() == 2 ? paddle::MKLDNNMemoryFormat::nc : x.format();
     auto md = dnnl::memory::desc(
         src_tz, paddle::platform::MKLDNNGetDataType<T>(), src_fmt);
 
@@ -70,16 +73,16 @@ void ScaleKernel(const Context& dev_ctx,
                  DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
 
-  const auto& mkldnn_engine = dev_ctx.GetEngine();
+  // const auto& mkldnn_engine = dev_ctx.GetEngine();
 
   bool is_inplaced = x.IsSharedBufferWith(*out);
 
-  ScaleMKLDNNHandler<T> handler(dnnl::algorithm::eltwise_linear,
-                                dev_ctx,
-                                x,
-                                scale,
-                                bias,
-                                bias_after_scale);
+  ScaleMKLDNNHandler<T, Context> handler(dnnl::algorithm::eltwise_linear,
+                                         dev_ctx,
+                                         x,
+                                         scale,
+                                         bias,
+                                         bias_after_scale);
 
   auto src_memory_p = handler.AcquireSrcMemory(&x);
   std::shared_ptr<dnnl::memory> dst_memory_p = nullptr;
@@ -96,8 +99,8 @@ void ScaleKernel(const Context& dev_ctx,
       astream, {{DNNL_ARG_FROM, *src_memory_p}, {DNNL_ARG_TO, *dst_memory_p}});
   astream.wait();
 
-  out->set_layout(framework::DataLayout::kMKLDNN);
-  out->set_format(platform::GetMKLDNNFormat(*dst_memory_p));
+  out->set_layout(paddle::framework::DataLayout::kMKLDNN);
+  out->set_format(paddle::platform::GetMKLDNNFormat(*dst_memory_p));
 }
 
 }  // namespace pten
