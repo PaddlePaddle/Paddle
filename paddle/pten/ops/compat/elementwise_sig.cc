@@ -77,10 +77,10 @@ KernelSignature ElementwiseAddGradOpArgumentMapping(
 
 }  // namespace pten
 
-PT_REGISTER_BASE_KERNEL_NAME(elementwise_add, add_raw);
-PT_REGISTER_BASE_KERNEL_NAME(elementwise_sub, subtract_raw);
-PT_REGISTER_BASE_KERNEL_NAME(elementwise_mul, muliply_raw);
-PT_REGISTER_BASE_KERNEL_NAME(elementwise_div, divide_raw);
+PT_REGISTER_BASE_KERNEL_NAME(elementwise_add, add);
+PT_REGISTER_BASE_KERNEL_NAME(elementwise_sub, subtract);
+PT_REGISTER_BASE_KERNEL_NAME(elementwise_mul, multiply);
+PT_REGISTER_BASE_KERNEL_NAME(elementwise_div, divide);
 PT_REGISTER_BASE_KERNEL_NAME(elementwise_add_grad, add_grad);
 PT_REGISTER_BASE_KERNEL_NAME(elementwise_sub_grad, subtract_grad);
 
