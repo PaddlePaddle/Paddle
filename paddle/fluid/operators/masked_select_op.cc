@@ -70,13 +70,6 @@ class MaskedSelectOpGrad : public framework::OperatorWithKernel {
     ctx->ShareLoD("X", /*-->*/ framework::GradVarName("X"));
   }
 
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::KernelSignature(
-        "masked_select_grad", {framework::GradVarName("Y"), "X", "Mask"}, {},
-        {framework::GradVarName("X")});
-  }
-
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
