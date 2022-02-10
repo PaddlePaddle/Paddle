@@ -46,7 +46,7 @@ TEST(DEV_API, flatten) {
   pten::DenseTensor dense_x(
       alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            framework::make_ddim({3, 2, 2, 3}),
+                            pten::framework::make_ddim({3, 2, 2, 3}),
                             pten::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x.mutable_data<float>(paddle::platform::CPUPlace());
@@ -56,10 +56,10 @@ TEST(DEV_API, flatten) {
   }
   int start_axis = 1, stop_axis = 2;
   pten::CPUContext dev_ctx;
-  dev_ctx.SetDeviceAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
-          .get());
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(paddle::platform::CPUPlace())
+                           .get());
+  dev_ctx.Init();
 
   // 2. test API
   auto out = pten::Flatten<float>(dev_ctx, dense_x, start_axis, stop_axis);

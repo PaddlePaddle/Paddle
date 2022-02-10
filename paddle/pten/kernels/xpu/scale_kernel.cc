@@ -18,7 +18,7 @@
 #include "paddle/pten/backends/xpu/xpu_context.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/float16.h"
-#include "paddle/pten/core/convert_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/kernel_registry.h"
 
 namespace pten {

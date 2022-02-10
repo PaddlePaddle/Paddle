@@ -16,8 +16,14 @@
 
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/backends/xpu/xpu_context.h"
+#include "paddle/pten/common/bfloat16.h"
+#include "paddle/pten/common/complex.h"
+#include "paddle/pten/common/float16.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/core/kernel_registry.h"
+
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/memory/memcpy.h"
 
 namespace pten {
 
@@ -64,7 +70,7 @@ void FullLikeKernel(const Context& dev_ctx,
   using XPUInTDType = typename XPUTypeTrait<T>::Type;
   using CommonType = typename std::common_type<
       float,
-      typename std::conditional<std::is_same<T, pten::platform::float16>::value,
+      typename std::conditional<std::is_same<T, pten::dtype::float16>::value,
                                 float,
                                 T>::type>::type;
 
@@ -118,10 +124,10 @@ PT_REGISTER_KERNEL(full,
                    int,
                    int64_t,
                    bool,
-                   pten::platform::float16,
-                   pten::platform::bfloat16,
-                   pten::platform::complex<float>,
-                   pten::platform::complex<double>) {}
+                   pten::dtype::float16,
+                   pten::dtype::bfloat16,
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(full_like,
                    XPU,
@@ -130,4 +136,4 @@ PT_REGISTER_KERNEL(full_like,
                    float,
                    int,
                    int64_t,
-                   pten::platform::float16) {}
+                   pten::dtype::float16) {}

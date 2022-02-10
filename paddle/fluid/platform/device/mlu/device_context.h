@@ -15,6 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/mlu/enforce.h"
 #include "paddle/fluid/platform/device/mlu/mlu_stream.h"
 #include "paddle/fluid/platform/device_context.h"
+#ifdef PADDLE_WITH_CNCL
+#include <cncl.h>
+#endif
 
 namespace Eigen {
 struct DefaultDevice;
@@ -75,7 +78,7 @@ class MLUDeviceContext : public DeviceContext {
   explicit MLUDeviceContext(MLUPlace place);
   virtual ~MLUDeviceContext();
   Eigen::DefaultDevice* eigen_device() const { return nullptr; }
-  Place GetPlace() const override;
+  const Place& GetPlace() const override;
 
   int GetComputeCapability() const;
 
@@ -87,6 +90,14 @@ class MLUDeviceContext : public DeviceContext {
 
   /*! \brief  Return mlu stream in the device context. */
   mluStream stream() const;
+
+#ifdef PADDLE_WITH_CNCL
+  /*! \brief  Return cncl communicators. */
+  cnclComm_t cncl_comm() const { return cncl_comm_; }
+
+  /*! \brief  Set cncl communicators. */
+  void set_cncl_comm(cnclComm_t comm) { cncl_comm_ = comm; }
+#endif
 
   template <typename Callback>
   void RecordEvent(mluEventHandle ev, Callback callback) const {
@@ -131,6 +142,10 @@ class MLUDeviceContext : public DeviceContext {
                                          std::shared_ptr<MLUContext>>
       thread_ctx_;
   static thread_local std::mutex ctx_mtx_;
+
+#ifdef PADDLE_WITH_CNCL
+  cnclComm_t cncl_comm_{nullptr};
+#endif
 
   DISABLE_COPY_AND_ASSIGN(MLUDeviceContext);
 };
