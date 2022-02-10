@@ -259,26 +259,36 @@ void BuildDygraphPtenKernelContext(
                         attr_names.size(), attr_defs.size()));
 
   for (size_t i = 0; i < input_names.size(); ++i) {
-    auto& ins_vector = ins.at(input_names[i]);
+    auto it = ins.find(input_names[i]);
 
     size_t start_idx = (i == 0 ? 0 : kernel_ctx->InputRangeAt(i - 1).second);
-    size_t end_idx = start_idx + ins_vector.size();
 
-    for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
-      const pten::TensorBase* tensor_in = nullptr;
-      auto& var = ins_vector[offset]->Var();
-      if (var.template IsType<pten::DenseTensor>()) {
-        tensor_in = &(var.template Get<pten::DenseTensor>());
-      } else if (var.template IsType<pten::SelectedRows>()) {
-        tensor_in = &(var.template Get<pten::SelectedRows>());
-      } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Unsupported input `%s` type when call pt kernel.",
-            framework::ToTypeName(var.Type())));
+    if ((it == ins.end()) &&
+        (input_defs[i].type_index ==
+         std::type_index(typeid(paddle::optional<const pten::DenseTensor&>)))) {
+      kernel_ctx->EmplaceBackInputWithoutSetRange(nullptr);
+      auto end_idx = start_idx + 1;
+      kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
+    } else {
+      auto ins_vector = it->second;
+      size_t end_idx = start_idx + ins_vector.size();
+
+      for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
+        const pten::TensorBase* tensor_in = nullptr;
+        auto& var = ins_vector[offset]->Var();
+        if (var.template IsType<pten::DenseTensor>()) {
+          tensor_in = &(var.template Get<pten::DenseTensor>());
+        } else if (var.template IsType<pten::SelectedRows>()) {
+          tensor_in = &(var.template Get<pten::SelectedRows>());
+        } else {
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "Unsupported input `%s` type when call pt kernel.",
+              framework::ToTypeName(var.Type())));
+        }
+        kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
       }
-      kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
+      kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
     }
-    kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
   }
 
   for (size_t i = 0; i < output_names.size(); ++i) {
@@ -337,6 +347,10 @@ void BuildDygraphPtenKernelContext(
                    std::type_index(typeid(std::vector<int32_t>))) {
           kernel_ctx->EmplaceBackAttr(std::move(
               pten::ScalarArray(BOOST_GET_CONST(std::vector<int32_t>, attr))));
+        } else if (attr_defs[i].type_index ==
+                   std::type_index(typeid(std::vector<int32_t>))) {
+          const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
+          kernel_ctx->EmplaceBackAttr(vector_int_attr);
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported cast op attribute `%s` to VectorTensor when "
@@ -400,6 +414,9 @@ void BuildDygraphPtenKernelContext(
       } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
         kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
       } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::string))) {
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(std::string, attr));
+      } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(pten::DataType))) {
         auto data_type = pten::TransToPtenDataType(
             static_cast<framework::proto::VarType::Type>(
@@ -441,6 +458,10 @@ void PreparePtenData(const pten::Kernel& pt_kernel,
 
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto& in_def = input_defs.at(i);
+    auto it = ins.find(input_names[i]);
+    if (it == ins.end()) {
+      continue;
+    }
     auto& ins_vector = ins.at(input_names[i]);
 
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
