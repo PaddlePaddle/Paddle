@@ -47,6 +47,10 @@
 #include "xpu/bkcl.h"
 #endif
 
+#if defined(PADDLE_WITH_CNCL)
+#include <cncl.h>
+#endif
+
 namespace pten {
 class DenseTensor;
 class SelectedRows;
@@ -181,6 +185,9 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
 #endif
 #if defined(PADDLE_WITH_XPU_BKCL)
     BKCLUniqueId, platform::BKCLCommunicator,
+#endif
+#if defined(PADDLE_WITH_CNCL)
+    cnclCliqueId,
 #endif
     int, float, Vocab>;
 template <typename T>

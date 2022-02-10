@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle
 import paddle.fluid.core as core
 
 from op_test import OpTest
@@ -58,6 +59,9 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
         self.shape = [41, 37]
         self.use_softmax = True
 
+    def hard_label_dtype(self):
+        return "int64"
+
     def setUp(self):
         self.initParams()
 
@@ -72,7 +76,8 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
         else:
             axis_dim = self.shape[self.axis]
             self.shape[self.axis] = 1
-            labels = np.random.randint(0, axis_dim, self.shape, dtype="int64")
+            labels = np.random.randint(
+                0, axis_dim, self.shape, dtype=self.hard_label_dtype())
 
         loss = cross_entropy(softmax, labels, self.soft_label, self.axis,
                              self.ignore_index)
@@ -105,6 +110,26 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
             self.check_grad(["Logits"], "Loss", max_relative_error=5e-1)
         else:
             self.check_grad(["Logits"], "Loss", numeric_grad_delta=0.001)
+
+
+class TestSoftmaxWithCrossEntropyOpInt32(TestSoftmaxWithCrossEntropyOp):
+    def hard_label_dtype(self):
+        return "int32"
+
+
+class TestSoftmaxWithCrossEntropyOpInt16(TestSoftmaxWithCrossEntropyOp):
+    def hard_label_dtype(self):
+        return "int16"
+
+
+class TestSoftmaxWithCrossEntropyOpInt8(TestSoftmaxWithCrossEntropyOp):
+    def hard_label_dtype(self):
+        return "int8"
+
+
+class TestSoftmaxWithCrossEntropyOpUInt8(TestSoftmaxWithCrossEntropyOp):
+    def hard_label_dtype(self):
+        return "uint8"
 
 
 class TestSoftmaxWithCrossEntropyOp_NotWithSoftmax_SoftLabel_1D(
@@ -711,4 +736,5 @@ class TestSoftmaxWithCrossEntropyOpBoundary1(TestSoftmaxWithCrossEntropyOp):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

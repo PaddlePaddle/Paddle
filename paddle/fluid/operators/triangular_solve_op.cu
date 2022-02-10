@@ -44,7 +44,7 @@ class MatrixReduceSumFunctor<platform::CUDADeviceContext, T> {
       }
     }
     gpuStream_t stream = ctx.cuda_device_context().stream();
-    TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+    TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
         ctx.cuda_device_context(), in, out, kps::IdentityFunctor<T>(),
         out_reduce_dims, stream);
   }

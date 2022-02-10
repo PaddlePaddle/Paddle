@@ -27,7 +27,7 @@
 // TODO(jiabin): remove nolint here!!!
 using namespace egr;  // NOLINT
 
-TEST(AccumulationNode, EagerTensor) {
+TEST(AccumulationNode, Tensor) {
   // Construct Eager Tensor
   pten::DenseTensorMeta meta = pten::DenseTensorMeta(
       pten::DataType::FLOAT16, paddle::framework::make_ddim({1, 1}));
@@ -38,7 +38,7 @@ TEST(AccumulationNode, EagerTensor) {
       meta);
   dt0->mutable_data<paddle::platform::float16>(
       paddle::platform::CPUPlace())[0] = 10.0;
-  EagerTensor et0 = EagerTensor(dt0);
+  paddle::experimental::Tensor et0 = paddle::experimental::Tensor(dt0);
 
   std::shared_ptr<pten::DenseTensor> dt1 = std::make_shared<pten::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
@@ -48,7 +48,7 @@ TEST(AccumulationNode, EagerTensor) {
 
   dt1->mutable_data<paddle::platform::float16>(
       paddle::platform::CPUPlace())[0] = 20.0;
-  EagerTensor et1 = EagerTensor(dt1);
+  paddle::experimental::Tensor et1 = paddle::experimental::Tensor(dt1);
 
   std::shared_ptr<pten::DenseTensor> grad_dt =
       std::make_shared<pten::DenseTensor>(
@@ -56,34 +56,28 @@ TEST(AccumulationNode, EagerTensor) {
               paddle::platform::CPUPlace())
               .get(),
           meta);
-  EagerTensor grad_et = EagerTensor(grad_dt);
+  paddle::experimental::Tensor grad_et = paddle::experimental::Tensor(grad_dt);
 
   // AccumulationNode
   GradNodeAccumulation node = GradNodeAccumulation();
 
   // Hook
-  std::function<egr::EagerTensor(const egr::EagerTensor&)> hook =
-      [&grad_et](const egr::EagerTensor& t) {
-        if (t.defined()) {
-          grad_et.set_impl(t.impl());
-          return grad_et;
-        } else {
-          grad_et.MutableVar()
-              ->GetMutable<paddle::framework::LoDTensor>()
-              ->ShareDataWith(t.Var().Get<paddle::framework::LoDTensor>());
-          return grad_et;
-        }
+  std::function<paddle::experimental::Tensor(
+      const paddle::experimental::Tensor&)>
+      hook = [&grad_et](const paddle::experimental::Tensor& t) {
+        grad_et.set_impl(t.impl());
+        return grad_et;
       };
   node.RetainGrad(hook);
 
   // operator()
-  EagerTensor ret_et0 = node({{et0}})[0][0];
+  paddle::experimental::Tensor ret_et0 = node({{et0}})[0][0];
   auto* ret_et0_ptr =
       std::dynamic_pointer_cast<pten::DenseTensor>(ret_et0.impl())
           ->data<paddle::platform::float16>();
   CHECK_EQ(ret_et0_ptr[0], paddle::platform::float16(10.0f));
 
-  EagerTensor ret_et1 = node({{et1}})[0][0];
+  paddle::experimental::Tensor ret_et1 = node({{et1}})[0][0];
   auto* ret_et1_ptr =
       std::dynamic_pointer_cast<pten::DenseTensor>(ret_et1.impl())
           ->data<paddle::platform::float16>();

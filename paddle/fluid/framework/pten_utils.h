@@ -63,7 +63,7 @@ class KernelArgsNameMaker {
 
 void InitDefaultKernelSignatureMap();
 
-void SetAllocationForOutputTenosr(pten::DenseTensor* tensor,
+void SetAllocationForOutputTenosr(pten::TensorBase* tensor,
                                   const platform::Place& place);
 
 // TODO(Wilber): support others device context.
