@@ -75,8 +75,8 @@ class ClipByNormKernel<platform::CUDADeviceContext, platform::float16>
     }
     Tensor tmp = context.AllocateTmpTensor<float, platform::CUDADeviceContext>(
         {1}, dev_ctx);
-    TensorReduceFunctorImpl<platform::float16, float, kps::AddFunctor,
-                            kps::SquareFunctor<platform::float16, float>>(
+    TensorReduceImpl<platform::float16, float, kps::AddFunctor,
+                     kps::SquareFunctor<platform::float16, float>>(
         dev_ctx, *input, &tmp, kps::SquareFunctor<platform::float16, float>(),
         reduce_dims, dev_ctx.stream());
     auto tmp_eigen = EigenVector<float>::Flatten(tmp);

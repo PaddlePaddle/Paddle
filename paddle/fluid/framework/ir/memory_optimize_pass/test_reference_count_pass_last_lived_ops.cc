@@ -21,7 +21,7 @@
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 
-USE_OP(scale);
+USE_OP_ITSELF(scale);
 USE_OP(elementwise_mul);
 USE_OP(elementwise_add);
 USE_OP(elementwise_add_grad);

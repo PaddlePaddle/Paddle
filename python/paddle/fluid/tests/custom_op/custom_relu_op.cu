@@ -89,3 +89,31 @@ std::vector<paddle::Tensor> relu_cuda_backward_without_x(
 
   return {grad_x};
 }
+
+void relu_cuda_forward_out(const paddle::Tensor& x, paddle::Tensor* out) {
+  int numel = x.size();
+  int block = 512;
+  int grid = (numel + block - 1) / block;
+  PD_DISPATCH_FLOATING_AND_HALF_TYPES(
+      x.type(), "relu_cuda_forward_kernel", ([&] {
+        relu_cuda_forward_kernel<data_t><<<grid, block, 0, x.stream()>>>(
+            x.data<data_t>(), out->mutable_data<data_t>(x.place()), numel);
+      }));
+}
+
+void relu_cuda_backward_out(const paddle::Tensor& x,
+                            const paddle::Tensor& out,
+                            const paddle::Tensor& grad_out,
+                            paddle::Tensor* grad_x) {
+  int numel = out.size();
+  int block = 512;
+  int grid = (numel + block - 1) / block;
+  PD_DISPATCH_FLOATING_AND_HALF_TYPES(
+      out.type(), "relu_cuda_backward_kernel", ([&] {
+        relu_cuda_backward_kernel<data_t><<<grid, block, 0, x.stream()>>>(
+            grad_out.data<data_t>(),
+            out.data<data_t>(),
+            grad_x->mutable_data<data_t>(x.place()),
+            numel);
+      }));
+}

@@ -298,7 +298,7 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     logits_max =
         ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({N, 1}, dev_ctx);
     T* logits_max_buff = logits_max.mutable_data<T>(place);
-    TensorReduceFunctorImpl<T, T, kps::MaxFunctor, kps::IdentityFunctor<T>>(
+    TensorReduceImpl<T, T, kps::MaxFunctor, kps::IdentityFunctor<T>>(
         dev_ctx, softmax_2d, &logits_max, kps::IdentityFunctor<T>(), {1},
         dev_ctx.stream());
 
@@ -320,7 +320,7 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     sum_exp_logits =
         ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({N, 1}, dev_ctx);
     T* sum_exp_logits_buff = sum_exp_logits.mutable_data<T>(place);
-    TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::ExpFunctor<T>>(
+    TensorReduceImpl<T, T, kps::AddFunctor, kps::ExpFunctor<T>>(
         dev_ctx, softmax_2d, &sum_exp_logits, kps::ExpFunctor<T>(), {1},
         dev_ctx.stream());
 
