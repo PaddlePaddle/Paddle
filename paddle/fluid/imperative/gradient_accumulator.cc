@@ -23,12 +23,12 @@
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_XPU
 #include "xpu/refactor/math.h"
 #endif
@@ -211,7 +211,7 @@ void TensorAddImpl(const framework::Tensor& src, framework::Tensor* dst,
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   paddle::platform::DeviceContext* ctx = pool.Get(place);
   auto dev_ctx = dynamic_cast<DeviceContext*>(ctx);
-  operators::math::ElementwiseAddTo<DeviceContext, T> func;
+  pten::funcs::ElementwiseAddTo<DeviceContext, T> func;
   func(dev_ctx, src, dst);
 }
 
@@ -709,13 +709,13 @@ void EagerGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
         tensor->Resize(var->Var().Get<framework::LoDTensor>().dims());
         tensor->mutable_data(place,
                              framework::TransToPtenDataType(var->DataType()));
-        operators::math::set_constant(*dev_ctx, tensor, 0.0);
+        pten::funcs::set_constant(*dev_ctx, tensor, 0.0);
       } else {
         auto* tensor =
             dst_var->MutableVar()->GetMutable<framework::LoDTensor>();
         tensor->mutable_data(place,
                              framework::TransToPtenDataType(var->DataType()));
-        operators::math::set_constant(*dev_ctx, tensor, 0.0);
+        pten::funcs::set_constant(*dev_ctx, tensor, 0.0);
       }
     }
   }
@@ -843,13 +843,13 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
         tensor->Resize(var->Var().Get<framework::LoDTensor>().dims());
         tensor->mutable_data(place,
                              framework::TransToPtenDataType(var->DataType()));
-        operators::math::set_constant(*dev_ctx, tensor, 0.0);
+        pten::funcs::set_constant(*dev_ctx, tensor, 0.0);
       } else {
         auto* tensor =
             dst_var->MutableVar()->GetMutable<framework::LoDTensor>();
         tensor->mutable_data(place,
                              framework::TransToPtenDataType(var->DataType()));
-        operators::math::set_constant(*dev_ctx, tensor, 0.0);
+        pten::funcs::set_constant(*dev_ctx, tensor, 0.0);
       }
     }
     // looks like tmp_grad_vars will not have any member but just in case

@@ -91,7 +91,7 @@ class Tree2ColFunctor<platform::CPUDeviceContext, T> {
     std::vector<std::vector<int>> tr;
     auto feature_dims = node_features.dims();
     auto cpu_place = context.GetPlace();
-    math::SetConstant<platform::CPUDeviceContext, T> constant;
+    pten::funcs::SetConstant<platform::CPUDeviceContext, T> constant;
     int64_t feature_size = feature_dims[1];
     size_t patch_elem_size = 3 * static_cast<size_t>(feature_size);
     size_t node_count = 0, patch_count = 0, patch_size;
@@ -144,7 +144,7 @@ class Col2TreeFunctor<platform::CPUDeviceContext, T> {
     std::vector<std::vector<int>> tr;
     auto output_dims = out_grad.dims();
     auto cpu_place = context.GetPlace();
-    math::SetConstant<platform::CPUDeviceContext, T> constant;
+    pten::funcs::SetConstant<platform::CPUDeviceContext, T> constant;
     int64_t output_size = output_dims[1];
     size_t grad_elem_size = 3 * static_cast<size_t>(output_size);
     size_t node_count = 0, grad_count = 0;

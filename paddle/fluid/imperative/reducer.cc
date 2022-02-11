@@ -756,7 +756,7 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
             {static_cast<int64_t>(length)});
       } else {
         group_tensor.Resize({static_cast<int64_t>(length)});
-        operators::math::set_constant(*dev_ctx, &group_tensor, 0.0);
+        pten::funcs::set_constant(*dev_ctx, &group_tensor, 0.0);
       }
 #endif
     }

@@ -16,7 +16,7 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -61,7 +61,7 @@ class FillConstantBatchSizeLikeOpKernel : public framework::OpKernel<T> {
     bool cpu_place = force_cpu || ctx.GetPlace() == platform::CPUPlace();
     if (cpu_place) {
       auto &dev_ctx = *pool.Get(platform::CPUPlace());
-      math::SetConstant<platform::CPUDeviceContext, T> functor;
+      pten::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
       out->mutable_data(platform::CPUPlace(),
                         framework::TransToPtenDataType(data_type));
       functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
@@ -70,7 +70,7 @@ class FillConstantBatchSizeLikeOpKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (!cpu_place) {
       auto &dev_ctx = *pool.Get(ctx.GetPlace());
-      math::SetConstant<platform::CUDADeviceContext, T> functor;
+      pten::funcs::SetConstant<platform::CUDADeviceContext, T> functor;
       out->mutable_data(ctx.GetPlace(),
                         framework::TransToPtenDataType(data_type));
       functor(reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx),

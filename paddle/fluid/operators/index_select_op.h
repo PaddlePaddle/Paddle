@@ -16,7 +16,7 @@
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -159,7 +159,7 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
   auto output_dim = x_grad->dims();
 
   auto& dev_ctx = context.template device_context<DeviceContext>();
-  math::SetConstant<DeviceContext, T> set_constant;
+  pten::funcs::SetConstant<DeviceContext, T> set_constant;
   set_constant(dev_ctx, x_grad, static_cast<T>(0.0));
 
   auto slice_size = 1;

@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/framework/data_layout_transform.h"
 
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 #endif
@@ -43,7 +43,7 @@ void CastDataLayout::apply() {
   auto place = ctx_->GetPlace();
 
   if (platform::is_cpu_place(place)) {
-    operators::math::Transpose<platform::CPUDeviceContext, T, 4> trans4;
+    pten::funcs::Transpose<platform::CPUDeviceContext, T, 4> trans4;
     auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);
     trans4(*context, in_, out_, axis_);
   } else {

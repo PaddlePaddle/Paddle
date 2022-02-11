@@ -456,7 +456,7 @@ void Unpack_Pivot(const DeviceContext& dev_ctx, const framework::Tensor& Pivot,
   auto Pdim = framework::make_ddim(Pdimvec);
   P->Resize(Pdim);
   auto pdata = P->mutable_data<T>(dev_ctx.GetPlace());
-  math::SetConstant<DeviceContext, T> setter;
+  pten::funcs::SetConstant<DeviceContext, T> setter;
   setter(dev_ctx, P, static_cast<T>(0));
 
   auto batchsize = product(framework::slice_ddim(dims, 0, prank - 1));
@@ -544,7 +544,7 @@ class LUGradKernel : public framework::OpKernel<T> {
     Tensor_Add<DeviceContext, T>(dev_ctx, phi_L, phi_U, &phi);
     psi.Resize(xdims);
     psi.mutable_data<T>(ctx.GetPlace());
-    math::SetConstant<DeviceContext, T> setter;
+    pten::funcs::SetConstant<DeviceContext, T> setter;
     setter(dev_ctx, &psi, static_cast<T>(0));
 
     std::vector<int64_t> axes = {xrank - 2, xrank - 1};

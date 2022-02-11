@@ -18,7 +18,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -64,7 +64,7 @@ void BincountInner(const framework::ExecutionContext& context) {
     const auto& weights_type = framework::TransToProtoVarType(weights->dtype());
     if (weights_type == framework::proto::VarType::FP32) {
       float* output_data = output->mutable_data<float>(context.GetPlace());
-      math::SetConstant<DeviceContext, float>()(
+      pten::funcs::SetConstant<DeviceContext, float>()(
           context.template device_context<DeviceContext>(), output,
           static_cast<float>(0));
       for (int64_t i = 0; i < input_numel; i++) {
@@ -72,7 +72,7 @@ void BincountInner(const framework::ExecutionContext& context) {
       }
     } else {
       double* output_data = output->mutable_data<double>(context.GetPlace());
-      math::SetConstant<DeviceContext, double>()(
+      pten::funcs::SetConstant<DeviceContext, double>()(
           context.template device_context<DeviceContext>(), output,
           static_cast<double>(0));
       for (int64_t i = 0; i < input_numel; i++) {
@@ -82,7 +82,7 @@ void BincountInner(const framework::ExecutionContext& context) {
 
   } else {
     int64_t* output_data = output->mutable_data<int64_t>(context.GetPlace());
-    math::SetConstant<DeviceContext, int64_t>()(
+    pten::funcs::SetConstant<DeviceContext, int64_t>()(
         context.template device_context<DeviceContext>(), output, 0L);
     for (int64_t i = 0; i < input_numel; i++) {
       output_data[input_data[i]] += 1L;

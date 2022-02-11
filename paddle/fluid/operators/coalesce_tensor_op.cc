@@ -18,8 +18,8 @@
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_memory_aligment.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #endif
@@ -66,11 +66,11 @@ struct FillConstantVisitor {
               .stream();
       runner.Run(stream);
     } else {
-      math::SetConstant<DeviceContext, T> set_constant;
+      pten::funcs::SetConstant<DeviceContext, T> set_constant;
       set_constant(dev_ctx_, tensor_, static_cast<T>(value_));
     }
 #else
-    math::SetConstant<DeviceContext, T> set_constant;
+    pten::funcs::SetConstant<DeviceContext, T> set_constant;
     set_constant(dev_ctx_, tensor_, static_cast<T>(value_));
 #endif
   }
