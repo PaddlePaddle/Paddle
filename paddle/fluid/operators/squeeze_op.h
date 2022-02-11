@@ -18,9 +18,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/pooling.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {

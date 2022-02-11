@@ -19,11 +19,11 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/complex_functors.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/matrix_rank_op.h"
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/platform/dynload/cusolver.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {

@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 #include <algorithm>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #endif
@@ -500,7 +500,7 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
       input_grad->mutable_data<T>(ctx.GetPlace());
       input_roi_grad->mutable_data<T>(ctx.GetPlace());
       // set gradient of X to be 0. before backpropagate.
-      math::SetConstant<DeviceContext, T> set_zero;
+      pten::funcs::SetConstant<DeviceContext, T> set_zero;
       set_zero(ctx.template device_context<DeviceContext>(), input_grad,
                static_cast<T>(0));
       set_zero(ctx.template device_context<DeviceContext>(), input_roi_grad,
