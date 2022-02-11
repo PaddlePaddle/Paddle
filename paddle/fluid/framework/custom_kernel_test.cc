@@ -233,7 +233,7 @@ TEST(CustomKernel, custom_kernel_dot) {
   pten::dtype::float16 fake_attr_f16 = pten::dtype::float16(5);
   pten::DataType fake_attr_dtype = pten::DataType::UINT32;
   paddle::framework::LoDTensor tmp_tensor;
-  tmp_tensor.mutable_data<uint8_t>({1}, pten::TransToFluidPlace(backend));
+  tmp_tensor.mutable_data<uint8_t>({1}, pten::TransToPtenPlace(backend));
   pten::Scalar fake_attr_scalar{tmp_tensor};
   pten::ScalarArray fake_attr_scalar_array;
   std::vector<int64_t> fake_attr_int64_vec;
