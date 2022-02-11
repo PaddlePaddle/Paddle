@@ -825,7 +825,7 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
     forward_function_name = GetForwardFunctionName(fwd_api_name)
     forward_function_str = FORWARD_FUNCTION_TEMPLATE.format(
         returns_type_str, forward_function_name, inputs_args_definition_str,
-        forward_call_str, returns_str, node_creation_str)
+        forward_call_str, node_creation_str, returns_str)
     forward_function_declaration_str = f"{returns_type_str} {forward_function_name}({inputs_args_declaration_str});"
 
     return forward_function_str, forward_function_declaration_str
