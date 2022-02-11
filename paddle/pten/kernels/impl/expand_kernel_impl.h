@@ -82,7 +82,6 @@ void Expand(const Context& ctx,
     }
   }
 
-  auto* out0 = out;
   Eigen::DSizes<Eigen::DenseIndex, Rank> bcast_dims;
   for (size_t i = 0; i < repeat_times.size(); ++i) {
     bcast_dims[i] = repeat_times[i];
@@ -94,12 +93,12 @@ void Expand(const Context& ctx,
     out_dims[i] *= repeat_times[i];
   }
 
-  out0->Resize(out_dims);
+  out->Resize(out_dims);
   auto x0 = EigenTensor<T, Rank>::From(x, new_in_dims);
-  ctx.template Alloc<T>(out0);
-  out0->data<T>();
+  ctx.template Alloc<T>(out);
+  out->data<T>();
 
-  auto y = EigenTensor<T, Rank>::From(*out0, out_dims);
+  auto y = EigenTensor<T, Rank>::From(*out, out_dims);
   auto& place = *ctx.eigen_device();
   // use 32-bit index to speed up
   bool use_32bit_index = y.size() < Eigen::NumTraits<int>::highest();
