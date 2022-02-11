@@ -142,7 +142,6 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
           {"output_fp16", &output_fp16, nvinfer1::PluginFieldType::kINT32, 1},
       };
 
-      // remember to free
       nvinfer1::PluginFieldCollection* plugin_ptr =
           static_cast<nvinfer1::PluginFieldCollection*>(
               malloc(sizeof(*plugin_ptr) +
@@ -168,6 +167,11 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       shape_dim.nbDims = 1;
       shape_dim.d[0] = -1;
       shuffle_layer->setReshapeDimensions(shape_dim);
+      shuffle_layer->setName(
+          ("Embeltwise_Shuffle_reshape (Output: max_seqlen " +
+           op_desc.Output("Out")[0] + ")")
+              .c_str());
+      engine_->SetTensorDynamicRange(shuffle_layer->getOutput(0), 1.0f);
       plugin_inputs.emplace_back(
           shuffle_layer->getOutput(0));  // max_seqlen, eval_placeholder_3
 
@@ -178,12 +182,40 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
           creator->createPlugin("CustomEmbLayerNormPluginDynamic", plugin_ptr);
       auto plugin_layer = engine_->network()->addPluginV2(
           plugin_inputs.data(), plugin_inputs.size(), *plugin_obj);
-      layer = plugin_layer;
+      plugin_layer->setName(("CustomEmbLayerNormPluginDynamic_V2(Output: " +
+                             op_desc.Output("Out")[0] + ")")
+                                .c_str());
       free(plugin_ptr);
-      auto output_name = op_desc.Output("Out")[0];
-      RreplenishLayerAndOutput(layer, "emb_eltwise_layernorm",
-                               {output_name, std::string("qkv_plugin_mask")},
-                               test_mode);
+      if (enable_int8) {
+        float out_scale =
+            BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+        engine_->SetTensorDynamicRange(plugin_layer->getOutput(0), out_scale);
+        engine_->SetTensorDynamicRange(plugin_layer->getOutput(1), out_scale);
+      }
+      if (engine_->with_interleaved()) {
+        VLOG(4)
+            << "fused emb_eltwise_layernorm op: use_oss and with_interleaved";
+        if (!enable_int8) {
+          PADDLE_THROW(
+              platform::errors::Fatal("use with_interleaved must be int8."));
+        }
+        auto* shuffler_embed = TRT_ENGINE_ADD_LAYER(
+            engine_, Shuffle, *(plugin_layer->getOutput(0)));
+        nvinfer1::Permutation transpose_embed{2, 1, 0, 3};
+        shuffler_embed->setSecondTranspose(transpose_embed);
+        engine_->SetITensor(op_desc.Output("Out")[0],
+                            shuffler_embed->getOutput(0));
+        shuffler_embed->setName(
+            ("Emb_eltwise_out_shuffler_transpose (Output: " +
+             op_desc.Output("Out")[0] + ")")
+                .c_str());
+      } else {
+        layer = plugin_layer;
+        auto output_name = op_desc.Output("Out")[0];
+        RreplenishLayerAndOutput(layer, "CustomEmbLayerNormPluginDynamic_V2",
+                                 {output_name, std::string("qkv_plugin_mask")},
+                                 test_mode);
+      }
     } else {
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
