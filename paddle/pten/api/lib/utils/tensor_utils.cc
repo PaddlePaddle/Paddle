@@ -116,14 +116,14 @@ pten::ScalarArray MakePtenScalarArrayFromVarList(
           vector_data.push_back(*tensor.data<int32_t>());
         }
       } else {
-        PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        PADDLE_THROW(pten::errors::InvalidArgument(
             "Data type error. When cast a LoDTensor to VectorTensor, "
             "the data type of LoDTensor must be int32 or int64, "
             "but now data type is %s.",
             data_type));
       }
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(pten::errors::Unimplemented(
           "Unsupport casting input `%s` type to VectorTensor when call pt "
           "kernel.",
           framework::ToTypeName(var->Type())));
