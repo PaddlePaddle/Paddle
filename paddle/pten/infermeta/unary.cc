@@ -242,14 +242,14 @@ void SumInferMeta(const MetaTensor& x,
                   DataType dtype,
                   bool keep_dim,
                   MetaTensor* out) {
-  ReduceInferMeta(x, axis, keep_dim, dtype, std::move(out));
+  ReduceInferMetaBase(x, axis, keep_dim, dtype, out);
 }
 
-void ReduceInferMeta(const MetaTensor& x,
-                     const std::vector<int64_t>& axis,
-                     bool keep_dim,
-                     DataType dtype,
-                     MetaTensor* out) {
+void ReduceInferMetaBase(const MetaTensor& x,
+                         const std::vector<int64_t>& axis,
+                         bool keep_dim,
+                         DataType dtype,
+                         MetaTensor* out) {
   bool reduce_all = true;
   std::set<int64_t> dims_set(axis.begin(), axis.end());
   for (int64_t i = 0; i < x.dims().size(); ++i) {
@@ -304,7 +304,7 @@ void ReduceInferMeta(const MetaTensor& x,
                      const std::vector<int64_t>& axis,
                      bool keep_dim,
                      MetaTensor* out) {
-  ReduceInferMeta(x, axis, keep_dim, DataType::UNDEFINED, out);
+  ReduceInferMetaBase(x, axis, keep_dim, DataType::UNDEFINED, out);
 }
 
 void TransferLayoutInferMeta(const MetaTensor& x,
@@ -316,5 +316,3 @@ void TransferLayoutInferMeta(const MetaTensor& x,
 }
 
 }  // namespace pten
-
-PT_REGISTER_INFER_META_FN(sign, pten::UnchangedInferMeta);

@@ -19,7 +19,8 @@
 #include "paddle/fluid/framework/new_executor/interpretercore_event_garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/os_info.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/framework/new_executor/interpretercore_fast_garbage_collector.h"
@@ -552,6 +553,13 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
     instr_id = ready_ops.front();
     ready_ops.pop();
     auto& instr_node = vec_instruction_.at(instr_id);
+    VLOG(5) << __func__ << " OP id:" << instr_node.Id()
+            << " name:" << instr_node.OpBase()->Type()
+            << " type:" << (instr_node.KernelType() == OpFuncType::kQueueSync
+                                ? "kQueueSync"
+                                : "kQueueAsync")
+            << " runs on " << platform::GetCurrentThreadName();
+
     auto* op = instr_node.OpBase();
     platform::RecordEvent instruction_event(op->Type().c_str());
     interpreter::WaitEvent(instr_node, place_);
