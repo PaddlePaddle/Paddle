@@ -54,6 +54,7 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
       const framework::ExecutionContext& ctx) const {
     const auto* x = ctx.Input<Tensor>("X");
     auto in_dims = x->dims();
+    // TODO FIXME add NHWC support
     const bool is_channel_last = false;  // In mkldnn kernel, always use NCHW
 
     framework::DDim in_dhw_dims;
@@ -184,6 +185,7 @@ REGISTER_OP_KERNEL(bilinear_interp, MKLDNN, ::paddle::platform::CPUPlace,
 
 REGISTER_OP_KERNEL(nearest_interp_v2, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::InterpolateMKLDNNKernel<float>,
+                   ops::InterpolateMKLDNNKernel<paddle::platform::bfloat16>,
                    ops::InterpolateMKLDNNKernel<int8_t>,
                    ops::InterpolateMKLDNNKernel<uint8_t>);
 REGISTER_OP_KERNEL(bilinear_interp_v2, MKLDNN, ::paddle::platform::CPUPlace,

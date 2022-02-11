@@ -2417,6 +2417,7 @@ PDNode *patterns::Bfloat16Placement::operator()(
                                        "prelu",
                                        "relu",
                                        "reshape2",
+                                       "nearest_interp_v2",
                                        "scale",
                                        "sigmoid",
                                        "slice",
