@@ -122,9 +122,7 @@ class SequenceMaskNPUKernel : public framework::OpKernel<T> {
     }
 
     const auto& cast2_runner = NpuOpRunner(
-        "Cast", {y_tmp}, {*y},
-        {{"dst_type",
-          ConvertToNpuDtype(framework::TransToProtoVarType(out_dtype))}});
+        "Cast", {y_tmp}, {*y}, {{"dst_type", ConvertToNpuDtype(out_dtype)}});
     cast2_runner.Run(dev_ctx.stream());
   }
 };

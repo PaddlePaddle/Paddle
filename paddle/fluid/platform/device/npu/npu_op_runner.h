@@ -21,6 +21,7 @@ limitations under the License. */
 #include <vector>
 
 #include "acl/acl.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device/npu/enforce_npu.h"
 

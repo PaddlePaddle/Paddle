@@ -74,7 +74,8 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
         framework::proto::VarType::INT32) {
       ids_int32.Resize(ids->dims());
       ids_int32.mutable_data<int>(ctx.GetPlace());
-      auto dst_dtype_ids_int32 = ConvertToNpuDtype(ids_int32.type());
+      auto dst_dtype_ids_int32 =
+          ConvertToNpuDtype(framework::TransToProtoVarType(ids_int32.dtype()));
       const auto& runner_ids_int32 =
           NpuOpRunner("Cast", {*ids}, {ids_int32},
                       {{"dst_type", static_cast<int>(dst_dtype_ids_int32)}});
@@ -88,7 +89,8 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
         framework::proto::VarType::INT32) {
       pre_ids_int32.Resize(pre_ids->dims());
       pre_ids_int32.mutable_data<int>(ctx.GetPlace());
-      auto dst_dtype_pre_ids_int32 = ConvertToNpuDtype(pre_ids_int32.type());
+      auto dst_dtype_pre_ids_int32 = ConvertToNpuDtype(
+          framework::TransToProtoVarType(pre_ids_int32.dtype()));
       const auto& runner_pre_ids_int32 = NpuOpRunner(
           "Cast", {*pre_ids}, {pre_ids_int32},
           {{"dst_type", static_cast<int>(dst_dtype_pre_ids_int32)}});

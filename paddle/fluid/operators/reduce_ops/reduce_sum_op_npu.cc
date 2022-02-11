@@ -88,7 +88,7 @@ class ReduceSumNPUKernel : public framework::OpKernel<T> {
         framework::TransToProtoVarType(x->dtype()) !=
             framework::proto::VarType::FP16) {
       auto dst_dtype =
-          framework::TransToProtoVarType(ConvertToNpuDtype(out->type()));
+          ConvertToNpuDtype(framework::TransToProtoVarType(out->dtype()));
       const auto& runner_cast =
           NpuOpRunner("Cast", {cast_out}, {*out},
                       {{"dst_type", static_cast<int>(dst_dtype)}});

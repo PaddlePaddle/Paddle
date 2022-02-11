@@ -65,7 +65,8 @@ struct InterpolateFunction {
     runner.Run(stream);
   }
   void Cast(const Tensor* x, Tensor* y) {
-    auto dst_dtype = ConvertToNpuDtype(y->type());
+    auto dst_dtype =
+        ConvertToNpuDtype(framework::TransToProtoVarType(y->dtype()));
     const auto& runner = NpuOpRunner(
         "Cast", {*x}, {*y}, {{"dst_type", static_cast<int>(dst_dtype)}});
     runner.Run(stream);

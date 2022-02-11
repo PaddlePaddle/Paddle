@@ -77,7 +77,8 @@ class TopkNPUKernel : public framework::OpKernel<T> {
     runner.Run(stream);
 
     // cast indices from INT32 to INT64
-    auto dst_dtype = ConvertToNpuDtype(indices->type());
+    auto dst_dtype =
+        ConvertToNpuDtype(framework::TransToProtoVarType(indices->dtype()));
     const auto& runner_cast_indices =
         NpuOpRunner("Cast", {tmp_indices}, {*indices},
                     {{"dst_type", static_cast<int>(dst_dtype)}});

@@ -460,7 +460,8 @@ void NpuOpRunner::TypeAdapter(
 
   for (size_t i = 0; i < input_type.size(); ++i) {
     bool cast_input =
-        (input_type[i] == -1 || input_type[i] != inputs[i].type());
+        (input_type[i] == -1 ||
+         input_type[i] != framework::TransToProtoVarType(inputs[i].dtype()));
     if (!cast_input) {
       tmp_inputs[i].ShareDataWith(inputs[i]);
     } else {
@@ -476,7 +477,8 @@ void NpuOpRunner::TypeAdapter(
   }
   for (size_t i = 0; i < output_type.size(); ++i) {
     bool cast_output =
-        (output_type[i] == -1 || output_type[i] != outputs[i].type());
+        (output_type[i] == -1 ||
+         output_type[i] != framework::TransToProtoVarType(outputs[i].dtype()));
     if (!cast_output) {
       tmp_outputs[i].ShareDataWith(outputs[i]);
     } else {
@@ -490,12 +492,14 @@ void NpuOpRunner::TypeAdapter(
 
   for (size_t i = 0; i < output_type.size(); ++i) {
     bool cast_output =
-        (output_type[i] == -1 || output_type[i] != outputs[i].type());
+        (output_type[i] == -1 ||
+         output_type[i] != framework::TransToProtoVarType(outputs[i].dtype()));
     if (cast_output) {
       const auto &cast_runner = NpuOpRunner(
           "Cast", {tmp_outputs[i]}, {outputs[i]},
           {{"dst_type",
-            static_cast<int>(ConvertToNpuDtype(outputs[i].type()))}});
+            static_cast<int>(ConvertToNpuDtype(
+                framework::TransToProtoVarType(outputs[i].dtype())))}});
       cast_runner.Run(dev_ctx.stream());
     }
   }
