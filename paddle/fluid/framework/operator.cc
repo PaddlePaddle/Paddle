@@ -1171,8 +1171,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   std::string pt_kernel_name;
   if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(type_)) {
     if (pt_kernel_signature_ == nullptr || pt_kernel_ == nullptr) {
-      pt_kernel_signature_.reset(new KernelSignature(
-          std::move(this->GetExpectedPtenKernelArgs(exe_ctx))));
+      pt_kernel_signature_.reset(
+          new KernelSignature(std::move(GetExpectedPtenKernelArgs(exe_ctx))));
       VLOG(6) << *pt_kernel_signature_.get();
 
       kernel_type_.reset(
@@ -1365,7 +1365,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 pten::KernelKey OperatorWithKernel::ChoosePtenKernel(
     const ExecutionContext& ctx) const {
   pt_kernel_signature_.reset(
-      new KernelSignature(std::move(this->GetExpectedPtenKernelArgs(ctx))));
+      new KernelSignature(std::move(GetExpectedPtenKernelArgs(ctx))));
   VLOG(6) << *pt_kernel_signature_.get();
 
   kernel_type_.reset(

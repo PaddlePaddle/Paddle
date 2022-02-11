@@ -195,32 +195,57 @@ class TestLambOpMultiPrecision(unittest.TestCase):
                 hidden = linear(x)
                 loss = paddle.mean(hidden)
 
-            optimizer = paddle.optimizer.Lamb(learning_rate=1e-3)
-            optimizer._multi_precision = multi_precision
+            original_optimizer = paddle.optimizer.Lamb(learning_rate=1e-3)
+            original_optimizer._multi_precision = multi_precision
             if multi_precision:
                 optimizer = paddle.static.amp.decorate(
-                    optimizer, use_pure_fp16=True, use_fp16_guard=True)
+                    original_optimizer, use_pure_fp16=True, use_fp16_guard=True)
+            else:
+                optimizer = original_optimizer
             optimizer.minimize(loss)
 
         weight, bias = linear.weight, linear.bias
-        scope = paddle.static.Scope()
         exe = paddle.static.Executor(place)
         scope = paddle.static.Scope()
         x = main_prog.global_block().var(x.name)
         if x.dtype == core.VarDesc.VarType.FP16:
             x_np = x_np.astype(np.float16)
 
+        def get_parameter(var):
+            name = var if isinstance(var, (str, bytes)) else var.name
+            params = original_optimizer._get_parameter(name, scope)
+            assert isinstance(params, (list, tuple))
+            params = list(params)
+            assert len(params) == 2
+            if multi_precision:
+                params[0] = np.array(params[0])
+                params[1] = np.array(params[1])
+                self.assertTrue(
+                    np.array_equal(params[0], params[1].astype(np.float16)))
+                return params[0].astype(np.float32)
+            else:
+                self.assertTrue(params[0] is not None)
+                self.assertTrue(params[1] is None)
+                params[0] = np.array(params[0])
+                return params[0]
+
         with paddle.static.scope_guard(scope):
             exe.run(startup_prog)
             if multi_precision:
                 optimizer.amp_init(place)
+
             weight_np, bias_np = None, None
             for i in range(n):
                 feed_dict = {x.name: x_np}
                 weight_np, bias_np = exe.run(main_prog,
                                              feed=feed_dict,
                                              fetch_list=[weight, bias])
-        return weight_np.astype('float32'), bias_np.astype('float32')
+                weight_np = weight_np.astype('float32')
+                bias_np = bias_np.astype('float32')
+                self.assertTrue(
+                    np.array_equal(weight_np, get_parameter(weight)))
+                self.assertTrue(np.array_equal(bias_np, get_parameter(bias)))
+            return weight_np, bias_np
 
     @switch_to_static_graph
     def test_main(self):

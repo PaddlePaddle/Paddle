@@ -606,7 +606,7 @@ class OperatorWithKernel : public OperatorBase {
     * When selecting Kernel during Op execution, select the arguments of the
     * original Op according to the GetExpectedPtenKernelArgs returned arguments.
     */
-  virtual pten::KernelSignature GetExpectedPtenKernelArgs(
+  pten::KernelSignature GetExpectedPtenKernelArgs(
       const ExecutionContext& ctx) const;
 
   /* member functions for adapting to pten lib */
