@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/dynload/cublas.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
