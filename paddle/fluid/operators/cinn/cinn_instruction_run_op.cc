@@ -34,7 +34,7 @@ class CinnInstructionRunOp : public framework::OperatorWithKernel {
     details::CinnLaunchContext* launch_context =
         compiled_object.launch_context.get();
     std::vector<std::string> output_args = ctx->Outputs(kOutputs);
-    std::vector<framework::DDim> output_dims;
+    std::vector<framework::DDim> output_dims(output_args.size());
     std::transform(output_args.begin(), output_args.end(), output_dims.begin(),
                    [launch_context](const std::string& var_name) {
                      cinn_buffer_t* buffer =

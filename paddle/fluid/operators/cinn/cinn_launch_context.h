@@ -92,15 +92,16 @@ class CinnLaunchContext {
   // the variable scope of cinn
   const std::shared_ptr<CinnScope> cinn_scope_;
 
-  // all variables used by compiled executable program
+  // all names of cinn variables used by compiled executable program
   std::unordered_set<std::string> cinn_variable_names_;
 
   // because a cinn_pod_value_t does not own the cinn_buffer_t object,
   // an extra stroage is necessary to keep the object and it can
-  // not be released until runtime program finish  execution.
+  // not be released until the runtime program finish execution.
   std::vector<std::unique_ptr<cinn_buffer_t>> hold_buffers_;
 
-  // name to execution argument
+  // this map saves all execution arguments with their cinn names as key,
+  // and it is passed to the Execute interface of a cinn runtime program.
   std::map<std::string, cinn_pod_value_t> name2argument_;
 };
 
