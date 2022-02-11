@@ -240,7 +240,7 @@ TType& GetInnerTensor(const paddle::experimental::Tensor& src) {
   PADDLE_ENFORCE_EQ(
       src.initialized(), true,
       platform::errors::Fatal("We only add tensor with value if a tensor is "
-                              "INITILIZED, it should just move instead of "
+                              "NOT INITILIZED, it should just move instead of "
                               "calling this method."));
   auto* src_tensor = static_cast<TType*>(src.impl().get());
   return *src_tensor;
