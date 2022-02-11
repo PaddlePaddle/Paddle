@@ -23,6 +23,7 @@ import paddle.fluid as fluid
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid import compiler
 import paddle.fluid.unique_name as unique_name
+import paddle
 
 
 class TestInplaceANBOpTraining(unittest.TestCase):
@@ -187,6 +188,5 @@ class TestInplaceANBOpTraining(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    import paddle
     paddle.enable_static()
     unittest.main()

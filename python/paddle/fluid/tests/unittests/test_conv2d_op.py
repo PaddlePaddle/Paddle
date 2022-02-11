@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle
 
 import paddle
 import paddle.fluid.core as core
@@ -1001,6 +1002,5 @@ create_test_cudnn_channel_last_fp16_class(
     TestWithDilation_AsyPadding, grad_check=False)
 
 if __name__ == '__main__':
-    import paddle 
     paddle.enable_static()
     unittest.main()

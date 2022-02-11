@@ -393,10 +393,8 @@ void NormDoubleGradFunctor(const DeviceContext &ctx,
                            const DataLayout data_layout, const Tensor *X,
                            const Tensor *Scale, const Tensor *dY,
                            const Tensor *Saved_mean,
-                           const Tensor *Saved_variance, 
-                           const Tensor *Mean,
-                           const Tensor *Variance,
-                           const double epsilon,
+                           const Tensor *Saved_variance, const Tensor *Mean,
+                           const Tensor *Variance, const double epsilon,
                            const bool use_global_stats, const Tensor *ddX,
                            const Tensor *ddScale, const Tensor *ddBias,
                            Tensor *dX, Tensor *dScale, Tensor *ddY) {
@@ -443,6 +441,7 @@ void NormDoubleGradFunctor(const DeviceContext &ctx,
   } else {
     const T *smean_data = Saved_mean->data<T>();
     const T *svariance_data = Saved_variance->data<T>();
+
     mean_data = smean_data;
     variance_data = svariance_data;
   }
