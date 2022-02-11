@@ -85,7 +85,8 @@ void DenseTensor::ResetHolder(const std::shared_ptr<pten::Allocation>& holder) {
     // compare with a data with unsigned long type, this will make checking
     // failed, so it's a temporary solution to deal with this problem.
     PADDLE_ENFORCE_LE(
-        numel() * static_cast<int64_t>(SizeOf(dtype())) + meta_.offset,
+        numel() * static_cast<int64_t>(SizeOf(dtype())) +
+            static_cast<int64_t>(meta_.offset),
         static_cast<int64_t>(holder->size()),
         paddle::platform::errors::InvalidArgument(
             "The size of Holder is not enough to store the Tensor."));

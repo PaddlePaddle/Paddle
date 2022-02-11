@@ -134,12 +134,19 @@ struct DimensionsTransform {
   explicit DimensionsTransform(const std::vector<const DenseTensor *> &ins,
                                const pten::framework::DDim &dims,
                                int axis) {
-    const int N = ins.size();
+    const int N = max(static_cast<int>(ins.size()), 2);
     dim_size = dims.size();
     out_dims = pten::framework::vectorize<int64_t>(dims);
     in_dims.resize(N);
-    for (int j = 0; j < N; ++j) {
-      in_dims[j] = pten::framework::vectorize<int64_t>(ins[j]->dims());
+    if (ins.size() == 1) {
+      // when ins.size() = 1, broadcast input to output
+      in_dims[0] = pten::framework::vectorize<int64_t>(ins[0]->dims());
+      in_dims[1] = out_dims;
+      // Add out_dims to in_dims to avoid errors in dims merging
+    } else {
+      for (int j = 0; j < N; ++j) {
+        in_dims[j] = pten::framework::vectorize<int64_t>(ins[j]->dims());
+      }
     }
     InputDimensionsExtend(N, axis);
 
@@ -567,9 +574,8 @@ void LaunchElementwiseCudaKernel(const KPDevice &ctx,
     dims_size.emplace_back(in->dims().size());
   }
   if (no_broadcast_flag) {
-    pten::funcs::
-        LaunchSameDimsElementwiseCudaKernel<ET, InT, OutT, Functor, NumOuts>(
-            ctx, ins, outs, func);
+    pten::funcs::LaunchSameDimsElementwiseCudaKernel<OutT, Functor, NumOuts>(
+        ctx, ins, outs, func);
   } else {
     axis = axis == -1
                ? *std::max_element(dims_size.begin(), dims_size.end()) -
