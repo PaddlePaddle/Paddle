@@ -34,6 +34,12 @@ set(bw_api_source_file ${CMAKE_SOURCE_DIR}/paddle/pten/api/lib/backward_api.cc)
 set(bw_api_header_file_tmp ${bw_api_header_file}.tmp)
 set(bw_api_source_file_tmp ${bw_api_source_file}.tmp)
 
+# wrapped infermeta file
+set(wrapped_infermeta_gen_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/wrapped_infermeta_gen.py)
+set(api_yaml_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/api.yaml)
+set(wrapped_infermeta_header_file ${CMAKE_SOURCE_DIR}/paddle/pten/infermeta/generated/wrapped_infermeta.h)
+set(wrapped_infermeta_source_file ${CMAKE_SOURCE_DIR}/paddle/pten/infermeta/generated/wrapped_infermeta.cc)
+
 if (NOT PYTHON_EXECUTABLE)
   find_package(PythonInterp REQUIRED)
 endif()
@@ -65,8 +71,19 @@ add_custom_command(
   DEPENDS ${bw_api_yaml_file} ${bw_api_gen_file} ${api_gen_base}
   VERBATIM)
 
+# generate wrapped infermeta
+add_custom_command(
+  OUTPUT ${wrapped_infermeta_header_file} ${wrapped_infermeta_source_file}
+  COMMAND ${PYTHON_EXECUTABLE} ${wrapped_infermeta_gen_file}
+                 --api_yaml_path ${api_yaml_file}
+                 --wrapped_infermeta_header_path ${wrapped_infermeta_header_file}
+                 --wrapped_infermeta_source_path ${wrapped_infermeta_source_file}
+  DEPENDS ${api_yaml_file} ${wrapped_infermeta_gen_file} ${api_gen_base}
+  VERBATIM)
+
 cc_library(pten_data_transform SRCS data_transform.cc DEPS pten_tensor transfer_layout_kernel cast_kernel data_device_transform)
 cc_library(manual_api SRCS manual_api.cc DEPS pten_tensor pten kernel_dispatch)
 cc_library(sparse_api SRCS sparse_api.cc DEPS pten_tensor pten kernel_dispatch pten_data_transform)
 cc_library(pten_function_api SRCS ${api_source_file} DEPS pten_tensor pten kernel_dispatch pten_data_transform)
 cc_library(pten_bw_function_api SRCS ${bw_api_source_file} DEPS pten_tensor pten kernel_dispatch backward_infermeta pten_data_transform pten_function_api)
+cc_library(wrapped_infermeta SRCS ${wrapped_infermeta_source_file} DEPS pten)
