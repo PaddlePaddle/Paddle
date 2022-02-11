@@ -195,7 +195,7 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     Tensor length_lod;
     int* length_lod_data =
         length_lod.mutable_data<int>({lod_size}, dev_ctx.GetPlace());
-    math::SetConstant<platform::CUDADeviceContext, int> set_zero;
+    pten::funcs::SetConstant<platform::CUDADeviceContext, int> set_zero;
     set_zero(dev_ctx, &length_lod, static_cast<int>(0));
 
     int blocks = NumBlocks(real_post_num);

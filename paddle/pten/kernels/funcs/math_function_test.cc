@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/operators/math/blas.h"
 
@@ -42,8 +42,19 @@ TEST(math_function, gemm_notrans_cblas) {
   memcpy(input3_ptr, arr3, 8 * sizeof(float));
 
   paddle::platform::CPUDeviceContext context(*cpu_place);
-  GetBlas<float>(context).GEMM(false, false, m, n, k, 1, input1_ptr, 3,
-                               input2_ptr + 1, 4, 1, input3_ptr + 1, 4);
+  GetBlas<float>(context).GEMM(false,
+                               false,
+                               m,
+                               n,
+                               k,
+                               1,
+                               input1_ptr,
+                               3,
+                               input2_ptr + 1,
+                               4,
+                               1,
+                               input3_ptr + 1,
+                               4);
 
   EXPECT_EQ(input3_ptr[0], 0);
   EXPECT_EQ(input3_ptr[1], 24);
@@ -83,15 +94,36 @@ void MklSmmCompare(int m, int n, int k) {
   auto smm = [&, m, n, k, lda, ldb, ldc, alpha, beta]() {
     const char transa = 'N';
     const char transb = 'N';
-    paddle::operators::math::CBlas<T>::SMM_GEMM(&transa, &transb, &n, &m, &k,
-                                                &alpha, B, &ldb, A, &lda, &beta,
-                                                CSMM, &ldc);
+    paddle::operators::math::CBlas<T>::SMM_GEMM(&transa,
+                                                &transb,
+                                                &n,
+                                                &m,
+                                                &k,
+                                                &alpha,
+                                                B,
+                                                &ldb,
+                                                A,
+                                                &lda,
+                                                &beta,
+                                                CSMM,
+                                                &ldc);
   };
 
   auto mkl = [&, m, n, k, lda, ldb, ldc, alpha, beta]() {
-    paddle::operators::math::CBlas<T>::GEMM(CblasRowMajor, CblasNoTrans,
-                                            CblasNoTrans, m, n, k, alpha, A,
-                                            lda, B, ldb, beta, CMKL, ldc);
+    paddle::operators::math::CBlas<T>::GEMM(CblasRowMajor,
+                                            CblasNoTrans,
+                                            CblasNoTrans,
+                                            m,
+                                            n,
+                                            k,
+                                            alpha,
+                                            A,
+                                            lda,
+                                            B,
+                                            ldb,
+                                            beta,
+                                            CMKL,
+                                            ldc);
   };
 
   smm();
@@ -131,8 +163,19 @@ TEST(math_function, gemm_trans_cblas) {
   memcpy(input3_ptr, arr3, 8 * sizeof(float));
 
   paddle::platform::CPUDeviceContext context(*cpu_place);
-  GetBlas<float>(context).GEMM(false, true, m, n, k, 1, input1_ptr, 3,
-                               input2_ptr + 3, 3, 1, input3_ptr + 1, 4);
+  GetBlas<float>(context).GEMM(false,
+                               true,
+                               m,
+                               n,
+                               k,
+                               1,
+                               input1_ptr,
+                               3,
+                               input2_ptr + 3,
+                               3,
+                               1,
+                               input3_ptr + 1,
+                               4);
   delete cpu_place;
   cpu_place = NULL;
 
@@ -151,9 +194,7 @@ TEST(math_function, zero) {
   auto* cpu_place = new paddle::platform::CPUPlace();
   float* t = tensor.mutable_data<float>({2, 2}, *cpu_place);
   paddle::platform::CPUDeviceContext context(*cpu_place);
-  paddle::operators::math::SetConstant<paddle::platform::CPUDeviceContext,
-                                       float>
-      functor;
+  pten::funcs::SetConstant<paddle::platform::CPUDeviceContext, float> functor;
   functor(context, &tensor, 0);
   EXPECT_EQ(t[0], 0);
   EXPECT_EQ(t[1], 0);
@@ -188,8 +229,14 @@ void GemvTest(int m, int n, bool trans) {
   }
 
   paddle::platform::CPUDeviceContext context(*cpu_place);
-  GetBlas<T>(context).GEMV(trans, static_cast<int>(m), static_cast<int>(n), 1.,
-                           data_a, data_b, 0., data_c);
+  GetBlas<T>(context).GEMV(trans,
+                           static_cast<int>(m),
+                           static_cast<int>(n),
+                           1.,
+                           data_a,
+                           data_b,
+                           0.,
+                           data_c);
 
   if (!trans) {
     for (int i = 0; i < m; ++i) {
@@ -224,9 +271,10 @@ TEST(math_funciton, set_constant) {
   t.mutable_data<int>(paddle::platform::CPUPlace());
   auto* ctx = new paddle::platform::CPUDeviceContext();
   ctx->Init();
-  paddle::operators::math::set_constant(*ctx, &t, 10);
+  pten::funcs::set_constant(*ctx, &t, 10);
   for (int64_t i = 0; i < t.numel(); ++i) {
-    PADDLE_ENFORCE_EQ(10, t.data<int>()[i],
+    PADDLE_ENFORCE_EQ(10,
+                      t.data<int>()[i],
                       paddle::platform::errors::InvalidArgument(
                           "Each value of input tensor should be 10, "
                           "but received %d.",
@@ -262,16 +310,27 @@ void GemmWarpTest(int m, int n, int k, T alpha, T beta) {
 
   // this would call gemm_warp
   paddle::platform::CPUDeviceContext context(*cpu_place);
-  GetBlas<T>(context).GEMM(CblasNoTrans, CblasNoTrans, m, n, k, alpha, A, B,
-                           beta, CREF);
+  GetBlas<T>(context).GEMM(
+      CblasNoTrans, CblasNoTrans, m, n, k, alpha, A, B, beta, CREF);
 
   // lda,ldb,ldc follow RowMajor
   int lda = k;
   int ldb = n;
   int ldc = n;
-  paddle::operators::math::CBlas<T>::GEMM(CblasRowMajor, CblasNoTrans,
-                                          CblasNoTrans, m, n, k, alpha, A, lda,
-                                          B, ldb, beta, CMKL, ldc);
+  paddle::operators::math::CBlas<T>::GEMM(CblasRowMajor,
+                                          CblasNoTrans,
+                                          CblasNoTrans,
+                                          m,
+                                          n,
+                                          k,
+                                          alpha,
+                                          A,
+                                          lda,
+                                          B,
+                                          ldb,
+                                          beta,
+                                          CMKL,
+                                          ldc);
 
   for (int i = 0; i < mat_c_mkl.numel(); ++i) {
     EXPECT_FLOAT_EQ(CREF[i], CMKL[i]);
