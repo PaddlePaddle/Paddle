@@ -222,10 +222,6 @@ TType* GetInnerMutableTensor(framework::Variable* dst) {
 
 template <typename TType>
 TType* GetInnerMutableTensor(paddle::experimental::Tensor* dst) {
-  PADDLE_ENFORCE_EQ(dst->initialized(), true,
-                    platform::errors::Fatal(
-                        "The underlying Tensor implementation should not be "
-                        "nullptr and the allocation should be allocated."));
   auto* dst_tensor = static_cast<TType*>(dst->impl().get());
   return dst_tensor;
 }
