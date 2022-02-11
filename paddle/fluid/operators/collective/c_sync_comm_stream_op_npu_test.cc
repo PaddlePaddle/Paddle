@@ -27,8 +27,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/operators/dropout_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 #include "paddle/fluid/operators/collective/c_broadcast_op.h"
 #include "paddle/fluid/operators/collective/gen_hccl_id_op_helper.h"
@@ -40,7 +40,6 @@ limitations under the License. */
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
-namespace m = paddle::operators::math;
 
 USE_OP(c_broadcast);
 USE_OP_DEVICE_KERNEL(c_sync_comm_stream, NPU);

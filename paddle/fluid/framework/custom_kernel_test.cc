@@ -253,7 +253,7 @@ TEST(CustomKernel, custom_kernel_dot) {
 
   auto dense_out = std::make_shared<pten::DenseTensor>(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
-          pten::TransToFluidPlace(backend)),
+          pten::TransToPtenPlace(backend)),
       pten::DenseTensorMeta());
 
   pten::MetaTensor meta_out(dense_out.get());

@@ -117,13 +117,6 @@ class DotGradOp : public framework::OperatorWithKernel {
                                        ctx, framework::GradVarName("Out")),
                                    ctx.GetPlace());
   }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::KernelSignature(
-        "dot_grad", {"X", "Y", framework::GradVarName("Out")}, {},
-        {framework::GradVarName("X"), framework::GradVarName("Y")});
-  }
 };
 
 template <typename T>

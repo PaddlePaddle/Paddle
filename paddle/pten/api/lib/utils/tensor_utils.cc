@@ -37,7 +37,7 @@ std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
 }
 
 pten::Scalar MakePtenScalarFromVar(const framework::Variable& variable) {
-  auto expected_place = pten::TransToFluidPlace(pten::Backend::CPU);
+  auto expected_place = pten::TransToPtenPlace(pten::Backend::CPU);
   if (variable.IsType<framework::LoDTensor>()) {
     const auto& tensor = variable.Get<framework::LoDTensor>();
     if (!platform::is_same_place(tensor.place(), expected_place)) {
@@ -61,7 +61,7 @@ pten::ScalarArray MakePtenScalarArray(const paddle::framework::Tensor& src) {
 
 pten::ScalarArray MakePtenScalarArrayFromVar(
     const framework::Variable& variable) {
-  auto expected_place = pten::TransToFluidPlace(pten::Backend::CPU);
+  auto expected_place = pten::TransToPtenPlace(pten::Backend::CPU);
   if (variable.IsType<framework::LoDTensor>()) {
     const auto& tensor = variable.Get<framework::LoDTensor>();
     if (!platform::is_same_place(tensor.place(), expected_place)) {
@@ -85,7 +85,7 @@ pten::ScalarArray MakePtenScalarArrayFromVarList(
   if (variable_list.size() == 0) {
     return pten::ScalarArray();
   }
-  auto expected_place = pten::TransToFluidPlace(pten::Backend::CPU);
+  auto expected_place = pten::TransToPtenPlace(pten::Backend::CPU);
 
   std::vector<int64_t> vector_data;
   vector_data.reserve(variable_list.size());

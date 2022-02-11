@@ -54,11 +54,11 @@ void ReshapeInferMeta(const MetaTensor& x,
                       const ScalarArray& shape,
                       MetaTensor* out);
 
-void ReduceInferMeta(const MetaTensor& x,
-                     const std::vector<int64_t>& axis,
-                     bool keep_dim,
-                     DataType dtype,
-                     MetaTensor* out);
+void ReduceInferMetaBase(const MetaTensor& x,
+                         const std::vector<int64_t>& axis,
+                         bool keep_dim,
+                         DataType dtype,
+                         MetaTensor* out);
 
 void ReduceInferMeta(const MetaTensor& x,
                      const std::vector<int64_t>& axis,

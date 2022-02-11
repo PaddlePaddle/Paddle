@@ -14,9 +14,41 @@ limitations under the License. */
 
 #include "paddle/pten/core/compat/op_utils.h"
 
-namespace pten {}  // namespace pten
+namespace pten {
+
+KernelSignature MatmulGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("matmul_grad",
+                         {"X", "Y", GradVarName("Out")},
+                         {"trans_x", "trans_y"},
+                         {GradVarName("X"), GradVarName("Y")});
+}
+
+KernelSignature MatmulDoubleGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("matmul_double_grad",
+                         {"X", "Y", "DOut", "DDX", "DDY"},
+                         {"trans_x", "trans_y"},
+                         {"DX", "DY", "DDOut"});
+}
+
+KernelSignature MatmulTripleGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "matmul_triple_grad",
+      {"X", "Y", "DOut", "DDX", "DDY", "D_DX", "D_DY", "D_DDOut"},
+      {"trans_x", "trans_y"},
+      {"D_X_out", "D_Y_out", "D_DOut_out", "D_DDX_out", "D_DDY_out"});
+}
+
+}  // namespace pten
 
 PT_REGISTER_BASE_KERNEL_NAME(matmul_v2, matmul);
 PT_REGISTER_BASE_KERNEL_NAME(matmul_v2_grad, matmul_grad);
 PT_REGISTER_BASE_KERNEL_NAME(matmul_v2_grad_grad, matmul_double_grad);
 PT_REGISTER_BASE_KERNEL_NAME(matmul_v2_triple_grad, matmul_triple_grad);
+
+PT_REGISTER_ARG_MAPPING_FN(matmul_v2_grad, pten::MatmulGradOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(matmul_v2_grad_grad,
+                           pten::MatmulDoubleGradOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(matmul_v2_triple_grad,
+                           pten::MatmulTripleGradOpArgumentMapping);
