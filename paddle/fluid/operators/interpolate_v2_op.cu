@@ -61,13 +61,13 @@ inline platform::GpuLaunchConfig GetGpuLaunchConfig3D(
 
 template <typename T>
 __forceinline__ __device__ void PreCalculatorForLinearInterpInputIndex(
-    int* in_img_idx, int* w_id, T* w1lambda, T* w2lambda, T src_w,
-    const int in_img_w) {
-  src_w = (src_w > 0) ? src_w : 0.f;
-  *in_img_idx = static_cast<int>(src_w);
-  *w_id = (*in_img_idx < in_img_w - 1) ? 1 : 0;
-  *w1lambda = src_w - *in_img_idx;
-  *w2lambda = 1.f - *w1lambda;
+    int* in_img_idx, int* x_id, T* lambda1, T* lambda2, T src_x,
+    const int in_img_x) {
+  src_x = (src_x > 0) ? src_x : 0.f;
+  *in_img_idx = static_cast<int>(src_x);
+  *x_id = (*in_img_idx < in_img_x - 1) ? 1 : 0;
+  *lambda1 = src_x - *in_img_idx;
+  *lambda2 = 1.f - *lambda1;
 }
 
 struct FastDivModForInterpolate {
@@ -659,9 +659,11 @@ __global__ void KeBilinearInterpNCHWBw(T* in, const size_t in_img_h,
   T h1lambda, w1lambda, h2lambda, w2lambda;
   T src_w = ratio_w * (out_img_idx + align_type_value) - align_type_value;
   T src_h = ratio_h * (out_img_idy + align_type_value) - align_type_value;
-  PreCalculatorForInputIndex(&in_img_idx, &in_img_idy, &w_id, &h_id, &w1lambda,
-                             &h1lambda, &w2lambda, &h2lambda, src_w, src_h,
-                             in_img_w, in_img_h);
+
+  PreCalculatorForLinearInterpInputIndex(&in_img_idx, &w_id, &w1lambda,
+                                         &w2lambda, src_w, in_img_w);
+  PreCalculatorForLinearInterpInputIndex(&in_img_idy, &h_id, &h1lambda,
+                                         &h2lambda, src_h, in_img_h);
 
   int in_index = (nc_id * in_img_h + in_img_idy) * in_img_w + in_img_idx;
   int in_index_stride = nc_stride * in_img_h * in_img_w;
@@ -701,70 +703,38 @@ __global__ void KeBilinearInterpBw(T* in, const int in_h, const int in_w,
   int in_chw = in_h * in_w * num_channels;
   int nthreads = n * out_chw;
 
-  if (is_nchw) {
-    for (; tid < nthreads; tid += stride) {
-      int out_id_h = tid / out_chw;
-      int out_id_w = tid % out_chw;
-      const int in_img_size = in_h * in_w;
-      const int out_img_size = out_h * out_w;
-      T value = out[out_id_h * out_chw + out_id_w];
+  for (; tid < nthreads; tid += stride) {
+    auto out_id_divmod = divmods.output_w_div.Divmod(tid);
+    int out_id_h = out_id_divmod.val[0];
+    int out_id_w = out_id_divmod.val[1];
 
-      int channel_id = out_id_w / out_img_size;
-      int out_img_idy = (out_id_w % out_img_size) / out_w;
-      int out_img_idx = tid % out_w;
-      int in_img_idx, in_img_idy, w_id, h_id;
-      T w1lambda, h1lambda, w2lambda, h2lambda;
+    int channel_id = divmods.channels_div.Divmod(tid).val[1];
+    auto outimg_id_divmod = divmods.output_wc_div.Divmod(out_id_w);
+    int out_img_idy = outimg_id_divmod.val[0];
+    int out_img_idx =
+        divmods.channels_div.Divmod(outimg_id_divmod.val[1]).val[0];
 
-      T src_w = ratio_w * (out_img_idx + align_type_value) - align_type_value;
-      T src_h = ratio_h * (out_img_idy + align_type_value) - align_type_value;
+    int in_img_idx, in_img_idy, w_id, h_id;
+    T w1lambda, h1lambda, w2lambda, h2lambda;
+    T src_w = ratio_w * (out_img_idx + align_type_value) - align_type_value;
+    T src_h = ratio_h * (out_img_idy + align_type_value) - align_type_value;
 
-      PreCalculatorForLinearInterpInputIndex(&in_img_idx, &w_id, &w1lambda,
-                                             &w2lambda, src_w, in_w);
-      PreCalculatorForLinearInterpInputIndex(&in_img_idy, &h_id, &h1lambda,
-                                             &h2lambda, src_h, in_h);
+    PreCalculatorForLinearInterpInputIndex(&in_img_idx, &w_id, &w1lambda,
+                                           &w2lambda, src_w, in_w);
+    PreCalculatorForLinearInterpInputIndex(&in_img_idy, &h_id, &h1lambda,
+                                           &h2lambda, src_h, in_h);
 
-      T* in_pos = &in[out_id_h * in_chw + channel_id * in_img_size +
-                      in_img_idy * in_w + in_img_idx];
-      platform::CudaAtomicAdd(&in_pos[0], h2lambda * w2lambda * value);
-      platform::CudaAtomicAdd(&in_pos[w_id], h2lambda * w1lambda * value);
-      platform::CudaAtomicAdd(&in_pos[h_id * in_w],
-                              h1lambda * w2lambda * value);
-      platform::CudaAtomicAdd(&in_pos[h_id * in_w + w_id],
-                              h1lambda * w1lambda * value);
-    }
-  } else {
-    for (; tid < nthreads; tid += stride) {
-      int out_id_h = tid / out_chw;
-      int out_id_w = tid % out_chw;
-      const int in_img_size = in_h * in_w;
-      const int out_img_size = out_h * out_w;
-      T value = out[out_id_h * out_chw + out_id_w];
-
-      int out_img_idy = out_id_w / (out_w * num_channels);
-      int out_img_idx = out_id_w % (out_w * num_channels) / num_channels;
-      int channel_id = tid % num_channels;
-
-      int in_img_idx, in_img_idy, w_id, h_id;
-      T w1lambda, h1lambda, w2lambda, h2lambda;
-      T src_w = ratio_w * (out_img_idx + align_type_value) - align_type_value;
-      T src_h = ratio_h * (out_img_idy + align_type_value) - align_type_value;
-
-      PreCalculatorForLinearInterpInputIndex(&in_img_idx, &w_id, &w1lambda,
-                                             &w2lambda, src_w, in_w);
-      PreCalculatorForLinearInterpInputIndex(&in_img_idy, &h_id, &h1lambda,
-                                             &h2lambda, src_h, in_h);
-
-      T* in_pos = &in[out_id_h * in_chw + in_img_idy * in_w * num_channels +
-                      in_img_idx * num_channels + channel_id];
-      platform::CudaAtomicAdd(&in_pos[0], h2lambda * w2lambda * value);
-      platform::CudaAtomicAdd(&in_pos[w_id * num_channels],
-                              h2lambda * w1lambda * value);
-      platform::CudaAtomicAdd(&in_pos[h_id * in_w * num_channels],
-                              h1lambda * w2lambda * value);
-      platform::CudaAtomicAdd(
-          &in_pos[h_id * in_w * num_channels + w_id * num_channels],
-          h1lambda * w1lambda * value);
-    }
+    T value = out[tid];
+    T* in_pos = &in[out_id_h * in_chw + in_img_idy * in_w * num_channels +
+                    in_img_idx * num_channels + channel_id];
+    platform::CudaAtomicAdd(&in_pos[0], h2lambda * w2lambda * value);
+    platform::CudaAtomicAdd(&in_pos[w_id * num_channels],
+                            h2lambda * w1lambda * value);
+    platform::CudaAtomicAdd(&in_pos[h_id * in_w * num_channels],
+                            h1lambda * w2lambda * value);
+    platform::CudaAtomicAdd(
+        &in_pos[h_id * in_w * num_channels + w_id * num_channels],
+        h1lambda * w1lambda * value);
   }
 }
 
