@@ -13,60 +13,52 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/pten/core/compat/convert_utils.h"
-#include "paddle/pten/core/compat/op_utils.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
-#include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#include "paddle/pten/backends/gpu/gpu_info.h"
+#include "paddle/pten/backends/xpu/xpu_info.h"
+#include "paddle/pten/common/place.h"
+#include "paddle/pten/core/compat/op_utils.h"
 
 namespace pten {
 
-// TODO(chenweihang): Add other place trans cases later
-Backend TransToPtenBackend(const paddle::platform::Place& place) {
-  if (paddle::platform::is_cpu_place(place)) {
+Backend TransToPtenBackend(const pten::Place& place) {
+  if (place.GetType() == pten::AllocationType::CPU) {
     return Backend::CPU;
-  } else if (paddle::platform::is_gpu_place(place)) {
+  } else if (place.GetType() == pten::AllocationType::GPU) {
     return Backend::GPU;
   } else {
     return Backend::UNDEFINED;
   }
 }
 
-paddle::platform::Place TransToFluidPlace(const Backend& backend,
-                                          bool set_device_id) {
+pten::Place TransToPtenPlace(const Backend& backend, bool set_device_id) {
   // NOTE(zhiqiu): GetCurrentDeviceId not always success, and device id is not
   // always needed.
   // So, add set_device_id parameter here.
   switch (backend) {
     case pten::Backend::CPU:
-      return paddle::platform::CPUPlace();
+      return pten::CPUPlace();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     case pten::Backend::GPU:
-      return paddle::platform::CUDAPlace(
-          set_device_id ? paddle::platform::GetCurrentDeviceId() : 0);
+      return pten::GPUPlace(
+          set_device_id ? pten::backends::gpu::GetCurrentDeviceId() : 0);
 #endif
 #ifdef PADDLE_WITH_MKLDNN
     case pten::Backend::MKLDNN:
-      return paddle::platform::CPUPlace();
+      return pten::CPUPlace();
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     case pten::Backend::CUDNN:
-      return paddle::platform::CUDAPlace(
-          set_device_id ? paddle::platform::GetCurrentDeviceId() : 0);
+      return pten::GPUPlace(
+          set_device_id ? pten::backends::gpu::GetCurrentDeviceId() : 0);
 #endif
 #if defined(PADDLE_WITH_XPU)
     case pten::Backend::XPU:
-      return paddle::platform::XPUPlace(
-          set_device_id ? paddle::platform::GetXPUCurrentDeviceId() : 0);
-#endif
-#if defined(PADDLE_WITH_ASCEND_CL)
-    case pten::Backend::NPU:
-      return paddle::platform::NPUPlace(
-          set_device_id ? paddle::platform::GetCurrentNPUDeviceId() : 0);
+      return pten::XPUPlace(
+          set_device_id ? pten::backends::xpu::GetXPUCurrentDeviceId() : 0);
 #endif
     default:
-      PADDLE_THROW(paddle::platform::errors::Unimplemented(
+      PADDLE_THROW(pten::errors::Unimplemented(
           "Unsupported backend `%s` when casting it to paddle place type.",
           backend));
   }

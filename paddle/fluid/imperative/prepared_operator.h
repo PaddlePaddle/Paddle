@@ -327,7 +327,7 @@ void BuildDygraphPtenKernelContext(
       experimental::ResetTensorDtypeAndLayoutByArgDef(tensor_out,
                                                       output_defs.at(i));
       framework::SetAllocationForOutputTenosr(
-          tensor_out, pten::TransToFluidPlace(output_defs.at(i).backend));
+          tensor_out, pten::TransToPtenPlace(output_defs.at(i).backend));
 
       kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
     }
@@ -468,7 +468,7 @@ void PreparePtenData(const pten::Kernel& pt_kernel,
       auto var = ins_vector[offset];
       const auto* tensor_in = GetTensorFromVar(var->Var());
       if (tensor_in && tensor_in->IsInitialized()) {
-        auto expected_place = pten::TransToFluidPlace(in_def.backend);
+        auto expected_place = pten::TransToPtenPlace(in_def.backend);
         if (platform::is_same_place(tensor_in->place(), expected_place)) {
           continue;
         }
