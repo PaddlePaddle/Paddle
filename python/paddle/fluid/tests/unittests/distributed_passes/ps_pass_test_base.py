@@ -22,6 +22,7 @@ import inspect
 import unittest
 import numpy as np
 from collections import OrderedDict
+from paddle.distributed.ps.utils.public import logger
 from dist_pass_test_base import prepare_python_path_and_return_module, remove_path_if_exists
 import paddle.distributed.fleet as fleet
 
@@ -37,7 +38,7 @@ class PsPassTestBase(unittest.TestCase):
         print('Ps tearDown...')
 
     def ps_launch(self, config, ps_mode="cpu-ps"):
-        if ps_mode == "cpu-ps":
+        if ps_mode == "cpu-ps" or ps_mode == 'heter-ps':
             os.environ['WITH_DISTRIBUTE'] = 'ON'
 
             cmd = [
@@ -45,7 +46,16 @@ class PsPassTestBase(unittest.TestCase):
                 "-u",
             ] + [
                 "-m", "launch", "--log_dir", config['log_dir'], "--worker_num",
-                config['worker_num'], "--server_num", config['server_num'],
+                config['worker_num'], "--server_num", config['server_num']
+            ]
+            if ps_mode == 'heter-ps':
+                os.environ['FLAGS_START_PORT'] = '12004'
+                cmd += [
+                    '--heter_worker_num', config['heter_worker_num'],
+                    '--heter_devices', config['heter_devices']
+                ]
+
+            cmd += [
                 "../ps/ps_dnn_trainer.py", "-m", config['ps_mode_config'],
                 "--run_minimize", config['run_minimize'], "--run_single_pass",
                 config['run_single_pass'], "--debug_new_pass",
@@ -53,6 +63,7 @@ class PsPassTestBase(unittest.TestCase):
                 config['debug_new_minimize'], "--applied_pass_name",
                 config['applied_pass_name']
             ]
+
         elif ps_mode == "gpu-ps":
             os.environ['FLAGS_LAUNCH_BARRIER'] = '0'
             os.environ['PADDLE_PSERVER_NUMS'] = '1'
@@ -79,5 +90,7 @@ class PsPassTestBase(unittest.TestCase):
             ]
 
         cmd = [shlex.quote(c) for c in cmd]
+        print("!!!!!!:\n")
+        print(' '.join(cmd))
         prepare_python_path_and_return_module(__file__)
         exitcode = os.system(' '.join(cmd))
