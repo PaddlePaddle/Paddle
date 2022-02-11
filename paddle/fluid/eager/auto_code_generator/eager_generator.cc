@@ -1437,14 +1437,14 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       if (op_passing_outs_map[op_type].count(output_name)) {
         const char* FWD_OUT_TENSORS_TEMPLATE =
             "  std::vector<paddle::experimental::Tensor> %s;\n"
-            "  egr::EagerUtils::Output2Result(outs[\"%s\"][0], %s, &%s);\n";
+            "  egr::EagerUtils::Output2Result(outs[\"%s\"], %s, &%s);\n";
         out_tensor_str = paddle::string::Sprintf(
             FWD_OUT_TENSORS_TEMPLATE, output_varname, output_name,
             output_var_args_name, output_varname);
       } else {
         const char* FWD_OUT_TENSORS_TEMPLATE =
             "  std::vector<paddle::experimental::Tensor> %s;\n"
-            "  egr::EagerUtils::Output2Result(outs[\"%s\"][0], &%s, &%s);\n";
+            "  egr::EagerUtils::Output2Result(outs[\"%s\"], &%s, &%s);\n";
         out_tensor_str = paddle::string::Sprintf(
             FWD_OUT_TENSORS_TEMPLATE, output_varname, output_name,
             output_varname, output_varname);
