@@ -115,11 +115,11 @@ class AddLrDecayTablePass(PassBase):
                           LRScheduler), "must be LRScheduler"
 
         ops = get_optimize_ops(attrs['origin_main_program'])
-        lr_decay_main_program, lr_decay_startup_program, lr_name = _get_lr_sheduler_program(
+        lr_decay_main_program, lr_decay_startup_program, lr_name = self._get_lr_sheduler_program(
             attrs['origin_main_program'].lr_sheduler, attrs['lr_decay_steps'])
-        _add_tensor_table(attrs, "@LR_DECAY_COUNTER@", lr_name,
-                          lr_decay_startup_program, lr_decay_main_program,
-                          "GlobalStepTable")
+        self._add_tensor_table(attrs, "@LR_DECAY_COUNTER@", lr_name,
+                               lr_decay_startup_program, lr_decay_main_program,
+                               "GlobalStepTable")
         return
 
 
