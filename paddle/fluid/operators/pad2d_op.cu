@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include <algorithm>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -395,7 +395,7 @@ class Pad2dGradCUDAKernel : public framework::OpKernel<T> {
     const T* d_out_data = d_out->data<T>();
     T* d_in_data = d_in->mutable_data<T>(context.GetPlace());
 
-    math::SetConstant<platform::CUDADeviceContext, T> set_zero;
+    pten::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
     set_zero(context.template device_context<platform::CUDADeviceContext>(),
              d_in, static_cast<T>(0));
 

@@ -23,7 +23,7 @@
 
 #pragma once
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 template <typename T>
 __global__ void FilterGradAddupCUDAKernel(const int nthreads, const int n,

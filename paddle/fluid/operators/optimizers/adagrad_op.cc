@@ -17,8 +17,8 @@ limitations under the License. */
 
 #include <cmath>
 
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {

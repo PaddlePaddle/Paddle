@@ -19,9 +19,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sample_prob.h"
 #include "paddle/fluid/operators/math/softmax.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -286,7 +286,7 @@ class SampleLogitsGradKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx =
         context.template device_context<platform::CPUDeviceContext>();
-    math::SetConstant<platform::CPUDeviceContext, T> set_zero;
+    pten::funcs::SetConstant<platform::CPUDeviceContext, T> set_zero;
     set_zero(dev_ctx, logits_grad, static_cast<T>(0));
 
     // UNDERSTAND: scatter it back to logit_grad
