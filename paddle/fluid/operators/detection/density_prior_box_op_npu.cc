@@ -122,7 +122,7 @@ struct DensityPriorBoxFunction {
 
 template <>
 void DensityPriorBoxFunction<fp16>::Arange(int n, Tensor* x) {
-  Tensor x_fp32(framework::proto::VarType::FP32);
+  Tensor x_fp32(experimental::DataType::FP32);
   x_fp32.mutable_data<float>(x->dims(), place);
   FillNpuTensorWithConstant<float>(&tn, static_cast<float>(n));
   const auto& runner = NpuOpRunner("Range", {t0, tn, t1}, {x_fp32}, {});
@@ -133,7 +133,7 @@ void DensityPriorBoxFunction<fp16>::Arange(int n, Tensor* x) {
 template <>
 void DensityPriorBoxFunction<fp16>::FloatVec2Tsr(const std::vector<float>& vec,
                                                  Tensor* tsr_dst) {
-  Tensor tsr_fp32(framework::proto::VarType::FP32);
+  Tensor tsr_fp32(experimental::DataType::FP32);
   tsr_fp32.mutable_data<float>(tsr_dst->dims(), place);
   framework::TensorFromVector<float>(vec, ctx.device_context(), &tsr_fp32);
   ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();

@@ -29,29 +29,29 @@ class TruncatedGaussianRandomNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     // TODO(zhiqiu): support dynamic shape and call ParameterizedTruncatedNormal
     std::vector<int> shape = ctx.Attr<std::vector<int>>("shape");
-    Tensor shape_tensor(framework::proto::VarType::INT32);
+    Tensor shape_tensor(experimental::DataType::INT32);
     shape_tensor.mutable_data<int32_t>({static_cast<int>(shape.size())},
                                        ctx.GetPlace());
     paddle::framework::TensorFromVector(shape, ctx.device_context(),
                                         &shape_tensor);
     float mean = ctx.Attr<float>("mean");
-    Tensor mean_tensor(framework::proto::VarType::FP32);
+    Tensor mean_tensor(experimental::DataType::FP32);
     mean_tensor.mutable_data<float>({1}, ctx.GetPlace());
     FillNpuTensorWithConstant<float>(&mean_tensor, mean);
 
     float std = ctx.Attr<float>("std");
-    Tensor std_tensor(framework::proto::VarType::FP32);
+    Tensor std_tensor(experimental::DataType::FP32);
     std_tensor.mutable_data<float>({1}, ctx.GetPlace());
     FillNpuTensorWithConstant<float>(&std_tensor, std);
 
     int32_t seed_var = ctx.Attr<int32_t>("seed");
 
-    Tensor min_tensor(framework::proto::VarType::FP32);
+    Tensor min_tensor(experimental::DataType::FP32);
     min_tensor.mutable_data<float>({1}, ctx.GetPlace());
     float min_value = mean - std * 2.0;
     FillNpuTensorWithConstant<float>(&min_tensor, min_value);
 
-    Tensor max_tensor(framework::proto::VarType::FP32);
+    Tensor max_tensor(experimental::DataType::FP32);
     max_tensor.mutable_data<float>({1}, ctx.GetPlace());
     float max_value = mean + std * 2.0;
     FillNpuTensorWithConstant<float>(&max_tensor, max_value);

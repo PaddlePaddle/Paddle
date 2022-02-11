@@ -89,7 +89,7 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
 
       // mask used in `DropOutGenMask` NPU OP is different from
       // the output `Mask`.
-      Tensor npu_mask(framework::proto::VarType::UINT8);
+      Tensor npu_mask(experimental::DataType::UINT8);
       uint32_t length = (x->numel() + 128 - 1) / 128 * 128;
       npu_mask.Resize(framework::make_ddim({length / 8}));
       npu_mask.mutable_data<uint8_t>(ctx.GetPlace());
@@ -116,7 +116,7 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
       runner_dropout.Run(stream);
 
       // cast `out` from float/float16 to bool
-      Tensor cast_mask(framework::proto::VarType::BOOL);
+      Tensor cast_mask(experimental::DataType::BOOL);
       cast_mask.Resize(mask->dims());
       cast_mask.mutable_data<bool>(ctx.GetPlace());
       auto dst_dtype_bool =

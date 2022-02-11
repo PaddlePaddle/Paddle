@@ -75,16 +75,16 @@ class ArgsortNPUKernel : public framework::OpKernel<T> {
     framework::NPUAttributeMap attr = {{"axis", -1},
                                        {"descending", descending}};
 
-    Tensor indices_tmp(framework::proto::VarType::INT32);
+    Tensor indices_tmp(experimental::DataType::INT32);
     indices_tmp.Resize(indices->dims());
 
     if (framework::TransToProtoVarType(input->dtype()) ==
         framework::proto::VarType::INT64) {
-      Tensor input_fp32(framework::proto::VarType::FP32);
+      Tensor input_fp32(experimental::DataType::FP32);
       input_fp32.Resize(input->dims());
       CastToFP32(ctx, stream, *input, &input_fp32);
 
-      Tensor output_fp32(framework::proto::VarType::FP32);
+      Tensor output_fp32(experimental::DataType::FP32);
       output_fp32.Resize(output->dims());
 
       if (axis == -1 || axis + 1 == in_dims.size()) {
@@ -113,7 +113,7 @@ class ArgsortNPUKernel : public framework::OpKernel<T> {
         TranposeNPU<float>(ctx, stream, &perm, input_fp32, &trans_input);
 
         Tensor trans_output(input_fp32.type());
-        Tensor trans_indices(framework::proto::VarType::INT32);
+        Tensor trans_indices(experimental::DataType::INT32);
         trans_output.mutable_data<float>(trans_dims, ctx.GetPlace());
         trans_indices.mutable_data<int32_t>(trans_dims, ctx.GetPlace());
 
@@ -151,7 +151,7 @@ class ArgsortNPUKernel : public framework::OpKernel<T> {
         TranposeNPU<T>(ctx, stream, &perm, *input, &trans_input);
 
         Tensor trans_output(input->type());
-        Tensor trans_indices(framework::proto::VarType::INT32);
+        Tensor trans_indices(experimental::DataType::INT32);
         trans_output.mutable_data<T>(trans_dims, ctx.GetPlace());
         trans_indices.mutable_data<int32_t>(trans_dims, ctx.GetPlace());
 
