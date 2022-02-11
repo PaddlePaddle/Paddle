@@ -44,6 +44,11 @@ DECLARE_string(deny_cinn_ops);
 
 namespace paddle {
 namespace framework {
+
+namespace ir {
+class MemOptVarInfo;
+}  // namespace ir
+
 namespace paddle2cinn {
 
 using framework::ir::Graph;
@@ -369,6 +374,11 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
       ExtractNoNeedBufferFeeds(cluster, cluster_inputs));
   subgraph->Set<std::unordered_set<std::string>>(
       kNoNeedBufferFeeds, no_need_buffer_feeds.release());
+  // initialize empty map for kMemOptVarInfoFromMainGraph attribute,
+  // it will be filled on the share_mem_opt_info_to_subgraph pass
+  subgraph->GetOrInit<std::unordered_map<
+      std::string, std::shared_ptr<framework::ir::MemOptVarInfo>>>(
+      kMemOptVarInfoFromMainGraph);
   return subgraph;
 }
 

@@ -126,8 +126,7 @@ class PnormCUDAKernel : public framework::OpKernel<T> {
       std::vector<framework::Tensor*> outs = {out_norm};
       const auto& cuda_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();
-      paddle::operators::LaunchSameDimsElementwiseCudaKernel<
-          ElementwiseType::kUnary, T, T, UnsignedPowFunctor<T>>(
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
           cuda_ctx, ins, &outs, UnsignedPowFunctor<T>(1. / porder));
     }
   }
