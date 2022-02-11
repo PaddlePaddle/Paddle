@@ -90,7 +90,5 @@ class PsPassTestBase(unittest.TestCase):
             ]
 
         cmd = [shlex.quote(c) for c in cmd]
-        print("!!!!!!:\n")
-        print(' '.join(cmd))
         prepare_python_path_and_return_module(__file__)
         exitcode = os.system(' '.join(cmd))
