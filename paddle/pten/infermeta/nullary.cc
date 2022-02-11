@@ -12,23 +12,25 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/pten/infermeta/nullary.h"
 
 namespace pten {
 
-DenseTensorMeta CreateInferMeta(const std::vector<int64_t>& shape,
-                                DataType dtype,
-                                DataLayout layout) {
-  const auto& out_dims = pten::framework::make_ddim(shape);
-  return {dtype, out_dims, layout};
+void CreateInferMetaBase(const std::vector<int64_t>& shape,
+                         DataType dtype,
+                         DataLayout layout,
+                         MetaTensor* out) {
+  auto out_dims = pten::framework::make_ddim(shape);
+  out->set_dims(out_dims);
+  out->set_dtype(dtype);
+  out->set_layout(layout);
 }
 
-DenseTensorMeta CreateInferMeta(const ScalarArray& shape,
-                                DataType dtype,
-                                DataLayout layout) {
-  const auto& out_dims = pten::framework::make_ddim(shape.GetData());
-  return {dtype, out_dims, layout};
+void CreateInferMeta(const ScalarArray& shape,
+                     DataType dtype,
+                     DataLayout layout,
+                     MetaTensor* out) {
+  CreateInferMetaBase(shape.GetData(), dtype, layout, out);
 }
 
 }  // namespace pten

@@ -105,25 +105,28 @@ class PnormCUDAKernel : public framework::OpKernel<T> {
 
     using MT = typename details::MPTypeTrait<T>::Type;
     if (porder == 0) {
-      TensorReduceFunctorImpl<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
-          *in_x, out_norm, NonzeroFunctor<T>(), reduce_axis, stream);
+      TensorReduceImpl<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
+          ctx.cuda_device_context(), *in_x, out_norm, NonzeroFunctor<T>(),
+          reduce_axis, stream);
     } else if (porder == INFINITY) {
-      TensorReduceFunctorImpl<T, T, kps::MaxFunctor, AbsFunctor<T>>(
-          *in_x, out_norm, AbsFunctor<T>(), reduce_axis, stream);
+      TensorReduceImpl<T, T, kps::MaxFunctor, AbsFunctor<T>>(
+          ctx.cuda_device_context(), *in_x, out_norm, AbsFunctor<T>(),
+          reduce_axis, stream);
     } else if (porder == -INFINITY) {
-      TensorReduceFunctorImpl<T, T, kps::MinFunctor, AbsFunctor<T>>(
-          *in_x, out_norm, AbsFunctor<T>(), reduce_axis, stream);
+      TensorReduceImpl<T, T, kps::MinFunctor, AbsFunctor<T>>(
+          ctx.cuda_device_context(), *in_x, out_norm, AbsFunctor<T>(),
+          reduce_axis, stream);
     } else {
-      TensorReduceFunctorImpl<T, T, kps::AddFunctor, UnsignedPowFunctor<T>>(
-          *in_x, out_norm, UnsignedPowFunctor<T>(porder), reduce_axis, stream);
+      TensorReduceImpl<T, T, kps::AddFunctor, UnsignedPowFunctor<T>>(
+          ctx.cuda_device_context(), *in_x, out_norm,
+          UnsignedPowFunctor<T>(porder), reduce_axis, stream);
 
       const framework::Tensor* tmp_norm = out_norm;
       std::vector<const framework::Tensor*> ins = {tmp_norm};
       std::vector<framework::Tensor*> outs = {out_norm};
       const auto& cuda_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();
-      paddle::operators::LaunchSameDimsElementwiseCudaKernel<
-          ElementwiseType::kUnary, T, T, UnsignedPowFunctor<T>>(
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
           cuda_ctx, ins, &outs, UnsignedPowFunctor<T>(1. / porder));
     }
   }

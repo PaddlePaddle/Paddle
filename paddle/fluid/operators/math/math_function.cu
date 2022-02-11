@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function_impl.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/kernels/funcs/eigen/common.h"
 
 namespace paddle {
@@ -43,6 +44,18 @@ template struct SetConstant<platform::CUDADeviceContext,
                             platform::complex<float>>;
 template struct SetConstant<platform::CUDADeviceContext,
                             platform::complex<double>>;
+
+template struct SetConstant<pten::GPUContext, platform::float16>;
+template struct SetConstant<pten::GPUContext, platform::bfloat16>;
+template struct SetConstant<pten::GPUContext, float>;
+template struct SetConstant<pten::GPUContext, double>;
+template struct SetConstant<pten::GPUContext, uint8_t>;
+template struct SetConstant<pten::GPUContext, int>;
+template struct SetConstant<pten::GPUContext, int16_t>;
+template struct SetConstant<pten::GPUContext, int64_t>;
+template struct SetConstant<pten::GPUContext, bool>;
+template struct SetConstant<pten::GPUContext, platform::complex<float>>;
+template struct SetConstant<pten::GPUContext, platform::complex<double>>;
 
 template struct SetConstant<platform::CUDAPinnedDeviceContext,
                             platform::float16>;

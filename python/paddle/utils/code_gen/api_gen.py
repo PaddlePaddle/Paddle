@@ -16,76 +16,57 @@ import os
 import yaml
 import argparse
 
-import gen_utils
+from api_base import BaseAPI
 
 
-class API:
+class ForwardAPI(BaseAPI):
     prefix_tensor_name = 'dense_'
 
     def __init__(self, api_item_yaml):
-        self.api = api_item_yaml['api']
-        # args:
-        #   inputs:
-        #     names : [], list of input names
-        #   attrs:
-        #     names : [], list of attribute names
-        #     attr_info : { attr_name : (type, default_values)}
-        self.args = gen_utils.parse_args(self.api, api_item_yaml['args'])
-        self.output = api_item_yaml['output']
-        self.is_base_api = True
-        if 'invoke' in api_item_yaml:
-            self.is_base_api = False
-            self.invoke = api_item_yaml['invoke']
+        super(ForwardAPI, self).__init__(api_item_yaml)
+
+    def get_return_type(self, out_type_list):
+        return out_type_list[0] if len(
+            out_type_list) == 1 else "std::tuple<" + ",".join(
+                out_type_list) + ">"
+
+    def gene_output(self, output_type_list):
+        kernel_output = ""
+        output_names = []
+        output_create = ""
+
+        if len(output_type_list) == 1:
+            kernel_output = 'dense_out'
+            output_names.append('dense_out')
+            output_create = f"""
+  {self.outputs['return_type']} out;
+  auto dense_out = SetKernelOutput(kernel_backend, &out);"""
+
+        elif len(output_type_list) > 1:
+            output_create = f"""
+  {self.outputs['return_type']} out;"""
+
+            for i in range(len(output_type_list)):
+                kernel_output = kernel_output + f'dense_out_{i}, '
+                output_names.append(f'dense_out_{i}')
+                output_create = output_create + f"""
+  auto dense_out_{i} = SetKernelOutput(kernel_backend, &std::get<{i}>(out));"""
+
+            kernel_output = kernel_output[:-2]
         else:
-            self.kernel = api_item_yaml['kernel']
-            if 'backend' not in self.kernel or len(self.kernel['backend']) == 0:
-                self.kernel['backend'] = None
-            if 'layout' not in self.kernel or len(self.kernel['layout']) == 0:
-                self.kernel['layout'] = None
-            if 'data_type' not in self.kernel or len(self.kernel[
-                    'data_type']) == 0:
-                self.kernel['data_type'] = None
-            if 'param' not in self.kernel:
-                self.kernel['param'] = None
+            raise ValueError(
+                "{} : Output error: the output should not be empty.".format(
+                    self.api))
 
-            self.infer_meta = api_item_yaml['infer_meta']
-            if 'param' not in self.infer_meta:
-                self.infer_meta['param'] = None
+        return kernel_output, output_names, output_create
 
-    def gene_api_declaration(self):
-        return f"""
-PADDLE_API {self.output} {self.api}({self.args['args_declare']});
-"""
-
-    def gene_api_code(self):
+    def gene_infer_meta_register(self):
         if self.is_base_api:
-            input_tensors, kernel_args = gen_utils.get_kernel_args(
-                self.args['inputs']['names'], self.args['attrs'],
-                self.kernel['param'])
-            out_type, _ = gen_utils.parse_output(self.api, self.output)
-            outputs_args, output_create = gen_utils.gene_output(out_type)
             return f"""
-PADDLE_API {self.output} {self.api}({self.args["args_define"]}) {{
-{gen_utils.gene_kernel_select(self.api, self.args['inputs']['names'], self.args['attrs'], self.kernel)}
-
-  auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
-{input_tensors}
-{gen_utils.gene_infer_meta(self.args['inputs']['names'], self.args['attrs']['names'], self.infer_meta)}
-{output_create}
-
-  auto* kernel_fn = kernel.GetVariadicKernelFn<pten::{self.api}_kernel>();
-  (*kernel_fn)({kernel_args}, {outputs_args});
-
-  return out;
-}}
-"""
+PT_REGISTER_INFER_META_FN({self.kernel['func']}, pten::{self.infer_meta['func']});"""
 
         else:
-            return f"""
-PADDLE_API {self.output} {self.api}({self.args["args_define"]}) {{
-  return {self.invoke};
-}}
-"""
+            return ''
 
 
 def header_include():
@@ -105,11 +86,12 @@ def source_include(header_file_path):
 
 #include "glog/logging.h"
 
-#include "paddle/pten/api/include/kernel_signature.h"
 #include "paddle/pten/api/lib/api_registry.h"
 #include "paddle/pten/api/lib/api_utils.h"
+#include "paddle/pten/api/lib/data_transform.h"
 #include "paddle/pten/api/lib/kernel_dispatch.h"
 #include "paddle/pten/api/lib/utils/storage.h"
+#include "paddle/pten/core/infermeta_utils.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/infermeta/binary.h"
 #include "paddle/pten/infermeta/multiary.h"
@@ -154,15 +136,21 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
     source_file.write(source_include(include_header_file))
     source_file.write(namespace[0])
 
+    infer_meta_register_code = ''
+
     for api in apis:
-        api_code = API(api)
+        api_code = ForwardAPI(api)
         print(api_code.gene_api_declaration())
         header_file.write(api_code.gene_api_declaration())
         source_file.write(api_code.gene_api_code())
+        infer_meta_register_code = infer_meta_register_code + api_code.gene_infer_meta_register(
+        )
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])
+
     source_file.write(api_register())
+    source_file.write(infer_meta_register_code)
 
     header_file.close()
     source_file.close()

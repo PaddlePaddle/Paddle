@@ -19,9 +19,101 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/custom_operator.h"
+#include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/enforce.h"
 
 namespace paddle {
+
+PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst) {
+  PADDLE_ENFORCE_EQ(src.is_dense_tensor() && dst->is_dense_tensor(),
+                    true,
+                    pten::errors::Unavailable(
+                        "Now only supported DenseTensor in Custom Operator."));
+  PADDLE_ENFORCE_EQ(
+      src.initialized(),
+      true,
+      pten::errors::Unavailable(
+          "The Custom OpKernel calculate output is not initialized."));
+  PADDLE_ENFORCE_EQ(dst->defined(),
+                    true,
+                    pten::errors::Unavailable(
+                        "The Custom OpKernel origin output is not defined."));
+  auto& dense_src = static_cast<const pten::DenseTensor&>(*src.impl());
+  auto* dense_dst = static_cast<pten::DenseTensor*>(dst->impl().get());
+  *dense_dst = dense_src;
+}
+
+////////////////////// Kernel Context //////////////////////
+
+void CustomOpKernelContext::EmplaceBackInput(Tensor&& input) {
+  size_t index = inputs_.size();
+  inputs_.emplace_back(input);
+  input_range_.emplace_back(std::make_pair(index, index + 1));
+}
+
+void CustomOpKernelContext::EmplaceBackInputs(std::vector<Tensor>&& inputs) {
+  size_t index = inputs_.size();
+  input_range_.emplace_back(std::make_pair(index, index + inputs.size()));
+  inputs_.insert(inputs_.end(),
+                 std::make_move_iterator(inputs.begin()),
+                 std::make_move_iterator(inputs.end()));
+}
+
+void CustomOpKernelContext::EmplaceBackOutput(Tensor&& output) {
+  size_t index = outputs_.size();
+  outputs_.emplace_back(output);
+  output_range_.emplace_back(std::make_pair(index, index + 1));
+}
+
+void CustomOpKernelContext::EmplaceBackOutputs(std::vector<Tensor>&& outputs) {
+  size_t index = outputs_.size();
+  output_range_.emplace_back(std::make_pair(index, index + outputs.size()));
+  outputs_.insert(outputs_.end(),
+                  std::make_move_iterator(outputs.begin()),
+                  std::make_move_iterator(outputs.end()));
+}
+
+void CustomOpKernelContext::EmplaceBackAttr(paddle::any attr) {
+  attrs_.emplace_back(std::move(attr));
+}
+
+const Tensor& CustomOpKernelContext::InputAt(size_t idx) const {
+  return inputs_.at(idx);
+}
+
+std::vector<Tensor> CustomOpKernelContext::InputsBetween(size_t start,
+                                                         size_t end) const {
+  std::vector<Tensor> rlt;
+  for (size_t i = start; i < end; ++i) {
+    rlt.emplace_back(inputs_.at(i));
+  }
+  return rlt;
+}
+
+Tensor* CustomOpKernelContext::MutableOutputAt(size_t idx) {
+  return &(outputs_.at(idx));
+}
+std::vector<Tensor*> CustomOpKernelContext::MutableOutputBetweeen(size_t start,
+                                                                  size_t end) {
+  std::vector<Tensor*> rlt;
+  for (size_t i = start; i < end; ++i) {
+    rlt.emplace_back(&(outputs_.at(i)));
+  }
+  return rlt;
+}
+
+std::vector<Tensor>* CustomOpKernelContext::AllMutableOutput() {
+  return &outputs_;
+}
+
+const std::pair<size_t, size_t>& CustomOpKernelContext::InputRangeAt(
+    size_t idx) const {
+  return input_range_.at(idx);
+}
+const std::pair<size_t, size_t>& CustomOpKernelContext::OutputRangeAt(
+    size_t idx) const {
+  return output_range_.at(idx);
+}
 
 ////////////////////// Op Meta Info //////////////////////
 

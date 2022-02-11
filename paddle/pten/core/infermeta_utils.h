@@ -17,20 +17,16 @@ limitations under the License. */
 #include <string>
 #include <utility>
 
+#include "paddle/pten/common/scalar.h"
+#include "paddle/pten/common/scalar_array.h"
+#include "paddle/pten/core/enforce.h"
+#include "paddle/pten/core/macros.h"
 #include "paddle/pten/core/meta_tensor.h"
+#include "paddle/pten/core/type_defs.h"
+#include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
 
 namespace pten {
-
-// TODO(chenweihang): add other flags if needed
-struct MetaConfig {
-  bool is_runtime{true};
-
-  MetaConfig() = default;
-
-  // supporting implicit construction is easier to use
-  MetaConfig(bool is_runtime) : is_runtime(is_runtime) {}  // NOLINT
-};
 
 class InferMetaContext {
  public:
@@ -52,6 +48,7 @@ class InferMetaContext {
 
   const MetaConfig& GetMetaConfig() const;
   const MetaTensor& InputAt(size_t idx) const;
+  std::vector<MetaTensor> InputsBetween(size_t start, size_t end) const;
   MetaTensor* MutableOutputAt(size_t idx);
 
   template <typename AttrType>
@@ -59,7 +56,7 @@ class InferMetaContext {
     try {
       return paddle::any_cast<AttrType>(attrs_.at(idx));
     } catch (paddle::bad_any_cast&) {
-      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+      PADDLE_THROW(pten::errors::InvalidArgument(
           "Attribute cast error in InferMeta Context."));
     }
   }
@@ -91,7 +88,8 @@ class InferMetaContext {
                     "InferMeta's Attributes should appear before Outputs.");   \
       attr_type arg = ctx->AttrAt<attr_type>(attr_idx);                        \
       InferMetaFnCallHelper<                                                   \
-          Tail...>::template Call<in_idx, attr_idx + 1, out_idx>(pargs...,     \
+          Tail...>::template Call<in_idx, attr_idx + 1, out_idx>(ctx,          \
+                                                                 pargs...,     \
                                                                  arg);         \
     }                                                                          \
   }
@@ -130,6 +128,35 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
     }
   };
 
+  template <typename... Tail>
+  struct InferMetaFnCallHelper<const std::vector<MetaTensor>&, Tail...> {
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
+    static void Call(InferMetaContext* ctx, PreviousArgs&... pargs) {
+      static_assert(attr_idx == 0,
+                    "InferMeta's Input should appear before Attributes.");
+      static_assert(out_idx == 0,
+                    "InferMeta's Input should appear before Outputs.");
+      const std::pair<int, int> range = ctx->InputRangeAt(in_idx);
+      std::vector<MetaTensor> arg =
+          ctx->InputsBetween(range.first, range.second);
+      InferMetaFnCallHelper<
+          Tail...>::template Call<in_idx + 1, attr_idx, out_idx>(ctx,
+                                                                 pargs...,
+                                                                 arg);
+    }
+  };
+
+  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(bool);
+  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(int);
+  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(int64_t);
+  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::vector<int>&);
+  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(
+      const std::vector<int64_t>&);
+  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(DataType);
+  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(DataLayout);
+  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const Scalar&);
+  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const ScalarArray&);
+
   // TODO(chenweihang): support vector<MetaTensor> input later
 
   template <typename... Tail>
@@ -151,7 +178,7 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
   struct InferMetaFnCallHelper<MetaConfig, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
     static void Call(InferMetaContext* ctx, PreviousArgs&... pargs) {
-      const MetaConfig& arg = ctx->GetMetaConfig();
+      MetaConfig arg = ctx->GetMetaConfig();
       InferMetaFnCallHelper<Tail...>::template Call<in_idx, attr_idx, out_idx>(
           ctx, pargs..., arg);
     }
@@ -166,5 +193,73 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
     }
   };
 };
+
+class MetaFunctionMap {
+ public:
+  static MetaFunctionMap& Instance();
+
+  bool Contains(const std::string& kernel_name_prefix) const {
+    return meta_fn_map_.count(kernel_name_prefix) > 0;
+  }
+
+  void Insert(std::string kernel_name_prefix, InferMetaFn infer_meta_fn) {
+    PADDLE_ENFORCE_NE(
+        Contains(kernel_name_prefix),
+        true,
+        pten::errors::AlreadyExists(
+            "`%s`'s Series Kernel's InferMetaFn has been registered.",
+            kernel_name_prefix));
+    meta_fn_map_.insert(
+        {std::move(kernel_name_prefix), std::move(infer_meta_fn)});
+  }
+
+  const InferMetaFn& Get(const std::string& kernel_name_prefix) const {
+    auto it = meta_fn_map_.find(kernel_name_prefix);
+    PADDLE_ENFORCE_NE(
+        it,
+        meta_fn_map_.end(),
+        pten::errors::NotFound(
+            "`%s`'s Series Kernel's InferMetaFn is not registered.",
+            kernel_name_prefix));
+    return it->second;
+  }
+
+ private:
+  MetaFunctionMap() = default;
+
+  /**
+   * [ Why use kernel name prefix? ]
+   *
+   * one op -> a matrix of kernels
+   *
+   * such as, scale op, it may correspond to the following kernels:
+   *
+   * - scale, scale_sr, scale_dnnl
+   * - scale_raw, scale_raw_sr, scale_raw_dnnl
+   *
+   * All the kernels in each row correspond to the same infershape function,
+   * the number of kernel arguments in the same row is the same, and only
+   * the tensor types in the arguments are different.
+   */
+  paddle::flat_hash_map<std::string, InferMetaFn> meta_fn_map_;
+
+  DISABLE_COPY_AND_ASSIGN(MetaFunctionMap);
+};
+
+struct InferMetaFnRegistrar {
+  InferMetaFnRegistrar(const char* kernel_name_prefix,
+                       InferMetaFn infer_meta_fn) {
+    MetaFunctionMap::Instance().Insert(kernel_name_prefix,
+                                       std::move(infer_meta_fn));
+  }
+};
+
+#define PT_REGISTER_INFER_META_FN(kernel_name_prefix, variadic_infer_meta_fn) \
+  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \
+      pt_register_infer_meta_fn_ns_check_##kernel_name_prefix,                \
+      "PT_REGISTER_INFER_META_FN must be called in global namespace.");       \
+  static const ::pten::InferMetaFnRegistrar                                   \
+      __registrar_arg_map_fn_for_##kernel_name_prefix(                        \
+          #kernel_name_prefix, PT_INFER_META(variadic_infer_meta_fn))
 
 }  // namespace pten

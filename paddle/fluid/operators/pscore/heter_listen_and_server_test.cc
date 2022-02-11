@@ -18,8 +18,8 @@ limitations under the License. */
 #include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/distributed/service/heter_client.h"
-#include "paddle/fluid/distributed/service/heter_server.h"
+#include "paddle/fluid/distributed/ps/service/heter_client.h"
+#include "paddle/fluid/distributed/ps/service/heter_server.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -33,7 +33,7 @@ using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
 using VarMsg = ::paddle::distributed::VariableMessage;
 DECLARE_double(eager_delete_tensor_gb);
 
-USE_OP(scale);
+USE_OP_ITSELF(scale);
 USE_NO_KERNEL_OP(heter_listen_and_serv);
 
 framework::BlockDesc* AppendSendAndRecvBlock(framework::ProgramDesc* program) {
