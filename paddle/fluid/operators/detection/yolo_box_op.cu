@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/detection/yolo_box_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 namespace paddle {
 namespace operators {
 
@@ -114,7 +114,7 @@ class YoloBoxOpCUDAKernel : public framework::OpKernel<T> {
     T* boxes_data = boxes->mutable_data<T>({n, box_num, 4}, ctx.GetPlace());
     T* scores_data =
         scores->mutable_data<T>({n, box_num, class_num}, ctx.GetPlace());
-    math::SetConstant<platform::CUDADeviceContext, T> set_zero;
+    pten::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
     set_zero(dev_ctx, boxes, static_cast<T>(0));
     set_zero(dev_ctx, scores, static_cast<T>(0));
     platform::GpuLaunchConfig config =
