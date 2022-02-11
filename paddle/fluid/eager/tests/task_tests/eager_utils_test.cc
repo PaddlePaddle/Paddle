@@ -36,7 +36,7 @@ TEST(EagerUtils, AutoGradMeta) {
           .get(),
       meta);
   dt0->mutable_data<float>(paddle::platform::CPUPlace())[0] = 10.0;
-  EagerTensor et0 = EagerTensor(dt0);
+  paddle::experimental::Tensor et0 = paddle::experimental::Tensor(dt0);
 
   std::shared_ptr<pten::DenseTensor> dt1 = std::make_shared<pten::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
@@ -44,10 +44,7 @@ TEST(EagerUtils, AutoGradMeta) {
           .get(),
       meta);
   dt1->mutable_data<float>(paddle::platform::CPUPlace())[0] = 20.0;
-  EagerTensor et1 = EagerTensor(dt1);
-
-  std::vector<EagerTensor> ets = {et0, et1};
-  auto test_node = std::make_shared<eager_test::GradTestNode>();
+  paddle::experimental::Tensor et1 = paddle::experimental::Tensor(dt1);
 
   // unsafe_autograd_meta()
   // autograd_meta()
@@ -57,6 +54,10 @@ TEST(EagerUtils, AutoGradMeta) {
   AutogradMeta* unsafe_autograd_meta_after =
       EagerUtils::unsafe_autograd_meta(et0);
   CHECK_NOTNULL(unsafe_autograd_meta_after);
+
+  // NOTE: Since autograd_meta will be copied make sure it's not null
+  std::vector<paddle::experimental::Tensor> ets = {et0, et1};
+  auto test_node = std::make_shared<eager_test::GradTestNode>();
 
   std::vector<AutogradMeta*> autograd_metas = EagerUtils::autograd_meta(&ets);
   std::vector<AutogradMeta*> unsafe_autograd_metas =
@@ -100,11 +101,11 @@ TEST(EagerUtils, AutoGradMeta) {
 }
 
 template <typename T>
-egr::EagerTensor CreateTestCPUTensor(T val,
-                                     const paddle::framework::DDim& ddim) {
+paddle::experimental::Tensor CreateTestCPUTensor(
+    T val, const paddle::framework::DDim& ddim) {
   pten::DenseTensorMeta meta =
       pten::DenseTensorMeta(pten::DataType::FLOAT32, ddim);
-  egr::EagerTensor tensor;
+  paddle::experimental::Tensor tensor;
   std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
@@ -163,11 +164,11 @@ TEST(EagerUtils, PassStopGradient) {
   CHECK(auto_grad3->StopGradient() == true);
 }
 
-TEST(EagerUtils, SyncToVarsSingle) {
+TEST(EagerUtils, TrySyncToVar) {
   paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
   auto tensor = CreateTestCPUTensor(5.0f, ddim);
-  std::vector<std::shared_ptr<egr::EagerTensor>> var_bases =
-      egr::EagerUtils::SyncToVars(tensor);
+  std::vector<std::shared_ptr<egr::EagerTensor>> var_bases = {
+      egr::EagerUtils::TrySyncToVar(tensor)};
 
   paddle::framework::Variable* var = var_bases[0]->MutableVar();
   const auto& framework_tensor = var->Get<paddle::framework::LoDTensor>();
@@ -181,13 +182,13 @@ TEST(EagerUtils, SyncToVarsSingle) {
   }
 }
 
-TEST(EagerUtils, SyncToVarsMultiple) {
+TEST(EagerUtils, TrySyncToVars) {
   paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
-  std::vector<egr::EagerTensor> tensors = {CreateTestCPUTensor(1.0f, ddim),
-                                           CreateTestCPUTensor(2.0f, ddim)};
+  std::vector<paddle::experimental::Tensor> tensors = {
+      CreateTestCPUTensor(1.0f, ddim), CreateTestCPUTensor(2.0f, ddim)};
 
   std::vector<std::shared_ptr<egr::EagerTensor>> var_bases =
-      egr::EagerUtils::SyncToVars(tensors);
+      egr::EagerUtils::TrySyncToVars(tensors);
 
   {
     paddle::framework::Variable* var = var_bases[0]->MutableVar();
@@ -215,66 +216,12 @@ TEST(EagerUtils, SyncToVarsMultiple) {
   }
 }
 
-TEST(EagerUtils, SyncToTensorSingle) {
-  std::shared_ptr<egr::EagerTensor> X(new egr::EagerTensor());
-  std::vector<float> src_data(128, 5.0);
-  std::vector<int64_t> dims = {2, 4, 4, 4};
-  paddle::platform::CPUPlace place;
-
-  auto* x_tensor = X->MutableVar()->GetMutable<paddle::framework::LoDTensor>();
-  x_tensor->Resize(paddle::framework::make_ddim(dims));
-  auto* mutable_x = x_tensor->mutable_data<float>(place);
-  paddle::memory::Copy(place, mutable_x, place, src_data.data(),
-                       sizeof(float) * src_data.size());
-  auto X_ = egr::EagerUtils::SyncToTensors(*(X.get()));
-  egr::EagerTensor tensor = egr::EagerUtils::GetOutput(X_[0]);
-  VLOG(6) << "Check Value for SyncToTensorSingle";
-  CHECK(eager_test::CompareTensorWithValue<float>(tensor, 5.0));
-}
-
-TEST(EagerUtils, SyncToTensorMultiple) {
-  eager_test::InitEnv(paddle::platform::CPUPlace());
-  std::vector<int64_t> dims = {2, 4, 4, 4};
-  paddle::platform::CPUPlace place;
-
-  std::vector<egr::EagerTensor> egr_tensors;
-  {
-    auto egr_tensor = egr::EagerTensor();
-    std::vector<float> src_data(128, 1.0);
-    auto* x_tensor =
-        egr_tensor.MutableVar()->GetMutable<paddle::framework::LoDTensor>();
-    x_tensor->Resize(paddle::framework::make_ddim(dims));
-    auto* mutable_x = x_tensor->mutable_data<float>(place);
-    paddle::memory::Copy(place, mutable_x, place, src_data.data(),
-                         sizeof(float) * src_data.size());
-    egr_tensors.emplace_back(egr_tensor);
-  }
-  {
-    auto egr_tensor = egr::EagerTensor();
-    std::vector<float> src_data(128, 2.0);
-    auto* x_tensor =
-        egr_tensor.MutableVar()->GetMutable<paddle::framework::LoDTensor>();
-    x_tensor->Resize(paddle::framework::make_ddim(dims));
-    auto* mutable_x = x_tensor->mutable_data<float>(place);
-    paddle::memory::Copy(place, mutable_x, place, src_data.data(),
-                         sizeof(float) * src_data.size());
-    egr_tensors.emplace_back(std::move(egr_tensor));
-  }
-  std::vector<egr::EagerTensor> tensors =
-      egr::EagerUtils::GetOutputs(egr::EagerUtils::SyncToTensors(egr_tensors));
-
-  VLOG(6) << "Check Value for SyncToTensorMultiple";
-  CHECK(eager_test::CompareTensorWithValue<float>(tensors[0], 1.0) == true);
-  CHECK(eager_test::CompareTensorWithValue<float>(tensors[1], 2.0) == true);
-}
-
-TEST(EagerUtils, ConstructDuplicableOutput) {
-  VLOG(6) << "Check ConstructDuplicableOutput";
+TEST(EagerUtils, CreateVars) {
+  VLOG(6) << "Check CreateVars";
   std::vector<std::shared_ptr<egr::EagerTensor>> outs =
-      egr::EagerUtils::ConstructDuplicableOutput(2);
+      egr::EagerUtils::CreateVars(2);
   CHECK_EQ(outs.size(), size_t(2));
-  CHECK(outs[0]->defined() == false);
-  CHECK(outs[0]->initialized() == false);
+  CHECK(outs[0]->Var().IsInitialized() == false);
 }
 
 }  // namespace egr

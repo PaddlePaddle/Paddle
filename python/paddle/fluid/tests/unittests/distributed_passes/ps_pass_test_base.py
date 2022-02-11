@@ -63,7 +63,6 @@ class PsPassTestBase(unittest.TestCase):
                 config['debug_new_minimize'], "--applied_pass_name",
                 config['applied_pass_name']
             ]
-
         elif ps_mode == "gpu-ps":
             os.environ['FLAGS_LAUNCH_BARRIER'] = '0'
             os.environ['PADDLE_PSERVER_NUMS'] = '1'
