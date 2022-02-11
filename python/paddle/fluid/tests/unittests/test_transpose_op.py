@@ -120,7 +120,6 @@ class TestTransposeBF16Op(OpTest):
         self.initTestCase()
         self.dtype = np.uint16
         x = np.random.random(self.shape).astype("float32")
-        out = x.transpose(self.axis)
 
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.attrs = {
@@ -130,7 +129,7 @@ class TestTransposeBF16Op(OpTest):
         self.outputs = {
             'XShape': convert_float_to_uint16(
                 np.random.random(self.shape).astype("float32")),
-            'Out': convert_float_to_uint16(out)
+            'Out': self.inputs['X'].transpose(self.axis)
         }
 
     def init_op_type(self):
