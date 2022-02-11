@@ -2952,8 +2952,8 @@ def batch_norm(input,
     saved_variance = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
     reserve_space = None
-    # if not is_test:
-    reserve_space = helper.create_variable_for_type_inference(
+    if not is_test:
+        reserve_space = helper.create_variable_for_type_inference(
             dtype=helper.input_dtype(), stop_gradient=True)
 
     batch_norm_out = input if in_place else \
