@@ -60,20 +60,14 @@ inline platform::GpuLaunchConfig GetGpuLaunchConfig3D(
 }
 
 template <typename T>
-__forceinline__ __device__ void PreCalculatorForBilinearInterpInputIndex(
-    int* in_img_idx, int* in_img_idy, int* w_id, int* h_id, T* w1lambda,
-    T* h1lambda, T* w2lambda, T* h2lambda, T src_w, T src_h, const int in_img_w,
-    const int in_img_h) {
+__forceinline__ __device__ void PreCalculatorForLinearInterpInputIndex(
+    int* in_img_idx, int* w_id, T* w1lambda, T* w2lambda, T src_w,
+    const int in_img_w) {
   src_w = (src_w > 0) ? src_w : 0.f;
-  src_h = (src_h > 0) ? src_h : 0.f;
   *in_img_idx = static_cast<int>(src_w);
-  *in_img_idy = static_cast<int>(src_h);
   *w_id = (*in_img_idx < in_img_w - 1) ? 1 : 0;
-  *h_id = (*in_img_idy < in_img_h - 1) ? 1 : 0;
   *w1lambda = src_w - *in_img_idx;
-  *h1lambda = src_h - *in_img_idy;
   *w2lambda = 1.f - *w1lambda;
-  *h2lambda = 1.f - *h1lambda;
 }
 
 struct FastDivModForInterpolate {
@@ -449,9 +443,11 @@ __global__ void KeBilinearInterpNCHWFw(const T* in, const size_t in_img_h,
   T h1lambda, w1lambda, h2lambda, w2lambda;
   T src_w = ratio_w * (out_img_idx + align_type_value) - align_type_value;
   T src_h = ratio_h * (out_img_idy + align_type_value) - align_type_value;
-  PreCalculatorForBilinearInterpInputIndex(
-      &in_img_idx, &in_img_idy, &w_id, &h_id, &w1lambda, &h1lambda, &w2lambda,
-      &h2lambda, src_w, src_h, in_img_w, in_img_h);
+
+  PreCalculatorForLinearInterpInputIndex(&in_img_idx, &w_id, &w1lambda,
+                                         &w2lambda, src_w, in_img_w);
+  PreCalculatorForLinearInterpInputIndex(&in_img_idy, &h_id, &h1lambda,
+                                         &h2lambda, src_h, in_img_h);
 
   int in_index = (nc_id * in_img_h + in_img_idy) * in_img_w + in_img_idx;
   int in_index_stride = nc_stride * in_img_h * in_img_w;
@@ -501,9 +497,11 @@ __global__ void KeBilinearInterpFw(
     T h1lambda, w1lambda, h2lambda, w2lambda;
     T src_w = ratio_w * (out_img_idx + align_type_value) - align_type_value;
     T src_h = ratio_h * (out_img_idy + align_type_value) - align_type_value;
-    PreCalculatorForBilinearInterpInputIndex(
-        &in_img_idx, &in_img_idy, &w_id, &h_id, &w1lambda, &h1lambda, &w2lambda,
-        &h2lambda, src_w, src_h, in_img_w, in_img_h);
+
+    PreCalculatorForLinearInterpInputIndex(&in_img_idx, &w_id, &w1lambda,
+                                           &w2lambda, src_w, in_img_w);
+    PreCalculatorForLinearInterpInputIndex(&in_img_idy, &h_id, &h1lambda,
+                                           &h2lambda, src_h, in_img_h);
 
     // bilinear interpolation
     const T* in_pos =
@@ -584,9 +582,11 @@ __global__ void KeBilinearInterpBwShareMemory(
     T w1lambda, h1lambda, w2lambda, h2lambda;
     T src_w = ratio_w * (out_img_idx + align_type_value) - align_type_value;
     T src_h = ratio_h * (out_img_idy + align_type_value) - align_type_value;
-    PreCalculatorForBilinearInterpInputIndex(
-        &in_img_idx, &in_img_idy, &w_id, &h_id, &w1lambda, &h1lambda, &w2lambda,
-        &h2lambda, src_w, src_h, in_w, in_h);
+
+    PreCalculatorForLinearInterpInputIndex(&in_img_idx, &w_id, &w1lambda,
+                                           &w2lambda, src_w, in_w);
+    PreCalculatorForLinearInterpInputIndex(&in_img_idy, &h_id, &h1lambda,
+                                           &h2lambda, src_h, in_h);
 
     // top_left_index is just input_index.
     int input_index = out_id_h * in_chw + channel_id * in_img_size +
@@ -671,9 +671,11 @@ __global__ void KeBilinearInterpBw(T* in, const int in_h, const int in_w,
 
       T src_w = ratio_w * (out_img_idx + align_type_value) - align_type_value;
       T src_h = ratio_h * (out_img_idy + align_type_value) - align_type_value;
-      PreCalculatorForBilinearInterpInputIndex(
-          &in_img_idx, &in_img_idy, &w_id, &h_id, &w1lambda, &h1lambda,
-          &w2lambda, &h2lambda, src_w, src_h, in_w, in_h);
+
+      PreCalculatorForLinearInterpInputIndex(&in_img_idx, &w_id, &w1lambda,
+                                             &w2lambda, src_w, in_w);
+      PreCalculatorForLinearInterpInputIndex(&in_img_idy, &h_id, &h1lambda,
+                                             &h2lambda, src_h, in_h);
 
       T* in_pos = &in[out_id_h * in_chw + channel_id * in_img_size +
                       in_img_idy * in_w + in_img_idx];
@@ -700,9 +702,11 @@ __global__ void KeBilinearInterpBw(T* in, const int in_h, const int in_w,
       T w1lambda, h1lambda, w2lambda, h2lambda;
       T src_w = ratio_w * (out_img_idx + align_type_value) - align_type_value;
       T src_h = ratio_h * (out_img_idy + align_type_value) - align_type_value;
-      PreCalculatorForBilinearInterpInputIndex(
-          &in_img_idx, &in_img_idy, &w_id, &h_id, &w1lambda, &h1lambda,
-          &w2lambda, &h2lambda, src_w, src_h, in_w, in_h);
+
+      PreCalculatorForLinearInterpInputIndex(&in_img_idx, &w_id, &w1lambda,
+                                             &w2lambda, src_w, in_w);
+      PreCalculatorForLinearInterpInputIndex(&in_img_idy, &h_id, &h1lambda,
+                                             &h2lambda, src_h, in_h);
 
       T* in_pos = &in[out_id_h * in_chw + in_img_idy * in_w * num_channels +
                       in_img_idx * num_channels + channel_id];
