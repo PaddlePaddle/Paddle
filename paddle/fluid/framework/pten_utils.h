@@ -27,6 +27,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/common/backend.h"
 #include "paddle/pten/core/compat/arg_map_context.h"
 #include "paddle/pten/core/kernel_factory.h"
 #include "paddle/utils/flat_hash_map.h"
