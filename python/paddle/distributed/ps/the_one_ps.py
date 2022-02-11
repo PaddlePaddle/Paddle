@@ -24,8 +24,8 @@ from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.executor import Executor
 from paddle.fluid.parallel_executor import ParallelExecutor
 from paddle.fluid.framework import Variable, Parameter
-from .runtime_base import RuntimeBase
-from ..base.private_helper_function import wait_server_ready
+from paddle.distributed.fleet.runtime.runtime_base import RuntimeBase
+from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
 from paddle.fluid.communicator import Communicator, HeterClient
 from google.protobuf import text_format
 
@@ -258,7 +258,7 @@ class CommonAccessor:
     def parse_by_optimizer(self, grad_name, is_sparse, size, single_dim,
                            context, adam_d2sum):
         main_program = context['origin_main_program']
-        startup_program = context['startup_main_program']
+        startup_program = context['origin_startup_program']
         pserver_id = get_role_id(context['role_maker'])
         pserver_num = len(get_ps_endpoints(context['role_maker']))
         optimizer_ops = get_optimize_ops(main_program)
@@ -619,10 +619,13 @@ class TheOnePSRuntime(RuntimeBase):
         self.context['trainer'] = TrainerRuntimeConfig(context[
             'valid_strategy'])
         self.context['ps_mode'] = self.context['trainer'].mode
-        self.context['use_ps_gpu'] = context['valid_strategy'].use_ps_gpu
+        self.context['use_ps_gpu'] = context['valid_strategy'].a_sync_configs[
+            'use_ps_gpu']
         self.is_sync = True if self.context[
             'ps_mode'] == DistributedMode.SYNC else False
         self.context['grad_name_to_param_name'] = {}
+        self.context['tensor_table'] = {}
+        build_var_distributed(self.context)
 
     def _init_worker(self):
         worker = self._get_fleet_proto(is_server=False, is_sync=self.is_sync)
@@ -898,7 +901,7 @@ class TheOnePSRuntime(RuntimeBase):
                     common.table_name = self.context['grad_name_to_param_name'][
                         ctx.origin_varnames()[0]]
 
-                    if self.ps_mode == DistributedMode.GEO:
+                    if self.context['ps_mode'] == DistributedMode.GEO:
                         table.table_class = "SparseGeoTable"
                     else:
                         all_table_proto = self.context[
@@ -1075,6 +1078,7 @@ class TheOnePSRuntime(RuntimeBase):
             if var.name in exclude_var_names:
                 return False
 
+            from .utils.public import _get_varname_parts
             origin_varname, _, _ = _get_varname_parts(var.name)
             if origin_varname.endswith("@GRAD"):
                 return False

@@ -203,13 +203,6 @@ def get_dist_env():
     }
 
 
-def get_ps_endpoint(role_maker):
-    try:
-        return role_maker._get_pserver_endpoints()[get_role_id(role_maker)]
-    except Exception:
-        return role_maker.get_pserver_endpoints()[get_role_id(role_maker)]
-
-
 def get_heter_worker_endpoint(role_maker):
     try:
         return role_maker._get_heter_worker_endpoint()
@@ -278,11 +271,18 @@ def get_role_id(role_maker):
         return role_maker.role_id()
 
 
-def get_ps_endpoints(role_maker):
+def get_ps_endpoint(role_maker):
     try:
         return role_maker._get_pserver_endpoints()[get_role_id(role_maker)]
     except Exception:
         return role_maker.get_pserver_endpoints()[get_role_id(role_maker)]
+
+
+def get_ps_endpoints(role_maker):
+    try:
+        return role_maker._get_pserver_endpoints()
+    except Exception:
+        return role_maker.get_pserver_endpoints()
 
 
 def get_trainers(role_maker):
@@ -1025,7 +1025,7 @@ def get_the_one_recv_context(context,
 
             param_names = []
             for grad_varname in origin_grad_varnames:
-                param_name = grad_name_to_param_name[grad_varname]
+                param_name = context["grad_name_to_param_name"][grad_varname]
                 param_names.append(param_name)
             recv_id_maps[ctx.table_id()] = param_names
     else:
@@ -1042,7 +1042,7 @@ def get_the_one_recv_context(context,
 
             param_names = []
             for grad_varname in origin_grad_varnames:
-                param_name = grad_name_to_param_name[grad_varname]
+                param_name = context["grad_name_to_param_name"][grad_varname]
                 param_names.append(param_name)
             recv_id_maps[ctx.table_id()] = param_names
     return recv_id_maps
