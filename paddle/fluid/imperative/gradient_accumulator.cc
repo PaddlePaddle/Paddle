@@ -222,18 +222,11 @@ TType* GetInnerMutableTensor(framework::Variable* dst) {
 
 template <typename TType>
 TType* GetInnerMutableTensor(paddle::experimental::Tensor* dst) {
-  if (dst->defined()) {
-    auto* dst_tensor = static_cast<TType*>(dst->impl().get());
-    return dst_tensor;
-  }
-  dst->set_impl(std::make_shared<TType>());
+  PADDLE_ENFORCE_EQ(dst->initialized(), true,
+                    platform::errors::Fatal(
+                        "The underlying Tensor implementation should not be "
+                        "nullptr and the allocation should be allocated."));
   auto* dst_tensor = static_cast<TType*>(dst->impl().get());
-  return dst_tensor;
-}
-
-template <typename TType>
-TType* GetInnerMutableTensor(paddle::imperative::VariableWrapper* dst) {
-  auto* dst_tensor = dst->MutableVar()->GetMutable<TType>();
   return dst_tensor;
 }
 
@@ -247,10 +240,27 @@ TType& GetInnerTensor(const paddle::experimental::Tensor& src) {
   PADDLE_ENFORCE_EQ(
       src.initialized(), true,
       platform::errors::Fatal("We only add tensor with value if a tensor is "
-                              "NOT INITILIZED, it should just move instead of "
+                              "INITILIZED, it should just move instead of "
                               "calling this method."));
   auto* src_tensor = static_cast<TType*>(src.impl().get());
   return *src_tensor;
+}
+
+template <typename TType>
+TType* GetInnerMutable(paddle::experimental::Tensor* dst) {
+  PADDLE_ENFORCE_EQ(
+      dst->defined(), false,
+      platform::errors::Fatal(
+          "The underlying Tensor implementation should be nullptr"));
+  dst->set_impl(std::make_shared<TType>());
+  auto* dst_tensor = static_cast<TType*>(dst->impl().get());
+  return dst_tensor;
+}
+
+template <typename TType>
+TType* GetInnerMutable(paddle::imperative::VariableWrapper* dst) {
+  auto* dst_tensor = dst->MutableVar()->GetMutable<TType>();
+  return dst_tensor;
 }
 
 template <typename VarType>
@@ -498,7 +508,7 @@ std::shared_ptr<ReturnVarType> SelectedRowsMerge(const VarType& src1,
 
   auto dst_var = std::make_shared<ReturnVarType>("Temp");
   pten::SelectedRows* dst_selected_rows =
-      GetInnerMutableTensor<pten::SelectedRows>(dst_var.get());
+      GetInnerMutable<pten::SelectedRows>(dst_var.get());
 
 #define PADDLE_SELECTED_ROWS_ADD(dev_ctx_type, cpp_type)                  \
   if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) {      \
