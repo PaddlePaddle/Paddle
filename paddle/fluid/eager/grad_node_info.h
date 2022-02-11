@@ -150,6 +150,8 @@ class GradNodeBase {
       const std::vector<std::vector<paddle::experimental::Tensor>>& tensors);
   void ApplyReduceHooks();
 
+  virtual std::string name() { return "GradNodeBase"; }
+
  private:
   // TODO(jiabin): Use SmallVector instead after merge PR from develop
 

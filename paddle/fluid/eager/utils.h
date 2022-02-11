@@ -172,17 +172,24 @@ class EagerUtils {
       const std::vector<std::shared_ptr<EagerTensor>>& outs);
   static paddle::experimental::Tensor GetOutput(
       const std::shared_ptr<EagerTensor>& out);
-  // Sync Back to origin output Tensor
-  static void OverwriteOutputs(const std::shared_ptr<EagerTensor>& out,
-                               paddle::experimental::Tensor* tensor);
-  static void OverwriteOutputs(const paddle::experimental::Tensor& out,
-                               paddle::experimental::Tensor* tensor);
-  static void OverwriteOutputs(
+  static void Output2Result(const std::shared_ptr<EagerTensor>& out,
+                            paddle::experimental::Tensor* out_var,
+                            paddle::experimental::Tensor* result);
+  static void Output2Result(
       const std::vector<std::shared_ptr<EagerTensor>>& outs,
-      const std::vector<paddle::experimental::Tensor*>& tensors);
-  static void OverwriteOutputs(
-      const std::vector<paddle::experimental::Tensor>& outs,
-      const std::vector<paddle::experimental::Tensor*>& tensors);
+      std::vector<paddle::experimental::Tensor>* out_var,
+      std::vector<paddle::experimental::Tensor>* result);
+  static void Output2Result(
+      const std::vector<std::shared_ptr<EagerTensor>>& outs,
+      const std::vector<paddle::experimental::Tensor*>& out_var,
+      std::vector<paddle::experimental::Tensor>* result);
+  static void Output2Result(const std::shared_ptr<EagerTensor>& out,
+                            std::vector<paddle::experimental::Tensor>* out_var,
+                            std::vector<paddle::experimental::Tensor>* result);
+  static void Output2Result(
+      const std::shared_ptr<EagerTensor>& out,
+      const std::vector<paddle::experimental::Tensor*>& out_var,
+      std::vector<paddle::experimental::Tensor>* result);
   // end Intermidate needed
 
   static void CheckAndRetainGrad(const paddle::experimental::Tensor& tensor);

@@ -35,6 +35,8 @@ class GradNodeAccumulation : public GradNodeBase {
 
   paddle::experimental::Tensor* Grad() { return &accumulated_grad; }
 
+  std::string name() { return "GradNodeAccumulation"; }
+
  private:
   paddle::experimental::Tensor accumulated_grad;
 

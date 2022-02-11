@@ -148,11 +148,11 @@ void InitEagerTensorWithEagerTensor(TensorObject* self,
     VLOG(4) << "Different place, do TensorCopy";
   }
   if (src.get_autograd_meta()) {
-    egr::EagerUtils::unsafe_autograd_meta(self->tensor)
+    egr::EagerUtils::autograd_meta(&(self->tensor))
         ->SetPersistable(
             egr::EagerUtils::unsafe_autograd_meta(src)->Persistable());
   } else {
-    egr::EagerUtils::unsafe_autograd_meta(self->tensor)->SetPersistable(false);
+    egr::EagerUtils::autograd_meta(&(self->tensor))->SetPersistable(false);
   }
 }
 
@@ -171,7 +171,7 @@ void InitEagerTensorWithFrameworkTensor(TensorObject* self,
         temp.copy_to(pten::TransToPtenBackend(place), true).impl());
     VLOG(4) << "Different place, do TensorCopy";
   }
-  egr::EagerUtils::unsafe_autograd_meta(self->tensor)->SetPersistable(false);
+  egr::EagerUtils::autograd_meta(&(self->tensor))->SetPersistable(false);
 }
 
 py::object ParsePyArray(

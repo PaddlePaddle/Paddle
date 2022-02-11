@@ -219,54 +219,64 @@ paddle::experimental::Tensor EagerUtils::GetOutput(
   return paddle::experimental::Tensor(out->GetTensorBase(), out->name());
 }
 
-void EagerUtils::OverwriteOutputs(const std::shared_ptr<EagerTensor>& out,
-                                  paddle::experimental::Tensor* tensor) {
+void EagerUtils::Output2Result(const std::shared_ptr<EagerTensor>& out,
+                               paddle::experimental::Tensor* out_var,
+                               paddle::experimental::Tensor* result) {
   PADDLE_ENFORCE_NOT_NULL(
-      tensor, paddle::platform::errors::Fatal(
-                  "Tensor is null and cannot be copied. "
-                  "We are tring to OverwriteOutput from its "
-                  "shared_ptr, this error may indicate some outputs "
-                  "are nullptr"));
-  tensor->set_impl(out->GetTensorBase());
+      out_var, paddle::platform::errors::Fatal(
+                   "Tensor is null and cannot be copied. "
+                   "We are tring to OverwriteOutput from its "
+                   "shared_ptr, this error may indicate some outputs "
+                   "are nullptr"));
+  out_var->set_impl(out->GetTensorBase());
+  *result = *out_var;
 }
 
-void EagerUtils::OverwriteOutputs(
+void EagerUtils::Output2Result(
     const std::vector<std::shared_ptr<EagerTensor>>& outs,
-    const std::vector<paddle::experimental::Tensor*>& tensors) {
-  PADDLE_ENFORCE_EQ(
-      outs.size(), tensors.size(),
-      paddle::platform::errors::Fatal(
-          "We are tring to OverwriteOutputs which passed in and it expected "
-          "elements num of outs and origin outputs are equal, but we got outs "
-          "size of: %d, and tensors passed in size is: %d",
-          outs.size(), tensors.size()));
+    std::vector<paddle::experimental::Tensor>* out_var,
+    std::vector<paddle::experimental::Tensor>* result) {
   for (size_t i = 0; i < outs.size(); i++) {
-    OverwriteOutputs(outs[i], tensors[i]);
+    (*out_var)[i].set_impl(outs[i]->GetTensorBase());
   }
 }
 
-void EagerUtils::OverwriteOutputs(const paddle::experimental::Tensor& out,
-                                  paddle::experimental::Tensor* tensor) {
-  PADDLE_ENFORCE_NOT_NULL(
-      tensor, paddle::platform::errors::Fatal(
-                  "Tensor is null and cannot be copied. "
-                  "We are tring to OverwriteOutput from its "
-                  "shared_ptr, this error may indicate some outputs "
-                  "are nullptr"));
-  *tensor = out;
-}
-void EagerUtils::OverwriteOutputs(
-    const std::vector<paddle::experimental::Tensor>& outs,
-    const std::vector<paddle::experimental::Tensor*>& tensors) {
+void EagerUtils::Output2Result(
+    const std::vector<std::shared_ptr<EagerTensor>>& outs,
+    const std::vector<paddle::experimental::Tensor*>& out_var,
+    std::vector<paddle::experimental::Tensor>* result) {
+  result->reserve(outs.size());
   for (size_t i = 0; i < outs.size(); i++) {
     PADDLE_ENFORCE_NOT_NULL(
-        tensors[i], paddle::platform::errors::Fatal(
+        out_var[i], paddle::platform::errors::Fatal(
                         "Tensor is null and cannot be copied. "
                         "We are tring to OverwriteOutput from its "
                         "shared_ptr, this error may indicate some outputs "
                         "are nullptr"));
-    *tensors[i] = outs[i];
+    out_var[i]->set_impl(outs[i]->GetTensorBase());
+    result->emplace_back(*out_var[i]);
   }
+}
+
+void EagerUtils::Output2Result(
+    const std::shared_ptr<EagerTensor>& out,
+    std::vector<paddle::experimental::Tensor>* out_var,
+    std::vector<paddle::experimental::Tensor>* result) {
+  result->emplace_back(out->GetTensorBase());
+}
+
+void EagerUtils::Output2Result(
+    const std::shared_ptr<EagerTensor>& out,
+    const std::vector<paddle::experimental::Tensor*>& out_var,
+    std::vector<paddle::experimental::Tensor>* result) {
+  PADDLE_ENFORCE_NOT_NULL(
+      out_var[0], paddle::platform::errors::Fatal(
+                      "Tensor is null and cannot be copied. "
+                      "We are tring to OverwriteOutput from its "
+                      "shared_ptr, this error may indicate some outputs "
+                      "are nullptr"));
+  out_var[0]->set_impl(out->GetTensorBase());
+  result->emplace_back(*out_var[0]);
 }
 
 paddle::experimental::Tensor EagerUtils::RecoverTensorWrapper(
@@ -288,7 +298,7 @@ void EagerUtils::CheckAndRetainGrad(
     const paddle::experimental::Tensor& tensor) {
   VLOG(6) << "Check RetainGradForTensor: " << tensor.name();
   if (FLAGS_retain_grad_for_all_tensor) {
-    if (tensor.initialized() || tensor.Var().IsInitialized()) {
+    if (tensor.initialized()) {
       VLOG(6) << "RetainGradForTensor: " << tensor.name();
       egr::egr_utils_api::RetainGradForTensor(tensor);
     }
@@ -299,7 +309,7 @@ void EagerUtils::CheckAndRetainGrad(
     const std::vector<paddle::experimental::Tensor>& tensors) {
   if (FLAGS_retain_grad_for_all_tensor) {
     for (auto& tensor : tensors) {
-      if (tensor.initialized() || tensor.Var().IsInitialized()) {
+      if (tensor.initialized()) {
         VLOG(6) << "RetainGradForTensor: " << tensor.name();
         egr::egr_utils_api::RetainGradForTensor(tensor);
       }
