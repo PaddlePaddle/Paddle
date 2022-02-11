@@ -243,7 +243,7 @@ TType& GetInnerTensor(const paddle::experimental::Tensor& src) {
 }
 
 template <typename TType>
-TType* GetInnerMutable(paddle::experimental::Tensor* dst) {
+TType* GetEmptyInnerTensor(paddle::experimental::Tensor* dst) {
   PADDLE_ENFORCE_EQ(
       dst->defined(), false,
       platform::errors::Fatal(
@@ -254,7 +254,7 @@ TType* GetInnerMutable(paddle::experimental::Tensor* dst) {
 }
 
 template <typename TType>
-TType* GetInnerMutable(paddle::imperative::VariableWrapper* dst) {
+TType* GetEmptyInnerTensor(paddle::imperative::VariableWrapper* dst) {
   auto* dst_tensor = dst->MutableVar()->GetMutable<TType>();
   return dst_tensor;
 }
@@ -504,7 +504,7 @@ std::shared_ptr<ReturnVarType> SelectedRowsMerge(const VarType& src1,
 
   auto dst_var = std::make_shared<ReturnVarType>("Temp");
   pten::SelectedRows* dst_selected_rows =
-      GetInnerMutable<pten::SelectedRows>(dst_var.get());
+      GetEmptyInnerTensor<pten::SelectedRows>(dst_var.get());
 
 #define PADDLE_SELECTED_ROWS_ADD(dev_ctx_type, cpp_type)                  \
   if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) {      \

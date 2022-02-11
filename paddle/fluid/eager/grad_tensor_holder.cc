@@ -77,9 +77,9 @@ void GradTensorHolder::add(size_t slot_id, size_t rank,
         if (buffer_tensor.is_dense_tensor()) {
           paddle::imperative::SelectedRowsAddToTensor(t, &buffer_tensor);
         } else {
-          auto new_buffer = *paddle::imperative::SelectedRowsMerge<
-              paddle::experimental::Tensor>(t, buffer_tensor);
-          buffer_tensor = std::move(new_buffer);
+          buffer_tensor =
+              std::move(*paddle::imperative::SelectedRowsMerge<
+                        paddle::experimental::Tensor>(t, buffer_tensor));
         }
       }
     }
