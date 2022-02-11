@@ -53,6 +53,9 @@ class DistributedMode:
 
 class TrainerRuntimeConfig(object):
     def __init__(self, valid_strategy):
+        self.mode = None
+        num_threads = os.getenv("CPU_NUM", "1")
+        send_queue_size = num_threads
 
         k_steps = valid_strategy.a_sync_configs["k_steps"]
         if not valid_strategy.a_sync and k_steps == 0:
@@ -63,15 +66,13 @@ class TrainerRuntimeConfig(object):
 
         if valid_strategy.a_sync and k_steps > 0:
             self.mode = DistributedMode.GEO
-
-        self.mode = None
-        num_threads = os.getenv("CPU_NUM", "1")
+            send_queue_size = k_steps
 
         self.runtime_configs = {}
         self.runtime_configs['communicator_max_merge_var_num'] = os.getenv(
-            "FLAGS_communicator_max_merge_var_num", num_threads)
+            "FLAGS_communicator_max_merge_var_num", send_queue_size)
         self.runtime_configs['communicator_send_queue_size'] = os.getenv(
-            "FLAGS_communicator_send_queue_size", num_threads)
+            "FLAGS_communicator_send_queue_size", send_queue_size)
         self.runtime_configs[
             'communicator_independent_recv_thread'] = os.getenv(
                 "FLAGS_communicator_independent_recv_thread", "1")
@@ -84,6 +85,55 @@ class TrainerRuntimeConfig(object):
             "FLAGS_communicator_send_wait_times", "5")
         self.runtime_configs['communicator_is_sgd_optimizer'] = os.getenv(
             "FLAGS_communicator_is_sgd_optimizer", "1")
+
+    def get_communicator_flags(self):
+        need_keys = []
+        num_threads = os.getenv("CPU_NUM", "1")
+        mode_str = ""
+        if self.mode is None or self.mode == DistributedMode.ASYNC:
+            need_keys = self.runtime_configs.keys()
+            mode_str = "async"
+        elif self.mode == DistributedMode.SYNC or self.mode == DistributedMode.HALF_ASYNC:
+            mode_str = "sync or half_async"
+            need_keys = [
+                'communicator_max_merge_var_num',
+                'communicator_send_wait_times', 'communicator_thread_pool_size',
+                'communicator_send_queue_size'
+            ]
+        elif self.mode == DistributedMode.GEO:
+            mode_str = "GEO"
+            need_keys = [
+                'communicator_thread_pool_size', 'communicator_send_wait_times',
+                'communicator_max_merge_var_num', 'communicator_send_queue_size'
+            ]
+        else:
+            raise ValueError("Unsupported Mode")
+
+        if self.mode == DistributedMode.SYNC or self.mode == DistributedMode.HALF_ASYNC:
+            max_merge_var_num = self.runtime_configs[
+                'communicator_max_merge_var_num']
+            send_queue_size = self.runtime_configs[
+                'communicator_send_queue_size']
+            if max_merge_var_num != num_threads:
+                print('WARNING: In {} mode, communicator_max_merge_var_num '
+                      'must be equal to CPU_NUM. But received, '
+                      'communicator_max_merge_var_num = {}, CPU_NUM = '
+                      '{}. communicator_max_merge_var_num will be forced to {}.'
+                      .format(mode_str, max_merge_var_num, num_threads,
+                              num_threads))
+                self.runtime_configs[
+                    'communicator_max_merge_var_num'] = num_threads
+            if send_queue_size != num_threads:
+                print('WARNING: In {} mode, communicator_send_queue_size '
+                      'must be equal to CPU_NUM. But received, '
+                      'communicator_send_queue_size = {}, CPU_NUM = '
+                      '{}. communicator_send_queue_size will be forced to {}.'
+                      .format(mode_str, send_queue_size, num_threads,
+                              num_threads))
+                self.runtime_configs[
+                    'communicator_send_queue_size'] = num_threads
+
+        return dict((key, str(self.runtime_configs[key])) for key in need_keys)
 
 
 def get_lr_ops(program):
