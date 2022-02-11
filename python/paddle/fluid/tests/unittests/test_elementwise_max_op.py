@@ -69,12 +69,10 @@ class TestElementwiseBF16Op(OpTest):
         self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'], 'Out', max_relative_error=0.005, no_grad_set=set("X"))
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y'))
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
 
 
 @skip_check_grad_ci(
