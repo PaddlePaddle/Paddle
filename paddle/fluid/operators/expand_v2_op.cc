@@ -219,13 +219,6 @@ class ExpandV2GradOp : public framework::OperatorWithKernel {
     }
   }
 
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::KernelSignature(
-        "expand_grad", {framework::GradVarName("Out")}, {},
-        {framework::GradVarName("X")});
-  }
-
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {

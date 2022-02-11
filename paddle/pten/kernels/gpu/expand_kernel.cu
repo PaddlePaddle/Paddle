@@ -25,6 +25,7 @@ PT_REGISTER_KERNEL(expand,
                    pten::ExpandKernel,
                    float,
                    double,
+                   paddle::platform::float16,
                    int,
                    int64_t,
                    bool) {}

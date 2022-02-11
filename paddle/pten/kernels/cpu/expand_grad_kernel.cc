@@ -19,12 +19,11 @@
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/impl/expand_grad_kernel_impl.h"
 
-PT_REGISTER_KERNEL(expand_grad, 
-                   CPU, 
-                   ALL_LAYOUT, 
-                   pten::ExpandKernel, 
-                   float, 
+PT_REGISTER_KERNEL(expand_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::ExpandGradKernel,
+                   float,
                    double,
                    int,
-                   int64_t,
-                   bool) {}
+                   int64_t) {}

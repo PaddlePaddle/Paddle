@@ -19,11 +19,11 @@
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/impl/expand_kernel_impl.h"
 
-PT_REGISTER_KERNEL(expand, 
-                   CPU, 
-                   ALL_LAYOUT, 
-                   pten::ExpandKernel, 
-                   float, 
+PT_REGISTER_KERNEL(expand,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::ExpandKernel,
+                   float,
                    double,
                    int,
                    int64_t,

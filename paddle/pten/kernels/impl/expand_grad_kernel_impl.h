@@ -14,120 +14,136 @@
 
 #pragma once
 
-namespace pten{
+#include "paddle/pten/kernels/funcs/eigen/common.h"
+#include "paddle/pten/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/pten/kernels/impl/expand_kernel_impl.h"
 
-template <typename DeviceContext, typename T>
-class ExpandGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* in0 = context.Input<Tensor>("X");
-    auto expand_shape = get_expand_shape(context);
-    auto x_dims = in0->dims();
-    auto vec_in_dims = framework::vectorize<int>(x_dims);
-    auto diff = expand_shape.size() - vec_in_dims.size();
-    vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
-    // 1. reshape_dims_vec is the broadcast parameter.
-    // 2. reduce_dims_vec is the dimension parameter to compute gradients. For
-    //    each dimension expanded, the gradients should be summed to original
-    //    size.
-    std::vector<int> repeat_times(vec_in_dims.size());
-    for (size_t i = 0; i < vec_in_dims.size(); ++i) {
-      if (expand_shape[i] < 0) {
-        repeat_times[i] = 1;
-      } else {
-        repeat_times[i] = expand_shape[i] / vec_in_dims[i];
-      }
-    }
-    std::vector<int> reshape_dims_vec;
-    std::vector<int> reduce_dims_vec;
-    for (size_t i = 0; i < repeat_times.size(); ++i) {
-      reduce_dims_vec.push_back(reshape_dims_vec.size());
-      reshape_dims_vec.push_back(repeat_times[i]);
-      reshape_dims_vec.push_back(vec_in_dims[i]);
-    }
+namespace pten {
+template <typename Context, typename T, int Dims>
+void ExpandBackward(const Context& ctx,
+                    const DenseTensor& out_grad,
+                    const std::vector<int>& reshape_dims_vec,
+                    const std::vector<int>& reduce_dims_vec,
+                    DenseTensor* in_grad) {
+  size_t reshape_size = reshape_dims_vec.size();
+  size_t reduce_size = reduce_dims_vec.size();
+  // auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
+  // auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
+  // out0->mutable_data<T>(context.GetPlace());
+  ctx.template Alloc<T>(in_grad);
+  in_grad->data<T>();
 
-    int dims = reduce_dims_vec.size();
+  auto x_grad = EigenVector<T>::Flatten(*in_grad);
+  Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;
+  for (size_t i = 0; i < reshape_size; ++i) {
+    reshape_dims[i] = reshape_dims_vec[i];
+  }
+  Eigen::DSizes<Eigen::DenseIndex, Dims> reduce_dims;
+  for (size_t i = 0; i < reduce_size; ++i) {
+    reduce_dims[i] = reduce_dims_vec[i];
+  }
+  auto out_grad0 = EigenVector<T>::Flatten(out_grad);
+  auto& place = *ctx.eigen_device();
+  pten::funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
+      place, x_grad, out_grad0, reduce_dims, reshape_dims);
+}
 
-    bool just_copy = true;
-    for (size_t i = 0; i < repeat_times.size(); i++) {
-      if (repeat_times[i] != 1) {
-        just_copy = false;
-        break;
-      }
-    }
-    // no need reduce, just copy
-    if (just_copy) {
-      auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
-      auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
-      out0->mutable_data<T>(context.GetPlace());
-      framework::TensorCopy(*in0, context.GetPlace(), context.device_context(),
-                            out0);
+template <typename T, typename Context>
+void ExpandGradKernel(const Context& ctx,
+                      const DenseTensor& out_grad,
+                      const DenseTensor& x,
+                      const ScalarArray& shape,
+                      DenseTensor* in_grad) {
+  auto expand_shape = shape.GetData();
+  auto x_dims = out_grad.dims();
+  auto vec_in_dims = framework::vectorize<int>(x_dims);
+  auto diff = expand_shape.size() - vec_in_dims.size();
+  vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
+  // 1. reshape_dims_vec is the broadcast parameter.
+  // 2. reduce_dims_vec is the dimension parameter to compute gradients. For
+  //    each dimension expanded, the gradients should be summed to original
+  //    size.
+  std::vector<int> repeat_times(vec_in_dims.size());
+  for (size_t i = 0; i < vec_in_dims.size(); ++i) {
+    if (expand_shape[i] < 0) {
+      repeat_times[i] = 1;
     } else {
-      PADDLE_ENFORCE_GE(dims, 1,
-                        platform::errors::InvalidArgument(
-                            "The rank of the input 'Out@GRAD' for "
-                            "expand_v2_grad op must be greater than or "
-                            "equal to 1, but the value received is %d.",
-                            dims));
-      PADDLE_ENFORCE_LE(dims, MAX_RANK_SUPPORTED,
-                        platform::errors::InvalidArgument(
-                            "The rank of the input 'Out@GRAD' for "
-                            "expand_v2_grad op must be less than or equal "
-                            "to %d, but the value received is %d.",
-                            MAX_RANK_SUPPORTED, dims));
-      switch (dims) {
-        case 1:
-          ExpandBackward<1>(context, reshape_dims_vec, reduce_dims_vec);
-          break;
-        case 2:
-          ExpandBackward<2>(context, reshape_dims_vec, reduce_dims_vec);
-          break;
-        case 3:
-          ExpandBackward<3>(context, reshape_dims_vec, reduce_dims_vec);
-          break;
-        case 4:
-          ExpandBackward<4>(context, reshape_dims_vec, reduce_dims_vec);
-          break;
-        case 5:
-          ExpandBackward<5>(context, reshape_dims_vec, reduce_dims_vec);
-          break;
-        case 6:
-          ExpandBackward<6>(context, reshape_dims_vec, reduce_dims_vec);
-          break;
-        default:
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "Only support tensor with rank being between 1 and 6. But "
-              "received tensor's rank = %d.",
-              dims));
-      }
+      repeat_times[i] = expand_shape[i] / vec_in_dims[i];
     }
   }
-
- protected:
-  template <int Dims>
-  void ExpandBackward(const framework::ExecutionContext& context,
-                      const std::vector<int>& reshape_dims_vec,
-                      const std::vector<int>& reduce_dims_vec) const {
-    size_t reshape_size = reshape_dims_vec.size();
-    size_t reduce_size = reduce_dims_vec.size();
-    auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
-    out0->mutable_data<T>(context.GetPlace());
-    auto x_grad = EigenVector<T>::Flatten(*out0);
-    Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;
-    for (size_t i = 0; i < reshape_size; ++i) {
-      reshape_dims[i] = reshape_dims_vec[i];
-    }
-    Eigen::DSizes<Eigen::DenseIndex, Dims> reduce_dims;
-    for (size_t i = 0; i < reduce_size; ++i) {
-      reduce_dims[i] = reduce_dims_vec[i];
-    }
-    auto out_grad = EigenVector<T>::Flatten(*in0);
-    auto& place =
-        *context.template device_context<DeviceContext>().eigen_device();
-    EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
-        place, x_grad, out_grad, reduce_dims, reshape_dims);
+  std::vector<int> reshape_dims_vec;
+  std::vector<int> reduce_dims_vec;
+  for (size_t i = 0; i < repeat_times.size(); ++i) {
+    reduce_dims_vec.push_back(reshape_dims_vec.size());
+    reshape_dims_vec.push_back(repeat_times[i]);
+    reshape_dims_vec.push_back(vec_in_dims[i]);
   }
-};
 
-} // namespace pten
+  int dims = reduce_dims_vec.size();
+
+  bool just_copy = true;
+  for (size_t i = 0; i < repeat_times.size(); i++) {
+    if (repeat_times[i] != 1) {
+      just_copy = false;
+      break;
+    }
+  }
+  // no need reduce, just copy
+  if (just_copy) {
+    // in_grad->mutable_data<T>(ctx.GetPlace());
+    ctx.template Alloc<T>(in_grad);
+    in_grad->data<T>();
+
+    // framework::TensorCopy(*out_grad, ctx.GetPlace(), ctx.device_context(),
+    //                      in_grad);
+  } else {
+    PADDLE_ENFORCE_GE(dims,
+                      1,
+                      pten::errors::InvalidArgument(
+                          "The rank of the input 'Out@GRAD' for "
+                          "expand_v2_grad op must be greater than or "
+                          "equal to 1, but the value received is %d.",
+                          dims));
+    PADDLE_ENFORCE_LE(dims,
+                      MAX_RANK_SUPPORTED,
+                      pten::errors::InvalidArgument(
+                          "The rank of the input 'Out@GRAD' for "
+                          "expand_v2_grad op must be less than or equal "
+                          "to %d, but the value received is %d.",
+                          MAX_RANK_SUPPORTED,
+                          dims));
+    switch (dims) {
+      case 1:
+        ExpandBackward<Context, T, 1>(
+            ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+        break;
+      case 2:
+        ExpandBackward<Context, T, 2>(
+            ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+        break;
+      case 3:
+        ExpandBackward<Context, T, 3>(
+            ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+        break;
+      case 4:
+        ExpandBackward<Context, T, 4>(
+            ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+        break;
+      case 5:
+        ExpandBackward<Context, T, 5>(
+            ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+        break;
+      case 6:
+        ExpandBackward<Context, T, 6>(
+            ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+        break;
+      default:
+        PADDLE_THROW(pten::errors::InvalidArgument(
+            "Only support tensor with rank being between 1 and 6. But "
+            "received tensor's rank = %d.",
+            dims));
+    }
+  }
+}
+
+}  // namespace pten

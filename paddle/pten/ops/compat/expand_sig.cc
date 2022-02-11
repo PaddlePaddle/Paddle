@@ -12,18 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/backends/gpu/gpu_context.h"
-#include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/expand_grad_kernel.h"
-#include "paddle/pten/kernels/impl/expand_grad_kernel_impl.h"
+#include "paddle/pten/core/compat/op_utils.h"
 
-PT_REGISTER_KERNEL(expand_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   pten::ExpandGradKernel,
-                   float,
-                   double,
-                   paddle::platform::float16,
-                   int,
-                   int64_t) {}
+namespace pten {
+
+KernelSignature ExpandOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  if (ctx.HasInput("Shape")) {
+    return KernelSignature("expand", {"X"}, {"Shape"}, {"Out"});
+  } else if (ctx.InputSize("expand_shapes_tensor") > 0) {
+    return KernelSignature("expand", {"X"}, {"expand_shapes_tensor"}, {"Out"});
+  } else {
+    return KernelSignature("expand", {"X"}, {"shape"}, {"Out"});
+  }
+}
+}  // namespace pten
+
+PT_REGISTER_BASE_KERNEL_NAME(expand_v2, expand);
+
+PT_REGISTER_ARG_MAPPING_FN(expand_v2, pten::ExpandOpArgumentMapping);
