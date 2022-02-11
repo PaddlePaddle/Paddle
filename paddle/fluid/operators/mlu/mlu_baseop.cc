@@ -224,11 +224,13 @@ MLUCnnlActivationDesc::~MLUCnnlActivationDesc() {
 MLUCnnlPoolingDesc::MLUCnnlPoolingDesc(
     const cnnlPoolingMode_t mode, const cnnlNanPropagation_t maxpooling_nan_opt,
     int window_rows, int window_cols, int64_t pad_up, int64_t pad_down,
-    int64_t pad_left, int64_t pad_right, int row_stride, int col_stride) {
+    int64_t pad_left, int64_t pad_right, int row_stride, int col_stride,
+    int row_dilation, int col_dilation, bool ceil_mode) {
   PADDLE_ENFORCE_MLU_SUCCESS(cnnlCreatePoolingDescriptor(&pooling_desc_));
-  PADDLE_ENFORCE_MLU_SUCCESS(cnnlSetPooling2dDescriptor(
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlSetPooling2dDescriptor_v2(
       pooling_desc_, mode, maxpooling_nan_opt, window_rows, window_cols, pad_up,
-      pad_down, pad_left, pad_right, row_stride, col_stride));
+      pad_down, pad_left, pad_right, row_stride, col_stride, row_dilation,
+      col_dilation, ceil_mode));
 }
 
 MLUCnnlPoolingDesc::MLUCnnlPoolingDesc(
@@ -1125,17 +1127,16 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
 }
 
 /* static */ void MLUCnnl::PoolingForward(
-    const ExecutionContext& ctx, cnnlPoolingMode_t pool_mode,
-    const std::vector<int64_t>& output_shape,
-    const cnnlPoolingDescriptor_t pooling_desc, const void* alpha,
-    const cnnlTensorDescriptor_t input_desc, const void* input,
-    const void* beta, const void* extra_input_ptr,
+    const ExecutionContext& ctx, cnnlPoolingMode_t pool_mode, int64_t output_h,
+    int64_t output_w, const cnnlPoolingDescriptor_t pooling_desc,
+    const void* alpha, const cnnlTensorDescriptor_t input_desc,
+    const void* input, const void* beta, const void* extra_input_ptr,
     const cnnlTensorDescriptor_t output_desc, void* output) {
   cnnlHandle_t handle = GetHandleFromCTX(ctx);
 
   size_t workspace_size = 0;
   PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetPoolingWorkspaceSize(
-      handle, pool_mode, output_shape[2], output_shape[1], &workspace_size));
+      handle, pool_mode, output_w, output_h, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
   Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
