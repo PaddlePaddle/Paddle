@@ -513,7 +513,7 @@ class MLUCnnl {
   static void RandomUniform(const ExecutionContext& ctx, const int num,
                             const cnnlDataType_t data_type,
                             const cnnlRandGenerator_t mlu_generator,
-                            void* output);
+                            const float min, const float max, void* output);
 
   static void Cumsum(const ExecutionContext& ctx, const int axis,
                      const bool exclusive, const bool reverse,

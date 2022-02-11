@@ -923,11 +923,12 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
 
 /* static */ void MLUCnnl::RandomUniform(
     const ExecutionContext& ctx, const int num, const cnnlDataType_t data_type,
-    const cnnlRandGenerator_t mlu_generator, void* output) {
+    const cnnlRandGenerator_t mlu_generator, const float min, const float max,
+    void* output) {
   cnnlHandle_t handle = GetHandleFromCTX(ctx);
 
   PADDLE_ENFORCE_MLU_SUCCESS(cnnlRandGenerateUniform(
-      handle, mlu_generator, data_type, nullptr, num, 0, 1, output));
+      handle, mlu_generator, data_type, nullptr, num, min, max, output));
 }
 
 /* static */ void MLUCnnl::TopK(
