@@ -317,7 +317,7 @@ class GPUPSROIPoolGradOpKernel : public framework::OpKernel<T> {
                             ctx.device_context(), &rois_batch_id_list_gpu);
 
       input_grad->mutable_data<T>(ctx.GetPlace());
-      math::SetConstant<Place, T> set_zero;
+      pten::funcs::SetConstant<Place, T> set_zero;
       set_zero(ctx.cuda_device_context(), input_grad, static_cast<T>(0));
 
       int output_grad_size = output_grad->numel();
