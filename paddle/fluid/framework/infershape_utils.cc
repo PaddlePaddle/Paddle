@@ -298,15 +298,20 @@ pten::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
 
   auto attr_reader = ctx->Attrs();
   for (auto& attr_name : attr_names) {
-    auto& attr = attr_reader.GetAttr(attr_name);
-    if (std::type_index(attr.type()) == std::type_index(typeid(bool))) {
-      infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
-    } else if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
-      infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(float, attr));
+    if (ctx->HasAttr(atrr_name)) {
+      auto& attr = attr_reader.GetAttr(attr_name);
+      if (std::type_index(attr.type()) == std::type_index(typeid(bool))) {
+        infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(float))) {
+        infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(float, attr));
+      } else {
+        // do nothing, skip useless attrs now
+        // TODO(chenweihang): support other attr type later and throw error
+        // if attr is cannot parsed
+      }
     } else {
-      // do nothing, skip useless attrs now
-      // TODO(chenweihang): support other attr type later and throw error
-      // if attr is cannot parsed
+      // do nothing
     }
   }
 
