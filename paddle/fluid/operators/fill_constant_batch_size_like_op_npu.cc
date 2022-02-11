@@ -78,7 +78,7 @@ class FillConstantBatchSizeLikeOpNPUKernel : public framework::OpKernel<T> {
     } else {
       out->mutable_data(ctx.GetPlace(),
                         framework::TransToPtenDataType(data_type));
-      Tensor tensor_tmp(data_type);
+      Tensor tensor_tmp(framework::TransToPtenDataType(data_type));
       tensor_tmp.mutable_data<T>({1}, ctx.GetPlace());
       FillNpuTensorWithConstant<T>(&tensor_tmp, value);
 

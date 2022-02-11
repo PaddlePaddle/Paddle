@@ -52,8 +52,7 @@ class ReduceSumNPUKernel : public framework::OpKernel<T> {
             framework::proto::VarType::FP16) {
       cast_x.Resize(x->dims());
       cast_x.mutable_data<float>(ctx.GetPlace());
-      auto dst_dtype = framework::TransToProtoVarType(
-          ConvertToNpuDtype(framework::proto::VarType::FP32));
+      auto dst_dtype = ConvertToNpuDtype(framework::proto::VarType::FP32);
       const auto& runner_cast = NpuOpRunner(
           "Cast", {*x}, {cast_x}, {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast.Run(stream);

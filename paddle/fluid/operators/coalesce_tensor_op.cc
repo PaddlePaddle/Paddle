@@ -54,7 +54,7 @@ struct FillConstantVisitor {
                  * = nullptr) const {
 #ifdef PADDLE_WITH_ASCEND_CL
     if (platform::is_npu_place(dev_ctx_.GetPlace())) {
-      Tensor tensor_tmp(dtype_);
+      Tensor tensor_tmp(framework::TransToPtenDataType(dtype_));
       tensor_tmp.mutable_data<T>({1}, context_.GetPlace());
       FillNpuTensorWithConstant<T>(&tensor_tmp, static_cast<T>(value_));
 

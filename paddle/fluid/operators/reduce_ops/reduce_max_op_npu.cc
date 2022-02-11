@@ -96,8 +96,7 @@ class ReduceMaxNPUKernel : public framework::OpKernel<T> {
     }
 
     if (framework::TransToProtoVarType(x->dtype()) != cast_out_dtype) {
-      auto dst_dtype =
-          framework::TransToProtoVarType(ConvertToNpuDtype(cast_out_dtype));
+      auto dst_dtype = ConvertToNpuDtype(cast_out_dtype);
       const auto& runner_cast =
           NpuOpRunner("Cast", {cast_out}, {*out},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
