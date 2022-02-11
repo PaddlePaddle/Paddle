@@ -2079,7 +2079,7 @@ void OperatorWithKernel::BuildPtenKernelContext(
       experimental::ResetTensorDtypeAndLayoutByArgDef(tensor_out,
                                                       output_defs.at(i));
       SetAllocationForOutputTenosr(
-          tensor_out, pten::TransToFluidPlace(output_defs.at(i).backend));
+          tensor_out, pten::TransToPtenPlace(output_defs.at(i).backend));
 
       pt_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
     }
