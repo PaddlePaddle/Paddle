@@ -298,7 +298,7 @@ pten::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
 
   auto attr_reader = ctx->Attrs();
   for (auto& attr_name : attr_names) {
-    if (ctx->HasAttr(atrr_name)) {
+    if (ctx->HasAttr(attr_name)) {
       auto& attr = attr_reader.GetAttr(attr_name);
       if (std::type_index(attr.type()) == std::type_index(typeid(bool))) {
         infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
