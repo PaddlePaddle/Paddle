@@ -643,10 +643,10 @@ void BatchNormGradRawKernel(const Context &ctx,
         if (compute_format == DataLayout::kNCHW) {
           BNBackward<T,
                      block,
-                     DataLayout::kNCHW><<<grid2, block, 0, dev_ctx.stream()>>>(
+                     DataLayout::kNCHW><<<grid2, block, 0, ctx.stream()>>>(
               transformed_d_y.template data<T>(),
               transformed_x.template data<T>(),
-              scale->template data<BatchNormParamType<T>>(),
+              scale.template data<BatchNormParamType<T>>(),
               saved_mean_data,
               saved_var_data,
               C,
@@ -661,10 +661,10 @@ void BatchNormGradRawKernel(const Context &ctx,
         } else {
           BNBackward<T,
                      block,
-                     DataLayout::kNHWC><<<grid2, block, 0, dev_ctx.stream()>>>(
+                     DataLayout::kNHWC><<<grid2, block, 0, ctx.stream()>>>(
               transformed_d_y.template data<T>(),
               transformed_x.template data<T>(),
-              scale->template data<BatchNormParamType<T>>(),
+              scale.template data<BatchNormParamType<T>>(),
               saved_mean_data,
               saved_var_data,
               C,
@@ -946,6 +946,21 @@ void BatchNormGradKernel(const Context &dev_ctx,
 
 }  // namespace pten
 
+#ifdef PADDLE_WITH_HIP
+PT_REGISTER_KERNEL(batch_norm_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::BatchNormGradKernel,
+                   float,
+                   pten::dtype::float16) {}
+
+PT_REGISTER_KERNEL(batch_norm_grad_raw,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::BatchNormGradRawKernel,
+                   float,
+                   pten::dtype::float16) {}
+#else
 PT_REGISTER_KERNEL(batch_norm_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -961,3 +976,5 @@ PT_REGISTER_KERNEL(batch_norm_grad_raw,
                    float,
                    double,
                    pten::dtype::float16) {}
+
+#endif

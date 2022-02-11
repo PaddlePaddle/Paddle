@@ -95,9 +95,19 @@ void BatchNormGradGradKernel(const Context& ctx,
 }
 }  // namespace pten
 
+#ifdef PADDLE_WITH_HIP
 PT_REGISTER_KERNEL(batch_norm_grad_grad,
                    GPU,
                    ALL_LAYOUT,
                    pten::BatchNormGradGradKernel,
                    float,
                    double) {}
+
+#else
+PT_REGISTER_KERNEL(batch_norm_grad_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::BatchNormGradGradKernel,
+                   float,
+                   double) {}
+#endif

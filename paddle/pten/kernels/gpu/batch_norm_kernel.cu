@@ -356,12 +356,12 @@ void BatchNormKernel(const Context &ctx,
     if (compute_format == DataLayout::kNCHW) {
       BNForwardInference<
           T,
-          DataLayout::kNCHW><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+          DataLayout::kNCHW><<<grid_size, block_size, 0, ctx.stream()>>>(
           transformed_x.template data<T>(),
           est_mean->template data<BatchNormParamType<T>>(),
           est_var->template data<BatchNormParamType<T>>(),
-          scale->template data<BatchNormParamType<T>>(),
-          bias->template data<BatchNormParamType<T>>(),
+          scale.template data<BatchNormParamType<T>>(),
+          bias.template data<BatchNormParamType<T>>(),
           C,
           N,
           H * W * D,
@@ -370,12 +370,12 @@ void BatchNormKernel(const Context &ctx,
     } else {
       BNForwardInference<
           T,
-          DataLayout::kNHWC><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+          DataLayout::kNHWC><<<grid_size, block_size, 0, ctx.stream()>>>(
           transformed_x.template data<T>(),
           est_mean->template data<BatchNormParamType<T>>(),
           est_var->template data<BatchNormParamType<T>>(),
-          scale->template data<BatchNormParamType<T>>(),
-          bias->template data<BatchNormParamType<T>>(),
+          scale.template data<BatchNormParamType<T>>(),
+          bias.template data<BatchNormParamType<T>>(),
           C,
           N,
           H * W * D,
@@ -534,17 +534,17 @@ void BatchNormKernel(const Context &ctx,
 #ifdef PADDLE_WITH_HIP
         const int num = transformed_x.numel();
         const int block = 256;
-        const int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
+        const int max_threads = ctx.GetMaxPhysicalThreadCount();
         const int max_blocks = std::max(max_threads / block, 1);
         const int grid = std::min(C, max_blocks);
         if (compute_format == DataLayout::kNCHW) {
           BNForwardTraining<
               T,
               block,
-              DataLayout::kNCHW><<<grid, block, 0, dev_ctx.stream()>>>(
+              DataLayout::kNCHW><<<grid, block, 0, ctx.stream()>>>(
               transformed_x.template data<T>(),
-              scale->template data<BatchNormParamType<T>>(),
-              bias->template data<BatchNormParamType<T>>(),
+              scale.template data<BatchNormParamType<T>>(),
+              bias.template data<BatchNormParamType<T>>(),
               C,
               N,
               H * W * D,
@@ -559,10 +559,10 @@ void BatchNormKernel(const Context &ctx,
           BNForwardTraining<
               T,
               block,
-              DataLayout::kNHWC><<<grid, block, 0, dev_ctx.stream()>>>(
+              DataLayout::kNHWC><<<grid, block, 0, ctx.stream()>>>(
               transformed_x.template data<T>(),
-              scale->template data<BatchNormParamType<T>>(),
-              bias->template data<BatchNormParamType<T>>(),
+              scale.template data<BatchNormParamType<T>>(),
+              bias.template data<BatchNormParamType<T>>(),
               C,
               N,
               H * W * D,
@@ -655,6 +655,14 @@ void BatchNormKernel(const Context &ctx,
 
 }  // namespace pten
 
+#ifdef PADDLE_WITH_HIP
+PT_REGISTER_KERNEL(batch_norm,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::BatchNormKernel,
+                   float,
+                   pten::dtype::float16) {}
+#else
 PT_REGISTER_KERNEL(batch_norm,
                    GPU,
                    ALL_LAYOUT,
@@ -662,3 +670,5 @@ PT_REGISTER_KERNEL(batch_norm,
                    float,
                    double,
                    pten::dtype::float16) {}
+
+#endif
