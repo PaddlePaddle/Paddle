@@ -19,7 +19,7 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/im2col.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -106,7 +106,7 @@ class UnfoldGradOpKernel : public framework::OpKernel<T> {
     math::Col2ImFunctor<math::ColFormat::kCFO, DeviceContext, T> col2im;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
-    math::SetConstant<DeviceContext, T> set_zero;
+    pten::funcs::SetConstant<DeviceContext, T> set_zero;
     set_zero(dev_ctx, input_grad, static_cast<T>(0));
     for (int i = 0; i < batch_size; i++) {
       Tensor out_grad_batch =

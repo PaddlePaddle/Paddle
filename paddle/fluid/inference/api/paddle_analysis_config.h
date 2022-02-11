@@ -521,6 +521,9 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool tensorrt_dla_enabled() { return trt_use_dla_; }
 
+  void EnableTensorRtInspector();
+  bool tensorrt_inspector_enabled() { return trt_use_inspector_; }
+
   void EnableDlnne(int min_subgraph_size = 3);
   bool dlnne_enabled() const { return use_dlnne_; }
 
@@ -807,6 +810,7 @@ struct PD_INFER_DECL AnalysisConfig {
   bool trt_allow_build_at_runtime_{false};
   // tune to get dynamic_shape info.
   bool trt_tuned_dynamic_shape_{false};
+  bool trt_use_inspector_{false};
 
   // In CollectShapeInfo mode, we will collect the shape information of
   // all intermediate tensors in the compute graph and calculate the
