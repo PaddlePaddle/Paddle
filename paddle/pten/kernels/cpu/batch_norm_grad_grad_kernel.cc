@@ -17,7 +17,7 @@
 #include "paddle/pten/kernels/batch_norm_kernel.h"
 #include "paddle/pten/kernels/funcs/eigen/common.h"
 
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 #include "paddle/pten/kernels/gpu/batch_norm_utils.h"
 
 namespace pten {
@@ -86,7 +86,7 @@ void BatchNormGradGradKernel(const Context &ctx,
   const int C = (data_layout == DataLayout::kNCHW ? x_dims[1]
                                                   : x_dims[x_dims.size() - 1]);
   const int sample_size = X->numel() / C;
-  paddle::operators::math::SetConstant<Context, T> set_constant;
+  pten::funcs::SetConstant<Context, T> set_constant;
 
   const T *mean_data = Saved_mean->data<T>();
   const T *inv_var_data = Saved_variance->data<T>();

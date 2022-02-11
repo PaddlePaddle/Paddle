@@ -299,13 +299,13 @@ bool FuseOptimizerOpPass::OpWithKernelSupportCPUAndGPU(
         kernel_factory.SelectKernelMap(pten::TransToPtenKernelName(op_type));
     for (auto &kernel : kernel_key_map) {
       if (platform::is_cpu_place(
-              pten::TransToFluidPlace(kernel.first.backend()))) {
+              pten::TransToPtenPlace(kernel.first.backend()))) {
         support_cpu = true;
         continue;
       }
 
       if (platform::is_gpu_place(
-              pten::TransToFluidPlace(kernel.first.backend()))) {
+              pten::TransToPtenPlace(kernel.first.backend()))) {
         support_gpu = true;
         continue;
       }

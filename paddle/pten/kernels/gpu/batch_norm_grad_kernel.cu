@@ -473,8 +473,7 @@ void BatchNormGradRawKernel(const Context &ctx,
       if (d_x) {
         paddle::framework::TensorCopy(*d_y, ctx.GetPlace(), d_x);
       }
-      paddle::operators::math::SetConstant<Context, BatchNormParamType<T>>
-          functor;
+      pten::funcs::SetConstant<Context, BatchNormParamType<T>> functor;
       functor(ctx, d_scale, static_cast<BatchNormParamType<T>>(0));
       functor(ctx, d_bias, static_cast<BatchNormParamType<T>>(0));
       return;

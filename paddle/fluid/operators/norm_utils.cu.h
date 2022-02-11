@@ -405,8 +405,7 @@ void NormDoubleGradFunctor(const DeviceContext &ctx,
   const T *ddscale_data = (ddScale == nullptr ? nullptr : ddScale->data<T>());
   const T *ddbias_data = (ddBias == nullptr ? nullptr : ddBias->data<T>());
 
-  auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-  pten::funcs::SetConstant<platform::CUDADeviceContext, T> set_constant;
+  pten::funcs::SetConstant<DeviceContext, T> set_constant;
 
   auto &x_dims = X->dims();
   const int C = (data_layout == DataLayout::kNCHW ? x_dims[1]
