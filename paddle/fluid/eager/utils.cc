@@ -237,7 +237,7 @@ void EagerUtils::Output2Result(
     std::vector<paddle::experimental::Tensor>* out_var,
     std::vector<paddle::experimental::Tensor>* result) {
   for (size_t i = 0; i < outs.size(); i++) {
-    (*out_var)[i].set_impl(outs[i]->GetTensorBase());
+    result->emplace_back(outs[i]->GetTensorBase());
   }
 }
 

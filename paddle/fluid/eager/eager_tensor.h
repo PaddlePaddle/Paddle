@@ -22,6 +22,7 @@
 #include "paddle/pten/api/lib/api_declare.h"
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/core/compat/convert_utils.h"
+#include "paddle/pten/core/selected_rows.h"
 /**
  * This class is used by Eager mode for now. It's painful to do this in Eager
  * Mode, the better
@@ -63,6 +64,17 @@ class EagerTensor final {
                               "we got Tensor with type DenseTensor, and we got "
                               "EagerVariable with another type."));
         *framework_tensor = *tensor_dense;
+      } else if (tensor.is_selected_rows()) {
+        auto* framework_tensor = var_.GetMutable<pten::SelectedRows>();
+        // Contruct framework::Tensor from egr::EagerTensor
+        auto selected_rows =
+            std::dynamic_pointer_cast<pten::SelectedRows>(tensor.impl());
+        PADDLE_ENFORCE_EQ((selected_rows.get() && selected_rows), true,
+                          paddle::platform::errors::Fatal(
+                              "Failed to Trans Tensor to EagerVariable since "
+                              "we got Tensor with type DenseTensor, and we got "
+                              "EagerVariable with another type."));
+        *framework_tensor = *selected_rows;
       } else {
         PADDLE_THROW(paddle::platform::errors::Fatal(
             "Unrecognized egr::EagerVariable type, only "

@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/selected_rows.h"
 #include "paddle/pten/core/tensor_base.h"
 #include "paddle/pten/core/tensor_meta.h"
 #include "paddle/pten/core/tensor_utils.h"
@@ -131,6 +132,10 @@ DataLayout Tensor::layout() const { return impl_->layout(); }
 
 bool Tensor::is_dense_tensor() const {
   return pten::DenseTensor::classof(impl_.get());
+}
+
+bool Tensor::is_selected_rows() const {
+  return pten::SelectedRows::classof(impl_.get());
 }
 
 /* Part 3: Device and Backend methods */
