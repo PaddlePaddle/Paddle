@@ -84,7 +84,7 @@ TEST(Tensor, data_transform_diff_place) {
   ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
   ASSERT_EQ(out.initialized(), true);
   ASSERT_EQ(out.impl()->place(),
-            pten::TransToFluidPlace(experimental::Backend::GPU));
+            pten::TransToPtenPlace(experimental::Backend::GPU));
 
   auto ref_out = experimental::copy_to(out, experimental::Backend::CPU, true);
 

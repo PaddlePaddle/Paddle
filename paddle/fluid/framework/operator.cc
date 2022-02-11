@@ -605,7 +605,7 @@ bool OpSupportGPU(const std::string& op_type) {
       kernel_factory.SelectKernelMap(pten::TransToPtenKernelName(op_type));
   for (auto& kernel : kernel_key_map) {
     if (platform::is_gpu_place(
-            pten::TransToFluidPlace(kernel.first.backend()))) {
+            pten::TransToPtenPlace(kernel.first.backend()))) {
       return true;
     }
   }
@@ -1951,7 +1951,8 @@ Scope* OperatorWithKernel::PreparePtenData(
       if (!tensor_in->IsInitialized()) {
         continue;
       }
-      auto expected_place = pten::TransToFluidPlace(in_def.backend);
+
+      auto expected_place = pten::TransToPtenPlace(in_def.backend);
       if (platform::is_same_place(tensor_in->place(), expected_place)) {
         continue;
       }
@@ -2081,7 +2082,7 @@ void OperatorWithKernel::BuildPtenKernelContext(
       experimental::ResetTensorDtypeAndLayoutByArgDef(tensor_out,
                                                       output_defs.at(i));
       SetAllocationForOutputTenosr(
-          tensor_out, pten::TransToFluidPlace(output_defs.at(i).backend));
+          tensor_out, pten::TransToPtenPlace(output_defs.at(i).backend));
 
       pt_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
     }
