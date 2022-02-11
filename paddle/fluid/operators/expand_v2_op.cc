@@ -16,6 +16,9 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/op_registry.h"
+
+#define MAX_RANK_SUPPORTED 6
 
 namespace paddle {
 namespace operators {

@@ -91,7 +91,7 @@ inline std::vector<int> get_expand_shape(
     return ctx.Attr<std::vector<int>>("shape");
   }
 }
-
+/*
 using Tensor = framework::Tensor;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -344,6 +344,6 @@ class ExpandV2GradKernel : public framework::OpKernel<T> {
         place, x_grad, out_grad, reduce_dims, reshape_dims);
   }
 };
-
+*/
 }  // namespace operators
 }  // namespace paddle
