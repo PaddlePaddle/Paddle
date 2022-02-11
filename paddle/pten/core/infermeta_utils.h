@@ -161,9 +161,9 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
   };
 };
 
-class MetaFunctionMap {
+class MetaFnFactory {
  public:
-  static MetaFunctionMap& Instance();
+  static MetaFnFactory& Instance();
 
   bool Contains(const std::string& kernel_name_prefix) const {
     return meta_fn_map_.count(kernel_name_prefix) > 0;
@@ -192,7 +192,7 @@ class MetaFunctionMap {
   }
 
  private:
-  MetaFunctionMap() = default;
+  MetaFnFactory() = default;
 
   /**
    * [ Why use kernel name prefix? ]
@@ -210,14 +210,14 @@ class MetaFunctionMap {
    */
   paddle::flat_hash_map<std::string, InferMetaFn> meta_fn_map_;
 
-  DISABLE_COPY_AND_ASSIGN(MetaFunctionMap);
+  DISABLE_COPY_AND_ASSIGN(MetaFnFactory);
 };
 
 struct InferMetaFnRegistrar {
   InferMetaFnRegistrar(const char* kernel_name_prefix,
                        InferMetaFn infer_meta_fn) {
-    MetaFunctionMap::Instance().Insert(kernel_name_prefix,
-                                       std::move(infer_meta_fn));
+    MetaFnFactory::Instance().Insert(kernel_name_prefix,
+                                     std::move(infer_meta_fn));
   }
 };
 

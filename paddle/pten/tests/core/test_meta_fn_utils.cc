@@ -22,7 +22,7 @@ limitations under the License. */
 namespace pten {
 namespace tests {
 
-TEST(MetaFunctionMap, InferMetaFnExists) {
+TEST(MetaFnFactory, InferMetaFnExists) {
   pten::DenseTensor dense_x;
   dense_x.Resize(pten::framework::make_ddim({3, 4}));
 
@@ -38,7 +38,7 @@ TEST(MetaFunctionMap, InferMetaFnExists) {
   ctx.EmplaceBackInput(shared_meat_x);
   ctx.EmplaceBackOutput(shared_meta_out);
   ctx.SetMetaConfig(/*is_runtime=*/true);
-  pten::MetaFunctionMap::Instance().Get("sign")(&ctx);
+  pten::MetaFnFactory::Instance().Get("sign")(&ctx);
 
   EXPECT_EQ(dense_out1.dims().size(), dense_out2.dims().size());
   EXPECT_EQ(dense_out1.dims()[0], dense_out2.dims()[0]);
