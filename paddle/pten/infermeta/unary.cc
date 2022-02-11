@@ -315,12 +315,6 @@ void TransferLayoutInferMeta(const MetaTensor& x,
   out->set_layout(layout);
 }
 
-DenseTensorMeta TransferLayoutInferMeta(const DenseTensorMeta& x_meta,
-                                        DataLayout layout) {
-  DenseTensorMeta out_meta(x_meta.dtype, x_meta.dims, layout);
-  return out_meta;
-}
-
 }  // namespace pten
 
 PT_REGISTER_INFER_META_FN(sign, pten::UnchangedInferMeta);

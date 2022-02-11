@@ -49,19 +49,6 @@ inline std::shared_ptr<pten::SelectedRows> TensorToSelectedRows(
   return std::dynamic_pointer_cast<pten::SelectedRows>(tensor.impl());
 }
 
-inline std::unique_ptr<std::vector<pten::SelectedRows>> TensorToSelectedRows(
-    const std::vector<Tensor>& tensors) {
-  auto pt_tensors = std::make_unique<std::vector<pten::SelectedRows>>();
-  pt_tensors->reserve(tensors.size());
-
-  for (const auto& t : tensors) {
-    pt_tensors->push_back(
-        *std::dynamic_pointer_cast<pten::SelectedRows>(t.impl()));
-  }
-
-  return std::move(pt_tensors);
-}
-
 /* ----------------- for infer_meta --------------------- */
 
 inline pten::MetaTensor MakeMetaTensor(const pten::DenseTensor& tensor) {
@@ -76,6 +63,10 @@ inline std::vector<pten::MetaTensor> MakeMetaTensor(
     meta_tensors.emplace_back(t);
   }
   return meta_tensors;
+}
+
+inline pten::MetaTensor MakeMetaTensor(const pten::SelectedRows& tensor) {
+  return pten::MetaTensor(tensor);
 }
 
 /* ------------------ for output ----------------------- */
@@ -101,6 +92,13 @@ inline std::vector<pten::DenseTensor*> SetKernelOutput(
     out->back().set_impl(tensor_ptr);
   }
   return results;
+}
+
+inline pten::SelectedRows* SetSelectedRowsKernelOutput(Backend backend,
+                                                       Tensor* out) {
+  auto select_rows = std::make_shared<pten::SelectedRows>();
+  out->set_impl(select_rows);
+  return select_rows.get();
 }
 
 }  // namespace experimental
