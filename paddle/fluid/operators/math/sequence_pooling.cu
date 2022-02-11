@@ -15,10 +15,10 @@ limitations under the License. */
 #include <algorithm>
 #include <string>
 #include "paddle/fluid/framework/mixed_vector.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sequence_pooling.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {

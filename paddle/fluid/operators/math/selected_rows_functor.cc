@@ -129,7 +129,7 @@ struct SelectedRowsAddTensor<platform::CPUDeviceContext, T> {
             "But recieved input width = [%d], output width = [%d]",
             in1_row_numel, output->numel() / in1_height));
 
-    SetConstant<platform::CPUDeviceContext, T> functor;
+    pten::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
     functor(context, output, 0.0);
 
     auto* in1_data = in1_value.data<T>();
@@ -461,7 +461,7 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
 
       out.set_rows(merge_rows);
 
-      math::SetConstant<platform::CPUDeviceContext, T> constant_functor;
+      pten::funcs::SetConstant<platform::CPUDeviceContext, T> constant_functor;
       constant_functor(context, out.mutable_value(), static_cast<T>(0.f));
 
       std::unordered_map<int64_t, size_t> rows_to_id;
@@ -689,7 +689,7 @@ struct MergeAverage<platform::CPUDeviceContext, T> {
 
     out.set_rows(merge_rows);
 
-    math::SetConstant<platform::CPUDeviceContext, T> constant_functor;
+    pten::funcs::SetConstant<platform::CPUDeviceContext, T> constant_functor;
     constant_functor(context, out.mutable_value(), 0.0);
 
     std::unordered_map<int64_t, size_t> rows_to_id;

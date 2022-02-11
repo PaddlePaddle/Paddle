@@ -17,8 +17,8 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sequence_padding.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -87,7 +87,7 @@ class SequenceUnpadGradOpKernel : public framework::OpKernel<T> {
       LoDTensor zero_pads;
       zero_pads.Resize({1, 1});
       zero_pads.mutable_data<T>(ctx.GetPlace());
-      math::SetConstant<DeviceContext, T> set_zero;
+      pten::funcs::SetConstant<DeviceContext, T> set_zero;
       auto& dev_ctx = ctx.template device_context<DeviceContext>();
       set_zero(dev_ctx, &zero_pads, static_cast<T>(0));
 

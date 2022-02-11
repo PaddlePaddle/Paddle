@@ -26,8 +26,7 @@ namespace operators {
 
 using ElementwiseType = pten::ElementwiseType;
 
-template <ElementwiseType ET, typename InT, typename OutT, typename Functor,
-          int NumOuts = 1>
+template <typename OutT, typename Functor, int NumOuts = 1>
 void LaunchSameDimsElementwiseCudaKernel(
     const KPDevice &ctx, const std::vector<const framework::Tensor *> &ins,
     std::vector<framework::Tensor *> *outs, Functor func) {
@@ -54,9 +53,8 @@ void LaunchSameDimsElementwiseCudaKernel(
   for (int i = 0; i < pt_outputs_tmp.size(); i++) {
     pt_outputs.push_back(pt_outputs_tmp[i].get());
   }
-  pten::funcs::LaunchSameDimsElementwiseCudaKernel<ET, InT, OutT, Functor,
-                                                   NumOuts>(ctx, pt_inputs,
-                                                            &pt_outputs, func);
+  pten::funcs::LaunchSameDimsElementwiseCudaKernel<OutT, Functor, NumOuts>(
+      ctx, pt_inputs, &pt_outputs, func);
 }
 
 }  // namespace operators

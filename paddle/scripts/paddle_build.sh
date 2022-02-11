@@ -240,6 +240,7 @@ function cmake_base() {
         -DON_INFER=${ON_INFER:-OFF}
         -DWITH_HETERPS=${WITH_HETERPS:-OFF}
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} 
+        -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF}
         -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}"
     ========================================
 EOF
@@ -291,6 +292,7 @@ EOF
         -DWITH_HETERPS=${WITH_HETERPS:-OFF} \
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
         -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}" \
+        -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
@@ -452,6 +454,14 @@ function cmake_gen_and_build() {
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
     echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+}
+
+function get_build_time_file() {
+    python ${PADDLE_ROOT}/tools/analysis_build_time.py
+    cat ${PADDLE_ROOT}/tools/buildTime.txt
+    today=$(date "+%Y-%m-%d")
+    mkdir -p /paddle_targets_buildtime_record
+    cp ${PADDLE_ROOT}/tools/buildTime.txt /paddle_targets_buildtime_record/${today}-buildTime.txt
 }
 
 function build_mac() {
@@ -2485,6 +2495,10 @@ function build_pr_and_develop() {
     mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
 }
 
+function build_develop() {
+    #git checkout -b develop_base_pr upstream/$BRANCH
+    cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+}
 
 function main() {
     local CMD=$1 
@@ -2495,7 +2509,12 @@ function main() {
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         ;;
       build_pr_dev)
-        build_pr_and_develop 
+        build_pr_and_develop
+        ;;
+      build_dev_test)
+        #build_develop
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        get_build_time_file
         ;;
       build_and_check)
         set +e
