@@ -25,9 +25,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/fc.h"
 #include "paddle/fluid/operators/math/gru_compute.h"
 #include "paddle/fluid/operators/math/lstm_compute.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/unique_op.h"
 #include "paddle/fluid/operators/utils.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -305,7 +305,7 @@ struct Layer {
       framework::TensorCopy(bias_hh, context.GetPlace(), dev_ctx, &bias_hh_tmp);
       bias_hh_tmp.Resize({3, bias_hh_tmp.numel() / 3});
       auto bias_hh_tmp_unbind = Unbind(bias_hh_tmp);
-      math::SetConstant<platform::CPUDeviceContext, T> zero;
+      pten::funcs::SetConstant<platform::CPUDeviceContext, T> zero;
       zero(dev_ctx, &bias_hh_tmp_unbind[2], static_cast<T>(0.0));
 
       auto bias_hh_after_mask = framework::EigenMatrix<T>::From(
@@ -439,7 +439,7 @@ struct Layer {
                             &weight_hh_tmp);
       weight_hh_tmp.Resize({3, weight_hh_tmp.numel() / 3});
       auto weight_hh_tmp_unbind = Unbind(weight_hh_tmp);
-      math::SetConstant<platform::CPUDeviceContext, T> zero;
+      pten::funcs::SetConstant<platform::CPUDeviceContext, T> zero;
       zero(dev_ctx, &weight_hh_tmp_unbind[2], static_cast<T>(0.0));
       weight_hh_tmp.Resize(vec[1 + offset * 4].dims());
     }
@@ -585,7 +585,7 @@ struct Layer {
                             &weight_hh_tmp);
       weight_hh_tmp.Resize({3, weight_hh_tmp.numel() / 3});
       auto weight_hh_tmp_unbind = Unbind(weight_hh_tmp);
-      math::SetConstant<platform::CPUDeviceContext, T> zero;
+      pten::funcs::SetConstant<platform::CPUDeviceContext, T> zero;
       zero(dev_ctx, &weight_hh_tmp_unbind[2], static_cast<T>(0.0));
       weight_hh_tmp.Resize(vec[1 + offset * 4].dims());
     }
@@ -966,7 +966,7 @@ class RNNCPUKernel : public framework::OpKernel<T> {
     dropout_mask->mutable_data<uint8_t>(output->dims(), ctx.GetPlace());
 
     auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
-    math::SetConstant<platform::CPUDeviceContext, uint8_t> ones;
+    pten::funcs::SetConstant<platform::CPUDeviceContext, uint8_t> ones;
     ones(dev_ctx, dropout_mask, static_cast<uint8_t>(1));
     // init the output and allocate the memory
     output->mutable_data<T>(ctx.GetPlace());
@@ -1095,7 +1095,7 @@ struct GradLayer {
     Tensor c, d;
     Tensor* dynamic_grad_pre_h = &c;
     Tensor* dynamic_grad_pre_c = &d;
-    math::SetConstant<platform::CPUDeviceContext, T> zero;
+    pten::funcs::SetConstant<platform::CPUDeviceContext, T> zero;
     if (init_h_grad_unbind->size() > 0) {
       dynamic_grad_pre_h->ShareDataWith(
           (*init_h_grad_unbind)[current_layer_idx]);
@@ -1293,7 +1293,7 @@ struct GradLayer {
                 mat_dim_parameter, static_cast<T>(1.0), input_grad, T(1));
 
     // calc the gradient of Bias_hi, Bias_hh
-    math::ColwiseSum<platform::CPUDeviceContext, T> col_sum;
+    pten::funcs::ColwiseSum<platform::CPUDeviceContext, T> col_sum;
     Tensor tmp_grad_gate;
     tmp_grad_gate.ShareDataWith(grad_gate);
     tmp_grad_gate.Resize(
@@ -1328,7 +1328,7 @@ struct SingleGradLayer : GradLayer<T, GradCellType> {
       const int& gate_num) {
     auto& device_ctx =
         context.template device_context<platform::CPUDeviceContext>();
-    math::SetConstant<platform::CPUDeviceContext, T> zero;
+    pten::funcs::SetConstant<platform::CPUDeviceContext, T> zero;
     zero(device_ctx, input_grad, static_cast<T>(0.0));
 
     const bool& is_bidirec = context.Attr<bool>("is_bidirec");
@@ -1425,7 +1425,7 @@ struct BidirGradLayer : GradLayer<T, GradCellType> {
     // split the output two tensor to output_forward, output_backward
     auto& device_ctx =
         context.template device_context<platform::CPUDeviceContext>();
-    math::SetConstant<platform::CPUDeviceContext, T> zero;
+    pten::funcs::SetConstant<platform::CPUDeviceContext, T> zero;
     zero(device_ctx, input_grad, static_cast<T>(0.0));
 
     std::vector<Tensor*> output_vec;
@@ -1675,7 +1675,7 @@ struct GRUGradCell : GradCell<T> {
       backup_tensor<T>(context, &grad_pre_hidden_bak, grad_pre_hidden);
     }
     // zero pre_hidden
-    math::SetConstant<platform::CPUDeviceContext, T> zero;
+    pten::funcs::SetConstant<platform::CPUDeviceContext, T> zero;
     zero(device_ctx, grad_pre_hidden, static_cast<T>(0.0));
     math::GRUMetaValue<T> gru_value;
     math::GRUMetaGrad<T> gru_grad;

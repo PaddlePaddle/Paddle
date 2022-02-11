@@ -17,8 +17,8 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/pooling.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -92,7 +92,7 @@ class MaxPoolWithIndexGradKernel : public framework::OpKernel<T1> {
     if (in_x_grad) {
       in_x_grad->mutable_data<T1>(context.GetPlace());
       auto& device_ctx = context.template device_context<DeviceContext>();
-      math::set_constant(device_ctx, in_x_grad, 0);
+      pten::funcs::set_constant(device_ctx, in_x_grad, 0);
 
       switch (ksize.size()) {
         case 2: {

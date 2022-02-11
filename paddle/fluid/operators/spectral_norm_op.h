@@ -14,7 +14,7 @@
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -40,19 +40,19 @@ static inline void TransCompute(const int rank, const Tensor& in, Tensor* out,
 
   switch (rank) {
     case 2:
-      math::Transpose<DeviceContext, T, 2> trans2;
+      pten::funcs::Transpose<DeviceContext, T, 2> trans2;
       trans2(dev_ctx, in, out, perm);
       break;
     case 3:
-      math::Transpose<DeviceContext, T, 3> trans3;
+      pten::funcs::Transpose<DeviceContext, T, 3> trans3;
       trans3(dev_ctx, in, out, perm);
       break;
     case 4:
-      math::Transpose<DeviceContext, T, 4> trans4;
+      pten::funcs::Transpose<DeviceContext, T, 4> trans4;
       trans4(dev_ctx, in, out, perm);
       break;
     case 5:
-      math::Transpose<DeviceContext, T, 5> trans5;
+      pten::funcs::Transpose<DeviceContext, T, 5> trans5;
       trans5(dev_ctx, in, out, perm);
       break;
     default:
