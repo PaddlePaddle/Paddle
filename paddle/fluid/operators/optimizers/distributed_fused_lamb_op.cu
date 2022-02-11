@@ -33,6 +33,8 @@
 namespace cub = hipcub;
 #endif
 
+DECLARE_bool(distributed_lamb_divide_nranks_when_allreduce);
+
 namespace paddle {
 namespace operators {
 
@@ -163,12 +165,37 @@ struct AndFunctor {
   HOSTDEVICE bool operator()(bool x, bool y) const { return x && y; }
 };
 
+template <typename T1, typename T2>
+static __global__ void GPUScaleCUDAKernel(const T1 *__restrict__ x,
+                                          const T2 *__restrict__ scale,
+                                          T1 *__restrict__ y, int num) {
+  static_assert(sizeof(T1) <= sizeof(T2),
+                "sizeof(T1) must be not greater than sizeof(T2).");
+  T2 s = scale[0];
+  CUDA_KERNEL_LOOP(i, num) {
+    y[i] = static_cast<T1>(static_cast<T2>(x[i]) * s);
+  }
+}
+
 template <typename T>
-static __global__ void ScaleCUDAKernel(const T *__restrict__ x,
-                                       const T *__restrict__ scale,
-                                       T *__restrict__ y, int num) {
-  T s = scale[0];
-  CUDA_KERNEL_LOOP(i, num) { y[i] = x[i] * s; }
+static __global__ void InplaceDivideNumDeviceCUDAKernel(T *x, int num,
+                                                        int num_devices) {
+  using MT = typename details::MPTypeTrait<T>::Type;
+  CUDA_KERNEL_LOOP(i, num) {
+    auto x_val = static_cast<MT>(x[i]) / static_cast<MT>(num_devices);
+    x[i] = static_cast<T>(x_val);
+  }
+}
+
+template <typename T1, typename T2>
+static __global__ void CPUScaleCUDAKernel(const T1 *__restrict__ x,
+                                          const T2 scale, T1 *__restrict__ y,
+                                          int num) {
+  static_assert(sizeof(T1) <= sizeof(T2),
+                "sizeof(T1) must be not greater than sizeof(T2).");
+  CUDA_KERNEL_LOOP(i, num) {
+    y[i] = static_cast<T1>(static_cast<T2>(x[i]) * scale);
+  }
 }
 
 template <typename T>
@@ -186,13 +213,16 @@ template <typename T1, typename T2>
 static __global__ void CalcGradNormClipBeforeAllReduceScale(
     const T1 *__restrict__ global_scale, T1 max_global_grad_norm,
     const T1 *__restrict__ square_grad_norm, T1 *__restrict__ out1,
-    T2 *__restrict__ out2, T1 clip_rescale_grad) {
+    T2 *__restrict__ out2, T1 clip_rescale_grad, T1 extra_rescale) {
   T1 grad_norm = static_cast<T1>(sqrt(*square_grad_norm)) * clip_rescale_grad;
   T1 scale = global_scale[0] * max_global_grad_norm / (1e-6 + grad_norm);
   bool found_nan_inf = !isfinite(scale);
   if (scale >= 1 || found_nan_inf) {
-    scale = static_cast<T1>(1.0);
+    scale = extra_rescale;
+  } else {
+    scale *= extra_rescale;
   }
+
   if (out1) {
     *out1 = scale;
   }
@@ -481,8 +511,8 @@ static void NCCLReduceScatterWithScale(
                             "nranks must be 1 when scale != nullptr."));
       auto numel = recvcount * nranks;
       auto config = platform::GetGpuLaunchConfig1D(dev_ctx, numel);
-      ScaleCUDAKernel<<<config.block_per_grid, config.thread_per_block, 0,
-                        stream>>>(sendbuff, scale, recvbuff, numel);
+      GPUScaleCUDAKernel<<<config.block_per_grid, config.thread_per_block, 0,
+                           stream>>>(sendbuff, scale, recvbuff, numel);
     }
     return;
   }
@@ -497,8 +527,8 @@ static void NCCLReduceScatterWithScale(
     size_t numel = recvcount * nranks;
     T *new_sendbuff = buffer.Alloc<T>(numel);
     auto config = platform::GetGpuLaunchConfig1D(dev_ctx, numel);
-    ScaleCUDAKernel<<<config.block_per_grid, config.thread_per_block, 0,
-                      stream>>>(sendbuff, scale, new_sendbuff, numel);
+    GPUScaleCUDAKernel<<<config.block_per_grid, config.thread_per_block, 0,
+                         stream>>>(sendbuff, scale, new_sendbuff, numel);
     sendbuff = new_sendbuff;
   }
 
@@ -598,6 +628,16 @@ static void GetSquareGradNorm(const float *fp32_grad, int fp32_numel,
   }
   VLOG(10) << "GetSquareGradNorm ends, fp32_numel = " << fp32_numel
            << " , fp16_numel = " << fp16_numel;
+}
+
+template <typename T>
+static void InplaceDivideNumDevice(const platform::CUDADeviceContext &dev_ctx,
+                                   T *x, int num, int num_devices) {
+  if (UNLIKELY(num <= 0)) return;
+  auto config = platform::GetGpuLaunchConfig1D(dev_ctx, num);
+  InplaceDivideNumDeviceCUDAKernel<<<
+      config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
+      x, num, num_devices);
 }
 
 template <typename T>
@@ -896,18 +936,42 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
     VLOG(10) << "max_global_grad_norm = " << max_global_grad_norm
              << " , clip_after_allreduce = " << clip_after_allreduce;
     bool is_grad_scaled_by_nranks = ctx.Attr<bool>("is_grad_scaled_by_nranks");
-    // TODO(zengjinle): may be we need to add Attr<float>("rescale_grad")
-    // to rescale the gradient value to prevent overflow/underflow if we
-    // found non-convergence.
-    float origin_rescale_grad = 1.0f;
-    float rescale_grad = origin_rescale_grad;
-    if (!is_grad_scaled_by_nranks) {
+    bool divide_nranks_when_allreduce;
+    if (is_grad_scaled_by_nranks) {
+      divide_nranks_when_allreduce = false;
+      if (FLAGS_distributed_lamb_divide_nranks_when_allreduce) {
+        LOG_FIRST_N(WARNING, 1) << "FLAGS_distributed_lamb_divide_nranks_when_"
+                                   "allreduce should be false when "
+                                   "is_grad_scaled_by_nranks is true.";
+      }
+    } else {
+      if (FLAGS_distributed_lamb_divide_nranks_when_allreduce) {
+        divide_nranks_when_allreduce = true;
+      } else {
+        divide_nranks_when_allreduce = false;
+      }
+    }
+
+    if (num_devices == 1) {
+      divide_nranks_when_allreduce = false;
+    }
+
+    float rescale_grad = 1.0f;
+    if (!divide_nranks_when_allreduce) {
       rescale_grad /= num_devices;
     }
 
     if (max_global_grad_norm > 0) {
       if (clip_after_allreduce) {
         // (1) ReduceScater first
+        if (divide_nranks_when_allreduce) {
+          InplaceDivideNumDevice(dev_ctx, const_cast<float *>(fp32_grad),
+                                 fp32_numel, num_devices);
+          InplaceDivideNumDevice(dev_ctx,
+                                 const_cast<platform::float16 *>(fp16_grad),
+                                 fp16_numel, num_devices);
+        }
+
         NCCLReduceScatterWithScale(fp32_grad, fp32_sum_grad,
                                    fp32_numel_each_device, num_devices, comm,
                                    stream, dev_ctx);
@@ -948,14 +1012,16 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
           fp16_scale = cub_tmp_buffer.Alloc<platform::float16>(1);
         }
 
-        float clip_scale = origin_rescale_grad;
+        float clip_scale = 1.0f;
         if (is_grad_scaled_by_nranks) {
           clip_scale *= num_devices;
         }
+        float extra_scale =
+            divide_nranks_when_allreduce ? 1.0f / num_devices : 1.0f;
         CalcGradNormClipBeforeAllReduceScale<
             float, platform::float16><<<1, 1, 0, stream>>>(
             global_scale, max_global_grad_norm, fp32_square_grad_norm,
-            fp32_scale, fp16_scale, clip_scale);
+            fp32_scale, fp16_scale, clip_scale, extra_scale);
         VLOG(1) << "Grad scale: " << FlattenToString(fp32_scale, 1, place);
         // (3) Do ReduceScatter with scale
         NCCLReduceScatterWithScale(fp32_grad, fp32_sum_grad,
@@ -967,6 +1033,14 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
         max_global_grad_norm = 0;
       }
     } else {
+      if (divide_nranks_when_allreduce) {
+        InplaceDivideNumDevice(dev_ctx, const_cast<float *>(fp32_grad),
+                               fp32_numel, num_devices);
+        InplaceDivideNumDevice(dev_ctx,
+                               const_cast<platform::float16 *>(fp16_grad),
+                               fp16_numel, num_devices);
+      }
+
       NCCLReduceScatterWithScale(fp32_grad, fp32_sum_grad,
                                  fp32_numel_each_device, num_devices, comm,
                                  stream, dev_ctx);
