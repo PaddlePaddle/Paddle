@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_graph_symbolization.h"
 
 namespace paddle {
