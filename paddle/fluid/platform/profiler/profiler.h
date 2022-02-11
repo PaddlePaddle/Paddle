@@ -20,7 +20,7 @@ limitations under the License. */
 #include <list>
 #include <memory>
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/fluid/platform/profiler/trace_event_collector.h"
+#include "paddle/fluid/platform/profiler/event_node.h"
 #include "paddle/fluid/platform/profiler/tracer_base.h"
 
 namespace paddle {
@@ -38,7 +38,7 @@ class Profiler {
 
   void Start();
 
-  TraceEventCollector Stop();
+  std::unique_ptr<NodeTrees> Stop();
 
   ~Profiler();
 
