@@ -39,8 +39,8 @@ class LgammaKernel<platform::CUDADeviceContext, T>
     std::vector<const framework::Tensor*> ins = {x};
     std::vector<framework::Tensor*> outs = {out};
     auto functor = CudaLgammaFunctor<T>();
-    paddle::operators::LaunchSameDimsElementwiseCudaKernel<
-        ElementwiseType::kUnary, T, T>(dev_ctx, ins, &outs, functor);
+    paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins,
+                                                              &outs, functor);
   }
 };
 
