@@ -156,8 +156,9 @@ void GLOOParallelContext::AllReduce(const pten::SelectedRows &src,
           << ", height: " << src.height();
   auto *dst_rows = dst->mutable_rows();
   dst_rows->resize(rows_num);
-  auto *dst_rows_ptr = dst_rows->MutableData(place);
-  const int64_t *src_rows_ptr = src_rows.Data(place);
+
+  VectorMutableData(int64_t, (*dst_rows), place, dst_rows_ptr);
+  VectorMutableData(int64_t, src_rows, place, src_rows_ptr);
 
   auto *dst_tensor = dst->mutable_value();
   auto dims = src_tensor.dims();

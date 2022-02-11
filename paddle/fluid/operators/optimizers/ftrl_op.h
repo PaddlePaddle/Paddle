@@ -189,7 +189,7 @@ class FTRLOpKernel : public framework::OpKernel<T> {
       merge_func(ctx.template device_context<DeviceContext>(), *grad,
                  merged_grad);
 
-      const int64_t* rows = merged_grad->rows().Data(ctx.GetPlace());
+      VectorMutableData(int64_t, merged_grad->rows(), ctx.GetPlace(), rows);
       auto row_numel = static_cast<int64_t>(merged_grad->value().dims()[1]);
       auto row_height = static_cast<int64_t>(merged_grad->rows().size());
 

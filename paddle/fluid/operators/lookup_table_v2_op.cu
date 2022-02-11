@@ -152,11 +152,14 @@ struct LookupTableV2GradCUDAFunctor {
       auto gpu_place = context_.GetPlace();
 
       if (!std::is_same<IdT, int64_t>::value) {
-        InputTypeConvert<<<grids, threads, 0, stream>>>(
-            ids_data, ids_num, new_rows.MutableData(gpu_place));
+        VectorMutableData(int64_t, new_rows, gpu_place, new_rows_ptr);
+        InputTypeConvert<<<grids, threads, 0, stream>>>(ids_data, ids_num,
+                                                        new_rows_ptr);
       } else {
-        memory::Copy(gpu_place, new_rows.CUDAMutableData(gpu_place), gpu_place,
-                     ids_data, ids_num * sizeof(int64_t), stream);
+        CUDA_MALLOC_FROM_VECTOR_WITH_PREF(int64_t, new_rows, gpu_place,
+                                          new_rows_ptr)
+        memory::Copy(gpu_place, new_rows_ptr, gpu_place, ids_data,
+                     ids_num * sizeof(int64_t), stream);
       }
 
       d_table->set_rows(new_rows);

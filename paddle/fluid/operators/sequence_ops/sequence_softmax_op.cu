@@ -133,9 +133,11 @@ struct SequenceSoftmaxFunctor<platform::CUDADeviceContext, T> {
 
     dim3 block_size(thread_x);
     dim3 grid_size(max_blocks);
+    CUDA_MALLOC_FROM_VECTOR_WITH_PREF(size_t, ref_lod, context.GetPlace(),
+                                      ref_lod_data)
     sequence_softmax_kernel<
         T, kThreadsPerBlock><<<grid_size, block_size, 0, context.stream()>>>(
-        x.data<T>(), ref_lod.CUDAData(context.GetPlace()), height,
+        x.data<T>(), ref_lod_data, height,
         out->mutable_data<T>(context.GetPlace()));
   }
 };
@@ -156,10 +158,12 @@ struct SequenceSoftmaxGradFunctor<platform::CUDADeviceContext, T> {
     dim3 block_size(thread_x);
     dim3 grid_size(max_blocks);
 
+    CUDA_MALLOC_FROM_VECTOR_WITH_PREF(size_t, ref_lod, context.GetPlace(),
+                                      ref_lod_data)
     sequence_softmax_grad_kernel<
         T, kThreadsPerBlock><<<grid_size, block_size, 0, context.stream()>>>(
-        dout.data<T>(), out.data<T>(), ref_lod.CUDAData(context.GetPlace()),
-        height, dx->mutable_data<T>(context.GetPlace()));
+        dout.data<T>(), out.data<T>(), ref_lod_data, height,
+        dx->mutable_data<T>(context.GetPlace()));
   }
 };
 

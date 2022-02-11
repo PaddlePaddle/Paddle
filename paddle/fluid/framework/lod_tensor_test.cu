@@ -37,7 +37,8 @@ TEST(LoD, data) {
                      v.size());
   hipDeviceSynchronize();
 #else
-  test<<<1, 1>>>(v.CUDAMutableData(gpu), v.size());
+  CUDA_MALLOC_FROM_VECTOR_WITH_PREF(size_t, v, gpu, gpu_raw)
+  test<<<1, 1>>>(gpu_raw, v.size());
   cudaDeviceSynchronize();
 #endif
   for (size_t i = 0; i < v.size(); ++i) {
@@ -68,7 +69,8 @@ TEST(LoDTensor, LoDInGPU) {
                      lod[0].CUDAMutableData(place), lod[0].size());
   hipDeviceSynchronize();
 #else
-  test<<<1, 8>>>(lod[0].CUDAMutableData(place), lod[0].size());
+  CUDA_MALLOC_FROM_VECTOR_WITH_PREF(size_t, lod[0], place, gpu_raw)
+  test<<<1, 8>>>(gpu_raw, lod[0].size());
   cudaDeviceSynchronize();
 #endif
 

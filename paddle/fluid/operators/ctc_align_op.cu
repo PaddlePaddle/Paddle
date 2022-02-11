@@ -110,10 +110,11 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
       // merge elements and delete blank
       T* output_data = output->mutable_data<T>({num_tokens, 1}, ctx.GetPlace());
 
+      CUDA_MALLOC_FROM_VECTOR_WITH_PREF(size_t, input_lod[level],
+                                        ctx.GetPlace(), gpu_raw)
       MergeAndDelCudaKernel<T><<<1, 1, 0, stream>>>(
-          num_tokens, tokens, num_seq,
-          input_lod[level].CUDAMutableData(ctx.GetPlace()), blank,
-          merge_repeated, dev_out_lod0_ptr, output_data);
+          num_tokens, tokens, num_seq, gpu_raw, blank, merge_repeated,
+          dev_out_lod0_ptr, output_data);
 
       // set output lod
       std::vector<size_t> host_out_lod0(dev_out_lod0.begin(),

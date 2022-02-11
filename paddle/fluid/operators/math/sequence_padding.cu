@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/operators/math/sequence_padding.h"
 
 namespace paddle {
@@ -104,10 +105,11 @@ class PaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
     T* pad_data = pad_tensor->data<T>();
     const T* pad_value_data = pad_value.data<T>();
 
+    CUDA_MALLOC_FROM_VECTOR_WITH_PREF(size_t, seq_offsets, context.GetPlace(),
+                                      gpu_raw);
     SequencePaddingKernel<T, kSeqToPad><<<grid, threads, 0, context.stream()>>>(
-        pad_data, seq_data, pad_value_data, pad_value.numel() == 1,
-        seq_offsets.CUDAData(context.GetPlace()), seq_num, pad_seq_len,
-        step_width, norm_by_times, layout);
+        pad_data, seq_data, pad_value_data, pad_value.numel() == 1, gpu_raw,
+        seq_num, pad_seq_len, step_width, norm_by_times, layout);
   }
 };
 
@@ -157,9 +159,10 @@ class UnpaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
     const T* pad_data = pad_tensor.data<T>();
     T* seq_data = seq_tensor->data<T>();
 
+    CUDA_MALLOC_FROM_VECTOR_WITH_PREF(size_t, seq_offsets, context.GetPlace(),
+                                      gpu_raw);
     SequencePaddingKernel<T, kPadToSeq><<<grid, threads, 0, context.stream()>>>(
-        seq_data, pad_data, nullptr, false,
-        seq_offsets.CUDAData(context.GetPlace()), seq_num, pad_seq_len,
+        seq_data, pad_data, nullptr, false, gpu_raw, seq_num, pad_seq_len,
         step_width, norm_by_times, layout);
   }
 };

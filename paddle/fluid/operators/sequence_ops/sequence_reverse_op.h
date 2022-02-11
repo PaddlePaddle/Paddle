@@ -132,7 +132,9 @@ class SequenceReverseOpKernel : public framework::OpKernel<T> {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(ctx.GetPlace())) {
-      lod = x.lod()[0].CUDAData(ctx.GetPlace());
+      CUDA_MALLOC_FROM_VECTOR_WITH_PREF(size_t, x.lod()[0], ctx.GetPlace(),
+                                        lod_tmp)
+      lod = lod_tmp;
     } else {
 #endif
       lod = x.lod()[0].data();

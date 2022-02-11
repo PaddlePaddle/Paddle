@@ -164,8 +164,10 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
       auto gpu_place = context.GetPlace();
 
       // TODO(yuyang18): Strange code here.
-      memory::Copy(gpu_place, new_rows.CUDAMutableData(context.GetPlace()),
-                   gpu_place, ids_data, ids_num * sizeof(int64_t), stream);
+      CUDA_MALLOC_FROM_VECTOR_WITH_PREF(int64_t, new_rows, context.GetPlace(),
+                                        gpu_raw)
+      memory::Copy(gpu_place, gpu_raw, gpu_place, ids_data,
+                   ids_num * sizeof(int64_t), stream);
       d_table->set_rows(new_rows);
 
       auto *d_table_value = d_table->mutable_value();

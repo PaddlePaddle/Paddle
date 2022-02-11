@@ -56,5 +56,25 @@ inline std::string to_string(const char* v) {
   return std::string(v);
 }
 
+using LoD = std::vector<std::vector<size_t>>;
+inline std::ostream& operator<<(std::ostream& os, const LoD& lod) {
+  os << "{";
+  for (auto& v : lod) {
+    os << "{";
+    bool is_first = true;
+    for (auto& i : v) {
+      if (is_first) {
+        os << i;
+        is_first = false;
+      } else {
+        os << ", " << i;
+      }
+    }
+    os << "}";
+  }
+  os << "}";
+  return os;
+}
+
 }  // namespace string
 }  // namespace paddle

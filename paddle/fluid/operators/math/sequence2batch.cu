@@ -11,6 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/operators/math/sequence2batch.h"
 
 namespace paddle {
@@ -72,9 +73,10 @@ class CopyMatrixRowsFunctor<platform::CUDADeviceContext, T> {
     dim3 threads(128, 8);
     dim3 grid(8, 1);
     auto stream = context.stream();
+    CUDA_MALLOC_FROM_VECTOR_WITH_PREF(size_t, index_lod, context.GetPlace(),
+                                      gpu_raw);
     CopyMatrixRowsKernel<T, 128, 8, 8><<<grid, threads, 0, stream>>>(
-        src_data, dst_data, index_lod.CUDAData(context.GetPlace()), height,
-        width, is_src_index);
+        src_data, dst_data, gpu_raw, height, width, is_src_index);
   }
 };
 

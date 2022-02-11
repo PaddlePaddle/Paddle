@@ -22,14 +22,77 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
-#include "paddle/fluid/framework/details/cow_ptr.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/utils/none.h"
 #include "paddle/utils/optional.h"
 
 namespace paddle {
 namespace framework {
 
+template <class T>
+using Vector = std::vector<T>;
+
+inline paddle::optional<platform::CUDAPlace> OptionalCUDAPlace(
+    const paddle::memory::allocation::AllocationPtr &gpu_) {
+  return gpu_ == nullptr ? paddle::none
+                         : paddle::optional<platform::CUDAPlace>(gpu_->place());
+}
+
+template <typename T>
+void CopyCPUDataToCUDAHelper(const std::vector<T> *cpu_,
+                             paddle::memory::AllocationPtr *gpu_,
+                             size_t *gpu_memory_size_,
+                             const platform::Place &place) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  const void *src = cpu_->data();
+  *gpu_memory_size_ = cpu_->size() * sizeof(T);  // sizeof(T)
+  (*gpu_) = memory::Alloc(place, *gpu_memory_size_);
+  void *dst = (*gpu_)->ptr();
+  auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
+      platform::DeviceContextPool::Instance().Get(place));
+  auto stream = dev_ctx->stream();
+  paddle::memory::Copy(OptionalCUDAPlace(*gpu_).get(), dst,
+                       platform::CPUPlace(), src, *gpu_memory_size_, stream);
+#endif
+}
+
+template <class T>
+paddle::memory::AllocationPtr CUDA_MALLOC_FROM_VECTOR(
+    const std::vector<T> cpu_, const platform::Place &place) {
+  paddle::memory::AllocationPtr gpu_;
+  size_t gpu_memory_size_;
+  paddle::framework::CopyCPUDataToCUDAHelper(&cpu_, &gpu_, &gpu_memory_size_,
+                                             place);
+  return gpu_;
+}
+
+#define REINTERPRET(T, x) reinterpret_cast<T *>(x->ptr())
+
+#define CUDA_MALLOC_FROM_VECTOR_WITH_PREF(TYPE, cpu_, place, output) \
+  auto *output = REINTERPRET(                                        \
+      TYPE, paddle::framework::CUDA_MALLOC_FROM_VECTOR<TYPE>(cpu_, place));
+
+#define VectorMutableData(TYPE, cpu_, place, output)                           \
+  TYPE *output = nullptr;                                                      \
+  if (platform::is_gpu_place(place)) {                                         \
+    output = const_cast<TYPE *>(REINTERPRET(                                   \
+        TYPE, paddle::framework::CUDA_MALLOC_FROM_VECTOR<TYPE>(cpu_, place))); \
+  } else {                                                                     \
+    output = const_cast<TYPE *>(cpu_.data());                                  \
+  }
+
+// extend a vector by iterator.
+// NOTE: the iterator must support end-begin
+template <typename T, typename It>
+void Extend(std::vector<T> cpu_, It begin, It end) {
+  auto out_it = std::back_inserter<std::vector<T>>(cpu_);
+  std::copy(begin, end, out_it);
+}
+
+/*
 inline paddle::optional<platform::CUDAPlace> OptionalCUDAPlace(
     const paddle::memory::allocation::AllocationPtr &gpu_) {
   return gpu_ == nullptr ? paddle::none
@@ -443,6 +506,7 @@ class Vector {
   // Vector is an COW object.
   mutable details::COWPtr<VectorData> m_;
 };
+*/
 
 };  // namespace framework
 }  // namespace paddle

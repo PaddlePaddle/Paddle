@@ -145,6 +145,8 @@ class CVMGradCUDAKernel : public framework::OpKernel<T> {
           dx_numel);
     } else {
       auto lod = dx->lod()[0];
+      CUDA_MALLOC_FROM_VECTOR_WITH_PREF(size_t, lod, context.GetPlace(),
+                                        gpu_raw)
       PADDLE_ENFORCE_EQ(
           batch_size, lod[lod.size() - 1],
           platform::errors::PreconditionNotMet(
@@ -152,8 +154,8 @@ class CVMGradCUDAKernel : public framework::OpKernel<T> {
       CvmGradComputeKernel<<<(dx_numel + PADDLE_CUDA_NUM_THREADS - 1) /
                                  PADDLE_CUDA_NUM_THREADS,
                              PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
-          use_cvm, item_size, cvm_data, dout_data, dx_data, true,
-          lod.CUDAData(context.GetPlace()), lod.size(), dx_numel);
+          use_cvm, item_size, cvm_data, dout_data, dx_data, true, gpu_raw,
+          lod.size(), dx_numel);
     }
   }
 };

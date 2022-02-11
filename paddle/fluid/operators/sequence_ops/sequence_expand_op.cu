@@ -157,7 +157,8 @@ struct SequenceExpandFunctor<platform::CUDADeviceContext, T> {
         out_offset[2 * x_lod_size + i] = ref_lod[i];
       }
 
-      const size_t* out_offset_data = out_offset.CUDAData(context.GetPlace());
+      CUDA_MALLOC_FROM_VECTOR_WITH_PREF(size_t, out_offset, context.GetPlace(),
+                                        out_offset_data)
       const size_t* x_lod_data = out_offset_data + x_lod_size;
       const size_t* ref_lod_data = out_offset_data + 2 * x_lod_size;
 
@@ -193,11 +194,15 @@ struct SequenceExpandGradFunctor<platform::CUDADeviceContext, T> {
     int block_x = static_cast<int>(ref_lod.size());
     dim3 block_size(thread_x, thread_y, thread_z);
     dim3 grid_size(block_x, 1);
+    CUDA_MALLOC_FROM_VECTOR_WITH_PREF(size_t, ref_lod, context.GetPlace(),
+                                      ref_lod_data)
+    CUDA_MALLOC_FROM_VECTOR_WITH_PREF(size_t, out_offset, context.GetPlace(),
+                                      out_offset_data)
+    CUDA_MALLOC_FROM_VECTOR_WITH_PREF(size_t, x_lod, context.GetPlace(),
+                                      x_lod_ptr)
     sequence_expand_grad_kernel<<<grid_size, block_size, 0, context.stream()>>>(
-        dout.data<T>(), ref_lod.CUDAData(context.GetPlace()),
-        x_lod.CUDAData(context.GetPlace()),
-        out_offset.CUDAData(context.GetPlace()), ref_lod.size(), x_item_length,
-        dx->mutable_data<T>(context.GetPlace()));
+        dout.data<T>(), ref_lod_data, x_lod_ptr, out_offset_data,
+        ref_lod.size(), x_item_length, dx->mutable_data<T>(context.GetPlace()));
   }
 };
 

@@ -336,7 +336,8 @@ class RowConvKernel<platform::CUDADeviceContext, T>
 
     int num_sequence = batch_indices.size() - 1;
     int future_context = Filter->dims()[0];
-    size_t *idx = batch_indices.CUDAMutableData(context.GetPlace());
+    CUDA_MALLOC_FROM_VECTOR_WITH_PREF(size_t, batch_indices, context.GetPlace(),
+                                      idx)
     auto stream = context.cuda_device_context().stream();
 
     if (future_context <= 32) {
@@ -392,7 +393,8 @@ class RowConvGradKernel<platform::CUDADeviceContext, T>
     // int input_dim = X->dims()[1];
     int num_sequence = batch_indices.size() - 1;
     int future_context = Filter->dims()[0];
-    size_t *idx = batch_indices.CUDAMutableData(context.GetPlace());
+    CUDA_MALLOC_FROM_VECTOR_WITH_PREF(size_t, batch_indices, context.GetPlace(),
+                                      idx)
 
     auto &device_ctx = context.cuda_device_context();
     math::SetConstant<platform::CUDADeviceContext, T> zero;

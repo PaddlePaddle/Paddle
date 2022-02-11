@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/operators/math/beam_search.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
@@ -357,9 +358,8 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
     framework::LoD selected_lod(2);
     selected_lod[0].assign(abs_lod[level].begin(), abs_lod[level].end());
     selected_lod[1].resize(scores->dims()[0] + 1);
-    size_t* selected_offsets =
-        selected_lod[1].CUDAMutableData(context.GetPlace());
-
+    CUDA_MALLOC_FROM_VECTOR_WITH_PREF(size_t, selected_lod[1],
+                                      context.GetPlace(), selected_offsets);
     if (num_seqs == 1) {
       const int seq_length = static_cast<int>(abs_lod[level][1]);
       const int kMaxThreadsPerSeq = 1024;
@@ -377,7 +377,8 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
                 is_accumulated, num_used_threads));
       }
     } else if (num_seqs <= 4) {
-      const size_t* seq_offsets = abs_lod[level].CUDAData(context.GetPlace());
+      CUDA_MALLOC_FROM_VECTOR_WITH_PREF(size_t, abs_lod[level],
+                                        context.GetPlace(), seq_offsets)
       // Use only 1 block
       const int kMaxThreadsPerSeq = 32;
       const int kMaxSeqs = 4;

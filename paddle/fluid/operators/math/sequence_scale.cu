@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/operators/math/sequence_scale.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
@@ -51,10 +52,11 @@ class ScaleLoDTensorFunctor<platform::CUDADeviceContext, T> {
         seq_data, abs_offset_lod[level].CUDAMutableData(context.GetPlace()),
         scales, seq_width);
 #else
+    CUDA_MALLOC_FROM_VECTOR_WITH_PREF(size_t, abs_offset_lod[level],
+                                      context.GetPlace(), gpu_raw);
     SequenceScaleKernel<T, PADDLE_CUDA_NUM_THREADS><<<
         num_seq, PADDLE_CUDA_NUM_THREADS, 0, context.stream()>>>(
-        seq_data, abs_offset_lod[level].CUDAMutableData(context.GetPlace()),
-        scales, seq_width);
+        seq_data, gpu_raw, scales, seq_width);
 #endif
   }
 };

@@ -81,8 +81,10 @@ struct SequenceExpandAsFunctor<platform::CUDADeviceContext, T> {
 
     dim3 block_size(thread_x);
     dim3 grid_size(block_x);
+    CUDA_MALLOC_FROM_VECTOR_WITH_PREF(size_t, ref_lod, context.GetPlace(),
+                                      gpu_raw)
     sequence_expand_as_kernel<<<grid_size, block_size, 0, context.stream()>>>(
-        x.data<T>(), ref_lod.CUDAData(context.GetPlace()), height, width,
+        x.data<T>(), gpu_raw, height, width,
         out->mutable_data<T>(context.GetPlace()));
   }
 };
@@ -107,9 +109,11 @@ struct SequenceExpandAsGradFunctor<platform::CUDADeviceContext, T> {
 
     dim3 block_size(thread_x);
     dim3 grid_size(block_x);
+    CUDA_MALLOC_FROM_VECTOR_WITH_PREF(size_t, ref_lod, context.GetPlace(),
+                                      gpu_raw)
     sequence_expand_as_grad_kernel<<<grid_size, block_size, 0,
                                      context.stream()>>>(
-        dout.data<T>(), ref_lod.CUDAData(context.GetPlace()), height, width,
+        dout.data<T>(), gpu_raw, height, width,
         dx->mutable_data<T>(context.GetPlace()));
   }
 };

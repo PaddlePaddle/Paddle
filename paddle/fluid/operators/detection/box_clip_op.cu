@@ -57,9 +57,10 @@ class GPUBoxClipKernel : public framework::OpKernel<T> {
     auto stream = dev_ctx.stream();
     const size_t batch_size = lod.back().size() - 1;
     T *output_data = output->mutable_data<T>(dev_ctx.GetPlace());
+    CUDA_MALLOC_FROM_VECTOR_WITH_PREF(size_t, abs_offset_lod[0],
+                                      dev_ctx.GetPlace(), gpu_raw)
     GPUBoxClip<T, 512><<<batch_size, 512, 0, stream>>>(
-        input->data<T>(), abs_offset_lod[0].CUDAMutableData(dev_ctx.GetPlace()),
-        bbox_width, im_info->data<T>(), output_data);
+        input->data<T>(), gpu_raw, bbox_width, im_info->data<T>(), output_data);
   }
 };
 

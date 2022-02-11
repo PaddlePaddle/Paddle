@@ -108,14 +108,14 @@ class TargetAssignKernel : public framework::OpKernel<T> {
 
     auto x_lod = x->lod().back();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    size_t* x_lod_data = x_lod.MutableData(ctx.GetPlace());
+    VectorMutableData(size_t, x_lod, ctx.GetPlace(), x_lod_data)
 #else
     size_t* x_lod_data = x_lod.data();
 #endif
 
-    TargetAssignFunctor<T, WT> functor(x_data, match_idx_data, x_lod_data,
-                                       mismatch_value, n, m, p, k, out_data,
-                                       out_wt_data);
+        TargetAssignFunctor<T, WT>
+            functor(x_data, match_idx_data, x_lod_data, mismatch_value, n, m, p,
+                    k, out_data, out_wt_data);
 
     auto& device_ctx = ctx.template device_context<DeviceContext>();
     platform::ForRange<DeviceContext> for_range(device_ctx, n * m);
@@ -130,11 +130,12 @@ class TargetAssignKernel : public framework::OpKernel<T> {
       const int* neg_idx_data = neg_indices->data<int>();
       auto neg_lod = neg_indices->lod().back();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      size_t* neg_lod_data = neg_lod.MutableData(ctx.GetPlace());
+      VectorMutableData(size_t, neg_lod, ctx.GetPlace(), neg_lod_data)
 #else
       size_t* neg_lod_data = neg_lod.data();
 #endif
-      NegTargetAssignFunctor<DeviceContext, T, WT> neg_trg_functor;
+          NegTargetAssignFunctor<DeviceContext, T, WT>
+              neg_trg_functor;
       neg_trg_functor(device_ctx, neg_idx_data, neg_lod_data, n, m, k,
                       mismatch_value, out_data, out_wt_data);
     }

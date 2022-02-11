@@ -88,7 +88,8 @@ class SequenceEraseOpCUDAKernel : public framework::OpKernel<T> {
     // Copy LoD to GPU
     auto last_lod = lod[lod.size() - 1];
     auto lod_len = last_lod.size();
-    const size_t* dev_in_lod_ptr = last_lod.CUDAData(ctx.GetPlace());
+    CUDA_MALLOC_FROM_VECTOR_WITH_PREF(size_t, last_lod, ctx.GetPlace(),
+                                      dev_in_lod_ptr)
     // Calc output LoD
     thrust::device_vector<size_t> dev_out_lod(lod_len);
     size_t* dev_out_lod_ptr = thrust::raw_pointer_cast(dev_out_lod.data());

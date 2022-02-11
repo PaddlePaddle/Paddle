@@ -1366,30 +1366,14 @@ std::ostream& print_tensor<paddle::platform::complex<double>>(
   return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const LoD& lod) {
-  os << "{";
-  for (auto& v : lod) {
-    os << "{";
-    bool is_first = true;
-    for (auto& i : v) {
-      if (is_first) {
-        os << i;
-        is_first = false;
-      } else {
-        os << ", " << i;
-      }
-    }
-    os << "}";
-  }
-  os << "}";
-
-  return os;
-}
-
 }  // namespace framework
 }  // namespace paddle
 
 namespace pten {
+std::ostream& operator<<(std::ostream& os, const LoD& lod) {
+  paddle::string::operator<<(os, lod);
+  return os;
+}
 
 std::ostream& operator<<(std::ostream& os, const pten::DenseTensor& t) {
   if (t.lod().size() > 0) {
@@ -1433,3 +1417,16 @@ std::ostream& operator<<(std::ostream& os, const pten::DenseTensor& t) {
   return os;
 }
 }  // namespace pten
+
+namespace paddle {
+namespace framework {
+// NOTE(xiongkun):
+// https://stackoverflow.com/questions/5195512/namespaces-and-operator-resolution
+// if we don't redefine, the operator << of pten / framework LoD is not found.
+std::ostream& operator<<(std::ostream& os, const LoD& lod) {
+  paddle::string::operator<<(os, lod);
+  return os;
+}
+
+}  // namespace framework
+}  // namespace paddle

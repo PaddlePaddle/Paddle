@@ -593,7 +593,7 @@ class LambOpKernel : public framework::OpKernel<T> {
       auto& grad_merge = *grad_merge_ptr;
       auto& grad_tensor = grad_merge.value();
       const T* grad_data = grad_tensor.template data<T>();
-      const int64_t* rows = grad_merge.rows().Data(ctx.GetPlace());
+      VectorMutableData(int64_t, grad_merge.rows(), ctx.GetPlace(), rows);
       auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
       if (platform::is_gpu_place(ctx.GetPlace()) &&
           beta1_pow.place() == platform::CPUPlace() &&
