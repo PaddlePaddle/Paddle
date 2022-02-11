@@ -83,6 +83,8 @@ ELSE(NOT WIN32)
         CMAKE_CACHE_ARGS    -DCMAKE_INSTALL_PREFIX:PATH=${CBLAS_INSTALL_DIR}
                             -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
                             -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
+        # ninja need to know where openblas.lib comes from
+        BUILD_BYPRODUCTS    ${CBLAS_LIBRARIES}
         )
     SET(OPENBLAS_SHARED_LIB  ${CBLAS_INSTALL_DIR}/bin/openblas${CMAKE_SHARED_LIBRARY_SUFFIX})
 ENDIF(NOT WIN32)
