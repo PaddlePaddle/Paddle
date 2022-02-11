@@ -29,8 +29,6 @@ class TrtConvertBilinearInterpTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs
             for i in range(len(program_config.ops))
         ]
-        if attrs[0]['align_corners'] == True:
-            return False
 
         return True
 
