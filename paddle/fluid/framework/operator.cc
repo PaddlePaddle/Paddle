@@ -1339,12 +1339,18 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
       }
       // when the Op that only has CPUKernel is assigned to GPU, the CPUKernel
       // will be executed and a warning will be given at the same time.
+      expected_kernel_key.place_ = platform::CPUPlace();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (SupportGPU()) {
         expected_kernel_key.place_ = dev_ctx.GetPlace();
-      } else if (SupportNPU()) {
+      }
+#endif
+#ifdef PADDLE_WITH_ASCEND_CL
+      if (SupportNPU()) {
         expected_kernel_key.place_ = dev_ctx.GetPlace();
-      } else {
-        expected_kernel_key.place_ = platform::CPUPlace();
+      }
+#endif
+      if (platform::is_cpu_place(expected_kernel_key.place_)) {
         LOG_FIRST_N(WARNING, 1)
             << "Op(" << type_
             << ") has no CUDA implementation. It will be assigned to CPUPlace.";
