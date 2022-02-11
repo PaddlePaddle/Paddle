@@ -551,6 +551,6 @@ TEST(test_tracer, test_execution_context) {
 
 USE_OP(mul);
 USE_OP(mul_grad);
-USE_OP(reduce_sum);
+USE_OP_ITSELF(reduce_sum);
 USE_OP(reduce_sum_grad);
 USE_OP(elementwise_add);
