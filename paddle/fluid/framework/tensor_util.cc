@@ -71,11 +71,9 @@ void TensorCopyImpl(const TENSOR& src, const platform::Place& dst_place,
 #ifdef PADDLE_WITH_MKLDNN
   auto size = src.layout() == DataLayout::kMKLDNN
                   ? src.memory_size()
-                  : src.numel() *
-                        SizeOfType(framework::TransToProtoVarType(src.dtype()));
+                  : src.numel() * framework::DataTypeSize(src.dtype());
 #else
-  auto size =
-      src.numel() * SizeOfType(framework::TransToProtoVarType(src.dtype()));
+  auto size = src.numel() * framework::DataTypeSize(src.dtype());
 #endif
 
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
@@ -422,8 +420,7 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
     return;
   }
 
-  auto size =
-      src.numel() * SizeOfType(framework::TransToProtoVarType(src.dtype()));
+  auto size = src.numel() * framework::DataTypeSize(src.dtype());
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }

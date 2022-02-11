@@ -105,6 +105,8 @@ size_t DataTypeSize(DataType dtype) {
       return sizeof(int);
     case DataType::INT64:
       return sizeof(int64_t);
+    case DataType::BFLOAT16:
+      return sizeof(paddle::platform::bfloat16);
     case DataType::FLOAT16:
       return sizeof(paddle::platform::float16);
     case DataType::FLOAT32:
