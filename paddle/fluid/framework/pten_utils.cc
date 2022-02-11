@@ -31,45 +31,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-paddle::platform::Place TransToFluidPlace(const pten::Backend& backend,
-                                          bool set_device_id) {
-  // NOTE(zhiqiu): GetCurrentDeviceId not always success, and device id is not
-  // always needed.
-  // So, add set_device_id parameter here.
-  switch (backend) {
-    case pten::Backend::CPU:
-      return paddle::platform::CPUPlace();
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    case pten::Backend::GPU:
-      return paddle::platform::CUDAPlace(
-          set_device_id ? paddle::platform::GetCurrentDeviceId() : 0);
-#endif
-#ifdef PADDLE_WITH_MKLDNN
-    case pten::Backend::MKLDNN:
-      return paddle::platform::CPUPlace();
-#endif
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    case pten::Backend::CUDNN:
-      return paddle::platform::CUDAPlace(
-          set_device_id ? paddle::platform::GetCurrentDeviceId() : 0);
-#endif
-#if defined(PADDLE_WITH_XPU)
-    case pten::Backend::XPU:
-      return paddle::platform::XPUPlace(
-          set_device_id ? paddle::platform::GetXPUCurrentDeviceId() : 0);
-#endif
-#if defined(PADDLE_WITH_ASCEND_CL)
-    case pten::Backend::NPU:
-      return paddle::platform::NPUPlace(
-          set_device_id ? paddle::platform::GetCurrentNPUDeviceId() : 0);
-#endif
-    default:
-      PADDLE_THROW(paddle::platform::errors::Unimplemented(
-          "Unsupported backend `%s` when casting it to paddle place type.",
-          backend));
-  }
-}
-
 class KernelArgsNameMakerByOpProto : public KernelArgsNameMaker {
  public:
   explicit KernelArgsNameMakerByOpProto(
@@ -103,8 +64,7 @@ OpKernelType TransPtenKernelKeyToOpKernelType(
   proto::VarType::Type data_type =
       pten::TransToProtoVarType(kernel_key.dtype());
   // no need to set current device id here
-  platform::Place place =
-      paddle::framework::TransToFluidPlace(kernel_key.backend(), false);
+  platform::Place place = pten::TransToPtenPlace(kernel_key.backend(), false);
   DataLayout data_layout = kernel_key.layout();
   LibraryType library_type = LibraryType::kPlain;
   if (kernel_key.backend() == pten::Backend::MKLDNN) {

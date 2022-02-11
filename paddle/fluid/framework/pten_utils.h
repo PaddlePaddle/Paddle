@@ -42,11 +42,6 @@ namespace framework {
 
 using KernelSignature = pten::KernelSignature;
 
-/* Place convert functions */
-
-paddle::platform::Place TransToFluidPlace(const pten::Backend& backend,
-                                          bool set_device_id = true);
-
 /* Kernel Key translate */
 
 OpKernelType TransPtenKernelKeyToOpKernelType(
