@@ -180,7 +180,7 @@ class SmoothL1LossGradNPUKernel : public framework::OpKernel<T> {
     // outy_grad = - gradient
     if (outy_grad) {
       outy_grad->mutable_data<T>(context.GetPlace());
-      Tensor coeff(experimental::DataType::FP32);
+      Tensor coeff(experimental::DataType::FLOAT32);
       coeff.mutable_data<float>({1}, context.GetPlace());
       FillNpuTensorWithConstant<float>(&coeff, -1);
       const auto& runner_y_grad =

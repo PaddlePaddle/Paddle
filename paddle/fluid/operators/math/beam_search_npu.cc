@@ -302,7 +302,7 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     runner_topk.Run(stream);
 
     // cast tmp_indices from int to float32 for Sort op
-    Tensor cast_tmp_indices(experimental::DataType::FP32);
+    Tensor cast_tmp_indices(experimental::DataType::FLOAT32);
     cast_tmp_indices.Resize(tmp_indices.dims());
     cast_tmp_indices.mutable_data<float>(ctx.GetPlace());
     auto dst_dtype_tmp_indices_fp32 = ConvertToNpuDtype(
@@ -313,7 +313,7 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     runner_cast_tmp_indices.Run(stream);
 
     // sort tmp_indices
-    Tensor sorted_tmp_indices(experimental::DataType::FP32);
+    Tensor sorted_tmp_indices(experimental::DataType::FLOAT32);
     sorted_tmp_indices.Resize(tmp_indices.dims());
     sorted_tmp_indices.mutable_data<float>(ctx.GetPlace());
     Tensor sorted_score_indices(experimental::DataType::INT32);
@@ -394,7 +394,7 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     // get indices of gather_nd op
     cast_sort_tmp_indices.Resize(
         framework::make_ddim({num_seqs, static_cast<int64_t>(beam_size), 1}));
-    Tensor gather_nd_id_indices(experimental::DataType::: INT32);
+    Tensor gather_nd_id_indices(experimental::DataType::INT32);
     gather_nd_id_indices.Resize(
         framework::make_ddim({num_seqs, static_cast<int64_t>(beam_size), 2}));
     gather_nd_id_indices.mutable_data<int>(place);
@@ -454,7 +454,7 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
         framework::make_ddim({num_seqs, static_cast<int64_t>(beam_size)}));
 
     // cast batch_ids from int to float32
-    Tensor cast_batch_ids(experimental::DataType::FP32);
+    Tensor cast_batch_ids(experimental::DataType::FLOAT32);
     cast_batch_ids.Resize(batch_ids.dims());
     cast_batch_ids.mutable_data<float>(ctx.GetPlace());
     auto dst_dtype1 = ConvertToNpuDtype(
@@ -465,7 +465,7 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     runner_cast_batch_ids.Run(stream);
 
     // scale batch_ids with beam_size
-    Tensor scale_batch_ids(experimental::DataType::FP32);
+    Tensor scale_batch_ids(experimental::DataType::FLOAT32);
     scale_batch_ids.Resize(batch_ids.dims());
     scale_batch_ids.mutable_data<float>(place);
     const auto& runner_power =

@@ -36,7 +36,7 @@ class ReduceProdNPUKernel : public framework::OpKernel<T> {
     cast_out.Resize(out->dims());
     cast_out.mutable_data<T>(place);
 
-    auto cast_out_dtype = x->type();
+    auto cast_out_dtype = framework::TransToProtoVarType(x->dtype());
     if (out_dtype != -1) {
       cast_out_dtype = static_cast<framework::proto::VarType::Type>(out_dtype);
     }
@@ -82,8 +82,7 @@ class ReduceProdNPUKernel : public framework::OpKernel<T> {
     runner.Run(stream);
 
     if (framework::TransToProtoVarType(x->dtype()) != cast_out_dtype) {
-      auto dst_dtype =
-          framework::TransToProtoVarType(ConvertToNpuDtype(cast_out_dtype));
+      auto dst_dtype = ConvertToNpuDtype(cast_out_dtype);
       const auto& runner_cast =
           NpuOpRunner("Cast", {cast_out}, {*out},
                       {{"dst_type", static_cast<int>(dst_dtype)}});

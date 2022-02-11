@@ -80,11 +80,11 @@ class ArgsortNPUKernel : public framework::OpKernel<T> {
 
     if (framework::TransToProtoVarType(input->dtype()) ==
         framework::proto::VarType::INT64) {
-      Tensor input_fp32(experimental::DataType::FP32);
+      Tensor input_fp32(experimental::DataType::FLOAT32);
       input_fp32.Resize(input->dims());
       CastToFP32(ctx, stream, *input, &input_fp32);
 
-      Tensor output_fp32(experimental::DataType::FP32);
+      Tensor output_fp32(experimental::DataType::FLOAT32);
       output_fp32.Resize(output->dims());
 
       if (axis == -1 || axis + 1 == in_dims.size()) {
