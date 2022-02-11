@@ -14,8 +14,8 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/pten/core/hostdevice.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -39,7 +39,7 @@ inline std::vector<int> get_new_shape(
                           tensor->dims()));
     if (platform::is_gpu_place(tensor->place())) {
       framework::Tensor temp;
-      TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+      paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
       vec_new_shape.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
     } else {
       vec_new_shape.push_back(static_cast<int32_t>(*tensor->data<int32_t>()));
@@ -55,7 +55,8 @@ inline std::vector<T> get_new_data_from_tensor(const Tensor* new_data_tensor) {
   auto* new_data = new_data_tensor->data<T>();
   framework::Tensor cpu_starts_tensor;
   if (platform::is_gpu_place(new_data_tensor->place())) {
-    TensorCopySync(*new_data_tensor, platform::CPUPlace(), &cpu_starts_tensor);
+    paddle::framework::TensorCopySync(*new_data_tensor, platform::CPUPlace(),
+                                      &cpu_starts_tensor);
     new_data = cpu_starts_tensor.data<T>();
   }
   vec_new_data = std::vector<T>(new_data, new_data + new_data_tensor->numel());
@@ -1056,7 +1057,7 @@ static void Interpolate1DCPUBwd(const framework::ExecutionContext& ctx,
   input_grad->mutable_data<T>(dim_grad, ctx.GetPlace());
 
   auto& device_ctx = ctx.template device_context<platform::CPUDeviceContext>();
-  math::SetConstant<platform::CPUDeviceContext, T> zero;
+  pten::funcs::SetConstant<platform::CPUDeviceContext, T> zero;
   zero(device_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_w == out_w) {
@@ -1125,7 +1126,7 @@ static void Interpolate2DCPUBwd(const framework::ExecutionContext& ctx,
   input_grad->mutable_data<T>(dim_grad, ctx.GetPlace());
 
   auto& device_ctx = ctx.template device_context<platform::CPUDeviceContext>();
-  math::SetConstant<platform::CPUDeviceContext, T> zero;
+  pten::funcs::SetConstant<platform::CPUDeviceContext, T> zero;
   zero(device_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_h == out_h && in_w == out_w) {
@@ -1212,7 +1213,7 @@ static void Interpolate3DCPUBwd(const framework::ExecutionContext& ctx,
   }
   input_grad->mutable_data<T>(dim_grad, ctx.GetPlace());
   auto& device_ctx = ctx.template device_context<platform::CPUDeviceContext>();
-  math::SetConstant<platform::CPUDeviceContext, T> zero;
+  pten::funcs::SetConstant<platform::CPUDeviceContext, T> zero;
   zero(device_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_d == out_d && in_h == out_h && in_w == out_w) {

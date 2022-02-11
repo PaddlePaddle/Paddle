@@ -73,6 +73,14 @@ class Conv2DHardSwishFusePass : public ConvActivationFusePass {
   std::string activation_type() const { return "hard_swish"; }
 };
 /*
+ * Fuse Conv and Mish class
+ */
+class Conv2DMishFusePass : public ConvActivationFusePass {
+ public:
+  Conv2DMishFusePass();
+  std::string activation_type() const { return "mish"; }
+};
+/*
  * Fuse Conv and HardSigmoid class
  */
 class Conv2DHardSigmoidFusePass : public ConvActivationFusePass {

@@ -14,10 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/pten/common/complex.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/include/infermeta.h"
-#include "paddle/pten/kernels/empty_kernel.h"
-
 #include "paddle/pten/infermeta/unary.h"
 #include "paddle/pten/kernels/empty_kernel.h"
 
@@ -26,12 +24,30 @@ namespace pten {
 template <typename T, typename Context>
 void ConjKernel(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out);
 
-template <typename T, typename Context>
+// If T is complex
+template <typename T,
+          typename Context,
+          std::enable_if_t<
+              std::is_same<T, paddle::platform::complex<float>>::value ||
+                  std::is_same<T, paddle::platform::complex<double>>::value,
+              bool> = true>
 DenseTensor Conj(const Context& dev_ctx, const DenseTensor& x) {
-  auto out_meta = UnchangedInferMeta(x.meta());
-  auto dense_out = pten::Empty<T, Context>(dev_ctx, std::move(out_meta));
+  auto dense_out = pten::Empty<T, Context>(dev_ctx);
+  MetaTensor meta_out(&dense_out);
+  UnchangedInferMeta(x, &meta_out);
   ConjKernel<T>(dev_ctx, x, &dense_out);
   return dense_out;
+}
+
+// If T is not complex
+template <typename T,
+          typename Context,
+          std::enable_if_t<
+              !std::is_same<T, paddle::platform::complex<float>>::value &&
+                  !std::is_same<T, paddle::platform::complex<double>>::value,
+              bool> = true>
+DenseTensor Conj(const Context& dev_ctx, const DenseTensor& x) {
+  return x;
 }
 
 }  // namespace pten

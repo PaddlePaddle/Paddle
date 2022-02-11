@@ -437,17 +437,29 @@ def quantile(x, q, axis=None, keepdim=False):
     indices_upper = paddle.ceil(indices).astype(paddle.int32)
     outputs = []
 
+    def expand_dim(indices, sorted_tensor_shape, axis):
+        assert axis < len(list(sorted_tensor_shape))
+        expanded_shape = [1] * len(list(sorted_tensor_shape))
+        expanded_shape[axis] = len(indices)
+        expanded_shape = tuple(expanded_shape)
+        indices = indices.reshape(expanded_shape)
+        return indices
+
     # TODO(chenjianye): replace the for-loop to directly take elements.
     for i in range(len(indices)):
         if (indices_upper[i] != indices_below[i]):
-            tensor_below = paddle.take_along_axis(sorted_tensor,
-                                                  indices_below[i], axis)
-            tensor_upper = paddle.take_along_axis(sorted_tensor,
-                                                  indices_upper[i], axis)
+            tensor_below = paddle.take_along_axis(
+                sorted_tensor,
+                expand_dim(indices_below[i], sorted_tensor.shape, axis), axis)
+            tensor_upper = paddle.take_along_axis(
+                sorted_tensor,
+                expand_dim(indices_upper[i], sorted_tensor.shape, axis), axis)
             weights = (indices[i] - indices_below[i]).astype(x.dtype)
             out = paddle.lerp(tensor_below, tensor_upper, weights)
         else:
-            out = paddle.take_along_axis(sorted_tensor, indices_below[i], axis)
+            out = paddle.take_along_axis(
+                sorted_tensor,
+                expand_dim(indices_below[i], sorted_tensor.shape, axis), axis)
         if not keepdim:
             out = paddle.squeeze(out, axis=axis)
         else:

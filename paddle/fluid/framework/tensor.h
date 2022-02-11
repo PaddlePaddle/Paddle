@@ -28,23 +28,15 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/stream/stream.h"
+#include "paddle/pten/core/stream.h"
 
 #include "paddle/pten/core/dense_tensor.h"
-
-namespace paddle {
-namespace memory {
-namespace allocation {
-class Allocation;
-}  // namespace allocation
-}  // namespace memory
-}  // namespace paddle
 
 namespace paddle {
 
 namespace framework {
 
-class LoDTensor;
+using LoD = std::vector<paddle::framework::Vector<size_t>>;
 
 /*
  NOTE(liym27): [ What is TensorInplaceVersion used for? ]
@@ -77,28 +69,7 @@ class LoDTensor;
   Variable object but not a pointer.
 */
 
-class Tensor : public pten::DenseTensor {
- public:
-  using DenseTensor = pten::DenseTensor;
-  using DenseTensor::DenseTensor;
-
-  /*! The internal of two tensors share the same memory block. */
-  Tensor& ShareDataWith(const Tensor& src);
-
-  /*! The internal of two tensors share the same inplace version counter. */
-  Tensor& ShareInplaceVersionCounterWith(const Tensor& src);
-
-  Tensor Slice(int64_t begin_idx, int64_t end_idx) const;
-
-  std::vector<Tensor> Split(int64_t split_size, int64_t axis) const;
-
-  std::vector<Tensor> Chunk(int64_t chunks, int64_t axis) const;
-
-  Tensor& Resize(const DDim& dims) {
-    meta_.dims = dims;
-    return *this;
-  }
-};
+using Tensor = pten::DenseTensor;
 
 }  // namespace framework
 }  // namespace paddle

@@ -47,7 +47,7 @@ struct OneHotV2OpCUDAFunctor {
     auto numel = in_->numel();
     auto* p_out_data = out_->mutable_data<OutT>(ctx_.GetPlace());
     auto stream = ctx_.stream();
-    math::set_constant(ctx_, out_, 0.0);
+    pten::funcs::set_constant(ctx_, out_, 0.0);
 
     FillOutputKernel<<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
                            PADDLE_CUDA_NUM_THREADS,
@@ -69,7 +69,8 @@ class OneHotV2CUDAKernel : public framework::OpKernel<T> {
       auto* depth_tensor = context.Input<framework::Tensor>("depth_tensor");
       if (platform::is_gpu_place(depth_tensor->place())) {
         framework::Tensor temp;
-        TensorCopySync(*depth_tensor, platform::CPUPlace(), &temp);
+        paddle::framework::TensorCopySync(*depth_tensor, platform::CPUPlace(),
+                                          &temp);
         depth = *temp.data<int32_t>();
       } else {
         depth = *depth_tensor->data<int32_t>();

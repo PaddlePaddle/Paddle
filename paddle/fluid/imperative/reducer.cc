@@ -16,6 +16,7 @@
 
 #include <iostream>
 
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/string/string_helper.h"
 
@@ -24,6 +25,7 @@
 
 #include "paddle/fluid/imperative/parallel_context.h"
 
+#include "paddle/pten/core/dense_tensor.h"
 namespace paddle {
 namespace imperative {
 
@@ -34,8 +36,7 @@ namespace imperative {
 void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
   framework::Tensor *tensor =
       is_sparse_
-          ? sparse_contents_->GetMutable<framework::SelectedRows>()
-                ->mutable_value()
+          ? sparse_contents_->GetMutable<pten::SelectedRows>()->mutable_value()
           : dense_contents_.GetMutable<framework::LoDTensor>();
 
   if (platform::is_gpu_place(tensor->place())) {
@@ -754,7 +755,7 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
             {static_cast<int64_t>(length)});
       } else {
         group_tensor.Resize({static_cast<int64_t>(length)});
-        operators::math::set_constant(*dev_ctx, &group_tensor, 0.0);
+        pten::funcs::set_constant(*dev_ctx, &group_tensor, 0.0);
       }
 #endif
     }
@@ -773,7 +774,7 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
     auto var_base = vars_[var_index]->GradVarBase();
     // need to check tensor type
     PADDLE_ENFORCE_EQ(
-        var_base->Var().IsType<framework::SelectedRows>(), true,
+        var_base->Var().IsType<pten::SelectedRows>(), true,
         platform::errors::PreconditionNotMet(
             "The sparse parameter[%d][%s] must have a selectedrows gradient. "
             "Before forward pass, the parameter type is inferred to be "
@@ -835,7 +836,7 @@ void Reducer::MarkGroupReady(size_t group_index) {
     // thrown in comm_pool_.
     auto next_group = next_group_;
     comm_pool_->enqueue([this, run_order, next_group, &group] {
-      auto dev_id = BOOST_GET_CONST(platform::XPUPlace, place_).device;
+      auto dev_id = place_.device;
       platform::SetXPUDeviceId(dev_id);
       FusedAllReduceSchedule(run_order, group, next_group);
       {
@@ -975,7 +976,8 @@ void Reducer::ProcessUnusedDenseVars() {
       auto *dest_grad_tensor =
           grad_var_base_tmp->MutableVar()->GetMutable<framework::LoDTensor>();
       const auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
-      TensorCopy(src_tensor, place_, *dev_ctx, dest_grad_tensor);
+      paddle::framework::TensorCopy(src_tensor, place_, *dev_ctx,
+                                    dest_grad_tensor);
       dest_grad_tensor->Resize(dest_dims);
     }
   }
@@ -992,8 +994,8 @@ bool Reducer::HasGrad(size_t var_index) {
     if (var.Get<framework::LoDTensor>().IsInitialized()) {
       return true;
     }
-  } else if (var.IsType<framework::SelectedRows>()) {
-    if (var.Get<framework::SelectedRows>().value().IsInitialized()) {
+  } else if (var.IsType<pten::SelectedRows>()) {
+    if (var.Get<pten::SelectedRows>().value().IsInitialized()) {
       return true;
     }
   } else {

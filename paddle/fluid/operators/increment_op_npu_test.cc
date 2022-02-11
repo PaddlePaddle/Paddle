@@ -25,12 +25,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/operators/dropout_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
-namespace m = paddle::operators::math;
 
 USE_OP(increment);
 USE_OP_DEVICE_KERNEL(increment, NPU);
@@ -45,7 +44,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
   std::vector<T> init;
   init.push_back(static_cast<T>(1.0));
 
-  TensorFromVector(init, ctx, tensor_x);
+  paddle::framework::TensorFromVector(init, ctx, tensor_x);
   tensor_x->Resize({1});
 
   ctx.Wait();
@@ -61,7 +60,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
   op->Run(*scope, place);
 
   std::vector<T> out_vec;
-  TensorToVector(*tensor_out, ctx, &out_vec);
+  paddle::framework::TensorToVector(*tensor_out, ctx, &out_vec);
 
   ctx.Wait();
 

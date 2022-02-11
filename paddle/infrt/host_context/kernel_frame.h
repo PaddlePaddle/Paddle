@@ -21,7 +21,8 @@
 #include "llvm/ADT/SmallVector.h"
 #include "paddle/infrt/host_context/value.h"
 
-namespace infrt::host_context {
+namespace infrt {
+namespace host_context {
 
 /**
  * KernelFrame captures the states(input arguments, attributes, results)
@@ -30,11 +31,22 @@ namespace infrt::host_context {
 class KernelFrame {
  public:
   int GetNumArgs() const { return num_arguments_; }
-  int GetNumResults() const { return num_results_; }
+  int GetNumResults() const { return num_results_ == -1 ? 0 : num_results_; }
   int GetNumAttributes() const {
     return value_or_attrs_.size() - num_arguments_ -
            (num_results_ == -1 ? 0 : num_results_);
   }
+
+  //! Get something at a specific position \p index. The element might be an
+  //! argument, an attribute or a result.
+  template <typename T>
+  T& GetElementAt(int index) {
+    CHECK_LT(index, GetNumArgs() + GetNumAttributes() + GetNumResults());
+    return value_or_attrs_[index]->template get_or_default<T>();
+  }
+
+  // Get number of elements, either input, attributes or results.
+  size_t GetNumElements() const { return value_or_attrs_.size(); }
 
   template <typename T>
   T& GetArgAt(int index) {
@@ -109,6 +121,8 @@ class KernelFrame {
     return llvm::makeMutableArrayRef(&value_or_attrs_[from], length);
   }
 
+  bool IsEmpty() const { return value_or_attrs_.empty(); }
+
  protected:
   int num_arguments_{};
   int num_results_{-1};
@@ -163,4 +177,5 @@ class KernelFrameBuilder : public KernelFrame {
   }
 };
 
-}  // namespace infrt::host_context
+}  // namespace host_context
+}  // namespace infrt

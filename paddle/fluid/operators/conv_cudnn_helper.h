@@ -251,7 +251,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
               args.cdesc.desc(), args.odesc.desc(), kNUM_CUDNN_FWD_ALGS,
               &perf_count, perf_results.get()));
       algo = (perf_results.get())[best_algo_idx].algo;
-      workspace_size = GetWorkspaceSize(args, algo);
+      workspace_size = (perf_results.get())[best_algo_idx].memory;
 
       if (workspace_size > workspace_size_limit) {
 #if CUDNN_VERSION >= 8000
@@ -288,7 +288,6 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
           ctx.template device_context<platform::CUDADeviceContext>();
       auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
-      auto& temp = ctx.cuda_device_context();
       AlgorithmsCache<algo_t>& algo_cache =
           *(framework::ConvSearchCache::Instance().GetForward());
 
@@ -502,7 +501,8 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
               args.cdesc.desc(), args.wdesc.desc(), kNUM_CUDNN_BWD_FILTER_ALGS,
               &perf_count, perf_results.get()));
       algo = (perf_results.get())[best_algo_idx].algo;
-      workspace_size = GetWorkspaceSize(args, algo);
+      workspace_size = (perf_results.get())[best_algo_idx].memory;
+
       if (workspace_size > workspace_size_limit) {
         workspace_size = workspace_size_limit;
 #if CUDNN_VERSION >= 8000

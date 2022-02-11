@@ -14,11 +14,13 @@ limitations under the License. */
 
 #pragma once
 
+#include <functional>
 #include <mutex>  // NOLINT
 
 #include "paddle/fluid/platform/dynload/cusparse.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/pten/backends/gpu/gpu_decls.h"
 
 namespace paddle {
 namespace platform {
@@ -45,8 +47,8 @@ class CusparseHandleHolder {
 #endif
   }
 
-  template <typename Callback>
-  inline void Call(Callback&& callback) const {
+  inline void Call(
+      const std::function<void(pten::sparseHandle_t)>& callback) const {
     std::lock_guard<std::mutex> guard(mtx_);
     callback(handle_);
   }

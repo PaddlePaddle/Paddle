@@ -74,7 +74,7 @@ class QrGPUKernel : public framework::OpKernel<T> {
         context.GetPlace(), size_t(batch_size * m * n * sizeof(math::Real<T>)));
     // BatchedGeqrf performs computation in-place and 'qr' must be a copy of
     // input
-    TensorCopy(x, context.GetPlace(), &qr);
+    paddle::framework::TensorCopy(x, context.GetPlace(), &qr);
 
     // Prepare tau
     auto tau_dims_vec = framework::vectorize<int>(x_dims);
@@ -122,12 +122,9 @@ class QrGPUKernel : public framework::OpKernel<T> {
           auto new_qr_data = new_qr.mutable_data<T>(context.GetPlace());
           auto new_qr_stride = m * m;
           for (int i = 0; i < batch_size; ++i) {
-            memory::Copy(
-                BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
-                (new_qr_data + i * new_qr_stride),
-                BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
-                (qr_data + i * qr_stride), qr_stride * sizeof(math::Real<T>),
-                dev_ctx.stream());
+            memory::Copy(dev_ctx.GetPlace(), (new_qr_data + i * new_qr_stride),
+                         dev_ctx.GetPlace(), (qr_data + i * qr_stride),
+                         qr_stride * sizeof(math::Real<T>), dev_ctx.stream());
           }
           BatchedOrgqr<platform::CUDADeviceContext, T>(
               dev_ctx, batch_size, m, m, min_mn, new_qr_data, m, tau_data,
@@ -171,9 +168,8 @@ void BatchedGeqrf<platform::CUDADeviceContext, float>(
     // Do we need synchronized here?
     // check the error info
     int info_h;
-    memory::Copy(platform::CPUPlace(), &info_h,
-                 BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
-                 info_d, sizeof(int), dev_ctx.stream());
+    memory::Copy(platform::CPUPlace(), &info_h, dev_ctx.GetPlace(), info_d,
+                 sizeof(int), dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         info_h, 0,
         platform::errors::PreconditionNotMet(
@@ -205,9 +201,8 @@ void BatchedGeqrf<platform::CUDADeviceContext, double>(
     // Do we need synchronized here?
     // check the error info
     int info_h;
-    memory::Copy(platform::CPUPlace(), &info_h,
-                 BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
-                 info_d, sizeof(int), dev_ctx.stream());
+    memory::Copy(platform::CPUPlace(), &info_h, dev_ctx.GetPlace(), info_d,
+                 sizeof(int), dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         info_h, 0,
         platform::errors::PreconditionNotMet(
@@ -239,9 +234,8 @@ void BatchedOrgqr<platform::CUDADeviceContext, float>(
     // Do we need synchronized here?
     // check the error info
     int info_h;
-    memory::Copy(platform::CPUPlace(), &info_h,
-                 BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
-                 info_d, sizeof(int), dev_ctx.stream());
+    memory::Copy(platform::CPUPlace(), &info_h, dev_ctx.GetPlace(), info_d,
+                 sizeof(int), dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         info_h, 0,
         platform::errors::PreconditionNotMet(
@@ -273,9 +267,8 @@ void BatchedOrgqr<platform::CUDADeviceContext, double>(
     // Do we need synchronized here?
     // check the error info
     int info_h;
-    memory::Copy(platform::CPUPlace(), &info_h,
-                 BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
-                 info_d, sizeof(int), dev_ctx.stream());
+    memory::Copy(platform::CPUPlace(), &info_h, dev_ctx.GetPlace(), info_d,
+                 sizeof(int), dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         info_h, 0,
         platform::errors::PreconditionNotMet(

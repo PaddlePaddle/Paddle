@@ -26,12 +26,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
-namespace m = paddle::operators::math;
 
 USE_OP(elementwise_add);
 USE_OP_DEVICE_KERNEL(elementwise_add, NPU);
@@ -56,9 +55,9 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
     init_y.push_back(static_cast<T>(2.0));
   }
 
-  TensorFromVector(init_x, ctx, tensor_x);
+  paddle::framework::TensorFromVector(init_x, ctx, tensor_x);
   tensor_x->Resize({10, 10});
-  TensorFromVector(init_y, ctx, tensor_y);
+  paddle::framework::TensorFromVector(init_y, ctx, tensor_y);
   tensor_y->Resize({10, 10});
 
   f::AttributeMap attrs;
@@ -85,7 +84,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   sync_op->Run(*scope, place);
 
   std::vector<T> out_vec;
-  TensorToVector(*tensor_out, ctx, &out_vec);
+  paddle::framework::TensorToVector(*tensor_out, ctx, &out_vec);
 
   // sync op copy
   auto sync_op2 = f::OpRegistry::CreateOp("c_sync_calc_stream", {{"X", {"X"}}},

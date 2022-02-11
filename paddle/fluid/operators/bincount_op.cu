@@ -16,7 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/bincount_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
-#include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/pten/core/hostdevice.h"
 
 namespace paddle {
 namespace operators {
@@ -77,8 +77,10 @@ void BincountCUDAInner(const framework::ExecutionContext& context) {
   input_min_scala.device(*place) = input_x.minimum();
 
   Tensor input_min_cpu, input_max_cpu;
-  TensorCopySync(input_max_t, platform::CPUPlace(), &input_max_cpu);
-  TensorCopySync(input_min_t, platform::CPUPlace(), &input_min_cpu);
+  paddle::framework::TensorCopySync(input_max_t, platform::CPUPlace(),
+                                    &input_max_cpu);
+  paddle::framework::TensorCopySync(input_min_t, platform::CPUPlace(),
+                                    &input_min_cpu);
 
   InputT input_min = input_min_cpu.data<InputT>()[0];
 
@@ -103,7 +105,7 @@ void BincountCUDAInner(const framework::ExecutionContext& context) {
 
   if (!has_weights) {
     int64_t* output_data = output->mutable_data<int64_t>(context.GetPlace());
-    math::SetConstant<DeviceContext, int64_t>()(
+    pten::funcs::SetConstant<DeviceContext, int64_t>()(
         context.template device_context<DeviceContext>(), output, 0L);
 
     KernelBincount<T, InputT, int64_t><<<GET_BLOCKS(input_numel),
@@ -114,7 +116,7 @@ void BincountCUDAInner(const framework::ExecutionContext& context) {
 
     if (weights_type == framework::proto::VarType::FP32) {
       float* output_data = output->mutable_data<float>(context.GetPlace());
-      math::SetConstant<DeviceContext, float>()(
+      pten::funcs::SetConstant<DeviceContext, float>()(
           context.template device_context<DeviceContext>(), output,
           static_cast<float>(0));
 
@@ -123,7 +125,7 @@ void BincountCUDAInner(const framework::ExecutionContext& context) {
           input_data, input_numel, has_weights, weights_data, output_data);
     } else {
       double* output_data = output->mutable_data<double>(context.GetPlace());
-      math::SetConstant<DeviceContext, double>()(
+      pten::funcs::SetConstant<DeviceContext, double>()(
           context.template device_context<DeviceContext>(), output,
           static_cast<double>(0));
 

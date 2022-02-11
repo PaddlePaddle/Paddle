@@ -12,7 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/array_operator.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
+
+#include "paddle/pten/core/lod_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -73,7 +75,7 @@ class ShrinkRNNMemoryOp : public ArrayOp {
                                                               dst_num_rows, 0);
       height = lod_offset.second.second;
       auto out_lod = out_tensor.mutable_lod();
-      framework::AppendLoD(out_lod, lod_offset.first);
+      pten::AppendLoD(out_lod, lod_offset.first);
     }
 
     if (dst_num_rows != 0) {
@@ -154,7 +156,7 @@ class ShrinkRNNMemoryGradOp : public ArrayOp {
     auto &dev_ctx = *pool.Get(place);
 
     if (dout_var == nullptr) {  // dx_tensor fill zero
-      math::set_constant(dev_ctx, &dx_tensor, 0.0f);
+      pten::funcs::set_constant(dev_ctx, &dx_tensor, 0.0f);
     } else {
       auto &dout_tensor = dout_var->Get<framework::LoDTensor>();
       auto height = dout_tensor.dims()[0];
@@ -163,7 +165,7 @@ class ShrinkRNNMemoryGradOp : public ArrayOp {
       if (dx_tensor.dims()[0] > height) {
         auto rest_tensor = dx_tensor.Slice(
             static_cast<int>(height), static_cast<int>(dx_tensor.dims()[0]));
-        math::set_constant(dev_ctx, &rest_tensor, 0.0f);
+        pten::funcs::set_constant(dev_ctx, &rest_tensor, 0.0f);
       }
     }
     dx_tensor.set_lod(x_tensor.lod());

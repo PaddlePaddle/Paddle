@@ -11,7 +11,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/masked_select_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 
 namespace paddle {
@@ -47,8 +47,7 @@ class MaskedSelectXPUKernel : public framework::OpKernel<T> {
                            mask->numel()),
         "nonzero_count ");
     memory::Copy(platform::CPUPlace(), static_cast<void*>(&out_size_cpu),
-                 BOOST_GET_CONST(platform::XPUPlace, mask->place()),
-                 static_cast<void*>(out_size), sizeof(int32_t));
+                 mask->place(), static_cast<void*>(out_size), sizeof(int32_t));
 
     framework::DDim out_dim{out_size_cpu};
     out->Resize(out_dim);

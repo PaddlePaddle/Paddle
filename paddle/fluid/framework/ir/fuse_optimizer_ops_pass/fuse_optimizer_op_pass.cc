@@ -268,6 +268,9 @@ bool FuseOptimizerOpPass::HasVarDepsBetweenOps(
 
 bool FuseOptimizerOpPass::OpWithKernelSupportCPUAndGPU(
     const std::string &op_type) const {
+  if (op_type == "c_sync_calc_stream" || op_type == "c_sync_comm_stream") {
+    return true;
+  }
   auto &all_kernels = OperatorWithKernel::AllOpKernels();
   auto it = all_kernels.find(op_type);
   // skip op not has kernel

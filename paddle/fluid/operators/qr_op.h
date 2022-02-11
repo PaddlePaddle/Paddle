@@ -142,7 +142,7 @@ class QrGradKernel : public framework::OpKernel<T> {
         *ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     dA.mutable_data<math::Real<T>>(ctx.GetPlace());
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    math::SetConstant<DeviceContext, T>()(dev_ctx, &dA, T(0));
+    pten::funcs::SetConstant<DeviceContext, T>()(dev_ctx, &dA, T(0));
 
     auto dito = math::DeviceIndependenceTensorOperations<DeviceContext, T>(ctx);
 

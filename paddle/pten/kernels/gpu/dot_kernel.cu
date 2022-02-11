@@ -20,7 +20,7 @@
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/platform/complex.h"
+#include "paddle/pten/common/complex.h"
 
 namespace pten {
 
@@ -29,7 +29,7 @@ void DotKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const DenseTensor& y,
                DenseTensor* out) {
-  out->mutable_data<T>();
+  dev_ctx.template Alloc<T>(out);
   if (1 == out->dims().size()) {
     auto eigen_out = pten::EigenScalar<T>::From(*out);
     auto eigen_x = pten::EigenVector<T>::Flatten(x);
@@ -52,13 +52,13 @@ void DotKernel(const Context& dev_ctx,
 using complex64 = ::paddle::platform::complex<float>;
 using complex128 = ::paddle::platform::complex<double>;
 
-PT_REGISTER_CTX_KERNEL(dot,
-                       GPU,
-                       ALL_LAYOUT,
-                       pten::DotKernel,
-                       float,
-                       double,
-                       int,
-                       int64_t,
-                       complex64,
-                       complex128) {}
+PT_REGISTER_KERNEL(dot,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::DotKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   complex64,
+                   complex128) {}

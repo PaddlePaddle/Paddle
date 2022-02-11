@@ -40,7 +40,7 @@ class SoftmaxWithCrossEntropyOpMaker
         "The outputs value of softmax activation by given the input batch, "
         "which will be used in backward calculation.")
         .AsIntermediate();
-#ifdef PADDLE_WITH_ASCEND_CL
+#if defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
     AddOutput(
         "Backprop",
         "(Tensor, default: Tensor<float>), A tensor in same shape with "
@@ -49,7 +49,7 @@ class SoftmaxWithCrossEntropyOpMaker
         "is :"
         "exp(logits -max_logits) / sum(exp(logits - max_logits)) - labels, "
         "where labels is ont-hot."
-        "Currently, the tensor is generated and used in npu kernel only. ")
+        "Currently, the tensor is generated and used in npu/mlu kernel. ")
         .AsIntermediate();
 #endif
     AddOutput("Loss",
@@ -131,7 +131,7 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Softmax"), true,
                       platform::errors::InvalidArgument(
                           "Output(Softmax) should be not null."));
-#ifdef PADDLE_WITH_ASCEND_CL
+#if defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Backprop"), true,
                       platform::errors::InvalidArgument(
                           "Output(Backprop) should be not null."));
@@ -194,7 +194,7 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
     }
 
     ctx->SetOutputDim("Softmax", logits_dims);
-#ifdef PADDLE_WITH_ASCEND_CL
+#if defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
     ctx->SetOutputDim("Backprop", logits_dims);
     ctx->ShareLoD("Logits", /*->*/ "Backprop");
 #endif
@@ -225,7 +225,7 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->HasInput("Softmax"), true,
                       platform::errors::InvalidArgument(
                           "Input(Softmax) should be not null."));
-#ifdef PADDLE_WITH_ASCEND_CL
+#if defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
     PADDLE_ENFORCE_EQ(ctx->HasInput("Backprop"), true,
                       platform::errors::InvalidArgument(
                           "Input(Backprop) should be not null."));
@@ -306,7 +306,7 @@ class SoftmaxGradMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetType("softmax_with_cross_entropy_grad");
     grad_op->SetInput("Label", this->Input("Label"));
     grad_op->SetInput("Softmax", this->Output("Softmax"));
-#ifdef PADDLE_WITH_ASCEND_CL
+#if defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
     grad_op->SetInput("Backprop", this->Output("Backprop"));
 #endif
     grad_op->SetInput(framework::GradVarName("Loss"), this->OutputGrad("Loss"));
@@ -343,7 +343,7 @@ REGISTER_OP_CPU_KERNEL(softmax_with_cross_entropy_grad,
                        ops::SoftmaxWithCrossEntropyGradKernel<double>);
 
 REGISTER_OP_VERSION(softmax_with_cross_entropy)
-#ifdef PADDLE_WITH_ASCEND_CL
+#if defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
     .AddCheckpoint(
         R"ROC(
               Add a new attribute [use_softmax] )ROC",
@@ -358,8 +358,7 @@ REGISTER_OP_VERSION(softmax_with_cross_entropy)
             "calculation is :"
             "exp(logits -max_logits) / sum(exp(logits - max_logits)) - labels, "
             "where labels is ont-hot."
-            "Currently, the tensor is generated and used in npu kernel "
-            "only. "));
+            "Currently, the tensor is generated and used in npu/mlu kernel. "));
 #else
     .AddCheckpoint(
         R"ROC(
