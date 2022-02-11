@@ -17,6 +17,9 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
+import os
+import re
+import paddle.fluid.core as core
 
 
 class TestElementwiseOp(OpTest):
@@ -46,6 +49,21 @@ class TestElementwiseOp(OpTest):
             ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y'))
 
 
+# Get cuda version from command line
+def get_cuda_runtime_version():
+    command = os.popen("nvcc --version").read()
+    command = re.split(' ', command)
+    tag = 0
+    for _ in command:
+        tag += 1
+        if _ == 'release':
+            break
+    return int(float(command[tag].replace(',', '')) * 1000)
+
+
+@unittest.skipIf(
+    core.is_compiled_with_cuda() and get_cuda_runtime_version() < 11000,
+    "run test when gpu is availble and the minimum cuda version is 11.")
 class TestElementwiseBF16Op(OpTest):
     def setUp(self):
         self.op_type = "elementwise_max"
