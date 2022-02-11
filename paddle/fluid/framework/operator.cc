@@ -1321,8 +1321,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
 OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
     const ExecutionContext& ctx) const {
-  auto& dev_ctx = ctx.device_context();
-
   auto expected_kernel_key = this->GetExpectedKernelType(ctx);
   if (HasAttr("op_device")) {
     if (Attr<std::string>("op_device") == "cpu") {
@@ -1342,11 +1340,13 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
       expected_kernel_key.place_ = platform::CPUPlace();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (SupportGPU()) {
+        auto& dev_ctx = ctx.device_context();
         expected_kernel_key.place_ = dev_ctx.GetPlace();
       }
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
       if (SupportNPU()) {
+        auto& dev_ctx = ctx.device_context();
         expected_kernel_key.place_ = dev_ctx.GetPlace();
       }
 #endif
