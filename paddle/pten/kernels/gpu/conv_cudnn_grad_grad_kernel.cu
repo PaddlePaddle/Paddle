@@ -36,9 +36,9 @@
 
 #include "paddle/pten/kernels/impl/conv_cudnn_impl.h"
 
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/pten/common/bfloat16.h"
 #include "paddle/pten/common/float16.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace pten {
 
@@ -72,7 +72,7 @@ void ConvCudnnGradGradKernel(const Context& ctx,
   auto dX = input_grad;
   if (ddO) {
     ddO->mutable_data<T>(ctx.GetPlace());
-    paddle::operators::math::SetConstant<Context, T> set_zero;
+    pten::funcs::SetConstant<Context, T> set_zero;
     set_zero(ctx, ddO, static_cast<T>(0));
   }
   if (dW) {

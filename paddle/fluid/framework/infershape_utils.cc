@@ -46,6 +46,8 @@ class InferShapeArgumentMappingContext : public pten::ArgumentMappingContext {
     return GetAttrValue(attr);
   }
 
+  pten::Place GetPlace() const override { return pten::CPUPlace(); }
+
   size_t InputSize(const std::string& name) const override {
     return ctx_.Inputs(name).size();
   }

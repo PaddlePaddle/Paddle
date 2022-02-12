@@ -20,10 +20,10 @@
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/depthwise_conv.h"
 #include "paddle/fluid/operators/math/im2col.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/vol2col.h"
 #include "paddle/pten/kernels/cpu/conv_util.h"
 #include "paddle/pten/kernels/funcs/batch_norm_utils.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace pten {
 

@@ -15,12 +15,12 @@
 #include "paddle/pten/kernels/depthwise_conv_grad_kernel.h"
 
 #include "paddle/fluid/operators/math/depthwise_conv.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/common/layout.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/cpu/conv_util.h"
 #include "paddle/pten/kernels/funcs/batch_norm_utils.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace pten {
 
@@ -73,16 +73,14 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
       paddings.erase(paddings.begin() + i + 1);
     }
   }
-  paddle::operators::math::SetConstant<Context, T> set_zero;
+  pten::funcs::SetConstant<Context, T> set_zero;
 
   if (input_grad) {
     input_grad->mutable_data<T>(dev_ctx.GetPlace());
     set_zero(dev_ctx, input_grad, static_cast<T>(0));
 
     if (fuse_relu) {
-      paddle::operators::math::DepthwiseConvInputGradFunctor<DeviceContext,
-                                                             T,
-                                                             true>
+      paddle::operators::math::DepthwiseConvInputGradFunctor<Context, T, true>
           depthwiseConvInputGrad;
       depthwiseConvInputGrad(dev_ctx,
                              input,
@@ -94,9 +92,7 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
                              input_grad,
                              data_layout);
     } else {
-      paddle::operators::math::DepthwiseConvInputGradFunctor<DeviceContext,
-                                                             T,
-                                                             false>
+      paddle::operators::math::DepthwiseConvInputGradFunctor<Context, T, false>
           depthwiseConvInputGrad;
       depthwiseConvInputGrad(dev_ctx,
                              input,
@@ -114,9 +110,7 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
     filter_grad->mutable_data<T>(dev_ctx.GetPlace());
     set_zero(dev_ctx, filter_grad, static_cast<T>(0));
     if (fuse_relu) {
-      paddle::operators::math::DepthwiseConvFilterGradFunctor<DeviceContext,
-                                                              T,
-                                                              true>
+      paddle::operators::math::DepthwiseConvFilterGradFunctor<Context, T, true>
           depthwiseConvFilterGrad;
       depthwiseConvFilterGrad(dev_ctx,
                               input,
@@ -127,9 +121,7 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
                               filter_grad,
                               data_layout);
     } else {
-      paddle::operators::math::DepthwiseConvFilterGradFunctor<DeviceContext,
-                                                              T,
-                                                              false>
+      paddle::operators::math::DepthwiseConvFilterGradFunctor<Context, T, false>
           depthwiseConvFilterGrad;
       depthwiseConvFilterGrad(dev_ctx,
                               input,

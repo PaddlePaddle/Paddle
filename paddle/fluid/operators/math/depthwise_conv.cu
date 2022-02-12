@@ -909,7 +909,7 @@ class DepthwiseConvFunctor<pten::GPUContext, T, fuse_relu_before_conv> {
       filter_hwc.Resize(filter_hwc_dims);
       filter_hwc.mutable_data<T>(context.GetPlace());
       std::vector<int> perm_axis({2, 3, 0, 1});
-      pten::funcs::TransposeNormal<platform::CUDADeviceContext, T> trans;
+      pten::funcs::TransposeNormal<pten::GPUContext, T> trans;
       trans(context, filter, &filter_hwc, perm_axis);
       filter_data = filter_hwc.data<T>();
     }
@@ -1049,7 +1049,7 @@ class DepthwiseConvInputGradFunctor<pten::GPUContext, T,
       filter_hwc.Resize(filter_hwc_dims);
       filter_hwc.mutable_data<T>(context.GetPlace());
       std::vector<int> perm_axis({2, 3, 0, 1});
-      pten::funcs::TransposeNormal<platform::CUDADeviceContext, T> trans;
+      pten::funcs::TransposeNormal<pten::GPUContext, T> trans;
       trans(context, filter, &filter_hwc, perm_axis);
       filter_data = filter_hwc.data<T>();
     }
@@ -1211,7 +1211,7 @@ class DepthwiseConvFilterGradFunctor<pten::GPUContext, T,
              filter_grad->dims()[0], filter_grad->dims()[1]});                 \
         filter_grad_hwc.Resize(filter_grad_hwc_dims);                          \
         filter_grad_hwc.mutable_data<T>(context.GetPlace());                   \
-        pten::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;     \
+        pten::funcs::SetConstant<pten::GPUContext, T> set_zero;                \
         set_zero(context, &filter_grad_hwc, static_cast<T>(0));                \
         filter_grad_data = filter_grad_hwc.data<T>();                          \
       } else {                                                                 \
@@ -1236,7 +1236,7 @@ class DepthwiseConvFilterGradFunctor<pten::GPUContext, T,
           dilate_height, dilate_width, filter_grad_data);                      \
       if (c_filter != -1) {                                                    \
         std::vector<int> perm_axis({2, 3, 0, 1});                              \
-        pten::funcs::TransposeNormal<platform::CUDADeviceContext, T> trans;    \
+        pten::funcs::TransposeNormal<pten::GPUContext, T> trans;               \
         trans(context, filter_grad_hwc, filter_grad, perm_axis);               \
       }                                                                        \
     }                                                                          \

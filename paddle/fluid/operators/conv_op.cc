@@ -875,34 +875,36 @@ REGISTER_OPERATOR(conv3d_grad_grad, ops::ConvOpDoubleGrad);
 //     ops::GemmConvKernel<paddle::platform::CPUDeviceContext, float>,
 //     ops::GemmConvKernel<paddle::platform::CPUDeviceContext, double>);
 
-REGISTER_OP_CPU_KERNEL(
-    depthwise_conv2d_grad,
-    ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, double>);
+// REGISTER_OP_CPU_KERNEL(
+//     depthwise_conv2d_grad,
+//     ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, float>,
+//     ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, double>);
 
-REGISTER_OP_CPU_KERNEL(
-    conv2d, ops::GemmConvKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GemmConvKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    conv2d_grad,
-    ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    conv2d_grad_grad,
-    ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);
+// REGISTER_OP_CPU_KERNEL(
+//     conv2d, ops::GemmConvKernel<paddle::platform::CPUDeviceContext, float>,
+//     ops::GemmConvKernel<paddle::platform::CPUDeviceContext, double>);
+// REGISTER_OP_CPU_KERNEL(
+//     conv2d_grad,
+//     ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, float>,
+//     ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, double>);
+// REGISTER_OP_CPU_KERNEL(
+//     conv2d_grad_grad,
+//     ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
+//     ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext,
+//     double>);
 
-REGISTER_OP_CPU_KERNEL(
-    conv3d, ops::GemmConvKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GemmConvKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    conv3d_grad,
-    ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    conv3d_grad_grad,
-    ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);
+// REGISTER_OP_CPU_KERNEL(
+//     conv3d, ops::GemmConvKernel<paddle::platform::CPUDeviceContext, float>,
+//     ops::GemmConvKernel<paddle::platform::CPUDeviceContext, double>);
+// REGISTER_OP_CPU_KERNEL(
+//     conv3d_grad,
+//     ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, float>,
+//     ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, double>);
+// REGISTER_OP_CPU_KERNEL(
+//     conv3d_grad_grad,
+//     ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
+//     ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext,
+//     double>);
 
 REGISTER_OP_VERSION(conv2d)
     .AddCheckpoint(

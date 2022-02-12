@@ -20,10 +20,10 @@
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/depthwise_conv.h"
 #include "paddle/fluid/operators/math/im2col.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/vol2col.h"
 #include "paddle/pten/kernels/cpu/conv_util.h"
 #include "paddle/pten/kernels/funcs/batch_norm_utils.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace pten {
 
@@ -140,7 +140,7 @@ void ConvGradGradKernel(const Context& dev_ctx,
     col_matrix.Resize(col_matrix_shape);
   }
 
-  paddle::operators::math::SetConstant<Context, T> set_zero;
+  pten::funcs::SetConstant<Context, T> set_zero;
   auto blas = paddle::operators::math::GetBlas<Context, T>(dev_ctx);
 
   // dx convolution double grad:  gemm + col2im(col2vol)

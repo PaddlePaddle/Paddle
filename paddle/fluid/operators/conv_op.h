@@ -178,26 +178,6 @@ class ConvOp : public framework::OperatorWithKernel {
     ctx->ShareLoD("Input", "Output");
   }
 
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext& ctx) const override {
-    LOG(ERROR) << ctx.Type();
-    if (ctx.Attr<bool>("use_cudnn") && platform::is_gpu_place(ctx.GetPlace())) {
-      return framework::KernelSignature(
-          "conv2d_cudnn", {"Input", "Filter"},
-          {"strides", "paddings", "padding_algorithm", "groups", "dilations",
-           "data_format", "use_addto", "workspace_size_MB",
-           "exhaustive_search"},
-          {"Output"});
-    } else {
-      return framework::KernelSignature(
-          ctx.Type(), {"Input", "Filter"},
-          {"strides", "paddings", "padding_algorithm", "groups", "dilations",
-           "data_format", "use_addto", "workspace_size_MB",
-           "exhaustive_search"},
-          {"Output"});
-    }
-  }
-
  protected:
   std::vector<int64_t> ComputeOutputShape(
       framework::InferShapeContext* ctx) const;
@@ -215,26 +195,6 @@ class ConvOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override;
 
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext& ctx) const override {
-    if (ctx.Attr<bool>("use_cudnn") && platform::is_gpu_place(ctx.GetPlace())) {
-      return framework::KernelSignature(
-          "conv2d_cudnn_grad",
-          {framework::GradVarName("Output"), "Input", "Filter"},
-          {"strides", "paddings", "padding_algorithm", "groups", "dilations",
-           "data_format", "use_addto", "workspace_size_MB",
-           "exhaustive_search"},
-          {framework::GradVarName("Input"), framework::GradVarName("Filter")});
-    } else {
-      return framework::KernelSignature(
-          "conv2d_grad", {framework::GradVarName("Output"), "Input", "Filter"},
-          {"strides", "paddings", "padding_algorithm", "groups", "dilations",
-           "data_format", "use_addto", "workspace_size_MB",
-           "exhaustive_search"},
-          {framework::GradVarName("Input"), framework::GradVarName("Filter")});
-    }
-  }
-
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
@@ -248,27 +208,6 @@ class ConvOpDoubleGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override;
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext& ctx) const override {
-    if (ctx.Attr<bool>("use_cudnn") && platform::is_gpu_place(ctx.GetPlace())) {
-      return framework::KernelSignature(
-          "conv2d_cudnn_grad_grad",
-          {"DDInput", "DDFilter", "DOutput", "Input", "Filter"},
-          {"strides", "paddings", "padding_algorithm", "groups", "dilations",
-           "data_format", "use_addto", "workspace_size_MB",
-           "exhaustive_search"},
-          {"DDOutput", "DInput", "DFilter"});
-    } else {
-      return framework::KernelSignature(
-          "conv2d_grad_grad",
-          {"DDInput", "DDFilter", "DOutput", "Input", "Filter"},
-          {"strides", "paddings", "padding_algorithm", "groups", "dilations",
-           "data_format", "use_addto", "workspace_size_MB",
-           "exhaustive_search"},
-          {"DDOutput", "DInput", "DFilter"});
-    }
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(

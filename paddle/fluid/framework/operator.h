@@ -455,6 +455,7 @@ class ExecutionArgumentMappingContext : public pten::ArgumentMappingContext {
     return ctx_.HasOutput(name);
   }
 
+  pten::Place GetPlace() const override { return ctx_.GetPlace(); }
   paddle::any Attr(const std::string& name) const override {
     auto& attr = ctx_.GetAttr(name);
     return GetAttrValue(attr);
