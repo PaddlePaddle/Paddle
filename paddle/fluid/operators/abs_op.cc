@@ -107,7 +107,7 @@ class AbsDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 
  protected:
   void Apply(GradOpPtr<T> op) const override {
-    op->SetType("abs_grad_grad");
+    op->SetType("abs_double_grad");
     // input1: x
     op->SetInput("X", this->Input("X"));
     // input2: ddx
@@ -157,4 +157,4 @@ REGISTER_OPERATOR(abs_grad, ops::AbsGradOp,
                   ops::AbsDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::AbsDoubleGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(abs_grad_grad, ops::AbsDoubleGradOp);
+REGISTER_OPERATOR(abs_double_grad, ops::AbsDoubleGradOp);
