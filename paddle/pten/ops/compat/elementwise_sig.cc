@@ -89,6 +89,17 @@ KernelSignature ElementwiseAddTripleGradOpArgumentMapping(
                          {"D_DDX", "D_DDY"});
 }
 
+KernelSignature ElementwiseSubGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  if (ctx.IsDenseTensorInput("X")) {
+    return KernelSignature("subtract_grad",
+                           {"X", "Y", GradVarName("Out")},
+                           {"axis"},
+                           {GradVarName("X"), GradVarName("Y")});
+  }
+  return KernelSignature("unregistered", {}, {}, {});
+}
+
 }  // namespace pten
 
 PT_REGISTER_BASE_KERNEL_NAME(elementwise_add, add);
@@ -114,3 +125,5 @@ PT_REGISTER_ARG_MAPPING_FN(elementwise_add_grad_grad,
                            pten::ElementwiseAddDoubleGradOpArgumentMapping);
 PT_REGISTER_ARG_MAPPING_FN(elementwise_add_triple_grad,
                            pten::ElementwiseAddTripleGradOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(elementwise_sub_grad,
+                           pten::ElementwiseSubGradOpArgumentMapping);
