@@ -170,7 +170,7 @@ void MatrixPowerGradFunction(const Tensor* X, const Tensor* Out,
 
   if (n == 0) {
     // \nabla X = O
-    math::SetConstant<DeviceContext, T> zero;
+    pten::funcs::SetConstant<DeviceContext, T> zero;
     zero(dev_ctx, dX, static_cast<T>(0));
     return;
   } else if (n == 1) {

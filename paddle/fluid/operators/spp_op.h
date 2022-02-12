@@ -16,9 +16,9 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/pooling.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -95,7 +95,7 @@ class SppGradKernel : public framework::OpKernel<T> {
     std::string pooling_type =
         context.template Attr<std::string>("pooling_type");
     auto& device_ctx = context.template device_context<DeviceContext>();
-    math::SetConstant<DeviceContext, T> zero;
+    pten::funcs::SetConstant<DeviceContext, T> zero;
     in_x_grad->mutable_data<T>(context.GetPlace());
     zero(device_ctx, in_x_grad, static_cast<T>(0));
     auto out_stride = framework::stride(out->dims());

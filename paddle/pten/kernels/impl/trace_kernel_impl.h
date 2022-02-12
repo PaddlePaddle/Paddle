@@ -22,8 +22,9 @@
 #include <algorithm>
 
 #include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace pten {
 template <typename T>
@@ -196,7 +197,7 @@ void TraceGradKernel(const Context& ctx,
   auto* out_data = out_grad.data<T>();
   T* x_data = in_grad->mutable_data<T>(ctx.GetPlace());
 
-  paddle::operators::math::SetConstant<Context, T> set_zero;
+  pten::funcs::SetConstant<Context, T> set_zero;
 
   set_zero(ctx, in_grad, static_cast<T>(0.0));
   auto dim1 = axis1;

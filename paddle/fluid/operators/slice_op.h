@@ -18,9 +18,9 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/slice_utils.h"
 #include "paddle/fluid/operators/utils.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -299,7 +299,7 @@ class SliceGradKernel : public framework::OpKernel<T> {
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
       auto& dev_ctx = *pool.Get(ctx.GetPlace());
-      math::SetConstant<DeviceContext, T> functor;
+      pten::funcs::SetConstant<DeviceContext, T> functor;
       for (int i = 0; i < d_in_size; ++i) {
         auto dim = input_array->at(i).dims();
         d_in_arr->at(i).Resize(dim);
