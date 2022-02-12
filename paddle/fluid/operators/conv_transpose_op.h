@@ -631,10 +631,12 @@ class DepthwiseConvTransposeKernel : public framework::OpKernel<T> {
     pten::funcs::SetConstant<DeviceContext, T> set_zero;
     set_zero(dev_ctx, output, static_cast<T>(0));
 
-    math::DepthwiseConvInputGradFunctor<DeviceContext, T>
+    math::DepthwiseConvInputGradFunctor<pten::GPUContext, T>
         depthwiseConvInputGrad;
     depthwiseConvInputGrad(
-        dev_ctx, *output, filter, *input, strides,
+        static_cast<const typename framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *output, filter, *input, strides,
         std::vector<int>{paddings[0], paddings[2], paddings[1], paddings[3]},
         dilations, output, data_layout);
   }
@@ -682,9 +684,11 @@ class DepthwiseConvTransposeGradKernel : public framework::OpKernel<T> {
                              in_data_dims, strides, ksize);
 
     if (input_grad) {
-      math::DepthwiseConvFunctor<DeviceContext, T> depthwiseConv;
+      math::DepthwiseConvFunctor<pten::GPUContext, T> depthwiseConv;
       depthwiseConv(
-          dev_ctx, *output_grad, filter, strides,
+          static_cast<const typename framework::ConvertToPtenContext<
+              DeviceContext>::TYPE&>(dev_ctx),
+          *output_grad, filter, strides,
           std::vector<int>{paddings[0], paddings[2], paddings[1], paddings[3]},
           dilations, input_grad, data_layout);
     }
@@ -694,10 +698,12 @@ class DepthwiseConvTransposeGradKernel : public framework::OpKernel<T> {
       filter_grad->mutable_data<T>(context.GetPlace());
       set_zero(dev_ctx, filter_grad, static_cast<T>(0));
 
-      math::DepthwiseConvFilterGradFunctor<DeviceContext, T>
+      math::DepthwiseConvFilterGradFunctor<pten::GPUContext, T>
           depthwiseConvFilterGrad;
       depthwiseConvFilterGrad(
-          dev_ctx, *output_grad, *input, strides,
+          static_cast<const typename framework::ConvertToPtenContext<
+              DeviceContext>::TYPE&>(dev_ctx),
+          *output_grad, *input, strides,
           std::vector<int>{paddings[0], paddings[2], paddings[1], paddings[3]},
           dilations, filter_grad, data_layout);
     }

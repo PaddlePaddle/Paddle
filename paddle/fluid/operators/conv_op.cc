@@ -870,10 +870,10 @@ REGISTER_OPERATOR(conv3d_grad_grad, ops::ConvOpDoubleGrad);
 
 // depthwise conv kernel
 // TODO(xingzhaolong): neon kernel for mobile
-REGISTER_OP_CPU_KERNEL(
-    depthwise_conv2d,
-    ops::GemmConvKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GemmConvKernel<paddle::platform::CPUDeviceContext, double>);
+// REGISTER_OP_CPU_KERNEL(
+//     depthwise_conv2d,
+//     ops::GemmConvKernel<paddle::platform::CPUDeviceContext, float>,
+//     ops::GemmConvKernel<paddle::platform::CPUDeviceContext, double>);
 
 REGISTER_OP_CPU_KERNEL(
     depthwise_conv2d_grad,

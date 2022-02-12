@@ -864,10 +864,9 @@ __global__ void KernelDepthwiseConvFilterGradSp(
  * height and width, respectively.
  */
 template <class T, bool fuse_relu_before_conv>
-class DepthwiseConvFunctor<platform::CUDADeviceContext, T,
-                           fuse_relu_before_conv> {
+class DepthwiseConvFunctor<pten::GPUContext, T, fuse_relu_before_conv> {
  public:
-  void operator()(const platform::CUDADeviceContext& context,
+  void operator()(const pten::GPUContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& filter,
                   const std::vector<int>& strides,
@@ -1004,18 +1003,15 @@ class DepthwiseConvFunctor<platform::CUDADeviceContext, T,
 };
 
 template <typename T, bool fuse_relu_before_conv>
-class DepthwiseConvInputGradFunctor<platform::CUDADeviceContext, T,
+class DepthwiseConvInputGradFunctor<pten::GPUContext, T,
                                     fuse_relu_before_conv> {
  public:
-  void operator()(const platform::CUDADeviceContext& context,
-                  const framework::Tensor& input,
-                  const framework::Tensor& filter,
-                  const framework::Tensor& output_grad,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  const std::vector<int>& dilations,
-                  framework::Tensor* input_grad,
-                  const DataLayout data_layout = DataLayout::kNCHW) {
+  void operator()(
+      const pten::GPUContext& context, const framework::Tensor& input,
+      const framework::Tensor& filter, const framework::Tensor& output_grad,
+      const std::vector<int>& strides, const std::vector<int>& paddings,
+      const std::vector<int>& dilations, framework::Tensor* input_grad,
+      const DataLayout data_layout = DataLayout::kNCHW) {
     const int batch_size = input.dims()[0];
     const int input_channels =
         (data_layout != DataLayout::kNHWC ? input.dims()[1] : input.dims()[3]);
@@ -1129,10 +1125,10 @@ class DepthwiseConvInputGradFunctor<platform::CUDADeviceContext, T,
 };
 
 template <typename T, bool fuse_relu_before_conv>
-class DepthwiseConvFilterGradFunctor<platform::CUDADeviceContext, T,
+class DepthwiseConvFilterGradFunctor<pten::GPUContext, T,
                                      fuse_relu_before_conv> {
  public:
-  void operator()(const platform::CUDADeviceContext& context,
+  void operator()(const pten::GPUContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& output_grad,
                   const std::vector<int>& strides,
@@ -1263,31 +1259,23 @@ class DepthwiseConvFilterGradFunctor<platform::CUDADeviceContext, T,
   }
 };
 
-template class DepthwiseConvFunctor<platform::CUDADeviceContext, float, false>;
-template class DepthwiseConvFunctor<platform::CUDADeviceContext, double, false>;
+template class DepthwiseConvFunctor<pten::GPUContext, float, false>;
+template class DepthwiseConvFunctor<pten::GPUContext, double, false>;
 
-template class DepthwiseConvInputGradFunctor<platform::CUDADeviceContext, float,
-                                             false>;
-template class DepthwiseConvInputGradFunctor<platform::CUDADeviceContext,
-                                             double, false>;
+template class DepthwiseConvInputGradFunctor<pten::GPUContext, float, false>;
+template class DepthwiseConvInputGradFunctor<pten::GPUContext, double, false>;
 
-template class DepthwiseConvFilterGradFunctor<platform::CUDADeviceContext,
-                                              float, false>;
-template class DepthwiseConvFilterGradFunctor<platform::CUDADeviceContext,
-                                              double, false>;
+template class DepthwiseConvFilterGradFunctor<pten::GPUContext, float, false>;
+template class DepthwiseConvFilterGradFunctor<pten::GPUContext, double, false>;
 
-template class DepthwiseConvFunctor<platform::CUDADeviceContext, float, true>;
-template class DepthwiseConvFunctor<platform::CUDADeviceContext, double, true>;
+template class DepthwiseConvFunctor<pten::GPUContext, float, true>;
+template class DepthwiseConvFunctor<pten::GPUContext, double, true>;
 
-template class DepthwiseConvInputGradFunctor<platform::CUDADeviceContext, float,
-                                             true>;
-template class DepthwiseConvInputGradFunctor<platform::CUDADeviceContext,
-                                             double, true>;
+template class DepthwiseConvInputGradFunctor<pten::GPUContext, float, true>;
+template class DepthwiseConvInputGradFunctor<pten::GPUContext, double, true>;
 
-template class DepthwiseConvFilterGradFunctor<platform::CUDADeviceContext,
-                                              float, true>;
-template class DepthwiseConvFilterGradFunctor<platform::CUDADeviceContext,
-                                              double, true>;
+template class DepthwiseConvFilterGradFunctor<pten::GPUContext, float, true>;
+template class DepthwiseConvFilterGradFunctor<pten::GPUContext, double, true>;
 
 }  // namespace math
 }  // namespace operators

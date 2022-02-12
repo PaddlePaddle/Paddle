@@ -180,7 +180,8 @@ class ConvOp : public framework::OperatorWithKernel {
 
   framework::KernelSignature GetExpectedPtenKernelArgs(
       const framework::ExecutionContext& ctx) const override {
-    if (ctx.Attr<bool>("use_cudnn")) {
+    LOG(ERROR) << ctx.Type();
+    if (ctx.Attr<bool>("use_cudnn") && platform::is_gpu_place(ctx.GetPlace())) {
       return framework::KernelSignature(
           "conv2d_cudnn", {"Input", "Filter"},
           {"strides", "paddings", "padding_algorithm", "groups", "dilations",
@@ -189,7 +190,7 @@ class ConvOp : public framework::OperatorWithKernel {
           {"Output"});
     } else {
       return framework::KernelSignature(
-          "conv2d", {"Input", "Filter"},
+          ctx.Type(), {"Input", "Filter"},
           {"strides", "paddings", "padding_algorithm", "groups", "dilations",
            "data_format", "use_addto", "workspace_size_MB",
            "exhaustive_search"},
@@ -216,7 +217,7 @@ class ConvOpGrad : public framework::OperatorWithKernel {
 
   framework::KernelSignature GetExpectedPtenKernelArgs(
       const framework::ExecutionContext& ctx) const override {
-    if (ctx.Attr<bool>("use_cudnn")) {
+    if (ctx.Attr<bool>("use_cudnn") && platform::is_gpu_place(ctx.GetPlace())) {
       return framework::KernelSignature(
           "conv2d_cudnn_grad",
           {framework::GradVarName("Output"), "Input", "Filter"},
@@ -248,6 +249,27 @@ class ConvOpDoubleGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override;
 
+  framework::KernelSignature GetExpectedPtenKernelArgs(
+      const framework::ExecutionContext& ctx) const override {
+    if (ctx.Attr<bool>("use_cudnn") && platform::is_gpu_place(ctx.GetPlace())) {
+      return framework::KernelSignature(
+          "conv2d_cudnn_grad_grad",
+          {"DDInput", "DDFilter", "DOutput", "Input", "Filter"},
+          {"strides", "paddings", "padding_algorithm", "groups", "dilations",
+           "data_format", "use_addto", "workspace_size_MB",
+           "exhaustive_search"},
+          {"DDOutput", "DInput", "DFilter"});
+    } else {
+      return framework::KernelSignature(
+          "conv2d_grad_grad",
+          {"DDInput", "DDFilter", "DOutput", "Input", "Filter"},
+          {"strides", "paddings", "padding_algorithm", "groups", "dilations",
+           "data_format", "use_addto", "workspace_size_MB",
+           "exhaustive_search"},
+          {"DDOutput", "DInput", "DFilter"});
+    }
+  }
+
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
@@ -276,165 +298,13 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
 template <typename DeviceContext, typename T>
 class DepthwiseConvKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    const Tensor* input = context.Input<Tensor>("Input");
-    Tensor filter = *context.Input<Tensor>("Filter");
-    Tensor* output = context.Output<Tensor>("Output");
-    output->mutable_data<T>(context.GetPlace());
-
-    const std::vector<int> strides = context.Attr<std::vector<int>>("strides");
-    std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
-    std::vector<int> dilations = context.Attr<std::vector<int>>("dilations");
-    bool fuse_relu = context.Attr<bool>("fuse_relu_before_depthwise_conv");
-
-    const std::string padding_algorithm =
-        context.Attr<std::string>("padding_algorithm");
-    const std::string data_format = context.Attr<std::string>("data_format");
-
-    const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
-    if (channel_last) {
-      PADDLE_ENFORCE_EQ(
-          output->dims()[output->dims().size() - 1] %
-              input->dims()[input->dims().size() - 1],
-          0, platform::errors::InvalidArgument(
-                 "ShapeError: The output channels must be a multiple of the "
-                 "input channels. But receivced output channel number is %d "
-                 "and input channel number is %d",
-                 output->dims()[output->dims().size() - 1],
-                 input->dims()[input->dims().size() - 1]));
-    } else {
-      PADDLE_ENFORCE_EQ(
-          output->dims()[1] % input->dims()[1], 0,
-          platform::errors::InvalidArgument(
-              "ShapeError: The output channels must be a multiple of the "
-              "input channels. But receivced output channel number is %d "
-              "and input channel number is %d",
-              output->dims()[1], input->dims()[1]));
-    }
-
-    // update padding and dilation
-    auto in_dims = input->dims();
-    auto filter_dims = filter.dims();
-
-    framework::DDim in_data_dims;
-    const framework::DataLayout data_layout =
-        framework::StringToDataLayout(data_format);
-    if (data_layout != framework::DataLayout::kNHWC) {
-      in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
-    } else {
-      in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
-    }
-
-    framework::DDim filter_data_dims =
-        framework::slice_ddim(filter_dims, 2, filter_dims.size());
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
-    UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
-                             in_data_dims, strides, ksize);
-
-    bool is_sys_pad = strides.size() * 2 == paddings.size() ? false : true;
-    if (!is_sys_pad) {
-      for (size_t i = 0; i < strides.size(); ++i) {
-        paddings.erase(paddings.begin() + i + 1);
-      }
-    }
-
-    auto& dev_ctx = context.template device_context<DeviceContext>();
-
-    if (fuse_relu) {
-      math::DepthwiseConvFunctor<DeviceContext, T, true> depthwiseConv;
-      depthwiseConv(dev_ctx, *input, filter, strides, paddings, dilations,
-                    output, data_layout);
-    } else {
-      math::DepthwiseConvFunctor<DeviceContext, T, false> depthwiseConv;
-      depthwiseConv(dev_ctx, *input, filter, strides, paddings, dilations,
-                    output, data_layout);
-    }
-  }
+  void Compute(const framework::ExecutionContext& context) const override {}
 };
 
 template <typename DeviceContext, typename T>
 class DepthwiseConvGradKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    const Tensor* input = context.Input<Tensor>("Input");
-    const Tensor* output_grad =
-        context.Input<Tensor>(framework::GradVarName("Output"));
-    Tensor* input_grad =
-        context.Output<Tensor>(framework::GradVarName("Input"));
-    Tensor* filter_grad =
-        context.Output<Tensor>(framework::GradVarName("Filter"));
-    Tensor filter = *context.Input<Tensor>("Filter");
-
-    if (!input_grad && !filter_grad) return;
-
-    std::vector<int> strides = context.Attr<std::vector<int>>("strides");
-    std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
-    std::vector<int> dilations = context.Attr<std::vector<int>>("dilations");
-    bool fuse_relu = context.Attr<bool>("fuse_relu_before_depthwise_conv");
-    const std::string padding_algorithm =
-        context.Attr<std::string>("padding_algorithm");
-    const std::string data_format = context.Attr<std::string>("data_format");
-
-    // update padding and dilation
-    auto in_dims = input->dims();
-    auto filter_dims = filter.dims();
-
-    framework::DDim in_data_dims;
-    const framework::DataLayout data_layout =
-        framework::StringToDataLayout(data_format);
-    if (data_layout != framework::DataLayout::kNHWC) {
-      in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
-    } else {
-      in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
-    }
-    framework::DDim filter_data_dims =
-        framework::slice_ddim(filter_dims, 2, filter_dims.size());
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
-    UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
-                             in_data_dims, strides, ksize);
-
-    bool is_sys_pad = strides.size() * 2 == paddings.size() ? false : true;
-    if (!is_sys_pad) {
-      for (size_t i = 0; i < strides.size(); ++i) {
-        paddings.erase(paddings.begin() + i + 1);
-      }
-    }
-    pten::funcs::SetConstant<DeviceContext, T> set_zero;
-    auto& dev_ctx = context.template device_context<DeviceContext>();
-
-    if (input_grad) {
-      input_grad->mutable_data<T>(context.GetPlace());
-      set_zero(dev_ctx, input_grad, static_cast<T>(0));
-
-      if (fuse_relu) {
-        math::DepthwiseConvInputGradFunctor<DeviceContext, T, true>
-            depthwiseConvInputGrad;
-        depthwiseConvInputGrad(dev_ctx, *input, filter, *output_grad, strides,
-                               paddings, dilations, input_grad, data_layout);
-      } else {
-        math::DepthwiseConvInputGradFunctor<DeviceContext, T, false>
-            depthwiseConvInputGrad;
-        depthwiseConvInputGrad(dev_ctx, *input, filter, *output_grad, strides,
-                               paddings, dilations, input_grad, data_layout);
-      }
-    }
-
-    if (filter_grad) {
-      filter_grad->mutable_data<T>(context.GetPlace());
-      set_zero(dev_ctx, filter_grad, static_cast<T>(0));
-      if (fuse_relu) {
-        math::DepthwiseConvFilterGradFunctor<DeviceContext, T, true>
-            depthwiseConvFilterGrad;
-        depthwiseConvFilterGrad(dev_ctx, *input, *output_grad, strides,
-                                paddings, dilations, filter_grad, data_layout);
-      } else {
-        math::DepthwiseConvFilterGradFunctor<DeviceContext, T, false>
-            depthwiseConvFilterGrad;
-        depthwiseConvFilterGrad(dev_ctx, *input, *output_grad, strides,
-                                paddings, dilations, filter_grad, data_layout);
-      }
-    }
-  }
+  void Compute(const framework::ExecutionContext& context) const override {}
 };
 
 }  // namespace operators

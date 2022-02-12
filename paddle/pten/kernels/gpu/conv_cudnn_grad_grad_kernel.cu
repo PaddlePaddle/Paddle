@@ -674,12 +674,59 @@ void ConvCudnnGradGradKernel(const Context& ctx,
   }
 }
 
+template <typename T, typename Context>
+void DepthwiseConvCudnnGradGradKernel(const Context& ctx,
+                                      const DenseTensor& input_grad_grad,
+                                      const DenseTensor& filter_grad_grad,
+                                      const DenseTensor& out_grad,
+                                      const DenseTensor& input,
+                                      const DenseTensor& filter,
+                                      const std::vector<int>& strides,
+                                      const std::vector<int>& paddings_t,
+                                      const std::string& padding_algorithm,
+                                      int groups,
+                                      const std::vector<int>& dilations_t,
+                                      const std::string& data_format,
+                                      bool use_addto,
+                                      int workspace_size_MB,
+                                      bool exhaustive_search_t,
+                                      DenseTensor* out_grad_grad,
+                                      DenseTensor* input_grad,
+                                      DenseTensor* filter_grad) {
+  ConvCudnnGradGradKernel<T>(ctx,
+                             input_grad_grad,
+                             filter_grad_grad,
+                             out_grad,
+                             input,
+                             filter,
+                             strides,
+                             paddings_t,
+                             padding_algorithm,
+                             groups,
+                             dilations_t,
+                             data_format,
+                             use_addto,
+                             workspace_size_MB,
+                             exhaustive_search_t,
+                             out_grad_grad,
+                             input_grad,
+                             filter_grad);
+}
+
 }  // namespace pten
 
 PT_REGISTER_KERNEL(conv2d_cudnn_grad_grad,
                    GPU,
                    ALL_LAYOUT,
                    pten::ConvCudnnGradGradKernel,
+                   float,
+                   double,
+                   paddle::platform::float16) {}
+
+PT_REGISTER_KERNEL(depthwise_conv2d_cudnn_grad_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::DepthwiseConvCudnnGradGradKernel,
                    float,
                    double,
                    paddle::platform::float16) {}
