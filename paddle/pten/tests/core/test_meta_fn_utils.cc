@@ -37,7 +37,7 @@ TEST(WrappedInferMeta, Scale) {
   EXPECT_EQ(dense_out1.dims()[1], dense_x.dims()[1]);
 }
 
-TEST(MetaFnFactory, InferMetaFnExists) 
+TEST(MetaFnFactory, InferMetaFnExists) {
   pten::DenseTensor dense_x;
   dense_x.Resize(pten::framework::make_ddim({3, 4}));
 
