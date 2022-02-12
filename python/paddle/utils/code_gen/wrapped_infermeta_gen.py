@@ -131,7 +131,7 @@ def generate_wrapped_infermeta_and_register(api_yaml_path, header_file_path,
     header_file.write(header_include())
     header_file.write(namespace[0])
 
-    include_header_file = "paddle/pten/infermeta/generated/wrapped_infermeta.h"
+    include_header_file = "paddle/pten/infermeta/generated.h"
     source_file.write(source_include(include_header_file))
     source_file.write(namespace[0])
 
@@ -164,12 +164,12 @@ def main():
     parser.add_argument(
         '--wrapped_infermeta_header_path',
         help='output of generated wrapped_infermeta header code file',
-        default='paddle/pten/infermeta/generated/wrapped_infermeta.h')
+        default='paddle/pten/infermeta/generated.h')
 
     parser.add_argument(
         '--wrapped_infermeta_source_path',
         help='output of generated wrapped_infermeta source code file',
-        default='paddle/pten/infermeta/generated/wrapped_infermeta.cc')
+        default='paddle/pten/infermeta/generated.cc')
 
     options = parser.parse_args()
 

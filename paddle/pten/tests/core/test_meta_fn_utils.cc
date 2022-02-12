@@ -17,7 +17,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/infermeta_utils.h"
-#include "paddle/pten/infermeta/generated/wrapped_infermeta.h"
+#include "paddle/pten/infermeta/generated.h"
 #include "paddle/pten/infermeta/unary.h"
 
 namespace pten {

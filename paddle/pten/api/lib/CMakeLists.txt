@@ -37,8 +37,8 @@ set(bw_api_source_file_tmp ${bw_api_source_file}.tmp)
 # wrapped infermeta file
 set(wrapped_infermeta_gen_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/wrapped_infermeta_gen.py)
 set(api_yaml_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/api.yaml)
-set(wrapped_infermeta_header_file ${CMAKE_SOURCE_DIR}/paddle/pten/infermeta/generated/wrapped_infermeta.h)
-set(wrapped_infermeta_source_file ${CMAKE_SOURCE_DIR}/paddle/pten/infermeta/generated/wrapped_infermeta.cc)
+set(wrapped_infermeta_header_file ${CMAKE_SOURCE_DIR}/paddle/pten/infermeta/generated.h)
+set(wrapped_infermeta_source_file ${CMAKE_SOURCE_DIR}/paddle/pten/infermeta/generated.cc)
 
 if (NOT PYTHON_EXECUTABLE)
   find_package(PythonInterp REQUIRED)
