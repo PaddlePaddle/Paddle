@@ -287,6 +287,23 @@ static __global__ void UpdateLambMoment(
     mom1_p[i] = mom1;
     mom2_p[i] = mom2;
     trust_ratio_div_p[i] = trust_ratio_div;
+    /*
+    if (!isfinite(g) || !isfinite(mom1) || !isfinite(mom2) ||
+        !isfinite(trust_ratio_div)) {
+      printf(
+          "blockIdx.x = %d threadIdx.x = %d : param = %f, grad = %f, "
+          "scaled_grad = %f, "
+          "square_grad_norm = %f, mom1 = %f, "
+          "mom2 = %f, trust_ratio_div = %f, weight_deccay = %f, beta1 = %f, "
+          "beta2 = %f, "
+          "beta1pow = %f, beta2pow = %f, scale = %f, rescale_grad = %f, "
+          "global_scale = %f\n",
+          blockIdx.x, threadIdx.x, p, grad_p[i], g, square_grad_norm, mom1,
+          mom2, trust_ratio_div, weight_decay, beta1, beta2, beta1pow_p[0],
+          beta2pow_p[0], scale, rescale_grad, global_scale[0]);
+      asm("trap; ");
+    }
+    */
   }
 }
 
@@ -616,14 +633,21 @@ static void GetSquareGradNorm(const float *fp32_grad, int fp32_numel,
   if (fp32_numel > 0) {
     GetSquareGradNormImpl(fp32_grad, fp32_numel, square_norm, stream,
                           cub_tmp_buffer);
+    VLOG(10) << "FP32 square L2-Norm: "
+             << FlattenToString(square_norm, 1, cub_tmp_buffer->GetPlace());
   }
 
   if (fp16_numel > 0) {
     float *fp16_square_norm = fp32_numel > 0 ? square_norm + 1 : square_norm;
     GetSquareGradNormImpl(fp16_grad, fp16_numel, fp16_square_norm, stream,
                           cub_tmp_buffer);
+    VLOG(10) << "FP16 square L2-Norm: "
+             << FlattenToString(fp16_square_norm, 1,
+                                cub_tmp_buffer->GetPlace());
     if (fp32_numel > 0) {
       AddToCUDAKernel<<<1, 1, 0, stream>>>(fp16_square_norm, square_norm);
+      VLOG(10) << "FP32+FP16 square L2-Norm: "
+               << FlattenToString(square_norm, 1, cub_tmp_buffer->GetPlace());
     }
   }
   VLOG(10) << "GetSquareGradNorm ends, fp32_numel = " << fp32_numel
@@ -731,6 +755,22 @@ static void PrintAllMinMaxRange(const framework::ExecutionContext &ctx,
               << " , " << GetMinMaxStr(tensors[i]);
     }
   }
+}
+
+template <typename T>
+static bool HasNanInf(const T *x, int n, gpuStream_t stream,
+                      memory::Buffer *cub_tmp_buffer) {
+  if (n <= 0) return false;
+  memory::Buffer buffer(cub_tmp_buffer->GetPlace());
+  auto *flag = buffer.Alloc<bool>(1);
+  cub::TransformInputIterator<bool, IsNanInfFunctor<T>, const T *> iter(
+      x, IsNanInfFunctor<T>());
+  CubDeviceReduce(iter, flag, n, OrFunctor(), false, stream, cub_tmp_buffer);
+  bool cpu_flag = false;
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&cpu_flag, flag, sizeof(bool),
+                                             cudaMemcpyDeviceToHost, stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
+  return cpu_flag;
 }
 
 // NOTE: has_nan_inf should be of length 2 at least when fp32_numel > 0 and
@@ -1024,12 +1064,35 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
             fp32_scale, fp16_scale, clip_scale, extra_scale);
         VLOG(1) << "Grad scale: " << FlattenToString(fp32_scale, 1, place);
         // (3) Do ReduceScatter with scale
+        /*
+        if (HasNanInf(fp32_grad, fp32_numel, stream, &cub_tmp_buffer)) {
+          LOG(WARNING) << "FP32Grad has nan/inf before allreduce";
+        }
+        if (HasNanInf(fp16_grad, fp16_numel, stream, &cub_tmp_buffer)) {
+          LOG(WARNING) << "FP16Grad has nan/inf before allreduce";
+        }
+        */
+        if (num_devices > 1) {
+          PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+              fp32_square_grad_norm, fp32_square_grad_norm, 1, ncclFloat32,
+              ncclSum, comm, stream));
+        }
         NCCLReduceScatterWithScale(fp32_grad, fp32_sum_grad,
                                    fp32_numel_each_device, num_devices, comm,
                                    stream, dev_ctx, fp32_scale);
         NCCLReduceScatterWithScale(fp16_grad, fp16_sum_grad,
                                    fp16_numel_each_device, num_devices, comm,
                                    stream, dev_ctx, fp16_scale);
+        /*
+        if (HasNanInf(fp32_sum_grad, fp32_numel_each_device, stream,
+                      &cub_tmp_buffer)) {
+          LOG(WARNING) << "FP32Grad has nan/inf after allreduce";
+        }
+        if (HasNanInf(fp16_sum_grad, fp16_numel_each_device, stream,
+                      &cub_tmp_buffer)) {
+          LOG(WARNING) << "FP16Grad has nan/inf after allreduce";
+        }
+        */
         max_global_grad_norm = 0;
       }
     } else {
