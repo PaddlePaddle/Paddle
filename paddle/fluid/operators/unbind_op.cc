@@ -85,4 +85,5 @@ REGISTER_OP_CPU_KERNEL(
     ops::UnbindOpKernel<plat::CPUDeviceContext, float>,
     ops::UnbindOpKernel<plat::CPUDeviceContext, int64_t>,
     ops::UnbindOpKernel<plat::CPUDeviceContext, int>,
-    ops::UnbindOpKernel<plat::CPUDeviceContext, plat::float16>);
+    ops::UnbindOpKernel<plat::CPUDeviceContext, plat::float16>,
+    ops::UnbindOpKernel<plat::CPUDeviceContext, plat::bfloat16>);

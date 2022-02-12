@@ -22,6 +22,8 @@ namespace paddle2cinn {
 
 constexpr char kCinnLaunchOp[] = "cinn_launch";
 constexpr char kNoNeedBufferFeeds[] = "no_need_buffer_feeds";
+constexpr char kMemOptVarInfoFromMainGraph[] =
+    "mem_opt_var_info_from_main_graph";
 
 // A pass named BuildCinnPass, the function of this pass is:
 //

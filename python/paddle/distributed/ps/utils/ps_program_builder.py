@@ -41,7 +41,7 @@ class PsProgramBuilder(object):
         pass
 
     def _build_trainer_programs(self):
-        pass
+        raise NotImplementedError
 
     def _build_pserver_programs(self):
         is_sgd_adam = False
@@ -60,11 +60,13 @@ class PsProgramBuilder(object):
 
     def _build_programs(self):
         if self.attrs['is_worker']:
+            logger.info("start building trainer program")
             self._build_trainer_programs()
             fluid.framework.switch_startup_program(self.cloned_startup)
             self.loss.block.program = self.cloned_main
 
         elif self.attrs['is_server']:
+            logger.info("start building pserver program")
             self._build_pserver_programs()
             self.loss.block.program = self.attrs['_main_server']
             fluid.framework.switch_startup_program(self.attrs[
@@ -73,6 +75,7 @@ class PsProgramBuilder(object):
 
 class GeoPsProgramBuilder(PsProgramBuilder):  # 仅 CPU 模式
     def __init__(self, pass_ctx):
+        logger.info("start building geo-ps program")
         super(GeoPsProgramBuilder, self).__init__(pass_ctx)
         if self.ps_mode != DistributedMode.GEO:
             raise ValueError("ps mode: {} not matched {}",
@@ -92,6 +95,7 @@ class GeoPsProgramBuilder(PsProgramBuilder):  # 仅 CPU 模式
 
 class CpuSyncPsProgramBuilder(PsProgramBuilder):
     def __init__(self, pass_ctx):
+        logger.info("start building cpu-sync-ps program")
         super(CpuSyncPsProgramBuilder, self).__init__(pass_ctx)
         if self.ps_mode == DistributedMode.GEO:
             raise ValueError("ps mode: {} not matched {}",
@@ -130,14 +134,17 @@ class CpuSyncPsProgramBuilder(PsProgramBuilder):
 
 class CpuAsyncPsProgramBuilder(CpuSyncPsProgramBuilder):
     def __init__(self, pass_ctx):
+        logger.info("start building cpu-async-ps program")
         super(CpuAsyncPsProgramBuilder, self).__init__(pass_ctx)
 
 
-class GpuPsProgramBuilder(PsProgramBuilder):  # 和 geo、sync、async 等模式无关 
+class GpuPsProgramBuilder(PsProgramBuilder):
     def __init__(self, pass_ctx):
+        logger.info("start building gpu-ps program")
         super(GpuPsProgramBuilder, self).__init__(pass_ctx)
 
     def _build_trainer_programs(self):
+
         add_lr_decay_table_pass = new_pass("add_lr_decay_table_pass",
                                            self.attrs)
         add_lr_decay_table_pass.apply([], [], self.pass_ctx)
@@ -152,7 +159,8 @@ class GpuPsProgramBuilder(PsProgramBuilder):  # 和 geo、sync、async 等模式
         ps_gpu_pass.apply([self.cloned_main], [None], self.pass_ctx)
 
         ps_transpile_pass = new_pass("ps_transpile_pass", self.attrs)
-        ps_transpile_pass.apply([_main], [_startup], self.pass_ctx)
+        ps_transpile_pass.apply([self.cloned_main], [self.cloned_startup],
+                                self.pass_ctx)
 
         self.attrs['origin_main_program'] = self.cloned_main
         self.attrs['origin_startup_program'] = self.cloned_startup
@@ -165,6 +173,7 @@ class GpuPsProgramBuilder(PsProgramBuilder):  # 和 geo、sync、async 等模式
 
 class HeterAsyncPsProgramBuilder(PsProgramBuilder):
     def __init__(self, pass_ctx):
+        logger.info("start building heter-async-ps program")
         super(HeterAsyncPsProgramBuilder, self).__init__(pass_ctx)
         if self.use_ps_gpu or self.ps_mode == DistributedMode.GEO or self.attrs[
                 'is_heter_ps_mode'] == False:

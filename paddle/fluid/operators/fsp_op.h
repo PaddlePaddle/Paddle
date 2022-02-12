@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -79,7 +79,7 @@ class FSPGradOpKernel : public framework::OpKernel<T> {
     int64_t w = 0;
 
     auto blas = math::GetBlas<DeviceContext, T>(context);
-    math::SetConstant<DeviceContext, T> set_zero;
+    pten::funcs::SetConstant<DeviceContext, T> set_zero;
     if (d_x != nullptr) {
       d_x->mutable_data<T>(context.GetPlace());
       set_zero(context.template device_context<DeviceContext>(), d_x,

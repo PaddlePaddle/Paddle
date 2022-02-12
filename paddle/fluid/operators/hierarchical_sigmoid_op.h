@@ -24,9 +24,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/clip_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/matrix_bit_code.h"
 #include "paddle/fluid/platform/transform.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -81,10 +81,10 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
     auto pre_out_mat = EigenMatrix<T>::From(*pre_out);
     // Not all class(leaf) nodes' path lengths equal code_length, thus init as
     // 0s can avoid out of path's loss.
-    math::SetConstant<DeviceContext, T> zero;
+    pten::funcs::SetConstant<DeviceContext, T> zero;
     zero(dev_ctx, pre_out, static_cast<T>(0.0));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
-    math::RowwiseSum<DeviceContext, T> row_sum;
+    pten::funcs::RowwiseSum<DeviceContext, T> row_sum;
 
     std::unique_ptr<math::MatrixBitCodeFunctor<T>> bit_code;
     if (!is_custom) {
@@ -134,7 +134,7 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
     auto* in_grad = ctx.Output<LoDTensor>(framework::GradVarName("X"));
     bool is_sparse = ctx.Attr<bool>("is_sparse");
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    math::SetConstant<DeviceContext, T> zero;
+    pten::funcs::SetConstant<DeviceContext, T> zero;
     auto& label = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Label"), "Input",
                                   "Label", "HierarchicalSigmoidGrad");
     auto& pre_out = GET_DATA_SAFELY(ctx.Input<LoDTensor>("PreOut"), "Input",

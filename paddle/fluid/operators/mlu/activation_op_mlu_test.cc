@@ -15,9 +15,9 @@ limitations under the License. */
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/operators/activation_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device/mlu/device_context.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace fw = paddle::framework;
 namespace plat = paddle::platform;
