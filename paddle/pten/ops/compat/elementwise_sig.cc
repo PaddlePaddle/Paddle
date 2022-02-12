@@ -75,6 +75,20 @@ KernelSignature ElementwiseAddGradOpArgumentMapping(
   return KernelSignature("unregistered", {}, {}, {});
 }
 
+KernelSignature ElementwiseAddDoubleGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "add_double_grad", {"Y", "DDX", "DDY", "DOut"}, {"axis"}, {"DDOut"});
+}
+
+KernelSignature ElementwiseAddTripleGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("add_triple_grad",
+                         {"DDX", "DDY", "D_DDOut"},
+                         {"axis"},
+                         {"D_DDX", "D_DDY"});
+}
+
 }  // namespace pten
 
 PT_REGISTER_BASE_KERNEL_NAME(elementwise_add, add);
@@ -96,3 +110,7 @@ PT_REGISTER_ARG_MAPPING_FN(elementwise_div,
                            pten::ElementwiseDivOpArgumentMapping);
 PT_REGISTER_ARG_MAPPING_FN(elementwise_add_grad,
                            pten::ElementwiseAddGradOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(elementwise_add_grad_grad,
+                           pten::ElementwiseAddDoubleGradOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(elementwise_add_triple_grad,
+                           pten::ElementwiseAddTripleGradOpArgumentMapping);
