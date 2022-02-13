@@ -390,12 +390,49 @@ void ConvCudnnKernel(const Context& ctx,
   }
 }
 
+template <typename T, typename Context>
+void Conv3DCudnnKernel(const Context& dev_ctx,
+                       const DenseTensor& input,
+                       const DenseTensor& filter,
+                       const std::vector<int>& strides,
+                       const std::vector<int>& paddings,
+                       const std::string& padding_algorithm,
+                       int groups,
+                       const std::vector<int>& dilations,
+                       const std::string& data_format,
+                       bool use_addto,
+                       int workspace_size_MB,
+                       bool exhaustive_search,
+                       DenseTensor* out) {
+  ConvCudnnKernel<T>(dev_ctx,
+                     input,
+                     filter,
+                     strides,
+                     paddings,
+                     padding_algorithm,
+                     groups,
+                     dilations,
+                     data_format,
+                     use_addto,
+                     workspace_size_MB,
+                     exhaustive_search,
+                     out);
+}
+
 }  // namespace pten
 
 PT_REGISTER_KERNEL(conv2d_cudnn,
                    GPU,
                    ALL_LAYOUT,
                    pten::ConvCudnnKernel,
+                   float,
+                   double,
+                   paddle::platform::float16) {}
+
+PT_REGISTER_KERNEL(conv3d_cudnn,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::Conv3DCudnnKernel,
                    float,
                    double,
                    paddle::platform::float16) {}

@@ -20,6 +20,7 @@ import numpy as np
 import paddle.fluid.core as core
 from op_test import OpTest
 import paddle.fluid as fluid
+import paddle
 
 
 def conv3d_forward_naive(input,
@@ -1001,4 +1002,5 @@ class TestConv3DAPI_Error(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()
