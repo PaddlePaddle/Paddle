@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #include "paddle/pten/kernels/norm_kernel.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/funcs/common_shape.h"
 #include "paddle/pten/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace pten {
 

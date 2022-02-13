@@ -274,7 +274,7 @@ class GPUROIPoolGradOpKernel : public framework::OpKernel<T> {
                    dev_ctx.stream());
 
       x_grad->mutable_data<T>(ctx.GetPlace());
-      math::SetConstant<Place, T> set_zero;
+      pten::funcs::SetConstant<Place, T> set_zero;
       set_zero(dev_ctx, x_grad, static_cast<T>(0));
 
       int output_grad_size = out_grad->numel();

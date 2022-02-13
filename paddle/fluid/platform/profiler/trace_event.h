@@ -84,7 +84,7 @@ struct MemcpyEventInfo {
   // The kind of the memory copy.
   // Each kind represents the source and destination targets of a memory copy.
   // Targets are host, device, and array. Refer to CUpti_ActivityMemcpyKind
-  // std::string copy_kind;
+  char copy_kind[kMemKindMaxLen];
   // The source memory kind read by the memory copy.
   // Each kind represents the type of the memory accessed by a memory
   // operation/copy. Refer to CUpti_ActivityMemoryKind

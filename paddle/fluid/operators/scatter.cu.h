@@ -15,11 +15,11 @@ limitations under the License. */
 #pragma once
 #include <unordered_set>
 #include <vector>
-#include "math/math_function.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {

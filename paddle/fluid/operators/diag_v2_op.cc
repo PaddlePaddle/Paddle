@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/diag_v2_op.h"
 #include <algorithm>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -109,7 +109,7 @@ class DiagV2Kernel : public framework::OpKernel<T> {
     int64_t i;
     if (x_dims.size() == 1) {
       float padding_value = context.Attr<float>("padding_value");
-      math::SetConstant<DeviceContext, T> set_padding_value;
+      pten::funcs::SetConstant<DeviceContext, T> set_padding_value;
       auto& dev_ctx = context.template device_context<DeviceContext>();
       set_padding_value(dev_ctx, out, static_cast<T>(padding_value));
 

@@ -161,6 +161,14 @@
   kernel :
     func : scale, scale_sr
 
+- api : sign
+  args : (const Tensor& x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : sign
+
 - api : subtract
   args : (const Tensor& x, const Tensor& y)
   output : Tensor
@@ -173,10 +181,10 @@
 - api : sum
   args : (const Tensor& x, const std::vector<int64_t>& axis={}, DataType dtype=DataType::UNDEFINED, bool keep_dim=false)
   output : Tensor
-  infer_meta : 
+  infer_meta :
     func : SumInferMeta
     param: [x, axis, dtype, keep_dim]
-  kernel : 
+  kernel :
     func : sum
     param : [x, axis, dtype, keep_dim]
     data_type : x

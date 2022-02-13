@@ -412,14 +412,7 @@ PADDLE_API {self.outputs['return_type']} {self.api}({self.args_str['args_declare
         input_infos = self.inputs['input_info']
         kernel_args_type_list = ['const platform::DeviceContext&']
 
-        input_tensor_code = ""
-        for input_name in input_names:
-            # set input code
-            input_tensor_code = input_tensor_code + f"""
-      auto {PREFIX_TENSOR_NAME}{input_name} = TensorToDenseTensor({input_name});"""
-
         attr_names = self.attrs['names']
-
         kernel_param = self.kernel['param']
         if kernel_param is None:
             kernel_param = input_names + attr_names
