@@ -19,7 +19,7 @@ namespace pten {
 KernelSignature Conv3dOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (paddle::any_cast<bool>(ctx.Attr("use_cudnn")) &&
       (ctx.GetPlace().GetType() == pten::AllocationType::GPU)) {
-    return KernelSignature("conv3d",
+    return KernelSignature("conv3d_cudnn",
                            {"Input", "Filter"},
                            {"strides",
                             "paddings",
@@ -32,7 +32,7 @@ KernelSignature Conv3dOpArgumentMapping(const ArgumentMappingContext& ctx) {
                             "exhaustive_search"},
                            {"Output"});
   }
-  return KernelSignature("conv3d_cudnn",
+  return KernelSignature("conv3d",
                          {"Input", "Filter"},
                          {"strides",
                           "paddings",

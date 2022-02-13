@@ -28,7 +28,8 @@ KernelSignature DepthwiseConv2dOpArgumentMapping(
                           "data_format",
                           "use_addto",
                           "workspace_size_MB",
-                          "exhaustive_search"},
+                          "exhaustive_search",
+                          "fuse_relu_before_depthwise_conv"},
                          {"Output"});
 }
 
@@ -44,7 +45,8 @@ KernelSignature DepthwiseConv2dGradOpArgumentMapping(
                           "data_format",
                           "use_addto",
                           "workspace_size_MB",
-                          "exhaustive_search"},
+                          "exhaustive_search",
+                          "fuse_relu_before_depthwise_conv"},
                          {GradVarName("Input"), GradVarName("Filter")});
 }
 
@@ -60,7 +62,8 @@ KernelSignature DepthwiseConv2dDoubleGradOpArgumentMapping(
                           "data_format",
                           "use_addto",
                           "workspace_size_MB",
-                          "exhaustive_search"},
+                          "exhaustive_search",
+                          "fuse_relu_before_depthwise_conv"},
                          {"DDOutput", "DInput", "DFilter"});
 }
 

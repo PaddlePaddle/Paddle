@@ -35,4 +35,21 @@ void ConvGradKernel(const Context& dev_ctx,
                     DenseTensor* input_grad,
                     DenseTensor* filter_grad);
 
+template <typename T, typename Context>
+void Conv3DGradKernel(const Context& dev_ctx,
+                      const DenseTensor& out_grad,
+                      const DenseTensor& input,
+                      const DenseTensor& filter,
+                      const std::vector<int>& strides,
+                      const std::vector<int>& paddings,
+                      const std::string& paddding_algorithm,
+                      int groups,
+                      const std::vector<int>& dilations,
+                      const std::string& data_format,
+                      bool use_addto,
+                      int workspace_size_MB,
+                      bool exhaustive_search,
+                      DenseTensor* input_grad,
+                      DenseTensor* filter_grad);
+
 }  // namespace pten

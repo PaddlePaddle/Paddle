@@ -32,6 +32,7 @@ void DepthwiseConvKernel(const Context& dev_ctx,
                          bool use_addto,
                          int workspace_size_MB,
                          bool exhaustive_search,
+                         bool fuse_relu,
                          DenseTensor* out) {
   ConvKernel<T>(dev_ctx,
                 input,
