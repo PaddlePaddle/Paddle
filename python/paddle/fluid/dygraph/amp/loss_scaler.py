@@ -493,3 +493,6 @@ class AmpScaler(object):
         self._incr_count = state_dict["incr_count"]
         self._decr_count = state_dict["decr_count"]
         self._use_dynamic_loss_scaling = state_dict["use_dynamic_loss_scaling"]
+
+    # Unify API
+    set_state_dict = load_state_dict
