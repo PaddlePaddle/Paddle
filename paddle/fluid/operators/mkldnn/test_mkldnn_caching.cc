@@ -55,7 +55,7 @@ class CacheTester {
     onednn_dev_ctx_->ResetBlobMap(nullptr);
   }
 
-  bool Analyze(unsigned int16 num_entries) {
+  bool Analyze(uint16_t num_entries) {
     //  Number of created objects in cache should be as expected (num_entries)
     return onednn_dev_ctx_->GetCachedObjectsNumber() == num_entries;
   }
