@@ -87,7 +87,7 @@ paddle::memory::AllocationPtr CUDA_MALLOC_FROM_VECTOR(
 // extend a vector by iterator.
 // NOTE: the iterator must support end-begin
 template <typename T, typename It>
-void Extend(std::vector<T> cpu_, It begin, It end) {
+void Extend(std::vector<T> &cpu_, It begin, It end) {  // NOLINT
   auto out_it = std::back_inserter<std::vector<T>>(cpu_);
   std::copy(begin, end, out_it);
 }
