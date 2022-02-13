@@ -49,6 +49,7 @@ class Sampler {
                        drop_last_(drop_last),
                        rank_(rank),
                        world_size_(world_size) {
+      LOG(ERROR) << "Sampler num_samples " << num_samples;
       sample_ids_.reserve(num_samples);
       for (int64_t i = 0; i < num_samples; i++) {
         sample_ids_.emplace_back(i);
@@ -125,6 +126,7 @@ class DataReader {
         sampler_.GetNextIndices(&indices);
         // shutdown reader if indices drained
         if (indices.size() == 0) {
+          LOG(ERROR) << "DataReader indices drained";
           for(auto& queue: output_queues_) {
             while (queue->Size()) sleep(0.5);
             queue->Close();

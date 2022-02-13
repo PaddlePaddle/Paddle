@@ -11,7 +11,8 @@ register_unity_group(cc
     nvjpeg_decoder.cc
     dataloader_op.cc
     map_op.cc
-    batch_decode_random_crop_op.cc)
+    batch_decode_random_crop_op.cc
+    random_flip_op.cc)
 
 register_unity_group(cu
     dataloader_op.cu.cc

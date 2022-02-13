@@ -36,52 +36,57 @@ class FlipOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
                       platform::errors::NotFound(
                           "Output(Out) of FlipOp should not be null."));
+
     auto x_dims = ctx->GetInputDim("X");
-    auto flip_dims = ctx->Attrs().Get<std::vector<int>>("axis");
-    size_t flip_dims_size = flip_dims.size();
 
-    if (flip_dims_size > 0) {
-      // check if dims axis within range
-      auto min_max_d = std::minmax_element(flip_dims.begin(), flip_dims.end());
-      PADDLE_ENFORCE_LT(
-          *min_max_d.first, x_dims.size(),
-          platform::errors::InvalidArgument(
-              "min(axes) should be less than the input tensor X's "
-              "axes of FlipOp. But received min(axes) = %d,  "
-              "X's axes = %d, X's shape = [%s]",
-              *min_max_d.first, x_dims.size(), x_dims));
-      PADDLE_ENFORCE_GE(*min_max_d.first, x_dims.size() * -1,
-                        platform::errors::InvalidArgument(
-                            "min(axes) should be greater than or equal to the "
-                            "input tensor X's "
-                            "axes of FlipOp times -1. But received "
-                            "min(axes) = %d,  X's "
-                            "axes = %d, X's shape = [%s]",
-                            *min_max_d.first, x_dims.size() * -1, x_dims));
-      PADDLE_ENFORCE_LT(
-          *min_max_d.second, x_dims.size(),
-          platform::errors::InvalidArgument(
-              "max(axes) should be less than the input tensor X's "
-              "axes of FlipOp. But received max(axes) = %d,  "
-              "X's axes = %d, X's shape = [%s]",
-              *min_max_d.second, x_dims.size(), x_dims));
-      PADDLE_ENFORCE_GE(*min_max_d.second, x_dims.size() * -1,
-                        platform::errors::InvalidArgument(
-                            "max(axes) should be greater than or equal to the "
-                            "input tensor X's "
-                            "axes of FlipOp times -1. But received "
-                            "max(axes) = %d,  X's "
-                            "axes = %d, X's shape = [%s]",
-                            *min_max_d.second, x_dims.size() * -1, x_dims));
+    if (ctx->IsRuntime()) {
+      auto flip_dims = ctx->Attrs().Get<std::vector<int>>("axis");
+      size_t flip_dims_size = flip_dims.size();
 
-      // check duplicates in dims
-      flip_dims.erase(std::unique(flip_dims.begin(), flip_dims.end()),
-                      flip_dims.end());
-      PADDLE_ENFORCE_EQ(flip_dims.size(), flip_dims_size,
-                        platform::errors::InvalidArgument(
-                            "axes has duplicates, original flip axes size=%d, "
-                            "but unique flip axes size=%d.)",
-                            flip_dims_size, flip_dims.size()));
+      if (flip_dims_size > 0) {
+        // check if dims axis within range
+        auto min_max_d = std::minmax_element(flip_dims.begin(), flip_dims.end());
+        PADDLE_ENFORCE_LT(
+            *min_max_d.first, x_dims.size(),
+            platform::errors::InvalidArgument(
+                "min(axes) should be less than the input tensor X's "
+                "axes of FlipOp. But received min(axes) = %d,  "
+                "X's axes = %d, X's shape = [%s]",
+                *min_max_d.first, x_dims.size(), x_dims));
+        PADDLE_ENFORCE_GE(*min_max_d.first, x_dims.size() * -1,
+                          platform::errors::InvalidArgument(
+                              "min(axes) should be greater than or equal to the "
+                              "input tensor X's "
+                              "axes of FlipOp times -1. But received "
+                              "min(axes) = %d,  X's "
+                              "axes = %d, X's shape = [%s]",
+                              *min_max_d.first, x_dims.size() * -1, x_dims));
+        PADDLE_ENFORCE_LT(
+            *min_max_d.second, x_dims.size(),
+            platform::errors::InvalidArgument(
+                "max(axes) should be less than the input tensor X's "
+                "axes of FlipOp. But received max(axes) = %d,  "
+                "X's axes = %d, X's shape = [%s]",
+                *min_max_d.second, x_dims.size(), x_dims));
+        PADDLE_ENFORCE_GE(*min_max_d.second, x_dims.size() * -1,
+                          platform::errors::InvalidArgument(
+                              "max(axes) should be greater than or equal to the "
+                              "input tensor X's "
+                              "axes of FlipOp times -1. But received "
+                              "max(axes) = %d,  X's "
+                              "axes = %d, X's shape = [%s]",
+                              *min_max_d.second, x_dims.size() * -1, x_dims));
+
+        // check duplicates in dims
+        flip_dims.erase(std::unique(flip_dims.begin(), flip_dims.end()),
+                        flip_dims.end());
+        PADDLE_ENFORCE_EQ(flip_dims.size(), flip_dims_size,
+                          platform::errors::InvalidArgument(
+                              "axes has duplicates, original flip axes size=%d, "
+                              "but unique flip axes size=%d.)",
+                              flip_dims_size, flip_dims.size()));
+      }
+
     }
 
     VLOG(3) << "flip operator x.shape=" << x_dims;

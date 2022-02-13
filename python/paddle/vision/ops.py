@@ -1012,6 +1012,20 @@ def image_decode_random_crop(x,
     return out
 
 
+def flip_vector(x, prob=0.5, name=None):
+    helper = LayerHelper("flip_vector", **locals())
+    out = helper.create_variable(
+        name=unique_name.generate("flip_vector"),
+        type=core.VarDesc.VarType.LOD_TENSOR,
+        dtype=core.VarDesc.VarType.BOOL)
+    helper.append_op(
+        type="random_flip",
+        inputs={"X": x},
+        outputs={"Out": out},
+        attrs={"probability": prob})
+    return out
+
+
 def random_flip(x, prob=0.5, name=None):
     if prob < 0. or prob > 1.:
         raise ValueError("prob should in (0, 1) in random_flip")
@@ -1023,8 +1037,11 @@ def random_flip(x, prob=0.5, name=None):
                 x[i] = paddle.flip(x[i], -1)
         return x
 
-    p = paddle.uniform([layers.shape(x)[0], 1], min=0., max=1.)
-    ie = layers.IfElse(p < prob)
+    # p = paddle.uniform([layers.shape(x)[0], 1], min=0., max=1.)
+    # prob = paddle.ones([layers.shape(x)[0], 1]) * prob
+    # cond = layers.less_than(p, prob)
+    cond = flip_vector(x, prob)
+    ie = layers.IfElse(cond)
     with ie.true_block():
         out = ie.input(x)
         out = paddle.flip(x, -1)
