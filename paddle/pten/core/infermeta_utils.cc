@@ -83,8 +83,8 @@ MetaTensor* InferMetaContext::MutableOutputAt(size_t idx) {
   return outputs_.at(idx).get();
 }
 
-MetaFunctionMap& MetaFunctionMap::Instance() {
-  static MetaFunctionMap g_meta_fn_map;
+MetaFnFactory& MetaFnFactory::Instance() {
+  static MetaFnFactory g_meta_fn_map;
   return g_meta_fn_map;
 }
 
