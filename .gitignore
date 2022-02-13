@@ -9,6 +9,7 @@ paddle/pten/api/lib/api.cc
 paddle/pten/api/backward/backward_api.h
 paddle/pten/api/lib/backward_api.cc
 paddle/pten/include/*
+paddle/pten/infermeta/generated.*
 paddle/pten/extension.h
 paddle/fluid/eager/api/generated/*
 
