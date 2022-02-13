@@ -2155,6 +2155,8 @@ void OperatorWithKernel::BuildPtenKernelContext(
         pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(float, attr));
       } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
         pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
+      } else if (attr_defs[i].type_index == std::type_index(typeid(int64_t))) {
+        pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(int64_t, attr));
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::string))) {
         pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(std::string, attr));

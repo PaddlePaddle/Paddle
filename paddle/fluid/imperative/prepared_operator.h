@@ -412,6 +412,8 @@ void BuildDygraphPtenKernelContext(
         kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(float, attr));
       } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
         kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
+        } else if (attr_defs[i].type_index == std::type_index(typeid(int64_t))) {
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(int64_t, attr));
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::string))) {
         kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(std::string, attr));
