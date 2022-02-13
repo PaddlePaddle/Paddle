@@ -1469,6 +1469,8 @@ USE_TRT_CONVERTER(conv3d);
 USE_TRT_CONVERTER(conv3d_transpose);
 USE_TRT_CONVERTER(mish);
 USE_TRT_CONVERTER(deformable_conv);
+USE_TRT_CONVERTER(bilinear_interp);
+USE_TRT_CONVERTER(bilinear_interp_v2);
 USE_TRT_CONVERTER(pool3d)
 #endif
 

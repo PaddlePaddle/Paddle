@@ -63,6 +63,10 @@ struct SimpleOpTypeSetTeller : public Teller {
     int8_teller_set.insert("reshape");
     int8_teller_set.insert("reshape2");
 #endif
+#if IS_TRT_VERSION_GE(8016)
+    teller_set.insert("bilinear_interp");
+    teller_set.insert("bilinear_interp_v2");
+#endif
   }
 
   bool operator()(const std::string& op_type, const framework::OpDesc& desc,
@@ -706,6 +710,196 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       // diff
       if (align_corners && scale != 1) {
         return false;
+      }
+    }
+    if (op_type == "bilinear_interp") {
+      std::vector<std::string> attrs{"data_layout",   "interp_method",
+                                     "align_corners", "scale",
+                                     "out_h",         "out_w"};
+      for (auto const attr : attrs) {
+        if (!desc.HasAttr(attr)) {
+          VLOG(3) << "The op_type " << op_type << " doesn't have the attr "
+                  << attr << " and return false";
+          return false;
+        }
+      }
+
+      auto data_layout = framework::StringToDataLayout(
+          BOOST_GET_CONST(std::string, desc.GetAttr("data_layout")));
+      if (data_layout != framework::DataLayout::kNCHW &&
+          data_layout != framework::DataLayout::kNHWC) {
+        VLOG(3) << "The op_type " << op_type
+                << " is not NCHW or NHWC return false";
+        return false;
+      }
+
+      auto resize_inputs = desc.Inputs();
+      if (resize_inputs.find("SizeTensor") != resize_inputs.end()) {
+        if (desc.Input("SizeTensor").size() >= 1) {
+          VLOG(3)
+              << "The Paddle-TRT doesn't support the SizeTensor for op_type "
+              << op_type;
+          return false;
+        }
+      }
+      auto interp_method =
+          BOOST_GET_CONST(std::string, desc.GetAttr("interp_method"));
+      if (interp_method != "bilinear") {
+        VLOG(3) << "The interp_method of op_type " << op_type << " is bilinear";
+        return false;
+      }
+
+      auto align_corners = BOOST_GET_CONST(bool, desc.GetAttr("align_corners"));
+      if (align_corners != false) {
+        VLOG(3)
+            << "The bilinear_interp only supports align_corners with false.";
+        return false;
+      }
+
+      // when the Scale and OutSize vector doesn't exist, fallback to the attr
+      // scale or
+      // out_h / in_h, out_w / in_w
+      bool has_out_size =
+          (resize_inputs.find("OutSize") != resize_inputs.end());
+      bool has_scale_input_size =
+          (resize_inputs.find("Scale") != resize_inputs.end());
+
+      if (has_out_size) {
+        VLOG(3)
+            << "The bilinear_interp TRT doesn't support input with OutSize.";
+        return false;
+      }
+
+      if (has_scale_input_size && desc.Input("Scale").size() != 1) {
+        VLOG(3) << "The Scale of bilinear_interp is "
+                << desc.Input("Scale").size();
+
+        if (!desc.HasAttr("scale") || !desc.HasAttr("out_h") ||
+            !desc.HasAttr("out_w")) {
+          VLOG(3) << "The op_type " << op_type
+                  << " doesn't have scale or out_h / out_w and return false";
+          return false;
+        } else {
+          auto scale = BOOST_GET_CONST(float, desc.GetAttr("scale"));
+          auto out_h = BOOST_GET_CONST(int, desc.GetAttr("out_h"));
+          auto out_w = BOOST_GET_CONST(int, desc.GetAttr("out_w"));
+          if (!(scale > 0.f && (out_h <= 0 && out_w <= 0))) {
+            if (out_h <= 0) {
+              VLOG(3) << "out_h must be greater than 0 if scale is not set.";
+              return false;
+            }
+            if (out_w <= 0) {
+              VLOG(3) << "out_w must be greater than 0 if scale is not set.";
+              return false;
+            }
+          }
+          if ((scale <= 0.f) && with_dynamic_shape) {
+            VLOG(3) << "dynamic shape not support Attr(scale) and Input(Scale) "
+                       "not set.";
+            return false;
+          }
+        }
+      }
+    }
+
+    if (op_type == "bilinear_interp_v2") {
+      std::vector<std::string> attrs{"data_layout",   "interp_method",
+                                     "align_corners", "scale",
+                                     "out_h",         "out_w"};
+      for (auto const attr : attrs) {
+        if (!desc.HasAttr(attr)) {
+          VLOG(3) << "The op_type " << op_type << " doesn't have the attr "
+                  << attr << " and return false";
+          return false;
+        }
+      }
+
+      auto resize_inputs = desc.Inputs();
+      if (resize_inputs.find("SizeTensor") != resize_inputs.end()) {
+        if (desc.Input("SizeTensor").size() >= 1) {
+          VLOG(3)
+              << "The Paddle-TRT doesn't support the SizeTensor for op_type "
+              << op_type;
+          return false;
+        }
+      }
+
+      auto data_layout = framework::StringToDataLayout(
+          BOOST_GET_CONST(std::string, desc.GetAttr("data_layout")));
+      if (data_layout != framework::DataLayout::kNCHW &&
+          data_layout != framework::DataLayout::kNHWC) {
+        VLOG(3) << "The op_type " << op_type
+                << " is not NCHW or NHWC return false";
+        return false;
+      }
+      auto interp_method =
+          BOOST_GET_CONST(std::string, desc.GetAttr("interp_method"));
+      if (interp_method != "bilinear") {
+        VLOG(3) << "The interp_method of op_type " << op_type << " is bilinear";
+        return false;
+      }
+
+      auto align_corners = BOOST_GET_CONST(bool, desc.GetAttr("align_corners"));
+      if (align_corners != false) {
+        VLOG(3)
+            << "The bilinear_interp_v2 only supports align_corners with false.";
+        return false;
+      }
+
+      bool has_out_size =
+          (resize_inputs.find("OutSize") != resize_inputs.end());
+      bool has_scale_input_size =
+          (resize_inputs.find("Scale") != resize_inputs.end());
+      /*
+      if (has_out_size) {
+        VLOG(3)
+            << "The bilinear_interp_v2 TRT doesn't support input with OutSize.";
+        return false;
+      }
+      */
+
+      if (has_scale_input_size && desc.Input("Scale").size() != 1) {
+        VLOG(3) << "The Scale of bilinear_interp_v2 is "
+                << desc.Input("Scale").size();
+
+        const std::vector<float> scale =
+            BOOST_GET_CONST(std::vector<float>, desc.GetAttr("scale"));
+        if (scale.size() <= 1) {
+          if (!desc.HasAttr("out_h") || !desc.HasAttr("out_w")) {
+            VLOG(3) << "The op_type " << op_type
+                    << " doesn't have Scale and the scale size <=1 and without "
+                       "out_h / out_w, it will return false";
+            return false;
+          }
+          auto out_h = BOOST_GET_CONST(int, desc.GetAttr("out_h"));
+          auto out_w = BOOST_GET_CONST(int, desc.GetAttr("out_w"));
+          if (!(out_h <= 0 && out_w <= 0)) {
+            if (out_h <= 0) {
+              VLOG(3) << "The op_type " << op_type
+                      << "'s out_h must be greater than 0 if scale is not set.";
+              return false;
+            }
+            if (out_w <= 0) {
+              VLOG(3) << "The op_type " << op_type
+                      << "'s out_w must be greater than 0 if scale is not set.";
+              return false;
+            }
+          }
+          if (with_dynamic_shape) {
+            VLOG(3) << "dynamic shape not support Attr(scale) and Input(Scale) "
+                       "vector not set.";
+            return false;
+          }
+        } else {
+          for (size_t i = 0; i < scale.size(); i++) {
+            if (scale[i] <= 0 && with_dynamic_shape) {
+              VLOG(3) << "dynamic shape not support Attr(scale[" << i << "]) "
+                      << scale[i]
+                      << " less than 1 and Input(Scale) vector not set.";
+              return false;
+            }
+          }
+        }
       }
     }
 
