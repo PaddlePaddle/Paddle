@@ -29,8 +29,8 @@ namespace platform = paddle::platform;
 namespace op = paddle::operators;
 using Tensor = paddle::framework::Tensor;
 
-USE_OP(conv2d);
-USE_OP(conv2d_grad);
+USE_OP_ITSELF(conv2d);
+USE_OP_ITSELF(conv2d_grad);
 USE_OP_DEVICE_KERNEL(conv2d, CUDNN);
 USE_OP_DEVICE_KERNEL(conv2d_grad, CUDNN);
 
