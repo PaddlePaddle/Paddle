@@ -8,6 +8,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include "paddle/pten/core/generator.h"
 #include <fcntl.h>
 
 #ifdef _POSIX_C_SOURCE
@@ -31,10 +32,11 @@ namespace paddle {
 namespace pybind {
 void BindGenerator(py::module* m_ptr) {
   auto& m = *m_ptr;
-  py::class_<framework::GeneratorState,
-             std::shared_ptr<framework::GeneratorState>>(m, "GeneratorState")
+  py::class_<pten::Generator::GeneratorState,
+             std::shared_ptr<pten::Generator::GeneratorState>>(m,
+                                                               "GeneratorState")
       .def("current_seed",
-           [](std::shared_ptr<framework::GeneratorState>& self) {
+           [](std::shared_ptr<pten::Generator::GeneratorState>& self) {
              return self->current_seed;
            });
   py::class_<std::mt19937_64>(m, "mt19937_64", "");

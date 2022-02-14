@@ -47,8 +47,12 @@ class GatherNdXPUKernel : public framework::OpKernel<T> {
 
     auto x_shape = paddle::framework::vectorize<int>(x->dims());
     auto index_shape = paddle::framework::vectorize<int>(index->dims());
+    if (index_shape.size() == 1) {
+      index_shape.insert(index_shape.begin(), 1);
+    }
     xpu::VectorParam<int> x_vec = {x_shape.data(),
                                    static_cast<int>(x_shape.size()), nullptr};
+
     auto &dev_ctx =
         ctx.template device_context<paddle::platform::XPUDeviceContext>();
     int ret = XPU_SUCCESS;

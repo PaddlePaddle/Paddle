@@ -20,4 +20,5 @@ REGISTER_OP_CUDA_KERNEL(
     ops::UnbindOpKernel<plat::CUDADeviceContext, float>,
     ops::UnbindOpKernel<plat::CUDADeviceContext, int64_t>,
     ops::UnbindOpKernel<plat::CUDADeviceContext, int>,
-    ops::UnbindOpKernel<plat::CUDADeviceContext, plat::float16>);
+    ops::UnbindOpKernel<plat::CUDADeviceContext, plat::float16>,
+    ops::UnbindOpKernel<plat::CUDADeviceContext, plat::bfloat16>);

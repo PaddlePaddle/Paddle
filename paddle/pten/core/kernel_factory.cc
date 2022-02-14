@@ -95,25 +95,81 @@ const Kernel& KernelFactory::SelectKernelOrThrowError(
                                   KernelKey(backend, layout, dtype));
 }
 
+// print kernel info with json format:
+// {
+//   "(CPU, Undefined(AnyLayout), complex64)": {
+//   "input": ["CPU, NCHW, complex64", "CPU, NCHW, complex64"],
+//   "output": ["CPU, NCHW, complex64"],
+//   "attribute": ["i"]
+// }
 std::ostream& operator<<(std::ostream& os, const Kernel& kernel) {
-  os << "InputNum(" << kernel.args_def().input_defs().size() << "): [";
+  // input
+  os << "{\"input\":[";
+  bool need_comma = false;
   for (auto& in_def : kernel.args_def().input_defs()) {
-    os << "<" << in_def.backend << ", " << in_def.layout << ", " << in_def.dtype
-       << ">";
+    if (need_comma) os << ",";
+    os << "\"" << in_def.backend << ", " << in_def.layout << ", "
+       << in_def.dtype << "\"";
+    need_comma = true;
   }
-  os << "]), AttributeNum(" << kernel.args_def().attribute_defs().size()
-     << "), OutputNum(" << kernel.args_def().output_defs().size() << ")";
+  os << "],";
+
+  // output
+  os << "\"output\":[";
+  need_comma = false;
+  for (auto& out_def : kernel.args_def().output_defs()) {
+    if (need_comma) os << ",";
+    os << "\"" << out_def.backend << ", " << out_def.layout << ", "
+       << out_def.dtype << "\"";
+    need_comma = true;
+  }
+  os << "],";
+
+  // attr
+  os << "\"attribute\":[";
+  need_comma = false;
+  for (auto& arg_def : kernel.args_def().attribute_defs()) {
+    if (need_comma) os << ",";
+    os << "\"" << arg_def.type_index.name() << "\"";
+    need_comma = true;
+  }
+  os << "]}";
+
   return os;
 }
 
+// print all kernels info with json format:
+// {
+//  "kernel_name1":
+//      [
+//        {
+//          "(CPU, Undefined(AnyLayout), complex64)": {
+//          "input": ["CPU, NCHW, complex64", "CPU, NCHW, complex64"],
+//          "output": ["CPU, NCHW, complex64"],
+//          "attribute": ["i"]
+//        },
+//        ...
+//      ],
+//    "kernel_name2": []
+//    ...
+// }
 std::ostream& operator<<(std::ostream& os, KernelFactory& kernel_factory) {
+  os << "{";
+  bool need_comma_kernels = false;
   for (const auto& op_kernel_pair : kernel_factory.kernels()) {
-    os << "- kernel name: " << op_kernel_pair.first << "\n";
+    if (need_comma_kernels) os << ",";
+    os << "\"" << op_kernel_pair.first << "\":[";
+    bool need_comma_per_kernel = false;
     for (const auto& kernel_pair : op_kernel_pair.second) {
-      os << "\t- kernel key: " << kernel_pair.first << " | "
-         << "kernel: " << kernel_pair.second << "\n";
+      if (need_comma_per_kernel) os << ",";
+      os << "{\"" << kernel_pair.first << "\":" << kernel_pair.second << "}";
+      need_comma_per_kernel = true;
     }
+    os << "]";
+    need_comma_kernels = true;
   }
+  os << "}";
+
   return os;
 }
 
