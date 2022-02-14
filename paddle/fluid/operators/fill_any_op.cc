@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fill_any_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -87,22 +87,3 @@ REGISTER_OPERATOR(fill_any, ops::FillAnyOp, ops::FillAnyOpMaker,
 
 REGISTER_OPERATOR(fill_any_grad, ops::FillAnyGradOp,
                   ops::FillAnyGradInplaceInferer);
-
-REGISTER_OP_CPU_KERNEL(
-    fill_any, ops::FillAnyKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FillAnyKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::FillAnyKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::FillAnyKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::FillAnyKernel<paddle::platform::CPUDeviceContext,
-                       paddle::platform::float16>,
-    ops::FillAnyKernel<paddle::platform::CPUDeviceContext, bool>);
-
-REGISTER_OP_CPU_KERNEL(
-    fill_any_grad,
-    ops::FillAnyGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FillAnyGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::FillAnyGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::FillAnyGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::FillAnyGradKernel<paddle::platform::CPUDeviceContext,
-                           paddle::platform::float16>,
-    ops::FillAnyGradKernel<paddle::platform::CPUDeviceContext, bool>);
