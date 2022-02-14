@@ -24,10 +24,45 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/operators/data/nvjpeg_decoder.h"
 
-
 namespace paddle {
 namespace operators {
 namespace data {
+
+// template <typename DeviceContext, typename T>
+// void TransCompute(const int dim, const DeviceContext& dev_ctx,
+//                          const framework::Tensor& in, framework::Tensor* out,
+//                          const std::vector<int>& axis) {
+//   switch (dim) {
+//     case 1:
+//       math::Transpose<DeviceContext, T, 1> trans1;
+//       trans1(dev_ctx, in, out, axis);
+//       break;
+//     case 2:
+//       math::Transpose<DeviceContext, T, 2> trans2;
+//       trans2(dev_ctx, in, out, axis);
+//       break;
+//     case 3:
+//       math::Transpose<DeviceContext, T, 3> trans3;
+//       trans3(dev_ctx, in, out, axis);
+//       break;
+//     case 4:
+//       math::Transpose<DeviceContext, T, 4> trans4;
+//       trans4(dev_ctx, in, out, axis);
+//       break;
+//     case 5:
+//       math::Transpose<DeviceContext, T, 5> trans5;
+//       trans5(dev_ctx, in, out, axis);
+//       break;
+//     case 6:
+//       math::Transpose<DeviceContext, T, 6> trans6;
+//       trans6(dev_ctx, in, out, axis);
+//       break;
+//     default:
+//       // for dim >= 7 situation
+//       math::TransposeNormal<DeviceContext, T> trans_normal;
+//       trans_normal(dev_ctx, in, out, axis);
+//   }
+// }
 
 template <typename T>
 class CPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {

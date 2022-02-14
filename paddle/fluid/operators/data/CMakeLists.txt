@@ -4,10 +4,6 @@ if(WITH_UNITY_BUILD)
     include(unity_build_rule.cmake)
 endif()
 
-# find_package(ZLIB)
-# include_directories(${ZLIB_INCLUDE_DIRS})
-# TARGET_LINK_LIBRARIES( ${ZLIB_LIBRARIES})
-
 cc_library(pipeline SRCS pipeline.cc DEPS parallel_executor simple_threadpool scope)
 op_library(dataloader_op SRCS dataloader_op.cc dataloader_op.cu.cc DEPS pipeline ${OP_HEADER_DEPS})
 
@@ -23,9 +19,10 @@ op_library(batch_decode_op SRCS batch_decode_op.cc batch_decode_op.cu DEPS nvjpe
 
 op_library(random_crop_and_resize_op SRCS random_crop_and_resize_op.cc random_crop_and_resize_op.cu DEPS ${OP_HEADER_DEPS})
 op_library(batch_resize_op SRCS batch_resize_op.cc batch_resize_op.cu DEPS ${OP_HEADER_DEPS})
+
 op_library(file_label_loader_op SRCS file_label_loader_op.cc DEPS ${OP_HEADER_DEPS})
 
 # register_operators()
 
 # TODO: add test here
-# cc_test(xxx SRCS xxx DEPS xxx)
+# cc_test(xxx SRCS xxx DEPS xxx

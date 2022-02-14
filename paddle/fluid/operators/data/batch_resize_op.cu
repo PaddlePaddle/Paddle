@@ -234,15 +234,32 @@ class BatchResizeCUDAKernel : public framework::OpKernel<T> {
     bool align_corners = ctx.Attr<bool>("align_corners");
     int align_mode = ctx.Attr<int>("align_mode");
 
+    // int img_h, img_w;//, idx_h, idx_w, crop_h, crop_w;
+
     auto* img = &x->at(0);
     int64_t img_c = data_layout == DataLayout::kNCHW ? \
                   img->dims()[0] : img->dims()[2];
 
+    LOG(ERROR) << "img channel: " << img_c << " || " << data_layout_str;
+    // img_h =
+    //     data_layout == DataLayout::kNCHW ? img->dims()[1] : img->dims()[0];
+    // img_w =
+    //     data_layout == DataLayout::kNCHW ? img->dims()[2] : img->dims()[1];
+
     std::vector<int64_t> out_dim = {static_cast<int64_t>(x->size()),
+                                    size[0], size[1], img_c};
+    if (data_layout == DataLayout::kNCHW) {
+      out_dim = {static_cast<int64_t>(x->size()),
                                     img_c, size[0], size[1]};
+    }
     out->Resize(framework::make_ddim(out_dim));
     out->mutable_data<T>(ctx.GetPlace());
 
+    // for (int i = 0; i < x->size(); i++) {
+    //   img = &x->at(i);
+    //   auto out_tensor = out->Slice(i, i + 1);
+    //   TensorCopySync(*img, ctx.GetPlace(), &out_tensor);
+    // }
     int img_h, img_w, idx_h, idx_w, crop_h, crop_w;
     for (int i = 0; i < x->size(); i++) {
       img = &x->at(i);
