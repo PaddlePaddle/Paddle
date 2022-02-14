@@ -51,7 +51,7 @@ class SoftmaxGradNPUKernel : public framework::OpKernel<T> {
 
     auto dims = dX->dims();
     const int rank = dims.size();
-    const int axis = CanonicalAxis(ctx.Attr<int>("axis"), rank);
+    const int axis = pten::funcs::CanonicalAxis(ctx.Attr<int>("axis"), rank);
     int64_t first_dim = 1;
     int64_t sec_dim = 1;
     for (int i = 0; i < axis; i++) {

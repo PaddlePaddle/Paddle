@@ -83,7 +83,8 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
       Tensor* softmax_out = context.Output<Tensor>("Softmax");
       Tensor* loss = context.Output<Tensor>("Loss");
       const int rank = softmax->dims().size();
-      const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
+      const int axis =
+          pten::funcs::CanonicalAxis(context.Attr<int>("axis"), rank);
       int axis_dim = softmax->dims()[axis];
 
       PADDLE_ENFORCE_GT(
@@ -96,7 +97,7 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
       softmax_out->mutable_data<T>(context.GetPlace());
       loss->mutable_data<T>(context.GetPlace());
 
-      const int n = SizeToAxis(axis, softmax->dims());
+      const int n = pten::funcs::SizeToAxis(axis, softmax->dims());
 
       PADDLE_ENFORCE_GT(
           n, 0, platform::errors::InvalidArgument(
@@ -104,7 +105,7 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
                     "SizeToAxis of softmax is %d.",
                     n));
 
-      const int d = SizeFromAxis(axis, softmax->dims());
+      const int d = pten::funcs::SizeFromAxis(axis, softmax->dims());
 
       Tensor softmax_2d, labels_2d, loss_2d, softmax_out_2d;
       softmax_2d.ShareDataWith(*softmax).Resize({n, d});
@@ -132,7 +133,8 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
     Tensor* loss = context.Output<Tensor>("Loss");
 
     const int rank = logits->dims().size();
-    const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
+    const int axis =
+        pten::funcs::CanonicalAxis(context.Attr<int>("axis"), rank);
     int axis_dim = logits->dims()[axis];
     PADDLE_ENFORCE_GT(
         axis_dim, 0,
@@ -144,14 +146,14 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
     softmax->mutable_data<T>(context.GetPlace());
     loss->mutable_data<T>(context.GetPlace());
 
-    const int n = SizeToAxis(axis, logits->dims());
+    const int n = pten::funcs::SizeToAxis(axis, logits->dims());
     PADDLE_ENFORCE_GT(
         n, 0, platform::errors::InvalidArgument(
                   "The size of axis should be larger than 0, but received "
                   "SizeToAxis of logits is %d.",
                   n));
 
-    const int d = SizeFromAxis(axis, logits->dims());
+    const int d = pten::funcs::SizeFromAxis(axis, logits->dims());
     Tensor logits_2d, softmax_2d, labels_2d, loss_2d;
     logits_2d.ShareDataWith(*logits).Resize({n, d});
     softmax_2d.ShareDataWith(*softmax).Resize({n, d});
@@ -191,7 +193,8 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
     auto ignore_index = context.Attr<int>("ignore_index");
 
     const int rank = logit_grad->dims().size();
-    const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
+    const int axis =
+        pten::funcs::CanonicalAxis(context.Attr<int>("axis"), rank);
     int axis_dim = logit_grad->dims()[axis];
     PADDLE_ENFORCE_GT(
         axis_dim, 0,
@@ -200,14 +203,14 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
             "axis dimention is %d.",
             axis_dim));
 
-    const int n = SizeToAxis(axis, logit_grad->dims());
+    const int n = pten::funcs::SizeToAxis(axis, logit_grad->dims());
     PADDLE_ENFORCE_GT(
         n, 0, platform::errors::InvalidArgument(
                   "The size of axis should be larger than 0, but received "
                   "SizeToAxis of logit_grad is %d.",
                   n));
 
-    const int d = SizeFromAxis(axis, logit_grad->dims());
+    const int d = pten::funcs::SizeFromAxis(axis, logit_grad->dims());
     Tensor logit_grad_2d, labels_2d, out_grad_2d;
     logit_grad_2d.ShareDataWith(*logit_grad).Resize({n, d});
     labels_2d.ShareDataWith(labels).Resize({n, labels.numel() / n});

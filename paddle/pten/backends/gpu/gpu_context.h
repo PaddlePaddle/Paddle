@@ -220,4 +220,9 @@ class GPUContext : public DeviceContext {
   std::unique_ptr<Impl> impl_;
 };
 
+// Note: In order to register the kernel of CUDNN, GPUDNNContext is required.
+// Currently, CUDNN kernel directly uses GPUContext. If need to split the
+// implementation in the future, we can upgrade it.
+using GPUDNNContext = GPUContext;
+
 }  // namespace pten

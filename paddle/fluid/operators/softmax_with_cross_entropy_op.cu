@@ -950,11 +950,12 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
       Tensor* loss = context.Output<Tensor>("Loss");
 
       const int rank = softmax->dims().size();
-      const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
+      const int axis =
+          pten::funcs::CanonicalAxis(context.Attr<int>("axis"), rank);
       const int axis_dim = softmax->dims()[axis];
 
-      const int n = SizeToAxis(axis, softmax->dims());
-      const int d = SizeFromAxis(axis, softmax->dims());
+      const int n = pten::funcs::SizeToAxis(axis, softmax->dims());
+      const int d = pten::funcs::SizeFromAxis(axis, softmax->dims());
 
       auto* softmax_out_data =
           softmax_out->template mutable_data<T>(context.GetPlace());
@@ -1035,11 +1036,12 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
     Tensor* loss = context.Output<Tensor>("Loss");
 
     const int rank = logits->dims().size();
-    const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
+    const int axis =
+        pten::funcs::CanonicalAxis(context.Attr<int>("axis"), rank);
     int axis_dim = logits->dims()[axis];
 
-    const int64_t n = SizeToAxis(axis, logits->dims());
-    const int64_t d = SizeFromAxis(axis, logits->dims());
+    const int64_t n = pten::funcs::SizeToAxis(axis, logits->dims());
+    const int64_t d = pten::funcs::SizeFromAxis(axis, logits->dims());
 
     auto* softmax_data = softmax->template mutable_data<T>(context.GetPlace());
     auto* loss_data = loss->template mutable_data<T>(context.GetPlace());
@@ -1118,11 +1120,12 @@ class SoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
     T* logit_grad_data = logit_grad->template data<T>();
 
     const int rank = logit_grad->dims().size();
-    const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
+    const int axis =
+        pten::funcs::CanonicalAxis(context.Attr<int>("axis"), rank);
     int axis_dim = logit_grad->dims()[axis];
 
-    const int64_t n = SizeToAxis(axis, logit_grad->dims());
-    const int64_t d = SizeFromAxis(axis, logit_grad->dims());
+    const int64_t n = pten::funcs::SizeToAxis(axis, logit_grad->dims());
+    const int64_t d = pten::funcs::SizeFromAxis(axis, logit_grad->dims());
     const int64_t remain = d / axis_dim;
 
 #ifdef __HIPCC__

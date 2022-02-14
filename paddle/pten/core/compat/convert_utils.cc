@@ -119,7 +119,7 @@ pten::Place TransToPtenPlace(const Backend& backend, bool set_device_id) {
       return pten::CPUPlace();
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    case pten::Backend::CUDNN:
+    case pten::Backend::GPUDNN:
       return pten::GPUPlace(
           set_device_id ? pten::backends::gpu::GetCurrentDeviceId() : 0);
 #endif

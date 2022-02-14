@@ -29,7 +29,7 @@ class SoftmaxXPUKernel : public framework::OpKernel<T> {
     auto* x = context.Input<Tensor>("X");
     auto* out = context.Output<Tensor>("Out");
     const int rank = x->dims().size();
-    int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
+    int axis = pten::funcs::CanonicalAxis(context.Attr<int>("axis"), rank);
 
     // allocate memory on device.
     out->mutable_data<T>(context.GetPlace());
@@ -88,7 +88,7 @@ class SoftmaxGradXPUKernel : public framework::OpKernel<T> {
     auto* dout = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = context.Output<Tensor>(framework::GradVarName("X"));
     const int rank = dx->dims().size();
-    int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
+    int axis = pten::funcs::CanonicalAxis(context.Attr<int>("axis"), rank);
 
     // allocate memory on device.
     dx->mutable_data<T>(context.GetPlace());

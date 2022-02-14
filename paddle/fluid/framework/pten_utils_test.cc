@@ -42,8 +42,8 @@ TEST(PtenUtils, TransPtenKernelKeyToOpKernelType) {
 #endif
 
 #ifdef PADDLE_WITH_CUDA
-  pten::KernelKey kernel_key_cudnn(pten::Backend::CUDNN, pten::DataLayout::NCHW,
-                                   pten::DataType::FLOAT32);
+  pten::KernelKey kernel_key_cudnn(
+      pten::Backend::GPUDNN, pten::DataLayout::NCHW, pten::DataType::FLOAT32);
   op_kernel_type =
       paddle::framework::TransPtenKernelKeyToOpKernelType(kernel_key_cudnn);
   ASSERT_EQ(op_kernel_type.data_type_, paddle::framework::proto::VarType::FP32);

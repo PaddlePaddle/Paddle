@@ -15,43 +15,13 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/softmax.h"
+#include "paddle/pten/kernels/funcs/axis_utils.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
 using DDim = framework::DDim;
-
-static inline int CanonicalAxis(const int axis, const int rank) {
-  if (axis < 0) {
-    return axis + rank;
-  }
-  return axis;
-}
-
-static inline int SizeToAxis(const int axis, DDim dims) {
-  int size = 1;
-  for (int i = 0; i < axis; i++) {
-    size *= dims[i];
-  }
-  return size;
-}
-
-static inline int SizeFromAxis(const int axis, DDim dims) {
-  int size = 1;
-  for (int i = axis; i < dims.size(); i++) {
-    size *= dims[i];
-  }
-  return size;
-}
-
-static inline int SizeOutAxis(const int axis, DDim dims) {
-  int size = 1;
-  for (int i = axis + 1; i < dims.size(); i++) {
-    size *= dims[i];
-  }
-  return size;
-}
 
 template <typename DeviceContext, typename T>
 class SoftmaxKernel : public framework::OpKernel<T> {
@@ -60,7 +30,8 @@ class SoftmaxKernel : public framework::OpKernel<T> {
     auto* X = context.Input<Tensor>("X");
     auto* Out = context.Output<Tensor>("Out");
     const int rank = X->dims().size();
-    const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
+    const int axis =
+        pten::funcs::CanonicalAxis(context.Attr<int>("axis"), rank);
     int axis_dim = X->dims()[axis];
 
     // allocate memory on device.
@@ -69,8 +40,8 @@ class SoftmaxKernel : public framework::OpKernel<T> {
       return;
     }
 
-    const int n = SizeToAxis(axis, X->dims());
-    const int d = SizeFromAxis(axis, X->dims());
+    const int n = pten::funcs::SizeToAxis(axis, X->dims());
+    const int d = pten::funcs::SizeFromAxis(axis, X->dims());
     Tensor X_2d, Out_2d;
     X_2d.ShareDataWith(*X).Resize({n, d});
     Out_2d.ShareDataWith(*Out).Resize({n, d});
@@ -88,7 +59,8 @@ class SoftmaxGradKernel : public framework::OpKernel<T> {
     auto* dOut = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* dX = context.Output<Tensor>(framework::GradVarName("X"));
     const int rank = dX->dims().size();
-    const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
+    const int axis =
+        pten::funcs::CanonicalAxis(context.Attr<int>("axis"), rank);
     int axis_dim = dX->dims()[axis];
 
     // allocate memory on device.
@@ -97,8 +69,8 @@ class SoftmaxGradKernel : public framework::OpKernel<T> {
       return;
     }
 
-    const int n = SizeToAxis(axis, dX->dims());
-    const int d = SizeFromAxis(axis, dX->dims());
+    const int n = pten::funcs::SizeToAxis(axis, dX->dims());
+    const int d = pten::funcs::SizeFromAxis(axis, dX->dims());
     Tensor dX_2d, Out_2d, dOut_2d;
     dX_2d.ShareDataWith(*dX).Resize({n, d});
     Out_2d.ShareDataWith(*Out).Resize({n, d});

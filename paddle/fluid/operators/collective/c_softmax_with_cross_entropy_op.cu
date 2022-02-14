@@ -98,8 +98,8 @@ class CSoftmaxWithCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     const auto& labels_dims = labels->dims();
 
     const int axis = logits_dims.size() - 1;
-    const int N = SizeToAxis(axis, logits_dims);
-    const int D = SizeFromAxis(axis, logits_dims);
+    const int N = pten::funcs::SizeToAxis(axis, logits_dims);
+    const int D = pten::funcs::SizeFromAxis(axis, logits_dims);
 
     Tensor logits_2d, softmax_2d, loss_2d;
     logits_2d.ShareDataWith(*logits).Resize({N, D});
@@ -217,8 +217,8 @@ class CSoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
     }
     const auto sofrmax_dims = softmax->dims();
     const int axis = sofrmax_dims.size() - 1;
-    const int N = SizeToAxis(axis, sofrmax_dims);
-    const int D = SizeFromAxis(axis, sofrmax_dims);
+    const int N = pten::funcs::SizeToAxis(axis, sofrmax_dims);
+    const int D = pten::funcs::SizeFromAxis(axis, sofrmax_dims);
 
     Tensor logit_grad_2d;
     logit_grad_2d.ShareDataWith(*logit_grad).Resize({N, D});

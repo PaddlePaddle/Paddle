@@ -245,8 +245,8 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     const auto& labels_dims = labels->dims();
 
     const int axis = logits_dims.size() - 1;
-    const int N = SizeToAxis(axis, logits_dims);
-    const int D = SizeFromAxis(axis, logits_dims);
+    const int N = pten::funcs::SizeToAxis(axis, logits_dims);
+    const int D = pten::funcs::SizeFromAxis(axis, logits_dims);
 
     int blocks = NumBlocks(N);
     int threads = kNumCUDAThreads;
@@ -397,8 +397,8 @@ class MarginCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
 
     const auto sofrmax_dims = softmax->dims();
     const int axis = sofrmax_dims.size() - 1;
-    const int N = SizeToAxis(axis, sofrmax_dims);
-    const int D = SizeFromAxis(axis, sofrmax_dims);
+    const int N = pten::funcs::SizeToAxis(axis, sofrmax_dims);
+    const int D = pten::funcs::SizeFromAxis(axis, sofrmax_dims);
 
     if (return_softmax) {
       framework::TensorCopy(*softmax, context.GetPlace(),

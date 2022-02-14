@@ -70,7 +70,8 @@ class SoftmaxMKLDNNHandler
                           out_grad->dims(), in_x_grad->dims()));
 
     auto dims = out_grad->dims();  // input and output share the same shape
-    const int axis = CanonicalAxis(ctx.Attr<int>("axis"), dims.size());
+    const int axis =
+        pten::funcs::CanonicalAxis(ctx.Attr<int>("axis"), dims.size());
     auto softmax_tz = framework::vectorize<int64_t>(dims);
 
     auto data_softmax_md = MKLDNNMemDesc(
@@ -96,7 +97,8 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
     Tensor* output = ctx.Output<Tensor>("Out");
     bool is_inplaced = input->IsSharedBufferWith(*output);
 
-    const int axis = CanonicalAxis(ctx.Attr<int>("axis"), input->dims().size());
+    const int axis =
+        pten::funcs::CanonicalAxis(ctx.Attr<int>("axis"), input->dims().size());
 
     SoftmaxMKLDNNHandler<T> handler(mkldnn_engine, ctx.GetPlace(), input,
                                     output, axis);

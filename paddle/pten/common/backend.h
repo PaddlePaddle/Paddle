@@ -49,7 +49,7 @@ enum class Backend : uint8_t {
 
   // the third library backend
   MKLDNN,
-  CUDNN,
+  GPUDNN,  // cuDNN and hipDNN
 
   // end of backend types
   NUM_BACKENDS,
@@ -111,8 +111,8 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
     case Backend::MKLDNN:
       os << "MKLDNN";
       break;
-    case Backend::CUDNN:
-      os << "CUDNN";
+    case Backend::GPUDNN:
+      os << "GPUDNN";
       break;
     default:
       PD_THROW("Invalid enum backend type `", static_cast<int>(backend), "`.");

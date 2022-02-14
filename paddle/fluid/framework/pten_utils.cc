@@ -66,7 +66,7 @@ OpKernelType TransPtenKernelKeyToOpKernelType(
   LibraryType library_type = LibraryType::kPlain;
   if (kernel_key.backend() == pten::Backend::MKLDNN) {
     library_type = LibraryType::kMKLDNN;
-  } else if (kernel_key.backend() == pten::Backend::CUDNN) {
+  } else if (kernel_key.backend() == pten::Backend::GPUDNN) {
     library_type = LibraryType::kCUDNN;
   } else {
     // do nothing
@@ -81,7 +81,7 @@ pten::KernelKey TransOpKernelTypeToPtenKernelKey(
   if (kernel_type.library_type_ == LibraryType::kMKLDNN) {
     backend = pten::Backend::MKLDNN;
   } else if (kernel_type.library_type_ == LibraryType::kCUDNN) {
-    backend = pten::Backend::CUDNN;
+    backend = pten::Backend::GPUDNN;
   } else {
     // do
   }

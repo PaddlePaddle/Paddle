@@ -41,8 +41,8 @@ TEST(Backend, OStream) {
   oss << pten::Backend::MKLDNN;
   EXPECT_EQ(oss.str(), "MKLDNN");
   oss.str("");
-  oss << pten::Backend::CUDNN;
-  EXPECT_EQ(oss.str(), "CUDNN");
+  oss << pten::Backend::GPUDNN;
+  EXPECT_EQ(oss.str(), "GPUDNN");
   oss.str("");
   try {
     oss << pten::Backend::NUM_BACKENDS;
