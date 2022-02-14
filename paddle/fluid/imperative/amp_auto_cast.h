@@ -33,12 +33,6 @@ enum class AmpLevel {
   O3,      // fp16
 };
 
-enum class AmpDtype {
-  D0 = 0,  // float32
-  D1,      // float16
-  D2,      // bfloat16
-};
-
 std::tuple<std::unordered_set<std::string>, std::unordered_set<std::string>,
            std::unordered_set<std::string>>
 OpSupportedInfos(const std::string& place,

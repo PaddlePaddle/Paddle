@@ -2202,11 +2202,6 @@ void BindImperative(py::module *m_ptr) {
       .value("O2", paddle::imperative::AmpLevel::O2)
       .value("O3", paddle::imperative::AmpLevel::O3)
       .export_values();
-  py::enum_<paddle::imperative::AmpDtype>(m, "AmpDtype", py::arithmetic())
-      .value("D0", paddle::imperative::AmpDtype::D0)
-      .value("D1", paddle::imperative::AmpDtype::D1)
-      .value("D2", paddle::imperative::AmpDtype::D2)
-      .export_values();
 
   py::class_<imperative::Tracer, std::shared_ptr<imperative::Tracer>>(
       m, "Tracer", R"DOC()DOC")

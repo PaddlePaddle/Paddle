@@ -25,7 +25,6 @@ import operator
 import types
 
 AMP_LEVEL = core.AmpLevel
-AMP_DTYPE = core.AmpDtype
 
 __all__ = ['amp_guard', 'amp_decorate']
 
@@ -141,10 +140,10 @@ def _is_gpu_bfloat16_supported():
     prop = paddle.device.cuda.get_device_capability()
     cuda_version = paddle.version.cuda()
     if cuda_version is not None:
-        cuda_maj_decide = int(cuda_version.split('.')[0]) >= 11
+        cuda_version_check = int(cuda_version.split('.')[0]) >= 11
     else:
-        cuda_maj_decide = False
-    return prop[0] >= 8 and cuda_maj_decide
+        cuda_version_check = False
+    return prop[0] >= 8 and cuda_version_check
 
 
 @dygraph_only
@@ -185,10 +184,10 @@ def check_optimizers(optimizers):
 @signature_safe_contextmanager
 @dygraph_only
 def amp_guard(enable=True,
-              dtype='float16',
               custom_white_list=None,
               custom_black_list=None,
-              level='O1'):
+              level='O1',
+              dtype='float16'):
     """
     :api_attr: imperative
 
@@ -201,7 +200,6 @@ def amp_guard(enable=True,
 
     Args:
         enable(bool, optional): Enable auto-mixed-precision or not. Default is True.
-        dtype(str, optional): Whether to use 'float16' or 'bfloat16'. Default is 'float16'.
         custom_white_list(set|list|tuple, optional): The custom white_list. It's the set of ops that support
              fp16 calculation and are considered numerically-safe and performance-critical. These ops 
              will be converted to fp16.
@@ -210,6 +208,7 @@ def amp_guard(enable=True,
              observed in downstream ops. These ops will not be converted to fp16.
         level(str, optional): Auto mixed precision level. Accepted values are "O1" and "O2": O1 represent mixed precision, the input data type of each operator will be casted by white_list and black_list; 
              O2 represent Pure fp16, all operators parameters and input data will be casted to fp16, except operators in black_list, don't support fp16 kernel and batchnorm. Default is O1(amp)
+        dtype(str, optional): Whether to use 'float16' or 'bfloat16'. Default is 'float16'.
 
         
     Examples:
@@ -279,9 +278,9 @@ def amp_guard(enable=True,
                    cuda_version))
 
     if dtype == 'float16':
-        amp_dtype = AMP_DTYPE.D1
+        amp_dtype = "float16"
     elif dtype == 'bfloat16':
-        amp_dtype = AMP_DTYPE.D2
+        amp_dtype = "bfloat16"
 
     if level == 'O1':
         amp_level = AMP_LEVEL.O1
@@ -302,7 +301,7 @@ def amp_guard(enable=True,
 
     if not enable:
         amp_level = AMP_LEVEL.O0
-        amp_dtype = AMP_DTYPE.D0
+        amp_dtype = "float32"
 
     if tracer:
         # enable auto_cast

@@ -133,12 +133,26 @@ class Tracer {
 
   AmpLevel GetAmpLevel() const { return amp_level_; }
 
-  void SetAmpDtype(AmpDtype dtype) {
-    VLOG(4) << "set amp_dtype to " << static_cast<unsigned int>(dtype);
-    amp_dtype_ = dtype;
+  void SetAmpDtype(std::string amp_dtype) {
+    VLOG(4) << "set amp_dtype to " << amp_dtype;
+    if (amp_dtype == "float16") {
+      amp_dtype_ = pten::DataType::FLOAT16;
+    } else if (amp_dtype == "bfloat16") {
+      amp_dtype_ = pten::DataType::BFLOAT16;
+    } else {
+      amp_dtype_ = pten::DataType::FLOAT32;
+    }
   }
 
-  AmpDtype GetAmpDtype() const { return amp_dtype_; }
+  std::string GetAmpDtype() const {
+    if (amp_dtype_ == pten::DataType::FLOAT16) {
+      return std::string("float16");
+    } else if (amp_dtype_ == pten::DataType::BFLOAT16) {
+      return std::string("bfloat16");
+    } else {
+      return std::string("float32");
+    }
+  }
 
   paddle::framework::GarbageCollector* MutableGarbageCollectorIfNotExists(
       const platform::Place& place);
@@ -152,7 +166,7 @@ class Tracer {
   GarbageCollectorMap gcs_;
   static thread_local bool has_grad_;
   static thread_local AmpLevel amp_level_;
-  static thread_local AmpDtype amp_dtype_;
+  static thread_local pten::DataType amp_dtype_;
 };
 
 // To access static variable current_tracer
