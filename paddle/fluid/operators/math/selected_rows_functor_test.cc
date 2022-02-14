@@ -15,14 +15,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 TEST(selected_rows_functor, cpu_add) {
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CPUDeviceContext ctx(cpu_place);
-  paddle::operators::math::SetConstant<paddle::platform::CPUDeviceContext,
-                                       float>
-      functor;
+  pten::funcs::SetConstant<paddle::platform::CPUDeviceContext, float> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
 
@@ -122,9 +120,7 @@ TEST(selected_rows_functor, cpu_add) {
 TEST(selected_rows_functor, cpu_add_to) {
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CPUDeviceContext ctx(cpu_place);
-  paddle::operators::math::SetConstant<paddle::platform::CPUDeviceContext,
-                                       float>
-      functor;
+  pten::funcs::SetConstant<paddle::platform::CPUDeviceContext, float> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
 
@@ -221,9 +217,7 @@ TEST(selected_rows_functor, cpu_add_to) {
 TEST(selected_rows_functor, cpu_merge_average_float) {
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CPUDeviceContext ctx(cpu_place);
-  paddle::operators::math::SetConstant<paddle::platform::CPUDeviceContext,
-                                       float>
-      functor;
+  pten::funcs::SetConstant<paddle::platform::CPUDeviceContext, float> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
 
@@ -260,9 +254,7 @@ TEST(selected_rows_functor, cpu_merge_average_float) {
 TEST(selected_rows_functor, cpu_merge_add_float) {
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CPUDeviceContext ctx(cpu_place);
-  paddle::operators::math::SetConstant<paddle::platform::CPUDeviceContext,
-                                       float>
-      functor;
+  pten::funcs::SetConstant<paddle::platform::CPUDeviceContext, float> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
 
@@ -301,8 +293,7 @@ TEST(selected_rows_functor, cpu_merge_add_float) {
 TEST(selected_rows_functor, cpu_merge_add_int) {
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CPUDeviceContext ctx(cpu_place);
-  paddle::operators::math::SetConstant<paddle::platform::CPUDeviceContext, int>
-      functor;
+  pten::funcs::SetConstant<paddle::platform::CPUDeviceContext, int> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
 
@@ -341,9 +332,7 @@ TEST(selected_rows_functor, cpu_merge_add_int) {
 TEST(selected_rows_functor, cpu_merge_add_multi) {
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CPUDeviceContext ctx(cpu_place);
-  paddle::operators::math::SetConstant<paddle::platform::CPUDeviceContext,
-                                       float>
-      set_const;
+  pten::funcs::SetConstant<paddle::platform::CPUDeviceContext, float> set_const;
 
   int64_t height = 10;
   int64_t row_numel = 8;
@@ -397,9 +386,7 @@ TEST(selected_rows_functor, cpu_merge_add_multi) {
 TEST(selected_rows_functor, cpu_merge_add_multi_noduplicated) {
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CPUDeviceContext ctx(cpu_place);
-  paddle::operators::math::SetConstant<paddle::platform::CPUDeviceContext,
-                                       float>
-      set_const;
+  pten::funcs::SetConstant<paddle::platform::CPUDeviceContext, float> set_const;
 
   int64_t height = 10;
   int64_t row_numel = 8;
@@ -459,9 +446,7 @@ TEST(selected_rows_functor, cpu_merge_add_multi_noduplicated) {
 TEST(selected_rows_functor, cpu_sum_to) {
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CPUDeviceContext ctx(cpu_place);
-  paddle::operators::math::SetConstant<paddle::platform::CPUDeviceContext,
-                                       float>
-      functor;
+  pten::funcs::SetConstant<paddle::platform::CPUDeviceContext, float> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
   std::vector<int64_t> rows1{0, 4, 7};

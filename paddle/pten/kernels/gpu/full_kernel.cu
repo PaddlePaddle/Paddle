@@ -48,9 +48,7 @@ void FullKernel(const ContextT& dev_ctx,
     // This function has no input, so the inputs.size() == 0. Use kUnary, but
     // the data will not be loaded in the kernel because the number of
     // parameters in the operator is 0
-    pten::funcs::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary,
-                                                     T,
-                                                     T>(
+    pten::funcs::LaunchSameDimsElementwiseCudaKernel<T>(
         dev_ctx, inputs, &outputs, FullFuctor<T>(val.to<T>()));
   }
 }
@@ -90,9 +88,7 @@ void FullLikeKernel(const ContextT& dev_ctx,
   // the operator is 0
   int numel = out->numel();
   if (numel > 0) {
-    pten::funcs::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary,
-                                                     T,
-                                                     T>(
+    pten::funcs::LaunchSameDimsElementwiseCudaKernel<T>(
         dev_ctx, inputs, &outputs, FullFuctor<T>(value));
   }
 }

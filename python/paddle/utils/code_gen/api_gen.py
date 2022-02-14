@@ -135,6 +135,7 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])
+
     source_file.write(api_register())
 
     header_file.close()

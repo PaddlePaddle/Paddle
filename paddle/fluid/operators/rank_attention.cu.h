@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/fluid/framework/dim.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {

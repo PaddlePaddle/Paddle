@@ -47,7 +47,7 @@ struct OneHotV2OpCUDAFunctor {
     auto numel = in_->numel();
     auto* p_out_data = out_->mutable_data<OutT>(ctx_.GetPlace());
     auto stream = ctx_.stream();
-    math::set_constant(ctx_, out_, 0.0);
+    pten::funcs::set_constant(ctx_, out_, 0.0);
 
     FillOutputKernel<<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
                            PADDLE_CUDA_NUM_THREADS,

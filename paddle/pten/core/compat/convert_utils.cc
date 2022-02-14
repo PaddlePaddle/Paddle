@@ -13,28 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/pten/core/compat/convert_utils.h"
+
+#include "paddle/pten/backends/gpu/gpu_info.h"
+#include "paddle/pten/backends/xpu/xpu_info.h"
+#include "paddle/pten/common/place.h"
 #include "paddle/pten/core/compat/op_utils.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+// TODO(Aganlengzi): change to custom device related header
 #include "paddle/fluid/platform/device/npu/npu_info.h"
-#include "paddle/fluid/platform/device/xpu/xpu_info.h"
 
 namespace pten {
-
-// TODO(chenweihang): Add other place trans cases later
-Backend TransToPtenBackend(const paddle::platform::Place& place) {
-  if (paddle::platform::is_cpu_place(place)) {
-    return Backend::CPU;
-  } else if (paddle::platform::is_gpu_place(place)) {
-    return Backend::GPU;
-    // TODO(Aganlengzi): is_custom_place and map with dev_type
-  } else if (paddle::platform::is_npu_place(place)) {
-    return Backend::ASCEND;
-  } else {
-    return Backend::UNDEFINED;
-  }
-}
 
 paddle::experimental::DataType TransToPtenDataType(
     const paddle::framework::proto::VarType::Type& dtype) {
@@ -70,49 +58,6 @@ paddle::experimental::DataType TransToPtenDataType(
   }
 }
 
-paddle::platform::Place TransToFluidPlace(const Backend& backend,
-                                          bool set_device_id) {
-  // NOTE(zhiqiu): GetCurrentDeviceId not always success, and device id is not
-  // always needed.
-  // So, add set_device_id parameter here.
-  switch (backend) {
-    case pten::Backend::CPU:
-      return paddle::platform::CPUPlace();
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    case pten::Backend::GPU:
-      return paddle::platform::CUDAPlace(
-          set_device_id ? paddle::platform::GetCurrentDeviceId() : 0);
-#endif
-#ifdef PADDLE_WITH_MKLDNN
-    case pten::Backend::MKLDNN:
-      return paddle::platform::CPUPlace();
-#endif
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    case pten::Backend::CUDNN:
-      return paddle::platform::CUDAPlace(
-          set_device_id ? paddle::platform::GetCurrentDeviceId() : 0);
-#endif
-#if defined(PADDLE_WITH_XPU)
-    case pten::Backend::XPU:
-      return paddle::platform::XPUPlace(
-          set_device_id ? paddle::platform::GetXPUCurrentDeviceId() : 0);
-#endif
-#if defined(PADDLE_WITH_ASCEND_CL)
-    case pten::Backend::NPU:
-      return paddle::platform::NPUPlace(
-          set_device_id ? paddle::platform::GetCurrentNPUDeviceId() : 0);
-    // TODO(Aganlengzi): Trans to CustomPlace mapping with Backends
-    case pten::Backend::ASCEND:
-      return paddle::platform::NPUPlace(
-          set_device_id ? paddle::platform::GetCurrentNPUDeviceId() : 0);
-#endif
-    default:
-      PADDLE_THROW(paddle::platform::errors::Unimplemented(
-          "Unsupported backend `%s` when casting it to paddle place type.",
-          backend));
-  }
-}
-
 paddle::framework::proto::VarType::Type TransToProtoVarType(
     const paddle::experimental::DataType& dtype) {
   // Set the order of case branches according to the frequency with
@@ -143,10 +88,65 @@ paddle::framework::proto::VarType::Type TransToProtoVarType(
     case DataType::BOOL:
       return paddle::framework::proto::VarType::BOOL;
     default:
-      PADDLE_THROW(paddle::platform::errors::Unimplemented(
+      PADDLE_THROW(pten::errors::Unimplemented(
           "Unsupported data type `%s` when casting it into "
           "paddle data type.",
           dtype));
+  }
+}
+
+Backend TransToPtenBackend(const pten::Place& place) {
+  if (place.GetType() == pten::AllocationType::CPU) {
+    return Backend::CPU;
+  } else if (place.GetType() == pten::AllocationType::GPU) {
+    return Backend::GPU;
+  // TODO(Aganlengzi): change to custom device related
+  } else if (place.GetType() == pten::AllocationType::NPU) {
+    return Backend::ASCEND;
+  } else {
+    return Backend::UNDEFINED;
+  }
+}
+
+pten::Place TransToPtenPlace(const Backend& backend, bool set_device_id) {
+  // NOTE(zhiqiu): GetCurrentDeviceId not always success, and device id is not
+  // always needed.
+  // So, add set_device_id parameter here.
+  switch (backend) {
+    case pten::Backend::CPU:
+      return pten::CPUPlace();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    case pten::Backend::GPU:
+      return pten::GPUPlace(
+          set_device_id ? pten::backends::gpu::GetCurrentDeviceId() : 0);
+#endif
+#ifdef PADDLE_WITH_MKLDNN
+    case pten::Backend::MKLDNN:
+      return pten::CPUPlace();
+#endif
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    case pten::Backend::CUDNN:
+      return pten::GPUPlace(
+          set_device_id ? pten::backends::gpu::GetCurrentDeviceId() : 0);
+#endif
+#if defined(PADDLE_WITH_XPU)
+    case pten::Backend::XPU:
+      return pten::XPUPlace(
+          set_device_id ? pten::backends::xpu::GetXPUCurrentDeviceId() : 0);
+#endif
+#if defined(PADDLE_WITH_ASCEND_CL)
+    case pten::Backend::NPU:
+      return pten::NPUPlace(
+          set_device_id ? paddle::platform::GetCurrentNPUDeviceId() : 0);
+    // TODO(Aganlengzi): Trans to CustomPlace mapping with Backends
+    case pten::Backend::ASCEND:
+      return pten::NPUPlace(
+          set_device_id ? paddle::platform::GetCurrentNPUDeviceId() : 0);
+#endif
+    default:
+      PADDLE_THROW(pten::errors::Unimplemented(
+          "Unsupported backend `%s` when casting it to paddle place type.",
+          backend));
   }
 }
 
@@ -167,15 +167,15 @@ size_t DataTypeSize(DataType dtype) {
     case DataType::INT64:
       return sizeof(int64_t);
     case DataType::FLOAT16:
-      return sizeof(paddle::platform::float16);
+      return sizeof(pten::dtype::float16);
     case DataType::FLOAT32:
       return sizeof(float);
     case DataType::FLOAT64:
       return sizeof(double);
     case DataType::COMPLEX64:
-      return sizeof(paddle::platform::complex<float>);
+      return sizeof(pten::dtype::complex<float>);
     case DataType::COMPLEX128:
-      return sizeof(paddle::platform::complex<double>);
+      return sizeof(pten::dtype::complex<double>);
     default:
       return 0;
   }
@@ -234,7 +234,7 @@ std::string DataType2String(DataType dtype) {
     case DataType::COMPLEX128:
       return "complex128";
     default:
-      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+      PADDLE_THROW(pten::errors::InvalidArgument(
           "Unknow pten::DataType, the int value = %d.",
           static_cast<int>(dtype)));
       return "";

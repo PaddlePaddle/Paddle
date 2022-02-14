@@ -53,7 +53,7 @@ std::size_t CountLeadingZeros(uint64_t val) {
 
 pten::DeviceContext* GetDeviceContextByBackend(pten::Backend backend) {
   auto& pool = paddle::platform::DeviceContextPool::Instance();
-  return pool.Get(pten::TransToFluidPlace(backend));
+  return pool.Get(pten::TransToPtenPlace(backend));
 }
 
 DataType ParseDataType(DataType dtype) { return dtype; }
