@@ -94,6 +94,11 @@ void HandleComplexGradToRealGrad<egr::EagerVariable>(
   // TODO(jiabin): Support Complex here.
 }
 
+void TestHandleComplexGradToRealGradEager(
+    const NameVarMap<egr::EagerVariable>& outs) {
+  HandleComplexGradToRealGrad<egr::EagerVariable>(outs);
+}
+
 PreparedOp::PreparedOp(const framework::OperatorBase& op,
                        const framework::RuntimeContext& ctx,
                        const framework::OpKernelType& kernel_type,

@@ -193,6 +193,11 @@ void SetForwardDataTypeOfGradVars<egr::EagerVariable>(
   // In eager mode we don't need this.
 }
 
+void TestSetForwardDataTypeOfGradVarsEager(
+    const NameVarMap<egr::EagerVariable>& outs) {
+  SetForwardDataTypeOfGradVars<egr::EagerVariable>(outs);
+}
+
 VarBase::VarBase(const std::shared_ptr<VariableWrapper>& var)
     : var_(var), grad_node_(var->GetGradNode()) {
   if (auto grad_var = var_->GetGradVar()) {
