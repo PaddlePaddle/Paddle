@@ -195,7 +195,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
     def forward(ctx, *args, **kwargs):
 
         dist_op_context = ctx.dist_op_context
-        main_block = dist_op_context.get_dst_main_program().global_block()
+        main_block = dist_op_context.get_work_block()
         startup_block = dist_op_context.get_dst_startup_program().global_block()
         src_op = dist_op_context.get_cur_src_op()
         rank_id = dist_op_context.get_rank_id()
@@ -278,7 +278,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
 
         # by now the backward function only insert the gradient allreduce for dist op itself
         dist_op_context = ctx.dist_op_context
-        main_block = dist_op_context.get_dst_main_program().global_block()
+        main_block = dist_op_context.get_work_block()
         backward_op = dist_op_context.get_cur_src_op()
         dist_attr = ctx.get_op_dist_attr_for_program(backward_op)
         assert dist_attr is not None, "backward op [{}] don't have dist attribute !".format(

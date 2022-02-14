@@ -157,15 +157,46 @@ class Partitioner(object):
         2. replace local op with corresponding dist op
         """
 
-        dist_op_context = self._dist_context.dist_op_context
         partitioned_main_prog = fluid.Program()
+        dist_op_context = self._dist_context.dist_op_context
         dist_op_context.set_dst_main_program(partitioned_main_prog)
-        target_block = partitioned_main_prog.global_block()
-        ref_block = serial_main_program.global_block()
-        serial_ops = serial_main_program.global_block().ops
+
+        for idx in range(self._dist_context.block_state.nblock):
+
+            if idx == 0:
+                dist_op_context.set_work_block(partitioned_main_prog.blocks[0])  
+            else:
+                ref_block = serial_main_program.blocks[idx]
+                new_block = partitioned_main_prog._create_block(parent_idx=ref_block.parent_idx)
+                assert ref_block.idx == new_block.idx
+                new_block._set_forward_block_idx(ref_block.forward_block_idx)
+                dist_op_context.set_work_block(new_block)  
+
+            self.partition_block(ref_block, new_block)
+            
+        partitioned_main_prog.current_block_idx = 0
+        assert len(partitioned_main_prog.blocks) == len(serial_main_program.blocks)
+
+        partitioned_params_and_grads = []
+        for p, g in params_and_grads:
+            assert p.name in self._serial2dist_varname_mapping
+            dist_p = self._get_dist_var_by_serial_var(p, partitioned_main_prog)
+            if g is None:
+                dist_g = None
+            else:
+                assert g.name in self._serial2dist_varname_mapping
+                dist_g = self._get_dist_var_by_serial_var(g, partitioned_main_prog)
+            partitioned_params_and_grads.append((dist_p, dist_g))
+
+        return partitioned_main_prog, partitioned_params_and_grads
+
+
+    def partition_block(self, ref_block, target_block)
+
+        dist_op_context = self._dist_context.dist_op_context
+        serial_ops = ref_block.ops
 
         # init mapping
-        first_backward_op_idx = -1
         forward_op_id2forward_op = {}
         for idx in range(len(serial_ops)):
             if is_forward_op(serial_ops[idx]):
@@ -218,22 +249,6 @@ class Partitioner(object):
                     "partitioner only support forward op and backward op, but got {}".
                     format(str(op)))
 
-        partitioned_params_and_grads = []
-        for p, g in params_and_grads:
-            assert p.name in self._serial2dist_varname_mapping
-            dist_p_name = self._serial2dist_varname_mapping[p.name]
-            assert target_block.has_var(dist_p_name)
-            dist_p = target_block.var(dist_p_name)
-            if g is None:
-                dist_g = None
-            else:
-                assert g.name in self._serial2dist_varname_mapping
-                dist_g_name = self._serial2dist_varname_mapping[g.name]
-                assert target_block.has_var(dist_g_name)
-                dist_g = target_block.var(dist_g_name)
-            partitioned_params_and_grads.append((dist_p, dist_g))
-
-        return partitioned_main_prog, partitioned_params_and_grads
 
     def _is_valid_annotated_program(self, program):
 
@@ -255,6 +270,13 @@ class Partitioner(object):
 
         return all_ops_annotated and all_vars_annotated
 
+    def _get_dist_var_by_serial_var(self, serial_var, partitioned_main_prog):
+
+        block_idx = serial_var.block.idx
+        target_block = partitioned_main_prog.blocks[block_idx]
+        dist_var_name = self._serial2dist_varname_mapping[serial_var.name]
+        assert target_block.has_var(dist_var_name) 
+        return target_block.var(dist_var_name)
 
 def _get_dist_shape(var, dist_attr):
 

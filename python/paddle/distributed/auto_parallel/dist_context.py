@@ -51,6 +51,7 @@ class DistributedContext:
         self._is_initialized_for_program = False
         self._dist_tensors_for_program = {}
         self._dist_ops_for_program = {}
+        self._block_state = BlockState()
         # Graph related data members
         self._is_initialized_for_graph = False
         self._serial_graph = None
@@ -91,8 +92,8 @@ class DistributedContext:
         return self._process_meshes
 
     @property
-    def dist_op_context(self):
-        return self._dist_op_context
+    def block_state(self):
+        return self._block_state
 
     @property
     def dist_main_programs(self):
@@ -101,6 +102,10 @@ class DistributedContext:
     @property
     def dist_startup_programs(self):
         return self._dist_startup_programs
+
+    @property
+    def serial_graph(self):
+        return self._serial_graph
 
     def add_process_mesh(self, process_mesh):
         assert isinstance(process_mesh, ProcessMesh), \
@@ -511,6 +516,7 @@ class DistributedOperatorContext:
         self._cur_dist_attr = None
         self.grad_op_id_to_op_id = {}
         self.already_init_sync_vars = set()
+        self._work_block = None
 
     def __deepcopy__(self, memo):
         cls = self.__class__
@@ -534,6 +540,12 @@ class DistributedOperatorContext:
 
     def get_dst_startup_program(self):
         return self._dst_startup_program
+
+    def set_work_block(self, block):
+        self._work_block = block
+
+    def get_work_block(self):
+        return self._work_block
 
     def set_varname_mapping(self, mapping):
         self._varname_mapping = mapping
@@ -576,3 +588,49 @@ class DistributedOperatorContext:
             koutputs[output_name] = varnames
 
         return kinputs, koutputs
+
+
+class BlockState(object):
+
+    def __init__(self):
+        self.nblock = 0
+        self.forward_indices = []
+        self.backward_indices = []
+        self.backward_to_forward_index_map = {}
+
+    def parse_forward_blocks(program):
+
+        while program.current_block_idx != 0:
+            program._rollback()
+        
+        assert program.current_block_idx == 0
+
+        for idx, block in enumerate(program.blocks):
+            assert idx == block.idx, "index doesn't match"
+            print("block.forward_block_idx: ", block.forward_block_idx)
+            self.forward_indices.append(idx)
+            self.nblock += 1
+
+        assert self.nblock >= 1
+
+    def parse_backward_blocks(program):
+
+        assert 0 in self.forward_indices
+        self.backward_to_forward_index_map[0] = 0
+        
+
+        for idx, block in enumerate(program.blocks):
+
+            if idx < len(self.forward_indices):
+                continue
+
+            assert idx == block.idx, "index doesn't match"
+            assert block.forward_block_idx in self.forward_indices
+            self.backward_indices.append(idx)
+            self.backward_to_forward_index_map[idx] = block.forward_block_idx
+            self.nblock += 1
+
+
+        assert self.nblock == len(program.blocks)
+
+            
