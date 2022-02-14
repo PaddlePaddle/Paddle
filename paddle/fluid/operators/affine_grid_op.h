@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -61,7 +61,7 @@ inline void GetIdxMap(int n, int h, int w, bool align_corners, Tensor* grid,
   Tensor ones;
   ones.mutable_data<T>({h, w, 1}, ctx.GetPlace());
 
-  math::SetConstant<DeviceContext, T>()(
+  pten::funcs::SetConstant<DeviceContext, T>()(
       ctx.template device_context<DeviceContext>(), &ones, static_cast<T>(1));
   auto ones_t = EigenTensor<T, 3>::From(ones);
   // Get grid tensor with shape [n, h, w, 3] by concatenating h_idx, w_idx and
@@ -115,7 +115,7 @@ class AffineGridOpKernel : public framework::OpKernel<T> {
     }
     auto* output = ctx.Output<Tensor>("Output");
     output->mutable_data<T>({n, h, w, 2}, ctx.GetPlace());
-    math::SetConstant<DeviceContext, T>()(
+    pten::funcs::SetConstant<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), output,
         static_cast<T>(0));
     Tensor grid;
@@ -158,7 +158,7 @@ class AffineGridGradOpKernel : public framework::OpKernel<T> {
       w = size_attr[3];
     }
     theta_grad->mutable_data<T>({n, 2, 3}, ctx.GetPlace());
-    math::SetConstant<DeviceContext, T>()(
+    pten::funcs::SetConstant<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), theta_grad,
         static_cast<T>(0));
     Tensor grid;
