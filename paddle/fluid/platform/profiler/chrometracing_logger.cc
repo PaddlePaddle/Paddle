@@ -188,12 +188,12 @@ void ChromeTracingLogger::HandleTypeKernel(
       "device": %d, "context": %d,
       "stream": %d, "correlation id": %d,
       "registers per thread": %d,
-      "shared memory": %f,
+      "shared memory": %d,
       "blocks per SM": %f,
       "warps per SM": %f,
       "grid": [%d, %d, %d],
       "block": [%d, %d, %d],
-      "est. achieved occupancy %": %f
+      "est. achieved occupancy %%": %f
     }
   },
   )JSON"),
@@ -267,7 +267,7 @@ void ChromeTracingLogger::StartLog() {
                                            R"JSON(
   { 
     "schemaVersion": "%s",
-    "displayTimeUnit": "us",
+    "displayTimeUnit": "ms",
     "SpanNumber": "%d",
   )JSON"),
                                        kSchemaVersion, num_span++);
