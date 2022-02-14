@@ -21,7 +21,7 @@
 
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 
-USE_OP(fill_constant);
+USE_OP_ITSELF(fill_constant);
 USE_OP(uniform_random);
 USE_OP(lookup_table);
 USE_OP(transpose2);

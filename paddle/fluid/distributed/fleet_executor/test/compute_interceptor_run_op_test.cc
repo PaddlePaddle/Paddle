@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 
 USE_OP(elementwise_add);
-USE_OP(fill_constant);
+USE_OP_ITSELF(fill_constant);
 
 namespace paddle {
 namespace distributed {

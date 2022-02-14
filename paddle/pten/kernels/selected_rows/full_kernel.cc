@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/kernels/scale_kernel.h"
+#include "paddle/pten/kernels/full_kernel.h"
 
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"

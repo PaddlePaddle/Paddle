@@ -62,7 +62,7 @@ KernelSignature FillConstantOpArgumentMapping(
         }
       }
     }
-  } else if (ctx.IsDenseTensorOutput("Out")) {
+  } else if (ctx.IsSelectedRowsOutput("Out")) {
     if (ctx.HasInput("ShapeTensor")) {
       if (ctx.HasInput("ValueTensor")) {
         return KernelSignature(
