@@ -21,7 +21,6 @@
 
 #include <algorithm>
 
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/for_range.h"
 
 namespace pten {
