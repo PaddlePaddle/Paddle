@@ -1012,10 +1012,13 @@ def image_decode_random_crop(x,
     return out
 
 
-def flip_vector(x, prob=0.5, name=None):
-    helper = LayerHelper("flip_vector", **locals())
+def random_flip(x, prob=0.5, name=None):
+    if prob < 0. or prob > 1.:
+        raise ValueError("prob should in (0, 1) in random_flip")
+
+    helper = LayerHelper("random_flip", **locals())
     out = helper.create_variable(
-        name=unique_name.generate("flip_vector"),
+        name=unique_name.generate("random_flip"),
         type=core.VarDesc.VarType.LOD_TENSOR,
         dtype=core.VarDesc.VarType.BOOL)
     helper.append_op(
@@ -1026,27 +1029,34 @@ def flip_vector(x, prob=0.5, name=None):
     return out
 
 
-def random_flip(x, prob=0.5, name=None):
-    if prob < 0. or prob > 1.:
-        raise ValueError("prob should in (0, 1) in random_flip")
+def mirror_normalize(x, mirror,
+                     mean=[123.675, 116.28, 103.53],
+                     std=[58.395, 57.120, 57.375],
+                     name=None):
+    def _to_list_3(l):
+        if isinstance(l, (list, tuple)):
+            assert len(l) == 1 or len(l) == 3, \
+                    "input list length should be 1 or 3"
+            if len(l) == 1:
+                l = l * 3
+            return l
+        else:
+            return [l] * 3
 
-    if in_dygraph_mode():
-        p = np.random.uniform(0., 1., x.shape[0:1])
-        for i in range(x.shape[0]):
-            if p[i] < prob:
-                x[i] = paddle.flip(x[i], -1)
-        return x
+    mean = _to_list_3(mean)
+    std = _to_list_3(std)
 
-    # p = paddle.uniform([layers.shape(x)[0], 1], min=0., max=1.)
-    # prob = paddle.ones([layers.shape(x)[0], 1]) * prob
-    # cond = layers.less_than(p, prob)
-    cond = flip_vector(x, prob)
-    ie = layers.IfElse(cond)
-    with ie.true_block():
-        out = ie.input(x)
-        out = paddle.flip(x, -1)
-        ie.output(out)
-    return ie()[0]
+    helper = LayerHelper("mirror_normalize", **locals())
+    out = helper.create_variable(
+        name=unique_name.generate("mirror_normalize"),
+        type=core.VarDesc.VarType.LOD_TENSOR,
+        dtype=core.VarDesc.VarType.BOOL)
+    helper.append_op(
+        type="mirror_normalize",
+        inputs={"X": x, "Mirror": mirror},
+        outputs={"Out": out},
+        attrs={"mean": mean, "std": std})
+    return out
 
 
 def decode_jpeg(x, mode='unchanged', name=None):

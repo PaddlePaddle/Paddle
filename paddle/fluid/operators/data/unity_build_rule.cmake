@@ -12,9 +12,11 @@ register_unity_group(cc
     dataloader_op.cc
     map_op.cc
     batch_decode_random_crop_op.cc
-    random_flip_op.cc)
+    random_flip_op.cc
+    mirror_normalize_op.cc)
 
 register_unity_group(cu
     dataloader_op.cu.cc
     map_op.cu.cc
-    batch_decode_random_crop_op.cu)
+    batch_decode_random_crop_op.cu,
+    mirror_normalize_op.cu)

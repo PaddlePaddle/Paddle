@@ -27,6 +27,7 @@ op_library(batch_resize_op SRCS batch_resize_op.cc batch_resize_op.cu DEPS ${OP_
 op_library(file_label_loader_op SRCS file_label_loader_op.cc DEPS ${OP_HEADER_DEPS})
 
 op_library(random_flip_op SRCS random_flip_op.cc DEPS ${OP_HEADER_DEPS})
+op_library(mirror_normalize_op SRCS mirror_normalize_op.cc mirror_normalize_op.cu DEPS ${OP_HEADER_DEPS})
 
 # register_operators()
 

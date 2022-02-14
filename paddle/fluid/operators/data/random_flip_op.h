@@ -75,7 +75,7 @@ class RandomFlipCPUKernel : public framework::OpKernel<T> {
     auto* data = out->mutable_data<bool>(ctx.GetPlace());
     auto* generator = CreateRandomFlipGenerator(seed, prob);
     for (int64_t i = 0; i < x->dims()[0]; i++) {
-      data[i] = generator->Generate() ? 1 : 0;
+      data[i] = generator->Generate();
     }
     LOG(ERROR) << "RandomFlipCPUKernel finish";
   }
