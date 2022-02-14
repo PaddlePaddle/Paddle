@@ -820,6 +820,7 @@ inline void Blas<platform::CUDADeviceContext>::GEMM(
     platform::bfloat16 alpha, const platform::bfloat16 *A,
     const platform::bfloat16 *B, platform::bfloat16 beta,
     platform::bfloat16 *C) const {
+#if CUDA_VERSION >= 11000
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
@@ -840,7 +841,6 @@ inline void Blas<platform::CUDADeviceContext>::GEMM(
   float h_alpha = static_cast<float>(alpha);
   float h_beta = static_cast<float>(beta);
 
-#if CUDA_VERSION >= 11000
   cublasGemmAlgo_t algo = CUBLAS_GEMM_DEFAULT;
   bool use_tensor_op_math = context_.tensor_core_available();
   if (use_tensor_op_math) {
@@ -869,6 +869,7 @@ inline void Blas<pten::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                          const platform::bfloat16 *B,
                                          platform::bfloat16 beta,
                                          platform::bfloat16 *C) const {
+#if CUDA_VERSION >= 11000
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
@@ -878,18 +879,16 @@ inline void Blas<pten::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   cublasOperation_t cuTransB =
       (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
 
-  // TODO(kexinzhao): add processing code for compute capability < 53 case
   PADDLE_ENFORCE_GE(
       context_.GetComputeCapability(), 80,
       platform::errors::InvalidArgument(
-          "cublas fp16 gemm requires GPU compute capability >= 80,"
+          "cublas bf16 gemm requires GPU compute capability >= 80,"
           "but received %d",
           context_.GetComputeCapability()));
 
   float h_alpha = static_cast<float>(alpha);
   float h_beta = static_cast<float>(beta);
 
-#if CUDA_VERSION >= 11000
   cublasGemmAlgo_t algo = CUBLAS_GEMM_DEFAULT;
   bool use_tensor_op_math = context_.tensor_core_available();
   if (use_tensor_op_math) {
@@ -1446,6 +1445,7 @@ inline void Blas<platform::CUDADeviceContext>::BatchedGEMM(
     platform::bfloat16 alpha, const platform::bfloat16 *A,
     const platform::bfloat16 *B, platform::bfloat16 beta, platform::bfloat16 *C,
     int batchCount, int64_t strideA, int64_t strideB) const {
+#if CUDA_VERSION >= 11000
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
@@ -1457,7 +1457,6 @@ inline void Blas<platform::CUDADeviceContext>::BatchedGEMM(
       (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
   const int64_t strideC = M * N;
 
-#if CUDA_VERSION >= 11000
   cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
   bool use_tensor_op_math = context_.tensor_core_available();
   if (use_tensor_op_math) {
@@ -1486,6 +1485,7 @@ inline void Blas<pten::GPUContext>::BatchedGEMM(
     platform::bfloat16 alpha, const platform::bfloat16 *A,
     const platform::bfloat16 *B, platform::bfloat16 beta, platform::bfloat16 *C,
     int batchCount, int64_t strideA, int64_t strideB) const {
+#if CUDA_VERSION >= 11000
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
@@ -1497,7 +1497,6 @@ inline void Blas<pten::GPUContext>::BatchedGEMM(
       (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
   const int64_t strideC = M * N;
 
-#if CUDA_VERSION >= 11000
   cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
   bool use_tensor_op_math = context_.tensor_core_available();
   if (use_tensor_op_math) {
