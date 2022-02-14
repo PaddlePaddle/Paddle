@@ -44,6 +44,11 @@ class CPUQuantizeSquashPass : public FusePassBase {
       std::unordered_map<const Node*, int>* nodes_keep_counter) const;
 
   /*
+   * Check if input to dequantize is uint8
+   */
+  bool IsDequantizeInputUint8(const Node* dequant_in) const;
+
+  /*
    * Squash dequantize-quantize ops pairs into requantize or nothing
    */
   void DequantQuantSquash(
