@@ -18,10 +18,12 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+// Dump a NodeTrees into a chrome tracing file.
+// A ChromeTracingLogger object can only dump a NodeTrees object,
+// creates a file in the constructor and closes the file in the destructor.
 class ChromeTracingLogger : public BaseLogger {
  public:
-  explicit ChromeTracingLogger(const std::string& filename);
-  explicit ChromeTracingLogger(const char* filename);
+  ChromeTracingLogger();
   ~ChromeTracingLogger();
   std::string filename() { return filename_; }
   void LogDeviceTraceEventNode(const DeviceTraceEventNode&) override;

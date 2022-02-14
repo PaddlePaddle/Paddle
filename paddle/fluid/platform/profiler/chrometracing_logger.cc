@@ -18,9 +18,9 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/chrometracing_logger.h"
 #include "paddle/fluid/platform/profiler/event_node.h"
+#include "paddle/fluid/platform/profiler/utils.h"
 
 namespace paddle {
 namespace platform {
@@ -28,30 +28,6 @@ namespace platform {
 static const char* kSchemaVersion = "1.0.0";
 static const char* kDefaultFilename = "pid_%s_time_%s.paddle_trace.json";
 static uint32_t num_span = 0;
-
-static int64_t nsToUs(int64_t ns) { return ns / 1000; }
-
-template <typename... Args>
-std::string string_format(const std::string& format, Args... args) {
-  int size_s = std::snprintf(nullptr, 0, format.c_str(), args...) +
-               1;  // Extra space for '\0'
-  PADDLE_ENFORCE_GE(size_s, 0, platform::errors::Fatal(
-                                   "Error during profiler data formatting."));
-  auto size = static_cast<size_t>(size_s);
-  auto buf = std::make_unique<char[]>(size);
-  std::snprintf(buf.get(), size, format.c_str(), args...);
-  return std::string(buf.get(), size - 1);  // exclude the '\0'
-}
-
-std::string GetStringFormatLocalTime() {
-  std::time_t rawtime;
-  std::tm* timeinfo;
-  char buf[100];
-  std::time(&rawtime);
-  timeinfo = std::localtime(&rawtime);
-  std::strftime(buf, 100, "%F-%X", timeinfo);
-  return std::string(buf);
-}
 
 static std::string DefaultFileName() {
   auto pid = GetProcessId();
@@ -67,9 +43,10 @@ void ChromeTracingLogger::OpenFile() {
   output_file_stream_.open(filename_,
                            std::ofstream::out | std::ofstream::trunc);
   if (!output_file_stream_) {
-    VLOG(2) << "Unable to open file for writing profiling data." << std::endl;
+    LOG(WARNING) << "Unable to open file for writing profiling data."
+                 << std::endl;
   } else {
-    VLOG(0) << "writing profiling data to " << filename_ << std::endl;
+    LOG(INFO) << "writing profiling data to " << filename_ << std::endl;
   }
 }
 
@@ -293,7 +270,7 @@ void ChromeTracingLogger::StartLog() {
     "displayTimeUnit": "us",
     "SpanNumber": "%d",
   )JSON"),
-                                       kSchemaVersion, num_span);
+                                       kSchemaVersion, num_span++);
 // add device property information
 #if defined(PADDLE_WITH_CUDA)
   output_file_stream_ << std::string(R"JSON(

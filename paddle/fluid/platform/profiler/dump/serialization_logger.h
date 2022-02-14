@@ -17,6 +17,9 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+// Dump a NodeTrees into a profobuf file.
+// A SerializationLogger object can only dump a NodeTrees object,
+// creates a file in the constructor and closes the file in the destructor.
 class SerializationLogger : public BaseLogger {
  public:
   explicit SerializationLogger(const std::string& filename);
