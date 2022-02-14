@@ -18,10 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
-PADDLE_DEFINE_EXPORTED_bool(
-    lookup_table_v2_deterministic, false,
-    "Whether to run the deterministic lookup_table_v2 op.");
-
 namespace paddle {
 namespace operators {
 
@@ -200,21 +196,11 @@ struct LookupTableV2GradCUDAFunctor {
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemsetAsync(d_table, 0, N * D * sizeof(T), dev_ctx.stream()));
 
-      // The true config is used to check precision. Need to set to false when
-      // test performance.
-      if (FLAGS_lookup_table_v2_deterministic) {
-        dim3 threads(128, 1);
-        dim3 grids(1, 1);
-        LookupTableV2Grad<T, IdT><<<grids, threads, 0, dev_ctx.stream()>>>(
-            d_table, d_output, ids, N, K, D);
-
-      } else {
-        const int gridx = 2 * dev_ctx.GetSMCount();
-        dim3 threads(128, 8);
-        dim3 grids(gridx, 1);
-        LookupTableV2Grad<T, IdT><<<grids, threads, 0, dev_ctx.stream()>>>(
-            d_table, d_output, ids, N, K, D);
-      }
+      const int gridx = 2 * dev_ctx.GetSMCount();
+      dim3 threads(128, 8);
+      dim3 grids(gridx, 1);
+      LookupTableV2Grad<T, IdT><<<grids, threads, 0, dev_ctx.stream()>>>(
+          d_table, d_output, ids, N, K, D);
     }
   }
 
