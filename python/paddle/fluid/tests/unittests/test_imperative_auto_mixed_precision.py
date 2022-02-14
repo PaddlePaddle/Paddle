@@ -860,8 +860,7 @@ class TestPureFp16InferenceSaveLoad(unittest.TestCase):
         results = exe.run(inference_program,
                           feed={feed_target_names[0]: tensor_img},
                           fetch_list=fetch_targets)
-
-        self.assertTrue(np.allclose(pred.numpy(), results, atol=1.e-2))
+        self.assertTrue(np.allclose(pred.numpy(), results, atol=1.e-5))
 
 
 class TestResnet2(unittest.TestCase):
