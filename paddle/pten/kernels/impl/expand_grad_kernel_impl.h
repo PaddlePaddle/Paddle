@@ -88,9 +88,8 @@ void ExpandGradKernel(const Context& ctx,
   }
   // no need reduce, just copy
   if (just_copy) {
-    ctx.template Alloc<T>(in_grad);
-    in_grad->data<T>();
-    pten::Copy(ctx, x, false, in_grad);
+    auto* in_grad0 = ctx.template Alloc<T>(in_grad);
+    pten::Copy(ctx, x, false, in_grad0);
   } else {
     PADDLE_ENFORCE_GE(dims,
                       1,
