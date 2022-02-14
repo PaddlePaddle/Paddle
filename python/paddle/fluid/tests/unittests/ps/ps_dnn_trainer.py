@@ -332,7 +332,6 @@ class DnnTrainer(object):
         self.role_maker._generate_role()  # 必要
         if self.config['debug_new_minimize'] == 1:
             logger.info("entering run_minimize -- new")
-            self.role_maker._generate_role()  # 必要
             from paddle.distributed.fleet.meta_optimizers.ps_optimizer import ParameterServerOptimizer
             ps_optimizer = ParameterServerOptimizer(inner_optimizer)
             ps_optimizer._set_basic_info(loss, self.role_maker, inner_optimizer,
