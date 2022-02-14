@@ -78,7 +78,7 @@ def source_include(header_file_path):
 
 #include "glog/logging.h"
 
-#include "paddle/pten/api/lib/api_invoke_impl.h"
+#include "paddle/pten/api/lib/api_custom_impl.h"
 #include "paddle/pten/api/lib/api_registry.h"
 #include "paddle/pten/api/lib/api_utils.h"
 #include "paddle/pten/api/lib/data_transform.h"
