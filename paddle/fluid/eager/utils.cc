@@ -21,6 +21,7 @@
 #include "paddle/pten/common/layout.h"
 #include "paddle/pten/core/tensor_meta.h"
 
+#include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/variable.h"
@@ -299,6 +300,43 @@ void EagerUtils::CheckAndRetainGrad(
     for (auto& tensor : tensors) {
       VLOG(6) << "RetainGradForTensor: " << tensor.name();
       egr::egr_utils_api::RetainGradForTensor(tensor);
+    }
+  }
+}
+
+std::shared_ptr<egr::GradNodeBase> EagerUtils::GetGradAccumulationNode(
+    const paddle::experimental::Tensor& tensor) {
+  auto* autograd_ptr = nullable_autograd_meta(tensor);
+  if (!autograd_ptr) {
+    return nullptr;
+  }
+  auto node_ptr = autograd_ptr->GetMutableGradNode();
+  if (node_ptr && node_ptr.get()) {
+    if (!autograd_ptr->StopGradient()) {
+      auto accumulation_ptr =
+          std::dynamic_pointer_cast<GradNodeAccumulation>(node_ptr);
+      if (accumulation_ptr) {
+        return accumulation_ptr;
+      } else {
+        // Current GradNode is not a egr::GradNodeAccumulation
+        PADDLE_THROW(paddle::platform::errors::Fatal(
+            "GetGradAccumulationNode should only be called on leaf tensor, but "
+            "target tensor: %s has GradNode which is not a "
+            "GradNodeAccumulation, and this should not happend unless target "
+            "tensor is modified by some ops and calling set history for it.",
+            tensor.name()));
+      }
+    } else {
+      // Current Tensor does not have grad since it's stop_gradient is true;
+      return nullptr;
+    }
+  } else {
+    if (!autograd_ptr->StopGradient()) {
+      VLOG(6) << "Add GradNodeAccumulation for tensor: " << tensor.name();
+      autograd_ptr->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
+      return autograd_ptr->GetMutableGradNode();
+    } else {
+      return nullptr;
     }
   }
 }

@@ -16,6 +16,7 @@
 
 #include "gtest/gtest.h"
 
+#include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tests/data_structure_tests/grad_node_test.h"
@@ -222,6 +223,28 @@ TEST(EagerUtils, CreateVars) {
       egr::EagerUtils::CreateVars(2);
   CHECK_EQ(outs.size(), size_t(2));
   CHECK(outs[0]->Var().IsInitialized() == false);
+}
+
+TEST(EagerUtils, GetGradAccumulationNode) {
+  VLOG(6) << "Check GetGradAccumulationNode";
+  paddle::experimental::Tensor t0("test_tensor");
+  ASSERT_EQ(egr::EagerUtils::GetGradAccumulationNode(t0), nullptr);
+  auto autograd_ptr0 = egr::EagerUtils::autograd_meta(&t0);
+  autograd_ptr0->SetStopGradient(true);
+  ASSERT_EQ(egr::EagerUtils::GetGradAccumulationNode(t0), nullptr);
+  autograd_ptr0->SetStopGradient(false);
+  auto res = std::dynamic_pointer_cast<egr::GradNodeAccumulation>(
+      egr::EagerUtils::GetGradAccumulationNode(t0));
+  ASSERT_TRUE(res != nullptr);
+  auto res2 = egr::EagerUtils::GetGradAccumulationNode(t0);
+  ASSERT_EQ(res2.get(), res.get());
+  autograd_ptr0->SetStopGradient(true);
+  auto res3 = egr::EagerUtils::GetGradAccumulationNode(t0);
+  ASSERT_EQ(res3, nullptr);
+  autograd_ptr0->SetStopGradient(false);
+  autograd_ptr0->SetGradNode(
+      std::make_shared<eager_test::GradTestNode>(1, 2.0, 3));
+  ASSERT_ANY_THROW(egr::EagerUtils::GetGradAccumulationNode(t0));
 }
 
 }  // namespace egr
