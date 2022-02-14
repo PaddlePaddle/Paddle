@@ -40,8 +40,8 @@ class DemoNet(nn.Layer):
 
 class TestInplaceAddtoPass(DistPassTestBase):
     def init(self):
-        self.atol = 0.0
-        self.rtol = 0.0
+        self.atol = 1e-4
+        self.rtol = 1e-4
         paddle.fluid.set_flags({"FLAGS_max_inplace_grad_add": 8})
 
     def get_model(self, place, batch_size=32, image_shape=[3, 224, 224]):
@@ -79,17 +79,11 @@ class TestInplaceAddtoPass(DistPassTestBase):
             [new_pass("inplace_addto_op", {"use_cuda": True})])
         pass_manager.apply([main_prog], [startup_prog])
         print(pass_manager.names)
-        print("99999999999999999")
-        print(main_prog)
         matmul_v2_grad_attr = []
         for op in main_prog.global_block().ops:
-            print(op.type)
             if op.type == "matmul_v2_grad":
-                print("=====777777777777=====")
-                print(op.desc.attr("use_addto"))
                 matmul_v2_grad_attr.append(op.desc.attr("use_addto"))
-        print(matmul_v2_grad_attr)
-        #self.assertTrue(True in matmul_v2_grad_attr)
+        self.assertTrue(True in matmul_v2_grad_attr)
 
     def test_inplace_addto(self):
         self.check_main()

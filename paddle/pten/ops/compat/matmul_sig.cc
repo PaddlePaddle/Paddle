@@ -17,10 +17,11 @@ limitations under the License. */
 namespace pten {
 
 KernelSignature MatmulGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  if (ctx.HasAttr("use_addto")) {
+  if (ctx.HasAttr("use_addto") &&
+      paddle::any_cast<bool>(ctx.Attr("use_addto"))) {
     return KernelSignature("addto_matmul_grad",
                            {"X", "Y", GradVarName("Out")},
-                           {"trans_x", "trans_y", "use_addto"},
+                           {"trans_x", "trans_y"},
                            {GradVarName("X"), GradVarName("Y")});
   } else {
     return KernelSignature("matmul_grad",
