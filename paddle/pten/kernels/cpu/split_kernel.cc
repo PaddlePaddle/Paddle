@@ -69,4 +69,5 @@ PT_REGISTER_KERNEL(split,
                    int64_t,
                    int,
                    bool,
-                   pten::dtype::float16) {}
+                   pten::dtype::float16,
+                   pten::dtype::bfloat16) {}
