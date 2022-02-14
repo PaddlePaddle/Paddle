@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 TEST(selected_rows_functor, gpu_add) {
   paddle::platform::CUDAPlace gpu_place(0);
@@ -22,9 +22,7 @@ TEST(selected_rows_functor, gpu_add) {
   paddle::platform::CUDADeviceContext& ctx =
       *reinterpret_cast<paddle::platform::CUDADeviceContext*>(
           paddle::platform::DeviceContextPool::Instance().Get(gpu_place));
-  paddle::operators::math::SetConstant<paddle::platform::CUDADeviceContext,
-                                       float>
-      functor;
+  pten::funcs::SetConstant<paddle::platform::CUDADeviceContext, float> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
 
@@ -144,9 +142,7 @@ TEST(selected_rows_functor, gpu_add_to) {
   paddle::platform::CUDADeviceContext& ctx =
       *reinterpret_cast<paddle::platform::CUDADeviceContext*>(
           paddle::platform::DeviceContextPool::Instance().Get(gpu_place));
-  paddle::operators::math::SetConstant<paddle::platform::CUDADeviceContext,
-                                       float>
-      functor;
+  pten::funcs::SetConstant<paddle::platform::CUDADeviceContext, float> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
 
@@ -254,8 +250,7 @@ TEST(selected_rows_functor, gpu_merge_add) {
   paddle::platform::CUDADeviceContext& ctx =
       *reinterpret_cast<paddle::platform::CUDADeviceContext*>(
           paddle::platform::DeviceContextPool::Instance().Get(gpu_place));
-  paddle::operators::math::SetConstant<paddle::platform::CUDADeviceContext,
-                                       float>
+  pten::funcs::SetConstant<paddle::platform::CUDADeviceContext, float>
       set_const;
 
   int64_t height = 10;

@@ -265,6 +265,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("parameters", params);
   op_desc->SetAttr("allow_build_at_runtime", allow_build_at_runtime);
   op_desc->SetAttr("shape_range_info_path", shape_range_info_path);
+  op_desc->SetAttr("use_inspector", Get<bool>("use_inspector"));
 
   // we record all inputs' shapes in attr to check if they are consistent
   // with the real inputs' shapes retrieved from scope when trt runs.
@@ -375,6 +376,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   trt_engine->SetWithInterleaved(Get<bool>("with_interleaved"));
   trt_engine->SetUseDLA(Get<bool>("trt_use_dla"));
   trt_engine->SetDLACore(Get<int>("trt_dla_core"));
+  trt_engine->SetUseInspector(Get<bool>("use_inspector"));
 
   trt_engine->SetWithErnie(
       graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&

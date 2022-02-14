@@ -18,7 +18,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -39,7 +39,7 @@ class HistogramKernel : public framework::OpKernel<T> {
     auto input_numel = input->numel();
 
     int64_t* out_data = output->mutable_data<int64_t>(context.GetPlace());
-    math::SetConstant<DeviceContext, int64_t>()(
+    pten::funcs::SetConstant<DeviceContext, int64_t>()(
         context.template device_context<DeviceContext>(), output,
         static_cast<int64_t>(0));
 
