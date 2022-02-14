@@ -49,7 +49,7 @@ KernelSignature Conv3dOpArgumentMapping(const ArgumentMappingContext& ctx) {
 KernelSignature Conv3dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (paddle::any_cast<bool>(ctx.Attr("use_cudnn")) &&
       (ctx.GetPlace().GetType() == pten::AllocationType::GPU)) {
-    return KernelSignature("conv3d_cudnn_grad",
+    return KernelSignature("conv2d_cudnn_grad",
                            {GradVarName("Output"), "Input", "Filter"},
                            {"strides",
                             "paddings",
@@ -62,7 +62,8 @@ KernelSignature Conv3dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
                             "exhaustive_search"},
                            {GradVarName("Input"), GradVarName("Filter")});
   }
-  return KernelSignature("conv3d_grad",
+
+  return KernelSignature("conv2d_grad",
                          {GradVarName("Output"), "Input", "Filter"},
                          {"strides",
                           "paddings",

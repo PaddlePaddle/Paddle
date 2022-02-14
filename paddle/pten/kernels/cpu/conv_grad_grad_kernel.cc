@@ -18,9 +18,58 @@
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
 
+namespace pten {
+template <typename T, typename Context>
+void Conv3DGradGradKernel(const Context& ctx,
+                          paddle::optional<const DenseTensor&> input_grad_grad,
+                          paddle::optional<const DenseTensor&> filter_grad_grad,
+                          const DenseTensor& out_grad,
+                          const DenseTensor& input,
+                          const DenseTensor& filter,
+                          const std::vector<int>& strides,
+                          const std::vector<int>& paddings_t,
+                          const std::string& padding_algorithm,
+                          int groups,
+                          const std::vector<int>& dilations_t,
+                          const std::string& data_format,
+                          bool use_addto,
+                          int workspace_size_MB,
+                          bool exhaustive_search_t,
+                          DenseTensor* out_grad_grad,
+                          DenseTensor* input_grad,
+                          DenseTensor* filter_grad) {
+  ConvGradGradKernel<T>(ctx,
+                        input_grad_grad,
+                        filter_grad_grad,
+                        out_grad,
+                        input,
+                        filter,
+                        strides,
+                        paddings_t,
+                        padding_algorithm,
+                        groups,
+                        dilations_t,
+                        data_format,
+                        use_addto,
+                        workspace_size_MB,
+                        exhaustive_search_t,
+                        out_grad_grad,
+                        input_grad,
+                        filter_grad);
+}
+
+}  // namespace pten
+
 PT_REGISTER_KERNEL(conv2d_grad_grad,
                    CPU,
                    ALL_LAYOUT,
                    pten::ConvGradGradKernel,
+                   float,
+                   double) {}
+
+PT_REGISTER_KERNEL(conv3d_grad_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::Conv3DGradGradKernel,
                    float,
                    double) {}

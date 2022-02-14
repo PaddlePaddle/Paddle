@@ -83,7 +83,7 @@ KernelSignature Conv2dDoubleGradOpArgumentMapping(
   if (paddle::any_cast<bool>(ctx.Attr("use_cudnn")) &&
       (ctx.GetPlace().GetType() == pten::AllocationType::GPU)) {
     return KernelSignature(
-        "conv2d_grad_grad",
+        "conv2d_cudnn_grad_grad",
         {"DDInput", "DDFilter", "DOutput", "Input", "Filter"},
         {"strides",
          "paddings",
@@ -97,7 +97,7 @@ KernelSignature Conv2dDoubleGradOpArgumentMapping(
         {"DDOutput", "DInput", "DFilter"});
   } else {
     return KernelSignature(
-        "conv2d_cudnn_grad_grad",
+        "conv2d_grad_grad",
         {"DDInput", "DDFilter", "DOutput", "Input", "Filter"},
         {"strides",
          "paddings",

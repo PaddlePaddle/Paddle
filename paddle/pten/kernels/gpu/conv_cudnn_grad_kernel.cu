@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/conv_cudnn_grad_kernel.h"
 
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
@@ -38,6 +37,8 @@
 
 #include "paddle/pten/common/bfloat16.h"
 #include "paddle/pten/common/float16.h"
+
+#include "paddle/fluid/platform/device/gpu/cuda/cudnn_helper.h"
 
 namespace pten {
 
@@ -83,15 +84,17 @@ void ConvCudnnGradKernel(const Context& ctx,
 
 #ifdef PADDLE_WITH_HIP
   // HIP MIOPEN ONLY SUPPORT NCHW format
-  auto compute_format = DataLayout::kNCHW;
+  auto compute_format = paddle::platform::DataLayout::kNCHW;
 #else
   const bool compute_in_nhwc = dtype == CUDNN_DATA_HALF && IsVoltaOrLater(ctx);
-  auto compute_format =
-      compute_in_nhwc && channel_last ? DataLayout::kNHWC : DataLayout::kNCHW;
+  auto compute_format = compute_in_nhwc && channel_last
+                            ? paddle::platform::DataLayout::kNHWC
+                            : paddle::platform::DataLayout::kNCHW;
 #endif
   VLOG(3) << "Compute ConvGradOp with cuDNN:"
           << " data_format=" << data_format << " compute_format="
-          << (compute_format == DataLayout::kNHWC ? "NHWC" : "NCHW");
+          << (compute_format == paddle::platform::DataLayout::kNHWC ? "NHWC"
+                                                                    : "NCHW");
 
   // transform Tensor
   DenseTensor transformed_input_channel(input.type());
@@ -100,7 +103,7 @@ void ConvCudnnGradKernel(const Context& ctx,
   DenseTensor transformed_filter_channel(filter.type());
   DenseTensor transformed_filter_grad_channel(filter.type());
 
-  if (channel_last && compute_format == DataLayout::kNCHW) {
+  if (channel_last && compute_format == paddle::platform::DataLayout::kNCHW) {
     VLOG(3) << "Transform input, output_grad, input_grad and tensor from "
                "NHWC to NCHW.";
     ResizeToChannelFirst<Context, T>(ctx, &input, &transformed_input_channel);
@@ -129,7 +132,7 @@ void ConvCudnnGradKernel(const Context& ctx,
     }
   }
 
-  if (compute_format == DataLayout::kNHWC) {
+  if (compute_format == paddle::platform::DataLayout::kNHWC) {
     VLOG(3) << "Transform filter and filter_grad tensor from NCHW to NHWC.";
     ResizeToChannelLast<Context, T>(ctx, &filter, &transformed_filter_channel);
     TransToChannelLast<Context, T>(ctx, &filter, &transformed_filter_channel);
@@ -150,7 +153,7 @@ void ConvCudnnGradKernel(const Context& ctx,
   auto filter_dims = transformed_filter_channel.dims();
   framework::DDim in_data_dims;
   framework::DDim filter_data_dims;
-  if (compute_format == DataLayout::kNCHW) {
+  if (compute_format == paddle::platform::DataLayout::kNCHW) {
     in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
     filter_data_dims =
         framework::slice_ddim(filter_dims, 2, filter_dims.size());
@@ -178,7 +181,7 @@ void ConvCudnnGradKernel(const Context& ctx,
     std::vector<int> padding_diff(data_dim);
     std::vector<int> new_input_shape_vec(data_dim + 2);
     new_input_shape_vec[0] = transformed_input_channel.dims()[0];
-    if (compute_format == DataLayout::kNCHW) {
+    if (compute_format == paddle::platform::DataLayout::kNCHW) {
       new_input_shape_vec[1] = transformed_input_channel.dims()[1];
     } else {
       new_input_shape_vec[data_dim + 1] =
@@ -188,14 +191,14 @@ void ConvCudnnGradKernel(const Context& ctx,
     for (size_t i = 0; i < data_dim; ++i) {
       padding_diff[i] = std::abs(paddings[2 * i] - paddings[2 * i + 1]);
       padding_common[i] = std::min(paddings[2 * i], paddings[2 * i + 1]);
-      if (compute_format == DataLayout::kNCHW) {
+      if (compute_format == paddle::platform::DataLayout::kNCHW) {
         new_input_shape_vec[i + 2] =
             transformed_input_channel.dims()[i + 2] + padding_diff[i];
       } else {
         new_input_shape_vec[i + 1] =
             transformed_input_channel.dims()[i + 1] + padding_diff[i];
       }
-      if (compute_format == DataLayout::kNCHW) {
+      if (compute_format == paddle::platform::DataLayout::kNCHW) {
         input_pad[2 * i + 4] = paddings[2 * i] - padding_common[i];
         input_pad[2 * i + 4 + 1] = paddings[2 * i + 1] - padding_common[i];
       } else {
@@ -275,47 +278,51 @@ void ConvCudnnGradKernel(const Context& ctx,
                                     dtype};
 
   auto handle = ctx.cudnn_handle();
-  DataLayout layout = compute_format == DataLayout::kNHWC ? DataLayout::kNHWC
-                                                          : DataLayout::kNCHW;
+  // TODO(phlrain): replace paddle::platform::DataLaytout to pten::DataLayout
+  paddle::platform::DataLayout layout =
+      compute_format == paddle::platform::DataLayout::kNHWC
+          ? paddle::platform::DataLayout::kNHWC
+          : paddle::platform::DataLayout::kNCHW;
   if (transformed_input.dims().size() == 5) {
-    layout = compute_format == DataLayout::kNHWC ? DataLayout::NDHWC
-                                                 : DataLayout::NCDHW;
+    layout = compute_format == paddle::platform::DataLayout::kNHWC
+                 ? paddle::platform::DataLayout::kNDHWC
+                 : paddle::platform::DataLayout::kNCDHW;
   }
-  auto layout_tensor = GetCudnnTensorFormat(layout);
+  auto layout_tensor = paddle::platform::GetCudnnTensorFormat(layout);
   auto workspace_handle = ctx.cudnn_workspace_handle();
 
   int i_n, i_c, i_d, i_h, i_w;
   int o_n, o_c, o_d, o_h, o_w;
-  if (compute_format == DataLayout::kNHWC) {
-    GetNCDHW(transformed_input.dims(),
-             DataLayout::kNHWC,
-             &i_n,
-             &i_c,
-             &i_d,
-             &i_h,
-             &i_w);
-    GetNCDHW(transformed_output_grad_channel.dims(),
-             DataLayout::kNHWC,
-             &o_n,
-             &o_c,
-             &o_d,
-             &o_h,
-             &o_w);
+  if (compute_format == paddle::platform::DataLayout::kNHWC) {
+    paddle::operators::GetNCDHW(transformed_input.dims(),
+                                paddle::platform::DataLayout::kNHWC,
+                                &i_n,
+                                &i_c,
+                                &i_d,
+                                &i_h,
+                                &i_w);
+    paddle::operators::GetNCDHW(transformed_output_grad_channel.dims(),
+                                paddle::platform::DataLayout::kNHWC,
+                                &o_n,
+                                &o_c,
+                                &o_d,
+                                &o_h,
+                                &o_w);
   } else {
-    GetNCDHW(transformed_input.dims(),
-             DataLayout::kNCHW,
-             &i_n,
-             &i_c,
-             &i_d,
-             &i_h,
-             &i_w);
-    GetNCDHW(transformed_output_grad_channel.dims(),
-             DataLayout::kNCHW,
-             &o_n,
-             &o_c,
-             &o_d,
-             &o_h,
-             &o_w);
+    paddle::operators::GetNCDHW(transformed_input.dims(),
+                                paddle::platform::DataLayout::kNCHW,
+                                &i_n,
+                                &i_c,
+                                &i_d,
+                                &i_h,
+                                &i_w);
+    paddle::operators::GetNCDHW(transformed_output_grad_channel.dims(),
+                                paddle::platform::DataLayout::kNCHW,
+                                &o_n,
+                                &o_c,
+                                &o_d,
+                                &o_h,
+                                &o_w);
   }
 
   int group_offset_in = i_c / groups * i_h * i_w * i_d;
@@ -350,6 +357,7 @@ void ConvCudnnGradKernel(const Context& ctx,
     // ------------------- cudnn descriptors ---------------------
     input_grad_data = input_grad->data<T>();
     transformed_input_grad_data = transformed_input_grad.data<T>();
+
     args1.handle = handle;
     args1.idesc.set(transformed_input_grad, layout_tensor);
     args1.wdesc.set(transformed_filter_channel, layout_tensor, iwo_groups);
@@ -527,7 +535,7 @@ void ConvCudnnGradKernel(const Context& ctx,
       }
     }
 
-    if (channel_last && compute_format == DataLayout::kNCHW) {
+    if (channel_last && compute_format == paddle::platform::DataLayout::kNCHW) {
       TransToChannelLast<Context, T>(
           ctx, &transformed_input_grad_channel, input_grad);
     }
@@ -582,7 +590,7 @@ void ConvCudnnGradKernel(const Context& ctx,
     }
 #endif
 
-    if (compute_format == DataLayout::kNHWC) {
+    if (compute_format == paddle::platform::DataLayout::kNHWC) {
       TransToChannelFirst<Context, T>(
           ctx, &transformed_filter_grad_channel, filter_grad);
     }

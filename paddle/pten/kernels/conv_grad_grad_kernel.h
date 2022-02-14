@@ -20,8 +20,8 @@ namespace pten {
 
 template <typename T, typename Context>
 void ConvGradGradKernel(const Context& dev_ctx,
-                        const DenseTensor& input_grad_grad,
-                        const DenseTensor& filter_grad_grad,
+                        paddle::optional<const DenseTensor&> input_grad_grad,
+                        paddle::optional<const DenseTensor&> filter_grad_grad,
                         const DenseTensor& out_grad,
                         const DenseTensor& input,
                         const DenseTensor& filter,
@@ -40,8 +40,8 @@ void ConvGradGradKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void Conv3DGradGradKernel(const Context& dev_ctx,
-                          const DenseTensor& input_grad_grad,
-                          const DenseTensor& filter_grad_grad,
+                          paddle::optional<const DenseTensor&> input_grad_grad,
+                          paddle::optional<const DenseTensor&> filter_grad_grad,
                           const DenseTensor& out_grad,
                           const DenseTensor& input,
                           const DenseTensor& filter,

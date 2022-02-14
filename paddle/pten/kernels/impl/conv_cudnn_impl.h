@@ -15,8 +15,6 @@
 #pragma once
 
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/conv_cudnn_grad_kernel.h"
-#include "paddle/pten/kernels/conv_cudnn_kernel.h"
 
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
@@ -47,23 +45,23 @@ static inline bool IsVoltaOrLater(const pten::GPUContext& dev_ctx) {
   return dev_ctx.GetComputeCapability() >= 70;
 }
 
-inline cudnnTensorFormat_t GetCudnnTensorFormat(
-    const pten::DataLayout& order) {  // Not use
-  switch (order) {
-    case pten::DataLayout::kNHWC:
-      return CUDNN_TENSOR_NHWC;
-    case pten::DataLayout::kNCHW:
-      return CUDNN_TENSOR_NCHW;
-    case pten::DataLayout::NCDHW:
-      return CUDNN_TENSOR_NCHW;  // NOTE: cudnn treat NdTensor as the same
-    case pten::DataLayout::NDHWC:
-      return CUDNN_TENSOR_NHWC;  // add, liyamei
-    default:
-      PADDLE_THROW(pten::errors::Unimplemented(
-          "CUDNN has no equivalent dataLayout for input order."));
-  }
-  return CUDNN_TENSOR_NCHW;
-}
+// inline cudnnTensorFormat_t GetCudnnTensorFormat(
+//     const pten::DataLayout& order) {  // Not use
+//   switch (order) {
+//     case pten::DataLayout::kNHWC:
+//       return CUDNN_TENSOR_NHWC;
+//     case pten::DataLayout::kNCHW:
+//       return CUDNN_TENSOR_NCHW;
+//     case pten::DataLayout::NCDHW:
+//       return CUDNN_TENSOR_NCHW;  // NOTE: cudnn treat NdTensor as the same
+//     case pten::DataLayout::NDHWC:
+//       return CUDNN_TENSOR_NHWC;  // add, liyamei
+//     default:
+//       PADDLE_THROW(pten::errors::Unimplemented(
+//           "CUDNN has no equivalent dataLayout for input order."));
+//   }
+//   return CUDNN_TENSOR_NCHW;
+// }
 
 static inline void GetNCDHW(const paddle::framework::DDim& dims,
                             const pten::DataLayout& layout,

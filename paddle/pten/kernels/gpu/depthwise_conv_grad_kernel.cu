@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/kernels/depthwise_conv_grad_kernel.h"
-
 #include "paddle/fluid/operators/math/depthwise_conv.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/common/layout.h"

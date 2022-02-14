@@ -29,8 +29,8 @@ namespace pten {
 
 template <typename T, typename Context>
 void ConvGradGradKernel(const Context& dev_ctx,
-                        const DenseTensor& input_grad_grad,
-                        const DenseTensor& filter_grad_grad,
+                        paddle::optional<const DenseTensor&> input_grad_grad,
+                        paddle::optional<const DenseTensor&> filter_grad_grad,
                         const DenseTensor& out_grad,
                         const DenseTensor& input,
                         const DenseTensor& filter,
@@ -48,8 +48,8 @@ void ConvGradGradKernel(const Context& dev_ctx,
                         DenseTensor* filter_grad) {
   const DenseTensor* X = &input;
   const DenseTensor* dY = &out_grad;
-  const DenseTensor* ddX = &input_grad_grad;
-  const DenseTensor* ddW_in = &filter_grad_grad;
+  const DenseTensor* ddX = input_grad_grad.get_ptr();
+  const DenseTensor* ddW_in = filter_grad_grad.get_ptr();
 
   DenseTensor* ddY = out_grad_grad;
   DenseTensor* dW = filter_grad;
@@ -135,6 +135,7 @@ void ConvGradGradKernel(const Context& dev_ctx,
   DenseTensor col;
   DenseTensor col_matrix;
   if (is_expand) {
+    col.Resize(col_shape);
     col.mutable_data<T>(dev_ctx.GetPlace());
     col_matrix.ShareDataWith(col);
     col_matrix.Resize(col_matrix_shape);

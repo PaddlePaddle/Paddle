@@ -2014,7 +2014,7 @@ void OperatorWithKernel::BuildPtenKernelContext(
         (i == 0 ? 0 : pt_kernel_context->InputRangeAt(i - 1).second);
 
     // deal with optional here
-    if ((it == ctx.inputs.end()) &&
+    if ((it == ctx.inputs.end() || it->second.empty()) &&
         (input_defs[i].type_index ==
          std::type_index(typeid(paddle::optional<const pten::DenseTensor&>)))) {
       pt_kernel_context->EmplaceBackInputWithoutSetRange(nullptr);

@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/conv_cudnn_grad_grad_kernel.h"
 
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
@@ -40,32 +39,35 @@
 #include "paddle/pten/common/float16.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
 
+#include "paddle/fluid/platform/device/gpu/cuda/cudnn_helper.h"
+
 namespace pten {
 
 template <typename T, typename Context>
-void ConvCudnnGradGradKernel(const Context& ctx,
-                             const DenseTensor& input_grad_grad,
-                             const DenseTensor& filter_grad_grad,
-                             const DenseTensor& out_grad,
-                             const DenseTensor& input,
-                             const DenseTensor& filter,
-                             const std::vector<int>& strides,
-                             const std::vector<int>& paddings_t,
-                             const std::string& padding_algorithm,
-                             int groups,
-                             const std::vector<int>& dilations_t,
-                             const std::string& data_format,
-                             bool use_addto,
-                             int workspace_size_MB,
-                             bool exhaustive_search_t,
-                             DenseTensor* out_grad_grad,
-                             DenseTensor* input_grad,
-                             DenseTensor* filter_grad) {
+void ConvCudnnGradGradKernel(
+    const Context& ctx,
+    paddle::optional<const DenseTensor&> input_grad_grad,
+    paddle::optional<const DenseTensor&> filter_grad_grad,
+    const DenseTensor& out_grad,
+    const DenseTensor& input,
+    const DenseTensor& filter,
+    const std::vector<int>& strides,
+    const std::vector<int>& paddings_t,
+    const std::string& padding_algorithm,
+    int groups,
+    const std::vector<int>& dilations_t,
+    const std::string& data_format,
+    bool use_addto,
+    int workspace_size_MB,
+    bool exhaustive_search_t,
+    DenseTensor* out_grad_grad,
+    DenseTensor* input_grad,
+    DenseTensor* filter_grad) {
   auto X = &input;
   auto W = &filter;
   auto dO = &out_grad;
-  auto ddX = &input_grad_grad;
-  auto ddW = &filter_grad_grad;
+  auto ddX = input_grad_grad.get_ptr();
+  auto ddW = filter_grad_grad.get_ptr();
 
   auto ddO = out_grad_grad;
   auto dW = filter_grad;
@@ -311,7 +313,8 @@ void ConvCudnnGradGradKernel(const Context& ctx,
       static_cast<cudnnConvolutionBwdFilterAlgo_t>(0);
 #endif
 
-  auto layout = GetCudnnTensorFormat(DataLayout::kNCHW);
+  auto layout = paddle::platform::GetCudnnTensorFormat(
+      paddle::platform::DataLayout::kNCHW);
 
   // ddo = conv(ddI, W) + conv(I, ddW)
   size_t workspace_size = 0;
@@ -675,25 +678,26 @@ void ConvCudnnGradGradKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void DepthwiseConvCudnnGradGradKernel(const Context& ctx,
-                                      const DenseTensor& input_grad_grad,
-                                      const DenseTensor& filter_grad_grad,
-                                      const DenseTensor& out_grad,
-                                      const DenseTensor& input,
-                                      const DenseTensor& filter,
-                                      const std::vector<int>& strides,
-                                      const std::vector<int>& paddings_t,
-                                      const std::string& padding_algorithm,
-                                      int groups,
-                                      const std::vector<int>& dilations_t,
-                                      const std::string& data_format,
-                                      bool use_addto,
-                                      int workspace_size_MB,
-                                      bool exhaustive_search_t,
-                                      bool fuse_relu,
-                                      DenseTensor* out_grad_grad,
-                                      DenseTensor* input_grad,
-                                      DenseTensor* filter_grad) {
+void DepthwiseConvCudnnGradGradKernel(
+    const Context& ctx,
+    paddle::optional<const DenseTensor&> input_grad_grad,
+    paddle::optional<const DenseTensor&> filter_grad_grad,
+    const DenseTensor& out_grad,
+    const DenseTensor& input,
+    const DenseTensor& filter,
+    const std::vector<int>& strides,
+    const std::vector<int>& paddings_t,
+    const std::string& padding_algorithm,
+    int groups,
+    const std::vector<int>& dilations_t,
+    const std::string& data_format,
+    bool use_addto,
+    int workspace_size_MB,
+    bool exhaustive_search_t,
+    bool fuse_relu,
+    DenseTensor* out_grad_grad,
+    DenseTensor* input_grad,
+    DenseTensor* filter_grad) {
   ConvCudnnGradGradKernel<T>(ctx,
                              input_grad_grad,
                              filter_grad_grad,
@@ -715,24 +719,25 @@ void DepthwiseConvCudnnGradGradKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void Conv3DCudnnGradGradKernel(const Context& ctx,
-                               const DenseTensor& input_grad_grad,
-                               const DenseTensor& filter_grad_grad,
-                               const DenseTensor& out_grad,
-                               const DenseTensor& input,
-                               const DenseTensor& filter,
-                               const std::vector<int>& strides,
-                               const std::vector<int>& paddings_t,
-                               const std::string& padding_algorithm,
-                               int groups,
-                               const std::vector<int>& dilations_t,
-                               const std::string& data_format,
-                               bool use_addto,
-                               int workspace_size_MB,
-                               bool exhaustive_search_t,
-                               DenseTensor* out_grad_grad,
-                               DenseTensor* input_grad,
-                               DenseTensor* filter_grad) {
+void Conv3DCudnnGradGradKernel(
+    const Context& ctx,
+    paddle::optional<const DenseTensor&> input_grad_grad,
+    paddle::optional<const DenseTensor&> filter_grad_grad,
+    const DenseTensor& out_grad,
+    const DenseTensor& input,
+    const DenseTensor& filter,
+    const std::vector<int>& strides,
+    const std::vector<int>& paddings_t,
+    const std::string& padding_algorithm,
+    int groups,
+    const std::vector<int>& dilations_t,
+    const std::string& data_format,
+    bool use_addto,
+    int workspace_size_MB,
+    bool exhaustive_search_t,
+    DenseTensor* out_grad_grad,
+    DenseTensor* input_grad,
+    DenseTensor* filter_grad) {
   ConvCudnnGradGradKernel<T>(ctx,
                              input_grad_grad,
                              filter_grad_grad,
@@ -771,7 +776,7 @@ PT_REGISTER_KERNEL(conv3d_cudnn_grad_grad,
                    double,
                    paddle::platform::float16) {}
 
-PT_REGISTER_KERNEL(depthwise_conv2d_cudnn_grad_grad,
+PT_REGISTER_KERNEL(depthwise_conv2d_grad_grad,
                    GPU,
                    ALL_LAYOUT,
                    pten::DepthwiseConvCudnnGradGradKernel,
