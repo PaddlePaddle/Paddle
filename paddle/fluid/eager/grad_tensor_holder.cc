@@ -16,7 +16,7 @@
 #include "paddle/fluid/imperative/gradient_accumulator.h"
 
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace egr {
 

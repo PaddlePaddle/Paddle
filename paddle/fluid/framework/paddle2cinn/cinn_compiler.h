@@ -20,9 +20,6 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
-
-#include "cinn/common/target.h"
-#include "cinn/hlir/framework/graph_compiler.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_cache_key.h"
@@ -30,13 +27,22 @@
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/pten/core/utils/rw_lock.h"
 
-namespace paddle {
+namespace cinn {
+namespace common {
+class Target;
+}  // namespace common
 
-namespace operators {
-namespace details {
+namespace hlir::framework {
+class GraphCompiler;
+class Program;
+class Scope;
+}  // namespace hlir::framework
+}  // namespace cinn
+
+namespace paddle {
+namespace operators::details {
 class CinnLaunchContext;
-}  // namespace details
-}  // namespace operators
+}  // namespace operators::details
 
 namespace framework {
 namespace paddle2cinn {

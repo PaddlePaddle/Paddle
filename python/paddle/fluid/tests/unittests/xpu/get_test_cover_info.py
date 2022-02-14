@@ -17,6 +17,7 @@ from __future__ import print_function
 import inspect
 import os
 import fcntl
+import numpy as np
 
 import paddle
 import paddle.fluid.core as core
@@ -29,28 +30,61 @@ type_dict_paddle_to_str = {
     paddle.int32: 'int32',
     paddle.int64: 'int64',
     paddle.float16: 'float16',
+    paddle.bfloat16: 'bfloat16',
     paddle.float32: 'float32',
     paddle.float64: 'float64',
     paddle.complex128: 'complex128',
     paddle.complex64: 'complex64',
 }
 
+type_dict_paddle_to_numpy = {
+    paddle.bool: np.bool_,
+    paddle.uint8: np.uint8,
+    paddle.int8: np.int8,
+    paddle.int16: np.int16,
+    paddle.int32: np.int32,
+    paddle.int64: np.int64,
+    paddle.bfloat16: np.uint16,
+    paddle.float16: np.float16,
+    paddle.float32: np.float32,
+    paddle.float64: np.float64,
+    paddle.complex128: np.complex128,
+    paddle.complex64: np.complex64,
+}
+
 type_dict_str_to_paddle = {
-    'int32': paddle.int32,
-    'int64': paddle.int64,
-    'float32': paddle.float32,
-    'float16': paddle.float16,
-    'bool': paddle.bool,
     'uint8': paddle.uint8,
     'int8': paddle.int8,
-    'complex128': paddle.complex128,
-    'complex64': paddle.complex64,
     'int16': paddle.int16,
+    'int32': paddle.int32,
+    'int64': paddle.int64,
+    'bfloat16': paddle.bfloat16,
+    'float16': paddle.float16,
+    'float32': paddle.float32,
+    'float64': paddle.float64,
+    'bool': paddle.bool,
+    'complex64': paddle.complex64,
+    'complex128': paddle.complex128,
+}
+
+type_dict_str_to_numpy = {
+    'uint8': np.uint8,
+    'int8': np.int8,
+    'int16': np.int16,
+    'int32': np.int32,
+    'int64': np.int64,
+    'bfloat16': np.uint16,
+    'float16': np.float16,
+    'float32': np.float32,
+    'float64': np.float64,
+    'bool': np.bool_,
+    'complex64': np.complex64,
+    'complex128': np.complex128,
 }
 
 xpu_test_op_white_list = []
 xpu_test_type_white_list = []
-xpu_test_op_type_white_list = []
+xpu_test_op_type_white_list = ['float64']
 xpu_test_device_op_white_list = []
 xpu_test_device_op_type_white_list = []
 
@@ -122,6 +156,8 @@ def make_xpu_op_list(xpu_version):
         if op_name in op_white_list or device_op_name in device_op_white_list:
             continue
         for op_type in type_list:
+            if op_type == paddle.bfloat16:
+                op_type = paddle.bfloat16
             if op_type in type_white_list or op_type not in type_dict_paddle_to_str.keys(
             ):
                 continue
@@ -143,10 +179,17 @@ def get_xpu_op_support_types(op_name, dev_id=0):
     xpu_version = core.get_xpu_device_version(dev_id)
     support_type_list = core.get_xpu_device_op_support_types(op_name,
                                                              xpu_version)
-    support_type_str_list = [
-        type_dict_paddle_to_str[x] for x in support_type_list
+    support_type_str_list = []
+    for stype in support_type_list:
+        if stype == paddle.bfloat16:
+            support_type_str_list.append(type_dict_paddle_to_str[
+                paddle.bfloat16])
+        else:
+            support_type_str_list.append(type_dict_paddle_to_str[stype])
+    type_white_list = get_op_type_white_list()
+    return [
+        stype for stype in support_type_str_list if stype not in type_white_list
     ]
-    return support_type_str_list
 
 
 def record_op_test(op_name, test_type):
@@ -196,8 +239,9 @@ def create_test_class(func_globals,
             continue
         class_obj = test_class[1]
         cls_name = "{0}_{1}".format(test_class[0], str(test_type))
-        func_globals[cls_name] = type(cls_name, (class_obj, ),
-                                      {'in_type': test_type})
+        func_globals[cls_name] = type(
+            cls_name, (class_obj, ),
+            {'in_type': type_dict_str_to_numpy[test_type]})
 
     if hasattr(test_class_obj, 'use_dynamic_create_class'
                ) and test_class_obj.use_dynamic_create_class:
@@ -205,7 +249,7 @@ def create_test_class(func_globals,
         for dy_class in dynamic_classes:
             cls_name = "{0}_{1}".format(dy_class[0], str(test_type))
             attr_dict = dy_class[1]
-            attr_dict['in_type'] = test_type
+            attr_dict['in_type'] = type_dict_str_to_numpy[test_type]
             func_globals[cls_name] = type(cls_name, (base_class, ), attr_dict)
 
     record_op_test(op_name, test_type)
