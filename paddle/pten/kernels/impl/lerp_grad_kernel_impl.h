@@ -14,36 +14,10 @@
 
 #pragma once
 
-#include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/pten/kernels/funcs/common_shape.h"
 #include "paddle/pten/kernels/funcs/eigen/common.h"
-#include "paddle/pten/kernels/lerp_grad_kernel.h"
 
 namespace pten {
-
-static framework::DDim ExtendDims2Rank(const framework::DDim& in_dims,
-                                       int rank) {
-  if (in_dims.size() == rank) {
-    return in_dims;
-  }
-  std::vector<int64_t> shapes(rank, 1);
-  for (int i = in_dims.size() - 1, j = rank - 1; i >= 0; --i, --j) {
-    shapes[j] = in_dims[i];
-  }
-  return framework::make_ddim(shapes);
-}
-
-template <size_t D>
-static void GetBroadcastDims(const framework::DDim& in_dims,
-                             const framework::DDim& out_dims,
-                             Eigen::DSizes<int, D>* bcast_dims) {
-  for (size_t i = 0; i < D; ++i) {
-    if (in_dims[i] == out_dims[i]) {
-      (*bcast_dims)[i] = 1;
-    } else {
-      (*bcast_dims)[i] = std::max(in_dims[i], out_dims[i]);
-    }
-  }
-}
 
 template <typename Context, typename T, size_t D>
 static void LerpGradFunction(const Context& ctx,
@@ -54,26 +28,21 @@ static void LerpGradFunction(const Context& ctx,
                              const DenseTensor& out_grad,
                              DenseTensor* x_grad,
                              DenseTensor* y_grad) {
-  // auto w = ctx.Input<framework::Tensor>("Weight");
-  // auto dout = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-  // auto dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-  // auto dy = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
-
   auto& w = weight;
   auto& dout = out_grad;
   auto* dx = x_grad;
   auto* dy = y_grad;
 
   auto dout_dims = dout.dims();
-  auto dx_dims = ExtendDims2Rank(dx->dims(), D);
-  auto dy_dims = ExtendDims2Rank(dy->dims(), D);
-  auto w_dims = ExtendDims2Rank(w.dims(), D);
+  auto dx_dims = pten::funcs::ExtendDims2Rank(dx->dims(), D);
+  auto dy_dims = pten::funcs::ExtendDims2Rank(dy->dims(), D);
+  auto w_dims = pten::funcs::ExtendDims2Rank(w.dims(), D);
   Eigen::DSizes<int, D> dx_bcast_dims;
   Eigen::DSizes<int, D> dy_bcast_dims;
   Eigen::DSizes<int, D> w_bcast_dims;
-  GetBroadcastDims<D>(dx_dims, dout_dims, &dx_bcast_dims);
-  GetBroadcastDims<D>(dy_dims, dout_dims, &dy_bcast_dims);
-  GetBroadcastDims<D>(w_dims, dout_dims, &w_bcast_dims);
+  pten::funcs::GetBroadcastDims<D>(dx_dims, dout_dims, &dx_bcast_dims);
+  pten::funcs::GetBroadcastDims<D>(dy_dims, dout_dims, &dy_bcast_dims);
+  pten::funcs::GetBroadcastDims<D>(w_dims, dout_dims, &w_bcast_dims);
 
   auto eigen_w = pten::EigenTensor<T, D>::From(w, w_dims);
   auto eigen_dout = pten::EigenTensor<T, D>::From(dout);
@@ -89,11 +58,10 @@ static void LerpGradFunction(const Context& ctx,
     reduce_dims[i] = 2 * i;
   }
 
-  // auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
   auto& place = *ctx.eigen_device();
 
   if (dx) {
-    dx->mutable_data<T>(ctx.GetPlace());
+    ctx.template Alloc<T>(dx);
     auto eigen_dx = pten::EigenTensor<T, D>::From(*dx, dx_dims);
     auto eigen_expr = (1 - eigen_w.broadcast(w_bcast_dims)) * eigen_dout;
     eigen_dx.device(place) = eigen_expr.reshape(dx_reshape_dims)
@@ -101,7 +69,7 @@ static void LerpGradFunction(const Context& ctx,
                                  .reshape(eigen_dx.dimensions());
   }
   if (dy) {
-    dy->mutable_data<T>(ctx.GetPlace());
+    ctx.template Alloc<T>(dy);
     auto eigen_dy = pten::EigenTensor<T, D>::From(*dy, dy_dims);
     auto eigen_expr = eigen_w.broadcast(w_bcast_dims) * eigen_dout;
     eigen_dy.device(place) = eigen_expr.reshape(dy_reshape_dims)

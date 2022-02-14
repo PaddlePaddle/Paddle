@@ -102,5 +102,30 @@ inline void GetPrePostNumel(
   }
 }
 
+static framework::DDim ExtendDims2Rank(const framework::DDim &in_dims,
+                                       int rank) {
+  if (in_dims.size() == rank) {
+    return in_dims;
+  }
+  std::vector<int64_t> shapes(rank, 1);
+  for (int i = in_dims.size() - 1, j = rank - 1; i >= 0; --i, --j) {
+    shapes[j] = in_dims[i];
+  }
+  return framework::make_ddim(shapes);
+}
+
+template <size_t D>
+static void GetBroadcastDims(const framework::DDim &in_dims,
+                             const framework::DDim &out_dims,
+                             Eigen::DSizes<int, D> *bcast_dims) {
+  for (size_t i = 0; i < D; ++i) {
+    if (in_dims[i] == out_dims[i]) {
+      (*bcast_dims)[i] = 1;
+    } else {
+      (*bcast_dims)[i] = std::max(in_dims[i], out_dims[i]);
+    }
+  }
+}
+
 }  // namespace funcs
 }  // namespace pten
