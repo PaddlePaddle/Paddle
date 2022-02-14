@@ -45,7 +45,7 @@ void PTENDialect::printType(::mlir::Type type,
     os << "gpu_context";
     return;
   }
-  llvm_unreachable("unexpected 'shape' type kind");
+  llvm_unreachable("unexpected 'allocator/context' type kind");
 }
 
 void PTENDialect::initialize() {
