@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/pten/kernels/copy_kernel.h"
 #include "paddle/pten/kernels/funcs/eigen/common.h"
 #include "paddle/pten/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/pten/kernels/impl/expand_kernel_impl.h"
