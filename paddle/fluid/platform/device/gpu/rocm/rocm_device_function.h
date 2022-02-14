@@ -60,6 +60,14 @@ __forceinline__ __device__ float16 CudaShuffleDownSync(unsigned mask,
 }
 
 template <>
+__forceinline__ __device__ bfloat16 CudaShuffleDownSync(unsigned mask,
+                                                        bfloat16 val, int delta,
+                                                        int width) {
+  return bfloat16(__shfl_down(static_cast<float>(val),
+                              static_cast<unsigned>(delta), width));
+}
+
+template <>
 __forceinline__ __device__ paddle::platform::complex<float> CudaShuffleDownSync(
     unsigned mask, paddle::platform::complex<float> val, int delta, int width) {
   float real = __shfl_down(val.real, delta, width);

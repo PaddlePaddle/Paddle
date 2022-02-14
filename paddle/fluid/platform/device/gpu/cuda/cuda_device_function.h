@@ -62,15 +62,18 @@ __forceinline__ __device__ float16 CudaShuffleDownSync(unsigned mask,
                                   static_cast<unsigned>(delta), width));
 }
 
-#if defined(PADDLE_CUDA_BF16)
 template <>
 __forceinline__ __device__ bfloat16 CudaShuffleDownSync(unsigned mask,
                                                         bfloat16 val, int delta,
                                                         int width) {
+#if defined(PADDLE_CUDA_BF16)
   return bfloat16(__shfl_down_sync(mask, static_cast<nv_bfloat16>(val),
                                    static_cast<unsigned>(delta), width));
-}
+#else
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "__shfl_down_sync with bfloat16 is not supported on cuda <= 11"));
 #endif
+}
 
 template <>
 __forceinline__ __device__ paddle::platform::complex<float> CudaShuffleDownSync(
