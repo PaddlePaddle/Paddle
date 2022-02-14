@@ -54,11 +54,6 @@ DenseTensor(intrusive_ptr<Storage> storage, DenseTensorMeta&& meta);
 inline bool IsInitialized() const { return holder_ != nullptr; }
 
 template <typename T>
-T* data();
-
-void* data();
-
-template <typename T>
 T* mutable_data(const paddle::platform::Place& place,
                 size_t requested_size = 0);
 
