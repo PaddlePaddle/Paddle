@@ -364,7 +364,7 @@ int PrelnEmbeddingEltwiseLayerNormFusePass::BuildFusion(
     IR_NODE_LINK_TO(end_pattern_biases[k], preln_embedding_eltwise_layernorm);
     IR_NODE_LINK_TO(end_pattern_scales[k], preln_embedding_eltwise_layernorm);
     IR_NODE_LINK_TO(preln_embedding_eltwise_layernorm, end_pattern_out[k]);
-    IR_NODE_LINK_TO(embedding_eltwise_layernorm, inner_pattern_out[k]);
+    IR_NODE_LINK_TO(preln_embedding_eltwise_layernorm, inner_pattern_out[k]);
 
     // Remove unneeded nodes.
     std::unordered_set<const Node*> marked_nodes;
