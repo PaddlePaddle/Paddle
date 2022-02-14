@@ -15,20 +15,15 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/pten/api/include/tensor.h"
-#include "paddle/pten/common/backend.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
-
-/**
- * This file stores some special APIs that are implemented manually
- * or difficult to automatically generated.
- */
 
 namespace paddle {
 namespace experimental {
 
-// TODO(chenweihang): Replace backend by place when place is ready
-PADDLE_API Tensor copy_to(const Tensor& x, Backend backend, bool blocking);
+PADDLE_API std::vector<Tensor> split_impl(const Tensor& x,
+                                          const ScalarArray& num_or_sections,
+                                          const Scalar& axis);
 
 }  // namespace experimental
 }  // namespace paddle
