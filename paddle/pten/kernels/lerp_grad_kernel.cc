@@ -15,6 +15,7 @@
 #include "paddle/pten/kernels/lerp_grad_kernel.h"
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
+#include "paddle/pten/kernels/funcs/eigen/common.h"
 
 namespace pten {
 
