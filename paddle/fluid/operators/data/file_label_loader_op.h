@@ -157,8 +157,8 @@ static std::vector<std::pair<std::string, int>>* GetFilesAndLabelsFromCache(cons
   if (iter == root_to_samples_.end()) {
     std::vector<std::pair<std::string, int>> samples;
     ParseFilesAndLabels(data_root, &samples);
-    std::cout << "files 0: " << samples[0].first << std::endl;
-    std::cout << "files 1: " << samples[1].first << std::endl;
+    // std::cout << "files 0: " << samples[0].first << std::endl;
+    // std::cout << "files 1: " << samples[1].first << std::endl;
     LOG(ERROR) << "Init samples: " << samples.size();
     root_to_samples_[data_root] = samples;
   }
