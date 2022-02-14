@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-#include "paddle/fluid/operators/math/compound_functors.h"
+#include "paddle/pten/kernels/funcs/compound_functors.h"
 #include "paddle/pten/kernels/funcs/elementwise_functor.h"
 #include "paddle/pten/kernels/funcs/functors.h"
 
@@ -54,22 +54,22 @@ static void RunBinaryCompoundFunctor(
   // intermediate_out = Unary(Y)
   // out = Binary(X, Unary(Y))
   // In this case, the shape of intermediate_out and out are different.
-  paddle::operators::math::BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor>
+  pten::funcs::BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor>
       compound_func(binary_functor, unary_functor);
   int axis = ctx.Attr<int>("axis");
   if (ctx.Attr<bool>("save_intermediate_out")) {
-    FusedElemwiseAndActComputeEx<DeviceContext, T,
-                                 paddle::operators::math::BinaryCompoundFunctor<
-                                     T, BinaryFunctor, UnaryFunctor>,
-                                 true /*KeepIntermediateValue*/,
-                                 false /*SameShapeOfIntermediateOutAndOut*/>(
+    FusedElemwiseAndActComputeEx<
+        DeviceContext, T,
+        pten::funcs::BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor>,
+        true /*KeepIntermediateValue*/,
+        false /*SameShapeOfIntermediateOutAndOut*/>(
         ctx, in_x, in_y, axis, compound_func, (*outputs)[0], (*outputs)[1]);
   } else {
-    FusedElemwiseAndActComputeEx<DeviceContext, T,
-                                 paddle::operators::math::BinaryCompoundFunctor<
-                                     T, BinaryFunctor, UnaryFunctor>,
-                                 false /*KeepIntermediateValue*/,
-                                 false /*SameShapeOfIntermediateOutAndOut*/>(
+    FusedElemwiseAndActComputeEx<
+        DeviceContext, T,
+        pten::funcs::BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor>,
+        false /*KeepIntermediateValue*/,
+        false /*SameShapeOfIntermediateOutAndOut*/>(
         ctx, in_x, in_y, axis, compound_func, (*outputs)[0], (*outputs)[1]);
   }
 }
@@ -86,22 +86,22 @@ static void RunUnaryCompoundFunctors(
   // In this case, the shape of intermediate_out and out are the same.
   int axis = ctx.Attr<int>("axis");
 
-  paddle::operators::math::UnaryCompoundFunctor<T, UnaryFunctor, BinaryFunctor>
+  pten::funcs::UnaryCompoundFunctor<T, UnaryFunctor, BinaryFunctor>
       compound_func(unary_functor, binary_functor);
 
   if (ctx.Attr<bool>("save_intermediate_out")) {
-    FusedElemwiseAndActComputeEx<DeviceContext, T,
-                                 paddle::operators::math::UnaryCompoundFunctor<
-                                     T, UnaryFunctor, BinaryFunctor>,
-                                 true /*KeepIntermediateValue*/,
-                                 true /*SameShapeOfIntermediateOutAndOut*/>(
+    FusedElemwiseAndActComputeEx<
+        DeviceContext, T,
+        pten::funcs::UnaryCompoundFunctor<T, UnaryFunctor, BinaryFunctor>,
+        true /*KeepIntermediateValue*/,
+        true /*SameShapeOfIntermediateOutAndOut*/>(
         ctx, in_x, in_y, axis, compound_func, (*outputs)[0], (*outputs)[1]);
   } else {
-    FusedElemwiseAndActComputeEx<DeviceContext, T,
-                                 paddle::operators::math::UnaryCompoundFunctor<
-                                     T, UnaryFunctor, BinaryFunctor>,
-                                 false /*KeepIntermediateValue*/,
-                                 true /*SameShapeOfIntermediateOutAndOut*/>(
+    FusedElemwiseAndActComputeEx<
+        DeviceContext, T,
+        pten::funcs::UnaryCompoundFunctor<T, UnaryFunctor, BinaryFunctor>,
+        false /*KeepIntermediateValue*/,
+        true /*SameShapeOfIntermediateOutAndOut*/>(
         ctx, in_x, in_y, axis, compound_func, (*outputs)[0], (*outputs)[1]);
   }
 }
@@ -121,13 +121,12 @@ static void RunBinaryCompoundGradFunctors(
   int axis = ctx.Attr<int>("axis");
 
   using BinaryCompoundDxFunctor =
-      paddle::operators::math::BinaryCompoundGradDxFunctor<T, BinaryGradFunctor,
-                                                           UnaryFunctor>;
-  using BinaryCompoundDyFunctor =
-      paddle::operators::math::BinaryCompoundGradDyFunctor<
-          T, BinaryGradFunctor, UnaryFunctor, UnaryGradFunctor, InPlace>;
+      pten::funcs::BinaryCompoundGradDxFunctor<T, BinaryGradFunctor,
+                                               UnaryFunctor>;
+  using BinaryCompoundDyFunctor = pten::funcs::BinaryCompoundGradDyFunctor<
+      T, BinaryGradFunctor, UnaryFunctor, UnaryGradFunctor, InPlace>;
   using BinaryCompoundDIntermedaiteOutFunctor =
-      paddle::operators::math::BinaryCompoundGradDIntermedaiteOutFunctor<
+      pten::funcs::BinaryCompoundGradDIntermedaiteOutFunctor<
           T, BinaryGradFunctor, UnaryFunctor>;
 
   if (in_intermediate_out) {
@@ -171,14 +170,12 @@ static void RunUnaryCompoundGradFunctors(
   // Z = Unary(Binary(X, Y))
   int axis = ctx.Attr<int>("axis");
 
-  using UnaryCompoundDxFunctor =
-      paddle::operators::math::UnaryCompoundGradDxFunctor<
-          T, UnaryGradFunctor, BinaryFunctor, BinaryGradFunctor, InPlace>;
-  using UnaryCompoundDyFunctor =
-      paddle::operators::math::UnaryCompoundGradDyFunctor<
-          T, UnaryGradFunctor, BinaryFunctor, BinaryGradFunctor, InPlace>;
+  using UnaryCompoundDxFunctor = pten::funcs::UnaryCompoundGradDxFunctor<
+      T, UnaryGradFunctor, BinaryFunctor, BinaryGradFunctor, InPlace>;
+  using UnaryCompoundDyFunctor = pten::funcs::UnaryCompoundGradDyFunctor<
+      T, UnaryGradFunctor, BinaryFunctor, BinaryGradFunctor, InPlace>;
   using UnaryCompoundDIntermediateFunctor =
-      paddle::operators::math::UnaryCompoundGradDIntermediateFunctor<
+      pten::funcs::UnaryCompoundGradDIntermediateFunctor<
           T, UnaryGradFunctor, BinaryFunctor, InPlace>;
 
   if (in_intermediate_out) {
