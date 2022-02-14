@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 
 namespace egr {
@@ -21,7 +22,10 @@ namespace egr {
 class GradNodeAccumulation : public GradNodeBase {
  public:
   // Constructor: configure fwd input tensors to grad node
-  GradNodeAccumulation() : GradNodeBase(1, 1) { SetDefaultGradInOutMeta(); }
+  explicit GradNodeAccumulation(const AutogradMeta* meta = nullptr)
+      : GradNodeBase(1, 1), meta_(meta) {
+    SetDefaultGradInOutMeta();
+  }
 
   ~GradNodeAccumulation() override = default;
 
@@ -33,10 +37,8 @@ class GradNodeAccumulation : public GradNodeBase {
   void RetainGrad(const std::function<paddle::experimental::Tensor(
                       const paddle::experimental::Tensor&)>& hook);
 
-  paddle::experimental::Tensor* Grad() { return &accumulated_grad; }
-
  private:
-  paddle::experimental::Tensor accumulated_grad;
+  const AutogradMeta* meta_;
 
   std::function<paddle::experimental::Tensor(
       const paddle::experimental::Tensor&)>

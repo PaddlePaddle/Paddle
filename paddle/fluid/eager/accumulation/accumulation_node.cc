@@ -25,17 +25,6 @@
 
 #include "glog/logging.h"
 
-static void CopyOrAddTensor(paddle::experimental::Tensor* tensor,
-                            const paddle::experimental::Tensor& t) {
-  if (!tensor->defined() || !tensor->initialized()) {
-    // Simply copy tensor->impl
-    *tensor = t;
-  } else {
-    // Accumulation
-    paddle::imperative::TensorAdd<paddle::experimental::Tensor>(t, tensor);
-  }
-}
-
 namespace egr {
 
 void GradNodeAccumulation::RetainGrad(
@@ -58,17 +47,17 @@ operator()(
                      "However received: %d in slot %d .",
                      grads[0].size(), 0));
   // Apply Gradient Hooks
+  paddle::experimental::Tensor grad_out;
   if (GradientHooksRegistered()) {
     std::vector<std::vector<paddle::experimental::Tensor>> hooked_grads =
         ApplyGradientHooks(grads);
-    // TODO(jiabin): It's little weird
-    CopyOrAddTensor(&accumulated_grad, hooked_grads[0][0]);
+    grad_out = hooked_grads[0][0];
   } else {
-    CopyOrAddTensor(&accumulated_grad, grads[0][0]);
+    grad_out = grads[0][0];
   }
 
   if (retain_grad_hook_ != nullptr) {
-    retain_grad_hook_(accumulated_grad);
+    retain_grad_hook_(grad_out);
   }
 
   // Apply Reduce Hooks
@@ -76,7 +65,7 @@ operator()(
     ApplyReduceHooks();
   }
 
-  return {{accumulated_grad}};
+  return {{grad_out}};
 }
 
 }  // namespace egr

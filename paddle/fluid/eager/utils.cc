@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/utils.h"
+#include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
 #include "paddle/fluid/eager/tensor_wrapper.h"
@@ -108,15 +109,39 @@ std::shared_ptr<GradNodeBase> EagerUtils::grad_node(
   }
 }
 
+paddle::experimental::Tensor* EagerUtils::mutable_grad(
+    const paddle::experimental::Tensor& target) {
+  auto* meta = nullable_autograd_meta(target);
+  if (meta) {
+    return meta->MutableGrad();
+  } else {
+    return nullptr;
+  }
+}
+
 void EagerUtils::SetHistory(std::vector<AutogradMeta*>* autograd_metas,
                             const std::shared_ptr<GradNodeBase>& grad_node) {
   for (const auto& autograd_meta : *autograd_metas) {
+    if (dynamic_cast<GradNodeAccumulation*>(autograd_meta->GradNode())) {
+      PADDLE_THROW(paddle::platform::errors::Fatal(
+          "Error: Reseting GradNodeAccumulation for leaf tensor is not allowed."
+          "You're not expected to hit this error, likely an internal issue "
+          "with Paddle."
+          "Please contact Paddle developers for more details."));
+    }
     autograd_meta->SetGradNode(grad_node);
   }
 }
 
 void EagerUtils::SetHistory(AutogradMeta* autograd_meta,
                             const std::shared_ptr<GradNodeBase>& grad_node) {
+  if (dynamic_cast<GradNodeAccumulation*>(autograd_meta->GradNode())) {
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "Error: Reseting GradNodeAccumulation for leaf tensor is not allowed."
+        "You're not expected to hit this error, likely an internal issue with "
+        "Paddle."
+        "Please contact Paddle developers for more details."));
+  }
   autograd_meta->SetGradNode(grad_node);
 }
 
