@@ -76,7 +76,8 @@ def map(map_func, inputs):
         program_inputs = [
             map_block.create_var(
                 name=unique_name.generate("map_sub"),
-                type=inputs[0].desc.type(),
+                type=inp.desc.type(),
+                dtype=inp.desc.dtype(),
                 persistable=False) for inp in inputs]
         program_outputs = map_func(*program_inputs)
         program_outputs = _to_list(program_outputs)
@@ -88,6 +89,7 @@ def map(map_func, inputs):
         [helper.create_variable(
             name=unique_name.generate("map"),
             type=outp.desc.type(),
+            dtype=outp.desc.dtype(),
             persistable=True) for outp in program_outputs]
     attrs = {
         "map_block": map_block,
@@ -138,6 +140,7 @@ def data_reader(reader_func,
         [helper.create_variable(
             name=unique_name.generate("data_reader"),
             type=outp.desc.type(),
+            dtype=outp.desc.dtype(),
             persistable=True) for outp in program_outputs]
 
     attrs = {

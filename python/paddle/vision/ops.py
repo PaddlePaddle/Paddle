@@ -1045,14 +1045,13 @@ def mirror_normalize(x, mirror,
         else:
             return [l] * 3
 
+    x = paddle.cast(x, dtype='float32')
     mean = _to_list_3(mean)
     std = _to_list_3(std)
 
     helper = LayerHelper("mirror_normalize", **locals())
-    out = helper.create_variable(
-        name=unique_name.generate("mirror_normalize"),
-        type=core.VarDesc.VarType.LOD_TENSOR,
-        dtype=core.VarDesc.VarType.BOOL)
+    dtype = helper.input_dtype()
+    out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="mirror_normalize",
         inputs={"X": x, "Mirror": mirror},

@@ -32,7 +32,8 @@ __global__ void KeMirrorNormalize(
     int ci = (idx % chw) / hw;
     int wi = idx % w;
     
-    int out_idx = idx - 2 * wi + w - 1;
+    int out_idx = idx;
+    if (mirrors[ni]) out_idx = idx - 2 * wi + w - 1;
     out_data[out_idx] = (in_data[idx] - mean[ci]) / std[ci];
   }
 }
@@ -90,6 +91,5 @@ class MirrorNormalizeCUDAKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(mirror_normalize,
-                        ops::data::MirrorNormalizeCUDAKernel<uint8_t>,
                         ops::data::MirrorNormalizeCUDAKernel<float>,
                         ops::data::MirrorNormalizeCUDAKernel<double>);

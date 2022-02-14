@@ -100,5 +100,4 @@ REGISTER_OPERATOR(mirror_normalize, ops::MirrorNormalizeOp, ops::MirrorNormalize
 
 REGISTER_OP_CPU_KERNEL(
     mirror_normalize, ops::MirrorNormalizeCPUKernel<float>,
-    ops::MirrorNormalizeCPUKernel<double>,
-    ops::MirrorNormalizeCPUKernel<uint8_t>);
+    ops::MirrorNormalizeCPUKernel<double>);
