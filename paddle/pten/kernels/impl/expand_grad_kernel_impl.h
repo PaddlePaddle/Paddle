@@ -27,9 +27,6 @@ void ExpandBackward(const Context& ctx,
                     DenseTensor* in_grad) {
   size_t reshape_size = reshape_dims_vec.size();
   size_t reduce_size = reduce_dims_vec.size();
-  // auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
-  // auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
-  // out0->mutable_data<T>(context.GetPlace());
   ctx.template Alloc<T>(in_grad);
   in_grad->data<T>();
 
@@ -90,12 +87,7 @@ void ExpandGradKernel(const Context& ctx,
   }
   // no need reduce, just copy
   if (just_copy) {
-    // in_grad->mutable_data<T>(ctx.GetPlace());
-    ctx.template Alloc<T>(in_grad);
-    in_grad->data<T>();
-
-    // framework::TensorCopy(*out_grad, ctx.GetPlace(), ctx.device_context(),
-    //                      in_grad);
+    pten::Copy(ctx, x, false, in_grad);
   } else {
     PADDLE_ENFORCE_GE(dims,
                       1,

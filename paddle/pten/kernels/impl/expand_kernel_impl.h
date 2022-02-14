@@ -23,13 +23,6 @@
 
 namespace pten {
 using Tensor = DenseTensor;
-// template <typename T, int MajorType = Eigen::RowMajor,
-//          typename IndexType = Eigen::DenseIndex>
-// using EigenVector = pten::EigenVector<T, MajorType, IndexType>;
-// template <typename T, size_t D, int MajorType = Eigen::RowMajor,
-//          typename IndexType = Eigen::DenseIndex>
-// using EigenTensor = pten::EigenTensor<T, D, MajorType, IndexType>;
-// using framework::To32BitIndex;
 
 template <typename Context, typename T, int Rank>
 void Expand(const Context& ctx,
