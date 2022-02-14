@@ -104,6 +104,34 @@ void CPUQuantizeSquashPass::FindNodesToKeep(
   AddStatis(found_count);
 }
 
+bool CPUQuantizeSquashPass::IsDequantizeInputUint8(
+    const Node* dequant_in) const {
+  PADDLE_ENFORCE_EQ(
+      dequant_in->inputs.size(), 1,
+      platform::errors::InvalidArgument(
+          "Dequantize (id: %f) should have only one input.", dequant_in->id()));
+  if (dequant_in->inputs[0]->IsOp()) {
+    auto prev_op = dequant_in->inputs[0]->Op();
+    std::string act_name;
+    if (prev_op->Type() == "relu") {
+      return true;
+    } else {
+      if (prev_op->Type() == "conv2d") {
+        act_name = "fuse_activation";
+      } else if (prev_op->Type() == "fc") {
+        act_name = "activation_type";
+      }
+      if (!act_name.empty()) {
+        auto act = prev_op->GetAttrIfExists<std::string>(act_name);
+        if (act == "relu" || act == "relu6") {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
 void CPUQuantizeSquashPass::DequantQuantSquash(
     Graph* graph,
     std::unordered_map<const Node*, int>* nodes_keep_counter) const {
@@ -122,6 +150,12 @@ void CPUQuantizeSquashPass::DequantQuantSquash(
     GET_IR_NODE_FROM_SUBGRAPH(quant_op, quant_op, squash_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(quant_out, quant_out, squash_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(next_op, next_op, squash_pattern);
+
+    // Don't squash if e.g. just one concat input is unsigned
+    if (IsDequantizeInputUint8(dequant_in) &&
+        !quant_op->Op()->GetAttrIfExists<bool>("is_negative_input")) {
+      return;
+    }
 
     auto* next_op_desc = next_op->Op();
     float dequant_scale =

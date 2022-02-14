@@ -33,7 +33,7 @@ namespace egr {
  * Implementation of Eager Utils.
 **/
 
-AutogradMeta* EagerUtils::autograd_meta(egr::EagerTensor* target) {
+AutogradMeta* EagerUtils::autograd_meta(paddle::experimental::Tensor* target) {
   auto* p_autograd_meta = target->get_autograd_meta();
   if (!p_autograd_meta) {
     auto p_autograd_meta_ptr = std::make_shared<AutogradMeta>();
@@ -43,7 +43,8 @@ AutogradMeta* EagerUtils::autograd_meta(egr::EagerTensor* target) {
   return static_cast<AutogradMeta*>(p_autograd_meta);
 }
 
-AutogradMeta* EagerUtils::unsafe_autograd_meta(const egr::EagerTensor& target) {
+AutogradMeta* EagerUtils::unsafe_autograd_meta(
+    const paddle::experimental::Tensor& target) {
   auto* p_autograd_meta = target.get_autograd_meta();
   PADDLE_ENFORCE(p_autograd_meta,
                  paddle::platform::errors::Fatal(
@@ -52,17 +53,17 @@ AutogradMeta* EagerUtils::unsafe_autograd_meta(const egr::EagerTensor& target) {
 }
 
 std::vector<AutogradMeta*> EagerUtils::unsafe_autograd_meta(
-    const std::vector<egr::EagerTensor>& targets) {
+    const std::vector<paddle::experimental::Tensor>& targets) {
   std::vector<AutogradMeta*> metas;
   metas.reserve(targets.size());
-  for (const egr::EagerTensor& t : targets) {
+  for (const paddle::experimental::Tensor& t : targets) {
     metas.emplace_back(unsafe_autograd_meta(t));
   }
   return metas;
 }
 
 AutogradMeta* EagerUtils::nullable_autograd_meta(
-    const egr::EagerTensor& target) {
+    const paddle::experimental::Tensor& target) {
   auto* p_autograd_meta = target.get_autograd_meta();
   if (!p_autograd_meta) return nullptr;
 
@@ -70,35 +71,35 @@ AutogradMeta* EagerUtils::nullable_autograd_meta(
 }
 
 std::vector<AutogradMeta*> EagerUtils::nullable_autograd_meta(
-    const std::vector<egr::EagerTensor>& targets) {
+    const std::vector<paddle::experimental::Tensor>& targets) {
   std::vector<AutogradMeta*> metas;
   metas.reserve(targets.size());
-  for (const egr::EagerTensor& t : targets) {
+  for (const paddle::experimental::Tensor& t : targets) {
     metas.emplace_back(nullable_autograd_meta(t));
   }
   return metas;
 }
 
 std::vector<AutogradMeta*> EagerUtils::autograd_meta(
-    std::vector<egr::EagerTensor>* targets) {
+    std::vector<paddle::experimental::Tensor>* targets) {
   std::vector<AutogradMeta*> ret;
   ret.reserve(targets->size());
 
   // for autograd_meta we can tolerent it has nullptr.
-  for (auto& t : (*targets)) {
-    auto* p_autograd_meta = autograd_meta(&t);
-    ret.push_back(static_cast<AutogradMeta*>(p_autograd_meta));
+  for (size_t i = 0; i < targets->size(); i++) {
+    auto* p_autograd_meta = autograd_meta(&((*targets)[i]));
+    ret.emplace_back(p_autograd_meta);
   }
   return ret;
 }
 
 std::pair<size_t, size_t> EagerUtils::OutRankInfo(
-    const egr::EagerTensor& target) {
+    const paddle::experimental::Tensor& target) {
   return unsafe_autograd_meta(target)->OutRankInfo();
 }
 
 std::shared_ptr<GradNodeBase> EagerUtils::grad_node(
-    const egr::EagerTensor& target) {
+    const paddle::experimental::Tensor& target) {
   auto* meta = nullable_autograd_meta(target);
   if (meta) {
     return meta->GetMutableGradNode();
@@ -130,58 +131,46 @@ void EagerUtils::SetOutRankWithSlot(AutogradMeta* target, size_t slot_id) {
   target->SetSingleOutRankWithSlot(slot_id, 0);
 }
 
-/* ---- Tensor -> Var ---- */
-std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::SyncToVars(
-    const egr::EagerTensor& tensor) {
-  // TODO(jiabin): No const cast here. We should call SyncToVar in Python_C
-  // wrapper
-  const_cast<EagerTensor*>(&tensor)->SyncToVar(
-      paddle::framework::proto::VarType_Type_LOD_TENSOR);
-  return {std::make_shared<EagerTensor>(tensor)};
-}
-
-std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::SyncToVars(
-    const std::vector<egr::EagerTensor>& tensors) {
-  // TODO(jiabin): No const cast here. We should call SyncToVar in Python_C
-  // wrapper
-  std::vector<std::shared_ptr<EagerTensor>> res;
-  size_t num = tensors.size();
-  res.reserve(num);
-  for (size_t i = 0; i < num; i++) {
-    const_cast<EagerTensor*>(&(tensors[i]))
-        ->SyncToVar(paddle::framework::proto::VarType_Type_LOD_TENSOR);
-    res.emplace_back(new EagerTensor(tensors[i]));
-  }
-  return res;
-}
-
-static std::shared_ptr<egr::EagerTensor> TrySyncToVar(
-    egr::EagerTensor* tensor) {
-  if (tensor->initialized() || tensor->Var().IsInitialized()) {
-    tensor->SyncToVar(paddle::framework::proto::VarType_Type_LOD_TENSOR);
-  }
-  return std::shared_ptr<egr::EagerTensor>(tensor,
-                                           [&](egr::EagerTensor* ptr) {});
+std::shared_ptr<egr::EagerTensor> EagerUtils::TrySyncToVar(
+    const paddle::experimental::Tensor& tensor) {
+  return std::make_shared<egr::EagerTensor>(tensor);
 }
 
 std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::TrySyncToVars(
-    egr::EagerTensor* tensor) {
+    const paddle::experimental::Tensor& tensor) {
   return {TrySyncToVar(tensor)};
 }
 
 std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::TrySyncToVars(
-    std::vector<egr::EagerTensor>* tensors) {
+    paddle::experimental::Tensor* tensor) {
+  PADDLE_ENFORCE_NOT_NULL(
+      tensor,
+      paddle::platform::errors::Fatal(
+          "Should Not Pass Empty tensor pointer in, since only output can "
+          "reach this, please check output value and make sure it's not null"));
+  return {TrySyncToVar(*tensor)};
+}
+
+std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::TrySyncToVars(
+    const std::vector<paddle::experimental::Tensor*>& tensors) {
   std::vector<std::shared_ptr<EagerTensor>> res;
-  size_t num = tensors->size();
+  size_t num = tensors.size();
   res.reserve(num);
   for (size_t i = 0; i < num; i++) {
-    res.emplace_back(TrySyncToVar(&(*tensors)[i]));
+    auto* tensor = tensors[i];
+    PADDLE_ENFORCE_NOT_NULL(
+        tensor, paddle::platform::errors::Fatal(
+                    "Tensor is null and cannot be copied. "
+                    "We are tring to TrySyncToVars tensor from its "
+                    "shared_ptr, this error may indicate some outputs "
+                    "are nullptr"));
+    res.emplace_back(TrySyncToVar(*tensor));
   }
   return res;
 }
 
 std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::TrySyncToVars(
-    const std::vector<egr::EagerTensor*>& tensors) {
+    const std::vector<paddle::experimental::Tensor>& tensors) {
   std::vector<std::shared_ptr<EagerTensor>> res;
   size_t num = tensors.size();
   res.reserve(num);
@@ -191,30 +180,7 @@ std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::TrySyncToVars(
   return res;
 }
 
-/* ---- VarBase -> Tensor ---- */
-std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::SyncToTensors(
-    const egr::EagerTensor& tensor) {
-  // TODO(jiabin): No const cast here. We should call SyncToTensor in Python_C
-  // wrapper
-  const_cast<EagerTensor*>(&tensor)->SyncToTensor();
-  return {std::make_shared<EagerTensor>(tensor)};
-}
-
-std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::SyncToTensors(
-    const std::vector<egr::EagerTensor>& tensors) {
-  // TODO(jiabin): No const cast here. We should call SyncToTensor in Python_C
-  // wrapper
-  std::vector<std::shared_ptr<EagerTensor>> res;
-  size_t num = tensors.size();
-  res.reserve(num);
-  for (size_t i = 0; i < num; i++) {
-    const_cast<EagerTensor*>(&(tensors[i]))->SyncToTensor();
-    res.emplace_back(new EagerTensor(tensors[i]));
-  }
-  return res;
-}
-
-std::vector<std::shared_ptr<EagerTensor>> EagerUtils::ConstructDuplicableOutput(
+std::vector<std::shared_ptr<EagerTensor>> EagerUtils::CreateVars(
     const size_t num) {
   std::vector<std::shared_ptr<EagerTensor>> res;
   res.reserve(num);
@@ -225,9 +191,9 @@ std::vector<std::shared_ptr<EagerTensor>> EagerUtils::ConstructDuplicableOutput(
   return res;
 }
 
-std::vector<egr::EagerTensor> EagerUtils::GetOutputs(
+std::vector<paddle::experimental::Tensor> EagerUtils::GetOutputs(
     const std::vector<std::shared_ptr<EagerTensor>>& outs) {
-  std::vector<egr::EagerTensor> res;
+  std::vector<paddle::experimental::Tensor> res;
   res.reserve(outs.size());
   for (const auto& out : outs) {
     PADDLE_ENFORCE_NOT_NULL(
@@ -237,12 +203,12 @@ std::vector<egr::EagerTensor> EagerUtils::GetOutputs(
                        "shared_ptr, this error may indicate some outputs "
                        "are nullptr",
                        out->name()));
-    res.emplace_back((*(out.get())));
+    res.emplace_back(out->GetTensorBase(), out->name());
   }
   return res;
 }
 
-egr::EagerTensor EagerUtils::GetOutput(
+paddle::experimental::Tensor EagerUtils::GetOutput(
     const std::shared_ptr<EagerTensor>& out) {
   PADDLE_ENFORCE_NOT_NULL(
       out.get(), paddle::platform::errors::Fatal(
@@ -250,25 +216,76 @@ egr::EagerTensor EagerUtils::GetOutput(
                      "are tring to Get Output tensor from its shared_ptr, "
                      "this error may indicate output is nullptr",
                      out->name()));
-  return EagerTensor((*(out.get())));
+  return paddle::experimental::Tensor(out->GetTensorBase(), out->name());
 }
 
-EagerTensor EagerUtils::RecoverTensorWrapper(
+void EagerUtils::OverwriteOutputs(const std::shared_ptr<EagerTensor>& out,
+                                  paddle::experimental::Tensor* tensor) {
+  PADDLE_ENFORCE_NOT_NULL(
+      tensor, paddle::platform::errors::Fatal(
+                  "Tensor is null and cannot be copied. "
+                  "We are tring to OverwriteOutput from its "
+                  "shared_ptr, this error may indicate some outputs "
+                  "are nullptr"));
+  tensor->set_impl(out->GetTensorBase());
+}
+
+void EagerUtils::OverwriteOutputs(
+    const std::vector<std::shared_ptr<EagerTensor>>& outs,
+    const std::vector<paddle::experimental::Tensor*>& tensors) {
+  PADDLE_ENFORCE_EQ(
+      outs.size(), tensors.size(),
+      paddle::platform::errors::Fatal(
+          "We are tring to OverwriteOutputs which passed in and it expected "
+          "elements num of outs and origin outputs are equal, but we got outs "
+          "size of: %d, and tensors passed in size is: %d",
+          outs.size(), tensors.size()));
+  for (size_t i = 0; i < outs.size(); i++) {
+    OverwriteOutputs(outs[i], tensors[i]);
+  }
+}
+
+void EagerUtils::OverwriteOutputs(const paddle::experimental::Tensor& out,
+                                  paddle::experimental::Tensor* tensor) {
+  PADDLE_ENFORCE_NOT_NULL(
+      tensor, paddle::platform::errors::Fatal(
+                  "Tensor is null and cannot be copied. "
+                  "We are tring to OverwriteOutput from its "
+                  "shared_ptr, this error may indicate some outputs "
+                  "are nullptr"));
+  *tensor = out;
+}
+void EagerUtils::OverwriteOutputs(
+    const std::vector<paddle::experimental::Tensor>& outs,
+    const std::vector<paddle::experimental::Tensor*>& tensors) {
+  for (size_t i = 0; i < outs.size(); i++) {
+    PADDLE_ENFORCE_NOT_NULL(
+        tensors[i], paddle::platform::errors::Fatal(
+                        "Tensor is null and cannot be copied. "
+                        "We are tring to OverwriteOutput from its "
+                        "shared_ptr, this error may indicate some outputs "
+                        "are nullptr"));
+    *tensors[i] = outs[i];
+  }
+}
+
+paddle::experimental::Tensor EagerUtils::RecoverTensorWrapper(
     TensorWrapper* tw, const std::shared_ptr<GradNodeBase>& grad_node) {
   return tw->recover(grad_node);
 }
 
-std::vector<EagerTensor> EagerUtils::RecoverTensorWrapper(
+std::vector<paddle::experimental::Tensor> EagerUtils::RecoverTensorWrapper(
     std::vector<TensorWrapper>* tw,
     const std::shared_ptr<GradNodeBase>& grad_node) {
-  std::vector<EagerTensor> ret;
+  std::vector<paddle::experimental::Tensor> ret;
   for (auto& t : *tw) {
     ret.emplace_back(t.recover(grad_node));
   }
   return ret;
 }
 
-void EagerUtils::CheckAndRetainGrad(const egr::EagerTensor& tensor) {
+void EagerUtils::CheckAndRetainGrad(
+    const paddle::experimental::Tensor& tensor) {
   VLOG(6) << "Check RetainGradForTensor: " << tensor.name();
   if (FLAGS_retain_grad_for_all_tensor) {
     VLOG(6) << "RetainGradForTensor: " << tensor.name();
@@ -277,52 +294,13 @@ void EagerUtils::CheckAndRetainGrad(const egr::EagerTensor& tensor) {
 }
 
 void EagerUtils::CheckAndRetainGrad(
-    const std::vector<egr::EagerTensor>& tensors) {
+    const std::vector<paddle::experimental::Tensor>& tensors) {
   if (FLAGS_retain_grad_for_all_tensor) {
     for (auto& tensor : tensors) {
       VLOG(6) << "RetainGradForTensor: " << tensor.name();
       egr::egr_utils_api::RetainGradForTensor(tensor);
     }
   }
-}
-
-paddle::experimental::Tensor EagerUtils::SyncToPtenTensors(
-    const egr::EagerTensor& tensor) {
-  const_cast<EagerTensor*>(&tensor)->SyncToTensor();
-  return *tensor.Tensor().get();
-}
-
-std::vector<paddle::experimental::Tensor> EagerUtils::SyncToPtenTensors(
-    const std::vector<egr::EagerTensor>& tensors) {
-  std::vector<paddle::experimental::Tensor> res;
-  size_t num = tensors.size();
-  res.reserve(num);
-  for (size_t i = 0; i < num; i++) {
-    const_cast<EagerTensor*>(&(tensors[i]))->SyncToTensor();
-    res.push_back(*tensors[i].Tensor().get());
-  }
-  return res;
-}
-
-egr::EagerTensor EagerUtils::CreateEagerTensorFromTensor(
-    const paddle::experimental::Tensor& tensor) {
-  egr::EagerTensor ret;
-  ret.set_tensor(std::make_shared<paddle::experimental::Tensor>(tensor));
-  return ret;
-}
-
-std::vector<egr::EagerTensor> EagerUtils::CreateEagerTensorFromTensor(
-    const std::vector<paddle::experimental::Tensor>& tensors) {
-  std::vector<egr::EagerTensor> res;
-  size_t num = tensors.size();
-  res.reserve(num);
-  for (size_t i = 0; i < num; i++) {
-    egr::EagerTensor tmp;
-    tmp.set_tensor(std::make_shared<paddle::experimental::Tensor>(tensors[i]));
-    res.emplace_back(std::move(tmp));
-  }
-
-  return res;
 }
 
 }  // namespace egr

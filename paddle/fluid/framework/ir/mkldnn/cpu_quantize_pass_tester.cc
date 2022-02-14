@@ -192,7 +192,6 @@ void MainTest(const ProgramDesc& prog,
   int original_nodes_num, current_nodes_num;
   PreparePass(&graph, prog, variable_names, &original_nodes_num,
               &current_nodes_num, var_without_scale, var_signed);
-  std::unordered_map<std::string, int> actual_operators;
   for (auto* node : graph->Nodes()) {
     if (node->IsOp()) {
       auto* op = node->Op();
