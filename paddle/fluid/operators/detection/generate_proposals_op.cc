@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/fluid/operators/detection/nms_util.h"
 #include "paddle/fluid/operators/gather.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -112,7 +112,7 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     scores_swap.mutable_data<T>({num, h_score, w_score, c_score},
                                 dev_ctx.GetPlace());
 
-    math::Transpose<platform::CPUDeviceContext, T, 4> trans;
+    pten::funcs::Transpose<platform::CPUDeviceContext, T, 4> trans;
     std::vector<int> axis = {0, 2, 3, 1};
     trans(dev_ctx, *bbox_deltas, &bbox_deltas_swap, axis);
     trans(dev_ctx, *scores, &scores_swap, axis);
@@ -211,7 +211,7 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     FilterBoxes<T>(ctx, &proposals, min_size, im_info_slice, true, &keep);
     // Handle the case when there is no keep index left
     if (keep.numel() == 0) {
-      math::SetConstant<platform::CPUDeviceContext, T> set_zero;
+      pten::funcs::SetConstant<platform::CPUDeviceContext, T> set_zero;
       bbox_sel.mutable_data<T>({1, 4}, ctx.GetPlace());
       set_zero(ctx, &bbox_sel, static_cast<T>(0));
       Tensor scores_filter;

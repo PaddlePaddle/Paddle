@@ -111,7 +111,7 @@ class BilinearTensorProductGradKernel : public framework::OpKernel<T> {
                             ctx.GetPlace());
     auto y_scale_mat = EigenMatrix<T>::From(y_scale);
 
-    math::SetConstant<DeviceContext, T> set_zero;
+    pten::funcs::SetConstant<DeviceContext, T> set_zero;
 
     if (d_x) {
       d_x->mutable_data<T>(ctx.GetPlace());

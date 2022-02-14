@@ -18,8 +18,8 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/slice_op.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 namespace paddle {
 namespace operators {
 
@@ -615,7 +615,7 @@ class StridedSliceGradKernel : public framework::OpKernel<T> {
             d_out_tensor->mutable_data<T>(context.GetPlace());
           }
 
-          math::SetConstant<DeviceContext, T> set_zero;
+          pten::funcs::SetConstant<DeviceContext, T> set_zero;
           set_zero(dev_ctx, d_out_tensor, static_cast<T>(0));
         }
       }
@@ -628,7 +628,7 @@ class StridedSliceGradKernel : public framework::OpKernel<T> {
 
       d_out->mutable_data<T>(context.GetPlace());
 
-      math::SetConstant<DeviceContext, T> set_zero;
+      pten::funcs::SetConstant<DeviceContext, T> set_zero;
       set_zero(dev_ctx, d_out, static_cast<T>(0));
 
       auto in_dims = d_input->dims();

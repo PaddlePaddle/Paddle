@@ -346,31 +346,22 @@ inline dnnl::memory::format_tag GetPlainMKLDNNFormat(int tensor_rank) {
   switch (tensor_rank) {
     case 1:
       return dnnl::memory::format_tag::a;
-      break;
     case 2:
       return dnnl::memory::format_tag::ab;
-      break;
     case 3:
       return dnnl::memory::format_tag::abc;
-      break;
     case 4:
       return dnnl::memory::format_tag::abcd;
-      break;
     case 5:
       return dnnl::memory::format_tag::abcde;
-      break;
     case 6:
       return dnnl::memory::format_tag::abcdef;
-      break;
     case 7:
       return dnnl::memory::format_tag::abcdefg;
-      break;
     case 8:
       return dnnl::memory::format_tag::abcdefgh;
-      break;
     case 9:
       return dnnl::memory::format_tag::abcdefghi;
-      break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Paddle support tensors with rank in range <1, 9>, but received "

@@ -17,7 +17,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -621,7 +621,7 @@ class Pad3dGradCPUKernel : public framework::OpKernel<T> {
     auto d_out_dims = d_out->dims();
     const T* d_out_data = d_out->data<T>();
     T* d_in_data = d_in->mutable_data<T>(context.GetPlace());
-    math::SetConstant<platform::CPUDeviceContext, T> set_zero;
+    pten::funcs::SetConstant<platform::CPUDeviceContext, T> set_zero;
     set_zero(context.template device_context<platform::CPUDeviceContext>(),
              d_in, static_cast<T>(0));
     const int pad_left = pads[0];

@@ -64,6 +64,17 @@ KernelSignature ElementwiseDivOpArgumentMapping(
   return KernelSignature("unregistered", {}, {}, {});
 }
 
+KernelSignature ElementwiseAddGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  if (ctx.IsDenseTensorInput("X")) {
+    return KernelSignature("add_grad",
+                           {"X", "Y", GradVarName("Out")},
+                           {"axis"},
+                           {GradVarName("X"), GradVarName("Y")});
+  }
+  return KernelSignature("unregistered", {}, {}, {});
+}
+
 }  // namespace pten
 
 PT_REGISTER_BASE_KERNEL_NAME(elementwise_add, add);
@@ -71,7 +82,6 @@ PT_REGISTER_BASE_KERNEL_NAME(elementwise_sub, subtract);
 PT_REGISTER_BASE_KERNEL_NAME(elementwise_mul, multiply);
 PT_REGISTER_BASE_KERNEL_NAME(elementwise_div, divide);
 PT_REGISTER_BASE_KERNEL_NAME(elementwise_add_grad, add_grad);
-PT_REGISTER_BASE_KERNEL_NAME(elementwise_sub_grad, subtract_grad);
 
 PT_REGISTER_ARG_MAPPING_FN(elementwise_add,
                            pten::ElementwiseAddOpArgumentMapping);
@@ -81,3 +91,5 @@ PT_REGISTER_ARG_MAPPING_FN(elementwise_mul,
                            pten::ElementwiseMulOpArgumentMapping);
 PT_REGISTER_ARG_MAPPING_FN(elementwise_div,
                            pten::ElementwiseDivOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(elementwise_add_grad,
+                           pten::ElementwiseAddGradOpArgumentMapping);

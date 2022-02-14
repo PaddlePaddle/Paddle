@@ -29,7 +29,6 @@ limitations under the License. */
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/mixed_vector.h"
-#include "paddle/fluid/memory/memcpy.h"
 namespace pten {
 class SelectedRows : public TensorBase,
                      public TypeInfoTraits<TensorBase, SelectedRows> {
