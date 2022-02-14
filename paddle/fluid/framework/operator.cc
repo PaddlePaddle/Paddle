@@ -664,6 +664,10 @@ class RuntimeInferShapeContext : public InferShapeContext {
     return out[0] != nullptr;
   }
 
+  bool HasAttr(const std::string& name) const override {
+    return op_.HasAttr(name);
+  }
+
   bool HasInputs(const std::string& name) const override {
     const auto& ins = ctx_.inputs;
     auto it = ins.find(name);
@@ -2099,6 +2103,10 @@ void OperatorWithKernel::BuildPtenKernelContext(
                    std::type_index(typeid(std::vector<int32_t>))) {
           pt_kernel_context->EmplaceBackAttr(std::move(pten::ScalarArray(
               BOOST_GET_CONST(std::vector<int32_t>, attr_iter->second))));
+        } else if (std::type_index(attr_iter->second.type()) ==
+                   std::type_index(typeid(int32_t))) {
+          pt_kernel_context->EmplaceBackAttr(std::move(pten::ScalarArray(
+              &BOOST_GET_CONST(int32_t, attr_iter->second), 1)));
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported cast op attribute `%s` to ScalarArray when "

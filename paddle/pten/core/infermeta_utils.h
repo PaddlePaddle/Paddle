@@ -146,6 +146,7 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
     }
   };
 
+  // TODO(chenweihang): support other attr type later
   PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(bool);
   PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(int);
   PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(int64_t);
