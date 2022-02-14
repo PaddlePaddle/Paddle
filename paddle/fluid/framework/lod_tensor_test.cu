@@ -32,12 +32,11 @@ TEST(LoD, data) {
 
   auto& v = lod[0];
   paddle::platform::CUDAPlace gpu(0);
+  CUDA_MALLOC_FROM_VECTOR_WITH_PREF(size_t, v, gpu, gpu_raw)
 #ifdef PADDLE_WITH_HIP
-  hipLaunchKernelGGL(test, dim3(1), dim3(1), 0, 0, v.CUDAMutableData(gpu),
-                     v.size());
+  hipLaunchKernelGGL(test, dim3(1), dim3(1), 0, 0, gpu_raw, v.size());
   hipDeviceSynchronize();
 #else
-  CUDA_MALLOC_FROM_VECTOR_WITH_PREF(size_t, v, gpu, gpu_raw)
   test<<<1, 1>>>(gpu_raw, v.size());
   cudaDeviceSynchronize();
 #endif
@@ -64,12 +63,11 @@ TEST(LoDTensor, LoDInGPU) {
 
   auto lod = lod_tensor.lod();
 
+  CUDA_MALLOC_FROM_VECTOR_WITH_PREF(size_t, lod[0], place, gpu_raw)
 #ifdef PADDLE_WITH_HIP
-  hipLaunchKernelGGL(test, dim3(1), dim3(8), 0, 0,
-                     lod[0].CUDAMutableData(place), lod[0].size());
+  hipLaunchKernelGGL(test, dim3(1), dim3(8), 0, 0, gpu_raw, lod[0].size());
   hipDeviceSynchronize();
 #else
-  CUDA_MALLOC_FROM_VECTOR_WITH_PREF(size_t, lod[0], place, gpu_raw)
   test<<<1, 8>>>(gpu_raw, lod[0].size());
   cudaDeviceSynchronize();
 #endif

@@ -44,16 +44,14 @@ class ScaleLoDTensorFunctor<platform::CUDADeviceContext, T> {
     const size_t seq_width = seq->numel() / seq->dims()[0];
     framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
     T* seq_data = seq->mutable_data<T>(context.GetPlace());
-
+    CUDA_MALLOC_FROM_VECTOR_WITH_PREF(size_t, abs_offset_lod[level],
+                                      context.GetPlace(), gpu_raw);
 #ifdef PADDLE_WITH_HIP
     hipLaunchKernelGGL(
         HIP_KERNEL_NAME(SequenceScaleKernel<T, PADDLE_CUDA_NUM_THREADS>),
         dim3(num_seq), dim3(PADDLE_CUDA_NUM_THREADS), 0, context.stream(),
-        seq_data, abs_offset_lod[level].CUDAMutableData(context.GetPlace()),
-        scales, seq_width);
+        seq_data, gpu_raw, scales, seq_width);
 #else
-    CUDA_MALLOC_FROM_VECTOR_WITH_PREF(size_t, abs_offset_lod[level],
-                                      context.GetPlace(), gpu_raw);
     SequenceScaleKernel<T, PADDLE_CUDA_NUM_THREADS><<<
         num_seq, PADDLE_CUDA_NUM_THREADS, 0, context.stream()>>>(
         seq_data, gpu_raw, scales, seq_width);
