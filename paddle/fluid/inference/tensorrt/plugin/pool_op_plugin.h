@@ -35,17 +35,8 @@ static std::vector<int> CalcOutputSize(const std::vector<int>& input_shape,
     output_shape[0] = ksize[0];
     output_shape[1] = ksize[1];
   } else {
-    int output_h, output_w;
-    if (!ceil_mode) {
-      output_h =
-          (input_shape[0] - ksize[0] + real_paddings[0] + real_paddings[1]) /
-              strides[0] +
-          1;
-      output_w =
-          (input_shape[1] - ksize[1] + real_paddings[2] + real_paddings[3]) /
-              strides[1] +
-          1;
-    } else {
+    int output_h = 0, output_w = 0;
+    if (ceil_mode) {
       output_h = (input_shape[0] - ksize[0] + real_paddings[0] +
                   real_paddings[1] + strides[0] - 1) /
                      strides[0] +
@@ -55,6 +46,15 @@ static std::vector<int> CalcOutputSize(const std::vector<int>& input_shape,
                      strides[1] +
                  1;
     }
+    // TRT will use native layer when ceil_model=false
+    /*
+    else{
+      output_h = (input_shape[0] - ksize[0] + real_paddings[0] +
+    real_paddings[1]) / strides[0] + 1;
+      output_w = (input_shape[1] - ksize[1] + real_paddings[2] +
+    real_paddings[3]) / strides[1] + 1;
+    }
+    */
     output_shape[0] = output_h;
     output_shape[1] = output_w;
   }
@@ -109,10 +109,7 @@ class PoolPlugin : public PluginTensorRT {
     DeserializeValue(&serialData, &serialLength, &output_shape_);
   }
 
-  PoolPlugin* clone() const TRT_NOEXCEPT override {
-    return new PoolPlugin(ceil_mode_, pool_type_, adaptive_, exclusive_, ksize_,
-                          strides_, paddings_, input_shape_, real_paddings_);
-  }
+  PoolPlugin* clone() const TRT_NOEXCEPT override;
 
   const char* getPluginType() const TRT_NOEXCEPT override {
     return "pool_plugin";
@@ -177,10 +174,7 @@ class PoolPluginDynamic : public DynamicPluginTensorRT {
 
   PoolPluginDynamic(void const* serialData, size_t serialLength);
   ~PoolPluginDynamic() {}
-  nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
-    return new PoolPluginDynamic(ceil_mode_, pool_type_, adaptive_, exclusive_,
-                                 ksize_, strides_, paddings_, is_global_);
-  }
+  nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override;
 
   const char* getPluginType() const TRT_NOEXCEPT override {
     return "pool_plugin_dynamic";

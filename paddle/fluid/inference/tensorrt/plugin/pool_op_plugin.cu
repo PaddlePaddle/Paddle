@@ -36,7 +36,6 @@ nvinfer1::Dims PoolPlugin::getOutputDimensions(int index,
 }
 
 size_t PoolPlugin::getSerializationSize() const TRT_NOEXCEPT {
-  std::cout << "#############test_get############" << std::endl;
   return getBaseSerializationSize() + SerializedSize(ceil_mode_) +
          SerializedSize(pool_type_) + SerializedSize(adaptive_) +
          SerializedSize(exclusive_) + SerializedSize(ksize_) +
@@ -48,7 +47,6 @@ size_t PoolPlugin::getSerializationSize() const TRT_NOEXCEPT {
 // TRT will call this func when we need to serialize the configuration of
 // tensorrt.
 void PoolPlugin::serialize(void *buffer) const TRT_NOEXCEPT {
-  std::cout << "#############test_serialize############" << std::endl;
   serializeBase(buffer);
   SerializeValue(&buffer, ceil_mode_);
   SerializeValue(&buffer, pool_type_);
@@ -60,6 +58,11 @@ void PoolPlugin::serialize(void *buffer) const TRT_NOEXCEPT {
   SerializeValue(&buffer, real_paddings_);
   SerializeValue(&buffer, input_shape_);
   SerializeValue(&buffer, output_shape_);
+}
+
+PoolPlugin *PoolPlugin::clone() const TRT_NOEXCEPT {
+  return new PoolPlugin(ceil_mode_, pool_type_, adaptive_, exclusive_, ksize_,
+                        strides_, paddings_, input_shape_, real_paddings_);
 }
 
 int PoolPlugin::enqueue(int batchSize, const void *const *inputs,
@@ -133,6 +136,11 @@ void PoolPluginDynamic::serialize(void *buffer) const TRT_NOEXCEPT {
   SerializeValue(&buffer, strides_);
   SerializeValue(&buffer, paddings_);
   SerializeValue(&buffer, is_global_);
+}
+
+nvinfer1::IPluginV2DynamicExt *PoolPluginDynamic::clone() const TRT_NOEXCEPT {
+  return new PoolPluginDynamic(ceil_mode_, pool_type_, adaptive_, exclusive_,
+                               ksize_, strides_, paddings_, is_global_);
 }
 
 nvinfer1::DimsExprs PoolPluginDynamic::getOutputDimensions(
