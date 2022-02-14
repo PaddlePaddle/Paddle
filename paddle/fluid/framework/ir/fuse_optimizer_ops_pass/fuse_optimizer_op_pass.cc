@@ -274,36 +274,36 @@ bool FuseOptimizerOpPass::OpWithKernelSupportCPUAndGPU(
   }
   bool support_cpu = false;
   bool support_gpu = false;
-  bool has_op_kernel = false;
   auto &kernel_factory = pten::KernelFactory::Instance();
   auto kernel_key_map =
       kernel_factory.SelectKernelMap(pten::TransToPtenKernelName(op_type));
+  bool has_op_kernel = kernel_key_map.size() > 0 ? true : false;
   for (auto &kernel : kernel_key_map) {
-    has_op_kernel = true;
     if (platform::is_gpu_place(
             pten::TransToPtenPlace(kernel.first.backend()))) {
       support_gpu = true;
-    }
-    if (platform::is_cpu_place(
-            pten::TransToPtenPlace(kernel.first.backend()))) {
+    } else if (platform::is_cpu_place(
+                   pten::TransToPtenPlace(kernel.first.backend()))) {
       support_cpu = true;
     }
   }
 
-  auto &all_kernels = OperatorWithKernel::AllOpKernels();
-  auto it = all_kernels.find(op_type);
-  // skip op not has kernel
-  if (it != all_kernels.end()) {
-    has_op_kernel = true;
-    for (auto &kernel_pair : it->second) {
-      if (platform::is_cpu_place(kernel_pair.first.place_)) {
-        support_cpu = true;
-      }
-      if (platform::is_gpu_place(kernel_pair.first.place_)) {
-        support_gpu = true;
+  if (!support_cpu || !support_gpu) {
+    auto &all_kernels = OperatorWithKernel::AllOpKernels();
+    auto it = all_kernels.find(op_type);
+    // skip op not has kernel
+    if (it != all_kernels.end()) {
+      has_op_kernel = true;
+      for (auto &kernel_pair : it->second) {
+        if (platform::is_cpu_place(kernel_pair.first.place_)) {
+          support_cpu = true;
+        } else if (platform::is_gpu_place(kernel_pair.first.place_)) {
+          support_gpu = true;
+        }
       }
     }
   }
+
   VLOG(6) << "Op check: " << op_type << ", support CPU: " << support_cpu
           << ", support GPU: " << support_gpu;
   return has_op_kernel ? (support_cpu && support_gpu) : true;
