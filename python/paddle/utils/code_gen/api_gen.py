@@ -60,14 +60,6 @@ class ForwardAPI(BaseAPI):
 
         return kernel_output, output_names, output_create
 
-    def gene_infer_meta_register(self):
-        if self.is_base_api:
-            return f"""
-PT_REGISTER_INFER_META_FN({self.kernel['func']}, pten::{self.infer_meta['func']});"""
-
-        else:
-            return ''
-
 
 def header_include():
     return """
@@ -91,7 +83,6 @@ def source_include(header_file_path):
 #include "paddle/pten/api/lib/data_transform.h"
 #include "paddle/pten/api/lib/kernel_dispatch.h"
 #include "paddle/pten/api/lib/utils/storage.h"
-#include "paddle/pten/core/infermeta_utils.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/infermeta/binary.h"
 #include "paddle/pten/infermeta/multiary.h"
@@ -136,21 +127,16 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
     source_file.write(source_include(include_header_file))
     source_file.write(namespace[0])
 
-    infer_meta_register_code = ''
-
     for api in apis:
         api_code = ForwardAPI(api)
         print(api_code.gene_api_declaration())
         header_file.write(api_code.gene_api_declaration())
         source_file.write(api_code.gene_api_code())
-        infer_meta_register_code = infer_meta_register_code + api_code.gene_infer_meta_register(
-        )
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])
 
     source_file.write(api_register())
-    source_file.write(infer_meta_register_code)
 
     header_file.close()
     source_file.close()

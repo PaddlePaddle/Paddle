@@ -20,10 +20,10 @@
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/prepared_operator.h"
 #include "paddle/fluid/imperative/var_helper.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -229,7 +229,7 @@ void VarBase::ClearGradient(bool set_to_zero) {
         if (set_to_zero) {
           auto* dev_ctx =
               platform::DeviceContextPool::Instance().Get(grad_t->place());
-          operators::math::set_constant(*dev_ctx, grad_t, 0.0);
+          pten::funcs::set_constant(*dev_ctx, grad_t, 0.0);
         } else {
           grad_t->clear();
         }

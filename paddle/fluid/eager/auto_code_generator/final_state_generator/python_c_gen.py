@@ -104,6 +104,8 @@ static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObj
   PyThreadState *tstate = nullptr;
   try
   {{
+    VLOG(6) << "Running Eager Final State API: {}";
+
     // Get EagerTensors from args
 {}
 
@@ -129,15 +131,86 @@ static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObj
 
 """
     python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
-        fwd_api_name, get_eager_tensor_str, parse_attributes_str,
+        fwd_api_name, fwd_api_name, get_eager_tensor_str, parse_attributes_str,
         GetForwardFunctionName(fwd_api_name), dygraph_function_call_str)
 
-    python_c_function_reg_str = f"{{\"final_state_{fwd_api_name}\", (PyCFunction)(void(*)(void))eager_final_state_api_{fwd_api_name}, METH_VARARGS | METH_KEYWORDS, \"C++ interface function for {fwd_api_name} in dygraph.\"}}"
+    python_c_function_reg_str = f"{{\"final_state_{fwd_api_name}\", (PyCFunction)(void(*)(void))eager_final_state_api_{fwd_api_name}, METH_VARARGS | METH_KEYWORDS, \"C++ interface function for {fwd_api_name} in dygraph.\"}},\n"
 
     return python_c_function_str, python_c_function_reg_str
 
 
+def GenerateCoreOpsInfoMap():
+    result = """
+static PyObject * eager_get_final_state_core_ops_args_info(PyObject *self) {
+    PyThreadState *tstate = nullptr;
+    try
+    {
+      return ToPyObject(core_ops_final_state_args_info);
+    }
+    catch(...) {
+      if (tstate) {
+        PyEval_RestoreThread(tstate);
+      }
+      ThrowExceptionToPython(std::current_exception());
+      return nullptr;
+    }
+}
+
+static PyObject * eager_get_final_state_core_ops_args_type_info(PyObject *self) {
+    PyThreadState *tstate = nullptr;
+    try
+    {
+      return ToPyObject(core_ops_final_state_args_type_info);
+    }
+    catch(...) {
+      if (tstate) {
+        PyEval_RestoreThread(tstate);
+      }
+      ThrowExceptionToPython(std::current_exception());
+      return nullptr;
+    }
+}
+
+static PyObject * eager_get_final_state_core_ops_returns_info(PyObject *self) {
+    PyThreadState *tstate = nullptr;
+    try
+    {
+      return ToPyObject(core_ops_final_state_returns_info);
+    }
+    catch(...) {
+      if (tstate) {
+        PyEval_RestoreThread(tstate);
+      }
+      ThrowExceptionToPython(std::current_exception());
+      return nullptr;
+    }
+}
+    """
+
+    core_ops_infos_registry = """
+    {\"get_final_state_core_ops_args_info\",
+    (PyCFunction)(void(*)(void))eager_get_final_state_core_ops_args_info, METH_NOARGS,
+    \"C++ interface function for eager_get_final_state_core_ops_args_info.\"},
+    {\"get_final_state_core_ops_args_type_info\",
+    (PyCFunction)(void(*)(void))eager_get_final_state_core_ops_args_type_info,
+    METH_NOARGS,
+    \"C++ interface function for eager_get_final_state_core_ops_args_type_info.\"},
+    {\"get_final_state_core_ops_returns_info\",
+    (PyCFunction)(void(*)(void))eager_get_final_state_core_ops_returns_info,
+    METH_NOARGS, \"C++ interface function for eager_get_final_state_core_ops_returns_info.\"},
+"""
+
+    return result, core_ops_infos_registry
+
+
 def GeneratePythonCWrappers(python_c_function_str, python_c_function_reg_str):
+
+    core_ops_infos_definition, core_ops_infos_registry = GenerateCoreOpsInfoMap(
+    )
+
+    python_c_function_str += core_ops_infos_definition
+    python_c_function_reg_str += core_ops_infos_registry
+    python_c_function_reg_str += "\n {nullptr,nullptr,0,nullptr}"
 
     PYTHON_C_WRAPPER_TEMPLATE = """
 #pragma once
@@ -215,12 +288,12 @@ if __name__ == "__main__":
         python_c_function_reg_list.append(python_c_function_reg_str)
         print("Generated Python-C Function: ", python_c_function_str)
 
-    python_c_function_reg_list.append("{nullptr,nullptr,0,nullptr}")
     python_c_functions_str = "\n".join(python_c_function_list)
     python_c_functions_reg_str = ",\n".join(python_c_function_reg_list)
 
     python_c_str = GeneratePythonCWrappers(python_c_functions_str,
                                            python_c_functions_reg_str)
+
     print("Generated Python-C Codes: ", python_c_str)
 
     output_path = args.output_path
