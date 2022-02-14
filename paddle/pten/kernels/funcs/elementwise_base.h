@@ -449,12 +449,22 @@ struct Unroller {
     Func<Begin, VecSize>::Apply(std::forward<Args>(args)...);
     Unroller<Func, VecSize, End, Begin + 1>::step(args...);
   }
+
+  template <typename... Args>
+  static __device__ inline void step(Args &&... args) {
+    Func<Begin, VecSize>::Apply(std::forward<Args>(args)...);
+    Unroller<Func, VecSize, End, Begin + 1>::step(args...);
+  }
+
 };
 
 template <template <int Index, int VecSize> typename Func, int VecSize, int End>
 struct Unroller<Func, VecSize, End, End> {
   template <typename... Args>
   static HOSTDEVICE inline void step(Args &&... args) {}
+
+  template <typename... Args>
+  static __device__ inline void step(Args &&... args) {}
 };
 
 template <int Index, int VecSize>
@@ -469,10 +479,10 @@ struct Loader {
     kps::Init<Type, ArgsT, Index, VecSize>(args, static_cast<Type>(1.0f));
     if (is_boundary) {
       kps::ReadData<Type, VecSize, 1, 1, ArgsT, Index, true>(
-          args, reinterpret_cast<const Type *>(in[Index]) + data_offset, num);
+          args, reinterpret_cast<const _ptr_ Type *>(in[Index]) + data_offset, num);
     } else {
       kps::ReadData<Type, VecSize, 1, 1, ArgsT, Index, false>(
-          args, reinterpret_cast<const Type *>(in[Index]) + data_offset, num);
+          args, reinterpret_cast<const _ptr_ Type *>(in[Index]) + data_offset, num);
     }
   }
 };
@@ -482,8 +492,7 @@ struct InputSetter {
   template <typename Array>
   static HOSTDEVICE void Apply(
       const std::vector<const DenseTensor *> &ins_tensor, Array *ins_data) {
-    (*ins_data)[Index] =
-        reinterpret_cast<const _ptr_ char *>(ins_tensor[Index]->data());
+    (*ins_data)[Index] = (const _ptr_ char *)(ins_tensor[Index]->data());
   }
 };
 
@@ -661,7 +670,7 @@ __device__ void VectorizedElementwiseKernelImpl(
     Functor func) {
   using Traits = paddle::platform::FunctionTraits<Functor>;
   using ArgsT = typename Traits::ArgsTuple;
-  ArgsT args[VecSize];
+  __local__ ArgsT args[VecSize];
   ConditionalT<OutT, NumOuts> result[VecSize];
 
   Unroller<Loader, VecSize, Arity>::step(
@@ -717,13 +726,7 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
   pten::framework::Array<const _ptr_ char *__restrict__, Arity> ins_data;
   pten::framework::Array<_ptr_ OutT *, NumOuts> outs_data;
 
-<<<<<<< HEAD
-  for (int i = 0; i < Arity; ++i) {
-    ins_data[i] = (const _ptr_ InT*)(ins[i]->data<InT>());
-  }
-=======
   Unroller<InputSetter, VecSize, Arity>::step(ins, &ins_data);
->>>>>>> 55da9344d9dee63bfc2594566afb1a2e282502bc
   for (int i = 0; i < NumOuts; ++i) {
     outs_data[i] = (_ptr_ OutT*)(ctx.Alloc<OutT>((*outs)[i]));
   }
@@ -790,25 +793,25 @@ void LaunchSameDimsElementwiseCudaKernel(
 
   // calculate the max vec_size for all ins and outs
   int vec_size = GetVectorizedSizeForTensors<OutT, Functor>(ins, *outs);
-  switch (vec_size) {
-    case 4:
-      ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 4>(
-          ctx, ins, outs, func);
-      break;
-    case 2:
-      ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 2>(
-          ctx, ins, outs, func);
-      break;
-    case 1:
-      ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 1>(
-          ctx, ins, outs, func);
-      break;
-    default: {
-      PADDLE_THROW(paddle::platform::errors::Unimplemented(
-          "Unsupported vectorized size: %d !", vec_size));
-      break;
-    }
-  }
+ // switch (vec_size) {
+ //   case 4:
+ //     ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 4>(
+ //         ctx, ins, outs, func);
+ //     break;
+ //   case 2:
+ //     ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 2>(
+ //         ctx, ins, outs, func);
+ //     break;
+ //   case 1:
+ //     ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 1>(
+ //         ctx, ins, outs, func);
+ //     break;
+ //   default: {
+ //     PADDLE_THROW(paddle::platform::errors::Unimplemented(
+ //         "Unsupported vectorized size: %d !", vec_size));
+ //     break;
+ //   }
+ // }
 }
 #endif
 

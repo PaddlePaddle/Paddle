@@ -222,7 +222,7 @@ __device__ __forceinline__ void Init(ArgsT* dst, T init_data) {
  * src: The data pointer of the current block.
  * size: The current block needs to load size data continuously.
  */
-template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
+template <typename T, int NX, int NY, int BlockSize, bool IsBoundary>
 __device__ __inline__ void ReadData(T* dst,
                                     const T _global_ptr_* src,
                                     int num) {
@@ -251,9 +251,9 @@ template <typename T,
           int BlockSize,
           typename ArgsT,
           int Index,
-          bool IsBoundary = false>
+          bool IsBoundary>
 __device__ __forceinline__ void ReadData(ArgsT* dst,
-                                         const T* __restrict__ src,
+                                         const T _global_ptr_ *src,
                                          int num) {
   int thread_offset = core_id() * NX;
   __local__ T in_temp[1];

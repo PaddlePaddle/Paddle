@@ -119,7 +119,7 @@ template <typename T>
 struct AddFunctor {
   inline T initial() { return static_cast<T>(0.0f); }
 
-  __device__  T operator()(const T& a, const T& b) const {
+  __device__  T operator()(const T a, const T b) const {
     return b + a;
   }
 };
