@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
 from paddle.fluid.tests.unittests.op_test import skip_check_grad_ci
 
 
@@ -59,6 +59,7 @@ def nearest_neighbor_interp_mkldnn_np(X,
 
 
 @skip_check_grad_ci(reason="Haven not implement interpolate grad kernel.")
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestNearestInterpV2MKLDNNOp(OpTest):
     def init_test_case(self):
         pass
