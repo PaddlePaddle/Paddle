@@ -664,6 +664,10 @@ class RuntimeInferShapeContext : public InferShapeContext {
     return out[0] != nullptr;
   }
 
+  bool HasAttr(const std::string& name) const override {
+    return op_.HasAttr(name);
+  }
+
   bool HasInputs(const std::string& name) const override {
     const auto& ins = ctx_.inputs;
     auto it = ins.find(name);
