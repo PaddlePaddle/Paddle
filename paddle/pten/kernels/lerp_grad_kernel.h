@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,4 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/lerp_op.h"
+#pragma once
+
+#include "paddle/pten/core/dense_tensor.h"
+
+namespace pten {
+
+template <typename T, typename Context>
+void LerpGradKernel(const Context& ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    const DenseTensor& weight,
+                    const DenseTensor& out,
+                    const DenseTensor& out_grad,
+                    DenseTensor* x_grad,
+                    DenseTensor* y_grad);
+
+}  // namespace pten

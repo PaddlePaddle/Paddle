@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/lerp_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -132,15 +133,3 @@ REGISTER_OPERATOR(
     paddle::operators::LerpInplaceInferer);
 
 REGISTER_OPERATOR(lerp_grad, paddle::operators::LerpGradOp);
-
-REGISTER_OP_CPU_KERNEL(
-    lerp,
-    paddle::operators::LerpKernel<paddle::platform::CPUDeviceContext, float>,
-    paddle::operators::LerpKernel<paddle::platform::CPUDeviceContext, double>);
-
-REGISTER_OP_CPU_KERNEL(
-    lerp_grad,
-    paddle::operators::LerpGradKernel<paddle::platform::CPUDeviceContext,
-                                      float>,
-    paddle::operators::LerpGradKernel<paddle::platform::CPUDeviceContext,
-                                      double>);

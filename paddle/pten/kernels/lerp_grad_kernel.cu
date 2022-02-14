@@ -12,4 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/lerp_op.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
+#include "paddle/pten/core/kernel_registry.h"
+#include "paddle/pten/kernels/lerp_grad_kernel.h"
+
+PT_REGISTER_KERNEL(
+    lerp_grad, GPU, ALL_LAYOUT, pten::LerpGradKernel, float, double) {}
