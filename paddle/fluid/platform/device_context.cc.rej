@@ -1,0 +1,9 @@
+diff a/paddle/fluid/platform/device_context.cc b/paddle/fluid/platform/device_context.cc	(rejected hunks)
+@@ -29,6 +29,7 @@ limitations under the License. */
+ #include "glog/logging.h"
+ #include "paddle/fluid/framework/expect.h"
+ #include "paddle/fluid/memory/allocation/allocator_facade.h"
++#include "paddle/fluid/platform/device/device_wrapper.h"
+ #include "paddle/fluid/platform/profiler.h"
+ 
+ namespace paddle {

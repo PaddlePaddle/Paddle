@@ -180,6 +180,17 @@ void TensorFromArray(const T* src, const size_t& array_size,
         reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
   }
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  else if (platform::is_custom_place(dst_place)) {  // NOLINT
+    memory::Copy(
+        dst_place, dst_ptr, src_place, src_ptr, size,
+        reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream());
+  }
+#endif
+  else {  // NOLINT
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "TensorFromArray on %s is not supported.", dst_place));
+  }
 }
 
 template <typename T>
@@ -241,6 +252,17 @@ void TensorFromVector(const std::vector<T>& src,
         reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream());
   }
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  else if (platform::is_custom_place(dst_place)) {  // NOLINT
+    memory::Copy(
+        dst_place, dst_ptr, src_place, src_ptr, size,
+        reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream());
+  }
+#endif
+  else {  // NOLINT
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "TensorFromVector on %s is not supported.", dst_place));
+  }
 }
 
 // The fully specialized function should be inline to avoid
@@ -300,6 +322,17 @@ inline void TensorFromVector(const std::vector<bool>& src,
         reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
   }
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEICE
+  else if (platform::is_custom_place(dst_place)) {  // NOLINT
+    auto stream =
+        reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream();
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
+  }
+#endif
+  else {  // NOLINT
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "TensorFromVector on %s is not supported.", dst_place));
+  }
   delete[] array;
 }
 
@@ -369,6 +402,15 @@ void TensorToVector(const Tensor& src, const platform::DeviceContext& ctx,
         reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream());
   }
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  else if (platform::is_custom_place(src.place())) {  // NOLINT
+    memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size, nullptr);
+  }
+#endif
+  else {  // NOLINT
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "TensorToVector on %s is not supported.", src.place()));
+  }
 }
 
 template <>
@@ -409,6 +451,11 @@ inline void TensorToVector(const Tensor& src,
     memory::Copy(
         dst_place, dst_ptr, src.place(), src_ptr, size,
         reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream());
+  }
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  else if (platform::is_custom_place(src.place())) {  // NOLINT
+    memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size, nullptr);
   }
 #endif
   for (unsigned int i = 0; i < src.numel(); i++) {

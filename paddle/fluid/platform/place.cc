@@ -56,7 +56,16 @@ bool is_npu_pinned_place(const Place &p) {
   return p.GetType() == pten::AllocationType::NPUPINNED;
 }
 
+bool is_custom_place(const Place &p) {
+  return p.GetType() == pten::AllocationType::CUSTOM;
+}
+
 bool places_are_same_class(const Place &p1, const Place &p2) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (is_custom_place(p1) && is_custom_place(p2)) {
+    return p1.GetDeviceType() == p2.GetDeviceType();
+  }
+#endif
   return p1.GetType() == p2.GetType();
 }
 
@@ -73,6 +82,8 @@ bool is_same_place(const Place &p1, const Place &p2) {
       return p1 == p2;
     } else if (is_ipu_place(p1)) {
       return p1 == p2;
+    } else if (is_custom_place(p1)) {
+      return p1 == p2;
     } else {
       return p1 == p2;
     }
@@ -80,6 +91,44 @@ bool is_same_place(const Place &p1, const Place &p2) {
     return false;
   }
 }
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+std::string PlaceHelper::GetDeviceType(const Place &place) {
+  if (is_cpu_place(place)) {
+    return "cpu";
+  } else if (is_gpu_place(place)) {
+    return "gpu";
+  } else if (is_npu_place(place)) {
+    return "npu";
+  } else if (is_xpu_place(place)) {
+    return "xpu";
+  } else if (is_custom_place(place)) {
+    return place.GetDeviceType();
+  } else {
+    PADDLE_THROW(platform::errors::Fatal(
+        "Unknown device type. Please check available devices by "
+        "paddle.device.get_available_device()"));
+  }
+}
+
+size_t PlaceHelper::GetDeviceId(const Place &place) {
+  return place.GetDeviceId();
+}
+
+Place PlaceHelper::CreatePlace(const std::string &dev_type, size_t dev_id) {
+  if (dev_type == "cpu") {
+    return platform::CPUPlace();
+  } else if (dev_type == "gpu") {
+    return platform::CUDAPlace(dev_id);
+  } else if (dev_type == "npu") {
+    return platform::NPUPlace(dev_id);
+  } else if (dev_type == "xpu") {
+    return platform::XPUPlace(dev_id);
+  } else {
+    return platform::CustomPlace(dev_type, dev_id);
+  }
+}
+#endif
 
 }  // namespace platform
 }  // namespace paddle
