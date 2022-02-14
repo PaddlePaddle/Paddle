@@ -14,12 +14,12 @@
 
 #include <algorithm>
 #include <vector>
-#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/abs_kernel.h"
+#include "paddle/pten/kernels/funcs/elementwise_base.h"
 
 namespace pten {
 
@@ -52,8 +52,8 @@ void AbsKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   std::vector<DenseTensor*> outs = {out};
   auto functor = CudaAbsFunctor<T>();
 
-  paddle::operators::LaunchSameDimsElementwiseCudaKernel<
-      paddle::operators::math::Real<T>>(ctx, ins, &outs, functor);
+  funcs::LaunchSameDimsElementwiseCudaKernel<paddle::operators::math::Real<T>>(
+      ctx, ins, &outs, functor);
 }
 
 }  // namespace pten
