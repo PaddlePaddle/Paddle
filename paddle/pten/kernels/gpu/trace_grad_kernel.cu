@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/kernels/impl/trace_kernel_impl.h"
 #include "paddle/pten/kernels/trace_grad_kernel.h"
 
-#include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
+#include "paddle/pten/kernels/impl/trace_grad_kernel_impl.h"
 
 PT_REGISTER_KERNEL(trace_grad,
                    GPU,
