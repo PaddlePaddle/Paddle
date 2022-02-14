@@ -51,6 +51,11 @@ class DeviceContext {
   DeviceContext(DeviceContext&&);
 
   /**
+   * @brief Move assign operator.
+   */
+  DeviceContext& operator=(DeviceContext&&);
+
+  /**
    * @brief Default destruct.
    */
   virtual ~DeviceContext();
