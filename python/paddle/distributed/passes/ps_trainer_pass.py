@@ -21,25 +21,6 @@ from .pass_base import PassBase, register_pass
 from paddle.fluid.transpiler.details.program_utils import delete_ops
 from paddle.fluid.transpiler.collective import SingleProcessMultiThread
 
-OP_NAME_SCOPE = "op_namescope"
-CLIP_OP_NAME_SCOPE = "gradient_clip"
-STEP_COUNTER = "@PS_STEP_COUNTER@"
-OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
-RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
-LR_SCHED_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.LRSched
-OPT_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Optimize
-op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
-backward = core.op_proto_and_checker_maker.OpRole.Backward
-
-SPARSE_OP_TYPE_DICT = {"lookup_table": "W", "lookup_table_v2": "W"}
-SPARSE_GRAD_OP_TYPE_DICT = {
-    "lookup_table_grad": "W",
-    "lookup_table_v2_grad": "W"
-}
-DEVICE_LIST = ["cpu", "gpu", "xpu"]
-COMMUNICATE_OPS_TYPE = ["send", "recv", "fetch_barrier", "send_barrier"]
-DEFAULT_DEVICE = 'cpu'
-
 
 @register_pass("append_send_ops_pass")
 class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
@@ -894,6 +875,100 @@ class SplitTrainerOpsPass(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
+    def _replace_ops_by_communicate_op(self, program, attrs, heter_block_index,
+                                       ops_list, block_var_detail):
+        all_op = program.global_block().ops
+        start_op = ops_list[0]
+        first_op_idx = -1
+        for op in all_op:
+            if str(op) == str(start_op):
+                first_op_idx = all_op.index(op)
+                break
+        assert first_op_idx != -1
+        self._delete_same_ops(program.global_block(), ops_list)
+
+        entrance_var = []
+        role_maker = attrs['role_maker']
+        if heter_block_index == 1:
+            next_heter_worker_endpoints = get_next_stage_trainers(role_maker)
+
+            entrance_var = block_var_detail[heter_block_index]["forward"][
+                "entrance"]
+
+            comm_info = get_communicate_var_info(program, heter_block_index + 1,
+                                                 entrance_var)
+            program.global_block()._insert_op(
+                index=first_op_idx,
+                type="send_and_recv",
+                inputs={"X": program.global_block().vars[entrance_var[0]]},
+                outputs={"Out": []},
+                attrs={
+                    "mode": "forward",
+                    "send_var_name": entrance_var + ["microbatch_id"],
+                    "recv_var_name": [],
+                    "message_name": comm_info["block_input_var_name"],
+                    "next_endpoints": next_heter_worker_endpoints,
+                    "previous_endpoints": [],
+                    "trainer_id": get_role_id(role_maker),
+                    RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+                })
+
+        return entrance_var
+
+    def _delete_same_ops(self, block, ops):
+        for op in ops:
+            try:
+                for origin_op in block.ops:
+                    if str(origin_op) == str(op):
+                        idx = list(block.ops).index(origin_op)
+                        block._remove_op(idx)
+                        break
+            except Exception as e:
+                print(e)
+
+    def _remove_var_pair_by_grad(self, var_name, attrs):
+        for index, pair in enumerate(attrs['merged_variables_pairs']):
+            var = pair[0]
+            var_grad = pair[1]
+            if var_grad.merged_var.name == var_name:
+                del attrs['merged_variables_pairs'][index]
+
+        for index, pair in enumerate(attrs['merged_dense_pairs']):
+            var = pair[0]
+            var_grad = pair[1]
+            if var_grad.merged_var.name == var_name:
+                del attrs['merged_dense_pairs'][index]
+                return
+
+        for index, pair in enumerate(attrs['merged_sparse_pairs']):
+            var = pair[0]
+            var_grad = pair[1]
+            if var_grad.merged_var.name == var_name:
+                del attrs['merged_sparse_pairs'][index]
+                return
+
+    def _remove_trainer_send_op(self, program, attrs, heter_block_index,
+                                block_var_detail):
+        # if trainer do FF->BP->SEND, it has follow vars: var, var@GRAD
+        # if trainer only do SEND, it has one var: var@GRAD
+        # Delete Send op ,if trainer doesn't has pair var (var<->var@GRAD)
+        persistables = block_var_detail[heter_block_index]["forward"]["persistables"] + \
+                    block_var_detail[heter_block_index]["backward"]["persistables"]
+        need_remove_send_op = []
+        need_remove_grad_var = []
+        for op in find_send_op(program):
+            input_list, _ = find_op_input_output(program,
+                                                 program.global_block(), op)
+            for var_name in input_list:
+                origin_var_name = var_name.split("@GRAD")[0]
+                if origin_var_name in persistables:
+                    need_remove_send_op.append(op)
+                    need_remove_grad_var.append(var_name)
+        need_remove_send_op = list(set(need_remove_send_op))
+        delete_ops(program.global_block(), need_remove_send_op)
+        for grad_var_name in need_remove_grad_var:
+            self._remove_var_pair_by_grad(grad_var_name, attrs)
+
     def _create_trainer_program(self, program, origin_program, attrs,
                                 program_block_ops_list, block_var_detail):
         # This function mainly includes the following contents:
@@ -911,18 +986,18 @@ class SplitTrainerOpsPass(PassBase):
             ops_list = program_block_ops_list[heter_block_index][
                 "forward"] + program_block_ops_list[heter_block_index][
                     "backward"]
-            static_var += replace_ops_by_communicate_op(
+            static_var += self._replace_ops_by_communicate_op(
                 program, attrs, heter_block_index, ops_list, block_var_detail)
-            remove_trainer_send_op(program, attrs, heter_block_index,
-                                   block_var_detail)
+            self._remove_trainer_send_op(program, attrs, heter_block_index,
+                                         block_var_detail)
 
         optimizer_block = []
         grad_to_block_id = []
 
         bp_ops_list = program_block_ops_list[0]["backward"]
-        delete_same_ops(program.global_block(), bp_ops_list)
-        delete_trainer_useless_var(attrs, program, static_var)
-        backward_block = create_backward_block(program, origin_program, attrs,
+        self._delete_same_ops(program.global_block(), bp_ops_list)
+        delete_trainer_useless_var(program, static_var)
+        backward_block = create_backward_block(program, origin_program,
                                                bp_ops_list, block_var_detail)
 
         bp_entrance_vars = block_var_detail[0]["backward"]["entrance"]

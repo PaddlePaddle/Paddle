@@ -78,6 +78,10 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     return out[0] != nullptr;
   }
 
+  bool HasAttr(const std::string& name) const override {
+    return attrs_->count(name) > 0 || default_attrs_->count(name) > 0;
+  }
+
   bool HasInputs(const std::string& name) const override {
     auto it = var_map_in_->find(name);
     if (it == var_map_in_->end() || it->second.empty()) {
