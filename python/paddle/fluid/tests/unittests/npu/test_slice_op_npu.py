@@ -58,12 +58,17 @@ class TestSliceOp(OpTest):
         self.place = paddle.NPUPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place)
+        if self.dtype == np.float16:
+            self.check_output_with_place(self.place)
+        else:
+            self.check_output_with_place(self.place)
 
     def test_check_grad_normal(self):
         if self.dtype == np.float16:
-            return
-        self.check_grad_with_place(self.place, ['Input'], 'Out')
+            self.check_grad_with_place(
+                self.place, ['Input'], 'Out', max_relative_error=0.02)
+        else:
+            self.check_grad_with_place(self.place, ['Input'], 'Out')
 
 
 class TestSliceOp2(TestSliceOp):
@@ -346,8 +351,6 @@ class TestSliceOpDecsDim(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad_normal(self):
-        if self.dtype == np.float16:
-            return
         self.check_grad_with_place(self.place, ['Input'], 'Out')
 
 

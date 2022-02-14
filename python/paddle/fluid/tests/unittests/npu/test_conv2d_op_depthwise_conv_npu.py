@@ -132,8 +132,6 @@ class TestDepthwiseConvNPU(OpTest):
         self.check_output_with_place(self.place, atol=1e-2)
 
     def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
         if self.dilations[0] == 1 and self.dilations[1] == 1:
             self.check_grad_with_place(
                 self.place, {'Input', 'Filter'},
@@ -142,8 +140,6 @@ class TestDepthwiseConvNPU(OpTest):
                 numeric_place=paddle.CPUPlace())
 
     def test_check_grad_no_filter(self):
-        if self.dtype == np.float16:
-            return
         self.check_grad_with_place(
             self.place, ['Input'],
             'Output',
@@ -152,8 +148,6 @@ class TestDepthwiseConvNPU(OpTest):
             numeric_place=paddle.CPUPlace())
 
     def test_check_grad_no_input(self):
-        if self.dtype == np.float16:
-            return
         if self.dilations[0] == 1 and self.dilations[1] == 1:
             self.check_grad_with_place(
                 self.place, ['Filter'],
@@ -266,8 +260,6 @@ class TestDepthwiseConvNPU_Padding(OpTest):
         self.check_output_with_place(self.place, atol=1e-2)
 
     def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
         self.check_grad_with_place(
             self.place, {'Input', 'Filter'},
             'Output',
@@ -275,8 +267,6 @@ class TestDepthwiseConvNPU_Padding(OpTest):
             numeric_place=paddle.CPUPlace())
 
     def test_check_grad_no_filter(self):
-        if self.dtype == np.float16:
-            return
         self.check_grad_with_place(
             self.place, ['Input'],
             'Output',
@@ -285,8 +275,6 @@ class TestDepthwiseConvNPU_Padding(OpTest):
             numeric_place=paddle.CPUPlace())
 
     def test_check_grad_no_input(self):
-        if self.dtype == np.float16:
-            return
         self.check_grad_with_place(
             self.place, ['Filter'],
             'Output',
