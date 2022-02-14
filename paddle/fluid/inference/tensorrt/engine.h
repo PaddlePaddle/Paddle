@@ -580,17 +580,10 @@ class TensorRTEngine {
   }
 
   void SetProfileNum(int num) { max_profile_num_ = num; }
-  void GetEngineInfo() {
-#if IS_TRT_VERSION_GE(8200)
-    std::unique_ptr<nvinfer1::IEngineInspector> infer_inspector(
-        infer_engine_->createEngineInspector());
-    infer_inspector->setExecutionContext(context());
-    VLOG(3) << infer_inspector->getEngineInformation(
-        nvinfer1::LayerInformationFormat::kJSON);
-#else
-    VLOG(3) << "Inspector needs TensorRT version 8.2 and after.";
-#endif
-  }
+
+  void GetEngineInfo();
+
+  void SetUseInspector(bool use_inspector) { use_inspector_ = use_inspector; }
 
  private:
   // Each ICudaEngine object is bound to a specific GPU when it is instantiated,
@@ -664,6 +657,7 @@ class TensorRTEngine {
   std::vector<std::unique_ptr<plugin::DynamicPluginTensorRT>> owned_pluginv2_;
 #endif
   std::mutex mutex_;
+  bool use_inspector_;
 };  // class TensorRTEngine
 
 // Add a layer__ into engine__ with args ARGS.

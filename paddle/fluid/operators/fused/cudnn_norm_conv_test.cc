@@ -21,8 +21,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/fused/cudnn_norm_conv.cu.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
