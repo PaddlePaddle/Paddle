@@ -54,6 +54,14 @@ MkldnnQuantizerConfig::MkldnnQuantizerConfig() {
   rules_["matmul"]["Y"] = ScaleAlgo::KL;
   rules_["matmul"]["Out"] = ScaleAlgo::KL;
 
+  rules_["elementwise_add_onednn"]["X"] = ScaleAlgo::KL;
+  rules_["elementwise_add_onednn"]["Y"] = ScaleAlgo::KL;
+  rules_["elementwise_add_onednn"]["Out"] = ScaleAlgo::KL;
+
+  rules_["elementwise_mul_onednn"]["X"] = ScaleAlgo::KL;
+  rules_["elementwise_mul_onednn"]["Y"] = ScaleAlgo::KL;
+  rules_["elementwise_mul_onednn"]["Out"] = ScaleAlgo::KL;
+
   rules_["elementwise_add"]["X"] = ScaleAlgo::KL;
   rules_["elementwise_add"]["Y"] = ScaleAlgo::KL;
   rules_["elementwise_add"]["Out"] = ScaleAlgo::KL;
