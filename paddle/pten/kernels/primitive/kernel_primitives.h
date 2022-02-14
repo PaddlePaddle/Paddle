@@ -14,17 +14,18 @@
 
 #pragma once
 #include "paddle/pten/kernels/primitive/helper_primitives.h"
-#ifdef PADDLE_WITH_XPU2
-#include "paddle/pten/backends/xpu/xpu_context.h"
-#include "paddle/pten/kernels/primitive/compute_primitives_xpu2.h"
-#include "paddle/pten/kernels/primitive/datamover_primitives_xpu2.h"
-#include "paddle/pten/kernels/primitive/functor_primitives_xpu2.h"
+#ifdef PADDLE_WITH_XPU_KP
 
 #define KPStream XPUStream
 #define KPDevice pten::XPUContext
 #define _ptr_ _global_ptr_
 #define __forceinline__ __inline__
 #define __restrict__
+
+#include "paddle/pten/backends/xpu/xpu_context.h"
+#include "paddle/pten/kernels/primitive/compute_primitives_xpu2.h"
+#include "paddle/pten/kernels/primitive/datamover_primitives_xpu2.h"
+#include "paddle/pten/kernels/primitive/functor_primitives_xpu2.h"
 
 #define THREAD_ID_X core_id()
 #define THREAD_ID_Y 0

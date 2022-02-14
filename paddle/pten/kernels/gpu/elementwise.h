@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/pten/kernels/funcs/cuda_kernel_config.h"
 #include "paddle/pten/kernels/funcs/elementwise_base.h"
 #include "paddle/pten/kernels/gpu/reduce.h"
+#include "paddle/pten/kernels/primitive/kernel_primitives.h"
 
 #ifdef __HIPCC__
 constexpr int ELEMWISE_MAX_BLOCK_DIM = 256;
@@ -230,7 +231,7 @@ __device__ void ElementwiseBroadcastKernelImpl(
 
 #pragma unroll
   for (int i = 0; i < Arity; i++) {
-    kps::Init<InT, VecSize>(args[i], static_cast<InT>(1.0f));
+    //kps::Init<InT, VecSize>(args[i], static_cast<InT>(1.0));
     LoadData<InT, VecSize, Rank, IsBoundary>(args[i],
                                              ins[i],
                                              block_offset,
@@ -272,7 +273,7 @@ __global__ void ElementwiseBroadcastKernel(
   int block_offset = BLOCK_ID_X * BLOCK_NUM_X * VecSize;
   int stride = BLOCK_NUM_X * GRID_NUM_X * VecSize;
 
-#ifdef PADDLE_WITH_XPU2
+#ifdef PADDLE_WITH_XPU_KP
   for (; block_offset < main_offset; block_offset += stride) {
     ElementwiseBroadcastKernelImpl<InT,
                                    OutT,
@@ -352,12 +353,12 @@ void LaunchKernel(const KPDevice &ctx,
   pten::framework::Array<_ptr_ OutT *, NumOuts> outs_data;
 
   for (int i = 0; i < NumOuts; ++i) {
-    outs_data[i] = ctx.Alloc<OutT>((*outs)[i]);
+    outs_data[i] =(_ptr_ OutT*)( ctx.Alloc<OutT>((*outs)[i]));
   }
 
   for (int i = 0; i < Arity; i++) {
     use_broadcast[i] = (ins[i]->numel() != numel);
-    ins_data[i] = (_ptr_ InT *)(ins[i]->data<InT>());
+    ins_data[i] = (const _ptr_ InT *)(ins[i]->data<InT>());
     if (use_broadcast[i]) {
       // get the broadcast config,
       // if data shape is[m, n], then you should set data_dim = {n, m}
@@ -367,7 +368,7 @@ void LaunchKernel(const KPDevice &ctx,
     }
   }
 
-#ifdef PADDLE_WITH_XPU2
+#ifdef PADDLE_WITH_XPU_KP
   const int threads = 64;
   const int blocks = 8;
   int main_offset = (numel / (VecSize * threads)) * VecSize * threads;
@@ -659,6 +660,7 @@ inline void ComputeBroadcastKernelSize(int *x_dims_array,
   }
 }
 
+#ifndef __xpu__
 template <typename T, typename OP, typename Tout = T>
 static __global__ void FastCommonGradBroadcastOneCUDAKernel(const T *x,
                                                             const T *y,
@@ -673,8 +675,8 @@ static __global__ void FastCommonGradBroadcastOneCUDAKernel(const T *x,
                                                             bool is_xsize,
                                                             OP op,
                                                             T *dd) {
-  int tid = threadIdx.x;
-  int bid = blockIdx.x;
+  int tid = THREAD_ID_X;
+  int bid = BLOCK_ID_X;
 
   T val(0);
   if (is_xsize) {
@@ -741,8 +743,8 @@ static __global__ void FastCommonGradBroadcastAllCUDAKernel(
     DY_OP dy_op,
     T *dx,
     T *dy) {
-  int tid = threadIdx.x;
-  int bid = blockIdx.x;
+  int tid = THREAD_ID_X;
+  int bid = BLOCK_ID_X;
 
   T val(0);
   if (is_xsize_larger) {
@@ -805,67 +807,67 @@ static __global__ void FastCommonGradBroadcastCUDAKernelHeight(const T *x,
   __shared__ T sdata[BLOCK_Y][BLOCK_X + 1];
 
   T val(0);
-  size_t width_stride = gridDim.x * blockDim.x;
-  size_t idx = threadIdx.x + blockDim.x * blockIdx.x;
+  size_t width_stride = GRID_NUM_X * BLOCK_NUM_X;
+  size_t idx = THREAD_ID_X + BLOCK_NUM_X * BLOCK_ID_X;
   size_t full_width =
       (w & (~((uint64_t)(BLOCK_X - 1)))) + ((w & (BLOCK_X - 1)) ? BLOCK_X : 0);
   size_t full_height =
       (h & (~((uint64_t)(BLOCK_Y - 1)))) + ((h & (BLOCK_Y - 1)) ? BLOCK_Y : 0);
   if (is_y) {
     for (int m = idx; m < full_width; m += width_stride) {
-      sdata[threadIdx.y][threadIdx.x] = 0;
-      for (int n = threadIdx.y; n < full_height; n += BLOCK_Y) {
+      sdata[THREAD_ID_Y][THREAD_ID_X] = 0;
+      for (int n = THREAD_ID_Y; n < full_height; n += BLOCK_Y) {
         int out_offset = n * w + m;
         int x_offset = (n % x_h) * x_w + m % x_w;
         if (dy) {
           if (m < w && n < h) {
             T val = dy_op(x[x_offset], y[m], out[out_offset], dout[out_offset]);
-            sdata[threadIdx.y][threadIdx.x] += val;
+            sdata[THREAD_ID_Y][THREAD_ID_X] += val;
           }
           __syncthreads();
         }
       }
       if (dy) {
-        T my_val = sdata[threadIdx.x][threadIdx.y];
+        T my_val = sdata[THREAD_ID_X][THREAD_ID_Y];
         for (int i = warpSize >> 1; i > 0; i >>= 1) {
           my_val += paddle::platform::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
         }
         __syncthreads();
-        if ((threadIdx.x == 0)) {
-          sdata[0][threadIdx.y] = my_val;
+        if ((THREAD_ID_X == 0)) {
+          sdata[0][THREAD_ID_Y] = my_val;
         }
         __syncthreads();
-        if (threadIdx.y == 0 && m < w) {
-          dy[m] = sdata[0][threadIdx.x];
+        if (THREAD_ID_Y == 0 && m < w) {
+          dy[m] = sdata[0][THREAD_ID_X];
         }
       }
     }
   } else {
     for (int m = idx; m < full_width; m += width_stride) {
-      sdata[threadIdx.y][threadIdx.x] = 0;
-      for (int n = threadIdx.y; n < full_height; n += BLOCK_Y) {
+      sdata[THREAD_ID_Y][THREAD_ID_X] = 0;
+      for (int n = THREAD_ID_Y; n < full_height; n += BLOCK_Y) {
         int out_offset = n * w + m;
         int y_offset = (n % x_h) * x_w + m % x_w;
         if (dy) {
           if (m < w && n < h) {
             T val = dy_op(x[m], y[y_offset], out[out_offset], dout[out_offset]);
-            sdata[threadIdx.y][threadIdx.x] += val;
+            sdata[THREAD_ID_Y][THREAD_ID_X] += val;
           }
           __syncthreads();
         }
       }
       if (dy) {
-        T my_val = sdata[threadIdx.x][threadIdx.y];
+        T my_val = sdata[THREAD_ID_X][THREAD_ID_Y];
         for (int i = warpSize >> 1; i > 0; i >>= 1) {
           my_val += paddle::platform::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
         }
         __syncthreads();
-        if ((threadIdx.x == 0)) {
-          sdata[0][threadIdx.y] = my_val;
+        if ((THREAD_ID_X == 0)) {
+          sdata[0][THREAD_ID_Y] = my_val;
         }
         __syncthreads();
-        if (threadIdx.y == 0 && m < w) {
-          dy[m] = sdata[0][threadIdx.x];
+        if (THREAD_ID_Y == 0 && m < w) {
+          dy[m] = sdata[0][THREAD_ID_X];
         }
       }
     }
@@ -884,9 +886,9 @@ static __global__ void CommonGradBroadcast1CUDAKernelHeight(const T *x,
                                                             int x_h,
                                                             int x_w,
                                                             bool is_y) {
-  int j = blockIdx.x;
-  int i = threadIdx.x;
-  int tid = threadIdx.x;
+  int j = BLOCK_ID_X;
+  int i = THREAD_ID_X;
+  int tid = THREAD_ID_X;
   T val(0);
 
   if (is_y) {
@@ -902,7 +904,7 @@ static __global__ void CommonGradBroadcast1CUDAKernelHeight(const T *x,
     if (dy) {
       h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
       val = paddle::platform::reduceSum(val, tid, h);
-      if (threadIdx.x == 0) {
+      if (THREAD_ID_X == 0) {
         dy[j] = val;
       }
     }
@@ -919,7 +921,7 @@ static __global__ void CommonGradBroadcast1CUDAKernelHeight(const T *x,
     if (dy) {
       h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
       val = paddle::platform::reduceSum(val, tid, h);
-      if (threadIdx.x == 0) {
+      if (THREAD_ID_X == 0) {
         dy[j] = val;
       }
     }
@@ -938,9 +940,9 @@ static __global__ void ElemwiseGradBroadcast1CUDAKernel(const T *x,
                                                         DY_OP dy_op,
                                                         T *dx,
                                                         T *dy) {
-  int j = blockIdx.x;
-  int i = threadIdx.x;
-  int tid = threadIdx.x;
+  int j = BLOCK_ID_X;
+  int i = THREAD_ID_X;
+  int tid = THREAD_ID_X;
   T val(0);
   if (is_xsize_larger) {
     do {
@@ -957,7 +959,7 @@ static __global__ void ElemwiseGradBroadcast1CUDAKernel(const T *x,
     if (dy) {
       h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
       val = paddle::platform::reduceSum(val, tid, h);
-      if (threadIdx.x == 0) {
+      if (THREAD_ID_X == 0) {
         dy[j] = val;
       }
     }
@@ -976,7 +978,7 @@ static __global__ void ElemwiseGradBroadcast1CUDAKernel(const T *x,
     if (dx) {
       h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
       val = paddle::platform::reduceSum(val, tid, h);
-      if (threadIdx.x == 0) {
+      if (THREAD_ID_X == 0) {
         dx[j] = val;
       }
     }
@@ -1001,16 +1003,16 @@ static __global__ void FastElemwiseGradBroadcast1CUDAKernel(
   __shared__ T sdata[BLOCK_Y][BLOCK_X + 1];
 
   T val(0);
-  size_t width_stride = gridDim.x * blockDim.x;
-  size_t idx = threadIdx.x + blockDim.x * blockIdx.x;
+  size_t width_stride = GRID_NUM_X * BLOCK_NUM_X;
+  size_t idx = THREAD_ID_X + BLOCK_NUM_X * BLOCK_ID_X;
   size_t full_width =
       (w & (~((uint64_t)(BLOCK_X - 1)))) + ((w & (BLOCK_X - 1)) ? BLOCK_X : 0);
   size_t full_height =
       (h & (~((uint64_t)(BLOCK_Y - 1)))) + ((h & (BLOCK_Y - 1)) ? BLOCK_Y : 0);
   if (is_xsize_larger) {
     for (int m = idx; m < full_width; m += width_stride) {
-      sdata[threadIdx.y][threadIdx.x] = 0;
-      for (int n = threadIdx.y; n < full_height; n += BLOCK_Y) {
+      sdata[THREAD_ID_Y][THREAD_ID_X] = 0;
+      for (int n = THREAD_ID_Y; n < full_height; n += BLOCK_Y) {
         int x_offset = n * w + m;
         if (dx && m < w && n < h) {
           dx[x_offset] =
@@ -1019,29 +1021,29 @@ static __global__ void FastElemwiseGradBroadcast1CUDAKernel(
         if (dy) {
           if (m < w && n < h) {
             T val = dy_op(x[x_offset], y[m], out[x_offset], dout[x_offset]);
-            sdata[threadIdx.y][threadIdx.x] += val;
+            sdata[THREAD_ID_Y][THREAD_ID_X] += val;
           }
           __syncthreads();
         }
       }
       if (dy) {
-        T my_val = sdata[threadIdx.x][threadIdx.y];
+        T my_val = sdata[THREAD_ID_X][THREAD_ID_Y];
         for (int i = warpSize >> 1; i > 0; i >>= 1)
           my_val += paddle::platform::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
         __syncthreads();
-        if ((threadIdx.x == 0)) {
-          sdata[0][threadIdx.y] = my_val;
+        if ((THREAD_ID_X == 0)) {
+          sdata[0][THREAD_ID_Y] = my_val;
         }
         __syncthreads();
-        if (threadIdx.y == 0 && m < w) {
-          dy[m] = sdata[0][threadIdx.x];
+        if (THREAD_ID_Y == 0 && m < w) {
+          dy[m] = sdata[0][THREAD_ID_X];
         }
       }
     }
   } else {  // x.dims < y.dims, broadcast for x.
     for (int m = idx; m < full_width; m += width_stride) {
-      sdata[threadIdx.y][threadIdx.x] = 0;
-      for (int n = threadIdx.y; n < full_height; n += BLOCK_Y) {
+      sdata[THREAD_ID_Y][THREAD_ID_X] = 0;
+      for (int n = THREAD_ID_Y; n < full_height; n += BLOCK_Y) {
         int y_offset = n * w + m;
         if (dy && m < w && n < h) {
           dy[y_offset] =
@@ -1050,22 +1052,22 @@ static __global__ void FastElemwiseGradBroadcast1CUDAKernel(
         if (dx) {
           if (m < w && n < h) {
             T val = dx_op(x[m], y[y_offset], out[y_offset], dout[y_offset]);
-            sdata[threadIdx.y][threadIdx.x] += val;
+            sdata[THREAD_ID_Y][THREAD_ID_X] += val;
           }
           __syncthreads();
         }
       }
       if (dx) {
-        T my_val = sdata[threadIdx.x][threadIdx.y];
+        T my_val = sdata[THREAD_ID_X][THREAD_ID_Y];
         for (int i = warpSize >> 1; i > 0; i >>= 1)
           my_val += paddle::platform::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
         __syncthreads();
-        if ((threadIdx.x == 0)) {
-          sdata[0][threadIdx.y] = my_val;
+        if ((THREAD_ID_X == 0)) {
+          sdata[0][THREAD_ID_Y] = my_val;
         }
         __syncthreads();
-        if (threadIdx.y == 0 && m < w) {
-          dx[m] = sdata[0][threadIdx.x];
+        if (THREAD_ID_Y == 0 && m < w) {
+          dx[m] = sdata[0][THREAD_ID_X];
         }
       }
     }
@@ -1085,8 +1087,8 @@ static __global__ void ElemwiseGradBroadcast2CUDAKernel(const T *x,
                                                         DY_OP dy_op,
                                                         T *dx,
                                                         T *dy) {
-  int tid = threadIdx.x;
-  int j = blockIdx.x;
+  int tid = THREAD_ID_X;
+  int j = BLOCK_ID_X;
 
   T val(0);
   int ttid = tid;
@@ -1114,7 +1116,7 @@ static __global__ void ElemwiseGradBroadcast2CUDAKernel(const T *x,
       int h = pre * post;
       h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
       val = paddle::platform::reduceSum(val, tid, h);
-      if (threadIdx.x == 0) {
+      if (THREAD_ID_X == 0) {
         dy[j] = val;
       }
     }
@@ -1141,7 +1143,7 @@ static __global__ void ElemwiseGradBroadcast2CUDAKernel(const T *x,
       int h = pre * post;
       h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
       val = paddle::platform::reduceSum(val, tid, h);
-      if (threadIdx.x == 0) {
+      if (THREAD_ID_X == 0) {
         dx[j] = val;
       }
     }
@@ -1213,9 +1215,9 @@ __global__ void CommonGradBroadcastCUDAKernel(const int *x_strides_array,
                                               int thread_num,
                                               DX_OP dx_op) {
   T val(0);
-  int i = blockIdx.x;
-  int tid = threadIdx.x;
-  for (int j = tid; j < thread_num; j += blockDim.x) {
+  int i = BLOCK_ID_X;
+  int tid = THREAD_ID_X;
+  for (int j = tid; j < thread_num; j += BLOCK_NUM_X) {
     const int X_index = i * thread_num + j;
     int out_index = X_index;
     int C_index = 0;
@@ -1239,7 +1241,7 @@ __global__ void CommonGradBroadcastCUDAKernel(const int *x_strides_array,
     val += dx_op(x[x_index], y[y_index], out[out_index], dout[out_index]);
   }
   val = paddle::platform::reduceSum(val, tid, thread_num);
-  if (threadIdx.x == 0) {
+  if (THREAD_ID_X == 0) {
     dx[i] = val;
   }
 }
@@ -1961,8 +1963,8 @@ void ElemwiseGradComputeWithBroadcast(const GPUContext &ctx,
 template <typename T>
 static __global__ void SimpleElemwiseAddGradCUDAKernel(
     const T *__restrict__ dout, int size, int vec_size, T *dx, T *dy) {
-  int tid = blockIdx.x * blockDim.x + threadIdx.x;
-  int stride = gridDim.x * blockDim.x;
+  int tid = BLOCK_ID_X * BLOCK_NUM_X + THREAD_ID_X;
+  int stride = GRID_NUM_X * BLOCK_NUM_X;
   int loop = size / vec_size;
   int remainder = size % vec_size;
   const float4 *dout_vec = reinterpret_cast<const float4 *>(dout);
@@ -2095,14 +2097,14 @@ static __global__ void SimpleElemwiseSubGradCUDAKernel(const T *dout,
                                                        int64_t size,
                                                        T *dx,
                                                        T *dy) {
-  int col = blockIdx.x * blockDim.x + threadIdx.x;
+  int col = BLOCK_ID_X * BLOCK_NUM_X + THREAD_ID_X;
 
   while (col < size) {
     if (dx != nullptr) {
       dx[col] = dout[col];
     }
     dy[col] = -dout[col];
-    col += blockDim.x * gridDim.x;
+    col += BLOCK_NUM_X * GRID_NUM_X;
   }
 }
 
@@ -2185,5 +2187,6 @@ void elementwise_sub_grad(const GPUContext &ctx,
       dx->mutable_data<T>(ctx.GetPlace()),
       dy->mutable_data<T>(ctx.GetPlace()));
 }
+#endif
 
 }  // namespace pten

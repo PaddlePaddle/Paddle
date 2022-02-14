@@ -328,7 +328,7 @@ __device__ __forceinline__ void Reduce(T* out,
                                        const T* in,
                                        ReduceFunctor reducer,
                                        bool reduce_last_dim) {
-  if (Mode == kGlobalMode) {
+  if (Mode == details::kGlobalMode) {
 #pragma unroll
     for (int i = 0; i < NY; ++i) {
 #pragma unroll
@@ -336,7 +336,7 @@ __device__ __forceinline__ void Reduce(T* out,
         out[i] = reducer(out[i], in[i * NX + j]);
       }
     }
-    BlockXReduce<T, OpFunc, NY>(out, reducer);
+    BlockXReduce<T, ReduceFunctor, NY>(out, reducer);
   } else {  // else  kLocalMode
 #pragma unroll
     for (int i = 0; i < NY; ++i) {
@@ -345,6 +345,20 @@ __device__ __forceinline__ void Reduce(T* out,
         out[i] = reducer(out[i], in[i * NX + j]);
       }
     }
+  }
+}
+
+template <typename InT,
+          typename OutT,
+          int NX,
+          int NY,
+          int BlockSize,
+          class OpFunc>
+__device__ __forceinline__ void ElementwiseFillConst(OutT* out,
+                                                     OpFunc compute) {
+#pragma unroll
+  for (int idx = 0; idx < NX * NY; idx++) {
+    out[idx] = static_cast<OutT>(compute());
   }
 }
 

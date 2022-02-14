@@ -25,7 +25,7 @@
 #include "xpu/kernel/math.h"
 #endif
 
-#if (defined(__CUDACC__) || defined(__HIPCC__) || defined(__xpu_kp__))
+#if (defined(__CUDACC__) || defined(__HIPCC__) || defined(__xpu__))
 #define HOSTDEVICE __host__ __device__
 #define DEVICE __device__
 #define HOST __host__

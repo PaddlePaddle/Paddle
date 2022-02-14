@@ -25,13 +25,19 @@ limitations under the License. */
   #undef __NVCC__
 #endif
 
-#ifdef __xpu_on_host__
+#ifdef PADDLE_WITH_XPU_KP
+//#ifdef __xpu_on_host__
+#include <xpu/runtime.h>
+#include "xpu/kernel/cluster_header.h"
+#include "xpu/kernel/debug.h"
+#include "xpu/kernel/math.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include <memory>
 #include <string>
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_xpu.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 
 namespace paddle {
 namespace operators {
@@ -41,6 +47,13 @@ class ElementwiseAddXPUKPKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     std::cout<< "lxd_debug: KP elementwise_add"<<std::endl;
+    std::vector<const framework::Tensor*> ins;
+    std::vector<framework::Tensor*> outs;
+    int axis = PackTensorsIntoVector<T>(ctx, &ins, &outs);
+    const auto& xpu_ctx =
+      ctx.template device_context<paddle::platform::XPUDeviceContext>();
+    paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T, kps::AddFunctor<T>,1>(
+        xpu_ctx, ins, &outs, axis, kps::AddFunctor<T>());
   }
 };
 
@@ -166,11 +179,10 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_KERNEL(elementwise_add, KP, plat::XPUPlace,
-                    ops::ElementwiseAddXPUKPKernel<float>,
-                   ops::ElementwiseAddXPUKPKernel<paddle::platform::float16>);
+                    ops::ElementwiseAddXPUKPKernel<float>);
 
 REGISTER_OP_KERNEL(elementwise_add_grad, KP, plat::XPUPlace,
-                    ops::ElementwiseAddGradXPUKernel<float>,
-                   ops::ElementwiseAddGradXPUKernel<paddle::platform::float16>);
+                    ops::ElementwiseAddGradXPUKernel<float>);
 
-#endif // __xpu_on_host__
+//#endif // __xpu_on_host__
+#endif // PADDLE_WITH_XPU_KP

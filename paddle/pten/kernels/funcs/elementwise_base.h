@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/kernels/empty_kernel.h"
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/function_traits.h"
 #include "paddle/pten/backends/gpu/gpu_launch_config.h"
@@ -438,7 +438,7 @@ inline void ElementwiseGradPreProcess(const DenseTensor &dout,
   }
 }
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 
 template <typename InT, typename OutT>
 int GetVectorizedSizeForTensors(const std::vector<const DenseTensor *> &ins,
@@ -571,7 +571,7 @@ __device__ void VectorizedElementwiseKernelImpl(
 
 #pragma unroll
   for (int i = 0; i < Arity; i++) {
-    kps::Init<InT, VecSize>(args[i], static_cast<InT>(1.0f));
+    //kps::Init<InT, VecSize>(args[i], static_cast<InT>(1.0f));
     kps::ReadData<InT, VecSize, 1, 1, IsBoundary>(
         args[i], in[i] + data_offset, num);
   }
@@ -643,12 +643,12 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
   pten::framework::Array<_ptr_ OutT *, NumOuts> outs_data;
 
   for (int i = 0; i < Arity; ++i) {
-    ins_data[i] = ins[i]->data<InT>();
+    ins_data[i] = (const _ptr_ InT*)(ins[i]->data<InT>());
   }
   for (int i = 0; i < NumOuts; ++i) {
-    outs_data[i] = ctx.Alloc<OutT>((*outs)[i]);
+    outs_data[i] = (_ptr_ OutT*)(ctx.Alloc<OutT>((*outs)[i]));
   }
-#ifdef PADDLE_WITH_XPU2
+#ifdef PADDLE_WITH_XPU_KP
   int block_size = 64;
   int grid_size = 8;
   auto stream = ctx.x_context()->xpu_stream;

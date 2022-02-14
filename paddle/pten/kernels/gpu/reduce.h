@@ -214,7 +214,7 @@ struct ReduceIndexMapping {
       : dim(dims) {}
 
   __device__ __forceinline__ int BlockIdX() {
-#ifdef PADDLE_WITH_XPU2
+#ifdef PADDLE_WITH_XPU_KP
     if (ReduceLastDim) {
       return (cluster_id() / dim.split_num_x % dim.split_num_y);
     } else {
@@ -226,7 +226,7 @@ struct ReduceIndexMapping {
   }
 
   __device__ __forceinline__ int BlockIdY() {
-#ifdef PADDLE_WITH_XPU2
+#ifdef PADDLE_WITH_XPU_KP
     if (ReduceLastDim) {
       return (cluster_id() % dim.split_num_x);
     } else {
@@ -238,7 +238,7 @@ struct ReduceIndexMapping {
   }
 
   __device__ __forceinline__ int BlockDimX() {
-#ifdef PADDLE_WITH_XPU2
+#ifdef PADDLE_WITH_XPU_KP
     return dim.deal_size_x;
 #else
     return blockDim.x;
@@ -246,7 +246,7 @@ struct ReduceIndexMapping {
   }
 
   __device__ __forceinline__ int BlockDimY() {
-#ifdef PADDLE_WITH_XPU2
+#ifdef PADDLE_WITH_XPU_KP
     return dim.deal_size_y;
 #else
     return blockDim.y;
@@ -254,7 +254,7 @@ struct ReduceIndexMapping {
   }
 
   __device__ __forceinline__ int GridDimX() {
-#ifdef PADDLE_WITH_XPU2
+#ifdef PADDLE_WITH_XPU_KP
     if (ReduceLastDim) {
       return dim.split_num_y;
     } else {
@@ -266,7 +266,7 @@ struct ReduceIndexMapping {
   }
 
   __device__ __forceinline__ int GridDimY() {
-#ifdef PADDLE_WITH_XPU2
+#ifdef PADDLE_WITH_XPU_KP
     if (ReduceLastDim) {
       return dim.split_num_x;
     } else {
@@ -278,7 +278,7 @@ struct ReduceIndexMapping {
   }
 
   __device__ __forceinline__ int GetLoopSize() {
-#ifdef PADDLE_WITH_XPU2
+#ifdef PADDLE_WITH_XPU_KP
     if (ReduceLastDim) {
       return dim.deal_size_y;
     } else {
@@ -457,7 +457,7 @@ struct ReduceConfig {
       reduce_type = static_cast<int>(ReduceType::kReduceLastDim);
     } else if (reduce_rank == 1) {
 // ReduceFirstDim and reduceSecondDim
-#ifdef PADDLE_WITH_XPU2
+#ifdef PADDLE_WITH_XPU_KP
       if (reduce_dim[0] == 0) {
         reduce_type = static_cast<int>(ReduceType::kReduceHigherDim);
       } else {
@@ -577,7 +577,7 @@ struct ReduceConfig {
     dim3 block_dim(block_num, 1, 1);
     dim3 grid_dim(left_num, 1, 1);
     blocking_size = reduce_num;
-#ifdef PADDLE_WITH_XPU2
+#ifdef PADDLE_WITH_XPU_KP
     if (reduce_last_dim) {
       block_dim.x = 128;
       block_dim.y = reduce_num;
@@ -855,7 +855,7 @@ static void LaunchReduceKernel(const Tx* x_data,
                                         0);
     dim.SetRem(config.reduce_num % config.block.x, 0, 0);
 
-#ifdef PADDLE_WITH_XPU2
+#ifdef PADDLE_WITH_XPU_KP
     ReduceAnyKernel<Tx,
                     Ty,
                     MPType,
@@ -910,7 +910,7 @@ static void LaunchReduceKernel(const Tx* x_data,
                                         0);
     dim.SetRem(config.reduce_num % config.block.x, 0, 0);
 
-#ifdef PADDLE_WITH_XPU2
+#ifdef PADDLE_WITH_XPU_KP
     ReduceAnyKernel<Tx,
                     Ty,
                     MPType,
@@ -965,7 +965,7 @@ static void LaunchReduceKernel(const Tx* x_data,
     kps::DimConfig dim =
         kps::DimConfig(grid.x, grid.y, grid.z, block.x, config.grid.y, 0);
     dim.SetRem(config.left_num % block.x, 0, 0);
-#ifdef PADDLE_WITH_XPU2
+#ifdef PADDLE_WITH_XPU_KP
     ReduceHigherDimKernel<Ty,
                           Ty,
                           MPType,
@@ -1127,7 +1127,7 @@ void TensorReduceFunctorImpl(const pten::GPUContext& dev_ctx,
                config.reduce_num % config.blocking_size,
                0);
 
-#ifdef PADDLE_WITH_XPU2
+#ifdef PADDLE_WITH_XPU_KP
     ReduceHigherDimKernel<Tx,
                           Ty,
                           MPType,
@@ -1166,7 +1166,7 @@ void TensorReduceFunctorImpl(const pten::GPUContext& dev_ctx,
           kps::DimConfig(grid.x, grid.y, grid.z, block.x, config.grid.y, 0);
       dim2.SetRem(config.left_num % config.block.x, 0, 0);
 
-#ifdef PADDLE_WITH_XPU2
+#ifdef PADDLE_WITH_XPU_KP
       ReduceHigherDimKernel<
           Ty,
           Ty,

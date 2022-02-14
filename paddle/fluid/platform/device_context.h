@@ -70,7 +70,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/npu/enforce_npu.h"
 #include "paddle/fluid/platform/device/npu/npu_stream.h"
 #endif
+
+#ifdef __xpu_on_host__
 #include "unsupported/Eigen/CXX11/Tensor"
+#endif
 
 namespace Eigen {
 struct DefaultDevice;

@@ -336,7 +336,7 @@ __device__ __inline__ void ReadDataReduce(T* dst,
                                           int stride_nx,
                                           int stride_ny,
                                           bool reduce_last_dim) {
-  __local__ Tx in_temp[1];
+  __local__ T in_temp[1];
   int thread_offset = 0;
   int left_idx = 0;
   if (reduce_last_dim) {
@@ -356,8 +356,8 @@ __device__ __inline__ void ReadDataReduce(T* dst,
         }
       }
       uint32_t index_src = index_cal(thread_offset + block_offset);
-      GM2LM(src + index_src, in_temp, sizeof(Tx));
-      dst[ny] = static_cast<Ty>(func(in_temp[0]));
+      GM2LM(src + index_src, in_temp, sizeof(T));
+      dst[ny] = static_cast<T>(func(in_temp[0]));
       thread_offset += stride_ny;
     }
   } else {
@@ -372,8 +372,8 @@ __device__ __inline__ void ReadDataReduce(T* dst,
           }
         }
         uint32_t index_src = index_cal(thread_offset + block_offset);
-        GM2LM(src + index_src, in_temp, sizeof(Tx));
-        dst[nx + ny * NX] = static_cast<Ty>(func(in_temp[0]));
+        GM2LM(src + index_src, in_temp, sizeof(T));
+        dst[nx + ny * NX] = static_cast<T>(func(in_temp[0]));
         thread_offset += stride_ny;
       }
     }
