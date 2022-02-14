@@ -16,12 +16,15 @@
 
 #include "paddle/fluid/operators/data/batch_decode_random_crop_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
+#include "paddle/fluid/operators/math/math_function.h"
+// #include "paddle/fluid/operators/transpose_op.h"
 
 namespace paddle {
 namespace operators {
 namespace data {
 
 using LoDTensorBlockingQueueHolder = operators::reader::LoDTensorBlockingQueueHolder;
+using DataLayout = framework::DataLayout;
 
 NvjpegDecoderThreadPool* decode_pool = nullptr;
 // std::seed_seq* rand_seq = nullptr;
@@ -50,6 +53,15 @@ class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
     auto& out_array = *out->GetMutable<framework::LoDTensorArray>();
     out_array.resize(inputs->size());
 
+    const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
+    const DataLayout data_layout =
+        framework::StringToDataLayout(data_layout_str);
+
+    framework::LoDTensorArray temp_array;
+    if (data_layout == DataLayout::kNCHW) {
+      temp_array.resize(inputs->size());
+    }
+
     auto aspect_ratio_min = ctx.Attr<float>("aspect_ratio_min");
     auto aspect_ratio_max = ctx.Attr<float>("aspect_ratio_max");
     AspectRatioRange aspect_ratio_range{aspect_ratio_min, aspect_ratio_max};
@@ -66,19 +78,51 @@ class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
       const framework::LoDTensor x = inputs->at(i);
       auto* x_data = x.data<T>();
       size_t x_numel = static_cast<size_t>(x.numel());
-
-      NvjpegDecodeTask task = {
-        .bit_stream = x_data,
-        .bit_len = x_numel,
-        .tensor = &out_array[i],
-        .roi_generator = new RandomROIGenerator(
-                                aspect_ratio_range, area_range, rands[i]),
-        .place = dev
-      };
-      decode_pool->AddTask(std::make_shared<NvjpegDecodeTask>(task));
+      
+      if (data_layout == DataLayout::kNCHW){
+        NvjpegDecodeTask task = {
+          .bit_stream = x_data,
+          .bit_len = x_numel,
+          .tensor = &temp_array[i],
+          .roi_generator = new RandomROIGenerator(
+                                  aspect_ratio_range, area_range, rands[i]),
+          .place = dev
+        };
+        decode_pool->AddTask(std::make_shared<NvjpegDecodeTask>(task));
+      }
+      else{
+        NvjpegDecodeTask task = {
+          .bit_stream = x_data,
+          .bit_len = x_numel,
+          .tensor = &out_array[i],
+          .roi_generator = new RandomROIGenerator(
+                                  aspect_ratio_range, area_range, rands[i]),
+          .place = dev
+        };
+        decode_pool->AddTask(std::make_shared<NvjpegDecodeTask>(task));
+      }
+      
     }
 
     decode_pool->RunAll(true);
+
+    if (data_layout == DataLayout::kNCHW){
+      const auto& dev_ctx = ctx.cuda_device_context();
+      paddle::operators::math::Transpose<paddle::platform::CUDADeviceContext, T, 3> trans;
+      std::vector<int> axis = {2, 0, 1};
+      // LOG(ERROR) << "start transpose 01!!!";
+      for (size_t i = 0; i < inputs->size(); i++) {
+        // Do transpose
+        const framework::DDim& in_sizes = temp_array[i].dims();
+        // const int ndim = in_sizes.size();
+        framework::DDim transposed_input_shape = in_sizes.transpose(axis);
+        std::vector<int64_t> transposed_input_shape_ =
+            framework::vectorize(transposed_input_shape);
+        out_array[i].Resize(transposed_input_shape);
+        out_array[i].mutable_data<T>(dev_ctx.GetPlace());
+        trans(dev_ctx, temp_array[i], &out_array[i], axis);
+      }
+    }
 
     LOG(ERROR) << "GPUBatchDecodeJpegKernel Compute finish";
   }

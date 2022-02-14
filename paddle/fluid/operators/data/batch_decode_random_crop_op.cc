@@ -132,6 +132,13 @@ and 255.
         "for optionally converting the image, can be \"unchanged\" "
         ",\"gray\" , \"rgb\" .")
         .SetDefault("unchanged");
+    AddAttr<std::string>(
+        "data_layout",
+        "(string, default NCHW) Only used in "
+        "an optional string from: \"NHWC\", \"NCHW\". "
+        "Specify that the data format of the input and output data is "
+        "channel_first or channel_last.")
+        .SetDefault("NCHW");
     AddAttr<float>("aspect_ratio_min", "").SetDefault(3./4.);
     AddAttr<float>("aspect_ratio_max", "").SetDefault(4./3.);
     AddAttr<float>("area_min", "").SetDefault(0.08);

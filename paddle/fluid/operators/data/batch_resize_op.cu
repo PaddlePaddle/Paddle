@@ -239,7 +239,11 @@ class BatchResizeCUDAKernel : public framework::OpKernel<T> {
                   img->dims()[0] : img->dims()[2];
 
     std::vector<int64_t> out_dim = {static_cast<int64_t>(x->size()),
+                                    size[0], size[1], img_c};
+    if (data_layout == DataLayout::kNCHW) {
+      out_dim = {static_cast<int64_t>(x->size()),
                                     img_c, size[0], size[1]};
+    }
     out->Resize(framework::make_ddim(out_dim));
     out->mutable_data<T>(ctx.GetPlace());
 

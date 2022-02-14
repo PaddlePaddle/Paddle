@@ -86,6 +86,7 @@ void NvjpegDecoder::CPUDecodeRandomCropResize(const uint8_t* data, size_t length
                                 framework::LoDTensor& temp, framework::LoDTensor* out, platform::Place place) {
   cv::Mat image =
       cv::imdecode(cv::Mat(1, length, CV_8UC1, const_cast<unsigned char*>(data)), cv::IMREAD_COLOR);
+  
   cv::Mat cropped;
   int height;
   int width;
@@ -99,18 +100,21 @@ void NvjpegDecoder::CPUDecodeRandomCropResize(const uint8_t* data, size_t length
     cv_roi.height = roi.h;
     height = roi.h;
     width = roi.w;
-    std::vector<int64_t> out_shape = {3, height, width};
+
+    std::vector<int64_t> out_shape = {height, width, 3};
     temp.Resize(framework::make_ddim(out_shape));
     platform::CPUPlace cpu;
     // allocate memory and assign to out_image
     auto* data = temp.mutable_data<uint8_t>(cpu);
-    cropped.data = data;
+    // todo jianglielin: why not work?
+    // cropped.data = data;
     image(cv_roi).copyTo(cropped);
-    out->Resize(framework::make_ddim(out_shape));
-    
+
+    std::memcpy(data, cropped.data, 3 * height * width);
+
     TensorCopySync(temp, place, out);
-    
   } else {
+    LOG(ERROR) << "Not Use Opencv decode!!!";
     // throw error
   }
 }
@@ -138,6 +142,9 @@ int NvjpegDecoder::ParseDecodeParams(
     CPUDecodeRandomCropResize(bit_stream, bit_len, roi_generator, nullptr, 0, temp, out, place);
     return 1;
 #endif
+  }
+  else{
+    // LOG(ERROR) << "Use nvjpeg decode!!!";
   }
 
   int64_t width = static_cast<int64_t>(widths[0]);
@@ -180,7 +187,7 @@ int NvjpegDecoder::ParseDecodeParams(
     width = roi.w;
   }
 
-  std::vector<int64_t> out_shape = {output_components, height, width};
+  std::vector<int64_t> out_shape = {height, width, output_components};
   out->Resize(framework::make_ddim(out_shape));
 
   // allocate memory and assign to out_image
@@ -217,7 +224,9 @@ void NvjpegDecoder::Run(
   if (res) {
     return;
   }
+  // LOG(ERROR) << "ParseDecodeParams finish !!!";
   Decode(bit_stream, bit_len, &image);
+  // LOG(ERROR) << "Decode finish !!!";
 }
 
 NvjpegDecoderThreadPool::NvjpegDecoderThreadPool(const int num_threads, const std::string mode, const int dev_id)
