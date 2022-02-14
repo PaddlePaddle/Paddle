@@ -128,7 +128,7 @@ static framework::Tensor FoldHeadAndLastDims(const DeviceContext &context,
   output.Resize({in_dims[1], in_dims[0], in_dims[2]});
   output.mutable_data<T>(context.GetPlace());
   std::vector<int> axis = {1, 0, 2};
-  math::Transpose<DeviceContext, T, 3> trans;
+  pten::funcs::Transpose<DeviceContext, T, 3> trans;
   trans(context, input, &output, axis);
   output.Resize({in_dims[1], in_dims[0] * in_dims[2]});
 

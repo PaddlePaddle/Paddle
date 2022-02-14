@@ -3,7 +3,6 @@
   output : Tensor
   infer_meta :
     func : ElementwiseInferMeta
-    param : [x, y]
   kernel :
     func : add
 
@@ -40,7 +39,6 @@
   output : Tensor
   infer_meta :
     func : ElementwiseInferMeta
-    param : [x, y]
   kernel :
     func : divide
 
@@ -126,7 +124,6 @@
   output : Tensor
   infer_meta :
     func : ReduceInferMeta
-    param: [x, axis, keep_dim]
   kernel :
     func : mean
 
@@ -135,7 +132,6 @@
   output : Tensor
   infer_meta :
     func : ElementwiseInferMeta
-    param : [x, y]
   kernel :
     func : multiply
 
@@ -174,7 +170,6 @@
   output : Tensor
   infer_meta :
     func : ElementwiseInferMeta
-    param : [x, y]
   kernel :
     func : subtract
 
@@ -183,7 +178,6 @@
   output : Tensor
   infer_meta :
     func : SumInferMeta
-    param: [x, axis, dtype, keep_dim]
   kernel :
     func : sum
     param : [x, axis, dtype, keep_dim]

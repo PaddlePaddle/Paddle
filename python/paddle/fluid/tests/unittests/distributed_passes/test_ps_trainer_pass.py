@@ -47,7 +47,6 @@ class TestPsTrainerPass(PsPassTestBase):
     def check(self):
         pass
 
-    '''
     def test_ps_optimizer_minimize_cpu_async(self):
         self.init()
         self.config['ps_mode_config'] = "../ps/cpu_async_ps_config.yaml"
@@ -64,7 +63,7 @@ class TestPsTrainerPass(PsPassTestBase):
         self.ps_launch(self.config)
 
         self.check()
-    
+
     def test_ps_optimizer_minimize_cpu_sync(self):
         self.init()
         self.config['ps_mode_config'] = "../ps/cpu_sync_ps_config.yaml"
@@ -81,7 +80,7 @@ class TestPsTrainerPass(PsPassTestBase):
         self.ps_launch(self.config)
 
         self.check()
-    
+
     def test_ps_optimizer_minimize_cpu_geo(self):
         self.init()
         self.config['ps_mode_config'] = "../ps/cpu_geo_ps_config.yaml"
@@ -98,7 +97,6 @@ class TestPsTrainerPass(PsPassTestBase):
         self.ps_launch(self.config)
 
         self.check()
-    '''
 
     # heter ps 二阶段
     def test_ps_optimizer_minimize_heter(self):
@@ -121,7 +119,6 @@ class TestPsTrainerPass(PsPassTestBase):
         remove_path_if_exists(self.config['log_dir'])
         self.ps_launch(self.config, 'heter-ps')
 
-    '''
     def test_ps_optimizer_minimize_gpu(self):
         self.init()
         self.config['run_minimize'] = '1'
@@ -154,7 +151,6 @@ class TestPsTrainerPass(PsPassTestBase):
 
     def test_distributed_ops_pass(self):
         pass
-    '''
 
 
 if __name__ == '__main__':

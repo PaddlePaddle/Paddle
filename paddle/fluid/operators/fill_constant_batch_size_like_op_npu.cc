@@ -70,7 +70,7 @@ class FillConstantBatchSizeLikeOpNPUKernel : public framework::OpKernel<T> {
     bool cpu_place = force_cpu || ctx.GetPlace() == platform::CPUPlace();
     if (cpu_place) {
       auto &dev_ctx = *pool.Get(platform::CPUPlace());
-      math::SetConstant<platform::CPUDeviceContext, T> functor;
+      pten::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
       out->mutable_data(platform::CPUPlace(), data_type);
       functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
               out, static_cast<T>(value));

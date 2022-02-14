@@ -29,8 +29,8 @@
 #include "paddle/fluid/operators/deformable_conv_func.h"
 #include "paddle/fluid/operators/deformable_conv_v1_op.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -489,7 +489,7 @@ class DeformableConvV1GradCUDAKernel : public framework::OpKernel<T> {
     Tensor col_buffer_3d;
     col_buffer_3d.ShareDataWith(col_buffer).Resize(col_buffer_3d_shape);
 
-    math::SetConstant<CUDADeviceContext, T> set_zero;
+    pten::funcs::SetConstant<CUDADeviceContext, T> set_zero;
     auto blas = math::GetBlas<CUDADeviceContext, T>(dev_ctx);
 
     col_buffer.mutable_data<T>(ctx.GetPlace());

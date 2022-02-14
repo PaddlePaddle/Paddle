@@ -16,8 +16,8 @@ limitations under the License. */
 #include <memory>
 #include <vector>
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/dynload/mklml.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
