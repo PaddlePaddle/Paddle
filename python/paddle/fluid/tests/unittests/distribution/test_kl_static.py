@@ -22,13 +22,14 @@ import scipy.stats
 from paddle.distribution import kl
 
 import config
+import parameterize as param
 import mock_data as mock
 
 paddle.enable_static()
 
 
-@config.place(config.DEVICES)
-@config.parameterize((config.TEST_CASE_NAME, 'a1', 'b1', 'a2', 'b2'), [
+@param.place(config.DEVICES)
+@param.parameterize_cls((param.TEST_CASE_NAME, 'a1', 'b1', 'a2', 'b2'), [
     ('test_regular_input', 6.0 * np.random.random((4, 5)) + 1e-4,
      6.0 * np.random.random((4, 5)) + 1e-4, 6.0 * np.random.random(
          (4, 5)) + 1e-4, 6.0 * np.random.random((4, 5)) + 1e-4),
@@ -75,8 +76,8 @@ class TestKLBetaBeta(unittest.TestCase):
                 (a2 - a1 + b2 - b1) * scipy.special.digamma(a1 + b1))
 
 
-@config.place(config.DEVICES)
-@config.parameterize((config.TEST_CASE_NAME, 'conc1', 'conc2'), [
+@param.place(config.DEVICES)
+@param.parameterize_cls((param.TEST_CASE_NAME, 'conc1', 'conc2'), [
     ('test-regular-input', np.random.random((5, 7, 8, 10)), np.random.random(
         (5, 7, 8, 10))),
 ])
@@ -123,9 +124,9 @@ class DummyDistribution(paddle.distribution.Distribution):
     pass
 
 
-@config.place(config.DEVICES)
-@config.parameterize((config.TEST_CASE_NAME, 'p', 'q'),
-                     [('test-dispatch-exception')])
+@param.place(config.DEVICES)
+@param.parameterize_cls((param.TEST_CASE_NAME, 'p', 'q'),
+                        [('test-dispatch-exception')])
 class TestDispatch(unittest.TestCase):
     def setUp(self):
         self.mp = paddle.static.Program()

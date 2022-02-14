@@ -22,6 +22,7 @@ from paddle.distribution import *
 from paddle.fluid import layers
 
 import config
+import parameterize
 
 paddle.enable_static()
 
@@ -132,11 +133,12 @@ class DistributionTestName(unittest.TestCase):
         self.assertEqual(self.get_prefix(lp.name), name + '_log_prob')
 
 
-@config.place(config.DEVICES)
-@config.parameterize((config.TEST_CASE_NAME, 'batch_shape', 'event_shape'),
-                     [('test-tuple', (10, 20),
-                       (10, 20)), ('test-list', [100, 100], [100, 200, 300]),
-                      ('test-null-eventshape', (100, 100), ())])
+@parameterize.place(config.DEVICES)
+@parameterize.parameterize(
+    (parameterize.TEST_CASE_NAME, 'batch_shape', 'event_shape'),
+    [('test-tuple', (10, 20), (10, 20)),
+     ('test-list', [100, 100], [100, 200, 300]), ('test-null-eventshape',
+                                                  (100, 100), ())])
 class TestDistributionShape(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()

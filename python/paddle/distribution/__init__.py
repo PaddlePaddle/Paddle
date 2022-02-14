@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .beta import Beta
-from .categorical import Categorical
-from .dirichlet import Dirichlet
-from .distribution import Distribution
-from .exponential_family import ExponentialFamily
-from .kl import kl_divergence, register_kl
-from .multinomial import Multinomial
-from .normal import Normal
-from .uniform import Uniform
+from paddle.distribution import transform
+from paddle.distribution.beta import Beta
+from paddle.distribution.categorical import Categorical
+from paddle.distribution.dirichlet import Dirichlet
+from paddle.distribution.distribution import Distribution
+from paddle.distribution.exponential_family import ExponentialFamily
+from paddle.distribution.kl import kl_divergence, register_kl
+from paddle.distribution.normal import Normal
+from paddle.distribution.transform import *  # noqa: F403
+from paddle.distribution.uniform import Uniform
 
 __all__ = [  # noqa
     'Beta',
@@ -34,3 +35,5 @@ __all__ = [  # noqa
     'kl_divergence',
     'register_kl',
 ]
+
+__all__.extend(transform.__all__)

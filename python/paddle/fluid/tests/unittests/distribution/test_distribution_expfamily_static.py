@@ -20,11 +20,12 @@ import scipy.stats
 
 import config
 import mock_data as mock
+import parameterize
 
 paddle.enable_static()
 
 
-@config.place(config.DEVICES)
+@parameterize.place(config.DEVICES)
 class TestExponentialFamily(unittest.TestCase):
     def setUp(self):
         self.program = paddle.static.Program()

@@ -19,12 +19,12 @@ import paddle
 import scipy.stats
 
 import config
-from config import (ATOL, DEVICES, RTOL, TEST_CASE_NAME, parameterize, place,
-                    xrand)
+from config import ATOL, DEVICES, RTOL,
+from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
 
 
 @place(DEVICES)
-@parameterize(
+@parameterize_cls(
     (TEST_CASE_NAME, 'concentration'),
     [
         ('test-one-dim', config.xrand((89, ))),
