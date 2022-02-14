@@ -1321,8 +1321,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
 OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
     const ExecutionContext& ctx) const {
-  auto& dev_ctx = ctx.device_context();
-
   auto expected_kernel_key = this->GetExpectedKernelType(ctx);
   if (HasAttr("op_device")) {
     if (Attr<std::string>("op_device") == "cpu") {
@@ -1339,12 +1337,20 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
       }
       // when the Op that only has CPUKernel is assigned to GPU, the CPUKernel
       // will be executed and a warning will be given at the same time.
+      expected_kernel_key.place_ = platform::CPUPlace();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (SupportGPU()) {
+        auto& dev_ctx = ctx.device_context();
         expected_kernel_key.place_ = dev_ctx.GetPlace();
-      } else if (SupportNPU()) {
+      }
+#endif
+#ifdef PADDLE_WITH_ASCEND_CL
+      if (SupportNPU()) {
+        auto& dev_ctx = ctx.device_context();
         expected_kernel_key.place_ = dev_ctx.GetPlace();
-      } else {
-        expected_kernel_key.place_ = platform::CPUPlace();
+      }
+#endif
+      if (platform::is_cpu_place(expected_kernel_key.place_)) {
         LOG_FIRST_N(WARNING, 1)
             << "Op(" << type_
             << ") has no CUDA implementation. It will be assigned to CPUPlace.";
