@@ -80,13 +80,12 @@ class TestMatMulV2Op(OpTest):
         else:
             x = np.random.random(self.x_shape).astype(self.dtype)
             y = np.random.random(self.y_shape).astype(self.dtype)
-        # -0.1 ~ 0.1
-        x = -0.1 + 0.2 * x
-        y = -0.1 + 0.2 * y
+            # -0.1 ~ 0.1
+            x = -0.1 + 0.2 * x
+            y = -0.1 + 0.2 * y
         result = reference_matmul(x, y, self.trans_x, self.trans_y)
-        result = result.astype(self.dtype)
         if self.is_bfloat16_op():
-            output = output.astype(np.float32)
+            result = result.astype(np.float32)
             self.inputs = {
                 'X': convert_float_to_uint16(x),
                 'Y': convert_float_to_uint16(y),
@@ -96,6 +95,7 @@ class TestMatMulV2Op(OpTest):
                 'Y': y,
             }
         else:
+            result = result.astype(self.dtype)
             self.inputs = {
                 'X': x,
                 'Y': y,
@@ -391,7 +391,7 @@ def create_test_bf16_class(parent, atol=0.01):
             op = create_op(scope, self.op_type, self.inputs, self.outputs,
                            self.attrs)
             return get_numeric_gradient(place, scope, op, self.inputs_fp32,
-                                        check_name, ['Output'])
+                                        check_name, ['Out'])
 
         def init_kernel_type(self):
             self.dtype = np.uint16
@@ -417,6 +417,9 @@ def create_test_bf16_class(parent, atol=0.01):
                 'Out',
                 no_grad_set=set(['X']),
                 user_defined_grads=[numeric_grads])
+
+        def test_check_grad(self):
+            pass
 
     cls_name = "{0}_{1}".format(parent.__name__, "Bf16")
     TestMatMulOpBf16Case.__name__ = cls_name

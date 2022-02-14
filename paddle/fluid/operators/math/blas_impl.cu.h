@@ -1456,6 +1456,8 @@ inline void Blas<platform::CUDADeviceContext>::BatchedGEMM(
   cublasOperation_t cuTransB =
       (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
   const int64_t strideC = M * N;
+  float h_alpha = static_cast<float>(alpha);
+  float h_beta = static_cast<float>(beta);
 
   cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
   bool use_tensor_op_math = context_.tensor_core_available();
@@ -1466,8 +1468,8 @@ inline void Blas<platform::CUDADeviceContext>::BatchedGEMM(
 
   context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasGemmStridedBatchedEx(
-        handle, cuTransB, cuTransA, N, M, K, &alpha, B, CUDA_R_16BF, ldb,
-        strideB, A, CUDA_R_16BF, lda, strideA, &beta, C, CUDA_R_16BF, ldc,
+        handle, cuTransB, cuTransA, N, M, K, &h_alpha, B, CUDA_R_16BF, ldb,
+        strideB, A, CUDA_R_16BF, lda, strideA, &h_beta, C, CUDA_R_16BF, ldc,
         strideC, batchCount, CUBLAS_COMPUTE_32F, algo));
   });
 #else
@@ -1497,6 +1499,9 @@ inline void Blas<pten::GPUContext>::BatchedGEMM(
       (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
   const int64_t strideC = M * N;
 
+  float h_alpha = static_cast<float>(alpha);
+  float h_beta = static_cast<float>(beta);
+
   cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
   bool use_tensor_op_math = context_.tensor_core_available();
   if (use_tensor_op_math) {
@@ -1506,8 +1511,8 @@ inline void Blas<pten::GPUContext>::BatchedGEMM(
 
   context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasGemmStridedBatchedEx(
-        handle, cuTransB, cuTransA, N, M, K, &alpha, B, CUDA_R_16BF, ldb,
-        strideB, A, CUDA_R_16BF, lda, strideA, &beta, C, CUDA_R_16BF, ldc,
+        handle, cuTransB, cuTransA, N, M, K, &h_alpha, B, CUDA_R_16BF, ldb,
+        strideB, A, CUDA_R_16BF, lda, strideA, &h_beta, C, CUDA_R_16BF, ldc,
         strideC, batchCount, CUBLAS_COMPUTE_32F, algo));
   });
 #else
