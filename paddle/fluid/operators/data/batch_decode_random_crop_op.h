@@ -24,7 +24,6 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/operators/data/nvjpeg_decoder.h"
 
-
 namespace paddle {
 namespace operators {
 namespace data {

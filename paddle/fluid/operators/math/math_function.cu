@@ -50,6 +50,7 @@ template struct SetConstant<platform::CUDADeviceContext,
   template struct Transpose<platform::CUDADeviceContext, float16, RANK>;  \
   template struct Transpose<platform::CUDADeviceContext, bfloat16, RANK>; \
   template struct Transpose<platform::CUDADeviceContext, int8_t, RANK>;   \
+  template struct Transpose<platform::CUDADeviceContext, uint8_t, RANK>;  \
   template struct Transpose<platform::CUDADeviceContext, int32_t, RANK>;  \
   template struct Transpose<platform::CUDADeviceContext, int64_t, RANK>;  \
   template struct Transpose<platform::CUDADeviceContext,                  \
