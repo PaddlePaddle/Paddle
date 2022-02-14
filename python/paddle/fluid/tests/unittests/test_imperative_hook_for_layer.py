@@ -118,7 +118,7 @@ class Test_Forward_Hook(unittest.TestCase):
                 self.assertTrue(
                     np.array_equal(outs_pre_hook.numpy(), outs_origin.numpy()))
 
-                # register forward_posst_hook
+                # register forward_post_hook
                 forward_post_hook_handle1 = simplenet.register_forward_post_hook(
                     forward_post_hook1)
                 outs_forward_hook = simplenet(input, y)
