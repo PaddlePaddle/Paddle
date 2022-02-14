@@ -99,8 +99,6 @@ class TestBilinearInterpOp(OpTest):
 
     def test_check_grad(self):
         self.__class__.exist_check_grad = True
-        if self.dtype == 'float16':
-            return
         self.max_relative_error = 0.005
         inputs_to_check = ['X']
         output_names = ['Out']

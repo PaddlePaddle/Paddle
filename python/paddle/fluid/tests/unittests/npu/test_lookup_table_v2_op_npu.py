@@ -77,8 +77,10 @@ class TestLookupTableV2(OpTest):
 
     def test_check_grad(self):
         if self.dtype == np.float16:
-            return
-        self.check_grad_with_place(self.place, ['W'], 'Out')
+            self.check_grad_with_place(
+                self.place, ['W'], 'Out', max_relative_error=0.01)
+        else:
+            self.check_grad_with_place(self.place, ['W'], 'Out')
 
 
 class TestLookupTableV2FP16(TestLookupTableV2):

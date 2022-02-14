@@ -108,9 +108,6 @@ class TestGroupNormOp(OpTest):
         self.check_output_with_place(self.place, atol=self.atol)
 
     def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-
         self.__class__.exist_check_grad = True
         inputs_to_check = ['X', 'Scale', 'Bias']
         output_names = 'Y'
