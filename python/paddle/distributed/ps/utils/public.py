@@ -42,9 +42,17 @@ RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
 op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
 LR_SCHED_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.LRSched
 OPT_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Optimize
+backward = core.op_proto_and_checker_maker.OpRole.Backward
 
+DEVICE_LIST = ["cpu", "gpu", "xpu"]
+COMMUNICATE_OPS_TYPE = ["send", "recv", "fetch_barrier", "send_barrier"]
 SPARSE_OP_LIST = ["lookup_table", "lookup_table_v2"]
 SPARSE_OP_TYPE_DICT = {"lookup_table": "W", "lookup_table_v2": "W"}
+SPARSE_GRAD_OP_TYPE_DICT = {
+    "lookup_table_grad": "W",
+    "lookup_table_v2_grad": "W"
+}
+DEFAULT_DEVICE = 'cpu'
 
 
 def logger_config(log_path, logging_name):
@@ -640,6 +648,20 @@ def find_block_joints(program, program_block_ops_list, heter_ops):
     return block_var_detail
 
 
+def find_ops_list_input_output(program, ops_list):
+    input_var_list = []
+    output_var_list = []
+    for op in ops_list:
+        inputs = _get_input_map_from_op(program.global_block().vars, op)
+        input_var_list += get_varlist_from_op_map(inputs)
+        outputs = _get_output_map_from_op(program.global_block().vars, op)
+        output_var_list += get_varlist_from_op_map(outputs)
+
+    input_var_list = list(set(input_var_list))
+    output_var_list = list(set(output_var_list))
+    return input_var_list, output_var_list
+
+
 def find_entrance_exit_private(program, program_block_ops_list):
     block_var_detail = []
     persistables = []
@@ -848,6 +870,54 @@ def _get_output_map_from_op(varmap, op):
         else:
             iomap[key] = vars
     return iomap
+
+
+def get_varlist_from_op_map(var_map):
+    var_list = []
+    for key, varlist in six.iteritems(var_map):
+        if not isinstance(varlist, list):
+            varlist = [varlist]
+        for i in range(len(varlist)):
+            var = varlist[i]
+            var_list.append(var.name)
+    return var_list
+
+
+def _get_input_map_from_op(varmap, op):
+    """Returns a dict from op input name to the vars in varmap."""
+    iomap = collections.OrderedDict()
+    for key in op.input_names:
+        vars = []
+        for varname in op.input(key):
+            if varname == "@EMPTY@":
+                continue
+            if "lod_tensor_blocking_queue" in varname:
+                continue
+            vars.append(varmap[varname])
+        if len(vars) == 1:
+            iomap[key] = vars[0]
+        else:
+            iomap[key] = vars
+    return iomap
+
+
+def screen_persistables(program, var_list):
+    need_remove = []
+    for var_name in var_list:
+        if "@GRAD" in var_name:
+            if "GRAD" != var_name.split("@")[-1]:
+                continue
+            origin_var_name = var_name.split("@GRAD")[0]
+            var = program.global_block().vars[origin_var_name]
+        else:
+            var = program.global_block().vars[var_name]
+
+        if fluid.io.is_persistable(var):
+            need_remove.append(var_name)
+
+    for var_name in need_remove:
+        var_list.remove(var_name)
+    return need_remove
 
 
 def block_append_op(program, origin_program, block, op):
@@ -1152,6 +1222,84 @@ def get_param_grads(origin_program):
     sparse_param_grads, dense_param_grads = _get_params_grads(sparse_varnames)
 
     return sparse_param_grads, dense_param_grads
+
+
+def delete_ops(block, ops):
+    for op in ops:
+        try:
+            idx = list(block.ops).index(op)
+            block._remove_op(idx)
+        except Exception as e:
+            print(e)
+
+
+def find_send_op(program):
+    send_op_list = []
+    for op in program.global_block().ops:
+        if op.type == "send":
+            send_op_list.append(op)
+    return send_op_list
+
+
+def find_op_input_output(program, block, op):
+    input_var_list = []
+    output_var_list = []
+    inputs = _get_input_map_from_op(block.vars, op)
+    input_var_list += get_varlist_from_op_map(inputs)
+    outputs = _get_output_map_from_op(block.vars, op)
+    output_var_list += get_varlist_from_op_map(outputs)
+    input_var_list = list(set(input_var_list))
+    output_var_list = list(set(output_var_list))
+    return input_var_list, output_var_list
+
+
+def get_vars_name_in_block(block):
+    vars_list = block.vars.keys()
+    vars_name_list = [var_name for var_name in vars_list]
+    return vars_name_list
+
+
+def delete_trainer_useless_var(program, static_var):
+    static_var = list(set(static_var))
+    program_useful_var_list = []
+    for op in program.global_block().ops:
+        input_var_list, output_var_list = find_op_input_output(
+            program, program.global_block(), op)
+        op_var_list = list(set(input_var_list).union(set(output_var_list)))
+        program_useful_var_list = list(
+            set(program_useful_var_list).union(set(op_var_list)))
+    program_useful_var_list += static_var
+    program_useless_var_list = list(
+        set(get_vars_name_in_block(program.global_block())).difference(
+            set(program_useful_var_list)))
+    for var in program_useless_var_list:
+        program.global_block()._remove_var(var)
+    return program_useless_var_list
+
+
+def create_backward_block(program, origin_program, bp_ops_list,
+                          block_var_detail):
+    pre_block_idx = program.num_blocks - 1
+    heter_block = program._create_block(pre_block_idx)
+
+    for _, op in enumerate(bp_ops_list):
+        if op.type == "send":
+            send_varnames = op.attr('send_varnames')
+            is_skip = False
+            for varname in send_varnames:
+                if varname not in program.global_block(
+                ).vars and varname not in heter_block.vars:
+                    is_skip = True
+                    break
+            if is_skip == True:
+                continue
+        block_append_op(program, origin_program, heter_block, op)
+
+    entrance_vars = block_var_detail[0]["backward"]["entrance"]
+    add_vars_by_var_list(entrance_vars, origin_program, program, heter_block)
+    exit_vars = block_var_detail[0]["backward"]["exit"]
+    add_vars_by_var_list(exit_vars, origin_program, program, heter_block)
+    return heter_block
 
 
 def debug_program(file, program, is_trainer):

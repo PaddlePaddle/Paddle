@@ -172,11 +172,3 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(split, ops::SplitOp, ops::SplitOpMaker,
                   ops::SplitGradMaker<paddle::framework::OpDesc>,
                   ops::SplitGradMaker<paddle::imperative::OpBase>);
-namespace plat = paddle::platform;
-REGISTER_OP_CPU_KERNEL(
-    split, ops::SplitOpKernel<plat::CPUDeviceContext, double>,
-    ops::SplitOpKernel<plat::CPUDeviceContext, float>,
-    ops::SplitOpKernel<plat::CPUDeviceContext, int64_t>,
-    ops::SplitOpKernel<plat::CPUDeviceContext, int>,
-    ops::SplitOpKernel<plat::CPUDeviceContext, bool>,
-    ops::SplitOpKernel<plat::CPUDeviceContext, plat::float16>);
