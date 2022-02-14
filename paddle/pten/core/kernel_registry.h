@@ -223,8 +223,8 @@ struct KernelRegistrar {
   PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \
       pt_register_tp_kernel_ns_check_##kernel_name##_##backend##_##layout,    \
       "PT_REGISTER_KERNEL must be called in global namespace.");              \
-  _PT_REGISTER_2TA_KERNEL(                                                    \
-      kernel_name, backend, layout, meta_kernel_fn, __VA_ARGS__)
+  PT_EXPAND(_PT_REGISTER_2TA_KERNEL(                                          \
+      kernel_name, backend, layout, meta_kernel_fn, __VA_ARGS__))
 
 #ifndef _WIN32
 #define _PT_REGISTER_2TA_KERNEL(                                            \
@@ -258,13 +258,13 @@ struct KernelRegistrar {
     kernel_name, backend, layout, meta_kernel_fn, ...)                      \
   static void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
       ::pten::Kernel*);                                                     \
-  PT_KERNEL_REGISTRAR_INIT(                                                 \
+  PT_EXPAND(PT_KERNEL_REGISTRAR_INIT(                                       \
       kernel_name,                                                          \
       backend,                                                              \
       layout,                                                               \
       &__PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout,        \
       meta_kernel_fn,                                                       \
-      __VA_ARGS__);                                                         \
+      __VA_ARGS__));                                                        \
   void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(        \
       ::pten::Kernel* kernel)
 #endif
@@ -339,33 +339,33 @@ struct KernelRegistrar {
 
 #define PT_KERNEL_REGISTRAR_INIT(                                   \
     kernel_name, backend, layout, args_def_fn, meta_kernel_fn, ...) \
-  _PT_KERNEL_REGISTRAR_INIT(PT_NARGS(__VA_ARGS__),                  \
-                            kernel_name,                            \
-                            backend,                                \
-                            layout,                                 \
-                            args_def_fn,                            \
-                            meta_kernel_fn,                         \
-                            __VA_ARGS__)
+  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT(PT_NARGS(__VA_ARGS__),        \
+                                      kernel_name,                  \
+                                      backend,                      \
+                                      layout,                       \
+                                      args_def_fn,                  \
+                                      meta_kernel_fn,               \
+                                      __VA_ARGS__))
 
 // clang-format off
 
 /* The =pre-commit always treats this macro into the wrong format,
   and multi-line macros cannot be skipped with NOLINT.*/
-#define _PT_KERNEL_REGISTRAR_INIT(N,              \
-                                  kernel_name,    \
-                                  backend,        \
-                                  layout,         \
-                                  args_def_fn,    \
-                                  meta_kernel_fn, \
-                                  ...)            \
-  PT_CONCATENATE(_PT_KERNEL_REGISTRAR_INIT_, N) ( \
-    kernel_name,                                  \
-    backend,                                      \
-    layout,                                       \
-    PT_ID,                                        \
-    args_def_fn,                                  \
-    meta_kernel_fn,                               \
-    __VA_ARGS__)
+#define _PT_KERNEL_REGISTRAR_INIT(N,                       \
+                                  kernel_name,             \
+                                  backend,                 \
+                                  layout,                  \
+                                  args_def_fn,             \
+                                  meta_kernel_fn,          \
+                                  ...)                     \
+  PT_EXPAND(PT_CONCATENATE(_PT_KERNEL_REGISTRAR_INIT_, N) ( \
+    kernel_name,                                           \
+    backend,                                               \
+    layout,                                                \
+    PT_ID,                                                 \
+    args_def_fn,                                           \
+    meta_kernel_fn,                                        \
+    __VA_ARGS__))
 
 // clang-format on
 
