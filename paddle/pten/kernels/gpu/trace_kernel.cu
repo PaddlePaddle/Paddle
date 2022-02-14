@@ -37,7 +37,7 @@ void TraceKernel(const Context& ctx,
     kernels::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
         ctx, diag, out, kps::IdentityFunctor<T>(), reduce_dims, stream);
   } else {
-    paddle::operators::math::SetConstant<Context, T> functor;
+    pten::funcs::SetConstant<Context, T> functor;
     functor(ctx, out, static_cast<T>(0));
   }
 }
@@ -52,6 +52,6 @@ PT_REGISTER_KERNEL(trace,
                    double,
                    int,
                    int64_t,
-                   paddle::platform::float16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::float16,
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}

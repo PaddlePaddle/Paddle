@@ -16,7 +16,7 @@ limitations under the License. */
 #include <algorithm>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/context_project.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -64,7 +64,7 @@ class SequenceConvKernel : public framework::OpKernel<T> {
     Tensor col;
     col.mutable_data<T>(col_shape, context.GetPlace());
     // Because if padding_trainable is false, padding data should be zeros.
-    math::SetConstant<DeviceContext, T> set_zero;
+    pten::funcs::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
     auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
     set_zero(dev_ctx, &col, static_cast<T>(0));
@@ -107,7 +107,7 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
     int down_pad = std::max(0, context_start + context_length - 1);
     auto sequence_width = static_cast<int64_t>(in->dims()[1]);
 
-    math::SetConstant<DeviceContext, T> set_zero;
+    pten::funcs::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
     auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
     // use col_shape in the im2col calculation

@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -289,7 +289,7 @@ void GatherBoxesLabels(const platform::CPUDeviceContext& context,
   fg_labels.mutable_data<int>({fg_num}, context.GetPlace());
   CPUGather<int>(context, gt_classes, gt_label_inds_t, &fg_labels);
   bg_labels.mutable_data<int>({bg_num}, context.GetPlace());
-  math::set_constant(context, &bg_labels, 0);
+  pten::funcs::set_constant(context, &bg_labels, 0);
   Concat<int>(context, fg_labels, bg_labels, sampled_labels);
 
   Tensor fg_max_overlap, bg_max_overlap;
@@ -328,7 +328,7 @@ std::vector<Tensor> SampleRoisForOneImage(
     Tensor roi_filter;
     // Tensor box_filter;
     if (keep.numel() == 0) {
-      math::SetConstant<platform::CPUDeviceContext, T> set_zero;
+      pten::funcs::SetConstant<platform::CPUDeviceContext, T> set_zero;
       roi_filter.mutable_data<T>({proposals_num, kBoxDim}, context.GetPlace());
       set_zero(context, &roi_filter, static_cast<T>(0));
     } else {
@@ -403,9 +403,9 @@ std::vector<Tensor> SampleRoisForOneImage(
   bbox_targets.mutable_data<T>(bbox_expand_dim, context.GetPlace());
   bbox_inside_weights.mutable_data<T>(bbox_expand_dim, context.GetPlace());
   bbox_outside_weights.mutable_data<T>(bbox_expand_dim, context.GetPlace());
-  math::set_constant(context, &bbox_targets, 0.0);
-  math::set_constant(context, &bbox_inside_weights, 0.0);
-  math::set_constant(context, &bbox_outside_weights, 0.0);
+  pten::funcs::set_constant(context, &bbox_targets, 0.0);
+  pten::funcs::set_constant(context, &bbox_inside_weights, 0.0);
+  pten::funcs::set_constant(context, &bbox_outside_weights, 0.0);
 
   auto* bbox_targets_single_data = bbox_targets_single.data<T>();
   auto* sampled_labels_data = sampled_labels.data<int>();

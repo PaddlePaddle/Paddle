@@ -321,7 +321,7 @@ class GRUCPUKernel : public framework::OpKernel<T> {
     to_batch(dev_ctx, *input, batch_gate, true, is_reverse);
 
     if (bias) {
-      math::RowwiseAdd<DeviceContext, T> add_bias;
+      pten::funcs::RowwiseAdd<DeviceContext, T> add_bias;
       add_bias(dev_ctx, *batch_gate, *bias, batch_gate);
     }
 

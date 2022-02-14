@@ -21,8 +21,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/cast_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 // only can include the headers in paddle/pten/api dirs
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
@@ -102,7 +102,7 @@ void GetShuffledInput(const framework::ExecutionContext& context,
   shuffled_input->Resize(shuffled_dims);
   shuffled_input->mutable_data<OutT>(context.GetPlace());
 
-  math::TransposeNormal<DeviceContext, OutT> trans;
+  pten::funcs::TransposeNormal<DeviceContext, OutT> trans;
   trans(context.template device_context<DeviceContext>(), *input,
         shuffled_input, perm_axis);
 }
@@ -166,7 +166,7 @@ void HandleLargeDimGrad(const framework::ExecutionContext& context,
   framework::TensorCopy(*dx, context.GetPlace(), &dx_tmp);
   dx_tmp.Resize(shuffled_dim);
   dx->Resize(x_dim);
-  math::TransposeNormal<DeviceContext, T> trans;
+  pten::funcs::TransposeNormal<DeviceContext, T> trans;
   trans(context.template device_context<DeviceContext>(), dx_tmp, dx,
         origin_axis);
 }
@@ -546,34 +546,6 @@ class ReduceOp : public framework::OperatorWithKernel {
                             "float16 can only be used on GPU or NPU place"));
     }
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
-  }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext& ctx) const override {
-    bool reduce_all = ctx.Attr<bool>("reduce_all");
-    if (Type() == "reduce_sum") {
-      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
-        if (!reduce_all) {
-          return framework::KernelSignature(
-              "sum", {"X"}, {"dim", "out_dtype", "keep_dim"}, {"Out"});
-        }
-        return framework::KernelSignature(
-            "sum_raw", {"X"}, {"dim", "keep_dim", "reduce_all", "out_dtype"},
-            {"Out"});
-      }
-    }
-    if (Type() == "reduce_mean") {
-      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
-        if (!reduce_all) {
-          return framework::KernelSignature("mean", {"X"}, {"dim", "keep_dim"},
-                                            {"Out"});
-        }
-        return framework::KernelSignature(
-            "mean_raw", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
-      }
-    }
-    // TODO(chentianyu03): support other cases after selected rows added
-    return framework::KernelSignature("reduce.unregistered", {}, {}, {});
   }
 };
 

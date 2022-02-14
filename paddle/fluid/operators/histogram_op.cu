@@ -82,7 +82,7 @@ class HistogramCUDAKernel : public framework::OpKernel<T> {
     const int input_numel = input->numel();
 
     int64_t* out_data = output->mutable_data<int64_t>(context.GetPlace());
-    math::SetConstant<platform::CUDADeviceContext, int64_t>()(
+    pten::funcs::SetConstant<platform::CUDADeviceContext, int64_t>()(
         context.template device_context<platform::CUDADeviceContext>(), output,
         static_cast<int64_t>(0));
 

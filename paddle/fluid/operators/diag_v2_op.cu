@@ -72,7 +72,7 @@ class DiagV2CUDAKernel : public framework::OpKernel<T> {
 
     if (x_dims.size() == 1) {
       float padding_value = context.Attr<float>("padding_value");
-      math::SetConstant<DeviceContext, T> set_padding_value;
+      pten::funcs::SetConstant<DeviceContext, T> set_padding_value;
       set_padding_value(dev_ctx, out, static_cast<T>(padding_value));
 
       auto x_length = x_dims[0];
