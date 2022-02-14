@@ -50,12 +50,12 @@ void ExpandBackward(const Context& ctx,
 
 template <typename T, typename Context>
 void ExpandGradKernel(const Context& ctx,
-                      const DenseTensor& out_grad,
                       const DenseTensor& x,
+                      const DenseTensor& out_grad,
                       const ScalarArray& shape,
                       DenseTensor* in_grad) {
   auto expand_shape = shape.GetData();
-  auto x_dims = out_grad.dims();
+  auto x_dims = x.dims();
   auto vec_in_dims = framework::vectorize<int>(x_dims);
   auto diff = expand_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);

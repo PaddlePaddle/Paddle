@@ -16,11 +16,12 @@
 
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/device_context.h"
 
 namespace pten {
 
 template <typename T, typename Context>
-void ExpandKernel(const Context& ctx, 
+void ExpandKernel(const Context& ctx,
                   const DenseTensor& x,
                   const ScalarArray& shape,
                   DenseTensor* out);

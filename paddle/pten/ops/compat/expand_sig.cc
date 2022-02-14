@@ -26,29 +26,29 @@ KernelSignature ExpandOpArgumentMapping(const ArgumentMappingContext& ctx) {
   }
 }
 
-/*
 KernelSignature ExpandGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.HasInput("Shape")) {
     return KernelSignature("expand_grad",
-                           {GradVarName("Out"), "X"},
+                           {"X", GradVarName("Out")},
                            {"Shape"},
                            {GradVarName("X")});
   } else if (ctx.InputSize("expand_shapes_tensor") > 0) {
     return KernelSignature("expand_grad",
-                           {GradVarName("Out"), "X"},
+                           {"X", GradVarName("Out")},
                            {"expand_shapes_tensor"},
                            {GradVarName("X")});
   } else {
     return KernelSignature("expand_grad",
-                           {GradVarName("Out"), "X"},
+                           {"X", GradVarName("Out")},
                            {"shape"},
                            {GradVarName("X")});
   }
 }
-*/
+
 }  // namespace pten
 
 PT_REGISTER_BASE_KERNEL_NAME(expand_v2, expand);
 PT_REGISTER_BASE_KERNEL_NAME(expand_v2_grad, expand_grad);
 
 PT_REGISTER_ARG_MAPPING_FN(expand_v2, pten::ExpandOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(expand_v2_grad, pten::ExpandGradOpArgumentMapping);

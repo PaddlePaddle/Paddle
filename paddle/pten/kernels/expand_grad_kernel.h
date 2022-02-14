@@ -14,14 +14,17 @@
 
 #pragma once
 
+#include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/device_context.h"
 
 namespace pten {
 
-template <typename Context>
+template <typename T, typename Context>
 void ExpandGradKernel(const Context& ctx,
-                      const DenseTensor& out_grad,
                       const DenseTensor& x,
-                      DenseTensor* x_grad);
+                      const DenseTensor& out_grad,
+                      const ScalarArray& shape,
+                      DenseTensor* in_grad);
 
 }  // namespace pten

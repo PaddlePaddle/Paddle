@@ -248,12 +248,15 @@ class ExpandV2GradOp : public framework::OperatorWithKernel {
                                    tensor.place(), tensor.layout());
   }
 
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::KernelSignature("expand_grad",
-                                      {framework::GradVarName("Out"), "X"},
-                                      {"shape"}, {framework::GradVarName("X")});
-  }
+  /*
+    framework::KernelSignature GetExpectedPtenKernelArgs(
+        const framework::ExecutionContext& ctx) const override {
+      return framework::KernelSignature("expand_grad",
+                                        {framework::GradVarName("Out"), "X"},
+                                        {"shape"},
+    {framework::GradVarName("X")});
+    }
+  */
 };
 
 template <typename T>
