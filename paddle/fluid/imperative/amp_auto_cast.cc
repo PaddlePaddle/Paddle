@@ -424,6 +424,36 @@ template NameVarMap<egr::EagerTensor> CastPureFp16Inputs<egr::EagerTensor>(
     const std::string& op_type, const NameVarMap<egr::EagerTensor>& ins);
 
 template <typename VarType>
+NameVarMap<VarType> AutoCastBF16Inputs(const std::string& op_type,
+                                       const NameVarMap<VarType>& ins) {
+  NameVarMap<VarType> new_ins(ins);
+  if (AmpOperators::Instance().GetMutableAllowOps()->count(op_type)) {
+    for (auto& pair : new_ins) {
+      VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
+              << GetDtypeStr(*pair.second.cbegin()) << " to bfloat16";
+      for (auto& var : pair.second) {
+        var = CastToBF16<VarType>(var);
+      }
+    }
+    return new_ins;
+  } else {
+    for (auto& pair : new_ins) {
+      VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
+              << GetDtypeStr(*pair.second.cbegin()) << " to float";
+      for (auto& var : pair.second) {
+        var = CastToFP32<VarType>(var);
+      }
+    }
+    return new_ins;
+  }
+  return new_ins;
+}
+template NameVarMap<VarBase> AutoCastBF16Inputs<VarBase>(
+    const std::string& op_type, const NameVarMap<VarBase>& ins);
+template NameVarMap<egr::EagerTensor> AutoCastBF16Inputs<egr::EagerTensor>(
+    const std::string& op_type, const NameVarMap<egr::EagerTensor>& ins);
+
+template <typename VarType>
 NameVarMap<VarType> CastPureBf16Inputs(const std::string& op_type,
                                        const NameVarMap<VarType>& ins) {
   NameVarMap<VarType> new_ins(ins);

@@ -102,6 +102,9 @@ template <typename VarType>
 NameVarMap<VarType> CastPureFp16Inputs(const std::string& op_type,
                                        const NameVarMap<VarType>& ins);
 template <typename VarType>
+NameVarMap<VarType> AutoCastBF16Inputs(const std::string& op_type,
+                                       const NameVarMap<VarType>& ins);
+template <typename VarType>
 NameVarMap<VarType> CastPureBf16Inputs(const std::string& op_type,
                                        const NameVarMap<VarType>& ins);
 

@@ -75,19 +75,29 @@ PURE_FP16_BLACK_LIST = {
     'lookup_table', 'lookup_table_v2', 'scatter', 'scatter_grad'
 }
 
+BF16_WHITE_LIST = {'conv2d'}
+BF16_BLACK_LIST = {' '}
+
 
 #NOTE(zhiqiu): similar as paddle.fluid.contrib.mixed_precision.fp16_lists.AutoMixedPrecisionLists._update_list
 # The reason why not use AutoMixedPrecisionLists is that custom_black_varnames is not suitable for imperative mode.
-def _update_list(custom_white_list, custom_black_list, level='O1'):
+def _update_list(custom_white_list,
+                 custom_black_list,
+                 level='O1',
+                 dtype='float16'):
     """
     Update black and white list according to users' custom list.
     """
-    if level == 'O1':
-        _white_list = copy.copy(WHITE_LIST)
-        _black_list = copy.copy(BLACK_LIST)
+    if dtype == 'float16':
+        if level == 'O1':
+            _white_list = copy.copy(WHITE_LIST)
+            _black_list = copy.copy(BLACK_LIST)
+        else:
+            _white_list = copy.copy(PURE_FP16_WHITE_LIST)
+            _black_list = copy.copy(PURE_FP16_BLACK_LIST)
     else:
-        _white_list = copy.copy(PURE_FP16_WHITE_LIST)
-        _black_list = copy.copy(PURE_FP16_BLACK_LIST)
+        _white_list = copy.copy(BF16_WHITE_LIST)
+        _black_list = copy.copy(BF16_BLACK_LIST)
     if custom_white_list and custom_black_list:
         for op_name in custom_white_list:
             if op_name in custom_black_list:
@@ -284,20 +294,33 @@ def amp_guard(enable=True,
 
     if level == 'O1':
         amp_level = AMP_LEVEL.O1
-        _white_list = WHITE_LIST
-        _black_list = BLACK_LIST
+        if dtype == 'float16':
+            _white_list = WHITE_LIST
+            _black_list = BLACK_LIST
+        elif dtype == 'bfloat16':
+            _white_list = BF16_WHITE_LIST
+            _black_list = BF16_BLACK_LIST
+
     elif level == 'O2':
         amp_level = AMP_LEVEL.O2
-        _white_list = PURE_FP16_WHITE_LIST
-        _black_list = PURE_FP16_BLACK_LIST
+        if dtype == 'float16':
+            _white_list = PURE_FP16_WHITE_LIST
+            _black_list = PURE_FP16_BLACK_LIST
+        elif dtype == 'bfloat16':
+            _white_list = BF16_WHITE_LIST
+            _black_list = BF16_BLACK_LIST
     elif level == 'O0':
         amp_level = AMP_LEVEL.O0
-        _white_list = WHITE_LIST
-        _black_list = BLACK_LIST
+        if dtype == 'float16':
+            _white_list = WHITE_LIST
+            _black_list = BLACK_LIST
+        elif dtype == 'bfloat16':
+            _white_list = BF16_WHITE_LIST
+            _black_list = BF16_BLACK_LIST
 
     if custom_white_list or custom_black_list:
         _white_list, _black_list = _update_list(custom_white_list,
-                                                custom_black_list, level)
+                                                custom_black_list, level, dtype)
 
     if not enable:
         amp_level = AMP_LEVEL.O0
