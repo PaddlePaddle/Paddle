@@ -400,7 +400,7 @@ class TestComplexMatMulOp(OpTest):
             'Out',
             user_defined_grads=[self.grad_x, self.grad_y],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=True)
+            check_eager=False)
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
@@ -418,7 +418,7 @@ class TestComplexMatMulOp(OpTest):
             no_grad_set=set('Y'),
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=True)
+            check_eager=False)
 
 
 class TestComplexMatMulOpBroadcast(OpTest):
@@ -453,7 +453,7 @@ class TestComplexMatMulOpBroadcast(OpTest):
                              axis=0)
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -461,7 +461,7 @@ class TestComplexMatMulOpBroadcast(OpTest):
             'Out',
             user_defined_grads=[self.grad_x, self.grad_y],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=False)
+            check_eager=True)
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
@@ -470,7 +470,7 @@ class TestComplexMatMulOpBroadcast(OpTest):
             no_grad_set=set('X'),
             user_defined_grads=[self.grad_y],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=False)
+            check_eager=True)
 
     def test_check_grad_ingore_y(self):
         self.check_grad(
@@ -479,7 +479,7 @@ class TestComplexMatMulOpBroadcast(OpTest):
             no_grad_set=set('Y'),
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=False)
+            check_eager=True)
 
 
 class TestMatMulTypePromotion(TestComplexMatMulOp):
