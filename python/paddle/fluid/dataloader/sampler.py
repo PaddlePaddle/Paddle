@@ -264,7 +264,7 @@ def _weighted_sample(weights, num_samples, replacement=True):
             "weights positive value number should not " \
             "less than num_samples when replacement=False"
 
-    weights = weights / weights.sum(axis=1)
+    weights = weights / weights.sum(axis=1, keepdims = True)
     rets = []
     for i in range(weights.shape[0]):
         ret = np.random.choice(weights.shape[1], num_samples, replacement,
