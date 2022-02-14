@@ -23,7 +23,8 @@ namespace platform {
 // creates a file in the constructor and closes the file in the destructor.
 class ChromeTracingLogger : public BaseLogger {
  public:
-  ChromeTracingLogger();
+  explicit ChromeTracingLogger(const std::string& filename);
+  explicit ChromeTracingLogger(const char* filename);
   ~ChromeTracingLogger();
   std::string filename() { return filename_; }
   void LogDeviceTraceEventNode(const DeviceTraceEventNode&) override;
