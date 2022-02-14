@@ -50,6 +50,8 @@ __all__ = [     #noqa
            'TrainerProc',
            'get_logger',
            'pull_worker_log',
+           'global_hierarchy_scatter',
+           'global_hierarchy_gather',
            'global_scatter',
            'global_gather',
            'expert_count',
@@ -237,6 +239,69 @@ def global_scatter(x,
         return out
 
 
+def global_hierarchy_scatter(x,
+                             local_count,
+                             mp_global_count,
+                             dp_global_count,
+                             inside_group,
+                             outside_group,
+                             use_calc_stream=True):
+    """
+    The function of global_hierarchy_scatter operator is equal to global_scatter's, the difference between global_hierarchy_scatter and global_scatter is the order of all_to_all.
+    global_hierarchy_scatter firstly execs the all_to_all inside the machine, finally, all_to_all outside the machine. in other words, it is a method of dp hierarchy global scatter
+
+    Args:
+        x (Tensor): Tensor. The tensor data type should be float16, float32, float64, int32 or int64.
+        local_count (Tensor): Tensor which have n_expert * world_size elements that indicates
+            how many data needed to be sent. The tensor data type should be int64.
+        mp_global_count (Tensor): Tensor which have n_expert * world_size elements that indicates
+            how many data needed to be sent. The tensor data type should be int64.
+        dp_global_count (Tensor): Tensor which have n_expert * world_size elements that indicates
+            how many data needed to be sent. The tensor data type should be int64.
+        inside_group (Group): The group instance return by new_group or None for inside group.
+        outside_group (Group): The group instance return by new_group or None for outside group.
+        use_calc_stream (bool, optional): Wether to use calculation stream (True) or communication stream. Default: True.
+
+    Returns:
+        out (Tensor): The data received from all experts.
+
+    """
+    assert inside_group is not None and outside_group is not None, "inside_group/outside_group can not be None."
+    inside_ring_id = 0 if inside_group is None else inside_group.id
+    outside_ring_id = 0 if outside_group is None else outside_group.id
+    if in_dygraph_mode():
+        return _C_ops.global_hierarchy_scatter(x, local_count,mp_global_count, dp_global_count, \
+                                    'use_calc_stream', use_calc_stream, \
+                                    'inside_ring_id', inside_ring_id,
+                                    'outside_ring_id', outside_ring_id)
+    else:
+        op_type = 'global_hierarchy_scatter'
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'],
+            'global_hierarchy_scatter')
+        check_variable_and_dtype(local_count, 'local_count', ['int64'],
+                                 'global_hierarchy_scatter')
+
+        helper = LayerHelper(op_type, **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+        helper.append_op(
+            type=op_type,
+            inputs={
+                'X': [x],
+                'local_count': [local_count],
+                'mp_global_count': [mp_global_count],
+                'dp_global_count': [dp_global_count]
+            },
+            outputs={'Out': [out]},
+            attrs={
+                'inside_ring_id': inside_ring_id,
+                'outside_ring_id': inside_ring_id,
+                'use_calc_stream': use_calc_stream
+            })
+        return out
+
+
 def global_gather(x,
                   local_count,
                   global_count,
@@ -348,6 +413,70 @@ def global_gather(x,
             attrs={
                 'ring_id': group,
                 'use_calc_stream': use_calc_stream,
+            })
+        return out
+
+
+def global_hierarchy_gather(x,
+                            local_count,
+                            mp_global_count,
+                            dp_global_count,
+                            inside_group,
+                            outside_group,
+                            use_calc_stream=True):
+    """
+    The function of global_hierarchy_gather operator is equal to global_scatter's, the difference between global_hierarchy_gather and global_scatter is the order of all_to_all.
+    global_hierarchy_gather firstly execs the all_to_all inside the machine, finally, all_to_all outside the machine. in other words, it is a method of dp hierarchy global scatter.
+
+    Args:
+        x (Tensor): Tensor. The tensor data type should be float16, float32, float64, int32 or int64.
+        local_count (Tensor): Tensor which have n_expert * world_size elements that indicates
+            how many data needed to be sent. The tensor data type should be int64.
+        mp_global_count (Tensor): Tensor which have n_expert * world_size elements that indicates
+            how many data needed to be sent. The tensor data type should be int64.
+        dp_global_count (Tensor): Tensor which have n_expert * world_size elements that indicates
+            how many data needed to be sent. The tensor data type should be int64.
+        inside_group (Group): The group instance return by new_group or None for inside group.
+        outside_group (Group): The group instance return by new_group or None for outside group.
+        use_calc_stream (bool, optional): Wether to use calculation stream (True) or communication stream. Default: True.
+
+    Returns:
+        out (Tensor): The data received from all experts.
+
+    """
+    assert inside_group is not None and outside_group is not None, "inside_group/outside_group can not be None."
+
+    inside_ring_id = 0 if inside_group is None else inside_group.id
+    outside_ring_id = 0 if outside_group is None else outside_group.id
+    if in_dygraph_mode():
+        return _C_ops.global_hierarchy_gather(x, local_count,mp_global_count, dp_global_count, \
+                                    'use_calc_stream', use_calc_stream, \
+                                    'inside_ring_id', inside_ring_id,
+                                    'outside_ring_id', outside_ring_id)
+    else:
+        op_type = 'global_hierarchy_gather'
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'],
+            'global_hierarchy_gather')
+        check_variable_and_dtype(local_count, 'local_count', ['int64'],
+                                 'global_hierarchy_gather')
+
+        helper = LayerHelper(op_type, **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+        helper.append_op(
+            type=op_type,
+            inputs={
+                'X': [x],
+                'local_count': [local_count],
+                'mp_global_count': [mp_global_count],
+                'dp_global_count': [dp_global_count]
+            },
+            outputs={'Out': [out]},
+            attrs={
+                'inside_ring_id': inside_ring_id,
+                'outside_ring_id': inside_ring_id,
+                'use_calc_stream': use_calc_stream
             })
         return out
 
