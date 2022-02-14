@@ -707,6 +707,7 @@ class ProgramCache(object):
     def __init__(self):
         # {hash_id : (concrete_program, partial_layer)}
         self._caches = collections.OrderedDict()
+        # trace mostly recent used program 
         self._recent_key = None
 
     def _build_once(self, cache_key):
