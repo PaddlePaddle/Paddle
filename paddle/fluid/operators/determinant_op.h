@@ -150,7 +150,7 @@ inline bool CheckMatrixInvertible(const framework::ExecutionContext& ctx,
   auto* data = dev_tensor.mutable_data<bool>({1}, ctx.GetPlace());
 
   // set false
-  math::SetConstant<DeviceContext, bool> zero;
+  pten::funcs::SetConstant<DeviceContext, bool> zero;
   zero(dev_ctx, &dev_tensor, false);
 
   // find whether zero
@@ -208,7 +208,7 @@ class DeterminantGradKernel : public framework::OpKernel<T> {
       VLOG(3) << "The input matrix not invertible!";
       ddet->Resize(input->dims());
       ddet->mutable_data<T>(context.GetPlace());
-      math::SetConstant<DeviceContext, T> zero;
+      pten::funcs::SetConstant<DeviceContext, T> zero;
       zero(dev_ctx, ddet, static_cast<T>(0.0f));
       return;
     }
@@ -363,7 +363,7 @@ class SlogDeterminantGradKernel : public framework::OpKernel<T> {
       VLOG(3) << "The input matrix not invertible!";
       dslogdet->Resize(input->dims());
       dslogdet->mutable_data<T>(context.GetPlace());
-      math::SetConstant<DeviceContext, T> zero;
+      pten::funcs::SetConstant<DeviceContext, T> zero;
       zero(dev_ctx, dslogdet, std::numeric_limits<T>::quiet_NaN());
       return;
     }

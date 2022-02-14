@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/pool_op.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/operator.h"
@@ -114,7 +114,7 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
       transformed_input.Resize(framework::make_ddim(in_dims_vec));
       transformed_input.mutable_data(ctx.GetPlace(), input->type());
 
-      math::Transpose<paddle::platform::CUDADeviceContext, T, 5> trans5;
+      pten::funcs::Transpose<paddle::platform::CUDADeviceContext, T, 5> trans5;
       trans5(dev_ctx, *input, &transformed_input, axis);
 
       // output
@@ -142,7 +142,7 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
       transformed_input.Resize(framework::make_ddim(in_dims_vec));
       transformed_input.mutable_data(ctx.GetPlace(), input->type());
 
-      math::Transpose<paddle::platform::CUDADeviceContext, T, 4> trans;
+      pten::funcs::Transpose<paddle::platform::CUDADeviceContext, T, 4> trans;
       trans(dev_ctx, *input, &transformed_input, axis);
 
       transformed_output.Resize(output->dims());
@@ -221,7 +221,8 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
       auto &dev_ctx =
           ctx.template device_context<paddle::platform::CUDADeviceContext>();
       std::vector<int> axis{0, 2, 3, 4, 1};
-      math::Transpose<paddle::platform::CUDADeviceContext, T, 5> trans5_v2;
+      pten::funcs::Transpose<paddle::platform::CUDADeviceContext, T, 5>
+          trans5_v2;
       trans5_v2(dev_ctx, transformed_output, output, axis);
     }
 #ifdef PADDLE_WITH_HIP
@@ -230,7 +231,7 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
       auto &dev_ctx =
           ctx.template device_context<paddle::platform::CUDADeviceContext>();
       std::vector<int> axis{0, 2, 3, 1};
-      math::Transpose<paddle::platform::CUDADeviceContext, T, 4> trans;
+      pten::funcs::Transpose<paddle::platform::CUDADeviceContext, T, 4> trans;
       trans(dev_ctx, transformed_output, output, axis);
     }
 #endif
@@ -337,7 +338,7 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
       transformed_input.Resize(framework::make_ddim(in_dims_vec));
       transformed_input.mutable_data(ctx.GetPlace(), input->type());
 
-      math::Transpose<paddle::platform::CUDADeviceContext, T, 5> trans5;
+      pten::funcs::Transpose<paddle::platform::CUDADeviceContext, T, 5> trans5;
       trans5(dev_ctx, *input, &transformed_input, axis);
 
       // output
@@ -351,14 +352,16 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
 
       transformed_output.mutable_data(ctx.GetPlace(), output->type());
 
-      math::Transpose<paddle::platform::CUDADeviceContext, T, 5> trans5_v2;
+      pten::funcs::Transpose<paddle::platform::CUDADeviceContext, T, 5>
+          trans5_v2;
       trans5_v2(dev_ctx, *output, &transformed_output, axis);
 
       // output grad
       transformed_output_grad.Resize(framework::make_ddim(out_dims_vec));
       transformed_output_grad.mutable_data(ctx.GetPlace(), output_grad->type());
 
-      math::Transpose<paddle::platform::CUDADeviceContext, T, 5> trans5_v3;
+      pten::funcs::Transpose<paddle::platform::CUDADeviceContext, T, 5>
+          trans5_v3;
       trans5_v3(dev_ctx, *output_grad, &transformed_output_grad, axis);
 
       // input grad
@@ -381,7 +384,7 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
       transformed_input.Resize(framework::make_ddim(in_dims_vec));
       transformed_input.mutable_data(ctx.GetPlace(), input->type());
 
-      math::Transpose<paddle::platform::CUDADeviceContext, T, 4> trans4;
+      pten::funcs::Transpose<paddle::platform::CUDADeviceContext, T, 4> trans4;
       trans4(dev_ctx, *input, &transformed_input, axis);
 
       // output
@@ -394,14 +397,16 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
 
       transformed_output.mutable_data(ctx.GetPlace(), output->type());
 
-      math::Transpose<paddle::platform::CUDADeviceContext, T, 4> trans4_v2;
+      pten::funcs::Transpose<paddle::platform::CUDADeviceContext, T, 4>
+          trans4_v2;
       trans4_v2(dev_ctx, *output, &transformed_output, axis);
 
       // output grad
       transformed_output_grad.Resize(framework::make_ddim(out_dims_vec));
       transformed_output_grad.mutable_data(ctx.GetPlace(), output_grad->type());
 
-      math::Transpose<paddle::platform::CUDADeviceContext, T, 4> trans4_v3;
+      pten::funcs::Transpose<paddle::platform::CUDADeviceContext, T, 4>
+          trans4_v3;
       trans4_v3(dev_ctx, *output_grad, &transformed_output_grad, axis);
 
       // input grad
@@ -485,7 +490,8 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
         auto &dev_ctx =
             ctx.template device_context<paddle::platform::CUDADeviceContext>();
         std::vector<int> axis{0, 2, 3, 4, 1};
-        math::Transpose<paddle::platform::CUDADeviceContext, T, 5> trans5_v4;
+        pten::funcs::Transpose<paddle::platform::CUDADeviceContext, T, 5>
+            trans5_v4;
         trans5_v4(dev_ctx, transformed_input_grad, input_grad, axis);
       }
 #ifdef PADDLE_WITH_HIP
@@ -494,7 +500,8 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
         auto &dev_ctx =
             ctx.template device_context<paddle::platform::CUDADeviceContext>();
         std::vector<int> axis{0, 2, 3, 1};
-        math::Transpose<paddle::platform::CUDADeviceContext, T, 4> trans4_v4;
+        pten::funcs::Transpose<paddle::platform::CUDADeviceContext, T, 4>
+            trans4_v4;
         trans4_v4(dev_ctx, transformed_input_grad, input_grad, axis);
       }
 #endif

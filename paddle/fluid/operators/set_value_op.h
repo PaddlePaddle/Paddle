@@ -437,7 +437,7 @@ class SetValueGradKernel : public framework::OpKernel<T> {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
-    math::SetConstant<DeviceContext, T> set_zero;
+    pten::funcs::SetConstant<DeviceContext, T> set_zero;
 
     if (grad_input) {
       // Set gradient of `Input`
