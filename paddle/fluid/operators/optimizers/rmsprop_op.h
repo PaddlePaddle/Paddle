@@ -143,14 +143,14 @@ class RmspropOpKernel : public framework::OpKernel<T> {
     auto &lr_tensor = *ctx.Input<LoDTensor>("LearningRate");
     auto &mom_tensor = *ctx.Input<LoDTensor>("Moment");
 
-    PADDLE_ENFORCE_EQ(&p_tensor, param_out,
+    PADDLE_ENFORCE_EQ(p_tensor.IsSharedBufferWith(*param_out), true,
                       platform::errors::InvalidArgument(
                           "Param and ParamOut must be the same Tensor"));
-    PADDLE_ENFORCE_EQ(&mom_tensor, moment_out,
+    PADDLE_ENFORCE_EQ(mom_tensor.IsSharedBufferWith(*moment_out), true,
                       platform::errors::InvalidArgument(
                           "Moment and MomentOut must be the same Tensor"));
     PADDLE_ENFORCE_EQ(
-        &ms_tensor, mean_square_out,
+        ms_tensor.IsSharedBufferWith(*mean_square_out), true,
         platform::errors::InvalidArgument(
             "MeanSquare and MeanSquareOut must be the same Tensor"));
 

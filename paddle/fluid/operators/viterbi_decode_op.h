@@ -250,8 +250,8 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     auto batch_size = static_cast<int>(input->dims()[0]);
     auto seq_len = static_cast<int>(input->dims()[1]);
     auto n_labels = static_cast<int>(input->dims()[2]);
-    math::SetConstant<DeviceContext, T> float_functor;
-    math::SetConstant<DeviceContext, int64_t> int_functor;
+    pten::funcs::SetConstant<DeviceContext, T> float_functor;
+    pten::funcs::SetConstant<DeviceContext, int64_t> int_functor;
     std::vector<Tensor> historys;
     // We create tensor buffer in order to avoid allocating memory frequently
     // 10 means allocate 10*batch_size bytes memory, such as int_mask, zero...

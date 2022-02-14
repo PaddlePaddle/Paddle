@@ -59,34 +59,51 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
           ||
           arg_type == std::type_index(typeid(const GPUContext&))) {
+#elif defined(PADDLE_WITH_XPU)
+          ||
+          arg_type == std::type_index(typeid(const XPUContext&))) {
 #else
               ) {
 #endif
         // do nothing, skip context arg now
       } else if (arg_type == std::type_index(typeid(const DenseTensor&))) {
-        args_def->AppendInput(
-            default_key.backend(), default_tensor_layout, default_key.dtype());
+        args_def->AppendInput(default_key.backend(),
+                              default_tensor_layout,
+                              default_key.dtype(),
+                              arg_type);
       } else if (arg_type == std::type_index(typeid(
                                  paddle::optional<const DenseTensor&>))) {
-        args_def->AppendInput(
-            default_key.backend(), default_tensor_layout, default_key.dtype());
+        args_def->AppendInput(default_key.backend(),
+                              default_tensor_layout,
+                              default_key.dtype(),
+                              arg_type);
       } else if (arg_type ==
                  std::type_index(typeid(const std::vector<DenseTensor>&))) {
-        args_def->AppendInput(
-            default_key.backend(), default_tensor_layout, default_key.dtype());
+        args_def->AppendInput(default_key.backend(),
+                              default_tensor_layout,
+                              default_key.dtype(),
+                              arg_type);
       } else if (arg_type == std::type_index(typeid(const SelectedRows&))) {
-        args_def->AppendInput(
-            default_key.backend(), default_tensor_layout, default_key.dtype());
+        args_def->AppendInput(default_key.backend(),
+                              default_tensor_layout,
+                              default_key.dtype(),
+                              arg_type);
       } else if (arg_type == std::type_index(typeid(DenseTensor*))) {
-        args_def->AppendOutput(
-            default_key.backend(), default_tensor_layout, default_key.dtype());
+        args_def->AppendOutput(default_key.backend(),
+                               default_tensor_layout,
+                               default_key.dtype(),
+                               arg_type);
       } else if (arg_type ==
                  std::type_index(typeid(std::vector<DenseTensor*>))) {
-        args_def->AppendOutput(
-            default_key.backend(), default_tensor_layout, default_key.dtype());
+        args_def->AppendOutput(default_key.backend(),
+                               default_tensor_layout,
+                               default_key.dtype(),
+                               arg_type);
       } else if (arg_type == std::type_index(typeid(SelectedRows*))) {
-        args_def->AppendOutput(
-            default_key.backend(), default_tensor_layout, default_key.dtype());
+        args_def->AppendOutput(default_key.backend(),
+                               default_tensor_layout,
+                               default_key.dtype(),
+                               arg_type);
       } else {
         // Attribute deal with
         // TODO(chenweihang): now here allow any types of attribute, maybe

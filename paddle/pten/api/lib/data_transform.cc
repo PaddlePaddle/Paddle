@@ -38,7 +38,7 @@ inline bool NeedTransformPlace(const paddle::platform::Place& input,
                                const TransformFlag& transform_flag) {
   bool ret = transform_flag.need_trans_backend() &&
              target != Backend::ALL_BACKEND &&
-             !platform::is_same_place(input, pten::TransToFluidPlace(target));
+             !platform::is_same_place(input, pten::TransToPtenPlace(target));
   return ret;
 }
 
@@ -168,10 +168,10 @@ pten::DenseTensor TransformData(const pten::DenseTensor& tensor,
           out.place(), target_args_def.backend, transform_flag)) {
     pten::DenseTensor result(
         pten::make_intrusive<paddle::experimental::SharedStorage>(
-            pten::TransToFluidPlace(target_args_def.backend)),
+            pten::TransToPtenPlace(target_args_def.backend)),
         {out.dtype(), out.dims(), out.layout()});
     framework::TransDataDevice(
-        out, pten::TransToFluidPlace(target_args_def.backend), &result);
+        out, pten::TransToPtenPlace(target_args_def.backend), &result);
     out = result;
   }
   return out;

@@ -71,7 +71,7 @@ PADDLE_API Tensor scale_kernel_context(const Tensor& x,
 
   auto dense_out = std::make_shared<pten::DenseTensor>(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
-          pten::TransToFluidPlace(kernel_backend)),
+          pten::TransToPtenPlace(kernel_backend)),
       pten::DenseTensorMeta());
   pten::MetaTensor meta_out(dense_out.get());
   pten::UnchangedInferMeta(*dense_x, &meta_out);
@@ -238,7 +238,7 @@ Tensor scale_switch_case(const Tensor& x,
 
   auto dense_out = std::make_shared<pten::DenseTensor>(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
-          pten::TransToFluidPlace(kernel_backend)),
+          pten::TransToPtenPlace(kernel_backend)),
       pten::DenseTensorMeta());
   pten::MetaTensor meta_out(dense_out.get());
   pten::UnchangedInferMeta(*dense_x, &meta_out);

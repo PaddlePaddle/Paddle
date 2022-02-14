@@ -43,6 +43,7 @@ namespace cub = hipcub;
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/enforce.h"
 #include "paddle/pten/core/utils/array.h"
+#include "paddle/pten/kernels/cast_kernel.h"
 #include "paddle/pten/kernels/funcs/elementwise_base.h"
 #include "paddle/pten/kernels/primitive/kernel_primitives.h"
 
@@ -1006,12 +1007,12 @@ template <typename Tx,
 static
     typename std::enable_if<!std::is_same<Tx, paddle::platform::float16>::value,
                             void>::type
-    CubTensorReduceFunctorImpl(const Tx* x_data,
-                               Ty* y_data,
-                               const TransformOp& transform,
-                               int reduce_num,
-                               const paddle::platform::Place& place,
-                               gpuStream_t stream) {
+    CubTensorReduceImpl(const Tx* x_data,
+                        Ty* y_data,
+                        const TransformOp& transform,
+                        int reduce_num,
+                        const paddle::platform::Place& place,
+                        gpuStream_t stream) {
   auto reducer = ReduceOp<Ty>();
   cub::TransformInputIterator<Ty, TransformOp, const Tx*> trans_x(x_data,
                                                                   transform);
@@ -1050,12 +1051,12 @@ template <typename Tx,
 static
     typename std::enable_if<std::is_same<Tx, paddle::platform::float16>::value,
                             void>::type
-    CubTensorReduceFunctorImpl(const Tx* x_data,
-                               Ty* y_data,
-                               const TransformOp& transform,
-                               int reduce_num,
-                               const paddle::platform::Place& place,
-                               gpuStream_t stream) {
+    CubTensorReduceImpl(const Tx* x_data,
+                        Ty* y_data,
+                        const TransformOp& transform,
+                        int reduce_num,
+                        const paddle::platform::Place& place,
+                        gpuStream_t stream) {
   PADDLE_THROW(pten::errors::InvalidArgument(
       "Tx should not be float16 when using cub::DeviceReduce::Reduce()."));
 }
@@ -1064,12 +1065,12 @@ template <typename Tx,
           typename Ty,
           template <typename> class ReduceOp,
           typename TransformOp>
-void TensorReduceFunctorImpl(const pten::GPUContext& dev_ctx,
-                             const pten::DenseTensor& x,
-                             pten::DenseTensor* y,
-                             const TransformOp& transform,
-                             const std::vector<int>& origin_reduce_dims,
-                             gpuStream_t stream) {
+void TensorReduceImpl(const pten::GPUContext& dev_ctx,
+                      const pten::DenseTensor& x,
+                      pten::DenseTensor* y,
+                      const TransformOp& transform,
+                      const std::vector<int>& origin_reduce_dims,
+                      gpuStream_t stream) {
   y->mutable_data<Ty>(x.place());
 
   auto x_dim = pten::framework::vectorize<int>(x.dims());
@@ -1092,7 +1093,7 @@ void TensorReduceFunctorImpl(const pten::GPUContext& dev_ctx,
   if (config.reduce_num == 1) {
     std::vector<const DenseTensor*> inputs = {&x};
     std::vector<DenseTensor*> outputs = {y};
-    funcs::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, Tx, Ty>(
+    funcs::LaunchSameDimsElementwiseCudaKernel<Ty>(
         dev_ctx, inputs, &outputs, transform);
     return;
   }
@@ -1101,7 +1102,7 @@ void TensorReduceFunctorImpl(const pten::GPUContext& dev_ctx,
   constexpr bool kIsTxFP16 = std::is_same<Tx, paddle::platform::float16>::value;
   bool use_cub_reduce = config.reduce_num == numel && !kIsTxFP16;
   if (use_cub_reduce) {
-    CubTensorReduceFunctorImpl<Tx, Ty, ReduceOp, TransformOp>(
+    CubTensorReduceImpl<Tx, Ty, ReduceOp, TransformOp>(
         x_data, y_data, transform, config.reduce_num, x.place(), stream);
     return;
   }
@@ -1232,34 +1233,35 @@ void Reduce(const GPUContext& dev_ctx,
   gpuStream_t stream = dev_ctx.stream();
 
   if (out_dtype != pten::DataType::UNDEFINED && out_dtype != x.dtype()) {
-    PD_DISPATCH_FLOATING_AND_COMPLEX_AND_2_TYPES(
+    auto tmp_tensor = pten::Cast<T>(dev_ctx, x, out_dtype);
+    PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_3_TYPES(
         pten::DataType::INT32,
         pten::DataType::INT64,
+        pten::DataType::FLOAT16,
         out_dtype,
-        "TensorReduceFunctorImpl",
+        "TensorReduceImpl",
         ([&] {
           using MPType = typename kps::details::MPTypeTrait<data_t>::Type;
-          pten::kernels::TensorReduceFunctorImpl<T,
-                                                 data_t,
-                                                 ReduceOp,
-                                                 TransformOp<T, MPType>>(
+          pten::kernels::TensorReduceImpl<data_t,
+                                          data_t,
+                                          ReduceOp,
+                                          TransformOp<data_t, MPType>>(
               dev_ctx,
-              x,
+              tmp_tensor,
               out,
-              TransformOp<T, MPType>(reduce_num),
+              TransformOp<data_t, MPType>(reduce_num),
               reduce_dims,
               stream);
         }));
   } else {
     using MPType = typename kps::details::MPTypeTrait<T>::Type;
-    pten::kernels::
-        TensorReduceFunctorImpl<T, T, ReduceOp, TransformOp<T, MPType>>(
-            dev_ctx,
-            x,
-            out,
-            TransformOp<T, MPType>(reduce_num),
-            reduce_dims,
-            stream);
+    pten::kernels::TensorReduceImpl<T, T, ReduceOp, TransformOp<T, MPType>>(
+        dev_ctx,
+        x,
+        out,
+        TransformOp<T, MPType>(reduce_num),
+        reduce_dims,
+        stream);
   }
 }
 }  // namespace pten

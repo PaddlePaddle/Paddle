@@ -88,13 +88,13 @@ class GradNodeBase {
    * Tensor which contains grads input of current operator
    *
    * Note: why we need backward inputs and outputs construct as vector of vector
-   * of egr::EagerTensor?
+   * of paddle::experimental::Tensor?
    * Since all of paddle op composite in form of {"Slot name ", vector<Var>},
    * so, vector of vector
    * is better choice to fit this format.
    * **/
-  virtual std::vector<std::vector<egr::EagerTensor>> operator()(
-      const std::vector<std::vector<egr::EagerTensor>>& grads) = 0;
+  virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
+      const std::vector<std::vector<paddle::experimental::Tensor>>& grads) = 0;
 
   /**
    * AddEdges is designed to set input tensors' backward Node as current
@@ -135,9 +135,9 @@ class GradNodeBase {
   /**
    * Register GradientHook or ReduceHook
    * **/
-  void RegisterGradientHook(
-      size_t slot_id, size_t rank,
-      const std::function<egr::EagerTensor(const egr::EagerTensor&)>& hook);
+  void RegisterGradientHook(size_t slot_id, size_t rank,
+                            const std::function<paddle::experimental::Tensor(
+                                const paddle::experimental::Tensor&)>& hook);
   void RegisterReduceHook(const std::function<void(void)>& hook);
 
   /**
@@ -146,8 +146,8 @@ class GradNodeBase {
   inline bool GradientHooksRegistered() { return gradient_hooks_.size() != 0; }
   inline bool ReduceHooksRegistered() { return reduce_hooks_.size() != 0; }
 
-  std::vector<std::vector<egr::EagerTensor>> ApplyGradientHooks(
-      const std::vector<std::vector<egr::EagerTensor>>& tensors);
+  std::vector<std::vector<paddle::experimental::Tensor>> ApplyGradientHooks(
+      const std::vector<std::vector<paddle::experimental::Tensor>>& tensors);
   void ApplyReduceHooks();
 
  private:
@@ -170,7 +170,8 @@ class GradNodeBase {
   // Each entry consists one pair of <out_rank, std::function>
   std::vector<std::tuple<
       /* slot id */ size_t, /* rank */ size_t,
-      /* hook */ std::function<egr::EagerTensor(const egr::EagerTensor&)>>>
+      /* hook */ std::function<paddle::experimental::Tensor(
+          const paddle::experimental::Tensor&)>>>
       gradient_hooks_;
   std::vector<std::function<void(void)>> reduce_hooks_;
 };

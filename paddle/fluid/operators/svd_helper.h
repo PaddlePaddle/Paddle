@@ -26,9 +26,9 @@
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/complex_functors.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -232,11 +232,11 @@ static std::vector<int64_t> get_broadcast_batch_portion(
   return batchPortion;
 }
 
-#define DITO_TRANSPOSE_RANK_CASE(N)             \
-  case N: {                                     \
-    math::Transpose<DeviceContext, T, N> trans; \
-    trans(dev_ctx, x, &ret, axis);              \
-    break;                                      \
+#define DITO_TRANSPOSE_RANK_CASE(N)                    \
+  case N: {                                            \
+    pten::funcs::Transpose<DeviceContext, T, N> trans; \
+    trans(dev_ctx, x, &ret, axis);                     \
+    break;                                             \
   }
 
 #define DITO_SLICE_RANK_CASE(N)                      \
@@ -526,7 +526,7 @@ struct DeviceIndependenceTensorOperations {
     ret.Resize(framework::make_ddim(shape));
     ret.mutable_data<T>(context.GetPlace());
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    SetConstant<DeviceContext, T>()(dev_ctx, &ret, T(fill_value));
+    pten::funcs::SetConstant<DeviceContext, T>()(dev_ctx, &ret, T(fill_value));
     return ret;
   }
   framework::Tensor Infinits(std::vector<int> shape) {

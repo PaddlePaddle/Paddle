@@ -21,10 +21,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/matrix_solve.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
 #include "paddle/fluid/operators/squeeze_op.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #endif
@@ -45,7 +45,7 @@ void ReduceSumForSolve(const Tensor* input, Tensor* output,
                        const paddle::framework::ExecutionContext& ctx) {
 #if defined(__NVCC__) || defined(__HIPCC__)
   auto stream = ctx.cuda_device_context().stream();
-  TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+  TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
       ctx.cuda_device_context(), *input, output, kps::IdentityFunctor<T>(),
       reduce_dims, stream);
 #else
@@ -509,7 +509,7 @@ class SolveGradKernel : public framework::OpKernel<T> {
     const auto& new_dims_vec = getNewDimsVec(input->dims());
     tmp_input.Resize(framework::make_ddim(new_dims_vec));
     tmp_input.mutable_data<T>(ctx.GetPlace());
-    math::TransposeNormal<DeviceContext, T> trans;
+    pten::funcs::TransposeNormal<DeviceContext, T> trans;
     std::vector<int> new_axis = getNewAxis(input->dims().size());
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     trans(dev_ctx, *input, &tmp_input, new_axis);

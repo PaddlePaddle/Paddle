@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <vector>
 
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/operators/math/softmax_impl.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {

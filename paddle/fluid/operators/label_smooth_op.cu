@@ -87,8 +87,8 @@ class LabelSmoothGPUKernel : public framework::OpKernel<T> {
       std::vector<const framework::Tensor*> ins = {in_t};
       std::vector<framework::Tensor*> outs = {out_t};
       auto functor = LabelSmoothFunctor<T>(epsilon, label_dim);
-      paddle::operators::LaunchSameDimsElementwiseCudaKernel<
-          ElementwiseType::kUnary, T, T>(dev_ctx, ins, &outs, functor);
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins,
+                                                                &outs, functor);
     }
   }
 };
@@ -107,8 +107,8 @@ class LabelSmoothGradGPUKernel : public framework::OpKernel<T> {
     std::vector<const framework::Tensor*> ins = {d_out_t};
     std::vector<framework::Tensor*> outs = {d_in_t};
     auto functor = LabelSmoothGradFunctor<T>(epsilon);
-    paddle::operators::LaunchSameDimsElementwiseCudaKernel<
-        ElementwiseType::kUnary, T, T>(dev_ctx, ins, &outs, functor);
+    paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins,
+                                                              &outs, functor);
   }
 };
 }  // namespace operators
