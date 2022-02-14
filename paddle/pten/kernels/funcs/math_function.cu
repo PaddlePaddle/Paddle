@@ -101,6 +101,20 @@ template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext,
                             RANK>;                                             \
   template struct Transpose<paddle::platform::CUDADeviceContext,               \
                             paddle::platform::complex<double>,                 \
+                            RANK>;                                             \
+  template struct Transpose<pten::GPUContext, bool, RANK>;                     \
+  template struct Transpose<pten::GPUContext, float, RANK>;                    \
+  template struct Transpose<pten::GPUContext, double, RANK>;                   \
+  template struct Transpose<pten::GPUContext, float16, RANK>;                  \
+  template struct Transpose<pten::GPUContext, bfloat16, RANK>;                 \
+  template struct Transpose<pten::GPUContext, int8_t, RANK>;                   \
+  template struct Transpose<pten::GPUContext, int32_t, RANK>;                  \
+  template struct Transpose<pten::GPUContext, int64_t, RANK>;                  \
+  template struct Transpose<pten::GPUContext,                                  \
+                            paddle::platform::complex<float>,                  \
+                            RANK>;                                             \
+  template struct Transpose<pten::GPUContext,                                  \
+                            paddle::platform::complex<double>,                 \
                             RANK>;
 
 DEFINE_GPU_TRANS(1);
@@ -184,9 +198,63 @@ struct TransposeNormal<paddle::platform::CUDADeviceContext, T> {
   }
 };
 
+template <typename T>
+struct TransposeNormal<pten::GPUContext, T> {
+  void operator()(const pten::GPUContext& context,
+                  const DenseTensor& in,
+                  DenseTensor* out,
+                  const std::vector<int>& axis) {
+    const int rank = axis.size();
+    auto in_stride = framework::stride(in.dims());
+    auto out_stride = framework::stride(out->dims());
+    auto* in_ptr = in.data<T>();
+    auto* out_ptr = out->data<T>();
+
+    // copy in_stride, out_stride, axis to gpu device
+    const paddle::platform::CUDAPlace& cuda_place = context.GetPlace();
+    paddle::platform::CPUPlace cpu_place = paddle::platform::CPUPlace();
+    size_t size = 3 * rank * sizeof(int64_t);
+    auto cpu_buf_holder = paddle::memory::Alloc(cpu_place, size);
+    auto cuda_buf_holder = paddle::memory::Alloc(cuda_place, size);
+    REINTERPRET(int64_t, cpu_buf, cpu_buf_holder->ptr());
+    REINTERPRET(int64_t, cuda_buf, cuda_buf_holder->ptr());
+    for (int i = 0; i < rank; ++i) {
+      cpu_buf[i] = in_stride[i];
+      cpu_buf[rank + i] = out_stride[i];
+      cpu_buf[2 * rank + i] = axis[i];
+    }
+    paddle::memory::Copy(
+        cuda_place, cuda_buf, cpu_place, cpu_buf, size, context.stream());
+    REINTERPRET(const int64_t, in_stride_ptr, cuda_buf);
+    REINTERPRET(const int64_t, out_stride_ptr, cuda_buf + rank);
+    REINTERPRET(const int64_t, axis_ptr, cuda_buf + 2 * rank);
+
+    const int MAX_BLOCK_DIM = context.GetMaxThreadsPerBlock();
+    const int MAX_GRID_DIM =
+        context.GetMaxPhysicalThreadCount() / MAX_BLOCK_DIM;
+    int64_t elements = in.numel();
+    int block_size = (elements >= MAX_BLOCK_DIM)
+                         ? MAX_BLOCK_DIM
+                         : (1 << static_cast<int>(std::log2(elements)));
+    int grid_size = elements / block_size;
+    grid_size = (grid_size >= MAX_GRID_DIM) ? MAX_GRID_DIM : grid_size;
+    TransposeNormalKernel<T><<<grid_size, block_size, 0, context.stream()>>>(
+        in_ptr,
+        out_ptr,
+        elements,
+        in_stride_ptr,
+        out_stride_ptr,
+        axis_ptr,
+        rank);
+  }
+};
+
 // define transpose normal
 #define DEFINE_GPU_TRANS_NORMAL(TYPE) \
   template struct TransposeNormal<paddle::platform::CUDADeviceContext, TYPE>
+
+#define DEFINE_GPU_TRANS_NORMAL_PTEN(TYPE) \
+  template struct TransposeNormal<pten::GPUContext, TYPE>
 
 DEFINE_GPU_TRANS_NORMAL(float16);
 DEFINE_GPU_TRANS_NORMAL(bfloat16);
@@ -200,6 +268,19 @@ DEFINE_GPU_TRANS_NORMAL(uint8_t);
 DEFINE_GPU_TRANS_NORMAL(int8_t);
 DEFINE_GPU_TRANS_NORMAL(paddle::platform::complex<float>);
 DEFINE_GPU_TRANS_NORMAL(paddle::platform::complex<double>);
+
+DEFINE_GPU_TRANS_NORMAL_PTEN(float16);
+DEFINE_GPU_TRANS_NORMAL_PTEN(bfloat16);
+DEFINE_GPU_TRANS_NORMAL_PTEN(float);
+DEFINE_GPU_TRANS_NORMAL_PTEN(double);
+DEFINE_GPU_TRANS_NORMAL_PTEN(int);
+DEFINE_GPU_TRANS_NORMAL_PTEN(int64_t);
+DEFINE_GPU_TRANS_NORMAL_PTEN(bool);
+DEFINE_GPU_TRANS_NORMAL_PTEN(int16_t);
+DEFINE_GPU_TRANS_NORMAL_PTEN(uint8_t);
+DEFINE_GPU_TRANS_NORMAL_PTEN(int8_t);
+DEFINE_GPU_TRANS_NORMAL_PTEN(paddle::platform::complex<float>);
+DEFINE_GPU_TRANS_NORMAL_PTEN(paddle::platform::complex<double>);
 
 struct TensorSetConstantGPU {
   TensorSetConstantGPU(const paddle::platform::DeviceContext& context,

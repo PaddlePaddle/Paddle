@@ -16,6 +16,7 @@
 #include <vector>
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/pten/common/bfloat16.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/funcs/transpose.h"
 #include "paddle/pten/kernels/impl/transpose_grad_kernel_impl.h"
@@ -40,5 +41,6 @@ PT_REGISTER_KERNEL(transpose,
                    double,
                    int32_t,
                    int64_t,
+                   pten::dtype::bfloat16,
                    paddle::platform::complex<float>,
                    paddle::platform::complex<double>) {}

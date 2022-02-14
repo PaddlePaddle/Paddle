@@ -14,5 +14,26 @@
 
 #include "paddle/pten/core/compat/op_utils.h"
 
+namespace pten {
+
+KernelSignature TransposeOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("transpose", {"X"}, {"axis"}, {"Out"});
+}
+
+KernelSignature TransposeGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "transpose_grad", {GradVarName("Out")}, {"axis"}, {GradVarName("X")});
+}
+
+}  // namespace pten
+
+PT_REGISTER_ARG_MAPPING_FN(transpose, pten::TransposeOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(transpose_grad,
+                           pten::TransposeGradOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(transpose2, pten::TransposeOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(transpose2_grad,
+                           pten::TransposeGradOpArgumentMapping);
+
 PT_REGISTER_BASE_KERNEL_NAME(transpose2, transpose);
 PT_REGISTER_BASE_KERNEL_NAME(transpose2_grad, transpose_grad);

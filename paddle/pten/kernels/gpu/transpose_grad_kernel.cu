@@ -16,6 +16,7 @@
 #include "paddle/pten/kernels/transpose_grad_kernel.h"
 
 #include "paddle/pten/backends/gpu/gpu_context.h"
+#include "paddle/pten/common/bfloat16.h"
 #include "paddle/pten/core/kernel_registry.h"
 
 PT_REGISTER_KERNEL(transpose_grad,
@@ -28,5 +29,6 @@ PT_REGISTER_KERNEL(transpose_grad,
                    int32_t,
                    int64_t,
                    pten::dtype::float16,
+                   pten::dtype::bfloat16,
                    paddle::platform::complex<float>,
                    paddle::platform::complex<double>) {}

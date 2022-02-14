@@ -86,11 +86,6 @@ class TransposeOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", out_dims);
   }
 
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext &ctx) const override {
-    return framework::KernelSignature("transpose", {"X"}, {"axis"}, {"Out"});
-  }
-
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
@@ -193,13 +188,6 @@ class TransposeOpGrad : public framework::OperatorWithKernel {
     }
   }
 
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext &ctx) const override {
-    return framework::KernelSignature("transpose_grad",
-                                      {framework::GradVarName("Out")}, {"axis"},
-                                      {framework::GradVarName("X")});
-  }
-
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
@@ -244,11 +232,6 @@ class Transpose2Op : public TransposeOp {
     }
     ctx->SetOutputDim("XShape", framework::make_ddim(x_shape_dim));
     ctx->ShareLoD("X", /*->*/ "XShape");
-  }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext &ctx) const override {
-    return framework::KernelSignature("transpose", {"X"}, {"axis"}, {"Out"});
   }
 
  protected:
@@ -335,13 +318,6 @@ class Transpose2OpGrad : public framework::OperatorWithKernel {
     }
   }
 
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext &ctx) const override {
-    return framework::KernelSignature("transpose_grad",
-                                      {framework::GradVarName("Out")}, {"axis"},
-                                      {framework::GradVarName("X")});
-  }
-
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
@@ -382,28 +358,6 @@ REGISTER_OPERATOR(
 REGISTER_OPERATOR(transpose_grad, ops::TransposeOpGrad,
                   ops::TransposeGradInferVarType);
 
-REGISTER_OP_CPU_KERNEL(
-    transpose, ops::TransposeKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::TransposeKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::TransposeKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::TransposeKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<float>>,
-    ops::TransposeKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<double>>,
-    ops::TransposeKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::bfloat16>);
-REGISTER_OP_CPU_KERNEL(
-    transpose_grad,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::complex<float>>,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::complex<double>>,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::bfloat16>);
-
 REGISTER_OPERATOR(transpose2, ops::Transpose2Op, ops::Transpose2OpMaker,
                   ops::Transpose2GradMaker<paddle::framework::OpDesc>,
                   ops::Transpose2GradMaker<paddle::imperative::OpBase>);
@@ -411,29 +365,3 @@ REGISTER_OPERATOR(transpose2_grad, ops::Transpose2OpGrad,
                   ops::TransposeGradInferVarType,
                   ops::Transpose2DoubleGradMaker<paddle::framework::OpDesc>,
                   ops::Transpose2DoubleGradMaker<paddle::imperative::OpBase>);
-
-REGISTER_OP_CPU_KERNEL(
-    transpose2, ops::TransposeKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::TransposeKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::TransposeKernel<paddle::platform::CPUDeviceContext, int32_t>,
-    ops::TransposeKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::TransposeKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::TransposeKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<float>>,
-    ops::TransposeKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<double>>,
-    ops::TransposeKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::bfloat16>);
-REGISTER_OP_CPU_KERNEL(
-    transpose2_grad,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, int32_t>,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::complex<float>>,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::complex<double>>,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::bfloat16>);
