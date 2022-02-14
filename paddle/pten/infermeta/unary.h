@@ -74,4 +74,7 @@ void TransferLayoutInferMeta(const MetaTensor& x,
                              DataLayout layout,
                              MetaTensor* out);
 
+void TraceInferMeta(
+    const MetaTensor& x, int offset, int axis1, int axis2, MetaTensor* out);
+
 }  // namespace pten
