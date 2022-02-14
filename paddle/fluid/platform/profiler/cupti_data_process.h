@@ -14,29 +14,19 @@
 
 #pragma once
 
+#include <unordered_map>
+#include "paddle/fluid/platform/dynload/cupti.h"
 #include "paddle/fluid/platform/profiler/trace_event_collector.h"
 
 namespace paddle {
 namespace platform {
-
-class TracerBase {
- public:
-  // The state machine for a Tracer.
-  enum class TracerState { UNINITED, READY, STARTED, STOPED };
-
-  virtual void PrepareTracing() { state_ = TracerState::READY; }
-
-  virtual void StartTracing() = 0;
-
-  virtual void StopTracing() = 0;
-
-  virtual void CollectTraceData(TraceEventCollector* collector) = 0;
-
-  virtual ~TracerBase() {}
-
- protected:
-  TracerState state_ = TracerState::UNINITED;
-};
-
+namespace details {
+#ifdef PADDLE_WITH_CUPTI
+void ProcessCuptiActivityRecord(
+    const CUpti_Activity* record, uint64_t start_ns,
+    const std::unordered_map<uint32_t, uint64_t> tid_mapping,
+    TraceEventCollector* collector);
+#endif
+}  // namespace details
 }  // namespace platform
 }  // namespace paddle

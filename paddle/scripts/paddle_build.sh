@@ -1759,11 +1759,11 @@ set +x
 set -x
         ut_endTime_s=`date +%s`
         echo "XPU testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+        python ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/xpu/get_test_cover_info.py
+        unset XPU_OP_LIST_DIR
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 8;
         fi
-        python ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/xpu/get_test_cover_info.py
-        unset XPU_OP_LIST_DIR
     fi   
 }
 
