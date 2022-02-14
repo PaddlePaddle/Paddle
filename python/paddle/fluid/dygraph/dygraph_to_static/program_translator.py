@@ -707,6 +707,7 @@ class ProgramCache(object):
     def __init__(self):
         # {hash_id : (concrete_program, partial_layer)}
         self._caches = collections.OrderedDict()
+        self._recent_key = None
 
     def _build_once(self, cache_key):
         concrete_program = ConcreteProgram.from_func_spec(
@@ -722,6 +723,7 @@ class ProgramCache(object):
             raise ValueError('type(item) should be CacheKey, but received %s' %
                              type_name(item))
         item_id = hash(item)
+        self._recent_key = item_id
         if item_id not in self._caches:
             self._caches[item_id] = self._build_once(item)
             # Note: raise warnings if number of traced program is more than `max_tracing_count`
@@ -749,8 +751,8 @@ class ProgramCache(object):
     def last(self):
         assert len(
             self._caches) >= 1, "No valid cached program in ProgramCache."
-        key = next(reversed(self._caches.keys()))
-        return key, self._caches[key]
+        assert self._recent_key is not None
+        return self._recent_key, self._caches[self._recent_key]
 
     def __len__(self):
         return len(self._caches)
