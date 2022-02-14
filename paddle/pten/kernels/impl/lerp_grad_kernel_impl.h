@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/kernels/lerp_grad_kernel.h"
+#pragma once
+
 #include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/funcs/eigen/common.h"
+#include "paddle/pten/kernels/lerp_grad_kernel.h"
 
 namespace pten {
 
@@ -162,6 +163,3 @@ void LerpGradKernel(const Context& ctx,
 }
 
 }  // namespace pten
-
-PT_REGISTER_KERNEL(
-    lerp_grad, CPU, ALL_LAYOUT, pten::LerpGradKernel, float, double) {}

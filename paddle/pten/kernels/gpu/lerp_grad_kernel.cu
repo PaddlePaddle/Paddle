@@ -14,6 +14,8 @@
 
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/lerp_kernel.h"
+#include "paddle/pten/kernels/impl/lerp_grad_kernel_impl.h"
+#include "paddle/pten/kernels/lerp_grad_kernel.h"
 
-PT_REGISTER_KERNEL(lerp, GPU, ALL_LAYOUT, pten::LerpKernel, float, double) {}
+PT_REGISTER_KERNEL(
+    lerp_grad, GPU, ALL_LAYOUT, pten::LerpGradKernel, float, double) {}

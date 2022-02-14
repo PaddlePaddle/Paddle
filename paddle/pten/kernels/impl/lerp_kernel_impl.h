@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/kernels/lerp_kernel.h"
+#pragma once
+
 #include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/funcs/eigen/common.h"
+#include "paddle/pten/kernels/lerp_kernel.h"
 
 namespace pten {
 
@@ -126,5 +127,3 @@ void LerpKernel(const Context& ctx,
 }
 
 }  // namespace pten
-
-PT_REGISTER_KERNEL(lerp, CPU, ALL_LAYOUT, pten::LerpKernel, float, double) {}
