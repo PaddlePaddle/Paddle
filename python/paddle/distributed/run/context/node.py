@@ -34,7 +34,11 @@ class Node(object):
             return '127.0.0.1'
 
     def get_free_ports(self, n=1):
-        self.free_ports += [self.get_free_port() for i in range(n)]
+        free_ports = [self.get_free_port() for i in range(n)]
+        self.free_ports += free_ports
+        return free_ports
+
+    def get_ports_occupied(self):
         return self.free_ports
 
     @classmethod

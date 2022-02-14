@@ -69,5 +69,5 @@ class Pod(PodSepc):
     def status(self):
         return None
 
-    def logs(self):
-        pass
+    def logs(self, idx=0):
+        self.containers[idx].logs()

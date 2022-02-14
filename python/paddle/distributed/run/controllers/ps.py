@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .controller import Controller
+from .controller import Controller, ControleMode
+
+import json
 
 
 class PSController(Controller):
     @classmethod
     def enable(cls, ctx):
-        ctx.logger.debug("PSController enabled")
-        if ctx.args.server_num or len(ctx.args.servers) > 0:
+        if ctx.args.mode == ControleMode.PS or ctx.args.server_num or len(
+                ctx.args.servers) > 0:
+            ctx.logger.debug("PSController enabled")
             return True
         else:
             return False
@@ -31,23 +34,66 @@ class PSController(Controller):
         self.job.endpoints = []
 
     def build_pod(self):
+        self.pod.rank = self.ctx.args.rank
+
+        server_num = self.ctx.args.server_num or 1
+        servers = [
+            "{}:{}".format(self.ctx.node.ip, p)
+            for p in self.ctx.node.get_free_ports(server_num)
+        ]
+        trainer_num = self.ctx.args.trainer_num or 1
+        trainers = [
+            "{}:{}".format(self.ctx.node.ip, p)
+            for p in self.ctx.node.get_free_ports(trainer_num)
+        ]
+
+        data = json.dumps({
+            'name': self.pod.name,
+            'rank': self.pod.rank,
+            'servers': servers,
+            'trainers': trainers,
+            'dtype': self.ctx.node.device.dtype,
+        })
+
+        peer_list, rank = self.master.sync_peers(
+            '/{}/info'.format(self.job.id), self.pod.name, data,
+            self.job.replicas, self.pod.rank)
+
+        self.ctx.logger.debug("Gather peer list {}".format(peer_list))
+
+        peer_list = [json.loads(i) for i in peer_list]
+
+        self.save_log(peer_list)
+
+        server_endpoints = [j for i in peer_list for j in i['servers']]
+        trainer_endpoints = [j for i in peer_list for j in i['trainers']]
+        #rank_offset = sum([i['replicas'] for i in peer_list[:rank]])
+
+        server_rank_offset = sum([len(i['servers']) for i in peer_list[:rank]])
+        trainer_rank_offset = sum(
+            [len(i['trainers']) for i in peer_list[:rank]])
+
+        self.pod.rank = rank
 
         host = self.ctx.node.ip
         #self.pod.replicas = self.ctx.node.device.count
 
-        server_num = ctx.args.server_num or len(ctx.args.servers)
-
         for i in range(server_num):
             e = {
-                "PADDLE_PSERVERS": server_endpoints,
-                "PADDLE_TRAINER_ENDPOINTS": worker_endpoints,
-                "PADDLE_PORT": cur_server.endpoint.split(":")[1],
-                "TRAINING_ROLE": "PSERVER",
-                "PADDLE_TRAINERS_NUM": str(self.worker_num),
-                "POD_IP": host,
-                "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "0")),
-                "PADDLE_GLOO_RENDEZVOUS": "3",
-                "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
-                "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port
+                "PADDLE_PSERVER_ENDPOINTS": ",".join(server_endpoints),
+                "PADDLE_TRAINER_ENDPOINTS": ",".join(trainer_endpoints),
+                "PADDLE_ROLE": "PSERVER",
+                "PADDLE_RANK": "{}".format(i + server_rank_offset),
             }
-            self.add_container(envs=e)
+            log_file = "server.{}.{}.log".format(self.pod.name, i)
+            self.add_container(envs=e, log_file=log_file)
+
+        for i in range(trainer_num):
+            e = {
+                "PADDLE_PSERVER_ENDPOINTS": ",".join(server_endpoints),
+                "PADDLE_TRAINER_ENDPOINTS": ",".join(trainer_endpoints),
+                "PADDLE_ROLE": "TRAINER_CPU",
+                "PADDLE_RANK": "{}".format(i + server_rank_offset),
+            }
+            log_file = "trainer.{}.{}.log".format(self.pod.name, i)
+            self.add_container(envs=e, log_file=log_file)

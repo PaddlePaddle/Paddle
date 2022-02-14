@@ -179,7 +179,7 @@ class Context(object):
             help="User defined heter devices in each stage cpu;gpu;cpu")
 
         ps_group.add_argument(
-            "--worker_num", type=int, help="number of workers")
+            "--trainer_num", type=int, help="number of trainers")
         ps_group.add_argument(
             "--server_num", type=int, help="number of servers")
         ps_group.add_argument(

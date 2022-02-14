@@ -15,55 +15,63 @@
 from .controller import Controller
 
 import json
+import os
 
 
 class CollectiveController(Controller):
     @classmethod
     def enable(cls, ctx):
-        ctx.logger.debug("CollectiveController enabled")
         if ctx:
+            ctx.logger.debug("CollectiveController enabled")
             return True
         else:
             return False
 
     def build_job(self):
-
-        self.job.replicas = self.ctx.args.np or 1
-        self.job.id = self.ctx.args.id
+        super().build_job()
 
     def build_pod(self):
         self.pod.replicas = self.pod_replicas()
         self.pod.rank = self.ctx.args.rank
+
+        port = self.ctx.node.get_free_port()
+        ip = self.ctx.node.ip
 
         data = json.dumps({
             'name': self.pod.name,
             'rank': self.pod.rank,
             'replicas': self.pod.replicas,
             'dtype': self.ctx.node.device.dtype,
+            'candidate': '{}:{}'.format(ip, port)
         })
 
-        peer_list, rank = self.master.allgather(
+        peer_list, rank = self.master.sync_peers(
             '/{}/info'.format(self.job.id), self.pod.name, data,
             self.job.replicas, self.pod.rank)
 
-        print(peer_list)
-
         peer_list = [json.loads(i) for i in peer_list]
+
+        self.save_log(peer_list)
 
         global_size = sum([i['replicas'] for i in peer_list])
         rank_offset = sum([i['replicas'] for i in peer_list[:rank]])
 
         self.pod.rank = rank
+        '''
+        The new desinged collective need nothing but a master endpoint
+        '''
+        collective_master = peer_list[0]['candidate']
 
         for i in range(self.pod.replicas):
             e = {
-                "PADDLE_MASTER": self.master.endpoint,
+                "PADDLE_MASTER": collective_master,
                 "PADDLE_GLOBAL_SIZE": "{}".format(global_size),
                 "PADDLE_LOCAL_SIZE": "{}".format(self.pod.replicas),
                 "PADDLE_GLOBAL_RANK": "{}".format(i + rank_offset),
                 "PADDLE_LOCAL_RANK": "{}".format(i),
             }
-            self.add_container(envs=e)
+            log_file = "worker.{}.{}.log".format(self.pod.name, i)
+            self.add_container(envs=e, log_file=log_file)
 
     '''
     compatible version of build_pod
@@ -78,7 +86,7 @@ class CollectiveController(Controller):
             for p in self.ctx.node.get_free_ports(self.pod.replicas)
         ]
 
-        eps, _ = self.master.allgather(
+        eps, _ = self.master.sync_peers(
             '/workers',
             self.pod.name,
             ",".join(self.pod.endpoints),

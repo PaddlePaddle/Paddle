@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import sys
+import os
 import signal
 
 from paddle.distributed.run.job import Job
@@ -22,6 +23,11 @@ from paddle.distributed.run.job import Container
 from .master import Master
 
 import time
+
+
+class ControleMode:
+    COLLECTIVE = "collective"
+    PS = "ps"
 
 
 class ControllerBase(object):
@@ -51,6 +57,13 @@ class ControllerBase(object):
         sys.exit(sigint)
 
     def tach(self):
+        '''
+        for i in range(50):
+            print([i]*(i+1))
+            self.pod.logs()
+            time.sleep(1)
+        '''
+
         self.pod.join()
         self.master.stop()
 
@@ -75,7 +88,8 @@ Controller API for customization
 
 class Controller(ControllerBase):
     def build_job(self):
-        pass
+        self.job.replicas = self.ctx.args.np or 1
+        self.job.id = self.ctx.args.id
 
     def build_pod(self):
         raise NotImplementedError
@@ -85,10 +99,17 @@ class Controller(ControllerBase):
         entrypoint.extend(self.ctx.args.training_script_args)
         return entrypoint
 
-    def build_container(self, entrypoint=None, envs={}, use_ctx_env=True):
+    def build_container(self,
+                        entrypoint=None,
+                        envs={},
+                        use_ctx_env=True,
+                        out=None,
+                        err=None):
         c = Container()
         c.entrypoint = entrypoint or self._get_entrypoint()
         c.env = self.ctx.get_envs() if use_ctx_env else {}
+        c.out = os.path.join(self.ctx.args.log_dir, out) if out else None
+        c.err = os.path.join(self.ctx.args.log_dir, err) if err else c.out
         c.update_env(envs)
         return c
 
@@ -96,9 +117,11 @@ class Controller(ControllerBase):
                       container=None,
                       entrypoint=None,
                       envs={},
-                      is_init=False):
+                      is_init=False,
+                      log_file=None):
         if not container:
-            container = self.build_container(entrypoint=entrypoint, envs=envs)
+            container = self.build_container(
+                entrypoint=entrypoint, envs=envs, out=log_file, err=log_file)
 
         if is_init:
             self.pod.init_containers.append(container)
@@ -110,3 +133,11 @@ class Controller(ControllerBase):
             return int(self.ctx.args.nproc_per_node)
         else:
             return self.ctx.node.device.count
+
+    def save_log(self, info):
+        f = os.path.join(self.ctx.args.log_dir, '{}.log'.format(self.pod.name))
+        try:
+            with open(f, 'a') as fd:
+                fd.write(str(info))
+        except Exception as e:
+            self.ctx.logger.error("save log failed because {}".format(e))

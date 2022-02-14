@@ -37,7 +37,7 @@ class Master(object):
     def stop(self):
         raise NotImplementedError
 
-    def allgather(self, prefix, key, value, size, rank=-1) -> (list, int):
+    def sync_peers(self, prefix, key, value, size, rank=-1) -> (list, int):
         raise NotImplementedError
 
     @classmethod
@@ -101,7 +101,7 @@ class HTTPMaster(Master):
     def stop(self):
         self._stop_server()
 
-    def allgather(self, prefix, key, value, size, rank=-1) -> (list, int):
+    def sync_peers(self, prefix, key, value, size, rank=-1) -> (list, int):
         if size < 2:
             return [value], 0
 
@@ -158,11 +158,11 @@ class ETCDMaster(Master):
         self.remove_list = set()
 
     '''
-    allgather gather all value for key under scop prefix
+    sync_peers gather all value for key under scop prefix
     result always be sorted either by rank or alphabet of pod.name
     '''
 
-    def allgather(self, prefix, key, value, size, rank=-1) -> (list, int):
+    def sync_peers(self, prefix, key, value, size, rank=-1) -> (list, int):
         self.remove_list.add(prefix)
 
         path = "{}/{}/{}".format(prefix, key, rank)

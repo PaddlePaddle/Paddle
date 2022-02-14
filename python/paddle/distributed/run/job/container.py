@@ -36,22 +36,44 @@ class Container(object):
         self.entrypoint = []
         self.rank = 0
         self.retry: int = 3
-        self.stdin = None
-        self.stdout = sys.stdout
-        self.stderr = sys.stderr
+        self.out = None
+        self.err = None
         self.env = {}
         self.proc = None
         self.grace_period = 10
 
+        self._log_handler = None
+
     def update_env(self, env={}, **kwargs):
+        env = {k: v for k, v in env.items() if isinstance(v, str)}
         self.env.update(env)
+
+        kwargs = {k: v for k, v in kwargs.items() if isinstance(v, str)}
         self.env.update(kwargs)
+
+    def _get_fd(self, pth):
+        if not pth:
+            return None
+
+        try:
+            d = os.path.dirname(pth)
+            if not os.path.isdir(d):
+                os.makedirs(d, exist_ok=True)
+            return open(pth, 'w')
+        except:
+            return None
 
     def start(self, timeout=-1):
         st = time.time()
 
         if self.proc and self.proc.alive():
             return True
+
+        self.stdout = self._get_fd(self.out) or sys.stdout
+        if self.out == self.err:
+            self.stderr = self.stdout
+        elif self.err:
+            self.stderr = self._get_fd(self.err) or sys.stderr
 
         self.proc = ProcessContext(
             self.entrypoint, env=self.env, out=self.stdout, err=self.stderr)
@@ -66,6 +88,9 @@ class Container(object):
             return False
 
     def terminate(self, force=False):
+        if self._log_handler:
+            self._log_handler.close()
+
         if self.proc and self.proc.alive():
             return self.proc.terminate(force)
 
@@ -85,5 +110,18 @@ class Container(object):
     def __str__(self):
         return 'Container {} {} {}'.format(self.env, self.entrypoint, self.rank)
 
-    def logs(self):
-        pass
+    def logs(self, fn=None, offset=-1):
+        if not self._log_handler:
+            self._log_handler = open(self.out)
+
+        if offset >= 0:
+            self._log_handler.seek(offset, 0)
+
+        if fn is None:
+            fn = sys.stdout
+
+        try:
+            for line in self._log_handler:
+                fn.write(line)
+        finally:
+            return self._log_handler.tell()

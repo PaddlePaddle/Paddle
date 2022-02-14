@@ -43,17 +43,20 @@ Case 3: multi-node, specified master/rendezvous server
 
 Parameter Server Mode
 
-Case 1: 1 node, 2 ps, 2 worker
+Case 1.1: 1 node, 1 ps, 1 trainer
 
 # python -m paddle.distributed.run --mode ps train.py
+# python -m paddle.distributed.run --server_num=1 --trainer_num=1 train.py
 
-# python -m paddle.distributed.run --server_num=2 --worker_num=2 train.py
+Case 1.2: 1 node, 2 ps, 2 trainer
 
-Case 2: 2 node, 2 ps, 2 worker per node
+# python -m paddle.distributed.run --server_num=2 --trainer_num=2 train.py
 
-# python -m paddle.distributed.run --server_num=2 --worker_num=2 --np 2 train.py
+Case 2: 2 node, 2 ps, 2 trainer per node
+
+# python -m paddle.distributed.run --server_num=2 --trainer_num=2 --np 2 train.py
 # auto print following command
-# python -m paddle.distributed.run --master 10.0.0.1:13538 --server_num=2 --worker_num=2 --np 2 train.py
+# python -m paddle.distributed.run --master 10.0.0.1:13538 --server_num=2 --trainer_num=2 --np 2 train.py
 
 
 
