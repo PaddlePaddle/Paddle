@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 // See Note [ Why still include the fluid headers? ]
+#include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/meta_tensor.h"
 
@@ -74,4 +75,9 @@ void TransferLayoutInferMeta(const MetaTensor& x,
                              DataLayout layout,
                              MetaTensor* out);
 
+void SplitInferMeta(const MetaTensor& x_meta,
+                    const ScalarArray& num_or_sections,
+                    const Scalar& axis,
+                    std::vector<MetaTensor>* out,
+                    MetaConfig config = MetaConfig());
 }  // namespace pten
