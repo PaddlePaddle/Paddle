@@ -274,9 +274,10 @@ def amp_guard(enable=True,
     # NOTE: Now, amp only support gpu for float16 and bfloat16, xpu for float16.
     # Maybe we will support cpu for bfloat16.
     if enable and not (tracer._expected_place.is_gpu_place() or
-                       tracer._expected_place.is_xpu_place()):
+                       tracer._expected_place.is_xpu_place() or
+                       tracer._expected_place.is_npu_place()):
         warnings.warn(
-            'amp_guard can only be enabled on CUDAPlace and XPUPlace, current place is %s, so it makes no effect.'
+            'amp_guard can only be enabled on CUDAPlace, XPUPlace, and NPUPlace, current place is %s, so it makes no effect.'
             % tracer._expected_place)
         enable = False
     # For xpu:
