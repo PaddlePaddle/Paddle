@@ -347,6 +347,14 @@ void BuildDygraphPtenKernelContext(
                    std::type_index(typeid(std::vector<int32_t>))) {
           kernel_ctx->EmplaceBackAttr(std::move(
               pten::ScalarArray(BOOST_GET_CONST(std::vector<int32_t>, attr))));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(int64_t))) {
+          kernel_ctx->EmplaceBackAttr(
+              std::move(pten::ScalarArray(&BOOST_GET_CONST(int64_t, attr), 1)));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(int32_t))) {
+          kernel_ctx->EmplaceBackAttr(
+              std::move(pten::ScalarArray(&BOOST_GET_CONST(int32_t, attr), 1)));
         } else if (attr_defs[i].type_index ==
                    std::type_index(typeid(std::vector<int32_t>))) {
           const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
