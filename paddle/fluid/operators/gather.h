@@ -20,8 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -226,7 +226,7 @@ void GatherV2GradFunction(const Tensor* input, const Tensor* index,
   auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
   auto out_dim = out->dims();
   int64_t out_index_dim_size = out_dim[axis_index];
-  operators::math::set_constant(*dev_ctx, out, 0.0);
+  pten::funcs::set_constant(*dev_ctx, out, 0.0);
 
   for (int64_t i = 0; i < inner_dim_size; i++) {
     for (int64_t j = 0; j < input_index_dim_size; j++) {

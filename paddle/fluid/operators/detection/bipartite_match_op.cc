@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -205,9 +205,9 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
     match_indices->mutable_data<int>({n, col}, context.GetPlace());
     match_dist->mutable_data<T>({n, col}, context.GetPlace());
 
-    math::SetConstant<platform::CPUDeviceContext, int> iset;
+    pten::funcs::SetConstant<platform::CPUDeviceContext, int> iset;
     iset(dev_ctx, match_indices, static_cast<int>(-1));
-    math::SetConstant<platform::CPUDeviceContext, T> tset;
+    pten::funcs::SetConstant<platform::CPUDeviceContext, T> tset;
     tset(dev_ctx, match_dist, static_cast<T>(0));
 
     int* indices = match_indices->data<int>();
