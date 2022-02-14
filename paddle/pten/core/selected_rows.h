@@ -29,8 +29,10 @@ limitations under the License. */
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/mixed_vector.h"
-#include "paddle/fluid/memory/memcpy.h"
 
+namespace egr {
+class EagerTensor;
+}  // namespace egr
 namespace pten {
 class SelectedRows : public TensorBase,
                      public TypeInfoTraits<TensorBase, SelectedRows> {
@@ -197,6 +199,39 @@ class SelectedRows : public TensorBase,
   std::unique_ptr<DenseTensor> value_{nullptr};
   int64_t height_;  // height indicates the underline tensor's height
   std::unique_ptr<RWLock> rwlock_{nullptr};
+  // TODO(jiabin): Remove this when we don't need EagerTensor support
+  // SelectedRows which is expected in next version.
+  /** Why we need this weird friend class?
+   * In eager mode, since some of ops doesn't support C++ API for now we need to
+   *use 'imperative::TraceOp' to run it.
+   * So, we need to support get a SelectedRows from egr::EagerTensor's
+   *framework::Variable obj and used it to reconstruct
+   * a new paddle::experimental::Tensor to support framework usage. However, we
+   *got 2 problems here.
+   * First, we got 2 unique_ptr in SelectedRows so that we can't support
+   *std::make_shared in EagerTensor's SetImplWithSelectedRows method,
+   * since we have to construct a shared_ptr for paddle::experimental::Tensor's
+   *impl.
+   * Second, when we are trying to support move constructor for SelectedRows we
+   *found that we can't get its rvalue from
+   * framework::Variable because it holds an obj of target type.
+   *
+   *
+   * The only three way to solve this problem is:
+   * 1. Just like what we have done, using friend class and just copy/move each
+   *member. In this way, we can avoid additional API
+   * and symbols.
+   * 2. Make pten::SelectedRows's member from unique_ptr to shared_ptr. However,
+   *this may cause some cost of performance.
+   * 3. Add some api to return or move member of framework::SelectedRows.
+   *However, it's not as safe as first solution.
+   * 4. Support all framework::SelectedRows related ops and make sure
+   *EagerTensor never holds framework::SelectedRows.
+   *
+   * If anyone got better ideas, welcome to contact JiabinYang, we are open for
+   *your help.
+  **/
+  friend class egr::EagerTensor;
 };
 
 }  // namespace pten

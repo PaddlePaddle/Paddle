@@ -27,6 +27,8 @@
 
 USE_OP(pool2d);
 USE_OP_DEVICE_KERNEL(pool2d, MKLDNN);
+USE_OP(relu);
+USE_OP_DEVICE_KERNEL(relu, MKLDNN);
 USE_OP(transpose);
 USE_OP_DEVICE_KERNEL(transpose, MKLDNN);
 
@@ -90,5 +92,63 @@ TEST(test_pool2d_transpose_nhwc, cpu_place) {
                         "Computed shape does not match expected shape"));
 }
 
+TEST(test_pool2d_relu_relu_nhwc, cpu_place) {
+  framework::DDim dims({1, 4, 8, 512});           // NHWC shape
+  framework::DDim expected_dims({1, 512, 3, 7});  // NHWC expected shape
+  platform::CPUPlace p;
+  framework::Scope scope;
+
+  InputVars input_name = {"x",
+                          scope.Var("x")->GetMutable<framework::LoDTensor>()};
+  // Initialize input data
+  std::uniform_real_distribution<float> dist(static_cast<float>(10.0),
+                                             static_cast<float>(20.0));
+  std::mt19937 engine;
+  size_t numel = static_cast<size_t>(framework::product(dims));
+  input_name.tensor->Resize(dims);
+  auto data_ptr = input_name.tensor->mutable_data<float>(p);
+  for (size_t i = 0; i < numel; ++i) {
+    data_ptr[i] = dist(engine);
+  }
+
+  scope.Var("y")->GetMutable<framework::LoDTensor>();
+  scope.Var("u")->GetMutable<framework::LoDTensor>();
+  auto *z = scope.Var("z")->GetMutable<framework::LoDTensor>();
+
+  auto &pool = platform::DeviceContextPool::Instance();
+
+  // Make pool2d(oneDNN) followed by relu(CPU paddle) followed by
+  // relu(oneDNN). Second relu should make a shape rotation to NCHW
+
+  auto ksize = std::vector<int>(2, 2);
+  auto op_pool = framework::OpRegistry::CreateOp(
+      "pool2d", {{"X", {"x"}}}, {{"Out", {"y"}}},
+      {{"pooling_type", {std::string("max")}},
+       {"ksize", {ksize}},
+       {"data_format", {std::string("NHWC")}},
+       {"use_mkldnn", {true}}});
+
+  auto axis = std::vector<int>(4, 0);
+  axis[1] = 2;
+  axis[2] = 3;
+  axis[3] = 1;
+  auto op_relu1 = framework::OpRegistry::CreateOp(
+      "relu", {{"X", {"y"}}}, {{"Out", {"u"}}},
+      {{"axis", {axis}}, {"use_mkldnn", {false}}});
+
+  auto op_relu2 = framework::OpRegistry::CreateOp(
+      "relu", {{"X", {"u"}}}, {{"Out", {"z"}}}, {{"use_mkldnn", {true}}});
+
+  op_pool->Run(scope, p);
+  op_relu1->Run(scope, p);
+  op_relu2->Run(scope, p);
+
+  pool.Get(p)->Wait();
+
+  // Verify shape of output
+  PADDLE_ENFORCE_EQ(z->dims(), expected_dims,
+                    platform::errors::InvalidArgument(
+                        "Computed shape does not match expected shape"));
+}
 }  // namespace operators
 }  // namespace paddle

@@ -2,7 +2,6 @@ if(NOT WITH_GPU)
     return()
 endif()
 
-
 if(WITH_NV_JETSON)
   add_definitions(-DWITH_NV_JETSON)
   set(paddle_known_gpu_archs "53 62 72")

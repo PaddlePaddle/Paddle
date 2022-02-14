@@ -21,8 +21,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/conv_cudnn_helper.h"
 #endif
 #include "paddle/fluid/operators/conv_transpose_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/padding.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -34,7 +34,7 @@ static void DataTranspose(const framework::ExecutionContext& ctx,
                           const Tensor* input, Tensor* output,
                           const std::vector<int>& axis, int flag = 0) {
   auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-  math::Transpose<platform::CUDADeviceContext, T, D> transpose;
+  pten::funcs::Transpose<platform::CUDADeviceContext, T, D> transpose;
   auto in_dims = input->dims();
   std::vector<int64_t> input_transpose_vec;
   for (size_t i = 0; i < axis.size(); ++i) {
@@ -650,7 +650,7 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
 
     if (ddO) {
       ddO->mutable_data<T>(ctx.GetPlace());
-      math::SetConstant<platform::CUDADeviceContext, T> set_zero;
+      pten::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
       set_zero(dev_ctx, ddO, static_cast<T>(0));
     }
     if (dW) {

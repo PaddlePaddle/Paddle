@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <array>
 #include <functional>
+#include <mutex>
 #include "paddle/pten/backends/gpu/forwards.h"
 #include "paddle/pten/backends/gpu/gpu_decls.h"
 #include "paddle/pten/backends/gpu/gpu_helper.h"
@@ -24,7 +25,53 @@ limitations under the License. */
 
 namespace pten {
 
-class DnnWorkspaceHandle;
+class DnnWorkspaceHandle {
+ public:
+  explicit inline DnnWorkspaceHandle(Allocator* allocator)
+      : allocator_(allocator) {
+    mtx_.reset(new std::mutex());
+  }
+
+  inline void RunFunc(const std::function<void(void*)>& cudnn_func,
+                      size_t required_workspace_bytes) {
+    if (required_workspace_bytes > WorkspaceSize()) {
+      ReallocWorkspace(required_workspace_bytes);
+    }
+    {
+      std::lock_guard<std::mutex> guard(*mtx_);
+      cudnn_func(allocation_ ? allocation_->ptr() : nullptr);
+    }
+  }
+
+  /*! \brief Thread which call RunFuncSync() would release gpu memory after
+   *  running the function. Currently this function is only used when cudnn
+   *  exhaustive searching and callers have to guarantee that the input function
+   *  is host blocking */
+  inline void RunFuncSync(const std::function<void(void*)>& cudnn_func,
+                          size_t required_workspace_bytes) {
+    RunFunc(cudnn_func, required_workspace_bytes);
+    ResetWorkspace();
+  }
+
+  inline size_t WorkspaceSize() {
+    if (allocation_ == nullptr) {
+      return 0;
+    }
+    return allocation_->size();
+  }
+
+  void ResetWorkspace();
+
+  void ReallocWorkspace(size_t required_workspace_bytes);
+
+  DnnWorkspaceHandle(DnnWorkspaceHandle&&) = default;
+  DnnWorkspaceHandle& operator=(DnnWorkspaceHandle&&) = delete;
+
+ private:
+  Allocator::AllocationPtr allocation_{nullptr};
+  Allocator* allocator_{nullptr};
+  std::unique_ptr<std::mutex> mtx_;
+};
 
 class GPUContext : public DeviceContext {
  public:
@@ -85,7 +132,8 @@ class GPUContext : public DeviceContext {
    *  would be acquired to prevent other threads from accessing the
    *  workspace. Once the handle is destructed, the lock would be released.
    */
-  DnnWorkspaceHandle* cudnn_workspace_handle();
+  // TODO(wilber): The return type is a pointer, to be modified later.
+  DnnWorkspaceHandle cudnn_workspace_handle() const;
 
  public:
   /*! \brief  Call cublas function safely. */

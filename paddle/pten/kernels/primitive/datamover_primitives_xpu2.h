@@ -190,6 +190,18 @@ __device__ __inline__ void Init(T* dst, T init_data) {
 }
 
 /**
+ * The difference from the above function is that
+ * it supports different data types of inputs.
+ */
+template <typename T, typename ArgsT, int Index, int NX>
+__device__ __forceinline__ void Init(ArgsT* dst, T init_data) {
+#pragma unroll
+  for (int i = 0; i < NX; i++) {
+    std::get<Index>(dst[i]) = init_data;
+  }
+}
+
+/**
  * @brief Read 1D data from global memory to register. When IsBoundary = true
  * and (NX % 4 == 0 or Nx % 2 == 0), vectorized load data will be used to
  * improve memory access efficiency.
@@ -226,6 +238,40 @@ __device__ __inline__ void ReadData(T* dst,
     }
   } else {  // core_num() * NX < num
     GM2LM(src + thread_offset, dst, NX * sizeof(T));
+  }
+}
+
+/**
+ * @brief Read 1D data from global memory to register. The difference
+ * from the above function is that it supports different data types of inputs.
+ */
+template <typename T,
+          int NX,
+          int NY,
+          int BlockSize,
+          typename ArgsT,
+          int Index,
+          bool IsBoundary = false>
+__device__ __forceinline__ void ReadData(ArgsT* dst,
+                                         const T* __restrict__ src,
+                                         int num) {
+  int thread_offset = core_id() * NX;
+  __local__ T in_temp[1];
+  __local__ T in_vec[NX];
+  if (IsBoundary) {  // core_num() * NX > num
+#pragma unroll
+    for (int idx = 0; idx < NX; ++idx) {
+      if (idx + thread_offset < num) {
+        GM2LM(src + thread_offset + idx, in_temp, sizeof(T));
+        std::get<Index>(dst[idx]) = in_temp[0];
+      }
+    }
+  } else {  // core_num() * NX < num
+    GM2LM(src + thread_offset, in_vec, NX * sizeof(T));
+#pragma unroll
+    for (int idx = 0; idx < NX; ++idx) {
+      std::get<Index>(dst[idx]) = in_vec[idx];
+    }
   }
 }
 

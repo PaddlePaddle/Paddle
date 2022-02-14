@@ -47,8 +47,8 @@ limitations under the License. */
 
 #endif
 
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 #define DIVUP(x, y) (((x) + (y)-1) / (y))
 
@@ -1188,7 +1188,7 @@ template <typename T>
 void ReduceWrapper(const platform::CUDADeviceContext &dev_ctx, int axis,
                    framework::Tensor *src, framework::Tensor *dst) {
   std::vector<int> reduce_dims = GetReduceDim(dst->dims(), src->dims(), axis);
-  TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+  TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
       dev_ctx, *src, dst, kps::IdentityFunctor<T>(), reduce_dims,
       dev_ctx.stream());
 }

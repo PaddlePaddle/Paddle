@@ -48,9 +48,7 @@ void FullKernel(const ContextT& dev_ctx,
     // This function has no input, so the inputs.size() == 0. Use kUnary, but
     // the data will not be loaded in the kernel because the number of
     // parameters in the operator is 0
-    pten::funcs::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary,
-                                                     T,
-                                                     T>(
+    pten::funcs::LaunchSameDimsElementwiseCudaKernel<T>(
         dev_ctx, inputs, &outputs, FullFuctor<T>(val.to<T>()));
   }
 }
@@ -62,10 +60,9 @@ void FullLikeKernel(const ContextT& dev_ctx,
   auto value = val.to<float>();
   using CommonType = typename std::common_type<
       float,
-      typename std::conditional<
-          std::is_same<T, paddle::platform::float16>::value,
-          float,
-          T>::type>::type;
+      typename std::conditional<std::is_same<T, pten::dtype::float16>::value,
+                                float,
+                                T>::type>::type;
 
   auto common_type_value = static_cast<CommonType>(value);
 
@@ -75,7 +72,7 @@ void FullLikeKernel(const ContextT& dev_ctx,
           (common_type_value <=
            static_cast<CommonType>(std::numeric_limits<T>::max())),
       true,
-      paddle::platform::errors::InvalidArgument(
+      pten::errors::InvalidArgument(
           "The filled value is out of range for target type, "
           "current kernel type is %s, the range should between %f "
           "and %f, but now value is %f.",
@@ -91,9 +88,7 @@ void FullLikeKernel(const ContextT& dev_ctx,
   // the operator is 0
   int numel = out->numel();
   if (numel > 0) {
-    pten::funcs::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary,
-                                                     T,
-                                                     T>(
+    pten::funcs::LaunchSameDimsElementwiseCudaKernel<T>(
         dev_ctx, inputs, &outputs, FullFuctor<T>(value));
   }
 }

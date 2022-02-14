@@ -22,11 +22,11 @@ namespace cub = hipcub;
 #include <vector>
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/margin_cross_entropy_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/softmax_impl.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -298,7 +298,7 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     logits_max =
         ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({N, 1}, dev_ctx);
     T* logits_max_buff = logits_max.mutable_data<T>(place);
-    TensorReduceFunctorImpl<T, T, kps::MaxFunctor, kps::IdentityFunctor<T>>(
+    TensorReduceImpl<T, T, kps::MaxFunctor, kps::IdentityFunctor<T>>(
         dev_ctx, softmax_2d, &logits_max, kps::IdentityFunctor<T>(), {1},
         dev_ctx.stream());
 
@@ -320,7 +320,7 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     sum_exp_logits =
         ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({N, 1}, dev_ctx);
     T* sum_exp_logits_buff = sum_exp_logits.mutable_data<T>(place);
-    TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::ExpFunctor<T>>(
+    TensorReduceImpl<T, T, kps::AddFunctor, kps::ExpFunctor<T>>(
         dev_ctx, softmax_2d, &sum_exp_logits, kps::ExpFunctor<T>(), {1},
         dev_ctx.stream());
 
@@ -341,8 +341,8 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     // step 6, prob = exp((logit - logit_max) - log(sum(exp(logit -
     // logit_max))))
     // loss = -((logit_i - logit_max) - log(sum(exp(logit - logit_max))))
-    math::SetConstant<platform::CUDADeviceContext, T>()(dev_ctx, loss,
-                                                        static_cast<T>(0.0));
+    pten::funcs::SetConstant<platform::CUDADeviceContext, T>()(
+        dev_ctx, loss, static_cast<T>(0.0));
     if (label_type == framework::proto::VarType::INT32) {
       typedef int32_t LabelT;
       HardLabelSoftmaxWithCrossEntropyKernel<

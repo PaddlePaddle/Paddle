@@ -569,7 +569,7 @@ class CUDADeviceContext : public pten::GPUContext {
    *  workspace. Once the handle is destructed, the lock would be released.
    *  CudnnWorkspaceHandle is an RAII object to implement thread-safe
    *  sequential cudnn function calls. */
-  CudnnWorkspaceHandle cudnn_workspace_handle() const;
+  pten::DnnWorkspaceHandle cudnn_workspace_handle() const;
 
   /*! \brief  Return cuda stream in the device context. */
   gpuStream_t stream() const;
@@ -610,6 +610,7 @@ class CUDADeviceContext : public pten::GPUContext {
   // NOTE: Just for compatibility with the past, please delete if there is an
   // elegant way.
   std::unique_ptr<stream::CUDAStream> cuda_stream_;
+  std::unique_ptr<pten::DnnWorkspaceHandle> workspace_{nullptr};
 
   DISABLE_COPY_AND_ASSIGN(CUDADeviceContext);
 };

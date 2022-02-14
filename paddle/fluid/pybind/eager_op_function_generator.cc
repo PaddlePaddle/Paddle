@@ -73,10 +73,10 @@ const char* OUT_VAR_TYPE = R"(std::shared_ptr<imperative::VarBase>)";
 const char* OUT_VAR_LIST_TYPE = R"(std::vector<std::shared_ptr<imperative::VarBase>>)";
 
 const char* CAST_VAR_TEMPLATE = R"(
-    auto& %s = GetEagerTensorFromArgs("%s", "%s", args, %d, %s);)";
+    auto& %s = GetTensorFromArgs("%s", "%s", args, %d, %s);)";
 
 const char* CAST_VAR_LIST_TEMPLATE = R"(
-    auto %s = GetEagerTensorListFromArgs("%s", "%s", args, %d, %s);)";
+    auto %s = GetTensorListFromArgs("%s", "%s", args, %d, %s);)";
 
 const char* CAST_VAR_PTR_TEMPLATE = R"(
     auto %s = GetEagerTensorPtrFromArgs("%s", "%s", args, %d, %s);)";
@@ -396,6 +396,7 @@ int main(int argc, char* argv[]) {
 
   std::vector<std::string> headers{
       "\"pybind11/detail/common.h\"",
+      "\"paddle/fluid/pybind/eager_final_state_op_function_impl.h\"",
       "\"paddle/fluid/pybind/op_function_common.h\"",
       "\"paddle/fluid/eager/api/generated/fluid_generated/"
       "dygraph_forward_api.h\"",
@@ -441,6 +442,10 @@ int main(int argc, char* argv[]) {
       << "  InitOpsAttrTypeMap();\n"
       << "  auto m = module->def_submodule(\"ops\");\n"
       << "  if (PyModule_AddFunctions(m.ptr(), ExtestMethods) < 0) {\n"
+      << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
+         "core.eager.ops failed!\"));\n"
+      << "  }\n\n"
+      << "  if (PyModule_AddFunctions(m.ptr(), EagerFinalStateMethods) < 0) {\n"
       << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
          "core.eager.ops failed!\"));\n"
       << "  }\n\n"

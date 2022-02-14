@@ -164,17 +164,16 @@ class SortedGradientAccumulator : public GradientAccumulator {
   std::vector<SavedVarInfo> tmp_grad_vars_;
 };
 
-void SelectedRowsAddToTensor(const framework::Variable& src,
-                             framework::Variable* dst);
+template <typename VarType>
+void SelectedRowsAddToTensor(const VarType& src, VarType* dst);
 
-void SelectedRowsAddTensor(const framework::Variable& src_selected_rows_var,
-                           const framework::Variable& src_tensor_var,
-                           framework::Variable* dst_tensor_var);
+template <typename VarType>
+void SelectedRowsAddTensor(const VarType& src_selected_rows_var,
+                           const VarType& src_tensor_var,
+                           VarType* dst_tensor_var);
 
 template <typename VarType>
 void TensorAdd(const VarType& src, VarType* dst);
-
-void VariableAdd(const egr::EagerTensor& src, egr::EagerTensor* dst);
 
 }  // namespace imperative
 }  // namespace paddle

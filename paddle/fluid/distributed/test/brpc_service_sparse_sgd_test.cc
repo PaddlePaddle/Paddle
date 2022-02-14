@@ -22,8 +22,8 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/service/brpc_ps_server.h"
 #include "paddle/fluid/distributed/ps/service/env.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace distributed {
@@ -43,7 +43,6 @@ class DenseTensor;
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 namespace operators = paddle::operators;
-namespace math = paddle::operators::math;
 namespace memory = paddle::memory;
 namespace distributed = paddle::distributed;
 
