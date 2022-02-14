@@ -91,5 +91,9 @@ class InplaceAddtoOpPass(CPPPassWrapper):
     def cpp_name(self):
         return "buffer_shared_inplace_pass"
 
+    @property
+    def cpp_attr_types(self):
+        return {"mem_opt_skip_vars": "list[str]"}
+
     def _type(self):
         return PassType.CALC_OPT
