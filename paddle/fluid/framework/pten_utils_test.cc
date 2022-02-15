@@ -53,3 +53,38 @@ TEST(PtenUtils, TransPtenKernelKeyToOpKernelType) {
             paddle::framework::LibraryType::kCUDNN);
 #endif
 }
+
+TEST(PtenUtils, TransOpKernelTypeToPtenKernelKey) {
+  paddle::framework::OpKernelType op_kernel_type(
+      paddle::framework::proto::VarType::FP32, paddle::platform::CPUPlace(),
+      paddle::framework::DataLayout::kNCHW);
+  auto kernel_key =
+      paddle::framework::TransOpKernelTypeToPtenKernelKey(op_kernel_type);
+  ASSERT_EQ(kernel_key.dtype(), pten::DataType::FLOAT32);
+  ASSERT_EQ(kernel_key.layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(kernel_key.backend(), pten::Backend::CPU);
+
+#ifdef PADDLE_WITH_MKLDNN
+  paddle::framework::OpKernelType op_kernel_type_mkldnn(
+      paddle::framework::proto::VarType::FP32, paddle::platform::CPUPlace(),
+      paddle::framework::DataLayout::kMKLDNN,
+      paddle::framework::LibraryType::kMKLDNN);
+  auto kernel_key_mkldnn = paddle::framework::TransOpKernelTypeToPtenKernelKey(
+      op_kernel_type_mkldnn);
+  ASSERT_EQ(kernel_key_mkldnn.dtype(), pten::DataType::FLOAT32);
+  ASSERT_EQ(kernel_key_mkldnn.layout(), pten::DataLayout::MKLDNN);
+  ASSERT_EQ(kernel_key_mkldnn.backend(), pten::Backend::MKLDNN);
+#endif
+
+#ifdef PADDLE_WITH_CUDA
+  paddle::framework::OpKernelType op_kernel_type_cudnn(
+      paddle::framework::proto::VarType::FP32, paddle::platform::CPUPlace(),
+      paddle::framework::DataLayout::kNCHW,
+      paddle::framework::LibraryType::kCUDNN);
+  auto kernel_key_cudnn =
+      paddle::framework::TransOpKernelTypeToPtenKernelKey(op_kernel_type_cudnn);
+  ASSERT_EQ(kernel_key_cudnn.dtype(), pten::DataType::FLOAT32);
+  ASSERT_EQ(kernel_key_cudnn.layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(kernel_key_cudnn.backend(), pten::Backend::GPUDNN);
+#endif
+}
