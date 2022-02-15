@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <stdint.h>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/version.h"
 
 namespace paddle {
@@ -327,7 +328,7 @@ std::vector<LoDTensor> SplitLoDTensor(
     for (size_t i = 0; i < places.size(); ++i) {
       LoDTensor dst;
       dst.Resize(src.dims());
-      dst.mutable_data(places[i], src.type());
+      dst.mutable_data(places[i], src.dtype());
       if (!src.lod().empty()) {
         dst.set_lod(src.lod());
       }
@@ -393,7 +394,7 @@ void MergeLoDTensor(LoDTensor *target,
   for (auto *t : lod_tensors) {
     if (t->numel() && t->IsInitialized()) {
       new_dim = t->dims();
-      new_type = t->type();
+      new_type = framework::TransToProtoVarType(t->dtype());
       new_layout = t->layout();
       break;
     }
@@ -405,11 +406,12 @@ void MergeLoDTensor(LoDTensor *target,
     auto *t = lod_tensors[i];
     if (t->numel() && t->IsInitialized()) {
       PADDLE_ENFORCE_EQ(
-          new_type, t->type(),
+          new_type, framework::TransToProtoVarType(t->dtype()),
           platform::errors::InvalidArgument(
               "LoDTensor data type does not match, expected type is %s, actual "
               "type is %s.",
-              DataTypeToString(new_type), DataTypeToString(t->type())));
+              DataTypeToString(new_type),
+              DataTypeToString(framework::TransToProtoVarType(t->dtype()))));
       PADDLE_ENFORCE_EQ(
           new_layout, t->layout(),
           platform::errors::InvalidArgument(
@@ -444,7 +446,8 @@ void MergeLoDTensor(LoDTensor *target,
   target->Resize(new_dim);
   target->set_layout(new_layout);
   target->set_lod(new_lod);
-  target->mutable_data(dst_place, new_type);
+  target->mutable_data(dst_place,
+                       paddle::framework::TransToPtenDataType(new_type));
 
   int begin = 0;
   for (auto *src : lod_tensors) {

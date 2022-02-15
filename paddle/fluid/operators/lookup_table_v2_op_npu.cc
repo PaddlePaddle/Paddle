@@ -134,7 +134,8 @@ class LookupTableV2GradNPUKernel : public framework::OpKernel<T> {
       runner_scatter.Run(stream);
     } else {
       Tensor casted_ids_t;
-      if (ids_t->type() != framework::proto::VarType::INT32) {
+      if (framework::TransToProtoVarType(ids_t->dtype()) !=
+          framework::proto::VarType::INT32) {
         casted_ids_t.mutable_data<int32_t>(ids_t->dims(), ctx.GetPlace());
         const auto &cast_runner = NpuOpRunner("Cast", {*ids_t}, {casted_ids_t},
                                               {{"dst_type", ACL_INT32}});
