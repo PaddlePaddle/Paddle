@@ -16,20 +16,33 @@ limitations under the License. */
 
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
+#include "paddle/pten/core/ddim.h"
 #include "paddle/pten/core/macros.h"
 #include "paddle/pten/core/tensor_base.h"
 #include "paddle/pten/core/tensor_meta.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/framework/ddim.h"
-
 namespace pten {
+
+// TODO(chenweihang): add other flags if needed
+struct MetaConfig {
+  bool is_runtime{true};
+
+  MetaConfig() = default;
+
+  // supporting implicit construction is easier to use
+  MetaConfig(bool is_runtime) : is_runtime(is_runtime) {}  // NOLINT
+};
 
 class MetaTensor {
  public:
-  explicit MetaTensor(TensorBase* tensor) : tensor_(tensor) {}
-
   MetaTensor() = default;
+
+  // supporting implicit construction is easier to use
+  MetaTensor(TensorBase* tensor) : tensor_(tensor) {}  // NOLINT
+  MetaTensor(const TensorBase& tensor)                 // NOLINT
+      : tensor_(const_cast<TensorBase*>(&tensor)) {}
+  MetaTensor(TensorBase& tensor) : tensor_(&tensor) {}  // NOLINT
+
   MetaTensor(const MetaTensor&) = default;
   MetaTensor(MetaTensor&&) = default;
   MetaTensor& operator=(const MetaTensor&) = delete;
@@ -44,7 +57,9 @@ class MetaTensor {
   virtual void set_dims(const DDim& dims);
   virtual void set_dtype(DataType dtype);
   virtual void set_layout(DataLayout layout);
+
   virtual void share_lod(const MetaTensor& meta_tensor);
+  virtual void share_meta(const MetaTensor& meta_tensor);
 
  private:
   // Because the lod in compiletime and runtime is different,

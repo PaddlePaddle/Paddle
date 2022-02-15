@@ -19,6 +19,7 @@ limitations under the License. */
 #include <string>
 
 #include "gflags/gflags.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
@@ -32,6 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
+#include "paddle/pten/core/kernel_factory.h"
 #include "paddle/pten/ops/compat/signatures.h"
 
 namespace pten {
@@ -56,7 +58,6 @@ DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
 PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism, 0,
                              "number of threads for inner op");
-DECLARE_bool(run_pten_kernel);
 DECLARE_bool(run_kp_kernel);
 
 namespace paddle {
@@ -109,13 +110,13 @@ static std::string GetDtype(const ScopeBase& scope, const std::string& name) {
     if (UNLIKELY(!tensor.IsInitialized())) {
       return "";
     }
-    return DataTypeToString(tensor.type());
+    return DataTypeToString(framework::TransToProtoVarType(tensor.dtype()));
   } else if (var->IsType<pten::SelectedRows>()) {
     auto tensor = var->Get<pten::SelectedRows>().value();
     if (UNLIKELY(!tensor.IsInitialized())) {
       return "uninited";
     } else {
-      return DataTypeToString(tensor.type());
+      return DataTypeToString(framework::TransToProtoVarType(tensor.dtype()));
     }
   } else if (var->IsType<Strings>()) {
     return "strings";
@@ -599,6 +600,17 @@ std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
 }
 
 bool OpSupportGPU(const std::string& op_type) {
+  // check in new Function kernel first
+  auto& kernel_factory = pten::KernelFactory::Instance();
+  auto kernel_key_map =
+      kernel_factory.SelectKernelMap(pten::TransToPtenKernelName(op_type));
+  for (auto& kernel : kernel_key_map) {
+    if (platform::is_gpu_place(
+            pten::TransToPtenPlace(kernel.first.backend()))) {
+      return true;
+    }
+  }
+
   auto& all_kernels = OperatorWithKernel::AllOpKernels();
   auto it = all_kernels.find(op_type);
   if (it == all_kernels.end()) {
@@ -610,6 +622,7 @@ bool OpSupportGPU(const std::string& op_type) {
       return true;
     }
   }
+
   return false;
 }
 
@@ -650,6 +663,10 @@ class RuntimeInferShapeContext : public InferShapeContext {
         platform::errors::InvalidArgument(
             "Output %s should not contain more than one outputs.", name));
     return out[0] != nullptr;
+  }
+
+  bool HasAttr(const std::string& name) const override {
+    return op_.HasAttr(name);
   }
 
   bool HasInputs(const std::string& name) const override {
@@ -1054,8 +1071,8 @@ static void CheckTensorNANOrInf(const std::string& op_type,
   if (tensor.memory_size() == 0) {
     return;
   }
-  if (tensor.type() != proto::VarType::FP32 &&
-      tensor.type() != proto::VarType::FP64) {
+  if (framework::TransToProtoVarType(tensor.dtype()) != proto::VarType::FP32 &&
+      framework::TransToProtoVarType(tensor.dtype()) != proto::VarType::FP64) {
     return;
   }
   PADDLE_ENFORCE_NE(
@@ -1159,8 +1176,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   std::string pt_kernel_name;
   if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(type_)) {
     if (pt_kernel_signature_ == nullptr || pt_kernel_ == nullptr) {
-      pt_kernel_signature_.reset(new KernelSignature(
-          std::move(this->GetExpectedPtenKernelArgs(exe_ctx))));
+      pt_kernel_signature_.reset(
+          new KernelSignature(std::move(GetExpectedPtenKernelArgs(exe_ctx))));
       VLOG(6) << *pt_kernel_signature_.get();
 
       kernel_type_.reset(
@@ -1205,7 +1222,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                 pt_kernel_name, pt_cpu_kernel_key)));
 
         dev_ctx = pool.Get(platform::CPUPlace());
-
         if (pt_kernel_->IsValid()) {
           VLOG(6) << "Static mode PrepareImpl - kernel name: " << pt_kernel_name
                   << " | kernel key: " << pt_cpu_kernel_key
@@ -1348,7 +1364,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 pten::KernelKey OperatorWithKernel::ChoosePtenKernel(
     const ExecutionContext& ctx) const {
   pt_kernel_signature_.reset(
-      new KernelSignature(std::move(this->GetExpectedPtenKernelArgs(ctx))));
+      new KernelSignature(std::move(GetExpectedPtenKernelArgs(ctx))));
   VLOG(6) << *pt_kernel_signature_.get();
 
   kernel_type_.reset(
@@ -1386,6 +1402,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
   auto expected_kernel_key = InnerGetExpectedKernelType(ctx);
 
   auto kernel_iter = kernels.find(expected_kernel_key);
+
 #ifdef PADDLE_WITH_MKLDNN
   // workaround for missing MKLDNN kernel when FLAGS_use_mkldnn env var is set
   if (kernel_iter == kernels.end() &&
@@ -1408,6 +1425,22 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
     kernel_iter = kernels.find(expected_kernel_key);
   }
 #endif
+
+#ifdef PADDLE_WITH_XPU_KP
+  bool use_xpu_kp_kernel_rt =
+      FLAGS_run_kp_kernel &&
+      paddle::platform::is_xpu_kp_support_op(type_, expected_kernel_key);
+  bool use_xpu_kp_kernel_debug =
+      paddle::platform::is_in_xpu_kpwhite_list(type_);
+  if (platform::is_xpu_place(expected_kernel_key.place_) &&
+      (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug)) {
+    expected_kernel_key.library_type_ = LibraryType::kKP;
+    kernel_iter = kernels.find(expected_kernel_key);
+    VLOG(3) << "using XPU KP kernel: " << type_
+            << ", using_kernel_key:" << expected_kernel_key;
+  }
+#endif
+
 #ifdef PADDLE_WITH_IPU
   if (kernel_iter == kernels.end() &&
       platform::is_ipu_place(expected_kernel_key.place_)) {
@@ -1504,7 +1537,7 @@ void OperatorWithKernel::HandleComplexGradToRealGrad(
         continue;
       }
       // only focus on complex dtype now
-      auto src_type = grad_tensor->type();
+      auto src_type = framework::TransToProtoVarType(grad_tensor->dtype());
       if (!IsComplexType(src_type)) {
         continue;
       }
@@ -1524,7 +1557,7 @@ void OperatorWithKernel::HandleComplexGradToRealGrad(
           platform::errors::Unavailable(
               "Forward tensor is nullptr when handle complex data to real."));
       // only need record type, the allocation may have been released
-      auto dst_type = tensor->saved_type();
+      auto dst_type = framework::TransToProtoVarType(tensor->dtype());
       // only focus on real dtype and need casting
       if (IsComplexType(dst_type)) {
         continue;
@@ -1738,7 +1771,8 @@ void OperatorWithKernel::ParseInputDataType(
             platform::errors::InvalidArgument("The %s Op's Input Variable `%s` "
                                               "contains uninitialized Tensor.",
                                               Type(), name));
-        proto::VarType::Type tmp = t->type();
+        proto::VarType::Type tmp =
+            paddle::framework::TransToProtoVarType(t->dtype());
         PADDLE_ENFORCE(tmp == *data_type || *data_type == default_data_type,
                        platform::errors::InvalidArgument(
                            "The DataType of %s Op's duplicable or different "
@@ -1837,8 +1871,8 @@ proto::VarType::Type OperatorWithKernel::IndicateOrPromoteVarDataTypes(
   auto* tensor_b = GetTensorFormInputSafely(ctx, name2);
 
   // 2. Get two input types
-  auto type_a = tensor_a->type();
-  auto type_b = tensor_b->type();
+  auto type_a = framework::TransToProtoVarType(tensor_a->dtype());
+  auto type_b = framework::TransToProtoVarType(tensor_b->dtype());
 
   // 3. Get first input type or promote complex types
   auto target_type = PromoteTypesIfComplexExists(type_a, type_b);
@@ -1877,6 +1911,7 @@ Scope* OperatorWithKernel::PreparePtenData(
                         "the size of kernel input_defs (%d).",
                         input_names.size(), input_defs.size()));
   Scope* new_scope = nullptr;
+  auto& name_map = Inputs();
   const std::unordered_set<std::string>* no_buffer_ins = nullptr;
   if (info_) {
     auto& no_buffer_inferer = info_->NoNeedBufferVarsInferer();
@@ -1889,7 +1924,13 @@ Scope* OperatorWithKernel::PreparePtenData(
 
   for (size_t i = 0; i < input_defs.size(); ++i) {
     auto& in_def = input_defs.at(i);
-    auto& ins_vector = ctx->inputs.at(input_names[i]);
+    auto it = ctx->inputs.find(input_names[i]);
+    if (it == ctx->inputs.end()) {
+      continue;
+    }
+
+    auto& ins_vector = it->second;
+    auto& name_vec = name_map.at(input_names[i]);
     bool should_skip_input =
         no_buffer_ins && no_buffer_ins->count(input_names[i]) > 0;
 
@@ -1914,7 +1955,7 @@ Scope* OperatorWithKernel::PreparePtenData(
         continue;
       }
 
-      auto expected_place = pten::TransToFluidPlace(in_def.backend);
+      auto expected_place = pten::TransToPtenPlace(in_def.backend);
       if (platform::is_same_place(tensor_in->place(), expected_place)) {
         continue;
       }
@@ -1927,7 +1968,7 @@ Scope* OperatorWithKernel::PreparePtenData(
       }
 
       // Create new var with the same name in transfer scopes
-      auto* trans_var = new_scope->Var(input_names[i]);
+      auto* trans_var = new_scope->Var(name_vec[offset]);
       ins_vector[offset] = trans_var;
 
       // Do transfer
@@ -1972,23 +2013,36 @@ void OperatorWithKernel::BuildPtenKernelContext(
                         attr_names.size(), attr_defs.size()));
 
   for (size_t i = 0; i < input_names.size(); ++i) {
-    auto& ins_vector = ctx.inputs.at(input_names[i]);
+    auto it = ctx.inputs.find(input_names[i]);
 
     // calcute the start and end index of the input tensors
     size_t start_idx =
         (i == 0 ? 0 : pt_kernel_context->InputRangeAt(i - 1).second);
-    size_t end_idx = start_idx + ins_vector.size();
 
+    // deal with optional here
+    if ((it == ctx.inputs.end()) &&
+        (input_defs[i].type_index ==
+         std::type_index(typeid(paddle::optional<const pten::DenseTensor&>)))) {
+      pt_kernel_context->EmplaceBackInputWithoutSetRange(nullptr);
+      auto end_idx = start_idx + 1;
+      pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx),
+                                          i);
+      continue;
+    }
+    auto ins_vector = it->second;
+    size_t end_idx = start_idx + ins_vector.size();
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
-      const framework::Tensor* tensor_in = nullptr;
+      const pten::TensorBase* tensor_in = nullptr;
       auto* var = ins_vector[offset];
       if (var->IsType<framework::LoDTensor>()) {
         tensor_in = &(var->Get<framework::LoDTensor>());
+      } else if (var->IsType<pten::SelectedRows>()) {
+        tensor_in = &(var->Get<pten::SelectedRows>());
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported input `%s` type when call pt kernel.",
             framework::ToTypeName(var->Type())));
-      }  // TODO(zyfncg): Add support for SelectedRows
+      }
 
       pt_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
     }
@@ -1996,36 +2050,44 @@ void OperatorWithKernel::BuildPtenKernelContext(
   }
 
   for (size_t i = 0; i < output_names.size(); ++i) {
-    auto& outs_vector = ctx.outputs.at(output_names[i]);
-
+    auto it = ctx.outputs.find(output_names[i]);
     size_t start_idx =
         (i == 0 ? 0 : pt_kernel_context->OutputRangeAt(i - 1).second);
+
+    if (it == ctx.outputs.end() || it->second.empty()) {
+      // Deal with the case that some outputs are not found or be NULL when run
+      // the kernel.
+      // For example : the outputs of matmul_grad are dx and dy,
+      // sometimes dx or dy may be NULL.
+      pt_kernel_context->EmplaceBackOutputWithoutSetRange(nullptr);
+      auto end_idx = start_idx + 1;
+      pt_kernel_context->AssignOutputRange(std::make_pair(start_idx, end_idx),
+                                           i);
+      continue;
+    }
+    auto& outs_vector = it->second;
+
     size_t end_idx = start_idx + outs_vector.size();
 
     for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
-      framework::Tensor* tensor_out = nullptr;
+      pten::TensorBase* tensor_out = nullptr;
       auto* var = outs_vector[offset];
       if (var->template IsType<framework::LoDTensor>()) {
         tensor_out = var->template GetMutable<framework::LoDTensor>();
+      } else if (var->template IsType<pten::SelectedRows>()) {
+        tensor_out = var->template GetMutable<pten::SelectedRows>();
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported output `%s` type when call pt kernel.",
             framework::ToTypeName(var->Type())));
-      }  // TODO(zyfncg): Add support for SelectedRows
+      }
 
-      experimental::ResetTensorByArgDef(tensor_out, output_defs.at(i));
+      experimental::ResetTensorDtypeAndLayoutByArgDef(tensor_out,
+                                                      output_defs.at(i));
       SetAllocationForOutputTenosr(
-          tensor_out, pten::TransToFluidPlace(output_defs.at(i).backend));
+          tensor_out, pten::TransToPtenPlace(output_defs.at(i).backend));
 
       pt_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
-    }
-
-    // Deal with the case that some outputs are NULL when run the kernel.
-    // For example : the outputs of matmul_grad are dx and dy,
-    // sometimes dx or dy may be NULL.
-    if (outs_vector.empty()) {
-      pt_kernel_context->EmplaceBackOutputWithoutSetRange({nullptr});
-      end_idx = start_idx + 1;
     }
 
     pt_kernel_context->AssignOutputRange(std::make_pair(start_idx, end_idx), i);
@@ -2043,6 +2105,10 @@ void OperatorWithKernel::BuildPtenKernelContext(
                    std::type_index(typeid(std::vector<int32_t>))) {
           pt_kernel_context->EmplaceBackAttr(std::move(pten::ScalarArray(
               BOOST_GET_CONST(std::vector<int32_t>, attr_iter->second))));
+        } else if (std::type_index(attr_iter->second.type()) ==
+                   std::type_index(typeid(int32_t))) {
+          pt_kernel_context->EmplaceBackAttr(std::move(pten::ScalarArray(
+              &BOOST_GET_CONST(int32_t, attr_iter->second), 1)));
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported cast op attribute `%s` to ScalarArray when "
@@ -2099,9 +2165,14 @@ void OperatorWithKernel::BuildPtenKernelContext(
         pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(float, attr));
       } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
         pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
+      } else if (attr_defs[i].type_index == std::type_index(typeid(int64_t))) {
+        pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(int64_t, attr));
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::string))) {
+        pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(std::string, attr));
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(pten::DataType))) {
-        auto data_type = pten::TransToPtenDataType(
+        auto data_type = paddle::framework::TransToPtenDataType(
             static_cast<framework::proto::VarType::Type>(
                 BOOST_GET_CONST(int, attr)));
         pt_kernel_context->EmplaceBackAttr(data_type);
@@ -2117,6 +2188,10 @@ void OperatorWithKernel::BuildPtenKernelContext(
         }
         // TODO(YuanRisheng) Need support vector<int64_t> attr
 
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::vector<int32_t>))) {
+        const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
+        pt_kernel_context->EmplaceBackAttr(vector_int_attr);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported cast op attribute `%s` when construct "

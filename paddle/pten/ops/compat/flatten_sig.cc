@@ -28,7 +28,18 @@ KernelSignature FlattenOpArgumentMapping(const ArgumentMappingContext& ctx) {
   }
 }
 
+KernelSignature FlattenGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "flatten_grad", {GradVarName("Out"), "XShape"}, {}, {GradVarName("X")});
+}
+
 }  // namespace pten
+
+PT_REGISTER_BASE_KERNEL_NAME(flatten_contiguous_range, flatten);
+PT_REGISTER_BASE_KERNEL_NAME(flatten_contiguous_range_grad, flatten_grad);
 
 PT_REGISTER_ARG_MAPPING_FN(flatten_contiguous_range,
                            pten::FlattenOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(flatten_contiguous_range_grad,
+                           pten::FlattenGradOpArgumentMapping);

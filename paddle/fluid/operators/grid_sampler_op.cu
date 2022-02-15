@@ -292,7 +292,7 @@ class GridSampleOpCUDAKernel : public framework::OpKernel<T> {
     auto* output_data = output->mutable_data<T>(ctx.GetPlace());
     VLOG(3) << "out dims: " << output->dims()[0] << "; " << output->dims()[1]
             << "; " << output->dims()[2] << "; " << output->dims()[3];
-    math::SetConstant<paddle::platform::CUDADeviceContext, T>()(
+    pten::funcs::SetConstant<paddle::platform::CUDADeviceContext, T>()(
         dev_ctx, output, static_cast<T>(0));
     int count = static_cast<int>(n * out_h * out_w);
     auto cu_stream = dev_ctx.stream();
@@ -459,7 +459,7 @@ class GridSampleGradOpCUDAKernel : public framework::OpKernel<T> {
 
     auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     input_grad->mutable_data<T>(ctx.GetPlace());
-    math::SetConstant<paddle::platform::CUDADeviceContext, T>()(
+    pten::funcs::SetConstant<paddle::platform::CUDADeviceContext, T>()(
         ctx.template device_context<paddle::platform::CUDADeviceContext>(),
         input_grad, static_cast<T>(0));
 
@@ -467,7 +467,7 @@ class GridSampleGradOpCUDAKernel : public framework::OpKernel<T> {
     if (ctx.HasOutput(framework::GradVarName("Grid"))) {
       auto* grid_grad = ctx.Output<Tensor>(framework::GradVarName("Grid"));
       grid_grad_data = grid_grad->mutable_data<T>(ctx.GetPlace());
-      math::SetConstant<paddle::platform::CUDADeviceContext, T>()(
+      pten::funcs::SetConstant<paddle::platform::CUDADeviceContext, T>()(
           ctx.template device_context<paddle::platform::CUDADeviceContext>(),
           grid_grad, static_cast<T>(0));
     }

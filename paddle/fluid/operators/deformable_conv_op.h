@@ -27,7 +27,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/deformable_conv_func.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -489,7 +489,7 @@ class DeformableConvGradCPUKernel : public framework::OpKernel<T> {
     Tensor col_buffer_3d;
     col_buffer_3d.ShareDataWith(col_buffer).Resize(col_buffer_3d_shape);
 
-    math::SetConstant<CPUDeviceContext, T> set_zero;
+    pten::funcs::SetConstant<CPUDeviceContext, T> set_zero;
     auto blas = math::GetBlas<CPUDeviceContext, T>(dev_ctx);
 
     col_buffer.mutable_data<T>(ctx.GetPlace());

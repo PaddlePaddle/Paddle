@@ -12,11 +12,24 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/scale_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
+
+template <typename T>
+static inline T GetAttrFromTensor(const framework::Tensor* tensor) {
+  const auto* tensor_data = tensor->data<T>();
+  framework::Tensor cpu_tensor;
+  if (platform::is_gpu_place(tensor->place()) ||
+      platform::is_npu_place(tensor->place())) {
+    paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(),
+                                      &cpu_tensor);
+    tensor_data = cpu_tensor.data<T>();
+  }
+  return tensor_data[0];
+}
 
 template <typename T>
 class ScaleNPUKernel : public framework::OpKernel<T> {
@@ -66,11 +79,13 @@ class ScaleNPUKernel : public framework::OpKernel<T> {
       adds_runner.Run(dev_ctx.stream());
     };
 
-    if (x->type() == framework::proto::VarType::INT32) {
+    if (framework::TransToProtoVarType(x->dtype()) ==
+        framework::proto::VarType::INT32) {
       NpuOpRunner::TypeAdapter({*x}, {*out}, attrs, dev_ctx, op_func,
                                {framework::proto::VarType::INT32},
                                {framework::proto::VarType::INT32});
-    } else if (x->type() == framework::proto::VarType::INT64) {
+    } else if (framework::TransToProtoVarType(x->dtype()) ==
+               framework::proto::VarType::INT64) {
       NpuOpRunner::TypeAdapter({*x}, {*out}, attrs, dev_ctx, op_func,
                                {framework::proto::VarType::INT32},
                                {framework::proto::VarType::INT32});

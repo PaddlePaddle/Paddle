@@ -14,17 +14,40 @@ limitations under the License. */
 
 #pragma once
 
-#include <mutex>
+#include <string>
+#include <unordered_set>
 
 #include "paddle/pten/core/compat/arg_map_context.h"
+#include "paddle/pten/core/enforce.h"
 #include "paddle/pten/core/infermeta_utils.h"
-#include "paddle/pten/core/kernel_def.h"
 #include "paddle/pten/core/macros.h"
+#include "paddle/pten/core/type_defs.h"
 #include "paddle/utils/flat_hash_map.h"
 
-#include "paddle/fluid/platform/enforce.h"
-
 namespace pten {
+
+const std::unordered_set<std::string> standard_kernel_suffixs({
+    "sr",  // SelectedRows kernel
+    "raw"  // fallback kernel of origfinal fluid op
+});
+
+/**
+ * Some fluid ops are no longer used under the corresponding official API
+ * system of 2.0. These names need to correspond to the official API names
+ * after 2.0, and can no longer be occupied by the previously abandoned ops.
+ * They are marked here uniformly.
+ */
+const std::unordered_set<std::string> deprecated_op_names({"flatten",
+                                                           "flatten_grad",
+                                                           "matmul",
+                                                           "matmul_grad",
+                                                           "matmul_grad_grad",
+                                                           "mean",
+                                                           "reshape",
+                                                           "reshape_grad",
+                                                           "expand",
+                                                           "expand_grad",
+                                                           "sum"});
 
 class DefaultKernelSignatureMap {
  public:
@@ -37,7 +60,7 @@ class DefaultKernelSignatureMap {
     PADDLE_ENFORCE_NE(
         it,
         map_.end(),
-        paddle::platform::errors::NotFound(
+        pten::errors::NotFound(
             "Operator `%s`'s kernel signature is not registered.", op_type));
     return it->second;
   }
@@ -46,7 +69,7 @@ class DefaultKernelSignatureMap {
     PADDLE_ENFORCE_NE(
         Has(op_type),
         true,
-        paddle::platform::errors::AlreadyExists(
+        pten::errors::AlreadyExists(
             "Operator (%s)'s Kernel Siginature has been registered.", op_type));
     map_.insert({std::move(op_type), std::move(signature)});
   }
@@ -64,32 +87,37 @@ class OpUtilsMap {
   static OpUtilsMap& Instance();
 
   bool Contains(const std::string& op_type) const {
-    return name_map_.count(op_type) || arg_mapping_fn_map_.count(op_type);
+    return base_kernel_name_map_.count(op_type) ||
+           arg_mapping_fn_map_.count(op_type);
   }
 
-  void InsertApiName(std::string op_type, std::string api_name) {
+  void InsertBaseKernelName(std::string op_type, std::string base_kernel_name) {
     PADDLE_ENFORCE_EQ(
-        name_map_.count(op_type),
+        base_kernel_name_map_.count(op_type),
         0UL,
-        paddle::platform::errors::AlreadyExists(
+        pten::errors::AlreadyExists(
             "Operator (%s)'s api name has been registered.", op_type));
-    name_map_.insert({std::move(op_type), std::move(api_name)});
+    base_kernel_name_map_.insert(
+        {std::move(op_type), std::move(base_kernel_name)});
   }
 
   void InsertArgumentMappingFn(std::string op_type, ArgumentMappingFn fn) {
     PADDLE_ENFORCE_EQ(
         arg_mapping_fn_map_.count(op_type),
         0UL,
-        paddle::platform::errors::AlreadyExists(
+        pten::errors::AlreadyExists(
             "Operator (%s)'s argu,emt mapping function has been registered.",
             op_type));
     arg_mapping_fn_map_.insert({std::move(op_type), std::move(fn)});
   }
 
-  std::string GetApiName(const std::string& op_type) const {
-    auto it = name_map_.find(op_type);
-    if (it == name_map_.end()) {
+  std::string GetBaseKernelName(const std::string& op_type) const {
+    if (deprecated_op_names.find(op_type) != deprecated_op_names.end()) {
       return "deprecated";
+    }
+    auto it = base_kernel_name_map_.find(op_type);
+    if (it == base_kernel_name_map_.end()) {
+      return op_type;
     } else {
       return it->second;
     }
@@ -108,18 +136,23 @@ class OpUtilsMap {
     }
   }
 
+  const paddle::flat_hash_map<std::string, std::string>& base_kernel_name_map()
+      const {
+    return base_kernel_name_map_;
+  }
+
  private:
   OpUtilsMap() = default;
 
-  paddle::flat_hash_map<std::string, std::string> name_map_;
+  paddle::flat_hash_map<std::string, std::string> base_kernel_name_map_;
   paddle::flat_hash_map<std::string, ArgumentMappingFn> arg_mapping_fn_map_;
 
   DISABLE_COPY_AND_ASSIGN(OpUtilsMap);
 };
 
-struct ApiNameRegistrar {
-  ApiNameRegistrar(const char* op_type, const char* api_name) {
-    OpUtilsMap::Instance().InsertApiName(op_type, api_name);
+struct BaseKernelNameRegistrar {
+  BaseKernelNameRegistrar(const char* op_type, const char* base_kernel_name) {
+    OpUtilsMap::Instance().InsertBaseKernelName(op_type, base_kernel_name);
   }
 };
 
@@ -131,21 +164,21 @@ struct ArgumentMappingFnRegistrar {
   }
 };
 
-#define PT_REGISTER_API_NAME(op_type, api_name)                             \
-  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                        \
-      pt_register_api_name_ns_check_##op_type,                              \
-      "PT_REGISTER_API_NAME must be called in global namespace.");          \
-  static const ::pten::ApiNameRegistrar __registrar_api_name_for_##op_type( \
-      #op_type, #api_name);                                                 \
-  int TouchApiNameSymbol_##op_type() { return 0; }
+#define PT_REGISTER_BASE_KERNEL_NAME(op_type, base_kernel_name)                \
+  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                           \
+      pt_register_base_kernel_name_ns_check_##op_type,                         \
+      "PT_REGISTER_BASE_KERNEL_NAME must be called in global namespace.");     \
+  static const ::pten::BaseKernelNameRegistrar                                 \
+      __registrar_base_kernel_name_for_##op_type(#op_type, #base_kernel_name); \
+  int TouchBaseKernelNameSymbol_##op_type() { return 0; }
 
-#define PT_DECLARE_API_NAME(op_type)                              \
-  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                              \
-      pt_declare_ai_name_ns_check_##op_type,                      \
-      "PT_DECLARE_API_NAME must be called in global namespace."); \
-  extern int TouchApiNameSymbol_##op_type();                      \
-  UNUSED static int __declare_api_name_symbol_for_##op_type =     \
-      TouchApiNameSymbol_##op_type()
+#define PT_DECLARE_BASE_KERNEL_NAME(op_type)                              \
+  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                      \
+      pt_declare_ai_name_ns_check_##op_type,                              \
+      "PT_DECLARE_BASE_KERNEL_NAME must be called in global namespace."); \
+  extern int TouchBaseKernelNameSymbol_##op_type();                       \
+  UNUSED static int __declare_base_kernel_name_symbol_for_##op_type =     \
+      TouchBaseKernelNameSymbol_##op_type()
 
 #define PT_REGISTER_ARG_MAPPING_FN(op_type, arg_mapping_fn)              \
   PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                     \

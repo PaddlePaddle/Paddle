@@ -92,14 +92,14 @@ struct OneHotGenerator<platform::CUDADeviceContext, T> {
     const int size_from_axis = SizeFromAxis(axis, X.dims());
     const int size_out_axis = SizeOutAxis(axis, X.dims());
     constexpr int thread_size = 512;
-    int64_t max_grid_dimx = context.GetCUDAMaxGridDimSize().x;
+    int64_t max_grid_dimx = context.GetCUDAMaxGridDimSize()[0];
     int64_t height = size_to_axis * size_out_axis;
     int block_size = height < max_grid_dimx ? height : max_grid_dimx;
 
     Tensor input_tensor;
     input_tensor.mutable_data<T>(Out->dims(), platform::CUDAPlace());
     paddle::framework::TensorCopy(*Out, context.GetPlace(), &input_tensor);
-    math::set_constant(context, Out, 0.0);
+    pten::funcs::set_constant(context, Out, 0.0);
     OneHotCUDAKernel<
         T, thread_size><<<block_size, thread_size, 0, context.stream()>>>(
         height, size_from_axis / size_out_axis, size_out_axis,

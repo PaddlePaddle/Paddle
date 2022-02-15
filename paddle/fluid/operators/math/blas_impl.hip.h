@@ -14,9 +14,10 @@
 
 #pragma once
 
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/dynload/rocblas.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 DECLARE_bool(enable_cublas_tensor_op_math);
 
@@ -221,6 +222,20 @@ struct CUBlas<platform::float16> {
           beta, C, Ctype, ldc, C, Ctype, ldc, computeType, algo, 0, 0));
     });
   }
+  template <typename... ARGS>
+  static void GEMM_EX(pten::GPUContext *dev_ctx, rocblas_operation transa,
+                      rocblas_operation transb, int m, int n, int k,
+                      const void *alpha, const void *A, rocblas_datatype Atype,
+                      int lda, const void *B, rocblas_datatype Btype, int ldb,
+                      const void *beta, void *C, rocblas_datatype Ctype,
+                      int ldc, rocblas_datatype computeType) {
+    rocblas_gemm_algo algo = rocblas_gemm_algo_standard;
+    dev_ctx->TensorCoreCublasCallIfAvailable([&](rocblas_handle handle) {
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_gemm_ex(
+          handle, transa, transb, m, n, k, alpha, A, Atype, lda, B, Btype, ldb,
+          beta, C, Ctype, ldc, C, Ctype, ldc, computeType, algo, 0, 0));
+    });
+  }
 };
 
 template <>
@@ -298,6 +313,20 @@ struct CUBlas<platform::complex<float>> {
                       rocblas_datatype Btype, int ldb, const void *beta,
                       void *C, rocblas_datatype Ctype, int ldc,
                       rocblas_datatype computeType) {
+    rocblas_gemm_algo algo = rocblas_gemm_algo_standard;
+    dev_ctx->TensorCoreCublasCallIfAvailable([&](rocblas_handle handle) {
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_gemm_ex(
+          handle, transa, transb, m, n, k, alpha, A, Atype, lda, B, Btype, ldb,
+          beta, C, Ctype, ldc, C, Ctype, ldc, computeType, algo, 0, 0));
+    });
+  }
+  template <typename... ARGS>
+  static void GEMM_EX(pten::GPUContext *dev_ctx, rocblas_operation transa,
+                      rocblas_operation transb, int m, int n, int k,
+                      const void *alpha, const void *A, rocblas_datatype Atype,
+                      int lda, const void *B, rocblas_datatype Btype, int ldb,
+                      const void *beta, void *C, rocblas_datatype Ctype,
+                      int ldc, rocblas_datatype computeType) {
     rocblas_gemm_algo algo = rocblas_gemm_algo_standard;
     dev_ctx->TensorCoreCublasCallIfAvailable([&](rocblas_handle handle) {
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_gemm_ex(
@@ -389,6 +418,20 @@ struct CUBlas<platform::complex<double>> {
           beta, C, Ctype, ldc, C, Ctype, ldc, computeType, algo, 0, 0));
     });
   }
+  template <typename... ARGS>
+  static void GEMM_EX(pten::GPUContext *dev_ctx, rocblas_operation transa,
+                      rocblas_operation transb, int m, int n, int k,
+                      const void *alpha, const void *A, rocblas_datatype Atype,
+                      int lda, const void *B, rocblas_datatype Btype, int ldb,
+                      const void *beta, void *C, rocblas_datatype Ctype,
+                      int ldc, rocblas_datatype computeType) {
+    rocblas_gemm_algo algo = rocblas_gemm_algo_standard;
+    dev_ctx->TensorCoreCublasCallIfAvailable([&](rocblas_handle handle) {
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_gemm_ex(
+          handle, transa, transb, m, n, k, alpha, A, Atype, lda, B, Btype, ldb,
+          beta, C, Ctype, ldc, C, Ctype, ldc, computeType, algo, 0, 0));
+    });
+  }
 };
 
 template <>
@@ -397,6 +440,27 @@ void Blas<platform::CUDADeviceContext>::GEMM(CBLAS_TRANSPOSE transA,
                                              CBLAS_TRANSPOSE transB, int M,
                                              int N, int K, T alpha, const T *A,
                                              const T *B, T beta, T *C) const {
+  // Note that cublas follows fortran order, so the order is different from
+  // the cblas convention.
+  int lda = (transA == CblasNoTrans) ? K : M;
+  int ldb = (transB == CblasNoTrans) ? N : K;
+  rocblas_operation cuTransA = (transA == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+  rocblas_operation cuTransB = (transB == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+  context_.CublasCall([&](rocblas_handle handle) {
+    CUBlas<T>::GEMM(handle, cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A, lda,
+                    &beta, C, N);
+  });
+}
+template <>
+template <typename T>
+void Blas<pten::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
+                                  CBLAS_TRANSPOSE transB, int M, int N, int K,
+                                  T alpha, const T *A, const T *B, T beta,
+                                  T *C) const {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
@@ -448,6 +512,43 @@ inline void Blas<platform::CUDADeviceContext>::GEMM(
       rocblas_datatype_f16_r, ldb, A, rocblas_datatype_f16_r, lda, &h_beta, C,
       rocblas_datatype_f16_r, N, rocblas_datatype_f32_r);
 }
+template <>
+template <>
+inline void Blas<pten::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
+                                         CBLAS_TRANSPOSE transB, int M, int N,
+                                         int K, platform::float16 alpha,
+                                         const platform::float16 *A,
+                                         const platform::float16 *B,
+                                         platform::float16 beta,
+                                         platform::float16 *C) const {
+  // Note that cublas follows fortran order, so the order is different from
+  // the cblas convention.
+  int lda = (transA == CblasNoTrans) ? K : M;
+  int ldb = (transB == CblasNoTrans) ? N : K;
+  rocblas_operation cuTransA = (transA == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+  rocblas_operation cuTransB = (transB == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+
+  // TODO(kexinzhao): add processing code for compute capability < 53 case
+  PADDLE_ENFORCE_GE(
+      context_.GetComputeCapability(), 53,
+      platform::errors::InvalidArgument(
+          "cublas fp16 gemm requires GPU compute capability >= 53,"
+          "but received %d",
+          context_.GetComputeCapability()));
+
+  float h_alpha = static_cast<float>(alpha);
+  float h_beta = static_cast<float>(beta);
+
+  auto &cuda_ctx = const_cast<pten::GPUContext &>(context_);
+  CUBlas<platform::float16>::GEMM_EX(
+      &cuda_ctx, cuTransB, cuTransA, N, M, K, &h_alpha, B,
+      rocblas_datatype_f16_r, ldb, A, rocblas_datatype_f16_r, lda, &h_beta, C,
+      rocblas_datatype_f16_r, N, rocblas_datatype_f32_r);
+}
 
 template <>
 template <>
@@ -480,6 +581,44 @@ inline void Blas<platform::CUDADeviceContext>::GEMM(
   thrust::complex<float> c_beta = thrust::complex<float>(beta.real, beta.imag);
 
   auto &cuda_ctx = const_cast<platform::CUDADeviceContext &>(context_);
+  CUBlas<platform::complex<float>>::GEMM_EX(
+      &cuda_ctx, cuTransB, cuTransA, N, M, K, &c_alpha, B,
+      rocblas_datatype_f32_c, ldb, A, rocblas_datatype_f32_c, lda, &c_beta, C,
+      rocblas_datatype_f32_c, N, rocblas_datatype_f32_c);
+}
+template <>
+template <>
+inline void Blas<pten::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
+                                         CBLAS_TRANSPOSE transB, int M, int N,
+                                         int K, platform::complex<float> alpha,
+                                         const platform::complex<float> *A,
+                                         const platform::complex<float> *B,
+                                         platform::complex<float> beta,
+                                         platform::complex<float> *C) const {
+  // Note that cublas follows fortran order, so the order is different from
+  // the cblas convention.
+  int lda = (transA == CblasNoTrans) ? K : M;
+  int ldb = (transB == CblasNoTrans) ? N : K;
+  rocblas_operation cuTransA = (transA == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+  rocblas_operation cuTransB = (transB == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+
+  // TODO(kexinzhao): add processing code for compute capability < 53 case
+  PADDLE_ENFORCE_GE(
+      context_.GetComputeCapability(), 53,
+      platform::errors::InvalidArgument(
+          "cublas complex64 gemm requires GPU compute capability >= 53,"
+          "but received %d",
+          context_.GetComputeCapability()));
+
+  thrust::complex<float> c_alpha =
+      thrust::complex<float>(alpha.real, alpha.imag);
+  thrust::complex<float> c_beta = thrust::complex<float>(beta.real, beta.imag);
+
+  auto &cuda_ctx = const_cast<pten::GPUContext &>(context_);
   CUBlas<platform::complex<float>>::GEMM_EX(
       &cuda_ctx, cuTransB, cuTransA, N, M, K, &c_alpha, B,
       rocblas_datatype_f32_c, ldb, A, rocblas_datatype_f32_c, lda, &c_beta, C,
@@ -523,6 +662,45 @@ inline void Blas<platform::CUDADeviceContext>::GEMM(
       rocblas_datatype_f64_c, ldb, A, rocblas_datatype_f64_c, lda, &c_beta, C,
       rocblas_datatype_f64_c, N, rocblas_datatype_f64_c);
 }
+template <>
+template <>
+inline void Blas<pten::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
+                                         CBLAS_TRANSPOSE transB, int M, int N,
+                                         int K, platform::complex<double> alpha,
+                                         const platform::complex<double> *A,
+                                         const platform::complex<double> *B,
+                                         platform::complex<double> beta,
+                                         platform::complex<double> *C) const {
+  // Note that cublas follows fortran order, so the order is different from
+  // the cblas convention.
+  int lda = (transA == CblasNoTrans) ? K : M;
+  int ldb = (transB == CblasNoTrans) ? N : K;
+  rocblas_operation cuTransA = (transA == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+  rocblas_operation cuTransB = (transB == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+
+  // TODO(kexinzhao): add processing code for compute capability < 53 case
+  PADDLE_ENFORCE_GE(
+      context_.GetComputeCapability(), 53,
+      platform::errors::InvalidArgument(
+          "cublas complex128 gemm requires GPU compute capability >= 53,"
+          "but received %d",
+          context_.GetComputeCapability()));
+
+  thrust::complex<double> c_alpha =
+      thrust::complex<double>(alpha.real, alpha.imag);
+  thrust::complex<double> c_beta =
+      thrust::complex<double>(beta.real, beta.imag);
+
+  auto &cuda_ctx = const_cast<pten::GPUContext &>(context_);
+  CUBlas<platform::complex<double>>::GEMM_EX(
+      &cuda_ctx, cuTransB, cuTransA, N, M, K, &c_alpha, B,
+      rocblas_datatype_f64_c, ldb, A, rocblas_datatype_f64_c, lda, &c_beta, C,
+      rocblas_datatype_f64_c, N, rocblas_datatype_f64_c);
+}
 
 template <>
 template <typename T>
@@ -530,6 +708,22 @@ void Blas<platform::CUDADeviceContext>::GEMM(bool transA, bool transB, int M,
                                              int N, int K, T alpha, const T *A,
                                              int lda, const T *B, int ldb,
                                              T beta, T *C, int ldc) const {
+  // Note that cublas follows fortran order, so the order is different from
+  // the cblas convention.
+  rocblas_operation cuTransA =
+      transA ? rocblas_operation_transpose : rocblas_operation_none;
+  rocblas_operation cuTransB =
+      transB ? rocblas_operation_transpose : rocblas_operation_none;
+  context_.CublasCall([&](rocblas_handle handle) {
+    CUBlas<T>::GEMM(handle, cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A, lda,
+                    &beta, C, ldc);
+  });
+}
+template <>
+template <typename T>
+void Blas<pten::GPUContext>::GEMM(bool transA, bool transB, int M, int N, int K,
+                                  T alpha, const T *A, int lda, const T *B,
+                                  int ldb, T beta, T *C, int ldc) const {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   rocblas_operation cuTransA =
@@ -560,11 +754,38 @@ inline void Blas<platform::CUDADeviceContext>::GEMM(
                                     B, ldb, A, lda, &beta, C, ldc);
   });
 }
+template <>
+template <>
+inline void Blas<pten::GPUContext>::GEMM(bool transA, bool transB, int M, int N,
+                                         int K, platform::float16 alpha,
+                                         const platform::float16 *A, int lda,
+                                         const platform::float16 *B, int ldb,
+                                         platform::float16 beta,
+                                         platform::float16 *C, int ldc) const {
+  // Note that cublas follows fortran order, so the order is different from
+  // the cblas convention.
+  rocblas_operation cuTransA =
+      transA ? rocblas_operation_transpose : rocblas_operation_none;
+  rocblas_operation cuTransB =
+      transB ? rocblas_operation_transpose : rocblas_operation_none;
+
+  context_.CublasCall([&](rocblas_handle handle) {
+    CUBlas<platform::float16>::GEMM(handle, cuTransB, cuTransA, N, M, K, &alpha,
+                                    B, ldb, A, lda, &beta, C, ldc);
+  });
+}
 
 template <>
 template <typename T>
 void Blas<platform::CUDADeviceContext>::AXPY(int n, T alpha, const T *x,
                                              T *y) const {
+  context_.CublasCall([&](rocblas_handle handle) {
+    CUBlas<T>::AXPY(handle, n, &alpha, x, 1, y, 1);
+  });
+}
+template <>
+template <typename T>
+void Blas<pten::GPUContext>::AXPY(int n, T alpha, const T *x, T *y) const {
   context_.CublasCall([&](rocblas_handle handle) {
     CUBlas<T>::AXPY(handle, n, &alpha, x, 1, y, 1);
   });
@@ -576,10 +797,22 @@ void Blas<platform::CUDADeviceContext>::SCAL(int n, const T alpha, T *x) const {
   context_.CublasCall(
       [&](rocblas_handle handle) { CUBlas<T>::SCAL(handle, n, &alpha, x, 1); });
 }
+template <>
+template <typename T>
+void Blas<pten::GPUContext>::SCAL(int n, const T alpha, T *x) const {
+  context_.CublasCall(
+      [&](rocblas_handle handle) { CUBlas<T>::SCAL(handle, n, &alpha, x, 1); });
+}
 
 template <>
 template <typename T>
 void Blas<platform::CUDADeviceContext>::VCOPY(int n, const T *x, T *y) const {
+  context_.CublasCall(
+      [&](rocblas_handle handle) { CUBlas<T>::VCOPY(handle, n, x, 1, y, 1); });
+}
+template <>
+template <typename T>
+void Blas<pten::GPUContext>::VCOPY(int n, const T *x, T *y) const {
   context_.CublasCall(
       [&](rocblas_handle handle) { CUBlas<T>::VCOPY(handle, n, x, 1, y, 1); });
 }
@@ -596,6 +829,17 @@ void Blas<platform::CUDADeviceContext>::GEMV(bool trans_a, int M, int N,
     CUBlas<T>::GEMV(handle, cuTransA, N, M, &alpha, A, N, B, 1, &beta, C, 1);
   });
 }
+template <>
+template <typename T>
+void Blas<pten::GPUContext>::GEMV(bool trans_a, int M, int N, T alpha,
+                                  const T *A, const T *B, T beta, T *C) const {
+  rocblas_operation cuTransA =
+      !trans_a ? rocblas_operation_transpose : rocblas_operation_none;
+
+  context_.CublasCall([&](rocblas_handle handle) {
+    CUBlas<T>::GEMV(handle, cuTransA, N, M, &alpha, A, N, B, 1, &beta, C, 1);
+  });
+}
 
 template <>
 template <>
@@ -603,6 +847,23 @@ inline void Blas<platform::CUDADeviceContext>::GEMV(
     bool trans_a, int M, int N, platform::float16 alpha,
     const platform::float16 *A, const platform::float16 *B,
     platform::float16 beta, platform::float16 *C) const {
+  // Because cublas doesn't support half gemv, we use cublasHgemm to achieve it.
+  if (trans_a) {
+    this->template GEMM<platform::float16>(CblasNoTrans, CblasNoTrans, 1, N, M,
+                                           alpha, B, A, beta, C);
+  } else {
+    this->template GEMM<platform::float16>(CblasNoTrans, CblasNoTrans, M, 1, N,
+                                           alpha, A, B, beta, C);
+  }
+}
+template <>
+template <>
+inline void Blas<pten::GPUContext>::GEMV(bool trans_a, int M, int N,
+                                         platform::float16 alpha,
+                                         const platform::float16 *A,
+                                         const platform::float16 *B,
+                                         platform::float16 beta,
+                                         platform::float16 *C) const {
   // Because cublas doesn't support half gemv, we use cublasHgemm to achieve it.
   if (trans_a) {
     this->template GEMM<platform::float16>(CblasNoTrans, CblasNoTrans, 1, N, M,
@@ -637,6 +898,32 @@ void Blas<platform::CUDADeviceContext>::BatchedGEMM(
                                   ldc, strideC, batchCount);
   });
 }
+template <>
+template <typename T>
+void Blas<pten::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
+                                         CBLAS_TRANSPOSE transB, int M, int N,
+                                         int K, T alpha, const T *A, const T *B,
+                                         T beta, T *C, int batchCount,
+                                         int64_t strideA,
+                                         int64_t strideB) const {
+  // Note that cublas follows fortran order, so the order is different from
+  // the cblas convention.
+  int lda = (transA == CblasNoTrans) ? K : M;
+  int ldb = (transB == CblasNoTrans) ? N : K;
+  int ldc = N;
+  rocblas_operation cuTransA = (transA == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+  rocblas_operation cuTransB = (transB == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+  const int64_t strideC = M * N;
+  context_.CublasCall([&](rocblas_handle handle) {
+    CUBlas<T>::GEMM_STRIDED_BATCH(handle, cuTransB, cuTransA, N, M, K, &alpha,
+                                  B, ldb, strideB, A, lda, strideA, &beta, C,
+                                  ldc, strideC, batchCount);
+  });
+}
 
 template <>
 template <typename T>
@@ -648,10 +935,34 @@ void Blas<platform::CUDADeviceContext>::BatchedGEMM(
                            C[k]);
   }
 }
+template <>
+template <typename T>
+void Blas<pten::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
+                                         CBLAS_TRANSPOSE transB, int M, int N,
+                                         int K, T alpha, const T **A,
+                                         const T **B, T beta, T **C,
+                                         int batchCount) const {
+  for (int k = 0; k < batchCount; ++k) {
+    this->template GEMM<T>(transA, transB, M, N, K, alpha, A[k], B[k], beta,
+                           C[k]);
+  }
+}
 
 template <>
 template <>
 inline void Blas<platform::CUDADeviceContext>::BatchedGEMM(
+    CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
+    platform::float16 alpha, const platform::float16 **A,
+    const platform::float16 **B, platform::float16 beta, platform::float16 **C,
+    int batchCount) const {
+  for (int k = 0; k < batchCount; ++k) {
+    this->template GEMM<platform::float16>(transA, transB, M, N, K, alpha, A[k],
+                                           B[k], beta, C[k]);
+  }
+}
+template <>
+template <>
+inline void Blas<pten::GPUContext>::BatchedGEMM(
     CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
     platform::float16 alpha, const platform::float16 **A,
     const platform::float16 **B, platform::float16 beta, platform::float16 **C,
@@ -687,12 +998,44 @@ void Blas<platform::CUDADeviceContext>::TRSM(CBLAS_SIDE side, CBLAS_UPLO uplo,
                     lda, B, ldb);
   });
 }
+template <>
+template <typename T>
+void Blas<pten::GPUContext>::TRSM(CBLAS_SIDE side, CBLAS_UPLO uplo,
+                                  CBLAS_TRANSPOSE transA, CBLAS_DIAG diag,
+                                  int M, int N, T alpha, const T *A, int lda,
+                                  T *B, int ldb) const {
+  // solve row major `op ( A ) X = α B` by taking it as `X' op ( A' )  =  α B'`
+  // where ' stands for transpose
+  rocblas_side cuSide =
+      (side == CblasLeft) ? rocblas_side_right : rocblas_side_left;
+  rocblas_fill cuUplo =
+      (uplo == CblasLower) ? rocblas_fill_upper : rocblas_fill_lower;
+  // use CUBLAS_OP_C (conjugate transpose) for complex
+  rocblas_operation cuTransA = (transA == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+  rocblas_diagonal cuDiag =
+      (diag == CblasUnit) ? rocblas_diagonal_unit : rocblas_diagonal_non_unit;
+
+  context_.CublasCall([&](rocblas_handle handle) {
+    CUBlas<T>::TRSM(handle, cuSide, cuUplo, cuTransA, cuDiag, N, M, &alpha, A,
+                    lda, B, ldb);
+  });
+}
 
 template <>
 template <typename T>
 void Blas<platform::CUDADeviceContext>::BatchedGETRF(int n, T **a, int *ipiv,
                                                      int *info,
                                                      int batch_size) const {
+  context_.CublasCall([&](rocblas_handle handle) {
+    CUBlas<T>::GETRF_BATCH(handle, n, a, n, ipiv, info, batch_size);
+  });
+}
+template <>
+template <typename T>
+void Blas<pten::GPUContext>::BatchedGETRF(int n, T **a, int *ipiv, int *info,
+                                          int batch_size) const {
   context_.CublasCall([&](rocblas_handle handle) {
     CUBlas<T>::GETRF_BATCH(handle, n, a, n, ipiv, info, batch_size);
   });
@@ -715,12 +1058,36 @@ void Blas<platform::CUDADeviceContext>::BatchedGETRI(int n, const T **a,
     CUBlas<T>::GETRI_BATCH(handle, n, a, n, ipiv, a_inv, n, info, batch_size);
   });
 }
+template <>
+template <typename T>
+void Blas<pten::GPUContext>::BatchedGETRI(int n, const T **a, const int *ipiv,
+                                          T **a_inv, int *info,
+                                          int batch_size) const {
+  PADDLE_ENFORCE_NE(
+      a_inv, a,
+      platform::errors::InvalidArgument(
+          "cuBLAS fuction 'cublas<S/D>getrfBatched' cannot be executed "
+          "in-place. The memory space of output matrix (address: %p) cannot "
+          "overlap memory space of input matrix (address: %p).",
+          a_inv, a));
+  context_.CublasCall([&](rocblas_handle handle) {
+    CUBlas<T>::GETRI_BATCH(handle, n, a, n, ipiv, a_inv, n, info, batch_size);
+  });
+}
 
 template <>
 template <typename T>
 void Blas<platform::CUDADeviceContext>::BatchedMatInv(int n, const T **a,
                                                       T **a_inv, int *info,
                                                       int batch_size) const {
+  context_.CublasCall([&](rocblas_handle handle) {
+    CUBlas<T>::MATINV_BATCH(handle, n, a, n, a_inv, n, info, batch_size);
+  });
+}
+template <>
+template <typename T>
+void Blas<pten::GPUContext>::BatchedMatInv(int n, const T **a, T **a_inv,
+                                           int *info, int batch_size) const {
   context_.CublasCall([&](rocblas_handle handle) {
     CUBlas<T>::MATINV_BATCH(handle, n, a, n, a_inv, n, info, batch_size);
   });
@@ -739,6 +1106,20 @@ void Blas<platform::CUDADeviceContext>::BatchedGETRS(
                            batch_size);
   });
 }
+template <>
+template <typename T>
+void Blas<pten::GPUContext>::BatchedGETRS(CBLAS_TRANSPOSE trans, int n,
+                                          int nrhs, const T **a, int lda,
+                                          int *ipiv, T **b, int ldb, int *info,
+                                          int batch_size) const {
+  rocblas_operation cuTrans = (trans == CblasNoTrans)
+                                  ? rocblas_operation_none
+                                  : rocblas_operation_transpose;
+  context_.CublasCall([&](rocblas_handle handle) {
+    CUBlas<T>::GETRS_BATCH(handle, cuTrans, n, nrhs, a, lda, ipiv, b, ldb, info,
+                           batch_size);
+  });
+}
 
 template <>
 template <typename T>
@@ -746,6 +1127,31 @@ void Blas<platform::CUDADeviceContext>::BatchedTRSM(
     CBLAS_SIDE side, CBLAS_UPLO uplo, CBLAS_TRANSPOSE transA, CBLAS_DIAG diag,
     int M, int N, T alpha, const T **A, int lda, T **B, int ldb,
     int batch_size) const {
+  // solve row major `op ( A ) X = α B` by taking it as `X' op ( A' )  =  α B'`
+  // where ' stands for transpose
+  rocblas_side cuSide =
+      (side == CblasLeft) ? rocblas_side_right : rocblas_side_left;
+  rocblas_fill cuUplo =
+      (uplo == CblasLower) ? rocblas_fill_upper : rocblas_fill_lower;
+  // use CUBLAS_OP_C (conjugate transpose) for complex
+  rocblas_operation cuTransA = (transA == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+  rocblas_diagonal cuDiag =
+      (diag == CblasUnit) ? rocblas_diagonal_unit : rocblas_diagonal_non_unit;
+
+  context_.CublasCall([&](rocblas_handle handle) {
+    CUBlas<T>::TRSM_BATCH(handle, cuSide, cuUplo, cuTransA, cuDiag, N, M,
+                          &alpha, A, lda, B, ldb, batch_size);
+  });
+}
+template <>
+template <typename T>
+void Blas<pten::GPUContext>::BatchedTRSM(CBLAS_SIDE side, CBLAS_UPLO uplo,
+                                         CBLAS_TRANSPOSE transA,
+                                         CBLAS_DIAG diag, int M, int N, T alpha,
+                                         const T **A, int lda, T **B, int ldb,
+                                         int batch_size) const {
   // solve row major `op ( A ) X = α B` by taking it as `X' op ( A' )  =  α B'`
   // where ' stands for transpose
   rocblas_side cuSide =

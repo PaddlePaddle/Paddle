@@ -26,6 +26,24 @@ KernelSignature ReshapeOpArgumentMapping(const ArgumentMappingContext& ctx) {
   }
 }
 
+KernelSignature ReshapeGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "reshape_grad", {GradVarName("Out")}, {}, {GradVarName("X")});
+}
+
+KernelSignature ReshapeDoubleGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("reshape_double_grad", {"DDX"}, {}, {"DDOut"});
+}
+
 }  // namespace pten
 
+PT_REGISTER_BASE_KERNEL_NAME(reshape2, reshape);
+PT_REGISTER_BASE_KERNEL_NAME(reshape2_grad, reshape_grad);
+PT_REGISTER_BASE_KERNEL_NAME(reshape2_grad_grad, reshape_double_grad);
+
 PT_REGISTER_ARG_MAPPING_FN(reshape2, pten::ReshapeOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(reshape2_grad, pten::ReshapeGradOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(reshape2_grad_grad,
+                           pten::ReshapeDoubleGradOpArgumentMapping);

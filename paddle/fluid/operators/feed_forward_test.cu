@@ -20,8 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/fused/attn_feed_forward.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
@@ -275,6 +275,18 @@ class TestFeedForward {
     output_size_ = 3 * num_head_ * dim_head_;
     input_size_ = dim_embed_;
     ctx_ = new platform::CUDADeviceContext(place_);
+    ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(place_, ctx_->stream())
+                           .get());
+    ctx_->SetHostAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CPUPlace())
+            .get());
+    ctx_->SetZeroAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetZeroAllocator(place_)
+            .get());
+    ctx_->PartialInitWithAllocator();
 
     size_src_ = bsz_seq_ * dim_embed_;         // src: [bs, seq_len, em_dim]
     size_weight_ = dim_embed_ * output_size_;  // weight: [output_size, em_dim]

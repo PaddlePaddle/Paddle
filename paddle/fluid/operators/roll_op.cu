@@ -17,7 +17,7 @@
 #include "paddle/fluid/operators/roll_op.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
-#include "paddle/pten/core/array.h"
+#include "paddle/pten/core/utils/array.h"
 
 namespace paddle {
 namespace operators {

@@ -28,11 +28,10 @@ struct ScaleFunctor {
   InT scale;
   bool bias_after_scale;
 
-  ScaleFunctor(InT scale_data, InT bias_data, bool is_bias_after_sacle) {
-    scale = scale_data;
-    bias = bias_data;
-    bias_after_scale = is_bias_after_sacle;
-  }
+  ScaleFunctor(InT scale_data, InT bias_data, bool is_bias_after_sacle)
+      : bias(bias_data),
+        scale(scale_data),
+        bias_after_scale(is_bias_after_sacle) {}
 
   __device__ __forceinline__ InT operator()(const InT x) const {
     if (bias_after_scale) {
@@ -55,9 +54,7 @@ void ScaleKernel(const Context& dev_ctx,
   inputs.emplace_back(&x);
   outputs.emplace_back(out);
   dev_ctx.template Alloc<T>(out);
-  pten::funcs::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary,
-                                                   T,
-                                                   T>(
+  pten::funcs::LaunchSameDimsElementwiseCudaKernel<T>(
       dev_ctx,
       inputs,
       &outputs,

@@ -26,26 +26,24 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/pten/common/data_type.h"
-#include "paddle/pten/core/convert_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 #pragma GCC diagnostic ignored "-Wwrite-strings"
 
 namespace paddle {
 namespace pybind {
 
-extern PyTypeObject* p_eager_tensor_type;
+extern PyTypeObject* p_tensor_type;
 
-PyObject* eager_tensor_properties_get_name(EagerTensorObject* self,
-                                           void* closure) {
+PyObject* eager_tensor_properties_get_name(TensorObject* self, void* closure) {
   EAGER_SYNC_TRY
-  return ToPyObject(self->eager_tensor.name());
+  return ToPyObject(self->tensor.name());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyObject* eager_tensor_properties_get_type(EagerTensorObject* self,
-                                           void* closure) {
+PyObject* eager_tensor_properties_get_type(TensorObject* self, void* closure) {
   EAGER_SYNC_TRY
-  if (self->eager_tensor.is_dense_tensor()) {
+  if (self->tensor.is_dense_tensor()) {
     return ToPyObject(paddle::framework::proto::VarType::LOD_TENSOR);
   } else {
     Py_INCREF(Py_None);
@@ -54,28 +52,27 @@ PyObject* eager_tensor_properties_get_type(EagerTensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-int eager_tensor_properties_set_name(EagerTensorObject* self, PyObject* value,
+int eager_tensor_properties_set_name(TensorObject* self, PyObject* value,
                                      void* closure) {
   EAGER_SYNC_TRY
-  self->eager_tensor.set_name(CastPyArg2AttrString(value, 0));
+  self->tensor.set_name(CastPyArg2AttrString(value, 0));
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_ZERO
 }
 
-PyObject* eager_tensor_properties_get_stop_gradient(EagerTensorObject* self,
+PyObject* eager_tensor_properties_get_stop_gradient(TensorObject* self,
                                                     void* closure) {
   EAGER_SYNC_TRY
-  auto meta = egr::EagerUtils::autograd_meta(&self->eager_tensor);
+  auto meta = egr::EagerUtils::autograd_meta(&self->tensor);
   return ToPyObject(meta->StopGradient());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyObject* eager_tensor_properties_get_grad(EagerTensorObject* self,
-                                           void* closure) {
+PyObject* eager_tensor_properties_get_grad(TensorObject* self, void* closure) {
   EAGER_SYNC_TRY
-  if (egr::egr_utils_api::IsLeafTensor(self->eager_tensor)) {
+  if (egr::egr_utils_api::IsLeafTensor(self->tensor)) {
     std::shared_ptr<egr::GradNodeBase> grad_node =
-        egr::EagerUtils::grad_node(self->eager_tensor);
+        egr::EagerUtils::grad_node(self->tensor);
     PADDLE_ENFORCE(
         grad_node.get() != nullptr,
         paddle::platform::errors::Fatal("Detected NULL grad_node"
@@ -85,8 +82,8 @@ PyObject* eager_tensor_properties_get_grad(EagerTensorObject* self,
         std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
     return ToPyObject(*accumulation_grad_node->Grad());
   } else {
-    VLOG(6) << "Get grad for tensor: " << self->eager_tensor.name();
-    auto meta = egr::EagerUtils::nullable_autograd_meta(self->eager_tensor);
+    VLOG(6) << "Get grad for tensor: " << self->tensor.name();
+    auto meta = egr::EagerUtils::nullable_autograd_meta(self->tensor);
     if (meta) {
       return ToPyObject(meta->Grad());
     } else {
@@ -97,15 +94,15 @@ PyObject* eager_tensor_properties_get_grad(EagerTensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-int eager_tensor_properties_set_grad(EagerTensorObject* self, PyObject* value,
+int eager_tensor_properties_set_grad(TensorObject* self, PyObject* value,
                                      void* closure) {
   EAGER_SYNC_TRY
-  auto src = CastPyArg2EagerTensor(value, 0);
+  auto src = CastPyArg2Tensor(value, 0);
   PADDLE_ENFORCE(
-      egr::egr_utils_api::IsLeafTensor(self->eager_tensor),
+      egr::egr_utils_api::IsLeafTensor(self->tensor),
       paddle::platform::errors::Fatal("Only leaf Tensor can be set grad."));
   std::shared_ptr<egr::GradNodeBase> grad_node =
-      egr::EagerUtils::grad_node(self->eager_tensor);
+      egr::EagerUtils::grad_node(self->tensor);
   PADDLE_ENFORCE(
       grad_node.get() != nullptr,
       paddle::platform::errors::Fatal("Detected NULL grad_node"
@@ -118,36 +115,35 @@ int eager_tensor_properties_set_grad(EagerTensorObject* self, PyObject* value,
   EAGER_CATCH_AND_THROW_RETURN_ZERO
 }
 
-int eager_tensor_properties_set_stop_gradient(EagerTensorObject* self,
+int eager_tensor_properties_set_stop_gradient(TensorObject* self,
                                               PyObject* value, void* closure) {
   EAGER_SYNC_TRY
-  auto meta = egr::EagerUtils::autograd_meta(&self->eager_tensor);
+  auto meta = egr::EagerUtils::autograd_meta(&self->tensor);
   meta->SetStopGradient(CastPyArg2AttrBoolean(value, 0));
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_ZERO
 }
 
-PyObject* eager_tensor_properties_get_persistable(EagerTensorObject* self,
+PyObject* eager_tensor_properties_get_persistable(TensorObject* self,
                                                   void* closure) {
   EAGER_SYNC_TRY
-  auto meta = egr::EagerUtils::autograd_meta(&self->eager_tensor);
+  auto meta = egr::EagerUtils::autograd_meta(&self->tensor);
   return ToPyObject(meta->Persistable());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-int eager_tensor_properties_set_persistable(EagerTensorObject* self,
-                                            PyObject* value, void* closure) {
+int eager_tensor_properties_set_persistable(TensorObject* self, PyObject* value,
+                                            void* closure) {
   EAGER_SYNC_TRY
-  auto meta = egr::EagerUtils::autograd_meta(&self->eager_tensor);
+  auto meta = egr::EagerUtils::autograd_meta(&self->tensor);
   meta->SetPersistable(CastPyArg2AttrBoolean(value, 0));
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_ZERO
 }
 
-PyObject* eager_tensor_properties_get_shape(EagerTensorObject* self,
-                                            void* closure) {
+PyObject* eager_tensor_properties_get_shape(TensorObject* self, void* closure) {
   EAGER_SYNC_TRY
-  auto ddim = self->eager_tensor.shape();
+  auto ddim = self->tensor.shape();
   std::vector<int64_t> value;
   size_t rank = static_cast<size_t>(ddim.size());
   value.resize(rank);
@@ -159,26 +155,25 @@ PyObject* eager_tensor_properties_get_shape(EagerTensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyObject* eager_tensor_properties_get_place(EagerTensorObject* self,
-                                            void* closure) {
+PyObject* eager_tensor_properties_get_place(TensorObject* self, void* closure) {
   EAGER_SYNC_TRY
-  return ToPyObject(self->eager_tensor.place());
+  return ToPyObject(self->tensor.inner_place());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyObject* eager_tensor_properties_get_place_str(EagerTensorObject* self,
+PyObject* eager_tensor_properties_get_place_str(TensorObject* self,
                                                 void* closure) {
   EAGER_SYNC_TRY
   std::stringstream ostr;
-  ostr << self->eager_tensor.place();
+  ostr << self->tensor.inner_place();
   return ToPyObject(ostr.str());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyObject* eager_tensor_properties_get_dtype(EagerTensorObject* self,
-                                            void* closure) {
+PyObject* eager_tensor_properties_get_dtype(TensorObject* self, void* closure) {
   EAGER_SYNC_TRY
-  return ToPyObject(pten::TransToProtoVarType(self->eager_tensor.type()));
+  return ToPyObject(
+      paddle::framework::TransToProtoVarType(self->tensor.type()));
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 

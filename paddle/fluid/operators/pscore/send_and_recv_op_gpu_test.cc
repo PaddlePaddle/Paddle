@@ -35,7 +35,7 @@ namespace memory = paddle::memory;
 using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
 using VarMsg = ::paddle::distributed::VariableMessage;
 
-USE_OP(scale);
+USE_OP_ITSELF(scale);
 USE_OP(send_and_recv);
 
 std::shared_ptr<distributed::HeterServer> b_rpc_service2;
@@ -96,11 +96,12 @@ void InitTensorsOnClient(framework::Scope* scope, int64_t rows_numel,
   std::vector<float> temp_vec{0};
   float* temp_ptr = temp_vec.data();
 
-  memory::Copy(
-      place, reinterpret_cast<void*>(micro_id_ptr), platform::CPUPlace(),
-      reinterpret_cast<void*>(temp_ptr),
-      micro_id_var->numel() * framework::SizeOfType(micro_id_var->type()),
-      stream);
+  memory::Copy(place, reinterpret_cast<void*>(micro_id_ptr),
+               platform::CPUPlace(), reinterpret_cast<void*>(temp_ptr),
+               micro_id_var->numel() *
+                   framework::SizeOfType(
+                       framework::TransToProtoVarType(micro_id_var->dtype())),
+               stream);
 
   auto x_var = scope->Var("x")->GetMutable<framework::LoDTensor>();
   float* x_ptr =
@@ -110,7 +111,8 @@ void InitTensorsOnClient(framework::Scope* scope, int64_t rows_numel,
   float* x_vec_ptr = x_vec.data();
   memory::Copy(place, reinterpret_cast<void*>(x_ptr), platform::CPUPlace(),
                reinterpret_cast<void*>(x_vec_ptr),
-               x_var->numel() * framework::SizeOfType(x_var->type()), stream);
+               x_var->numel() * framework::DataTypeSize(x_var->dtype()),
+               stream);
 
   // auto res_var = scope->Var("res")->GetMutable<framework::LoDTensor>();
   // float* res_ptr =
@@ -222,6 +224,10 @@ TEST(SENDANDRECV, GPU) {
   framework::Scope* scope = (*micro_scope)[0];
   platform::CUDAPlace place;
   platform::CUDADeviceContext ctx(place);
+  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                       .GetAllocator(place, ctx.stream())
+                       .get());
+  ctx.PartialInitWithAllocator();
 
   framework::Executor exe(place);
   // create var on local scope

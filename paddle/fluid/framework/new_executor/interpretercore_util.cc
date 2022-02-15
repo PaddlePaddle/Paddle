@@ -24,7 +24,6 @@
 PADDLE_DEFINE_EXPORTED_bool(
     new_executor_sequential_run, false,
     "Enable sequential execution for standalone executor, used for debug");
-DECLARE_bool(run_pten_kernel);
 
 namespace paddle {
 namespace framework {
@@ -264,7 +263,15 @@ void deal_operator_base(const platform::Place& place,
   auto* dev_ctx = pool.Get(place);
   // input, output is prepared. set the other attributes.
   op_func_node->operator_base_ = op_base;
-  op_func_node->type_ = OpFuncType::kQueueSync;  // alway Sync
+  if (platform::is_gpu_place(place)) {
+    op_func_node->type_ = OpFuncType::kQueueAsync;
+  } else if (platform::is_cpu_place(place)) {
+    op_func_node->type_ = OpFuncType::kQueueSync;
+  } else {
+    PADDLE_THROW(
+        platform::errors::Fatal("Unsupported current place %s", place));
+  }
+
   op_func_node->kernel_func_ = nullptr;
   op_base->Run(*local_scope, place);  // Run without data transformer.
 

@@ -7,7 +7,7 @@ cc_test(test_sparse_coo_tensor SRCS test_sparse_coo_tensor.cc DEPS dense_tensor 
 cc_test(test_sparse_csr_tensor SRCS test_sparse_csr_tensor.cc DEPS dense_tensor sparse_csr_tensor)
 cc_test(test_op_utils SRCS test_op_utils.cc DEPS op_compat_infos)
 cc_test(test_pten_device_context SRCS test_device_context.cc DEPS pten_context cpu_context)
-cc_test(test_meta_fn_utils SRCS test_meta_fn_utils.cc DEPS dense_tensor infermeta infermeta_utils)
+cc_test(test_meta_fn_utils SRCS test_meta_fn_utils.cc DEPS dense_tensor wrapped_infermeta infermeta infermeta_utils)
 
 cc_test(test_ddim SRCS test_ddim.cc DEPS ddim)
 if(WITH_GPU)
@@ -23,3 +23,5 @@ endif()
 if (NOT WIN32)
 cc_test(test_rw_lock SRCS test_rw_lock.cc)
 endif (NOT WIN32)
+
+cc_test(unroll_array_ops_test SRCS unroll_array_ops_test.cc)

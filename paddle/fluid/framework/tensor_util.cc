@@ -19,6 +19,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/complex.h"
@@ -55,10 +56,10 @@ void TensorCopyImpl(const TENSOR& src, const platform::Place& dst_place,
   // than numel()*size(type())
   auto dst_ptr =
       src.layout() == DataLayout::kMKLDNN
-          ? dst->mutable_data(dst_place, src.type(), src.memory_size())
-          : dst->mutable_data(dst_place, src.type());
+          ? dst->mutable_data(dst_place, src.dtype(), src.memory_size())
+          : dst->mutable_data(dst_place, src.dtype());
 #else
-  auto dst_ptr = dst->mutable_data(dst_place, src.type());
+  auto dst_ptr = dst->mutable_data(dst_place, src.dtype());
 #endif
   if (src_ptr == dst_ptr && src_place == dst_place) {
     VLOG(3) << "Skip copy the same data async from " << src_place << " to "
@@ -70,9 +71,9 @@ void TensorCopyImpl(const TENSOR& src, const platform::Place& dst_place,
 #ifdef PADDLE_WITH_MKLDNN
   auto size = src.layout() == DataLayout::kMKLDNN
                   ? src.memory_size()
-                  : src.numel() * SizeOfType(src.type());
+                  : src.numel() * framework::DataTypeSize(src.dtype());
 #else
-  auto size = src.numel() * SizeOfType(src.type());
+  auto size = src.numel() * framework::DataTypeSize(src.dtype());
 #endif
 
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
@@ -126,7 +127,7 @@ void TensorCopyImpl(const TENSOR& src, const platform::Place& dst_place,
     Tensor npu_pinned_tensor;
     npu_pinned_tensor.Resize(src.dims());
     auto npu_pinned_ptr =
-        npu_pinned_tensor.mutable_data(npu_pinned_place, src.type());
+        npu_pinned_tensor.mutable_data(npu_pinned_place, src.dtype());
     memory::Copy(npu_pinned_place, npu_pinned_ptr, src_place, src_ptr, size);
 
     //  2. async copy npu pinned tensor -> npu tensor
@@ -410,7 +411,7 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
 #endif
   auto src_place = src.place();
   auto src_ptr = src.data();
-  auto dst_ptr = dst->mutable_data(dst_place, src.type());
+  auto dst_ptr = dst->mutable_data(dst_place, src.dtype());
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
 
   if (src_ptr == dst_ptr && src_place == dst_place) {
@@ -419,7 +420,7 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
     return;
   }
 
-  auto size = src.numel() * SizeOfType(src.type());
+  auto size = src.numel() * framework::DataTypeSize(src.dtype());
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
@@ -582,8 +583,9 @@ struct AnyDTypeVisitor {
 template <typename Predicate, typename DevCtx>
 inline void AnyImpl(Predicate predicate, const framework::Tensor& tensor,
                     const DevCtx& ctx, framework::Tensor* out) {
-  VisitDataType(tensor.type(), AnyDTypeVisitor<Predicate, DevCtx>(
-                                   predicate, tensor, ctx, out));
+  VisitDataType(
+      framework::TransToProtoVarType(tensor.dtype()),
+      AnyDTypeVisitor<Predicate, DevCtx>(predicate, tensor, ctx, out));
 }
 
 template <typename Predicate>
@@ -722,8 +724,9 @@ struct AllDTypeVisitor {
 template <typename Predicate, typename DevCtx>
 inline void AllImpl(Predicate predicate, const framework::Tensor& tensor,
                     const DevCtx& ctx, framework::Tensor* out) {
-  VisitDataType(tensor.type(), AllDTypeVisitor<Predicate, DevCtx>(
-                                   predicate, tensor, ctx, out));
+  VisitDataType(
+      framework::TransToProtoVarType(tensor.dtype()),
+      AllDTypeVisitor<Predicate, DevCtx>(predicate, tensor, ctx, out));
 }
 
 template <typename Predicate>
@@ -930,7 +933,7 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
      // int32_t  size
      // void*    protobuf message
     proto::VarType::TensorDesc desc;
-    desc.set_data_type(tensor.type());
+    desc.set_data_type(framework::TransToProtoVarType(tensor.dtype()));
     auto dims = framework::vectorize(tensor.dims());
     auto* pb_dims = desc.mutable_dims();
     pb_dims->Resize(static_cast<int>(dims.size()), 0);
@@ -941,7 +944,7 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
     os.write(out.data(), size);
   }
   {  // the 3rd field, tensor data
-    uint64_t size = tensor.numel() * framework::SizeOfType(tensor.type());
+    uint64_t size = tensor.numel() * framework::DataTypeSize(tensor.dtype());
 
     auto* data_ptr = tensor.data();
     PADDLE_ENFORCE_LT(size, (std::numeric_limits<std::streamsize>::max)(),
@@ -1085,7 +1088,7 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
     is.seekg(seekg, is.cur);
 
     void* buf;
-    auto ctx = platform::CPUDeviceContext();
+    platform::CPUDeviceContext ctx;
     size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
     if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
         platform::is_xpu_place(dev_ctx.GetPlace()) ||
@@ -1155,7 +1158,7 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
     std::copy(desc.dims().begin(), desc.dims().end(), std::back_inserter(dims));
     tensor->Resize(framework::make_ddim(dims));
     void* buf;
-    auto ctx = platform::CPUDeviceContext();
+    platform::CPUDeviceContext ctx;
     size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
     if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
         platform::is_xpu_place(dev_ctx.GetPlace()) ||
@@ -1419,17 +1422,18 @@ std::ostream& operator<<(std::ostream& os, const pten::DenseTensor& t) {
     dev_ctx.Wait();
   }
 
-#define PrintTensorCallback(cpp_type, proto_type)            \
-  do {                                                       \
-    if (tensor.type() == proto_type) {                       \
-      os << "  - dtype: " << proto_type << "\n";             \
-      paddle::framework::print_tensor<cpp_type>(os, tensor); \
-      return os;                                             \
-    }                                                        \
+#define PrintTensorCallback(cpp_type, proto_type)                 \
+  do {                                                            \
+    if (paddle::framework::TransToProtoVarType(tensor.dtype()) == \
+        proto_type) {                                             \
+      os << "  - dtype: " << proto_type << "\n";                  \
+      paddle::framework::print_tensor<cpp_type>(os, tensor);      \
+      return os;                                                  \
+    }                                                             \
   } while (0)
 
   _ForEachDataType_(PrintTensorCallback);
   VLOG(1) << "PrintVar: unrecognized data type:" << t.type();
   return os;
 }
-}
+}  // namespace pten

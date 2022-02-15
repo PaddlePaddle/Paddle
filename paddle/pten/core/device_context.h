@@ -16,11 +16,10 @@ limitations under the License. */
 
 #include <memory>
 
-// TODO(wilber): Do we need to use place in pten kernel?
-#include "paddle/pten/common/place.h"
-
 #include "paddle/pten/common/data_type.h"
+#include "paddle/pten/common/place.h"
 #include "paddle/pten/core/allocator.h"
+#include "paddle/pten/core/generator.h"
 
 namespace pten {
 class TensorBase;
@@ -60,7 +59,7 @@ class DeviceContext {
    *
    * @param allocator
    */
-  void SetDeviceAllocator(const Allocator*);
+  void SetAllocator(const Allocator*);
 
   /**
    * @brief Set the host Allocator object.
@@ -81,7 +80,7 @@ class DeviceContext {
    *
    * @return Allocator
    */
-  const Allocator& GetDeviceAllocator() const;
+  const Allocator& GetAllocator() const;
 
   /**
    * @brief Get the const device-related Allocator object.
@@ -112,12 +111,23 @@ class DeviceContext {
   template <typename T>
   T* HostAlloc(TensorBase* tensor, size_t requested_size = 0) const;
 
-  // TODO(wilber): Just for the convenience of migrating the code, it will be
-  // modified or removed later.
-  virtual Place GetPlace() const = 0;
+  virtual const Place& GetPlace() const = 0;
   // TODO(wilber): The fluid framework uses wait() in many places, how to delete
   // this API interface.
   virtual void Wait() const {}
+
+  /**
+  * @brief Set the generator for special op.
+  *
+  * @param Generator
+  */
+  void SetGenerator(Generator*);
+  /**
+   * @brief Get the generator object.
+   *
+   * @return Generator
+   */
+  Generator* GetGenerator() const;
 
  private:
   struct Impl;

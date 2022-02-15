@@ -14,14 +14,14 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/framework/data_layout.h"
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/platform/stream/stream.h"
-
 #include "paddle/pten/core/allocator.h"
 #include "paddle/pten/core/storage.h"
+#include "paddle/pten/core/stream.h"
 #include "paddle/pten/core/tensor_base.h"
 #include "paddle/pten/core/tensor_meta.h"
+
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/framework/data_type.h"
 
 /* @jim19930609: Move to MKLDNN_Tensor in the future
     */
@@ -31,7 +31,7 @@ limitations under the License. */
 
 namespace pten {
 
-class CompatibleDenseTensorUtils;
+class DenseTensorUtils;
 
 /// \brief The Dense tensor store values in a contiguous sequential block
 /// of memory where all values are represented. Tensors or multi-dimensional
@@ -120,8 +120,8 @@ class DenseTensor : public TensorBase,
   /// \return Whether the metadata is valid.
   bool valid() const noexcept override { return meta_.valid(); }
 
-  /// \brief Test whether the storage is allocated.
-  /// return Whether the storage is allocated.
+  /// \brief Test whether the allocation is allocated.
+  /// return Whether the allocation is allocated.
   bool initialized() const override { return holder_ && holder_->ptr(); }
 
   /// \brief Allocate memory with requested size from allocator.
@@ -130,12 +130,12 @@ class DenseTensor : public TensorBase,
                      DataType dtype,
                      size_t requested_size = 0) override;
 
-  /// \brief Check if storage is shared with other objects.
-  /// \return Whether the storage is shared with other objects.
+  /// \brief Check if allocation is shared with other objects.
+  /// \return Whether the allocation is shared with other objects.
   bool IsSharedWith(const DenseTensor& b) const;
 
   /// \brief Change the shape information in the metadata. If the new size is
-  /// larger than the original value, the storage area will be reallocated.
+  /// larger than the original value, the allocation area will be reallocated.
   /// \param dims The new dims of the dense tensor.
   /// \param lod The new lod of the dense tensor.
   // void Resize(const DDim& dims);
@@ -147,9 +147,10 @@ class DenseTensor : public TensorBase,
   /// \param lod The new lod of the dense tensor.
   void ResetLoD(const LoD& lod);
 
-  /// \brief Returns the actual storage size occupied by tensor, may be larger
+  /// \brief Returns the actual allocation size occupied by tensor, may be
+  /// larger
   /// than its shape dims.
-  /// \return The actual storage size occupied by tensor.
+  /// \return The actual allocation size occupied by tensor.
   size_t capacity() const { return holder_->size(); }
 
   /// \brief Get the const data pointer value of type T.
@@ -161,8 +162,13 @@ class DenseTensor : public TensorBase,
   /// \return The const data pointer value of raw type.
   const void* data() const;
 
+  template <typename T>
+  T* data();
+
+  void* data();
+
  private:
-  friend class CompatibleDenseTensorUtils;
+  friend class DenseTensorUtils;
 
  protected:
   DenseTensorMeta meta_;
