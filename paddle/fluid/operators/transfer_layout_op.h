@@ -116,7 +116,8 @@ class TransferLayoutFunctor {
     out->mutable_data(in.place(), in.type());
 
     framework::VisitDataType(
-        in.type(), framework::CastDataLayout(&dev_ctx, axis, in, out));
+        framework::TransToProtoVarType(in.dtype()),
+        framework::CastDataLayout(&dev_ctx, axis, in, out));
   }
 
   const framework::Variable *in_;

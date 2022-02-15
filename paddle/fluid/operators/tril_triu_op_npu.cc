@@ -52,7 +52,8 @@ class TrilTriuNPUKernel : public framework::OpKernel<T> {
       runner.Run(dev_ctx.stream());
     };
 
-    if (x->type() == framework::proto::VarType::BOOL) {
+    if (framework::TransToProtoVarType(x->dtype()) ==
+        framework::proto::VarType::BOOL) {
       if (lower) {
         NpuOpRunner::TypeAdapter({*x}, {*out}, attr_input, dev_ctx,
                                  op_func_tril,

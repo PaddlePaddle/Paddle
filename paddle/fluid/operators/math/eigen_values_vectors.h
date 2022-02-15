@@ -108,7 +108,8 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, T> {
     ValueType *rwork_data = nullptr;
 
     // complex type
-    if (framework::IsComplexType(input.type())) {
+    if (framework::IsComplexType(
+            framework::TransToProtoVarType(input.dtype()))) {
       lrwork = std::max<int>(1, static_cast<int>(rwork_opt));
       rwork_data = rwork_tensor.mutable_data<ValueType>(
           framework::make_ddim({lrwork}), ctx.GetPlace());
@@ -180,7 +181,8 @@ struct MatrixEighFunctor<platform::CUDADeviceContext, T> {
     // When the input type is float32, and the feature value input dimension is
     // greater than or equal to [*,32,32]  and less than or equal to
     // [*,512,512], Syevj has better performance.
-    bool use_syevj = (input.type() == framework::proto::VarType::FP32 &&
+    bool use_syevj = (framework::TransToProtoVarType(input.dtype()) ==
+                          framework::proto::VarType::FP32 &&
                       values_stride >= 32 && values_stride <= 512);
     syevjInfo_t syevj_params;
     if (use_syevj) {

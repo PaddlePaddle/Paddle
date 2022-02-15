@@ -204,7 +204,8 @@ class GroupNormGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_NOT_NULL(
         t, platform::errors::InvalidArgument(
                "Input(Y@GRAD) Tensor of GroupNormGradOp should not be null"));
-    return framework::OpKernelType(t->type(), ctx.GetPlace());
+    return framework::OpKernelType(framework::TransToProtoVarType(t->dtype()),
+                                   ctx.GetPlace());
   }
 };
 

@@ -38,10 +38,12 @@ class ActivationMLUKernel : public framework::OpKernel<T> {
     output->mutable_data<T>(ctx.GetPlace());
 
     MLUCnnlActivationDesc act_desc(act_mode, alpha);
-    MLUCnnlTensorDesc input_desc(*input, CNNL_LAYOUT_ARRAY,
-                                 ToCnnlDataType(input->type()));
-    MLUCnnlTensorDesc output_desc(*output, CNNL_LAYOUT_ARRAY,
-                                  ToCnnlDataType(output->type()));
+    MLUCnnlTensorDesc input_desc(
+        *input, CNNL_LAYOUT_ARRAY,
+        ToCnnlDataType(framework::TransToProtoVarType(input->dtype())));
+    MLUCnnlTensorDesc output_desc(
+        *output, CNNL_LAYOUT_ARRAY,
+        ToCnnlDataType(framework::TransToProtoVarType(output->dtype())));
 
     MLUCnnl::Active(ctx, act_desc.get(), input_desc.get(),
                     reinterpret_cast<const void*>(input->data<T>()),
@@ -61,12 +63,15 @@ class ActivationGradMLUKernel : public framework::OpKernel<T> {
 
     dx->mutable_data<T>(ctx.GetPlace());
 
-    MLUCnnlTensorDesc dout_desc(*dout, CNNL_LAYOUT_ARRAY,
-                                ToCnnlDataType(dout->type()));
-    MLUCnnlTensorDesc out_desc(*out, CNNL_LAYOUT_ARRAY,
-                               ToCnnlDataType(out->type()));
-    MLUCnnlTensorDesc dx_desc(*dx, CNNL_LAYOUT_ARRAY,
-                              ToCnnlDataType(dx->type()));
+    MLUCnnlTensorDesc dout_desc(
+        *dout, CNNL_LAYOUT_ARRAY,
+        ToCnnlDataType(framework::TransToProtoVarType(dout->dtype())));
+    MLUCnnlTensorDesc out_desc(
+        *out, CNNL_LAYOUT_ARRAY,
+        ToCnnlDataType(framework::TransToProtoVarType(out->dtype())));
+    MLUCnnlTensorDesc dx_desc(
+        *dx, CNNL_LAYOUT_ARRAY,
+        ToCnnlDataType(framework::TransToProtoVarType(dx->dtype())));
     MLUCnnlActivationDesc act_desc(act_mode, alpha);
     MLUCnnl::ActiveGrad(
         ctx, act_desc.get(), nullptr, nullptr, nullptr, nullptr,
