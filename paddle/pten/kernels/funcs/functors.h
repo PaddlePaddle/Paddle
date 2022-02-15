@@ -17,16 +17,17 @@ limitations under the License. */
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/math.h"
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace pten {
+namespace funcs {
 
-// MulFunctor
-template <typename T>
-struct MulFunctor {
-  // out = x * y;
-  inline HOSTDEVICE T operator()(T x, T y) { return x * y; }
-};
+// // MulFunctor
+// // NOTE(chenfeiyu): IT IS NOLONGER USED, use pten::funcs::MultiplyFunctor
+// instead
+// template <typename T>
+// struct MulFunctor {
+//   // out = x * y;
+//   inline HOSTDEVICE T operator()(T x, T y) { return x * y; }
+// };
 
 template <typename T>
 struct MulGradFunctor {
@@ -34,12 +35,13 @@ struct MulGradFunctor {
   inline HOSTDEVICE T Dy(T x, T y) { return x; }
 };
 
-// AddFunctor
-template <typename T>
-struct AddFunctor {
-  // out = x + y;
-  inline HOSTDEVICE T operator()(T x, T y) { return x + y; }
-};
+// // AddFunctor
+// // NOTE(chenfeiyu): IT IS NOLONGER USED, use pten::funcs::AddFunctor instead
+// template <typename T>
+// struct AddFunctor {
+//   // out = x + y;
+//   inline HOSTDEVICE T operator()(T x, T y) { return x + y; }
+// };
 
 template <typename T>
 struct MaxFunctor {
@@ -102,7 +104,8 @@ struct TanhFunctor {
     // y = 2 / (1 + e^-2x) - 1
     T t0 = static_cast<T>(2) * x;
     T t1 = (t0 < kMin) ? kMin : ((t0 > kMax) ? kMax : t0);
-    return static_cast<T>(2) / (static_cast<T>(1) + real_exp(-t1)) -
+    return static_cast<T>(2) /
+               (static_cast<T>(1) + paddle::operators::real_exp(-t1)) -
            static_cast<T>(1);
   }
 };
@@ -123,7 +126,8 @@ struct SigmoidFunctor {
   inline HOSTDEVICE T operator()(T x) {
     // y = 1 / (1 + e^-x)
     T tmp = (x < kMin) ? kMin : ((x > kMax) ? kMax : x);
-    return static_cast<T>(1) / (static_cast<T>(1) + real_exp(-tmp));
+    return static_cast<T>(1) /
+           (static_cast<T>(1) + paddle::operators::real_exp(-tmp));
   }
 };
 
@@ -138,7 +142,7 @@ struct SigmoidGradFunctor {
 
 template <typename T>
 struct GeluFunctor {
-  using MT = typename details::MPTypeTrait<T>::Type;
+  using MT = typename paddle::operators::details::MPTypeTrait<T>::Type;
   inline HOSTDEVICE T operator()(T x) {
     // this function is tanh approximation of gelu
     // actual gelu is:
@@ -154,7 +158,7 @@ struct GeluFunctor {
 
 template <typename T>
 struct GeluGradFunctor {
-  using MT = typename details::MPTypeTrait<T>::Type;
+  using MT = typename paddle::operators::details::MPTypeTrait<T>::Type;
   inline HOSTDEVICE T UseX(T x) {
     MT mx = static_cast<MT>(x);
     MT tanh_out =
@@ -193,6 +197,5 @@ struct GeluGradFunctor {
   }
 };
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace pten

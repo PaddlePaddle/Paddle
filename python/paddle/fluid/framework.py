@@ -6918,7 +6918,7 @@ def _get_paddle_place(place):
         return place
     if isinstance(place, (core.Place, core.XPUPlace, core.CPUPlace,
                           core.CUDAPinnedPlace, core.CUDAPlace, core.NPUPlace,
-                          core.IPUPlace, core.MLUPlace)):
+                          core.IPUPlace, core.MLUPlace, core.CustomPlace)):
         return place
 
     if not isinstance(place, str):
