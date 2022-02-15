@@ -28,6 +28,7 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->SwitchSpecifyInputNames();
   cfg->SetCpuMathLibraryNumThreads(FLAGS_cpu_num_threads);
   cfg->EnableMKLDNN();
+  cfg->SwitchIrDebug(true);
 }
 
 TEST(Analyzer_int8_image_classification, quantization) {
