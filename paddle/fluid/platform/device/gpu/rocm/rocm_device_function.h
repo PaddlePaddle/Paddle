@@ -16,6 +16,7 @@ limitations under the License. */
 
 // NOTE(): support float16 to half in header file.
 #define PADDLE_CUDA_FP16
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
 
