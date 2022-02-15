@@ -15,6 +15,7 @@ limitations under the License. */
 #include <cstdlib>
 #include <string>
 #include <vector>
+
 #include "io/fs.h"
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/data_set.h"
@@ -232,12 +233,13 @@ void PSGPUTrainer::Finalize() {
       }
 #define MergeCallback(cpp_type, proto_type)                                    \
   do {                                                                         \
-    if (root_tensor->type() == proto_type) {                                   \
-      if (thread_tensor->type() != proto_type) {                               \
+    if (framework::TransToProtoVarType(root_tensor->dtype()) == proto_type) {  \
+      if (framework::TransToProtoVarType(thread_tensor->dtype()) !=            \
+          proto_type) {                                                        \
         VLOG(0) << "Error: thread id=" << j << ", need_merge_var_names_[" << i \
                 << "] " << need_merge_var_names_[i]                            \
-                << ", root tensor type=" << root_tensor->type()                \
-                << ", thread tensor type=" << thread_tensor->type();           \
+                << ", root tensor type=" << root_tensor->dtype()               \
+                << ", thread tensor type=" << thread_tensor->dtype();          \
         exit(-1);                                                              \
       }                                                                        \
       MergeToRootScope<cpp_type>(root_tensor, thread_tensor);                  \

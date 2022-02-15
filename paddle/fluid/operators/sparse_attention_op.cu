@@ -362,7 +362,8 @@ void DotSdd(const platform::CUDADeviceContext& ctx, const Tensor* a,
   const int* c_columns_data = c_columns->data<int>();
   T* c_value_data = c_value->data<T>();
 
-  cudaDataType_t gpu_type = GetGpuType(c_value->type());
+  cudaDataType_t gpu_type =
+      GetGpuType(framework::TransToProtoVarType(c_value->dtype()));
   cusparseHandle_t handle = nullptr;
   cusparseDnMatDescr_t mat_a, mat_b;
   cusparseSpMatDescr_t mat_c;
@@ -418,7 +419,8 @@ void DotDsd(const platform::CUDADeviceContext& ctx, const Tensor* a_offset,
   const T* b_data = b->data<T>();
   T* c_data = c->data<T>();
 
-  cudaDataType_t gpu_type = GetGpuType(c->type());
+  cudaDataType_t gpu_type =
+      GetGpuType(framework::TransToProtoVarType(c->dtype()));
   cusparseHandle_t handle = nullptr;
   cusparseSpMatDescr_t mat_a;
   cusparseDnMatDescr_t mat_b, mat_c;
