@@ -16,7 +16,6 @@ def DT_Dialect : Dialect {
   let cppNamespace = "::infrt::dt";
 }
 
-
 class DT_Op<string mnemonic, list<OpTrait> traits = []> :
       Op<DT_Dialect, mnemonic, traits>;
 
