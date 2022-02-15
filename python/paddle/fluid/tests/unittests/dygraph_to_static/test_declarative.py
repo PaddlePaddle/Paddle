@@ -236,7 +236,7 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
             # test for recent program
             foo(to_variable(x_data), y_data)
             recent_program = foo.program_cache.last()
-            self.assertTrue(first_program, recent_program)
+            self.assertTrue(first_program == recent_program)
 
     def test_get_concrete_program(self):
 
