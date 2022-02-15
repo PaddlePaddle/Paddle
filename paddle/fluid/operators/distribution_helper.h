@@ -28,6 +28,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/pten/core/hostdevice.h"
 
+#if defined(__NVCC__) || defined(__HIPCC__)
+#include "paddle/pten/kernels/primitive/kernel_primitives.h"
+#endif
+
 #if !defined(_WIN32)
 #define UNLIKELY(condition) __builtin_expect(static_cast<bool>(condition), 0)
 #else
@@ -171,30 +175,32 @@ struct normal_distribution<double> {
 };
 #endif
 
-/******** Launch GPU function of distribution and transformation *********/
 template <typename T, typename DistOp, typename TransformOp>
 __global__ void DistributionKernel(size_t size, uint64_t seed, uint64_t offset,
                                    DistOp dist, TransformOp trans,
                                    T *out_data) {
-  size_t idx = static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
-  int32_t returns_count = DistOp::kReturnsCount;
+  size_t idx = static_cast<size_t>(BLOCK_ID_X * BLOCK_NUM_X + THREAD_ID_X);
+  static constexpr int kCount = DistOp::kReturnsCount;
 #if defined(__NVCC__)
   curandStatePhilox4_32_10_t state;
   curand_init(seed, idx, offset, &state);
+  using SType = curandStatePhilox4_32_10_t;
 #else
   hiprandStatePhilox4_32_10_t state;
   hiprand_init(seed, idx, offset, &state);
+  using SType = hiprandStatePhilox4_32_10_t;
 #endif
-  size_t total_thread = gridDim.x * blockDim.x;
-  for (size_t i = idx; i < size; i += total_thread * returns_count) {
-    auto random_tuple = dist(&state);
-    for (size_t j = 0; j < returns_count; j++) {
-      size_t index = i + j * total_thread;
-      if (index < size) {
-        auto random = (&random_tuple.x)[j];
-        out_data[index] = static_cast<T>(trans(random));
-      }
-    }
+  size_t total_thread = GRID_NUM_X * BLOCK_NUM_X;
+  using VectorType = kps::details::VectorType<T, kCount>;
+  T args[kCount];
+  T result[kCount];
+  for (size_t i = idx; i < size; i += total_thread * kCount) {
+    kps::ElementwiseRandom<SType, T, kCount, 1, DistOp>(&args[0], dist, &state);
+    kps::ElementwiseUnary<T, T, kCount, 1, 1, TransformOp>(&result[0], &args[0],
+                                                           trans);
+    kps::WriteData<T, T, kCount, 1, 1, true>(
+        out_data + idx - THREAD_ID_X, &result[0],
+        static_cast<int>(size - idx + THREAD_ID_X), 1, total_thread, 1);
   }
 }
 
