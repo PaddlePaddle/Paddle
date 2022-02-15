@@ -260,6 +260,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
   }
 
   if (ComputeRequiredGrad(new_ins, outs, trace_backward)) {
+    platform::RecordEvent op_type_record_event(type + " create_grad_op");
     if (!override_default_attr_map) {
       PADDLE_ENFORCE_NOT_NULL(passed_default_attrs_,
                               paddle::platform::errors::PermissionDenied(
@@ -329,6 +330,7 @@ void Tracer::SetExpectedPlace(platform::Place place) {
 bool Tracer::ComputeRequiredGrad(const NameVarBaseMap& ins,
                                  const NameVarBaseMap& outs,
                                  bool trace_backward) {
+  platform::RecordEvent op_type_record_event("ComputeRequiredGrad");
   if (!trace_backward) return false;
 
   for (const auto& name_pair : ins) {
