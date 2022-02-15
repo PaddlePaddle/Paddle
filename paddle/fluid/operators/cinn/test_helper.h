@@ -95,14 +95,6 @@ void InitVariablesWithRandomValue(const std::vector<std::string>& var_names,
   }
 }
 
-// void RunOp(const std::string& out_name,
-//            const platform::Place& place,
-//            framework::Scope* scope,
-//            framework::OperatorBase* op) {
-//     scope->Var(out_name)->GetMutable<LoDTensor>();
-//     op->Run(*scope, place);
-// }
-
 template <typename DataType>
 void CompareOpResult(Variable* test_out, Variable* expected_out) {
   LoDTensor test_tensor, expected_tensor;
