@@ -17,6 +17,9 @@
 #include <iostream>
 #include <memory>
 #include <mutex>
+#include <thread>
+#include <unordered_map>
+
 #include "paddle/fluid/distributed/store/socket.h"
 #include "paddle/fluid/distributed/store/store.h"
 
@@ -29,6 +32,25 @@ enum class Command { SET, GET, REMOVE, ADD, WAIT };
 
 namespace detail {
 
+class MasterDaemon {
+ public:
+  static std::unique_ptr<MasterDaemon> start(Socket sock);
+  explicit MasterDaemon(Socket socket);
+  ~MasterDaemon() {}
+
+ private:
+  void run();
+  void doSet(int);
+  void doGet(int);
+  void doRemove(int);
+  void doAdd(int);
+  void doWait(int);
+  Socket _socket;
+  std::vector<Socket> _sockets;
+  std::unordered_map<std::string, std::vector<uint8_t>> _store;
+  std::thread _background_thread{};
+};
+
 class TCPServer {
  public:
   explicit TCPServer(uint16_t port) : _port(port) {}
@@ -36,6 +58,7 @@ class TCPServer {
 
  private:
   std::uint16_t _port;
+  std::unique_ptr<MasterDaemon> _master_daemon;
 };
 
 class TCPClient {

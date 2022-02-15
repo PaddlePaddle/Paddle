@@ -37,7 +37,11 @@ std::error_code getSocketError() {
   hints.ai_socktype = SOCK_STREAM;
 
   int n;
-  n = ::getaddrinfo(host.c_str(), service.c_str(), &hints, &res);
+  if (host.empty()) {
+    n = ::getaddrinfo(nullptr, service.c_str(), &hints, &res);
+  } else {
+    n = ::getaddrinfo(host.c_str(), service.c_str(), &hints, &res);
+  }
   const char* gai_err = ::gai_strerror(n);
   const char* network =
       (family == AF_INET ? "IPv4" : family == AF_INET6 ? "IPv6" : "");
@@ -84,6 +88,7 @@ int tcpConnect(const std::string host, const std::string service, int family,
   PADDLE_ENFORCE_GT(sockfd, 0, platform::errors::InvalidArgument(
                                    "Local network %s:%s cannot be connected.",
                                    host, service));
+  VLOG(0) << "Connected to " << host << ":" << service;
 
   return sockfd;
 }
@@ -117,7 +122,8 @@ int tcpListen(const std::string host, const std::string service, int family) {
 
   ::listen(sockfd, LISTENQ);
 
-  VLOG(0) << "The server starts to listen on " << host << ":" << service;
+  VLOG(0) << "The server starts to listen on " << host << ":" << service
+          << " with socket: " << sockfd;
 
   return sockfd;
 }

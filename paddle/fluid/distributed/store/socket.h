@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PADDLE_FLUID_DISTRIBUTED_SOCKET_SOCKET_H_
-#define PADDLE_FLUID_DISTRIBUTED_SOCKET_SOCKET_H_
+#ifndef PADDLE_FLUID_DISTRIBUTED_STORE_SOCKET_H_
+#define PADDLE_FLUID_DISTRIBUTED_STORE_SOCKET_H_
 
 #include <netdb.h>
 #include <chrono>
@@ -67,4 +67,4 @@ class Socket {
 }  // namespace distributed
 }  // namespace paddle
 
-#endif  // PADDLE_FLUID_DISTRIBUTED_SOCKET_SOCKET_H_
+#endif  // PADDLE_FLUID_DISTRIBUTED_STORE_SOCKET_H_

@@ -67,6 +67,7 @@ void sendBytes(int sock, const T* buffer, size_t len) {
 
   while (to_send > 0) {
     auto byte_sent = ::send(sock, bytes, to_send, 0);
+    VLOG(0) << "byte sent: " << byte_sent;
     PADDLE_ENFORCE_GT(byte_sent, 0, platform::errors::InvalidArgument(
                                         "TCP send error. Details: %s.",
                                         std::strerror(errno)));
