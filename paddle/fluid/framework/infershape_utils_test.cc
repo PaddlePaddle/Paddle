@@ -121,7 +121,8 @@ TEST(InferShapeUtilsTest, ALL) {
   paddle::framework::Attribute int_attr(10);
   op->SetAttr("int", int_attr);
 
-  paddle::framework::Attribute int64_attr(100L);
+  int64_t int64_val = 100;
+  paddle::framework::Attribute int64_attr(int64_val);
   op->SetAttr("int64", int64_attr);
 
   float float_value = 3.14;
