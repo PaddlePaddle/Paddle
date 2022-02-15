@@ -577,12 +577,14 @@ inline void Blas<platform::CUDADeviceContext>::GEMM(
 
   float h_alpha = static_cast<float>(alpha);
   float h_beta = static_cast<float>(beta);
+  rocblas_gemm_algo algo = rocblas_gemm_algo_standard;
 
   context_.TensorCoreCublasCallIfAvailable([&](rocblas_handle handle) {
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_gemm_ex(
-        handle, transb, transa, N, M, K, &h_alpha, B, rocblas_datatype_bf16_r,
-        ldb, A, rocblas_datatype_bf16_r, lda, &h_beta, C,
-        rocblas_datatype_bf16_r, N, rocblas_datatype_f32_r, algo));
+        handle, cuTransB, cuTransA, N, M, K, &h_alpha, B,
+        rocblas_datatype_bf16_r, ldb, A, rocblas_datatype_bf16_r, lda, &h_beta,
+        C, rocblas_datatype_bf16_r, N, C, rocblas_datatype_bf16_r, N,
+        rocblas_datatype_f32_r, algo, 0, 0));
   });
 }
 
@@ -615,12 +617,14 @@ inline void Blas<pten::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
 
   float h_alpha = static_cast<float>(alpha);
   float h_beta = static_cast<float>(beta);
+  rocblas_gemm_algo algo = rocblas_gemm_algo_standard;
 
   context_.TensorCoreCublasCallIfAvailable([&](rocblas_handle handle) {
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::rocblas_gemm_ex(
-        handle, transb, transa, N, M, K, &h_alpha, B, rocblas_datatype_bf16_r,
-        ldb, A, rocblas_datatype_bf16_r, lda, &h_beta, C,
-        rocblas_datatype_bf16_r, N, rocblas_datatype_f32_r, algo));
+        handle, cuTransB, cuTransA, N, M, K, &h_alpha, B,
+        rocblas_datatype_bf16_r, ldb, A, rocblas_datatype_bf16_r, lda, &h_beta,
+        C, rocblas_datatype_bf16_r, N, C, rocblas_datatype_bf16_r, N,
+        rocblas_datatype_f32_r, algo, 0, 0));
   });
 }
 
@@ -1037,8 +1041,9 @@ template <>
 template <>
 inline void Blas<platform::CUDADeviceContext>::BatchedGEMM(
     CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
-    T alpha, const T *A, const T *B, T beta, T *C, int batchCount,
-    int64_t strideA, int64_t strideB) const {
+    platform::bfloat16 alpha, const platform::bfloat16 *A,
+    const platform::bfloat16 *B, platform::bfloat16 beta, platform::bfloat16 *C,
+    int batchCount, int64_t strideA, int64_t strideB) const {
   int lda = (transA == CblasNoTrans) ? K : M;
   int ldb = (transB == CblasNoTrans) ? N : K;
   int ldc = N;
@@ -1056,10 +1061,11 @@ inline void Blas<platform::CUDADeviceContext>::BatchedGEMM(
   context_.TensorCoreCublasCallIfAvailable([&](rocblas_handle handle) {
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::rocblas_gemm_strided_batched_ex(
-            handle, transb, transa, N, M, K, &h_alpha, B,
+            handle, cuTransB, cuTransA, N, M, K, &h_alpha, B,
             rocblas_datatype_bf16_r, ldb, strideB, A, rocblas_datatype_bf16_r,
-            lda, strideA, &h_beta, C, rocblas_datatype_bf16_r, ldc, strideC,
-            rocblas_datatype_f32_r, algo));
+            lda, strideA, &h_beta, C, rocblas_datatype_bf16_r, ldc, strideC, C,
+            rocblas_datatype_bf16_r, ldc, strideC, batchCount,
+            rocblas_datatype_f32_r, algo, 0, 0));
   });
 }
 
@@ -1067,8 +1073,9 @@ template <>
 template <>
 inline void Blas<pten::GPUContext>::BatchedGEMM(
     CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
-    T alpha, const T *A, const T *B, T beta, T *C, int batchCount,
-    int64_t strideA, int64_t strideB) const {
+    platform::bfloat16 alpha, const platform::bfloat16 *A,
+    const platform::bfloat16 *B, platform::bfloat16 beta, platform::bfloat16 *C,
+    int batchCount, int64_t strideA, int64_t strideB) const {
   int lda = (transA == CblasNoTrans) ? K : M;
   int ldb = (transB == CblasNoTrans) ? N : K;
   int ldc = N;
@@ -1086,10 +1093,11 @@ inline void Blas<pten::GPUContext>::BatchedGEMM(
   context_.TensorCoreCublasCallIfAvailable([&](rocblas_handle handle) {
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::rocblas_gemm_strided_batched_ex(
-            handle, transb, transa, N, M, K, &h_alpha, B,
+            handle, cuTransB, cuTransA, N, M, K, &h_alpha, B,
             rocblas_datatype_bf16_r, ldb, strideB, A, rocblas_datatype_bf16_r,
-            lda, strideA, &h_beta, C, rocblas_datatype_bf16_r, ldc, strideC,
-            rocblas_datatype_f32_r, algo));
+            lda, strideA, &h_beta, C, rocblas_datatype_bf16_r, ldc, strideC, C,
+            rocblas_datatype_bf16_r, ldc, strideC, batchCount,
+            rocblas_datatype_f32_r, algo, 0, 0));
   });
 }
 
