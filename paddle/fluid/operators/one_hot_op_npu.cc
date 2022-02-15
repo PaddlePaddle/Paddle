@@ -43,7 +43,8 @@ class OneHotNPUKernel : public framework::OpKernel<T> {
     out->mutable_data<float>(ctx.GetPlace());
 
     float on_value = 1.0f, off_value = 0.0f;
-    if (in->type() == framework::proto::VarType::INT32) {
+    if (framework::TransToProtoVarType(in->dtype()) ==
+        framework::proto::VarType::INT32) {
       NpuOpRunner runner;
       runner.SetType("OneHot")
           .AddInput(*in)

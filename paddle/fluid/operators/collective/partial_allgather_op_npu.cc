@@ -29,7 +29,8 @@ class CallPartialGatherOpASCENDKernel : public framework::OpKernel<T> {
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
     int64_t numel = in->numel();
-    HcclDataType dtype = platform::ToHCCLDataType(in->type());
+    HcclDataType dtype =
+        platform::ToHCCLDataType(framework::TransToProtoVarType(in->dtype()));
 
     int rank = ctx.Attr<int>("rank");
     int ring_id = ctx.Attr<int>("ring_id");

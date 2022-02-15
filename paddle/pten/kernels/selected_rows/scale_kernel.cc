@@ -29,7 +29,8 @@ void ScaleSR(const Context& dev_ctx,
              float bias,
              bool bias_after_scale,
              SelectedRows* out) {
-  if (x.value().data() != out->value().data()) {
+  if (x.value().Holder() != out->value().Holder() ||
+      x.value().data() != out->value().data()) {
     out->set_rows(x.rows());
     out->set_height(x.height());
   }
