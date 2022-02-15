@@ -69,7 +69,7 @@ static std::vector<int> get_rdims(const std::vector<int>& xdims,
 }
 
 template <typename T>
-class ElementwiseAddGradXPUKernel : public ElemwiseGradKernel<T> {
+class ElementwiseAddGradXPUKPKernel : public ElemwiseGradKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
  public:
@@ -181,8 +181,6 @@ namespace plat = paddle::platform;
 REGISTER_OP_KERNEL(elementwise_add, KP, plat::XPUPlace,
                     ops::ElementwiseAddXPUKPKernel<float>);
 
-REGISTER_OP_KERNEL(elementwise_add_grad, KP, plat::XPUPlace,
-                    ops::ElementwiseAddGradXPUKernel<float>);
 
 //#endif // __xpu_on_host__
 #endif // PADDLE_WITH_XPU_KP

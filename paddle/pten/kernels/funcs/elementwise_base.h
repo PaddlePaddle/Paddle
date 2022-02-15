@@ -790,28 +790,28 @@ void LaunchSameDimsElementwiseCudaKernel(
               i));
     }
   }
-
+  VLOG(3)<<"lxd_debug: enter the test";
   // calculate the max vec_size for all ins and outs
   int vec_size = GetVectorizedSizeForTensors<OutT, Functor>(ins, *outs);
- // switch (vec_size) {
- //   case 4:
- //     ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 4>(
- //         ctx, ins, outs, func);
- //     break;
- //   case 2:
- //     ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 2>(
- //         ctx, ins, outs, func);
- //     break;
- //   case 1:
- //     ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 1>(
- //         ctx, ins, outs, func);
- //     break;
- //   default: {
- //     PADDLE_THROW(paddle::platform::errors::Unimplemented(
- //         "Unsupported vectorized size: %d !", vec_size));
- //     break;
- //   }
- // }
+ switch (vec_size) {
+   case 4:
+     ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 4>(
+         ctx, ins, outs, func);
+     break;
+   case 2:
+     ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 2>(
+         ctx, ins, outs, func);
+     break;
+   case 1:
+     ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 1>(
+         ctx, ins, outs, func);
+     break;
+   default: {
+     PADDLE_THROW(paddle::platform::errors::Unimplemented(
+         "Unsupported vectorized size: %d !", vec_size));
+     break;
+   }
+ }
 }
 #endif
 
