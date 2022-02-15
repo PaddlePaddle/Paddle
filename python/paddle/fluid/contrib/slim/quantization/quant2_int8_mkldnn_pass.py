@@ -454,6 +454,8 @@ class Quant2Int8MkldnnPass(object):
         graph = self._apply_pass(graph, 'matmul_v2_transpose_reshape_fuse_pass')
         graph = self._apply_pass(graph, 'batch_norm_act_fuse_pass')
         graph = self._apply_pass(graph, 'softplus_activation_mkldnn_fuse_pass')
+        graph = self._apply_pass(graph, 'onednn_replace_pass')
+        graph = self._apply_pass(graph, 'elt_act_mkldnn_fuse_pass')
         # the following pass should be the last one since it will work on all fused ops.
         graph = self._apply_pass(graph, 'runtime_context_cache_pass')
         return graph
