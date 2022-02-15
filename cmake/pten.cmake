@@ -98,6 +98,8 @@ function(kernel_library TARGET)
 
     set(oneValueArgs SUB_DIR)
     set(multiValueArgs SRCS DEPS)
+    set(target_build_flag 1)
+
     cmake_parse_arguments(kernel_library "${options}" "${oneValueArgs}"
         "${multiValueArgs}" ${ARGN})
 
@@ -233,38 +235,40 @@ function(kernel_library TARGET)
             cc_library(${TARGET} SRCS ${selected_rows_srcs} DEPS ${kernel_library_DEPS} ${kernel_deps})
         endif()
     else()
-         message(FATAL_ERROR "Cannot find any implementation for ${TARGET}")
+        set(target_build_flag 0)
     endif()
 
-    if (${common_srcs_len} GREATER 0 OR ${cpu_srcs_len} GREATER 0 OR
-        ${gpu_srcs_len} GREATER 0 OR ${xpu_srcs_len} GREATER 0 OR
-        ${gpudnn_srcs_len} GREATER 0 OR ${selected_rows_srcs_len} GREATER 0)
-        # append target into PTEN_KERNELS property
-        get_property(pten_kernels GLOBAL PROPERTY PTEN_KERNELS)
-        set(pten_kernels ${pten_kernels} ${TARGET})
-        set_property(GLOBAL PROPERTY PTEN_KERNELS ${pten_kernels})
-    endif()
+    if (${target_build_flag} EQUAL 1)
+        if (${common_srcs_len} GREATER 0 OR ${cpu_srcs_len} GREATER 0 OR
+            ${gpu_srcs_len} GREATER 0 OR ${xpu_srcs_len} GREATER 0 OR
+            ${gpudnn_srcs_len} GREATER 0 OR ${selected_rows_srcs_len} GREATER 0)
+            # append target into PTEN_KERNELS property
+            get_property(pten_kernels GLOBAL PROPERTY PTEN_KERNELS)
+            set(pten_kernels ${pten_kernels} ${TARGET})
+            set_property(GLOBAL PROPERTY PTEN_KERNELS ${pten_kernels})
+        endif()
 
-    # parse kernel name and auto generate kernel declaration
-    # here, we don't need to check WITH_XXX, because if not WITH_XXX, the
-    # xxx_srcs_len will be equal to 0
-    if (${common_srcs_len} GREATER 0)
-        kernel_declare(${common_srcs})
-    endif()
-    if (${cpu_srcs_len} GREATER 0)
-        kernel_declare(${cpu_srcs})
-    endif()
-    if (${gpu_srcs_len} GREATER 0)
-        kernel_declare(${gpu_srcs})
-    endif()
-    if (${xpu_srcs_len} GREATER 0)
-        kernel_declare(${xpu_srcs})
-    endif()
-    if (${gpudnn_srcs_len} GREATER 0)
-        kernel_declare(${gpudnn_srcs})
-    endif()
-    if (${selected_rows_srcs_len} GREATER 0)
-        kernel_declare(${selected_rows_srcs})
+        # parse kernel name and auto generate kernel declaration
+        # here, we don't need to check WITH_XXX, because if not WITH_XXX, the
+        # xxx_srcs_len will be equal to 0
+        if (${common_srcs_len} GREATER 0)
+            kernel_declare(${common_srcs})
+        endif()
+        if (${cpu_srcs_len} GREATER 0)
+            kernel_declare(${cpu_srcs})
+        endif()
+        if (${gpu_srcs_len} GREATER 0)
+            kernel_declare(${gpu_srcs})
+        endif()
+        if (${xpu_srcs_len} GREATER 0)
+            kernel_declare(${xpu_srcs})
+        endif()
+        if (${gpudnn_srcs_len} GREATER 0)
+            kernel_declare(${gpudnn_srcs})
+        endif()
+        if (${selected_rows_srcs_len} GREATER 0)
+            kernel_declare(${selected_rows_srcs})
+        endif()
     endif()
 endfunction()
 
