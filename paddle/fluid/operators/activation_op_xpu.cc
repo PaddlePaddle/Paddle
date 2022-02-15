@@ -253,9 +253,8 @@ struct XPUHardSwishFunctor : public BaseActivationFunctor<T> {
     PADDLE_ENFORCE_EQ(threshold, 6.0f,
                       platform::errors::External(
                           "Not support threshold [%f] in XPU", threshold));
-    PADDLE_ENFORCE_EQ(
-        scale, 6.0f,
-        platform::errors::External("Not support scale [%f] in XPU", scale));
+    PADDLE_ENFORCE_EQ(scale, 6.0f, platform::errors::External(
+                                       "Not support scale [%f] in XPU", scale));
     PADDLE_ENFORCE_EQ(
         offset, 3.0f,
         platform::errors::External("Not support offset [%f] in XPU", offset));
@@ -274,9 +273,8 @@ struct XPUHardSwishGradFunctor : public BaseActivationFunctor<T> {
     PADDLE_ENFORCE_EQ(threshold, 6.0f,
                       platform::errors::External(
                           "Not support threshold [%f] in XPU", threshold));
-    PADDLE_ENFORCE_EQ(
-        scale, 6.0f,
-        platform::errors::External("Not support scale [%f] in XPU", scale));
+    PADDLE_ENFORCE_EQ(scale, 6.0f, platform::errors::External(
+                                       "Not support scale [%f] in XPU", scale));
     PADDLE_ENFORCE_EQ(
         offset, 3.0f,
         platform::errors::External("Not support offset [%f] in XPU", offset));
@@ -346,11 +344,10 @@ struct XPUPowFunctor : public BaseActivationFunctor<T> {
 
     auto xpu_context =
         ctx.device_context<paddle::platform::XPUDeviceContext>().x_context();
-    PADDLE_ENFORCE_EQ(
-        xpu_malloc(reinterpret_cast<void **>(&factor_data),
-                   x->numel() * sizeof(T)),
-        XPU_SUCCESS,
-        platform::errors::ResourceExhausted("XPU has no enough memory"));
+    PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void **>(&factor_data),
+                                 x->numel() * sizeof(T)),
+                      XPU_SUCCESS, platform::errors::ResourceExhausted(
+                                       "XPU has no enough memory"));
     int r = xpu::constant<T>(xpu_context, factor_data, x->numel(), pow_factor);
     PADDLE_ENFORCE_EQ(
         r, xpu::Error_t::SUCCESS,
