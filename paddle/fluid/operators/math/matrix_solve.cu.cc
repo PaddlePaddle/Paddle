@@ -15,9 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/matrix_solve.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/solve_op.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace platform {
@@ -65,7 +65,7 @@ class MatrixSolveFunctor<platform::CUDADeviceContext, T> {
     // copy input A to a temporary tensor tmp_a,
     // LU factorization, written back to original matrix A, so in the beginning,
     // it's necessary to create a temporary tensor tmp_a.
-    Tensor tmp_a(a.type());
+    Tensor tmp_a(a.dtype());
     tmp_a.Resize(a.dims());
     tmp_a.mutable_data<T>(context.GetPlace());
     framework::TensorCopy(a, context.GetPlace(), &tmp_a);
@@ -76,7 +76,7 @@ class MatrixSolveFunctor<platform::CUDADeviceContext, T> {
     const auto& new_dims_vec = getNewDimsVec(b_dims);
     tmp_b.Resize(framework::make_ddim(new_dims_vec));
     tmp_b.mutable_data<T>(context.GetPlace());
-    math::TransposeNormal<platform::CUDADeviceContext, T> trans;
+    pten::funcs::TransposeNormal<platform::CUDADeviceContext, T> trans;
     std::vector<int> new_axis = getNewAxis(b_rank);
     trans(context, b, &tmp_b, new_axis);
 
@@ -149,7 +149,7 @@ class MatrixSolveFunctor<platform::CUDADeviceContext, T> {
                           -host_info));
 
     // transpose tmp_b to get the final result in row-major form.
-    math::TransposeNormal<platform::CUDADeviceContext, T> trans2;
+    pten::funcs::TransposeNormal<platform::CUDADeviceContext, T> trans2;
     trans2(context, tmp_b, out, new_axis);
 
 #else

@@ -126,8 +126,7 @@ class PnormCUDAKernel : public framework::OpKernel<T> {
       std::vector<framework::Tensor*> outs = {out_norm};
       const auto& cuda_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();
-      paddle::operators::LaunchSameDimsElementwiseCudaKernel<
-          ElementwiseType::kUnary, T, T, UnsignedPowFunctor<T>>(
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
           cuda_ctx, ins, &outs, UnsignedPowFunctor<T>(1. / porder));
     }
   }
@@ -181,7 +180,7 @@ class PnormGradCUDAKernel : public framework::OpKernel<T> {
     auto& cuda_ctx = ctx.template device_context<DeviceContext>();
 
     if (porder == 0) {
-      math::SetConstant<DeviceContext, T> set_zero;
+      pten::funcs::SetConstant<DeviceContext, T> set_zero;
       set_zero(cuda_ctx, out_dx, static_cast<T>(0));
     } else if (porder == INFINITY || porder == -INFINITY) {
       AbsMaxAndMinGradFunctor<T> functor;

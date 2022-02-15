@@ -18,6 +18,7 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -176,7 +177,6 @@ class SetValueKernel : public framework::OpKernel<T> {
     auto decrease_axes = ctx.Attr<std::vector<int64_t>>("decrease_axes");
     auto none_axes = ctx.Attr<std::vector<int64_t>>("none_axes");
 
-    auto dtype = in->type();
     if (!starts_tensor_list.empty()) {
       starts = GetDataFromTensorList<int64_t>(starts_tensor_list);
     }
@@ -235,7 +235,7 @@ class SetValueKernel : public framework::OpKernel<T> {
     // set_value is what we want.
     paddle::framework::TensorCopy(*in, place, out);
 
-    Tensor slice_tensor(dtype), pad_tensor(dtype);
+    Tensor slice_tensor(in->dtype()), pad_tensor(in->dtype());
     slice_tensor.mutable_data<T>(slice_dims, place);
     pad_tensor.mutable_data<T>(in_dims, place);
 
@@ -292,12 +292,13 @@ class SetValueKernel : public framework::OpKernel<T> {
       ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
           ctx, &slice_tensor, value_tensor, -1, SubFunctor<T>(), &slice_tensor);
     } else {
-      Tensor value_t(dtype);
+      Tensor value_t(in->dtype());
       auto value_dims = framework::make_ddim(shape);
       CheckIsDimsMatch(slice_dims_for_assign, value_dims);
 
       value_t.mutable_data<T>(value_dims, place);
-      auto value_name = GetValueName(dtype);
+      auto value_name =
+          GetValueName(framework::TransToProtoVarType(in->dtype()));
       CopyVecotorToTensor<T>(value_name.c_str(), &value_t, ctx);
       value_t.Resize(value_dims);
       ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
@@ -437,7 +438,7 @@ class SetValueGradKernel : public framework::OpKernel<T> {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
-    math::SetConstant<DeviceContext, T> set_zero;
+    pten::funcs::SetConstant<DeviceContext, T> set_zero;
 
     if (grad_input) {
       // Set gradient of `Input`
@@ -447,7 +448,7 @@ class SetValueGradKernel : public framework::OpKernel<T> {
           framework::EigenTensor<T, D, Eigen::RowMajor,
                                  Eigen::DenseIndex>::From(*grad_input);
 
-      framework::Tensor tmp(grad_input->type());
+      framework::Tensor tmp(grad_input->dtype());
       tmp.mutable_data<T>(out_dims, context.GetPlace());
       set_zero(dev_ctx, &tmp, static_cast<T>(0));
       auto tmp_t = framework::EigenTensor<T, D, Eigen::RowMajor,
@@ -468,7 +469,7 @@ class SetValueGradKernel : public framework::OpKernel<T> {
             framework::EigenTensor<T, D, Eigen::RowMajor,
                                    Eigen::DenseIndex>::From(*grad_value);
         if (need_reverse) {
-          framework::Tensor tmp(grad_value->type());
+          framework::Tensor tmp(grad_value->dtype());
           tmp.mutable_data<T>(out_dims, context.GetPlace());
           set_zero(dev_ctx, &tmp, static_cast<T>(0));
           auto tmp_t = framework::EigenTensor<T, D, Eigen::RowMajor,
@@ -534,7 +535,7 @@ class SetValueGradKernel : public framework::OpKernel<T> {
             framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::
                 From(*grad_value, fake_grad_value_dims);
 
-        framework::Tensor tmp(grad_value->type());
+        framework::Tensor tmp(grad_value->dtype());
         tmp.mutable_data<T>(out_dims, context.GetPlace());
         set_zero(dev_ctx, &tmp, static_cast<T>(0));
         auto tmp_t = framework::EigenTensor<T, D, Eigen::RowMajor,
@@ -550,7 +551,7 @@ class SetValueGradKernel : public framework::OpKernel<T> {
               tmp_t.slice(framework::EigenDim<D>::From(offset), extent);
         }
         if (need_reverse) {
-          framework::Tensor tmp_value(grad_value->type());
+          framework::Tensor tmp_value(grad_value->dtype());
           tmp_value.mutable_data<T>(fake_grad_value_dims, context.GetPlace());
           auto tmp_value_t =
               framework::EigenTensor<T, D, Eigen::RowMajor,

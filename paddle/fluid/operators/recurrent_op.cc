@@ -265,7 +265,7 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
               framework::LoDTensor *dst_tensor) {
             // create output tensor at begin
             dst_tensor->Resize(PrependDims(seq_len, src_tensor.dims()));
-            dst_tensor->mutable_data(place, src_tensor.type());
+            dst_tensor->mutable_data(place, src_tensor.dtype());
 
             auto dst_out = dst_tensor->Slice(seq_offset, seq_offset + 1);
             // Explicit copy output since the local RNN scope can be destroyed
@@ -438,7 +438,8 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
           auto &inside_tensor =
               cur_scope.FindVar(inside_grad_name)->Get<framework::LoDTensor>();
           framework::AttributeMap attrs;
-          attrs["dtype"] = inside_tensor.type();
+          attrs["dtype"] =
+              framework::TransToProtoVarType(inside_tensor.dtype());
           attrs["shape"] = framework::vectorize<int>(inside_tensor.dims());
           attrs["value"] = 0.0f;
 
@@ -474,7 +475,7 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
             }
             // Alloc outside memory
             outside->Resize(PrependDims(seq_len, inside.dims()));
-            outside->mutable_data(place, inside.type());
+            outside->mutable_data(place, inside.dtype());
 
             auto dst = outside->Slice(seq_offset, seq_offset + 1);
             framework::TensorCopy(inside, place, dev_ctx, &dst);
@@ -492,7 +493,7 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
             [&](const framework::LoDTensor &inside,
                 framework::LoDTensor *outside) {
               outside->Resize(inside.dims());
-              outside->mutable_data(place, inside.type());
+              outside->mutable_data(place, inside.dtype());
               framework::TensorCopy(inside, place, dev_ctx, outside);
             },
             true /*is_backward*/);

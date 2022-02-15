@@ -208,6 +208,13 @@ void set_constant_with_place<platform::MLUPlace>(
 }
 
 template <>
+void set_constant_with_place<platform::CustomPlace>(
+    const platform::DeviceContext& context, framework::Tensor* tensor,
+    float value) {
+  PADDLE_THROW(platform::errors::Unimplemented("CustomPlace is not supported"));
+}
+
+template <>
 void set_constant_with_place<platform::CUDAPinnedPlace>(
     const platform::DeviceContext& context, framework::Tensor* tensor,
     float value) {

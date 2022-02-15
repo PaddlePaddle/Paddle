@@ -395,7 +395,7 @@ class GPUROIAlignGradOpKernel : public framework::OpKernel<T> {
     memory::Copy(gplace, roi_id_data, cplace, roi_batch_id_data, bytes,
                  dev_ctx.stream());
     in_grad->mutable_data<T>(ctx.GetPlace());
-    math::SetConstant<Place, T> set_zero;
+    pten::funcs::SetConstant<Place, T> set_zero;
     set_zero(dev_ctx, in_grad, static_cast<T>(0));
 
     int output_grad_size = out_grad->numel();

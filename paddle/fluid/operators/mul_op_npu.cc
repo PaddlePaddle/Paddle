@@ -68,8 +68,10 @@ class MulNPUKernel : public framework::OpKernel<T> {
                         platform::errors::InvalidArgument(
                             "now only support x_num_col_dims == 2: but got %d",
                             x_num_col_dims));
-      if (x->type() == framework::proto::VarType::FP16 &&
-          y->type() == framework::proto::VarType::FP16) {
+      if (framework::TransToProtoVarType(x->dtype()) ==
+              framework::proto::VarType::FP16 &&
+          framework::TransToProtoVarType(y->dtype()) ==
+              framework::proto::VarType::FP16) {
         // NOTE: When the dim of the input and output shapes is inconsistent,
         // (Boradcast) BatchMatMul NPU OP only support FP16.
         out->mutable_data<T>(ctx.GetPlace());
@@ -187,8 +189,10 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
 
       if (dx) {
         // tmp_dout * y [2, 3, 5] * [4,5] => [2, 3, 4]
-        if (dout->type() == framework::proto::VarType::FP16 &&
-            y->type() == framework::proto::VarType::FP16) {
+        if (framework::TransToProtoVarType(dout->dtype()) ==
+                framework::proto::VarType::FP16 &&
+            framework::TransToProtoVarType(y->dtype()) ==
+                framework::proto::VarType::FP16) {
           // NOTE: When the dim of the input and output shapes is inconsistent,
           // (Boradcast) BatchMatMul NPU OP only support FP16.
           dx->mutable_data<T>(ctx.GetPlace());

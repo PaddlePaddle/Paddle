@@ -1,5 +1,5 @@
 - backward_api : matmul_grad
-  forward : matmul (const Tensor& x, const Tensor& y, bool transpose_x, bool transpose_y) -> Tensor(out)
+  forward : matmul (const Tensor& x, const Tensor& y, bool transpose_x=false, bool transpose_y=false) -> Tensor(out)
   args : (const Tensor& x, const Tensor& y, const Tensor& out_grad, bool transpose_x=false, bool transpose_y=false)
   output : Tensor(x_grad), Tensor(y_grad)
   infer_meta :

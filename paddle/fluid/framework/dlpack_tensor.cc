@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/dlpack_tensor.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 
 namespace paddle {
@@ -99,6 +100,11 @@ struct DLDeviceVisitor : public boost::static_visitor<::DLDevice> {
         platform::errors::Unimplemented("platform::MLUPlace is not supported"));
   }
 
+  inline ::DLDevice operator()(const platform::CustomPlace &place) const {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "platform::CustomPlace is not supported"));
+  }
+
   inline ::DLDevice operator()(const platform::CUDAPlace &place) const {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     ::DLDevice device;
@@ -134,7 +140,8 @@ DLPackTensor::DLPackTensor(const Tensor &tensor, LaneType lanes) {
   t_.device = paddle::platform::VisitPlace(place, internal::DLDeviceVisitor());
 
   // init dtype
-  t_.dtype = internal::GetDLDataTypeFromTypeIndex(tensor.type());
+  t_.dtype = internal::GetDLDataTypeFromTypeIndex(
+      framework::TransToProtoVarType(tensor.dtype()));
   t_.dtype.lanes = lanes;
 
   // init ndim, tensor rank

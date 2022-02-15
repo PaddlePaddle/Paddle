@@ -105,18 +105,18 @@ void BincountCUDAInner(const framework::ExecutionContext& context) {
 
   if (!has_weights) {
     int64_t* output_data = output->mutable_data<int64_t>(context.GetPlace());
-    math::SetConstant<DeviceContext, int64_t>()(
+    pten::funcs::SetConstant<DeviceContext, int64_t>()(
         context.template device_context<DeviceContext>(), output, 0L);
 
     KernelBincount<T, InputT, int64_t><<<GET_BLOCKS(input_numel),
                                          PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
         input_data, input_numel, has_weights, weights_data, output_data);
   } else {
-    const auto& weights_type = weights->type();
+    const auto& weights_type = framework::TransToProtoVarType(weights->dtype());
 
     if (weights_type == framework::proto::VarType::FP32) {
       float* output_data = output->mutable_data<float>(context.GetPlace());
-      math::SetConstant<DeviceContext, float>()(
+      pten::funcs::SetConstant<DeviceContext, float>()(
           context.template device_context<DeviceContext>(), output,
           static_cast<float>(0));
 
@@ -125,7 +125,7 @@ void BincountCUDAInner(const framework::ExecutionContext& context) {
           input_data, input_numel, has_weights, weights_data, output_data);
     } else {
       double* output_data = output->mutable_data<double>(context.GetPlace());
-      math::SetConstant<DeviceContext, double>()(
+      pten::funcs::SetConstant<DeviceContext, double>()(
           context.template device_context<DeviceContext>(), output,
           static_cast<double>(0));
 
@@ -141,7 +141,7 @@ class BincountCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const Tensor* input = context.Input<framework::Tensor>("X");
-    const auto& input_type = input->type();
+    const auto& input_type = framework::TransToProtoVarType(input->dtype());
 
     if (input_type == framework::proto::VarType::INT32) {
       BincountCUDAInner<DeviceContext, T, int>(context);

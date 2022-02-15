@@ -17,16 +17,68 @@
 #include <vector>
 
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace imperative = paddle::imperative;
 namespace platform = paddle::platform;
 namespace framework = paddle::framework;
 namespace paddle {
 namespace imperative {
+
+TEST(Test__SelectedRowsMerge_Test, SelectedRowsMerge) {
+  pten::CPUPlace cpu;
+
+  std::vector<int64_t> rows{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+  int64_t table_size = 10;
+  int64_t embedding_width = 10;
+
+  auto sr1 = std::make_shared<pten::SelectedRows>(rows, table_size);
+  auto sr2 = std::make_shared<pten::SelectedRows>(rows, table_size);
+
+  // initialize a sparse table 1
+  sr1->mutable_value()->Resize(
+      pten::framework::make_ddim({table_size, embedding_width}));
+  auto* data_sr1 = sr1->mutable_value()->mutable_data<float>(cpu);
+  for (int64_t i = 0; i < table_size; ++i) {
+    for (int64_t j = 0; j < embedding_width; ++j) {
+      data_sr1[i * embedding_width + j] = static_cast<float>(i);
+    }
+  }
+
+  // initialize a sparse table 2
+  sr2->mutable_value()->Resize(
+      pten::framework::make_ddim({table_size, embedding_width}));
+  auto* data_sr2 = sr2->mutable_value()->mutable_data<float>(cpu);
+  for (int64_t i = 0; i < table_size; ++i) {
+    for (int64_t j = 0; j < embedding_width; ++j) {
+      data_sr2[i * embedding_width + j] = static_cast<float>(i);
+    }
+  }
+  // new 2 pten::Tensor
+  paddle::experimental::Tensor t1(sr1);
+  paddle::experimental::Tensor t2(sr2);
+
+  // call SelectedRowsMerge
+  auto new_buffer =
+      paddle::imperative::SelectedRowsMerge<paddle::experimental::Tensor>(t1,
+                                                                          t2);
+  auto* new_buffer_tensor =
+      static_cast<pten::SelectedRows*>(new_buffer->impl().get());
+  auto* new_buffer_data_sr1 =
+      new_buffer_tensor->mutable_value()->mutable_data<float>(cpu);
+
+  // verify the MergeAdd result
+  for (int64_t i = 0; i < table_size; ++i) {
+    for (int64_t j = 0; j < embedding_width; ++j) {
+      EXPECT_EQ(new_buffer_data_sr1[i * embedding_width + j],
+                (static_cast<float>(i) + static_cast<float>(i)));
+    }
+  }
+}
 
 template <typename Place1, typename Place2, typename T>
 int TensorddTest(Place1 place1, Place2 place2, T t1, T t2) {
@@ -224,8 +276,10 @@ static bool IsEqualVar(const framework::Variable& var1,
 
   auto* t1_p = t1.data();
   auto* t2_p = t2.data();
-  return std::memcmp(t1_p, t2_p,
-                     t1.numel() * framework::SizeOfType(t1.type())) == 0;
+  return std::memcmp(
+             t1_p, t2_p,
+             t1.numel() * framework::SizeOfType(
+                              framework::TransToProtoVarType(t1.dtype()))) == 0;
 }
 
 template <typename T>

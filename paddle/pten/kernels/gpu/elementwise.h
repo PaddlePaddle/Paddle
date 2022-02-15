@@ -574,9 +574,8 @@ void LaunchElementwiseCudaKernel(const KPDevice &ctx,
     dims_size.emplace_back(in->dims().size());
   }
   if (no_broadcast_flag) {
-    pten::funcs::
-        LaunchSameDimsElementwiseCudaKernel<ET, InT, OutT, Functor, NumOuts>(
-            ctx, ins, outs, func);
+    pten::funcs::LaunchSameDimsElementwiseCudaKernel<OutT, Functor, NumOuts>(
+        ctx, ins, outs, func);
   } else {
     axis = axis == -1
                ? *std::max_element(dims_size.begin(), dims_size.end()) -

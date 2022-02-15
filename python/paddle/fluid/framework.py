@@ -2467,7 +2467,7 @@ class Operator(object):
         'c_comm_init', 'c_sync_calc_stream', 'c_sync_comm_stream',
         'queue_generator', 'dequeue', 'enqueue', 'heter_listen_and_serv',
         'c_wait_comm', 'c_wait_compute', 'c_gen_hccl_id', 'c_comm_init_hccl',
-        'copy_cross_scope'
+        'copy_cross_scope', 'c_gen_cncl_id'
     }
 
     def __init__(self,
@@ -6918,7 +6918,7 @@ def _get_paddle_place(place):
         return place
     if isinstance(place, (core.Place, core.XPUPlace, core.CPUPlace,
                           core.CUDAPinnedPlace, core.CUDAPlace, core.NPUPlace,
-                          core.IPUPlace, core.MLUPlace)):
+                          core.IPUPlace, core.MLUPlace, core.CustomPlace)):
         return place
 
     if not isinstance(place, str):
