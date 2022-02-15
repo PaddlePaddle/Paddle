@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,6 +13,17 @@
 // limitations under the License.
 
 #pragma once
-#include <algorithm>
-#include <vector>
-#include "paddle/fluid/framework/op_registry.h"
+
+#include "paddle/pten/core/dense_tensor.h"
+
+namespace pten {
+
+template <typename T, typename Context>
+void DiagonalGradKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& out_grad,
+                        int offset,
+                        int axis1,
+                        int axis2,
+                        DenseTensor* in_grad);
+}  // namespace pten
