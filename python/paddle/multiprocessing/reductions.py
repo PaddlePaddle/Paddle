@@ -84,15 +84,6 @@ def cuda_from_cache(key):
     return lodtensor
 
 
-#TODO: support cuda ipc event
-def rebuild_event():
-    pass
-
-
-def reduce_event():
-    pass
-
-
 def rebuild_tensor(cls, lodtensor, metadata):
     if cls == paddle.fluid.framework.ParamBase:
         tensor = paddle.fluid.framework.ParamBase(lodtensor.shape(),
@@ -102,7 +93,10 @@ def rebuild_tensor(cls, lodtensor, metadata):
     else:
         size, stop_gradient = metadata
         tensor = paddle.fluid.core.VarBase()
-        tensor.value().get_tensor()._share_data_with(lodtensor)
+        if lodtensor._is_initialized():
+            tensor.value().get_tensor()._share_data_with(lodtensor)
+        else:
+            tensor = paddle.to_tensor([], dtype=lodtensor._dtype())
         tensor.stop_gradient = stop_gradient
     return tensor
 
@@ -131,6 +125,7 @@ def reduce_tensor(tensor):
 
 def rebuild_lodtensor_filename(cls, ipc_name, size, type_idx, dims, lod):
     lodtensor = cls._new_shared_filename((ipc_name, size, type_idx, dims, lod))
+    lodtensor._shared_decref()
     return lodtensor
 
 
@@ -163,15 +158,17 @@ def rebuild_lodtensor_empty(cls):
 def reduce_lodtensor(lodtensor):
     if lodtensor._place().is_cpu_place() or lodtensor._place(
     ).is_cuda_pinned_place():
+        for dim in lodtensor.shape():
+            if dim == 0:
+                # Empty tensors have nothing be mmapped.
+                return (rebuild_lodtensor_empty, (type(lodtensor), ))
+
         # Default use share filename stratege
         metadata = lodtensor._share_filename(
         )  # ipc_name, size, type_idx, dims, lod
         rebuild = rebuild_lodtensor_filename
+        lodtensor._shared_incref()
         # TODO, maintain reference for lodtensor
-        for dim in lodtensor.shape():
-            if dim == 0:
-                # Empty tensors have nothing be mmapped.
-                return (rebuild_lod_empty, (type(lodtensor), ))
         # TODO: support file_discriptor stratege
     elif lodtensor._place().is_gpu_place():
         metadata = lodtensor._share_cuda()

@@ -102,14 +102,16 @@ void AllocateMemoryMap(std::string filename, int flags, size_t size,
   }
 }
 
-std::shared_ptr<MemoryMapAllocation> AllocateMemoryMapAllocation(
-    std::string filename, int flags, size_t size) {
-  int fd = -1;
-  void *base_ptr = nullptr;
-  AllocateMemoryMap(filename, flags, size, &base_ptr, &fd);
-  return std::make_shared<MemoryMapAllocation>(base_ptr, size, filename, flags,
-                                               fd);
-}
+// Temporarily commented out for convergence rate @ZHUI
+// std::shared_ptr<MemoryMapAllocation> AllocateMemoryMapAllocation(
+//     std::string filename, int flags, size_t size) {
+//   int fd = -1;
+//   void *base_ptr = nullptr;
+//   AllocateMemoryMap(filename, flags, size, &base_ptr, &fd);
+//   return std::make_shared<MemoryMapAllocation>(base_ptr, size, filename,
+//   flags,
+//                                                fd);
+// }
 
 std::shared_ptr<RefcountedMemoryMapAllocation>
 AllocateRefcountedMemoryMapAllocation(std::string filename, int flags,
@@ -136,30 +138,34 @@ void MemoryMapAllocation::close() {
     return;
   }
   closed_ = true;
-  if (map_ptr_ == nullptr) {
-    return;
-  }
-  if (flags_ & MAPPED_KEEPFD) {
-    PADDLE_ENFORCE_NE(
-        ::close(fd_), -1,
-        platform::errors::Unavailable("could not close file descriptor ", fd_,
-                                      " :", strerror(errno), " (", errno, ")"));
-  }
+  // Temporarily commented out for convergence rate @ZHUI
+  // if (map_ptr_ == nullptr) {
+  //   return;
+  // }
+  // if (flags_ & MAPPED_KEEPFD) {
+  //   PADDLE_ENFORCE_NE(
+  //       ::close(fd_), -1,
+  //       platform::errors::Unavailable("could not close file descriptor ",
+  //       fd_,
+  //                                     " :", strerror(errno), " (", errno,
+  //                                     ")"));
+  // }
 
-  PADDLE_ENFORCE_NE(
-      munmap(map_ptr_, map_size_), -1,
-      platform::errors::Unavailable("could not unmap the shared memory file: ",
-                                    strerror(errno), " (", errno, ")"));
+  // PADDLE_ENFORCE_NE(
+  //     munmap(map_ptr_, map_size_), -1,
+  //     platform::errors::Unavailable("could not unmap the shared memory file:
+  //     ",
+  //                                   strerror(errno), " (", errno, ")"));
 
-  if (!(flags_ & (MAPPED_FROMFD | MAPPED_UNLINK))) {
-    if (flags_ & MAPPED_SHAREDMEM) {
-      PADDLE_ENFORCE_NE(
-          shm_unlink(ipc_name_.c_str()), -1,
-          platform::errors::Unavailable(
-              "could not unlink the shared memory file ", ipc_name_, " : ",
-              strerror(errno), " (", errno, ")"));
-    }
-  }
+  // if (!(flags_ & (MAPPED_FROMFD | MAPPED_UNLINK))) {
+  //   if (flags_ & MAPPED_SHAREDMEM) {
+  //     PADDLE_ENFORCE_NE(
+  //         shm_unlink(ipc_name_.c_str()), -1,
+  //         platform::errors::Unavailable(
+  //             "could not unlink the shared memory file ", ipc_name_, " : ",
+  //             strerror(errno), " (", errno, ")"));
+  //   }
+  // }
 }
 
 MemoryMapAllocation::~MemoryMapAllocation() { close(); }

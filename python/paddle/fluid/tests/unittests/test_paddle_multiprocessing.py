@@ -40,6 +40,16 @@ def send_tensor(queue, event, device, dtype):
     event.wait()
 
 
+def send_parambase(queue, event, device, dtype):
+    tensor = paddle.nn.Layer().create_parameter(
+        [5, 5],
+        dtype=dtype,
+        default_initializer=paddle.nn.initializer.Constant(value=1.0))
+    queue.put(tensor)
+    queue.put(tensor)
+    event.wait()
+
+
 class leak_checker(object):
     def __init__(self, test_case):
         self.checked_pids = [os.getpid()]
@@ -96,6 +106,13 @@ class TestMultiprocessingBase(unittest.TestCase):
             default_initializer=paddle.nn.initializer.Constant(value=0.0))
         return w
 
+    def _test_empty(self, dtype="float32"):
+        q = mp.Queue()
+        empty = paddle.to_tensor([], dtype=dtype)
+        q.put(empty)
+        out = q.get(timeout=1)
+        self.assertEqual(str(out), str(empty))
+
     def _test_sharing(self,
                       ctx=mp,
                       device='cpu',
@@ -135,7 +152,8 @@ class TestMultiprocessingBase(unittest.TestCase):
             event = ctx.Event()
 
             process = ctx.Process(
-                target=send_tensor, args=(queue, event, device, dtype))
+                target=send_parambase if param else send_tensor,
+                args=(queue, event, device, dtype))
             process.daemon = True
             lc.check_pid(process.pid)
             process.start()
@@ -152,8 +170,7 @@ class TestMultiprocessingBase(unittest.TestCase):
         with leak_checker(self) as lc:
             for _ in range(repeat):
                 test_fill()
-                if device != "gpu":
-                    test_receive()
+                test_receive()
 
 
 class TestMultiprocessingCpu(TestMultiprocessingBase):
@@ -167,6 +184,7 @@ class TestMultiprocessingCpu(TestMultiprocessingBase):
 
     def test_pass_empty(self):
         paddle.set_device("cpu")
+        self._test_empty()
 
 
 class TestMultiprocessingGpu(TestMultiprocessingBase):

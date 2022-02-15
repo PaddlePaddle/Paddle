@@ -1428,6 +1428,30 @@ PYBIND11_MODULE(core_noavx, m) {
                  tensor_from_shared = paddle.to_tensor(paddle.fluid.core.LoDTensor._new_shared_filename(metainfo))
 
         )DOC")
+      .def("_shared_incref",
+           [](framework::Tensor &self) {
+             auto *mmap_allocation = dynamic_cast<
+                 memory::allocation::RefcountedMemoryMapAllocation *>(
+                 self.Holder().get());
+             if (mmap_allocation) {
+               mmap_allocation->incref();
+             }
+           },
+           R"DOC(
+            Increase reference count of share_filename tensor.
+      )DOC")
+      .def("_shared_decref",
+           [](framework::Tensor &self) {
+             auto *mmap_allocation = dynamic_cast<
+                 memory::allocation::RefcountedMemoryMapAllocation *>(
+                 self.Holder().get());
+             if (mmap_allocation) {
+               mmap_allocation->decref();
+             }
+           },
+           R"DOC(
+            Decrease reference count of share_filename tensor.
+      )DOC")
       .def(py::pickle(
           [](const framework::Tensor &t) {  // __getstate__
             auto holder = t.Holder();
