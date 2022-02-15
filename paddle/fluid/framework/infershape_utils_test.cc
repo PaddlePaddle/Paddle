@@ -103,9 +103,6 @@ REGISTER_OPERATOR(infer_shape_utils_test,
                   paddle::framework::InferShapeUtilsTestOp,
                   paddle::framework::InferShapeUtilsTestOpMaker,
                   InferShapeUtilsTestInferShapeFunctor);
-PT_REGISTER_ARG_MAPPING_FN(
-    infer_shape_utils_test,
-    paddle::framework::InferShapeUtilsTestOpArgumentMapping);
 
 TEST(InferShapeUtilsTest, ALL) {
   paddle::framework::ProgramDesc prog;
@@ -157,6 +154,10 @@ TEST(InferShapeUtilsTest, ALL) {
   std::vector<std::string> vec_str(2, "test_vec");
   paddle::framework::Attribute vec_str_attr = vec_str;
   op->SetAttr("vec_str", vec_str_attr);
+
+  pten::OpUtilsMap::Instance().InsertArgumentMappingFn(
+      "infer_shape_utils_test",
+      paddle::framework::InferShapeUtilsTestOpArgumentMapping);
 
   op->InferShape(block_desc);
 }
