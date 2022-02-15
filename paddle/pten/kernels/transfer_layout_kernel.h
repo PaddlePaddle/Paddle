@@ -30,12 +30,8 @@ template <typename Context>
 DenseTensor TransferLayout(const Context& dev_ctx,
                            const DenseTensor& x,
                            DataLayout dst_layout) {
-  pten::DenseTensor dense_out(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(
-          dev_ctx.GetPlace()),
-      {x.dtype(), x.dims(), dst_layout});
-  MetaTensor meta_out(&dense_out);
-  TransferLayoutInferMeta(x, dst_layout, &meta_out);
+  pten::DenseTensor dense_out =
+      pten::Empty(dev_ctx, {x.dtype(), x.dims(), dst_layout});
   TransferLayoutKernel<Context>(dev_ctx, x, dst_layout, &dense_out);
   return dense_out;
 }

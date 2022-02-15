@@ -76,13 +76,13 @@ class PowGradNPUKernel : public framework::OpKernel<T> {
     // Step 2: Construct a broadcast factor, which has the same shape with x.
 
     // 2.1 Get a factor tensor with shape [1].
-    Tensor factor_tensor(framework::proto::VarType::FP32);
+    Tensor factor_tensor(experimental::DataType::FLOAT32);
     factor_tensor.mutable_data<float>({1}, place);
     FillNpuTensorWithConstant<float>(&factor_tensor, factor);
 
     // 2.2 Get the factor which has the shape with x and the same value with
     // factor.
-    Tensor factor_bc_tensor(framework::proto::VarType::FP32);
+    Tensor factor_bc_tensor(experimental::DataType::FLOAT32);
     factor_bc_tensor.mutable_data<float>(x_dims, place);
     const auto& runner_bc =
         NpuOpRunner("FillD", {factor_tensor}, {factor_bc_tensor},
@@ -659,14 +659,15 @@ class HardSwishGradNPUKernel : public framework::OpKernel<T> {
                     {{"dims", framework::vectorize(x->dims())}});
     runner_fill.Run(stream);
 
-    Tensor tmp_bool(framework::proto::VarType::BOOL);
+    Tensor tmp_bool(experimental::DataType::BOOL);
     tmp_bool.mutable_data<bool>(x->dims(), place);
     const auto& runner_less =
         NpuOpRunner("Less", {add_offset_val, tensor_threshold}, {tmp_bool});
     runner_less.Run(stream);
     Tensor tmp4(x->type());
     tmp4.mutable_data<T>(x->dims(), place);
-    auto dst_dtype = ConvertToNpuDtype(x->type());
+    auto dst_dtype =
+        ConvertToNpuDtype(framework::TransToProtoVarType(x->type()));
     const auto& runner_cast =
         NpuOpRunner("Cast", {tmp_bool}, {tmp4},
                     {{"dst_type", static_cast<int>(dst_dtype)}});
