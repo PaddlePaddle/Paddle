@@ -128,7 +128,7 @@ static framework::Tensor FoldHeadAndLastDims(const DeviceContext &context,
   output.Resize({in_dims[1], in_dims[0], in_dims[2]});
   output.mutable_data<T>(context.GetPlace());
   std::vector<int> axis = {1, 0, 2};
-  math::Transpose<DeviceContext, T, 3> trans;
+  pten::funcs::Transpose<DeviceContext, T, 3> trans;
   trans(context, input, &output, axis);
   output.Resize({in_dims[1], in_dims[0] * in_dims[2]});
 
@@ -765,8 +765,9 @@ class MatMulOp : public framework::OperatorWithKernel {
       const framework::OpKernelType &expected_kernel_type) const {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(tensor.type(), tensor.place(),
-                                     tensor.layout());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+          tensor.layout());
     } else {
       return framework::OpKernelType(expected_kernel_type.data_type_,
                                      tensor.place(), tensor.layout());

@@ -14,16 +14,17 @@ limitations under the License. */
 
 #include <sstream>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/pten_utils.h"
-#include "paddle/pten/core/compat/convert_utils.h"
-#include "paddle/pten/core/compat/op_utils.h"
-#include "paddle/pten/core/kernel_factory.h"
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/pten/core/compat/convert_utils.h"
+#include "paddle/pten/core/compat/op_utils.h"
+#include "paddle/pten/core/kernel_factory.h"
 
 namespace paddle {
 namespace framework {
@@ -59,9 +60,9 @@ class KernelArgsNameMakerByOpProto : public KernelArgsNameMaker {
 OpKernelType TransPtenKernelKeyToOpKernelType(
     const pten::KernelKey& kernel_key) {
   proto::VarType::Type data_type =
-      pten::TransToProtoVarType(kernel_key.dtype());
+      paddle::framework::TransToProtoVarType(kernel_key.dtype());
   // no need to set current device id here
-  platform::Place place = pten::TransToFluidPlace(kernel_key.backend(), false);
+  platform::Place place = pten::TransToPtenPlace(kernel_key.backend(), false);
   DataLayout data_layout = kernel_key.layout();
   LibraryType library_type = LibraryType::kPlain;
   if (kernel_key.backend() == pten::Backend::MKLDNN) {
@@ -87,7 +88,7 @@ pten::KernelKey TransOpKernelTypeToPtenKernelKey(
   }
   paddle::experimental::DataLayout layout = kernel_type.data_layout_;
   paddle::experimental::DataType dtype =
-      pten::TransToPtenDataType(kernel_type.data_type_);
+      paddle::framework::TransToPtenDataType(kernel_type.data_type_);
   return pten::KernelKey(backend, layout, dtype);
 }
 

@@ -17,7 +17,7 @@
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -31,7 +31,7 @@ class PoissonGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     dx->mutable_data<T>(ctx.GetPlace());
-    math::SetConstant<DeviceContext, T> functor;
+    pten::funcs::SetConstant<DeviceContext, T> functor;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     functor(dev_ctx, dx, static_cast<T>(0));
   }

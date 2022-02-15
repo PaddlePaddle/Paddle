@@ -14,7 +14,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -52,7 +52,7 @@ class PixelShuffleOpKernel : public framework::OpKernel<T> {
     } else {
       o.Resize({in_dims[0], in_dims[1], factor, in_dims[2], factor, o_dims[3]});
     }
-    math::Transpose<DeviceContext, T, 6> trans;
+    pten::funcs::Transpose<DeviceContext, T, 6> trans;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     trans(dev_ctx, t, &o, axis);
     out->Resize(o_dims);
@@ -95,7 +95,7 @@ class PixelShuffleGradOpKernel : public framework::OpKernel<T> {
       o.Resize(
           {do_dims[0], dx_dims[1], dx_dims[2], do_dims[3], factor, factor});
     }
-    math::Transpose<DeviceContext, T, 6> trans;
+    pten::funcs::Transpose<DeviceContext, T, 6> trans;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     trans(dev_ctx, t, &o, axis);
     dx->Resize(dx_dims);

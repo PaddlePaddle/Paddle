@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/pten/kernels/trace_kernel.h"
+
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
+#include "paddle/pten/kernels/funcs/diagonal.h"
 #include "paddle/pten/kernels/gpu/reduce.h"
-#include "paddle/pten/kernels/impl/trace_kernel_impl.h"
-#include "paddle/pten/kernels/trace_kernel.h"
 
 namespace pten {
 
@@ -27,8 +28,8 @@ void TraceKernel(const Context& ctx,
                  int axis1,
                  int axis2,
                  DenseTensor* out) {
-  T* out_data = out->mutable_data<T>(ctx.GetPlace());
-  auto diag = Diagonal<T, Context>(ctx, &x, offset, axis1, axis2);
+  T* out_data = ctx.template Alloc<T>(out);
+  auto diag = funcs::Diagonal<T, Context>(ctx, &x, offset, axis1, axis2);
   if (diag.numel() > 0) {
     auto stream = ctx.stream();
     std::vector<int> reduce_dims;
@@ -36,7 +37,7 @@ void TraceKernel(const Context& ctx,
     kernels::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
         ctx, diag, out, kps::IdentityFunctor<T>(), reduce_dims, stream);
   } else {
-    paddle::operators::math::SetConstant<Context, T> functor;
+    pten::funcs::SetConstant<Context, T> functor;
     functor(ctx, out, static_cast<T>(0));
   }
 }
@@ -51,6 +52,6 @@ PT_REGISTER_KERNEL(trace,
                    double,
                    int,
                    int64_t,
-                   paddle::platform::float16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::float16,
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}

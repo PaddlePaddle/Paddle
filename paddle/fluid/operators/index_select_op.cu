@@ -84,7 +84,7 @@ class IndexSelectCUDAKernel : public framework::OpKernel<T> {
     int64_t size = output_dim[dim];
     int64_t delta = input_dim[dim] - size;
 
-    const auto& index_type = index->type();
+    const auto& index_type = framework::TransToProtoVarType(index->dtype());
     bool index_type_match = index_type == framework::proto::VarType::INT64 ||
                             index_type == framework::proto::VarType::INT32;
     PADDLE_ENFORCE_EQ(index_type_match, true,
@@ -142,7 +142,7 @@ class IndexSelectGradCUDAKernel : public framework::OpKernel<T> {
     int64_t size = output_dim[dim];
     int64_t delta = input_dim[dim] - size;
 
-    const auto& index_type = index->type();
+    const auto& index_type = framework::TransToProtoVarType(index->dtype());
     bool index_type_match = index_type == framework::proto::VarType::INT64 ||
                             index_type == framework::proto::VarType::INT32;
     PADDLE_ENFORCE_EQ(index_type_match, true,

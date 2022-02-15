@@ -14,7 +14,7 @@
 
 #pragma once
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -41,7 +41,7 @@ struct OneHotV2OpFunctor {
     auto* p_in_data = in_->data<InT>();
     auto numel = in_->numel();
     auto* p_out_data = out_->mutable_data<OutT>(ctx_.GetPlace());
-    math::set_constant(ctx_, out_, 0.0);
+    pten::funcs::set_constant(ctx_, out_, 0.0);
 
     if (allow_out_of_range_) {
       for (int i = 0; i < numel; ++i) {
