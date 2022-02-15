@@ -15,12 +15,10 @@
 from collections import OrderedDict
 from .container import Container
 
+from .status import Status
+
 import random
-
-
-class Status(object):
-    def __init__(self):
-        pass
+import time
 
 
 class PodSepc(object):
@@ -38,6 +36,7 @@ class PodSepc(object):
         self.rank = -1
         self.replicas = 0  # number of containers
         self.init_timeout = 120  # 2 min timeout for each init container
+        self.restart = 0
 
 
 class Pod(PodSepc):
@@ -57,7 +56,7 @@ class Pod(PodSepc):
         for c in self.containers:
             c.start()
 
-    def stop(self, sigint):
+    def stop(self, sigint=0):
         for c in self.containers:
             force = True if sigint == 9 else False
             c.terminate(force)
@@ -67,7 +66,42 @@ class Pod(PodSepc):
             c.wait(None)
 
     def status(self):
-        return None
+        if self.is_failed():
+            return Status.FAILED
+
+        if self.is_completed():
+            return Status.COMPLETED
+
+        return Status.UNKNOWN
+
+    def is_failed(self):
+        for c in self.containers:
+            if c.status() == Status.FAILED:
+                return True
+        return False
+
+    def is_completed(self):
+        for c in self.containers:
+            if c.status() != Status.COMPLETED:
+                return False
+        return True
 
     def logs(self, idx=0):
         self.containers[idx].logs()
+
+    def watch(self,
+              all_list=[Status.COMPLETED],
+              any_list=[Status.FAILED],
+              interval=1,
+              timeout=-1):
+        st = time.time()
+        while timeout > 0 and st + timeout > time.time():
+            for c in self.containers:
+                if c.status() in any_list:
+                    return c.status()
+
+            s = set([c.status() for c in self.containers])
+            if len(s) == 1 and s[0] in all_list:
+                return s[0]
+
+            time.sleep(interval)

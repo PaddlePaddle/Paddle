@@ -27,27 +27,26 @@ class CollectiveController(Controller):
         else:
             return False
 
-    def build_job(self):
-        super().build_job()
-
-    def build_pod(self):
+    def init_pod(self):
         self.pod.replicas = self.pod_replicas()
-        self.pod.rank = self.ctx.args.rank
+
+        self.pod.rank = self.ctx.args.rank if self.pod.rank < 0 else self.pod.rank
 
         port = self.ctx.node.get_free_port()
-        ip = self.ctx.node.ip
 
         data = json.dumps({
             'name': self.pod.name,
             'rank': self.pod.rank,
             'replicas': self.pod.replicas,
             'dtype': self.ctx.node.device.dtype,
-            'candidate': '{}:{}'.format(ip, port)
+            'candidate': '{}:{}'.format(self.ctx.node.ip, port)
         })
 
         peer_list, rank = self.master.sync_peers(
             '/{}/info'.format(self.job.id), self.pod.name, data,
             self.job.replicas, self.pod.rank)
+
+        print(peer_list)
 
         peer_list = [json.loads(i) for i in peer_list]
 
@@ -74,10 +73,10 @@ class CollectiveController(Controller):
             self.add_container(envs=e, log_file=log_file)
 
     '''
-    compatible version of build_pod
+    compatible version of init_pod
     '''
 
-    def _build_pod(self):
+    def _init_pod(self):
 
         self.pod.replicas = self.pod_replicas()
 
@@ -103,5 +102,39 @@ class CollectiveController(Controller):
                 "PADDLE_TRAINERS_NUM": "%d" % len(self.job.endpoints),
                 "PADDLE_RANK_IN_NODE": str(i),
             }
-            c = self.build_container(envs=e)
+            c = self.init_container(envs=e)
             self.add_container(c)
+
+
+class CollectiveElasticController(CollectiveController):
+    @classmethod
+    def enable(cls, ctx):
+        if ctx:
+            ctx.logger.debug("CollectiveController enabled")
+            return True
+        else:
+            return False
+
+    def init_pod(self):
+        pass
+
+    def run(self):
+
+        while self.pod.restart < self.ctx.args.max_restart + 1:
+            self.init_job()
+            self.init_pod()
+
+            self.ctx.logger.debug("Run pod {}\n {}".format(
+                self.pod, self.pod.containers[0]))
+            assert len(self.pod.containers) > 0, "No container in the pod"
+
+            self.pod.deploy()
+
+            self.pod.watch()
+
+            self.pod.stop()
+
+            self.master.clean()
+
+            self.ctx.logger.debug("Restart pod {}".format(self.pod.name))
+            self.pod.restart += 1

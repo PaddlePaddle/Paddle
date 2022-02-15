@@ -15,20 +15,13 @@
 from collections import OrderedDict
 from paddle.distributed.run.utils.process_context import ProcessContext
 
+from .status import Status
+
 import os, copy, sys
 import time
 '''
 A container can be run by process or just a callable function
 '''
-
-
-class ContainerStatus:
-    UNINIT = "uninit"
-    RUNNING = "running"
-    FAILED = "failed"
-    TERMINATING = "terminating"
-    UNKNOWN = "unknown"
-    COMPLETED = "completed"
 
 
 class Container(object):
@@ -90,6 +83,7 @@ class Container(object):
     def terminate(self, force=False):
         if self._log_handler:
             self._log_handler.close()
+            self._log_handler = None
 
         if self.proc and self.proc.alive():
             return self.proc.terminate(force)
@@ -99,16 +93,17 @@ class Container(object):
 
     def status(self):
         if not self.proc:
-            return ContainerStatus.UNINIT
+            return Status.UNINIT
         if self.proc.alive():
-            return ContainerStatus.RUNNING
+            return Status.RUNNING
         elif self.proc.exit_code() == 0:
-            return ContainerStatus.COMPLETED
+            return Status.COMPLETED
         else:
-            return ContainerStatus.UNKNOWN
+            return Status.FAILED
 
     def __str__(self):
-        return 'Container {} {} {}'.format(self.env, self.entrypoint, self.rank)
+        return 'Container env {} cmd {} rank {}'.format(
+            self.env, self.entrypoint, self.rank)
 
     def logs(self, fn=None, offset=-1):
         if not self._log_handler:

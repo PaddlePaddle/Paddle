@@ -37,16 +37,29 @@ class ControllerBase(object):
         signal.signal(signal.SIGINT, self.signal_handler)
 
         self.ctx = ctx
-
         self.master = Master.factory(self.ctx)
 
         self.job = Job()
         self.pod = Pod()
 
-        self.build_job()
-        self.build_pod()
-
         self.join_server = None
+
+    def run(self):
+        self.init_job()
+        self.init_pod()
+        self.ctx.logger.debug("Run pod {}\n {}".format(self.pod,
+                                                       self.pod.containers[0]))
+        assert len(self.pod.containers) > 0, "No container in the pod"
+
+        self.pod.deploy()
+
+    def stop(self, sigint=None):
+        self.master.stop()
+        self.pod.stop(sigint)
+
+    def finalize(self):
+        self.pod.join()
+        self.master.stop()
 
     def signal_handler(self, sigint, frame):
         self.ctx.logger.info("Termiating with signal {}".format(sigint))
@@ -56,30 +69,6 @@ class ControllerBase(object):
         time.sleep(1)
         sys.exit(sigint)
 
-    def tach(self):
-        '''
-        for i in range(50):
-            print([i]*(i+1))
-            self.pod.logs()
-            time.sleep(1)
-        '''
-
-        self.pod.join()
-        self.master.stop()
-
-    def run(self):
-        self.ctx.logger.debug("Run pod {}".format(self.pod))
-
-        if not self.pod.containers:
-            raise "No containers in the pod"
-
-        self.ctx.logger.debug(self.pod.containers[0])
-        self.pod.deploy()
-
-    def stop(self, sigint=None):
-        self.master.stop()
-        self.pod.stop(sigint)
-
 
 '''
 Controller API for customization
@@ -87,11 +76,11 @@ Controller API for customization
 
 
 class Controller(ControllerBase):
-    def build_job(self):
+    def init_job(self):
         self.job.replicas = self.ctx.args.np or 1
         self.job.id = self.ctx.args.id
 
-    def build_pod(self):
+    def init_pod(self):
         raise NotImplementedError
 
     def _get_entrypoint(self):
@@ -99,17 +88,23 @@ class Controller(ControllerBase):
         entrypoint.extend(self.ctx.args.training_script_args)
         return entrypoint
 
-    def build_container(self,
-                        entrypoint=None,
-                        envs={},
-                        use_ctx_env=True,
-                        out=None,
-                        err=None):
+    def _get_out_err_file(self, out=None, err=None):
+        if out and self.ctx.args.log_dir != "":
+            out = os.path.join(self.ctx.args.log_dir, out)
+        if err and self.ctx.args.log_dir != "":
+            err = os.path.join(self.ctx.args.log_dir, err)
+        return out, (err or out)
+
+    def new_container(self,
+                      entrypoint=None,
+                      envs={},
+                      use_ctx_env=True,
+                      out=None,
+                      err=None):
         c = Container()
         c.entrypoint = entrypoint or self._get_entrypoint()
         c.env = self.ctx.get_envs() if use_ctx_env else {}
-        c.out = os.path.join(self.ctx.args.log_dir, out) if out else None
-        c.err = os.path.join(self.ctx.args.log_dir, err) if err else c.out
+        c.out, c.err = self._get_out_err_file(out, err)
         c.update_env(envs)
         return c
 
@@ -120,7 +115,7 @@ class Controller(ControllerBase):
                       is_init=False,
                       log_file=None):
         if not container:
-            container = self.build_container(
+            container = self.new_container(
                 entrypoint=entrypoint, envs=envs, out=log_file, err=log_file)
 
         if is_init:
@@ -128,16 +123,27 @@ class Controller(ControllerBase):
         else:
             self.pod.containers.append(container)
 
+    '''
+    how many process/container should be run in pod
+    '''
+
     def pod_replicas(self):
         if self.ctx.args.nproc_per_node:
             return int(self.ctx.args.nproc_per_node)
         else:
             return self.ctx.node.device.count
 
+    '''
+    save_log append *info* to the log file of pod.name
+    '''
+
     def save_log(self, info):
+        if not self.ctx.args.log_dir:
+            return
+
         f = os.path.join(self.ctx.args.log_dir, '{}.log'.format(self.pod.name))
         try:
-            with open(f, 'a') as fd:
+            with open(f, 'a+') as fd:
                 fd.write(str(info))
         except Exception as e:
             self.ctx.logger.error("save log failed because {}".format(e))

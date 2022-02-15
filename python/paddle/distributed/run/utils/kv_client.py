@@ -28,6 +28,8 @@ class KVClient(object):
             r = requests.post(u, data=value, timeout=3)
             if r.status_code == 200:
                 return True
+            else:
+                return False
         except:
             return False
 
@@ -52,6 +54,18 @@ class KVClient(object):
         except:
             return ""
 
+    def delete(self, key):
+        key = key if key.startswith('/') else "/{}".format(key)
+        u = "{}{}".format(self.endpoint, key)
+        try:
+            r = requests.delete(u, timeout=3)
+            if r.status_code == 200:
+                return True
+            else:
+                return False
+        except:
+            return False
+
     def wait_server_ready(self, timeout=3):
         end = time.time() + timeout
         while time.time() < end:
@@ -72,5 +86,7 @@ if __name__ == '__main__':
     cli.put("key", "value")
     print(cli.get("key"))
     assert cli.get("key") == "value"
+    cli.delete("key")
+    print(cli.get("/key"))
     print(cli.get("/healthy"))
     assert cli.get("/healthy") == "ok"

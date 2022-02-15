@@ -34,6 +34,8 @@ class Master(object):
         self.initialized = False
         self.endpoint = None
 
+        self.gc = []
+
     def stop(self):
         raise NotImplementedError
 
@@ -110,7 +112,9 @@ class HTTPMaster(Master):
         assert self.client.wait_server_ready(timeout=600), 'server is not ready'
 
         ky = 'aaaaaa' if rank < 0 and self.role == Master.MAIN else key
-        assert self.client.put("{}/{}/{}".format(prefix, ky, rank), value)
+        k = "{}/{}/{}".format(prefix, ky, rank)
+        assert self.client.put(k, value)
+        self.gc.append(k)
 
         while True:
             rjson = self.client.get_prefix(prefix)
@@ -129,6 +133,10 @@ class HTTPMaster(Master):
                     return ret, rank
             else:
                 time.sleep(0.5)
+
+    def clean(self):
+        for i in self.gc:
+            self.client.delete(i)
 
     def broadcast(self, key, value=None):
         if value:

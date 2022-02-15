@@ -47,6 +47,14 @@ class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         except:
             self.output(500)
 
+    def do_DELETE(self):
+        with self.server.kv_lock:
+            if self.path in self.server.kv:
+                del self.server.kv[self.path]
+                self.output(200)
+            else:
+                self.output(404)
+
     def output(self, code, value=''):
         self.send_response(code)
         self.send_header("Content-Length", len(value))

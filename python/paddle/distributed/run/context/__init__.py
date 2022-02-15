@@ -60,6 +60,12 @@ class Context(object):
             "--log", type=str, default="INFO", help="Log level. Default INFO")
 
         base_group.add_argument(
+            "--max_restart",
+            type=int,
+            default=0,
+            help="How many times can restart. Default 0")
+
+        base_group.add_argument(
             "--nproc_per_node",
             type=int,
             default=None,

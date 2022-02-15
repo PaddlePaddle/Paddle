@@ -12,17 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .context import Context
-from . import controllers
 
-# initialize the context to run
-ctx = Context()
-
-# initialize the selected controller
-c = controllers.init(ctx)
-
-# run the pods
-c.run()
-
-# manager or just wait pod
-c.finalize()
+class Status(object):
+    UNINIT = "uninit"
+    RUNNING = "running"
+    FAILED = "failed"
+    TERMINATING = "terminating"
+    UNKNOWN = "unknown"
+    COMPLETED = "completed"
