@@ -145,14 +145,13 @@ class TestBilinearInterpMKLDNNOp(OpTest):
         self.check_output(check_dygraph=False)
 
 
-# TODO fix NHWC kernel and re-enable this test
-# class TestBilinearInterpOpMKLDNNNHWC(TestBilinearInterpMKLDNNOp):
-#     def init_test_case(self):
-#         self.input_shape = [3, 2, 32, 16]
-#         self.out_h = 27
-#         self.out_w = 49
-#         self.scale = [2.0, 3.0]
-#         self.data_layout = 'NHWC'
+class TestBilinearInterpOpMKLDNNNHWC(TestBilinearInterpMKLDNNOp):
+    def init_test_case(self):
+        self.input_shape = [3, 2, 32, 16]
+        self.out_h = 27
+        self.out_w = 49
+        self.scale = [2.0, 3.0]
+        self.data_layout = 'NHWC'
 
 
 class TestBilinearNeighborInterpMKLDNNCase2(TestBilinearInterpMKLDNNOp):

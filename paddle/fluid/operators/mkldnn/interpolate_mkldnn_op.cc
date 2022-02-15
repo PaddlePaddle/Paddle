@@ -34,15 +34,24 @@ class InterpolateMKLDNNHandler
  public:
   InterpolateMKLDNNHandler(const dnnl::algorithm algo,
                            const dnnl::engine engine, platform::Place cpu_place,
-                           const Tensor* x, Tensor* z)
+                           const Tensor* x, Tensor* z, const bool is_nchw)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::resampling_forward>(
             engine, cpu_place) {
-    const auto src_x_tz = framework::vectorize(x->dims());
-    const auto dst_tz = framework::vectorize(z->dims());
-    const auto src_md = dnnl::memory::desc(
-        src_x_tz, platform::MKLDNNGetDataType<T>(), x->format());
-    const auto dst_md = memory::desc(dst_tz, platform::MKLDNNGetDataType<T>(),
-                                     MKLDNNMemoryFormat::any);
+    auto src_tz = framework::vectorize(x->dims());
+    auto dst_tz = framework::vectorize(z->dims());
+
+    auto src_md = dnnl::memory::desc(src_tz, platform::MKLDNNGetDataType<T>(),
+                                     x->format());
+    auto dst_md = memory::desc(dst_tz, platform::MKLDNNGetDataType<T>(),
+                               MKLDNNMemoryFormat::any);
+
+    if (!is_nchw) {
+      src_md =
+          src_md.permute_axes(platform::GetNHWCToNCHWPermute(x->dims().size()));
+      dst_md =
+          dst_md.permute_axes(platform::GetNHWCToNCHWPermute(x->dims().size()));
+    }
+
     this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_inference,
                                             algo, src_md, dst_md);
   }
@@ -50,15 +59,13 @@ class InterpolateMKLDNNHandler
 
 template <typename T = float>
 class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
-  std::vector<int> ComputeOutputShape(
-      const framework::ExecutionContext& ctx) const {
+  std::vector<int> ComputeOutputShape(const framework::ExecutionContext& ctx,
+                                      const bool is_nchw) const {
     const auto* x = ctx.Input<Tensor>("X");
     auto in_dims = x->dims();
-    // TODO FIXME add NHWC support
-    const bool is_channel_last = false;  // In mkldnn kernel, always use NCHW
 
     framework::DDim in_dhw_dims;
-    if (is_channel_last) {  // NDHWC, NHWC, NWC
+    if (!is_nchw) {  // NDHWC, NHWC, NWC
       in_dhw_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
     } else {  // NCDHW, NCHW, NCW
       in_dhw_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
@@ -127,7 +134,7 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
                              "should be greater than 0."));
 
     out_dims.insert(out_dims.begin(), in_dims[0]);
-    if (is_channel_last) {
+    if (!is_nchw) {
       out_dims.push_back(in_dims[in_dims.size() - 1]);
     } else {
       out_dims.insert(out_dims.begin() + 1, in_dims[1]);
@@ -144,17 +151,21 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
     const auto* x = ctx.Input<Tensor>("X");
     auto* z = ctx.Output<Tensor>("Out");
 
-    auto interp_method = ctx.Attr<std::string>("interp_method");
-    dnnl::algorithm algo = (interp_method == "nearest")
-                               ? dnnl::algorithm::resampling_nearest
-                               : dnnl::algorithm::resampling_linear;
+    const auto& interp_method = ctx.Attr<std::string>("interp_method");
+    const dnnl::algorithm algo = (interp_method == "nearest")
+                                     ? dnnl::algorithm::resampling_nearest
+                                     : dnnl::algorithm::resampling_linear;
 
-    auto out_dims_vec = ComputeOutputShape(ctx);
+    const bool is_nchw =
+        framework::StringToDataLayout(ctx.Attr<std::string>("data_layout")) ==
+        DataLayout::kNCHW;
+
+    auto out_dims_vec = ComputeOutputShape(ctx, is_nchw);
     framework::DDim dim_out = framework::make_ddim(out_dims_vec);
     z->Resize(dim_out);
 
     InterpolateMKLDNNHandler<T> handler(algo, mkldnn_engine, ctx.GetPlace(), x,
-                                        z);
+                                        z, is_nchw);
 
     auto src_memory_p = handler.AcquireSrcMemory(x);
     auto dst_memory_p = handler.AcquireDstMemory(z);
@@ -166,8 +177,17 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
     resampling_prim->execute(astream, args);
     astream.wait();
 
+    dnnl::memory::format_tag out_fmt;
+
+    if (is_nchw) {
+      out_fmt = platform::GetMKLDNNFormat(dst_memory_p->get_desc());
+    } else {
+      out_fmt = platform::GetMKLDNNFormat(dst_memory_p->get_desc().permute_axes(
+          platform::GetNCHWToNHWCPermute(z->dims().size())));
+    }
+
     z->set_layout(DataLayout::kMKLDNN);
-    z->set_format(platform::GetMKLDNNFormat(*dst_memory_p));
+    z->set_format(out_fmt);
   }
 };
 

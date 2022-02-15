@@ -149,14 +149,13 @@ class TestNearestInterpV2MKLDNNOp(OpTest):
         self.check_output(check_dygraph=False)
 
 
-# TODO add NHWC support
-# class TestNearestInterpOpV2MKLDNNNHWC(TestNearestInterpV2MKLDNNOp):
-#     def init_test_case(self):
-#         self.input_shape = [3, 2, 32, 16]
-#         self.out_h = 27
-#         self.out_w = 49
-#         self.scale = [2.0, 3.0]
-#         self.data_layout = 'NHWC'
+class TestNearestInterpOpV2MKLDNNNHWC(TestNearestInterpV2MKLDNNOp):
+    def init_test_case(self):
+        self.input_shape = [3, 2, 32, 16]
+        self.out_h = 27
+        self.out_w = 49
+        self.scale = [2.0, 3.0]
+        self.data_layout = 'NHWC'
 
 
 class TestNearestNeighborInterpV2MKLDNNCase2(TestNearestInterpV2MKLDNNOp):
@@ -219,8 +218,7 @@ def create_test_class(parent):
 
 
 create_test_class(TestNearestInterpV2MKLDNNOp)
-# TODO add NHWC support
-#create_test_class(TestNearestInterpOpV2MKLDNNNHWC)
+create_test_class(TestNearestInterpOpV2MKLDNNNHWC)
 create_test_class(TestNearestNeighborInterpV2MKLDNNCase2)
 create_test_class(TestNearestNeighborInterpV2MKLDNNCase3)
 create_test_class(TestNearestNeighborInterpV2MKLDNNCase4)
