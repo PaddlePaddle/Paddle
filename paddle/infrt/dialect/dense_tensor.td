@@ -16,6 +16,7 @@ def DT_Dialect : Dialect {
   let cppNamespace = "::infrt::dt";
 }
 
+
 class DT_Op<string mnemonic, list<OpTrait> traits = []> :
       Op<DT_Dialect, mnemonic, traits>;
 
@@ -105,7 +106,7 @@ def LoadParamsOp : DT_Op<"load_params", [NoSideEffect]> {
   }];
 
   // input path of model params.
-  let arguments = (ins StringType:$path);
+  let arguments = (ins StrAttr:$path);
   let results = (outs TensorMapType);
 
   let assemblyFormat = "`(` operands `)` attr-dict";
@@ -122,7 +123,7 @@ def TensorMapGetTensorOp : DT_Op<"tensor_map_get_tensor", [NoSideEffect]> {
   // input path of model params.
   let arguments = (ins
           TensorMapType:$map,
-          StringType:$name
+          StrAttr:$name
           );
   let results = (outs TensorType:$output);
   let assemblyFormat = "`(` operands `)` attr-dict `->` type($output)";

@@ -171,7 +171,7 @@ void MLIRModelGenImpl::UpdateModelParams(
                       builder_,
                       &precision_);
       mlir::Type type_ = mlir::RankedTensorType::get(dims, precision_);
-      auto op = builder_.create<infrt::dt::GetParamOp>(
+      auto op = builder_.create<infrt::dt::TensorMapGetTensorOp>(
           mlir::UnknownLoc::get(context_), type_, map, name);
       params_map_.insert(std::pair<std::string, mlir::Value>(
           var_desc.name(), op.getOperation()->getResult(0)));
