@@ -53,8 +53,6 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
         data_format = prog_config.ops[0].attrs["data_format"]
         filter_shape = prog_config.weights["filter"].shape
         input_shape = prog_config.inputs["input_x"].shape
-        # if data_format != "NCHW":
-        #     return False
         if padding_algorithm == "VALID":
             if ((input_shape[2] - (dilations[0] * (filter_shape[2] - 1) + 1)) / strides[0] + 1) <= 1 or \
             ((input_shape[3] - (dilations[1] * (filter_shape[3] - 1) + 1)) / strides[1] + 1) <= 1:
