@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/complex_functors.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 
 #include "paddle/pten/core/dense_tensor.h"
 
@@ -102,7 +102,7 @@ void MatMulFunction(const Context& dev_ctx,
   const T* x_data = X.data<T>();
   const T* y_data = Y.data<T>();
 
-  auto blas = paddle::operators::math::GetBlas<Context, T>(dev_ctx);
+  auto blas = pten::funcs::GetBlas<Context, T>(dev_ctx);
 
   if (x_ndim == 1 && y_ndim == 1) {
     const int M = X.numel();

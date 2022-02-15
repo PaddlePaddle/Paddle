@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "gtest/gtest.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
 
 void fill_fp16_data(paddle::platform::float16* in_ptr,
@@ -33,10 +33,9 @@ void fill_fp16_data(paddle::platform::float16* in_ptr,
 }
 
 template <typename T>
-inline paddle::operators::math::BlasT<paddle::platform::CUDADeviceContext, T>
-GetBlas(const paddle::platform::CUDADeviceContext& context) {
-  return paddle::operators::math::GetBlas<paddle::platform::CUDADeviceContext,
-                                          T>(context);
+inline pten::funcs::BlasT<paddle::platform::CUDADeviceContext, T> GetBlas(
+    const paddle::platform::CUDADeviceContext& context) {
+  return pten::funcs::GetBlas<paddle::platform::CUDADeviceContext, T>(context);
 }
 
 TEST(math_function, notrans_mul_trans_fp32) {

@@ -24,10 +24,10 @@
 #include "paddle/fluid/operators/diag_op.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -317,8 +317,8 @@ struct DeviceIndependenceTensorOperations {
     ret.Resize(framework::make_ddim(x_vec));
     ret.mutable_data<T>(context.GetPlace());
     auto blas = GetBlas();
-    auto mat_a_discrib = math::CreateMatrixDescriptor(a_dim, 0, trans_a);
-    auto mat_b_discrib = math::CreateMatrixDescriptor(b_dim, 0, trans_b);
+    auto mat_a_discrib = pten::funcs::CreateMatrixDescriptor(a_dim, 0, trans_a);
+    auto mat_b_discrib = pten::funcs::CreateMatrixDescriptor(b_dim, 0, trans_b);
     blas.MatMul(mat_a, mat_a_discrib, mat_b, mat_b_discrib, T(1.0), &ret,
                 T(0.0));
     return ret;
@@ -687,8 +687,8 @@ struct DeviceIndependenceTensorOperations {
 
  private:
   const framework::ExecutionContext& context;
-  BlasT<DeviceContext, T> GetBlas() {
-    return math::GetBlas<DeviceContext, T>(context);
+  pten::funcs::BlasT<DeviceContext, T> GetBlas() {
+    return pten::funcs::GetBlas<DeviceContext, T>(context);
   }
   platform::ForRange<DeviceContext> GetForRange(int numel) {
     auto& dev_ctx = context.template device_context<DeviceContext>();

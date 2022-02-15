@@ -168,7 +168,7 @@ class CholeskySolveGradKernel : public framework::OpKernel<T> {
         db->Resize(bin->dims());
       }
 
-      auto blas = math::GetBlas<DeviceContext, T>(ctx);
+      auto blas = pten::funcs::GetBlas<DeviceContext, T>(ctx);
 
       // calculate out's conjugate for complex
       framework::Tensor out_conj(out->type());
@@ -182,8 +182,8 @@ class CholeskySolveGradKernel : public framework::OpKernel<T> {
       framework::Tensor commonterm(out->type());
       auto outdims = out_conj.dims();
       auto dbdims = db_bst.dims();
-      auto mat_dim_a = math::CreateMatrixDescriptor(outdims, 0, false);
-      auto mat_dim_b = math::CreateMatrixDescriptor(dbdims, 0, false);
+      auto mat_dim_a = pten::funcs::CreateMatrixDescriptor(outdims, 0, false);
+      auto mat_dim_b = pten::funcs::CreateMatrixDescriptor(dbdims, 0, false);
       auto cmtdim = outdims;
       cmtdim[cmtdim.size() - 2] = dbdims[dbdims.size() - 2];
       commonterm.Resize(cmtdim);
@@ -207,9 +207,10 @@ class CholeskySolveGradKernel : public framework::OpKernel<T> {
               DeviceContext>::TYPE &>(dev_ctx),
           commonterm, commonterm_conj, -1, &commonterm);
 
-      auto mat_dim_u = math::CreateMatrixDescriptor(u_bst.dims(), 0, false);
+      auto mat_dim_u =
+          pten::funcs::CreateMatrixDescriptor(u_bst.dims(), 0, false);
       auto mat_dim_c =
-          math::CreateMatrixDescriptor(commonterm.dims(), 0, false);
+          pten::funcs::CreateMatrixDescriptor(commonterm.dims(), 0, false);
 
       Tensor du_bst(uin->type());
       // get upper or lower triangular

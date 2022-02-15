@@ -18,9 +18,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/fluid/operators/utils.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -95,15 +95,15 @@ inline framework::Tensor MatMul(const framework::ExecutionContext& ctx,
                                 const framework::DDim& a_dim,
                                 const framework::DDim& b_dim) {
   auto place = ctx.GetPlace();
-  auto blas = math::GetBlas<DeviceContext, T>(ctx);
+  auto blas = pten::funcs::GetBlas<DeviceContext, T>(ctx);
 
   framework::Tensor matrix_c;
   framework::DDim c_dim = framework::make_ddim({a_dim[0], b_dim[1]});
   matrix_c.Resize(c_dim);
   matrix_c.mutable_data<T>(place);
 
-  auto mat_dim_a = math::CreateMatrixDescriptor(a_dim, 0, false);
-  auto mat_dim_b = math::CreateMatrixDescriptor(b_dim, 0, false);
+  auto mat_dim_a = pten::funcs::CreateMatrixDescriptor(a_dim, 0, false);
+  auto mat_dim_b = pten::funcs::CreateMatrixDescriptor(b_dim, 0, false);
   const T alpha = static_cast<T>(1.0);
   blas.MatMul(matrix_a, mat_dim_a, matrix_b, mat_dim_b, alpha, &matrix_c, T(0));
   return matrix_c;
@@ -269,7 +269,7 @@ class MultiDotKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     out->mutable_data<T>(place);
 
-    auto blas = math::GetBlas<DeviceContext, T>(ctx);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(ctx);
 
     auto n = ins.size();
     std::vector<framework::DDim> ins_dims(n);
@@ -277,8 +277,10 @@ class MultiDotKernel : public framework::OpKernel<T> {
 
     const T scale = static_cast<T>(1.0);
     if (n == 2) {
-      auto mat_dim_a = math::CreateMatrixDescriptor(ins_dims[0], 0, false);
-      auto mat_dim_b = math::CreateMatrixDescriptor(ins_dims[1], 0, false);
+      auto mat_dim_a =
+          pten::funcs::CreateMatrixDescriptor(ins_dims[0], 0, false);
+      auto mat_dim_b =
+          pten::funcs::CreateMatrixDescriptor(ins_dims[1], 0, false);
       blas.MatMul(*ins[0], mat_dim_a, *ins[1], mat_dim_b, scale, out, T(0));
     } else if (n == 3) {
       const auto Ma = ins_dims[0][0];
@@ -287,16 +289,20 @@ class MultiDotKernel : public framework::OpKernel<T> {
       const auto Nc = ins_dims[2][1];
       const uint64_t cost1 = Ma * Nb * (Ka + Nc);
       const uint64_t cost2 = Ka * Nc * (Nb + Ma);
-      auto mat_dim_a = math::CreateMatrixDescriptor(ins_dims[0], 0, false);
-      auto mat_dim_b = math::CreateMatrixDescriptor(ins_dims[1], 0, false);
-      auto mat_dim_c = math::CreateMatrixDescriptor(ins_dims[2], 0, false);
+      auto mat_dim_a =
+          pten::funcs::CreateMatrixDescriptor(ins_dims[0], 0, false);
+      auto mat_dim_b =
+          pten::funcs::CreateMatrixDescriptor(ins_dims[1], 0, false);
+      auto mat_dim_c =
+          pten::funcs::CreateMatrixDescriptor(ins_dims[2], 0, false);
       if (cost1 < cost2) {
         framework::Tensor tmp_out;
         tmp_out.mutable_data<T>(place, Ma * Nb * sizeof(T));
         framework::DDim tmp_dim = framework::make_ddim({Ma, Nb});
         blas.MatMul(*ins[0], mat_dim_a, *ins[1], mat_dim_b, scale, &tmp_out,
                     T(0));
-        auto mat_dim_tmp = math::CreateMatrixDescriptor(tmp_dim, 0, false);
+        auto mat_dim_tmp =
+            pten::funcs::CreateMatrixDescriptor(tmp_dim, 0, false);
         blas.MatMul(tmp_out, mat_dim_tmp, *ins[2], mat_dim_c, scale, out, T(0));
       } else {
         framework::Tensor tmp_out;
@@ -304,7 +310,8 @@ class MultiDotKernel : public framework::OpKernel<T> {
         framework::DDim tmp_dim = framework::make_ddim({Ka, Nc});
         blas.MatMul(*ins[1], mat_dim_b, *ins[2], mat_dim_c, scale, &tmp_out,
                     T(0));
-        auto mat_dim_tmp = math::CreateMatrixDescriptor(tmp_dim, 0, false);
+        auto mat_dim_tmp =
+            pten::funcs::CreateMatrixDescriptor(tmp_dim, 0, false);
         blas.MatMul(*ins[0], mat_dim_a, tmp_out, mat_dim_tmp, scale, out, T(0));
       }
     } else {
@@ -348,11 +355,11 @@ class MultiDotGradKernel : public framework::OpKernel<T> {
                 const framework::Tensor& B, const framework::DDim& dout_dim,
                 const framework::DDim& a_dim, const framework::DDim& b_dim,
                 framework::Tensor* dA, framework::Tensor* dB) const {
-    auto mat_dim_dout = math::CreateMatrixDescriptor(dout_dim, 0, false);
-    auto mat_dim_a = math::CreateMatrixDescriptor(a_dim, 0, true);
-    auto mat_dim_b = math::CreateMatrixDescriptor(b_dim, 0, true);
+    auto mat_dim_dout = pten::funcs::CreateMatrixDescriptor(dout_dim, 0, false);
+    auto mat_dim_a = pten::funcs::CreateMatrixDescriptor(a_dim, 0, true);
+    auto mat_dim_b = pten::funcs::CreateMatrixDescriptor(b_dim, 0, true);
     T alpha = static_cast<T>(1.0);
-    auto blas = math::GetBlas<DeviceContext, T>(ctx);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(ctx);
     blas.MatMul(A, mat_dim_a, dout, mat_dim_dout, alpha, dB, T(0));
     blas.MatMul(dout, mat_dim_dout, B, mat_dim_b, alpha, dA, T(0));
   }
@@ -433,7 +440,7 @@ class MultiDotGradKernel : public framework::OpKernel<T> {
     auto dout = *ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto dx = ctx.MultiOutput<framework::Tensor>(framework::GradVarName("X"));
 
-    auto blas = math::GetBlas<DeviceContext, T>(ctx);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(ctx);
     auto place = ctx.GetPlace();
 
     const auto n = ins.size();
@@ -458,7 +465,7 @@ class MultiDotGradKernel : public framework::OpKernel<T> {
     }
 
     T alpha = static_cast<T>(1);
-    auto mat_dim_dout = math::CreateMatrixDescriptor(dout_dim, 0, false);
+    auto mat_dim_dout = pten::funcs::CreateMatrixDescriptor(dout_dim, 0, false);
     if (n == 2) {
       CalcGrad(ctx, dout, *ins[0], *ins[1], dout_dim, ins_dims[0], ins_dims[1],
                dx[0], dx[1]);
@@ -469,9 +476,12 @@ class MultiDotGradKernel : public framework::OpKernel<T> {
       const auto Nc = ins_dims[2][1];
       const uint64_t cost1 = Ma * Nb * (Ka + Nc);
       const uint64_t cost2 = Ka * Nc * (Nb + Ma);
-      auto mat_dim_a = math::CreateMatrixDescriptor(ins_dims[0], 0, false);
-      auto mat_dim_b = math::CreateMatrixDescriptor(ins_dims[1], 0, false);
-      auto mat_dim_c = math::CreateMatrixDescriptor(ins_dims[2], 0, false);
+      auto mat_dim_a =
+          pten::funcs::CreateMatrixDescriptor(ins_dims[0], 0, false);
+      auto mat_dim_b =
+          pten::funcs::CreateMatrixDescriptor(ins_dims[1], 0, false);
+      auto mat_dim_c =
+          pten::funcs::CreateMatrixDescriptor(ins_dims[2], 0, false);
       if (cost1 < cost2) {
         framework::Tensor tmp_out, tmp_dout;
         tmp_out.Resize({Ma, Nb});
