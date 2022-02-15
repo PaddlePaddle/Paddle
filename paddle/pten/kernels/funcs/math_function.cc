@@ -216,6 +216,15 @@ void set_constant_with_place<paddle::platform::IPUPlace>(
 }
 
 template <>
+void set_constant_with_place<paddle::platform::CustomPlace>(
+    const paddle::platform::DeviceContext& context,
+    paddle::framework::Tensor* tensor,
+    float value) {
+  PADDLE_THROW(
+      paddle::platform::errors::Unimplemented("CustomPlace is not supported"));
+}
+
+template <>
 void set_constant_with_place<paddle::platform::CPUPlace>(
     const paddle::platform::DeviceContext& context,
     paddle::framework::Tensor* tensor,
