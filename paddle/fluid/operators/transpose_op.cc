@@ -250,7 +250,8 @@ class Transpose2Op : public TransposeOp {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
       using framework::proto::VarType;
-      auto input_data_type = ctx.Input<Tensor>("X")->type();
+      auto input_data_type =
+          framework::TransToProtoVarType(ctx.Input<Tensor>("X")->dtype());
       customized_type_value = (input_data_type == VarType::INT8 ||
                                input_data_type == VarType::UINT8)
                                   ? kTransposeMKLDNNINT8
