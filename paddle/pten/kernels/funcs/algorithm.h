@@ -20,9 +20,8 @@
 
 #include "paddle/pten/core/hostdevice.h"
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace pten {
+namespace funcs {
 
 template <typename T>
 HOSTDEVICE inline int64_t BinarySearch(const T *x, int64_t num, const T &val) {
@@ -85,6 +84,5 @@ HOSTDEVICE inline size_t UpperBound(const T1 *x, size_t num, const T2 &val) {
 #endif  // @} End Group UpperBound
 }
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace pten
