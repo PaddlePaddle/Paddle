@@ -168,6 +168,8 @@ class MixVector {
       flag_ = kDirty | kDataInCPU;
     }
 
+    std::vector<T> *get_vector() { return cpu_; }
+
     size_t capacity() const { return (*cpu_).capacity(); }
 
     // reserve data
@@ -179,6 +181,13 @@ class MixVector {
       return OptionalCUDAPlace(gpu_);
     }
 
+    void MutableCPU() {
+      if (IsInCUDA() && IsDirty()) {
+        CopyToCPU();
+      }
+      flag_ = kDirty | kDataInCPU;
+    }
+
    private:
     enum DataFlag {
       kDataInCPU = 0x01,
@@ -188,13 +197,6 @@ class MixVector {
     };
 
     void CopyToCPU() const;
-
-    void MutableCPU() {
-      if (IsInCUDA() && IsDirty()) {
-        CopyToCPU();
-      }
-      flag_ = kDirty | kDataInCPU;
-    }
 
     void ImmutableCUDA(platform::Place place) const {
       if (IsDirty()) {
@@ -245,7 +247,7 @@ class MixVector {
 
     bool IsInCPU() const { return flag_ & kDataInCPU; }
 
-    mutable std::vector<T> *cpu_;
+    std::vector<T> *cpu_;
     mutable paddle::memory::allocation::AllocationPtr gpu_;
     mutable size_t gpu_memory_size_{0};
     mutable int flag_;
@@ -256,7 +258,8 @@ class MixVector {
  public:
   // implicit cast from std::vector.
   template <typename U>
-  MixVector(std::vector<U> *dat) : m_(dat) {  // NOLINT
+  MixVector(std::vector<U> *dat) {  // NOLINT
+    m_.reset(new VectorData(dat));
   }
 
   // Copy ctor
@@ -269,61 +272,61 @@ class MixVector {
   MixVector(MixVector<T> &&other) = delete;
 
   // CPU data access method. Mutable.
-  T &operator[](size_t i) { return m_[i]; }
+  T &operator[](size_t i) { return (*m_)[i]; }
 
   // CPU data access method. Immutable.
-  const T &operator[](size_t i) const { return m_[i]; }
+  const T &operator[](size_t i) const { return (*m_)[i]; }
 
   // std::vector iterator methods. Based on CPU data access method
-  size_t size() const { return m_.size(); }
+  size_t size() const { return m_->size(); }
 
-  iterator begin() { return m_.begin(); }
+  iterator begin() { return m_->begin(); }
 
-  iterator end() { return m_.end(); }
+  iterator end() { return m_->end(); }
 
-  T &front() { return m_.front(); }
+  T &front() { return m_->front(); }
 
-  T &back() { return m_.back(); }
+  T &back() { return m_->back(); }
 
-  const_iterator begin() const { return m_.begin(); }
+  const_iterator begin() const { return m_->begin(); }
 
-  const_iterator end() const { return m_.end(); }
+  const_iterator end() const { return m_->end(); }
 
   const_iterator cbegin() const { return begin(); }
 
   const_iterator cend() const { return end(); }
 
-  const T &back() const { return m_.back(); }
+  const T &back() const { return m_->back(); }
 
-  T *data() { return m_.data(); }
+  T *data() { return m_->data(); }
 
-  const T *data() const { return m_.data(); }
+  const T *data() const { return m_->data(); }
 
-  const T &front() const { return m_.front(); }
+  const T &front() const { return m_->front(); }
   // end of std::vector iterator methods
 
   // assign this from iterator.
   // NOTE: the iterator must support `end-begin`
   template <typename Iter>
   void assign(Iter begin, Iter end) {
-    m_.assign(begin, end);
+    m_->assign(begin, end);
   }
 
   // push_back. If the previous capacity is not enough, the memory will
   // double.
-  void push_back(T elem) { m_.push_back(elem); }
+  void push_back(T elem) { m_->push_back(elem); }
 
   // extend a vector by iterator.
   // NOTE: the iterator must support end-begin
   template <typename It>
   void Extend(It begin, It end) {
-    m_.Extend(begin, end);
+    m_->Extend(begin, end);
   }
 
   // resize the vector
   void resize(size_t size) {
-    if (m_.size() != size) {
-      m_.resize(size);
+    if (m_->size() != size) {
+      m_->resize(size);
     }
   }
 
@@ -331,13 +334,15 @@ class MixVector {
   const T *CUDAData(platform::Place place) const {
     {
       platform::CUDAPlace p(place.GetDeviceId());
-      auto &mtx = m_.Mutex();
+      auto &mtx = m_->Mutex();
       std::lock_guard<std::mutex> guard(mtx);
-      auto cuda_place = m_.CUDAPlace();
+      auto cuda_place = m_->CUDAPlace();
       if (cuda_place == paddle::none || cuda_place == p) {
-        return m_.CUDAData(place);
+        return m_->CUDAData(place);
       }
     }
+    m_->MutableCPU();
+    m_.reset(new VectorData(m_->get_vector()));
     return CUDAData(place);
   }
 
@@ -345,23 +350,25 @@ class MixVector {
   T *CUDAMutableData(platform::Place place) {
     {
       platform::CUDAPlace p(place.GetDeviceId());
-      auto &mtx = m_.Mutex();
+      auto &mtx = m_->Mutex();
       std::lock_guard<std::mutex> guard(mtx);
-      auto cuda_place = m_.CUDAPlace();
+      auto cuda_place = m_->CUDAPlace();
       if (cuda_place == paddle::none || cuda_place == p) {
-        return m_.CUDAMutableData(place);
+        return m_->CUDAMutableData(place);
       }
     }
+    m_->MutableCPU();
+    m_.reset(new VectorData(m_->get_vector()));
     return CUDAMutableData(place);
   }
 
   // clear
-  void clear() { m_.clear(); }
+  void clear() { m_->clear(); }
 
-  size_t capacity() const { return m_.capacity(); }
+  size_t capacity() const { return m_->capacity(); }
 
   // reserve data
-  void reserve(size_t size) { m_.reserve(size); }
+  void reserve(size_t size) { m_->reserve(size); }
 
   // the unify method to access CPU or CUDA data. immutable.
   const T *Data(platform::Place place) const {
@@ -381,11 +388,10 @@ class MixVector {
     }
   }
 
-  const void *Handle() const { return &m_; }
+  const void *Handle() const { return m_.get(); }
 
  private:
-  // Vector is an COW object.
-  VectorData m_;
+  mutable std::unique_ptr<VectorData> m_;
 };
 
 };  // namespace framework
