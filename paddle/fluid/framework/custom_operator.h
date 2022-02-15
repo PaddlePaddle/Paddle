@@ -26,10 +26,11 @@ void LoadOpMetaInfoAndRegisterOp(const std::string& dso_name);
 
 // Register custom op api: register op directly
 void RegisterOperatorWithMetaInfoMap(
-    const paddle::OpMetaInfoMap& op_meta_info_map);
+    const paddle::OpMetaInfoMap& op_meta_info_map, void* dso_handle = nullptr);
 
 // Interface for selective register custom op.
-void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos);
+void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
+                                  void* dso_handle = nullptr);
 
 }  // namespace framework
 }  // namespace paddle

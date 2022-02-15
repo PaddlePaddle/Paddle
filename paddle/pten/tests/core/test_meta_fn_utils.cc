@@ -17,19 +17,34 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/infermeta_utils.h"
+#include "paddle/pten/infermeta/generated.h"
 #include "paddle/pten/infermeta/unary.h"
 
 namespace pten {
 namespace tests {
 
-TEST(MetaFunctionMap, InferMetaFnExists) {
+TEST(WrappedInferMeta, Scale) {
   pten::DenseTensor dense_x;
   dense_x.Resize(pten::framework::make_ddim({3, 4}));
 
   pten::MetaTensor meta_x(&dense_x);
   pten::DenseTensor dense_out1;
   pten::MetaTensor meta_out(&dense_out1);
-  pten::UnchangedInferMetaNew(/*is_runtime=*/true, meta_x, &meta_out);
+  pten::ScaleInferMeta(meta_x, 0, 0, false, &meta_out);
+
+  EXPECT_EQ(dense_out1.dims().size(), dense_x.dims().size());
+  EXPECT_EQ(dense_out1.dims()[0], dense_x.dims()[0]);
+  EXPECT_EQ(dense_out1.dims()[1], dense_x.dims()[1]);
+}
+
+TEST(MetaFnFactory, InferMetaFnExists) {
+  pten::DenseTensor dense_x;
+  dense_x.Resize(pten::framework::make_ddim({3, 4}));
+
+  pten::MetaTensor meta_x(&dense_x);
+  pten::DenseTensor dense_out1;
+  pten::MetaTensor meta_out(&dense_out1);
+  pten::UnchangedInferMeta(meta_x, &meta_out);
 
   auto shared_meat_x = std::make_shared<pten::MetaTensor>(&dense_x);
   pten::DenseTensor dense_out2;
@@ -38,7 +53,7 @@ TEST(MetaFunctionMap, InferMetaFnExists) {
   ctx.EmplaceBackInput(shared_meat_x);
   ctx.EmplaceBackOutput(shared_meta_out);
   ctx.SetMetaConfig(/*is_runtime=*/true);
-  pten::MetaFunctionMap::Instance().Get("sign")(&ctx);
+  pten::MetaFnFactory::Instance().Get("sign")(&ctx);
 
   EXPECT_EQ(dense_out1.dims().size(), dense_out2.dims().size());
   EXPECT_EQ(dense_out1.dims()[0], dense_out2.dims()[0]);

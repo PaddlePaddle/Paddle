@@ -3,7 +3,6 @@
   output : Tensor
   infer_meta :
     func : ElementwiseInferMeta
-    param : [x, y]
   kernel :
     func : add
 
@@ -23,7 +22,7 @@
   output : Tensor
   infer_meta :
     func : ConcatInferMeta
-    param : [x, axis, true]
+    param : [x, axis]
   kernel :
     func : concat
 
@@ -40,7 +39,6 @@
   output : Tensor
   infer_meta :
     func : ElementwiseInferMeta
-    param : [x, y]
   kernel :
     func : divide
 
@@ -126,7 +124,6 @@
   output : Tensor
   infer_meta :
     func : ReduceInferMeta
-    param: [x, axis, keep_dim]
   kernel :
     func : mean
 
@@ -135,7 +132,6 @@
   output : Tensor
   infer_meta :
     func : ElementwiseInferMeta
-    param : [x, y]
   kernel :
     func : multiply
 
@@ -159,24 +155,30 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : scale
+    func : scale, scale_sr
+
+- api : sign
+  args : (const Tensor& x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : sign
 
 - api : subtract
   args : (const Tensor& x, const Tensor& y)
   output : Tensor
   infer_meta :
     func : ElementwiseInferMeta
-    param : [x, y]
   kernel :
     func : subtract
 
 - api : sum
   args : (const Tensor& x, const std::vector<int64_t>& axis={}, DataType dtype=DataType::UNDEFINED, bool keep_dim=false)
   output : Tensor
-  infer_meta : 
+  infer_meta :
     func : SumInferMeta
-    param: [x, axis, dtype, keep_dim]
-  kernel : 
+  kernel :
     func : sum
     param : [x, axis, dtype, keep_dim]
     data_type : x

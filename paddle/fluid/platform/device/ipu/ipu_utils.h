@@ -89,7 +89,8 @@ bool GetBoolEnv(std::string str);
 
 template <typename T>
 std::unique_ptr<popart::NDArrayWrapper<T>> Tensor2IArray(const Tensor& tensor) {
-  auto dtype = VarType2PopartType(tensor.type());
+  auto dtype =
+      VarType2PopartType(framework::TransToProtoVarType(tensor.dtype()));
   auto shape = std::vector<int64_t>();
   for (size_t i = 0; i < tensor.dims().size(); ++i) {
     shape.push_back(tensor.dims().at(i));

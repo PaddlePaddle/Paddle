@@ -26,10 +26,6 @@ inline void check_shape(const DDim& dims) {
 #define Check(non_zero_crows, non_zero_cols, non_zero_elements, dims)          \
   {                                                                            \
     check_shape(dims);                                                         \
-    PADDLE_ENFORCE_EQ(dims.size(),                                             \
-                      2,                                                       \
-                      paddle::platform::errors::InvalidArgument(               \
-                          "the SparseCsrTensor only support 2-D Tensor."));    \
     PADDLE_ENFORCE_EQ(                                                         \
         non_zero_cols.place(),                                                 \
         non_zero_crows.place(),                                                \
@@ -50,7 +46,12 @@ SparseCsrTensor::SparseCsrTensor(const DenseTensor& non_zero_crows,
       non_zero_cols_(non_zero_cols),
       non_zero_elements_(non_zero_elements),
       dims_(dims) {
-  Check(non_zero_crows_, non_zero_cols_, non_zero_elements_, dims_);
+  if (non_zero_crows.initialized()) {
+    Check(non_zero_crows_, non_zero_cols_, non_zero_elements_, dims_);
+  } else {
+    // create a empty tensor
+    check_shape(dims);
+  }
 }
 
 SparseCsrTensor::SparseCsrTensor(const SparseCsrTensor& other)
@@ -65,6 +66,12 @@ SparseCsrTensor& SparseCsrTensor::operator=(const SparseCsrTensor& other) {
   this->non_zero_cols_ = other.non_zero_cols();
   this->non_zero_elements_ = other.non_zero_elements();
   return *this;
+}
+
+void* SparseCsrTensor::AllocateFrom(Allocator* allocator,
+                                    DataType dtype,
+                                    size_t requested_size) {
+  return non_zero_elements_.AllocateFrom(allocator, dtype, requested_size);
 }
 
 void SparseCsrTensor::Resize(const DDim& dense_dims,

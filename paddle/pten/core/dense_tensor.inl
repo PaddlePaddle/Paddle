@@ -37,7 +37,7 @@ private:
 
 /* @jim19930609: Remove dependency on protobuf after Tensor Unification.
 */
-explicit DenseTensor(paddle::framework::proto::VarType::Type dtype);
+explicit DenseTensor(paddle::experimental::DataType dtype);
 
 /// \brief Use existing storage space to create dense tensor. This interface
 /// can be used to deliberately create an uninitialized dense tensor.
@@ -54,11 +54,6 @@ DenseTensor(intrusive_ptr<Storage> storage, DenseTensorMeta&& meta);
 inline bool IsInitialized() const { return holder_ != nullptr; }
 
 template <typename T>
-T* data();
-
-void* data();
-
-template <typename T>
 T* mutable_data(const paddle::platform::Place& place,
                 size_t requested_size = 0);
 
@@ -68,23 +63,19 @@ T* mutable_data(const DDim& dims,
                 size_t requested_size = 0);
 
 void* mutable_data(const paddle::platform::Place& place,
-                    paddle::framework::proto::VarType::Type type,
+                    paddle::experimental::DataType type,
                     size_t requested_size = 0);
 
 void* mutable_data(const paddle::platform::Place& place,
                     size_t requested_size = 0);
 
 void* mutable_data(const paddle::platform::Place& place,
-                    paddle::framework::proto::VarType::Type type,
-                    const paddle::platform::Stream& stream);
+                    paddle::experimental::DataType type,
+                    const pten::Stream& stream);
 
 /* @jim19930609: Remove dependency on protobuf after Tensor Unification.
 */
-paddle::framework::proto::VarType::Type type() const;
-
-/* @jim19930609: Remove dependency on protobuf after Tensor Unification.
-*/
-paddle::framework::proto::VarType::Type saved_type() const;
+paddle::experimental::DataType type() const;
 
 // memory size returns the holding memory size in byte.
 size_t memory_size() const;
@@ -120,9 +111,9 @@ std::shared_ptr<pten::Allocation> MoveMemoryHolder() {
 void ResetHolder(const std::shared_ptr<pten::Allocation>& holder);
 
 void ResetHolderWithType(const std::shared_ptr<pten::Allocation>& holder,
-                        paddle::framework::proto::VarType::Type type);
+                        paddle::experimental::DataType type);
 
-void set_type(paddle::framework::proto::VarType::Type type);
+void set_type(paddle::experimental::DataType type);
 
 InplaceVersion& InplaceVersionCounter() {
   return *inplace_version_counter_;

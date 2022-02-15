@@ -17,8 +17,8 @@
 #include <algorithm>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -70,7 +70,7 @@ class DiagEmbedKernel : public framework::OpKernel<T> {
     auto* input_data = input->data<T>();
 
     T* out_data = out->mutable_data<T>(context.GetPlace());
-    math::SetConstant<DeviceContext, T> set_zero;
+    pten::funcs::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
     set_zero(dev_ctx, out, static_cast<T>(0.0));
 

@@ -47,6 +47,12 @@ SparseCooTensor SparseCooTensor::operator=(const SparseCooTensor& other) {
   return *this;
 }
 
+void* SparseCooTensor::AllocateFrom(Allocator* allocator,
+                                    DataType dtype,
+                                    size_t requested_size) {
+  return non_zero_elements_.AllocateFrom(allocator, dtype, requested_size);
+}
+
 int64_t SparseCooTensor::nnz() const {
   const auto indices_dims = non_zero_indices_.dims();
   if (indices_dims.size() == 0) {

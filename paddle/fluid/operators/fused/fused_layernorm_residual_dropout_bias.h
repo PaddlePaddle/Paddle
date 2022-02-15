@@ -122,12 +122,12 @@ __global__ void FusedLayernormResidualDropoutBias(
   __shared__ U shared_mean[32];
   __shared__ U shared_var[32];
 
-  math::ReluFunctor<T> relu;
+  pten::funcs::ReluFunctor<T> relu;
   U mean_val = 0;
   U var_val = 0;
   for (int i = col_id * VecSize; i < cols; i += blockDim.x * VecSize) {
     FusedResidualDropoutBiasOneThread<T, MaskType, VecSize, true, false,
-                                      math::ReluFunctor<T>>(
+                                      pten::funcs::ReluFunctor<T>>(
         row_id, i, cols, &state, dropout_prob, factor, src, residual, bias, dst,
         mask, is_test, &mean_val, &var_val, relu);
   }
@@ -439,6 +439,31 @@ void LaunchLayernormResidualDropoutBias(
           mask_data, dst, layernorm_dst, mean, var);
     }
   }
+}
+
+template <typename T, typename U, typename MaskType,
+          bool ScaleBiasWithSameTypeX = false>
+void LaunchLayernormResidualDropoutGrad(
+    const platform::CUDADeviceContext &dev_ctx, const uint32_t rows,
+    const uint32_t cols, const float epsilon, const float dropout_prob,
+    const bool is_upscale_in_train, const T *d_out, const T *layernorm_src,
+    const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *scale,
+    const LayerNormParamType<T> *mean, const LayerNormParamType<T> *var,
+    const MaskType *mask_data,
+    LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *d_scale,
+    LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *d_layernorm_bias,
+    T *d_residual, T *d_dropout_src) {
+  const T zero = static_cast<T>(0.0f);
+  auto factor = dropout_prob == static_cast<float>(1.0f)
+                    ? zero
+                    : static_cast<T>(1.0f / (1.0f - dropout_prob));
+  if (!is_upscale_in_train) {
+    factor = static_cast<T>(1.0f);
+  }
+  ln_bwd_1024_kernel_driver<
+      T, U, LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>, MaskType>(
+      dev_ctx, rows, cols, epsilon, layernorm_src, scale, mean, var, d_out,
+      d_residual, d_scale, d_layernorm_bias, mask_data, factor, d_dropout_src);
 }
 
 }  // namespace operators

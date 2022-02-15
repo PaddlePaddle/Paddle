@@ -76,7 +76,7 @@ class ConcatOp : public framework::OperatorWithKernel {
     bool flag = 0;
     for (auto *input : inputs) {
       if (input->IsInitialized() && input->numel() > 0) {
-        input_data_type = input->type();
+        input_data_type = framework::TransToProtoVarType(input->dtype());
         flag = 1;
         break;
       }
@@ -103,15 +103,6 @@ class ConcatOp : public framework::OperatorWithKernel {
     }
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    tensor.place(), tensor.layout());
-  }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext &ctx) const override {
-    if (ctx.HasInput("AxisTensor")) {
-      return framework::KernelSignature("concat", {"X"}, {"AxisTensor"},
-                                        {"Out"});
-    }
-    return framework::KernelSignature("concat", {"X"}, {"axis"}, {"Out"});
   }
 };
 
@@ -253,19 +244,7 @@ REGISTER_OPERATOR(concat_grad, ops::ConcatOpGrad,
                   ops::ConcatDoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::ConcatDoubleGradOpMaker<paddle::imperative::OpBase>,
                   ops::ConcatOpGradNoNeedBufferVarInferer);
-REGISTER_OP_CPU_KERNEL(
-    concat, ops::ConcatKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::float16>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::complex<float>>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::complex<double>>);
+
 REGISTER_OP_CPU_KERNEL(
     concat_grad,
     ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, double>,

@@ -354,7 +354,7 @@ void Communicator::RpcRecvSparse(const std::string &varname, int table_id,
 
   bool training = true;
 
-  auto status = _worker_ptr->pull_sparse(
+  auto status = _worker_ptr->pull_sparse_param(
       (float **)push_g_vec.data(), table_id,  // NOLINT
       sparse_push_keys.data(), sparse_push_keys.size(), training);
   status.wait();
@@ -1029,7 +1029,7 @@ void GeoCommunicator::Send(const std::vector<std::string> &var_names,
     auto &sparse_ids_set = iter.second;
     auto sparse_ids_vec = std::make_shared<std::vector<int64_t>>();
     sparse_ids_vec->assign(sparse_ids_set.begin(), sparse_ids_set.end());
-    sparse_id_queues_.at(key)->Push(sparse_ids_vec);
+    sparse_id_queues_.at(key)->Put(sparse_ids_vec);
     VLOG(3) << "push " << sparse_ids_vec->size() << " ids to " << key
             << "'s queue";
   }
@@ -1051,7 +1051,10 @@ void GeoCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
 
   for (auto &iter : send_varname_to_ctx_) {
     auto &ctx = iter.second;
-    if (!ctx.is_sparse) continue;
+    if (!ctx.is_sparse) {
+      parallel_task_nums_ += 1;
+      continue;
+    }
     auto &varnames = ctx.origin_varnames;
     PADDLE_ENFORCE_EQ(
         varnames.size(), 1,
@@ -1060,12 +1063,11 @@ void GeoCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
     for (auto &splited_var : ctx.splited_varnames) {
       parallel_task_nums_ += 1;
       sparse_id_queues_.insert(
-          std::pair<std::string, std::shared_ptr<BlockingQueue<
-                                     std::shared_ptr<std::vector<int64_t>>>>>(
+          std::pair<std::string, paddle::framework::Channel<
+                                     std::shared_ptr<std::vector<int64_t>>>>(
               splited_var,
-              std::make_shared<
-                  BlockingQueue<std::shared_ptr<std::vector<int64_t>>>>(
-                  send_queue_size_)));
+              paddle::framework::MakeChannel<
+                  std::shared_ptr<std::vector<int64_t>>>(send_queue_size_)));
     }
   }
 
@@ -1153,7 +1155,7 @@ void GeoCommunicator::SendDense(const CommContext &send_ctx) {
     auto &t_latest = var_latest->Get<framework::LoDTensor>();
     auto t_timestamp = var_timestamp->GetMutable<framework::LoDTensor>();
 
-    auto cpu_ctx = paddle::platform::CPUDeviceContext();
+    paddle::platform::CPUDeviceContext cpu_ctx;
     auto *var_delta = delta_scope_->Var(varname);
     auto *t_delta = var_delta->GetMutable<framework::LoDTensor>();
     t_delta->mutable_data<float>(t_latest.dims(), cpu_ctx.GetPlace());
@@ -1183,7 +1185,7 @@ void GeoCommunicator::RecvDense(const CommContext &send_ctx) {
   RpcRecvDense(varnames, table_id, pserver_scope_.get());
 
   // 2.1 pserver - old => delta; 2.2 latest + old => latest 2.3 old => pserver
-  auto cpu_ctx = paddle::platform::CPUDeviceContext();
+  paddle::platform::CPUDeviceContext cpu_ctx;
   for (auto &varname : varnames) {
     auto *var_latest = recv_scope_->FindVar(varname);
     auto t_latest = var_latest->GetMutable<framework::LoDTensor>();
@@ -1242,8 +1244,8 @@ std::vector<int64_t> GeoCommunicator::MergeSparseIds(
     VLOG(3) << "Merge Number of " << send_varname << " = " << merge_num;
     if (sparse_id_queues_.at(send_varname)->Size() > 0) {
       wait_times = 0;
-      std::shared_ptr<std::vector<int64_t>> pop_ids =
-          sparse_id_queues_.at(send_varname)->Pop();
+      std::shared_ptr<std::vector<int64_t>> pop_ids = nullptr;
+      sparse_id_queues_.at(send_varname)->Get(pop_ids);
       for (size_t j = 0; j < pop_ids->size(); j++) {
         sparse_ids.insert(pop_ids->at(j));
       }
@@ -1268,6 +1270,9 @@ void GeoCommunicator::SendSparse(const std::string &varname,
                                  std::vector<int64_t> &sparse_ids, int table_id,
                                  int ep_idx) {
   platform::RecordEvent record_event("GeoCommunicator->SendSparse");
+  if (sparse_ids.size() == 0) {
+    return;
+  }
   std::string param_name = SplitedGradToParam(varname);
   VLOG(1) << "In GeoCommunicator::SendSparse(" << varname << " " << param_name
           << ", ids.size = " << sparse_ids.size() << ", table_id: " << table_id
@@ -1287,7 +1292,7 @@ void GeoCommunicator::SendSparse(const std::string &varname,
   auto *t_old = var_old->GetMutable<framework::LoDTensor>();
 
   auto dims1 = t_latest.dims()[1];
-  auto cpu_ctx = paddle::platform::CPUDeviceContext();
+  paddle::platform::CPUDeviceContext cpu_ctx;
 
   auto *var_delta = delta_scope_->Var(varname);
   auto *t_delta = var_delta->GetMutable<pten::SelectedRows>();
@@ -1313,6 +1318,10 @@ void GeoCommunicator::SendSparse(const std::string &varname,
               t_value + j * dims1,
               t_old->data<float>() + sparse_ids[j] * dims1);
     push_g_vec.push_back(t_value + j * dims1);
+
+    VLOG(5) << "DEBUG GeoCommunicator::SendSparse send sparse key "
+            << sparse_ids[j] << " value[0] " << push_g_vec[j][0]
+            << " value[-1] " << push_g_vec[j][dims1 - 1];
   }
 
   ++_async_call_num;
@@ -1361,12 +1370,15 @@ void GeoCommunicator::RecvSparse(const std::string &varname, int table_id,
   std::vector<float> v_delta;
   v_delta.resize(numel);
 
-  auto cpu_ctx = paddle::platform::CPUDeviceContext();
+  paddle::platform::CPUDeviceContext cpu_ctx;
   auto blas =
       paddle::operators::math::GetBlas<platform::CPUDeviceContext, float>(
           cpu_ctx);
 
   for (auto j = 0; j < static_cast<int>(keys.size()); ++j) {
+    VLOG(5) << "DEBUG GeoCommunicator::RecvSparse recv sparse key" << keys[j]
+            << "value[0] " << values[j * dims1] << " value[-1] "
+            << values[j * dims1 + dims1 - 1];
     float *latest_data = t_latest->data<float>() + keys[j] * dims1;
     float *old_data = t_old->data<float>() + keys[j] * dims1;
     // pserver - old => delta

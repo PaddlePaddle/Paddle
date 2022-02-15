@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/pten/backends/xpu/xpu_context.h"
 #include "paddle/pten/common/data_type.h"
-#include "paddle/pten/core/convert_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/kernel_registry.h"
 
 // See Note [ Why still include the fluid headers? ]
@@ -45,8 +45,7 @@ void Copy(const Context& dev_ctx,
           << dst_place;
   dst->ResizeAndAllocate(src.dims());
   CHECK(dst->layout() == src.layout());
-  auto size = src.numel() *
-              paddle::framework::SizeOfType(TransToProtoVarType(src.dtype()));
+  auto size = src.numel() * paddle::experimental::SizeOf(src.dtype());
 
   if (paddle::platform::is_xpu_place(src_place) &&  // NOLINT
       paddle::platform::is_cpu_place(dst_place)) {

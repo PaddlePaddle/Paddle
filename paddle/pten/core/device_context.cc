@@ -23,7 +23,7 @@ struct DeviceContext::Impl {
   Impl() = default;
   ~Impl() = default;
 
-  void SetDeviceAllocator(const Allocator* allocator) {
+  void SetAllocator(const Allocator* allocator) {
     PADDLE_ENFORCE_NOT_NULL(
         allocator,
         pten::errors::InvalidArgument(
@@ -47,7 +47,7 @@ struct DeviceContext::Impl {
     zero_allocator_ = allocator;
   }
 
-  const Allocator& GetDeviceAllocator() const {
+  const Allocator& GetAllocator() const {
     PADDLE_ENFORCE_NOT_NULL(
         device_allocator_,
         pten::errors::InvalidArgument("Required device_allocator_ shall not be "
@@ -114,17 +114,34 @@ struct DeviceContext::Impl {
     return static_cast<T*>(HostAlloc(tensor, dtype, requested_size));
   }
 
+  void SetGenerator(Generator* gen) {
+    PADDLE_ENFORCE_NOT_NULL(
+        gen,
+        pten::errors::InvalidArgument(
+            "Required generator shall not be nullptr, but received nullptr."));
+    generator_ = gen;
+  }
+
+  Generator* GetGenerator() const {
+    PADDLE_ENFORCE_NOT_NULL(
+        generator_,
+        pten::errors::InvalidArgument("Required generator_ shall not be "
+                                      "nullptr, but received nullptr."));
+    return generator_;
+  }
+
  private:
   const Allocator* device_allocator_{nullptr};
   const Allocator* host_allocator_{nullptr};
   const Allocator* zero_allocator_{nullptr};
+  Generator* generator_{nullptr};
 };
 
 DeviceContext::DeviceContext() { impl_ = std::make_unique<Impl>(); }
 
 DeviceContext::DeviceContext(const DeviceContext& other) {
   impl_->SetHostAllocator(&other.GetHostAllocator());
-  impl_->SetDeviceAllocator(&other.GetDeviceAllocator());
+  impl_->SetAllocator(&other.GetAllocator());
   impl_->SetZeroAllocator(&other.GetZeroAllocator());
 }
 
@@ -134,12 +151,12 @@ DeviceContext::DeviceContext(DeviceContext&& other) {
 
 DeviceContext::~DeviceContext() = default;
 
-void DeviceContext::SetDeviceAllocator(const Allocator* allocator) {
-  impl_->SetDeviceAllocator(allocator);
+void DeviceContext::SetAllocator(const Allocator* allocator) {
+  impl_->SetAllocator(allocator);
 }
 
-const Allocator& DeviceContext::GetDeviceAllocator() const {
-  return impl_->GetDeviceAllocator();
+const Allocator& DeviceContext::GetAllocator() const {
+  return impl_->GetAllocator();
 }
 
 void DeviceContext::SetHostAllocator(const Allocator* allocator) {
@@ -200,5 +217,9 @@ DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex64)
 DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex128)
 
 #undef DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION
+
+void DeviceContext::SetGenerator(Generator* gen) { impl_->SetGenerator(gen); }
+
+Generator* DeviceContext::GetGenerator() const { return impl_->GetGenerator(); }
 
 }  // namespace pten
