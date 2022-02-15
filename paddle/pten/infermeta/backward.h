@@ -20,8 +20,6 @@ limitations under the License. */
 
 namespace pten {
 
-void GeneralUnaryGradInferMeta(const MetaTensor& x, MetaTensor* dx);
-
 void GeneralBinaryGradInferMeta(const MetaTensor& x,
                                 const MetaTensor& y,
                                 MetaTensor* dx,
