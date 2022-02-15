@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/pten/kernels/split_kernel.h"
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/pten/api/include/manual_api.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"

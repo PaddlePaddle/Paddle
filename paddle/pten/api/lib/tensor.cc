@@ -19,7 +19,6 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
-#include "paddle/pten/api/include/manual_api.h"
 #include "paddle/pten/api/lib/ext_compat_utils.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/api/lib/utils/storage.h"
@@ -61,6 +60,7 @@ namespace experimental {
 
 // declare cast api
 Tensor cast(const Tensor &x, DataType out_dtype);
+Tensor copy_to(const Tensor &x, Backend backend, bool blocking);
 
 /////// Tensor Methods ////////
 

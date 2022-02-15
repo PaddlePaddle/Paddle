@@ -50,6 +50,7 @@ class InferMetaContext {
   const MetaTensor& InputAt(size_t idx) const;
   std::vector<MetaTensor> InputsBetween(size_t start, size_t end) const;
   MetaTensor* MutableOutputAt(size_t idx);
+  std::vector<MetaTensor> MutableOutputBetween(size_t start, size_t end);
 
   template <typename AttrType>
   AttrType AttrAt(size_t idx) {
@@ -169,6 +170,21 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
     static void Call(InferMetaContext* ctx, PreviousArgs&... pargs) {
       const std::pair<int, int> range = ctx->OutputRangeAt(out_idx);
       MetaTensor* arg = ctx->MutableOutputAt(range.first);
+      InferMetaFnCallHelper<
+          Tail...>::template Call<in_idx, attr_idx, out_idx + 1>(ctx,
+                                                                 pargs...,
+                                                                 arg);
+    }
+  };
+
+  template <typename... Tail>
+  struct InferMetaFnCallHelper<std::vector<MetaTensor>*, Tail...> {
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
+    static void Call(InferMetaContext* ctx, PreviousArgs&... pargs) {
+      const std::pair<int, int> range = ctx->OutputRangeAt(out_idx);
+      std::vector<MetaTensor> tmp =
+          ctx->MutableOutputBetween(range.first, range.second);
+      std::vector<MetaTensor>* arg = &tmp;
       InferMetaFnCallHelper<
           Tail...>::template Call<in_idx, attr_idx, out_idx + 1>(ctx,
                                                                  pargs...,

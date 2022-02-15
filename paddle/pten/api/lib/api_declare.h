@@ -18,5 +18,4 @@ limitations under the License. */
 #include "paddle/pten/api/lib/api_registry.h"
 
 PT_DECLARE_API(Math);
-PT_DECLARE_API(Utils);
 PT_DECLARE_API(SparseApi);

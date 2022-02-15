@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,15 +15,19 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/pten/api/include/tensor.h"
+#include "paddle/pten/common/backend.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
 
 namespace paddle {
 namespace experimental {
 
-PADDLE_API std::vector<Tensor> split_impl(const Tensor& x,
-                                          const ScalarArray& num_or_sections,
-                                          const Scalar& axis);
+// TODO(chenweihang): Replace backend by place when place is ready
+Tensor copy_to_impl(const Tensor& x, Backend backend, bool blocking);
+
+std::vector<Tensor> split_impl(const Tensor& x,
+                               const ScalarArray& num_or_sections,
+                               const Scalar& axis);
 
 }  // namespace experimental
 }  // namespace paddle

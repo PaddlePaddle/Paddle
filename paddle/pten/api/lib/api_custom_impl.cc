@@ -19,7 +19,6 @@ limitations under the License. */
 #include "paddle/pten/api/lib/data_transform.h"
 #include "paddle/pten/api/lib/kernel_dispatch.h"
 #include "paddle/pten/api/lib/utils/storage.h"
-#include "paddle/pten/common/backend.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/core/meta_tensor.h"
 #include "paddle/pten/infermeta/binary.h"
@@ -32,28 +31,53 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-PADDLE_API std::vector<Tensor> split_impl(const Tensor& x,
-                                          const ScalarArray& num_or_sections,
-                                          const Scalar& axis) {
-  Backend kernel_backend = Backend::UNDEFINED;
-  DataLayout kernel_layout = DataLayout::UNDEFINED;
-  DataType kernel_data_type = DataType::UNDEFINED;
+Tensor copy_to_impl(const Tensor& x, Backend backend, bool blocking) {
+  // 1. Get kernel signature and kernel
+  auto kernel_key_set = ParseKernelKeyByInputArgs(x);
+  kernel_key_set.backend_set = kernel_key_set.backend_set | BackendSet(backend);
+  auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
+  auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
+      "copy", kernel_key);
 
-  if (kernel_backend == Backend::UNDEFINED ||
-      kernel_layout == DataLayout::UNDEFINED ||
-      kernel_data_type == DataType::UNDEFINED) {
-    auto kernel_key_set = ParseKernelKeyByInputArgs(x);
-    auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
-    if (kernel_backend == Backend::UNDEFINED) {
-      kernel_backend = kernel_key.backend();
-    }
-    if (kernel_layout == DataLayout::UNDEFINED) {
-      kernel_layout = kernel_key.layout();
-    }
-    if (kernel_data_type == DataType::UNDEFINED) {
-      kernel_data_type = kernel_key.dtype();
-    }
-  }
+  VLOG(6) << "to API kernel key: " << kernel_key;
+  VLOG(6) << "to API kernel: " << kernel;
+
+  // 2. Get Device Context
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
+  auto kernel_context = pten::KernelContext(dev_ctx);
+
+  // 3. Auto data transform
+  auto dense_x = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
+  kernel_context.EmplaceBackInput(dense_x.get());
+  kernel_context.EmplaceBackAttr(blocking);
+
+  // 4. Prepare outputs & InferMeta
+  auto dense_out = std::make_shared<pten::DenseTensor>(
+      pten::make_intrusive<paddle::experimental::SharedStorage>(
+          pten::TransToPtenPlace(backend)),
+      pten::DenseTensorMeta());
+  pten::MetaTensor meta_out(dense_out.get());
+  pten::UnchangedInferMeta(*dense_x, &meta_out);
+  dense_out->mutable_data(pten::TransToPtenPlace(backend));
+  kernel_context.EmplaceBackOutput(dense_out.get());
+  Tensor out;
+  out.set_impl(dense_out);
+
+  // 5. Call kernel
+  kernel(&kernel_context);
+
+  return out;
+}
+
+std::vector<Tensor> split_impl(const Tensor& x,
+                               const ScalarArray& num_or_sections,
+                               const Scalar& axis) {
+  auto kernel_key_set = ParseKernelKeyByInputArgs(x);
+  auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
+
+  Backend kernel_backend = kernel_key.backend();
+  DataLayout kernel_layout = kernel_key.layout();
+  DataType kernel_data_type = kernel_key.dtype();
 
   auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
       "split", {kernel_backend, kernel_layout, kernel_data_type});

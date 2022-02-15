@@ -34,6 +34,11 @@
   kernel :
     func : conj
 
+- api : copy_to
+  args : (const Tensor& x, Backend backend, bool blocking)
+  output : Tensor
+  invoke : copy_to_impl(x, backend, blocking)
+
 - api : divide
   args : (const Tensor& x, const Tensor& y)
   output : Tensor
