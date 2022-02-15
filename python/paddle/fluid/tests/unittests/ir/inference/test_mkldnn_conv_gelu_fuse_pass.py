@@ -104,19 +104,6 @@ class TestConvGeluMkldnnFusePass(PassAutoScanTest):
         config = self.create_inference_config(use_mkldnn=True)
         yield config, ["conv2d"], (1e-5, 1e-5)
 
-#    # If the problem has been fixed, the judgment 
-#    # needs to be deleted!!!
-#    def add_ignore_pass_case(self):
-#        def teller1(program_config, predictor_config):
-#            if program_config.ops[0].attrs['data_format'] == "NHWC":
-#                return True
-#            return False
-#
-#        self.add_ignore_check_case(
-#            teller1, SkipReasons.PASS_ACCURACY_ERROR,
-#            "The output format of conv2d is wrong when data_format attribute is NHWC"
-#        )
-
     def test(self):
         self.run_and_statis(quant=False, passes=["conv_gelu_mkldnn_fuse_pass"])
 
