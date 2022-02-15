@@ -68,13 +68,10 @@ __global__ void GroupNormForwardGetMeanAndVar(const T* x, int N, int C, int W,
   T x_mean = 0, x_var = 0;
   for (int imid = threadIdx.x; imid < imsize; imid += blockDim.x) {
     T val;
-    if (data_layout == DataLayout::kNCHW) {
-      val = x[(bid * C + ccid) * imsize + imid];
-    } else {
-      int hid = imid / W;
-      int wid = imid % W;
-      val = x[(bid * H + hid) * W * C + wid * C + ccid];
-    }
+    int hid = imid / W;
+    int wid = imid % W;
+    val = x[(bid * H + hid) * W * C + wid * C + ccid];
+
     x_mean += val;
     x_var += val * val;
   }
@@ -82,6 +79,40 @@ __global__ void GroupNormForwardGetMeanAndVar(const T* x, int N, int C, int W,
   x_var /= number * imsize;
   CudaAtomicAddWithWarp(&mean[bid * groups + gid], x_mean);
   CudaAtomicAddWithWarp(&var[bid * groups + gid], x_var);
+}
+
+template <typename T, int BlockDim>
+__global__ void GroupNormForwardGetMeanAndVarNCHW(
+    const T* x, int N, int C, int W, int imsize, int groups, int group_size,
+    T* mean, T* var, const DataLayout data_layout) {
+  T x_mean = 0, x_var = 0;
+  int i = blockIdx.x;
+  for (int j = threadIdx.x; j < group_size * imsize; j += blockDim.x) {
+    T val;
+    val = x[i * group_size * imsize + j];
+    x_mean += val;
+    x_var += val * val;
+  }
+  x_mean /= group_size * imsize;
+  x_var /= group_size * imsize;
+  if (blockDim.x <= 32) {
+    CudaAtomicAddWithWarp(&mean[blockIdx.x], x_mean);
+    CudaAtomicAddWithWarp(&var[blockIdx.x], x_var);
+  } else {
+    typedef cub::BlockReduce<T, BlockDim> BlockReduce;
+
+    __shared__ typename BlockReduce::TempStorage mean_storage;
+    __shared__ typename BlockReduce::TempStorage var_storage;
+
+    __syncthreads();
+    auto mean_out = BlockReduce(mean_storage).Reduce(x_mean, cub::Sum());
+    auto var_out = BlockReduce(var_storage).Reduce(x_var, cub::Sum());
+    __syncthreads();
+    if (threadIdx.x == 0) {
+      mean[blockIdx.x] = mean_out;
+      var[blockIdx.x] = var_out;
+    }
+  }
 }
 
 template <typename T, int flags>
@@ -113,7 +144,9 @@ __global__ void GroupNormForward(const T* x, const T* mean, const T* var,
     }
     val = (val - x_mean) * var_inv;
     if (flags & kHasScale) val *= scale[gid * group_size + cid];
-    if (flags & kHasBias) val += bias[gid * group_size + cid];
+    if (flags & kHasBias) {
+      val += bias[gid * group_size + cid];
+    }
     if (data_layout == DataLayout::kNCHW) {
       y[(bid * C + ccid) * imsize + imid] = val;
     } else {
@@ -186,12 +219,22 @@ class GroupNormKernel<platform::CUDADeviceContext, T>
     int block_size = std::max(std::min(256, imsize), 64);
 #else
     int block_size = std::min(1024, imsize);
+    int block_size_nchw = std::min(1024, group_size * imsize);
 #endif
     dim3 grid(group_size, groups, x_dims[0]);
     dim3 threads(block_size, 1, 1);
-    GroupNormForwardGetMeanAndVar<T><<<grid, threads, 0, dev_ctx.stream()>>>(
-        x_data, x_dims[0], C, W, imsize, groups, group_size, mean_data,
-        temp_var_data, data_layout);
+    if (data_layout == DataLayout::kNCHW) {
+      GroupNormForwardGetMeanAndVarNCHW<
+          T,
+          1024><<<x_dims[0] * groups, block_size_nchw, 0, dev_ctx.stream()>>>(
+          x_data, x_dims[0], C, W, imsize, groups, group_size, mean_data,
+          temp_var_data, data_layout);
+    } else {
+      GroupNormForwardGetMeanAndVar<T><<<grid, threads, 0, dev_ctx.stream()>>>(
+          x_data, x_dims[0], C, W, imsize, groups, group_size, mean_data,
+          temp_var_data, data_layout);
+    }
+
     int flags =
         (scale_data != nullptr) * kHasScale + (bias_data != nullptr) * kHasBias;
     UNROLL_ALL_CASES(flags, GroupNormForward, x_data, mean_data, temp_var_data,
