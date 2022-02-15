@@ -1196,7 +1196,8 @@ PYBIND11_MODULE(core_noavx, m) {
                      "api."));
 
              size_t size = t[0].cast<size_t>();
-             auto dtype = static_cast<proto::VarType::Type>(t[1].cast<int>());
+             auto dtype =
+                 static_cast<paddle::experimental::DataType>(t[1].cast<int>());
              auto dims = make_ddim(t[2].cast<std::vector<int>>());
              auto lod_info = t[3].cast<framework::LoD>();
              auto device_id = t[4].cast<int>();
@@ -1262,7 +1263,9 @@ PYBIND11_MODULE(core_noavx, m) {
 
              int type_idx = static_cast<int>(self.type());
              size_t data_size =
-                 self.numel() * framework::SizeOfType(self.type());
+                 self.numel() *
+                 framework::SizeOfType(
+                     framework::TransToProtoVarType(self.type()));
 
              return py::make_tuple(_handle, (py::size_t)offset_bytes, data_size,
                                    type_idx, vectorize(self.dims()), self.lod(),
@@ -1308,7 +1311,7 @@ PYBIND11_MODULE(core_noavx, m) {
              // 3. Rebuild Tensor
              tensor.ResetHolderWithType(
                  shared_reader_holder,
-                 static_cast<proto::VarType::Type>(t[3].cast<int>()));
+                 static_cast<paddle::experimental::DataType>(t[3].cast<int>()));
              tensor.Resize(make_ddim(t[4].cast<std::vector<int>>()));
              tensor.set_lod(t[5].cast<framework::LoD>());
 
@@ -1353,7 +1356,9 @@ PYBIND11_MODULE(core_noavx, m) {
              if (mmap_allocation == nullptr) {
                void *data_ptr = self.data();
                size_t data_size =
-                   self.numel() * framework::SizeOfType(self.type());
+                   self.numel() *
+                   framework::SizeOfType(
+                       framework::TransToProtoVarType(self.type()));
 
                int flags = memory::allocation::MAPPED_SHAREDMEM |
                            memory::allocation::MAPPED_EXCLUSIVE;
@@ -1417,7 +1422,7 @@ PYBIND11_MODULE(core_noavx, m) {
              // 3. Rebuild Tensor
              tensor.ResetHolderWithType(
                  shared_holder,
-                 static_cast<proto::VarType::Type>(t[2].cast<int>()));
+                 static_cast<paddle::experimental::DataType>(t[2].cast<int>()));
              tensor.Resize(make_ddim(t[3].cast<std::vector<int>>()));
              tensor.set_lod(t[4].cast<framework::LoD>());
 
