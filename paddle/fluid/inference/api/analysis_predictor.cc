@@ -551,7 +551,7 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
     framework::FetchType &fetch_var =
         framework::GetFetchVariable(*scope, "fetch", idx);
     auto &fetch = BOOST_GET(framework::LoDTensor, fetch_var);
-    auto type = fetch.type();
+    auto type = framework::TransToProtoVarType(fetch.dtype());
     auto output = &(outputs->at(i));
     output->name = fetches_[idx]->Input("X")[0];
     if (type == framework::proto::VarType::FP32) {
@@ -615,6 +615,7 @@ void AnalysisPredictor::PrepareArgument() {
         config_.tuned_tensorrt_dynamic_shape());
     argument_.SetTensorRtAllowBuildAtRuntime(
         config_.trt_allow_build_at_runtime());
+    argument_.SetTensorRtUseInspector(config_.trt_use_inspector_);
   }
 
   if (config_.dlnne_enabled()) {
