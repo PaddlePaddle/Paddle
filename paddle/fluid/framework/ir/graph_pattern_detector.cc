@@ -1201,8 +1201,7 @@ PDNode *patterns::BatchNormAct::operator()(
                  ->assert_is_op("batch_norm")
                  ->assert_is_not_op_input("MomentumTensor")
                  ->assert_op_attr<bool>("is_test", false)
-                 ->assert_op_attr<bool>("use_global_stats", false)
-                 ->assert_op_attr<std::string>("data_layout", "NHWC");
+                 ->assert_op_attr<bool>("use_global_stats", false);
 
   auto *bn_mean_out_var = pattern->NewNode(bn_mean_out_repr())
                               ->assert_is_op_output("batch_norm", "MeanOut");
