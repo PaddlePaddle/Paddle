@@ -109,7 +109,8 @@ class LookupTableV2CUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     const auto *ids_t = context.Input<framework::Tensor>("Ids");
     LookupTableV2CUDAFunctor<T> functor(context, ids_t);
-    framework::VisitIntDataType(ids_t->type(), functor);
+    framework::VisitIntDataType(framework::TransToProtoVarType(ids_t->dtype()),
+                                functor);
   }
 };
 
@@ -216,7 +217,8 @@ class LookupTableV2GradCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     const auto *ids_t = context.Input<framework::Tensor>("Ids");
     LookupTableV2GradCUDAFunctor<T> functor(context, ids_t);
-    framework::VisitIntDataType(ids_t->type(), functor);
+    framework::VisitIntDataType(framework::TransToProtoVarType(ids_t->dtype()),
+                                functor);
   }
 };
 
