@@ -30,6 +30,8 @@ ValueRef::ValueRef(::pten::CPUContext&& val)
     : Shared<Value>(new Value(std::move(val))) {}
 ValueRef::ValueRef(::pten::DenseTensor&& val)
     : Shared<Value>(new Value(std::move(val))) {}
+ValueRef::ValueRef(::pten::MetaTensor&& val)
+    : Shared<Value>(new Value(std::move(val))) {}
 
 const char* Value::type_info() const { return __type_info__; }
 

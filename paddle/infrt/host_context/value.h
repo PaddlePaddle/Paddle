@@ -31,8 +31,14 @@
 #include "paddle/infrt/tensor/tensor_shape.h"
 
 #ifdef INFRT_WITH_PTEN
-#include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/pten/backends/all_context.h"
+#include "paddle/pten/common/backend.h"
+#include "paddle/pten/common/data_type.h"
+#include "paddle/pten/common/layout.h"
+#include "paddle/pten/common/scalar.h"
+#include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/meta_tensor.h"
 #endif
 
 namespace infrt {
@@ -40,29 +46,41 @@ namespace host_context {
 
 struct MlirFunctionExecutable;
 
-using ValueVariantType = Variant<int16_t,
-                                 int32_t,
-                                 int64_t,
-                                 float,
-                                 double,
-                                 bool,
-                                 uint32_t,
-                                 uint64_t,
-                                 std::string,
-                                 tensor::TensorShape,
-                                 tensor::DenseHostTensor,
-                                 MlirFunctionExecutable*,
-                                 tensor::TensorMap,
+using ValueVariantType =
+    Variant<int16_t,
+            int32_t,
+            int64_t,
+            float,
+            double,
+            bool,
+            uint32_t,
+            uint64_t,
+            std::string,
+            tensor::TensorShape,
+            tensor::DenseHostTensor,
+            MlirFunctionExecutable*,
+            tensor::TensorMap,
 #ifdef INFRT_WITH_PTEN
-                                 pten::CPUContext,
-                                 pten::DenseTensor,
+            pten::CPUContext,
+            //  pten::GPUContext,
+            //  pten::XPUContext,
+            pten::DenseTensor,
+            std::vector<pten::DenseTensor>,
+            paddle::experimental::ScalarBase<pten::DenseTensor>,
+            paddle::experimental::ScalarArrayBase<pten::DenseTensor>,
+            pten::MetaTensor,
+            std::vector<pten::MetaTensor>,
+            pten::MetaConfig,
+            paddle::experimental::Backend,
+            paddle::experimental::DataLayout,
+            paddle::experimental::DataType,
 #endif
-                                 naive::MetaTensor,
-                                 std::vector<int16_t>,
-                                 std::vector<int32_t>,
-                                 std::vector<int64_t>,
-                                 std::vector<float>,
-                                 std::vector<double>>;
+            naive::MetaTensor,
+            std::vector<int16_t>,
+            std::vector<int32_t>,
+            std::vector<int64_t>,
+            std::vector<float>,
+            std::vector<double>>;
 
 //! Copy content from \param from to \param to.
 void CopyTo(const Value& from, Value* to);
@@ -93,6 +111,7 @@ class Value : public common::Object {
   explicit Value(naive::MetaTensor&& x) : data(std::move(x)) {}
   explicit Value(::pten::CPUContext&& x) : data(std::move(x)) {}
   explicit Value(::pten::DenseTensor&& x) : data(std::move(x)) {}
+  explicit Value(::pten::MetaTensor&& x) : data(std::move(x)) {}
 
   template <typename T>
   const T& get() const {
@@ -153,6 +172,7 @@ class ValueRef : common::Shared<Value> {
   explicit ValueRef(naive::MetaTensor&& val);
   explicit ValueRef(::pten::CPUContext&& x);
   explicit ValueRef(::pten::DenseTensor&& x);
+  explicit ValueRef(::pten::MetaTensor&& x);
 
   using common::Shared<Value>::get;
   using common::Shared<Value>::Reset;

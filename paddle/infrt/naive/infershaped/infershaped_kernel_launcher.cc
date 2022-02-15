@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/infrt/naive/infershaped/infershaped_kernel_launcher.h"
+#include "paddle/infrt/tensor/tensor_shape.h"
+#include "paddle/pten/core/dense_tensor.h"
 
 namespace infrt {
 namespace naive {
@@ -25,6 +27,9 @@ void InferShapedKernelLauncher::CreateKernelFrameForInferShape(
     if (value->is_type<tensor::DenseHostTensor>()) {
       values.emplace_back(MetaTensor{&value->get<tensor::DenseHostTensor>()});
       infershape_kernel_frame_builder.AddArgument(values.back().get());
+    } else if (value->is_type<pten::DenseTensor>()) {
+      values.emplace_back(pten::MetaTensor{&value->get<pten::DenseTensor>()});
+      infershape_kernel_frame_builder.AddArgument(values.back().get());
     } else {
       infershape_kernel_frame_builder.AddArgument(value);
     }
@@ -35,8 +40,12 @@ void InferShapedKernelLauncher::BuildInferShapeCache(
     const uint16_t num_inputs) {
   tensor_shape_cache.resize(num_inputs);
   for (uint16_t i = 0; i < num_inputs; i++) {
-    tensor_shape_cache[i] =
-        infershape_kernel_frame_builder.GetArgAt(i)->get<MetaTensor>().shape();
+    auto shape = infershape_kernel_frame_builder.GetArgAt(i)
+                     ->get<pten::MetaTensor>()
+                     .dims();
+    std::vector<int64_t> tmp(shape.size());
+    for (int i = 0; i < shape.size(); ++i) tmp[i] = shape[i];
+    tensor_shape_cache[i] = tensor::TensorShape(tmp);
   }
 }
 

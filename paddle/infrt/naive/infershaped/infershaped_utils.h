@@ -16,12 +16,14 @@
 
 #include <type_traits>
 #include "paddle/infrt/tensor/dense_host_tensor.h"
+#include "paddle/pten/core/dense_tensor.h"
 
 namespace infrt {
 namespace naive {
 namespace infershaped {
 
-using KeyType = const tensor::DenseHostTensor&;
+// using KeyType = const tensor::DenseHostTensor&;
+using KeyType = const pten::DenseTensor&;
 using CountType = uint8_t;
 
 constexpr CountType value(std::true_type) { return 1; }

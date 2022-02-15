@@ -19,14 +19,18 @@
 #include "paddle/infrt/naive/infershaped/infershaped_registry.h"
 #include "paddle/infrt/naive/infershaped/infershaped_utils.h"
 #include "paddle/infrt/tensor/dense_host_tensor.h"
+#include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/pten/common/place.h"
+#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/meta_tensor.h"
 
 namespace infrt {
 namespace naive {
 
 namespace {
-static void ElementwiseAddTest(const tensor::DenseHostTensor& a,
-                               const tensor::DenseHostTensor& b,
-                               tensor::DenseHostTensor* c);
+static void ElementwiseAddTest(const pten::DenseTensor& a,
+                               const pten::DenseTensor& b,
+                               pten::DenseTensor* c);
 }
 
 TEST(utils, registry) {
@@ -35,25 +39,63 @@ TEST(utils, registry) {
   CHECK_EQ(count, 2U);
 }
 
+class FancyAllocator : public pten::Allocator {
+ public:
+  static void Delete(pten::Allocation* allocation) {
+    ::operator delete(allocation->ptr());
+  }
+
+  AllocationPtr Allocate(size_t bytes_size) override {
+    void* data = ::operator new(bytes_size);
+    auto* allocation = new pten::Allocation(data, bytes_size, pten::CPUPlace());
+    return AllocationPtr(allocation, Delete);
+  }
+};
+
 TEST(ElementwiseAdd, registry) {
   InferShapedKernelRegistry registry;
   RegisterInferShapeLaunchers(&registry);
   ASSERT_EQ(registry.size(), 1UL);
-  auto creator = registry.GetKernel("elementwise_add");
+  auto creator = registry.GetKernel("add.cpu.any.fp32");
   auto infershape_launcher_handle = creator();
-  // fake some tensors
 
-  tensor::DenseHostTensor a({2, 8}, GetDType<float>());
-  tensor::DenseHostTensor b({2, 8}, GetDType<float>());
-  tensor::DenseHostTensor c({2, 8}, GetDType<float>());
+  const pten::DDim dims({1, 2});
+  const pten::DataType dtype{pten::DataType::FLOAT32};
+  const pten::DataLayout layout{pten::DataLayout::NHWC};
+  const pten::LoD lod{};
+  pten::DenseTensorMeta meta(dtype, dims, layout, lod);
+
+  auto fancy_allocator = std::unique_ptr<pten::Allocator>(new FancyAllocator);
+  auto* alloc = fancy_allocator.get();
+
+  pten::DenseTensor a(alloc, meta);
+  pten::DenseTensor b(alloc, meta);
+  pten::DenseTensor c(alloc, meta);
+
+  auto place = pten::CPUPlace();
+  float* a_data = a.mutable_data<float>(place);
+  float* b_data = b.mutable_data<float>(place);
+  float* c_data = c.mutable_data<float>(place);
+  for (size_t i = 0; i < 2; ++i) {
+    a_data[i] = 1.f;
+    b_data[i] = 2.f;
+  }
+
+  pten::CPUContext context;
+  context.SetAllocator(alloc);
+  context.Init();
 
   host_context::KernelFrameBuilder kernel_frame_builder;
-  kernel_frame_builder.AddArgument(new host_context::Value(0));
+  kernel_frame_builder.AddArgument(new host_context::Value(std::move(context)));
   kernel_frame_builder.AddArgument(new host_context::Value(std::move(a)));
   kernel_frame_builder.AddArgument(new host_context::Value(std::move(b)));
   kernel_frame_builder.SetResults({new host_context::Value(std::move(c))});
 
   infershape_launcher_handle->Invoke(&kernel_frame_builder);
+
+  for (size_t i = 0; i < 2; ++i) {
+    CHECK_EQ(c_data[i], 3.f);
+  }
 }
 
 }  // namespace naive

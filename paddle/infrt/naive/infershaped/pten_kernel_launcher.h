@@ -19,24 +19,8 @@
 #include "paddle/infrt/naive/infershaped/infershaped_kernel_launcher.h"
 #include "paddle/infrt/naive/infershaped/infershaped_utils.h"
 
-// This file contains a example of the infershape ElementwiseAdd kernel.
-// Some of the following code should be generated from PTEN by script.
-
 namespace infrt {
 namespace naive {
-
-static void ElementwiseAddInferShape(const MetaTensor& a,
-                                     const MetaTensor& b,
-                                     MetaTensor* c) {
-  CHECK(a.shape() == b.shape())
-      << "ElementwiseAdd, but shapes of a b are not match";
-  *c->mutable_shape() = a.shape();
-}
-
-static void ElementwiseAdd(tensor::DenseHostTensor* /*Context*/,
-                           const tensor::DenseHostTensor& a,
-                           const tensor::DenseHostTensor& b,
-                           tensor::DenseHostTensor* c) {}
 
 template <typename KernelFunc,
           KernelFunc kernel,
@@ -59,7 +43,6 @@ class KernelLauncher : public InferShapedKernelLauncher {
         BuildInferShapeCache(num_input_tensors);
       }
     }
-
     ::infrt::host_context::KernelImpl<KernelFunc, kernel>::Invoke(frame);
   }
 };
