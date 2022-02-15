@@ -175,6 +175,7 @@ struct normal_distribution<double> {
 };
 #endif
 
+/******** Launch GPU function of distribution and transformation *********/
 template <typename T, typename DistOp, typename TransformOp>
 __global__ void DistributionKernel(size_t size, uint64_t seed, uint64_t offset,
                                    DistOp dist, TransformOp trans,
