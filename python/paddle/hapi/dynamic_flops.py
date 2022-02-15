@@ -258,6 +258,8 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
 
     total_ops = 0
     total_params = 0
+    total_ops = paddle.to_tensor(total_ops, dtype=paddle.int64)
+    total_params = paddle.to_tensor(total_ops, dtype=paddle.int64)
     for m in model.sublayers():
         if len(list(m.children())) > 0:
             continue
