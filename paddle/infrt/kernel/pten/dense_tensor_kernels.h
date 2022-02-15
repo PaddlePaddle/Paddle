@@ -12,29 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/kernel/pten/registry.h"
+#pragma once
 
-#include <iostream>
-#include <string>
-
-#include "paddle/infrt/host_context/kernel_registry.h"
-#include "paddle/infrt/host_context/kernel_utils.h"
-#include "paddle/infrt/kernel/pten/allocator_kernels.h"
-#include "paddle/infrt/kernel/pten/dense_tensor_kernels.h"
-#include "paddle/pten/include/infermeta.h"
-#include "paddle/pten/include/kernels.h"
-
-#include "paddle/pten/backends/cpu/cpu_context.h"
-
-using infrt::host_context::Attribute;
+#include "paddle/pten/core/dense_tensor.h"
 
 namespace infrt {
 namespace kernel {
+namespace pten {
 
-void RegisterPtenKernels(host_context::KernelRegistry* registry) {
-  registry->AddKernel("pten_dt.create_allocator.host",
-                      INFRT_KERNEL(infrt::kernel::pten::CreateHostAllocator));
+template <typename T>
+std::vector<int64_t> CreateUninitTensor(const std::vector<int64_t>& shape) {
+  return {};
 }
 
+}  // namespace pten
 }  // namespace kernel
 }  // namespace infrt

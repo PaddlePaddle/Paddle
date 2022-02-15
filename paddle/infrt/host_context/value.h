@@ -31,6 +31,7 @@
 #include "paddle/infrt/tensor/tensor_shape.h"
 
 #ifdef INFRT_WITH_PTEN
+#include "paddle/infrt/backends/host/pten_allocator.h"
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
 #endif
@@ -56,6 +57,7 @@ using ValueVariantType = Variant<int16_t,
 #ifdef INFRT_WITH_PTEN
                                  pten::CPUContext,
                                  pten::DenseTensor,
+                                 backends::HostPtenAllocator,
 #endif
                                  naive::MetaTensor,
                                  std::vector<int16_t>,
@@ -91,8 +93,11 @@ class Value : public common::Object {
   explicit Value(tensor::DenseHostTensor&& x) : data(std::move(x)) {}
   explicit Value(MlirFunctionExecutable* x) : data(x) {}
   explicit Value(naive::MetaTensor&& x) : data(std::move(x)) {}
+#ifdef INFRT_WITH_PTEN
   explicit Value(::pten::CPUContext&& x) : data(std::move(x)) {}
   explicit Value(::pten::DenseTensor&& x) : data(std::move(x)) {}
+  explicit Value(backends::HostPtenAllocator&& x) : data(std::move(x)) {}
+#endif
 
   template <typename T>
   const T& get() const {
