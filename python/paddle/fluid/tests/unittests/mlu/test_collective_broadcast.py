@@ -27,8 +27,28 @@ class TestCBroadcastOp(TestDistBase):
     def _setup_config(self):
         pass
 
-    def test_reduce(self):
-        self.check_with_place("collective_broadcast_op.py", "broadcast")
+    def test_broadcast_fp32(self):
+        self.check_with_place("collective_broadcast_op.py", "broadcast",
+                              "float32")
+
+    def test_broadcast_fp16(self):
+        self.check_with_place("collective_broadcast_op.py", "broadcast",
+                              "float16")
+
+    def test_broadcast_int32(self):
+        self.check_with_place("collective_broadcast_op.py", "broadcast",
+                              "int32")
+
+    def test_broadcast_int16(self):
+        self.check_with_place("collective_broadcast_op.py", "broadcast",
+                              "int16")
+
+    def test_broadcast_int8(self):
+        self.check_with_place("collective_broadcast_op.py", "broadcast", "int8")
+
+    def test_broadcast_uint8(self):
+        self.check_with_place("collective_broadcast_op.py", "broadcast",
+                              "uint8")
 
 
 if __name__ == '__main__':

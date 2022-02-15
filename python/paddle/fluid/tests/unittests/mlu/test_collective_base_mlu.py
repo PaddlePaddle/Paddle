@@ -29,6 +29,29 @@ import paddle.fluid.unique_name as nameGen
 from paddle.fluid import core
 
 
+def DataTypeCast(date_type):
+    np_data_type = None
+
+    if date_type == "float16":
+        np_data_type = np.float16
+    elif date_type == "float32":
+        np_data_type = np.float32
+    elif date_type == "float64":
+        np_data_type = np.float64
+    elif date_type == "int8":
+        np_data_type = np.int8
+    elif date_type == "int16":
+        np_data_type = np.int16
+    elif date_type == "int32":
+        np_data_type = np.int32
+    elif date_type == "uint8":
+        np_data_type = np.uint8
+    else:
+        raise ValueError("This data type is not support!")
+
+    return np_data_type
+
+
 class TestCollectiveRunnerBase(object):
     def get_model(self, train_prog, startup_prog):
         raise NotImplementedError(
@@ -112,7 +135,8 @@ class TestCollectiveRunnerBase(object):
         exe = fluid.Executor(place)
         exe.run(startup_prog)
         np.random.seed(os.getpid())
-        indata = np.random.random((10, 1000)).astype(np.float32)
+        np_data_type = DataTypeCast(args["data_type"])
+        indata = np.random.random((10, 1000)).astype(np_data_type)
         out = exe.run(train_prog,
                       feed={'tindata': indata},
                       fetch_list=[result.name])
@@ -128,6 +152,7 @@ def runtime_main(test_class, col_type, sub_type):
     args["endpoints"] = os.getenv('PADDLE_TRAINER_ENDPOINTS')
     args["currentendpoint"] = os.getenv("PADDLE_CURRENT_ENDPOINT")
     args["col_type"] = col_type
+    args["data_type"] = os.getenv("DATA_TYPE")
     model.run_trainer(args)
 
 
@@ -210,6 +235,7 @@ class TestDistBase(unittest.TestCase):
     def check_with_place(self,
                          model_file,
                          col_type,
+                         data_type,
                          check_error_log=False,
                          need_envs={}):
         required_envs = {
@@ -219,6 +245,7 @@ class TestDistBase(unittest.TestCase):
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "LD_PRELOAD": os.getenv("LD_PRELOAD", ""),
             "GLOG_v": "3",
+            "DATA_TYPE": data_type,
         }
         required_envs.update(need_envs)
         if check_error_log:
@@ -226,90 +253,14 @@ class TestDistBase(unittest.TestCase):
             required_envs["GLOG_logtostderr"] = "1"
         tr0_out, tr1_out, pid0, pid1 = self._run_cluster(model_file,
                                                          required_envs)
+        np_data_type = DataTypeCast(data_type)
         np.random.seed(pid0)
-        input1 = np.random.random((10, 1000)).astype(np.float32)
+        input1 = np.random.random((10, 1000)).astype(np_data_type)
         np.random.seed(pid1)
-        input2 = np.random.random((10, 1000)).astype(np.float32)
-        if col_type == "allgather":
-            need_result = np.vstack((input1, input2))
-            self.assertTrue(np.allclose(tr0_out, need_result))
-            self.assertTrue(np.allclose(tr1_out, need_result))
-        elif col_type == "broadcast":
+        input2 = np.random.random((10, 1000)).astype(np_data_type)
+        if col_type == "broadcast":
             need_result = input2
             self.assertTrue(np.allclose(tr0_out, need_result))
             self.assertTrue(np.allclose(tr1_out, need_result))
-        elif col_type == "reduce":
-            need_result = input1 + input2
-            self.assertTrue(np.allclose(tr1_out, need_result))
-        elif col_type == "scatter":
-            need_result = input2
-            need_result1 = need_result[0:need_result.shape[0] // 2]
-            need_result2 = need_result[need_result.shape[0] // 2:]
-            self.assertTrue(np.allclose(tr0_out, need_result1))
-            self.assertTrue(np.allclose(tr1_out, need_result2))
-        elif col_type == "allreduce":
-            need_result = input1 + input2
-            self.assertTrue(
-                np.allclose(
-                    tr0_out, need_result, rtol=1e-05, atol=1e-05))
-            self.assertTrue(
-                np.allclose(
-                    tr1_out, need_result, rtol=1e-05, atol=1e-05))
-        elif col_type == "reduce_scatter":
-            tmp = input1 + input2
-            need_result1 = tmp[0:tmp.shape[0] // 2]
-            need_result2 = tmp[tmp.shape[0] // 2:]
-            self.assertTrue(
-                np.allclose(
-                    tr0_out, need_result1, rtol=1e-05, atol=1e-05))
-            self.assertTrue(
-                np.allclose(
-                    tr1_out, need_result2, rtol=1e-05, atol=1e-05))
-        elif col_type == "sendrecv":
-            need_result = input1
-            self.assertTrue(
-                np.allclose(
-                    tr1_out, need_result, rtol=1e-05, atol=1e-05))
-        elif col_type == "identity":
-            need_result1 = input1
-            need_result2 = input2
-            self.assertTrue(np.allclose(tr0_out, need_result1, rtol=0, atol=0))
-            self.assertTrue(np.allclose(tr1_out, need_result2, rtol=0, atol=0))
-        elif col_type == "reduce_slicegather":
-            slicesize = input1.shape[0] // 2
-            tmp10 = input1[0:slicesize]
-            tmp11 = input2[0:slicesize]
-            need_result1 = np.concatenate((tmp10, tmp11), axis=1)
-            tmp20 = input1[slicesize:]
-            tmp21 = input2[slicesize:]
-            need_result2 = np.concatenate((tmp20, tmp21), axis=1)
-            self.assertTrue(np.allclose(tr0_out, need_result1))
-            self.assertTrue(np.allclose(tr1_out, need_result2))
-        elif col_type == "concat":
-            need_result = np.concatenate((input1, input2), axis=1)
-            self.assertTrue(
-                np.allclose(
-                    tr0_out, need_result, rtol=1e-05, atol=1e-05))
-            self.assertTrue(
-                np.allclose(
-                    tr1_out, need_result, rtol=1e-05, atol=1e-05))
-        elif col_type == "split":
-            need_result1 = np.split(input1, 2, axis=1)[0]
-            need_result2 = np.split(input2, 2, axis=1)[1]
-            self.assertTrue(
-                np.allclose(
-                    tr0_out, need_result1, rtol=1e-05, atol=1e-05))
-            self.assertTrue(
-                np.allclose(
-                    tr1_out, need_result2, rtol=1e-05, atol=1e-05))
-        elif col_type == "sendrecv_array":
-            need_result1 = np.array([[0, 1, 2]])
-            need_result2 = np.array([[3, 4, 5]])
-            self.assertTrue(
-                np.allclose(
-                    tr1_out[0][0], need_result1, rtol=1e-05, atol=1e-05))
-            self.assertTrue(
-                np.allclose(
-                    tr1_out[0][1], need_result2, rtol=1e-05, atol=1e-05))
         else:
             pass
