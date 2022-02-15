@@ -174,12 +174,12 @@ template PADDLE_API uint8_t *Tensor::mutable_data<uint8_t>();
 template PADDLE_API int8_t *Tensor::mutable_data<int8_t>();
 template PADDLE_API int16_t *Tensor::mutable_data<int16_t>();
 template PADDLE_API bool *Tensor::mutable_data<bool>();
-template PADDLE_API paddle::platform::complex<float>
-    *Tensor::mutable_data<paddle::platform::complex<float>>();
-template PADDLE_API paddle::platform::complex<double>
-    *Tensor::mutable_data<paddle::platform::complex<double>>();
-template PADDLE_API paddle::platform::float16 *
-Tensor::mutable_data<paddle::platform::float16>();
+template PADDLE_API pten::dtype::complex<float>
+    *Tensor::mutable_data<pten::dtype::complex<float>>();
+template PADDLE_API pten::dtype::complex<double>
+    *Tensor::mutable_data<pten::dtype::complex<double>>();
+template PADDLE_API pten::dtype::float16 *
+Tensor::mutable_data<pten::dtype::float16>();
 
 template <typename T>
 T *Tensor::mutable_data(const PlaceType &place) {
@@ -212,12 +212,12 @@ template PADDLE_API int8_t *Tensor::mutable_data<int8_t>(
 template PADDLE_API int16_t *Tensor::mutable_data<int16_t>(
     const PlaceType &place);
 template PADDLE_API bool *Tensor::mutable_data<bool>(const PlaceType &place);
-template PADDLE_API paddle::platform::complex<float> *
-Tensor::mutable_data<paddle::platform::complex<float>>(const PlaceType &place);
-template PADDLE_API paddle::platform::complex<double> *
-Tensor::mutable_data<paddle::platform::complex<double>>(const PlaceType &place);
-template PADDLE_API paddle::platform::float16 *
-Tensor::mutable_data<paddle::platform::float16>(const PlaceType &place);
+template PADDLE_API pten::dtype::complex<float>
+    *Tensor::mutable_data<pten::dtype::complex<float>>(const PlaceType &place);
+template PADDLE_API pten::dtype::complex<double>
+    *Tensor::mutable_data<pten::dtype::complex<double>>(const PlaceType &place);
+template PADDLE_API pten::dtype::float16 *
+Tensor::mutable_data<pten::dtype::float16>(const PlaceType &place);
 
 template <typename T>
 const T *Tensor::data() const {
@@ -236,14 +236,14 @@ template PADDLE_API const uint8_t *Tensor::data<uint8_t>() const;
 template PADDLE_API const int8_t *Tensor::data<int8_t>() const;
 template PADDLE_API const int16_t *Tensor::data<int16_t>() const;
 template PADDLE_API const bool *Tensor::data<bool>() const;
-template PADDLE_API const paddle::platform::complex<float>
-    *Tensor::data<paddle::platform::complex<float>>() const;
-template PADDLE_API const paddle::platform::complex<double>
-    *Tensor::data<paddle::platform::complex<double>>() const;
-template PADDLE_API const paddle::platform::float16 *
-Tensor::data<paddle::platform::float16>() const;
-template PADDLE_API const paddle::platform::bfloat16 *
-Tensor::data<paddle::platform::bfloat16>() const;
+template PADDLE_API const pten::dtype::complex<float>
+    *Tensor::data<pten::dtype::complex<float>>() const;
+template PADDLE_API const pten::dtype::complex<double>
+    *Tensor::data<pten::dtype::complex<double>>() const;
+template PADDLE_API const pten::dtype::float16 *
+Tensor::data<pten::dtype::float16>() const;
+template PADDLE_API const pten::dtype::bfloat16 *
+Tensor::data<pten::dtype::bfloat16>() const;
 
 template <typename T>
 T *Tensor::data() {
@@ -262,12 +262,11 @@ template PADDLE_API uint8_t *Tensor::data<uint8_t>();
 template PADDLE_API int8_t *Tensor::data<int8_t>();
 template PADDLE_API int16_t *Tensor::data<int16_t>();
 template PADDLE_API bool *Tensor::data<bool>();
-template PADDLE_API paddle::platform::complex<float>
-    *Tensor::data<paddle::platform::complex<float>>();
-template PADDLE_API paddle::platform::complex<double>
-    *Tensor::data<paddle::platform::complex<double>>();
-template PADDLE_API paddle::platform::float16 *
-Tensor::data<paddle::platform::float16>();
+template PADDLE_API pten::dtype::complex<float>
+    *Tensor::data<pten::dtype::complex<float>>();
+template PADDLE_API pten::dtype::complex<double>
+    *Tensor::data<pten::dtype::complex<double>>();
+template PADDLE_API pten::dtype::float16 *Tensor::data<pten::dtype::float16>();
 
 // TODO(chenweihang): replace slice impl by API
 Tensor Tensor::slice(int64_t begin_idx, int64_t end_idx) const {
@@ -323,12 +322,12 @@ template PADDLE_API Tensor
 Tensor::copy_to<int16_t>(const PlaceType &target_place) const;
 template PADDLE_API Tensor
 Tensor::copy_to<bool>(const PlaceType &target_place) const;
-template PADDLE_API Tensor Tensor::copy_to<paddle::platform::complex<float>>(
+template PADDLE_API Tensor Tensor::copy_to<pten::dtype::complex<float>>(
     const PlaceType &target_place) const;
-template PADDLE_API Tensor Tensor::copy_to<paddle::platform::complex<double>>(
+template PADDLE_API Tensor Tensor::copy_to<pten::dtype::complex<double>>(
     const PlaceType &target_place) const;
 template PADDLE_API Tensor
-Tensor::copy_to<paddle::platform::float16>(const PlaceType &target_place) const;
+Tensor::copy_to<pten::dtype::float16>(const PlaceType &target_place) const;
 
 Tensor Tensor::copy_to(Backend backend, bool blocking) const {
   return experimental::copy_to(*this, backend, blocking);

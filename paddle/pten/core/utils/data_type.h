@@ -26,23 +26,23 @@ namespace pten {
 #define _PtenForEachDataTypeHelper_(callback, cpp_type, data_type) \
   callback(cpp_type, data_type);
 
-#define _PtenForEachDataType_(callback)                                   \
-  _PtenForEachDataTypeHelper_(callback, float, DataType::FLOAT32);        \
-  _PtenForEachDataTypeHelper_(                                            \
-      callback, ::paddle::platform::float16, DataType::FLOAT16);          \
-  _PtenForEachDataTypeHelper_(                                            \
-      callback, ::paddle::platform::bfloat16, DataType::BFLOAT16);        \
-  _PtenForEachDataTypeHelper_(callback, double, DataType::FLOAT64);       \
-  _PtenForEachDataTypeHelper_(callback, int, DataType::INT32);            \
-  _PtenForEachDataTypeHelper_(callback, int64_t, DataType::INT64);        \
-  _PtenForEachDataTypeHelper_(callback, bool, DataType::BOOL);            \
-  _PtenForEachDataTypeHelper_(callback, uint8_t, DataType::UINT8);        \
-  _PtenForEachDataTypeHelper_(callback, int16_t, DataType::INT16);        \
-  _PtenForEachDataTypeHelper_(callback, int8_t, DataType::INT8);          \
-  _PtenForEachDataTypeHelper_(                                            \
-      callback, ::paddle::platform::complex<float>, DataType::COMPLEX64); \
-  _PtenForEachDataTypeHelper_(                                            \
-      callback, ::paddle::platform::complex<double>, DataType::COMPLEX128);
+#define _PtenForEachDataType_(callback)                              \
+  _PtenForEachDataTypeHelper_(callback, float, DataType::FLOAT32);   \
+  _PtenForEachDataTypeHelper_(                                       \
+      callback, ::pten::dtype::float16, DataType::FLOAT16);          \
+  _PtenForEachDataTypeHelper_(                                       \
+      callback, ::pten::dtype::bfloat16, DataType::BFLOAT16);        \
+  _PtenForEachDataTypeHelper_(callback, double, DataType::FLOAT64);  \
+  _PtenForEachDataTypeHelper_(callback, int, DataType::INT32);       \
+  _PtenForEachDataTypeHelper_(callback, int64_t, DataType::INT64);   \
+  _PtenForEachDataTypeHelper_(callback, bool, DataType::BOOL);       \
+  _PtenForEachDataTypeHelper_(callback, uint8_t, DataType::UINT8);   \
+  _PtenForEachDataTypeHelper_(callback, int16_t, DataType::INT16);   \
+  _PtenForEachDataTypeHelper_(callback, int8_t, DataType::INT8);     \
+  _PtenForEachDataTypeHelper_(                                       \
+      callback, ::pten::dtype::complex<float>, DataType::COMPLEX64); \
+  _PtenForEachDataTypeHelper_(                                       \
+      callback, ::pten::dtype::complex<double>, DataType::COMPLEX128);
 
 template <typename Visitor>
 inline void VisitDataType(pten::DataType type, Visitor visitor) {

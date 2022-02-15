@@ -25,9 +25,9 @@ PT_REGISTER_KERNEL(matmul_grad,
                    pten::MatmulGradKernel,
                    float,
                    double,
-                   paddle::platform::float16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::float16,
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(matmul_double_grad,
                    GPU,
@@ -35,9 +35,9 @@ PT_REGISTER_KERNEL(matmul_double_grad,
                    pten::MatmulDoubleGradKernel,
                    float,
                    double,
-                   paddle::platform::float16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::float16,
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(matmul_triple_grad,
                    GPU,
@@ -45,6 +45,6 @@ PT_REGISTER_KERNEL(matmul_triple_grad,
                    pten::MatmulTripleGradKernel,
                    float,
                    double,
-                   paddle::platform::float16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::float16,
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
