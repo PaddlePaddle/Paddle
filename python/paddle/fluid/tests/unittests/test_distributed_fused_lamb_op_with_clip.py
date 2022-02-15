@@ -72,7 +72,7 @@ class TestDistributedFusedLambWithClip(unittest.TestCase):
     def test_1(self):
         run_test(clip_after_allreduce=True, max_global_norm=0.01)
 
-    def test_2(self):
+    def _test_2(self):
         run_test(clip_after_allreduce=False, max_global_norm=0.01)
 
 

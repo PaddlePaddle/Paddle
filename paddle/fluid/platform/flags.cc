@@ -214,11 +214,6 @@ PADDLE_DEFINE_EXPORTED_bool(
     cudnn_batchnorm_spatial_persistent, false,
     "Whether enable CUDNN_BATCHNORM_SPATIAL_PERSISTENT mode for cudnn "
     "batch_norm, default is False.");
-
-PADDLE_DEFINE_EXPORTED_bool(
-    distributed_lamb_divide_nranks_when_allreduce, false,
-    "Whether to divide nranks when performing allreduce.");
-
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

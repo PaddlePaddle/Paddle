@@ -38,56 +38,57 @@ class DistributedFusedLambInitOpMaker
     AddInput("Param", "The initial parameter list.").AsDuplicable();
     AddInput("Grad", "The initial gradient list.").AsDuplicable();
 
-    AddOutput(
-        "FP32FusedParam",
-        "The fp32 fused param and fp16 master weight param tensor. Its "
-        "shape is [M1+M2], where M1 is the fp32 fused parameter size and "
-        "M2 is the fp16 fused master weight parameter size. Note that M1 "
-        "and M2 should be exactly divided by N, where N is the world size.")
+    AddOutput("FP32FusedParam",
+              "The fp32 fused param and fp16 fused master weight tensor. Its "
+              "shape is [M1+M2], where M1 is the fp32 fused parameter size and "
+              "M2 is the fp16 fused master weight parameter size. Note that M1 "
+              "and M2 should be exactly divided by N (guaranteed by extra "
+              "padding 0), where N is the world size.")
         .AsDispensable();
     AddOutput("FP32FusedGrad", "The fp32 fused grad tensor. Its shape is [M1].")
         .AsDispensable();
     AddOutput("FP16FusedParam",
               "The fp16 fused param tensor. Its shape is [M2].")
         .AsDispensable();
-    AddOutput("FP16FusedGrad",
-              "The fp16 fused param tensors. Its shape is [M2].")
+    AddOutput("FP16FusedGrad", "The fp16 fused grad tensor. Its shape is [M2].")
         .AsDispensable();
 
-    AddOutput("Moment1", "The fp32 moment1 tensor. Its shape is [(M1+M2)/N].");
-    AddOutput("Moment2", "The fp32 moment2 tensor. Its shape is [(M1+M2)/N].");
+    AddOutput("Moment1",
+              "The sharded fp32 moment1 tensor. Its shape is [(M1+M2)/N].");
+    AddOutput("Moment2",
+              "The sharded fp32 moment2 tensor. Its shape is [(M1+M2)/N].");
     AddOutput("Beta1Pow",
               "The fp32 beta1 power accumulator tensor. Its shape is [1].");
     AddOutput("Beta2Pow",
               "The fp32 beta2 power accumulator tensor. Its shape is [1].");
     AddOutput("FusedIndices",
               "The param index of each element in FP32FusedParam. Its shape is "
-              "[M1+M2].");
-    AddOutput("FusedParamOffsets",
-              "The parameter offset of the fused parameters. Its shape is "
-              "[param_num + 1].");
+              "[M1+M2]. It is like [0,0,0,1,1,1,1,2,2,...].");
     AddOutput(
-        "FP32PartialFusedParamOffsets",
-        "The partial parameter offset of the fused FP32 parameters. Its shape "
-        "is [fp32_local_param_num + 1].");
+        "FusedParamOffsets",
+        "The numel offset of each parameter inside the FP32FusedParam. Its "
+        "shape is [param_num + 1]. It is like [0, n_0, n_0 + n_1, n_0 + n_1 "
+        "+ n_2, ...].");
+    AddOutput("FP32ShardFusedParamOffsets",
+              "The sharded numel offset of each parameter in the local rank. "
+              "Its shape is [fp32_local_param_num + 1].");
+    AddOutput("FP16ShardFusedParamOffsets",
+              "The sharded numel offset of each parameter in the local rank. "
+              "Its shape is [fp16_local_param_num + 1].");
     AddOutput(
-        "FP16PartialFusedParamOffsets",
-        "The partial parameter offset of the fused FP16 parameters. Its shape "
-        "is [fp16_local_param_num + 1].");
-    /*
-    AddOutput("FP32PartialFusedParamOffsetsEx", "");
-    AddOutput("FP16PartialFusedParamOffsetsEx", "");
-    */
-    AddOutput("WeightDecay",
-              "The fp32 weight decay tensor. Its shape is [(M1+M2)/N].");
-    AddOutput("LocalParamInfo",
-              "The local param info inside FP32FusedParam. It should be in "
-              "CPUPlace, and its shape is [4].");
+        "WeightDecay",
+        "The sharded fp32 weight decay tensor. Its shape is [(M1+M2)/N].");
+    AddOutput("ParamInfo",
+              "The param info. It should be in CPUPlace, and its shape is [6]"
+              "CPUPlace, and its shape is [6]. It is "
+              "[fp32_shard_param_start_idx, fp32_local_param_num, "
+              "fp32_global_param_num, fp16_shard_param_start_idx, "
+              "fp16_local_param_num, fp16_global_param_num].");
 
     AddOutput("ParamOut", "The output parameter list.").AsDuplicable();
     AddOutput("MasterParamOut",
               "The output master parameter list. It would share the memory of "
-              "each FP32 parameter and FP16 master parameter.")
+              "each fp32 parameter and fp16 master parameter.")
         .AsDuplicable();
     AddOutput("GradOut", "The output gradient list.").AsDuplicable();
     AddOutput("GlobalScale",
@@ -95,9 +96,10 @@ class DistributedFusedLambInitOpMaker
 
     AddAttr<float>("beta1", "The initial value of Beta1Pow.");
     AddAttr<float>("beta2", "The initial value of Beta2Pow.");
-    AddAttr<std::vector<float>>("weight_decay",
-                                "The weight decay for each parameter. Its "
-                                "shape is equal to the parameter number.");
+    AddAttr<std::vector<float>>(
+        "weight_decay",
+        "The weight decay for each parameter. Its "
+        "shape is equal to the global parameter number.");
     AddAttr<int>("alignment", "The alignment in bytes for the fused tensors.");
     AddAttr<int>("rank", "The global rank of the current process.");
     AddAttr<int>("nranks", "The global world size.");

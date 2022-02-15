@@ -562,24 +562,23 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
     size_t total_local_param_num = fp32_local_param_num + fp16_local_param_num;
     VLOG(10) << "Found the sharding arguments";
 
-    auto *local_param_info_t = ctx.Output<framework::Tensor>("LocalParamInfo");
-    local_param_info_t->Resize({6});
-    auto *local_param_info =
-        local_param_info_t->mutable_data<int>(platform::CPUPlace());
-    local_param_info[0] = static_cast<int>(fp32_start_idx);
-    local_param_info[1] = static_cast<int>(fp32_local_param_num);
-    local_param_info[2] = static_cast<int>(fp32_infos.size());
-    local_param_info[3] = static_cast<int>(fp16_start_idx + fp32_infos.size());
-    local_param_info[4] = static_cast<int>(fp16_local_param_num);
-    local_param_info[5] = static_cast<int>(fp16_infos.size());
+    auto *param_info_t = ctx.Output<framework::Tensor>("ParamInfo");
+    param_info_t->Resize({6});
+    auto *param_info = param_info_t->mutable_data<int>(platform::CPUPlace());
+    param_info[0] = static_cast<int>(fp32_start_idx);
+    param_info[1] = static_cast<int>(fp32_local_param_num);
+    param_info[2] = static_cast<int>(fp32_infos.size());
+    param_info[3] = static_cast<int>(fp16_start_idx + fp32_infos.size());
+    param_info[4] = static_cast<int>(fp16_local_param_num);
+    param_info[5] = static_cast<int>(fp16_infos.size());
 
-    VLOG(10) << "Start FP32 idx: " << local_param_info[0];
-    VLOG(10) << "Local FP32 param num: " << local_param_info[1];
-    VLOG(10) << "Global FP32 param num: " << local_param_info[2];
+    VLOG(10) << "Start FP32 idx: " << param_info[0];
+    VLOG(10) << "Local FP32 param num: " << param_info[1];
+    VLOG(10) << "Global FP32 param num: " << param_info[2];
 
-    VLOG(10) << "Start FP16 idx: " << local_param_info[3];
-    VLOG(10) << "Local FP16 param num: " << local_param_info[4];
-    VLOG(10) << "Global FP16 param num: " << local_param_info[5];
+    VLOG(10) << "Start FP16 idx: " << param_info[3];
+    VLOG(10) << "Local FP16 param num: " << param_info[4];
+    VLOG(10) << "Global FP16 param num: " << param_info[5];
 
     // For WeightDecay, shard and perform H2D copy
     const auto &origin_weight_decay =
@@ -587,8 +586,7 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
     PADDLE_ENFORCE_EQ(params.size(), origin_weight_decay.size(),
                       platform::errors::InvalidArgument(
                           "The attr(weight_decay) should have the "
-                          "same length "
-                          "with Input(Param)."));
+                          "same length with Input(Param)."));
     std::vector<float> shard_weight_decay;
     shard_weight_decay.reserve(total_local_param_num);
     for (size_t i = 0; i < fp32_local_param_num; ++i) {
@@ -600,8 +598,7 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
           origin_weight_decay[fp16_infos[i + fp16_start_idx].idx]);
     }
 
-    // For FusedIndices, launch CUDA kernel to do
-    // binary search
+    // For FusedIndices, launch CUDA kernel to do binary search
     auto *fused_indices_t = ctx.Output<framework::Tensor>("FusedIndices");
     fused_indices_t->Resize({static_cast<int64_t>(total_numel)});
     auto *fused_indices = fused_indices_t->mutable_data<int>(place);

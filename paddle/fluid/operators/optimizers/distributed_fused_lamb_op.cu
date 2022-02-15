@@ -33,8 +33,6 @@
 namespace cub = hipcub;
 #endif
 
-DECLARE_bool(distributed_lamb_divide_nranks_when_allreduce);
-
 namespace paddle {
 namespace operators {
 
@@ -169,35 +167,14 @@ struct AndFunctor {
 };
 
 template <typename T1, typename T2>
-static __global__ void GPUScaleCUDAKernel(const T1 *__restrict__ x,
-                                          const T2 *__restrict__ scale,
-                                          T1 *__restrict__ y, int num) {
+static __global__ void ScaleCUDAKernel(const T1 *__restrict__ x,
+                                       const T2 *__restrict__ scale,
+                                       T1 *__restrict__ y, int num) {
   static_assert(sizeof(T1) <= sizeof(T2),
                 "sizeof(T1) must be not greater than sizeof(T2).");
   T2 s = scale[0];
   CUDA_KERNEL_LOOP(i, num) {
     y[i] = static_cast<T1>(static_cast<T2>(x[i]) * s);
-  }
-}
-
-template <typename T>
-static __global__ void InplaceDivideNumDeviceCUDAKernel(T *x, int num,
-                                                        int num_devices) {
-  using MT = MasterT<T>;
-  CUDA_KERNEL_LOOP(i, num) {
-    auto x_val = static_cast<MT>(x[i]) / static_cast<MT>(num_devices);
-    x[i] = static_cast<T>(x_val);
-  }
-}
-
-template <typename T1, typename T2>
-static __global__ void CPUScaleCUDAKernel(const T1 *__restrict__ x,
-                                          const T2 scale, T1 *__restrict__ y,
-                                          int num) {
-  static_assert(sizeof(T1) <= sizeof(T2),
-                "sizeof(T1) must be not greater than sizeof(T2).");
-  CUDA_KERNEL_LOOP(i, num) {
-    y[i] = static_cast<T1>(static_cast<T2>(x[i]) * scale);
   }
 }
 
@@ -216,14 +193,12 @@ template <typename T1, typename T2>
 static __global__ void CalcGradNormClipBeforeAllReduceScale(
     const T1 *__restrict__ global_scale, T1 max_global_grad_norm,
     const T1 *__restrict__ square_grad_norm, T1 *__restrict__ out1,
-    T2 *__restrict__ out2, T1 clip_rescale_grad, T1 extra_rescale) {
+    T2 *__restrict__ out2, T1 clip_rescale_grad) {
   T1 grad_norm = static_cast<T1>(sqrt(*square_grad_norm)) * clip_rescale_grad;
   T1 scale = global_scale[0] * max_global_grad_norm / (1e-6 + grad_norm);
   bool found_nan_inf = !isfinite(scale);
   if (scale >= 1 || found_nan_inf) {
-    scale = extra_rescale;
-  } else {
-    scale *= extra_rescale;
+    scale = static_cast<T1>(1.0);
   }
 
   if (out1) {
@@ -290,55 +265,18 @@ static __global__ void UpdateLambMoment(
     mom1_p[i] = mom1;
     mom2_p[i] = mom2;
     trust_ratio_div_p[i] = trust_ratio_div;
-    /*
-    if (!isfinite(g) || !isfinite(mom1) || !isfinite(mom2) ||
-        !isfinite(trust_ratio_div)) {
-      printf(
-          "blockIdx.x = %d threadIdx.x = %d : param = %f, grad = %f, "
-          "scaled_grad = %f, "
-          "square_grad_norm = %f, mom1 = %f, "
-          "mom2 = %f, trust_ratio_div = %f, weight_deccay = %f, beta1 = %f, "
-          "beta2 = %f, "
-          "beta1pow = %f, beta2pow = %f, scale = %f, rescale_grad = %f, "
-          "global_scale = %f\n",
-          blockIdx.x, threadIdx.x, p, grad_p[i], g, square_grad_norm, mom1,
-          mom2, trust_ratio_div, weight_decay, beta1, beta2, beta1pow_p[0],
-          beta2pow_p[0], scale, rescale_grad, global_scale[0]);
-      asm("trap; ");
-    }
-    */
   }
 }
 
-template <typename T>
-static __global__ void FillConstantWithPtrCUDAKernel(T *x, T value, int n) {
-  CUDA_KERNEL_LOOP(i, n) { x[i] = value; }
-}
-
-template <typename T>
-static void FillConstantWithPtr(const platform::CUDADeviceContext &dev_ctx,
-                                T *x, T value, int n) {
-  auto config = platform::GetGpuLaunchConfig1D(dev_ctx, n);
-  FillConstantWithPtrCUDAKernel<T><<<
-      config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
-      x, value, n);
-}
-
-template <typename T>
-static __global__ void ScatterForTrustRatioDivCUDAKernel(
-    const T *local_x, T *global_x, int local_param_num, int fp32_param_num,
-    int fp32_start_idx, int fp16_start_idx) {
-  CUDA_KERNEL_LOOP(i, local_param_num) {
-    auto scatter_idx = i < fp32_param_num
-                           ? i + fp32_start_idx
-                           : (i - fp32_param_num) + fp16_start_idx;
-    global_x[scatter_idx] = local_x[i];
-  }
-}
-
-template <typename T, bool NeedUpdate>
+template <typename T, bool NeedUpdate /*=true*/>
 struct LambBetaPowUpdateOnceHelper {
-  void SetBetaPows(T *beta1pow, T *beta2pow, T beta1, T beta2) {
+  LambBetaPowUpdateOnceHelper(T *beta1pow, T *beta2pow, T beta1, T beta2) {
+    PADDLE_ENFORCE_NOT_NULL(beta1pow,
+                            platform::errors::InvalidArgument(
+                                "The beta1pow should not be nullptr."));
+    PADDLE_ENFORCE_NOT_NULL(beta2pow,
+                            platform::errors::InvalidArgument(
+                                "The beta2pow should not be nullptr."));
     beta1pow_ = beta1pow;
     beta2pow_ = beta2pow;
     beta1_ = beta1;
@@ -359,14 +297,26 @@ struct LambBetaPowUpdateOnceHelper {
 
 template <typename T>
 struct LambBetaPowUpdateOnceHelper<T, false> {
-  void SetBetaPows(T *beta1pow, T *beta2pow, T beta1, T beta2) {}
+  LambBetaPowUpdateOnceHelper(T *beta1pow, T *beta2pow, T beta1, T beta2) {
+    PADDLE_ENFORCE_EQ(
+        beta1pow, nullptr,
+        platform::errors::InvalidArgument("The beta1pow should be nullptr."));
+    PADDLE_ENFORCE_EQ(
+        beta2pow, nullptr,
+        platform::errors::InvalidArgument("The beta2pow should be nullptr."));
+  }
+
   HOSTDEVICE void UpdateBetaPows() const {}
 };
 
-template <bool HasFoundInf>
+template <bool HasFoundInf /*=true*/>
 struct LambFoundInfHelper {
  public:
-  void SetFoundInf(bool *found_inf) { found_inf_ = found_inf; }
+  explicit LambFoundInfHelper(bool *found_inf) : found_inf_(found_inf) {
+    PADDLE_ENFORCE_NOT_NULL(found_inf,
+                            platform::errors::InvalidArgument(
+                                "The found_inf should not be nullptr."));
+  }
 
   HOSTDEVICE void UpdateFoundInf(bool value) { *found_inf_ = value; }
 
@@ -377,23 +327,88 @@ struct LambFoundInfHelper {
 template <>
 struct LambFoundInfHelper<false> {
  public:
-  void SetFoundInf(bool *) {}
+  explicit LambFoundInfHelper(bool *found_inf) {
+    PADDLE_ENFORCE_EQ(
+        found_inf, nullptr,
+        platform::errors::InvalidArgument("The found_inf should be nullptr."));
+  }
+
   HOSTDEVICE void UpdateFoundInf(bool) {}
 };
 
-template <typename ParamT, typename IndexT, bool NeedUpdateBetaPow,
-          bool HasFoundInf>
+template <typename T, bool HasMasterParam /*=true*/>
+struct LambParamHelper {
+  LambParamHelper(T *param, MasterT<T> *master_param) {
+    constexpr bool kIsSameType = std::is_same<T, MasterT<T>>::value;
+    PADDLE_ENFORCE_EQ(kIsSameType, false,
+                      platform::errors::InvalidArgument(
+                          "T must not be the same with MasterT<T>."));
+    PADDLE_ENFORCE_NOT_NULL(master_param,
+                            platform::errors::InvalidArgument(
+                                "Master parameter must be provided."));
+    param_ = param;
+    master_param_ = master_param;
+  }
+
+  HOSTDEVICE void SetParam(int i, MasterT<T> updated_p) {
+    param_[i] = static_cast<T>(updated_p);
+    master_param_[i] = updated_p;
+  }
+
+  HOSTDEVICE MasterT<T> GetParam(int i) { return master_param_[i]; }
+
+ private:
+  T *__restrict__ param_;
+  MasterT<T> *__restrict__ master_param_;
+};
+
+template <typename T>
+struct LambParamHelper<T, false> {
+  LambParamHelper(T *param, MasterT<T> *master_param) {
+    constexpr bool kIsSameType = std::is_same<T, MasterT<T>>::value;
+    PADDLE_ENFORCE_EQ(kIsSameType, true,
+                      platform::errors::InvalidArgument(
+                          "T must be the same with MasterT<T>."));
+    if (master_param != nullptr) {
+      PADDLE_ENFORCE_EQ(static_cast<void *>(param),
+                        static_cast<void *>(master_param),
+                        platform::errors::InvalidArgument(
+                            "Master parameter must be nullptr or the same as "
+                            "non-master parameter."));
+    }
+    param_ = param;
+  }
+
+  HOSTDEVICE void SetParam(int i, MasterT<T> updated_p) {
+    param_[i] = static_cast<T>(updated_p);
+  }
+
+  HOSTDEVICE MasterT<T> GetParam(int i) {
+    return static_cast<MasterT<T>>(param_[i]);
+  }
+
+ private:
+  T *__restrict__ param_;
+};
+
+template <typename ParamT, typename IndexT, bool HasMasterParam,
+          bool NeedUpdateBetaPow, bool HasFoundInf>
 struct LambParamAndBetaPowsUpdateHelper
-    : public LambBetaPowUpdateOnceHelper<MasterT<ParamT>, NeedUpdateBetaPow>,
+    : public LambParamHelper<ParamT, HasMasterParam>,
+      public LambBetaPowUpdateOnceHelper<MasterT<ParamT>, NeedUpdateBetaPow>,
       public LambFoundInfHelper<HasFoundInf> {
   LambParamAndBetaPowsUpdateHelper(
-      ParamT *param, MasterT<ParamT> *master_param,
-      const MasterT<ParamT> *trust_ratio_div, const MasterT<ParamT> *lr,
-      const IndexT *index, const MasterT<ParamT> *param_square_norm,
+      ParamT *param, MasterT<ParamT> *master_param, MasterT<ParamT> *beta1pow,
+      MasterT<ParamT> *beta2pow, MasterT<ParamT> beta1, MasterT<ParamT> beta2,
+      bool *found_inf, const MasterT<ParamT> *trust_ratio_div,
+      const MasterT<ParamT> *lr, const IndexT *index,
+      const MasterT<ParamT> *param_square_norm,
       const MasterT<ParamT> *trust_ratio_div_square_norm,
       const MasterT<ParamT> *update_flag)
-      : param(param),
-        master_param(master_param),
+      : LambParamHelper<ParamT, HasMasterParam>(param, master_param),
+        LambBetaPowUpdateOnceHelper<MasterT<ParamT>, NeedUpdateBetaPow>(
+            beta1pow, beta2pow, beta1, beta2),
+        LambFoundInfHelper<HasFoundInf>(found_inf),
         trust_ratio_div(trust_ratio_div),
         lr(lr),
         index(index),
@@ -401,8 +416,6 @@ struct LambParamAndBetaPowsUpdateHelper
         trust_ratio_div_square_norm(trust_ratio_div_square_norm),
         update_flag(update_flag) {}
 
-  ParamT *__restrict__ param;
-  MasterT<ParamT> *__restrict__ master_param;
   const MasterT<ParamT> *__restrict__ trust_ratio_div;
   const MasterT<ParamT> *__restrict__ lr;
   const IndexT *__restrict__ index;
@@ -411,11 +424,11 @@ struct LambParamAndBetaPowsUpdateHelper
   const MasterT<ParamT> *__restrict__ update_flag;
 };
 
-template <typename ParamT, typename IndexT, bool NeedUpdateBetaPow,
-          bool HasFoundInf>
+template <typename ParamT, typename IndexT, bool HasMasterParam,
+          bool NeedUpdateBetaPow, bool HasFoundInf>
 static __global__ void LambUpdateParamAndBetaPowsCUDAKernel(
-    LambParamAndBetaPowsUpdateHelper<ParamT, IndexT, NeedUpdateBetaPow,
-                                     HasFoundInf>
+    LambParamAndBetaPowsUpdateHelper<ParamT, IndexT, HasMasterParam,
+                                     NeedUpdateBetaPow, HasFoundInf>
         args,
     int num) {
   auto should_update = *args.update_flag;
@@ -428,13 +441,15 @@ static __global__ void LambUpdateParamAndBetaPowsCUDAKernel(
     args.UpdateFoundInf(false);
   }
 
+  if (NeedUpdateBetaPow && threadIdx.x == 0 && blockIdx.x == 0) {
+    args.UpdateBetaPows();
+  }
+
   using MT = MasterT<ParamT>;
 
   MT lr_value = *args.lr;
-  bool use_master_param = (args.master_param != nullptr);
   CUDA_KERNEL_LOOP(i, num) {
-    MT p = use_master_param ? args.master_param[i]
-                            : static_cast<MT>(args.param[i]);
+    MT p = args.GetParam(i);
     MT t = args.trust_ratio_div[i];
     auto norm_idx = args.index[i];
     MT p_square_norm = args.param_square_norm[norm_idx];
@@ -452,14 +467,7 @@ static __global__ void LambUpdateParamAndBetaPowsCUDAKernel(
                       : static_cast<MT>(1);
 
     MT updated_p = p - lr_value * update * t;
-    args.param[i] = static_cast<ParamT>(updated_p);
-    if (use_master_param) {
-      args.master_param[i] = updated_p;
-    }
-  }
-
-  if (NeedUpdateBetaPow && threadIdx.x == 0 && blockIdx.x == 0) {
-    args.UpdateBetaPows();
+    args.SetParam(i, updated_p);
   }
 }
 
@@ -475,54 +483,54 @@ static void LambUpdateParamAndBetaPows(
     MasterT<ParamT> *master_param, gpuStream_t stream) {
   if (num == 0) return;
 
-  if (std::is_same<ParamT, MasterT<ParamT>>::value) {
-    PADDLE_ENFORCE_EQ(
-        master_param, nullptr,
-        platform::errors::InvalidArgument("Wrong argument for Lamb update."));
-  } else {
-    PADDLE_ENFORCE_NOT_NULL(
-        master_param,
-        platform::errors::InvalidArgument("Wrong argument for Lamb update."));
-    PADDLE_ENFORCE_NE(
-        static_cast<void *>(master_param), static_cast<void *>(param),
-        platform::errors::InvalidArgument("Wrong argument for Lamb update."));
-  }
-
+  bool has_master_param = !(std::is_same<ParamT, MasterT<ParamT>>::value);
   auto has_beta_pow = (*beta1pow) != nullptr && (*beta2pow) != nullptr;
   auto has_found_inf = (*found_inf) != nullptr;
 
-#define PADDLE_LAUNCH_LAMB_UPDATE_PARAM_KERNEL(__has_beta_pow,               \
-                                               __has_found_inf)              \
+#define PADDLE_LAUNCH_LAMB_UPDATE_PARAM_KERNEL(                              \
+    __has_master_param, __has_beta_pow, __has_found_inf)                     \
   do {                                                                       \
-    LambParamAndBetaPowsUpdateHelper<ParamT, IndexT, __has_beta_pow,         \
-                                     __has_found_inf>                        \
-        helper(param, master_param, trust_ratio_div, lr, index,              \
-               param_square_norm, trust_ratio_div_square_norm, update_flag); \
-    if (__has_beta_pow) {                                                    \
-      helper.SetBetaPows(*beta1pow, *beta2pow, beta1, beta2);                \
-    }                                                                        \
-    if (__has_found_inf) {                                                   \
-      helper.SetFoundInf(*found_inf);                                        \
-    }                                                                        \
+    LambParamAndBetaPowsUpdateHelper<ParamT, IndexT, __has_master_param,     \
+                                     __has_beta_pow, __has_found_inf>        \
+        helper(param, master_param, *beta1pow, *beta2pow, beta1, beta2,      \
+               *found_inf, trust_ratio_div, lr, index, param_square_norm,    \
+               trust_ratio_div_square_norm, update_flag);                    \
     auto config = platform::GetGpuLaunchConfig1D(dev_ctx, num);              \
     LambUpdateParamAndBetaPowsCUDAKernel<<<                                  \
         config.block_per_grid, config.thread_per_block, 0, stream>>>(helper, \
                                                                      num);   \
   } while (0)
 
-  if (has_beta_pow) {
-    if (has_found_inf) {
-      PADDLE_LAUNCH_LAMB_UPDATE_PARAM_KERNEL(true, true);
+  if (has_master_param) {
+    if (has_beta_pow) {
+      if (has_found_inf) {
+        PADDLE_LAUNCH_LAMB_UPDATE_PARAM_KERNEL(true, true, true);
+      } else {
+        PADDLE_LAUNCH_LAMB_UPDATE_PARAM_KERNEL(true, true, false);
+      }
     } else {
-      PADDLE_LAUNCH_LAMB_UPDATE_PARAM_KERNEL(true, false);
+      if (has_found_inf) {
+        PADDLE_LAUNCH_LAMB_UPDATE_PARAM_KERNEL(true, false, true);
+      } else {
+        PADDLE_LAUNCH_LAMB_UPDATE_PARAM_KERNEL(true, false, false);
+      }
     }
   } else {
-    if (has_found_inf) {
-      PADDLE_LAUNCH_LAMB_UPDATE_PARAM_KERNEL(false, true);
+    if (has_beta_pow) {
+      if (has_found_inf) {
+        PADDLE_LAUNCH_LAMB_UPDATE_PARAM_KERNEL(false, true, true);
+      } else {
+        PADDLE_LAUNCH_LAMB_UPDATE_PARAM_KERNEL(false, true, false);
+      }
     } else {
-      PADDLE_LAUNCH_LAMB_UPDATE_PARAM_KERNEL(false, false);
+      if (has_found_inf) {
+        PADDLE_LAUNCH_LAMB_UPDATE_PARAM_KERNEL(false, false, true);
+      } else {
+        PADDLE_LAUNCH_LAMB_UPDATE_PARAM_KERNEL(false, false, false);
+      }
     }
   }
+
   *beta1pow = nullptr;
   *beta2pow = nullptr;
   *found_inf = nullptr;
@@ -564,8 +572,8 @@ static void NCCLReduceScatterWithScale(
                             "nranks must be 1 when scale != nullptr."));
       auto numel = recvcount * nranks;
       auto config = platform::GetGpuLaunchConfig1D(dev_ctx, numel);
-      GPUScaleCUDAKernel<<<config.block_per_grid, config.thread_per_block, 0,
-                           stream>>>(sendbuff, scale, recvbuff, numel);
+      ScaleCUDAKernel<<<config.block_per_grid, config.thread_per_block, 0,
+                        stream>>>(sendbuff, scale, recvbuff, numel);
     }
     return;
   }
@@ -580,8 +588,8 @@ static void NCCLReduceScatterWithScale(
     size_t numel = recvcount * nranks;
     T *new_sendbuff = buffer.Alloc<T>(numel);
     auto config = platform::GetGpuLaunchConfig1D(dev_ctx, numel);
-    GPUScaleCUDAKernel<<<config.block_per_grid, config.thread_per_block, 0,
-                         stream>>>(sendbuff, scale, new_sendbuff, numel);
+    ScaleCUDAKernel<<<config.block_per_grid, config.thread_per_block, 0,
+                      stream>>>(sendbuff, scale, new_sendbuff, numel);
     sendbuff = new_sendbuff;
   }
 
@@ -646,6 +654,22 @@ struct AddConstantFunctor {
   T bias_;
 };
 
+template <typename T>
+struct OffsetWithBiasFunctor {
+  OffsetWithBiasFunctor(const T *offset, T bias)
+      : offset_(offset), bias_(bias) {}
+
+  HOSTDEVICE T operator()(T idx) const { return offset_[idx] - bias_; }
+
+  HOSTDEVICE constexpr bool operator==(const OffsetWithBiasFunctor<T> &) const {
+    return true;
+  }
+
+ private:
+  const T *offset_;
+  const T bias_;
+};
+
 template <typename T, typename OffsetT>
 static void CubDeviceSegmentedSquareNorm(const T *x, MasterT<T> *y, int n,
                                          const OffsetT *offset,
@@ -659,10 +683,11 @@ static void CubDeviceSegmentedSquareNorm(const T *x, MasterT<T> *y, int n,
     CubDeviceSegmentedReduce(iter, y, n, offset, offset + 1, cub::Sum(),
                              static_cast<MasterT<T>>(0), stream, buffer);
   } else {
-    AddConstantFunctor<OffsetT> functor(-init_offset);
-    cub::TransformInputIterator<OffsetT, AddConstantFunctor<OffsetT>,
-                                const OffsetT *>
-        offset_iter(offset, functor);
+    cub::CountingInputIterator<OffsetT> cnt_iter(0);
+    OffsetWithBiasFunctor<OffsetT> functor(offset, init_offset);
+    cub::TransformInputIterator<OffsetT, OffsetWithBiasFunctor<OffsetT>,
+                                cub::CountingInputIterator<OffsetT>>
+        offset_iter(cnt_iter, functor);
     CubDeviceSegmentedReduce(iter, y, n, offset_iter, offset_iter + 1,
                              cub::Sum(), static_cast<MasterT<T>>(0), stream,
                              buffer);
@@ -710,16 +735,6 @@ static void GetSquareGradNorm(const float *fp32_grad, int fp32_numel,
   }
   VLOG(10) << "GetSquareGradNorm ends, fp32_numel = " << fp32_numel
            << " , fp16_numel = " << fp16_numel;
-}
-
-template <typename T>
-static void InplaceDivideNumDevice(const platform::CUDADeviceContext &dev_ctx,
-                                   T *x, int num, int num_devices) {
-  if (UNLIKELY(num <= 0)) return;
-  auto config = platform::GetGpuLaunchConfig1D(dev_ctx, num);
-  InplaceDivideNumDeviceCUDAKernel<<<
-      config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
-      x, num, num_devices);
 }
 
 template <typename T>
@@ -831,8 +846,6 @@ static bool HasNanInf(const T *x, int n, gpuStream_t stream,
   return cpu_flag;
 }
 
-// NOTE: has_nan_inf should be of length 2 at least when fp32_numel > 0 and
-// fp16_numel > 0
 static void CheckHasNanInfGrad(const float *fp32_grad, int fp32_numel,
                                const platform::float16 *fp16_grad,
                                int fp16_numel, float *nan_inf_flag,
@@ -885,13 +898,11 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    // PrintAllMinMaxRange(ctx, true);
-
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto stream = dev_ctx.stream();
     auto place = dev_ctx.GetPlace();
 
-    // Step 1: collect fp16 param and grad tensors
+    // Step 1: Get fp16 param and grad tensors
     int64_t fp16_numel;
     auto *fp16_param = GetSameInOutTensorPtr<platform::float16, true>(
         ctx, place, "FP16FusedParam", "FP16FusedParamOut", &fp16_numel);
@@ -903,7 +914,7 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
       fp16_param = nullptr;
     }
 
-    // Step 2: collect fp32 param and grad tensors
+    // Step 2: Get fp32 param and grad tensors
     int64_t fp32_numel = 0;
     auto *fp32_param = GetSameInOutTensorPtr<float, true>(
         ctx, place, "FP32FusedParam", "FP32FusedParamOut", &fp32_numel);
@@ -912,7 +923,8 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
                           "The element number in FP32FusedParam should be not "
                           "less than FP16FusedParam."));
 
-    fp32_numel -= fp16_numel;
+    fp32_numel -= fp16_numel;  // the FP32FusedParam contains fp32 param and
+                               // fp16 master weight
     bool has_fp32_param = (fp32_numel > 0);
     const float *fp32_grad = nullptr;
     if (has_fp32_param) {
@@ -925,11 +937,8 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
     }
 
     auto numel = fp32_numel + fp16_numel;
-    VLOG(10) << "numel = " << numel << " , fp32_numel = " << fp32_numel
-             << " , fp16_numel = " << fp16_numel;
-    VLOG(1) << "FP32FusedParam: "
-            << GetMinMaxStr(fp32_param, fp32_numel + fp16_numel, place);
-    VLOG(1) << "FP32FusedGrad: " << GetMinMaxStr(fp32_grad, fp32_numel, place);
+    VLOG(1) << "numel = " << numel << " , fp32_numel = " << fp32_numel
+            << " , fp16_numel = " << fp16_numel;
 
     // The NVIDIA cub library does not support number > INT32_MAX
     PADDLE_ENFORCE_LE(numel, std::numeric_limits<int>::max(),
@@ -937,26 +946,33 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
                           "Too many parameter number. Only <= %d is supported.",
                           std::numeric_limits<int>::max()));
 
-    // Step 3: FusedIndices
+    // Step 3: Get FusedIndices, ParamInfo
     const auto *indices = GetInputTensorPtr<int>(ctx, "FusedIndices");
-    const auto *local_param_info_tensor =
-        GetInputTensorPtr<int>(ctx, "LocalParamInfo");
-    auto fp32_local_start_idx = local_param_info_tensor[0];
-    auto fp32_local_param_num = local_param_info_tensor[1];
-    auto fp32_global_param_num = local_param_info_tensor[2];
-    auto fp16_local_start_idx = local_param_info_tensor[3];
-    auto fp16_local_param_num = local_param_info_tensor[4];
-    auto fp16_global_param_num = local_param_info_tensor[5];
+    const auto *param_info_tensor = GetInputTensorPtr<int>(ctx, "ParamInfo");
+    auto fp32_local_start_idx = param_info_tensor[0];
+    auto fp32_local_param_num = param_info_tensor[1];
+    auto fp32_global_param_num = param_info_tensor[2];
+    auto fp16_local_start_idx = param_info_tensor[3];
+    auto fp16_local_param_num = param_info_tensor[4];
+    auto fp16_global_param_num = param_info_tensor[5];
 
     auto local_param_num = fp32_local_param_num + fp16_local_param_num;
+    auto param_num = fp32_global_param_num + fp16_global_param_num;
+    PADDLE_ENFORCE_LE(local_param_num, param_num,
+                      platform::errors::InvalidArgument(
+                          "The local parameter number should not exceed the "
+                          "global parameter number."));
     VLOG(1) << "local_param_num = " << local_param_num
+            << " , global_param_num = " << param_num
             << " , fp32_local_start_idx = " << fp32_local_start_idx
             << " , fp32_local_param_num = " << fp32_local_param_num
+            << " , fp32_global_param_num = " << fp32_global_param_num
             << " , fp16_local_start_idx = " << fp16_local_start_idx
-            << " , fp16_local_param_num = " << fp16_local_param_num;
+            << " , fp16_local_param_num = " << fp16_local_param_num
+            << " , fp16_global_param_num = " << fp16_global_param_num;
 
-    // Step 4: LearningRate, Moment1, Moment2, Beta1Pow, Beta2Pow, WeightDecay,
-    // GlobalScale, FoundInf
+    // Step 4: Get LearningRate, Moment1, Moment2, Beta1Pow, Beta2Pow,
+    // WeightDecay, GlobalScale, FoundInf
     const auto *global_scale = GetInputTensorPtr<float>(ctx, "GlobalScale");
     const auto *lr = GetInputTensorPtr<float>(ctx, "LearningRate");
     int64_t partial_numel = 0;
@@ -970,8 +986,8 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
                           numel, partial_numel));
 
     int64_t num_devices = numel / partial_numel;
-    VLOG(10) << "num_devices = " << num_devices
-             << " , partial_numel = " << partial_numel;
+    VLOG(1) << "num_devices = " << num_devices
+            << " , partial_numel = " << partial_numel;
 
     PADDLE_ENFORCE_EQ(fp32_numel % num_devices, 0,
                       platform::errors::InvalidArgument(
@@ -996,7 +1012,8 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
     found_inf_t->Resize({1});
     auto *found_inf = found_inf_t->mutable_data<bool>(place);
 
-    // Step 5: attributes beta1, beta2, epsilon, max_grad_norm, ring_id
+    // Step 5: Get attributes beta1, beta2, epsilon, max_grad_norm, ring_id,
+    // use_master_param_norm, is_grad_scaled_by_nranks
     auto beta1 = ctx.Attr<float>("beta1");
     auto beta2 = ctx.Attr<float>("beta2");
     auto epsilon = ctx.Attr<float>("epsilon");
@@ -1004,19 +1021,16 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
     auto clip_after_allreduce = ctx.Attr<bool>("clip_after_allreduce");
     auto ring_id = ctx.Attr<int>("ring_id");
     auto use_master_param_norm = ctx.Attr<bool>("use_master_param_norm");
+    auto is_grad_scaled_by_nranks = ctx.Attr<bool>("is_grad_scaled_by_nranks");
+    VLOG(10) << "max_global_grad_norm = " << max_global_grad_norm
+             << " , clip_after_allreduce = " << clip_after_allreduce
+             << " , use_master_param_norm = " << use_master_param_norm
+             << " , is_grad_scaled_by_nranks = " << is_grad_scaled_by_nranks;
 
-    auto param_ts = ctx.MultiInput<framework::Tensor>("Param");
-    auto param_num = static_cast<int>(param_ts.size());
-    PADDLE_ENFORCE_LE(local_param_num, param_num,
-                      platform::errors::InvalidArgument(
-                          "The local parameter number should not exceed the "
-                          "global parameter number."));
-
-    // Step 6: allreduce + global norm gradient clip before allreduce
+    // Step 6: allreduce + global norm gradient clip
     int rank = 0;
-    bool is_distributed = (num_devices > 1);
     ncclComm_t comm = nullptr;
-    if (is_distributed) {
+    if (num_devices > 1) {
       auto *nccl_comm_handle =
           platform::NCCLCommContext::Instance().Get(ring_id, place);
       comm = nccl_comm_handle->comm();
@@ -1032,7 +1046,7 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
     platform::float16 *fp16_sum_grad;
     auto fp32_numel_each_device = fp32_numel / num_devices;
     auto fp16_numel_each_device = fp16_numel / num_devices;
-    if (is_distributed) {
+    if (num_devices > 1) {
       auto ptr = sum_grad_buffer.Alloc<uint8_t>(
           fp32_numel_each_device * sizeof(float) +
           fp16_numel_each_device * sizeof(platform::float16));
@@ -1042,49 +1056,24 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
                                 ptr + fp32_numel_each_device * sizeof(float))
                           : nullptr;
     } else {
+      // NOTE: The const_cast here is not important. The fp32_sum_grad and
+      // fp16_sum_grad would not be changed when num_devices == 1
+      // But if I do not perform const_cast here, there would be more
+      // if-else codes (num_devices > 1) when I write the following code.
+      // So I prefer to use const_cast to unify the following code to reduce
+      // the if-else codes.
       fp32_sum_grad = const_cast<float *>(fp32_grad);
       fp16_sum_grad = const_cast<platform::float16 *>(fp16_grad);
     }
 
-    VLOG(10) << "max_global_grad_norm = " << max_global_grad_norm
-             << " , clip_after_allreduce = " << clip_after_allreduce;
-    bool is_grad_scaled_by_nranks = ctx.Attr<bool>("is_grad_scaled_by_nranks");
-    bool divide_nranks_when_allreduce;
-    if (is_grad_scaled_by_nranks) {
-      divide_nranks_when_allreduce = false;
-      if (FLAGS_distributed_lamb_divide_nranks_when_allreduce) {
-        LOG_FIRST_N(WARNING, 1) << "FLAGS_distributed_lamb_divide_nranks_when_"
-                                   "allreduce should be false when "
-                                   "is_grad_scaled_by_nranks is true.";
-      }
-    } else {
-      if (FLAGS_distributed_lamb_divide_nranks_when_allreduce) {
-        divide_nranks_when_allreduce = true;
-      } else {
-        divide_nranks_when_allreduce = false;
-      }
-    }
-
-    if (num_devices == 1) {
-      divide_nranks_when_allreduce = false;
-    }
-
     float rescale_grad = 1.0f;
-    if (!divide_nranks_when_allreduce) {
+    if (!is_grad_scaled_by_nranks) {
       rescale_grad /= num_devices;
     }
 
     if (max_global_grad_norm > 0) {
       if (clip_after_allreduce) {
         // (1) ReduceScater first
-        if (divide_nranks_when_allreduce) {
-          InplaceDivideNumDevice(dev_ctx, const_cast<float *>(fp32_grad),
-                                 fp32_numel, num_devices);
-          InplaceDivideNumDevice(dev_ctx,
-                                 const_cast<platform::float16 *>(fp16_grad),
-                                 fp16_numel, num_devices);
-        }
-
         NCCLReduceScatterWithScale(fp32_grad, fp32_sum_grad,
                                    fp32_numel_each_device, num_devices, comm,
                                    stream, dev_ctx);
@@ -1110,7 +1099,7 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
                           fp32_square_grad_norm, stream, &cub_tmp_buffer);
         VLOG(1) << "Grad square norm before all reduce: "
                 << FlattenToString(fp32_square_grad_norm, 1, place);
-        // (2) Calculate the scale
+        // (2) Calculate the gradient clip scale
         float *fp32_scale = nullptr;
         platform::float16 *fp16_scale = nullptr;
         if (has_fp32_param && has_fp16_param) {
@@ -1129,66 +1118,42 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
         if (is_grad_scaled_by_nranks) {
           clip_scale *= num_devices;
         }
-        float extra_scale =
-            divide_nranks_when_allreduce ? 1.0f / num_devices : 1.0f;
         CalcGradNormClipBeforeAllReduceScale<
             float, platform::float16><<<1, 1, 0, stream>>>(
             global_scale, max_global_grad_norm, fp32_square_grad_norm,
-            fp32_scale, fp16_scale, clip_scale, extra_scale);
+            fp32_scale, fp16_scale, clip_scale);
         VLOG(1) << "Grad scale: " << FlattenToString(fp32_scale, 1, place);
-        // (3) Do ReduceScatter with scale
-        /*
-        if (HasNanInf(fp32_grad, fp32_numel, stream, &cub_tmp_buffer)) {
-          LOG(WARNING) << "FP32Grad has nan/inf before allreduce";
-        }
-        if (HasNanInf(fp16_grad, fp16_numel, stream, &cub_tmp_buffer)) {
-          LOG(WARNING) << "FP16Grad has nan/inf before allreduce";
-        }
-        */
         if (num_devices > 1) {
           PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
               fp32_square_grad_norm, fp32_square_grad_norm, 1, ncclFloat32,
               ncclSum, comm, stream));
         }
+        // (3) Do ReduceScatter with scale
         NCCLReduceScatterWithScale(fp32_grad, fp32_sum_grad,
                                    fp32_numel_each_device, num_devices, comm,
                                    stream, dev_ctx, fp32_scale);
         NCCLReduceScatterWithScale(fp16_grad, fp16_sum_grad,
                                    fp16_numel_each_device, num_devices, comm,
                                    stream, dev_ctx, fp16_scale);
-        /*
-        if (HasNanInf(fp32_sum_grad, fp32_numel_each_device, stream,
-                      &cub_tmp_buffer)) {
-          LOG(WARNING) << "FP32Grad has nan/inf after allreduce";
-        }
-        if (HasNanInf(fp16_sum_grad, fp16_numel_each_device, stream,
-                      &cub_tmp_buffer)) {
-          LOG(WARNING) << "FP16Grad has nan/inf after allreduce";
-        }
-        */
+        // (4) mark max_global_grad_norm as 0, meaning that clip has been
+        // already performed
         max_global_grad_norm = 0;
       }
     } else {
-      if (divide_nranks_when_allreduce) {
-        InplaceDivideNumDevice(dev_ctx, const_cast<float *>(fp32_grad),
-                               fp32_numel, num_devices);
-        InplaceDivideNumDevice(dev_ctx,
-                               const_cast<platform::float16 *>(fp16_grad),
-                               fp16_numel, num_devices);
-      }
-
       NCCLReduceScatterWithScale(fp32_grad, fp32_sum_grad,
                                  fp32_numel_each_device, num_devices, comm,
                                  stream, dev_ctx);
       NCCLReduceScatterWithScale(fp16_grad, fp16_sum_grad,
                                  fp16_numel_each_device, num_devices, comm,
                                  stream, dev_ctx);
-      static_assert(
-          sizeof(bool) * 2 <= sizeof(float),
-          "sizeof(bool) * 2 should not be larger than sizeof(float).");
       CheckHasNanInfGrad(fp32_sum_grad, fp32_numel_each_device, fp16_sum_grad,
                          fp16_numel_each_device, fp32_square_grad_norm, stream,
                          &cub_tmp_buffer);
+      if (num_devices > 1) {
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+            fp32_square_grad_norm, fp32_square_grad_norm, 1, ncclFloat32,
+            ncclSum, comm, stream));
+      }
       max_global_grad_norm = 0;
     }
     VLOG(10) << "ReduceScatter done";
@@ -1234,14 +1199,25 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
     auto *param_square_norm = square_norm_buffer.Alloc<float>(2 * param_num);
     auto *trust_ratio_div_square_norm = param_square_norm + param_num;
 
-    auto *fused_offsets =
-        ctx.Input<framework::Tensor>("FusedParamOffsets")->data<int>();
-    auto *fp32_partial_fused_offsets =
-        ctx.Input<framework::Tensor>("FP32PartialFusedParamOffsets")
-            ->data<int>();
-    auto *fp16_partial_fused_offsets =
-        ctx.Input<framework::Tensor>("FP16PartialFusedParamOffsets")
-            ->data<int>();
+    auto *fused_offsets_t = ctx.Input<framework::Tensor>("FusedParamOffsets");
+    auto *fused_offsets = fused_offsets_t->data<int>();
+    auto *fp32_partial_fused_offsets_t =
+        ctx.Input<framework::Tensor>("FP32PartialFusedParamOffsets");
+    const auto *fp32_partial_fused_offsets =
+        fp32_partial_fused_offsets_t->data<int>();
+    auto *fp16_partial_fused_offsets_t =
+        ctx.Input<framework::Tensor>("FP16PartialFusedParamOffsets");
+    const auto *fp16_partial_fused_offsets =
+        fp16_partial_fused_offsets_t->data<int>();
+
+    VLOG(1) << "FusedParamOffsets: "
+            << FlattenToString(fused_offsets, fused_offsets_t->numel(), place);
+    VLOG(1) << "FP32PartialFusedParamOffsets: "
+            << FlattenToString(fp32_partial_fused_offsets,
+                               fp32_partial_fused_offsets_t->numel(), place);
+    VLOG(1) << "FP16PartialFusedParamOffsets: "
+            << FlattenToString(fp16_partial_fused_offsets,
+                               fp16_partial_fused_offsets_t->numel(), place);
 
     if (num_devices > 1) {
       if (use_master_param_norm) {
@@ -1260,10 +1236,12 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
           fp16_local_param_num, fp16_partial_fused_offsets, 0, stream,
           &cub_tmp_buffer);
     } else {
+      // NOTE: extra computation is performed. We can improve this performance
+      // if needed in the future.
       CubDeviceSegmentedSquareNorm(
           fp16_param, param_square_norm + fp32_global_param_num,
-          fp16_global_param_num, fused_offsets, static_cast<int>(fp32_numel),
-          stream, &cub_tmp_buffer);
+          fp16_global_param_num, fused_offsets + fp32_global_param_num,
+          static_cast<int>(fp32_numel), stream, &cub_tmp_buffer);
     }
 
     CubDeviceSegmentedSquareNorm(
@@ -1325,46 +1303,6 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
             fp16_param + fp16_offset, fp16_param, fp16_numel_each_device,
             ncclFloat16, comm, stream));
       }
-      /*
-      auto broadcast_master_param = ctx.Attr<bool>("broadcast_master_param");
-      if (broadcast_master_param) {
-        LambUpdateParamAndBetaPows<float>(
-            dev_ctx, trust_ratio_div + fp32_numel_each_device, lr,
-            indices + fp32_numel + fp16_offset, param_square_norm,
-            trust_ratio_div_square_norm, fp32_square_grad_norm, &beta1pow,
-            &beta2pow, &found_inf, beta1, beta2, fp16_numel_each_device,
-            master_param + fp16_offset, nullptr, stream);
-        if (num_devices > 1) {
-          // ncclAllGather
-          PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
-              master_param + fp16_offset, master_param, fp16_numel_each_device,
-              ncclFloat32, comm, stream));
-        }
-        LaunchCastKernel(dev_ctx, master_param, fp16_param, fp16_numel);
-      } else {
-        LambUpdateParamAndBetaPows<platform::float16>(
-            dev_ctx, trust_ratio_div + fp32_numel_each_device, lr,
-            indices + fp32_numel + fp16_offset, param_square_norm,
-            trust_ratio_div_square_norm, fp32_square_grad_norm, &beta1pow,
-            &beta2pow, &found_inf, beta1, beta2, fp16_numel_each_device,
-            fp16_param + fp16_offset, master_param + fp16_offset, stream);
-
-        if (num_devices > 1) {
-          // ncclAllGather
-          PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
-              fp16_param + fp16_offset, fp16_param, fp16_numel_each_device,
-              ncclFloat16, comm, stream));
-          // launch kernel to cast partial master weight to
-          auto prev_cast_offset = fp16_offset - fp16_prev_offset;
-          LaunchCastKernel(dev_ctx, fp16_param + prev_cast_offset,
-                           master_param + prev_cast_offset, fp16_prev_offset);
-
-          auto next_cast_offset = fp16_offset + fp16_numel_each_device;
-          LaunchCastKernel(dev_ctx, fp16_param + next_cast_offset,
-                           master_param + next_cast_offset, fp16_next_offset);
-        }
-      }
-      */
     }
     VLOG(10) << "Update Param done";
 
