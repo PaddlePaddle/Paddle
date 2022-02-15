@@ -443,5 +443,43 @@ __device__ __forceinline__ void ElementwiseRandom(OutT* out,
   }
 }
 
+// attention please set share_size = blockDim.x;
+// data and b are the register pointer
+#define shared_size 64
+template <typename InT,
+          typename OutT,
+          int NX,
+          int NY,
+          int BlockSize,
+          class OpFunc>
+__device__ __forceinline__ void Cumsum(OutT* out,
+                                       const InT* in,
+                                       OpFunc compute) {
+  __shared__ InT temp[shared_size * 2 + (shared_size * 2) / 32];
+  int tidx = threadIdx.x;
+  temp[tidx + tidx / 32] = in[0];
+  temp[shared_size + tidx + (shared_size + tidx) / 32] = in[1];
+  for (int stride = 1; stride <= blockDim.x; stride *= 2) {
+    __syncthreads();
+    int index = (tidx + 1) * 2 * stride - 1;
+    if (index < (blockDim.x * 2)) {
+      temp[index + index / 32] += temp[index - stride + (index - stride) / 32];
+    }
+  }
+  for (int stride = (blockDim.x * 2) / 4; stride > 0; stride /= 2) {
+    __syncthreads();
+    int index = (tidx + 1) * 2 * stride - 1;
+    if ((index + stride) < (blockDim.x * 2)) {
+      temp[index + stride + (stride + index) / 32] +=
+          temp[index + (index) / 32];
+    }
+  }
+
+  __syncthreads();
+  out[0] = static_cast<OutT>(temp[tidx + tidx / 32]);
+  out[1] =
+      static_cast<OutT>(temp[tidx + shared_size + (tidx + shared_size) / 32]);
+}
+
 }  // namespace kps
 }  // namespace pten
