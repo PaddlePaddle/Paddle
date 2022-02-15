@@ -37,13 +37,13 @@ class InterpolateMKLDNNHandler
                            const Tensor* x, Tensor* z, const bool is_nchw)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::resampling_forward>(
             engine, cpu_place) {
-    auto src_tz = framework::vectorize(x->dims());
-    auto dst_tz = framework::vectorize(z->dims());
+    const auto src_tz = framework::vectorize(x->dims());
+    const auto dst_tz = framework::vectorize(z->dims());
 
-    auto src_md = dnnl::memory::desc(src_tz, platform::MKLDNNGetDataType<T>(),
-                                     x->format());
-    auto dst_md = memory::desc(dst_tz, platform::MKLDNNGetDataType<T>(),
-                               MKLDNNMemoryFormat::any);
+    const auto src_md = dnnl::memory::desc(
+        src_tz, platform::MKLDNNGetDataType<T>(), x->format());
+    const auto dst_md = memory::desc(dst_tz, platform::MKLDNNGetDataType<T>(),
+                                     MKLDNNMemoryFormat::any);
 
     if (!is_nchw) {
       src_md =
