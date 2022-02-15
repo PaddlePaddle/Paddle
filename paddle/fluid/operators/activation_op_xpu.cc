@@ -14,8 +14,10 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/activation_op.h"
 #include <string>
+
+#include "paddle/fluid/operators/activation_op.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 
 namespace paddle {
@@ -251,8 +253,9 @@ struct XPUHardSwishFunctor : public BaseActivationFunctor<T> {
     PADDLE_ENFORCE_EQ(threshold, 6.0f,
                       platform::errors::External(
                           "Not support threshold [%f] in XPU", threshold));
-    PADDLE_ENFORCE_EQ(scale, 6.0f, platform::errors::External(
-                                       "Not support scale [%f] in XPU", scale));
+    PADDLE_ENFORCE_EQ(
+        scale, 6.0f,
+        platform::errors::External("Not support scale [%f] in XPU", scale));
     PADDLE_ENFORCE_EQ(
         offset, 3.0f,
         platform::errors::External("Not support offset [%f] in XPU", offset));
@@ -271,8 +274,9 @@ struct XPUHardSwishGradFunctor : public BaseActivationFunctor<T> {
     PADDLE_ENFORCE_EQ(threshold, 6.0f,
                       platform::errors::External(
                           "Not support threshold [%f] in XPU", threshold));
-    PADDLE_ENFORCE_EQ(scale, 6.0f, platform::errors::External(
-                                       "Not support scale [%f] in XPU", scale));
+    PADDLE_ENFORCE_EQ(
+        scale, 6.0f,
+        platform::errors::External("Not support scale [%f] in XPU", scale));
     PADDLE_ENFORCE_EQ(
         offset, 3.0f,
         platform::errors::External("Not support offset [%f] in XPU", offset));
@@ -342,10 +346,11 @@ struct XPUPowFunctor : public BaseActivationFunctor<T> {
 
     auto xpu_context =
         ctx.device_context<paddle::platform::XPUDeviceContext>().x_context();
-    PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void **>(&factor_data),
-                                 x->numel() * sizeof(T)),
-                      XPU_SUCCESS, platform::errors::ResourceExhausted(
-                                       "XPU has no enough memory"));
+    PADDLE_ENFORCE_EQ(
+        xpu_malloc(reinterpret_cast<void **>(&factor_data),
+                   x->numel() * sizeof(T)),
+        XPU_SUCCESS,
+        platform::errors::ResourceExhausted("XPU has no enough memory"));
     int r = xpu::constant<T>(xpu_context, factor_data, x->numel(), pow_factor);
     PADDLE_ENFORCE_EQ(
         r, xpu::Error_t::SUCCESS,
@@ -361,6 +366,48 @@ struct XPUPowFunctor : public BaseActivationFunctor<T> {
       xpu_wait(xpu_context->xpu_stream);
     }
     xpu_free(factor_data);
+  }
+};
+
+template <typename T>
+struct XPUSoftPlusFunctor : public BaseActivationFunctor<T> {
+  void operator()(const framework::ExecutionContext &ctx) const {
+    const auto *x = ctx.Input<Tensor>("X");
+    auto *y = ctx.Output<Tensor>("Out");
+    float beta = ctx.Attr<float>("beta");
+    float threshold = ctx.Attr<float>("threshold");
+    const T *x_data = x->data<T>();
+    T *y_data = y->mutable_data<T>(ctx.GetPlace());
+
+    auto xpu_context =
+        ctx.device_context<paddle::platform::XPUDeviceContext>().x_context();
+    int r =
+        xpu::softplus(xpu_context, x_data, y_data, x->numel(), beta, threshold);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "softplus");
+  }
+};
+
+template <typename T>
+struct XPUSoftPlusGradFunctor : public BaseActivationFunctor<T> {
+  void operator()(const framework::ExecutionContext &ctx) const {
+    const auto *x = ctx.Input<Tensor>("X");
+    auto *dOut = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto *dX = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    float beta = ctx.Attr<float>("beta");
+    float threshold = ctx.Attr<float>("threshold");
+    const T *x_data = x->data<T>();
+    const T *y_grad = dOut->data<T>();
+    T *x_grad = dX->mutable_data<T>(ctx.GetPlace());
+    auto xpu_context =
+        ctx.device_context<paddle::platform::XPUDeviceContext>().x_context();
+
+    int r = xpu::softplus_grad(
+        xpu_context, reinterpret_cast<const float *>(x_data),
+        reinterpret_cast<const float *>(
+            x_data),  // softplus_grad do not need y_data
+        reinterpret_cast<const float *>(y_grad),
+        reinterpret_cast<float *>(x_grad), dX->numel(), beta, threshold);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "softplus_grad");
   }
 };
 
@@ -388,6 +435,8 @@ REGISTER_ACTIVATION_XPU_KERNEL(sigmoid, XPUSigmoidFunctor,
                                XPUSigmoidGradFunctor)
 REGISTER_ACTIVATION_XPU_KERNEL(sqrt, XPUSqrtFunctor, XPUSqrtGradFunctor)
 REGISTER_ACTIVATION_XPU_KERNEL(square, XPUSquareFunctor, XPUSquareGradFunctor)
+REGISTER_ACTIVATION_XPU_KERNEL(softplus, XPUSoftPlusFunctor,
+                               XPUSoftPlusGradFunctor)
 
 REGISTER_OP_XPU_KERNEL(
     tanh, ops::XPUActivationKernel<ops::XPUTanhFunctor<float>>,
