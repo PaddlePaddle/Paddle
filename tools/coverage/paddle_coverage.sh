@@ -48,6 +48,7 @@ function gen_full_html_report() {
         '/paddle/paddle/fluid/operators/*' \
         '/paddle/paddle/fluid/recordio/*' \
         '/paddle/paddle/fluid/string/*' \
+        '/paddle/paddle/pten/*' \
         -o coverage-full.tmp \
         --rc lcov_branch_coverage=0
 
@@ -59,6 +60,7 @@ function gen_full_html_report() {
         '/paddle/paddle/fluid/*/*/*test*' \
         '/paddle/paddle/fluid/inference/tests/*' \
         '/paddle/paddle/fluid/inference/api/demo_ci/*' \
+        '/paddle/paddle/pten/tests/*' \
         -o coverage-full.tmp \
         --rc lcov_branch_coverage=0
 

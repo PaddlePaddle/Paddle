@@ -134,7 +134,7 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
 
   int start = in_place ? 1 : 0;
   if (!in_place) {
-    math::SetConstant<platform::CUDADeviceContext, T> constant_functor;
+    pten::funcs::SetConstant<platform::CUDADeviceContext, T> constant_functor;
     constant_functor(
         context.template device_context<platform::CUDADeviceContext>(), out,
         static_cast<T>(0));

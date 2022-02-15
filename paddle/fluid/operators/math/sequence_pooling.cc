@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sequence_pooling.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -191,7 +191,7 @@ class MaxSeqPoolGradFunctor {
     const int* max_index = index.data<int>();
     T* ig_data = in_grad->data<T>();
 
-    SetConstant<platform::CPUDeviceContext, T> set_zero;
+    pten::funcs::SetConstant<platform::CPUDeviceContext, T> set_zero;
     set_zero(context, in_grad, static_cast<T>(0.0));
     int64_t num_seq = og_dims[0];
     int64_t dim = out_grad.numel() / num_seq;
@@ -409,7 +409,7 @@ class SequencePoolGradFunctor<platform::CPUDeviceContext, T> {
 
     if (pooltype == "LAST" || pooltype == "FIRST") {
       // set X@Grad be zero at first when pooltype is LAST/FIRST
-      math::SetConstant<platform::CPUDeviceContext, T> functor;
+      pten::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
       functor(context, in_grad, 0);
     }
 
