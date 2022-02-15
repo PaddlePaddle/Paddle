@@ -75,8 +75,6 @@ void RunBackwardHooks(
     const std::vector<std::vector<paddle::experimental::Tensor>>& grad_tensors,
     egr::GradNodeBase* grad_node) {
   grad_node->ApplyGradientHooks(grad_tensors);
-  VLOG(6) << "Apply Reduce Hooks for node";
-  grad_node->ApplyReduceHooks();
 }
 
 void RunBackward(const std::vector<paddle::experimental::Tensor>& tensors,

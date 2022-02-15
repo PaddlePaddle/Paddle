@@ -17,11 +17,13 @@
 #include "gtest/gtest.h"
 
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
+#include "paddle/fluid/eager/api/utils/hook_utils.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/grad_tensor_holder.h"
-#include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/fluid/eager/utils.h"
 
+#include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/core/kernel_registry.h"
 
 // TODO(jiabin): remove nolint here!!!
@@ -57,35 +59,31 @@ TEST(AccumulationNode, Tensor) {
               .get(),
           meta);
   paddle::experimental::Tensor grad_et = paddle::experimental::Tensor(grad_dt);
+  auto grad_meta = EagerUtils::autograd_meta(&grad_et);
 
   // AccumulationNode
-  GradNodeAccumulation node = GradNodeAccumulation();
+  auto node = std::make_shared<GradNodeAccumulation>(grad_meta);
+  grad_meta->SetGradNode(node);
+  grad_meta->SetStopGradient(false);
 
-  // Hook
-  std::function<paddle::experimental::Tensor(
-      const paddle::experimental::Tensor&)>
-      hook = [&grad_et](const paddle::experimental::Tensor& t) {
-        grad_et.set_impl(t.impl());
-        return grad_et;
-      };
-  node.RetainGrad(hook);
+  egr::egr_utils_api::RetainGradForTensor(grad_et);
 
   // operator()
-  paddle::experimental::Tensor ret_et0 = node({{et0}})[0][0];
+  paddle::experimental::Tensor ret_et0 = node->operator()({{et0}})[0][0];
   auto* ret_et0_ptr =
       std::dynamic_pointer_cast<pten::DenseTensor>(ret_et0.impl())
           ->data<paddle::platform::float16>();
   CHECK_EQ(ret_et0_ptr[0], paddle::platform::float16(10.0f));
 
-  paddle::experimental::Tensor ret_et1 = node({{et1}})[0][0];
+  paddle::experimental::Tensor ret_et1 = node->operator()({{et1}})[0][0];
   auto* ret_et1_ptr =
       std::dynamic_pointer_cast<pten::DenseTensor>(ret_et1.impl())
           ->data<paddle::platform::float16>();
-  CHECK_EQ(ret_et1_ptr[0], paddle::platform::float16(30.0f));
+  CHECK_EQ(ret_et1_ptr[0], paddle::platform::float16(20.0f));
 
-  // Retain Grad
-  auto* ret_grad_et_ptr =
-      std::dynamic_pointer_cast<pten::DenseTensor>(grad_et.impl())
-          ->data<paddle::platform::float16>();
-  CHECK_EQ(ret_grad_et_ptr[0], paddle::platform::float16(30.0f));
+  // Check Retain Grad
+  paddle::experimental::Tensor* grad = EagerUtils::mutable_grad(grad_et);
+  auto* grad_ptr = std::dynamic_pointer_cast<pten::DenseTensor>(grad->impl())
+                       ->data<paddle::platform::float16>();
+  CHECK_EQ(grad_ptr[0], paddle::platform::float16(30.0f));
 }

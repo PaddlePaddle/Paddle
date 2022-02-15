@@ -70,23 +70,13 @@ PyObject* eager_tensor_properties_get_stop_gradient(TensorObject* self,
 
 PyObject* eager_tensor_properties_get_grad(TensorObject* self, void* closure) {
   EAGER_SYNC_TRY
-  if (egr::egr_utils_api::IsLeafTensor(self->tensor)) {
-    paddle::experimental::Tensor* grad =
-        egr::EagerUtils::mutable_grad(self->tensor);
-    if (!grad) {
-      Py_INCREF(Py_None);
-      return Py_None;
-    }
-    return ToPyObject(grad);
+  VLOG(6) << "Get grad for tensor: " << self->tensor.name();
+  auto meta = egr::EagerUtils::nullable_autograd_meta(self->tensor);
+  if (meta) {
+    return ToPyObject(meta->Grad());
   } else {
-    VLOG(6) << "Get grad for tensor: " << self->tensor.name();
-    auto meta = egr::EagerUtils::nullable_autograd_meta(self->tensor);
-    if (meta) {
-      return ToPyObject(meta->Grad());
-    } else {
-      Py_INCREF(Py_None);
-      return Py_None;
-    }
+    Py_INCREF(Py_None);
+    return Py_None;
   }
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }

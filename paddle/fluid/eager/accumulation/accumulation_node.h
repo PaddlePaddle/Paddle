@@ -22,8 +22,8 @@ namespace egr {
 class GradNodeAccumulation : public GradNodeBase {
  public:
   // Constructor: configure fwd input tensors to grad node
-  explicit GradNodeAccumulation(const AutogradMeta* meta = nullptr)
-      : GradNodeBase(1, 1), meta_(meta) {
+  explicit GradNodeAccumulation(AutogradMeta* meta) : GradNodeBase(1, 1) {
+    weak_grad_ = meta->WeakGrad();
     SetDefaultGradInOutMeta();
   }
 
@@ -34,15 +34,8 @@ class GradNodeAccumulation : public GradNodeBase {
       const std::vector<std::vector<paddle::experimental::Tensor>>& grads)
       override;
 
-  void RetainGrad(const std::function<paddle::experimental::Tensor(
-                      const paddle::experimental::Tensor&)>& hook);
-
  private:
-  const AutogradMeta* meta_;
-
-  std::function<paddle::experimental::Tensor(
-      const paddle::experimental::Tensor&)>
-      retain_grad_hook_;
+  std::weak_ptr<paddle::experimental::Tensor> weak_grad_;
 };
 
 }  // namespace egr

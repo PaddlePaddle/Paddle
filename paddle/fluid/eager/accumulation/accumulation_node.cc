@@ -27,10 +27,15 @@
 
 namespace egr {
 
-void GradNodeAccumulation::RetainGrad(
-    const std::function<paddle::experimental::Tensor(
-        const paddle::experimental::Tensor&)>& hook) {
-  retain_grad_hook_ = hook;
+static void CopyOrAddTensor(paddle::experimental::Tensor* tensor,
+                            const paddle::experimental::Tensor& t) {
+  if (!tensor->defined() || !tensor->initialized()) {
+    // Simply copy tensor->impl
+    *tensor = t;
+  } else {
+    // Accumulation
+    paddle::imperative::TensorAdd<paddle::experimental::Tensor>(t, tensor);
+  }
 }
 
 std::vector<std::vector<paddle::experimental::Tensor>> GradNodeAccumulation::
@@ -56,8 +61,9 @@ operator()(
     grad_out = grads[0][0];
   }
 
-  if (retain_grad_hook_ != nullptr) {
-    retain_grad_hook_(grad_out);
+  if (!weak_grad_.expired()) {
+    auto grad = weak_grad_.lock();
+    CopyOrAddTensor(grad.get(), grad_out);
   }
 
   // Apply Reduce Hooks

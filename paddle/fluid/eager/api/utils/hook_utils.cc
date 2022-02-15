@@ -41,53 +41,15 @@ void RegisterReduceHookForTensor(const paddle::experimental::Tensor& tensor,
   grad_node->RegisterReduceHook(hook);
 }
 
-static void CopyOrAddTensor(paddle::experimental::Tensor* tensor,
-                            const paddle::experimental::Tensor& t) {
-  if (!tensor->defined() || !tensor->initialized()) {
-    // Simply copy tensor->impl
-    *tensor = t;
-  } else {
-    // Accumulation
-    paddle::imperative::TensorAdd<paddle::experimental::Tensor>(t, tensor);
-  }
-}
-
-static void RetainGradForAccumulationNode(
-    const paddle::experimental::Tensor& tensor) {
-  AutogradMeta* meta = EagerUtils::unsafe_autograd_meta(tensor);
-  std::weak_ptr<paddle::experimental::Tensor> weak_grad_tensor =
-      meta->WeakGrad();
-
-  // Define Hook
-  std::function<paddle::experimental::Tensor(
-      const paddle::experimental::Tensor&)>
-      accumulation_node_hook = [weak_grad_tensor](
-          const paddle::experimental::Tensor& t) {
-        if (!weak_grad_tensor.expired()) {
-          auto grad_tensor = weak_grad_tensor.lock();
-          CopyOrAddTensor(grad_tensor.get(), t);
-          return *grad_tensor.get();
-        } else {
-          VLOG(7) << "Retain NULL paddle::experimental::Tensor in Grad Hook";
-          return paddle::experimental::Tensor();
-        }
-      };
-
-  // Add RetainGrad as PostHook to AccumulationNode
-  std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(tensor);
-  PADDLE_ENFORCE(
-      grad_node.get() != nullptr,
-      paddle::platform::errors::Fatal("Detected NULL grad_node"
-                                      "Leaf tensor should have had grad_node "
-                                      "with type: GradNodeAccumulation"));
-  auto accumulation_grad_node =
-      std::dynamic_pointer_cast<GradNodeAccumulation>(grad_node);
-  accumulation_grad_node->RetainGrad(accumulation_node_hook);
-}
-
 static void RetainGradForRegularNode(
     const paddle::experimental::Tensor& tensor) {
   AutogradMeta* meta = EagerUtils::unsafe_autograd_meta(tensor);
+  if (meta->RetainGrads()) {
+    return;
+  } else {
+    meta->SetRetainGrads(true);
+  }
+
   std::weak_ptr<paddle::experimental::Tensor> weak_grad_tensor =
       meta->WeakGrad();
 
@@ -122,7 +84,9 @@ static void RetainGradForRegularNode(
 
 void RetainGradForTensor(const paddle::experimental::Tensor& tensor) {
   if (IsLeafTensor(tensor)) {
-    RetainGradForAccumulationNode(tensor);
+    // Leaf tensor's grad will always be retained
+    // Refer to implementation of AccumulationNode for more details
+    return;
   } else {
     RetainGradForRegularNode(tensor);
   }
