@@ -173,13 +173,10 @@ class DistributedFusedLamb(Optimizer):
         beta2pow = self._create_persistable_var('beta2pow')
         fused_indices = self._create_persistable_var(
             'fused_indices', dtype='int32')
-        pad_indices = self._create_persistable_var('pad_indices', dtype='int32')
-        pad_indices.is_distributed = True
         weight_decay = self._create_persistable_var('weight_decay')
         weight_decay.is_distributed = True
-        local_param_info = self._create_persistable_var(
-            'local_param_info', dtype='int32')
-        local_param_info.is_distributed = True
+        param_info = self._create_persistable_var('param_info', dtype='int32')
+        param_info.is_distributed = True
 
         fused_offsets = self._create_persistable_var('fused_offsets')
 
@@ -227,15 +224,14 @@ class DistributedFusedLamb(Optimizer):
                 'Beta1Pow': [beta1pow],
                 'Beta2Pow': [beta2pow],
                 'FusedIndices': [fused_indices],
-                'PadIndices': [pad_indices],
                 'WeightDecay': [weight_decay],
                 'GlobalScale': [scale],
-                'ParamInfo': [local_param_info],
+                'ParamInfo': [param_info],
                 'ParamOut': params,
                 'MasterParamOut': master_params,
                 'GradOut': grads,
-                'FP32PartialFusedParamOffsets': [fp32_partial_fused_offsets],
-                'FP16PartialFusedParamOffsets': [fp16_partial_fused_offsets],
+                'FP32ShardFusedParamOffsets': [fp32_partial_fused_offsets],
+                'FP16ShardFusedParamOffsets': [fp16_partial_fused_offsets],
                 'FusedParamOffsets': [fused_offsets],
             },
             attrs={
@@ -275,15 +271,14 @@ class DistributedFusedLamb(Optimizer):
                 'Beta1Pow': [beta1pow],
                 'Beta2Pow': [beta2pow],
                 'FusedIndices': [fused_indices],
-                'PadIndices': [pad_indices],
                 'WeightDecay': [weight_decay],
                 'GlobalScale': [scale],
                 'ParamInfo': [param_info],
                 'Param': params,
                 'Grad': grads,
                 'FusedParamOffsets': [fused_offsets],
-                'FP32PartialFusedParamOffsets': [fp32_partial_fused_offsets],
-                'FP16PartialFusedParamOffsets': [fp16_partial_fused_offsets],
+                'FP32ShardFusedParamOffsets': [fp32_partial_fused_offsets],
+                'FP16ShardFusedParamOffsets': [fp16_partial_fused_offsets],
             },
             outputs={
                 'FP32FusedParamOut': [fp32_fused_param],

@@ -13,11 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/operators/math/algorithm.h"
 #include "paddle/fluid/operators/optimizers/cast_with_ptr.h"
 #include "paddle/fluid/operators/optimizers/distributed_fused_lamb_init_op.h"
 #include "paddle/fluid/operators/tensor_to_string.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/pten/common/data_type.h"
+#include "paddle/pten/kernels/funcs/algorithm.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -143,8 +144,8 @@ static void GetParamGradShardInfo(const std::vector<ParamGradInfo> &infos,
 
 static size_t FillAlignmentPaddingInfo(std::vector<ParamGradInfo> *infos,
                                        size_t alignment, size_t nranks,
-                                       framework::proto::VarType::Type dtype) {
-  auto sizeof_dtype = framework::SizeOfType(dtype);
+                                       pten::DataType dtype) {
+  auto sizeof_dtype = paddle::experimental::SizeOf(dtype);
   PADDLE_ENFORCE_EQ(
       alignment % sizeof_dtype, 0,
       platform::errors::InvalidArgument(
@@ -184,10 +185,10 @@ static framework::Tensor CastDataForInitedTensor(
                     platform::errors::InvalidArgument(
                         "The tensor to be cast should be initialized."));
 
-  PADDLE_ENFORCE_EQ(fused_out->type(), framework::proto::VarType::FP32,
+  PADDLE_ENFORCE_EQ(fused_out->dtype(), pten::DataType::FLOAT32,
                     platform::errors::InvalidArgument(
                         "The dst tensor to be cast should be FP32 tensor."));
-  PADDLE_ENFORCE_EQ(origin->type(), framework::proto::VarType::FP16,
+  PADDLE_ENFORCE_EQ(origin->dtype(), pten::DataType::FLOAT16,
                     platform::errors::InvalidArgument(
                         "The src tensor to be cast should be FP16 tensor."));
   auto *dst = fused_out->data<float>() + numel_offset;
@@ -233,12 +234,12 @@ static framework::Tensor CopyAndShareBufferForInitedTensor(
   auto sliced_tensor = fused_out->Resize({fused_out_numel})
                            .Slice(numel_offset, numel + numel_offset);
   memory::Copy(place, sliced_tensor.data(), place, origin->data(),
-               numel * framework::SizeOfType(dtype), stream);
+               numel * paddle::experimental::SizeOf(dtype), stream);
   origin->ShareBufferWith(sliced_tensor);
   fused_out->Resize(fused_out_dim);
   VLOG(10) << "Copy and share buffer, range: [" << numel_offset << ", "
            << numel_offset + numel << ") , total: [0, " << fused_out->numel()
-           << ") , dtype = " << framework::DataTypeToString(dtype);
+           << ") , dtype = " << dtype;
   return sliced_tensor;
 }
 
@@ -260,7 +261,7 @@ static void ShareBufferForNonInitedTensor(framework::Tensor *origin,
   fused_out->Resize(fused_out_dim);
   VLOG(10) << "Share buffer for non-inited, range: [" << numel_offset << ", "
            << numel_offset + numel << "), total: [0, " << fused_out->numel()
-           << ") , dtype = " << framework::DataTypeToString(fused_out->type());
+           << ") , dtype = " << fused_out->dtype();
 }
 
 template <typename OffsetT, typename IndexT>
@@ -269,7 +270,7 @@ static __global__ void LambFillFusedIndicesCUDAKernel(const OffsetT *offsets,
                                                       int offset_num,
                                                       int out_num) {
   CUDA_KERNEL_LOOP_TYPE(i, out_num, int) {
-    auto idx = math::LowerBound(offsets, offset_num, i);
+    auto idx = pten::funcs::LowerBound(offsets, offset_num, i);
     if (idx == offset_num || offsets[idx] != i) {
       --idx;
     }
@@ -346,7 +347,7 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
                               "should be the same tensor.",
                               i));
 
-        auto dtype = p->type();
+        auto dtype = p->dtype();
         PADDLE_ENFORCE_NOT_NULL(
             g, platform::errors::InvalidArgument(
                    "The %d-th gradient should not be nullptr.", i));
@@ -361,11 +362,11 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
 
         void *g_data = nullptr;
         if (g->IsInitialized()) {
-          PADDLE_ENFORCE_EQ(g->type(), dtype,
+          PADDLE_ENFORCE_EQ(g->dtype(), dtype,
                             platform::errors::InvalidArgument(
                                 "The %d-th Input(Param) and Input(Grad) should "
                                 "have the same data type %s.",
-                                i, framework::DataTypeToString(dtype)));
+                                i, dtype));
           PADDLE_ENFORCE_EQ(g->dims(), p->dims(),
                             platform::errors::InvalidArgument(
                                 "The %d-th Input(Param) and Input(Grad) should "
@@ -375,20 +376,20 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
         }
 
         ParamGradInfo *info;
-        if (dtype == framework::proto::VarType::FP32) {
+        if (dtype == pten::DataType::FLOAT32) {
           fp32_infos.emplace_back();
           info = &fp32_infos.back();
-        } else if (dtype == framework::proto::VarType::FP16) {
+        } else if (dtype == pten::DataType::FLOAT16) {
           fp16_infos.emplace_back();
           info = &fp16_infos.back();
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
-              "Unsupported data type %s.", framework::DataTypeToString(dtype)));
+              "Unsupported data type %s.", dtype));
         }
 
-        VLOG(10) << "Found " << framework::DataTypeToString(dtype)
-                 << " parameter " << i << " shape=[" << p_out->dims()
-                 << "] numel=" << numel << " grad.IsInitialized()="
+        VLOG(10) << "Found " << dtype << " parameter " << i << " shape=["
+                 << p_out->dims() << "] numel=" << numel
+                 << " grad.IsInitialized()="
                  << (g_out->IsInitialized() ? "true" : "false");
 
         info->param_t = p_out;
@@ -426,10 +427,10 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
     // NOTE: We guarantee that both fp32_numel and fp16_numel can be exactly
     // divided by alignment and nranks.
     auto fp32_numel = FillAlignmentPaddingInfo(&fp32_infos, alignment, nranks,
-                                               framework::proto::VarType::FP32);
+                                               pten::DataType::FLOAT32);
     VLOG(10) << "FP32 ParamGradInfo: " << string::join_strings(fp32_infos, " ");
     auto fp16_numel = FillAlignmentPaddingInfo(&fp16_infos, alignment, nranks,
-                                               framework::proto::VarType::FP16);
+                                               pten::DataType::FLOAT16);
     VLOG(10) << "FP16 ParamGradInfo: " << string::join_strings(fp16_infos, " ");
     auto total_numel = fp32_numel + fp16_numel;
     PADDLE_ENFORCE_LT(
@@ -684,11 +685,11 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
 
     CopyVectorToTensor(
         fp32_partial_numel_offsets,
-        ctx.Output<framework::Tensor>("FP32PartialFusedParamOffsets"), place,
+        ctx.Output<framework::Tensor>("FP32ShardFusedParamOffsets"), place,
         stream);
     CopyVectorToTensor(
         fp16_partial_numel_offsets,
-        ctx.Output<framework::Tensor>("FP16PartialFusedParamOffsets"), place,
+        ctx.Output<framework::Tensor>("FP16ShardFusedParamOffsets"), place,
         stream);
 
     // Fill the weight decay tensor

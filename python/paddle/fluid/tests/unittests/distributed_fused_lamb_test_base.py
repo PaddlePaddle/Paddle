@@ -206,7 +206,7 @@ def run_model(use_distributed_lamb, use_fp16, use_master_param_norm, **kwargs):
         return grad_t
 
     def reader():
-        for _ in range(10):
+        for _ in range(5):
             yield dict(
                 [(grad.name, gen_random_grad_tensor(grad)) for grad in grads])
 

@@ -21,6 +21,7 @@
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/pten/core/utils/data_type.h"
 
 #ifdef __NVCC__
 #include "cub/cub.cuh"
@@ -59,13 +60,13 @@ static void LogParamAndTrustRatioDivSquareNorm(
   fp16_indices.reserve(n);
   for (size_t i = 0; i < n; ++i) {
     const auto *t = tensors[i];
-    if (t->type() == framework::proto::VarType::FP32) {
+    if (t->dtype() == pten::DataType::FLOAT32) {
       fp32_indices.push_back(i);
-    } else if (t->type() == framework::proto::VarType::FP16) {
+    } else if (t->dtype() == pten::DataType::FLOAT16) {
       fp16_indices.push_back(i);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Unsupported data type %s.", framework::DataTypeToString(t->type())));
+          "Unsupported data type %s.", t->dtype()));
     }
   }
 
@@ -76,8 +77,7 @@ static void LogParamAndTrustRatioDivSquareNorm(
   const auto &names = ctx.GetOp().Inputs("Param");
   for (size_t i = 0; i < fp32_indices.size(); ++i) {
     auto idx = fp32_indices[i];
-    auto dtype = framework::DataTypeToString(tensors[idx]->type());
-    VLOG(LogLevel) << "Param " << dtype << " " << names[idx]
+    VLOG(LogLevel) << "Param " << tensors[idx]->dtype() << " " << names[idx]
                    << " pn = " << pn_vec[i] << " , tn = " << tn_vec[i];
   }
 }
@@ -801,7 +801,7 @@ static std::string GetMinMaxStr(const framework::Tensor *x) {
   if (!platform::is_gpu_place(x->place())) return "CPUTensor";
   std::string str;
   VisitDTypeFunctor functor(x, &str);
-  framework::VisitDataType(x->type(), functor);
+  pten::VisitDataType(x->dtype(), functor);
   return str;
 }
 
@@ -828,22 +828,6 @@ static void PrintAllMinMaxRange(const framework::ExecutionContext &ctx,
               << " , " << GetMinMaxStr(tensors[i]);
     }
   }
-}
-
-template <typename T>
-static bool HasNanInf(const T *x, int n, gpuStream_t stream,
-                      memory::Buffer *cub_tmp_buffer) {
-  if (n <= 0) return false;
-  memory::Buffer buffer(cub_tmp_buffer->GetPlace());
-  auto *flag = buffer.Alloc<bool>(1);
-  cub::TransformInputIterator<bool, IsNanInfFunctor<T>, const T *> iter(
-      x, IsNanInfFunctor<T>());
-  CubDeviceReduce(iter, flag, n, OrFunctor(), false, stream, cub_tmp_buffer);
-  bool cpu_flag = false;
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&cpu_flag, flag, sizeof(bool),
-                                             cudaMemcpyDeviceToHost, stream));
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
-  return cpu_flag;
 }
 
 static void CheckHasNanInfGrad(const float *fp32_grad, int fp32_numel,
@@ -1202,20 +1186,20 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
     auto *fused_offsets_t = ctx.Input<framework::Tensor>("FusedParamOffsets");
     auto *fused_offsets = fused_offsets_t->data<int>();
     auto *fp32_partial_fused_offsets_t =
-        ctx.Input<framework::Tensor>("FP32PartialFusedParamOffsets");
+        ctx.Input<framework::Tensor>("FP32ShardFusedParamOffsets");
     const auto *fp32_partial_fused_offsets =
         fp32_partial_fused_offsets_t->data<int>();
     auto *fp16_partial_fused_offsets_t =
-        ctx.Input<framework::Tensor>("FP16PartialFusedParamOffsets");
+        ctx.Input<framework::Tensor>("FP16ShardFusedParamOffsets");
     const auto *fp16_partial_fused_offsets =
         fp16_partial_fused_offsets_t->data<int>();
 
     VLOG(1) << "FusedParamOffsets: "
             << FlattenToString(fused_offsets, fused_offsets_t->numel(), place);
-    VLOG(1) << "FP32PartialFusedParamOffsets: "
+    VLOG(1) << "FP32ShardFusedParamOffsets: "
             << FlattenToString(fp32_partial_fused_offsets,
                                fp32_partial_fused_offsets_t->numel(), place);
-    VLOG(1) << "FP16PartialFusedParamOffsets: "
+    VLOG(1) << "FP16ShardFusedParamOffsets: "
             << FlattenToString(fp16_partial_fused_offsets,
                                fp16_partial_fused_offsets_t->numel(), place);
 
