@@ -111,10 +111,10 @@ __device__ __forceinline__ T BlockXReduce(T val, ReduceOp reducer) {
     val = reducer(val, temp);
   }
   if (threadIdx.x == 0) {
-    shared[bid] = val;
+    shared[threadIdx.y] = val;
   }
   __syncthreads();
-  return shared[bid];
+  return shared[threadIdx.y];
 }
 
 /**
