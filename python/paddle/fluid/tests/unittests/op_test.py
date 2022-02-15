@@ -170,8 +170,8 @@ def get_numeric_gradient(place,
             numpy_tensor = numpy_tensor.flatten()
             return struct.unpack('<f',
                                  struct.pack('<I',
-                                             np.int64(numpy_tensor[i])
-                                             << 16))[0]
+                                             np.uint32(numpy_tensor[i])
+                                             << np.uint32(16)))[0]
         elif tensor_to_check_dtype == np.float32:
             return tensor._get_float_element(i)
         elif tensor_to_check_dtype == np.float64:
@@ -274,7 +274,7 @@ def convert_float_to_uint16(float_list, data_format="NCHW"):
 def convert_uint16_to_float(in_list):
     in_list = np.asarray(in_list)
     out = np.vectorize(
-        lambda x: struct.unpack('<f', struct.pack('<I', np.int64(x) << 16))[0],
+        lambda x: struct.unpack('<f', struct.pack('<I', np.uint32(x) << np.uint32(16)))[0],
         otypes=[np.float32])(in_list.flat)
     return np.reshape(out, in_list.shape)
 
