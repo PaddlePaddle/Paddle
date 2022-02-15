@@ -554,6 +554,21 @@ static bool CheckOpProto(proto::OpProto* op_proto) {
   return true;
 }
 
+static bool BeSameAsInput(const std::string& output_name,
+                          const std::set<std::string>& input_names) {
+  if (output_name.size() < 4) {
+    return false;
+  }
+
+  if (output_name.substr(output_name.size() - 3, 3) == "Out") {
+    if (input_names.count(output_name.substr(0, output_name.size() - 3))) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 /* --------------------------------------- */
 /* --------- Preprocess Ins/Outs --------- */
 /* --------------------------------------- */
@@ -1311,19 +1326,21 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   generated_function_body += "\n";
 
   // Handle Dispensable Inputs
+  std::set<std::string> input_names;
   for (const proto::OpProto::Var& input : in_vars) {
     const std::string& input_name = input.name();
+    input_names.insert(input_name);
     if (input.dispensable()) {
       if (input.duplicable()) {
         const char* FWD_INS_CONTENT_TEMPLATE =
             "  if(%s.size() > 0) "
-            "ins[\"%s\"] = egr::EagerUtils::TrySyncToVars(%s)\n;";
+            "ins[\"%s\"] = egr::EagerUtils::TrySyncToVars(%s);\n";
         generated_function_body += paddle::string::Sprintf(
             FWD_INS_CONTENT_TEMPLATE, input_name, input_name, input_name);
       } else {
         const char* FWD_INS_CONTENT_TEMPLATE =
             "  if(%s.initialized()) "
-            "ins[\"%s\"] = egr::EagerUtils::TrySyncToVars(%s)\n;";
+            "ins[\"%s\"] = egr::EagerUtils::TrySyncToVars(%s);\n";
         generated_function_body += paddle::string::Sprintf(
             FWD_INS_CONTENT_TEMPLATE, input_name, input_name, input_name);
       }
@@ -1358,11 +1375,21 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
 
         core_ops_args_type_info[op_type].push_back("tensor");
       }
-      const char* FWD_OUTS_CONTENT_TEMPLATE =
-          "{ \"%s\", egr::EagerUtils::TrySyncToVars(%s) },";
-      outs_contents_str += paddle::string::Sprintf(
-          FWD_OUTS_CONTENT_TEMPLATE, output_name, output_var_name);
 
+      if (BeSameAsInput(output_name, input_names)) {
+        if (!output.dispensable()) {
+          std::string input_name =
+              output_name.substr(0, output_name.size() - 3);
+          const char* FWD_OUTS_CONTENT_TEMPLATE = "{ \"%s\", ins[\"%s\"] },";
+          outs_contents_str += paddle::string::Sprintf(
+              FWD_OUTS_CONTENT_TEMPLATE, output_name, input_name);
+        }
+      } else {
+        const char* FWD_OUTS_CONTENT_TEMPLATE =
+            "{ \"%s\", egr::EagerUtils::TrySyncToVars(%s) },";
+        outs_contents_str += paddle::string::Sprintf(
+            FWD_OUTS_CONTENT_TEMPLATE, output_name, output_var_name);
+      }
       core_ops_args_info[op_type].push_back(output_var_name);
 
     } else {
@@ -1401,6 +1428,23 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   generated_function_body += outs_map_str;
   generated_function_body += "\n";
 
+  for (const proto::OpProto::Var& output : out_vars) {
+    const std::string& output_name = output.name();
+    if (op_passing_outs_map[op_type].count(output_name)) {
+      if (BeSameAsInput(output_name, input_names)) {
+        if (output.dispensable()) {
+          std::string input_name =
+              output_name.substr(0, output_name.size() - 3);
+          const char* FWD_OUTS_CONTENT_TEMPLATE =
+              "  if (ins.count(\"%s\")) outs[\"%s\"] = ins[\"%s\"];\n";
+          generated_function_body += paddle::string::Sprintf(
+              FWD_OUTS_CONTENT_TEMPLATE, input_name, output_name, input_name);
+        }
+      }
+    }
+  }
+  generated_function_body += "\n";
+
   VLOG(6) << "Generated Outs Map";
 
   // [Generation] Get Attrs
@@ -1435,37 +1479,60 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
 
     if (output.duplicable()) {
       if (op_passing_outs_map[op_type].count(output_name)) {
-        const char* FWD_OUT_TENSORS_TEMPLATE =
-            "  std::vector<paddle::experimental::Tensor> %s;\n"
-            "  egr::EagerUtils::Output2Result(outs[\"%s\"], %s, &%s);\n";
-        out_tensor_str = paddle::string::Sprintf(
-            FWD_OUT_TENSORS_TEMPLATE, output_varname, output_name,
-            output_var_args_name, output_varname);
+        if (output.dispensable()) {
+          const char* FWD_OUT_TENSORS_TEMPLATE =
+              "  std::vector<paddle::experimental::Tensor> %s;\n"
+              "  if (outs.count(\"%s\"))  "
+              "egr::EagerUtils::GetOutputs(outs[\"%s\"], %s);\n"
+              "  egr::EagerUtils::Output2Result(%s, &%s);\n";
+          out_tensor_str = paddle::string::Sprintf(
+              FWD_OUT_TENSORS_TEMPLATE, output_varname, output_name,
+              output_name, output_var_args_name, output_var_args_name,
+              output_varname);
+        } else {
+          const char* FWD_OUT_TENSORS_TEMPLATE =
+              "  std::vector<paddle::experimental::Tensor> %s;\n"
+              "  egr::EagerUtils::GetOutputs(outs[\"%s\"], %s);\n"
+              "  egr::EagerUtils::Output2Result(%s, &%s);\n";
+          out_tensor_str = paddle::string::Sprintf(
+              FWD_OUT_TENSORS_TEMPLATE, output_varname, output_name,
+              output_var_args_name, output_var_args_name, output_varname);
+        }
       } else {
         const char* FWD_OUT_TENSORS_TEMPLATE =
             "  std::vector<paddle::experimental::Tensor> %s;\n"
-            "  egr::EagerUtils::Output2Result(outs[\"%s\"], &%s, &%s);\n";
-        out_tensor_str = paddle::string::Sprintf(
-            FWD_OUT_TENSORS_TEMPLATE, output_varname, output_name,
-            output_varname, output_varname);
+            "  egr::EagerUtils::GetOutputs(outs[\"%s\"], &%s);\n";
+        out_tensor_str =
+            paddle::string::Sprintf(FWD_OUT_TENSORS_TEMPLATE, output_varname,
+                                    output_name, output_varname);
       }
       return_types[return_position] =
           "std::vector<paddle::experimental::Tensor>";
     } else {
       if (op_passing_outs_map[op_type].count(output_name)) {
-        const char* FWD_OUT_TENSOR_TEMPLATE =
-            "  paddle::experimental::Tensor %s;\n"
-            "  egr::EagerUtils::Output2Result(outs[\"%s\"][0], %s, &%s);\n";
-        out_tensor_str = paddle::string::Sprintf(
-            FWD_OUT_TENSOR_TEMPLATE, output_varname, output_varname,
-            output_var_args_name, output_varname);
+        if (output.dispensable()) {
+          const char* FWD_OUT_TENSOR_TEMPLATE =
+              "  if (outs.count(\"%s\"))  "
+              "egr::EagerUtils::GetOutput(outs[\"%s\"][0], %s);\n"
+              "  paddle::experimental::Tensor& %s = *%s;\n";
+          out_tensor_str = paddle::string::Sprintf(
+              FWD_OUT_TENSOR_TEMPLATE, output_name, output_name,
+              output_var_args_name, output_varname, output_var_args_name);
+        } else {
+          const char* FWD_OUT_TENSOR_TEMPLATE =
+              "  egr::EagerUtils::GetOutput(outs[\"%s\"][0], %s);\n"
+              "  paddle::experimental::Tensor& %s = *%s;\n";
+          out_tensor_str = paddle::string::Sprintf(
+              FWD_OUT_TENSOR_TEMPLATE, output_name, output_var_args_name,
+              output_varname, output_var_args_name);
+        }
       } else {
         const char* FWD_OUT_TENSOR_TEMPLATE =
             "  paddle::experimental::Tensor %s;\n"
-            "  egr::EagerUtils::Output2Result(outs[\"%s\"][0], &%s, &%s);\n";
-        out_tensor_str = paddle::string::Sprintf(
-            FWD_OUT_TENSOR_TEMPLATE, output_varname, output_name,
-            output_varname, output_varname);
+            "  egr::EagerUtils::GetOutput(outs[\"%s\"][0], &%s);\n";
+        out_tensor_str =
+            paddle::string::Sprintf(FWD_OUT_TENSOR_TEMPLATE, output_varname,
+                                    output_name, output_varname);
       }
       return_types[return_position] = "paddle::experimental::Tensor";
     }

@@ -219,9 +219,8 @@ paddle::experimental::Tensor EagerUtils::GetOutput(
   return paddle::experimental::Tensor(out->GetTensorBase(), out->name());
 }
 
-void EagerUtils::Output2Result(const std::shared_ptr<EagerTensor>& out,
-                               paddle::experimental::Tensor* out_var,
-                               paddle::experimental::Tensor* result) {
+void EagerUtils::GetOutput(const std::shared_ptr<EagerTensor>& out,
+                           paddle::experimental::Tensor* out_var) {
   PADDLE_ENFORCE_NOT_NULL(
       out_var, paddle::platform::errors::Fatal(
                    "Tensor is null and cannot be copied. "
@@ -229,23 +228,19 @@ void EagerUtils::Output2Result(const std::shared_ptr<EagerTensor>& out,
                    "shared_ptr, this error may indicate some outputs "
                    "are nullptr"));
   out_var->set_impl(out->GetTensorBase());
-  *result = *out_var;
 }
 
-void EagerUtils::Output2Result(
+void EagerUtils::GetOutputs(
     const std::vector<std::shared_ptr<EagerTensor>>& outs,
-    std::vector<paddle::experimental::Tensor>* out_var,
     std::vector<paddle::experimental::Tensor>* result) {
   for (size_t i = 0; i < outs.size(); i++) {
     result->emplace_back(outs[i]->GetTensorBase());
   }
 }
 
-void EagerUtils::Output2Result(
+void EagerUtils::GetOutputs(
     const std::vector<std::shared_ptr<EagerTensor>>& outs,
-    const std::vector<paddle::experimental::Tensor*>& out_var,
-    std::vector<paddle::experimental::Tensor>* result) {
-  result->reserve(outs.size());
+    const std::vector<paddle::experimental::Tensor*>& out_var) {
   for (size_t i = 0; i < outs.size(); i++) {
     PADDLE_ENFORCE_NOT_NULL(
         out_var[i], paddle::platform::errors::Fatal(
@@ -254,21 +249,17 @@ void EagerUtils::Output2Result(
                         "shared_ptr, this error may indicate some outputs "
                         "are nullptr"));
     out_var[i]->set_impl(outs[i]->GetTensorBase());
-    result->emplace_back(*out_var[i]);
   }
 }
 
-void EagerUtils::Output2Result(
-    const std::shared_ptr<EagerTensor>& out,
-    std::vector<paddle::experimental::Tensor>* out_var,
-    std::vector<paddle::experimental::Tensor>* result) {
+void EagerUtils::GetOutputs(const std::shared_ptr<EagerTensor>& out,
+                            std::vector<paddle::experimental::Tensor>* result) {
   result->emplace_back(out->GetTensorBase());
 }
 
-void EagerUtils::Output2Result(
+void EagerUtils::GetOutputs(
     const std::shared_ptr<EagerTensor>& out,
-    const std::vector<paddle::experimental::Tensor*>& out_var,
-    std::vector<paddle::experimental::Tensor>* result) {
+    const std::vector<paddle::experimental::Tensor*>& out_var) {
   PADDLE_ENFORCE_NOT_NULL(
       out_var[0], paddle::platform::errors::Fatal(
                       "Tensor is null and cannot be copied. "
@@ -276,7 +267,15 @@ void EagerUtils::Output2Result(
                       "shared_ptr, this error may indicate some outputs "
                       "are nullptr"));
   out_var[0]->set_impl(out->GetTensorBase());
-  result->emplace_back(*out_var[0]);
+}
+
+void EagerUtils::Output2Result(
+    const std::vector<paddle::experimental::Tensor*>& out_var,
+    std::vector<paddle::experimental::Tensor>* result) {
+  result->reserve(out_var.size());
+  for (size_t i = 0; i < out_var.size(); i++) {
+    result->emplace_back(*out_var[i]);
+  }
 }
 
 paddle::experimental::Tensor EagerUtils::RecoverTensorWrapper(
