@@ -671,7 +671,6 @@ HIGH_PARALLEL_JOB_NEW = [
     'test_trt_convert_reduce_sum',
     'save_quant2_model_lstm',
     'test_trt_convert_slice',
-    'test_quant2_int8_lstm_mkldnn'
 ]
 
 # mem=0 but always timeout or failed : It run 15 job each time in Single cases;
@@ -1180,6 +1179,7 @@ LOWEST_PARALLEL_JOB_NEW = [
     'test_trt_convert_hard_sigmoid',
     'test_gather_op',
     'test_trilinear_interp_v2_op',
+    'send_and_recv_cpu_test',
 ]
 
 # *=======These unittest doesn't occupy GPU memory, just run as CPU unittest=======* #
