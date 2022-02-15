@@ -15,6 +15,7 @@
 #include "paddle/fluid/eager/grad_tensor_holder.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
 

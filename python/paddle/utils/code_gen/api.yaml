@@ -155,7 +155,7 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : scale
+    func : scale, scale_sr
 
 - api : sign
   args : (const Tensor& x)

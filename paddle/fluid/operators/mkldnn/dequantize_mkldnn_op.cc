@@ -64,8 +64,8 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
 
     auto src_tz = paddle::framework::vectorize<int64_t>(input->dims());
     auto dst_tz = paddle::framework::vectorize<int64_t>(output->dims());
-    dnnl::memory::data_type src_dt =
-        paddle::framework::ToMKLDNNDataType(input->type());
+    dnnl::memory::data_type src_dt = paddle::framework::ToMKLDNNDataType(
+        framework::TransToProtoVarType(input->dtype()));
     MKLDNNMemoryFormat src_fmt = input->format();
 
     std::string key =

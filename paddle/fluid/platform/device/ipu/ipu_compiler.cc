@@ -297,7 +297,9 @@ void Compiler::LowerConstants(const Graph* graph, const Scope* scope) {
       tensor->Resize(ddim);
 
       auto const_data = std::unique_ptr<popart::ConstVoidData>();
-      popart::TensorInfo tensor_info(VarType2PopartType(tensor->type()), shape);
+      popart::TensorInfo tensor_info(
+          VarType2PopartType(framework::TransToProtoVarType(tensor->dtype())),
+          shape);
       const_data.reset(new popart::ConstVoidData(tensor->data(), tensor_info));
       popart::TensorId result = builder_->aiOnnxOpset11().constant(*const_data);
       SetIpuIndexStage(result, op_desc);
@@ -325,7 +327,8 @@ void Compiler::LowerWeights(const Graph* graph, const Scope* scope) {
         auto var = scope->FindVar(var_name);
         if (var) {
           auto tensor = var->Get<framework::LoDTensor>();
-          auto dtype = VarType2PopartType(tensor.type());
+          auto dtype = VarType2PopartType(
+              framework::TransToProtoVarType(tensor.dtype()));
           auto shape = std::vector<int64_t>();
           for (size_t i = 0; i < tensor.dims().size(); ++i) {
             shape.push_back(tensor.dims().at(i));

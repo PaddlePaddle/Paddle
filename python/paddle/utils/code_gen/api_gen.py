@@ -30,27 +30,27 @@ class ForwardAPI(BaseAPI):
             out_type_list) == 1 else "std::tuple<" + ",".join(
                 out_type_list) + ">"
 
-    def gene_output(self, output_type_list):
+    def gene_output(self, output_type_list, set_out_func, code_indent):
         kernel_output = ""
         output_names = []
         output_create = ""
 
         if len(output_type_list) == 1:
-            kernel_output = 'dense_out'
-            output_names.append('dense_out')
+            kernel_output = 'kernel_out'
+            output_names.append('kernel_out')
             output_create = f"""
-  {self.outputs['return_type']} out;
-  auto dense_out = SetKernelOutput(kernel_backend, &out);"""
+{code_indent}  {self.outputs['return_type']} out;
+{code_indent}  auto kernel_out = {set_out_func}(kernel_backend, &out);"""
 
         elif len(output_type_list) > 1:
             output_create = f"""
-  {self.outputs['return_type']} out;"""
+{code_indent}  {self.outputs['return_type']} out;"""
 
             for i in range(len(output_type_list)):
-                kernel_output = kernel_output + f'dense_out_{i}, '
-                output_names.append(f'dense_out_{i}')
+                kernel_output = kernel_output + f'kernel_out_{i}, '
+                output_names.append(f'kernel_out_{i}')
                 output_create = output_create + f"""
-  auto dense_out_{i} = SetKernelOutput(kernel_backend, &std::get<{i}>(out));"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}(kernel_backend, &std::get<{i}>(out));"""
 
             kernel_output = kernel_output[:-2]
         else:
