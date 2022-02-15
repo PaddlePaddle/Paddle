@@ -29,29 +29,35 @@ def gene_wrapped_infermeta_and_register(api):
 PT_REGISTER_INFER_META_FN({api.kernel['func']}, pten::{api.infer_meta['func']});"""
 
         if api.infer_meta['param'] is not None:
+            kernel_params = api.kernel['param']
+            if kernel_params is None:
+                kernel_params = api.inputs['names'] + api.attrs['names']
+            if kernel_params == api.infer_meta['param']:
+                return '', '', register_code
+
+            assert len(api.infer_meta['param']) <= len(kernel_params), \
+                 f"{api.api} api: Parameters error. The params of infer_meta should be a subset of kernel params."
+
             tensor_type_map = {
                 'const Tensor&': 'const MetaTensor&',
                 'const std::vector<Tensor>&': 'const std::vector<MetaTensor>&',
                 'Tensor': 'MetaTensor*',
                 'std::vector<Tensor>': 'std::vector<MetaTensor>*',
             }
+
             wrapped_infermeta_name = get_wrapped_infermeta_name(api.api)
             args = []
-            check_args = []
             for input_name in api.inputs['names']:
-                args.append(tensor_type_map[api.inputs['input_info'][
-                    input_name]] + ' ' + input_name)
-                check_args.append(input_name)
+                if input_name in kernel_params:
+                    args.append(tensor_type_map[api.inputs['input_info'][
+                        input_name]] + ' ' + input_name)
             for attr_name in api.attrs['names']:
-                args.append(api.attrs['attr_info'][attr_name][0] + ' ' +
-                            attr_name)
-                check_args.append(attr_name)
+                if attr_name in kernel_params:
+                    args.append(api.attrs['attr_info'][attr_name][0] + ' ' +
+                                attr_name)
             for i, out_type in enumerate(api.outputs['types']):
                 args.append(tensor_type_map[out_type] + ' ' + api.outputs[
                     'names'][i])
-
-            if check_args == api.infer_meta['param']:
-                return '', '', register_code
 
             invoke_param = api.infer_meta['param']
             invoke_param.extend(api.outputs['names'])

@@ -23,12 +23,16 @@ namespace pten {
 template <typename T, typename Context>
 void EmptyKernel(const Context& dev_ctx,
                  const ScalarArray& shape,
+                 DataType dtype,
                  DenseTensor* out) {
   out->ResizeAndAllocate(pten::framework::make_ddim(shape.GetData()));
 }
 
 template <typename T, typename Context>
-void EmptyLikeKernel(const Context& dev_ctx, DenseTensor* out) {
+void EmptyLikeKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     DataType dtype,
+                     DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
 }
 
