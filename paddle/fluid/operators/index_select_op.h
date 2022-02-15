@@ -103,7 +103,7 @@ class IndexSelectKernel : public framework::OpKernel<T> {
     if (dim < 0) {
       dim += inputs.dims().size();
     }
-    const auto& index_type = index->type();
+    const auto& index_type = framework::TransToProtoVarType(index->dtype());
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(index_type_match, true,
@@ -211,7 +211,7 @@ class IndexSelectGradKernel : public framework::OpKernel<T> {
     if (dim < 0) {
       dim += out_grad->dims().size();
     }
-    const auto& index_type = index->type();
+    const auto& index_type = framework::TransToProtoVarType(index->dtype());
 
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;

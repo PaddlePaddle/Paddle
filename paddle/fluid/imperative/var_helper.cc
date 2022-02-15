@@ -15,6 +15,7 @@
 #include "paddle/fluid/imperative/var_helper.h"
 
 #include "paddle/fluid/eager/eager_tensor.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -170,9 +171,11 @@ template <>
 framework::proto::VarType::Type GetDataType<egr::EagerVariable>(
     std::shared_ptr<egr::EagerVariable> var) {
   if (var->Var().IsType<pten::SelectedRows>()) {
-    return var->Var().Get<pten::SelectedRows>().value().type();
+    return framework::TransToProtoVarType(
+        var->Var().Get<pten::SelectedRows>().value().type());
   } else if (var->Var().IsType<framework::LoDTensor>()) {
-    return var->Var().Get<framework::LoDTensor>().type();
+    return framework::TransToProtoVarType(
+        var->Var().Get<framework::LoDTensor>().type());
   } else {
     PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "We only support pten::SelectedRows and framework::LoDTensor in "

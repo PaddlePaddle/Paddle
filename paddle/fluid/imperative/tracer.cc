@@ -20,6 +20,7 @@
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/platform/denormal.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/string_helper.h"
 
@@ -139,6 +140,17 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
           "Paddle can't use MLU device since it's not compiled with MLU,"
           "Please recompile or reinstall Paddle with MLU support."));
 #endif
+    } else if (platform::is_custom_place(place)) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+      gc.reset(new framework::CustomDefaultStreamGarbageCollector(place, 0));
+      VLOG(10) << "Created GarbageCollector at " << place;
+#else
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Paddle can't use CustomDevice since it's not compiled with "
+          "CustomDevice,"
+          "Please recompile or reinstall Paddle with CustomDevice "
+          "support."));
+#endif
     } else {
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "Unsupported place for garbage collection"));
@@ -222,6 +234,14 @@ void Tracer::TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with MLU if use MLUPlace."));
+#endif
+    } else if (platform::is_custom_place(place)) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      platform::DeviceManager::SetDevice(place);
+#else
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "PaddlePaddle should compile with CustomDevice if use "
+          "CustomPlace."));
 #endif
     }
     if (!use_default_attr_map) {

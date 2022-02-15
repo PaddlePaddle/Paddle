@@ -73,10 +73,13 @@ FFTConfigKey create_fft_configkey(const framework::Tensor& input,
                                   const framework::Tensor& output,
                                   int signal_ndim) {
   // Create the transform plan (either from cache or locally)
-  const auto value_type = framework::IsComplexType(input.type())
-                              ? framework::ToRealType(input.type())
-                              : input.type();
-  auto fft_type = GetFFTTransformType(input.type(), output.type());
+  const auto value_type =
+      framework::IsComplexType(framework::TransToProtoVarType(input.dtype()))
+          ? framework::ToRealType(framework::TransToProtoVarType(input.dtype()))
+          : framework::TransToProtoVarType(input.dtype());
+  auto fft_type =
+      GetFFTTransformType(framework::TransToProtoVarType(input.dtype()),
+                          framework::TransToProtoVarType(output.dtype()));
   // signal sizes
   std::vector<int64_t> signal_size(signal_ndim + 1);
 
@@ -137,10 +140,13 @@ FFTConfigKey create_fft_configkey(const framework::Tensor& input,
                                   const framework::Tensor& output,
                                   int signal_ndim) {
   // Create the transform plan (either from cache or locally)
-  const auto value_type = framework::IsComplexType(input.type())
-                              ? framework::ToRealType(input.type())
-                              : input.type();
-  auto fft_type = GetFFTTransformType(input.type(), output.type());
+  const auto value_type =
+      framework::IsComplexType(framework::TransToProtoVarType(input.dtype()))
+          ? framework::ToRealType(framework::TransToProtoVarType(input.dtype()))
+          : framework::TransToProtoVarType(input.dtype());
+  auto fft_type =
+      GetFFTTransformType(framework::TransToProtoVarType(input.dtype()),
+                          framework::TransToProtoVarType(output.type()));
   // signal sizes
   std::vector<int64_t> signal_size(signal_ndim + 1);
 

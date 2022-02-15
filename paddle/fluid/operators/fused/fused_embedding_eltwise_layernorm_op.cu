@@ -14,6 +14,7 @@
 
 #include <paddle/fluid/platform/device_context.h>
 #include <algorithm>
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math/bert_encoder_functor.h"
@@ -32,8 +33,10 @@ class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
     auto embs = context.MultiInput<framework::Tensor>("Embs");
     int input_num = static_cast<int>(ids.size());
 
-    framework::Tensor in_ids_(framework::proto::VarType::INT64),
-        in_embs_(framework::proto::VarType::INT64);
+    framework::Tensor in_ids_(
+        framework::TransToPtenDataType(framework::proto::VarType::INT64)),
+        in_embs_(
+            framework::TransToPtenDataType(framework::proto::VarType::INT64));
     framework::DDim in_dim{input_num};
     int device_id;
 #ifdef PADDLE_WITH_HIP

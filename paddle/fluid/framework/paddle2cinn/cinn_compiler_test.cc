@@ -270,13 +270,20 @@ TEST(CinnCompilerTest, Compile) {
   auto compile_fn = [&](const Target& target) {
     const auto& compiled_obj =
         cinn_compiler->Compile(compiling_graph, input_tensors, target);
+    ASSERT_NE(compiled_obj.compiler, nullptr);
     ASSERT_NE(compiled_obj.runtime_program, nullptr);
     ASSERT_NE(compiled_obj.scope, nullptr);
     ASSERT_FALSE(compiled_obj.paddle2cinn_varmap.empty());
+    ASSERT_NE(compiled_obj.launch_context, nullptr);
     const auto& cached_obj =
         cinn_compiler->Compile(compilation_key, input_tensors, target);
     ASSERT_EQ(reinterpret_cast<std::uint64_t>(&compiled_obj),
               reinterpret_cast<std::uint64_t>(&cached_obj));
+    ASSERT_EQ(cached_obj.cached_index + 1, cinn_compiler->real_compiled_num());
+    const auto& ret_obj =
+        cinn_compiler->GetCompiledObject(cached_obj.cached_index);
+    ASSERT_EQ(reinterpret_cast<std::uint64_t>(&compiled_obj),
+              reinterpret_cast<std::uint64_t>(&ret_obj));
   };
 
   // GPU Compilation

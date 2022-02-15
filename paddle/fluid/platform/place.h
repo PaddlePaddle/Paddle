@@ -36,8 +36,18 @@ using NPUPinnedPlace = pten::NPUPinnedPlace;
 using XPUPlace = pten::XPUPlace;
 using IPUPlace = pten::IPUPlace;
 using MLUPlace = pten::MLUPlace;
+using CustomPlace = pten::CustomPlace;
 
 using PlaceList = std::vector<Place>;
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+class PlaceHelper {
+ public:
+  static std::string GetDeviceType(const Place &place);
+  static size_t GetDeviceId(const Place &place);
+  static Place CreatePlace(const std::string &dev_type, size_t dev_id = 0);
+};
+#endif
 
 bool is_gpu_place(const Place &);
 bool is_xpu_place(const Place &);
@@ -47,6 +57,7 @@ bool is_ipu_place(const Place &);
 bool is_cpu_place(const Place &);
 bool is_cuda_pinned_place(const Place &);
 bool is_npu_pinned_place(const Place &);
+bool is_custom_place(const Place &p);
 bool places_are_same_class(const Place &, const Place &);
 bool is_same_place(const Place &, const Place &);
 
@@ -121,6 +132,15 @@ typename Visitor::result_type VisitPlace(const Place &place,
 #else
       PADDLE_THROW(platform::errors::Unavailable(
           "Paddle is not compiled with MLU. Cannot visit mlu device"));
+#endif
+    }
+    case pten::AllocationType::CUSTOM: {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      platform::CustomPlace p(place.GetDeviceType(), place.GetDeviceId());
+      return visitor(p);
+#else
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Paddle is not compiled with CUSTOM. Cannot visit custom device"));
 #endif
     }
     default: {

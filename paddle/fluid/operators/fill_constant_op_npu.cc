@@ -61,7 +61,7 @@ class FillConstantNPUKernel : public framework::OpKernel<T> {
 
     out_var->mutable_data<T>(shape, ctx.GetPlace());
     if (data_type != framework::proto::VarType::BOOL) {
-      Tensor tensor_value(data_type);
+      Tensor tensor_value(framework::TransToPtenDataType(data_type));
       tensor_value.mutable_data<T>({1}, ctx.GetPlace());
       FillNpuTensorWithConstant<T>(&tensor_value, value);
       NpuOpRunner runner;

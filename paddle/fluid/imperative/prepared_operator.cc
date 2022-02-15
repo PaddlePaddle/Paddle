@@ -284,6 +284,16 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
     kernel_iter = kernels.find(expected_kernel_key);
   }
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (kernel_iter == kernels.end() &&
+      paddle::platform::is_custom_place(expected_kernel_key.place_)) {
+    VLOG(3) << "missing " << place.GetDeviceType() << " kernel: " << op.Type()
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+    expected_kernel_key.place_ = platform::CPUPlace();
+    kernel_iter = kernels.find(expected_kernel_key);
+  }
+#endif
   // TODO(jiabin): Add operator.cc's line 1000 part back when we need that
   // case
   PADDLE_ENFORCE_NE(kernel_iter, kernels.end(),
