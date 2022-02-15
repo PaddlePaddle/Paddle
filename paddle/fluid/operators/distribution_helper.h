@@ -182,7 +182,7 @@ template <typename T, typename DistOp, typename TransformOp>
 __global__ void DistributionKernel(size_t size, uint64_t seed, uint64_t offset,
                                    DistOp dist, TransformOp trans,
                                    T *out_data) {
-  size_t idx = static_cast<size_t>(blockIdx.x * blockDim.x);
+  size_t idx = static_cast<size_t>(BLOCK_ID_X * BLOCK_NUM_X);
   static constexpr int kCount = DistOp::kReturnsCount;
 #if defined(__NVCC__)
   curandStatePhilox4_32_10_t state;
@@ -193,7 +193,7 @@ __global__ void DistributionKernel(size_t size, uint64_t seed, uint64_t offset,
   hiprand_init(seed, idx + THREAD_ID_X, offset, &state);
   using SType = hiprandStatePhilox4_32_10_t;
 #endif
-  size_t total_thread = gridDim.x * blockDim.x;
+  size_t total_thread = GRID_NUM_X * BLOCK_NUM_X;
   T args[kCount];
   T result[kCount];
   for (size_t i = idx; i < size; i += total_thread * kCount) {
