@@ -73,6 +73,10 @@ void AdaptivePool2dConvertGlobalPass::ApplyImpl(ir::Graph* graph) const {
     if (n->IsOp()) {
       auto* op = n->Op();
       if (op->HasAttr("adaptive") && op->HasAttr("ksize")) {
+        bool global_pooling =
+            BOOST_GET_CONST(bool, op->GetAttr("global_pooling"));
+        if (global_pooling) return;
+
         bool adaptive = BOOST_GET_CONST(bool, op->GetAttr("adaptive"));
         std::vector<int> ksize =
             BOOST_GET_CONST(std::vector<int>, op->GetAttr("ksize"));

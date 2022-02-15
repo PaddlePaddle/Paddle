@@ -42,10 +42,14 @@ class TestAdaptivePool2dConvertGlobalPass(PassAutoScanTest):
                 st.integers(
                     min_value=1, max_value=4), min_size=2, max_size=2))
 
-        paddings = [0, 0]  # only 0 0 is right
+        paddings = draw(
+            st.lists(
+                st.integers(
+                    min_value=1, max_value=4), min_size=2, max_size=2))
+
         ceil_mode = draw(st.booleans())
         exclusive = draw(st.booleans())
-        global_pooling = False  #only false is right
+        global_pooling = draw(st.booleans())
         padding_algorithm = draw(st.sampled_from(["EXPLICIT", "SAME", "VAILD"]))
 
         pool_op = OpConfig(
@@ -92,19 +96,10 @@ class TestAdaptivePool2dConvertGlobalPass(PassAutoScanTest):
                     return True
             return False
 
-        def teller2(program_config, predictor_config):
-            if program_config.ops[0].attrs["padding_algorithm"] == "SAME":
-                return True
-            return False
-
         self.add_ignore_check_case(
             teller1,
             IgnoreReasons.PASS_ACCURACY_ERROR,
             "max pooling has diff if H or W is not equals to 1", )
-        self.add_ignore_check_case(
-            teller2,
-            IgnoreReasons.PASS_ACCURACY_ERROR,
-            "output has wrong result if padding_algorithm equals to SAME", )
 
     def test(self):
         self.run_and_statis(
