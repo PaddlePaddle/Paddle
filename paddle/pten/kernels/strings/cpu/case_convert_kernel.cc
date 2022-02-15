@@ -19,13 +19,13 @@ limitations under the License. */
 
 using pstring = ::pten::dtype::pstring;
 
-PT_REGISTER_GENERAL_KERNEL(string_lower,
+PT_REGISTER_GENERAL_KERNEL(strings_lower,
                            CPU,
                            ALL_LAYOUT,
                            pten::strings::StringLowerKernel<pten::CPUContext>,
                            pstring) {}
 
-PT_REGISTER_GENERAL_KERNEL(string_upper,
+PT_REGISTER_GENERAL_KERNEL(strings_upper,
                            CPU,
                            ALL_LAYOUT,
                            pten::strings::StringUpperKernel<pten::CPUContext>,

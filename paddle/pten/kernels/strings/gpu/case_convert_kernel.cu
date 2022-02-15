@@ -83,13 +83,13 @@ struct UTF8CaseConverter<pten::GPUContext, CharConverter> {
 }  // namespace strings
 }  // namespace pten
 
-PT_REGISTER_GENERAL_KERNEL(string_lower,
+PT_REGISTER_GENERAL_KERNEL(strings_lower,
                            GPU,
                            ALL_LAYOUT,
                            pten::strings::StringLowerKernel<pten::GPUContext>,
                            pstring) {}
 
-PT_REGISTER_GENERAL_KERNEL(string_upper,
+PT_REGISTER_GENERAL_KERNEL(strings_upper,
                            GPU,
                            ALL_LAYOUT,
                            pten::strings::StringUpperKernel<pten::GPUContext>,

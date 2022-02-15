@@ -37,7 +37,7 @@ void EmptyLikeKernel(const Context& dev_ctx, StringTensor* out) {
 
 using pstring = ::pten::dtype::pstring;
 
-PT_REGISTER_GENERAL_KERNEL(string_empty,
+PT_REGISTER_GENERAL_KERNEL(strings_empty,
                            CPU,
                            ALL_LAYOUT,
                            pten::strings::EmptyKernel<pten::CPUContext>,
