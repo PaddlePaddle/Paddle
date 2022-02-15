@@ -125,7 +125,8 @@ void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
                       const char* var_name) {
   auto x = scope->Var(var_name);
   auto tensor = x->GetMutable<LoDTensor>();
-  tensor->mutable_data(place, proto::VarType::FP32, 1);
+  tensor->mutable_data(place,
+                       framework::TransToPtenDataType(proto::VarType::FP32), 1);
 }
 
 void PreparePass(std::unique_ptr<ir::Graph>* graph, const ProgramDesc& prog,
@@ -192,7 +193,6 @@ void MainTest(const ProgramDesc& prog,
   int original_nodes_num, current_nodes_num;
   PreparePass(&graph, prog, variable_names, &original_nodes_num,
               &current_nodes_num, var_without_scale, var_signed);
-  std::unordered_map<std::string, int> actual_operators;
   for (auto* node : graph->Nodes()) {
     if (node->IsOp()) {
       auto* op = node->Op();

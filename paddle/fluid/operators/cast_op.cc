@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/cast_op.h"
 #include <memory>
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/float16.h"
 #ifdef PADDLE_WITH_MLU
@@ -82,7 +83,9 @@ class CastOp : public framework::OperatorWithKernel {
     auto &tensor_place = tensor->place();
     // NOTE: cuda pinned tensor need to copy its data to target place
     if (platform::is_cuda_pinned_place(tensor_place)) {
-      return framework::OpKernelType(tensor->type(), ctx.device_context());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor->dtype()),
+          ctx.device_context());
     }
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -100,26 +103,32 @@ class CastOp : public framework::OperatorWithKernel {
       return true;
     };
 
-    if (this->CanMKLDNNBeUsed(ctx, tensor->type()) && MKLDNNSupportsCast()) {
-      return framework::OpKernelType(tensor->type(), ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
+    if (this->CanMKLDNNBeUsed(
+            ctx, framework::TransToProtoVarType(tensor->dtype())) &&
+        MKLDNNSupportsCast()) {
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor->dtype()), ctx.GetPlace(),
+          framework::DataLayout::kMKLDNN, framework::LibraryType::kMKLDNN);
     }
 #endif
 #ifdef PADDLE_WITH_MLU
     auto src_type = static_cast<VT::Type>(ctx.Attr<int>("in_dtype"));
     auto dst_type = static_cast<VT::Type>(ctx.Attr<int>("out_dtype"));
     if (src_type == dst_type || MLUSupportsCast(src_type, dst_type)) {
-      return framework::OpKernelType(tensor->type(), tensor_place);
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor->dtype()), tensor_place);
     } else {
       VLOG(3) << "MLU not support cast type: "
               << framework::DataTypeToString(src_type)
               << " to type: " << framework::DataTypeToString(dst_type)
               << ", fallbacking to CPU one!";
-      return framework::OpKernelType(tensor->type(), platform::CPUPlace());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor->dtype()),
+          platform::CPUPlace());
     }
 #endif
-    return framework::OpKernelType(tensor->type(), tensor_place);
+    return framework::OpKernelType(
+        framework::TransToProtoVarType(tensor->dtype()), tensor_place);
   }
 };
 

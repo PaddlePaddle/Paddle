@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/operators/elementwise/mkldnn/elementwise_mkldnn_op.h"
 
 namespace paddle {
@@ -41,9 +42,11 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
 
     auto tz = paddle::framework::vectorize<int64_t>(dout->dims());
-    memory::data_type dout_type = framework::ToMKLDNNDataType(dout->type());
-    platform::ReorderMKLDNNHandler handler(tz, dout->type(), dout_type,
-                                           onednn_engine);
+    memory::data_type dout_type = framework::ToMKLDNNDataType(
+        framework::TransToProtoVarType(dout->dtype()));
+    platform::ReorderMKLDNNHandler handler(
+        tz, framework::TransToProtoVarType(dout->dtype()), dout_type,
+        onednn_engine);
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     auto reorder_src_memory_p = handler.AcquireSrcMemory(

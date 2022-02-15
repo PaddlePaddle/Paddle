@@ -28,6 +28,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_type_transform.h"
@@ -458,7 +459,9 @@ static void inline CreateVariableIfNotExit(
         var = const_cast<framework::Scope *>(&scope)->Var(para_name);
         auto *tensor_temp = var->GetMutable<framework::LoDTensor>();
         tensor_temp->Resize(framework::make_ddim(var_desc.GetShape()));
-        tensor_temp->mutable_data(exe->GetPlace(), var_desc.GetDataType());
+        tensor_temp->mutable_data(
+            exe->GetPlace(),
+            framework::TransToPtenDataType(var_desc.GetDataType()));
       }
     }
   } else {
@@ -817,33 +820,39 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::CPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
+             return reinterpret_cast<uintptr_t>(self.mutable_data(
+                 place, framework::TransToPtenDataType(type)));
            })
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::XPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
+             return reinterpret_cast<uintptr_t>(self.mutable_data(
+                 place, framework::TransToPtenDataType(type)));
            })
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::CUDAPlace &place,
               paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
+             return reinterpret_cast<uintptr_t>(self.mutable_data(
+                 place, framework::TransToPtenDataType(type)));
            })
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::CUDAPinnedPlace &place,
               paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
+             return reinterpret_cast<uintptr_t>(self.mutable_data(
+                 place, framework::TransToPtenDataType(type)));
            })
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::MLUPlace &place,
               paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
+             return reinterpret_cast<uintptr_t>(self.mutable_data(
+                 place, framework::TransToPtenDataType(type)));
            })
       .def("_clear", &framework::Tensor::clear)
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::NPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
+             return reinterpret_cast<uintptr_t>(self.mutable_data(
+                 place, framework::TransToPtenDataType(type)));
            })
       .def("_copy_from", &TensorCopyFrom<paddle::platform::CPUPlace>,
            py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
@@ -941,7 +950,10 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("_set_double_element", TensorSetElement<double>)
       .def("_get_double_element", TensorGetElement<double>)
       .def("_place", [](framework::Tensor &self) { return self.place(); })
-      .def("_dtype", [](framework::Tensor &self) { return self.type(); })
+      .def("_dtype",
+           [](framework::Tensor &self) {
+             return framework::TransToProtoVarType(self.type());
+           })
       .def("_layout",
            [](framework::Tensor &self) {
              return DataLayoutToString(self.layout());
@@ -1207,7 +1219,7 @@ PYBIND11_MODULE(core_noavx, m) {
             // 4. Rebuild Tensor
             tensor.ResetHolderWithType(
                 shared_reader_holder,
-                static_cast<proto::VarType::Type>(t[2].cast<int>()));
+                static_cast<paddle::experimental::DataType>(t[2].cast<int>()));
             tensor.Resize(make_ddim(t[3].cast<std::vector<int>>()));
             tensor.set_lod(t[4].cast<framework::LoD>());
 
