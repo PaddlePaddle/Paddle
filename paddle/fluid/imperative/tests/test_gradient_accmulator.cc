@@ -115,6 +115,30 @@ TEST(test_add_functor, add_functor) {
       TensorddTest(gpu_place, gpu_place, static_cast<platform::float16>(1.0),
                    static_cast<platform::float16>(2.0));
   EXPECT_EQ(gpu_res, 0);
+
+  // normal
+  gpu_res = TensorddTest(gpu_place, gpu_place, static_cast<float>(1.0),
+                         static_cast<float>(2.0));
+  EXPECT_EQ(gpu_res, 0);
+  gpu_res =
+      TensorddTest(gpu_place, gpu_place, static_cast<platform::float16>(1.0),
+                   static_cast<platform::float16>(2.0));
+  EXPECT_EQ(gpu_res, 0);
+  // different places
+  gpu_res = TensorddTest(cpu_place, gpu_place, static_cast<float>(1.0),
+                         static_cast<float>(2.0));
+  EXPECT_EQ(gpu_res, 0);
+  gpu_res = TensorddTest(gpu_place, cpu_place, static_cast<float>(1.0),
+                         static_cast<float>(2.0));
+  EXPECT_EQ(gpu_res, 0);
+  gpu_res =
+      TensorddTest(cpu_place, gpu_place, static_cast<platform::float16>(1.0),
+                   static_cast<platform::float16>(2.0));
+  EXPECT_EQ(gpu_res, 0);
+  gpu_res =
+      TensorddTest(gpu_place, cpu_place, static_cast<platform::float16>(1.0),
+                   static_cast<platform::float16>(2.0));
+  EXPECT_EQ(gpu_res, 0);
 #endif
 
 #ifdef PADDLE_WITH_XPU
