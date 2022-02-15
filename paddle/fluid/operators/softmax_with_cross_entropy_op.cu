@@ -433,6 +433,29 @@ void SwitchWarpSoftmaxForward(T* loss, T* softmax, const T* src,
   }
 }
 
+template <typename T, bool IgnoreIndex>
+__device__ __forceinline__ void ComputeLoss(T* loss, const T loss_value,
+                                            const int label_id,
+                                            const int64_t label_value,
+                                            const int tid, const int vec_size,
+                                            const int offset,
+                                            const int ignore_index) {
+  int loss_id = vec_size * tid + offset;
+  if (IgnoreIndex) {
+    if (label_value == loss_id) {
+      if (label_value == ignore_index) {
+        loss[label_id] = static_cast<T>(0.0f);
+      } else {
+        loss[label_id] = loss_value;
+      }
+    }
+  } else {
+    if (label_value == loss_id) {
+      loss[label_id] = loss_value;
+    }
+  }
+}
+
 template <typename T, typename AccT, int VecSize, class ReduceFunctor>
 __device__ __forceinline__ AccT ThreadReduce(const T* input, int size,
                                              const int offset, AccT init,
@@ -481,20 +504,30 @@ __device__ __forceinline__ void VectorizedSoftmaxForwardImpl(
     const int ignore_index) {
   using VecT = kps::details::VectorType<T, VecSize>;
   int tid = threadIdx.x;
-  int label_tid = blockIdx.x;
-  auto lable_value = static_cast<int64_t>(label[label_tid]);
-  const bool label_valid = lable_value >= 0 && lable_value < size;
+  int label_id = blockIdx.x;
+  auto label_value = static_cast<int64_t>(label[label_id]);
+  const bool label_valid = label_value >= 0 && label_value < size;
+  int loss_id_offset = 0;
 
   if (offset > 0) {
     logits -= offset;
     softmax -= offset;
     size += offset;
+    loss_id_offset -= offset;
     if (tid >= offset) {
-      softmax[tid] = func(logits[tid]);
+      AccT log_softmax = func(static_cast<AccT>(logits[tid]));
+      softmax[tid] = static_cast<T>(std::exp(log_softmax));
+      // loss
+      if (label_valid) {
+        ComputeLoss<T, IgnoreIndex>(loss, static_cast<T>(-log_softmax),
+                                    label_id, label_value, tid, 1,
+                                    loss_id_offset, ignore_index);
+      }
     }
     size -= blockDim.x;
     logits += blockDim.x;
     softmax += blockDim.x;
+    loss_id_offset += blockDim.x;
   }
   int remain = size % (VecSize * blockDim.x);
 
@@ -516,20 +549,9 @@ __device__ __forceinline__ void VectorizedSoftmaxForwardImpl(
 
       // loss
       if (label_valid) {
-        int loss_tid = VecSize * tid + i;
-        if (IgnoreIndex) {
-          if (lable_value == loss_tid) {
-            if (lable_value == ignore_index) {
-              loss[label_tid] = static_cast<T>(0.0f);
-            } else {
-              loss[label_tid] = -log_softmax;
-            }
-          }
-        } else {
-          if (lable_value == loss_tid) {
-            loss[label_tid] = -log_softmax;
-          }
-        }
+        ComputeLoss<T, IgnoreIndex>(loss, static_cast<T>(-log_softmax),
+                                    label_id, label_value, tid, VecSize,
+                                    loss_id_offset + i, ignore_index);
       }
     }
 
@@ -545,26 +567,15 @@ __device__ __forceinline__ void VectorizedSoftmaxForwardImpl(
 
     // loss
     if (label_valid) {
-      int loss_tid = tid;
-      if (IgnoreIndex) {
-        if (lable_value == loss_tid) {
-          if (lable_value == ignore_index) {
-            loss[label_tid] = static_cast<T>(0.0f);
-          } else {
-            loss[label_tid] = -log_softmax;
-          }
-        }
-      } else {
-        if (lable_value == loss_tid) {
-          loss[label_tid] = -log_softmax;
-        }
-      }
+      ComputeLoss<T, IgnoreIndex>(loss, static_cast<T>(-log_softmax), label_id,
+                                  label_value, tid, 1, loss_id_offset,
+                                  ignore_index);
     }
   }
 
   // invalid label, write once
   if (!label_valid && threadIdx.x == 0) {
-    loss[label_tid] = static_cast<T>(0.0f);
+    loss[label_id] = static_cast<T>(0.0f);
   }
 }
 
@@ -575,9 +586,9 @@ __device__ __forceinline__ void ScalarSoftmaxForwardImpl(
     const LogSoftmaxForwardFunctor<AccT>& func, const int ignore_index) {
   int tid = threadIdx.x;
   int remain = size % (VecSize * blockDim.x);
-  int label_tid = blockIdx.x;
-  auto lable_value = static_cast<int64_t>(label[label_tid]);
-  const bool label_valid = lable_value >= 0 && lable_value < size;
+  int label_id = blockIdx.x;
+  auto label_value = static_cast<int64_t>(label[label_id]);
+  const bool label_valid = label_value >= 0 && label_value < size;
 
   // main part
   for (; tid < (size - remain); tid += VecSize * blockDim.x) {
@@ -593,20 +604,9 @@ __device__ __forceinline__ void ScalarSoftmaxForwardImpl(
       softmax[tid + i * blockDim.x] = static_cast<T>(std::exp(log_softmax));
       // loss
       if (label_valid) {
-        int loss_tid = VecSize * tid + i;
-        if (IgnoreIndex) {
-          if (lable_value == loss_tid) {
-            if (lable_value == ignore_index) {
-              loss[label_tid] = static_cast<T>(0.0f);
-            } else {
-              loss[label_tid] = -log_softmax;
-            }
-          }
-        } else {
-          if (lable_value == loss_tid) {
-            loss[label_tid] = -log_softmax;
-          }
-        }
+        ComputeLoss<T, IgnoreIndex>(loss, static_cast<T>(-log_softmax),
+                                    label_id, label_value, tid, VecSize, i,
+                                    ignore_index);
       }
     }
   }
@@ -617,26 +617,14 @@ __device__ __forceinline__ void ScalarSoftmaxForwardImpl(
     softmax[tid] = static_cast<T>(std::exp(log_softmax));
     // loss
     if (label_valid) {
-      int loss_tid = tid;
-      if (IgnoreIndex) {
-        if (lable_value == loss_tid) {
-          if (lable_value == ignore_index) {
-            loss[label_tid] = static_cast<T>(0.0f);
-          } else {
-            loss[label_tid] = -log_softmax;
-          }
-        }
-      } else {
-        if (lable_value == loss_tid) {
-          loss[label_tid] = -log_softmax;
-        }
-      }
+      ComputeLoss<T, IgnoreIndex>(loss, static_cast<T>(-log_softmax), label_id,
+                                  label_value, tid, 1, 0, ignore_index);
     }
   }
 
   // invalid label, write once
   if (!label_valid && threadIdx.x == 0) {
-    loss[label_tid] = static_cast<T>(0.0f);
+    loss[label_id] = static_cast<T>(0.0f);
   }
 }
 
