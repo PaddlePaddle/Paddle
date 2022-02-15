@@ -19,9 +19,9 @@
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/math/algorithm.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/algorithm.h"
 
 namespace paddle {
 namespace operators {
@@ -85,11 +85,11 @@ class GpuAndCpuSearchSortedCompute {
       out_data_[idx] = seq_size_;
     } else {
       if (right_) {
-        out_data_[idx] = static_cast<OutType>(
-            math::UpperBound<T1, T2>(sequence_ptr, seq_size_, *value_ptr));
+        out_data_[idx] = static_cast<OutType>(pten::funcs::UpperBound<T1, T2>(
+            sequence_ptr, seq_size_, *value_ptr));
       } else {
-        out_data_[idx] = static_cast<OutType>(
-            math::LowerBound<T1, T2>(sequence_ptr, seq_size_, *value_ptr));
+        out_data_[idx] = static_cast<OutType>(pten::funcs::LowerBound<T1, T2>(
+            sequence_ptr, seq_size_, *value_ptr));
       }
     }
   }
