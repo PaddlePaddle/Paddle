@@ -18,6 +18,7 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/chrometracing_logger.h"
 #include "paddle/fluid/platform/profiler/event_node.h"
 #include "paddle/fluid/platform/profiler/utils.h"
@@ -175,6 +176,11 @@ void ChromeTracingLogger::HandleTypeKernel(
   warps_per_sm = blocks_per_sm * (kernel_info.block_x * kernel_info.block_y *
                                   kernel_info.block_z) /
                  threads_per_warp;
+  occupancy = CalculateEstOccupancy(
+      device_node.DeviceId(), kernel_info.registers_per_thread,
+      kernel_info.static_shared_memory, kernel_info.dynamic_shared_memory,
+      kernel_info.block_x, kernel_info.block_y, kernel_info.block_z,
+      blocks_per_sm);
 #endif
 
   output_file_stream_ << string_format(
@@ -197,16 +203,16 @@ void ChromeTracingLogger::HandleTypeKernel(
     }
   },
   )JSON"),
-      device_node.Name().c_str(), device_node.DeviceId(),
-      device_node.StreamId(), nsToUs(device_node.StartNs()),
-      nsToUs(device_node.Duration()),
+      paddle::platform::demangle(device_node.Name()).c_str(),
+      device_node.DeviceId(), device_node.StreamId(),
+      nsToUs(device_node.StartNs()), nsToUs(device_node.Duration()),
       categary_name_[static_cast<int>(device_node.Type())],
       device_node.DeviceId(), device_node.ContextId(), device_node.StreamId(),
       device_node.CorrelationId(), kernel_info.registers_per_thread,
       kernel_info.static_shared_memory + kernel_info.dynamic_shared_memory,
       blocks_per_sm, warps_per_sm, kernel_info.grid_x, kernel_info.grid_y,
       kernel_info.grid_z, kernel_info.block_x, kernel_info.block_y,
-      kernel_info.block_z, occupancy);
+      kernel_info.block_z, occupancy * 100);
 }
 
 void ChromeTracingLogger::HandleTypeMemcpy(
