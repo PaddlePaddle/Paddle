@@ -374,10 +374,11 @@ struct XPUSoftPlusFunctor : public BaseActivationFunctor<T> {
   void operator()(const framework::ExecutionContext &ctx) const {
     const auto *x = ctx.Input<Tensor>("X");
     auto *y = ctx.Output<Tensor>("Out");
-    float beta = ctx.Attr<float>("beta");
-    float threshold = ctx.Attr<float>("threshold");
     const T *x_data = x->data<T>();
     T *y_data = y->mutable_data<T>(ctx.GetPlace());
+
+    float beta = ctx.Attr<float>("beta");
+    float threshold = ctx.Attr<float>("threshold");
 
     auto xpu_context =
         ctx.device_context<paddle::platform::XPUDeviceContext>().x_context();
@@ -393,14 +394,15 @@ struct XPUSoftPlusGradFunctor : public BaseActivationFunctor<T> {
     const auto *x = ctx.Input<Tensor>("X");
     auto *dOut = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto *dX = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    float beta = ctx.Attr<float>("beta");
-    float threshold = ctx.Attr<float>("threshold");
     const T *x_data = x->data<T>();
     const T *y_grad = dOut->data<T>();
     T *x_grad = dX->mutable_data<T>(ctx.GetPlace());
+
+    float beta = ctx.Attr<float>("beta");
+    float threshold = ctx.Attr<float>("threshold");
+
     auto xpu_context =
         ctx.device_context<paddle::platform::XPUDeviceContext>().x_context();
-
     int r = xpu::softplus_grad(
         xpu_context, reinterpret_cast<const float *>(x_data),
         reinterpret_cast<const float *>(
