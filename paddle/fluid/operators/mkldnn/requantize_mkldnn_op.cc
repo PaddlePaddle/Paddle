@@ -52,7 +52,8 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
                                            "Scale of output cannot be 0.0"));
     if (shift_in != 0.0f) {
       PADDLE_ENFORCE_EQ(
-          input->type(), framework::proto::VarType::UINT8,
+          framework::TransToProtoVarType(input->dtype()),
+          framework::proto::VarType::UINT8,
           platform::errors::Unimplemented("Requantize does not support nonzero "
                                           "shift for signed input."));
     }
@@ -81,7 +82,8 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
 
     if (reorder_p == nullptr) {
       auto dst_tz = framework::vectorize(output->dims());
-      auto src_dt = framework::ToMKLDNNDataType(input->type());
+      auto src_dt = framework::ToMKLDNNDataType(
+          framework::TransToProtoVarType(input->dtype()));
       auto dst_dt = with_shift ? framework::MKLDNNDataType::u8 : src_dt;
 
       auto src_md = platform::MKLDNNMemDesc({src_tz}, src_dt, input->format());

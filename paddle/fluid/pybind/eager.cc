@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/utils.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -74,7 +75,8 @@ void EmptyEagerTensorInitializer(
     std::shared_ptr<pten::DenseTensor> dense_tensor =
         std::make_shared<pten::DenseTensor>(
             pten::make_intrusive<paddle::experimental::SharedStorage>(place),
-            pten::DenseTensorMeta(pten::TransToPtenDataType(dtype), ddims));
+            pten::DenseTensorMeta(paddle::framework::TransToPtenDataType(dtype),
+                                  ddims));
     if (paddle::framework::product(ddims) > 0) {
       dense_tensor->mutable_data(place);
     }

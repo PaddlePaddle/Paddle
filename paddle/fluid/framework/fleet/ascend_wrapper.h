@@ -22,6 +22,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
@@ -146,13 +147,16 @@ class AscendInstance {
     // }
 
     ge::Shape shape(vec_dim);
-    ge::TensorDesc tensor_desc(shape, ge::Format::FORMAT_ND,
-                               VarTypeToGeType(tensor->type()));
+    ge::TensorDesc tensor_desc(
+        shape, ge::Format::FORMAT_ND,
+        VarTypeToGeType(framework::TransToProtoVarType(tensor->dtype())));
     tensor_desc.SetRealDimCnt(vec_dim.size());
 
     const uint8_t *data = reinterpret_cast<const uint8_t *>(tensor->data());
-    std::vector<uint8_t> dst(numel * GeTypeSize(tensor->type()));
-    memcpy(dst.data(), data, GeTypeSize(tensor->type()) * numel);
+    std::vector<uint8_t> dst(
+        numel * GeTypeSize(framework::TransToProtoVarType(tensor->dtype())));
+    memcpy(dst.data(), data,
+           GeTypeSize(framework::TransToProtoVarType(tensor->dtype())) * numel);
     ge::Tensor ge_tensor(tensor_desc, dst);
     return ge_tensor;
   }

@@ -74,9 +74,11 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
 
     auto x_vec_dims = framework::vectorize(x_dims);
 
-    dnnl::memory::data_type x_type = framework::ToMKLDNNDataType(x->type());
-    platform::ReorderMKLDNNHandler reorder_handler(x_vec_dims, x->type(),
-                                                   x_type, onednn_engine);
+    dnnl::memory::data_type x_type =
+        framework::ToMKLDNNDataType(framework::TransToProtoVarType(x->dtype()));
+    platform::ReorderMKLDNNHandler reorder_handler(
+        x_vec_dims, framework::TransToProtoVarType(x->dtype()), x_type,
+        onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         x->format(), platform::to_void_cast(x->data<T>()));
@@ -99,8 +101,8 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
   }
 
   void InferInOutShape(const framework::ExecutionContext& ctx,
-                       framework::DDim& x_dims,
-                       framework::DDim& out_dims) const {
+                       framework::DDim& x_dims,            // NOLINT
+                       framework::DDim& out_dims) const {  // NOLINT
     switch (op_name) {
       case ReshapeKernelOpName::reshape:
         InferShapeReshapeOp(ctx, x_dims, out_dims);
@@ -127,8 +129,8 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
   }
 
   void InferShapeReshapeOp(const framework::ExecutionContext& ctx,
-                           framework::DDim& x_dims,
-                           framework::DDim& out_dims) const {
+                           framework::DDim& x_dims,            // NOLINT
+                           framework::DDim& out_dims) const {  // NOLINT
     auto* x = ctx.Input<LoDTensor>("X");
     auto* out = ctx.Output<LoDTensor>("Out");
     x_dims = x->dims();
@@ -137,8 +139,8 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
   }
 
   void InferShapeReshape2Op(const framework::ExecutionContext& ctx,
-                            framework::DDim& x_dims,
-                            framework::DDim& out_dims) const {
+                            framework::DDim& x_dims,            // NOLINT
+                            framework::DDim& out_dims) const {  // NOLINT
     auto* out = ctx.Output<LoDTensor>("Out");
     auto* xshape = ctx.Output<LoDTensor>("XShape");
     auto xshape_dims = xshape->dims();
@@ -149,9 +151,10 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
 
   // in reshape1/2 ops  "ShapeTensor" has highest priority and "Shape" has
   // second highest priority
-  void ChangeReshapeOutDimsIfNeeded(const framework::ExecutionContext& ctx,
-                                    framework::DDim& x_dims,
-                                    framework::DDim& out_dims) const {
+  void ChangeReshapeOutDimsIfNeeded(
+      const framework::ExecutionContext& ctx,
+      framework::DDim& x_dims,            // NOLINT
+      framework::DDim& out_dims) const {  // NOLINT
     auto list_new_shape_tensor = ctx.MultiInput<Tensor>("ShapeTensor");
     if (list_new_shape_tensor.size() > 0) {
       auto new_shape = extract_shape(list_new_shape_tensor);
@@ -167,8 +170,8 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
   }
 
   void InferShapeSqueezeOp(const framework::ExecutionContext& ctx,
-                           framework::DDim& x_dims,
-                           framework::DDim& out_dims) const {
+                           framework::DDim& x_dims,            // NOLINT
+                           framework::DDim& out_dims) const {  // NOLINT
     auto* x = ctx.Input<LoDTensor>("X");
     x_dims = x->dims();
     const auto& axes = ctx.Attr<std::vector<int>>("axes");
@@ -176,8 +179,8 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
   }
 
   void InferShapeSqueeze2Op(const framework::ExecutionContext& ctx,
-                            framework::DDim& x_dims,
-                            framework::DDim& out_dims) const {
+                            framework::DDim& x_dims,            // NOLINT
+                            framework::DDim& out_dims) const {  // NOLINT
     auto* out = ctx.Output<LoDTensor>("Out");
     auto* xshape = ctx.Output<LoDTensor>("XShape");
     auto xshape_dims = xshape->dims();
@@ -186,8 +189,8 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
   }
 
   void InferShapeFlattenOp(const framework::ExecutionContext& ctx,
-                           framework::DDim& x_dims,
-                           framework::DDim& out_dims) const {
+                           framework::DDim& x_dims,            // NOLINT
+                           framework::DDim& out_dims) const {  // NOLINT
     auto x = ctx.Input<LoDTensor>("X");
     x_dims = x->dims();
     auto axes = ctx.Attr<int>("axis");
@@ -324,10 +327,11 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
 
     auto dout_vec_dims = framework::vectorize(dout->dims());
 
-    dnnl::memory::data_type dout_type =
-        framework::ToMKLDNNDataType(dout->type());
-    platform::ReorderMKLDNNHandler reorder_handler(dout_vec_dims, dout->type(),
-                                                   dout_type, onednn_engine);
+    dnnl::memory::data_type dout_type = framework::ToMKLDNNDataType(
+        framework::TransToProtoVarType(dout->dtype()));
+    platform::ReorderMKLDNNHandler reorder_handler(
+        dout_vec_dims, framework::TransToProtoVarType(dout->dtype()), dout_type,
+        onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         dout->format(), platform::to_void_cast(dout->data<T>()));
@@ -347,7 +351,7 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
   }
 
   void InferOutputShapeInGrad(const framework::ExecutionContext& ctx,
-                              framework::DDim& x_dims) const {
+                              framework::DDim& x_dims) const {  // NOLINT
     switch (op_name) {
       case ReshapeKernelOpName::reshape:
         InferShapeReshapeSqueezeGradOp(ctx, x_dims);
@@ -373,20 +377,22 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
     }
   }
 
-  void InferShapeReshapeSqueezeGradOp(const framework::ExecutionContext& ctx,
-                                      framework::DDim& dx_dims) const {
+  void InferShapeReshapeSqueezeGradOp(
+      const framework::ExecutionContext& ctx,
+      framework::DDim& dx_dims) const {  // NOLINT
     auto* dx = ctx.Output<LoDTensor>(framework::GradVarName("X"));
     dx_dims = dx->dims();
   }
 
   void InferShapeReshape2Squeeze2Flatten2GradOp(
-      const framework::ExecutionContext& ctx, framework::DDim& dx_dims) const {
+      const framework::ExecutionContext& ctx,
+      framework::DDim& dx_dims) const {  // NOLINT
     auto xshape_dims = ctx.Input<framework::LoDTensor>("XShape")->dims();
     dx_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
   }
 
   void InferShapeFlattenGradOp(const framework::ExecutionContext& ctx,
-                               framework::DDim& dx_dims) const {
+                               framework::DDim& dx_dims) const {  // NOLINT
     dx_dims = ctx.Input<LoDTensor>("X")->dims();
   }
 };
