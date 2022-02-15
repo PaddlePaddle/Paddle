@@ -78,9 +78,9 @@ void GradTensorHolder::add(size_t slot_id, size_t rank,
         if (buffer_tensor.is_dense_tensor()) {
           paddle::imperative::SelectedRowsAddToTensor(t, &buffer_tensor);
         } else {
-          PADDLE_THROW(paddle::platform::errors::Fatal(
-              "We don't support Selected Rows merge for now, support it later "
-              "and make all kinds of grads can be merged."));
+          buffer_tensor =
+              std::move(*paddle::imperative::SelectedRowsMerge<
+                        paddle::experimental::Tensor>(t, buffer_tensor));
         }
       }
     }

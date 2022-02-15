@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/abs_op.h"
-
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "paddle/fluid/framework/op_registry.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -108,7 +107,7 @@ class AbsDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 
  protected:
   void Apply(GradOpPtr<T> op) const override {
-    op->SetType("abs_grad_grad");
+    op->SetType("abs_double_grad");
     // input1: x
     op->SetInput("X", this->Input("X"));
     // input2: ddx
@@ -159,37 +158,4 @@ REGISTER_OPERATOR(abs_grad, ops::AbsGradOp,
                   ops::AbsDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::AbsDoubleGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(abs_grad_grad, ops::AbsDoubleGradOp);
-
-REGISTER_OP_CPU_KERNEL(
-    abs, ops::AbsKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::AbsKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::AbsKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::AbsKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::AbsKernel<paddle::platform::CPUDeviceContext,
-                   paddle::platform::complex<float>>,
-    ops::AbsKernel<paddle::platform::CPUDeviceContext,
-                   paddle::platform::complex<double>>);
-
-REGISTER_OP_CPU_KERNEL(
-    abs_grad, ops::AbsGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::AbsGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::AbsGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::AbsGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::AbsGradKernel<paddle::platform::CPUDeviceContext,
-                       paddle::platform::complex<float>>,
-    ops::AbsGradKernel<paddle::platform::CPUDeviceContext,
-                       paddle::platform::complex<double>>);
-
-REGISTER_OP_CPU_KERNEL(
-    abs_grad_grad,
-    ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::float16>,
-    ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::complex<float>>,
-    ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::complex<double>>);
+REGISTER_OPERATOR(abs_double_grad, ops::AbsDoubleGradOp);

@@ -224,8 +224,11 @@ Tensor::mutable_data<paddle::platform::float16>(const PlaceType &place);
 template <typename T>
 const T *Tensor::data() const {
   if (is_dense_tensor()) {
-    return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->mutable_data<T>(
-        ConvertExtPlaceToInnerPlace(place()));
+    return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->data<T>();
+  } else if (pten::SelectedRows::classof(impl_.get())) {
+    return std::dynamic_pointer_cast<pten::SelectedRows>(impl_)
+        ->value()
+        .data<T>();
   }
   return nullptr;
 }
