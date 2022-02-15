@@ -76,7 +76,7 @@ function(kernel_declare TARGET_LIST)
             elseif (${kernel_path} MATCHES "./xpu\/")
                 file(APPEND ${kernel_declare_file} "PT_DECLARE_KERNEL(${kernel_name}, XPU, ALL_LAYOUT);\n")
             elseif (${kernel_path} MATCHES "./mkldnn\/")
-                file(APPEND ${kernel_declare_file} "PT_DECLARE_KERNEL(${kernel_name}, MKLDNN, ALL_LAYOUT);\n")
+                file(APPEND ${kernel_declare_file} "PT_DECLARE_KERNEL(${kernel_name}, MKLDNN, MKLDNN);\n")
             else ()
                 # deal with device independent kernel, now we use CPU temporaary
                 file(APPEND ${kernel_declare_file} "PT_DECLARE_KERNEL(${kernel_name}, CPU, ALL_LAYOUT);\n")

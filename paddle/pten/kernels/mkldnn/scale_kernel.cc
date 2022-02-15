@@ -103,9 +103,5 @@ void ScaleKernel(const Context& dev_ctx,
 
 }  // namespace pten
 
-PT_REGISTER_KERNEL(scale,
-                   MKLDNN,
-                   ALL_LAYOUT,
-                   pten::ScaleKernel,
-                   float,
-                   pten::dtype::bfloat16) {}
+PT_REGISTER_KERNEL(
+    scale, MKLDNN, MKLDNN, pten::ScaleKernel, float, pten::dtype::bfloat16) {}

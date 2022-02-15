@@ -1082,6 +1082,24 @@ static void CheckTensorNANOrInf(const std::string& op_type,
 
 bool OperatorWithKernel::SupportsMKLDNN(
     const proto::VarType::Type data_type) const {
+  bool pten_result = false;
+  const auto& pten_kernels =
+      pten::KernelFactory::Instance().SelectKernelMap(type_);
+
+  pten_result = std::any_of(
+      pten_kernels.begin(), pten_kernels.end(),
+      [data_type](pten::KernelKeyMap::const_reference kernel_pair) {
+        return (pten::Backend::MKLDNN == kernel_pair.first.backend()) &&
+               (pten::DataLayout::MKLDNN == kernel_pair.first.layout() ||
+                pten::DataLayout::ALL_LAYOUT == kernel_pair.first.layout()) &&
+               (pten::TransToPtenDataType(data_type) ==
+                kernel_pair.first.dtype());
+      });
+
+  if (pten_result) {
+    return true;
+  }
+
   auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
   return std::any_of(op_kernels.begin(), op_kernels.end(),
                      [data_type](OpKernelMap::const_reference kern_pair) {
