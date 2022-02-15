@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/imperative/hccl_context.h"
+#include "paddle/fluid/framework/convert_utils.h"
 
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
@@ -44,8 +45,9 @@ static void AllReduce(const framework::Tensor &src, framework::Tensor *dst,
 
   void *src_ptr = const_cast<void *>(src.data());
   dst->Resize(src.dims());
-  void *dst_ptr = dst->mutable_data(src.place(), src.type());
-  HcclDataType hccl_dtype = platform::ToHCCLDataType(src.type());
+  void *dst_ptr = dst->mutable_data(src.place(), src.dtype());
+  HcclDataType hccl_dtype =
+      platform::ToHCCLDataType(framework::TransToProtoVarType(src.dtype()));
 
   PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
       src_ptr, dst_ptr, src.numel(), hccl_dtype, HCCL_REDUCE_SUM, comm->comm(),
@@ -169,7 +171,8 @@ void HCCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
 
     void *src_ptr =
         reinterpret_cast<void *>(const_cast<void *>(src_tensor->data()));
-    auto hccl_dtype = platform::ToHCCLDataType(src_tensor->type());
+    auto hccl_dtype = platform::ToHCCLDataType(
+        framework::TransToProtoVarType(src_tensor->dtype()));
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
         src_ptr, src_tensor->numel(), hccl_dtype, 0, comm->comm(),
         reinterpret_cast<void *>(stream)));

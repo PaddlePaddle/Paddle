@@ -43,13 +43,15 @@ class SumMLUKernel : public framework::OpKernel<T> {
       std::vector<cnnlTensorDescriptor_t> desc_vector;
       for (int i = 0; i < ins_size; i++) {
         input_descs.emplace_back(MLUCnnlTensorDesc(
-            *ins[i], CNNL_LAYOUT_ARRAY, ToCnnlDataType(ins[i]->type())));
+            *ins[i], CNNL_LAYOUT_ARRAY,
+            ToCnnlDataType(framework::TransToProtoVarType(ins[i]->dtype()))));
         desc_vector.push_back(input_descs.back().get());
         inputs.push_back(GetBasePtr(ins[i]));
       }
       // init out tensors
-      MLUCnnlTensorDesc output_desc(*out, CNNL_LAYOUT_ARRAY,
-                                    ToCnnlDataType(out->type()));
+      MLUCnnlTensorDesc output_desc(
+          *out, CNNL_LAYOUT_ARRAY,
+          ToCnnlDataType(framework::TransToProtoVarType(out->dtype())));
       uint32_t ins_size_t = static_cast<uint32_t>(ins_size);
       MLUCnnl::AddN(ctx, ins_size_t, desc_vector.data(), inputs.data(),
                     output_desc.get(), GetBasePtr(out));

@@ -1019,9 +1019,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
 
+#if IS_TRT_VERSION_LT(7000)
       if (desc.HasAttr("approximate")) {
+        VLOG(3) << "approximate gelu op needs TensorRT 7.0 and after";
         if (BOOST_GET_CONST(bool, desc.GetAttr("approximate"))) return false;
       }
+#endif
 
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -1030,6 +1033,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                    "the pass.";
         return false;
       }
+
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
@@ -1203,8 +1207,9 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
-      if (x_shape.size() == 1) {
-        VLOG(3) << "prelu op does not support input's dim is 1 in tensorrt.";
+      if (!with_dynamic_shape && x_shape.size() == 1) {
+        VLOG(3) << "prelu op does not support input's dim is 1 in tensorrt "
+                   "with static shape.";
         return false;
       }
 
@@ -1245,13 +1250,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (x_shape.size() == 1) {
         VLOG(3) << "mish op does not support input's dim is 1 in tensorrt.";
         return false;
-      }
-
-      if (!with_dynamic_shape) {
-        if (x_shape.size() == 2) {
-          VLOG(3) << "mish op does not support input's dim is 2 in tensorrt.";
-          return false;
-        }
       }
     }
 

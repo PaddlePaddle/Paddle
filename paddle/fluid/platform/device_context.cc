@@ -28,6 +28,7 @@ limitations under the License. */
 #endif
 #include "glog/logging.h"
 #include "paddle/fluid/framework/expect.h"
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -160,11 +161,14 @@ inline void EmplaceDeviceContext(
                                     .GetAllocator(p, cuda_ctx->stream())
                                     .get());
           cuda_ctx->PartialInitWithAllocator();
+          dev_ctx->SetGenerator(
+              framework::GetDefaultCUDAGenerator(p.GetDeviceId()).get());
 #endif
         } else {
           dev_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
                                     .GetAllocator(p)
                                     .get());
+          dev_ctx->SetGenerator(framework::DefaultCPUGenerator().get());
         }
         dev_ctx->SetHostAllocator(
             memory::allocation::AllocatorFacade::Instance()

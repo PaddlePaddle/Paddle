@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
@@ -122,7 +123,7 @@ T *Tensor::data(PlaceType *place, int *size) const {
 
 DataType Tensor::type() const {
   EAGER_GET_TENSOR(paddle::framework::LoDTensor);
-  auto type = tensor->type();
+  auto type = paddle::framework::TransToProtoVarType(tensor->dtype());
   if (type == paddle::framework::proto::VarType::FP32) {
     return DataType::FLOAT32;
   } else if (type == paddle::framework::proto::VarType::FP16) {
@@ -429,6 +430,33 @@ std::vector<int> Tensor::shape() const {
   PADDLE_ENFORCE_NOT_NULL(
       tensor_, paddle::platform::errors::PreconditionNotMet(
                    "Not found tensor called %s in the scope", name_));
+// mkldnn may does layout transform internally, so need to reorder before
+// return
+#ifdef PADDLE_WITH_MKLDNN
+  if (tensor->layout() == paddle::framework::DataLayout::kMKLDNN) {
+    paddle::framework::DataLayout out_layout =
+        paddle::platform::MKLDNNDeviceContext::tls()
+            .get_cur_paddle_data_layout();
+    // Set default as NCHW in case not specified
+    out_layout = out_layout == paddle::framework::DataLayout::kAnyLayout
+                     ? paddle::framework::DataLayout::kNCHW
+                     : out_layout;
+    // In these data layouts, channel dimension is either on 2nd position: nChw
+    // or
+    // at last nhwC, so for dim==2 these layouts are the same and nothing should
+    // be done. Similarly for dim==1 when you have just one possible
+    // combination.
+    if (tensor->dims().size() < 3)
+      return paddle::framework::vectorize<int>(tensor->dims());
+    if (out_layout == paddle::framework::DataLayout::kNHWC) {
+      auto dims = paddle::framework::vectorize<int>(tensor->dims());
+      std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
+      return dims;
+    } else {
+      return paddle::framework::vectorize<int>(tensor->dims());
+    }
+  }
+#endif
   return paddle::framework::vectorize<int>(tensor->dims());
 }
 

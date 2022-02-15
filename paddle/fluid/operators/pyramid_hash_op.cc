@@ -15,6 +15,7 @@ limitations under the License. */
 #include <xxhash.h>
 #include <algorithm>
 #include <cmath>
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/search_compute.h"
 
@@ -391,7 +392,7 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
     if (iter != iter_end) {
       exit(1);
     }
-    auto weight_type = _blobs_0->type();
+    auto weight_type = framework::TransToProtoVarType(_blobs_0->dtype());
     if (_is_training == 0 && weight_type != framework::proto::VarType::INT8) {
       axpy_noadd(top_data, top_data, top->dims()[0] * top->dims()[1],
                  _drop_out_percent);

@@ -17,8 +17,8 @@ limitations under the License. */
 #include <algorithm>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -47,7 +47,7 @@ class EyeKernel : public framework::OpKernel<T> {
     auto* out_tensor = ctx.Output<framework::Tensor>("Out");
     T* out_data = out_tensor->mutable_data<T>(ctx.GetPlace());
 
-    math::SetConstant<DeviceContext, T> set_zero;
+    pten::funcs::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     set_zero(dev_ctx, out_tensor, static_cast<T>(0));
 

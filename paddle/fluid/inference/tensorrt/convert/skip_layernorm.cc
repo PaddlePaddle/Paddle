@@ -54,47 +54,85 @@ class SkipLayerNormOpConverter : public OpConverter {
     nvinfer1::ILayer* layer = nullptr;
 
     if (engine_->use_oss()) {
-      auto creator = GetPluginRegistry()->getPluginCreator(
-          "CustomSkipLayerNormPluginDynamic", "2");
-      PADDLE_ENFORCE_NE(
-          creator, nullptr,
-          platform::errors::InvalidArgument(
-              "fail to get creator of CustomSkipLayerNormPluginDynamic"));
-      int type = static_cast<int>((engine_->WithFp16() == 1)
-                                      ? nvinfer1::DataType::kHALF
-                                      : nvinfer1::DataType::kFLOAT);
-      int ld = input1->getDimensions().d[2];  // hidden dimension
-      PADDLE_ENFORCE_GT(ld, 0, platform::errors::InvalidArgument(
-                                   "in CustomSkipLayerNormPluginDynamic hidden "
-                                   "dimension should > 0"));
-      if (enable_int8) {
-        type = static_cast<int>(nvinfer1::DataType::kHALF);
+      if (engine_->with_interleaved()) {
+        VLOG(4) << "fused skip_layernorm op: use_oss and with_interleaved";
+        if (!enable_int8) {
+          PADDLE_THROW(
+              platform::errors::Fatal("use with_interleaved must be int8."));
+        }
+        auto creator = GetPluginRegistry()->getPluginCreator(
+            "CustomSkipLayerNormPluginDynamic", "3");
+        PADDLE_ENFORCE_NE(
+            creator, nullptr,
+            platform::errors::InvalidArgument(
+                "fail to get creator of CustomSkipLayerNormPluginDynamic"));
+        const std::vector<nvinfer1::PluginField> fields{
+            {"beta", bias, nvinfer1::PluginFieldType::kFLOAT32, bias_size},
+            { "gamma",
+              scale,
+              nvinfer1::PluginFieldType::kFLOAT32,
+              scale_size }};
+        nvinfer1::PluginFieldCollection* pluginPtr =
+            static_cast<nvinfer1::PluginFieldCollection*>(
+                malloc(sizeof(*pluginPtr) +
+                       fields.size() * sizeof(nvinfer1::PluginField)));
+        pluginPtr->nbFields = static_cast<int>(fields.size());
+        pluginPtr->fields = fields.data();
+
+        auto pluginObj = creator->createPlugin(
+            "CustomSkipLayerNormPluginDynamic", pluginPtr);
+        auto plugin_layer = engine_->network()->addPluginV2(
+            inputs.data(), inputs.size(), *pluginObj);
+
+        PADDLE_ENFORCE_NE(
+            plugin_layer, nullptr,
+            platform::errors::InvalidArgument(
+                "fail to add CustomSkipLayerNormPluginDynamic layer"));
+        layer = plugin_layer;
+      } else {
+        auto creator = GetPluginRegistry()->getPluginCreator(
+            "CustomSkipLayerNormPluginDynamic", "2");
+        PADDLE_ENFORCE_NE(
+            creator, nullptr,
+            platform::errors::InvalidArgument(
+                "fail to get creator of CustomSkipLayerNormPluginDynamic"));
+        int type = static_cast<int>((engine_->WithFp16() == 1)
+                                        ? nvinfer1::DataType::kHALF
+                                        : nvinfer1::DataType::kFLOAT);
+        int ld = input1->getDimensions().d[2];  // hidden dimension
+        PADDLE_ENFORCE_GT(ld, 0,
+                          platform::errors::InvalidArgument(
+                              "in CustomSkipLayerNormPluginDynamic hidden "
+                              "dimension should > 0"));
+        if (enable_int8) {
+          type = static_cast<int>(nvinfer1::DataType::kINT8);
+        }
+
+        const std::vector<nvinfer1::PluginField> fields{
+            {"type_id", &type, nvinfer1::PluginFieldType::kINT32, 1},
+            {"ld", &ld, nvinfer1::PluginFieldType::kINT32, 1},
+            {"beta", bias, nvinfer1::PluginFieldType::kFLOAT32, bias_size},
+            {"gamma", scale, nvinfer1::PluginFieldType::kFLOAT32, scale_size},
+        };
+        nvinfer1::PluginFieldCollection* pluginPtr =
+            static_cast<nvinfer1::PluginFieldCollection*>(
+                malloc(sizeof(*pluginPtr) +
+                       fields.size() *
+                           sizeof(nvinfer1::PluginField)));  // remember to free
+        pluginPtr->nbFields = static_cast<int>(fields.size());
+        pluginPtr->fields = fields.data();
+
+        auto pluginObj = creator->createPlugin(
+            "CustomSkipLayerNormPluginDynamic", pluginPtr);
+        auto plugin_layer = engine_->network()->addPluginV2(
+            inputs.data(), inputs.size(), *pluginObj);
+
+        PADDLE_ENFORCE_NE(
+            plugin_layer, nullptr,
+            platform::errors::InvalidArgument(
+                "fail to add CustomSkipLayerNormPluginDynamic layer"));
+        layer = plugin_layer;
       }
-
-      const std::vector<nvinfer1::PluginField> fields{
-          {"type_id", &type, nvinfer1::PluginFieldType::kINT32, 1},
-          {"ld", &ld, nvinfer1::PluginFieldType::kINT32, 1},
-          {"beta", bias, nvinfer1::PluginFieldType::kFLOAT32, bias_size},
-          {"gamma", scale, nvinfer1::PluginFieldType::kFLOAT32, scale_size},
-      };
-      nvinfer1::PluginFieldCollection* pluginPtr =
-          static_cast<nvinfer1::PluginFieldCollection*>(
-              malloc(sizeof(*pluginPtr) +
-                     fields.size() *
-                         sizeof(nvinfer1::PluginField)));  // remember to free
-      pluginPtr->nbFields = static_cast<int>(fields.size());
-      pluginPtr->fields = fields.data();
-
-      auto pluginObj =
-          creator->createPlugin("CustomSkipLayerNormPluginDynamic", pluginPtr);
-      auto plugin_layer = engine_->network()->addPluginV2(
-          inputs.data(), inputs.size(), *pluginObj);
-
-      PADDLE_ENFORCE_NE(
-          plugin_layer, nullptr,
-          platform::errors::InvalidArgument(
-              "fail to add CustomSkipLayerNormPluginDynamic layer"));
-      layer = plugin_layer;
     } else {
       float eps = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
       bool with_fp16 =
