@@ -58,6 +58,7 @@ Tensor copy_to_impl(const Tensor& x, Backend backend, bool blocking) {
       pten::DenseTensorMeta());
   pten::MetaTensor meta_out(dense_out.get());
   pten::UnchangedInferMeta(*dense_x, &meta_out);
+  dense_out->mutable_data(pten::TransToPtenPlace(backend));
   kernel_context.EmplaceBackOutput(dense_out.get());
   Tensor out;
   out.set_impl(dense_out);
