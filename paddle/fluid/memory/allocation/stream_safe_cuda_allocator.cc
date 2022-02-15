@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/stream_safe_cuda_allocator.h"
+#include "paddle/fluid/platform/device/gpu/cuda/cuda_graph.h"
 
 namespace paddle {
 namespace memory {
@@ -29,41 +30,31 @@ StreamSafeCUDAAllocation::StreamSafeCUDAAllocation(
 void StreamSafeCUDAAllocation::RecordStream(const gpuStream_t& stream) {
   VLOG(8) << "Try record stream " << stream << " for address " << ptr();
   if (stream == owning_stream_) {
-    VLOG(9) << "Record the same stream of " << stream;
     return;
   }
 
   std::lock_guard<SpinLock> lock_guard(outstanding_event_map_lock_);
-  gpuEvent_t record_event;
-  auto it = outstanding_event_map_.find(stream);
-  if (it == outstanding_event_map_.end()) {
-    gpuEvent_t new_event;
 #ifdef PADDLE_WITH_CUDA
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        cudaEventCreateWithFlags(&new_event, cudaEventDisableTiming));
-#else
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        hipEventCreateWithFlags(&new_event, hipEventDisableTiming));
-#endif
-    outstanding_event_map_[stream] = new_event;
-    record_event = new_event;
-    VLOG(9) << "Create a new event " << new_event;
-  } else {
-    record_event = it->second;
-    VLOG(9) << "Reuse event " << record_event;
+  if (UNLIKELY(platform::CUDAGraph::IsCapturing())) {
+    graph_capturing_stream_set_.insert(stream);
+    return;
   }
-
-#ifdef PADDLE_WITH_CUDA
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(record_event, stream));
-#else
-  PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(record_event, stream));
 #endif
-  VLOG(8) << "Record event " << record_event << " to stream " << stream;
+
+  RecordStreamWithNoGraphCapturing(stream);
+  RecordGraphCapturingStreams();
 }
 
 bool StreamSafeCUDAAllocation::CanBeFreed() {
-  // NOTE(Ruibiao): This function will not execute concurrently,
-  // so outstanding_event_lock_ is not required here
+#ifdef PADDLE_WITH_CUDA
+  if (UNLIKELY(platform::CUDAGraph::IsCapturing())) {
+    return graph_capturing_stream_set_.empty() &&
+           outstanding_event_map_.empty();
+  }
+#endif
+
+  RecordGraphCapturingStreams();
+
   for (auto it = outstanding_event_map_.begin();
        it != outstanding_event_map_.end(); ++it) {
     gpuEvent_t& event = it->second;
@@ -95,6 +86,42 @@ bool StreamSafeCUDAAllocation::CanBeFreed() {
 
 const gpuStream_t& StreamSafeCUDAAllocation::GetOwningStream() const {
   return owning_stream_;
+}
+
+void StreamSafeCUDAAllocation::RecordGraphCapturingStreams() {
+  for (gpuStream_t stream : graph_capturing_stream_set_) {
+    RecordStreamWithNoGraphCapturing(stream);
+  }
+  graph_capturing_stream_set_.clear();
+}
+
+void StreamSafeCUDAAllocation::RecordStreamWithNoGraphCapturing(
+    const gpuStream_t& stream) {
+  gpuEvent_t record_event;
+  auto it = outstanding_event_map_.find(stream);
+  if (it == outstanding_event_map_.end()) {
+    gpuEvent_t new_event;
+#ifdef PADDLE_WITH_CUDA
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaEventCreateWithFlags(&new_event, cudaEventDisableTiming));
+#else
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        hipEventCreateWithFlags(&new_event, hipEventDisableTiming));
+#endif
+    outstanding_event_map_[stream] = new_event;
+    record_event = new_event;
+    VLOG(9) << "Create a new event " << new_event;
+  } else {
+    record_event = it->second;
+    VLOG(9) << "Reuse event " << record_event;
+  }
+
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(record_event, stream));
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(record_event, stream));
+#endif
+  VLOG(8) << "Record event " << record_event << " to stream " << stream;
 }
 
 StreamSafeCUDAAllocator::StreamSafeCUDAAllocator(
@@ -152,12 +179,12 @@ void StreamSafeCUDAAllocator::FreeImpl(pten::Allocation* allocation) {
                               "StreamSafeCUDAAllocation*",
                               allocation));
   VLOG(8) << "Try free allocation " << stream_safe_cuda_allocation->ptr();
-  std::lock_guard<SpinLock> lock_guard(unfreed_allocation_lock_);
   if (stream_safe_cuda_allocation->CanBeFreed()) {
     VLOG(9) << "Directly delete allocation";
     delete stream_safe_cuda_allocation;
   } else {
     VLOG(9) << "Put into unfreed_allocation list";
+    std::lock_guard<SpinLock> lock_guard(unfreed_allocation_lock_);
     unfreed_allocations_.emplace_back(stream_safe_cuda_allocation);
   }
 }
@@ -167,7 +194,7 @@ uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const platform::Place& place) {
   std::vector<StreamSafeCUDAAllocator*>& allocators = allocator_map_[place];
   uint64_t released_size = 0;
   for (StreamSafeCUDAAllocator* allocator : allocators) {
-    released_size += allocator->ProcessUnfreedAllocationsWithRelease();
+    released_size += allocator->ProcessUnfreedAllocationsAndRelease();
   }
   VLOG(8) << "Release " << released_size << " bytes memory from all streams";
   return released_size;
@@ -186,7 +213,7 @@ void StreamSafeCUDAAllocator::ProcessUnfreedAllocations() {
   }
 }
 
-uint64_t StreamSafeCUDAAllocator::ProcessUnfreedAllocationsWithRelease() {
+uint64_t StreamSafeCUDAAllocator::ProcessUnfreedAllocationsAndRelease() {
   ProcessUnfreedAllocations();
   return underlying_allocator_->Release(place_);
 }

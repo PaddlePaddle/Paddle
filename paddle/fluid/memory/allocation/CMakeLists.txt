@@ -17,7 +17,7 @@ if (WITH_GPU)
   nv_library(cuda_allocator SRCS cuda_allocator.cc DEPS allocator cuda_device_guard)
   nv_library(cuda_managed_allocator SRCS cuda_managed_allocator.cc DEPS allocator cuda_device_guard gpu_info)
   nv_library(pinned_allocator SRCS pinned_allocator.cc DEPS allocator)
-  nv_library(stream_safe_cuda_allocator SRCS stream_safe_cuda_allocator.cc DEPS allocator)
+  nv_library(stream_safe_cuda_allocator SRCS stream_safe_cuda_allocator.cc DEPS allocator cuda_graph)
   nv_library(thread_local_allocator SRCS thread_local_allocator.cc DEPS allocator)
 
   cc_test(thread_local_allocator_test SRCS thread_local_allocator_test.cc DEPS thread_local_allocator)

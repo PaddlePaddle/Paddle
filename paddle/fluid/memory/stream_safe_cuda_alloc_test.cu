@@ -26,7 +26,7 @@
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -35,14 +35,14 @@
 namespace paddle {
 namespace memory {
 
-__global__ void add_kernel(int *x, int n) {
+__global__ void add_kernel(int* x, int n) {
   int thread_num = gridDim.x * blockDim.x;
   int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
   for (int i = thread_id; i < n; i += thread_num) {
     atomicAdd(x + i, thread_id);
   }
 }
-
+/*
 void CheckMemLeak(const platform::CUDAPlace &place) {
   uint64_t cuda_malloc_size =
       platform::RecordedGpuMallocSize(place.GetDeviceId());
@@ -303,36 +303,6 @@ TEST(StreamSafeCUDAAllocInterfaceTest, GetStreamInterfaceTest) {
   CheckMemLeak(place);
 }
 
-#ifdef PADDLE_WITH_CUDA
-TEST(StreamSafeCUDAAllocInterfaceTest, CUDAGraphExceptionTest) {
-  platform::CUDAPlace place = platform::CUDAPlace();
-  size_t alloc_size = 1;
-  std::shared_ptr<Allocation> allocation = AllocShared(place, alloc_size);
-
-  platform::BeginCUDAGraphCapture(place, cudaStreamCaptureModeGlobal);
-  EXPECT_THROW(AllocShared(place, alloc_size), paddle::platform::EnforceNotMet);
-  EXPECT_THROW(Alloc(place, alloc_size), paddle::platform::EnforceNotMet);
-  EXPECT_THROW(Release(place), paddle::platform::EnforceNotMet);
-  EXPECT_THROW(allocation::AllocatorFacade::Instance().GetAllocator(place),
-               paddle::platform::EnforceNotMet);
-  EXPECT_THROW(
-      AllocShared(place, alloc_size,
-                  pten::Stream(reinterpret_cast<pten::StreamId>(nullptr))),
-      paddle::platform::EnforceNotMet);
-  EXPECT_THROW(Alloc(place, alloc_size, nullptr),
-               paddle::platform::EnforceNotMet);
-  EXPECT_THROW(Release(place, nullptr), paddle::platform::EnforceNotMet);
-  EXPECT_THROW(RecordStream(allocation, nullptr),
-               paddle::platform::EnforceNotMet);
-  EXPECT_THROW(GetStream(allocation), paddle::platform::EnforceNotMet);
-  platform::EndCUDAGraphCapture();
-
-  allocation.reset();
-  Release(place);
-  CheckMemLeak(place);
-}
-#endif
-
 TEST(StreamSafeCUDAAllocRetryTest, RetryTest) {
   platform::CUDAPlace place = platform::CUDAPlace();
   gpuStream_t stream1, stream2;
@@ -370,6 +340,50 @@ TEST(StreamSafeCUDAAllocRetryTest, RetryTest) {
   Release(place, stream2);
   CheckMemLeak(place);
 }
+*/
+#ifdef PADDLE_WITH_CUDA
+TEST(StreamSafeCUDAAllocInterfaceTest, CUDAGraphTest) {
+  platform::BeginCUDAGraphCapture(platform::CUDAPlace(),
+                                  cudaStreamCaptureModeGlobal);
+
+  size_t data_num = 1024;
+  std::shared_ptr<Allocation> data_allocation =
+      AllocShared(platform::CUDAPlace(), data_num * sizeof(int));
+
+  const gpuStream_t& main_stream = GetStream(data_allocation);
+  gpuStream_t other_stream;
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&other_stream));
+
+  int thread_num = 64;
+  add_kernel<<<1, thread_num, 0, main_stream>>>(
+      static_cast<int*>(data_allocation->ptr()), data_num);
+  RecordStream(data_allocation, other_stream);
+
+  std::unique_ptr<platform::CUDAGraph> cuda_graph =
+      platform::EndCUDAGraphCapture();
+
+  int replay_times = 10;
+  for (int i = 0; i < replay_times; ++i) {
+    cuda_graph->Replay();
+  }
+
+  std::shared_ptr<Allocation> result_allocation =
+      AllocShared(platform::CPUPlace(), data_num * sizeof(int));
+  Copy(result_allocation->place(), result_allocation->ptr(),
+       data_allocation->place(), data_allocation->ptr(), data_num * sizeof(int),
+       main_stream);
+  cudaDeviceSynchronize();
+
+  int* result = static_cast<int*>(result_allocation->ptr());
+  // EXPECT_EQ(result[1], 2);
+  for (int i = 0; i < data_num; ++i) {
+    EXPECT_EQ(result[i], (i % thread_num) * replay_times);  // add two times,
+                                                            // one in capturing
+                                                            // and the other in
+                                                            // replay
+  }
+}
+#endif
 
 }  // namespace memory
 }  // namespace paddle

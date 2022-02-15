@@ -14,10 +14,8 @@
 
 #pragma once
 
-#include <deque>
 #include <list>
 #include <map>
-#include <mutex>
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/place.h"
@@ -42,7 +40,10 @@ class StreamSafeCUDAAllocation : public Allocation {
   const gpuStream_t &GetOwningStream() const;
 
  private:
+  void RecordGraphCapturingStreams();
+  void RecordStreamWithNoGraphCapturing(const gpuStream_t &stream);
   DecoratedAllocationPtr underlying_allocation_;
+  std::set<gpuStream_t> graph_capturing_stream_set_;
   std::map<gpuStream_t, gpuEvent_t> outstanding_event_map_;
   gpuStream_t owning_stream_;
   SpinLock outstanding_event_map_lock_;
@@ -63,7 +64,7 @@ class StreamSafeCUDAAllocator : public Allocator {
 
  private:
   void ProcessUnfreedAllocations();
-  uint64_t ProcessUnfreedAllocationsWithRelease();
+  uint64_t ProcessUnfreedAllocationsAndRelease();
 
   static std::map<platform::Place, std::vector<StreamSafeCUDAAllocator *>>
       allocator_map_;

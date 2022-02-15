@@ -957,12 +957,6 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (FLAGS_use_stream_safe_cuda_allocator && platform::is_gpu_place(place) &&
       size > 0 && FLAGS_use_system_allocator == false) {
-#ifdef PADDLE_WITH_CUDA
-    if (UNLIKELY(platform::CUDAGraph::IsCapturing())) {
-      return m_->GetAllocator(place, size)->Allocate(size);
-    }
-#endif
-
     platform::CUDAPlace cuda_place(place.GetDeviceId());
     return Alloc(cuda_place, size, m_->GetDefaultStream(cuda_place));
   }
@@ -975,14 +969,6 @@ uint64_t AllocatorFacade::Release(const platform::Place& place) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (FLAGS_use_stream_safe_cuda_allocator && platform::is_gpu_place(place) &&
       FLAGS_use_system_allocator == false) {
-#ifdef PADDLE_WITH_CUDA
-    if (UNLIKELY(platform::CUDAGraph::IsCapturing())) {
-      return m_
-          ->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1)
-          ->Release(place);
-    }
-#endif
-
     platform::CUDAPlace cuda_place(place.GetDeviceId());
     return Release(cuda_place, m_->GetDefaultStream(cuda_place));
   }
@@ -1001,13 +987,6 @@ std::shared_ptr<pten::Allocation> AllocatorFacade::AllocShared(
           "multi-stream 'AllocaShared' function. To enable it, you can enter"
           "'export FLAGS_use_stream_safe_cuda_allocator=true' in the "
           "terminal."));
-
-#ifdef PADDLE_WITH_CUDA
-  if (UNLIKELY(platform::CUDAGraph::IsCapturing())) {
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Not allow to use StreamSafeCUDAAllocator with CUDAGraphAllocator"));
-  }
-#endif
   gpuStream_t s = reinterpret_cast<gpuStream_t>(stream.id());
   return std::shared_ptr<pten::Allocation>(Alloc(place, size, s));
 #else
@@ -1026,13 +1005,6 @@ bool AllocatorFacade::InSameStream(
           "multi-stream 'InSameStream' function. To enable it, you can enter"
           "'export FLAGS_use_stream_safe_cuda_allocator=true' in the "
           "terminal."));
-
-#ifdef PADDLE_WITH_CUDA
-  if (UNLIKELY(platform::CUDAGraph::IsCapturing())) {
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Not allow to use StreamSafeCUDAAllocator with CUDAGraphAllocator"));
-  }
-#endif
   gpuStream_t s = reinterpret_cast<gpuStream_t>(stream.id());
   return s == GetStream(allocation);
 #else
@@ -1051,12 +1023,6 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place, size_t size,
           "'export FLAGS_use_stream_safe_cuda_allocator=true' in the "
           "terminal."));
 
-#ifdef PADDLE_WITH_CUDA
-  if (UNLIKELY(platform::CUDAGraph::IsCapturing())) {
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Not allow to use StreamSafeCUDAAllocator with CUDAGraphAllocator"));
-  }
-#endif
   platform::CUDAPlace p(place.GetDeviceId());
   if (LIKELY(size > 0 && FLAGS_use_system_allocator == false)) {
     return m_->GetAllocator(p, stream, /* create_if_not_found = */ true)
@@ -1075,14 +1041,6 @@ uint64_t AllocatorFacade::Release(const platform::CUDAPlace& place,
           "multi-stream 'Release' function. To enable it, you can enter"
           "'export FLAGS_use_stream_safe_cuda_allocator=true' in the "
           "terminal."));
-
-#ifdef PADDLE_WITH_CUDA
-  if (UNLIKELY(platform::CUDAGraph::IsCapturing())) {
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Not allow to use StreamSafeCUDAAllocator with CUDAGraphAllocator"));
-  }
-#endif
-
   return m_->GetAllocator(place, stream)->Release(place);
 }
 
@@ -1095,14 +1053,6 @@ void AllocatorFacade::RecordStream(std::shared_ptr<pten::Allocation> allocation,
           "'RecordStream' function. To enable it, you can enter"
           "'export FLAGS_use_stream_safe_cuda_allocator=true' in the "
           "terminal."));
-
-#ifdef PADDLE_WITH_CUDA
-  if (UNLIKELY(platform::CUDAGraph::IsCapturing())) {
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Not allow to use StreamSafeCUDAAllocator with CUDAGraphAllocator"));
-  }
-#endif
-
   m_->RecordStream(allocation, stream);
 }
 
@@ -1115,14 +1065,6 @@ const gpuStream_t& AllocatorFacade::GetStream(
           "'GetStream' function. To enable it, you can enter"
           "'export FLAGS_use_stream_safe_cuda_allocator=true' in the "
           "terminal."));
-
-#ifdef PADDLE_WITH_CUDA
-  if (UNLIKELY(platform::CUDAGraph::IsCapturing())) {
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Not allow to use StreamSafeCUDAAllocator with CUDAGraphAllocator"));
-  }
-#endif
-
   return m_->GetStream(allocation);
 }
 
