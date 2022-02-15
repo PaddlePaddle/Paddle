@@ -316,13 +316,13 @@ pten::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
                  std::type_index(typeid(std::string))) {
         infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(std::string, attr));
       } else if (std::type_index(attr.type()) ==
-                 std::type_index(typeid(std::vector<int>))) {
-        infer_meta_context.EmplaceBackAttr(
-            BOOST_GET_CONST(std::vector<int>, attr));
-      } else if (std::type_index(attr.type()) ==
                  std::type_index(typeid(std::vector<bool>))) {
         infer_meta_context.EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<bool>, attr));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::vector<int>))) {
+        infer_meta_context.EmplaceBackAttr(
+            BOOST_GET_CONST(std::vector<int>, attr));
       } else if (std::type_index(attr.type()) ==
                  std::type_index(typeid(std::vector<int64_t>))) {
         infer_meta_context.EmplaceBackAttr(
@@ -336,13 +336,13 @@ pten::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
         infer_meta_context.EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<double>, attr));
       } else if (std::type_index(attr.type()) ==
-                 std::type_index(typeid(std::vector<std::vector<int64_t>>))) {
+                 std::type_index(typeid(std::vector<std::string>))) {
         infer_meta_context.EmplaceBackAttr(
-            BOOST_GET_CONST(std::vector<std::vector<int64_t>>, attr));
+            BOOST_GET_CONST(std::vector<std::string>, attr));
       } else {
-        // do nothing, skip useless attrs now
-        // TODO(chenweihang): support other attr type later and throw error
-        // if attr is cannot parsed
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported attribute type is received when call "
+            "InferShapeFunctor."));
       }
     } else {
       // do nothing
