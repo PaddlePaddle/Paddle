@@ -31,13 +31,14 @@ TEST(LoD, data) {
   lod.push_back(std::vector<size_t>({0, 1, 6, 8, 10, 11}));
 
   auto& v = lod[0];
+  paddle::framework::MixVector<size_t> mix_vector_v(&v);
   paddle::platform::CUDAPlace gpu(0);
 #ifdef PADDLE_WITH_HIP
-  hipLaunchKernelGGL(test, dim3(1), dim3(1), 0, 0, v.CUDAMutableData(gpu),
-                     v.size());
+  hipLaunchKernelGGL(test, dim3(1), dim3(1), 0, 0,
+                     mix_vector_v.CUDAMutableData(gpu), v.size());
   hipDeviceSynchronize();
 #else
-  test<<<1, 1>>>(v.CUDAMutableData(gpu), v.size());
+  test<<<1, 1>>>(mix_vector_v.CUDAMutableData(gpu), v.size());
   cudaDeviceSynchronize();
 #endif
   for (size_t i = 0; i < v.size(); ++i) {
@@ -62,13 +63,14 @@ TEST(LoDTensor, LoDInGPU) {
   EXPECT_EQ(lod_tensor.lod_element(0, 4).first, 8UL);
 
   auto lod = lod_tensor.lod();
+  paddle::framework::MixVector<size_t> mix_vector(&(lod[0]));
 
 #ifdef PADDLE_WITH_HIP
   hipLaunchKernelGGL(test, dim3(1), dim3(8), 0, 0,
-                     lod[0].CUDAMutableData(place), lod[0].size());
+                     mix_vector.CUDAMutableData(place), lod[0].size());
   hipDeviceSynchronize();
 #else
-  test<<<1, 8>>>(lod[0].CUDAMutableData(place), lod[0].size());
+  test<<<1, 8>>>(mix_vector.CUDAMutableData(place), lod[0].size());
   cudaDeviceSynchronize();
 #endif
 

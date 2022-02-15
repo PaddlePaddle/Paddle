@@ -164,7 +164,8 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
       auto gpu_place = context.GetPlace();
 
       // TODO(yuyang18): Strange code here.
-      memory::Copy(gpu_place, new_rows.CUDAMutableData(context.GetPlace()),
+      paddle::framework::MixVector<int64_t> mixv_new_rows(&new_rows);
+      memory::Copy(gpu_place, mixv_new_rows.CUDAMutableData(context.GetPlace()),
                    gpu_place, ids_data, ids_num * sizeof(int64_t), stream);
       d_table->set_rows(new_rows);
 

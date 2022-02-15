@@ -95,7 +95,8 @@ static void AllReduce(const pten::SelectedRows &src, pten::SelectedRows *dst,
   framework::Vector<int64_t> rows_num_vector(strategy.nranks_);
   rows_num_vector[strategy.local_rank_] = static_cast<int64_t>(src_rows.size());
   // CUDAMutableData use CalStream
-  auto *gpu_rows_num_ptr = rows_num_vector.CUDAMutableData(place);
+  paddle::framework::MixVector<int64_t> mixv_rows_num_vector(&rows_num_vector);
+  auto *gpu_rows_num_ptr = mixv_rows_num_vector.CUDAMutableData(place);
   if (!use_calc_stream) {
     dev_ctx->Wait();
   }
@@ -119,8 +120,11 @@ static void AllReduce(const pten::SelectedRows &src, pten::SelectedRows *dst,
 
   auto *dst_rows = dst->mutable_rows();
   dst_rows->resize(rows_num);
-  auto *dst_rows_ptr = dst_rows->CUDAMutableData(place);
-  const auto *src_rows_ptr = src_rows.CUDAData(place);
+  paddle::framework::MixVector<int64_t> mixv_dst_rows(dst_rows);
+  auto *dst_rows_ptr = mixv_dst_rows.CUDAMutableData(place);
+  paddle::framework::MixVector<int64_t> mixv_src_rows(
+      const_cast<std::vector<int64_t> *>(&src_rows));
+  const auto *src_rows_ptr = mixv_src_rows.CUDAData(place);
 
   auto *dst_tensor = dst->mutable_value();
   auto dims = src_tensor.dims();

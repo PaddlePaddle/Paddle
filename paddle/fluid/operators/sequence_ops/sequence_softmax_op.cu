@@ -133,9 +133,11 @@ struct SequenceSoftmaxFunctor<platform::CUDADeviceContext, T> {
 
     dim3 block_size(thread_x);
     dim3 grid_size(max_blocks);
+    paddle::framework::MixVector<size_t> mixv_ref_lod(
+        const_cast<std::vector<size_t> *>(&ref_lod));
     sequence_softmax_kernel<
         T, kThreadsPerBlock><<<grid_size, block_size, 0, context.stream()>>>(
-        x.data<T>(), ref_lod.CUDAData(context.GetPlace()), height,
+        x.data<T>(), mixv_ref_lod.CUDAData(context.GetPlace()), height,
         out->mutable_data<T>(context.GetPlace()));
   }
 };
@@ -156,10 +158,13 @@ struct SequenceSoftmaxGradFunctor<platform::CUDADeviceContext, T> {
     dim3 block_size(thread_x);
     dim3 grid_size(max_blocks);
 
+    paddle::framework::MixVector<size_t> mixv_ref_lod(
+        const_cast<std::vector<size_t> *>(&ref_lod));
     sequence_softmax_grad_kernel<
         T, kThreadsPerBlock><<<grid_size, block_size, 0, context.stream()>>>(
-        dout.data<T>(), out.data<T>(), ref_lod.CUDAData(context.GetPlace()),
-        height, dx->mutable_data<T>(context.GetPlace()));
+        dout.data<T>(), out.data<T>(),
+        mixv_ref_lod.CUDAData(context.GetPlace()), height,
+        dx->mutable_data<T>(context.GetPlace()));
   }
 };
 

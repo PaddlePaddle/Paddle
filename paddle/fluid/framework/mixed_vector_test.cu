@@ -28,7 +28,7 @@
 #include "paddle/fluid/platform/device_context.h"
 
 template <typename T>
-using vec = paddle::framework::Vector<T>;
+using vec = paddle::framework::MixVector<T>;
 using gpuStream_t = paddle::gpuStream_t;
 
 static __global__ void multiply_10(int* ptr) {
@@ -44,10 +44,11 @@ gpuStream_t GetCUDAStream(paddle::platform::CUDAPlace place) {
 }
 
 TEST(mixed_vector, GPU_VECTOR) {
-  vec<int> tmp;
+  std::vector<int> x;
   for (int i = 0; i < 10; ++i) {
-    tmp.push_back(i);
+    x.push_back(i);
   }
+  vec<int> tmp(&x);
   ASSERT_EQ(tmp.size(), 10UL);
   paddle::platform::CUDAPlace gpu(0);
 
@@ -70,24 +71,28 @@ TEST(mixed_vector, MultiGPU) {
     return;
   }
 
-  vec<int> tmp;
+  std::vector<int> x;
   for (int i = 0; i < 10; ++i) {
-    tmp.push_back(i);
+    x.push_back(i);
   }
+  vec<int> tmp(&x);
   ASSERT_EQ(tmp.size(), 10UL);
   paddle::platform::CUDAPlace gpu0(0);
   paddle::platform::SetDeviceId(0);
 
+  VLOG(2) << "here";
 #ifdef PADDLE_WITH_HIP
   hipLaunchKernelGGL(multiply_10, dim3(1), dim3(1), 0, GetCUDAStream(gpu0),
                      tmp.MutableData(gpu0));
 #else
   multiply_10<<<1, 1, 0, GetCUDAStream(gpu0)>>>(tmp.MutableData(gpu0));
 #endif
+  VLOG(2) << "here";
   paddle::platform::CUDAPlace gpu1(1);
   auto* gpu1_ptr = tmp.MutableData(gpu1);
   paddle::platform::SetDeviceId(1);
 
+  VLOG(2) << "here";
 #ifdef PADDLE_WITH_HIP
   hipLaunchKernelGGL(multiply_10, dim3(1), dim3(1), 0, GetCUDAStream(gpu1),
                      gpu1_ptr);

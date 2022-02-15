@@ -336,7 +336,8 @@ class RowConvKernel<platform::CUDADeviceContext, T>
 
     int num_sequence = batch_indices.size() - 1;
     int future_context = Filter->dims()[0];
-    size_t *idx = batch_indices.CUDAMutableData(context.GetPlace());
+    paddle::framework::MixVector<size_t> mix_vector(&batch_indices);
+    size_t *idx = mix_vector.CUDAMutableData(context.GetPlace());
     auto stream = context.cuda_device_context().stream();
 
     if (future_context <= 32) {
@@ -392,7 +393,8 @@ class RowConvGradKernel<platform::CUDADeviceContext, T>
     // int input_dim = X->dims()[1];
     int num_sequence = batch_indices.size() - 1;
     int future_context = Filter->dims()[0];
-    size_t *idx = batch_indices.CUDAMutableData(context.GetPlace());
+    paddle::framework::MixVector<size_t> mixv_batch_indices(&batch_indices);
+    size_t *idx = mixv_batch_indices.CUDAMutableData(context.GetPlace());
 
     auto &device_ctx = context.cuda_device_context();
     pten::funcs::SetConstant<platform::CUDADeviceContext, T> zero;

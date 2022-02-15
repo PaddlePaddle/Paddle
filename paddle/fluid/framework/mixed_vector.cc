@@ -67,16 +67,16 @@ void CopyCPUDataToCUDAHelper(std::vector<T> *cpu_,
 #endif
 }
 
-#define INSTANTIATE_VECTOR_FOR_TYPE(__TYPE__)                                  \
-  template <>                                                                  \
-  void Vector<__TYPE__>::VectorData::CopyToCPU() const {                       \
-    CopyToCPUHelper<__TYPE__>(&cpu_, &gpu_, &gpu_memory_size_);                \
-  }                                                                            \
-                                                                               \
-  template <>                                                                  \
-  void Vector<__TYPE__>::VectorData::CopyCPUDataToCUDA(                        \
-      const platform::Place &place) const {                                    \
-    CopyCPUDataToCUDAHelper<__TYPE__>(&cpu_, &gpu_, &gpu_memory_size_, place); \
+#define INSTANTIATE_VECTOR_FOR_TYPE(__TYPE__)                                 \
+  template <>                                                                 \
+  void MixVector<__TYPE__>::VectorData::CopyToCPU() const {                   \
+    CopyToCPUHelper<__TYPE__>(cpu_, &gpu_, &gpu_memory_size_);                \
+  }                                                                           \
+                                                                              \
+  template <>                                                                 \
+  void MixVector<__TYPE__>::VectorData::CopyCPUDataToCUDA(                    \
+      const platform::Place &place) const {                                   \
+    CopyCPUDataToCUDAHelper<__TYPE__>(cpu_, &gpu_, &gpu_memory_size_, place); \
   }
 
 INSTANTIATE_VECTOR_FOR_TYPE(size_t)
