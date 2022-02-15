@@ -38,6 +38,9 @@ DECLARE_bool(distributed_lamb_divide_nranks_when_allreduce);
 namespace paddle {
 namespace operators {
 
+template <typename T>
+using MasterT = typename details::MPTypeTrait<T>::Type;
+
 template <int LogLevel>
 static void LogParamAndTrustRatioDivSquareNorm(
     const framework::ExecutionContext &ctx, const float *param_square_norm,
@@ -146,8 +149,8 @@ static T *GetSameInOutTensorPtr(const framework::ExecutionContext &ctx,
 
 template <typename T>
 struct SquareFunctor {
-  HOSTDEVICE float operator()(T x) const {
-    auto y = static_cast<float>(x);
+  HOSTDEVICE MasterT<T> operator()(T x) const {
+    auto y = static_cast<MasterT<T>>(x);
     return y * y;
   }
 };
@@ -180,7 +183,7 @@ static __global__ void GPUScaleCUDAKernel(const T1 *__restrict__ x,
 template <typename T>
 static __global__ void InplaceDivideNumDeviceCUDAKernel(T *x, int num,
                                                         int num_devices) {
-  using MT = typename details::MPTypeTrait<T>::Type;
+  using MT = MasterT<T>;
   CUDA_KERNEL_LOOP(i, num) {
     auto x_val = static_cast<MT>(x[i]) / static_cast<MT>(num_devices);
     x[i] = static_cast<T>(x_val);
@@ -308,6 +311,20 @@ static __global__ void UpdateLambMoment(
 }
 
 template <typename T>
+static __global__ void FillConstantWithPtrCUDAKernel(T *x, T value, int n) {
+  CUDA_KERNEL_LOOP(i, n) { x[i] = value; }
+}
+
+template <typename T>
+static void FillConstantWithPtr(const platform::CUDADeviceContext &dev_ctx,
+                                T *x, T value, int n) {
+  auto config = platform::GetGpuLaunchConfig1D(dev_ctx, n);
+  FillConstantWithPtrCUDAKernel<T><<<
+      config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
+      x, value, n);
+}
+
+template <typename T>
 static __global__ void ScatterForTrustRatioDivCUDAKernel(
     const T *local_x, T *global_x, int local_param_num, int fp32_param_num,
     int fp32_start_idx, int fp16_start_idx) {
@@ -364,47 +381,41 @@ struct LambFoundInfHelper<false> {
   HOSTDEVICE void UpdateFoundInf(bool) {}
 };
 
-template <typename ParamInT, typename ParamOutT, typename IndexT,
-          bool NeedUpdateBetaPow, bool HasFoundInf>
+template <typename ParamT, typename IndexT, bool NeedUpdateBetaPow,
+          bool HasFoundInf>
 struct LambParamAndBetaPowsUpdateHelper
-    : public LambBetaPowUpdateOnceHelper<ParamInT, NeedUpdateBetaPow>,
+    : public LambBetaPowUpdateOnceHelper<MasterT<ParamT>, NeedUpdateBetaPow>,
       public LambFoundInfHelper<HasFoundInf> {
-  template <typename U>
-  using MayBeRestrictPtr =
-      typename std::conditional<std::is_same<ParamInT, ParamOutT>::value, U *,
-                                U *__restrict__>::type;
-
-  LambParamAndBetaPowsUpdateHelper(const ParamInT *param_in,
-                                   const ParamInT *trust_ratio_div,
-                                   const ParamInT *lr, const IndexT *index,
-                                   const ParamInT *param_square_norm,
-                                   const ParamInT *trust_ratio_div_square_norm,
-                                   const ParamInT *update_flag,
-                                   ParamOutT *param_out)
-      : param_in(param_in),
+  LambParamAndBetaPowsUpdateHelper(
+      ParamT *param, MasterT<ParamT> *master_param,
+      const MasterT<ParamT> *trust_ratio_div, const MasterT<ParamT> *lr,
+      const IndexT *index, const MasterT<ParamT> *param_square_norm,
+      const MasterT<ParamT> *trust_ratio_div_square_norm,
+      const MasterT<ParamT> *update_flag)
+      : param(param),
+        master_param(master_param),
         trust_ratio_div(trust_ratio_div),
         lr(lr),
         index(index),
         param_square_norm(param_square_norm),
         trust_ratio_div_square_norm(trust_ratio_div_square_norm),
-        update_flag(update_flag),
-        param_out(param_out) {}
+        update_flag(update_flag) {}
 
-  MayBeRestrictPtr<const ParamInT> param_in;
-  const ParamInT *__restrict__ trust_ratio_div;
-  const ParamInT *__restrict__ lr;
+  ParamT *__restrict__ param;
+  MasterT<ParamT> *__restrict__ master_param;
+  const MasterT<ParamT> *__restrict__ trust_ratio_div;
+  const MasterT<ParamT> *__restrict__ lr;
   const IndexT *__restrict__ index;
-  const ParamInT *__restrict__ param_square_norm;
-  const ParamInT *__restrict__ trust_ratio_div_square_norm;
-  const ParamInT *__restrict__ update_flag;
-  MayBeRestrictPtr<ParamOutT> param_out;
+  const MasterT<ParamT> *__restrict__ param_square_norm;
+  const MasterT<ParamT> *__restrict__ trust_ratio_div_square_norm;
+  const MasterT<ParamT> *__restrict__ update_flag;
 };
 
-template <typename ParamInT, typename ParamOutT, typename IndexT,
-          bool NeedUpdateBetaPow, bool HasFoundInf>
+template <typename ParamT, typename IndexT, bool NeedUpdateBetaPow,
+          bool HasFoundInf>
 static __global__ void LambUpdateParamAndBetaPowsCUDAKernel(
-    LambParamAndBetaPowsUpdateHelper<ParamInT, ParamOutT, IndexT,
-                                     NeedUpdateBetaPow, HasFoundInf>
+    LambParamAndBetaPowsUpdateHelper<ParamT, IndexT, NeedUpdateBetaPow,
+                                     HasFoundInf>
         args,
     int num) {
   auto should_update = *args.update_flag;
@@ -417,24 +428,34 @@ static __global__ void LambUpdateParamAndBetaPowsCUDAKernel(
     args.UpdateFoundInf(false);
   }
 
-  auto lr_value = *args.lr;
+  using MT = MasterT<ParamT>;
+
+  MT lr_value = *args.lr;
+  bool use_master_param = (args.master_param != nullptr);
   CUDA_KERNEL_LOOP(i, num) {
-    auto p = args.param_in[i];
-    auto t = args.trust_ratio_div[i];
+    MT p = use_master_param ? args.master_param[i]
+                            : static_cast<MT>(args.param[i]);
+    MT t = args.trust_ratio_div[i];
     auto norm_idx = args.index[i];
-    auto p_square_norm = args.param_square_norm[norm_idx];
-    auto t_square_norm = args.trust_ratio_div_square_norm[norm_idx];
+    MT p_square_norm = args.param_square_norm[norm_idx];
+    if (p_square_norm < static_cast<MT>(0)) {
+      asm("trap;");
+    }
 
-    auto p_norm = static_cast<ParamInT>(sqrtf(p_square_norm));
-    auto t_norm = static_cast<ParamInT>(sqrtf(t_square_norm));
+    MT t_square_norm = args.trust_ratio_div_square_norm[norm_idx];
 
-    auto update = (p_norm != static_cast<ParamInT>(0) &&
-                   t_norm != static_cast<ParamInT>(0))
+    MT p_norm = static_cast<MT>(sqrtf(p_square_norm));
+    MT t_norm = static_cast<MT>(sqrtf(t_square_norm));
+
+    auto update = (p_norm != static_cast<MT>(0) && t_norm != static_cast<MT>(0))
                       ? p_norm / t_norm
-                      : static_cast<ParamInT>(1);
+                      : static_cast<MT>(1);
 
-    p -= (lr_value * update * t);
-    args.param_out[i] = static_cast<ParamOutT>(p);
+    MT updated_p = p - lr_value * update * t;
+    args.param[i] = static_cast<ParamT>(updated_p);
+    if (use_master_param) {
+      args.master_param[i] = updated_p;
+    }
   }
 
   if (NeedUpdateBetaPow && threadIdx.x == 0 && blockIdx.x == 0) {
@@ -442,15 +463,30 @@ static __global__ void LambUpdateParamAndBetaPowsCUDAKernel(
   }
 }
 
-template <typename ParamInT, typename ParamOutT, typename IndexT>
+template <typename ParamT, typename IndexT>
 static void LambUpdateParamAndBetaPows(
-    const platform::CUDADeviceContext &dev_ctx, const ParamInT *param_in,
-    const ParamInT *trust_ratio_div, const ParamInT *lr, const IndexT *index,
-    const ParamInT *param_square_norm,
-    const ParamInT *trust_ratio_div_square_norm, const ParamInT *update_flag,
-    ParamInT **beta1pow, ParamInT **beta2pow, bool **found_inf, ParamInT beta1,
-    ParamInT beta2, int num, ParamOutT *param_out, gpuStream_t stream) {
+    const platform::CUDADeviceContext &dev_ctx,
+    const MasterT<ParamT> *trust_ratio_div, const MasterT<ParamT> *lr,
+    const IndexT *index, const MasterT<ParamT> *param_square_norm,
+    const MasterT<ParamT> *trust_ratio_div_square_norm,
+    const MasterT<ParamT> *update_flag, MasterT<ParamT> **beta1pow,
+    MasterT<ParamT> **beta2pow, bool **found_inf, MasterT<ParamT> beta1,
+    MasterT<ParamT> beta2, int num, ParamT *param,
+    MasterT<ParamT> *master_param, gpuStream_t stream) {
   if (num == 0) return;
+
+  if (std::is_same<ParamT, MasterT<ParamT>>::value) {
+    PADDLE_ENFORCE_EQ(
+        master_param, nullptr,
+        platform::errors::InvalidArgument("Wrong argument for Lamb update."));
+  } else {
+    PADDLE_ENFORCE_NOT_NULL(
+        master_param,
+        platform::errors::InvalidArgument("Wrong argument for Lamb update."));
+    PADDLE_ENFORCE_NE(
+        static_cast<void *>(master_param), static_cast<void *>(param),
+        platform::errors::InvalidArgument("Wrong argument for Lamb update."));
+  }
 
   auto has_beta_pow = (*beta1pow) != nullptr && (*beta2pow) != nullptr;
   auto has_found_inf = (*found_inf) != nullptr;
@@ -458,10 +494,10 @@ static void LambUpdateParamAndBetaPows(
 #define PADDLE_LAUNCH_LAMB_UPDATE_PARAM_KERNEL(__has_beta_pow,               \
                                                __has_found_inf)              \
   do {                                                                       \
-    LambParamAndBetaPowsUpdateHelper<ParamInT, ParamOutT, IndexT,            \
-                                     __has_beta_pow, __has_found_inf>        \
-        helper(param_in, trust_ratio_div, lr, index, param_square_norm,      \
-               trust_ratio_div_square_norm, update_flag, param_out);         \
+    LambParamAndBetaPowsUpdateHelper<ParamT, IndexT, __has_beta_pow,         \
+                                     __has_found_inf>                        \
+        helper(param, master_param, trust_ratio_div, lr, index,              \
+               param_square_norm, trust_ratio_div_square_norm, update_flag); \
     if (__has_beta_pow) {                                                    \
       helper.SetBetaPows(*beta1pow, *beta2pow, beta1, beta2);                \
     }                                                                        \
@@ -600,15 +636,37 @@ static void CubDeviceSegmentedReduce(InputIteratorT d_in, OutputIteratorT d_out,
       d_begin_offsets, d_end_offsets, reduction_op, initial_value, stream));
 }
 
+template <typename T>
+struct AddConstantFunctor {
+  explicit AddConstantFunctor(T bias) : bias_(bias) {}
+
+  T operator()(T x) const { return x + bias_; }
+
+ private:
+  T bias_;
+};
+
 template <typename T, typename OffsetT>
-static void CubDeviceSegmentedSquareNorm(const T *x, T *y, int n,
+static void CubDeviceSegmentedSquareNorm(const T *x, MasterT<T> *y, int n,
                                          const OffsetT *offset,
+                                         OffsetT init_offset,
                                          gpuStream_t stream,
                                          memory::Buffer *buffer) {
-  cub::TransformInputIterator<T, SquareFunctor<T>, const T *> iter(
+  if (n <= 0) return;
+  cub::TransformInputIterator<MasterT<T>, SquareFunctor<T>, const T *> iter(
       x, SquareFunctor<T>());
-  CubDeviceSegmentedReduce(iter, y, n, offset, offset + 1, cub::Sum(),
-                           static_cast<T>(0), stream, buffer);
+  if (init_offset == static_cast<OffsetT>(0)) {
+    CubDeviceSegmentedReduce(iter, y, n, offset, offset + 1, cub::Sum(),
+                             static_cast<MasterT<T>>(0), stream, buffer);
+  } else {
+    AddConstantFunctor<OffsetT> functor(-init_offset);
+    cub::TransformInputIterator<OffsetT, AddConstantFunctor<OffsetT>,
+                                const OffsetT *>
+        offset_iter(offset, functor);
+    CubDeviceSegmentedReduce(iter, y, n, offset_iter, offset_iter + 1,
+                             cub::Sum(), static_cast<MasterT<T>>(0), stream,
+                             buffer);
+  }
 }
 
 template <typename T>
@@ -812,6 +870,16 @@ static void CheckHasNanInfGrad(const float *fp32_grad, int fp32_numel,
 }
 
 template <typename T>
+static void FillZeroWithPtr(T *x, size_t n, gpuStream_t stream) {
+  static_assert(!std::is_same<T, void>::value, "T cannot be void.");
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_GPU_SUCCESS(hipMemsetAsync(x, 0, n * sizeof(T), stream));
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(x, 0, n * sizeof(T), stream));
+#endif
+}
+
+template <typename T>
 class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
@@ -875,8 +943,11 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
         GetInputTensorPtr<int>(ctx, "LocalParamInfo");
     auto fp32_local_start_idx = local_param_info_tensor[0];
     auto fp32_local_param_num = local_param_info_tensor[1];
-    auto fp16_local_start_idx = local_param_info_tensor[2];
-    auto fp16_local_param_num = local_param_info_tensor[3];
+    auto fp32_global_param_num = local_param_info_tensor[2];
+    auto fp16_local_start_idx = local_param_info_tensor[3];
+    auto fp16_local_param_num = local_param_info_tensor[4];
+    auto fp16_global_param_num = local_param_info_tensor[5];
+
     auto local_param_num = fp32_local_param_num + fp16_local_param_num;
     VLOG(1) << "local_param_num = " << local_param_num
             << " , fp32_local_start_idx = " << fp32_local_start_idx
@@ -932,6 +1003,8 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
     auto max_global_grad_norm = ctx.Attr<float>("max_global_grad_norm");
     auto clip_after_allreduce = ctx.Attr<bool>("clip_after_allreduce");
     auto ring_id = ctx.Attr<int>("ring_id");
+    auto use_master_param_norm = ctx.Attr<bool>("use_master_param_norm");
+
     auto param_ts = ctx.MultiInput<framework::Tensor>("Param");
     auto param_num = static_cast<int>(param_ts.size());
     PADDLE_ENFORCE_LE(local_param_num, param_num,
@@ -1158,53 +1231,65 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
 
     // Step 8: calculate L2-Norm square of parameter and trust_ratio_div
     memory::Buffer square_norm_buffer(place);
-    auto *param_square_norm =
-        square_norm_buffer.Alloc<float>(2 * param_num + local_param_num);
+    auto *param_square_norm = square_norm_buffer.Alloc<float>(2 * param_num);
     auto *trust_ratio_div_square_norm = param_square_norm + param_num;
-    auto *local_trust_ratio_div_square_norm = param_square_norm + 2 * param_num;
 
     auto *fused_offsets =
         ctx.Input<framework::Tensor>("FusedParamOffsets")->data<int>();
-    auto *partial_fused_offsets =
-        ctx.Input<framework::Tensor>("PartialFusedParamOffsets")->data<int>();
+    auto *fp32_partial_fused_offsets =
+        ctx.Input<framework::Tensor>("FP32PartialFusedParamOffsets")
+            ->data<int>();
+    auto *fp16_partial_fused_offsets =
+        ctx.Input<framework::Tensor>("FP16PartialFusedParamOffsets")
+            ->data<int>();
 
-    CubDeviceSegmentedSquareNorm(fp32_param, param_square_norm, param_num,
-                                 fused_offsets, stream, &cub_tmp_buffer);
-    VLOG(1) << "Trust Ratio Div: "
-            << GetMinMaxStr(trust_ratio_div,
-                            fp32_numel_each_device + fp16_numel_each_device,
-                            place);
+    if (num_devices > 1) {
+      if (use_master_param_norm) {
+        FillZeroWithPtr(param_square_norm + fp32_global_param_num,
+                        2 * param_num - fp32_global_param_num, stream);
+      } else {
+        FillZeroWithPtr(trust_ratio_div_square_norm, param_num, stream);
+      }
+    }
+    CubDeviceSegmentedSquareNorm(fp32_param, param_square_norm,
+                                 fp32_global_param_num, fused_offsets, 0,
+                                 stream, &cub_tmp_buffer);
+    if (use_master_param_norm) {
+      CubDeviceSegmentedSquareNorm(
+          master_param + fp16_offset, param_square_norm + fp16_local_start_idx,
+          fp16_local_param_num, fp16_partial_fused_offsets, 0, stream,
+          &cub_tmp_buffer);
+    } else {
+      CubDeviceSegmentedSquareNorm(
+          fp16_param, param_square_norm + fp32_global_param_num,
+          fp16_global_param_num, fused_offsets, static_cast<int>(fp32_numel),
+          stream, &cub_tmp_buffer);
+    }
+
     CubDeviceSegmentedSquareNorm(
-        trust_ratio_div, local_trust_ratio_div_square_norm, local_param_num,
-        partial_fused_offsets, stream, &cub_tmp_buffer);
+        trust_ratio_div, trust_ratio_div_square_norm + fp32_local_start_idx,
+        fp32_local_param_num, fp32_partial_fused_offsets, 0, stream,
+        &cub_tmp_buffer);
+    CubDeviceSegmentedSquareNorm(
+        trust_ratio_div + fp32_numel_each_device,
+        trust_ratio_div_square_norm + fp16_local_start_idx,
+        fp16_local_param_num, fp16_partial_fused_offsets, 0, stream,
+        &cub_tmp_buffer);
 
-#ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_GPU_SUCCESS(hipMemsetAsync(
-        trust_ratio_div_square_norm, 0,
-        param_num * sizeof(*trust_ratio_div_square_norm), stream));
-#else
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(
-        trust_ratio_div_square_norm, 0,
-        param_num * sizeof(*trust_ratio_div_square_norm), stream));
-#endif
-
-    auto config = platform::GetGpuLaunchConfig1D(dev_ctx, local_param_num);
-    ScatterForTrustRatioDivCUDAKernel<<<config.block_per_grid,
-                                        config.thread_per_block, 0, stream>>>(
-        local_trust_ratio_div_square_norm, trust_ratio_div_square_norm,
-        local_param_num, fp32_local_param_num, fp32_local_start_idx,
-        fp16_local_start_idx);
-    VLOG(10) << "ScatterForTrustRatioDivCUDAKernel done";
-
-    VLOG(1) << "Local TrustRatioDiv L2-Norm before allreduce: "
-            << FlattenToString(local_trust_ratio_div_square_norm,
-                               local_param_num, place);
     VLOG(1) << "TrustRatioDiv L2-Norm before allreduce: "
             << FlattenToString(trust_ratio_div_square_norm, param_num, place);
     if (num_devices > 1) {
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-          trust_ratio_div_square_norm, trust_ratio_div_square_norm, param_num,
-          ncclFloat32, ncclSum, comm, stream));
+      if (use_master_param_norm) {
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+            param_square_norm + fp32_global_param_num,
+            param_square_norm + fp32_global_param_num,
+            2 * param_num - fp32_global_param_num, ncclFloat32, ncclSum, comm,
+            stream));
+      } else {
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+            trust_ratio_div_square_norm, trust_ratio_div_square_norm, param_num,
+            ncclFloat32, ncclSum, comm, stream));
+      }
       VLOG(10) << "ncclAllReduce done";
     }
 
@@ -1214,11 +1299,11 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
 
     // Step 9: update parameter, beta1pow, beta2pow. All gather parameters.
     if (has_fp32_param) {
-      LambUpdateParamAndBetaPows(
-          dev_ctx, fp32_param + fp32_offset, trust_ratio_div, lr,
-          indices + fp32_offset, param_square_norm, trust_ratio_div_square_norm,
-          fp32_square_grad_norm, &beta1pow, &beta2pow, &found_inf, beta1, beta2,
-          fp32_numel_each_device, fp32_param + fp32_offset, stream);
+      LambUpdateParamAndBetaPows<float>(
+          dev_ctx, trust_ratio_div, lr, indices + fp32_offset,
+          param_square_norm, trust_ratio_div_square_norm, fp32_square_grad_norm,
+          &beta1pow, &beta2pow, &found_inf, beta1, beta2,
+          fp32_numel_each_device, fp32_param + fp32_offset, nullptr, stream);
       if (num_devices > 1) {
         // ncclAllGather
         PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
@@ -1227,15 +1312,28 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
       }
     }
     if (has_fp16_param) {
+      LambUpdateParamAndBetaPows<platform::float16>(
+          dev_ctx, trust_ratio_div + fp32_numel_each_device, lr,
+          indices + fp32_numel + fp16_offset, param_square_norm,
+          trust_ratio_div_square_norm, fp32_square_grad_norm, &beta1pow,
+          &beta2pow, &found_inf, beta1, beta2, fp16_numel_each_device,
+          fp16_param + fp16_offset, master_param + fp16_offset, stream);
+
+      if (num_devices > 1) {
+        // ncclAllGather
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
+            fp16_param + fp16_offset, fp16_param, fp16_numel_each_device,
+            ncclFloat16, comm, stream));
+      }
+      /*
       auto broadcast_master_param = ctx.Attr<bool>("broadcast_master_param");
       if (broadcast_master_param) {
-        LambUpdateParamAndBetaPows(
-            dev_ctx, master_param + fp16_offset,
-            trust_ratio_div + fp32_numel_each_device, lr,
+        LambUpdateParamAndBetaPows<float>(
+            dev_ctx, trust_ratio_div + fp32_numel_each_device, lr,
             indices + fp32_numel + fp16_offset, param_square_norm,
             trust_ratio_div_square_norm, fp32_square_grad_norm, &beta1pow,
             &beta2pow, &found_inf, beta1, beta2, fp16_numel_each_device,
-            master_param + fp16_offset, stream);
+            master_param + fp16_offset, nullptr, stream);
         if (num_devices > 1) {
           // ncclAllGather
           PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
@@ -1244,22 +1342,29 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
         }
         LaunchCastKernel(dev_ctx, master_param, fp16_param, fp16_numel);
       } else {
-        LambUpdateParamAndBetaPows(
-            dev_ctx, master_param + fp16_offset,
-            trust_ratio_div + fp32_numel_each_device, lr,
+        LambUpdateParamAndBetaPows<platform::float16>(
+            dev_ctx, trust_ratio_div + fp32_numel_each_device, lr,
             indices + fp32_numel + fp16_offset, param_square_norm,
             trust_ratio_div_square_norm, fp32_square_grad_norm, &beta1pow,
             &beta2pow, &found_inf, beta1, beta2, fp16_numel_each_device,
-            fp16_param + fp16_offset, stream);
+            fp16_param + fp16_offset, master_param + fp16_offset, stream);
 
         if (num_devices > 1) {
           // ncclAllGather
           PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
               fp16_param + fp16_offset, fp16_param, fp16_numel_each_device,
               ncclFloat16, comm, stream));
+          // launch kernel to cast partial master weight to
+          auto prev_cast_offset = fp16_offset - fp16_prev_offset;
+          LaunchCastKernel(dev_ctx, fp16_param + prev_cast_offset,
+                           master_param + prev_cast_offset, fp16_prev_offset);
+
+          auto next_cast_offset = fp16_offset + fp16_numel_each_device;
+          LaunchCastKernel(dev_ctx, fp16_param + next_cast_offset,
+                           master_param + next_cast_offset, fp16_next_offset);
         }
-        LaunchCastKernel(dev_ctx, fp16_param, master_param, fp16_numel);
       }
+      */
     }
     VLOG(10) << "Update Param done";
 

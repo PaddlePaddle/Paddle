@@ -121,7 +121,7 @@ class IdentityGradClip(ClipGradBase):
         return params_grads
 
 
-def run_model(use_distributed_lamb, use_fp16, broadcast_master_param, **kwargs):
+def run_model(use_distributed_lamb, use_fp16, use_master_param_norm, **kwargs):
     nranks = paddle.distributed.get_world_size()
 
     set_seed(1000)
@@ -148,7 +148,7 @@ def run_model(use_distributed_lamb, use_fp16, broadcast_master_param, **kwargs):
                 optimizer_class = DistributedFusedLamb
                 kwargs = dict(kwargs)
                 kwargs['is_grad_scaled_by_nranks'] = False
-                kwargs['broadcast_master_param'] = broadcast_master_param
+                kwargs['use_master_param_norm'] = use_master_param_norm
             else:
                 optimizer_class = paddle.optimizer.Lamb
                 kwargs = dict(kwargs)
@@ -206,7 +206,7 @@ def run_model(use_distributed_lamb, use_fp16, broadcast_master_param, **kwargs):
         return grad_t
 
     def reader():
-        for _ in range(5):
+        for _ in range(10):
             yield dict(
                 [(grad.name, gen_random_grad_tensor(grad)) for grad in grads])
 
@@ -261,43 +261,43 @@ class TestDistributedFusedLamb(unittest.TestCase):
             if max_global_norm > 0 else None,
         }
 
-    def run_main(self, use_fp16, broadcast_master_param=True):
+    def run_main(self, use_fp16, use_master_param_norm=True):
         if not paddle.is_compiled_with_cuda():
             return
 
         if not use_fp16:
-            self.assertTrue(broadcast_master_param)
+            self.assertTrue(use_master_param_norm)
 
         base_config = self.config()
         config1 = dict(base_config)
         config1['use_distributed_lamb'] = True
         config1['use_fp16'] = use_fp16
-        config1['broadcast_master_param'] = broadcast_master_param
+        config1['use_master_param_norm'] = use_master_param_norm
 
         config2 = dict(base_config)
         config2['use_distributed_lamb'] = False
         config2['use_fp16'] = use_fp16
-        config2['broadcast_master_param'] = broadcast_master_param
+        config2['use_master_param_norm'] = use_master_param_norm
 
         result1 = run_model(**config1)
         result2 = run_model(**config2)
         self.assertEqual(len(result1), len(result2))
 
         if use_fp16:
-            atol = 8e-4 if broadcast_master_param else 1e-3
+            atol = 8e-4 if use_master_param_norm else 1e-3
         else:
             atol = 1e-7
         for ret1, ret2 in zip(result1, result2):
             max_diff = np.max(np.abs(ret1 - ret2))
-            msg = 'max_diff = {} when use_fp16 = {} , broadcast_master_param = {}'.format(
-                max_diff, use_fp16, broadcast_master_param)
+            msg = 'max_diff = {} atol = {} when use_fp16 = {} , use_master_param_norm = {}'.format(
+                max_diff, atol, use_fp16, use_master_param_norm)
             self.assertTrue(max_diff < atol, msg)
             print(msg)
 
     def test_main(self):
         self.run_main(use_fp16=False)
-        self.run_main(use_fp16=True, broadcast_master_param=True)
-        self.run_main(use_fp16=True, broadcast_master_param=False)
+        self.run_main(use_fp16=True, use_master_param_norm=True)
+        self.run_main(use_fp16=True, use_master_param_norm=False)
 
         touch_file_name = os.environ.get('SUCCESS_TOUCH_FILE')
         if touch_file_name:

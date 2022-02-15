@@ -37,7 +37,7 @@ class DistributedFusedLamb(Optimizer):
                  clip_after_allreduce=True,
                  is_grad_scaled_by_nranks=True,
                  alignment=128,
-                 broadcast_master_param=True,
+                 use_master_param_norm=True,
                  name=None):
         assert not framework.in_dygraph_mode(
         ), "DistributedFusedLamb does not support dygraph mode"
@@ -66,7 +66,7 @@ class DistributedFusedLamb(Optimizer):
         self._exclude_from_weight_decay_fn = exclude_from_weight_decay_fn
         self._scale = None
         self._ring_id = 0
-        self._broadcast_master_param = broadcast_master_param
+        self._use_master_param_norm = use_master_param_norm
         self.helper = LayerHelper('distributed_fused_lamb')
         self._supports_check_nan_inf = True  # very import flag for AMP
 
@@ -182,9 +182,13 @@ class DistributedFusedLamb(Optimizer):
         local_param_info.is_distributed = True
 
         fused_offsets = self._create_persistable_var('fused_offsets')
-        partial_fused_offsets = self._create_persistable_var(
-            'partial_fused_offsets')
-        partial_fused_offsets.is_distributed = True
+
+        fp32_partial_fused_offsets = self._create_persistable_var(
+            'fp32_partial_fused_offsets', dtype='int32')
+        fp32_partial_fused_offsets.is_distributed = True
+        fp16_partial_fused_offsets = self._create_persistable_var(
+            'fp16_partial_fused_offsets', dtype='int32')
+        fp16_partial_fused_offsets.is_distributed = True
 
         rank = get_rank()
         nranks = get_world_size()
@@ -230,7 +234,8 @@ class DistributedFusedLamb(Optimizer):
                 'ParamOut': params,
                 'MasterParamOut': master_params,
                 'GradOut': grads,
-                'PartialFusedParamOffsets': [partial_fused_offsets],
+                'FP32PartialFusedParamOffsets': [fp32_partial_fused_offsets],
+                'FP16PartialFusedParamOffsets': [fp16_partial_fused_offsets],
                 'FusedParamOffsets': [fused_offsets],
             },
             attrs={
@@ -276,8 +281,9 @@ class DistributedFusedLamb(Optimizer):
                 'LocalParamInfo': [local_param_info],
                 'Param': params,
                 'Grad': grads,
-                'PartialFusedParamOffsets': [partial_fused_offsets],
                 'FusedParamOffsets': [fused_offsets],
+                'FP32PartialFusedParamOffsets': [fp32_partial_fused_offsets],
+                'FP16PartialFusedParamOffsets': [fp16_partial_fused_offsets],
             },
             outputs={
                 'FP32FusedParamOut': [fp32_fused_param],
@@ -298,7 +304,7 @@ class DistributedFusedLamb(Optimizer):
                 'clip_after_allreduce': self._clip_after_allreduce,
                 'rank': rank,
                 'ring_id': self._ring_id,
-                'broadcast_master_param': self._broadcast_master_param,
+                'use_master_param_norm': self._use_master_param_norm,
                 'is_grad_scaled_by_nranks': self._is_grad_scaled_by_nranks,
             })
         return [lamb_op]

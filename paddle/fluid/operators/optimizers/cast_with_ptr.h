@@ -53,6 +53,7 @@ static void VecCastKernel(const platform::CUDADeviceContext &ctx, const InT *x,
 template <typename InT, typename OutT>
 static void LaunchCastKernel(const platform::CUDADeviceContext &ctx,
                              const InT *x, OutT *y, size_t n) {
+  if (n == 0) return;
   PADDLE_ENFORCE_NE(
       static_cast<const void *>(x), static_cast<void *>(y),
       platform::errors::InvalidArgument("Inplace cast is not supported yet."));

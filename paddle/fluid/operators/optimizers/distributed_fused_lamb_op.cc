@@ -83,8 +83,10 @@ class DistributedFusedLambOpMaker : public framework::OpProtoAndCheckerMaker {
              "CPUPlace, and its shape is [4].");
     AddInput("FusedParamOffsets",
              "The parameter offset of the fused parameters.");
-    AddInput("PartialFusedParamOffsets",
-             "The partial parameter offset of the fused parameters.");
+    AddInput("FP32PartialFusedParamOffsets",
+             "The partial parameter offset of the FP32 fused parameters.");
+    AddInput("FP16PartialFusedParamOffsets",
+             "The partial parameter offset of the FP16 fused parameters.");
 
     AddOutput("FP32FusedParamOut", "The updated FP32FusedParam.")
         .AsDispensable();
@@ -114,12 +116,12 @@ class DistributedFusedLambOpMaker : public framework::OpProtoAndCheckerMaker {
                   "Whether to clip before allreduce, only valid when the "
                   "world size is larger than 1.");
     AddAttr<bool>(
-        "broadcast_master_param",
-        "Whether to broadcast master parameter or FP16 parameter. It is only "
-        "useful when there is any FP16 parameter. If it is true, the master "
-        "weight would be updated, broadcast and cast to be FP16 parameter. "
-        "If it is false, the FP16 parameter would be updated, broadcast and "
-        "cast to be master weight.");
+        "use_master_param_norm",
+        "Whether to use master parameter to calculate "
+        "the L2-Norm. If it is true, it would be more accurate but be more "
+        "NCCL communication data. If it is false, it would be less accurate "
+        "and be less NCCL communication data.")
+        .SetDefault(true);
     AddAttr<bool>("is_grad_scaled_by_nranks",
                   "Whether the input gradient has been scaled by nranks.")
         .SetDefault(true);
