@@ -287,10 +287,7 @@ def amp_guard(enable=True,
                 % (paddle.device.cuda.get_device_name(), prop[0], prop[1],
                    cuda_version))
 
-    if dtype == 'float16':
-        amp_dtype = "float16"
-    elif dtype == 'bfloat16':
-        amp_dtype = "bfloat16"
+    amp_dtype = dtype
 
     if level == 'O1':
         amp_level = AMP_LEVEL.O1
