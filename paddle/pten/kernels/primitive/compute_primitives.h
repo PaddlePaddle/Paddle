@@ -428,5 +428,20 @@ __device__ __forceinline__ void ElementwiseConstant(OutT* out, OpFunc compute) {
   }
 }
 
+template <typename StateType,
+          typename OutT,
+          int ReturnsCount,
+          int BlockSize,
+          class OpFunc>
+__device__ __forceinline__ void ElementwiseRandom(OutT* out,
+                                                  OpFunc compute,
+                                                  StateType* state) {
+  auto random_tuple = compute(state);
+#pragma unroll
+  for (int i = 0; i < ReturnsCount; i++) {
+    out[i] = static_cast<OutT>((&random_tuple.x)[i]);
+  }
+}
+
 }  // namespace kps
 }  // namespace pten

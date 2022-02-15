@@ -94,7 +94,7 @@ struct normal_transform {
 };
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-
+namespace kps = pten::kps;
 /*********************** Distribution Function *************************/
 template <typename T>
 struct uniform_distribution;
@@ -192,7 +192,6 @@ __global__ void DistributionKernel(size_t size, uint64_t seed, uint64_t offset,
   using SType = hiprandStatePhilox4_32_10_t;
 #endif
   size_t total_thread = GRID_NUM_X * BLOCK_NUM_X;
-  using VectorType = kps::details::VectorType<T, kCount>;
   T args[kCount];
   T result[kCount];
   for (size_t i = idx; i < size; i += total_thread * kCount) {
