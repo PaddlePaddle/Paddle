@@ -14,14 +14,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using SelectedRows = framework::SelectedRows;
+using SelectedRows = pten::SelectedRows;
 using LoDTensor = framework::LoDTensor;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -37,32 +37,32 @@ void SelectedRowsCompute(const framework::ExecutionContext &context) {
     return;
   }
 
-  std::vector<const paddle::framework::SelectedRows *> inputs;
+  std::vector<const pten::SelectedRows *> inputs;
   SelectedRows temp_in0;
 
   if (in_place) {
-    auto &in0 = in_vars[0]->Get<SelectedRows>();
+    auto &in0 = in_vars[0]->Get<pten::SelectedRows>();
     temp_in0.set_height(in0.height());
     temp_in0.set_rows(in0.rows());
     framework::TensorCopy(in0.value(), in0.place(), context.device_context(),
                           temp_in0.mutable_value());
     inputs.push_back(&temp_in0);
     for (size_t i = 1; i < in_vars.size(); ++i) {
-      auto &in = in_vars[i]->Get<SelectedRows>();
+      auto &in = in_vars[i]->Get<pten::SelectedRows>();
       if (in.rows().size() > 0) {
         inputs.push_back(&in);
       }
     }
   } else {
     for (auto &in_var : in_vars) {
-      auto &in = in_var->Get<SelectedRows>();
+      auto &in = in_var->Get<pten::SelectedRows>();
       if (in.rows().size() > 0) {
-        inputs.push_back(&in_var->Get<SelectedRows>());
+        inputs.push_back(&in_var->Get<pten::SelectedRows>());
       }
     }
   }
 
-  auto *out = context.Output<SelectedRows>("Out");
+  auto *out = context.Output<pten::SelectedRows>("Out");
   out->mutable_rows()->clear();
 
   bool has_data = false;
@@ -167,7 +167,7 @@ class SumKernel : public framework::OpKernel<T> {
         }
         if (start != 2) {
           VLOG(10) << "Fill with constant = 0 in sum kernel.";
-          math::SetConstant<DeviceContext, T> constant_functor;
+          pten::funcs::SetConstant<DeviceContext, T> constant_functor;
           constant_functor(context.template device_context<DeviceContext>(),
                            out, static_cast<T>(0));
         }
@@ -183,8 +183,8 @@ class SumKernel : public framework::OpKernel<T> {
           }
           auto in = EigenVector<T>::Flatten(in_t);
           result.device(place) = result + in;
-        } else if (in_vars[i]->IsType<framework::SelectedRows>()) {
-          auto &in_t = in_vars[i]->Get<framework::SelectedRows>();
+        } else if (in_vars[i]->IsType<pten::SelectedRows>()) {
+          auto &in_t = in_vars[i]->Get<pten::SelectedRows>();
           functor(context.template device_context<DeviceContext>(), in_t, out);
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
@@ -194,7 +194,7 @@ class SumKernel : public framework::OpKernel<T> {
               framework::ToTypeName(in_vars[i]->Type())));
         }
       }
-    } else if (out_var->IsType<framework::SelectedRows>()) {
+    } else if (out_var->IsType<pten::SelectedRows>()) {
       SelectedRowsCompute<DeviceContext, T>(context);
     } else if (out_var->IsType<framework::LoDTensorArray>()) {
       LodTensorArrayCompute<DeviceContext, T>(context);

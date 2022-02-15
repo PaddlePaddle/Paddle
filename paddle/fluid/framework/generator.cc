@@ -138,13 +138,13 @@ std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t seed) {
   }
 }
 
-GeneratorState Generator::GetState() {
+pten::Generator::GeneratorState Generator::GetState() {
   std::lock_guard<std::mutex> lock(this->mu_);
   state_.cpu_engine = *engine_;
   return this->state_;
 }
 
-void Generator::SetState(const GeneratorState& state) {
+void Generator::SetState(const pten::Generator::GeneratorState& state) {
   std::lock_guard<std::mutex> lock(this->mu_);
   this->state_ = state;
   this->engine_ = std::make_shared<std::mt19937_64>(state.cpu_engine);

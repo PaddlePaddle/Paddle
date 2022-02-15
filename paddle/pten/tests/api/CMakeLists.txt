@@ -1,7 +1,7 @@
 if(WITH_ROCM)
-  hip_test(test_pten_tensor SRCS test_pten_tensor.cc DEPS pten_tensor pten_function_api utils_api glog)
+  hip_test(test_pten_tensor SRCS test_pten_tensor.cc DEPS pten_tensor pten_function_api manual_api glog)
 else()
-  cc_test(test_pten_tensor SRCS test_pten_tensor.cc DEPS pten_tensor pten_function_api utils_api glog)
+  cc_test(test_pten_tensor SRCS test_pten_tensor.cc DEPS pten_tensor pten_function_api manual_api glog)
 endif()
 
 cc_test(test_pten_exception SRCS test_pten_exception.cc DEPS gtest)
@@ -22,3 +22,6 @@ cc_test(test_scale_api SRCS test_scale_api.cc DEPS pten_tensor pten_api pten_api
 cc_test(test_scale_benchmark SRCS test_scale_benchmark.cc DEPS pten_tensor pten_api pten_api_utils)
 cc_test(test_conj_api SRCS test_conj_api.cc DEPS pten_tensor pten_api pten_api_utils)
 cc_test(test_concat_api SRCS test_concat_api.cc DEPS pten_tensor pten_api pten_api_utils)
+cc_test(test_split_api SRCS test_split_api.cc DEPS pten_tensor pten_api pten_api_utils)
+cc_test(test_data_transform SRCS test_data_transform.cc DEPS pten_tensor pten_api pten_api_utils)
+cc_test(test_sparse_utils_api SRCS test_sparse_utils_api.cc DEPS pten_tensor pten_api pten_api_utils)

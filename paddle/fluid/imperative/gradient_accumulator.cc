@@ -18,16 +18,17 @@
 #include <memory>
 #include <utility>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_XPU
 #include "xpu/refactor/math.h"
 #endif
@@ -55,12 +56,12 @@ static void MoveOrCopyVar(framework::Variable* dst, framework::Variable* src,
     auto* dst_tensor = dst->GetMutable<framework::LoDTensor>();
     framework::TensorCopy(src_tensor, src_tensor.place(), dst_tensor);
     dst_tensor->set_lod(src_tensor.lod());
-  } else if (src->IsType<framework::SelectedRows>()) {
-    auto& src_selected_rows = src->Get<framework::SelectedRows>();
-    if (!dst->IsType<framework::SelectedRows>()) {
+  } else if (src->IsType<pten::SelectedRows>()) {
+    auto& src_selected_rows = src->Get<pten::SelectedRows>();
+    if (!dst->IsType<pten::SelectedRows>()) {
       dst->Clear();
     }
-    auto* dst_selected_rows = dst->GetMutable<framework::SelectedRows>();
+    auto* dst_selected_rows = dst->GetMutable<pten::SelectedRows>();
     framework::TensorCopy(src_selected_rows.value(),
                           src_selected_rows.value().place(),
                           dst_selected_rows->mutable_value());
@@ -210,13 +211,59 @@ void TensorAddImpl(const framework::Tensor& src, framework::Tensor* dst,
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   paddle::platform::DeviceContext* ctx = pool.Get(place);
   auto dev_ctx = dynamic_cast<DeviceContext*>(ctx);
-  operators::math::ElementwiseAddTo<DeviceContext, T> func;
+  pten::funcs::ElementwiseAddTo<DeviceContext, T> func;
   func(dev_ctx, src, dst);
 }
 
-void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
-  auto* dst_tensor = dst->GetMutable<framework::LoDTensor>();
-  auto& src_tensor = src.Get<framework::LoDTensor>();
+template <typename TType>
+TType* GetInnerMutableTensor(framework::Variable* dst) {
+  auto* dst_tensor = dst->GetMutable<TType>();
+  return dst_tensor;
+}
+
+template <typename TType>
+TType* GetInnerMutableTensor(paddle::experimental::Tensor* dst) {
+  auto* dst_tensor = static_cast<TType*>(dst->impl().get());
+  return dst_tensor;
+}
+
+template <typename TType>
+const TType& GetInnerTensor(const framework::Variable& src) {
+  return src.Get<TType>();
+}
+
+template <typename TType>
+TType& GetInnerTensor(const paddle::experimental::Tensor& src) {
+  PADDLE_ENFORCE_EQ(
+      src.initialized(), true,
+      platform::errors::Fatal("We only add tensor with value if a tensor is "
+                              "NOT INITILIZED, it should just move instead of "
+                              "calling this method."));
+  auto* src_tensor = static_cast<TType*>(src.impl().get());
+  return *src_tensor;
+}
+
+template <typename TType>
+TType* GetEmptyInnerTensor(paddle::experimental::Tensor* dst) {
+  PADDLE_ENFORCE_EQ(
+      dst->defined(), false,
+      platform::errors::Fatal(
+          "The underlying Tensor implementation should be nullptr"));
+  dst->set_impl(std::make_shared<TType>());
+  auto* dst_tensor = static_cast<TType*>(dst->impl().get());
+  return dst_tensor;
+}
+
+template <typename TType>
+TType* GetEmptyInnerTensor(paddle::imperative::VariableWrapper* dst) {
+  auto* dst_tensor = dst->MutableVar()->GetMutable<TType>();
+  return dst_tensor;
+}
+
+template <typename VarType>
+void TensorAdd(const VarType& src, VarType* dst) {
+  pten::DenseTensor* dst_tensor = GetInnerMutableTensor<pten::DenseTensor>(dst);
+  const pten::DenseTensor& src_tensor = GetInnerTensor<pten::DenseTensor>(src);
 
   auto numel = src_tensor.numel();
 
@@ -234,14 +281,22 @@ void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
           "%zu and the number of elements of destination tensor is %zu.",
           numel, dst_tensor->numel()));
 
-  auto data_type = src_tensor.type();
+  auto data_type = framework::TransToProtoVarType(src_tensor.dtype());
   auto place = src_tensor.place();
 
-  PADDLE_ENFORCE_EQ(dst_tensor->type(), data_type,
+  PADDLE_ENFORCE_EQ(framework::TransToProtoVarType(dst_tensor->dtype()),
+                    data_type,
                     platform::errors::PreconditionNotMet(
                         "The data type of source tensor and destination tensor "
                         "should be equal, Otherwise, the calculation results "
                         "will be incorrect."));
+
+#ifdef PADDLE_WITH_XPU
+  // if src and dst are in different place, copy dst to src's place
+  if (dst_tensor->place() != place) {
+    paddle::framework::TensorCopySync(*dst_tensor, place, dst_tensor);
+  }
+#endif
 
 #define PADDLE_TENSOR_ADD(cpp_type)                                  \
   if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) { \
@@ -329,12 +384,19 @@ void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
       framework::DataTypeToString(data_type), place));
 }
 
-void SelectedRowsAddToTensor(const framework::Variable& src,
-                             framework::Variable* dst) {
-  auto* dst_tensor = dst->GetMutable<framework::LoDTensor>();
-  auto& src_selected_rows = src.Get<framework::SelectedRows>();
+template void TensorAdd<framework::Variable>(const framework::Variable& src,
+                                             framework::Variable* dst);
+template void TensorAdd<paddle::experimental::Tensor>(
+    const paddle::experimental::Tensor& src, paddle::experimental::Tensor* dst);
+
+template <typename VarType>
+void SelectedRowsAddToTensor(const VarType& src, VarType* dst) {
+  pten::DenseTensor* dst_tensor = GetInnerMutableTensor<pten::DenseTensor>(dst);
+  const pten::SelectedRows& src_selected_rows =
+      GetInnerTensor<pten::SelectedRows>(src);
   auto place = dst_tensor->place();
-  auto data_type = src_selected_rows.value().type();
+  auto data_type =
+      framework::TransToProtoVarType(src_selected_rows.value().dtype());
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
 
 #define PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(dev_ctx_type, cpp_type)           \
@@ -366,20 +428,27 @@ void SelectedRowsAddToTensor(const framework::Variable& src,
       framework::DataTypeToString(data_type)));
 }
 
-static void SelectedRowsAddTensor(
-    const framework::Variable& src_selected_rows_var,
-    const framework::Variable& src_tensor_var,
-    framework::Variable* dst_tensor_var) {
-  const auto& src_selected_rows =
-      src_selected_rows_var.Get<framework::SelectedRows>();
-  const auto& src_tensor = src_tensor_var.Get<framework::LoDTensor>();
+template void SelectedRowsAddToTensor(const framework::Variable& src,
+                                      framework::Variable* dst);
+template void SelectedRowsAddToTensor(const paddle::experimental::Tensor& src,
+                                      paddle::experimental::Tensor* dst);
+
+template <typename VarType>
+void SelectedRowsAddTensor(const VarType& src_selected_rows_var,
+                           const VarType& src_tensor_var,
+                           VarType* dst_tensor_var) {
+  const pten::SelectedRows& src_selected_rows =
+      GetInnerTensor<pten::SelectedRows>(src_selected_rows_var);
+  const pten::DenseTensor& src_tensor =
+      GetInnerTensor<pten::DenseTensor>(src_tensor_var);
   const auto& place = src_tensor.place();
-  auto data_type = src_tensor.type();
+  auto data_type = framework::TransToProtoVarType(src_tensor.dtype());
   auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
 
-  auto* dst_tensor = dst_tensor_var->GetMutable<framework::LoDTensor>();
+  pten::DenseTensor* dst_tensor =
+      GetInnerMutableTensor<pten::DenseTensor>(dst_tensor_var);
   dst_tensor->Resize(src_tensor.dims());
-  dst_tensor->mutable_data(place, data_type);
+  dst_tensor->mutable_data(place, src_tensor.dtype());
 
 #define PADDLE_SELECTED_ROWS_ADD_TENSOR(dev_ctx_type, cpp_type)            \
   if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) {       \
@@ -409,23 +478,38 @@ static void SelectedRowsAddTensor(
 #undef PADDLE_SELECTED_ROWS_ADD_TENSOR
 }
 
+template void SelectedRowsAddTensor(
+    const framework::Variable& src_selected_rows_var,
+    const framework::Variable& src_tensor_var,
+    framework::Variable* dst_tensor_var);
+template void SelectedRowsAddTensor(
+    const paddle::experimental::Tensor& src_selected_rows_var,
+    const paddle::experimental::Tensor& src_tensor_var,
+    paddle::experimental::Tensor* dst_tensor_var);
+
 // Note(chenweihang): when two selected rows need to be added,
 //   adding one to another is not equal to merging two selected rows
 //   to one then add it to a empty selected rows, the after is correct
-std::shared_ptr<VariableWrapper> SelectedRowsMerge(
-    const framework::Variable& src1, const framework::Variable& src2) {
-  auto& src_selected_rows1 = src1.Get<framework::SelectedRows>();
-  auto& src_selected_rows2 = src2.Get<framework::SelectedRows>();
+template <typename ReturnVarType, typename VarType>
+std::shared_ptr<ReturnVarType> SelectedRowsMerge(const VarType& src1,
+                                                 const VarType& src2) {
+  const pten::SelectedRows& src_selected_rows1 =
+      GetInnerTensor<pten::SelectedRows>(src1);
+  const pten::SelectedRows& src_selected_rows2 =
+      GetInnerTensor<pten::SelectedRows>(src2);
+
   auto place = src_selected_rows1.value().place();
-  auto data_type = src_selected_rows1.value().type();
+  auto data_type =
+      framework::TransToProtoVarType(src_selected_rows1.value().dtype());
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
 
-  std::vector<const framework::SelectedRows*> src_selected_rows;
+  std::vector<const pten::SelectedRows*> src_selected_rows;
   src_selected_rows.emplace_back(&src_selected_rows1);
   src_selected_rows.emplace_back(&src_selected_rows2);
-  auto dst_var = std::make_shared<VariableWrapper>("Temp");
-  auto* dst_selected_rows =
-      dst_var->MutableVar()->GetMutable<framework::SelectedRows>();
+
+  auto dst_var = std::make_shared<ReturnVarType>("Temp");
+  pten::SelectedRows* dst_selected_rows =
+      GetEmptyInnerTensor<pten::SelectedRows>(dst_var.get());
 
 #define PADDLE_SELECTED_ROWS_ADD(dev_ctx_type, cpp_type)                  \
   if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) {      \
@@ -450,11 +534,16 @@ std::shared_ptr<VariableWrapper> SelectedRowsMerge(
 #endif
 
 #undef PADDLE_SELECTED_ROWS_ADD
-
   PADDLE_THROW(platform::errors::InvalidArgument(
       "Not supported data type %s for SelectedRowsMerge",
       framework::DataTypeToString(data_type)));
 }
+
+template std::shared_ptr<paddle::experimental::Tensor> SelectedRowsMerge(
+    const paddle::experimental::Tensor& src1,
+    const paddle::experimental::Tensor& src2);
+template std::shared_ptr<paddle::imperative::VariableWrapper> SelectedRowsMerge(
+    const framework::Variable& src1, const framework::Variable& src2);
 
 void VariableWrapperAdd(std::shared_ptr<VariableWrapper> var,
                         VariableWrapper* dst_var, bool unchange_input) {
@@ -462,8 +551,8 @@ void VariableWrapperAdd(std::shared_ptr<VariableWrapper> var,
   auto* dst = dst_var->MutableVar();
   if (dst->IsType<framework::LoDTensor>()) {
     if (src.IsType<framework::LoDTensor>()) {
-      TensorAdd(src, dst);
-    } else if (src.IsType<framework::SelectedRows>()) {
+      TensorAdd<framework::Variable>(src, dst);
+    } else if (src.IsType<pten::SelectedRows>()) {
       SelectedRowsAddToTensor(src, dst);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -481,8 +570,8 @@ void VariableWrapperAdd(std::shared_ptr<VariableWrapper> var,
         SelectedRowsAddToTensor(*dst, src_mutable);
         *dst = std::move(*(var->MutableVar()));
       }
-    } else if (src.IsType<framework::SelectedRows>()) {
-      auto temp = SelectedRowsMerge(src, *dst);
+    } else if (src.IsType<pten::SelectedRows>()) {
+      auto temp = SelectedRowsMerge<VariableWrapper>(src, *dst);
       *dst = std::move(*(temp->MutableVar()));
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -497,8 +586,8 @@ static platform::Place GetPlaceOfVar(
   platform::Place place;
   if (var->Var().IsType<framework::LoDTensor>()) {
     place = var->Var().Get<framework::LoDTensor>().place();
-  } else if (var->Var().IsType<framework::SelectedRows>()) {
-    place = var->Var().Get<framework::SelectedRows>().place();
+  } else if (var->Var().IsType<pten::SelectedRows>()) {
+    place = var->Var().Get<pten::SelectedRows>().place();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "only support LoDTensor and SelectedRows in dygraph"));
@@ -529,16 +618,16 @@ void GradientAccumulator::AccumulateGrad() {
                "previous gradient.";
     if (dst->IsType<framework::LoDTensor>()) {
       if (src->IsType<framework::LoDTensor>()) {
-        TensorAdd(*src, dst);
-      } else if (src->IsType<framework::SelectedRows>()) {
+        TensorAdd<framework::Variable>(*src, dst);
+      } else if (src->IsType<pten::SelectedRows>()) {
         SelectedRowsAddToTensor(*src, dst);
       }
-    } else if (dst->IsType<framework::SelectedRows>()) {
+    } else if (dst->IsType<pten::SelectedRows>()) {
       if (src->IsType<framework::LoDTensor>()) {
         SelectedRowsAddToTensor(*dst, src);
         *dst = std::move(*src);
-      } else if (src->IsType<framework::SelectedRows>()) {
-        auto temp = SelectedRowsMerge(*src, *dst);
+      } else if (src->IsType<pten::SelectedRows>()) {
+        auto temp = SelectedRowsMerge<VariableWrapper>(*src, *dst);
         *dst = std::move(*(temp->MutableVar()));
       }
     } else {
@@ -642,13 +731,15 @@ void EagerGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
         VLOG(6) << "Dims of " << dst_var->Name() << " is set as: "
                 << var->Var().Get<framework::LoDTensor>().dims();
         tensor->Resize(var->Var().Get<framework::LoDTensor>().dims());
-        tensor->mutable_data(place, var->DataType());
-        operators::math::set_constant(*dev_ctx, tensor, 0.0);
+        tensor->mutable_data(place,
+                             framework::TransToPtenDataType(var->DataType()));
+        pten::funcs::set_constant(*dev_ctx, tensor, 0.0);
       } else {
         auto* tensor =
             dst_var->MutableVar()->GetMutable<framework::LoDTensor>();
-        tensor->mutable_data(place, var->DataType());
-        operators::math::set_constant(*dev_ctx, tensor, 0.0);
+        tensor->mutable_data(place,
+                             framework::TransToPtenDataType(var->DataType()));
+        pten::funcs::set_constant(*dev_ctx, tensor, 0.0);
       }
     }
   }
@@ -657,7 +748,7 @@ void EagerGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
   // so synchronous VariableWrapper with Variable.
   if (dst_var->Var().IsType<framework::LoDTensor>()) {
     dst_var->SetType(framework::proto::VarType::LOD_TENSOR);
-  } else if (dst_var->Var().IsType<framework::SelectedRows>()) {
+  } else if (dst_var->Var().IsType<pten::SelectedRows>()) {
     dst_var->SetType(framework::proto::VarType::SELECTED_ROWS);
   }
 
@@ -701,7 +792,7 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
       if (paddle::platform::is_gpu_place(place)) {
         // sum selected rows firstly
         for (auto& var_info : tmp_grad_vars_) {
-          if (!var_info.var->Var().IsType<framework::SelectedRows>()) {
+          if (!var_info.var->Var().IsType<pten::SelectedRows>()) {
             continue;
           }
 
@@ -744,7 +835,7 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
           }
           PADDLE_ENFORCE_EQ(
               var_info.var->Var().IsType<framework::LoDTensor>() ||
-                  var_info.var->Var().IsType<framework::SelectedRows>(),
+                  var_info.var->Var().IsType<pten::SelectedRows>(),
               true, platform::errors::PermissionDenied("The type of Gradient "
                                                        "var must be LoDTensor "
                                                        "or SelectedRows"));
@@ -774,13 +865,15 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
         VLOG(6) << "Dims of " << dst_var->Name() << " is set as: "
                 << var->Var().Get<framework::LoDTensor>().dims();
         tensor->Resize(var->Var().Get<framework::LoDTensor>().dims());
-        tensor->mutable_data(place, var->DataType());
-        operators::math::set_constant(*dev_ctx, tensor, 0.0);
+        tensor->mutable_data(place,
+                             framework::TransToPtenDataType(var->DataType()));
+        pten::funcs::set_constant(*dev_ctx, tensor, 0.0);
       } else {
         auto* tensor =
             dst_var->MutableVar()->GetMutable<framework::LoDTensor>();
-        tensor->mutable_data(place, var->DataType());
-        operators::math::set_constant(*dev_ctx, tensor, 0.0);
+        tensor->mutable_data(place,
+                             framework::TransToPtenDataType(var->DataType()));
+        pten::funcs::set_constant(*dev_ctx, tensor, 0.0);
       }
     }
     // looks like tmp_grad_vars will not have any member but just in case
@@ -789,7 +882,7 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
 
   if (dst_var->Var().IsType<framework::LoDTensor>()) {
     dst_var->SetType(framework::proto::VarType::LOD_TENSOR);
-  } else if (dst_var->Var().IsType<framework::SelectedRows>()) {
+  } else if (dst_var->Var().IsType<pten::SelectedRows>()) {
     dst_var->SetType(framework::proto::VarType::SELECTED_ROWS);
   }
 }

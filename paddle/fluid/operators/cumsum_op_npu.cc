@@ -27,10 +27,12 @@ static void CumsumImp(const Tensor& input, Tensor* output,
   auto stream =
       ctx.template device_context<paddle::platform::NPUDeviceContext>()
           .stream();
-  if (input.type() == framework::proto::VarType::INT64) {
+  if (framework::TransToProtoVarType(input.dtype()) ==
+      framework::proto::VarType::INT64) {
     Tensor tmp_input;
     tmp_input.mutable_data<float>(input.dims(), ctx.GetPlace());
-    auto dst_acl_dtype = ConvertToNpuDtype(tmp_input.type());
+    auto dst_acl_dtype =
+        ConvertToNpuDtype(framework::TransToProtoVarType(tmp_input.type()));
     const auto& cast_runner_1 =
         NpuOpRunner("Cast", {input}, {tmp_input},
                     {{"dst_type", static_cast<int>(dst_acl_dtype)}});
@@ -42,7 +44,8 @@ static void CumsumImp(const Tensor& input, Tensor* output,
         NpuOpRunner("CumsumD", {tmp_input}, {tmp_output}, attr_input);
     runner.Run(stream);
 
-    dst_acl_dtype = ConvertToNpuDtype(output->type());
+    dst_acl_dtype =
+        ConvertToNpuDtype(framework::TransToProtoVarType(output->type()));
     const auto& cast_runner_2 =
         NpuOpRunner("Cast", {tmp_output}, {*output},
                     {{"dst_type", static_cast<int>(dst_acl_dtype)}});

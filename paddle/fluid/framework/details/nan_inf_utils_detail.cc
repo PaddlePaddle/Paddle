@@ -19,6 +19,7 @@
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #endif
+#include "paddle/fluid/framework/convert_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -307,7 +308,7 @@ void tensor_check<platform::CPUDeviceContext>(const std::string& op_type,
                                               const platform::Place& place) {
   TensorCheckerVisitor<platform::CPUDeviceContext> vistor(op_type, var_name,
                                                           tensor, place);
-  VisitDataType(tensor.type(), vistor);
+  VisitDataType(framework::TransToProtoVarType(tensor.dtype()), vistor);
 }
 
 void CheckVarHasNanOrInf(const std::string& op_type,
@@ -321,8 +322,8 @@ void CheckVarHasNanOrInf(const std::string& op_type,
   const Tensor* tensor{nullptr};
   if (var->IsType<framework::LoDTensor>()) {
     tensor = &var->Get<framework::LoDTensor>();
-  } else if (var->IsType<framework::SelectedRows>()) {
-    tensor = &var->Get<framework::SelectedRows>().value();
+  } else if (var->IsType<pten::SelectedRows>()) {
+    tensor = &var->Get<pten::SelectedRows>().value();
   } else {
     VLOG(10) << var_name << " var_name need not to check";
     return;
@@ -348,7 +349,8 @@ void CheckVarHasNanOrInf(const std::string& op_type,
     return;
   } else if (platform::is_xpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_XPU
-    if (tensor->type() != proto::VarType::FP32) {
+    if (framework::TransToProtoVarType(tensor->dtype()) !=
+        proto::VarType::FP32) {
       return;
     }
 
@@ -377,14 +379,15 @@ void CheckVarHasNanOrInf(const std::string& op_type,
     return;
   } else if (platform::is_npu_place(tensor->place())) {
 #ifdef PADDLE_WITH_ASCEND_CL
-    if (tensor->type() != proto::VarType::FP32) {
+    if (framework::TransToProtoVarType(tensor->dtype()) !=
+        proto::VarType::FP32) {
       return;
     }
 
     framework::LoDTensor cpu_tensor;
     cpu_tensor.Resize(tensor->dims());
     float* cpu_data = static_cast<float*>(
-        cpu_tensor.mutable_data(platform::CPUPlace(), tensor->type()));
+        cpu_tensor.mutable_data(platform::CPUPlace(), tensor->dtype()));
 
     framework::TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
     bool flag = false;
@@ -468,15 +471,17 @@ void PrintNpuVarInfo(const std::string& op_type, const std::string& var_name,
   const Tensor* tensor{nullptr};
   if (var->IsType<framework::LoDTensor>()) {
     tensor = &var->Get<framework::LoDTensor>();
-  } else if (var->IsType<framework::SelectedRows>()) {
-    tensor = &var->Get<framework::SelectedRows>().value();
+  } else if (var->IsType<pten::SelectedRows>()) {
+    tensor = &var->Get<pten::SelectedRows>().value();
   } else {
     VLOG(10) << var_name << " var_name need not to check";
     return;
   }
 
-  if ((tensor->type() != proto::VarType::FP32) &&
-      (tensor->type() != proto::VarType::FP16)) {
+  if ((framework::TransToProtoVarType(tensor->dtype()) !=
+       proto::VarType::FP32) &&
+      (framework::TransToProtoVarType(tensor->dtype()) !=
+       proto::VarType::FP16)) {
     return;
   }
 
@@ -490,16 +495,17 @@ void PrintNpuVarInfo(const std::string& op_type, const std::string& var_name,
 
   framework::Tensor cpu_tensor;
   cpu_tensor.Resize(tensor->dims());
-  cpu_tensor.mutable_data(platform::CPUPlace(), tensor->type());
+  cpu_tensor.mutable_data(platform::CPUPlace(), tensor->dtype());
   framework::TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
 
   LOG(WARNING) << "print [" << var_name << "] tensor info:";
   // use env strategy control in future, -1=print_all.
   int print_num = 3;
-  if (tensor->type() == proto::VarType::FP32) {
+  if (framework::TransToProtoVarType(tensor->dtype()) == proto::VarType::FP32) {
     const float* value = cpu_tensor.data<float>();
     PrintNanInf(value, tensor->numel(), print_num, op_type, var_name, false);
-  } else if (tensor->type() == proto::VarType::FP16) {
+  } else if (framework::TransToProtoVarType(tensor->dtype()) ==
+             proto::VarType::FP16) {
     const paddle::platform::float16* value =
         cpu_tensor.data<paddle::platform::float16>();
     PrintNanInf(value, tensor->numel(), print_num, op_type, var_name, false);

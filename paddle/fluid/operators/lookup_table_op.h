@@ -28,7 +28,7 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
-using SelectedRows = framework::SelectedRows;
+using SelectedRows = pten::SelectedRows;
 using DDim = framework::DDim;
 
 constexpr int64_t kNoPadding = -1;
@@ -82,12 +82,13 @@ class LookupTableKernel : public framework::OpKernel<T> {
         }
       }
 
-    } else if (table_var->IsType<SelectedRows>()) {
-      const auto &table_t = table_var->Get<SelectedRows>();
+    } else if (table_var->IsType<pten::SelectedRows>()) {
+      const auto &table_t = table_var->Get<pten::SelectedRows>();
       int64_t row_width = table_t.value().dims()[1];
       const auto *table = table_t.value().data<T>();
       auto *output = output_t->mutable_data<T>(context.GetPlace());
-      auto input_data_type = table_t.value().type();
+      auto input_data_type =
+          framework::TransToProtoVarType(table_t.value().dtype());
       for (int64_t i = 0; i < ids_numel; ++i) {
         if (padding_idx != kNoPadding && ids[i] == padding_idx) {
           memset(output + i * row_width, 0, row_width * sizeof(T));
@@ -155,8 +156,8 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
     DDim table_dim;
     if (table_var->IsType<LoDTensor>()) {
       table_dim = context.Input<LoDTensor>("W")->dims();
-    } else if (table_var->IsType<SelectedRows>()) {
-      auto *table_t = context.Input<SelectedRows>("W");
+    } else if (table_var->IsType<pten::SelectedRows>()) {
+      auto *table_t = context.Input<pten::SelectedRows>("W");
       table_dim = table_t->value().dims();
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -171,7 +172,8 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
     if (is_sparse) {
       auto *ids = context.Input<LoDTensor>("Ids");
       auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
-      auto *d_table = context.Output<SelectedRows>(framework::GradVarName("W"));
+      auto *d_table =
+          context.Output<pten::SelectedRows>(framework::GradVarName("W"));
 
       auto *ids_data = ids->data<int64_t>();
       int64_t ids_num = ids->numel();

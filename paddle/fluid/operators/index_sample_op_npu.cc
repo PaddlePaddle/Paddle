@@ -60,7 +60,7 @@ class IndexSampleNPUKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<framework::LoDTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
-    const auto& index_type = index->type();
+    const auto& index_type = framework::TransToProtoVarType(index->dtype());
     if (index_type == framework::proto::VarType::INT32) {
       IndexSampleGather<int32_t>(dev_ctx, index, input, out);
     } else {
@@ -113,7 +113,7 @@ class IndexSampleGradNPUKernel : public framework::OpKernel<T> {
         ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
     x_grad->mutable_data<T>(ctx.GetPlace());
 
-    const auto& index_type = index->type();
+    const auto& index_type = framework::TransToProtoVarType(index->dtype());
     if (index_type == framework::proto::VarType::INT32) {
       IndexSampleGradScatter<int32_t>(dev_ctx, index, out_grad, x_grad);
     } else {

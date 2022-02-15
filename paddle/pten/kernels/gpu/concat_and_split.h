@@ -134,12 +134,12 @@ __global__ void ConcatKernel_(const T** inputs_data,
 }
 
 template <typename T>
-__global__ void SplitKernel(const T* input_data,
-                            const int64_t in_row,
-                            const int64_t in_col,
-                            const int64_t* out_cols,
-                            int out_cols_size,
-                            T** outputs_data) {
+__global__ void SplitKernel_(const T* input_data,
+                             const int64_t in_row,
+                             const int64_t in_col,
+                             const int64_t* out_cols,
+                             int out_cols_size,
+                             T** outputs_data) {
   int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
   int curr_segment = 0;
   int curr_offset = out_cols[0];
@@ -184,21 +184,21 @@ __device__ void SplitKernelDetail(const T* input_data,
 }
 
 template <typename T>
-__global__ void SplitKernel(const T* input_data,
-                            const int64_t in_row,
-                            const int64_t in_col,
-                            const int64_t fixed_out_col,
-                            T** outputs_data) {
+__global__ void SplitKernel_(const T* input_data,
+                             const int64_t in_row,
+                             const int64_t in_col,
+                             const int64_t fixed_out_col,
+                             T** outputs_data) {
   SplitKernelDetail<T>(input_data, in_row, in_col, fixed_out_col, outputs_data);
 }
 
 template <typename T>
-__global__ void SplitKernel(const T* input_data,
-                            const int64_t in_row,
-                            const int64_t in_col,
-                            const int64_t fixed_out_col,
-                            T* outputs_addr0,
-                            T* outputs_addr1) {
+__global__ void SplitKernel_(const T* input_data,
+                             const int64_t in_row,
+                             const int64_t in_col,
+                             const int64_t fixed_out_col,
+                             T* outputs_addr0,
+                             T* outputs_addr1) {
   T* outputs_data[2];
   outputs_data[0] = outputs_addr0;
   outputs_data[1] = outputs_addr1;
@@ -206,13 +206,13 @@ __global__ void SplitKernel(const T* input_data,
 }
 
 template <typename T>
-__global__ void SplitKernel(const T* input_data,
-                            const int64_t in_row,
-                            const int64_t in_col,
-                            const int64_t fixed_out_col,
-                            T* outputs_addr0,
-                            T* outputs_addr1,
-                            T* outputs_addr2) {
+__global__ void SplitKernel_(const T* input_data,
+                             const int64_t in_row,
+                             const int64_t in_col,
+                             const int64_t fixed_out_col,
+                             T* outputs_addr0,
+                             T* outputs_addr1,
+                             T* outputs_addr2) {
   T* outputs_data[3];
   outputs_data[0] = outputs_addr0;
   outputs_data[1] = outputs_addr1;
@@ -221,14 +221,14 @@ __global__ void SplitKernel(const T* input_data,
 }
 
 template <typename T>
-__global__ void SplitKernel(const T* input_data,
-                            const int64_t in_row,
-                            const int64_t in_col,
-                            const int64_t fixed_out_col,
-                            T* outputs_addr0,
-                            T* outputs_addr1,
-                            T* outputs_addr2,
-                            T* outputs_addr3) {
+__global__ void SplitKernel_(const T* input_data,
+                             const int64_t in_row,
+                             const int64_t in_col,
+                             const int64_t fixed_out_col,
+                             T* outputs_addr0,
+                             T* outputs_addr1,
+                             T* outputs_addr2,
+                             T* outputs_addr3) {
   T* outputs_data[4];
   outputs_data[0] = outputs_addr0;
   outputs_data[1] = outputs_addr1;
@@ -237,12 +237,11 @@ __global__ void SplitKernel(const T* input_data,
   SplitKernelDetail<T>(input_data, in_row, in_col, fixed_out_col, outputs_data);
 }
 
-static inline void GetBlockDims(
-    const paddle::platform::CUDADeviceContext& context,
-    int64_t num_rows,
-    int64_t num_cols,
-    dim3* block_dims,
-    dim3* grid_dims) {
+static inline void GetBlockDims(const pten::GPUContext& context,
+                                int64_t num_rows,
+                                int64_t num_cols,
+                                dim3* block_dims,
+                                dim3* grid_dims) {
   // Set the thread block and grid according to CurrentDeviceId
   const int kThreadsPerBlock = 1024;
   int block_cols = kThreadsPerBlock;
@@ -498,7 +497,7 @@ void SplitImpl(const Context& context,
 
   if (has_same_shape) {
     if (o_num == 2) {
-      SplitKernel<<<grid_dims, block_dims, 0, context.stream()>>>(
+      SplitKernel_<<<grid_dims, block_dims, 0, context.stream()>>>(
           input.data<T>(),
           in_row,
           in_col,
@@ -506,7 +505,7 @@ void SplitImpl(const Context& context,
           outputs_data[0],
           outputs_data[1]);
     } else if (o_num == 3) {
-      SplitKernel<<<grid_dims, block_dims, 0, context.stream()>>>(
+      SplitKernel_<<<grid_dims, block_dims, 0, context.stream()>>>(
           input.data<T>(),
           in_row,
           in_col,
@@ -515,7 +514,7 @@ void SplitImpl(const Context& context,
           outputs_data[1],
           outputs_data[2]);
     } else if (o_num == 4) {
-      SplitKernel<<<grid_dims, block_dims, 0, context.stream()>>>(
+      SplitKernel_<<<grid_dims, block_dims, 0, context.stream()>>>(
           input.data<T>(),
           in_row,
           in_col,
@@ -525,7 +524,7 @@ void SplitImpl(const Context& context,
           outputs_data[2],
           outputs_data[3]);
     } else {
-      SplitKernel<<<grid_dims, block_dims, 0, context.stream()>>>(
+      SplitKernel_<<<grid_dims, block_dims, 0, context.stream()>>>(
           input.data<T>(), in_row, in_col, out0_col, dev_out_gpu_data);
     }
   } else {
@@ -543,7 +542,7 @@ void SplitImpl(const Context& context,
     int64_t* dev_outs_col_data =
         reinterpret_cast<int64_t*>(tmp_dev_ins_col_data->ptr());
 
-    SplitKernel<<<grid_dims, block_dims, 0, context.stream()>>>(
+    SplitKernel_<<<grid_dims, block_dims, 0, context.stream()>>>(
         input.data<T>(),
         in_row,
         in_col,

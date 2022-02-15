@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/cast_op.h"
 #include <memory>
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/float16.h"
 #ifdef PADDLE_WITH_MLU
@@ -82,7 +83,9 @@ class CastOp : public framework::OperatorWithKernel {
     auto &tensor_place = tensor->place();
     // NOTE: cuda pinned tensor need to copy its data to target place
     if (platform::is_cuda_pinned_place(tensor_place)) {
-      return framework::OpKernelType(tensor->type(), ctx.device_context());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor->dtype()),
+          ctx.device_context());
     }
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -100,31 +103,32 @@ class CastOp : public framework::OperatorWithKernel {
       return true;
     };
 
-    if (this->CanMKLDNNBeUsed(ctx, tensor->type()) && MKLDNNSupportsCast()) {
-      return framework::OpKernelType(tensor->type(), ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
+    if (this->CanMKLDNNBeUsed(
+            ctx, framework::TransToProtoVarType(tensor->dtype())) &&
+        MKLDNNSupportsCast()) {
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor->dtype()), ctx.GetPlace(),
+          framework::DataLayout::kMKLDNN, framework::LibraryType::kMKLDNN);
     }
 #endif
 #ifdef PADDLE_WITH_MLU
     auto src_type = static_cast<VT::Type>(ctx.Attr<int>("in_dtype"));
     auto dst_type = static_cast<VT::Type>(ctx.Attr<int>("out_dtype"));
     if (src_type == dst_type || MLUSupportsCast(src_type, dst_type)) {
-      return framework::OpKernelType(tensor->type(), tensor_place);
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor->dtype()), tensor_place);
     } else {
       VLOG(3) << "MLU not support cast type: "
               << framework::DataTypeToString(src_type)
               << " to type: " << framework::DataTypeToString(dst_type)
               << ", fallbacking to CPU one!";
-      return framework::OpKernelType(tensor->type(), platform::CPUPlace());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor->dtype()),
+          platform::CPUPlace());
     }
 #endif
-    return framework::OpKernelType(tensor->type(), tensor_place);
-  }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext &ctx) const override {
-    return framework::KernelSignature("cast", {"X"}, {"out_dtype"}, {"Out"});
+    return framework::OpKernelType(
+        framework::TransToProtoVarType(tensor->dtype()), tensor_place);
   }
 };
 
@@ -133,23 +137,27 @@ class CastOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
-#define REGISTER_CAST_CPU_BASE(op_name, ...)                                  \
-  REGISTER_OPERATOR(op_name, ops::CastOp,                                     \
-                    ops::CastOpGradMaker<paddle::framework::OpDesc>,          \
-                    ops::CastOpGradMaker<paddle::imperative::OpBase>,         \
-                    ops::CastOpProtoMaker);                                   \
-  REGISTER_OP_CPU_KERNEL(                                                     \
-      op_name, ops::CastOpKernel<CPU, float>, ops::CastOpKernel<CPU, double>, \
-      ops::CastOpKernel<CPU, int>, ops::CastOpKernel<CPU, int64_t>,           \
-      ops::CastOpKernel<CPU, int>, ops::CastOpKernel<CPU, int16_t>,           \
-      ops::CastOpKernel<CPU, bool>, ops::CastOpKernel<CPU, uint8_t>,          \
-      ops::CastOpKernel<CPU, paddle::platform::float16>,                      \
-      ops::CastOpKernel<CPU, paddle::platform::bfloat16>,                     \
-      ops::CastOpKernel<CPU, paddle::platform::complex<float>>,               \
-      ops::CastOpKernel<CPU, paddle::platform::complex<double>>);
 
-REGISTER_CAST_CPU_BASE(cast)
+// cast use pten kernel, so no need to REGISTER_OP_CPU_KERNEL here.
+REGISTER_OPERATOR(cast, ops::CastOp,
+                  ops::CastOpGradMaker<paddle::framework::OpDesc>,
+                  ops::CastOpGradMaker<paddle::imperative::OpBase>,
+                  ops::CastOpProtoMaker);
+
 // [ why register transfer_dtype_op alias with cast_op? ]
 // In case of InterpreterCore, if we reuse cast_op, we cannot distinguish
 // which cast_op is inserted by new executor when we do profiling.
-REGISTER_CAST_CPU_BASE(transfer_dtype)
+REGISTER_OPERATOR(transfer_dtype, ops::CastOp,
+                  ops::CastOpGradMaker<paddle::framework::OpDesc>,
+                  ops::CastOpGradMaker<paddle::imperative::OpBase>,
+                  ops::CastOpProtoMaker);
+REGISTER_OP_CPU_KERNEL(
+    transfer_dtype, ops::CastOpKernel<CPU, float>,
+    ops::CastOpKernel<CPU, double>, ops::CastOpKernel<CPU, int>,
+    ops::CastOpKernel<CPU, int64_t>, ops::CastOpKernel<CPU, int>,
+    ops::CastOpKernel<CPU, int16_t>, ops::CastOpKernel<CPU, bool>,
+    ops::CastOpKernel<CPU, uint8_t>,
+    ops::CastOpKernel<CPU, paddle::platform::float16>,
+    ops::CastOpKernel<CPU, paddle::platform::bfloat16>,
+    ops::CastOpKernel<CPU, paddle::platform::complex<float>>,
+    ops::CastOpKernel<CPU, paddle::platform::complex<double>>);

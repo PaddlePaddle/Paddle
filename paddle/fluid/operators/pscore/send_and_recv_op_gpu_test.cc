@@ -20,8 +20,8 @@ limitations under the License. */
 #include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/distributed/service/heter_client.h"
-#include "paddle/fluid/distributed/service/heter_server.h"
+#include "paddle/fluid/distributed/ps/service/heter_client.h"
+#include "paddle/fluid/distributed/ps/service/heter_server.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
@@ -35,7 +35,7 @@ namespace memory = paddle::memory;
 using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
 using VarMsg = ::paddle::distributed::VariableMessage;
 
-USE_OP(scale);
+USE_OP_ITSELF(scale);
 USE_OP(send_and_recv);
 
 std::shared_ptr<distributed::HeterServer> b_rpc_service2;
@@ -59,7 +59,7 @@ framework::BlockDesc* AppendSendAndRecvBlock(framework::ProgramDesc* program) {
 
 void CreateVarsOnScope(framework::Scope* scope) {
   auto w_var = scope->Var("w");
-  w_var->GetMutable<framework::SelectedRows>();
+  w_var->GetMutable<pten::SelectedRows>();
 
   auto out_var = scope->Var("out");
   out_var->GetMutable<framework::LoDTensor>();
@@ -96,11 +96,12 @@ void InitTensorsOnClient(framework::Scope* scope, int64_t rows_numel,
   std::vector<float> temp_vec{0};
   float* temp_ptr = temp_vec.data();
 
-  memory::Copy(
-      place, reinterpret_cast<void*>(micro_id_ptr), platform::CPUPlace(),
-      reinterpret_cast<void*>(temp_ptr),
-      micro_id_var->numel() * framework::SizeOfType(micro_id_var->type()),
-      stream);
+  memory::Copy(place, reinterpret_cast<void*>(micro_id_ptr),
+               platform::CPUPlace(), reinterpret_cast<void*>(temp_ptr),
+               micro_id_var->numel() *
+                   framework::SizeOfType(
+                       framework::TransToProtoVarType(micro_id_var->dtype())),
+               stream);
 
   auto x_var = scope->Var("x")->GetMutable<framework::LoDTensor>();
   float* x_ptr =
@@ -110,7 +111,8 @@ void InitTensorsOnClient(framework::Scope* scope, int64_t rows_numel,
   float* x_vec_ptr = x_vec.data();
   memory::Copy(place, reinterpret_cast<void*>(x_ptr), platform::CPUPlace(),
                reinterpret_cast<void*>(x_vec_ptr),
-               x_var->numel() * framework::SizeOfType(x_var->type()), stream);
+               x_var->numel() * framework::DataTypeSize(x_var->dtype()),
+               stream);
 
   // auto res_var = scope->Var("res")->GetMutable<framework::LoDTensor>();
   // float* res_ptr =
@@ -121,7 +123,7 @@ void InitTensorsOnClient(framework::Scope* scope, int64_t rows_numel,
 void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope);
-  auto w = scope->Var("w")->GetMutable<framework::SelectedRows>();
+  auto w = scope->Var("w")->GetMutable<pten::SelectedRows>();
   auto w_value = w->mutable_value();
   w_value->Resize({rows_numel, 10});
   for (int64_t i = 0; i < rows_numel; ++i) w->AutoGrownIndex(i, true);
@@ -222,6 +224,10 @@ TEST(SENDANDRECV, GPU) {
   framework::Scope* scope = (*micro_scope)[0];
   platform::CUDAPlace place;
   platform::CUDADeviceContext ctx(place);
+  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                       .GetAllocator(place, ctx.stream())
+                       .get());
+  ctx.PartialInitWithAllocator();
 
   framework::Executor exe(place);
   // create var on local scope

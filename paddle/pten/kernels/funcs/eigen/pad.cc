@@ -11,6 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include "paddle/pten/common/bfloat16.h"
 #include "paddle/pten/common/complex.h"
 #include "paddle/pten/kernels/funcs/eigen/eigen_function.h"
 
@@ -61,6 +62,7 @@ INSTANTIATION(EigenPad, int);
 INSTANTIATION(EigenPad, int64_t);
 INSTANTIATION(EigenPad, float);
 INSTANTIATION(EigenPad, double);
+INSTANTIATION(EigenPad, dtype::bfloat16);
 INSTANTIATION(EigenPad, dtype::complex<float>);
 INSTANTIATION(EigenPad, dtype::complex<double>);
 #undef INSTANTIATION

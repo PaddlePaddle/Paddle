@@ -17,11 +17,13 @@ add_subdirectory(kernels)
 add_subdirectory(infermeta)
 # pten operator definitions
 add_subdirectory(ops)
+# pten tools
+add_subdirectory(tools)
 # pten tests
 add_subdirectory(tests)
 
 # make an unity target for compile deps
-set(PTEN_DEPS convert_utils dense_tensor pten_context kernel_factory kernel_context arg_map_context infermeta lod_utils)
+set(PTEN_DEPS convert_utils dense_tensor pten_context kernel_factory kernel_context arg_map_context infermeta lod_utils op_compat_infos sparse_csr_tensor sparse_coo_tensor)
 get_property(pten_kernels GLOBAL PROPERTY PTEN_KERNELS)
 # keep this message for debug, remove it later if needless
 message(STATUS "All standard pten kernels: ${pten_kernels}")

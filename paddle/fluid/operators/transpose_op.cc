@@ -250,7 +250,8 @@ class Transpose2Op : public TransposeOp {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
       using framework::proto::VarType;
-      auto input_data_type = ctx.Input<Tensor>("X")->type();
+      auto input_data_type =
+          framework::TransToProtoVarType(ctx.Input<Tensor>("X")->dtype());
       customized_type_value = (input_data_type == VarType::INT8 ||
                                input_data_type == VarType::UINT8)
                                   ? kTransposeMKLDNNINT8
@@ -356,7 +357,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::TransposeKernel<paddle::platform::CPUDeviceContext,
                          paddle::platform::complex<float>>,
     ops::TransposeKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<double>>);
+                         paddle::platform::complex<double>>,
+    ops::TransposeKernel<paddle::platform::CPUDeviceContext,
+                         paddle::platform::bfloat16>);
 REGISTER_OP_CPU_KERNEL(
     transpose_grad,
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, bool>,
@@ -365,7 +368,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext,
                              paddle::platform::complex<float>>,
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::complex<double>>);
+                             paddle::platform::complex<double>>,
+    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext,
+                             paddle::platform::bfloat16>);
 
 REGISTER_OPERATOR(transpose2, ops::Transpose2Op, ops::Transpose2OpMaker,
                   ops::Transpose2GradMaker<paddle::framework::OpDesc>,
@@ -383,7 +388,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::TransposeKernel<paddle::platform::CPUDeviceContext,
                          paddle::platform::complex<float>>,
     ops::TransposeKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<double>>);
+                         paddle::platform::complex<double>>,
+    ops::TransposeKernel<paddle::platform::CPUDeviceContext,
+                         paddle::platform::bfloat16>);
 REGISTER_OP_CPU_KERNEL(
     transpose2_grad,
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, bool>,
@@ -394,4 +401,6 @@ REGISTER_OP_CPU_KERNEL(
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext,
                              paddle::platform::complex<float>>,
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::complex<double>>);
+                             paddle::platform::complex<double>>,
+    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext,
+                             paddle::platform::bfloat16>);

@@ -13,12 +13,12 @@
 #include <algorithm>
 #include <string>
 #include <vector>
-#include "paddle/fluid/distributed/fleet.h"
-#include "paddle/fluid/distributed/service/communicator.h"
+#include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
+#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -40,8 +40,8 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
 
     if (var->IsType<framework::LoDTensor>()) {
       emb_dim = var->Get<framework::LoDTensor>().dims()[1];
-    } else if (var->IsType<framework::SelectedRows>()) {
-      emb_dim = var->Get<framework::SelectedRows>().value().dims()[1];
+    } else if (var->IsType<pten::SelectedRows>()) {
+      emb_dim = var->Get<pten::SelectedRows>().value().dims()[1];
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Expected type of `W` must be Tensor, SelectedRows.But got "

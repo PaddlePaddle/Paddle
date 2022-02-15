@@ -236,7 +236,8 @@ class MLUCnnlPoolingDesc {
                      const cnnlNanPropagation_t maxpooling_nan_opt,
                      int window_rows, int window_cols, int64_t pad_up,
                      int64_t pad_down, int64_t pad_left, int64_t pad_right,
-                     int row_stride, int col_stride);
+                     int row_stride, int col_stride, int row_dilation,
+                     int col_dilation, bool ceil_mode);
 
   MLUCnnlPoolingDesc(const cnnlPoolingMode_t mode,
                      const cnnlNanPropagation_t maxpooling_nan_opt,
@@ -512,7 +513,7 @@ class MLUCnnl {
   static void RandomUniform(const ExecutionContext& ctx, const int num,
                             const cnnlDataType_t data_type,
                             const cnnlRandGenerator_t mlu_generator,
-                            void* output);
+                            const float min, const float max, void* output);
 
   static void Cumsum(const ExecutionContext& ctx, const int axis,
                      const bool exclusive, const bool reverse,
@@ -643,10 +644,9 @@ class MLUCnnl {
 
   static void PoolingForward(
       const ExecutionContext& ctx, cnnlPoolingMode_t pool_mode,
-      const std::vector<int64_t>& output_shape,
-      cnnlPoolingDescriptor_t pooling_desc, const void* alpha,
-      const cnnlTensorDescriptor_t input_desc, const void* input,
-      const void* beta, const void* extra_input_ptr,
+      int64_t output_h, int64_t output_w, cnnlPoolingDescriptor_t pooling_desc,
+      const void* alpha, const cnnlTensorDescriptor_t input_desc,
+      const void* input, const void* beta, const void* extra_input_ptr,
       const cnnlTensorDescriptor_t output_desc, void* output);
 
   static void Pool3D(const ExecutionContext& ctx, cnnlPoolingMode_t pool_mode,
@@ -678,7 +678,10 @@ class MLUCnnl {
                        const cnnlTensorDescriptor_t a_desc, const void* a,
                        const cnnlTensorDescriptor_t b_desc, const void* b,
                        const cnnlTensorDescriptor_t output_desc, void* output,
-                       const cnnlDataType_t dtype);
+                       const cnnlDataType_t dtype,
+                       const float alpha1_float = 1.f,
+                       const float alpha2_float = 1.f,
+                       const float beta_float = 0.f);
 
   static void BiasAddGrad(const ExecutionContext& ctx, const int axis,
                           const cnnlTensorDescriptor_t out_backprop_desc,
@@ -1136,6 +1139,29 @@ class MLUCnnl {
                          const cnnlTensorDescriptor_t output_desc,
                          void* output);
 };
+
+template <typename T>
+inline void TransposeFromMLUTensor(const ExecutionContext& ctx,
+                                   const std::vector<int> perm,
+                                   const Tensor* transformed_input,
+                                   Tensor* transformed_output,
+                                   bool need_reshape_or_alloc) {
+  auto in_dims_vec = framework::vectorize(transformed_input->dims());
+  if (need_reshape_or_alloc) {
+    transformed_output->mutable_data<T>(
+        {in_dims_vec[perm[0]], in_dims_vec[perm[1]], in_dims_vec[perm[2]],
+         in_dims_vec[perm[3]]},
+        ctx.GetPlace());
+  }
+  MLUCnnlTensorDesc trans_in_desc(*transformed_input, CNNL_LAYOUT_ARRAY,
+                                  ToCnnlDataType<T>());
+  MLUCnnlTensorDesc trans_out_desc(*transformed_output, CNNL_LAYOUT_ARRAY,
+                                   ToCnnlDataType<T>());
+
+  MLUCnnl::Transpose(ctx, perm, in_dims_vec.size(), trans_in_desc.get(),
+                     GetBasePtr(transformed_input), trans_out_desc.get(),
+                     GetBasePtr(transformed_output));
+}
 
 }  // namespace operators
 }  // namespace paddle

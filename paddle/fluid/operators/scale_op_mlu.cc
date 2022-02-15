@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/scale_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 
 namespace paddle {
@@ -32,12 +32,14 @@ class ScaleMLUKernel : public framework::OpKernel<T> {
     if (ctx.HasInput("ScaleTensor")) {
       framework::Tensor float_scale_tensor =
           *ctx.Input<framework::Tensor>("ScaleTensor");
-      if (float_scale_tensor.type() != in->type()) {
+      if (framework::TransToProtoVarType(float_scale_tensor.dtype()) !=
+          framework::TransToProtoVarType(in->dtype())) {
         scale_tensor = ctx.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
         MLUCnnlTensorDesc float_scale_desc(float_scale_tensor);
         MLUCnnlTensorDesc final_scale_desc(scale_tensor);
-        cnnlCastDataType_t cast_type =
-            GetCastDataType(float_scale_tensor.type(), scale_tensor.type());
+        cnnlCastDataType_t cast_type = GetCastDataType(
+            framework::TransToProtoVarType(float_scale_tensor.dtype()),
+            framework::TransToProtoVarType(scale_tensor.dtype()));
         MLUCnnl::Cast(ctx, cast_type, float_scale_desc.get(),
                       GetBasePtr(&float_scale_tensor), final_scale_desc.get(),
                       GetBasePtr(&scale_tensor));
@@ -57,9 +59,9 @@ class ScaleMLUKernel : public framework::OpKernel<T> {
     MLUCnnl::Fill(ctx, bias, bias_desc.get(), GetBasePtr(&bias_tensor));
 
     auto* out_var = ctx.OutputVar("Out");
-    if (in_var->IsType<framework::SelectedRows>() && in_var != out_var) {
-      auto& in_slr = in_var->Get<framework::SelectedRows>();
-      auto* out_slr = out_var->GetMutable<framework::SelectedRows>();
+    if (in_var->IsType<pten::SelectedRows>() && in_var != out_var) {
+      auto& in_slr = in_var->Get<pten::SelectedRows>();
+      auto* out_slr = out_var->GetMutable<pten::SelectedRows>();
       out_slr->set_rows(in_slr.rows());
       out_slr->set_height(in_slr.height());
     }
@@ -83,13 +85,15 @@ class ScaleMLUKernel : public framework::OpKernel<T> {
           ctx.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
       MLUCnnlTensorDesc new_bias_desc(new_bias_tensor);
 
-      MLUCnnlOpTensorDesc mul_op_desc(CNNL_OP_TENSOR_MUL,
-                                      ToCnnlDataType(in->type()),
-                                      CNNL_NOT_PROPAGATE_NAN);
+      MLUCnnlOpTensorDesc mul_op_desc(
+          CNNL_OP_TENSOR_MUL,
+          ToCnnlDataType(framework::TransToProtoVarType(in->dtype())),
+          CNNL_NOT_PROPAGATE_NAN);
       MLUCnnl::OpTensor(
           ctx, mul_op_desc.get(), scale_desc.get(), GetBasePtr(&scale_tensor),
           bias_desc.get(), GetBasePtr(&bias_tensor), new_bias_desc.get(),
-          GetBasePtr(&new_bias_tensor), ToCnnlDataType(in->type()));
+          GetBasePtr(&new_bias_tensor),
+          ToCnnlDataType(framework::TransToProtoVarType(in->dtype())));
       MLUCnnl::Scale(ctx, axis, input_desc.get(), GetBasePtr(in),
                      scale_desc.get(), GetBasePtr(&scale_tensor),
                      new_bias_desc.get(), GetBasePtr(&new_bias_tensor),

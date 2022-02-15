@@ -37,7 +37,7 @@ class ScatterNdAddOpKernel : public framework::OpKernel<T> {
 
     // In place output: Out = X
     framework::TensorCopySync(*X, ctx.GetPlace(), Out);
-    const auto &index_type = Ids->type();
+    const auto &index_type = framework::TransToProtoVarType(Ids->dtype());
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(index_type_match, true,
@@ -76,7 +76,7 @@ class ScatterNdAddGradientOpKernel : public framework::OpKernel<T> {
     if (dUpdates) {
       dUpdates->mutable_data<T>(ctx.GetPlace());
       // Gradient by Gather: dUpdates = dO[Ids]
-      const auto &index_type = Ids->type();
+      const auto &index_type = framework::TransToProtoVarType(Ids->dtype());
       if (index_type == framework::proto::VarType::INT32) {
         CPUGatherNd<T, int32_t>(ctx.device_context(), *dOut, *Ids, dUpdates);
       } else {

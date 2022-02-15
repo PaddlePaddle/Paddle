@@ -37,7 +37,8 @@ class NPUWhereIndexKernel : public framework::OpKernel<T> {
 
     // Run Cast and ReduceSum to get 0 dim of Out
     Tensor booled_cond;
-    if (condition->type() != framework::proto::VarType::BOOL) {
+    if (framework::TransToProtoVarType(condition->dtype()) !=
+        framework::proto::VarType::BOOL) {
       auto bool_type = ConvertToNpuDtype(framework::proto::VarType::BOOL);
       booled_cond.mutable_data<bool>(dims, place);
       const auto& booled_runner =

@@ -15,47 +15,69 @@ limitations under the License. */
 #pragma once
 
 // See Note [ Why still include the fluid headers? ]
+#include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
-#include "paddle/pten/core/tensor_meta.h"
+#include "paddle/pten/core/meta_tensor.h"
 
 namespace pten {
 
+class MetaConfig;
+
 // Common InferMeta Functions for unary operators, The format like:
 //
-//   1. DenseTensorMeta [OpName]InferMeta(const DenseTensorMeta& x_meta, ...)
-//   {}
-//   2. std::pair<DenseTensorMeta, DenseTensorMeta> [OpName]InferMeta(const
-//   DenseTensorMeta&
-//   x_meta, ...) {}
-//   3. std::tuple<DenseTensorMeta, DenseTensorMeta, DenseTensorMeta>
-//   [OpName]InferMeta(const
-//   DenseTensorMeta& x_meta, ...)
-//  NOTE: The name "InferMeta" may be not appropriate. "InferMeta" may be good.
-//  Because functions in this file
-//  not only can infer shape, but alse need infer lod or other useful data.
+//   void [FunctionDesc|OpName]InferMeta(const MetaTensor& x, ..., MetaTensor*
+//   out) {}
+//
+// NOTE: The name "InferShape" may be not appropriate. "InferMeta" may be good.
+// Because functions in this file not only can infer shape, but also need
+// infer lod or other useful data.
 
-DenseTensorMeta UnchangedInferMeta(const DenseTensorMeta& x_meta);
+void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out);
 
-DenseTensorMeta ReductionInferMeta(const DenseTensorMeta& x_meta);
+void FlattenInferMeta(const MetaTensor& x,
+                      int start_axis,
+                      int stop_axis,
+                      MetaTensor* out);
 
-DenseTensorMeta FlattenInferMeta(const DenseTensorMeta& x_meta,
-                                 int start_axis,
-                                 int stop_axis);
-DenseTensorMeta CastInferMeta(const DenseTensorMeta& x_meta,
-                              const DataType out_dtype);
+void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out);
 
-DenseTensorMeta CreateLikeInferMeta(const DenseTensorMeta& x_meta,
-                                    DataType dtype,
-                                    DataLayout layout);
+void CreateLikeInferMeta(const MetaTensor& x,
+                         DataType dtype,
+                         DataLayout layout,
+                         MetaTensor* out);
 
-DenseTensorMeta InferMetaFromVecValue(const DenseTensorMeta& x_meta,
-                                      const std::vector<int64_t>& shape);
+void InferMetaFromVecValue(const MetaTensor& x,
+                           const std::vector<int64_t>& shape,
+                           MetaTensor* out);
 
-DenseTensorMeta ReshapeInferMeta(const DenseTensorMeta& x_meta,
-                                 const ScalarArray& shape);
+void ReshapeInferMeta(const MetaTensor& x,
+                      const ScalarArray& shape,
+                      MetaTensor* out);
 
-DenseTensorMeta ReduceInferMeta(const DenseTensorMeta& x_meta,
-                                const std::vector<int64_t>& axis,
-                                bool keep_dim,
-                                DataType dtype = DataType::UNDEFINED);
+void ReduceInferMetaBase(const MetaTensor& x,
+                         const std::vector<int64_t>& axis,
+                         bool keep_dim,
+                         DataType dtype,
+                         MetaTensor* out);
+
+void ReduceInferMeta(const MetaTensor& x,
+                     const std::vector<int64_t>& axis,
+                     bool keep_dim,
+                     MetaTensor* out);
+
+void SumInferMeta(const MetaTensor& x,
+                  const std::vector<int64_t>& axis,
+                  DataType dtype,
+                  bool keep_dim,
+                  MetaTensor* out);
+
+void TransferLayoutInferMeta(const MetaTensor& x,
+                             DataLayout layout,
+                             MetaTensor* out);
+
+void SplitInferMeta(const MetaTensor& x_meta,
+                    const ScalarArray& num_or_sections,
+                    const Scalar& axis,
+                    std::vector<MetaTensor>* out,
+                    MetaConfig config = MetaConfig());
 }  // namespace pten

@@ -19,8 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 #define INLINE_FOR2(sizei, sizej)     \
   for (int64_t i = 0; i < sizei; i++) \
@@ -35,15 +35,14 @@ namespace math {
 template <typename DeviceContext, typename T>
 struct SelectedRowsAdd {
   void operator()(const DeviceContext& context,
-                  const framework::SelectedRows& input1,
-                  const framework::SelectedRows& input2,
-                  framework::SelectedRows* output);
+                  const pten::SelectedRows& input1,
+                  const pten::SelectedRows& input2, pten::SelectedRows* output);
 };
 
 template <typename DeviceContext, typename T>
 struct SelectedRowsAddTensor {
   void operator()(const DeviceContext& context,
-                  const framework::SelectedRows& input1,
+                  const pten::SelectedRows& input1,
                   const framework::Tensor& input2, framework::Tensor* output);
 };
 
@@ -51,17 +50,17 @@ struct SelectedRowsAddTensor {
 template <typename DeviceContext, typename T>
 struct SelectedRowsAddTo {
   void operator()(const DeviceContext& context,
-                  const framework::SelectedRows& input1,
-                  const int64_t input2_offset, framework::SelectedRows* input2);
+                  const pten::SelectedRows& input1, const int64_t input2_offset,
+                  pten::SelectedRows* input2);
 };
 
 // input2 = [all input in input1] + input2
 template <typename DeviceContext, typename T>
 struct SelectedRowsSumTo {
   void operator()(const DeviceContext& context,
-                  const std::vector<framework::SelectedRows*>& input1,
+                  const std::vector<pten::SelectedRows*>& input1,
                   const std::vector<int64_t>& input2_offsets,
-                  framework::SelectedRows* input2);
+                  pten::SelectedRows* input2);
 };
 
 // FIXME: The result of SelectedRowsAddToTensor maybe non deterministic,
@@ -70,8 +69,7 @@ struct SelectedRowsSumTo {
 template <typename DeviceContext, typename T>
 struct SelectedRowsAddToTensor {
   void operator()(const DeviceContext& context,
-                  const framework::SelectedRows& input1,
-                  framework::Tensor* input2);
+                  const pten::SelectedRows& input1, framework::Tensor* input2);
 };
 
 namespace scatter {
@@ -80,29 +78,25 @@ template <typename DeviceContext, typename T>
 struct MergeAdd {
   // unary functor, merge by adding duplicated rows in
   // the input SelectedRows object.
-  framework::SelectedRows operator()(const DeviceContext& context,
-                                     const framework::SelectedRows& input,
-                                     const bool sorted_result = false);
+  pten::SelectedRows operator()(const DeviceContext& context,
+                                const pten::SelectedRows& input,
+                                const bool sorted_result = false);
+  void operator()(const DeviceContext& context, const pten::SelectedRows& input,
+                  pten::SelectedRows* output, const bool sorted_result = false);
   void operator()(const DeviceContext& context,
-                  const framework::SelectedRows& input,
-                  framework::SelectedRows* output,
-                  const bool sorted_result = false);
-  void operator()(const DeviceContext& context,
-                  const std::vector<const framework::SelectedRows*>& inputs,
-                  framework::SelectedRows* output,
-                  const bool sorted_result = false);
+                  const std::vector<const pten::SelectedRows*>& inputs,
+                  pten::SelectedRows* output, const bool sorted_result = false);
 };
 
 template <typename DeviceContext, typename T>
 struct MergeAverage {
-  framework::SelectedRows operator()(const DeviceContext& context,
-                                     const framework::SelectedRows& input);
+  pten::SelectedRows operator()(const DeviceContext& context,
+                                const pten::SelectedRows& input);
+  void operator()(const DeviceContext& context, const pten::SelectedRows& input,
+                  pten::SelectedRows* output);
   void operator()(const DeviceContext& context,
-                  const framework::SelectedRows& input,
-                  framework::SelectedRows* output);
-  void operator()(const DeviceContext& context,
-                  const std::vector<const framework::SelectedRows*>& inputs,
-                  framework::SelectedRows* output);
+                  const std::vector<const pten::SelectedRows*>& inputs,
+                  pten::SelectedRows* output);
 };
 
 enum class ScatterOps { ASSIGN, ADD, SUB, SUBBY, MUL, DIV, DIVBY };
@@ -111,8 +105,7 @@ enum class ScatterOps { ASSIGN, ADD, SUB, SUBBY, MUL, DIV, DIVBY };
 template <typename DeviceContext, typename T>
 struct UpdateToTensor {
   void operator()(const DeviceContext& context, const ScatterOps& op,
-                  const framework::SelectedRows& input1,
-                  framework::Tensor* input2);
+                  const pten::SelectedRows& input1, framework::Tensor* input2);
 };
 
 }  // namespace scatter

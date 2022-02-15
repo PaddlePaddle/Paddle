@@ -943,7 +943,7 @@ class TheOnePSRuntime(RuntimeBase):
                         ctx.origin_varnames()[0]]
 
                     if self.compiled_strategy.is_geo_mode():
-                        table.table_class = "SparseGeoTable"
+                        table.table_class = "MemorySparseGeoTable"
                     else:
                         all_table_proto = self.context[
                             "user_defined_strategy"].sparse_table_configs
@@ -1306,6 +1306,7 @@ class TheOnePSRuntime(RuntimeBase):
             is_dense=True,
             split_dense_table=self.role_maker._is_heter_parameter_server_mode,
             use_origin_program=True)
+        # TODO(zhaocaibei123): for GEO: should call GeoCommunicator::RecvDense
         self._communicator.pull_dense(denses)
 
         generate_vars = self.context[

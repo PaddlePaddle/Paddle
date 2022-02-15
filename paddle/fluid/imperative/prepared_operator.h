@@ -18,6 +18,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/operator.h"
@@ -26,18 +27,13 @@
 #include "paddle/fluid/imperative/execution_context.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/imperative/var_helper.h"
+
+#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/selected_rows.h"
 
 DECLARE_bool(use_mkldnn);
-
-namespace pten {
-class DenseTensor;
-}  // namespace pten
-
-namespace paddle {
-namespace framework {
-class Variable;
-}  // namespace framework
-}  // namespace paddle
 
 namespace paddle {
 namespace imperative {
@@ -66,10 +62,14 @@ void SetForwardDataTypeOfGradVar<VarBase>(const std::shared_ptr<VarBase>& var) {
   }
 }
 
-extern const std::shared_ptr<VariableWrapper>& GetVariableWrapper(
-    const std::shared_ptr<paddle::imperative::VarBase>& var);
-extern const std::shared_ptr<VariableWrapper>& GetVariableWrapper(
-    const std::shared_ptr<VariableWrapper>& var);
+template <>
+void SetForwardDataTypeOfGradVar<egr::EagerTensor>(
+    const std::shared_ptr<egr::EagerTensor>& var) {
+  VLOG(10) << "Var in Eager dose not support SetForwardDataTypeOfGradVar: "
+           << var->name();
+  // TODO(jiabin): SetForwardDataType of Grad var is not supported yet in
+  // EagerMode.
+}
 
 template <typename VarType>
 std::shared_ptr<NameVarMap<VarType>> PrepareData(
@@ -78,31 +78,32 @@ std::shared_ptr<NameVarMap<VarType>> PrepareData(
   std::shared_ptr<NameVarMap<VarType>> tmp_ins_ptr = nullptr;
   for (const auto& name_pair : ins) {
     for (size_t i = 0; i < name_pair.second.size(); ++i) {
-      auto& var_base = name_pair.second[i];
-      SetForwardDataTypeOfGradVar(var_base);
-      const auto* tensor = GetTensorFromVar(var_base->Var());
+      auto& template_var = name_pair.second[i];
+      SetForwardDataTypeOfGradVar(template_var);
+      const auto* tensor = GetTensorFromVar(template_var->Var());
       if (tensor && tensor->IsInitialized()) {
         auto kernel_type_for_var = op.GetKernelTypeForVar(
             name_pair.first, *tensor, expected_kernel_key);
         if (!NeedTransform(kernel_type_for_var, expected_kernel_key)) {
           continue;
         } else {
-          VLOG(3) << "Transform Variable " << var_base->Name() << " from "
-                  << kernel_type_for_var << " to " << expected_kernel_key;
+          VLOG(3) << "Transform Variable " << GetNameFromVar(template_var)
+                  << " from " << kernel_type_for_var << " to "
+                  << expected_kernel_key;
 
-          if (GetVariableWrapper(var_base)->hasCacheKey(expected_kernel_key)) {
+          if (CheckCachedKey(template_var, expected_kernel_key)) {
             VLOG(3) << "Hit variable_wrapper cache: key="
                     << expected_kernel_key;
             std::shared_ptr<VariableWrapper> cache_var =
-                GetVariableWrapper(var_base)->getCacheValue(
-                    expected_kernel_key);
+                GetCachedValue(template_var, expected_kernel_key);
             if (tmp_ins_ptr == nullptr) {
               tmp_ins_ptr = std::make_shared<NameVarMap<VarType>>(ins);
             }
 
             const auto* tensor = GetTensorFromVar(cache_var->Var());
-            auto tmp_var = std::make_shared<VarType>(var_base->Name());
-            tmp_var->SetType(var_base->Type());
+            auto tmp_var =
+                std::make_shared<VarType>(GetNameFromVar(template_var));
+            SetType(tmp_var, GetType(template_var));
             SetTensorToVariable(cache_var->Var(), *tensor,
                                 tmp_var->MutableVar());
             (*tmp_ins_ptr)[name_pair.first][i] = tmp_var;
@@ -118,20 +119,21 @@ std::shared_ptr<NameVarMap<VarType>> PrepareData(
               if (tmp_ins_ptr == nullptr) {
                 tmp_ins_ptr = std::make_shared<NameVarMap<VarType>>(ins);
               }
-              auto tmp_var = std::make_shared<VarType>(var_base->Name());
-              tmp_var->SetType(var_base->Type());
-              SetTensorToVariable(var_base->Var(), out, tmp_var->MutableVar());
+              auto tmp_var =
+                  std::make_shared<VarType>(GetNameFromVar(template_var));
+              SetType(tmp_var, GetType(template_var));
+              SetTensorToVariable(template_var->Var(), out,
+                                  tmp_var->MutableVar());
               (*tmp_ins_ptr)[name_pair.first][i] = tmp_var;
-
-              GetVariableWrapper(var_base)->setCacheValue(
-                  expected_kernel_key, GetVariableWrapper(tmp_var));
+              SetCachedValue(template_var, expected_kernel_key, tmp_var);
               VLOG(3) << "Set cache to variable_wrapper: key="
                       << expected_kernel_key;
             } else {
               // if dtype is same, transform inplace will not change the
               // original
               // value, transform inplace to avoid multiple copy
-              SetTensorToVariable(var_base->Var(), out, var_base->MutableVar());
+              SetTensorToVariable(template_var->Var(), out,
+                                  template_var->MutableVar());
             }
           }
         }
@@ -169,12 +171,24 @@ class PreparedOp {
                             const framework::AttributeMap& attrs,
                             const framework::AttributeMap& default_attrs);
 
+  static PreparedOp Prepare(const NameVarMap<egr::EagerTensor>& ins,
+                            const NameVarMap<egr::EagerTensor>& outs,
+                            const framework::OperatorWithKernel& op,
+                            const platform::Place& place,
+                            const framework::AttributeMap& attrs,
+                            const framework::AttributeMap& default_attrs);
+
   void Run(const NameVarMap<VarBase>& in, const NameVarMap<VarBase>& out,
            const framework::AttributeMap& attrs,
            const framework::AttributeMap& default_attrs);
 
   void Run(const NameVarMap<VariableWrapper>& ins,
            const NameVarMap<VariableWrapper>& outs,
+           const framework::AttributeMap& attrs,
+           const framework::AttributeMap& default_attrs);
+
+  void Run(const NameVarMap<egr::EagerTensor>& ins,
+           const NameVarMap<egr::EagerTensor>& outs,
            const framework::AttributeMap& attrs,
            const framework::AttributeMap& default_attrs);
 
@@ -190,9 +204,296 @@ class PreparedOp {
   // new pten kernel, if there is a better design in the future,
   // we may polish the implementation here
   bool run_pten_kernel_{false};
+  bool run_kp_kernel_{false};
   framework::KernelSignature pt_kernel_signature_;
   pten::Kernel pt_kernel_;
 };
+
+const inline framework::Attribute& GetAttr(
+    const framework::AttributeMap& attrs,
+    const framework::AttributeMap& default_attrs, const std::string& name) {
+  auto it = attrs.find(name);
+  bool found = it != attrs.end();
+  if (!found) {
+    it = default_attrs.find(name);
+    found = it != default_attrs.end();
+  }
+  PADDLE_ENFORCE_EQ(
+      found, true,
+      platform::errors::NotFound("(%s) is not found in AttributeMap.", name));
+  return it->second;
+}
+
+template <typename VarType>
+void BuildDygraphPtenKernelContext(
+    const framework::KernelSignature& pt_kernel_signature,
+    const pten::Kernel& pt_kernel, const NameVarMap<VarType>& ins,
+    const NameVarMap<VarType>& outs, const framework::AttributeMap& attrs,
+    const framework::AttributeMap& default_attrs,
+    platform::DeviceContext* dev_ctx, pten::KernelContext* kernel_ctx) {
+  kernel_ctx->SetDeviceContext(dev_ctx);
+
+  auto& input_names = std::get<0>(pt_kernel_signature.args);
+  auto& attr_names = std::get<1>(pt_kernel_signature.args);
+  auto& output_names = std::get<2>(pt_kernel_signature.args);
+
+  auto& input_defs = pt_kernel.args_def().input_defs();
+  auto& output_defs = pt_kernel.args_def().output_defs();
+  auto& attr_defs = pt_kernel.args_def().attribute_defs();
+
+  PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
+                    platform::errors::InvalidArgument(
+                        "the size of inputs_args names (%d) must be equal to "
+                        "the size of kernel input_defs (%d).",
+                        input_names.size(), input_defs.size()));
+
+  PADDLE_ENFORCE_EQ(output_names.size(), output_defs.size(),
+                    platform::errors::InvalidArgument(
+                        "the size of outputs_args names (%d) must be equal to "
+                        "the size of kernel output_defs (%d).",
+                        output_names.size(), output_defs.size()));
+
+  PADDLE_ENFORCE_EQ(attr_names.size(), attr_defs.size(),
+                    platform::errors::InvalidArgument(
+                        "the size of attribute_args names (%d) must be equal "
+                        "to the size of kernel attribute_defs (%d).",
+                        attr_names.size(), attr_defs.size()));
+
+  for (size_t i = 0; i < input_names.size(); ++i) {
+    auto it = ins.find(input_names[i]);
+
+    size_t start_idx = (i == 0 ? 0 : kernel_ctx->InputRangeAt(i - 1).second);
+
+    if ((it == ins.end()) &&
+        (input_defs[i].type_index ==
+         std::type_index(typeid(paddle::optional<const pten::DenseTensor&>)))) {
+      kernel_ctx->EmplaceBackInputWithoutSetRange(nullptr);
+      auto end_idx = start_idx + 1;
+      kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
+    } else {
+      auto ins_vector = it->second;
+      size_t end_idx = start_idx + ins_vector.size();
+
+      for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
+        const pten::TensorBase* tensor_in = nullptr;
+        auto& var = ins_vector[offset]->Var();
+        if (var.template IsType<pten::DenseTensor>()) {
+          tensor_in = &(var.template Get<pten::DenseTensor>());
+        } else if (var.template IsType<pten::SelectedRows>()) {
+          tensor_in = &(var.template Get<pten::SelectedRows>());
+        } else {
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "Unsupported input `%s` type when call pt kernel.",
+              framework::ToTypeName(var.Type())));
+        }
+        kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
+      }
+      kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
+    }
+  }
+
+  for (size_t i = 0; i < output_names.size(); ++i) {
+    size_t start_idx = (i == 0 ? 0 : kernel_ctx->OutputRangeAt(i - 1).second);
+
+    auto iter = outs.find(output_names[i]);
+    if (iter == outs.end()) {
+      kernel_ctx->EmplaceBackOutputWithoutSetRange({nullptr});
+      kernel_ctx->AssignOutputRange(std::make_pair(start_idx, start_idx + 1),
+                                    i);
+      continue;
+    }
+
+    auto& outs_vector = iter->second;
+    size_t end_idx = start_idx + outs_vector.size();
+
+    for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
+      if (outs_vector[offset] == nullptr) {
+        kernel_ctx->EmplaceBackOutputWithoutSetRange({nullptr});
+        continue;
+      }
+
+      pten::TensorBase* tensor_out = nullptr;
+      auto* var = outs_vector[offset]->MutableVar();
+      if (var->template IsType<pten::DenseTensor>()) {
+        tensor_out = var->template GetMutable<pten::DenseTensor>();
+      } else if (var->template IsType<pten::SelectedRows>()) {
+        tensor_out = var->template GetMutable<pten::SelectedRows>();
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported output `%s` type when call pt kernel.",
+            framework::ToTypeName(var->Type())));
+      }
+
+      experimental::ResetTensorDtypeAndLayoutByArgDef(tensor_out,
+                                                      output_defs.at(i));
+      framework::SetAllocationForOutputTenosr(
+          tensor_out, pten::TransToPtenPlace(output_defs.at(i).backend));
+
+      kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
+    }
+    kernel_ctx->AssignOutputRange(std::make_pair(start_idx, end_idx), i);
+  }
+
+  for (size_t i = 0; i < attr_names.size(); ++i) {
+    if (attr_defs[i].type_index == std::type_index(typeid(pten::ScalarArray))) {
+      if (attrs.find(attr_names[i]) !=
+          attrs.end()) {  // shape is in the attribute
+        auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
+        if (std::type_index(attr.type()) ==
+            std::type_index(typeid(std::vector<int64_t>))) {
+          kernel_ctx->EmplaceBackAttr(std::move(
+              pten::ScalarArray(BOOST_GET_CONST(std::vector<int64_t>, attr))));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(std::vector<int32_t>))) {
+          kernel_ctx->EmplaceBackAttr(std::move(
+              pten::ScalarArray(BOOST_GET_CONST(std::vector<int32_t>, attr))));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(int64_t))) {
+          kernel_ctx->EmplaceBackAttr(
+              std::move(pten::ScalarArray(&BOOST_GET_CONST(int64_t, attr), 1)));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(int32_t))) {
+          kernel_ctx->EmplaceBackAttr(
+              std::move(pten::ScalarArray(&BOOST_GET_CONST(int32_t, attr), 1)));
+        } else if (attr_defs[i].type_index ==
+                   std::type_index(typeid(std::vector<int32_t>))) {
+          const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
+          kernel_ctx->EmplaceBackAttr(vector_int_attr);
+        } else {
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "Unsupported cast op attribute `%s` to VectorTensor when "
+              "construct KernelContext.",
+              attr_names[i]));
+        }
+      } else {  // shape is in the input
+        auto& ins_vector = ins.at(attr_names[i]);
+        if (ins_vector.size() == 1) {  // ShapeTensor
+          kernel_ctx->EmplaceBackAttr(std::move(
+              experimental::MakePtenScalarArrayFromVar(ins_vector[0]->Var())));
+        } else {  // ShapeTensorList
+          std::vector<framework::Variable*> variables;
+          variables.reserve(ins_vector.size());
+          for (const auto& var_base : ins_vector) {
+            variables.push_back(var_base->MutableVar());
+          }
+          kernel_ctx->EmplaceBackAttr(std::move(
+              experimental::MakePtenScalarArrayFromVarList(variables)));
+        }
+      }
+    } else if (attr_defs[i].type_index ==
+               std::type_index(typeid(pten::Scalar))) {
+      // TODO(chenweihang): support other attrs later
+      // TODO(zhangyunfei): Scalar should hold scaler type, and we should check
+      // attribtue type by attr_defs
+      if (attrs.find(attr_names[i]) != attrs.end() ||
+          default_attrs.find(attr_names[i]) !=
+              default_attrs.end()) {  // scalar is in the attribute
+        auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
+        if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
+          kernel_ctx->EmplaceBackAttr(
+              std::move(pten::Scalar(BOOST_GET_CONST(float, attr))));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(std::string))) {
+          kernel_ctx->EmplaceBackAttr(
+              std::move(pten::Scalar(BOOST_GET_CONST(std::string, attr))));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(int))) {
+          kernel_ctx->EmplaceBackAttr(
+              std::move(pten::Scalar(BOOST_GET_CONST(int, attr))));
+        } else {
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "Unsupported cast op attribute `%s` to Scalar when construct "
+              "KernelContext in dygraph.",
+              attr_names[i]));
+        }
+      } else {  // scalar is in the input
+        auto& ins_vector = ins.at(attr_names[i]);
+        kernel_ctx->EmplaceBackAttr(std::move(
+            experimental::MakePtenScalarFromVar(ins_vector[0]->Var())));
+      }
+
+    } else {
+      // TODO(chenweihang): support other attrs later
+      auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
+      if (attr_defs[i].type_index == std::type_index(typeid(int))) {
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(int, attr));
+      } else if (attr_defs[i].type_index == std::type_index(typeid(float))) {
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(float, attr));
+      } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
+      } else if (attr_defs[i].type_index == std::type_index(typeid(int64_t))) {
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(int64_t, attr));
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::string))) {
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(std::string, attr));
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(pten::DataType))) {
+        auto data_type = framework::TransToPtenDataType(
+            static_cast<framework::proto::VarType::Type>(
+                BOOST_GET_CONST(int, attr)));
+        kernel_ctx->EmplaceBackAttr(data_type);
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::vector<int64_t>))) {
+        if (std::type_index(attr.type()) ==
+            std::type_index(typeid(std::vector<int>))) {
+          // Emplace Back Attr according to the type of Pten_Kernel args.
+          const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
+          const std::vector<int64_t> vector_int64_attr(vector_int_attr.begin(),
+                                                       vector_int_attr.end());
+          kernel_ctx->EmplaceBackAttr(vector_int64_attr);
+        }
+        // TODO(YuanRisheng) Need support vector<int64_t> attr
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported cast op attribute `%s` when construct "
+            "KernelContext in dygraph.",
+            attr_names[i]));
+      }
+    }
+  }
+}
+
+template <typename VarType>
+void PreparePtenData(const pten::Kernel& pt_kernel,
+                     const framework::KernelSignature& pt_kernel_signature,
+                     const NameVarMap<VarType>& ins) {
+  auto& input_names = std::get<0>(pt_kernel_signature.args);
+  auto& input_defs = pt_kernel.args_def().input_defs();
+
+  PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
+                    platform::errors::InvalidArgument(
+                        "the size of inputs_args names (%d) must be equal to "
+                        "the size of kernel input_defs (%d).",
+                        input_names.size(), input_defs.size()));
+
+  for (size_t i = 0; i < input_names.size(); ++i) {
+    auto& in_def = input_defs.at(i);
+    auto it = ins.find(input_names[i]);
+    if (it == ins.end()) {
+      continue;
+    }
+    auto& ins_vector = ins.at(input_names[i]);
+
+    for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
+      auto var = ins_vector[offset];
+      const auto* tensor_in = GetTensorFromVar(var->Var());
+      if (tensor_in && tensor_in->IsInitialized()) {
+        auto expected_place = pten::TransToPtenPlace(in_def.backend);
+        if (platform::is_same_place(tensor_in->place(), expected_place)) {
+          continue;
+        }
+
+        VLOG(3) << "Pten Transform Variable " << input_names[i] << " from "
+                << tensor_in->place() << " to " << expected_place;
+
+        framework::Tensor tmp_tensor;
+        framework::TensorCopySync(*tensor_in, expected_place, &tmp_tensor);
+
+        SetTensorToVariable(var->Var(), tmp_tensor, var->MutableVar());
+      }
+    }
+  }
+}
 
 }  // namespace imperative
 }  // namespace paddle

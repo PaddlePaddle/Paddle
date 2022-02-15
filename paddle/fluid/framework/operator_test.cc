@@ -456,7 +456,7 @@ TEST(IndicateVarDataTypeTest, selectedrows) {
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   auto* var = scope.Var("selected_rows_1");
-  var->GetMutable<paddle::framework::SelectedRows>();
+  var->GetMutable<pten::SelectedRows>();
 
   bool caught = false;
   try {

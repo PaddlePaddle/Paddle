@@ -18,8 +18,8 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/stream/stream.h"
 #include "paddle/pten/core/device_context.h"
+#include "paddle/pten/core/stream.h"
 
 namespace paddle {
 namespace memory {
@@ -39,10 +39,10 @@ extern uint64_t Release(const platform::Place& place);
 
 extern std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
                                                size_t size,
-                                               const platform::Stream& stream);
+                                               const pten::Stream& stream);
 
 extern bool InSameStream(const std::shared_ptr<Allocation>& allocation,
-                         const platform::Stream& stream);
+                         const pten::Stream& stream);
 
 extern void* GetBasePtr(const std::shared_ptr<Allocation>& allocation);
 

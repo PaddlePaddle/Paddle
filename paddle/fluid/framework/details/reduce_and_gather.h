@@ -20,6 +20,11 @@
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
+
+namespace pten {
+class SelectedRows;
+}  // namespace pten
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -96,10 +101,10 @@ struct ReduceBufferData {
 
 struct GatherLocalSelectedRowsFunctor {
   GatherLocalSelectedRowsFunctor(
-      const std::vector<const SelectedRows *> &src_selected_rows,
+      const std::vector<const pten::SelectedRows *> &src_selected_rows,
       const std::vector<platform::Place> &in_places,
       const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
-      const platform::Place &out_place, SelectedRows *dst_selected_rows)
+      const platform::Place &out_place, pten::SelectedRows *dst_selected_rows)
       : dev_ctxes_(dev_ctxes),
         in_places_(in_places),
         out_place_(out_place),
@@ -125,7 +130,8 @@ struct GatherLocalSelectedRowsFunctor {
     DDim out_dim = pre_in->GetCompleteDims();
     out_dim[0] = static_cast<int64_t>(rows);
     dst_tensor.mutable_value()->Resize(out_dim);
-    dst_tensor.mutable_value()->mutable_data(out_place, pre_in->value().type());
+    dst_tensor.mutable_value()->mutable_data(out_place,
+                                             pre_in->value().dtype());
   }
 
   void operator()() {
@@ -147,7 +153,7 @@ struct GatherLocalSelectedRowsFunctor {
   std::vector<Tensor> in_tensors_;
 
   platform::Place out_place_;
-  SelectedRows *dst_selected_rows_;
+  pten::SelectedRows *dst_selected_rows_;
 };
 
 }  // namespace details

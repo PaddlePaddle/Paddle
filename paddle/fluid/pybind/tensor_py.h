@@ -31,6 +31,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -308,7 +309,7 @@ void SetTensorFromPyArrayT(
     if (zero_copy) {
       auto holder = std::make_shared<details::NumpyAllocation<T>>(array);
       auto type = framework::ToDataType(std::type_index(typeid(T)));
-      self->ResetHolderWithType(holder, type);
+      self->ResetHolderWithType(holder, framework::TransToPtenDataType(type));
     } else {
       auto dst = self->mutable_data<T>(place);
       std::memcpy(dst, array.data(), array.nbytes());
@@ -332,7 +333,7 @@ void SetTensorFromPyArrayT(
     if (zero_copy) {
       auto holder = std::make_shared<details::NumpyAllocation<T>>(array);
       auto type = framework::ToDataType(std::type_index(typeid(T)));
-      self->ResetHolderWithType(holder, type);
+      self->ResetHolderWithType(holder, framework::TransToPtenDataType(type));
     } else {
       auto dst = self->mutable_data<T>(place);
       std::memcpy(dst, array.data(), array.nbytes());
@@ -448,6 +449,40 @@ void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
   }
 }
 
+template <typename T>
+void SetUVATensorFromPyArray(
+    const std::shared_ptr<paddle::imperative::VarBase> &self,
+    const py::array_t<T> &array, int device_id) {
+#if defined(PADDLE_WITH_CUDA)
+  auto *self_tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
+  std::vector<int64_t> dims;
+  dims.reserve(array.ndim());
+  int64_t numel = 1;
+  for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
+    dims.emplace_back(static_cast<int>(array.shape()[i]));
+    numel *= static_cast<int>(array.shape()[i]);
+  }
+  self_tensor->Resize(framework::make_ddim(dims));
+
+  auto data_type = framework::ToDataType(std::type_index(typeid(T)));
+  const auto &need_allocate_size = numel * framework::SizeOfType(data_type);
+  T *data_ptr;
+  cudaHostAlloc(reinterpret_cast<void **>(&data_ptr), need_allocate_size,
+                cudaHostAllocWriteCombined | cudaHostAllocMapped);
+  std::memcpy(data_ptr, array.data(), array.nbytes());
+
+  void *cuda_device_pointer = nullptr;
+  cudaHostGetDevicePointer(reinterpret_cast<void **>(&cuda_device_pointer),
+                           reinterpret_cast<void *>(data_ptr), 0);
+  std::shared_ptr<memory::allocation::Allocation> holder =
+      std::make_shared<memory::allocation::Allocation>(
+          cuda_device_pointer, need_allocate_size,
+          platform::CUDAPlace(device_id));
+  self_tensor->ResetHolderWithType(holder,
+                                   framework::TransToPtenDataType(data_type));
+#endif
+}
+
 template <typename T, size_t D>
 void _sliceCompute(const framework::Tensor *in, framework::Tensor *out,
                    const platform::CPUDeviceContext &ctx,
@@ -544,21 +579,21 @@ inline framework::Tensor *_getTensor(const framework::Tensor &self,
   output->Resize(ddim);
   auto place = self.place();
   if (platform::is_cpu_place(place)) {
-    output->mutable_data(place, self.type());
+    output->mutable_data(place, self.dtype());
   } else if (platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
-    output->mutable_data(place, self.type());
+    output->mutable_data(place, self.dtype());
 #endif
   } else if (platform::is_mlu_place(place)) {
 #ifdef PADDLE_WITH_MLU
-    output->mutable_data(place, self.type());
+    output->mutable_data(place, self.dtype());
 #endif
   } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_cuda_pinned_place(place)) {
-      output->mutable_data(place, self.type());
+      output->mutable_data(place, self.dtype());
     } else if ((platform::is_gpu_place(place))) {
-      output->mutable_data(place, self.type());
+      output->mutable_data(place, self.dtype());
     }
 #endif
   }
@@ -644,7 +679,7 @@ inline framework::Tensor *_sliceAndConcat(const framework::Tensor &self,
 
 inline framework::Tensor *_sliceTensor(const framework::Tensor &self,
                                        py::object obj, int dim) {
-  auto src_type = self.type();
+  auto src_type = framework::TransToProtoVarType(self.dtype());
   switch (src_type) {
     case framework::proto::VarType::FP16:
       return _sliceAndConcat<paddle::platform::float16>(self, obj, dim);
@@ -723,7 +758,7 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
   bool is_npu_tensor = platform::is_npu_place(tensor.place());
   bool is_mlu_tensor = platform::is_mlu_place(tensor.place());
   const auto &tensor_dims = tensor.dims();
-  auto tensor_dtype = tensor.type();
+  auto tensor_dtype = framework::TransToProtoVarType(tensor.dtype());
   size_t sizeof_dtype = framework::SizeOfType(tensor_dtype);
 
   std::vector<size_t> py_dims(tensor_dims.size());
@@ -738,7 +773,8 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
 
   const void *tensor_buf_ptr = tensor.data();
 
-  std::string py_dtype_str = details::TensorDTypeToPyDTypeStr(tensor.type());
+  std::string py_dtype_str = details::TensorDTypeToPyDTypeStr(
+      framework::TransToProtoVarType(tensor.dtype()));
 
   if (!is_gpu_tensor && !is_xpu_tensor && !is_npu_tensor && !is_mlu_tensor) {
     if (!need_deep_copy) {

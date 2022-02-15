@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/infermeta/binary.h"
 #include "paddle/pten/infermeta/unary.h"
@@ -50,8 +49,8 @@ template <typename T, typename Context>
 void SumKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const std::vector<int64_t>& dims,
-               bool keep_dim,
                DataType out_dtype,
+               bool keep_dim,
                DenseTensor* out);
 
 template <typename T, typename Context>
@@ -110,8 +109,9 @@ template <typename T, typename Context>
 DenseTensor Add(const Context& dev_ctx,
                 const DenseTensor& x,
                 const DenseTensor& y) {
-  auto out_meta = ElementwiseInferMeta(x.meta(), y.meta(), -1);
-  auto dense_out = pten::Empty<T, Context>(dev_ctx, std::move(out_meta));
+  auto dense_out = pten::Empty<T, Context>(dev_ctx);
+  MetaTensor meta_out(&dense_out);
+  ElementwiseInferMeta(x, y, &meta_out);
   AddKernel<T, Context>(dev_ctx, x, y, &dense_out);
   return dense_out;
 }
@@ -120,8 +120,9 @@ template <typename T, typename Context>
 DenseTensor Subtract(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y) {
-  auto out_meta = ElementwiseInferMeta(x.meta(), y.meta(), -1);
-  auto dense_out = pten::Empty<T, Context>(dev_ctx, std::move(out_meta));
+  auto dense_out = pten::Empty<T, Context>(dev_ctx);
+  MetaTensor meta_out(&dense_out);
+  ElementwiseInferMeta(x, y, &meta_out);
   SubtractKernel<T, Context>(dev_ctx, x, y, &dense_out);
   return dense_out;
 }
@@ -130,8 +131,9 @@ template <typename T, typename Context>
 DenseTensor Divide(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y) {
-  auto out_meta = ElementwiseInferMeta(x.meta(), y.meta(), -1);
-  auto dense_out = pten::Empty<T, Context>(dev_ctx, std::move(out_meta));
+  auto dense_out = pten::Empty<T, Context>(dev_ctx);
+  MetaTensor meta_out(&dense_out);
+  ElementwiseInferMeta(x, y, &meta_out);
   DivideKernel<T, Context>(dev_ctx, x, y, &dense_out);
   return dense_out;
 }
@@ -140,8 +142,9 @@ template <typename T, typename Context>
 DenseTensor Multiply(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y) {
-  auto out_meta = ElementwiseInferMeta(x.meta(), y.meta(), -1);
-  auto dense_out = pten::Empty<T, Context>(dev_ctx, std::move(out_meta));
+  auto dense_out = pten::Empty<T, Context>(dev_ctx);
+  MetaTensor meta_out(&dense_out);
+  ElementwiseInferMeta(x, y, &meta_out);
   MultiplyKernel<T, Context>(dev_ctx, x, y, &dense_out);
   return dense_out;
 }
@@ -151,8 +154,9 @@ DenseTensor Mean(const Context& dev_ctx,
                  const DenseTensor& x,
                  const std::vector<int64_t>& axis,
                  bool keep_dim) {
-  auto out_meta = ReduceInferMeta(x.meta(), axis, keep_dim);
-  auto dense_out = pten::Empty<T, Context>(dev_ctx, std::move(out_meta));
+  auto dense_out = pten::Empty<T, Context>(dev_ctx);
+  MetaTensor meta_out(&dense_out);
+  ReduceInferMetaBase(x, axis, keep_dim, x.dtype(), &meta_out);
   MeanKernel<T, Context>(dev_ctx, x, axis, keep_dim, &dense_out);
   return dense_out;
 }
@@ -163,10 +167,10 @@ DenseTensor Sum(const Context& dev_ctx,
                 const std::vector<int64_t>& axis,
                 DataType dtype,
                 bool keep_dim) {
-  auto out_meta = ReduceInferMeta(x.meta(), axis, keep_dim, dtype);
-  auto dense_out = pten::Empty<T, Context>(dev_ctx, std::move(out_meta));
-
-  SumKernel<T, Context>(dev_ctx, x, axis, keep_dim, dtype, &dense_out);
+  auto dense_out = pten::Empty<T, Context>(dev_ctx);
+  MetaTensor meta_out(&dense_out);
+  SumInferMeta(x, axis, dtype, keep_dim, &meta_out);
+  SumKernel<T, Context>(dev_ctx, x, axis, dtype, keep_dim, &dense_out);
   return dense_out;
 }
 

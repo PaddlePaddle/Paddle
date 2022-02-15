@@ -593,8 +593,10 @@ def load_parameter_into_program(param_dict, program):
         param_dict(dict): parameters' name and value.
         program(Program): the program to be updated
     """
-    _check_param_dict(param_dict)
+    assert isinstance(param_dict, dict)
     assert program and isinstance(program, paddle.fluid.framework.Program)
+    if not param_dict:
+        return
     program.set_state_dict(param_dict)
 
 
@@ -705,7 +707,6 @@ def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
         dist_param_dict(dict): parameters' value of current rank.
     """
     assert _check_dist_attr(pre_dist_attr), "'pre_dist_attr' cannot be None."
-    assert _check_dist_attr(cur_dist_attr), "'pre_dist_attr' cannot be None."
     assert isinstance(dist_param_dict, dict), \
         "The type of 'dist_param_dict' should be 'dict', but got {}.".format(
             str(type(dist_param_dict)))
@@ -719,6 +720,9 @@ def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
             raise TypeError(
                 "The value of 'dist_param_dict' is parameter's value of all ranks, "
                 "and its type should be 'list(numpy.ndarray)'.")
+
+    if cur_dist_attr is None:
+        return {}
 
     param_not_in_pre = []
     param_not_in_cur = []
@@ -998,7 +1002,7 @@ def set_grad_var_shape(program, dist_context):
         if op.type in ["check_finite_and_unscale", "update_loss_scaling"]:
             break
 
-        if op.type in ["sum"]:
+        if op.type in ["sum", "concat"]:
             continue
         if int(op.attr('op_role')) == int(OpRole.Backward):
             op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
@@ -1268,6 +1272,7 @@ def get_all_distributed_main_program(serial_program_info, dist_context,
         used_dist_context._dist_op_context = DistributedOperatorContext()
         _, _, dist_startup_program, dist_main_program, _ = copied_parallelizer._get_dist_program(
             rank_id, used_dist_context)
+        # print("dist_main_program: ", dist_main_program)
         all_dist_main_program.append(dist_main_program)
 
     return all_dist_main_program

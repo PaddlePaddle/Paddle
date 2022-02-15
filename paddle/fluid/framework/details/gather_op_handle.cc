@@ -64,14 +64,14 @@ void GatherOpHandle::RunImpl() {
       platform::errors::NotFound("The variable '%s' is not found in the scope.",
                                  in_0_handle->name()));
 
-  PADDLE_ENFORCE_EQ(pre_in_var->IsType<framework::SelectedRows>(), true,
+  PADDLE_ENFORCE_EQ(pre_in_var->IsType<pten::SelectedRows>(), true,
                     platform::errors::Unimplemented(
                         "Currently, gather_op only supports SelectedRows."));
 
   // Wait input done, this Wait is asynchronous operation
   WaitInputVarGenerated();
 
-  auto &pre_in_value = pre_in_var->Get<framework::SelectedRows>();
+  auto &pre_in_value = pre_in_var->Get<pten::SelectedRows>();
   std::vector<int64_t> out_rows;
   std::vector<Tensor> in_tensors;
 
@@ -85,7 +85,7 @@ void GatherOpHandle::RunImpl() {
             "The variable '%s' is not found in the scope.", in_handle->name()));
     VariableVisitor::EnforceShapeAndDTypeEQ(*in_var, *pre_in_var);
 
-    auto &in_sr_value = in_var->Get<framework::SelectedRows>();
+    auto &in_sr_value = in_var->Get<pten::SelectedRows>();
 
     auto &in_sr_rows = in_sr_value.rows();
     out_rows.insert(out_rows.end(), in_sr_rows.begin(), in_sr_rows.end());
@@ -108,14 +108,14 @@ void GatherOpHandle::RunImpl() {
       out_var,
       platform::errors::NotFound("The variable '%s' is not found in the scope.",
                                  out_var_handle->name()));
-  auto out_value = out_var->GetMutable<framework::SelectedRows>();
+  auto out_value = out_var->GetMutable<pten::SelectedRows>();
   out_value->set_height(pre_in_value.height());
   out_value->set_rows(out_rows);
   size_t rows = out_rows.size();
   DDim out_dim = pre_in_value.GetCompleteDims();
   out_dim[0] = static_cast<int64_t>(rows);
   out_value->mutable_value()->Resize(out_dim).mutable_data(
-      t_out_p, pre_in_value.value().type());
+      t_out_p, pre_in_value.value().dtype());
   Tensor *out_tensor = out_value->mutable_value();
 
   // copy

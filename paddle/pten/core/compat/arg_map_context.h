@@ -24,6 +24,18 @@ limitations under the License. */
 
 namespace pten {
 
+constexpr char kGradVarSuffix[] = "@GRAD";
+
+constexpr size_t kGradVarSuffixSize = 5U;
+
+inline std::string GradVarName(const std::string& var_name) {
+  std::string result;
+  result.reserve(var_name.size() + kGradVarSuffixSize);
+  result += var_name;
+  result += kGradVarSuffix;
+  return result;
+}
+
 // tuple(input_names, attr_names, output_names)
 using KernelArgsTuple = std::tuple<paddle::SmallVector<std::string>,
                                    paddle::SmallVector<std::string>,
@@ -34,6 +46,7 @@ struct KernelSignature {
   KernelArgsTuple args;
 
   KernelSignature() = default;
+
   KernelSignature(std::string&& kernel_name,
                   paddle::SmallVector<std::string>&& inputs,
                   paddle::SmallVector<std::string>&& attrs,
@@ -45,6 +58,14 @@ struct KernelSignature {
                   const paddle::SmallVector<std::string>& attrs,
                   const paddle::SmallVector<std::string>& outputs)
       : name(kernel_name), args(std::make_tuple(inputs, attrs, outputs)) {}
+
+  // TODO(chenweihang): add assign constructor to solve windows compile
+  // problem, remove it later
+  KernelSignature& operator=(const KernelSignature& other) {
+    name = other.name;
+    args = other.args;
+    return *this;
+  }
 };
 
 std::ostream& operator<<(std::ostream& os, KernelSignature signature);
@@ -56,6 +77,7 @@ class ArgumentMappingContext {
 
   virtual bool HasInput(const std::string& name) const = 0;
   virtual bool HasOutput(const std::string& name) const = 0;
+  virtual bool HasAttr(const std::string& name) const = 0;
 
   // now we can't use Attribute here, it will cause pten relay on
   // boost::variant and BlockDesc
@@ -66,6 +88,9 @@ class ArgumentMappingContext {
 
   virtual bool IsDenseTensorInput(const std::string& name) const = 0;
   virtual bool IsSelectedRowsInput(const std::string& name) const = 0;
+
+  virtual bool IsDenseTensorOutput(const std::string& name) const = 0;
+  virtual bool IsSelectedRowsOutput(const std::string& name) const = 0;
 };
 
 }  // namespace pten

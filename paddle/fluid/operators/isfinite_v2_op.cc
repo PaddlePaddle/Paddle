@@ -61,9 +61,11 @@ class OverflowV2Op : public framework::OperatorWithKernel {
     int dtype = -1;
     auto *x_var = ctx.InputVar("X");
     if (x_var->IsType<framework::LoDTensor>()) {
-      dtype = x_var->Get<framework::LoDTensor>().type();
-    } else if (x_var->IsType<framework::SelectedRows>()) {
-      dtype = x_var->Get<framework::SelectedRows>().value().type();
+      dtype = framework::TransToProtoVarType(
+          x_var->Get<framework::LoDTensor>().dtype());
+    } else if (x_var->IsType<pten::SelectedRows>()) {
+      dtype = framework::TransToProtoVarType(
+          x_var->Get<pten::SelectedRows>().value().dtype());
     } else {
       PADDLE_THROW(plat::errors::InvalidArgument(
           "Cannot find the input data type by all input data"));
@@ -103,39 +105,69 @@ element of X as a tensor.
 
 namespace ops = paddle::operators;
 
-#define REGISTER_V2OP_MAKER(op_type, comment)                         \
-  namespace paddle {                                                  \
-  namespace operators {                                               \
-  class _##op_type##OverflowV2OpMaker                                 \
-      : public ::paddle::operators::OverflowV2OpMaker {               \
-   protected:                                                         \
-    std::string GetName() const { return #op_type; }                  \
-    std::string GetComments() const { return comment; }               \
-  };                                                                  \
-  }                                                                   \
-  }                                                                   \
-  REGISTER_OPERATOR(                                                  \
-      op_type, ops::OverflowV2Op, ops::_##op_type##OverflowV2OpMaker, \
-      paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>, \
-      paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)
+#define REGISTER_V2OP_MAKER(op_type, comment)           \
+  namespace paddle {                                    \
+  namespace operators {                                 \
+  class _##op_type##OverflowV2OpMaker                   \
+      : public ::paddle::operators::OverflowV2OpMaker { \
+   protected:                                           \
+    std::string GetName() const { return #op_type; }    \
+    std::string GetComments() const { return comment; } \
+  };                                                    \
+  }                                                     \
+  }
 
-#define REGISTER_OVERFLOW_CPU_KERNEL(op_type, functor)                       \
-  REGISTER_OP_CPU_KERNEL(                                                    \
-      op_type, ops::OverflowKernel<paddle::platform::CPUDeviceContext, int,  \
-                                   ops::functor>,                            \
-      ops::OverflowKernel<paddle::platform::CPUDeviceContext, int64_t,       \
-                          ops::functor>,                                     \
-      ops::OverflowKernel<paddle::platform::CPUDeviceContext, float,         \
-                          ops::functor>,                                     \
-      ops::OverflowKernel<paddle::platform::CPUDeviceContext, double,        \
-                          ops::functor>,                                     \
-      ops::OverflowKernel<paddle::platform::CPUDeviceContext, plat::float16, \
-                          ops::functor>);
-
-REGISTER_V2OP_MAKER(isinf_v2, "isinfv2(X)");
-REGISTER_V2OP_MAKER(isnan_v2, "isnanv2(X)");
+REGISTER_V2OP_MAKER(isinf_v2, "isinfv2(X)")
+REGISTER_V2OP_MAKER(isnan_v2, "isnanv2(X)")
 REGISTER_V2OP_MAKER(isfinite_v2, "isfinitev2(X)");
 
-REGISTER_OVERFLOW_CPU_KERNEL(isinf_v2, InfinityV2Functor);
-REGISTER_OVERFLOW_CPU_KERNEL(isnan_v2, NANV2Functor);
-REGISTER_OVERFLOW_CPU_KERNEL(isfinite_v2, IsfiniteV2Functor);
+REGISTER_OPERATOR(
+    isinf_v2, ops::OverflowV2Op, ops::_isinf_v2OverflowV2OpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+
+REGISTER_OPERATOR(
+    isnan_v2, ops::OverflowV2Op, ops::_isnan_v2OverflowV2OpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+
+REGISTER_OPERATOR(
+    isfinite_v2, ops::OverflowV2Op, ops::_isfinite_v2OverflowV2OpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+
+REGISTER_OP_CPU_KERNEL(isnan_v2,
+                       ops::OverflowKernel<paddle::platform::CPUDeviceContext,
+                                           int, ops::NANV2Functor>,
+                       ops::OverflowKernel<paddle::platform::CPUDeviceContext,
+                                           int64_t, ops::NANV2Functor>,
+                       ops::OverflowKernel<paddle::platform::CPUDeviceContext,
+                                           float, ops::NANV2Functor>,
+                       ops::OverflowKernel<paddle::platform::CPUDeviceContext,
+                                           double, ops::NANV2Functor>,
+                       ops::OverflowKernel<paddle::platform::CPUDeviceContext,
+                                           plat::float16, ops::NANV2Functor>);
+
+REGISTER_OP_CPU_KERNEL(
+    isinf_v2, ops::OverflowKernel<paddle::platform::CPUDeviceContext, int,
+                                  ops::InfinityV2Functor>,
+    ops::OverflowKernel<paddle::platform::CPUDeviceContext, int64_t,
+                        ops::InfinityV2Functor>,
+    ops::OverflowKernel<paddle::platform::CPUDeviceContext, float,
+                        ops::InfinityV2Functor>,
+    ops::OverflowKernel<paddle::platform::CPUDeviceContext, double,
+                        ops::InfinityV2Functor>,
+    ops::OverflowKernel<paddle::platform::CPUDeviceContext, plat::float16,
+                        ops::InfinityV2Functor>);
+
+REGISTER_OP_CPU_KERNEL(
+    isfinite_v2, ops::OverflowKernel<paddle::platform::CPUDeviceContext, int,
+                                     ops::IsfiniteV2Functor>,
+    ops::OverflowKernel<paddle::platform::CPUDeviceContext, int64_t,
+                        ops::IsfiniteV2Functor>,
+    ops::OverflowKernel<paddle::platform::CPUDeviceContext, float,
+                        ops::IsfiniteV2Functor>,
+    ops::OverflowKernel<paddle::platform::CPUDeviceContext, double,
+                        ops::IsfiniteV2Functor>,
+    ops::OverflowKernel<paddle::platform::CPUDeviceContext, plat::float16,
+                        ops::IsfiniteV2Functor>);

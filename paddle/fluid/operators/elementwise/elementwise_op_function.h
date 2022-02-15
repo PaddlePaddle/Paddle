@@ -47,8 +47,8 @@ limitations under the License. */
 
 #endif
 
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 #define DIVUP(x, y) (((x) + (y)-1) / (y))
 
@@ -84,7 +84,7 @@ int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
     auto *x = ctx.Input<framework::LoDTensor>("X");
     z = ctx.Output<framework::LoDTensor>("Out");
     ins->emplace_back(x);
-  } else if (x_var->IsType<framework::SelectedRows>()) {
+  } else if (x_var->IsType<pten::SelectedRows>()) {
     PADDLE_ENFORCE_EQ(y->dims().size() == 1 && y->dims()[0] == 1, true,
                       platform::errors::InvalidArgument(
                           "For elementwise_op, if X is Sparse, Y must be "
@@ -96,15 +96,15 @@ int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
             "The parameter x_for_selectedrows is excepted to "
             "be valid, once input varible X`s class type is "
             "SelectedRows.\n"));
-    auto &x_sele = x_var->Get<framework::SelectedRows>();
-    auto out_sele = ctx.Output<framework::SelectedRows>("Out");
+    auto &x_sele = x_var->Get<pten::SelectedRows>();
+    auto out_sele = ctx.Output<pten::SelectedRows>("Out");
     *x_for_selectedrows = x_sele.value();
     out_sele->set_rows(x_sele.rows());
     out_sele->set_height(x_sele.height());
     out_sele->mutable_value()->Resize(x_sele.value().dims());
     out_sele->mutable_value()->mutable_data(ctx.GetPlace(),
                                             x_for_selectedrows->type());
-    z = ctx.Output<framework::SelectedRows>("Out")->mutable_value();
+    z = ctx.Output<pten::SelectedRows>("Out")->mutable_value();
     ins->emplace_back(x_for_selectedrows);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -1188,8 +1188,9 @@ template <typename T>
 void ReduceWrapper(const platform::CUDADeviceContext &dev_ctx, int axis,
                    framework::Tensor *src, framework::Tensor *dst) {
   std::vector<int> reduce_dims = GetReduceDim(dst->dims(), src->dims(), axis);
-  TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-      *src, dst, kps::IdentityFunctor<T>(), reduce_dims, dev_ctx.stream());
+  TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+      dev_ctx, *src, dst, kps::IdentityFunctor<T>(), reduce_dims,
+      dev_ctx.stream());
 }
 
 template <ElementwiseType ET, typename T, typename Functor>

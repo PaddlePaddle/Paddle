@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/new_executor/data_transfer.h"
+#include "paddle/fluid/framework/convert_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -259,7 +260,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
       auto var = var_name_item.second[i];
       auto& var_name = new_ins[var_name_item.first].at(i);
       const Tensor* tensor_in;
-      if (var->IsType<LoDTensor>() || var->IsType<SelectedRows>()) {
+      if (var->IsType<LoDTensor>() || var->IsType<pten::SelectedRows>()) {
         tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
       } else if (var->IsType<LoDTensorArray>()) {
         tensor_in =
@@ -366,7 +367,7 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
         continue;
       }
       // only focus on complex dtype now
-      auto src_type = grad_tensor->type();
+      auto src_type = framework::TransToProtoVarType(grad_tensor->dtype());
       if (!framework::IsComplexType(src_type)) {
         VLOG(3) << "skip grad_tensor with not complexType";
         continue;
@@ -390,7 +391,7 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
           platform::errors::Unavailable(
               "Forward tensor is nullptr when handle complex data to real."));
       // only need record type, the allocation may have been released
-      auto dst_type = tensor->saved_type();
+      auto dst_type = framework::TransToProtoVarType(tensor->dtype());
       // only focus on real dtype and need casting
       if (framework::IsComplexType(dst_type)) {
         continue;

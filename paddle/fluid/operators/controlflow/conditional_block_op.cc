@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/controlflow/conditional_block_op.h"
 
 #include "paddle/fluid/operators/assign_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -242,10 +242,10 @@ class ConditionalBlockGradOp : public ConditionalOp {
     }
     VLOG(4) << "Assigning zero to " << outside_tensor;
     outside_tensor->Resize(input_tensor.dims());
-    outside_tensor->mutable_data(place, input_tensor.type());
+    outside_tensor->mutable_data(place, input_tensor.dtype());
     const platform::DeviceContext *dev_ctx =
         platform::DeviceContextPool::Instance().Get(place);
-    math::set_constant(*dev_ctx, outside_tensor, 0.0f);
+    pten::funcs::set_constant(*dev_ctx, outside_tensor, 0.0f);
     outside_tensor->set_lod(input_tensor.lod());
   }
 };
