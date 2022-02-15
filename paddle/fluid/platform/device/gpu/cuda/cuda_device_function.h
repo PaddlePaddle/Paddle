@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/core/enforce.h"
 
 namespace paddle {
 namespace platform {
@@ -70,8 +71,8 @@ __forceinline__ __device__ bfloat16 CudaShuffleDownSync(unsigned mask,
   return bfloat16(__shfl_down_sync(mask, static_cast<nv_bfloat16>(val),
                                    static_cast<unsigned>(delta), width));
 #else
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "__shfl_down_sync with bfloat16 is not supported on cuda <= 11"));
+  PADDLE_ENFORCE(
+      false, "__shfl_down_sync with bfloat16 is not supported on cuda <= 11.");
 #endif
 }
 
