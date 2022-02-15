@@ -29,6 +29,7 @@
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/var_helper.h"
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/selected_rows.h"
 
@@ -346,6 +347,14 @@ void BuildDygraphPtenKernelContext(
                    std::type_index(typeid(std::vector<int32_t>))) {
           kernel_ctx->EmplaceBackAttr(std::move(
               pten::ScalarArray(BOOST_GET_CONST(std::vector<int32_t>, attr))));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(int64_t))) {
+          kernel_ctx->EmplaceBackAttr(
+              std::move(pten::ScalarArray(&BOOST_GET_CONST(int64_t, attr), 1)));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(int32_t))) {
+          kernel_ctx->EmplaceBackAttr(
+              std::move(pten::ScalarArray(&BOOST_GET_CONST(int32_t, attr), 1)));
         } else if (attr_defs[i].type_index ==
                    std::type_index(typeid(std::vector<int32_t>))) {
           const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
@@ -417,7 +426,7 @@ void BuildDygraphPtenKernelContext(
         kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(std::string, attr));
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(pten::DataType))) {
-        auto data_type = pten::TransToPtenDataType(
+        auto data_type = framework::TransToPtenDataType(
             static_cast<framework::proto::VarType::Type>(
                 BOOST_GET_CONST(int, attr)));
         kernel_ctx->EmplaceBackAttr(data_type);

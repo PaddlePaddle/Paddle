@@ -162,6 +162,11 @@ class DenseTensor : public TensorBase,
   /// \return The const data pointer value of raw type.
   const void* data() const;
 
+  template <typename T>
+  T* data();
+
+  void* data();
+
  private:
   friend class DenseTensorUtils;
 

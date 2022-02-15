@@ -180,12 +180,12 @@ class SearchSortedKernel : public framework::OpKernel<T> {
       int* out_data = out->mutable_data<int>(context.GetPlace());
       SearchSortedFunctor<DeviceContext, T, int> functor(
           context, sorted_sequence, value, right, out_data);
-      VisitDataType(value->type(), functor);
+      VisitDataType(framework::TransToProtoVarType(value->dtype()), functor);
     } else {
       int64_t* out_data = out->mutable_data<int64_t>(context.GetPlace());
       SearchSortedFunctor<DeviceContext, T, int64_t> functor(
           context, sorted_sequence, value, right, out_data);
-      VisitDataType(value->type(), functor);
+      VisitDataType(framework::TransToProtoVarType(value->dtype()), functor);
     }
   }
 };

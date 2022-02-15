@@ -198,7 +198,9 @@ class StridedSliceOp : public framework::OperatorWithKernel {
     // NOTE: cuda pinned tensor need to copy its data to target place
     auto in_tensor = ctx.Input<Tensor>("Input");
     if (platform::is_cuda_pinned_place(in_tensor->place())) {
-      return framework::OpKernelType(in_tensor->type(), ctx.device_context());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(in_tensor->dtype()),
+          ctx.device_context());
     }
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "Input"),

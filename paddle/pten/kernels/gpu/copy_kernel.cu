@@ -54,8 +54,7 @@ void Copy(const Context& dev_ctx,
 
   CHECK(dst->layout() == src.layout());
 
-  auto size = src.numel() *
-              paddle::framework::SizeOfType(TransToProtoVarType(src.dtype()));
+  auto size = src.numel() * paddle::experimental::SizeOf(src.dtype());
 
   if (paddle::platform::is_cuda_pinned_place(src_place) &&  // NOLINT
       paddle::platform::is_cuda_pinned_place(dst_place)) {
