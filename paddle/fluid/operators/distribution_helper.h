@@ -177,30 +177,29 @@ struct normal_distribution<double> {
 
 /******** Launch GPU function of distribution and transformation *********/
 template <typename T, typename DistOp, typename TransformOp>
-__global__ void DistributionKernel(size_t size, uint64_t seed, uint64_t offset,
-                                   DistOp dist, TransformOp trans,
-                                   T *out_data) {
-  size_t idx = static_cast<size_t>(BLOCK_ID_X * BLOCK_NUM_X + THREAD_ID_X);
+__global__ void DistributionKernel_M(size_t size, uint64_t seed,
+                                     uint64_t offset, DistOp dist,
+                                     TransformOp trans, T *out_data) {
+  size_t idx = static_cast<size_t>(blockIdx.x * blockDim.x);
   static constexpr int kCount = DistOp::kReturnsCount;
 #if defined(__NVCC__)
   curandStatePhilox4_32_10_t state;
-  curand_init(seed, idx, offset, &state);
+  curand_init(seed, idx + THREAD_ID_X, offset, &state);
   using SType = curandStatePhilox4_32_10_t;
 #else
   hiprandStatePhilox4_32_10_t state;
-  hiprand_init(seed, idx, offset, &state);
+  hiprand_init(seed, idx + THREAD_ID_X, offset, &state);
   using SType = hiprandStatePhilox4_32_10_t;
 #endif
-  size_t total_thread = GRID_NUM_X * BLOCK_NUM_X;
+  size_t total_thread = gridDim.x * blockDim.x;
   T args[kCount];
   T result[kCount];
   for (size_t i = idx; i < size; i += total_thread * kCount) {
     kps::ElementwiseRandom<SType, T, kCount, 1, DistOp>(&args[0], dist, &state);
     kps::ElementwiseUnary<T, T, kCount, 1, 1, TransformOp>(&result[0], &args[0],
                                                            trans);
-    kps::WriteData<T, T, kCount, 1, 1, true>(
-        out_data + idx - THREAD_ID_X, &result[0],
-        static_cast<int>(size - idx + THREAD_ID_X), 1, total_thread, 1);
+    kps::WriteData<T, T, kCount, 1, 1, true>(out_data + i, &result[0], size - i,
+                                             1, total_thread, 1);
   }
 }
 
@@ -231,7 +230,7 @@ void distribution_and_transform(const platform::CUDADeviceContext &dev_ctx,
   uint64_t seed = seed_offset.first;
   uint64_t offset = seed_offset.second;
 
-  DistributionKernel<
+  DistributionKernel_M<
       T, DistOp, TransformOp><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
       size, seed, offset, dist, trans, out_data);
 }
