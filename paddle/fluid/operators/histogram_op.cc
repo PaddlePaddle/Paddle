@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/histogram_op.h"
-
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -85,8 +85,3 @@ REGISTER_OPERATOR(
     histogram, ops::HistogramOp, ops::HistogramOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    histogram, ops::HistogramKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::HistogramKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::HistogramKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::HistogramKernel<paddle::platform::CPUDeviceContext, int64_t>);

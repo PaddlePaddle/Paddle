@@ -18,27 +18,18 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
-#include "cinn/hlir/framework/graph_compiler.h"
-#include "cinn/hlir/framework/scope.h"
-#include "cinn/runtime/cinn_runtime.h"
-#include "cinn/runtime/flags.h"
+#include "cinn/common/target.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
+#include "paddle/fluid/operators/cinn/cinn_op_helper.h"
 
 namespace paddle {
 namespace operators {
 
-constexpr char kX[] = "X";
-constexpr char kNoNeedBufferX[] = "NoNeedBufferX";
-constexpr char kOutputs[] = "Out";
-constexpr char kCompilationKey[] = "compilation_key";
-
 using LoDTensor = framework::LoDTensor;
-using CinnTensor = ::cinn::hlir::framework::Tensor;
-using CinnScope = ::cinn::hlir::framework::Scope;
 using CinnCompiler = framework::paddle2cinn::CinnCompiler;
 using CinnCompiledObject = framework::paddle2cinn::CinnCompiledObject;
 
@@ -56,17 +47,6 @@ void LaunchCinnExecution(const CinnCompiledObject& compiled_obj,
 
 // Set cinn FLAGS (such as FLAGS_cinn_cudnn_deterministic) with paddle's FLAGS.
 void SetCinnRuntimeFlags();
-
-template <typename DeviceContext>
-void* GetStream(const framework::ExecutionContext& ctx) {
-  return nullptr;
-}
-
-#ifdef PADDLE_WITH_CUDA
-template <>
-void* GetStream<platform::CUDADeviceContext>(
-    const framework::ExecutionContext& ctx);
-#endif
 
 }  // namespace details
 

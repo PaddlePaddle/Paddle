@@ -22,6 +22,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#include "paddle/fluid/framework/convert_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -134,9 +135,10 @@ class SumOp : public framework::OperatorWithKernel {
           continue;
         }
         if (dtype == -1) {
-          dtype = tensor->type();
+          dtype = framework::TransToProtoVarType(tensor->dtype());
         } else {
-          PADDLE_ENFORCE_EQ(dtype, tensor->type(),
+          PADDLE_ENFORCE_EQ(dtype,
+                            framework::TransToProtoVarType(tensor->dtype()),
                             platform::errors::InvalidArgument(
                                 "The inputs type of sum op must be same"));
         }
@@ -169,8 +171,9 @@ class SumOp : public framework::OperatorWithKernel {
       for (auto& var : x_vars) {
         auto& value = var->Get<pten::SelectedRows>().value();
         if (value.IsInitialized()) {
-          return framework::OpKernelType(value.type(), ctx.device_context(),
-                                         layout, library);
+          return framework::OpKernelType(
+              framework::TransToProtoVarType(value.dtype()),
+              ctx.device_context(), layout, library);
         }
       }
       // if input sparse vars are not initialized, use an default kernel type.
@@ -181,8 +184,9 @@ class SumOp : public framework::OperatorWithKernel {
         auto& array = x_var->Get<framework::LoDTensorArray>();
         for (auto& each : array) {
           if (each.numel() != 0 && each.IsInitialized()) {
-            return framework::OpKernelType(each.type(), ctx.device_context(),
-                                           layout, library);
+            return framework::OpKernelType(
+                framework::TransToProtoVarType(each.dtype()),
+                ctx.device_context(), layout, library);
           }
         }
       }
