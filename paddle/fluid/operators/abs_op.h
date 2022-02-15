@@ -16,8 +16,8 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/complex_functors.h"
 
 namespace paddle {
 namespace operators {
@@ -32,12 +32,12 @@ class AbsKernel : public framework::OpKernel<T> {
 
     auto numel = x->numel();
     auto* x_data = x->data<T>();
-    auto* out_data = out->mutable_data<math::Real<T>>(
-        context.GetPlace(), size_t(x->numel() * sizeof(math::Real<T>)));
+    auto* out_data = out->mutable_data<pten::funcs::Real<T>>(
+        context.GetPlace(), size_t(x->numel() * sizeof(pten::funcs::Real<T>)));
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
     platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
-    math::AbsFunctor<T> functor(x_data, out_data, numel);
+    pten::funcs::AbsFunctor<T> functor(x_data, out_data, numel);
     for_range(functor);
   }
 };
@@ -53,14 +53,14 @@ class AbsGradKernel : public framework::OpKernel<T> {
         ctx.Output<framework::Tensor>(framework::GradVarName("X"));
 
     auto numel = d_out->numel();
-    auto* dout_data = d_out->data<math::Real<T>>();
+    auto* dout_data = d_out->data<pten::funcs::Real<T>>();
     auto* x_data = x->data<T>();
     auto* dx_data = d_x->mutable_data<T>(
         ctx.GetPlace(), static_cast<size_t>(numel * sizeof(T)));
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
-    math::AbsGradFunctor<T> functor(dout_data, x_data, dx_data, numel);
+    pten::funcs::AbsGradFunctor<T> functor(dout_data, x_data, dx_data, numel);
     for_range(functor);
   }
 };
@@ -81,7 +81,8 @@ class AbsDoubleGradKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
-    math::AbsGradGradFunctor<T> functor(ddx_data, x_data, ddout_data, numel);
+    pten::funcs::AbsGradGradFunctor<T> functor(ddx_data, x_data, ddout_data,
+                                               numel);
     for_range(functor);
   }
 };

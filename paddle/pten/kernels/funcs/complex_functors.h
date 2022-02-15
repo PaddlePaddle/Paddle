@@ -16,12 +16,11 @@ limitations under the License. */
 
 #include <type_traits>
 
-#include "paddle/fluid/platform/complex.h"
+#include "paddle/pten/common/complex.h"
 #include "paddle/pten/core/hostdevice.h"
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace pten {
+namespace funcs {
 
 template <bool B, typename T>
 struct cond {
@@ -64,8 +63,8 @@ using select_t = typename select<Head, Tail...>::type;
 
 template <typename T>
 using Real =
-    select_t<cond<std::is_same<T, platform::complex<float>>::value, float>,
-             cond<std::is_same<T, platform::complex<double>>::value, double>,
+    select_t<cond<std::is_same<T, pten::dtype::complex<float>>::value, float>,
+             cond<std::is_same<T, pten::dtype::complex<double>>::value, double>,
              T>;
 
 template <typename T, typename RealT>
@@ -77,13 +76,13 @@ using NoComplex = typename std::enable_if<std::is_same<T, RealT>::value>::type;
 
 template <typename T>
 using EnableComplex = typename std::enable_if<
-    std::is_same<T, platform::complex<float>>::value ||
-    std::is_same<T, platform::complex<double>>::value>::type;
+    std::is_same<T, pten::dtype::complex<float>>::value ||
+    std::is_same<T, pten::dtype::complex<double>>::value>::type;
 
 template <typename T>
 using DisableComplex = typename std::enable_if<
-    !std::is_same<T, platform::complex<float>>::value &&
-    !std::is_same<T, platform::complex<double>>::value>::type;
+    !std::is_same<T, pten::dtype::complex<float>>::value &&
+    !std::is_same<T, pten::dtype::complex<double>>::value>::type;
 
 template <typename T, typename Enable = void>
 struct RealFunctor;
@@ -154,8 +153,7 @@ struct AbsFunctor<T, NoComplex<T, Real<T>>> {
 
 template <typename T>
 struct AbsGradFunctor {
-  AbsGradFunctor(const math::Real<T>* dout, const T* x, T* output,
-                 int64_t numel)
+  AbsGradFunctor(const Real<T>* dout, const T* x, T* output, int64_t numel)
       : dout_(dout), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
@@ -166,52 +164,55 @@ struct AbsGradFunctor {
     }
   }
 
-  const math::Real<T>* dout_;
+  const Real<T>* dout_;
   const T* x_;
   T* output_;
   int64_t numel_;
 };
 
 template <>
-struct AbsGradFunctor<paddle::platform::complex<float>> {
-  AbsGradFunctor(const float* dout, const paddle::platform::complex<float>* x,
-                 paddle::platform::complex<float>* output, int64_t numel)
+struct AbsGradFunctor<pten::dtype::complex<float>> {
+  AbsGradFunctor(const float* dout,
+                 const pten::dtype::complex<float>* x,
+                 pten::dtype::complex<float>* output,
+                 int64_t numel)
       : dout_(dout), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    if (x_[idx] == paddle::platform::complex<float>(0)) {
-      output_[idx] = paddle::platform::complex<float>(0);
+    if (x_[idx] == pten::dtype::complex<float>(0)) {
+      output_[idx] = pten::dtype::complex<float>(0);
     } else {
-      output_[idx] = paddle::platform::complex<float>(dout_[idx]) *
-                     (x_[idx] / paddle::platform::complex<float>(abs(x_[idx])));
+      output_[idx] = pten::dtype::complex<float>(dout_[idx]) *
+                     (x_[idx] / pten::dtype::complex<float>(abs(x_[idx])));
     }
   }
 
   const float* dout_;
-  const paddle::platform::complex<float>* x_;
-  paddle::platform::complex<float>* output_;
+  const pten::dtype::complex<float>* x_;
+  pten::dtype::complex<float>* output_;
   int64_t numel_;
 };
 
 template <>
-struct AbsGradFunctor<paddle::platform::complex<double>> {
-  AbsGradFunctor(const double* dout, const paddle::platform::complex<double>* x,
-                 paddle::platform::complex<double>* output, int64_t numel)
+struct AbsGradFunctor<pten::dtype::complex<double>> {
+  AbsGradFunctor(const double* dout,
+                 const pten::dtype::complex<double>* x,
+                 pten::dtype::complex<double>* output,
+                 int64_t numel)
       : dout_(dout), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    if (x_[idx] == paddle::platform::complex<double>(0)) {
-      output_[idx] = paddle::platform::complex<double>(0);
+    if (x_[idx] == pten::dtype::complex<double>(0)) {
+      output_[idx] = pten::dtype::complex<double>(0);
     } else {
-      output_[idx] =
-          paddle::platform::complex<double>(dout_[idx]) *
-          (x_[idx] / paddle::platform::complex<double>(abs(x_[idx])));
+      output_[idx] = pten::dtype::complex<double>(dout_[idx]) *
+                     (x_[idx] / pten::dtype::complex<double>(abs(x_[idx])));
     }
   }
 
   const double* dout_;
-  const paddle::platform::complex<double>* x_;
-  paddle::platform::complex<double>* output_;
+  const pten::dtype::complex<double>* x_;
+  pten::dtype::complex<double>* output_;
   int64_t numel_;
 };
 
@@ -235,46 +236,48 @@ struct AbsGradGradFunctor {
 };
 
 template <>
-struct AbsGradGradFunctor<paddle::platform::complex<double>> {
-  AbsGradGradFunctor(const paddle::platform::complex<double>* ddx,
-                     const paddle::platform::complex<double>* x,
-                     paddle::platform::complex<double>* output, int64_t numel)
+struct AbsGradGradFunctor<pten::dtype::complex<double>> {
+  AbsGradGradFunctor(const pten::dtype::complex<double>* ddx,
+                     const pten::dtype::complex<double>* x,
+                     pten::dtype::complex<double>* output,
+                     int64_t numel)
       : ddx_(ddx), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    if (x_[idx] == paddle::platform::complex<double>(0)) {
-      output_[idx] = paddle::platform::complex<double>(0);
+    if (x_[idx] == pten::dtype::complex<double>(0)) {
+      output_[idx] = pten::dtype::complex<double>(0);
     } else {
-      output_[idx] = paddle::platform::complex<double>(ddx_[idx]) * x_[idx] /
-                     paddle::platform::complex<double>(abs(x_[idx]));
+      output_[idx] = pten::dtype::complex<double>(ddx_[idx]) * x_[idx] /
+                     pten::dtype::complex<double>(abs(x_[idx]));
     }
   }
 
-  const paddle::platform::complex<double>* ddx_;
-  const paddle::platform::complex<double>* x_;
-  paddle::platform::complex<double>* output_;
+  const pten::dtype::complex<double>* ddx_;
+  const pten::dtype::complex<double>* x_;
+  pten::dtype::complex<double>* output_;
   int64_t numel_;
 };
 
 template <>
-struct AbsGradGradFunctor<paddle::platform::complex<float>> {
-  AbsGradGradFunctor(const paddle::platform::complex<float>* ddx,
-                     const paddle::platform::complex<float>* x,
-                     paddle::platform::complex<float>* output, int64_t numel)
+struct AbsGradGradFunctor<pten::dtype::complex<float>> {
+  AbsGradGradFunctor(const pten::dtype::complex<float>* ddx,
+                     const pten::dtype::complex<float>* x,
+                     pten::dtype::complex<float>* output,
+                     int64_t numel)
       : ddx_(ddx), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    if (x_[idx] == paddle::platform::complex<float>(0)) {
-      output_[idx] = paddle::platform::complex<float>(0);
+    if (x_[idx] == pten::dtype::complex<float>(0)) {
+      output_[idx] = pten::dtype::complex<float>(0);
     } else {
-      output_[idx] = paddle::platform::complex<float>(ddx_[idx]) * x_[idx] /
-                     paddle::platform::complex<float>(abs(x_[idx]));
+      output_[idx] = pten::dtype::complex<float>(ddx_[idx]) * x_[idx] /
+                     pten::dtype::complex<float>(abs(x_[idx]));
     }
   }
 
-  const paddle::platform::complex<float>* ddx_;
-  const paddle::platform::complex<float>* x_;
-  paddle::platform::complex<float>* output_;
+  const pten::dtype::complex<float>* ddx_;
+  const pten::dtype::complex<float>* x_;
+  pten::dtype::complex<float>* output_;
   int64_t numel_;
 };
 template <typename T, typename Enable = void>
@@ -318,8 +321,10 @@ struct RealImagToComplexFunctor;
 
 template <typename T>
 struct RealImagToComplexFunctor<T, Complex<T, Real<T>>> {
-  RealImagToComplexFunctor(const Real<T>* input_real, const Real<T>* input_imag,
-                           T* output, int64_t numel)
+  RealImagToComplexFunctor(const Real<T>* input_real,
+                           const Real<T>* input_imag,
+                           T* output,
+                           int64_t numel)
       : input_real_(input_real),
         input_imag_(input_imag),
         output_(output),
@@ -363,6 +368,84 @@ struct ConjFunctor<T, DisableComplex<T>> {
   T* output_;
 };
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+template <typename T, typename Enable = void>
+struct AngleFunctor;
+
+// angel function for complex
+template <typename T>
+struct AngleFunctor<T, pten::funcs::Complex<T, pten::funcs::Real<T>>> {
+  AngleFunctor(const T* input, pten::funcs::Real<T>* output, int64_t numel)
+      : input_(input), output_(output), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    output_[idx] = arg(input_[idx]);
+  }
+
+  const T* input_;
+  pten::funcs::Real<T>* output_;
+  int64_t numel_;
+};
+
+// angel function for real
+template <typename T>
+struct AngleFunctor<T, pten::funcs::NoComplex<T, pten::funcs::Real<T>>> {
+  AngleFunctor(const T* input, T* output, int64_t numel)
+      : input_(input), output_(output), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    output_[idx] = input_[idx] < static_cast<T>(0) ? M_PI : 0;
+  }
+
+  const T* input_;
+  T* output_;
+  int64_t numel_;
+};
+
+template <typename T, typename Enable = void>
+struct AngleGradFunctor;
+
+// angle grad for complex
+template <typename T>
+struct AngleGradFunctor<T, pten::funcs::Complex<T, pten::funcs::Real<T>>> {
+  AngleGradFunctor(const pten::funcs::Real<T>* dout,
+                   const T* x,
+                   T* dx,
+                   int64_t numel)
+      : dout_(dout), x_(x), dx_(dx), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    if (x_[idx] == T(0)) {
+      dx_[idx] = T(0);
+    } else {
+      const pten::funcs::Real<T> r_square =
+          x_[idx].real * x_[idx].real + x_[idx].imag * x_[idx].imag;
+      dx_[idx] = T(-dout_[idx] * x_[idx].imag / r_square,
+                   dout_[idx] * x_[idx].real / r_square);
+    }
+  }
+
+  const pten::funcs::Real<T>* dout_;
+  const T* x_;
+  T* dx_;
+  int64_t numel_;
+};
+
+// angle grad for real
+template <typename T>
+struct AngleGradFunctor<T, pten::funcs::NoComplex<T, pten::funcs::Real<T>>> {
+  AngleGradFunctor(const pten::funcs::Real<T>* dout,
+                   const T* x,
+                   T* dx,
+                   int64_t numel)
+      : dout_(dout), x_(x), dx_(dx), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const { dx_[idx] = 0; }
+
+  const pten::funcs::Real<T>* dout_;
+  const T* x_;
+  T* dx_;
+  int64_t numel_;
+};
+
+}  // namespace funcs
+}  // namespace pten

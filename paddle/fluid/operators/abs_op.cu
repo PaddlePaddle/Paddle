@@ -23,14 +23,14 @@ template <typename T, typename Enable = void>
 struct CudaAbsFunctor;
 
 template <typename T>
-struct CudaAbsFunctor<T, math::Complex<T, math::Real<T>>> {
-  __device__ __forceinline__ math::Real<T> operator()(const T x) const {
+struct CudaAbsFunctor<T, pten::funcs::Complex<T, pten::funcs::Real<T>>> {
+  __device__ __forceinline__ pten::funcs::Real<T> operator()(const T x) const {
     return abs(x);
   }
 };
 
 template <typename T>
-struct CudaAbsFunctor<T, math::NoComplex<T, math::Real<T>>> {
+struct CudaAbsFunctor<T, pten::funcs::NoComplex<T, pten::funcs::Real<T>>> {
   __device__ __forceinline__ T operator()(const T x) const {
     return std::abs(x);
   }
@@ -43,15 +43,15 @@ class AbsKernel<platform::CUDADeviceContext, T>
   void Compute(const framework::ExecutionContext& context) const override {
     const Tensor* x = context.Input<Tensor>("X");
     Tensor* out = context.Output<Tensor>("Out");
-    out->mutable_data<math::Real<T>>(context.GetPlace());
+    out->mutable_data<pten::funcs::Real<T>>(context.GetPlace());
 
     auto& dev_ctx =
         context.template device_context<platform::CUDADeviceContext>();
     std::vector<const framework::Tensor*> ins = {x};
     std::vector<framework::Tensor*> outs = {out};
     auto functor = CudaAbsFunctor<T>();
-    paddle::operators::LaunchSameDimsElementwiseCudaKernel<math::Real<T>>(
-        dev_ctx, ins, &outs, functor);
+    paddle::operators::LaunchSameDimsElementwiseCudaKernel<
+        pten::funcs::Real<T>>(dev_ctx, ins, &outs, functor);
   }
 };
 
