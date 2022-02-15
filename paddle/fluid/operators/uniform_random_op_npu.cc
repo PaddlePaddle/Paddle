@@ -60,7 +60,7 @@ class NPUUniformRandomKernel : public framework::OpKernel<T> {
     tensor->mutable_data<T>(ctx.GetPlace());
     int64_t size = tensor->numel();
 
-    Tensor cpu_tensor(tensor->type());
+    Tensor cpu_tensor(tensor->dtype());
     cpu_tensor.Resize(tensor->dims());
     T *data_cpu = cpu_tensor.mutable_data<T>(platform::CPUPlace());
 

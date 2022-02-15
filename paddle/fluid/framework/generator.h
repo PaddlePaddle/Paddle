@@ -25,6 +25,8 @@ limitations under the License. */
 #include <typeinfo>
 #include <utility>
 
+#include "paddle/pten/core/generator.h"
+
 namespace paddle {
 namespace framework {
 
@@ -34,14 +36,7 @@ static uint64_t GetRandomSeed() {
   return ((((uint64_t)rd()) << 32) + rd()) & 0x1FFFFFFFFFFFFF;
 }
 
-struct GeneratorState {
-  int64_t device = -1;
-  uint64_t current_seed = 34342423252;
-  uint64_t thread_offset = 0;
-  std::mt19937_64 cpu_engine;
-};
-
-struct Generator {
+struct Generator : public pten::Generator {
   Generator() {
     auto seed = GetRandomSeed();
     std::seed_seq seq({seed});
@@ -82,9 +77,9 @@ struct Generator {
   Generator(const Generator& other) = delete;
 
   // get random state
-  GeneratorState GetState();
+  pten::Generator::GeneratorState GetState();
   // set random state
-  void SetState(const GeneratorState&);
+  void SetState(const pten::Generator::GeneratorState&);
   // get current seed
   uint64_t GetCurrentSeed();
   // random a seed and get
@@ -105,7 +100,7 @@ struct Generator {
   uint64_t get_device_id() { return this->state_.device; }
 
  private:
-  GeneratorState state_;
+  pten::Generator::GeneratorState state_;
   std::shared_ptr<std::mt19937_64> engine_;
   mutable std::mutex mu_;
 
