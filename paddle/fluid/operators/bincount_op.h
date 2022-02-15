@@ -61,7 +61,7 @@ void BincountInner(const framework::ExecutionContext& context) {
 
   if (has_weights) {
     const T* weights_data = weights->data<T>();
-    const auto& weights_type = weights->type();
+    const auto& weights_type = framework::TransToProtoVarType(weights->dtype());
     if (weights_type == framework::proto::VarType::FP32) {
       float* output_data = output->mutable_data<float>(context.GetPlace());
       pten::funcs::SetConstant<DeviceContext, float>()(
@@ -95,7 +95,7 @@ class BincountKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const Tensor* input = context.Input<framework::Tensor>("X");
-    const auto& input_type = input->type();
+    const auto& input_type = framework::TransToProtoVarType(input->dtype());
 
     if (input_type == framework::proto::VarType::INT32) {
       BincountInner<DeviceContext, T, int>(context);

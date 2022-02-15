@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#pragma once
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
@@ -21,11 +23,10 @@ using paddle::framework::LoDTensor;
 using paddle::framework::Tensor;
 using platform::to_void_cast;
 
-inline std::vector<int64_t> CalculateReducedDims(const Tensor* input,
-                                                 const Tensor* output,
-                                                 std::vector<int>& reduce_dims,
-                                                 bool reduce_all,
-                                                 bool keep_dim) {
+inline std::vector<int64_t> CalculateReducedDims(
+    const Tensor* input, const Tensor* output,
+    std::vector<int>& reduce_dims,  // NOLINT
+    bool reduce_all, bool keep_dim) {
   if (keep_dim) return framework::vectorize(output->dims());
 
   if (reduce_all)
@@ -69,10 +70,11 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
     // In that case reorder must be executed to maintain compatibility with
     // PaddlePaddle reduce op
     if (input_dims == output_dims) {
-      dnnl::memory::data_type input_type =
-          framework::ToMKLDNNDataType(input->type());
-      platform::ReorderMKLDNNHandler reorder_handler(input_dims, input->type(),
-                                                     input_type, onednn_engine);
+      dnnl::memory::data_type input_type = framework::ToMKLDNNDataType(
+          framework::TransToProtoVarType(input->dtype()));
+      platform::ReorderMKLDNNHandler reorder_handler(
+          input_dims, framework::TransToProtoVarType(input->dtype()),
+          input_type, onednn_engine);
 
       auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
           input->format(), platform::to_void_cast(input->data<T>()));

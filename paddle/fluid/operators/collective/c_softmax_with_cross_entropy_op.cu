@@ -121,8 +121,9 @@ class CSoftmaxWithCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
         eigen_logits.maximum(along_axis);
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
         logits_max_buff, logits_max_buff, logits_max.numel(),
-        platform::ToNCCLDataType(logits_max.type()), ncclMax, comm->comm(),
-        stream));
+        platform::ToNCCLDataType(
+            framework::TransToProtoVarType(logits_max.dtype())),
+        ncclMax, comm->comm(), stream));
 
     // step 2, obtain logit - logit_max
     Eigen::DSizes<int, 2> batch_by_one(N, 1);
@@ -147,7 +148,7 @@ class CSoftmaxWithCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
 
     int blocks = NumBlocks(N);
     int threads = kNumCUDAThreads;
-    const auto& label_type = labels->type();
+    const auto& label_type = framework::TransToProtoVarType(labels->dtype());
 
     if (label_type == framework::proto::VarType::INT32) {
       MaskLabelByIndex<T, int32_t><<<blocks, threads, 0, dev_ctx.stream()>>>(
@@ -162,8 +163,9 @@ class CSoftmaxWithCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     void* predict_logits_buff = predicted_logits.mutable_data<T>(place);
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
         predict_logits_buff, predict_logits_buff, predicted_logits.numel(),
-        platform::ToNCCLDataType(predicted_logits.type()), ncclSum,
-        comm->comm(), stream));
+        platform::ToNCCLDataType(
+            framework::TransToProtoVarType(predicted_logits.dtype())),
+        ncclSum, comm->comm(), stream));
 
     // step 4, obtain exp(logit)
     eigen_softmax.device(*dev_ctx.eigen_device()) = eigen_softmax.exp();
@@ -180,8 +182,9 @@ class CSoftmaxWithCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
         sum_exp_logits_buff, sum_exp_logits_buff, sum_exp_logits.numel(),
-        platform::ToNCCLDataType(sum_exp_logits.type()), ncclSum, comm->comm(),
-        stream));
+        platform::ToNCCLDataType(
+            framework::TransToProtoVarType(sum_exp_logits.dtype())),
+        ncclSum, comm->comm(), stream));
 
     auto eigen_loss = math::EigenMatrix<T>::From(loss_2d);
     auto eigen_predicted_logits = math::EigenMatrix<T>::From(predicted_logits);
@@ -225,7 +228,7 @@ class CSoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
 
     int blocks = NumBlocks(N * D);
     int threads = kNumCUDAThreads;
-    const auto& label_type = labels->type();
+    const auto& label_type = framework::TransToProtoVarType(labels->dtype());
     const int start_index = rank * D;
     const int end_index = start_index + D;
 

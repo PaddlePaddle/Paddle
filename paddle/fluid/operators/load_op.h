@@ -18,6 +18,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -82,7 +83,7 @@ class LoadOpKernel : public framework::OpKernel<T> {
     }
 
     auto load_as_fp16 = ctx.Attr<bool>("load_as_fp16");
-    auto in_dtype = tensor->type();
+    auto in_dtype = framework::TransToProtoVarType(tensor->dtype());
     auto out_dtype = load_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
 
     if (in_dtype != out_dtype) {

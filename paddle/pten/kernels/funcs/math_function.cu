@@ -227,7 +227,8 @@ void set_constant_with_place<paddle::platform::CUDAPlace>(
     paddle::framework::Tensor* tensor,
     float value) {
   paddle::framework::VisitDataType(
-      tensor->type(), TensorSetConstantGPU(context, tensor, value));
+      paddle::framework::TransToProtoVarType(tensor->type()),
+      TensorSetConstantGPU(context, tensor, value));
 }
 
 template <typename T>
