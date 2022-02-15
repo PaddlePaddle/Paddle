@@ -46,7 +46,8 @@ class StackMKLDNNHandler
     // in stack op all inputs must have same dims
     auto input_dims = framework::vectorize<int64_t>(inputs[0]->dims());
 
-    memory::data_type dt = framework::ToMKLDNNDataType(inputs[0]->type());
+    memory::data_type dt = framework::ToMKLDNNDataType(
+        framework::TransToProtoVarType(inputs[0]->dtype()));
     std::vector<memory::desc> srcs_md;
     memory::desc dst_md;
     MKLDNNMemoryFormat dst_fmt;

@@ -18,6 +18,7 @@
 #include <memory>
 #include <utility>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/imperative/layer.h"
@@ -263,10 +264,11 @@ void TensorAdd(const VarType& src, VarType* dst) {
           "%zu and the number of elements of destination tensor is %zu.",
           numel, dst_tensor->numel()));
 
-  auto data_type = src_tensor.type();
+  auto data_type = framework::TransToProtoVarType(src_tensor.dtype());
   auto place = src_tensor.place();
 
-  PADDLE_ENFORCE_EQ(dst_tensor->type(), data_type,
+  PADDLE_ENFORCE_EQ(framework::TransToProtoVarType(dst_tensor->dtype()),
+                    data_type,
                     platform::errors::PreconditionNotMet(
                         "The data type of source tensor and destination tensor "
                         "should be equal, Otherwise, the calculation results "
@@ -376,7 +378,8 @@ void SelectedRowsAddToTensor(const VarType& src, VarType* dst) {
   const pten::SelectedRows& src_selected_rows =
       GetInnerTensor<pten::SelectedRows>(src);
   auto place = dst_tensor->place();
-  auto data_type = src_selected_rows.value().type();
+  auto data_type =
+      framework::TransToProtoVarType(src_selected_rows.value().dtype());
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
 
 #define PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(dev_ctx_type, cpp_type)           \
@@ -422,13 +425,14 @@ void SelectedRowsAddTensor(const VarType& src_selected_rows_var,
   const pten::DenseTensor& src_tensor =
       GetInnerTensor<pten::DenseTensor>(src_tensor_var);
   const auto& place = src_tensor.place();
-  auto data_type = src_tensor.type();
+  auto data_type = framework::TransToProtoVarType(src_tensor.dtype());
   auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
 
   pten::DenseTensor* dst_tensor =
       GetInnerMutableTensor<pten::DenseTensor>(dst_tensor_var);
   dst_tensor->Resize(src_tensor.dims());
-  dst_tensor->mutable_data(place, data_type);
+  dst_tensor->mutable_data(place, src_tensor.dtype());
+
 #define PADDLE_SELECTED_ROWS_ADD_TENSOR(dev_ctx_type, cpp_type)            \
   if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) {       \
     paddle::operators::math::SelectedRowsAddTensor<dev_ctx_type, cpp_type> \
@@ -477,7 +481,8 @@ std::shared_ptr<VariableWrapper> SelectedRowsMerge(
   auto& src_selected_rows1 = src1.Get<pten::SelectedRows>();
   auto& src_selected_rows2 = src2.Get<pten::SelectedRows>();
   auto place = src_selected_rows1.value().place();
-  auto data_type = src_selected_rows1.value().type();
+  auto data_type =
+      framework::TransToProtoVarType(src_selected_rows1.value().dtype());
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
 
   std::vector<const pten::SelectedRows*> src_selected_rows;
@@ -702,12 +707,14 @@ void EagerGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
         VLOG(6) << "Dims of " << dst_var->Name() << " is set as: "
                 << var->Var().Get<framework::LoDTensor>().dims();
         tensor->Resize(var->Var().Get<framework::LoDTensor>().dims());
-        tensor->mutable_data(place, var->DataType());
+        tensor->mutable_data(place,
+                             framework::TransToPtenDataType(var->DataType()));
         pten::funcs::set_constant(*dev_ctx, tensor, 0.0);
       } else {
         auto* tensor =
             dst_var->MutableVar()->GetMutable<framework::LoDTensor>();
-        tensor->mutable_data(place, var->DataType());
+        tensor->mutable_data(place,
+                             framework::TransToPtenDataType(var->DataType()));
         pten::funcs::set_constant(*dev_ctx, tensor, 0.0);
       }
     }
@@ -834,12 +841,14 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
         VLOG(6) << "Dims of " << dst_var->Name() << " is set as: "
                 << var->Var().Get<framework::LoDTensor>().dims();
         tensor->Resize(var->Var().Get<framework::LoDTensor>().dims());
-        tensor->mutable_data(place, var->DataType());
+        tensor->mutable_data(place,
+                             framework::TransToPtenDataType(var->DataType()));
         pten::funcs::set_constant(*dev_ctx, tensor, 0.0);
       } else {
         auto* tensor =
             dst_var->MutableVar()->GetMutable<framework::LoDTensor>();
-        tensor->mutable_data(place, var->DataType());
+        tensor->mutable_data(place,
+                             framework::TransToPtenDataType(var->DataType()));
         pten::funcs::set_constant(*dev_ctx, tensor, 0.0);
       }
     }

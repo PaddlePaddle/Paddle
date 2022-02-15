@@ -21,6 +21,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 #include "gflags/gflags.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -93,7 +94,8 @@ class IndexSampleKernel : public framework::OpKernel<T> {
     auto *out_var = ctx.OutputVar("Out");
     auto *out_tensor = out_var->GetMutable<framework::LoDTensor>();
 
-    const auto &index_type = index_tensor.type();
+    const auto &index_type =
+        framework::TransToProtoVarType(index_tensor.dtype());
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(index_type_match, true,
@@ -169,7 +171,8 @@ class IndexSampleGradKernel : public framework::OpKernel<T> {
     auto &out_grad_tensor = out_grad_var->Get<LoDTensor>();
     auto *x_grad_tensor = x_grad_var->GetMutable<framework::LoDTensor>();
 
-    const auto &index_type = index_tensor.type();
+    const auto &index_type =
+        framework::TransToProtoVarType(index_tensor.dtype());
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(index_type_match, true,
