@@ -43,6 +43,7 @@ option(WITH_ONEMKL      "Compile PaddlePaddle with oneMKL"              OFF)
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
 option(WITH_TENSORRT    "Compile PaddlePaddle with NVIDIA TensorRT"     OFF)
 option(WITH_XPU         "Compile PaddlePaddle with BAIDU KUNLUN XPU"    OFF)
+option(WITH_XPU_KP      "Compile PaddlePaddle with BAIDU XPU compiler " OFF)
 option(WITH_MLU    "Compile PaddlePaddle with CAMBRICON MLU"     OFF)
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode"    OFF)
 option(WITH_ASCEND         "Compile PaddlePaddle with ASCEND"        OFF)
@@ -58,6 +59,9 @@ include(generic)            # simplify cmake module
 
 if (WITH_GPU  AND WITH_XPU)
     message(FATAL_ERROR "Error when compile GPU and XPU at the same time")
+endif()
+if (WITH_GPU AND WITH_XPU_KP)
+    message(FATAL_ERROR "Error when compile GPU and XPU2 at the same time")
 endif()
 if (WITH_GPU AND WITH_ASCEND)
     message(FATAL_ERROR "Error when compile GPU and ASCEND at the same time")
@@ -226,6 +230,7 @@ option(WITH_INFRT  "Compile PaddlePaddle with INFRT" OFF)
 option(WITH_NCCL   "Compile PaddlePaddle with NCCL support"             ON)
 option(WITH_RCCL   "Compile PaddlePaddle with RCCL support"             ON)
 option(WITH_XPU_BKCL    "Compile PaddlePaddle with BAIDU KUNLUN XPU BKCL"   OFF)
+option(WITH_CNCL   "Compile PaddlePaddle with CNCL support"             OFF)
 option(WITH_CRYPTO   "Compile PaddlePaddle with crypto support"         ON)
 option(WITH_ARM   "Compile PaddlePaddle with arm support"         OFF)
 option(WITH_SW   "Compile PaddlePaddle with sw support"         OFF)
@@ -237,6 +242,15 @@ option(NEW_RELEASE_CUBIN   "PaddlePaddle next-level release strategy for pypi cu
 option(NEW_RELEASE_JIT   "PaddlePaddle next-level release strategy for backup jit package"             OFF)
 option(WITH_ASCEND_INT64 "Compile with int64 kernel for ascend NPU"    OFF)
 option(WITH_POCKETFFT    "Compile with pocketfft support"      ON)
+option(WITH_RECORD_BUILDTIME    "Compile PaddlePaddle with record all targets build time"       OFF)
+
+if(WITH_RECORD_BUILDTIME)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_CURRENT_SOURCE_DIR}/tools/get_build_time.sh")
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK "${CMAKE_CURRENT_SOURCE_DIR}/tools/get_build_time.sh")
+else()            
+    include(ccache) # set ccache for compilation ; if WITH_RECORD_BUILDTIME=ON can't use ccache
+endif()
+unset(WITH_RECORD_BUILDTIME CACHE)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -273,11 +287,26 @@ if (NOT WITH_GPU AND WITH_NCCL)
         "Disable NCCL when compiling without GPU" FORCE)
 endif()
 
+# force WITH_XPU on when WITH_XPU_KP
+if (WITH_XPU_KP AND NOT WITH_XPU)
+    MESSAGE(WARNING
+        "Enable WITH_XPU when compiling with WITH_XPU_KP. Force WITH_XPU=ON.")
+    set(WITH_XPU ON CACHE STRING
+        "Enable WITH_XPU when compiling with WITH_XPU_KP" FORCE)
+endif()
+
 if (NOT WITH_XPU AND WITH_XPU_BKCL)
     MESSAGE(WARNING
         "Disable BKCL when compiling without XPU. Force WITH_XPU_BKCL=OFF.")
     set(WITH_XPU_BKCL OFF CACHE STRING
         "Disable BKCL when compiling without XPU" FORCE)
+endif()
+
+if (NOT WITH_MLU AND WITH_CNCL)
+    MESSAGE(WARNING
+        "Disable CNCL when compiling without MLU. Force WITH_MLU=OFF.")
+    set(WITH_MLU OFF CACHE STRING
+        "Disable CNCL when compiling without MLU" FORCE)
 endif()
 
 if(WITH_NCCL)
@@ -317,6 +346,10 @@ if(WITH_ROCM)
     include(miopen) # set miopen libraries, must before configure
 endif(WITH_ROCM)
 
+if(WITH_XPU_KP)
+    include(xpu_kp)
+endif()
+
 if (NOT WITH_ROCM AND WITH_RCCL)
     MESSAGE(WARNING
         "Disable RCCL when compiling without ROCM. Force WITH_RCCL=OFF.")
@@ -331,6 +364,10 @@ else()
      if(WITH_ROCM)
          MESSAGE(WARNING "If the environment is multi-card, the WITH_RCCL option needs to be turned on, otherwise only a single card can be used.")
      endif()
+endif()
+
+if(WITH_HETERPS AND WITH_PSLIB)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
 endif()
 
 if(WITH_DISTRIBUTE)
@@ -354,7 +391,6 @@ if(WITH_PROFILER)
     add_definitions(-DWITH_GPERFTOOLS)
 endif()
 
-include(ccache)             # set ccache for compilation
 include(util)               # set unittest and link libs
 include(version)            # set PADDLE_VERSION
 include(coveralls)          # set code coverage

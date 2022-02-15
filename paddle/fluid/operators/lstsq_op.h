@@ -21,12 +21,12 @@
 #include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/math/eigen_values_vectors.h"
 #include "paddle/fluid/operators/math/lapack_function.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/matrix_solve.h"
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/operators/triangular_solve_op.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 #define EPSILON 1e-6
 
@@ -177,7 +177,7 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
     // "rwork" only used for complex inputs and "gelsy/gelsd/gelss" drivers
     Tensor rwork;
     ValueType* rwork_data = nullptr;
-    if (framework::IsComplexType(x.type()) &&
+    if (framework::IsComplexType(framework::TransToProtoVarType(x.dtype())) &&
         driver != LapackDriverType::Gels) {
       int rwork_len = 0;
       if (driver == LapackDriverType::Gelsy) {

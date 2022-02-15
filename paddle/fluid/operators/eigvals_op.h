@@ -110,7 +110,8 @@ LapackEigvals(const framework::ExecutionContext& ctx, const Tensor& input,
                      static_cast<T*>(NULL), &info);
 
   std::string name = "framework::platform::dynload::dgeev_";
-  if (input.type() == framework::proto::VarType::FP64) {
+  if (framework::TransToProtoVarType(input.dtype()) ==
+      framework::proto::VarType::FP64) {
     name = "framework::platform::dynload::sgeev_";
   }
   CheckLapackEigResult(info, name);
@@ -159,7 +160,8 @@ LapackEigvals(const framework::ExecutionContext& ctx, const Tensor& input,
       rwork->template data<Real<T>>(), &info);
 
   std::string name = "framework::platform::dynload::cgeev_";
-  if (input.type() == framework::proto::VarType::COMPLEX64) {
+  if (framework::TransToProtoVarType(input.dtype()) ==
+      framework::proto::VarType::COMPLEX64) {
     name = "framework::platform::dynload::zgeev_";
   }
   CheckLapackEigResult(info, name);
@@ -203,7 +205,8 @@ class EigvalsKernel : public framework::OpKernel<T> {
       lwork = 3 * n_dim;
       work.mutable_data<T>(framework::make_ddim({lwork}), ctx.GetPlace());
     }
-    if (framework::IsComplexType(input->type())) {
+    if (framework::IsComplexType(
+            framework::TransToProtoVarType(input->dtype()))) {
       rwork.mutable_data<Real<T>>(framework::make_ddim({n_dim << 1}),
                                   ctx.GetPlace());
     }

@@ -12,14 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/dlpack_tensor.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
-
-namespace paddle {
-namespace platform {
-struct bfloat16;
-struct float16;
-}  // namespace platform
-}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -141,7 +135,8 @@ DLPackTensor::DLPackTensor(const Tensor &tensor, LaneType lanes) {
   t_.device = paddle::platform::VisitPlace(place, internal::DLDeviceVisitor());
 
   // init dtype
-  t_.dtype = internal::GetDLDataTypeFromTypeIndex(tensor.type());
+  t_.dtype = internal::GetDLDataTypeFromTypeIndex(
+      framework::TransToProtoVarType(tensor.dtype()));
   t_.dtype.lanes = lanes;
 
   // init ndim, tensor rank

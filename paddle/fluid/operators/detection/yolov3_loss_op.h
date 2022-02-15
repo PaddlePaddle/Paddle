@@ -13,7 +13,7 @@
 #include <algorithm>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -305,7 +305,7 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
     Tensor gtscore;
     if (!gt_score) {
       gtscore.mutable_data<T>({n, b}, ctx.GetPlace());
-      math::SetConstant<platform::CPUDeviceContext, T>()(
+      pten::funcs::SetConstant<platform::CPUDeviceContext, T>()(
           ctx.template device_context<platform::CPUDeviceContext>(), &gtscore,
           static_cast<T>(1.0));
       gt_score = &gtscore;
@@ -461,7 +461,7 @@ class Yolov3LossGradKernel : public framework::OpKernel<T> {
     Tensor gtscore;
     if (!gt_score) {
       gtscore.mutable_data<T>({n, b}, ctx.GetPlace());
-      math::SetConstant<platform::CPUDeviceContext, T>()(
+      pten::funcs::SetConstant<platform::CPUDeviceContext, T>()(
           ctx.template device_context<platform::CPUDeviceContext>(), &gtscore,
           static_cast<T>(1.0));
       gt_score = &gtscore;

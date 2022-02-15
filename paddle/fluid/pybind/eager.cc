@@ -18,14 +18,16 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/utils.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/pten/common/data_type.h"
-#include "paddle/pten/core/convert_utils.h"
+#include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "pybind11/detail/internals.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
@@ -39,22 +41,23 @@ namespace pybind {
 
 namespace py = ::pybind11;
 
-PyTypeObject* p_eager_tensor_type;
+PyTypeObject* p_tensor_type;
 extern PyTypeObject* g_vartype_pytype;
 extern PyTypeObject* g_framework_tensor_pytype;
 
 PyObject* EagerTensorNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
   PyObject* obj = type->tp_alloc(type, 0);
   if (obj) {
-    auto v = reinterpret_cast<EagerTensorObject*>(obj);
-    new (&(v->eager_tensor)) egr::EagerTensor();
+    auto v = reinterpret_cast<TensorObject*>(obj);
+    new (&(v->tensor)) paddle::experimental::Tensor();
+    Py_INCREF(obj);
   }
   return obj;
 }
 
 // TODO(jiabin): Overload this once we need more constructor in Python
 void EmptyEagerTensorInitializer(
-    EagerTensorObject* self, const std::string& name,
+    TensorObject* self, const std::string& name,
     const paddle::platform::Place& place, bool persistable = false,
     bool stop_gradient = true, framework::proto::VarType::Type dtype =
                                    paddle::framework::proto::VarType::FP32,
@@ -68,8 +71,8 @@ void EmptyEagerTensorInitializer(
           "Create Eager Tensor with dims contain minus num is ilegal"
           "Please check your code and make sure you new a "
           "eager tensor with fixed shape instead of using -1."));
-  self->eager_tensor.set_name(name);
-  auto autograd_meta = egr::EagerUtils::autograd_meta(&(self->eager_tensor));
+  self->tensor.set_name(name);
+  auto autograd_meta = egr::EagerUtils::autograd_meta(&(self->tensor));
   autograd_meta->SetPersistable(persistable);
   autograd_meta->SetStopGradient(stop_gradient);
   if (var_type == paddle::framework::proto::VarType::LOD_TENSOR) {
@@ -77,8 +80,10 @@ void EmptyEagerTensorInitializer(
     std::shared_ptr<pten::DenseTensor> dense_tensor =
         std::make_shared<pten::DenseTensor>(
             pten::make_intrusive<paddle::experimental::SharedStorage>(place),
-            pten::DenseTensorMeta(pten::TransToPtenDataType(dtype), ddims));
-    self->eager_tensor.set_impl(dense_tensor);
+            pten::DenseTensorMeta(paddle::framework::TransToPtenDataType(dtype),
+                                  ddims));
+    dense_tensor->mutable_data(place);
+    self->tensor.set_impl(dense_tensor);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "We only support LoDTensor to be constructed by this initializer, "
@@ -93,18 +98,17 @@ void EmptyEagerTensorInitializer(
   }
 }
 
-void InitEagerTensorWithNumpyValue(EagerTensorObject* self,
-                                   const py::object& array,
+void InitEagerTensorWithNumpyValue(TensorObject* self, const py::object& array,
                                    bool zero_copy = false) {
   PADDLE_ENFORCE_EQ(
-      self->eager_tensor.defined(), true,
+      self->tensor.defined(), true,
       paddle::platform::errors::Fatal(
           "Calling InitEagerTensorWithNumpyValue of Eager Tensor without "
           "EmptyEagerTensorInitializer is "
           "forbidden. Please check your code and make sure you new a "
           "eager tensor before init it with NumPy."));
   pten::DenseTensor* impl_ptr =
-      static_cast<pten::DenseTensor*>(self->eager_tensor.impl().get());
+      static_cast<pten::DenseTensor*>(self->tensor.impl().get());
   paddle::platform::Place place = impl_ptr->place();
   paddle::framework::LoDTensor temp_tensor = paddle::framework::LoDTensor();
   if (platform::is_cpu_place(place)) {
@@ -127,64 +131,50 @@ void InitEagerTensorWithNumpyValue(EagerTensorObject* self,
         "Place should be one of "
         "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace"));
   }
-  paddle::experimental::ReMakePtenDenseTensor(temp_tensor, impl_ptr);
+  *impl_ptr = temp_tensor;
 }
 
-void InitEagerTensorWithEagerTensor(EagerTensorObject* self,
-                                    const egr::EagerTensor& src,
+void InitEagerTensorWithEagerTensor(TensorObject* self,
+                                    const paddle::experimental::Tensor& src,
                                     const paddle::platform::Place& place,
                                     const std::string& name) {
-  self->eager_tensor.set_name(name);
-  if (place == src.place()) {
+  self->tensor.set_name(name);
+  if (place == src.inner_place()) {
     auto impl = std::static_pointer_cast<pten::DenseTensor>(src.impl());
-    self->eager_tensor.set_impl(impl);
+    self->tensor.set_impl(impl);
     VLOG(4) << "Same place, do ShareDataWith";
   } else {
-    self->eager_tensor.set_impl(
+    self->tensor.set_impl(
         src.copy_to(pten::TransToPtenBackend(place), true).impl());
     VLOG(4) << "Different place, do TensorCopy";
   }
-  egr::EagerUtils::autograd_meta(&(self->eager_tensor))->SetStopGradient(true);
+  egr::EagerUtils::autograd_meta(&(self->tensor))->SetStopGradient(true);
   if (src.get_autograd_meta()) {
-    egr::EagerUtils::unsafe_autograd_meta(self->eager_tensor)
+    egr::EagerUtils::unsafe_autograd_meta(self->tensor)
         ->SetPersistable(
             egr::EagerUtils::unsafe_autograd_meta(src)->Persistable());
   } else {
-    egr::EagerUtils::unsafe_autograd_meta(self->eager_tensor)
-        ->SetPersistable(false);
+    egr::EagerUtils::unsafe_autograd_meta(self->tensor)->SetPersistable(false);
   }
 }
 
-void InitEagerTensorWithFrameworkTensor(EagerTensorObject* self,
+void InitEagerTensorWithFrameworkTensor(TensorObject* self,
                                         const framework::Tensor& src,
                                         const paddle::platform::Place& place,
                                         const std::string& name) {
-  self->eager_tensor.set_name(name);
+  self->tensor.set_name(name);
   if (place == src.place()) {
-    std::shared_ptr<pten::DenseTensor> dense_tensor =
-        std::make_shared<pten::DenseTensor>(
-            pten::make_intrusive<paddle::experimental::SharedStorage>(place),
-            pten::DenseTensorMeta(pten::TransToPtenDataType(src.type()),
-                                  src.dims()));
-    paddle::experimental::ReMakePtenDenseTensor(src, dense_tensor.get());
-    self->eager_tensor.set_impl(dense_tensor);
+    self->tensor.set_impl(std::make_shared<pten::DenseTensor>(src));
     VLOG(4) << "Same place, do ShareDataWith";
   } else {
-    std::shared_ptr<pten::DenseTensor> dense_tensor =
-        std::make_shared<pten::DenseTensor>(
-            pten::make_intrusive<paddle::experimental::SharedStorage>(
-                src.place()),
-            pten::DenseTensorMeta(pten::TransToPtenDataType(src.type()),
-                                  src.dims()));
-    paddle::experimental::ReMakePtenDenseTensor(src, dense_tensor.get());
-    auto temp = egr::EagerTensor(dense_tensor);
-    self->eager_tensor.set_impl(
+    auto temp =
+        paddle::experimental::Tensor(std::make_shared<pten::DenseTensor>(src));
+    self->tensor.set_impl(
         temp.copy_to(pten::TransToPtenBackend(place), true).impl());
     VLOG(4) << "Different place, do TensorCopy";
   }
-  egr::EagerUtils::autograd_meta(&(self->eager_tensor))->SetStopGradient(true);
-  egr::EagerUtils::unsafe_autograd_meta(self->eager_tensor)
-      ->SetPersistable(false);
+  egr::EagerUtils::autograd_meta(&(self->tensor))->SetStopGradient(true);
+  egr::EagerUtils::unsafe_autograd_meta(self->tensor)->SetPersistable(false);
 }
 
 py::object ParsePyArray(
@@ -284,7 +274,7 @@ std::string ParseName(std::unordered_map<std::string, PyObject*> kws_map,
 // initialize EagerTensor by PyArray(first argument is PyArray,
 // mix args and kwargs) automatically.
 void AutoInitEagerTensorByPyArray(
-    EagerTensorObject* py_tensor_ptr,
+    TensorObject* py_tensor_ptr,
     std::unordered_map<std::string, PyObject*> kws_map, PyObject* args,
     bool flag_kwargs, Py_ssize_t args_num) {
   // The first argument of the EagerTensor constructor is PyArray,
@@ -324,7 +314,7 @@ void AutoInitEagerTensorByPyArray(
 // initialize EagerTensor by EagerTensor or framework::Tensor (mix args and
 // kwargs) automatically.
 void AutoInitEagerTensorByTensor(
-    EagerTensorObject* py_tensor_ptr,
+    TensorObject* py_tensor_ptr,
     std::unordered_map<std::string, PyObject*> kws_map, PyObject* args,
     bool flag_kwargs, Py_ssize_t args_num, bool init_by_egr_tensor = true) {
   // The first argument of the EagerTensor constructor is EagerTensor or
@@ -345,14 +335,14 @@ void AutoInitEagerTensorByTensor(
   act_name = ParseName(kws_map, kw_order_map, args, flag_kwargs, args_num);
 
   if (init_by_egr_tensor) {
-    egr::EagerTensor src_tensor;
+    paddle::experimental::Tensor src_tensor;
     if (kw_order_map["value"] <= args_num) {
-      src_tensor = CastPyArg2EagerTensor(
-          PyTuple_GET_ITEM(args, kw_order_map["value"] - 1),
-          kw_order_map["value"] - 1);
+      src_tensor =
+          CastPyArg2Tensor(PyTuple_GET_ITEM(args, kw_order_map["value"] - 1),
+                           kw_order_map["value"] - 1);
     } else {
       if (flag_kwargs && kws_map["value"] != NULL) {
-        src_tensor = CastPyArg2EagerTensor(kws_map["value"], 0);
+        src_tensor = CastPyArg2Tensor(kws_map["value"], 0);
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "The first expected kwargs is {value: EagerTensor}, "
@@ -490,7 +480,7 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
                 "forbidden. Please check your code and make sure you new a "
                 "eager tensor before init it."));
 
-  auto py_tensor_ptr = reinterpret_cast<EagerTensorObject*>(self);
+  auto py_tensor_ptr = reinterpret_cast<TensorObject*>(self);
 
   Py_ssize_t args_num = PyTuple_Size(args);
   VLOG(6) << " args_num: " << args_num;
@@ -512,8 +502,8 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
           AutoInitEagerTensorByPyArray(py_tensor_ptr, kws_map, args,
                                        flag_kwargs, args_num);
           return 0;
-        } else if (PyObject_IsInstance(kw_value, reinterpret_cast<PyObject*>(
-                                                     p_eager_tensor_type))) {
+        } else if (PyObject_IsInstance(
+                       kw_value, reinterpret_cast<PyObject*>(p_tensor_type))) {
           VLOG(6) << "Calling case5's or case6's initializer";
           AutoInitEagerTensorByTensor(py_tensor_ptr, kws_map, args, flag_kwargs,
                                       args_num);
@@ -608,8 +598,8 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
       AutoInitEagerTensorByPyArray(py_tensor_ptr, kws_map, args, flag_kwargs,
                                    args_num);
       return 0;
-    } else if (PyObject_IsInstance(arg0_ptr, reinterpret_cast<PyObject*>(
-                                                 p_eager_tensor_type))) {
+    } else if (PyObject_IsInstance(
+                   arg0_ptr, reinterpret_cast<PyObject*>(p_tensor_type))) {
       VLOG(6) << "Calling case5's or case6's initializer.";
       AutoInitEagerTensorByTensor(py_tensor_ptr, kws_map, args, flag_kwargs,
                                   args_num);
@@ -726,8 +716,8 @@ int EagerTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   return 1;
 }
 
-static void eagertensor_dealloc(EagerTensorObject* self) {
-  self->eager_tensor.~EagerTensor();
+static void EagerTensorDealloc(TensorObject* self) {
+  self->tensor.~Tensor();
   Py_TYPE(self)->tp_free(reinterpret_cast<PyObject*>(self));
 }
 
@@ -739,71 +729,44 @@ PyNumberMethods number_methods;
 PySequenceMethods sequence_methods;
 PyMappingMethods mapping_methods;
 
-PyTypeObject eager_tensor_type = {
-    PyVarObject_HEAD_INIT(NULL, 0) "core_avx.eager.EagerTensor", /* tp_name */
-    sizeof(EagerTensorObject),       /* tp_basicsize */
-    0,                               /* tp_itemsize */
-    (destructor)eagertensor_dealloc, /* tp_dealloc */
-    0,                               /* tp_vectorcall_offset */
-    0,                               /* tp_getattr */
-    0,                               /* tp_setattr */
-    0,                               /* tp_reserved */
-    0,                               /* tp_repr */
-    &number_methods,                 /* tp_as_number */
-    &sequence_methods,               /* tp_as_sequence */
-    &mapping_methods,                /* tp_as_mapping */
-    0,                               /* tp_hash  */
-    0,                               /* tp_call */
-    0,                               /* tp_str */
-    0,                               /* tp_getattro */
-    0,                               /* tp_setattro */
-    0,                               /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE |
-        Py_TPFLAGS_HEAPTYPE, /* tp_flags */
-    0,                       /* tp_doc */
-    0,                       /* tp_traverse */
-    0,                       /* tp_clear */
-    0,                       /* tp_richcompare */
-    0,                       /* tp_weaklistoffset */
-    0,                       /* tp_iter */
-    0,                       /* tp_iternext */
-    variable_methods,        /* tp_methods */
-    0,                       /* tp_members */
-    variable_properties,     /* tp_getset */
-    0,                       /* tp_base */
-    0,                       /* tp_dict */
-    0,                       /* tp_descr_get */
-    0,                       /* tp_descr_set */
-    0,                       /* tp_dictoffset */
-    EagerTensorInit,         /* tp_init */
-    0,                       /* tp_alloc */
-    EagerTensorNew,          /* tp_new */
-    0,                       /* tp_free */
-    0,                       /* tp_is_gc */
-    0,                       /* tp_bases */
-    0,                       /* tp_mro */
-    0,                       /* tp_cache */
-    0,                       /* tp_subclasses */
-    0,                       /* tp_weaklist */
-    0,                       /* tp_del */
-    0,                       /* tp_version_tag */
-    0                        /* tp_finalize */
-};
-
 void BindEager(pybind11::module* module) {
   auto m = module->def_submodule("eager");
 
-  p_eager_tensor_type = &eager_tensor_type;
-  if (PyType_Ready(&eager_tensor_type) < 0) {
+  auto& internals = pybind11::detail::get_internals();
+  auto heap_type = reinterpret_cast<PyHeapTypeObject*>(
+      internals.default_metaclass->tp_alloc(internals.default_metaclass, 0));
+  heap_type->ht_name = ToPyObject("EagerTensor");
+  heap_type->ht_qualname = ToPyObject("EagerTensor");
+  auto type = &heap_type->ht_type;
+  type->tp_name = "EagerTensor";
+  type->tp_basicsize = sizeof(TensorObject);
+  type->tp_dealloc = (destructor)EagerTensorDealloc;
+  type->tp_as_number = &number_methods;
+  type->tp_as_sequence = &sequence_methods;
+  type->tp_as_mapping = &mapping_methods;
+  type->tp_methods = variable_methods;
+  type->tp_getset = variable_properties;
+  type->tp_init = EagerTensorInit;
+  type->tp_new = EagerTensorNew;
+  Py_INCREF(internals.instance_base);
+  type->tp_base = reinterpret_cast<PyTypeObject*>(internals.instance_base);
+  type->tp_flags |=
+      Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HEAPTYPE;
+#if PY_VERSION_HEX >= 0x03050000
+  type->tp_as_async = &heap_type->as_async;
+#endif
+  p_tensor_type = type;
+
+  if (PyType_Ready(type) < 0) {
     PADDLE_THROW(platform::errors::Fatal(
         "Init Paddle error in BindEager(PyType_Ready)."));
     return;
   }
 
-  Py_INCREF(&eager_tensor_type);
+  Py_INCREF(type);
   if (PyModule_AddObject(m.ptr(), "EagerTensor",
-                         reinterpret_cast<PyObject*>(&eager_tensor_type)) < 0) {
-    Py_DECREF(&eager_tensor_type);
+                         reinterpret_cast<PyObject*>(type)) < 0) {
+    Py_DECREF(type);
     Py_DECREF(m.ptr());
     PADDLE_THROW(platform::errors::Fatal(
         "Init Paddle error in BindEager(PyModule_AddObject)."));

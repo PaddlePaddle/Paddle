@@ -32,7 +32,8 @@
 
 namespace egr {
 
-egr::EagerTensor hook_function(const egr::EagerTensor& t) {
+paddle::experimental::Tensor hook_function(
+    const paddle::experimental::Tensor& t) {
   auto t_dense = std::dynamic_pointer_cast<pten::DenseTensor>(t.impl());
 
   auto ret_meta = pten::DenseTensorMeta(t_dense->dtype(), t_dense->dims(),
@@ -45,14 +46,14 @@ egr::EagerTensor hook_function(const egr::EagerTensor& t) {
           paddle::memory::Alloc(place, bytes_size)),
       std::move(ret_meta));
 
-  float* t_ptr = t_dense->mutable_data<float>();
-  float* ret_ptr = ret_dense->mutable_data<float>();
+  float* t_ptr = t_dense->mutable_data<float>(place);
+  float* ret_ptr = ret_dense->mutable_data<float>(place);
   for (int i = 0; i < ret_dense->numel(); i++) {
     ret_ptr[i] = t_ptr[i] + 3.0;
   }
 
   auto ret_impl = std::dynamic_pointer_cast<pten::TensorBase>(ret_dense);
-  egr::EagerTensor ret = egr::EagerTensor();
+  paddle::experimental::Tensor ret = paddle::experimental::Tensor();
   ret.set_impl(ret_impl);
 
   return ret;
@@ -62,15 +63,15 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
-  std::vector<egr::EagerTensor> target_tensors;
+  std::vector<paddle::experimental::Tensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  egr::EagerTensor tensor = egr_utils_api::CreateTensorWithValue(
+  paddle::experimental::Tensor tensor = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 1.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
-  egr::EagerTensor& target_tensor = target_tensors[0];
+  paddle::experimental::Tensor& target_tensor = target_tensors[0];
 
   // Create ScaleNode
   auto scale_node_ptr = std::make_shared<GradNodeScale>(1, 1);
@@ -86,8 +87,9 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
   // Apply RetainGrad
   {
     // ScaleNode Hook: +3
-    std::function<egr::EagerTensor(const egr::EagerTensor&)> hook =
-        &hook_function;
+    std::function<paddle::experimental::Tensor(
+        const paddle::experimental::Tensor&)>
+        hook = &hook_function;
 
     auto auto_grad_meta = std::make_shared<AutogradMeta>();
     auto_grad_meta->SetGradNode(
@@ -114,11 +116,12 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
   }
 
   // Retain Grad for leaf tensor1
-  egr::EagerTensor leaf_tensor = egr::EagerTensor();
+  paddle::experimental::Tensor leaf_tensor = paddle::experimental::Tensor();
   {
     // AccumulationNode Hook: +3
-    std::function<egr::EagerTensor(const egr::EagerTensor&)> hook =
-        &hook_function;
+    std::function<paddle::experimental::Tensor(
+        const paddle::experimental::Tensor&)>
+        hook = &hook_function;
 
     auto auto_grad_meta = std::make_shared<AutogradMeta>();
     auto_grad_meta->SetGradNode(
@@ -143,15 +146,15 @@ TEST(RetainGrad, HookAfterRetainGrad) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
-  std::vector<egr::EagerTensor> target_tensors;
+  std::vector<paddle::experimental::Tensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  egr::EagerTensor tensor = egr_utils_api::CreateTensorWithValue(
+  paddle::experimental::Tensor tensor = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 1.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
-  egr::EagerTensor& target_tensor = target_tensors[0];
+  paddle::experimental::Tensor& target_tensor = target_tensors[0];
 
   // Create ScaleNode
   auto scale_node_ptr = std::make_shared<GradNodeScale>(1, 1);
@@ -165,8 +168,9 @@ TEST(RetainGrad, HookAfterRetainGrad) {
   // Apply RetainGrad
   {
     // ScaleNode Hook: +3
-    std::function<egr::EagerTensor(const egr::EagerTensor&)> hook =
-        &hook_function;
+    std::function<paddle::experimental::Tensor(
+        const paddle::experimental::Tensor&)>
+        hook = &hook_function;
 
     auto auto_grad_meta = std::make_shared<AutogradMeta>();
     auto_grad_meta->SetGradNode(
@@ -192,11 +196,12 @@ TEST(RetainGrad, HookAfterRetainGrad) {
   }
 
   // Retain Grad for leaf tensor1
-  egr::EagerTensor leaf_tensor = egr::EagerTensor();
+  paddle::experimental::Tensor leaf_tensor = paddle::experimental::Tensor();
   {
     // AccumulationNode Hook: +3
-    std::function<egr::EagerTensor(const egr::EagerTensor&)> hook =
-        &hook_function;
+    std::function<paddle::experimental::Tensor(
+        const paddle::experimental::Tensor&)>
+        hook = &hook_function;
 
     auto auto_grad_meta = std::make_shared<AutogradMeta>();
     auto_grad_meta->SetGradNode(

@@ -26,13 +26,18 @@ void ReshapeKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const ScalarArray& shape,
                    DenseTensor* out) {
-  auto out_meta = InferMetaFromVecValue(x.meta(), shape.GetData());
-  if (x.data() == out->data() && x.numel() == out->numel()) {
-    out->ResizeAndAllocate(out_meta.dims);
+  MetaTensor meta_out(out);
+  InferMetaFromVecValue(x, shape.GetData(), &meta_out);
+  if (x.initialized() && x.Holder() == out->Holder()) {
+    dev_ctx.Alloc(out);
     return;
   }
+  dev_ctx.Alloc(out);
+  // TODO(chenweihang): the output dims are overwrite after copying,
+  // here we need to use copy method that only copy data
+  auto dims = out->dims();
   pten::Copy(dev_ctx, x, false, out);
-  out->ResizeAndAllocate(out_meta.dims);
+  out->Resize(dims);
   out->ResetLoD(x.lod());
 }
 

@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/softmax.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -155,7 +155,7 @@ struct OneHotGenerator<platform::CPUDeviceContext, T> {
 #undef CALL_ARG_MINMAX_FUNCTOR
     }
 
-    math::set_constant(context, Out, 0.0);
+    pten::funcs::set_constant(context, Out, 0.0);
     for (int i = 0; i < size_to_axis; i++) {
       for (int j = 0; j < size_out_axis; j++) {
         *(Out->data<T>() + i * size_from_axis + j +

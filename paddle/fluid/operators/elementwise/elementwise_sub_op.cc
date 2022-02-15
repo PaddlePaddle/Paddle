@@ -19,13 +19,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 
 namespace paddle {
-namespace platform {
-template <typename T>
-struct complex;
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace framework {
 class OpDesc;
 }  // namespace framework

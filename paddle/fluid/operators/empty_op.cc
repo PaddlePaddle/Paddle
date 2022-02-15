@@ -109,20 +109,6 @@ class EmptyOp : public framework::OperatorWithKernel {
         framework::proto::VarType::Type(context.Attr<int>("dtype")),
         context.GetPlace());
   }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext& ctx) const override {
-    std::string shape;
-    if (ctx.HasInput("ShapeTensor")) {
-      shape = "ShapeTensor";
-    } else if (ctx.MultiInput<framework::Tensor>("ShapeTensorList").size()) {
-      shape = "ShapeTensorList";
-    } else {
-      shape = "shape";
-    }
-
-    return framework::KernelSignature("empty", {}, {shape}, {"Out"});
-  }
 };
 
 class EmptyOpVarTypeInference : public framework::VarTypeInference {

@@ -110,7 +110,7 @@ class LU_UnpackGradKernel : public framework::OpKernel<T> {
     std::vector<int64_t> slice_ends(2, 0);
     auto valuedims = vectorize(xdims);
 
-    math::SetConstant<DeviceContext, T> setter;
+    pten::funcs::SetConstant<DeviceContext, T> setter;
     setter(dev_ctx, dx, static_cast<T>(0));
     if (m <= n) {
       slice_starts[0] = 0;

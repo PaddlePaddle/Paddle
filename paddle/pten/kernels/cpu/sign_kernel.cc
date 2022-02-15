@@ -19,6 +19,6 @@ limitations under the License. */
 #include "paddle/pten/core/kernel_registry.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/pten/common/bfloat16.h"
 
 PT_REGISTER_KERNEL(sign, CPU, ALL_LAYOUT, pten::SignKernel, float, double) {}

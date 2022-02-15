@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 
-#include "paddle/fluid/distributed/service/brpc_utils.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/distributed/ps/service/brpc_utils.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace framework {
@@ -28,7 +28,6 @@ class Variable;
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 namespace operators = paddle::operators;
-namespace math = paddle::operators::math;
 namespace memory = paddle::memory;
 namespace distributed = paddle::distributed;
 
@@ -42,7 +41,7 @@ void CreateVarsOnScope(framework::Scope* scope, platform::Place* place,
   lod1.push_back(framework::Vector<size_t>({1, 3, 8}));
   tensor1->set_lod(lod1);
   tensor1->mutable_data<float>(*place);
-  math::set_constant(ctx, tensor1, 31.9);
+  pten::funcs::set_constant(ctx, tensor1, 31.9);
 
   // var 2
   framework::Variable* var2 = scope->Var("x2");
@@ -52,17 +51,17 @@ void CreateVarsOnScope(framework::Scope* scope, platform::Place* place,
   lod2.push_back(framework::Vector<size_t>({1, 1}));
   tensor2->set_lod(lod2);
   tensor2->mutable_data<int>(*place);
-  math::set_constant(ctx, tensor2, 100);
+  pten::funcs::set_constant(ctx, tensor2, 100);
 
   // var 3
   framework::Variable* var3 = scope->Var("x3");
-  auto* slr = var3->GetMutable<framework::SelectedRows>();
+  auto* slr = var3->GetMutable<pten::SelectedRows>();
   slr->set_height(564);
   auto* tensor3 = slr->mutable_value();
   auto* rows = slr->mutable_rows();
   tensor3->Resize(framework::make_ddim({564, 128}));
   tensor3->mutable_data<float>(*place);
-  math::set_constant(ctx, tensor3, 32.7);
+  pten::funcs::set_constant(ctx, tensor3, 32.7);
   for (int i = 0; i < 564; ++i) rows->push_back(i);
 }
 
@@ -111,7 +110,7 @@ void RunMultiVarMsg(platform::Place place) {
 
   // check var3
   framework::Variable* var3 = scope_recv.FindVar("x3");
-  auto* slr = var3->GetMutable<framework::SelectedRows>();
+  auto* slr = var3->GetMutable<pten::SelectedRows>();
   EXPECT_EQ(slr->rows().size(), 564);
   for (int i = 0; i < 564; ++i) {
     EXPECT_EQ(slr->rows()[i], i);

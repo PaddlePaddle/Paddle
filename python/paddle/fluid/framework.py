@@ -1763,7 +1763,10 @@ class Variable(object):
         Examples:
           .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+
+            paddle.enable_static()
             cur_program = fluid.Program()
             cur_block = cur_program.current_block()
             new_variable = cur_block.create_var(name="X",
@@ -1773,7 +1776,8 @@ class Variable(object):
         """
         if self.type == core.VarDesc.VarType.SELECTED_ROWS:
             raise Exception("SelectedRows DO NOT supprt lod")
-
+        if self.type == core.VarDesc.VarType.STRINGS:
+            return None
         return self.desc.lod_level()
 
     @property
@@ -2463,7 +2467,7 @@ class Operator(object):
         'c_comm_init', 'c_sync_calc_stream', 'c_sync_comm_stream',
         'queue_generator', 'dequeue', 'enqueue', 'heter_listen_and_serv',
         'c_wait_comm', 'c_wait_compute', 'c_gen_hccl_id', 'c_comm_init_hccl',
-        'copy_cross_scope'
+        'copy_cross_scope', 'c_gen_cncl_id'
     }
 
     def __init__(self,

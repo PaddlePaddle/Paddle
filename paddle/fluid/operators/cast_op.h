@@ -63,11 +63,14 @@ class CastOpKernel : public framework::OpKernel<InT> {
     out->mutable_data(dev_ctx.GetPlace(),
                       static_cast<framework::proto::VarType::Type>(out_dtype));
 
-    auto pt_out_dtype = pten::TransToPtenDataType(
+    auto pt_out_dtype = framework::TransToPtenDataType(
         static_cast<framework::proto::VarType::Type>(out_dtype));
 
     // call new kernel
-    pten::CastKernel<InT>(dev_ctx, *in, pt_out_dtype, out);
+    pten::CastKernel<InT>(
+        static_cast<const typename paddle::framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *in, pt_out_dtype, out);
   }
 };
 

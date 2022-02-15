@@ -24,7 +24,7 @@ namespace operators {
 #ifdef __NVCC__
 template <bool FastMode>
 static __device__ __forceinline__ float FP32FastTanh(float x) {
-#if __CUDA_ARCH__ >= 750 && !defined(_WIN32)
+#if __CUDA_ARCH__ >= 750 && CUDA_VERSION >= 11000
   if (FastMode) {
     float y;
     asm("tanh.approx.f32 %0,%1; \n\t" : "=f"(y) : "f"(x));
@@ -108,7 +108,7 @@ static bool TryLaunchFP16FastGeluFwdVectorizeCUDAKernel(
         is_aligned(y, kAlignment)) {                                          \
       size_t thread = std::min<size_t>(512, dev_ctx.GetMaxThreadsPerBlock()); \
       size_t block = (n / __vec_size + thread - 1) / thread;                  \
-      block = std::min<size_t>(block, dev_ctx.GetCUDAMaxGridDimSize().x);     \
+      block = std::min<size_t>(block, dev_ctx.GetCUDAMaxGridDimSize()[0]);    \
       VLOG(10) << "Use FP16 fast gelu fwd kernel, block = " << block          \
                << " , thread = " << thread;                                   \
       FP16FastGeluFwdCUDAKernel<                                              \
@@ -144,7 +144,7 @@ static bool TryLaunchFP16FastGeluBwdVectorizeCUDAKernel(
         is_aligned(x_g, kAlignment)) {                                        \
       size_t thread = std::min<size_t>(512, dev_ctx.GetMaxThreadsPerBlock()); \
       size_t block = (n / __vec_size + thread - 1) / thread;                  \
-      block = std::min<size_t>(block, dev_ctx.GetCUDAMaxGridDimSize().x);     \
+      block = std::min<size_t>(block, dev_ctx.GetCUDAMaxGridDimSize()[0]);    \
       VLOG(10) << "Use FP16 fast gelu bwd kernel, block = " << block          \
                << " , thread = " << thread;                                   \
       FP16FastGeluBwdCUDAKernel<                                              \

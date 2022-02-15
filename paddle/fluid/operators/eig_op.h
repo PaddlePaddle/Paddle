@@ -19,11 +19,11 @@
 #include <complex>
 #include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/math/lapack_function.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/matrix_solve.h"
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 #define EPSILON 1e-6
 
 namespace paddle {
@@ -189,7 +189,7 @@ class EigKernel : public framework::OpKernel<T> {
     auto* out_values = context.Output<Tensor>("Eigenvalues");
     auto* out_vectors = context.Output<Tensor>("Eigenvectors");
 
-    if (!framework::IsComplexType(x->type())) {
+    if (!framework::IsComplexType(framework::TransToProtoVarType(x->dtype()))) {
       out_values->mutable_data<Tout>(context.GetPlace());
       out_vectors->mutable_data<Tout>(context.GetPlace());
 

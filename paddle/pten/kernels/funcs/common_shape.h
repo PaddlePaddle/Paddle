@@ -26,7 +26,7 @@ inline void SetXShape(const DenseTensor &x, DenseTensor *xshape) {
   for (int i = 0; i < in_dims.size(); ++i) {
     xshape_dims[i + 1] = in_dims[i];
   }
-  xshape->ResizeAndAllocate(paddle::framework::make_ddim(xshape_dims));
+  xshape->ResizeAndAllocate(pten::framework::make_ddim(xshape_dims));
   xshape->ResetLoD(x.meta().lod);
 }
 
@@ -86,6 +86,19 @@ inline void GetBroadcastDimsArrays(const DDim &x_dims,
     } else {
       out_dims_array[i] = -1;
     }
+  }
+}
+
+inline void GetPrePostNumel(
+    const framework::DDim &dim, int axis, int *pre, int *n, int *post) {
+  *pre = 1;
+  *post = 1;
+  *n = dim[axis];
+  for (int i = 0; i < axis; ++i) {
+    (*pre) *= dim[i];
+  }
+  for (int i = axis + 1; i < dim.size(); ++i) {
+    (*post) *= dim[i];
   }
 }
 

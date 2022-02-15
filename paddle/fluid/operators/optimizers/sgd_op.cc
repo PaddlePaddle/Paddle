@@ -80,7 +80,7 @@ class SGDOp : public framework::OperatorWithKernel {
       // supported cases
       bool dense_param_sparse_grad =
           param_var->IsType<framework::LoDTensor>() &&
-          grad_var->IsType<framework::SelectedRows>();
+          grad_var->IsType<pten::SelectedRows>();
       bool dense_param_and_grad = param_var->IsType<framework::LoDTensor>() &&
                                   grad_var->IsType<framework::LoDTensor>();
 
@@ -97,8 +97,9 @@ class SGDOp : public framework::OperatorWithKernel {
       const std::string &var_name, const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const {
     if (var_name == "LearningRate") {
-      return framework::OpKernelType(tensor.type(), tensor.place(),
-                                     tensor.layout());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+          tensor.layout());
     }
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    tensor.place(), tensor.layout());

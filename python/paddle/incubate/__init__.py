@@ -19,6 +19,7 @@ from ..fluid.layer_helper import LayerHelper  # noqa: F401
 from .operators import softmax_mask_fuse_upper_triangle  # noqa: F401
 from .operators import softmax_mask_fuse  # noqa: F401
 from .operators import graph_send_recv
+from .operators import graph_khop_sampler
 from .tensor import segment_sum
 from .tensor import segment_mean
 from .tensor import segment_max
@@ -33,6 +34,7 @@ __all__ = [
     'softmax_mask_fuse_upper_triangle',
     'softmax_mask_fuse',
     'graph_send_recv',
+    'graph_khop_sampler',
     'segment_sum',
     'segment_mean',
     'segment_max',

@@ -572,12 +572,14 @@ void exec_fft(const DeviceContext& ctx, const Tensor* x, Tensor* out,
 
   // make a DFTI_DESCRIPTOR
   DftiDescriptor desc =
-      _plan_mkl_fft(x->type(), out->type(), input_stride, output_stride,
-                    signal_sizes, normalization, forward);
+      _plan_mkl_fft(framework::TransToProtoVarType(x->dtype()),
+                    framework::TransToProtoVarType(out->dtype()), input_stride,
+                    output_stride, signal_sizes, normalization, forward);
 
   const FFTTransformType fft_type = GetFFTTransformType(x->type(), out->type());
   if (fft_type == FFTTransformType::C2R && forward) {
-    framework::Tensor collapsed_input_conj(collapsed_input.type());
+    framework::Tensor collapsed_input_conj(
+        framework::TransToProtoVarType(collapsed_input.dtype()));
     collapsed_input_conj.mutable_data<Ti>(collapsed_input.dims(),
                                           ctx.GetPlace());
     // conjugate the input
@@ -589,7 +591,8 @@ void exec_fft(const DeviceContext& ctx, const Tensor* x, Tensor* out,
     MKL_DFTI_CHECK(platform::dynload::DftiComputeBackward(
         desc.get(), collapsed_input_conj.data(), collapsed_output.data()));
   } else if (fft_type == FFTTransformType::R2C && !forward) {
-    framework::Tensor collapsed_output_conj(collapsed_output.type());
+    framework::Tensor collapsed_output_conj(
+        framework::TransToProtoVarType(collapsed_output.dtype()));
     collapsed_output_conj.mutable_data<To>(collapsed_output.dims(),
                                            ctx.GetPlace());
     MKL_DFTI_CHECK(platform::dynload::DftiComputeForward(

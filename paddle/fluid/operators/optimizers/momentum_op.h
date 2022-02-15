@@ -18,16 +18,16 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/operators/math/algorithm.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/algorithm.h"
 
 namespace paddle {
 namespace operators {
 
 using framework::Tensor;
-using framework::SelectedRows;
+using pten::SelectedRows;
 struct NoNesterov;
 struct UseNesterov;
 
@@ -345,7 +345,7 @@ class SparseMomentumFunctor<T, MT, UseNesterov> {
 
   inline HOSTDEVICE void operator()(size_t i) {
     auto row_idx =
-        math::BinarySearch<int64_t>(rows_, row_height_, i / row_numel_);
+        pten::funcs::BinarySearch<int64_t>(rows_, row_height_, i / row_numel_);
     MT grad =
         row_idx >= 0
             ? static_cast<MT>(grad_[row_idx * row_numel_ + i % row_numel_]) *
@@ -418,7 +418,7 @@ class SparseMomentumFunctor<T, MT, NoNesterov> {
 
   inline HOSTDEVICE void operator()(size_t i) {
     auto row_idx =
-        math::BinarySearch<int64_t>(rows_, row_height_, i / row_numel_);
+        pten::funcs::BinarySearch<int64_t>(rows_, row_height_, i / row_numel_);
     MT grad =
         row_idx >= 0
             ? static_cast<MT>(grad_[row_idx * row_numel_ + i % row_numel_]) *
@@ -545,9 +545,9 @@ class MomentumOpKernel : public framework::OpKernel<T> {
         }
       }
 
-    } else if (grad_var->IsType<framework::SelectedRows>()) {
+    } else if (grad_var->IsType<pten::SelectedRows>()) {
       // sparse update embedding with selectedrows
-      auto grad = ctx.Input<framework::SelectedRows>("Grad");
+      auto grad = ctx.Input<pten::SelectedRows>("Grad");
 
       // sparse update maybe empty.
       if (grad->rows().size() == 0) {
@@ -555,8 +555,8 @@ class MomentumOpKernel : public framework::OpKernel<T> {
         return;
       }
 
-      framework::SelectedRows tmp_merged_grad;
-      framework::SelectedRows* merged_grad = &tmp_merged_grad;
+      pten::SelectedRows tmp_merged_grad;
+      pten::SelectedRows* merged_grad = &tmp_merged_grad;
       math::scatter::MergeAdd<DeviceContext, T> merge_func;
       merge_func(ctx.template device_context<DeviceContext>(), *grad,
                  merged_grad);

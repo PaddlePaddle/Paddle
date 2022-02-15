@@ -57,7 +57,12 @@ class NCCLTester : public ::testing::Test {
     paddle::platform::CPUPlace cpu_place;
     for (size_t i = 0; i < gpu_list_.size(); ++i) {
       p::CUDAPlace place(i);
-      dev_ctxs_.emplace_back(new p::CUDADeviceContext(place));
+      auto *ctx = new p::CUDADeviceContext(place);
+      ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetAllocator(place, ctx->stream())
+                            .get());
+      ctx->PartialInitWithAllocator();
+      dev_ctxs_.emplace_back(ctx);
     }
 
     NCCLInitOp();

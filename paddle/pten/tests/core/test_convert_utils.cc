@@ -13,59 +13,66 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "gtest/gtest.h"
-#include "paddle/pten/core/convert_utils.h"
+#include "paddle/fluid/framework/convert_utils.h"
 
 namespace pten {
 namespace tests {
 
 TEST(ConvertUtils, DataType) {
   // enum -> proto
-  CHECK(pten::TransToProtoVarType(paddle::DataType::FLOAT64) ==
+  CHECK(paddle::framework::TransToProtoVarType(paddle::DataType::FLOAT64) ==
         paddle::framework::proto::VarType::FP64);
-  CHECK(pten::TransToProtoVarType(paddle::DataType::FLOAT32) ==
+  CHECK(paddle::framework::TransToProtoVarType(paddle::DataType::FLOAT32) ==
         paddle::framework::proto::VarType::FP32);
-  CHECK(pten::TransToProtoVarType(paddle::DataType::UINT8) ==
+  CHECK(paddle::framework::TransToProtoVarType(paddle::DataType::UINT8) ==
         paddle::framework::proto::VarType::UINT8);
-  CHECK(pten::TransToProtoVarType(paddle::DataType::INT8) ==
+  CHECK(paddle::framework::TransToProtoVarType(paddle::DataType::INT8) ==
         paddle::framework::proto::VarType::INT8);
-  CHECK(pten::TransToProtoVarType(paddle::DataType::INT32) ==
+  CHECK(paddle::framework::TransToProtoVarType(paddle::DataType::INT32) ==
         paddle::framework::proto::VarType::INT32);
-  CHECK(pten::TransToProtoVarType(paddle::DataType::INT64) ==
+  CHECK(paddle::framework::TransToProtoVarType(paddle::DataType::INT64) ==
         paddle::framework::proto::VarType::INT64);
-  CHECK(pten::TransToProtoVarType(paddle::DataType::INT16) ==
+  CHECK(paddle::framework::TransToProtoVarType(paddle::DataType::INT16) ==
         paddle::framework::proto::VarType::INT16);
-  CHECK(pten::TransToProtoVarType(paddle::DataType::BOOL) ==
+  CHECK(paddle::framework::TransToProtoVarType(paddle::DataType::BOOL) ==
         paddle::framework::proto::VarType::BOOL);
-  CHECK(pten::TransToProtoVarType(paddle::DataType::COMPLEX64) ==
+  CHECK(paddle::framework::TransToProtoVarType(paddle::DataType::COMPLEX64) ==
         paddle::framework::proto::VarType::COMPLEX64);
-  CHECK(pten::TransToProtoVarType(paddle::DataType::COMPLEX128) ==
+  CHECK(paddle::framework::TransToProtoVarType(paddle::DataType::COMPLEX128) ==
         paddle::framework::proto::VarType::COMPLEX128);
-  CHECK(pten::TransToProtoVarType(paddle::DataType::FLOAT16) ==
+  CHECK(paddle::framework::TransToProtoVarType(paddle::DataType::FLOAT16) ==
         paddle::framework::proto::VarType::FP16);
   // proto -> enum
-  CHECK(pten::TransToPtenDataType(paddle::framework::proto::VarType::FP64) ==
+  CHECK(paddle::framework::TransToPtenDataType(
+            paddle::framework::proto::VarType::FP64) ==
         paddle::DataType::FLOAT64);
-  CHECK(pten::TransToPtenDataType(paddle::framework::proto::VarType::FP32) ==
+  CHECK(paddle::framework::TransToPtenDataType(
+            paddle::framework::proto::VarType::FP32) ==
         paddle::DataType::FLOAT32);
-  CHECK(pten::TransToPtenDataType(paddle::framework::proto::VarType::INT64) ==
+  CHECK(paddle::framework::TransToPtenDataType(
+            paddle::framework::proto::VarType::INT64) ==
         paddle::DataType::INT64);
-  CHECK(pten::TransToPtenDataType(paddle::framework::proto::VarType::INT32) ==
+  CHECK(paddle::framework::TransToPtenDataType(
+            paddle::framework::proto::VarType::INT32) ==
         paddle::DataType::INT32);
-  CHECK(pten::TransToPtenDataType(paddle::framework::proto::VarType::INT8) ==
-        paddle::DataType::INT8);
-  CHECK(pten::TransToPtenDataType(paddle::framework::proto::VarType::UINT8) ==
+  CHECK(paddle::framework::TransToPtenDataType(
+            paddle::framework::proto::VarType::INT8) == paddle::DataType::INT8);
+  CHECK(paddle::framework::TransToPtenDataType(
+            paddle::framework::proto::VarType::UINT8) ==
         paddle::DataType::UINT8);
-  CHECK(pten::TransToPtenDataType(paddle::framework::proto::VarType::INT16) ==
+  CHECK(paddle::framework::TransToPtenDataType(
+            paddle::framework::proto::VarType::INT16) ==
         paddle::DataType::INT16);
-  CHECK(pten::TransToPtenDataType(paddle::framework::proto::VarType::BOOL) ==
-        paddle::DataType::BOOL);
-  CHECK(
-      pten::TransToPtenDataType(paddle::framework::proto::VarType::COMPLEX64) ==
-      paddle::DataType::COMPLEX64);
-  CHECK(pten::TransToPtenDataType(
+  CHECK(paddle::framework::TransToPtenDataType(
+            paddle::framework::proto::VarType::BOOL) == paddle::DataType::BOOL);
+  CHECK(paddle::framework::TransToPtenDataType(
+            paddle::framework::proto::VarType::COMPLEX64) ==
+        paddle::DataType::COMPLEX64);
+  CHECK(paddle::framework::TransToPtenDataType(
             paddle::framework::proto::VarType::COMPLEX128) ==
         paddle::DataType::COMPLEX128);
-  CHECK(pten::TransToPtenDataType(paddle::framework::proto::VarType::FP16) ==
+  CHECK(paddle::framework::TransToPtenDataType(
+            paddle::framework::proto::VarType::FP16) ==
         paddle::DataType::FLOAT16);
 }
 

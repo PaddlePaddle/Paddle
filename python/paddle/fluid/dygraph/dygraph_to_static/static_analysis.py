@@ -334,6 +334,13 @@ class StaticAnalysisVisitor(object):
                 if isinstance(target, gast.Name):
                     self.node_to_wrapper_map[target].node_var_type = ret_type
                     self.var_env.set_var_type(target.id, ret_type)
+                # Handle statements like `a, b = paddle.shape(x)`
+                elif isinstance(target, gast.Tuple):
+                    for sub_target in target.elts:
+                        if isinstance(sub_target, gast.Name):
+                            self.node_to_wrapper_map[
+                                sub_target].node_var_type = ret_type
+                            self.var_env.set_var_type(sub_target.id, ret_type)
             return ret_type
 
         if isinstance(node, gast.AnnAssign):
