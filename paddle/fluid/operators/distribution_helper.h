@@ -94,7 +94,9 @@ struct normal_transform {
 };
 
 #if defined(__NVCC__) || defined(__HIPCC__)
+
 namespace kps = pten::kps;
+
 /*********************** Distribution Function *************************/
 template <typename T>
 struct uniform_distribution;
@@ -177,9 +179,9 @@ struct normal_distribution<double> {
 
 /******** Launch GPU function of distribution and transformation *********/
 template <typename T, typename DistOp, typename TransformOp>
-__global__ void DistributionKernel_M(size_t size, uint64_t seed,
-                                     uint64_t offset, DistOp dist,
-                                     TransformOp trans, T *out_data) {
+__global__ void DistributionKernel(size_t size, uint64_t seed, uint64_t offset,
+                                   DistOp dist, TransformOp trans,
+                                   T *out_data) {
   size_t idx = static_cast<size_t>(blockIdx.x * blockDim.x);
   static constexpr int kCount = DistOp::kReturnsCount;
 #if defined(__NVCC__)
@@ -230,7 +232,7 @@ void distribution_and_transform(const platform::CUDADeviceContext &dev_ctx,
   uint64_t seed = seed_offset.first;
   uint64_t offset = seed_offset.second;
 
-  DistributionKernel_M<
+  DistributionKernel<
       T, DistOp, TransformOp><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
       size, seed, offset, dist, trans, out_data);
 }
