@@ -15,8 +15,8 @@
 #pragma once
 
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/operators/math/lapack_function.h"
 #include "paddle/fluid/operators/svd_helper.h"
+#include "paddle/pten/kernels/funcs/lapack/lapack_function.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cusolver.h"
 #endif  // PADDLE_WITH_CUDA
@@ -98,9 +98,9 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, T> {
 
     int info = 0;
     // Call lapackEigh to get the optimal size of work data
-    math::lapackEigh<T, ValueType>(jobz, uplo, n, input_vector, lda, out_value,
-                                   &lwork_opt, lwork, &rwork_opt, lrwork,
-                                   &iwork_opt, liwork, &info);
+    pten::funcs::lapackEigh<T, ValueType>(
+        jobz, uplo, n, input_vector, lda, out_value, &lwork_opt, lwork,
+        &rwork_opt, lrwork, &iwork_opt, liwork, &info);
     lwork = std::max<int>(1, static_cast<int>(lwork_opt));
     liwork = std::max<int>(1, iwork_opt);
 
@@ -123,9 +123,9 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, T> {
     for (auto i = 0; i < batch_size; i++) {
       auto *value_data = out_value + i * values_stride;
       auto *input_data = input_vector + i * vector_stride;
-      math::lapackEigh<T, Real<T>>(jobz, uplo, n, input_data, lda, value_data,
-                                   work_data, lwork, rwork_data, lrwork,
-                                   iwork_data, liwork, &info);
+      pten::funcs::lapackEigh<T, Real<T>>(
+          jobz, uplo, n, input_data, lda, value_data, work_data, lwork,
+          rwork_data, lrwork, iwork_data, liwork, &info);
       CheckEighResult(i, info);
     }
     if (has_vectors) {

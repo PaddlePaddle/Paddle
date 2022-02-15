@@ -15,11 +15,11 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/lapack_function.h"
 #include "paddle/fluid/operators/solve_op.h"
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/operators/triangular_solve_op.h"
 #include "paddle/fluid/platform/complex.h"
+#include "paddle/pten/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/pten/kernels/math_kernel.h"
 
 namespace paddle {
@@ -38,8 +38,8 @@ class CholeskySolveFunctor<paddle::platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext &dev_ctx, bool upper, int n,
                   int nrhs, T *Adata, int lda, T *Bdata, int *devInfo) {
     char uplo = upper ? 'U' : 'L';
-    math::lapackCholeskySolve<T>(uplo, n, nrhs, Adata, lda, Bdata, lda,
-                                 devInfo);
+    pten::funcs::lapackCholeskySolve<T>(uplo, n, nrhs, Adata, lda, Bdata, lda,
+                                        devInfo);
   }
 };
 
