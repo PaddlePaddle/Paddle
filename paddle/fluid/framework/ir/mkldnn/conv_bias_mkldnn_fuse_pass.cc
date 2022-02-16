@@ -115,7 +115,7 @@ Conv2DTransposeBiasFusePass::Conv2DTransposeBiasFusePass() {
       .IsStringIn({"EXPLICIT", "SAME", "VALID"})
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NCHW"})
+      .IsStringIn({"NCHW", "AnyLayout"})
       .End();
 
   AddOpCompat(OpCompat("elementwise_add"))
