@@ -212,7 +212,7 @@ template <typename InT,
           int VecSize,
           int Rank,
           bool IsBoundary = false>
-__device__ void ElementwiseBroadcastKernelImpl(
+__device__ void VectorizedBroadcastKernelImpl(
     const pten::framework::Array<const _ptr_ InT *__restrict__, Arity> &ins,
     pten::framework::Array<_ptr_ OutT *, NumOuts> outs,
     const pten::framework::Array<int, Arity> &use_broadcast,
@@ -257,7 +257,7 @@ template <typename InT,
           int NumOuts,
           int VecSize,
           int Rank>
-__global__ void ElementwiseBroadcastKernel(
+__global__ void VectorizedBroadcastKernel(
     pten::framework::Array<const _ptr_ InT *__restrict__, Arity> ins,
     pten::framework::Array<_ptr_ OutT *, NumOuts> outs,
     pten::framework::Array<int, Arity> use_broadcast,
@@ -271,60 +271,60 @@ __global__ void ElementwiseBroadcastKernel(
 
 #ifdef PADDLE_WITH_XPU2
   for (; block_offset < main_offset; block_offset += stride) {
-    ElementwiseBroadcastKernelImpl<InT,
-                                   OutT,
-                                   Functor,
-                                   Arity,
-                                   NumOuts,
-                                   VecSize,
-                                   Rank,
-                                   false>(ins,
-                                          outs,
-                                          use_broadcast,
-                                          numel,
-                                          configs,
-                                          BLOCK_NUM_X * VecSize,
-                                          block_offset,
-                                          func);
+    VectorizedBroadcastKernelImpl<InT,
+                                  OutT,
+                                  Functor,
+                                  Arity,
+                                  NumOuts,
+                                  VecSize,
+                                  Rank,
+                                  false>(ins,
+                                         outs,
+                                         use_broadcast,
+                                         numel,
+                                         configs,
+                                         BLOCK_NUM_X * VecSize,
+                                         block_offset,
+                                         func);
   }
   int num = numel - block_offset;
   if (num > 0) {
-    ElementwiseBroadcastKernelImpl<InT,
-                                   OutT,
-                                   Functor,
-                                   Arity,
-                                   NumOuts,
-                                   VecSize,
-                                   Rank,
-                                   true>(
+    VectorizedBroadcastKernelImpl<InT,
+                                  OutT,
+                                  Functor,
+                                  Arity,
+                                  NumOuts,
+                                  VecSize,
+                                  Rank,
+                                  true>(
         ins, outs, use_broadcast, numel, configs, num, block_offset, func);
   }
 #else
   if (block_offset < main_offset) {
-    ElementwiseBroadcastKernelImpl<InT,
-                                   OutT,
-                                   Functor,
-                                   Arity,
-                                   NumOuts,
-                                   VecSize,
-                                   Rank,
-                                   false>(ins,
-                                          outs,
-                                          use_broadcast,
-                                          numel,
-                                          configs,
-                                          BLOCK_NUM_X * VecSize,
-                                          block_offset,
-                                          func);
+    VectorizedBroadcastKernelImpl<InT,
+                                  OutT,
+                                  Functor,
+                                  Arity,
+                                  NumOuts,
+                                  VecSize,
+                                  Rank,
+                                  false>(ins,
+                                         outs,
+                                         use_broadcast,
+                                         numel,
+                                         configs,
+                                         BLOCK_NUM_X * VecSize,
+                                         block_offset,
+                                         func);
   } else {
-    ElementwiseBroadcastKernelImpl<InT,
-                                   OutT,
-                                   Functor,
-                                   Arity,
-                                   NumOuts,
-                                   VecSize,
-                                   Rank,
-                                   true>(
+    VectorizedBroadcastKernelImpl<InT,
+                                  OutT,
+                                  Functor,
+                                  Arity,
+                                  NumOuts,
+                                  VecSize,
+                                  Rank,
+                                  true>(
         ins, outs, use_broadcast, numel, configs, tail_tid, block_offset, func);
   }
 #endif
@@ -337,11 +337,11 @@ template <typename InT,
           int NumOuts,
           int VecSize,
           int Rank>
-void LaunchKernel(const KPDevice &ctx,
-                  const std::vector<const DenseTensor *> &ins,
-                  std::vector<DenseTensor *> *outs,
-                  Functor func,
-                  DimensionsTransform merge_dims) {
+void LaunchBroadcastKernel(const KPDevice &ctx,
+                           const std::vector<const DenseTensor *> &ins,
+                           std::vector<DenseTensor *> *outs,
+                           Functor func,
+                           DimensionsTransform merge_dims) {
   int numel = (*outs)[0]->numel();
   pten::framework::Array<kps::details::BroadcastConfig<Rank>, Arity> configs;
   pten::framework::Array<int, Arity> use_broadcast;
@@ -370,41 +370,40 @@ void LaunchKernel(const KPDevice &ctx,
   int main_offset = (numel / (VecSize * threads)) * VecSize * threads;
   int tail_tid = numel % (VecSize * threads);
   auto stream = ctx.x_context()->xpu_stream;
-  ElementwiseBroadcastKernel<InT,
-                             OutT,
-                             Functor,
-                             Arity,
-                             NumOuts,
-                             VecSize,
-                             Rank><<<blocks, threads, stream>>>(ins_data,
-                                                                outs_data,
-                                                                use_broadcast,
-                                                                numel,
-                                                                configs,
-                                                                main_offset,
-                                                                tail_tid,
-                                                                func);
+  VectorizedBroadcastKernel<InT,
+                            OutT,
+                            Functor,
+                            Arity,
+                            NumOuts,
+                            VecSize,
+                            Rank><<<blocks, threads, stream>>>(ins_data,
+                                                               outs_data,
+                                                               use_broadcast,
+                                                               numel,
+                                                               configs,
+                                                               main_offset,
+                                                               tail_tid,
+                                                               func);
 #else
   const int threads = 256;
   int blocks = ((numel + VecSize - 1) / VecSize + threads - 1) / threads;
   int main_offset = (numel / (VecSize * threads)) * VecSize * threads;
   int tail_tid = numel % (VecSize * threads);
   auto stream = ctx.stream();
-  ElementwiseBroadcastKernel<InT,
-                             OutT,
-                             Functor,
-                             Arity,
-                             NumOuts,
-                             VecSize,
-                             Rank><<<blocks, threads, 0, stream>>>(
-      ins_data,
-      outs_data,
-      use_broadcast,
-      numel,
-      configs,
-      main_offset,
-      tail_tid,
-      func);
+  VectorizedBroadcastKernel<InT,
+                            OutT,
+                            Functor,
+                            Arity,
+                            NumOuts,
+                            VecSize,
+                            Rank><<<blocks, threads, 0, stream>>>(ins_data,
+                                                                  outs_data,
+                                                                  use_broadcast,
+                                                                  numel,
+                                                                  configs,
+                                                                  main_offset,
+                                                                  tail_tid,
+                                                                  func);
 #endif
 }
 
@@ -414,7 +413,7 @@ template <typename InT,
           int Arity,
           int NumOuts,
           int VecSize>
-void LaunchBroadcastKernelForDifferentVecSize(
+void BroadcastKernelForDifferentDimSize(
     const KPDevice &ctx,
     const std::vector<const DenseTensor *> &ins,
     std::vector<DenseTensor *> *outs,
@@ -422,10 +421,10 @@ void LaunchBroadcastKernelForDifferentVecSize(
     Functor func) {
   const auto merge_dims = DimensionsTransform(ins, (*outs)[0]->dims(), axis);
 
-#define CALL_BROADCAST_FOR_DIM_SIZE(rank)                            \
-  case rank: {                                                       \
-    LaunchKernel<InT, OutT, Functor, Arity, NumOuts, VecSize, rank>( \
-        ctx, ins, outs, func, merge_dims);                           \
+#define CALL_BROADCAST_FOR_DIM_SIZE(rank)                                     \
+  case rank: {                                                                \
+    LaunchBroadcastKernel<InT, OutT, Functor, Arity, NumOuts, VecSize, rank>( \
+        ctx, ins, outs, func, merge_dims);                                    \
   } break;
 
   switch (merge_dims.dim_size) {
@@ -453,7 +452,7 @@ template <ElementwiseType ET,
           typename OutT,
           typename Functor,
           int NumOuts = 1>
-void LaunchBroadcastElementwiseCudaKernel(
+void BroadcastKernelForDifferentVecSize(
     const KPDevice &ctx,
     const std::vector<const DenseTensor *> &ins,
     std::vector<DenseTensor *> *outs,
@@ -513,30 +512,30 @@ void LaunchBroadcastElementwiseCudaKernel(
 
   switch (vec_size) {
     case 4: {
-      LaunchBroadcastKernelForDifferentVecSize<InT,
-                                               OutT,
-                                               Functor,
-                                               kArity,
-                                               NumOuts,
-                                               4>(ctx, ins, outs, axis, func);
+      BroadcastKernelForDifferentDimSize<InT,
+                                         OutT,
+                                         Functor,
+                                         kArity,
+                                         NumOuts,
+                                         4>(ctx, ins, outs, axis, func);
       break;
     }
     case 2: {
-      LaunchBroadcastKernelForDifferentVecSize<InT,
-                                               OutT,
-                                               Functor,
-                                               kArity,
-                                               NumOuts,
-                                               2>(ctx, ins, outs, axis, func);
+      BroadcastKernelForDifferentDimSize<InT,
+                                         OutT,
+                                         Functor,
+                                         kArity,
+                                         NumOuts,
+                                         2>(ctx, ins, outs, axis, func);
       break;
     }
     case 1: {
-      LaunchBroadcastKernelForDifferentVecSize<InT,
-                                               OutT,
-                                               Functor,
-                                               kArity,
-                                               NumOuts,
-                                               1>(ctx, ins, outs, axis, func);
+      BroadcastKernelForDifferentDimSize<InT,
+                                         OutT,
+                                         Functor,
+                                         kArity,
+                                         NumOuts,
+                                         1>(ctx, ins, outs, axis, func);
       break;
     }
     default: {
@@ -576,7 +575,7 @@ void BroadcastKernel(const KPDevice &ctx,
                ? *std::max_element(dims_size.begin(), dims_size.end()) -
                      *std::min_element(dims_size.begin(), dims_size.end())
                : axis;
-    LaunchBroadcastElementwiseCudaKernel<ET, InT, OutT, Functor, NumOuts>(
+    BroadcastKernelForDifferentVecSize<ET, InT, OutT, Functor, NumOuts>(
         ctx, ins, outs, axis, func);
   }
 }
