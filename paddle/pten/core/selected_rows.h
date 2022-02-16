@@ -64,6 +64,14 @@ class SelectedRows : public TensorBase,
     rwlock_.reset(new RWLock);
   }
 
+  SelectedRows(SelectedRows&& other) {
+    rows_ = std::move(other.rows_);
+    id_to_index_ = std::move(other.id_to_index_);
+    value_ = std::move(other.value_);
+    rwlock_ = std::move(other.rwlock_);
+    height_ = other.height_;
+  }
+
   SelectedRows& operator=(SelectedRows&& x) & {
     rows_ = std::move(x.rows_);
     id_to_index_ = std::move(x.id_to_index_);
