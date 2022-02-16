@@ -2820,15 +2820,19 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<platform::RecordEvent>(m, "_RecordEvent")
       .def(py::init([](std::string name, platform::TracerEventType type) {
-        return std::unique_ptr<platform::RecordEvent>(
-            new platform::RecordEvent(name));
+        return std::unique_ptr<platform::RecordEvent>(new platform::RecordEvent(
+            name, paddle::platform::EventRole::kOrdinary, 1, type));
       }))
       .def("end", [](platform::RecordEvent *event) { event->End(); });
 
   py::enum_<paddle::platform::TracerEventType>(m, "TracerEventType")
       .value("UserDefined", paddle::platform::TracerEventType::UserDefined)
       .value("Dataloader", paddle::platform::TracerEventType::Dataloader)
-      .value("ProfileStep", paddle::platform::TracerEventType::ProfileStep);
+      .value("ProfileStep", paddle::platform::TracerEventType::ProfileStep)
+      .value("Forward", paddle::platform::TracerEventType::Forward)
+      .value("Backward", paddle::platform::TracerEventType::Backward)
+      .value("Optimization", paddle::platform::TracerEventType::Optimization)
+      .value("PythonOp", paddle::platform::TracerEventType::PythonOp);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("set_cublas_switch", platform::SetAllowTF32Cublas);
