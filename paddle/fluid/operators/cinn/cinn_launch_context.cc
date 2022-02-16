@@ -107,7 +107,7 @@ bool CinnLaunchContext::IsVariableUsed(const std::string& var_name) const {
 
 CinnTensor CinnLaunchContext::GetCinnTensor(const std::string& arg_name) {
   PADDLE_ENFORCE_GT(cinn_argument_names_.count(arg_name), 0,
-                    platform::errors::NotFound(
+                    platform::errors::InvalidArgument(
                         "Variable(%s) not found in cinn scope.", arg_name));
   return cinn_scope_->GetTensor(arg_name);
 }
@@ -241,7 +241,7 @@ cinn_buffer_t* CinnLaunchContext::GetCinnBufferOfVar(
           "Variable(%s) not found in compilation result", var_name));
   auto res = name2argument_.find(it->second);
   PADDLE_ENFORCE_NE(res, name2argument_.end(),
-                    platform::errors::InvalidArgument(
+                    platform::errors::NotFound(
                         "Argument(%s) not be initialized", it->second));
   return static_cast<cinn_buffer_t*>(res->second);
 }
