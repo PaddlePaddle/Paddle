@@ -1107,7 +1107,7 @@ bool OperatorWithKernel::SupportsMKLDNN(
         return (pten::Backend::MKLDNN == kernel_pair.first.backend()) &&
                (pten::DataLayout::MKLDNN == kernel_pair.first.layout() ||
                 pten::DataLayout::ALL_LAYOUT == kernel_pair.first.layout()) &&
-               (pten::TransToPtenDataType(data_type) ==
+               (framework::TransToPtenDataType(data_type) ==
                 kernel_pair.first.dtype());
       });
 
