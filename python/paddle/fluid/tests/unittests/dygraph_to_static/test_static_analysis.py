@@ -147,6 +147,7 @@ result_var_type6 = {
 def func_to_test7(a: int, b: float, c: paddle.Tensor, d: float='diff'):
     a = True
     e, f = paddle.shape(c)
+    g: paddle.Tensor = len(c)
 
 
 result_var_type7 = {
@@ -155,7 +156,8 @@ result_var_type7 = {
     'c': {NodeVarType.TENSOR},
     'd': {NodeVarType.STRING},
     'e': {NodeVarType.PADDLE_RETURN_TYPES},
-    'f': {NodeVarType.PADDLE_RETURN_TYPES}
+    'f': {NodeVarType.PADDLE_RETURN_TYPES},
+    'g': {NodeVarType.TENSOR}
 }
 
 test_funcs = [
