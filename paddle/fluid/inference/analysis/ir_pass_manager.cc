@@ -58,7 +58,7 @@ void IRPassManager::CreatePasses(Argument *argument,
     pass->Set("with_interleaved",
               new bool(argument->tensorrt_with_interleaved()));
     pass->Set("disable_logs", new bool(argument->disable_logs()));
-
+    auto precision_mode = argument->tensorrt_precision_mode();
     bool enable_int8 = precision_mode == AnalysisConfig::Precision::kInt8;
     pass->Set("enable_int8", new bool(enable_int8));
 
@@ -106,9 +106,6 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new int(argument->tensorrt_min_subgraph_size()));
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
-
-      auto precision_mode = argument->tensorrt_precision_mode();
-
       pass->Set("predictor_id", new int(argument->predictor_id()));
       bool use_calib_mode = argument->tensorrt_use_calib_mode();
       pass->Set("use_calib_mode", new bool(use_calib_mode));
