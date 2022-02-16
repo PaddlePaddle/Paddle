@@ -119,7 +119,7 @@ def export_chrome_tracing(dir_name: str,
         now = datetime.datetime.now()
         filename = '{}_time_{}.paddle_trace.json'.format(
             worker_name, now.strftime('%Y_%m_%d_%H_%M_%S_%f'))
-        prof.profiler_result.save(os.path.join(dir_name, filename), "json")
+        prof.export(os.path.join(dir_name, filename), "json")
 
     return handle_fn
 
@@ -168,6 +168,15 @@ class Profiler:
         for iter in range(N):
           train()
           p.step()
+    3. Use profiler without context manager, and use default parameters
+    .. code-block:: python
+    import paddle.profiler as profiler
+    p = profiler.Profiler()
+    p.start()
+    for iter in range(N):
+        train()
+        p.step()
+    p.stop()
   '''
 
     def __init__(
@@ -204,7 +213,11 @@ class Profiler:
                 closed=0, ready=0, record=(end_batch - start_batch), repeat=1)
         else:
             self.schedule = _default_state_scheduler
-        self.on_trace_ready = on_trace_ready
+
+        if on_trace_ready == None:
+            self.on_trace_ready = export_chrome_tracing('./profiler_log/')
+        else:
+            self.on_trace_ready = on_trace_ready
         self.step_num = 0
         self.previous_state = ProfilerState.CLOSED
         self.current_state = self.schedule(self.step_num)
@@ -324,12 +337,12 @@ class Profiler:
             if self.on_trace_ready:
                 self.on_trace_ready(self)
 
-    def export_chrome_tracing(self, path=""):
+    def export(self, path="", format="json"):
         '''
     Exports the tracing data in Chrome tracing data format.
     '''
         if self.profiler_result:
-            self.profiler_result.save(path, "json")
+            self.profiler_result.save(path, format)
 
     def summary(self):
         pass
