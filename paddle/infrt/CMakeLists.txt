@@ -99,14 +99,15 @@ set(infrt_mlir_incs
         trt_ops_inc
         )
 if (INFRT_WITH_PTEN)
+    set(pten_libs pten)
     set(infrt_mlir_incs ${infrt_mlir_incs}
         MLIRinfrt_pten_tensorIncGen
         MLIRinfrt_pten_baseIncGen
         )
 endif()
 
-cc_library(infrt SHARED SRCS ${infrt_src} DEPS glog boost ${mlir_libs} paddle_framework_proto infrt_naive)
-cc_library(infrt_static SRCS ${infrt_src} DEPS glog boost ${mlir_libs} paddle_framework_proto)
+cc_library(infrt SHARED SRCS ${infrt_src} DEPS glog boost ${mlir_libs} ${pten_libs} paddle_framework_proto infrt_naive)
+cc_library(infrt_static SRCS ${infrt_src} DEPS glog boost ${mlir_libs} ${pten_libs} paddle_framework_proto)
 add_dependencies(infrt ${infrt_mlir_incs} mlir-headers)
 
 add_custom_target(test_infrt_exec DEPENDS ${INFRT_TEST_TARGETS})

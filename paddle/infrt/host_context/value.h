@@ -29,9 +29,13 @@
 #include "paddle/infrt/tensor/dense_tensor_view.h"
 #include "paddle/infrt/tensor/tensor_map.h"
 #include "paddle/infrt/tensor/tensor_shape.h"
-// Disabled temporarily for failed compile, will enable latter.
-// #include "paddle/pten/backends/cpu/cpu_context.h"
-// #include "paddle/pten/core/dense_tensor.h"
+
+#ifdef INFRT_WITH_PTEN
+#include "paddle/infrt/backends/host/pten_allocator.h"
+#include "paddle/infrt/backends/host/pten_context.h"
+#include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/pten/core/dense_tensor.h"
+#endif
 
 namespace infrt {
 namespace host_context {
@@ -44,13 +48,18 @@ using ValueVariantType = Variant<int16_t,
                                  float,
                                  double,
                                  bool,
+                                 uint32_t,
+                                 uint64_t,
                                  std::string,
                                  tensor::TensorShape,
                                  tensor::DenseHostTensor,
                                  MlirFunctionExecutable*,
                                  tensor::TensorMap,
-                                 // pten::CPUContext,
-                                 // pten::DenseTensor,
+#ifdef INFRT_WITH_PTEN
+                                 pten::DenseTensor,
+                                 backends::CpuPtenAllocator,
+                                 backends::CpuPtenContext,
+#endif
                                  naive::MetaTensor,
                                  std::vector<int16_t>,
                                  std::vector<int32_t>,
@@ -85,6 +94,11 @@ class Value : public common::Object {
   explicit Value(tensor::DenseHostTensor&& x) : data(std::move(x)) {}
   explicit Value(MlirFunctionExecutable* x) : data(x) {}
   explicit Value(naive::MetaTensor&& x) : data(std::move(x)) {}
+#ifdef INFRT_WITH_PTEN
+  explicit Value(backends::CpuPtenContext&& x) : data(std::move(x)) {}
+  explicit Value(::pten::DenseTensor&& x) : data(std::move(x)) {}
+  explicit Value(backends::CpuPtenAllocator&& x) : data(std::move(x)) {}
+#endif
 
   template <typename T>
   const T& get() const {
@@ -143,6 +157,8 @@ class ValueRef : common::Shared<Value> {
   explicit ValueRef(double val);
   explicit ValueRef(bool val);
   explicit ValueRef(naive::MetaTensor&& val);
+  explicit ValueRef(backends::CpuPtenContext&& x);
+  explicit ValueRef(::pten::DenseTensor&& x);
 
   using common::Shared<Value>::get;
   using common::Shared<Value>::Reset;

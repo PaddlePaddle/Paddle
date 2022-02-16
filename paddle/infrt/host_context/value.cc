@@ -26,6 +26,10 @@ ValueRef::ValueRef(double val) : Shared<Value>(new Value(val)) {}
 ValueRef::ValueRef(bool val) : Shared<Value>(new Value(val)) {}
 ValueRef::ValueRef(naive::MetaTensor&& val)
     : Shared<Value>(new Value(std::move(val))) {}
+ValueRef::ValueRef(backends::CpuPtenContext&& val)
+    : Shared<Value>(new Value(std::move(val))) {}
+ValueRef::ValueRef(::pten::DenseTensor&& val)
+    : Shared<Value>(new Value(std::move(val))) {}
 
 const char* Value::type_info() const { return __type_info__; }
 
@@ -35,32 +39,39 @@ void CopyTo(const Value& from, Value* to) {
   visit(
       [&](auto&& arg) {
         using T = std::decay_t<decltype(arg)>;
+        void const* ptr = &arg;
         if (std::is_same<T, int16_t>::value)
-          to->data = arg;
+          to->data.get<int16_t>() = *reinterpret_cast<int16_t const*>(ptr);
         else if (std::is_same<T, int32_t>::value)
-          to->data = arg;
+          to->data.get<int32_t>() = *reinterpret_cast<int32_t const*>(ptr);
         else if (std::is_same<T, float>::value)
-          to->data = arg;
+          to->data.get<float>() = *reinterpret_cast<float const*>(ptr);
         else if (std::is_same<T, double>::value)
-          to->data = arg;
+          to->data.get<double>() = *reinterpret_cast<double const*>(ptr);
         else if (std::is_same<T, uint32_t>::value)
-          to->data = arg;
+          to->data.get<uint32_t>() = *reinterpret_cast<uint32_t const*>(ptr);
         else if (std::is_same<T, uint64_t>::value)
-          to->data = arg;
+          to->data.get<uint64_t>() = *reinterpret_cast<uint64_t const*>(ptr);
         else if (std::is_same<T, bool>::value)
-          to->data = arg;
+          to->data.get<bool>() = *reinterpret_cast<bool const*>(ptr);
         else if (std::is_same<T, tensor::TensorShape>::value)
-          to->data = arg;
+          to->data.get<tensor::TensorShape>() =
+              *reinterpret_cast<tensor::TensorShape const*>(ptr);
         else if (std::is_same<T, MlirFunctionExecutable*>::value)
-          to->data = arg;
+          to->data.get<MlirFunctionExecutable*>() =
+              *reinterpret_cast<MlirFunctionExecutable* const*>(ptr);
         else if (std::is_same<T, tensor::DenseHostTensor>::value)
-          to->data = arg;
+          to->data.get<tensor::DenseHostTensor>() =
+              *reinterpret_cast<tensor::DenseHostTensor const*>(ptr);
         else if (std::is_same<T, std::vector<int16_t>>::value)
-          to->data = arg;
+          to->data.get<std::vector<int16_t>>() =
+              *reinterpret_cast<std::vector<int16_t> const*>(ptr);
         else if (std::is_same<T, std::vector<int64_t>>::value)
-          to->data = arg;
+          to->data.get<std::vector<int64_t>>() =
+              *reinterpret_cast<std::vector<int64_t> const*>(ptr);
         else if (std::is_same<T, tensor::TensorMap>::value)
-          to->data = arg;
+          to->data.get<tensor::TensorMap>() =
+              *reinterpret_cast<tensor::TensorMap const*>(ptr);
         else
           LOG(FATAL) << "Not supported Value copy: " << typeid(T).name();
       },
