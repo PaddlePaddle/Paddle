@@ -1474,6 +1474,7 @@ USE_TRT_CONVERTER(bilinear_interp);
 USE_TRT_CONVERTER(bilinear_interp_v2);
 USE_TRT_CONVERTER(fused_preln_embedding_eltwise_layernorm)
 USE_TRT_CONVERTER(preln_skip_layernorm)
+#endif
 
 namespace paddle_infer {
 
