@@ -34,7 +34,8 @@ class TensorWrapper {
  public:
   TensorWrapper() = default;
   explicit TensorWrapper(const paddle::experimental::Tensor& tensor,
-                         bool full_reserved = false) {
+                         bool full_reserved = false,
+                         bool snapshot_inplace_version = false) {
     /**
      * Normally, we should fully reserved all non-output or non-leaf fwd tensor
      * here. And for fwd output tensor, we should not reserve its autogradmeta,
@@ -50,6 +51,21 @@ class TensorWrapper {
     // shallow copy tensor_impl here
     intermidiate_tensor_.set_impl(tensor.impl());
     intermidiate_tensor_.set_name(tensor.name() + "@Saved");
+
+    // Snapshot Inplace Version
+    if (snapshot_inplace_version) {
+      if (pten::DenseTensor::classof(tensor.impl().get())) {
+        pten::DenseTensor* dense_tensor =
+            static_cast<pten::DenseTensor*>(tensor.impl().get());
+        auto& inplace_version_counter = dense_tensor->InplaceVersionCounter();
+        inplace_version_snapshot_ = inplace_version_counter.CurrentVersion();
+
+      } else {
+        PADDLE_THROW(paddle::platform::errors::Fatal(
+            "Unrecognized tensor type for snapshoting inplace version."));
+      }
+    }
+
     PADDLE_ENFORCE_NOT_NULL(
         EagerUtils::unsafe_autograd_meta(tensor),
         paddle::platform::errors::Fatal(
@@ -83,9 +99,36 @@ class TensorWrapper {
     }
   }
 
+  void CheckInplaceVersion() {
+    if (pten::DenseTensor::classof(intermidiate_tensor_.impl().get())) {
+      pten::DenseTensor* dense_tensor =
+          static_cast<pten::DenseTensor*>(intermidiate_tensor_.impl().get());
+      auto& inplace_version_counter = dense_tensor->InplaceVersionCounter();
+
+      uint32_t current_inplace_version =
+          inplace_version_counter
+              .CurrentVersion() if (inplace_version_snapshot_ !=
+                                    current_inplace_version) {
+        PADDLE_THROW(paddle::platform::errors::Fatal(
+            "Detected inplace_version_snapshot %d != current_inplace_version "
+            "%d, "
+            "This indicates improper inplace op usages",
+            inplace_version_snapshot_, current_inplace_version));
+      }
+
+    } else {
+      PADDLE_THROW(paddle::platform::errors::Fatal(
+          "Unrecognized tensor type for snapshoting inplace version."));
+    }
+  }
+
+  uint32_t GetSnapshottedInplaceVersion() { return inplace_version_snapshot_; }
+
  private:
   bool full_reserved_ = false;
   std::pair<size_t, size_t> out_rank_info_;
   paddle::experimental::Tensor intermidiate_tensor_;
+
+  uint32_t inplace_version_snapshot_ = 0;
 };
 }  // namespace egr

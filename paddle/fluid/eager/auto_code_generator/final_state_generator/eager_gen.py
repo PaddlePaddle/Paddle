@@ -41,6 +41,10 @@ def ParseArguments():
 #################
 ###  Helpers  ###
 #################
+def GetInplacedFunctionName(function_name):
+    return function_name + "_"
+
+
 def FindGradName(string):
     return string + "_grad"
 
@@ -127,6 +131,24 @@ def ReadBwdFile(filepath):
 ######################
 ###  Yaml Parsers  ###
 ######################
+def ParseInplaceInfo(string):
+    # string: "(x -> out0), (y -> out2)"
+    inplace_map = {}
+    for pair in string.split(","):
+        pair = pair.strip()
+        if pair.startswith("("):
+            pair = pair[1:]
+
+        if pair.endswith(")"):
+            pair = pair[:-1]
+
+        key = pair.split("->")[0].strip()
+        val = pair.split("->")[1].strip()
+        inplace_map[key] = val
+
+    return inplace_map
+
+
 def ParseYamlArgs(string):
     # Example: const Tensor& x, const Tensor& y, bool transpose_x, bool transpose_y
 
@@ -413,8 +435,8 @@ def GenerateNodeDeclaration(fwd_api_name, backward_fwd_input_map,
         tensor_wrapper_name = GetSavedName(tname)
         if IsPlainTensorType(ttype):
             SET_PLAIN_TENSOR_WRAPPER_TEMPLATE = """
-   void SetTensorWrapper{}(const paddle::experimental::Tensor& {}, bool full_reserved) {{     
-     {} = egr::TensorWrapper({}, full_reserved);
+   void SetTensorWrapper{}(const paddle::experimental::Tensor& {}, bool full_reserved, bool snapshot_inplace_version) {{     
+     {} = egr::TensorWrapper({}, full_reserved, snapshot_inplace_version);
    }}
 """
             set_tensor_wrapper_methods_str += SET_PLAIN_TENSOR_WRAPPER_TEMPLATE.format(
@@ -428,9 +450,9 @@ def GenerateNodeDeclaration(fwd_api_name, backward_fwd_input_map,
         else:
             assert IsVectorTensorType(ttype)
             SET_VECTOR_TENSOR_WRAPPER_TEMPLATE = """
-   void SetTensorWrapper{}(const std::vector<paddle::experimental::Tensor>& {}, bool full_reserved) {{
+   void SetTensorWrapper{}(const std::vector<paddle::experimental::Tensor>& {}, bool full_reserved, bool snapshot_inplace_version) {{
      for(const auto& eager_tensor : {}) {{
-        {}.emplace_back( egr::TensorWrapper(eager_tensor, full_reserved) );
+        {}.emplace_back( egr::TensorWrapper(eager_tensor, full_reserved, snapshot_inplace_version) );
      }};
    }}
 """
@@ -498,7 +520,7 @@ class {} : public egr::GradNodeBase {{
 
 def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
                            backward_grad_input_map, backward_grad_output_map,
-                           backward_attrs_list):
+                           backward_attrs_list, inplace_map):
     # fwd_api_name = ""
     # backward_fwd_input_map   = { "name" : [type, is_fwd_input, orig_position] ...}
     # backward_grad_input_map  = { "name" : [type, fwd_position, orig_position] ...}
@@ -510,9 +532,16 @@ def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
     grad_api_args_len = len(backward_fwd_input_map.keys()) + len(
         backward_grad_input_map.keys()) + len(backward_attrs_list)
     grad_api_args = ["" for i in range(grad_api_args_len)]
+    check_inplace_version_list = []
     for name, (_, is_fwd_input,
                grad_api_position), in backward_fwd_input_map.items():
         tensor_wrapper_name = GetSavedName(name)
+
+        # Check inplace version
+        if name in inplace_map.keys() or name in inplace_map.values():
+            check_inplace_version_list.append(
+                f"this->{tensor_wrapper_name}.CheckInplaceVersion()")
+
         grad_api_args[
             grad_api_position] = f"egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name}, nullptr)"
 
@@ -528,6 +557,7 @@ def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
         saved_attribute_name = GetSavedName(name)
         grad_api_args[grad_api_position] = f"this->{saved_attribute_name}"
     grad_api_args_str = ", ".join(grad_api_args)
+    check_inplace_version_str = "\n".join(check_inplace_version_list)
 
     # Construct grad_api returns
     num_bwd_outputs = len(backward_grad_output_map.keys())
@@ -550,6 +580,9 @@ def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
     grad_node_name = GetGradNodeName(fwd_api_name)
     FUNCTION_TEMPLATE = """
 std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(const std::vector<std::vector<paddle::experimental::Tensor>>& grads) {{
+    // Check Inplace Version
+    {}
+    
     // Call grad_api function
     auto grad_api_returns = paddle::experimental::{}({});
     {}
@@ -557,16 +590,17 @@ std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(const std:
   """
 
     node_definition_str = FUNCTION_TEMPLATE.format(
-        grad_node_name, bwd_api_name, grad_api_args_str, returns_str)
+        check_inplace_version_str, grad_node_name, bwd_api_name,
+        grad_api_args_str, returns_str)
 
     return node_definition_str
 
 
-def GenerateNodeCreationCodes(fwd_api_name, bwd_api_name,
-                              forward_inputs_position_map,
-                              forward_outputs_position_map, forward_attrs_list,
-                              backward_fwd_input_map, backward_grad_input_map,
-                              backward_grad_output_map, backward_attrs_list):
+def GenerateNodeCreationCodes(
+        fwd_api_name, bwd_api_name, forward_inputs_position_map,
+        forward_outputs_position_map, forward_attrs_list,
+        backward_fwd_input_map, backward_grad_input_map,
+        backward_grad_output_map, backward_attrs_list, inplace_map):
     # fwd_api_name = ""
     # forward_inputs_position_map = { "name" : [type, fwd_position] }
     # forward_outputs_position_map = { "name" : [type, fwd_position] }
@@ -640,10 +674,15 @@ def GenerateNodeCreationCodes(fwd_api_name, bwd_api_name,
     # SetTensorWrappers
     set_tensor_wrappers_list = []
     for name, (_, is_fwd_input, _) in backward_fwd_input_map.items():
+        full_reserve = "false"
+        snapshot_inplace_version = "false"
         if is_fwd_input:
-            set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, true);"
-        else:
-            set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, false);"
+            full_reserve = "true"
+            # Only snapshot input tensor's inplace version
+            if name in inplace_map.keys() or name in inplace_map.values():
+                snapshot_inplace_version = "true"
+
+        set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, full_reserve, snapshot_inplace_version);"
         set_tensor_wrappers_list.append(set_tensor_wrappers)
     set_tensor_wrappers_str = "\n".join(set_tensor_wrappers_list)
 
@@ -1001,6 +1040,10 @@ if __name__ == "__main__":
         fwd_args_str = fwd_api['args']
         fwd_returns_str = fwd_api['output']
 
+        inplace_map = {}
+        if 'inplace' in fwd_api.keys():
+            inplace_map = ParseInplaceInfo(fwd_api['inplace'])
+
         bwd_api_name = fwd_api['backward']
         assert bwd_api_name in grad_api_dict.keys()
         bwd_api = grad_api_dict[bwd_api_name]
@@ -1068,7 +1111,7 @@ if __name__ == "__main__":
         node_definition_str += GenerateNodeDefinition(
             fwd_api_name, bwd_api_name, backward_fwd_input_map,
             backward_grad_input_map, backward_grad_output_map,
-            backward_attrs_list)
+            backward_attrs_list, inplace_map)
         print("Generated Node Definition: ", node_definition_str)
 
         # Node Definition Generation
@@ -1076,16 +1119,40 @@ if __name__ == "__main__":
             fwd_api_name, bwd_api_name, forward_inputs_position_map,
             forward_outputs_position_map, forward_attrs_list,
             backward_fwd_input_map, backward_grad_input_map,
-            backward_grad_output_map, backward_attrs_list)
-        print("Generated Forward Definition: ", forward_definition_str)
-        print("Generated Forward Declaration: ", forward_declaration_str)
+            backward_grad_output_map, backward_attrs_list, {})
         forward_definition_str += definition_declaration_pair[0]
         forward_declaration_str += definition_declaration_pair[1]
+
+        print("Generated Forward Definition: ", forward_definition_str)
+        print("Generated Forward Declaration: ", forward_declaration_str)
 
         # For python-level API dispatch
         CollectCoreOpsInformation(fwd_api_name, forward_inputs_position_map,
                                   forward_outputs_position_map,
                                   forward_attrs_list)
+
+        # Inplaced Version Dygraph Function Generation
+        if 'inplace' in fwd_api.keys():
+            fwd_api_name_inplaced = GetInplacedFunctionName(fwd_api_name)
+
+            # Node Definition Generation
+            definition_declaration_pair = GenerateForwardDefinition(
+                fwd_api_name_inplaced, bwd_api_name,
+                forward_inputs_position_map, forward_outputs_position_map,
+                forward_attrs_list, backward_fwd_input_map,
+                backward_grad_input_map, backward_grad_output_map,
+                backward_attrs_list, inplace_map)
+            print("Generated Inplaced Forward Definition: ",
+                  forward_definition_str)
+            print("Generated Inplaced Forward Declaration: ",
+                  forward_declaration_str)
+            forward_definition_str += definition_declaration_pair[0]
+            forward_declaration_str += definition_declaration_pair[1]
+
+            # For python-level API dispatch
+            CollectCoreOpsInformation(
+                fwd_api_name_inplaced, forward_inputs_position_map,
+                forward_outputs_position_map, forward_attrs_list)
 
     # Generate Files
     nodes_h_path = args.nodes_h_path

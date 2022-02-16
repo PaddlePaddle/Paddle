@@ -407,5 +407,35 @@ void Tensor::set_autograd_meta(
   autograd_meta_ = std::move(autograd_meta);
 }
 
+void Tensor::BumpInplaceVersion() {
+  // Snapshot Inplace Version
+  if (pten::DenseTensor::classof(impl_.get())) {
+    pten::DenseTensor *dense_tensor =
+        static_cast<pten::DenseTensor *>(impl_.get());
+    auto &inplace_version_counter = dense_tensor->InplaceVersionCounter();
+    inplace_version_counter.Bump();
+
+  } else {
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "Unrecognized tensor type for bumping inplace version."));
+  }
+}
+
+uint32_t Tensor::CurrentInplaceVersion() {
+  if (pten::DenseTensor::classof(impl_.get())) {
+    // Only Copy Meta
+    pten::DenseTensor *dense_tensor =
+        static_cast<pten::DenseTensor *>(impl_.get());
+    auto &inplace_version_counter = dense_tensor->InplaceVersionCounter();
+    return inplace_version_counter.CurrentVersion();
+
+  } else {
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "Unrecognized tensor type for bumping inplace version."));
+  }
+
+  return 0;
+}
+
 }  // namespace experimental
 }  // namespace paddle

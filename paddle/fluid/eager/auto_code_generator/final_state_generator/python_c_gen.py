@@ -14,7 +14,7 @@
 
 import os
 import argparse
-from eager_gen import ReadFwdFile, GetForwardFunctionName, ParseYamlForward, DetermineForwardPositionMap
+from eager_gen import ReadFwdFile, ParseInplaceInfo, GetInplacedFunctionName, GetForwardFunctionName, ParseYamlForward, DetermineForwardPositionMap
 
 atype_to_parsing_function = {
     "bool": "CastPyArg2Boolean",
@@ -70,7 +70,8 @@ def FindParsingFunctionFromAttributeType(atype):
 
 
 def GeneratePythonCFunction(fwd_api_name, forward_inputs_position_map,
-                            forward_attrs_list, forward_outputs_position_map):
+                            forward_attrs_list, forward_outputs_position_map,
+                            inplace_map):
     # forward_inputs_position_map = { "name" : [type, fwd_position] }
     # forward_outputs_position_map = { "name" : [type, fwd_position] }
     # forward_attrs_list = [ [attr_name, attr_type, default_value, orig_position], ...]
@@ -86,6 +87,7 @@ def GeneratePythonCFunction(fwd_api_name, forward_inputs_position_map,
         dygraph_function_call_list[pos] = f"{name}"
 
     parse_attributes_str = "    paddle::framework::AttributeMap attrs;\n"
+
     # Get Attributes
     for name, atype, _, pos in forward_attrs_list:
         parsing_function = FindParsingFunctionFromAttributeType(atype)
@@ -97,6 +99,16 @@ def GeneratePythonCFunction(fwd_api_name, forward_inputs_position_map,
 
         dygraph_function_call_list[pos] = f"{name}"
     dygraph_function_call_str = ",".join(dygraph_function_call_list)
+
+    # Inplace BumpVersion
+    inplace_bump_version_list = []
+    for k, v in inplace_map.items():
+        # Only BumpVersion for inputs
+        if k in forward_inputs_position_map.keys():
+            inplace_bump_version_list.append(f"{k}.BumpInplaceVersion();")
+        if v in forward_inputs_position_map.keys():
+            inplace_bump_version_list.append(f"{v}.BumpInplaceVersion();")
+    inplace_bump_version_str = "\n".join(inplace_bump_version_list)
 
     PYTHON_C_FUNCTION_TEMPLATE = """
 static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObject *kwargs)
@@ -113,7 +125,10 @@ static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObj
 {}
 
     tstate = PyEval_SaveThread();
-    
+
+    // Inplace BumpVersion
+{}
+
     auto out = {}({});
     
     PyEval_RestoreThread(tstate);
@@ -132,6 +147,7 @@ static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObj
 """
     python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
         fwd_api_name, fwd_api_name, get_eager_tensor_str, parse_attributes_str,
+        inplace_bump_version_str,
         GetForwardFunctionName(fwd_api_name), dygraph_function_call_str)
 
     python_c_function_reg_str = f"{{\"final_state_{fwd_api_name}\", (PyCFunction)(void(*)(void))eager_final_state_api_{fwd_api_name}, METH_VARARGS | METH_KEYWORDS, \"C++ interface function for {fwd_api_name} in dygraph.\"}},\n"
@@ -283,10 +299,23 @@ if __name__ == "__main__":
 
         python_c_function_str, python_c_function_reg_str = GeneratePythonCFunction(
             fwd_api_name, forward_inputs_position_map, forward_attrs_list,
-            forward_outputs_position_map)
+            forward_outputs_position_map, {})
         python_c_function_list.append(python_c_function_str)
         python_c_function_reg_list.append(python_c_function_reg_str)
         print("Generated Python-C Function: ", python_c_function_str)
+
+        # Inplace Version Python-C Function
+        if 'inplace' in fwd_api.keys():
+            inplace_map = ParseInplaceInfo(fwd_api['inplace'])
+            fwd_api_name_inplaced = GetInplacedFunctionName(fwd_api_name)
+
+            python_c_function_str, python_c_function_reg_str = GeneratePythonCFunction(
+                fwd_api_name_inplaced, forward_inputs_position_map,
+                forward_attrs_list, forward_outputs_position_map, inplace_map)
+            python_c_function_list.append(python_c_function_str)
+            python_c_function_reg_list.append(python_c_function_reg_str)
+            print("Generated Inplaced Python-C Function: ",
+                  python_c_function_str)
 
     python_c_functions_str = "\n".join(python_c_function_list)
     python_c_functions_reg_str = ",\n".join(python_c_function_reg_list)
