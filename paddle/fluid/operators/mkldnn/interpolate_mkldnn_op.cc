@@ -40,10 +40,10 @@ class InterpolateMKLDNNHandler
     const auto src_tz = framework::vectorize(x->dims());
     const auto dst_tz = framework::vectorize(z->dims());
 
-    const auto src_md = dnnl::memory::desc(
-        src_tz, platform::MKLDNNGetDataType<T>(), x->format());
-    const auto dst_md = memory::desc(dst_tz, platform::MKLDNNGetDataType<T>(),
-                                     MKLDNNMemoryFormat::any);
+    auto src_md = dnnl::memory::desc(src_tz, platform::MKLDNNGetDataType<T>(),
+                                     x->format());
+    auto dst_md = memory::desc(dst_tz, platform::MKLDNNGetDataType<T>(),
+                               MKLDNNMemoryFormat::any);
 
     if (!is_nchw) {
       src_md =
