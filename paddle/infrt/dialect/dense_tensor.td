@@ -109,7 +109,8 @@ def LoadParamsOp : DT_Op<"load_params", [NoSideEffect]> {
   let arguments = (ins StrAttr:$path);
   let results = (outs TensorMapType);
 
-  let assemblyFormat = "`(` operands `)` attr-dict";
+
+  let assemblyFormat = "`(` `)` attr-dict";
   let verifier = ?;
 }
 
