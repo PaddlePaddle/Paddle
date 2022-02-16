@@ -91,12 +91,11 @@ class NPUPoolOpKernel : public framework::OpKernel<T> {
       Tensor transformed_input, transformed_output;
       if (pooling_type == "avg" && channel_last) {
         transformed_input.mutable_data<T>(
-            framework::make_dim(in_x_dims[0], in_x_dims[3], in_x_dims[1],
-                                in_x_dims[2]),
+            pten::make_dim(in_x_dims[0], in_x_dims[3], in_x_dims[1],
+                           in_x_dims[2]),
             ctx.GetPlace());
         transformed_output.mutable_data<T>(
-            framework::make_dim(out_dims[0], out_dims[3], out_dims[1],
-                                out_dims[2]),
+            pten::make_dim(out_dims[0], out_dims[3], out_dims[1], out_dims[2]),
             ctx.GetPlace());
 
         const auto &trans_runner =
