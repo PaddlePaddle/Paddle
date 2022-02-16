@@ -97,7 +97,7 @@ class SetTensorOp<string dtype> :
   let printer = [{ return infrt::dt::printSetTensorOp(p, *this); }];
 }
 
-def LoadParamsOp : DT_Op<"load_params"> {
+def LoadParamsOp : DT_Op<"load_params", [NoSideEffect]> {
   let summary = "dt.load_params operation";
 
   let description = [{
