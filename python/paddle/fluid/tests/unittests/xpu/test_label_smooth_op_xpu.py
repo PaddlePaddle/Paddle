@@ -53,9 +53,10 @@ class XPUTestLabelSmoothOp(XPUOpTestWrapper):
                 self.batch_size = 10
                 self.label_dim = 12
             self.label = np.zeros(
-                (batch_size, self.label_dim)).astype("float32")
-            nonzero_index = np.random.randint(self.label_dim, size=(batch_size))
-            self.label[np.arange(batch_size), nonzero_index] = 1
+                (self.batch_size, self.label_dim)).astype("float32")
+            nonzero_index = np.random.randint(
+                self.label_dim, size=(self.batch_size))
+            self.label[np.arange(self.batch_size), nonzero_index] = 1
             smoothed_label = (1 - self.epsilon
                               ) * self.label + self.epsilon / self.label_dim
             self.inputs = {'X': self.label}
