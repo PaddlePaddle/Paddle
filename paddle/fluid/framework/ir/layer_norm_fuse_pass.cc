@@ -14,6 +14,7 @@
 
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/layer_norm_fuse_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -273,10 +274,11 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
             "but has %s elements.",
             eps_tensor->numel()));
     CHECK_TRUE(
-        eps_tensor->type() == proto::VarType::FP32,
+        framework::TransToProtoVarType(eps_tensor->dtype()) ==
+            proto::VarType::FP32,
         ::paddle::string::Sprintf("The LayerNorm divisor epsilon value "
                                   "must be of FP32 data type, but is %s.",
-                                  eps_tensor->type()));
+                                  eps_tensor->dtype()));
 
     CHECK_TRUE(validateReduceOpAttrs(x_mean, x_shape, "input mean"),
                "Validation of input mean node failed.");
@@ -333,7 +335,8 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
     auto* gamma_tensor = scope->FindVar(gamma->Name())->GetMutable<LoDTensor>();
     VarDesc new_gamma_desc(patterns::PDNodeName("layer_norm_fuse", "Scale"));
     new_gamma_desc.SetShape({layer_norm_x_mat_dims[1]});
-    new_gamma_desc.SetDataType(gamma_tensor->type());
+    new_gamma_desc.SetDataType(
+        framework::TransToProtoVarType(gamma_tensor->dtype()));
     new_gamma_desc.SetLoDLevel(gamma->Var()->GetLoDLevel());
     new_gamma_desc.SetPersistable(true);
     auto* new_gamma_node = g->CreateVarNode(&new_gamma_desc);
@@ -347,7 +350,8 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
     auto* beta_tensor = scope->FindVar(beta->Name())->GetMutable<LoDTensor>();
     VarDesc new_beta_desc(patterns::PDNodeName("layer_norm_fuse", "Bias"));
     new_beta_desc.SetShape({layer_norm_x_mat_dims[1]});
-    new_beta_desc.SetDataType(beta_tensor->type());
+    new_beta_desc.SetDataType(
+        framework::TransToProtoVarType(beta_tensor->dtype()));
     new_beta_desc.SetLoDLevel(beta->Var()->GetLoDLevel());
     new_beta_desc.SetPersistable(true);
     auto* new_beta_node = g->CreateVarNode(&new_beta_desc);

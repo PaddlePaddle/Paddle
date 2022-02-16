@@ -17,6 +17,7 @@ limitations under the License. */
 #include <memory>
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -24,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/utils/data_type.h"
 
 namespace pten {
 namespace funcs {

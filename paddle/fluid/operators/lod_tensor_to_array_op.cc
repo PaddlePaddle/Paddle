@@ -78,7 +78,8 @@ struct LoDTensorToArrayFunctor : public boost::static_visitor<void> {
     LoDTensorToArrayFunctorImpl<DeviceContext> func;
     func.prev_functor_ = this;
     func.dev_ctx_ = dev_ctx;
-    framework::VisitDataType(input_.type(), func);
+    framework::VisitDataType(framework::TransToProtoVarType(input_.dtype()),
+                             func);
   }
 };
 
