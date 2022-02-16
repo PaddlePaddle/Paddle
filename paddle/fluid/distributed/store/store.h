@@ -32,14 +32,7 @@ class Store {
   explicit Store(const std::chrono::seconds& timeout) : _timeout(timeout) {}
   virtual ~Store() {}
 
-  virtual void set(const std::string& key,
-                   const std::vector<uint8_t>& value) = 0;
-  virtual std::vector<uint8_t> get(const std::string& key) = 0;
-
   virtual int64_t add(const std::string& key, int64_t value) = 0;
-  virtual void wait(const std::vector<std::string>& keys) = 0;
-  virtual void wait(const std::vector<std::string>& keys,
-                    const std::chrono::seconds& timeout) = 0;
 
   virtual const std::chrono::seconds& timeout() const { return _timeout; }
   virtual void timeout(const std::chrono::seconds& timeout) {

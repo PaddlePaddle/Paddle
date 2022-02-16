@@ -27,7 +27,7 @@ namespace paddle {
 namespace distributed {
 
 enum class WaitReplyType { STOP_WAIT };
-enum class Command { SET, GET, ADD, WAIT };
+enum class Command { ADD };
 
 namespace detail {
 
@@ -39,10 +39,7 @@ class MasterDaemon {
 
  private:
   void run();
-  void doSet(int socket);
-  void doGet(int socket);
-  void doAdd(int socket);
-  void doWait(int socket);
+  void _do_add(int socket);
   Socket _listen_socket;
   std::vector<Socket> _sockets;
   std::unordered_map<std::string, std::vector<uint8_t>> _store;
@@ -51,11 +48,10 @@ class MasterDaemon {
 
 class TCPServer {
  public:
-  explicit TCPServer(uint16_t port) : _port(port) {}
+  TCPServer() = default;
   static std::unique_ptr<TCPServer> create(std::uint16_t port);
 
  private:
-  std::uint16_t _port;
   std::unique_ptr<MasterDaemon> _master_daemon;
 };
 
@@ -65,17 +61,13 @@ class TCPClient {
   static std::unique_ptr<TCPClient> connect(const std::string host,
                                             uint16_t port,
                                             const std::chrono::seconds timeout);
-  void sendCommandForKey(Command type, const std::string& key);
-  void sendCommand(Command type);
-  void sendStrings(std::vector<std::string> strings);
-  void sendBytes(const std::vector<std::uint8_t>& bytes);
-  std::vector<uint8_t> recvBytes();
+  void send_command_for_key(Command type, const std::string& key);
 
   template <typename T>
-  void sendValue(const T& value);
+  void send_value(const T& value);
 
   template <typename T>
-  T recvValue();
+  T receive_value();
 
  private:
   Socket _socket;
@@ -91,19 +83,10 @@ class TCPStore : public Store {
                     std::chrono::seconds timeout = Store::kDefaultTimeout);
 
   ~TCPStore() = default;
-  void setTimeout(std::chrono::seconds timeout) { _timeout = timeout; }
-
-  void set(const std::string& key, const std::vector<uint8_t>& value) override;
-  std::vector<uint8_t> get(const std::string& key) override;
 
   int64_t add(const std::string& key, int64_t value) override;
-  void wait(const std::vector<std::string>& keys) override;
-  void wait(const std::vector<std::string>& keys,
-            const std::chrono::seconds& timeout) override;
 
  private:
-  void doWait(const std::vector<std::string>& keys,
-              const std::chrono::milliseconds& timeout);
   void waitWorkers();
   std::unique_ptr<detail::TCPServer> _server;
   std::unique_ptr<detail::TCPClient> _client;
@@ -111,8 +94,6 @@ class TCPStore : public Store {
   const std::string _init_key = "init/";
   const std::string _key_prefix = "/";
   std::chrono::seconds _timeout;
-  std::string _host;
-  uint16_t _port;
   bool _is_master;
   int _num_workers;
   std::mutex _lock;
