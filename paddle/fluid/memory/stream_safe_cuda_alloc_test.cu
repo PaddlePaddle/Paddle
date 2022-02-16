@@ -12,37 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef PADDLE_WITH_CUDA
-#include <cuda.h>
-#include <cuda_runtime.h>
-#endif
-
-#ifdef PADDLE_WITH_HIP
-#include <hip/hip_runtime.h>
-#endif
-
 #include <thread>  // NOLINT
 #include <vector>
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/pten/core/stream.h"
 
+#ifdef PADDLE_WITH_CUDA
+#include <cuda.h>
+#include <cuda_runtime.h>
+#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
+#endif
+
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#endif
+
 namespace paddle {
 namespace memory {
 
-__global__ void add_kernel(int* x, int n) {
+__global__ void add_kernel(int *x, int n) {
   int thread_num = gridDim.x * blockDim.x;
   int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
   for (int i = thread_id; i < n; i += thread_num) {
     atomicAdd(x + i, thread_id);
   }
 }
-/*
+
 void CheckMemLeak(const platform::CUDAPlace &place) {
   uint64_t cuda_malloc_size =
       platform::RecordedGpuMallocSize(place.GetDeviceId());
@@ -340,25 +340,26 @@ TEST(StreamSafeCUDAAllocRetryTest, RetryTest) {
   Release(place, stream2);
   CheckMemLeak(place);
 }
-*/
+
 #ifdef PADDLE_WITH_CUDA
 TEST(StreamSafeCUDAAllocInterfaceTest, CUDAGraphTest) {
-  platform::BeginCUDAGraphCapture(platform::CUDAPlace(),
-                                  cudaStreamCaptureModeGlobal);
-
   size_t data_num = 1024;
   std::shared_ptr<Allocation> data_allocation =
       AllocShared(platform::CUDAPlace(), data_num * sizeof(int));
+  int *data = static_cast<int *>(data_allocation->ptr());
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemset(data, 0, data_num * sizeof(int)));
 
-  const gpuStream_t& main_stream = GetStream(data_allocation);
+  // CUDA Graph in Paddle did not support custom stream yet
+  gpuStream_t main_stream = GetStream(data_allocation);
   gpuStream_t other_stream;
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&other_stream));
 
+  platform::BeginCUDAGraphCapture(platform::CUDAPlace(),
+                                  cudaStreamCaptureModeGlobal);
   int thread_num = 64;
   add_kernel<<<1, thread_num, 0, main_stream>>>(
-      static_cast<int*>(data_allocation->ptr()), data_num);
+      static_cast<int *>(data_allocation->ptr()), data_num);
   RecordStream(data_allocation, other_stream);
-
   std::unique_ptr<platform::CUDAGraph> cuda_graph =
       platform::EndCUDAGraphCapture();
 
@@ -374,13 +375,9 @@ TEST(StreamSafeCUDAAllocInterfaceTest, CUDAGraphTest) {
        main_stream);
   cudaDeviceSynchronize();
 
-  int* result = static_cast<int*>(result_allocation->ptr());
-  // EXPECT_EQ(result[1], 2);
+  int *result = static_cast<int *>(result_allocation->ptr());
   for (int i = 0; i < data_num; ++i) {
-    EXPECT_EQ(result[i], (i % thread_num) * replay_times);  // add two times,
-                                                            // one in capturing
-                                                            // and the other in
-                                                            // replay
+    EXPECT_EQ(result[i], (i % thread_num) * replay_times);
   }
 }
 #endif
