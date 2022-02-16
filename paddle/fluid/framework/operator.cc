@@ -19,6 +19,7 @@ limitations under the License. */
 #include <string>
 
 #include "gflags/gflags.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
@@ -28,6 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/pten/common/scalar.h"
@@ -109,13 +111,13 @@ static std::string GetDtype(const ScopeBase& scope, const std::string& name) {
     if (UNLIKELY(!tensor.IsInitialized())) {
       return "";
     }
-    return DataTypeToString(tensor.type());
+    return DataTypeToString(framework::TransToProtoVarType(tensor.dtype()));
   } else if (var->IsType<pten::SelectedRows>()) {
     auto tensor = var->Get<pten::SelectedRows>().value();
     if (UNLIKELY(!tensor.IsInitialized())) {
       return "uninited";
     } else {
-      return DataTypeToString(tensor.type());
+      return DataTypeToString(framework::TransToProtoVarType(tensor.dtype()));
     }
   } else if (var->IsType<Strings>()) {
     return "strings";
@@ -243,6 +245,15 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
 #else
       auto dev_id = place.device;
       platform::SetMLUDeviceId(dev_id);
+#endif
+    } else if (platform::is_custom_place(place)) {
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Cannot run operator on place %s, please recompile paddle or "
+          "reinstall Paddle with CustomDevice support.",
+          place));
+#else
+      platform::DeviceManager::SetDevice(place);
 #endif
     }
 
@@ -664,6 +675,10 @@ class RuntimeInferShapeContext : public InferShapeContext {
     return out[0] != nullptr;
   }
 
+  bool HasAttr(const std::string& name) const override {
+    return op_.HasAttr(name);
+  }
+
   bool HasInputs(const std::string& name) const override {
     const auto& ins = ctx_.inputs;
     auto it = ins.find(name);
@@ -1066,8 +1081,8 @@ static void CheckTensorNANOrInf(const std::string& op_type,
   if (tensor.memory_size() == 0) {
     return;
   }
-  if (tensor.type() != proto::VarType::FP32 &&
-      tensor.type() != proto::VarType::FP64) {
+  if (framework::TransToProtoVarType(tensor.dtype()) != proto::VarType::FP32 &&
+      framework::TransToProtoVarType(tensor.dtype()) != proto::VarType::FP64) {
     return;
   }
   PADDLE_ENFORCE_NE(
@@ -1532,7 +1547,7 @@ void OperatorWithKernel::HandleComplexGradToRealGrad(
         continue;
       }
       // only focus on complex dtype now
-      auto src_type = grad_tensor->type();
+      auto src_type = framework::TransToProtoVarType(grad_tensor->dtype());
       if (!IsComplexType(src_type)) {
         continue;
       }
@@ -1552,7 +1567,7 @@ void OperatorWithKernel::HandleComplexGradToRealGrad(
           platform::errors::Unavailable(
               "Forward tensor is nullptr when handle complex data to real."));
       // only need record type, the allocation may have been released
-      auto dst_type = tensor->saved_type();
+      auto dst_type = framework::TransToProtoVarType(tensor->dtype());
       // only focus on real dtype and need casting
       if (IsComplexType(dst_type)) {
         continue;
@@ -1766,7 +1781,8 @@ void OperatorWithKernel::ParseInputDataType(
             platform::errors::InvalidArgument("The %s Op's Input Variable `%s` "
                                               "contains uninitialized Tensor.",
                                               Type(), name));
-        proto::VarType::Type tmp = t->type();
+        proto::VarType::Type tmp =
+            paddle::framework::TransToProtoVarType(t->dtype());
         PADDLE_ENFORCE(tmp == *data_type || *data_type == default_data_type,
                        platform::errors::InvalidArgument(
                            "The DataType of %s Op's duplicable or different "
@@ -1865,8 +1881,8 @@ proto::VarType::Type OperatorWithKernel::IndicateOrPromoteVarDataTypes(
   auto* tensor_b = GetTensorFormInputSafely(ctx, name2);
 
   // 2. Get two input types
-  auto type_a = tensor_a->type();
-  auto type_b = tensor_b->type();
+  auto type_a = framework::TransToProtoVarType(tensor_a->dtype());
+  auto type_b = framework::TransToProtoVarType(tensor_b->dtype());
 
   // 3. Get first input type or promote complex types
   auto target_type = PromoteTypesIfComplexExists(type_a, type_b);
@@ -2099,6 +2115,10 @@ void OperatorWithKernel::BuildPtenKernelContext(
                    std::type_index(typeid(std::vector<int32_t>))) {
           pt_kernel_context->EmplaceBackAttr(std::move(pten::ScalarArray(
               BOOST_GET_CONST(std::vector<int32_t>, attr_iter->second))));
+        } else if (std::type_index(attr_iter->second.type()) ==
+                   std::type_index(typeid(int32_t))) {
+          pt_kernel_context->EmplaceBackAttr(std::move(pten::ScalarArray(
+              &BOOST_GET_CONST(int32_t, attr_iter->second), 1)));
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported cast op attribute `%s` to ScalarArray when "
@@ -2155,12 +2175,14 @@ void OperatorWithKernel::BuildPtenKernelContext(
         pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(float, attr));
       } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
         pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
+      } else if (attr_defs[i].type_index == std::type_index(typeid(int64_t))) {
+        pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(int64_t, attr));
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::string))) {
         pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(std::string, attr));
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(pten::DataType))) {
-        auto data_type = pten::TransToPtenDataType(
+        auto data_type = paddle::framework::TransToPtenDataType(
             static_cast<framework::proto::VarType::Type>(
                 BOOST_GET_CONST(int, attr)));
         pt_kernel_context->EmplaceBackAttr(data_type);

@@ -69,7 +69,7 @@ class XPUTestArgsortOp1(XPUOpTestWrapper):
             self.descending = False if not hasattr(
                 self, 'init_descending') else self.init_descending
 
-            if self.in_type == 'float32':
+            if self.in_type == np.float32:
                 self.x = np.random.random(self.input_shape).astype(self.dtype)
             else:
                 self.x = np.random.randint(
@@ -118,7 +118,7 @@ class XPUTestArgsortOp2(XPUOpTestWrapper):
             self.init_axis()
             self.init_direction()
 
-            if self.in_type == 'float32':
+            if self.in_type == np.float32:
                 self.x = np.random.random(self.input_shape).astype(self.dtype)
             else:
                 self.x = np.random.randint(
