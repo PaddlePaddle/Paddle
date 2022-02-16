@@ -37,17 +37,19 @@ const std::unordered_set<std::string> standard_kernel_suffixs({
  * after 2.0, and can no longer be occupied by the previously abandoned ops.
  * They are marked here uniformly.
  */
-const std::unordered_set<std::string> deprecated_op_names({"flatten",
-                                                           "flatten_grad",
-                                                           "matmul",
-                                                           "matmul_grad",
-                                                           "matmul_grad_grad",
-                                                           "mean",
-                                                           "reshape",
-                                                           "reshape_grad",
-                                                           "expand",
-                                                           "expand_grad",
-                                                           "sum"});
+const std::unordered_set<std::string> deprecated_op_names({
+    "flatten",
+    "flatten_grad",
+    "matmul",
+    "matmul_grad",
+    "matmul_grad_grad",
+    "mean",
+    "reshape",
+    "reshape_grad",
+    "expand",
+    "expand_grad",
+    "sum",
+});
 
 class DefaultKernelSignatureMap {
  public:
