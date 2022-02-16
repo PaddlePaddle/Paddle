@@ -14,19 +14,17 @@
 
 #include <gtest/gtest.h>
 
-#include "paddle/infrt/naive/infershaped/infershaped_kernel_launcher.h"
-#include "paddle/infrt/naive/infershaped/infershaped_kernel_launchers.h"
-#include "paddle/infrt/naive/infershaped/infershaped_registry.h"
-#include "paddle/infrt/naive/infershaped/infershaped_utils.h"
-#include "paddle/infrt/tensor/dense_host_tensor.h"
+#include "paddle/infrt/kernel/pten/infershaped/infershaped_kernel_launcher.h"
+#include "paddle/infrt/kernel/pten/infershaped/infershaped_kernel_launchers.h"
+#include "paddle/infrt/kernel/pten/infershaped/infershaped_utils.h"
 
 namespace infrt {
-namespace naive {
+namespace kernel {
 
 namespace {
-static void ElementwiseAddTest(const tensor::DenseHostTensor& a,
-                               const tensor::DenseHostTensor& b,
-                               tensor::DenseHostTensor* c);
+static void ElementwiseAddTest(const ::pten::DenseTensor& a,
+                               const ::pten::DenseTensor& b,
+                               ::pten::DenseTensor* c);
 }
 
 TEST(utils, registry) {
@@ -41,18 +39,18 @@ TEST(ElementwiseAdd, launcher_registry) {
   ASSERT_EQ(registry.size(), 1UL);
   auto creator = registry.GetKernel("elementwise_add");
 
-  tensor::DenseHostTensor a({2, 8}, GetDType<float>());
-  tensor::DenseHostTensor b({2, 8}, GetDType<float>());
-  tensor::DenseHostTensor c({2, 8}, GetDType<float>());
+  ::pten::CPUContext ctx{};
+  ::pten::DenseTensor a{};
+  ::pten::DenseTensor b{};
+  ::pten::DenseTensor c{};
 
   host_context::KernelFrameBuilder kernel_frame_builder;
-  kernel_frame_builder.AddArgument(new host_context::Value(0));
+  kernel_frame_builder.AddArgument(new host_context::Value(std::move(ctx)));
   kernel_frame_builder.AddArgument(new host_context::Value(std::move(a)));
   kernel_frame_builder.AddArgument(new host_context::Value(std::move(b)));
   kernel_frame_builder.SetResults({new host_context::Value(std::move(c))});
-
   creator(&kernel_frame_builder);
 }
 
-}  // namespace naive
+}  // namespace kernel
 }  // namespace infrt

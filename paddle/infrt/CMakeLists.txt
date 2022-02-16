@@ -82,7 +82,6 @@ add_subdirectory(tensor)
 add_subdirectory(support)
 add_subdirectory(external_kernels)
 add_subdirectory(paddle)
-add_subdirectory(naive)
 add_subdirectory(tests)
 
 

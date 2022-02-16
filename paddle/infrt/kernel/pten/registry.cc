@@ -22,8 +22,10 @@
 #include "paddle/infrt/kernel/pten/allocator_kernels.h"
 #include "paddle/infrt/kernel/pten/context_kernels.h"
 #include "paddle/infrt/kernel/pten/dense_tensor_kernels.h"
+#include "paddle/infrt/kernel/pten/infershaped/elementwise_add.h"
 #include "paddle/pten/include/infermeta.h"
 #include "paddle/pten/include/kernels.h"
+#include "paddle/pten/kernels/matmul_kernel.h"
 
 using infrt::host_context::Attribute;
 
@@ -40,6 +42,19 @@ void RegisterPtenKernels(host_context::KernelRegistry* registry) {
       INFRT_KERNEL(infrt::kernel::pten::CreateDenseTensorCpuF32Nchw));
   registry->AddKernel("pten_dt.fill_dense_tensor.f32",
                       INFRT_KERNEL(infrt::kernel::pten::FillDenseTensorF32));
+  registry->AddKernel(
+      "pten.matmul.host.fp32",
+      std::bind(&kernel::KernelLauncherFunc<
+                    decltype(&::pten::MatmulKernel<float, ::pten::CPUContext>),
+                    &::pten::MatmulKernel<float, ::pten::CPUContext>,
+                    decltype(&::pten::MatmulInferMeta),
+                    &::pten::MatmulInferMeta>,
+                kernel::KernelLauncher<
+                    decltype(&::pten::MatmulKernel<float, ::pten::CPUContext>),
+                    &::pten::MatmulKernel<float, ::pten::CPUContext>,
+                    decltype(&::pten::MatmulInferMeta),
+                    &::pten::MatmulInferMeta>(),
+                std::placeholders::_1));
 }
 
 }  // namespace kernel

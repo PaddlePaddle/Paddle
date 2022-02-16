@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/naive/infershaped/infershaped_kernel_launchers.h"
-#include "paddle/infrt/naive/infershaped/elementwise_add.h"
+#include "paddle/infrt/kernel/pten/infershaped/infershaped_kernel_launchers.h"
+#include "paddle/infrt/kernel/pten/infershaped/elementwise_add.h"
 
 namespace infrt {
-namespace naive {
+namespace kernel {
 
 void RegisterInferShapeLaunchers(host_context::KernelRegistry* registry) {
   registry->AddKernel(
@@ -32,5 +32,5 @@ void RegisterInferShapeLaunchers(host_context::KernelRegistry* registry) {
                 std::placeholders::_1));
 }
 
-}  // namespace naive
+}  // namespace kernel
 }  // namespace infrt
