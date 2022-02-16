@@ -766,15 +766,14 @@ def _run_dygraph(instance, input, program_holder):
     # 1. prepare inputs, outputs, attrs
     input_vars = []
     for i, value in enumerate(input):
-        if not isinstance(value,
-                          (np.ndarray, core.VarBase, core.eager.EagerTensor)):
+        if not isinstance(value, (np.ndarray, core.VarBase, core.eager.Tensor)):
             raise TypeError(
                 "The type of input in TranslatedLayer must be numpy array or Variable(VarBase), but received %s."
                 % type(value))
         # NOTE: In order to unify the API, firstly convert the input to VarBase
         if isinstance(value, np.ndarray):
             if framework._in_eager_mode():
-                var = core.eager.EagerTensor(
+                var = core.eager.Tensor(
                     value=value,
                     name=program_holder.input_descs[i].name(),
                     persistable=False,
@@ -813,7 +812,7 @@ def _run_dygraph(instance, input, program_holder):
     output_vars = []
     for var_desc in program_holder.output_descs:
         if framework._in_eager_mode():
-            var = core.eager.EagerTensor(
+            var = core.eager.Tensor(
                 dtype=var_desc.dtype(),
                 dims=var_desc.shape(),
                 name=var_desc.name(),
@@ -827,7 +826,7 @@ def _run_dygraph(instance, input, program_holder):
 
     # hold forward variables
     if framework._in_eager_mode():
-        tmp_scope_vec = core.eager.EagerTensor(
+        tmp_scope_vec = core.eager.Tensor(
             dtype=core.VarDesc.VarType.FP32,
             dims=[],
             name="program_out_scope",
@@ -842,7 +841,7 @@ def _run_dygraph(instance, input, program_holder):
     double_grad_vars = []
     for var_desc in program_holder.double_grad_descs:
         if framework._in_eager_mode():
-            var = core.eager.EagerTensor(
+            var = core.eager.Tensor(
                 dtype=var_desc.dtype(),
                 dims=var_desc.shape(),
                 name=var_desc.name(),
@@ -856,7 +855,7 @@ def _run_dygraph(instance, input, program_holder):
     if len(double_grad_vars) == 0:
         if framework._in_eager_mode():
             double_grad_vars = [
-                core.eager.EagerTensor(
+                core.eager.Tensor(
                     value=[1],
                     name='Fake_var',
                     place=framework._current_expected_place())
@@ -1280,7 +1279,7 @@ class TranslatedLayer(layers.Layer):
                     dy_name = _generate_unique_var_name(PARAMETER_NAME_PREFIX)
                     self._persistable_var_name_dict[name] = dy_name
                     self.add_parameter(dy_name, var)
-                elif isinstance(var, (core.VarBase, core.eager.EagerTensor)):
+                elif isinstance(var, (core.VarBase, core.eager.Tensor)):
                     dy_name = _generate_unique_var_name(BUFFER_NAME_PREFIX)
                     self._persistable_var_name_dict[name] = dy_name
                     self.register_buffer(dy_name, var)

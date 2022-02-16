@@ -280,7 +280,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             self.opti_dict = adam.state_dict()
             self.base_opti = {}
             for k, v in self.opti_dict.items():
-                if isinstance(v, (core.VarBase, core.eager.EagerTensor)):
+                if isinstance(v, (core.VarBase, core.eager.Tensor)):
                     self.base_opti[v.name] = v.numpy()
                     self.assertTrue(np.sum(np.abs(v.numpy())) != 0)
                 else:
@@ -368,7 +368,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             opti_dict = adam.state_dict()
             # set to zero
             for k, v in opti_dict.items():
-                if isinstance(v, (core.VarBase, core.eager.EagerTensor)):
+                if isinstance(v, (core.VarBase, core.eager.Tensor)):
                     np_t = v.numpy()
                     var = v.value().get_tensor()
                     var.set(np.zeros_like(np_t), place)
@@ -381,7 +381,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             opti_dict = adam.state_dict()
             for k, v in opti_dict.items():
-                if isinstance(v, (core.VarBase, core.eager.EagerTensor)):
+                if isinstance(v, (core.VarBase, core.eager.Tensor)):
                     self.assertTrue(
                         np.array_equal(v.numpy(), self.base_opti[v.name]))
                 else:
@@ -476,7 +476,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             opti_dict = adam.state_dict()
             # set to zero
             for k, v in opti_dict.items():
-                if isinstance(v, (core.VarBase, core.eager.EagerTensor)):
+                if isinstance(v, (core.VarBase, core.eager.Tensor)):
                     np_t = v.numpy()
                     var = v.value().get_tensor()
                     var.set(np.zeros_like(np_t), place)
@@ -489,7 +489,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             adam.set_state_dict(self.opti_dict)
             opti_dict = adam.state_dict()
             for k, v in opti_dict.items():
-                if isinstance(v, (core.VarBase, core.eager.EagerTensor)):
+                if isinstance(v, (core.VarBase, core.eager.Tensor)):
                     self.assertTrue(
                         np.array_equal(v.numpy(), self.base_opti[v.name]))
                 else:
@@ -585,7 +585,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             np_opti_dict = {}
             # set to zero
             for k, v in opti_dict.items():
-                if isinstance(v, (core.VarBase, core.eager.EagerTensor)):
+                if isinstance(v, (core.VarBase, core.eager.Tensor)):
                     np_t = v.numpy()
                     np_opti_dict[v.name] = np_t
                     var = v.value().get_tensor()
@@ -601,7 +601,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             opti_dict = adam.state_dict()
             for k, v in opti_dict.items():
-                if isinstance(v, (core.VarBase, core.eager.EagerTensor)):
+                if isinstance(v, (core.VarBase, core.eager.Tensor)):
                     self.assertTrue(
                         np.array_equal(v.numpy(), self.base_opti[v.name]))
                 else:
@@ -847,7 +847,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             np_state_dict = {}
 
             for k, v in self.opti_dict.items():
-                if isinstance(v, (core.VarBase, core.eager.EagerTensor)):
+                if isinstance(v, (core.VarBase, core.eager.Tensor)):
                     np_opti_dict[v.name] = v.numpy()
                 else:
                     np_opti_dict[k] = v

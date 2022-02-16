@@ -6255,7 +6255,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
     """
     if in_dygraph_mode():
         if _in_eager_mode():
-            tmp_tensor_type = core.eager.EagerTensor
+            tmp_tensor_type = core.eager.Tensor
         else:
             tmp_tensor_type = Variable
         #TODO(zhiqiu): enable inplace in dygraph mode.
@@ -11136,7 +11136,7 @@ def slice(input, axes, starts, ends):
         infer_flags = list(1 for i in range(len(axes)))
 
         if _in_eager_mode():
-            tmp_tensor_type = core.eager.EagerTensor
+            tmp_tensor_type = core.eager.Tensor
         else:
             tmp_tensor_type = Variable
 
