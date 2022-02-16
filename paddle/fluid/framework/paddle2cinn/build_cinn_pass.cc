@@ -491,7 +491,7 @@ void AddCinnOpToGraph(const GraphNodeSet& cluster,
                         std::vector<std::string>(no_need_buffer_feeds.begin(),
                                                  no_need_buffer_feeds.end()));
   cinn_op_desc.SetOutput(operators::kOutputs,
-                         subgraph.Get<std::vector<std::string>>(kOutPutVars));
+                         subgraph.Get<std::vector<std::string>>(kOutputVars));
   cinn_op_desc.SetAttr(operators::kCompilationKey, compilation_key);
   cinn_op_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                        ExtractOpRole(cluster));
