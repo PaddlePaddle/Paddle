@@ -94,7 +94,7 @@ void ScaleLossGradOpHandle::RunImpl() {
 
 void ScaleLossGradOpHandle::RunOnVar(Variable *var, bool record_event) {
   auto *tensor = var->GetMutable<LoDTensor>();
-  tensor->Resize(make_ddim({1}));
+  tensor->Resize(pten::make_ddim({1}));
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   ScaleLossGradFunctor func(coeff_, tensor, place_, out_dtype_,

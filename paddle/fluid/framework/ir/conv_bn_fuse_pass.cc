@@ -135,7 +135,7 @@ void recompute_bias_and_weights(const Scope* scope,
       }
     }
   } else {
-    auto weights_shape_2d = flatten_to_2d(weights_shape, 1);
+    auto weights_shape_2d = pten::flatten_to_2d(weights_shape, 1);
 
     EigenMatrixArrayMap weights_array_2d(weights_data, weights_shape_2d[0],
                                          weights_shape_2d[1]);

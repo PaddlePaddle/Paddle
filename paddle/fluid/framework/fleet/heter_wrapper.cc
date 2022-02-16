@@ -148,7 +148,7 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope,
   for (auto& x : req_var.dims()) {
     vec_dim.push_back(x);
   }
-  tensor->Resize(make_ddim(vec_dim));
+  tensor->Resize(pten::make_ddim(vec_dim));
 
   LoD lod;
   for (int i = 0; i < req_var.lod_level(); ++i) {
@@ -189,7 +189,7 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope,
   for (auto& x : req_var.dims()) {
     vec_dim.push_back(x);
   }
-  tensor->Resize(make_ddim(vec_dim));
+  tensor->Resize(pten::make_ddim(vec_dim));
 
   LoD lod;
   for (int i = 0; i < req_var.lod_level(); ++i) {

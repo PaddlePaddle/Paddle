@@ -79,7 +79,7 @@ void TransDataLayout(const OpKernelType& kernel_type_for_var,
     dst_dim[i] = src_dim[axis[i]];
   }
 
-  out->Resize(make_ddim(dst_dim));
+  out->Resize(pten::make_ddim(dst_dim));
   out->mutable_data(expected_kernel_type.place_, in.dtype());
 
   framework::VisitDataType(

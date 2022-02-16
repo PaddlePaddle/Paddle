@@ -25,8 +25,8 @@ TEST(TensorCopy, Tensor) {
   Tensor dst_tensor;
   platform::CPUDeviceContext cpu_ctx((platform::CPUPlace()));
 
-  int* src_ptr =
-      src_tensor.mutable_data<int>(make_ddim({3, 3}), platform::CPUPlace());
+  int* src_ptr = src_tensor.mutable_data<int>(pten::make_ddim({3, 3}),
+                                              platform::CPUPlace());
 
   int arr[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
   memcpy(src_ptr, arr, 9 * sizeof(int));
@@ -64,8 +64,8 @@ TEST(TensorCopy, Tensor) {
     Tensor gpu_tensor;
     Tensor dst_tensor;
 
-    int* src_ptr =
-        src_tensor.mutable_data<int>(make_ddim({3, 3}), platform::CPUPlace());
+    int* src_ptr = src_tensor.mutable_data<int>(pten::make_ddim({3, 3}),
+                                                platform::CPUPlace());
 
     int arr[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
     memcpy(src_ptr, arr, 9 * sizeof(int));
@@ -161,7 +161,7 @@ TEST(TensorFromVector, Tensor) {
     paddle::framework::Tensor dst_tensor;
 
     // Copy to CPU Tensor
-    cpu_tensor.Resize(make_ddim({3, 3}));
+    cpu_tensor.Resize(pten::make_ddim({3, 3}));
     auto cpu_place = new paddle::platform::CPUPlace();
     paddle::platform::CPUDeviceContext cpu_ctx(*cpu_place);
     paddle::framework::TensorFromVector<int>(src_vec, cpu_ctx, &cpu_tensor);
@@ -344,7 +344,7 @@ TEST(TensorFromDLPack, Tensor) {
     paddle::framework::Tensor gpu_tensor_from_dlpack;
 
     // Copy to CPU Tensor
-    cpu_tensor.Resize(make_ddim({3, 3}));
+    cpu_tensor.Resize(pten::make_ddim({3, 3}));
     paddle::platform::CPUPlace cpu_place;
     paddle::platform::CPUDeviceContext cpu_ctx(cpu_place);
     paddle::framework::TensorFromVector<int>(src_vec, cpu_ctx, &cpu_tensor);

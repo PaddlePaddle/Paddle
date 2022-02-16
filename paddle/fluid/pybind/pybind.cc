@@ -657,7 +657,7 @@ PYBIND11_MODULE(core_noavx, m) {
   m.def("broadcast_shape", [](const std::vector<int64_t> &x_dim,
                               const std::vector<int64_t> &y_dim) {
     return vectorize(operators::details::BroadcastTwoDims(
-        make_ddim(x_dim), make_ddim(y_dim), -1));
+       (pten::make_ddim(x_dim), (pten::make_ddim(y_dim), -1));
   });
 
   m.def(
@@ -762,7 +762,7 @@ PYBIND11_MODULE(core_noavx, m) {
            [](const framework::Tensor &self) { return vectorize(self.dims()); })
       .def("_set_dims",
            [](framework::Tensor &self, const std::vector<int64_t> &dim) {
-             self.Resize(make_ddim(dim));
+             self.Resize(pten::make_ddim(dim));
            })
       .def("_set_layout",
            [](framework::Tensor &self, const std::string &layout) {
@@ -1221,7 +1221,7 @@ PYBIND11_MODULE(core_noavx, m) {
             tensor.ResetHolderWithType(
                 shared_reader_holder,
                 static_cast<paddle::experimental::DataType>(t[2].cast<int>()));
-            tensor.Resize(make_ddim(t[3].cast<std::vector<int>>()));
+            tensor.Resize(pten::make_ddim(t[3].cast<std::vector<int>>()));
             tensor.set_lod(t[4].cast<framework::LoD>());
 
             return tensor;

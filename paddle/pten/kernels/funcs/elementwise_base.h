@@ -363,8 +363,8 @@ inline void get_mid_dims(const DDim &x_dims,
 }
 
 // for broadcast backwards
-static inline std::vector<int> GetReduceDim(const paddle::DDim &in,
-                                            const paddle::DDim &out,
+static inline std::vector<int> GetReduceDim(const DDim &in,
+                                            const DDim &out,
                                             int axis) {
   axis =
       (axis == -1 ? std::abs(static_cast<int>(out.size() - in.size())) : axis);

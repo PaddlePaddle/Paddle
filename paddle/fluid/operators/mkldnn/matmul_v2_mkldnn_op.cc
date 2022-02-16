@@ -214,7 +214,7 @@ class MatMulV2MKLDNNKernel : public paddle::framework::OpKernel<T> {
                       i, x_bd_dims[i], i, y_bd_dims[i]));
         out_dims[i] = std::max(x_bd_dims[i], y_bd_dims[i]);
       }
-      out->Resize(make_ddim(out_dims));
+      out->Resize(pten::make_ddim(out_dims));
     }
   }
 
@@ -269,9 +269,9 @@ class MatMulV2GradMKLDNNKernel : public paddle::framework::OpKernel<T> {
       }
     }
 
-    dx_tmp->Resize(make_ddim(dx_bd_dims));
+    dx_tmp->Resize(pten::make_ddim(dx_bd_dims));
     dx_tmp->mutable_data<T>(ctx.GetPlace());
-    dy_tmp->Resize(make_ddim(dy_bd_dims));
+    dy_tmp->Resize(pten::make_ddim(dy_bd_dims));
     dy_tmp->mutable_data<T>(ctx.GetPlace());
   }
 

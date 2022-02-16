@@ -58,7 +58,8 @@ static void SpiltBatchSquareMatrix(const Tensor& input,
 
   DDim flattened_input_dims, flattened_output_dims;
   if (input_dims.size() > 2) {
-    flattened_input_dims = flatten_to_3d(input_dims, last_dim - 1, last_dim);
+    flattened_input_dims =
+        pten::flatten_to_3d(input_dims, last_dim - 1, last_dim);
   } else {
     flattened_input_dims = pten::make_ddim({1, n_dim, n_dim});
   }

@@ -291,7 +291,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     DDim res;
     try {
       auto shape = var->GetShape();
-      res = shape.empty() ? make_ddim({0UL}) : make_ddim(shape);
+      res = shape.empty() ? (pten::make_ddim({0UL}) : (pten::make_ddim(shape);
     } catch (...) {
       VLOG(5) << "GetDim of variable " << name << " error";
       std::rethrow_exception(std::current_exception());
@@ -912,7 +912,7 @@ std::vector<DDim> CompileTimeInferShapeContext::GetRepeatedDims(
   try {
     auto shapes = var->GetShapes();
     for (const auto &s : shapes) {
-      res.push_back(s.empty() ? make_ddim({0UL}) : make_ddim(s));
+      res.push_back(s.empty() ?(pten::make_ddim({0UL}) :(pten::make_ddim(s));
     }
   } catch (...) {
     VLOG(5) << "GetRepeatedDim of variable " << name << " error.";

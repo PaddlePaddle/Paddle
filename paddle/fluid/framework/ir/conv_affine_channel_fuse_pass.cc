@@ -84,7 +84,7 @@ void recompute_bias_and_weights(const Scope* scope, ir::Node* conv_weight,
   // Re-compute weight of conv2d from AffineChannel
   auto* weights = scope->FindVar(conv_weight->Name())->GetMutable<LoDTensor>();
   auto weights_shape = weights->dims();
-  auto weights_shape_2d = flatten_to_2d(weights_shape, 1);
+  auto weights_shape_2d = pten::flatten_to_2d(weights_shape, 1);
   auto* weights_data = weights->mutable_data<float>(platform::CPUPlace());
 
   EigenMatrixArrayMap weights_array_2d(weights_data, weights_shape_2d[0],
