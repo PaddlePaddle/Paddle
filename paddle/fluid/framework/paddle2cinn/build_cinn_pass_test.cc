@@ -652,6 +652,19 @@ TEST(BuildCinnPassTest, NoNeedBufferInput) {
   ASSERT_EQ(no_need_buffer_feeds.size(), 2);
   ASSERT_EQ(no_need_buffer_feeds,
             std::unordered_set<std::string>({"var2", "var3"}));
+
+  // check the attributes of variable lists are saved correctly
+  ASSERT_TRUE(subgraph.Has(kInputVars));
+  EXPECT_EQ(subgraph.Get<std::vector<std::string>>(kInputVars),
+            std::vector<std::string>({"var1"}));
+  ASSERT_TRUE(subgraph.Has(kInternalVars));
+  EXPECT_EQ(subgraph.Get<std::vector<std::string>>(kInternalVars),
+            std::vector<std::string>({"var4"}));
+  ASSERT_TRUE(subgraph.Has(kOutputVars));
+  const auto& output_vars = subgraph.Get<std::vector<std::string>>(kOutputVars);
+  EXPECT_EQ(
+      std::unordered_set<std::string>(output_vars.begin(), output_vars.end()),
+      std::unordered_set<std::string>("var5", "var6"));
 }
 
 }  // namespace paddle2cinn
