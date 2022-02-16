@@ -87,20 +87,6 @@ class TestAdaptivePool2dConvertGlobalPass(PassAutoScanTest):
             use_calib_mode=False)
         yield config, ['pool2d'], (1e-5, 1e-5)
 
-    def add_ignore_pass_case(self):
-        # Here we put some skip rules to avoid known bugs
-        def teller1(program_config, predictor_config):
-            if program_config.ops[0].attrs["pooling_type"] == "max":
-                x_shape = list(program_config.inputs["input_data"].shape)
-                if x_shape[-1] != 1 or x_shape[-2] != 1:
-                    return True
-            return False
-
-        self.add_ignore_check_case(
-            teller1,
-            IgnoreReasons.PASS_ACCURACY_ERROR,
-            "max pooling has diff if H or W is not equals to 1", )
-
     def test(self):
         self.run_and_statis(
             quant=False,
