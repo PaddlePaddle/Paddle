@@ -65,7 +65,7 @@ message TrainerDesc {
 
   repeated int32 trainers = 35;
   optional int32 trainer_id = 36;
-
+  
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;
   optional DownpourWorkerParameter downpour_param = 103;
@@ -211,4 +211,19 @@ message TableParameter {
   // if table will pull sparse asynchronously in worker
   optional bool is_async = 14 [ default = false ];
   optional string async_wait_op_name = 15;
+
+  // sparse table only, used for initializing gpups optimizer
+  optional float sparse_nonclk_coeff = 16 [default = 0.1 ];
+  optional float sparse_click_coeff = 17 [default = 1 ];
+  optional float sparse_learning_rate = 18 [default = 0.05 ];
+  optional float sparse_initial_g2sum = 19 [default = 3.0 ];
+  optional float sparse_initial_range = 20 [default = 1e-4 ];
+  repeated float sparse_weight_bounds = 21;
+  
+  optional float sparse_embedx_threshold = 22 [default = 10];
+  optional float embedx_sparse_learning_rate  = 23 [default = 0.05 ];
+  optional float embedx_sparse_initial_g2sum  = 24 [default = 3.0 ];
+  optional float embedx_sparse_initial_range = 25 [default = 1e-4 ];
+  repeated float embedx_sparse_weight_bounds = 26;
+
 }
