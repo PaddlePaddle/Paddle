@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <netdb.h>
+#include <netinet/tcp.h>
 #include <poll.h>
 #include <chrono>
 #include <iostream>
@@ -28,13 +30,21 @@ namespace detail {
 
 constexpr int INFTIME = -1;
 
-std::unique_ptr<MasterDaemon> MasterDaemon::start(const Socket& socket) {
+std::unique_ptr<MasterDaemon> MasterDaemon::start(int socket) {
   auto master = std::make_unique<MasterDaemon>(socket);
   return master;
 }
 
-MasterDaemon::MasterDaemon(const Socket& socket) : _listen_socket(socket) {
+MasterDaemon::MasterDaemon(int socket) : _listen_socket(socket) {
   _background_thread = std::thread{&MasterDaemon::run, this};
+}
+
+MasterDaemon::~MasterDaemon() {
+  ::close(_listen_socket);
+  for (int socket : _sockets) {
+    ::close(socket);
+  }
+  _background_thread.join();
 }
 
 void MasterDaemon::_do_add(int socket) {
@@ -59,8 +69,7 @@ void MasterDaemon::_do_add(int socket) {
 
 void MasterDaemon::run() {
   std::vector<struct pollfd> fds;
-  auto sockfd = _listen_socket.sockfd();
-  fds.push_back({.fd = sockfd, .events = POLLIN, .revents = 0});
+  fds.push_back({.fd = _listen_socket, .events = POLLIN, .revents = 0});
 
   bool done = false;
   while (!done) {
@@ -71,10 +80,9 @@ void MasterDaemon::run() {
     ::poll(fds.data(), fds.size(), INFTIME);
 
     if (fds[0].revents != 0) {
-      Socket socket = _listen_socket.accept();
+      int socket = tcputils::tcp_accept(_listen_socket);
       _sockets.emplace_back(socket);
-      auto new_sockfd = socket.sockfd();
-      fds.push_back({.fd = new_sockfd, .events = POLLIN, .revents = 0});
+      fds.push_back({.fd = socket, .events = POLLIN, .revents = 0});
     }
 
     for (size_t i = 1; i < fds.size(); i++) {
@@ -94,40 +102,35 @@ void MasterDaemon::run() {
 }
 
 std::unique_ptr<TCPServer> TCPServer::create(uint16_t port) {
-  auto socket = Socket::listen(port);
+  int socket = tcputils::tcp_listen("", std::to_string(port), AF_INET);
   auto server = std::make_unique<TCPServer>();
   server->_master_daemon = MasterDaemon::start(socket);
   return server;
 }
 
-std::unique_ptr<TCPClient> TCPClient::connect(
-    const std::string host, uint16_t port, const std::chrono::seconds timeout) {
-  SocketOptions sock_opt{};
-  sock_opt.connect_timeout(timeout);
-  const Socket socket = Socket::connect(host, port, sock_opt);
+std::unique_ptr<TCPClient> TCPClient::connect(const std::string host,
+                                              uint16_t port) {
+  int socket = tcputils::tcp_connect(host, std::to_string(port), AF_INET);
   return std::make_unique<TCPClient>(socket);
 }
 
 void TCPClient::send_command_for_key(Command type, const std::string& key) {
-  int sockfd = _socket.sockfd();
-  tcputils::send_bytes<Command>(sockfd, &type, 1);
+  tcputils::send_bytes<Command>(_socket, &type, 1);
   if (key.empty()) {
     return;
   }
-  tcputils::send_string(sockfd, key);
+  tcputils::send_string(_socket, key);
 }
 
 template <typename T>
 void TCPClient::send_value(const T& value) {
-  int socket = _socket.sockfd();
-  tcputils::send_bytes<T>(socket, &value, 1);
+  tcputils::send_bytes<T>(_socket, &value, 1);
 }
 
 template <typename T>
 T TCPClient::receive_value() {
-  int sockfd = _socket.sockfd();
   T res;
-  tcputils::receive_bytes<T>(sockfd, &res, 1);
+  tcputils::receive_bytes<T>(_socket, &res, 1);
   return res;
 }
 
@@ -140,7 +143,7 @@ TCPStore::TCPStore(std::string host, uint16_t port, bool is_master,
     _server = detail::TCPServer::create(port);
   }
 
-  _client = detail::TCPClient::connect(host, port, _timeout);
+  _client = detail::TCPClient::connect(host, port);
   waitWorkers();
 }
 

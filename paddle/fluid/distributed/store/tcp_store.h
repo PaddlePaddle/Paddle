@@ -33,15 +33,15 @@ namespace detail {
 
 class MasterDaemon {
  public:
-  static std::unique_ptr<MasterDaemon> start(const Socket& socket);
-  ~MasterDaemon() {}
-  explicit MasterDaemon(const Socket& socket);
+  static std::unique_ptr<MasterDaemon> start(int listen_socket);
+  ~MasterDaemon();
+  explicit MasterDaemon(int listen_socket);
 
  private:
   void run();
   void _do_add(int socket);
-  Socket _listen_socket;
-  std::vector<Socket> _sockets;
+  int _listen_socket;
+  std::vector<int> _sockets;
   std::unordered_map<std::string, std::vector<uint8_t>> _store;
   std::thread _background_thread{};
 };
@@ -57,10 +57,9 @@ class TCPServer {
 
 class TCPClient {
  public:
-  explicit TCPClient(Socket socket) : _socket{socket} {}
+  explicit TCPClient(int socket) : _socket{socket} {}
   static std::unique_ptr<TCPClient> connect(const std::string host,
-                                            uint16_t port,
-                                            const std::chrono::seconds timeout);
+                                            uint16_t port);
   void send_command_for_key(Command type, const std::string& key);
 
   template <typename T>
@@ -70,7 +69,7 @@ class TCPClient {
   T receive_value();
 
  private:
-  Socket _socket;
+  int _socket;
 };
 
 }  // namespace detail
