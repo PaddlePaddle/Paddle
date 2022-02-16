@@ -61,13 +61,15 @@ class SplitMLUKernel : public framework::OpKernel<T> {
     for (size_t i = 0; i < outs.size(); i++) {
       outs[i]->mutable_data<T>(ctx.GetPlace());
       output_descs.emplace_back(MLUCnnlTensorDesc(
-          *outs[i], CNNL_LAYOUT_ARRAY, ToCnnlDataType(outs[i]->type())));
+          *outs[i], CNNL_LAYOUT_ARRAY,
+          ToCnnlDataType(framework::TransToProtoVarType(outs[i]->dtype()))));
       desc_vector.push_back(output_descs.back().get());
       vct_tensor.push_back(GetBasePtr(outs[i]));
     }
     // init in tensors
-    MLUCnnlTensorDesc input_desc(*in, CNNL_LAYOUT_ARRAY,
-                                 ToCnnlDataType(in->type()));
+    MLUCnnlTensorDesc input_desc(
+        *in, CNNL_LAYOUT_ARRAY,
+        ToCnnlDataType(framework::TransToProtoVarType(in->dtype())));
 
     // MLU should do sth
     MLUCnnl::Split(ctx, num_tensor, axis, input_desc.get(), GetBasePtr(in),

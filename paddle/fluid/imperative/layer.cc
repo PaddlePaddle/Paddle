@@ -15,6 +15,8 @@
 #include "paddle/fluid/imperative/layer.h"
 
 #include "paddle/fluid/eager/eager_tensor.h"
+#include "paddle/fluid/framework/convert_utils.h"
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/infer_var_type_context.h"
 #include "paddle/fluid/imperative/op_base.h"
@@ -99,7 +101,9 @@ static std::string DebugString(
       auto& tensor = var.Get<framework::LoDTensor>();
       ss << "LoDTensor<";
       if (tensor.IsInitialized()) {
-        ss << framework::DataTypeToString(tensor.type()) << ", ";
+        ss << framework::DataTypeToString(
+                  framework::TransToProtoVarType(tensor.dtype()))
+           << ", ";
         ss << tensor.place() << ", ";
         ss << "(" << tensor.dims() << ")";
       } else {
@@ -112,7 +116,9 @@ static std::string DebugString(
       auto& tensor = selected_rows.value();
       auto& rows = selected_rows.rows();
       if (tensor.IsInitialized()) {
-        ss << framework::DataTypeToString(tensor.type()) << ", ";
+        ss << framework::DataTypeToString(
+                  framework::TransToProtoVarType(tensor.dtype()))
+           << ", ";
         ss << tensor.place() << ", ";
         ss << "height(" << selected_rows.height() << "), rows(";
         std::for_each(rows.cbegin(), rows.cend(),
@@ -171,9 +177,9 @@ std::string LayerDebugString(const std::string& op_type,
 }
 
 std::string LayerDebugString(const std::string& op_type,
-                             const NameVarMap<egr::EagerTensor>& ins,
-                             const NameVarMap<egr::EagerTensor>& outs) {
-  return LayerDebugStringImpl<egr::EagerTensor>(op_type, ins, outs);
+                             const NameVarMap<egr::EagerVariable>& ins,
+                             const NameVarMap<egr::EagerVariable>& outs) {
+  return LayerDebugStringImpl<egr::EagerVariable>(op_type, ins, outs);
 }
 
 template <typename VarType>
@@ -188,9 +194,14 @@ static void SetForwardDataTypeOfGradVars(const NameVarMap<VarType>& outs) {
   }
 }
 template <>
-void SetForwardDataTypeOfGradVars<egr::EagerTensor>(
-    const NameVarMap<egr::EagerTensor>& outs) {
+void SetForwardDataTypeOfGradVars<egr::EagerVariable>(
+    const NameVarMap<egr::EagerVariable>& outs) {
   // In eager mode we don't need this.
+}
+
+void TestSetForwardDataTypeOfGradVarsEager(
+    const NameVarMap<egr::EagerVariable>& outs) {
+  SetForwardDataTypeOfGradVars<egr::EagerVariable>(outs);
 }
 
 VarBase::VarBase(const std::shared_ptr<VariableWrapper>& var)
@@ -522,12 +533,12 @@ void OpBase::Run(const framework::OperatorBase& op,
 }
 
 void OpBase::Run(const framework::OperatorBase& op,
-                 const NameVarMap<egr::EagerTensor>& ins,
-                 const NameVarMap<egr::EagerTensor>& outs,
+                 const NameVarMap<egr::EagerVariable>& ins,
+                 const NameVarMap<egr::EagerVariable>& outs,
                  const framework::AttributeMap& attrs,
                  const framework::AttributeMap& default_attrs,
                  const platform::Place& place) {
-  OpBaseRunImpl<egr::EagerTensor>(op, ins, outs, attrs, default_attrs, place);
+  OpBaseRunImpl<egr::EagerVariable>(op, ins, outs, attrs, default_attrs, place);
 }
 
 void ClearNoNeedBufferInputs(OpBase* op) {

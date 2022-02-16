@@ -100,7 +100,8 @@ struct LookupTableV2CPUFunctor {
       int64_t row_width = table_t.value().dims()[1];
       const auto *table = table_t.value().template data<T>();
       auto *output = output_t->template mutable_data<T>(context_.GetPlace());
-      auto input_data_type = table_t.value().type();
+      auto input_data_type =
+          framework::TransToProtoVarType(table_t.value().dtype());
 
       for (int64_t i = 0; i < ids_numel; ++i) {
         if (padding_idx != kNoPadding && ids[i] == padding_idx) {
@@ -143,7 +144,8 @@ class LookupTableV2Kernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     const auto *ids = context.Input<Tensor>("Ids");
     LookupTableV2CPUFunctor<T> functor(context, ids);
-    framework::VisitIntDataType(ids->type(), functor);
+    framework::VisitIntDataType(framework::TransToProtoVarType(ids->dtype()),
+                                functor);
   }
 };
 
@@ -257,7 +259,8 @@ class LookupTableV2GradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     const auto *ids = context.Input<Tensor>("Ids");
     LookupTableV2GradCPUFunctor<T> functor(context, ids);
-    framework::VisitIntDataType(ids->type(), functor);
+    framework::VisitIntDataType(framework::TransToProtoVarType(ids->dtype()),
+                                functor);
   }
 };
 

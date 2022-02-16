@@ -54,9 +54,11 @@ class OverflowOp : public framework::OperatorWithKernel {
     int dtype = -1;
     auto *x_var = ctx.InputVar("X");
     if (x_var->IsType<framework::LoDTensor>()) {
-      dtype = x_var->Get<framework::LoDTensor>().type();
+      dtype = framework::TransToProtoVarType(
+          x_var->Get<framework::LoDTensor>().type());
     } else if (x_var->IsType<pten::SelectedRows>()) {
-      dtype = x_var->Get<pten::SelectedRows>().value().type();
+      dtype = framework::TransToProtoVarType(
+          x_var->Get<pten::SelectedRows>().value().type());
     } else {
       PADDLE_ENFORCE_EQ(
           true, false,

@@ -106,9 +106,10 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     if place is None:
         place = _current_expected_place()
     elif not isinstance(place, (core.Place, core.CPUPlace, core.CUDAPinnedPlace,
-                                core.CUDAPlace, core.NPUPlace, core.XPUPlace)):
+                                core.CUDAPlace, core.NPUPlace, core.XPUPlace,
+                                core.CustomPlace)):
         raise ValueError(
-            "'place' must be any of paddle.Place, paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace, paddle.NPUPlace, paddle.XPUPlace"
+            "'place' must be any of paddle.Place, paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace, paddle.NPUPlace, paddle.XPUPlace, paddle.CustomPlace"
         )
 
     #Todo(zhouwei): Support allocate tensor on any other specified card
@@ -168,8 +169,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
 
     # TOOD(jiabin): Support kwargs in eager tensor constructor
     if _in_eager_mode() and isinstance(data, np.ndarray):
-        return core.eager.EagerTensor(data, place, False, False, None,
-                                      stop_gradient)
+        return core.eager.Tensor(data, place, False, False, None, stop_gradient)
     else:
         return paddle.Tensor(
             value=data,
