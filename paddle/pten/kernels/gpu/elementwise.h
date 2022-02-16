@@ -17,8 +17,6 @@ limitations under the License. */
 #include "paddle/pten/kernels/copy_kernel.h"
 #include "paddle/pten/kernels/funcs/broadcast_base.h"
 #include "paddle/pten/kernels/funcs/common_shape.h"
-#include "paddle/pten/kernels/funcs/cuda_kernel_config.h"
-#include "paddle/pten/kernels/funcs/elementwise_base.h"
 #include "paddle/pten/kernels/gpu/reduce.h"
 
 #ifdef __HIPCC__

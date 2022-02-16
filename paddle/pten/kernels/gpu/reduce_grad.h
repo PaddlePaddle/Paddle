@@ -22,8 +22,10 @@
 #include <numeric>
 #include <set>
 #include <vector>
-#include "paddle/pten/kernels/gpu/elementwise.h"
+#include "paddle/pten/kernels/funcs/broadcast_base.h"
+
 namespace pten {
+
 template <typename InT, typename Functor>
 void ReduceGrad(const GPUContext& dev_ctx,
                 DenseTensor* d_out,
@@ -33,12 +35,11 @@ void ReduceGrad(const GPUContext& dev_ctx,
   std::vector<const DenseTensor*> inputs = {d_out};
   std::vector<DenseTensor*> outputs = {d_x};
   PD_VISIT_ALL_TYPES(
-      out_dtype, "LaunchBroadcastElementwiseCudaKernel", ([&] {
-        LaunchBroadcastElementwiseCudaKernel<pten::ElementwiseType::kUnary,
-                                             InT,
-                                             data_t>(
+      out_dtype, "BroadcastKernel", ([&] {
+        funcs::BroadcastKernel<pten::ElementwiseType::kUnary, InT, data_t>(
             dev_ctx, inputs, &outputs, 0, functor);
       }));
 }
+
 }  // namespace pten
 #endif

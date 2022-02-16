@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/function_traits.h"
 #include "paddle/pten/backends/gpu/gpu_launch_config.h"
+#include "paddle/pten/kernels/funcs/elementwise_base.h"
 #include "paddle/pten/kernels/primitive/kernel_primitives.h"
 
 namespace kps = pten::kps;
@@ -568,6 +569,11 @@ void BroadcastKernel(const KPDevice &ctx,
     no_broadcast_flag &= ins[0]->dims() == in->dims();
     dims_size.emplace_back(in->dims().size());
   }
+
+  if (ins.size() > 0 && outs->size() > 0) {
+    no_broadcast_flag &= outs->at(0)->dims() == ins[0]->dims();
+  }
+
   if (no_broadcast_flag) {
     pten::funcs::ElementwiseKernel<OutT, Functor, NumOuts>(
         ctx, ins, outs, func);
@@ -576,7 +582,7 @@ void BroadcastKernel(const KPDevice &ctx,
                ? *std::max_element(dims_size.begin(), dims_size.end()) -
                      *std::min_element(dims_size.begin(), dims_size.end())
                : axis;
-    pten::LaunchBroadcastElementwiseCudaKernel<ET, InT, OutT, Functor, NumOuts>(
+    LaunchBroadcastElementwiseCudaKernel<ET, InT, OutT, Functor, NumOuts>(
         ctx, ins, outs, axis, func);
   }
 }
