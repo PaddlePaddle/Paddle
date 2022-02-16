@@ -14,11 +14,11 @@
 
 #include <algorithm>
 #include <vector>
-#include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/abs_kernel.h"
+#include "paddle/pten/kernels/funcs/complex_functors.h"
 #include "paddle/pten/kernels/funcs/elementwise_base.h"
 
 namespace pten {
@@ -27,19 +27,14 @@ template <typename T, typename Enable = void>
 struct CudaAbsFunctor;
 
 template <typename T>
-struct CudaAbsFunctor<
-    T,
-    paddle::operators::math::Complex<T, paddle::operators::math::Real<T>>> {
-  __device__ __forceinline__ paddle::operators::math::Real<T> operator()(
-      const T x) const {
+struct CudaAbsFunctor<T, pten::funcs::Complex<T, pten::funcs::Real<T>>> {
+  __device__ __forceinline__ pten::funcs::Real<T> operator()(const T x) const {
     return abs(x);
   }
 };
 
 template <typename T>
-struct CudaAbsFunctor<
-    T,
-    paddle::operators::math::NoComplex<T, paddle::operators::math::Real<T>>> {
+struct CudaAbsFunctor<T, pten::funcs::NoComplex<T, pten::funcs::Real<T>>> {
   __device__ __forceinline__ T operator()(const T x) const {
     return std::abs(x);
   }
@@ -47,12 +42,12 @@ struct CudaAbsFunctor<
 
 template <typename T, typename Context>
 void AbsKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
-  ctx.template Alloc<paddle::operators::math::Real<T>>(out);
+  ctx.template Alloc<pten::funcs::Real<T>>(out);
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};
   auto functor = CudaAbsFunctor<T>();
 
-  funcs::LaunchSameDimsElementwiseCudaKernel<paddle::operators::math::Real<T>>(
+  funcs::LaunchSameDimsElementwiseCudaKernel<pten::funcs::Real<T>>(
       ctx, ins, &outs, functor);
 }
 

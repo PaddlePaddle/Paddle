@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/complex_functors.h"
+#include "paddle/pten/kernels/funcs/complex_functors.h"
 
 #include "paddle/pten/core/dense_tensor.h"
 

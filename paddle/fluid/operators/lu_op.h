@@ -211,8 +211,9 @@ void Tensor_Conj(const DeviceContext& dev_ctx, const framework::Tensor& tensor,
                  framework::Tensor* out) {
   out->Resize(tensor.dims());
   platform::ForRange<DeviceContext> out_for_range(dev_ctx, tensor.numel());
-  math::ConjFunctor<T> out_functor(tensor.data<T>(), tensor.numel(),
-                                   out->mutable_data<T>(dev_ctx.GetPlace()));
+  pten::funcs::ConjFunctor<T> out_functor(
+      tensor.data<T>(), tensor.numel(),
+      out->mutable_data<T>(dev_ctx.GetPlace()));
   out_for_range(out_functor);
 }
 
