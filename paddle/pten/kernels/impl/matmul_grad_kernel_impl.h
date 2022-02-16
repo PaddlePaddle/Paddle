@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/pten/backends/gpu/gpu_context.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/pten/kernels/gpu/reduce.h"
+#include "paddle/pten/kernels/funcs/reduce_function.h"
 #endif
 
 namespace pten {
@@ -60,7 +60,7 @@ struct ReduceSumForMatmulGrad<GPUContext, T> {
                   DenseTensor* output,
                   const std::vector<int>& reduce_dims) {
     auto stream = dev_ctx.stream();
-    kernels::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+    funcs::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
         dev_ctx, input, output, kps::IdentityFunctor<T>(), reduce_dims, stream);
   }
 };

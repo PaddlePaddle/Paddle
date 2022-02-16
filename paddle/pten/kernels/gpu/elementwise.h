@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/pten/kernels/funcs/common_shape.h"
 #include "paddle/pten/kernels/funcs/cuda_kernel_config.h"
 #include "paddle/pten/kernels/funcs/elementwise_base.h"
-#include "paddle/pten/kernels/gpu/reduce.h"
+#include "paddle/pten/kernels/funcs/reduce_function.h"
 
 #ifdef __HIPCC__
 constexpr int ELEMWISE_MAX_BLOCK_DIM = 256;
@@ -2022,7 +2022,7 @@ void default_elementwise_add_grad(const GPUContext &ctx,
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(x.dims(), out.dims(), axis);
       gpuStream_t stream = ctx.stream();
-      kernels::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+      funcs::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
           ctx, dout, dx, kps::IdentityFunctor<T>(), reduce_dims, stream);
     }
   }
@@ -2037,7 +2037,7 @@ void default_elementwise_add_grad(const GPUContext &ctx,
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(y.dims(), out.dims(), axis);
       gpuStream_t stream = ctx.stream();
-      kernels::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+      funcs::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
           ctx, dout, dy, kps::IdentityFunctor<T>(), reduce_dims, stream);
     }
   }
@@ -2133,7 +2133,7 @@ void default_elementwise_sub_grad(const GPUContext &ctx,
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(x.dims(), out.dims(), axis);
       gpuStream_t stream = ctx.stream();
-      kernels::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+      funcs::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
           ctx, dout, dx, kps::IdentityFunctor<T>(), reduce_dims, stream);
     }
   }
@@ -2154,7 +2154,7 @@ void default_elementwise_sub_grad(const GPUContext &ctx,
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(y.dims(), out.dims(), axis);
       gpuStream_t stream = ctx.stream();
-      kernels::TensorReduceImpl<T, T, kps::AddFunctor, kps::InverseFunctor<T>>(
+      funcs::TensorReduceImpl<T, T, kps::AddFunctor, kps::InverseFunctor<T>>(
           ctx, dout, dy, kps::InverseFunctor<T>(), reduce_dims, stream);
     }
   }
