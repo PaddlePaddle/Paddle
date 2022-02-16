@@ -710,11 +710,20 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
 
       auto align_corners = BOOST_GET_CONST(bool, desc.GetAttr("align_corners"));
+      auto align_mode = BOOST_GET_CONST(bool, desc.GetAttr("align_mode"));
       if (align_corners != false) {
         VLOG(3)
             << "The bilinear_interp only supports align_corners with false.";
         return false;
       }
+
+#if IS_TRT_VERSION_LT(8016)
+      if (align_corners == false && align_mode == 0) {
+        VLOG(3) << "The bilinear_interp only supports align_corners with false "
+                   "and align_mode = 0 while TRT version is less than 8.0.";
+        return false;
+      }
+#endif
 
       // when the Scale and OutSize vector doesn't exist, fallback to the attr
       // scale or
