@@ -26,7 +26,8 @@ hyper_parameters:
   fc_sizes: [400, 400, 400]
 
 runner:
-  sync_mode: "async"  # sync / async / geo / heter
+  geo_step: 400
+  sync_mode: "geo"
   thread_num: 16
   use_gpu: 0
   
