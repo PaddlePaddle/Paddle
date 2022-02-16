@@ -495,6 +495,20 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
       PADDLE_THROW(
           platform::errors::Unimplemented("No MLU gc found in CPU/MLU paddle"));
 #endif
+    } else if (platform::is_custom_place(place_)) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      if (IsFastEagerDeletionModeEnabled()) {
+        VLOG(4) << "Use unsafe fast gc for " << place_ << ".";
+        gc.reset(new CustomDeviceUnsafeFastGarbageCollector(place_,
+                                                            max_memory_size));
+      } else {
+        VLOG(4) << "Use default stream gc for " << place_ << ".";
+        gc.reset(
+            new CustomDefaultStreamGarbageCollector(place_, max_memory_size));
+      }
+#else
+      PADDLE_THROW(platform::errors::Unimplemented("No CustomDevice gc found"));
+#endif
     }
   }
 
