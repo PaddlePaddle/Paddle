@@ -40,15 +40,15 @@
  * **/
 
 namespace egr {
-class EagerTensor final {
+class EagerVariable final {
  public:
   /* Default constructor and name constructor should only be used for contruct
    * output and in fluid*/
-  EagerTensor() = default;
+  EagerVariable() = default;
 
-  explicit EagerTensor(const std::string& name) : name_(name) {}
+  explicit EagerVariable(const std::string& name) : name_(name) {}
 
-  explicit EagerTensor(const paddle::experimental::Tensor& tensor)
+  explicit EagerVariable(const paddle::experimental::Tensor& tensor)
       : name_(tensor.name()) {
     if (tensor.defined()) {
       if (tensor.is_dense_tensor()) {
@@ -57,11 +57,11 @@ class EagerTensor final {
         ConstructVariableFromSelectedRows(tensor);
       } else {
         PADDLE_THROW(paddle::platform::errors::Fatal(
-            "Unrecognized egr::EagerTensor type, only "
+            "Unrecognized egr::EagerVariable type, only "
             "DenseTensor and SelectedRows are supported for now."));
       }
     } else {
-      VLOG(6) << "Build Empty EagerTensor with name " << name_;
+      VLOG(6) << "Build Empty EagerVariable with name " << name_;
     }
   }
 
@@ -77,12 +77,12 @@ class EagerTensor final {
       } else {
         PADDLE_THROW(paddle::platform::errors::Fatal(
             "Unable to fetch underlying tensor "
-            "from EagerTensor, only LoDTensor and "
+            "from EagerVariable, only LoDTensor and "
             "Tensor are supported for now"));
       }
     } else {
       PADDLE_THROW(paddle::platform::errors::Fatal(
-          "Can not Sync EagerTensor %s whose paddle::framework::Variable is "
+          "Can not Sync EagerVariable %s whose paddle::framework::Variable is "
           "not initialized!",
           name()));
     }
@@ -115,7 +115,7 @@ class EagerTensor final {
 
   void ConstructVariableFromTensor(const paddle::experimental::Tensor& tensor) {
     auto* framework_tensor = var_.GetMutable<pten::DenseTensor>();
-    // Contruct framework::Tensor from egr::EagerTensor
+    // Contruct framework::Tensor from egr::EagerVariable
     auto tensor_dense =
         std::dynamic_pointer_cast<pten::DenseTensor>(tensor.impl());
     PADDLE_ENFORCE_EQ(
@@ -131,7 +131,7 @@ class EagerTensor final {
   void ConstructVariableFromSelectedRows(
       const paddle::experimental::Tensor& tensor) {
     auto* framework_tensor = var_.GetMutable<pten::SelectedRows>();
-    // Contruct framework::Tensor from egr::EagerTensor
+    // Contruct framework::Tensor from egr::EagerVariable
     auto tensor_dense =
         std::dynamic_pointer_cast<pten::SelectedRows>(tensor.impl());
     PADDLE_ENFORCE_EQ(
