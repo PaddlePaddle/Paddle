@@ -94,9 +94,7 @@ class DeviceContext {
   /**
    * @brief Allocate device memory for tensor.
    */
-  void* Alloc(TensorBase*,
-              DataType dtype = DataType::UNDEFINED,
-              size_t requested_size = 0) const;
+  void* Alloc(TensorBase*, DataType dtype, size_t requested_size = 0) const;
 
   template <typename T>
   T* Alloc(TensorBase* tensor, size_t requested_size = 0) const;
