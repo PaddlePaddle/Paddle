@@ -36,66 +36,25 @@ namespace memory {
 template <typename DstPlace, typename SrcPlace>
 void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-
 /**
  * \brief   Copy memory from one place to another place.
  *
- * \param[in]  DstPlace Destination allocation place (CPU or GPU).
+ * \param[in]  DstPlace Destination allocation place (CPU or GPU or XPU or
+ * CustomDevice).
  * \param[in]  dst      Destination memory address.
- * \param[in]  SrcPlace Source allocation place (CPU or GPU).
+ * \param[in]  SrcPlace Source allocation place (CPU or GPU or XPU or
+ * CustomDevice).
  * \param[in]  src      Source memory address.
  * \param[in]  num      memory size in bytes to copy.
- * \param[in]  stream   CUDA stream.
+ * \param[in]  stream   stream for asynchronously memory copy.
  *
- * \note    For GPU memory copy, CUDA stream need to be specified
- *          for asynchronously memory copy.
+ * \note    For GPU/XPU/CustomDevice memory copy, stream need to be specified
+ *          for asynchronously memory copy, and type is restored in the
+ *          implementation.
  *
  */
 template <typename DstPlace, typename SrcPlace>
 void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num,
-          gpuStream_t stream);
-#endif
-
-#ifdef PADDLE_WITH_ASCEND_CL
-/**
- * \brief   Copy memory from one place to another place.
- *
- * \param[in]  DstPlace Destination allocation place (CPU or NPU).
- * \param[in]  dst      Destination memory address.
- * \param[in]  SrcPlace Source allocation place (CPU or NPU).
- * \param[in]  src      Source memory address.
- * \param[in]  num      memory size in bytes to copy.
- * \param[in]  stream   NPU stream.
- *
- * \note    For NPU memory copy, NPU stream need to be specified
- *          for asynchronously memory copy.
- *
- */
-template <typename DstPlace, typename SrcPlace>
-void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num,
-          aclrtStream stream);
-#endif
-
-#ifdef PADDLE_WITH_MLU
-/**
- * \brief   Copy memory from one place to another place.
- *
- * \param[in]  DstPlace Destination allocation place (CPU or MLU).
- * \param[in]  dst      Destination memory address.
- * \param[in]  SrcPlace Source allocation place (CPU or MLU).
- * \param[in]  src      Source memory address.
- * \param[in]  num      memory size in bytes to copy.
- * \param[in]  stream   MLU stream.
- *
- * \note    For MLU memory copy, MLU stream need to be specified
- *          for asynchronously memory copy.
- *
- */
-template <typename DstPlace, typename SrcPlace>
-void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num,
-          mluStream stream);
-#endif
-
+          void* stream);
 }  // namespace memory
 }  // namespace paddle

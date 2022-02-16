@@ -26,6 +26,7 @@ PT_REGISTER_KERNEL(matmul_grad,
                    float,
                    double,
                    pten::dtype::float16,
+                   pten::dtype::bfloat16,
                    pten::dtype::complex<float>,
                    pten::dtype::complex<double>) {}
 

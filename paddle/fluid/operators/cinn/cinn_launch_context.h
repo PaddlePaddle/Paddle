@@ -64,6 +64,8 @@ class CinnLaunchContext {
   // Finalize all execution arguments and return them
   const std::map<std::string, cinn_pod_value_t>& FinalizeArguments() const;
 
+  cinn_buffer_t* GetCinnBufferOfVar(const std::string& paddle_var_name);
+
  private:
   // Get CinnTensor with CINN variable name
   CinnTensor GetCinnTensor(const std::string& var_name);
@@ -84,19 +86,22 @@ class CinnLaunchContext {
   std::unique_ptr<framework::Scope> cached_temp_scope_ = nullptr;
 
   // a variable name map from paddle to cinn
-  const std::unordered_map<std::string, std::string>& paddle2cinn_varmap_;
+  std::unordered_map<std::string, std::string> paddle2cinn_varmap_;
+  // a variable name map from cinn to paddle
+  std::unordered_map<std::string, std::string> cinn2paddle_varmap_;
   // the variable scope of cinn
   const std::shared_ptr<CinnScope> cinn_scope_;
 
-  // all variables used by compiled executable program
+  // all names of cinn variables used by compiled executable program
   std::unordered_set<std::string> cinn_variable_names_;
 
   // because a cinn_pod_value_t does not own the cinn_buffer_t object,
   // an extra stroage is necessary to keep the object and it can
-  // not be released until runtime program finish  execution.
+  // not be released until the runtime program finish execution.
   std::vector<std::unique_ptr<cinn_buffer_t>> hold_buffers_;
 
-  // name to execution argument
+  // this map saves all execution arguments with their cinn names as key,
+  // and it is passed to the Execute interface of a cinn runtime program.
   std::map<std::string, cinn_pod_value_t> name2argument_;
 };
 

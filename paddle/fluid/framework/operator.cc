@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/pten/common/scalar.h"
@@ -244,6 +245,15 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
 #else
       auto dev_id = place.device;
       platform::SetMLUDeviceId(dev_id);
+#endif
+    } else if (platform::is_custom_place(place)) {
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Cannot run operator on place %s, please recompile paddle or "
+          "reinstall Paddle with CustomDevice support.",
+          place));
+#else
+      platform::DeviceManager::SetDevice(place);
 #endif
     }
 
@@ -1326,8 +1336,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
 OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
     const ExecutionContext& ctx) const {
-  auto& dev_ctx = ctx.device_context();
-
   auto expected_kernel_key = this->GetExpectedKernelType(ctx);
   if (HasAttr("op_device")) {
     if (Attr<std::string>("op_device") == "cpu") {
@@ -1344,12 +1352,20 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
       }
       // when the Op that only has CPUKernel is assigned to GPU, the CPUKernel
       // will be executed and a warning will be given at the same time.
+      expected_kernel_key.place_ = platform::CPUPlace();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (SupportGPU()) {
+        auto& dev_ctx = ctx.device_context();
         expected_kernel_key.place_ = dev_ctx.GetPlace();
-      } else if (SupportNPU()) {
+      }
+#endif
+#ifdef PADDLE_WITH_ASCEND_CL
+      if (SupportNPU()) {
+        auto& dev_ctx = ctx.device_context();
         expected_kernel_key.place_ = dev_ctx.GetPlace();
-      } else {
-        expected_kernel_key.place_ = platform::CPUPlace();
+      }
+#endif
+      if (platform::is_cpu_place(expected_kernel_key.place_)) {
         LOG_FIRST_N(WARNING, 1)
             << "Op(" << type_
             << ") has no CUDA implementation. It will be assigned to CPUPlace.";
@@ -1924,12 +1940,10 @@ Scope* OperatorWithKernel::PreparePtenData(
 
   for (size_t i = 0; i < input_defs.size(); ++i) {
     auto& in_def = input_defs.at(i);
-    auto it = ctx->inputs.find(input_names[i]);
-    if (it == ctx->inputs.end()) {
+    if (ctx->inputs.find(input_names[i]) == ctx->inputs.end()) {
       continue;
     }
-
-    auto& ins_vector = it->second;
+    auto& ins_vector = ctx->inputs.at(input_names[i]);
     auto& name_vec = name_map.at(input_names[i]);
     bool should_skip_input =
         no_buffer_ins && no_buffer_ins->count(input_names[i]) > 0;
@@ -1940,7 +1954,6 @@ Scope* OperatorWithKernel::PreparePtenData(
       if (var == nullptr || !VarIsTensor(*var)) {
         continue;
       }
-
       auto* tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
 
       // When no_buffer_ins then checking of Tensor::holder_ is
@@ -2165,6 +2178,8 @@ void OperatorWithKernel::BuildPtenKernelContext(
         pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(float, attr));
       } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
         pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
+      } else if (attr_defs[i].type_index == std::type_index(typeid(int64_t))) {
+        pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(int64_t, attr));
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::string))) {
         pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(std::string, attr));
