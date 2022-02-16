@@ -744,14 +744,12 @@ void EagerGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
         VLOG(6) << "Dims of " << dst_var->Name() << " is set as: "
                 << var->Var().Get<framework::LoDTensor>().dims();
         tensor->Resize(var->Var().Get<framework::LoDTensor>().dims());
-        tensor->mutable_data(place,
-                             framework::TransToPtenDataType(var->DataType()));
+        tensor->mutable_data(place, var->DataType());
         pten::funcs::set_constant(*dev_ctx, tensor, 0.0);
       } else {
         auto* tensor =
             dst_var->MutableVar()->GetMutable<framework::LoDTensor>();
-        tensor->mutable_data(place,
-                             framework::TransToPtenDataType(var->DataType()));
+        tensor->mutable_data(place, var->DataType());
         pten::funcs::set_constant(*dev_ctx, tensor, 0.0);
       }
     }
@@ -878,14 +876,12 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
         VLOG(6) << "Dims of " << dst_var->Name() << " is set as: "
                 << var->Var().Get<framework::LoDTensor>().dims();
         tensor->Resize(var->Var().Get<framework::LoDTensor>().dims());
-        tensor->mutable_data(place,
-                             framework::TransToPtenDataType(var->DataType()));
+        tensor->mutable_data(place, var->DataType());
         pten::funcs::set_constant(*dev_ctx, tensor, 0.0);
       } else {
         auto* tensor =
             dst_var->MutableVar()->GetMutable<framework::LoDTensor>();
-        tensor->mutable_data(place,
-                             framework::TransToPtenDataType(var->DataType()));
+        tensor->mutable_data(place, var->DataType());
         pten::funcs::set_constant(*dev_ctx, tensor, 0.0);
       }
     }

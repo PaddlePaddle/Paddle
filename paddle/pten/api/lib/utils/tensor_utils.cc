@@ -91,11 +91,11 @@ pten::ScalarArray MakePtenScalarArrayFromVarList(
   vector_data.reserve(variable_list.size());
 
   for (auto* var : variable_list) {
-    paddle::experimental::DataType data_type;
+    paddle::framework::proto::VarType::Type data_type;
     if (var->IsType<framework::LoDTensor>()) {
       const auto& tensor = var->Get<framework::LoDTensor>();
-      data_type = tensor.dtype();
-      if (data_type == paddle::experimental::DataType::INT64) {
+      data_type = tensor.type();
+      if (data_type == paddle::framework::proto::VarType::INT64) {
         const auto& tensor = var->Get<framework::LoDTensor>();
         if (tensor.IsInitialized() &&
             !platform::is_same_place(tensor.place(), expected_place)) {
@@ -105,7 +105,7 @@ pten::ScalarArray MakePtenScalarArrayFromVarList(
         } else {
           vector_data.push_back(*tensor.data<int64_t>());
         }
-      } else if (data_type == paddle::experimental::DataType::INT32) {
+      } else if (data_type == paddle::framework::proto::VarType::INT32) {
         const auto& tensor = var->Get<framework::LoDTensor>();
         if (tensor.IsInitialized() &&
             !platform::is_same_place(tensor.place(), expected_place)) {

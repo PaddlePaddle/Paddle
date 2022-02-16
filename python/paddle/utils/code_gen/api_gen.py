@@ -39,12 +39,12 @@ class ForwardAPI(BaseAPI):
             kernel_output = 'kernel_out'
             output_names.append('kernel_out')
             output_create = f"""
-{code_indent}  {self.outputs['return_type']} out;
-{code_indent}  auto kernel_out = {set_out_func}(kernel_backend, &out);"""
+  {self.outputs['return_type']} out;
+  auto dense_out = SetKernelOutput(kernel_backend, &out);"""
 
         elif len(output_type_list) > 1:
             output_create = f"""
-{code_indent}  {self.outputs['return_type']} out;"""
+  {self.outputs['return_type']} out;"""
 
             for i in range(len(output_type_list)):
                 kernel_output = kernel_output + f'kernel_out_{i}, '

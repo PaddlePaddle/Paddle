@@ -38,7 +38,7 @@ class PsPassTestBase(unittest.TestCase):
         print('Ps tearDown...')
 
     def ps_launch(self, config, ps_mode="cpu-ps"):
-        if ps_mode == "cpu-ps" or ps_mode == 'heter-ps':
+        if ps_mode == "cpu-ps":
             os.environ['WITH_DISTRIBUTE'] = 'ON'
 
             cmd = [
@@ -46,16 +46,7 @@ class PsPassTestBase(unittest.TestCase):
                 "-u",
             ] + [
                 "-m", "launch", "--log_dir", config['log_dir'], "--worker_num",
-                config['worker_num'], "--server_num", config['server_num']
-            ]
-            if ps_mode == 'heter-ps':
-                os.environ['FLAGS_START_PORT'] = '12004'
-                cmd += [
-                    '--heter_worker_num', config['heter_worker_num'],
-                    '--heter_devices', config['heter_devices']
-                ]
-
-            cmd += [
+                config['worker_num'], "--server_num", config['server_num'],
                 "../ps/ps_dnn_trainer.py", "-m", config['ps_mode_config'],
                 "--run_minimize", config['run_minimize'], "--run_single_pass",
                 config['run_single_pass'], "--debug_new_pass",

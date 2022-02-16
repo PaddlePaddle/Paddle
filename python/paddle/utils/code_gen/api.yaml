@@ -165,6 +165,14 @@
   kernel :
     func : sign
 
+- api : sign
+  args : (const Tensor& x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : sign
+
 - api : subtract
   args : (const Tensor& x, const Tensor& y)
   output : Tensor

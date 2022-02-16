@@ -62,8 +62,7 @@ class FillConstantBatchSizeLikeOpKernel : public framework::OpKernel<T> {
     if (cpu_place) {
       auto &dev_ctx = *pool.Get(platform::CPUPlace());
       pten::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
-      out->mutable_data(platform::CPUPlace(),
-                        framework::TransToPtenDataType(data_type));
+      out->mutable_data(platform::CPUPlace(), data_type);
       functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
               out, static_cast<T>(value));
     }
@@ -71,8 +70,7 @@ class FillConstantBatchSizeLikeOpKernel : public framework::OpKernel<T> {
     if (!cpu_place) {
       auto &dev_ctx = *pool.Get(ctx.GetPlace());
       pten::funcs::SetConstant<platform::CUDADeviceContext, T> functor;
-      out->mutable_data(ctx.GetPlace(),
-                        framework::TransToPtenDataType(data_type));
+      out->mutable_data(ctx.GetPlace(), data_type);
       functor(reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx),
               out, static_cast<T>(value));
     }

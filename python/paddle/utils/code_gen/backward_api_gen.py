@@ -62,7 +62,7 @@ class BackwardAPI(BaseAPI):
 
         # check the output of backward
         assert len(self.outputs['types']) <= len(fw_inputs['names']), \
-            f"{self.api} : Output error: The number of outputs should be less then the number of inputs of forward api. \
+            f"{self.api} : Output error: The number of ouputs should be less then the number of inputs of forward api. \
              Please check the output of {self.api} in yaml."
 
     def get_return_type(self, out_type_list):
@@ -78,12 +78,12 @@ class BackwardAPI(BaseAPI):
             kernel_output = 'kernel_out'
             output_names.append('kernel_out')
             output_create = f"""
-{code_indent}  {self.outputs['return_type']} out;
-{code_indent}  auto kernel_out = {set_out_func}(kernel_backend, &out);"""
+  {self.outputs['return_type']} out;
+  auto dense_out = SetKernelOutput(kernel_backend, &out);"""
 
         elif len(output_type_list) > 1:
             output_create = f"""
-{code_indent}  {self.outputs['return_type']} out({len(output_type_list)});"""
+  {self.outputs['return_type']} out({len(output_type_list)});"""
 
             for i, out_type_item in enumerate(output_type_list):
                 kernel_output = kernel_output + f'kernel_out_{i}, '

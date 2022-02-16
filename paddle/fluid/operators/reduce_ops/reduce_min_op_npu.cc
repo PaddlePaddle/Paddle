@@ -36,12 +36,12 @@ class ReduceMinNPUKernel : public framework::OpKernel<T> {
     cast_out.Resize(out->dims());
     cast_out.mutable_data<T>(place);
 
-    auto cast_out_dtype = framework::TransToProtoVarType(x->dtype());
+    auto cast_out_dtype = x->type();
     if (out_dtype != -1) {
       cast_out_dtype = static_cast<framework::proto::VarType::Type>(out_dtype);
     }
 
-    if (framework::TransToProtoVarType(x->type()) != cast_out_dtype) {
+    if (x->type() != cast_out_dtype) {
       if (cast_out_dtype == framework::proto::VarType::FP32) {
         out->mutable_data<float>(place);
       } else if (cast_out_dtype == framework::proto::VarType::FP16) {
@@ -75,7 +75,7 @@ class ReduceMinNPUKernel : public framework::OpKernel<T> {
 
     const auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
-    if (x->dtype() == experimental::DataType::INT64) {
+    if (x->type() == framework::proto::VarType::INT64) {
       auto op_func = [](const std::vector<Tensor>& inputs,
                         const std::vector<Tensor>& outputs,
                         const NPUAttributeMap& attrs,
@@ -94,7 +94,7 @@ class ReduceMinNPUKernel : public framework::OpKernel<T> {
       runner.Run(dev_ctx.stream());
     }
 
-    if (framework::TransToProtoVarType(x->type()) != cast_out_dtype) {
+    if (x->type() != cast_out_dtype) {
       auto dst_dtype = ConvertToNpuDtype(cast_out_dtype);
       const auto& runner_cast =
           NpuOpRunner("Cast", {cast_out}, {*out},

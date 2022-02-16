@@ -133,18 +133,15 @@ __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
 
 template <typename T, typename MaskType>
 struct CudaDropoutGradFunctor {
-  using MT = typename details::MPTypeTrait<T>::Type;
-
-  explicit CudaDropoutGradFunctor(const MT factor) : factor_(factor) {}
+  explicit CudaDropoutGradFunctor(const T factor) : factor_(factor) {}
 
   __device__ __forceinline__ T operator()(const T dout,
                                           const MaskType mask) const {
-    return static_cast<T>(static_cast<MT>(dout) * static_cast<MT>(mask) *
-                          factor_);
+    return dout * static_cast<T>(mask) * factor_;
   }
 
  private:
-  MT factor_;
+  T factor_;
 };
 
 template <typename T, typename MaskType, int VecSize>
@@ -287,7 +284,7 @@ void DropoutGradGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
       if (dropout_prob == 1.0f) {
         dX.device(place) = static_cast<T>(0) * dY;
       } else {
-        auto factor = static_cast<MT>(1.0f / (1.0f - dropout_prob));
+        auto factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
         auto stream = dev_ctx.stream();
         std::vector<const framework::Tensor*> ins = {&grad_y, &mask};
         std::vector<framework::Tensor*> outs = {grad_x};

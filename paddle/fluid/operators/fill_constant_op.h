@@ -121,16 +121,14 @@ class FillConstantKernel : public framework::OpKernel<T> {
       VLOG(4) << "[CPU] FillConstantKernel"
               << ((data_type == framework::proto::VarType::BF16) ? "<bfloat16>"
                                                                  : "<T>");
-      tensor->mutable_data(platform::CPUPlace(),
-                           framework::TransToPtenDataType(data_type));
+      tensor->mutable_data(platform::CPUPlace(), data_type);
       pten::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
       auto &dev_ctx = *pool.Get(platform::CPUPlace());
       functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
               tensor, static_cast<T>(value));
     } else if (actual_place == 1) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      tensor->mutable_data(ctx.GetPlace(),
-                           framework::TransToPtenDataType(data_type));
+      tensor->mutable_data(ctx.GetPlace(), data_type);
       pten::funcs::SetConstant<platform::CUDADeviceContext, T> functor;
       auto &dev_ctx = *pool.Get(ctx.GetPlace());
       functor(reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx),
@@ -141,8 +139,7 @@ class FillConstantKernel : public framework::OpKernel<T> {
 #endif
     } else if (actual_place == 2) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      tensor->mutable_data(platform::CUDAPinnedPlace(),
-                           framework::TransToPtenDataType(data_type));
+      tensor->mutable_data(platform::CUDAPinnedPlace(), data_type);
       pten::funcs::SetConstant<platform::CUDAPinnedDeviceContext, T> functor;
       auto &dev_ctx = *pool.Get(platform::CUDAPinnedPlace());
       functor(
@@ -154,8 +151,7 @@ class FillConstantKernel : public framework::OpKernel<T> {
 #endif
     } else if (actual_place == 3) {
 #ifdef PADDLE_WITH_XPU
-      tensor->mutable_data(ctx.GetPlace(),
-                           framework::TransToPtenDataType(data_type));
+      tensor->mutable_data(ctx.GetPlace(), data_type);
       pten::funcs::SetConstant<platform::XPUDeviceContext, T> functor;
       auto &dev_ctx = *pool.Get(ctx.GetPlace());
       functor(reinterpret_cast<const platform::XPUDeviceContext &>(dev_ctx),

@@ -63,27 +63,6 @@ class TestPsTrainerPass(PsPassTestBase):
 
         self.check()
 
-    # heter ps 三阶段待测
-    def test_ps_optimizer_minimize_heter(self):
-        self.init()
-        self.config['worker_num'] = "2"
-        self.config['server_num'] = "2"
-        self.config['heter_worker_num'] = '2'
-        self.config['heter_devices'] = 'gpu'
-
-        self.config['run_minimize'] = '1'
-        self.config['ps_mode_config'] = "../ps/heter_ps_config.yaml"
-
-        self.config['debug_new_minimize'] = '0'
-        self.config['log_dir'] = "/heter_log_old_minimize"
-        remove_path_if_exists(self.config['log_dir'])
-        self.ps_launch(self.config, 'heter-ps')
-
-        self.config['debug_new_minimize'] = '1'
-        self.config['log_dir'] = "/heter_log_new_minimize"
-        remove_path_if_exists(self.config['log_dir'])
-        self.ps_launch(self.config, 'heter-ps')
-
     def test_ps_optimizer_minimize_gpu(self):
         self.init()
         self.config['run_minimize'] = '1'

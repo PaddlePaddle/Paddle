@@ -44,11 +44,10 @@ TEST(ProfilerTest, TestHostTracer) {
   }
   auto nodetree = profiler->Stop();
   std::set<std::string> host_events;
-  for (const auto pair : nodetree->Traverse(true)) {
+  for (const auto pair : nodetree->Traverse(true))
     for (const auto evt : pair.second) {
       host_events.insert(evt->Name());
     }
-  }
   EXPECT_EQ(host_events.count("TestTraceLevel_record1"), 1u);
   EXPECT_EQ(host_events.count("TestTraceLevel_record2"), 0u);
 }
