@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/jit/kernels.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -36,7 +36,7 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
     auto* decoded_path = ctx.Output<Tensor>("ViterbiPath");
 
     int64_t* path = decoded_path->mutable_data<int64_t>(platform::CPUPlace());
-    math::SetConstant<DeviceContext, int64_t>()(
+    pten::funcs::SetConstant<DeviceContext, int64_t>()(
         ctx.template device_context<DeviceContext>(), decoded_path, 0);
 
     bool has_length = ctx.HasInput("Length");

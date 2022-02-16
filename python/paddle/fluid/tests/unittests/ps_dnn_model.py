@@ -17,6 +17,7 @@ import paddle.nn as nn
 import paddle.nn.functional as F
 import math
 import paddle.distributed.fleet as fleet
+from paddle.distributed.ps.utils.public import logger
 
 
 class DNNLayer(nn.Layer):
@@ -77,8 +78,13 @@ class DNNLayer(nn.Layer):
 
         y_dnn = paddle.concat(x=sparse_embs + [dense_inputs], axis=1)
 
-        for n_layer in self._mlp_layers:
-            y_dnn = n_layer(y_dnn)
+        if self.sync_mode == 'heter':
+            with paddle.fluid.device_guard('gpu'):
+                for n_layer in self._mlp_layers:
+                    y_dnn = n_layer(y_dnn)
+        else:
+            for n_layer in self._mlp_layers:
+                y_dnn = n_layer(y_dnn)
 
         return y_dnn
 

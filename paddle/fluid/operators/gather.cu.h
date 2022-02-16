@@ -18,10 +18,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 namespace paddle {
 namespace operators {
 
@@ -283,7 +283,7 @@ void GatherV2GradCUDAFunction(const Tensor* input, const Tensor* index,
   auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
   auto out_dim = out->dims();
   int64_t out_index_dim_size = out_dim[axis_index];
-  operators::math::set_constant(*dev_ctx, out, 0.0);
+  pten::funcs::set_constant(*dev_ctx, out, 0.0);
 
   platform::GpuLaunchConfig config =
       platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), input_size);

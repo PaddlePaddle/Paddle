@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -119,7 +119,7 @@ class PnormGradKernel : public framework::OpKernel<T> {
     Eigen::DSizes<int, 3> bcast(1, n, 1);
 
     if (porder == 0) {
-      math::SetConstant<DeviceContext, T> set_zero;
+      pten::funcs::SetConstant<DeviceContext, T> set_zero;
       auto& dev_ctx = ctx.template device_context<DeviceContext>();
       set_zero(dev_ctx, out_dx, static_cast<T>(0));
     } else if (porder == INFINITY || porder == -INFINITY) {
