@@ -137,6 +137,8 @@ bool CPUQuantizeSquashPass::IsDequantizeQuantizeIncompatible(
   bool is_concat_signed =
       quant_op->Op()->GetAttrIfExists<bool>("is_negative_input");
   bool is_input_unsigned = IsDequantizeInputUint8(dequant_in);
+  /* TODO(sfraczek): remove elementwise from this condition when BinaryMKLDNN
+   kernel will support two different input data types */
   bool is_next_op_concat_or_elementwise =
       next_op->Op()->Type() == "concat" ||
       next_op->Op()->Type().find("elementwise") == 0;
