@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/pten_utils.h"
 
@@ -21,8 +22,11 @@ limitations under the License. */
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/common/scalar_array.h"
+#include "paddle/pten/core/infermeta_utils.h"
+#include "paddle/pten/infermeta/unary.h"
 #include "paddle/pten/kernels/reshape_grad_kernel.h"
 #include "paddle/pten/kernels/reshape_kernel.h"
+
 namespace paddle {
 namespace framework {
 class InferShapeContext;
@@ -472,22 +476,6 @@ class Reshape2Op : public ReshapeOp {
              const framework::VariableNameMap &outputs,
              const framework::AttributeMap &attrs)
       : ReshapeOp(type, inputs, outputs, attrs) {}
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("XShape"), true,
-                      platform::errors::InvalidArgument(
-                          "Output(XShape) of ReshapeOp should not be null."));
-    const auto &x_dims = ctx->GetInputDim("X");
-    std::vector<int64_t> xshape_dims(x_dims.size() + 1);
-    xshape_dims[0] = 0;
-    for (int i = 0; i < x_dims.size(); ++i) {
-      xshape_dims[i + 1] = x_dims[i];
-    }
-    ctx->SetOutputDim("XShape", framework::make_ddim(xshape_dims));
-    ctx->ShareLoD("X", /*->*/ "XShape");
-
-    ReshapeOp::InferShape(ctx);
-  }
 };
 
 class Reshape2OpMaker : public ReshapeOpMaker {
@@ -519,7 +507,7 @@ class Reshape2GradMaker : public framework::SingleGradOpMaker<T> {
 
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("reshape2_grad");
-    grad_op->SetInput("XShape", this->Output("XShape"));
+    grad_op->SetInput("X", this->Input("X"));
     grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     grad_op->SetAttrMap(this->Attrs());
@@ -550,15 +538,13 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("XShape"), true,
-        platform::errors::InvalidArgument("Input(XShape) shouldn't be null."));
+        ctx->HasInput("X"), true,
+        platform::errors::InvalidArgument("Input(X) shouldn't be null."));
     PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
                       platform::errors::InvalidArgument(
                           "Input(Out@GRAD) shouldn't be null."));
-    auto xshape_dims = ctx->GetInputDim("XShape");
-    auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
-    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
-    ctx->ShareLoD("XShape", framework::GradVarName("X"));
+    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+    ctx->ShareLoD("X", framework::GradVarName("X"));
   }
 
  protected:
@@ -645,10 +631,14 @@ REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape_grad, float, ops::ReshapeGradKernel,
                                double, ops::ReshapeGradKernel, int,
                                ops::ReshapeGradKernel, int64_t,
                                ops::ReshapeGradKernel);
+
+DELCARE_INFER_SHAPE_FUNCTOR(reshape2, ReshapeInferShapeFunctor,
+                            PT_INFER_META(pten::ReshapeInferMeta));
+
 REGISTER_OPERATOR(reshape2, ops::Reshape2Op, ops::Reshape2OpMaker,
                   ops::Reshape2GradMaker<paddle::framework::OpDesc>,
                   ops::Reshape2GradMaker<paddle::imperative::OpBase>,
-                  ops::ReshapeOpInplaceInferer);
+                  ReshapeInferShapeFunctor, ops::ReshapeOpInplaceInferer);
 REGISTER_OPERATOR(reshape2_grad, ops::Reshape2GradOp,
                   ops::Reshape2DoubleGradMaker<paddle::framework::OpDesc>,
                   ops::Reshape2DoubleGradMaker<paddle::imperative::OpBase>,

@@ -52,7 +52,8 @@ void InferMetaFromVecValue(const MetaTensor& x,
 
 void ReshapeInferMeta(const MetaTensor& x,
                       const ScalarArray& shape,
-                      MetaTensor* out);
+                      MetaTensor* out,
+                      MetaConfig config = MetaConfig());
 
 void ReduceInferMetaBase(const MetaTensor& x,
                          const std::vector<int64_t>& axis,

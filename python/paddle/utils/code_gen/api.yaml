@@ -145,6 +145,7 @@
   output : Tensor
   infer_meta :
     func : ReshapeInferMeta
+    param : [x, shape]
   kernel :
     func : reshape
 

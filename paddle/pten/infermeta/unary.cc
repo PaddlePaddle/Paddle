@@ -15,8 +15,8 @@ limitations under the License. */
 #include "paddle/pten/infermeta/unary.h"
 
 #include <set>
-
 #include "paddle/pten/common/data_type.h"
+#include "paddle/pten/core/enforce.h"
 #include "paddle/pten/core/infermeta_utils.h"
 
 namespace pten {
@@ -213,7 +213,7 @@ void InferMetaFromVecValue(const MetaTensor& x,
                            MetaTensor* out) {
   PADDLE_ENFORCE_EQ(!shape.empty(),
                     true,
-                    paddle::platform::errors::InvalidArgument(
+                    pten::errors::InvalidArgument(
                         "The parameter 'shape' in ReshapeOp must be set. "
                         "But received 'shape' is empty."));
   auto x_dims = x.dims();
@@ -230,8 +230,21 @@ void InferMetaFromVecValue(const MetaTensor& x,
 
 void ReshapeInferMeta(const MetaTensor& x,
                       const ScalarArray& shape,
-                      MetaTensor* out) {
-  InferMetaFromVecValue(x, shape.GetData(), out);
+                      MetaTensor* out,
+                      MetaConfig config) {
+  auto& shape_data = shape.GetData();
+  PADDLE_ENFORCE_NOT_NULL(out,
+                          pten::errors::InvalidArgument(
+                              "Output(Out) of ReshapeOp should not be null."));
+  if (!config.is_runtime && shape_data.size() == 0) {
+    out->share_lod(x);
+    return;
+  }
+  PADDLE_ENFORCE_GT(shape_data.size(),
+                    0,
+                    pten::errors::InvalidArgument(
+                        "The shape's size in ReshapeOp can't be zero."));
+  InferMetaFromVecValue(x, shape_data, out);
 }
 
 /*  Why not use ReduceInferMeta directly?
