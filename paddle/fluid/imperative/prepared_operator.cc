@@ -256,18 +256,6 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
     kernel_iter = kernels.find(expected_kernel_key);
     VLOG(3) << "using XPU KP kernel: " << op.Type()
             << ", using_kernel_key:" << expected_kernel_key;
-
-    if(kernel_iter == kernels.end()){
-      VLOG(3) <<"lxd_debug: can't find the related kernel";
-    }
-    
-  PADDLE_ENFORCE_NE(kernel_iter, kernels.end(),
-                    platform::errors::NotFound(
-                        "Operator %s does not have kernel for %s.", op.Type(),
-                        KernelTypeToString(expected_kernel_key)));
-
-    VLOG(3) << "GOOOD! using XPU KP kernel: " << op.Type()
-            << ", using_kernel_key:" << expected_kernel_key;
   }
 #endif
 

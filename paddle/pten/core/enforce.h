@@ -303,7 +303,7 @@ inline bool is_error(bool stat) { return !stat; }
 struct EnforceNotMet : public std::exception {
  public:
   EnforceNotMet(std::exception_ptr e, const char* file, int line) {
-	try {
+    try {
       std::rethrow_exception(e);
     } catch (EnforceNotMet& e) {
       code_ = e.code();
@@ -320,9 +320,9 @@ struct EnforceNotMet : public std::exception {
     simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
   }
 
-  EnforceNotMet(const pten::ErrorSummary& error, const char* file, int line) 
+  EnforceNotMet(const pten::ErrorSummary& error, const char* file, int line)
       : code_(error.code()),
-        err_str_(GetTraceBackString("asdf", file, line)) {
+        err_str_(GetTraceBackString(error.to_string(), file, line)) {
     simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
   }
 

@@ -30,7 +30,6 @@ class ElementwiseAddXPUKernel : public framework::OpKernel<T> {
 
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    std::cout << "lxd_debug: XDNN elementwise_add" << std::endl;
     XPUElementwise<T, XPUType>(ctx, xpu::broadcast_add<XPUType>);
   }
 };

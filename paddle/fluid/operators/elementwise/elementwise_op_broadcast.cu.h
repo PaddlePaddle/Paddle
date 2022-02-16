@@ -53,6 +53,7 @@ void LaunchBroadcastElementwiseCudaKernel(
   pten::LaunchBroadcastElementwiseCudaKernel<ET, InT, OutT, Functor, NumOuts>(
       ctx, pt_inputs, &pt_outputs, axis, func);
 }
+
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor,
           int NumOuts = 1>
 void LaunchElementwiseCudaKernel(
