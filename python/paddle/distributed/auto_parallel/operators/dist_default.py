@@ -32,6 +32,8 @@ from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY,
 from ..process_group import new_process_group
 from ..utils import _get_comm_group, _get_corresponding_rank
 
+__op_not_need_param_init__ = ["while", "cond"]
+
 
 class DistributedDefault(DistributedOperatorImplContainer):
     def __init__(self, op_type):
@@ -227,6 +229,9 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         main_block._sync_with_cpp()
 
         # param initialization sync
+        if src_op.type in __op_not_need_param_init__:
+            return
+
         for varname in dist_op_desc.input_arg_names():
             if startup_block.has_var(varname) and startup_block.var(
                     varname
