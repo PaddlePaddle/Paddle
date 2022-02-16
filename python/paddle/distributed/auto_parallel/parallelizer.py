@@ -132,7 +132,7 @@ class AutoParallelizer:
                 distop_context=self._dist_context.dist_op_context)
         self._completer = Completer(self._dist_context)
         self._completer.complete_backward_annotation(main_program)
-
+        self._dist_context.block_state.parse_backward_blocks(main_program)
         return params_grads
 
     def _apply_optimize(self, main_program, startup_program, params_grads):
@@ -176,7 +176,7 @@ class AutoParallelizer:
         serial_loss = serial_main_program.global_block().var(self._loss.name)
 
         # parse forward sub block
-        dist_context.block_state.parse_forward_blocks(serial_main_program) 
+        dist_context.block_state.parse_forward_blocks(serial_main_program)
 
         # generating serial 
         if dist_context is None:

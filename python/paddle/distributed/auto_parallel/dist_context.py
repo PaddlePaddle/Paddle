@@ -60,7 +60,7 @@ class DistributedContext:
         self._node_id_to_tensor_id = {}
         self._node_id_to_op_id = {}
         # Other data members
-        self.dist_op_context = DistributedOperatorContext()
+        self._dist_op_context = DistributedOperatorContext()
         self._process_meshes = []
         self._serial_ordered_nodes = []
         self._tensor_id_to_tensor_node_ids = {}
@@ -92,6 +92,10 @@ class DistributedContext:
         return self._process_meshes
 
     @property
+    def dist_op_context(self):
+        return self._dist_op_context
+
+    @property
     def block_state(self):
         return self._block_state
 
@@ -102,10 +106,6 @@ class DistributedContext:
     @property
     def dist_startup_programs(self):
         return self._dist_startup_programs
-
-    @property
-    def serial_graph(self):
-        return self._serial_graph
 
     def add_process_mesh(self, process_mesh):
         assert isinstance(process_mesh, ProcessMesh), \
@@ -606,7 +606,8 @@ class BlockState(object):
 
         for idx, block in enumerate(program.blocks):
             assert idx == block.idx, "index doesn't match"
-            print("block.forward_block_idx: ", block.forward_block_idx)
+            assert block.forward_block_idx == -1, "forward_block_idx of forward block [{}] is not [{}]".format(
+                idx, block.forward_block_idx)
             self.forward_indices.append(idx)
             self.nblock += 1
 
