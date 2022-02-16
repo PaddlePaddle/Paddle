@@ -223,11 +223,10 @@ CinnLaunchContext::FinalizeArguments() const {
   // Check all execution parameters are assigned valued.
   std::for_each(cinn_argument_names_.begin(), cinn_argument_names_.end(),
                 [this](const auto& arg_name) {
-                  PADDLE_ENFORCE_GT(name2argument_.count(arg_name), 0,
-                                    platform::errors::InvalidArgument(
-                                        "Variable(%s) is missed for launching "
-                                        "compiled program execution",
-                                        arg_name));
+                  PADDLE_ENFORCE_GT(
+                      name2argument_.count(arg_name), 0,
+                      platform::errors::NotFound(
+                          "Argument(%s) is missed for execution", arg_name));
                 });
   return name2argument_;
 }
