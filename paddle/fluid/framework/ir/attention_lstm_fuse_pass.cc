@@ -265,7 +265,7 @@ void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op) {
   auto* attention_scalar_bias_t =
       scope.FindVar(param.AttentionScalarBias)->GetMutable<LoDTensor>();
   attention_scalar_bias_t->Resize(
-     (pten::make_ddim({1, attention_scalar_bias_t->dims()[0]}));
+      pten::make_ddim({1, attention_scalar_bias_t->dims()[0]}));
 
   PrepareLSTMWeight(W_forget_w0_t, W_forget_w1_t, W_input_w0_t, W_input_w1_t,
                     W_output_w0_t, W_output_w1_t, W_c_w0_t, W_c_w1_t,

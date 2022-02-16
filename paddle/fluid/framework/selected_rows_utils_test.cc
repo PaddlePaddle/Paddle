@@ -28,7 +28,8 @@ class SelectedRowsTester : public ::testing::Test {
 
     Tensor* value = selected_rows_->mutable_value();
     auto* data = value->mutable_data<float>(
-       (pten::make_ddim({static_cast<int64_t>(rows.size()), row_numel}), place_);
+        pten::make_ddim({static_cast<int64_t>(rows.size()), row_numel}),
+        place_);
     for (int64_t i = 0; i < value->numel(); ++i) {
       data[i] = static_cast<float>(i);
     }
@@ -42,11 +43,11 @@ class SelectedRowsTester : public ::testing::Test {
 TEST_F(SelectedRowsTester, height) { ASSERT_EQ(selected_rows_->height(), 10); }
 
 TEST_F(SelectedRowsTester, dims) {
-  ASSERT_EQ(selected_rows_->value().dims(),(pten::make_ddim({3, 100}));
+  ASSERT_EQ(selected_rows_->value().dims(), pten::make_ddim({3, 100}));
 }
 
 TEST_F(SelectedRowsTester, complete_dims) {
-  ASSERT_EQ(selected_rows_->GetCompleteDims(),(pten::make_ddim({10, 100}));
+  ASSERT_EQ(selected_rows_->GetCompleteDims(), pten::make_ddim({10, 100}));
 }
 
 TEST_F(SelectedRowsTester, SerializeAndDeseralize) {

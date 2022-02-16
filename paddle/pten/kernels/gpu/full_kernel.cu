@@ -38,7 +38,7 @@ void FullKernel(const ContextT& dev_ctx,
                 const ScalarArray& shape,
                 const Scalar& val,
                 DenseTensor* out) {
-  out->Resize(paddle::pten::make_ddim(shape.GetData()));
+  out->Resize(pten::make_ddim(shape.GetData()));
   int numel = out->numel();
   out->mutable_data<T>(dev_ctx.GetPlace());
   if (numel > 0) {

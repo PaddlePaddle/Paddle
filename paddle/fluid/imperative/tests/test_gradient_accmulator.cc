@@ -40,8 +40,7 @@ TEST(Test__SelectedRowsMerge_Test, SelectedRowsMerge) {
   auto sr2 = std::make_shared<pten::SelectedRows>(rows, table_size);
 
   // initialize a sparse table 1
-  sr1->mutable_value()->Resize(
-      pten::pten::make_ddim({table_size, embedding_width}));
+  sr1->mutable_value()->Resize(pten::make_ddim({table_size, embedding_width}));
   auto* data_sr1 = sr1->mutable_value()->mutable_data<float>(cpu);
   for (int64_t i = 0; i < table_size; ++i) {
     for (int64_t j = 0; j < embedding_width; ++j) {
@@ -50,8 +49,7 @@ TEST(Test__SelectedRowsMerge_Test, SelectedRowsMerge) {
   }
 
   // initialize a sparse table 2
-  sr2->mutable_value()->Resize(
-      pten::pten::make_ddim({table_size, embedding_width}));
+  sr2->mutable_value()->Resize(pten::make_ddim({table_size, embedding_width}));
   auto* data_sr2 = sr2->mutable_value()->mutable_data<float>(cpu);
   for (int64_t i = 0; i < table_size; ++i) {
     for (int64_t j = 0; j < embedding_width; ++j) {

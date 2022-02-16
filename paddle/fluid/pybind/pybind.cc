@@ -656,8 +656,8 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.def("broadcast_shape", [](const std::vector<int64_t> &x_dim,
                               const std::vector<int64_t> &y_dim) {
-    return vectorize(operators::details::BroadcastTwoDims(
-       (pten::make_ddim(x_dim), (pten::make_ddim(y_dim), -1));
+    return pten::vectorize(operators::details::BroadcastTwoDims(
+        pten::make_ddim(x_dim), pten::make_ddim(y_dim), -1));
   });
 
   m.def(

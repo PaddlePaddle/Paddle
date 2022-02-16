@@ -87,8 +87,8 @@ void ScaleAPI(const paddle::experimental::Tensor& x, float scale, float bias,
   auto tensor_meta = pten::DenseTensorMeta(
       dense_tensor->dtype(), dense_tensor->dims(), dense_tensor->layout());
   auto place = dense_tensor->place();
-  size_t bytes_size = paddle::framework::product(dense_tensor->dims()) *
-                      SizeOf(dense_tensor->dtype());
+  size_t bytes_size =
+      pten::product(dense_tensor->dims()) * SizeOf(dense_tensor->dtype());
   auto dense_out = std::make_shared<pten::DenseTensor>(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           paddle::memory::Alloc(place, bytes_size)),

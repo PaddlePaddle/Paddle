@@ -164,10 +164,7 @@ class SelectedRows : public TensorBase,
 
   /// \brief Returns the dims of the tensor.
   /// \return The dims of the tensor.
-  const DDim& dims() const noexcept override {
-    return value_->dims();
-    // return paddle::pten::make_ddim(dims);
-  }
+  const DDim& dims() const noexcept override { return value_->dims(); }
 
   /// \brief Returns the data type of the tensor.
   /// \return The data type of the tensor.
