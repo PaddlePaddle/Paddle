@@ -385,7 +385,7 @@ __device__ __forceinline__ void ReadDataReduce(Ty* dst,
                                                int stride_ny,
                                                Functor func,
                                                bool reduce_last_dim) {
-  __local__ T in_temp[1];
+  __local__ Tx in_temp[1];
   int thread_offset = 0;
   int left_idx = 0;
   if (reduce_last_dim) {

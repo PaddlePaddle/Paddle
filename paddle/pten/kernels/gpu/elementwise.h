@@ -238,7 +238,7 @@ __device__ void ElementwiseBroadcastKernelImpl(
 
 #pragma unroll
   for (int i = 0; i < Arity; i++) {
-    //kps::Init<InT, VecSize>(args[i], static_cast<InT>(1.0));
+    // kps::Init<InT, VecSize>(args[i], static_cast<InT>(1.0));
     LoadData<InT, VecSize, Rank, IsBoundary>(args[i],
                                              ins[i],
                                              block_offset,
@@ -360,7 +360,7 @@ void LaunchKernel(const KPDevice &ctx,
   pten::framework::Array<_ptr_ OutT *, NumOuts> outs_data;
 
   for (int i = 0; i < NumOuts; ++i) {
-    outs_data[i] =(_ptr_ OutT*)( ctx.Alloc<OutT>((*outs)[i]));
+    outs_data[i] = (_ptr_ OutT *)(ctx.Alloc<OutT>((*outs)[i]));
   }
 
   for (int i = 0; i < Arity; i++) {

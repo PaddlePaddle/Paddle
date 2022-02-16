@@ -54,7 +54,7 @@ void LaunchBroadcastElementwiseCudaKernel(
       ctx, pt_inputs, &pt_outputs, axis, func);
 }
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor,
-          int NumOuts=1>
+          int NumOuts = 1>
 void LaunchElementwiseCudaKernel(
     const KPDevice &ctx, const std::vector<const framework::Tensor *> &ins,
     std::vector<framework::Tensor *> *outs, int axis, Functor func) {

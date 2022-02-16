@@ -455,7 +455,6 @@ struct Unroller {
     Func<Begin, VecSize>::Apply(std::forward<Args>(args)...);
     Unroller<Func, VecSize, End, Begin + 1>::step(args...);
   }
-
 };
 
 template <template <int Index, int VecSize> typename Func, int VecSize, int End>
@@ -479,10 +478,14 @@ struct Loader {
     kps::Init<Type, ArgsT, Index, VecSize>(args, static_cast<Type>(1.0f));
     if (is_boundary) {
       kps::ReadData<Type, VecSize, 1, 1, ArgsT, Index, true>(
-          args, reinterpret_cast<const _ptr_ Type *>(in[Index]) + data_offset, num);
+          args,
+          reinterpret_cast<const _ptr_ Type *>(in[Index]) + data_offset,
+          num);
     } else {
       kps::ReadData<Type, VecSize, 1, 1, ArgsT, Index, false>(
-          args, reinterpret_cast<const _ptr_ Type *>(in[Index]) + data_offset, num);
+          args,
+          reinterpret_cast<const _ptr_ Type *>(in[Index]) + data_offset,
+          num);
     }
   }
 };
@@ -728,7 +731,7 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
 
   Unroller<InputSetter, VecSize, Arity>::step(ins, &ins_data);
   for (int i = 0; i < NumOuts; ++i) {
-    outs_data[i] = (_ptr_ OutT*)(ctx.Alloc<OutT>((*outs)[i]));
+    outs_data[i] = (_ptr_ OutT *)(ctx.Alloc<OutT>((*outs)[i]));
   }
 #ifdef PADDLE_WITH_XPU_KP
   int block_size = 64;
@@ -790,28 +793,28 @@ void LaunchSameDimsElementwiseCudaKernel(
               i));
     }
   }
-  VLOG(3)<<"lxd_debug: enter the test";
+  VLOG(3) << "lxd_debug: enter the test";
   // calculate the max vec_size for all ins and outs
   int vec_size = GetVectorizedSizeForTensors<OutT, Functor>(ins, *outs);
- switch (vec_size) {
-   case 4:
-     ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 4>(
-         ctx, ins, outs, func);
-     break;
-   case 2:
-     ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 2>(
-         ctx, ins, outs, func);
-     break;
-   case 1:
-     ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 1>(
-         ctx, ins, outs, func);
-     break;
-   default: {
-     PADDLE_THROW(paddle::platform::errors::Unimplemented(
-         "Unsupported vectorized size: %d !", vec_size));
-     break;
-   }
- }
+  switch (vec_size) {
+    case 4:
+      ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 4>(
+          ctx, ins, outs, func);
+      break;
+    case 2:
+      ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 2>(
+          ctx, ins, outs, func);
+      break;
+    case 1:
+      ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 1>(
+          ctx, ins, outs, func);
+      break;
+    default: {
+      PADDLE_THROW(paddle::platform::errors::Unimplemented(
+          "Unsupported vectorized size: %d !", vec_size));
+      break;
+    }
+  }
 }
 #endif
 
