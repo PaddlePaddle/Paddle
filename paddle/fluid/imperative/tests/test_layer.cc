@@ -39,6 +39,8 @@ using vb_vector = std::vector<std::shared_ptr<imperative::VarBase>>;
 
 using var_pair = std::pair<std::string, vb_vector>;
 
+extern void TestSetForwardDataTypeOfGradVarsEager(
+    const NameVarMap<egr::EagerVariable>& outs);
 template <typename VarType>
 class TestRuntimeInferVarTypeContext
     : public RuntimeInferVarTypeContext<VarType> {
@@ -404,6 +406,11 @@ TEST(test_layer, test_inner_op_not_inited) {
   ASSERT_THROW(op.Info(), platform::EnforceNotMet);
   ASSERT_THROW(op.InnerOp(), platform::EnforceNotMet);
   ASSERT_THROW(op.CheckAttrs(), platform::EnforceNotMet);
+}
+
+TEST(test_layer, test_eager) {
+  imperative::NameTensorMap ins = {};
+  TestSetForwardDataTypeOfGradVarsEager(ins);
 }
 
 }  // namespace imperative
