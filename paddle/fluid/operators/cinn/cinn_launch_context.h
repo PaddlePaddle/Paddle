@@ -71,7 +71,9 @@ class CinnLaunchContext {
 
   // Extract internal variable names from all applied variables
   // in execution by excluding the input and output variables
-  std::unordered_set<std::string> ExtractInternalVarNames();
+  std::unordered_set<std::string> ExtractInternalVarNames(
+      const std::vector<std::string>& input_var_names,
+      const std::vector<std::string>& output_var_names);
 
   // Finalize all execution arguments and return the name->argument map
   const std::map<std::string, cinn_pod_value_t>& FinalizeArguments() const;

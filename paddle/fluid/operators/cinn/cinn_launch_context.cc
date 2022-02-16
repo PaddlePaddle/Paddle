@@ -112,17 +112,24 @@ CinnTensor CinnLaunchContext::GetCinnTensor(const std::string& arg_name) {
   return cinn_scope_->GetTensor(arg_name);
 }
 
-std::unordered_set<std::string> CinnLaunchContext::ExtractInternalVarNames() {
-  std::unordered_set<std::string> all_parameters;
-  all_parameters.reserve(paddle2cinn_varmap_.size());
+std::unordered_set<std::string> CinnLaunchContext::ExtractInternalVarNames(
+    const std::vector<std::string>& input_var_names,
+    const std::vector<std::string>& output_var_names) {
+  std::unordered_set<std::string> remain_var_names;
+  remain_var_names.reserve(paddle2cinn_varmap_.size());
   std::transform(paddle2cinn_varmap_.begin(), paddle2cinn_varmap_.end(),
-                 std::inserter(all_parameters, all_parameters.end()),
+                 std::inserter(remain_var_names, remain_var_names.end()),
                  [](const auto& name_pair) { return name_pair.first; });
-  std::for_each(name2argument_.begin(), name2argument_.end(),
-                [&all_parameters, this](const auto& name2arg) {
-                  all_parameters.erase(cinn2paddle_varmap_.at(name2arg.first));
-                });
-  return all_parameters;
+
+  // exclude the input variables and output variables
+  auto exclude_names_fn = [&remain_var_names](const std::string& var_name) {
+    remain_var_names.erase(var_name);
+  };
+  std::for_each(input_var_names.begin(), input_var_names.end(),
+                exclude_names_fn);
+  std::for_each(output_var_names.begin(), output_var_names.end(),
+                exclude_names_fn);
+  return remain_var_names;
 }
 
 void CinnLaunchContext::CheckTensorEquivalent(const std::string& var_name,

@@ -112,7 +112,8 @@ TEST(CinnLaunchContextTest, TestAppendArgument) {
   ASSERT_THROW(launch_context->FinalizeArguments(),
                paddle::platform::EnforceNotMet);
   // test get internal variables
-  auto internal_variable_names = launch_context->ExtractInternalVarNames();
+  auto internal_variable_names =
+      launch_context->ExtractInternalVarNames({"var1"}, {"var3"});
   ASSERT_EQ(internal_variable_names.size(), 1);
   EXPECT_EQ(*internal_variable_names.begin(), "cinn_var2");
 
