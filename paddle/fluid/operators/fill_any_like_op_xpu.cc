@@ -31,6 +31,7 @@ class FillAnyLikeXPUKernel : public framework::OpKernel<T> {
   using XPUInTDType = typename XPUTypeTrait<T>::Type;
 
   void Compute(const framework::ExecutionContext& context) const override {
+    auto* x = context.Input<framework::Tensor>("X");
     auto* out = context.Output<framework::Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
 
@@ -63,7 +64,7 @@ class FillAnyLikeXPUKernel : public framework::OpKernel<T> {
     pten::FullLikeKernel<T>(
         static_cast<const typename paddle::framework::ConvertToPtenContext<
             paddle::platform::XPUDeviceContext>::TYPE&>(dev_ctx),
-        value, pten::DataType::UNDEFINED, out);
+        *x value, pten::DataType::UNDEFINED, out);
   }
 };
 
