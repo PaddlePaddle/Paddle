@@ -331,6 +331,9 @@ void BatchNormGradRawKernel(const Context &ctx,
                             DenseTensor *bias_grad) {
   double epsilon = static_cast<double>(epsilon_f);
 
+  LOG(ERROR) << scale_grad->dtype() << "\t" << scale_grad->dims();
+  LOG(ERROR) << bias_grad->dtype() << "\t" << bias_grad->dims();
+
   const DataLayout data_layout =
       paddle::framework::StringToDataLayout(data_layout_str);
   const auto *d_y = &y_grad;
@@ -388,7 +391,13 @@ void BatchNormGradRawKernel(const Context &ctx,
   if (d_scale && d_bias) {
     d_scale->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
     d_bias->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+
+    LOG(ERROR) << d_scale->dtype() << "\t" << d_scale->memory_size() << "\t"
+               << d_scale->dims();
+    LOG(ERROR) << d_bias->dtype() << "\t" << d_bias->memory_size() << "\t"
+               << d_bias->dims();
   }
+
   PADDLE_ENFORCE_EQ(
       scale.dims().size(),
       1UL,

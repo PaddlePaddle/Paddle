@@ -162,6 +162,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 
     pt_kernel_name = pt_kernel_signature.name;
     pt_kernel_key = TransOpKernelTypeToPtenKernelKey(expected_kernel_key);
+    VLOG(6) << pt_kernel_name << "\t" << pt_kernel_key;
     auto pt_kernel = pten::KernelFactory::Instance().SelectKernel(
         pt_kernel_name, pt_kernel_key);
 

@@ -161,6 +161,11 @@ void BatchNormKernel(const Context &ctx,
                      DenseTensor *saved_mean,
                      DenseTensor *saved_variance,
                      DenseTensor *reserve_space) {
+  LOG(ERROR) << x.dtype() << "\t" << scale.dtype();
+  LOG(ERROR) << scale;
+  LOG(ERROR) << bias;
+  LOG(ERROR) << mean;
+  LOG(ERROR) << variance;
   double epsilon = epsilon_f;
   const bool trainable_stats = trainable_statistics;
   const DataLayout data_layout =
@@ -184,6 +189,7 @@ void BatchNormKernel(const Context &ctx,
   paddle::operators::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
   auto dtype = paddle::platform::CudnnDataType<T>::type;
+  LOG(ERROR) << "cudnn " << dtype;
 
 #ifdef PADDLE_WITH_HIP
   auto compute_format =

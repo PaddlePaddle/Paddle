@@ -322,7 +322,7 @@ void BuildDygraphPtenKernelContext(
             "Unsupported output `%s` type when call pt kernel.",
             framework::ToTypeName(var->Type())));
       }
-
+      LOG(ERROR) << "reset " << output_names[i];
       experimental::ResetTensorDtypeAndLayoutByArgDef(tensor_out,
                                                       output_defs.at(i));
       framework::SetAllocationForOutputTenosr(
