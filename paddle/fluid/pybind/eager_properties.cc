@@ -68,8 +68,8 @@ PyObject* tensor_properties_get_stop_gradient(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyObject* eager_tensor_properties_get_grad(TensorObject* self, void* closure) {
-  EAGER_SYNC_TRY
+PyObject* tensor_properties_get_grad(TensorObject* self, void* closure) {
+  EAGER_TRY
   VLOG(6) << "Get grad for tensor: " << self->tensor.name();
   auto meta = egr::EagerUtils::nullable_autograd_meta(self->tensor);
   if (meta) {

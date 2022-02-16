@@ -22,7 +22,6 @@
 #include "paddle/pten/common/layout.h"
 #include "paddle/pten/core/tensor_meta.h"
 
-#include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/variable.h"
@@ -358,7 +357,8 @@ std::shared_ptr<egr::GradNodeBase> EagerUtils::GetGradAccumulationNode(
   } else {
     if (!autograd_ptr->StopGradient()) {
       VLOG(6) << "Add GradNodeAccumulation for tensor: " << tensor.name();
-      autograd_ptr->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
+      autograd_ptr->SetGradNode(
+          std::make_shared<egr::GradNodeAccumulation>(autograd_ptr));
       return autograd_ptr->GetMutableGradNode();
     } else {
       return nullptr;
