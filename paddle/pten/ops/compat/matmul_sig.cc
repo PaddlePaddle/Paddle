@@ -19,7 +19,7 @@ namespace pten {
 KernelSignature MatmulGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("matmul_grad",
                          {"X", "Y", GradVarName("Out")},
-                         {"trans_x", "trans_y"},
+                         {"trans_x", "trans_y", "use_addto"},
                          {GradVarName("X"), GradVarName("Y")});
 }
 

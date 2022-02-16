@@ -139,6 +139,7 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     bool transpose_x = ctx.Attr<bool>("trans_x");
     bool transpose_y = ctx.Attr<bool>("trans_y");
+    bool use_addto = ctx.Attr<bool>("use_addto");
     auto* x = ctx.Input<framework::Tensor>("X");
     auto* y = ctx.Input<framework::Tensor>("Y");
     auto* dout = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
@@ -155,7 +156,7 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
     pten::MatmulGradKernel<T>(
         static_cast<const typename paddle::framework::ConvertToPtenContext<
             DeviceContext>::TYPE&>(dev_ctx),
-        *x, *y, *dout, transpose_x, transpose_y, dx, dy);
+        *x, *y, *dout, transpose_x, transpose_y, use_addto, dx, dy);
   }
 };
 
