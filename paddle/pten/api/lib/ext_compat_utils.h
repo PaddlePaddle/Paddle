@@ -21,9 +21,9 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-platform::Place ConvertExtPlaceToInnerPlace(PlaceType p);
+pten::Place ConvertExtPlaceToInnerPlace(PlaceType p);
 
-PlaceType ConvertInnerPlaceToExtPlace(const platform::Place& p);
+PlaceType ConvertInnerPlaceToExtPlace(const pten::Place& p);
 
 Backend ConvertExtPlaceToBackend(PlaceType p);
 

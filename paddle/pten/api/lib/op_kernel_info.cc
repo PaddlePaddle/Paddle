@@ -17,71 +17,9 @@ limitations under the License. */
 
 namespace paddle {
 
-////////////////////// Op Kernel Info //////////////////////
-
-OpKernelInfo& OpKernelInfo::SetKernelFn(CustomKernelFunc&& func) {
-  kernel_fn_ = std::forward<CustomKernelFunc>(func);
-  return *this;
-}
-
-OpKernelInfo& OpKernelInfo::SetVariadicKernelFn(void* func) {
-  variadic_kernel_fn_ = func;
-  return *this;
-}
-
 //////////////// Op Kernel Info Map /////////////////
 
-std::vector<OpKernelInfo>& OpKernelInfoMap::operator[](
-    const std::string& name) {
-  return map_[name];
-}
-
-const std::unordered_map<std::string, std::vector<OpKernelInfo>>&
-OpKernelInfoMap::GetMap() const {
-  return map_;
-}
-
-//////////////// Op Kernel Info Builder /////////////////
-
-OpKernelInfoBuilder::OpKernelInfoBuilder(std::string&& op_name,
-                                         pten::Backend backend,
-                                         pten::DataLayout data_layout,
-                                         pten::DataType data_type) {
-  // 1. member assign
-  op_name_ = std::forward<std::string>(op_name);
-  backend_ = backend;
-  layout_ = data_layout;
-  dtype_ = data_type;
-
-  // 2. info parse
-  auto& info_vector = OpKernelInfoMap::Instance()[op_name_];
-  auto op_kernel_info = OpKernelInfo(op_name_, backend_, layout_, dtype_);
-  info_vector.emplace_back(std::move(op_kernel_info));
-
-  // 3. get current info ptr
-  info_ptr_ = &(info_vector.back());
-}
-
-OpKernelInfoBuilder& OpKernelInfoBuilder::SetKernelFn(CustomKernelFunc func) {
-  info_ptr_->SetKernelFn(std::forward<CustomKernelFunc>(func));
-  return *this;
-}
-
-OpKernelInfoBuilder& OpKernelInfoBuilder::SetVariadicKernelFn(void* func) {
-  info_ptr_->SetVariadicKernelFn(func);
-  return *this;
-}
-
-OpKernelInfoBuilder& OpKernelInfoBuilder::ArgsParse(
-    CustomKernelArgsParseFn func) {
-  func(this->info_ptr_);
-  return *this;
-}
-
-OpKernelInfoBuilder& OpKernelInfoBuilder::ArgsDef(CustomKernelArgsDefFn func) {
-  func(this->info_ptr_);
-  return *this;
-}
+const pten::KernelNameMap& OpKernelInfoMap::GetMap() const { return kernels_; }
 
 /////////////////////// Op register API /////////////////////////
 

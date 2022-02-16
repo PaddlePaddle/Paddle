@@ -24,15 +24,14 @@ namespace experimental {
 
 class DefaultAllocator : public pten::Allocator {
  public:
-  explicit DefaultAllocator(const paddle::platform::Place& place)
-      : place_(place) {}
+  explicit DefaultAllocator(const pten::Place& place) : place_(place) {}
 
   AllocationPtr Allocate(size_t bytes_size) override {
     return memory::Alloc(place_, bytes_size);
   }
 
  private:
-  paddle::platform::Place place_;
+  pten::Place place_;
 };
 
 }  // namespace experimental
