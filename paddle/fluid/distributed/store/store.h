@@ -23,14 +23,13 @@ namespace distributed {
 
 class Store {
  public:
-  static constexpr std::chrono::milliseconds kDefaultTimeout =
+  static constexpr std::chrono::seconds kDefaultTimeout =
       std::chrono::seconds(360);
-  static constexpr std::chrono::milliseconds kNoTimeout =
-      std::chrono::milliseconds::zero();
+  static constexpr std::chrono::seconds kNoTimeout =
+      std::chrono::seconds::zero();
 
   Store() : _timeout(kDefaultTimeout) {}
-  explicit Store(const std::chrono::milliseconds& timeout)
-      : _timeout(timeout) {}
+  explicit Store(const std::chrono::seconds& timeout) : _timeout(timeout) {}
   virtual ~Store() {}
 
   virtual void set(const std::string& key,

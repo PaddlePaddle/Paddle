@@ -32,7 +32,7 @@ Socket Socket::listen(std::uint16_t port, const SocketOptions& opts) {
 Socket Socket::connect(const std::string& host, std::uint16_t port,
                        const SocketOptions& opts) {
   int sock = tcputils::tcpConnect(host, std::to_string(port), AF_INET,
-                                  opts.get_connect_timeout());
+                                  opts.connect_timeout());
   return Socket(sock);
 }
 

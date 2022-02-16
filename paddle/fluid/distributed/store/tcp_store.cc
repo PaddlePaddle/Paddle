@@ -122,10 +122,9 @@ std::unique_ptr<TCPServer> TCPServer::create(uint16_t port) {
 }
 
 std::unique_ptr<TCPClient> TCPClient::connect(
-    const std::string host, uint16_t port,
-    const std::chrono::milliseconds& timeout) {
+    const std::string host, uint16_t port, const std::chrono::seconds timeout) {
   SocketOptions sock_opt{};
-  sock_opt.set_connect_timeout(timeout);
+  sock_opt.connect_timeout(timeout);
   const Socket socket = Socket::connect(host, port, sock_opt);
   return std::make_unique<TCPClient>(socket);
 }
@@ -180,7 +179,7 @@ void TCPClient::sendStrings(std::vector<std::string> strings) {
 }  // namespace detail
 
 TCPStore::TCPStore(std::string host, uint16_t port, bool is_master,
-                   size_t num_workers, std::chrono::milliseconds timeout)
+                   size_t num_workers, std::chrono::seconds timeout)
     : Store(timeout),
       _host(host),
       _port(port),

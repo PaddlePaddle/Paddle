@@ -31,7 +31,7 @@ namespace pybind {
 void BindTCPStore(py::module* m) {
   py::class_<paddle::distributed::TCPStore>(*m, "TCPStore")
       .def(py::init<std::string, uint16_t, bool, size_t,
-                    std::chrono::milliseconds>());
+                    std::chrono::seconds>());
 }
 
 }  // namespace pybind

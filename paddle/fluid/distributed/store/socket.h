@@ -25,15 +25,17 @@ namespace distributed {
 
 class SocketOptions {
  public:
-  void set_connect_timeout(std::chrono::milliseconds timeout) {
+  SocketOptions() = default;
+  ~SocketOptions() {}
+
+  void connect_timeout(std::chrono::seconds timeout) {
     _connect_timeout = timeout;
   }
-  std::chrono::milliseconds get_connect_timeout() const {
-    return _connect_timeout;
-  }
+
+  std::chrono::seconds connect_timeout() const { return _connect_timeout; }
 
  private:
-  std::chrono::milliseconds _connect_timeout{30};
+  std::chrono::seconds _connect_timeout{30};
 };
 
 class Socket {

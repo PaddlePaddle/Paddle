@@ -17,8 +17,8 @@
 namespace paddle {
 namespace distributed {
 
-constexpr std::chrono::milliseconds Store::kDefaultTimeout;
-constexpr std::chrono::milliseconds Store::kNoTimeout;
+constexpr std::chrono::seconds Store::kDefaultTimeout;
+constexpr std::chrono::seconds Store::kNoTimeout;
 
 }  // namespace distributed
 }  // namespace paddle

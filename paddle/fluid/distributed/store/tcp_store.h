@@ -65,9 +65,9 @@ class TCPClient {
  public:
   // TCPClient(Socket&& socket) : _socket{std::move(socket)} {}
   explicit TCPClient(Socket socket) : _socket{socket} {}
-  static std::unique_ptr<TCPClient> connect(
-      const std::string host, uint16_t port,
-      const std::chrono::milliseconds& timeout);
+  static std::unique_ptr<TCPClient> connect(const std::string host,
+                                            uint16_t port,
+                                            const std::chrono::seconds timeout);
   void sendCommandForKey(Command type, const std::string& key);
   void sendCommand(Command type);
   void sendStrings(std::vector<std::string> strings);
@@ -91,10 +91,10 @@ class TCPStore : public Store {
   static constexpr std::uint16_t kDefaultPort = 6170;
   explicit TCPStore(std::string host, uint16_t port = kDefaultPort,
                     bool is_master = false, size_t num_workers = 1,
-                    std::chrono::milliseconds timeout = Store::kDefaultTimeout);
+                    std::chrono::seconds timeout = Store::kDefaultTimeout);
 
   ~TCPStore() = default;
-  void setTimeout(std::chrono::milliseconds timeout) { _timeout = timeout; }
+  void setTimeout(std::chrono::seconds timeout) { _timeout = timeout; }
 
   void set(const std::string& key, const std::vector<uint8_t>& value) override;
   std::vector<uint8_t> get(const std::string& key) override;
@@ -114,7 +114,7 @@ class TCPStore : public Store {
 
   const std::string _init_key = "init/";
   const std::string _key_prefix = "/";
-  std::chrono::milliseconds _timeout;
+  std::chrono::seconds _timeout;
   std::string _host;
   uint16_t _port;
   bool _is_master;
