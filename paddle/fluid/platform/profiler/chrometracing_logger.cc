@@ -37,8 +37,9 @@ static std::string DefaultFileName() {
 }
 
 const char* ChromeTracingLogger::categary_name_[] = {
-    "operator", "dataloader", "profile_step", "cuda_runtime", "kernel",
-    "memcpy",   "memset",     "user_defined", "others"};
+    "operator", "dataloader",   "profile_step",  "cuda_runtime",   "kernel",
+    "memcpy",   "memset",       "user_defined",  "operator_inner", "forward",
+    "backward", "optimization", "communication", "python_op"};
 
 void ChromeTracingLogger::OpenFile() {
   output_file_stream_.open(filename_,
