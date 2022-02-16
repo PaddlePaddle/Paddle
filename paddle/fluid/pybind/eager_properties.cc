@@ -170,7 +170,7 @@ PyObject* tensor_properties_get_place_str(TensorObject* self, void* closure) {
 
 PyObject* tensor_properties_get_dtype(TensorObject* self, void* closure) {
   EAGER_TRY
-  return ToPyObject(pten::TransToProtoVarType(self->tensor.type()));
+  return ToPyObject(framework::TransToProtoVarType(self->tensor.type()));
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
