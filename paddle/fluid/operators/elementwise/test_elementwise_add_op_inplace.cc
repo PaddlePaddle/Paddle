@@ -22,7 +22,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
-USE_OP(elementwise_add);
+USE_OP_ITSELF(elementwise_add);
 
 namespace paddle {
 namespace operators {

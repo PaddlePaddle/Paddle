@@ -15,6 +15,7 @@
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 
 #include "paddle/fluid/imperative/all_reduce.h"
+#include "paddle/fluid/framework/convert_utils.h"
 
 #ifdef PADDLE_WITH_NCCL
 #include <nccl.h>
@@ -62,8 +63,9 @@ static void AllReduce(const framework::Tensor &src, framework::Tensor *dst,
 
   const void *src_ptr = src.data();
   dst->Resize(src.dims());
-  auto *dst_ptr = dst->mutable_data(src.place(), src.type());
-  auto nccl_dtype = platform::ToNCCLDataType(src.type());
+  auto *dst_ptr = dst->mutable_data(src.place(), src.dtype());
+  auto nccl_dtype =
+      platform::ToNCCLDataType(framework::TransToProtoVarType(src.dtype()));
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
       src_ptr, dst_ptr, src.numel(), nccl_dtype, ncclSum, comm->comm(),
       stream));
@@ -82,7 +84,7 @@ static void AllReduce(const pten::SelectedRows &src, pten::SelectedRows *dst,
       platform::errors::Unimplemented(
           "Imperative mode does not support multi-CPU training yet."));
 
-  auto dtype = src_tensor.type();
+  auto dtype = framework::TransToProtoVarType(src_tensor.dtype());
   auto nccl_dtype = platform::ToNCCLDataType(dtype);
   auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
       platform::DeviceContextPool::Instance().Get(place));
@@ -127,7 +129,7 @@ static void AllReduce(const pten::SelectedRows &src, pten::SelectedRows *dst,
   dims[0] = rows_num;
   auto feature_size = framework::product(dims) / dims[0];
   dst_tensor->Resize(dims);
-  auto *dst_tensor_ptr = dst_tensor->mutable_data(place, dtype);
+  auto *dst_tensor_ptr = dst_tensor->mutable_data(place, src_tensor.dtype());
   const auto *src_tensor_ptr = src_tensor.data();
 
   auto sizeof_dtype = framework::SizeOfType(dtype);

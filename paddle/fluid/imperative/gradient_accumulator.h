@@ -17,10 +17,10 @@
 #include <memory>
 #include <utility>
 #include <vector>
-
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/layer.h"
+#include "paddle/pten/api/include/tensor.h"
 
 namespace paddle {
 namespace imperative {
@@ -164,17 +164,20 @@ class SortedGradientAccumulator : public GradientAccumulator {
   std::vector<SavedVarInfo> tmp_grad_vars_;
 };
 
-void SelectedRowsAddToTensor(const framework::Variable& src,
-                             framework::Variable* dst);
+template <typename ReturnVarType, typename VarType>
+std::shared_ptr<ReturnVarType> SelectedRowsMerge(const VarType& src1,
+                                                 const VarType& src2);
 
-void SelectedRowsAddTensor(const framework::Variable& src_selected_rows_var,
-                           const framework::Variable& src_tensor_var,
-                           framework::Variable* dst_tensor_var);
+template <typename VarType>
+void SelectedRowsAddToTensor(const VarType& src, VarType* dst);
+
+template <typename VarType>
+void SelectedRowsAddTensor(const VarType& src_selected_rows_var,
+                           const VarType& src_tensor_var,
+                           VarType* dst_tensor_var);
 
 template <typename VarType>
 void TensorAdd(const VarType& src, VarType* dst);
-
-void VariableAdd(const egr::EagerTensor& src, egr::EagerTensor* dst);
 
 }  // namespace imperative
 }  // namespace paddle

@@ -38,7 +38,7 @@ void SetValueCompute(const framework::ExecutionContext& ctx,
   std::vector<int64_t> decrease_axes = {};
   std::vector<int64_t> none_axes = {};
 
-  auto dtype = in->type();
+  auto dtype = framework::TransToProtoVarType(in->dtype());
 
   auto in_dims = in->dims();
   CheckAndUpdateSliceAttrs<int64_t>(in_dims, axes, starts, ends, &steps);
@@ -88,7 +88,8 @@ void SetValueCompute(const framework::ExecutionContext& ctx,
   // set_value is what we want.
   paddle::framework::TensorCopy(*in, place, out);
 
-  Tensor slice_tensor(dtype), pad_tensor(dtype);
+  Tensor slice_tensor(framework::TransToPtenDataType(dtype)),
+      pad_tensor(framework::TransToPtenDataType(dtype));
   slice_tensor.mutable_data<T>(slice_dims, place);
   pad_tensor.mutable_data<T>(in_dims, place);
 
@@ -146,7 +147,7 @@ void SetValueCompute(const framework::ExecutionContext& ctx,
     ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
         ctx, &slice_tensor, value_tensor, -1, SubFunctor<T>(), &slice_tensor);
   } else {
-    Tensor value_t(dtype);
+    Tensor value_t(framework::TransToPtenDataType(dtype));
     auto value_dims = framework::make_ddim(shape);
     CheckIsDimsMatch(slice_dims_for_assign, value_dims);
 
@@ -210,8 +211,9 @@ void Tensor_Conj(const DeviceContext& dev_ctx, const framework::Tensor& tensor,
                  framework::Tensor* out) {
   out->Resize(tensor.dims());
   platform::ForRange<DeviceContext> out_for_range(dev_ctx, tensor.numel());
-  math::ConjFunctor<T> out_functor(tensor.data<T>(), tensor.numel(),
-                                   out->mutable_data<T>(dev_ctx.GetPlace()));
+  pten::funcs::ConjFunctor<T> out_functor(
+      tensor.data<T>(), tensor.numel(),
+      out->mutable_data<T>(dev_ctx.GetPlace()));
   out_for_range(out_functor);
 }
 
@@ -455,7 +457,7 @@ void Unpack_Pivot(const DeviceContext& dev_ctx, const framework::Tensor& Pivot,
   auto Pdim = framework::make_ddim(Pdimvec);
   P->Resize(Pdim);
   auto pdata = P->mutable_data<T>(dev_ctx.GetPlace());
-  math::SetConstant<DeviceContext, T> setter;
+  pten::funcs::SetConstant<DeviceContext, T> setter;
   setter(dev_ctx, P, static_cast<T>(0));
 
   auto batchsize = product(framework::slice_ddim(dims, 0, prank - 1));
@@ -543,7 +545,7 @@ class LUGradKernel : public framework::OpKernel<T> {
     Tensor_Add<DeviceContext, T>(dev_ctx, phi_L, phi_U, &phi);
     psi.Resize(xdims);
     psi.mutable_data<T>(ctx.GetPlace());
-    math::SetConstant<DeviceContext, T> setter;
+    pten::funcs::SetConstant<DeviceContext, T> setter;
     setter(dev_ctx, &psi, static_cast<T>(0));
 
     std::vector<int64_t> axes = {xrank - 2, xrank - 1};

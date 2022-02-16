@@ -25,10 +25,10 @@ limitations under the License. */
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/selected_rows.h"
 #include "paddle/pten/core/tensor_base.h"
 #include "paddle/pten/core/tensor_meta.h"
 #include "paddle/pten/core/tensor_utils.h"
-
 /**
  * [ Why still include the fluid headers? ]
  *
@@ -90,6 +90,9 @@ Tensor::Tensor(const PlaceType &place, const std::vector<int64_t> &shape)
                                           pten::DataLayout::NCHW))))),
       place_{place} {}
 
+Tensor::Tensor(std::shared_ptr<pten::TensorBase> tensor_impl,
+               const std::string &name)
+    : impl_(std::move(tensor_impl)), name_(std::move(name)) {}
 /* Part 2: Dimension, DataType and DataLayout methods */
 
 int64_t Tensor::numel() const { return impl_->numel(); }
@@ -129,7 +132,9 @@ DataLayout Tensor::layout() const { return impl_->layout(); }
 bool Tensor::is_dense_tensor() const {
   return pten::DenseTensor::classof(impl_.get());
 }
-
+bool Tensor::is_selected_rows() const {
+  return pten::SelectedRows::classof(impl_.get());
+}
 /* Part 3: Device and Backend methods */
 
 PlaceType Tensor::place() const {
@@ -219,8 +224,11 @@ Tensor::mutable_data<paddle::platform::float16>(const PlaceType &place);
 template <typename T>
 const T *Tensor::data() const {
   if (is_dense_tensor()) {
-    return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->mutable_data<T>(
-        ConvertExtPlaceToInnerPlace(place()));
+    return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->data<T>();
+  } else if (pten::SelectedRows::classof(impl_.get())) {
+    return std::dynamic_pointer_cast<pten::SelectedRows>(impl_)
+        ->value()
+        .data<T>();
   }
   return nullptr;
 }
@@ -377,12 +385,16 @@ void Tensor::reset() { impl_.reset(); }
 Tensor &Tensor::operator=(const Tensor &x) & {
   impl_ = x.impl_;
   autograd_meta_ = x.autograd_meta_;
+  name_ = x.name_;
+  place_ = x.place_;
   return *this;
 }
 
 Tensor &Tensor::operator=(Tensor &&x) & {
   impl_ = std::move(x.impl_);
   autograd_meta_ = std::move(x.autograd_meta_);
+  name_ = std::move(x.name_);
+  place_ = std::move(x.place_);
   return *this;
 }
 

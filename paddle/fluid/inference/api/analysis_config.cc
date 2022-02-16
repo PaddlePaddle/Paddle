@@ -194,6 +194,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(trt_allow_build_at_runtime_);
   CP_MEMBER(collect_shape_range_info_);
   CP_MEMBER(shape_range_info_path_);
+  CP_MEMBER(trt_use_inspector_);
   // Dlnne related
   CP_MEMBER(use_dlnne_);
   CP_MEMBER(dlnne_min_subgraph_size_);
@@ -426,6 +427,8 @@ void AnalysisConfig::EnableTensorRtDLA(int dla_core) {
   trt_use_dla_ = true;
   trt_dla_core_ = dla_core;
 }
+
+void AnalysisConfig::EnableTensorRtInspector() { trt_use_inspector_ = true; }
 
 void AnalysisConfig::Exp_DisableTensorRtOPs(
     const std::vector<std::string> &ops) {

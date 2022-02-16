@@ -70,6 +70,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/npu/enforce_npu.h"
 #include "paddle/fluid/platform/device/npu/npu_stream.h"
 #endif
+
+#include "paddle/fluid/platform/device/device_ext.h"
+#include "paddle/fluid/platform/device/stream.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace Eigen {
@@ -566,7 +569,7 @@ class CUDADeviceContext : public pten::GPUContext {
    *  workspace. Once the handle is destructed, the lock would be released.
    *  CudnnWorkspaceHandle is an RAII object to implement thread-safe
    *  sequential cudnn function calls. */
-  CudnnWorkspaceHandle cudnn_workspace_handle() const;
+  pten::DnnWorkspaceHandle cudnn_workspace_handle() const;
 
   /*! \brief  Return cuda stream in the device context. */
   gpuStream_t stream() const;
@@ -607,6 +610,7 @@ class CUDADeviceContext : public pten::GPUContext {
   // NOTE: Just for compatibility with the past, please delete if there is an
   // elegant way.
   std::unique_ptr<stream::CUDAStream> cuda_stream_;
+  std::unique_ptr<pten::DnnWorkspaceHandle> workspace_{nullptr};
 
   DISABLE_COPY_AND_ASSIGN(CUDADeviceContext);
 };
@@ -811,6 +815,47 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   std::shared_ptr<ExecShape> p_exec_items_;
   std::shared_ptr<std::mutex> p_mutex_;
   bool block_next_cache_clearing_ = false;
+};
+#endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+class CustomDeviceContext : public DeviceContext {
+ public:
+  explicit CustomDeviceContext(CustomPlace place);
+  virtual ~CustomDeviceContext();
+
+  const Place& GetPlace() const override;
+  void Wait() const override;
+  Eigen::DefaultDevice* eigen_device() const { return nullptr; }
+  C_Stream stream() const {
+    return reinterpret_cast<C_Stream>(stream_->raw_stream());
+  }
+
+  template <typename Callback>
+  void AddStreamCallback(Callback&& callback) const {
+    return stream_->AddCallback(callback);
+  }
+
+  void WaitStreamCallback() const { return stream_->WaitCallback(); }
+
+ private:
+  std::string device_type_;
+
+  CustomPlace place_;
+
+  std::shared_ptr<platform::stream::Stream> stream_;
+
+  CustomDeviceContext();
+  DISABLE_COPY_AND_ASSIGN(CustomDeviceContext);
+};
+template <>
+struct DefaultDeviceContextType<platform::CustomPlace> {
+  using TYPE = CustomDeviceContext;
+};
+#else
+template <>
+struct DefaultDeviceContextType<platform::CustomPlace> {
+  using TYPE = DeviceContext;
 };
 #endif
 

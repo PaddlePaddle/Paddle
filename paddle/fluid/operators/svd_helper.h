@@ -25,10 +25,10 @@
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/complex_functors.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/complex_functors.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -105,7 +105,8 @@ struct RealMulComplexFunctor {
                                         "The image part of y must to be 0"
                                         "but got [%d]",
                                         y.imag));
-    return platform::complex<Real<T>>(x.real * y.real, x.imag * y.real);
+    return platform::complex<pten::funcs::Real<T>>(x.real * y.real,
+                                                   x.imag * y.real);
   }
 };
 
@@ -232,11 +233,11 @@ static std::vector<int64_t> get_broadcast_batch_portion(
   return batchPortion;
 }
 
-#define DITO_TRANSPOSE_RANK_CASE(N)             \
-  case N: {                                     \
-    math::Transpose<DeviceContext, T, N> trans; \
-    trans(dev_ctx, x, &ret, axis);              \
-    break;                                      \
+#define DITO_TRANSPOSE_RANK_CASE(N)                    \
+  case N: {                                            \
+    pten::funcs::Transpose<DeviceContext, T, N> trans; \
+    trans(dev_ctx, x, &ret, axis);                     \
+    break;                                             \
   }
 
 #define DITO_SLICE_RANK_CASE(N)                      \
@@ -390,11 +391,11 @@ struct DeviceIndependenceTensorOperations {
   // batch_diag for CPU only
   Tensor BatchDiag(const Tensor& x, int batch) {
     Tensor out;
-    auto* x_data = x.data<math::Real<T>>();
+    auto* x_data = x.data<pten::funcs::Real<T>>();
     auto numel = x.numel();
-    auto* out_data = out.mutable_data<math::Real<T>>(
+    auto* out_data = out.mutable_data<pten::funcs::Real<T>>(
         x.dims(), context.GetPlace(),
-        static_cast<size_t>(numel * sizeof(math::Real<T>)));
+        static_cast<size_t>(numel * sizeof(pten::funcs::Real<T>)));
 
     auto x_dims = x.dims();
     int num_dims = x_dims.size();
@@ -526,7 +527,7 @@ struct DeviceIndependenceTensorOperations {
     ret.Resize(framework::make_ddim(shape));
     ret.mutable_data<T>(context.GetPlace());
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    SetConstant<DeviceContext, T>()(dev_ctx, &ret, T(fill_value));
+    pten::funcs::SetConstant<DeviceContext, T>()(dev_ctx, &ret, T(fill_value));
     return ret;
   }
   framework::Tensor Infinits(std::vector<int> shape) {
@@ -654,7 +655,7 @@ struct DeviceIndependenceTensorOperations {
     auto* out_data = out.mutable_data<T>(x.dims(), context.GetPlace());
     auto* x_data = x.data<T>();
     auto for_range = GetForRange(x.numel());
-    math::ConjFunctor<T> functor(x_data, x.numel(), out_data);
+    pten::funcs::ConjFunctor<T> functor(x_data, x.numel(), out_data);
     for_range(functor);
     return out;
   }
@@ -662,12 +663,12 @@ struct DeviceIndependenceTensorOperations {
   Tensor Real(const Tensor& x) {
     Tensor out;
     auto numel = x.numel();
-    auto* out_data = out.mutable_data<math::Real<T>>(
+    auto* out_data = out.mutable_data<pten::funcs::Real<T>>(
         x.dims(), context.GetPlace(),
-        static_cast<size_t>(numel * sizeof(math::Real<T>)));
+        static_cast<size_t>(numel * sizeof(pten::funcs::Real<T>)));
     auto* x_data = x.data<T>();
     auto for_range = GetForRange(numel);
-    math::RealFunctor<T> functor(x_data, out_data, numel);
+    pten::funcs::RealFunctor<T> functor(x_data, out_data, numel);
     for_range(functor);
     return out;
   }

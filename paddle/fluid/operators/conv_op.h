@@ -235,8 +235,8 @@ class GemmConvKernel : public framework::OpKernel<T> {
     const std::string data_format = context.Attr<std::string>("data_format");
     const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
 
-    Tensor transformed_input(input->type());
-    Tensor transformed_output(output->type());
+    Tensor transformed_input(input->dtype());
+    Tensor transformed_output(output->dtype());
 
     if (channel_last) {
       ResizeToChannelFirst<DeviceContext, T>(context, input,
@@ -398,8 +398,8 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
 
     const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
 
-    Tensor transformed_input(input->type());
-    Tensor transformed_output_grad(output_grad->type());
+    Tensor transformed_input(input->dtype());
+    Tensor transformed_output_grad(output_grad->dtype());
 
     if (channel_last) {
       ResizeToChannelFirst<DeviceContext, T>(context, input,
@@ -485,12 +485,12 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
       col_matrix.Resize(col_matrix_shape);
     }
 
-    math::SetConstant<DeviceContext, T> set_zero;
+    pten::funcs::SetConstant<DeviceContext, T> set_zero;
     auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
 
     if (input_grad) {
       input_grad->mutable_data<T>(context.GetPlace());
-      Tensor transformed_input_grad(input_grad->type());
+      Tensor transformed_input_grad(input_grad->dtype());
       if (channel_last) {
         ResizeToChannelFirst<DeviceContext, T>(context, input_grad,
                                                &transformed_input_grad);
@@ -616,9 +616,9 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
     const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
 
     // transform Tensor
-    Tensor transformed_X(X->type());
-    Tensor transformed_dY(dY->type());
-    Tensor transformed_ddX(X->type());
+    Tensor transformed_X(X->dtype());
+    Tensor transformed_dY(dY->dtype());
+    Tensor transformed_ddX(X->dtype());
 
     if (channel_last) {
       ResizeToChannelFirst<DeviceContext, T>(ctx, X, &transformed_X);
@@ -692,7 +692,7 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
       col_matrix.Resize(col_matrix_shape);
     }
 
-    math::SetConstant<DeviceContext, T> set_zero;
+    pten::funcs::SetConstant<DeviceContext, T> set_zero;
     auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
 
     // dx convolution double grad:  gemm + col2im(col2vol)
@@ -703,7 +703,7 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
       ddW.ShareDataWith(*ddW_in).Resize(filter_matrix_shape);
       dX->mutable_data<T>(ctx.GetPlace());
 
-      Tensor transformed_dX(dX->type());
+      Tensor transformed_dX(dX->dtype());
 
       if (channel_last) {
         ResizeToChannelFirst<DeviceContext, T>(ctx, dX, &transformed_dX);
@@ -794,7 +794,7 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
     if (ddY) {
       ddY->mutable_data<T>(ctx.GetPlace());
 
-      Tensor transformed_ddY(ddY->type());
+      Tensor transformed_ddY(ddY->dtype());
       if (channel_last) {
         ResizeToChannelFirst<DeviceContext, T>(ctx, ddY, &transformed_ddY);
       } else {
@@ -991,7 +991,7 @@ class DepthwiseConvGradKernel : public framework::OpKernel<T> {
         paddings.erase(paddings.begin() + i + 1);
       }
     }
-    math::SetConstant<DeviceContext, T> set_zero;
+    pten::funcs::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
 
     if (input_grad) {

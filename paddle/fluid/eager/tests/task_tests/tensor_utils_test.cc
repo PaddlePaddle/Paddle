@@ -30,15 +30,15 @@ TEST(TensorUtils, Test) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
-  std::vector<egr::EagerTensor> target_tensors;
+  std::vector<paddle::experimental::Tensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  egr::EagerTensor t = egr_utils_api::CreateTensorWithValue(
+  paddle::experimental::Tensor t = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 5.0 /*value*/, true /*is_leaf*/);
 
-  egr::EagerTensor t_grad = egr_utils_api::CreateTensorWithValue(
+  paddle::experimental::Tensor t_grad = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 1.0 /*value*/, false /*is_leaf*/);
 

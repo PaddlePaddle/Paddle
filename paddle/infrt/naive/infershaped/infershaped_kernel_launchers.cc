@@ -13,11 +13,17 @@
 // limitations under the License.
 
 #include "paddle/infrt/naive/infershaped/infershaped_kernel_launchers.h"
-
 #include "paddle/infrt/naive/infershaped/elementwise_add.h"
 #include "paddle/infrt/naive/infershaped/infershaped_registry.h"
+
 namespace infrt {
 namespace naive {
+
+using ElementwiseAddLauncher =
+    KernelLauncher<decltype(&ElementwiseAdd),
+                   &ElementwiseAdd,
+                   decltype(&ElementwiseAddInferShape),
+                   &ElementwiseAddInferShape>;
 
 void RegisterInferShapeLaunchers(InferShapedKernelRegistry* registry) {
   registry->AddKernel("elementwise_add",

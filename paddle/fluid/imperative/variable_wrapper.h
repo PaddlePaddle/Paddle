@@ -19,6 +19,7 @@
 #include <string>
 #include <utility>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/variable.h"
@@ -169,7 +170,7 @@ class VariableWrapper {
       }
     }
     if (tensor && tensor->IsInitialized()) {
-      return tensor->type();
+      return framework::TransToProtoVarType(tensor->dtype());
     } else {
       VLOG(6) << "The tensor of variable " << name_ << " is not initialized";
 

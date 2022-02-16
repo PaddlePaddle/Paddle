@@ -75,7 +75,8 @@ $$Out = scale*(X + bias)$$
         .SetDefault(true);
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
   }
 };
 

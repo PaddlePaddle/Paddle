@@ -25,6 +25,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cupti.h"
 #endif
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
@@ -234,6 +235,19 @@ void InitDevices(const std::vector<int> devices) {
     if (!custom_kernel_root.empty()) {
       LOG(INFO) << "ENV [CUSTOM_DEVICE_ROOT]=" << custom_kernel_root;
       framework::LoadCustomKernel(custom_kernel_root);
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      if (platform::LoadCustomDevice(custom_kernel_root)) {
+        auto device_types = platform::DeviceManager::GetAllCustomDeviceTypes();
+        for (auto &dev_type : device_types) {
+          VLOG(1) << "Device type: " << dev_type << ", visible devices count: "
+                  << platform::DeviceManager::GetDeviceCount(dev_type);
+          for (size_t i = 0;
+               i < platform::DeviceManager::GetDeviceCount(dev_type); i++) {
+            places.push_back(platform::CustomPlace(dev_type, i));
+          }
+        }
+      }
+#endif
     } else {
       VLOG(3) << "ENV [CUSTOM_DEVICE_ROOT] is empty.";
     }

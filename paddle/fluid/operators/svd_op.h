@@ -17,9 +17,9 @@
 #include <cstdarg>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/complex_functors.h"
 
 namespace paddle {
 namespace operators {
@@ -46,14 +46,14 @@ class SvdCPUKernel : public framework::OpKernel<T> {
     int col_u = full ? rows : k;
     int col_v = full ? cols : k;
     int batches = numel / (rows * cols);
-    auto* U_out = U->mutable_data<math::Real<T>>(
+    auto* U_out = U->mutable_data<pten::funcs::Real<T>>(
         context.GetPlace(),
-        size_t(batches * rows * col_u * sizeof(math::Real<T>)));
-    auto* VH_out = VH->mutable_data<math::Real<T>>(
+        size_t(batches * rows * col_u * sizeof(pten::funcs::Real<T>)));
+    auto* VH_out = VH->mutable_data<pten::funcs::Real<T>>(
         context.GetPlace(),
-        size_t(batches * col_v * cols * sizeof(math::Real<T>)));
-    auto* S_out = S->mutable_data<math::Real<T>>(
-        context.GetPlace(), size_t(batches * k * sizeof(math::Real<T>)));
+        size_t(batches * col_v * cols * sizeof(pten::funcs::Real<T>)));
+    auto* S_out = S->mutable_data<pten::funcs::Real<T>>(
+        context.GetPlace(), size_t(batches * k * sizeof(pten::funcs::Real<T>)));
     /*SVD Use the Eigen Library*/
     math::BatchSvd<T>(x_data, U_out, VH_out, S_out, rows, cols, batches, full);
   }
