@@ -86,7 +86,7 @@ void GroupConcatSplit(Place place, size_t size) {
     tmp.ShareDataWith(*tensor).Resize({static_cast<int64_t>(len)});
     group.dense_tensors_.push_back(std::move(tmp));
     group.all_length_ += len;
-    group.dtype_ = tensor->type();
+    group.dtype_ = framework::TransToProtoVarType(tensor->dtype());
   }
 
   paddle::platform::DeviceContextPool& pool =
@@ -96,7 +96,7 @@ void GroupConcatSplit(Place place, size_t size) {
   {  // concat
     auto* tensor = group.dense_contents_.GetMutable<framework::LoDTensor>();
     tensor->Resize(framework::make_ddim({group.all_length_}))
-        .mutable_data(place, group.dtype_);
+        .mutable_data(place, framework::TransToPtenDataType(group.dtype_));
     group.ConcatTensors(*dev_ctx);
 
     group.DivNRanks(*dev_ctx, 1);
