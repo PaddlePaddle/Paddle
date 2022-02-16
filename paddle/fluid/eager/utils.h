@@ -88,7 +88,7 @@ class EagerUtils {
   /**
    * We have to use autograd_meta and multi_autograd_meta to initialize
    * autograd_meta for tensor, since we can't init it in
-   * egr::EagerTensor's
+   * egr::EagerVariable's
    * constructor (it's abstract class there)
    *
    * **/
@@ -151,34 +151,35 @@ class EagerUtils {
 
   // Intermidate needed remove this once we don't need legacy
   // Inner Method
-  static std::shared_ptr<egr::EagerTensor> TrySyncToVar(
+  static std::shared_ptr<egr::EagerVariable> TrySyncToVar(
       const paddle::experimental::Tensor& tensor);
   // Basic Input
-  static std::vector<std::shared_ptr<egr::EagerTensor>> TrySyncToVars(
+  static std::vector<std::shared_ptr<egr::EagerVariable>> TrySyncToVars(
       const paddle::experimental::Tensor& tensor);
   // Basic Output
-  static std::vector<std::shared_ptr<egr::EagerTensor>> TrySyncToVars(
+  static std::vector<std::shared_ptr<egr::EagerVariable>> TrySyncToVars(
       paddle::experimental::Tensor* tensor);
   // Multi Output
-  static std::vector<std::shared_ptr<egr::EagerTensor>> TrySyncToVars(
+  static std::vector<std::shared_ptr<egr::EagerVariable>> TrySyncToVars(
       const std::vector<paddle::experimental::Tensor*>& tensors);
   // Multi Input
-  static std::vector<std::shared_ptr<egr::EagerTensor>> TrySyncToVars(
+  static std::vector<std::shared_ptr<egr::EagerVariable>> TrySyncToVars(
       const std::vector<paddle::experimental::Tensor>& tensors);
   // Construct empty output
-  static std::vector<std::shared_ptr<EagerTensor>> CreateVars(const size_t num);
+  static std::vector<std::shared_ptr<EagerVariable>> CreateVars(
+      const size_t num);
   // Construct Tensor From var
   static std::vector<paddle::experimental::Tensor> GetOutputs(
-      const std::vector<std::shared_ptr<EagerTensor>>& outs);
+      const std::vector<std::shared_ptr<EagerVariable>>& outs);
   static paddle::experimental::Tensor GetOutput(
-      const std::shared_ptr<EagerTensor>& out);
+      const std::shared_ptr<EagerVariable>& out);
   // Sync Back to origin output Tensor
-  static void OverwriteOutputs(const std::shared_ptr<EagerTensor>& out,
+  static void OverwriteOutputs(const std::shared_ptr<EagerVariable>& out,
                                paddle::experimental::Tensor* tensor);
   static void OverwriteOutputs(const paddle::experimental::Tensor& out,
                                paddle::experimental::Tensor* tensor);
   static void OverwriteOutputs(
-      const std::vector<std::shared_ptr<EagerTensor>>& outs,
+      const std::vector<std::shared_ptr<EagerVariable>>& outs,
       const std::vector<paddle::experimental::Tensor*>& tensors);
   static void OverwriteOutputs(
       const std::vector<paddle::experimental::Tensor>& outs,

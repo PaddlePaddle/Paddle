@@ -167,7 +167,7 @@ TEST(EagerUtils, PassStopGradient) {
 TEST(EagerUtils, TrySyncToVar) {
   paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
   auto tensor = CreateTestCPUTensor(5.0f, ddim);
-  std::vector<std::shared_ptr<egr::EagerTensor>> var_bases = {
+  std::vector<std::shared_ptr<egr::EagerVariable>> var_bases = {
       egr::EagerUtils::TrySyncToVar(tensor)};
 
   paddle::framework::Variable* var = var_bases[0]->MutableVar();
@@ -187,7 +187,7 @@ TEST(EagerUtils, TrySyncToVars) {
   std::vector<paddle::experimental::Tensor> tensors = {
       CreateTestCPUTensor(1.0f, ddim), CreateTestCPUTensor(2.0f, ddim)};
 
-  std::vector<std::shared_ptr<egr::EagerTensor>> var_bases =
+  std::vector<std::shared_ptr<egr::EagerVariable>> var_bases =
       egr::EagerUtils::TrySyncToVars(tensors);
 
   {
@@ -218,7 +218,7 @@ TEST(EagerUtils, TrySyncToVars) {
 
 TEST(EagerUtils, CreateVars) {
   VLOG(6) << "Check CreateVars";
-  std::vector<std::shared_ptr<egr::EagerTensor>> outs =
+  std::vector<std::shared_ptr<egr::EagerVariable>> outs =
       egr::EagerUtils::CreateVars(2);
   CHECK_EQ(outs.size(), size_t(2));
   CHECK(outs[0]->Var().IsInitialized() == false);
