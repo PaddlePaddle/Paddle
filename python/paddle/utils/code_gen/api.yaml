@@ -172,7 +172,7 @@
 
 - api : split
   args : (const Tensor& x, const ScalarArray& num_or_sections, const Scalar& axis)
-  output : std::vector<Tensor>
+  output : Tensor[]
   invoke : split_impl(x, num_or_sections, axis)
 
 - api : subtract
