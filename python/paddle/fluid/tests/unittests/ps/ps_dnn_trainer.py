@@ -23,7 +23,6 @@ import yaml, six, copy
 import paddle
 import os
 import warnings
-import logging
 import ast
 import numpy as np
 import struct
@@ -176,6 +175,10 @@ def get_user_defined_strategy(config):
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
         strategy.a_sync_configs = {"heter_worker_device_guard": "gpu"}
+        strategy.pipeline = True
+        strategy.pipeline_configs = {
+            "accumulate_steps": config.get('runner.micro_num')
+        }
     elif sync_mode == "gpubox":
         print("sync_mode = {}".format(sync_mode))
         strategy = paddle.distributed.fleet.DistributedStrategy()
@@ -328,6 +331,7 @@ class DnnTrainer(object):
 
         if self.config['debug_new_minimize'] == 1:
             logger.info("entering run_minimize -- new")
+            self.role_maker._generate_role()  # 必要
             from paddle.distributed.fleet.meta_optimizers.ps_optimizer import ParameterServerOptimizer
             ps_optimizer = ParameterServerOptimizer(inner_optimizer)
             ps_optimizer._set_basic_info(loss, self.role_maker, inner_optimizer,

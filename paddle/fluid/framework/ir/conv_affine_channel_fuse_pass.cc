@@ -16,6 +16,7 @@
 
 #include <cmath>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace pten {
@@ -216,7 +217,8 @@ void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
         patterns::PDNodeName(name_scope_, "eltwise_y_in"));
     // Set shape && datatype manually
     eltwise_y_in_desc.SetShape(framework::vectorize(ac_bias_tensor->dims()));
-    eltwise_y_in_desc.SetDataType(ac_bias_tensor->type());
+    eltwise_y_in_desc.SetDataType(
+        framework::TransToProtoVarType(ac_bias_tensor->dtype()));
     eltwise_y_in_desc.SetLoDLevel(ac_bias->Var()->GetLoDLevel());
     eltwise_y_in_desc.SetPersistable(true);
 

@@ -177,7 +177,7 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
     // "rwork" only used for complex inputs and "gelsy/gelsd/gelss" drivers
     Tensor rwork;
     ValueType* rwork_data = nullptr;
-    if (framework::IsComplexType(x.type()) &&
+    if (framework::IsComplexType(framework::TransToProtoVarType(x.dtype())) &&
         driver != LapackDriverType::Gels) {
       int rwork_len = 0;
       if (driver == LapackDriverType::Gelsy) {

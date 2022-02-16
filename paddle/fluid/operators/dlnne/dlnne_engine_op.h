@@ -196,7 +196,7 @@ class DlnneEngineOp : public framework::OperatorBase {
       index++;
       int64_t data_bytes;
       int32_t dtype;
-      auto type = t.type();
+      auto type = framework::TransToProtoVarType(t.dtype());
       data_bytes = 1;
       void *buffer = nullptr;
       if (type == framework::proto::VarType::FP32) {
