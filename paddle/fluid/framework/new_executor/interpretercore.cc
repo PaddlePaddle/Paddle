@@ -16,8 +16,8 @@
 #include <unordered_set>
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
-#include "paddle/fluid/framework/new_executor/garbage_collector/interpretercore_event_garbage_collector.h"
-#include "paddle/fluid/framework/new_executor/garbage_collector/interpretercore_fast_garbage_collector.h"
+#include "paddle/fluid/framework/new_executor/garbage_collector/event_garbage_collector.h"
+#include "paddle/fluid/framework/new_executor/garbage_collector/fast_garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/os_info.h"
@@ -723,12 +723,12 @@ void InterpreterCore::CheckGC(const Instruction& instr) {
 
       } else {
         static_cast<InterpreterCoreEventGarbageCollector*>(gc_.get())->Add(
-            var_scope.Var(var_id), gc_event_.at(instr_id),
+            var_scope.Var(var_id), &gc_event_.at(instr_id),
             &instr.DeviceContext());
       }
 #else
       static_cast<InterpreterCoreEventGarbageCollector*>(gc_.get())->Add(
-          var_scope.Var(var_id), gc_event_.at(instr_id),
+          var_scope.Var(var_id), &gc_event_.at(instr_id),
           &instr.DeviceContext());
 #endif
     }
