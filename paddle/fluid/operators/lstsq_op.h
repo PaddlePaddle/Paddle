@@ -39,7 +39,7 @@ enum class LapackDriverType : int { Gels, Gelsd, Gelsy, Gelss };
 using DDim = framework::DDim;
 static DDim UDDim(const DDim& x_dim) {
   auto x_vec = vectorize(x_dim);
-  return framework::make_ddim(x_vec);
+  return pten::make_ddim(x_vec);
 }
 
 template <typename DeviceContext, typename T>
@@ -142,7 +142,7 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
     Tensor jpvt;
     int* jpvt_data = nullptr;
     if (driver == LapackDriverType::Gelsy) {
-      jpvt.Resize(framework::make_ddim({std::max<int>(1, n)}));
+      jpvt.Resize(pten::make_ddim({std::max<int>(1, n)}));
       jpvt_data = jpvt.mutable_data<int>(context.GetPlace());
     }
 
@@ -171,7 +171,7 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
 
     lwork = std::max<int>(1, static_cast<int>(math::Real<T>(wkopt)));
     Tensor work;
-    work.Resize(framework::make_ddim({lwork}));
+    work.Resize(pten::make_ddim({lwork}));
     T* work_data = work.mutable_data<T>(context.GetPlace());
 
     // "rwork" only used for complex inputs and "gelsy/gelsd/gelss" drivers
@@ -187,7 +187,7 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
       } else if (driver == LapackDriverType::Gelsd) {
         rwork_len = std::max<int>(1, rwkopt);
       }
-      rwork.Resize(framework::make_ddim({rwork_len}));
+      rwork.Resize(pten::make_ddim({rwork_len}));
       rwork_data = rwork.mutable_data<ValueType>(context.GetPlace());
     }
 
@@ -195,7 +195,7 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
     Tensor iwork;
     int* iwork_data = nullptr;
     if (driver == LapackDriverType::Gelsd) {
-      iwork.Resize(framework::make_ddim({std::max<int>(1, iwkopt)}));
+      iwork.Resize(pten::make_ddim({std::max<int>(1, iwkopt)}));
       iwork_data = iwork.mutable_data<int>(context.GetPlace());
     }
 

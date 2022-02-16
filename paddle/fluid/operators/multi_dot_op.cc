@@ -45,7 +45,7 @@ inline framework::DDim ComputeAndCheckShape(
 
   // If the first tensor is 1D of size n view it as a row vector (1, n)
   if (first_dim.size() == 1) {
-    first_dim = framework::make_ddim({1, static_cast<int>(first_dim[0])});
+    first_dim = pten::make_ddim({1, static_cast<int>(first_dim[0])});
     is_vector = true;
   }
 
@@ -58,12 +58,12 @@ inline framework::DDim ComputeAndCheckShape(
 
   // If the last tensor is 1D of size n view it as a column vector (n, 1)
   if (last_dim.size() == 1) {
-    last_dim = framework::make_ddim({static_cast<int>(last_dim[0]), 1});
-    out_dim = is_vector ? framework::make_ddim({1})
-                        : framework::make_ddim({first_dim[0]});
+    last_dim = pten::make_ddim({static_cast<int>(last_dim[0]), 1});
+    out_dim =
+        is_vector ? pten::make_ddim({1}) : pten::make_ddim({first_dim[0]});
   } else {
-    out_dim = is_vector ? framework::make_ddim({last_dim[1]})
-                        : framework::make_ddim({first_dim[0], last_dim[1]});
+    out_dim = is_vector ? pten::make_ddim({last_dim[1]})
+                        : pten::make_ddim({first_dim[0], last_dim[1]});
   }
 
   auto width = first_dim[1];
@@ -98,7 +98,7 @@ inline framework::Tensor MatMul(const framework::ExecutionContext& ctx,
   auto blas = math::GetBlas<DeviceContext, T>(ctx);
 
   framework::Tensor matrix_c;
-  framework::DDim c_dim = framework::make_ddim({a_dim[0], b_dim[1]});
+  framework::DDim c_dim = pten::make_ddim({a_dim[0], b_dim[1]});
   matrix_c.Resize(c_dim);
   matrix_c.mutable_data<T>(place);
 
@@ -210,9 +210,9 @@ inline void GetDims(const std::vector<const framework::Tensor*>& ins,
   for (size_t i = 0; i < n; i++) {
     (*ins_dims)[i] = ins[i]->dims();
     if (i == 0 && (*ins_dims)[i].size() == 1) {
-      (*ins_dims)[i] = framework::make_ddim({1, (*ins_dims)[i][0]});
+      (*ins_dims)[i] = pten::make_ddim({1, (*ins_dims)[i][0]});
     } else if (i == n - 1 && (*ins_dims)[i].size() == 1) {
-      (*ins_dims)[i] = framework::make_ddim({(*ins_dims)[i][0], 1});
+      (*ins_dims)[i] = pten::make_ddim({(*ins_dims)[i][0], 1});
     }
   }
 }
@@ -293,7 +293,7 @@ class MultiDotKernel : public framework::OpKernel<T> {
       if (cost1 < cost2) {
         framework::Tensor tmp_out;
         tmp_out.mutable_data<T>(place, Ma * Nb * sizeof(T));
-        framework::DDim tmp_dim = framework::make_ddim({Ma, Nb});
+        framework::DDim tmp_dim = pten::make_ddim({Ma, Nb});
         blas.MatMul(*ins[0], mat_dim_a, *ins[1], mat_dim_b, scale, &tmp_out,
                     T(0));
         auto mat_dim_tmp = math::CreateMatrixDescriptor(tmp_dim, 0, false);
@@ -301,7 +301,7 @@ class MultiDotKernel : public framework::OpKernel<T> {
       } else {
         framework::Tensor tmp_out;
         tmp_out.mutable_data<T>(place, Ka * Nc * sizeof(T));
-        framework::DDim tmp_dim = framework::make_ddim({Ka, Nc});
+        framework::DDim tmp_dim = pten::make_ddim({Ka, Nc});
         blas.MatMul(*ins[1], mat_dim_b, *ins[2], mat_dim_c, scale, &tmp_out,
                     T(0));
         auto mat_dim_tmp = math::CreateMatrixDescriptor(tmp_dim, 0, false);
@@ -446,14 +446,14 @@ class MultiDotGradKernel : public framework::OpKernel<T> {
 
     framework::DDim dout_dim = dout.dims();
     if (ins[0]->dims().size() == 1 && ins[n - 1]->dims().size() == 1) {
-      dout_dim = framework::make_ddim({1, 1});
+      dout_dim = pten::make_ddim({1, 1});
     } else if (ins[0]->dims().size() == 1) {
       if (dout_dim.size() == 1) {
-        dout_dim = framework::make_ddim({1, dout_dim[0]});
+        dout_dim = pten::make_ddim({1, dout_dim[0]});
       }
     } else if (ins[n - 1]->dims().size() == 1) {
       if (dout_dim.size() == 1) {
-        dout_dim = framework::make_ddim({dout_dim[0], 1});
+        dout_dim = pten::make_ddim({dout_dim[0], 1});
       }
     }
 

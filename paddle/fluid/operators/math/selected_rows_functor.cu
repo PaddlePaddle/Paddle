@@ -344,8 +344,7 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
     out.set_rows(merge_rows);
     out.set_height(input.height());
     out.mutable_value()->mutable_data<T>(
-        framework::make_ddim(
-            {static_cast<int64_t>(merge_rows.size()), input_width}),
+        pten::make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}),
         context.GetPlace());
 
     pten::funcs::SetConstant<platform::CUDADeviceContext, T> constant_functor;
@@ -407,8 +406,7 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
     out.set_rows(merge_rows);
     out.set_height(input_height);
     out.mutable_value()->mutable_data<T>(
-        framework::make_ddim(
-            {static_cast<int64_t>(merge_rows.size()), input_width}),
+        pten::make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}),
         context.GetPlace());
 
     pten::funcs::SetConstant<platform::CUDADeviceContext, T> constant_functor;

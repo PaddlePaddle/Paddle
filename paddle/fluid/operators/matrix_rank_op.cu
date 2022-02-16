@@ -29,15 +29,15 @@ namespace paddle {
 namespace operators {
 namespace detail {
 DDim GetUDDim(const DDim& x_dim, int k) {
-  auto x_vec = framework::vectorize(x_dim);
+  auto x_vec = pten::vectorize(x_dim);
   x_vec[x_vec.size() - 1] = k;
-  return framework::make_ddim(x_vec);
+  return pten::make_ddim(x_vec);
 }
 
 DDim GetVHDDim(const DDim& x_dim, int k) {
-  auto x_vec = framework::vectorize(x_dim);
+  auto x_vec = pten::vectorize(x_dim);
   x_vec[x_vec.size() - 2] = k;
-  return framework::make_ddim(x_vec);
+  return pten::make_ddim(x_vec);
 }
 }  // namespace detail
 
@@ -109,8 +109,8 @@ class MatrixRankGPUKernel : public framework::OpKernel<T> {
     auto dito_T =
         math::DeviceIndependenceTensorOperations<platform::CUDADeviceContext,
                                                  T>(context);
-    std::vector<int> max_eigenvalue_shape = framework::vectorize<int>(
-        detail::RemoveLastDim(eigenvalue_tensor.dims()));
+    std::vector<int> max_eigenvalue_shape =
+        pten::vectorize<int>(detail::RemoveLastDim(eigenvalue_tensor.dims()));
     Tensor max_eigenvalue_tensor =
         dito_T.ReduceMax(eigenvalue_tensor, max_eigenvalue_shape);
     Tensor temp_rtol_tensor;
@@ -136,7 +136,7 @@ class MatrixRankGPUKernel : public framework::OpKernel<T> {
     auto dito_int =
         math::DeviceIndependenceTensorOperations<platform::CUDADeviceContext,
                                                  int64_t>(context);
-    std::vector<int> result_shape = framework::vectorize<int>(dim_out);
+    std::vector<int> result_shape = pten::vectorize<int>(dim_out);
     Tensor result = dito_int.ReduceSum(compare_result, result_shape);
     out->ShareDataWith(result);
   }

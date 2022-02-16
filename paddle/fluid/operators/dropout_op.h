@@ -52,7 +52,7 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
     if (!context.Attr<bool>("is_test")) {
       auto* mask = context.Output<Tensor>("Mask");
       auto* mask_data = mask->mutable_data<uint8_t>(context.GetPlace());
-      size_t size = framework::product(mask->dims());
+      size_t size = pten::product(mask->dims());
 
       // Special case when dropout_prob is 1.0
       if (dropout_prob == 1.0f) {

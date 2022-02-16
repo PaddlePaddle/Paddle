@@ -78,7 +78,7 @@ Tensor::Tensor(const PlaceType &place)
           std::move(pten::make_intrusive<SharedStorage>(
               ConvertExtPlaceToInnerPlace(place))),
           std::move(pten::DenseTensorMeta(pten::DataType::UNDEFINED,
-                                          pten::framework::make_ddim({}),
+                                          pten::make_ddim({}),
                                           pten::DataLayout::NCHW))))),
       place_{place} {}
 
@@ -87,7 +87,7 @@ Tensor::Tensor(const PlaceType &place, const std::vector<int64_t> &shape)
           std::move(pten::make_intrusive<SharedStorage>(
               ConvertExtPlaceToInnerPlace(place))),
           std::move(pten::DenseTensorMeta(pten::DataType::UNDEFINED,
-                                          pten::framework::make_ddim(shape),
+                                          pten::make_ddim(shape),
                                           pten::DataLayout::NCHW))))),
       place_{place} {}
 
@@ -100,10 +100,10 @@ int64_t Tensor::numel() const { return impl_->numel(); }
 
 int64_t Tensor::size() const { return impl_->numel(); }
 
-pten::framework::DDim Tensor::dims() const { return impl_->dims(); }
+pten::DDim Tensor::dims() const { return impl_->dims(); }
 
 std::vector<int64_t> Tensor::shape() const {
-  return pten::framework::vectorize<int64_t>(impl_->dims());
+  return pten::vectorize<int64_t>(impl_->dims());
 }
 
 void Tensor::reshape(const std::vector<int64_t> &shape) {
@@ -117,7 +117,7 @@ void Tensor::reshape(const std::vector<int64_t> &shape) {
                   "the tensor to remain constant.";
   if (is_dense_tensor()) {
     std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->set_meta(
-        pten::DenseTensorMeta(dtype(), pten::framework::make_ddim(shape)));
+        pten::DenseTensorMeta(dtype(), pten::make_ddim(shape)));
   } else {
     PADDLE_THROW(pten::errors::Unimplemented(
         "Only support reshape operation on DenseTensor now."));

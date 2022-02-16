@@ -103,7 +103,7 @@ struct DotGradFunction<DeviceContext,
       auto* data_dx = ctx.template Alloc<T>(tensor_dx);
       const auto* data_y = tensor_y->data<T>();
       const DDim& dim = tensor_x->dims();
-      size_t N = static_cast<size_t>(pten::framework::product(dim));
+      size_t N = static_cast<size_t>(pten::product(dim));
 
       auto step = dim[dim.size() - 1];
 
@@ -118,7 +118,7 @@ struct DotGradFunction<DeviceContext,
       auto* data_dy = ctx.template Alloc<T>(tensor_dy);
       const auto* data_x = tensor_x->data<T>();
       const DDim& dim = tensor_y->dims();
-      size_t N = static_cast<size_t>(pten::framework::product(dim));
+      size_t N = static_cast<size_t>(pten::product(dim));
 
       auto step = dim[dim.size() - 1];
 

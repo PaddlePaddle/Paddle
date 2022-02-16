@@ -78,12 +78,12 @@ TEST(TestHooks, TestGradVarLeafBackwardHook) {
   auto* x_tensor = x->MutableVar()->GetMutable<framework::LoDTensor>();
   auto* y_tensor = y->MutableVar()->GetMutable<framework::LoDTensor>();
 
-  x_tensor->Resize(framework::make_ddim(x_dims));
+  x_tensor->Resize(pten::make_ddim(x_dims));
   auto* mutable_x = x_tensor->mutable_data<float>(place);
   memory::Copy(place, mutable_x, place, src_data.data(),
                sizeof(float) * src_data.size());
 
-  y_tensor->Resize(framework::make_ddim(y_dims));
+  y_tensor->Resize(pten::make_ddim(y_dims));
   auto* mutable_y = y_tensor->mutable_data<float>(place);
   memory::Copy(place, mutable_y, place, src_data.data(),
                sizeof(float) * src_data.size());
@@ -162,17 +162,17 @@ void GradVarLeafBackwardHookWithGradAccmulatedTest() {
   auto* y_tensor = y->MutableVar()->GetMutable<framework::LoDTensor>();
   auto* z_tensor = z->MutableVar()->GetMutable<framework::LoDTensor>();
 
-  x_tensor->Resize(framework::make_ddim(x_dims));
+  x_tensor->Resize(pten::make_ddim(x_dims));
   auto* mutable_x = x_tensor->mutable_data<float>(place);
   memory::Copy(place, mutable_x, place, src_data.data(),
                sizeof(float) * src_data.size());
 
-  y_tensor->Resize(framework::make_ddim(y_dims));
+  y_tensor->Resize(pten::make_ddim(y_dims));
   auto* mutable_y = y_tensor->mutable_data<float>(place);
   memory::Copy(place, mutable_y, place, src_data.data(),
                sizeof(float) * src_data.size());
 
-  z_tensor->Resize(framework::make_ddim(z_dims));
+  z_tensor->Resize(pten::make_ddim(z_dims));
   auto* mutable_z = z_tensor->mutable_data<float>(place);
   memory::Copy(place, mutable_z, place, src_data.data(),
                sizeof(float) * src_data.size());

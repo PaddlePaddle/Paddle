@@ -192,7 +192,7 @@ class LayerNormKernel : public framework::OpKernel<T> {
     mean->mutable_data<T>(ctx.GetPlace());
     var->mutable_data<T>(ctx.GetPlace());
 
-    auto matrix_dim = framework::flatten_to_2d(x_dims, begin_norm_axis);
+    auto matrix_dim = pten::flatten_to_2d(x_dims, begin_norm_axis);
     int left = static_cast<int>(matrix_dim[0]);
     int right = static_cast<int>(matrix_dim[1]);
     framework::DDim matrix_shape({left, right});
@@ -282,7 +282,7 @@ class LayerNormGradKernel : public framework::OpKernel<T> {
     auto* d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
 
     const auto& x_dims = x.dims();
-    auto matrix_dim = framework::flatten_to_2d(x_dims, begin_norm_axis);
+    auto matrix_dim = pten::flatten_to_2d(x_dims, begin_norm_axis);
     int left = static_cast<int>(matrix_dim[0]);
     int right = static_cast<int>(matrix_dim[1]);
     framework::DDim matrix_shape({left, right});

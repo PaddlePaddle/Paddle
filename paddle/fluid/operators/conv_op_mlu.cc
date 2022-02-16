@@ -47,12 +47,12 @@ class MLUConvOpKernel : public framework::OpKernel<T> {
     framework::DDim filter_data_dims;
 
     if (channel_last) {
-      in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
+      in_data_dims = pten::slice_ddim(in_dims, 1, in_dims.size() - 1);
     } else {
-      in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+      in_data_dims = pten::slice_ddim(in_dims, 2, in_dims.size());
     }
-    filter_data_dims = framework::slice_ddim(filter_dims, 2, in_dims.size());
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+    filter_data_dims = pten::slice_ddim(filter_dims, 2, in_dims.size());
+    std::vector<int> ksize = pten::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 
@@ -136,13 +136,13 @@ class MLUConvGradOpKernel : public framework::OpKernel<T> {
     framework::DDim filter_data_dims;
 
     if (channel_last) {
-      in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
+      in_data_dims = pten::slice_ddim(in_dims, 1, in_dims.size() - 1);
     } else {
-      in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+      in_data_dims = pten::slice_ddim(in_dims, 2, in_dims.size());
     }
-    filter_data_dims = framework::slice_ddim(filter_dims, 2, in_dims.size());
+    filter_data_dims = pten::slice_ddim(filter_dims, 2, in_dims.size());
 
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+    std::vector<int> ksize = pten::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 

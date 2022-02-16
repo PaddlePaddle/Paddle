@@ -180,7 +180,7 @@ class QrGradKernel : public framework::OpKernel<T> {
       if (ctx.HasInput(framework::GradVarName("R"))) {
         R_term = dito.Matmul(R, dito.Transpose(dR));
       } else {
-        R_term = dito.Fill(framework::vectorize<int>(R.dims()), 0);
+        R_term = dito.Fill(pten::vectorize<int>(R.dims()), 0);
       }
 
       // dQ^H * Q
@@ -188,7 +188,7 @@ class QrGradKernel : public framework::OpKernel<T> {
       if (ctx.HasInput(framework::GradVarName("Q"))) {
         Q_term = dito.Matmul(dito.Transpose(dQ), Q);
       } else {
-        Q_term = dito.Fill(framework::vectorize<int>(R.dims()), 0);
+        Q_term = dito.Fill(pten::vectorize<int>(R.dims()), 0);
       }
 
       framework::Tensor M_tmp1 = dito.Sub(R_term, Q_term);
@@ -234,8 +234,8 @@ class QrGradKernel : public framework::OpKernel<T> {
         // Y * dV^H
         dQ_prime = dito.Matmul(Y, dito.Transpose(dV));
       } else {
-        dV = dito.Fill(framework::vectorize<int>(Y.dims()), 0);
-        dQ_prime = dito.Fill(framework::vectorize<int>(Q.dims()), 0);
+        dV = dito.Fill(pten::vectorize<int>(Y.dims()), 0);
+        dQ_prime = dito.Fill(pten::vectorize<int>(Q.dims()), 0);
       }
 
       if (ctx.HasInput(framework::GradVarName("Q"))) {

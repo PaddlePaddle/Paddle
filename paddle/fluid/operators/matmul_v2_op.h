@@ -79,7 +79,7 @@ static framework::DDim RowMatrixFromVector(const framework::DDim& x_dim) {
   if (x_dim.size() > 1) {
     return x_dim;
   }
-  return framework::make_ddim({1, x_dim[0]});
+  return pten::make_ddim({1, x_dim[0]});
 }
 
 /**
@@ -90,7 +90,7 @@ static framework::DDim ColumnMatrixFromVector(const framework::DDim& y_dim) {
   if (y_dim.size() > 1) {
     return y_dim;
   }
-  return framework::make_ddim({y_dim[0], 1});
+  return pten::make_ddim({y_dim[0], 1});
 }
 
 /**

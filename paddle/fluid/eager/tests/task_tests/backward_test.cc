@@ -37,7 +37,7 @@ TEST(Backward, SingleNodeEmptyGrad) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = pten::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
   paddle::experimental::Tensor target_tensor =
@@ -91,7 +91,7 @@ TEST(Backward, SingleNodeCustomGrad) {
 
   // Prepare Inputs
   std::vector<paddle::experimental::Tensor> target_tensors;
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = pten::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
   paddle::experimental::Tensor tensor = egr_utils_api::CreateTensorWithValue(
@@ -162,7 +162,7 @@ TEST(Backward, LinearNodes) {
 
   // Prepare Inputs
   std::vector<paddle::experimental::Tensor> target_tensors;
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = pten::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
   paddle::experimental::Tensor tensor = egr_utils_api::CreateTensorWithValue(
@@ -239,7 +239,7 @@ TEST(Backward, WithAccumulation) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = pten::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
   std::vector<paddle::experimental::Tensor> target_tensors;

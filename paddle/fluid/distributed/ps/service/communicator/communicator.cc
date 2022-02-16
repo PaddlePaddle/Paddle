@@ -852,7 +852,7 @@ bool AsyncCommunicator::Check(const std::vector<std::string> &var_tables) {
     VLOG(3) << "send step_counter into queue";
     auto tmp_var = std::make_shared<Variable>();
     auto *tensor = tmp_var->GetMutable<framework::LoDTensor>();
-    tensor->Resize(framework::make_ddim({1}));
+    tensor->Resize(pten::make_ddim({1}));
     auto *out_d = tensor->mutable_data<int64_t>(platform::CPUPlace());
     out_d[0] = 1;
     send_varname_to_queue_[table_name]->Push(tmp_var);

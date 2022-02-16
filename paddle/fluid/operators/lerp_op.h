@@ -34,7 +34,7 @@ static framework::DDim ExtendDims2Rank(const framework::DDim& in_dims,
   for (int i = in_dims.size() - 1, j = rank - 1; i >= 0; --i, --j) {
     shapes[j] = in_dims[i];
   }
-  return framework::make_ddim(shapes);
+  return pten::make_ddim(shapes);
 }
 
 template <size_t D>

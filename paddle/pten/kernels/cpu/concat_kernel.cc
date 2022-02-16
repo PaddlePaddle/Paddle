@@ -83,8 +83,8 @@ void ConcatKernel(const Context& dev_ctx,
       if (in.numel() == 0UL) {
         continue;
       }
-      auto in_stride = paddle::framework::stride_numel(in.dims());
-      auto out_stride = paddle::framework::stride_numel(out->dims());
+      auto in_stride = pten::stride_numel(in.dims());
+      auto out_stride = pten::stride_numel(out->dims());
       paddle::operators::StridedNumelCopyWithAxis<T>(
           dev_ctx,
           axis,

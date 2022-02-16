@@ -26,7 +26,7 @@ namespace pten {
 
 class TensorBase {
  public:
-  using DDim = pten::framework::DDim;
+  using DDim = pten::DDim;
 
   virtual ~TensorBase() = default;
 

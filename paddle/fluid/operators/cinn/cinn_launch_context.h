@@ -22,9 +22,9 @@
 #include "cinn/hlir/framework/scope.h"
 #include "cinn/hlir/framework/tensor.h"
 #include "cinn/runtime/cinn_runtime.h"
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/pten/core/ddim.h"
 
 namespace paddle {
 namespace operators {

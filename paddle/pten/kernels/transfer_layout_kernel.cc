@@ -61,7 +61,7 @@ void TransferLayoutKernel(const Context& dev_ctx,
     dst_dim[i] = src_dim[axis[i]];
   }
 
-  out->ResizeAndAllocate(framework::make_ddim(dst_dim));
+  out->ResizeAndAllocate(pten::make_ddim(dst_dim));
 
   PD_VISIT_ALL_TYPES(x.dtype(), "CastDataLayout", ([&] {
                        CastDataLayout<data_t, Context>(dev_ctx, x, axis, out);

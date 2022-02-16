@@ -38,10 +38,10 @@ enum ElementwiseType { kUnary = 1, kBinary = 2, kTernary = 3, kAny = -1 };
    for supporting multiple-output feature in elementwise system.*/
 template <class T, int Num>
 using ConditionalT =
-    typename std::conditional_t<Num == 1, T, pten::framework::Array<T, Num>>;
+    typename std::conditional_t<Num == 1, T, pten::Array<T, Num>>;
 
 namespace funcs {
-using DDim = pten::framework::DDim;
+using DDim = pten::DDim;
 
 template <typename T, typename DX_OP, typename DY_OP, typename Tout = T>
 struct ElemwiseGradNoBroadcast {
@@ -305,9 +305,9 @@ inline DDim trim_trailing_singular_dims(const DDim &dims) {
     trim_dims[i] = dims[i];
   }
   if (trim_dims.size() == 0) {
-    return DDim(pten::framework::make_dim());
+    return DDim(pten::make_dim());
   }
-  DDim actual_dims = pten::framework::make_ddim(trim_dims);
+  DDim actual_dims = pten::make_ddim(trim_dims);
   return actual_dims;
 }
 
@@ -363,8 +363,8 @@ inline void get_mid_dims(const DDim &x_dims,
 }
 
 // for broadcast backwards
-static inline std::vector<int> GetReduceDim(const paddle::framework::DDim &in,
-                                            const paddle::framework::DDim &out,
+static inline std::vector<int> GetReduceDim(const paddle::DDim &in,
+                                            const paddle::DDim &out,
                                             int axis) {
   axis =
       (axis == -1 ? std::abs(static_cast<int>(out.size() - in.size())) : axis);
@@ -416,7 +416,7 @@ void ElemwiseGradComputeNoBroadcast(const DeviceContext &dev_ctx,
                                     DenseTensor *dy,
                                     DX_OP dx_op,
                                     DY_OP dy_op) {
-  size_t N = static_cast<size_t>(pten::framework::product(x_dim));
+  size_t N = static_cast<size_t>(pten::product(x_dim));
   paddle::platform::ForRange<DeviceContext> for_range(dev_ctx, N);
   for_range(ElemwiseGradNoBroadcast<T, DX_OP, DY_OP, Tout>{
       x.data<T>(),
@@ -614,7 +614,7 @@ struct SameDimsElementwisePrimitiveCaller {
 template <typename OutT, int VecSize, bool IsBoundary, int NumOuts>
 struct ElementwiseWriteDataCaller {
   __device__ __forceinline__ void operator()(
-      pten::framework::Array<_ptr_ OutT *, NumOuts> outs,
+      pten::Array<_ptr_ OutT *, NumOuts> outs,
       ConditionalT<OutT, NumOuts> src[VecSize],
       int block_offset,
       int num) {
@@ -636,11 +636,10 @@ struct ElementwiseWriteDataCaller {
 
 template <typename OutT, int VecSize, bool IsBoundary>
 struct ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, 1> {
-  __device__ __forceinline__ void operator()(
-      pten::framework::Array<_ptr_ OutT *, 1> outs,
-      OutT src[VecSize],
-      int block_offset,
-      int num) {
+  __device__ __forceinline__ void operator()(pten::Array<_ptr_ OutT *, 1> outs,
+                                             OutT src[VecSize],
+                                             int block_offset,
+                                             int num) {
     kps::WriteData<OutT, VecSize, 1, 1, IsBoundary>(
         outs[0] + block_offset, src, num);
   }
@@ -654,8 +653,8 @@ template <typename OutT,
           bool IsBoundary>
 __device__ void VectorizedElementwiseKernelImpl(
 
-    const pten::framework::Array<const _ptr_ char *__restrict__, Arity> &in,
-    pten::framework::Array<_ptr_ OutT *, NumOuts> outs,
+    const pten::Array<const _ptr_ char *__restrict__, Arity> &in,
+    pten::Array<_ptr_ OutT *, NumOuts> outs,
     int num,
     int data_offset,
     Functor func) {
@@ -679,8 +678,8 @@ __device__ void VectorizedElementwiseKernelImpl(
 
 template <typename OutT, typename Functor, int Arity, int NumOuts, int VecSize>
 __global__ void VectorizedElementwiseKernel(
-    pten::framework::Array<const _ptr_ char *__restrict__, Arity> ins,
-    pten::framework::Array<_ptr_ OutT *, NumOuts> outs,
+    pten::Array<const _ptr_ char *__restrict__, Arity> ins,
+    pten::Array<_ptr_ OutT *, NumOuts> outs,
     int size,
     int main_offset,
     Functor func) {
@@ -714,8 +713,8 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
                            Functor func) {
   auto numel =
       (*outs)[0]->numel();  // To avoid running errors when ins.size()== 0
-  pten::framework::Array<const _ptr_ char *__restrict__, Arity> ins_data;
-  pten::framework::Array<_ptr_ OutT *, NumOuts> outs_data;
+  pten::Array<const _ptr_ char *__restrict__, Arity> ins_data;
+  pten::Array<_ptr_ OutT *, NumOuts> outs_data;
 
   Unroller<InputSetter, VecSize, Arity>::step(ins, &ins_data);
   for (int i = 0; i < NumOuts; ++i) {

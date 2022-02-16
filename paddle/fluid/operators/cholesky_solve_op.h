@@ -99,7 +99,7 @@ void cholesky_solve_fn(const paddle::framework::ExecutionContext &ctx,
 
   framework::Tensor tmp;
   std::vector<int> tmpdim(1, batchsize);
-  tmp.Resize(framework::make_ddim(tmpdim));
+  tmp.Resize(pten::make_ddim(tmpdim));
   int *info = tmp.mutable_data<int>(dev_ctx.GetPlace());
 
   CholeskySolveFunctor<DeviceContext, T> functor;

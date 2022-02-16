@@ -94,7 +94,7 @@ void HeterWrapper::SerializeToReq(const std::string& varname, Scope* scope,
   req_var->set_data_type(static_cast<VariableMessage::Type>(
       framework::TransToProtoVarType(tensor->dtype())));
 
-  for (auto& dim : framework::vectorize(tensor->dims())) {
+  for (auto& dim : pten::vectorize(tensor->dims())) {
     req_var->add_dims(dim);
   }
   const framework::LoD lod = tensor->lod();

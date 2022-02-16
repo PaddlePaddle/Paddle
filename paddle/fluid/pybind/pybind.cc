@@ -459,7 +459,7 @@ static void inline CreateVariableIfNotExit(
         Py_DECREF(py_var_desc);
         var = const_cast<framework::Scope *>(&scope)->Var(para_name);
         auto *tensor_temp = var->GetMutable<framework::LoDTensor>();
-        tensor_temp->Resize(framework::make_ddim(var_desc.GetShape()));
+        tensor_temp->Resize(pten::make_ddim(var_desc.GetShape()));
         tensor_temp->mutable_data(
             exe->GetPlace(),
             framework::TransToPtenDataType(var_desc.GetDataType()));

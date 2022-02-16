@@ -20,7 +20,7 @@ using dnnl::memory;
 using dnnl::primitive;
 using paddle::framework::DataLayout;
 using paddle::framework::ExecutionContext;
-using paddle::framework::vectorize;
+using pten::vectorize;
 using paddle::platform::GetMKLDNNFormat;
 using paddle::platform::MKLDNNFormatForSize;
 using paddle::platform::MKLDNNDeviceContext;
@@ -93,14 +93,14 @@ constexpr bool IsBfloat16() {
 // original x_dim is returned.
 static paddle::framework::DDim RowMatrixDimsFromVector(
     const paddle::framework::DDim& x_dim) {
-  return x_dim.size() > 1 ? x_dim : paddle::framework::make_ddim({1, x_dim[0]});
+  return x_dim.size() > 1 ? x_dim : pten::make_ddim({1, x_dim[0]});
 }
 
 // Get column matrix shape from a vector shape. If the ran of y_dim > 1, the
 // original y_dim is returned.
 static paddle::framework::DDim ColumnMatrixDimsFromVector(
     const paddle::framework::DDim& y_dim) {
-  return y_dim.size() > 1 ? y_dim : paddle::framework::make_ddim({y_dim[0], 1});
+  return y_dim.size() > 1 ? y_dim : pten::make_ddim({y_dim[0], 1});
 }
 
 template <typename XT, typename YT, typename OT>

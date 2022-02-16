@@ -33,8 +33,8 @@ struct TransposeNormal<CPUContext, T> {
                   pten::DenseTensor* out,
                   const std::vector<int64_t>& axis) {
     const int rank = axis.size();
-    auto in_stride = pten::framework::stride(in.dims());
-    auto out_stride = pten::framework::stride(out->dims());
+    auto in_stride = pten::stride(in.dims());
+    auto out_stride = pten::stride(out->dims());
     const T* in_ptr = in.data<T>();
     T* out_ptr = dev_ctx.template Alloc<T>(out);
 

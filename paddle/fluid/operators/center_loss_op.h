@@ -146,7 +146,7 @@ class CenterLossGradKernel : public framework::OpKernel<T> {
     x_g->mutable_data<T>(context.GetPlace());
     // eigen matrix
     auto x_grad =
-        EigenMatrix<T>::From(*x_g, framework::make_ddim({x_dims[0], cols}));
+        EigenMatrix<T>::From(*x_g, pten::make_ddim({x_dims[0], cols}));
     x_grad.device(eigen_place) = grad_mat;
   }
 };

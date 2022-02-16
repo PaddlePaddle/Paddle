@@ -162,8 +162,8 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
   out_dims_vec.push_back(1);
   std::vector<int64_t> tmp_dims_vec{tmp_dim_0};
   tmp_dims_vec.push_back(1);
-  ctx->SetOutputDim("Out", framework::make_ddim(out_dims_vec));
-  ctx->SetOutputDim("Tmp", framework::make_ddim(tmp_dims_vec));
+  ctx->SetOutputDim("Out", pten::make_ddim(out_dims_vec));
+  ctx->SetOutputDim("Tmp", pten::make_ddim(tmp_dims_vec));
 }
 
 void MatchMatrixTensorOpGrad::InferShape(

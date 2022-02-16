@@ -426,7 +426,7 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
 
     out.set_height(input_height);
     out.mutable_value()->mutable_data<T>(
-        framework::make_ddim(
+        pten::make_ddim(
             {static_cast<int64_t>(merged_row_set.size()), input_width}),
         context.GetPlace());
     auto* out_data = out.mutable_value()->data<T>();
@@ -501,8 +501,7 @@ struct MergeAdd<platform::XPUDeviceContext, T> {
     out.set_rows(merge_rows);
     out.set_height(input.height());
     out.mutable_value()->mutable_data<T>(
-        framework::make_ddim(
-            {static_cast<int64_t>(merge_rows.size()), input_width}),
+        pten::make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}),
         context.GetPlace());
     int r =
         xpu::constant<T>(context.x_context(), out.mutable_value()->data<T>(),
@@ -581,7 +580,7 @@ struct MergeAdd<platform::XPUDeviceContext, T> {
     out.set_rows(merge_rows);
     out.set_height(input_height);
     out.mutable_value()->mutable_data<T>(
-        framework::make_ddim(
+        pten::make_ddim(
             {static_cast<int64_t>(merged_row_set.size()), input_width}),
         context.GetPlace());
 
@@ -678,7 +677,7 @@ struct MergeAverage<platform::CPUDeviceContext, T> {
 
     out.set_height(input_height);
     out.mutable_value()->mutable_data<T>(
-        framework::make_ddim(
+        pten::make_ddim(
             {static_cast<int64_t>(merged_row_set.size()), input_width}),
         context.GetPlace());
     auto* out_data = out.mutable_value()->data<T>();

@@ -15,12 +15,12 @@ limitations under the Licnse. */
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 #include "paddle/fluid/platform/device/mlu/device_context.h"
+#include "paddle/pten/core/ddim.h"
 
 namespace paddle {
 namespace operators {

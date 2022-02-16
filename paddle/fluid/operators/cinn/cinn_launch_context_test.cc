@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/pten/core/ddim.h"
 
 namespace paddle {
 namespace operators {
@@ -66,7 +66,7 @@ TEST(CinnLaunchContextTest, TestCheckTensorEquivalent) {
   auto* tensor1 = scope.Var("var1")->GetMutable<LoDTensor>();
 
   // CheckTensorEquivalent: tensor dimension not equivalent
-  tensor1->mutable_data<float>(framework::make_ddim({3, 5}), place);
+  tensor1->mutable_data<float>(pten::make_ddim({3, 5}), place);
   ASSERT_THROW(launch_context->AssignExternalVariable("var1"),
                paddle::platform::EnforceNotMet);
 }
@@ -95,14 +95,13 @@ TEST(CinnLaunchContextTest, TestSetArgument) {
 
   // assign external variables
   auto* tensor1 = scope.Var("var1")->GetMutable<LoDTensor>();
-  float* data1 =
-      tensor1->mutable_data<float>(framework::make_ddim({3, 4}), place);
+  float* data1 = tensor1->mutable_data<float>(pten::make_ddim({3, 4}), place);
   data1[0] = 9.99f;
   data1[10] = 19.99f;
   ASSERT_NO_THROW(launch_context->AssignExternalVariable("var1"));
 
   auto* tensor3 = scope.Var("var3")->GetMutable<LoDTensor>();
-  tensor3->mutable_data<float>(framework::make_ddim({10, 16}), place);
+  tensor3->mutable_data<float>(pten::make_ddim({10, 16}), place);
   ASSERT_NO_THROW(launch_context->AssignExternalVariable("var3"));
 
   // FinalizeArguments missed check
@@ -114,7 +113,7 @@ TEST(CinnLaunchContextTest, TestSetArgument) {
   EXPECT_EQ(*internal_variable_names.begin(), "cinn_var2");
 
   auto* tensor2 = scope.Var("var2")->GetMutable<LoDTensor>();
-  tensor2->mutable_data<float>(framework::make_ddim({6, 7, 8}), place);
+  tensor2->mutable_data<float>(pten::make_ddim({6, 7, 8}), place);
   ASSERT_NO_THROW(launch_context->AssignInternalVariable("cinn_var2"));
 
   // check argument is set correctly and alloc/free callbacks work well

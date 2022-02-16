@@ -107,7 +107,7 @@ class MaxOutOp : public framework::OperatorWithKernel {
     std::vector<int64_t> output_shape(
         {in_x_dims[0], in_x_dims[1], in_x_dims[2], in_x_dims[3]});
     output_shape[axis] = in_x_dims[axis] / groups;
-    ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
+    ctx->SetOutputDim("Out", pten::make_ddim(output_shape));
   }
 };
 

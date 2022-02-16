@@ -38,8 +38,7 @@ paddle::experimental::Tensor hook_function(
   auto ret_meta = pten::DenseTensorMeta(t_dense->dtype(), t_dense->dims(),
                                         t_dense->layout());
   auto place = t_dense->place();
-  size_t bytes_size =
-      paddle::framework::product(t_dense->dims()) * SizeOf(t_dense->dtype());
+  size_t bytes_size = pten::product(t_dense->dims()) * SizeOf(t_dense->dtype());
   auto ret_dense = std::make_shared<pten::DenseTensor>(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           paddle::memory::Alloc(place, bytes_size)),
@@ -62,7 +61,7 @@ TEST(FwdBwdJoint, SingleNode) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // 1. Prepare Input
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = pten::make_ddim({4, 16, 16, 32});
   paddle::experimental::Tensor tensor = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 5.0 /*value*/, true /*is_leaf*/);
@@ -102,7 +101,7 @@ TEST(FwdBwdJoint, LinearNodes) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // 1. Prepare Input
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = pten::make_ddim({4, 16, 16, 32});
   paddle::experimental::Tensor tensor = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 5.0 /*value*/, true /*is_leaf*/);
@@ -150,7 +149,7 @@ TEST(FwdBwdJoint, BranchedNodes) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // 1. Prepare Input
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = pten::make_ddim({4, 16, 16, 32});
   paddle::experimental::Tensor tensor = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 5.0 /*value*/, true /*is_leaf*/);
@@ -216,7 +215,7 @@ TEST(FwdBwdJoint, GradientHook) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // 1. Prepare Input
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = pten::make_ddim({4, 16, 16, 32});
   paddle::experimental::Tensor tensor = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 5.0 /*value*/, true /*is_leaf*/);
@@ -284,7 +283,7 @@ TEST(FwdBwdJoint, CrossBatchAccumulation) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // 1. Prepare Input
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = pten::make_ddim({4, 16, 16, 32});
   paddle::experimental::Tensor tensor = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 5.0 /*value*/, true /*is_leaf*/);
@@ -333,7 +332,7 @@ TEST(FwdBwdJoint, SingleNodeCUDA) {
   eager_test::InitEnv(paddle::platform::CUDAPlace());
 
   // 1. Prepare Input
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = pten::make_ddim({4, 16, 16, 32});
   paddle::experimental::Tensor tensor = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CUDAPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 5.0 /*value*/, true /*is_leaf*/);
@@ -370,7 +369,7 @@ TEST(FwdBwdJoint, BranchedNodesCUDA) {
   eager_test::InitEnv(paddle::platform::CUDAPlace());
 
   // 1. Prepare Input
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = pten::make_ddim({4, 16, 16, 32});
   paddle::experimental::Tensor tensor = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CUDAPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 5.0 /*value*/, true /*is_leaf*/);

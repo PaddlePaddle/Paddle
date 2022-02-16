@@ -17,12 +17,12 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/math/lapack_function.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/core/ddim.h"
 
 namespace paddle {
 namespace operators {
@@ -60,7 +60,7 @@ static void SpiltBatchSquareMatrix(const Tensor& input,
   if (input_dims.size() > 2) {
     flattened_input_dims = flatten_to_3d(input_dims, last_dim - 1, last_dim);
   } else {
-    flattened_input_dims = framework::make_ddim({1, n_dim, n_dim});
+    flattened_input_dims = pten::make_ddim({1, n_dim, n_dim});
   }
 
   Tensor flattened_input;
@@ -90,7 +90,7 @@ LapackEigvals(const framework::ExecutionContext& ctx, const Tensor& input,
   Tensor w;
   int64_t n_dim = input.dims()[1];
   auto* w_data =
-      w.mutable_data<T>(framework::make_ddim({n_dim << 1}), ctx.GetPlace());
+      w.mutable_data<T>(pten::make_ddim({n_dim << 1}), ctx.GetPlace());
 
   int64_t work_mem = work->memory_size();
   int64_t required_work_mem = 3 * n_dim * sizeof(T);
@@ -181,7 +181,7 @@ class EigvalsKernel : public framework::OpKernel<T> {
     int64_t n_dim = input_matrices[0].dims()[1];
     int64_t n_batch = input_matrices.size();
     DDim output_dims = output->dims();
-    output->Resize(framework::make_ddim({n_batch, n_dim}));
+    output->Resize(pten::make_ddim({n_batch, n_dim}));
     std::vector<Tensor> output_vectors = output->Split(1, 0);
 
     // query workspace size
@@ -195,7 +195,7 @@ class EigvalsKernel : public framework::OpKernel<T> {
 
     Tensor work, rwork;
     try {
-      work.mutable_data<T>(framework::make_ddim({lwork}), ctx.GetPlace());
+      work.mutable_data<T>(pten::make_ddim({lwork}), ctx.GetPlace());
     } catch (memory::allocation::BadAlloc&) {
       LOG(WARNING) << "Failed to allocate Lapack workspace with the optimal "
                    << "memory size = " << lwork * sizeof(T) << " bytes, "
@@ -203,11 +203,11 @@ class EigvalsKernel : public framework::OpKernel<T> {
                    << "required size = " << 3 * n_dim * sizeof(T) << " bytes, "
                    << "this may lead to bad performance.";
       lwork = 3 * n_dim;
-      work.mutable_data<T>(framework::make_ddim({lwork}), ctx.GetPlace());
+      work.mutable_data<T>(pten::make_ddim({lwork}), ctx.GetPlace());
     }
     if (framework::IsComplexType(
             framework::TransToProtoVarType(input->dtype()))) {
-      rwork.mutable_data<Real<T>>(framework::make_ddim({n_dim << 1}),
+      rwork.mutable_data<Real<T>>(pten::make_ddim({n_dim << 1}),
                                   ctx.GetPlace());
     }
 

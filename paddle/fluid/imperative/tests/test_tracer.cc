@@ -56,11 +56,11 @@ TEST(test_tracer, test_trace_op) {
 
   auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
-  x_in_tensor->Resize(framework::make_ddim(dims1));
+  x_in_tensor->Resize(pten::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_x, place, src_data.data(),
                        sizeof(float) * src_data.size());
-  y_in_tensor->Resize(framework::make_ddim(dims2));
+  y_in_tensor->Resize(pten::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_y, place, src_data.data(),
                        sizeof(float) * src_data.size());
@@ -102,11 +102,11 @@ TEST(test_tracer, test_trace_op_with_backward) {
 
   auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
-  x_in_tensor->Resize(framework::make_ddim(dims1));
+  x_in_tensor->Resize(pten::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_x, place, src_data.data(),
                        sizeof(float) * src_data.size());
-  y_in_tensor->Resize(framework::make_ddim(dims2));
+  y_in_tensor->Resize(pten::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_y, place, src_data.data(),
                        sizeof(float) * src_data.size());
@@ -142,11 +142,11 @@ TEST(test_tracer, test_track_backward_output) {
 
   auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
-  x_in_tensor->Resize(framework::make_ddim(dims1));
+  x_in_tensor->Resize(pten::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_x, place, src_data.data(),
                        sizeof(float) * src_data.size());
-  y_in_tensor->Resize(framework::make_ddim(dims2));
+  y_in_tensor->Resize(pten::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_y, place, src_data.data(),
                        sizeof(float) * src_data.size());
@@ -181,11 +181,11 @@ TEST(test_tracer, test_track_backward_input) {
 
   auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
-  x_in_tensor->Resize(framework::make_ddim(dims1));
+  x_in_tensor->Resize(pten::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_x, place, src_data.data(),
                        sizeof(float) * src_data.size());
-  y_in_tensor->Resize(framework::make_ddim(dims2));
+  y_in_tensor->Resize(pten::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_y, place, src_data.data(),
                        sizeof(float) * src_data.size());
@@ -223,11 +223,11 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
 
   auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
-  x_in_tensor->Resize(framework::make_ddim(dims1));
+  x_in_tensor->Resize(pten::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_x, place, src_data.data(),
                        sizeof(float) * src_data.size());
-  y_in_tensor->Resize(framework::make_ddim(dims2));
+  y_in_tensor->Resize(pten::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(gpu_place);
   paddle::memory::Copy(gpu_place, mutable_y, place, src_data.data(),
                        sizeof(float) * src_data.size(), 0);
@@ -354,11 +354,11 @@ TEST(test_tracer, test_var_without_grad_var) {
 
   auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
-  x_in_tensor->Resize(framework::make_ddim(dims1));
+  x_in_tensor->Resize(pten::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_x, place, src_data.data(),
                        sizeof(float) * src_data.size());
-  y_in_tensor->Resize(framework::make_ddim(dims2));
+  y_in_tensor->Resize(pten::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_y, place, src_data.data(),
                        sizeof(float) * src_data.size());

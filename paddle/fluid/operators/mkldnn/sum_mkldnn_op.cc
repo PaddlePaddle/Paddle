@@ -56,7 +56,7 @@ class SumMKLDNNHandler
 
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::sum>(engine, cpu_place),
         num_inputs_(0) {
-    auto dst_tz = framework::vectorize<int64_t>(z->dims());
+    auto dst_tz = pten::vectorize<int64_t>(z->dims());
     auto src_tz = dst_tz;
 
     std::vector<dnnl::memory::desc> srcs_md;
@@ -163,7 +163,7 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // so from oneDNN dst memory we reorder data into input
     if (in_place) {
       auto& in_out = in_vars[0]->Get<framework::LoDTensor>();
-      auto output_tz = framework::vectorize<int64_t>(output->dims());
+      auto output_tz = pten::vectorize<int64_t>(output->dims());
       platform::ReorderMKLDNNHandler reorder_handler(
           output_tz, framework::TransToProtoVarType(output->dtype()),
           framework::ToMKLDNNDataType(

@@ -22,8 +22,7 @@ limitations under the License. */
 namespace pten {
 
 struct ReAllocateVisitor {
-  ReAllocateVisitor(const pten::framework::DDim& dims,
-                    pten::DenseTensor* tensor)
+  ReAllocateVisitor(const pten::DDim& dims, pten::DenseTensor* tensor)
       : dims_(dims), tensor_(tensor) {}
 
   template <typename T>
@@ -39,7 +38,7 @@ struct ReAllocateVisitor {
     tensor_->ShareDataWith(cpu_tensor);
   }
 
-  pten::framework::DDim dims_;
+  pten::DDim dims_;
   pten::DenseTensor* tensor_;
 };
 

@@ -79,7 +79,7 @@ inline void UpdatePaddingAndDilation(std::vector<T>* paddings,
                                      const std::vector<T>& strides,
                                      const std::vector<T>& ksize) {
   // set padding size == data_dims.size() * 2
-  auto data_shape = framework::vectorize<T>(data_dims);
+  auto data_shape = pten::vectorize<T>(data_dims);
   if (static_cast<int>(paddings->size()) == data_dims.size()) {
     for (int i = 0; i < data_dims.size(); ++i) {
       T copy_pad = *(paddings->begin() + 2 * i);
@@ -93,7 +93,7 @@ inline void UpdatePaddingAndDilation(std::vector<T>* paddings,
             "input's dimension. "
             "But recieved: padding's size is %d, padding is [%s]; input's "
             "dimension is %d, input's shape is [%s].",
-            paddings->size(), framework::make_ddim(*paddings), data_dims.size(),
+            paddings->size(), pten::make_ddim(*paddings), data_dims.size(),
             data_dims));
   }
 
@@ -174,7 +174,7 @@ class ConvOp : public framework::OperatorWithKernel {
     std::vector<int64_t> output_shape = ComputeOutputShape(ctx);
 
     OP_INOUT_CHECK(ctx->HasOutput("Output"), "Output", "Output", "Conv");
-    ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
+    ctx->SetOutputDim("Output", pten::make_ddim(output_shape));
     ctx->ShareLoD("Input", "Output");
   }
 
@@ -256,11 +256,11 @@ class GemmConvKernel : public framework::OpKernel<T> {
     auto filter_dims = filter.dims();
 
     framework::DDim in_data_dims =
-        framework::slice_ddim(trans_in_dims, 2, trans_in_dims.size());
+        pten::slice_ddim(trans_in_dims, 2, trans_in_dims.size());
     framework::DDim filter_data_dims =
-        framework::slice_ddim(filter_dims, 2, filter_dims.size());
+        pten::slice_ddim(filter_dims, 2, filter_dims.size());
 
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+    std::vector<int> ksize = pten::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 
@@ -270,12 +270,12 @@ class GemmConvKernel : public framework::OpKernel<T> {
 
     // filter_shape_vec:
     // {k_o, k_i, k_h, k_w} or {k_o, k_i, k_d, k_h, k_w}
-    std::vector<int64_t> filter_shape_vec(framework::vectorize(filter.dims()));
+    std::vector<int64_t> filter_shape_vec(pten::vectorize(filter.dims()));
 
     // output_shape_vec:
     // {o_n, o_c, o_h, o_w} or {o_n, o_c, o_d, o_h, o_w}
     std::vector<int64_t> output_shape_vec(
-        framework::vectorize(transformed_output.dims()));
+        pten::vectorize(transformed_output.dims()));
 
     // use col_shape in the im2col calculation
     // col_shape_vec:
@@ -290,15 +290,14 @@ class GemmConvKernel : public framework::OpKernel<T> {
       col_shape_vec[j + 1 + data_dim] = output_shape_vec[j + 2];
     }
 
-    framework::DDim col_shape(framework::make_ddim(col_shape_vec));
+    framework::DDim col_shape(pten::make_ddim(col_shape_vec));
 
     // use col_matrix_shape in the gemm calculation
     // size:
     // (i_c/g * k_h * k_w, o_h * o_w) or (i_c/g * k_d * k_h * k_w, o_d * o_h *
     // o_w)
 
-    framework::DDim col_matrix_shape =
-        framework::flatten_to_2d(col_shape, data_dim);
+    framework::DDim col_matrix_shape = pten::flatten_to_2d(col_shape, data_dim);
 
     bool is_expand = IsExpand(filter_shape_vec, strides, paddings, dilations);
 
@@ -313,7 +312,7 @@ class GemmConvKernel : public framework::OpKernel<T> {
       col_matrix.Resize(col_matrix_shape);
     }
 
-    framework::DDim in_matrix_shape = framework::slice_ddim(
+    framework::DDim in_matrix_shape = pten::slice_ddim(
         transformed_input.dims(), 1, transformed_input.dims().size());
 
     framework::DDim filter_matrix_shape = {filter.dims()[0],
@@ -418,11 +417,10 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
     // update padding and dilation
     auto in_dims = transformed_input.dims();
     auto filter_dims = filter.dims();
-    framework::DDim in_data_dims =
-        framework::slice_ddim(in_dims, 2, in_dims.size());
+    framework::DDim in_data_dims = pten::slice_ddim(in_dims, 2, in_dims.size());
     framework::DDim filter_data_dims =
-        framework::slice_ddim(filter_dims, 2, filter_dims.size());
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+        pten::slice_ddim(filter_dims, 2, filter_dims.size());
+    std::vector<int> ksize = pten::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 
@@ -431,10 +429,10 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
     auto& dev_ctx = context.template device_context<DeviceContext>();
 
     // filter_shape_vec: {k_o, k_i, k_h, k_w} or {k_o, k_i, k_d, k_h, k_w}
-    std::vector<int64_t> filter_shape_vec(framework::vectorize(filter.dims()));
+    std::vector<int64_t> filter_shape_vec(pten::vectorize(filter.dims()));
     // output_shape_vec: {o_n, o_c, o_h, o_w} or {o_n, o_c, o_d, o_h, o_w}
     std::vector<int64_t> output_shape_vec(
-        framework::vectorize(transformed_output_grad.dims()));
+        pten::vectorize(transformed_output_grad.dims()));
 
     // use col_shape in the im2col calculation
     // col_shape_vec: {i_c/g, k_h, k_w, o_h, o_w} or {i_c/g, k_d, k_h, k_w, o_d,
@@ -446,16 +444,16 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
       col_shape_vec[j + 1] = filter_shape_vec[j + 2];
       col_shape_vec[j + 1 + data_dim] = output_shape_vec[j + 2];
     }
-    framework::DDim col_shape(framework::make_ddim(col_shape_vec));
+    framework::DDim col_shape(pten::make_ddim(col_shape_vec));
 
     // use col_matrix_shape in the gemm calculation
     // size: (i_c/g * k_h * k_w, o_h * o_w)
     // or
     // (i_c/g * k_d * k_h * k_w, o_d * o_h * o_w)
     framework::DDim col_matrix_shape =
-        framework::flatten_to_2d(col_shape, data_dim + 1);
+        pten::flatten_to_2d(col_shape, data_dim + 1);
 
-    framework::DDim input_shape = framework::slice_ddim(
+    framework::DDim input_shape = pten::slice_ddim(
         transformed_input.dims(), 1, transformed_input.dims().size());
 
     framework::DDim filter_matrix_shape = {filter.dims()[0],
@@ -643,18 +641,17 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
     auto in_dims = transformed_X.dims();
     auto filter_dims = W.dims();
 
-    framework::DDim in_data_dims =
-        framework::slice_ddim(in_dims, 2, in_dims.size());
+    framework::DDim in_data_dims = pten::slice_ddim(in_dims, 2, in_dims.size());
     framework::DDim filter_data_dims =
-        framework::slice_ddim(filter_dims, 2, filter_dims.size());
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+        pten::slice_ddim(filter_dims, 2, filter_dims.size());
+    std::vector<int> ksize = pten::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 
     const int batch_size = static_cast<int>(transformed_X.dims()[0]);
-    std::vector<int64_t> filter_shape_vec(framework::vectorize(W.dims()));
+    std::vector<int64_t> filter_shape_vec(pten::vectorize(W.dims()));
     std::vector<int64_t> output_shape_vec(
-        framework::vectorize(transformed_dY.dims()));
+        pten::vectorize(transformed_dY.dims()));
 
     size_t data_dim = filter_shape_vec.size() - 2;
     std::vector<int64_t> col_shape_vec(1 + 2 * data_dim);
@@ -664,13 +661,13 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
       col_shape_vec[j + 1] = filter_shape_vec[j + 2];
       col_shape_vec[j + data_dim + 1] = output_shape_vec[j + 2];
     }
-    framework::DDim col_shape(framework::make_ddim(col_shape_vec));
+    framework::DDim col_shape(pten::make_ddim(col_shape_vec));
     // col_matrix_shape [in_channel/group * kh * kw, oh * ow]
     framework::DDim col_matrix_shape =
-        framework::flatten_to_2d(col_shape, data_dim + 1);
+        pten::flatten_to_2d(col_shape, data_dim + 1);
     // input_shape [Cin, H, W]
-    framework::DDim input_shape = framework::slice_ddim(
-        transformed_X.dims(), 1, transformed_X.dims().size());
+    framework::DDim input_shape =
+        pten::slice_ddim(transformed_X.dims(), 1, transformed_X.dims().size());
     // filter_matrix_shape [Cout, Cin * kh * kw]
     framework::DDim filter_matrix_shape = {W.dims()[0],
                                            W.numel() / W.dims()[0]};
@@ -912,14 +909,14 @@ class DepthwiseConvKernel : public framework::OpKernel<T> {
     const framework::DataLayout data_layout =
         framework::StringToDataLayout(data_format);
     if (data_layout != framework::DataLayout::kNHWC) {
-      in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+      in_data_dims = pten::slice_ddim(in_dims, 2, in_dims.size());
     } else {
-      in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
+      in_data_dims = pten::slice_ddim(in_dims, 1, in_dims.size() - 1);
     }
 
     framework::DDim filter_data_dims =
-        framework::slice_ddim(filter_dims, 2, filter_dims.size());
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+        pten::slice_ddim(filter_dims, 2, filter_dims.size());
+    std::vector<int> ksize = pten::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 
@@ -975,13 +972,13 @@ class DepthwiseConvGradKernel : public framework::OpKernel<T> {
     const framework::DataLayout data_layout =
         framework::StringToDataLayout(data_format);
     if (data_layout != framework::DataLayout::kNHWC) {
-      in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+      in_data_dims = pten::slice_ddim(in_dims, 2, in_dims.size());
     } else {
-      in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
+      in_data_dims = pten::slice_ddim(in_dims, 1, in_dims.size() - 1);
     }
     framework::DDim filter_data_dims =
-        framework::slice_ddim(filter_dims, 2, filter_dims.size());
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+        pten::slice_ddim(filter_dims, 2, filter_dims.size());
+    std::vector<int> ksize = pten::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 

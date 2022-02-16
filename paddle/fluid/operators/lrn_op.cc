@@ -44,9 +44,9 @@ struct LRNFunctor<platform::CPUDeviceContext, T> {
       auto in_dims = input.dims();
       std::vector<int64_t> shape(
           {in_dims[0], in_dims[3], in_dims[1], in_dims[2]});
-      in_transpose.mutable_data<T>(framework::make_ddim(shape), place);
-      mid_transpose.mutable_data<T>(framework::make_ddim(shape), place);
-      out_transpose.mutable_data<T>(framework::make_ddim(shape), place);
+      in_transpose.mutable_data<T>(pten::make_ddim(shape), place);
+      mid_transpose.mutable_data<T>(pten::make_ddim(shape), place);
+      out_transpose.mutable_data<T>(pten::make_ddim(shape), place);
       std::vector<int> axis = {0, 3, 1, 2};
       transpose(dev_ctx, input, &in_transpose, axis);
     } else {

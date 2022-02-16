@@ -99,7 +99,7 @@ class AccuracyMLUKernel : public framework::OpKernel<T> {
     // [correct]
     // reduce_max
     Tensor correct_max(VT::FP32);
-    correct_max.Resize(framework::make_ddim({num_samples}));
+    correct_max.Resize(pten::make_ddim({num_samples}));
     correct_max.mutable_data<float>(ctx.GetPlace());
     MLUCnnlTensorDesc correct_max_desc(correct_max);
     MLUCnnlReduceDesc reduce_max_desc(

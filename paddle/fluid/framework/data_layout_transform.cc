@@ -151,7 +151,7 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
   auto* dev_ctx = dynamic_cast<platform::MKLDNNDeviceContext*>(pool.Get(place));
   auto& cpu_engine = dev_ctx->GetEngine();
 
-  auto in_tz = paddle::framework::vectorize<int64_t>(in.dims());
+  auto in_tz = pten::vectorize<int64_t>(in.dims());
   auto out_tz = in_tz;
 
   memory::data_type in_type =

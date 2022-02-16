@@ -285,7 +285,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
     // Create eltwise_y (conv bias) variable
     VarDesc eltwise_y_in_desc(
         patterns::PDNodeName("fuse_conv_bn", conv_type() + "_eltwise_y_in"));
-    eltwise_y_in_desc.SetShape(framework::vectorize(bn_bias_tensor->dims()));
+    eltwise_y_in_desc.SetShape(pten::vectorize(bn_bias_tensor->dims()));
     eltwise_y_in_desc.SetDataType(
         framework::TransToProtoVarType(bn_bias_tensor->dtype()));
     eltwise_y_in_desc.SetLoDLevel(bn_bias->Var()->GetLoDLevel());
@@ -531,8 +531,7 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
       // Create eltwise_y (conv bias) variable
       VarDesc eltwise_y_in_desc(patterns::PDNodeName(
           name_scope_, "eltwise_y_in" + std::to_string(found_conv_bn_count)));
-      eltwise_y_in_desc.SetShape(
-          framework::vectorize(eltwise_y_in_tensor->dims()));
+      eltwise_y_in_desc.SetShape(pten::vectorize(eltwise_y_in_tensor->dims()));
       eltwise_y_in_desc.SetDataType(
           framework::TransToProtoVarType(eltwise_y_in_tensor->dtype()));
       eltwise_y_in_desc.SetLoDLevel(eltwise_y_in->Var()->GetLoDLevel());

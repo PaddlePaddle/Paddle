@@ -101,7 +101,7 @@ void CinnLaunchContext::CheckTensorEquivalent(
     const std::string& paddle_var_name, const LoDTensor& paddle_tensor,
     const CinnTensor& cinn_tensor) {
   // check dimension
-  auto cinn_dims = framework::make_ddim(cinn_tensor->shape().data());
+  auto cinn_dims = pten::make_ddim(cinn_tensor->shape().data());
   PADDLE_ENFORCE_EQ(paddle_tensor.dims(), cinn_dims,
                     platform::errors::PreconditionNotMet(
                         "Tensors' shape in variable(%s) are not equivalent, "

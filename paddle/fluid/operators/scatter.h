@@ -16,11 +16,11 @@ limitations under the License. */
 #include <cstring>
 #include <string>
 
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/pten/core/ddim.h"
 #include "unordered_set"
 
 namespace paddle {
@@ -236,8 +236,8 @@ void ScatterNdAdd(const framework::ExecutionContext& ctx, const Tensor& update,
   // final dim
   int64_t end_size = index_dims[index_dims_size - 1];
   // remain dim
-  auto remain_ddim = framework::slice_ddim(index_dims, 0, index_dims_size - 1);
-  int64_t remain_numel = framework::product(remain_ddim);
+  auto remain_ddim = pten::slice_ddim(index_dims, 0, index_dims_size - 1);
+  int64_t remain_numel = pten::product(remain_ddim);
   // slice size
   int64_t slice_size = 1;
   for (int64_t i = end_size; i < output_dims_size; ++i) {

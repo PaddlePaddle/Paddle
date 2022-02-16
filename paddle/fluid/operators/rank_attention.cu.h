@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/fluid/framework/dim.h"
+#include "paddle/pten/core/dim.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {

@@ -77,7 +77,7 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
     LoDTensor sum;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto* pre_out_data = pre_out->mutable_data<T>(
-        framework::make_ddim({batch_size, code_length}), ctx.GetPlace());
+        pten::make_ddim({batch_size, code_length}), ctx.GetPlace());
     auto pre_out_mat = EigenMatrix<T>::From(*pre_out);
     // Not all class(leaf) nodes' path lengths equal code_length, thus init as
     // 0s can avoid out of path's loss.
@@ -96,7 +96,7 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
     }
 
     std::vector<int64_t> sum_dims({batch_size, 1UL});
-    sum.mutable_data<T>(framework::make_ddim(sum_dims), ctx.GetPlace());
+    sum.mutable_data<T>(pten::make_ddim(sum_dims), ctx.GetPlace());
     auto sum_mat = EigenMatrix<T>::From(sum);
     out->mutable_data<T>(ctx.GetPlace());
     auto out_mat = framework::EigenMatrix<T>::From(*out);

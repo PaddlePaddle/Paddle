@@ -131,8 +131,7 @@ class SpectralNormKernel : public framework::OpKernel<T> {
           real_dims.push_back(dims[i]);
         }
       }
-      weight_mat.mutable_data<T>(framework::make_ddim(real_dims),
-                                 ctx.GetPlace());
+      weight_mat.mutable_data<T>(pten::make_ddim(real_dims), ctx.GetPlace());
       TransCompute<DeviceContext, T>(rank, *weight, &weight_mat, perm, dev_ctx);
     } else {
       for (int i = 0; i < rank; i++) {
@@ -164,7 +163,7 @@ class SpectralNormKernel : public framework::OpKernel<T> {
       }
       out->mutable_data<T>(dims, ctx.GetPlace());
       TransCompute<DeviceContext, T>(
-          rank, weight_mat.Resize(framework::make_ddim(real_dims)), out, perm,
+          rank, weight_mat.Resize(pten::make_ddim(real_dims)), out, perm,
           dev_ctx);
     } else {
       paddle::framework::TensorCopySync(weight_mat.Resize(dims), ctx.GetPlace(),
@@ -207,10 +206,8 @@ class SpectralNormGradKernel : public framework::OpKernel<T> {
           real_dims.push_back(dims[i]);
         }
       }
-      weight_mat.mutable_data<T>(framework::make_ddim(real_dims),
-                                 ctx.GetPlace());
-      out_grad_mat.mutable_data<T>(framework::make_ddim(real_dims),
-                                   ctx.GetPlace());
+      weight_mat.mutable_data<T>(pten::make_ddim(real_dims), ctx.GetPlace());
+      out_grad_mat.mutable_data<T>(pten::make_ddim(real_dims), ctx.GetPlace());
       TransCompute<DeviceContext, T>(rank, *weight, &weight_mat, perm, dev_ctx);
       TransCompute<DeviceContext, T>(rank, *out_grad, &out_grad_mat, perm,
                                      dev_ctx);
@@ -265,8 +262,8 @@ class SpectralNormGradKernel : public framework::OpKernel<T> {
       }
       weight_grad->mutable_data<T>(dims, ctx.GetPlace());
       TransCompute<DeviceContext, T>(
-          rank, weight_grad_mat.Resize(framework::make_ddim(real_dims)),
-          weight_grad, perm, dev_ctx);
+          rank, weight_grad_mat.Resize(pten::make_ddim(real_dims)), weight_grad,
+          perm, dev_ctx);
     } else {
       paddle::framework::TensorCopySync(weight_grad_mat.Resize(dims),
                                         ctx.GetPlace(), weight_grad);

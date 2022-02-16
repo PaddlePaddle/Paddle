@@ -112,8 +112,7 @@ class DeterminantKernel : public framework::OpKernel<T> {
                           "the input matrix should be square matrix."));
     auto rank = input_dim[input_dim_size - 1];  // square matrix length
     DeterminantFunctor<T>()(*input, context, rank, batch_count, output);
-    auto output_dims =
-        framework::slice_ddim(input->dims(), 0, input_dim_size - 2);
+    auto output_dims = pten::slice_ddim(input->dims(), 0, input_dim_size - 2);
     if (input_dim_size > 2) {
       output->Resize(output_dims);
     } else {
@@ -322,7 +321,7 @@ class SlogDeterminantKernel : public framework::OpKernel<T> {
     }
     output_dim_vec.insert(output_dim_vec.begin(),
                           2);  // make the output dims as same as numpy
-    auto output_dims = framework::make_ddim(output_dim_vec);
+    auto output_dims = pten::make_ddim(output_dim_vec);
     output->Resize(output_dims);
     VLOG(2) << "output dim:" << output->dims();
   }

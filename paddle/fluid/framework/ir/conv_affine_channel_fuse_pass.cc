@@ -216,7 +216,7 @@ void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
     VarDesc eltwise_y_in_desc(
         patterns::PDNodeName(name_scope_, "eltwise_y_in"));
     // Set shape && datatype manually
-    eltwise_y_in_desc.SetShape(framework::vectorize(ac_bias_tensor->dims()));
+    eltwise_y_in_desc.SetShape(pten::vectorize(ac_bias_tensor->dims()));
     eltwise_y_in_desc.SetDataType(
         framework::TransToProtoVarType(ac_bias_tensor->dtype()));
     eltwise_y_in_desc.SetLoDLevel(ac_bias->Var()->GetLoDLevel());

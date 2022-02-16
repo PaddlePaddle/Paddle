@@ -18,7 +18,6 @@ limitations under the License. */
 #include <random>
 #include <string>
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
@@ -26,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/init.h"
+#include "paddle/pten/core/ddim.h"
 
 USE_OP(cinn_launch);
 USE_OP_ITSELF(elementwise_add);

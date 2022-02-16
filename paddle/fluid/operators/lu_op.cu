@@ -120,7 +120,7 @@ class LUCUDAKernel : public framework::OpKernel<T> {
 
     auto info_dims = slice_ddim(outdims, 0, outrank - 2);
     if (info_dims.size() == 0) {
-      info_dims = framework::make_ddim({1});
+      info_dims = pten::make_ddim({1});
     }
     InfoT->Resize(info_dims);
     auto info_data = InfoT->mutable_data<int>(ctx.GetPlace());

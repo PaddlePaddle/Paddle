@@ -148,10 +148,10 @@ class SelectedRows : public TensorBase,
   /*
    * @brief Get complete Dims before
    */
-  pten::framework::DDim GetCompleteDims() const {
+  pten::DDim GetCompleteDims() const {
     std::vector<int64_t> dims = vectorize(value_->dims());
     dims[0] = height_;
-    return pten::framework::make_ddim(dims);
+    return pten::make_ddim(dims);
   }
 
   /// \brief Returns the name of the class for type traits.
@@ -166,7 +166,7 @@ class SelectedRows : public TensorBase,
   /// \return The dims of the tensor.
   const DDim& dims() const noexcept override {
     return value_->dims();
-    // return paddle::framework::make_ddim(dims);
+    // return paddle::pten::make_ddim(dims);
   }
 
   /// \brief Returns the data type of the tensor.

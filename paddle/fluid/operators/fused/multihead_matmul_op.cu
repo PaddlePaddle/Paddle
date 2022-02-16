@@ -205,9 +205,9 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
 
     Tensor temp_out_tensor;
     auto temp_out_dims =
-        framework::make_ddim({batch, seq_len, 3, head_number, head_size});
-    temp_out_tensor.Resize({batch * seq_len, framework::product(temp_out_dims) /
-                                                 (batch * seq_len)});
+        pten::make_ddim({batch, seq_len, 3, head_number, head_size});
+    temp_out_tensor.Resize(
+        {batch * seq_len, pten::product(temp_out_dims) / (batch * seq_len)});
     auto *temp_out_data = temp_out_tensor.mutable_data<T>(context.GetPlace());
 
     // (B * S, hidden) * (hidden, 3 * N * H) -> (B * S * 3 * N * H)

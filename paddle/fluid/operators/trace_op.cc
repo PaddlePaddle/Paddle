@@ -70,7 +70,7 @@ class TraceOp : public framework::OperatorWithKernel {
       sizes.erase(sizes.begin() + std::max(dim1_, dim2_));
       sizes.erase(sizes.begin() + std::min(dim1_, dim2_));
     }
-    ctx->SetOutputDim("Out", framework::make_ddim(sizes));
+    ctx->SetOutputDim("Out", pten::make_ddim(sizes));
   }
 };
 

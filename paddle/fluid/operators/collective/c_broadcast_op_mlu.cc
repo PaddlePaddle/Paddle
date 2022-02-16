@@ -62,7 +62,7 @@ class CBroadcastOPMLUKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_MLU_SUCCESS(cnclBcast(out->mutable_data<T>(place), numel,
                                            dtype, root, comm->comm(), stream));
       VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
-              << framework::product(out->dims());
+              << pten::product(out->dims());
     }
 
     out->Resize(x->dims());

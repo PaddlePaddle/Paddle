@@ -51,22 +51,22 @@ class LUOp : public framework::OperatorWithKernel {
     int m = x_dims[x_rank - 1];
     int n = x_dims[x_rank - 2];
     int min_mn = std::min(m, n);
-    auto dims_vec = framework::vectorize(x_dims);
+    auto dims_vec = pten::vectorize(x_dims);
     OP_INOUT_CHECK(context->HasOutput("Infos"), "Output", "Infos", "LU");
     if (x_rank == 2) {
       auto Infos_dim = std::vector<int>(1);
-      context->SetOutputDim("Infos", framework::make_ddim(Infos_dim));
+      context->SetOutputDim("Infos", pten::make_ddim(Infos_dim));
     } else {
       auto Infos_dim =
           std::vector<int>(dims_vec.begin(), dims_vec.begin() + x_rank - 2);
-      context->SetOutputDim("Infos", framework::make_ddim(Infos_dim));
+      context->SetOutputDim("Infos", pten::make_ddim(Infos_dim));
     }
     if (pivots) {
       OP_INOUT_CHECK(context->HasOutput("Pivots"), "Output", "Pivots", "LU");
       auto Pivots_dim =
           std::vector<int>(dims_vec.begin(), dims_vec.begin() + x_rank - 1);
       Pivots_dim[x_rank - 2] = min_mn;
-      context->SetOutputDim("Pivots", framework::make_ddim(Pivots_dim));
+      context->SetOutputDim("Pivots", pten::make_ddim(Pivots_dim));
     }
   }
 
@@ -130,7 +130,7 @@ class LUKernel : public framework::OpKernel<T> {
 
     auto info_dims = slice_ddim(outdims, 0, outrank - 2);
     if (info_dims.size() == 0) {
-      info_dims = framework::make_ddim({1});
+      info_dims = pten::make_ddim({1});
     }
     InfoT->Resize(info_dims);
     auto info_data = InfoT->mutable_data<int>(ctx.GetPlace());

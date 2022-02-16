@@ -89,7 +89,7 @@ class DiagonalCUDAKernel : public framework::OpKernel<T> {
     auto input_dim = input->dims().Get();
     auto input_dim_size = input->dims().size();
 
-    std::vector<int64_t> res_in = vectorize(framework::stride(input->dims()));
+    std::vector<int64_t> res_in = vectorize(pten::stride(input->dims()));
     paddle::framework::Tensor input_stride_tensor;
     framework::TensorFromVector<int64_t>(res_in, context.device_context(),
                                          &input_stride_tensor);
@@ -100,7 +100,7 @@ class DiagonalCUDAKernel : public framework::OpKernel<T> {
     auto output_dim = output->dims().Get();
     auto output_dim_size = output->dims().size();
 
-    std::vector<int64_t> res_out = vectorize(framework::stride(output->dims()));
+    std::vector<int64_t> res_out = vectorize(pten::stride(output->dims()));
     paddle::framework::Tensor output_stride_tensor;
     framework::TensorFromVector<int64_t>(res_out, context.device_context(),
                                          &output_stride_tensor);
@@ -175,7 +175,7 @@ class DiagonalGradCUDAKernel : public framework::OpKernel<T> {
     auto dout_dim = dout->dims().Get();
     auto dout_dim_size = dout->dims().size();
 
-    std::vector<int64_t> res_dout = vectorize(framework::stride(dout->dims()));
+    std::vector<int64_t> res_dout = vectorize(pten::stride(dout->dims()));
     paddle::framework::Tensor dout_stride_tensor;
     framework::TensorFromVector<int64_t>(res_dout, context.device_context(),
                                          &dout_stride_tensor);
@@ -187,7 +187,7 @@ class DiagonalGradCUDAKernel : public framework::OpKernel<T> {
     auto dx_dim = dx->dims().Get();
     auto dx_dim_size = dx->dims().size();
 
-    std::vector<int64_t> res_dx = vectorize(framework::stride(dx->dims()));
+    std::vector<int64_t> res_dx = vectorize(pten::stride(dx->dims()));
     paddle::framework::Tensor dx_stride_tensor;
     framework::TensorFromVector<int64_t>(res_dx, context.device_context(),
                                          &dx_stride_tensor);

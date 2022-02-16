@@ -67,7 +67,7 @@ DenseTensor Diagonal(const DeviceContext& context,
                      int64_t dim2) {
   auto* input_data = input->data<T>();
   auto input_dims = input->dims();
-  auto input_stride = framework::stride(input_dims);
+  auto input_stride = pten::stride(input_dims);
   auto dim1_ = dim1 < 0 ? input_dims.size() + dim1 : dim1;
   auto dim2_ = dim2 < 0 ? input_dims.size() + dim2 : dim2;
   auto len1 = input_dims[std::min(dim1_, dim2_)];
@@ -99,8 +99,8 @@ DenseTensor Diagonal(const DeviceContext& context,
     ret_strides.push_back(stride1 + stride2);
     ret_dims.push_back(diag_size);
     DenseTensor diag;
-    framework::DDim diag_dims = framework::make_ddim(ret_dims);
-    auto dig_stride = framework::stride(diag_dims);
+    DDim diag_dims = pten::make_ddim(ret_dims);
+    auto dig_stride = pten::stride(diag_dims);
     auto diag_data = diag.mutable_data<T>(diag_dims, context.GetPlace());
 
     int64_t pos = std::abs(offset) * offset_stride;

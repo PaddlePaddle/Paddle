@@ -42,9 +42,7 @@ class DenseTensor;
 
 namespace pten {
 class TensorBase;
-namespace framework {
 class DDim;
-}  // namespace framework
 }  // namespace pten
 
 namespace paddle {
@@ -167,9 +165,9 @@ class PADDLE_API Tensor final {
   /**
    * @brief Return the dimensions of Tensor.
    *
-   * @return pten::framework::DDim
+   * @return pten::DDim
    */
-  pten::framework::DDim dims() const;
+  pten::DDim dims() const;
 
   /**
    * @brief Return the shape (dimensions) of Tensor.

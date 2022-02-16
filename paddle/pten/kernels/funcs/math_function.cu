@@ -140,8 +140,8 @@ struct TransposeNormal<paddle::platform::CUDADeviceContext, T> {
                   paddle::framework::Tensor* out,
                   const std::vector<int>& axis) {
     const int rank = axis.size();
-    auto in_stride = paddle::framework::stride(in.dims());
-    auto out_stride = paddle::framework::stride(out->dims());
+    auto in_stride = pten::stride(in.dims());
+    auto out_stride = pten::stride(out->dims());
     auto* in_ptr = in.data<T>();
     auto* out_ptr = out->data<T>();
 

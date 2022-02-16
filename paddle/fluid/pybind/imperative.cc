@@ -920,7 +920,7 @@ void BindImperative(py::module *m_ptr) {
              if (type == framework::proto::VarType::LOD_TENSOR) {
                auto *tensor =
                    self.MutableVar()->GetMutable<framework::LoDTensor>();
-               tensor->Resize(framework::make_ddim(dims));
+               tensor->Resize(pten::make_ddim(dims));
              }
            })
       .def("__init__", &InitVarBaseFromNumpyWithArg<platform::CPUPlace>,
@@ -2138,13 +2138,13 @@ void BindImperative(py::module *m_ptr) {
       .def_property_readonly("shape",
                              [](imperative::VarBase &self) {
                                if (self.Var().IsType<framework::LoDTensor>()) {
-                                 return framework::vectorize<int>(
+                                 return pten::vectorize<int>(
                                      self.Var()
                                          .Get<framework::LoDTensor>()
                                          .dims());
                                } else if (self.Var()
                                               .IsType<pten::SelectedRows>()) {
-                                 return framework::vectorize<int>(
+                                 return pten::vectorize<int>(
                                      self.Var()
                                          .Get<pten::SelectedRows>()
                                          .value()

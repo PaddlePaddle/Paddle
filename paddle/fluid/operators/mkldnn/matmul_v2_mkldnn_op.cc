@@ -28,19 +28,19 @@ using paddle::platform::to_void_cast;
 using Tensor = paddle::framework::Tensor;
 using paddle::framework::DDim;
 using paddle::framework::GradVarName;
-using paddle::framework::make_ddim;
-using paddle::framework::vectorize;
+using pten::make_ddim;
+using pten::vectorize;
 
 // Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
 // original x_dim is returned.
 static DDim RowMatrixDimsFromVector(const DDim& x_dim) {
-  return x_dim.size() > 1 ? x_dim : paddle::framework::make_ddim({1, x_dim[0]});
+  return x_dim.size() > 1 ? x_dim : pten::make_ddim({1, x_dim[0]});
 }
 
 // Get column matrix shape from a vector shape. If the ran of y_dim > 1, the
 // original y_dim is returned.
 static DDim ColumnMatrixDimsFromVector(const DDim& y_dim) {
-  return y_dim.size() > 1 ? y_dim : paddle::framework::make_ddim({y_dim[0], 1});
+  return y_dim.size() > 1 ? y_dim : pten::make_ddim({y_dim[0], 1});
 }
 
 static std::vector<int64_t> Transpose(const std::vector<int64_t>& x,
@@ -393,15 +393,13 @@ class MatMulV2GradMKLDNNKernel : public paddle::framework::OpKernel<T> {
 
     if (x_dims != dx_bd_dims) {
       ReduceSumForMatmulGradOutput(ctx, dev_ctx, onednn_engine, &dx_tmp, dx,
-                                   x_dims,
-                                   paddle::framework::vectorize(x->dims()));
+                                   x_dims, pten::vectorize(x->dims()));
     } else {
       *dx = std::move(dx_tmp);
     }
     if (y_dims != dy_bd_dims) {
       ReduceSumForMatmulGradOutput(ctx, dev_ctx, onednn_engine, &dy_tmp, dy,
-                                   y_dims,
-                                   paddle::framework::vectorize(y->dims()));
+                                   y_dims, pten::vectorize(y->dims()));
     } else {
       *dy = std::move(dy_tmp);
     }

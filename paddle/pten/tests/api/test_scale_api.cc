@@ -25,7 +25,7 @@ namespace paddle {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = pten::framework::DDim;
+using DDim = pten::DDim;
 
 void CheckScaleResult(const experimental::Tensor* out) {
   ASSERT_EQ(out->dims().size(), 2);

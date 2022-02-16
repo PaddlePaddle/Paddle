@@ -131,7 +131,7 @@ class TensorDescriptor {
   T* desc() const { return desc_.get(); }
 
   void set(const Tensor& tensor, const int groups = 1) {
-    auto dims = framework::vectorize<int>(tensor.dims());
+    auto dims = pten::vectorize<int>(tensor.dims());
     std::vector<int> strides(dims.size());
     strides[dims.size() - 1] = 1;
     for (int i = dims.size() - 2; i >= 0; i--) {
@@ -154,7 +154,7 @@ class TensorDescriptor {
     PADDLE_ENFORCE_EQ(format, MIOPEN_TENSOR_NCHW,
                       platform::errors::InvalidArgument(
                           "format should ONLY be NCHW in MIOPEN."));
-    auto dims = framework::vectorize<int>(tensor.dims());
+    auto dims = pten::vectorize<int>(tensor.dims());
     std::vector<int> strides(dims.size());
     strides[dims.size() - 1] = 1;
     for (int i = dims.size() - 2; i >= 0; i--) {
@@ -200,7 +200,7 @@ class FilterDescriptor {
     PADDLE_ENFORCE_EQ(format, MIOPEN_TENSOR_NCHW,
                       platform::errors::InvalidArgument(
                           "format should ONLY be NCHW in MIOPEN."));
-    auto dims = framework::vectorize<int>(tensor.dims());
+    auto dims = pten::vectorize<int>(tensor.dims());
     std::vector<int> strides(dims.size());
     strides[dims.size() - 1] = 1;
     for (int i = dims.size() - 2; i >= 0; i--) {

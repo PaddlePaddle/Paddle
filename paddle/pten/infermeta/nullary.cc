@@ -20,7 +20,7 @@ void CreateInferMetaBase(const std::vector<int64_t>& shape,
                          DataType dtype,
                          DataLayout layout,
                          MetaTensor* out) {
-  auto out_dims = pten::framework::make_ddim(shape);
+  auto out_dims = pten::make_ddim(shape);
   out->set_dims(out_dims);
   out->set_dtype(dtype);
   out->set_layout(layout);
