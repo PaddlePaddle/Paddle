@@ -16,7 +16,8 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
+from paddle.fluid.tests.unittests.testsuite import create_op
 import paddle.fluid.core as core
 
 import paddle
@@ -73,17 +74,32 @@ class TestMatMulV2Op(OpTest):
         self.init_kernel_type()
         self.config()
         self.op_type = "matmul_v2"
-        x = np.random.random(self.x_shape).astype(self.dtype)
-        y = np.random.random(self.y_shape).astype(self.dtype)
-        # -0.1 ~ 0.1
-        x = -0.1 + 0.2 * x
-        y = -0.1 + 0.2 * y
+        if self.is_bfloat16_op():
+            x = np.random.random(self.x_shape).astype(np.float32)
+            y = np.random.random(self.y_shape).astype(np.float32)
+        else:
+            x = np.random.random(self.x_shape).astype(self.dtype)
+            y = np.random.random(self.y_shape).astype(self.dtype)
+            # -0.1 ~ 0.1
+            x = -0.1 + 0.2 * x
+            y = -0.1 + 0.2 * y
         result = reference_matmul(x, y, self.trans_x, self.trans_y)
-        result = result.astype(self.dtype)
-        self.inputs = {
-            'X': x,
-            'Y': y,
-        }
+        if self.is_bfloat16_op():
+            result = result.astype(np.float32)
+            self.inputs = {
+                'X': convert_float_to_uint16(x),
+                'Y': convert_float_to_uint16(y),
+            }
+            self.inputs_fp32 = {
+                'X': x,
+                'Y': y,
+            }
+        else:
+            result = result.astype(self.dtype)
+            self.inputs = {
+                'X': x,
+                'Y': y,
+            }
         self.attrs = {'trans_x': self.trans_x, 'trans_y': self.trans_y}
         self.outputs = {'Out': result}
 
@@ -97,7 +113,7 @@ class TestMatMulV2Op(OpTest):
             self.check_grad(['X', 'Y'], 'Out')
 
 
-class TestMatMuklOp2(TestMatMulV2Op):
+class TestMatMulOp2(TestMatMulV2Op):
     """
     case 2
     """
@@ -109,7 +125,7 @@ class TestMatMuklOp2(TestMatMulV2Op):
         self.trans_y = True
 
 
-class TestMatMuklOp3(TestMatMulV2Op):
+class TestMatMulOp3(TestMatMulV2Op):
     """
     case 3
     """
@@ -121,7 +137,7 @@ class TestMatMuklOp3(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMuklOp4(TestMatMulV2Op):
+class TestMatMulOp4(TestMatMulV2Op):
     """
     case 4
     """
@@ -133,7 +149,7 @@ class TestMatMuklOp4(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMuklOp5(TestMatMulV2Op):
+class TestMatMulOp5(TestMatMulV2Op):
     """
     case 5
     """
@@ -145,7 +161,7 @@ class TestMatMuklOp5(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMuklOp6(TestMatMulV2Op):
+class TestMatMulOp6(TestMatMulV2Op):
     """
     case 6
     """
@@ -157,7 +173,7 @@ class TestMatMuklOp6(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMuklOp7(TestMatMulV2Op):
+class TestMatMulOp7(TestMatMulV2Op):
     """
     case 7
     """
@@ -169,7 +185,7 @@ class TestMatMuklOp7(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMuklOp8(TestMatMulV2Op):
+class TestMatMulOp8(TestMatMulV2Op):
     """
     case 8
     """
@@ -181,7 +197,7 @@ class TestMatMuklOp8(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMuklOp9(TestMatMulV2Op):
+class TestMatMulOp9(TestMatMulV2Op):
     """
     case 9
     """
@@ -193,7 +209,7 @@ class TestMatMuklOp9(TestMatMulV2Op):
         self.trans_y = True
 
 
-class TestMatMuklOp10(TestMatMulV2Op):
+class TestMatMulOp10(TestMatMulV2Op):
     """
     case 10
     """
@@ -205,7 +221,7 @@ class TestMatMuklOp10(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMuklOp11(TestMatMulV2Op):
+class TestMatMulOp11(TestMatMulV2Op):
     """
     case 11
     """
@@ -217,7 +233,7 @@ class TestMatMuklOp11(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMuklOp12(TestMatMulV2Op):
+class TestMatMulOp12(TestMatMulV2Op):
     """
     case 12
     """
@@ -229,7 +245,7 @@ class TestMatMuklOp12(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMuklOp13(TestMatMulV2Op):
+class TestMatMulOp13(TestMatMulV2Op):
     """
     case 13
     """
@@ -241,7 +257,7 @@ class TestMatMuklOp13(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMuklOp14(TestMatMulV2Op):
+class TestMatMulOp14(TestMatMulV2Op):
     """
     case 14_1
     """
@@ -253,7 +269,7 @@ class TestMatMuklOp14(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMuklOp15(TestMatMulV2Op):
+class TestMatMulOp15(TestMatMulV2Op):
     """
     case 14_2
     """
@@ -265,7 +281,7 @@ class TestMatMuklOp15(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMuklOp16(TestMatMulV2Op):
+class TestMatMulOp16(TestMatMulV2Op):
     """
     case 16 : to check the gradient for special case
     """
@@ -277,7 +293,7 @@ class TestMatMuklOp16(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMuklOp17(TestMatMulV2Op):
+class TestMatMulOp17(TestMatMulV2Op):
     """
     case 17 : to check the gradient for special case
     """
@@ -289,7 +305,7 @@ class TestMatMuklOp17(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMuklOpBroadcast1(TestMatMulV2Op):
+class TestMatMulOpBroadcast1(TestMatMulV2Op):
     """
     case 14_3
     """
@@ -301,7 +317,7 @@ class TestMatMuklOpBroadcast1(TestMatMulV2Op):
         self.trans_y = True
 
 
-class TestMatMuklOpBroadcast2(TestMatMulV2Op):
+class TestMatMulOpBroadcast2(TestMatMulV2Op):
     """
     case 14_4
     """
@@ -343,22 +359,90 @@ def create_test_fp16_class(parent, atol=0.001, max_relative_error=1.0):
 
 
 create_test_fp16_class(TestMatMulV2Op)
-create_test_fp16_class(TestMatMuklOp2)
-create_test_fp16_class(TestMatMuklOp3)
-create_test_fp16_class(TestMatMuklOp4)
-create_test_fp16_class(TestMatMuklOp5)
-create_test_fp16_class(TestMatMuklOp6)
-create_test_fp16_class(TestMatMuklOp7)
-create_test_fp16_class(TestMatMuklOp8)
-create_test_fp16_class(TestMatMuklOp9)
-create_test_fp16_class(TestMatMuklOp10)
-create_test_fp16_class(TestMatMuklOp11)
-create_test_fp16_class(TestMatMuklOp12)
-create_test_fp16_class(TestMatMuklOp13)
-create_test_fp16_class(TestMatMuklOp14)
-create_test_fp16_class(TestMatMuklOp15)
-create_test_fp16_class(TestMatMuklOp16)
-create_test_fp16_class(TestMatMuklOp17)
+create_test_fp16_class(TestMatMulOp2)
+create_test_fp16_class(TestMatMulOp3)
+create_test_fp16_class(TestMatMulOp4)
+create_test_fp16_class(TestMatMulOp5)
+create_test_fp16_class(TestMatMulOp6)
+create_test_fp16_class(TestMatMulOp7)
+create_test_fp16_class(TestMatMulOp8)
+create_test_fp16_class(TestMatMulOp9)
+create_test_fp16_class(TestMatMulOp10)
+create_test_fp16_class(TestMatMulOp11)
+create_test_fp16_class(TestMatMulOp12)
+create_test_fp16_class(TestMatMulOp13)
+create_test_fp16_class(TestMatMulOp14)
+create_test_fp16_class(TestMatMulOp15)
+create_test_fp16_class(TestMatMulOp16)
+create_test_fp16_class(TestMatMulOp17)
+
+#--------------------test matmul bf16--------------------
+
+
+def create_test_bf16_class(parent, atol=0.01):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda() or core.cudnn_version() < 8100,
+        "core is not compiled with CUDA and cudnn version need larger than 8.1.0"
+    )
+    class TestMatMulOpBf16Case(parent):
+        def get_numeric_grad(self, place, check_name):
+            scope = core.Scope()
+            self._check_grad_helper()
+            op = create_op(scope, self.op_type, self.inputs, self.outputs,
+                           self.attrs)
+            return get_numeric_gradient(place, scope, op, self.inputs_fp32,
+                                        check_name, ['Out'])
+
+        def init_kernel_type(self):
+            self.dtype = np.uint16
+
+        def test_check_output(self):
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=atol)
+
+        def test_check_grad_x(self):
+            place = core.CUDAPlace(0)
+            numeric_grads = self.get_numeric_grad(place, 'X')
+            self.check_grad_with_place(
+                place, ['X'],
+                'Out',
+                no_grad_set=set(['Y']),
+                user_defined_grads=[numeric_grads])
+
+        def test_check_grad_y(self):
+            place = core.CUDAPlace(0)
+            numeric_grads = self.get_numeric_grad(place, 'Y')
+            self.check_grad_with_place(
+                place, ['Y'],
+                'Out',
+                no_grad_set=set(['X']),
+                user_defined_grads=[numeric_grads])
+
+        def test_check_grad(self):
+            pass
+
+    cls_name = "{0}_{1}".format(parent.__name__, "Bf16")
+    TestMatMulOpBf16Case.__name__ = cls_name
+    globals()[cls_name] = TestMatMulOpBf16Case
+
+
+create_test_bf16_class(TestMatMulV2Op)
+create_test_bf16_class(TestMatMulOp2)
+create_test_bf16_class(TestMatMulOp3)
+create_test_bf16_class(TestMatMulOp4)
+create_test_bf16_class(TestMatMulOp5)
+create_test_bf16_class(TestMatMulOp6)
+create_test_bf16_class(TestMatMulOp7)
+create_test_bf16_class(TestMatMulOp8)
+create_test_bf16_class(TestMatMulOp9)
+create_test_bf16_class(TestMatMulOp10)
+create_test_bf16_class(TestMatMulOp11)
+create_test_bf16_class(TestMatMulOp12)
+create_test_bf16_class(TestMatMulOp13)
+create_test_bf16_class(TestMatMulOp14)
+create_test_bf16_class(TestMatMulOp15)
+create_test_bf16_class(TestMatMulOp16)
+create_test_bf16_class(TestMatMulOp17)
 
 
 class TestMatMulV2API(unittest.TestCase):

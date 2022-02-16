@@ -103,6 +103,8 @@ target_link_libraries(generate_pass pass_desc_proto)
 
 if(WITH_TENSORRT)
     pass_library(trt_map_matmul_to_mul_pass inference)
+    pass_library(preln_embedding_eltwise_layernorm_fuse_pass inference)
+    pass_library(preln_skip_layernorm_fuse_pass inference)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
