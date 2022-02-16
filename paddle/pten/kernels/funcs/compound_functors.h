@@ -18,9 +18,8 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace pten {
+namespace funcs {
 
 // Z = BinaryFunctor(X, UnaryFunctor(Y))
 template <typename T, typename BinaryFunctor, typename UnaryFunctor>
@@ -69,8 +68,8 @@ struct BinaryCompoundGradDxFunctor {
     return dout * d_binary_fun_.Dx(x, unary_fun_(y));
   }
 
-  inline HOSTDEVICE T UseIntermediateOut(T x, T y, T intermediate_out, T out,
-                                         T dout) {
+  inline HOSTDEVICE T
+  UseIntermediateOut(T x, T y, T intermediate_out, T out, T dout) {
     return dout * d_binary_fun_.Dx(x, intermediate_out);
   }
 
@@ -82,8 +81,11 @@ struct BinaryCompoundGradDxFunctor {
 };
 
 // Z = BinaryFunctor(X, UnaryFunctor(Y))
-template <typename T, typename DBinaryFun, typename UnaryFun,
-          typename DUnaryFun, bool InPlace>
+template <typename T,
+          typename DBinaryFun,
+          typename UnaryFun,
+          typename DUnaryFun,
+          bool InPlace>
 struct BinaryCompoundGradDyFunctor {
   BinaryCompoundGradDyFunctor(const DBinaryFun &d_binary_fun,
                               const UnaryFun &unary_fun,
@@ -96,8 +98,8 @@ struct BinaryCompoundGradDyFunctor {
     return dout * d_binary_fun_.Dy(x, unary_fun_(y)) * d_unary_fun_.UseX(y);
   }
 
-  inline HOSTDEVICE T UseIntermediateOut(T x, T y, T intermediate_out, T out,
-                                         T dout) {
+  inline HOSTDEVICE T
+  UseIntermediateOut(T x, T y, T intermediate_out, T out, T dout) {
     if (InPlace) {
       return dout * d_binary_fun_.Dy(x, intermediate_out) *
              d_unary_fun_.UseOut(intermediate_out);
@@ -116,8 +118,11 @@ struct BinaryCompoundGradDyFunctor {
 };
 
 // Z = UnaryFunctor(BinaryFunctor(X, Y))
-template <typename T, typename DUnaryFun, typename BinaryFun,
-          typename DBinaryFun, bool InPlace>
+template <typename T,
+          typename DUnaryFun,
+          typename BinaryFun,
+          typename DBinaryFun,
+          bool InPlace>
 struct UnaryCompoundGradDxFunctor {
   UnaryCompoundGradDxFunctor(const DUnaryFun &d_unary_fun,
                              const BinaryFun &binary_fun,
@@ -136,8 +141,8 @@ struct UnaryCompoundGradDxFunctor {
     return base * d_binary_fun_.Dx(x, y);
   }
 
-  inline HOSTDEVICE T UseIntermediateOut(T x, T y, T intermediate_out, T out,
-                                         T dout) {
+  inline HOSTDEVICE T
+  UseIntermediateOut(T x, T y, T intermediate_out, T out, T dout) {
     T base;
     if (InPlace) {
       base = dout * d_unary_fun_.UseOut(out);
@@ -156,8 +161,11 @@ struct UnaryCompoundGradDxFunctor {
 };
 
 // Z = UnaryFunctor(BinaryFunctor(X, Y))
-template <typename T, typename DUnaryFun, typename BinaryFun,
-          typename DBinaryFun, bool InPlace>
+template <typename T,
+          typename DUnaryFun,
+          typename BinaryFun,
+          typename DBinaryFun,
+          bool InPlace>
 struct UnaryCompoundGradDyFunctor {
   UnaryCompoundGradDyFunctor(const DUnaryFun &d_unary_fun,
                              const BinaryFun &binary_fun,
@@ -176,8 +184,8 @@ struct UnaryCompoundGradDyFunctor {
     return base * d_binary_fun_.Dy(x, y);
   }
 
-  inline HOSTDEVICE T UseIntermediateOut(T x, T y, T intermediate_out, T out,
-                                         T dout) {
+  inline HOSTDEVICE T
+  UseIntermediateOut(T x, T y, T intermediate_out, T out, T dout) {
     T base;
     if (InPlace) {
       base = dout * d_unary_fun_.UseOut(out);
@@ -206,7 +214,9 @@ struct BinaryCompoundGradDIntermedaiteOutFunctor {
     return dout * d_binary_fun_.Dy(x, unary_fun_(y));
   }
 
-  inline HOSTDEVICE T UseIntermediateOut(T x, T intermediate_out, T out,
+  inline HOSTDEVICE T UseIntermediateOut(T x,
+                                         T intermediate_out,
+                                         T out,
                                          T dout) {
     return dout * d_binary_fun_.Dy(x, intermediate_out);
   }
@@ -233,7 +243,9 @@ struct UnaryCompoundGradDIntermediateFunctor {
     }
   }
 
-  inline HOSTDEVICE T UseIntermediateOut(T x, T intermediate_out, T out,
+  inline HOSTDEVICE T UseIntermediateOut(T x,
+                                         T intermediate_out,
+                                         T out,
                                          T dout) {
     if (InPlace) {
       return dout * d_unary_fun_.UseOut(out);
@@ -249,6 +261,5 @@ struct UnaryCompoundGradDIntermediateFunctor {
   BinaryFun binary_fun_;
 };
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace pten

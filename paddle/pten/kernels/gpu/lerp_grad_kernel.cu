@@ -12,16 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/lerp_op.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
+#include "paddle/pten/core/kernel_registry.h"
+#include "paddle/pten/kernels/impl/lerp_grad_kernel_impl.h"
+#include "paddle/pten/kernels/lerp_grad_kernel.h"
 
-REGISTER_OP_CUDA_KERNEL(
-    lerp,
-    paddle::operators::LerpKernel<paddle::platform::CUDADeviceContext, float>,
-    paddle::operators::LerpKernel<paddle::platform::CUDADeviceContext, double>);
-
-REGISTER_OP_CUDA_KERNEL(
-    lerp_grad,
-    paddle::operators::LerpGradKernel<paddle::platform::CUDADeviceContext,
-                                      float>,
-    paddle::operators::LerpGradKernel<paddle::platform::CUDADeviceContext,
-                                      double>);
+PT_REGISTER_KERNEL(
+    lerp_grad, GPU, ALL_LAYOUT, pten::LerpGradKernel, float, double) {}
