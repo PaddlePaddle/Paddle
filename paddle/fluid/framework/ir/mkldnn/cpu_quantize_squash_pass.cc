@@ -155,9 +155,14 @@ void CPUQuantizeSquashPass::DequantQuantSquash(
     bool is_concat_signed =
         quant_op->Op()->GetAttrIfExists<bool>("is_negative_input");
     bool is_input_unsigned = IsDequantizeInputUint8(dequant_in);
-    if (is_concat_signed && is_input_unsigned) {
+    bool is_next_op_concat_or_elementwise =
+        next_op->Op()->Type() == "concat" ||
+        next_op->Op()->Type().find("elementwise") == 0;
+    if (is_next_op_concat_or_elementwise && is_concat_signed &&
+        is_input_unsigned) {
       VLOG(4) << "Do not squash dequant-quant, because "
-              << "is_concat_signed: " << is_concat_signed
+              << "next_op is: " << next_op->Op()->Type()
+              << ", is_concat_signed: " << is_concat_signed
               << ", is_input_unsigned: " << is_input_unsigned << ".";
       return;
     }
