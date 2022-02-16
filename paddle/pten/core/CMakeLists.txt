@@ -20,6 +20,7 @@ cc_library(pten_device_context SRCS device_context.cc DEPS tensor_base)
 cc_library(dense_tensor SRCS dense_tensor.cc dense_tensor_impl.cc DEPS convert_utils tensor_meta tensor_base)
 cc_library(sparse_coo_tensor SRCS sparse_coo_tensor.cc DEPS tensor_meta tensor_base)
 cc_library(sparse_csr_tensor SRCS sparse_csr_tensor.cc DEPS dense_tensor tensor_base)
+cc_library(vocab_tensor SRCS vocab_tensor.cc DEPS tensor_base)
 
 cc_library(meta_tensor SRCS meta_tensor.cc DEPS tensor_base tensor_meta dense_tensor)
 cc_library(infermeta_utils SRCS infermeta_utils.cc DEPS meta_tensor)
