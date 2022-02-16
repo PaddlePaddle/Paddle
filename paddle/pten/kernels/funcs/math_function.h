@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/utils/data_type.h"
 
 namespace pten {
 namespace funcs {

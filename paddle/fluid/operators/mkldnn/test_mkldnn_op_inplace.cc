@@ -25,7 +25,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
-USE_OP(elementwise_add);
+USE_OP_ITSELF(elementwise_add);
 USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
 USE_OP(relu);
 USE_OP_DEVICE_KERNEL(relu, MKLDNN);
