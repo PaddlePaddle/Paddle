@@ -327,7 +327,7 @@ bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
     framework::FetchType &fetch_var =
         framework::GetFetchVariable(*scope, "fetch", idx);
     auto fetch = BOOST_GET_CONST(framework::LoDTensor, fetch_var);
-    auto type = fetch.type();
+    auto type = framework::TransToProtoVarType(fetch.dtype());
     auto output = &(outputs->at(i));
     output->name = fetchs_[idx]->Input("X")[0];
     if (type == framework::DataTypeTrait<float>::DataType()) {

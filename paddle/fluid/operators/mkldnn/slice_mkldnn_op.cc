@@ -97,10 +97,12 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
 
     out->Resize(framework::make_ddim(slice_dims));
 
-    dnnl::memory::data_type x_type = framework::ToMKLDNNDataType(x->type());
+    dnnl::memory::data_type x_type =
+        framework::ToMKLDNNDataType(framework::TransToProtoVarType(x->dtype()));
 
-    platform::ReorderMKLDNNHandler reorder_handler(x_vec_dims, x->type(),
-                                                   x_type, onednn_engine);
+    platform::ReorderMKLDNNHandler reorder_handler(
+        x_vec_dims, framework::TransToProtoVarType(x->dtype()), x_type,
+        onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         x->format(), platform::to_void_cast(x->data<T>()));
@@ -192,15 +194,16 @@ class SliceGradMKLDNNKernel : public framework::OpKernel<T> {
       slice_dims[axes[i]] = ends[i] - starts[i];
     }
 
-    dnnl::memory::data_type dout_type =
-        framework::ToMKLDNNDataType(dout->type());
+    dnnl::memory::data_type dout_type = framework::ToMKLDNNDataType(
+        framework::TransToProtoVarType(dout->dtype()));
     dnnl::memory::desc md(dout_vec_dims, platform::MKLDNNGetDataType<T>(),
                           dout->format());
     dnnl::memory::format_tag reorder_format_tag =
         platform::GetMKLDNNFormat(md.reshape(slice_dims));
 
-    platform::ReorderMKLDNNHandler reorder_handler(slice_dims, dout->type(),
-                                                   dout_type, onednn_engine);
+    platform::ReorderMKLDNNHandler reorder_handler(
+        slice_dims, framework::TransToProtoVarType(dout->dtype()), dout_type,
+        onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         reorder_format_tag, platform::to_void_cast(dout->data<T>()));

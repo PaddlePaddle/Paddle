@@ -62,6 +62,11 @@
 #include "paddle/fluid/platform/device/mlu/mlu_info.h"
 #endif
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/fluid/memory/allocation/custom_allocator.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
+#endif
+
 PADDLE_DEFINE_EXPORTED_int64(
     gpu_allocator_retry_time, 10000,
     "The retry time (milliseconds) when allocator fails "
@@ -187,6 +192,17 @@ class AllocatorFacadePrivate {
           InitNaiveBestFitMLUAllocator(platform::MLUPlace(dev_id));
         }
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+        auto device_types = platform::DeviceManager::GetAllCustomDeviceTypes();
+        for (const auto& dev_type : device_types) {
+          for (size_t dev_id = 0;
+               dev_id < platform::DeviceManager::GetDeviceCount(dev_type);
+               ++dev_id) {
+            InitNaiveBestFitCustomDeviceAllocator(
+                platform::CustomPlace(dev_type, dev_id));
+          }
+        }
+#endif
         break;
       }
 
@@ -221,6 +237,17 @@ class AllocatorFacadePrivate {
 #ifdef PADDLE_WITH_MLU
         for (int dev_id = 0; dev_id < platform::GetMLUDeviceCount(); ++dev_id) {
           InitNaiveBestFitMLUAllocator(platform::MLUPlace(dev_id));
+        }
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+        auto device_types = platform::DeviceManager::GetAllCustomDeviceTypes();
+        for (const auto& dev_type : device_types) {
+          for (size_t dev_id = 0;
+               dev_id < platform::DeviceManager::GetDeviceCount(dev_type);
+               ++dev_id) {
+            InitAutoGrowthCustomDeviceAllocator(
+                platform::CustomPlace(dev_type, dev_id), allow_free_idle_chunk);
+          }
         }
 #endif
         break;
@@ -700,6 +727,21 @@ class AllocatorFacadePrivate {
   }
 #endif
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  void InitNaiveBestFitCustomDeviceAllocator(platform::CustomPlace p) {
+    allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
+  }
+
+  void InitAutoGrowthCustomDeviceAllocator(platform::CustomPlace p,
+                                           bool allow_free_idle_chunk) {
+    auto custom_allocator =
+        std::make_shared<paddle::memory::allocation::CustomAllocator>(p);
+    allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
+        custom_allocator, platform::DeviceManager::GetMinChunkSize(p),
+        allow_free_idle_chunk);
+  }
+#endif
+
   void InitSystemAllocators() {
     if (!system_allocators_.empty()) return;
     system_allocators_[platform::CPUPlace()] = std::make_shared<CPUAllocator>();
@@ -768,6 +810,16 @@ class AllocatorFacadePrivate {
     int device_count = platform::GetMLUDeviceCount();
     for (int dev_id = 0; dev_id < device_count; ++dev_id) {
       places.emplace_back(platform::MLUPlace(dev_id));
+    }
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    auto device_types = platform::DeviceManager::GetAllCustomDeviceTypes();
+    for (const auto& dev_type : device_types) {
+      for (size_t dev_id = 0;
+           dev_id < platform::DeviceManager::GetDeviceCount(dev_type);
+           dev_id++) {
+        places.emplace_back(platform::CustomPlace(dev_type, dev_id));
+      }
     }
 #endif
 
@@ -1005,7 +1057,6 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place, size_t size,
         "Not allow to use StreamSafeCUDAAllocator with CUDAGraphAllocator"));
   }
 #endif
-
   platform::CUDAPlace p(place.GetDeviceId());
   if (LIKELY(size > 0 && FLAGS_use_system_allocator == false)) {
     return m_->GetAllocator(p, stream, /* create_if_not_found = */ true)

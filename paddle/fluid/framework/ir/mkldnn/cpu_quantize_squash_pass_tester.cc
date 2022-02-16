@@ -26,12 +26,26 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
            const std::vector<std::string>& outputs, bool use_mkldnn,
            const std::vector<float> scale = {}, float bias = 0.0,
            const std::string& mkldnn_data_type = "float32",
-           bool bias_after_scale = false, int groups = 1) {
+           bool bias_after_scale = false, int groups = 1,
+           bool is_negative_input = true) {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
   op->SetAttr("use_mkldnn", use_mkldnn);
   op->SetAttr("name", name);
-  if (type == "conv2d") {
+  if (type != "dropout" && type != "quantize" && type != "dequantize") {
+    op->SetAttr("mkldnn_data_type", mkldnn_data_type);
+  }
+  if (type == "pool2d") {
+    op->SetInput("X", {inputs[0]});
+    op->SetOutput("Out", {outputs[0]});
+    if (scale.size() > 0) op->SetAttr("Scale_in", scale[0]);
+    if (scale.size() > 1) op->SetAttr("Scale_out", scale[1]);
+  } else if (type == "relu") {
+    op->SetInput("X", {inputs[0]});
+    op->SetOutput("Out", {outputs[0]});
+    if (scale.size() > 0) op->SetAttr("Scale_in", scale[0]);
+    if (scale.size() > 1) op->SetAttr("Scale_out", scale[1]);
+  } else if (type == "conv2d") {
     if (scale.size() > 0) op->SetAttr("Scale_in", scale[0]);
     if (scale.size() > 1) op->SetAttr("Scale_out", scale[1]);
     op->SetInput("Input", {inputs[0]});
@@ -48,11 +62,11 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     op->SetAttr("padding_algorithm", std::string("EXPLICIT"));
     op->SetAttr("data_format", std::string("NCHW"));
     op->SetAttr("force_fp32_output", false);
-    op->SetAttr("mkldnn_data_type", mkldnn_data_type);
   } else if (type == "quantize") {
     op->SetInput("Input", {inputs[0]});
     op->SetOutput("Output", {outputs[0]});
     op->SetAttr("Scale", scale[0]);
+    op->SetAttr("is_negative_input", is_negative_input);
   } else if (type == "dequantize") {
     op->SetInput("Input", {inputs[0]});
     op->SetOutput("Output", {outputs[0]});
@@ -121,7 +135,8 @@ ProgramDesc BuildConvRequantProgramDesc(bool use_mkldnn, float scale_out,
 }
 
 static const std::initializer_list<std::string> variable_names{
-    "a", "b", "c", "d", "e", "f", "g", "h", "i", "x", "y", "w1", "w2"};
+    "a", "b", "c", "d", "e", "f", "g",  "h",
+    "i", "j", "k", "l", "x", "y", "w1", "w2"};
 
 // a->Conv1(scale1)->b
 // b->Dequant(scale1)->c
@@ -216,6 +231,35 @@ ProgramDesc BuildConvMultiRequantProgramDesc(bool use_mkldnn, float scale_out,
         {scale_out, scale1});
   SetOp(&prog, "requantize", "Requant2", {"b"}, {"d"}, use_mkldnn,
         {scale_out, scale2});
+  return prog;
+}
+
+/* a->pool2d->b->Dequant->c(s8)->Quant->d-\
+ * e->relu->f->Dequant->g(u8)->Quant->h--Concat1->x
+ * i->pool2d->j->Dequant->k(s8)->Quant->l-/
+ */
+ProgramDesc BuildConvS8U8S8ConcatProgramDesc(float scale_out, float scale) {
+  ProgramDesc prog;
+  for (auto& v : variable_names) {
+    prog.MutableBlock(0)->Var(v);
+  }
+  SetOp(&prog, "pool2d", "Pool2d1", {"a"}, {"b"}, true, {scale, scale_out});
+  SetOp(&prog, "relu", "Relu1", {"e"}, {"f"}, true, {scale, scale_out});
+  SetOp(&prog, "pool2d", "Pool2d2", {"i"}, {"j"}, true, {scale, scale_out});
+
+  SetOp(&prog, "dequantize", "Dequant1", {"b"}, {"c"}, true,
+        {scale, scale_out});
+  SetOp(&prog, "dequantize", "Dequant2", {"f"}, {"g"}, true,
+        {scale, scale_out});
+  SetOp(&prog, "dequantize", "Dequant3", {"j"}, {"k"}, true,
+        {scale, scale_out});
+
+  SetOp(&prog, "quantize", "Quant1", {"c"}, {"d"}, true, {scale, scale_out});
+  SetOp(&prog, "quantize", "Quant2", {"g"}, {"h"}, true, {scale, scale_out},
+        0.0, "float32", false, 1, false);
+  SetOp(&prog, "quantize", "Quant3", {"k"}, {"l"}, true, {scale, scale_out});
+
+  SetOp(&prog, "concat", "Concat1", {"d", "h", "l"}, {"x"}, true);
   return prog;
 }
 
@@ -394,7 +438,8 @@ void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
                       const char* var_name) {
   auto x = scope->Var(var_name);
   auto tensor = x->GetMutable<LoDTensor>();
-  tensor->mutable_data(place, proto::VarType::FP32, 1);
+  tensor->mutable_data(place,
+                       framework::TransToPtenDataType(proto::VarType::FP32), 1);
 }
 
 void PrepareGraph(std::unique_ptr<ir::Graph>* graph, const ProgramDesc& prog) {
@@ -424,6 +469,31 @@ void CountNodeTest(const ProgramDesc& prog, int removed_nodes_num) {
   int current_nodes_num = graph->Nodes().size();
 
   EXPECT_EQ(original_nodes_num - removed_nodes_num, current_nodes_num);
+}
+
+void CheckNodesTest(const ProgramDesc& prog,
+                    std::unordered_map<std::string, int> expected_operators,
+                    const int removed_nodes_num) {
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
+  PrepareGraph(&graph, prog);
+
+  int original_nodes_num = graph->Nodes().size();
+  RegisterPass(&graph);
+  int current_nodes_num = graph->Nodes().size();
+
+  EXPECT_EQ(original_nodes_num - removed_nodes_num, current_nodes_num);
+
+  for (auto* node : graph->Nodes()) {
+    if (node->IsOp()) {
+      auto* op = node->Op();
+      if (expected_operators.count(op->Type()) > 0) {
+        expected_operators[op->Type()]--;
+      }
+    }
+  }
+  for (auto const& pair : expected_operators) {
+    EXPECT_EQ(pair.second, 0) << " " << pair.first;
+  }
 }
 
 // check op->scale_out
@@ -762,6 +832,18 @@ TEST(CpuQuantizeSquashPass, quant_bf16_conv2d) {
   CountNodeTest(
       BuildQuantConv2dProgramDesc(use_mkldnn, quant_scale, mkldnn_data_type),
       remove_nodes);
+}
+
+TEST(CpuQuantizeSquashPass, dont_squash_u8_dequant_s8_quant_input_to_concat) {
+  // removed 2 x 4 (dequantize_op, dequantize_out, quantize, quantize_out)
+  auto remove_nodes = 8;
+  std::unordered_map<std::string, int> expected_operators = {{"concat", 1},
+                                                             {"quantize", 1},
+                                                             {"dequantize", 1},
+                                                             {"relu", 1},
+                                                             {"pool2d", 2}};
+  CheckNodesTest(BuildConvS8U8S8ConcatProgramDesc(1.2f, 1.2f),
+                 expected_operators, remove_nodes);
 }
 
 }  // namespace ir
