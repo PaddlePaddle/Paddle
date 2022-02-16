@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/pten/kernels/funcs/axis_utils.h"
 
 namespace paddle {
 namespace operators {

@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/operators/math/softmax_impl.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -138,6 +139,16 @@ template class SoftmaxGradFunctor<platform::CUDADeviceContext, float>;
 template class SoftmaxGradFunctor<platform::CUDADeviceContext, double>;
 template class SoftmaxGradFunctor<platform::CUDADeviceContext,
                                   platform::float16>;
+
+template class SoftmaxFunctor<pten::GPUContext, platform::float16, false>;
+template class SoftmaxFunctor<pten::GPUContext, platform::float16, true>;
+template class SoftmaxFunctor<pten::GPUContext, float, false>;
+template class SoftmaxFunctor<pten::GPUContext, double, false>;
+template class SoftmaxFunctor<pten::GPUContext, float, true>;
+template class SoftmaxFunctor<pten::GPUContext, double, true>;
+template class SoftmaxGradFunctor<pten::GPUContext, float>;
+template class SoftmaxGradFunctor<pten::GPUContext, double>;
+template class SoftmaxGradFunctor<pten::GPUContext, platform::float16>;
 
 }  // namespace math
 }  // namespace operators

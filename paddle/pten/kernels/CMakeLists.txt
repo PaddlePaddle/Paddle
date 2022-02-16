@@ -21,8 +21,10 @@ if(WITH_GPU OR WITH_ROCM)
 endif()
 
 # auto build kernel targets by cmake
-register_kernels(EXCLUDES math_kernel DEPS ${COMMON_KERNEL_DEPS})
+register_kernels(EXCLUDES math_kernel softmax_kernel softmax_grad_kernel DEPS ${COMMON_KERNEL_DEPS})
 kernel_library(math_kernel DEPS ${MATH_KERNEL_DEPS})
+kernel_library(softmax_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
+kernel_library(softmax_grad_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
 add_subdirectory(sparse)
 
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})

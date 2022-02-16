@@ -11,8 +11,8 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/softmax_op.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/pten/kernels/funcs/axis_utils.h"
 
 namespace paddle {
 namespace operators {
