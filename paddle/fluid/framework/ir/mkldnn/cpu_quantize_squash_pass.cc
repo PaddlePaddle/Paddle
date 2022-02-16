@@ -132,6 +132,25 @@ bool CPUQuantizeSquashPass::IsDequantizeInputUint8(
   return false;
 }
 
+bool CPUQuantizeSquashPass::IsDequantizeQuantizeIncompatible(
+    Node* quant_op, Node* dequant_in, Node* next_op) const {
+  bool is_concat_signed =
+      quant_op->Op()->GetAttrIfExists<bool>("is_negative_input");
+  bool is_input_unsigned = IsDequantizeInputUint8(dequant_in);
+  bool is_next_op_concat_or_elementwise =
+      next_op->Op()->Type() == "concat" ||
+      next_op->Op()->Type().find("elementwise") == 0;
+  if (is_next_op_concat_or_elementwise && is_concat_signed &&
+      is_input_unsigned) {
+    VLOG(4) << "Do not squash dequant-quant, because "
+            << "next_op is: " << next_op->Op()->Type()
+            << ", is_concat_signed: " << is_concat_signed
+            << ", is_input_unsigned: " << is_input_unsigned << ".";
+    return true;
+  }
+  return false;
+}
+
 void CPUQuantizeSquashPass::DequantQuantSquash(
     Graph* graph,
     std::unordered_map<const Node*, int>* nodes_keep_counter) const {
@@ -151,19 +170,7 @@ void CPUQuantizeSquashPass::DequantQuantSquash(
     GET_IR_NODE_FROM_SUBGRAPH(quant_out, quant_out, squash_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(next_op, next_op, squash_pattern);
 
-    // Don't squash if e.g. just one concat input is unsigned
-    bool is_concat_signed =
-        quant_op->Op()->GetAttrIfExists<bool>("is_negative_input");
-    bool is_input_unsigned = IsDequantizeInputUint8(dequant_in);
-    bool is_next_op_concat_or_elementwise =
-        next_op->Op()->Type() == "concat" ||
-        next_op->Op()->Type().find("elementwise") == 0;
-    if (is_next_op_concat_or_elementwise && is_concat_signed &&
-        is_input_unsigned) {
-      VLOG(4) << "Do not squash dequant-quant, because "
-              << "next_op is: " << next_op->Op()->Type()
-              << ", is_concat_signed: " << is_concat_signed
-              << ", is_input_unsigned: " << is_input_unsigned << ".";
+    if (IsDequantizeQuantizeIncompatible(quant_op, dequant_in, next_op)) {
       return;
     }
 
