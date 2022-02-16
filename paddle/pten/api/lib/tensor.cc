@@ -252,10 +252,13 @@ Tensor::data<paddle::platform::bfloat16>() const;
 
 template <typename T>
 T *Tensor::data() {
-  PADDLE_THROW(pten::errors::Unimplemented(
-      "It is not currently supported to directly obtain the modifiable data "
-      "address through the tensor::data<T>() method, please use the "
-      "tensor::mutable_data<T>() method."));
+  if (is_dense_tensor()) {
+    return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->data<T>();
+  } else if (pten::SelectedRows::classof(impl_.get())) {
+    return std::dynamic_pointer_cast<pten::SelectedRows>(impl_)
+        ->mutable_value()
+        ->data<T>();
+  }
   return nullptr;
 }
 
