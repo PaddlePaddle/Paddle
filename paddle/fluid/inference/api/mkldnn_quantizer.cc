@@ -121,10 +121,6 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForOpOutputs(
         std::string fuse_activation =
             op->GetAttrIfExists<std::string>("fuse_activation");
         is_unsigned = (fuse_activation == "relu" || fuse_activation == "relu6");
-      } else if (op->Type() == "fc") {
-        std::string activation_type =
-            op->GetAttrIfExists<std::string>("activation_type");
-        is_unsigned = (activation_type == "relu" || activation_type == "relu6");
       } else if (op->Type() == "relu") {
         is_unsigned = true;
       } else if (op->Type() == "transpose2" || op->Type() == "reshape2" ||

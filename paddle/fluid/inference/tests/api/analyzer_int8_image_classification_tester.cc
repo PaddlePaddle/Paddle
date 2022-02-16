@@ -22,7 +22,13 @@ namespace inference {
 namespace analysis {
 
 void SetConfig(AnalysisConfig *cfg) {
-  cfg->SetModel(FLAGS_infer_model);
+  std::string model_path = FLAGS_infer_model + "/__model__";
+  std::ifstream model_file(model_path.c_str());
+  if (model_file.good())
+    cfg->SetModel(FLAGS_infer_model);
+  else
+    cfg->SetModel(FLAGS_infer_model + "/inference.pdmodel",
+                  FLAGS_infer_model + "/inference.pdiparams");
   cfg->DisableGpu();
   cfg->SwitchIrOptim();
   cfg->SwitchSpecifyInputNames();

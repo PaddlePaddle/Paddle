@@ -152,8 +152,16 @@ void CPUQuantizeSquashPass::DequantQuantSquash(
     GET_IR_NODE_FROM_SUBGRAPH(next_op, next_op, squash_pattern);
 
     // Don't squash if e.g. just one concat input is unsigned
-    if (IsDequantizeInputUint8(dequant_in) &&
-        !quant_op->Op()->GetAttrIfExists<bool>("is_negative_input")) {
+    bool is_concat_signed =
+        quant_op->Op()->GetAttrIfExists<bool>("is_negative_input");
+    bool is_input_unsigned = IsDequantizeInputUint8(dequant_in);
+    bool is_many_inputs_op =
+        next_op->Op()->Type() == "concat" ||
+        (next_op->Op()->Type().find("elementwise") != std::string::npos);
+    if (is_concat_signed && is_input_unsigned && is_many_inputs_op) {
+      VLOG(4) << "Do not squash dequant-quant, because "
+              << "is_concat_signed: " << is_concat_signed
+              << ", is_input_unsigned: " << is_input_unsigned << ".";
       return;
     }
 

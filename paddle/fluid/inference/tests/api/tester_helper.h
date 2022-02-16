@@ -112,6 +112,14 @@ void CheckError(float data_ref, float data) {
   }
 }
 
+bool CheckErrorBool(float data_ref, float data) {
+  if (std::abs(data_ref) > 1) {
+    return (std::abs((data_ref - data) / data_ref) <= FLAGS_accuracy);
+  } else {
+    return (std::abs(data_ref - data) <= FLAGS_accuracy);
+  }
+}
+
 class Barrier {
  public:
   explicit Barrier(std::size_t count) : _count(count) {}
@@ -200,15 +208,15 @@ std::shared_ptr<std::vector<PaddleTensor>> GetWarmupData(
                     element_in_batch * 3 * 224 * 224,
                 3 * 224 * 224,
                 static_cast<float *>(images.data.data()) + i * 3 * 224 * 224);
-
-    std::copy_n(static_cast<int64_t *>(test_data[batch][1].data.data()) +
-                    element_in_batch,
-                1, static_cast<int64_t *>(labels.data.data()) + i);
+    if (FLAGS_with_accuracy_layer)
+      std::copy_n(static_cast<int64_t *>(test_data[batch][1].data.data()) +
+                      element_in_batch,
+                  1, static_cast<int64_t *>(labels.data.data()) + i);
   }
-
-  auto warmup_data = std::make_shared<std::vector<PaddleTensor>>(2);
+  auto num_inputs = FLAGS_with_accuracy_layer ? 2 : 1;
+  auto warmup_data = std::make_shared<std::vector<PaddleTensor>>(num_inputs);
   (*warmup_data)[0] = std::move(images);
-  (*warmup_data)[1] = std::move(labels);
+  if (FLAGS_with_accuracy_layer) (*warmup_data)[1] = std::move(labels);
   return warmup_data;
 }
 
@@ -241,9 +249,13 @@ void SetInputs(std::vector<std::vector<PaddleTensor>> *inputs,
   }
   for (auto i = 0; i < iterations; i++) {
     auto images = image_reader.NextBatch();
-    auto labels = label_reader.NextBatch();
-    inputs->emplace_back(
-        std::vector<PaddleTensor>{std::move(images), std::move(labels)});
+    std::vector<PaddleTensor> tmp_vec;
+    tmp_vec.push_back(std::move(images));
+    if (FLAGS_with_accuracy_layer) {
+      auto labels = label_reader.NextBatch();
+      tmp_vec.push_back(std::move(labels));
+    }
+    inputs->push_back(std::move(tmp_vec));
   }
 }
 
@@ -812,7 +824,20 @@ void CompareQuantizedAndAnalysis(
   SummarizePerformance("FP32", sample_latency_fp32, "INT8",
                        sample_latency_int8);
 
-  CompareAccuracy(quantized_outputs, analysis_outputs, compared_idx);
+  int good = 0;
+  for (size_t i = 0; i < analysis_outputs.size(); ++i) {
+    auto float_data = static_cast<float *>(analysis_outputs[i][0].data.data());
+    auto int8_data = static_cast<float *>(quantized_outputs[i][0].data.data());
+    for (int j = 0; j < FLAGS_batch_size; ++j) {
+      if (CheckErrorBool(*(float_data++), *(int8_data++))) good++;
+    }
+  }
+  std::cout << "ACC compared between FP32 and int8 = "
+            << (1.f * good / (analysis_outputs.size() * FLAGS_batch_size))
+            << std::endl;
+
+  if (FLAGS_with_accuracy_layer)
+    CompareAccuracy(quantized_outputs, analysis_outputs, compared_idx);
 }
 
 void CompareBFloat16AndAnalysis(

@@ -303,18 +303,18 @@ inference_analysis_api_test(test_analyzer_ernie ${ERNIE_INSTALL_DIR} analyzer_er
 inference_analysis_api_int8_test(test_analyzer_ernie_int8 ${ERNIE_INSTALL_DIR} analyzer_ernie_int8_tester.cc)
 
 # Ernie large
-set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie_Large")
-download_model_and_data(${ERNIE_INSTALL_DIR} "Ernie_large_model.tar.gz" af7715245ed32cc77374625d4c80f7ef "Ernie_large_data.txt.tar.gz" edb2113eec93783cad56ed76d47ba57f)
-download_result(${ERNIE_INSTALL_DIR} "Ernie_large_result.txt.tar.gz" 1facda98eef1085dc9d435ebf3f23a73)
-inference_analysis_test(test_analyzer_ernie_large SRCS analyzer_ernie_tester.cc
-    EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
-    ARGS --infer_model=${ERNIE_INSTALL_DIR}/model --infer_data=${ERNIE_INSTALL_DIR}/data.txt --refer_result=${ERNIE_INSTALL_DIR}/result.txt --ernie_large=true)
-if(NOT WIN32 AND NOT APPLE AND TEST test_analyzer_ernie_large)
-    set_tests_properties(test_analyzer_ernie_large PROPERTIES TIMEOUT 150 LABELS "RUN_TYPE=NIGHTLY")
-endif()
-if (WIN32 AND TEST test_analyzer_ernie_large)
-    set_tests_properties(test_analyzer_ernie_large PROPERTIES TIMEOUT 200)
-endif()
+# set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie_Large")
+# download_model_and_data(${ERNIE_INSTALL_DIR} "Ernie_large_model.tar.gz" af7715245ed32cc77374625d4c80f7ef "Ernie_large_data.txt.tar.gz" edb2113eec93783cad56ed76d47ba57f)
+# download_result(${ERNIE_INSTALL_DIR} "Ernie_large_result.txt.tar.gz" 1facda98eef1085dc9d435ebf3f23a73)
+# inference_analysis_test(test_analyzer_ernie_large SRCS analyzer_ernie_tester.cc
+#     EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+#     ARGS --infer_model=${ERNIE_INSTALL_DIR}/model --infer_data=${ERNIE_INSTALL_DIR}/data.txt --refer_result=${ERNIE_INSTALL_DIR}/result.txt --ernie_large=true)
+# if(NOT WIN32 AND NOT APPLE AND TEST test_analyzer_ernie_large)
+#     set_tests_properties(test_analyzer_ernie_large PROPERTIES TIMEOUT 150 LABELS "RUN_TYPE=NIGHTLY")
+# endif()
+# if (WIN32 AND TEST test_analyzer_ernie_large)
+#     set_tests_properties(test_analyzer_ernie_large PROPERTIES TIMEOUT 200)
+# endif()
 
 # text_classification
 set(TEXT_CLASSIFICATION_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/text_classification")
@@ -450,6 +450,23 @@ if(WITH_MKLDNN)
   set(INT8_GOOGLENET_MODEL_DIR "${INT8_DATA_DIR}/googlenet")
   download_int8_data_without_verify(${INT8_GOOGLENET_MODEL_DIR} "GoogleNet_int8_model.tar.gz" )
   inference_analysis_api_int8_test_run_custom_warmup_batch_size(test_analyzer_int8_googlenet ${INT8_IMG_CLASS_TEST_APP} ${INT8_GOOGLENET_MODEL_DIR} ${IMAGENET_DATA_PATH} 10)
+
+ # mobilenetv3_large_x1_0 int8
+ set(INT8_MOBILENETV3_LARGE_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv3_large")
+ set(INT8_MOBILENETV3_FILE_NAME "MobileNetV3_large_x1_0_infer.tar")
+ if (NOT EXISTS ${INT8_MOBILENETV3_LARGE_MODEL_DIR}/${INT8_MOBILENETV3_FILE_NAME})
+    inference_download_and_uncompress_without_verify(${INT8_MOBILENETV3_LARGE_MODEL_DIR} "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/inference/" ${INT8_MOBILENETV3_FILE_NAME})
+ endif()
+ inference_analysis_test_run(test_analyzer_int8_mobilenetv3_large 
+    COMMAND ${INT8_IMG_CLASS_TEST_APP} 
+    ARGS --infer_model=${INT8_MOBILENETV3_LARGE_MODEL_DIR}/MobileNetV3_large_x1_0_infer
+        --infer_data=${IMAGENET_DATA_PATH} 
+        --warmup_batch_size=50
+        --batch_size=50 
+        --enable_int8=true 
+        --cpu_num_threads=${CPU_NUM_THREADS_ON_CI} 
+        --iterations=2 
+        --with_accuracy_layer=false)
 
   ### BFLOAT16 tests
 
