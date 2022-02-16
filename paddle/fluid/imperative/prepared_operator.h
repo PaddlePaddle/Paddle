@@ -270,26 +270,26 @@ void BuildDygraphPtenKernelContext(
       kernel_ctx->EmplaceBackInputWithoutSetRange(nullptr);
       auto end_idx = start_idx + 1;
       kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
-    } else {
-      auto ins_vector = it->second;
-      size_t end_idx = start_idx + ins_vector.size();
-
-      for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
-        const pten::TensorBase* tensor_in = nullptr;
-        auto& var = ins_vector[offset]->Var();
-        if (var.template IsType<pten::DenseTensor>()) {
-          tensor_in = &(var.template Get<pten::DenseTensor>());
-        } else if (var.template IsType<pten::SelectedRows>()) {
-          tensor_in = &(var.template Get<pten::SelectedRows>());
-        } else {
-          PADDLE_THROW(platform::errors::Unimplemented(
-              "Unsupported input `%s` type when call pt kernel.",
-              framework::ToTypeName(var.Type())));
-        }
-        kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
-      }
-      kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
+      continue;
     }
+    auto ins_vector = it->second;
+    size_t end_idx = start_idx + ins_vector.size();
+
+    for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
+      const pten::TensorBase* tensor_in = nullptr;
+      auto& var = ins_vector[offset]->Var();
+      if (var.template IsType<pten::DenseTensor>()) {
+        tensor_in = &(var.template Get<pten::DenseTensor>());
+      } else if (var.template IsType<pten::SelectedRows>()) {
+        tensor_in = &(var.template Get<pten::SelectedRows>());
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported input `%s` type when call pt kernel.",
+            framework::ToTypeName(var.Type())));
+      }
+      kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
+    }
+    kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
   }
 
   for (size_t i = 0; i < output_names.size(); ++i) {
@@ -472,8 +472,7 @@ void PreparePtenData(const pten::Kernel& pt_kernel,
 
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto& in_def = input_defs.at(i);
-    auto it = ins.find(input_names[i]);
-    if (it == ins.end()) {
+    if (ins.find(input_names[i]) == ins.end()) {
       continue;
     }
     auto& ins_vector = ins.at(input_names[i]);
