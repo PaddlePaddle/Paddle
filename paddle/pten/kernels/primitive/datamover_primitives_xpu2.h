@@ -253,7 +253,7 @@ template <typename T,
           int Index,
           bool IsBoundary>
 __device__ __forceinline__ void ReadData(ArgsT* dst,
-                                         const T _global_ptr_ *src,
+                                         const T _global_ptr_* src,
                                          int num) {
   int thread_offset = core_id() * NX;
   __local__ T in_temp[1];
@@ -618,11 +618,12 @@ template <typename T,
           int BlockSize,
           int Rank,
           bool IsBoundary = false>
-__device__ __inline__ void ReadDataBc(T* dst,
-                                      const T _global_ptr_* src,
-                                      uint32_t block_offset,
-                                      details::BroadcastConfig<Rank> config,
-                                      int total_num_output) {
+__device__ __inline__ void ReadDataBc(
+    T* dst,
+    const T _global_ptr_* src,
+    uint32_t block_offset,
+    const details::BroadcastConfig<Rank>& config,
+    int total_num_output) {
   int thread_offset = block_offset + core_id() * NX;
   int index_src = 0;
 
