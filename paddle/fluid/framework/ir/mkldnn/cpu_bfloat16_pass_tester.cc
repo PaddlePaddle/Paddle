@@ -45,7 +45,7 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     op->SetInput("Input", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
     op->SetAttr("mkldnn_data_type", mkldnn_data_type);
-  } else if (type == "concat" || type == "sum") {
+  } else if (type == "concat" || type == "sum" || type == "split") {
     op->SetInput("X", inputs);
     op->SetOutput("Out", outputs);
     op->SetAttr("mkldnn_data_type", mkldnn_data_type);
@@ -166,6 +166,28 @@ TEST(CpuBfloat16Pass, duplicated_input_ops) {
   int dequant_op = 3;
   int added_nodes = quant_op * 2 + dequant_op * 2;
   MainTest(BuildProgramDescDuplicatedInput(use_mkldnn), quant_op, dequant_op,
+           added_nodes);
+}
+
+ProgramDesc BuildProgramDescDuplicatedOutput(bool use_mkldnn) {
+  ProgramDesc prog;
+  for (auto& v : variable_names) {
+    prog.MutableBlock(0)->Var(v);
+  }
+  SetOp(&prog, "dropout", "Dropout", {"a"}, {"b"}, use_mkldnn, "float32");
+  SetOp(&prog, "split", "Split", {"b"}, {"c", "d"}, use_mkldnn, "bfloat16");
+  SetOp(&prog, "transpose2", "Transpose", {"c"}, {"e"}, use_mkldnn, "float32");
+  SetOp(&prog, "reshape2", "Reshape", {"d"}, {"f"}, use_mkldnn, "bfloat16");
+
+  return prog;
+}
+
+TEST(CpuBfloat16Pass, duplicated_output_ops) {
+  bool use_mkldnn = true;
+  int quant_op = 2;
+  int dequant_op = 3;
+  int added_nodes = quant_op * 2 + dequant_op * 2;
+  MainTest(BuildProgramDescDuplicatedOutput(use_mkldnn), quant_op, dequant_op,
            added_nodes);
 }
 
