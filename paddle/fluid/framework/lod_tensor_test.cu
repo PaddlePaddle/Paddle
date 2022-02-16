@@ -41,6 +41,7 @@ TEST(LoD, data) {
   test<<<1, 1>>>(mix_vector_v.CUDAMutableData(gpu), v.size());
   cudaDeviceSynchronize();
 #endif
+  mix_vector_v.CopyToCPU();
   for (size_t i = 0; i < v.size(); ++i) {
     EXPECT_EQ(v[i], i * 2);
   }
@@ -73,6 +74,7 @@ TEST(LoDTensor, LoDInGPU) {
   test<<<1, 8>>>(mix_vector.CUDAMutableData(place), lod[0].size());
   cudaDeviceSynchronize();
 #endif
+  mix_vector.CopyToCPU();
 
   for (size_t i = 0; i < src_lod[0].size(); ++i) {
     EXPECT_EQ(lod[0].data()[i], src_lod[0].data()[i] * 2);

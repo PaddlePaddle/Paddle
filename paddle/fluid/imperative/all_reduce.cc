@@ -100,6 +100,7 @@ static void AllReduce(const pten::SelectedRows &src, pten::SelectedRows *dst,
   if (!use_calc_stream) {
     dev_ctx->Wait();
   }
+  mixv_rows_num_vector.CopyToCPU();
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
       gpu_rows_num_ptr + strategy.local_rank_, gpu_rows_num_ptr, 1, ncclInt64,
       comm->comm(), stream));
@@ -169,7 +170,8 @@ static void AllReduce(const pten::SelectedRows &src, pten::SelectedRows *dst,
       row_offset += cpu_rows_num_ptr[i];
     }
   }
-
+  mixv_dst_rows.CopyToCPU();
+  mixv_src_rows.CopyToCPU();
   VLOG(3) << "Original SelectedRows rows: "
           << string::join_strings(src_rows, ',');
   VLOG(3) << "Result SelectedRows rows: "

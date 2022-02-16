@@ -160,6 +160,7 @@ struct LookupTableV2GradCUDAFunctor {
                      gpu_place, ids_data, ids_num * sizeof(int64_t), stream);
       }
 
+      mixv_new_rows.CopyToCPU();
       d_table->set_rows(new_rows);
 
       auto *d_table_value = d_table->mutable_value();

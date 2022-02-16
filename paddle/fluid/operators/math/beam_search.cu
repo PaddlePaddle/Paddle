@@ -358,6 +358,7 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
     selected_lod[0].assign(abs_lod[level].begin(), abs_lod[level].end());
     selected_lod[1].resize(scores->dims()[0] + 1);
     paddle::framework::MixVector<size_t> mix_vector(&selected_lod[1]);
+    paddle::framework::MixVector<size_t> mixv_abs(&abs_lod[level]);
     size_t* selected_offsets = mix_vector.CUDAMutableData(context.GetPlace());
 
     if (num_seqs == 1) {
@@ -377,7 +378,6 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
                 is_accumulated, num_used_threads));
       }
     } else if (num_seqs <= 4) {
-      paddle::framework::MixVector<size_t> mixv_abs(&abs_lod[level]);
       const size_t* seq_offsets = mixv_abs.CUDAData(context.GetPlace());
       // Use only 1 block
       const int kMaxThreadsPerSeq = 32;
@@ -401,6 +401,7 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
     }
 
     context.Wait();
+    mix_vector.CopyToCPU();
     if (!framework::CheckLoD(selected_lod)) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "lod %s is not right in"
