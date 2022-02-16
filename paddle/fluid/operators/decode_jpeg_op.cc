@@ -73,8 +73,9 @@ class DecodeJpegOp : public framework::OperatorWithKernel {
       return expected_kernel_type;
     }
 
-    return framework::OpKernelType(tensor.type(), tensor.place(),
-                                   tensor.layout());
+    return framework::OpKernelType(
+        framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+        tensor.layout());
   }
 };
 

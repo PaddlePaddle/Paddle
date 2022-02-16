@@ -15,6 +15,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/eigen.h"
@@ -393,8 +394,9 @@ class FFTR2CGradKernel : public framework::OpKernel<T> {
       fft_c2c_func(dev_ctx, &full_dy, &complex_dx, axes, normalization,
                    !forward);
     }
-    framework::TransComplexToReal(dx->type(), complex_dx.type(), complex_dx,
-                                  dx);
+    framework::TransComplexToReal(
+        framework::TransToProtoVarType(dx->dtype()),
+        framework::TransToProtoVarType(complex_dx.dtype()), complex_dx, dx);
   }
 };
 

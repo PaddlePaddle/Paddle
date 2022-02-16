@@ -22,6 +22,7 @@
 #include "paddle/pten/common/layout.h"
 #include "paddle/pten/core/tensor_meta.h"
 
+#include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/variable.h"
@@ -156,17 +157,17 @@ void EagerUtils::SetOutRankWithSlot(AutogradMeta* target, size_t slot_id) {
   target->SetSingleOutRankWithSlot(slot_id, 0);
 }
 
-std::shared_ptr<egr::EagerTensor> EagerUtils::TrySyncToVar(
+std::shared_ptr<egr::EagerVariable> EagerUtils::TrySyncToVar(
     const paddle::experimental::Tensor& tensor) {
-  return std::make_shared<egr::EagerTensor>(tensor);
+  return std::make_shared<egr::EagerVariable>(tensor);
 }
 
-std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::TrySyncToVars(
+std::vector<std::shared_ptr<egr::EagerVariable>> EagerUtils::TrySyncToVars(
     const paddle::experimental::Tensor& tensor) {
   return {TrySyncToVar(tensor)};
 }
 
-std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::TrySyncToVars(
+std::vector<std::shared_ptr<egr::EagerVariable>> EagerUtils::TrySyncToVars(
     paddle::experimental::Tensor* tensor) {
   PADDLE_ENFORCE_NOT_NULL(
       tensor,
@@ -176,9 +177,9 @@ std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::TrySyncToVars(
   return {TrySyncToVar(*tensor)};
 }
 
-std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::TrySyncToVars(
+std::vector<std::shared_ptr<egr::EagerVariable>> EagerUtils::TrySyncToVars(
     const std::vector<paddle::experimental::Tensor*>& tensors) {
-  std::vector<std::shared_ptr<EagerTensor>> res;
+  std::vector<std::shared_ptr<EagerVariable>> res;
   size_t num = tensors.size();
   res.reserve(num);
   for (size_t i = 0; i < num; i++) {
@@ -194,9 +195,9 @@ std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::TrySyncToVars(
   return res;
 }
 
-std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::TrySyncToVars(
+std::vector<std::shared_ptr<egr::EagerVariable>> EagerUtils::TrySyncToVars(
     const std::vector<paddle::experimental::Tensor>& tensors) {
-  std::vector<std::shared_ptr<EagerTensor>> res;
+  std::vector<std::shared_ptr<EagerVariable>> res;
   size_t num = tensors.size();
   res.reserve(num);
   for (size_t i = 0; i < num; i++) {
@@ -205,19 +206,19 @@ std::vector<std::shared_ptr<egr::EagerTensor>> EagerUtils::TrySyncToVars(
   return res;
 }
 
-std::vector<std::shared_ptr<EagerTensor>> EagerUtils::CreateVars(
+std::vector<std::shared_ptr<EagerVariable>> EagerUtils::CreateVars(
     const size_t num) {
-  std::vector<std::shared_ptr<EagerTensor>> res;
+  std::vector<std::shared_ptr<EagerVariable>> res;
   res.reserve(num);
   for (size_t i = 0; i < num; i++) {
     res.emplace_back(
-        new EagerTensor(egr::Controller::Instance().GenerateUniqueName()));
+        new EagerVariable(egr::Controller::Instance().GenerateUniqueName()));
   }
   return res;
 }
 
 std::vector<paddle::experimental::Tensor> EagerUtils::GetOutputs(
-    const std::vector<std::shared_ptr<EagerTensor>>& outs) {
+    const std::vector<std::shared_ptr<EagerVariable>>& outs) {
   std::vector<paddle::experimental::Tensor> res;
   res.reserve(outs.size());
   for (const auto& out : outs) {
@@ -234,7 +235,7 @@ std::vector<paddle::experimental::Tensor> EagerUtils::GetOutputs(
 }
 
 paddle::experimental::Tensor EagerUtils::GetOutput(
-    const std::shared_ptr<EagerTensor>& out) {
+    const std::shared_ptr<EagerVariable>& out) {
   PADDLE_ENFORCE_NOT_NULL(
       out.get(), paddle::platform::errors::Fatal(
                      "Eager Tensor %s is null and cannot be copied. We "
@@ -244,7 +245,7 @@ paddle::experimental::Tensor EagerUtils::GetOutput(
   return paddle::experimental::Tensor(out->GetTensorBase(), out->name());
 }
 
-void EagerUtils::OverwriteOutputs(const std::shared_ptr<EagerTensor>& out,
+void EagerUtils::OverwriteOutputs(const std::shared_ptr<EagerVariable>& out,
                                   paddle::experimental::Tensor* tensor) {
   PADDLE_ENFORCE_NOT_NULL(
       tensor, paddle::platform::errors::Fatal(
@@ -256,7 +257,7 @@ void EagerUtils::OverwriteOutputs(const std::shared_ptr<EagerTensor>& out,
 }
 
 void EagerUtils::OverwriteOutputs(
-    const std::vector<std::shared_ptr<EagerTensor>>& outs,
+    const std::vector<std::shared_ptr<EagerVariable>>& outs,
     const std::vector<paddle::experimental::Tensor*>& tensors) {
   PADDLE_ENFORCE_EQ(
       outs.size(), tensors.size(),
@@ -324,6 +325,43 @@ void EagerUtils::CheckAndRetainGrad(
     for (auto& tensor : tensors) {
       VLOG(6) << "RetainGradForTensor: " << tensor.name();
       egr::egr_utils_api::RetainGradForTensor(tensor);
+    }
+  }
+}
+
+std::shared_ptr<egr::GradNodeBase> EagerUtils::GetGradAccumulationNode(
+    const paddle::experimental::Tensor& tensor) {
+  auto* autograd_ptr = nullable_autograd_meta(tensor);
+  if (!autograd_ptr) {
+    return nullptr;
+  }
+  auto node_ptr = autograd_ptr->GetMutableGradNode();
+  if (node_ptr && node_ptr.get()) {
+    if (!autograd_ptr->StopGradient()) {
+      auto accumulation_ptr =
+          std::dynamic_pointer_cast<GradNodeAccumulation>(node_ptr);
+      if (accumulation_ptr) {
+        return accumulation_ptr;
+      } else {
+        // Current GradNode is not a egr::GradNodeAccumulation
+        PADDLE_THROW(paddle::platform::errors::Fatal(
+            "GetGradAccumulationNode should only be called on leaf tensor, but "
+            "target tensor: %s has GradNode which is not a "
+            "GradNodeAccumulation, and this should not happend unless target "
+            "tensor is modified by some ops and calling set history for it.",
+            tensor.name()));
+      }
+    } else {
+      // Current Tensor does not have grad since it's stop_gradient is true;
+      return nullptr;
+    }
+  } else {
+    if (!autograd_ptr->StopGradient()) {
+      VLOG(6) << "Add GradNodeAccumulation for tensor: " << tensor.name();
+      autograd_ptr->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
+      return autograd_ptr->GetMutableGradNode();
+    } else {
+      return nullptr;
     }
   }
 }

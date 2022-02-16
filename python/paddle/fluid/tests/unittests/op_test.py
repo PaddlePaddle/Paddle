@@ -1660,7 +1660,7 @@ class OpTest(unittest.TestCase):
         for grad in analytic_grads:
             if grad.dtype == np.uint16:
                 grad = convert_uint16_to_float(grad)
-                max_relative_error = 0.03 if max_relative_error < 0.03 else max_relative_error
+                max_relative_error = 0.04 if max_relative_error < 0.04 else max_relative_error
             fp32_analytic_grads.append(grad)
         analytic_grads = fp32_analytic_grads
 
@@ -1668,7 +1668,7 @@ class OpTest(unittest.TestCase):
         for grad in numeric_grads:
             if grad.dtype == np.uint16:
                 grad = convert_uint16_to_float(grad)
-                max_relative_error = 0.03 if max_relative_error < 0.03 else max_relative_error
+                max_relative_error = 0.04 if max_relative_error < 0.04 else max_relative_error
             fp32_numeric_grads.append(grad)
         numeric_grads = fp32_numeric_grads
 

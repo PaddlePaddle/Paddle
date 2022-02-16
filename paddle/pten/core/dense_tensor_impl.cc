@@ -30,8 +30,8 @@ DenseTensor::DenseTensor() {
   meta_.offset = 0;
 }
 
-DenseTensor::DenseTensor(paddle::framework::proto::VarType::Type dtype) {
-  meta_.dtype = TransToPtenDataType(dtype);
+DenseTensor::DenseTensor(paddle::experimental::DataType dtype) {
+  meta_.dtype = dtype;
   meta_.offset = 0;
 }
 
@@ -64,13 +64,7 @@ const paddle::platform::Place& DenseTensor::place() const {
   return holder_->place();
 }
 
-paddle::framework::proto::VarType::Type DenseTensor::type() const {
-  return TransToProtoVarType(meta_.dtype);
-}
-
-paddle::framework::proto::VarType::Type DenseTensor::saved_type() const {
-  return TransToProtoVarType(meta_.dtype);
-}
+paddle::experimental::DataType DenseTensor::type() const { return meta_.dtype; }
 
 void DenseTensor::set_layout(const paddle::framework::DataLayout layout) {
   meta_.layout = layout;
@@ -96,17 +90,17 @@ void DenseTensor::ResetHolder(const std::shared_ptr<pten::Allocation>& holder) {
 
 void DenseTensor::ResetHolderWithType(
     const std::shared_ptr<pten::Allocation>& holder,
-    paddle::framework::proto::VarType::Type type) {
+    paddle::experimental::DataType type) {
   set_type(type);
   ResetHolder(holder);
 }
 
-void DenseTensor::set_type(paddle::framework::proto::VarType::Type type) {
-  meta_.dtype = TransToPtenDataType(type);
+void DenseTensor::set_type(paddle::experimental::DataType type) {
+  meta_.dtype = type;
 }
 
 void* DenseTensor::mutable_data(const paddle::platform::Place& place,
-                                paddle::framework::proto::VarType::Type type,
+                                paddle::experimental::DataType type,
                                 size_t requested_size) {
   set_type(type);
   PADDLE_ENFORCE_GE(
@@ -139,7 +133,7 @@ void* DenseTensor::mutable_data(const paddle::platform::Place& place,
 }
 
 void* DenseTensor::mutable_data(const paddle::platform::Place& place,
-                                paddle::framework::proto::VarType::Type type,
+                                paddle::experimental::DataType type,
                                 const pten::Stream& stream) {
   set_type(type);
   PADDLE_ENFORCE_GE(
@@ -183,8 +177,10 @@ template <typename T>
 inline T* DenseTensor::mutable_data(const paddle::platform::Place& place,
                                     size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
-  return reinterpret_cast<T*>(mutable_data(
-      place, paddle::framework::DataTypeTrait<T>::DataType(), requested_size));
+  return reinterpret_cast<T*>(
+      mutable_data(place,
+                   paddle::experimental::CppTypeToDataType<T>::Type(),
+                   requested_size));
 }
 
 void DenseTensor::ShareBufferWith(const DenseTensor& tensor) {

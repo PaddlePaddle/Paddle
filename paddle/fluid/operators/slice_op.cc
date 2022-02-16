@@ -130,7 +130,9 @@ class SliceOp : public framework::OperatorWithKernel {
               "The tensor Input (Input) of Slice op is not initialized."));
       // NOTE: cuda pinned tensor need to copy its data to target place
       if (platform::is_cuda_pinned_place(in_tensor.place())) {
-        return framework::OpKernelType(in_tensor.type(), ctx.device_context());
+        return framework::OpKernelType(
+            framework::TransToProtoVarType(in_tensor.dtype()),
+            ctx.device_context());
       }
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -152,7 +154,8 @@ class SliceOp : public framework::OperatorWithKernel {
       }
 #endif
 
-      return framework::OpKernelType(in_tensor.type(), in_tensor.place());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(in_tensor.dtype()), in_tensor.place());
     }
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace());

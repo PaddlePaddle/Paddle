@@ -475,12 +475,11 @@ void InterpreterCore::ExecuteInstructionList(
 
   if (UNLIKELY(exception_holder_.IsCaught())) {
     VLOG(1) << "Exception caught " << exception_holder_.Type();
-    // NOTE(xiongkun) Why we reset ?
-    // The caught exception may be EOFExcetion, under this situation, we need
-    // make async_work_queue_ available, so we need reset.
-    async_work_queue_->Cancel();
-    async_work_queue_.reset(new interpreter::AsyncWorkQueue(
-        kHostNumThreads, &main_thread_blocker_));
+    // Graceful exit when the executor encountered a fatal error.
+    // EOF is not a fatal error.
+    if (exception_holder_.Type() != "EOF") {
+      async_work_queue_->Cancel();
+    }
     PADDLE_ENFORCE_EQ(
         main_thread_blocker_.Clear(), 0,
         platform::errors::PreconditionNotMet(

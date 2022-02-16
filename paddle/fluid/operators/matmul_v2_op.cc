@@ -16,6 +16,10 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/pten/core/infermeta_utils.h"
+#include "paddle/pten/infermeta/backward.h"
+
 namespace paddle {
 namespace operators {
 
@@ -268,8 +272,9 @@ class MatMulV2Op : public framework::OperatorWithKernel {
       const framework::OpKernelType& expected_kernel_type) const {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(tensor.type(), tensor.place(),
-                                     tensor.layout());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+          tensor.layout());
     } else {
       return framework::OpKernelType(expected_kernel_type.data_type_,
                                      tensor.place(), tensor.layout());
@@ -343,25 +348,6 @@ class MatMulV2OpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContext* context) const override {
-    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "matmul_v2");
-    OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y", "matmul_v2");
-    OP_INOUT_CHECK(context->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "matmul_v2");
-    auto x_dims = context->GetInputDim("X");
-    auto y_dims = context->GetInputDim("Y");
-
-    auto x_grad_name = framework::GradVarName("X");
-    auto y_grad_name = framework::GradVarName("Y");
-
-    if (context->HasOutput(x_grad_name)) {
-      context->SetOutputDim(x_grad_name, x_dims);
-    }
-    if (context->HasOutput(y_grad_name)) {
-      context->SetOutputDim(y_grad_name, y_dims);
-    }
-  }
-
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(
@@ -382,8 +368,9 @@ class MatMulV2OpGrad : public framework::OperatorWithKernel {
       const framework::OpKernelType& expected_kernel_type) const {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(tensor.type(), tensor.place(),
-                                     tensor.layout());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+          tensor.layout());
     } else {
       return framework::OpKernelType(expected_kernel_type.data_type_,
                                      tensor.place(), tensor.layout());
@@ -539,9 +526,12 @@ REGISTER_OPERATOR(matmul_v2, ops::MatMulV2Op, ops::MatMulV2OpMaker,
                   ops::MatMulV2GradOpMaker<paddle::framework::OpDesc>,
                   ops::MatMulV2GradOpMaker<paddle::imperative::OpBase>);
 
+DELCARE_INFER_SHAPE_FUNCTOR(matmul_v2_grad, MatMulV2GradInferShapeFunctor,
+                            PT_INFER_META(pten::GeneralBinaryGradInferMeta));
 REGISTER_OPERATOR(matmul_v2_grad, ops::MatMulV2OpGrad,
                   ops::MatMulV2OpDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::MatMulV2OpDoubleGradMaker<paddle::imperative::OpBase>);
+                  ops::MatMulV2OpDoubleGradMaker<paddle::imperative::OpBase>,
+                  MatMulV2GradInferShapeFunctor);
 
 REGISTER_OPERATOR(matmul_v2_grad_grad, ops::MatMulV2OpDoubleGrad,
                   ops::MatMulV2OpTripleGradMaker<paddle::framework::OpDesc>,

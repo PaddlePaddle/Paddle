@@ -1233,11 +1233,11 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
 
         // Forward Function Body
         // According to fwd_inputs_name_pos_map
-        std::map<std::string, std::vector<std::shared_ptr<egr::EagerTensor>>>
+        std::map<std::string, std::vector<std::shared_ptr<egr::EagerVariable>>>
   ins =
                 { {"X" , TrySyncToVars(X)}, { "Y" , TrySyncToVars(Y)} };
 
-        std::map<std::string, std::vector<std::shared_ptr<egr::EagerTensor>>>
+        std::map<std::string, std::vector<std::shared_ptr<egr::EagerVariable>>>
   outs =
   {
           {"Out0" , CreateVars(Out0Num)}, {"Out1"
@@ -1322,7 +1322,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
 
   const char* FWD_INS_MAP_TEMPLATE =
       "  std::map<std::string, "
-      "std::vector<std::shared_ptr<egr::EagerTensor>>> ins = { "
+      "std::vector<std::shared_ptr<egr::EagerVariable>>> ins = { "
       "%s };\n";
   std::string ins_map_str =
       paddle::string::Sprintf(FWD_INS_MAP_TEMPLATE, ins_contents_str);
@@ -1359,8 +1359,9 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     if (op_passing_outs_map[op_type].count(output_name)) {
       const std::string output_var_name = output_name + "Var";
 
-      // Pass Output from function argument(EagerTensor*/vector<EagerTensor*>&),
-      // in form of shared_ptr<EagerTensor>/vector<shared_ptr<EagerTensor>>
+      // Pass Output from function
+      // argument(EagerVariable*/vector<EagerVariable*>&),
+      // in form of shared_ptr<EagerVariable>/vector<shared_ptr<EagerVariable>>
       if (output.duplicable()) {
         const char* FWD_NUM_ARG_TEMPLATE =
             ", std::vector<paddle::experimental::Tensor*>& %s";
@@ -1401,7 +1402,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       } else {
         const char* FWD_OUTS_CONTENT_TEMPLATE =
             "{ \"%s\", "
-            "{std::make_shared<egr::EagerTensor>(egr::Controller::Instance()."
+            "{std::make_shared<egr::EagerVariable>(egr::Controller::Instance()."
             "GenerateUniqueName())}},";
         outs_contents_str +=
             paddle::string::Sprintf(FWD_OUTS_CONTENT_TEMPLATE, output_name);
@@ -1413,7 +1414,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
 
   const char* FWD_OUTS_MAP_TEMPLATE =
       "  std::map<std::string, "
-      "std::vector<std::shared_ptr<egr::EagerTensor>>> outs = { "
+      "std::vector<std::shared_ptr<egr::EagerVariable>>> outs = { "
       "%s };\n";
   std::string outs_map_str =
       paddle::string::Sprintf(FWD_OUTS_MAP_TEMPLATE, outs_contents_str);
@@ -1488,7 +1489,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     generated_function_body += out_tensor_str;
   }
   generated_function_body += "\n";
-  VLOG(6) << "Converted Output VarBase to EagerTensor(s)";
+  VLOG(6) << "Converted Output VarBase to EagerVariable(s)";
 
   // [Generation] Handle core_ops_returns_info
   core_ops_returns_info[op_type] = return_contents;
@@ -1633,7 +1634,7 @@ static std::string GenerateSingleOpBase(
 
   const char* BWD_INS_MAP_TEMPLATE =
       "  std::map<std::string, "
-      "std::vector<std::shared_ptr<egr::EagerTensor>>> %s = { "
+      "std::vector<std::shared_ptr<egr::EagerVariable>>> %s = { "
       "%s };\n";
   std::string ins_map_str =
       paddle::string::Sprintf(BWD_INS_MAP_TEMPLATE, ins_name, ins_contents_str);
@@ -1710,7 +1711,7 @@ static std::string GenerateSingleOpBase(
         } else {
           const char* GRAD_OUTS_CONTENT_TEMPLATE =
               "{ \"%s\", "
-              "{std::make_shared<egr::EagerTensor>(egr::Controller::Instance("
+              "{std::make_shared<egr::EagerVariable>(egr::Controller::Instance("
               ")."
               "GenerateUniqueName())}},";
           outs_contents_str += paddle::string::Sprintf(
@@ -1729,7 +1730,7 @@ static std::string GenerateSingleOpBase(
 
   const char* BWD_OUTS_MAP_TEMPLATE =
       "  std::map<std::string, "
-      "std::vector<std::shared_ptr<egr::EagerTensor>>> %s = { "
+      "std::vector<std::shared_ptr<egr::EagerVariable>>> %s = { "
       "%s };\n";
   std::string outs_map_str = paddle::string::Sprintf(
       BWD_OUTS_MAP_TEMPLATE, outs_name, outs_contents_str);
