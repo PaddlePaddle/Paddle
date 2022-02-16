@@ -262,8 +262,10 @@ if [ "${PTEN_INCLUDE_FLUID_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one RD (chenwhql, MingMingShangTian, YuanRisheng or zyfncg) approval for the including paddle/fluid header in paddle/pten files(${PTEN_INCLUDE_FLUID_FILES}).\n"
     check_approval 1 chenwhql MingMingShangTian YuanRisheng zyfncg
 fi
+
+HAS_MODIFIED_PTEN_KERNEL_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/pten/kernels" || true`
 PTEN_USE_MUTABLE_DATA_FILES=""
-for CHANGE_FILE in ${HAS_MODIFIED_PTEN_FILES}; do
+for CHANGE_FILE in ${HAS_MODIFIED_PTEN_KERNEL_FILES}; do
     PTEN_DIR_ADDED_LINES=`git diff -U0 upstream/$BRANCH -- ${PADDLE_ROOT}/${CHANGE_FILE} | grep "^+" | grep -w "mutable_data" || true`
     if [ "${PTEN_DIR_ADDED_LINES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
         PTEN_USE_MUTABLE_DATA_FILES="${PTEN_USE_MUTABLE_DATA_FILES} ${CHANGE_FILE}"
