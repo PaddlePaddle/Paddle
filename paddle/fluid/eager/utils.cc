@@ -297,10 +297,8 @@ void EagerUtils::CheckAndRetainGrad(
     const paddle::experimental::Tensor& tensor) {
   VLOG(6) << "Check RetainGradForTensor: " << tensor.name();
   if (FLAGS_retain_grad_for_all_tensor) {
-    if (tensor.initialized()) {
-      VLOG(6) << "RetainGradForTensor: " << tensor.name();
-      egr::egr_utils_api::RetainGradForTensor(tensor);
-    }
+    VLOG(6) << "RetainGradForTensor: " << tensor.name();
+    egr::egr_utils_api::RetainGradForTensor(tensor);
   }
 }
 
@@ -308,10 +306,8 @@ void EagerUtils::CheckAndRetainGrad(
     const std::vector<paddle::experimental::Tensor>& tensors) {
   if (FLAGS_retain_grad_for_all_tensor) {
     for (auto& tensor : tensors) {
-      if (tensor.initialized()) {
-        VLOG(6) << "RetainGradForTensor: " << tensor.name();
-        egr::egr_utils_api::RetainGradForTensor(tensor);
-      }
+      VLOG(6) << "RetainGradForTensor: " << tensor.name();
+      egr::egr_utils_api::RetainGradForTensor(tensor);
     }
   }
 }
