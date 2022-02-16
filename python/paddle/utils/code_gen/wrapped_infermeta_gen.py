@@ -26,7 +26,7 @@ def get_wrapped_infermeta_name(api_name):
 def gene_wrapped_infermeta_and_register(api):
     if api.is_base_api:
         register_code = f"""
-PT_REGISTER_INFER_META_FN({api.kernel['func']}, pten::{api.infer_meta['func']});"""
+PT_REGISTER_INFER_META_FN({api.kernel['func'][0]}, pten::{api.infer_meta['func']});"""
 
         if api.infer_meta['param'] is not None:
             tensor_type_map = {
@@ -67,7 +67,7 @@ void {wrapped_infermeta_name}({", ".join(args)}) {{
 """
 
             register_code = f"""
-PT_REGISTER_INFER_META_FN({api.kernel['func']}, pten::{get_wrapped_infermeta_name(api.kernel['func'])});"""
+PT_REGISTER_INFER_META_FN({api.kernel['func'][0]}, pten::{get_wrapped_infermeta_name(api.kernel['func'][0])});"""
 
             return declare_code, defind_code, register_code
         else:
@@ -80,11 +80,11 @@ def gene_infermeta_register(api):
     if api.is_base_api:
         if api.infer_meta['param'] is None:
             return f"""
-PT_REGISTER_INFER_META_FN({api.kernel['func']}, pten::{api.infer_meta['func']});"""
+PT_REGISTER_INFER_META_FN({api.kernel['func'][0]}, pten::{api.infer_meta['func']});"""
 
         else:
             return f"""
-PT_REGISTER_INFER_META_FN({api.kernel['func']}, pten::{get_wrapped_infermeta_name(api.kernel['func'])});"""
+PT_REGISTER_INFER_META_FN({api.kernel['func'][0]}, pten::{get_wrapped_infermeta_name(api.kernel['func'][0])});"""
 
     else:
         return ''

@@ -105,11 +105,14 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
 
     // cast scale from LayerNormParamType to T if needed
     Tensor cast_scale(x->type());
-    if (x->type() == framework::proto::VarType::FP16 &&
-        scale->type() == framework::proto::VarType::FP32) {
+    if (framework::TransToProtoVarType(x->dtype()) ==
+            framework::proto::VarType::FP16 &&
+        framework::TransToProtoVarType(scale->dtype()) ==
+            framework::proto::VarType::FP32) {
       cast_scale.Resize(scale->dims());
       cast_scale.mutable_data<T>(ctx.GetPlace());
-      auto dst_dtype = ConvertToNpuDtype(x->type());
+      auto dst_dtype =
+          ConvertToNpuDtype(framework::TransToProtoVarType(x->type()));
       const auto& runner_cast_scale =
           NpuOpRunner("Cast", {*scale}, {cast_scale},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
@@ -120,11 +123,14 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
 
     // cast bias from LayerNormParamType to T if needed
     Tensor cast_bias(x->type());
-    if (x->type() == framework::proto::VarType::FP16 &&
-        bias->type() == framework::proto::VarType::FP32) {
+    if (framework::TransToProtoVarType(x->dtype()) ==
+            framework::proto::VarType::FP16 &&
+        framework::TransToProtoVarType(bias->dtype()) ==
+            framework::proto::VarType::FP32) {
       cast_bias.Resize(bias->dims());
       cast_bias.mutable_data<T>(ctx.GetPlace());
-      auto dst_dtype = ConvertToNpuDtype(x->type());
+      auto dst_dtype =
+          ConvertToNpuDtype(framework::TransToProtoVarType(x->type()));
       const auto& runner_cast_bias =
           NpuOpRunner("Cast", {*bias}, {cast_bias},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
@@ -138,9 +144,12 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
     // mean should be of  U type
     Tensor* tmp_mean = mean;
     Tensor cast_mean(x->type());
-    if (x->type() == framework::proto::VarType::FP16 &&
-        (scale->type() == framework::proto::VarType::FP32 ||
-         bias->type() == framework::proto::VarType::FP32)) {
+    if (framework::TransToProtoVarType(x->dtype()) ==
+            framework::proto::VarType::FP16 &&
+        (framework::TransToProtoVarType(scale->dtype()) ==
+             framework::proto::VarType::FP32 ||
+         framework::TransToProtoVarType(bias->dtype()) ==
+             framework::proto::VarType::FP32)) {
       cast_mean.Resize(mean->dims());
       cast_mean.mutable_data<T>(ctx.GetPlace());
       tmp_mean = &cast_mean;
@@ -152,9 +161,12 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
     // same for variance
     Tensor* tmp_variance = variance;
     Tensor cast_variance(x->type());
-    if (x->type() == framework::proto::VarType::FP16 &&
-        (scale->type() == framework::proto::VarType::FP32 ||
-         bias->type() == framework::proto::VarType::FP32)) {
+    if (framework::TransToProtoVarType(x->dtype()) ==
+            framework::proto::VarType::FP16 &&
+        (framework::TransToProtoVarType(scale->dtype()) ==
+             framework::proto::VarType::FP32 ||
+         framework::TransToProtoVarType(bias->dtype()) ==
+             framework::proto::VarType::FP32)) {
       cast_variance.Resize(variance->dims());
       cast_variance.mutable_data<T>(ctx.GetPlace());
       tmp_variance = &cast_variance;
@@ -171,18 +183,24 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
     runner.Run(stream);
 
     // cast back from FP16 to FP32
-    if (x->type() == framework::proto::VarType::FP16 &&
-        mean->type() == framework::proto::VarType::FP32) {
-      auto dst_dtype = ConvertToNpuDtype(mean->type());
+    if (framework::TransToProtoVarType(x->dtype()) ==
+            framework::proto::VarType::FP16 &&
+        framework::TransToProtoVarType(mean->dtype()) ==
+            framework::proto::VarType::FP32) {
+      auto dst_dtype =
+          ConvertToNpuDtype(framework::TransToProtoVarType(mean->type()));
       const auto& runner_cast_mean =
           NpuOpRunner("Cast", {*tmp_mean}, {*mean},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_mean.Run(stream);
     }
     // same for variance
-    if (x->type() == framework::proto::VarType::FP16 &&
-        variance->type() == framework::proto::VarType::FP32) {
-      auto dst_dtype = ConvertToNpuDtype(variance->type());
+    if (framework::TransToProtoVarType(x->dtype()) ==
+            framework::proto::VarType::FP16 &&
+        framework::TransToProtoVarType(variance->dtype()) ==
+            framework::proto::VarType::FP32) {
+      auto dst_dtype =
+          ConvertToNpuDtype(framework::TransToProtoVarType(variance->type()));
       const auto& runner_cast_variance =
           NpuOpRunner("Cast", {*tmp_variance}, {*variance},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
@@ -260,11 +278,14 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
 
     // cast scale from LayerNormParamType to T if needed
     Tensor cast_scale(x->type());
-    if (x->type() == framework::proto::VarType::FP16 &&
-        scale->type() == framework::proto::VarType::FP32) {
+    if (framework::TransToProtoVarType(x->dtype()) ==
+            framework::proto::VarType::FP16 &&
+        framework::TransToProtoVarType(scale->dtype()) ==
+            framework::proto::VarType::FP32) {
       cast_scale.Resize(scale->dims());
       cast_scale.mutable_data<T>(ctx.GetPlace());
-      auto dst_dtype = ConvertToNpuDtype(x->type());
+      auto dst_dtype =
+          ConvertToNpuDtype(framework::TransToProtoVarType(x->type()));
       const auto& runner_cast_scale =
           NpuOpRunner("Cast", {*scale}, {cast_scale},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
@@ -275,11 +296,14 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
 
     // cast mean from LayerNormParamType to T if needed
     Tensor cast_mean(x->type());
-    if (x->type() == framework::proto::VarType::FP16 &&
-        mean->type() == framework::proto::VarType::FP32) {
+    if (framework::TransToProtoVarType(x->dtype()) ==
+            framework::proto::VarType::FP16 &&
+        framework::TransToProtoVarType(mean->dtype()) ==
+            framework::proto::VarType::FP32) {
       cast_mean.Resize(mean->dims());
       cast_mean.mutable_data<T>(ctx.GetPlace());
-      auto dst_dtype = ConvertToNpuDtype(x->type());
+      auto dst_dtype =
+          ConvertToNpuDtype(framework::TransToProtoVarType(x->type()));
       const auto& runner_cast_mean =
           NpuOpRunner("Cast", {*mean}, {cast_mean},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
@@ -290,11 +314,14 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
 
     // cast variance from LayerNormParamType to T if needed
     Tensor cast_variance(x->type());
-    if (x->type() == framework::proto::VarType::FP16 &&
-        variance->type() == framework::proto::VarType::FP32) {
+    if (framework::TransToProtoVarType(x->dtype()) ==
+            framework::proto::VarType::FP16 &&
+        framework::TransToProtoVarType(variance->dtype()) ==
+            framework::proto::VarType::FP32) {
       cast_variance.Resize(variance->dims());
       cast_variance.mutable_data<T>(ctx.GetPlace());
-      auto dst_dtype = ConvertToNpuDtype(x->type());
+      auto dst_dtype =
+          ConvertToNpuDtype(framework::TransToProtoVarType(x->type()));
       const auto& runner_cast_variance =
           NpuOpRunner("Cast", {*variance}, {cast_variance},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
@@ -318,9 +345,12 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
     // dscale should be of  U type
     Tensor* tmp_dscale = dscale;
     Tensor cast_dscale(x->type());
-    if (x->type() == framework::proto::VarType::FP16 &&
-        (mean->type() == framework::proto::VarType::FP32 ||
-         variance->type() == framework::proto::VarType::FP32)) {
+    if (framework::TransToProtoVarType(x->dtype()) ==
+            framework::proto::VarType::FP16 &&
+        (framework::TransToProtoVarType(mean->dtype()) ==
+             framework::proto::VarType::FP32 ||
+         framework::TransToProtoVarType(variance->dtype()) ==
+             framework::proto::VarType::FP32)) {
       cast_dscale.Resize(dscale->dims());
       cast_dscale.mutable_data<T>(ctx.GetPlace());
       tmp_dscale = &cast_dscale;
@@ -332,9 +362,12 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
     // same for dbias
     Tensor* tmp_dbias = dbias;
     Tensor cast_dbias(x->type());
-    if (x->type() == framework::proto::VarType::FP16 &&
-        (mean->type() == framework::proto::VarType::FP32 ||
-         variance->type() == framework::proto::VarType::FP32)) {
+    if (framework::TransToProtoVarType(x->dtype()) ==
+            framework::proto::VarType::FP16 &&
+        (framework::TransToProtoVarType(mean->dtype()) ==
+             framework::proto::VarType::FP32 ||
+         framework::TransToProtoVarType(variance->dtype()) ==
+             framework::proto::VarType::FP32)) {
       cast_dbias.Resize(dbias->dims());
       cast_dbias.mutable_data<T>(ctx.GetPlace());
       tmp_dbias = &cast_dbias;
@@ -349,18 +382,24 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
     runner.Run(stream);
 
     // cast back from FP16 to FP32
-    if (x->type() == framework::proto::VarType::FP16 &&
-        dscale->type() == framework::proto::VarType::FP32) {
-      auto dst_dtype = ConvertToNpuDtype(dscale->type());
+    if (framework::TransToProtoVarType(x->dtype()) ==
+            framework::proto::VarType::FP16 &&
+        framework::TransToProtoVarType(dscale->dtype()) ==
+            framework::proto::VarType::FP32) {
+      auto dst_dtype =
+          ConvertToNpuDtype(framework::TransToProtoVarType(dscale->type()));
       const auto& runner_cast_dscale =
           NpuOpRunner("Cast", {*tmp_dscale}, {*dscale},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_dscale.Run(stream);
     }
     // same for dbias
-    if (x->type() == framework::proto::VarType::FP16 &&
-        dbias->type() == framework::proto::VarType::FP32) {
-      auto dst_dtype = ConvertToNpuDtype(dbias->type());
+    if (framework::TransToProtoVarType(x->dtype()) ==
+            framework::proto::VarType::FP16 &&
+        framework::TransToProtoVarType(dbias->dtype()) ==
+            framework::proto::VarType::FP32) {
+      auto dst_dtype =
+          ConvertToNpuDtype(framework::TransToProtoVarType(dbias->type()));
       const auto& runner_cast_dbias =
           NpuOpRunner("Cast", {*tmp_dbias}, {*dbias},
                       {{"dst_type", static_cast<int>(dst_dtype)}});

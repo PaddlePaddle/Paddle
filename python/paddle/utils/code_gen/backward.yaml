@@ -3,7 +3,8 @@
   args : (const Tensor& x, const Tensor& y, const Tensor& out_grad, bool transpose_x=false, bool transpose_y=false)
   output : Tensor(x_grad), Tensor(y_grad)
   infer_meta :
-    func : MatmulGradInferMeta
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
   kernel :
     func : matmul_grad
 
