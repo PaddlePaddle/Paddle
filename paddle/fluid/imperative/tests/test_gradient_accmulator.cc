@@ -163,10 +163,6 @@ TEST(test_add_functor, add_functor) {
   gpu_res = TensorddTest(gpu_place, gpu_place, static_cast<double>(1.0),
                          static_cast<double>(2.0));
   EXPECT_EQ(gpu_res, 0);
-  gpu_res =
-      TensorddTest(gpu_place, gpu_place, static_cast<platform::float16>(1.0),
-                   static_cast<platform::float16>(2.0));
-  EXPECT_EQ(gpu_res, 0);
 
   // normal
   gpu_res = TensorddTest(gpu_place, gpu_place, static_cast<float>(1.0),
