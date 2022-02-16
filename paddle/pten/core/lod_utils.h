@@ -15,12 +15,12 @@
 #pragma once
 
 // See Note [ Why still include the fluid headers? ]
-#ifndef PADDLE_WITH_CUSTOM_DEVICE
+#ifndef PADDLE_WITH_CUSTOM_KERNEL
 #include "paddle/fluid/framework/mixed_vector.h"
 #endif
 
 namespace pten {
-#ifndef PADDLE_WITH_CUSTOM_DEVICE
+#ifndef PADDLE_WITH_CUSTOM_KERNEL
 using LoD = std::vector<paddle::framework::Vector<size_t>>;
 #else
 using LoD = std::vector<std::vector<size_t>>;

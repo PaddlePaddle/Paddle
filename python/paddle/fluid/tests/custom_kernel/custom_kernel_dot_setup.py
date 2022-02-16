@@ -35,7 +35,7 @@ paddle_extra_compile_args = [
     '-shared',
     '-fPIC',
     '-Wno-parentheses',
-    '-DPADDLE_WITH_CUSTOM_DEVICE',
+    '-DPADDLE_WITH_CUSTOM_KERNEL',
 ]
 if core.is_compiled_with_npu():
     paddle_extra_compile_args += ['-D_GLIBCXX_USE_CXX11_ABI=0']

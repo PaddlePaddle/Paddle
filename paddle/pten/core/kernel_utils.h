@@ -22,7 +22,7 @@
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/enforce.h"
 #include "paddle/pten/core/kernel_context.h"
-#ifndef PADDLE_WITH_CUSTOM_DEVICE
+#ifndef PADDLE_WITH_CUSTOM_KERNEL
 #include "paddle/pten/core/selected_rows.h"
 #endif
 #include "paddle/pten/core/sparse_coo_tensor.h"
@@ -218,7 +218,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(DenseTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(DenseTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(DenseTensor);
-#ifndef PADDLE_WITH_CUSTOM_DEVICE
+#ifndef PADDLE_WITH_CUSTOM_KERNEL
   PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SelectedRows);
 #endif
 
@@ -250,7 +250,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
 
   PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(DenseTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(DenseTensor);
-#ifndef PADDLE_WITH_CUSTOM_DEVICE
+#ifndef PADDLE_WITH_CUSTOM_KERNEL
   PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SelectedRows);
 #endif
 
