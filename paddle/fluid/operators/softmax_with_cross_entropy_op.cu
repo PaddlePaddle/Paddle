@@ -17,12 +17,12 @@ namespace cub = hipcub;
 #endif
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/math/cross_entropy.h"
-#include "paddle/fluid/operators/softmax_cudnn_op.cu.h"
 #include "paddle/fluid/operators/softmax_with_cross_entropy_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/pten/kernels/gpudnn/softmax_gpudnn.h"
 
 namespace paddle {
 namespace operators {
@@ -236,7 +236,7 @@ __global__ void WarpSoftmaxForward(T* loss, T* softmax, const T* src,
       max_value[i] = (max_value[i] > valmax) ? max_value[i] : valmax;
     }
   }
-  WarpReduceMax<AccT, kBatchSize, kWarpSize>(max_value);
+  pten::WarpReduceMax<AccT, kBatchSize, kWarpSize>(max_value);
 
   // compute sum: s_{i} = sum_{j}{ exp(src_{i,j} - maxvalue_{i} }
   AccT sum[kBatchSize];
@@ -276,7 +276,7 @@ __global__ void WarpSoftmaxForward(T* loss, T* softmax, const T* src,
       }
     }
   }
-  WarpReduceSum<AccT, kBatchSize, kWarpSize>(sum);
+  pten::WarpReduceSum<AccT, kBatchSize, kWarpSize>(sum);
 
 // write data
 #pragma unroll
@@ -566,7 +566,7 @@ __global__ void CrossEntropySoftLabel(T* loss, T* softmaxwrt, const T* softmax,
       }
     }
   }
-  WarpReduceSum<T, kBatchSize, kWarpSize>(sum);
+  pten::WarpReduceSum<T, kBatchSize, kWarpSize>(sum);
   __syncthreads();
 
   __shared__ T sumshare[kWarpPerBatch][kBatchPerBlock][kBatchSize];
@@ -674,7 +674,7 @@ __global__ void WarpSoftmaxForwardSoftLabel(T* loss, T* softmax, const T* src,
                          : static_cast<AccT>(valmax);
     }
   }
-  WarpReduceMax<AccT, kBatchSize, kWarpSize>(max_value);
+  pten::WarpReduceMax<AccT, kBatchSize, kWarpSize>(max_value);
 
   // compute sum
   AccT sum[kBatchSize]{0.0};
@@ -694,7 +694,7 @@ __global__ void WarpSoftmaxForwardSoftLabel(T* loss, T* softmax, const T* src,
       }
     }
   }
-  WarpReduceSum<AccT, kBatchSize, kWarpSize>(sum);
+  pten::WarpReduceSum<AccT, kBatchSize, kWarpSize>(sum);
 
   // log_softmax and loss
   AccT sumloss[kBatchSize]{0.0};
@@ -737,7 +737,7 @@ __global__ void WarpSoftmaxForwardSoftLabel(T* loss, T* softmax, const T* src,
   }
 
   // loss
-  WarpReduceSum<AccT, kBatchSize, kWarpSize>(sumloss);
+  pten::WarpReduceSum<AccT, kBatchSize, kWarpSize>(sumloss);
 
   for (int i = 0; i < kBatchSize; i++) {
     if (i >= local_batches) break;

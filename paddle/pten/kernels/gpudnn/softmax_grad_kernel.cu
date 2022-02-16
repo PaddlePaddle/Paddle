@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/kernels/softmax_kernel.h"
+#include "paddle/pten/kernels/softmax_grad_kernel.h"
 
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
@@ -21,28 +21,29 @@ limitations under the License. */
 namespace pten {
 
 template <typename T, typename Context>
-void SoftmaxRawKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      int axis,
-                      DenseTensor* out) {
-  dev_ctx.template Alloc<T>(out);
-  SoftmaxForwardCUDAKernelDriver<T>(dev_ctx, x, axis, out);
+void SoftmaxGradKernel(const Context& dev_ctx,
+                       const DenseTensor& out,
+                       const DenseTensor& out_grad,
+                       int axis,
+                       DenseTensor* x_grad) {
+  dev_ctx.template Alloc<T>(x_grad);
+  SoftmaxBackwardCUDAKernelDriver<T>(dev_ctx, out, out_grad, axis, x_grad);
 }
 
 }  // namespace pten
 
 #ifdef PADDLE_WITH_HIP
-PT_REGISTER_KERNEL(softmax,
+PT_REGISTER_KERNEL(softmax_grad,
                    GPUDNN,
                    ALL_LAYOUT,
-                   pten::SoftmaxRawKernel,
+                   pten::SoftmaxGradKernel,
                    float,
                    pten::dtype::float16) {}
 #else
-PT_REGISTER_KERNEL(softmax,
+PT_REGISTER_KERNEL(softmax_grad,
                    GPUDNN,
                    ALL_LAYOUT,
-                   pten::SoftmaxRawKernel,
+                   pten::SoftmaxGradKernel,
                    float,
                    double,
                    pten::dtype::float16) {}
