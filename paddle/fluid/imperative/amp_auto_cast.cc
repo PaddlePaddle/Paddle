@@ -375,9 +375,8 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
 }
 template NameVarMap<VarBase> AutoCastInputs<VarBase>(
     const std::string& op_type, const NameVarMap<VarBase>& ins);
-template NameVarMap<egr::EagerTensor> AutoCastInputs<egr::EagerTensor>(
-    const std::string& op_type, const NameVarMap<egr::EagerTensor>& ins);
-
+template NameVarMap<egr::EagerVariable> AutoCastInputs<egr::EagerVariable>(
+    const std::string& op_type, const NameVarMap<egr::EagerVariable>& ins);
 template <typename VarType>
 NameVarMap<VarType> CastPureFp16Inputs(const std::string& op_type,
                                        const NameVarMap<VarType>& ins) {
@@ -420,8 +419,8 @@ NameVarMap<VarType> CastPureFp16Inputs(const std::string& op_type,
 }
 template NameVarMap<VarBase> CastPureFp16Inputs<VarBase>(
     const std::string& op_type, const NameVarMap<VarBase>& ins);
-template NameVarMap<egr::EagerTensor> CastPureFp16Inputs<egr::EagerTensor>(
-    const std::string& op_type, const NameVarMap<egr::EagerTensor>& ins);
+template NameVarMap<egr::EagerVariable> CastPureFp16Inputs<egr::EagerVariable>(
+    const std::string& op_type, const NameVarMap<egr::EagerVariable>& ins);
 
 template <typename VarType>
 NameVarMap<VarType> AutoCastBF16Inputs(const std::string& op_type,
@@ -450,8 +449,8 @@ NameVarMap<VarType> AutoCastBF16Inputs(const std::string& op_type,
 }
 template NameVarMap<VarBase> AutoCastBF16Inputs<VarBase>(
     const std::string& op_type, const NameVarMap<VarBase>& ins);
-template NameVarMap<egr::EagerTensor> AutoCastBF16Inputs<egr::EagerTensor>(
-    const std::string& op_type, const NameVarMap<egr::EagerTensor>& ins);
+template NameVarMap<egr::EagerVariable> AutoCastBF16Inputs<egr::EagerVariable>(
+    const std::string& op_type, const NameVarMap<egr::EagerVariable>& ins);
 
 template <typename VarType>
 NameVarMap<VarType> CastPureBf16Inputs(const std::string& op_type,
@@ -476,7 +475,8 @@ NameVarMap<VarType> CastPureBf16Inputs(const std::string& op_type,
 }
 template NameVarMap<VarBase> CastPureBf16Inputs<VarBase>(
     const std::string& op_type, const NameVarMap<VarBase>& ins);
-template NameVarMap<egr::EagerTensor> CastPureBf16Inputs<egr::EagerTensor>(
-    const std::string& op_type, const NameVarMap<egr::EagerTensor>& ins);
+template NameVarMap<egr::EagerVariable> CastPureBf16Inputs<egr::EagerVariable>(
+    const std::string& op_type, const NameVarMap<egr::EagerVariable>& ins);
+
 }  // namespace imperative
 }  // namespace paddle

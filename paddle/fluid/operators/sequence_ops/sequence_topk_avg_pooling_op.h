@@ -21,7 +21,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -196,7 +196,7 @@ class SequenceTopkAvgPoolingGradKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx =
         context.template device_context<platform::CPUDeviceContext>();
-    math::SetConstant<paddle::platform::CPUDeviceContext, T> zero;
+    pten::funcs::SetConstant<paddle::platform::CPUDeviceContext, T> zero;
     zero(dev_ctx, d_in, static_cast<T>(0.0));
 
     auto din_data = d_in->data<T>();

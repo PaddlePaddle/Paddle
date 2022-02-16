@@ -26,8 +26,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/operators/dropout_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 #include "paddle/fluid/operators/collective/gen_hccl_id_op_helper.h"
 #include "paddle/fluid/operators/collective/send_v2_op.h"
@@ -39,7 +39,6 @@ limitations under the License. */
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
-namespace m = paddle::operators::math;
 
 USE_OP(send_v2);
 USE_NO_KERNEL_OP(c_gen_hccl_id);

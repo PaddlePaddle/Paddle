@@ -86,7 +86,7 @@ class SparseCsrTensor : public TensorBase,
 
   /// \brief Return the number of elements contained in original dense tensor
   /// \return The number of elements contained in original dense tensor
-  int64_t numel() const { return product(dims_); }
+  int64_t numel() const override { return product(dims_); }
 
   /// \brief Returns the dims of the original dense tensor.
   /// \return The dims of the original dense tensor.
@@ -100,7 +100,7 @@ class SparseCsrTensor : public TensorBase,
 
   /// \brief Returns the data layout of the tensor.
   /// \return The data layout of the tensor.
-  DataLayout layout() const { return DataLayout::SPARSE_CSR; }
+  DataLayout layout() const noexcept override { return DataLayout::SPARSE_CSR; }
 
   /// \brief Returns the data place of the tensor.
   /// \return The data place of the tensor.
@@ -108,7 +108,7 @@ class SparseCsrTensor : public TensorBase,
 
   /// \brief Test whether the non_zero_elements_ metadata is valid.
   /// \return Whether the non_zero_elements_ metadata is valid.
-  bool valid() const noexcept { return non_zero_elements_.valid(); }
+  bool valid() const noexcept override { return non_zero_elements_.valid(); }
 
   /// \brief Test whether the non_zero_elements_ storage is allocated.
   /// return Whether the non_zero_elements_ storage is allocated.

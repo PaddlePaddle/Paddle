@@ -173,7 +173,8 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
     auto place = ctx.GetPlace();
-    HcclDataType dtype = platform::ToHCCLDataType(in->type());
+    HcclDataType dtype =
+        platform::ToHCCLDataType(framework::TransToProtoVarType(in->dtype()));
     int64_t numel = in->numel();
 
     void* sendbuff = reinterpret_cast<void*>(const_cast<T*>(in->data<T>()));
@@ -231,7 +232,7 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
 
     bool found_nan = false;
 
-    auto d_type = in->type();
+    auto d_type = framework::TransToProtoVarType(in->dtype());
     switch (d_type) {
       case framework::proto::VarType::FP16: {
         break;
@@ -284,7 +285,8 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
     auto out = ctx.Output<framework::Tensor>("Out");
 
     auto place = ctx.GetPlace();
-    BKCLDataType dtype = platform::ToBKCLDataType(in->type());
+    BKCLDataType dtype =
+        platform::ToBKCLDataType(framework::TransToProtoVarType(in->dtype()));
     int64_t numel = in->numel();
     const void* sendbuff = in->data<T>();
     out->Resize(in->dims());
@@ -346,7 +348,8 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     auto out = ctx.Output<framework::Tensor>("Out");
 
     auto place = ctx.GetPlace();
-    ncclDataType_t dtype = platform::ToNCCLDataType(in->type());
+    ncclDataType_t dtype =
+        platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
     int64_t numel = in->numel();
     const void* sendbuff = in->data<T>();
     out->Resize(in->dims());

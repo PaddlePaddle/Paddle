@@ -25,6 +25,7 @@ namespace experimental {
 template <typename T>
 class ScalarBase {
  public:
+  bool IsInitByTensor() const { return is_init_by_tensor_; }
   // Constructor support implicit
   ScalarBase(double val) : dtype_(DataType::FLOAT64) {  // NOLINT
     data_.f64 = val;
@@ -103,6 +104,7 @@ class ScalarBase {
 
   // The Tensor must have one dim
   ScalarBase(const T& tensor) : dtype_(tensor.dtype()) {  // NOLINT
+    is_init_by_tensor_ = true;
     PD_CHECK(
         tensor.numel() == 1,
         "The Scalar only supports Tensor with 1 element, but now Tensor has `",
@@ -194,6 +196,7 @@ class ScalarBase {
   friend void CopyScalar(const ScalarBase<T1>& src, ScalarBase<T2>* dst);
 
  private:
+  bool is_init_by_tensor_{false};
   DataType dtype_;
   union data {
     bool b;

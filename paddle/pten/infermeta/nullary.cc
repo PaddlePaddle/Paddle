@@ -16,10 +16,10 @@ limitations under the License. */
 
 namespace pten {
 
-void CreateInferMeta(const std::vector<int64_t>& shape,
-                     DataType dtype,
-                     DataLayout layout,
-                     MetaTensor* out) {
+void CreateInferMetaBase(const std::vector<int64_t>& shape,
+                         DataType dtype,
+                         DataLayout layout,
+                         MetaTensor* out) {
   auto out_dims = pten::framework::make_ddim(shape);
   out->set_dims(out_dims);
   out->set_dtype(dtype);
@@ -30,7 +30,7 @@ void CreateInferMeta(const ScalarArray& shape,
                      DataType dtype,
                      DataLayout layout,
                      MetaTensor* out) {
-  CreateInferMeta(shape.GetData(), dtype, layout, out);
+  CreateInferMetaBase(shape.GetData(), dtype, layout, out);
 }
 
 }  // namespace pten

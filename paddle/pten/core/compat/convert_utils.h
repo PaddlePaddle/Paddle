@@ -31,16 +31,6 @@ std::string TransToPtenKernelName(const std::string& fluid_op_name);
 const std::string& TransToFluidOpName(const std::string& pten_kernel_name);
 
 Backend TransToPtenBackend(const pten::Place& place);
-DataType TransToPtenDataType(
-    const paddle::framework::proto::VarType::Type& dtype);
-
-paddle::platform::Place TransToFluidPlace(const Backend& backend,
-                                          bool set_device_id = true);
-paddle::framework::proto::VarType::Type TransToProtoVarType(
-    const DataType& dtype);
-
-size_t DataTypeSize(DataType dtype);
-DataType String2DataType(const std::string& str);
-std::string DataType2String(DataType dtype);
+pten::Place TransToPtenPlace(const Backend& backend, bool set_device_id = true);
 
 }  // namespace pten

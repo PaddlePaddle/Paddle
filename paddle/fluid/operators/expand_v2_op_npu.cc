@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/expand_v2_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -116,11 +117,13 @@ class ExpandV2NPUKernel : public framework::OpKernel<T> {
       runner.Run(dev_ctx.stream());
     };
 
-    if (X->type() == framework::proto::VarType::BOOL) {
+    if (framework::TransToProtoVarType(X->dtype()) ==
+        framework::proto::VarType::BOOL) {
       NpuOpRunner::TypeAdapter({*X}, {*Out}, attr_input, dev_ctx, op_func,
                                {framework::proto::VarType::UINT8},
                                {framework::proto::VarType::UINT8});
-    } else if (X->type() == framework::proto::VarType::INT64) {
+    } else if (framework::TransToProtoVarType(X->dtype()) ==
+               framework::proto::VarType::INT64) {
       NpuOpRunner::TypeAdapter({*X}, {*Out}, attr_input, dev_ctx, op_func,
                                {framework::proto::VarType::INT32},
                                {framework::proto::VarType::INT32});
@@ -151,8 +154,8 @@ class ExpandV2NPUGradKernel : public framework::OpKernel<T> {
       axes.push_back(i);
     }
 
-    Tensor tmp_dout(dout->type());
-    Tensor reduced_dout(dx->type());
+    Tensor tmp_dout(dout->dtype());
+    Tensor reduced_dout(dx->dtype());
     tmp_dout.ShareDataWith(*dout);
     if (axes.size() != 0) {
       std::vector<int64_t> reduced_dout_dims;

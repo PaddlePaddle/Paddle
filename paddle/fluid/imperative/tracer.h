@@ -71,7 +71,7 @@ class Tracer {
                const platform::Place& place, bool trace_backward,
                const std::map<std::string, std::string>& inplace_map = {},
                paddle::framework::AttributeMap* passed_default_attrs_ = nullptr,
-               bool override_default_attr_map = true);
+               bool use_default_attr_map = true);
 
   void TraceOp(const std::string& type, const NameVarBaseMap& ins,
                const NameVarBaseMap& outs, framework::AttributeMap attrs,
@@ -85,7 +85,7 @@ class Tracer {
                const NameTensorMap& outs, paddle::framework::AttributeMap attrs,
                const paddle::platform::Place& place,
                paddle::framework::AttributeMap* default_attrs,
-               bool override_default_attr_map,
+               bool use_default_attr_map,
                const std::map<std::string, std::string>& inplace_map = {});
 
   bool ComputeRequiredGrad(const NameVarBaseMap& ins,
