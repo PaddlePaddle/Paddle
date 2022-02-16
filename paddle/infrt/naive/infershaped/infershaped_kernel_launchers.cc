@@ -14,20 +14,22 @@
 
 #include "paddle/infrt/naive/infershaped/infershaped_kernel_launchers.h"
 #include "paddle/infrt/naive/infershaped/elementwise_add.h"
-#include "paddle/infrt/naive/infershaped/infershaped_registry.h"
 
 namespace infrt {
 namespace naive {
 
-using ElementwiseAddLauncher =
-    KernelLauncher<decltype(&ElementwiseAdd),
-                   &ElementwiseAdd,
-                   decltype(&ElementwiseAddInferShape),
-                   &ElementwiseAddInferShape>;
-
-void RegisterInferShapeLaunchers(InferShapedKernelRegistry* registry) {
-  registry->AddKernel("elementwise_add",
-                      INFERSHAPED_KERNEL_CREATOR(ElementwiseAddLauncher));
+void RegisterInferShapeLaunchers(host_context::KernelRegistry* registry) {
+  registry->AddKernel(
+      "elementwise_add",
+      std::bind(&KernelLauncherFunc<decltype(&ElementwiseAdd),
+                                    &ElementwiseAdd,
+                                    decltype(&ElementwiseAddInferShape),
+                                    &ElementwiseAddInferShape>,
+                KernelLauncher<decltype(&ElementwiseAdd),
+                               &ElementwiseAdd,
+                               decltype(&ElementwiseAddInferShape),
+                               &ElementwiseAddInferShape>(),
+                std::placeholders::_1));
 }
 
 }  // namespace naive
