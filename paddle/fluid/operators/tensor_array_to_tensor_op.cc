@@ -299,7 +299,7 @@ class TensorArrayToTensorGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 }  // namespace operators
 }  // namespace paddle
-USE_OP_ITSELF(concat);
+USE_OP(concat);
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
