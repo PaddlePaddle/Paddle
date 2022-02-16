@@ -25,7 +25,7 @@ void TransposeKernelImpl(const Context& ctx,
                          const DenseTensor& x,
                          const std::vector<int>& axis,
                          DenseTensor* out) {
-  out->mutable_data<T>(ctx.GetPlace());
+  ctx.template Alloc<T>(out);
   if (out->numel() == 0) {
     return;
   }
@@ -69,7 +69,7 @@ void TransposeGradKernel(const Context& dev_ctx,
                          DenseTensor* x_grad) {
   std::vector<int> reversed_axis(axis);
 
-  x_grad->mutable_data<T>(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<T>(x_grad);
   for (size_t i = 0; i < axis.size(); i++) {
     reversed_axis[axis[i]] = i;
   }
