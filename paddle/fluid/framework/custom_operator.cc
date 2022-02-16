@@ -26,6 +26,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/attribute.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_meta_info_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -249,7 +250,8 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
       true_out_meta->dims = calc_out->dims();
       true_out_meta->dtype = calc_out->dtype();
       true_out_meta->layout = calc_out->layout();
-      // lod and offset no need to be reset
+      true_out_meta->offset = calc_out->offset();
+      // lod no need to be reset
       // reset holder if needed
       if (true_out->Holder() != calc_out->Holder()) {
         true_out->ResetHolder(calc_out->Holder());
@@ -776,12 +778,14 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
           std::vector<DataType> vec_custom_dtype;
           for (size_t i = 0; i < ctx->InputSize(in_name); ++i) {
             auto dtype = ctx->GetInputDataType(in_name, i);
-            vec_custom_dtype.emplace_back(pten::TransToPtenDataType(dtype));
+            vec_custom_dtype.emplace_back(
+                paddle::framework::TransToPtenDataType(dtype));
           }
           vec_input_dtypes.emplace_back(vec_custom_dtype);
         } else {
           auto dtype = ctx->GetInputDataType(in_name);
-          input_dtypes.emplace_back(pten::TransToPtenDataType(dtype));
+          input_dtypes.emplace_back(
+              paddle::framework::TransToPtenDataType(dtype));
         }
       }
 
@@ -793,12 +797,14 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
         auto out_name = op_outputs[i];
         if (detail::IsDuplicableVar(out_name)) {
           for (size_t j = 0; j < output_dtypes.size(); ++j) {
-            auto dtype = pten::TransToProtoVarType(output_dtypes[i]);
+            auto dtype =
+                paddle::framework::TransToProtoVarType(output_dtypes[i]);
             ctx->SetOutputDataType(out_name, dtype, j);
           }
         } else {
-          ctx->SetOutputDataType(out_name,
-                                 pten::TransToProtoVarType(output_dtypes[i]));
+          ctx->SetOutputDataType(
+              out_name,
+              paddle::framework::TransToProtoVarType(output_dtypes[i]));
         }
       }
     };

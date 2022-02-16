@@ -10,8 +10,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/roi_align_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -53,7 +53,7 @@ class ROIAlignNPUKernel : public framework::OpKernel<T> {
     int dtype =
         static_cast<int>(ConvertToNpuDtype(framework::proto::VarType::FP32));
     framework::NPUAttributeMap attr_cast = {{"dst_type", dtype}};
-    Tensor ROIsNum_fp(ROIs->type());
+    Tensor ROIsNum_fp(ROIs->dtype());
     ROIsNum_fp.Resize(framework::make_ddim({ROIs->dims()[0], 1}));
     ROIsNum_fp.mutable_data<T>(ctx.GetPlace());
 
@@ -67,7 +67,7 @@ class ROIAlignNPUKernel : public framework::OpKernel<T> {
     x_list.push_back(*ROIs);
     auto axis = 1;
     // output of concate
-    Tensor ROIs_N5(ROIs->type());
+    Tensor ROIs_N5(ROIs->dtype());
     ROIs_N5.Resize(framework::make_ddim({ROIs->dims()[0], 5}));
     ROIs_N5.mutable_data<T>(ctx.GetPlace());
 
@@ -128,7 +128,8 @@ class ROIAlignNPUGradKernel : public framework::OpKernel<T> {
         platform::errors::NotFound("Input(RoisNum) of ROIAlignGradOp "
                                    "is not found while using NPU."));
     PADDLE_ENFORCE_EQ(
-        rois->type(), framework::proto::VarType::FP32,
+        framework::TransToProtoVarType(rois->dtype()),
+        framework::proto::VarType::FP32,
         platform::errors::InvalidArgument(
             "ROIAlignGradNPU only support ROIs type equaled to FP32."));
 

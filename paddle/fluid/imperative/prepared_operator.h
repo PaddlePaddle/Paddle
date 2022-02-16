@@ -29,6 +29,10 @@
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/var_helper.h"
 
+#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/selected_rows.h"
+
 DECLARE_bool(use_mkldnn);
 
 namespace paddle {
@@ -59,8 +63,8 @@ void SetForwardDataTypeOfGradVar<VarBase>(const std::shared_ptr<VarBase>& var) {
 }
 
 template <>
-void SetForwardDataTypeOfGradVar<egr::EagerTensor>(
-    const std::shared_ptr<egr::EagerTensor>& var) {
+void SetForwardDataTypeOfGradVar<egr::EagerVariable>(
+    const std::shared_ptr<egr::EagerVariable>& var) {
   VLOG(10) << "Var in Eager dose not support SetForwardDataTypeOfGradVar: "
            << var->name();
   // TODO(jiabin): SetForwardDataType of Grad var is not supported yet in
@@ -167,8 +171,8 @@ class PreparedOp {
                             const framework::AttributeMap& attrs,
                             const framework::AttributeMap& default_attrs);
 
-  static PreparedOp Prepare(const NameVarMap<egr::EagerTensor>& ins,
-                            const NameVarMap<egr::EagerTensor>& outs,
+  static PreparedOp Prepare(const NameVarMap<egr::EagerVariable>& ins,
+                            const NameVarMap<egr::EagerVariable>& outs,
                             const framework::OperatorWithKernel& op,
                             const platform::Place& place,
                             const framework::AttributeMap& attrs,
@@ -183,8 +187,8 @@ class PreparedOp {
            const framework::AttributeMap& attrs,
            const framework::AttributeMap& default_attrs);
 
-  void Run(const NameVarMap<egr::EagerTensor>& ins,
-           const NameVarMap<egr::EagerTensor>& outs,
+  void Run(const NameVarMap<egr::EagerVariable>& ins,
+           const NameVarMap<egr::EagerVariable>& outs,
            const framework::AttributeMap& attrs,
            const framework::AttributeMap& default_attrs);
 
@@ -256,13 +260,33 @@ void BuildDygraphPtenKernelContext(
                         attr_names.size(), attr_defs.size()));
 
   for (size_t i = 0; i < input_names.size(); ++i) {
-    auto& ins_vector = ins.at(input_names[i]);
+    auto it = ins.find(input_names[i]);
 
     size_t start_idx = (i == 0 ? 0 : kernel_ctx->InputRangeAt(i - 1).second);
+
+    if ((it == ins.end()) &&
+        (input_defs[i].type_index ==
+         std::type_index(typeid(paddle::optional<const pten::DenseTensor&>)))) {
+      kernel_ctx->EmplaceBackInputWithoutSetRange(nullptr);
+      auto end_idx = start_idx + 1;
+      kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
+      continue;
+    }
+    auto ins_vector = it->second;
     size_t end_idx = start_idx + ins_vector.size();
 
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
-      const auto* tensor_in = GetTensorFromVar(ins_vector[offset]->Var());
+      const pten::TensorBase* tensor_in = nullptr;
+      auto& var = ins_vector[offset]->Var();
+      if (var.template IsType<pten::DenseTensor>()) {
+        tensor_in = &(var.template Get<pten::DenseTensor>());
+      } else if (var.template IsType<pten::SelectedRows>()) {
+        tensor_in = &(var.template Get<pten::SelectedRows>());
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported input `%s` type when call pt kernel.",
+            framework::ToTypeName(var.Type())));
+      }
       kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
     }
     kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
@@ -287,19 +311,23 @@ void BuildDygraphPtenKernelContext(
         kernel_ctx->EmplaceBackOutputWithoutSetRange({nullptr});
         continue;
       }
+
+      pten::TensorBase* tensor_out = nullptr;
       auto* var = outs_vector[offset]->MutableVar();
-      framework::Tensor* tensor_out = nullptr;
-      if (var->template IsType<framework::LoDTensor>()) {
-        tensor_out = var->template GetMutable<framework::LoDTensor>();
+      if (var->template IsType<pten::DenseTensor>()) {
+        tensor_out = var->template GetMutable<pten::DenseTensor>();
+      } else if (var->template IsType<pten::SelectedRows>()) {
+        tensor_out = var->template GetMutable<pten::SelectedRows>();
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported output `%s` type when call pt kernel.",
             framework::ToTypeName(var->Type())));
-      }  // TODO(zyfncg): Add support for SelectedRows
+      }
 
-      experimental::ResetTensorByArgDef(tensor_out, output_defs.at(i));
+      experimental::ResetTensorDtypeAndLayoutByArgDef(tensor_out,
+                                                      output_defs.at(i));
       framework::SetAllocationForOutputTenosr(
-          tensor_out, pten::TransToFluidPlace(output_defs.at(i).backend));
+          tensor_out, pten::TransToPtenPlace(output_defs.at(i).backend));
 
       kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
     }
@@ -319,6 +347,18 @@ void BuildDygraphPtenKernelContext(
                    std::type_index(typeid(std::vector<int32_t>))) {
           kernel_ctx->EmplaceBackAttr(std::move(
               pten::ScalarArray(BOOST_GET_CONST(std::vector<int32_t>, attr))));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(int64_t))) {
+          kernel_ctx->EmplaceBackAttr(
+              std::move(pten::ScalarArray(&BOOST_GET_CONST(int64_t, attr), 1)));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(int32_t))) {
+          kernel_ctx->EmplaceBackAttr(
+              std::move(pten::ScalarArray(&BOOST_GET_CONST(int32_t, attr), 1)));
+        } else if (attr_defs[i].type_index ==
+                   std::type_index(typeid(std::vector<int32_t>))) {
+          const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
+          kernel_ctx->EmplaceBackAttr(vector_int_attr);
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported cast op attribute `%s` to VectorTensor when "
@@ -381,9 +421,14 @@ void BuildDygraphPtenKernelContext(
         kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(float, attr));
       } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
         kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
+      } else if (attr_defs[i].type_index == std::type_index(typeid(int64_t))) {
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(int64_t, attr));
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::string))) {
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(std::string, attr));
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(pten::DataType))) {
-        auto data_type = pten::TransToPtenDataType(
+        auto data_type = framework::TransToPtenDataType(
             static_cast<framework::proto::VarType::Type>(
                 BOOST_GET_CONST(int, attr)));
         kernel_ctx->EmplaceBackAttr(data_type);
@@ -423,13 +468,16 @@ void PreparePtenData(const pten::Kernel& pt_kernel,
 
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto& in_def = input_defs.at(i);
+    if (ins.find(input_names[i]) == ins.end()) {
+      continue;
+    }
     auto& ins_vector = ins.at(input_names[i]);
 
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
       auto var = ins_vector[offset];
       const auto* tensor_in = GetTensorFromVar(var->Var());
       if (tensor_in && tensor_in->IsInitialized()) {
-        auto expected_place = pten::TransToFluidPlace(in_def.backend);
+        auto expected_place = pten::TransToPtenPlace(in_def.backend);
         if (platform::is_same_place(tensor_in->place(), expected_place)) {
           continue;
         }

@@ -16,6 +16,7 @@
 
 #include <string>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -49,7 +50,7 @@ static void CheckTensorAttrs(const LoDTensor *tensor,
   if (tensor->numel() && tensor->IsInitialized()) {
     // step1: check type
     PADDLE_ENFORCE_EQ(
-        type, tensor->type(),
+        type, framework::TransToProtoVarType(tensor->dtype()),
         platform::errors::InvalidArgument(
             "The data type of fetched Tensors or the items of fetched "
             "LoDTensorArray are different from each other on different "
@@ -57,7 +58,7 @@ static void CheckTensorAttrs(const LoDTensor *tensor,
             "(th) fetched variable. Please set the "
             "parameter `return_merged = False` when you "
             "call the `Executor.run()` method.",
-            DataTypeToString(type), DataTypeToString(tensor->type()), offset));
+            DataTypeToString(type), tensor->dtype(), offset));
 
     // step2: check layout
     PADDLE_ENFORCE_EQ(
@@ -139,7 +140,7 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
   for (auto *t : src_lodtensors) {
     if (t->numel() && t->IsInitialized()) {
       check_dim = t->dims();
-      new_type = t->type();
+      new_type = paddle::framework::TransToProtoVarType(t->dtype());
       new_layout = t->layout();
       break;
     }
@@ -169,10 +170,10 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
   dst_lodtensor->set_lod(src_lodtensors[0]->lod());
   if (platform::is_gpu_place(src_lodtensors[0]->place())) {
     dst_lodtensor->mutable_data(platform::CUDAPinnedPlace(),
-                                src_lodtensors[0]->type());
+                                src_lodtensors[0]->dtype());
   } else {
     dst_lodtensor->mutable_data(platform::CPUPlace(),
-                                src_lodtensors[0]->type());
+                                src_lodtensors[0]->dtype());
   }
 
   // slice and memcpy

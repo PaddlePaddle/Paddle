@@ -28,6 +28,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_type_transform.h"
@@ -59,6 +60,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/trainer.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/version.h"
+#include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
@@ -67,6 +69,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -304,66 +307,6 @@ bool SupportsVNNI() {
 #endif
 }
 
-// According to the input `place` and `dtype`, this function returns a tuple
-// consists of three sets:
-// 1) All operators registered in the Paddle framework.
-// 2) All operators supported for `place` and `dtype`.
-// 3) All operators unsupported for `place` and `dtype`.
-// The input `place` is a type of string, which can only be `GPU` or `CPU`.
-// The input `dtype` is a type of paddle::framework::proto::VarType::Type,
-// which can be paddle::framework::proto::VarType::FP16,
-// paddle::framework::proto::VarType::FP32 and so on.
-std::tuple<std::unordered_set<std::string>, std::unordered_set<std::string>,
-           std::unordered_set<std::string>>
-OpSupportedInfos(const std::string &place,
-                 framework::proto::VarType::Type dtype) {
-  std::string query_place;
-  std::transform(place.begin(), place.end(), std::back_inserter(query_place),
-                 [](unsigned char c) { return std::toupper(c); });
-  using fn_type = std::add_pointer<bool(const platform::Place &)>::type;
-  std::unordered_map<std::string, fn_type> is_target_place{
-      {"GPU", &platform::is_gpu_place}, {"CPU", &platform::is_cpu_place},
-      {"XPU", &platform::is_xpu_place}, {"NPU", &platform::is_npu_place},
-      {"MLU", &platform::is_mlu_place},
-  };
-  PADDLE_ENFORCE_NE(
-      is_target_place.count(query_place), 0,
-      platform::errors::InvalidArgument(
-          "The argument `place` should be 'GPU' or 'CPU', but get '%s'.",
-          place));
-
-  std::unordered_set<std::string> all_ops;
-  const auto &op_info = framework::OpInfoMap::Instance().map();
-  for (auto it = op_info.begin(); it != op_info.end(); it++) {
-    all_ops.emplace(it->first);
-  }
-
-  std::unordered_set<std::string> supported_ops;
-  auto &all_kernels = framework::OperatorWithKernel::AllOpKernels();
-  for (auto it = all_kernels.begin(); it != all_kernels.end(); it++) {
-    for (auto &kernel_type : it->second) {
-      if (is_target_place[query_place](kernel_type.first.place_) &&
-          kernel_type.first.data_type_ == dtype) {
-        supported_ops.emplace(it->first);
-      }
-    }
-  }
-
-  std::unordered_set<std::string> unsupported_ops;
-  for (auto &op : all_ops) {
-    if (!supported_ops.count(op)) {
-      unsupported_ops.emplace(op);
-    }
-  }
-
-  VLOG(4) << "-- The size of all_ops: " << all_ops.size() << " --";
-  VLOG(4) << "-- The size of supported_ops: " << supported_ops.size() << " --";
-  VLOG(4) << "-- The size of unsupported_ops: " << unsupported_ops.size()
-          << " --";
-  return std::make_tuple(std::move(all_ops), std::move(supported_ops),
-                         std::move(unsupported_ops));
-}
-
 bool IsCompiledWithBrpc() {
 #ifndef PADDLE_WITH_DISTRIBUTE
   return false;
@@ -517,7 +460,9 @@ static void inline CreateVariableIfNotExit(
         var = const_cast<framework::Scope *>(&scope)->Var(para_name);
         auto *tensor_temp = var->GetMutable<framework::LoDTensor>();
         tensor_temp->Resize(framework::make_ddim(var_desc.GetShape()));
-        tensor_temp->mutable_data(exe->GetPlace(), var_desc.GetDataType());
+        tensor_temp->mutable_data(
+            exe->GetPlace(),
+            framework::TransToPtenDataType(var_desc.GetDataType()));
       }
     }
   } else {
@@ -876,33 +821,39 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::CPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
+             return reinterpret_cast<uintptr_t>(self.mutable_data(
+                 place, framework::TransToPtenDataType(type)));
            })
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::XPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
+             return reinterpret_cast<uintptr_t>(self.mutable_data(
+                 place, framework::TransToPtenDataType(type)));
            })
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::CUDAPlace &place,
               paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
+             return reinterpret_cast<uintptr_t>(self.mutable_data(
+                 place, framework::TransToPtenDataType(type)));
            })
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::CUDAPinnedPlace &place,
               paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
+             return reinterpret_cast<uintptr_t>(self.mutable_data(
+                 place, framework::TransToPtenDataType(type)));
            })
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::MLUPlace &place,
               paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
+             return reinterpret_cast<uintptr_t>(self.mutable_data(
+                 place, framework::TransToPtenDataType(type)));
            })
       .def("_clear", &framework::Tensor::clear)
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::NPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
+             return reinterpret_cast<uintptr_t>(self.mutable_data(
+                 place, framework::TransToPtenDataType(type)));
            })
       .def("_copy_from", &TensorCopyFrom<paddle::platform::CPUPlace>,
            py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
@@ -1000,7 +951,10 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("_set_double_element", TensorSetElement<double>)
       .def("_get_double_element", TensorGetElement<double>)
       .def("_place", [](framework::Tensor &self) { return self.place(); })
-      .def("_dtype", [](framework::Tensor &self) { return self.type(); })
+      .def("_dtype",
+           [](framework::Tensor &self) {
+             return framework::TransToProtoVarType(self.type());
+           })
       .def("_layout",
            [](framework::Tensor &self) {
              return DataLayoutToString(self.layout());
@@ -1266,7 +1220,7 @@ PYBIND11_MODULE(core_noavx, m) {
             // 4. Rebuild Tensor
             tensor.ResetHolderWithType(
                 shared_reader_holder,
-                static_cast<proto::VarType::Type>(t[2].cast<int>()));
+                static_cast<paddle::experimental::DataType>(t[2].cast<int>()));
             tensor.Resize(make_ddim(t[3].cast<std::vector<int>>()));
             tensor.set_lod(t[4].cast<framework::LoD>());
 
@@ -1714,6 +1668,139 @@ All parameter, weight, gradient are variables in Paddle.
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
+  m.def("get_all_device_type", []() {
+    std::vector<std::string> device_types;
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    device_types = platform::DeviceManager::GetAllDeviceTypes();
+#else
+          LOG(WARNING) << string::Sprintf(
+              "Cannot use get_all_device_type because you have installed"
+              "CPU/GPU version PaddlePaddle.\n"
+              "If you want to use get_all_device_type, please try to install"
+              "CustomDevice version "
+              "PaddlePaddle by: pip install paddlepaddle-core\n");
+#endif
+    return device_types;
+  });
+  m.def("get_all_custom_device_type", []() {
+    std::vector<std::string> device_types;
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    device_types = platform::DeviceManager::GetAllCustomDeviceTypes();
+#else
+          LOG(WARNING) << string::Sprintf(
+              "Cannot use get_all_custom_device_type because you have installed"
+              "CPU/GPU version PaddlePaddle.\n"
+              "If you want to use get_all_custom_device_type, please try to "
+              "install CustomDevice version "
+              "PaddlePaddle by: pip install paddlepaddle-core\n");
+#endif
+    return device_types;
+  });
+  m.def("get_available_device", [] {
+    std::vector<std::string> devices;
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    devices = platform::DeviceManager::GetAllDeviceList();
+#else
+          LOG(WARNING) << string::Sprintf(
+              "Cannot use get_available_device because you have installed"
+              "CPU/GPU version PaddlePaddle.\n"
+              "If you want to use get_available_device, please try to install"
+              "CustomDevice version "
+              "PaddlePaddle by: pip install paddlepaddle-core\n");
+#endif
+    return devices;
+  });
+  m.def("get_available_custom_device", [] {
+    std::vector<std::string> devices;
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    devices = platform::DeviceManager::GetAllCustomDeviceList();
+#else
+          LOG(WARNING) << string::Sprintf(
+              "Cannot use get_available_custom_device because you have "
+              "installed"
+              "CPU/GPU version PaddlePaddle.\n"
+              "If you want to use get_available_custom_device, please try to "
+              "install"
+              "CustomDevice version "
+              "PaddlePaddle by: pip install paddlepaddle-core\n");
+#endif
+    return devices;
+  });
+  py::class_<platform::CustomPlace>(m, "CustomPlace",
+                                    R"DOC(
+    CustomPlace is a descriptor of a device.
+    It represents a custom device on which a tensor will be allocated and a model will run.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+          fake_cpu_place = paddle.CustomPlace("FakeCPU", 0)
+                                             )DOC")
+      .def("__init__",
+           [](platform::CustomPlace &self, const std::string &device_type,
+              int dev_id) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+             if (UNLIKELY(dev_id < 0)) {
+               LOG(ERROR) << string::Sprintf(
+                   "Invalid CustomPlace(%s, %d), device id must be 0 "
+                   "or "
+                   "positive integer",
+                   device_type, dev_id);
+               std::exit(-1);
+             }
+
+             if (LIKELY(platform::DeviceManager::HasDeviceType(device_type) &&
+                        platform::DeviceManager::IsCustom(device_type))) {
+               int dev_count = static_cast<int>(
+                   platform::DeviceManager::GetDeviceCount(device_type));
+               if (UNLIKELY(dev_id >= dev_count)) {
+                 if (dev_count == 0) {
+                   LOG(ERROR) << "Cannot use " << device_type
+                              << " because there is no " << device_type
+                              << " detected on your "
+                                 "machine.";
+                   std::exit(-1);
+                 } else {
+                   LOG(ERROR) << string::Sprintf(
+                       "Invalid CustomPlace(%s, %d), dev_id must "
+                       "inside "
+                       "[0, %d), because %s "
+                       "number on your machine is %d",
+                       device_type, dev_id, dev_count, device_type, dev_count);
+                   std::exit(-1);
+                 }
+               }
+               new (&self) platform::CustomPlace(device_type, dev_id);
+             } else {
+               LOG(ERROR) << string::Sprintf(
+                   "Invalid CustomPlace(%s, %d), the device type is "
+                   "not registered "
+                   "as a custom device.",
+                   device_type, dev_id);
+               std::exit(-1);
+             }
+#else
+             LOG(ERROR) << string::Sprintf(
+                 "Cannot use CustomDevice because you have installed CPU/GPU"
+                 "version PaddlePaddle.\n"
+                 "If you want to use CustomDevice, please try to install"
+                 "CustomDevice version "
+                 "PaddlePaddle by: pip install paddlepaddle-core\n"
+                 "If you only have CPU, please change "
+                 "CustomPlace(%s, %d) to be CPUPlace().\n",
+                 device_type, dev_id);
+             std::exit(-1);
+#endif
+           })
+      .def("get_device_id",
+           [](const platform::CustomPlace &self) { return self.GetDeviceId(); })
+      .def("get_device_type",
+           [](const platform::CustomPlace &self) {
+             return self.GetDeviceType();
+           })
+      .def("__repr__", string::to_string<const platform::CustomPlace &>)
+      .def("__str__", string::to_string<const platform::CustomPlace &>);
   py::class_<platform::CUDAPlace> cudaplace(m, "CUDAPlace", R"DOC(
 
     CUDAPlace is a descriptor of a device.
@@ -2165,11 +2252,16 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("is_mlu_place",
            [](platform::Place &self) { return platform::is_mlu_place(self); })
+      .def(
+          "is_custom_place",
+          [](platform::Place &self) { return platform::is_custom_place(self); })
       .def("gpu_device_id", [](platform::Place &self) { return self.device; })
       .def("xpu_device_id", [](platform::Place &self) { return self.device; })
       .def("npu_device_id", [](platform::Place &self) { return self.device; })
       .def("ipu_device_id", [](platform::Place &self) { return self.device; })
       .def("mlu_device_id", [](platform::Place &self) { return self.device; })
+      .def("custom_device_id",
+           [](platform::Place &self) { return self.device; })
       .def("set_place", [](platform::Place &self,
                            const platform::Place &other) { self = other; })
       .def("set_place",
@@ -2200,6 +2292,10 @@ All parameter, weight, gradient are variables in Paddle.
       .def("set_place",
            [](platform::Place &self, const platform::MLUPlace &mlu_place) {
              self = mlu_place;
+           })
+      .def("set_place",
+           [](platform::Place &self, const platform::CustomPlace &plug_place) {
+             self = plug_place;
            })
       .def("__repr__", string::to_string<const platform::Place &>)
       .def("__str__", string::to_string<const platform::Place &>);
@@ -2449,7 +2545,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
   m.def("supports_int8", SupportsInt8);
   m.def("supports_vnni", SupportsVNNI);
-  m.def("op_supported_infos", OpSupportedInfos);
+  m.def("op_supported_infos", imperative::OpSupportedInfos);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
   m.def("_cuda_synchronize", [](const platform::CUDAPlace &place) {

@@ -33,7 +33,7 @@ using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
 using VarMsg = ::paddle::distributed::VariableMessage;
 DECLARE_double(eager_delete_tensor_gb);
 
-USE_OP(scale);
+USE_OP_ITSELF(scale);
 USE_NO_KERNEL_OP(heter_listen_and_serv);
 
 framework::BlockDesc* AppendSendAndRecvBlock(framework::ProgramDesc* program) {

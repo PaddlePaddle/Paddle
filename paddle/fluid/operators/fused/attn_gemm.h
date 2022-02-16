@@ -165,7 +165,7 @@ class AttnMatMul {
            (input_dims[2] == output_dims[0]));
       if (support_case_1 || support_case_2) {
         gpuStream_t stream = dev_ctx_.stream();
-        TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+        TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
             dev_ctx_, *d_output, d_bias, kps::IdentityFunctor<T>(), {0, 1},
             stream);
       } else {

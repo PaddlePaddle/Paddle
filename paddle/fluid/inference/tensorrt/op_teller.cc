@@ -30,24 +30,6 @@ namespace tensorrt {
 // Just tell by the op_types.
 struct SimpleOpTypeSetTeller : public Teller {
   SimpleOpTypeSetTeller() {
-#if IS_TRT_VERSION_GE(5130)
-    teller_set.insert("relu6");
-    teller_set.insert("hard_sigmoid");
-    teller_set.insert("clip");
-    int8_teller_set.insert("relu6");
-    int8_teller_set.insert("hard_sigmoid");
-    int8_teller_set.insert("clip");
-#endif
-#if IS_TRT_VERSION_GE(6000)
-    teller_set.insert("fused_embedding_eltwise_layernorm");
-    teller_set.insert("multihead_matmul");
-    teller_set.insert("skip_layernorm");
-    teller_set.insert("slice");
-    int8_teller_set.insert("fused_embedding_eltwise_layernorm");
-    int8_teller_set.insert("multihead_matmul");
-    int8_teller_set.insert("skip_layernorm");
-    int8_teller_set.insert("slice");
-#endif
 // TODO(baoachun) The group_norm trt plugin will check input's dim
 // not -1 failed when dynamic shape mode.
 // #if IS_TRT_VERSION_GE(7130)
@@ -80,104 +62,124 @@ struct SimpleOpTypeSetTeller : public Teller {
 
  private:
   // use this set for no calib int8.
-  std::unordered_set<std::string> int8_teller_set{"mul",
-                                                  "matmul",
-                                                  "conv2d",
-                                                  "conv2d_fusion",
-                                                  "pool2d",
-                                                  "relu",
-                                                  "softmax",
-                                                  "sigmoid",
-                                                  "hard_swish",
-                                                  "depthwise_conv2d",
-                                                  "batch_norm",
-                                                  "concat",
-                                                  "tanh",
-                                                  "pad",
-                                                  "elementwise_add",
-                                                  "elementwise_mul",
-                                                  "dropout",
-                                                  "prelu",
-                                                  "conv2d_transpose",
-                                                  "depthwise_conv2d_transpose",
-                                                  "leaky_relu",
-                                                  "fc",
-                                                  "shuffle_channel",
-                                                  "swish",
-                                                  "split",
-                                                  "instance_norm",
-                                                  "gelu",
-                                                  "layer_norm",
-                                                  "scale",
-                                                  "stack",
-                                                  "transpose2",
-                                                  "transpose",
-                                                  "flatten2",
-                                                  "flatten",
-                                                  "gather",
-                                                  "gather_nd",
-                                                  "yolo_box",
-                                                  "roi_align",
-                                                  "affine_channel",
-                                                  "nearest_interp",
-                                                  "anchor_generator",
-                                                  "reduce_sum",
-                                                  "reduce_mean",
-                                                  "conv3d",
-                                                  "conv3d_transpose",
-                                                  "mish",
-                                                  "nearest_interp_v2",
-                                                  "pool3d",
-                                                  "deformable_conv"};
-  std::unordered_set<std::string> teller_set{"mul",
-                                             "matmul",
-                                             "conv2d",
-                                             "conv2d_fusion",
-                                             "pool2d",
-                                             "relu",
-                                             "softmax",
-                                             "sigmoid",
-                                             "hard_swish",
-                                             "depthwise_conv2d",
-                                             "batch_norm",
-                                             "concat",
-                                             "tanh",
-                                             "pad",
-                                             "elementwise_add",
-                                             "elementwise_mul",
-                                             "dropout",
-                                             "prelu",
-                                             "conv2d_transpose",
-                                             "depthwise_conv2d_transpose",
-                                             "leaky_relu",
-                                             "fc",
-                                             "shuffle_channel",
-                                             "swish",
-                                             "split",
-                                             "instance_norm",
-                                             "gelu",
-                                             "layer_norm",
-                                             "scale",
-                                             "stack",
-                                             "transpose2",
-                                             "transpose",
-                                             "flatten2",
-                                             "flatten",
-                                             "gather",
-                                             "gather_nd",
-                                             "yolo_box",
-                                             "roi_align",
-                                             "affine_channel",
-                                             "nearest_interp",
-                                             "anchor_generator",
-                                             "reduce_sum",
-                                             "reduce_mean",
-                                             "conv3d",
-                                             "conv3d_transpose",
-                                             "mish",
-                                             "nearest_interp_v2",
-                                             "pool3d",
-                                             "deformable_conv"};
+  std::unordered_set<std::string> int8_teller_set{
+      "mul",
+      "matmul",
+      "conv2d",
+      "conv2d_fusion",
+      "pool2d",
+      "relu",
+      "softmax",
+      "sigmoid",
+      "hard_swish",
+      "depthwise_conv2d",
+      "batch_norm",
+      "concat",
+      "tanh",
+      "pad",
+      "elementwise_add",
+      "elementwise_mul",
+      "dropout",
+      "prelu",
+      "conv2d_transpose",
+      "depthwise_conv2d_transpose",
+      "leaky_relu",
+      "fc",
+      "shuffle_channel",
+      "swish",
+      "split",
+      "instance_norm",
+      "gelu",
+      "layer_norm",
+      "scale",
+      "stack",
+      "transpose2",
+      "transpose",
+      "flatten2",
+      "flatten",
+      "gather",
+      "gather_nd",
+      "yolo_box",
+      "roi_align",
+      "affine_channel",
+      "nearest_interp",
+      "anchor_generator",
+      "reduce_sum",
+      "reduce_mean",
+      "conv3d",
+      "conv3d_transpose",
+      "mish",
+      "nearest_interp_v2",
+      "pool3d",
+      "deformable_conv",
+      "relu6",
+      "hard_sigmoid",
+      "clip",
+      "fused_embedding_eltwise_layernorm",
+      "multihead_matmul",
+      "skip_layernorm",
+      "slice",
+      "fused_preln_embedding_eltwise_layernorm",
+      "preln_skip_layernorm"};
+  std::unordered_set<std::string> teller_set{
+      "mul",
+      "matmul",
+      "conv2d",
+      "conv2d_fusion",
+      "pool2d",
+      "relu",
+      "softmax",
+      "sigmoid",
+      "hard_swish",
+      "depthwise_conv2d",
+      "batch_norm",
+      "concat",
+      "tanh",
+      "pad",
+      "elementwise_add",
+      "elementwise_mul",
+      "dropout",
+      "prelu",
+      "conv2d_transpose",
+      "depthwise_conv2d_transpose",
+      "leaky_relu",
+      "fc",
+      "shuffle_channel",
+      "swish",
+      "split",
+      "instance_norm",
+      "gelu",
+      "layer_norm",
+      "scale",
+      "stack",
+      "transpose2",
+      "transpose",
+      "flatten2",
+      "flatten",
+      "gather",
+      "gather_nd",
+      "yolo_box",
+      "roi_align",
+      "affine_channel",
+      "nearest_interp",
+      "anchor_generator",
+      "reduce_sum",
+      "reduce_mean",
+      "conv3d",
+      "conv3d_transpose",
+      "mish",
+      "nearest_interp_v2",
+      "pool3d",
+      "deformable_conv",
+      "relu6",
+      "hard_sigmoid",
+      "clip",
+      "fused_embedding_eltwise_layernorm",
+      "multihead_matmul",
+      "skip_layernorm",
+      "slice",
+      "fused_preln_embedding_eltwise_layernorm",
+      "preln_skip_layernorm"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
@@ -1210,6 +1212,24 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
+    if (op_type == "fused_preln_embedding_eltwise_layernorm") {
+      if (!with_dynamic_shape) {
+        VLOG(3)
+            << "fused_preln_embedding_eltwise_layernorm should run on dynamic "
+               "shape mode.";
+        return false;
+      }
+      if (desc.Input("Ids").size() != desc.Input("Embs").size()) {
+        VLOG(3) << "The id and emb size of fused PrelnEmbEltwiseLayerNormOp "
+                   "should be same ";
+        return false;
+      }
+      if (!desc.HasAttr("enable_int8")) {
+        VLOG(3) << "PrelnEmbEltwiseLayerNormOp must use int8 mode.";
+        return false;
+      }
+    }
+
     if (op_type == "gelu") {
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "gelu op has only 1 input, but got "
@@ -1222,9 +1242,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
 
+#if IS_TRT_VERSION_LT(7000)
       if (desc.HasAttr("approximate")) {
+        VLOG(3) << "approximate gelu op needs TensorRT 7.0 and after";
         if (BOOST_GET_CONST(bool, desc.GetAttr("approximate"))) return false;
       }
+#endif
 
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -1233,6 +1256,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                    "the pass.";
         return false;
       }
+
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
@@ -1406,8 +1430,9 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
-      if (x_shape.size() == 1) {
-        VLOG(3) << "prelu op does not support input's dim is 1 in tensorrt.";
+      if (!with_dynamic_shape && x_shape.size() == 1) {
+        VLOG(3) << "prelu op does not support input's dim is 1 in tensorrt "
+                   "with static shape.";
         return false;
       }
 
@@ -1448,13 +1473,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (x_shape.size() == 1) {
         VLOG(3) << "mish op does not support input's dim is 1 in tensorrt.";
         return false;
-      }
-
-      if (!with_dynamic_shape) {
-        if (x_shape.size() == 2) {
-          VLOG(3) << "mish op does not support input's dim is 2 in tensorrt.";
-          return false;
-        }
       }
     }
 
@@ -1517,6 +1535,17 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     if (op_type == "skip_layernorm") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the skip_layernorm does not support static shape yet";
+        return false;
+      }
+    }
+
+    if (op_type == "preln_skip_layernorm") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the preln_skip_layernorm does not support static shape yet";
+        return false;
+      }
+      if (!desc.HasAttr("enable_int8")) {
+        VLOG(3) << "PrelnEmbEltwiseLayerNormOp must use int8 mode.";
         return false;
       }
     }

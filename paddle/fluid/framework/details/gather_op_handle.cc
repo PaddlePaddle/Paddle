@@ -115,7 +115,7 @@ void GatherOpHandle::RunImpl() {
   DDim out_dim = pre_in_value.GetCompleteDims();
   out_dim[0] = static_cast<int64_t>(rows);
   out_value->mutable_value()->Resize(out_dim).mutable_data(
-      t_out_p, pre_in_value.value().type());
+      t_out_p, pre_in_value.value().dtype());
   Tensor *out_tensor = out_value->mutable_value();
 
   // copy

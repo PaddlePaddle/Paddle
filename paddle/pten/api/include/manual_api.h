@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include "paddle/pten/api/include/tensor.h"
 #include "paddle/pten/common/backend.h"
+#include "paddle/pten/common/scalar.h"
+#include "paddle/pten/common/scalar_array.h"
 
 /**
  * This file stores some special APIs that are implemented manually
@@ -27,6 +29,12 @@ namespace experimental {
 
 // TODO(chenweihang): Replace backend by place when place is ready
 PADDLE_API Tensor copy_to(const Tensor& x, Backend backend, bool blocking);
+
+// TODO(chentianyu03): Split API has extra logic to calculate the outputs size,
+// api_gen do not support
+PADDLE_API std::vector<Tensor> split(const Tensor& x,
+                                     const ScalarArray& num_or_sections,
+                                     const Scalar& axis);
 
 }  // namespace experimental
 }  // namespace paddle

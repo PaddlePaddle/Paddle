@@ -15,30 +15,15 @@
 #include "paddle/fluid/eager/grad_tensor_holder.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace egr {
 
-static void FillUnderlyingVariableWithValue(
-    double value, const paddle::framework::DDim& ddim,
-    const paddle::platform::Place& place,
-    const paddle::framework::proto::VarType::Type& dtype,
-    egr::EagerTensor* target) {
-  auto* dst_tensor =
-      target->MutableVar()->GetMutable<paddle::framework::LoDTensor>();
-  auto* dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
-  dst_tensor->Resize(ddim);
-  // TOOD(jiabin): Ugly fix here we have fwd_data_type_ and data_type, since in
-  // grad mission
-  // we can't get data_type_ directly. We need to check if we can only use
-  // default data_type for now.
-  dst_tensor->mutable_data(place, dtype);
-  paddle::operators::math::set_constant(*dev_ctx, dst_tensor, value);
-}
-
 void GradTensorHolder::add(size_t slot_id, size_t rank,
-                           const egr::EagerTensor& t, bool fill_one) {
+                           const paddle::experimental::Tensor& t,
+                           bool fill_one) {
   // TODO(jiabin): We need to deal with empty input_buffer with slot size not
   // empty;
   PADDLE_ENFORCE(slot_id < buffer_.size(),
@@ -58,62 +43,52 @@ void GradTensorHolder::add(size_t slot_id, size_t rank,
           "Invalid rank for GradTensorHolder::add() which exceeds size "
           "of buffer slot %d, got slot size is: %d rank is: %d",
           slot_id, buffer_[slot_id].size(), rank));
-  egr::EagerTensor& buffer_tensor = buffer_[slot_id][rank];
   if (!fill_one) {
+    paddle::experimental::Tensor& buffer_tensor = buffer_[slot_id][rank];
     // TODO(jiabin): Code bellow is ugly to divide which inner var we used,
     // remove framework::Variable
     // related code later.
     // This if statement is trying to test neither pten::Tensor nor
     // framework::Variable is initialized.
-    if ((!buffer_tensor.defined() || !buffer_tensor.initialized()) &&
-        (!buffer_tensor.Var().IsInitialized())) {
+    if ((!buffer_tensor.defined() || !buffer_tensor.initialized())) {
       // Simply copy tensor->impl
       buffer_tensor = t;
     } else {
       // Accumulation
-      if (t.initialized() && buffer_tensor.initialized()) {
-        paddle::imperative::TensorAdd<egr::EagerTensor>(t, &buffer_tensor);
-      } else if (t.Var().IsInitialized() &&
-                 buffer_tensor.Var().IsInitialized()) {
-        paddle::imperative::VariableAdd(t, &buffer_tensor);
-      } else if (t.Var().IsInitialized() && buffer_tensor.initialized()) {
-        // TODO(jiabin): This can be merge to upper if case.
-        buffer_tensor.SyncToVar();
-        paddle::imperative::VariableAdd(t, &buffer_tensor);
-      } else if (t.initialized() && buffer_tensor.Var().IsInitialized()) {
-        buffer_tensor.SyncToTensor();
-        paddle::imperative::TensorAdd<egr::EagerTensor>(t, &buffer_tensor);
+      PADDLE_ENFORCE_EQ(t.initialized(), true,
+                        paddle::platform::errors::Fatal(
+                            "We can only accumulate initialized tensor, but we "
+                            "got tensor: %s is empty please check you network "
+                            "and make sure it creates grads.",
+                            t.name()));
+      if (t.is_dense_tensor()) {
+        if (buffer_tensor.is_dense_tensor()) {
+          paddle::imperative::TensorAdd<paddle::experimental::Tensor>(
+              t, &buffer_tensor);
+        } else {
+          // TODO(jiabin): Support Other TensorBase later
+          paddle::experimental::Tensor new_buffer(
+              std::make_shared<pten::DenseTensor>(), "tmp_accumulator");
+          paddle::imperative::SelectedRowsAddTensor(buffer_tensor, t,
+                                                    &new_buffer);
+          buffer_tensor.set_impl(new_buffer.impl());
+        }
       } else {
-        // Should not happend case
-        // 1. both not init
+        // TODO(jiabin): Support Other TensorBase later
+        if (buffer_tensor.is_dense_tensor()) {
+          paddle::imperative::SelectedRowsAddToTensor(t, &buffer_tensor);
+        } else {
+          buffer_tensor =
+              std::move(*paddle::imperative::SelectedRowsMerge<
+                        paddle::experimental::Tensor>(t, buffer_tensor));
+        }
       }
     }
   } else {
     // Create new tensor->impl and fill it with 1.0
     if (t.defined()) {
       // Fill 1.0
-      paddle::experimental::Tensor tensor =
-          paddle::experimental::ones_like(*t.Tensor().get());
-      buffer_tensor.set_tensor(
-          std::make_shared<paddle::experimental::Tensor>(tensor));
-
-    } else {
-      // TODO(jiabin): Only Support LodTensorForNow
-      auto type = paddle::framework::ToVarType(t.Var().Type());
-      switch (type) {
-        case paddle::framework::proto::VarType::LOD_TENSOR: {
-          auto t_ftensor = t.Var().Get<paddle::framework::LoDTensor>();
-          FillUnderlyingVariableWithValue(1.0, t_ftensor.dims(),
-                                          t_ftensor.place(), t_ftensor.type(),
-                                          &buffer_tensor);
-          break;
-        }
-        default: {
-          PADDLE_THROW(paddle::platform::errors::NotFound(
-              "Cannot found var type: %s in Fill Constant API",
-              paddle::framework::ToTypeName(type)));
-        }
-      }
+      buffer_[slot_id][rank] = paddle::experimental::ones_like(t);
     }
   }
 }

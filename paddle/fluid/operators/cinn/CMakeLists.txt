@@ -1,8 +1,10 @@
 include(operators)
-register_operators(EXCLUDES cinn_launch_op)
 
+cc_library(cinn_op_helper SRCS cinn_op_helper.cc DEPS operator device_context)
 cc_library(cinn_launch_context SRCS cinn_launch_context.cc DEPS ddim lod_tensor scope cinn)
-op_library(cinn_launch_op SRCS cinn_launch_op.cc cinn_launch_op.cu.cc DEPS string_helper cinn cinn_compiler cinn_launch_context)
+
+SET(CINN_OP_DEPS string_helper cinn cinn_compiler cinn_op_helper cinn_launch_context)
+register_operators(DEPS ${CINN_OP_DEPS})
 
 if (WITH_TESTING)
   cc_test(cinn_launch_context_test SRCS cinn_launch_context_test.cc DEPS ddim lod_tensor scope cinn_launch_context)

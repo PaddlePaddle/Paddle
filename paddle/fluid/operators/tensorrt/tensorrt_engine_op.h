@@ -140,6 +140,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   bool enable_int8_;
   bool enable_fp16_;
   bool use_calib_mode_;
+  bool use_inspector_;
   std::string calibration_data_;
   std::string engine_key_;
   std::string calibration_engine_key_;
@@ -175,6 +176,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     shape_range_info_path_ = Attr<std::string>("shape_range_info_path");
     allow_build_at_runtime_ = Attr<bool>("allow_build_at_runtime");
     use_static_engine_ = Attr<bool>("use_static_engine");
+    use_inspector_ = HasAttr("use_inspector") && Attr<bool>("use_inspector");
     if (use_static_engine_) {
       model_opt_cache_dir_ = Attr<std::string>("model_opt_cache_dir");
     }
@@ -285,6 +287,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
       return;
     }
     auto *trt_engine = GetEngine(scope, dev_place);
+    if (use_inspector_) {
+      trt_engine->GetEngineInfo();
+    }
     if (trt_engine->with_dynamic_shape()) {
       // get runtime input shapes.
       std::map<std::string, std::vector<int32_t>> runtime_input_shape;
@@ -331,7 +336,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
             anc = &scope;
           }
           PrepareTRTEngine(*anc, trt_engine);
-
           // update shape_range_info_pbtxt
           if (!shape_range_info_path_.empty()) {
             inference::UpdateShapeRangeInfo(
@@ -509,7 +513,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
 #endif
       }
       runtime_batch = t_shape[0];
-      auto type = t.type();
+      auto type = framework::TransToProtoVarType(t.dtype());
       if (type == framework::proto::VarType::FP32) {
         buffers[bind_index] = static_cast<void *>(t.data<float>());
       } else if (type == framework::proto::VarType::INT64) {

@@ -326,21 +326,24 @@ def conv1d(x,
 
     # update attrs
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 1)
+
     if len(padding) == 2:
-        padding = padding + [0] * 2
+        padding = [0] * 2 + padding
     elif len(padding) == 1:
-        padding = padding + [0]
+        padding = [0] + padding
     else:
         raise ValueError(
             "The size of padding's dimension should be 1 or 2. But got padding={}".
             format(padding))
-
-    stride = convert_to_list(stride, 1, 'stride') + [1]
-    dilation = convert_to_list(dilation, 1, 'dilation') + [1]
+    stride = [1] + convert_to_list(stride, 1, 'stride')
+    dilation = [1] + convert_to_list(dilation, 1, 'dilation')
+    weight = unsqueeze(weight, axis=[-2])
 
     l_type = "conv2d"
-    if (num_channels == groups and num_channels != 1 and
-            num_filters % num_channels == 0 and not use_cudnn):
+
+    # When "groups==num_channels and num_filters% num_channels == 0" using depthwise_conv2d has better performance
+    if (core.is_compiled_with_cuda() and num_channels == groups and
+            num_channels != 1 and num_filters % num_channels == 0):
         l_type = 'depthwise_conv2d'
         use_cudnn = False
 
@@ -351,9 +354,9 @@ def conv1d(x,
         else:
             l_type = 'conv2d'
 
-    squeeze_aixs = -2 if channel_last else -1
+    squeeze_aixs = -3 if channel_last else -2
     x = unsqueeze(x, axis=[squeeze_aixs])
-    weight = unsqueeze(weight, axis=[-1])
+
     if in_dygraph_mode():
         attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
                  'groups', groups, 'use_cudnn', use_cudnn, 'use_mkldnn', False,

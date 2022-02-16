@@ -446,7 +446,7 @@ void Reducer::InitializeGroups(
       InitializeDenseGroups(variable_indices_, &group);
       auto tensor = group.dense_contents_.GetMutable<framework::LoDTensor>();
       tensor->Resize(framework::make_ddim({group.all_length_}))
-          .mutable_data(place_, group.dtype_);
+          .mutable_data(place_, framework::TransToPtenDataType(group.dtype_));
     }
 
     // map variables to this group by VariableLocator
@@ -737,7 +737,8 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
       // by avoiding tensor construction
       if (!group_tensor.IsInitialized()) {
         group_tensor.Resize({static_cast<int64_t>(length)});
-        group_tensor.mutable_data(place_, group.dtype_);
+        group_tensor.mutable_data(place_,
+                                  framework::TransToPtenDataType(group.dtype_));
       }
 
 #ifdef PADDLE_WITH_XPU_BKCL
@@ -755,7 +756,7 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
             {static_cast<int64_t>(length)});
       } else {
         group_tensor.Resize({static_cast<int64_t>(length)});
-        operators::math::set_constant(*dev_ctx, &group_tensor, 0.0);
+        pten::funcs::set_constant(*dev_ctx, &group_tensor, 0.0);
       }
 #endif
     }

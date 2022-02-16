@@ -15,7 +15,7 @@ limitations under the License. */
 #include <numeric>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -23,7 +23,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
-namespace {
+namespace {  // NOLINT
 constexpr size_t get_offset(size_t x, size_t y, size_t width) {
   return y * width + x;
 }
@@ -41,7 +41,7 @@ struct offsets_and_ratios {
         xy_ratio(xy_ratio),
         xY_ratio(xY_ratio),
         Xy_ratio(Xy_ratio),
-        XY_ratio(XY_ratio){};
+        XY_ratio(XY_ratio) {}
 
   std::size_t xy = 0;
   std::size_t xY = 0;
@@ -128,10 +128,10 @@ std::vector<offsets_and_ratios<T>> get_indexes_and_ratios(
     }
   }
   return interpolation_cords;
-}
+}  // namespace
 
 template <typename T>
-void interpolate(std::vector<T>& interpolated_values,
+void interpolate(std::vector<T>& interpolated_values,  // NOLINT
                  const std::vector<offsets_and_ratios<T>>& interpolation_cords,
                  const T* data) {
   for (auto& ic : interpolation_cords) {
@@ -167,7 +167,7 @@ void avg_pool(const std::vector<T>& interpolated_values, T* output_data,
     output_data[i] = sum * count;
   }
 }
-}
+}  // NOLINT
 
 template <class T>
 void bilinear_interpolate_gradient(const int height, const int width, T y, T x,
@@ -389,7 +389,7 @@ class CPUROIAlignGradOpKernel : public framework::OpKernel<T> {
     }
     in_grad->mutable_data<T>(ctx.GetPlace());
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    math::SetConstant<DeviceContext, T> set_zero;
+    pten::funcs::SetConstant<DeviceContext, T> set_zero;
     set_zero(dev_ctx, in_grad, static_cast<T>(0));
 
     int output_grad_size = out_grad->numel();

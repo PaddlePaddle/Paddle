@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/stream/cuda_stream.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
+#include "paddle/pten/core/allocator.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
@@ -27,7 +28,9 @@ limitations under the License. */
 #endif
 #include "glog/logging.h"
 #include "paddle/fluid/framework/expect.h"
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -159,11 +162,14 @@ inline void EmplaceDeviceContext(
                                     .GetAllocator(p, cuda_ctx->stream())
                                     .get());
           cuda_ctx->PartialInitWithAllocator();
+          dev_ctx->SetGenerator(
+              framework::GetDefaultCUDAGenerator(p.GetDeviceId()).get());
 #endif
         } else {
           dev_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
                                     .GetAllocator(p)
                                     .get());
+          dev_ctx->SetGenerator(framework::DefaultCPUGenerator().get());
         }
         dev_ctx->SetHostAllocator(
             memory::allocation::AllocatorFacade::Instance()
@@ -250,6 +256,15 @@ DeviceContextPool::DeviceContextPool(
       PADDLE_THROW(platform::errors::Unimplemented(
           "NPUPinnedPlace is not supported. Please re-compile with "
           "WITH_ASCEND_CL "
+          "option."));
+#endif
+    } else if (platform::is_custom_place(p)) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      EmplaceDeviceContext<CustomDeviceContext>(&device_contexts_, p);
+#else
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "CustomPlace is not supported. Please re-compile with "
+          "WITH_CUSTOM_DEVICE "
           "option."));
 #endif
     }
@@ -485,8 +500,11 @@ CUDAContext::~CUDAContext() {
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
     : pten::GPUContext(place) {
   pten::GPUContext::PartialInitWithoutAllocator();
-  cuda_stream_.reset(
-      new stream::CUDAStream(pten::GPUContext::stream(), this->GetPlace()));
+  cuda_stream_.reset(new stream::CUDAStream(pten::GPUContext::stream(), place));
+  workspace_.reset(new pten::DnnWorkspaceHandle(
+      memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(place, pten::GPUContext::stream())
+          .get()));
 }
 
 CUDADeviceContext::~CUDADeviceContext() = default;
@@ -571,8 +589,15 @@ void CUDADeviceContext::WaitStreamCallback() const {
   pten::GPUContext::WaitStreamCallback();
 }
 
-CudnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
-  return CudnnWorkspaceHandle(*this, &cudnn_handle_mtx_);
+pten::DnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
+  if (thread_ctx_.count(this)) {
+    // return workspace_.get();
+    return pten::DnnWorkspaceHandle(
+        memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(GetPlace(), pten::GPUContext::stream())
+            .get());
+  }
+  return pten::GPUContext::cudnn_workspace_handle();
 }
 
 gpuStream_t CUDADeviceContext::stream() const {
@@ -870,6 +895,24 @@ MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
   return key_it->second;
 }
 
+#endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+CustomDeviceContext::CustomDeviceContext(CustomPlace place) : place_(place) {
+  DeviceGuard guard(place_);
+  stream_.reset(new stream::Stream());
+  stream_->Init(place_);
+}
+
+CustomDeviceContext::~CustomDeviceContext() {}
+
+const Place& CustomDeviceContext::GetPlace() const { return place_; }
+
+void CustomDeviceContext::Wait() const {
+  // platform::RecordEvent record_event("NPUDeviceContext/wait");
+  VLOG(4) << "CustomDevice context(" << this << ")  Wait";
+  stream_->Wait();
+}
 #endif
 }  // namespace platform
 }  // namespace paddle
