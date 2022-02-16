@@ -190,7 +190,6 @@
     func : SumInferMeta
   kernel :
     func : sum
-    param : [x, axis, dtype, keep_dim]
     data_type : x
 
 - api : zeros_like
