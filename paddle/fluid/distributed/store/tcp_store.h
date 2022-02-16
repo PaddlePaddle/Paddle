@@ -20,7 +20,6 @@
 #include <thread>
 #include <unordered_map>
 
-#include "paddle/fluid/distributed/store/socket.h"
 #include "paddle/fluid/distributed/store/store.h"
 
 namespace paddle {
