@@ -115,7 +115,7 @@ TEST(Tensor, MemberFunction) {
   CHECK_EQ(tmp_autograd_meta_test->val_, 2);
 }
 
-TEST(EagerTensor, Constructor) {
+TEST(EagerVariable, Constructor) {
   paddle::experimental::Tensor t3;
   pten::DenseTensorMeta meta = pten::DenseTensorMeta(
       pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 2}));
@@ -134,7 +134,7 @@ TEST(EagerTensor, Constructor) {
   CHECK_EQ(t3.defined(), false);
   t3.set_impl(dt);
 
-  egr::EagerTensor et3 = egr::EagerTensor(t3);
+  egr::EagerVariable et3 = egr::EagerVariable(t3);
   VLOG(6) << "SyncToVar";
   CHECK_EQ(et3.Var().Get<paddle::framework::LoDTensor>().data<float>()[0],
            5.0f);

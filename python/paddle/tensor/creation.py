@@ -169,8 +169,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
 
     # TOOD(jiabin): Support kwargs in eager tensor constructor
     if _in_eager_mode() and isinstance(data, np.ndarray):
-        return core.eager.EagerTensor(data, place, False, False, None,
-                                      stop_gradient)
+        return core.eager.Tensor(data, place, False, False, None, stop_gradient)
     else:
         return paddle.Tensor(
             value=data,
