@@ -39,7 +39,6 @@ struct SkipLayerNorm : public PatternBase {
   PDNode *operator()(PDNode *x, PDNode *y);
 
   // declare operator node's name
-  PATTERN_DECL_NODE(fused_skipe_layernorm);
   PATTERN_DECL_NODE(elementwise);
   PATTERN_DECL_NODE(layer_norm);
   // declare variable node's name

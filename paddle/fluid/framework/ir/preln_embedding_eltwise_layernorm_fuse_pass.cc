@@ -428,6 +428,16 @@ PrelnEmbeddingEltwiseLayerNormFusePass::
 
 void PrelnEmbeddingEltwiseLayerNormFusePass::ApplyImpl(Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
+
+  bool enable_int8 = Get<bool>("enable_int8");
+  bool use_oss = Get<bool>("use_oss");
+  bool with_interleaved = Get<bool>("with_interleaved");
+  if (!enable_int8 && use_oss && with_interleaved) {
+    VLOG(4) << "preln_embedding_eltwise_layernorm_fuse_pass need: enable_int8, "
+               "use_oss, with_interleaved. Stop this pass, please reconfig. ";
+    return;
+  }
+
   int fusion_count =
       PrelnEmbeddingEltwiseLayerNormFusePass::BuildFusion(graph, name_scope_);
   if (fusion_count > 0) {

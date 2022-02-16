@@ -51,21 +51,11 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
     auto pos_emb_name = op_desc.Input("PosEmbedding").front();
     auto sent_emb_name = op_desc.Input("SentEmbedding").front();
 
-    std::vector<std::string> id_names;
     std::vector<std::string> emb_names;
-
-    id_names =
-        std::vector<std::string>{word_id_name, pos_id_name, sent_id_name};
     emb_names =
         std::vector<std::string>{word_emb_name, pos_emb_name, sent_emb_name};
 
-    int input_num = id_names.size();
-
-    // Declare inputs
-    std::vector<nvinfer1::ITensor*> input_ids;
-    for (int i = 0; i < input_num; i++) {
-      input_ids.push_back(engine_->GetITensor(id_names[i]));
-    }
+    int input_num = emb_names.size();
 
     // input_embs[0]: word_embedding
     // input_embs[1]: pos_embedding

@@ -39,7 +39,6 @@ struct PrelnSkipLayerNorm : public PatternBase {
   void operator()(PDNode *x, PDNode *y);
 
   // declare operator node's name
-  PATTERN_DECL_NODE(fused_skipe_layernorm);
   PATTERN_DECL_NODE(elementwise);
   PATTERN_DECL_NODE(layer_norm);
   // declare variable node's name
@@ -104,6 +103,16 @@ void PrelnSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("preln_skip_layernorm_fuse", graph);
+
+  bool enable_int8 = Get<bool>("enable_int8");
+  bool use_oss = Get<bool>("use_oss");
+  bool with_interleaved = Get<bool>("with_interleaved");
+  if (!enable_int8 && use_oss && with_interleaved) {
+    VLOG(4) << "preln_skip_layernorm_fuse_pass need: enable_int8, use_oss, "
+               "with_interleaved. Stop this pass, please reconfig. ";
+    return;
+  }
+
   int found_subgraph_count = 0;
 
   GraphPatternDetector gpd;
