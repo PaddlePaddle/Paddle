@@ -343,21 +343,6 @@ class InterpolateOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
-#ifdef PADDLE_WITH_MKLDNN
-    if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
-        (tensor.layout() != framework::DataLayout::kMKLDNN)) {
-      auto attrs = Attrs();
-      auto ar = paddle::framework::AttrReader(attrs);
-      const std::string data_format = ar.Get<std::string>("data_layout");
-      auto dl = framework::StringToDataLayout(data_format);
-      // Some models may have intentionally set "AnyLayout" for pool
-      // op. Treat this as NCHW (default data_format value)
-      if (dl != framework::DataLayout::kAnyLayout) {
-        return framework::OpKernelType(expected_kernel_type.data_type_,
-                                       tensor.place(), dl);
-      }
-    }
-#endif
     if (var_name == "SizeTensor" || var_name == "Scale") {
       return expected_kernel_type;
     }
