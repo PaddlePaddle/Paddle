@@ -311,6 +311,11 @@ class MatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false)
         .AsExtra();
+    AddAttr<bool>("use_addto",
+                  "(bool, default false) In order to support new feature "
+                  "(inplace addto strategy) for gradient accumulation.")
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<std::string>(
         "mkldnn_data_type",
         "(string, default \"float32\"). Data type of mkldnn kernel")

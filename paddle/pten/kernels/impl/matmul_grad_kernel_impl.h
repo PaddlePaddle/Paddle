@@ -222,15 +222,15 @@ void CalcInputGrad(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void MatmulGradKernelImpl(const Context& dev_ctx,
-                          const DenseTensor& x,
-                          const DenseTensor& y,
-                          const DenseTensor& out_grad,
-                          bool transpose_x,
-                          bool transpose_y,
-                          bool use_addto,
-                          DenseTensor* dx,
-                          DenseTensor* dy) {
+void MatmulGradKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& y,
+                      const DenseTensor& out_grad,
+                      bool transpose_x,
+                      bool transpose_y,
+                      bool use_addto,
+                      DenseTensor* dx,
+                      DenseTensor* dy) {
   // get dims
   std::vector<std::int64_t> x_dims = vectorize(x.dims());
   std::vector<std::int64_t> y_dims = vectorize(y.dims());
@@ -480,32 +480,6 @@ void MatmulGradKernelImpl(const Context& dev_ctx,
     }
     // Get the OutputGrad(out)
   }
-}
-
-template <typename T, typename Context>
-void MatmulGradKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      const DenseTensor& y,
-                      const DenseTensor& out_grad,
-                      bool transpose_x,
-                      bool transpose_y,
-                      DenseTensor* dx,
-                      DenseTensor* dy) {
-  MatmulGradKernelImpl<T, Context>(
-      dev_ctx, x, y, out_grad, transpose_x, transpose_y, false, dx, dy);
-}
-
-template <typename T, typename Context>
-void AddtoMatmulGradKernel(const Context& dev_ctx,
-                           const DenseTensor& x,
-                           const DenseTensor& y,
-                           const DenseTensor& out_grad,
-                           bool transpose_x,
-                           bool transpose_y,
-                           DenseTensor* dx,
-                           DenseTensor* dy) {
-  MatmulGradKernelImpl<T, Context>(
-      dev_ctx, x, y, out_grad, transpose_x, transpose_y, true, dx, dy);
 }
 
 template <typename T, typename Context>
