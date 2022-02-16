@@ -793,7 +793,6 @@ void LaunchSameDimsElementwiseCudaKernel(
               i));
     }
   }
-  VLOG(3) << "lxd_debug: enter the test";
   // calculate the max vec_size for all ins and outs
   int vec_size = GetVectorizedSizeForTensors<OutT, Functor>(ins, *outs);
   switch (vec_size) {

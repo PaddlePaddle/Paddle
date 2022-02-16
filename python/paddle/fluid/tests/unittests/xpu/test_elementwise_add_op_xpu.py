@@ -348,15 +348,15 @@ class TestElementwiseAddFP16Op(TestElementwiseAddOp):
 
 class TestElementwiseAddOp_scalarFP16(TestElementwiseAddFP16Op):
     def init_input_output(self):
-        self.x = np.random.rand(100, 4, 5).astype(self.dtype)
-        self.y = np.random.rand(100, 1, 1).astype(self.dtype)
+        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
+        self.y = np.random.rand(1).astype(self.dtype)
         self.out = self.x + self.y
 
 
 class TestElementwiseAddOp_scalar2FP16(TestElementwiseAddFP16Op):
     def init_input_output(self):
-        self.x = np.random.rand(100, 4, 5).astype(self.dtype)
-        self.y = np.random.rand(100, 1, 1).astype(self.dtype)
+        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
+        self.y = np.random.rand(1, 1).astype(self.dtype)
         self.out = self.x + self.y
 
 
@@ -451,14 +451,14 @@ class TestElementwiseAddOp_rowwise_add_0FP16(TestElementwiseAddFP16Op):
         self.axis = 1
 
 
-# class TestElementwiseAddOp_rowwise_add_1FP16(TestElementwiseAddFP16Op):
-#     def init_input_output(self):
-#         self.x = np.random.rand(105, 10).astype(self.dtype)
-#         self.y = np.random.rand(105).astype(self.dtype)
-#         self.out = self.x + self.y.reshape(105, 1)
+class TestElementwiseAddOp_rowwise_add_1FP16(TestElementwiseAddFP16Op):
+    def init_input_output(self):
+        self.x = np.random.rand(100, 1).astype(self.dtype)
+        self.y = np.random.rand(1).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 1)
 
-#     def init_axis(self):
-#         self.axis = 1
+    def init_axis(self):
+        self.axis = 1
 
 
 class TestElementwiseAddOp_channelwise_addFP16(TestElementwiseAddFP16Op):
