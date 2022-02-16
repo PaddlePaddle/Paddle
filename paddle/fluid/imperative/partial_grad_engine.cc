@@ -29,7 +29,7 @@
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
 

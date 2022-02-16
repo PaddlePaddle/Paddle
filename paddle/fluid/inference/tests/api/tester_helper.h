@@ -38,7 +38,7 @@
 #include "paddle/fluid/inference/tests/api/config_printer.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
 #include "paddle/fluid/inference/utils/benchmark.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 DEFINE_string(model_name, "", "model name");
 DEFINE_string(infer_model, "", "model path");

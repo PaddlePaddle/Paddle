@@ -16,7 +16,7 @@
 
 #include <string>
 
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace framework {
@@ -189,7 +189,8 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
 }
 
 void FetchAsyncOpHandle::RunImpl() {
-  platform::RecordEvent record_event(Name());
+  platform::RecordEvent record_event(Name(), platform::EventRole::kOrdinary, 2,
+                                     platform::TracerEventType::UserDefined);
   WaitInputVarGenerated(true);
 
   // get src vars

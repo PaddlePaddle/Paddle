@@ -33,7 +33,7 @@ limitations under the License. */
 #endif
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 

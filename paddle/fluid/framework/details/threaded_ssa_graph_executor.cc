@@ -15,7 +15,7 @@
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 #if defined PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
@@ -55,8 +55,9 @@ ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
 
 inline FetchResultType ThreadedSSAGraphExecutor::RunImpl(
     const std::vector<std::string> &fetch_tensors, bool return_merged) {
-  std::unique_ptr<platform::RecordEvent> event(
-      new platform::RecordEvent("ThreadedSSAGraphExecutorPrepare"));
+  std::unique_ptr<platform::RecordEvent> event(new platform::RecordEvent(
+      "ThreadedSSAGraphExecutorPrepare", platform::EventRole::kOrdinary, 2,
+      platform::TracerEventType::UserDefined));
   std::unique_ptr<OpDependentData> op_deps = op_deps_futures_.get();
   CopyOpDeps();
 

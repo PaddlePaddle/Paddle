@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace operators {
@@ -105,7 +105,8 @@ class ReadOp : public framework::OperatorBase {
     std::vector<framework::LoDTensor> ins;
 
     // For profiling
-    platform::RecordEvent record_event(Type());
+    platform::RecordEvent record_event(Type(), platform::EventRole::kOrdinary, 1,
+                                       platform::TracerEventType::UserDefined);
 
     reader->ReadNext(&ins);
     if (ins.empty()) {

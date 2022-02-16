@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/padding.h"
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 DECLARE_bool(cudnn_deterministic);
 DECLARE_uint64(conv_workspace_size_limit);

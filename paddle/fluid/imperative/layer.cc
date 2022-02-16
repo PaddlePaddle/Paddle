@@ -22,7 +22,7 @@
 #include "paddle/fluid/imperative/var_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -222,7 +222,8 @@ void VarBase::ClearGradient(bool set_to_zero) {
         grad_t->mutable_value()->clear();
       }
     } else {
-      platform::RecordEvent record_event("ClearGradient");
+      platform::RecordEvent record_event("ClearGradient", platform::EventRole::kOrdinary,
+                                         2, platform::TracerEventType::UserDefined);
       auto* grad_t =
           grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
       if (grad_t->IsInitialized()) {

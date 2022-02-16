@@ -20,7 +20,7 @@
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/platform/denormal.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/string/string_helper.h"
 
 DECLARE_bool(use_mkldnn);
@@ -157,7 +157,8 @@ void Tracer::TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
                      const std::map<std::string, std::string>& inplace_map,
                      paddle::framework::AttributeMap* passed_default_attrs_,
                      bool override_default_attr_map) {
-  platform::RecordEvent op_type_record_event(type);
+  platform::RecordEvent op_type_record_event(type, platform::EventRole::kOrdinary, 2,
+                                             platform::TracerEventType::UserDefined);
   platform::ScopedFlushDenormal flush;
   VLOG(1) << "Trace Op: " << type;
   if (FLAGS_use_mkldnn) {

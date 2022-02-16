@@ -180,7 +180,8 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     platform::RecordEvent record_reorder("ext_reorder",
-                                         platform::EventRole::kUniqueOp);
+                                         platform::EventRole::kUniqueOp, 2,
+                                         platform::TracerEventType::UserDefined);
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
     astream.wait();
   } else {

@@ -971,7 +971,8 @@ class ConvMKLDNNGradOpKernel : public framework::OpKernel<T> {
 
         {
           platform::RecordEvent record_reorder("int_reorder",
-                                               platform::EventRole::kUniqueOp);
+                                               platform::EventRole::kUniqueOp,
+                                               2, platform::TracerEventType::UserDefined);
           reorder_p->execute(astream, *diff_weights_memory_p,
                              *reorder_dst_memory_p);
           astream.wait();

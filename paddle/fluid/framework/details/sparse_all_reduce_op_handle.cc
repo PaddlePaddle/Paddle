@@ -24,7 +24,7 @@
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 DECLARE_bool(sync_nccl_allreduce);
 
@@ -65,7 +65,8 @@ SparseAllReduceOpHandle::SparseAllReduceOpHandle(
 }
 
 void SparseAllReduceOpHandle::RunImplEncoded() {
-  platform::RecordEvent record_event(Name());
+  platform::RecordEvent record_event(Name(), platform::EventRole::kOrdinary, 2,
+                                     platform::TracerEventType::UserDefined);
 
   auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());
   auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());

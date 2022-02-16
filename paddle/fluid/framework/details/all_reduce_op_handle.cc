@@ -16,7 +16,7 @@
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 DECLARE_bool(sync_nccl_allreduce);
@@ -67,7 +67,8 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
 #endif
 
 void AllReduceOpHandle::RunImpl() {
-  platform::RecordEvent record_event(Name());
+  platform::RecordEvent record_event(Name(), platform::EventRole::kOrdinary, 2,
+                                     platform::TracerEventType::UserDefined);
 
   WaitInputVarGenerated();
   std::vector<VarHandleBase *> inputs = this->Inputs();

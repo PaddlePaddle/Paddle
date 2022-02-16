@@ -16,7 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace operators {
@@ -46,7 +46,8 @@ class MarkerOpCUDAKernel : public framework::OpKernel<T> {
     auto* out_temp = B.mutable_data<T>({32, 1}, ctx.GetPlace());
     platform::RecordEvent record_event(
         "MarkerCUDA", platform::EventRole::kInnerOp,
-        "marker_" + marker_role + "_" + marker_pos);
+        "marker_" + marker_role + "_" + marker_pos, 1,
+        platform::TracerEventType::OperatorInner);
     SimpleMarkerKernel<T><<<1, 32, 0, dev_ctx.stream()>>>(in_temp, out_temp,
                                                           32);
   }

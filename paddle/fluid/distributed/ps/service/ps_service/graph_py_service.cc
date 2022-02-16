@@ -18,7 +18,7 @@
 #include "iomanip"
 #include "paddle/fluid/distributed/ps/table/table.h"
 #include "paddle/fluid/framework/archive.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 namespace paddle {
 namespace distributed {
 std::vector<std::string> GraphPyService::split(std::string& str,

@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
@@ -250,7 +251,8 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       // TODO(wangchaochaohu) : refine code to use only one RecordEvent)
       // in order to record different op type cost time
       // and different op name cost time,we set two event.
-      platform::RecordEvent op_type_record_event(Type());
+      platform::RecordEvent op_type_record_event(Type(), platform::EventRole::kOrdinary,
+                                                 1, platform::TracerEventType::Operator);
       auto op_name = platform::OpName(outputs_, Type());
       platform::RecordEvent op_name_record_event(
           op_name, platform::EventRole::kUniqueOp);
@@ -1238,7 +1240,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   Scope* transfer_scope = nullptr;
   {
     platform::RecordEvent record_event("prepare_data",
-                                       platform::EventRole::kInnerOp);
+                                       platform::EventRole::kInnerOp, 1,
+                                       platform::TracerEventType::OperatorInner);
     if (need_prepare_data_) {
       transfer_scope = PrepareData(scope, *kernel_type_,
                                    &transfered_inplace_vars, runtime_ctx);
@@ -1250,7 +1253,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   if (!all_kernels_must_compute_runtime_shape_) {
     platform::RecordEvent record_event("infer_shape",
-                                       platform::EventRole::kInnerOp);
+                                       platform::EventRole::kInnerOp, 1,
+                                       platform::TracerEventType::OperatorInner);
     RuntimeInferShapeContext infer_shape_ctx(*this, *runtime_ctx);
     this->Info().infer_shape_(&infer_shape_ctx);
   }
@@ -1262,8 +1266,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
   {
-    platform::RecordEvent record_event("compute",
-                                       platform::EventRole::kInnerOp);
+    platform::RecordEvent record_event("compute", platform::EventRole::kInnerOp,
+                                       1, platform::TracerEventType::OperatorInner);
     if (run_pten_kernel_) {
       pten::KernelContext pt_kernel_context;
       // Do data transform before building KernelContext

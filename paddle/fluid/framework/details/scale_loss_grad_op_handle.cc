@@ -16,7 +16,7 @@
 
 #include <string>
 
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace pten {
 class DenseTensor;
@@ -88,7 +88,8 @@ std::string ScaleLossGradOpHandle::LossGradName() const {
 }
 
 void ScaleLossGradOpHandle::RunImpl() {
-  platform::RecordEvent record_event(Name());
+  platform::RecordEvent record_event(Name(), platform::EventRole::kOrdinary, 2,
+                                     platform::TracerEventType::UserDefined);
   RunOnVar(local_exec_scopes_[0]->FindVar(LossGradName()), true);
 }
 

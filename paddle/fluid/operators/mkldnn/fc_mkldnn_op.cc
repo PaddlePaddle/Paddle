@@ -285,7 +285,8 @@ class FCPrimitiveFactory {
 
     {
       platform::RecordEvent record_reorder("int_reorder",
-                                           platform::EventRole::kUniqueOp);
+                                           platform::EventRole::kUniqueOp, 2,
+                                           platform::TracerEventType::UserDefined);
       reorder.execute(astream, src_mem, *dst_mem);
       astream.wait();
     }
@@ -313,7 +314,8 @@ class FCPrimitiveFactory {
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     {
       platform::RecordEvent record_reorder("int_reorder",
-                                           platform::EventRole::kUniqueOp);
+                                           platform::EventRole::kUniqueOp, 2,
+                                           platform::TracerEventType::UserDefined);
       reorder.execute(astream,
                       {{DNNL_ARG_FROM, *src_mem}, {DNNL_ARG_TO, *dst_mem}});
       astream.wait();
