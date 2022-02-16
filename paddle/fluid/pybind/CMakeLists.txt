@@ -284,7 +284,7 @@ if(WITH_PYTHON)
 
   cc_library(paddle_pybind SHARED
     SRCS ${PYBIND_SRCS}
-    DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+    DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} ${GLOB_DEV_LIB})
 
   if(NOT APPLE AND NOT WIN32)
     target_link_libraries(paddle_pybind rt)

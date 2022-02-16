@@ -99,7 +99,8 @@ class RepeatInterleaveCUDAKernel : public framework::OpKernel<T> {
                             "But received: [%s], required: [%d].",
                             repeats_tensor->dims()[0], in->dims()[dim]));
 
-      const auto& index_type = repeats_tensor->type();
+      const auto& index_type =
+          framework::TransToProtoVarType(repeats_tensor->dtype());
       bool index_type_match = index_type == framework::proto::VarType::INT64 ||
                               index_type == framework::proto::VarType::INT32;
       PADDLE_ENFORCE_EQ(
@@ -215,7 +216,8 @@ class RepeatInterleaveGradCUDAKernel : public framework::OpKernel<T> {
       auto repeats_tensor =
           context.Input<framework::LoDTensor>("RepeatsTensor");
 
-      const auto& index_type = repeats_tensor->type();
+      const auto& index_type =
+          framework::TransToProtoVarType(repeats_tensor->dtype());
       bool index_type_match = index_type == framework::proto::VarType::INT64 ||
                               index_type == framework::proto::VarType::INT32;
       PADDLE_ENFORCE_EQ(

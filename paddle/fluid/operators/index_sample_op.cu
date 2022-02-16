@@ -85,7 +85,7 @@ class IndexSampleKernel<platform::CUDADeviceContext, T>
     auto* index = ctx.Input<LoDTensor>("Index");
     auto* output = ctx.Output<LoDTensor>("Out");
 
-    const auto& index_type = index->type();
+    const auto& index_type = framework::TransToProtoVarType(index->dtype());
     bool index_type_match = index_type == framework::proto::VarType::INT64 ||
                             index_type == framework::proto::VarType::INT32;
     PADDLE_ENFORCE_EQ(index_type_match, true,
@@ -144,7 +144,7 @@ class IndexSampleGradKernel<platform::CUDADeviceContext, T>
     const auto* output_grad_data = output_grad->data<T>();
     auto* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
 
-    const auto& index_type = index->type();
+    const auto& index_type = framework::TransToProtoVarType(index->dtype());
     bool index_type_match = index_type == framework::proto::VarType::INT64 ||
                             index_type == framework::proto::VarType::INT32;
     PADDLE_ENFORCE_EQ(index_type_match, true,
