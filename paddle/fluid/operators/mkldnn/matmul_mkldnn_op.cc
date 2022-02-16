@@ -71,9 +71,6 @@ static Tensor FoldFirstAndLastDims(const MKLDNNDeviceContext& dev_ctx,
   auto reorder_p = reorder_handler.AcquireReorder(reorder_src_memory_p,
                                                   reorder_dst_memory_p);
 
-  paddle::platform::RecordEvent record_reorder(
-      "int_reorder", paddle::platform::EventRole::kUniqueOp);
-
   auto& astream = MKLDNNDeviceContext::tls().get_stream();
   reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
   astream.wait();

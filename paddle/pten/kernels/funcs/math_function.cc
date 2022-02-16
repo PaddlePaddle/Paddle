@@ -229,9 +229,7 @@ void set_constant_with_place<paddle::platform::CPUPlace>(
     const paddle::platform::DeviceContext& context,
     paddle::framework::Tensor* tensor,
     float value) {
-  paddle::framework::VisitDataType(
-      paddle::framework::TransToProtoVarType(tensor->type()),
-      TensorSetConstantCPU(tensor, value));
+  pten::VisitDataType(tensor->dtype(), TensorSetConstantCPU(tensor, value));
 }
 
 template <>
@@ -248,9 +246,7 @@ void set_constant_with_place<paddle::platform::CUDAPinnedPlace>(
     const paddle::platform::DeviceContext& context,
     paddle::framework::Tensor* tensor,
     float value) {
-  paddle::framework::VisitDataType(
-      paddle::framework::TransToProtoVarType(tensor->type()),
-      TensorSetConstantCPU(tensor, value));
+  pten::VisitDataType(tensor->dtype(), TensorSetConstantCPU(tensor, value));
 }
 
 struct TensorSetConstantWithPlace : public boost::static_visitor<void> {

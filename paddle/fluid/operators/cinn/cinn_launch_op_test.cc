@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/init.h"
 
 USE_OP(cinn_launch);
-USE_OP(elementwise_add);
+USE_OP_ITSELF(elementwise_add);
 
 namespace paddle::operators {
 
