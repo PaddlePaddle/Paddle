@@ -74,9 +74,11 @@ void AdaptivePool2dConvertGlobalPass::ApplyImpl(ir::Graph* graph) const {
       auto* op = n->Op();
       if (op->Type() == "pool2d" && op->HasAttr("adaptive") &&
           op->HasAttr("ksize")) {
-        bool global_pooling =
-            BOOST_GET_CONST(bool, op->GetAttr("global_pooling"));
-        if (global_pooling) return;
+        if (op->HasAttr("global_pooling")) {
+          bool global_pooling =
+              BOOST_GET_CONST(bool, op->GetAttr("global_pooling"));
+          if (global_pooling) return;
+        }
         std::string type =
             BOOST_GET_CONST(std::string, op->GetAttr("pooling_type"));
         // adaptive has no effect on max pooling
