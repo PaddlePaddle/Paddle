@@ -13,13 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <paddle/fluid/framework/operator.h>
+#include <paddle/fluid/framework/dim.h>
 #include <string>
 #include <vector>
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
 
 template <typename T = int64_t>
 inline void CheckAndUpdateSliceAttrs(const framework::DDim in_dims,
