@@ -661,6 +661,6 @@ TEST(BuildCinnPassTest, NoNeedBufferInput) {
 USE_PASS(build_cinn_pass);
 USE_OP(mul);
 USE_OP(relu);
-USE_OP(elementwise_add);
+USE_OP_ITSELF(elementwise_add);
 USE_OP(relu_grad);
-USE_OP(elementwise_add_grad);
+USE_OP_ITSELF(elementwise_add_grad);

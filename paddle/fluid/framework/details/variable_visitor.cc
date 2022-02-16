@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/details/variable_visitor.h"
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 
 namespace pten {
@@ -115,7 +116,7 @@ struct EnforceShapeAndDTypeEQVisitor {
             "The place type of the two variables is not equal. The src place "
             "is %s, but the dst place is %s",
             src.place().DebugString(), tensor.place().DebugString()));
-    PADDLE_ENFORCE_EQ(src.type(), tensor.type(),
+    PADDLE_ENFORCE_EQ(src.dtype(), tensor.dtype(),
                       platform::errors::PreconditionNotMet(
                           "The dtype of the two variables is not equal."));
     PADDLE_ENFORCE_EQ(

@@ -187,7 +187,8 @@ class FillDiagonalTensorGradOp : public framework::OperatorWithKernel {
     // Note: don't get data type from ctx.Input<framework::Tensor>("Input");
     auto dtype =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"))->type();
-    return framework::OpKernelType(dtype, ctx.GetPlace());
+    return framework::OpKernelType(framework::TransToProtoVarType(dtype),
+                                   ctx.GetPlace());
   }
 };
 
