@@ -35,7 +35,7 @@
     func : conj
 
 - api : copy_to
-  args : (const Tensor& x, Backend backend, bool blocking)
+  args : (Tensor x, Backend backend, bool blocking)
   output : Tensor
   invoke : copy_to_impl(x, backend, blocking)
 
@@ -171,7 +171,7 @@
     func : sign
 
 - api : split
-  args : (const Tensor& x, const ScalarArray& num_or_sections, const Scalar& axis)
+  args : (Tensor x, ScalarArray num_or_sections, Scalar axis)
   output : Tensor[]
   invoke : split_impl(x, num_or_sections, axis)
 
