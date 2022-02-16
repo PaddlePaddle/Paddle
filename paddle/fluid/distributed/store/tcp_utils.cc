@@ -17,149 +17,158 @@
 #include <unistd.h>
 #include <cerrno>
 #include <cstring>
+#include <thread>
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace distributed {
 namespace tcputils {
 
-using TimePoint = std::chrono::time_point<std::chrono::system_clock>;
-
-std::error_code getSocketError() {
+std::error_code socket_error() {
   return std::error_code{errno, std::generic_category()};
 }
 
-::addrinfo* getAddrInfo(const std::string host, const std::string service,
-                        int ai_flags, int family) {
+::addrinfo* get_addr_info(const std::string host, const std::string port,
+                          int ai_flags, int family) {
   ::addrinfo hints{}, *res;
   hints.ai_flags = ai_flags;
   hints.ai_family = family;
   hints.ai_socktype = SOCK_STREAM;
 
+  const char* node = host.empty() ? nullptr : host.c_str();
+
   int n;
-  if (host.empty()) {
-    n = ::getaddrinfo(nullptr, service.c_str(), &hints, &res);
-  } else {
-    n = ::getaddrinfo(host.c_str(), service.c_str(), &hints, &res);
-  }
+  n = ::getaddrinfo(node, port.c_str(), &hints, &res);
   const char* gai_err = ::gai_strerror(n);
-  const char* network =
+  const char* proto =
       (family == AF_INET ? "IPv4" : family == AF_INET6 ? "IPv6" : "");
   PADDLE_ENFORCE_EQ(
       n, 0, platform::errors::InvalidArgument(
-                "Local network %s cannot be obtained. Details: %s.", network,
-                gai_err));
+                "%s network %s:%s cannot be obtained. Details: %s.", proto,
+                host, port, gai_err));
 
   return res;
 }
 
-void freeAddrInfo(::addrinfo* info) {
+void free_addr_info(::addrinfo* hint) {
   PADDLE_ENFORCE_NOT_NULL(
-      info, platform::errors::InvalidArgument(
-                "The pointer to free for freeAddrInfo should not be null."));
-  ::freeaddrinfo(info);
+      hint, platform::errors::InvalidArgument(
+                "The parameter for free_addr_info cannot be null."));
+  ::freeaddrinfo(hint);
 }
 
-int tcpConnect(const std::string host, const std::string service, int family,
-               std::chrono::milliseconds timeout) {
+int tcp_connect(const std::string host, const std::string port, int family,
+                std::chrono::seconds timeout) {
   int ai_flags = AI_NUMERICSERV | AI_V4MAPPED | AI_ALL;
-  ::addrinfo* res = getAddrInfo(host, service, ai_flags, family);
+  ::addrinfo* res = get_addr_info(host, port, ai_flags, family);
 
-  int sockfd;
-  bool is_timeout = false;
+  int sockfd = -1;
+  bool retry = true;
   auto deadline = std::chrono::steady_clock::now() + timeout;
   do {
-    sockfd = ::socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-    if (sockfd < 0) {
-      VLOG(0) << "Trying to connect to " << host << ":" << service
-              << " failed. Details: " << std::strerror(errno);
-      continue;
-    }
+    for (::addrinfo* cur = res; cur != nullptr; cur = cur->ai_next) {
+      sockfd = ::socket(cur->ai_family, cur->ai_socktype, cur->ai_protocol);
+      PADDLE_ENFORCE_GT(sockfd, 0, platform::errors::InvalidArgument(
+                                       "Create socket to connect %s:%s failed. "
+                                       "Details: %s. ",
+                                       host, port, socket_error().message()));
 
-    if (::connect(sockfd, res->ai_addr, res->ai_addrlen) == 0) {
-      break;
+      if (::connect(sockfd, cur->ai_addr, cur->ai_addrlen) == 0) {
+        retry = false;
+        break;
+      }
+      VLOG(0) << "Retry to connect to " << host << ":" << port
+              << " while the server is not yet listening.";
+      ::close(sockfd);
+      sockfd = -1;
+      std::this_thread::sleep_for(kDelay);
+      if (timeout != kNoTimeOut &&
+          std::chrono::steady_clock::now() >= deadline) {
+        retry = false;
+        break;
+      }
     }
 
     if (timeout != kNoTimeOut && std::chrono::steady_clock::now() >= deadline) {
-      is_timeout = true;
+      retry = false;
     }
-  } while (res->ai_next && !is_timeout);
+  } while (retry);
 
-  PADDLE_ENFORCE_GT(sockfd, 0, platform::errors::InvalidArgument(
-                                   "Local network %s:%s cannot be connected.",
-                                   host, service));
-  VLOG(0) << "Connected to " << host << ":" << service;
+  free_addr_info(res);
+
+  PADDLE_ENFORCE_GT(sockfd, 0,
+                    platform::errors::InvalidArgument(
+                        "Network %s:%s cannot be connected.", host, port));
+  VLOG(0) << "Successfully connected to " << host << ":" << port;
 
   return sockfd;
 }
 
-int tcpListen(const std::string host, const std::string service, int family) {
+int tcp_listen(const std::string host, const std::string port, int family) {
   int ai_flags = AI_PASSIVE | AI_NUMERICSERV;
-  ::addrinfo* res = getAddrInfo(host, service, ai_flags, family);
-  int sockfd;
+  ::addrinfo* res = get_addr_info(host, port, ai_flags, family);
+  ::addrinfo* cur = res;
+  int sockfd = -1;
 
-  do {
-    sockfd = ::socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+  std::string node = host.empty() ? "IP_ANY" : host;
+  while (cur) {
+    sockfd = ::socket(cur->ai_family, cur->ai_socktype, cur->ai_protocol);
     if (sockfd < 0) {
-      VLOG(0) << "Cannot create socket on " << host << ":" << service
-              << " Details: " << std::strerror(errno);
+      VLOG(0) << "Cannot create socket on " << node << ":" << port
+              << ". Details: " << socket_error().message();
+      cur = cur->ai_next;
       continue;
     }
 
     const int on = 1;
-    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
-      VLOG(0) << "Cannot set the address reuse option on " << host << ":"
-              << service;
+    if (::setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
+      VLOG(0) << "Set the address reuse option failed on the server.";
     }
     if (::bind(sockfd, res->ai_addr, res->ai_addrlen) == 0) {
       break;
     }
-  } while (res->ai_next);
+    ::close(sockfd);
+    sockfd = -1;
+    cur = cur->ai_next;
+  }
 
-  PADDLE_ENFORCE_GT(
-      sockfd, 0, platform::errors::InvalidArgument(
-                     "Local network %s:%s cannot be binded.", host, service));
+  PADDLE_ENFORCE_GT(sockfd, 0,
+                    platform::errors::InvalidArgument(
+                        "Bind network on %s:%s failedd.", node, port));
 
   ::listen(sockfd, LISTENQ);
 
-  VLOG(0) << "The server starts to listen on " << host << ":" << service
-          << " with socket: " << sockfd;
-
+  VLOG(0) << "The server starts to listen on " << node << ":" << port;
   return sockfd;
 }
 
-int tcpAccept(int sock) {
+int tcp_accept(int socket) {
   ::sockaddr_storage addr_s{};
   ::socklen_t addr_len = sizeof(addr_s);
-  int new_sock =
-      ::accept(sock, reinterpret_cast<::sockaddr*>(&addr_s), &addr_len);
+  int new_socket =
+      ::accept(socket, reinterpret_cast<::sockaddr*>(&addr_s), &addr_len);
   PADDLE_ENFORCE_GT(
-      new_sock, 0,
+      new_socket, 0,
       platform::errors::InvalidArgument(
           "The server failed to accept a new connection. Details: %s.",
-          std::strerror(errno)));
-  ::fcntl(new_sock, F_SETFD, FD_CLOEXEC);
+          socket_error().message()));
+  ::fcntl(new_socket, F_SETFD, FD_CLOEXEC);
   auto value = 1;
-  ::setsockopt(new_sock, IPPROTO_TCP, TCP_NODELAY, &value, sizeof(value));
-  return new_sock;
+  ::setsockopt(new_socket, IPPROTO_TCP, TCP_NODELAY, &value, sizeof(value));
+  return new_socket;
 }
 
-void setSockOpt(int sock, int level, int optname, const char* value,
-                int optlen) {
-  ::setsockopt(sock, level, optname, value, optlen);
+void send_string(int socket, const std::string& s) {
+  std::string::size_type size = s.size();
+  send_bytes<std::string::size_type>(socket, &size, 1);
+  send_bytes<const char>(socket, s.data(), size);
 }
 
-void sendString(int sock, const std::string& s) {
-  size_t size = s.size();
-  sendBytes<size_t>(sock, &size, 1);
-  sendBytes<char>(sock, s.data(), size);
-}
-
-std::string recvString(int sock) {
-  size_t size;
-  recvBytes<size_t>(sock, &size, 1);
+std::string receive_string(int socket) {
+  std::string::size_type size;
+  receive_bytes<std::string::size_type>(socket, &size, 1);
   std::vector<char> v(size);
-  sendBytes<char>(sock, v.data(), size);
+  receive_bytes<char>(socket, v.data(), size);
   return std::string(v.data(), v.size());
 }
 

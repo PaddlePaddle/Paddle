@@ -35,7 +35,7 @@ class SocketOptions {
   std::chrono::seconds connect_timeout() const { return _connect_timeout; }
 
  private:
-  std::chrono::seconds _connect_timeout{30};
+  std::chrono::seconds _connect_timeout{0};
 };
 
 class Socket {
@@ -43,27 +43,16 @@ class Socket {
   Socket() = default;
   ~Socket() = default;
 
-  static Socket listen(std::uint16_t port, const SocketOptions& opts = {});
+  static Socket listen(std::uint16_t port);
   static Socket connect(const std::string& host, std::uint16_t port,
                         const SocketOptions& opts = {});
   Socket accept() const;
-  explicit Socket(int sock) : _sock(sock) {}
+  explicit Socket(int socket) : _sockfd(socket) {}
 
-  // template <typename T>
-  // void sendValue(const T& value);
-  // template <typename T>
-  // T recvValue();
-
-  std::uint16_t getPort() const;
-  int get_socket_fd() const { return _sock; }
+  int sockfd() const { return _sockfd; }
 
  private:
-  int _sock;
-
-  // template <typename T>
-  // void sendBytes(const T* buffer, size_t len);
-  // template <typename T>
-  // void recvBytes(T* buffer, size_t len);
+  int _sockfd;
 };
 
 }  // namespace distributed

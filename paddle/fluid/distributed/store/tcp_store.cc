@@ -28,12 +28,12 @@ namespace detail {
 
 constexpr int INFTIME = -1;
 
-std::unique_ptr<MasterDaemon> MasterDaemon::start(Socket sock) {
-  auto master = std::make_unique<MasterDaemon>(sock);
+std::unique_ptr<MasterDaemon> MasterDaemon::start(const Socket& socket) {
+  auto master = std::make_unique<MasterDaemon>(socket);
   return master;
 }
 
-MasterDaemon::MasterDaemon(Socket socket) : _socket(socket) {
+MasterDaemon::MasterDaemon(const Socket& socket) : _listen_socket(socket) {
   _background_thread = std::thread{&MasterDaemon::run, this};
 }
 
@@ -45,11 +45,10 @@ void MasterDaemon::doGet(int sock) {
 
 void MasterDaemon::doSet(int sock) {}
 
-void MasterDaemon::doRemove(int sock) {}
-
 void MasterDaemon::doAdd(int sock) {
-  std::string key = tcputils::recvString(sock);
-  int64_t incr = tcputils::recvValue<int64_t>(sock);
+  std::string key = tcputils::receive_string(sock);
+  int64_t incr;
+  tcputils::receive_bytes<int64_t>(sock, &incr, 1);
   int64_t new_value = incr;
   std::vector<uint8_t> old_value;
   auto it = _store.find(key);
@@ -63,15 +62,15 @@ void MasterDaemon::doAdd(int sock) {
   std::string new_value_str = std::to_string(new_value);
   _store[key] =
       std::vector<uint8_t>(new_value_str.begin(), new_value_str.end());
-  tcputils::sendValue<int64_t>(sock, new_value);
+  tcputils::send_bytes<int64_t>(sock, &new_value, 1);
 }
 
 void MasterDaemon::doWait(int sock) {}
 
 void MasterDaemon::run() {
   std::vector<struct pollfd> fds;
-  auto sock_fd = _socket.get_socket_fd();
-  fds.push_back({.fd = sock_fd, .events = POLLIN, .revents = 0});
+  auto sockfd = _listen_socket.sockfd();
+  fds.push_back({.fd = sockfd, .events = POLLIN, .revents = 0});
 
   bool done = false;
   while (!done) {
@@ -82,10 +81,10 @@ void MasterDaemon::run() {
     ::poll(fds.data(), fds.size(), INFTIME);
 
     if (fds[0].revents != 0) {
-      Socket socket = _socket.accept();
+      Socket socket = _listen_socket.accept();
       _sockets.emplace_back(socket);
-      auto new_sock_fd = socket.get_socket_fd();
-      fds.push_back({.fd = new_sock_fd, .events = POLLIN, .revents = 0});
+      auto new_sockfd = socket.sockfd();
+      fds.push_back({.fd = new_sockfd, .events = POLLIN, .revents = 0});
     }
 
     for (size_t i = 1; i < fds.size(); i++) {
@@ -94,15 +93,13 @@ void MasterDaemon::run() {
       }
 
       Command command;
-      tcputils::recvBytes<Command>(fds[i].fd, &command, 1);
+      tcputils::receive_bytes<Command>(fds[i].fd, &command, 1);
 
       switch (command) {
         case Command::GET:
           doGet(fds[i].fd);
         case Command::SET:
           doSet(fds[i].fd);
-        case Command::REMOVE:
-          doRemove(fds[i].fd);
         case Command::ADD:
           doAdd(fds[i].fd);
         case Command::WAIT:
@@ -130,49 +127,51 @@ std::unique_ptr<TCPClient> TCPClient::connect(
 }
 
 void TCPClient::sendCommandForKey(Command type, const std::string& key) {
-  int sock_fd = _socket.get_socket_fd();
-  tcputils::sendValue<Command>(sock_fd, type);
+  int sockfd = _socket.sockfd();
+  tcputils::send_bytes<Command>(sockfd, &type, 1);
   if (key.empty()) {
     return;
   }
-  tcputils::sendString(sock_fd, key);
+  tcputils::send_string(sockfd, key);
 }
 
 void TCPClient::sendCommand(Command type) { sendCommandForKey(type, ""); }
 
 void TCPClient::sendBytes(const std::vector<std::uint8_t>& bytes) {
-  int sock_fd = _socket.get_socket_fd();
-  tcputils::sendVector<std::uint8_t>(sock_fd, bytes);
+  int socket = _socket.sockfd();
+  tcputils::send_vector<std::uint8_t>(socket, bytes);
 }
 
 std::vector<uint8_t> TCPClient::recvBytes() {
-  int sock_fd = _socket.get_socket_fd();
-  return tcputils::recvVector<std::uint8_t>(sock_fd);
+  int socket = _socket.sockfd();
+  return tcputils::receive_vector<std::uint8_t>(socket);
 }
 
 template <typename T>
 void TCPClient::sendValue(const T& value) {
-  int sock_fd = _socket.get_socket_fd();
-  tcputils::sendValue<T>(sock_fd, value);
+  int socket = _socket.sockfd();
+  tcputils::send_bytes<T>(socket, &value, 1);
 }
 
 template <typename T>
 T TCPClient::recvValue() {
-  int sock_fd = _socket.get_socket_fd();
-  return tcputils::recvValue<T>(sock_fd);
+  int sockfd = _socket.sockfd();
+  T res;
+  tcputils::receive_bytes<T>(sockfd, &res, 1);
+  return res;
 }
 
 void TCPClient::sendStrings(std::vector<std::string> strings) {
   size_t size = strings.size();
-  int sock_fd = _socket.get_socket_fd();
-  tcputils::sendValue<size_t>(sock_fd, size);
+  int sockfd = _socket.sockfd();
+  tcputils::send_bytes<size_t>(sockfd, &size, 1);
 
   if (strings.empty()) {
     return;
   }
 
   for (auto& s : strings) {
-    tcputils::sendString(sock_fd, s);
+    tcputils::send_string(sockfd, s);
   }
 }
 
@@ -237,19 +236,12 @@ int64_t TCPStore::add(const std::string& key, int64_t value) {
   return _client->recvValue<std::int64_t>();
 }
 
-bool TCPStore::removeKey(const std::string& key) {
-  const std::lock_guard<std::mutex> lock(_lock);
-  _client->sendCommandForKey(Command::REMOVE, _key_prefix + key);
-  auto num_removed = _client->recvValue<std::int64_t>();
-  return num_removed == 1;
-}
-
 void TCPStore::wait(const std::vector<std::string>& keys) {
   wait(keys, _timeout);
 }
 
 void TCPStore::wait(const std::vector<std::string>& keys,
-                    const std::chrono::milliseconds& timeout) {
+                    const std::chrono::seconds& timeout) {
   std::vector<std::string> keys_with_prefix;
   for (auto key : keys) {
     keys_with_prefix.emplace_back(_key_prefix + key);

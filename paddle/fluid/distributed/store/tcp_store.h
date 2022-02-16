@@ -27,25 +27,23 @@ namespace paddle {
 namespace distributed {
 
 enum class WaitReplyType { STOP_WAIT };
-
-enum class Command { SET, GET, REMOVE, ADD, WAIT };
+enum class Command { SET, GET, ADD, WAIT };
 
 namespace detail {
 
 class MasterDaemon {
  public:
-  static std::unique_ptr<MasterDaemon> start(Socket sock);
-  explicit MasterDaemon(Socket socket);
+  static std::unique_ptr<MasterDaemon> start(const Socket& socket);
   ~MasterDaemon() {}
+  explicit MasterDaemon(const Socket& socket);
 
  private:
   void run();
-  void doSet(int);
-  void doGet(int);
-  void doRemove(int);
-  void doAdd(int);
-  void doWait(int);
-  Socket _socket;
+  void doSet(int socket);
+  void doGet(int socket);
+  void doAdd(int socket);
+  void doWait(int socket);
+  Socket _listen_socket;
   std::vector<Socket> _sockets;
   std::unordered_map<std::string, std::vector<uint8_t>> _store;
   std::thread _background_thread{};
@@ -63,7 +61,6 @@ class TCPServer {
 
 class TCPClient {
  public:
-  // TCPClient(Socket&& socket) : _socket{std::move(socket)} {}
   explicit TCPClient(Socket socket) : _socket{socket} {}
   static std::unique_ptr<TCPClient> connect(const std::string host,
                                             uint16_t port,
@@ -99,11 +96,10 @@ class TCPStore : public Store {
   void set(const std::string& key, const std::vector<uint8_t>& value) override;
   std::vector<uint8_t> get(const std::string& key) override;
 
-  bool removeKey(const std::string& key) override;
   int64_t add(const std::string& key, int64_t value) override;
   void wait(const std::vector<std::string>& keys) override;
   void wait(const std::vector<std::string>& keys,
-            const std::chrono::milliseconds& timeout) override;
+            const std::chrono::seconds& timeout) override;
 
  private:
   void doWait(const std::vector<std::string>& keys,

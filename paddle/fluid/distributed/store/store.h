@@ -36,21 +36,18 @@ class Store {
                    const std::vector<uint8_t>& value) = 0;
   virtual std::vector<uint8_t> get(const std::string& key) = 0;
 
-  virtual bool removeKey(const std::string& key) = 0;
   virtual int64_t add(const std::string& key, int64_t value) = 0;
   virtual void wait(const std::vector<std::string>& keys) = 0;
   virtual void wait(const std::vector<std::string>& keys,
-                    const std::chrono::milliseconds& timeout) = 0;
+                    const std::chrono::seconds& timeout) = 0;
 
-  virtual const std::chrono::milliseconds& getTimeout() const {
-    return _timeout;
-  }
-  virtual void setTimeout(const std::chrono::milliseconds& timeout) {
+  virtual const std::chrono::seconds& timeout() const { return _timeout; }
+  virtual void timeout(const std::chrono::seconds& timeout) {
     _timeout = timeout;
   }
 
  private:
-  std::chrono::milliseconds _timeout;
+  std::chrono::seconds _timeout;
 };
 
 }  // namespace distributed
