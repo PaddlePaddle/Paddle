@@ -453,10 +453,6 @@ static __global__ void LambUpdateParamAndBetaPowsCUDAKernel(
     MT t = args.trust_ratio_div[i];
     auto norm_idx = args.index[i];
     MT p_square_norm = args.param_square_norm[norm_idx];
-    if (p_square_norm < static_cast<MT>(0)) {
-      asm("trap;");
-    }
-
     MT t_square_norm = args.trust_ratio_div_square_norm[norm_idx];
 
     MT p_norm = static_cast<MT>(sqrtf(p_square_norm));
