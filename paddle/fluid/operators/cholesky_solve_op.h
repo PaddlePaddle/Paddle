@@ -64,7 +64,7 @@ void cholesky_solve_fn(const paddle::framework::ExecutionContext &ctx,
   // calculate u's conjugate for complex
   framework::Tensor u_conj(u_bst.type());
   platform::ForRange<DeviceContext> u_for_range(dev_ctx, u_bst.numel());
-  math::ConjFunctor<T> u_functor(
+  pten::funcs::ConjFunctor<T> u_functor(
       u_bst.data<T>(), u_bst.numel(),
       u_conj.mutable_data<T>(u_bst.dims(), dev_ctx.GetPlace()));
   u_for_range(u_functor);
@@ -73,7 +73,7 @@ void cholesky_solve_fn(const paddle::framework::ExecutionContext &ctx,
   // calculate b's conjugate for complex
   framework::Tensor b_conj(b_bst.type());
   platform::ForRange<DeviceContext> b_for_range(dev_ctx, b_bst.numel());
-  math::ConjFunctor<T> b_functor(
+  pten::funcs::ConjFunctor<T> b_functor(
       b_bst.data<T>(), b_bst.numel(),
       b_conj.mutable_data<T>(b_bst.dims(), dev_ctx.GetPlace()));
   b_for_range(b_functor);
@@ -113,7 +113,7 @@ void cholesky_solve_fn(const paddle::framework::ExecutionContext &ctx,
 
   // calculate out's conjugate for complex
   platform::ForRange<DeviceContext> out_for_range(dev_ctx, out->numel());
-  math::ConjFunctor<T> out_functor(
+  pten::funcs::ConjFunctor<T> out_functor(
       out->data<T>(), out->numel(),
       out->mutable_data<T>(out->dims(), dev_ctx.GetPlace()));
   out_for_range(out_functor);
@@ -173,7 +173,7 @@ class CholeskySolveGradKernel : public framework::OpKernel<T> {
       // calculate out's conjugate for complex
       framework::Tensor out_conj(out->type());
       platform::ForRange<DeviceContext> out_for_range(dev_ctx, out->numel());
-      math::ConjFunctor<T> out_functor(
+      pten::funcs::ConjFunctor<T> out_functor(
           out->data<T>(), out->numel(),
           out_conj.mutable_data<T>(out->dims(), dev_ctx.GetPlace()));
       out_for_range(out_functor);
@@ -195,7 +195,7 @@ class CholeskySolveGradKernel : public framework::OpKernel<T> {
       framework::Tensor commonterm_conj(commonterm.type());
       platform::ForRange<DeviceContext> commonterm_for_range(
           dev_ctx, commonterm.numel());
-      math::ConjFunctor<T> commonterm_functor(
+      pten::funcs::ConjFunctor<T> commonterm_functor(
           commonterm.data<T>(), commonterm.numel(),
           commonterm_conj.mutable_data<T>(commonterm.dims(),
                                           dev_ctx.GetPlace()));

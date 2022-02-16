@@ -18,11 +18,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 #include "paddle/fluid/operators/solve_op.h"
 #include "paddle/fluid/operators/tril_triu_op.h"
 #include "paddle/pten/kernels/funcs/blas/blas.h"
+#include "paddle/pten/kernels/funcs/complex_functors.h"
 
 namespace paddle {
 namespace operators {
@@ -152,7 +152,7 @@ class TriangularSolveGradKernel : public framework::OpKernel<T> {
       // calculate x's conjugate for complex
       Tensor x_conj(x->type());
       platform::ForRange<DeviceContext> x_for_range(dev_ctx, x->numel());
-      math::ConjFunctor<T> x_functor(
+      pten::funcs::ConjFunctor<T> x_functor(
           x->data<T>(), x->numel(),
           x_conj.mutable_data<T>(x->dims(), dev_ctx.GetPlace()));
       x_for_range(x_functor);
@@ -179,7 +179,7 @@ class TriangularSolveGradKernel : public framework::OpKernel<T> {
       // calculate out's conjugate for complex
       Tensor out_conj(out->type());
       platform::ForRange<DeviceContext> out_for_range(dev_ctx, out->numel());
-      math::ConjFunctor<T> out_functor(
+      pten::funcs::ConjFunctor<T> out_functor(
           out->data<T>(), out->numel(),
           out_conj.mutable_data<T>(out->dims(), dev_ctx.GetPlace()));
       out_for_range(out_functor);

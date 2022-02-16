@@ -71,23 +71,26 @@ class BaseAPI(object):
             f"Args declaration should start with '(' and end with ')', please check the args of {api_name} in yaml."
         args_str = args_str[1:-1]
         args_list = args_str.split(',')
-        input_types = [
-            'const Tensor&', 'const Tensor &', 'const std::vector<Tensor>&',
-            'const std::vector<Tensor> &'
-        ]
-        attr_types = ['const Scalar&', 'const Scalar &', 'const ScalarArray&', 'const ScalarArray &', \
-                      'int', 'int32_t', 'int64_t', 'size_t', 'float', 'double', 'bool', \
-                      'const std::vector<int64_t>&', 'Backend', 'DataLayout', 'DataType']
+        input_types_map = {
+            'Tensor': 'const Tensor&',
+            'Tensor[]': 'const std::vector<Tensor>&'
+        }
+        attr_types_map = {'ScalarArray' : 'const ScalarArray&', 'Scalar' : 'const Scalar&', \
+                      'int' : 'int', 'int32_t' : 'int32_t', 'int64_t' : 'int64_t',  'size_t' : 'size_t', \
+                      'float' : 'float', 'double' : 'double', 'bool' : 'bool', \
+                      'Backend' : 'Backend', 'DataLayout' : 'DataLayout', 'DataType' : 'DataType', \
+                      'int64_t[]' : 'const std::vector<int64_t>&', 'int[]' : 'const std::vector<int>&'}
         args_declare_str = ""
         args_define_str = ""
 
         for item in args_list:
             item = item.strip()
+            type_and_name = item.split(' ')
             # match the input tensor
             has_input = False
-            for in_type in input_types:
-                if item.startswith(in_type):
-                    input_name = item[len(in_type):].strip()
+            for in_type_symbol, in_type in input_types_map.items():
+                if type_and_name[0] == in_type_symbol:
+                    input_name = type_and_name[1].strip()
                     assert len(input_name) > 0, \
                         f"The input tensor name should not be empty. Please check the args of {api_name} in yaml."
                     assert len(attrs['names']) == 0, \
@@ -103,9 +106,9 @@ class BaseAPI(object):
                 continue
 
             # match the attribute
-            for attr_type in attr_types:
-                if item.startswith(attr_type):
-                    attr_name = item[len(attr_type):].strip()
+            for attr_type_symbol, attr_type in attr_types_map.items():
+                if type_and_name[0] == attr_type_symbol:
+                    attr_name = item[len(attr_type_symbol):].strip()
                     assert len(attr_name) > 0, \
                         f"The attribute name should not be empty. Please check the args of {api_name} in yaml."
                     default_value = None
@@ -128,25 +131,28 @@ class BaseAPI(object):
 
     def parse_output(self, api_name, output_config):
         def parse_output_item(output_item):
-            alllowd_output_types = ['Tensor', 'std::vector<Tensor>']
+            output_type_map = {
+                'Tensor': 'Tensor',
+                'Tensor[]': 'std::vector<Tensor>'
+            }
             if re.search(r'\(\w*\)', output_item):
                 result = re.search(
-                    r"(?P<out_type>[a-zA-Z0-9_<>]+)\s*\((?P<name>\w+)\)",
+                    r"(?P<out_type>[a-zA-Z0-9_[\]]+)\s*\((?P<name>\w+)\)",
                     output_item)
                 out_type = result.group('out_type')
-                assert out_type in alllowd_output_types, \
-                    f"{api_name} : Output type error: the output type only support Tensor and std::vector<Tensor>, \
+                assert out_type in output_type_map, \
+                    f"{api_name} : Output type error: the output type only support Tensor and Tensor[], \
                       but now is {out_type}."
 
                 return out_type, result.group('name')
 
             else:
-                if output_item.strip() in alllowd_output_types:
-                    return output_item.strip(), 'out'
+                if output_item.strip() in output_type_map:
+                    return output_type_map[output_item.strip()], 'out'
                 else:
                     raise ValueError(
-                        "{} : Output type error: the output type only support Tensor and std::vector<Tensor>, \
-                      but now is {}.".format(api_name, out_type))
+                        "{} : Output type error: the output type only support Tensor and Tensor[], \
+                      but now is {}.".format(api_name, output_item.strip()))
 
         temp_list = output_config.split(',')
 

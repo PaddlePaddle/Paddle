@@ -20,8 +20,8 @@
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/complex_functors.h"
 #include "paddle/pten/kernels/funcs/lapack/lapack_function.h"
 
 namespace paddle {
@@ -48,7 +48,7 @@ struct PaddleComplex<
 template <typename T>
 using PaddleCType = typename PaddleComplex<T>::type;
 template <typename T>
-using Real = typename math::Real<T>;
+using Real = typename pten::funcs::Real<T>;
 
 static void SpiltBatchSquareMatrix(const Tensor& input,
                                    std::vector<Tensor>* output) {
@@ -118,7 +118,7 @@ LapackEigvals(const framework::ExecutionContext& ctx, const Tensor& input,
 
   platform::ForRange<DeviceContext> for_range(
       ctx.template device_context<DeviceContext>(), n_dim);
-  math::RealImagToComplexFunctor<PaddleCType<T>> functor(
+  pten::funcs::RealImagToComplexFunctor<PaddleCType<T>> functor(
       w_data, w_data + n_dim, output->template data<PaddleCType<T>>(), n_dim);
   for_range(functor);
 }
@@ -143,7 +143,7 @@ LapackEigvals(const framework::ExecutionContext& ctx, const Tensor& input,
           required_work_mem, work_mem));
 
   int64_t rwork_mem = rwork->memory_size();
-  int64_t required_rwork_mem = (n_dim << 1) * sizeof(Real<T>);
+  int64_t required_rwork_mem = (n_dim << 1) * sizeof(pten::funcs::Real<T>);
   PADDLE_ENFORCE_GE(
       rwork_mem, required_rwork_mem,
       platform::errors::InvalidArgument(
@@ -153,11 +153,11 @@ LapackEigvals(const framework::ExecutionContext& ctx, const Tensor& input,
           required_rwork_mem, rwork_mem));
 
   int info = 0;
-  pten::funcs::lapackEig<T, Real<T>>(
+  pten::funcs::lapackEig<T, pten::funcs::Real<T>>(
       'N', 'N', static_cast<int>(n_dim), a.template data<T>(),
       static_cast<int>(n_dim), output->template data<T>(), NULL, 1, NULL, 1,
       work->template data<T>(), static_cast<int>(work_mem / sizeof(T)),
-      rwork->template data<Real<T>>(), &info);
+      rwork->template data<pten::funcs::Real<T>>(), &info);
 
   std::string name = "framework::platform::dynload::cgeev_";
   if (framework::TransToProtoVarType(input.dtype()) ==
@@ -187,7 +187,7 @@ class EigvalsKernel : public framework::OpKernel<T> {
     // query workspace size
     T qwork;
     int info;
-    pten::funcs::lapackEig<T, Real<T>>(
+    pten::funcs::lapackEig<T, pten::funcs::Real<T>>(
         'N', 'N', static_cast<int>(n_dim), input_matrices[0].template data<T>(),
         static_cast<int>(n_dim), NULL, NULL, 1, NULL, 1, &qwork, -1,
         static_cast<Real<T>*>(NULL), &info);
@@ -207,8 +207,8 @@ class EigvalsKernel : public framework::OpKernel<T> {
     }
     if (framework::IsComplexType(
             framework::TransToProtoVarType(input->dtype()))) {
-      rwork.mutable_data<Real<T>>(framework::make_ddim({n_dim << 1}),
-                                  ctx.GetPlace());
+      rwork.mutable_data<pten::funcs::Real<T>>(
+          framework::make_ddim({n_dim << 1}), ctx.GetPlace());
     }
 
     for (int64_t i = 0; i < n_batch; ++i) {
