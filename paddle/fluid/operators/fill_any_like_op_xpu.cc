@@ -63,7 +63,7 @@ class FillAnyLikeXPUKernel : public framework::OpKernel<T> {
     pten::FullLikeKernel<T>(
         static_cast<const typename paddle::framework::ConvertToPtenContext<
             paddle::platform::XPUDeviceContext>::TYPE&>(dev_ctx),
-        value, out);
+        value, pten::DataType::UNDEFINED, out);
   }
 };
 
