@@ -1,5 +1,9 @@
 include(operators)
 
+# solve "math constants not defined" problems caused by the order of inclusion 
+# of <cmath> and the definition of macro _USE_MATH_DEFINES
+add_definitions(-D_USE_MATH_DEFINES)
+
 # clean cache and pybind_file content first when rebuild
 unset(GLOB_OP_LIB CACHE)
 unset(OP_LIBRARY CACHE)
