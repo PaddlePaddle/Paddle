@@ -22,6 +22,7 @@
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/imperative/var_helper.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
 
 namespace paddle {
@@ -37,8 +38,8 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
       const framework::AttributeMap* attr,
       const framework::AttributeMap* default_attr, const std::string op_type,
       const framework::OpKernelType* op_kernel_type = nullptr)
-      : var_base_map_in_(in),
-        var_base_map_out_(out),
+      : var_map_in_(in),
+        var_map_out_(out),
         attrs_(attr),
         default_attrs_(default_attr),
         op_type_(op_type),
@@ -46,9 +47,9 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
 
   bool HasInput(const std::string& name) const override {
     // has only one input
-    auto it = var_base_map_in_->find(name);
+    auto it = var_map_in_->find(name);
 
-    if (it == var_base_map_in_->end()) {
+    if (it == var_map_in_->end()) {
       return false;
     }
     const auto& in = it->second;
@@ -62,8 +63,8 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
 
   bool HasOutput(const std::string& name) const override {
     // has only one output
-    auto it = var_base_map_out_->find(name);
-    if (it == var_base_map_out_->end()) {
+    auto it = var_map_out_->find(name);
+    if (it == var_map_out_->end()) {
       return false;
     }
     const auto& out = it->second;
@@ -77,9 +78,13 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     return out[0] != nullptr;
   }
 
+  bool HasAttr(const std::string& name) const override {
+    return attrs_->count(name) > 0 || default_attrs_->count(name) > 0;
+  }
+
   bool HasInputs(const std::string& name) const override {
-    auto it = var_base_map_in_->find(name);
-    if (it == var_base_map_in_->end() || it->second.empty()) {
+    auto it = var_map_in_->find(name);
+    if (it == var_map_in_->end() || it->second.empty()) {
       return false;
     }
     for (auto& input : it->second) {
@@ -91,8 +96,8 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   }
 
   bool HasOutputs(const std::string& name) const override {
-    auto it = var_base_map_out_->find(name);
-    if (it == var_base_map_out_->end() || it->second.empty()) {
+    auto it = var_map_out_->find(name);
+    if (it == var_map_out_->end() || it->second.empty()) {
       return false;
     }
     for (auto& output : it->second) {
@@ -109,15 +114,15 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
 
   std::vector<std::string> Inputs(const std::string& name) const override {
     std::vector<std::string> vec_res;
-    auto it = var_base_map_in_->find(name);
+    auto it = var_map_in_->find(name);
     PADDLE_ENFORCE_NE(
-        it, var_base_map_in_->end(),
+        it, var_map_in_->end(),
         platform::errors::NotFound("can not find [%s] in input", name));
 
     vec_res.reserve(it->second.size());
     for (auto& var : it->second) {
       if (var) {
-        vec_res.push_back(var->Name());
+        vec_res.push_back(GetNameFromVar(var));
       } else {
         vec_res.push_back(framework::kEmptyVarName);
       }
@@ -128,15 +133,15 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
 
   std::vector<std::string> Outputs(const std::string& name) const override {
     std::vector<std::string> vec_res;
-    auto it = var_base_map_out_->find(name);
+    auto it = var_map_out_->find(name);
     PADDLE_ENFORCE_NE(
-        it, var_base_map_out_->end(),
+        it, var_map_out_->end(),
         platform::errors::NotFound("can not find [%s] in output", name));
 
     vec_res.reserve(it->second.size());
     for (auto& var : it->second) {
       if (var) {
-        vec_res.push_back(var->Name());
+        vec_res.push_back(GetNameFromVar(var));
       } else {
         vec_res.push_back(framework::kEmptyVarName);
       }
@@ -169,16 +174,16 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
 
   void ShareDim(const std::string& in, const std::string& out, size_t i = 0,
                 size_t j = 0) override {
-    auto in_it = var_base_map_in_->find(in);
-    auto out_it = var_base_map_out_->find(out);
+    auto in_it = var_map_in_->find(in);
+    auto out_it = var_map_out_->find(out);
     PADDLE_ENFORCE_NE(
-        in_it, var_base_map_in_->end(),
+        in_it, var_map_in_->end(),
         platform::errors::NotFound("can not found [%s] in input", in));
     PADDLE_ENFORCE_GT(in_it->second.size(), i,
                       platform::errors::PreconditionNotMet(
                           "Inputs %s should have %llu argument", in, i));
     PADDLE_ENFORCE_NE(
-        out_it, var_base_map_out_->end(),
+        out_it, var_map_out_->end(),
         platform::errors::NotFound("can not found [%s] in input", in));
     PADDLE_ENFORCE_GT(out_it->second.size(), j,
                       platform::errors::PreconditionNotMet(
@@ -223,9 +228,9 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   std::vector<framework::InferShapeVarPtr> GetInputVarPtrs(
       const std::string& name) const override {
     std::vector<framework::InferShapeVarPtr> res;
-    auto it = var_base_map_in_->find(name);
+    auto it = var_map_in_->find(name);
     PADDLE_ENFORCE_NE(
-        it, var_base_map_in_->end(),
+        it, var_map_in_->end(),
         platform::errors::NotFound("Can not find [%s] in inputs.", name));
     for (auto& var : it->second) {
       res.emplace_back(var->MutableVar());
@@ -236,9 +241,9 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   std::vector<framework::InferShapeVarPtr> GetOutputVarPtrs(
       const std::string& name) const override {
     std::vector<framework::InferShapeVarPtr> res;
-    auto it = var_base_map_out_->find(name);
+    auto it = var_map_out_->find(name);
     PADDLE_ENFORCE_NE(
-        it, var_base_map_out_->end(),
+        it, var_map_out_->end(),
         platform::errors::NotFound("Can not find [%s] in outputs.", name));
     for (auto& var : it->second) {
       res.emplace_back(var->MutableVar());
@@ -247,9 +252,9 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   }
 
   DDim GetInputDim(const std::string& name) const override {
-    auto it = var_base_map_in_->find(name);
+    auto it = var_map_in_->find(name);
     PADDLE_ENFORCE_NE(
-        it, var_base_map_in_->end(),
+        it, var_map_in_->end(),
         platform::errors::NotFound("can not find [%s] in input", name));
     PADDLE_ENFORCE_EQ(
         it->second.size(), 1UL,
@@ -262,9 +267,9 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   std::vector<DDim> GetInputsDim(const std::string& name) const override {
     // const std::vector<Variable*>& vars = InputVars(name);
     std::vector<DDim> vec_res;
-    auto it = var_base_map_in_->find(name);
+    auto it = var_map_in_->find(name);
     PADDLE_ENFORCE_NE(
-        it, var_base_map_in_->end(),
+        it, var_map_in_->end(),
         platform::errors::NotFound("can not find [%s] in output", name));
     vec_res.reserve(it->second.size());
     for (size_t i = 0; i < it->second.size(); ++i) {
@@ -281,9 +286,9 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   std::vector<framework::proto::VarType::Type> GetInputsVarType(
       const std::string& name) const override {
     std::vector<framework::proto::VarType::Type> vec_res;
-    auto it = var_base_map_in_->find(name);
+    auto it = var_map_in_->find(name);
     PADDLE_ENFORCE_NE(
-        it, var_base_map_in_->end(),
+        it, var_map_in_->end(),
         platform::errors::NotFound("can not find [%s] in input", name));
     vec_res.reserve(it->second.size());
     for (size_t i = 0; i < it->second.size(); ++i) {
@@ -300,9 +305,9 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   std::vector<framework::proto::VarType::Type> GetOutputsVarType(
       const std::string& name) const override {
     std::vector<framework::proto::VarType::Type> vec_res;
-    auto it = var_base_map_out_->find(name);
+    auto it = var_map_out_->find(name);
     PADDLE_ENFORCE_NE(
-        it, var_base_map_out_->end(),
+        it, var_map_out_->end(),
         platform::errors::NotFound("can not find [%s] in output", name));
     vec_res.reserve(it->second.size());
     for (size_t i = 0; i < it->second.size(); ++i) {
@@ -317,9 +322,9 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   }
 
   void SetOutputDim(const std::string& name, const DDim& dim) override {
-    auto it = var_base_map_out_->find(name);
+    auto it = var_map_out_->find(name);
     PADDLE_ENFORCE_NE(
-        it, var_base_map_out_->end(),
+        it, var_map_out_->end(),
         platform::errors::NotFound("can not find [%s] in output", name));
 
     if (it->second[0]) {
@@ -329,9 +334,9 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
 
   void SetOutputsDim(const std::string& name,
                      const std::vector<DDim>& dims) override {
-    auto it = var_base_map_out_->find(name);
+    auto it = var_map_out_->find(name);
     PADDLE_ENFORCE_NE(
-        it, var_base_map_out_->end(),
+        it, var_map_out_->end(),
         platform::errors::NotFound("can not find [%s] in output", name));
 
     PADDLE_ENFORCE_EQ(dims.size(), it->second.size(),
@@ -370,7 +375,8 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     } else {
       PADDLE_THROW(platform::errors::PermissionDenied(
           "Only LoDTensor/SelectedRows support 'GetDim', but Variables "
-          "type_id is xx."));
+          "type_id is: %s.",
+          framework::ToTypeName(var->Type())));
     }
   }
 
@@ -413,8 +419,8 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   }
 
  private:
-  const NameVarMap<VarType>* var_base_map_in_;
-  const NameVarMap<VarType>* var_base_map_out_;
+  const NameVarMap<VarType>* var_map_in_;
+  const NameVarMap<VarType>* var_map_out_;
   const framework::AttributeMap* attrs_;
   const framework::AttributeMap* default_attrs_;
   const std::string op_type_;

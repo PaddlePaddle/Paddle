@@ -23,7 +23,8 @@ namespace operators {
 template <typename T = int32_t>
 inline std::vector<T> GetDataFromTensor(const framework::Tensor* x) {
   std::vector<T> vec_new_data;
-  if (x->type() == framework::proto::VarType::INT32) {
+  if (framework::TransToProtoVarType(x->dtype()) ==
+      framework::proto::VarType::INT32) {
     auto* data = x->data<int>();
     framework::Tensor cpu_attr_tensor;
     if (!platform::is_cpu_place(x->place())) {
@@ -32,7 +33,8 @@ inline std::vector<T> GetDataFromTensor(const framework::Tensor* x) {
       data = cpu_attr_tensor.data<int>();
     }
     vec_new_data = std::vector<T>(data, data + x->numel());
-  } else if (x->type() == framework::proto::VarType::INT64) {
+  } else if (framework::TransToProtoVarType(x->dtype()) ==
+             framework::proto::VarType::INT64) {
     auto* data = x->data<int64_t>();
     framework::Tensor cpu_attr_tensor;
     if (!platform::is_cpu_place(x->place())) {
@@ -45,7 +47,7 @@ inline std::vector<T> GetDataFromTensor(const framework::Tensor* x) {
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "The dtype of Tensor must be int32 or int64, but received: %s",
-        x->type()));
+        framework::TransToProtoVarType(x->dtype())));
   }
   return vec_new_data;
 }
@@ -63,7 +65,8 @@ inline std::vector<T> GetDataFromTensorList(
                           "is [%s]",
                           tensor->dims()));
 
-    if (tensor->type() == framework::proto::VarType::INT32) {
+    if (framework::TransToProtoVarType(tensor->dtype()) ==
+        framework::proto::VarType::INT32) {
       if (!platform::is_cpu_place(tensor->place())) {
         framework::Tensor temp;
         paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
@@ -71,7 +74,8 @@ inline std::vector<T> GetDataFromTensorList(
       } else {
         vec_new_data.push_back(static_cast<T>(*tensor->data<int>()));
       }
-    } else if (tensor->type() == framework::proto::VarType::INT64) {
+    } else if (framework::TransToProtoVarType(tensor->dtype()) ==
+               framework::proto::VarType::INT64) {
       if (!platform::is_cpu_place(tensor->place())) {
         framework::Tensor temp;
         paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
@@ -84,7 +88,7 @@ inline std::vector<T> GetDataFromTensorList(
       PADDLE_THROW(platform::errors::InvalidArgument(
           "The dtype of Tensor in list must be int32 or int64, but received: "
           "%s",
-          tensor->type()));
+          tensor->dtype()));
     }
   }
   return vec_new_data;

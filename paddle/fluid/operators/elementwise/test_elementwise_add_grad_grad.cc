@@ -18,7 +18,7 @@
 #include "paddle/fluid/operators/elementwise/test_elementwise_op_grad_grad.h"
 #include "paddle/fluid/platform/place.h"
 
-USE_OP(elementwise_add);
+USE_OP_ITSELF(elementwise_add);
 
 namespace paddle {
 namespace operators {

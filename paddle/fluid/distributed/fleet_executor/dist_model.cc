@@ -562,7 +562,7 @@ bool DistModel::FetchResults(std::vector<DistModelTensor> *output_data,
     framework::FetchType &fetch_var =
         framework::GetFetchVariable(*scope, "fetch", idx);
     auto &fetch = BOOST_GET(framework::LoDTensor, fetch_var);
-    auto type = fetch.type();
+    auto type = framework::TransToProtoVarType(fetch.dtype());
     auto output = &(output_data->at(i));
     output->name = idx_to_fetches_[idx];
     bool rst = false;
@@ -611,27 +611,43 @@ bool DistModel::Run(const std::vector<DistModelTensor> &input_data,
 
   DistModelTimer timer;
   timer.tic();
+  double feed_elapse;
+  double fleet_exe_elapse;
+  double fetch_elapse;
 
   if (!FeedData(input_data, scope_.get())) {
     LOG(ERROR) << "DistModel failed at feeding data.";
     return false;
   }
-  double feed_elapse = timer.toc();
-  VLOG(3) << "Finish loading data, cost " << feed_elapse << "ms.";
+  if (config_.enable_timer) {
+    feed_elapse = timer.toc();
+    LOG(INFO) << "Finish loading data, cost " << feed_elapse << "ms.";
+  } else {
+    VLOG(3) << "Finish loading data.";
+  }
 
   fleet_exe->Run(carrier_id_);
-  double fleet_exe_elapse = timer.toc();
-  VLOG(3) << "Finish FleetExe running, cost " << fleet_exe_elapse - feed_elapse
-          << "ms.";
+  if (config_.enable_timer) {
+    fleet_exe_elapse = timer.toc();
+    LOG(INFO) << "Finish FleetExe running, cost "
+              << fleet_exe_elapse - feed_elapse << "ms.";
+  } else {
+    VLOG(3) << "Finish FleetExe running.";
+  }
 
   if (!FetchResults(output_data, scope_.get())) {
     LOG(ERROR) << "DistModel failed at fetching result.";
     return false;
   }
-  double fetch_elapse = timer.toc();
-  VLOG(3) << "Finish fetching data, cost " << fetch_elapse - fleet_exe_elapse
-          << "ms.";
-  VLOG(3) << "DistModel finish inf, cost " << fetch_elapse << "ms";
+  if (config_.enable_timer) {
+    fetch_elapse = timer.toc();
+    LOG(INFO) << "Finish fetching data, cost "
+              << fetch_elapse - fleet_exe_elapse << "ms.";
+    LOG(INFO) << "DistModel finish inf, cost " << fetch_elapse << "ms";
+  } else {
+    VLOG(3) << "Finish fetching data.";
+    VLOG(3) << "DistModel finish inf.";
+  }
   return true;
 }
 

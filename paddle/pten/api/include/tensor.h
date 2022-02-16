@@ -131,6 +131,14 @@ class PADDLE_API Tensor final {
   Tensor(const PlaceType& place, const std::vector<int64_t>& shape);
 
   /**
+   * @brief Construct a new Tensor object by a TensorBase pointer and name
+   *
+   * @param tensor_impl
+   */
+  Tensor(std::shared_ptr<pten::TensorBase> tensor_impl,
+         const std::string& name);
+
+  /**
    * @brief Construct a new Tensor object with name
    *
    * @note Used to adapt original execution mechanism and debug analysis
@@ -213,6 +221,14 @@ class PADDLE_API Tensor final {
    * @return false
    */
   bool is_dense_tensor() const;
+
+  /**
+   * @brief Determine whether tensor is SelectedRows
+   *
+   * @return true
+   * @return false
+   */
+  bool is_selected_rows() const;
 
   /* Part 3: Device and Backend methods */
 

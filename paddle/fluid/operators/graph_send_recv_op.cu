@@ -197,7 +197,7 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(
 #endif
   int64_t n = slice_size * index_size;
   const auto& dev_ctx = ctx.cuda_device_context();
-  int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize().x;
+  int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int64_t grid_tmp = (n + block - 1) / block;
   int64_t grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
   int64_t input_size = src_dims[0];
@@ -320,7 +320,7 @@ void GraphSendRecvGradOpCUDAKernelLaunchHelper(
 #endif
   int64_t n = slice_size * index_size;
   const auto& dev_ctx = ctx.cuda_device_context();
-  int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize().x;
+  int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int64_t grid_tmp = (n + block - 1) / block;
   int64_t grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
   int64_t input_size = src_dims[0];
@@ -360,7 +360,7 @@ class GraphSendRecvOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* src_index = ctx.Input<Tensor>("Src_index");
     auto* dst_index = ctx.Input<Tensor>("Dst_index");
-    auto index_type = src_index->type();
+    auto index_type = framework::TransToProtoVarType(src_index->dtype());
 
     if (index_type == framework::proto::VarType::INT32) {
       GraphSendRecvOpCUDAKernelLaunchHelper<DeviceContext, T, int>(
@@ -383,7 +383,7 @@ class GraphSendRecvGradOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* src_index = ctx.Input<Tensor>("Dst_index");
     auto* dst_index = ctx.Input<Tensor>("Src_index");
-    auto index_type = src_index->type();
+    auto index_type = framework::TransToProtoVarType(src_index->dtype());
 
     if (index_type == framework::proto::VarType::INT32) {
       GraphSendRecvGradOpCUDAKernelLaunchHelper<DeviceContext, T, int>(

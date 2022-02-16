@@ -16,9 +16,9 @@ limitations under the License. */
 #include <math.h>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/algorithm.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/algorithm.h"
 
 namespace paddle {
 namespace operators {
@@ -42,7 +42,8 @@ struct SparseRmspropGradFunctor {
         row_count_(row_count) {}
 
   HOSTDEVICE inline T operator()(int64_t idx) const {
-    auto row_idx = math::BinarySearch(rows_, row_count_, idx / row_numel_);
+    auto row_idx =
+        pten::funcs::BinarySearch(rows_, row_count_, idx / row_numel_);
     return row_idx >= 0 ? grad_[row_idx * row_numel_ + idx % row_numel_] : 0;
   }
 
@@ -143,14 +144,14 @@ class RmspropOpKernel : public framework::OpKernel<T> {
     auto &lr_tensor = *ctx.Input<LoDTensor>("LearningRate");
     auto &mom_tensor = *ctx.Input<LoDTensor>("Moment");
 
-    PADDLE_ENFORCE_EQ(&p_tensor, param_out,
+    PADDLE_ENFORCE_EQ(p_tensor.IsSharedBufferWith(*param_out), true,
                       platform::errors::InvalidArgument(
                           "Param and ParamOut must be the same Tensor"));
-    PADDLE_ENFORCE_EQ(&mom_tensor, moment_out,
+    PADDLE_ENFORCE_EQ(mom_tensor.IsSharedBufferWith(*moment_out), true,
                       platform::errors::InvalidArgument(
                           "Moment and MomentOut must be the same Tensor"));
     PADDLE_ENFORCE_EQ(
-        &ms_tensor, mean_square_out,
+        ms_tensor.IsSharedBufferWith(*mean_square_out), true,
         platform::errors::InvalidArgument(
             "MeanSquare and MeanSquareOut must be the same Tensor"));
 

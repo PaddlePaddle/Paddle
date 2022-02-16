@@ -17,10 +17,10 @@
 #include <string>
 #include <vector>
 
-#include "paddle/pten/core/dim.h"
+#include "paddle/pten/core/enforce.h"
+#include "paddle/pten/core/utils/dim.h"
 
 namespace pten {
-namespace platform = paddle::platform;
 namespace framework {
 
 #define PADDLE_VISIT_DDIM_BASE(rank, callback) \
@@ -42,7 +42,7 @@ namespace framework {
     PADDLE_VISIT_DDIM_BASE(8, callback);                                   \
     PADDLE_VISIT_DDIM_BASE(9, callback);                                   \
     default:                                                               \
-      PADDLE_THROW(platform::errors::Unimplemented(                        \
+      PADDLE_THROW(pten::errors::Unimplemented(                            \
           "Invalid dimension to be accessed. Now only supports access to " \
           "dimension 0 to 9, but received dimension is %d.",               \
           rank));                                                          \
@@ -98,14 +98,14 @@ class DDim {
   int64_t& at(int idx) {
     PADDLE_ENFORCE_GE(idx,
                       0,
-                      platform::errors::InvalidArgument(
+                      pten::errors::InvalidArgument(
                           "Invalid DDim index to be accessed. The valid index "
                           "is between 0 and %d, but received index is %d.",
                           rank_,
                           idx));
     PADDLE_ENFORCE_LT(idx,
                       rank_,
-                      platform::errors::InvalidArgument(
+                      pten::errors::InvalidArgument(
                           "Invalid DDim index to be accessed. The valid index "
                           "is between 0 and %d, but received index is %d.",
                           rank_,
@@ -116,14 +116,14 @@ class DDim {
   int64_t at(int idx) const {
     PADDLE_ENFORCE_GE(idx,
                       0,
-                      platform::errors::InvalidArgument(
+                      pten::errors::InvalidArgument(
                           "Invalid DDim index to be accessed. The valid index "
                           "is between 0 and %d, but received index is %d.",
                           rank_,
                           idx));
     PADDLE_ENFORCE_LT(idx,
                       rank_,
-                      platform::errors::InvalidArgument(
+                      pten::errors::InvalidArgument(
                           "Invalid DDim index to be accessed. The valid index "
                           "is between 0 and %d, but received index is %d.",
                           rank_,

@@ -13,7 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/pten/core/selected_rows.h"
+
 #include "paddle/pten/core/utils/data_type.h"
+
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/memory/memcpy.h"
 
 namespace pten {
 
@@ -90,6 +94,12 @@ struct TensorFillVisitor {
   int64_t dst_offset_;
   int64_t size_;
 };
+
+void* SelectedRows::AllocateFrom(Allocator* allocator,
+                                 DataType dtype,
+                                 size_t requested_size) {
+  return value_->AllocateFrom(allocator, dtype, requested_size);
+}
 
 bool SelectedRows::HasKey(int64_t key) const {
   return std::find(rows_.begin(), rows_.end(), key) == rows_.end() ? false

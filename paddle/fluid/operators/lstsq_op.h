@@ -18,15 +18,15 @@
 #include <algorithm>
 #include <complex>
 #include "paddle/fluid/operators/eig_op.h"
-#include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/math/eigen_values_vectors.h"
 #include "paddle/fluid/operators/math/lapack_function.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/matrix_solve.h"
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/operators/triangular_solve_op.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/complex_functors.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 #define EPSILON 1e-6
 
@@ -46,7 +46,7 @@ template <typename DeviceContext, typename T>
 class LstsqCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    using ValueType = math::Real<T>;
+    using ValueType = pten::funcs::Real<T>;
 
     const Tensor& x = *context.Input<Tensor>("X");
     auto y = context.Input<Tensor>("Y");
@@ -169,7 +169,7 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
                         &rwkopt, &info);
     }
 
-    lwork = std::max<int>(1, static_cast<int>(math::Real<T>(wkopt)));
+    lwork = std::max<int>(1, static_cast<int>(pten::funcs::Real<T>(wkopt)));
     Tensor work;
     work.Resize(framework::make_ddim({lwork}));
     T* work_data = work.mutable_data<T>(context.GetPlace());
@@ -177,7 +177,7 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
     // "rwork" only used for complex inputs and "gelsy/gelsd/gelss" drivers
     Tensor rwork;
     ValueType* rwork_data = nullptr;
-    if (framework::IsComplexType(x.type()) &&
+    if (framework::IsComplexType(framework::TransToProtoVarType(x.dtype())) &&
         driver != LapackDriverType::Gels) {
       int rwork_len = 0;
       if (driver == LapackDriverType::Gelsy) {

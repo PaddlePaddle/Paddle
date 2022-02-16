@@ -17,10 +17,10 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sequence_padding.h"
 #include "paddle/fluid/operators/math/sequence_scale.h"
 #include "paddle/fluid/platform/dynload/warpctc.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -138,7 +138,7 @@ class WarpCTCFunctor {
         framework::make_ddim({static_cast<int64_t>(workspace_elements)}),
         dev_ctx);
     T* workspace_data = workspace.data<T>();
-    math::SetConstant<DeviceContext, T>()(
+    pten::funcs::SetConstant<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), &workspace,
         static_cast<T>(0));
 
@@ -334,7 +334,7 @@ class WarpCTCKernel : public framework::OpKernel<T> {
     T* warpctc_grad_data =
         warpctc_grad->mutable_data<T>(warpctc_logits.dims(), ctx.GetPlace());
 
-    math::SetConstant<DeviceContext, T>()(
+    pten::funcs::SetConstant<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), warpctc_grad,
         static_cast<T>(0));
 

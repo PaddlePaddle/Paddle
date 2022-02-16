@@ -66,8 +66,8 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
     const std::string padding_algorithm =
         ctx.Attr<std::string>("padding_algorithm");
 
-    Tensor transformed_input_channel(input->type());
-    Tensor transformed_output(output->type());
+    Tensor transformed_input_channel(input->dtype());
+    Tensor transformed_output(output->dtype());
     transformed_input_channel = *input;
     transformed_output = *output;
     T* output_data = transformed_output.data<T>();

@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/platform/complex.h"
-#include "paddle/pten/core/array.h"
+#include "paddle/pten/core/utils/array.h"
 #include "paddle/pten/kernels/funcs/elementwise_functor.h"
 
 namespace paddle {
@@ -234,21 +234,22 @@ struct FMinFunctor<int64_t> {
 
 template <typename T>
 struct MinGradXFunctor {
-  inline HOSTDEVICE T operator()(const T& x, const T& y, const T& dout) const {
+  inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
     return dout * static_cast<T>(x < y);
   }
 };
 template <typename T>
 struct MinGradYFunctor {
-  inline HOSTDEVICE T operator()(const T& x, const T& y, const T& dout) const {
+  inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
     return dout * static_cast<T>(x >= y);
   }
 };
 
 template <typename InT, typename OutT>
 struct MinGradXYFunctor {
-  inline HOSTDEVICE pten::framework::Array<OutT, 2> operator()(
-      const InT& x, const InT& y, const InT& dout) {
+  inline HOSTDEVICE pten::framework::Array<OutT, 2> operator()(const InT x,
+                                                               const InT y,
+                                                               const InT dout) {
     pten::framework::Array<OutT, 2> outs;
     // dx = dout * (x < y)
     outs[0] = static_cast<OutT>(dout * static_cast<InT>(x < y));
@@ -303,21 +304,22 @@ struct MulGradXYFunctor<Complex<InT>, Complex<OutT>> {
 // Ternary compare
 template <typename T>
 struct MaxGradXFunctor {
-  inline HOSTDEVICE T operator()(const T& x, const T& y, const T& dout) const {
+  inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
     return dout * static_cast<T>(x > y);
   }
 };
 template <typename T>
 struct MaxGradYFunctor {
-  inline HOSTDEVICE T operator()(const T& x, const T& y, const T& dout) const {
+  inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
     return dout * static_cast<T>(x <= y);
   }
 };
 
 template <typename InT, typename OutT>
 struct MaxGradXYFunctor {
-  inline HOSTDEVICE pten::framework::Array<OutT, 2> operator()(
-      const InT& x, const InT& y, const InT& dout) {
+  inline HOSTDEVICE pten::framework::Array<OutT, 2> operator()(const InT x,
+                                                               const InT y,
+                                                               const InT dout) {
     pten::framework::Array<OutT, 2> outs;
     // dx = dout * (x > y)
     outs[0] = static_cast<OutT>(dout * static_cast<InT>(x > y));

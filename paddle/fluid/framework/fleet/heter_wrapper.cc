@@ -27,7 +27,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/fleet/heter_wrapper.h"
-#ifdef PADDLE_WITH_PSLIB
+#if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/device_worker.h"
 
 namespace paddle {
@@ -90,7 +91,8 @@ void HeterWrapper::SerializeToReq(const std::string& varname, Scope* scope,
   LoDTensor* tensor = var->GetMutable<LoDTensor>();
   req_var->set_varname(varname);
   req_var->set_type(LOD_TENSOR);
-  req_var->set_data_type(static_cast<VariableMessage::Type>(tensor->type()));
+  req_var->set_data_type(static_cast<VariableMessage::Type>(
+      framework::TransToProtoVarType(tensor->dtype())));
 
   for (auto& dim : framework::vectorize(tensor->dims())) {
     req_var->add_dims(dim);
@@ -108,21 +110,27 @@ void HeterWrapper::SerializeToReq(const std::string& varname, Scope* scope,
 
   auto* req_data = req_var->mutable_data();
   req_data->clear();
-  req_data->resize(tensor->numel() * SizeOfType(tensor->type()));
+  req_data->resize(tensor->numel() *
+                   SizeOfType(framework::TransToProtoVarType(tensor->dtype())));
   char* data_ptr = const_cast<char*>(req_data->data());
 
   if (platform::is_cpu_place(tensor->place())) {
     memcpy(data_ptr, tensor->data(),
-           tensor->numel() * SizeOfType(tensor->type()));
+           tensor->numel() *
+               SizeOfType(framework::TransToProtoVarType(tensor->dtype())));
   } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    memory::Copy(platform::CPUPlace(), data_ptr, tensor->place(),
-                 tensor->data(), tensor->numel() * SizeOfType(tensor->type()),
-                 nullptr);
+    memory::Copy(
+        platform::CPUPlace(), data_ptr, tensor->place(), tensor->data(),
+        tensor->numel() *
+            SizeOfType(framework::TransToProtoVarType(tensor->dtype())),
+        nullptr);
 #endif
 #ifdef PADDLE_WITH_XPU
-    memory::Copy(platform::CPUPlace(), data_ptr, tensor->place(),
-                 tensor->data(), tensor->numel() * SizeOfType(tensor->type()));
+    memory::Copy(
+        platform::CPUPlace(), data_ptr, tensor->place(), tensor->data(),
+        tensor->numel() *
+            SizeOfType(framework::TransToProtoVarType(tensor->dtype())));
 #endif
   }
 }
@@ -152,15 +160,18 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope,
   }
   tensor->set_lod(lod);
 
-  void* tensor_data =
-      tensor->mutable_data(place, ToVarType(req_var.data_type()));
+  void* tensor_data = tensor->mutable_data(
+      place, framework::TransToPtenDataType(ToVarType(req_var.data_type())));
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   memory::Copy(place, tensor_data, platform::CPUPlace(), req_var.data().data(),
-               tensor->numel() * SizeOfType(tensor->type()), stream);
+               tensor->numel() *
+                   SizeOfType(framework::TransToProtoVarType(tensor->dtype())),
+               stream);
 #else
   memcpy(tensor_data, req_var.data().data(),
-         tensor->numel() * SizeOfType(tensor->type()));
+         tensor->numel() *
+             SizeOfType(framework::TransToProtoVarType(tensor->dtype())));
 #endif
 }
 #endif
@@ -190,15 +201,17 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope,
   }
   tensor->set_lod(lod);
 
-  void* tensor_data =
-      tensor->mutable_data(place, ToVarType(req_var.data_type()));
+  void* tensor_data = tensor->mutable_data(
+      place, framework::TransToPtenDataType(ToVarType(req_var.data_type())));
 
 #ifdef PADDLE_WITH_XPU
   memory::Copy(place, tensor_data, platform::CPUPlace(), req_var.data().data(),
-               tensor->numel() * SizeOfType(tensor->type()));
+               tensor->numel() *
+                   SizeOfType(framework::TransToProtoVarType(tensor->dtype())));
 #else
   memcpy(tensor_data, req_var.data().data(),
-         tensor->numel() * SizeOfType(tensor->type()));
+         tensor->numel() *
+             SizeOfType(framework::TransToProtoVarType(tensor->dtype())));
 #endif
 }
 

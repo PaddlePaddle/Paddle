@@ -14,9 +14,9 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/index_sample_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 #define PREDEFINED_BLOCK_SIZE_X 512
 #define PREDEFINED_BLOCK_SIZE 1024
@@ -27,10 +27,10 @@ namespace operators {
 
 namespace {
 void LimitGridDim(const framework::ExecutionContext& ctx, dim3* grid_dim) {
-  dim3 max_grid_dim = ctx.template device_context<platform::CUDADeviceContext>()
+  auto max_grid_dim = ctx.template device_context<platform::CUDADeviceContext>()
                           .GetCUDAMaxGridDimSize();
-  grid_dim->x = grid_dim->x < max_grid_dim.x ? grid_dim->x : max_grid_dim.x;
-  grid_dim->y = grid_dim->y < max_grid_dim.y ? grid_dim->y : max_grid_dim.y;
+  grid_dim->x = grid_dim->x < max_grid_dim[0] ? grid_dim->x : max_grid_dim[0];
+  grid_dim->y = grid_dim->y < max_grid_dim[1] ? grid_dim->y : max_grid_dim[1];
 }
 }
 
@@ -85,7 +85,7 @@ class IndexSampleKernel<platform::CUDADeviceContext, T>
     auto* index = ctx.Input<LoDTensor>("Index");
     auto* output = ctx.Output<LoDTensor>("Out");
 
-    const auto& index_type = index->type();
+    const auto& index_type = framework::TransToProtoVarType(index->dtype());
     bool index_type_match = index_type == framework::proto::VarType::INT64 ||
                             index_type == framework::proto::VarType::INT32;
     PADDLE_ENFORCE_EQ(index_type_match, true,
@@ -144,7 +144,7 @@ class IndexSampleGradKernel<platform::CUDADeviceContext, T>
     const auto* output_grad_data = output_grad->data<T>();
     auto* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
 
-    const auto& index_type = index->type();
+    const auto& index_type = framework::TransToProtoVarType(index->dtype());
     bool index_type_match = index_type == framework::proto::VarType::INT64 ||
                             index_type == framework::proto::VarType::INT32;
     PADDLE_ENFORCE_EQ(index_type_match, true,
@@ -177,7 +177,7 @@ class IndexSampleGradKernel<platform::CUDADeviceContext, T>
                   (batch_size + block_dim.y - 1) / block_dim.y);
     LimitGridDim(ctx, &grid_dim);
 
-    math::SetConstant<platform::CUDADeviceContext, T> set_zero;
+    pten::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     set_zero(dev_ctx, input_grad, static_cast<T>(0));
 

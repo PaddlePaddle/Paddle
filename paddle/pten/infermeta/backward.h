@@ -15,15 +15,14 @@ limitations under the License. */
 #pragma once
 
 #include <tuple>
-#include "paddle/pten/core/tensor_meta.h"
+
+#include "paddle/pten/core/meta_tensor.h"
 
 namespace pten {
 
-std::tuple<DenseTensorMeta, DenseTensorMeta> MatmulGradInferMeta(
-    const DenseTensorMeta& x_meta,
-    const DenseTensorMeta& y_meta,
-    const DenseTensorMeta& out_grad_meta,
-    bool transpose_x,
-    bool transpose_y);
+void GeneralBinaryGradInferMeta(const MetaTensor& x,
+                                const MetaTensor& y,
+                                MetaTensor* dx,
+                                MetaTensor* dy);
 
 }  // namespace pten

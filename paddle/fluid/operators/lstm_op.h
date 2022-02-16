@@ -76,7 +76,7 @@ class LSTMKernel : public framework::OpKernel<T> {
       Tensor b = *bias;
       b.Resize({bias->numel(), 1});
       Tensor gate_bias = b.Slice(0, 4 * frame_size);
-      math::RowwiseAdd<DeviceContext, T> add_bias;
+      pten::funcs::RowwiseAdd<DeviceContext, T> add_bias;
       add_bias(device_ctx, *batch_gate, gate_bias, batch_gate);
     }
 
@@ -210,7 +210,7 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     auto* c0_g = ctx.Output<Tensor>(framework::GradVarName("C0"));
 
     auto& device_ctx = ctx.template device_context<DeviceContext>();
-    math::SetConstant<DeviceContext, T> zero;
+    pten::funcs::SetConstant<DeviceContext, T> zero;
     if (weight_g) {
       weight_g->mutable_data<T>(ctx.GetPlace());
       zero(device_ctx, weight_g, static_cast<T>(0.0));
@@ -380,7 +380,7 @@ class LSTMGradKernel : public framework::OpKernel<T> {
       Tensor b_g = *bias_g;
       b_g.Resize({bias_g->numel(), 1});
       Tensor gate_bias_g = b_g.Slice(0, 4 * frame_size);
-      math::ColwiseSum<DeviceContext, T> col_sum;
+      pten::funcs::ColwiseSum<DeviceContext, T> col_sum;
       col_sum(device_ctx, batch_gate_g, &gate_bias_g);
     }
 

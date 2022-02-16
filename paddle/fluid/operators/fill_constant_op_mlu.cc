@@ -63,7 +63,8 @@ class FillConstantMLUKernel : public framework::OpKernel<T> {
       framework::Tensor mlu_tensor;
       auto tmp_place = value_tensor->place();
       if (platform::is_mlu_place(tmp_place)) {
-        TensorCopySync(*value_tensor, platform::CPUPlace(), &mlu_tensor);
+        framework::TensorCopySync(*value_tensor, platform::CPUPlace(),
+                                  &mlu_tensor);
         tensor_data = mlu_tensor.data<T>();
       }
       value = tensor_data[0];
@@ -71,8 +72,9 @@ class FillConstantMLUKernel : public framework::OpKernel<T> {
 
     auto shape = GetShape(ctx);
     out_var->mutable_data<T>(shape, ctx.GetPlace());
-    MLUCnnlTensorDesc output_desc(*out_var, CNNL_LAYOUT_ARRAY,
-                                  ToCnnlDataType(out_var->type()));
+    MLUCnnlTensorDesc output_desc(
+        *out_var, CNNL_LAYOUT_ARRAY,
+        ToCnnlDataType(framework::TransToProtoVarType(out_var->dtype())));
     MLUCnnl::Fill(ctx, value, output_desc.get(), GetBasePtr(out_var));
   }
 };

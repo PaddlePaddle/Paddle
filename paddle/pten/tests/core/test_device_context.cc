@@ -25,43 +25,29 @@ limitations under the License. */
 namespace pten {
 namespace tests {
 
+class InferenceCPUContext : public CPUContext {
+ public:
+  void SetEigenDevice(Eigen::DefaultDevice* eigen_device) {
+    CPUContext::SetEigenDevice(eigen_device);
+  }
+};
+
 TEST(DeviceContext, cpu_context) {
   std::cout << "test training scenarios" << std::endl;
   {
     pten::CPUContext ctx;
-    CHECK(ctx.eigen_device() != nullptr);
+    ctx.Init();
+    EXPECT_TRUE(ctx.eigen_device() != nullptr);
   }
 
   std::cout << "test inference scenarios" << std::endl;
   Eigen::DefaultDevice* device = new Eigen::DefaultDevice();
   {
-    pten::CPUContextResource ctx_res{device};
-    pten::CPUContext ctx(ctx_res);
-    CHECK(ctx.eigen_device() != nullptr);
-  }
-  {
-    pten::CPUContextResource ctx_res{nullptr};
-    pten::CPUContext ctx(ctx_res);
+    InferenceCPUContext ctx;
     ctx.SetEigenDevice(device);
-    CHECK(ctx.eigen_device() != nullptr);
+    EXPECT_TRUE(ctx.eigen_device() != nullptr);
   }
   delete device;
-
-  std::cout << "test copy constructor" << std::endl;
-  {
-    pten::CPUContext ctx1;
-    pten::CPUContext ctx2(ctx1);
-    CHECK_EQ(ctx1.eigen_device(), ctx2.eigen_device());
-  }
-
-  std::cout << "test move constructor" << std::endl;
-  {
-    pten::CPUContext ctx1 = pten::CPUContext();
-    auto* eigen_device1 = ctx1.eigen_device();
-    pten::CPUContext ctx2(std::move(ctx1));
-    auto* eigen_device2 = ctx2.eigen_device();
-    CHECK_EQ(eigen_device1, eigen_device2);
-  }
 }
 
 }  // namespace tests

@@ -1,4 +1,4 @@
-set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapper prune
+set(PYBIND_DEPS init pybind python proto_desc memory executor fleet_wrapper box_wrapper metrics prune
   feed_fetch_method pass generate_pass pass_builder parallel_executor profiler layer tracer engine scope_pool
   analysis_predictor imperative_profiler imperative_flag save_load_util dlpack_tensor device_context
   gloo_wrapper infer_io_utils heter_wrapper generator op_version_registry ps_gpu_wrapper custom_operator
@@ -63,6 +63,7 @@ set(PYBIND_SRCS
   ps_gpu_wrapper_py.cc
   gloo_wrapper_py.cc
   box_helper_py.cc
+  metrics_py.cc
   data_set_py.cc
   imperative.cc
   ir.cc
@@ -152,7 +153,7 @@ if(WITH_PYTHON)
   set(tmp_eager_impl_file ${eager_impl_file}.tmp)
 
   set(OP_IMPL_DEPS op_function_generator)
-  set(EAGER_OP_IMPL_DEPS eager_op_function_generator)
+  set(EAGER_OP_IMPL_DEPS eager_op_function_generator eager_final_state_python_c_codegen)
 
   if(WIN32)
     if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
@@ -276,7 +277,7 @@ if(WITH_PYTHON)
   if(NOT ON_INFER)
     cc_library(paddle_eager
     SRCS eager.cc eager_functions.cc eager_method.cc eager_properties.cc eager_utils.cc
-    DEPS eager_api autograd_meta backward grad_node_info pten op_function_common dygraph_function dygraph_node accumulation_node global_utils utils python)
+    DEPS eager_api autograd_meta backward grad_node_info pten op_function_common final_dygraph_function final_dygraph_node dygraph_function dygraph_node accumulation_node global_utils utils python)
     add_dependencies(paddle_eager eager_codegen)
     add_dependencies(paddle_eager eager_op_function_generator_cmd)
     list(APPEND PYBIND_DEPS paddle_eager)
@@ -284,7 +285,7 @@ if(WITH_PYTHON)
 
   cc_library(paddle_pybind SHARED
     SRCS ${PYBIND_SRCS}
-    DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+    DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} ${GLOB_DEV_LIB})
 
   if(NOT APPLE AND NOT WIN32)
     target_link_libraries(paddle_pybind rt)
