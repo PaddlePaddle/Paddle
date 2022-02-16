@@ -26,7 +26,6 @@ from paddle.fluid import core
 from paddle.fluid import unique_name
 from test_imperative_base import new_program_scope
 from jit_load_rename_var import rename_var_with_generator
-from paddle.fluid.framework import _test_eager_guard
 
 LOADED_VAR_SUFFIX = ".load_0"
 
@@ -297,7 +296,7 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
 
         return static_x_data, static_out
 
-    def func_test_mnist_train_no_params_filename(self):
+    def test_mnist_train_no_params_filename(self):
         self.save_dirname = "mnist.inference.model.noname"
         self.model_filename = None
         self.params_filename = None
@@ -326,12 +325,7 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
             key = dict_old_new_init[key]
             self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-4))
 
-    def test_mnist_train_no_params_filename(self):
-        self.func_test_mnist_train_no_params_filename()
-        with _test_eager_guard():
-            self.func_test_mnist_train_no_params_filename()
-
-    def func_test_mnist_train_with_params_filename(self):
+    def test_mnist_train_with_params_filename(self):
         self.save_dirname = "mnist.inference.model"
         self.model_filename = "mnist.model"
         self.params_filename = "mnist.params"
@@ -358,12 +352,7 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
             key = dict_old_new_init[key]
             self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-4))
 
-    def test_mnist_train_with_params_filename(self):
-        self.func_test_mnist_train_with_params_filename()
-        with _test_eager_guard():
-            self.func_test_mnist_train_with_params_filename()
-
-    def func_test_mnist_infer_no_params_filename(self):
+    def test_mnist_infer_no_params_filename(self):
         self.save_dirname = "mnist.inference.model.noname"
         self.model_filename = None
         self.params_filename = None
@@ -382,11 +371,6 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
 
         np.testing.assert_array_almost_equal(static_out, dy_out)
         self.assertTrue(np.allclose(static_out, dy_out, atol=1e-04))
-
-    def test_mnist_infer_no_params_filename(self):
-        self.func_test_mnist_infer_no_params_filename()
-        with _test_eager_guard():
-            self.func_test_mnist_infer_no_params_filename()
 
 
 if __name__ == '__main__':
