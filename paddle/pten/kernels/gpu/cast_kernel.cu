@@ -39,6 +39,7 @@ template <typename InT, typename OutT>
 void CastCUDAKernelImpl(const GPUContext& dev_ctx,
                         const DenseTensor& x,
                         DenseTensor* out) {
+  if (x.numel() == 0) return;
   std::vector<const DenseTensor*> inputs;
   std::vector<DenseTensor*> outputs;
   inputs.emplace_back(&x);

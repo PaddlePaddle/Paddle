@@ -63,6 +63,8 @@ class CastOpKernel : public framework::OpKernel<InT> {
     out->mutable_data(dev_ctx.GetPlace(),
                       static_cast<framework::proto::VarType::Type>(out_dtype));
 
+    if (in->numel() == 0) return;
+
     auto pt_out_dtype = framework::TransToPtenDataType(
         static_cast<framework::proto::VarType::Type>(out_dtype));
 
