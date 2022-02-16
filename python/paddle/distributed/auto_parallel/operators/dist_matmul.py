@@ -257,7 +257,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
         kwargs['Y@GRAD'])
 
     X_var = main_block.var(kwargs['X'][0])
-    Y_var = main_block.var(kwargs['Y'][0])
+    Y_var = main_block._var_recursive(kwargs['Y'][0])
     Out_grad = main_block.var(kwargs['Out@GRAD'][0])
     Y_grad = main_block.var(kwargs['Y@GRAD'][0])
 
@@ -433,7 +433,8 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
 
 def _init_param_sync(Weight_var, dist_op_context, startup_block, ctx, rank_id):
 
-    assert Weight_var.name not in dist_op_context.already_init_sync_vars
+    assert Weight_var.name not in dist_op_context.already_init_sync_vars, "{} is in {}.".format(
+        Weight_var.name, dist_op_context.already_init_sync_vars)
     assert startup_block.has_var(Weight_var.name)
     dist_op_context.already_init_sync_vars.add(Weight_var.name)
     param = startup_block.var(Weight_var.name)
@@ -1071,7 +1072,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
                 output_name)
 
         X_var = main_block.var(kwargs['X'][0])
-        Weight_var = main_block.var(kwargs['Y'][0])
+        Weight_var = main_block._var_recursive(kwargs['Y'][0])
         Out_var = main_block.var(kwargs['Out'][0])
 
         # TODO infer logic comm presentation
@@ -1290,7 +1291,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
                 output_name)
 
         X_var = main_block.var(kwargs['X'][0])
-        Weight_var = main_block.var(kwargs['Y'][0])
+        Weight_var = main_block._var_recursive(kwargs['Y'][0])
         Out_var = main_block.var(kwargs['Out'][0])
 
         # TODO infer logic comm presentation

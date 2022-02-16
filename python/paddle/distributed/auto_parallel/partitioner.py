@@ -29,6 +29,9 @@ from .utils import print_program_with_dist_attr, is_forward_op, is_backward_op
 from .operators.common import BACKWARD_ONLY_DIST_OPS
 
 __varname_not_in_block__ = ["lod_tensor_blocking_queue_0"]
+__not_shape_var_type__ = [
+    core.VarDesc.VarType.READER, core.VarDesc.VarType.STEP_SCOPES
+]
 
 
 class Partitioner(object):
@@ -162,20 +165,23 @@ class Partitioner(object):
         dist_op_context.set_dst_main_program(partitioned_main_prog)
 
         for idx in range(self._dist_context.block_state.nblock):
+            ref_block = serial_main_program.blocks[idx]
 
             if idx == 0:
-                dist_op_context.set_work_block(partitioned_main_prog.blocks[0])  
+                dist_op_context.set_work_block(partitioned_main_prog.blocks[0])
+                target_block = partitioned_main_prog.blocks[0]
             else:
-                ref_block = serial_main_program.blocks[idx]
-                new_block = partitioned_main_prog._create_block(parent_idx=ref_block.parent_idx)
-                assert ref_block.idx == new_block.idx
-                new_block._set_forward_block_idx(ref_block.forward_block_idx)
-                dist_op_context.set_work_block(new_block)  
+                target_block = partitioned_main_prog._create_block(
+                    parent_idx=ref_block.parent_idx)
+                assert ref_block.idx == target_block.idx
+                target_block._set_forward_block_idx(ref_block.forward_block_idx)
+                dist_op_context.set_work_block(target_block)
 
-            self.partition_block(ref_block, new_block)
-            
+            self.partition_block(ref_block, target_block)
+
         partitioned_main_prog.current_block_idx = 0
-        assert len(partitioned_main_prog.blocks) == len(serial_main_program.blocks)
+        assert len(partitioned_main_prog.blocks) == len(
+            serial_main_program.blocks)
 
         partitioned_params_and_grads = []
         for p, g in params_and_grads:
@@ -185,13 +191,13 @@ class Partitioner(object):
                 dist_g = None
             else:
                 assert g.name in self._serial2dist_varname_mapping
-                dist_g = self._get_dist_var_by_serial_var(g, partitioned_main_prog)
+                dist_g = self._get_dist_var_by_serial_var(g,
+                                                          partitioned_main_prog)
             partitioned_params_and_grads.append((dist_p, dist_g))
 
         return partitioned_main_prog, partitioned_params_and_grads
 
-
-    def partition_block(self, ref_block, target_block)
+    def partition_block(self, ref_block, target_block):
 
         dist_op_context = self._dist_context.dist_op_context
         serial_ops = ref_block.ops
@@ -249,7 +255,6 @@ class Partitioner(object):
                     "partitioner only support forward op and backward op, but got {}".
                     format(str(op)))
 
-
     def _is_valid_annotated_program(self, program):
 
         # TODO (ZJ-LIANG) should check all block
@@ -260,7 +265,7 @@ class Partitioner(object):
         ]
         var_dist_attrs = [
             self._dist_context.get_tensor_dist_attr_for_program(var)
-            for var in vars_
+            for var in vars_ if (var.type not in __not_shape_var_type__)
         ]
 
         all_ops_annotated = all(dist_attr is not None
@@ -275,8 +280,9 @@ class Partitioner(object):
         block_idx = serial_var.block.idx
         target_block = partitioned_main_prog.blocks[block_idx]
         dist_var_name = self._serial2dist_varname_mapping[serial_var.name]
-        assert target_block.has_var(dist_var_name) 
+        assert target_block.has_var(dist_var_name)
         return target_block.var(dist_var_name)
+
 
 def _get_dist_shape(var, dist_attr):
 
@@ -363,7 +369,7 @@ def _partition_var(dist_context, src_block, dst_block, src_varname,
     """
     src_var = src_block.var(src_varname)
 
-    if src_var.type == core.VarDesc.VarType.READER:
+    if src_var.type in __not_shape_var_type__:
         dst_block.create_var(
             type=src_var.type,
             name=dst_varname,

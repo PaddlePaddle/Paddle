@@ -60,7 +60,7 @@ class DistributedContext:
         self._node_id_to_tensor_id = {}
         self._node_id_to_op_id = {}
         # Other data members
-        self._dist_op_context = DistributedOperatorContext()
+        self.dist_op_context = DistributedOperatorContext()
         self._process_meshes = []
         self._serial_ordered_nodes = []
         self._tensor_id_to_tensor_node_ids = {}
@@ -591,18 +591,17 @@ class DistributedOperatorContext:
 
 
 class BlockState(object):
-
     def __init__(self):
         self.nblock = 0
         self.forward_indices = []
         self.backward_indices = []
         self.backward_to_forward_index_map = {}
 
-    def parse_forward_blocks(program):
+    def parse_forward_blocks(self, program):
 
         while program.current_block_idx != 0:
             program._rollback()
-        
+
         assert program.current_block_idx == 0
 
         for idx, block in enumerate(program.blocks):
@@ -613,11 +612,10 @@ class BlockState(object):
 
         assert self.nblock >= 1
 
-    def parse_backward_blocks(program):
+    def parse_backward_blocks(self, program):
 
         assert 0 in self.forward_indices
         self.backward_to_forward_index_map[0] = 0
-        
 
         for idx, block in enumerate(program.blocks):
 
@@ -630,7 +628,4 @@ class BlockState(object):
             self.backward_to_forward_index_map[idx] = block.forward_block_idx
             self.nblock += 1
 
-
         assert self.nblock == len(program.blocks)
-
-            
