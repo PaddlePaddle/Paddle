@@ -103,7 +103,7 @@ class DeviceContext {
    * @brief Allocate host memory for tensor.
    */
   void* HostAlloc(TensorBase* tensor,
-                  DataType dtype = DataType::UNDEFINED,
+                  DataType dtype,
                   size_t requested_size = 0) const;
 
   template <typename T>
