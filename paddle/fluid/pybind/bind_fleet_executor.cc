@@ -151,8 +151,8 @@ void BindFleetExecutor(py::module* m) {
       .def_readwrite("current_endpoint", &DistModelConfig::current_endpoint)
       .def_readwrite("nranks", &DistModelConfig::nranks)
       .def_readwrite("local_rank", &DistModelConfig::local_rank)
-      .def_readwrite("ring_id_to_ranks_", &DistModelConfig::ring_id_to_ranks_)
-      .def_readwrite("rank_to_ring_ids_", &DistModelConfig::rank_to_ring_ids_)
+      .def_readwrite("ring_id_to_ranks", &DistModelConfig::ring_id_to_ranks_)
+      .def_readwrite("rank_to_ring_ids", &DistModelConfig::rank_to_ring_ids_)
       .def_readwrite("enable_timer", &DistModelConfig::enable_timer);
 
   py::class_<DistModel>(*m, "DistModel")
