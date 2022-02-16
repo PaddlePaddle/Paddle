@@ -189,6 +189,8 @@ class EagerUtils {
   static void CheckAndRetainGrad(const paddle::experimental::Tensor& tensor);
   static void CheckAndRetainGrad(
       const std::vector<paddle::experimental::Tensor>& tensors);
+  static std::shared_ptr<egr::GradNodeBase> GetGradAccumulationNode(
+      const paddle::experimental::Tensor& tensor);
 };
 
 }  // namespace egr
