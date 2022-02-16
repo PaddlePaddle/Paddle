@@ -156,35 +156,36 @@ class AutoAlign:
         check_step = -1
         result = True
         for step in dist_dict.keys():
-            firststep = next(iter(dist_dict.keys()))
-            avg_loss = sum(dist_dict[step]["loss"]) / len(dist_dict[step][
-                "loss"])
-            serial_loss = serial_dict[step]["loss"]
-            print('Step: {}, serial loss: {}, average loss: {}'.format(
-                step, serial_loss, avg_loss))
-            if avg_loss != serial_loss:
-                diff_step = step
-                print("The step {} loss is different".format(step))
-                if diff_step == firststep:
-                    print(
-                        'Check whether the parallel mode is DP, because DP may make a little different.'
-                    )
-                    check_step = firststep
-                    print('Check step {} forward'.format(check_step))
-                    diff_info = []
-                    diff_info.append(check_step)
-                    diff_info.append('forward')
-                    self._save_diff_info(diff_info)
-                else:
-                    check_step = diff_step - 1
-                    print('Check step {} backward'.format(check_step))
-                    diff_info = []
-                    diff_info.append(check_step)
-                    diff_info.append('backward')
-                    print(diff_info)
-                    self._save_diff_info(diff_info)
-                result = False
-                break
+            first_step = next(iter(dist_dict.keys()))
+            if dist_dict[step]["loss"]:
+                avg_loss = sum(dist_dict[step]["loss"]) / len(dist_dict[step][
+                    "loss"])
+                serial_loss = serial_dict[step]["loss"]
+                print('Step: {}, serial loss: {}, average loss: {}'.format(
+                    step, serial_loss, avg_loss))
+                if avg_loss != serial_loss:
+                    diff_step = step
+                    print("The step {} loss is different".format(step))
+                    if diff_step == first_step:
+                        print(
+                            'Check whether the parallel mode is DP, because DP may make a little different.'
+                        )
+                        check_step = first_step
+                        print('Check step {} forward'.format(check_step))
+                        diff_info = []
+                        diff_info.append(check_step)
+                        diff_info.append('forward')
+                        self._save_diff_info(diff_info)
+                    else:
+                        check_step = diff_step - 1
+                        print('Check step {} backward'.format(check_step))
+                        diff_info = []
+                        diff_info.append(check_step)
+                        diff_info.append('backward')
+                        print(diff_info)
+                        self._save_diff_info(diff_info)
+                    result = False
+                    break
         if result:
             print("Loss is the same.")
 
@@ -216,7 +217,7 @@ class AutoAlign:
         return partition_param_list[0][0]
 
     def find_diff_info(self, dist_tensor_file_path_list, serial_path,
-                       dist_attr_file_path, diff_step):
+                       dist_attr_file_path_list, diff_step):
         """
         Find different step and tensor.
 
@@ -230,32 +231,37 @@ class AutoAlign:
         with open(serial_path, 'rb') as f:
             serial_dict = pickle.load(f)
         dist_dict = OrderedDict()
-        with open(dist_attr_file_path, 'rb') as f:
-            dist_attr_dict = pickle.load(f)
+
+        dist_attr_dict = {}
+        for file_path in dist_attr_file_path_list:
+            with open(file_path, 'rb') as f:
+                tensor_dict = pickle.load(f)
+                for tensor_name in tensor_dict.keys():
+                    dist_attr_dict[tensor_name] = tensor_dict[tensor_name]
+
+        dist_dict[diff_step] = {}
         for file_path in dist_tensor_file_path_list:
             with open(file_path, 'rb') as f:
                 tensor_dict = pickle.load(f)
-                dist_dict[diff_step] = {}
                 for tensor_name in tensor_dict[diff_step].keys():
                     if tensor_name not in dist_dict[diff_step].keys():
                         dist_dict[diff_step][tensor_name] = []
                         dist_dict[diff_step][tensor_name].append(tensor_dict[
                             diff_step][tensor_name])
-                    dist_dict[diff_step][tensor_name].append(tensor_dict[
-                        diff_step][tensor_name])
-        print(serial_dict[diff_step].keys())
+
         for tensor_name in serial_dict[diff_step].keys():
             if tensor_name == "loss":
                 continue
             serial_tensor = serial_dict[diff_step][tensor_name]
-            dist_tensor_list = dist_dict[diff_step][tensor_name]
-            dist_attr = dist_attr_dict[tensor_name]
-            merged_tensor = self._merge_parameter_with_dist_attr(
-                dist_tensor_list, dist_attr)
-            serial_tensor = serial_dict[diff_step][tensor_name]
+            if tensor_name in dist_dict[diff_step]:
+                dist_tensor_list = dist_dict[diff_step][tensor_name]
+                dist_attr = dist_attr_dict[tensor_name]
+                merged_tensor = self._merge_parameter_with_dist_attr(
+                    dist_tensor_list, dist_attr)
+                serial_tensor = serial_dict[diff_step][tensor_name]
 
-            if not np.allclose(merged_tensor, serial_tensor):
-                print(
-                    'The tensor {} is different at step {}, serial tensor: {}, merged tensor: {}'.
-                    format(tensor_name, diff_step, serial_tensor,
-                           merged_tensor))
+                if not np.allclose(merged_tensor, serial_tensor):
+                    print(
+                        'The tensor {} is different at step {}, serial tensor: {}, merged tensor: {}'.
+                        format(tensor_name, diff_step, serial_tensor,
+                               merged_tensor))
