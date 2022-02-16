@@ -97,7 +97,7 @@ class SetTensorOp<string dtype> :
   let printer = [{ return infrt::dt::printSetTensorOp(p, *this); }];
 }
 
-def LoadParamsOp : DT_Op<"load_params", [NoSideEffect]> {
+def LoadParamsOp : DT_Op<"load_params"> {
   let summary = "dt.load_params operation";
 
   let description = [{
@@ -105,13 +105,13 @@ def LoadParamsOp : DT_Op<"load_params", [NoSideEffect]> {
   }];
 
   // input path of model params.
-  let arguments = (ins StrAttr:$path);
+  let arguments = (ins StringType:$path);
   let results = (outs TensorMapType);
 
-
-  let assemblyFormat = "`(` `)` attr-dict";
+  let assemblyFormat = "`(` operands `)` attr-dict";
   let verifier = ?;
 }
+
 
 def TensorMapGetTensorOp : DT_Op<"tensor_map_get_tensor", [NoSideEffect]> {
   let summary = "dt.tensor_map_get_tensor operation";
