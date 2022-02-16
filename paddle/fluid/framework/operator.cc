@@ -605,7 +605,7 @@ bool OpSupportGPU(const std::string& op_type) {
       kernel_factory.SelectKernelMap(pten::TransToPtenKernelName(op_type));
   for (auto& kernel : kernel_key_map) {
     if (platform::is_gpu_place(
-            pten::TransToFluidPlace(kernel.first.backend()))) {
+            pten::TransToPtenPlace(kernel.first.backend()))) {
       return true;
     }
   }
@@ -662,6 +662,10 @@ class RuntimeInferShapeContext : public InferShapeContext {
         platform::errors::InvalidArgument(
             "Output %s should not contain more than one outputs.", name));
     return out[0] != nullptr;
+  }
+
+  bool HasAttr(const std::string& name) const override {
+    return op_.HasAttr(name);
   }
 
   bool HasInputs(const std::string& name) const override {
@@ -1171,8 +1175,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   std::string pt_kernel_name;
   if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(type_)) {
     if (pt_kernel_signature_ == nullptr || pt_kernel_ == nullptr) {
-      pt_kernel_signature_.reset(new KernelSignature(
-          std::move(this->GetExpectedPtenKernelArgs(exe_ctx))));
+      pt_kernel_signature_.reset(
+          new KernelSignature(std::move(GetExpectedPtenKernelArgs(exe_ctx))));
       VLOG(6) << *pt_kernel_signature_.get();
 
       kernel_type_.reset(
@@ -1359,7 +1363,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 pten::KernelKey OperatorWithKernel::ChoosePtenKernel(
     const ExecutionContext& ctx) const {
   pt_kernel_signature_.reset(
-      new KernelSignature(std::move(this->GetExpectedPtenKernelArgs(ctx))));
+      new KernelSignature(std::move(GetExpectedPtenKernelArgs(ctx))));
   VLOG(6) << *pt_kernel_signature_.get();
 
   kernel_type_.reset(
@@ -1949,7 +1953,7 @@ Scope* OperatorWithKernel::PreparePtenData(
         continue;
       }
 
-      auto expected_place = pten::TransToFluidPlace(in_def.backend);
+      auto expected_place = pten::TransToPtenPlace(in_def.backend);
       if (platform::is_same_place(tensor_in->place(), expected_place)) {
         continue;
       }
@@ -2079,7 +2083,7 @@ void OperatorWithKernel::BuildPtenKernelContext(
       experimental::ResetTensorDtypeAndLayoutByArgDef(tensor_out,
                                                       output_defs.at(i));
       SetAllocationForOutputTenosr(
-          tensor_out, pten::TransToFluidPlace(output_defs.at(i).backend));
+          tensor_out, pten::TransToPtenPlace(output_defs.at(i).backend));
 
       pt_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
     }
@@ -2099,6 +2103,10 @@ void OperatorWithKernel::BuildPtenKernelContext(
                    std::type_index(typeid(std::vector<int32_t>))) {
           pt_kernel_context->EmplaceBackAttr(std::move(pten::ScalarArray(
               BOOST_GET_CONST(std::vector<int32_t>, attr_iter->second))));
+        } else if (std::type_index(attr_iter->second.type()) ==
+                   std::type_index(typeid(int32_t))) {
+          pt_kernel_context->EmplaceBackAttr(std::move(pten::ScalarArray(
+              &BOOST_GET_CONST(int32_t, attr_iter->second), 1)));
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported cast op attribute `%s` to ScalarArray when "

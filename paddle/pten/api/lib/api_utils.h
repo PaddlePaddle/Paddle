@@ -63,7 +63,7 @@ inline std::vector<pten::MetaTensor> MakeMetaTensor(
 
 inline pten::DenseTensor* SetKernelOutput(Backend backend, Tensor* out) {
   auto dense_tensor = std::make_shared<pten::DenseTensor>(
-      pten::make_intrusive<SharedStorage>(pten::TransToFluidPlace(backend)),
+      pten::make_intrusive<SharedStorage>(pten::TransToPtenPlace(backend)),
       pten::DenseTensorMeta());
   out->set_impl(dense_tensor);
   return dense_tensor.get();
@@ -75,7 +75,7 @@ inline std::vector<pten::DenseTensor*> SetKernelOutput(
   std::vector<pten::DenseTensor*> results(out_size);
   for (size_t i = 0; i < out_size; ++i) {
     auto tensor_ptr = std::make_shared<pten::DenseTensor>(
-        pten::make_intrusive<SharedStorage>(pten::TransToFluidPlace(backend)),
+        pten::make_intrusive<SharedStorage>(pten::TransToPtenPlace(backend)),
         pten::DenseTensorMeta());
     results[i] = tensor_ptr.get();
     out->emplace_back();

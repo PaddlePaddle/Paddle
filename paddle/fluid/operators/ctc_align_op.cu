@@ -128,7 +128,7 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
       if (host_out_lod0.back() == 0) {
         output->Resize({1, 1});
         output->mutable_data<T>(ctx.GetPlace());
-        math::SetConstant<platform::CUDADeviceContext, T> set_constant;
+        pten::funcs::SetConstant<platform::CUDADeviceContext, T> set_constant;
         set_constant(ctx.template device_context<platform::CUDADeviceContext>(),
                      output, -1);
       }

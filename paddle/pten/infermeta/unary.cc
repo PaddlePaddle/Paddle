@@ -242,14 +242,14 @@ void SumInferMeta(const MetaTensor& x,
                   DataType dtype,
                   bool keep_dim,
                   MetaTensor* out) {
-  ReduceInferMeta(x, axis, keep_dim, dtype, std::move(out));
+  ReduceInferMetaBase(x, axis, keep_dim, dtype, out);
 }
 
-void ReduceInferMeta(const MetaTensor& x,
-                     const std::vector<int64_t>& axis,
-                     bool keep_dim,
-                     DataType dtype,
-                     MetaTensor* out) {
+void ReduceInferMetaBase(const MetaTensor& x,
+                         const std::vector<int64_t>& axis,
+                         bool keep_dim,
+                         DataType dtype,
+                         MetaTensor* out) {
   bool reduce_all = true;
   std::set<int64_t> dims_set(axis.begin(), axis.end());
   for (int64_t i = 0; i < x.dims().size(); ++i) {
@@ -304,7 +304,7 @@ void ReduceInferMeta(const MetaTensor& x,
                      const std::vector<int64_t>& axis,
                      bool keep_dim,
                      MetaTensor* out) {
-  ReduceInferMeta(x, axis, keep_dim, DataType::UNDEFINED, out);
+  ReduceInferMetaBase(x, axis, keep_dim, DataType::UNDEFINED, out);
 }
 
 void TransferLayoutInferMeta(const MetaTensor& x,
@@ -315,6 +315,137 @@ void TransferLayoutInferMeta(const MetaTensor& x,
   out->set_layout(layout);
 }
 
-}  // namespace pten
+void SplitInferMeta(const MetaTensor& x,
+                    const ScalarArray& num_or_sections,
+                    const Scalar& axis,
+                    std::vector<MetaTensor>* out,
+                    MetaConfig config) {
+  int axis_value = axis.to<int>();
+  int rank = x.dims().size();
+  PADDLE_ENFORCE_EQ(
+      axis_value >= -rank && axis_value < rank,
+      true,
+      paddle::platform::errors::InvalidArgument(
+          "The axis is expected to be in range of [%d, %d), but got %d",
+          -rank,
+          rank,
+          axis_value));
+  if (axis_value < 0) {
+    axis_value = axis_value + rank;
+  }
 
-PT_REGISTER_INFER_META_FN(sign, pten::UnchangedInferMeta);
+  auto input_axis_dim = x.dims().at(axis_value);
+  auto num_or_sections_data = num_or_sections.GetData();
+  // step1: get formated sections
+  std::vector<int64_t> sections;
+  // num_or_sections is a number
+  if (num_or_sections_data.size() == 1) {
+    int num = num_or_sections_data.at(0);
+
+    PADDLE_ENFORCE_EQ(input_axis_dim % num,
+                      0,
+                      paddle::platform::errors::InvalidArgument(
+                          "The input's size along the split dimension "
+                          "must be evenly divisible by Attr(num_or_sections). "
+                          "But received Attr(num_or_sections) "
+                          "= %d, input(X)'s shape = [%s], Attr(dim) = %d.",
+                          num,
+                          x.dims(),
+                          axis_value));
+
+    for (int i = 0; i < num; ++i) {
+      sections.push_back(input_axis_dim / num);
+    }
+  } else {
+    // num_or_sections is a sections
+    const int unknow_dim_val = -1;
+    int unknow_dim_idx = -1;
+    int num_of_unknow = 0;
+    int sum_of_section = 0;
+
+    for (size_t i = 0; i < num_or_sections_data.size(); ++i) {
+      sections.push_back(num_or_sections_data[i]);
+
+      if (num_or_sections_data[i] == unknow_dim_val) {
+        num_of_unknow++;
+        unknow_dim_idx = i;
+      } else {
+        sum_of_section += num_or_sections_data[i];
+      }
+    }
+
+    if (config.is_runtime) {
+      PADDLE_ENFORCE_LE(num_of_unknow,
+                        1,
+                        paddle::platform::errors::InvalidArgument(
+                            "Only one dimension value of Attr(num_or_sections) "
+                            "in SplitOp can be -1. "
+                            "But received Attr(num_or_sections) = [%s].",
+                            pten::framework::make_ddim(num_or_sections_data)));
+    }
+
+    if (unknow_dim_idx != -1) {
+      // for example, input shape = [4 ,5], axis = 1, sections = [2, 3, -1].
+      // input_axis_dim = 5, sum_of_sections = 5.
+      // the following check will fail.
+      PADDLE_ENFORCE_LT(
+          sum_of_section,
+          input_axis_dim,
+          paddle::platform::errors::InvalidArgument(
+              "Sum of Attr(num_or_sections) other than unknown section "
+              "must be less than the input's "
+              "size "
+              "along the split dimension. But received Attr(num_or_sections) "
+              "= [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
+              pten::framework::make_ddim(num_or_sections_data),
+              x.dims(),
+              axis_value));
+
+      if (config.is_runtime) {
+        sections[unknow_dim_idx] = input_axis_dim - sum_of_section;
+      }
+    } else {
+      PADDLE_ENFORCE_EQ(
+          sum_of_section,
+          input_axis_dim,
+          paddle::platform::errors::InvalidArgument(
+              "Sum of Attr(num_or_sections) must be equal to the input's "
+              "size "
+              "along the split dimension. But received Attr(num_or_sections)"
+              " = [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
+              pten::framework::make_ddim(num_or_sections_data),
+              x.dims(),
+              axis_value));
+    }
+  }
+
+  // setp2: fill out dims
+  std::vector<pten::DDim> out_dims(sections.size(), x.dims());
+  if (config.is_runtime || input_axis_dim > 0) {
+    for (size_t i = 0; i < sections.size(); ++i) {
+      out_dims[i][axis_value] = sections[i];
+    }
+  } else {
+    for (size_t i = 0; i < sections.size(); ++i) {
+      out_dims[i][axis_value] = -1;
+    }
+  }
+
+  for (size_t i = 0; i < sections.size(); ++i) {
+    if (axis_value != 0) {
+      // Only pass LoD when not spliting along the first dim.
+      (*out)[i].set_dtype(x.dtype());
+      (*out)[i].set_dims(out_dims[i]);
+      (*out)[i].set_layout(x.layout());
+    } else {
+      (*out)[i].set_dtype(x.dtype());
+      (*out)[i].set_dims(out_dims[i]);
+      (*out)[i].set_layout(x.layout());
+      (*out)[i].share_lod(x);
+    }
+  }
+
+  return;
+}
+
+}  // namespace pten
