@@ -452,4 +452,10 @@ endif()
 
 cc_test(scope_guard_test SRCS scope_guard_test.cc)
 cc_test(pten_utils_test SRCS pten_utils_test.cc DEPS pten_utils)
+
+if(WITH_GPU OR WITH_ROCM)
+  cc_library(fluid_convert_utils SRCS convert_utils.cc DEPS data_type place gpu_info)
+else()
+  cc_library(fluid_convert_utils SRCS convert_utils.cc DEPS data_type place)
+endif()
 cc_test(custom_kernel_test SRCS custom_kernel_test.cc DEPS custom_kernel pten_tensor)

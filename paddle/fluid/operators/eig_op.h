@@ -189,7 +189,7 @@ class EigKernel : public framework::OpKernel<T> {
     auto* out_values = context.Output<Tensor>("Eigenvalues");
     auto* out_vectors = context.Output<Tensor>("Eigenvectors");
 
-    if (!framework::IsComplexType(x->type())) {
+    if (!framework::IsComplexType(framework::TransToProtoVarType(x->dtype()))) {
       out_values->mutable_data<Tout>(context.GetPlace());
       out_vectors->mutable_data<Tout>(context.GetPlace());
 

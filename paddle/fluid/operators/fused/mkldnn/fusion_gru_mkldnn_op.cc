@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/operators/fused/fusion_gru_op.h"
 #include "paddle/fluid/operators/fused/mkldnn/fusion_rnn_mkldnn.h"
@@ -277,13 +278,14 @@ class FusionGRUMKLDNNKernel : public framework::OpKernel<T> {
     std::shared_ptr<dnnl::memory> h0_memory_p, weight_h_memory_p,
         weight_x_memory_p;
 
-    if (weight_h->type() == paddle::framework::proto::VarType_Type_FP32) {
+    if (framework::TransToProtoVarType(weight_h->dtype()) ==
+        paddle::framework::proto::VarType_Type_FP32) {
       h0_memory_p = handler.template AcquireH0Memory<float>(h0);
       weight_x_memory_p =
           handler.template AcquireWeightXMemory<float>(weight_x, origin_mode);
       weight_h_memory_p =
           handler.template AcquireWeightHMemory<float>(weight_h, origin_mode);
-    } else if (weight_h->type() ==
+    } else if (framework::TransToProtoVarType(weight_h->dtype()) ==
                paddle::framework::proto::VarType_Type_BF16) {
       h0_memory_p =
           handler.template AcquireH0Memory<paddle::platform::bfloat16>(h0);

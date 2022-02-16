@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -39,6 +40,10 @@ class InferShapeArgumentMappingContext : public pten::ArgumentMappingContext {
 
   bool HasOutput(const std::string& name) const override {
     return ctx_.HasOutput(name);
+  }
+
+  bool HasAttr(const std::string& name) const override {
+    return ctx_.HasAttr(name);
   }
 
   paddle::any Attr(const std::string& name) const override {
@@ -130,7 +135,7 @@ class CompatMetaTensor : public pten::MetaTensor {
       }
     } else {
       auto* var = BOOST_GET_CONST(VarDesc*, var_);
-      return pten::TransToPtenDataType(var->GetDataType());
+      return paddle::framework::TransToPtenDataType(var->GetDataType());
     }
   }
 
@@ -179,7 +184,7 @@ class CompatMetaTensor : public pten::MetaTensor {
       }
     } else {
       auto* var = BOOST_GET(VarDesc*, var_);
-      var->SetDataType(pten::TransToProtoVarType(dtype));
+      var->SetDataType(paddle::framework::TransToProtoVarType(dtype));
     }
   }
 
@@ -278,21 +283,47 @@ pten::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
   pten::InferMetaContext infer_meta_context(ctx->IsRuntime());
 
   auto& input_names = std::get<0>(signature.args);
+  auto& attr_names = std::get<1>(signature.args);
   auto& output_names = std::get<2>(signature.args);
-  // TODO(chenweihang): support attrs in next pr
-  // auto& attr_names = std::get<1>(signature.args);
 
-  // TODO(chenweihang): support multiple inputs and outputs
+  // TODO(chenweihang): support multiple inputs and outputs later
   pten::InferMetaContext infer_mete_context;
   for (auto& in_name : input_names) {
-    infer_meta_context.EmplaceBackInput(std::make_shared<CompatMetaTensor>(
-        ctx->GetInputVarPtrs(in_name)[0], ctx->IsRuntime()));
+    if (ctx->HasInput(in_name)) {
+      infer_meta_context.EmplaceBackInput(std::make_shared<CompatMetaTensor>(
+          ctx->GetInputVarPtrs(in_name)[0], ctx->IsRuntime()));
+    } else {
+      infer_meta_context.EmplaceBackInput({nullptr});
+    }
   }
+
+  auto attr_reader = ctx->Attrs();
+  for (auto& attr_name : attr_names) {
+    if (ctx->HasAttr(attr_name)) {
+      auto& attr = attr_reader.GetAttr(attr_name);
+      if (std::type_index(attr.type()) == std::type_index(typeid(bool))) {
+        infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(float))) {
+        infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(float, attr));
+      } else {
+        // do nothing, skip useless attrs now
+        // TODO(chenweihang): support other attr type later and throw error
+        // if attr is cannot parsed
+      }
+    } else {
+      // do nothing
+    }
+  }
+
   for (auto& out_name : output_names) {
-    infer_meta_context.EmplaceBackOutput(std::make_shared<CompatMetaTensor>(
-        ctx->GetOutputVarPtrs(out_name)[0], ctx->IsRuntime()));
+    if (ctx->HasOutput(out_name)) {
+      infer_meta_context.EmplaceBackOutput(std::make_shared<CompatMetaTensor>(
+          ctx->GetOutputVarPtrs(out_name)[0], ctx->IsRuntime()));
+    } else {
+      infer_meta_context.EmplaceBackOutput({nullptr});
+    }
   }
-  // TODO(chenweihang): support attrs later
 
   return infer_meta_context;
 }

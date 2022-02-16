@@ -172,7 +172,8 @@ PyObject* eager_tensor_properties_get_place_str(TensorObject* self,
 
 PyObject* eager_tensor_properties_get_dtype(TensorObject* self, void* closure) {
   EAGER_SYNC_TRY
-  return ToPyObject(pten::TransToProtoVarType(self->tensor.type()));
+  return ToPyObject(
+      paddle::framework::TransToProtoVarType(self->tensor.type()));
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 

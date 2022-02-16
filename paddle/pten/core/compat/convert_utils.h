@@ -27,20 +27,10 @@ limitations under the License. */
 
 namespace pten {
 
-// dtype convert function still relay on fluid proto
-DataType TransToPtenDataType(
-    const paddle::framework::proto::VarType::Type& dtype);
-paddle::framework::proto::VarType::Type TransToProtoVarType(
-    const DataType& dtype);
-
 std::string TransToPtenKernelName(const std::string& fluid_op_name);
 const std::string& TransToFluidOpName(const std::string& pten_kernel_name);
 
 Backend TransToPtenBackend(const pten::Place& place);
 pten::Place TransToPtenPlace(const Backend& backend, bool set_device_id = true);
-
-size_t DataTypeSize(DataType dtype);
-DataType String2DataType(const std::string& str);
-std::string DataType2String(DataType dtype);
 
 }  // namespace pten

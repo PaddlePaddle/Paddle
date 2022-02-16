@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/mkldnn/matmul_mkldnn_op.h"
 #include <tuple>
+#include "paddle/fluid/framework/convert_utils.h"
 
 using dnnl::memory;
 using dnnl::primitive;
@@ -56,10 +57,11 @@ static Tensor FoldFirstAndLastDims(const MKLDNNDeviceContext& dev_ctx,
 
   auto output_dims = vectorize(output.dims());
 
-  memory::data_type input_type =
-      paddle::framework::ToMKLDNNDataType(input->type());
+  memory::data_type input_type = paddle::framework::ToMKLDNNDataType(
+      paddle::framework::TransToProtoVarType(input->dtype()));
   paddle::platform::ReorderMKLDNNHandler reorder_handler(
-      output_dims, input->type(), input_type, dev_ctx.GetEngine());
+      output_dims, paddle::framework::TransToProtoVarType(input->dtype()),
+      input_type, dev_ctx.GetEngine());
 
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
       memory::format_tag::abc,
@@ -68,9 +70,6 @@ static Tensor FoldFirstAndLastDims(const MKLDNNDeviceContext& dev_ctx,
       &output, memory::format_tag::bac, dev_ctx.GetPlace());
   auto reorder_p = reorder_handler.AcquireReorder(reorder_src_memory_p,
                                                   reorder_dst_memory_p);
-
-  paddle::platform::RecordEvent record_reorder(
-      "int_reorder", paddle::platform::EventRole::kUniqueOp);
 
   auto& astream = MKLDNNDeviceContext::tls().get_stream();
   reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
