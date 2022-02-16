@@ -14,6 +14,7 @@
 
 #include <tuple>
 
+#include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -47,14 +48,16 @@ static dnnl::memory::data_type GetDstType(bool is_int8, bool is_bfloat16,
       dst_dt = dnnl::memory::data_type::f32;
     }
     if (fuse_residual_conn && residual_param) {
-      auto residual_dt = framework::ToMKLDNNDataType(residual_param->type());
+      auto residual_dt = framework::ToMKLDNNDataType(
+          framework::TransToProtoVarType(residual_param->dtype()));
       if (dst_dt != residual_dt) dst_dt = residual_dt;
     }
   } else {
     if (!force_fp32_output && is_bfloat16) {
       dst_dt = dnnl::memory::data_type::bf16;
       if (fuse_residual_conn && residual_param) {
-        dst_dt = framework::ToMKLDNNDataType(residual_param->type());
+        dst_dt = framework::ToMKLDNNDataType(
+            framework::TransToProtoVarType(residual_param->dtype()));
       }
     }
   }
@@ -79,7 +82,7 @@ class ConvMKLDNNHandlerT
             dev_ctx, mkldnn_engine, cpu_place,
             platform::CreateKey(dev_ctx, framework::vectorize(input->dims()),
                                 unique_name)) {
-    if (!this->isCached()) {
+    if (unlikely(!this->isCached())) {
       PADDLE_ENFORCE_EQ(
           input->layout(), framework::DataLayout::kMKLDNN,
           platform::errors::InvalidArgument(
@@ -201,7 +204,8 @@ class ConvMKLDNNHandlerT
       dnnl::memory::desc src_md, weights_md;
       if (platform::is_int8<T>()) {
         src_md = platform::MKLDNNMemDesc(
-            src_tz, framework::ToMKLDNNDataType(input->type()),
+            src_tz, framework::ToMKLDNNDataType(
+                        framework::TransToProtoVarType(input->dtype())),
             chosen_memory_format);
         weights_md = platform::MKLDNNMemDesc(
             weights_tz, dnnl::memory::data_type::s8, chosen_memory_format);
@@ -218,13 +222,15 @@ class ConvMKLDNNHandlerT
                                          : dnnl::prop_kind::forward_training;
 
       float sum_scale = 1.0f;
+      float activation_scale = 1.0f;
       std::vector<float> output_shift_scale;
       if (platform::is_int8<T>())
-        std::tie(sum_scale, output_shift_scale) = get_int8_scales(ctx);
+        std::tie(sum_scale, output_shift_scale, activation_scale) =
+            get_int8_scales(ctx);
 
       const dnnl::primitive_attr conv_attr = CreatePostOps(
           fuse_activation, fuse_alpha, fuse_beta, fuse_residual_conn,
-          output_shift_scale, sum_scale);  // for INT8 only!
+          output_shift_scale, sum_scale, activation_scale);  // for INT8 only!
 
       if (bias) {
         auto bias_tz = framework::vectorize(bias->dims());
@@ -262,7 +268,7 @@ class ConvMKLDNNHandlerT
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
             platform::CreateKey(dev_ctx, framework::vectorize(in->dims()),
                                 unique_name)) {
-    if (!this->isBwdCached()) {
+    if (unlikely(!this->isBwdCached())) {
       PADDLE_ENFORCE_EQ(
           in->layout(), framework::DataLayout::kMKLDNN,
           platform::errors::InvalidArgument(
@@ -432,7 +438,7 @@ class ConvMKLDNNHandlerT
     return bias_scale_tuple;
   }
 
-  std::tuple<float, std::vector<float>> get_int8_scales(
+  std::tuple<float, std::vector<float>, float> get_int8_scales(
       const framework::ExecutionContext& ctx) const {
     const auto* filter = ctx.Input<Tensor>("Filter");
     const auto& weights_tz = framework::vectorize(filter->dims());
@@ -445,8 +451,14 @@ class ConvMKLDNNHandlerT
     const auto& scale_in_eltwise_data = ctx.Attr<float>("Scale_in_eltwise");
     auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
     bool is_multi_channel = scale_weights_data.size() > 1;
+    bool has_activation = !ctx.Attr<std::string>("fuse_activation").empty();
+    float activation_scale =
+        force_fp32_output ? 1.0f : has_activation ? ctx.Attr<float>("Scale_out")
+                                                  : 1.0f;
     auto scale_out_data =
-        force_fp32_output ? 1.0f : ctx.Attr<float>("Scale_out");
+        force_fp32_output ? 1.0f : has_activation
+                                       ? 1.0f
+                                       : ctx.Attr<float>("Scale_out");
     float sum_scale =
         fuse_residual_conn ? scale_out_data / scale_in_eltwise_data : 1.0f;
     int count =
@@ -468,13 +480,13 @@ class ConvMKLDNNHandlerT
                                 static_cast<double>(scale_weights_data[i])));
     }
 
-    return std::make_tuple(sum_scale, output_shift_scale);
+    return std::make_tuple(sum_scale, output_shift_scale, activation_scale);
   }
 
   dnnl::primitive_attr CreatePostOps(
       std::string fuse_activation, float fuse_alpha, float fuse_beta,
       bool fuse_residual_conn, const std::vector<float> output_shift_scale = {},
-      float sum_scale = 1.0f) {
+      float sum_scale = 1.0f, float activation_scale = 1.0f) {
     dnnl::primitive_attr conv_attr;
     dnnl::post_ops post_operations;
     if (output_shift_scale.size() > 0) {
@@ -492,30 +504,38 @@ class ConvMKLDNNHandlerT
     }
     // Fusion with ReLU layer is executed through the PostOps feature. Create a
     // PostOps object and configure it to execute an eltwise relu operation.
-    constexpr float scale = 1.0f;
     if (fuse_activation == "relu" || fuse_activation == "leaky_relu") {
-      post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_relu,
-                                     fuse_alpha, fuse_beta);
+      post_operations.append_eltwise(activation_scale,
+                                     dnnl::algorithm::eltwise_relu, fuse_alpha,
+                                     fuse_beta);
     } else if (fuse_activation == "relu6") {
-      post_operations.append_eltwise(
-          scale, dnnl::algorithm::eltwise_bounded_relu, fuse_alpha, fuse_beta);
+      post_operations.append_eltwise(activation_scale,
+                                     dnnl::algorithm::eltwise_bounded_relu,
+                                     fuse_alpha, fuse_beta);
     } else if (fuse_activation == "swish") {
-      post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_swish,
-                                     fuse_alpha, fuse_beta);
+      post_operations.append_eltwise(activation_scale,
+                                     dnnl::algorithm::eltwise_swish, fuse_alpha,
+                                     fuse_beta);
     } else if (fuse_activation == "hard_swish") {
-      post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_hardswish,
+      post_operations.append_eltwise(activation_scale,
+                                     dnnl::algorithm::eltwise_hardswish,
                                      fuse_alpha, fuse_beta);
+    } else if (fuse_activation == "mish") {
+      post_operations.append_eltwise(activation_scale,
+                                     dnnl::algorithm::eltwise_mish, fuse_alpha,
+                                     fuse_beta);
     } else if (fuse_activation == "hard_sigmoid") {
-      post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_linear,
+      post_operations.append_eltwise(activation_scale,
+                                     dnnl::algorithm::eltwise_linear,
                                      fuse_alpha, fuse_beta);
-      post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_clip, 0.0f,
-                                     1.0f);
+      post_operations.append_eltwise(activation_scale,
+                                     dnnl::algorithm::eltwise_clip, 0.0f, 1.0f);
     } else if (fuse_activation == "gelu_tanh") {
-      post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_gelu_tanh,
-                                     0.0f, 0.0f);
+      post_operations.append_eltwise(
+          activation_scale, dnnl::algorithm::eltwise_gelu_tanh, 0.0f, 0.0f);
     } else if (fuse_activation == "gelu_erf") {
-      post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_gelu_erf,
-                                     0.0f, 0.0f);
+      post_operations.append_eltwise(
+          activation_scale, dnnl::algorithm::eltwise_gelu_erf, 0.0f, 0.0f);
     }
     conv_attr.set_post_ops(post_operations);
     return conv_attr;
@@ -601,7 +621,7 @@ class ConvMKLDNNHandlerT
     auto weights_mem_p = this->AcquireMemory("@weights_mem_p_target");
     if (is_test && weights_mem_p) {
       return weights_mem_p;
-    } else {
+    } else if (is_test) {
       const K* filter_data = filter->data<K>();
       auto weights_tz = framework::vectorize(filter->dims());
       platform::GetGroupConvWeightsTz(weights_tz, groups);
@@ -613,6 +633,19 @@ class ConvMKLDNNHandlerT
       return this->AcquireMemoryWithReorder(
           user_src_md, this->fwd_pd_->weights_desc(),
           platform::to_void_cast<K>(filter_data), "@weights_mem_p", is_test, {},
+          scale_data, mask);
+    } else {
+      const T* filter_data = filter->data<T>();
+      auto weights_tz = framework::vectorize(filter->dims());
+      platform::GetGroupConvWeightsTz(weights_tz, groups);
+
+      auto user_src_md = platform::MKLDNNMemDesc(
+          weights_tz, platform::MKLDNNGetDataType<T>(),
+          GetWeightsFormat(filter->format(), groups, is_conv3d));
+
+      return this->AcquireMemoryWithReorder(
+          user_src_md, this->fwd_pd_->weights_desc(),
+          platform::to_void_cast<T>(filter_data), "@weights_mem_p", is_test, {},
           scale_data, mask);
     }
   }
@@ -639,7 +672,8 @@ class ConvMKLDNNHandlerT
   std::shared_ptr<dnnl::memory> AcquireResidualMemory(
       const framework::Tensor* residual_param) {
     void* residual_data =
-        residual_param->type() == framework::DataTypeTrait<T_out>::DataType()
+        framework::TransToProtoVarType(residual_param->dtype()) ==
+                framework::DataTypeTrait<T_out>::DataType()
             ? platform::to_void_cast<T_out>(residual_param->data<T_out>())
             : platform::to_void_cast<T>(residual_param->data<T>());
     auto residual_mem_p = this->AcquireMemory("@user_residual_data_mem_p");
@@ -649,7 +683,8 @@ class ConvMKLDNNHandlerT
     } else {
       auto user_residual_md = platform::MKLDNNMemDesc(
           framework::vectorize(residual_param->dims()),
-          framework::ToMKLDNNDataType(residual_param->type()),
+          framework::ToMKLDNNDataType(
+              framework::TransToProtoVarType(residual_param->dtype())),
           residual_param->format());
 
       return this->AcquireMemoryFromPrimitive(user_residual_md, residual_data,
@@ -921,8 +956,8 @@ class ConvMKLDNNGradOpKernel : public framework::OpKernel<T> {
       // For convolution with groups convert from blocked to NCHW
       // otherwise there will be problems in next operators working on this data
       if (g > 1) {
-        dnnl::memory::data_type in_type =
-            framework::ToMKLDNNDataType(filter->type());
+        dnnl::memory::data_type in_type = framework::ToMKLDNNDataType(
+            framework::TransToProtoVarType(filter->dtype()));
         // for 3d conv with groups (six dimensional data reorder to goidhw)
         // for 2d conv with groups (five dimensional data reorder to goihw)
         // auto weights_tz = framework::vectorize(filter->dims());
@@ -931,8 +966,9 @@ class ConvMKLDNNGradOpKernel : public framework::OpKernel<T> {
         dnnl::memory::format_tag out_format =
             weights_tz.size() == 6 ? dnnl::memory::format_tag::goidhw
                                    : dnnl::memory::format_tag::goihw;
-        platform::ReorderMKLDNNHandler handler(weights_tz, filter->type(),
-                                               in_type, mkldnn_engine);
+        platform::ReorderMKLDNNHandler handler(
+            weights_tz, framework::TransToProtoVarType(filter->dtype()),
+            in_type, mkldnn_engine);
         auto reorder_dst_memory_p =
             handler.AcquireDstMemory(filter_grad, out_format, ctx.GetPlace());
 
@@ -1015,7 +1051,8 @@ REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d_grad, MKLDNN,
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
     conv2d_grad, MKLDNN, ::paddle::platform::CPUPlace, BF16,
     ops::kConvMKLDNNFP32,
-    ops::ConvMKLDNNGradOpKernel<paddle::platform::bfloat16, float>);
+    ops::ConvMKLDNNGradOpKernel<paddle::platform::bfloat16,
+                                paddle::platform::bfloat16>);
 
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(depthwise_conv2d, MKLDNN,
                                     ::paddle::platform::CPUPlace, FP32,

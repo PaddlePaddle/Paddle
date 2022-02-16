@@ -57,7 +57,7 @@ std::vector<int64_t> ConvOp::ComputeOutputShape(
 
   // MKL-DNN Kernels are using NCHW order of dims description
   // so we ignore data_format consideration for MKL-DNN kernel
-  const bool channel_last = (this->IsMKLDNNType() == false) &&
+  const bool channel_last = (ctx->IsRunMKLDNNKernel() == false) &&
                             (data_format == "NHWC" || data_format == "NDHWC");
 
   PADDLE_ENFORCE_EQ(
@@ -194,7 +194,8 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
   if (input_data_type != framework::proto::VarType::INT8 &&
       input_data_type != framework::proto::VarType::UINT8 &&
       input_data_type != framework::proto::VarType::BF16) {
-    auto filter_data_type = ctx.Input<Tensor>("Filter")->type();
+    auto filter_data_type =
+        framework::TransToProtoVarType(ctx.Input<Tensor>("Filter")->dtype());
     PADDLE_ENFORCE_EQ(
         input_data_type, filter_data_type,
         platform::errors::InvalidArgument(

@@ -14,11 +14,15 @@
 
 #include "paddle/fluid/framework/details/variable_visitor.h"
 
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
+
+namespace pten {
+class DenseTensor;
+}  // namespace pten
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
 class Variable;
 }  // namespace framework
 }  // namespace paddle
@@ -30,8 +34,8 @@ template <typename Func>
 static void VisitVariable(Variable* var, Func* func) {
   if (var->IsType<LoDTensor>()) {
     (*func)(var->GetMutable<LoDTensor>());
-  } else if (var->IsType<SelectedRows>()) {
-    (*func)(var->GetMutable<SelectedRows>());
+  } else if (var->IsType<pten::SelectedRows>()) {
+    (*func)(var->GetMutable<pten::SelectedRows>());
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "VisitVariable is not supported for type %s.",
@@ -43,8 +47,8 @@ template <typename Func>
 static void VisitVariable(const Variable& var, Func* func) {
   if (var.IsType<LoDTensor>()) {
     (*func)(var.Get<LoDTensor>());
-  } else if (var.IsType<SelectedRows>()) {
-    (*func)(var.Get<SelectedRows>());
+  } else if (var.IsType<pten::SelectedRows>()) {
+    (*func)(var.Get<pten::SelectedRows>());
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "VisitVariable is not supported for type %s.", ToTypeName(var.Type())));
@@ -56,7 +60,7 @@ struct TensorVisitor {
 
   void operator()(LoDTensor* tensor) { result_ = tensor; }
 
-  void operator()(SelectedRows* selected_rows) {
+  void operator()(pten::SelectedRows* selected_rows) {
     result_ = selected_rows->mutable_value();
   }
 
@@ -82,8 +86,8 @@ struct ShareDimsAndLoDVisitor {
     tensor->Resize(val.dims());
   }
 
-  void operator()(const SelectedRows& val) {
-    auto* selected_rows = trg_->GetMutable<SelectedRows>();
+  void operator()(const pten::SelectedRows& val) {
+    auto* selected_rows = trg_->GetMutable<pten::SelectedRows>();
     selected_rows->set_rows(val.rows());
     selected_rows->set_height(val.height());
     selected_rows->mutable_value()->Resize(val.value().dims());
@@ -106,10 +110,13 @@ struct EnforceShapeAndDTypeEQVisitor {
 
   void operator()(const LoDTensor& src) {
     auto& tensor = dst_->Get<LoDTensor>();
-    PADDLE_ENFORCE_EQ(src.place().which(), tensor.place().which(),
-                      platform::errors::PreconditionNotMet(
-                          "The place type of the two variables is not equal."));
-    PADDLE_ENFORCE_EQ(src.type(), tensor.type(),
+    PADDLE_ENFORCE_EQ(
+        src.place().GetType(), tensor.place().GetType(),
+        platform::errors::PreconditionNotMet(
+            "The place type of the two variables is not equal. The src place "
+            "is %s, but the dst place is %s",
+            src.place().DebugString(), tensor.place().DebugString()));
+    PADDLE_ENFORCE_EQ(src.dtype(), tensor.dtype(),
                       platform::errors::PreconditionNotMet(
                           "The dtype of the two variables is not equal."));
     PADDLE_ENFORCE_EQ(
@@ -125,11 +132,14 @@ struct EnforceShapeAndDTypeEQVisitor {
             "The layout of the two variables' tensors tensor is not equal."));
   }
 
-  void operator()(const SelectedRows& src) {
-    auto& selected_rows = dst_->Get<SelectedRows>();
-    PADDLE_ENFORCE_EQ(src.place().which(), selected_rows.place().which(),
-                      platform::errors::PreconditionNotMet(
-                          "The place type of the two variables is not equal."));
+  void operator()(const pten::SelectedRows& src) {
+    auto& selected_rows = dst_->Get<pten::SelectedRows>();
+    PADDLE_ENFORCE_EQ(
+        src.place().GetType(), selected_rows.place().GetType(),
+        platform::errors::PreconditionNotMet(
+            "The place type of the two variables is not equal. The src place "
+            "is %s, but the dst place is %s",
+            src.place().DebugString(), selected_rows.place().DebugString()));
     PADDLE_ENFORCE_EQ(src.value().type(), selected_rows.value().type(),
                       platform::errors::PreconditionNotMet(
                           "The dtype of the two variables is not equal."));

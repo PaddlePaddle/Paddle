@@ -27,7 +27,7 @@ def CallOp : INFRT_Op<"call"> {
   let results = (outs Variadic<AnyType>);
 
   let extraClassDeclaration = [{
-      StringRef getCallee() { return callee(); }
+      mlir::StringRef getCallee() { return callee(); }
       mlir::FunctionType getCalleeType();
     }];
 }
@@ -57,9 +57,8 @@ def ReturnOp : INFRT_Op<"return", [Terminator]> {
 
   let arguments = (ins Variadic<AnyType>:$operands);
 
-  let builders = [OpBuilder<
-                  "OpBuilder &b, OperationState &result",
-                  [{ build(b, result, llvm::None); }]>];
+  let builders = [OpBuilder<(ins),
+                  [{ build($_builder, $_state, llvm::None); }]>];
 }
 
 class AddOp<string suffix, Type type> : INFRT_Op<"add." # suffix, [NoSideEffect]> {
@@ -107,10 +106,10 @@ class PrintOp<string suffix, Type type> : INFRT_Op<"print." # suffix> {
   let verifier = ?;
 }
 
-//def PrintI32Op : PrintOp<"i32", I32>;
-//def PrintI64Op : PrintOp<"i64", I64>;
+def PrintI32Op : PrintOp<"i32", I32>;
+def PrintI64Op : PrintOp<"i64", I64>;
 def PrintF32Op : PrintOp<"f32", F32>;
-//def PrintF64Op : PrintOp<"f64", F64>;
+def PrintF64Op : PrintOp<"f64", F64>;
 
 def GetStringOp : INFRT_Op<"get_string"> {
   let summary = "infrt.get_string";

@@ -14,6 +14,7 @@
 
 import contextlib
 import paddle
+from paddle.static import gradients
 from ..fluid import framework
 from ..fluid.dygraph import grad
 from ..tensor.creation import assign
@@ -904,3 +905,159 @@ def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
         vhp = grad_fn(jac, xs, v)
         outputs, vhp = return_fn(outputs), return_fn(vhp)
     return outputs, vhp
+
+
+class Jacobian(object):
+    r"""
+    Computes the Jacobian matrix of function `func`, which may take as input
+    single or multiple tensor typed arguments and output a single tensor or
+    multiple tensors. 
+    
+    In case `func` is multi-input and multi-output, i.e., 
+    
+    func: Callable[[Tensor, ...], [Tensor, ...]]
+
+    `func` is treated as a vector valued function with all its inputs flattened
+    into a single one dimensional tensor, or a two dimensional tensor with the
+    first dimension retained as the batching dimension. The same rule applies to
+    the function outputs.
+
+    Once the Jacobian J is constructed, there are four ways to retrieve the 
+    partial derivatives.
+
+    - J[:], retrieving the full matrix.
+    
+    - J[:, j], retrieving the partial derivatives w.r.t. the j'th input 
+    variable.
+
+    - J[i, :], retrieving the partial derivatives w.r.t. the i'th output 
+    variable.
+
+    - J[i, j], retrieving the partial derivatives w.r.t. the i'th output 
+    variable and the j'th input variable. 
+
+    Examples:
+        .. code-block:: python
+            import paddle        
+            import numpy as np
+
+            def func(xs):
+                x, y = xs
+                return paddle.matmul(x, y)
+            
+            main = fluid.Program()
+            startup = fluid.Program()
+            with fluid.program_guard(main, startup):
+                x = paddle.static.data(name='x', shape=[2, 2], dtype='float32')
+                JJ = paddle.autograd.functional.Jacobian(func, [x, x])
+                nrow, ncol = JJ.shape()
+                full_jacobian = JJ[:]
+            place = fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+            exe.run(startup)
+
+            feeds = {'x': np.array([[2., 2.], [2., 1.]]).astype('float32')}
+            jacobian = exe.run(main, feed=feeds, fetch_list=[full_jacobian])[0]
+            print(jacobian)
+            # [[4. 2. 2. 0. 4. 2. 2. 0.]
+            #  [2. 3. 0. 2. 2. 3. 0. 2.]
+            #  [2. 0. 3. 2. 2. 0. 3. 2.]
+            #  [0. 2. 2. 2. 0. 2. 2. 2.]]
+    """
+
+    def __init__(self, func, inputs, batch=False):
+        r"""Constructing a Jacobian matrix.
+
+        Parameters:
+            func (Callable): a Python function that takes as input a Tensor
+                or a Tensor list and outputs a Tensor or a Tensor list.
+            inputs (Tensor|list[Tensor]): a Tensor or a list of Tensors as
+                `func`'s input.
+            batch (bool):  if True the 0'th axis is considered the batch
+                dimension, both on input and output.
+        """
+
+        def enable_grads(inputs):
+            if isinstance(inputs, (list, tuple)):
+                for x in inputs:
+                    x.stop_gradient = False
+            else:
+                assert isinstance(inputs, paddle.fluid.framework.Variable), (
+                    f"Expecting {inputs} to be paddle.fluid.framework.Variable,"
+                    f" however it's found to be a(n) {type(inputs)}.")
+                inputs.stop_gradient = False
+            return inputs
+
+        self.batch = batch
+        self.xs = enable_grads(inputs)
+        ys = func(inputs)
+        if not isinstance(ys, list):
+            ys = [ys]
+        self.y = self.flatten_all(ys)
+        self.ydim = self.y.shape[-1]
+        self.xdim = self.flatten_all(inputs).shape[-1]
+        self.bdim = self.y.shape[0]
+        self.jacobian = {}
+
+    def flatten(self, x):
+        to = [x.shape[0], -1] if self.batch else [-1]
+        return x.reshape(to)
+
+    def flatten_all(self, xs):
+        if isinstance(xs, (list, tuple)):
+            return paddle.concat([self.flatten(x) for x in xs], axis=-1)
+        else:
+            return self.flatten(xs)
+
+    def shape(self):
+        return (self.ydim, self.xdim)
+
+    def __getitem__(self, tup):
+        if hasattr(tup, '__iter__'):
+            i, j = tup
+        else:
+            i, j = tup, None
+
+        full = isinstance(i, slice)
+
+        if full:
+            if 'full' not in self.jacobian:
+                rows = [
+                    self.flatten_all(gradients(self.y[..., i], self.xs))
+                    for i in range(self.ydim)
+                ]
+                self.jacobian['full'] = full_jacobian = paddle.stack(rows)
+            else:
+                full_jacobian = self.jacobian['full']
+
+            return full_jacobian[i] if j is None else full_jacobian[i][..., j]
+
+        assert 0 <= i < self.ydim, f"Jacobian index i={i} is not valid."
+        assert j is None or isinstance(j, slice) or (0 <= j < self.xdim), (
+            f"Jacobian index j={j} is not valid.")
+        if 'full' in self.jacobian:
+            JJ = self.jacobian['full']
+        else:
+            JJ = self.jacobian
+            if i not in self.jacobian:
+                self.jacobian[i] = self.flatten_all(
+                    gradients(self.y[..., i], self.xs))
+
+        if j is None:
+            return JJ[i]
+        else:
+            return JJ[i][..., j]
+
+
+class Hessian(object):
+    def __init__(self, func, inputs, batch=False):
+        f_x = lambda xs: Jacobian(func, xs, batch=batch)[0]
+        self.symbolic = Jacobian(f_x, inputs, batch=batch)
+        self.xs = inputs
+        self.batch = batch
+
+    def __getitem__(self, tup):
+        return self.symbolic[tup]
+
+    def shape(self):
+        return self.symbolic.shape()

@@ -18,7 +18,8 @@
 #include "paddle/infrt/dialect/dense_tensor.h"
 #include "paddle/infrt/dialect/test_kernels.h"
 
-namespace infrt::dialect {
+namespace infrt {
+namespace dialect {
 
 // ----INFRTDialect definition begin----
 void INFRTDialect::initialize() {
@@ -84,7 +85,8 @@ mlir::Type INFRTDialect::parseType(mlir::DialectAsmParser &parser) const {
     // parse ">"
     if (parser.parseGreater()) return mlir::Type();
 
-    return infrt::dt::TensorType::get(*targetType, *layoutType, *precisionType);
+    return infrt::dt::TensorType::get(
+        parser.getContext(), *targetType, *layoutType, *precisionType);
   }
   // parse TensorMapType, for example: !infrt.tensor_map
   if (keyword == "tensor_map") {
@@ -124,4 +126,5 @@ void INFRTDialect::printType(mlir::Type type,
 
 // ----INFRTDialect definition end----
 
-}  // namespace infrt::dialect
+}  // namespace dialect
+}  // namespace infrt

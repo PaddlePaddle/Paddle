@@ -35,6 +35,8 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   bool HasOutput(const std::string &name) const override;
 
+  bool HasAttr(const std::string &name) const override;
+
   bool HasInputs(const std::string &name) const override;
 
   bool HasOutputs(const std::string &name) const override;
@@ -239,6 +241,8 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   }
 
   bool IsRuntime() const override;
+
+  bool IsRunMKLDNNKernel() const override;
 
   std::vector<proto::VarType::Type> GetInputsVarType(
       const std::string &name) const override {
@@ -853,6 +857,10 @@ bool CompileTimeInferShapeContext::HasOutput(const std::string &name) const {
   return block_.HasVarRecursive(output_names[0]);
 }
 
+bool CompileTimeInferShapeContext::HasAttr(const std::string &name) const {
+  return op_.HasAttr(name);
+}
+
 bool CompileTimeInferShapeContext::HasInputs(const std::string &name) const {
   if (op_.Inputs().find(name) == op_.Inputs().end()) {
     return false;
@@ -929,6 +937,8 @@ void CompileTimeInferShapeContext::SetRepeatedDims(
 }
 
 bool CompileTimeInferShapeContext::IsRuntime() const { return false; }
+
+bool CompileTimeInferShapeContext::IsRunMKLDNNKernel() const { return false; }
 
 proto::VarType::Type CompileTimeInferShapeContext::GetVarType(
     const std::string &name) const {

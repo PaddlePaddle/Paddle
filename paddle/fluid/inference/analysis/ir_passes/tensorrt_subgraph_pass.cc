@@ -46,8 +46,11 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
               << " is diabled by config in TensorRT";
       return false;
     }
-    return tensorrt::OpTeller::Global().Tell(node, no_calib_int8,
-                                             with_dynamic_shape);
+    bool is_ok = tensorrt::OpTeller::Global().Tell(node, no_calib_int8,
+                                                   with_dynamic_shape);
+    if (!is_ok)
+      VLOG(3) << node->Op()->Type().c_str() << " op is not in TensorRT";
+    return is_ok;
   };
 
   framework::ir::SubGraphFuser fuser(
@@ -262,6 +265,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("parameters", params);
   op_desc->SetAttr("allow_build_at_runtime", allow_build_at_runtime);
   op_desc->SetAttr("shape_range_info_path", shape_range_info_path);
+  op_desc->SetAttr("use_inspector", Get<bool>("use_inspector"));
 
   // we record all inputs' shapes in attr to check if they are consistent
   // with the real inputs' shapes retrieved from scope when trt runs.
@@ -369,12 +373,16 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                   Get<int>("gpu_device_id"), min_input_shape, max_input_shape,
                   opt_input_shape, disable_trt_plugin_fp16);
   trt_engine->SetUseOSS(Get<bool>("use_oss"));
+  trt_engine->SetWithInterleaved(Get<bool>("with_interleaved"));
   trt_engine->SetUseDLA(Get<bool>("trt_use_dla"));
   trt_engine->SetDLACore(Get<int>("trt_dla_core"));
+  trt_engine->SetUseInspector(Get<bool>("use_inspector"));
 
   trt_engine->SetWithErnie(
-      graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
-      graph->Has(framework::ir::kMultiheadMatmulPass));
+      (graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
+       graph->Has(framework::ir::kMultiheadMatmulPass)) ||
+      (graph->Has(framework::ir::kPrelnEmbEltwiseLayernormPass) &&
+       graph->Has(framework::ir::kMultiheadMatmulPass)));
 
   if (use_static_engine) {
     trt_engine_serialized_data = GetTrtEngineSerializedData(

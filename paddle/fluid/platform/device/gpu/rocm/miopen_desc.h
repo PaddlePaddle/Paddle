@@ -26,11 +26,9 @@
 #include "paddle/fluid/platform/device/gpu/rocm/miopen_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 
-namespace paddle {
-namespace framework {
-class Tensor;
-}  // namespace framework
-}  // namespace paddle
+namespace pten {
+class DenseTensor;
+}  // namespace pten
 
 namespace paddle {
 namespace platform {
@@ -144,7 +142,8 @@ class TensorDescriptor {
       dims_with_group[1] = dims_with_group[1] / groups;
     }
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetTensorDescriptor(
-        (miopenTensorDescriptor_t)(desc_.get()), ToCudnnDataType(tensor.type()),
+        (miopenTensorDescriptor_t)(desc_.get()),
+        ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype())),
         static_cast<int>(dims_with_group.size()),
         const_cast<int*>(dims_with_group.data()),
         const_cast<int*>(strides.data())));
@@ -166,7 +165,8 @@ class TensorDescriptor {
       dims_with_group[1] = dims_with_group[1] / groups;
     }
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetTensorDescriptor(
-        (miopenTensorDescriptor_t)(desc_.get()), ToCudnnDataType(tensor.type()),
+        (miopenTensorDescriptor_t)(desc_.get()),
+        ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype())),
         static_cast<int>(dims_with_group.size()),
         const_cast<int*>(dims_with_group.data()),
         const_cast<int*>(strides.data())));
@@ -211,7 +211,8 @@ class FilterDescriptor {
       dims_with_group[1] = dims_with_group[1] / groups;
     }
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetTensorDescriptor(
-        (miopenTensorDescriptor_t)(desc_.get()), ToCudnnDataType(tensor.type()),
+        (miopenTensorDescriptor_t)(desc_.get()),
+        ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype())),
         static_cast<int>(dims_with_group.size()),
         const_cast<int*>(dims_with_group.data()),
         const_cast<int*>(strides.data())));

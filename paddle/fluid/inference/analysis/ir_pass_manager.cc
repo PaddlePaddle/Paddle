@@ -108,6 +108,8 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("enable_int8", new bool(enable_int8));
       pass->Set("use_calib_mode", new bool(use_calib_mode));
       pass->Set("use_oss", new bool(argument->tensorrt_use_oss()));
+      pass->Set("with_interleaved",
+                new bool(argument->tensorrt_with_interleaved()));
       pass->Set("precision_mode",
                 new AnalysisConfig::Precision(precision_mode));
 
@@ -154,6 +156,7 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
       pass->Set("use_static_engine", new bool(use_static_engine));
       pass->Set("model_from_memory", new bool(argument->model_from_memory()));
+      pass->Set("use_inspector", new bool(argument->tensorrt_use_inspector()));
 
       // tuned trt dynamic_shape
       pass->Set("trt_shape_range_info_path",

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/imperative/gloo_context.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -46,6 +47,17 @@ void GLOOParallelContext::Init() {
   gloo_wrapper->Init();
   device_ = std::unique_ptr<platform::CPUDeviceContext>(
       new platform::CPUDeviceContext(platform::CPUPlace()));
+  device_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetAllocator(platform::CPUPlace())
+                            .get());
+  device_->SetHostAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
+  device_->SetZeroAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(platform::CPUPlace())
+          .get());
 }
 
 void GLOOParallelContext::InitWithRingID(int ring_id) {
@@ -72,18 +84,18 @@ void GLOOParallelContext::AllReduceByStream(const framework::Variable &src,
     }
     AllReduce(src.Get<framework::LoDTensor>(),
               dst->GetMutable<framework::LoDTensor>());
-  } else if (src.IsType<framework::SelectedRows>()) {
+  } else if (src.IsType<pten::SelectedRows>()) {
     if (&src != dst) {
-      if (!dst->IsType<framework::SelectedRows>()) {
+      if (!dst->IsType<pten::SelectedRows>()) {
         dst->Clear();
       }
-      AllReduce(src.Get<framework::SelectedRows>(),
-                dst->GetMutable<framework::SelectedRows>());
+      AllReduce(src.Get<pten::SelectedRows>(),
+                dst->GetMutable<pten::SelectedRows>());
     } else {
       // SelectedRows cannot be allreduce in-place
       framework::Variable tmp_dst;
-      AllReduce(src.Get<framework::SelectedRows>(),
-                tmp_dst.GetMutable<framework::SelectedRows>());
+      AllReduce(src.Get<pten::SelectedRows>(),
+                tmp_dst.GetMutable<pten::SelectedRows>());
       *dst = std::move(tmp_dst);
     }
   } else {
@@ -98,7 +110,7 @@ void GLOOParallelContext::AllReduce(const framework::Tensor &src_tensor,
                                     framework::Tensor *dst_tensor) {
   auto gloo_wrapper = framework::GlooWrapper::GetInstance();
   dst_tensor->Resize(src_tensor.dims());
-  switch (src_tensor.type()) {
+  switch (framework::TransToProtoVarType(src_tensor.dtype())) {
     GLOO_CASE(framework::proto::VarType::FP32, float, gloo_wrapper);
     GLOO_CASE(framework::proto::VarType::FP64, double, gloo_wrapper);
     GLOO_CASE(framework::proto::VarType::INT32, int, gloo_wrapper);
@@ -120,15 +132,15 @@ void GLOOParallelContext::AllReduce(const framework::Tensor &src_tensor,
     break;                                                        \
   }
 
-void GLOOParallelContext::AllReduce(const framework::SelectedRows &src,
-                                    framework::SelectedRows *dst) {
+void GLOOParallelContext::AllReduce(const pten::SelectedRows &src,
+                                    pten::SelectedRows *dst) {
   // auto ;
   // int local_rank = strategy_.local_rank_;
   int nranks = strategy_.nranks_;
   VLOG(3) << "SelectedRows AllReduce start";
   const auto &src_tensor = src.value();
   const auto &place = src_tensor.place();
-  auto dtype = src_tensor.type();
+  auto dtype = framework::TransToProtoVarType(src_tensor.dtype());
   // 1. Gather rows number from all workers. Here use ncclAllGather to do this,
   // but we can use other ways to implement is in the future
   const auto &src_rows = src.rows();
@@ -158,7 +170,7 @@ void GLOOParallelContext::AllReduce(const framework::SelectedRows &src,
   std::for_each(element_nums.begin(), element_nums.end(),
                 [feature_size](size_t &x) { x = x * feature_size; });
 
-  auto *dst_tensor_ptr = dst_tensor->mutable_data(place, dtype);
+  auto *dst_tensor_ptr = dst_tensor->mutable_data(place, src_tensor.dtype());
   gloo_wrapper->AllGatherVector<int64_t>(const_cast<int64_t *>(src_rows_ptr),
                                          static_cast<int64_t *>(dst_rows_ptr),
                                          rows_num_vector);

@@ -21,14 +21,15 @@
 
 TEST(TensorWrapper, Basic) {
   VLOG(6) << "Test Full reserved";
-  egr::EagerTensor et1;
+  paddle::experimental::Tensor et1;
   pten::DenseTensorMeta meta = pten::DenseTensorMeta(
       pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 2}));
   std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace()),
+      std::make_unique<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CPUPlace())
+          .get(),
       meta);
-  auto* dt_ptr = dt->mutable_data<float>();
+  auto* dt_ptr = dt->mutable_data<float>(paddle::platform::CPUPlace());
   dt_ptr[0] = 5.0f;
   dt_ptr[1] = 10.0f;
   et1.set_impl(dt);
@@ -47,14 +48,15 @@ TEST(TensorWrapper, Basic) {
   CHECK_EQ(egr::EagerUtils::OutRankInfo(recover_et1).second,
            egr::EagerUtils::OutRankInfo(et1).second);
   VLOG(6) << "Test reconstruct";
-  egr::EagerTensor et2;
+  paddle::experimental::Tensor et2;
   pten::DenseTensorMeta meta2 = pten::DenseTensorMeta(
       pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 2}));
   std::shared_ptr<pten::DenseTensor> dt2 = std::make_shared<pten::DenseTensor>(
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace()),
+      std::make_unique<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CPUPlace())
+          .get(),
       meta2);
-  auto* dt_ptr2 = dt->mutable_data<float>();
+  auto* dt_ptr2 = dt->mutable_data<float>(paddle::platform::CPUPlace());
   dt_ptr2[0] = 6.0f;
   dt_ptr2[1] = 11.0f;
   et2.set_impl(dt2);
@@ -72,7 +74,7 @@ TEST(TensorWrapper, Basic) {
   CHECK_EQ(egr::EagerUtils::OutRankInfo(recover_et2).second,
            egr::EagerUtils::OutRankInfo(et2).second);
   // Test Raw recover
-  egr::EagerTensor et3;
+  paddle::experimental::Tensor et3;
   auto tw2 = egr::TensorWrapper(et3, true);
   CHECK(
       tw2.recover(std::make_shared<eager_test::GradTestNode>()).initialized() ==

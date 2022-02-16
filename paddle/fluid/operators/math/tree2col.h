@@ -18,7 +18,7 @@
 #include <unordered_map>
 #include <vector>
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {

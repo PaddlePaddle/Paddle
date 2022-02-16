@@ -17,16 +17,16 @@
 #include <llvm/ADT/STLExtras.h>
 #include <mlir/IR/Attributes.h>
 #include <mlir/IR/Builders.h>
+#include <mlir/IR/BuiltinOps.h>
+#include <mlir/IR/BuiltinTypes.h>
 #include <mlir/IR/DialectImplementation.h>
-#include <mlir/IR/Function.h>
-#include <mlir/IR/Module.h>
 #include <mlir/IR/OpDefinition.h>
 #include <mlir/IR/OpImplementation.h>
-#include <mlir/IR/StandardTypes.h>
 #include <mlir/IR/TypeUtilities.h>
 #include <mlir/Support/LogicalResult.h>
 
-namespace infrt::ts {
+namespace infrt {
+namespace ts {
 using namespace mlir;  // NOLINT
 
 void TensorShapeDialect::initialize() {
@@ -48,8 +48,8 @@ Type TensorShapeDialect::parseType(DialectAsmParser &parser) const {
   return Type();
 }
 
-void TensorShapeDialect::printType(::mlir::Type type,
-                                   ::mlir::DialectAsmPrinter &os) const {
+void TensorShapeDialect::printType(mlir::Type type,
+                                   mlir::DialectAsmPrinter &os) const {
   if (type.isa<ShapeType>()) {
     os << "shape";
     return;
@@ -61,8 +61,10 @@ void TensorShapeDialect::printType(::mlir::Type type,
   }
   llvm_unreachable("unexpected 'shape' type kind");
 }
+}  // namespace ts
+}  // namespace infrt
 
 #define GET_OP_CLASSES
 #include "paddle/infrt/dialect/tensor_shape.cpp.inc"  // NOLINT
 
-}  // namespace infrt::ts
+#include "paddle/infrt/dialect/tensor_shape_dialect.cpp.inc"

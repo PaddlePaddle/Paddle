@@ -21,13 +21,14 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/pten/backends/dynload/port.h"
 
 namespace paddle {
 namespace operators {
@@ -85,7 +86,7 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
                 inp_var_names[i]));
         // Serialize tensors one by one
         // Check types to see if a fp16 transformation is required
-        auto in_dtype = tensor.type();
+        auto in_dtype = framework::TransToProtoVarType(tensor.dtype());
         auto out_dtype =
             save_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
 

@@ -1,1 +1,1 @@
-cc_library(pten_common SRCS device.cc place.cc DEPS enforce)
+cc_library(pten_place SRCS place.cc)

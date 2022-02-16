@@ -17,6 +17,7 @@
 #include <utility>
 
 #include "dgc/dgc.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
@@ -146,12 +147,14 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
   for (size_t i = 0; i < local_scopes_.size(); ++i) {
     auto &place = places_[i];
     auto &in = *ins[i];
-    void *in_tensor_buf = const_cast<void *>(in.data<void>());
+    void *in_tensor_buf = const_cast<void *>(in.data());
 
     auto &out = *outs[i];
     float *out_tensor_buf = out.data<float>();
 
-    dtype = (dtype == -1) ? platform::ToNCCLDataType(in.type()) : dtype;
+    dtype = (dtype == -1) ? platform::ToNCCLDataType(
+                                framework::TransToProtoVarType(in.dtype()))
+                          : dtype;
     in_numel = (in_numel == 0) ? static_cast<size_t>(in.numel()) : in_numel;
     PADDLE_ENFORCE_EQ(in_numel % 2, 0,
                       platform::errors::InvalidArgument(
@@ -165,7 +168,7 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
                           in_numel));
     out_numel = (out_numel == 0) ? static_cast<size_t>(out.numel()) : out_numel;
 
-    int dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
+    int dev_id = place.device;
     auto *nccl_ctxs = nccl_ctxs_->GetRunEnvNCCLCtx(run_order_, false);
     auto &nccl_ctx = nccl_ctxs->at(dev_id);
     auto stream = nccl_ctx.stream();
@@ -175,7 +178,7 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
     // dgc use ncclAllGather to get all the encoded data
     // so the buffer need nranks.
     int buf_size = nranks_ * encode_size;
-    void *gather_buff = gathers[i]->data<void>();
+    void *gather_buff = gathers[i]->data();
 
     VLOG(10) << "in_numel:" << in_numel << ", out_numel:" << out_numel
              << ", nranks:" << nranks_ << ", gather_buf size:" << buf_size

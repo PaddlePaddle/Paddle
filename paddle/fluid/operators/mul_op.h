@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -25,6 +25,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 constexpr int kMULMKLDNNINT8 = 1;
+constexpr int kMULMKLDNNFP32 = 2;
 
 template <typename DeviceContext, typename T>
 class MulKernel : public framework::OpKernel<T> {

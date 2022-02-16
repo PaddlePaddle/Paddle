@@ -15,8 +15,9 @@
 #include <limits>
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/log_softmax_op.h"
-#include "paddle/fluid/operators/math/functors.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/pten/kernels/funcs/elementwise_functor.h"
+#include "paddle/pten/kernels/funcs/functors.h"
 
 namespace paddle {
 namespace operators {
@@ -213,15 +214,15 @@ __global__ void LogSoftmaxForwardCUDAKernelNotLastAxis(
       for (int d = threadIdx.x; d < dim_size; d += blockDim.x) {
         const AccT value =
             static_cast<AccT>(input[data_offset + d * dim_stride]);
-        max_value = math::MaxFunctor<AccT>()(max_value, value);
+        max_value = pten::funcs::MaxFunctor<AccT>()(max_value, value);
       }
       // If there are more than 1 threads along block x, reduce all max_values
       // and get the global max_value, which is the max value along "axis".
       // If there is only one thread along block x, no need to reduce, as the
       // 'max_value' is the global max_value.
       if (blockDim.x > 1) {
-        max_value =
-            BlockReduceAlongDimX<AccT, math::MaxFunctor>(sdata, max_value);
+        max_value = BlockReduceAlongDimX<AccT, pten::funcs::MaxFunctor>(
+            sdata, max_value);
       }
 
       // 2. reduce sum
@@ -232,7 +233,7 @@ __global__ void LogSoftmaxForwardCUDAKernelNotLastAxis(
                         max_value);
       }
       if (blockDim.x > 1) {
-        sum = BlockReduceAlongDimX<AccT, math::AddFunctor>(sdata, sum);
+        sum = BlockReduceAlongDimX<AccT, pten::funcs::AddFunctor>(sdata, sum);
       }
 
       // 3. input-max-log_sum and write to output

@@ -26,7 +26,8 @@ static inline std::vector<int> GetPaddings(
   std::vector<int> paddings(6);
   auto* paddings_t = context.Input<Tensor>("Paddings");
   if (paddings_t) {
-    TensorToVector(*paddings_t, context.device_context(), &paddings);
+    paddle::framework::TensorToVector(*paddings_t, context.device_context(),
+                                      &paddings);
   } else {
     auto pads = context.Attr<std::vector<int>>("paddings");
     std::copy(pads.begin(), pads.end(), paddings.data());

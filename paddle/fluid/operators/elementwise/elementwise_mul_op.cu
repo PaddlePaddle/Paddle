@@ -13,15 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
-#include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
 
-// only can include the headers in paddle/top/api dirs
-#include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/include/core.h"
-#include "paddle/pten/include/math.h"
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
@@ -40,13 +33,14 @@ class ElementwiseMulKernel<platform::CUDADeviceContext, T>
                           ctx.InputName("X")));
     const auto& cuda_ctx =
         ctx.template device_context<platform::CUDADeviceContext>();
-    if (x_var->IsType<framework::SelectedRows>()) {
+    if (x_var->IsType<pten::SelectedRows>()) {
       framework::Tensor x_for_selectedrows;
       std::vector<const framework::Tensor*> ins;
       std::vector<framework::Tensor*> outs;
       int axis =
           PackTensorsIntoVector<T>(ctx, &ins, &outs, &x_for_selectedrows);
-      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+      paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary,
+                                                     T, T>(
           cuda_ctx, ins, &outs, axis, MulFunctor<T>());
     } else if (x_var->IsType<framework::LoDTensor>()) {
       auto* x_lod = ctx.Input<framework::LoDTensor>("X");
@@ -58,8 +52,8 @@ class ElementwiseMulKernel<platform::CUDADeviceContext, T>
       auto pt_x = paddle::experimental::MakePtenDenseTensor(*x_lod);
       auto pt_y = paddle::experimental::MakePtenDenseTensor(*y_lod);
       auto pt_z = paddle::experimental::MakePtenDenseTensor(*z_lod);
-      pten::MultiplyKernel<T>(cuda_ctx, *pt_x.get(), *pt_y.get(), axis,
-                              pt_z.get());
+      pten::MultiplyRawKernel<T>(static_cast<const pten::GPUContext&>(cuda_ctx),
+                                 *pt_x.get(), *pt_y.get(), axis, pt_z.get());
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "X's type[%s] is not supported by elementwise_op. X's type should be "
@@ -82,20 +76,10 @@ ElementwiseMulGrad(const framework::ExecutionContext& ctx,
   const auto place = ctx.GetPlace();
 
   if (dx != nullptr && dy != nullptr) {
-    dx->mutable_data<T>(place);
-    if (dx->IsSharedBufferWith(*dout)) {
-      dx->clear();
-      dx->mutable_data<T>(x->dims(), place);
-    }
     std::vector<const framework::Tensor*> ins = {dout, y, x};
-    GetGradXAndYOut<ElementwiseType::kBinary, T>(
+    GetGradXAndYOut<ElementwiseType::kTernary, T>(
         dev_ctx, place, axis, ins, dout, dx, dy, MulGradXYFunctor<T, T>());
   } else if (dx != nullptr && dy == nullptr) {
-    dx->mutable_data<T>(place);
-    if (dx->IsSharedBufferWith(*dout)) {
-      dx->clear();
-      dx->mutable_data<T>(x->dims(), place);
-    }
     std::vector<const framework::Tensor*> ins = {dout, y};
     GetGradXOrYOut<ElementwiseType::kBinary, T>(dev_ctx, place, axis, ins, dout,
                                                 dx, MulGradFunctor<T>());

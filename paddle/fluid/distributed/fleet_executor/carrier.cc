@@ -15,12 +15,13 @@
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
-#include "paddle/fluid/distributed/fleet_executor/interceptor_message_service.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/runtime_graph.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 #include "paddle/fluid/framework/garbage_collector.h"
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/variable_helper.h"
 
 namespace paddle {
 namespace distributed {
@@ -44,17 +45,23 @@ void Carrier::Init(
     int64_t rank,
     const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank,
     const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node,
-    framework::Scope* root_scope, framework::Scope* minibatch_scope,
-    const std::vector<framework::Scope*>& microbatch_scopes,
-    const platform::Place& place) {
+    const framework::ProgramDesc& program, framework::Scope* scope,
+    int64_t num_micro_batches, const platform::Place& place) {
   rank_ = rank;
   interceptor_id_to_rank_ = interceptor_id_to_rank;
   interceptor_id_to_node_ = interceptor_id_to_node;
-  minibatch_scope_ = minibatch_scope;
-  microbatch_scopes_ = microbatch_scopes;
   place_ = place;
-  root_scope_ = root_scope;
+  root_scope_ = scope;
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
+
+  PADDLE_ENFORCE_NOT_NULL(root_scope_, platform::errors::InvalidArgument(
+                                           "root_scope can not be nullptr"));
+  minibatch_scope_ = &root_scope_->NewScope();
+  microbatch_scopes_.resize(num_micro_batches);
+  for (int i = 0; i < num_micro_batches; ++i) {
+    microbatch_scopes_[i] = &minibatch_scope_->NewScope();
+    CopyParameters(i, program);
+  }
 
   // TODO(fleet_exe dev): thread pool
   thread_num_ = 1;
@@ -65,9 +72,32 @@ void Carrier::Init(
   is_init_ = true;
 }
 
-void Carrier::Release() {}
+void Carrier::Release() {
+  if (root_scope_) {
+    root_scope_->DropKids();
+  }
+}
 
 Carrier::~Carrier() { VLOG(3) << "Carrier's destructor."; }
+
+void Carrier::CopyParameters(int microbatch_id,
+                             const framework::ProgramDesc& program) {
+  auto& global_block = program.Block(0);
+
+  for (auto& var : global_block.AllVars()) {
+    if (var->Persistable() && microbatch_id == 0) {
+      auto* ptr = root_scope_->Var(var->Name());
+      InitializeVariable(ptr, var->GetType());
+      VLOG(5) << "Create persistable var: " << var->Name()
+              << ", which pointer is " << ptr;
+    } else if (!var->Persistable()) {
+      auto* ptr = microbatch_scopes_[microbatch_id]->Var(var->Name());
+      VLOG(5) << "Create variable " << var->Name() << " for microbatch "
+              << microbatch_id << ", which pointer is " << ptr << ".";
+      InitializeVariable(ptr, var->GetType());
+    }
+  }
+}
 
 bool Carrier::EnqueueInterceptorMessage(
     const InterceptorMessage& interceptor_message) {
@@ -117,6 +147,15 @@ void Carrier::Start() {
   // TODO(wangxi): async step
   Wait();
   dev_ctx_->Wait();
+  for (auto* micro_scope : microbatch_scopes_) {
+    // By default, we should delete all kid scopes after run executor because
+    // some operators may create local scope when running, such as while_op.
+    // But when while_op also create a local executor to run it's sub block,
+    // the sub scopes it created should not be dropped immediately, because
+    // while_grad_op will use some variables created during while_op run, so
+    // we need to keep the kids and wait for the outer executor to drop them.
+    micro_scope->DropKids();
+  }
 }
 
 bool Carrier::IsInit() const { return is_init_; }
@@ -182,8 +221,8 @@ static std::shared_ptr<framework::GarbageCollector> GetGC(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(place)) {
       if (framework::IsFastEagerDeletionModeEnabled()) {
-        gc.reset(new framework::UnsafeFastGPUGarbageCollector(
-            BOOST_GET_CONST(platform::CUDAPlace, place), max_memory_size));
+        gc.reset(new framework::UnsafeFastGPUGarbageCollector(place,
+                                                              max_memory_size));
       }
     }
 #endif

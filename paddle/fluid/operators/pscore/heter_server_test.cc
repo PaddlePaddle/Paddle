@@ -18,8 +18,8 @@ limitations under the License. */
 #include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/distributed/service/heter_client.h"
-#include "paddle/fluid/distributed/service/heter_server.h"
+#include "paddle/fluid/distributed/ps/service/heter_client.h"
+#include "paddle/fluid/distributed/ps/service/heter_server.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace framework = paddle::framework;
@@ -29,7 +29,7 @@ namespace distributed = paddle::distributed;
 using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
 using VarMsg = ::paddle::distributed::VariableMessage;
 
-USE_OP(scale);
+USE_OP_ITSELF(scale);
 
 std::shared_ptr<distributed::HeterServer> b_rpc_service;
 
@@ -52,7 +52,7 @@ framework::BlockDesc* AppendSendAndRecvBlock(framework::ProgramDesc* program) {
 
 void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
   auto w_var = scope->Var("w");
-  w_var->GetMutable<framework::SelectedRows>();
+  w_var->GetMutable<pten::SelectedRows>();
 
   auto out_var = scope->Var("out");
   out_var->GetMutable<framework::LoDTensor>();
@@ -123,7 +123,7 @@ void InitTensorsOnClient2(framework::Scope* scope, platform::CPUPlace* place,
 void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
-  auto w = scope->Var("w")->GetMutable<framework::SelectedRows>();
+  auto w = scope->Var("w")->GetMutable<pten::SelectedRows>();
   auto w_value = w->mutable_value();
   w_value->Resize({rows_numel, 10});
   for (int64_t i = 0; i < rows_numel; ++i) w->AutoGrownIndex(i, true);

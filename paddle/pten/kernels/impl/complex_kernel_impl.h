@@ -15,19 +15,21 @@
 #pragma once
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/complex_functors.h"
 
 namespace pten {
 
 template <typename T, typename Context>
-void Conj(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {
+void ConjKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                DenseTensor* out) {
   auto numel = x.numel();
   auto* x_data = x.data<T>();
-  auto* out_data = out->mutable_data<T>();
+  auto* out_data = dev_ctx.template Alloc<T>(out);
 
   paddle::platform::ForRange<Context> for_range(dev_ctx, numel);
-  paddle::operators::math::ConjFunctor<T> functor(x_data, numel, out_data);
+  pten::funcs::ConjFunctor<T> functor(x_data, numel, out_data);
   for_range(functor);
 }
 

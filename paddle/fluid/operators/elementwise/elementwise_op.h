@@ -21,9 +21,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/data_layout.h"
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 
@@ -103,9 +101,37 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       std::vector<int> x_dims_array(max_dim);
       std::vector<int> y_dims_array(max_dim);
       std::vector<int> out_dims_array(max_dim);
+#ifdef PADDLE_WITH_MKLDNN
+      // (jczaja): Broadcasting of dims has to be done on Paddle shapes (NHWC)
+      // if model is using NHWC.
+      bool should_rotate =
+          ctx->IsRunMKLDNNKernel() &&
+          (platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout() ==
+           framework::DataLayout::kNHWC);
+      if (should_rotate) {
+        // Pick bigger shape and rotate this one
+        bool x_over_y = (x_dims.size() > y_dims.size());
+        auto vdims = x_over_y ? framework::vectorize<int>(x_dims)
+                              : framework::vectorize<int>(y_dims);
+        std::rotate(vdims.begin() + 1, vdims.begin() + 2, vdims.end());
+        if (x_over_y) {
+          x_dims = framework::make_ddim(vdims);
+        } else {
+          y_dims = framework::make_ddim(vdims);
+        }
+      }
+#endif
+
       GetBroadcastDimsArrays(x_dims, y_dims, x_dims_array.data(),
                              y_dims_array.data(), out_dims_array.data(),
                              max_dim, axis);
+#ifdef PADDLE_WITH_MKLDNN
+      // Now rotate shape back if needed (NHWC -> NCHW)
+      if (should_rotate) {
+        std::rotate(out_dims_array.begin() + 1, out_dims_array.end() - 1,
+                    out_dims_array.end());
+      }
+#endif
       ctx->SetOutputDim("Out", framework::make_ddim(out_dims_array));
       // to do
       ctx->ShareLoD("X", /*->*/ "Out");
@@ -132,40 +158,28 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       const framework::OpKernelType &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(tensor.type(), tensor.place(),
-                                     tensor.layout());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+          tensor.layout());
     } else {
+#ifdef PADDLE_WITH_MKLDNN
+      // When elementwise is first oneDNN op (there was some non oneDNN op
+      // previously)
+      // then we also need to rotate shape NHWC -> NCWH
+      if ((expected_kernel_type.data_layout_ ==
+           framework::DataLayout::kMKLDNN) &&
+          (tensor.layout() != framework::DataLayout::kMKLDNN) &&
+          paddle::platform::MKLDNNDeviceContext::tls()
+                  .get_cur_paddle_data_layout() ==
+              framework::DataLayout::kNHWC) {
+        return framework::OpKernelType(expected_kernel_type.data_type_,
+                                       tensor.place(),
+                                       framework::DataLayout::kNHWC);
+      }
+#endif
       return framework::OpKernelType(expected_kernel_type.data_type_,
                                      tensor.place(), tensor.layout());
     }
-  }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext &ctx) const override {
-    if (Type() == "elementwise_add") {
-      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
-        return framework::KernelSignature("add", {"X", "Y"}, {"axis"}, {"Out"});
-      }
-    }
-    if (Type() == "elementwise_sub") {
-      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
-        return framework::KernelSignature("subtract", {"X", "Y"}, {"axis"},
-                                          {"Out"});
-      }
-    }
-    if (Type() == "elementwise_div") {
-      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
-        return framework::KernelSignature("divide", {"X", "Y"}, {"axis"},
-                                          {"Out"});
-      }
-    }
-    if (Type() == "elementwise_mul") {
-      if (ctx.InputVar("X")->IsType<framework::LoDTensor>()) {
-        return framework::KernelSignature("multiply", {"X", "Y"}, {"axis"},
-                                          {"Out"});
-      }
-    }
-    return framework::KernelSignature("None", {"X"}, {}, {"Out"});
   }
 };
 
@@ -333,8 +347,9 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
       const framework::OpKernelType &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(tensor.type(), tensor.place(),
-                                     tensor.layout());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+          tensor.layout());
     } else {
       return framework::OpKernelType(expected_kernel_type.data_type_,
                                      tensor.place(), tensor.layout());
@@ -383,8 +398,9 @@ class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
       const framework::OpKernelType &expected_kernel_type) const {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(tensor.type(), tensor.place(),
-                                     tensor.layout());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+          tensor.layout());
     } else {
       return framework::OpKernelType(expected_kernel_type.data_type_,
                                      tensor.place(), tensor.layout());
@@ -436,8 +452,9 @@ class ElementwiseOpDoubleGradWithoutDXDY
       const framework::OpKernelType &expected_kernel_type) const {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(tensor.type(), tensor.place(),
-                                     tensor.layout());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+          tensor.layout());
     } else {
       return framework::OpKernelType(expected_kernel_type.data_type_,
                                      tensor.place(), tensor.layout());
@@ -493,8 +510,9 @@ class ElementwiseOpTripleGrad : public framework::OperatorWithKernel {
       const framework::OpKernelType &expected_kernel_type) const {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(tensor.type(), tensor.place(),
-                                     tensor.layout());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+          tensor.layout());
     } else {
       return framework::OpKernelType(expected_kernel_type.data_type_,
                                      tensor.place(), tensor.layout());
@@ -508,11 +526,9 @@ class ElemwiseGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto *dx =
         context.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    if (dx != nullptr) {
-      auto &dout =
-          *context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-      dx->set_lod(dout.lod());
-    }
+    auto &dout =
+        *context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+    pten::funcs::ElementwiseGradPreProcess(dout, dx);
   }
 };
 

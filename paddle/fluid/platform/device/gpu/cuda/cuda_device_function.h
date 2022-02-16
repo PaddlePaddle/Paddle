@@ -16,8 +16,10 @@ limitations under the License. */
 
 // NOTE(): support float16 to half in header file.
 #define PADDLE_CUDA_FP16
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/core/enforce.h"
 
 namespace paddle {
 namespace platform {
@@ -25,22 +27,6 @@ namespace platform {
 #define FULL_WARP_MASK 0xFFFFFFFF
 #define CREATE_SHFL_MASK(mask, predicate) \
   mask = __ballot_sync(FULL_WARP_MASK, (predicate))
-
-inline static int RoundToPowerOfTwo(int dim) {
-  if (dim > 512) {
-    return 1024;
-  } else if (dim > 256) {
-    return 512;
-  } else if (dim > 128) {
-    return 256;
-  } else if (dim > 64) {
-    return 128;
-  } else if (dim > 32) {
-    return 64;
-  } else {
-    return 32;
-  }
-}
 
 #define CUDA_LAUNCH_KERNEL_BASE(dim, ...)  \
   case (dim): {                            \
@@ -75,6 +61,19 @@ __forceinline__ __device__ float16 CudaShuffleDownSync(unsigned mask,
                                                        int width) {
   return float16(__shfl_down_sync(mask, val.to_half(),
                                   static_cast<unsigned>(delta), width));
+}
+
+template <>
+__forceinline__ __device__ bfloat16 CudaShuffleDownSync(unsigned mask,
+                                                        bfloat16 val, int delta,
+                                                        int width) {
+#if defined(PADDLE_CUDA_BF16)
+  return bfloat16(__shfl_down_sync(mask, static_cast<nv_bfloat16>(val),
+                                   static_cast<unsigned>(delta), width));
+#else
+  PADDLE_ENFORCE(
+      false, "__shfl_down_sync with bfloat16 is not supported on cuda <= 11.");
+#endif
 }
 
 template <>

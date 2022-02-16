@@ -112,7 +112,7 @@ __global__ void SparseAdamWCUDAKernelREG(
 
   for (; id < ndim; id += blockDim.x * gridDim.x) {
     auto row_idx =
-        math::BinarySearch<int64_t>(rows_, row_count, id / row_numel);
+        pten::funcs::BinarySearch<int64_t>(rows_, row_count, id / row_numel);
     if (lazy_mode && row_idx < 0) {
       return;
     } else {
@@ -192,8 +192,8 @@ class AdamWOpCUDAKernel : public framework::OpKernel<T> {
                             "Input(SkipUpdate) size must be 1, but get %d",
                             skip_update_tensor->numel()));
       std::vector<bool> skip_update_vec;
-      TensorToVector(*skip_update_tensor, ctx.device_context(),
-                     &skip_update_vec);
+      paddle::framework::TensorToVector(*skip_update_tensor,
+                                        ctx.device_context(), &skip_update_vec);
       skip_update = skip_update_vec[0];
     }
 
@@ -337,8 +337,8 @@ class AdamWOpCUDAKernel : public framework::OpKernel<T> {
               beta2_pow_out->mutable_data<MPDType>(ctx.GetPlace()));
         }
       }
-    } else if (grad_var->IsType<framework::SelectedRows>()) {
-      auto* grad = ctx.Input<framework::SelectedRows>("Grad");
+    } else if (grad_var->IsType<pten::SelectedRows>()) {
+      auto* grad = ctx.Input<pten::SelectedRows>("Grad");
       if (grad->rows().size() == 0) {
         VLOG(3) << "grad row size is 0!!";
         return;
@@ -353,8 +353,8 @@ class AdamWOpCUDAKernel : public framework::OpKernel<T> {
         }
       }
 
-      framework::SelectedRows tmp_grad_merge;
-      const framework::SelectedRows* grad_merge_ptr;
+      pten::SelectedRows tmp_grad_merge;
+      const pten::SelectedRows* grad_merge_ptr;
       if (is_strict_sorted) {
         grad_merge_ptr = grad;
       } else {

@@ -14,4 +14,13 @@ limitations under the License. */
 
 #pragma once
 
-namespace pten {}  // namespace pten
+#include "paddle/pten/common/scalar.h"
+#include "paddle/pten/core/meta_tensor.h"
+namespace pten {
+
+void ConcatInferMeta(const std::vector<MetaTensor>& x,
+                     const Scalar& axis_scalar,
+                     MetaTensor* out,
+                     MetaConfig config = MetaConfig());
+
+}  // namespace pten

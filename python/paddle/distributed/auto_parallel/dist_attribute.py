@@ -21,7 +21,9 @@ _g_tensor_dist_attr_field_keys = [
     "process_mesh", "dims_mapping", "shard_sizes", "device_placement"
 ]
 
-_g_op_dist_attr_field_keys = ["process_mesh", "impl_type", "impl_idx"]
+_g_op_dist_attr_field_keys = [
+    "process_mesh", "impl_type", "impl_idx", "is_recompute"
+]
 
 _g_op_input_suffix = "@input"
 
@@ -178,6 +180,7 @@ class OperatorDistributedAttribute:
         self._inputs_dist_attrs = {}
         self._outputs_dist_attrs = {}
         self._is_annotated = {}
+        self._is_recompute = False
 
     @property
     def process_mesh(self):
@@ -213,6 +216,15 @@ class OperatorDistributedAttribute:
     def impl_idx(self, impl_idx):
         if impl_idx is not None:
             self._impl_idx = impl_idx
+
+    @property
+    def is_recompute(self):
+        return self._is_recompute
+
+    @is_recompute.setter
+    def is_recompute(self, is_recompute):
+        assert isinstance(is_recompute, bool)
+        self._is_recompute = is_recompute
 
     @property
     def inputs_dist_attrs(self):

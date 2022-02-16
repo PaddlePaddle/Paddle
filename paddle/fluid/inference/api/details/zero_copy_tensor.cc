@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
@@ -122,7 +123,7 @@ T *Tensor::data(PlaceType *place, int *size) const {
 
 DataType Tensor::type() const {
   EAGER_GET_TENSOR(paddle::framework::LoDTensor);
-  auto type = tensor->type();
+  auto type = paddle::framework::TransToProtoVarType(tensor->dtype());
   if (type == paddle::framework::proto::VarType::FP32) {
     return DataType::FLOAT32;
   } else if (type == paddle::framework::proto::VarType::FP16) {
@@ -223,9 +224,10 @@ void Tensor::CopyToCpuImpl(T *data, void *exec_stream, CallbackFunc cb,
   auto t_place = tensor->place();
 
   paddle::framework::Tensor out;
-  auto mem_allocation = std::make_shared<paddle::memory::Allocation>(
-      static_cast<void *>(data), ele_num * sizeof(T),
-      paddle::platform::CPUPlace());
+  auto mem_allocation =
+      std::make_shared<paddle::memory::allocation::Allocation>(
+          static_cast<void *>(data), ele_num * sizeof(T),
+          paddle::platform::CPUPlace());
   out.ResetHolder(mem_allocation);
 
   if (paddle::platform::is_cpu_place(t_place)) {
@@ -252,7 +254,7 @@ void Tensor::CopyToCpuImpl(T *data, void *exec_stream, CallbackFunc cb,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     paddle::platform::DeviceContextPool &pool =
         paddle::platform::DeviceContextPool::Instance();
-    auto gpu_place = BOOST_GET_CONST(paddle::platform::CUDAPlace, t_place);
+    auto gpu_place = t_place;
     auto *dev_ctx = static_cast<const paddle::platform::CUDADeviceContext *>(
         pool.Get(gpu_place));
     paddle::memory::Copy(paddle::platform::CPUPlace(),
@@ -279,7 +281,7 @@ void Tensor::CopyToCpuImpl(T *data, void *exec_stream, CallbackFunc cb,
 #endif
   } else if (place_ == PlaceType::kXPU) {
 #ifdef PADDLE_WITH_XPU
-    auto xpu_place = BOOST_GET_CONST(paddle::platform::XPUPlace, t_place);
+    auto xpu_place = t_place;
     paddle::memory::Copy(paddle::platform::CPUPlace(),
                          static_cast<void *>(data), xpu_place, t_data,
                          ele_num * sizeof(T));
@@ -292,7 +294,7 @@ void Tensor::CopyToCpuImpl(T *data, void *exec_stream, CallbackFunc cb,
 #ifdef PADDLE_WITH_ASCEND_CL
     paddle::platform::DeviceContextPool &pool =
         paddle::platform::DeviceContextPool::Instance();
-    auto npu_place = BOOST_GET_CONST(paddle::platform::NPUPlace, t_place);
+    auto npu_place = t_place;
     auto *dev_ctx = static_cast<const paddle::platform::NPUDeviceContext *>(
         pool.Get(npu_place));
     paddle::memory::Copy(paddle::platform::CPUPlace(),
@@ -428,6 +430,33 @@ std::vector<int> Tensor::shape() const {
   PADDLE_ENFORCE_NOT_NULL(
       tensor_, paddle::platform::errors::PreconditionNotMet(
                    "Not found tensor called %s in the scope", name_));
+// mkldnn may does layout transform internally, so need to reorder before
+// return
+#ifdef PADDLE_WITH_MKLDNN
+  if (tensor->layout() == paddle::framework::DataLayout::kMKLDNN) {
+    paddle::framework::DataLayout out_layout =
+        paddle::platform::MKLDNNDeviceContext::tls()
+            .get_cur_paddle_data_layout();
+    // Set default as NCHW in case not specified
+    out_layout = out_layout == paddle::framework::DataLayout::kAnyLayout
+                     ? paddle::framework::DataLayout::kNCHW
+                     : out_layout;
+    // In these data layouts, channel dimension is either on 2nd position: nChw
+    // or
+    // at last nhwC, so for dim==2 these layouts are the same and nothing should
+    // be done. Similarly for dim==1 when you have just one possible
+    // combination.
+    if (tensor->dims().size() < 3)
+      return paddle::framework::vectorize<int>(tensor->dims());
+    if (out_layout == paddle::framework::DataLayout::kNHWC) {
+      auto dims = paddle::framework::vectorize<int>(tensor->dims());
+      std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
+      return dims;
+    } else {
+      return paddle::framework::vectorize<int>(tensor->dims());
+    }
+  }
+#endif
   return paddle::framework::vectorize<int>(tensor->dims());
 }
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,3 +22,10 @@ REGISTER_OP_CUDA_KERNEL(
     unpool_grad,
     ops::UnpoolGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::UnpoolGradKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(
+    unpool3d, ops::Unpool3dKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::Unpool3dKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(
+    unpool3d_grad,
+    ops::Unpool3dGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::Unpool3dGradKernel<paddle::platform::CUDADeviceContext, double>);

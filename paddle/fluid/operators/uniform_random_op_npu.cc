@@ -40,8 +40,8 @@ class NPUUniformRandomKernel : public framework::OpKernel<T> {
       }
     }
 
-    if (out_var->IsType<framework::SelectedRows>()) {
-      auto *selected_rows = out_var->GetMutable<framework::SelectedRows>();
+    if (out_var->IsType<pten::SelectedRows>()) {
+      auto *selected_rows = out_var->GetMutable<pten::SelectedRows>();
       tensor = selected_rows->mutable_value();
       auto shape = ctx.Attr<std::vector<int64_t>>("shape");
       if (!new_shape.empty()) shape = new_shape;
@@ -60,7 +60,7 @@ class NPUUniformRandomKernel : public framework::OpKernel<T> {
     tensor->mutable_data<T>(ctx.GetPlace());
     int64_t size = tensor->numel();
 
-    Tensor cpu_tensor(tensor->type());
+    Tensor cpu_tensor(tensor->dtype());
     cpu_tensor.Resize(tensor->dims());
     T *data_cpu = cpu_tensor.mutable_data<T>(platform::CPUPlace());
 

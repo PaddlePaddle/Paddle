@@ -13,12 +13,36 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
 namespace operators {
+
+cnnlCastDataType_t GetCastDataType(const VT::Type& src_type,
+                                   const VT::Type& dst_type) {
+  cnnlCastDataType_t cast_type = CNNL_CAST_FLOAT_TO_HALF;
+  for (auto it = MLU_SUPPORTED_CAST_TYPE.begin();
+       it != MLU_SUPPORTED_CAST_TYPE.end(); ++it) {
+    if (it->first.first == src_type && it->first.second == dst_type) {
+      cast_type = it->second;
+      break;
+    }
+  }
+  return cast_type;
+}
+
+bool MLUSupportsCast(const VT::Type& src_type, const VT::Type& dst_type) {
+  for (auto it = MLU_SUPPORTED_CAST_TYPE.begin();
+       it != MLU_SUPPORTED_CAST_TYPE.end(); ++it) {
+    if (it->first.first == src_type && it->first.second == dst_type) {
+      return true;
+    }
+  }
+  return false;
+}
 
 class MLUCnnlTensorDescPool {
  public:
@@ -153,6 +177,11 @@ MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
   }
 }
 
+MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor)
+    : MLUCnnlTensorDesc(
+          tensor, CNNL_LAYOUT_ARRAY,
+          ToCnnlDataType(framework::TransToProtoVarType(tensor.dtype()))) {}
+
 MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
                                      cnnlTensorLayout_t layout,
                                      const cnnlDataType_t tensor_dtype,
@@ -197,11 +226,13 @@ MLUCnnlActivationDesc::~MLUCnnlActivationDesc() {
 MLUCnnlPoolingDesc::MLUCnnlPoolingDesc(
     const cnnlPoolingMode_t mode, const cnnlNanPropagation_t maxpooling_nan_opt,
     int window_rows, int window_cols, int64_t pad_up, int64_t pad_down,
-    int64_t pad_left, int64_t pad_right, int row_stride, int col_stride) {
+    int64_t pad_left, int64_t pad_right, int row_stride, int col_stride,
+    int row_dilation, int col_dilation, bool ceil_mode) {
   PADDLE_ENFORCE_MLU_SUCCESS(cnnlCreatePoolingDescriptor(&pooling_desc_));
-  PADDLE_ENFORCE_MLU_SUCCESS(cnnlSetPooling2dDescriptor(
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlSetPooling2dDescriptor_v2(
       pooling_desc_, mode, maxpooling_nan_opt, window_rows, window_cols, pad_up,
-      pad_down, pad_left, pad_right, row_stride, col_stride));
+      pad_down, pad_left, pad_right, row_stride, col_stride, row_dilation,
+      col_dilation, ceil_mode));
 }
 
 MLUCnnlPoolingDesc::MLUCnnlPoolingDesc(
@@ -846,9 +877,11 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
     const cnnlTensorDescriptor_t a_desc, const void* a,
     const cnnlTensorDescriptor_t b_desc, const void* b,
     const cnnlTensorDescriptor_t output_desc, void* output,
-    const cnnlDataType_t dtype) {
-  static const int alpha1_int = 1, alpha2_int = 1, beta_int = 0;
-  static const float alpha1_float = 1.f, alpha2_float = 1.f, beta_float = 0.f;
+    const cnnlDataType_t dtype, const float alpha1_float,
+    const float alpha2_float, const float beta_float) {
+  const int alpha1_int = static_cast<const int>(alpha1_float);
+  const int alpha2_int = static_cast<const int>(alpha2_float);
+  const int beta_int = static_cast<const int>(beta_float);
 
   const void* alpha1_ptr = static_cast<const void*>(&alpha1_float);
   const void* alpha2_ptr = static_cast<const void*>(&alpha2_float);
@@ -892,11 +925,12 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
 
 /* static */ void MLUCnnl::RandomUniform(
     const ExecutionContext& ctx, const int num, const cnnlDataType_t data_type,
-    const cnnlRandGenerator_t mlu_generator, void* output) {
+    const cnnlRandGenerator_t mlu_generator, const float min, const float max,
+    void* output) {
   cnnlHandle_t handle = GetHandleFromCTX(ctx);
 
   PADDLE_ENFORCE_MLU_SUCCESS(cnnlRandGenerateUniform(
-      handle, mlu_generator, data_type, nullptr, num, 0, 1, output));
+      handle, mlu_generator, data_type, nullptr, num, min, max, output));
 }
 
 /* static */ void MLUCnnl::TopK(
@@ -1096,17 +1130,16 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
 }
 
 /* static */ void MLUCnnl::PoolingForward(
-    const ExecutionContext& ctx, cnnlPoolingMode_t pool_mode,
-    const std::vector<int64_t>& output_shape,
-    const cnnlPoolingDescriptor_t pooling_desc, const void* alpha,
-    const cnnlTensorDescriptor_t input_desc, const void* input,
-    const void* beta, const void* extra_input_ptr,
+    const ExecutionContext& ctx, cnnlPoolingMode_t pool_mode, int64_t output_h,
+    int64_t output_w, const cnnlPoolingDescriptor_t pooling_desc,
+    const void* alpha, const cnnlTensorDescriptor_t input_desc,
+    const void* input, const void* beta, const void* extra_input_ptr,
     const cnnlTensorDescriptor_t output_desc, void* output) {
   cnnlHandle_t handle = GetHandleFromCTX(ctx);
 
   size_t workspace_size = 0;
   PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetPoolingWorkspaceSize(
-      handle, pool_mode, output_shape[2], output_shape[1], &workspace_size));
+      handle, pool_mode, output_w, output_h, &workspace_size));
 
   auto& dev_ctx = GetDevCtxFromCTX(ctx);
   Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
@@ -1116,6 +1149,18 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
   PADDLE_ENFORCE_MLU_SUCCESS(cnnlPoolingForward_v2(
       handle, pooling_desc, alpha, input_desc, input, beta, extra_input_ptr,
       output_desc, output, workspace_ptr, workspace_size));
+}
+
+/* static */ void MLUCnnl::AdaptivePoolingForward(
+    const ExecutionContext& ctx, cnnlPoolingMode_t pool_mode,
+    const cnnlTensorDescriptor_t input_desc, const void* input,
+    const cnnlTensorDescriptor_t output_desc, void* output,
+    const cnnlTensorDescriptor_t index_desc, void* index) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  PADDLE_ENFORCE_MLU_SUCCESS(
+      cnnlAdaptivePoolingForward(handle, input_desc, input, pool_mode,
+                                 output_desc, output, index_desc, index));
 }
 
 /* static */ void MLUCnnl::Pool3D(
@@ -1769,6 +1814,17 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
       y, diff_y_desc, diff_y, x_desc, x, beta, diff_x_desc, diff_x));
 }
 
+/* static */ void MLUCnnl::AdaptivePoolingBackward(
+    const ExecutionContext& ctx, const cnnlPoolingMode_t pool_mode,
+    const cnnlTensorDescriptor_t y_desc, const void* y,
+    const cnnlTensorDescriptor_t index_desc, const void* index,
+    const cnnlTensorDescriptor_t diff_x_desc, void* diff_x) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlAdaptivePoolingBackward(
+      handle, y_desc, y, index_desc, index, pool_mode, diff_x_desc, diff_x));
+}
+
 /* static */ void MLUCnnl::NonMaxSuppression(
     const ExecutionContext& ctx, const cnnlNmsDescriptor_t nms_desc,
     const cnnlTensorDescriptor_t boxes_desc, const void* boxes,
@@ -1848,7 +1904,7 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
 
   if (is_training) {
     /*
-     *  If in Paddle, running_mean_output = momentum * runnning_mean_input +
+     *  In Paddle, running_mean_output = momentum * runnning_mean_input +
      *  (1 - momentum) * batch_mean. However, In CNNL,
      *  running_mean_output = (1 - momentum) * running_mean_input +
      *  momentum * batch_mean. So we pass (1.0 - momentum) to momentum param.
