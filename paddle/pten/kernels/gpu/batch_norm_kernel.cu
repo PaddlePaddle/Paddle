@@ -161,12 +161,10 @@ void BatchNormKernel(const Context &ctx,
                      DenseTensor *saved_mean,
                      DenseTensor *saved_variance,
                      DenseTensor *reserve_space) {
-  // LOG(ERROR) << x.dtype() << "\t" << scale.dtype();
   double epsilon = epsilon_f;
   const bool trainable_stats = trainable_statistics;
   const DataLayout data_layout =
       paddle::framework::StringToDataLayout(data_layout_str);
-
   bool test_mode = is_test && (!trainable_stats);
 
   // Get the size for each dimension.
@@ -185,7 +183,6 @@ void BatchNormKernel(const Context &ctx,
   paddle::operators::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
   auto dtype = paddle::platform::CudnnDataType<T>::type;
-// LOG(ERROR) << "cudnn " << dtype;
 
 #ifdef PADDLE_WITH_HIP
   auto compute_format =
@@ -206,6 +203,7 @@ void BatchNormKernel(const Context &ctx,
 
   DenseTensor transformed_x(x.type());
   DenseTensor transformed_y(y->type());
+
   if (data_layout == DataLayout::kNHWC && compute_format == DataLayout::kNCHW &&
       x_dims.size() > 2) {
     VLOG(3) << "Transform input tensor from NHWC to NCHW.";

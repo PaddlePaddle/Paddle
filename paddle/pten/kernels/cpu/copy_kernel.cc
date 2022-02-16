@@ -36,6 +36,7 @@ void Copy(const Context& dev_ctx,
   VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
           << src_place;
 
+  dst->set_meta(src.meta());
   dst->Resize(src.dims());
   auto* dst_ptr = dev_ctx.Alloc(dst);
 

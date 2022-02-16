@@ -41,7 +41,7 @@ void Copy(const Context& dev_ctx,
 
   VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
           << dst_place;
-
+  dst->set_meta(src.meta());
   dst->ResizeAndAllocate(src.dims());
   auto* dst_ptr = dst->mutable_data(dst_place);
 

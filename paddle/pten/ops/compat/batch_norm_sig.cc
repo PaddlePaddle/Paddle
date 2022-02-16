@@ -17,7 +17,7 @@
 namespace pten {
 
 KernelSignature BatchNormOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("batch_norm1",
+  return KernelSignature("batch_norm",
                          {"X", "Scale", "Bias", "Mean", "Variance"},
                          {"momentum",
                           "epsilon",
@@ -37,7 +37,7 @@ KernelSignature BatchNormOpArgumentMapping(const ArgumentMappingContext& ctx) {
 KernelSignature BatchNormGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "batch_norm_grad1",
+      "batch_norm_grad",
       {GradVarName("Y"),
        "X",
        "Scale",

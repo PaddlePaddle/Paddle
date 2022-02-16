@@ -331,41 +331,14 @@ void BatchNormGradRawKernel(const Context &ctx,
                             DenseTensor *bias_grad) {
   double epsilon = static_cast<double>(epsilon_f);
 
-  // LOG(ERROR) << scale_grad->dtype() << "\t" << scale_grad->dims();
-  // LOG(ERROR) << bias_grad->dtype() << "\t" << bias_grad->dims();
-
   const DataLayout data_layout =
       paddle::framework::StringToDataLayout(data_layout_str);
+
   const auto *d_y = &y_grad;
 
   auto *d_x = x_grad;
   auto *d_scale = scale_grad;
   auto *d_bias = bias_grad;
-
-  // batch_norm with inplace as false will take X as grad input, which
-  // is same as cuDNN batch_norm backward calculation, batch_norm
-  // with inplace as true only take Y as input and X should be calculate
-  // by inverse operation of batch_norm on Y
-  // const DenseTensor *x;
-
-  // if (ctx.HasInput("Y")) {
-  //   x = ctx.Input<Tensor>("Y");
-  //   is_inplace = true;
-  //   if (d_x) {
-  //     PADDLE_ENFORCE_EQ(d_x, d_y,
-  //                       platform::errors::InvalidArgument(
-  //                           "X@GRAD and Y@GRAD not inplace in inplace
-  //                           mode"));
-  //   }
-  // } else {
-  //   x = ctx.Input<Tensor>("X");
-  //   is_inplace = false;
-  //   if (d_x) {
-  //     PADDLE_ENFORCE_NE(
-  //         d_x, d_y, platform::errors::InvalidArgument(
-  //                       "X@GRAD and Y@GRAD inplaced in non-inplace mode"));
-  //   }
-  // }
 
   use_global_stats = is_test || use_global_stats;
 
@@ -391,11 +364,6 @@ void BatchNormGradRawKernel(const Context &ctx,
   if (d_scale && d_bias) {
     d_scale->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
     d_bias->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
-
-    // LOG(ERROR) << d_scale->dtype() << "\t" << d_scale->memory_size() << "\t"
-    //            << d_scale->dims();
-    // LOG(ERROR) << d_bias->dtype() << "\t" << d_bias->memory_size() << "\t"
-    //            << d_bias->dims();
   }
 
   PADDLE_ENFORCE_EQ(
@@ -427,7 +395,7 @@ void BatchNormGradRawKernel(const Context &ctx,
 #else
   const bool fast_nhwc_batch_norm = dtype == CUDNN_DATA_HALF &&
                                     FLAGS_cudnn_batchnorm_spatial_persistent &&
-                                    (!reserve_space);
+                                    (reserve_space.get_ptr() != nullptr);
   auto compute_format = fast_nhwc_batch_norm && data_layout == DataLayout::kNHWC
                             ? DataLayout::kNHWC
                             : DataLayout::kNCHW;
