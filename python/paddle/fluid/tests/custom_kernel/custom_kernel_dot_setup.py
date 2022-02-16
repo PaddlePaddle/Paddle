@@ -34,6 +34,7 @@ paddle_extra_compile_args = [
     '-std=c++14',
     '-shared',
     '-fPIC',
+    '-Wno-parentheses',
     '-DPADDLE_WITH_CUSTOM_DEVICE',
 ]
 if core.is_compiled_with_npu():

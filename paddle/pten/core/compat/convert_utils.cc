@@ -19,9 +19,6 @@ limitations under the License. */
 #include "paddle/pten/common/place.h"
 #include "paddle/pten/core/compat/op_utils.h"
 
-// TODO(Aganlengzi): change to custom device related header
-#include "paddle/fluid/platform/device/npu/npu_info.h"
-
 namespace pten {
 
 Backend TransToPtenBackend(const pten::Place& place) {
@@ -29,9 +26,6 @@ Backend TransToPtenBackend(const pten::Place& place) {
     return Backend::CPU;
   } else if (place.GetType() == pten::AllocationType::GPU) {
     return Backend::GPU;
-    // TODO(Aganlengzi): change to custom device related
-  } else if (place.GetType() == pten::AllocationType::NPU) {
-    return Backend::ASCEND;
   } else {
     return Backend::UNDEFINED;
   }
@@ -62,15 +56,6 @@ pten::Place TransToPtenPlace(const Backend& backend, bool set_device_id) {
     case pten::Backend::XPU:
       return pten::XPUPlace(
           set_device_id ? pten::backends::xpu::GetXPUCurrentDeviceId() : 0);
-#endif
-#if defined(PADDLE_WITH_ASCEND_CL)
-    case pten::Backend::NPU:
-      return pten::NPUPlace(
-          set_device_id ? paddle::platform::GetCurrentNPUDeviceId() : 0);
-    // TODO(Aganlengzi): Trans to CustomPlace mapping with Backends
-    case pten::Backend::ASCEND:
-      return pten::NPUPlace(
-          set_device_id ? paddle::platform::GetCurrentNPUDeviceId() : 0);
 #endif
     default:
       PADDLE_THROW(pten::errors::Unimplemented(

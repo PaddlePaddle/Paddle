@@ -25,10 +25,8 @@ limitations under the License. */
 #include "paddle/pten/backends/xpu/xpu_context.h"
 
 // TODO(wilber): DeviceContextPool nees include fluid file.
-#ifndef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/fluid/platform/device_context.h"
 
 namespace pten {
 using DeviceContextPool = paddle::platform::DeviceContextPool;
 }  // namespace pten
-#endif

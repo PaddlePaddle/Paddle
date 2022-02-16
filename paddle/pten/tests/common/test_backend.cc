@@ -44,9 +44,6 @@ TEST(Backend, OStream) {
   oss << pten::Backend::CUDNN;
   EXPECT_EQ(oss.str(), "CUDNN");
   oss.str("");
-  oss << pten::Backend::ASCEND;
-  EXPECT_EQ(oss.str(), "ASCEND");
-  oss.str("");
   try {
     oss << pten::Backend::NUM_BACKENDS;
   } catch (const std::exception& exception) {

@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-// Load custom kernel from giwen path
+// Load custom kernel from given path
 void LoadCustomKernel(const std::string& libs_path);
 
 // Load custom kernel lib and register
