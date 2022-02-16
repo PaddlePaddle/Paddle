@@ -26,8 +26,6 @@ void TruncKernel(const Context& dev_ctx,
                  DenseTensor* out) {
   size_t numel = x.numel();
   const T* x_data = x.data<T>();
-  // T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
-  // T* out_data = dev_ctx.Alloc<T>(out);
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   for (size_t i = 0; i < numel; i++) {
