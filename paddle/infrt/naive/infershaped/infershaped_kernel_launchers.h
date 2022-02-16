@@ -15,12 +15,9 @@
 #pragma once
 
 #include "paddle/infrt/host_context/kernel_registry.h"
-#include "paddle/infrt/naive/infershaped/infershaped_registry.h"
 
 namespace infrt {
 namespace naive {
-
-struct InferShapedKernelRegistry;
 
 void RegisterInferShapeLaunchers(host_context::KernelRegistry* registry);
 
