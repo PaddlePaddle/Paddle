@@ -1,5 +1,5 @@
 - api : add
-  args : (const Tensor& x, const Tensor& y)
+  args : (Tensor x, Tensor y)
   output : Tensor
   infer_meta :
     func : ElementwiseInferMeta
@@ -7,7 +7,7 @@
     func : add
 
 - api : cast
-  args : (const Tensor& x, DataType out_dtype)
+  args : (Tensor x, DataType out_dtype)
   output : Tensor
   infer_meta :
     func : CastInferMeta
@@ -18,7 +18,7 @@
 
 
 - api : concat
-  args : (const std::vector<Tensor>& x, const Scalar& axis)
+  args : (Tensor[] x, Scalar axis)
   output : Tensor
   infer_meta :
     func : ConcatInferMeta
@@ -27,7 +27,7 @@
     func : concat
 
 - api : conj
-  args : (const Tensor& x)
+  args : (Tensor x)
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
@@ -40,7 +40,7 @@
   invoke : copy_to_impl(x, backend, blocking)
 
 - api : divide
-  args : (const Tensor& x, const Tensor& y)
+  args : (Tensor x, Tensor y)
   output : Tensor
   infer_meta :
     func : ElementwiseInferMeta
@@ -48,7 +48,7 @@
     func : divide
 
 - api : dot
-  args : (const Tensor& x, const Tensor& y)
+  args : (Tensor x, Tensor y)
   output : Tensor
   infer_meta :
     func : DotInferMeta
@@ -56,7 +56,7 @@
     func : dot
 
 - api : empty
-  args : (const ScalarArray& shape, DataType dtype=DataType::FLOAT32, Backend place=Backend::CPU, DataLayout layout=DataLayout::NCHW)
+  args : (ScalarArray shape, DataType dtype=DataType::FLOAT32, Backend place=Backend::CPU, DataLayout layout=DataLayout::NCHW)
   output: Tensor
   infer_meta :
     func : CreateInferMeta
@@ -69,7 +69,7 @@
     layout : layout
 
 - api : empty_like
-  args : (const Tensor& x, DataType dtype = DataType::UNDEFINED, Backend place = Backend::UNDEFINED, DataLayout layout = DataLayout::UNDEFINED)
+  args : (Tensor x, DataType dtype = DataType::UNDEFINED, Backend place = Backend::UNDEFINED, DataLayout layout = DataLayout::UNDEFINED)
   output: Tensor
   infer_meta :
     func : CreateLikeInferMeta
@@ -82,7 +82,7 @@
     layout : layout > x
 
 - api : flatten
-  args : (const Tensor& x, int start_axis, int stop_axis)
+  args : (Tensor x, int start_axis, int stop_axis)
   output : Tensor
   infer_meta :
     func : FlattenInferMeta
@@ -90,7 +90,7 @@
     func : flatten
 
 - api : full
-  args : (const ScalarArray& shape, const Scalar& value, DataType dtype=DataType::FLOAT32, Backend place=Backend::CPU, DataLayout layout=DataLayout::NCHW)
+  args : (ScalarArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Backend place=Backend::CPU, DataLayout layout=DataLayout::NCHW)
   output: Tensor
   infer_meta :
     func : CreateInferMeta
@@ -103,7 +103,7 @@
     layout : layout
 
 - api : full_like
-  args : (const Tensor& x, const Scalar& value, DataType dtype = DataType::UNDEFINED, Backend place = Backend::UNDEFINED, DataLayout layout = DataLayout::UNDEFINED)
+  args : (Tensor x, Scalar value, DataType dtype = DataType::UNDEFINED, Backend place = Backend::UNDEFINED, DataLayout layout = DataLayout::UNDEFINED)
   output: Tensor
   infer_meta :
     func : CreateLikeInferMeta
@@ -116,7 +116,7 @@
     layout : layout > x
 
 - api : matmul
-  args : (const Tensor& x, const Tensor& y, bool transpose_x = false, bool transpose_y = false)
+  args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false)
   output : Tensor
   infer_meta :
     func : MatmulInferMeta
@@ -125,7 +125,7 @@
   backward : matmul_grad
 
 - api : mean
-  args : (const Tensor& x, const std::vector<int64_t>& axis={}, bool keep_dim=false)
+  args : (Tensor x, int64_t[] axis={}, bool keep_dim=false)
   output : Tensor
   infer_meta :
     func : ReduceInferMeta
@@ -133,7 +133,7 @@
     func : mean
 
 - api : multiply
-  args : (const Tensor& x, const Tensor& y)
+  args : (Tensor x, Tensor y)
   output : Tensor
   infer_meta :
     func : ElementwiseInferMeta
@@ -141,12 +141,12 @@
     func : multiply
 
 - api : ones_like
-  args : (const Tensor& x, DataType dtype=DataType::UNDEFINED, Backend place=Backend::UNDEFINED, DataLayout layout=DataLayout::UNDEFINED)
+  args : (Tensor x, DataType dtype=DataType::UNDEFINED, Backend place=Backend::UNDEFINED, DataLayout layout=DataLayout::UNDEFINED)
   output : Tensor
   invoke : full_like(x, 1, dtype, place, layout)
 
 - api : reshape
-  args : (const Tensor& x, const ScalarArray& shape)
+  args : (Tensor x, ScalarArray shape)
   output : Tensor
   infer_meta :
     func : ReshapeInferMeta
@@ -154,7 +154,7 @@
     func : reshape
 
 - api : scale
-  args : (const Tensor& x, const Scalar& scale, float bias, bool bias_after_scale)
+  args : (Tensor x, Scalar scale, float bias, bool bias_after_scale)
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
@@ -163,7 +163,7 @@
     func : scale, scale_sr
 
 - api : sign
-  args : (const Tensor& x)
+  args : (Tensor x)
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
@@ -176,7 +176,7 @@
   invoke : split_impl(x, num_or_sections, axis)
 
 - api : subtract
-  args : (const Tensor& x, const Tensor& y)
+  args : (Tensor x, Tensor y)
   output : Tensor
   infer_meta :
     func : ElementwiseInferMeta
@@ -184,7 +184,7 @@
     func : subtract
 
 - api : sum
-  args : (const Tensor& x, const std::vector<int64_t>& axis={}, DataType dtype=DataType::UNDEFINED, bool keep_dim=false)
+  args : (Tensor x, int64_t[] axis={}, DataType dtype=DataType::UNDEFINED, bool keep_dim=false)
   output : Tensor
   infer_meta :
     func : SumInferMeta
@@ -194,6 +194,6 @@
     data_type : x
 
 - api : zeros_like
-  args : (const Tensor& x, DataType dtype=DataType::UNDEFINED, Backend place=Backend::UNDEFINED, DataLayout layout=DataLayout::UNDEFINED)
+  args : (Tensor x, DataType dtype=DataType::UNDEFINED, Backend place=Backend::UNDEFINED, DataLayout layout=DataLayout::UNDEFINED)
   output : Tensor
   invoke : full_like(x, 0, dtype, place, layout)

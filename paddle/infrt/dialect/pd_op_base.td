@@ -6,6 +6,7 @@
 
 include "mlir/IR/OpBase.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
+include "paddle/infrt/dialect/infrt/infrt_ops.td"
 
 def PD_Dialect : Dialect {
   let name = "pd";
@@ -71,7 +72,10 @@ def PD_ElementType : Type<Or<[PD_Float.predicate,
                               PD_Int.predicate]>,
                               "pd.dtype">;
 
-def PD_Tensor : TensorOf<[PD_ElementType]>;
+// def PD_Tensor : TensorOf<[PD_ElementType]>;
+def PD_Tensor1 : TensorOf<[PD_ElementType]>;
+
+def PD_Tensor :  AnyTypeOf<[PD_Tensor1, LoDTensor],"pd.ttype">;
 
 def PD_Tensor_Array : VectorOf<[PD_Tensor]>;
 
