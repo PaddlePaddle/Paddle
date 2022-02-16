@@ -35,13 +35,11 @@ TEST(utils, registry) {
   CHECK_EQ(count, 2U);
 }
 
-TEST(ElementwiseAdd, registry) {
-  InferShapedKernelRegistry registry;
+TEST(ElementwiseAdd, launcher_registry) {
+  host_context::KernelRegistry registry;
   RegisterInferShapeLaunchers(&registry);
   ASSERT_EQ(registry.size(), 1UL);
   auto creator = registry.GetKernel("elementwise_add");
-  auto infershape_launcher_handle = creator();
-  // fake some tensors
 
   tensor::DenseHostTensor a({2, 8}, GetDType<float>());
   tensor::DenseHostTensor b({2, 8}, GetDType<float>());
@@ -53,7 +51,7 @@ TEST(ElementwiseAdd, registry) {
   kernel_frame_builder.AddArgument(new host_context::Value(std::move(b)));
   kernel_frame_builder.SetResults({new host_context::Value(std::move(c))});
 
-  infershape_launcher_handle->Invoke(&kernel_frame_builder);
+  creator(&kernel_frame_builder);
 }
 
 }  // namespace naive
