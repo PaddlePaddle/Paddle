@@ -366,22 +366,25 @@ __device__ __inline__ void ReadDataBc(T* dst,
  * reduce_last_dim: Used to indicate whether the dimension of reduce contains
  * the lowest dimension.
  */
-template <typename T,
+template <typename Tx,
+          typename Ty,
           int NX,
           int NY,
           int BlockSize,
           int Rank,
           typename IndexCal,
+          typename Functor,
           bool IsBoundary = false>
-__device__ __inline__ void ReadDataReduce(T* dst,
-                                          const T _global_ptr_* src,
-                                          int block_offset,
-                                          const IndexCal& index_cal,
-                                          int size_nx,
-                                          int size_ny,
-                                          int stride_nx,
-                                          int stride_ny,
-                                          bool reduce_last_dim) {
+__device__ __forceinline__ void ReadDataReduce(Ty* dst,
+                                               const Tx* __restrict__ src,
+                                               int block_offset,
+                                               const IndexCal& index_cal,
+                                               int size_nx,
+                                               int size_ny,
+                                               int stride_nx,
+                                               int stride_ny,
+                                               Functor func,
+                                               bool reduce_last_dim) {
   __local__ T in_temp[1];
   int thread_offset = 0;
   int left_idx = 0;
@@ -402,8 +405,8 @@ __device__ __inline__ void ReadDataReduce(T* dst,
         }
       }
       uint32_t index_src = index_cal(thread_offset + block_offset);
-      GM2LM(src + index_src, in_temp, sizeof(T));
-      dst[ny] = static_cast<T>(func(in_temp[0]));
+      GM2LM(src + index_src, in_temp, sizeof(Tx));
+      dst[ny] = static_cast<Ty>(func(in_temp[0]));
       thread_offset += stride_ny;
     }
   } else {
@@ -418,8 +421,8 @@ __device__ __inline__ void ReadDataReduce(T* dst,
           }
         }
         uint32_t index_src = index_cal(thread_offset + block_offset);
-        GM2LM(src + index_src, in_temp, sizeof(T));
-        dst[nx + ny * NX] = static_cast<T>(func(in_temp[0]));
+        GM2LM(src + index_src, in_temp, sizeof(Tx));
+        dst[nx + ny * NX] = static_cast<Ty>(func(in_temp[0]));
         thread_offset += stride_ny;
       }
     }
