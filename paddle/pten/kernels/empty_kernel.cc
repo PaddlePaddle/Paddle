@@ -94,7 +94,7 @@ PT_REGISTER_KERNEL(empty_like,
                    int64_t,
                    bool,
                    pten::dtype::float16,
-                   pten::dtype:::bfloat16,
+                   pten::dtype::bfloat16,
                    pten::dtype::complex<float>,
                    pten::dtype::complex<double>) {}
 #endif
