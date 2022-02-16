@@ -265,6 +265,18 @@ class ConditionalBlockGradInferShape : public framework::InferShapeBase {
   }
 };
 
+class ConditionalBlockGradInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    // NOTE(Aurelius84): VarType of Output is LoDTensor by default. In case of
+    // Input is {Tensor, LoDTensorArray}, we need synchronous the Input's
+    // VarType into Input@GRAD to avoid generating {Tensor, Tensor} as
+    // Input@GRAD.
+    ctx->SyncTypeAndDataType(ConditionalOp::kInputs,
+                             framework::GradVarName(ConditionalOp::kInputs));
+  }
+};
+
 template <typename T>
 class ConditionalBlockGradMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -300,4 +312,5 @@ REGISTER_OPERATOR(conditional_block, ops::ConditionalBlockOp,
                   ops::ConditionalBlockOpProtoMaker,
                   ops::ConditionalBlockGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(conditional_block_grad, ops::ConditionalBlockGradOp,
-                  ops::ConditionalBlockGradInferShape);
+                  ops::ConditionalBlockGradInferShape,
+                  ops::ConditionalBlockGradInferVarType);
