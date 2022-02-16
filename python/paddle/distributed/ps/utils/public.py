@@ -83,8 +83,10 @@ class DistributedMode:
 
 class TrainerRuntimeConfig(object):
     def __init__(self, valid_strategy):
-
+        self.mode = None
         k_steps = valid_strategy.a_sync_configs["k_steps"]
+        logger.info("ps mode in strategy: {}, {}".format(
+            valid_strategy.a_sync, valid_strategy.a_sync_configs["k_steps"]))
         if not valid_strategy.a_sync and k_steps == 0:
             self.mode = DistributedMode.SYNC
 
@@ -94,7 +96,6 @@ class TrainerRuntimeConfig(object):
         if valid_strategy.a_sync and k_steps > 0:
             self.mode = DistributedMode.GEO
 
-        self.mode = None
         num_threads = os.getenv("CPU_NUM", "1")
 
         self.runtime_configs = {}
@@ -161,6 +162,13 @@ def get_dist_env():
     }
 
 
+def get_role_id(role_maker):
+    try:
+        return role_maker._role_id()
+    except Exception:
+        return role_maker.role_id()
+
+
 def get_ps_endpoint(role_maker):
     try:
         return role_maker._get_pserver_endpoints()[get_role_id(role_maker)]
@@ -184,7 +192,7 @@ def get_trainer_endpoint(role_maker):
 
 def get_previous_stage_trainers(role_maker):
     try:
-        return role_maker_get_previous_trainers()
+        return role_maker._get_previous_trainers()
     except Exception:
         return role_maker.get_previous_trainers()
 
@@ -229,18 +237,11 @@ def get_sparse_tablenames(program, is_distributed):
     return list(tablenames)
 
 
-def get_role_id(role_maker):
-    try:
-        return role_maker._role_id()
-    except Exception:
-        return role_maker.role_id()
-
-
 def get_ps_endpoints(role_maker):
     try:
-        return role_maker._get_pserver_endpoints()[get_role_id(role_maker)]
+        return role_maker._get_pserver_endpoints()
     except Exception:
-        return role_maker.get_pserver_endpoints()[get_role_id(role_maker)]
+        return role_maker.get_pserver_endpoints()
 
 
 def get_trainers(role_maker):
@@ -296,8 +297,35 @@ def get_geo_trainer_send_context(context):
     if context['ps_mode'] != DistributedMode.GEO:
         raise ValueError("ps mode: {} not matched {}",
                          format(ps_mode, "get_geo_trainer_send_context"))
-
     send_ctx = {}
+    trainer_id = get_role_id(context['role_maker'])
+    idx = 0
+
+    distibuted_varnames = get_sparse_tablenames(context['origin_main_program'],
+                                                True)
+    for merged in context['merged_sparse_pairs']:
+        param, grad = merged
+        grad_name = grad.merged_var.name
+        param_name = param.merged_var.name
+        is_distributed = True if param_name in distibuted_varnames else False
+
+        var = context['origin_main_program'].global_block().vars[
+            grad.merged_var.name]
+        var_numel = reduce(lambda x, y: x * y, var.shape[1:])
+
+        sparse_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
+                                 [var_numel], [grad_name], trainer_id, True,
+                                 True, is_distributed, idx, False)
+        idx += 1
+        send_ctx[sparse_ctx.var_name()] = sparse_ctx
+
+    if len(send_ctx) == 0:
+        raise ValueError("GeoSGD require sparse parameters in your net.")
+
+    if len(context['tensor_table']) > 0 and context['is_worker']:
+        name, ctx = _step_ctx(idx, context['role_maker'])
+        send_ctx[name] = ctx
+
     return send_ctx
 
 
@@ -1253,6 +1281,60 @@ def find_op_input_output(program, block, op):
     return input_var_list, output_var_list
 
 
+def add_heter_send_op(program, heter_program, block, block_var_detail):
+    def _get_send_op_dict():
+        send_op_dict = {}
+        send_op_list = find_send_op(program)
+        for op in send_op_list:
+            input_list, _ = find_op_input_output(program,
+                                                 program.global_block(), op)
+            for var in input_list:
+                send_op_dict[var] = op
+        return send_op_dict
+
+    send_grad_var_list = []
+    send_op_dict = _get_send_op_dict()
+    table_dict = {}
+    for persistable_var in block_var_detail["backward"]["persistables"]:
+        if "@GRAD" not in persistable_var:
+            continue
+        if "GRAD" != persistable_var.split("@")[-1]:
+            continue
+        if persistable_var not in send_op_dict:
+            continue
+        send_op = send_op_dict[persistable_var]
+        is_sparse = send_op.attr('is_sparse')
+        table_id = send_op.attr('table_id')
+        send_varnames = send_op.attr('send_varnames')
+        send_grad_var_list.append(persistable_var)
+        if table_id not in table_dict:
+            table_dict[table_id] = {}
+            table_dict[table_id]['var_list'] = []
+            table_dict[table_id]['is_sparse'] = is_sparse
+            table_dict[table_id]['send_varnames'] = send_varnames
+        table_dict[table_id]['var_list'].append(persistable_var)
+
+    for table_id in table_dict:
+        dummy_output = block.create_var(
+            name=framework.generate_control_dev_var_name())
+        send_input_vars = [
+            block.vars[union_var]
+            for union_var in table_dict[table_id]['var_list']
+        ]
+        block.append_op(
+            type="send",
+            inputs={"X": send_input_vars},
+            outputs={"Out": dummy_output},
+            attrs={
+                "send_varnames": table_dict[table_id]['send_varnames'],
+                "is_sparse": is_sparse,
+                "table_id": table_id,
+                RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+            })
+
+    return send_grad_var_list
+
+
 def get_vars_name_in_block(block):
     vars_list = block.vars.keys()
     vars_name_list = [var_name for var_name in vars_list]
@@ -1302,10 +1384,6 @@ def create_backward_block(program, origin_program, bp_ops_list,
     return heter_block
 
 
-def debug_program(file, program, is_trainer):
-    if is_trainer:
-        with open(file, 'w+') as f:
-            f.write(str(program))
-    else:
-        with open(file, 'w+') as f:
-            f.write(str(program))
+def debug_program(file, program):
+    with open(file, 'w+') as f:
+        f.write(str(program))
