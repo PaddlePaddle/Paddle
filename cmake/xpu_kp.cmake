@@ -128,8 +128,10 @@ macro(compile_kernel COMPILE_ARGS)
     COMMAND
       ${CMAKE_COMMAND} -E make_directory kernel_build
     COMMAND
+      cp ${kernel_path}/${kernel_name}.kps kernel_build/${kernel_name}.xpu
+    COMMAND
     ${XPU_CLANG} --sysroot=${CXX_DIR}  -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=1 ${OPT_LEVEL} -fno-builtin -mcpu=xpu2  -fPIC ${XPU_CXX_DEFINES}  ${XPU_CXX_FLAGS}  ${XPU_CXX_INCLUDES} 
-       -I.  -o kernel_build/${kernel_name}.bin.o.sec ${kernel_path}/${kernel_name}.xpu
+       -I.  -o kernel_build/${kernel_name}.bin.o.sec kernel_build/${kernel_name}.xpu
         --xpu-device-only -c -v 
     COMMAND
       ${XTDK_DIR}/bin/xpu2-elfconv kernel_build/${kernel_name}.bin.o.sec  kernel_build/${kernel_name}.bin.o ${XPU_CLANG} --sysroot=${CXX_DIR}
@@ -150,7 +152,7 @@ macro(compile_kernel COMPILE_ARGS)
       ${CMAKE_COMMAND} -E make_directory kernel_build
     COMMAND
     ${XPU_CLANG} --sysroot=${CXX_DIR}  -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=1 ${OPT_LEVEL} -fno-builtin -mcpu=xpu2  -fPIC ${XPU_CXX_DEFINES}  ${XPU_CXX_FLAGS} ${XPU_CXX_INCLUDES} 
-        -I.  -o kernel_build/${kernel_name}.host.o ${kernel_path}/${kernel_name}.xpu
+        -I.  -o kernel_build/${kernel_name}.host.o kernel_build/${kernel_name}.xpu
         --xpu-host-only -c -v 
     WORKING_DIRECTORY
       ${CMAKE_CURRENT_BINARY_DIR}
@@ -185,7 +187,7 @@ macro(xpu_add_library TARGET_NAME)
     # Distinguish .xpu file from other files
     foreach(cur_xpu_src IN LISTS xpu_srcs_lists)
       get_filename_component(language_type_name ${cur_xpu_src} EXT)
-      if(${language_type_name} STREQUAL ".xpu")
+      if(${language_type_name} STREQUAL ".kps")
         list(APPEND xpu_kernel_lists ${cur_xpu_src})
       else()
         list(APPEND cc_kernel_lists ${cur_xpu_src})

@@ -26,7 +26,6 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_XPU_KP
-//#ifdef __xpu_on_host__
 #include <xpu/runtime.h>
 #include "xpu/kernel/cluster_header.h"
 #include "xpu/kernel/debug.h"
@@ -180,6 +179,7 @@ namespace plat = paddle::platform;
 REGISTER_OP_KERNEL(elementwise_add, KP, plat::XPUPlace,
                     ops::ElementwiseAddXPUKPKernel<float>);
 
+REGISTER_OP_KERNEL(elementwise_add_grad, KP, plat::XPUPlace,
+                    ops::ElementwiseAddGradXPUKPKernel<float>);
 
-//#endif // __xpu_on_host__
 #endif // PADDLE_WITH_XPU_KP
