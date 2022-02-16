@@ -21,7 +21,7 @@ void InterpreterCoreFastGarbageCollector::Add(
     Variable* var, platform::DeviceEvent* event,
     const platform::DeviceContext* ctx) {
   PADDLE_THROW(platform::errors::Unimplemented(
-      "Not implemented for InterpreterCoreEventGarbageCollector."));
+      "Not implemented for InterpreterCoreFastGarbageCollector."));
 }
 
 void InterpreterCoreFastGarbageCollector::Add(Variable* var) {
