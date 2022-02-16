@@ -409,7 +409,8 @@ void BasicEngine::Execute() {
 
     for (auto& cur_op : *shared_cur_node) {
       platform::RecordEvent op_type_record_event(
-          cur_op.Type(), platform::EventRole::kOrdinary, 1, platform::TracerEventType::Operator);
+          cur_op.Type(), platform::EventRole::kOrdinary, 1,
+          platform::TracerEventType::Operator);
 
       ++op_num;
 

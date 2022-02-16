@@ -116,9 +116,9 @@ class MulPrimitiveFactory {
 
     auto &astream = platform::MKLDNNDeviceContext::tls().get_stream();
     {
-      platform::RecordEvent record_reorder("int_reorder",
-                                           platform::EventRole::kUniqueOp, 2,
-                                           platform::TracerEventType::UserDefined);
+      platform::RecordEvent record_reorder(
+          "int_reorder", platform::EventRole::kUniqueOp, 2,
+          platform::TracerEventType::UserDefined);
       reorder.execute(astream, src_mem, dst_mem);
       astream.wait();
     }
@@ -278,9 +278,9 @@ class MulPrimitiveFactory {
 
     auto &astream = platform::MKLDNNDeviceContext::tls().get_stream();
     {
-      platform::RecordEvent record_reorder("int_reorder",
-                                           platform::EventRole::kUniqueOp, 2,
-                                           platform::TracerEventType::UserDefined);
+      platform::RecordEvent record_reorder(
+          "int_reorder", platform::EventRole::kUniqueOp, 2,
+          platform::TracerEventType::UserDefined);
       reorder.execute(astream, src_mem, dst_mem);
       astream.wait();
     }

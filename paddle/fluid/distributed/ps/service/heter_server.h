@@ -213,9 +213,9 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
 
   int Handle(const MultiVarMsg* request, MultiVarMsg* response,
              brpc::Controller* cntl) override {
-    platform::RecordEvent record_event("RequestSendAndRecvHandler->Handle",
-                                       platform::EventRole::kOrdinary, 1,
-                                       platform::TracerEventType::Communication);
+    platform::RecordEvent record_event(
+        "RequestSendAndRecvHandler->Handle", platform::EventRole::kOrdinary, 1,
+        platform::TracerEventType::Communication);
     FLAGS_eager_delete_tensor_gb = -1;
 
     // get microID from request

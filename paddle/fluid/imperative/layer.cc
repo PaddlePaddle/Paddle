@@ -222,8 +222,9 @@ void VarBase::ClearGradient(bool set_to_zero) {
         grad_t->mutable_value()->clear();
       }
     } else {
-      platform::RecordEvent record_event("ClearGradient", platform::EventRole::kOrdinary,
-                                         2, platform::TracerEventType::UserDefined);
+      platform::RecordEvent record_event(
+          "ClearGradient", platform::EventRole::kOrdinary, 2,
+          platform::TracerEventType::UserDefined);
       auto* grad_t =
           grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
       if (grad_t->IsInitialized()) {

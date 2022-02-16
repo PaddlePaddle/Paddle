@@ -179,9 +179,9 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
         handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-    platform::RecordEvent record_reorder("ext_reorder",
-                                         platform::EventRole::kUniqueOp, 2,
-                                         platform::TracerEventType::UserDefined);
+    platform::RecordEvent record_reorder(
+        "ext_reorder", platform::EventRole::kUniqueOp, 2,
+        platform::TracerEventType::UserDefined);
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
     astream.wait();
   } else {

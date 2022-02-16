@@ -227,9 +227,9 @@ void Copy<platform::NPUPlace, platform::NPUPlace>(platform::NPUPlace dst_place,
   if (dst_place == src_place) {
     platform::SetNPUDeviceId(src_place.device);
     if (stream) {
-      platform::RecordEvent record_event("NpuMemcpyAsync(same_npu):NPU->NPU",
-                                         platform::EventRole::kOrdinary, 1,
-                                         platform::TracerEventType::UserDefined);
+      platform::RecordEvent record_event(
+          "NpuMemcpyAsync(same_npu):NPU->NPU", platform::EventRole::kOrdinary,
+          1, platform::TracerEventType::UserDefined);
       platform::NPUMemcpyAsync(dst, src, num, ACL_MEMCPY_DEVICE_TO_DEVICE,
                                stream);
     } else {
@@ -237,9 +237,9 @@ void Copy<platform::NPUPlace, platform::NPUPlace>(platform::NPUPlace dst_place,
           platform::DeviceContextPool::Instance();
       static_cast<platform::NPUDeviceContext*>(pool.Get(dst_place))->Wait();
 
-      platform::RecordEvent record_event("NpuMemcpySync(same_npu):NPU->NPU",
-                                         platform::EventRole::kOrdinary, 1,
-                                         platform::TracerEventType::UserDefined);
+      platform::RecordEvent record_event(
+          "NpuMemcpySync(same_npu):NPU->NPU", platform::EventRole::kOrdinary, 1,
+          platform::TracerEventType::UserDefined);
       platform::NPUMemcpySync(dst, src, num, ACL_MEMCPY_DEVICE_TO_DEVICE);
     }
   } else {
@@ -249,9 +249,9 @@ void Copy<platform::NPUPlace, platform::NPUPlace>(platform::NPUPlace dst_place,
     }
     if (stream) {
       // TODO(zhiqiu): support peer access?
-      platform::RecordEvent record_event("NpuMemcpyPeerAsync:NPU->NPU",
-                                         platform::EventRole::kOrdinary, 1,
-                                         platform::TracerEventType::UserDefined);
+      platform::RecordEvent record_event(
+          "NpuMemcpyPeerAsync:NPU->NPU", platform::EventRole::kOrdinary, 1,
+          platform::TracerEventType::UserDefined);
       platform::NPUMemcpyAsync(dst, src, num, ACL_MEMCPY_DEVICE_TO_DEVICE,
                                stream);
     } else {
@@ -259,9 +259,9 @@ void Copy<platform::NPUPlace, platform::NPUPlace>(platform::NPUPlace dst_place,
           platform::DeviceContextPool::Instance();
       static_cast<platform::NPUDeviceContext*>(pool.Get(dst_place))->Wait();
 
-      platform::RecordEvent record_event("NpuMemcpyPeerSync:NPU->NPU",
-                                         platform::EventRole::kOrdinary, 1,
-                                         platform::TracerEventType::UserDefined);
+      platform::RecordEvent record_event(
+          "NpuMemcpyPeerSync:NPU->NPU", platform::EventRole::kOrdinary, 1,
+          platform::TracerEventType::UserDefined);
       platform::NPUMemcpySync(dst, src, num, ACL_MEMCPY_DEVICE_TO_DEVICE);
     }
   }
@@ -592,18 +592,18 @@ void Copy<platform::CUDAPlace, platform::CUDAPlace>(
   if (dst_place == src_place) {
     platform::SetDeviceId(src_place.device);
     if (stream) {
-      platform::RecordEvent record_event("GpuMemcpyAsync(same_gpu):GPU->GPU",
-                                         platform::EventRole::kOrdinary, 1,
-                                         platform::TracerEventType::UserDefined);
+      platform::RecordEvent record_event(
+          "GpuMemcpyAsync(same_gpu):GPU->GPU", platform::EventRole::kOrdinary,
+          1, platform::TracerEventType::UserDefined);
 #ifdef PADDLE_WITH_HIP
       platform::GpuMemcpyAsync(dst, src, num, hipMemcpyDeviceToDevice, stream);
 #else
       platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToDevice, stream);
 #endif
     } else {
-      platform::RecordEvent record_event("GpuMemcpySync(same_gpu):GPU->GPU",
-                                         platform::EventRole::kOrdinary, 1,
-                                         platform::TracerEventType::UserDefined);
+      platform::RecordEvent record_event(
+          "GpuMemcpySync(same_gpu):GPU->GPU", platform::EventRole::kOrdinary, 1,
+          platform::TracerEventType::UserDefined);
 #ifdef PADDLE_WITH_HIP
       platform::GpuMemcpySync(dst, src, num, hipMemcpyDeviceToDevice);
 #else
@@ -612,15 +612,15 @@ void Copy<platform::CUDAPlace, platform::CUDAPlace>(
     }
   } else {
     if (stream) {
-      platform::RecordEvent record_event("GpuMemcpyPeerAsync:GPU->GPU",
-                                         platform::EventRole::kOrdinary, 1,
-                                         platform::TracerEventType::UserDefined);
+      platform::RecordEvent record_event(
+          "GpuMemcpyPeerAsync:GPU->GPU", platform::EventRole::kOrdinary, 1,
+          platform::TracerEventType::UserDefined);
       platform::GpuMemcpyPeerAsync(dst, dst_place.device, src, src_place.device,
                                    num, stream);
     } else {
-      platform::RecordEvent record_event("GpuMemcpyPeerSync:GPU->GPU",
-                                         platform::EventRole::kOrdinary, 1,
-                                         platform::TracerEventType::UserDefined);
+      platform::RecordEvent record_event(
+          "GpuMemcpyPeerSync:GPU->GPU", platform::EventRole::kOrdinary, 1,
+          platform::TracerEventType::UserDefined);
       platform::GpuMemcpyPeerSync(dst, dst_place.device, src, src_place.device,
                                   num);
     }
@@ -914,9 +914,10 @@ void Copy<platform::MLUPlace, platform::MLUPlace>(platform::MLUPlace dst_place,
     if (stream) {
       VLOG(4) << "Async memory::Copy " << num << " Bytes from " << src_place
               << " to " << dst_place << " by mlu stream(" << stream << ")";
-      platform::RecordEvent record_event("MLUMemcpyD2DAsync(same_mlu):MLU->MLU",
-                                         platform::EventRole::kOrdinary, 1,
-                                         platform::TracerEventType::UserDefined);
+      platform::RecordEvent record_event(
+          "MLUMemcpyD2DAsync(same_mlu):MLU->MLU",
+          platform::EventRole::kOrdinary, 1,
+          platform::TracerEventType::UserDefined);
       platform::MLUMemcpyD2DAsync(dst, src, num, stream);
     } else {
       platform::DeviceContextPool& pool =
@@ -925,26 +926,26 @@ void Copy<platform::MLUPlace, platform::MLUPlace>(platform::MLUPlace dst_place,
 
       VLOG(4) << "Sync memory::Copy " << num << " Bytes from " << src_place
               << " to " << dst_place;
-      platform::RecordEvent record_event("MLUMemcpyD2DSync(same_mlu):MLU->MLU",
-                                         platform::EventRole::kOrdinary, 1,
-                                         platform::TracerEventType::UserDefined);
+      platform::RecordEvent record_event(
+          "MLUMemcpyD2DSync(same_mlu):MLU->MLU", platform::EventRole::kOrdinary,
+          1, platform::TracerEventType::UserDefined);
       platform::MLUMemcpyD2DSync(dst, src, num);
     }
   } else {
     if (stream) {
       VLOG(4) << "Async memory::Copy " << num << " Bytes from " << src_place
               << " to " << dst_place << " by mlu stream(" << stream << ")";
-      platform::RecordEvent record_event("MLUMemcpyPeerAsync:MLU->MLU",
-                                         platform::EventRole::kOrdinary, 1,
-                                         platform::TracerEventType::UserDefined);
+      platform::RecordEvent record_event(
+          "MLUMemcpyPeerAsync:MLU->MLU", platform::EventRole::kOrdinary, 1,
+          platform::TracerEventType::UserDefined);
       platform::MLUMemcpyPeerAsync(dst, dst_place.device, src, src_place.device,
                                    num, stream);
     } else {
       VLOG(4) << "Sync memory::Copy " << num << " Bytes from " << src_place
               << " to " << dst_place;
-      platform::RecordEvent record_event("MLUMemcpyPeerSync:MLU->MLU",
-                                         platform::EventRole::kOrdinary, 1,
-                                         platform::TracerEventType::UserDefined);
+      platform::RecordEvent record_event(
+          "MLUMemcpyPeerSync:MLU->MLU", platform::EventRole::kOrdinary, 1,
+          platform::TracerEventType::UserDefined);
       platform::MLUMemcpyPeerSync(dst, dst_place.device, src, src_place.device,
                                   num);
     }
