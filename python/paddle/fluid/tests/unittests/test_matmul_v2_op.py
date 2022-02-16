@@ -1,11 +1,11 @@
-# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,10 +13,12 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import unittest
 import numpy as np
 from op_test import OpTest
 import paddle.fluid.core as core
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
@@ -24,33 +26,40 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
-    'Reference forward implementation using np.matmul.'
+    """Reference forward implementation using np.matmul."""
+    # np.matmul does not support the transpose flags, so we manually
+    # transpose X and Y appropriately.
     if transpose_X:
-        if (X.ndim == 1):
+        if X.ndim == 1:
             X = X.reshape((X.size, ))
-        elif (X.ndim == 2):
+        elif X.ndim == 2:
             X = X.T
         else:
             dim = [i for i in range(len(X.shape))]
-            (dim[(-1)], dim[(len(X.shape) - 2)]) = (dim[(len(X.shape) - 2)],
-                                                    dim[(-1)])
+            dim[-1], dim[len(X.shape) - 2] = dim[len(X.shape) - 2], dim[-1]
             X = np.transpose(X, tuple(dim))
     if transpose_Y:
-        if (Y.ndim == 1):
+        if Y.ndim == 1:
             Y = Y.reshape((Y.size, ))
         else:
             dim = [i for i in range(len(Y.shape))]
-            (dim[(-1)], dim[(len(Y.shape) - 2)]) = (dim[(len(Y.shape) - 2)],
-                                                    dim[(-1)])
+            dim[-1], dim[len(Y.shape) - 2] = dim[len(Y.shape) - 2], dim[-1]
             Y = np.transpose(Y, tuple(dim))
+
     Out = np.matmul(X, Y)
-    if (not Out.shape):
-        Out = np.array([Out], dtype='float64')
+    if not Out.shape:
+        # We do not support 0-dimensional Tensors (scalars). So where
+        # np.matmul outputs a scalar, we must convert to a Tensor of
+        # shape (1, ) instead.
+        # Everywhere else, we are compatible with np.matmul.
+        Out = np.array([Out], dtype="float64")
     return Out
 
 
 class TestMatMulV2Op(OpTest):
-    '\n    case 1\n    '
+    """
+    case 1
+    """
 
     def config(self):
         self.x_shape = (100, )
@@ -59,19 +68,23 @@ class TestMatMulV2Op(OpTest):
         self.trans_y = False
 
     def init_kernel_type(self):
-        self.dtype = ('float32' if core.is_compiled_with_rocm() else 'float64')
+        self.dtype = "float32" if core.is_compiled_with_rocm() else "float64"
 
     def setUp(self):
         self.init_kernel_type()
         self.config()
-        self.op_type = 'matmul_v2'
+        self.op_type = "matmul_v2"
         x = np.random.random(self.x_shape).astype(self.dtype)
         y = np.random.random(self.y_shape).astype(self.dtype)
-        x = ((-0.1) + (0.2 * x))
-        y = ((-0.1) + (0.2 * y))
+        # -0.1 ~ 0.1
+        x = -0.1 + 0.2 * x
+        y = -0.1 + 0.2 * y
         result = reference_matmul(x, y, self.trans_x, self.trans_y)
         result = result.astype(self.dtype)
-        self.inputs = {'X': x, 'Y': y}
+        self.inputs = {
+            'X': x,
+            'Y': y,
+        }
         self.attrs = {'trans_x': self.trans_x, 'trans_y': self.trans_y}
         self.outputs = {'Out': result}
 
@@ -81,13 +94,15 @@ class TestMatMulV2Op(OpTest):
     def test_check_grad(self):
         if core.is_compiled_with_rocm():
             self.check_grad(
-                ['X', 'Y'], 'Out', max_relative_error=0.01, check_eager=True)
+                ['X', 'Y'], 'Out', max_relative_error=1e-2, check_eager=True)
         else:
             self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
 
 class TestMatMuklOp2(TestMatMulV2Op):
-    '\n    case 2\n    '
+    """
+    case 2
+    """
 
     def config(self):
         self.x_shape = (100, )
@@ -97,7 +112,9 @@ class TestMatMuklOp2(TestMatMulV2Op):
 
 
 class TestMatMuklOp3(TestMatMulV2Op):
-    '\n    case 3\n    '
+    """
+    case 3
+    """
 
     def config(self):
         self.x_shape = (100, )
@@ -107,7 +124,9 @@ class TestMatMuklOp3(TestMatMulV2Op):
 
 
 class TestMatMuklOp4(TestMatMulV2Op):
-    '\n    case 4\n    '
+    """
+    case 4
+    """
 
     def config(self):
         self.x_shape = (100, )
@@ -117,7 +136,9 @@ class TestMatMuklOp4(TestMatMulV2Op):
 
 
 class TestMatMuklOp5(TestMatMulV2Op):
-    '\n    case 5\n    '
+    """
+    case 5
+    """
 
     def config(self):
         self.x_shape = (1, 1, 100, 1)
@@ -127,7 +148,9 @@ class TestMatMuklOp5(TestMatMulV2Op):
 
 
 class TestMatMuklOp6(TestMatMulV2Op):
-    '\n    case 6\n    '
+    """
+    case 6
+    """
 
     def config(self):
         self.x_shape = (1, 2, 102, 1)
@@ -137,7 +160,9 @@ class TestMatMuklOp6(TestMatMulV2Op):
 
 
 class TestMatMuklOp7(TestMatMulV2Op):
-    '\n    case 7\n    '
+    """
+    case 7
+    """
 
     def config(self):
         self.x_shape = (1, 2, 1, 100)
@@ -147,7 +172,9 @@ class TestMatMuklOp7(TestMatMulV2Op):
 
 
 class TestMatMuklOp8(TestMatMulV2Op):
-    '\n    case 8\n    '
+    """
+    case 8
+    """
 
     def config(self):
         self.x_shape = (1, 1, 2, 100)
@@ -157,7 +184,9 @@ class TestMatMuklOp8(TestMatMulV2Op):
 
 
 class TestMatMuklOp9(TestMatMulV2Op):
-    '\n    case 9\n    '
+    """
+    case 9
+    """
 
     def config(self):
         self.x_shape = (1, 1, 1, 100)
@@ -167,7 +196,9 @@ class TestMatMuklOp9(TestMatMulV2Op):
 
 
 class TestMatMuklOp10(TestMatMulV2Op):
-    '\n    case 10\n    '
+    """
+    case 10
+    """
 
     def config(self):
         self.x_shape = (1, 1, 25, 4)
@@ -177,7 +208,9 @@ class TestMatMuklOp10(TestMatMulV2Op):
 
 
 class TestMatMuklOp11(TestMatMulV2Op):
-    '\n    case 11\n    '
+    """
+    case 11
+    """
 
     def config(self):
         self.x_shape = (2, 1, 2, 100)
@@ -187,7 +220,9 @@ class TestMatMuklOp11(TestMatMulV2Op):
 
 
 class TestMatMuklOp12(TestMatMulV2Op):
-    '\n    case 12\n    '
+    """
+    case 12
+    """
 
     def config(self):
         self.x_shape = (2, 1, 4, 25)
@@ -197,7 +232,9 @@ class TestMatMuklOp12(TestMatMulV2Op):
 
 
 class TestMatMuklOp13(TestMatMulV2Op):
-    '\n    case 13\n    '
+    """
+    case 13
+    """
 
     def config(self):
         self.x_shape = (2, 2, 10, 10)
@@ -207,7 +244,9 @@ class TestMatMuklOp13(TestMatMulV2Op):
 
 
 class TestMatMuklOp14(TestMatMulV2Op):
-    '\n    case 14_1\n    '
+    """
+    case 14_1
+    """
 
     def config(self):
         self.x_shape = (3, 1, 6, 6)
@@ -217,7 +256,9 @@ class TestMatMuklOp14(TestMatMulV2Op):
 
 
 class TestMatMuklOp15(TestMatMulV2Op):
-    '\n    case 14_2\n    '
+    """
+    case 14_2
+    """
 
     def config(self):
         self.x_shape = (3, 1, 6, 6)
@@ -227,27 +268,33 @@ class TestMatMuklOp15(TestMatMulV2Op):
 
 
 class TestMatMuklOp16(TestMatMulV2Op):
-    '\n    case 16 : to check the gradient for special case\n    '
+    """
+    case 16 : to check the gradient for special case
+    """
 
     def config(self):
-        self.x_shape = 100
+        self.x_shape = (100)
         self.y_shape = (1, 2, 2, 100, 2)
         self.trans_x = False
         self.trans_y = False
 
 
 class TestMatMuklOp17(TestMatMulV2Op):
-    '\n    case 17 : to check the gradient for special case\n    '
+    """
+    case 17 : to check the gradient for special case
+    """
 
     def config(self):
         self.x_shape = (2, 1, 100)
-        self.y_shape = 100
+        self.y_shape = (100)
         self.trans_x = False
         self.trans_y = False
 
 
 class TestMatMuklOpBroadcast1(TestMatMulV2Op):
-    '\n    case 14_3\n    '
+    """
+    case 14_3
+    """
 
     def config(self):
         self.x_shape = (3, 1, 10, 10)
@@ -257,7 +304,9 @@ class TestMatMuklOpBroadcast1(TestMatMulV2Op):
 
 
 class TestMatMuklOpBroadcast2(TestMatMulV2Op):
-    '\n    case 14_4\n    '
+    """
+    case 14_4
+    """
 
     def config(self):
         self.x_shape = (3, 1, 10, 10)
@@ -266,9 +315,12 @@ class TestMatMuklOpBroadcast2(TestMatMulV2Op):
         self.trans_y = True
 
 
+#--------------------test matmul fp16--------------------
+
+
 def create_test_fp16_class(parent, atol=0.001, max_relative_error=1.0):
-    @unittest.skipIf((not core.is_compiled_with_cuda()),
-                     'core is not compiled with CUDA')
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
     class TestMatMulOpFp16Case(parent):
         def init_kernel_type(self):
             self.dtype = np.float16
@@ -289,7 +341,7 @@ def create_test_fp16_class(parent, atol=0.001, max_relative_error=1.0):
                     max_relative_error=max_relative_error,
                     check_eager=True)
 
-    cls_name = '{0}_{1}'.format(parent.__name__, 'Fp16')
+    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
     TestMatMulOpFp16Case.__name__ = cls_name
     globals()[cls_name] = TestMatMulOpFp16Case
 
@@ -321,15 +373,18 @@ class TestMatMulV2API(unittest.TestCase):
 
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input_x = fluid.data(name='input_x', shape=[4, 3], dtype='float32')
-            input_y = fluid.data(name='input_y', shape=[3, 4], dtype='float32')
+            input_x = fluid.data(name="input_x", shape=[4, 3], dtype="float32")
+            input_y = fluid.data(name="input_y", shape=[3, 4], dtype="float32")
+
             result = paddle.matmul(input_x, input_y)
-            x_np = np.random.random([4, 3]).astype('float32')
-            y_np = np.random.random([3, 4]).astype('float32')
+
+            x_np = np.random.random([4, 3]).astype("float32")
+            y_np = np.random.random([3, 4]).astype("float32")
+
             exe = fluid.Executor(place)
             fetches = exe.run(fluid.default_main_program(),
-                              feed={'input_x': x_np,
-                                    'input_y': y_np},
+                              feed={"input_x": x_np,
+                                    "input_y": y_np},
                               fetch_list=[result])
 
     def test_static(self):
@@ -339,8 +394,8 @@ class TestMatMulV2API(unittest.TestCase):
     def test_dygraph(self):
         for place in self.places:
             with fluid.dygraph.guard(place):
-                input_x = np.random.random([4, 3]).astype('float64')
-                input_y = np.random.random([3, 4]).astype('float64')
+                input_x = np.random.random([4, 3]).astype("float64")
+                input_y = np.random.random([3, 4]).astype("float64")
                 x = paddle.to_tensor(input_x)
                 y = paddle.to_tensor(input_y)
                 result = paddle.matmul(x, y)
@@ -350,8 +405,8 @@ class TestMatMulV2API(unittest.TestCase):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
                 with fluid.dygraph.guard(place):
-                    input_x = np.random.random([4, 3]).astype('float16')
-                    input_y = np.random.random([3, 4]).astype('float16')
+                    input_x = np.random.random([4, 3]).astype("float16")
+                    input_y = np.random.random([3, 4]).astype("float16")
                     x = paddle.to_tensor(input_x)
                     y = paddle.to_tensor(input_y)
                     result = paddle.matmul(x, y)
@@ -364,30 +419,33 @@ class TestMatMulV2API(unittest.TestCase):
 
 class TestComplexMatMulOp(OpTest):
     def setUp(self):
-        self.op_type = 'matmul_v2'
+        self.op_type = "matmul_v2"
         self.init_base_dtype()
         self.init_input_output()
         self.init_grad_input_output()
+
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
         }
-        self.attrs = {'axis': (-1), 'use_mkldnn': False}
+        self.attrs = {'axis': -1, 'use_mkldnn': False}
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):
         self.dtype = np.float64
 
     def init_input_output(self):
-        self.x = (np.random.random((10, 10)).astype(self.dtype) +
-                  (1j * np.random.random((10, 10)).astype(self.dtype)))
-        self.y = (np.random.random((10, 10)).astype(self.dtype) +
-                  (1j * np.random.random((10, 10)).astype(self.dtype)))
+        self.x = np.random.random(
+            (10, 10)).astype(self.dtype) + 1J * np.random.random(
+                (10, 10)).astype(self.dtype)
+        self.y = np.random.random(
+            (10, 10)).astype(self.dtype) + 1J * np.random.random(
+                (10, 10)).astype(self.dtype)
         self.out = np.dot(self.x, self.y)
 
     def init_grad_input_output(self):
-        self.grad_out = (np.ones((10, 10), self.dtype) + (1j * np.ones(
-            (10, 10), self.dtype)))
+        self.grad_out = np.ones((10, 10), self.dtype) + 1J * np.ones(
+            (10, 10), self.dtype)
         self.grad_x = np.matmul(self.grad_out, np.conj(self.y).T)
         self.grad_y = np.matmul(np.conj(self.x).T, self.grad_out)
 
@@ -406,7 +464,7 @@ class TestComplexMatMulOp(OpTest):
         self.check_grad(
             ['Y'],
             'Out',
-            no_grad_set=set('X'),
+            no_grad_set=set("X"),
             user_defined_grads=[self.grad_y],
             user_defined_grad_outputs=[self.grad_out],
             check_eager=True)
@@ -423,30 +481,33 @@ class TestComplexMatMulOp(OpTest):
 
 class TestComplexMatMulOpBroadcast(OpTest):
     def setUp(self):
-        self.op_type = 'matmul_v2'
+        self.op_type = "matmul_v2"
         self.init_base_dtype()
         self.init_input_output()
         self.init_grad_input_output()
+
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
         }
-        self.attrs = {'axis': (-1), 'use_mkldnn': False}
+        self.attrs = {'axis': -1, 'use_mkldnn': False}
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):
         self.dtype = np.float64
 
     def init_input_output(self):
-        self.x = (np.random.random((10, 2, 5)).astype(self.dtype) +
-                  (1j * np.random.random((10, 2, 5)).astype(self.dtype)))
-        self.y = (np.random.random((5, 20)).astype(self.dtype) +
-                  (1j * np.random.random((5, 20)).astype(self.dtype)))
+        self.x = np.random.random(
+            (10, 2, 5)).astype(self.dtype) + 1J * np.random.random(
+                (10, 2, 5)).astype(self.dtype)
+        self.y = np.random.random(
+            (5, 20)).astype(self.dtype) + 1J * np.random.random(
+                (5, 20)).astype(self.dtype)
         self.out = np.dot(self.x, self.y)
 
     def init_grad_input_output(self):
-        self.grad_out = (np.ones((10, 2, 20), self.dtype) + (1j * np.ones(
-            (10, 2, 20), self.dtype)))
+        self.grad_out = np.ones((10, 2, 20), self.dtype) + 1J * np.ones(
+            (10, 2, 20), self.dtype)
         self.grad_x = np.matmul(self.grad_out, np.conj(self.y).T)
         self.grad_y = np.sum(np.matmul(
             np.conj(self.x).transpose(0, 2, 1), self.grad_out),
@@ -467,7 +528,7 @@ class TestComplexMatMulOpBroadcast(OpTest):
         self.check_grad(
             ['Y'],
             'Out',
-            no_grad_set=set('X'),
+            no_grad_set=set("X"),
             user_defined_grads=[self.grad_y],
             user_defined_grad_outputs=[self.grad_out],
             check_eager=True)
@@ -485,17 +546,18 @@ class TestComplexMatMulOpBroadcast(OpTest):
 class TestMatMulTypePromotion(TestComplexMatMulOp):
     def init_input_output(self):
         self.x = np.random.random((10, 10)).astype(self.dtype)
-        self.y = (np.random.random((10, 10)).astype(self.dtype) +
-                  (1j * np.random.random((10, 10)).astype(self.dtype)))
+        self.y = np.random.random(
+            (10, 10)).astype(self.dtype) + 1J * np.random.random(
+                (10, 10)).astype(self.dtype)
         self.out = np.dot(self.x, self.y)
 
     def init_grad_input_output(self):
-        self.grad_out = (np.ones((10, 10), self.dtype) + (1j * np.ones(
-            (10, 10), self.dtype)))
+        self.grad_out = np.ones((10, 10), self.dtype) + 1J * np.ones(
+            (10, 10), self.dtype)
         self.grad_x = np.matmul(self.grad_out, np.conj(self.y).T).real
         self.grad_y = np.matmul(np.conj(self.x).T, self.grad_out)
 
 
-if (__name__ == '__main__'):
+if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
