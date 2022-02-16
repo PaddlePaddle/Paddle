@@ -28,8 +28,7 @@ TEST(KernelRegistry, basic) {
   std::string key = "infrt.test.add.i32";
   registry.AddKernel(key, INFRT_KERNEL(add_i32));
 
-  auto* kernel_impl = registry.GetKernel(key);
-  ASSERT_TRUE(kernel_impl);
+  auto kernel_impl = registry.GetKernel(key);
 
   ValueRef a(1);
   ValueRef b(2);

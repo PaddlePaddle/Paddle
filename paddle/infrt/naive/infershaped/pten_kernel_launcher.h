@@ -47,5 +47,15 @@ class KernelLauncher : public InferShapedKernelLauncher {
   }
 };
 
+template <typename KernelFunc,
+          KernelFunc kernel,
+          typename InferShapedFunc,
+          InferShapedFunc infershape>
+void KernelLauncherFunc(
+    KernelLauncher<KernelFunc, kernel, InferShapedFunc, infershape> launcher,
+    host_context::KernelFrame* frame) {
+  launcher.Invoke(frame);
+}
+
 }  // namespace naive
 }  // namespace infrt

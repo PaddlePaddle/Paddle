@@ -52,12 +52,11 @@ class FancyAllocator : public pten::Allocator {
   }
 };
 
-TEST(ElementwiseAdd, registry) {
-  InferShapedKernelRegistry registry;
+TEST(ElementwiseAdd, launcher_registry) {
+  host_context::KernelRegistry registry;
   RegisterInferShapeLaunchers(&registry);
-  ASSERT_EQ(registry.size(), 1UL);
+  ASSERT_GE(registry.size(), 1UL);
   auto creator = registry.GetKernel("add.cpu.any.fp32");
-  auto infershape_launcher_handle = creator();
 
   const pten::DDim dims({1, 2});
   const pten::DataType dtype{pten::DataType::FLOAT32};
@@ -91,7 +90,7 @@ TEST(ElementwiseAdd, registry) {
   kernel_frame_builder.AddArgument(new host_context::Value(std::move(b)));
   kernel_frame_builder.SetResults({new host_context::Value(std::move(c))});
 
-  infershape_launcher_handle->Invoke(&kernel_frame_builder);
+  creator(&kernel_frame_builder);
 
   for (size_t i = 0; i < 2; ++i) {
     CHECK_EQ(c_data[i], 3.f);

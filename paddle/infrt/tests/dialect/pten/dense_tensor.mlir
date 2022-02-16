@@ -1,5 +1,6 @@
 // RUN: infrtopt %s | FileCheck %s
 
+// CHECK-LABEL: @basic_tensor
 func @basic_tensor() {
   %a = "pten_dt.create_allocator.host" (): () -> !pten.host_allocator
   %b = "pten_dt.create_context.host" (): () -> !pten.host_context

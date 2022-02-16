@@ -93,7 +93,6 @@ def gen_include_headers():
     return """
 #include "paddle/infrt/naive/infershaped/infershaped_kernel_launchers.h"
 #include "paddle/infrt/naive/infershaped/pten_kernel_launcher.h"
-#include "paddle/infrt/naive/infershaped/infershaped_registry.h"
 #include "paddle/pten/backends/all_context.h"
 #include "paddle/pten/include/kernels.h"
 #include "paddle/pten/include/infermeta.h"
@@ -148,73 +147,60 @@ def gen_kernel_func(val, ctx_name, dtype_name):
 
 
 def gen_dtype(vals: List[str]):
-    launcher_dtypes, ir_dtypes, origin_dtypes = [], [], []
+    ir_dtypes, origin_dtypes = [], []
     for val in vals:
         if val == "float":
-            launcher_dtypes.append("Fp32")
             ir_dtypes.append("fp32")
             origin_dtypes.append("float")
         elif val == "double":
-            launcher_dtypes.append("Fp64")
             ir_dtypes.append("fp64")
             origin_dtypes.append("double")
         elif val == "float16":
-            launcher_dtypes.append("Fp16")
             ir_dtypes.append("fp16")
             origin_dtypes.append("paddle::experimental::float16")
         elif val == "bfloat16":
-            launcher_dtypes.append("Bf16")
             ir_dtypes.append("bf16")
             origin_dtypes.append("paddle::experimental::bfloat16")
         elif val == "bool":
-            launcher_dtypes.append("Int1")
             ir_dtypes.append("int1")
             origin_dtypes.append("bool")
         elif val == "int8_t":
-            launcher_dtypes.append("Int8")
             ir_dtypes.append("int8")
             origin_dtypes.append("int8_t")
         elif val == "uint8_t":
-            launcher_dtypes.append("Uint8")
             ir_dtypes.append("uint8")
             origin_dtypes.append("uint8_t")
         elif val == "int16_t":
-            launcher_dtypes.append("Int16")
             ir_dtypes.append("int16")
             origin_dtypes.append("int16_t")
         elif val == "int" or val == "int32_t":
-            launcher_dtypes.append("Int32")
             ir_dtypes.append("int32")
             origin_dtypes.append("int32_t")
         elif val == "int64_t":
-            launcher_dtypes.append("Int64")
             ir_dtypes.append("int64")
             origin_dtypes.append("int64_t")
         elif val == "complex<float>" or val == "complex64":
-            launcher_dtypes.append("Complex64")
             ir_dtypes.append("complex64")
             origin_dtypes.append("paddle::experimental::complex64")
         elif val == "complex<double>" or val == "complex128":
-            launcher_dtypes.append("Complex128")
             ir_dtypes.append("complex128")
             origin_dtypes.append("paddle::experimental::complex128")
         elif val == "ALL_DTYPE":
-            launcher_dtypes.append("All")
             ir_dtypes.append("all")
             origin_dtypes.append("all")
         else:
             if "VA_ARGS" in val:
                 continue
             raise Exception(f"Unknown data type {val}")
-    return launcher_dtypes, ir_dtypes, origin_dtypes
+    return ir_dtypes, origin_dtypes
 
 
-# TODO(wilber): Now only process FP32 type and CPUContext.
-def gen_kernel_launcher_template(resources: List[List[str]]):
+# TODO(wilber): Now only process CPUContext.
+def gen_register_info(resources: List[List[str]]):
     """
     resources: [['add', 'CPU', 'ALL_LAYOUT', 'AddKernel', 'float', 'double', '...'(varaidic types), 'ElementwiseInferMeta'], ...]
     """
-    res = ""
+    res = "void RegisterInferShapeLaunchers(host_context::KernelRegistry* registry) {"
     for item in resources:
         # The output string is polluted by C++ macros, here the \ is removed
         update_item = [v.strip('\\') for v in item]
@@ -223,56 +209,32 @@ def gen_kernel_launcher_template(resources: List[List[str]]):
         if (ctx_name == ""):
             continue
         update_item[2] = gen_layout(update_item[2])
-        launcher_dtypes, _, origin_dtypes = gen_dtype(update_item[4:-1])
+        ir_dtypes, origin_dtypes = gen_dtype(update_item[4:-1])
         infer_shape_func = "&pten::" + update_item[-1]
 
         if update_item[-1] == "unknown":
             # TODO(wilber): handle the unknown inferShape func.
             continue
 
-        for launcher_dtype, origin_dtype in zip(launcher_dtypes, origin_dtypes):
-            launcher_name = ''.join(
-                [it.capitalize()
-                 for it in update_item[:3]]) + launcher_dtype + "Launcher"
+        for ir_dtype, origin_dtype in zip(ir_dtypes, origin_dtypes):
             kernel_func = gen_kernel_func(update_item[3], ctx_name,
                                           origin_dtype)
-            res += f"""
-using {launcher_name} =
-    KernelLauncher<decltype({kernel_func}),
-                   {kernel_func},
-                   decltype({infer_shape_func}),
-                   {infer_shape_func}>;
-        """
-
-    return res
-
-
-def gen_register_info(resources: List[List[str]]):
-    """
-    resources: [['add', 'CPU', 'ALL_LAYOUT', 'AddKernel', 'float', 'double', '...'(varaidic types), 'ElementwiseInferMeta'], ...]
-    """
-    res = "void RegisterInferShapeLaunchers(InferShapedKernelRegistry* registry) {"
-    for item in resources:
-        # The output string is polluted by C++ macros, here the \ is removed
-        update_item = [v.strip('\\') for v in item]
-
-        ctx_name = gen_context(update_item[1])
-        if (ctx_name == ""):
-            continue
-        update_item[2] = gen_layout(update_item[2])
-        launcher_dtypes, ir_dtypes, _ = gen_dtype(update_item[4:-1])
-
-        if update_item[-1] == "unknown":
-            # TODO(wilber): handle the unknown inferShape func.
-            continue
-        for launcher_dtype, ir_dtype in zip(launcher_dtypes, ir_dtypes):
-            launcher_name = ''.join(
-                [it.capitalize()
-                 for it in update_item[:3]]) + launcher_dtype + "Launcher"
             ir_name = '.'.join(
                 [it.lower() for it in update_item[:3]]) + "." + ir_dtype
             res += f"""
-  registry->AddKernel("{ir_name}", INFERSHAPED_KERNEL_CREATOR({launcher_name}));"""
+  registry->AddKernel("{ir_name}","""
+
+            res += f"""
+    std::bind(&KernelLauncherFunc<decltype({kernel_func}),
+                                  {kernel_func},
+                                  decltype({infer_shape_func}),
+                                  {infer_shape_func}>,
+              KernelLauncher<decltype({kernel_func}),
+                                  {kernel_func},
+                                  decltype({infer_shape_func}),
+                                  {infer_shape_func}>(),
+              std::placeholders::_1));
+"""
 
     res += "\n}"
     return res
@@ -285,11 +247,7 @@ def gen_pten_kernel_register_code(resources: List[List[str]],
     source_file.write(gen_include_headers())
     namespace = gen_namespace()
     source_file.write(namespace[0])
-
-    source_file.write(gen_kernel_launcher_template(resources))
-    source_file.write('\n')
     source_file.write(gen_register_info(resources))
-
     source_file.write(namespace[1])
     source_file.close()
 

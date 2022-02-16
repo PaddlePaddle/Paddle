@@ -249,6 +249,6 @@ USE_OP_ITSELF(scale);
 USE_OP(matmul_v2);
 USE_OP(reduce_sum);
 USE_OP(reduce_sum_grad);
-USE_OP(elementwise_add);
+USE_OP_ITSELF(elementwise_add);
 
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
