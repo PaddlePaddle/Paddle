@@ -14,15 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/backends/all_context.h"
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/kernels/funcs/elementwise_base.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/fluid/platform/aligned_vector.h"
-#include "paddle/fluid/platform/function_traits.h"
-#include "paddle/pten/backends/gpu/gpu_launch_config.h"
-#include "paddle/pten/kernels/funcs/elementwise_base.h"
-#include "paddle/pten/kernels/primitive/kernel_primitives.h"
 
 namespace kps = pten::kps;
 
