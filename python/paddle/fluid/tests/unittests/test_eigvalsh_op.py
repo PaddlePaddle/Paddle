@@ -60,6 +60,7 @@ class TestEigvalshGPUCase(unittest.TestCase):
         self.dtype = "float32"
         np.random.seed(123)
         self.x_np = np.random.random(self.x_shape).astype(self.dtype)
+        
         if (paddle.version.cuda() >= "11.6"):
             self.rtol = 2e-6
             self.atol = 2e-6
