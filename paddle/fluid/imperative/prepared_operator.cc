@@ -89,9 +89,14 @@ void HandleComplexGradToRealGrad(const NameVarMap<VarType>& outs) {
 }
 
 template <>
-void HandleComplexGradToRealGrad<egr::EagerTensor>(
-    const NameVarMap<egr::EagerTensor>& outs) {
+void HandleComplexGradToRealGrad<egr::EagerVariable>(
+    const NameVarMap<egr::EagerVariable>& outs) {
   // TODO(jiabin): Support Complex here.
+}
+
+void TestHandleComplexGradToRealGradEager(
+    const NameVarMap<egr::EagerVariable>& outs) {
+  HandleComplexGradToRealGrad<egr::EagerVariable>(outs);
 }
 
 PreparedOp::PreparedOp(const framework::OperatorBase& op,
@@ -322,14 +327,14 @@ PreparedOp PreparedOp::Prepare(const NameVarMap<VariableWrapper>& ins,
                                       default_attrs);
 }
 
-PreparedOp PreparedOp::Prepare(const NameVarMap<egr::EagerTensor>& ins,
-                               const NameVarMap<egr::EagerTensor>& outs,
+PreparedOp PreparedOp::Prepare(const NameVarMap<egr::EagerVariable>& ins,
+                               const NameVarMap<egr::EagerVariable>& outs,
                                const framework::OperatorWithKernel& op,
                                const platform::Place& place,
                                const framework::AttributeMap& attrs,
                                const framework::AttributeMap& default_attrs) {
-  return PrepareImpl<egr::EagerTensor>(ins, outs, op, place, attrs,
-                                       default_attrs);
+  return PrepareImpl<egr::EagerVariable>(ins, outs, op, place, attrs,
+                                         default_attrs);
 }
 template <typename VarType>
 static void PreparedOpRunImpl(
@@ -461,18 +466,18 @@ void PreparedOp::Run(const NameVarMap<VariableWrapper>& ins,
   }
 }
 
-void PreparedOp::Run(const NameVarMap<egr::EagerTensor>& ins,
-                     const NameVarMap<egr::EagerTensor>& outs,
+void PreparedOp::Run(const NameVarMap<egr::EagerVariable>& ins,
+                     const NameVarMap<egr::EagerVariable>& outs,
                      const framework::AttributeMap& attrs,
                      const framework::AttributeMap& default_attrs) {
   if (run_pten_kernel_) {
-    PreparedOpRunPtImpl<egr::EagerTensor>(
+    PreparedOpRunPtImpl<egr::EagerVariable>(
         op_, kernel_type_, pt_kernel_signature_, pt_kernel_, dev_ctx_, ins,
         outs, attrs, default_attrs);
   } else {
-    PreparedOpRunImpl<egr::EagerTensor>(op_, ctx_, kernel_type_, func_,
-                                        dev_ctx_, ins, outs, attrs,
-                                        default_attrs);
+    PreparedOpRunImpl<egr::EagerVariable>(op_, ctx_, kernel_type_, func_,
+                                          dev_ctx_, ins, outs, attrs,
+                                          default_attrs);
   }
 }
 

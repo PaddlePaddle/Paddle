@@ -150,7 +150,7 @@ def monkey_patch_varbase():
 
         """
         if core._in_eager_mode():
-            base_tensor = core.eager.EagerTensor
+            base_tensor = core.eager.Tensor
         else:
             base_tensor = core.VarBase
         assert isinstance(value, (np.ndarray, base_tensor, dict, str)), \
@@ -180,9 +180,9 @@ def monkey_patch_varbase():
                 "Variable dtype not match, Variable [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
                     self.name, self_tensor_np.dtype, value_np.dtype)
 
-            # NOTE(wuweilong): self could be VarBase or EagerTensor, the subsequent behavior are defined in different files
+            # NOTE(wuweilong): self could be VarBase or Tensor, the subsequent behavior are defined in different files
             # if self is VarBase, method value() return Variable that bindded in imperative.cc, get_tensor() bindded in pybind.cc
-            # if self is EagerTensor, method value() return self that defined in this file, get_tensor() defined in eager_method.cc
+            # if self is Tensor, method value() return self that defined in this file, get_tensor() defined in eager_method.cc
             # this Interface behavior will be unifed in the future.
             self.value().get_tensor().set(value_np,
                                           framework._current_expected_place())
@@ -244,8 +244,8 @@ def monkey_patch_varbase():
             if grad_tensor is not None:
                 if core._in_eager_mode():
                     assert isinstance(
-                        grad_tensor, core.eager.EagerTensor
-                    ), "The type of grad_tensor must be paddle.Tensor"
+                        grad_tensor, core.eager.
+                        Tensor), "The type of grad_tensor must be paddle.Tensor"
                 else:
                     assert isinstance(
                         grad_tensor, paddle.
@@ -592,8 +592,8 @@ def monkey_patch_varbase():
                 #         [0.79010487, 0.53972793, 0.09495186, 0.44267157, 0.72112119]])
         """
         if core._in_eager_mode():
-            from paddle.tensor.to_string import eager_tensor_to_string
-            return eager_tensor_to_string(self)
+            from paddle.tensor.to_string import tensor_to_string
+            return tensor_to_string(self)
         else:
             from paddle.tensor.to_string import to_string
             return to_string(self)
@@ -624,7 +624,7 @@ def monkey_patch_varbase():
                 "Only Leaf Tensor support the deepcopy at the moment, non-Leaf Tensors contains graph information that does't support deepcopy"
             )
         if core._in_eager_mode():
-            new_varbase = core.eager.EagerTensor()
+            new_varbase = core.eager.Tensor()
         else:
             new_varbase = core.VarBase()
         new_varbase.name = self.name + unique_name.generate("_deepcopy")
@@ -808,16 +808,16 @@ def monkey_patch_varbase():
         ("__getitem__", __getitem__), ("item", item),
         ("__setitem__", __setitem__), ("_to", _to)):
         if core._in_eager_mode():
-            setattr(core.eager.EagerTensor, method_name, method)
+            setattr(core.eager.Tensor, method_name, method)
         else:
             setattr(core.VarBase, method_name, method)
 
     if core._in_eager_mode():
-        setattr(core.eager.EagerTensor, "_grad_ivar", _grad_ivar)
-        setattr(core.eager.EagerTensor, "_set_grad_ivar", _set_grad_ivar)
-        setattr(core.eager.EagerTensor, "clear_gradient", clear_gradient)
-        setattr(core.eager.EagerTensor, "clone", clone)
-        setattr(core.eager.EagerTensor, "value", value)
+        setattr(core.eager.Tensor, "_grad_ivar", _grad_ivar)
+        setattr(core.eager.Tensor, "_set_grad_ivar", _set_grad_ivar)
+        setattr(core.eager.Tensor, "clear_gradient", clear_gradient)
+        setattr(core.eager.Tensor, "clone", clone)
+        setattr(core.eager.Tensor, "value", value)
     else:
         setattr(core.VarBase, "__name__", "Tensor")
         setattr(core.VarBase, "grad", grad)

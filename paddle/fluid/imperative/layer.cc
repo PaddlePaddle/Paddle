@@ -177,9 +177,9 @@ std::string LayerDebugString(const std::string& op_type,
 }
 
 std::string LayerDebugString(const std::string& op_type,
-                             const NameVarMap<egr::EagerTensor>& ins,
-                             const NameVarMap<egr::EagerTensor>& outs) {
-  return LayerDebugStringImpl<egr::EagerTensor>(op_type, ins, outs);
+                             const NameVarMap<egr::EagerVariable>& ins,
+                             const NameVarMap<egr::EagerVariable>& outs) {
+  return LayerDebugStringImpl<egr::EagerVariable>(op_type, ins, outs);
 }
 
 template <typename VarType>
@@ -194,9 +194,14 @@ static void SetForwardDataTypeOfGradVars(const NameVarMap<VarType>& outs) {
   }
 }
 template <>
-void SetForwardDataTypeOfGradVars<egr::EagerTensor>(
-    const NameVarMap<egr::EagerTensor>& outs) {
+void SetForwardDataTypeOfGradVars<egr::EagerVariable>(
+    const NameVarMap<egr::EagerVariable>& outs) {
   // In eager mode we don't need this.
+}
+
+void TestSetForwardDataTypeOfGradVarsEager(
+    const NameVarMap<egr::EagerVariable>& outs) {
+  SetForwardDataTypeOfGradVars<egr::EagerVariable>(outs);
 }
 
 VarBase::VarBase(const std::shared_ptr<VariableWrapper>& var)
@@ -528,12 +533,12 @@ void OpBase::Run(const framework::OperatorBase& op,
 }
 
 void OpBase::Run(const framework::OperatorBase& op,
-                 const NameVarMap<egr::EagerTensor>& ins,
-                 const NameVarMap<egr::EagerTensor>& outs,
+                 const NameVarMap<egr::EagerVariable>& ins,
+                 const NameVarMap<egr::EagerVariable>& outs,
                  const framework::AttributeMap& attrs,
                  const framework::AttributeMap& default_attrs,
                  const platform::Place& place) {
-  OpBaseRunImpl<egr::EagerTensor>(op, ins, outs, attrs, default_attrs, place);
+  OpBaseRunImpl<egr::EagerVariable>(op, ins, outs, attrs, default_attrs, place);
 }
 
 void ClearNoNeedBufferInputs(OpBase* op) {
