@@ -6,7 +6,7 @@ func @load_tensor_map() {
   %size = dt.tensor_map_get_size(%map) -> i32
   infrt.print.i32 %size
 
-  %a = dt.tensor_map_get_tensor(%mapi) {name="fc_bias"} -> !infrt.tensor<X86, NCHW, F32>
+  %a = dt.tensor_map_get_tensor(%map) {name="fc_bias"} -> !infrt.tensor<X86, NCHW, F32>
 
   // CHECK: tensor: shape=shape[2], values=[0, 0]
   dt.print_tensor (%a : !infrt.tensor<X86, NCHW, F32>)
