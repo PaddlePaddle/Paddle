@@ -272,7 +272,7 @@ for CHANGE_FILE in ${HAS_MODIFIED_PTEN_KERNEL_FILES}; do
     fi 
 done
 if [ "${PTEN_USE_MUTABLE_DATA_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You can not use the DenseTensor::mutable_data() method in paddle/pten files(${PTEN_USE_MUTABLE_DATA_FILES}). If you want to alloc memory, use pten::DeviceContext::Alloc() or pten::DeviceContext::HostAlloc() instead and if you want to get mutable data, use DenseTensor::data(). If you have any questions, you can have one RD (chenwhql, Shixiaowei02, MingMingShangTian, YuanRisheng or zyfncg) review and approve.\n"
+    echo_line="You can not use the DenseTensor::mutable_data() method in paddle/pten/kernels files(${PTEN_USE_MUTABLE_DATA_FILES}). If you want to alloc memory, use pten::DeviceContext::Alloc() or pten::DeviceContext::HostAlloc() instead and if you want to get mutable data, use DenseTensor::data(). If you have any questions, you can have one RD (chenwhql, Shixiaowei02, MingMingShangTian, YuanRisheng or zyfncg) review and approve.\n"
     check_approval 1 chenwhql Shixiaowei02 MingMingShangTian YuanRisheng zyfncg
 fi
   
