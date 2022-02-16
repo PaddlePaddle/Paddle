@@ -31,8 +31,7 @@ namespace detail {
 constexpr int INFTIME = -1;
 
 std::unique_ptr<MasterDaemon> MasterDaemon::start(int socket) {
-  auto master = std::make_unique<MasterDaemon>(socket);
-  return master;
+  return std::make_unique<MasterDaemon>(socket);
 }
 
 MasterDaemon::MasterDaemon(int socket) : _listen_socket(socket) {
@@ -40,11 +39,11 @@ MasterDaemon::MasterDaemon(int socket) : _listen_socket(socket) {
 }
 
 MasterDaemon::~MasterDaemon() {
+  _background_thread.join();
   ::close(_listen_socket);
   for (int socket : _sockets) {
     ::close(socket);
   }
-  _background_thread.join();
 }
 
 void MasterDaemon::_do_add(int socket) {
@@ -65,6 +64,22 @@ void MasterDaemon::_do_add(int socket) {
   _store[key] =
       std::vector<uint8_t>(new_value_str.begin(), new_value_str.end());
   tcputils::send_bytes<int64_t>(socket, &new_value, 1);
+}
+
+void MasterDaemon::_do_get(int socket) {
+  std::string key = tcputils::receive_string(socket);
+  std::vector<uint8_t> value = _store.find(key)->second;
+  tcputils::send_vector<uint8_t>(socket, value);
+}
+
+void MasterDaemon::_do_wait(int socket) {
+  std::string key = tcputils::receive_string(socket);
+  auto iter = _store.find(key);
+  auto reply = WaitReplyType::STOP_WAIT;
+  if (iter == _store.end()) {
+    reply = WaitReplyType::WAITING;
+  }
+  tcputils::send_bytes<WaitReplyType>(socket, &reply, 1);
 }
 
 void MasterDaemon::run() {
@@ -96,6 +111,10 @@ void MasterDaemon::run() {
       switch (command) {
         case Command::ADD:
           _do_add(fds[i].fd);
+        case Command::GET:
+          _do_get(fds[i].fd);
+        case Command::WAIT:
+          _do_wait(fds[i].fd);
       }
     }
   }
@@ -134,6 +153,16 @@ T TCPClient::receive_value() {
   return res;
 }
 
+template <typename T>
+void TCPClient::send_vector(const std::vector<T>& value) {
+  tcputils::send_vector<T>(_socket, value);
+}
+
+template <typename T>
+std::vector<T> TCPClient::receive_vector() {
+  return tcputils::receive_vector<T>(_socket);
+}
+
 }  // namespace detail
 
 TCPStore::TCPStore(std::string host, uint16_t port, bool is_master,
@@ -152,13 +181,51 @@ void TCPStore::waitWorkers() {
     return;
   }
   add(_init_key, 1);
+
+  if (_server) {
+    auto begin = std::chrono::steady_clock::now();
+    do {
+      auto value = get(_init_key);
+      int completed = std::stoi(std::string(value.begin(), value.end()));
+      if (completed >= _num_workers) {
+        break;
+      }
+      const auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+          std::chrono::steady_clock::now() - begin);
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      if (_timeout != tcputils::kNoTimeout && elapsed > _timeout) {
+        PADDLE_ENFORCE_EQ(
+            completed, _num_workers,
+            platform::errors::InvalidArgument(
+                "TCPStore timeouted and not all workers got ready."));
+      }
+    } while (true);
+  }
+  VLOG(3) << "TCPStore initialized.";
 }
 
 int64_t TCPStore::add(const std::string& key, int64_t value) {
-  const std::lock_guard<std::mutex> lock(_lock);
   _client->send_command_for_key(Command::ADD, _key_prefix + key);
   _client->send_value<std::int64_t>(value);
   return _client->receive_value<std::int64_t>();
+}
+
+std::vector<uint8_t> TCPStore::get(const std::string& key) {
+  do_wait(key);
+  _client->send_command_for_key(Command::GET, _key_prefix + key);
+  return _client->receive_vector<uint8_t>();
+}
+
+void TCPStore::do_wait(const std::string& key,
+                       const std::chrono::seconds& timeout) {
+  WaitReplyType reply;
+  do {
+    _client->send_command_for_key(Command::WAIT, _key_prefix + key);
+
+    reply = _client->receive_value<WaitReplyType>();
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  } while (reply != WaitReplyType::STOP_WAIT);
 }
 
 }  // namespace distributed

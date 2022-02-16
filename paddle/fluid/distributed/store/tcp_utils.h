@@ -28,14 +28,15 @@ namespace tcputils {
 
 constexpr int LISTENQ = 2048;
 constexpr std::chrono::seconds kDelay = std::chrono::seconds(3);
-constexpr std::chrono::seconds kNoTimeOut = std::chrono::seconds::zero();
+constexpr std::chrono::seconds kNoTimeout = std::chrono::seconds::zero();
+constexpr std::chrono::seconds kDefaultTimeout = std::chrono::seconds(360);
 
 std::error_code socket_error();
 ::addrinfo* get_addr_info(const std::string host, const std::string port,
                           int ai_flags, int family);
 void free_addr_info(::addrinfo*);
 int tcp_connect(const std::string host, const std::string port, int family,
-                std::chrono::seconds timeout = kNoTimeOut);
+                std::chrono::seconds timeout = kNoTimeout);
 int tcp_listen(const std::string host, const std::string port, int family);
 int tcp_accept(int socket);
 

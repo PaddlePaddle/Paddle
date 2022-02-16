@@ -82,14 +82,14 @@ int tcp_connect(const std::string host, const std::string port, int family,
       ::close(sockfd);
       sockfd = -1;
       std::this_thread::sleep_for(kDelay);
-      if (timeout != kNoTimeOut &&
+      if (timeout != kNoTimeout &&
           std::chrono::steady_clock::now() >= deadline) {
         retry = false;
         break;
       }
     }
 
-    if (timeout != kNoTimeOut && std::chrono::steady_clock::now() >= deadline) {
+    if (timeout != kNoTimeout && std::chrono::steady_clock::now() >= deadline) {
       retry = false;
     }
   } while (retry);

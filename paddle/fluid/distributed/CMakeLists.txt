@@ -1,4 +1,6 @@
-add_subdirectory(store)
+if (WITH_DISTRIBUTE AND LINUX)
+    add_subdirectory(store)
+endif()
 
 if(NOT WITH_PSCORE)
     add_subdirectory(fleet_executor)

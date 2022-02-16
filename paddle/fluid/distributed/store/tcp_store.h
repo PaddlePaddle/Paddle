@@ -21,12 +21,13 @@
 #include <unordered_map>
 
 #include "paddle/fluid/distributed/store/store.h"
+#include "paddle/fluid/distributed/store/tcp_utils.h"
 
 namespace paddle {
 namespace distributed {
 
-enum class WaitReplyType { STOP_WAIT };
-enum class Command { ADD };
+enum class WaitReplyType { WAITING, STOP_WAIT };
+enum class Command { ADD, GET, WAIT };
 
 namespace detail {
 
@@ -39,6 +40,8 @@ class MasterDaemon {
  private:
   void run();
   void _do_add(int socket);
+  void _do_wait(int socket);
+  void _do_get(int socket);
   int _listen_socket;
   std::vector<int> _sockets;
   std::unordered_map<std::string, std::vector<uint8_t>> _store;
@@ -65,6 +68,11 @@ class TCPClient {
   void send_value(const T& value);
 
   template <typename T>
+  void send_vector(const std::vector<T>& value);
+  template <typename T>
+  std::vector<T> receive_vector();
+
+  template <typename T>
   T receive_value();
 
  private:
@@ -78,11 +86,14 @@ class TCPStore : public Store {
   static constexpr std::uint16_t kDefaultPort = 6170;
   explicit TCPStore(std::string host, uint16_t port = kDefaultPort,
                     bool is_master = false, size_t num_workers = 1,
-                    std::chrono::seconds timeout = Store::kDefaultTimeout);
+                    std::chrono::seconds timeout = tcputils::kDefaultTimeout);
 
   ~TCPStore() = default;
 
   int64_t add(const std::string& key, int64_t value) override;
+  std::vector<uint8_t> get(const std::string& key) override;
+  void do_wait(const std::string& key, const std::chrono::seconds& timeout =
+                                           tcputils::kDefaultTimeout) override;
 
  private:
   void waitWorkers();

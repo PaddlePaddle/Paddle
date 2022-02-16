@@ -18,21 +18,21 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/distributed/store/tcp_utils.h"
+
 namespace paddle {
 namespace distributed {
 
 class Store {
  public:
-  static constexpr std::chrono::seconds kDefaultTimeout =
-      std::chrono::seconds(360);
-  static constexpr std::chrono::seconds kNoTimeout =
-      std::chrono::seconds::zero();
-
-  Store() : _timeout(kDefaultTimeout) {}
+  Store() = delete;
   explicit Store(const std::chrono::seconds& timeout) : _timeout(timeout) {}
-  virtual ~Store() {}
+  virtual ~Store() = default;
 
   virtual int64_t add(const std::string& key, int64_t value) = 0;
+  virtual std::vector<uint8_t> get(const std::string& key) = 0;
+  virtual void do_wait(const std::string& key,
+                       const std::chrono::seconds& timeout) = 0;
 
   virtual const std::chrono::seconds& timeout() const { return _timeout; }
   virtual void timeout(const std::chrono::seconds& timeout) {
