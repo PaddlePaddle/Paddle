@@ -38,7 +38,7 @@ class PutAlongAxisCUDAKernel : public framework::OpKernel<T> {
     auto result = ctx.Output<Tensor>("Result");
     const platform::DeviceContext &device_ctx = ctx.device_context();
 
-    const auto &index_type = index->type();
+    const auto &index_type = framework::TransToProtoVarType(index->dtype());
 
     framework::TensorCopy(*input, ctx.GetPlace(), result);
     if (reduce_op == "add") {
@@ -90,7 +90,7 @@ class PutAlongAxisGradOpCUDAKernel : public framework::OpKernel<T> {
     auto result_grad = ctx.Input<Tensor>(framework::GradVarName("Result"));
     auto axis = ctx.Attr<int>("Axis");
 
-    const auto &index_type = index->type();
+    const auto &index_type = framework::TransToProtoVarType(index->dtype());
     if (input_grad) {
       framework::TensorCopy(*result_grad, ctx.GetPlace(), input_grad);
       if (index_type == framework::proto::VarType::INT32) {

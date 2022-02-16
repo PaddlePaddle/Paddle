@@ -108,7 +108,7 @@ void MatrixPowerFunction(const Tensor* X, const int n, Tensor* Out,
 
   // Calculate Out = newX^{n} for abs(n) > 4 with time complexity as O(logN)
   int bit = 0;
-  Tensor z = Tensor(X->type());
+  Tensor z = Tensor(X->dtype());
   bool out_inited = false;
   Tensor temp_out = ctx.AllocateTmpTensor<T, DeviceContext>(X->dims(), dev_ctx);
   Tensor temp_z = ctx.AllocateTmpTensor<T, DeviceContext>(X->dims(), dev_ctx);
