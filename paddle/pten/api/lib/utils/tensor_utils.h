@@ -33,8 +33,6 @@ namespace experimental {
 std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
     const paddle::framework::Tensor& src);
 
-pten::Scalar MakePtenScalar(const paddle::framework::Tensor& src);
-
 pten::ScalarArray MakePtenScalarArray(const paddle::framework::Tensor& src);
 
 pten::Scalar MakePtenScalarFromVar(const framework::Variable& variable);

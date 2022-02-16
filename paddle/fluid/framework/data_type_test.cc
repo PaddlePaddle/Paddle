@@ -16,6 +16,7 @@
 #include <string>
 
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/tensor.h"
 
 TEST(DataType, float16) {
@@ -27,10 +28,11 @@ TEST(DataType, float16) {
 
   Tensor tensor;
   CPUPlace cpu;
-  tensor.mutable_data(cpu, dtype);
+  tensor.mutable_data(cpu, f::TransToPtenDataType(dtype));
 
   // test fp16 tensor
-  EXPECT_EQ(tensor.type(), f::ToDataType(typeid(float16)));
+  EXPECT_EQ(f::TransToProtoVarType(tensor.dtype()),
+            f::ToDataType(typeid(float16)));
 
   // test fp16 size
   EXPECT_EQ(f::SizeOfType(dtype), 2u);
@@ -49,10 +51,11 @@ TEST(DataType, bfloat16) {
 
   Tensor tensor;
   CPUPlace cpu;
-  tensor.mutable_data(cpu, dtype);
+  tensor.mutable_data(cpu, f::TransToPtenDataType(dtype));
 
   // test bf16 tensor
-  EXPECT_EQ(tensor.type(), f::ToDataType(typeid(bfloat16)));
+  EXPECT_EQ(f::TransToProtoVarType(tensor.dtype()),
+            f::ToDataType(typeid(bfloat16)));
 
   // test bf16 size
   EXPECT_EQ(f::SizeOfType(dtype), 2u);

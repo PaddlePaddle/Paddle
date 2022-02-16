@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/cross_entropy.h"
@@ -54,7 +55,7 @@ static void RunSoftmaxWithCrossEntropyFunctor(
   const bool soft_label = context.Attr<bool>("soft_label");
   SoftmaxWithCrossEntropyFunctor<T, Visitor> functor(context, *labels,
                                                      soft_label, visitor);
-  auto dtype = labels->type();
+  auto dtype = framework::TransToProtoVarType(labels->dtype());
   if (soft_label) {
     PADDLE_ENFORCE_EQ(
         dtype, framework::DataTypeTrait<T>::DataType(),

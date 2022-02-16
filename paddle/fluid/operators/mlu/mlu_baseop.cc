@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/operator.h"
@@ -177,8 +178,9 @@ MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
 }
 
 MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor)
-    : MLUCnnlTensorDesc(tensor, CNNL_LAYOUT_ARRAY,
-                        ToCnnlDataType(tensor.type())) {}
+    : MLUCnnlTensorDesc(
+          tensor, CNNL_LAYOUT_ARRAY,
+          ToCnnlDataType(framework::TransToProtoVarType(tensor.dtype()))) {}
 
 MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
                                      cnnlTensorLayout_t layout,

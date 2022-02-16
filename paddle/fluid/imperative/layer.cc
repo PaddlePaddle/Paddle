@@ -15,6 +15,8 @@
 #include "paddle/fluid/imperative/layer.h"
 
 #include "paddle/fluid/eager/eager_tensor.h"
+#include "paddle/fluid/framework/convert_utils.h"
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/infer_var_type_context.h"
 #include "paddle/fluid/imperative/op_base.h"
@@ -99,7 +101,9 @@ static std::string DebugString(
       auto& tensor = var.Get<framework::LoDTensor>();
       ss << "LoDTensor<";
       if (tensor.IsInitialized()) {
-        ss << framework::DataTypeToString(tensor.type()) << ", ";
+        ss << framework::DataTypeToString(
+                  framework::TransToProtoVarType(tensor.dtype()))
+           << ", ";
         ss << tensor.place() << ", ";
         ss << "(" << tensor.dims() << ")";
       } else {
@@ -112,7 +116,9 @@ static std::string DebugString(
       auto& tensor = selected_rows.value();
       auto& rows = selected_rows.rows();
       if (tensor.IsInitialized()) {
-        ss << framework::DataTypeToString(tensor.type()) << ", ";
+        ss << framework::DataTypeToString(
+                  framework::TransToProtoVarType(tensor.dtype()))
+           << ", ";
         ss << tensor.place() << ", ";
         ss << "height(" << selected_rows.height() << "), rows(";
         std::for_each(rows.cbegin(), rows.cend(),
