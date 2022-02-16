@@ -766,6 +766,7 @@ class IpuCompiledProgram(object):
         ipu_strategy(IpuStrategy, optional): This argument is used to build the program with the
             specified options, such as half computation, training or inference session, the number of IPUs, etc.
             Default is None, which means build the program based on the default `ipu_strategy`. 
+        custom_ops(List(IpuCustomOpIdentifier), optional): This argument is needed when using custom ops from popart.
 
     Returns:
         IpuCompiledProgram
@@ -966,17 +967,37 @@ class IpuCompiledProgram(object):
 
         return program
 
-    def detach(self):
-        self._backend.detach()
-
-    def reset(self):
-        self._backend.reset()
-
     def save_onnx_model(self, file_name):
+        """
+        Save compiled IpuCompiledProgram in ONNX format.
+
+        Args:
+            file_name(str): path of onnx model.
+
+        Returns:
+            None
+        """
         self._backend.save_model_proto(file_name)
 
 
 class IpuCustomOpIdentifier(core.IpuCustomOpIdentifier):
+    """
+    The IpuCustomOpIdentifier is used to map paddle custom op with popart custom op.
+    Please check the demo to see how to use it.
+
+    Args:
+        paddle_op(str): the name of custom op in paddle.
+
+        popart_op(str): the name of custom op in popart.
+
+        domain(str): domain name of custom op in popart.
+
+        version(int): version of custom op in popart.
+
+    Returns:
+        IpuCustomOpIdentifier
+
+    """
     if not core.is_compiled_with_ipu():
         raise ValueError(
             "Can't get IpuCustomOpIdentifier, since PaddlePaddle is not " \
