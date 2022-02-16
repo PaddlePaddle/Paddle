@@ -122,7 +122,7 @@ class TrtConvertBilinearInterpTest(TrtLayerAutoScanTest):
 
     def add_skip_trt_case(self):
         ver = paddle_infer.get_trt_compile_version()
-        if ver[0] * 1000 + ver[1] * 100 + ver[0] * 10 >= 8016:
+        if ver[0] * 1000 + ver[1] * 100 >= 8000:
 
             def teller1(program_config, predictor_config):
                 if program_config.ops[0].attrs['align_corners'] == True:
@@ -136,15 +136,15 @@ class TrtConvertBilinearInterpTest(TrtLayerAutoScanTest):
         else:
 
             def teller1(program_config, predictor_config):
-                if program_config.ops[0].attrs['align_corners'] == True or (
-                        program_config.ops[0].attrs['align_corners'] == False
-                        and program_config.ops[0].attrs['align_mode'] == 0):
-                    return True
-                return False
+                if program_config.ops[0].attrs[
+                        'align_corners'] == False and program_config.ops[
+                            0].attrs['align_mode'] == 1:
+                    return False
+                return True
 
             self.add_skip_case(
                 teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
-                "NOT Implemented: we need to add support align_corners == True in the future"
+                "Limited Implementation: only support align_corners == False and align_mode = 1"
             )
 
     def test(self):
