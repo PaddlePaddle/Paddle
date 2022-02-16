@@ -13,25 +13,33 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
+#include <algorithm>
 #include <functional>
+#include <utility>
 #include <vector>
+#include "cinn/hlir/framework/scope.h"
+#include "cinn/hlir/framework/tensor.h"
+#include "cinn/runtime/cinn_runtime.h"
+#include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/string/printf.h"
 
 namespace paddle {
-namespace operators {
-namespace details {
+namespace operators::details {
+
+using LoDTensor = framework::LoDTensor;
 
 CinnLaunchContext::CinnLaunchContext(
     const std::unordered_map<std::string, std::string>& paddle2cinn_varmap,
     const std::shared_ptr<CinnScope>& cinn_scope)
-    : paddle2cinn_varmap_(paddle2cinn_varmap), cinn_scope_(cinn_scope) {
-  // generate all names of cinn used variables
+    : cinn_scope_(cinn_scope) {
+  // generate all names of the cinn execution arguments
   auto var_names = cinn_scope_->var_names();
   cinn_argument_names_.reserve(var_names.size());
   std::transform(
       var_names.begin(), var_names.end(),
       std::inserter(cinn_argument_names_, cinn_argument_names_.end()),
       [](const auto& name_view) { return std::string(name_view.data()); });
-  // build name map between original variables and compiled ones
+  // build name map between the original variables and compiled ones
   BuildVarNameMap(paddle2cinn_varmap, cinn_argument_names_);
 }
 
@@ -104,14 +112,14 @@ CinnTensor CinnLaunchContext::GetCinnTensor(const std::string& arg_name) {
   return cinn_scope_->GetTensor(arg_name);
 }
 
-std::unordered_set<std::string> CinnLaunchContext::GetInternalVariableNames() {
+std::unordered_set<std::string> CinnLaunchContext::ExtractInternalVarNames() {
   std::unordered_set<std::string> all_parameters;
   all_parameters.reserve(paddle2cinn_varmap_.size());
   std::transform(paddle2cinn_varmap_.begin(), paddle2cinn_varmap_.end(),
                  std::inserter(all_parameters, all_parameters.end()),
                  [](const auto& name_pair) { return name_pair.first; });
   std::for_each(name2argument_.begin(), name2argument_.end(),
-                [&all_parameters](const auto& name2arg) {
+                [&all_parameters, this](const auto& name2arg) {
                   all_parameters.erase(cinn2paddle_varmap_.at(name2arg.first));
                 });
   return all_parameters;
@@ -163,7 +171,7 @@ void CinnLaunchContext::AssignExternalVariable(const std::string& var_name) {
         return 0;
       });
 
-  return SetArgument(cinn_arg_name, std::move(cinn_buffer));
+  return AppendArgument(cinn_arg_name, std::move(cinn_buffer));
 }
 
 void CinnLaunchContext::AssignInternalVariable(const std::string& var_name) {
@@ -197,17 +205,17 @@ void CinnLaunchContext::AssignInternalVariable(const std::string& var_name) {
         tensor->clear();
         return 0;
       });
-  return SetArgument(cinn_arg_name, std::move(cinn_buffer));
+  return AppendArgument(cinn_arg_name, std::move(cinn_buffer));
 }
 
-void CinnLaunchContext::SetArgument(const std::string& arg_name,
-                                    std::unique_ptr<cinn_buffer_t>&& buffer) {
-  VLOG(4) << "SetArgument-" << name2argument_.size() << ": name(" << arg_name
-          << "), dims(" << framework::DDim(buffer->dims, buffer->dimensions)
-          << ").";
-
+void CinnLaunchContext::AppendArgument(
+    const std::string& arg_name, std::unique_ptr<cinn_buffer_t>&& buffer) {
   name2argument_.emplace(arg_name, buffer.get());
   hold_buffers_.emplace_back(std::move(buffer));
+  VLOG(4) << string::Sprintf(
+      "Append an argument:name(%s),dims(%s),argument size:(%lu)", arg_name,
+      framework::DDim(buffer->dims, buffer->dimensions).to_str(),
+      name2argument_.size());
 }
 
 const std::map<std::string, cinn_pod_value_t>&
@@ -238,6 +246,5 @@ cinn_buffer_t* CinnLaunchContext::GetCinnBufferOfVar(
   return static_cast<cinn_buffer_t*>(res->second);
 }
 
-}  // namespace details
-}  // namespace operators
+}  // namespace operators::details
 }  // namespace paddle

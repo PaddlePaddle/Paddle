@@ -13,14 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
+#include "cinn/hlir/framework/scope.h"
+#include "cinn/hlir/framework/tensor.h"
+#include "cinn/runtime/cinn_runtime.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
-namespace operators {
-namespace details {
+namespace operators::details {
 
+using LoDTensor = framework::LoDTensor;
 using CinnShape = ::cinn::hlir::framework::Shape;
 
 std::unique_ptr<CinnLaunchContext> CreateDefaultLaunchContext() {
@@ -86,7 +89,7 @@ TEST(CinnLaunchContextTest, TestAssignVariablePreCondition) {
                paddle::platform::EnforceNotMet);
 }
 
-TEST(CinnLaunchContextTest, TestSetArgument) {
+TEST(CinnLaunchContextTest, TestAppendArgument) {
   platform::CPUPlace cpu_place;
   platform::Place place(cpu_place);
   framework::Scope scope;
@@ -109,7 +112,7 @@ TEST(CinnLaunchContextTest, TestSetArgument) {
   ASSERT_THROW(launch_context->FinalizeArguments(),
                paddle::platform::EnforceNotMet);
   // test get internal variables
-  auto internal_variable_names = launch_context->GetInternalVariableNames();
+  auto internal_variable_names = launch_context->ExtractInternalVarNames();
   ASSERT_EQ(internal_variable_names.size(), 1);
   EXPECT_EQ(*internal_variable_names.begin(), "cinn_var2");
 
@@ -134,6 +137,5 @@ TEST(CinnLaunchContextTest, TestSetArgument) {
   EXPECT_FLOAT_EQ(shadow_data[10], 19.99f);
 }
 
-}  // namespace details
-}  // namespace operators
+}  // namespace operators::details
 }  // namespace paddle

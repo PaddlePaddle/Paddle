@@ -75,8 +75,6 @@ namespace details {
 // Testing helper function used on CinnLaunchOpKernel in the following:
 // firstly build test data, then check both expected and illegal situations
 
-using CinnShape = ::cinn::hlir::framework::Shape;
-
 TEST(CinnLaunchOpHelperTest, TestPlaceToCinnTarget) {
   ASSERT_EQ(PlaceToCinnTarget(platform::CPUPlace()),
             ::cinn::common::DefaultHostTarget());
