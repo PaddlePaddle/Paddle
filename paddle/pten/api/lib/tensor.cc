@@ -58,9 +58,6 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-// declare cast api
-Tensor cast(const Tensor &x, DataType out_dtype);
-
 /////// Tensor Methods ////////
 
 /* Part 1: Construction and destruction methods */
@@ -362,9 +359,6 @@ void Tensor::copy_(const Tensor &src, bool blocking) {
   auto copy_tensor =
       src.copy_to(pten::TransToPtenBackend(src.inner_place()), blocking);
   set_impl(copy_tensor.impl());
-}
-Tensor Tensor::cast(DataType target_type) const {
-  return experimental::cast(*this, target_type);
 }
 
 /* Part 6: Status utils methods */
