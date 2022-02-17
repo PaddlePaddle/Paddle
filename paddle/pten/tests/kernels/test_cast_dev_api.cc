@@ -16,8 +16,10 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
+#include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/kernels/cast_kernel.h"
 
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/core/dense_tensor.h"
@@ -27,33 +29,35 @@ namespace pten {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
 TEST(DEV_API, cast) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  framework::make_ddim({3, 4}),
-                                                  pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x.mutable_data<float>();
+  pten::DenseTensor dense_x(
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                            pten::framework::make_ddim({3, 4}),
+                            pten::DataLayout::NCHW));
+  auto* dense_x_data =
+      dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 
   float sum = 0.0;
   for (size_t i = 0; i < 12; ++i) {
     dense_x_data[i] = i * 1.0;
     sum += i * 1.0;
   }
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
+
+  pten::CPUContext dev_ctx;
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(paddle::platform::CPUPlace())
+                           .get());
+  dev_ctx.Init();
 
   pten::DataType out_dtype = pten::DataType::FLOAT64;
   // 2. test API
-  auto out = pten::Cast<float>(
-      *(static_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)),
-      dense_x,
-      out_dtype);
+  auto out = pten::Cast<float>(dev_ctx, dense_x, out_dtype);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);

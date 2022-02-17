@@ -14,22 +14,14 @@ limitations under the License. */
 #include <cstdlib>
 #include <string>
 #include "gflags/gflags.h"
+
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/split.h"
 
-PADDLE_DEFINE_EXPORTED_string(
-    selected_xpus, "",
-    "A list of device ids separated by comma, like: 0,1,2,3. "
-    "This option is useful when doing multi process training and "
-    "each process have only one device (XPU). If you want to use "
-    "all visible devices, set this to empty string. NOTE: the "
-    "reason of doing this is that we want to use P2P communication"
-    "between XPU devices, use XPU_VISIBLE_DEVICES can only use"
-    "share-memory only.");
+#include "paddle/pten/backends/xpu/xpu_info.h"
 
 namespace paddle {
 namespace platform {
@@ -37,101 +29,40 @@ namespace platform {
 /**************************** Version Management **************************/
 
 //! Get the version of XPU Driver
-int GetDriverVersion() {
-  uint32_t driver_version_major = 0;
-  uint32_t driver_version_minor = 0;
-  PADDLE_ENFORCE_XPU_SUCCESS(
-      xpu_get_driver_version(&driver_version_major, &driver_version_minor));
-  int driver_version = driver_version_major * 10 + driver_version_minor;
-  return driver_version;
-}
+int GetDriverVersion() { return pten::backends::xpu::GetDriverVersion(); }
 
 //! Get the version of XPU Runtime
-int GetRuntimeVersion() {
-  uint32_t rumtime_version_major = 0;
-  uint32_t rumtime_version_minor = 0;
-  PADDLE_ENFORCE_XPU_SUCCESS(
-      xpu_get_runtime_version(&rumtime_version_major, &rumtime_version_minor));
-  int runtime_version = rumtime_version_major * 10 + rumtime_version_minor;
-  return runtime_version;
-}
+int GetRuntimeVersion() { return pten::backends::xpu::GetRuntimeVersion(); }
 
 /**************************** Device Management **************************/
 
-static int GetDeviceCountImpl() {
-  const auto* xpu_visible_devices = std::getenv("XPU_VISIBLE_DEVICES");
-  if (xpu_visible_devices != nullptr) {
-    std::string xpu_visible_devices_str(xpu_visible_devices);
-    if (std::all_of(xpu_visible_devices_str.begin(),
-                    xpu_visible_devices_str.end(),
-                    [](char ch) { return ch == ' '; })) {
-      VLOG(2) << "XPU_VISIBLE_DEVICES is set to be empty. No XPU detected.";
-      return 0;
-    }
-  }
-
-  int count = 0;
-  PADDLE_ENFORCE_XPU_SUCCESS(xpu_device_count(&count));
-  return count;
-}
-
-int GetXPUDeviceCount() {
-  static auto dev_cnt = GetDeviceCountImpl();
-  return dev_cnt;
-}
+int GetXPUDeviceCount() { return pten::backends::xpu::GetXPUDeviceCount(); }
 
 int GetXPUCurrentDeviceId() {
-  int dev_id;
-  PADDLE_ENFORCE_XPU_SUCCESS(xpu_current_device(&dev_id));
-  if (dev_id >= 64) {
-    // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
-    dev_id -= 64;
-  }
-  return dev_id;
+  return pten::backends::xpu::GetXPUCurrentDeviceId();
 }
 
-void SetXPUDeviceId(int id) {
-  PADDLE_ENFORCE_LT(
-      id, GetXPUDeviceCount(),
-      platform::errors::InvalidArgument("id must less than XPU count"));
-  PADDLE_ENFORCE_XPU_SUCCESS(xpu_set_device(id));
-}
+void SetXPUDeviceId(int id) { pten::backends::xpu::SetXPUDeviceId(id); }
 
 //! Get a list of device ids from environment variable or use all.
 std::vector<int> GetXPUSelectedDevices() {
   // use user specified XPUs in single-node multi-process mode.
-  std::vector<int> devices;
-  if (!FLAGS_selected_xpus.empty()) {
-    auto devices_str = paddle::string::Split(FLAGS_selected_xpus, ',');
-    for (auto id : devices_str) {
-      devices.push_back(atoi(id.c_str()));
-    }
-  } else {
-    int count = GetXPUDeviceCount();
-    for (int i = 0; i < count; ++i) {
-      devices.push_back(i);
-    }
-  }
-  return devices;
+  return pten::backends::xpu::GetXPUSelectedDevices();
 }
 
 /**************************** Memory Management **************************/
 
 void MemcpySyncH2D(void* dst, const void* src, size_t count,
                    const platform::XPUPlace& dst_place) {
-  platform::XPUDeviceGuard guard(dst_place.device);
-  PADDLE_ENFORCE_XPU_SUCCESS(
-      xpu_memcpy(dst, src, count, XPUMemcpyKind::XPU_HOST_TO_DEVICE));
+  pten::backends::xpu::MemcpySyncH2D(dst, src, count, dst_place);
 }
 
 void MemcpySyncD2H(void* dst, const void* src, size_t count,
                    const platform::XPUPlace& src_place) {
-  platform::XPUDeviceGuard guard(src_place.device);
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.GetByPlace(src_place);
   dev_ctx->Wait();
-  PADDLE_ENFORCE_XPU_SUCCESS(
-      xpu_memcpy(dst, src, count, XPUMemcpyKind::XPU_DEVICE_TO_HOST));
+  pten::backends::xpu::MemcpySyncD2H(dst, src, count, src_place, *dev_ctx);
 }
 
 // if src.device == dst.device and you need sync , after call this function,
@@ -139,33 +70,16 @@ void MemcpySyncD2H(void* dst, const void* src, size_t count,
 void MemcpySyncD2D(void* dst, const platform::XPUPlace& dst_place,
                    const void* src, const platform::XPUPlace& src_place,
                    size_t count) {
-  int dev_id = GetXPUCurrentDeviceId();
-  if (dst_place.device == dev_id && src_place.device == dev_id) {
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto* dev_ctx = pool.GetByPlace(src_place);
-    PADDLE_ENFORCE_XDNN_SUCCESS(
-        xpu::copy(dev_ctx->x_context(), static_cast<const int8_t*>(src),
-                  static_cast<int8_t*>(dst), count),
-        "copy ");
-  } else {
-    PADDLE_ENFORCE_XPU_SUCCESS(
-        xpu_memcpy_peer(dst_place.device, dst, src_place.device, src, count));
-  }
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.GetByPlace(src_place);
+  pten::backends::xpu::MemcpySyncD2D(dst, dst_place, src, src_place, count,
+                                     *dev_ctx);
 }
 
 /**************************** Others **************************/
 
-XPUVersion get_xpu_version(int dev_id) {
-  uint64_t v = 0;
-  PADDLE_ENFORCE_XPU_SUCCESS(xpu_device_get_attr(&v, XPUATTR_MODEL, dev_id));
-
-  if (v == K100 || v == K200) {
-    VLOG(1) << "KUNLUN device " << dev_id << " is XPU1\n";
-    return XPU1;
-  } else {
-    VLOG(1) << "KUNLUN device " << dev_id << " is XPU2\n";
-    return XPU2;
-  }
+pten::backends::xpu::XPUVersion get_xpu_version(int dev_id) {
+  return pten::backends::xpu::get_xpu_version(dev_id);
 }
 
 }  // namespace platform

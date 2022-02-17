@@ -22,7 +22,7 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/stream/stream.h"
+#include "paddle/pten/core/stream.h"
 
 namespace paddle {
 namespace memory {
@@ -51,6 +51,16 @@ class AllocatorFacade {
 
   const std::shared_ptr<Allocator>& GetAllocator(const platform::Place& place);
 
+  void* GetBasePtr(const std::shared_ptr<Allocation>& allocation);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  const std::shared_ptr<Allocator>& GetAllocator(const platform::Place& place,
+                                                 const gpuStream_t& stream);
+#endif
+
+  const std::shared_ptr<Allocator>& GetZeroAllocator(
+      const platform::Place& place);
+
   // Allocate a shared allocation.
   std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
                                           size_t size);
@@ -61,13 +71,13 @@ class AllocatorFacade {
 
   std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
                                           size_t size,
-                                          const platform::Stream& stream);
+                                          const pten::Stream& stream);
 
   bool InSameStream(const std::shared_ptr<Allocation>& allocation,
-                    const platform::Stream& stream);
+                    const pten::Stream& stream);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  // TODO(zhiqiu): change gpuStream_t to platform::Stream if needed.
+  // TODO(zhiqiu): change gpuStream_t to pten::Stream if needed.
   AllocationPtr Alloc(const platform::Place& place, size_t size,
                       const gpuStream_t& stream);
   uint64_t Release(const platform::CUDAPlace& place, const gpuStream_t& stream);

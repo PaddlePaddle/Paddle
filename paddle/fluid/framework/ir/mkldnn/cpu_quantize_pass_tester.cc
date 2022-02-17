@@ -36,7 +36,7 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
   op->SetType(type);
   op->SetAttr("use_mkldnn", use_mkldnn);
   op->SetAttr("name", name);
-  if (type != "dropout" || type != "quantize" || type != "dequantize") {
+  if (type != "dropout" && type != "quantize" && type != "dequantize") {
     op->SetAttr("mkldnn_data_type", mkldnn_data_type);
   }
 
@@ -125,7 +125,8 @@ void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
                       const char* var_name) {
   auto x = scope->Var(var_name);
   auto tensor = x->GetMutable<LoDTensor>();
-  tensor->mutable_data(place, proto::VarType::FP32, 1);
+  tensor->mutable_data(place,
+                       framework::TransToPtenDataType(proto::VarType::FP32), 1);
 }
 
 void PreparePass(std::unique_ptr<ir::Graph>* graph, const ProgramDesc& prog,
@@ -192,7 +193,6 @@ void MainTest(const ProgramDesc& prog,
   int original_nodes_num, current_nodes_num;
   PreparePass(&graph, prog, variable_names, &original_nodes_num,
               &current_nodes_num, var_without_scale, var_signed);
-  std::unordered_map<std::string, int> actual_operators;
   for (auto* node : graph->Nodes()) {
     if (node->IsOp()) {
       auto* op = node->Op();
@@ -371,7 +371,7 @@ TEST(CpuQuantizePass, fusion_lstm) {
 }
 
 static const std::initializer_list<std::string> variable_names_immutable_ops = {
-    "a", "w1", "b", "c", "d"};
+    "a", "w1", "b", "c", "d", "e", "f", "g"};
 
 // a->Dequantize->b
 // b->Tested Op->c
@@ -417,10 +417,46 @@ void TestImmutableOpBetweenNonQuantizedOp(const std::string tested_op) {
            SCALE * S8_MAX);
 }
 
+// a->Dropout1->b
+// b->TestedOp1(won't be quantized)->c
+//    c->Dropout2->d
+//    c->TestedOp2(will be quantized)->e
+//        e->Pool2d1(will be quantized)->f
+//        e->Pool2d2(will be quantized)->g
+void TestImmutableOpWithManyOutputs(const std::string tested_op) {
+  ProgramDesc prog;
+  for (auto& v : variable_names_immutable_ops) {
+    prog.MutableBlock(0)->Var(v);
+  }
+
+  SetOp(&prog, "dropout", "Dropout1", {"a"}, {"b"}, true, "float32");
+  SetOp(&prog, tested_op, std::string(tested_op + "1"), {"b"}, {"c"}, true,
+        "int8");
+  SetOp(&prog, "dropout", "Dropout2", {"c"}, {"d"}, true, "float32");
+  SetOp(&prog, tested_op, std::string(tested_op + "2"), {"c"}, {"e"}, true,
+        "int8");
+  SetOp(&prog, "pool2d", "Pool2d1", {"e"}, {"f"}, true, "int8");
+  SetOp(&prog, "pool2d", "Pool2d2", {"e"}, {"g"}, true, "int8");
+
+  // 3 Quant + 3 IN + 3 DeQuant + 3 OUT
+  int added_nodes = 12;
+  std::unordered_map<std::string, int> expected_operators = {{tested_op, 2},
+                                                             {"dropout", 2},
+                                                             {"pool2d", 2},
+                                                             {"quantize", 3},
+                                                             {"dequantize", 3}};
+  MainTest(prog, variable_names_immutable_ops, expected_operators, added_nodes,
+           SCALE * S8_MAX);
+}
+
 TEST(CpuQuantizePass, reshape2) { TestImmutableOp("reshape2"); }
 
 TEST(CpuQuantizePass, reshape2BetweenNonQuantizedOp) {
   TestImmutableOpBetweenNonQuantizedOp("reshape2");
+}
+
+TEST(CpuQuantizePass, reshape2WithManyOutputs) {
+  TestImmutableOpWithManyOutputs("reshape2");
 }
 
 TEST(CpuQuantizePass, transpose2) { TestImmutableOp("transpose2"); }
@@ -429,10 +465,18 @@ TEST(CpuQuantizePass, transpose2BetweenNonQuantizedOp) {
   TestImmutableOpBetweenNonQuantizedOp("transpose2");
 }
 
+TEST(CpuQuantizePass, transpose2WithManyOutputs) {
+  TestImmutableOpWithManyOutputs("transpose2");
+}
+
 TEST(CpuQuantizePass, slice) { TestImmutableOp("slice"); }
 
 TEST(CpuQuantizePass, sliceBetweenNonQuantizedOp) {
   TestImmutableOpBetweenNonQuantizedOp("slice");
+}
+
+TEST(CpuQuantizePass, sliceWithManyOutputs) {
+  TestImmutableOpWithManyOutputs("slice");
 }
 
 TEST(CpuQuantizePass, nearestInterp) { TestImmutableOp("nearest_interp"); }
@@ -441,10 +485,18 @@ TEST(CpuQuantizePass, nearestInterpBetweenNonQuantizedOp) {
   TestImmutableOpBetweenNonQuantizedOp("nearest_interp");
 }
 
+TEST(CpuQuantizePass, nearestInterpWithManyOutputs) {
+  TestImmutableOpWithManyOutputs("nearest_interp");
+}
+
 TEST(CpuQuantizePass, nearestInterpV2) { TestImmutableOp("nearest_interp_v2"); }
 
 TEST(CpuQuantizePass, nearestInterpV2BetweenNonQuantizedOp) {
   TestImmutableOpBetweenNonQuantizedOp("nearest_interp_v2");
+}
+
+TEST(CpuQuantizePass, nearestInterpV2WithManyOutputs) {
+  TestImmutableOpWithManyOutputs("nearest_interp_v2");
 }
 
 static const std::initializer_list<std::string> variable_names_matmul = {

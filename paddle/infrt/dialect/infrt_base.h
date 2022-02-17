@@ -25,6 +25,7 @@
 
 namespace infrt {
 namespace dialect {
+
 class INFRTDialect : public mlir::Dialect {
   explicit INFRTDialect(mlir::MLIRContext *context)
       : mlir::Dialect(

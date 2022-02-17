@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function_impl.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/kernels/funcs/eigen/common.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
@@ -51,6 +52,18 @@ template struct SetConstant<platform::CPUDeviceContext,
                             platform::complex<float>>;
 template struct SetConstant<platform::CPUDeviceContext,
                             platform::complex<double>>;
+
+template struct SetConstant<pten::CPUContext, platform::float16>;
+template struct SetConstant<pten::CPUContext, platform::bfloat16>;
+template struct SetConstant<pten::CPUContext, float>;
+template struct SetConstant<pten::CPUContext, double>;
+template struct SetConstant<pten::CPUContext, int16_t>;
+template struct SetConstant<pten::CPUContext, int>;
+template struct SetConstant<pten::CPUContext, int64_t>;
+template struct SetConstant<pten::CPUContext, bool>;
+template struct SetConstant<pten::CPUContext, uint8_t>;
+template struct SetConstant<pten::CPUContext, platform::complex<float>>;
+template struct SetConstant<pten::CPUContext, platform::complex<double>>;
 
 #ifdef PADDLE_WITH_XPU
 template struct SetConstant<platform::XPUDeviceContext, platform::float16>;
@@ -192,6 +205,13 @@ void set_constant_with_place<platform::MLUPlace>(
     const platform::DeviceContext& context, framework::Tensor* tensor,
     float value) {
   PADDLE_THROW(platform::errors::Unimplemented("MLUPlace is not supported"));
+}
+
+template <>
+void set_constant_with_place<platform::CustomPlace>(
+    const platform::DeviceContext& context, framework::Tensor* tensor,
+    float value) {
+  PADDLE_THROW(platform::errors::Unimplemented("CustomPlace is not supported"));
 }
 
 template <>

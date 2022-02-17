@@ -18,9 +18,9 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/slice_utils.h"
 #include "paddle/fluid/operators/utils.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -42,6 +42,10 @@ inline void DealTensorArray(const framework::ExecutionContext& ctx,
   start = std::max(start, static_cast<int64_t>(0));
   end = std::max(end, static_cast<int64_t>(0));
   end = std::min(end, in_size);
+
+  if (starts[0] == -1 && end == 0) {
+    end = start + 1;
+  }
 
   PADDLE_ENFORCE_GT(end, start,
                     platform::errors::InvalidArgument(
@@ -295,7 +299,7 @@ class SliceGradKernel : public framework::OpKernel<T> {
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
       auto& dev_ctx = *pool.Get(ctx.GetPlace());
-      math::SetConstant<DeviceContext, T> functor;
+      pten::funcs::SetConstant<DeviceContext, T> functor;
       for (int i = 0; i < d_in_size; ++i) {
         auto dim = input_array->at(i).dims();
         d_in_arr->at(i).Resize(dim);
@@ -330,7 +334,7 @@ class SliceGradKernel : public framework::OpKernel<T> {
     auto decrease_axis = ctx.Attr<std::vector<int>>("decrease_axis");
     auto decrease_size = decrease_axis.size();
     if (decrease_size > 0) {
-      if (decrease_size == (size_t)in_dims.size()) {
+      if (decrease_size == static_cast<size_t>(in_dims.size())) {
         // all dims decrease
         std::vector<int> origin_out_shape(decrease_size, 1);
         out_dims = framework::make_ddim(std::vector<int>(decrease_size, 1));

@@ -24,12 +24,12 @@ template <typename T, typename Context>
 void EmptyKernel(const Context& dev_ctx,
                  const ScalarArray& shape,
                  DenseTensor* out) {
-  out->ResizeAndAllocate(paddle::framework::make_ddim(shape.GetData()));
+  out->ResizeAndAllocate(pten::framework::make_ddim(shape.GetData()));
 }
 
 template <typename T, typename Context>
 void EmptyLikeKernel(const Context& dev_ctx, DenseTensor* out) {
-  out->mutable_data<T>();
+  dev_ctx.template Alloc<T>(out);
 }
 
 }  // namespace pten
@@ -94,6 +94,7 @@ PT_REGISTER_KERNEL(empty_like,
                    int64_t,
                    bool,
                    paddle::platform::float16,
+                   paddle::platform::bfloat16,
                    paddle::platform::complex<float>,
                    paddle::platform::complex<double>) {}
 #endif

@@ -33,7 +33,7 @@ namespace distributed {
 template <typename T>
 inline paddle::operators::math::BlasT<paddle::platform::CPUDeviceContext, T>
 GetBlas() {
-  auto cpu_ctx = paddle::platform::CPUDeviceContext();
+  paddle::platform::CPUDeviceContext cpu_ctx;
   return paddle::operators::math::GetBlas<paddle::platform::CPUDeviceContext,
                                           T>(cpu_ctx);
 }

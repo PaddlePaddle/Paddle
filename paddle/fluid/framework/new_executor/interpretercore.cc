@@ -19,7 +19,8 @@
 #include "paddle/fluid/framework/new_executor/interpretercore_event_garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/os_info.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/framework/new_executor/interpretercore_fast_garbage_collector.h"
@@ -393,7 +394,8 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
     platform::RecordEvent infershape_event("InferShape");
     // If it is OperatorBase, InferShape do nothing.
     if (op_with_kernel != nullptr)
-      op_with_kernel->InferShape(instr_node.InnerInferShapeContext().get());
+      op_with_kernel->Info().infer_shape_(
+          instr_node.InnerInferShapeContext().get());
   }
 
   if (op_with_kernel != nullptr &&
@@ -426,8 +428,6 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
         (*instr_node.PtenKernel())(&pt_kernel_context);
 
-        op_with_kernel->WriteBackToOutputs(
-            instr_node.InnerRuntimeContext().get(), &pt_kernel_context);
       } else {
         instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
       }
@@ -475,12 +475,11 @@ void InterpreterCore::ExecuteInstructionList(
 
   if (UNLIKELY(exception_holder_.IsCaught())) {
     VLOG(1) << "Exception caught " << exception_holder_.Type();
-    // NOTE(xiongkun) Why we reset ?
-    // The caught exception may be EOFExcetion, under this situation, we need
-    // make async_work_queue_ available, so we need reset.
-    async_work_queue_->Cancel();
-    async_work_queue_.reset(new interpreter::AsyncWorkQueue(
-        kHostNumThreads, &main_thread_blocker_));
+    // Graceful exit when the executor encountered a fatal error.
+    // EOF is not a fatal error.
+    if (exception_holder_.Type() != "EOF") {
+      async_work_queue_->Cancel();
+    }
     PADDLE_ENFORCE_EQ(
         main_thread_blocker_.Clear(), 0,
         platform::errors::PreconditionNotMet(
@@ -553,6 +552,13 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
     instr_id = ready_ops.front();
     ready_ops.pop();
     auto& instr_node = vec_instruction_.at(instr_id);
+    VLOG(5) << __func__ << " OP id:" << instr_node.Id()
+            << " name:" << instr_node.OpBase()->Type()
+            << " type:" << (instr_node.KernelType() == OpFuncType::kQueueSync
+                                ? "kQueueSync"
+                                : "kQueueAsync")
+            << " runs on " << platform::GetCurrentThreadName();
+
     auto* op = instr_node.OpBase();
     platform::RecordEvent instruction_event(op->Type().c_str());
     interpreter::WaitEvent(instr_node, place_);
@@ -676,8 +682,9 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
                    operators::reader::
                        OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {
       // do nothing
-    } else if (var->IsType<SelectedRows>()) {
-      TensorRecordStream(*(var->GetMutable<SelectedRows>()->mutable_value()));
+    } else if (var->IsType<pten::SelectedRows>()) {
+      TensorRecordStream(
+          *(var->GetMutable<pten::SelectedRows>()->mutable_value()));
     } else if (var->IsType<LoDTensorArray>()) {
       auto* tensor_arr = var->GetMutable<LoDTensorArray>();
       for (auto& tensor : *tensor_arr) {

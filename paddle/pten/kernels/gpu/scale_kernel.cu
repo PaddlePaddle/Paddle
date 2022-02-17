@@ -28,11 +28,10 @@ struct ScaleFunctor {
   InT scale;
   bool bias_after_scale;
 
-  ScaleFunctor(InT scale_data, InT bias_data, bool is_bias_after_sacle) {
-    scale = scale_data;
-    bias = bias_data;
-    bias_after_scale = is_bias_after_sacle;
-  }
+  ScaleFunctor(InT scale_data, InT bias_data, bool is_bias_after_sacle)
+      : bias(bias_data),
+        scale(scale_data),
+        bias_after_scale(is_bias_after_sacle) {}
 
   __device__ __forceinline__ InT operator()(const InT x) const {
     if (bias_after_scale) {
@@ -54,10 +53,8 @@ void ScaleKernel(const Context& dev_ctx,
   std::vector<DenseTensor*> outputs;
   inputs.emplace_back(&x);
   outputs.emplace_back(out);
-  out->mutable_data<T>();
-  pten::funcs::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary,
-                                                   T,
-                                                   T>(
+  dev_ctx.template Alloc<T>(out);
+  pten::funcs::LaunchSameDimsElementwiseCudaKernel<T>(
       dev_ctx,
       inputs,
       &outputs,
@@ -72,7 +69,7 @@ PT_REGISTER_KERNEL(scale,
                    pten::ScaleKernel,
                    float,
                    double,
-                   paddle::platform::float16,
+                   pten::dtype::float16,
                    uint8_t,
                    int8_t,
                    int16_t,

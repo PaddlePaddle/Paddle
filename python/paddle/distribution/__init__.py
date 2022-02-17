@@ -18,6 +18,7 @@ from .dirichlet import Dirichlet
 from .distribution import Distribution
 from .exponential_family import ExponentialFamily
 from .kl import kl_divergence, register_kl
+from .multinomial import Multinomial
 from .normal import Normal
 from .uniform import Uniform
 
@@ -27,8 +28,9 @@ __all__ = [  # noqa
     'Dirichlet',
     'Distribution',
     'ExponentialFamily',
+    'Multinomial',
     'Normal',
     'Uniform',
     'kl_divergence',
-    'register_kl'
+    'register_kl',
 ]

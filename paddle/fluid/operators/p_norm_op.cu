@@ -76,22 +76,13 @@ struct AbsFunctor {
   }
 };
 
-template <typename Tx, typename Ty = Tx>
+template <typename T>
 struct UnsignedPowFunctor {
   HOSTDEVICE explicit inline UnsignedPowFunctor(float porder) {
     this->porder = porder;
   }
-  HOSTDEVICE inline Ty operator()(const Tx x) const {
-    return static_cast<Ty>(inline_pow(inline_abs(x), static_cast<Tx>(porder)));
-  }
-  float porder;
-};
-
-template <typename Tx, typename Ty = Tx>
-struct PowFunctor {
-  HOSTDEVICE explicit inline PowFunctor(float porder) { this->porder = porder; }
-  HOSTDEVICE inline Ty operator()(const Tx x) const {
-    return static_cast<Ty>(inline_pow(x, static_cast<Tx>(porder)));
+  HOSTDEVICE inline T operator()(const T x) const {
+    return static_cast<T>(inline_pow(inline_abs(x), static_cast<T>(porder)));
   }
   float porder;
 };
@@ -105,49 +96,38 @@ class PnormCUDAKernel : public framework::OpKernel<T> {
     const T* x = in_x->data<T>();
     T* norm = out_norm->mutable_data<T>(ctx.GetPlace());
     auto xdim = in_x->dims();
-    auto ndim = out_norm->dims();
     float porder = ctx.Attr<float>("porder");
     bool asvector = ctx.Attr<bool>("asvector");
     int axis = ctx.Attr<int>("axis");
     std::vector<int> reduce_axis = {axis};
     reduce_axis = GetReduceDim(reduce_axis, xdim.size(), asvector);
-
     auto stream = ctx.cuda_device_context().stream();
 
     using MT = typename details::MPTypeTrait<T>::Type;
     if (porder == 0) {
-      TensorReduceFunctorImpl<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
-          *in_x, out_norm, NonzeroFunctor<T>(), reduce_axis, stream);
+      TensorReduceImpl<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
+          ctx.cuda_device_context(), *in_x, out_norm, NonzeroFunctor<T>(),
+          reduce_axis, stream);
     } else if (porder == INFINITY) {
-      TensorReduceFunctorImpl<T, T, kps::MaxFunctor, AbsFunctor<T>>(
-          *in_x, out_norm, AbsFunctor<T>(), reduce_axis, stream);
+      TensorReduceImpl<T, T, kps::MaxFunctor, AbsFunctor<T>>(
+          ctx.cuda_device_context(), *in_x, out_norm, AbsFunctor<T>(),
+          reduce_axis, stream);
     } else if (porder == -INFINITY) {
-      TensorReduceFunctorImpl<T, T, kps::MinFunctor, AbsFunctor<T>>(
-          *in_x, out_norm, AbsFunctor<T>(), reduce_axis, stream);
+      TensorReduceImpl<T, T, kps::MinFunctor, AbsFunctor<T>>(
+          ctx.cuda_device_context(), *in_x, out_norm, AbsFunctor<T>(),
+          reduce_axis, stream);
     } else {
-      framework::Tensor tmp_x;
-      tmp_x.mutable_data<T>(xdim, ctx.GetPlace());
-      std::vector<const framework::Tensor*> ins = {in_x};
-      std::vector<framework::Tensor*> outs = {&tmp_x};
-      auto func = UnsignedPowFunctor<MT, T>(porder);
+      TensorReduceImpl<T, T, kps::AddFunctor, UnsignedPowFunctor<T>>(
+          ctx.cuda_device_context(), *in_x, out_norm,
+          UnsignedPowFunctor<T>(porder), reduce_axis, stream);
+
+      const framework::Tensor* tmp_norm = out_norm;
+      std::vector<const framework::Tensor*> ins = {tmp_norm};
+      std::vector<framework::Tensor*> outs = {out_norm};
       const auto& cuda_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();
-
-      paddle::operators::LaunchSameDimsElementwiseCudaKernel<
-          ElementwiseType::kUnary, MT, T, UnsignedPowFunctor<MT, T>>(
-          cuda_ctx, ins, &outs, func);
-      framework::Tensor tmp_y;
-      tmp_y.mutable_data<T>(ndim, ctx.GetPlace());
-      TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          tmp_x, &tmp_y, kps::IdentityFunctor<T>(), reduce_axis, stream);
-      const framework::Tensor* tmp_norm = &tmp_y;
-      ins = {tmp_norm};
-      outs = {out_norm};
-      auto func_inverse = UnsignedPowFunctor<MT, T>(1. / porder);
-
-      paddle::operators::LaunchSameDimsElementwiseCudaKernel<
-          ElementwiseType::kUnary, MT, T, UnsignedPowFunctor<MT, T>>(
-          cuda_ctx, ins, &outs, func_inverse);
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
+          cuda_ctx, ins, &outs, UnsignedPowFunctor<T>(1. / porder));
     }
   }
 };
@@ -158,29 +138,25 @@ struct AbsMaxAndMinGradFunctor {
             typename DY, typename Dim>
   void operator()(const DeviceContext& place, X* x, Y* y, DX* dx, DY* dy,
                   const Dim& dim, int size) {
-    auto equals = ((*x).abs() == y->broadcast(dim));
-    auto ones = dx->constant(static_cast<T>(1.));
-    auto negs = dx->constant(static_cast<T>(-1.));
-    auto zeros = dx->constant(static_cast<T>(0.));
-    auto positives = (*x) > zeros;
-    dx->device(place) = dy->broadcast(dim) * equals.select(ones, zeros) *
-                        positives.select(ones, negs);
+    dx->device(place) = dy->broadcast(dim) * (*x).sign() *
+                        ((*x).abs() == y->broadcast(dim)).template cast<T>();
   }
 };
 
 template <typename T>
-struct PNormPostGradFunctor {
+struct PNormGradFunctor {
+  HOSTDEVICE explicit inline PNormGradFunctor(float porder) {
+    this->porder = static_cast<T>(porder - 1.);
+  }
   template <typename DeviceContext, typename X, typename Y, typename DX,
             typename DY, typename Dim>
   void operator()(const DeviceContext& place, X* x, Y* y, DX* dx, DY* dy,
                   const Dim& dim, int size) {
-    auto ones = dx->constant(static_cast<T>(1.));
-    auto negs = dx->constant(static_cast<T>(-1.));
-    auto zeros = dx->constant(static_cast<T>(0.));
-    auto positives = (*x) > zeros;
-    dx->device(place) = (*dx) * dy->broadcast(dim) * y->broadcast(dim) *
-                        positives.select(ones, negs);
+    dx->device(place) = (*x).abs().pow(this->porder) * (*x).sign() *
+                        dy->broadcast(dim) *
+                        (*y).pow(-this->porder).broadcast(dim);
   }
+  T porder;
 };
 
 template <typename DeviceContext, typename T, typename AttrType = T>
@@ -204,29 +180,16 @@ class PnormGradCUDAKernel : public framework::OpKernel<T> {
     auto& cuda_ctx = ctx.template device_context<DeviceContext>();
 
     if (porder == 0) {
-      math::SetConstant<DeviceContext, T> set_zero;
+      pten::funcs::SetConstant<DeviceContext, T> set_zero;
       set_zero(cuda_ctx, out_dx, static_cast<T>(0));
     } else if (porder == INFINITY || porder == -INFINITY) {
+      AbsMaxAndMinGradFunctor<T> functor;
       LaunchReduceGradKernel<DeviceContext, T, AbsMaxAndMinGradFunctor<T>>(
-          ctx, in_x, in_norm, in_norm_dy, out_dx, dims, reduce_all);
+          ctx, in_x, in_norm, in_norm_dy, out_dx, functor, dims, reduce_all);
     } else {
-      framework::Tensor tmp_norm;
-      tmp_norm.mutable_data<T>(in_norm->dims(), ctx.GetPlace());
-      std::vector<const framework::Tensor*> ins = {in_norm};
-      std::vector<framework::Tensor*> outs = {&tmp_norm};
-      auto pow_functor = PowFunctor<T>(1. - porder);
-      paddle::operators::LaunchSameDimsElementwiseCudaKernel<
-          ElementwiseType::kUnary, T, T, PowFunctor<T>>(cuda_ctx, ins, &outs,
-                                                        pow_functor);
-      ins = {in_x};
-      outs = {out_dx};
-      auto unsigned_pow = UnsignedPowFunctor<T>(porder - 1.);
-      paddle::operators::LaunchSameDimsElementwiseCudaKernel<
-          ElementwiseType::kUnary, T, T, UnsignedPowFunctor<T>>(
-          cuda_ctx, ins, &outs, unsigned_pow);
-      const framework::Tensor* tmp_norm_const = &tmp_norm;
-      LaunchReduceGradKernel<DeviceContext, T, PNormPostGradFunctor<T>>(
-          ctx, in_x, tmp_norm_const, in_norm_dy, out_dx, dims, reduce_all);
+      auto functor = PNormGradFunctor<T>(porder);
+      LaunchReduceGradKernel<DeviceContext, T, PNormGradFunctor<T>>(
+          ctx, in_x, in_norm, in_norm_dy, out_dx, functor, dims, reduce_all);
     }
   }
 };

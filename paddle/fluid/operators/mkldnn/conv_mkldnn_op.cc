@@ -14,6 +14,7 @@
 
 #include <tuple>
 
+#include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -47,14 +48,16 @@ static dnnl::memory::data_type GetDstType(bool is_int8, bool is_bfloat16,
       dst_dt = dnnl::memory::data_type::f32;
     }
     if (fuse_residual_conn && residual_param) {
-      auto residual_dt = framework::ToMKLDNNDataType(residual_param->type());
+      auto residual_dt = framework::ToMKLDNNDataType(
+          framework::TransToProtoVarType(residual_param->dtype()));
       if (dst_dt != residual_dt) dst_dt = residual_dt;
     }
   } else {
     if (!force_fp32_output && is_bfloat16) {
       dst_dt = dnnl::memory::data_type::bf16;
       if (fuse_residual_conn && residual_param) {
-        dst_dt = framework::ToMKLDNNDataType(residual_param->type());
+        dst_dt = framework::ToMKLDNNDataType(
+            framework::TransToProtoVarType(residual_param->dtype()));
       }
     }
   }
@@ -79,7 +82,7 @@ class ConvMKLDNNHandlerT
             dev_ctx, mkldnn_engine, cpu_place,
             platform::CreateKey(dev_ctx, framework::vectorize(input->dims()),
                                 unique_name)) {
-    if (!this->isCached()) {
+    if (unlikely(!this->isCached())) {
       PADDLE_ENFORCE_EQ(
           input->layout(), framework::DataLayout::kMKLDNN,
           platform::errors::InvalidArgument(
@@ -201,7 +204,8 @@ class ConvMKLDNNHandlerT
       dnnl::memory::desc src_md, weights_md;
       if (platform::is_int8<T>()) {
         src_md = platform::MKLDNNMemDesc(
-            src_tz, framework::ToMKLDNNDataType(input->type()),
+            src_tz, framework::ToMKLDNNDataType(
+                        framework::TransToProtoVarType(input->dtype())),
             chosen_memory_format);
         weights_md = platform::MKLDNNMemDesc(
             weights_tz, dnnl::memory::data_type::s8, chosen_memory_format);
@@ -264,7 +268,7 @@ class ConvMKLDNNHandlerT
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
             platform::CreateKey(dev_ctx, framework::vectorize(in->dims()),
                                 unique_name)) {
-    if (!this->isBwdCached()) {
+    if (unlikely(!this->isBwdCached())) {
       PADDLE_ENFORCE_EQ(
           in->layout(), framework::DataLayout::kMKLDNN,
           platform::errors::InvalidArgument(
@@ -668,7 +672,8 @@ class ConvMKLDNNHandlerT
   std::shared_ptr<dnnl::memory> AcquireResidualMemory(
       const framework::Tensor* residual_param) {
     void* residual_data =
-        residual_param->type() == framework::DataTypeTrait<T_out>::DataType()
+        framework::TransToProtoVarType(residual_param->dtype()) ==
+                framework::DataTypeTrait<T_out>::DataType()
             ? platform::to_void_cast<T_out>(residual_param->data<T_out>())
             : platform::to_void_cast<T>(residual_param->data<T>());
     auto residual_mem_p = this->AcquireMemory("@user_residual_data_mem_p");
@@ -678,7 +683,8 @@ class ConvMKLDNNHandlerT
     } else {
       auto user_residual_md = platform::MKLDNNMemDesc(
           framework::vectorize(residual_param->dims()),
-          framework::ToMKLDNNDataType(residual_param->type()),
+          framework::ToMKLDNNDataType(
+              framework::TransToProtoVarType(residual_param->dtype())),
           residual_param->format());
 
       return this->AcquireMemoryFromPrimitive(user_residual_md, residual_data,
@@ -950,8 +956,8 @@ class ConvMKLDNNGradOpKernel : public framework::OpKernel<T> {
       // For convolution with groups convert from blocked to NCHW
       // otherwise there will be problems in next operators working on this data
       if (g > 1) {
-        dnnl::memory::data_type in_type =
-            framework::ToMKLDNNDataType(filter->type());
+        dnnl::memory::data_type in_type = framework::ToMKLDNNDataType(
+            framework::TransToProtoVarType(filter->dtype()));
         // for 3d conv with groups (six dimensional data reorder to goidhw)
         // for 2d conv with groups (five dimensional data reorder to goihw)
         // auto weights_tz = framework::vectorize(filter->dims());
@@ -960,8 +966,9 @@ class ConvMKLDNNGradOpKernel : public framework::OpKernel<T> {
         dnnl::memory::format_tag out_format =
             weights_tz.size() == 6 ? dnnl::memory::format_tag::goidhw
                                    : dnnl::memory::format_tag::goihw;
-        platform::ReorderMKLDNNHandler handler(weights_tz, filter->type(),
-                                               in_type, mkldnn_engine);
+        platform::ReorderMKLDNNHandler handler(
+            weights_tz, framework::TransToProtoVarType(filter->dtype()),
+            in_type, mkldnn_engine);
         auto reorder_dst_memory_p =
             handler.AcquireDstMemory(filter_grad, out_format, ctx.GetPlace());
 

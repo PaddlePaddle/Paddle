@@ -36,7 +36,11 @@ __all__ = [  # noqa
     'is_compiled_with_cuda',
     'is_compiled_with_rocm',
     'is_compiled_with_npu',
-    'is_compiled_with_mlu'
+    'is_compiled_with_mlu',
+    'get_all_device_type',
+    'get_all_custom_device_type',
+    'get_available_device',
+    'get_available_custom_device',
 ]
 
 _cudnn_version = None
@@ -225,15 +229,26 @@ def _convert_to_place(device):
         selected_mlus = os.getenv("FLAGS_selected_mlus", "0").split(",")
         device_id = int(selected_mlus[0])
         place = core.MLUPlace(device_id)
+    elif device in core.get_all_custom_device_type():
+        place = core.CustomPlace(device, 0)
     else:
         avaliable_gpu_device = re.match(r'gpu:\d+', lower_device)
         avaliable_xpu_device = re.match(r'xpu:\d+', lower_device)
         avaliable_npu_device = re.match(r'npu:\d+', lower_device)
         avaliable_mlu_device = re.match(r'mlu:\d+', lower_device)
         if not avaliable_gpu_device and not avaliable_xpu_device and not avaliable_npu_device and not avaliable_mlu_device:
-            raise ValueError(
-                "The device must be a string which is like 'cpu', 'gpu', 'gpu:x', 'xpu', 'xpu:x', 'mlu', 'mlu:x', 'npu', 'npu:x' or ipu"
-            )
+            device_info_list = device.split(':', 1)
+            device_type = device_info_list[0]
+            if device_type in core.get_all_custom_device_type():
+                device_id = device_info_list[1]
+                device_id = int(device_id)
+                place = core.CustomPlace(device_type, device_id)
+            else:
+                raise ValueError(
+                    "The device must be a string which is like 'cpu', {}".
+                    format(', '.join("'{}', '{}:x'".format(x, x)
+                                     for x in ['gpu', 'xpu', 'npu', 'mlu'] +
+                                     core.get_all_custom_device_type())))
         if avaliable_gpu_device:
             if not core.is_compiled_with_cuda():
                 raise ValueError(
@@ -338,3 +353,103 @@ def get_device():
         raise ValueError("The device specification {} is invalid".format(place))
 
     return device
+
+
+def get_all_device_type():
+    """
+    Get all available device types.
+
+    Returns:
+        A list of all available device types.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.device.get_all_device_type()
+
+            # Case 1: paddlepaddle-cpu package installed, and no custom device registerd.
+            # Output: ['cpu']
+
+            # Case 2: paddlepaddle-gpu package installed, and no custom device registerd.
+            # Output: ['cpu', 'gpu']
+
+            # Case 3: paddlepaddle-cpu package installed, and custom deivce 'CustomCPU' is registerd.
+            # Output: ['cpu', 'CustomCPU']
+
+            # Case 4: paddlepaddle-gpu package installed, and custom deivce 'CustomCPU' and 'CustomGPU' is registerd.
+            # Output: ['cpu', 'gpu', 'CustomCPU', 'CustomGPU']
+    """
+    return core.get_all_device_type()
+
+
+def get_all_custom_device_type():
+    """
+    Get all available custom device types.
+
+    Returns: 
+        A list of all available custom device types.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.device.get_all_custom_device_type()
+
+            # Case 1: paddlepaddle-gpu package installed, and no custom device registerd.
+            # Output: None
+
+            # Case 2: paddlepaddle-gpu package installed, and custom deivce 'CustomCPU' and 'CustomGPU' is registerd.
+            # Output: ['CustomCPU', 'CustomGPU']
+    """
+    return core.get_all_custom_device_type()
+
+
+def get_available_device():
+    """
+    Get all available devices.
+
+    Returns:
+        A list of all available devices.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.device.get_available_device()
+
+            # Case 1: paddlepaddle-cpu package installed, and no custom device registerd.
+            # Output: ['cpu']
+
+            # Case 2: paddlepaddle-gpu package installed, and no custom device registerd.
+            # Output: ['cpu', 'gpu:0', 'gpu:1']
+
+            # Case 3: paddlepaddle-cpu package installed, and custom deivce 'CustomCPU' is registerd.
+            # Output: ['cpu', 'CustomCPU']
+
+            # Case 4: paddlepaddle-gpu package installed, and custom deivce 'CustomCPU' and 'CustomGPU' is registerd.
+            # Output: ['cpu', 'gpu:0', 'gpu:1', 'CustomCPU', 'CustomGPU:0', 'CustomGPU:1']
+    """
+    return core.get_available_device()
+
+
+def get_available_custom_device():
+    """
+    Get all available custom devices.
+
+    Returns:
+       A list of all available custom devices.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.device.get_available_custom_device()
+
+            # Case 1: paddlepaddle-gpu package installed, and no custom device registerd.
+            # Output: None
+
+            # Case 2: paddlepaddle-gpu package installed, and custom deivce 'CustomCPU' and 'CustomGPU' is registerd.
+            # Output: ['CustomCPU', 'CustomGPU:0', 'CustomGPU:1']
+    """
+    return core.get_available_custom_device()

@@ -35,9 +35,7 @@ class MeanMLUKernel : public framework::OpKernel<T> {
     auto stream = context.template device_context<MLUDeviceContext>().stream();
 
     if (rank == 0) {  // scalar
-      auto mlu_place = BOOST_GET(platform::MLUPlace, place);
-      memory::Copy(mlu_place, out_data, mlu_place, in_data, numel * sizeof(T),
-                   stream);
+      memory::Copy(place, out_data, place, in_data, numel * sizeof(T), stream);
       return;
     }
 
@@ -47,10 +45,12 @@ class MeanMLUKernel : public framework::OpKernel<T> {
       reduce_dims.push_back(i);
     }
 
-    MLUCnnlTensorDesc input_desc(*input, CNNL_LAYOUT_ARRAY,
-                                 ToCnnlDataType(input->type()));
-    MLUCnnlTensorDesc output_desc(*output, CNNL_LAYOUT_ARRAY,
-                                  ToCnnlDataType(output->type()));
+    MLUCnnlTensorDesc input_desc(
+        *input, CNNL_LAYOUT_ARRAY,
+        ToCnnlDataType(framework::TransToProtoVarType(input->dtype())));
+    MLUCnnlTensorDesc output_desc(
+        *output, CNNL_LAYOUT_ARRAY,
+        ToCnnlDataType(framework::TransToProtoVarType(output->dtype())));
 
     MLUCnnlReduceDesc reduction_desc(
         reduce_dims, CNNL_REDUCE_AVG, ToCnnlDataType<T>(),
@@ -85,25 +85,26 @@ class MeanMLUGradKernel : public framework::OpKernel<T> {
     auto stream = context.template device_context<MLUDeviceContext>().stream();
 
     if (rank == 0) {  // scalar
-      auto mlu_place = BOOST_GET(platform::MLUPlace, place);
-      memory::Copy(mlu_place, out_data, mlu_place, in_data, numel * sizeof(T),
-                   stream);
+      memory::Copy(place, out_data, place, in_data, numel * sizeof(T), stream);
       return;
     }
 
     // means
-    Tensor mean_var(output_grad->type());
+    Tensor mean_var(framework::TransToProtoVarType(output_grad->dtype()));
     mean_var.mutable_data<T>(input_grad->dims(), context.GetPlace());
-    MLUCnnlTensorDesc mean_var_desc(mean_var, CNNL_LAYOUT_ARRAY,
-                                    ToCnnlDataType(mean_var.type()));
+    MLUCnnlTensorDesc mean_var_desc(
+        mean_var, CNNL_LAYOUT_ARRAY,
+        ToCnnlDataType(framework::TransToProtoVarType(mean_var.dtype())));
     auto value = static_cast<T>(1.0 / static_cast<float>(input_grad->numel()));
     MLUCnnl::Fill(context, value, mean_var_desc.get(), GetBasePtr(&mean_var));
 
     // means mul output_grad
-    MLUCnnlTensorDesc in_desc(*output_grad, CNNL_LAYOUT_ARRAY,
-                              ToCnnlDataType(output_grad->type()));
-    MLUCnnlTensorDesc out_desc(*input_grad, CNNL_LAYOUT_ARRAY,
-                               ToCnnlDataType(input_grad->type()));
+    MLUCnnlTensorDesc in_desc(
+        *output_grad, CNNL_LAYOUT_ARRAY,
+        ToCnnlDataType(framework::TransToProtoVarType(output_grad->dtype())));
+    MLUCnnlTensorDesc out_desc(
+        *input_grad, CNNL_LAYOUT_ARRAY,
+        ToCnnlDataType(framework::TransToProtoVarType(input_grad->dtype())));
 
     MLUCnnlOpTensorDesc op_tensor_desc(CNNL_OP_TENSOR_MUL, ToCnnlDataType<T>(),
                                        CNNL_NOT_PROPAGATE_NAN);

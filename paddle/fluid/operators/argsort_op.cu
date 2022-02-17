@@ -131,7 +131,7 @@ void ArgFullSort(const platform::CUDADeviceContext& ctx, const Tensor* input,
 
   int block_size = ComputeBlockSize(num_cols);
 
-  int maxGridDimX = ctx.GetCUDAMaxGridDimSize().x;
+  int maxGridDimX = ctx.GetCUDAMaxGridDimSize()[0];
   // actually, int num_rows < max_grid_size
   int grid_size = num_rows < maxGridDimX ? num_rows : maxGridDimX;
   // Init a index array
@@ -212,7 +212,7 @@ void ArgFullAssign(const platform::CUDADeviceContext& ctx, const Tensor* dO,
 
   int block_size = ComputeBlockSize(num_cols);
 
-  int maxGridDimX = ctx.GetCUDAMaxGridDimSize().x;
+  int maxGridDimX = ctx.GetCUDAMaxGridDimSize()[0];
   // actually, int num_rows < max_grid_size
   int grid_size = num_rows < maxGridDimX ? num_rows : maxGridDimX;
   FillGrad<<<grid_size, block_size, 0, cu_stream>>>(

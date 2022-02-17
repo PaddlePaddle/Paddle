@@ -226,7 +226,7 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
     filter.Resize(filter_matrix_shape);
 
     output->mutable_data<T>(context.GetPlace());
-    math::SetConstant<DeviceContext, T> set_zero;
+    pten::funcs::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
     auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
     set_zero(dev_ctx, output, static_cast<T>(0));
@@ -437,7 +437,7 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
       col_matrix.Resize(col_matrix_shape);
 
       Tensor filter_grad_;
-      math::SetConstant<DeviceContext, T> set_zero;
+      pten::funcs::SetConstant<DeviceContext, T> set_zero;
 
       math::Im2ColFunctor<math::ColFormat::kCFO, DeviceContext, T> im2col;
       math::Vol2ColFunctor<DeviceContext, T> vol2col;
@@ -628,7 +628,7 @@ class DepthwiseConvTransposeKernel : public framework::OpKernel<T> {
 
     output->mutable_data<T>(context.GetPlace());
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    math::SetConstant<DeviceContext, T> set_zero;
+    pten::funcs::SetConstant<DeviceContext, T> set_zero;
     set_zero(dev_ctx, output, static_cast<T>(0));
 
     math::DepthwiseConvInputGradFunctor<DeviceContext, T>
@@ -690,7 +690,7 @@ class DepthwiseConvTransposeGradKernel : public framework::OpKernel<T> {
     }
 
     if (filter_grad) {
-      math::SetConstant<DeviceContext, T> set_zero;
+      pten::funcs::SetConstant<DeviceContext, T> set_zero;
       filter_grad->mutable_data<T>(context.GetPlace());
       set_zero(dev_ctx, filter_grad, static_cast<T>(0));
 

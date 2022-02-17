@@ -18,6 +18,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -50,7 +51,7 @@ class LoadOpKernel : public framework::OpKernel<T> {
 
     if (out_var->IsType<framework::LoDTensor>()) {
       LoadLodTensor(fin, place, out_var, ctx);
-    } else if (out_var->IsType<framework::SelectedRows>()) {
+    } else if (out_var->IsType<pten::SelectedRows>()) {
       LoadSelectedRows(fin, place, out_var);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -82,7 +83,7 @@ class LoadOpKernel : public framework::OpKernel<T> {
     }
 
     auto load_as_fp16 = ctx.Attr<bool>("load_as_fp16");
-    auto in_dtype = tensor->type();
+    auto in_dtype = framework::TransToProtoVarType(tensor->dtype());
     auto out_dtype = load_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
 
     if (in_dtype != out_dtype) {
@@ -105,7 +106,7 @@ class LoadOpKernel : public framework::OpKernel<T> {
 
   void LoadSelectedRows(std::istream &fin, const platform::Place &place,
                         framework::Variable *var) const {
-    auto *selectedRows = var->GetMutable<framework::SelectedRows>();
+    auto *selectedRows = var->GetMutable<pten::SelectedRows>();
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
