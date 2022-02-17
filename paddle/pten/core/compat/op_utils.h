@@ -26,6 +26,11 @@ limitations under the License. */
 
 namespace pten {
 
+const std::unordered_set<std::string> standard_kernel_suffixs({
+    "sr",  // SelectedRows kernel
+    "raw"  // fallback kernel of origfinal fluid op
+});
+
 /**
  * Some fluid ops are no longer used under the corresponding official API
  * system of 2.0. These names need to correspond to the official API names
@@ -40,8 +45,9 @@ const std::unordered_set<std::string> deprecated_op_names({"flatten",
                                                            "mean",
                                                            "reshape",
                                                            "reshape_grad",
-                                                           "sum",
-                                                           "one_hot"});
+                                                           "expand",
+                                                           "expand_grad",
+                                                           "sum"});
 
 class DefaultKernelSignatureMap {
  public:
