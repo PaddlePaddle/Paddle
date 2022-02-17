@@ -26,5 +26,5 @@ PT_REGISTER_KERNEL(matmul,
                    pten::MatmulKernel,
                    float,
                    double,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
