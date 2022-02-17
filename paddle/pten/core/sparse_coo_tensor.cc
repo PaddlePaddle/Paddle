@@ -106,7 +106,7 @@ void SparseCooTensor::SetMember(const DenseTensor& non_zero_indices,
                                 const bool coalesced) {
   this->non_zero_indices_ = non_zero_indices;
   this->non_zero_elements_ = non_zero_elements;
-  this->dims_ = dims_;
+  this->dims_ = dims;
   this->coalesced_ = coalesced;
 }
 
