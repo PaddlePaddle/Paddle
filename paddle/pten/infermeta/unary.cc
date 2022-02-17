@@ -444,8 +444,59 @@ void SplitInferMeta(const MetaTensor& x,
       (*out)[i].share_lod(x);
     }
   }
+}
 
-  return;
+void TraceInferMeta(
+    const MetaTensor& x, int offset, int axis1, int axis2, MetaTensor* out) {
+  int dim1 = axis1;
+  int dim2 = axis2;
+
+  auto x_dims = x.dims();
+
+  int dim1_ = dim1 < 0 ? x_dims.size() + dim1 : dim1;
+  int dim2_ = dim2 < 0 ? x_dims.size() + dim2 : dim2;
+
+  PADDLE_ENFORCE_GE(
+      x_dims.size(),
+      2,
+      pten::errors::OutOfRange(
+          "Input's dim is out of range (expected at least 2, but got %ld).",
+          x_dims.size()));
+  PADDLE_ENFORCE_LT(
+      dim1_,
+      x_dims.size(),
+      pten::errors::OutOfRange(
+          "Attr(dim1) is out of range (expected to be in range of [%ld, "
+          "%ld], but got %ld).",
+          -(x_dims.size()),
+          (x_dims.size() - 1),
+          dim1));
+  PADDLE_ENFORCE_LT(
+      dim2_,
+      x_dims.size(),
+      pten::errors::OutOfRange(
+          "Attr(dim2) is out of range (expected to be in range of [%ld, "
+          "%ld], but got %ld).",
+          -(x_dims.size()),
+          (x_dims.size() - 1),
+          dim2));
+  PADDLE_ENFORCE_NE(
+      dim1_,
+      dim2_,
+      pten::errors::InvalidArgument("The dimensions should not be identical "
+                                    "%ld vs %ld.",
+                                    dim1,
+                                    dim2));
+
+  auto sizes = vectorize(x_dims);
+  if (x_dims.size() == 2) {
+    sizes.clear();
+    sizes.push_back(1);
+  } else {
+    sizes.erase(sizes.begin() + std::max(dim1_, dim2_));
+    sizes.erase(sizes.begin() + std::min(dim1_, dim2_));
+  }
+  out->set_dims(framework::make_ddim(sizes));
 }
 
 }  // namespace pten
