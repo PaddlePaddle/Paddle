@@ -26,7 +26,11 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_XPU_KP
-#include <xpu/runtime.h>
+#include <xpu/runtime.h>                // NOLINT
+#include "xpu/kernel/cluster_header.h"  // NOLINT
+#include "xpu/kernel/debug.h"           // NOLINT
+#include "xpu/kernel/math.h"            // NOLINT
+
 #include <memory>
 #include <string>
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
@@ -34,9 +38,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_xpu.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
-#include "xpu/kernel/cluster_header.h"
-#include "xpu/kernel/debug.h"
-#include "xpu/kernel/math.h"
 
 namespace paddle {
 namespace operators {
