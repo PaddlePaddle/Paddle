@@ -88,7 +88,7 @@ const CinnCompiledObject& CinnCompiler::Compile(
       if (cache_by_struct_.count(cur_key_by_struct) != 0) {
         exist = true;
         cache_by_address_[cur_key_by_address] =
-            cache_by_struct_.at(cur_key_by_struct).get();
+            cache_by_struct_.at(cur_key_by_struct);
       }
     }
   }
@@ -98,12 +98,13 @@ const CinnCompiledObject& CinnCompiler::Compile(
         CompileGraph(graph, input_tensors, target, compiled_num, stream);
     pten::AutoWRLock w_guard{&rwlock_};
     if (!cache_by_struct_.count(cur_key_by_struct)) {
-      cache_by_address_[cur_key_by_address] = compiled_res.get();
-      cache_by_struct_[cur_key_by_struct] = std::move(compiled_res);
+      cache_by_address_[cur_key_by_address] = compiled_num;
+      cache_by_struct_[cur_key_by_struct] = compiled_num;
+      index2cache_.emplace(compiled_num, std::move(compiled_res));
     }
   }
   pten::AutoRDLock guard{&rwlock_};
-  const auto& cached_boj = *cache_by_address_[cur_key_by_address];
+  const auto& cached_boj = *index2cache_[cache_by_address_[cur_key_by_address]];
   return cached_boj;
 }
 
@@ -113,6 +114,15 @@ const CinnCompiledObject& CinnCompiler::Compile(
     const Target& target, void* stream) {
   const auto& graph = FindGraph(compilation_key);
   return Compile(graph, input_tensors, target, stream);
+}
+
+const CinnCompiledObject& CinnCompiler::GetCompiledObject(
+    int64_t cached_index) const {
+  auto res = index2cache_.find(cached_index);
+  PADDLE_ENFORCE_NE(res, index2cache_.end(),
+                    platform::errors::InvalidArgument(
+                        "Index(%ld) not found in cache", cached_index));
+  return *res->second;
 }
 
 std::string CinnCompiler::AddGraph(std::unique_ptr<Graph> graph) {
@@ -202,6 +212,7 @@ void CinnCompiler::Clear() {
     graphs_.clear();
     cache_by_address_.clear();
     cache_by_struct_.clear();
+    index2cache_.clear();
   }
   real_compiled_num_.store(0);
 }
@@ -240,6 +251,7 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
   compiled_obj->launch_context =
       std::make_unique<operators::details::CinnLaunchContext>(
           compiled_obj->paddle2cinn_varmap, compiled_obj->scope);
+  compiled_obj->cached_index = compiled_num;
   return compiled_obj;
 }
 

@@ -24,6 +24,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/op_base.h"
@@ -152,7 +153,8 @@ void BasicEngine::CheckBackwardInputs(const OpBase& op) {
         // correct. var->DataType() returns the default dtype, which is float32.
         // Here, we use the type of the corresponding forward datatype.
 
-        tensor->mutable_data(op.place(), var->ForwardDataType());
+        tensor->mutable_data(
+            op.place(), framework::TransToPtenDataType(var->ForwardDataType()));
         VLOG(6) << "Set ungenerated Grad: " << var->Name()
                 << " as zero with dtype "
                 << framework::DataTypeToString(var->ForwardDataType());

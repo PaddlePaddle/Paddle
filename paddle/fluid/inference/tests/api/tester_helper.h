@@ -1020,7 +1020,7 @@ static bool CompareTensorData(const framework::LoDTensor &a,
   }
 
   for (size_t i = 0; i < a_size; i++) {
-    if (a.type() == VarType::FP32) {
+    if (framework::TransToProtoVarType(a.dtype()) == VarType::FP32) {
       const auto *a_data = a.data<float>();
       const auto *b_data = b.data<float>();
       if (std::abs(a_data[i] - b_data[i]) > 1e-3) {
@@ -1029,7 +1029,7 @@ static bool CompareTensorData(const framework::LoDTensor &a,
             b_data[i]);
         return false;
       }
-    } else if (a.type() == VarType::INT64) {
+    } else if (framework::TransToProtoVarType(a.dtype()) == VarType::INT64) {
       const auto *a_data = a.data<int64_t>();
       const auto *b_data = b.data<int64_t>();
       if (std::abs(a_data[i] - b_data[i]) > 1e-3) {

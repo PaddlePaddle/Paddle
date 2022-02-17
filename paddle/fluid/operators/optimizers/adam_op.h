@@ -21,10 +21,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/jit/kernels.h"
-#include "paddle/fluid/operators/math/algorithm.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/pten/kernels/funcs/algorithm.h"
 
 namespace paddle {
 namespace operators {
@@ -279,7 +280,7 @@ class SparseAdamFunctor<T, GPUAdam, MT> {
 
   inline HOSTDEVICE void operator()(size_t i) const {
     auto row_idx =
-        math::BinarySearch<int64_t>(rows_, row_count_, i / row_numel_);
+        pten::funcs::BinarySearch<int64_t>(rows_, row_count_, i / row_numel_);
     if (lazy_mode_ && row_idx < 0) {
       return;
     } else {

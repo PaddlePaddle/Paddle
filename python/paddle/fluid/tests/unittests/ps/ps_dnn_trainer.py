@@ -23,7 +23,6 @@ import yaml, six, copy
 import paddle
 import os
 import warnings
-import logging
 import ast
 import numpy as np
 import struct
@@ -176,6 +175,10 @@ def get_user_defined_strategy(config):
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
         strategy.a_sync_configs = {"heter_worker_device_guard": "gpu"}
+        strategy.pipeline = True
+        strategy.pipeline_configs = {
+            "accumulate_steps": config.get('runner.micro_num')
+        }
     elif sync_mode == "gpubox":
         print("sync_mode = {}".format(sync_mode))
         strategy = paddle.distributed.fleet.DistributedStrategy()
@@ -326,6 +329,7 @@ class DnnTrainer(object):
         sync_mode = self.config.get("runner.sync_mode")
         inner_optimizer = paddle.optimizer.Adam(learning_rate, lazy_mode=True)
 
+        self.role_maker._generate_role()  # 必要
         if self.config['debug_new_minimize'] == 1:
             logger.info("entering run_minimize -- new")
             from paddle.distributed.fleet.meta_optimizers.ps_optimizer import ParameterServerOptimizer
@@ -342,11 +346,16 @@ class DnnTrainer(object):
         if fleet.is_server():
             _main_file = '/' + sync_mode + '_run_minimize' + '_debug:_' + str(
                 self.config['debug_new_minimize']) + '_server_main.prototxt'
-            debug_program(_main_file, loss.block.program, 0)
+            debug_program(_main_file, loss.block.program)
         elif fleet.is_worker():
             _main_file = '/' + sync_mode + '_run_minimize' + '_debug:_' + str(
                 self.config['debug_new_minimize']) + '_worker_main.prototxt'
-            debug_program(_main_file, loss.block.program, 1)
+            debug_program(_main_file, loss.block.program)
+        elif self.role_maker._is_heter_worker():
+            _main_file = '/' + sync_mode + '_run_minimize' + '_debug:_' + str(
+                self.config[
+                    'debug_new_minimize']) + '_heter_worker_main.prototxt'
+            debug_program(_main_file, loss.block.program)
 
     def run_single_pass(self):
         self.init_fleet_with_gloo()
@@ -391,17 +400,18 @@ class DnnTrainer(object):
             _main_file = '/' + sync_mode + "_" + str(config[
                 "applied_pass_name"]) + '_debug:_' + str(self.config[
                     'debug_new_pass']) + '_server_main.prototxt'
-            debug_program(_main_file, _main, 0)
+            debug_program(_main_file, _main)
         elif fleet.is_worker():
             _main_file = '/' + sync_mode + "_" + str(config[
                 "applied_pass_name"]) + '_debug:_' + str(self.config[
                     'debug_new_pass']) + '_worker_main.prototxt'
-            debug_program(_main_file, _main, 1)
+            debug_program(_main_file, _main)
 
 
 if __name__ == "__main__":
     paddle.enable_static()
     config = parse_args()
+    logger.info(">>>>>>>>>> python process started")
     os.environ["CPU_NUM"] = str(config.get("runner.thread_num"))
     benchmark_main = DnnTrainer(config)
     if config['run_single_pass'] == 1:

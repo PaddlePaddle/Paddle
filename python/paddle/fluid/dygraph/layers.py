@@ -343,7 +343,7 @@ class Layer(object):
                 import paddle
                 import numpy as np
 
-                # the forward_post_hook change the input of the layer: input = input * 2
+                # the forward_pre_hook change the input of the layer: input = input * 2
                 def forward_pre_hook(layer, input):
                     # user can use layer and input for information statistis tasks
 

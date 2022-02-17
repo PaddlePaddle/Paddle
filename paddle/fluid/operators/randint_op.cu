@@ -13,6 +13,7 @@
 // limitations under the License.
 #include <thrust/random.h>
 #include <thrust/transform.h>
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/uniform_random_op.h"
@@ -45,7 +46,7 @@ class GPURandintKernel : public framework::OpKernel<T> {
     T high = static_cast<T>(context.Attr<int>("high")) - 1;
     framework::LoDTensor tensor;
     tensor.Resize(out->dims());
-    tensor.mutable_data(cpu, dtype);
+    tensor.mutable_data(cpu, framework::TransToPtenDataType(dtype));
     T* data = tensor.mutable_data<T>(cpu);
 
     int64_t size = out->numel();
