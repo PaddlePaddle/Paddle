@@ -45,15 +45,27 @@ class Sampler {
                      const int rank, const int world_size)
                      : current_iter_(0),
                        batch_size_(batch_size),
-                       num_samples_(num_samples),
+                      //  num_samples_(num_samples),
                        drop_last_(drop_last),
                        rank_(rank),
                        world_size_(world_size) {
       LOG(ERROR) << "Sampler num_samples " << num_samples;
-      sample_ids_.reserve(num_samples);
-      for (int64_t i = 0; i < num_samples; i++) {
+      int trunc_num_samples;
+      if (drop_last) {
+        int total_batch_size = world_size * batch_size;
+        trunc_num_samples = floor(num_samples / total_batch_size) * total_batch_size;
+        sample_ids_.reserve(trunc_num_samples);
+        LOG(ERROR) << " Trunc sampler num_samples " << trunc_num_samples;
+      }
+      else{
+        sample_ids_.reserve(num_samples);
+        trunc_num_samples = num_samples;
+      }
+      for (int64_t i = 0; i < trunc_num_samples; i++) {
         sample_ids_.emplace_back(i);
       }
+      num_samples_ = sample_ids_.size();
+      LOG(ERROR) << " Final num_samples " << num_samples_;
       if (shuffle) {
         rnd_.seed(time(0));
         std::shuffle(sample_ids_.begin(), sample_ids_.end(), rnd_);
@@ -62,23 +74,32 @@ class Sampler {
 
     void GetNextIndices(std::vector<int64_t>* indices) {
       int64_t start_idx =
-          batch_size_ * world_size_ * current_iter_ + rank_ * batch_size_;
+          batch_size_ * world_size_ * current_iter_ + rank_;
+          // batch_size_ * world_size_ * current_iter_ + rank_ * batch_size_;
       current_iter_++;
 
-      if (start_idx >= num_samples_) return;
-      if (drop_last_ && start_idx + batch_size_ >= num_samples_) return;
+      if (start_idx >= num_samples_) {
+        LOG(ERROR) << " start idx >= num samples " << start_idx << " >= " << num_samples_;
+        return;
+      }
+      // if (drop_last_ && start_idx + batch_size_ >= num_samples_) return;
 
-      int64_t batch_len = std::min(batch_size_, num_samples_ - start_idx);
-      indices->reserve(batch_len);
-      for (int64_t i = 0; i < batch_len; i++) {
-        indices->emplace_back(sample_ids_[start_idx + i]);
+      // int64_t batch_len = std::min(batch_size_, num_samples_ - start_idx);
+      // indices->reserve(batch_len);
+      for (int64_t i = 0; i < batch_size_; i++) {
+        int cur_idx =  start_idx + i * world_size_;
+        if (cur_idx >= num_samples_) {
+          LOG(ERROR) << " cur_idx >= num samples " << cur_idx << " >= " << num_samples_;
+          return;
+        }
+        indices->emplace_back(sample_ids_[cur_idx]);
       }
     }
 
   private:
     int64_t current_iter_;
     const int64_t batch_size_;
-    const int64_t num_samples_;
+    int64_t num_samples_;
     const bool drop_last_;
     const int rank_;
     const int world_size_;
