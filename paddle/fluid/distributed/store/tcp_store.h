@@ -92,8 +92,7 @@ class TCPStore : public Store {
 
   int64_t add(const std::string& key, int64_t value) override;
   std::vector<uint8_t> get(const std::string& key) override;
-  void do_wait(const std::string& key, const std::chrono::seconds& timeout =
-                                           tcputils::kDefaultTimeout) override;
+  void wait(const std::string& key) override;
 
  private:
   void waitWorkers();

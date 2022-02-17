@@ -212,13 +212,12 @@ int64_t TCPStore::add(const std::string& key, int64_t value) {
 }
 
 std::vector<uint8_t> TCPStore::get(const std::string& key) {
-  do_wait(key);
+  wait(key);
   _client->send_command_for_key(Command::GET, _key_prefix + key);
   return _client->receive_vector<uint8_t>();
 }
 
-void TCPStore::do_wait(const std::string& key,
-                       const std::chrono::seconds& timeout) {
+void TCPStore::wait(const std::string& key) {
   WaitReplyType reply;
   do {
     _client->send_command_for_key(Command::WAIT, _key_prefix + key);
