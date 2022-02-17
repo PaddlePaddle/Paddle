@@ -97,7 +97,7 @@ class TestMatMulV2Op(XPUOpTest):
         self.check_grad_with_place(place, ['X', 'Y'], 'Out')
 
 
-class TestMatMulOp2(TestMatMulV2Op):
+class TestMatMuklOp2(TestMatMulV2Op):
     """
     case 2
     """
@@ -109,7 +109,7 @@ class TestMatMulOp2(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMulOp3(TestMatMulV2Op):
+class TestMatMuklOp3(TestMatMulV2Op):
     """
     case 3
     """
@@ -121,7 +121,7 @@ class TestMatMulOp3(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMulOp4(TestMatMulV2Op):
+class TestMatMuklOp4(TestMatMulV2Op):
     """
     case 4
     """
@@ -133,7 +133,7 @@ class TestMatMulOp4(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMulOp5(TestMatMulV2Op):
+class TestMatMuklOp5(TestMatMulV2Op):
     """
     case 5
     """
@@ -145,7 +145,7 @@ class TestMatMulOp5(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMulOp6(TestMatMulV2Op):
+class TestMatMuklOp6(TestMatMulV2Op):
     """
     case 6
     """
@@ -157,7 +157,7 @@ class TestMatMulOp6(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMulOp7(TestMatMulV2Op):
+class TestMatMuklOp7(TestMatMulV2Op):
     """
     case 7
     """
@@ -169,7 +169,7 @@ class TestMatMulOp7(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMulOp8(TestMatMulV2Op):
+class TestMatMuklOp8(TestMatMulV2Op):
     """
     case 8
     """
@@ -181,7 +181,7 @@ class TestMatMulOp8(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMulOp9(TestMatMulV2Op):
+class TestMatMuklOp9(TestMatMulV2Op):
     """
     case 9
     """
@@ -193,7 +193,7 @@ class TestMatMulOp9(TestMatMulV2Op):
         self.trans_y = True
 
 
-class TestMatMulOp10(TestMatMulV2Op):
+class TestMatMuklOp10(TestMatMulV2Op):
     """
     case 10
     """
@@ -205,7 +205,7 @@ class TestMatMulOp10(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMulOp11(TestMatMulV2Op):
+class TestMatMuklOp11(TestMatMulV2Op):
     """
     case 11
     """
@@ -217,7 +217,7 @@ class TestMatMulOp11(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMulOp12(TestMatMulV2Op):
+class TestMatMuklOp12(TestMatMulV2Op):
     """
     case 12
     """
@@ -229,7 +229,7 @@ class TestMatMulOp12(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMulOp13(TestMatMulV2Op):
+class TestMatMuklOp13(TestMatMulV2Op):
     """
     case 13
     """
@@ -241,7 +241,7 @@ class TestMatMulOp13(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMulOp14(TestMatMulV2Op):
+class TestMatMuklOp14(TestMatMulV2Op):
     """
     case 14_1
     """
@@ -253,7 +253,7 @@ class TestMatMulOp14(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMulOp15(TestMatMulV2Op):
+class TestMatMuklOp15(TestMatMulV2Op):
     """
     case 14_2
     """
@@ -265,7 +265,7 @@ class TestMatMulOp15(TestMatMulV2Op):
         self.trans_y = True
 
 
-class TestMatMulOp16(TestMatMulV2Op):
+class TestMatMuklOp16(TestMatMulV2Op):
     """
     case 16 : to check the big data
     """
@@ -277,7 +277,7 @@ class TestMatMulOp16(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMulOp17(TestMatMulV2Op):
+class TestMatMuklOp17(TestMatMulV2Op):
     """
     case 17 : to check the gradient for special case
     """
@@ -289,7 +289,7 @@ class TestMatMulOp17(TestMatMulV2Op):
         self.trans_y = False
 
 
-# class TestMatMulOpBroadcast1(TestMatMulV2Op):
+# class TestMatMuklOpBroadcast1(TestMatMulV2Op):
 #     """
 #     case 14_3
 #     """
@@ -300,7 +300,7 @@ class TestMatMulOp17(TestMatMulV2Op):
 #         self.trans_x = True
 #         self.trans_y = True
 
-# class TestMatMulOpBroadcast2(TestMatMulV2Op):
+# class TestMatMuklOpBroadcast2(TestMatMulV2Op):
 #     """
 #     case 14_4
 #     """
