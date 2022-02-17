@@ -60,11 +60,10 @@ class AutoAlign:
         with open(path, 'wb') as f:
             pickle.dump(tensor_dict, f)
 
-    def save_dist_tensors(self, tensor_dict):
+    def save_dist_tensors(self, tensor_dict, rank_id):
         """Save all rank tensors."""
-        path = os.path.join(
-            self._directory,
-            "tensors_" + str(paddle.distributed.get_rank()) + ".pkl")
+
+        path = os.path.join(self._directory, "tensors_" + str(rank_id) + ".pkl")
         with open(path, 'wb') as f:
             pickle.dump(tensor_dict, f)
 
@@ -117,8 +116,7 @@ class AutoAlign:
                 forward_var.add(var_name)
         return list(forward_var)
 
-    def check_loss(self, dist_tensor_file_path_list, serial_path,
-                   dist_attr_file_path):
+    def check_loss(self, dist_tensor_file_path_list, serial_path):
         """
         Compare average dist losses with serial losses.
         1. load serial losses
@@ -128,15 +126,12 @@ class AutoAlign:
         Args:
             dist_tensor_file_path_list (list): used to hold every rank losses 
             serial_path (str): the path of serial losses
-            dist_attr_file_path (str): the path of dist losses
 
         Examples:
             dist_tensor_file_path_list = ["./tensors_0.pkl", "./tensors_1.pkl"]
             autoalign.check_loss(dist_tensor_file_path_list, "./tensors.pkl", "dist_attr_0.pkl")
         """
         dist_dict = OrderedDict()
-        with open(dist_attr_file_path, 'rb') as f:
-            dist_attr_dict = pickle.load(f)
         for file_path in dist_tensor_file_path_list:
             with open(file_path, 'rb') as f:
                 tensor_dict = pickle.load(f)
