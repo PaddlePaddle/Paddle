@@ -53,8 +53,6 @@ class TestConvBiasMkldnnFusePass(PassAutoScanTest):
         data_format = prog_config.ops[0].attrs["data_format"]
         filter_shape = prog_config.weights["filter"].shape
         input_shape = prog_config.inputs["input_x"].shape
-        if data_format != "NCHW":
-            return False
         if padding_algorithm == "VALID":
             if ((input_shape[2] - (dilations[0] * (filter_shape[2] - 1) + 1)) / strides[0] + 1) <= 1 or \
             ((input_shape[3] - (dilations[1] * (filter_shape[3] - 1) + 1)) / strides[1] + 1) <= 1:
@@ -80,8 +78,8 @@ class TestConvBiasMkldnnFusePass(PassAutoScanTest):
         x_shape = draw(
             st.lists(
                 st.integers(
-                    min_value=1, max_value=100), min_size=4, max_size=4))
-        x_shape[1] = draw(st.integers(min_value=1, max_value=10))
+                    min_value=5, max_value=100), min_size=4, max_size=4))
+        x_shape[1] = draw(st.integers(min_value=5, max_value=10))
 
         # 2. Generate legal attr:data_format of conv2d
         data_format = draw(st.sampled_from(["NCHW", "NHWC"]))
@@ -90,7 +88,7 @@ class TestConvBiasMkldnnFusePass(PassAutoScanTest):
         f_shape = draw(
             st.lists(
                 st.integers(
-                    min_value=1, max_value=7), min_size=4, max_size=4))
+                    min_value=1, max_value=4), min_size=4, max_size=4))
         if data_format == "NCHW":
             f_shape[1] = x_shape[1]
         else:
@@ -100,7 +98,7 @@ class TestConvBiasMkldnnFusePass(PassAutoScanTest):
         strides = draw(
             st.lists(
                 st.integers(
-                    min_value=1, max_value=5), min_size=2, max_size=2))
+                    min_value=1, max_value=4), min_size=2, max_size=2))
 
         # 5. Generate legal attr:padding_algorithm of conv2d
         padding_algorithm = draw(st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
@@ -109,7 +107,7 @@ class TestConvBiasMkldnnFusePass(PassAutoScanTest):
         padding = draw(
             st.lists(
                 st.integers(
-                    min_value=1, max_value=5), min_size=4, max_size=4))
+                    min_value=1, max_value=4), min_size=4, max_size=4))
 
         # 7. Generate legal attr:groups of conv2d
         groups = draw(st.integers(min_value=1, max_value=3))
@@ -118,7 +116,7 @@ class TestConvBiasMkldnnFusePass(PassAutoScanTest):
         dilations = draw(
             st.lists(
                 st.integers(
-                    min_value=1, max_value=5), min_size=2, max_size=2))
+                    min_value=1, max_value=4), min_size=2, max_size=2))
 
         # 9. Generate legal shape of input:bias of elementwise_add
         bias_shape = [f_shape[0]]
