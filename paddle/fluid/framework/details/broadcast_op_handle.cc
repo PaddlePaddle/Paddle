@@ -18,14 +18,16 @@
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 
 void BroadcastOpHandle::RunImpl() {
-  platform::RecordEvent record_event(Name());
+  platform::RecordEvent record_event(Name(),
+                                     platform::TracerEventType::UserDefined, 2,
+                                     platform::EventRole::kOrdinary);
 
   if (places_.size() == 1) return;
 
