@@ -43,7 +43,7 @@ void RegisterPtenKernels(host_context::KernelRegistry* registry) {
   registry->AddKernel("pten_dt.fill_dense_tensor.f32",
                       INFRT_KERNEL(infrt::kernel::pten::FillDenseTensorF32));
   registry->AddKernel(
-      "pten.matmul.host.fp32",
+      "pten_kernel.matmul.host.fp32",
       std::bind(&kernel::KernelLauncherFunc<
                     decltype(&::pten::MatmulKernel<float, ::pten::CPUContext>),
                     &::pten::MatmulKernel<float, ::pten::CPUContext>,

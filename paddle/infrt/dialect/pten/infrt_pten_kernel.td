@@ -1,7 +1,10 @@
 #ifndef PTEN_KERNEL
 #define PTEN_KERNEL
 
-include "paddle/infrt/dialect/pten/infrt_pten_tensor.td"
+include "paddle/infrt/dialect/pten/infrt_pten_base.td"
+include "mlir/Interfaces/SideEffectInterfaces.td"
+include "mlir/IR/OpBase.td"
+include "paddle/infrt/dialect/infrt_base.td"
 
 def PTEN_KernelDialect : Dialect {
   let name = "pten_kernel";
