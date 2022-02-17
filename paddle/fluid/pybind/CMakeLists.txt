@@ -137,6 +137,8 @@ if(WITH_PYTHON)
   target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})
   add_executable(eager_op_function_generator eager_op_function_generator.cc)
   target_link_libraries(eager_op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})
+  add_executable(kernel_signature_generator kernel_signature_generator.cc)
+  target_link_libraries(kernel_signature_generator ${OP_FUNCTION_GENERETOR_DEPS})
 
   get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(op_function_generator ${os_dependency_modules})
