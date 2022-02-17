@@ -59,8 +59,7 @@ void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
     config["max_boud"] = sparse_table.sparse_weight_bounds()[1];
   }
 
-  std::cout dsf config["mf_create_thresholds"] =
-      sparse_table.sparse_embedx_threshold();
+  config["mf_create_thresholds"] = sparse_table.sparse_embedx_threshold();
   config["mf_learning_rate"] = sparse_table.embedx_sparse_learning_rate();
   config["mf_initial_g2sum"] = sparse_table.embedx_sparse_initial_g2sum();
   config["mf_initial_range"] = sparse_table.embedx_sparse_initial_range();
@@ -69,7 +68,7 @@ void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
     config["mf_max_bound"] = sparse_table.embedx_sparse_weight_bounds()[1];
   }
 
-  auto ps_gpu_wrapper = paddle::framework::PSGPUWarpper::GetInstance();
+  auto ps_gpu_wrapper = paddle::framework::PSGPUWrapper::GetInstance();
   ps_gpu_wrapper->InitializeGPUServer(config);
 
   scale_datanorm_ = trainer_desc.scale_datanorm();
