@@ -17,11 +17,9 @@
 
 #include "paddle/infrt/host_context/kernel_frame.h"
 #include "paddle/infrt/host_context/value.h"
-#include "paddle/infrt/naive/meta_tensor.h"
-#include "paddle/infrt/tensor/dense_host_tensor.h"
 
 namespace infrt {
-namespace naive {
+namespace kernel {
 
 struct InferShapedKernelLauncher {
   virtual void Invoke(host_context::KernelFrame* frame) = 0;
@@ -46,9 +44,9 @@ struct InferShapedKernelLauncher {
 
   // values to hold the TensorMeta.
   llvm::SmallVector<host_context::ValueRef, 3> values;
-  llvm::SmallVector<tensor::TensorShape, 3> tensor_shape_cache;
+  llvm::SmallVector<::pten::DDim, 3> tensor_shape_cache;
   host_context::KernelFrameBuilder infershape_kernel_frame_builder;
 };
 
-}  // namespace naive
+}  // namespace kernel
 }  // namespace infrt
