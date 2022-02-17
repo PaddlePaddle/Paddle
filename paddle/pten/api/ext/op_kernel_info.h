@@ -15,10 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/pten/api/ext/op_meta_info.h"
-#include "paddle/pten/common/place.h"
-#include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/kernel_context.h"
-#include "paddle/pten/core/kernel_factory.h"
 #include "paddle/pten/core/kernel_registry.h"
 
 /**
@@ -27,14 +23,10 @@ limitations under the License. */
  */
 
 namespace paddle {
-namespace framework {
-class PADDLE_API OpKernelInfoHelper;
-}  // namespace framework
 
 using DenseTensor = pten::DenseTensor;
 
 //////////////// Op Kernel Info Map /////////////////
-// all custom kernels' information are stored in this map
 class PADDLE_API OpKernelInfoMap {
  public:
   static OpKernelInfoMap& Instance() {
@@ -42,7 +34,7 @@ class PADDLE_API OpKernelInfoMap {
     return g_custom_kernel_info_map;
   }
 
-  pten::KernelNameMap& kernels() { return kernels_; }
+  pten::KernelNameMap& Kernels() { return kernels_; }
   const pten::KernelNameMap& GetMap() const;
 
  private:
@@ -74,7 +66,7 @@ struct CustomKernelRegistrar {
   }
 
  private:
-  pten::Backend GetOrRegisterGlobalDeviceTypeId(const char* backend_cstr) {
+  pten::Backend GetOrRegisterBackend(const char* backend_cstr) {
     std::string backend(backend_cstr);
     if (backend == "CPU") {
       return pten::Backend::CPU;
@@ -83,9 +75,10 @@ struct CustomKernelRegistrar {
     } else if (backend == "XPU") {
       return pten::Backend::XPU;
     } else {
+      auto device_type_id = pten::GetOrRegisterGlobalDeviceTypeId(backend);
+      LOG(WARNING) << "REG device_type_id: " << device_type_id;
       return static_cast<pten::Backend>(
-          static_cast<size_t>(pten::Backend::NUM_BACKENDS) +
-          pten::GetOrRegisterGlobalDeviceTypeId(backend));
+          static_cast<size_t>(pten::Backend::NUM_BACKENDS) + device_type_id);
     }
   }
   void ConstructCustomKernel(const char* kernel_name_cstr,
@@ -98,11 +91,11 @@ struct CustomKernelRegistrar {
                              void* variadic_kernel_fn) {
     std::string kernel_name(kernel_name_cstr);
     pten::KernelKey kernel_key(
-        GetOrRegisterGlobalDeviceTypeId(backend_cstr), layout, dtype);
+        GetOrRegisterBackend(backend_cstr), layout, dtype);
     pten::Kernel kernel(kernel_fn, variadic_kernel_fn);
     args_parse_fn(kernel_key, kernel.mutable_args_def());
     args_def_fn(&kernel);
-    OpKernelInfoMap::Instance().kernels()[kernel_name][kernel_key] = kernel;
+    OpKernelInfoMap::Instance().Kernels()[kernel_name][kernel_key] = kernel;
   }
 };
 /////////////////////// Custom kernel register API /////////////////////////
@@ -118,8 +111,6 @@ void LoadCustomKernelLib(const std::string& dso_name);
 // Refer to PT_REGISTER_KERNEL in paddle/pten/core/kernel_registry.h, we
 // provide PD_REGISTER_KERNEL and PD_REGISTER_CUSTOM KERNEL which supports
 // 2 template arguments.
-
-#define PD_DATALAYOUT(arg__) pten::DataLayout::arg__
 
 #define PD_REGISTER_KERNEL(kernel_name, backend, layout, func, cpp_dtype, ...) \
   STATIC_ASSERT_GLOBAL_NAMESPACE(                                              \
@@ -325,7 +316,7 @@ void LoadCustomKernelLib(const std::string& dso_name);
       registrar_id)(                                                      \
       #kernel_name,                                                       \
       #backend,                                                           \
-      PD_DATALAYOUT(layout),                                              \
+      DATALAYOUT(layout),                                              \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),       \
       ::pten::KernelArgsParseFunctor<decltype(                            \
           &meta_kernel_fn<cpp_dtype, context>)>::Parse,                   \
@@ -349,7 +340,7 @@ void LoadCustomKernelLib(const std::string& dso_name);
       registrar_id)(                                                \
       #kernel_name,                                                 \
       #backend,                                                     \
-      PD_DATALAYOUT(layout),                                        \
+      DATALAYOUT(layout),                                        \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(), \
       ::pten::KernelArgsParseFunctor<decltype(                      \
           &meta_kernel_fn<cpp_dtype, context>)>::Parse,             \
@@ -379,7 +370,7 @@ void LoadCustomKernelLib(const std::string& dso_name);
       registrar_id)(                                                \
       #kernel_name,                                                 \
       #backend,                                                     \
-      PD_DATALAYOUT(layout),                                        \
+      DATALAYOUT(layout),                                        \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(), \
       ::pten::KernelArgsParseFunctor<decltype(                      \
           &meta_kernel_fn<cpp_dtype, context>)>::Parse,             \
@@ -409,7 +400,7 @@ void LoadCustomKernelLib(const std::string& dso_name);
       registrar_id)(                                                \
       #kernel_name,                                                 \
       #backend,                                                     \
-      PD_DATALAYOUT(layout),                                        \
+      DATALAYOUT(layout),                                        \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(), \
       ::pten::KernelArgsParseFunctor<decltype(                      \
           &meta_kernel_fn<cpp_dtype, context>)>::Parse,             \
@@ -439,7 +430,7 @@ void LoadCustomKernelLib(const std::string& dso_name);
       registrar_id)(                                                \
       #kernel_name,                                                 \
       #backend,                                                     \
-      PD_DATALAYOUT(layout),                                        \
+      DATALAYOUT(layout),                                        \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(), \
       ::pten::KernelArgsParseFunctor<decltype(                      \
           &meta_kernel_fn<cpp_dtype, context>)>::Parse,             \
@@ -469,7 +460,7 @@ void LoadCustomKernelLib(const std::string& dso_name);
       registrar_id)(                                                \
       #kernel_name,                                                 \
       #backend,                                                     \
-      PD_DATALAYOUT(layout),                                        \
+      DATALAYOUT(layout),                                        \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(), \
       ::pten::KernelArgsParseFunctor<decltype(                      \
           &meta_kernel_fn<cpp_dtype, context>)>::Parse,             \
@@ -499,7 +490,7 @@ void LoadCustomKernelLib(const std::string& dso_name);
       registrar_id)(                                                \
       #kernel_name,                                                 \
       #backend,                                                     \
-      PD_DATALAYOUT(layout),                                        \
+      DATALAYOUT(layout),                                        \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(), \
       ::pten::KernelArgsParseFunctor<decltype(                      \
           &meta_kernel_fn<cpp_dtype, context>)>::Parse,             \
@@ -529,7 +520,7 @@ void LoadCustomKernelLib(const std::string& dso_name);
       registrar_id)(                                                \
       #kernel_name,                                                 \
       #backend,                                                     \
-      PD_DATALAYOUT(layout),                                        \
+      DATALAYOUT(layout),                                        \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(), \
       ::pten::KernelArgsParseFunctor<decltype(                      \
           &meta_kernel_fn<cpp_dtype, context>)>::Parse,             \
@@ -559,7 +550,7 @@ void LoadCustomKernelLib(const std::string& dso_name);
       registrar_id)(                                                \
       #kernel_name,                                                 \
       #backend,                                                     \
-      PD_DATALAYOUT(layout),                                        \
+      DATALAYOUT(layout),                                        \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(), \
       ::pten::KernelArgsParseFunctor<decltype(                      \
           &meta_kernel_fn<cpp_dtype, context>)>::Parse,             \
@@ -589,7 +580,7 @@ void LoadCustomKernelLib(const std::string& dso_name);
       registrar_id)(                                                \
       #kernel_name,                                                 \
       #backend,                                                     \
-      PD_DATALAYOUT(layout),                                        \
+      DATALAYOUT(layout),                                        \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(), \
       ::pten::KernelArgsParseFunctor<decltype(                      \
           &meta_kernel_fn<cpp_dtype, context>)>::Parse,             \
@@ -619,7 +610,7 @@ void LoadCustomKernelLib(const std::string& dso_name);
       registrar_id)(                                                \
       #kernel_name,                                                 \
       #backend,                                                     \
-      PD_DATALAYOUT(layout),                                        \
+      DATALAYOUT(layout),                                        \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(), \
       ::pten::KernelArgsParseFunctor<decltype(                      \
           &meta_kernel_fn<cpp_dtype, context>)>::Parse,             \
@@ -649,7 +640,7 @@ void LoadCustomKernelLib(const std::string& dso_name);
       registrar_id)(                                                \
       #kernel_name,                                                 \
       #backend,                                                     \
-      PD_DATALAYOUT(layout),                                        \
+      DATALAYOUT(layout),                                        \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(), \
       ::pten::KernelArgsParseFunctor<decltype(                      \
           &meta_kernel_fn<cpp_dtype, context>)>::Parse,             \
@@ -679,7 +670,7 @@ void LoadCustomKernelLib(const std::string& dso_name);
       registrar_id)(                                                \
       #kernel_name,                                                 \
       #backend,                                                     \
-      PD_DATALAYOUT(layout),                                        \
+      DATALAYOUT(layout),                                        \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(), \
       ::pten::KernelArgsParseFunctor<decltype(                      \
           &meta_kernel_fn<cpp_dtype, context>)>::Parse,             \
@@ -709,7 +700,7 @@ void LoadCustomKernelLib(const std::string& dso_name);
       registrar_id)(                                                \
       #kernel_name,                                                 \
       #backend,                                                     \
-      PD_DATALAYOUT(layout),                                        \
+      DATALAYOUT(layout),                                        \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(), \
       ::pten::KernelArgsParseFunctor<decltype(                      \
           &meta_kernel_fn<cpp_dtype, context>)>::Parse,             \
@@ -739,7 +730,7 @@ void LoadCustomKernelLib(const std::string& dso_name);
       registrar_id)(                                                \
       #kernel_name,                                                 \
       #backend,                                                     \
-      PD_DATALAYOUT(layout),                                        \
+      DATALAYOUT(layout),                                        \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(), \
       ::pten::KernelArgsParseFunctor<decltype(                      \
           &meta_kernel_fn<cpp_dtype, context>)>::Parse,             \

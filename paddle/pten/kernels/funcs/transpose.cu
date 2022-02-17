@@ -115,10 +115,10 @@ DEFINE_GPU_TRANS_NORMAL(int32_t);
 DEFINE_GPU_TRANS_NORMAL(int64_t);
 DEFINE_GPU_TRANS_NORMAL(float);
 DEFINE_GPU_TRANS_NORMAL(double);
-DEFINE_GPU_TRANS_NORMAL(paddle::platform::float16);
-DEFINE_GPU_TRANS_NORMAL(paddle::platform::bfloat16);
-DEFINE_GPU_TRANS_NORMAL(paddle::platform::complex<float>);
-DEFINE_GPU_TRANS_NORMAL(paddle::platform::complex<double>);
+DEFINE_GPU_TRANS_NORMAL(pten::dtype::float16);
+DEFINE_GPU_TRANS_NORMAL(pten::dtype::bfloat16);
+DEFINE_GPU_TRANS_NORMAL(pten::dtype::complex<float>);
+DEFINE_GPU_TRANS_NORMAL(pten::dtype::complex<double>);
 
 }  // namespace math
 }  // namespace pten

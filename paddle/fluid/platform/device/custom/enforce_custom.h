@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-#include "paddle/fluid/platform/device/device_ext.h"
+#include "paddle/pten/backends/custom/device_ext.h"
 
 namespace paddle {
 namespace platform {

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/platform/device/device_ext.h"
+#include "paddle/pten/backends/custom/device_ext.h"
 
 constexpr size_t global_total_memory = 1024 * 1024UL;
 static size_t global_free_memory = global_total_memory;

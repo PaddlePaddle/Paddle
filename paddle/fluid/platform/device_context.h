@@ -71,7 +71,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/npu/npu_stream.h"
 #endif
 
-#include "paddle/fluid/platform/device/device_ext.h"
+#include "paddle/pten/backends/custom/device_ext.h"
 #include "paddle/fluid/platform/device/stream.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 

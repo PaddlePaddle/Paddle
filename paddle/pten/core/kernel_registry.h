@@ -62,6 +62,9 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
 #elif defined(PADDLE_WITH_XPU)
           ||
           arg_type == std::type_index(typeid(const XPUContext&))) {
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+          ||
+          arg_type == std::type_index(typeid(const CustomContext&))) {
 #else
               ) {
 #endif

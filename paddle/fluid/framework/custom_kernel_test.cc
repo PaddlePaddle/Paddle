@@ -108,7 +108,7 @@ TEST(CustomKernel, custom_kernel_dot) {
   EXPECT_TRUE(paddle::OpKernelInfoMap::Instance().GetMap().find(op_name) !=
               paddle::OpKernelInfoMap::Instance().GetMap().end());
 
-  auto& custom_kernels = paddle::OpKernelInfoMap::Instance().kernels();
+  auto& custom_kernels = paddle::OpKernelInfoMap::Instance().Kernels();
   // 2.info check
   EXPECT_EQ(6, static_cast<int>(custom_kernels[op_name].size()));
   auto& custom_fake_dot_kernels = custom_kernels[op_name];

@@ -17,6 +17,7 @@
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/backends/xpu/xpu_context.h"
+#include "paddle/pten/backends/custom/custom_context.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
@@ -211,6 +212,9 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
 #endif
 #ifdef PADDLE_WITH_XPU
   PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(XPUContext);
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(CustomContext);
 #endif
 
   /* Input Helpers */

@@ -587,8 +587,7 @@ headers = (
     ['@PADDLE_SOURCE_DIR@/paddle/utils/optional.h'] +
     ['@PADDLE_SOURCE_DIR@/paddle/utils/string/printf.h'] +
     ['@PADDLE_SOURCE_DIR@/paddle/utils/string/to_string.h'] +
-    ['@PADDLE_SOURCE_DIR@/paddle/utils/string/tinyformat/tinyformat.h'] +
-    ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/device/device_ext.h'])
+    ['@PADDLE_SOURCE_DIR@/paddle/utils/string/tinyformat/tinyformat.h'])
 
 if '${WITH_MKLDNN}' == 'ON':
     headers += list(find_files('*', '${MKLDNN_INSTALL_DIR}/include')) # mkldnn
@@ -633,8 +632,6 @@ class InstallHeaders(Command):
         elif 'third_party' not in header:
             # paddle headers
             install_dir = re.sub('@PADDLE_SOURCE_DIR@/', '', header)
-            if 'device_ext.h' in header:
-                install_dir = "paddle/"
         else:
             # third_party
             install_dir = re.sub('${THIRD_PARTY_PATH}', 'third_party', header)

@@ -127,6 +127,9 @@ cc_library(device_context SRCS device_context.cc DEPS simple_threadpool malloc x
 if(WITH_XPU)
   target_link_libraries(device_context xpu_context)
 endif()
+if(WITH_CUSTOM_DEVICE)
+  target_link_libraries(device_context custom_context)
+endif()
 
 cc_library(collective_helper SRCS collective_helper.cc gen_comm_id_helper.cc DEPS framework_proto device_context enforce)
 if(WITH_ASCEND_CL)

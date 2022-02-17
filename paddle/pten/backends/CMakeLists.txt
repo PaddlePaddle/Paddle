@@ -21,3 +21,7 @@ endif()
 if(WITH_GPU)
   add_dependencies(pten_context gpu_context)
 endif()
+
+if(WITH_CUSTOM_DEVICE)
+  add_dependencies(pten_context custom_context)
+endif()

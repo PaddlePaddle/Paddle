@@ -16,7 +16,7 @@
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 
 #include "paddle/fluid/platform/device/device_base.h"
-#include "paddle/fluid/platform/device/device_ext.h"
+#include "paddle/pten/backends/custom/device_ext.h"
 #include "paddle/fluid/platform/device/event.h"
 #include "paddle/fluid/platform/device/stream.h"
 #include "paddle/fluid/platform/place.h"
