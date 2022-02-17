@@ -206,8 +206,8 @@ DATA_MEMBER_FUNC_INSTANTIATION(::pten::dtype::bfloat16);
 DATA_MEMBER_FUNC_INSTANTIATION(::pten::dtype::float16);
 DATA_MEMBER_FUNC_INSTANTIATION(float);
 DATA_MEMBER_FUNC_INSTANTIATION(double);
-DATA_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex64);
-DATA_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex128);
+DATA_MEMBER_FUNC_INSTANTIATION(::pten::dtype::complex<float>);
+DATA_MEMBER_FUNC_INSTANTIATION(::pten::dtype::complex<double>);
 
 #undef DATA_MEMBER_FUNC_INSTANTIATION
 
