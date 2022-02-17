@@ -57,8 +57,9 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
           handler.AcquireDstMemory(dx, dout->format(), ctx.GetPlace());
       auto reorder_p =
           handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
-      platform::RecordEvent record_reorder("int_reorder",
-                                           platform::EventRole::kUniqueOp);
+      platform::RecordEvent record_reorder(
+          "int_reorder", platform::TracerEventType::UserDefined, 2,
+          platform::EventRole::kUniqueOp);
       reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
       astream.wait();
 
@@ -73,8 +74,9 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
             handler.AcquireDstMemory(dy, dout->format(), ctx.GetPlace());
         auto reorder_p =
             handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
-        platform::RecordEvent record_reorder("int_reorder",
-                                             platform::EventRole::kUniqueOp);
+        platform::RecordEvent record_reorder(
+            "int_reorder", platform::TracerEventType::UserDefined, 2,
+            platform::EventRole::kUniqueOp);
         reorder_p->execute(astream, *reorder_src_memory_p,
                            *reorder_dst_memory_p);
         astream.wait();
