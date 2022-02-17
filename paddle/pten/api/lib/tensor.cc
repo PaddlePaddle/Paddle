@@ -59,9 +59,6 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-// declare cast api
-Tensor cast(const Tensor &x, DataType out_dtype);
-
 /////// Tensor Methods ////////
 
 /* Part 1: Construction and destruction methods */

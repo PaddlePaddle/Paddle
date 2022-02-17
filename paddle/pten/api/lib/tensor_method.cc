@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/pten/api/include/tensor.h"
 #include "paddle/pten/api/include/api.h"
-#include "paddle/pten/api/include/manual_api.h"
 
 namespace paddle {
 namespace experimental {

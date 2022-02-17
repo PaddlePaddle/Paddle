@@ -14,7 +14,8 @@ endif()
 cc_library(kernel_dispatch SRCS kernel_dispatch.cc DEPS pten_tensor_raw pten_context kernel_factory)
 cc_library(pten_data_transform SRCS data_transform.cc DEPS pten_tensor_raw transfer_layout_kernel cast_kernel data_device_transform)
 cc_library(manual_api SRCS manual_api.cc DEPS pten_tensor_raw pten kernel_dispatch pten_data_transform)
-cc_library(pten_tensor srcs tensor_method.cc DEPS pten_tensor_raw pten_function_api)
+
+cc_library(pten_tensor SRCS tensor_method.cc DEPS pten_tensor_raw pten_function_api)
 
 cc_library(op_meta_info SRCS op_meta_info.cc DEPS pten_tensor)
 cc_library(op_kernel_info SRCS op_kernel_info.cc DEPS pten_tensor_raw)
