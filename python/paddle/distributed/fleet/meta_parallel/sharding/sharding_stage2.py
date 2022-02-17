@@ -61,12 +61,10 @@ class ShardingStage2(nn.Layer):
             sharding_optimizer,
             group=None,
             sync_buffers=False,
-            pertrain_sync_models=True,
             buffer_max_size=2**23,  #8MB
             auto_refresh_trainable=True,
             device="gpu",
-            use_grad_storage=True,
-            accumulate_grads=False):
+            use_grad_storage=True):
         super().__init__()
 
         # training options
@@ -80,9 +78,6 @@ class ShardingStage2(nn.Layer):
         ), "Please use ShardingOptimizerStage2 optimizer"
         self._sync_buffers = sync_buffers
         self._auto_refresh_trainable = auto_refresh_trainable
-
-        # Gradient accumulation, Gradient flip
-        self._accumulate_grads = accumulate_grads
 
         # Communication related attributes
         self._group = dist.new_group(_get_global_group()
@@ -128,16 +123,11 @@ class ShardingStage2(nn.Layer):
         # Set backward pass hooks
         self._bw_hooks = []
 
-        # Synchronous all ranks models
-        if pertrain_sync_models:
-            self._sync_params_and_buffers()
-
         # Set tasks flow
         self._tasks_flow = deque()
 
         # Define optimizer step and clear_grad
-        if self._accumulate_grads:
-            self._redefine_opt_step()
+        self._redefine_opt_step()
         self._redefine_opt_clear()
 
     def forward(self, *inputs, **kwargs):
@@ -313,9 +303,6 @@ class ShardingStage2(nn.Layer):
 
                     # Change reduce information
                     self._grad_reduced[index] = False
-                    if not self._accumulate_grads:
-                        param.grad.scale_(scale=self._world_size_scaling)
-                        param._reset_grad_inplace_version(True)
 
                     # Clear the gradient that does not belong to the current rank through the callback function
                     def cleanup():
@@ -361,11 +348,6 @@ class ShardingStage2(nn.Layer):
 
                     if grad_storage.all_checked_in:
                         assert grad_storage.buffer is not None
-
-                        # Normalize all ranks grad_storage
-                        if not self._accumulate_grads:
-                            grad_storage.buffer.scale_(
-                                scale=self._world_size_scaling)
 
                         # Clearing up the grad_storage buffer
                         def cleanup():
@@ -431,22 +413,6 @@ class ShardingStage2(nn.Layer):
 
             self._bw_hooks.append(
                 param._register_backward_hook(reduce_function))
-
-    @paddle.no_grad()
-    def _sync_params_and_buffers(self):
-        """
-        Sync all model states for all ranks
-        """
-
-        for t in self._layer.parameters():
-            dist.broadcast(
-                t,
-                src=self._global_root_rank,
-                group=self._group,
-                use_calc_stream=True)
-
-        # Multi stream operation will be supported later
-        dist.wait(tensor=t, group=self._group, use_calc_stream=True)
 
     def _setup_use_grad_storage(self):
         """
@@ -555,8 +521,6 @@ class ShardingStage2(nn.Layer):
         return rank_buffer_size
 
     def _redefine_opt_step(self):
-        if not self._accumulate_grads:
-            return
         grad_func = self._grad_scale
         for opt in self._sharding_optimizers:
             opt_step = opt.step

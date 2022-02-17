@@ -151,14 +151,9 @@ void BindFleetExecutor(py::module* m) {
       .def_readwrite("current_endpoint", &DistModelConfig::current_endpoint)
       .def_readwrite("nranks", &DistModelConfig::nranks)
       .def_readwrite("local_rank", &DistModelConfig::local_rank)
-      .def_readwrite("mp_degree", &DistModelConfig::mp_degree)
-      .def_readwrite("pp_degree", &DistModelConfig::pp_degree)
-      .def_readwrite("mp_ring_id", &DistModelConfig::mp_ring_id)
-      .def_readwrite("enable_timer", &DistModelConfig::enable_timer)
-      .def_readwrite("pp_upstream_ring_id",
-                     &DistModelConfig::pp_upstream_ring_id)
-      .def_readwrite("pp_downstream_ring_id",
-                     &DistModelConfig::pp_downstream_ring_id);
+      .def_readwrite("ring_id_to_ranks", &DistModelConfig::ring_id_to_ranks_)
+      .def_readwrite("rank_to_ring_ids", &DistModelConfig::rank_to_ring_ids_)
+      .def_readwrite("enable_timer", &DistModelConfig::enable_timer);
 
   py::class_<DistModel>(*m, "DistModel")
       .def(py::init<const DistModelConfig&>())
