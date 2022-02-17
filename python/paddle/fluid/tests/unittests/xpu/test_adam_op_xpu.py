@@ -41,9 +41,11 @@ class XPUTestAdamOp(XPUOpTestWrapper):
             self.set_xpu()
             self.op_type = "adam"
             self.place = paddle.XPUPlace(0)
+            self.set_data()
             self.set_attrs()
             self.set_shape()
             self.set_inputs()
+            self.set_steps()
             param_out, moment1_out, \
                 moment2_out = adam_step(self.inputs, self.attrs)
 
@@ -66,15 +68,20 @@ class XPUTestAdamOp(XPUOpTestWrapper):
             self.dtype = self.in_type
 
         def set_attrs(self):
-            self.beta1 = 0.78
-            self.beta2 = 0.836
-            self.learning_rate = 0.004
-            epsilon = 1e-4
             self.attrs = {
-                'epsilon': epsilon,
+                'epsilon': self.epsilon,
                 'beta1': self.beta1,
                 'beta2': self.beta2
             }
+
+        def set_data(self):
+            self.beta1 = 0.78
+            self.beta2 = 0.836
+            self.learning_rate = 0.004
+            self.epsilon = 1e-4
+
+        def set_steps(self):
+            self.num_steps = 1
 
         def set_shape(self):
             self.shape = (102, 105)
@@ -103,85 +110,56 @@ class XPUTestAdamOp(XPUOpTestWrapper):
         def test_check_output(self):
             self.check_output_with_place(place=paddle.XPUPlace(0), atol=1e-2)
 
-    class TestAdamOp2(XPUOpTest):
+    class TestAdamOp2(TestAdamOp):
         '''Test Adam Op with supplied attributes
         '''
 
-        def set_attrs(self):
+        def set_data(self):
             self.beta1 = 0.9
             self.beta2 = 0.999
             self.learning_rate = 0.001
-            epsilon = 1e-8
-            self.attrs = {'epsilon': epsilon, 'beta1': beta1, 'beta2': beta2}
+            self.epsilon = 1e-8
 
-    class TestAdamOp3(XPUOpTest):
+    class TestAdamOp3(TestAdamOp2):
         '''Test Adam Op with supplied attributes
         '''
 
         def set_shape(self):
             self.shape = (101, 47)
 
-        def set_attrs(self):
-            self.beta1 = 0.9
-            self.beta2 = 0.999
-            self.learning_rate = 0.001
-            epsilon = 1e-8
-            self.attrs = {'epsilon': epsilon, 'beta1': beta1, 'beta2': beta2}
-
-    class TestAdamOp4(XPUOpTest):
+    class TestAdamOp4(TestAdamOp2):
         '''Test Adam Op with supplied attributes
         '''
 
         def set_shape(self):
             self.shape = (512, 26)
 
-        def set_attrs(self):
-            self.beta1 = 0.9
-            self.beta2 = 0.999
-            self.learning_rate = 0.001
-            epsilon = 1e-8
-            self.attrs = {'epsilon': epsilon, 'beta1': beta1, 'beta2': beta2}
-
-    class TestAdamOp5(XPUOpTest):
+    class TestAdamOp5(TestAdamOp2):
         '''Test Adam Op with supplied attributes
         '''
 
         def set_shape(self):
             self.shape = (11, 1)
 
-        def set_attrs(self):
-            self.beta1 = 0.9
-            self.beta2 = 0.999
-            self.learning_rate = 0.001
-            epsilon = 1e-8
-            self.attrs = {'epsilon': epsilon, 'beta1': beta1, 'beta2': beta2}
-
-    class TestAdamOp6(XPUOpTest):
+    class TestAdamOp6(TestAdamOp2):
         '''Test Adam Op with beta as Variable
         '''
 
-        def set_attrs(self):
+        def set_shape(self):
+            self.shape = (10, 10)
+
+        def set_data(self):
             self.beta1 = 0.85
             self.beta2 = 0.95
             self.learning_rate = 0.001
-            epsilon = 1e-8
-            self.attrs = {'epsilon': epsilon, 'beta1': beta1, 'beta2': beta2}
+            self.epsilon = 1e-8
 
-    class TestAdamOpMultipleSteps(TestAdamOp):
+    class TestAdamOpMultipleSteps(TestAdamOp2):
         '''Test Adam Operator with supplied attributes
         '''
 
-        def set_attrs(self):
+        def set_steps(self):
             self.num_steps = 10
-            self.beta1 = 0.9
-            self.beta2 = 0.999
-            self.learning_rate = 0.001
-            epsilon = 1e-8
-            self.attrs = {
-                'epsilon': epsilon,
-                'beta1': self.beta1,
-                'beta2': self.beta2
-            }
 
         def test_check_output(self):
             for _ in range(self.num_steps):
