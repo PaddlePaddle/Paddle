@@ -16,6 +16,7 @@
 
 #include <mlir/IR/Matchers.h>
 #include <mlir/IR/PatternMatch.h>
+#include "paddle/infrt/dialect/infrt/infrt_dialect.h"
 #include "paddle/infrt/dialect/infrt_base.h"
 
 #define GET_OP_CLASSES
