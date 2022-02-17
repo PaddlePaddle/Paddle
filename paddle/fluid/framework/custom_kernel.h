@@ -14,25 +14,21 @@ limitations under the License. */
 
 #pragma once
 
+#include <string>
 #include "paddle/pten/api/ext/op_kernel_info.h"
 
 namespace paddle {
 namespace framework {
 
-// Load custom kernel lib from giwen path
+// Load custom kernel from given path
 void LoadCustomKernel(const std::string& libs_path);
 
+// Load custom kernel lib and register
 void LoadCustomKernelLib(const std::string& dso_lib_path);
 
-// Load custom kernel api: register kernel after user compiled
-void LoadOpKernelInfoAndRegister(const std::string& dso_name);
-
 // Register custom kernel api: register kernel directly
-void RegisterKernelWithMetaInfoMap(
+void RegisterWithOpKernelInfoMap(
     const paddle::OpKernelInfoMap& op_kernel_info_map);
 
-// Interface for selective register custom kernel.
-void RegisterKernelWithMetaInfo(
-    const std::vector<OpKernelInfo>& op_kernel_infos);
 }  // namespace framework
 }  // namespace paddle

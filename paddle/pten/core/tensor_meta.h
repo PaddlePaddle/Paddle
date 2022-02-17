@@ -24,12 +24,18 @@ limitations under the License. */
 // Note: mixed_vector include many header now, LoD will be
 // used on CUDA device? Can we use small_vector here?
 // @zhanlve: Rollback to original LoD for now
+#ifndef PADDLE_WITH_CUSTOM_KERNEL
 #include "paddle/fluid/framework/mixed_vector.h"
+#endif
 
 namespace pten {
 
 using DDim = pten::framework::DDim;
+#ifndef PADDLE_WITH_CUSTOM_KERNEL
 using LoD = std::vector<paddle::framework::Vector<size_t>>;
+#else
+using LoD = std::vector<std::vector<size_t>>;
+#endif
 /// \brief The meta data of dense tensor. Take the structure type
 /// and use all default operations.
 ///
