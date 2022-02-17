@@ -61,7 +61,8 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
         VLOG(3) << "LodTensorArray: idx(" << idx << ")";
         auto& x = x_array.at(idx);
         int numel = x.numel();
-        ncclDataType_t dtype = platform::ToNCCLDataType(x.type());
+        ncclDataType_t dtype =
+            platform::ToNCCLDataType(framework::TransToProtoVarType(x.dtype()));
         PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
             x.data<T>(), numel, dtype, peer, comm->comm(), stream));
         VLOG(3) << "rank " << comm->rank() << " send "
@@ -72,7 +73,8 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
     auto x = ctx.Input<framework::LoDTensor>("X");
     int numel = x->numel();
 
-    ncclDataType_t dtype = platform::ToNCCLDataType(x->type());
+    ncclDataType_t dtype =
+        platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
         x->data<T>(), numel, dtype, peer, comm->comm(), stream));
     VLOG(3) << "rank " << comm->rank() << " send "

@@ -61,7 +61,8 @@ class ConcatMKLDNNHandler
       concat_axis = concat_axis + rank;
     }
 
-    memory::data_type dt = framework::ToMKLDNNDataType(inputs[0]->type());
+    memory::data_type dt = framework::ToMKLDNNDataType(
+        framework::TransToProtoVarType(inputs[0]->dtype()));
     std::vector<memory::desc> srcs_md;
     srcs_md.reserve(inputs.size());
 
@@ -185,10 +186,11 @@ class ConcatGradMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     std::vector<int64_t> offset(dout_vec_dims.size(), 0);
 
-    dnnl::memory::data_type dout_type =
-        framework::ToMKLDNNDataType(dout->type());
-    platform::ReorderMKLDNNHandler reorder_handler(dout_vec_dims, dout->type(),
-                                                   dout_type, onednn_engine);
+    dnnl::memory::data_type dout_type = framework::ToMKLDNNDataType(
+        framework::TransToProtoVarType(dout->dtype()));
+    platform::ReorderMKLDNNHandler reorder_handler(
+        dout_vec_dims, framework::TransToProtoVarType(dout->dtype()), dout_type,
+        onednn_engine);
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         dout->format(), platform::to_void_cast(dout->data<T>()));
 

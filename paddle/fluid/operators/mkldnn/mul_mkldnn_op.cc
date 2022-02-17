@@ -310,9 +310,10 @@ std::shared_ptr<MulPrimitiveFactory<XT, YT, OT>> GetPrimitiveFactory(
     const Tensor *input_x, const Tensor *input_y,
     const dnnl::engine &mkldnn_engine) {
   std::string key = platform::CreateKey(
-      dev_ctx, input_x->type(), framework::vectorize(input_x->dims()),
-      input_y->type(), framework::vectorize(input_y->dims()),
-      ctx.OutputName("Out"));
+      dev_ctx, framework::TransToProtoVarType(input_x->dtype()),
+      framework::vectorize(input_x->dims()),
+      framework::TransToProtoVarType(input_y->dtype()),
+      framework::vectorize(input_y->dims()), ctx.OutputName("Out"));
   key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
   auto prim_creator = std::static_pointer_cast<MulPrimitiveFactory<XT, YT, OT>>(

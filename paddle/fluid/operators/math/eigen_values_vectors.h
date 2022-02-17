@@ -63,7 +63,7 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, T> {
   void operator()(const framework::ExecutionContext &ctx, const Tensor &input,
                   Tensor *eigen_values, Tensor *eigen_vectors, bool is_lower,
                   bool has_vectors) {
-    using ValueType = math::Real<T>;
+    using ValueType = pten::funcs::Real<T>;
     auto *out_value = eigen_values->mutable_data<ValueType>(ctx.GetPlace());
 
     auto dito =
@@ -108,7 +108,8 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, T> {
     ValueType *rwork_data = nullptr;
 
     // complex type
-    if (framework::IsComplexType(input.type())) {
+    if (framework::IsComplexType(
+            framework::TransToProtoVarType(input.dtype()))) {
       lrwork = std::max<int>(1, static_cast<int>(rwork_opt));
       rwork_data = rwork_tensor.mutable_data<ValueType>(
           framework::make_ddim({lrwork}), ctx.GetPlace());
@@ -122,9 +123,9 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, T> {
     for (auto i = 0; i < batch_size; i++) {
       auto *value_data = out_value + i * values_stride;
       auto *input_data = input_vector + i * vector_stride;
-      math::lapackEigh<T, Real<T>>(jobz, uplo, n, input_data, lda, value_data,
-                                   work_data, lwork, rwork_data, lrwork,
-                                   iwork_data, liwork, &info);
+      math::lapackEigh<T, pten::funcs::Real<T>>(
+          jobz, uplo, n, input_data, lda, value_data, work_data, lwork,
+          rwork_data, lrwork, iwork_data, liwork, &info);
       CheckEighResult(i, info);
     }
     if (has_vectors) {
@@ -150,7 +151,7 @@ struct MatrixEighFunctor<platform::CUDADeviceContext, T> {
   void operator()(const framework::ExecutionContext &ctx, const Tensor &input,
                   Tensor *eigen_values, Tensor *eigen_vectors, bool is_lower,
                   bool has_vectors) {
-    using ValueType = math::Real<T>;
+    using ValueType = pten::funcs::Real<T>;
     auto *out_value = eigen_values->mutable_data<ValueType>(ctx.GetPlace());
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
@@ -180,7 +181,8 @@ struct MatrixEighFunctor<platform::CUDADeviceContext, T> {
     // When the input type is float32, and the feature value input dimension is
     // greater than or equal to [*,32,32]  and less than or equal to
     // [*,512,512], Syevj has better performance.
-    bool use_syevj = (input.type() == framework::proto::VarType::FP32 &&
+    bool use_syevj = (framework::TransToProtoVarType(input.dtype()) ==
+                          framework::proto::VarType::FP32 &&
                       values_stride >= 32 && values_stride <= 512);
     syevjInfo_t syevj_params;
     if (use_syevj) {
@@ -231,7 +233,7 @@ struct MatrixEighFunctor<platform::CUDADeviceContext, T> {
     }
   }
 
-  using ValueType = math::Real<T>;
+  using ValueType = pten::funcs::Real<T>;
   inline void EvdBuffer(cusolverDnHandle_t handle, cusolverEigMode_t jobz,
                         cublasFillMode_t uplo, int n, const T *A, int lda,
                         const ValueType *W, int *lwork) const;

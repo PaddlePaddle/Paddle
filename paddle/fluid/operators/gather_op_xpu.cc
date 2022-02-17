@@ -64,7 +64,8 @@ class GatherOpXPUKernel : public framework::OpKernel<T> {
 
     auto &dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
     int r = XPU_SUCCESS;
-    if (index->type() == framework::proto::VarType::INT32) {
+    if (framework::TransToProtoVarType(index->dtype()) ==
+        framework::proto::VarType::INT32) {
       r = xpu::gather<XPUType, int>(
           dev_ctx.x_context(), reinterpret_cast<const XPUType *>(x->data<T>()),
           index->data<int>(), reinterpret_cast<XPUType *>(output->data<T>()),
@@ -129,7 +130,8 @@ class GatherGradOpXPUKernel : public framework::OpKernel<T> {
     dx->mutable_data<T>(ctx.GetPlace());
 
     int r = XPU_SUCCESS;
-    if (index->type() == framework::proto::VarType::INT32) {
+    if (framework::TransToProtoVarType(index->dtype()) ==
+        framework::proto::VarType::INT32) {
       r = xpu::gather_grad<XPUType, int>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUType *>(dout->data<T>()),
