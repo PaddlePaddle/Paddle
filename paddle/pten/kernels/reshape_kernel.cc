@@ -41,12 +41,26 @@ void ReshapeKernel(const Context& dev_ctx,
   out->ResetLoD(x.lod());
 }
 
+template <typename Context>
+void ReshapeWithXShape(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const ScalarArray& shape,
+                       DenseTensor* xshape,
+                       DenseTensor* out) {
+  ReshapeKernel(dev_ctx, x, shape, out);
+}
+
 }  // namespace pten
 
 PT_REGISTER_GENERAL_KERNEL(reshape,
                            CPU,
                            ALL_LAYOUT,
                            pten::ReshapeKernel<pten::CPUContext>,
+                           ALL_DTYPE) {}
+PT_REGISTER_GENERAL_KERNEL(reshape_with_xshape,
+                           CPU,
+                           ALL_LAYOUT,
+                           pten::ReshapeWithXShape<pten::CPUContext>,
                            ALL_DTYPE) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -55,6 +69,11 @@ PT_REGISTER_GENERAL_KERNEL(reshape,
                            ALL_LAYOUT,
                            pten::ReshapeKernel<pten::GPUContext>,
                            ALL_DTYPE) {}
+PT_REGISTER_GENERAL_KERNEL(reshape_with_xshape,
+                           GPU,
+                           ALL_LAYOUT,
+                           pten::ReshapeWithXShape<pten::GPUContext>,
+                           ALL_DTYPE) {}
 #endif
 
 #ifdef PADDLE_WITH_XPU
@@ -62,5 +81,10 @@ PT_REGISTER_GENERAL_KERNEL(reshape,
                            XPU,
                            ALL_LAYOUT,
                            pten::ReshapeKernel<pten::XPUContext>,
+                           ALL_DTYPE) {}
+PT_REGISTER_GENERAL_KERNEL(reshape_with_xshape,
+                           XPU,
+                           ALL_LAYOUT,
+                           pten::ReshapeWithXShape<pten::XPUContext>,
                            ALL_DTYPE) {}
 #endif

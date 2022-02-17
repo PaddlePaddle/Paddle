@@ -247,6 +247,26 @@ void ReshapeInferMeta(const MetaTensor& x,
   InferMetaFromVecValue(x, shape_data, out);
 }
 
+void ReshapeWithXShapeInferMeta(const MetaTensor& x,
+                                const ScalarArray& shape,
+                                MetaTensor* xshape,
+                                MetaTensor* out,
+                                MetaConfig config) {
+  PADDLE_ENFORCE_NOT_NULL(
+      xshape,
+      pten::errors::InvalidArgument(
+          "Output(XShape) of ReshapeOp should not be null."));
+  const auto& x_dims = x.dims();
+  std::vector<int64_t> xshape_dims(x_dims.size() + 1);
+  xshape_dims[0] = 0;
+  for (int i = 0; i < x_dims.size(); ++i) {
+    xshape_dims[i + 1] = x_dims[i];
+  }
+  xshape->set_dims(pten::framework::make_ddim(xshape_dims));
+  xshape->share_lod(x);
+  ReshapeInferMeta(x, shape, out, config);
+}
+
 /*  Why not use ReduceInferMeta directly?
     Because we need make InferMetaFunction's args follow the design of api.yaml
 */

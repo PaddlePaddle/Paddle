@@ -17,12 +17,25 @@ limitations under the License. */
 namespace pten {
 
 KernelSignature ReshapeOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  if (ctx.InputSize("ShapeTensor") > 0) {
-    return KernelSignature("reshape", {"X"}, {"ShapeTensor"}, {"Out"});
-  } else if (ctx.HasInput("Shape")) {
-    return KernelSignature("reshape", {"X"}, {"Shape"}, {"Out"});
+  if (ctx.HasOutput("XShape")) {
+    if (ctx.InputSize("ShapeTensor") > 0) {
+      return KernelSignature(
+          "reshape_with_xshape", {"X"}, {"ShapeTensor"}, {"XShape", "Out"});
+    } else if (ctx.HasInput("Shape")) {
+      return KernelSignature(
+          "reshape_with_xshape", {"X"}, {"Shape"}, {"XShape", "Out"});
+    } else {
+      return KernelSignature(
+          "reshape_with_xshape", {"X"}, {"shape"}, {"XShape", "Out"});
+    }
   } else {
-    return KernelSignature("reshape", {"X"}, {"shape"}, {"Out"});
+    if (ctx.InputSize("ShapeTensor") > 0) {
+      return KernelSignature("reshape", {"X"}, {"ShapeTensor"}, {"Out"});
+    } else if (ctx.HasInput("Shape")) {
+      return KernelSignature("reshape", {"X"}, {"Shape"}, {"Out"});
+    } else {
+      return KernelSignature("reshape", {"X"}, {"shape"}, {"Out"});
+    }
   }
 }
 

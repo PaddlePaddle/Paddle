@@ -322,6 +322,7 @@ pten::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
       infer_meta_context.EmplaceBackOutput({nullptr});
     }
   }
+  auto attr_reader = ctx->Attrs();
   for (size_t i = 0; i < attr_names.size(); ++i) {
     auto attr_name = attr_names[i];
     // When attr is a vector_tensor or tensor, transform it to ScalarArray
@@ -346,9 +347,9 @@ pten::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
                 << ") ScalarArray value will be set empty";
         infer_meta_context.EmplaceBackAttr(std::move(pten::ScalarArray()));
       }
-    } else {
+    } else if (ctx->HasAttr(attr_name)) {
       // Emplace Back Attr according to the type of attr.
-      auto& attr = ctx->Attrs().GetAttr(attr_name);
+      auto& attr = attr_reader.GetAttr(attr_name);
       if (attr_defs[i].type_index ==
           std::type_index(typeid(pten::ScalarArray))) {
         if (std::type_index(attr.type()) ==
