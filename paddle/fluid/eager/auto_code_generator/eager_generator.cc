@@ -1612,7 +1612,7 @@ static std::string GenerateSingleOpBase(
       size_t fwd_output_position = fwd_outputs_name_pos_map.at(
           grad_ins_grad_slotname_map.at(grad_input_name));
       const char* GRAD_INS_GRAD_CONTENT_TEMPLATE =
-          "{ \"%s\", egr::EagerUtils::TrySyncToVars(grads[%d]) },";
+          "{ \"%s\", egr::EagerUtils::TrySyncToVars(hooked_grads[%d]) },";
       ins_contents_str += paddle::string::Sprintf(
           GRAD_INS_GRAD_CONTENT_TEMPLATE, grad_input_name, fwd_output_position);
 
@@ -1689,7 +1689,7 @@ static std::string GenerateSingleOpBase(
         size_t grads_position = fwd_outputs_name_pos_map.at(fwd_name);
 
         const char* GRAD_OUTS_CONTENT_TEMPLATE =
-            "{ \"%s\", egr::EagerUtils::TrySyncToVars(grads[%d]) },";
+            "{ \"%s\", egr::EagerUtils::TrySyncToVars(hooked_grads[%d]) },";
         outs_contents_str += paddle::string::Sprintf(
             GRAD_OUTS_CONTENT_TEMPLATE, grad_output_name, grads_position);
 
@@ -1849,9 +1849,9 @@ static std::string GenerateGradNodeCCContents(
             {
             "X" : this->"X", "Y" : this->"Y",
             "Out0@Grad":
-  TrySyncToVars(grads["fwd_outputs_name_pos_map[grad_ins_grad_slotname_map["Out0@Grad"]]"]),
+  TrySyncToVars(hooked_grads["fwd_outputs_name_pos_map[grad_ins_grad_slotname_map["Out0@Grad"]]"]),
             "Out1@Grad":
-  TensorsToVarBases(grads["fwd_outputs_name_pos_map[grad_ins_grad_slotname_map["Out1@Grad"]]"])
+  TensorsToVarBases(hooked_grads["fwd_outputs_name_pos_map[grad_ins_grad_slotname_map["Out1@Grad"]]"])
              };
 
     // Comes from "grad_outs"
@@ -1935,6 +1935,8 @@ static std::string GenerateGradNodeCCContents(
   }
 
   const char* BWD_RETURN_TEMPLATE =
+      "  std::vector<std::vector<paddle::experimental::Tensor>> hooked_grads = "
+      "egr::GradNodeBase::ApplyGradientHooks(grads);\n"
       "  std::vector<std::vector<paddle::experimental::Tensor>> outputs(%d);\n"
       "  %s\n"
       "  return outputs;\n";
