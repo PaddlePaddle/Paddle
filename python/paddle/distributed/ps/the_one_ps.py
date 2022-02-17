@@ -39,6 +39,14 @@ def conv_indent(indent):
 PSERVER_SAVE_SUFFIX = ".shard"
 
 
+def get_program_by_id(context, program_id):
+    programs = context["origin_main_programs"]
+    for i, program in enumerate(programs):
+        if id(program) == program_id:
+            return program, context["origin_startup_programs"][i]
+    return None, None
+
+
 def parse_table_class(varname, o_main_program):
     for op in o_main_program.global_block().ops:
         if not is_distributed_sparse_op(op) and not is_sparse_op(op):
@@ -194,6 +202,7 @@ class CommonAccessor:
         opt_input_map["sum"] = [("Param", None)]
         opt_input_map["naive_adagrad"] = [("Param", None), ("G2Sum", 1),
                                           ("LearningRate", 1)]
+        opt_input_map["summary"] = [("Param", None), ("SummaryDecayRate", 1)]
 
         opt_attr_map = {}
         opt_attr_map["sgd"] = []
@@ -203,6 +212,7 @@ class CommonAccessor:
                                 ("epsilon", "f")]
         opt_attr_map["adam_d2sum"] = [("beta1", "f"), ("beta2", "f"),
                                       ("epsilon", "f")]
+        opt_attr_map["summary"] = []
 
         opt_init_map = {}
         opt_init_map["gaussian_random"] = ["seed", "mean", "std"]
@@ -245,23 +255,36 @@ class CommonAccessor:
         attr_str = ""
 
         origin_var_name = value_name
+        print("get_initializer_attr param name:", value_name)
         for op in o_startup_program.global_block().ops:
             if op.type in self.opt_init_map.keys(
             ) and origin_var_name == op.output("Out")[0]:
                 init_attr = [op.type]
+                print("get_initializer_attr op type:", op.type)
                 for attr in self.opt_init_map[op.type]:
+                    print("get_initializer_attr opt_init_map attr:", attr)
                     init_attr.append(str(op.attr(attr)))
+                    print("get_initializer_attr op attr:", str(op.attr(attr)))
                 attr_str = l_in.join(init_attr)
                 break
         return attr_str
 
-    def parse_by_optimizer(self, grad_name, is_sparse, size, single_dim,
-                           context, adam_d2sum):
-        main_program = context['origin_main_program']
-        startup_program = context['origin_startup_program']
+    def parse_by_optimizer(self, ctx, context):
+        grad_name = ctx.origin_varnames()[0]
+        is_sparse = ctx.is_sparse()
+        size = ctx.sections()[0]
+        single_dim = ctx.sections()[1] if ctx.is_sparse() else 1
+        adam_d2sum = context["user_defined_strategy"].adam_d2sum
+        print("parse_by_optimizer table_id:{} is_datanorm:{}".format(
+            ctx.table_id(), ctx.is_datanorm_table()))
+
+        main_program, startup_program = get_program_by_id(context,
+                                                          ctx.program_id())
         pserver_id = get_role_id(context['role_maker'])
         pserver_num = len(get_ps_endpoints(context['role_maker']))
         optimizer_ops = get_optimize_ops(main_program)
+        print("the one ps optimizer_ops:", optimizer_ops)
+        print("the one ps parse_by_optimizer grad_name:", grad_name)
         oop = None
 
         for op in optimizer_ops:
@@ -295,6 +318,10 @@ class CommonAccessor:
             param_varnames = self.opt_input_map["naive_adagrad"]
             attr_varnames = self.opt_attr_map["naive_adagrad"]
             self.accessor_class = "sgd"
+        elif ctx.is_datanorm_table():
+            param_varnames = self.opt_input_map["summary"]
+            attr_varnames = self.opt_attr_map["summary"]
+            self.accessor_class = "summary"
         elif adam_d2sum and not is_sparse:
             param_varnames = self.opt_input_map["adam_d2sum"]
             attr_varnames = self.opt_attr_map["adam_d2sum"]
@@ -333,6 +360,27 @@ class CommonAccessor:
                     initializer = "fill_constant&0.9999"
                 elif formal_name == "AdaEpsilon":
                     initializer = "fill_constant&1.0e-8"
+                else:
+                    initializer = "fill_constant&0"
+                initializers.append(initializer)
+            elif self.accessor_class == "summary":
+                #for dims
+                if shape is None:
+                    if is_sparse:
+                        shape = single_dim
+                    else:
+                        shape = self.get_shard(size, pserver_num, pserver_id)
+                dims.append(shape)
+
+                #for initializers
+                if formal_name == "Param":
+                    param = main_program.global_block().vars[oop.input(
+                        formal_name)[0]]
+
+                    initializer = self.get_initializer_attr(param.name,
+                                                            startup_program)
+                elif formal_name == "SummaryDecayRate":
+                    initializer = "fill_constant&0.99999"
                 else:
                     initializer = "fill_constant&0"
                 initializers.append(initializer)
@@ -611,7 +659,9 @@ class TheOnePSRuntime(RuntimeBase):
     def _set_basic_info(self, context):
         self.context = context
         self.role_maker = context["role_maker"]
+
         self.origin_main_program = context["origin_main_program"]
+        self.origin_main_programs = context["origin_main_programs"]
 
         self.context[
             'is_heter_ps_mode'] = self.role_maker._is_heter_parameter_server_mode
@@ -948,11 +998,7 @@ class TheOnePSRuntime(RuntimeBase):
                     common.table_name = "MergedDense"
 
                 adam_d2sum = self.context["user_defined_strategy"].adam_d2sum
-                common.parse_by_optimizer(ctx.origin_varnames()[0],
-                                          ctx.is_sparse(),
-                                          ctx.sections()[0],
-                                          ctx.sections()[1] if ctx.is_sparse()
-                                          else 1, self.context, adam_d2sum)
+                common.parse_by_optimizer(ctx, self.context)
 
                 if ctx.is_sparse():
                     common.parse_entry(common.table_name,
@@ -1031,8 +1077,9 @@ class TheOnePSRuntime(RuntimeBase):
         self._server.init_server(proto_txt, string_hosts, role_id, trainers,
                                  self._server_sub_program)
 
-        dist_varnames = get_sparse_tablenames(self.origin_main_program, True)
-        sparse_varnames = get_sparse_tablenames(self.origin_main_program, False)
+        dist_varnames = get_sparse_tablenames(self.origin_main_programs, True)
+        sparse_varnames = get_sparse_tablenames(self.origin_main_programs,
+                                                False)
 
         distributed_varnames = dist_varnames + sparse_varnames
 

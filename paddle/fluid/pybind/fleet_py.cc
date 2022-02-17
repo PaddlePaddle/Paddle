@@ -103,11 +103,13 @@ void BindCommunicatorContext(py::module* m) {
           py::init<const std::string&, const std::vector<std::string>&,
                    const std::vector<std::string>&, const std::vector<int64_t>&,
                    const std::vector<std::string>&, int, bool, bool, bool, int,
-                   bool>())
+                   bool, bool, int64_t>())
       .def("var_name", [](const CommContext& self) { return self.var_name; })
       .def("trainer_id",
            [](const CommContext& self) { return self.trainer_id; })
       .def("table_id", [](const CommContext& self) { return self.table_id; })
+      .def("program_id",
+           [](const CommContext& self) { return self.program_id; })
       .def("split_varnames",
            [](const CommContext& self) { return self.splited_varnames; })
       .def("split_endpoints",
@@ -122,6 +124,8 @@ void BindCommunicatorContext(py::module* m) {
            [](const CommContext& self) { return self.origin_varnames; })
       .def("is_tensor_table",
            [](const CommContext& self) { return self.is_tensor_table; })
+      .def("is_datanorm_table",
+           [](const CommContext& self) { return self.is_datanorm_table; })
       .def("__str__", [](const CommContext& self) { return self.print(); });
 }
 
