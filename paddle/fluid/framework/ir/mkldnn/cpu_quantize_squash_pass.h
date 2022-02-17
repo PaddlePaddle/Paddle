@@ -49,6 +49,15 @@ class CPUQuantizeSquashPass : public FusePassBase {
   bool IsDequantizeInputUint8(const Node* dequant_in) const;
 
   /*
+   * Don't squash unsigned dequantize with signed quantize.
+   * This is important for concat and elementwise ops.
+   * When inputs have different sign, concat will assume signed type and
+   * elementwise assumes first input type.
+   */
+  bool IsDequantizeQuantizeIncompatible(Node* quant_op, Node* dequant_in,
+                                        Node* next_op) const;
+
+  /*
    * Squash dequantize-quantize ops pairs into requantize or nothing
    */
   void DequantQuantSquash(

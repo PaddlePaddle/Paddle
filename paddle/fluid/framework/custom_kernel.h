@@ -27,7 +27,7 @@ void LoadCustomKernel(const std::string& libs_path);
 void LoadCustomKernelLib(const std::string& dso_lib_path);
 
 // Register custom kernel api: register kernel directly
-void RegisterKernelWithMetaInfoMap(
+void RegisterWithOpKernelInfoMap(
     const paddle::OpKernelInfoMap& op_kernel_info_map);
 
 }  // namespace framework
