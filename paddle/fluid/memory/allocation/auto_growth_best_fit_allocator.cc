@@ -48,7 +48,8 @@ AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
 
 pten::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
     size_t unaligned_size) {
-  platform::RecordEvent("AutoGrowthBestFitAllocator::Allocate");
+  platform::RecordEvent("AutoGrowthBestFitAllocator::Allocate",
+                        platform::TracerEventType::UserDefined, 9 /*level*/);
   size_t size = AlignedSize(unaligned_size, alignment_);
   VLOG(10) << "Allocate " << unaligned_size << " bytes, aligned to " << size;
 
@@ -110,7 +111,8 @@ pten::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
 }
 
 void AutoGrowthBestFitAllocator::FreeImpl(pten::Allocation *allocation) {
-  platform::RecordEvent("AutoGrowthBestFitAllocator::Free");
+  platform::RecordEvent("AutoGrowthBestFitAllocator::Free",
+                        platform::TracerEventType::UserDefined, 9 /*level*/);
   VLOG(10) << "Free " << allocation->size()
            << " bytes, ptr = " << allocation->ptr();
   std::lock_guard<SpinLock> guard(spinlock_);
