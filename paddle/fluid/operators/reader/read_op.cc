@@ -106,9 +106,8 @@ class ReadOp : public framework::OperatorBase {
     std::vector<framework::LoDTensor> ins;
 
     // For profiling
-    platform::RecordEvent record_event(Type(),
-                                       platform::TracerEventType::UserDefined,
-                                       1, platform::EventRole::kOrdinary);
+    platform::RecordEvent record_event(
+        Type(), platform::TracerEventType::UserDefined, 1);
 
     reader->ReadNext(&ins);
     if (ins.empty()) {

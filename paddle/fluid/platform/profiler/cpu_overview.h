@@ -14,13 +14,16 @@
 
 #pragma once
 
+#include <stdio.h>
+#include <cinttypes>
+#include <cstdint>
+
 #include "paddle/fluid/platform/macros.h"
 #ifdef _MSC_VER
 #include <minwinbase.h>
 #include <processthreadsapi.h>
 #include <sysinfoapi.h>
 #else
-#include <stdio.h>
 #include <sys/times.h>
 #include <unistd.h>
 #endif

@@ -62,7 +62,8 @@ void CPUOverview::RecordBeginTimeInfo() {
   idle_start_ = 0;
   while (true) {
     int retval = fscanf(
-        stat_file, "%s %llu %llu %llu %llu %llu %llu %llu %llu %llu %llu",
+        stat_file, "%s %" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64
+                   "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64,
         temp_str, &tms_utime, &temp_lu, &tms_stime, &idle_start, &temp_lu,
         &temp_lu, &temp_lu, &temp_lu, &temp_lu, &temp_lu);
     if (std::string(temp_str).find("cpu") != 0) {
@@ -101,7 +102,8 @@ void CPUOverview::RecordEndTimeInfo() {
   idle_end_ = 0;
   while (true) {
     int retval = fscanf(
-        stat_file, "%s %llu %llu %llu %llu %llu %llu %llu %llu %llu %llu",
+        stat_file, "%s %" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64
+                   "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64,
         temp_str, &tms_utime, &temp_lu, &tms_stime, &idle_end, &temp_lu,
         &temp_lu, &temp_lu, &temp_lu, &temp_lu, &temp_lu);
     if (std::string(temp_str).find("cpu") != 0) {

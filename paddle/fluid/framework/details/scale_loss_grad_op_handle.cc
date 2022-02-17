@@ -89,8 +89,7 @@ std::string ScaleLossGradOpHandle::LossGradName() const {
 
 void ScaleLossGradOpHandle::RunImpl() {
   platform::RecordEvent record_event(Name(),
-                                     platform::TracerEventType::UserDefined, 2,
-                                     platform::EventRole::kOrdinary);
+                                     platform::TracerEventType::UserDefined, 2);
   RunOnVar(local_exec_scopes_[0]->FindVar(LossGradName()), true);
 }
 

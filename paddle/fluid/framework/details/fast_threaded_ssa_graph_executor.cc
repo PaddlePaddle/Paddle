@@ -66,8 +66,7 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
   VLOG(3) << "enter FastThreadedSSAGraphExecutor Run";
   std::unique_ptr<platform::RecordEvent> event(
       new platform::RecordEvent("FastThreadedSSAGraphExecutorPrepare",
-                                platform::TracerEventType::UserDefined, 2,
-                                platform::EventRole::kOrdinary));
+                                platform::TracerEventType::UserDefined, 2));
   std::unique_ptr<std::unordered_map<OpHandleBase *, std::atomic<int>>>
       op_deps = atomic_op_deps_.get();
   PrepareAtomicOpDeps();

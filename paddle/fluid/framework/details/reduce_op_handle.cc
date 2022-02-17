@@ -47,8 +47,7 @@ void ReduceOpHandle::Wait(
 
 void ReduceOpHandle::RunImpl() {
   platform::RecordEvent record_event(Name(),
-                                     platform::TracerEventType::UserDefined, 2,
-                                     platform::EventRole::kOrdinary);
+                                     platform::TracerEventType::UserDefined, 2);
 
   if (places_.size() == 1) return;
   // the input and output may have dummy var.

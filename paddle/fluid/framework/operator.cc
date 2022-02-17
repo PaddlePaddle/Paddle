@@ -263,8 +263,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       // in order to record different op type cost time
       // and different op name cost time,we set two event.
       platform::RecordEvent op_type_record_event(
-          Type(), platform::TracerEventType::Operator, 1,
-          platform::EventRole::kOrdinary);
+          Type(), platform::TracerEventType::Operator, 1);
       auto op_name = platform::OpName(outputs_, Type());
       platform::RecordEvent op_name_record_event(
           op_name, platform::TracerEventType::Operator, 1,

@@ -55,9 +55,9 @@ ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
 
 inline FetchResultType ThreadedSSAGraphExecutor::RunImpl(
     const std::vector<std::string> &fetch_tensors, bool return_merged) {
-  std::unique_ptr<platform::RecordEvent> event(new platform::RecordEvent(
-      "ThreadedSSAGraphExecutorPrepare", platform::TracerEventType::UserDefined,
-      2, platform::EventRole::kOrdinary));
+  std::unique_ptr<platform::RecordEvent> event(
+      new platform::RecordEvent("ThreadedSSAGraphExecutorPrepare",
+                                platform::TracerEventType::UserDefined, 2));
   std::unique_ptr<OpDependentData> op_deps = op_deps_futures_.get();
   CopyOpDeps();
 
