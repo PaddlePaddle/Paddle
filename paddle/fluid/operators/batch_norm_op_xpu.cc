@@ -169,11 +169,11 @@ class BatchNormGradXPUKernel : public framework::OpKernel<T> {
     const auto data_layout = framework::StringToDataLayout(data_layout_str);
 
     // TODO(guozbin): Transform input tensor from NHWC to NCHW
-    PADDLE_ENFORCE_EQ(data_layout, DataLayout::kNCHW,
-                      platform::errors::InvalidArgument(
-                          "The 'data_layout' attribute must be NCHW. But "
-                          "recevived 'data_layout' is [%s].",
-                          data_layout_str));
+    // PADDLE_ENFORCE_EQ(data_layout, DataLayout::kNCHW,
+    //                   platform::errors::InvalidArgument(
+    //                       "The 'data_layout' attribute must be NCHW. But "
+    //                       "recevived 'data_layout' is [%s].",
+    //                       data_layout_str));
 
     auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
@@ -207,15 +207,24 @@ class BatchNormGradXPUKernel : public framework::OpKernel<T> {
     }
 
     const auto &x_dims = x->dims();
-    PADDLE_ENFORCE_EQ(x_dims.size(), 4,
-                      platform::errors::InvalidArgument(
-                          "The input tensor X's dimension must equal to 4. But "
-                          "received X's shape = [%s], X's dimension = [%d].",
-                          x_dims, x_dims.size()));
-    const int N = x_dims[0];
-    const int C = x_dims[1];
-    const int H = x_dims[2];
-    const int W = x_dims[3];
+    // PADDLE_ENFORCE_EQ(x_dims.size(), 4,
+    //                   platform::errors::InvalidArgument(
+    //                       "The input tensor X's dimension must equal to 4. But "
+    //                       "received X's shape = [%s], X's dimension = [%d].",
+    //                       x_dims, x_dims.size()));
+    // const int N = x_dims[0];
+    // const int C = x_dims[1];
+    // const int H = x_dims[2];
+    // const int W = x_dims[3];
+    PADDLE_ENFORCE_EQ(
+    x_dims.size() >= 2 && x_dims.size() <= 5, true,
+    platform::errors::InvalidArgument(
+        "The size of input's dimensions should be between 2 and 5"
+        "But received: the size of input's dimensions is [%d]",
+        x_dims.size()));
+    
+    int N, C, H, W, D;
+    ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
     const auto *x_data = x->data<T>();
     const auto *d_y_data = d_y->data<T>();
@@ -250,10 +259,11 @@ class BatchNormGradXPUKernel : public framework::OpKernel<T> {
     auto &dev_ctx = ctx.template device_context<DeviceContext>();
     xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
 
-    const T *mean_data = nullptr;
-    const T *inv_var_data = nullptr;
+    const float *mean_data = nullptr;
+    const float *inv_var_data = nullptr;
 
     // TODO(guozibin): hadle the situation case of N * H * W = 1
+    const auto *running_variance = ctx.Input<Tensor>("Variance");
     if (!use_global_stats) {
       const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
       // SavedVariance have been reverted in forward operator
@@ -262,22 +272,35 @@ class BatchNormGradXPUKernel : public framework::OpKernel<T> {
       inv_var_data = saved_inv_variance->data<float>();
     } else {
       const auto *running_mean = ctx.Input<Tensor>("Mean");
-      const auto *running_variance = ctx.Input<Tensor>("Variance");
+      // const auto *running_variance = ctx.Input<Tensor>("Variance");
       mean_data = running_mean->data<float>();
       inv_var_data = running_variance->data<float>();
-      float *running_inv_var_data =
-          RAII_GUARD.alloc_l3_or_gm<float>(running_variance->numel());
-      float *epsilon_data = RAII_GUARD.alloc_l3_or_gm<float>(1);
-      int r1 = calculate_inv_var(dev_ctx.x_context(), inv_var_data, epsilon, C,
-                                 epsilon_data, running_inv_var_data);
-      PADDLE_ENFORCE_EQ(r1, XPU_SUCCESS, platform::errors::External(
-                                             "XPU API(batch_norm_grad "
-                                             "calculate_inv_var function) "
-                                             "return wrong value[%d %s]",
-                                             r1, XPUAPIErrorMsg[r1]));
-      inv_var_data = running_inv_var_data;
+      // float *running_inv_var_data =
+      //     RAII_GUARD.alloc_l3_or_gm<float>(running_variance->numel());
+      // float *epsilon_data = RAII_GUARD.alloc_l3_or_gm<float>(1);
+      // int r1 = calculate_inv_var(dev_ctx.x_context(), inv_var_data, epsilon, C,
+      //                            epsilon_data, running_inv_var_data);
+      // PADDLE_ENFORCE_EQ(r1, XPU_SUCCESS, platform::errors::External(
+      //                                        "XPU API(batch_norm_grad "
+      //                                        "calculate_inv_var function) "
+      //                                        "return wrong value[%d %s]",
+      //                                        r1, XPUAPIErrorMsg[r1]));
+      // inv_var_data = running_inv_var_data;
     }
     if (is_inplace) {
+      if (use_global_stats) {
+        float *running_inv_var_data =
+            RAII_GUARD.alloc_l3_or_gm<float>(running_variance->numel());
+        float *epsilon_data = RAII_GUARD.alloc_l3_or_gm<float>(1);
+        int r1 = calculate_inv_var(dev_ctx.x_context(), inv_var_data, epsilon, C,
+                                  epsilon_data, running_inv_var_data);
+        PADDLE_ENFORCE_EQ(r1, XPU_SUCCESS, platform::errors::External(
+                                              "XPU API(batch_norm_grad "
+                                              "calculate_inv_var function) "
+                                              "return wrong value[%d %s]",
+                                              r1, XPUAPIErrorMsg[r1]));
+        inv_var_data = running_inv_var_data;
+      }
       auto px = *x;
       int r2 = calculate_inv_BN_Y(
           dev_ctx.x_context(), px.mutable_data<T>(ctx.GetPlace()),
@@ -288,20 +311,30 @@ class BatchNormGradXPUKernel : public framework::OpKernel<T> {
                                              "calculate_inv_BN_Y function) "
                                              "return wrong value[%d %s]",
                                              r2, XPUAPIErrorMsg[r2]));
-    }
-    if (!d_x) {
-      d_x_data = RAII_GUARD.alloc_l3_or_gm<T>(x->numel());
-    }
-    if (!d_scale) {
-      d_scale_data = RAII_GUARD.alloc_l3_or_gm<float>(C);
-    }
-    if (!d_bias_data) {
-      d_bias_data = RAII_GUARD.alloc_l3_or_gm<float>(C);
+      if (use_global_stats) {
+        inv_var_data = running_variance->data<float>();
+      }
     }
 
-    int r3 = xpu::batch_norm_grad<T>(
-        dev_ctx.x_context(), x_data, d_y_data, d_x_data, N, C, H, W, scale_data,
-        mean_data, inv_var_data, d_scale_data, d_bias_data, true);
+    int r3;
+    if (use_global_stats) {
+      r3 = xpu::batch_norm_grad<T>(
+          dev_ctx.x_context(), x_data, d_y_data, d_x_data, N, C, H, W, scale_data,
+          mean_data, inv_var_data, d_scale_data, d_bias_data, true, true, epsilon);
+    } else {
+      if (!d_x) {
+        d_x_data = RAII_GUARD.alloc_l3_or_gm<T>(x->numel());
+      }
+      if (!d_scale) {
+        d_scale_data = RAII_GUARD.alloc_l3_or_gm<float>(C);
+      }
+      if (!d_bias_data) {
+        d_bias_data = RAII_GUARD.alloc_l3_or_gm<float>(C);
+      }
+      r3 = xpu::batch_norm_grad<T>(
+          dev_ctx.x_context(), x_data, d_y_data, d_x_data, N, C, H, W, scale_data,
+          mean_data, inv_var_data, d_scale_data, d_bias_data, true);
+    }
     PADDLE_ENFORCE_EQ(r3, XPU_SUCCESS, platform::errors::External(
                                            "XPU API(batch_norm_grad) return "
                                            "wrong value[%d %s]",
