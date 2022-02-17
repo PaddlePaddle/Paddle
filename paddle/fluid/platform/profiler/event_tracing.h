@@ -34,16 +34,19 @@ struct RecordInstantEvent {
 // Chrome Trace Viewer Format: Duration Event/Complte Event
 class RecordEvent {
  public:
-  explicit RecordEvent(const std::string& name,
-                       const EventRole role = EventRole::kOrdinary,
-                       uint32_t level = 1);
+  explicit RecordEvent(
+      const std::string& name,
+      const TracerEventType type = TracerEventType::UserDefined,
+      uint32_t level = 1, const EventRole role = EventRole::kOrdinary);
 
-  explicit RecordEvent(const char* name,
-                       const EventRole role = EventRole::kOrdinary,
-                       uint32_t level = 1);
+  explicit RecordEvent(
+      const char* name,
+      const TracerEventType type = TracerEventType::UserDefined,
+      uint32_t level = 1, const EventRole role = EventRole::kOrdinary);
 
-  RecordEvent(const std::string& name, const EventRole role,
-              const std::string& attr, uint32_t level = 1);
+  RecordEvent(const std::string& name, const std::string& attr,
+              const TracerEventType type = TracerEventType::UserDefined,
+              uint32_t level = 1, const EventRole role = EventRole::kOrdinary);
 
   // Stop event tracing explicitly before the object goes out of scope.
   // Sometimes it's inconvenient to use RAII
@@ -65,6 +68,7 @@ class RecordEvent {
   // different kernel invocations within an op.
   // std::string full_name_;
   EventRole role_{EventRole::kOrdinary};
+  TracerEventType type_{TracerEventType::UserDefined};
   std::string* attr_{nullptr};
   bool finished_{false};
 };
