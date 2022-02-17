@@ -20,6 +20,7 @@ limitations under the License. */
 #include <hip/hip_runtime.h>
 #endif
 #include <stdio.h>
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -142,6 +143,74 @@ CUDA_ATOMIC_WRAPPER(Add, float16) {
       old = atomicCAS(address_as_ui, assumed, add_to_high_half(assumed, val_f));
     } while (old != assumed);
     float16 ret;
+    ret.x = old >> 16;
+    return ret;
+  }
+}
+#endif
+#endif
+
+#ifdef PADDLE_CUDA_BF16
+// NOTE(zhangbo): cuda do not have atomicCAS for __nv_bfloat16.
+inline static __device__ uint32_t bf16_add_to_low_half(uint32_t val, float x) {
+  bfloat16 low_half;
+  // the bfloat16 in lower 16bits
+  low_half.x = static_cast<uint16_t>(val & 0xFFFFu);
+  low_half = static_cast<bfloat16>(static_cast<float>(low_half) + x);
+  return (val & 0xFFFF0000u) | low_half.x;
+}
+
+inline static __device__ uint32_t bf16_add_to_high_half(uint32_t val, float x) {
+  bfloat16 high_half;
+  // the bfloat16 in higher 16bits
+  high_half.x = static_cast<uint16_t>(val >> 16);
+  high_half = static_cast<bfloat16>(static_cast<float>(high_half) + x);
+  return (val & 0xFFFFu) | (static_cast<uint32_t>(high_half.x) << 16);
+}
+
+#if CUDA_VERSION >= 11000 && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+static __device__ __forceinline__ bfloat16 CUDABF16ToPDBF16(__nv_bfloat16 x) {
+  return *reinterpret_cast<bfloat16 *>(&x);
+}
+
+static __device__ __forceinline__ __nv_bfloat16 PDBF16ToCUDABF16(bfloat16 x) {
+  return *reinterpret_cast<__nv_bfloat16 *>(&x);
+}
+
+CUDA_ATOMIC_WRAPPER(Add, bfloat16) {
+  return CUDABF16ToPDBF16(atomicAdd(reinterpret_cast<__nv_bfloat16 *>(address),
+                                    PDBF16ToCUDABF16(val)));
+}
+#else
+CUDA_ATOMIC_WRAPPER(Add, bfloat16) {
+  // concrete packed bfloat16 value may exsits in lower or higher 16bits
+  // of the 32bits address.
+  uint32_t *address_as_ui = reinterpret_cast<uint32_t *>(
+      reinterpret_cast<char *>(address) -
+      (reinterpret_cast<uintptr_t>(address) & 0x02));
+  float val_f = static_cast<float>(val);
+  uint32_t old = *address_as_ui;
+  uint32_t sum;
+  uint32_t newval;
+  uint32_t assumed;
+  if (((uintptr_t)address & 0x02) == 0) {
+    // the bfloat16 value stay at lower 16 bits of the address.
+    do {
+      assumed = old;
+      old = atomicCAS(address_as_ui, assumed,
+                      bf16_add_to_low_half(assumed, val_f));
+    } while (old != assumed);
+    bfloat16 ret;
+    ret.x = old & 0xFFFFu;
+    return ret;
+  } else {
+    // the bfloat16 value stay at higher 16 bits of the address.
+    do {
+      assumed = old;
+      old = atomicCAS(address_as_ui, assumed,
+                      bf16_add_to_high_half(assumed, val_f));
+    } while (old != assumed);
+    bfloat16 ret;
     ret.x = old >> 16;
     return ret;
   }
