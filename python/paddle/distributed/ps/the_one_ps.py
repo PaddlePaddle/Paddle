@@ -47,8 +47,9 @@ def get_program_by_id(context, program_id):
     return None, None
 
 
-def parse_table_class(varname, o_main_program):
-    for op in o_main_program.global_block().ops:
+def parse_table_class(varname, program_id, context):
+    main_program, startup_program = get_program_by_id(context, program_id)
+    for op in main_program.global_block().ops:
         if not is_distributed_sparse_op(op) and not is_sparse_op(op):
             continue
 
@@ -61,9 +62,10 @@ def parse_table_class(varname, o_main_program):
                 return "MemorySparseTable"
 
 
-def get_default_accessor_proto(accessor, varname, o_main_program):
+def get_default_accessor_proto(accessor, varname, program_id, context):
+    main_program, startup_program = get_program_by_id(context, program_id)
     embedding_dim = 0
-    for var in o_main_program.list_vars():
+    for var in main_program.list_vars():
         if var.name == varname:
             embedding_dim = var.shape[1]
             break
@@ -131,9 +133,10 @@ def get_default_accessor_proto(accessor, varname, o_main_program):
                 sgd_param.adam.weight_bounds.extend([-10.0, 10.0])
 
 
-def check_embedding_dim(accessor, varname, o_main_program):
+def check_embedding_dim(accessor, varname, program_id, context):
+    main_program, startup_program = get_program_by_id(context, program_id)
     embedding_dim = 0
-    for var in o_main_program.list_vars():
+    for var in main_program.list_vars():
         if var.name == varname:
             embedding_dim = var.shape[1]
             break
@@ -224,8 +227,9 @@ class CommonAccessor:
         self.opt_input_map = opt_input_map
         self.opt_init_map = opt_init_map
 
-    def parse_entry(self, varname, o_main_program):
-        for op in o_main_program.global_block().ops:
+    def parse_entry(self, varname, program_id, context):
+        main_program, startup_program = get_program_by_id(context, program_id)
+        for op in main_program.global_block().ops:
             if not is_distributed_sparse_op(op) and not is_sparse_op(op):
                 continue
 
@@ -965,7 +969,8 @@ class TheOnePSRuntime(RuntimeBase):
                             table.table_class = table_proto.table_class
                         else:
                             table.table_class = parse_table_class(
-                                common.table_name, self.origin_main_program)
+                                common.table_name,
+                                ctx.program_id(), self.context)
                         if table.table_class != 'MemorySparseTable':
                             table.table_class = 'MemorySparseTable'
                             warnings.warn(
@@ -983,12 +988,12 @@ class TheOnePSRuntime(RuntimeBase):
                             warnings.warn(
                                 "The accessor of sparse table is not set, use default value."
                             )
-                        get_default_accessor_proto(table_proto.accessor,
-                                                   common.table_name,
-                                                   self.origin_main_program)
+                        get_default_accessor_proto(
+                            table_proto.accessor, common.table_name,
+                            ctx.program_id(), self.context)
                         check_embedding_dim(table_proto.accessor,
                                             common.table_name,
-                                            self.origin_main_program)
+                                            ctx.program_id(), self.context)
                         table.accessor_proto = text_format.MessageToString(
                             table_proto.accessor)
                 else:
@@ -1002,7 +1007,7 @@ class TheOnePSRuntime(RuntimeBase):
 
                 if ctx.is_sparse():
                     common.parse_entry(common.table_name,
-                                       self.origin_main_program)
+                                       ctx.program_id(), self.context)
 
                 if is_sync:
                     common.sync = "true"
@@ -1150,8 +1155,8 @@ class TheOnePSRuntime(RuntimeBase):
 
     def _save_sparse_params(self, executor, dirname, context, main_program,
                             mode):
-        distributed_varnames = get_sparse_tablenames(
-            self.context['origin_main_program'], True)
+        distributed_varnames = get_sparse_tablenames(self.origin_main_programs,
+                                                     True)
         values = []
         model_path = self._get_inference_model_path(dirname)
         for id, names in context.items():
@@ -1327,7 +1332,7 @@ class TheOnePSRuntime(RuntimeBase):
         self._ps_inference_save_persistables(*args, **kwargs)
 
     def _load_sparse_params(self, dirname, context, main_program, mode):
-        distributed_varnames = get_sparse_tablenames(self.origin_main_program,
+        distributed_varnames = get_sparse_tablenames(self.origin_main_programs,
                                                      True)
         values = []
         for id, names in context.items():
