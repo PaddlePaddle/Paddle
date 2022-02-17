@@ -18,7 +18,7 @@
 #include <hip/hip_runtime.h>
 #endif
 
-#ifdef __xpu_kp__
+#if defined(__xpu__)
 #include <xpu/runtime.h>
 #include "xpu/kernel/cluster_header.h"
 #include "xpu/kernel/debug.h"

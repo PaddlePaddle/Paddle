@@ -27,6 +27,8 @@ limitations under the License. */
 #include "paddle/pten/backends/gpu/gpu_launch_config.h"
 #include "paddle/pten/kernels/primitive/kernel_primitives.h"
 
+#define HOSTDEVICE __host__ __device__
+
 namespace kps = pten::kps;
 
 #endif
@@ -449,21 +451,12 @@ struct Unroller {
     Func<Begin, VecSize>::Apply(std::forward<Args>(args)...);
     Unroller<Func, VecSize, End, Begin + 1>::step(args...);
   }
-
-  template <typename... Args>
-  static __device__ inline void step(Args &&... args) {
-    Func<Begin, VecSize>::Apply(std::forward<Args>(args)...);
-    Unroller<Func, VecSize, End, Begin + 1>::step(args...);
-  }
 };
 
 template <template <int Index, int VecSize> typename Func, int VecSize, int End>
 struct Unroller<Func, VecSize, End, End> {
   template <typename... Args>
   static HOSTDEVICE inline void step(Args &&... args) {}
-
-  template <typename... Args>
-  static __device__ inline void step(Args &&... args) {}
 };
 
 template <int Index, int VecSize>
@@ -673,7 +666,7 @@ __device__ void VectorizedElementwiseKernelImpl(
     Functor func) {
   using Traits = paddle::platform::FunctionTraits<Functor>;
   using ArgsT = typename Traits::ArgsTuple;
-  __local__ ArgsT args[VecSize];
+  ArgsT args[VecSize];
   ConditionalT<OutT, NumOuts> result[VecSize];
 
   Unroller<Loader, VecSize, Arity>::step(
