@@ -22,7 +22,9 @@
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/enforce.h"
 #include "paddle/pten/core/kernel_context.h"
+#ifndef PADDLE_WITH_CUSTOM_KERNEL
 #include "paddle/pten/core/selected_rows.h"
+#endif
 #include "paddle/pten/core/sparse_coo_tensor.h"
 #include "paddle/pten/core/sparse_csr_tensor.h"
 #include "paddle/pten/core/type_defs.h"
@@ -216,7 +218,9 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(DenseTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(DenseTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(DenseTensor);
+#ifndef PADDLE_WITH_CUSTOM_KERNEL
   PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SelectedRows);
+#endif
 
   PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SparseCooTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SparseCooTensor);
@@ -246,7 +250,9 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
 
   PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(DenseTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(DenseTensor);
+#ifndef PADDLE_WITH_CUSTOM_KERNEL
   PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SelectedRows);
+#endif
 
   PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SparseCooTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(SparseCooTensor);
