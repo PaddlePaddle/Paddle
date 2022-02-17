@@ -186,8 +186,26 @@ class ONNXRuntimePredictor : public PaddlePredictor {
 
  private:
 #ifdef PADDLE_WITH_ONNXRUNTIME
+  ///
+  /// \brief get the Ort Value(input Tensor).
+  ///
+  /// \param[in] desc ONNXDesce(name、shape、dtype)
+  ///
+  /// \param[in] device_name "cpu" or "gpu" of device
+  ///
+  /// \return get a Ort::Value
+  ///
   Ort::Value GetOrtValue(const ONNXDesc &desc, const char *device_name);
 
+  ///
+  /// \brief Ort::Value to Paddle::ZeroCopyTensor.
+  ///
+  /// \param[in] value Ort::Value(output Tensor)
+  ///
+  /// \param[in] desc a ONNXDesce(name、shape、dtype)
+  ///
+  /// \return get a Ort::Value
+  ///
   void AsTensor(const Ort::Value &value, const ONNXDesc &desc);
 #endif
 
@@ -199,24 +217,12 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   Ort::Env env_;
   Ort::Session session_{nullptr};
 #endif
-  // std::vector<Tensor> input_tensors_;
-  // std::vector<Tensor> output_tensors_;
 
   platform::Place place_;
   framework::Scope *sub_scope_{nullptr};
   std::vector<ONNXDesc> input_desc_;
   std::vector<ONNXDesc> output_desc_;
-  // std::shared_ptr<framework::ProgramDesc> inference_program_;
-  // framework::OpCompatibleMap op_compatible_map_;
-  // std::vector<framework::OpDesc *> feeds_;
-  // std::map<std::string, size_t> feed_names_;
-  // Sorted according to the idx.
-  // std::map<size_t, std::string> idx2feeds_;
-  // std::vector<framework::OpDesc *> fetches_;
-  // std::map<size_t, std::string> idx2fetches_;
-
   int predictor_id_;
-  // std::map<std::string, std::vector<std::vector<int32_t>>> shape_info_;
 };
 
 }  // namespace paddle
