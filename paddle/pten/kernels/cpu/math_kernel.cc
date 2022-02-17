@@ -113,11 +113,11 @@ DEFINE_CPU_ELEMENTWISE_OP(Multiply)
 
 }  // namespace pten
 
-using complex64 = ::paddle::platform::complex<float>;
-using complex128 = ::paddle::platform::complex<double>;
+using complex64 = ::pten::dtype::complex<float>;
+using complex128 = ::pten::dtype::complex<double>;
 
 // NOTE(chenweihang): using bfloat16 will cause redefine with xpu bfloat16
-// using bfloat16 = ::paddle::platform::bfloat16;
+// using bfloat16 = ::pten::dtype::bfloat16;
 PT_REGISTER_KERNEL(add_raw,
                    CPU,
                    ALL_LAYOUT,
@@ -168,7 +168,7 @@ PT_REGISTER_KERNEL(sum_raw,
                    bool,
                    float,
                    double,
-                   paddle::platform::float16,
+                   pten::dtype::float16,
                    int16_t,
                    int,
                    int64_t,

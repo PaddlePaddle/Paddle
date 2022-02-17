@@ -135,8 +135,8 @@ PT_REGISTER_KERNEL(add_grad,
                    int16_t,
                    int,
                    int64_t,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(add_double_grad,
                    CPU,
@@ -147,8 +147,8 @@ PT_REGISTER_KERNEL(add_double_grad,
                    int16_t,
                    int,
                    int64_t,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(add_triple_grad,
                    CPU,
@@ -159,8 +159,8 @@ PT_REGISTER_KERNEL(add_triple_grad,
                    int16_t,
                    int,
                    int64_t,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(subtract_grad,
                    CPU,
@@ -171,8 +171,8 @@ PT_REGISTER_KERNEL(subtract_grad,
                    int16_t,
                    int,
                    int64_t,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(subtract_double_grad,
                    CPU,
@@ -183,5 +183,5 @@ PT_REGISTER_KERNEL(subtract_double_grad,
                    int16_t,
                    int,
                    int64_t,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}

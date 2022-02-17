@@ -78,8 +78,8 @@ void MultiplyKernel(const Context& dev_ctx,
 
 }  // namespace pten
 
-using complex64 = ::paddle::platform::complex<float>;
-using complex128 = ::paddle::platform::complex<double>;
+using complex64 = ::pten::dtype::complex<float>;
+using complex128 = ::pten::dtype::complex<double>;
 
 PT_REGISTER_KERNEL(
     mean, CPU, ALL_LAYOUT, pten::MeanKernel, float, double, bool) {}
@@ -91,7 +91,7 @@ PT_REGISTER_KERNEL(sum,
                    bool,
                    float,
                    double,
-                   paddle::platform::float16,
+                   pten::dtype::float16,
                    int16_t,
                    int,
                    int64_t,
@@ -152,7 +152,7 @@ PT_REGISTER_KERNEL(mean,
                    float,
                    double,
                    bool,
-                   paddle::platform::float16) {}
+                   pten::dtype::float16) {}
 PT_REGISTER_KERNEL(sum,
                    GPU,
                    ALL_LAYOUT,
@@ -160,7 +160,7 @@ PT_REGISTER_KERNEL(sum,
                    bool,
                    float,
                    double,
-                   paddle::platform::float16,
+                   pten::dtype::float16,
                    int16_t,
                    int,
                    int64_t,
@@ -177,7 +177,7 @@ PT_REGISTER_KERNEL(add,
                    int16_t,
                    int,
                    int64_t,
-                   paddle::platform::float16,
+                   pten::dtype::float16,
                    complex64,
                    complex128) {}
 PT_REGISTER_KERNEL(subtract,
@@ -189,7 +189,7 @@ PT_REGISTER_KERNEL(subtract,
                    int16_t,
                    int,
                    int64_t,
-                   paddle::platform::float16,
+                   pten::dtype::float16,
                    complex64,
                    complex128) {}
 PT_REGISTER_KERNEL(divide,
@@ -200,7 +200,7 @@ PT_REGISTER_KERNEL(divide,
                    double,
                    int,
                    int64_t,
-                   paddle::platform::float16,
+                   pten::dtype::float16,
                    complex64,
                    complex128) {}
 PT_REGISTER_KERNEL(multiply,
@@ -212,7 +212,7 @@ PT_REGISTER_KERNEL(multiply,
                    int,
                    int64_t,
                    bool,
-                   paddle::platform::float16,
+                   pten::dtype::float16,
                    complex64,
                    complex128) {}
 #endif
