@@ -1,5 +1,6 @@
 // RUN: infrtopt %s | FileCheck %s
 
+// CHECK-LABEL: @basic_tensor
 func @basic_tensor() {
   %a = "pten_dt.create_allocator.cpu" (): () -> !pten.CPU_allocator
   %b = "pten_dt.create_context.cpu" (): () -> !pten.CPU_context
