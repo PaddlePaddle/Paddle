@@ -131,8 +131,14 @@ SocketType tcp_listen(const std::string host, const std::string port,
       continue;
     }
 
-    const int on = 1;
-    if (::setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
+    int on = 1;
+#ifdef _WIN32
+    int ret = ::setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR,
+                           reinterpret_cast<char*>(&on), sizeof(on));
+#else
+    int ret = ::setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+#endif
+    if (ret < 0) {
       VLOG(0) << "Set the address reuse option failed on the server.";
     }
     if (::bind(sockfd, res->ai_addr, res->ai_addrlen) == 0) {

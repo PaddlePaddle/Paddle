@@ -28,10 +28,14 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 
+using TCPStore = paddle::distributed::TCPStore;
+
 void BindTCPStore(py::module* m) {
-  py::class_<paddle::distributed::TCPStore>(*m, "TCPStore")
-      .def(py::init<std::string, uint16_t, bool, size_t,
-                    std::chrono::seconds>());
+  py::class_<TCPStore>(*m, "TCPStore")
+      .def(
+          py::init<std::string, uint16_t, bool, size_t, std::chrono::seconds>())
+      .def("add", &TCPStore::add)
+      .def("get", &TCPStore::get);
 }
 
 }  // namespace pybind
