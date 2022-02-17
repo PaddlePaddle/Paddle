@@ -91,10 +91,10 @@ DEFINE_CUDA_ELEMENTWISE_OP(Divide)
 
 }  // namespace pten
 
-using float16 = paddle::platform::float16;
-using bfloat16 = paddle::platform::bfloat16;
-using complex64 = ::paddle::platform::complex<float>;
-using complex128 = ::paddle::platform::complex<double>;
+using float16 = pten::dtype::float16;
+using bfloat16 = pten::dtype::bfloat16 using complex64 =
+    ::pten::dtype::complex<float>;
+using complex128 = ::pten::dtype::complex<double>;
 
 PT_REGISTER_KERNEL(add_raw,
                    GPU,
