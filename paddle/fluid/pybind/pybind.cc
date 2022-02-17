@@ -3797,7 +3797,6 @@ All parameter, weight, gradient are variables in Paddle.
       .def("reset", &platform::ipu::IpuBackend::Reset)
       .def("set_scope", &platform::ipu::IpuBackend::SetScope)
       .def("set_ipu_strategy", &platform::ipu::IpuBackend::SetIpuStrategy)
-      .def("set_custom_ops", &platform::ipu::IpuBackend::SetCustomOps)
       .def("save_model_proto", &platform::ipu::IpuBackend::SaveModelProto);
 
   py::class_<platform::ipu::IpuStrategy>(m, "IpuStrategy")
@@ -3828,7 +3827,9 @@ All parameter, weight, gradient are variables in Paddle.
                      option_val = std::to_string(option.cast<std::uint64_t>());
                    } else {
                      PADDLE_THROW(platform::errors::Unimplemented(
-                         "Failed to convert type: %s", option.get_type()));
+                         "Failed to convert type: %s when set IpuStrategy "
+                         "option: %s",
+                         option.get_type(), option_name));
                    }
                    self.InsertStringOption(option_name, option_val);
                  }
@@ -3839,6 +3840,29 @@ All parameter, weight, gradient are variables in Paddle.
                          option_name, option.first.cast<std::string>(),
                          option.second.cast<std::uint64_t>());
                    }
+                 } else if (option_name == "custom_op") {
+                   std::string paddle_op;
+                   std::string popart_op;
+                   std::string domain;
+                   std::uint64_t version;
+                   for (auto option : element.second.cast<py::dict>()) {
+                     std::string option_key = option.first.cast<std::string>();
+                     if (option_key == "paddle_op") {
+                       paddle_op = option.second.cast<std::string>();
+                     } else if (option_key == "popart_op") {
+                       popart_op = option.second.cast<std::string>();
+                     } else if (option_key == "domain") {
+                       domain = option.second.cast<std::string>();
+                     } else if (option_key == "version") {
+                       version = option.second.cast<std::uint64_t>();
+                     } else {
+                       PADDLE_THROW(platform::errors::InvalidArgument(
+                           "Invalid argument, key must be one of paddle_op, "
+                           "popart_op, domain or version, but revecived %s",
+                           option_key));
+                     }
+                   }
+                   self.AddCustomOp(paddle_op, popart_op, domain, version);
                  } else {
                    for (auto option : element.second.cast<py::dict>()) {
                      std::string option_key = option.first.cast<std::string>();
@@ -3850,8 +3874,9 @@ All parameter, weight, gradient are variables in Paddle.
                            std::to_string(option.second.cast<std::uint64_t>());
                      } else {
                        PADDLE_THROW(platform::errors::Unimplemented(
-                           "Failed to convert type: %s",
-                           option.second.get_type()));
+                           "Failed to convert value type: %s when set "
+                           "IpuStrategy option: %s",
+                           option.second.get_type(), option_key));
                      }
                      self.InsertStringPairOption(option_name, option_key,
                                                  option_val);
@@ -3859,7 +3884,9 @@ All parameter, weight, gradient are variables in Paddle.
                  }
                } else {
                  PADDLE_THROW(platform::errors::InvalidArgument(
-                     "Unknown option type: %s", element.second.get_type()));
+                     "Invalid IpuStrategy option value type: %s, please check "
+                     "input value for option: %s",
+                     element.second.get_type(), option_name));
                }
              }
            })
@@ -3893,39 +3920,6 @@ All parameter, weight, gradient are variables in Paddle.
       .def("enable_pattern", &platform::ipu::IpuStrategy::EnablePattern)
       .def("disable_pattern", &platform::ipu::IpuStrategy::DisablePattern)
       .def("is_pattern_enabled", &platform::ipu::IpuStrategy::IsPatternEnabled);
-
-  py::class_<platform::ipu::IpuCustomOpIdentifier>(m, "IpuCustomOpIdentifier")
-      .def(py::init<const std::string &, const std::string &,
-                    const std::string &, unsigned int>())
-      .def("repr", &platform::ipu::IpuCustomOpIdentifier::repr)
-      .def_property(
-          "paddle_op",
-          [](const platform::ipu::IpuCustomOpIdentifier &self) {
-            return self.paddle_op;
-          },
-          [](platform::ipu::IpuCustomOpIdentifier &self,
-             const std::string &paddle_op) { self.paddle_op = paddle_op; })
-      .def_property("popart_op",
-                    [](const platform::ipu::IpuCustomOpIdentifier &self) {
-                      return self.popart_op.type;
-                    },
-                    [](platform::ipu::IpuCustomOpIdentifier &self,
-                       const std::string &type) { self.popart_op.type = type; })
-      .def_property(
-          "domain",
-          [](const platform::ipu::IpuCustomOpIdentifier &self) {
-            return self.popart_op.domain;
-          },
-          [](platform::ipu::IpuCustomOpIdentifier &self,
-             const std::string &domain) { self.popart_op.domain = domain; })
-      .def_property("version",
-                    [](const platform::ipu::IpuCustomOpIdentifier &self) {
-                      return self.popart_op.version;
-                    },
-                    [](platform::ipu::IpuCustomOpIdentifier &self,
-                       const unsigned int &version) {
-                      self.popart_op.version = version;
-                    });
 #endif
 
   BindFleetWrapper(&m);
