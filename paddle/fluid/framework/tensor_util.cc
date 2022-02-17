@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 #include "paddle/pten/core/dense_tensor.h"
 

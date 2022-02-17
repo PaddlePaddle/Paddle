@@ -27,7 +27,7 @@
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_XPU
 #include "xpu/refactor/math.h"

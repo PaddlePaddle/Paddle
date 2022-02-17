@@ -46,6 +46,7 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/pten/api/ext/op_meta_info.h"
 
 #ifdef PADDLE_WITH_MKLML
