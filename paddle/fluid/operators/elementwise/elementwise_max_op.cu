@@ -65,34 +65,27 @@ ElementwiseMaxGrad(const framework::ExecutionContext& ctx,
 
 namespace ops = paddle::operators;
 
-#define REGISTER_ELEMENTWISEADD_BASE(op_name, grad, ...)                  \
-  REGISTER_OP_CUDA_KERNEL(                                                \
-      op_name,                                                            \
-      ops::Elementwise##grad##Kernel<paddle::platform::CUDADeviceContext, \
-                                     float>,                              \
-      ops::Elementwise##grad##Kernel<paddle::platform::CUDADeviceContext, \
-                                     double>,                             \
-      ops::Elementwise##grad##Kernel<paddle::platform::CUDADeviceContext, \
-                                     int>,                                \
-      ops::Elementwise##grad##Kernel<paddle::platform::CUDADeviceContext, \
-                                     int64_t>,                            \
-      ops::Elementwise##grad##Kernel<paddle::platform::CUDADeviceContext, \
-                                     paddle::platform::float16>,          \
-      ##__VA_ARGS__);
-
-#define REGISTER_ELEMENTWISEADD_EX(op_name, grad)                         \
-  REGISTER_ELEMENTWISEADD_BASE(                                           \
-      op_name, grad,                                                      \
-      ops::Elementwise##grad##Kernel<paddle::platform::CUDADeviceContext, \
-                                     paddle::platform::bfloat16>)
-
-#if defined(PADDLE_CUDA_BF16)
-REGISTER_ELEMENTWISEADD_EX(elementwise_max, Max)
-REGISTER_ELEMENTWISEADD_EX(elementwise_max_grad, MaxGrad)
-#else
-REGISTER_ELEMENTWISEADD_BASE(elementwise_max, Max)
-REGISTER_ELEMENTWISEADD_BASE(elementwise_max_grad, MaxGrad)
-#endif
+REGISTER_OP_CUDA_KERNEL(
+    elementwise_max,
+    ops::ElementwiseMaxKernel<paddle::platform::CUDADeviceContext,
+                              paddle::platform::float16>,
+    ops::ElementwiseMaxKernel<paddle::platform::CUDADeviceContext,
+                              paddle::platform::bfloat16>,
+    ops::ElementwiseMaxKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ElementwiseMaxKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::ElementwiseMaxKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::ElementwiseMaxKernel<paddle::platform::CUDADeviceContext, int64_t>);
+REGISTER_OP_CUDA_KERNEL(
+    elementwise_max_grad,
+    ops::ElementwiseMaxGradKernel<paddle::platform::CUDADeviceContext,
+                                  paddle::platform::float16>,
+    ops::ElementwiseMaxGradKernel<paddle::platform::CUDADeviceContext,
+                                  paddle::platform::bfloat16>,
+    ops::ElementwiseMaxGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ElementwiseMaxGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::ElementwiseMaxGradKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::ElementwiseMaxGradKernel<paddle::platform::CUDADeviceContext,
+                                  int64_t>);
 
 REGISTER_OP_CUDA_KERNEL(
     elementwise_fmax,
