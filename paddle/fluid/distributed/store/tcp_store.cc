@@ -27,23 +27,23 @@ namespace detail {
 
 constexpr int INFTIME = -1;
 
-std::unique_ptr<MasterDaemon> MasterDaemon::start(int socket) {
+std::unique_ptr<MasterDaemon> MasterDaemon::start(SocketType socket) {
   return std::make_unique<MasterDaemon>(socket);
 }
 
-MasterDaemon::MasterDaemon(int socket) : _listen_socket(socket) {
+MasterDaemon::MasterDaemon(SocketType socket) : _listen_socket(socket) {
   _background_thread = std::thread{&MasterDaemon::run, this};
 }
 
 MasterDaemon::~MasterDaemon() {
   _background_thread.join();
-  ::close(_listen_socket);
-  for (int socket : _sockets) {
-    ::close(socket);
+  tcputils::close_socket(_listen_socket);
+  for (SocketType socket : _sockets) {
+    tcputils::close_socket(socket);
   }
 }
 
-void MasterDaemon::_do_add(int socket) {
+void MasterDaemon::_do_add(SocketType socket) {
   int64_t new_value{};
   std::string key = tcputils::receive_string(socket);
   new_value = tcputils::receive_value<int64_t>(socket);
@@ -64,7 +64,7 @@ void MasterDaemon::_do_add(int socket) {
   tcputils::send_value<int64_t>(socket, new_value);
 }
 
-void MasterDaemon::_do_get(int socket) {
+void MasterDaemon::_do_get(SocketType socket) {
   std::string key = tcputils::receive_string(socket);
   auto iter = _store.find(key);
   PADDLE_ENFORCE_NE(
@@ -79,13 +79,13 @@ void MasterDaemon::_do_get(int socket) {
   tcputils::send_vector<uint8_t>(socket, value);
 }
 
-void MasterDaemon::_do_stop(int socket) {
+void MasterDaemon::_do_stop(SocketType socket) {
   ReplyType value = ReplyType::STOP_WAIT;
   _stop = true;
   tcputils::send_value<ReplyType>(socket, value);
 }
 
-void MasterDaemon::_do_wait(int socket) {
+void MasterDaemon::_do_wait(SocketType socket) {
   std::string key = tcputils::receive_string(socket);
   auto iter = _store.find(key);
   auto reply = ReplyType::STOP_WAIT;
@@ -101,13 +101,16 @@ void MasterDaemon::run() {
   std::vector<struct pollfd> fds;
   fds.push_back({.fd = _listen_socket, .events = POLLIN, .revents = 0});
 
-  // TODO(sandyhouse) add exit method
   while (!_stop) {
     for (size_t i = 0; i < fds.size(); i++) {
       fds[i].revents = 0;
     }
 
+#ifdef _WIN32
+    ::WSAPoll(fds.data(), fds.size(), INFTIME);
+#else
     ::poll(fds.data(), fds.size(), INFTIME);
+#endif
 
     if (fds[0].revents != 0) {
       int socket = tcputils::tcp_accept(_listen_socket);

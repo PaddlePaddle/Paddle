@@ -15,12 +15,16 @@
 #pragma once
 
 #ifdef _WIN32
-#include <io.h>
 #include <winsock2.h>
+#include <ws2tcpip.h>
+#pragma comment(lib, "Ws2_32.lib")
 #else
+#include <fcntl.h>
 #include <netdb.h>
 #include <netinet/tcp.h>
-#include <poll.h>
+#include <sys/poll.h>
+#include <sys/socket.h>
+#include <unistd.h>
 #endif
 #include <chrono>
 #include <iostream>
@@ -30,6 +34,13 @@
 // Utility functions for TCP socket.
 namespace paddle {
 namespace distributed {
+
+#ifdef _WIN32
+using SocketType = SOCKET;
+#else
+using SocketType = int;
+#endif
+
 namespace tcputils {
 
 constexpr int LISTENQ = 2048;
@@ -38,19 +49,20 @@ constexpr std::chrono::seconds kNoTimeout = std::chrono::seconds::zero();
 constexpr std::chrono::seconds kDefaultTimeout = std::chrono::seconds(360);
 
 std::error_code socket_error();
+void close_socket(SocketType socket);
 ::addrinfo* get_addr_info(const std::string host, const std::string port,
                           int ai_flags, int family);
 void free_addr_info(::addrinfo*);
 int tcp_connect(const std::string host, const std::string port, int family,
                 std::chrono::seconds timeout = kNoTimeout);
 int tcp_listen(const std::string host, const std::string port, int family);
-int tcp_accept(int socket);
+int tcp_accept(SocketType socket);
 
-void send_string(int socket, const std::string& s);
-std::string receive_string(int socket);
+void send_string(SocketType socket, const std::string& s);
+std::string receive_string(SocketType socket);
 
 template <typename T>
-void send_bytes(int socket, const T* buffer, size_t len) {
+void send_bytes(SocketType socket, const T* buffer, size_t len) {
   size_t to_send = len * sizeof(T);
   if (to_send == 0) {
     return;
@@ -69,7 +81,7 @@ void send_bytes(int socket, const T* buffer, size_t len) {
 }
 
 template <typename T>
-void receive_bytes(int socket, T* buffer, size_t len) {
+void receive_bytes(SocketType socket, T* buffer, size_t len) {
   size_t to_recv = len * sizeof(T);
   if (to_recv == 0) {
     return;
@@ -88,14 +100,14 @@ void receive_bytes(int socket, T* buffer, size_t len) {
 }
 
 template <typename T>
-void send_vector(int socket, const std::vector<T>& v) {
+void send_vector(SocketType socket, const std::vector<T>& v) {
   size_t size = v.size();
   send_bytes<size_t>(socket, &size, 1);
   send_bytes<T>(socket, v.data(), size);
 }
 
 template <typename T>
-std::vector<T> receive_vector(int socket) {
+std::vector<T> receive_vector(SocketType socket) {
   size_t size;
   receive_bytes<size_t>(socket, &size, 1);
   std::vector<T> res(size);
@@ -104,12 +116,12 @@ std::vector<T> receive_vector(int socket) {
 }
 
 template <typename T>
-void send_value(int socket, const T& v) {
+void send_value(SocketType socket, const T& v) {
   send_bytes<T>(socket, &v, 1);
 }
 
 template <typename T>
-T receive_value(int socket) {
+T receive_value(SocketType socket) {
   T v;
   receive_bytes<T>(socket, &v, 1);
   return v;

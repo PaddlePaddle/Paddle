@@ -33,19 +33,19 @@ namespace detail {
 
 class MasterDaemon {
  public:
-  static std::unique_ptr<MasterDaemon> start(int listen_socket);
+  static std::unique_ptr<MasterDaemon> start(SocketType listen_socket);
   MasterDaemon() = delete;
-  explicit MasterDaemon(int listen_socket);
+  explicit MasterDaemon(SocketType listen_socket);
   ~MasterDaemon();
 
  private:
   void run();
-  void _do_add(int socket);
-  void _do_wait(int socket);
-  void _do_get(int socket);
-  void _do_stop(int socket);
-  int _listen_socket;
-  std::vector<int> _sockets;
+  void _do_add(SocketType socket);
+  void _do_wait(SocketType socket);
+  void _do_get(SocketType socket);
+  void _do_stop(SocketType socket);
+  SocketType _listen_socket;
+  std::vector<SocketType> _sockets;
   std::unordered_map<std::string, std::vector<uint8_t>> _store;
   std::thread _background_thread{};
   bool _stop = false;
@@ -62,10 +62,10 @@ class TCPServer {
 
 class TCPClient {
  public:
-  explicit TCPClient(int socket) : _socket{socket} {}
+  explicit TCPClient(SocketType socket) : _socket{socket} {}
   static std::unique_ptr<TCPClient> connect(const std::string host,
                                             uint16_t port);
-  ~TCPClient() { ::close(_socket); }
+  ~TCPClient() { tcputils::close_socket(_socket); }
   void send_command_for_key(Command type, const std::string& key);
 
   template <typename T>
@@ -80,7 +80,7 @@ class TCPClient {
   T receive_value();
 
  private:
-  int _socket;
+  SocketType _socket;
 };
 
 }  // namespace detail

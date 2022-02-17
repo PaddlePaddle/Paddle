@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/store/tcp_utils.h"
-#include <fcntl.h>
-#include <unistd.h>
 #include <cerrno>
 #include <cstring>
 #include <thread>
@@ -25,7 +23,19 @@ namespace distributed {
 namespace tcputils {
 
 std::error_code socket_error() {
+#ifdef _WIN32
+  return std::error_code{::WSAGetLastError(), std::generic_category()};
+#else
   return std::error_code{errno, std::generic_category()};
+#endif
+}
+
+void close_socket(SocketType socket) {
+#ifdef _WIN32
+  ::closesocket(socket);
+#else
+  ::close(socket);
+#endif
 }
 
 ::addrinfo* get_addr_info(const std::string host, const std::string port,
@@ -57,12 +67,12 @@ void free_addr_info(::addrinfo* hint) {
   ::freeaddrinfo(hint);
 }
 
-int tcp_connect(const std::string host, const std::string port, int family,
-                std::chrono::seconds timeout) {
+SocketType tcp_connect(const std::string host, const std::string port,
+                       int family, std::chrono::seconds timeout) {
   int ai_flags = AI_NUMERICSERV | AI_V4MAPPED | AI_ALL;
   ::addrinfo* res = get_addr_info(host, port, ai_flags, family);
 
-  int sockfd = -1;
+  SocketType sockfd = -1;
   bool retry = true;
   auto deadline = std::chrono::steady_clock::now() + timeout;
   do {
@@ -79,7 +89,7 @@ int tcp_connect(const std::string host, const std::string port, int family,
       }
       VLOG(0) << "Retry to connect to " << host << ":" << port
               << " while the server is not yet listening.";
-      ::close(sockfd);
+      close_socket(sockfd);
       sockfd = -1;
       std::this_thread::sleep_for(kDelay);
       if (timeout != kNoTimeout &&
@@ -104,11 +114,12 @@ int tcp_connect(const std::string host, const std::string port, int family,
   return sockfd;
 }
 
-int tcp_listen(const std::string host, const std::string port, int family) {
+SocketType tcp_listen(const std::string host, const std::string port,
+                      int family) {
   int ai_flags = AI_PASSIVE | AI_NUMERICSERV;
   ::addrinfo* res = get_addr_info(host, port, ai_flags, family);
   ::addrinfo* cur = res;
-  int sockfd = -1;
+  SocketType sockfd{};
 
   std::string node = host.empty() ? "IP_ANY" : host;
   while (cur) {
@@ -127,7 +138,7 @@ int tcp_listen(const std::string host, const std::string port, int family) {
     if (::bind(sockfd, res->ai_addr, res->ai_addrlen) == 0) {
       break;
     }
-    ::close(sockfd);
+    close_socket(sockfd);
     sockfd = -1;
     cur = cur->ai_next;
   }
@@ -142,29 +153,31 @@ int tcp_listen(const std::string host, const std::string port, int family) {
   return sockfd;
 }
 
-int tcp_accept(int socket) {
+SocketType tcp_accept(SocketType socket) {
   ::sockaddr_storage addr_s{};
   ::socklen_t addr_len = sizeof(addr_s);
-  int new_socket =
+  SocketType new_socket =
       ::accept(socket, reinterpret_cast<::sockaddr*>(&addr_s), &addr_len);
   PADDLE_ENFORCE_GT(
       new_socket, 0,
       platform::errors::InvalidArgument(
           "The server failed to accept a new connection. Details: %s.",
           socket_error().message()));
+#ifndef _WIN32
   ::fcntl(new_socket, F_SETFD, FD_CLOEXEC);
+#endif
   auto value = 1;
   ::setsockopt(new_socket, IPPROTO_TCP, TCP_NODELAY, &value, sizeof(value));
   return new_socket;
 }
 
-void send_string(int socket, const std::string& s) {
+void send_string(SocketType socket, const std::string& s) {
   std::string::size_type size = s.size();
   send_bytes<std::string::size_type>(socket, &size, 1);
   send_bytes<const char>(socket, s.data(), size);
 }
 
-std::string receive_string(int socket) {
+std::string receive_string(SocketType socket) {
   std::string::size_type size;
   receive_bytes<std::string::size_type>(socket, &size, 1);
   std::vector<char> v(size);
