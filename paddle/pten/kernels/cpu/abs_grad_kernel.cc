@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/pten/common/complex.h"
 #include "paddle/pten/core/kernel_registry.h"
+#include "paddle/pten/kernels/funcs/complex_functors.h"
 #include "paddle/pten/kernels/impl/abs_grad_kernel_impl.h"
 
 using pten::dtype::complex;

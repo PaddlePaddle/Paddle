@@ -63,7 +63,7 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, T> {
   void operator()(const framework::ExecutionContext &ctx, const Tensor &input,
                   Tensor *eigen_values, Tensor *eigen_vectors, bool is_lower,
                   bool has_vectors) {
-    using ValueType = math::Real<T>;
+    using ValueType = pten::funcs::Real<T>;
     auto *out_value = eigen_values->mutable_data<ValueType>(ctx.GetPlace());
 
     auto dito =
@@ -123,9 +123,9 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, T> {
     for (auto i = 0; i < batch_size; i++) {
       auto *value_data = out_value + i * values_stride;
       auto *input_data = input_vector + i * vector_stride;
-      math::lapackEigh<T, Real<T>>(jobz, uplo, n, input_data, lda, value_data,
-                                   work_data, lwork, rwork_data, lrwork,
-                                   iwork_data, liwork, &info);
+      math::lapackEigh<T, pten::funcs::Real<T>>(
+          jobz, uplo, n, input_data, lda, value_data, work_data, lwork,
+          rwork_data, lrwork, iwork_data, liwork, &info);
       CheckEighResult(i, info);
     }
     if (has_vectors) {
@@ -151,7 +151,7 @@ struct MatrixEighFunctor<platform::CUDADeviceContext, T> {
   void operator()(const framework::ExecutionContext &ctx, const Tensor &input,
                   Tensor *eigen_values, Tensor *eigen_vectors, bool is_lower,
                   bool has_vectors) {
-    using ValueType = math::Real<T>;
+    using ValueType = pten::funcs::Real<T>;
     auto *out_value = eigen_values->mutable_data<ValueType>(ctx.GetPlace());
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
@@ -233,7 +233,7 @@ struct MatrixEighFunctor<platform::CUDADeviceContext, T> {
     }
   }
 
-  using ValueType = math::Real<T>;
+  using ValueType = pten::funcs::Real<T>;
   inline void EvdBuffer(cusolverDnHandle_t handle, cusolverEigMode_t jobz,
                         cublasFillMode_t uplo, int n, const T *A, int lda,
                         const ValueType *W, int *lwork) const;
