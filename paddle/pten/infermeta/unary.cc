@@ -496,7 +496,7 @@ void TraceInferMeta(
     sizes.erase(sizes.begin() + std::max(dim1_, dim2_));
     sizes.erase(sizes.begin() + std::min(dim1_, dim2_));
   }
-  out->set_dims(framework::make_ddim(sizes));
+  out->set_dims(pten::make_ddim(sizes));
 }
 
 }  // namespace pten
