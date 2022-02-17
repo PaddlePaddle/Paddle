@@ -403,7 +403,7 @@ class ShardingOptimizerStage2(Optimizer):
             for dst_rank, internal_storage in dtype_per_rank.items():
                 dist.broadcast(
                     tensor=internal_storage.buffer,
-                    src=dst_rank,
+                    src=self.group.ranks[dst_rank],
                     group=self.group,
                     use_calc_stream=True)
 
