@@ -40,7 +40,7 @@ class AccuracyMLUKernel : public framework::OpKernel<T> {
     auto indices_type = framework::TransToProtoVarType(indices->type());
     if (indices_type != VT::INT32) {
       PADDLE_ENFORCE_EQ(MLUSupportsCast(indices_type, VT::INT32), true,
-                        platform::errors::Unavailable(
+                        platform::errors::Unimplemented(
                             "In accuracy mlu kernel, cast indices from [%s] to "
                             "[%s] is not supported.",
                             framework::DataTypeToString(indices_type),
@@ -59,7 +59,7 @@ class AccuracyMLUKernel : public framework::OpKernel<T> {
     if (label_type != VT::INT32) {
       PADDLE_ENFORCE_EQ(
           MLUSupportsCast(label_type, VT::INT32), true,
-          platform::errors::Unavailable(
+          platform::errors::Unimplemented(
               "In accuracy mlu kernel, cast label from [%s] to [%s] "
               "is not supported.",
               framework::DataTypeToString(label_type),
