@@ -186,10 +186,16 @@ static PyObject* tensor_retain_grads(TensorObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static PyObject* tensor__clear_gradient(TensorObject* self, PyObject* args,
-                                        PyObject* kwargs) {
+static PyObject* tensor_clear_gradient(TensorObject* self, PyObject* args,
+                                       PyObject* kwargs) {
   EAGER_TRY
   VLOG(4) << "ClearGradient " << self->tensor.name();
+
+  Py_ssize_t args_num = PyTuple_Size(args);
+  bool set_to_zero = true;
+  if (args_num == (Py_ssize_t)1) {
+    CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
+  }
 
   paddle::experimental::Tensor* grad;
   if (egr::egr_utils_api::IsLeafTensor(self->tensor)) {
@@ -209,13 +215,27 @@ static PyObject* tensor__clear_gradient(TensorObject* self, PyObject* args,
     grad = meta->MutableGrad();
   }
 
-  if (grad->initialized()) {
-    VLOG(4) << "Gradient of " << self->tensor.name()
-            << " is initialized, will be released.";
-    auto dense_tensor =
-        std::dynamic_pointer_cast<pten::DenseTensor>(grad->impl());
-    dense_tensor->MoveMemoryHolder();
+  if (grad->is_selected_rows()) {
+    auto selected_rows =
+        std::dynamic_pointer_cast<pten::SelectedRows>(grad->impl());
+    if (selected_rows->mutable_value()->IsInitialized()) {
+      selected_rows->mutable_rows()->clear();
+      selected_rows->mutable_value()->clear();
+    }
+  } else if (grad->is_dense_tensor()) {
+    if (grad->initialized()) {
+      if (set_to_zero) {
+        grad->set_impl(paddle::experimental::zeros_like(*grad).impl());
+      } else {
+        VLOG(4) << "Gradient of " << self->tensor.name()
+                << " is initialized, will be released.";
+        auto dense_tensor =
+            std::dynamic_pointer_cast<pten::DenseTensor>(grad->impl());
+        dense_tensor->MoveMemoryHolder();
+      }
+    }
   }
+
   Py_INCREF(Py_None);
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -407,7 +427,7 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"retain_grads", (PyCFunction)(void (*)(void))tensor_retain_grads,
      METH_VARARGS | METH_KEYWORDS, NULL},
-    {"_clear_gradient", (PyCFunction)(void (*)(void))tensor__clear_gradient,
+    {"clear_gradient", (PyCFunction)(void (*)(void))tensor_clear_gradient,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_zero_grads", (PyCFunction)(void (*)(void))tensor__zero_grads,
      METH_VARARGS | METH_KEYWORDS, NULL},
