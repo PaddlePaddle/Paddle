@@ -58,6 +58,7 @@ class GatherOpCUDAKernel : public framework::OpKernel<T> {
 
     output->mutable_data<T>(ctx.GetPlace());
     if (x->numel() == 0) return;
+    if (index->numel() == 0) return;
     if (index_type == framework::proto::VarType::INT32) {
       GPUGather<T, int>(ctx.device_context(), *x, *index, output);
     } else if (index_type == framework::proto::VarType::INT64) {
@@ -108,6 +109,7 @@ class GatherGradOpCUDAKernel : public framework::OpKernel<T> {
                        .eigen_device();
     dxt.device(place) = dxt.constant(static_cast<T>(0));
     if (dO->numel() == 0) return;
+    if (index->numel() == 0) return;
     if (index_type == framework::proto::VarType::INT32) {
       GPUScatterAssign<T, int>(ctx, *dO, *index, dX,
                                ctx.Attr<bool>("overwrite"));

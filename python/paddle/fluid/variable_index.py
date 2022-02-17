@@ -255,6 +255,13 @@ def is_integer_or_scalar_tensor(ele):
     return False
 
 
+def is_bool_tensor(ele):
+    from .framework import Variable
+    if isinstance(ele, Variable) and ele.dtype == paddle.bool:
+        return True
+    return False
+
+
 def deal_attrs(attrs, attr, attr_name, tensor_attr_name, inputs, infer_flags):
     from .framework import Variable
     from .layers import utils
@@ -304,7 +311,7 @@ def _getitem_impl_(var, item):
     slice_info = SliceInfo()
 
     for dim, slice_item in enumerate(item):
-        if is_integer_or_scalar_tensor(slice_item):
+        if is_integer_or_scalar_tensor(slice_item) and not is_bool_tensor(slice_item):
             if isinstance(slice_item,
                           int) and var.shape[dim] is not None and var.shape[
                               dim] >= 0 and slice_item >= var.shape[dim]:
@@ -523,7 +530,7 @@ def _setitem_impl_(var, item, value):
     slice_info = SliceInfo()
     dim = 0
     for _, slice_item in enumerate(item):
-        if is_integer_or_scalar_tensor(slice_item):
+        if is_integer_or_scalar_tensor(slice_item) and not is_bool_tensor(slice_item):
             decrease_axes.append(dim)
             start = slice_item
             end = slice_item + 1 if slice_item != -1 else MAX_INTEGER
