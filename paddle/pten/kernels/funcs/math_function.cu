@@ -375,6 +375,8 @@ struct ElementwiseAddTo<paddle::platform::CUDADeviceContext, T> {
 
 template struct ElementwiseAddTo<paddle::platform::CUDADeviceContext,
                                  paddle::platform::float16>;
+template struct ElementwiseAddTo<paddle::platform::CUDADeviceContext,
+                                 paddle::platform::bfloat16>;
 
 }  // namespace funcs
 }  // namespace pten
