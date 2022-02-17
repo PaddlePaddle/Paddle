@@ -29,6 +29,7 @@ void SetFeedVariable(Scope* scope, const LoDTensor& input,
                      const std::string& var_name, size_t index) {
   // If var_name Variable is not found in GlobalScope, a new variable will
   // be created.
+  std::cout << "lodtensor input -->place " << input.place() << std::endl;
   VLOG(3) << "SetFeedVariable name=" << var_name << " index=" << index;
   Variable* g_feed_value = scope->Var(var_name);
   auto& feed_inputs = *(g_feed_value->GetMutable<FeedList>());

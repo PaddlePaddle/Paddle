@@ -43,6 +43,7 @@ class FeedVariableVisitor : public boost::static_visitor<void> {
     } else {
       platform::DeviceContext *context =
           platform::DeviceContextPool::Instance().Get(place_);
+
       framework::TensorCopy(in_tensor, place_, *context, out_tensor);
     }
     out_tensor->set_lod(in_tensor.lod());
@@ -69,6 +70,7 @@ class FeedOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
+    std::cout << "in run feed op place = " << place << std::endl;
     OP_INOUT_CHECK(HasInputs("X"), "Input", "X", "Feed");
     OP_INOUT_CHECK(HasOutputs("Out"), "Output", "Out", "Feed");
 
