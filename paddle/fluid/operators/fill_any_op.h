@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -41,7 +41,7 @@ class FillAnyKernel : public framework::OpKernel<T> {
 
     out->mutable_data<T>(ctx.GetPlace());
     auto &dev_ctx = ctx.template device_context<DeviceContext>();
-    math::SetConstant<DeviceContext, T> functor;
+    pten::funcs::SetConstant<DeviceContext, T> functor;
     functor(reinterpret_cast<const DeviceContext &>(dev_ctx), out,
             static_cast<T>(fill_var));
   }
@@ -55,7 +55,7 @@ class FillAnyGradKernel : public framework::OpKernel<T> {
     if (dx) {
       dx->mutable_data<T>(ctx.GetPlace());
       auto &dev_ctx = ctx.template device_context<DeviceContext>();
-      math::SetConstant<DeviceContext, T> functor;
+      pten::funcs::SetConstant<DeviceContext, T> functor;
       functor(reinterpret_cast<const DeviceContext &>(dev_ctx), dx, T(0));
     }
   }

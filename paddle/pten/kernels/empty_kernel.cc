@@ -94,6 +94,7 @@ PT_REGISTER_KERNEL(empty_like,
                    int64_t,
                    bool,
                    paddle::platform::float16,
+                   paddle::platform::bfloat16,
                    paddle::platform::complex<float>,
                    paddle::platform::complex<double>) {}
 #endif

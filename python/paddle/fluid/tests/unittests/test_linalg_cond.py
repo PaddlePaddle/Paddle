@@ -47,6 +47,7 @@ def test_dygraph_assert_true(self, x_list, p_list):
 
 
 def gen_input():
+    np.random.seed(2021)
     # generate square matrix or batches of square matrices
     input_1 = np.random.rand(5, 5).astype('float32')
     input_2 = np.random.rand(3, 6, 6).astype('float64')

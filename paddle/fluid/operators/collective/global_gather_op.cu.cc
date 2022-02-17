@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
+#include "paddle/fluid/framework/convert_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -30,8 +31,10 @@ class GlobalGatherOpCUDAKernel : public framework::OpKernel<T> {
     auto x = ctx.Input<framework::LoDTensor>("X");
     auto local_count = ctx.Input<framework::LoDTensor>("local_count");
     auto global_count = ctx.Input<framework::LoDTensor>("global_count");
-    auto local_count_type = local_count->type();
-    auto global_count_type = global_count->type();
+    auto local_count_type =
+        framework::TransToProtoVarType(local_count->dtype());
+    auto global_count_type =
+        framework::TransToProtoVarType(global_count->dtype());
     if (local_count_type != framework::proto::VarType::INT64) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Please use int64 type in local_count."));
@@ -65,7 +68,8 @@ class GlobalGatherOpCUDAKernel : public framework::OpKernel<T> {
       cpu_global_count_data = cpu_global_count.data<int64_t>();
     }
 
-    ncclDataType_t dtype = platform::ToNCCLDataType(x->type());
+    ncclDataType_t dtype =
+        platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
 
     int ring_id = ctx.Attr<int>("ring_id");
     PADDLE_ENFORCE_GE(

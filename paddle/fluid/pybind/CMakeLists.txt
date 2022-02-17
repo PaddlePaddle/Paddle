@@ -160,7 +160,7 @@ if(WITH_PYTHON)
   set(tmp_eager_impl_file ${eager_impl_file}.tmp)
 
   set(OP_IMPL_DEPS op_function_generator)
-  set(EAGER_OP_IMPL_DEPS eager_op_function_generator)
+  set(EAGER_OP_IMPL_DEPS eager_op_function_generator eager_final_state_python_c_codegen)
 
   if(WIN32)
     if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
@@ -292,7 +292,7 @@ if(WITH_PYTHON)
   if(NOT ON_INFER)
     cc_library(paddle_eager
     SRCS eager.cc eager_functions.cc eager_method.cc eager_properties.cc eager_utils.cc
-    DEPS eager_api autograd_meta backward grad_node_info pten op_function_common dygraph_function dygraph_node accumulation_node global_utils utils python)
+    DEPS eager_api autograd_meta backward grad_node_info pten op_function_common final_dygraph_function final_dygraph_node dygraph_function dygraph_node accumulation_node global_utils utils python)
     add_dependencies(paddle_eager eager_codegen)
     add_dependencies(paddle_eager eager_op_function_generator_cmd)
     list(APPEND PYBIND_DEPS paddle_eager)
@@ -300,7 +300,7 @@ if(WITH_PYTHON)
 
   cc_library(paddle_pybind SHARED
     SRCS ${PYBIND_SRCS}
-    DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+    DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} ${GLOB_DEV_LIB})
 
   if(NOT APPLE AND NOT WIN32)
     target_link_libraries(paddle_pybind rt)

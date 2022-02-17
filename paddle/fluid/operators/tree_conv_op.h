@@ -28,7 +28,7 @@ class TreeConvKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     math::Tree2ColFunctor<DeviceContext, T> tree2col;
-    math::SetConstant<DeviceContext, T> constant;
+    pten::funcs::SetConstant<DeviceContext, T> constant;
 
     auto *Edges = ctx.Input<Tensor>("EdgeSet");
     auto *Embeddings = ctx.Input<Tensor>("NodesVector");
@@ -86,7 +86,7 @@ class TreeConvGradKernel : public framework::OpKernel<T> {
     auto *Filter = ctx.Input<Tensor>("Filter");
     math::Tree2ColFunctor<DeviceContext, T> tree2col;
     math::Col2TreeFunctor<DeviceContext, T> col2tree;
-    math::SetConstant<DeviceContext, T> constant;
+    pten::funcs::SetConstant<DeviceContext, T> constant;
     auto &dev_ctx = ctx.template device_context<DeviceContext>();
     auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
 

@@ -25,8 +25,8 @@ namespace cub = hipcub;
 #endif
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/instance_norm_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -169,7 +169,7 @@ class InstanceNormKernel<platform::CUDADeviceContext, T>
     const int max_blocks = std::max(max_threads / block, 1);
     const int grid = std::min((NxC + block - 1) / block, max_blocks);
 
-    math::SetConstant<platform::CUDADeviceContext, T> set_constant;
+    pten::funcs::SetConstant<platform::CUDADeviceContext, T> set_constant;
     if (scale) {
       repeat_param<T><<<grid, block, 0, dev_ctx.stream()>>>(
           scale->data<T>(), scale_tmp.data<T>(), N, C);
@@ -185,7 +185,7 @@ class InstanceNormKernel<platform::CUDADeviceContext, T>
 
     auto handle = dev_ctx.cudnn_handle();
 
-    math::SetConstant<platform::CUDADeviceContext, BatchNormParamType<T>>
+    pten::funcs::SetConstant<platform::CUDADeviceContext, BatchNormParamType<T>>
         functor;
 
     auto *saved_mean = ctx.Output<Tensor>("SavedMean");
@@ -349,7 +349,7 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
     }
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    math::SetConstant<platform::CUDADeviceContext, T> set_constant;
+    pten::funcs::SetConstant<platform::CUDADeviceContext, T> set_constant;
 
     const int n = x->numel();
     const int block = 512;
@@ -379,7 +379,8 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
 
     if ((H * W * D) == 1) {
       framework::TensorCopy(*d_y, ctx.GetPlace(), d_x);
-      math::SetConstant<platform::CUDADeviceContext, BatchNormParamType<T>>
+      pten::funcs::SetConstant<platform::CUDADeviceContext,
+                               BatchNormParamType<T>>
           functor;
       functor(dev_ctx, d_scale, static_cast<BatchNormParamType<T>>(0));
       functor(dev_ctx, d_bias, static_cast<BatchNormParamType<T>>(0));
@@ -732,7 +733,7 @@ class InstanceNormDoubleGradKernel<platform::CUDADeviceContext, T>
     const T *variance_data = Saved_variance->data<T>();
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    math::SetConstant<platform::CUDADeviceContext, T> set_zero;
+    pten::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
 
     auto &x_dims = X->dims();
     int N, C, H, W, D;

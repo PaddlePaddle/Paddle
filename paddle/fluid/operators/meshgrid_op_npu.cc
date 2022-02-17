@@ -54,7 +54,7 @@ class MeshgridNPUKernel : public framework::OpKernel<T> {
       view_shape[i] = shape[i];
 
       framework::DDim out_dims_reshape = framework::make_ddim(view_shape);
-      framework::Tensor reshape_ins_tensor(ins[i]->type());
+      framework::Tensor reshape_ins_tensor(ins[i]->dtype());
       reshape_ins_tensor.ShareDataWith(*ins[i]);
       reshape_ins_tensor.Resize(out_dims_reshape);
 

@@ -16,7 +16,7 @@
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -103,7 +103,7 @@ class IndexSelectKernel : public framework::OpKernel<T> {
     if (dim < 0) {
       dim += inputs.dims().size();
     }
-    const auto& index_type = index->type();
+    const auto& index_type = framework::TransToProtoVarType(index->dtype());
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(index_type_match, true,
@@ -159,7 +159,7 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
   auto output_dim = x_grad->dims();
 
   auto& dev_ctx = context.template device_context<DeviceContext>();
-  math::SetConstant<DeviceContext, T> set_constant;
+  pten::funcs::SetConstant<DeviceContext, T> set_constant;
   set_constant(dev_ctx, x_grad, static_cast<T>(0.0));
 
   auto slice_size = 1;
@@ -211,7 +211,7 @@ class IndexSelectGradKernel : public framework::OpKernel<T> {
     if (dim < 0) {
       dim += out_grad->dims().size();
     }
-    const auto& index_type = index->type();
+    const auto& index_type = framework::TransToProtoVarType(index->dtype());
 
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
