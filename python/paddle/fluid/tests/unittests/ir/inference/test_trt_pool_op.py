@@ -119,6 +119,17 @@ class TensorRTAvgPoolTest(TensorRTPoolTest):
         self.exclusive = False
 
 
+class TensorRTAvgCeilPoolTest(TensorRTPoolTest):
+    def set_extra_config(self):
+        self.pool_size = 2
+        self.pool_type = 'avg'
+        self.pool_stride = 1
+        self.pool_padding = 0
+        self.global_pooling = False
+        self.ceil_mode = True
+        self.exclusive = False
+
+
 class TensorRTGlobalPoolTest(TensorRTPoolTest):
     def set_extra_config(self):
         self.pool_size = 2

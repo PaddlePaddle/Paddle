@@ -21,10 +21,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/matrix_solve.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
 #include "paddle/fluid/operators/squeeze_op.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #endif
@@ -45,8 +45,9 @@ void ReduceSumForSolve(const Tensor* input, Tensor* output,
                        const paddle::framework::ExecutionContext& ctx) {
 #if defined(__NVCC__) || defined(__HIPCC__)
   auto stream = ctx.cuda_device_context().stream();
-  TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-      *input, output, kps::IdentityFunctor<T>(), reduce_dims, stream);
+  TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+      ctx.cuda_device_context(), *input, output, kps::IdentityFunctor<T>(),
+      reduce_dims, stream);
 #else
   ReduceKernelFunctor<DeviceContext, T, ops::SumFunctor>(
       input, output, reduce_dims, keep_dim, false, ctx)
@@ -326,11 +327,11 @@ static void linalg_solve(const framework::ExecutionContext& context,
 
   Tensor tmp_y;
   if (is_vector) {
-    tmp_y.mutable_data(context.GetPlace(), y->type());
+    tmp_y.mutable_data(context.GetPlace(), y->dtype());
     to_unsqueeze(context, *y, &tmp_y);
   } else {
     tmp_y.Resize(y->dims());
-    tmp_y.mutable_data(context.GetPlace(), y->type());
+    tmp_y.mutable_data(context.GetPlace(), y->dtype());
     framework::TensorCopy(
         *y, context.GetPlace(),
         context.template device_context<platform::DeviceContext>(), &tmp_y);
@@ -338,7 +339,7 @@ static void linalg_solve(const framework::ExecutionContext& context,
 
   Tensor tmp_x;
   tmp_x.Resize(x->dims());
-  tmp_x.mutable_data(context.GetPlace(), x->type());
+  tmp_x.mutable_data(context.GetPlace(), x->dtype());
   framework::TensorCopy(
       *x, context.GetPlace(),
       context.template device_context<platform::DeviceContext>(), &tmp_x);
@@ -472,11 +473,11 @@ class SolveGradKernel : public framework::OpKernel<T> {
 
     Tensor tmp_y;
     if (is_vector) {
-      tmp_y.mutable_data(ctx.GetPlace(), y->type());
+      tmp_y.mutable_data(ctx.GetPlace(), y->dtype());
       to_unsqueeze(ctx, *y, &tmp_y);
     } else {
       tmp_y.Resize(y->dims());
-      tmp_y.mutable_data(ctx.GetPlace(), y->type());
+      tmp_y.mutable_data(ctx.GetPlace(), y->dtype());
       framework::TensorCopy(
           *y, ctx.GetPlace(),
           ctx.template device_context<platform::DeviceContext>(), &tmp_y);
@@ -484,7 +485,7 @@ class SolveGradKernel : public framework::OpKernel<T> {
 
     Tensor tmp_x;
     tmp_x.Resize(input->dims());
-    tmp_x.mutable_data(ctx.GetPlace(), input->type());
+    tmp_x.mutable_data(ctx.GetPlace(), input->dtype());
     framework::TensorCopy(
         *input, ctx.GetPlace(),
         ctx.template device_context<platform::DeviceContext>(), &tmp_x);
@@ -504,11 +505,11 @@ class SolveGradKernel : public framework::OpKernel<T> {
     tmp_dy.Resize(framework::make_ddim(y_broadcast_dims));
     tmp_dy.mutable_data<T>(ctx.GetPlace());
 
-    Tensor tmp_input(input->type());
+    Tensor tmp_input(input->dtype());
     const auto& new_dims_vec = getNewDimsVec(input->dims());
     tmp_input.Resize(framework::make_ddim(new_dims_vec));
     tmp_input.mutable_data<T>(ctx.GetPlace());
-    math::TransposeNormal<DeviceContext, T> trans;
+    pten::funcs::TransposeNormal<DeviceContext, T> trans;
     std::vector<int> new_axis = getNewAxis(input->dims().size());
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     trans(dev_ctx, *input, &tmp_input, new_axis);
@@ -529,11 +530,11 @@ class SolveGradKernel : public framework::OpKernel<T> {
         blas.MatMul(tmp_dy, mat_dim_a1, *out, mat_dim_b1, T(-1), &tmp_dx, T(0));
       } else if (is_vector_rhs(*input, *y)) {
         Tensor tmp_dy_;
-        tmp_dy_.mutable_data(ctx.GetPlace(), y->type());
+        tmp_dy_.mutable_data(ctx.GetPlace(), y->dtype());
         to_unsqueeze(ctx, tmp_dy, &tmp_dy_);
 
         Tensor tmp_out_;
-        tmp_out_.mutable_data(ctx.GetPlace(), out->type());
+        tmp_out_.mutable_data(ctx.GetPlace(), out->dtype());
         to_unsqueeze(ctx, *out, &tmp_out_);
 
         auto mat_dim_a1 =
@@ -552,7 +553,7 @@ class SolveGradKernel : public framework::OpKernel<T> {
     if (y->dims() != tmp_dy.dims()) {
       Tensor dy_help;
       dy_help.Resize(tmp_dy.dims());
-      dy_help.mutable_data(ctx.GetPlace(), tmp_dy.type());
+      dy_help.mutable_data(ctx.GetPlace(), tmp_dy.dtype());
       framework::TensorCopy(
           tmp_dy, ctx.GetPlace(),
           ctx.template device_context<platform::DeviceContext>(), &dy_help);
@@ -606,7 +607,7 @@ class SolveGradKernel : public framework::OpKernel<T> {
     if (input->dims() != tmp_dx.dims()) {
       Tensor dx_help;
       dx_help.Resize(tmp_dx.dims());
-      dx_help.mutable_data(ctx.GetPlace(), tmp_dx.type());
+      dx_help.mutable_data(ctx.GetPlace(), tmp_dx.dtype());
       framework::TensorCopy(
           tmp_dx, ctx.GetPlace(),
           ctx.template device_context<platform::DeviceContext>(), &dx_help);

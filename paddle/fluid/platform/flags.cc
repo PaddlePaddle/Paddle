@@ -433,8 +433,9 @@ PADDLE_DEFINE_EXPORTED_double(
 
 // NOTE(zhiqiu): better to share the flags, otherwise we will have too many
 // flags.
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) ||      \
+    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
 
 /**
  * Memory related FLAG
@@ -686,18 +687,6 @@ PADDLE_DEFINE_EXPORTED_int32(get_host_by_name_time, 120,
 PADDLE_DEFINE_EXPORTED_bool(
     apply_pass_to_program, false,
     "It controls whether to apply IR pass to program when using Fleet APIs");
-
-/**
- * Pt kernel related FLAG
- * Name: FLAGS_run_pten_kernel
- * Since Version: 2.3.0
- * Value Range: bool, default=false
- * Example: FLAGS_run_pten_kernel=true would use the pt kernel to compute in the
- * Op.
- * Note:
- */
-PADDLE_DEFINE_EXPORTED_bool(run_pten_kernel, true,
-                            "It controls whether to use pten kernel");
 
 /**
  * KP kernel related FLAG

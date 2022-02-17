@@ -16,13 +16,16 @@ limitations under the License. */
 
 namespace pten {
 
-std::tuple<DenseTensorMeta, DenseTensorMeta> MatmulGradInferMeta(
-    const DenseTensorMeta& x_meta,
-    const DenseTensorMeta& y_meta,
-    const DenseTensorMeta& out_grad_meta,
-    bool transpose_x,
-    bool transpose_y) {
-  return std::make_tuple(x_meta, y_meta);
+void GeneralBinaryGradInferMeta(const MetaTensor& x,
+                                const MetaTensor& y,
+                                MetaTensor* dx,
+                                MetaTensor* dy) {
+  if (dx) {
+    dx->share_meta(x);
+  }
+  if (dy) {
+    dy->share_meta(y);
+  }
 }
 
 }  // namespace pten

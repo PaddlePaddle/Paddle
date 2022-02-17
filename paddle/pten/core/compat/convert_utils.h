@@ -27,18 +27,10 @@ limitations under the License. */
 
 namespace pten {
 
-const std::string& TransToPtenKernelName(const std::string& fluid_op_name);
+std::string TransToPtenKernelName(const std::string& fluid_op_name);
+const std::string& TransToFluidOpName(const std::string& pten_kernel_name);
 
 Backend TransToPtenBackend(const pten::Place& place);
-DataType TransToPtenDataType(
-    const paddle::framework::proto::VarType::Type& dtype);
-
-pten::Place TransToFluidPlace(const Backend& backend);
-paddle::framework::proto::VarType::Type TransToProtoVarType(
-    const DataType& dtype);
-
-size_t DataTypeSize(DataType dtype);
-DataType String2DataType(const std::string& str);
-std::string DataType2String(DataType dtype);
+pten::Place TransToPtenPlace(const Backend& backend, bool set_device_id = true);
 
 }  // namespace pten

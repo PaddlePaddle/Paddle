@@ -1676,7 +1676,7 @@ def cross_entropy(input,
             if label_max >= input.shape[axis]:
                 raise ValueError("label should not out of bound, but got{}".
                                  format(label_max))
-        if core.is_compiled_with_npu():
+        if core.is_compiled_with_npu() or core.is_compiled_with_mlu():
             _, _, out = _C_ops.softmax_with_cross_entropy(
                 input, label, 'soft_label', soft_label, 'ignore_index',
                 ignore_index, 'numeric_stable_mode', True, 'axis', axis,
@@ -1783,7 +1783,8 @@ def cross_entropy(input,
     fluid.data_feeder.check_variable_and_dtype(
         input, 'input', ['float32', 'float64'], 'softmax_cross_entropy')
     fluid.data_feeder.check_variable_and_dtype(
-        label, 'label', ['int32', 'int64', 'float32', 'float64'],
+        label, 'label',
+        ['uint8', 'int8', 'int16', 'int32', 'int64', 'float32', 'float64'],
         'softmax_cross_entropy')
     attrs = {
         'soft_label': soft_label,

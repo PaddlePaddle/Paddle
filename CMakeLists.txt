@@ -230,6 +230,7 @@ option(WITH_INFRT  "Compile PaddlePaddle with INFRT" OFF)
 option(WITH_NCCL   "Compile PaddlePaddle with NCCL support"             ON)
 option(WITH_RCCL   "Compile PaddlePaddle with RCCL support"             ON)
 option(WITH_XPU_BKCL    "Compile PaddlePaddle with BAIDU KUNLUN XPU BKCL"   OFF)
+option(WITH_CNCL   "Compile PaddlePaddle with CNCL support"             OFF)
 option(WITH_CRYPTO   "Compile PaddlePaddle with crypto support"         ON)
 option(WITH_ARM   "Compile PaddlePaddle with arm support"         OFF)
 option(WITH_SW   "Compile PaddlePaddle with sw support"         OFF)
@@ -241,6 +242,16 @@ option(NEW_RELEASE_CUBIN   "PaddlePaddle next-level release strategy for pypi cu
 option(NEW_RELEASE_JIT   "PaddlePaddle next-level release strategy for backup jit package"             OFF)
 option(WITH_ASCEND_INT64 "Compile with int64 kernel for ascend NPU"    OFF)
 option(WITH_POCKETFFT    "Compile with pocketfft support"      ON)
+option(WITH_RECORD_BUILDTIME    "Compile PaddlePaddle with record all targets build time"       OFF)
+option(WITH_CUSTOM_DEVICE "Compile with custom device support"    OFF)
+
+if(WITH_RECORD_BUILDTIME)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_CURRENT_SOURCE_DIR}/tools/get_build_time.sh")
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK "${CMAKE_CURRENT_SOURCE_DIR}/tools/get_build_time.sh")
+else()            
+    include(ccache) # set ccache for compilation ; if WITH_RECORD_BUILDTIME=ON can't use ccache
+endif()
+unset(WITH_RECORD_BUILDTIME CACHE)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -253,6 +264,10 @@ set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
 if(SANITIZER_TYPE AND NOT "${SANITIZER_TYPE}" MATCHES "^(Address|Leak|Memory|Thread|Undefined)$")
   message("Choose the correct type of sanitizer")
   return()
+endif()
+
+if (LINUX AND NOT WITH_CUSTOM_DEVICE AND NOT ON_INFER)
+set(WITH_CUSTOM_DEVICE ON)
 endif()
 
 if(WIN32)
@@ -290,6 +305,13 @@ if (NOT WITH_XPU AND WITH_XPU_BKCL)
         "Disable BKCL when compiling without XPU. Force WITH_XPU_BKCL=OFF.")
     set(WITH_XPU_BKCL OFF CACHE STRING
         "Disable BKCL when compiling without XPU" FORCE)
+endif()
+
+if (NOT WITH_MLU AND WITH_CNCL)
+    MESSAGE(WARNING
+        "Disable CNCL when compiling without MLU. Force WITH_MLU=OFF.")
+    set(WITH_MLU OFF CACHE STRING
+        "Disable CNCL when compiling without MLU" FORCE)
 endif()
 
 if(WITH_NCCL)
@@ -374,7 +396,6 @@ if(WITH_PROFILER)
     add_definitions(-DWITH_GPERFTOOLS)
 endif()
 
-include(ccache)             # set ccache for compilation
 include(util)               # set unittest and link libs
 include(version)            # set PADDLE_VERSION
 include(coveralls)          # set code coverage

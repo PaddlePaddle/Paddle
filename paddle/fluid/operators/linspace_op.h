@@ -16,7 +16,7 @@ limitations under the License. */
 #include <functional>
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -36,10 +36,10 @@ class CPULinspaceKernel : public framework::OpKernel<T> {
 
     Tensor start_t;
     Tensor stop_t;
-    auto start_dtype =
-        framework::OpKernelType(pre_start->type(), context.GetPlace());
-    auto stop_dtype =
-        framework::OpKernelType(pre_stop->type(), context.GetPlace());
+    auto start_dtype = framework::OpKernelType(
+        framework::TransToProtoVarType(pre_start->dtype()), context.GetPlace());
+    auto stop_dtype = framework::OpKernelType(
+        framework::TransToProtoVarType(pre_stop->dtype()), context.GetPlace());
     auto out_dtype = framework::OpKernelType(dtype, context.GetPlace());
     framework::TransDataType(start_dtype, out_dtype, *pre_start, &start_t);
     framework::TransDataType(stop_dtype, out_dtype, *pre_stop, &stop_t);

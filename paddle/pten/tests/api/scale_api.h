@@ -23,6 +23,7 @@
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/kernel_registry.h"
+#include "paddle/pten/core/meta_tensor.h"
 #include "paddle/pten/infermeta/unary.h"
 #include "paddle/pten/kernels/scale_kernel.h"
 
@@ -68,11 +69,12 @@ PADDLE_API Tensor scale_kernel_context(const Tensor& x,
   kernel_context.EmplaceBackAttr(bias);
   kernel_context.EmplaceBackAttr(bias_after_scale);
 
-  auto out_meta = pten::UnchangedInferMeta(dense_x->meta());
   auto dense_out = std::make_shared<pten::DenseTensor>(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
-          pten::TransToFluidPlace(kernel_backend)),
-      std::move(out_meta));
+          pten::TransToPtenPlace(kernel_backend)),
+      pten::DenseTensorMeta());
+  pten::MetaTensor meta_out(dense_out.get());
+  pten::UnchangedInferMeta(*dense_x, &meta_out);
   kernel_context.EmplaceBackOutput(dense_out.get());
 
   Tensor out;
@@ -234,11 +236,12 @@ Tensor scale_switch_case(const Tensor& x,
 
   auto dense_x = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
 
-  auto out_meta = pten::UnchangedInferMeta(dense_x->meta());
   auto dense_out = std::make_shared<pten::DenseTensor>(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
-          pten::TransToFluidPlace(kernel_backend)),
-      std::move(out_meta));
+          pten::TransToPtenPlace(kernel_backend)),
+      pten::DenseTensorMeta());
+  pten::MetaTensor meta_out(dense_out.get());
+  pten::UnchangedInferMeta(*dense_x, &meta_out);
 
   Tensor out;
   out.set_impl(dense_out);

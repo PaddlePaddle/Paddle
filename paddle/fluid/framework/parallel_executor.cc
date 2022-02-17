@@ -21,6 +21,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/details/async_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/bind_threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
@@ -532,6 +533,21 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
           "Paddle can't use XPU device since it's not compiled with XPU,"
           "Please recompile or reinstall Paddle with XPU support."));
 #endif
+    } else if (platform::is_custom_place(place)) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+      if (IsFastEagerDeletionModeEnabled()) {
+        gc.reset(
+            new CustomDeviceUnsafeFastGarbageCollector(place, max_memory_size));
+      } else {
+        gc.reset(new CustomStreamGarbageCollector(place, max_memory_size));
+      }
+      VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
+#else
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Paddle can't use custom device since it's not compiled with "
+          "CustomDevice,"
+          "Please recompile or reinstall Paddle with CustomDevice support."));
+#endif
     } else if (platform::is_cpu_place(place)) {
       gc.reset(new CPUGarbageCollector(place, max_memory_size));
       VLOG(10) << "Created GarbageCollector at " << place;
@@ -775,7 +791,8 @@ void ParallelExecutor::BCastParamsToDevices(
       std::vector<void *> buffers;
       buffers.reserve(member_->places_.size());
       size_t numel = main_tensor.numel();
-      ncclDataType_t data_type = platform::ToNCCLDataType(main_tensor.type());
+      ncclDataType_t data_type = platform::ToNCCLDataType(
+          framework::TransToProtoVarType(main_tensor.dtype()));
       for (size_t i = 0; i < member_->places_.size(); ++i) {
         auto place = member_->places_[i];
         void *buffer;
@@ -786,7 +803,7 @@ void ParallelExecutor::BCastParamsToDevices(
           auto local_scope = member_->local_scopes_[i];
           auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
           t->Resize(dims);
-          buffer = t->mutable_data(place, main_tensor.type());
+          buffer = t->mutable_data(place, main_tensor.dtype());
         }
         buffers.push_back(buffer);
       }
@@ -818,7 +835,8 @@ void ParallelExecutor::BCastParamsToDevices(
       // but broadcast is equivalent to no type of operation, does not affect
       // correctness.
       BKCLDataType data_type = BKCL_FLOAT;
-      // BKCLDataType data_type = platform::ToBKCLDataType(main_tensor.type());
+      // BKCLDataType data_type =
+      // platform::ToBKCLDataType(framework::TransToProtoVarType(main_tensor.dtype()));
       for (size_t i = 0; i < member_->places_.size(); ++i) {
         auto place = member_->places_[i];
         void *buffer;
@@ -829,7 +847,7 @@ void ParallelExecutor::BCastParamsToDevices(
           auto local_scope = member_->local_scopes_[i];
           auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
           t->Resize(dims);
-          buffer = t->mutable_data(place, main_tensor.type());
+          buffer = t->mutable_data(place, main_tensor.dtype());
         }
         buffers.push_back(buffer);
       }
@@ -848,7 +866,8 @@ void ParallelExecutor::BCastParamsToDevices(
         for (size_t i = 0; i < member_->places_.size(); ++i) {
           auto &bkcl_ctx = bkcl_ctxs->at(member_->places_[i]);
           auto broadcast_numel = numel;
-          if (main_tensor.type() == framework::proto::VarType::INT64) {
+          if (framework::TransToProtoVarType(main_tensor.dtype()) ==
+              framework::proto::VarType::INT64) {
             broadcast_numel *= 2;
           }
           PADDLE_ENFORCE_EQ(
@@ -873,7 +892,7 @@ void ParallelExecutor::BCastParamsToDevices(
 
         auto copy_memory = [&] {
           t->Resize(dims);
-          t->mutable_data(cpu, main_tensor.type());
+          t->mutable_data(cpu, main_tensor.dtype());
           paddle::framework::TensorCopy(main_tensor, cpu, t);
         };
 
@@ -1361,7 +1380,7 @@ void ParallelExecutor::PrepareNCCLCommunicator(Scope *global_scope) {
       auto *dev_ctx = static_cast<platform::XPUDeviceContext *>(
           pool.Get(member_->places_[dev_id]));
       auto &bkcl_ctx = bkcl_ctxs->at(member_->places_[dev_id]);
-      dev_ctx->set_bkcl_context(bkcl_ctx.comm());
+      dev_ctx->SetBkclContext(bkcl_ctx.comm());
     }
 #else
     PADDLE_THROW(

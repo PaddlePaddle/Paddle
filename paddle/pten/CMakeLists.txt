@@ -17,6 +17,8 @@ add_subdirectory(kernels)
 add_subdirectory(infermeta)
 # pten operator definitions
 add_subdirectory(ops)
+# pten tools
+add_subdirectory(tools)
 # pten tests
 add_subdirectory(tests)
 

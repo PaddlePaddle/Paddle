@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/imperative/prepared_operator.h"
 
+#include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/imperative/infer_shape_context.h"
@@ -29,7 +30,6 @@
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(check_nan_inf);
-DECLARE_bool(run_pten_kernel);
 DECLARE_bool(benchmark);
 DECLARE_bool(run_kp_kernel);
 
@@ -57,7 +57,7 @@ const framework::Tensor* GetTensorFromVar(const framework::Variable& var) {
 }
 
 template <typename VarType>
-static void HandleComplexGradToRealGrad(const NameVarMap<VarType>& outs) {
+void HandleComplexGradToRealGrad(const NameVarMap<VarType>& outs) {
   for (auto& pair : outs) {
     for (auto& var : pair.second) {
       if (var == nullptr) {
@@ -86,6 +86,17 @@ static void HandleComplexGradToRealGrad(const NameVarMap<VarType>& outs) {
       }
     }
   }
+}
+
+template <>
+void HandleComplexGradToRealGrad<egr::EagerVariable>(
+    const NameVarMap<egr::EagerVariable>& outs) {
+  // TODO(jiabin): Support Complex here.
+}
+
+void TestHandleComplexGradToRealGradEager(
+    const NameVarMap<egr::EagerVariable>& outs) {
+  HandleComplexGradToRealGrad<egr::EagerVariable>(outs);
 }
 
 PreparedOp::PreparedOp(const framework::OperatorBase& op,
@@ -273,6 +284,16 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
     kernel_iter = kernels.find(expected_kernel_key);
   }
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (kernel_iter == kernels.end() &&
+      paddle::platform::is_custom_place(expected_kernel_key.place_)) {
+    VLOG(3) << "missing " << place.GetDeviceType() << " kernel: " << op.Type()
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+    expected_kernel_key.place_ = platform::CPUPlace();
+    kernel_iter = kernels.find(expected_kernel_key);
+  }
+#endif
   // TODO(jiabin): Add operator.cc's line 1000 part back when we need that
   // case
   PADDLE_ENFORCE_NE(kernel_iter, kernels.end(),
@@ -306,6 +327,15 @@ PreparedOp PreparedOp::Prepare(const NameVarMap<VariableWrapper>& ins,
                                       default_attrs);
 }
 
+PreparedOp PreparedOp::Prepare(const NameVarMap<egr::EagerVariable>& ins,
+                               const NameVarMap<egr::EagerVariable>& outs,
+                               const framework::OperatorWithKernel& op,
+                               const platform::Place& place,
+                               const framework::AttributeMap& attrs,
+                               const framework::AttributeMap& default_attrs) {
+  return PrepareImpl<egr::EagerVariable>(ins, outs, op, place, attrs,
+                                         default_attrs);
+}
 template <typename VarType>
 static void PreparedOpRunImpl(
     const framework::OperatorBase& op, const framework::RuntimeContext& ctx,
@@ -433,6 +463,21 @@ void PreparedOp::Run(const NameVarMap<VariableWrapper>& ins,
   } else {
     PreparedOpRunImpl<VariableWrapper>(op_, ctx_, kernel_type_, func_, dev_ctx_,
                                        ins, outs, attrs, default_attrs);
+  }
+}
+
+void PreparedOp::Run(const NameVarMap<egr::EagerVariable>& ins,
+                     const NameVarMap<egr::EagerVariable>& outs,
+                     const framework::AttributeMap& attrs,
+                     const framework::AttributeMap& default_attrs) {
+  if (run_pten_kernel_) {
+    PreparedOpRunPtImpl<egr::EagerVariable>(
+        op_, kernel_type_, pt_kernel_signature_, pt_kernel_, dev_ctx_, ins,
+        outs, attrs, default_attrs);
+  } else {
+    PreparedOpRunImpl<egr::EagerVariable>(op_, ctx_, kernel_type_, func_,
+                                          dev_ctx_, ins, outs, attrs,
+                                          default_attrs);
   }
 }
 
