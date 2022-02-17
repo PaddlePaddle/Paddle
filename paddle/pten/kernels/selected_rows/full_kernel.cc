@@ -15,7 +15,9 @@ limitations under the License. */
 #include "paddle/pten/kernels/full_kernel.h"
 
 #include "paddle/pten/backends/cpu/cpu_context.h"
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/pten/backends/gpu/gpu_context.h"
+#endif
 #include "paddle/pten/core/kernel_registry.h"
 
 #include "paddle/pten/common/bfloat16.h"
@@ -44,10 +46,10 @@ PT_REGISTER_KERNEL(full_sr,
                    int,
                    int64_t,
                    bool,
-                   paddle::platform::float16,
-                   paddle::platform::bfloat16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::float16,
+                   pten::dtype::bfloat16,
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PT_REGISTER_KERNEL(full_sr,
@@ -61,7 +63,7 @@ PT_REGISTER_KERNEL(full_sr,
                    int,
                    int64_t,
                    bool,
-                   paddle::platform::float16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::float16,
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
 #endif
