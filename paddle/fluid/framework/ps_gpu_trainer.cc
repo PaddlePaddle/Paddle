@@ -15,8 +15,8 @@ limitations under the License. */
 #include <cstdlib>
 #include <string>
 #include <vector>
-#include "io/fs.h"
 
+#include "io/fs.h"
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
