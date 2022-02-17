@@ -128,9 +128,9 @@ PT_REGISTER_KERNEL(add_grad,
                    double,
                    int,
                    int64_t,
-                   paddle::platform::float16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::float16,
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(add_double_grad,
                    GPU,
@@ -140,9 +140,9 @@ PT_REGISTER_KERNEL(add_double_grad,
                    double,
                    int,
                    int64_t,
-                   paddle::platform::float16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::float16,
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(add_triple_grad,
                    GPU,
@@ -152,9 +152,9 @@ PT_REGISTER_KERNEL(add_triple_grad,
                    double,
                    int,
                    int64_t,
-                   paddle::platform::float16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::float16,
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(subtract_grad,
                    GPU,
@@ -164,9 +164,9 @@ PT_REGISTER_KERNEL(subtract_grad,
                    double,
                    int,
                    int64_t,
-                   paddle::platform::float16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::float16,
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(subtract_double_grad,
                    GPU,
@@ -176,6 +176,6 @@ PT_REGISTER_KERNEL(subtract_double_grad,
                    double,
                    int,
                    int64_t,
-                   paddle::platform::float16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::float16,
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}

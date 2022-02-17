@@ -46,8 +46,8 @@ void DotKernel(const Context& dev_ctx,
 
 }  // namespace pten
 
-using complex64 = ::paddle::platform::complex<float>;
-using complex128 = ::paddle::platform::complex<double>;
+using complex64 = ::pten::dtype::complex<float>;
+using complex128 = ::pten::dtype::complex<double>;
 
 PT_REGISTER_KERNEL(dot,
                    CPU,

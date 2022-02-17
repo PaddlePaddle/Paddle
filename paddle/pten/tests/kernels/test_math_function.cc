@@ -11,9 +11,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "paddle/pten/kernels/funcs/math_function.h"
+
 #include "gtest/gtest.h"
 #include "paddle/pten/kernels/funcs/blas/blas.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
+
+namespace pten {
+namespace tests {
 
 template <typename T>
 inline pten::funcs::BlasT<paddle::platform::CPUDeviceContext, T> GetBlas(
@@ -347,3 +351,6 @@ TEST(math_function, gemm_warp) {
   GemmWarpTest<double>(8, 5, 6, 1.0, 0.0);
   GemmWarpTest<double>(8, 5, 6, 2.0, 1.0);
 }
+
+}  // namespace tests
+}  // namespace pten
