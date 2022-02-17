@@ -115,12 +115,11 @@ bool MlirToRuntimeTranslator::EmitConstantOp(mlir::Operation* op) {
 template <>
 boost::optional<bool> MlirToRuntimeTranslator::EmitAttribute(
     const mlir::Attribute& attr) {
-  if (!attr.isa<mlir::IntegerAttr>()) return boost::none;
-  if (attr.isa<mlir::IntegerAttr>()) {
-    auto val = attr.cast<mlir::IntegerAttr>();
-    if (val.getType().isInteger(1)) {
-      return val.getInt();
-    }
+  if (!attr.isa<mlir::BoolAttr>()) return boost::none;
+  if (attr.isa<mlir::BoolAttr>()) {
+    auto val = attr.cast<mlir::BoolAttr>();
+    LOG(INFO) << "value = " << val.getValue();
+    return val.getValue();
   }
   return boost::none;
 }
@@ -391,6 +390,7 @@ Value* MlirToRuntimeTranslator::GetValue(mlir::Value value) {
 }
 
 Value* MlirToRuntimeTranslator::AddValue(mlir::Value value) {
+  llvm::outs() << "[mlir value = ] " << value << "\\\\" << '\n';
   auto res = impl_->value_map.try_emplace(value, ValueRef(new Value));
   CHECK(res.second) << "Duplicate add mlir value [" << DumpToString(value)
                     << "]";
