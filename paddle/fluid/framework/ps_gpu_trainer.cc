@@ -16,6 +16,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "io/fs.h"
+
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
@@ -36,7 +37,6 @@ void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
   ParseDumpConfig(trainer_desc);
   mpi_rank_ = trainer_desc.mpi_rank();
   mpi_size_ = trainer_desc.mpi_size();
-
   for (int i = 0; i < param_.dense_table_size(); ++i) {
     uint64_t table_id = static_cast<uint64_t>(param_.dense_table(i).table_id());
     auto table = param_.dense_table(i);
@@ -260,12 +260,13 @@ void PSGPUTrainer::Finalize() {
       }
 #define MergeCallback(cpp_type, proto_type)                                    \
   do {                                                                         \
-    if (root_tensor->type() == proto_type) {                                   \
-      if (thread_tensor->type() != proto_type) {                               \
+    if (framework::TransToProtoVarType(root_tensor->dtype()) == proto_type) {  \
+      if (framework::TransToProtoVarType(thread_tensor->dtype()) !=            \
+          proto_type) {                                                        \
         VLOG(0) << "Error: thread id=" << j << ", need_merge_var_names_[" << i \
                 << "] " << need_merge_var_names_[i]                            \
-                << ", root tensor type=" << root_tensor->type()                \
-                << ", thread tensor type=" << thread_tensor->type();           \
+                << ", root tensor type=" << root_tensor->dtype()               \
+                << ", thread tensor type=" << thread_tensor->dtype();          \
         exit(-1);                                                              \
       }                                                                        \
       MergeToRootScope<cpp_type>(root_tensor, thread_tensor);                  \
