@@ -263,7 +263,7 @@ def to_string(var, prefix='Tensor'):
         data=data)
 
 
-def eager_tensor_to_string(tensor, prefix='Tensor'):
+def tensor_to_string(tensor, prefix='Tensor'):
     indent = len(prefix) + 1
 
     _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient},\n{indent}{data})"

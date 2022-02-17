@@ -120,6 +120,6 @@ PT_REGISTER_KERNEL(concat,
                    int64_t,
                    int,
                    uint8_t,
-                   paddle::platform::float16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::float16,
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}

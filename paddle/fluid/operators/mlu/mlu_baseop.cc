@@ -1151,6 +1151,18 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
       output_desc, output, workspace_ptr, workspace_size));
 }
 
+/* static */ void MLUCnnl::AdaptivePoolingForward(
+    const ExecutionContext& ctx, cnnlPoolingMode_t pool_mode,
+    const cnnlTensorDescriptor_t input_desc, const void* input,
+    const cnnlTensorDescriptor_t output_desc, void* output,
+    const cnnlTensorDescriptor_t index_desc, void* index) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  PADDLE_ENFORCE_MLU_SUCCESS(
+      cnnlAdaptivePoolingForward(handle, input_desc, input, pool_mode,
+                                 output_desc, output, index_desc, index));
+}
+
 /* static */ void MLUCnnl::Pool3D(
     const ExecutionContext& ctx, cnnlPoolingMode_t pool_mode,
     const std::vector<int64_t>& output_shape,
@@ -1800,6 +1812,17 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
   PADDLE_ENFORCE_MLU_SUCCESS(cnnlPoolingBackward(
       handle, const_cast<cnnlPoolingDescriptor_t>(pooling_desc), alpha, y_desc,
       y, diff_y_desc, diff_y, x_desc, x, beta, diff_x_desc, diff_x));
+}
+
+/* static */ void MLUCnnl::AdaptivePoolingBackward(
+    const ExecutionContext& ctx, const cnnlPoolingMode_t pool_mode,
+    const cnnlTensorDescriptor_t y_desc, const void* y,
+    const cnnlTensorDescriptor_t index_desc, const void* index,
+    const cnnlTensorDescriptor_t diff_x_desc, void* diff_x) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlAdaptivePoolingBackward(
+      handle, y_desc, y, index_desc, index, pool_mode, diff_x_desc, diff_x));
 }
 
 /* static */ void MLUCnnl::NonMaxSuppression(
