@@ -33,6 +33,7 @@ limitations under the License. */
 DECLARE_bool(cudnn_deterministic);
 DECLARE_uint64(conv_workspace_size_limit);
 DECLARE_bool(cudnn_exhaustive_search);
+DECLARE_bool(no_data_format_transform);
 
 namespace paddle {
 namespace operators {
@@ -87,8 +88,12 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
 #else
     // Tensor Core introduced from Volta GPUs supports more faster conv op
     // with FP16 in NHWC data format.
-    const bool compute_in_nhwc =
-        dtype == CUDNN_DATA_HALF && IsVoltaOrLater(dev_ctx);
+    bool compute_in_nhwc;
+    if (FLAGS_no_data_format_transform) {
+      compute_in_nhwc = channel_last;
+    } else {
+      compute_in_nhwc = (dtype == CUDNN_DATA_HALF && IsVoltaOrLater(dev_ctx));
+    }
     // We will only do data format conversion from NHWC to NCHW.
     // cudnn will convert NCHW to NHWC automatically on Tensor Core.
     auto compute_format =
@@ -405,8 +410,12 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     // HIP MIOPEN ONLY SUPPORT NCHW format
     auto compute_format = DataLayout::kNCHW;
 #else
-    const bool compute_in_nhwc =
-        dtype == CUDNN_DATA_HALF && IsVoltaOrLater(dev_ctx);
+    bool compute_in_nhwc;
+    if (FLAGS_no_data_format_transform) {
+      compute_in_nhwc = channel_last;
+    } else {
+      compute_in_nhwc = (dtype == CUDNN_DATA_HALF && IsVoltaOrLater(dev_ctx));
+    }
     auto compute_format =
         compute_in_nhwc && channel_last ? DataLayout::kNHWC : DataLayout::kNCHW;
 #endif

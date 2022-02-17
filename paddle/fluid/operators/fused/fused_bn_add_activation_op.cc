@@ -67,7 +67,9 @@ void FusedBatchNormAddActOp::InferShape(
                                           "[%d]",
                                           x_dims, x_dims.size()));
 
-  const int64_t C = x_dims[x_dims.size() - 1];
+  const auto &data_layout = ctx->Attrs().Get<std::string>("data_layout");
+  const int64_t C =
+      data_layout == "NCHW" ? x_dims[1] : x_dims[x_dims.size() - 1];
 
   auto scale_dim = ctx->GetInputDim("Scale");
   auto bias_dim = ctx->GetInputDim("Bias");
@@ -172,6 +174,8 @@ void FusedBatchNormAddActOpMaker::Make() {
       });
   AddAttr<std::string>("act_type", "The activation type to be fused.")
       .SetDefault("relu");
+  AddAttr<std::string>("data_layout", "The data layout of the input tensor.")
+      .SetDefault("NHWC");
   AddComment(R"DOC(
 Fused Batch Normalization with activation.
 
@@ -207,8 +211,10 @@ void FusedBatchNormAddActGradOp::InferShape(
   OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Bias")), "Output",
                  framework::GradVarName("Bias"), "FusedBatchNormAddActGradOp");
 
+  const auto &data_layout = ctx->Attrs().Get<std::string>("data_layout");
   const auto in_dims = ctx->GetInputDim("X");
-  const int C = in_dims[in_dims.size() - 1];
+  const int64_t C =
+      data_layout == "NCHW" ? in_dims[1] : in_dims[in_dims.size() - 1];
 
   ctx->SetOutputDim(framework::GradVarName("X"), in_dims);
   ctx->SetOutputDim(framework::GradVarName("Z"), in_dims);

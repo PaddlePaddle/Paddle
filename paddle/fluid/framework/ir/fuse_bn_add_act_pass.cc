@@ -48,8 +48,7 @@ ir::Graph *FuseBatchNormAddActPass::FuseBatchNormAddAct(
   auto *x = gpd.mutable_pattern()
                 ->NewNode("bn_add_act/x")
                 ->AsInput()
-                ->assert_is_op_input("batch_norm", "X")
-                ->assert_var_dtype(proto::VarType::FP16);
+                ->assert_is_op_input("batch_norm", "X");
   patterns::BatchNormAddAct bn_add_act_pattern(gpd.mutable_pattern(),
                                                "bn_add_act");
 
@@ -174,8 +173,7 @@ ir::Graph *FuseBatchNormAddActPass::FuseBatchNormAddActGrad(
       gpd.mutable_pattern()
           ->NewNode("bn_add_act_grad/x")
           ->AsInput()
-          ->assert_is_ops_input(act_grad_types, GradVarName("Out"))
-          ->assert_var_dtype(proto::VarType::FP16);
+          ->assert_is_ops_input(act_grad_types, GradVarName("Out"));
   patterns::BatchNormAddActGrad bn_add_act_grad_pattern(gpd.mutable_pattern(),
                                                         "bn_add_act_grad");
   bn_add_act_grad_pattern(d_act_out, act_grad_types);

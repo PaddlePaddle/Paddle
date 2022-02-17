@@ -1245,8 +1245,7 @@ PDNode *patterns::BatchNormActGrad::operator()(
       pattern->NewNode(act_grad_repr())->assert_is_ops(act_grad_types);
   auto *bn_grad = pattern->NewNode(batch_norm_grad_repr())
                       ->assert_is_op("batch_norm_grad")
-                      ->assert_op_attr<bool>("use_global_stats", false)
-                      ->assert_op_attr<std::string>("data_layout", "NHWC");
+                      ->assert_op_attr<bool>("use_global_stats", false);
 
   auto *act_out_var = pattern->NewNode(act_out_repr())
                           ->assert_is_ops_input(act_grad_types, "Out");
@@ -1254,9 +1253,8 @@ PDNode *patterns::BatchNormActGrad::operator()(
       pattern->NewNode(d_itermediate_out_repr())
           ->assert_is_ops_output(act_grad_types, GradVarName("X"))
           ->assert_has_n_outputs(1);
-  auto *bn_x_var = pattern->NewNode(bn_x_repr())
-                       ->assert_is_op_input("batch_norm_grad", "X")
-                       ->assert_var_dtype(proto::VarType::FP16);
+  auto *bn_x_var =
+      pattern->NewNode(bn_x_repr())->assert_is_op_input("batch_norm_grad", "X");
   auto *bn_scale_var = pattern->NewNode(bn_scale_repr())
                            ->assert_is_op_input("batch_norm_grad", "Scale");
   auto *bn_bias_var = pattern->NewNode(bn_bias_repr())
@@ -1319,8 +1317,7 @@ PDNode *patterns::BatchNormActOneDNN::operator()(const std::string &act_type) {
 PDNode *patterns::BatchNormAddAct::operator()(
     paddle::framework::ir::PDNode *bn_x_var,
     std::unordered_set<std::string> act_types) {
-  bn_x_var->assert_is_op_input("batch_norm", "X")
-      ->assert_var_dtype(proto::VarType::FP16);
+  bn_x_var->assert_is_op_input("batch_norm", "X");
   auto *bn_scale_var = pattern->NewNode(bn_scale_repr())
                            ->assert_is_op_input("batch_norm", "Scale");
   auto *bn_bias_var = pattern->NewNode(bn_bias_repr())
@@ -1347,9 +1344,8 @@ PDNode *patterns::BatchNormAddAct::operator()(
   auto *bn_reserve_space =
       pattern->NewNode(bn_reserve_space_repr())
           ->assert_is_op_output("batch_norm", "ReserveSpace");
-  auto *bn_out_var = pattern->NewNode(bn_out_repr())
-                         ->assert_is_op_output("batch_norm", "Y")
-                         ->assert_var_dtype(proto::VarType::FP16);
+  auto *bn_out_var =
+      pattern->NewNode(bn_out_repr())->assert_is_op_output("batch_norm", "Y");
 
   bn_out_var->assert_is_op_input("elementwise_add");
 
@@ -1358,8 +1354,7 @@ PDNode *patterns::BatchNormAddAct::operator()(
 
   auto *elewise_add_in_var = pattern->NewNode(elewise_add_in_repr())
                                  ->assert_is_not_ctrl_var()
-                                 ->assert_is_op_input("elementwise_add")
-                                 ->assert_var_dtype(proto::VarType::FP16);
+                                 ->assert_is_op_input("elementwise_add");
 
   auto *elewise_add_out_var =
       pattern->NewNode(elewise_add_out_repr())
@@ -1392,8 +1387,7 @@ PDNode *patterns::BatchNormAddActGrad::operator()(
                                ->assert_is_op("elementwise_add_grad");
   auto *bn_grad = pattern->NewNode(batch_norm_grad_repr())
                       ->assert_is_op("batch_norm_grad")
-                      ->assert_op_attr<bool>("use_global_stats", false)
-                      ->assert_op_attr<std::string>("data_layout", "NHWC");
+                      ->assert_op_attr<bool>("use_global_stats", false);
 
   auto *act_out_var = pattern->NewNode(act_out_repr())
                           ->assert_is_ops_input(act_grad_types, "Out");
@@ -1407,19 +1401,15 @@ PDNode *patterns::BatchNormAddActGrad::operator()(
   auto *d_elewise_add_in_var =
       pattern->NewNode(d_elewise_add_in_repr())
           ->assert_is_not_ctrl_var()
-          ->assert_is_op_output("elementwise_add_grad")
-          ->assert_var_dtype(proto::VarType::FP16);  // d_add_in_1
-  auto *d_bn_out_var =
-      pattern->NewNode(d_bn_out_repr())
-          ->assert_is_not_ctrl_var()
-          ->assert_is_op_output("elementwise_add_grad")
-          ->assert_var_dtype(proto::VarType::FP16);  // d_add_in_2
+          ->assert_is_op_output("elementwise_add_grad");
+  auto *d_bn_out_var = pattern->NewNode(d_bn_out_repr())
+                           ->assert_is_not_ctrl_var()
+                           ->assert_is_op_output("elementwise_add_grad");
 
   d_bn_out_var->assert_is_op_input("batch_norm_grad", GradVarName("Y"));
 
-  auto *bn_x_var = pattern->NewNode(bn_x_repr())
-                       ->assert_is_op_input("batch_norm_grad", "X")
-                       ->assert_var_dtype(proto::VarType::FP16);
+  auto *bn_x_var =
+      pattern->NewNode(bn_x_repr())->assert_is_op_input("batch_norm_grad", "X");
   auto *bn_scale_var = pattern->NewNode(bn_scale_repr())
                            ->assert_is_op_input("batch_norm_grad", "Scale");
   auto *bn_bias_var = pattern->NewNode(bn_bias_repr())
@@ -1437,8 +1427,7 @@ PDNode *patterns::BatchNormAddActGrad::operator()(
   auto *d_bn_x_var =
       pattern->NewNode(d_bn_x_repr())
           ->assert_is_not_ctrl_var()
-          ->assert_is_op_output("batch_norm_grad", GradVarName("X"))
-          ->assert_var_dtype(proto::VarType::FP16);
+          ->assert_is_op_output("batch_norm_grad", GradVarName("X"));
   auto *d_bn_scale_var =
       pattern->NewNode(d_bn_scale_repr())
           ->assert_is_not_ctrl_var()

@@ -46,6 +46,8 @@ class FusedBatchNormActKernel<platform::CUDADeviceContext, T>
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     float momentum = ctx.Attr<float>("momentum");
     std::string act_type = ctx.Attr<std::string>("act_type");
+    const DataLayout data_layout =
+        framework::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
 
     if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
       LOG(ERROR) << "Provided epsilon is smaller than "
@@ -82,7 +84,6 @@ class FusedBatchNormActKernel<platform::CUDADeviceContext, T>
     y->mutable_data<T>(ctx.GetPlace());
 
     int N, C, H, W, D;
-    const DataLayout data_layout = DataLayout::kNHWC;
     ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
@@ -113,8 +114,14 @@ class FusedBatchNormActKernel<platform::CUDADeviceContext, T>
         platform::dynload::cudnnCreateTensorDescriptor(&bn_param_desc_));
 
     VLOG(3) << "Setting descriptors.";
-    std::vector<int> dims = {N, C, H, W, D};
-    std::vector<int> strides = {H * W * D * C, 1, W * D * C, D * C, C};
+    std::vector<int> dims, strides;
+    if (data_layout == DataLayout::kNCHW) {
+      dims = {N, C, H, W, D};
+      strides = {C * H * W * D, H * W * D, W * D, D, 1};
+    } else {
+      dims = {N, C, H, W, D};
+      strides = {H * W * D * C, 1, W * D * C, D * C, C};
+    }
 
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
         data_desc_, CudnnDataType<T>::type,
@@ -206,6 +213,8 @@ class FusedBatchNormActGradKernel<platform::CUDADeviceContext, T>
         platform::errors::PreconditionNotMet("It must use CUDAPlace."));
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     std::string act_type = ctx.Attr<std::string>("act_type");
+    const DataLayout data_layout =
+        framework::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
 
     const auto *x = ctx.Input<Tensor>("X");
     const auto *y = ctx.Input<Tensor>("Y");
@@ -220,7 +229,6 @@ class FusedBatchNormActGradKernel<platform::CUDADeviceContext, T>
                       platform::errors::PreconditionNotMet(
                           "The Input dim size should be between 2 and 5"));
     int N, C, H, W, D;
-    const DataLayout data_layout = DataLayout::kNHWC;
     ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
     // init output
@@ -264,8 +272,14 @@ class FusedBatchNormActGradKernel<platform::CUDADeviceContext, T>
       return;
     }
 
-    std::vector<int> dims = {N, C, H, W, D};
-    std::vector<int> strides = {H * W * C * D, 1, W * D * C, D * C, C};
+    std::vector<int> dims, strides;
+    if (data_layout == DataLayout::kNCHW) {
+      dims = {N, C, H, W, D};
+      strides = {C * H * W * D, H * W * D, W * D, D, 1};
+    } else {
+      dims = {N, C, H, W, D};
+      strides = {H * W * D * C, 1, W * D * C, D * C, C};
+    }
     // ------------------- cudnn descriptors ---------------------
     cudnnTensorDescriptor_t data_desc_;
     cudnnTensorDescriptor_t bn_param_desc_;

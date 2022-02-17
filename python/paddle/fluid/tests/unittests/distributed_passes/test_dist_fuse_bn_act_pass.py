@@ -43,7 +43,11 @@ class TestFuseBatchNormActPass(DistPassTestBase):
         self.atol = 1e-4
         self.rtol = 1e-4
 
-    def get_model(self, place, batch_size=32, image_shape=[224, 224, 3]):
+    def get_model(self,
+                  place,
+                  batch_size=32,
+                  image_shape=[224, 224, 3],
+                  use_fp16=True):
         image = paddle.static.data(
             shape=[batch_size] + image_shape, dtype='float32', name='image')
 
@@ -55,11 +59,12 @@ class TestFuseBatchNormActPass(DistPassTestBase):
         dist_strategy = fleet.DistributedStrategy()
         dist_strategy.fuse_all_reduce_ops = False
         dist_strategy.without_graph_optimization = True
-        dist_strategy.amp = True
-        dist_strategy.amp_configs = {
-            "init_loss_scaling": 32768,
-            "use_dynamic_loss_scaling": True,
-        }
+        if use_fp16:
+            dist_strategy.amp = True
+            dist_strategy.amp_configs = {
+                "init_loss_scaling": 32768,
+                "use_dynamic_loss_scaling": True,
+            }
         fleet.init(is_collective=True, strategy=dist_strategy)
         optimizer = fleet.distributed_optimizer(optimizer)
         optimizer.minimize(loss)
@@ -88,8 +93,11 @@ class TestFuseBatchNormActPass(DistPassTestBase):
         self.assertTrue("fused_batch_norm_act" in op_type)
         self.assertTrue("fused_batch_norm_act_grad" in op_type)
 
-    def test_fuse_bn_act(self):
-        self.check_main()
+    def test_fuse_bn_act_fp16(self):
+        self.check_main(use_fp16=True)
+
+    def test_fuse_bn_act_fp32(self):
+        self.check_main(use_fp16=False)
 
 
 if __name__ == "__main__":

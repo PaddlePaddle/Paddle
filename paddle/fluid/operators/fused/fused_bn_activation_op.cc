@@ -85,7 +85,9 @@ void FusedBatchNormActOp::InferShape(framework::InferShapeContext *ctx) const {
                                           "[%d]",
                                           x_dims, x_dims.size()));
 
-  const int64_t C = x_dims[x_dims.size() - 1];
+  const auto &data_layout = ctx->Attrs().Get<std::string>("data_layout");
+  const int64_t C =
+      data_layout == "NCHW" ? x_dims[1] : x_dims[x_dims.size() - 1];
 
   auto scale_dim = ctx->GetInputDim("Scale");
   auto bias_dim = ctx->GetInputDim("Bias");
@@ -215,6 +217,8 @@ void FusedBatchNormActOpMaker::Make() {
   AddOutput("ReserveSpace",
             "Reserve GPU space for triggering the new semi-persistent "
             "NHWC kernel");
+  AddAttr<std::string>("data_layout", "The data layout of the input tensor.")
+      .SetDefault("NHWC");
   AddComment(R"DOC(
 Fused Batch Normalization with activation.
 
@@ -257,7 +261,9 @@ void FusedBatchNormActGradOp::InferShape(
                         "Output(Bias@GRAD) should not be null."));
 
   const auto x_dims = ctx->GetInputDim("X");
-  const int C = x_dims[x_dims.size() - 1];
+  const auto &data_layout = ctx->Attrs().Get<std::string>("data_layout");
+  const int64_t C =
+      data_layout == "NCHW" ? x_dims[1] : x_dims[x_dims.size() - 1];
 
   ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
   // has_scale_grad == has_bias_grad, judge has_scale_grad is enough
