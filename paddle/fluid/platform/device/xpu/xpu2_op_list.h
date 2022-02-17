@@ -134,7 +134,7 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({pOpKernelType(vartype::INT64, XPUPlace()),
                      pOpKernelType(vartype::INT32, XPUPlace()),
                      pOpKernelType(vartype::INT16, XPUPlace()),
-                     pOpKernelType(vartype::INT8, XPUPlace()),
+                     pOpKernelType(vartype::UINT8, XPUPlace()),
                      pOpKernelType(vartype::BOOL, XPUPlace()),
                      pOpKernelType(vartype::FP64, XPUPlace()),
                      pOpKernelType(vartype::FP32, XPUPlace()),
