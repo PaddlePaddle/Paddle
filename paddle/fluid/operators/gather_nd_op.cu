@@ -33,6 +33,7 @@ class GatherNdOpCUDAKernel : public framework::OpKernel<T> {
 
     output->mutable_data<T>(ctx.GetPlace());
     if (x->numel() == 0) return;
+    if (index->numel() == 0) return;
     const auto &index_type = framework::TransToProtoVarType(index->dtype());
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
@@ -70,6 +71,7 @@ class GatherNdGradOpCUDAKernel : public framework::OpKernel<T> {
                        .eigen_device();
     dxt.device(place) = dxt.constant(static_cast<T>(0));
     if (dO->numel() == 0) return;
+    if (index->numel() == 0) return;
 
     const auto &index_type = framework::TransToProtoVarType(index->dtype());
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
