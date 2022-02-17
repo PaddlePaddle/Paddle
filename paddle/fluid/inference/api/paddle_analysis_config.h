@@ -261,6 +261,14 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void EnableNpu(int device_id = 0);
   ///
+  /// \brief Turn on ONNXRuntime.
+  ///
+  void EnableONNXRuntime();
+  ///
+  /// \brief Turn off ONNXRuntime.
+  ///
+  void DisableONNXRuntime();
+  ///
   /// \brief A boolean state telling whether the GPU is turned on.
   ///
   /// \return bool Whether the GPU is turned on.
@@ -283,6 +291,12 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return bool Whether the IPU is turned on.
   ///
   bool use_ipu() const { return use_ipu_; }
+  ///
+  /// \brief A boolean state telling whether the ONNXRuntime is turned on.
+  ///
+  /// \return bool Whether the ONNXRuntime is turned on.
+  ///
+  bool use_onnxruntime() const { return use_onnxruntime_; }
   ///
   /// \brief Get the GPU device id.
   ///
@@ -773,6 +787,9 @@ struct PD_INFER_DECL AnalysisConfig {
   // NPU related
   bool use_npu_{false};
   int npu_device_id_{0};
+
+  // ONNXRuntime related
+  bool use_onnxruntime_{false};
 
   // Padding related
   bool use_fc_padding_{true};

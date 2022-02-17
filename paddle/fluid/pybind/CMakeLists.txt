@@ -4,6 +4,10 @@ set(PYBIND_DEPS init pybind python proto_desc memory executor fleet_wrapper box_
   gloo_wrapper infer_io_utils heter_wrapper generator op_version_registry ps_gpu_wrapper custom_operator
   cost_model cuda_graph_with_memory_pool fleet_executor global_utils pten_utils)
 
+# if (WITH_ONNXRUNTIME)
+#   set(PYBIND_DEPS ${PYBIND_DEPS} onnxruntime_predictor)
+# endif()
+
 if (WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
   set(PYBIND_DEPS ${PYBIND_DEPS} graph_py_service)
@@ -133,6 +137,10 @@ if(WITH_PYTHON)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS hccl_context)
   endif(WITH_ASCEND_CL)
 
+  # if (WITH_ONNXRUNTIME)
+  #   list(APPEND OP_FUNCTION_GENERETOR_DEPS onnxruntime_predictor)
+  # endif()
+
   add_executable(op_function_generator op_function_generator.cc)
   target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})
   add_executable(eager_op_function_generator eager_op_function_generator.cc)
@@ -231,6 +239,14 @@ if(WITH_PYTHON)
     # copy these *.so to current directory and append current directory to
     # LD_LIBRARY_PATH. This is different with Windows platformm, which search
     # *.dll in current directory automatically.
+    if(WITH_ONNXRUNTIME)
+      ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libonnxruntime.so
+        COMMAND ${CMAKE_COMMAND} -E copy ${ONNXRUNTIME_LIB} ${CMAKE_CURRENT_BINARY_DIR} 
+        DEPENDS onnxruntime_predictor)
+      list(APPEND OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/libonnxruntime.so)
+      list(APPEND EAGER_OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/libonnxruntime.so)
+    endif()
+
     if(WITH_MKLML)
       ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libiomp5.so
         COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_IOMP_LIB} ${CMAKE_CURRENT_BINARY_DIR}

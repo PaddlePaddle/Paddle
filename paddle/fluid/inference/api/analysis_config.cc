@@ -157,6 +157,22 @@ void AnalysisConfig::EnableIpu(int device_num, bool ipu_enable_pipelining,
   Update();
 }
 
+void AnalysisConfig::EnableONNXRuntime() {
+#ifdef PADDLE_WITH_ONNXRUNTIME
+  use_onnxruntime_ = true;
+#else
+  LOG(ERROR) << "Please compile with onnxruntime to EnableONNXRuntime()";
+  use_onnxruntime_ = false;
+#endif
+
+  Update();
+}
+
+void AnalysisConfig::DisableONNXRuntime() {
+  use_onnxruntime_ = false;
+  Update();
+}
+
 AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 #define CP_MEMBER(member__) member__ = other.member__;
 

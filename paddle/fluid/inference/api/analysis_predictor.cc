@@ -36,6 +36,7 @@
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/inference/api/onnxruntime_predictor.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
@@ -1476,6 +1477,23 @@ namespace paddle_infer {
 Predictor::Predictor(const Config &config) {
   const_cast<Config *>(&config)->SwitchUseFeedFetchOps(false);
   // The second parameter indicates that the discard log is not printed
+  if (config.use_onnxruntime()) {
+#ifdef PADDLE_WITH_ONNXRUNTIME
+    if (config.use_gpu()) {
+      LOG(WARNING) << "ONNXRuntime not support gpu for now， fall back to "
+                      "using Paddle Inference.";
+    } else if (!paddle::ConvertToONNX(config)) {
+      LOG(WARNING) << "ONNXRuntime not support the Model， fall back to using "
+                      "Paddle Inference.";
+    } else {
+      predictor_ = paddle::CreatePaddlePredictor<
+          Config, paddle::PaddleEngineKind::kONNXRuntime>(config);
+      return;
+    }
+#else
+    LOG(WARNING) << "compli， fall back to using Paddle Inference.";
+#endif
+  }
   predictor_ = paddle::CreatePaddlePredictor<
       Config, paddle::PaddleEngineKind::kAnalysis>(config);
 }

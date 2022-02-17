@@ -53,6 +53,7 @@ option(WITH_IPU         "Compile PaddlePaddle with Graphcore IPU"    OFF)
 # to develop some acl related functionality on x86
 option(WITH_ASCEND_CL         "Compile PaddlePaddle with ASCEND CL"        ${WITH_ASCEND})
 option(WITH_ASCEND_CXX11         "Compile PaddlePaddle with ASCEND and CXX11 ABI"        OFF)
+option(WITH_ONNXRUNTIME         "Compile PaddlePaddle with ONNXRUNTIME"          OFF)
 # Note(zhouwei): It use option above, so put here
 include(init)
 include(generic)            # simplify cmake module
@@ -314,6 +315,11 @@ if(WITH_BRPC_RDMA)
     if(NOT WITH_DISTRIBUTE)
         message(FATAL_ERROR "Can't use brpc rdma in no distribute env.")
     endif()
+endif()
+
+if(WITH_ONNXRUNTIME)
+    include(paddle2onnx)
+    include(onnxruntime)
 endif()
 
 if(WITH_GPU)

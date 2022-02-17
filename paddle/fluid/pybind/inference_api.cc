@@ -28,6 +28,7 @@
 #include <vector>
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/inference/api/onnxruntime_predictor.h"
 #include "paddle/fluid/inference/api/paddle_infer_contrib.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
@@ -556,6 +557,9 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("device_id") = 0)
       .def("enable_npu", &AnalysisConfig::EnableNpu, py::arg("device_id") = 0)
       .def("disable_gpu", &AnalysisConfig::DisableGpu)
+      .def("enable_onnxruntime", &AnalysisConfig::EnableONNXRuntime)
+      .def("disable_onnxruntime", &AnalysisConfig::DisableONNXRuntime)
+      .def("onnxruntime_enable", &AnalysisConfig::use_onnxruntime)
       .def("use_gpu", &AnalysisConfig::use_gpu)
       .def("use_xpu", &AnalysisConfig::use_xpu)
       .def("use_npu", &AnalysisConfig::use_npu)
