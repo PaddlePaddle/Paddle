@@ -198,15 +198,17 @@ framework::OpKernelType PoolOp::GetKernelTypeForVar(
     const std::string& var_name, const Tensor& tensor,
     const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
+  auto cur_dl =
+      paddle::platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout();
   if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
-      (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+      (cur_dl != framework::DataLayout::kNHWC)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_format = ar.Get<std::string>("data_format");
     auto dl = framework::StringToDataLayout(data_format);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
-    if (dl != framework::DataLayout::kAnyLayout) {
+    if (dl != framework::DataLayout::kAnyLayout && cur_dl != dl) {
       return framework::OpKernelType(expected_kernel_type.data_type_,
                                      tensor.place(), dl);
     }

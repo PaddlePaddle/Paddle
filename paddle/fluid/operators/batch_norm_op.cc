@@ -188,16 +188,18 @@ framework::OpKernelType BatchNormOp::GetKernelTypeForVar(
 #ifdef PADDLE_WITH_MKLDNN
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
+  auto cur_dl =
+      paddle::platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout();
   if ((var_name == "X") &&
       (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
-      (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+      (cur_dl != framework::DataLayout::kNHWC)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_layout = ar.Get<std::string>("data_layout");
     auto dl = framework::StringToDataLayout(data_layout);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
-    if (dl != framework::DataLayout::kAnyLayout) {
+    if (dl != framework::DataLayout::kAnyLayout && cur_dl != dl) {
       return framework::OpKernelType(expected_kernel_type.data_type_,
                                      tensor.place(), dl);
     }
