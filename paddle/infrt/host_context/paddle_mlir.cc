@@ -171,7 +171,7 @@ void MLIRModelGenImpl::UpdateModelParams(
                       builder_,
                       &precision_);
       mlir::Type type_ = mlir::RankedTensorType::get(dims, precision_);
-      auto op = builder_.create<infrt::dt::GetParamOp>(
+      auto op = builder_.create<infrt::dt::TensorMapGetTensorOp>(
           mlir::UnknownLoc::get(context_), type_, map, name);
       params_map_.insert(std::pair<std::string, mlir::Value>(
           var_desc.name(), op.getOperation()->getResult(0)));
@@ -224,15 +224,14 @@ llvm::SmallVector<mlir::Value, 4> MLIRModelGenImpl::GetOpInputValue(
     const infrt::paddle::framework_proto::OpDesc &op_) {
   llvm::SmallVector<mlir::Value, 4> operands;
 
-  std::vector<std::string> inputs_info = {};
+  std::unordered_map<std::string, uint8_t> inputs_info = {};
   if (pd_dialect_inputs_info_map_.count(op_.type()))
     inputs_info = pd_dialect_inputs_info_map_.at(op_.type());
 
   for (int var_idx = 0; var_idx < op_.inputs_size(); ++var_idx) {
     auto &var = op_.inputs(var_idx);
     if (!var.arguments().empty()) {
-      if (!std::count(inputs_info.begin(), inputs_info.end(), var.parameter()))
-        continue;
+      if (!inputs_info.count(var.parameter())) continue;
       operands.push_back((params_map_[var.arguments()[0]]));
     }
   }
@@ -243,7 +242,7 @@ llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetOpOutputType(
     const infrt::paddle::framework_proto::OpDesc &op_) {
   llvm::SmallVector<mlir::Type, 4> resultTypes;
 
-  std::vector<std::string> pd_dialect_outputs_info = {};
+  std::unordered_map<std::string, uint8_t> pd_dialect_outputs_info = {};
   if (pd_dialect_outputs_info_map_.count(op_.type()))
     pd_dialect_outputs_info = pd_dialect_outputs_info_map_.at(op_.type());
 
@@ -251,9 +250,7 @@ llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetOpOutputType(
   for (int var_idx = 0; var_idx < op_.outputs_size(); ++var_idx) {
     auto &var_name = op_.outputs(var_idx).arguments()[0];
 
-    if (!std::count(pd_dialect_outputs_info.begin(),
-                    pd_dialect_outputs_info.end(),
-                    op_.outputs(var_idx).parameter()))
+    if (!pd_dialect_outputs_info.count(op_.outputs(var_idx).parameter()))
       continue;
 
     // update persistable tensors

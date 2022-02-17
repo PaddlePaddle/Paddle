@@ -117,4 +117,4 @@ PT_REGISTER_KERNEL(norm_grad,
                    pten::NormGradKernel,
                    float,
                    double,
-                   paddle::platform::float16) {}
+                   pten::dtype::float16) {}
