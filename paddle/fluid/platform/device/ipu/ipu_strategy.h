@@ -90,9 +90,10 @@ struct IpuStrategy {
       std::map<std::string, std::function<void(ValueType)>> &options,  // NOLINT
       const std::string &type_str) {
     auto it = options.find(key);
-    PADDLE_ENFORCE_NE(it, options.end(),
-                      platform::errors::InvalidArgument("Option: %s, type: %s",
-                                                        key, type_str));
+    PADDLE_ENFORCE_NE(it, options.end(), platform::errors::InvalidArgument(
+                                             "Cannot find option: %s, type: %s "
+                                             "when setting IpuStrategy options",
+                                             key, type_str));
     it->second(value);
   }
 
@@ -101,8 +102,11 @@ struct IpuStrategy {
       const std::string &key,
       std::map<std::string, std::function<ValueType()>> &options) {  // NOLINT
     auto it = options.find(key);
-    PADDLE_ENFORCE_NE(it, options.end(),
-                      platform::errors::InvalidArgument("Option: %s", key));
+    PADDLE_ENFORCE_NE(
+        it, options.end(),
+        platform::errors::InvalidArgument(
+            "Cannot find option name: %s when trying to get IpuStrategy option",
+            key));
     return it->second();
   }
 
