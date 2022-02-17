@@ -58,6 +58,10 @@ CPUContext::CPUContext(const Place& place)
 
 CPUContext::~CPUContext() = default;
 
+CPUContext::CPUContext(CPUContext&&) = default;
+
+CPUContext& CPUContext::operator=(CPUContext&&) = default;
+
 void CPUContext::Init() { impl_->Init(); }
 
 Eigen::DefaultDevice* CPUContext::eigen_device() const {
