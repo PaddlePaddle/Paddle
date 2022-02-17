@@ -37,16 +37,16 @@ class RecordEvent {
   explicit RecordEvent(
       const std::string& name,
       const TracerEventType type = TracerEventType::UserDefined,
-      uint32_t level = 1, const EventRole role = EventRole::kOrdinary);
+      uint32_t level = 4, const EventRole role = EventRole::kOrdinary);
 
   explicit RecordEvent(
       const char* name,
       const TracerEventType type = TracerEventType::UserDefined,
-      uint32_t level = 1, const EventRole role = EventRole::kOrdinary);
+      uint32_t level = 4, const EventRole role = EventRole::kOrdinary);
 
   RecordEvent(const std::string& name, const std::string& attr,
               const TracerEventType type = TracerEventType::UserDefined,
-              uint32_t level = 1, const EventRole role = EventRole::kOrdinary);
+              uint32_t level = 4, const EventRole role = EventRole::kOrdinary);
 
   // Stop event tracing explicitly before the object goes out of scope.
   // Sometimes it's inconvenient to use RAII
