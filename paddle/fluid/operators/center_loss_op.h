@@ -20,8 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/functors.h"
 #include "paddle/fluid/platform/transform.h"
+
 namespace paddle {
 namespace operators {
 

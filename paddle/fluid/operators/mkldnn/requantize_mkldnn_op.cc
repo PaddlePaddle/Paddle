@@ -138,12 +138,9 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     }
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-    {
-      platform::RecordEvent record_reorder("int_reorder",
-                                           platform::EventRole::kUniqueOp);
-      reorder_p->execute(astream, *src_memory, *dst_memory);
-      astream.wait();
-    }
+
+    reorder_p->execute(astream, *src_memory, *dst_memory);
+    astream.wait();
 
     output->set_layout(framework::DataLayout::kMKLDNN);
     output->set_format(platform::GetMKLDNNFormat(*dst_memory));

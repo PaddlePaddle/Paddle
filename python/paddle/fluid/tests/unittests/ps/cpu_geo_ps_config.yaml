@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,15 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#=================================================
-#                   Utils
-#=================================================
+# refer to PaddleRec/models/rank/dnn/benchmark.yaml
 
-set -e
+hyper_parameters:
+  optimizer:
+    class: Adam
+    learning_rate: 0.0001
+    adam_lazy_mode: True
+  sparse_inputs_slots: 27
+  sparse_feature_number: 1000001
+  sparse_feature_dim: 10
+  dense_input_dim: 13
+  fc_sizes: [400, 400, 400]
 
-EXIT_CODE=0;
-tmp_dir=`mktemp -d`
+runner:
+  geo_step: 400
+  sync_mode: "geo"
+  thread_num: 16
+  use_gpu: 0
+  
+  model_path: "../ps_dnn_model.py"
 
-PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
-
-unset GREP_OPTIONS && find ${PADDLE_ROOT}/paddle/pten/kernels -name "*.c*" | xargs sed -e '/PT_REGISTER_\(GENERAL_\)\?KERNEL(/,/)/!d' | awk 'BEGIN { RS="{" }{ gsub(/\n /,""); print $0 }' | grep PT_REGISTER | awk -F ",|\(" '{gsub(/ /,"");print $2, $3, $4, $5}' |  sort -u | awk '{gsub(/pten::/,"");print $0}' | grep -v "_grad"
+  
