@@ -18,8 +18,7 @@ import numpy as np
 import unittest
 import sys
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.compiler as compiler
+import paddle.static
 
 paddle.enable_static()
 SEED = 2021
@@ -29,7 +28,7 @@ SEED = 2021
                  "core is not compiled with IPU")
 class TestSGD(unittest.TestCase):
     def _test_sgd(self, run_ipu=True):
-        scope = fluid.core.Scope()
+        scope = paddle.fluid.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = SEED
@@ -38,7 +37,7 @@ class TestSGD(unittest.TestCase):
 
         np_image = np.random.rand(1, 3, 10, 10).astype(np.float32)
 
-        with fluid.scope_guard(scope):
+        with paddle.fluid.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
                 image = paddle.static.data(
                     name='image', shape=[1, 3, 10, 10], dtype='float32')
@@ -60,8 +59,8 @@ class TestSGD(unittest.TestCase):
                 feed_list = [image.name]
                 fetch_list = [loss.name]
                 ipu_strategy = paddle.static.IpuStrategy()
-                ipu_strategy.SetGraphConfig(is_training=True)
-                program = compiler.IPUCompiledProgram(
+                ipu_strategy.set_graph_config(is_training=True)
+                program = paddle.static.IpuCompiledProgram(
                     main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
                                                                   fetch_list)
             else:

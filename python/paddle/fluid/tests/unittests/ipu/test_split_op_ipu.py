@@ -1,4 +1,4 @@
-#  Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#  Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,17 +35,17 @@ class TestBase(IPUOpTest):
         return True
 
     def set_data_feed(self):
-        data = np.random.uniform(size=[1, 2, 3])
-        self.feed_fp32 = {"x": data.astype(np.float32)}
-        self.feed_fp16 = {"x": data.astype(np.float16)}
+        data1 = np.random.uniform(size=[1, 3, 10, 10])
+
+        self.feed_fp32 = {'x': data1.astype(np.float32)}
+        self.feed_fp16 = {'x': data1.astype(np.float16)}
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]
         self.feed_list = list(self.feed_fp32.keys())
-        self.feed_dtype = [x.dtype for x in self.feed_fp32.values()]
 
     def set_op_attrs(self):
-        self.attrs = {"axes": 0}
+        self.attrs = {"num_or_sections": [1, 1, 1], "axis": 1}
 
     def _test_base(self, exec_mode):
         scope = paddle.fluid.core.Scope()
@@ -62,9 +62,9 @@ class TestBase(IPUOpTest):
                     dtype='float32')
 
                 with paddle.static.amp.fp16_guard():
-                    out = paddle.fluid.layers.unsqueeze(x, **self.attrs)
+                    out = paddle.split(x, **self.attrs)
 
-            fetch_list = [out.name]
+                fetch_list = [fetch.name for fetch in out]
 
             if exec_mode == ExecutionMode.CPU_FP32:
                 place = paddle.CPUPlace()
@@ -91,26 +91,23 @@ class TestBase(IPUOpTest):
                 feed = self.feed_fp16
 
             result = exe.run(program, feed=feed, fetch_list=fetch_list)
+
             return result[0]
 
     def test_base(self):
         output_dict = {}
         for mode in ExecutionMode:
-            if mode > ExecutionMode.IPU_FP32 and not self.fp16_enabled:
+            if (mode > ExecutionMode.IPU_FP32 and not self.fp16_enabled
+                ) or mode == ExecutionMode.IPU_POPART_FP16:
                 break
             output_dict[mode] = self._test_base(mode).flatten()
 
-        self.check(output_dict, check_shape=True)
+        self.check(output_dict)
 
 
 class TestCase1(TestBase):
     def set_op_attrs(self):
-        self.attrs = {"axes": -1}
-
-
-class TestCase2(TestBase):
-    def set_op_attrs(self):
-        self.attrs = {"axes": [1, 2]}
+        self.attrs = {"num_or_sections": [2, 8], "axis": 2}
 
 
 if __name__ == "__main__":
