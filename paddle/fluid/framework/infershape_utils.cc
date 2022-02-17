@@ -325,33 +325,31 @@ pten::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
   auto attr_reader = ctx->Attrs();
   for (size_t i = 0; i < attr_names.size(); ++i) {
     auto attr_name = attr_names[i];
-    // When attr is a vector_tensor or tensor, transform it to ScalarArray
-    if (ctx->HasInputs(attr_name) || ctx->HasInput(attr_name)) {
-      const auto& infershape_inputs = ctx->GetInputVarPtrs(attr_name);
-      if (ctx->IsRuntime()) {
-        std::vector<Variable*> vars;
-        vars.reserve(infershape_inputs.size());
-        for (size_t i = 0; i < infershape_inputs.size(); i++) {
-          vars.push_back(BOOST_GET_CONST(Variable*, infershape_inputs[i]));
-        }
+    if (attr_defs[i].type_index == std::type_index(typeid(pten::ScalarArray))) {
+      // When attr is a vector_tensor or tensor, transform it to ScalarArray
+      if (ctx->HasInputs(attr_name) || ctx->HasInput(attr_name)) {
+        const auto& infershape_inputs = ctx->GetInputVarPtrs(attr_name);
+        if (ctx->IsRuntime()) {
+          std::vector<Variable*> vars;
+          vars.reserve(infershape_inputs.size());
+          for (size_t i = 0; i < infershape_inputs.size(); i++) {
+            vars.push_back(BOOST_GET_CONST(Variable*, infershape_inputs[i]));
+          }
 
-        if (infershape_inputs.size() != 1) {
-          infer_meta_context.EmplaceBackAttr(
-              std::move(experimental::MakePtenScalarArrayFromVarList(vars)));
+          if (infershape_inputs.size() != 1) {
+            infer_meta_context.EmplaceBackAttr(
+                std::move(experimental::MakePtenScalarArrayFromVarList(vars)));
+          } else {
+            infer_meta_context.EmplaceBackAttr(
+                std::move(experimental::MakePtenScalarArrayFromVar(*vars[0])));
+          }
         } else {
-          infer_meta_context.EmplaceBackAttr(
-              std::move(experimental::MakePtenScalarArrayFromVar(*vars[0])));
+          VLOG(6) << "Not in Runtime, the Attr( " << attr_name
+                  << ") ScalarArray value will be set empty";
+          infer_meta_context.EmplaceBackAttr(std::move(pten::ScalarArray()));
         }
-      } else {
-        VLOG(6) << "Not in Runtime, the Attr( " << attr_name
-                << ") ScalarArray value will be set empty";
-        infer_meta_context.EmplaceBackAttr(std::move(pten::ScalarArray()));
-      }
-    } else if (ctx->HasAttr(attr_name)) {
-      // Emplace Back Attr according to the type of attr.
-      auto& attr = attr_reader.GetAttr(attr_name);
-      if (attr_defs[i].type_index ==
-          std::type_index(typeid(pten::ScalarArray))) {
+      } else if (ctx->HasAttr(attr_name)) {
+        auto& attr = attr_reader.GetAttr(attr_name);
         if (std::type_index(attr.type()) ==
             std::type_index(typeid(std::vector<int32_t>))) {
           infer_meta_context.EmplaceBackAttr(std::move(
@@ -362,8 +360,12 @@ pten::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
               "construct KernelContext.",
               attr_name));
         }
-      } else if (std::type_index(attr.type()) ==
-                 std::type_index(typeid(bool))) {
+      }
+
+    } else if (ctx->HasAttr(attr_name)) {
+      // Emplace Back Attr according to the type of attr.
+      auto& attr = attr_reader.GetAttr(attr_name);
+      if (std::type_index(attr.type()) == std::type_index(typeid(bool))) {
         infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
       } else if (std::type_index(attr.type()) == std::type_index(typeid(int))) {
         infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(int, attr));
