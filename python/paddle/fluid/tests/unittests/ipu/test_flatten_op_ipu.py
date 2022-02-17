@@ -1,4 +1,4 @@
-#  Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#  Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,10 +35,9 @@ class TestBase(IPUOpTest):
         return True
 
     def set_data_feed(self):
-        x = np.random.uniform(size=[10, 20])
-        y = np.array([1, 3, 5])
-        self.feed_fp32 = {"x": x.astype(np.float32), "y": y.astype(np.int32)}
-        self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.int32)}
+        data = np.random.uniform(size=[2, 2, 4, 6])
+        self.feed_fp32 = {"in_0": data.astype(np.float32)}
+        self.feed_fp16 = {"in_0": data.astype(np.float16)}
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]
@@ -46,6 +45,7 @@ class TestBase(IPUOpTest):
 
     def set_op_attrs(self):
         self.attrs = {}
+        self.attrs['axis'] = 1
 
     def _test_base(self, exec_mode):
         scope = paddle.fluid.core.Scope()
@@ -60,15 +60,11 @@ class TestBase(IPUOpTest):
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
                     dtype='float32')
-                y = paddle.static.data(
-                    name=self.feed_list[1],
-                    shape=self.feed_shape[1],
-                    dtype='int32')
 
                 with paddle.static.amp.fp16_guard():
-                    out = paddle.fluid.layers.gather(x, index=y, **self.attrs)
+                    out = paddle.fluid.layers.flatten(x=x, **self.attrs)
 
-                fetch_list = [out.name]
+            fetch_list = [out.name]
 
             if exec_mode == ExecutionMode.CPU_FP32:
                 place = paddle.CPUPlace()
@@ -97,22 +93,26 @@ class TestBase(IPUOpTest):
             result = exe.run(program, feed=feed, fetch_list=fetch_list)
             return result[0]
 
-    def test(self):
+    def test_base(self):
         output_dict = {}
         for mode in ExecutionMode:
             if mode > ExecutionMode.IPU_FP32 and not self.fp16_enabled:
                 break
-            output_dict[mode] = self._test_base(mode).flatten()
+            output_dict[mode] = self._test_base(mode)
 
-        self.check(output_dict)
+        self.check(output_dict, check_shape=True)
 
 
 class TestCase1(TestBase):
-    def set_data_feed(self):
-        x = np.random.uniform(size=[100])
-        y = np.array([1, 3, 5])
-        self.feed_fp32 = {"x": x.astype(np.float32), "y": y.astype(np.int32)}
-        self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.int32)}
+    def set_op_attrs(self):
+        self.attrs = {}
+        self.attrs['axis'] = 0
+
+
+class TestCase2(TestBase):
+    def set_op_attrs(self):
+        self.attrs = {}
+        self.attrs['axis'] = 2
 
 
 if __name__ == "__main__":

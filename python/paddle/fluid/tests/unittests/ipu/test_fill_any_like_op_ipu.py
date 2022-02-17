@@ -35,17 +35,16 @@ class TestBase(IPUOpTest):
         return True
 
     def set_data_feed(self):
-        x = np.random.uniform(size=[10, 20])
-        y = np.array([1, 3, 5])
-        self.feed_fp32 = {"x": x.astype(np.float32), "y": y.astype(np.int32)}
-        self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.int32)}
+        data = np.random.uniform(size=[2, 3, 1])
+        self.feed_fp32 = {'in_0': data.astype(np.float32)}
+        self.feed_fp16 = {'in_0': data.astype(np.float16)}
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]
         self.feed_list = list(self.feed_fp32.keys())
 
     def set_op_attrs(self):
-        self.attrs = {}
+        self.attrs = {'fill_value': 0.3, 'dtype': 'float32'}
 
     def _test_base(self, exec_mode):
         scope = paddle.fluid.core.Scope()
@@ -60,13 +59,10 @@ class TestBase(IPUOpTest):
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
                     dtype='float32')
-                y = paddle.static.data(
-                    name=self.feed_list[1],
-                    shape=self.feed_shape[1],
-                    dtype='int32')
 
                 with paddle.static.amp.fp16_guard():
-                    out = paddle.fluid.layers.gather(x, index=y, **self.attrs)
+                    x_fill = paddle.full_like(x, **self.attrs)
+                    out = paddle.fluid.layers.elementwise_add(x_fill, x_fill)
 
                 fetch_list = [out.name]
 
@@ -108,11 +104,8 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
-    def set_data_feed(self):
-        x = np.random.uniform(size=[100])
-        y = np.array([1, 3, 5])
-        self.feed_fp32 = {"x": x.astype(np.float32), "y": y.astype(np.int32)}
-        self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.int32)}
+    def set_op_attrs(self):
+        self.attrs = {'fill_value': 3, 'dtype': 'int32'}
 
 
 if __name__ == "__main__":

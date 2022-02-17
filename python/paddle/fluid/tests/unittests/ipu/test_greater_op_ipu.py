@@ -35,10 +35,16 @@ class TestBase(IPUOpTest):
         return True
 
     def set_data_feed(self):
-        x = np.random.uniform(size=[10, 20])
-        y = np.array([1, 3, 5])
-        self.feed_fp32 = {"x": x.astype(np.float32), "y": y.astype(np.int32)}
-        self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.int32)}
+        x = np.random.randn(3, 4, 5)
+        y = np.random.randn(3, 4, 5)
+        self.feed_fp32 = {
+            "x": x.astype(np.float32),
+            "y": y.astype(np.float32),
+        }
+        self.feed_fp16 = {
+            "x": x.astype(np.float16),
+            "y": y.astype(np.float16),
+        }
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]
@@ -63,10 +69,10 @@ class TestBase(IPUOpTest):
                 y = paddle.static.data(
                     name=self.feed_list[1],
                     shape=self.feed_shape[1],
-                    dtype='int32')
+                    dtype='float32')
 
                 with paddle.static.amp.fp16_guard():
-                    out = paddle.fluid.layers.gather(x, index=y, **self.attrs)
+                    out = paddle.fluid.layers.greater_than(x, y, **self.attrs)
 
                 fetch_list = [out.name]
 
@@ -102,17 +108,33 @@ class TestBase(IPUOpTest):
         for mode in ExecutionMode:
             if mode > ExecutionMode.IPU_FP32 and not self.fp16_enabled:
                 break
-            output_dict[mode] = self._test_base(mode).flatten()
+            output_dict[mode] = self._test_base(mode).flatten().astype(np.int32)
 
         self.check(output_dict)
 
 
 class TestCase1(TestBase):
     def set_data_feed(self):
-        x = np.random.uniform(size=[100])
-        y = np.array([1, 3, 5])
-        self.feed_fp32 = {"x": x.astype(np.float32), "y": y.astype(np.int32)}
-        self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.int32)}
+        x = np.ones([1, 10])
+        y = np.ones([10])
+        self.feed_fp32 = {"x": x.astype(np.float32), "y": y.astype(np.float32)}
+        self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.float16)}
+
+
+class TestCase2(TestBase):
+    def set_data_feed(self):
+        x = np.ones([1, 10])
+        y = np.zeros([1, 10])
+        self.feed_fp32 = {"x": x.astype(np.float32), "y": y.astype(np.float32)}
+        self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.float16)}
+
+
+class TestCase3(TestBase):
+    def set_data_feed(self):
+        x = np.zeros([1, 10])
+        y = np.ones([1, 10])
+        self.feed_fp32 = {"x": x.astype(np.float32), "y": y.astype(np.float32)}
+        self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.float16)}
 
 
 if __name__ == "__main__":
