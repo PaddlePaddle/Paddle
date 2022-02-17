@@ -79,6 +79,13 @@ void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
   out->set_layout(x.layout());
 }
 
+void CopyToInferMeta(const MetaTensor& x,
+                     Backend backend,
+                     bool blocking,
+                     MetaTensor* out) {
+  UnchangedInferMeta(x, out);
+}
+
 void CreateLikeInferMeta(const MetaTensor& x,
                          DataType dtype,
                          DataLayout layout,
@@ -500,3 +507,6 @@ void TraceInferMeta(
 }
 
 }  // namespace pten
+
+PT_REGISTER_INFER_META_FN(copy_to, pten::CopyToInferMeta);
+PT_REGISTER_INFER_META_FN(split, pten::SplitInferMeta);

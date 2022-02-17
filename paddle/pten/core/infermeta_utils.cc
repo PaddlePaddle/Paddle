@@ -83,6 +83,16 @@ MetaTensor* InferMetaContext::MutableOutputAt(size_t idx) {
   return outputs_.at(idx).get();
 }
 
+std::vector<MetaTensor> InferMetaContext::MutableOutputBetween(size_t start,
+                                                               size_t end) {
+  std::vector<MetaTensor> result;
+  result.reserve(end - start);
+  for (size_t i = start; i < end; ++i) {
+    result.emplace_back(*outputs_.at(i));
+  }
+  return result;
+}
+
 MetaFnFactory& MetaFnFactory::Instance() {
   static MetaFnFactory g_meta_fn_map;
   return g_meta_fn_map;
