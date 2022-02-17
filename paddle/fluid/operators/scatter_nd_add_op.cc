@@ -98,8 +98,9 @@ class ScatterNdAddOp : public framework::OperatorWithKernel {
                       OperatorWithKernel::IndicateVarDataType(ctx, "Updates"),
                       platform::errors::InvalidArgument(
                           "Ref and Updates must have same type"));
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        framework::TransToProtoVarType(ctx.Input<Tensor>("X")->type()),
+        ctx.device_context());
   }
 };
 

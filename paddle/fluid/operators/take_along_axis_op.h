@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/gather_scatter_kernel.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -41,7 +41,7 @@ class TakeAlongAxisOpKernel : public framework::OpKernel<T> {
     result->Resize(index->dims());
     result->mutable_data<T>(ctx.GetPlace());
 
-    const auto &index_type = index->type();
+    const auto &index_type = framework::TransToProtoVarType(index->dtype());
     if (index_type == framework::proto::VarType::INT32) {
       cpu_gather_kernel<T, int32_t>(*input, axis, *index, *result,
                                     ctx.device_context());
@@ -72,11 +72,11 @@ class TakeAlongAxisGradOpKernel : public framework::OpKernel<T> {
 
     // Set to zero tensor.
     auto &dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
-    math::SetConstant<platform::CPUDeviceContext, T> functor;
+    pten::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
     functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
             input_grad, static_cast<T>(0));
 
-    const auto &index_type = index->type();
+    const auto &index_type = framework::TransToProtoVarType(index->dtype());
     if (index_type == framework::proto::VarType::INT32) {
       cpu_scatter_add_kernel<T, int32_t>(
           *input_grad, axis, *index, *result_grad,

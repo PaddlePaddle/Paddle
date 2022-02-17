@@ -236,7 +236,8 @@ class MLUCnnlPoolingDesc {
                      const cnnlNanPropagation_t maxpooling_nan_opt,
                      int window_rows, int window_cols, int64_t pad_up,
                      int64_t pad_down, int64_t pad_left, int64_t pad_right,
-                     int row_stride, int col_stride);
+                     int row_stride, int col_stride, int row_dilation,
+                     int col_dilation, bool ceil_mode);
 
   MLUCnnlPoolingDesc(const cnnlPoolingMode_t mode,
                      const cnnlNanPropagation_t maxpooling_nan_opt,
@@ -512,7 +513,7 @@ class MLUCnnl {
   static void RandomUniform(const ExecutionContext& ctx, const int num,
                             const cnnlDataType_t data_type,
                             const cnnlRandGenerator_t mlu_generator,
-                            void* output);
+                            const float min, const float max, void* output);
 
   static void Cumsum(const ExecutionContext& ctx, const int axis,
                      const bool exclusive, const bool reverse,
@@ -643,11 +644,16 @@ class MLUCnnl {
 
   static void PoolingForward(
       const ExecutionContext& ctx, cnnlPoolingMode_t pool_mode,
-      const std::vector<int64_t>& output_shape,
-      cnnlPoolingDescriptor_t pooling_desc, const void* alpha,
-      const cnnlTensorDescriptor_t input_desc, const void* input,
-      const void* beta, const void* extra_input_ptr,
+      int64_t output_h, int64_t output_w, cnnlPoolingDescriptor_t pooling_desc,
+      const void* alpha, const cnnlTensorDescriptor_t input_desc,
+      const void* input, const void* beta, const void* extra_input_ptr,
       const cnnlTensorDescriptor_t output_desc, void* output);
+
+  static void AdaptivePoolingForward(
+      const ExecutionContext& ctx, cnnlPoolingMode_t pool_mode,
+      const cnnlTensorDescriptor_t input_desc, const void* input,
+      const cnnlTensorDescriptor_t output_desc, void* output,
+      const cnnlTensorDescriptor_t index_desc, void* index);
 
   static void Pool3D(const ExecutionContext& ctx, cnnlPoolingMode_t pool_mode,
                      const std::vector<int64_t>& output_shape,
@@ -956,6 +962,12 @@ class MLUCnnl {
       const void* alpha, const cnnlTensorDescriptor_t y_desc, const void* y,
       const cnnlTensorDescriptor_t diff_y_desc, const void* diff_y,
       const cnnlTensorDescriptor_t x_desc, const void* x, const void* beta,
+      const cnnlTensorDescriptor_t diff_x_desc, void* diff_x);
+
+  static void AdaptivePoolingBackward(
+      const ExecutionContext& ctx, const cnnlPoolingMode_t pool_mode,
+      const cnnlTensorDescriptor_t y_desc, const void* y,
+      const cnnlTensorDescriptor_t index_desc, const void* index,
       const cnnlTensorDescriptor_t diff_x_desc, void* diff_x);
 
   static void PoolingIndex(const ExecutionContext& ctx,

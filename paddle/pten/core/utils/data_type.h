@@ -57,7 +57,7 @@ inline void VisitDataType(pten::DataType type, Visitor visitor) {
   _PtenForEachDataType_(PtenVisitDataTypeCallback);
 #undef PtenVisitDataTypeCallback
   PADDLE_THROW(pten::errors::Unimplemented(
-      "Not supported proto::VarType::Type(%d) as data type.",
+      "Not supported pten::DataType(%d) as data type.",
       static_cast<int>(type)));
 }
 }  // namespace pten

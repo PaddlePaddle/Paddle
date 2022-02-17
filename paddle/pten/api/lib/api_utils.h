@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/meta_tensor.h"
+#include "paddle/pten/core/selected_rows.h"
 
 namespace paddle {
 namespace experimental {
@@ -43,6 +44,11 @@ inline std::unique_ptr<std::vector<pten::DenseTensor>> TensorToDenseTensor(
   return std::move(pt_tensors);
 }
 
+inline std::shared_ptr<pten::SelectedRows> TensorToSelectedRows(
+    const Tensor& tensor) {
+  return std::dynamic_pointer_cast<pten::SelectedRows>(tensor.impl());
+}
+
 /* ----------------- for infer_meta --------------------- */
 
 inline pten::MetaTensor MakeMetaTensor(const pten::DenseTensor& tensor) {
@@ -59,11 +65,15 @@ inline std::vector<pten::MetaTensor> MakeMetaTensor(
   return meta_tensors;
 }
 
+inline pten::MetaTensor MakeMetaTensor(const pten::SelectedRows& tensor) {
+  return pten::MetaTensor(tensor);
+}
+
 /* ------------------ for output ----------------------- */
 
 inline pten::DenseTensor* SetKernelOutput(Backend backend, Tensor* out) {
   auto dense_tensor = std::make_shared<pten::DenseTensor>(
-      pten::make_intrusive<SharedStorage>(pten::TransToFluidPlace(backend)),
+      pten::make_intrusive<SharedStorage>(pten::TransToPtenPlace(backend)),
       pten::DenseTensorMeta());
   out->set_impl(dense_tensor);
   return dense_tensor.get();
@@ -75,13 +85,20 @@ inline std::vector<pten::DenseTensor*> SetKernelOutput(
   std::vector<pten::DenseTensor*> results(out_size);
   for (size_t i = 0; i < out_size; ++i) {
     auto tensor_ptr = std::make_shared<pten::DenseTensor>(
-        pten::make_intrusive<SharedStorage>(pten::TransToFluidPlace(backend)),
+        pten::make_intrusive<SharedStorage>(pten::TransToPtenPlace(backend)),
         pten::DenseTensorMeta());
     results[i] = tensor_ptr.get();
     out->emplace_back();
     out->back().set_impl(tensor_ptr);
   }
   return results;
+}
+
+inline pten::SelectedRows* SetSelectedRowsKernelOutput(Backend backend,
+                                                       Tensor* out) {
+  auto select_rows = std::make_shared<pten::SelectedRows>();
+  out->set_impl(select_rows);
+  return select_rows.get();
 }
 
 }  // namespace experimental

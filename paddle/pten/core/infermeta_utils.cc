@@ -66,12 +66,25 @@ const MetaConfig& InferMetaContext::GetMetaConfig() const { return config_; }
 const MetaTensor& InferMetaContext::InputAt(size_t idx) const {
   return *inputs_.at(idx);
 }
+
+std::vector<MetaTensor> InferMetaContext::InputsBetween(size_t start,
+                                                        size_t end) const {
+  std::vector<MetaTensor> result;
+  result.reserve(end - start);
+
+  for (size_t i = start; i < end; ++i) {
+    result.emplace_back(*inputs_.at(i));
+  }
+
+  return result;
+}
+
 MetaTensor* InferMetaContext::MutableOutputAt(size_t idx) {
   return outputs_.at(idx).get();
 }
 
-MetaFunctionMap& MetaFunctionMap::Instance() {
-  static MetaFunctionMap g_meta_fn_map;
+MetaFnFactory& MetaFnFactory::Instance() {
+  static MetaFnFactory g_meta_fn_map;
   return g_meta_fn_map;
 }
 

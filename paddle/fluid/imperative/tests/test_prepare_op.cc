@@ -32,6 +32,9 @@ namespace framework = paddle::framework;
 namespace paddle {
 namespace imperative {
 
+extern void TestHandleComplexGradToRealGradEager(
+    const NameVarMap<egr::EagerVariable>& outs);
+
 static framework::VariableNameMap CreateVarNameMap(
     const framework::OpInfo& op_info, const std::string& op_type,
     const NameVarBaseMap& varbase_map, bool is_input) {
@@ -209,6 +212,11 @@ TEST(test_prepare_op, test_prepare_data_same_place) {
   TestPrepareDataSamePlace({});
 }
 
+TEST(test_prepare_op, test_complex_eager) {
+  NameVarMap<egr::EagerVariable> outs = {};
+  TestHandleComplexGradToRealGradEager(outs);
+}
+
 #ifdef PADDLE_WITH_MKLDNN
 TEST(test_prepare_op, test_prepare_data_cpu_mkldnn) {
   TestPrepareDataSamePlace({{"use_mkldnn", true}});
@@ -217,7 +225,7 @@ TEST(test_prepare_op, test_prepare_data_cpu_mkldnn) {
 }  // namespace imperative
 }  // namespace paddle
 
-USE_OP(split);
+USE_OP_ITSELF(split);
 USE_OP(relu);
 #ifdef PADDLE_WITH_MKLDNN
 USE_OP_DEVICE_KERNEL(relu, MKLDNN);

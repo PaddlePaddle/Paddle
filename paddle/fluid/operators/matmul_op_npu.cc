@@ -32,7 +32,7 @@ static void Mul(const framework::ExecutionContext& ctx,
     const auto& runner_dx = NpuOpRunner("Mul", {X, Y}, {*Out}, {});
     runner_dx.Run(stream);
   } else {
-    Tensor Out_temp(Out->type());
+    Tensor Out_temp(Out->dtype());
     Out_temp.mutable_data<T>(Out->dims(), ctx.GetPlace());
     const auto& runner_dx = NpuOpRunner("Mul", {X, Y}, {Out_temp}, {});
     runner_dx.Run(stream);
@@ -53,7 +53,7 @@ static void Dot(const framework::ExecutionContext& ctx,
     const auto& runner = NpuOpRunner("Dot", {X, Y}, {*Out});
     runner.Run(stream);
   } else {
-    Tensor Out_temp(Out->type());
+    Tensor Out_temp(Out->dtype());
     Out_temp.mutable_data<T>(Out->dims(), ctx.GetPlace());
     const auto& out_temp_runner = NpuOpRunner("Dot", {X, Y}, {Out_temp});
     out_temp_runner.Run(stream);
@@ -77,7 +77,7 @@ static void MatMul2D(const framework::ExecutionContext& ctx,
                     {{"transpose_x1", trans_x}, {"transpose_x2", trans_y}});
     runner.Run(stream);
   } else {
-    Tensor Out_temp(Out->type());
+    Tensor Out_temp(Out->dtype());
     Out_temp.mutable_data<T>(Out->dims(), ctx.GetPlace());
     const auto& out_temp_runner =
         NpuOpRunner("MatMul", {X, Y}, {Out_temp},
@@ -103,7 +103,7 @@ static void MatMulND(const framework::ExecutionContext& ctx,
                     {{"adj_x1", trans_x}, {"adj_x2", trans_y}});
     runner.Run(stream);
   } else {
-    Tensor Out_temp(Out->type());
+    Tensor Out_temp(Out->dtype());
     Out_temp.mutable_data<T>(Out->dims(), ctx.GetPlace());
     const auto& out_temp_runner =
         NpuOpRunner("BatchMatMul", {X, Y}, {Out_temp},
@@ -235,7 +235,7 @@ class MatMulNPUKernel : public framework::OpKernel<T> {
     std::copy(x_dims.end() - 2, x_dims.end(), x_broadcast_dims.end() - 2);
     std::copy(y_dims.end() - 2, y_dims.end(), y_broadcast_dims.end() - 2);
 
-    Tensor x_temp_brd(X->type());
+    Tensor x_temp_brd(X->dtype());
     if (x_dims == x_broadcast_dims) {
       x_temp_brd.ShareDataWith(*X);
       x_temp_brd.Resize(framework::make_ddim(x_broadcast_dims));
@@ -250,7 +250,7 @@ class MatMulNPUKernel : public framework::OpKernel<T> {
           .Run(stream);
     }
 
-    Tensor y_temp_brd(Y->type());
+    Tensor y_temp_brd(Y->dtype());
     if (y_dims == y_broadcast_dims) {
       y_temp_brd.ShareDataWith(*Y);
       y_temp_brd.Resize(framework::make_ddim(y_broadcast_dims));
@@ -293,7 +293,7 @@ class MatMulGradNPUKernel : public framework::OpKernel<T> {
 
     // Case 1: [K] x [K] = [1]
     if (x_ndim == 1 && y_ndim == 1) {
-      Tensor dout_temp(dOut->type());
+      Tensor dout_temp(dOut->dtype());
       dout_temp.Resize(X->dims());
       dout_temp.mutable_data<T>(ctx.GetPlace());
       NpuOpRunner runner;
@@ -395,7 +395,7 @@ class MatMulGradNPUKernel : public framework::OpKernel<T> {
     std::copy(x_dims.end() - 2, x_dims.end(), x_broadcast_dims.end() - 2);
     std::copy(y_dims.end() - 2, y_dims.end(), y_broadcast_dims.end() - 2);
 
-    Tensor x_temp_brd(X->type());
+    Tensor x_temp_brd(X->dtype());
     if (x_dims == x_broadcast_dims) {
       x_temp_brd.ShareDataWith(*X);
       x_temp_brd.Resize(framework::make_ddim(x_broadcast_dims));
@@ -410,7 +410,7 @@ class MatMulGradNPUKernel : public framework::OpKernel<T> {
           .Run(stream);
     }
 
-    Tensor y_temp_brd(Y->type());
+    Tensor y_temp_brd(Y->dtype());
     if (y_dims == y_broadcast_dims) {
       y_temp_brd.ShareDataWith(*Y);
       y_temp_brd.Resize(framework::make_ddim(y_broadcast_dims));
@@ -435,7 +435,7 @@ class MatMulGradNPUKernel : public framework::OpKernel<T> {
                       !transpose_y, alpha);
         }
       } else {
-        Tensor dx_temp(X->type());
+        Tensor dx_temp(X->dtype());
         dx_temp.Resize(framework::make_ddim(x_broadcast_dims));
         if (transpose_x) {
           MatMulND<T>(ctx, stream, y_temp_brd, dout_temp, &dx_temp, transpose_y,
@@ -457,7 +457,7 @@ class MatMulGradNPUKernel : public framework::OpKernel<T> {
                       false, alpha);
         }
       } else {
-        Tensor dy_temp(Y->type());
+        Tensor dy_temp(Y->dtype());
         dy_temp.Resize(framework::make_ddim(y_broadcast_dims));
         if (transpose_y) {
           MatMulND<T>(ctx, stream, dout_temp, x_temp_brd, &dy_temp, true,

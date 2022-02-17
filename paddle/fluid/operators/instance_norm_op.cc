@@ -18,7 +18,7 @@ limitations under the License. */
 #include <unordered_map>
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -115,12 +115,14 @@ framework::OpKernelType InstanceNormOp::GetExpectedKernelType(
     in_param_type = framework::proto::VarType::FP64;
   }
   if (ctx.HasInput("Scale")) {
-    PADDLE_ENFORCE_EQ(in_param_type, ctx.Input<Tensor>("Scale")->type(),
+    PADDLE_ENFORCE_EQ(in_param_type, framework::TransToProtoVarType(
+                                         ctx.Input<Tensor>("Scale")->dtype()),
                       platform::errors::InvalidArgument(
                           "Scale input should be of float type"));
   }
   if (ctx.HasInput("Bias")) {
-    PADDLE_ENFORCE_EQ(in_param_type, ctx.Input<Tensor>("Bias")->type(),
+    PADDLE_ENFORCE_EQ(in_param_type, framework::TransToProtoVarType(
+                                         ctx.Input<Tensor>("Bias")->dtype()),
                       platform::errors::InvalidArgument(
                           "Bias input should be of float type"));
   }
@@ -208,7 +210,7 @@ class InstanceNormKernel<platform::CPUDeviceContext, T>
     Eigen::IndexList<Eigen::type2index<1>> rdims;
 #endif
 
-    math::SetConstant<platform::CPUDeviceContext, T> set_constant;
+    pten::funcs::SetConstant<platform::CPUDeviceContext, T> set_constant;
 
     saved_mean->mutable_data<T>(ctx.GetPlace());
     saved_variance->mutable_data<T>(ctx.GetPlace());
@@ -356,7 +358,7 @@ class InstanceNormGradKernel<platform::CPUDeviceContext, T>
     NxC_shape.set(0, NxC);
 #endif
 
-    math::SetConstant<platform::CPUDeviceContext, T> set_constant;
+    pten::funcs::SetConstant<platform::CPUDeviceContext, T> set_constant;
 
     Tensor scale_data;
     if (!scale) {
@@ -492,7 +494,7 @@ class InstanceNormDoubleGradKernel<platform::CPUDeviceContext, T>
     auto *ddY = ctx.Output<Tensor>("DDY");
 
     auto &dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
-    math::SetConstant<platform::CPUDeviceContext, T> set_constant;
+    pten::funcs::SetConstant<platform::CPUDeviceContext, T> set_constant;
 
     const auto &x_dims = X->dims();
     int N, C, H, W, D;

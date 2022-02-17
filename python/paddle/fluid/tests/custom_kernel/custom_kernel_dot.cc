@@ -20,8 +20,8 @@ namespace custom_kernel {
 
 // Here we use dot <CPU, ANY, INT8> for test
 // This test will fail when this kernel is supported in framework
-template <typename T>
-void Dot(const paddle::CPUContext& dev_ctx,
+template <typename T, typename Context>
+void Dot(const Context& dev_ctx,
          const paddle::Tensor& x,
          const paddle::Tensor& y,
          paddle::Tensor* out) {
@@ -45,9 +45,6 @@ void Dot(const paddle::CPUContext& dev_ctx,
 }  // namespace custom_kernel
 }  // namespace paddle
 
-PD_REGISTER_KERNEL(
-    dot, CPU, ALL_LAYOUT, INT8, paddle::custom_kernel::Dot<int8_t>) {
-  /* do some args define here
-   * the only param can be used is OpKernelInfo* kernel */
+PD_REGISTER_KERNEL(dot, CPU, ALL_LAYOUT, paddle::custom_kernel::Dot, int8_t) {
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::INT8);
 }

@@ -24,12 +24,31 @@ CinnLaunchContext::CinnLaunchContext(
     const std::unordered_map<std::string, std::string>& paddle2cinn_varmap,
     const std::shared_ptr<CinnScope>& cinn_scope)
     : paddle2cinn_varmap_(paddle2cinn_varmap), cinn_scope_(cinn_scope) {
+  // generate all names of cinn used variables
   auto var_names = cinn_scope_->var_names();
   cinn_variable_names_.reserve(var_names.size());
   std::transform(
       var_names.begin(), var_names.end(),
       std::inserter(cinn_variable_names_, cinn_variable_names_.end()),
       [](const auto& name_view) { return std::string(name_view.data()); });
+  // build the variable name map of cinn2paddle
+  for (const auto& x : paddle2cinn_varmap_) {
+    auto res = cinn2paddle_varmap_.emplace(x.second, x.first);
+    PADDLE_ENFORCE_EQ(
+        res.second, true,
+        platform::errors::InvalidArgument(
+            "Cinn variable(%s) maps to more than one paddle variable(%s,%s)",
+            x.second, res.first->second, x.first));
+  }
+  // supplement the relations of the remain variables not appearing in above
+  // map,
+  // they are internal variables and here we use the name from cinn compiled.
+  for (const auto& var_name : cinn_variable_names_) {
+    if (!cinn2paddle_varmap_.count(var_name)) {
+      cinn2paddle_varmap_.emplace(var_name, var_name);
+      paddle2cinn_varmap_.emplace(var_name, var_name);
+    }
+  }
 }
 
 void CinnLaunchContext::UpdateCapturedEnv(const framework::Scope& scope,
@@ -187,6 +206,20 @@ CinnLaunchContext::FinalizeArguments() const {
                                         var_name));
                 });
   return name2argument_;
+}
+
+cinn_buffer_t* CinnLaunchContext::GetCinnBufferOfVar(
+    const std::string& paddle_var_name) {
+  auto res = paddle2cinn_varmap_.find(paddle_var_name);
+  PADDLE_ENFORCE_NE(
+      res, paddle2cinn_varmap_.end(),
+      platform::errors::InvalidArgument(
+          "Variable(%s) not found in compilation result", paddle_var_name));
+  auto it = name2argument_.find(res->second);
+  PADDLE_ENFORCE_NE(it, name2argument_.end(),
+                    platform::errors::InvalidArgument(
+                        "Argument(%s) not be initialized", res->second));
+  return static_cast<cinn_buffer_t*>(it->second);
 }
 
 }  // namespace details

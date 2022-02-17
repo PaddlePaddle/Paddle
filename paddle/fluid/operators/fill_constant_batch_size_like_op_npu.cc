@@ -70,13 +70,15 @@ class FillConstantBatchSizeLikeOpNPUKernel : public framework::OpKernel<T> {
     bool cpu_place = force_cpu || ctx.GetPlace() == platform::CPUPlace();
     if (cpu_place) {
       auto &dev_ctx = *pool.Get(platform::CPUPlace());
-      math::SetConstant<platform::CPUDeviceContext, T> functor;
-      out->mutable_data(platform::CPUPlace(), data_type);
+      pten::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
+      out->mutable_data(platform::CPUPlace(),
+                        framework::TransToPtenDataType(data_type));
       functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
               out, static_cast<T>(value));
     } else {
-      out->mutable_data(ctx.GetPlace(), data_type);
-      Tensor tensor_tmp(data_type);
+      out->mutable_data(ctx.GetPlace(),
+                        framework::TransToPtenDataType(data_type));
+      Tensor tensor_tmp(framework::TransToPtenDataType(data_type));
       tensor_tmp.mutable_data<T>({1}, ctx.GetPlace());
       FillNpuTensorWithConstant<T>(&tensor_tmp, value);
 
