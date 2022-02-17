@@ -60,7 +60,6 @@ __all__ = [
     'is_compiled_with_rocm',
     'is_compiled_with_xpu',
     'is_compiled_with_npu',
-    'is_compiled_with_ipu',
     'Variable',
     'require_version',
     'device_guard',
@@ -545,21 +544,6 @@ def is_compiled_with_npu():
             support_npu = fluid.is_compiled_with_npu()
     """
     return core.is_compiled_with_npu()
-
-
-def is_compiled_with_ipu():
-    """
-    Whether this whl package can be used to run the model on IPU.
-
-    Returns (bool): support ipu or not.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            support_ipu = fluid.is_compiled_with_ipu()
-    """
-    return core.is_compiled_with_ipu()
 
 
 def disable_signal_handler():
