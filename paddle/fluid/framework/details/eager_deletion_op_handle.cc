@@ -128,8 +128,9 @@ void EagerDeletionOpHandle::RunImpl() {
     CallOnce();
   }
 
-  platform::RecordEvent record_event(Name(), platform::EventRole::kOrdinary, 2,
-                                     platform::TracerEventType::UserDefined);
+  platform::RecordEvent record_event(Name(),
+                                     platform::TracerEventType::UserDefined, 2,
+                                     platform::EventRole::kOrdinary);
   std::deque<std::shared_ptr<memory::Allocation>> garbages;
   for (size_t i = 0; i < var_infos_.size(); ++i) {
     auto *var_info = var_infos_[i];

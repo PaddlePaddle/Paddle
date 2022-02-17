@@ -45,9 +45,9 @@ class MarkerOpCUDAKernel : public framework::OpKernel<T> {
     auto* in_temp = A.mutable_data<T>({32, 1}, ctx.GetPlace());
     auto* out_temp = B.mutable_data<T>({32, 1}, ctx.GetPlace());
     platform::RecordEvent record_event(
-        "MarkerCUDA", platform::EventRole::kInnerOp,
-        "marker_" + marker_role + "_" + marker_pos, 1,
-        platform::TracerEventType::OperatorInner);
+        "MarkerCUDA", "marker_" + marker_role + "_" + marker_pos,
+        platform::TracerEventType::OperatorInner, 1,
+        platform::EventRole::kInnerOp);
     SimpleMarkerKernel<T><<<1, 32, 0, dev_ctx.stream()>>>(in_temp, out_temp,
                                                           32);
   }

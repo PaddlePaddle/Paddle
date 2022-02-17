@@ -64,9 +64,10 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
 FetchResultType FastThreadedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors, bool return_merged) {
   VLOG(3) << "enter FastThreadedSSAGraphExecutor Run";
-  std::unique_ptr<platform::RecordEvent> event(new platform::RecordEvent(
-      "FastThreadedSSAGraphExecutorPrepare", platform::EventRole::kOrdinary, 2,
-      platform::TracerEventType::UserDefined));
+  std::unique_ptr<platform::RecordEvent> event(
+      new platform::RecordEvent("FastThreadedSSAGraphExecutorPrepare",
+                                platform::TracerEventType::UserDefined, 2,
+                                platform::EventRole::kOrdinary));
   std::unique_ptr<std::unordered_map<OpHandleBase *, std::atomic<int>>>
       op_deps = atomic_op_deps_.get();
   PrepareAtomicOpDeps();

@@ -30,8 +30,9 @@ RPCOpHandle::RPCOpHandle(ir::Node *node, const framework::OpDesc &op_desc,
       place_(place) {}
 
 void RPCOpHandle::RunImpl() {
-  platform::RecordEvent record_event(Name(), platform::EventRole::kOrdinary, 2,
-                                     platform::TracerEventType::UserDefined);
+  platform::RecordEvent record_event(Name(),
+                                     platform::TracerEventType::UserDefined, 2,
+                                     platform::EventRole::kOrdinary);
 
   for (auto *in : inputs_) {
     auto &p = static_cast<VarHandle *>(in)->place();

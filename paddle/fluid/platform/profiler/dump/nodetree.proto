@@ -187,7 +187,13 @@ message ThreadNodeTreeProto {
   repeated HostTraceEventNodeProto host_nodes = 2;
 }
 
+message ExtraInfoMap {
+  required string key = 1;
+  required string value = 2;
+}
+
 message NodeTreesProto {
   required string version = 1;
   repeated ThreadNodeTreeProto thread_trees = 2;
+  repeated ExtraInfoMap extra_info = 3;
 }

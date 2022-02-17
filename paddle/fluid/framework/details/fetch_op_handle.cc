@@ -128,8 +128,9 @@ static void TransData(const framework::LoDTensor &src_item,
 }
 
 void FetchOpHandle::RunImpl() {
-  platform::RecordEvent record_event(Name(), platform::EventRole::kOrdinary, 2,
-                                     platform::TracerEventType::UserDefined);
+  platform::RecordEvent record_event(Name(),
+                                     platform::TracerEventType::UserDefined, 2,
+                                     platform::EventRole::kOrdinary);
   WaitInputVarGenerated(platform::CPUPlace());
 
   tensors_.resize(inputs_.size());

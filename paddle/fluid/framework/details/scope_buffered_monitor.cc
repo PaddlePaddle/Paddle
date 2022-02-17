@@ -92,8 +92,8 @@ void ScopeBufferedMonitor::Apply(const std::function<void()> &callback,
   std::unique_ptr<platform::RecordEvent> pre_local_exec_scopes_event(
       new platform::RecordEvent(
           "ScopeBufferedMonitor::pre_local_exec_scopes_process",
-          platform::EventRole::kOrdinary, 2,
-          platform::TracerEventType::UserDefined));
+          platform::TracerEventType::UserDefined, 2,
+          platform::EventRole::kOrdinary));
   for (size_t scope_id = 0; scope_id < local_exec_scopes_.size(); ++scope_id) {
     pre_local_exec_scopes_.at(scope_id).clear();
     auto scopes = local_exec_scopes_.at(scope_id)->kids();
@@ -108,8 +108,8 @@ void ScopeBufferedMonitor::Apply(const std::function<void()> &callback,
   std::unique_ptr<platform::RecordEvent> post_local_exec_scopes_event(
       new platform::RecordEvent(
           "ScopeBufferedMonitor::post_local_exec_scopes_process",
-          platform::EventRole::kOrdinary, 2,
-          platform::TracerEventType::UserDefined));
+          platform::TracerEventType::UserDefined, 2,
+          platform::EventRole::kOrdinary));
   for (size_t scope_id = 0; scope_id < local_exec_scopes_.size(); ++scope_id) {
     post_local_exec_scopes_.at(scope_id).clear();
     auto scopes = local_exec_scopes_.at(scope_id)->kids();

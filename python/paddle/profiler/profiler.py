@@ -197,6 +197,11 @@ class Profiler:
             self.targets = supported_targets
         profileoption = ProfilerOptions()
         profileoption.trace_level = 2
+        if ProfilerTarget.CPU in supported_targets:
+            profileoption.trace_switch |= 1
+        if ProfilerTarget.GPU in supported_targets:
+            profileoption.trace_switch |= (1 << 1)
+
         self.profiler = _Profiler.Create(profileoption)
         if callable(schedule):
             self.schedule = schedule
@@ -344,5 +349,9 @@ class Profiler:
         if self.profiler_result:
             self.profiler_result.save(path, format)
 
-    def summary(self):
+    def summary(self, level="default"):
+        '''
+        default: default statistics
+        detail: expand each operator detail information
+        '''
         pass

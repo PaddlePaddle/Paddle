@@ -115,8 +115,8 @@ void BufferedReader::ReadAsync(size_t i) {
         std::vector<void *> cuda_pinned_ptrs;
         cuda_pinned_ptrs.reserve(cpu.size());
         platform::RecordEvent record_event(
-            "BufferedReader:MemoryCopy", platform::EventRole::kOrdinary, 1,
-            platform::TracerEventType::UserDefined);
+            "BufferedReader:MemoryCopy", platform::TracerEventType::UserDefined,
+            1, platform::EventRole::kOrdinary);
         // NODE(chenweihang): When we use CUDAPinned Memory, we need call
         // cudaHostAlloc, that is a CUDA API, calling CUDA API need load
         // cuda lib into device, it will cost hundreds of MB of GPU memory.
@@ -172,8 +172,8 @@ void BufferedReader::ReadAsync(size_t i) {
 #endif
 
         platform::RecordEvent record_event(
-            "BufferedReader:MemoryCopy", platform::EventRole::kOrdinary, 1,
-            platform::TracerEventType::UserDefined);
+            "BufferedReader:MemoryCopy", platform::TracerEventType::UserDefined,
+            1, platform::EventRole::kOrdinary);
         for (size_t i = 0; i < cpu.size(); ++i) {
           auto cpu_place = cpu[i].place();
           auto cpu_ptr = cpu[i].data();
@@ -232,9 +232,9 @@ void BufferedReader::ReadAsync(size_t i) {
       platform::NPUEventRecord(events_[i].get(), compute_stream_);
       platform::NPUStreamWaitEvent(stream_.get(), events_[i].get());
 
-      platform::RecordEvent record_event(
-          "BufferedReader:MemoryCopy", platform::EventRole::kOrdinary, 1,
-          platform::TracerEventType::UserDefined);
+      platform::RecordEvent record_event("BufferedReader:MemoryCopy",
+                                         platform::TracerEventType::UserDefined,
+                                         1, platform::EventRole::kOrdinary);
       for (size_t i = 0; i < cpu.size(); ++i) {
         auto cpu_place = cpu[i].place();
         auto cpu_ptr = cpu[i].data();

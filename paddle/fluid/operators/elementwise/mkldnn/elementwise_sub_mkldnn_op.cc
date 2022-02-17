@@ -55,8 +55,8 @@ class EltwiseSubMKLDNNGradKernel : public ElemwiseGradKernel<T> {
       auto reorder_p =
           handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
       platform::RecordEvent record_reorder(
-          "int_reorder", platform::EventRole::kUniqueOp, 2,
-          platform::TracerEventType::UserDefined);
+          "int_reorder", platform::TracerEventType::UserDefined, 2,
+          platform::EventRole::kUniqueOp);
 
       reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
       astream.wait();
@@ -77,8 +77,8 @@ class EltwiseSubMKLDNNGradKernel : public ElemwiseGradKernel<T> {
         auto reorder_p = std::make_shared<dnnl::reorder>(
             *(reorder_src_memory_p), *(reorder_dst_memory_p), reorder_attr);
         platform::RecordEvent record_reorder(
-            "int_reorder", platform::EventRole::kUniqueOp, 2,
-            platform::TracerEventType::UserDefined);
+            "int_reorder", platform::TracerEventType::UserDefined, 2,
+            platform::EventRole::kUniqueOp);
         reorder_p->execute(astream, *reorder_src_memory_p,
                            *reorder_dst_memory_p);
         astream.wait();

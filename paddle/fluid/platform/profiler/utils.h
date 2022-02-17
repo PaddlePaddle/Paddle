@@ -14,6 +14,7 @@ limitations under the License. */
 #pragma once
 
 #include <ctime>
+#include <string>
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/os_info.h"
 

@@ -28,6 +28,7 @@ namespace platform {
 
 struct ProfilerOptions {
   uint32_t trace_level = 0;
+  uint8_t trace_switch = 0;  // bit 0: cpu, bit 1: gpu
 };
 
 class Profiler {

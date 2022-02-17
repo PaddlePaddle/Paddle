@@ -151,8 +151,8 @@ void HeterClient::SendAndRecvAsync(
     const std::vector<std::string>& send_var_name,
     const std::vector<std::string>& recv_var_name, const std::string& mode) {
   platform::RecordEvent record_event("HeterClient->SendAndRecvAsync",
-                                     platform::EventRole::kOrdinary, 1,
-                                     platform::TracerEventType::Communication);
+                                     platform::TracerEventType::Communication 1,
+                                     platform::EventRole::kOrdinary);
   const platform::DeviceContext* p_ctx = &ctx;
   const framework::Scope* p_scope = &scope;
   const std::string message_name_val = message_name;

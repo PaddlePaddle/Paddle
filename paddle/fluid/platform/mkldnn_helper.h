@@ -190,8 +190,8 @@ inline void Reorder(dnnl::memory src, dnnl::memory dst,
   auto reorder_prim = dnnl::reorder(src, dst);
   auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
   platform::RecordEvent record_reorder("int_reorder",
-                                       platform::EventRole::kUniqueOp, 2,
-                                       platform::TracerEventType::UserDefined);
+                                       platform::TracerEventType::UserDefined,
+                                       2, platform::EventRole::kUniqueOp);
   reorder_prim.execute(astream, src, dst);
   astream.wait();
 }

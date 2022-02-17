@@ -75,8 +75,9 @@ FetchResultType ScopeBufferedSSAGraphExecutor::Run(
 #endif
 
   if (drop_scope_counter_ == 0) {
-    platform::RecordEvent e("InitLocalVars", platform::EventRole::kOrdinary, 2,
-                            platform::TracerEventType::UserDefined);
+    platform::RecordEvent e("InitLocalVars",
+                            platform::TracerEventType::UserDefined, 2,
+                            platform::EventRole::kOrdinary);
     InitVariables();
   }
 
@@ -165,9 +166,9 @@ void ScopeBufferedSSAGraphExecutor::InitVariables() {
 }
 
 void ScopeBufferedSSAGraphExecutor::DropLocalExeScopes(bool need_wait) {
-  platform::RecordEvent drop_scope_event(
-      "DropLocalExeScopes", platform::EventRole::kOrdinary, 2,
-      platform::TracerEventType::UserDefined);
+  platform::RecordEvent drop_scope_event("DropLocalExeScopes",
+                                         platform::TracerEventType::UserDefined,
+                                         2, platform::EventRole::kOrdinary);
   drop_scope_counter_ = 0;
   if (need_wait) {
     for (auto &p : places_) {

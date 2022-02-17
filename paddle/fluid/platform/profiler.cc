@@ -66,8 +66,8 @@ double Event::CudaElapsedMs(const Event &e) const {
 #endif
 }
 
-RecordEvent::RecordEvent(const char *name, const EventRole role, uint32_t level,
-                         const TracerEventType type) {
+RecordEvent::RecordEvent(const char *name, const TracerEventType type,
+                         uint32_t level, const EventRole role) {
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
   if (g_enable_nvprof_hook) {
@@ -90,8 +90,8 @@ RecordEvent::RecordEvent(const char *name, const EventRole role, uint32_t level,
   start_ns_ = PosixInNsec();
 }
 
-RecordEvent::RecordEvent(const std::string &name, const EventRole role,
-                         uint32_t level, const TracerEventType type) {
+RecordEvent::RecordEvent(const std::string &name, const TracerEventType type,
+                         uint32_t level, const EventRole role) {
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
   if (g_enable_nvprof_hook) {
@@ -114,9 +114,9 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role,
   start_ns_ = PosixInNsec();
 }
 
-RecordEvent::RecordEvent(const std::string &name, const EventRole role,
-                         const std::string &attr, uint32_t level,
-                         const TracerEventType type) {
+RecordEvent::RecordEvent(const std::string &name, const std::string &attr,
+                         const TracerEventType type, uint32_t level,
+                         const EventRole role) {
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
   if (g_enable_nvprof_hook) {

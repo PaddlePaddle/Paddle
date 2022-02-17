@@ -67,8 +67,9 @@ FusedAllReduceOpHandle::~FusedAllReduceOpHandle() {
 }
 
 void FusedAllReduceOpHandle::RunImpl() {
-  platform::RecordEvent record_event(Name(), platform::EventRole::kOrdinary, 2,
-                                     platform::TracerEventType::UserDefined);
+  platform::RecordEvent record_event(Name(),
+                                     platform::TracerEventType::UserDefined, 2,
+                                     platform::EventRole::kOrdinary);
   VLOG(4) << this->DebugString();
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)

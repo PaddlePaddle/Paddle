@@ -174,8 +174,8 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       auto reorder_p = reorder_handler.AcquireReorder(target_mem, dst_mem);
       {
         platform::RecordEvent record_reorder(
-            "int_reorder", platform::EventRole::kUniqueOp, 2,
-            platform::TracerEventType::UserDefined);
+            "int_reorder", platform::TracerEventType::UserDefined, 2,
+            platform::EventRole::kUniqueOp);
         reorder_p->execute(astream, *dst_mem, *target_mem);
         astream.wait();
       }

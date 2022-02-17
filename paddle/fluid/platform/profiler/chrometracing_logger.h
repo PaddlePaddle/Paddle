@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#include <set>
+#include <unordered_map>
+#include <utility>
 #include "paddle/fluid/platform/profiler/output_logger.h"
 
 namespace paddle {
@@ -39,9 +42,13 @@ class ChromeTracingLogger : public BaseLogger {
   void HandleTypeMemcpy(const DeviceTraceEventNode&);
   void StartLog();
   void EndLog();
+  void LogMetaInfo(const std::unordered_map<std::string, std::string>&);
+  void RefineDisplayName();
   std::string filename_;
   std::ofstream output_file_stream_;
   static const char* categary_name_[];
+  std::set<std::pair<uint64_t, uint64_t>> pid_tid_set_;
+  std::set<std::pair<uint64_t, uint64_t>> deviceid_streamid_set_;
 };
 
 }  // namespace platform

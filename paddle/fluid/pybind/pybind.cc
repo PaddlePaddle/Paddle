@@ -2816,12 +2816,14 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<paddle::platform::ProfilerOptions>(m, "ProfilerOptions")
       .def(py::init<>())
       .def_readwrite("trace_level",
-                     &paddle::platform::ProfilerOptions::trace_level);
+                     &paddle::platform::ProfilerOptions::trace_level)
+      .def_readwrite("trace_switch",
+                     &paddle::platform::ProfilerOptions::trace_switch);
 
   py::class_<platform::RecordEvent>(m, "_RecordEvent")
       .def(py::init([](std::string name, platform::TracerEventType type) {
         return std::unique_ptr<platform::RecordEvent>(new platform::RecordEvent(
-            name, paddle::platform::EventRole::kOrdinary, 1, type));
+            name, type, 1, paddle::platform::EventRole::kOrdinary));
       }))
       .def("end", [](platform::RecordEvent *event) { event->End(); });
 

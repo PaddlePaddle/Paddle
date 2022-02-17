@@ -196,9 +196,9 @@ class MKLDNNHandlerNoCachingT {
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
-    platform::RecordEvent record_reorder(
-        "int_reorder", platform::EventRole::kUniqueOp, 2,
-        platform::TracerEventType::UserDefined);
+    platform::RecordEvent record_reorder("int_reorder",
+                                         platform::TracerEventType::UserDefined,
+                                         2, platform::EventRole::kUniqueOp);
     reorder_p->execute(astream, {{DNNL_ARG_FROM, *user_memory_p},
                                  {DNNL_ARG_TO, *target_memory_p}});
     astream.wait();
@@ -223,8 +223,8 @@ class MKLDNNHandlerNoCachingT {
 
       auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
       platform::RecordEvent record_reorder(
-          "int_reorder", platform::EventRole::kUniqueOp, 2,
-          platform::TracerEventType::UserDefined);
+          "int_reorder", platform::TracerEventType::UserDefined, 2,
+          platform::EventRole::kUniqueOp);
       reorder_p->execute(astream, {{DNNL_ARG_FROM, *user_memory_p},
                                    {DNNL_ARG_TO, *target_memory_p}});
       astream.wait();
@@ -515,9 +515,9 @@ class MKLDNNHandlerT {
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
-    platform::RecordEvent record_reorder(
-        "int_reorder", platform::EventRole::kUniqueOp, 2,
-        platform::TracerEventType::UserDefined);
+    platform::RecordEvent record_reorder("int_reorder",
+                                         platform::TracerEventType::UserDefined,
+                                         2, platform::EventRole::kUniqueOp);
     reorder_p->execute(astream, {{DNNL_ARG_FROM, *user_memory_p},
                                  {DNNL_ARG_TO, *target_memory_p}});
     astream.wait();
@@ -562,8 +562,8 @@ class MKLDNNHandlerT {
 
         auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
         platform::RecordEvent record_reorder(
-            "int_reorder", platform::EventRole::kUniqueOp, 2,
-            platform::TracerEventType::UserDefined);
+            "int_reorder", platform::TracerEventType::UserDefined, 2,
+            platform::EventRole::kUniqueOp);
         reorder_p->execute(astream, {{DNNL_ARG_FROM, *user_memory_p},
                                      {DNNL_ARG_TO, *target_memory_p}});
         astream.wait();
@@ -585,8 +585,8 @@ class MKLDNNHandlerT {
           dev_ctx_.GetBlob(key_reorder_p));
       if (reorder_p != nullptr) {
         platform::RecordEvent record_reorder(
-            "int_reorder", platform::EventRole::kUniqueOp, 2,
-            platform::TracerEventType::UserDefined);
+            "int_reorder", platform::TracerEventType::UserDefined, 2,
+            platform::EventRole::kUniqueOp);
         reorder_p->execute(astream, {{DNNL_ARG_FROM, *user_memory_p},
                                      {DNNL_ARG_TO, *target_memory_p}});
         astream.wait();

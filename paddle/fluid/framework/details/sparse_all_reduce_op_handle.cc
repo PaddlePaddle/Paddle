@@ -65,8 +65,9 @@ SparseAllReduceOpHandle::SparseAllReduceOpHandle(
 }
 
 void SparseAllReduceOpHandle::RunImplEncoded() {
-  platform::RecordEvent record_event(Name(), platform::EventRole::kOrdinary, 2,
-                                     platform::TracerEventType::UserDefined);
+  platform::RecordEvent record_event(Name(),
+                                     platform::TracerEventType::UserDefined, 2,
+                                     platform::EventRole::kOrdinary);
 
   auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());
   auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());
