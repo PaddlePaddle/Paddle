@@ -12,29 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/kernel/pten_kernels.h"
+#pragma once
 
-#include <iostream>
-#include <string>
-
-#include "paddle/infrt/host_context/kernel_registry.h"
-#include "paddle/infrt/host_context/kernel_utils.h"
-
-// Disable temporarily.
-// #include "paddle/pten/backends/cpu/cpu_context.h"
-// #include "paddle/pten/kernels/math_kernel.h"
-
-using infrt::host_context::Attribute;
+#include "paddle/infrt/backends/host/pten_allocator.h"
+#include "paddle/pten/core/dense_tensor.h"
 
 namespace infrt {
 namespace kernel {
+namespace pten {
 
-void RegisterPtenKernels(host_context::KernelRegistry* registry) {
-  registry->AddKernel("pd_cpu.add.float32",
-                      INFRT_KERNEL(pten::AddKernel<float, pten::CPUContext>));
-  registry->AddKernel("pd_cpu.add.int32",
-                      INFRT_KERNEL(pten::AddKernel<int, pten::CPUContext>));
-}
+backends::CpuPtenAllocator CreateCpuAllocator();
 
+}  // namespace pten
 }  // namespace kernel
 }  // namespace infrt
