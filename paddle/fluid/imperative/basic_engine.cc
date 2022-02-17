@@ -29,7 +29,7 @@
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/tracer.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
 
 DECLARE_bool(sort_sum_gradient);
@@ -410,7 +410,9 @@ void BasicEngine::Execute() {
     auto& inplace_grad_name_map = shared_cur_node->InplaceGradNameMap();
 
     for (auto& cur_op : *shared_cur_node) {
-      platform::RecordEvent op_type_record_event(cur_op.Type());
+      platform::RecordEvent op_type_record_event(
+          cur_op.Type(), platform::TracerEventType::Operator, 1,
+          platform::EventRole::kOrdinary);
 
       ++op_num;
 
