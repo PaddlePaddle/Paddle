@@ -149,8 +149,7 @@ void GPUScatterAssign(const framework::ExecutionContext& context,
   int64_t grid = (n + block - 1) / block;
   unsigned int maxGridDimX =
     reinterpret_cast<const platform::CUDADeviceContext&>(ctx)
-        .GetCUDAMaxGridDimSize()
-        .x;
+        .GetCUDAMaxGridDimSize()[0];
   grid = grid > maxGridDimX ? maxGridDimX : grid;
 
   // if not overwrite mode, init data
@@ -243,8 +242,7 @@ void GPUScatterNdAdd(const framework::ExecutionContext& context,
   int64_t grid = (n + block - 1) / block;
   unsigned int maxGridDimX =
     reinterpret_cast<const platform::CUDADeviceContext&>(ctx)
-        .GetCUDAMaxGridDimSize()
-        .x;
+        .GetCUDAMaxGridDimSize()[0];
   grid = grid > maxGridDimX ? maxGridDimX : grid;
 
   ScatterNdCUDAKernel<T, IndexT><<<

@@ -106,8 +106,7 @@ void GPUGather(const platform::DeviceContext& ctx, const Tensor& src,
   int64_t grid = (n + block - 1) / block;
   unsigned int maxGridDimX =
     reinterpret_cast<const platform::CUDADeviceContext&>(ctx)
-        .GetCUDAMaxGridDimSize()
-        .x;
+        .GetCUDAMaxGridDimSize()[0];
   if (grid > maxGridDimX) grid = maxGridDimX;
 
   GatherCUDAKernel<T, IndexT><<<
@@ -161,8 +160,7 @@ void GPUGatherNd(const framework::ExecutionContext& context,
   int64_t grid = (n + block - 1) / block;
   unsigned int maxGridDimX =
     reinterpret_cast<const platform::CUDADeviceContext&>(ctx)
-        .GetCUDAMaxGridDimSize()
-        .x;
+        .GetCUDAMaxGridDimSize()[0];
   if (grid > maxGridDimX) grid = maxGridDimX;
 
   GatherNdCUDAKernel<T, IndexT><<<

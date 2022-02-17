@@ -396,7 +396,7 @@ void LaunchKernel(const KPDevice &ctx,
                                                                 func);
 #else
   const unsigned int threads = 256;
-  unsigned int maxGridDimX = ctx.GetCUDAMaxGridDimSize().x;
+  unsigned int maxGridDimX = ctx.GetCUDAMaxGridDimSize()[0];
   unsigned int num_rows =
       ((numel + VecSize - 1) / VecSize + threads - 1) / threads;
   unsigned int blocks = num_rows < maxGridDimX ? num_rows : maxGridDimX;
