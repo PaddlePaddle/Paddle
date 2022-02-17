@@ -238,15 +238,12 @@ class DownpourSGD(DeviceWorker):
                                                        "DownpourWorker")
         pull_thread = trainer_desc.pull_dense_param
         pull_thread.device_num = trainer_desc.thread_num
-
         if opt_info.get("program_id_to_worker") is None:
             raise ValueError("opt_info must have program_id_to_worker")
-
         prog_id_to_worker = opt_info["program_id_to_worker"]
         if prog_id_to_worker.get(program_id) is None:
             raise ValueError("%s not found in program_id_to_worker" %
                              program_id)
-
         worker = opt_info["program_id_to_worker"][program_id]
 
         ## add for gpups
@@ -345,7 +342,6 @@ class DownpourSGD(DeviceWorker):
                 sparse_table.fea_dim = sparse_table.emb_dim + 2
             # TODO(guru4elephant): hard code here, need to improve
             sparse_table.label_var_name = "click"
-
         if opt_info["stat_var_names"]:
             for i in opt_info["stat_var_names"]:
                 downpour.stat_var_names.extend([i])
@@ -357,7 +353,6 @@ class DownpourSGD(DeviceWorker):
                 dense_table.dense_value_name.extend(i.dense_variable_name)
                 dense_table.dense_grad_name.extend(
                     i.dense_gradient_variable_name)
-
         downpour.skip_ops.extend(worker.get_desc().skip_op)
         if self._infer:
             downpour.push_dense = False
