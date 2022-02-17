@@ -20,6 +20,7 @@
 #include <utility>
 #include <vector>
 
+#include "boost/optional.hpp"
 #include "paddle/infrt/common/object.h"
 #include "paddle/infrt/common/shared.h"
 #include "paddle/infrt/host_context/function.h"
@@ -42,7 +43,10 @@ namespace host_context {
 
 struct MlirFunctionExecutable;
 
-using ValueVariantType = Variant<int16_t,
+struct none {};
+
+using ValueVariantType = Variant<none,
+                                 int16_t,
                                  int32_t,
                                  int64_t,
                                  float,
@@ -58,6 +62,7 @@ using ValueVariantType = Variant<int16_t,
 #ifdef INFRT_WITH_PTEN
                                  ::pten::MetaTensor,
                                  ::pten::DenseTensor,
+                                 ::pten::DenseTensor*,
                                  backends::CpuPtenAllocator,
                                  backends::CpuPtenContext,
                                  ::pten::CPUContext,
@@ -100,6 +105,7 @@ class Value : public common::Object {
   explicit Value(::pten::DenseTensor&& x) : data(std::move(x)) {}
   explicit Value(::pten::MetaTensor&& x) : data(std::move(x)) {}
   explicit Value(backends::CpuPtenAllocator&& x) : data(std::move(x)) {}
+  explicit Value(::pten::DenseTensor* x) : data(x) {}
 #endif
 
   template <typename T>
@@ -141,8 +147,9 @@ class Value : public common::Object {
 
   friend void CopyTo(const Value& from, Value* to);
 
- private:
   ValueVariantType data;
+
+ private:
   static constexpr const char* __type_info__ = "host_context_value";
 };
 

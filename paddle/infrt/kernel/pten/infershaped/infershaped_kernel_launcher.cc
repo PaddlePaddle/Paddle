@@ -26,7 +26,11 @@ void InferShapedKernelLauncher::CreateKernelFrameForInferShape(
       values.emplace_back(
           ::pten::MetaTensor{&value->get<::pten::DenseTensor>()});
       infershape_kernel_frame_builder.AddArgument(values.back().get());
+    } else if (value->is_type<host_context::none>()) {
+      infershape_kernel_frame_builder.SetResults(
+          llvm::ArrayRef<host_context::Value*>{new host_context::Value()});
     } else {
+      LOG(INFO) << "value.data.index_ = " << value->data.index();
       infershape_kernel_frame_builder.AddArgument(value);
     }
   }
