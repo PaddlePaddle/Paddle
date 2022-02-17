@@ -238,20 +238,31 @@ class DownpourSGD(DeviceWorker):
                                                        "DownpourWorker")
         pull_thread = trainer_desc.pull_dense_param
         pull_thread.device_num = trainer_desc.thread_num
+
         if opt_info.get("program_id_to_worker") is None:
             raise ValueError("opt_info must have program_id_to_worker")
+
         prog_id_to_worker = opt_info["program_id_to_worker"]
         if prog_id_to_worker.get(program_id) is None:
             raise ValueError("%s not found in program_id_to_worker" %
                              program_id)
+
         worker = opt_info["program_id_to_worker"][program_id]
+
+        ## add for gpups
+        ps_param = opt_info["fleet_desc"]
+        sparse_tables = ps_param.server_param.sparse_table
         for i in worker.get_desc().dense_table:
             if i.table_id in dense_table_set:
                 dense_table = pull_thread.dense_table.add()
                 dense_table.dense_value_name.extend(i.dense_variable_name)
                 dense_table.table_id = \
                     i.table_id
+
         sparse_len = len(worker.get_desc().sparse_table)
+        assert sparse_len == len(
+            sparse_tables
+        ), "the number of sparse table should be the same in worker and server"
         for i in range(sparse_len):
             sparse_table = downpour.sparse_table.add()
             sparse_table.table_id = worker.get_desc().sparse_table[i].table_id
@@ -261,6 +272,66 @@ class DownpourSGD(DeviceWorker):
                                                   .sparse_table[i].slot_value)
             sparse_table.sparse_grad_name.extend(worker.get_desc().sparse_table[
                 i].slot_gradient)
+            ## add for gpups
+            accessor_class = table.accessor.accessor_class
+            if accessor_class == 'DownpourFeatureValueAccessor' \
+                    or accessor_class == 'DownpourCtrAccessor' \
+                    or accessor_class == 'DownpourCtrDoubleAccessor':
+                sparse_table.sparse_nonclk_coeff = sparse_tables[
+                    i].accessor.downpour_accessor_param.nonclk_coeff
+                sparse_table.sparse_click_coeff = sparse_tables[
+                    i].accessor.downpour_accessor_param.click_coeff
+                sparse_table.sparse_learning_rate = sparse_tables[
+                    i].accessor.sparse_sgd_param.learning_rate
+                sparse_table.sparse_initial_g2sum = sparse_tables[
+                    i].accessor.sparse_sgd_param.initial_g2sum
+                sparse_table.sparse_initial_range = sparse_tables[
+                    i].accessor.sparse_sgd_param.initial_range
+                sparse_table.sparse_weight_bounds = sparse_tables[
+                    i].accessor.sparse_sgd_param.weight_bounds
+                sparse_table.sparse_embedx_threshold = sparse_tables[
+                    i].accessor.embedx_threshold
+            elif accessor_class == 'DownpourSparseValueAccessor':
+                optimizer_name = table.accessor.sparse_commonsgd_param.name
+                if optimizer_name == "naive":
+                    sparse_table.sparse_learning_rate = sparse_tables[
+                        i].accessor.sparse_commonsgd_param.naive.learning_rate
+                    sparse_table.sparse_initial_range = sparse_tables[
+                        i].accessor.sparse_commonsgd_param.naive.initial_range
+                    sparse_table.sparse_weight_bounds = sparse_tables[
+                        i].accessor.sparse_commonsgd_param.naive.weight_bounds
+                elif optimizer_name == "adagrad":
+                    sparse_table.sparse_learning_rate = sparse_tables[
+                        i].accessor.sparse_commonsgd_param.adagrad.learning_rate
+                    sparse_table.sparse_initial_range = sparse_tables[
+                        i].accessor.sparse_commonsgd_param.adagrad.initial_range
+                    sparse_table.sparse_initial_g2sum = sparse_tables[
+                        i].accessor.sparse_commonsgd_param.adagrad.initial_g2sum
+                    sparse_table.sparse_weight_bounds = sparse_tables[
+                        i].accessor.sparse_commonsgd_param.adagrad.weight_bounds
+                elif optimizer_name == "adam":
+                    sparse_table.sparse_learning_rate = sparse_tables[
+                        i].accessor.sparse_commonsgd_param.adam.learning_rate
+                    sparse_table.sparse_initial_range = sparse_tables[
+                        i].accessor.sparse_commonsgd_param.adam.initial_range
+                    sparse_table.sparse_weight_bounds = sparse_tables[
+                        i].accessor.sparse_commonsgd_param.adam.weight_bounds
+            elif accessor_class == 'DownpourUnitAccessor' or accessor_class == 'DownpourDoubleUnitAccessor':
+                sparse_table.sparse_embedx_threshold = sparse_tables[
+                    i].accessor.embedx_threshold
+                sparse_table.sparse_nonclk_coeff = sparse_tables[
+                    i].accessor.downpour_accessor_param.nonclk_coeff
+                sparse_table.sparse_click_coeff = sparse_tables[
+                    i].accessor.downpour_accessor_param.click_coeff
+                sparse_table.embedx_sparse_learning_rate = sparse_tables[
+                    i].accessor.embedx_sgd_param.embedx_sparse_learning_rate
+                sparse_table.embedx_sparse_initial_g2sum = sparse_tables[
+                    i].accessor.embedx_sgd_param.embedx_sparse_initial_g2sum
+                sparse_table.embedx_sparse_initial_range = sparse_tables[
+                    i].accessor.embedx_sgd_param.embedx_sparse_initial_range
+                sparse_table.embedx_sparse_weight_bounds = sparse_tables[
+                    i].accessor.embedx_sgd_param.embedx_sparse_weight_bounds
+
             if opt_info["use_cvm"] or "no_cvm" in opt_info and opt_info[
                     "no_cvm"] == True:
                 sparse_table.emb_dim = \
@@ -274,6 +345,7 @@ class DownpourSGD(DeviceWorker):
                 sparse_table.fea_dim = sparse_table.emb_dim + 2
             # TODO(guru4elephant): hard code here, need to improve
             sparse_table.label_var_name = "click"
+
         if opt_info["stat_var_names"]:
             for i in opt_info["stat_var_names"]:
                 downpour.stat_var_names.extend([i])
@@ -285,6 +357,7 @@ class DownpourSGD(DeviceWorker):
                 dense_table.dense_value_name.extend(i.dense_variable_name)
                 dense_table.dense_grad_name.extend(
                     i.dense_gradient_variable_name)
+
         downpour.skip_ops.extend(worker.get_desc().skip_op)
         if self._infer:
             downpour.push_dense = False
