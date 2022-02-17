@@ -162,7 +162,7 @@ static void ScaleGPU(DataType kernel_dtype,
       break;
     }
     case pten::DataType::FLOAT16: {
-      pten::ScaleKernel<paddle::platform::float16>(
+      pten::ScaleKernel<pten::dtype::float16>(
           dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }

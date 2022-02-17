@@ -20,11 +20,6 @@ limitations under the License. */
 #include "paddle/pten/common/place.h"
 #include "paddle/pten/core/tensor_meta.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/framework/data_type.h"
-
-// TODO(chenweihang): this file may need to be removed
-
 namespace pten {
 
 std::string TransToPtenKernelName(const std::string& fluid_op_name);

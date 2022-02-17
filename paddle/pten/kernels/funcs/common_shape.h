@@ -15,6 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/kernels/funcs/eigen/common.h"
+#include "paddle/pten/kernels/funcs/eigen/eigen_function.h"
 
 namespace pten {
 namespace funcs {

@@ -23,7 +23,7 @@
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/kernels/funcs/eigen/common.h"
-#include "paddle/pten/kernels/funcs/transpose.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 namespace pten {
@@ -80,7 +80,7 @@ void ReduceFunctor(const DeviceContext& context,
 inline void GetShuffledDim(const DDim& src_dims,
                            DDim* dst_dims,
                            const std::vector<int64_t>& reduced_dims,
-                           std::vector<int64_t>* perm_axis) {
+                           std::vector<int>* perm_axis) {
   // check if it's a reduced dim
   std::vector<bool> src_dims_check(src_dims.size(), false);
   size_t src_size = src_dims.size();
@@ -115,13 +115,13 @@ void GetShuffledInput(const DeviceContext& dev_ctx,
                       pten::DenseTensor* shuffled_input,
                       const std::vector<int64_t>& dims) {
   DDim shuffled_dims(input.dims());
-  std::vector<int64_t> perm_axis(input.dims().size());
+  std::vector<int> perm_axis(input.dims().size());
   GetShuffledDim(input.dims(), &shuffled_dims, dims, &perm_axis);
 
   shuffled_input->ResizeAndAllocate(shuffled_dims);
   dev_ctx.template Alloc<OutT>(shuffled_input);
 
-  pten::math::TransposeNormal<DeviceContext, OutT> trans;
+  pten::funcs::TransposeNormal<DeviceContext, OutT> trans;
   trans(dev_ctx, input, shuffled_input, perm_axis);
 }
 

@@ -536,37 +536,3 @@ REGISTER_OPERATOR(matmul_v2_grad_grad, ops::MatMulV2OpDoubleGrad,
                   ops::MatMulV2OpTripleGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(matmul_v2_triple_grad, ops::MatMulV2OpTripleGrad);
-
-REGISTER_OP_CPU_KERNEL(
-    matmul_v2, ops::MatMulV2Kernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MatMulV2Kernel<paddle::platform::CPUDeviceContext, double>,
-    ops::MatMulV2Kernel<paddle::platform::CPUDeviceContext,
-                        paddle::platform::complex<float>>,
-    ops::MatMulV2Kernel<paddle::platform::CPUDeviceContext,
-                        paddle::platform::complex<double>>);
-
-REGISTER_OP_CPU_KERNEL(
-    matmul_v2_grad,
-    ops::MatMulV2GradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MatMulV2GradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::MatMulV2GradKernel<paddle::platform::CPUDeviceContext,
-                            paddle::platform::complex<float>>,
-    ops::MatMulV2GradKernel<paddle::platform::CPUDeviceContext,
-                            paddle::platform::complex<double>>);
-REGISTER_OP_CPU_KERNEL(
-    matmul_v2_grad_grad,
-    ops::MatMulV2DoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MatMulV2DoubleGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::MatMulV2DoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex<float>>,
-    ops::MatMulV2DoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex<double>>);
-
-REGISTER_OP_CPU_KERNEL(
-    matmul_v2_triple_grad,
-    ops::MatMulV2TripleGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MatMulV2TripleGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::MatMulV2TripleGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex<float>>,
-    ops::MatMulV2TripleGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex<double>>);

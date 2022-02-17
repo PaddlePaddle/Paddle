@@ -14,12 +14,15 @@
 
 #pragma once
 
+#include "paddle/infrt/backends/host/pten_context.h"
+#include "paddle/pten/core/dense_tensor.h"
+
 namespace infrt {
-namespace naive {
+namespace kernel {
+namespace pten {
 
-struct InferShapedKernelRegistry;
+backends::CpuPtenContext CreateCpuContext();
 
-void RegisterInferShapeLaunchers(InferShapedKernelRegistry* registry);
-
-}  // namespace naive
+}  // namespace pten
+}  // namespace kernel
 }  // namespace infrt
