@@ -1,4 +1,4 @@
-#  Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#  Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,34 +30,23 @@ class TestBase(IPUOpTest):
         self.set_feed_attr()
         self.set_op_attrs()
 
+    # popart unsupport fp16 cumsum
     @property
     def fp16_enabled(self):
-        return True
+        return False
 
     def set_data_feed(self):
-        x = np.random.uniform(size=[3, 7])
-        label = np.arange(3).reshape([3, 1])
-        self.feed_fp32 = {
-            "x": x.astype(np.float32),
-            "label": label.astype(np.int64)
-        }
-        self.feed_fp16 = {
-            "x": x.astype(np.float16),
-            "label": label.astype(np.int32)
-        }
+        x = np.random.uniform(size=[1, 128])
+        self.feed_fp32 = {"x": x.astype(np.float32)}
+        self.feed_fp16 = {"x": x.astype(np.float16)}
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]
         self.feed_list = list(self.feed_fp32.keys())
+        self.feed_dtype = [x.dtype for x in self.feed_fp32.values()]
 
     def set_op_attrs(self):
-        self.attrs = {'soft_label': False, }
-
-    def np_nll_loss(self):
-        tmp = -np.log(self.feed_fp32['x'])
-        label = self.feed_fp32['label']
-        indice = [range(label.shape[0]), label.flatten()]
-        self.np_ref = tmp[indice]
+        self.attrs = {}
 
     def _test_base(self, exec_mode):
         scope = paddle.fluid.core.Scope()
@@ -73,20 +62,8 @@ class TestBase(IPUOpTest):
                     shape=self.feed_shape[0],
                     dtype="float32")
 
-                if exec_mode != ExecutionMode.CPU_FP32:
-                    label = paddle.static.data(
-                        name=self.feed_list[1],
-                        shape=self.feed_shape[1],
-                        dtype='int32')
-                else:
-                    label = paddle.static.data(
-                        name=self.feed_list[1],
-                        shape=self.feed_shape[1],
-                        dtype='int64')
-
                 with paddle.static.amp.fp16_guard():
-                    out = paddle.fluid.layers.cross_entropy(
-                        input=x, label=label, **self.attrs)
+                    out = paddle.fluid.layers.cumsum(x, **self.attrs)
 
                 fetch_list = [out.name]
 
@@ -102,6 +79,7 @@ class TestBase(IPUOpTest):
                 feed_list = self.feed_list
                 ipu_strategy = paddle.static.IpuStrategy()
                 ipu_strategy.set_graph_config(is_training=self.is_training)
+                ipu_strategy.save_init_onnx = True
                 if exec_mode == ExecutionMode.IPU_POPART_FP16:
                     ipu_strategy.set_half_config(enable_fp16=True)
                 program = paddle.static.IpuCompiledProgram(
@@ -114,9 +92,6 @@ class TestBase(IPUOpTest):
             if exec_mode > ExecutionMode.IPU_FP32:
                 feed = self.feed_fp16
 
-            if exec_mode != ExecutionMode.CPU_FP32:
-                feed['label'] = feed['label'].astype(np.int32)
-
             result = exe.run(program, feed=feed, fetch_list=fetch_list)
             return result[0]
 
@@ -125,39 +100,25 @@ class TestBase(IPUOpTest):
         for mode in ExecutionMode:
             if mode > ExecutionMode.IPU_FP32 and not self.fp16_enabled:
                 break
+
             output_dict[mode] = self._test_base(mode).flatten()
-        self.np_nll_loss()
 
         self.check(output_dict)
 
 
 class TestCase1(TestBase):
     def set_op_attrs(self):
-        self.attrs = {
-            'soft_label': False,
-            'ignore_index': 1,
-        }
+        self.attrs = {"exclusive": True, "reverse": False}
 
 
 class TestCase2(TestBase):
-    def set_data_feed(self):
-        x = np.random.uniform(size=[30, 70])
-        label = np.arange(30).reshape([30, 1])
-
-        self.feed_fp32 = {
-            "x": x.astype(np.float32),
-            "label": label.astype(np.int64)
-        }
-        self.feed_fp16 = {
-            "x": x.astype(np.float16),
-            "label": label.astype(np.int32)
-        }
+    def set_op_attrs(self):
+        self.attrs = {"exclusive": False, "reverse": True}
 
 
-@unittest.skip("soft_label=True is not supported")
 class TestCase3(TestBase):
     def set_op_attrs(self):
-        self.attrs = {'soft_label': True, }
+        self.attrs = {"exclusive": True, "reverse": True}
 
 
 if __name__ == "__main__":

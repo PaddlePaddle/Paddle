@@ -1,4 +1,4 @@
-#  Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#  Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,48 +16,38 @@ import unittest
 
 import numpy as np
 import paddle
+import paddle.nn.functional as F
 import paddle.static
-from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest, ExecutionMode
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import (ExecutionMode,
+                                                          IPUOpTest)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")
-class TestBase(IPUOpTest):
+class TestRelu(IPUOpTest):
     def setUp(self):
         self.set_atol()
+        self.set_test_op()
         self.set_training()
         self.set_data_feed()
         self.set_feed_attr()
-        self.set_op_attrs()
 
     @property
     def fp16_enabled(self):
         return True
 
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.relu
+        self.op_attrs = {}
+
     def set_data_feed(self):
-        x = np.random.uniform(size=[3, 7])
-        label = np.arange(3).reshape([3, 1])
-        self.feed_fp32 = {
-            "x": x.astype(np.float32),
-            "label": label.astype(np.int64)
-        }
-        self.feed_fp16 = {
-            "x": x.astype(np.float16),
-            "label": label.astype(np.int32)
-        }
+        data = np.random.uniform(size=[1, 3, 10, 10])
+        self.feed_fp32 = {'in_0': data.astype(np.float32)}
+        self.feed_fp16 = {'in_0': data.astype(np.float16)}
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]
         self.feed_list = list(self.feed_fp32.keys())
-
-    def set_op_attrs(self):
-        self.attrs = {'soft_label': False, }
-
-    def np_nll_loss(self):
-        tmp = -np.log(self.feed_fp32['x'])
-        label = self.feed_fp32['label']
-        indice = [range(label.shape[0]), label.flatten()]
-        self.np_ref = tmp[indice]
 
     def _test_base(self, exec_mode):
         scope = paddle.fluid.core.Scope()
@@ -71,22 +61,10 @@ class TestBase(IPUOpTest):
                 x = paddle.static.data(
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
-                    dtype="float32")
-
-                if exec_mode != ExecutionMode.CPU_FP32:
-                    label = paddle.static.data(
-                        name=self.feed_list[1],
-                        shape=self.feed_shape[1],
-                        dtype='int32')
-                else:
-                    label = paddle.static.data(
-                        name=self.feed_list[1],
-                        shape=self.feed_shape[1],
-                        dtype='int64')
+                    dtype='float32')
 
                 with paddle.static.amp.fp16_guard():
-                    out = paddle.fluid.layers.cross_entropy(
-                        input=x, label=label, **self.attrs)
+                    out = self.op(x, **self.op_attrs)
 
                 fetch_list = [out.name]
 
@@ -101,6 +79,7 @@ class TestBase(IPUOpTest):
             if exec_mode != ExecutionMode.CPU_FP32:
                 feed_list = self.feed_list
                 ipu_strategy = paddle.static.IpuStrategy()
+
                 ipu_strategy.set_graph_config(is_training=self.is_training)
                 if exec_mode == ExecutionMode.IPU_POPART_FP16:
                     ipu_strategy.set_half_config(enable_fp16=True)
@@ -114,9 +93,6 @@ class TestBase(IPUOpTest):
             if exec_mode > ExecutionMode.IPU_FP32:
                 feed = self.feed_fp16
 
-            if exec_mode != ExecutionMode.CPU_FP32:
-                feed['label'] = feed['label'].astype(np.int32)
-
             result = exe.run(program, feed=feed, fetch_list=fetch_list)
             return result[0]
 
@@ -126,38 +102,32 @@ class TestBase(IPUOpTest):
             if mode > ExecutionMode.IPU_FP32 and not self.fp16_enabled:
                 break
             output_dict[mode] = self._test_base(mode).flatten()
-        self.np_nll_loss()
 
         self.check(output_dict)
 
 
-class TestCase1(TestBase):
-    def set_op_attrs(self):
-        self.attrs = {
-            'soft_label': False,
-            'ignore_index': 1,
-        }
+class TestTanh(TestRelu):
+    def set_test_op(self):
+        self.op = F.tanh
+        self.op_attrs = {}
 
 
-class TestCase2(TestBase):
-    def set_data_feed(self):
-        x = np.random.uniform(size=[30, 70])
-        label = np.arange(30).reshape([30, 1])
-
-        self.feed_fp32 = {
-            "x": x.astype(np.float32),
-            "label": label.astype(np.int64)
-        }
-        self.feed_fp16 = {
-            "x": x.astype(np.float16),
-            "label": label.astype(np.int32)
-        }
+class TestLog(TestRelu):
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.log
+        self.op_attrs = {}
 
 
-@unittest.skip("soft_label=True is not supported")
-class TestCase3(TestBase):
-    def set_op_attrs(self):
-        self.attrs = {'soft_label': True, }
+class TestSigmoid(TestRelu):
+    def set_test_op(self):
+        self.op = F.sigmoid
+        self.op_attrs = {}
+
+
+class TestSqrt(TestRelu):
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.sqrt
+        self.op_attrs = {}
 
 
 if __name__ == "__main__":
