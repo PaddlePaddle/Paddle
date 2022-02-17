@@ -11,6 +11,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <unordered_map>
+
 #include "paddle/fluid/platform/profiler/dump/nodetree.pb.h"
 #include "paddle/fluid/platform/profiler/output_logger.h"
 
@@ -36,6 +38,7 @@ class SerializationLogger : public BaseLogger {
   void HandleTypeKernel(const DeviceTraceEventNode&);
   void HandleTypeMemset(const DeviceTraceEventNode&);
   void HandleTypeMemcpy(const DeviceTraceEventNode&);
+  void LogMetaInfo(const std::unordered_map<std::string, std::string>&);
   std::string filename_;
   std::ofstream output_file_stream_;
   NodeTreesProto* node_trees_proto_;

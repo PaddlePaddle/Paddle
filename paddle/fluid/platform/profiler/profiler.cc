@@ -24,7 +24,9 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/profiler/cpu_overview.h"
 #include "paddle/fluid/platform/profiler/cuda_tracer.h"
+#include "paddle/fluid/platform/profiler/extra_info.h"
 #include "paddle/fluid/platform/profiler/host_tracer.h"
 #include "paddle/fluid/platform/profiler/trace_event_collector.h"
 
@@ -46,8 +48,13 @@ Profiler::Profiler(const ProfilerOptions& options) {
   options_ = options;
   HostTracerOptions host_tracer_options;
   host_tracer_options.trace_level = options.trace_level;
-  tracers_.emplace_back(new HostTracer(host_tracer_options), true);
-  tracers_.emplace_back(&CudaTracer::GetInstance(), false);
+  uint8_t trace_switch = 1;
+  if (options.trace_switch & trace_switch) {
+    tracers_.emplace_back(new HostTracer(host_tracer_options), true);
+  }
+  if (options.trace_switch & (trace_switch << 1)) {
+    tracers_.emplace_back(&CudaTracer::GetInstance(), false);
+  }
 }
 
 Profiler::~Profiler() { alive_.store(false); }
@@ -63,6 +70,8 @@ void Profiler::Start() {
   for (auto& tracer : tracers_) {
     tracer.Get().StartTracing();
   }
+  CPUOverview::GetInstance().RecordBeginTimeInfo();
+  ExtraInfo::GetInstance().Clear();
 }
 
 std::unique_ptr<NodeTrees> Profiler::Stop() {
@@ -75,6 +84,14 @@ std::unique_ptr<NodeTrees> Profiler::Stop() {
   std::unique_ptr<NodeTrees> tree(new NodeTrees(collector.HostEvents(),
                                                 collector.RuntimeEvents(),
                                                 collector.DeviceEvents()));
+  CPUOverview& cpuoverview = CPUOverview::GetInstance();
+  cpuoverview.RecordEndTimeInfo();
+  ExtraInfo::GetInstance().AddMetaInfo(std::string("System Cpu Utilization"),
+                                       std::string("%f"),
+                                       cpuoverview.GetCpuUtilization());
+  ExtraInfo::GetInstance().AddMetaInfo(
+      std::string("Process Cpu Utilization"), std::string("%f"),
+      cpuoverview.GetCpuCurProcessUtilization());
   return tree;
 }
 

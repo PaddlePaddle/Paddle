@@ -9,6 +9,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/platform/profiler/dump/deserialization_reader.h"
+#include "paddle/fluid/platform/profiler/extra_info.h"
 
 #include <cstring>
 
@@ -41,6 +42,14 @@ std::unique_ptr<NodeTrees> DeserializationReader::Parse() {
     VLOG(2) << "Unable to load node trees in protobuf." << std::endl;
     return nullptr;
   }
+  // restore extra info
+  ExtraInfo& extrainfo = ExtraInfo::GetInstance();
+  for (auto indx = 0; indx < node_trees_proto_->extra_info_size(); indx++) {
+    ExtraInfoMap extra_info_map = node_trees_proto_->extra_info(indx);
+    extrainfo.AddMetaInfo(extra_info_map.key(), std::string("%s"),
+                          extra_info_map.value().c_str());
+  }
+  // restore NodeTrees
   std::map<uint64_t, HostTraceEventNode*> thread_event_trees_map;
   for (int node_tree_index = 0;
        node_tree_index < node_trees_proto_->thread_trees_size();
