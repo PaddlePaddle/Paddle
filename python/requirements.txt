@@ -5,3 +5,5 @@ Pillow
 six
 decorator
 astor
+scipy
+pygithub

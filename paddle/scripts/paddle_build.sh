@@ -713,10 +713,141 @@ EOF
     fi
 }
 
+function run_linux_cpu_test() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    pip install hypothesis
+    pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/op_test.py ${PADDLE_ROOT}/build/python
+    ut_total_startTime_s=`date +%s`
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit tests ...
+    ========================================
+EOF
+set -x
+        export TEST_NUM_PERCENT_CASES=0.15
+        bash $PADDLE_ROOT/tools/check_added_ut.sh
+        if [ -a "$PADDLE_ROOT/duplicate_ut" ];then
+            duplicate_uts=$(cat $PADDLE_ROOT/duplicate_ut|sed -e 's/\r//g')
+            if [[ "$duplicate_uts" != "" ]];then
+                set +x
+                echo "========================================"
+                echo "The new unit test has the same name as the existing unit test"
+                cat "$PADDLE_ROOT/duplicate_ut"
+                echo "========================================"
+                exit 102;
+                set -x
+            fi
+        fi
+        if [ -a "$PADDLE_ROOT/added_ut" ];then
+            added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
+            ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
+            ctest -R "(${added_uts})" -L "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error_1=$?
+            if [ "$added_ut_error" != 0 ] && [ "$added_ut_error_1" != 0 ];then
+                echo "========================================"
+                echo "Added UT should not exceed 15 seconds"
+                echo "========================================"
+                exit 8;
+            fi
+        fi
+set +x
+        tmpfile_rand=`date +%s%N`
+        tmpfile=$tmp_dir/$tmpfile_rand
+        #EXIT_CODE=0;
+        #get_quickly_disable_ut||disable_ut_quickly='disable_ut' # indicate whether the case was in quickly disable list 
+        disable_ut_quickly='^disable_ut$|^test_post_training_quantization_lstm_model$|^test_dist_fleet_grad_clip$|^test_trt_subgraph_pass$|^test_communicator_geo$|^test_trt_convert_reduce_sum$|^test_activation_nn_grad$|^test_trt_convert_dropout$|^test_trt_fc_fuse_quant_dequant_pass$|^test_collective_allreduce_api_xpu$|^test_trt_convert_matmul$|^test_multiprocess_dataloader_iterable_dataset_static$|^test_dist_fleet_heter_ctr$|^test_matmul_v2_mkldnn_op$|^test_dist_fleet_ps_gpu_ctr$|^test_dropout_op_xpu$|^heter_server_test$|^test_scale_op_xpu$|^test_quant2_int8_lstm_mkldnn$|^send_and_recv_cpu_test$|^test_paddle_save_load_binary$|^heter_listen_and_server_test$|^test_fleet_graph_executor$'
+        if [ ${NIGHTLY_MODE:-OFF} == "ON" ]; then
+            nightly_label="NIGHTLY_LABEL"
+        else
+            nightly_label="RUN_TYPE=NIGHTLY|RUN_TYPE=DIST:NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY"
+            echo "========================================="
+            echo "Unittests with nightly labels  are only run at night"
+            echo "========================================="
+        fi
+        get_precision_ut_mac
+        if [[ "$on_precision" == "0" ]];then
+            ctest -E "$disable_ut_quickly" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+        else
+            ctest -R "$UT_list_prec" -E "$disable_ut_quickly" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+            tmpfile_rand=`date +%s%N`
+            tmpfile=$tmp_dir/$tmpfile_rand
+            ctest -R "$UT_list_prec_1" -E "$disable_ut_quickly" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+        fi
+        failed_test_lists=''
+        collect_failed_tests
+        test_error=0
+        retry_unittests_record=''
+        retry_time=3
+        exec_times=0
+        exec_time_array=('first' 'second' 'third')
+        exec_retry_threshold=60
+        is_retry_execuate=0
+        if [ -n "$failed_test_lists" ];then
+            test_error=1
+            read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+            need_retry_ut_arr=(${need_retry_ut_str})
+            need_retry_ut_count=${#need_retry_ut_arr[@]}
+            read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+            if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
+                while ( [ $exec_times -lt $retry_time ] )
+                    do
+                        set +e
+                        retry_unittests_record="$retry_unittests_record$failed_test_lists"
+                        failed_test_lists_ult=`echo "${failed_test_lists}"`
+                        set -e
+                        if [[ "${exec_times}" == "1" ]];then
+                            if [[ "${failed_test_lists}" == "" ]];then
+                                break
+                            else
+                                read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+                            fi
+                        fi
+                        echo "========================================="
+                        echo "This is the ${exec_time_array[$exec_times]} time to re-run"
+                        echo "========================================="
+                        echo "The following unittest will be re-run:"
+                        echo "${retry_unittests}"
+                        echo "========================================="
+
+                        retry_unittests_regular=''
+                        for line in ${retry_unittests[@]} ;
+                            do
+                                if [[ "$retry_unittests_regular" == "" ]];then
+                                    retry_unittests_regular="^$line$"
+                                else
+                                    retry_unittests_regular="$retry_unittests_regular|^$line$"
+                                fi
+                            done
+                        rm -f $tmp_dir/*
+                        failed_test_lists=''
+                        ctest -R "($retry_unittests_regular)" --output-on-failure -j $2 | tee $tmpfile
+                        collect_failed_tests
+                        exec_times=$[$exec_times+1]
+                    done
+            else
+                # There are more than 20 failed unit tests, so no unit test retry
+                is_retry_execuate=1
+            fi
+
+        fi
+        ut_endTime_s=`date +%s`
+        echo "testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+        echo "ipipe_log_param_TestCases_Time: $[ $ut_endTime_s - $ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+        paddle version
+        # Recovery proxy to avoid failure in later steps
+        export http_proxy=$my_proxy
+        export https_proxy=$my_proxy
+        if [ "$test_error" != 0 ];then
+            show_ut_retry_result
+        fi
+    fi
+}
 function get_precision_ut_mac() {
     on_precision=0
     UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
-    precison_cases=""
+    precision_cases=""
     if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
         python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
         if [[ -f "ut_list" ]]; then
@@ -2693,7 +2824,9 @@ function main() {
         ;;
       cicheck_py35)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
-        parallel_test
+        run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
+        
+        #parallel_test
         ;;
       cpu_cicheck_py35)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
