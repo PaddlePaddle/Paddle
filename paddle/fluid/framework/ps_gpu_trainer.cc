@@ -16,10 +16,10 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "io/fs.h"
-#include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
+#include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/framework/trainer.h"
 #if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
     (defined PADDLE_WITH_PSLIB)
@@ -49,27 +49,27 @@ void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
   // now only support single sparse table
   auto sparse_table = param_.sparse_table(0);
   std::unordered_map<std::string, float> config;
-  config["nonclk_coeff"] = sparse_table.sparse_nonclk_coeff;
-  config["clk_coeff"] = sparse_table.sparse_click_coeff;
-  config["learning_rate"] = sparse_table.sparse_learning_rate;
-  config["initial_g2sum"] = sparse_table.sparse_initial_g2sum;
-  config["initial_range"] = sparse_table.sparse_initial_range;
+  config["nonclk_coeff"] = sparse_table.sparse_nonclk_coeff();
+  config["clk_coeff"] = sparse_table.sparse_click_coeff();
+  config["learning_rate"] = sparse_table.sparse_learning_rate();
+  config["initial_g2sum"] = sparse_table.sparse_initial_g2sum();
+  config["initial_range"] = sparse_table.sparse_initial_range();
   if (sparse_table.sparse_weight_bounds_size() == 2) {
-    config["min_bound"] = sparse_table.sparse_weight_bounds[0];
-    config["max_boud"] = sparse_table.sparse_weight_bounds[1];
+    config["min_bound"] = sparse_table.sparse_weight_bounds()[0];
+    config["max_boud"] = sparse_table.sparse_weight_bounds()[1];
   }
- 
-  std::cout dsf 
-  config["mf_create_thresholds"] = sparse_table.sparse_embedx_threshold;
-  config["mf_learning_rate"] = sparse_table.embedx_sparse_learning_rate;
-  config["mf_initial_g2sum"] = sparse_table.embedx_sparse_initial_g2sum;
-  config["mf_initial_range"] = sparse_table.embedx_sparse_initial_range;
+
+  std::cout dsf config["mf_create_thresholds"] =
+      sparse_table.sparse_embedx_threshold();
+  config["mf_learning_rate"] = sparse_table.embedx_sparse_learning_rate();
+  config["mf_initial_g2sum"] = sparse_table.embedx_sparse_initial_g2sum();
+  config["mf_initial_range"] = sparse_table.embedx_sparse_initial_range();
   if (sparse_table.embedx_sparse_weight_bounds_size() == 2) {
-    config["mf_min_bound"] = sparse_tabele.embedx_sparse_weight_bounds[0];
-    config["mf_max_bound"] = sparse_tabele.embedx_sparse_weight_bounds[1];
+    config["mf_min_bound"] = sparse_table.embedx_sparse_weight_bounds()[0];
+    config["mf_max_bound"] = sparse_table.embedx_sparse_weight_bounds()[1];
   }
-  
-  auto ps_gpu_wrapper = paddle::framework::PSGPUWarpper::GetInstance(); 
+
+  auto ps_gpu_wrapper = paddle::framework::PSGPUWarpper::GetInstance();
   ps_gpu_wrapper->InitializeGPUServer(config);
 
   scale_datanorm_ = trainer_desc.scale_datanorm();
