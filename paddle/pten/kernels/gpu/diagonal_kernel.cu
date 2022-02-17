@@ -16,12 +16,10 @@
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/diagonal_kernel.h"
-#include "paddle/pten/kernels/gpu/diagonal.h"
+#include "paddle/pten/kernels/funcs/diagonal.h"
 
 namespace pten {
-
 using paddle::platform::PADDLE_CUDA_NUM_THREADS;
-
 template <typename T, typename Context>
 void DiagonalKernel(const Context& dev_ctx,
                     const DenseTensor& x,
@@ -61,92 +59,92 @@ void DiagonalKernel(const Context& dev_ctx,
 
   switch (input_dim_size) {
     case 2:
-      Diagonal<T, 2, 1><<<blocks, threads>>>(input_data,
-                                             output_data,
-                                             offset_,
-                                             axis1_,
-                                             axis2_,
-                                             input_stride,
-                                             output_stride,
-                                             numel,
-                                             false);
+      funcs::DiagonalCuda<T, 2, 1><<<blocks, threads>>>(input_data,
+                                                        output_data,
+                                                        offset_,
+                                                        axis1_,
+                                                        axis2_,
+                                                        input_stride,
+                                                        output_stride,
+                                                        numel,
+                                                        false);
       break;
     case 3:
-      Diagonal<T, 3, 2><<<blocks, threads>>>(input_data,
-                                             output_data,
-                                             offset_,
-                                             axis1_,
-                                             axis2_,
-                                             input_stride,
-                                             output_stride,
-                                             numel,
-                                             false);
+      funcs::DiagonalCuda<T, 3, 2><<<blocks, threads>>>(input_data,
+                                                        output_data,
+                                                        offset_,
+                                                        axis1_,
+                                                        axis2_,
+                                                        input_stride,
+                                                        output_stride,
+                                                        numel,
+                                                        false);
       break;
     case 4:
-      Diagonal<T, 4, 3><<<blocks, threads>>>(input_data,
-                                             output_data,
-                                             offset_,
-                                             axis1_,
-                                             axis2_,
-                                             input_stride,
-                                             output_stride,
-                                             numel,
-                                             false);
+      funcs::DiagonalCuda<T, 4, 3><<<blocks, threads>>>(input_data,
+                                                        output_data,
+                                                        offset_,
+                                                        axis1_,
+                                                        axis2_,
+                                                        input_stride,
+                                                        output_stride,
+                                                        numel,
+                                                        false);
       break;
     case 5:
-      Diagonal<T, 5, 4><<<blocks, threads>>>(input_data,
-                                             output_data,
-                                             offset_,
-                                             axis1_,
-                                             axis2_,
-                                             input_stride,
-                                             output_stride,
-                                             numel,
-                                             false);
+      funcs::DiagonalCuda<T, 5, 4><<<blocks, threads>>>(input_data,
+                                                        output_data,
+                                                        offset_,
+                                                        axis1_,
+                                                        axis2_,
+                                                        input_stride,
+                                                        output_stride,
+                                                        numel,
+                                                        false);
       break;
     case 6:
-      Diagonal<T, 6, 5><<<blocks, threads>>>(input_data,
-                                             output_data,
-                                             offset_,
-                                             axis1_,
-                                             axis2_,
-                                             input_stride,
-                                             output_stride,
-                                             numel,
-                                             false);
+      funcs::DiagonalCuda<T, 6, 5><<<blocks, threads>>>(input_data,
+                                                        output_data,
+                                                        offset_,
+                                                        axis1_,
+                                                        axis2_,
+                                                        input_stride,
+                                                        output_stride,
+                                                        numel,
+                                                        false);
       break;
     case 7:
-      Diagonal<T, 7, 6><<<blocks, threads>>>(input_data,
-                                             output_data,
-                                             offset_,
-                                             axis1_,
-                                             axis2_,
-                                             input_stride,
-                                             output_stride,
-                                             numel,
-                                             false);
+      funcs::DiagonalCuda<T, 7, 6><<<blocks, threads>>>(input_data,
+                                                        output_data,
+                                                        offset_,
+                                                        axis1_,
+                                                        axis2_,
+                                                        input_stride,
+                                                        output_stride,
+                                                        numel,
+                                                        false);
       break;
     case 8:
-      Diagonal<T, 8, 7><<<blocks, threads>>>(input_data,
-                                             output_data,
-                                             offset_,
-                                             axis1_,
-                                             axis2_,
-                                             input_stride,
-                                             output_stride,
-                                             numel,
-                                             false);
+      funcs::DiagonalCuda<T, 8, 7><<<blocks, threads>>>(input_data,
+                                                        output_data,
+                                                        offset_,
+                                                        axis1_,
+                                                        axis2_,
+                                                        input_stride,
+                                                        output_stride,
+                                                        numel,
+                                                        false);
       break;
     case 9:
-      Diagonal<T, 9, 8><<<blocks, threads>>>(input_data,
-                                             output_data,
-                                             offset_,
-                                             axis1_,
-                                             axis2_,
-                                             input_stride,
-                                             output_stride,
-                                             numel,
-                                             false);
+      funcs::DiagonalCuda<T, 9, 8><<<blocks, threads>>>(input_data,
+                                                        output_data,
+                                                        offset_,
+                                                        axis1_,
+                                                        axis2_,
+                                                        input_stride,
+                                                        output_stride,
+                                                        numel,
+                                                        false);
       break;
     default:
       PADDLE_THROW(errors::InvalidArgument(

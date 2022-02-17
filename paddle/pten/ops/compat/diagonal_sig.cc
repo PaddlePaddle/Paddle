@@ -16,11 +16,6 @@
 
 namespace pten {
 
-KernelSignature DiagonalOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "diagonal", {"Input"}, {"offset", "axis1", "axis2"}, {"Out"});
-}
-
 KernelSignature DiagonalGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("diagonal_grad",
@@ -30,6 +25,4 @@ KernelSignature DiagonalGradOpArgumentMapping(
 }
 
 }  // namespace pten
-
-PT_REGISTER_ARG_MAPPING_FN(diagonal, pten::DiagonalOpArgumentMapping);
 PT_REGISTER_ARG_MAPPING_FN(diagonal_grad, pten::DiagonalGradOpArgumentMapping);

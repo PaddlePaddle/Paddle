@@ -16,7 +16,7 @@
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/diagonal_grad_kernel.h"
-#include "paddle/pten/kernels/gpu/diagonal.h"
+#include "paddle/pten/kernels/funcs/diagonal.h"
 
 namespace pten {
 
@@ -63,92 +63,92 @@ void DiagonalGradKernel(const Context& dev_ctx,
 
   switch (dx_dim_size) {
     case 2:
-      Diagonal<T, 2, 1><<<blocks, threads>>>(dout_data,
-                                             dx_data,
-                                             offset_,
-                                             axis1_,
-                                             axis2_,
-                                             dx_stride,
-                                             dout_stride,
-                                             numel,
-                                             true);
+      funcs::DiagonalCuda<T, 2, 1><<<blocks, threads>>>(dout_data,
+                                                        dx_data,
+                                                        offset_,
+                                                        axis1_,
+                                                        axis2_,
+                                                        dx_stride,
+                                                        dout_stride,
+                                                        numel,
+                                                        true);
       break;
     case 3:
-      Diagonal<T, 3, 2><<<blocks, threads>>>(dout_data,
-                                             dx_data,
-                                             offset_,
-                                             axis1_,
-                                             axis2_,
-                                             dx_stride,
-                                             dout_stride,
-                                             numel,
-                                             true);
+      funcs::DiagonalCuda<T, 3, 2><<<blocks, threads>>>(dout_data,
+                                                        dx_data,
+                                                        offset_,
+                                                        axis1_,
+                                                        axis2_,
+                                                        dx_stride,
+                                                        dout_stride,
+                                                        numel,
+                                                        true);
       break;
     case 4:
-      Diagonal<T, 4, 3><<<blocks, threads>>>(dout_data,
-                                             dx_data,
-                                             offset_,
-                                             axis1_,
-                                             axis2_,
-                                             dx_stride,
-                                             dout_stride,
-                                             numel,
-                                             true);
+      funcs::DiagonalCuda<T, 4, 3><<<blocks, threads>>>(dout_data,
+                                                        dx_data,
+                                                        offset_,
+                                                        axis1_,
+                                                        axis2_,
+                                                        dx_stride,
+                                                        dout_stride,
+                                                        numel,
+                                                        true);
       break;
     case 5:
-      Diagonal<T, 5, 4><<<blocks, threads>>>(dout_data,
-                                             dx_data,
-                                             offset_,
-                                             axis1_,
-                                             axis2_,
-                                             dx_stride,
-                                             dout_stride,
-                                             numel,
-                                             true);
+      funcs::DiagonalCuda<T, 5, 4><<<blocks, threads>>>(dout_data,
+                                                        dx_data,
+                                                        offset_,
+                                                        axis1_,
+                                                        axis2_,
+                                                        dx_stride,
+                                                        dout_stride,
+                                                        numel,
+                                                        true);
       break;
     case 6:
-      Diagonal<T, 6, 5><<<blocks, threads>>>(dout_data,
-                                             dx_data,
-                                             offset_,
-                                             axis1_,
-                                             axis2_,
-                                             dx_stride,
-                                             dout_stride,
-                                             numel,
-                                             true);
+      funcs::DiagonalCuda<T, 6, 5><<<blocks, threads>>>(dout_data,
+                                                        dx_data,
+                                                        offset_,
+                                                        axis1_,
+                                                        axis2_,
+                                                        dx_stride,
+                                                        dout_stride,
+                                                        numel,
+                                                        true);
       break;
     case 7:
-      Diagonal<T, 7, 6><<<blocks, threads>>>(dout_data,
-                                             dx_data,
-                                             offset_,
-                                             axis1_,
-                                             axis2_,
-                                             dx_stride,
-                                             dout_stride,
-                                             numel,
-                                             true);
+      funcs::DiagonalCuda<T, 7, 6><<<blocks, threads>>>(dout_data,
+                                                        dx_data,
+                                                        offset_,
+                                                        axis1_,
+                                                        axis2_,
+                                                        dx_stride,
+                                                        dout_stride,
+                                                        numel,
+                                                        true);
       break;
     case 8:
-      Diagonal<T, 8, 7><<<blocks, threads>>>(dout_data,
-                                             dx_data,
-                                             offset_,
-                                             axis1_,
-                                             axis2_,
-                                             dx_stride,
-                                             dout_stride,
-                                             numel,
-                                             true);
+      funcs::DiagonalCuda<T, 8, 7><<<blocks, threads>>>(dout_data,
+                                                        dx_data,
+                                                        offset_,
+                                                        axis1_,
+                                                        axis2_,
+                                                        dx_stride,
+                                                        dout_stride,
+                                                        numel,
+                                                        true);
       break;
     case 9:
-      Diagonal<T, 9, 8><<<blocks, threads>>>(dout_data,
-                                             dx_data,
-                                             offset_,
-                                             axis1_,
-                                             axis2_,
-                                             dx_stride,
-                                             dout_stride,
-                                             numel,
-                                             true);
+      funcs::DiagonalCuda<T, 9, 8><<<blocks, threads>>>(dout_data,
+                                                        dx_data,
+                                                        offset_,
+                                                        axis1_,
+                                                        axis2_,
+                                                        dx_stride,
+                                                        dout_stride,
+                                                        numel,
+                                                        true);
       break;
     default:
       PADDLE_THROW(errors::InvalidArgument(

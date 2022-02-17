@@ -15,7 +15,7 @@
 #include "paddle/pten/kernels/diagonal_grad_kernel.h"
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/cpu/diagonal.h"
+#include "paddle/pten/kernels/funcs/diagonal.h"
 
 namespace pten {
 
@@ -40,8 +40,8 @@ void DiagonalGradKernel(const Context& dev_ctx,
   int64_t axis1_ = axis1 < 0 ? dx_dim_size + axis1 : axis1;
   int64_t axis2_ = axis2 < 0 ? dx_dim_size + axis2 : axis2;
 
-  std::vector<int64_t> dout_stride = ComputeDimStride(dout_dim);
-  std::vector<int64_t> dx_stride = ComputeDimStride(dx_dim);
+  std::vector<int64_t> dout_stride = funcs::ComputeDimStride(dout_dim);
+  std::vector<int64_t> dx_stride = funcs::ComputeDimStride(dx_dim);
 
   int64_t numel = dx->numel();
 

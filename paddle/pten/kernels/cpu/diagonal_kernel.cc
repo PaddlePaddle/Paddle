@@ -15,7 +15,7 @@
 #include "paddle/pten/kernels/diagonal_kernel.h"
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/cpu/diagonal.h"
+#include "paddle/pten/kernels/funcs/diagonal.h"
 
 namespace pten {
 
@@ -39,8 +39,8 @@ void DiagonalKernel(const Context& dev_ctx,
   int64_t axis1_ = axis1 < 0 ? input_dim_size + axis1 : axis1;
   int64_t axis2_ = axis2 < 0 ? input_dim_size + axis2 : axis2;
 
-  std::vector<int64_t> input_stride = ComputeDimStride(input_dim);
-  std::vector<int64_t> output_stride = ComputeDimStride(output_dim);
+  std::vector<int64_t> input_stride = funcs::ComputeDimStride(input_dim);
+  std::vector<int64_t> output_stride = funcs::ComputeDimStride(output_dim);
 
   int64_t numel = input->numel();
 
