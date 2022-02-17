@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "paddle/fluid/operators/slice_utils.h"
 #include "paddle/pten/kernels/funcs/eigen/common.h"
 #include "paddle/pten/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/pten/kernels/funcs/slice_utils.h"
 
 namespace pten {
 
@@ -60,11 +60,10 @@ void SliceCompute(const Context& ctx,
     }
   }
 
-  paddle::operators::CheckAndUpdateSliceAttrs<int64_t>(
-      in_dims, axes, &starts, &ends);
-  slice_dims = paddle::operators::GetSliceDims<int64_t>(
-      in_dims, axes, starts, ends, nullptr, nullptr);
-  out_dims = paddle::operators::GetDecreasedDims(slice_dims, decrease_axis);
+  CheckAndUpdateSliceAttrs<int64_t>(in_dims, axes, &starts, &ends);
+  slice_dims =
+      GetSliceDims<int64_t>(in_dims, axes, starts, ends, nullptr, nullptr);
+  out_dims = GetDecreasedDims<int64_t>(slice_dims, decrease_axis);
 
   // 2.2 Get output
   auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();

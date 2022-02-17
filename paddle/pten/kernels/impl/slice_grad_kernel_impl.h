@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "paddle/fluid/operators/slice_utils.h"
 #include "paddle/pten/kernels/funcs/eigen/common.h"
 #include "paddle/pten/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/pten/kernels/funcs/slice_utils.h"
 #include "paddle/pten/kernels/slice_grad_kernel.h"
 
 namespace pten {
