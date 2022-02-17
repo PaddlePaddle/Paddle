@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/selected_rows.h"
 #include "paddle/pten/core/tensor_base.h"
 #include "paddle/pten/core/tensor_meta.h"
 #include "paddle/pten/core/tensor_utils.h"
@@ -57,9 +58,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace experimental {
-
-// declare cast api
-Tensor cast(const Tensor &x, DataType out_dtype);
 
 /////// Tensor Methods ////////
 
@@ -222,8 +220,11 @@ Tensor::mutable_data<paddle::platform::float16>(const PlaceType &place);
 template <typename T>
 const T *Tensor::data() const {
   if (is_dense_tensor()) {
-    return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->mutable_data<T>(
-        ConvertExtPlaceToInnerPlace(place()));
+    return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->data<T>();
+  } else if (pten::SelectedRows::classof(impl_.get())) {
+    return std::dynamic_pointer_cast<pten::SelectedRows>(impl_)
+        ->value()
+        .data<T>();
   }
   return nullptr;
 }
@@ -358,9 +359,6 @@ void Tensor::copy_(const Tensor &src, bool blocking) {
   auto copy_tensor =
       src.copy_to(pten::TransToPtenBackend(src.inner_place()), blocking);
   set_impl(copy_tensor.impl());
-}
-Tensor Tensor::cast(DataType target_type) const {
-  return experimental::cast(*this, target_type);
 }
 
 /* Part 6: Status utils methods */
