@@ -434,7 +434,7 @@ void PrelnEmbeddingEltwiseLayerNormFusePass::ApplyImpl(Graph* graph) const {
   bool with_interleaved = Get<bool>("with_interleaved");
   if (!enable_int8 && use_oss && with_interleaved) {
     VLOG(4) << "preln_embedding_eltwise_layernorm_fuse_pass need: enable_int8, "
-               "use_oss, with_interleaved. Stop this pass, please reconfig. ";
+               "use_oss, with_interleaved. Stop this pass, please reconfig.";
     return;
   }
 
