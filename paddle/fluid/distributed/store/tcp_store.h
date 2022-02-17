@@ -26,26 +26,29 @@
 namespace paddle {
 namespace distributed {
 
-enum class WaitReplyType { WAITING, STOP_WAIT };
-enum class Command { ADD, GET, WAIT };
+enum class ReplyType { WAITING, STOP_WAIT };
+enum class Command { ADD, GET, WAIT, STOP };
 
 namespace detail {
 
 class MasterDaemon {
  public:
   static std::unique_ptr<MasterDaemon> start(int listen_socket);
-  ~MasterDaemon();
+  MasterDaemon() = delete;
   explicit MasterDaemon(int listen_socket);
+  ~MasterDaemon();
 
  private:
   void run();
   void _do_add(int socket);
   void _do_wait(int socket);
   void _do_get(int socket);
+  void _do_stop(int socket);
   int _listen_socket;
   std::vector<int> _sockets;
   std::unordered_map<std::string, std::vector<uint8_t>> _store;
   std::thread _background_thread{};
+  bool _stop = false;
 };
 
 class TCPServer {
@@ -62,6 +65,7 @@ class TCPClient {
   explicit TCPClient(int socket) : _socket{socket} {}
   static std::unique_ptr<TCPClient> connect(const std::string host,
                                             uint16_t port);
+  ~TCPClient() { ::close(_socket); }
   void send_command_for_key(Command type, const std::string& key);
 
   template <typename T>
@@ -88,7 +92,7 @@ class TCPStore : public Store {
                     bool is_master = false, size_t num_workers = 1,
                     std::chrono::seconds timeout = tcputils::kDefaultTimeout);
 
-  ~TCPStore() = default;
+  ~TCPStore();
 
   int64_t add(const std::string& key, int64_t value) override;
   std::vector<uint8_t> get(const std::string& key) override;
@@ -104,7 +108,6 @@ class TCPStore : public Store {
   std::chrono::seconds _timeout;
   bool _is_master;
   int _num_workers;
-  std::mutex _lock;
 };
 
 }  // namespace distributed

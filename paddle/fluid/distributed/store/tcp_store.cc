@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <netdb.h>
-#include <netinet/tcp.h>
-#include <poll.h>
 #include <chrono>
 #include <iostream>
 #include <thread>
@@ -47,10 +44,9 @@ MasterDaemon::~MasterDaemon() {
 }
 
 void MasterDaemon::_do_add(int socket) {
-  int64_t increment;
+  int64_t new_value{};
   std::string key = tcputils::receive_string(socket);
-  tcputils::receive_bytes<int64_t>(socket, &increment, 1);
-  int64_t new_value = increment;
+  new_value = tcputils::receive_value<int64_t>(socket);
   std::vector<uint8_t> old_value;
   auto it = _store.find(key);
   if (it != _store.end()) {
@@ -63,31 +59,50 @@ void MasterDaemon::_do_add(int socket) {
   std::string new_value_str = std::to_string(new_value);
   _store[key] =
       std::vector<uint8_t>(new_value_str.begin(), new_value_str.end());
-  tcputils::send_bytes<int64_t>(socket, &new_value, 1);
+  VLOG(3) << "TCPStore: new value (" << new_value << ") for key (" << key
+          << ").";
+  tcputils::send_value<int64_t>(socket, new_value);
 }
 
 void MasterDaemon::_do_get(int socket) {
   std::string key = tcputils::receive_string(socket);
-  std::vector<uint8_t> value = _store.find(key)->second;
+  auto iter = _store.find(key);
+  PADDLE_ENFORCE_NE(
+      iter, _store.end(),
+      platform::errors::InvalidArgument("Key %s not found in TCPStore.", key));
+  std::vector<uint8_t> value = iter->second;
+  VLOG(3) << "TCPStore: value " << value[0];
+  VLOG(3) << "TCPStore: value ("
+          << std::stoll(std::string(reinterpret_cast<char*>(value.data()),
+                                    value.size()))
+          << ") for key (" << key << ").";
   tcputils::send_vector<uint8_t>(socket, value);
+}
+
+void MasterDaemon::_do_stop(int socket) {
+  ReplyType value = ReplyType::STOP_WAIT;
+  _stop = true;
+  tcputils::send_value<ReplyType>(socket, value);
 }
 
 void MasterDaemon::_do_wait(int socket) {
   std::string key = tcputils::receive_string(socket);
   auto iter = _store.find(key);
-  auto reply = WaitReplyType::STOP_WAIT;
+  auto reply = ReplyType::STOP_WAIT;
   if (iter == _store.end()) {
-    reply = WaitReplyType::WAITING;
+    reply = ReplyType::WAITING;
   }
-  tcputils::send_bytes<WaitReplyType>(socket, &reply, 1);
+  VLOG(3) << "TCPStore: wait reply (" << static_cast<int>(reply)
+          << ") for key (" << key << ").";
+  tcputils::send_value<ReplyType>(socket, reply);
 }
 
 void MasterDaemon::run() {
   std::vector<struct pollfd> fds;
   fds.push_back({.fd = _listen_socket, .events = POLLIN, .revents = 0});
 
-  bool done = false;
-  while (!done) {
+  // TODO(sandyhouse) add exit method
+  while (!_stop) {
     for (size_t i = 0; i < fds.size(); i++) {
       fds[i].revents = 0;
     }
@@ -105,16 +120,22 @@ void MasterDaemon::run() {
         continue;
       }
 
-      Command command;
-      tcputils::receive_bytes<Command>(fds[i].fd, &command, 1);
+      Command command = tcputils::receive_value<Command>(fds[i].fd);
+      VLOG(3) << "TCPStore: recv command: " << static_cast<int>(command) << ".";
 
       switch (command) {
         case Command::ADD:
           _do_add(fds[i].fd);
+          break;
         case Command::GET:
           _do_get(fds[i].fd);
+          break;
         case Command::WAIT:
           _do_wait(fds[i].fd);
+          break;
+        case Command::STOP:
+          _do_stop(fds[i].fd);
+          break;
       }
     }
   }
@@ -134,7 +155,7 @@ std::unique_ptr<TCPClient> TCPClient::connect(const std::string host,
 }
 
 void TCPClient::send_command_for_key(Command type, const std::string& key) {
-  tcputils::send_bytes<Command>(_socket, &type, 1);
+  tcputils::send_value<Command>(_socket, type);
   if (key.empty()) {
     return;
   }
@@ -187,6 +208,7 @@ void TCPStore::waitWorkers() {
     do {
       auto value = get(_init_key);
       int completed = std::stoi(std::string(value.begin(), value.end()));
+      VLOG(3) << completed << " worker ready, total " << _num_workers;
       if (completed >= _num_workers) {
         break;
       }
@@ -214,17 +236,26 @@ int64_t TCPStore::add(const std::string& key, int64_t value) {
 std::vector<uint8_t> TCPStore::get(const std::string& key) {
   wait(key);
   _client->send_command_for_key(Command::GET, _key_prefix + key);
+  VLOG(3) << "TCPStore get.";
   return _client->receive_vector<uint8_t>();
 }
 
 void TCPStore::wait(const std::string& key) {
-  WaitReplyType reply;
+  ReplyType reply;
   do {
     _client->send_command_for_key(Command::WAIT, _key_prefix + key);
 
-    reply = _client->receive_value<WaitReplyType>();
+    reply = _client->receive_value<ReplyType>();
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-  } while (reply != WaitReplyType::STOP_WAIT);
+  } while (reply != ReplyType::STOP_WAIT);
+}
+
+TCPStore::~TCPStore() {
+  _client->send_command_for_key(Command::STOP, "");
+  auto ret = _client->receive_value<ReplyType>();
+  PADDLE_ENFORCE_EQ(ret, ReplyType::STOP_WAIT,
+                    platform::errors::InvalidArgument(
+                        "The reply for TCPStore destructure must be 0."));
 }
 
 }  // namespace distributed

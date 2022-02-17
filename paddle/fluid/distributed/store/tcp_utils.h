@@ -14,8 +14,14 @@
 
 #pragma once
 
+#ifdef _WIN32
+#include <io.h>
+#include <winsock2.h>
+#else
 #include <netdb.h>
 #include <netinet/tcp.h>
+#include <poll.h>
+#endif
 #include <chrono>
 #include <iostream>
 #include <vector>
@@ -95,6 +101,18 @@ std::vector<T> receive_vector(int socket) {
   std::vector<T> res(size);
   receive_bytes<T>(socket, res.data(), size);
   return res;
+}
+
+template <typename T>
+void send_value(int socket, const T& v) {
+  send_bytes<T>(socket, &v, 1);
+}
+
+template <typename T>
+T receive_value(int socket) {
+  T v;
+  receive_bytes<T>(socket, &v, 1);
+  return v;
 }
 
 }  // namespace tcputils
