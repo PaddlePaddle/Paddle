@@ -16,27 +16,23 @@
 #include <llvm/ADT/SmallVector.h>
 
 #include "paddle/infrt/host_context/kernel_utils.h"
-#include "paddle/infrt/naive/infershaped/infershaped_kernel_launcher.h"
-#include "paddle/infrt/naive/infershaped/infershaped_utils.h"
+#include "paddle/infrt/kernel/pten/infershaped/infershaped_kernel_launcher.h"
+#include "paddle/infrt/kernel/pten/infershaped/infershaped_utils.h"
 
 // This file contains a example of the infershape ElementwiseAdd kernel.
 // Some of the following code should be generated from PTEN by script.
 
 namespace infrt {
-namespace naive {
+namespace kernel {
 
-static void ElementwiseAddInferShape(const MetaTensor& a,
-                                     const MetaTensor& b,
-                                     MetaTensor* c) {
-  CHECK(a.shape() == b.shape())
-      << "ElementwiseAdd, but shapes of a b are not match";
-  *c->mutable_shape() = a.shape();
-}
+static void ElementwiseAddInferShape(const ::pten::MetaTensor& a,
+                                     const ::pten::MetaTensor& b,
+                                     ::pten::MetaTensor* c) {}
 
-static void ElementwiseAdd(tensor::DenseHostTensor* /*Context*/,
-                           const tensor::DenseHostTensor& a,
-                           const tensor::DenseHostTensor& b,
-                           tensor::DenseHostTensor* c) {}
+static void ElementwiseAdd(const ::pten::CPUContext& /*Context*/,
+                           const ::pten::DenseTensor& a,
+                           const ::pten::DenseTensor& b,
+                           ::pten::DenseTensor* c) {}
 
 template <typename KernelFunc,
           KernelFunc kernel,
@@ -64,5 +60,15 @@ class KernelLauncher : public InferShapedKernelLauncher {
   }
 };
 
-}  // namespace naive
+template <typename KernelFunc,
+          KernelFunc kernel,
+          typename InferShapedFunc,
+          InferShapedFunc infershape>
+void KernelLauncherFunc(
+    KernelLauncher<KernelFunc, kernel, InferShapedFunc, infershape> launcher,
+    host_context::KernelFrame* frame) {
+  launcher.Invoke(frame);
+}
+
+}  // namespace kernel
 }  // namespace infrt
