@@ -3844,7 +3844,7 @@ All parameter, weight, gradient are variables in Paddle.
                    std::string paddle_op;
                    std::string popart_op;
                    std::string domain;
-                   std::uint64_t version;
+                   int version = -1;
                    for (auto option : element.second.cast<py::dict>()) {
                      std::string option_key = option.first.cast<std::string>();
                      if (option_key == "paddle_op") {
@@ -3854,7 +3854,7 @@ All parameter, weight, gradient are variables in Paddle.
                      } else if (option_key == "domain") {
                        domain = option.second.cast<std::string>();
                      } else if (option_key == "version") {
-                       version = option.second.cast<std::uint64_t>();
+                       version = option.second.cast<int>();
                      } else {
                        PADDLE_THROW(platform::errors::InvalidArgument(
                            "Invalid argument, key must be one of paddle_op, "
