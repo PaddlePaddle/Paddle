@@ -421,8 +421,8 @@ def _parse_every_object(obj, condition_func, convert_func):
         return set(_parse_every_object(list(obj), condition_func, convert_func))
     else:
         if isinstance(obj, collections.Iterable) and not isinstance(
-                obj, (str, np.ndarray, core.VarBase, core.eager.Tensor,
-                      core.LoDTensor)):
+                obj,
+            (str, np.ndarray, core.VarBase, core.eager.Tensor, core.LoDTensor)):
             raise NotImplementedError(
                 "The iteratable objects supported are tuple, list, dict, OrderedDict, string. But received {}.".
                 format(type(obj)))
