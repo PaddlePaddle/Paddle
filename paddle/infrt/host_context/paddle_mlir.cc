@@ -231,8 +231,7 @@ llvm::SmallVector<mlir::Value, 4> MLIRModelGenImpl::GetOpInputValue(
   for (int var_idx = 0; var_idx < op_.inputs_size(); ++var_idx) {
     auto &var = op_.inputs(var_idx);
     if (!var.arguments().empty()) {
-      if (!inputs_info.count(var.parameter()))
-        continue;
+      if (!inputs_info.count(var.parameter())) continue;
       operands.push_back((params_map_[var.arguments()[0]]));
     }
   }
