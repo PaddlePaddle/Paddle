@@ -98,7 +98,7 @@ class ShardingOptimizerStage2(Optimizer):
 
         self.world_size = self.group.nranks
         self.rank = self.group.rank
-        self._global_root_rank = 0
+        self._global_root_rank = self.group.ranks[0]
 
         # Synchronous all ranks models
         if pertrain_sync_models:

@@ -85,12 +85,14 @@ class ShardingStage2(nn.Layer):
         self._world_size_scaling = 1.0 / self._group.nranks
         assert self._group.nranks > 1, "Training must be distributed, ranks must be greater than 1"
         self._rank = self._group.rank
-        self._global_root_rank = 0  # picking rank 0 as the reference
+        self._global_root_rank = self.group.ranks[
+            0]  # picking rank 0 as the reference
         self._default_device = device
 
         # Global statistical parameters
         self._all_params = list(
-            chain(*[optim.local_params for optim in self._sharding_optimizers]))
+            chain(
+                * [optim.local_params for optim in self._sharding_optimizers]))
         self._trainable_params = []
         self._grad_reduced = []
         self._trainable_param2rank = {}
@@ -455,7 +457,7 @@ class ShardingStage2(nn.Layer):
                            ._fill))
 
         self._grad_storage_list = list(
-            chain(*[
+            chain(* [
                 self._grad_storages[dtype].values()
                 for dtype in self._grad_storages.keys()
             ]))

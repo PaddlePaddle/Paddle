@@ -101,7 +101,8 @@ class ShardingStage3(nn.Layer):
         self._world_size_scaling = 1.0 / self._group.nranks
         assert self._group.nranks > 1, "Training must be distributed, ranks must be greater than 1."
         self._rank = self._group.rank
-        self._global_root_rank = 0  # picking rank 0 as the reference
+        self._global_root_rank = self.group.ranks[
+            0]  # picking rank 0 as the reference
         self._global_ranks = self._group.ranks
 
         # Parameter segmentation for global ranks
