@@ -10,17 +10,6 @@ else()
   cc_library(pten_tensor_raw SRCS tensor.cc DEPS tensor_base dense_tensor pten_api_utils ext_compat_utils pten_enforce manual_api)
 endif()
 
-
-cc_library(kernel_dispatch SRCS kernel_dispatch.cc DEPS pten_tensor_raw pten_context kernel_factory)
-cc_library(pten_data_transform SRCS data_transform.cc DEPS pten_tensor_raw transfer_layout_kernel cast_kernel data_device_transform)
-cc_library(manual_api SRCS manual_api.cc DEPS pten_tensor_raw pten kernel_dispatch pten_data_transform)
-
-cc_library(pten_tensor SRCS tensor_method.cc DEPS pten_tensor_raw pten_function_api)
-
-cc_library(op_meta_info SRCS op_meta_info.cc DEPS pten_tensor)
-cc_library(op_kernel_info SRCS op_kernel_info.cc DEPS pten_tensor_raw)
-
-
 set(api_gen_base ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/api_base.py)
 
 # forward api file
@@ -86,7 +75,14 @@ add_custom_command(
   DEPENDS ${api_yaml_file} ${wrapped_infermeta_gen_file} ${api_gen_base}
   VERBATIM)
 
+cc_library(kernel_dispatch SRCS kernel_dispatch.cc DEPS pten_tensor_raw pten_context kernel_factory)
+cc_library(pten_data_transform SRCS data_transform.cc DEPS pten_tensor_raw transfer_layout_kernel cast_kernel data_device_transform)
+cc_library(manual_api SRCS manual_api.cc DEPS pten_tensor_raw pten kernel_dispatch pten_data_transform)
 
+cc_library(pten_tensor SRCS tensor_method.cc DEPS pten_tensor_raw pten_function_api)
+
+cc_library(op_meta_info SRCS op_meta_info.cc DEPS pten_tensor)
+cc_library(op_kernel_info SRCS op_kernel_info.cc DEPS pten_tensor_raw)
 
 cc_library(sparse_api SRCS sparse_api.cc DEPS pten_tensor pten kernel_dispatch pten_data_transform)
 cc_library(pten_function_api SRCS ${api_source_file} DEPS pten_tensor pten kernel_dispatch pten_data_transform)

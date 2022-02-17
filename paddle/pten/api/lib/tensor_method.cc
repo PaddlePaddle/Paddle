@@ -13,10 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/pten/api/include/tensor.h"
-#include "paddle/pten/api/include/api.h"
 
 namespace paddle {
 namespace experimental {
+
+// declare cast api
+Tensor cast(const Tensor &x, DataType out_dtype);
 
 Tensor Tensor::cast(DataType target_type) const {
   return experimental::cast(*this, target_type);
