@@ -1,4 +1,4 @@
-#  Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#  Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,20 +35,18 @@ class TestBase(IPUOpTest):
         return True
 
     def set_data_feed(self):
-        data = np.random.uniform(size=[1, 3, 10, 10])
-        self.feed_fp32 = {"x": data.astype(np.float32)}
-        self.feed_fp16 = {"x": data.astype(np.float16)}
+        x = np.random.uniform(size=[2, 3])
+        y = np.random.uniform(size=[3, 2])
+
+        self.feed_fp32 = {"x": x.astype(np.float32), "y": y.astype(np.float32)}
+        self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.float16)}
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]
         self.feed_list = list(self.feed_fp32.keys())
-        self.feed_dtype = [x.dtype for x in self.feed_fp32.values()]
 
     def set_op_attrs(self):
-        self.attrs = {
-            "shape": [30, 10],
-            "inplace": True,
-        }
+        self.attrs = {"transpose_x": False, "transpose_y": False}
 
     def _test_base(self, exec_mode):
         scope = paddle.fluid.core.Scope()
@@ -63,10 +61,13 @@ class TestBase(IPUOpTest):
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
                     dtype='float32')
+                y = paddle.static.data(
+                    name=self.feed_list[1],
+                    shape=self.feed_shape[1],
+                    dtype='float32')
 
                 with paddle.static.amp.fp16_guard():
-                    add = paddle.fluid.layers.elementwise_add(x, x)
-                    out = paddle.fluid.layers.reshape(add, **self.attrs)
+                    out = paddle.matmul(x, y, **self.attrs)
 
             fetch_list = [out.name]
 
@@ -102,16 +103,83 @@ class TestBase(IPUOpTest):
         for mode in ExecutionMode:
             if mode > ExecutionMode.IPU_FP32 and not self.fp16_enabled:
                 break
-            output_dict[mode] = self._test_base(mode)
+            output_dict[mode] = self._test_base(mode).flatten()
 
-        self.check(output_dict, check_shape=True)
+        self.check(output_dict)
 
 
 class TestCase1(TestBase):
-    def set_attrs(self):
+    def set_op_attrs(self):
         self.attrs = {
-            "shape": [-1, 0, 10],
-            "inplace": True,
+            "transpose_x": True,
+            "transpose_y": True,
+        }
+
+
+class TestCase3(TestBase):
+    def set_data_feed(self):
+        x = np.random.uniform(size=[5, 4, 2, 3])
+        y = np.random.uniform(size=[5, 4, 3, 2])
+
+        self.feed_fp32 = {"x": x.astype(np.float32), "y": y.astype(np.float32)}
+        self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.float16)}
+
+
+class TestCase4(TestBase):
+    def set_data_feed(self):
+        x = np.random.uniform(size=[4, 2, 3])
+        y = np.random.uniform(size=[4, 3, 2])
+
+        self.feed_fp32 = {"x": x.astype(np.float32), "y": y.astype(np.float32)}
+        self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.float16)}
+
+
+class TestCase5(TestBase):
+    def set_data_feed(self):
+        x = np.random.uniform(size=[4, 2, 3])
+        y = np.random.uniform(size=[3, 2])
+
+        self.feed_fp32 = {"x": x.astype(np.float32), "y": y.astype(np.float32)}
+        self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.float16)}
+
+
+class TestCase6(TestBase):
+    def set_data_feed(self):
+        x = np.random.uniform(size=[3])
+        y = np.random.uniform(size=[3])
+
+        self.feed_fp32 = {"x": x.astype(np.float32), "y": y.astype(np.float32)}
+        self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.float16)}
+
+
+@unittest.skip("not supported")
+class TestCase6_2(TestCase6):
+    def set_data_feed(self):
+        x = np.random.uniform(size=[3])
+        y = np.random.uniform(size=[3])
+
+        self.feed_fp32 = {"x": x.astype(np.float32), "y": y.astype(np.float32)}
+        self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.float16)}
+
+    def set_op_attrs(self):
+        self.attrs = {"transpose_x": True, "transpose_y": True}
+
+
+class TestCase7(TestBase):
+    def set_data_feed(self):
+        x = np.random.uniform(size=[3, 1])
+        y = np.random.uniform(size=[1, 2])
+
+        self.feed_fp32 = {"x": x.astype(np.float32), "y": y.astype(np.float32)}
+        self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.float16)}
+
+
+@unittest.skip("dim > 4 is not supported")
+class TestCase8(TestBase):
+    def set_data_feed(self):
+        self.feed = {
+            "x": np.random.uniform(size=[6, 5, 4, 2, 3]).astype('float32'),
+            "y": np.random.uniform(size=[6, 5, 4, 3, 2]).astype('float32'),
         }
 
 

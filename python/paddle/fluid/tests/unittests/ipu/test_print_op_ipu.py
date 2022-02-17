@@ -20,13 +20,7 @@ import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-def set_serialize_factor(serialize_factor):
-    main_prog = paddle.static.default_main_program()
-    op = main_prog.current_block().ops[-1]
-    op._set_attr('serialize_factor', serialize_factor)
-
-
-@unittest.skipIf(not paddle.is_compiled_with_ipu() or IPUOpTest.use_ipumodel,
+@unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")
 class TestBase(IPUOpTest):
     def setUp(self):
@@ -38,8 +32,7 @@ class TestBase(IPUOpTest):
 
     def set_data_feed(self):
         self.feed = {
-            "x": np.random.uniform(size=[2048, 3072]).astype('float32'),
-            "y": np.random.uniform(size=[3072, 2048]).astype('float32'),
+            "x": np.random.uniform(size=[1, 3, 3, 3]).astype('float32'),
         }
 
     def set_feed_attr(self):
@@ -48,7 +41,7 @@ class TestBase(IPUOpTest):
         self.feed_dtype = [x.dtype for x in self.feed.values()]
 
     def set_op_attrs(self):
-        self.attrs = {"transpose_x": False, "transpose_y": False}
+        self.attrs = {}
 
     def _test_base(self, run_ipu=True):
         scope = paddle.fluid.core.Scope()
@@ -63,16 +56,17 @@ class TestBase(IPUOpTest):
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
                     dtype=self.feed_dtype[0])
-                y = paddle.static.data(
-                    name=self.feed_list[1],
-                    shape=self.feed_shape[1],
-                    dtype=self.feed_dtype[1])
+                out = paddle.fluid.layers.conv2d(
+                    x, num_filters=3, filter_size=3)
+                out = paddle.fluid.layers.Print(out, **self.attrs)
 
-                # decrator maybe the best choice, but need to modify api
-                out = paddle.matmul(x, y, **self.attrs)
-                set_serialize_factor(4)
-
-                fetch_list = [out.name]
+                if self.is_training:
+                    loss = paddle.mean(out)
+                    adam = paddle.optimizer.Adam(learning_rate=1e-2)
+                    adam.minimize(loss)
+                    fetch_list = [loss.name]
+                else:
+                    fetch_list = [out.name]
 
             if run_ipu:
                 place = paddle.IPUPlace()
@@ -91,10 +85,19 @@ class TestBase(IPUOpTest):
             else:
                 program = main_prog
 
-            result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
-            return result[0]
+            if self.is_training:
+                result = []
+                for _ in range(self.epoch):
+                    loss_res = exe.run(program,
+                                       feed=self.feed,
+                                       fetch_list=fetch_list)
+                    result.append(loss_res[0])
+                return np.array(result)
+            else:
+                result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
+                return result[0]
 
-    def test_base(self):
+    def test(self):
         res0 = self._test_base(False)
         res1 = self._test_base(True)
 
@@ -103,6 +106,37 @@ class TestBase(IPUOpTest):
                 res0.flatten(), res1.flatten(), atol=self.atol))
 
         self.assertTrue(res0.shape == res1.shape)
+
+
+class TestCase1(TestBase):
+    def set_op_attrs(self):
+        self.attrs = {"message": "input_data"}
+
+
+class TestTrainCase1(TestBase):
+    def set_op_attrs(self):
+        # "forward" : print forward
+        # "backward" : print forward and backward
+        # "both": print forward and backward
+        self.attrs = {"message": "input_data2", "print_phase": "both"}
+
+    def set_training(self):
+        self.is_training = True
+        self.epoch = 2
+
+
+@unittest.skip("attrs are not supported")
+class TestCase2(TestBase):
+    def set_op_attrs(self):
+        self.attrs = {
+            "first_n": 10,
+            "summarize": 10,
+            "print_tensor_name": True,
+            "print_tensor_type": True,
+            "print_tensor_shape": True,
+            "print_tensor_layout": True,
+            "print_tensor_lod": True
+        }
 
 
 if __name__ == "__main__":

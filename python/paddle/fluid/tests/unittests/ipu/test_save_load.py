@@ -12,18 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import tempfile
 import unittest
-import shutil
 
 import numpy as np
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.compiler as compiler
-import paddle.optimizer
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
-
-paddle.enable_static()
 
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
@@ -31,36 +26,38 @@ paddle.enable_static()
 class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
-        self.set_feed()
-        self.set_attrs()
+        self.set_data_feed()
+        self.set_feed_attr()
+        self.set_op_attrs()
 
-    def set_feed(self):
-        self.feed_shape = []
-        self.feed_shape.append([1, 3, 10, 10])
+    def set_data_feed(self):
+        data = np.random.uniform(size=[1, 3, 10, 10])
+        self.feed_fp32 = {"in_0": data.astype(np.float32)}
+        self.feed_fp16 = {"in_0": data.astype(np.float16)}
 
-        self.feed = {}
-        self.feed["in_0"] = np.random.uniform(
-            size=self.feed_shape[0]).astype(np.float32)
+    def set_feed_attr(self):
+        self.feed_shape = [x.shape for x in self.feed_fp32.values()]
+        self.feed_list = list(self.feed_fp32.keys())
 
-        self.feed_list = list(self.feed.keys())
-
-    def set_attrs(self):
+    def set_op_attrs(self):
         self.attrs = {}
         self.attrs['steps'] = 100
         self.attrs['save_at_step'] = 20
         self.attrs['is_training'] = True
         self.attrs['opt_type'] = 'sgd'
+        self.attrs['enable_fp16'] = False
+        self.attrs['model_path'] = tempfile.TemporaryDirectory()
 
     def _test_base(self, save_otherwise_load):
-        scope = fluid.core.Scope()
+        scope = paddle.fluid.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = self.SEED
         startup_prog.random_seed = self.SEED
-        generator = fluid.unique_name.UniqueNameGenerator()
+        generator = paddle.fluid.unique_name.UniqueNameGenerator()
 
-        with fluid.unique_name.guard(generator):
-            with fluid.scope_guard(scope):
+        with paddle.fluid.unique_name.guard(generator):
+            with paddle.fluid.scope_guard(scope):
                 with paddle.static.program_guard(main_prog, startup_prog):
                     x = paddle.static.data(
                         name=self.feed_list[0],
@@ -91,12 +88,17 @@ class TestBase(IPUOpTest):
                 exe.run(startup_prog)
 
                 if not save_otherwise_load:
-                    paddle.static.load(main_prog, "model/model")
+                    paddle.static.load(main_prog, self.attrs['model_path'].name)
 
                 ipu_strategy = paddle.static.IpuStrategy()
-                ipu_strategy.SetGraphConfig(
+                ipu_strategy.set_graph_config(
                     is_training=self.attrs['is_training'])
-                program = compiler.IPUCompiledProgram(
+                ipu_strategy.set_half_config(
+                    enable_fp16=self.attrs['enable_fp16'])
+                ipu_strategy.set_option({
+                    'save_per_n_step': self.attrs['save_at_step']
+                })
+                program = paddle.static.IpuCompiledProgram(
                     main_prog, ipu_strategy=ipu_strategy).compile(
                         self.feed_list, fetch_list)
 
@@ -104,16 +106,17 @@ class TestBase(IPUOpTest):
                 run_steps = self.attrs['steps'] if save_otherwise_load \
                     else self.attrs['steps'] - self.attrs['save_at_step']
 
+                feed = self.feed_fp16 if self.attrs[
+                    'enable_fp16'] else self.feed_fp32
                 for i in range(run_steps):
-                    tmp = exe.run(program,
-                                  feed=self.feed,
-                                  fetch_list=fetch_list)
+                    tmp = exe.run(program, feed=feed, fetch_list=fetch_list)
 
                     # currently, we update opt state every sess.run,
                     # will optimize
                     if save_otherwise_load and \
                         i == self.attrs['save_at_step'] - 1:
-                        paddle.static.save(main_prog, "model/model")
+                        paddle.static.save(main_prog,
+                                           self.attrs['model_path'].name)
 
                     if save_otherwise_load and i >= self.attrs['save_at_step']:
                         result.append(tmp)
@@ -129,25 +132,65 @@ class TestBase(IPUOpTest):
         self.assertTrue(
             np.allclose(
                 res0.flatten(), res1.flatten(), atol=self.atol))
-        shutil.rmtree("model", True)
+        self.attrs['model_path'].cleanup()
 
 
 class TestAdam(TestBase):
-    def set_attrs(self):
+    def set_op_attrs(self):
         self.attrs = {}
         self.attrs['steps'] = 100
         self.attrs['save_at_step'] = 20
         self.attrs['is_training'] = True
         self.attrs['opt_type'] = 'adam'
+        self.attrs['enable_fp16'] = False
+        self.attrs['model_path'] = tempfile.TemporaryDirectory()
 
 
 class TestLamb(TestBase):
-    def set_attrs(self):
+    def set_op_attrs(self):
         self.attrs = {}
         self.attrs['steps'] = 100
         self.attrs['save_at_step'] = 20
         self.attrs['is_training'] = True
         self.attrs['opt_type'] = 'lamb'
+        self.attrs['enable_fp16'] = False
+        self.attrs['model_path'] = tempfile.TemporaryDirectory()
+
+
+@unittest.skipIf(IPUOpTest.use_ipumodel, "skip for ipumodel")
+class TestSGDFP16(TestBase):
+    def set_op_attrs(self):
+        self.attrs = {}
+        self.attrs['steps'] = 100
+        self.attrs['save_at_step'] = 20
+        self.attrs['is_training'] = True
+        self.attrs['opt_type'] = 'sgd'
+        self.attrs['enable_fp16'] = True
+        self.attrs['model_path'] = tempfile.TemporaryDirectory()
+
+
+@unittest.skipIf(IPUOpTest.use_ipumodel, "skip for ipumodel")
+class TestAdamFP16(TestBase):
+    def set_op_attrs(self):
+        self.attrs = {}
+        self.attrs['steps'] = 100
+        self.attrs['save_at_step'] = 20
+        self.attrs['is_training'] = True
+        self.attrs['opt_type'] = 'adam'
+        self.attrs['enable_fp16'] = True
+        self.attrs['model_path'] = tempfile.TemporaryDirectory()
+
+
+@unittest.skipIf(IPUOpTest.use_ipumodel, "skip for ipumodel")
+class TestLambFP16(TestBase):
+    def set_op_attrs(self):
+        self.attrs = {}
+        self.attrs['steps'] = 100
+        self.attrs['save_at_step'] = 20
+        self.attrs['is_training'] = True
+        self.attrs['opt_type'] = 'lamb'
+        self.attrs['enable_fp16'] = True
+        self.attrs['model_path'] = tempfile.TemporaryDirectory()
 
 
 if __name__ == "__main__":
