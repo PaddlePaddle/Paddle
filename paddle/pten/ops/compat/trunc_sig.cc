@@ -12,14 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/pten/core/compat/op_utils.h"
 
-namespace infrt {
-namespace naive {
+namespace pten {
 
-struct InferShapedKernelRegistry;
+KernelSignature TruncOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("trunc", {"X"}, {}, {"Out"});
+}
 
-void RegisterInferShapeLaunchers(InferShapedKernelRegistry* registry);
+KernelSignature TruncGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "trunc_grad", {GradVarName("Out")}, {}, {GradVarName("X")});
+}
 
-}  // namespace naive
-}  // namespace infrt
+}  // namespace pten
+
+PT_REGISTER_ARG_MAPPING_FN(trunc, pten::TruncOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(trunc_grad, pten::TruncGradOpArgumentMapping);

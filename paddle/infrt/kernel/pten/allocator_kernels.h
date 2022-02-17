@@ -12,23 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/naive/infershaped/infershaped_kernel_launchers.h"
-#include "paddle/infrt/naive/infershaped/elementwise_add.h"
-#include "paddle/infrt/naive/infershaped/infershaped_registry.h"
+#pragma once
+
+#include "paddle/infrt/backends/host/pten_allocator.h"
+#include "paddle/pten/core/dense_tensor.h"
 
 namespace infrt {
-namespace naive {
+namespace kernel {
+namespace pten {
 
-using ElementwiseAddLauncher =
-    KernelLauncher<decltype(&ElementwiseAdd),
-                   &ElementwiseAdd,
-                   decltype(&ElementwiseAddInferShape),
-                   &ElementwiseAddInferShape>;
+backends::CpuPtenAllocator CreateCpuAllocator();
 
-void RegisterInferShapeLaunchers(InferShapedKernelRegistry* registry) {
-  registry->AddKernel("elementwise_add",
-                      INFERSHAPED_KERNEL_CREATOR(ElementwiseAddLauncher));
-}
-
-}  // namespace naive
+}  // namespace pten
+}  // namespace kernel
 }  // namespace infrt
