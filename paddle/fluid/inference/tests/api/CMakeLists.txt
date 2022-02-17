@@ -451,6 +451,23 @@ if(WITH_MKLDNN)
   download_int8_data_without_verify(${INT8_GOOGLENET_MODEL_DIR} "GoogleNet_int8_model.tar.gz" )
   inference_analysis_api_int8_test_run_custom_warmup_batch_size(test_analyzer_int8_googlenet ${INT8_IMG_CLASS_TEST_APP} ${INT8_GOOGLENET_MODEL_DIR} ${IMAGENET_DATA_PATH} 10)
 
+ # mobilenetv3_large_x1_0 int8
+ set(INT8_MOBILENETV3_LARGE_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv3_large")
+ set(INT8_MOBILENETV3_FILE_NAME "MobileNetV3_large_x1_0_infer.tar")
+ if (NOT EXISTS ${INT8_MOBILENETV3_LARGE_MODEL_DIR}/${INT8_MOBILENETV3_FILE_NAME})
+    inference_download_and_uncompress_without_verify(${INT8_MOBILENETV3_LARGE_MODEL_DIR} "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/inference/" ${INT8_MOBILENETV3_FILE_NAME})
+ endif()
+ inference_analysis_test_run(test_analyzer_int8_mobilenetv3_large 
+    COMMAND ${INT8_IMG_CLASS_TEST_APP} 
+    ARGS --infer_model=${INT8_MOBILENETV3_LARGE_MODEL_DIR}/MobileNetV3_large_x1_0_infer
+        --infer_data=${IMAGENET_DATA_PATH} 
+        --warmup_batch_size=50
+        --batch_size=1
+        --enable_int8=true 
+        --cpu_num_threads=${CPU_NUM_THREADS_ON_CI} 
+        --iterations=100
+        --with_accuracy_layer=false)
+
   ### BFLOAT16 tests
 
   # build test binary to be used in subsequent tests
@@ -469,6 +486,17 @@ if(WITH_MKLDNN)
 
   # mobilenetv2 bfloat16
   inference_analysis_api_bfloat16_test_run(test_analyzer_bfloat16_mobilenetv2 ${BF16_IMG_CLASS_TEST_APP} ${INT8_MOBILENETV2_MODEL_DIR} ${IMAGENET_DATA_PATH})
+
+  # mobilenetv3_large 
+  inference_analysis_test_run(test_analyzer_bfloat16_mobilenetv3_large
+  COMMAND ${BF16_IMG_CLASS_TEST_APP}
+      ARGS --infer_model=${INT8_MOBILENETV3_LARGE_MODEL_DIR}/MobileNetV3_large_x1_0_infer
+        --infer_data=${IMAGENET_DATA_PATH} 
+        --batch_size=1
+        --enable_bf16=true
+        --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
+        --iterations=100
+        --with_accuracy_layer=false)
 
   ### Object detection models
   set(PASCALVOC_DATA_PATH "${INT8_DATA_DIR}/pascalvoc_val_head_300.bin")
