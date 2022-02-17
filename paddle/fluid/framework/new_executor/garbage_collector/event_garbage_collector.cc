@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/new_executor/interpretercore_event_garbage_collector.h"
+#include "paddle/fluid/framework/new_executor/garbage_collector/event_garbage_collector.h"
 
 #if !defined(_WIN32)
 #include <sched.h>
@@ -36,7 +36,7 @@ InterpreterCoreEventGarbageCollector::~InterpreterCoreEventGarbageCollector() {
 }
 
 void InterpreterCoreEventGarbageCollector::Add(
-    Garbage garbage, platform::DeviceEvent& event,
+    Garbage garbage, platform::DeviceEvent* event,
     const platform::DeviceContext* ctx) {
   if (!garbage) {
     return;
@@ -60,8 +60,14 @@ void InterpreterCoreEventGarbageCollector::Add(
   }
 }
 
+void InterpreterCoreEventGarbageCollector::Add(Variable* var) {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "Add(Variable* var) is not implemented for "
+      "InterpreterCoreEventGarbageCollector."));
+}
+
 void InterpreterCoreEventGarbageCollector::Add(
-    Variable* var, platform::DeviceEvent& event,
+    Variable* var, platform::DeviceEvent* event,
     const platform::DeviceContext* ctx) {
   if (UNLIKELY(max_memory_size_ < 0) || var == nullptr) {
     return;
@@ -100,11 +106,11 @@ void InterpreterCoreEventGarbageCollector::Add(
 }
 
 void InterpreterCoreEventGarbageCollector::Free(
-    GarbageQueue* garbages, platform::DeviceEvent& event,
+    GarbageQueue* garbages, platform::DeviceEvent* event,
     const platform::DeviceContext* ctx) {
-  event.Record(ctx);
-  event.SetFininshed();  // Only for CPU Event
-  queue_->AddTask([ container = garbages, event = &event ]() {
+  event->Record(ctx);
+  event->SetFininshed();  // Only for CPU Event
+  queue_->AddTask([ container = garbages, event = event ]() {
     while (!event->Query()) {
 #if defined(_WIN32)
       SleepEx(50, FALSE);
@@ -118,11 +124,11 @@ void InterpreterCoreEventGarbageCollector::Free(
 }
 
 void InterpreterCoreEventGarbageCollector::Free(
-    Garbage& garbage, platform::DeviceEvent& event,
+    const Garbage& garbage, platform::DeviceEvent* event,
     const platform::DeviceContext* ctx) {
-  event.Record(ctx);
-  event.SetFininshed();  // Only for CPU Event
-  queue_->AddTask([ container = garbage, event = &event ]() {
+  event->Record(ctx);
+  event->SetFininshed();  // Only for CPU Event
+  queue_->AddTask([ container = garbage, event = event ]() {
     while (!event->Query()) {
 #if defined(_WIN32)
       SleepEx(50, FALSE);
