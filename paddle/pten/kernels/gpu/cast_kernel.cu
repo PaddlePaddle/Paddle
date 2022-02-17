@@ -72,16 +72,16 @@ void CastKernel(const Context& dev_ctx,
                      int16_t,                           \
                      bool,                              \
                      uint8_t,                           \
-                     paddle::platform::float16,         \
-                     paddle::platform::complex<float>,  \
-                     paddle::platform::complex<double>, \
+                     pten::dtype::float16,              \
+                     pten::dtype::complex<float>,       \
+                     pten::dtype::complex<double>,      \
                      ##__VA_ARGS__) {                   \
     kernel->OutputAt(0).SetDataType(                    \
         paddle::experimental::DataType::UNDEFINED);     \
   }
 
 #if !defined(PADDLE_WITH_HIP)
-PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast, paddle::platform::bfloat16)
+PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast, pten::dtype::bfloat16)
 #else
 PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast)
 #endif

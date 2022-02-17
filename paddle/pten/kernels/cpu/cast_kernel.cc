@@ -69,9 +69,9 @@ PT_REGISTER_KERNEL(cast,
                    int16_t,
                    bool,
                    uint8_t,
-                   paddle::platform::float16,
-                   paddle::platform::bfloat16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {
+                   pten::dtype::float16,
+                   pten::dtype::bfloat16,
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }
