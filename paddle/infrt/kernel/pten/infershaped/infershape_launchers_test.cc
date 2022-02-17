@@ -17,6 +17,7 @@
 #include "paddle/infrt/kernel/pten/infershaped/infershaped_kernel_launcher.h"
 #include "paddle/infrt/kernel/pten/infershaped/infershaped_kernel_launchers.h"
 #include "paddle/infrt/kernel/pten/infershaped/infershaped_utils.h"
+#include "paddle/infrt/kernel/pten/registry.h"
 
 namespace infrt {
 namespace kernel {
@@ -33,22 +34,24 @@ TEST(utils, registry) {
   CHECK_EQ(count, 2U);
 }
 
-TEST(ElementwiseAdd, launcher_registry) {
+TEST(fake_kernel, launcher_registry) {
   host_context::KernelRegistry registry;
   RegisterInferShapeLaunchers(&registry);
-  ASSERT_EQ(registry.size(), 1UL);
-  auto creator = registry.GetKernel("elementwise_add");
+  auto creator = registry.GetKernel("pten_kernel.fake_pten_kernel");
+  CHECK(creator);
 
-  ::pten::CPUContext ctx{};
-  ::pten::DenseTensor a{};
-  ::pten::DenseTensor b{};
-  ::pten::DenseTensor c{};
+  ::pten::CPUContext dev_ctx{};
+  ::pten::DenseTensor x{};
+  ::pten::DenseTensor y{};
+  bool transpose_x{};
+  ::pten::DenseTensor out{};
 
   host_context::KernelFrameBuilder kernel_frame_builder;
-  kernel_frame_builder.AddArgument(new host_context::Value(std::move(ctx)));
-  kernel_frame_builder.AddArgument(new host_context::Value(std::move(a)));
-  kernel_frame_builder.AddArgument(new host_context::Value(std::move(b)));
-  kernel_frame_builder.SetResults({new host_context::Value(std::move(c))});
+  kernel_frame_builder.AddArgument(new host_context::Value(std::move(dev_ctx)));
+  kernel_frame_builder.AddArgument(new host_context::Value(std::move(x)));
+  kernel_frame_builder.AddArgument(new host_context::Value(std::move(y)));
+  kernel_frame_builder.AddArgument(new host_context::Value(transpose_x));
+  kernel_frame_builder.SetResults({new host_context::Value(std::move(out))});
   creator(&kernel_frame_builder);
 }
 

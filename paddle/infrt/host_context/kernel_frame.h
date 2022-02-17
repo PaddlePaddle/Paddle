@@ -109,14 +109,14 @@ class KernelFrame {
   }
 
   llvm::ArrayRef<Value*> GetValues(size_t from, size_t length) const {
-    CHECK_LE(static_cast<int>(from + length), num_arguments_ + num_results_);
+    CHECK_LE(from + length, GetNumElements());
     if (length == 0) return {};
 
     return llvm::makeArrayRef(&value_or_attrs_[from], length);
   }
 
   llvm::MutableArrayRef<Value*> GetMutableValues(size_t from, size_t length) {
-    CHECK_LE(static_cast<int>(from + length), num_arguments_ + num_results_);
+    CHECK_LE(from + length, GetNumElements());
     if (length == 0) return {};
     return llvm::makeMutableArrayRef(&value_or_attrs_[from], length);
   }

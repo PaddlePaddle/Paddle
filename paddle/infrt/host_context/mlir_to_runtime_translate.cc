@@ -112,7 +112,18 @@ bool MlirToRuntimeTranslator::EmitConstantOp(mlir::Operation* op) {
   LOG(FATAL) << "Not supported constant attribute type";
   return true;
 }
-
+template <>
+boost::optional<bool> MlirToRuntimeTranslator::EmitAttribute(
+    const mlir::Attribute& attr) {
+  if (!attr.isa<mlir::IntegerAttr>()) return boost::none;
+  if (attr.isa<mlir::IntegerAttr>()) {
+    auto val = attr.cast<mlir::IntegerAttr>();
+    if (val.getType().isInteger(1)) {
+      return val.getInt();
+    }
+  }
+  return boost::none;
+}
 template <>
 boost::optional<int32_t> MlirToRuntimeTranslator::EmitAttribute(
     const mlir::Attribute& attr) {
@@ -187,6 +198,7 @@ boost::optional<std::string> MlirToRuntimeTranslator::EmitAttribute(
     return res;                                                                \
   }
 
+PROCESS_ARRAY_INT(bool, 1);
 PROCESS_ARRAY_INT(int16_t, 16);
 PROCESS_ARRAY_INT(int32_t, 32);
 PROCESS_ARRAY_INT(int64_t, 64);
@@ -293,6 +305,8 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(mlir::Operation* op) {
     } else if (auto v = EmitAttribute<float>(attr.getValue())) {
       impl_->cur_op->AppendAttribute(new Value(*v));
     } else if (auto v = EmitAttribute<double>(attr.getValue())) {
+      impl_->cur_op->AppendAttribute(new Value(*v));
+    } else if (auto v = EmitAttribute<bool>(attr.getValue())) {
       impl_->cur_op->AppendAttribute(new Value(*v));
     } else if (auto v = EmitAttribute<std::string>(attr.getValue())) {
       impl_->cur_op->AppendAttribute(new Value(std::move(*v)));

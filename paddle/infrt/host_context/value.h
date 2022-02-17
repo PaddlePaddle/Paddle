@@ -83,7 +83,7 @@ class Value : public common::Object {
   explicit Value(int64_t x) : data(x) {}
   explicit Value(float x) : data(x) {}
   explicit Value(double x) : data(x) {}
-  explicit Value(bool x) : data(x) {}
+  explicit Value(bool x) : data(x) { LOG(INFO) << "bool here!"; }
   explicit Value(std::string x) : data(x) {}
   explicit Value(tensor::TensorMap&& x) : data(x) {}
   explicit Value(std::vector<int16_t>&& x) : data(x) {}

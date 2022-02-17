@@ -29,6 +29,7 @@
 #include "paddle/infrt/kernel/tensor_shape_kernels.h"
 #include "paddle/infrt/kernel/test_kernels.h"
 #ifdef INFRT_WITH_PTEN
+#include "paddle/infrt/kernel/pten/infershaped/infershaped_kernel_launchers.h"
 #include "paddle/infrt/kernel/pten/registry.h"
 #endif
 
@@ -58,6 +59,7 @@ int main(int argc, char** argv) {
   kernel::RegisterControlFlowKernels(&registry);
 #ifdef INFRT_WITH_PTEN
   kernel::RegisterPtenKernels(&registry);
+  kernel::RegisterInferShapeLaunchers(&registry);
 #endif
 
   // load extra shared library

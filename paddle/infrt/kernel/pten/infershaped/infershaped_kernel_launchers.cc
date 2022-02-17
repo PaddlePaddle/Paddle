@@ -20,15 +20,15 @@ namespace kernel {
 
 void RegisterInferShapeLaunchers(host_context::KernelRegistry* registry) {
   registry->AddKernel(
-      "elementwise_add",
-      std::bind(&KernelLauncherFunc<decltype(&ElementwiseAdd),
-                                    &ElementwiseAdd,
-                                    decltype(&ElementwiseAddInferShape),
-                                    &ElementwiseAddInferShape>,
-                KernelLauncher<decltype(&ElementwiseAdd),
-                               &ElementwiseAdd,
-                               decltype(&ElementwiseAddInferShape),
-                               &ElementwiseAddInferShape>(),
+      "pten_kernel.fake_pten_kernel",
+      std::bind(&KernelLauncherFunc<decltype(&FakePtenKernel),
+                                    &FakePtenKernel,
+                                    decltype(&FakePtenInferShape),
+                                    &FakePtenInferShape>,
+                KernelLauncher<decltype(&FakePtenKernel),
+                               &FakePtenKernel,
+                               decltype(&FakePtenInferShape),
+                               &FakePtenInferShape>(),
                 std::placeholders::_1));
 }
 

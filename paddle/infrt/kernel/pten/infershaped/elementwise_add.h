@@ -25,13 +25,15 @@
 namespace infrt {
 namespace kernel {
 
-static void ElementwiseAddInferShape(const ::pten::MetaTensor& a,
-                                     const ::pten::MetaTensor& b,
-                                     ::pten::MetaTensor* c) {}
+static void FakePtenInferShape(const ::pten::MetaTensor& a,
+                               const ::pten::MetaTensor& b,
+                               bool arg_0,
+                               ::pten::MetaTensor* c) {}
 
-static void ElementwiseAdd(const ::pten::CPUContext& /*Context*/,
+static void FakePtenKernel(const ::pten::CPUContext& /*Context*/,
                            const ::pten::DenseTensor& a,
                            const ::pten::DenseTensor& b,
+                           bool arg_0,
                            ::pten::DenseTensor* c) {}
 
 template <typename KernelFunc,

@@ -108,6 +108,7 @@ class Variant {
 
   template <typename T>
   bool is() const {
+    LOG(INFO) << "IndexOf<T>: " << IndexOf<T> << ", index_ " << index_;
     AssertHasType<T>();
     return IndexOf<T> == index_;
   }
