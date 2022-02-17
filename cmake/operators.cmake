@@ -389,8 +389,15 @@ function(op_library TARGET)
 
     # pybind USE_OP_DEVICE_KERNEL for XPU KP
     if (WITH_XPU_KP AND ${xpu_kp_cc_srcs_len} GREATER 0)
-        message(STATUS "Building KP Target! Attention!!!!!!!! ${TARGET}")
-        #file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, KP);\n")
+        foreach(xpu_kp_src ${xpu_kp_cc_srcs})
+        set(op_name "")
+        find_register(${xpu_kp_src} "REGISTER_OP_KERNEL" op_name)
+        if(NOT ${op_name} EQUAL "")
+            file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, KP);\n")
+            message(STATUS "Building KP Target: ${op_name}")
+            set(pybind_flag 1)
+        endif()
+        endforeach()
     endif()
 
     # pybind USE_OP_DEVICE_KERNEL for NPU

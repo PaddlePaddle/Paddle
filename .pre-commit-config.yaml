@@ -33,7 +33,7 @@ repos:
         description: Check C++ code style using cpplint.py.
         entry: bash ./tools/codestyle/cpplint_pre_commit.hook
         language: system
-        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps)$
+        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx)$
 -   repo: local
     hooks:
     -   id: pylint-doc-string
