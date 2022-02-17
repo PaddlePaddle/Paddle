@@ -14,23 +14,21 @@
 
 #include <gtest/gtest.h>
 
-#include "paddle/infrt/naive/infershaped/infershaped_kernel_launcher.h"
-#include "paddle/infrt/naive/infershaped/infershaped_kernel_launchers.h"
-#include "paddle/infrt/naive/infershaped/infershaped_registry.h"
-#include "paddle/infrt/naive/infershaped/infershaped_utils.h"
-#include "paddle/infrt/tensor/dense_host_tensor.h"
+#include "paddle/infrt/kernel/pten/infershaped/infershaped_kernel_launcher.h"
+#include "paddle/infrt/kernel/pten/infershaped/infershaped_kernel_launchers.h"
+#include "paddle/infrt/kernel/pten/infershaped/infershaped_utils.h"
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/common/place.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/meta_tensor.h"
 
 namespace infrt {
-namespace naive {
+namespace kernel {
 
 namespace {
-static void ElementwiseAddTest(const pten::DenseTensor& a,
-                               const pten::DenseTensor& b,
-                               pten::DenseTensor* c);
+static void ElementwiseAddTest(const ::pten::DenseTensor& a,
+                               const ::pten::DenseTensor& b,
+                               ::pten::DenseTensor* c);
 }
 
 TEST(utils, registry) {
@@ -97,5 +95,5 @@ TEST(ElementwiseAdd, launcher_registry) {
   }
 }
 
-}  // namespace naive
+}  // namespace kernel
 }  // namespace infrt

@@ -51,6 +51,6 @@ paddle/infrt/dialect/pd_ops_info.h
 .lit_test_times.txt
 paddle/infrt/tests/dialect/Output
 paddle/infrt/tests/lit.cfg.py
-paddle/infrt/naive/infershaped/infershaped_kernel_launchers.cc
+paddle/infrt/kernel/pten/infershaped/infershaped_kernel_launchers.cc
 paddle/fluid/pybind/eager_final_state_op_function_impl.h
 paddle/fluid/pybind/tmp_eager_final_state_op_function_impl.h

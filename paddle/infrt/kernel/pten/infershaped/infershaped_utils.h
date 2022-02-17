@@ -19,11 +19,10 @@
 #include "paddle/pten/core/dense_tensor.h"
 
 namespace infrt {
-namespace naive {
+namespace kernel {
 namespace infershaped {
 
-// using KeyType = const tensor::DenseHostTensor&;
-using KeyType = const pten::DenseTensor&;
+using KeyType = const ::pten::DenseTensor&;
 using CountType = uint8_t;
 
 constexpr CountType value(std::true_type) { return 1; }
@@ -75,5 +74,5 @@ struct InferShapeHelper<Return (*)(Args...)> {
   static constexpr int count = infershaped::count<Args...>();
 };
 
-}  // namespace naive
+}  // namespace kernel
 }  // namespace infrt

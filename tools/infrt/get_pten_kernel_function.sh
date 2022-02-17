@@ -50,4 +50,4 @@ python3 ${PADDLE_ROOT}/tools/infrt/get_pten_kernel_info.py \
   --paddle_root_path ${PADDLE_ROOT} \
   --kernel_info_file $kernel_register_info_file \
   --infermeta_wrap_file ${temp_path}/wrap_info.txt \
-  --generate_file ${PADDLE_ROOT}/paddle/infrt/naive/infershaped/infershaped_kernel_launchers.cc
+  --generate_file ${PADDLE_ROOT}/paddle/infrt/kernel/pten/infershaped/infershaped_kernel_launchers.cc

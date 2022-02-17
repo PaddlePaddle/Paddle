@@ -23,13 +23,13 @@ class ContextTypeOf<string place, list<Trait> traits=[]>:
     let summary = !strconcat("!pten.context_", place, " type");
 }
 
-def HostAllocator : AllocatorTypeOf<"Host">;
-def GpuAllocator : AllocatorTypeOf<"Gpu">;
+def CPU_Allocator : AllocatorTypeOf<"CPU">;
+def GPU_Allocator : AllocatorTypeOf<"GPU">;
 
-def HostContext : ContextTypeOf<"Host">;
-def GpuContext : ContextTypeOf<"Gpu">;
+def CPU_Context : ContextTypeOf<"CPU">;
+def GPU_Context : ContextTypeOf<"GPU">;
 
-def Allocator : AnyTypeOf<[HostAllocator, GpuAllocator], "Allocator type">;
-def Context : AnyTypeOf<[HostContext, GpuContext], "Context type">;
+def Allocator : AnyTypeOf<[CPU_Allocator, GPU_Allocator], "Allocator type">;
+def Context : AnyTypeOf<[CPU_Context, GPU_Context], "Context type">;
 
 #endif

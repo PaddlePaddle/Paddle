@@ -19,10 +19,13 @@
 
 #include "paddle/infrt/host_context/kernel_registry.h"
 #include "paddle/infrt/host_context/kernel_utils.h"
+#include "paddle/infrt/kernel/pten/allocator_kernels.h"
+#include "paddle/infrt/kernel/pten/context_kernels.h"
+#include "paddle/infrt/kernel/pten/dense_tensor_kernels.h"
+#include "paddle/infrt/kernel/pten/infershaped/pten_kernel_launcher.h"
 #include "paddle/pten/include/infermeta.h"
 #include "paddle/pten/include/kernels.h"
-
-#include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/pten/kernels/matmul_kernel.h"
 
 using infrt::host_context::Attribute;
 
@@ -30,10 +33,28 @@ namespace infrt {
 namespace kernel {
 
 void RegisterPtenKernels(host_context::KernelRegistry* registry) {
-  registry->AddKernel("pd_cpu.add.float32",
-                      INFRT_KERNEL(pten::AddKernel<float, pten::CPUContext>));
-  registry->AddKernel("pd_cpu.add.int32",
-                      INFRT_KERNEL(pten::AddKernel<int, pten::CPUContext>));
+  registry->AddKernel("pten_dt.create_allocator.cpu",
+                      INFRT_KERNEL(infrt::kernel::pten::CreateCpuAllocator));
+  registry->AddKernel("pten_dt.create_context.cpu",
+                      INFRT_KERNEL(infrt::kernel::pten::CreateCpuContext));
+  registry->AddKernel(
+      "pten_dt.create_dense_tensor.cpu.f32.nchw",
+      INFRT_KERNEL(infrt::kernel::pten::CreateDenseTensorCpuF32Nchw));
+  registry->AddKernel("pten_dt.fill_dense_tensor.f32",
+                      INFRT_KERNEL(infrt::kernel::pten::FillDenseTensorF32));
+  registry->AddKernel(
+      "pten.matmul.host.fp32",
+      std::bind(&kernel::KernelLauncherFunc<
+                    decltype(&::pten::MatmulKernel<float, ::pten::CPUContext>),
+                    &::pten::MatmulKernel<float, ::pten::CPUContext>,
+                    decltype(&::pten::MatmulInferMeta),
+                    &::pten::MatmulInferMeta>,
+                kernel::KernelLauncher<
+                    decltype(&::pten::MatmulKernel<float, ::pten::CPUContext>),
+                    &::pten::MatmulKernel<float, ::pten::CPUContext>,
+                    decltype(&::pten::MatmulInferMeta),
+                    &::pten::MatmulInferMeta>(),
+                std::placeholders::_1));
 }
 
 }  // namespace kernel

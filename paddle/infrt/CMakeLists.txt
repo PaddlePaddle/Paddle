@@ -82,7 +82,6 @@ add_subdirectory(tensor)
 add_subdirectory(support)
 add_subdirectory(external_kernels)
 add_subdirectory(paddle)
-add_subdirectory(naive)
 add_subdirectory(tests)
 
 
@@ -106,8 +105,8 @@ if (INFRT_WITH_PTEN)
         )
 endif()
 
-cc_library(infrt SHARED SRCS ${infrt_src} DEPS glog boost ${mlir_libs} paddle_framework_proto infrt_naive)
-cc_library(infrt_static SRCS ${infrt_src} DEPS glog boost ${mlir_libs} paddle_framework_proto)
+cc_library(infrt SHARED SRCS ${infrt_src} DEPS glog boost ${mlir_libs} ${pten_libs} paddle_framework_proto infrt_naive)
+cc_library(infrt_static SRCS ${infrt_src} DEPS glog boost ${mlir_libs} ${pten_libs} paddle_framework_proto)
 add_dependencies(infrt ${infrt_mlir_incs} mlir-headers)
 
 add_custom_target(test_infrt_exec DEPENDS ${INFRT_TEST_TARGETS})

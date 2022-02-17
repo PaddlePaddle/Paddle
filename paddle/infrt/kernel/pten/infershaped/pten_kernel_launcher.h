@@ -16,11 +16,11 @@
 #include <llvm/ADT/SmallVector.h>
 
 #include "paddle/infrt/host_context/kernel_utils.h"
-#include "paddle/infrt/naive/infershaped/infershaped_kernel_launcher.h"
-#include "paddle/infrt/naive/infershaped/infershaped_utils.h"
+#include "paddle/infrt/kernel/pten/infershaped/infershaped_kernel_launcher.h"
+#include "paddle/infrt/kernel/pten/infershaped/infershaped_utils.h"
 
 namespace infrt {
-namespace naive {
+namespace kernel {
 
 template <typename KernelFunc,
           KernelFunc kernel,
@@ -57,5 +57,5 @@ void KernelLauncherFunc(
   launcher.Invoke(frame);
 }
 
-}  // namespace naive
+}  // namespace kernel
 }  // namespace infrt
