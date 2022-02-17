@@ -18,7 +18,7 @@ limitations under the License. */
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/string/string_helper.h"
 
 #define LEARNING_RATE_DECAY_COUNTER "@LR_DECAY_COUNTER@"
@@ -113,7 +113,9 @@ int Communicator::SetClients(std::vector<uint64_t> &host_sign_list) {
 
 void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
                                 int table_id, Scope *scope) {
-  platform::RecordEvent record_event("Communicator->RpcRecvDense");
+  platform::RecordEvent record_event("Communicator->RpcRecvDense",
+                                     platform::TracerEventType::Communication,
+                                     1);
   std::vector<paddle::distributed::Region> regions;
   regions.reserve(varnames.size());
   for (auto &t : varnames) {
@@ -169,7 +171,9 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
 
 void Communicator::RpcSendDenseParam(const std::vector<std::string> &varnames,
                                      int table_id, const Scope &scope) {
-  platform::RecordEvent record_event("Communicator->RpcSendDenseParam");
+  platform::RecordEvent record_event("Communicator->RpcSendDenseParam",
+                                     platform::TracerEventType::Communication,
+                                     1);
   auto place = platform::CPUPlace();
   std::vector<paddle::distributed::Region> regions;
   for (auto &t : varnames) {
@@ -206,7 +210,9 @@ void Communicator::RpcSendDenseParam(const std::vector<std::string> &varnames,
 }
 
 void Communicator::RpcSendDense(const CommContext &ctx, const Scope &scope) {
-  platform::RecordEvent record_event("Communicator->RpcSendDense");
+  platform::RecordEvent record_event("Communicator->RpcSendDense",
+                                     platform::TracerEventType::Communication,
+                                     1);
   auto &var_names = ctx.origin_varnames;
   auto &table_id = ctx.table_id;
   auto dense_data = std::make_shared<std::vector<float>>();
@@ -250,7 +256,9 @@ void Communicator::RpcSendDense(const CommContext &ctx, const Scope &scope) {
 
 void Communicator::RpcSendSparseParam(const std::string &varname, int table_id,
                                       const Scope &scope) {
-  platform::RecordEvent record_event("Communicator->RpcSendSparseParam");
+  platform::RecordEvent record_event("Communicator->RpcSendSparseParam",
+                                     platform::TracerEventType::Communication,
+                                     1);
   size_t request_call_num = _worker_ptr->get_server_nums();
   std::vector<float *> push_g_vec;
 
@@ -287,7 +295,9 @@ void Communicator::RpcSendSparseParam(const std::string &varname, int table_id,
 
 void Communicator::RpcSendSparse(const std::string &var_name, int table_id,
                                  const Scope &scope) {
-  platform::RecordEvent record_event("Communicator->RpcSendSparse");
+  platform::RecordEvent record_event("Communicator->RpcSendSparse",
+                                     platform::TracerEventType::Communication,
+                                     1);
   size_t request_call_num = _worker_ptr->get_server_nums();
   std::vector<uint64_t> sparse_push_keys;
   std::vector<float *> push_g_vec;
@@ -338,7 +348,9 @@ void Communicator::RpcSendSparse(const std::string &var_name, int table_id,
 
 void Communicator::RpcRecvSparse(const std::string &varname, int table_id,
                                  Scope *scope) {
-  platform::RecordEvent record_event("Communicator->RpcRecvSparse");
+  platform::RecordEvent record_event("Communicator->RpcRecvSparse",
+                                     platform::TracerEventType::Communication,
+                                     1);
   auto *send_var = scope->Var(varname);
   auto *tensor = send_var->GetMutable<framework::LoDTensor>();
   auto dim = tensor->dims()[1];
@@ -406,7 +418,9 @@ void Communicator::SendGlobalStep(const CommContext &ctx, int batches,
   if (batches == 0) {
     return;
   }
-  platform::RecordEvent record_event("Communicator->SendGlobalStep");
+  platform::RecordEvent record_event("Communicator->SendGlobalStep",
+                                     platform::TracerEventType::Communication,
+                                     1);
   auto &table_id = ctx.table_id;
   size_t request_call_num = _worker_ptr->get_server_nums();
 
@@ -994,7 +1008,8 @@ void SyncCommunicator::BarrierRecv() {
 
 void GeoCommunicator::Send(const std::vector<std::string> &var_names,
                            const framework::Scope &scope) {
-  platform::RecordEvent record_event("GeoCommunicator->Send");
+  platform::RecordEvent record_event(
+      "GeoCommunicator->Send", platform::TracerEventType::Communication, 1);
   waiting_ = false;
   auto before_send = GetCurrentUS();
   auto table_name = var_names[0];
@@ -1137,7 +1152,9 @@ void GeoCommunicator::InitDense(std::vector<std::string> &varnames,
 }
 
 void GeoCommunicator::SendDense(const CommContext &send_ctx) {
-  platform::RecordEvent record_event("GeoCommunicator->SendDense");
+  platform::RecordEvent record_event("GeoCommunicator->SendDense",
+                                     platform::TracerEventType::Communication,
+                                     1);
   auto &var_names = send_ctx.origin_varnames;
   auto &table_id = send_ctx.table_id;
   for (auto &varname : var_names) {
@@ -1178,7 +1195,9 @@ void GeoCommunicator::SendDense(const CommContext &send_ctx) {
 }
 
 void GeoCommunicator::RecvDense(const CommContext &send_ctx) {
-  platform::RecordEvent record_event("GeoCommunicator->RecvDense");
+  platform::RecordEvent record_event("GeoCommunicator->RecvDense",
+                                     platform::TracerEventType::Communication,
+                                     1);
   auto &table_id = send_ctx.table_id;
   auto &varnames = recv_varname_to_ctx_.at(table_id);
   // 1. recv from pserver
@@ -1237,7 +1256,9 @@ void GeoCommunicator::InitSparse(const std::string &var_name, int table_id) {
 
 std::vector<int64_t> GeoCommunicator::MergeSparseIds(
     const std::string &send_varname) {
-  platform::RecordEvent record_event("GeoCommunicator->MergeSparseIds");
+  platform::RecordEvent record_event("GeoCommunicator->MergeSparseIds",
+                                     platform::TracerEventType::Communication,
+                                     1);
   size_t merge_num = 0, wait_times = 0;
   std::unordered_set<int64_t> sparse_ids;
   while (merge_num < static_cast<size_t>(max_merge_var_num_)) {
@@ -1269,7 +1290,9 @@ std::vector<int64_t> GeoCommunicator::MergeSparseIds(
 void GeoCommunicator::SendSparse(const std::string &varname,
                                  std::vector<int64_t> &sparse_ids, int table_id,
                                  int ep_idx) {
-  platform::RecordEvent record_event("GeoCommunicator->SendSparse");
+  platform::RecordEvent record_event("GeoCommunicator->SendSparse",
+                                     platform::TracerEventType::Communication,
+                                     1);
   if (sparse_ids.size() == 0) {
     return;
   }
@@ -1346,7 +1369,9 @@ void GeoCommunicator::SendSparse(const std::string &varname,
 
 void GeoCommunicator::RecvSparse(const std::string &varname, int table_id,
                                  int ep_idx) {
-  platform::RecordEvent record_event("GeoCommunicator->RecvSparse");
+  platform::RecordEvent record_event("GeoCommunicator->RecvSparse",
+                                     platform::TracerEventType::Communication,
+                                     1);
   // 1. recv from pserver
   std::vector<uint64_t> keys;
   std::vector<float> values;

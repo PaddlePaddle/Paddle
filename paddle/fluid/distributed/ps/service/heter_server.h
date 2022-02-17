@@ -34,7 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace google {
 namespace protobuf {
@@ -213,7 +213,9 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
 
   int Handle(const MultiVarMsg* request, MultiVarMsg* response,
              brpc::Controller* cntl) override {
-    platform::RecordEvent record_event("RequestSendAndRecvHandler->Handle");
+    platform::RecordEvent record_event("RequestSendAndRecvHandler->Handle",
+                                       platform::TracerEventType::Communication,
+                                       1);
     FLAGS_eager_delete_tensor_gb = -1;
 
     // get microID from request
