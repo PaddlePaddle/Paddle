@@ -553,12 +553,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                      "the pass.";
           return false;
         }
-        auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
-        const auto x_shape = x_var_desc->GetShape();
-        if (x_shape.size() == 1) {
-          VLOG(3) << "Gather does not support 1-dimensional input in tensorrt";
-          return false;
-        }
       }
     }
 

@@ -155,7 +155,7 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
             if self.input_num == 3:
                 return 0, 5
             else:
-                if dynamic_shape and self.axis == 0:
+                if dynamic_shape:
                     return 1, 3
                 else:
                     return 0, 4
@@ -179,31 +179,10 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(True), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(True), 1e-3
 
     def add_skip_trt_case(self):
-        def teller1(program_config, predictor_config):
-            if len(self.dynamic_shape.min_input_shape) != 0:
-                inputs = program_config.inputs
-                if len(inputs['input_data'].shape) == 1 or len(inputs[
-                        'index_data'].shape) == 1:
-                    return True
-            return False
-
-        self.add_skip_case(
-            teller1, SkipReasons.TRT_NOT_SUPPORT,
-            "Need to repair the case: trt reshape out failed for dynamic shape mode when inputs' dims==1."
-        )
-
-        def teller2(program_config, predictor_config):
-            inputs = program_config.inputs
-            if "axis_data" in inputs.keys():
-                return True
-            return False
-
-        self.add_skip_case(
-            teller2, SkipReasons.TRT_NOT_SUPPORT,
-            "Need to repair the case: trt do not support axis tensor input.")
+        pass
 
     def test(self):
         self.add_skip_trt_case()
