@@ -1,4 +1,4 @@
-#  Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#  Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,30 +28,19 @@ class TestBase(IPUOpTest):
         self.set_training()
         self.set_data_feed()
         self.set_feed_attr()
-        self.set_op_attrs()
 
     @property
     def fp16_enabled(self):
         return True
 
     def set_data_feed(self):
-        data = np.array([[[1], [3]], [[2], [4]], [[4], [127]]])
-        self.feed_cpu = {"x": data.astype(np.int64)}
-        self.feed_ipu = {"x": data.astype(np.int32)}
+        data = np.random.uniform(size=[2, 20, 30528])
+        self.feed = {"in_0": data.astype('bool')}
 
     def set_feed_attr(self):
-        self.feed_shape = [x.shape for x in self.feed_cpu.values()]
-        self.feed_list = list(self.feed_cpu.keys())
-        self.feed_dtype = [x.dtype for x in self.feed_cpu.values()]
-
-    def set_op_attrs(self):
-        self.attrs = {
-            "size": [128, 16],
-            "is_sparse": False,
-            "is_distributed": False,
-            "padding_idx": -1,
-            "dtype": 'float32'
-        }
+        self.feed_shape = [x.shape for x in self.feed.values()]
+        self.feed_list = list(self.feed.keys())
+        self.feed_dtype = [x.dtype for x in self.feed.values()]
 
     def _test_base(self, exec_mode):
         scope = paddle.fluid.core.Scope()
@@ -65,18 +54,12 @@ class TestBase(IPUOpTest):
                 x = paddle.static.data(
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
-                    dtype='int64')
+                    dtype="bool")
 
                 with paddle.static.amp.fp16_guard():
-                    out = paddle.fluid.layers.embedding(x, **self.attrs)
+                    out = paddle.fluid.layers.logical_not(x)
 
-                    if self.is_training:
-                        loss = paddle.mean(out)
-                        adam = paddle.optimizer.Adam(learning_rate=1e-2)
-                        adam.minimize(loss)
-                        fetch_list = [loss.name]
-                    else:
-                        fetch_list = [out.name]
+            fetch_list = [out.name]
 
             if exec_mode == ExecutionMode.CPU_FP32:
                 place = paddle.CPUPlace()
@@ -98,44 +81,17 @@ class TestBase(IPUOpTest):
             else:
                 program = main_prog
 
-            feed = self.feed_cpu
-            if exec_mode > ExecutionMode.CPU_FP32:
-                feed = self.feed_ipu
+            result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
+            return result[0]
 
-            if self.is_training:
-                result = []
-                for _ in range(self.epoch):
-                    loss_res = exe.run(program,
-                                       feed=feed,
-                                       fetch_list=fetch_list)
-                    result.append(loss_res[0])
-                return np.array(result)
-            else:
-                result = exe.run(program, feed=feed, fetch_list=fetch_list)
-                return result[0]
-
-    def test(self):
+    def test_base(self):
         output_dict = {}
         for mode in ExecutionMode:
-            if mode > ExecutionMode.IPU_FP32 and (not self.fp16_enabled or
-                                                  self.is_training):
+            if mode > ExecutionMode.IPU_FP32 and not self.fp16_enabled:
                 break
+            output_dict[mode] = self._test_base(mode).astype(np.int32)
 
-            output_dict[mode] = self._test_base(mode).flatten()
-
-        self.check(output_dict)
-
-
-class TestTrainCase1(TestBase):
-    def set_atol(self):
-        self.atol = 1e-7
-        self.rtol = 1e-6
-        self.atol_fp16 = 1e-3
-        self.rtol_fp16 = 1e-3
-
-    def set_training(self):
-        self.is_training = True
-        self.epoch = 10
+        self.check(output_dict, check_shape=True)
 
 
 if __name__ == "__main__":
