@@ -12,20 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/naive/meta_tensor.h"
-
-#include "paddle/infrt/tensor/dense_host_tensor.h"
-#include "paddle/infrt/tensor/tensor_shape.h"
+#include "paddle/infrt/kernel/pten/context_kernels.h"
 
 namespace infrt {
-namespace naive {
+namespace kernel {
+namespace pten {
 
-const tensor::TensorShape& MetaTensor::shape() const {
-  return mutable_tensor_->shape();
-}
-tensor::TensorShape* MetaTensor::mutable_shape() {
-  return mutable_tensor_->mutable_shape();
-}
+backends::CpuPtenContext CreateCpuContext() { return {}; }
 
-}  // namespace naive
+}  // namespace pten
+}  // namespace kernel
 }  // namespace infrt
