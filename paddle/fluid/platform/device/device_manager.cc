@@ -389,30 +389,20 @@ std::vector<std::string> ListAllLibraries(const std::string& library_dir) {
 
   dir = opendir(library_dir.c_str());
   if (dir == nullptr) {
-    VLOG(4) << "open CustomDevice library_dir: " << library_dir << " failed";
+    VLOG(4) << "Failed to open path: " << library_dir;
   } else {
     while ((ptr = readdir(dir)) != nullptr) {
       std::string filename(ptr->d_name);
       if (std::regex_match(filename.begin(), filename.end(), results,
                            express)) {
         libraries.push_back(library_dir + '/' + filename);
-        VLOG(4) << "found CustomDevice library: " << libraries.back()
-                << std::endl;
+        VLOG(4) << "Found lib: " << libraries.back();
       }
     }
     closedir(dir);
   }
 
   return libraries;
-}
-
-bool LoadCustomDevice(const std::string& library_dir) {
-  std::vector<std::string> libs = ListAllLibraries(library_dir);
-  for (const auto& lib_path : libs) {
-    auto dso_handle = dlopen(lib_path.c_str(), RTLD_NOW);
-    LoadCustomRuntimeLib(dso_handle);
-  }
-  return true;
 }
 
 }  // namespace platform

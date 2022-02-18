@@ -19,8 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 #include "unordered_set"
 
 namespace paddle {
@@ -37,7 +37,7 @@ typename std::enable_if<std::is_floating_point<T>::value>::type
 elementwise_inner_add(const framework::ExecutionContext& ctx,
                       const T* src_pointer, T* dst_pointer, size_t src_index,
                       IndexT dst_index, size_t slice_size) {
-  auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
+  auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(ctx);
   blas.VADD(slice_size, src_pointer + src_index * slice_size,
             dst_pointer + dst_index * slice_size,
             dst_pointer + dst_index * slice_size);

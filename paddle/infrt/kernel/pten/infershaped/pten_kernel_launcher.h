@@ -19,20 +19,8 @@
 #include "paddle/infrt/kernel/pten/infershaped/infershaped_kernel_launcher.h"
 #include "paddle/infrt/kernel/pten/infershaped/infershaped_utils.h"
 
-// This file contains a example of the infershape ElementwiseAdd kernel.
-// Some of the following code should be generated from PTEN by script.
-
 namespace infrt {
 namespace kernel {
-
-static void ElementwiseAddInferShape(const ::pten::MetaTensor& a,
-                                     const ::pten::MetaTensor& b,
-                                     ::pten::MetaTensor* c) {}
-
-static void ElementwiseAdd(const ::pten::CPUContext& /*Context*/,
-                           const ::pten::DenseTensor& a,
-                           const ::pten::DenseTensor& b,
-                           ::pten::DenseTensor* c) {}
 
 template <typename KernelFunc,
           KernelFunc kernel,
@@ -55,7 +43,6 @@ class KernelLauncher : public InferShapedKernelLauncher {
         BuildInferShapeCache(num_input_tensors);
       }
     }
-
     ::infrt::host_context::KernelImpl<KernelFunc, kernel>::Invoke(frame);
   }
 };

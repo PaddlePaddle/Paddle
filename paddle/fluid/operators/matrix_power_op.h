@@ -18,9 +18,9 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/matrix_inverse.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -58,7 +58,7 @@ void MatrixPowerFunction(const Tensor* X, const int n, Tensor* Out,
     return;
   }
 
-  auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+  auto blas = pten::funcs::GetBlas<DeviceContext, T>(dev_ctx);
 
   Tensor new_x = ctx.AllocateTmpTensor<T, DeviceContext>(X->dims(), dev_ctx);
   int new_n = n;
@@ -77,7 +77,7 @@ void MatrixPowerFunction(const Tensor* X, const int n, Tensor* Out,
     return;
   }
 
-  auto no_trans_desc = math::CreateMatrixDescriptor(x_dims, 0, false);
+  auto no_trans_desc = pten::funcs::CreateMatrixDescriptor(x_dims, 0, false);
 
   if (new_n == 2) {
     // Out = newX * newX
@@ -166,7 +166,7 @@ void MatrixPowerGradFunction(const Tensor* X, const Tensor* Out,
   const auto& x_dims = X->dims();
 
   auto& dev_ctx = ctx.template device_context<DeviceContext>();
-  auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+  auto blas = pten::funcs::GetBlas<DeviceContext, T>(dev_ctx);
 
   if (n == 0) {
     // \nabla X = O
@@ -179,8 +179,8 @@ void MatrixPowerGradFunction(const Tensor* X, const Tensor* Out,
     return;
   }
 
-  auto trans_desc = math::CreateMatrixDescriptor(x_dims, 0, true);
-  auto no_trans_desc = math::CreateMatrixDescriptor(x_dims, 0, false);
+  auto trans_desc = pten::funcs::CreateMatrixDescriptor(x_dims, 0, true);
+  auto no_trans_desc = pten::funcs::CreateMatrixDescriptor(x_dims, 0, false);
 
   if (n == -1) {
     // \nabla X = Out^{T} * \nabla Out * Out^{T}
