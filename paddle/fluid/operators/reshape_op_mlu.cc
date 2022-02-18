@@ -83,7 +83,7 @@ class Reshape2MLUKernel : public framework::OpKernel<T> {
     auto it =
         std::find(target_shape_vector.begin(), target_shape_vector.end(), -1);
     if (it != target_shape_vector.end()) {
-      auto ddim_out_vec = framework::vectorize(x->dims());
+      auto ddim_out_vec = pten::vectorize(x->dims());
       int ddim_out_product = std::accumulate(
           ddim_out_vec.begin(), ddim_out_vec.end(), 1, std::multiplies<int>());
       int reshape_out_product = std::accumulate(target_shape_vector.begin(),

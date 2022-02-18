@@ -110,9 +110,9 @@ class MatMulV2MLUKernel : public framework::OpKernel<T> {
     const bool trans_x = ctx.Attr<bool>("trans_x");
     const bool trans_y = ctx.Attr<bool>("trans_y");
 
-    std::vector<int64_t> x_dims = framework::vectorize(X->dims());
-    std::vector<int64_t> y_dims = framework::vectorize(Y->dims());
-    std::vector<int64_t> out_dims = framework::vectorize(Out->dims());
+    std::vector<int64_t> x_dims = pten::vectorize(X->dims());
+    std::vector<int64_t> y_dims = pten::vectorize(Y->dims());
+    std::vector<int64_t> out_dims = pten::vectorize(Out->dims());
     int x_ndim = x_dims.size();
     int y_ndim = y_dims.size();
 
@@ -176,7 +176,7 @@ class MatMulV2MLUKernel : public framework::OpKernel<T> {
       MatMulND<T>(ctx, x_temp, y_temp, Out, trans_x, trans_y);
     }
 
-    if (framework::vectorize(Out->dims()) != out_dims) {
+    if (pten::vectorize(Out->dims()) != out_dims) {
       Out->Resize(pten::make_ddim(out_dims));
     }
   }
@@ -194,9 +194,9 @@ class MatMulGradV2MLUKernel : public framework::OpKernel<T> {
     const bool trans_x = ctx.Attr<bool>("trans_x");
     const bool trans_y = ctx.Attr<bool>("trans_y");
 
-    std::vector<int64_t> x_dims = framework::vectorize(X->dims());
-    std::vector<int64_t> y_dims = framework::vectorize(Y->dims());
-    std::vector<int64_t> out_dims = framework::vectorize(dOut->dims());
+    std::vector<int64_t> x_dims = pten::vectorize(X->dims());
+    std::vector<int64_t> y_dims = pten::vectorize(Y->dims());
+    std::vector<int64_t> out_dims = pten::vectorize(dOut->dims());
     int x_ndim = x_dims.size();
     int y_ndim = y_dims.size();
     int out_ndim = out_dims.size();
