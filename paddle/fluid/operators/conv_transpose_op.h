@@ -20,11 +20,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/math/depthwise_conv.h"
 #include "paddle/fluid/operators/math/im2col.h"
 #include "paddle/fluid/operators/math/vol2col.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -228,7 +228,7 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
     output->mutable_data<T>(context.GetPlace());
     pten::funcs::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     set_zero(dev_ctx, output, static_cast<T>(0));
 
     int in_step =
@@ -425,7 +425,7 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
     // im2col + gemm (similar to conv-forward)
     // input need to compute gradient
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     if (input_grad || filter_grad) {
       Tensor col;
       col.mutable_data<T>(col_shape, context.GetPlace());
