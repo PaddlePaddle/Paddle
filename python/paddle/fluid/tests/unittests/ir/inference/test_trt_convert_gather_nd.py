@@ -425,7 +425,8 @@ class TrtConvertGatherNdTest_dim_3_3(TrtLayerAutoScanTest):
             return np.random.random([16, 32, 256]).astype(np.float32)
 
         def generate_input2():
-            return np.ones([2, 2, 2]).astype(np.int32)
+            return np.array(
+                [[[2, 5], [3, 8]], [[0, 2], [0, 3]]]).astype(np.int32)
 
         ops_config = [{
             "op_type": "gather_nd",
