@@ -1202,7 +1202,8 @@ class Optimizer(object):
                 adam.clear_grad()
         """
         record_event = profiler.Record_Event(
-            name="Optimizer Step", event_type=TracerEventType.Optimization)
+            name="Optimizer Step",
+            event_type=profiler.TracerEventType.Optimization)
         record_event.begin()
         if not isinstance(self._param_groups[0], dict):
             params_grads = []
