@@ -91,7 +91,7 @@ class XPUTestFillConstantOp(XPUOpTestWrapper):
                 self.value = np.random.randint(0, 2)
             elif self.index in [20, 21]:
                 self.value = 125
-            elif self.index in [1, 2, 3]:
+            elif self.index in [1, 2]:
                 self.value = 7
             elif self.index in [4, 5, 6]:
                 self.value = 1e-5
