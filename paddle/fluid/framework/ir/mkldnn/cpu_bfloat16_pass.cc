@@ -177,41 +177,39 @@ void CPUBFloat16Pass::SetInputDataType(ir::Graph* graph) const {
 
 void AddDequantize(Graph* g, ir::Node* op, ir::Node* op_out,
                    int& dequantize_counter) {
+  if (op->Op()->Type() == "prior_box") return;
+
+  // Find the name of the output linking op to op_out
   std::vector<std::string> output_names;
+  for (auto name : op->Op()->OutputNames())
+    for (auto output_name : op->Op()->Output(name))
+      if (output_name == op_out->Name() && IsPermittedOutputName(name))
+        output_names.push_back(name);
 
-  if (op->Op()->Type() != "prior_box") {
-    // Find the name of the output linking op to op_out
-    std::vector<std::string> output_names;
-    for (auto name : op->Op()->OutputNames())
-      for (auto output_name : op->Op()->Output(name))
-        if (output_name == op_out->Name() && IsPermittedOutputName(name))
-          output_names.push_back(name);
+  if (output_names.empty()) return;
 
-    if (output_names.empty()) return;
+  VarDesc dequantize_in_desc(patterns::PDNodeName("dequantize", "in"));
+  auto* dequantize_in_node = g->CreateVarNode(&dequantize_in_desc);
 
-    VarDesc dequantize_in_desc(patterns::PDNodeName("dequantize", "in"));
-    auto* dequantize_in_node = g->CreateVarNode(&dequantize_in_desc);
+  OpDesc deq_desc;
+  deq_desc.SetType("dequantize");
+  deq_desc.SetInput("Input",
+                    std::vector<std::string>({dequantize_in_node->Name()}));
+  deq_desc.SetOutput("Output", std::vector<std::string>({op_out->Name()}));
+  deq_desc.SetAttr("Scale", 1.0f);
+  deq_desc.SetAttr("Shift", 0.0f);
+  auto dequantize_op = g->CreateOpNode(&deq_desc);  // OpDesc will be copied.
 
-    OpDesc deq_desc;
-    deq_desc.SetType("dequantize");
-    deq_desc.SetInput("Input",
-                      std::vector<std::string>({dequantize_in_node->Name()}));
-    deq_desc.SetOutput("Output", std::vector<std::string>({op_out->Name()}));
-    deq_desc.SetAttr("Scale", 1.0f);
-    deq_desc.SetAttr("Shift", 0.0f);
-    auto dequantize_op = g->CreateOpNode(&deq_desc);  // OpDesc will be copied.
+  for (auto name = output_names.begin(); name < output_names.end(); name++)
+    op->Op()->SetOutput(*name,
+                        std::vector<std::string>({dequantize_in_node->Name()}));
 
-    for (auto name = output_names.begin(); name < output_names.end(); name++)
-      op->Op()->SetOutput(
-          *name, std::vector<std::string>({dequantize_in_node->Name()}));
+  UnlinkNodes(op, op_out);
+  IR_NODE_LINK_TO(op, dequantize_in_node);
+  IR_NODE_LINK_TO(dequantize_in_node, dequantize_op);
+  IR_NODE_LINK_TO(dequantize_op, op_out);
 
-    UnlinkNodes(op, op_out);
-    IR_NODE_LINK_TO(op, dequantize_in_node);
-    IR_NODE_LINK_TO(dequantize_in_node, dequantize_op);
-    IR_NODE_LINK_TO(dequantize_op, op_out);
-
-    dequantize_counter++;
-  }
+  dequantize_counter++;
 }
 
 void AddDequantizes(Graph* g, ir::Node* op, int& dequantize_counter) {
