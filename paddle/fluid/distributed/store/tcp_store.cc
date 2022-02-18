@@ -71,7 +71,6 @@ void MasterDaemon::_do_get(SocketType socket) {
       iter, _store.end(),
       platform::errors::InvalidArgument("Key %s not found in TCPStore.", key));
   std::vector<uint8_t> value = iter->second;
-  VLOG(3) << "TCPStore: value " << value[0];
   VLOG(3) << "TCPStore: value ("
           << std::stoll(std::string(reinterpret_cast<char*>(value.data()),
                                     value.size()))
@@ -99,7 +98,11 @@ void MasterDaemon::_do_wait(SocketType socket) {
 
 void MasterDaemon::run() {
   std::vector<struct pollfd> fds;
+#ifdef _WIN32
+  fds.push_back({_listen_socket, POLLIN});
+#else
   fds.push_back({.fd = _listen_socket, .events = POLLIN, .revents = 0});
+#endif
 
   while (!_stop) {
     for (size_t i = 0; i < fds.size(); i++) {
@@ -113,9 +116,13 @@ void MasterDaemon::run() {
 #endif
 
     if (fds[0].revents != 0) {
-      int socket = tcputils::tcp_accept(_listen_socket);
+      auto socket = tcputils::tcp_accept(_listen_socket);
       _sockets.emplace_back(socket);
+#ifdef _WIN32
+      fds.push_back({socket, POLLIN});
+#else
       fds.push_back({.fd = socket, .events = POLLIN, .revents = 0});
+#endif
     }
 
     for (size_t i = 1; i < fds.size(); i++) {

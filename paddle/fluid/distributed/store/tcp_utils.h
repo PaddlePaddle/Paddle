@@ -53,10 +53,11 @@ void close_socket(SocketType socket);
 ::addrinfo* get_addr_info(const std::string host, const std::string port,
                           int ai_flags, int family);
 void free_addr_info(::addrinfo*);
-int tcp_connect(const std::string host, const std::string port, int family,
-                std::chrono::seconds timeout = kNoTimeout);
-int tcp_listen(const std::string host, const std::string port, int family);
-int tcp_accept(SocketType socket);
+SocketType tcp_connect(const std::string host, const std::string port,
+                       int family, std::chrono::seconds timeout = kNoTimeout);
+SocketType tcp_listen(const std::string host, const std::string port,
+                      int family);
+SocketType tcp_accept(SocketType socket);
 
 void send_string(SocketType socket, const std::string& s);
 std::string receive_string(SocketType socket);

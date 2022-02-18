@@ -173,7 +173,12 @@ SocketType tcp_accept(SocketType socket) {
   ::fcntl(new_socket, F_SETFD, FD_CLOEXEC);
 #endif
   auto value = 1;
+#ifdef _WIN32
+  ::setsockopt(new_socket, IPPROTO_TCP, TCP_NODELAY,
+               reinterpret_cast<const char*>(&value), sizeof(value));
+#else
   ::setsockopt(new_socket, IPPROTO_TCP, TCP_NODELAY, &value, sizeof(value));
+#endif
   return new_socket;
 }
 
