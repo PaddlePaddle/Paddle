@@ -25,7 +25,7 @@ import numpy as np
 import multiprocessing
 from collections import namedtuple
 from paddle.fluid.framework import _set_expected_place, _current_expected_place, set_flags
-from paddle.profiler import record_event, TracerEventType
+import paddle.profiler as profiler
 
 # NOTE: queue has a different name in python2 and python3
 import queue
@@ -251,10 +251,10 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         self._exit_thread_expectedly()
 
     def __next__(self):
-        trace_event = record_event(
+        trace_event = profiler.Record_Event(
             name="_DataLoaderIterSingleProcess",
-            event_type=TracerEventType.Dataloader)
-        trace_event.__enter__()
+            event_type=profiler.TracerEventType.Dataloader)
+        trace_event.begin()
         try:
             if in_dygraph_mode():
                 if _in_eager_mode():
@@ -288,7 +288,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
             self._try_shutdown_all()
             six.reraise(*sys.exc_info())
         finally:
-            trace_event.__exit__(None, None, None)
+            trace_event.end()
 
     def _shutdown_thread(self):
         if self._thread:
@@ -694,10 +694,10 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._try_shutdown_all(1)
 
     def __next__(self):
-        trace_event = record_event(
-            name="_DataLoaderIterSingleProcess",
-            event_type=TracerEventType.Dataloader)
-        trace_event.__enter__()
+        trace_event = profiler.Record_Event(
+            name="_DataLoaderIterMultiProcess",
+            event_type=profiler.TracerEventType.Dataloader)
+        trace_event.begin()
         try:
             # _batches_outstanding here record the total batch data number
             # in 'from after _try_put_indices to beforeoutput data', this
@@ -746,7 +746,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 self._try_shutdown_all()
             six.reraise(*sys.exc_info())
         finally:
-            trace_event.__exit__(None, None, None)
+            trace_event.end()
 
     # python2 compatibility
     def next(self):
