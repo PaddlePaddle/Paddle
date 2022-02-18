@@ -4,10 +4,6 @@ set(PYBIND_DEPS init pybind python proto_desc memory executor fleet_wrapper box_
   gloo_wrapper infer_io_utils heter_wrapper generator op_version_registry ps_gpu_wrapper custom_operator
   cost_model cuda_graph_with_memory_pool fleet_executor global_utils pten_utils)
 
-# if (WITH_ONNXRUNTIME)
-#   set(PYBIND_DEPS ${PYBIND_DEPS} onnxruntime_predictor)
-# endif()
-
 if (WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
   set(PYBIND_DEPS ${PYBIND_DEPS} graph_py_service)
@@ -79,6 +75,10 @@ set(PYBIND_SRCS
   generator_py.cc
   cuda_streams_py.cc)
 
+if (WITH_ONNXRUNTIME)
+  set(PYBIND_DEPS ${PYBIND_DEPS} onnxruntime_predictor)
+endif()
+
 if(WITH_ASCEND)
   set(PYBIND_DEPS ${PYBIND_DEPS} ascend_wrapper)
   set(PYBIND_SRCS ${PYBIND_SRCS} ascend_wrapper_py.cc)
@@ -137,9 +137,9 @@ if(WITH_PYTHON)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS hccl_context)
   endif(WITH_ASCEND_CL)
 
-  # if (WITH_ONNXRUNTIME)
-  #   list(APPEND OP_FUNCTION_GENERETOR_DEPS onnxruntime_predictor)
-  # endif()
+  if (WITH_ONNXRUNTIME)
+    list(APPEND OP_FUNCTION_GENERETOR_DEPS onnxruntime_predictor)
+  endif()
 
   add_executable(op_function_generator op_function_generator.cc)
   target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})
@@ -240,6 +240,13 @@ if(WITH_PYTHON)
     # LD_LIBRARY_PATH. This is different with Windows platformm, which search
     # *.dll in current directory automatically.
     if(WITH_ONNXRUNTIME)
+      message(==WITH_ONNXRUNTIME=========pybind=======)
+      ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libpaddle2onnx.so
+        COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE2ONNX_LIB} ${CMAKE_CURRENT_BINARY_DIR}
+        DEPENDS paddle2onnx)
+      list(APPEND OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/libpaddle2onnx.so)
+      list(APPEND EAGER_OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/libpaddle2onnx.so)
+
       ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libonnxruntime.so
         COMMAND ${CMAKE_COMMAND} -E copy ${ONNXRUNTIME_LIB} ${CMAKE_CURRENT_BINARY_DIR} 
         DEPENDS onnxruntime_predictor)

@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -67,11 +67,13 @@ framework::proto::VarType::Type ConvertONNXType(
   }
 }
 
-bool ConvertToONNX(const AnalysisConfig &config) { return true; }
-
 /*
-bool ConvertToONNX(const AnalysisConfig& config) {
+bool CheckConvertToONNX(const AnalysisConfig &config) { return true; }
+*/
+
+bool CheckConvertToONNX(const AnalysisConfig &config) {
   if (!config.model_dir().empty()) {
+    LOG(ERROR) << "Paddle2ONNX not support model_dir config";
     // TODO(heliqi jiangjiajun): Paddle2ONNX not support
     // config.model_dir() + "/__model__"
     // config.model_dir() + var_name
@@ -79,29 +81,12 @@ bool ConvertToONNX(const AnalysisConfig& config) {
   } else if (config.prog_file().empty() || config.params_file().empty()) {
     LOG(ERROR) << string::Sprintf(
         "not valid model path '%s' or program path '%s' or params path '%s'.",
-config.model_dir(),
-        config.prog_file(), config.params_file());
+        config.model_dir(), config.prog_file(), config.params_file());
     return false;
   }
-  auto parser = paddle2onnx::PaddleParser();
-  if(!parser.Init(config.prog_file(), config.params_file()) {
-    VLOG(3) << "paddle2onnx parser init error";
-    return false;
-  }
-  paddle2onnx::ModelExporter me;
-  std::set<std::string> unsupported_ops;
-  if (!me.CheckIfOpSupported(parser, &unsupported_ops)) {
-    VLOG(3) << "there are some operators not supported by Paddle2ONNX ";
-    return false;
-  }
-  if(me.GetMinOpset(parser, false) < 0) {
-     VLOG(3) << "there are some operators' version not supported by Paddle2ONNX
-";
-    return false;
-  }
-  return true;
+  return paddle2onnx::IsExportable(config.prog_file(), config.params_file(),
+                                   config.model_from_memory());
 }
-*/
 
 bool ONNXRuntimePredictor::Init() {
   VLOG(3) << "ONNXRuntime Predictor::init()";
@@ -115,16 +100,9 @@ bool ONNXRuntimePredictor::Init() {
   scope_.reset(new paddle::framework::Scope());
   sub_scope_ = &scope_->NewScope();
 
-  /*
-  auto parser = paddle2onnx::PaddleParser();
-  if (!config_.prog_file().empty() && !config_.params_file().empty()) {
-    parser.Init(config_.prog_file(), config_.params_file())
-  } else {
-    return false;
-  }
-  paddle2onnx::ModelExporter me;
-  std::string onnx_proto = me.Run(parser, 9, true, false);
-  */
+  std::string onnx_proto;
+  paddle2onnx::Export(config_.prog_file(), config_.params_file(), &onnx_proto,
+                      config_.model_from_memory());
 
   Ort::SessionOptions session_options;
   // session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
@@ -141,8 +119,8 @@ bool ONNXRuntimePredictor::Init() {
   session_options.SetInterOpNumThreads(config_.cpu_math_library_num_threads());
   session_options.SetIntraOpNumThreads(config_.cpu_math_library_num_threads());
   VLOG(2) << "ONNXRuntime threads " << config_.cpu_math_library_num_threads();
-  session_ = {env_, config_.prog_file().c_str(), session_options};
-  // session_ = {env_, onnx_proto.data(), onnx_proto.size(), session_options};
+  // session_ = {env_, config_.prog_file().c_str(), session_options};
+  session_ = {env_, onnx_proto.data(), onnx_proto.size(), session_options};
 
   auto memory_info =
       Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
@@ -161,8 +139,6 @@ bool ONNXRuntimePredictor::Init() {
     input_desc_.emplace_back(
         ONNXDesc{.name = input_name, .shape = shape, .dtype = data_type});
     auto *ptr = scope_->Var(input_name);
-    // framework::proto::VarType::Type proto_type =
-    // framework::proto::VarType::FEED_MINIBATCH;
     framework::InitializeVariable(ptr, proto_type);
     allocator.Free(input_name);
   }
@@ -178,123 +154,12 @@ bool ONNXRuntimePredictor::Init() {
     output_desc_.emplace_back(
         ONNXDesc{.name = output_name, .shape = shape, .dtype = data_type});
     auto *ptr = scope_->Var(output_name);
-    // framework::proto::VarType::Type proto_type =
-    // framework::proto::VarType::FETCH_LIST;
     framework::InitializeVariable(ptr, proto_type);
     allocator.Free(output_name);
   }
 
   return true;
 }
-
-/*
-{
-  Ort::AllocatorWithDefaultOptions allocator;
-
-  //输出模型输入节点的数量
-  size_t num_input_nodes = session.GetInputCount();
-  size_t num_output_nodes = session.GetOutputCount();
-  std::vector<const char*> input_node_names(num_input_nodes);
-  std::vector<const char*> output_node_names(num_output_nodes);
-  std::vector<int64_t> input_node_dims;
-
-  bool dynamic_flag = false;
-
-  //迭代所有的输入节点
-  for (int i = 0; i < num_input_nodes; i++) {
-        //输出输入节点的名称
-      char* input_name = session.GetInputName(i, allocator);
-     std::cout << "Input " << i << ": name=" << input_name << std::endl;
-      input_node_names[i] = input_name;
-
-      // 输出输入节点的类型
-      Ort::TypeInfo type_info = session.GetInputTypeInfo(i);
-      auto tensor_info = type_info.GetTensorTypeAndShapeInfo();
-
-      ONNXTensorElementDataType type = tensor_info.GetElementType();
-      printf("Input %d : type=%d\n", i, type);
-
-      input_node_dims = tensor_info.GetShape();
-      //输入节点的打印维度
-        printf("Input %d : num_dims=%zu\n", i, input_node_dims.size());
-      //打印各个维度的大小
-      for (int j = 0; j < input_node_dims.size(); j++)
-      {
-          printf("Input %d : dim %d=%jd\n", i, j, input_node_dims[j]);
-          if (input_node_dims[j] < 1)
-          {
-              dynamic_flag  = true;
-          }
-      }
-
-      input_node_dims[0] = 1;
-  }
-  //打印输出节点信息，方法类似
-  for (int i = 0; i < num_output_nodes; i++)
-  {
-      char* output_name = session.GetOutputName(i, allocator);
-      printf("Output: %d name=%s\n", i, output_name);
-      output_node_names[i] = output_name;
-      Ort::TypeInfo type_info = session.GetOutputTypeInfo(i);
-      auto tensor_info = type_info.GetTensorTypeAndShapeInfo();
-      ONNXTensorElementDataType type = tensor_info.GetElementType();
-      printf("Output %d : type=%d\n", i, type);
-      auto output_node_dims = tensor_info.GetShape();
-      printf("Output %d : num_dims=%zu\n", i, output_node_dims.size());
-      for (int j = 0; j < input_node_dims.size(); j++)
-          printf("Output %d : dim %d=%jd\n", i, j, output_node_dims[j]);
-  }
-
-  size_t input_tensor_size = 2*3*3*3;
-  std::vector<float> input_tensor_values(input_tensor_size, 1.0);
-  // 为输入数据创建一个Tensor对象
-  try
-  {
-      OrtValue * input_val = nullptr;
-      std::vector<int64_t> input_shape = {2, 3, 3, 3};
-      auto memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator,
-OrtMemTypeDefault);
-      Ort::Value input_tensor = Ort::Value::CreateTensor<float>(memory_info,
-input_tensor_values.data(), input_tensor_size, input_shape.data(), 4);
-
-      // // 推理得到结果
-      // auto output_tensors = session.Run(Ort::RunOptions{ nullptr },
-input_node_names.data(), &input_tensor, 1, output_node_names.data(), 1);
-
-      // // Get pointer to output tensor float values
-      // float* floatarr = output_tensors.front().GetTensorMutableData<float>();
-      // for (auto j =0; j < 10; ++j)
-      //   for (auto i = 0; i < 4; ++i)
-      //     std::cout << "floatarr i " << j + i << "  " << floatarr[i] <<
-std::endl;
-
-      // 另一种形式
-      Ort::IoBinding io_binding{session};
-      io_binding.BindInput(input_node_names[0], input_tensor);
-      Ort::MemoryInfo output_mem_info =
-Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
-
-      io_binding.BindOutput(output_node_names[0], output_mem_info);
-      session.Run(Ort::RunOptions{ nullptr }, io_binding);
-      auto output_tensors2 = io_binding.GetOutputValues();
-      float* floatarr2 = output_tensors2.front().GetTensorMutableData<float>();
-      for (auto j =0; j < 10; ++j)
-      for (auto i = 0; i < 4; ++i)
-        std::cout << "floatarr22 i " << j*4 + i << "  " << floatarr2[i+j*4] <<
-std::endl;
-
-      // output_tensors.size(),
-      printf("Number of outputs = %d  %d\n",  output_tensors2.size());
-
-  }
-  catch (Ort::Exception& e)
-  {
-      printf(e.what());
-  }
-  printf("Done!\n");
-
-}
-*/
 
 template <>
 std::unique_ptr<PaddlePredictor>
@@ -395,7 +260,9 @@ Ort::Value ONNXRuntimePredictor::GetOrtValue(const ONNXDesc &desc,
                               place_.GetDeviceId(), OrtMemTypeDefault);
   auto *var = scope_->FindVar(desc.name);
   auto *tensor = var->GetMutable<framework::LoDTensor>();
-  size_t size = tensor->numel() * framework::SizeOfType(tensor->type());
+  size_t size =
+      tensor->numel() *
+      framework::SizeOfType(framework::TransToProtoVarType(tensor->dtype()));
   std::vector<int64_t> shape = framework::vectorize<int64_t>(tensor->dims());
   return Ort::Value::CreateTensor(memory_info,
                                   static_cast<void *>(tensor->data()), size,
@@ -466,82 +333,13 @@ bool ONNXRuntimePredictor::ZeroCopyRun() {
   return true;
 }
 
-/*
-bool ONNXRuntimePredictor::LoadProgramDesc() {
-  // Initialize the inference program
-  std::string filename;
-  if (!config_.model_dir().empty()) {
-    filename = config_.model_dir() + "/__model__";
-  } else if (!config_.prog_file().empty()) {
-    // All parameters are saved in a single file.
-    // The file names should be consistent with that used
-    // in Python API `fluid.io.save_inference_model`.
-    filename = config_.prog_file();
-  } else {
-    if (config_.model_dir().empty() && config_.prog_file().empty()) {
-      LOG(ERROR)
-          << "Either model_dir or (prog_file, param_file) should be set.";
-      return false;
-    }
-    LOG(ERROR) << string::Sprintf(
-        "not valid model path '%s' or program path '%s'.", config_.model_dir(),
-        config_.params_file());
-    return false;
-  }
-  // Create ProgramDesc
-  framework::proto::ProgramDesc proto;
-  if (!config_.model_from_memory()) {
-    std::string pb_content;
-    // Read binary
-    std::ifstream fin(filename, std::ios::in | std::ios::binary);
-    PADDLE_ENFORCE_EQ(
-        static_cast<bool>(fin.is_open()), true,
-        platform::errors::NotFound(
-            "Cannot open file %s, please confirm whether the file is normal.",
-            filename));
-    fin.seekg(0, std::ios::end);
-    pb_content.resize(fin.tellg());
-    fin.seekg(0, std::ios::beg);
-    fin.read(&(pb_content.at(0)), pb_content.size());
-    fin.close();
-
-    proto.ParseFromString(pb_content);
-  } else {
-    proto.ParseFromString(config_.prog_file());
-  }
-  // inference_program_.reset(new framework::ProgramDesc(proto));
-  return true;
-}
-*/
-
 std::unique_ptr<PaddlePredictor> ONNXRuntimePredictor::Clone() {
-  LOG(ERROR) << "Not support Clone()";
+  LOG(ERROR) << "Not support Clone(), Please create new Predictor";
   return nullptr;
 }
 
 uint64_t ONNXRuntimePredictor::TryShrinkMemory() {
-  // ClearIntermediateTensor();
   return paddle::memory::Release(place_);
-}
-
-void ONNXRuntimePredictor::ClearIntermediateTensor() {
-  // PADDLE_ENFORCE_NOT_NULL(inference_program_.get(),
-  //                         platform::errors::PreconditionNotMet(
-  //                             "The inference program should be loaded
-  //                             first."));
-  // const auto &global_block = inference_program_->MutableBlock(0);
-  // for (auto *var : global_block->AllVars()) {
-  //   if (!IsPersistable(var)) {
-  //     const std::string name = var->Name();
-  //     auto *variable = executor_->scope()->FindVar(name);
-  //     if (variable != nullptr && variable->IsType<framework::LoDTensor>() &&
-  //         name != "feed" && name != "fetch") {
-  //       VLOG(3) << "Clear Intermediate Tensor: " << name;
-  //       auto *t = variable->GetMutable<framework::LoDTensor>();
-  //       t->clear();
-  //     }
-  //   }
-  // }
 }
 
 ONNXRuntimePredictor::~ONNXRuntimePredictor() {

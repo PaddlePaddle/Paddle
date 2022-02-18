@@ -114,6 +114,18 @@ function(copy_part_of_thrid_party TARGET DST)
         endif()
     endif()
 
+    if (WITH_ONNXRUNTIME)
+        set(dst_dir "${DST}/third_party/install/onnxruntime")
+        copy(${TARGET}
+                SRCS ${ONNXRUNTIME_INC_DIR} ${ONNXRUNTIME_LIB_DIR}
+                DSTS ${dst_dir} ${dst_dir})
+
+        set(dst_dir "${DST}/third_party/install/paddle2onnx")
+        copy(${TARGET}
+                SRCS ${PADDLE2ONNX_INC_DIR}/paddle2onnx ${PADDLE2ONNX_LIB}
+                DSTS ${dst_dir}/include ${dst_dir}/lib)
+    endif()
+
     set(dst_dir "${DST}/third_party/install/gflags")
     copy(${TARGET}
             SRCS ${GFLAGS_INCLUDE_DIR} ${GFLAGS_LIBRARIES}

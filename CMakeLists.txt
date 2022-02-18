@@ -331,10 +331,6 @@ if(WITH_BRPC_RDMA)
     endif()
 endif()
 
-if(WITH_ONNXRUNTIME)
-    include(paddle2onnx)
-    include(onnxruntime)
-endif()
 
 if(WITH_GPU)
     include(cuda)

@@ -1485,16 +1485,18 @@ Predictor::Predictor(const Config &config) {
     if (config.use_gpu()) {
       LOG(WARNING) << "ONNXRuntime not support gpu for now， fall back to "
                       "using Paddle Inference.";
-    } else if (!paddle::ConvertToONNX(config)) {
-      LOG(WARNING) << "ONNXRuntime not support the Model， fall back to using "
-                      "Paddle Inference.";
+    } else if (!paddle::CheckConvertToONNX(config)) {
+      LOG(WARNING)
+          << "Paddle2ONNX do't support convert the Model， fall back to using "
+             "Paddle Inference.";
     } else {
       predictor_ = paddle::CreatePaddlePredictor<
           Config, paddle::PaddleEngineKind::kONNXRuntime>(config);
       return;
     }
 #else
-    LOG(WARNING) << "compli， fall back to using Paddle Inference.";
+    LOG(WARNING) << "Please compile with ONNXRuntime， fall back to using "
+                    "Paddle Inference.";
 #endif
   }
   predictor_ = paddle::CreatePaddlePredictor<

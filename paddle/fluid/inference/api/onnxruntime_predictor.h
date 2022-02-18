@@ -29,9 +29,9 @@
 #include "paddle/fluid/string/printf.h"
 
 #ifdef PADDLE_WITH_ONNXRUNTIME
-// #include "paddle2onnx/mapper/exporter.h"
 #include "onnxruntime_c_api.h"    // NOLINT
 #include "onnxruntime_cxx_api.h"  // NOLINT
+#include "paddle2onnx/converter.h"
 #endif
 
 ///
@@ -46,7 +46,7 @@
 
 namespace paddle {
 
-bool ConvertToONNX(const AnalysisConfig &config);
+bool CheckConvertToONNX(const AnalysisConfig &config);
 
 struct ONNXDesc {
   std::string name;
@@ -95,7 +95,9 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   explicit ONNXRuntimePredictor(const AnalysisConfig &config)
       : config_(config) {
     predictor_id_ = inference::GetUniqueId();
+#ifdef PADDLE_WITH_ONNXRUNTIME
     env_ = Ort::Env(ORT_LOGGING_LEVEL_VERBOSE, "onnx");
+#endif
   }
   ///
   /// \brief Destroy the ONNXRuntime Predictor object
@@ -158,12 +160,6 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   /// \return Whether the function executed successfully
   ///
   bool ZeroCopyRun() override;
-
-  ///
-  /// \brief Clear the intermediate tensors of the predictor
-  ///
-  ///
-  void ClearIntermediateTensor();
 
   ///
   /// \brief Release all tmp tensor to compress the size of the memory pool.
