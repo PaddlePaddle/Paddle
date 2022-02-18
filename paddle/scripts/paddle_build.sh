@@ -1091,15 +1091,7 @@ function collect_failed_tests() {
 
 # getting qucik disable ut list 
 function get_quickly_disable_ut() {
-    python -m pip install requests
-    if disable_ut_quickly=$(python ${PADDLE_ROOT}/tools/get_quick_disable_lt.py); then
-        echo "========================================="
-        echo "The following unittests have been disabled:"
-        echo ${disable_ut_quickly}
-        echo "========================================="
-    else
-        disable_ut_quickly='disable_ut'
-    fi
+    disable_ut_quickly='disable_ut'
 }
 
 function card_test() {
