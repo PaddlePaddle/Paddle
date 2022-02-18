@@ -624,7 +624,7 @@ class Executor(object):
             If ``place`` is string, it can be ``cpu``, and ``gpu:x``, where ``x`` 
             is the index of the GPUs. Note: users only pass one Place or None to initialize
             Executor when using multiple-cards. Other APIs will override the cards. See
-            `document for multiple-cards <https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/01_paddle2.0_introduction/update_cn.html#danjiduokaqidong>`_ 
+            `document for multiple-cards <https://www.paddlepaddle.org.cn/documentation/docs/en/develop/guides/01_paddle2.0_introduction/update_en.html#stand-alone-multi-card-launch>`_ 
 
     Returns:
         Executor
