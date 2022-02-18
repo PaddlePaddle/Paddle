@@ -166,9 +166,11 @@ void StartSendAndRecvServer(std::string endpoint) {
 
   b_rpc_service->SetRequestHandler(b_req_handler);
   LOG(INFO) << "before HeterServer::RunServer";
-  std::thread server_thread(std::bind(RunServer, b_rpc_service));
 
-  server_thread.join();
+  RunServer(b_rpc_service);
+
+  // std::thread server_thread(std::bind(RunServer, b_rpc_service));
+  // server_thread.join();
 }
 
 TEST(SENDANDRECV, CPU) {
