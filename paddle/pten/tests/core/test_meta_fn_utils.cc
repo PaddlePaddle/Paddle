@@ -72,6 +72,7 @@ TEST(MetaFnFactory, CopyInferMetaFn) {
   auto shared_meat_x = std::make_shared<pten::MetaTensor>(&dense_x);
   pten::DenseTensor dense_out2;
   auto shared_meta_out = std::make_shared<pten::MetaTensor>(&dense_out2);
+
   pten::InferMetaContext ctx;
   ctx.EmplaceBackInput(shared_meat_x);
   ctx.EmplaceBackAttr(Backend::CPU);
@@ -96,6 +97,7 @@ TEST(MetaFnFactory, SplitInferMetaFn) {
   paddle::SmallVector<std::shared_ptr<pten::MetaTensor>> out;
   out.push_back(std::make_shared<pten::MetaTensor>(&dense_out1));
   out.push_back(std::make_shared<pten::MetaTensor>(&dense_out2));
+
   pten::InferMetaContext ctx;
   ctx.EmplaceBackInput(shared_meat_x);
   ScalarArray num_or_sections{2, 2};
