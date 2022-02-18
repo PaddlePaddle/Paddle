@@ -329,7 +329,7 @@ int ProductRuleBook(const Context& dev_ctx,
   DenseTensorMeta indices_meta(
       DataType::INT32, {sparse_dim, out_non_zero_num}, DataLayout::NCHW);
   DenseTensorMeta values_meta(
-      x.dtype(), {out_non_zero_num, x.dims()[4]}, x.layout());
+      x.dtype(), {out_non_zero_num, kernel_dims[4]}, x.layout());
   pten::DenseTensor out_indices = pten::Empty(dev_ctx, std::move(indices_meta));
   pten::DenseTensor out_values = pten::Empty(dev_ctx, std::move(values_meta));
   int* out_indices_ptr = out_indices.mutable_data<int>(dev_ctx.GetPlace());
