@@ -49,10 +49,10 @@ PT_REGISTER_KERNEL(empty,
                    int,
                    int64_t,
                    bool,
-                   paddle::platform::float16,
-                   paddle::platform::bfloat16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::float16,
+                   pten::dtype::bfloat16,
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(empty_like,
                    CPU,
@@ -65,10 +65,10 @@ PT_REGISTER_KERNEL(empty_like,
                    int,
                    int64_t,
                    bool,
-                   paddle::platform::float16,
-                   paddle::platform::bfloat16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::float16,
+                   pten::dtype::bfloat16,
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PT_REGISTER_KERNEL(empty,
@@ -82,9 +82,9 @@ PT_REGISTER_KERNEL(empty,
                    int,
                    int64_t,
                    bool,
-                   paddle::platform::float16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::float16,
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(empty_like,
                    GPU,
@@ -97,7 +97,8 @@ PT_REGISTER_KERNEL(empty_like,
                    int,
                    int64_t,
                    bool,
-                   paddle::platform::float16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::float16,
+                   pten::dtype::bfloat16,
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
 #endif
