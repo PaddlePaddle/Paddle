@@ -18,7 +18,7 @@
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/common/bfloat16.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/funcs/transpose.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 #include "paddle/pten/kernels/impl/transpose_grad_kernel_impl.h"
 
 namespace pten {

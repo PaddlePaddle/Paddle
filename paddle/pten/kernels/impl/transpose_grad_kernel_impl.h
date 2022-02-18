@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/pten/kernels/funcs/transpose.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 #include "paddle/pten/kernels/transpose_grad_kernel.h"
 #include "paddle/pten/kernels/transpose_kernel.h"
 
@@ -32,32 +32,32 @@ void TransposeKernelImpl(const Context& ctx,
   int rank = axis.size();
   switch (rank) {
     case 1:
-      math::Transpose<Context, T, 1> trans1;
+      funcs::Transpose<Context, T, 1> trans1;
       trans1(ctx, x, out, axis);
       break;
     case 2:
-      math::Transpose<Context, T, 2> trans2;
+      funcs::Transpose<Context, T, 2> trans2;
       trans2(ctx, x, out, axis);
       break;
     case 3:
-      math::Transpose<Context, T, 3> trans3;
+      funcs::Transpose<Context, T, 3> trans3;
       trans3(ctx, x, out, axis);
       break;
     case 4:
-      math::Transpose<Context, T, 4> trans4;
+      funcs::Transpose<Context, T, 4> trans4;
       trans4(ctx, x, out, axis);
       break;
     case 5:
-      math::Transpose<Context, T, 5> trans5;
+      funcs::Transpose<Context, T, 5> trans5;
       trans5(ctx, x, out, axis);
       break;
     case 6:
-      math::Transpose<Context, T, 6> trans6;
+      funcs::Transpose<Context, T, 6> trans6;
       trans6(ctx, x, out, axis);
       break;
     default:
       // for rank >= 7 situation
-      math::TransposeNormal<Context, T> trans_normal;
+      funcs::TransposeNormal<Context, T> trans_normal;
       trans_normal(ctx, x, out, axis);
   }
 }

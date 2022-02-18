@@ -245,9 +245,6 @@ struct TransposeNormal<pten::GPUContext, T> {
   template struct TransposeNormal<paddle::platform::CUDADeviceContext, TYPE>; \
   template struct TransposeNormal<pten::GPUContext, TYPE>
 
-#define DEFINE_GPU_TRANS_NORMAL_PTEN(TYPE) \
-  template struct TransposeNormal<pten::GPUContext, TYPE>
-
 DEFINE_GPU_TRANS_NORMAL(float16);
 DEFINE_GPU_TRANS_NORMAL(bfloat16);
 DEFINE_GPU_TRANS_NORMAL(float);
@@ -260,19 +257,6 @@ DEFINE_GPU_TRANS_NORMAL(uint8_t);
 DEFINE_GPU_TRANS_NORMAL(int8_t);
 DEFINE_GPU_TRANS_NORMAL(pten::dtype::complex<float>);
 DEFINE_GPU_TRANS_NORMAL(pten::dtype::complex<double>);
-
-DEFINE_GPU_TRANS_NORMAL_PTEN(float16);
-DEFINE_GPU_TRANS_NORMAL_PTEN(bfloat16);
-DEFINE_GPU_TRANS_NORMAL_PTEN(float);
-DEFINE_GPU_TRANS_NORMAL_PTEN(double);
-DEFINE_GPU_TRANS_NORMAL_PTEN(int);
-DEFINE_GPU_TRANS_NORMAL_PTEN(int64_t);
-DEFINE_GPU_TRANS_NORMAL_PTEN(bool);
-DEFINE_GPU_TRANS_NORMAL_PTEN(int16_t);
-DEFINE_GPU_TRANS_NORMAL_PTEN(uint8_t);
-DEFINE_GPU_TRANS_NORMAL_PTEN(int8_t);
-DEFINE_GPU_TRANS_NORMAL_PTEN(paddle::platform::complex<float>);
-DEFINE_GPU_TRANS_NORMAL_PTEN(paddle::platform::complex<double>);
 
 struct TensorSetConstantGPU {
   TensorSetConstantGPU(const paddle::platform::DeviceContext& context,
