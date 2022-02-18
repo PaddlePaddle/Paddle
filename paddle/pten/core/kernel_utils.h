@@ -14,7 +14,9 @@
 
 #pragma once
 
-#include "paddle/pten/backends/all_context.h"
+#include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
+#include "paddle/pten/backends/xpu/xpu_context.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
@@ -231,7 +233,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(double);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(int);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(int64_t);
-  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(paddle::platform::float16);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(pten::dtype::float16);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const Scalar&);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataType);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataLayout);

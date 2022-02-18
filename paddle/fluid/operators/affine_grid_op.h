@@ -16,7 +16,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -122,7 +122,7 @@ class AffineGridOpKernel : public framework::OpKernel<T> {
     GetIdxMap<DeviceContext, T>(n, h, w, align_corners, &grid, ctx);
     // output = grid * theta.T
     // TODO(wanghaoshuang): Refine batched matrix multiply
-    auto blas = math::GetBlas<DeviceContext, T>(ctx);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(ctx);
     for (int i = 0; i < n; ++i) {
       Tensor sliced_grid = grid.Slice(i, i + 1).Resize(
           {static_cast<int64_t>(h) * static_cast<int64_t>(w), 3});
@@ -165,7 +165,7 @@ class AffineGridGradOpKernel : public framework::OpKernel<T> {
     GetIdxMap<DeviceContext, T>(n, h, w, align_corners, &grid, ctx);
     // output = grid * theta.T
     // TODO(wanghaoshuang): Refine batched matrix multiply
-    auto blas = math::GetBlas<DeviceContext, T>(ctx);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(ctx);
     for (int i = 0; i < n; ++i) {
       Tensor sliced_grid = grid.Slice(i, i + 1).Resize(
           {static_cast<int64_t>(h) * static_cast<int64_t>(w), 3});

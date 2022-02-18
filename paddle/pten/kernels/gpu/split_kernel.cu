@@ -43,7 +43,7 @@ void SplitKernel(const Context& dev_ctx,
 
   std::vector<const DenseTensor*> shape_refer;
   for (size_t j = 0; j < outs.size(); ++j) {
-    dev_ctx.Alloc(outs[j]);
+    dev_ctx.template Alloc<T>(outs[j]);
     shape_refer.emplace_back(outs[j]);
   }
 

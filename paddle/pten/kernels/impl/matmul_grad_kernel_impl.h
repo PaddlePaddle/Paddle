@@ -90,7 +90,7 @@ static DenseTensor FoldHeadAndLastDims(const Context& dev_ctx,
   DenseTensor output = EmptyLike<T, Context>(dev_ctx, input);
   output.Resize({in_dims[1], in_dims[0], in_dims[2]});
   std::vector<int> axis = {1, 0, 2};
-  math::Transpose<Context, T, 3> trans;
+  funcs::Transpose<Context, T, 3> trans;
   trans(dev_ctx, input, &output, axis);
   output.Resize({in_dims[1], in_dims[0] * in_dims[2]});
   return output;
@@ -105,11 +105,9 @@ void MatMul(const Context& dev_ctx,
             DenseTensor* out,
             bool flag = false) {
   dev_ctx.template Alloc<T>(out);
-  auto blas = paddle::operators::math::GetBlas<Context, T>(dev_ctx);
-  auto mat_dim_a =
-      paddle::operators::math::CreateMatrixDescriptor(a.dims(), 0, trans_a);
-  auto mat_dim_b =
-      paddle::operators::math::CreateMatrixDescriptor(b.dims(), 0, trans_b);
+  auto blas = pten::funcs::GetBlas<Context, T>(dev_ctx);
+  auto mat_dim_a = pten::funcs::CreateMatrixDescriptor(a.dims(), 0, trans_a);
+  auto mat_dim_b = pten::funcs::CreateMatrixDescriptor(b.dims(), 0, trans_b);
   if (a.dims().size() == 3 && b.dims().size() <= 2) {
     // the transpose_X must be false, if is true, the transpose cost much time
     if (!trans_a) {
@@ -155,7 +153,7 @@ static DDim ColumnMatrixFromVector(const DDim& y_dim) {
  * If transposed, `H,W` will be swapped.
  */
 static void ReshapeTensorIntoMatrixSequence(
-    DenseTensor* x, const paddle::operators::math::MatDescriptor& descriptor) {
+    DenseTensor* x, const pten::funcs::MatDescriptor& descriptor) {
   int64_t h, w;
   h = descriptor.height_;
   w = descriptor.width_;
@@ -176,10 +174,8 @@ static void ReshapeXYOutIntoMatrixSequence(DenseTensor* x,
                                            bool trans_y) {
   auto x_dim = RowMatrixFromVector(x->dims());
   auto y_dim = ColumnMatrixFromVector(y->dims());
-  auto mat_dim_x =
-      paddle::operators::math::CreateMatrixDescriptor(x_dim, 0, trans_x);
-  auto mat_dim_y =
-      paddle::operators::math::CreateMatrixDescriptor(y_dim, 0, trans_y);
+  auto mat_dim_x = pten::funcs::CreateMatrixDescriptor(x_dim, 0, trans_x);
+  auto mat_dim_y = pten::funcs::CreateMatrixDescriptor(y_dim, 0, trans_y);
   if (mat_dim_x.batch_size_ == 0 && mat_dim_y.batch_size_ == 0) {
     out->Resize({mat_dim_x.height_, mat_dim_y.width_});
   } else {

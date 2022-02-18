@@ -29,10 +29,10 @@ void ReshapeKernel(const Context& dev_ctx,
   MetaTensor meta_out(out);
   InferMetaFromVecValue(x, shape.GetData(), &meta_out);
   if (x.initialized() && x.Holder() == out->Holder()) {
-    dev_ctx.Alloc(out);
+    dev_ctx.Alloc(out, x.dtype());
     return;
   }
-  dev_ctx.Alloc(out);
+  dev_ctx.Alloc(out, x.dtype());
   // TODO(chenweihang): the output dims are overwrite after copying,
   // here we need to use copy method that only copy data
   auto dims = out->dims();
