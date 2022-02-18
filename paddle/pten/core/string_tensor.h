@@ -47,9 +47,7 @@ class StringTensor : public TensorBase,
   /// move constructor to support move semantics.
   StringTensor(StringTensor&& other) = default;
 
-  /// \brief We do not recommend deep copy of dense tensor because of its
-  /// efficiency and complexity across devices. The operation is disabled here.
-  StringTensor(const StringTensor& other) = delete;
+  StringTensor(const StringTensor& other);
 
   /// \brief Destroy the tensor object and release exclusive resources.
   virtual ~StringTensor() = default;

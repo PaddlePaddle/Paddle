@@ -31,6 +31,10 @@ StringTensor::StringTensor(const std::shared_ptr<pten::Allocation>& holder,
                            const StringTensorMeta& meta)
     : meta_(meta), holder_(holder) {}
 
+StringTensor::StringTensor(const StringTensor& other) : meta_(other.meta()) {
+  holder_ = other.holder_;
+}
+
 int64_t StringTensor::numel() const {
   if (meta_.is_scalar) {
     return 1;
