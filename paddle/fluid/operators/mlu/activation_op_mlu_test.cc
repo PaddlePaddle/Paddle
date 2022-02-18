@@ -21,7 +21,6 @@ limitations under the License. */
 
 namespace fw = paddle::framework;
 namespace plat = paddle::platform;
-namespace math = paddle::operators::math;
 
 USE_OP(relu);
 USE_OP_DEVICE_KERNEL(relu, MLU);

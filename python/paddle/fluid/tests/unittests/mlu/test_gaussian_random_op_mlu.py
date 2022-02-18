@@ -26,6 +26,8 @@ sys.path.append('..')
 from op_test import OpTest
 import paddle
 
+paddle.enable_static()
+
 
 class TestGaussianRandomOp(OpTest):
     def setUp(self):
@@ -74,5 +76,4 @@ class TestMeanStdAreInt(TestGaussianRandomOp):
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()
