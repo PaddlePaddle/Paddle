@@ -43,14 +43,14 @@ class ProfilerTarget(Enum):
     GPU = 1
 
 
-def shedule(*,
-            closed: int,
-            ready: int,
-            record: int,
-            repeat: int=0,
-            skip_first: int=0) -> Callable:
+def make_scheduler(*,
+                   closed: int,
+                   ready: int,
+                   record: int,
+                   repeat: int=0,
+                   skip_first: int=0) -> Callable:
     '''
-  Return a shedule function, which schedule the state according to the setting.
+  Return a scheduler function, which scheduler the state according to the setting.
   The state transform confirms to:
 
   (CLOSED)  (CLOSED)    (CLOSED)  (READY)    (RECORD,last RETURN)      (CLOSED)
@@ -81,7 +81,7 @@ def shedule(*,
             else:
                 return ProfilerState.RECORD_AND_RETURN
     assert closed >= 0 and ready >= 0 and record > 0 and \
-             repeat >= 0 and skip_first >= 0, "Invalid profiler schedule arguments"
+             repeat >= 0 and skip_first >= 0, "Invalid profiler scheduler arguments"
     if ready == 0:
         warn("Profiler will record data after enabling profiler immediately, \
           some data collected at the beginning of profiling may be 'noisy' because of overhead."
@@ -124,6 +124,33 @@ def export_chrome_tracing(dir_name: str,
     return handle_fn
 
 
+def export_protobuf(dir_name: str, worker_name: Optional[str]=None) -> Callable:
+    '''
+  Return a callable, used for outputing tracing data to protobuf file.
+  The output file will be saved in directory 'dir_name', and file name will be set as worker_name.
+  if worker_name is not set, the default name is [hostname]_[pid].
+  '''
+    if not os.path.exists(dir_name):
+        try:
+            os.makedirs(dir_name, exist_ok=True)
+        except Exception:
+            raise RuntimeError(
+                "Can not create directory '{}' for saving profiling results.".
+                format(dir_name))
+
+    def handle_fn(prof: Profiler):
+        nonlocal worker_name
+        if not worker_name:
+            worker_name = "host_{}pid_{}".format(socket.gethostname(),
+                                                 str(os.getpid()))
+        now = datetime.datetime.now()
+        filename = '{}_time_{}.paddle_trace.pb'.format(
+            worker_name, now.strftime('%Y_%m_%d_%H_%M_%S_%f'))
+        prof.export(os.path.join(dir_name, filename), "pb")
+
+    return handle_fn
+
+
 def _get_supported_targets() -> Iterable[ProfilerTarget]:
     '''
   Get the current supported profiler target in the system.
@@ -140,7 +167,7 @@ class Profiler:
     targets (iterable): list of tracing targets, currently supported values:
       ``paddle.profiler.ProfilerTarget.CPU``,
       ``paddle.profiler.ProfilerTarget.GPU``.
-    schedule (callable or tuple): If it is a callable object, it takes a step number as parameter and return the corresponding ``ProfilerState``. 
+    scheduler (callable or tuple): If it is a callable object, it takes a step number as parameter and return the corresponding ``ProfilerState``. 
         If not provided, the default sheduler will keep tracing until the profiler exits. If it is a tuple, it has two values start_batch and end_batch,
         which means profiling range [start_batch, end_batch).
     on_trace_ready (callable): callable object, takes the Profiler object as parameter, which provides a way for users to do post-processing.
@@ -151,7 +178,7 @@ class Profiler:
     import paddle.profiler as profiler
     with profiler.Profiler(targets=[profiler.ProfilerTarget.CPU,
                                     profiler.ProfilerTarget.GPU],
-                           schedule = (2, 5),
+                           scheduler = (2, 5),
                            on_trace_ready = profiler.export_chrome_tracing('./log')
                           ) as p:
         for iter in range(N):
@@ -162,7 +189,7 @@ class Profiler:
     import paddle.profiler as profiler
     with profiler.Profiler(targets=[profiler.ProfilerTarget.CPU,
                                     profiler.ProfilerTarget.GPU],
-                           schedule = profiler.shedule(closed=1, ready=1, record=3, repeat=3),
+                           scheduler = profiler.make_scheduler(closed=1, ready=1, record=3, repeat=3),
                            on_trace_ready = profiler.export_chrome_tracing('./log')
                           ) as p:
         for iter in range(N):
@@ -183,7 +210,7 @@ class Profiler:
             self,
             *,
             targets: Optional[Iterable[ProfilerTarget]]=None,
-            schedule: Union[Callable[[int], ProfilerState], tuple, None]=None,
+            scheduler: Union[Callable[[int], ProfilerState], tuple, None]=None,
             on_trace_ready: Optional[Callable[..., Any]]=None):
         supported_targets = _get_supported_targets()
         if targets:
@@ -202,21 +229,26 @@ class Profiler:
         if ProfilerTarget.GPU in self.targets:
             profileoption.trace_switch |= (1 << 1)
         self.profiler = _Profiler.Create(profileoption)
-        if callable(schedule):
-            self.schedule = schedule
-        elif isinstance(shedule, (tuple, list)):
-            assert len(shedule) == 2 and shedule[1] > shedule[0]
-            start_batch, end_batch = shedule
+        if callable(scheduler):
+            self.scheduler = scheduler
+        elif isinstance(scheduler, (tuple, list)):
+            assert len(scheduler) == 2 and scheduler[1] > scheduler[0]
+            start_batch, end_batch = scheduler
+            start_batch = max(start_batch, 0)
             if start_batch >= 1:
-                self.schedule = shedule(
+                self.scheduler = make_scheduler(
                     closed=max(start_batch - 1, 0),
                     ready=1,
                     record=(end_batch - start_batch),
                     repeat=1)
-            self.schedule = shedule(
-                closed=0, ready=0, record=(end_batch - start_batch), repeat=1)
+            else:
+                self.scheduler = make_scheduler(
+                    closed=0,
+                    ready=0,
+                    record=(end_batch - start_batch),
+                    repeat=1)
         else:
-            self.schedule = _default_state_scheduler
+            self.scheduler = _default_state_scheduler
 
         if on_trace_ready == None:
             self.on_trace_ready = export_chrome_tracing('./profiler_log/')
@@ -224,7 +256,7 @@ class Profiler:
             self.on_trace_ready = on_trace_ready
         self.step_num = 0
         self.previous_state = ProfilerState.CLOSED
-        self.current_state = self.schedule(self.step_num)
+        self.current_state = self.scheduler(self.step_num)
         self.record_event = None
         self.profiler_result = None
 
@@ -277,7 +309,7 @@ class Profiler:
             self.record_event = None
         self.previous_state = self.current_state
         self.step_num += 1
-        self.current_state = self.schedule(self.step_num)
+        self.current_state = self.scheduler(self.step_num)
         self._trigger_action()
         self.record_event = Record_Event(
             name="ProfileStep#{}".format(self.step_num),

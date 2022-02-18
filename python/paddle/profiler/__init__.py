@@ -13,12 +13,12 @@
 # limitations under the License.
 
 from .profiler import ProfilerState, ProfilerTarget
-from .profiler import shedule, export_chrome_tracing
+from .profiler import make_scheduler, export_chrome_tracing, export_protobuf
 from .profiler import Profiler
 from .profiler import TracerEventType
 from .utils import Record_Event
 
 __all__ = [
-    'ProfilerState', 'ProfilerTarget', 'TracerEventType', 'shedule',
-    'export_chrome_tracing', 'Profiler', 'Record_Event'
+    'ProfilerState', 'ProfilerTarget', 'TracerEventType', 'make_scheduler',
+    'export_chrome_tracing', 'export_protobuf', 'Profiler', 'Record_Event'
 ]
