@@ -32,11 +32,12 @@
 
 namespace egr {
 
-egr::EagerTensor scale(const egr::EagerTensor& x, float scale, float bias,
-                       bool bias_after_scale, bool trace_backward) {
+paddle::experimental::Tensor scale(const paddle::experimental::Tensor& x,
+                                   float scale, float bias,
+                                   bool bias_after_scale, bool trace_backward) {
   // 1. Run Forward
   // 1.1 Create outputs
-  egr::EagerTensor out;
+  paddle::experimental::Tensor out;
   // 1.2 Need by original op, we assemble ins, outs, attrs here
 
   // 1.3 Call forward C++ api
@@ -85,9 +86,9 @@ egr::EagerTensor scale(const egr::EagerTensor& x, float scale, float bias,
     scale_node->SetTensorWrappers_X({x});
 
     // Set Grad out rank as same as fwd input and set stop gradient to bwd
-    scale_node->SetGradOutMeta(*p_autograd_in, /*slot id*/ 0);
+    scale_node->SetGradOutMeta(p_autograd_in, /*slot id*/ 0);
     // Set Grad out rank as same as fwd input and set stop gradient to bwd
-    scale_node->SetGradInMeta(*p_autograd_out, /*slot id*/ 0);
+    scale_node->SetGradInMeta(p_autograd_out, /*slot id*/ 0);
 
     // Set History for output set current Grad Node for
     EagerUtils::SetHistory(p_autograd_out, scale_node);

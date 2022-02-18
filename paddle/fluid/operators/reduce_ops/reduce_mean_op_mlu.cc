@@ -47,9 +47,9 @@ class ReduceMeanMLUKernel : public framework::OpKernel<T> {
     }
 
     MLUCnnlTensorDesc input_desc(*input, CNNL_LAYOUT_ARRAY,
-                                 ToCnnlDataType(input->type()));
+                                 ToCnnlDataType(input->dtype()));
     MLUCnnlTensorDesc output_desc(*output, CNNL_LAYOUT_ARRAY,
-                                  ToCnnlDataType(output->type()));
+                                  ToCnnlDataType(output->dtype()));
 
     MLUCnnlReduceDesc reduction_desc(
         reduce_dims, CNNL_REDUCE_AVG, ToCnnlDataType<T>(),
@@ -89,7 +89,7 @@ class ReduceMeanGradMLUKernel : public framework::OpKernel<T> {
       reduce_numel *= input_dims[d];
     }
 
-    Tensor tmp_output_grad(output_grad->type());
+    Tensor tmp_output_grad(output_grad->dtype());
     auto tmp_output_dims = input_dims;
     for (auto d : reduce_dims) {
       tmp_output_dims[d] = 1;
@@ -98,9 +98,9 @@ class ReduceMeanGradMLUKernel : public framework::OpKernel<T> {
     tmp_output_grad.Resize(framework::make_ddim(tmp_output_dims));
 
     MLUCnnlTensorDesc output_grad_desc(tmp_output_grad, CNNL_LAYOUT_ARRAY,
-                                       ToCnnlDataType(tmp_output_grad.type()));
+                                       ToCnnlDataType(tmp_output_grad.dtype()));
     MLUCnnlTensorDesc input_grad_desc(*input_grad, CNNL_LAYOUT_ARRAY,
-                                      ToCnnlDataType(input_grad->type()));
+                                      ToCnnlDataType(input_grad->dtype()));
 
     auto value = static_cast<T>(1.0 / static_cast<float>(reduce_numel));
     MLUCnnl::Fill(context, value, input_grad_desc.get(),

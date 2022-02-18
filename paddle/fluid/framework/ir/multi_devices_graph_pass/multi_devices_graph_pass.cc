@@ -33,7 +33,7 @@
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 #if defined(PADDLE_WITH_DGC)
 #include "paddle/fluid/framework/details/sparse_all_reduce_op_handle.h"

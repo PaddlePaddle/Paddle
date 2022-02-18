@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/operators/layer_norm_kernel.cu.h"
 #include "paddle/fluid/operators/layer_norm_op.h"
 #include "paddle/fluid/platform/float16.h"
@@ -67,18 +68,22 @@ class LayerNormKernel<platform::CUDADeviceContext, T>
     auto *void_scale_data = (scale == nullptr ? nullptr : scale->data());
     auto *void_bias_data = (bias == nullptr ? nullptr : bias->data());
 
-    framework::proto::VarType::Type x_dtype = x->type();
+    framework::proto::VarType::Type x_dtype =
+        framework::TransToProtoVarType(x->dtype());
     framework::proto::VarType::Type scale_bias_dtype;
     if (void_scale_data != nullptr) {
-      scale_bias_dtype = scale->type();
+      scale_bias_dtype = framework::TransToProtoVarType(scale->dtype());
       if (void_bias_data != nullptr) {
-        PADDLE_ENFORCE_EQ(scale_bias_dtype, bias->type(),
+        PADDLE_ENFORCE_EQ(scale_bias_dtype,
+                          framework::TransToProtoVarType(bias->dtype()),
                           platform::errors::InvalidArgument(
                               "Thie Scale and Bias of layer_norm op "
                               "should have the same data type."));
       }
     } else {
-      scale_bias_dtype = (void_bias_data != nullptr ? bias->type() : x_dtype);
+      scale_bias_dtype = (void_bias_data != nullptr
+                              ? framework::TransToProtoVarType(bias->dtype())
+                              : x_dtype);
     }
 
     bool is_scale_bias_same_dtype_with_x = x_dtype == scale_bias_dtype;
@@ -112,11 +117,49 @@ class LayerNormKernel<platform::CUDADeviceContext, T>
     }                                                                      \
   } while (0)
 
-    if (is_scale_bias_same_dtype_with_x) {
-      PADDLE_LAUNCH_LAYERNORM_FWD(T, true);
-    } else {
-      PADDLE_LAUNCH_LAYERNORM_FWD(U, false);
+#ifdef PADDLE_WITH_CUDA
+    bool can_call_1024_kernel = false;
+    if (feature_size == 1024 && scale != nullptr && bias != nullptr) {
+      can_call_1024_kernel = true;
     }
+    if (can_call_1024_kernel) {
+      const int WARPS_M = 4;
+      const int WARPS_N = 1;
+      const int THREADS_PER_WARP = 32;
+      const int BYTES_PER_LDG = 16;
+      const int VecSize = BYTES_PER_LDG / sizeof(T);
+
+      const int THREADS_PER_CTA = WARPS_N * THREADS_PER_WARP * WARPS_M;
+      const int ROWS_PER_CTA = WARPS_M;
+
+      const int grid = static_cast<int>(
+          std::ceil(batch_size / static_cast<float>(ROWS_PER_CTA)));
+      if (is_scale_bias_same_dtype_with_x) {
+        ln_fwd_1024_kernel<T, U, T, VecSize, WARPS_M, WARPS_N,
+                           BYTES_PER_LDG><<<grid, THREADS_PER_CTA, 0, stream>>>(
+            batch_size, feature_size, epsilon, x_data,
+            static_cast<const T *>(void_scale_data),
+            static_cast<const T *>(void_bias_data), mean_data, var_data,
+            y_data);
+      } else {
+        ln_fwd_1024_kernel<T, U, U, VecSize, WARPS_M, WARPS_N,
+                           BYTES_PER_LDG><<<grid, THREADS_PER_CTA, 0, stream>>>(
+            batch_size, feature_size, epsilon, x_data,
+            static_cast<const U *>(void_scale_data),
+            static_cast<const U *>(void_bias_data), mean_data, var_data,
+            y_data);
+      }
+    } else {
+#endif
+      if (is_scale_bias_same_dtype_with_x) {
+        PADDLE_LAUNCH_LAYERNORM_FWD(T, true);
+      } else {
+        PADDLE_LAUNCH_LAYERNORM_FWD(U, false);
+      }
+#ifdef PADDLE_WITH_CUDA
+    }
+#endif
+
 #undef PADDLE_LAUNCH_LAYERNORM_FWD
   }
 };
@@ -155,16 +198,17 @@ class LayerNormGradKernel<platform::CUDADeviceContext, T>
     auto *d_x_data =
         (d_x == nullptr ? nullptr : d_x->mutable_data<T>(ctx.GetPlace()));
 
-    framework::proto::VarType::Type x_dtype = x->type();
+    framework::proto::VarType::Type x_dtype =
+        framework::TransToProtoVarType(x->dtype());
     framework::proto::VarType::Type scale_bias_dtype;
     if (scale != nullptr) {
-      scale_bias_dtype = scale->type();
+      scale_bias_dtype = framework::TransToProtoVarType(scale->dtype());
     } else {
       // FIXME(zengjinle): do not find a better way to get the right
       // data type of the d_scale and d_bias if scale == nullptr.
       auto *bias = ctx.Input<Tensor>("Bias");
       if (bias != nullptr) {
-        scale_bias_dtype = bias->saved_type();
+        scale_bias_dtype = framework::TransToProtoVarType(bias->dtype());
       } else {
         scale_bias_dtype = x_dtype;
       }

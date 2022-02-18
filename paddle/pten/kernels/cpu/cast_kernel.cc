@@ -36,7 +36,7 @@ void CastKernelImpl(const CPUContext& dev_ctx,
   auto numel = x.numel();
   auto* in_end = in_begin + numel;
 
-  auto* out_begin = out->mutable_data<OutT>();
+  auto* out_begin = dev_ctx.Alloc<OutT>(out);
 
   paddle::platform::Transform<CPUContext> trans;
   trans(dev_ctx,
@@ -69,9 +69,9 @@ PT_REGISTER_KERNEL(cast,
                    int16_t,
                    bool,
                    uint8_t,
-                   paddle::platform::float16,
-                   paddle::platform::bfloat16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {
+                   pten::dtype::float16,
+                   pten::dtype::bfloat16,
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }

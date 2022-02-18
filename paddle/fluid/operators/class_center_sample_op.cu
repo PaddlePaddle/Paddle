@@ -338,8 +338,9 @@ class ClassCenterSampleCUDAKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
           num_classes_per_device_ptr, num_classes_per_device_ptr,
           num_classes_per_device.numel(),
-          platform::ToNCCLDataType(num_classes_per_device.type()), ncclSum,
-          comm->comm(), calcu_stream));
+          platform::ToNCCLDataType(
+              framework::TransToProtoVarType(num_classes_per_device.dtype())),
+          ncclSum, comm->comm(), calcu_stream));
     }
 #endif
 

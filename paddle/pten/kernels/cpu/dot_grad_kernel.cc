@@ -18,7 +18,7 @@
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-#include "paddle/fluid/platform/complex.h"
+#include "paddle/pten/common/complex.h"
 
 PT_REGISTER_KERNEL(dot_grad,
                    CPU,
@@ -28,5 +28,5 @@ PT_REGISTER_KERNEL(dot_grad,
                    double,
                    int,
                    int64_t,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}

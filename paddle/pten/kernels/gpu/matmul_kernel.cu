@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
 
-#include "paddle/fluid/platform/complex.h"
+#include "paddle/pten/common/complex.h"
 #include "paddle/pten/kernels/impl/matmul_kernel_impl.h"
 
 PT_REGISTER_KERNEL(matmul,
@@ -26,6 +26,7 @@ PT_REGISTER_KERNEL(matmul,
                    pten::MatmulKernel,
                    float,
                    double,
-                   paddle::platform::float16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::float16,
+                   pten::dtype::bfloat16,
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}

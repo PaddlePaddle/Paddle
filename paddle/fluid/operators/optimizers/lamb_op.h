@@ -19,11 +19,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/buffer.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/operators/math/algorithm.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/operators/math/squared_l2_norm.h"
-#include "paddle/fluid/platform/eigen_ext.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/algorithm.h"
+#include "paddle/pten/kernels/funcs/eigen/extensions.h"
 
 namespace paddle {
 namespace operators {
@@ -233,7 +233,7 @@ struct SparseLambMomentREGUpdateFunctor {
   inline HOSTDEVICE void operator()(size_t i) const {
     if (skip_update_ && *skip_update_) return;
     auto row_idx =
-        math::BinarySearch<int64_t>(rows_, row_count_, i / row_numel_);
+        pten::funcs::BinarySearch<int64_t>(rows_, row_count_, i / row_numel_);
     T g = row_idx >= 0 ? grad_[row_idx * row_numel_ + i % row_numel_]
                        : static_cast<T>(0);
     update(i, g);
@@ -312,7 +312,7 @@ struct SparseLambMomentMENUpdateFunctor {
   inline HOSTDEVICE void operator()(size_t i) const {
     if (skip_update_ && *skip_update_) return;
     auto row_idx =
-        math::BinarySearch<int64_t>(rows_, row_count_, i / row_numel_);
+        pten::funcs::BinarySearch<int64_t>(rows_, row_count_, i / row_numel_);
     T g = row_idx >= 0 ? grad_[row_idx * row_numel_ + i % row_numel_]
                        : static_cast<T>(0);
     update(i, g);
@@ -552,7 +552,7 @@ class LambOpKernel : public framework::OpKernel<T> {
             trust_ratio_div_ptr, skip_update_flag);
         for_range(moment_update_functor);
       }
-    } else if (grad_var->IsType<framework::SelectedRows>()) {
+    } else if (grad_var->IsType<pten::SelectedRows>()) {
       PADDLE_ENFORCE_EQ(IsMultiPrecision, false,
                         platform::errors::Unimplemented(
                             "SelectedRows gradient is not supported when "
@@ -562,7 +562,7 @@ class LambOpKernel : public framework::OpKernel<T> {
                         platform::errors::Unimplemented(
                             "SelectedRows gradient is not supported when "
                             "multi_precision=True."));
-      auto& grad = GET_DATA_SAFELY(ctx.Input<framework::SelectedRows>("Grad"),
+      auto& grad = GET_DATA_SAFELY(ctx.Input<pten::SelectedRows>("Grad"),
                                    "Input", "Grad", "Lamb");
       if (grad.rows().size() == 0) {
         VLOG(3) << "grad row size is 0!!";
@@ -578,8 +578,8 @@ class LambOpKernel : public framework::OpKernel<T> {
         }
       }
 
-      framework::SelectedRows tmp_grad_merge;
-      const framework::SelectedRows* grad_merge_ptr;
+      pten::SelectedRows tmp_grad_merge;
+      const pten::SelectedRows* grad_merge_ptr;
       if (is_strict_sorted) {
         grad_merge_ptr = &grad;
       } else {

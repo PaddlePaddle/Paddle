@@ -14,27 +14,14 @@ limitations under the License. */
 #include <nvjpeg.h>
 #include <mutex>  // NOLINT
 
-#include "paddle/fluid/platform/dynload/dynamic_loader.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/pten/backends/dynload/nvjpeg.h"
 
 namespace paddle {
 namespace platform {
 namespace dynload {
-extern std::once_flag nvjpeg_dso_flag;
-extern void *nvjpeg_dso_handle;
 
-#define DECLARE_DYNAMIC_LOAD_NVJPEG_WRAP(__name)                             \
-  struct DynLoad__##__name {                                                 \
-    template <typename... Args>                                              \
-    nvjpegStatus_t operator()(Args... args) {                                \
-      using nvjpegFunc = decltype(&::__name);                                \
-      std::call_once(nvjpeg_dso_flag, []() {                                 \
-        nvjpeg_dso_handle = paddle::platform::dynload::GetNvjpegDsoHandle(); \
-      });                                                                    \
-      static void *p_##__name = dlsym(nvjpeg_dso_handle, #__name);           \
-      return reinterpret_cast<nvjpegFunc>(p_##__name)(args...);              \
-    }                                                                        \
-  };                                                                         \
+#define PLATFORM_DECLARE_DYNAMIC_LOAD_NVJPEG_WRAP(__name)     \
+  using DynLoad__##__name = pten::dynload::DynLoad__##__name; \
   extern DynLoad__##__name __name
 
 #define NVJPEG_RAND_ROUTINE_EACH(__macro) \
@@ -44,7 +31,7 @@ extern void *nvjpeg_dso_handle;
   __macro(nvjpegJpegStateDestroy);        \
   __macro(nvjpegDecode);
 
-NVJPEG_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_NVJPEG_WRAP);
+NVJPEG_RAND_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_NVJPEG_WRAP);
 
 }  // namespace dynload
 }  // namespace platform

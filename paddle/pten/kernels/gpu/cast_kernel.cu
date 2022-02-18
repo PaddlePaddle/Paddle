@@ -21,10 +21,10 @@
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/aligned_vector.h"
-#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device/gpu/gpu_helper.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/common/bfloat16.h"
+#include "paddle/pten/common/float16.h"
 
 namespace pten {
 
@@ -43,10 +43,8 @@ void CastCUDAKernelImpl(const GPUContext& dev_ctx,
   std::vector<DenseTensor*> outputs;
   inputs.emplace_back(&x);
   outputs.emplace_back(out);
-  out->mutable_data<OutT>();
-  pten::funcs::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary,
-                                                   InT,
-                                                   OutT>(
+  dev_ctx.Alloc<OutT>(out);
+  pten::funcs::LaunchSameDimsElementwiseCudaKernel<OutT>(
       dev_ctx, inputs, &outputs, CastFuctor<InT, OutT>());
 }
 
@@ -74,16 +72,16 @@ void CastKernel(const Context& dev_ctx,
                      int16_t,                           \
                      bool,                              \
                      uint8_t,                           \
-                     paddle::platform::float16,         \
-                     paddle::platform::complex<float>,  \
-                     paddle::platform::complex<double>, \
+                     pten::dtype::float16,              \
+                     pten::dtype::complex<float>,       \
+                     pten::dtype::complex<double>,      \
                      ##__VA_ARGS__) {                   \
     kernel->OutputAt(0).SetDataType(                    \
         paddle::experimental::DataType::UNDEFINED);     \
   }
 
 #if !defined(PADDLE_WITH_HIP)
-PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast, paddle::platform::bfloat16)
+PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast, pten::dtype::bfloat16)
 #else
 PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast)
 #endif

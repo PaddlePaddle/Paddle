@@ -11,7 +11,9 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_PSCORE)
 #include <float.h>
-#include "paddle/fluid/distributed/service/heter_server.h"
+
+#include "paddle/fluid/distributed/ps/service/heter_server.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/platform/cpu_helper.h"
@@ -35,21 +37,23 @@ void SetMicroId(paddle::framework::Scope* scope,
   auto* tensor = var->GetMutable<framework::LoDTensor>();
   std::vector<int> dims{1};
   tensor->Resize(framework::make_ddim(dims));
-  void* tensor_data =
-      tensor->mutable_data(place, framework::proto::VarType::FP32);
+  void* tensor_data = tensor->mutable_data(
+      place, framework::TransToPtenDataType(framework::proto::VarType::FP32));
   if (platform::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
     std::vector<char> temp;
-    temp.resize(tensor->numel() * framework::SizeOfType(tensor->type()));
+    temp.resize(tensor->numel() * framework::DataTypeSize(tensor->dtype()));
     char* temp_ptr = temp.data();
     float* temp_ptr_float = reinterpret_cast<float*>(temp_ptr);
     temp_ptr_float[0] = micro_id;
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(*dev_ctx).stream();
-    memory::Copy(place, tensor_data, platform::CPUPlace(),
-                 reinterpret_cast<void*>(temp_ptr),
-                 tensor->numel() * framework::SizeOfType(tensor->type()),
-                 stream);
+    memory::Copy(
+        place, tensor_data, platform::CPUPlace(),
+        reinterpret_cast<void*>(temp_ptr),
+        tensor->numel() * framework::SizeOfType(
+                              framework::TransToProtoVarType(tensor->dtype())),
+        stream);
 #endif
   } else {
     float* temp_ptr = reinterpret_cast<float*>(tensor_data);

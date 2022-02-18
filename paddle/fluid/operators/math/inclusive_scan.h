@@ -26,9 +26,9 @@ namespace cub = hipcub;
 #include <thrust/iterator/reverse_iterator.h>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/complex_functors.h"
 
 namespace paddle {
 namespace operators {
@@ -115,7 +115,7 @@ static __global__ void InclusiveScanInnerDimCUDAKernel(const T *x, T *y,
                                                        size_t num_rows,
                                                        size_t row_size, T init,
                                                        BinaryOp op) {
-  using RealT = math::Real<T>;
+  using RealT = pten::funcs::Real<T>;
   constexpr auto kSharedBufferSize =
       framework::IsComplex<T>::value ? 4 * kThreadNumX : 2 * kThreadNumX;
   __shared__ RealT sbuf[kThreadNumY][kSharedBufferSize];
@@ -194,7 +194,7 @@ static void InclusiveScanInnerDim(const T *x, T *y, size_t outer_dim,
   constexpr size_t kThreadNumY = 32;
 
   size_t grid_dim = (outer_dim + kThreadNumY - 1) / kThreadNumY;
-  grid_dim = std::min<size_t>(grid_dim, dev_ctx.GetCUDAMaxGridDimSize().x);
+  grid_dim = std::min<size_t>(grid_dim, dev_ctx.GetCUDAMaxGridDimSize()[0]);
   dim3 thread_dims(kThreadNumX, kThreadNumY);
   if (reverse) {
     InclusiveScanInnerDimCUDAKernel<

@@ -25,19 +25,19 @@
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/complex.h"
+#include "paddle/pten/common/bfloat16.h"
+#include "paddle/pten/common/complex.h"
 
 namespace pten {
 
 #define DEFINE_CPU_ELEMENTWISE_OP(name)                                     \
   template <typename T, typename Context>                                   \
-  void name##Kernel(const Context& dev_ctx,                                 \
-                    const DenseTensor& x,                                   \
-                    const DenseTensor& y,                                   \
-                    int axis,                                               \
-                    DenseTensor* out) {                                     \
-    out->mutable_data<T>();                                                 \
+  void name##RawKernel(const Context& dev_ctx,                              \
+                       const DenseTensor& x,                                \
+                       const DenseTensor& y,                                \
+                       int axis,                                            \
+                       DenseTensor* out) {                                  \
+    dev_ctx.template Alloc<T>(out);                                         \
     if (x.dims() == y.dims()) {                                             \
       SameDimsElementwiseCompute<SameDims##name##Functor<CPUContext, T>>()( \
           dev_ctx, x, y, out);                                              \
@@ -55,25 +55,37 @@ namespace pten {
   }
 
 template <typename T, typename Context>
-void MeanKernel(const Context& dev_ctx,
-                const DenseTensor& x,
-                const std::vector<int64_t>& dims,
-                bool keep_dim,
-                bool reduce_all,
-                DenseTensor* out) {
+void MeanRawKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const std::vector<int64_t>& dims,
+                   bool keep_dim,
+                   bool reduce_all,
+                   DenseTensor* out) {
   auto out_dtype = x.dtype();
   pten::Reduce<CPUContext, T, pten::funcs::MeanFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
 template <typename T, typename Context>
-void DivideKernel(const Context& dev_ctx,
+void SumRawKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  const DenseTensor& y,
-                  int axis,
+                  const std::vector<int64_t>& dims,
+                  bool keep_dim,
+                  bool reduce_all,
+                  DataType out_dtype,
                   DenseTensor* out) {
+  pten::Reduce<CPUContext, T, pten::funcs::SumFunctor>(
+      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
+}
+
+template <typename T, typename Context>
+void DivideRawKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     int axis,
+                     DenseTensor* out) {
   // allocate memory for out
-  out->mutable_data<T>();
+  dev_ctx.template Alloc<T>(out);
   if (x.dims() == y.dims() && std::is_floating_point<T>::value) {
     SameDimsElementwiseCompute<SameDimsDivideFunctor<CPUContext, T>>()(
         dev_ctx, x, y, out);
@@ -90,18 +102,6 @@ void DivideKernel(const Context& dev_ctx,
   }
 }
 
-template <typename T, typename Context>
-void SumKernel(const Context& dev_ctx,
-               const DenseTensor& x,
-               const std::vector<int64_t>& dims,
-               bool keep_dim,
-               bool reduce_all,
-               DataType out_dtype,
-               DenseTensor* out) {
-  pten::Reduce<CPUContext, T, pten::funcs::SumFunctor>(
-      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
-}
-
 // Create the definition of Add
 DEFINE_CPU_ELEMENTWISE_OP(Add)
 
@@ -113,47 +113,45 @@ DEFINE_CPU_ELEMENTWISE_OP(Multiply)
 
 }  // namespace pten
 
-using complex64 = ::paddle::platform::complex<float>;
-using complex128 = ::paddle::platform::complex<double>;
+using complex64 = ::pten::dtype::complex<float>;
+using complex128 = ::pten::dtype::complex<double>;
 
 // NOTE(chenweihang): using bfloat16 will cause redefine with xpu bfloat16
-// using bfloat16 = ::paddle::platform::bfloat16;
-PT_REGISTER_KERNEL(
-    mean, CPU, ALL_LAYOUT, pten::MeanKernel, float, double, bool) {}
-PT_REGISTER_KERNEL(add,
+// using bfloat16 = ::pten::dtype::bfloat16;
+PT_REGISTER_KERNEL(add_raw,
                    CPU,
                    ALL_LAYOUT,
-                   pten::AddKernel,
+                   pten::AddRawKernel,
                    float,
                    double,
                    int,
                    int64_t,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL(subtract,
+PT_REGISTER_KERNEL(subtract_raw,
                    CPU,
                    ALL_LAYOUT,
-                   pten::SubtractKernel,
+                   pten::SubtractRawKernel,
                    float,
                    double,
                    int,
                    int64_t,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL(divide,
+PT_REGISTER_KERNEL(divide_raw,
                    CPU,
                    ALL_LAYOUT,
-                   pten::DivideKernel,
+                   pten::DivideRawKernel,
                    float,
                    double,
                    int,
                    int64_t,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL(multiply,
+PT_REGISTER_KERNEL(multiply_raw,
                    CPU,
                    ALL_LAYOUT,
-                   pten::MultiplyKernel,
+                   pten::MultiplyRawKernel,
                    float,
                    double,
                    int,
@@ -161,17 +159,19 @@ PT_REGISTER_KERNEL(multiply,
                    bool,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL(sum,
+PT_REGISTER_KERNEL(sum_raw,
                    CPU,
                    ALL_LAYOUT,
-                   pten::SumKernel,
+                   pten::SumRawKernel,
                    bool,
                    float,
                    double,
-                   paddle::platform::float16,
+                   pten::dtype::float16,
                    int,
                    int64_t,
                    complex64,
                    complex128) {
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }
+PT_REGISTER_KERNEL(
+    mean_raw, CPU, ALL_LAYOUT, pten::MeanRawKernel, float, double, bool) {}

@@ -42,12 +42,12 @@ class DenseTensor;
 
 namespace pten {
 class TensorBase;
+namespace framework {
+class DDim;
+}  // namespace framework
 }  // namespace pten
 
 namespace paddle {
-namespace framework {
-class DDim;
-}
 
 namespace experimental {
 
@@ -131,6 +131,14 @@ class PADDLE_API Tensor final {
   Tensor(const PlaceType& place, const std::vector<int64_t>& shape);
 
   /**
+   * @brief Construct a new Tensor object by a TensorBase pointer and name
+   *
+   * @param tensor_impl
+   */
+  Tensor(std::shared_ptr<pten::TensorBase> tensor_impl,
+         const std::string& name);
+
+  /**
    * @brief Construct a new Tensor object with name
    *
    * @note Used to adapt original execution mechanism and debug analysis
@@ -159,9 +167,9 @@ class PADDLE_API Tensor final {
   /**
    * @brief Return the dimensions of Tensor.
    *
-   * @return paddle::framework::DDim
+   * @return pten::framework::DDim
    */
-  paddle::framework::DDim dims() const;
+  pten::framework::DDim dims() const;
 
   /**
    * @brief Return the shape (dimensions) of Tensor.
@@ -213,6 +221,14 @@ class PADDLE_API Tensor final {
    * @return false
    */
   bool is_dense_tensor() const;
+
+  /**
+   * @brief Determine whether tensor is SelectedRows
+   *
+   * @return true
+   * @return false
+   */
+  bool is_selected_rows() const;
 
   /* Part 3: Device and Backend methods */
 
@@ -505,6 +521,12 @@ class PADDLE_API Tensor final {
    * in the development of new dygraph. It may be removed in the future.
    */
   std::string name_{""};
+
+  /**
+   * Place type: Return the expected memory location if the Tensor is
+   * uninitialized.
+   */
+  PlaceType place_{PlaceType::kUNK};
 };
 
 }  // namespace experimental

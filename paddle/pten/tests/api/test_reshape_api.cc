@@ -25,7 +25,7 @@ namespace paddle {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 
 // TODO(chenweihang): Remove this test after the API is used in the dygraph
 TEST(API, reshape) {
@@ -35,9 +35,10 @@ TEST(API, reshape) {
   auto dense_x = std::make_shared<pten::DenseTensor>(
       alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            framework::make_ddim({3, 2, 2, 3}),
+                            pten::framework::make_ddim({3, 2, 2, 3}),
                             pten::DataLayout::NCHW));
-  auto* dense_x_data = dense_x->mutable_data<float>();
+  auto* dense_x_data =
+      dense_x->mutable_data<float>(paddle::platform::CPUPlace());
 
   for (int i = 0; i < dense_x->numel(); i++) {
     dense_x_data[i] = i;
@@ -66,17 +67,37 @@ TEST(API, reshape) {
   ASSERT_EQ(value_equal, true);
 }
 
+TEST(API, reshape_) {
+  // 1. create tensor
+  auto x = paddle::experimental::full(
+      {3, 2, 2, 3}, 1.0, experimental::DataType::FLOAT32);
+
+  // 2. test API
+  paddle::experimental::Tensor out = paddle::experimental::reshape_(x, {12, 3});
+  // 3. check result
+  std::vector<int64_t> expect_shape = {12, 3};
+  ASSERT_EQ(out.shape()[0], expect_shape[0]);
+  ASSERT_EQ(out.shape()[1], expect_shape[1]);
+  ASSERT_EQ(out.numel(), 36);
+  ASSERT_EQ(out.is_cpu(), true);
+  ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
+  ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(out.initialized(), true);
+  ASSERT_EQ(out.data<float>(), x.data<float>());
+}
+
 TEST(Tensor, old_reshape) {
   paddle::experimental::Tensor x(paddle::PlaceType::kCPU);
   x.reshape({3, 4});
+  x.mutable_data<float>(paddle::PlaceType::kCPU);
 
   ASSERT_EQ(x.shape()[0], 3);
   ASSERT_EQ(x.shape()[1], 4);
   ASSERT_EQ(x.numel(), 12);
   ASSERT_EQ(x.is_cpu(), true);
-  ASSERT_EQ(x.type(), pten::DataType::UNDEFINED);
+  ASSERT_EQ(x.type(), pten::DataType::FLOAT32);
   ASSERT_EQ(x.layout(), pten::DataLayout::NCHW);
-  ASSERT_EQ(x.initialized(), false);
+  ASSERT_EQ(x.initialized(), true);
 }
 
 }  // namespace tests

@@ -20,6 +20,7 @@ import paddle.fluid.core as core
 from paddle.utils import unique_name
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import Program, OpProtoHolder
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
 import paddle.fluid.layers.utils as utils
 from ..collective import _get_global_env
 from .dist_context import DistributedContext
@@ -279,7 +280,7 @@ def _is_overlapped(shape_x, shape_y):
     return overlapped
 
 
-def _need_reshard(dist_tensor, dist_op):
+def _need_reshard(dist_tensor, dist_op, op_input=True):
     """Judge the tensor whether needs to be resharded."""
     is_reshard = False
     tensor_dist_attr = dist_tensor.dist_attr
@@ -289,13 +290,31 @@ def _need_reshard(dist_tensor, dist_op):
     op_dist_attr = dist_op.dist_attr
     op_input_dims_mapping = op_dist_attr.get_input_dims_mapping(tensor_name)
     op_process_mesh = op_dist_attr.process_mesh
-    if all(
-            map(lambda x: x is not None, [
-                tensor_dims_mapping, tensor_process_mesh, op_input_dims_mapping,
-                op_process_mesh
-            ])):
-        if tensor_dims_mapping != op_input_dims_mapping or tensor_process_mesh != op_process_mesh:
-            is_reshard = True
+    if op_input:
+        op_input_dims_mapping = op_dist_attr.get_input_dims_mapping(tensor_name)
+        op_process_mesh = op_dist_attr.process_mesh
+        if all(
+                map(lambda x: x is not None, [
+                    tensor_dims_mapping, tensor_process_mesh,
+                    op_input_dims_mapping, op_process_mesh
+                ])):
+            if tensor_dims_mapping != op_input_dims_mapping or tensor_process_mesh != op_process_mesh:
+                is_reshard = True
+    else:
+        op_output_dims_mapping = op_dist_attr.get_output_dims_mapping(
+            tensor_name)
+        op_process_mesh = op_dist_attr.process_mesh
+        if all(
+                map(lambda x: x is not None, [
+                    tensor_dims_mapping, tensor_process_mesh,
+                    op_output_dims_mapping, op_process_mesh
+                ])):
+            if tensor_process_mesh != op_process_mesh:
+                is_reshard = True
+            if tensor_dims_mapping != op_output_dims_mapping:
+                raise ValueError(
+                    "It is not supported that tensor dims mapping is different from op output dims mapping."
+                )
     return is_reshard
 
 
@@ -844,7 +863,7 @@ def _remove_no_need_ops(auto_parallel_main_prog, dist_context, rank_id):
         block._remove_op(idx)
 
 
-def _remove_no_need_vars(auto_parallel_main_prog):
+def _remove_no_need_vars(auto_parallel_main_prog, dist_params_grads):
     """Remove no need vars in the main program"""
     remove_vars = set()
     block = auto_parallel_main_prog.global_block()
@@ -861,14 +880,42 @@ def _remove_no_need_vars(auto_parallel_main_prog):
     for var in vars:
         if var not in need_vars:
             remove_vars.add(var)
+
+    # change dist_params_grads
+    param_grad_map = {}
+    for op in ops:
+        if int(op.attr('op_role')) == int(OpRole.Optimize):
+            if "Param" in op.input_names and "Grad" in op.input_names:
+                param_name = op.input("Param")[0]
+                grad_name = op.input("Grad")[0]
+                param_grad_map[param_name] = grad_name
+
+    need_remove_idx = []
+    for idx, item in enumerate(dist_params_grads):
+        if item[0].name not in param_grad_map.keys():
+            need_remove_idx.append(idx)
+
+    for idx in need_remove_idx[::-1]:
+        dist_params_grads.pop(idx)
+
+    idx = 0
+    while idx < len(dist_params_grads):
+        param_name = dist_params_grads[idx][0].name
+        grad_name = dist_params_grads[idx][1].name
+        if grad_name != param_grad_map[param_name]:
+            dist_params_grads[idx] = (vars[param_name],
+                                      vars[param_grad_map[param_name]])
+        idx += 1
+
     for var in remove_vars:
         block._remove_var(var)
 
 
-def remove_no_need_in_main(auto_parallel_main_prog, dist_context, rank_id):
+def remove_no_need_in_main(auto_parallel_main_prog, dist_context, rank_id,
+                           dist_params_grads):
     """Remove no need vars and ops in the main program."""
     _remove_no_need_ops(auto_parallel_main_prog, dist_context, rank_id)
-    _remove_no_need_vars(auto_parallel_main_prog)
+    _remove_no_need_vars(auto_parallel_main_prog, dist_params_grads)
 
 
 def remove_no_need_in_startup(auto_parallel_main_prog,
@@ -946,14 +993,16 @@ def remove_no_need_in_startup(auto_parallel_main_prog,
 
 
 def reshard(auto_parallel_main_prog, auto_parallel_startup_prog, rank_id,
-            dist_context):
+            dist_context, dist_params_grads):
     """
-    Reshard tensor in the program according to its dist attr and corresponding op dist attr.
+    Reshard tensor in the program according to its distributed attribute and corresponding op distributed attribute.
 
     Args:
         auto_parallel_main_prog (Program): An auto parallel main program.
         auto_parallel_startup_prog (Program): An auto parallel startup program.
         rank_id (int): The process id.
+        dist_context (DistributedContext): The distributed context of this rank.
+        dist_params_grads (list): The list contains the tuple of param and grad.
     """
     assert isinstance(auto_parallel_main_prog, Program), "The type of auto_parallel_main_prog should be Program, " \
                                          "but got {}.".format(type(auto_parallel_main_prog))
@@ -1001,8 +1050,37 @@ def reshard(auto_parallel_main_prog, auto_parallel_startup_prog, rank_id,
         else:
             idx += 1
 
+    # insert send and recv op if output process mesh is different from tensor process mesh
+    idx = 0
+    skip_ops = ["create_py_reader", "create_double_buffer_reader", "read"]
+    while idx < len(block.ops):
+        pre_op_count = len(block.ops)
+        op = block.ops[idx]
+        dist_op = dist_context.get_dist_op_for_program(op)
+        if dist_op is not None and op.type not in skip_ops:
+            for var_name in op.output_arg_names:
+                var = block.vars[var_name]
+                dist_tensor = dist_context.get_dist_tensor_for_program(var)
+                if dist_tensor is not None and _need_reshard(dist_tensor,
+                                                             dist_op, False):
+                    for index, item in enumerate(
+                            dist_op.dist_attr.process_mesh.processes):
+                        recv_rank = dist_tensor.dist_attr.process_mesh.processes[
+                            index]
+                        if rank_id == item:
+                            _insert_send_op(block, idx + 1, var, recv_rank)
+                        if rank_id == recv_rank:
+                            _insert_recv_op(block, idx + 1, var, item)
+                    cur_op_count = len(block.ops)
+                    idx_offset = idx_offset + cur_op_count - pre_op_count
+                    pre_op_count = cur_op_count
+            idx = idx + idx_offset + 1
+        else:
+            idx += 1
+
     # remove no need vars and ops in the main program
-    remove_no_need_in_main(auto_parallel_main_prog, dist_context, rank_id)
+    remove_no_need_in_main(auto_parallel_main_prog, dist_context, rank_id,
+                           dist_params_grads)
 
     # remove no need vars and ops in the startip program
     remove_no_need_in_startup(auto_parallel_main_prog,

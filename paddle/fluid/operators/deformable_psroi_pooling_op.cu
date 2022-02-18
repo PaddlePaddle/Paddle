@@ -31,8 +31,8 @@
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/deformable_psroi_pooling_op.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -436,7 +436,7 @@ class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T> {
     Tensor* input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
     Tensor* trans_grad = ctx.Output<Tensor>(framework::GradVarName("Trans"));
 
-    math::SetConstant<DeviceContext, T> set_zero;
+    pten::funcs::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = ctx.cuda_device_context();
     if (input_grad) {
       input_grad->mutable_data<T>(ctx.GetPlace());

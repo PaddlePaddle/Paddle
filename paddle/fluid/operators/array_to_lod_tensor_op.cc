@@ -14,6 +14,7 @@ limitations under the License. */
 #include <paddle/fluid/operators/math/concat_and_split.h>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/pten/core/lod_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -65,7 +66,8 @@ struct ArrayToLoDFunctor : public boost::static_visitor<void> {
     ArrayToLoDFunctorImpl<DeviceContext> functor;
     functor.dev_ctx_ = dev_ctx;
     functor.prev_functor_ = this;
-    framework::VisitDataType(out->type(), functor);
+    framework::VisitDataType(framework::TransToProtoVarType(out->dtype()),
+                             functor);
   }
 };
 
@@ -100,7 +102,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
                           "There's no element in the input array."));
     int rank = x[0].dims().size();
     platform::Place place = x[0].place();
-    auto data_type = x[0].type();
+    auto data_type = x[0].dtype();
     int64_t batch_size = x[0].dims()[0];
     framework::DDim ins_dims = rank > 1
                                    ? framework::slice_ddim(x[0].dims(), 1, rank)
@@ -123,12 +125,12 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
               "The current place is %d, and the previous place is %d.",
               i, x[i].place(), place));
       PADDLE_ENFORCE_EQ(
-          x[i].type(), data_type,
+          x[i].dtype(), data_type,
           platform::errors::InvalidArgument(
               "The date type of the %zu'th element in LoDTensorArray "
               "differs from previous ones."
               "The current data type is %d, and the previous data type is %d.",
-              i, x[i].type(), data_type));
+              i, x[i].dtype(), data_type));
       batch_size += x[i].dims()[0];
     }
     auto ins_dim_vec = framework::vectorize(ins_dims);
@@ -168,7 +170,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
             x[x_idx].lod(), idx, idx + 1, 0);
 
         auto &lod_length = lod_and_offset.first;
-        framework::AppendLoD(out_lod, lod_length);
+        pten::AppendLoD(out_lod, lod_length);
 
         size_t start_offset = lod_and_offset.second.first;
         size_t end_offset = lod_and_offset.second.second;
