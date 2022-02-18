@@ -139,13 +139,10 @@ class PRChecker(object):
         """ judge is white file in pr's files. """
         isWhiteFile = False
         not_white_files = (PADDLE_ROOT + 'cmake/', PADDLE_ROOT + 'patches/',
-                           PADDLE_ROOT + 'paddle/testing/',
                            PADDLE_ROOT + 'tools/dockerfile/',
                            PADDLE_ROOT + 'tools/windows/',
                            PADDLE_ROOT + 'tools/test_runner.py',
-                           PADDLE_ROOT + 'tools/parallel_UT_rule.py',
-                           PADDLE_ROOT + 'paddle/scripts/paddle_build.sh',
-                           PADDLE_ROOT + 'paddle/scripts/paddle_build.bat')
+                           PADDLE_ROOT + 'tools/parallel_UT_rule.py')
         if 'cmakelist' in filename.lower():
             isWhiteFile = False
         elif filename.startswith((not_white_files)):
@@ -285,9 +282,21 @@ class PRChecker(object):
         file_list = []
         file_dict = self.get_pr_files()
         for filename in file_dict:
-            if filename.startswith(
-                (PADDLE_ROOT + 'python/', PADDLE_ROOT + 'paddle/fluid/')):
+            if filename.startswith(PADDLE_ROOT + 'python/'):
                 file_list.append(filename)
+            elif filename.startswith(PADDLE_ROOT + 'paddle/'):
+                if filename.startswith((PADDLE_ROOT + 'paddle/infrt',
+                                        PADDLE_ROOT + 'paddle/utils')):
+                    filterFiles.append(filename)
+                elif filename.startswith(PADDLE_ROOT + 'paddle/scripts'):
+                    if filename.startswith(
+                        (PADDLE_ROOT + 'paddle/scripts/paddle_build.sh',
+                         PADDLE_ROOT + 'paddle/scripts/paddle_build.bat')):
+                        file_list.append(filename)
+                    else:
+                        filterFiles.append(filename)
+                else:
+                    file_list.append(filename)
             else:
                 if file_dict[filename] == 'added':
                     file_list.append(filename)
