@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/pten/infermeta/unary.h"
 
 PT_DECLARE_KERNEL(copy, CPU, ALL_LAYOUT);
+PT_DECLARE_KERNEL(split, CPU, ALL_LAYOUT);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PT_DECLARE_KERNEL(copy, GPU, ALL_LAYOUT);

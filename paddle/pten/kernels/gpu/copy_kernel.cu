@@ -21,6 +21,7 @@ limitations under the License. */
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace pten {
 
@@ -43,7 +44,13 @@ void Copy(const Context& dev_ctx,
           << dst_place;
 
   dst->Resize(src.dims());
-  auto* dst_ptr = dst->mutable_data(dst_place);
+
+  void* dst_ptr = nullptr;
+  if (paddle::platform::is_cpu_place(dst_place)) {
+    dst_ptr = dev_ctx.HostAlloc(dst, src.dtype());
+  } else {
+    dst_ptr = dev_ctx.Alloc(dst, src.dtype());
+  }
 
   if (src_ptr == dst_ptr && src_place == dst_place) {
     VLOG(3) << "Skip copy the same data async from " << src_place << " to "

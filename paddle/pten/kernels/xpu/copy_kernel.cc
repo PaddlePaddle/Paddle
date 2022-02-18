@@ -35,9 +35,9 @@ void Copy(const Context& dev_ctx,
 
   dst->Resize(src.dims());
   if (paddle::platform::is_cpu_place(dst_place)) {
-    dst_ptr = dev_ctx.HostAlloc(dst, DataType::UNDEFINED);
+    dst_ptr = dev_ctx.HostAlloc(dst, src.dtype());
   } else {
-    dst_ptr = dev_ctx.Alloc(dst);
+    dst_ptr = dev_ctx.Alloc(dst, src.dtype());
   }
   const auto& src_place = src.place();
 
