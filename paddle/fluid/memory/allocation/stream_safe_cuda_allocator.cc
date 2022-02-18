@@ -20,12 +20,16 @@ namespace memory {
 namespace allocation {
 
 StreamSafeCUDAAllocation::StreamSafeCUDAAllocation(
-    DecoratedAllocationPtr underlying_allocation, gpuStream_t owning_stream)
+    DecoratedAllocationPtr underlying_allocation, gpuStream_t owning_stream,
+    StreamSafeCUDAAllocator* allocator)
     : Allocation(underlying_allocation->ptr(),
                  underlying_allocation->base_ptr(),
                  underlying_allocation->size(), underlying_allocation->place()),
       underlying_allocation_(std::move(underlying_allocation)),
-      owning_stream_(std::move(owning_stream)) {}
+      owning_stream_(std::move(owning_stream)),
+      allocator_(allocator->shared_from_this()) {
+  VLOG(1) << "StreamSafeCUDAAllocatino Construct: " << this;
+}
 
 void StreamSafeCUDAAllocation::RecordStream(const gpuStream_t& stream) {
   VLOG(8) << "Try record stream " << stream << " for address " << ptr();
@@ -35,7 +39,7 @@ void StreamSafeCUDAAllocation::RecordStream(const gpuStream_t& stream) {
 
   std::lock_guard<SpinLock> lock_guard(outstanding_event_map_lock_);
 #ifdef PADDLE_WITH_CUDA
-  if (UNLIKELY(platform::CUDAGraph::IsCapturing())) {
+  if (UNLIKELY(platform::CUDAGraph::IsThisThreadCapturing())) {
     graph_capturing_stream_set_.insert(stream);
     return;
   }
@@ -47,7 +51,7 @@ void StreamSafeCUDAAllocation::RecordStream(const gpuStream_t& stream) {
 
 bool StreamSafeCUDAAllocation::CanBeFreed() {
 #ifdef PADDLE_WITH_CUDA
-  if (UNLIKELY(platform::CUDAGraph::IsCapturing())) {
+  if (UNLIKELY(platform::CUDAGraph::IsThisThreadCapturing())) {
     return graph_capturing_stream_set_.empty() &&
            outstanding_event_map_.empty();
   }
@@ -126,19 +130,24 @@ void StreamSafeCUDAAllocation::RecordStreamWithNoGraphCapturing(
 
 StreamSafeCUDAAllocator::StreamSafeCUDAAllocator(
     std::shared_ptr<Allocator> underlying_allocator, platform::CUDAPlace place,
-    gpuStream_t default_stream)
+    gpuStream_t default_stream, bool in_cuda_graph_capturing)
     : underlying_allocator_(std::move(underlying_allocator)),
       place_(std::move(place)),
-      default_stream_(std::move(default_stream)) {
-  std::lock_guard<SpinLock> lock_guard(allocator_map_lock_);
-  allocator_map_[place].emplace_back(this);
+      default_stream_(std::move(default_stream)),
+      in_cuda_graph_capturing_(in_cuda_graph_capturing) {
+  if (LIKELY(!in_cuda_graph_capturing)) {
+    std::lock_guard<SpinLock> lock_guard(allocator_map_lock_);
+    allocator_map_[place].emplace_back(this);
+  }
 }
 
 StreamSafeCUDAAllocator::~StreamSafeCUDAAllocator() {
-  std::lock_guard<SpinLock> lock_guard(allocator_map_lock_);
-  std::vector<StreamSafeCUDAAllocator*>& allocators = allocator_map_[place_];
-  allocators.erase(std::remove(allocators.begin(), allocators.end(), this),
-                   allocators.end());
+  if (LIKELY(!in_cuda_graph_capturing_)) {
+    std::lock_guard<SpinLock> lock_guard(allocator_map_lock_);
+    std::vector<StreamSafeCUDAAllocator*>& allocators = allocator_map_[place_];
+    allocators.erase(std::remove(allocators.begin(), allocators.end(), this),
+                     allocators.end());
+  }
 }
 
 bool StreamSafeCUDAAllocator::IsAllocThreadSafe() const { return true; }
@@ -164,7 +173,7 @@ pten::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
   }
   StreamSafeCUDAAllocation* allocation = new StreamSafeCUDAAllocation(
       static_unique_ptr_cast<Allocation>(std::move(underlying_allocation)),
-      default_stream_);
+      default_stream_, this);
   VLOG(8) << "Allocate " << allocation->size() << " bytes at address "
           << allocation->ptr();
   return allocation;
@@ -190,6 +199,11 @@ void StreamSafeCUDAAllocator::FreeImpl(pten::Allocation* allocation) {
 }
 
 uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const platform::Place& place) {
+  if (UNLIKELY(in_cuda_graph_capturing_)) {
+    VLOG(7) << "Memory release forbidden in CUDA Graph Captruing";
+    return 0;
+  }
+
   std::lock_guard<SpinLock> lock_guard(allocator_map_lock_);
   std::vector<StreamSafeCUDAAllocator*>& allocators = allocator_map_[place];
   uint64_t released_size = 0;

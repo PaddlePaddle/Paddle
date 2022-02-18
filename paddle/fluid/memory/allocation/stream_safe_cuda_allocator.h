@@ -30,10 +30,16 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
+class StreamSafeCUDAAllocator;
+
 class StreamSafeCUDAAllocation : public Allocation {
  public:
   StreamSafeCUDAAllocation(DecoratedAllocationPtr underlying_allocation,
-                           gpuStream_t owning_stream);
+                           gpuStream_t owning_stream,
+                           StreamSafeCUDAAllocator *allocator);
+  ~StreamSafeCUDAAllocation() {
+    VLOG(1) << "StreamSafeCUDAAllocation Deconstruct: " << this;
+  }
   void RecordStream(const gpuStream_t &stream);
   bool CanBeFreed();
 
@@ -47,13 +53,18 @@ class StreamSafeCUDAAllocation : public Allocation {
   std::map<gpuStream_t, gpuEvent_t> outstanding_event_map_;
   gpuStream_t owning_stream_;
   SpinLock outstanding_event_map_lock_;
+  // To compatiable with CUDA Graph, hold the allocator to that Allocator will
+  // not deconstruct before Allocation
+  std::shared_ptr<Allocator> allocator_;
 };
 
-class StreamSafeCUDAAllocator : public Allocator {
+class StreamSafeCUDAAllocator
+    : public Allocator,
+      public std::enable_shared_from_this<StreamSafeCUDAAllocator> {
  public:
   StreamSafeCUDAAllocator(std::shared_ptr<Allocator> underlying_allocator,
-                          platform::CUDAPlace place,
-                          gpuStream_t default_stream);
+                          platform::CUDAPlace place, gpuStream_t default_stream,
+                          bool in_cuda_graph_capturing = false);
   ~StreamSafeCUDAAllocator();
   bool IsAllocThreadSafe() const override;
 
@@ -75,6 +86,8 @@ class StreamSafeCUDAAllocator : public Allocator {
   gpuStream_t default_stream_;
   std::list<StreamSafeCUDAAllocation *> unfreed_allocations_;
   SpinLock unfreed_allocation_lock_;
+
+  bool in_cuda_graph_capturing_;
 };
 
 }  // namespace allocation
