@@ -149,6 +149,8 @@ PT_REGISTER_KERNEL(mean,
                    float,
                    double,
                    bool,
+                   int,
+                   int64_t,
                    pten::dtype::float16) {}
 PT_REGISTER_KERNEL(sum,
                    GPU,
