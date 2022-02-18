@@ -138,11 +138,12 @@
 
 - api : reshape
   args : (Tensor x, ScalarArray shape)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : ReshapeInferMeta
   kernel :
     func : reshape
+  inplace : (x -> out)
 
 - api : scale
   args : (Tensor x, Scalar scale, float bias, bool bias_after_scale)
