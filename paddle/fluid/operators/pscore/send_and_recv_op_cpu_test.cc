@@ -41,7 +41,7 @@ std::shared_ptr<distributed::HeterServer> b_rpc_service;
 std::string get_ip_port() {
   std::mt19937 rng;
   rng.seed(std::random_device()());
-  std::uniform_int_distribution<std::mt19937::result_type> dist(4444, 16000);
+  std::uniform_int_distribution<std::mt19937::result_type> dist(4444, 25000);
   int port = dist(rng);
   std::string ip_port;
   std::stringstream temp_str;
@@ -166,9 +166,11 @@ void StartSendAndRecvServer(std::string endpoint) {
 
   b_rpc_service->SetRequestHandler(b_req_handler);
   LOG(INFO) << "before HeterServer::RunServer";
-  std::thread server_thread(std::bind(RunServer, b_rpc_service));
 
-  server_thread.join();
+  RunServer(b_rpc_service);
+
+  // std::thread server_thread(std::bind(RunServer, b_rpc_service));
+  // server_thread.join();
 }
 
 TEST(SENDANDRECV, CPU) {
@@ -275,8 +277,10 @@ TEST(SENDANDRECV, CPU) {
   exe.RunPreparedContext(prepared.get(), scope, false);
 
   LOG(INFO) << "client wait for Pop";
+
   auto task = (*task_queue_)[0]->Pop();
   LOG(INFO) << "client get from task queue";
+
   PADDLE_ENFORCE_EQ(
       task.first, "x",
       platform::errors::InvalidArgument(

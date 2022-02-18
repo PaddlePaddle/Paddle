@@ -39,7 +39,7 @@ std::shared_ptr<distributed::HeterServer> b_rpc_service;
 std::string get_ip_port() {
   std::mt19937 rng;
   rng.seed(std::random_device()());
-  std::uniform_int_distribution<std::mt19937::result_type> dist(4444, 16000);
+  std::uniform_int_distribution<std::mt19937::result_type> dist(4444, 25000);
   int port = dist(rng);
   std::string ip_port;
   std::stringstream temp_str;
@@ -194,9 +194,10 @@ void StartSendAndRecvServer(std::string endpoint) {
 
   b_rpc_service->SetRequestHandler(b_req_handler);
   LOG(INFO) << "before HeterServer::RunServer";
-  std::thread server_thread(std::bind(RunServer, b_rpc_service));
+  RunServer(b_rpc_service);
+  // std::thread server_thread(std::bind(RunServer, b_rpc_service));
 
-  server_thread.join();
+  // server_thread.join();
 }
 
 TEST(SENDANDRECV, CPU) {
