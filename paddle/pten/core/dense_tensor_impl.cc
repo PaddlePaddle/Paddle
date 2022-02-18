@@ -30,8 +30,8 @@ DenseTensor::DenseTensor() {
   meta_.offset = 0;
 }
 
-DenseTensor::DenseTensor(paddle::framework::proto::VarType::Type dtype) {
-  meta_.dtype = TransToPtenDataType(dtype);
+DenseTensor::DenseTensor(paddle::experimental::DataType dtype) {
+  meta_.dtype = dtype;
   meta_.offset = 0;
 }
 
@@ -40,14 +40,14 @@ size_t DenseTensor::memory_size() const {
 }
 
 void DenseTensor::check_memory_size() const {
-  PADDLE_ENFORCE_NOT_NULL(holder_,
-                          paddle::platform::errors::PreconditionNotMet(
-                              "Tensor holds no memory. "
-                              "Call Tensor::mutable_data firstly."));
+  PADDLE_ENFORCE_NOT_NULL(
+      holder_,
+      pten::errors::PreconditionNotMet("Tensor holds no memory. "
+                                       "Call Tensor::mutable_data firstly."));
   PADDLE_ENFORCE_LE(
       numel() * SizeOf(dtype()),
       memory_size(),
-      paddle::platform::errors::PreconditionNotMet(
+      pten::errors::PreconditionNotMet(
           "Tensor's dimension is out of bound."
           "Tensor's dimension must be equal or less than the size of its "
           "memory."
@@ -56,21 +56,15 @@ void DenseTensor::check_memory_size() const {
           memory_size()));
 }
 
-const paddle::platform::Place& DenseTensor::place() const {
+const Place& DenseTensor::place() const {
   PADDLE_ENFORCE_NOT_NULL(
       holder_,
-      paddle::platform::errors::PreconditionNotMet(
+      pten::errors::PreconditionNotMet(
           "Tensor not initialized yet when DenseTensor::place() is called."));
   return holder_->place();
 }
 
-paddle::framework::proto::VarType::Type DenseTensor::type() const {
-  return TransToProtoVarType(meta_.dtype);
-}
-
-paddle::framework::proto::VarType::Type DenseTensor::saved_type() const {
-  return TransToProtoVarType(meta_.dtype);
-}
+paddle::experimental::DataType DenseTensor::type() const { return meta_.dtype; }
 
 void DenseTensor::set_layout(const paddle::framework::DataLayout layout) {
   meta_.layout = layout;
@@ -88,7 +82,7 @@ void DenseTensor::ResetHolder(const std::shared_ptr<pten::Allocation>& holder) {
         numel() * static_cast<int64_t>(SizeOf(dtype())) +
             static_cast<int64_t>(meta_.offset),
         static_cast<int64_t>(holder->size()),
-        paddle::platform::errors::InvalidArgument(
+        pten::errors::InvalidArgument(
             "The size of Holder is not enough to store the Tensor."));
   }
   holder_ = holder;
@@ -96,23 +90,23 @@ void DenseTensor::ResetHolder(const std::shared_ptr<pten::Allocation>& holder) {
 
 void DenseTensor::ResetHolderWithType(
     const std::shared_ptr<pten::Allocation>& holder,
-    paddle::framework::proto::VarType::Type type) {
+    paddle::experimental::DataType type) {
   set_type(type);
   ResetHolder(holder);
 }
 
-void DenseTensor::set_type(paddle::framework::proto::VarType::Type type) {
-  meta_.dtype = TransToPtenDataType(type);
+void DenseTensor::set_type(paddle::experimental::DataType type) {
+  meta_.dtype = type;
 }
 
-void* DenseTensor::mutable_data(const paddle::platform::Place& place,
-                                paddle::framework::proto::VarType::Type type,
+void* DenseTensor::mutable_data(const Place& place,
+                                paddle::experimental::DataType type,
                                 size_t requested_size) {
   set_type(type);
   PADDLE_ENFORCE_GE(
       numel(),
       0,
-      paddle::platform::errors::PreconditionNotMet(
+      pten::errors::PreconditionNotMet(
           "The Tensor's element number must be equal or greater than zero. "
           "The Tensor's shape is [",
           dims(),
@@ -133,19 +127,18 @@ void* DenseTensor::mutable_data(const paddle::platform::Place& place,
                                  meta_.offset);
 }
 
-void* DenseTensor::mutable_data(const paddle::platform::Place& place,
-                                size_t requested_size) {
+void* DenseTensor::mutable_data(const Place& place, size_t requested_size) {
   return mutable_data(place, type(), requested_size);
 }
 
-void* DenseTensor::mutable_data(const paddle::platform::Place& place,
-                                paddle::framework::proto::VarType::Type type,
+void* DenseTensor::mutable_data(const Place& place,
+                                paddle::experimental::DataType type,
                                 const pten::Stream& stream) {
   set_type(type);
   PADDLE_ENFORCE_GE(
       numel(),
       0,
-      paddle::platform::errors::PreconditionNotMet(
+      pten::errors::PreconditionNotMet(
           "The Tensor's element number must be equal or greater than zero. "
           "The Tensor's shape is [",
           dims(),
@@ -155,7 +148,7 @@ void* DenseTensor::mutable_data(const paddle::platform::Place& place,
   /* some versions of boost::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + meta_.offset ||
-      !(paddle::platform::is_gpu_place(place) &&
+      !(place.GetType() == pten::AllocationType::GPU &&
         paddle::memory::InSameStream(holder_, stream))) {
     holder_.reset();
     holder_ = paddle::memory::AllocShared(place, size, stream);
@@ -172,7 +165,7 @@ void* DenseTensor::mutable_data(const paddle::platform::Place& place,
    */
 template <typename T>
 inline T* DenseTensor::mutable_data(const DDim& dims,
-                                    const paddle::platform::Place& place,
+                                    const Place& place,
                                     size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
   meta_.dims = dims;
@@ -180,11 +173,12 @@ inline T* DenseTensor::mutable_data(const DDim& dims,
 }
 
 template <typename T>
-inline T* DenseTensor::mutable_data(const paddle::platform::Place& place,
-                                    size_t requested_size) {
+inline T* DenseTensor::mutable_data(const Place& place, size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
-  return reinterpret_cast<T*>(mutable_data(
-      place, paddle::framework::DataTypeTrait<T>::DataType(), requested_size));
+  return reinterpret_cast<T*>(
+      mutable_data(place,
+                   paddle::experimental::CppTypeToDataType<T>::Type(),
+                   requested_size));
 }
 
 void DenseTensor::ShareBufferWith(const DenseTensor& tensor) {
@@ -193,13 +187,11 @@ void DenseTensor::ShareBufferWith(const DenseTensor& tensor) {
   meta_.dtype = tensor.dtype();
 }
 
-#define LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(dtype) \
-  template dtype* DenseTensor::mutable_data(         \
-      const DDim& dims,                              \
-      const paddle::platform::Place& place,          \
-      size_t requested_size);                        \
-  template dtype* DenseTensor::mutable_data(         \
-      const paddle::platform::Place& place, size_t requested_size);
+#define LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(dtype)                \
+  template dtype* DenseTensor::mutable_data(                        \
+      const DDim& dims, const Place& place, size_t requested_size); \
+  template dtype* DenseTensor::mutable_data(const Place& place,     \
+                                            size_t requested_size);
 
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(bool)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int8_t)
@@ -209,10 +201,10 @@ LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int32_t)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int64_t)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(float)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(double)
-LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::paddle::platform::bfloat16)
-LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::paddle::platform::float16)
-LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex64)
-LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex128)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::pten::dtype::bfloat16)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::pten::dtype::float16)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::pten::dtype::complex<float>)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::pten::dtype::complex<double>)
 
 #undef LEGACY_DATA_MEMBER_FUNC_INSTANTIATION
 
@@ -238,7 +230,7 @@ std::pair<size_t, size_t> DenseTensor::lod_element(size_t level,
   PADDLE_ENFORCE_LT(
       level,
       NumLevels(),
-      paddle::platform::errors::InvalidArgument(
+      pten::errors::InvalidArgument(
           "The input level of LoD is invalid, it should be less than LoD "
           "size. The input level is %zu, the LoD size is %zu.",
           level,
@@ -246,7 +238,7 @@ std::pair<size_t, size_t> DenseTensor::lod_element(size_t level,
 
   PADDLE_ENFORCE_LT(elem,
                     NumElements(level),
-                    paddle::platform::errors::InvalidArgument(
+                    pten::errors::InvalidArgument(
                         "The input element of LoD is invalid, it should be "
                         "less than the number of elements in its level."
                         "The input element is %zu, the number of elements in "
@@ -263,7 +255,7 @@ size_t DenseTensor::NumElements(size_t level) const {
   PADDLE_ENFORCE_LT(
       level,
       NumLevels(),
-      paddle::platform::errors::InvalidArgument(
+      pten::errors::InvalidArgument(
           "The input level of LoD is invalid, it should be less than LoD "
           "size. The input level is %zu, the LoD size is %zu.",
           level,
@@ -280,20 +272,20 @@ DenseTensor& DenseTensor::Resize(const DDim& dims) {
 
 DenseTensor DenseTensor::Slice(int64_t begin_idx, int64_t end_idx) const {
   check_memory_size();
-  PADDLE_ENFORCE_GE(begin_idx,
-                    0,
-                    paddle::platform::errors::OutOfRange(
-                        "The start row index must be greater than 0."
-                        "But received the start index is d%.",
-                        begin_idx));
-  PADDLE_ENFORCE_LE(end_idx,
-                    meta_.dims[0],
-                    paddle::platform::errors::OutOfRange(
-                        "The end row index is out of bound."));
+  PADDLE_ENFORCE_GE(
+      begin_idx,
+      0,
+      pten::errors::OutOfRange("The start row index must be greater than 0."
+                               "But received the start index is d%.",
+                               begin_idx));
+  PADDLE_ENFORCE_LE(
+      end_idx,
+      meta_.dims[0],
+      pten::errors::OutOfRange("The end row index is out of bound."));
   PADDLE_ENFORCE_LT(
       begin_idx,
       end_idx,
-      paddle::platform::errors::InvalidArgument(
+      pten::errors::InvalidArgument(
           "The start row index must be less than the end row index."
           "But received the start index = %d, the end index = %d.",
           begin_idx,
@@ -321,13 +313,13 @@ std::vector<DenseTensor> DenseTensor::Split(int64_t split_size,
 
   PADDLE_ENFORCE_GE(meta_.dims.size(),
                     0,
-                    paddle::platform::errors::OutOfRange(
+                    pten::errors::OutOfRange(
                         "split expects at least a 1-dimensional tensor"));
 
   PADDLE_ENFORCE_GE(
       split_size,
       0,
-      paddle::platform::errors::OutOfRange(
+      pten::errors::OutOfRange(
           "split expects split_size be non-negative, but got split_size is %d",
           split_size));
 
@@ -354,12 +346,12 @@ std::vector<DenseTensor> DenseTensor::Chunk(int64_t chunks,
   check_memory_size();
   PADDLE_ENFORCE_GE(meta_.dims.size(),
                     0,
-                    paddle::platform::errors::OutOfRange(
+                    pten::errors::OutOfRange(
                         "split expects at least a 1-dimensional tensor"));
   PADDLE_ENFORCE_GE(
       chunks,
       0,
-      paddle::platform::errors::OutOfRange(
+      pten::errors::OutOfRange(
           "chunks expects to be greater than 0, but got chunks is %d", chunks));
 
   int64_t numel_size = meta_.dims[axis];
@@ -380,7 +372,7 @@ DenseTensor& DenseTensor::ShareInplaceVersionCounterWith(
     const DenseTensor& src) {
   PADDLE_ENFORCE_NOT_NULL(
       inplace_version_counter_,
-      paddle::platform::errors::PreconditionNotMet(
+      pten::errors::PreconditionNotMet(
           "Tensor does not hold inplace_version_counter_."));
 
   inplace_version_counter_ = src.inplace_version_counter_;

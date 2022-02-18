@@ -135,7 +135,8 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
       CheckIsDimsMatch(slice_dims_for_assign, value_dims);
 
       value_t.mutable_data<T>(value_dims, ctx.GetPlace());
-      auto value_name = GetValueName(in->type());
+      auto value_name =
+          GetValueName(framework::TransToProtoVarType(in->dtype()));
       CopyVecotorToTensor<T>(value_name.c_str(), &value_t, ctx);
       value_t.Resize(value_dims);
     }

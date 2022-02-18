@@ -13,31 +13,31 @@
 // limitations under the License.
 
 #include "paddle/pten/kernels/trace_kernel.h"
+
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/impl/trace_kernel_impl.h"
+#include "paddle/pten/kernels/funcs/diagonal.h"
+#include "paddle/pten/kernels/funcs/eigen/common.h"
 
 namespace pten {
 
 template <typename T, typename Context>
-void TraceKernel(const Context& ctx,
+void TraceKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  int offset,
                  int axis1,
                  int axis2,
                  DenseTensor* out) {
-  auto output_dims = out->dims();
+  auto* out_data = dev_ctx.template Alloc<T>(out);
 
-  T* out_data = out->mutable_data<T>(ctx.GetPlace());
-
-  const DenseTensor diag = Diagonal<T, Context>(ctx, &x, offset, axis1, axis2);
+  const DenseTensor diag =
+      funcs::Diagonal<T, Context>(dev_ctx, &x, offset, axis1, axis2);
   if (diag.numel() > 0) {
-    auto x = paddle::framework::EigenMatrix<T>::Reshape(diag,
-                                                        diag.dims().size() - 1);
-    auto output = paddle::framework::EigenVector<T>::Flatten(*out);
+    auto x = pten::EigenMatrix<T>::Reshape(diag, diag.dims().size() - 1);
+    auto output = pten::EigenVector<T>::Flatten(*out);
     auto reduce_dim = Eigen::array<int, 1>({1});
-    output.device(*ctx.eigen_device()) = x.sum(reduce_dim);
-    out->Resize(output_dims);
+    output.device(*dev_ctx.eigen_device()) = x.sum(reduce_dim);
+    out->Resize(out->dims());
   } else {
     std::fill(out_data, out_data + out->numel(), static_cast<T>(0));
   }
@@ -53,6 +53,6 @@ PT_REGISTER_KERNEL(trace,
                    double,
                    int,
                    int64_t,
-                   paddle::platform::float16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::float16,
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}

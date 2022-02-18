@@ -36,12 +36,12 @@ limitations under the License. */
 namespace pten {
 namespace funcs {
 
-using float16 = paddle::platform::float16;
+using float16 = pten::dtype::float16;
 
 template struct SetConstant<paddle::platform::CPUDeviceContext,
-                            paddle::platform::float16>;
+                            pten::dtype::float16>;
 template struct SetConstant<paddle::platform::CPUDeviceContext,
-                            paddle::platform::bfloat16>;
+                            pten::dtype::bfloat16>;
 template struct SetConstant<paddle::platform::CPUDeviceContext, float>;
 template struct SetConstant<paddle::platform::CPUDeviceContext, double>;
 template struct SetConstant<paddle::platform::CPUDeviceContext, int16_t>;
@@ -50,12 +50,12 @@ template struct SetConstant<paddle::platform::CPUDeviceContext, int64_t>;
 template struct SetConstant<paddle::platform::CPUDeviceContext, bool>;
 template struct SetConstant<paddle::platform::CPUDeviceContext, uint8_t>;
 template struct SetConstant<paddle::platform::CPUDeviceContext,
-                            paddle::platform::complex<float>>;
+                            pten::dtype::complex<float>>;
 template struct SetConstant<paddle::platform::CPUDeviceContext,
-                            paddle::platform::complex<double>>;
+                            pten::dtype::complex<double>>;
 
-template struct SetConstant<pten::CPUContext, paddle::platform::float16>;
-template struct SetConstant<pten::CPUContext, paddle::platform::bfloat16>;
+template struct SetConstant<pten::CPUContext, pten::dtype::float16>;
+template struct SetConstant<pten::CPUContext, pten::dtype::bfloat16>;
 template struct SetConstant<pten::CPUContext, float>;
 template struct SetConstant<pten::CPUContext, double>;
 template struct SetConstant<pten::CPUContext, int16_t>;
@@ -63,15 +63,14 @@ template struct SetConstant<pten::CPUContext, int>;
 template struct SetConstant<pten::CPUContext, int64_t>;
 template struct SetConstant<pten::CPUContext, bool>;
 template struct SetConstant<pten::CPUContext, uint8_t>;
-template struct SetConstant<pten::CPUContext, paddle::platform::complex<float>>;
-template struct SetConstant<pten::CPUContext,
-                            paddle::platform::complex<double>>;
+template struct SetConstant<pten::CPUContext, pten::dtype::complex<float>>;
+template struct SetConstant<pten::CPUContext, pten::dtype::complex<double>>;
 
 #ifdef PADDLE_WITH_XPU
 template struct SetConstant<paddle::platform::XPUDeviceContext,
-                            paddle::platform::float16>;
+                            pten::dtype::float16>;
 template struct SetConstant<paddle::platform::XPUDeviceContext,
-                            paddle::platform::bfloat16>;
+                            pten::dtype::bfloat16>;
 template struct SetConstant<paddle::platform::XPUDeviceContext, float>;
 template struct SetConstant<paddle::platform::XPUDeviceContext, double>;
 template struct SetConstant<paddle::platform::XPUDeviceContext, uint8_t>;
@@ -80,17 +79,17 @@ template struct SetConstant<paddle::platform::XPUDeviceContext, int>;
 template struct SetConstant<paddle::platform::XPUDeviceContext, int64_t>;
 template struct SetConstant<paddle::platform::XPUDeviceContext, bool>;
 template struct SetConstant<paddle::platform::XPUDeviceContext,
-                            paddle::platform::complex<float>>;
+                            pten::dtype::complex<float>>;
 template struct SetConstant<paddle::platform::XPUDeviceContext,
-                            paddle::platform::complex<double>>;
+                            pten::dtype::complex<double>>;
 #endif
 
 #define DEFINE_CPU_TRANS(RANK)                                                 \
   template struct Transpose<paddle::platform::CPUDeviceContext,                \
-                            paddle::platform::float16,                         \
+                            pten::dtype::float16,                              \
                             RANK>;                                             \
   template struct Transpose<paddle::platform::CPUDeviceContext,                \
-                            paddle::platform::bfloat16,                        \
+                            pten::dtype::bfloat16,                             \
                             RANK>;                                             \
   template struct Transpose<paddle::platform::CPUDeviceContext, float, RANK>;  \
   template struct Transpose<paddle::platform::CPUDeviceContext, double, RANK>; \
@@ -107,10 +106,26 @@ template struct SetConstant<paddle::platform::XPUDeviceContext,
                             RANK>;                                             \
   template struct Transpose<paddle::platform::CPUDeviceContext, int8_t, RANK>; \
   template struct Transpose<paddle::platform::CPUDeviceContext,                \
-                            paddle::platform::complex<float>,                  \
+                            pten::dtype::complex<float>,                       \
                             RANK>;                                             \
   template struct Transpose<paddle::platform::CPUDeviceContext,                \
-                            paddle::platform::complex<double>,                 \
+                            pten::dtype::complex<double>,                      \
+                            RANK>;                                             \
+  template struct Transpose<pten::CPUContext, pten::dtype::float16, RANK>;     \
+  template struct Transpose<pten::CPUContext, pten::dtype::bfloat16, RANK>;    \
+  template struct Transpose<pten::CPUContext, float, RANK>;                    \
+  template struct Transpose<pten::CPUContext, double, RANK>;                   \
+  template struct Transpose<pten::CPUContext, int, RANK>;                      \
+  template struct Transpose<pten::CPUContext, int64_t, RANK>;                  \
+  template struct Transpose<pten::CPUContext, bool, RANK>;                     \
+  template struct Transpose<pten::CPUContext, int16_t, RANK>;                  \
+  template struct Transpose<pten::CPUContext, uint8_t, RANK>;                  \
+  template struct Transpose<pten::CPUContext, int8_t, RANK>;                   \
+  template struct Transpose<pten::CPUContext,                                  \
+                            pten::dtype::complex<float>,                       \
+                            RANK>;                                             \
+  template struct Transpose<pten::CPUContext,                                  \
+                            pten::dtype::complex<double>,                      \
                             RANK>;
 
 DEFINE_CPU_TRANS(1);
@@ -120,41 +135,41 @@ DEFINE_CPU_TRANS(4);
 DEFINE_CPU_TRANS(5);
 DEFINE_CPU_TRANS(6);
 
-template <typename T>
-struct TransposeNormal<paddle::platform::CPUDeviceContext, T> {
-  void operator()(const paddle::platform::CPUDeviceContext& context,
-                  const paddle::framework::Tensor& in,
-                  paddle::framework::Tensor* out,
-                  const std::vector<int>& axis) {
-    const int rank = axis.size();
-    auto in_stride = paddle::framework::stride(in.dims());
-    auto out_stride = paddle::framework::stride(out->dims());
-    const T* in_ptr = in.data<T>();
-    T* out_ptr = out->data<T>();
+template <typename DeviceContext, typename T>
+void TransposeNormal<DeviceContext, T>::operator()(
+    const DeviceContext& context,
+    const paddle::framework::Tensor& in,
+    paddle::framework::Tensor* out,
+    const std::vector<int>& axis) {
+  const int rank = axis.size();
+  auto in_stride = paddle::framework::stride(in.dims());
+  auto out_stride = paddle::framework::stride(out->dims());
+  const T* in_ptr = in.data<T>();
+  T* out_ptr = out->data<T>();
 
-    auto transpose_helper = [&](int64_t beg, int64_t end) {
-      for (int64_t out_idx = beg; out_idx < end; ++out_idx) {
-        int64_t in_idx = 0;
-        int64_t tmp_idx = out_idx;
-        // calculate the input index
-        for (int i = 0; i < rank; ++i) {
-          const int64_t coordinate = tmp_idx / out_stride[i];
-          tmp_idx -= coordinate * out_stride[i];
-          in_idx += coordinate * in_stride[axis[i]];
-        }
-        out_ptr[out_idx] = in_ptr[in_idx];
+  auto transpose_helper = [&](int64_t beg, int64_t end) {
+    for (int64_t out_idx = beg; out_idx < end; ++out_idx) {
+      int64_t in_idx = 0;
+      int64_t tmp_idx = out_idx;
+      // calculate the input index
+      for (int i = 0; i < rank; ++i) {
+        const int64_t coordinate = tmp_idx / out_stride[i];
+        tmp_idx -= coordinate * out_stride[i];
+        in_idx += coordinate * in_stride[axis[i]];
       }
-    };
-    transpose_helper(0, out->numel());
-  }
-};
+      out_ptr[out_idx] = in_ptr[in_idx];
+    }
+  };
+  transpose_helper(0, out->numel());
+}
 
 // define transpose normal
-#define DEFINE_CPU_TRANS_NORMAL(TYPE) \
-  template struct TransposeNormal<paddle::platform::CPUDeviceContext, TYPE>
+#define DEFINE_CPU_TRANS_NORMAL(TYPE)                                        \
+  template struct TransposeNormal<paddle::platform::CPUDeviceContext, TYPE>; \
+  template struct TransposeNormal<pten::CPUContext, TYPE>
 
-DEFINE_CPU_TRANS_NORMAL(paddle::platform::float16);
-DEFINE_CPU_TRANS_NORMAL(paddle::platform::bfloat16);
+DEFINE_CPU_TRANS_NORMAL(pten::dtype::float16);
+DEFINE_CPU_TRANS_NORMAL(pten::dtype::bfloat16);
 DEFINE_CPU_TRANS_NORMAL(float);
 DEFINE_CPU_TRANS_NORMAL(double);
 DEFINE_CPU_TRANS_NORMAL(int);
@@ -163,8 +178,8 @@ DEFINE_CPU_TRANS_NORMAL(bool);
 DEFINE_CPU_TRANS_NORMAL(int16_t);
 DEFINE_CPU_TRANS_NORMAL(uint8_t);
 DEFINE_CPU_TRANS_NORMAL(int8_t);
-DEFINE_CPU_TRANS_NORMAL(paddle::platform::complex<float>);
-DEFINE_CPU_TRANS_NORMAL(paddle::platform::complex<double>);
+DEFINE_CPU_TRANS_NORMAL(pten::dtype::complex<float>);
+DEFINE_CPU_TRANS_NORMAL(pten::dtype::complex<double>);
 
 struct TensorSetConstantCPU {
   TensorSetConstantCPU(paddle::framework::Tensor* tensor, float value)
@@ -216,12 +231,20 @@ void set_constant_with_place<paddle::platform::IPUPlace>(
 }
 
 template <>
+void set_constant_with_place<paddle::platform::CustomPlace>(
+    const paddle::platform::DeviceContext& context,
+    paddle::framework::Tensor* tensor,
+    float value) {
+  PADDLE_THROW(
+      paddle::platform::errors::Unimplemented("CustomPlace is not supported"));
+}
+
+template <>
 void set_constant_with_place<paddle::platform::CPUPlace>(
     const paddle::platform::DeviceContext& context,
     paddle::framework::Tensor* tensor,
     float value) {
-  paddle::framework::VisitDataType(tensor->type(),
-                                   TensorSetConstantCPU(tensor, value));
+  pten::VisitDataType(tensor->dtype(), TensorSetConstantCPU(tensor, value));
 }
 
 template <>
@@ -238,8 +261,7 @@ void set_constant_with_place<paddle::platform::CUDAPinnedPlace>(
     const paddle::platform::DeviceContext& context,
     paddle::framework::Tensor* tensor,
     float value) {
-  paddle::framework::VisitDataType(tensor->type(),
-                                   TensorSetConstantCPU(tensor, value));
+  pten::VisitDataType(tensor->dtype(), TensorSetConstantCPU(tensor, value));
 }
 
 struct TensorSetConstantWithPlace : public boost::static_visitor<void> {
@@ -336,7 +358,9 @@ struct ElementwiseAddTo<paddle::platform::CPUDeviceContext, T> {
 };
 
 template struct ElementwiseAddTo<paddle::platform::CPUDeviceContext,
-                                 paddle::platform::float16>;
+                                 pten::dtype::float16>;
+template struct ElementwiseAddTo<paddle::platform::CPUDeviceContext,
+                                 pten::dtype::bfloat16>;
 
 }  // namespace funcs
 }  // namespace pten

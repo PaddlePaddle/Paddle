@@ -130,7 +130,8 @@ struct GatherLocalSelectedRowsFunctor {
     DDim out_dim = pre_in->GetCompleteDims();
     out_dim[0] = static_cast<int64_t>(rows);
     dst_tensor.mutable_value()->Resize(out_dim);
-    dst_tensor.mutable_value()->mutable_data(out_place, pre_in->value().type());
+    dst_tensor.mutable_value()->mutable_data(out_place,
+                                             pre_in->value().dtype());
   }
 
   void operator()() {

@@ -14,6 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
 
+#include <string>
+
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -134,7 +137,7 @@ class CompatMetaTensor : public pten::MetaTensor {
       }
     } else {
       auto* var = BOOST_GET_CONST(VarDesc*, var_);
-      return pten::TransToPtenDataType(var->GetDataType());
+      return paddle::framework::TransToPtenDataType(var->GetDataType());
     }
   }
 
@@ -183,7 +186,7 @@ class CompatMetaTensor : public pten::MetaTensor {
       }
     } else {
       auto* var = BOOST_GET(VarDesc*, var_);
-      var->SetDataType(pten::TransToProtoVarType(dtype));
+      var->SetDataType(paddle::framework::TransToProtoVarType(dtype));
     }
   }
 
@@ -302,13 +305,45 @@ pten::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
       auto& attr = attr_reader.GetAttr(attr_name);
       if (std::type_index(attr.type()) == std::type_index(typeid(bool))) {
         infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
+      } else if (std::type_index(attr.type()) == std::type_index(typeid(int))) {
+        infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(int, attr));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(int64_t))) {
+        infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(int64_t, attr));
       } else if (std::type_index(attr.type()) ==
                  std::type_index(typeid(float))) {
         infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(float, attr));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::string))) {
+        infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(std::string, attr));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::vector<bool>))) {
+        infer_meta_context.EmplaceBackAttr(
+            BOOST_GET_CONST(std::vector<bool>, attr));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::vector<int>))) {
+        infer_meta_context.EmplaceBackAttr(
+            BOOST_GET_CONST(std::vector<int>, attr));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::vector<int64_t>))) {
+        infer_meta_context.EmplaceBackAttr(
+            BOOST_GET_CONST(std::vector<int64_t>, attr));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::vector<float>))) {
+        infer_meta_context.EmplaceBackAttr(
+            BOOST_GET_CONST(std::vector<float>, attr));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::vector<double>))) {
+        infer_meta_context.EmplaceBackAttr(
+            BOOST_GET_CONST(std::vector<double>, attr));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::vector<std::string>))) {
+        infer_meta_context.EmplaceBackAttr(
+            BOOST_GET_CONST(std::vector<std::string>, attr));
       } else {
-        // do nothing, skip useless attrs now
-        // TODO(chenweihang): support other attr type later and throw error
-        // if attr is cannot parsed
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported attribute type is received when call "
+            "InferShapeFunctor."));
       }
     } else {
       // do nothing

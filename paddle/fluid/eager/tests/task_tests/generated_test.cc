@@ -123,5 +123,5 @@ TEST(Generated, ElementwiseAdd) {
 }  // namespace egr
 
 USE_OP(sigmoid);
-USE_OP(elementwise_add);
-USE_OP(matmul_v2);
+USE_OP_ITSELF(elementwise_add);
+USE_OP_ITSELF(matmul_v2);

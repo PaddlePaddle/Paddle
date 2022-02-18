@@ -14,7 +14,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -25,7 +25,8 @@ namespace operators {
 /**
  * Printing shape information into a string is easy to use.
  */
-inline static std::string DumpMatrixShape(const math::MatDescriptor &desc) {
+inline static std::string DumpMatrixShape(
+    const pten::funcs::MatDescriptor &desc) {
   std::stringstream buffer;
   buffer << "[" << desc.batch_size_ << ", " << desc.height_ << ", "
          << desc.width_ << "]";
@@ -65,10 +66,10 @@ class MatMulKernel : public framework::OpKernel<T> {
     auto *out = context.Output<framework::Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
 
-    auto blas = math::GetBlas<DeviceContext, T>(context);
-    auto mat_dim_a = math::CreateMatrixDescriptor(
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(context);
+    auto mat_dim_a = pten::funcs::CreateMatrixDescriptor(
         RowMatrixFromVector(x.dims()), 0, context.Attr<bool>("transpose_X"));
-    auto mat_dim_b = math::CreateMatrixDescriptor(
+    auto mat_dim_b = pten::funcs::CreateMatrixDescriptor(
         ColumnMatrixFromVector(y.dims()), 0, context.Attr<bool>("transpose_Y"));
     auto scale = static_cast<T>(context.Attr<float>("alpha"));
 
@@ -142,7 +143,7 @@ static framework::Tensor FoldHeadAndLastDims(const DeviceContext &context,
  * If transposed, `H,W` will be swapped.
  */
 static void ReshapeTensorIntoMatrixSequence(
-    framework::Tensor *x, const math::MatDescriptor &descriptor) {
+    framework::Tensor *x, const pten::funcs::MatDescriptor &descriptor) {
   int64_t h, w;
   h = descriptor.height_;
   w = descriptor.width_;
@@ -176,8 +177,8 @@ static void ReshapeXYOutIntoMatrixSequence(framework::Tensor *x,
                                            bool trans_y) {
   auto x_dim = RowMatrixFromVector(x->dims());
   auto y_dim = ColumnMatrixFromVector(y->dims());
-  auto mat_dim_x = math::CreateMatrixDescriptor(x_dim, 0, trans_x);
-  auto mat_dim_y = math::CreateMatrixDescriptor(y_dim, 0, trans_y);
+  auto mat_dim_x = pten::funcs::CreateMatrixDescriptor(x_dim, 0, trans_x);
+  auto mat_dim_y = pten::funcs::CreateMatrixDescriptor(y_dim, 0, trans_y);
   if (mat_dim_x.batch_size_ == 0 && mat_dim_y.batch_size_ == 0) {
     out->Resize({mat_dim_x.height_, mat_dim_y.width_});
   } else {
@@ -222,9 +223,9 @@ class MatMulGradKernel : public framework::OpKernel<T> {
               const framework::Tensor &b, bool trans_b,
               framework::Tensor *out) const {
     out->mutable_data<T>(context.GetPlace());
-    auto blas = math::GetBlas<DeviceContext, T>(context);
-    auto mat_dim_a = math::CreateMatrixDescriptor(a.dims(), 0, trans_a);
-    auto mat_dim_b = math::CreateMatrixDescriptor(b.dims(), 0, trans_b);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(context);
+    auto mat_dim_a = pten::funcs::CreateMatrixDescriptor(a.dims(), 0, trans_a);
+    auto mat_dim_b = pten::funcs::CreateMatrixDescriptor(b.dims(), 0, trans_b);
 
     int head_number = 1;
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
@@ -404,9 +405,9 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
               const framework::Tensor &b, bool trans_b, bool flag,
               framework::Tensor *out) const {
     out->mutable_data<T>(context.GetPlace());
-    auto blas = math::GetBlas<DeviceContext, T>(context);
-    auto mat_dim_a = math::CreateMatrixDescriptor(a.dims(), 0, trans_a);
-    auto mat_dim_b = math::CreateMatrixDescriptor(b.dims(), 0, trans_b);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(context);
+    auto mat_dim_a = pten::funcs::CreateMatrixDescriptor(a.dims(), 0, trans_a);
+    auto mat_dim_b = pten::funcs::CreateMatrixDescriptor(b.dims(), 0, trans_b);
 
     int head_number = 1;
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
@@ -584,12 +585,12 @@ class MatMulOp : public framework::OperatorWithKernel {
 
     auto dim_x = GetDimForInput(*context, "X");
     auto dim_y = GetDimForInput(*context, "Y");
-    auto mat_dim_x =
-        math::CreateMatrixDescriptor(RowMatrixFromVector(dim_x), 0,
-                                     context->Attrs().Get<bool>("transpose_X"));
-    auto mat_dim_y =
-        math::CreateMatrixDescriptor(ColumnMatrixFromVector(dim_y), 0,
-                                     context->Attrs().Get<bool>("transpose_Y"));
+    auto mat_dim_x = pten::funcs::CreateMatrixDescriptor(
+        RowMatrixFromVector(dim_x), 0,
+        context->Attrs().Get<bool>("transpose_X"));
+    auto mat_dim_y = pten::funcs::CreateMatrixDescriptor(
+        ColumnMatrixFromVector(dim_y), 0,
+        context->Attrs().Get<bool>("transpose_Y"));
 
     if (mat_dim_x.width_ == -1) {
       mat_dim_x.width_ = mat_dim_y.height_;
@@ -765,8 +766,9 @@ class MatMulOp : public framework::OperatorWithKernel {
       const framework::OpKernelType &expected_kernel_type) const {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(tensor.type(), tensor.place(),
-                                     tensor.layout());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+          tensor.layout());
     } else {
       return framework::OpKernelType(expected_kernel_type.data_type_,
                                      tensor.place(), tensor.layout());

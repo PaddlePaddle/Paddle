@@ -112,7 +112,8 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
     tensor->Resize(framework::make_ddim(output_shape));
     auto fetch_dtype = fetch_info.dataType();
     auto paddle_type = PopartType2VarType(fetch_dtype);
-    tensor->mutable_data(ctx.GetPlace(), paddle_type);
+    tensor->mutable_data(ctx.GetPlace(),
+                         framework::TransToPtenDataType(paddle_type));
     anchor_wrappers.emplace(tensor_id, PaddleIArray(tensor));
     popart_anchors.emplace(tensor_id, anchor_wrappers.at(tensor_id));
   }
@@ -153,7 +154,12 @@ void Executor::AcquireDevice() {
 
   bool use_ipu_model = GetBoolEnv("POPLAR_IPUMODEL");
   if (use_ipu_model) {
-    std::map<std::string, std::string> deviceOpts{{"numIPUs", "1 "}};
+    std::map<std::string, std::string> deviceOpts{
+        {
+            "numIPUs", std::to_string(ipu_strategy_->num_ipus),
+        },
+        {"ipuVersion", "ipu2"},
+    };
     device_ = popart::DeviceManager::createDeviceManager().createIpuModelDevice(
         deviceOpts);
   } else {
@@ -209,8 +215,8 @@ void Executor::SetWeightsIO() {
 void Executor::ConvertWeights(bool align_to_popart) {
   for (auto weight_pair : executor_resources_->weights_and_opt_state) {
     auto paddle_var = scope_->GetVar(weight_pair.second);
-    auto paddle_var_dtype = VarType2PopartType(
-        paddle_var->GetMutable<framework::LoDTensor>()->type());
+    auto paddle_var_dtype = PdDataType2PopartType(
+        paddle_var->GetMutable<framework::LoDTensor>()->dtype());
 
     PADDLE_ENFORCE_EQ((paddle_var_dtype == popart::DataType::FLOAT ||
                        paddle_var_dtype == popart::DataType::FLOAT16),

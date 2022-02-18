@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -87,7 +87,8 @@ class LookupTableKernel : public framework::OpKernel<T> {
       int64_t row_width = table_t.value().dims()[1];
       const auto *table = table_t.value().data<T>();
       auto *output = output_t->mutable_data<T>(context.GetPlace());
-      auto input_data_type = table_t.value().type();
+      auto input_data_type =
+          framework::TransToProtoVarType(table_t.value().dtype());
       for (int64_t i = 0; i < ids_numel; ++i) {
         if (padding_idx != kNoPadding && ids[i] == padding_idx) {
           memset(output + i * row_width, 0, row_width * sizeof(T));
@@ -108,8 +109,8 @@ class LookupTableKernel : public framework::OpKernel<T> {
                 memcpy(output + i * row_width, table + id_index * row_width,
                        row_width * sizeof(T));
               } else {
-                auto blas =
-                    math::GetBlas<platform::CPUDeviceContext, T>(context);
+                auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(
+                    context);
                 blas.VCOPY(row_width, table + id_index * row_width,
                            output + i * row_width);
               }
@@ -136,7 +137,8 @@ class LookupTableKernel : public framework::OpKernel<T> {
               memcpy(output + i * row_width, table + id_index * row_width,
                      row_width * sizeof(T));
             } else {
-              auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+              auto blas =
+                  pten::funcs::GetBlas<platform::CPUDeviceContext, T>(context);
               blas.VCOPY(row_width, table + id_index * row_width,
                          output + i * row_width);
             }
