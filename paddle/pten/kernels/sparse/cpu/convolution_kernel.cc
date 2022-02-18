@@ -136,6 +136,7 @@ template <typename T, typename Context>
 void UpdateRulebookAndOutIndex(const Context& dev_ctx,
                                const SparseCooTensor& x,
                                const int kernel_size,
+                               const int out_channels,
                                const DDim& out_dims,
                                DenseTensor* rulebook,
                                SparseCooTensor* out) {
@@ -151,7 +152,7 @@ void UpdateRulebookAndOutIndex(const Context& dev_ctx,
   DenseTensorMeta indices_meta(
       DataType::INT32, {sparse_dim, out_non_zero_num}, DataLayout::NCHW);
   DenseTensorMeta values_meta(
-      x.dtype(), {out_non_zero_num, kernel_dims[4]}, x.layout());
+      x.dtype(), {out_non_zero_num, out_channels}, x.layout());
   pten::DenseTensor out_indices = pten::Empty(dev_ctx, std::move(indices_meta));
   pten::DenseTensor out_values = pten::Empty(dev_ctx, std::move(values_meta));
   int* out_indices_ptr = out_indices.mutable_data<int>(dev_ctx.GetPlace());
@@ -242,7 +243,7 @@ void Conv3dKernel(const Context& dev_ctx,
                               &counter_per_kernel);
 
   UpdateRulebookAndOutIndex<T>(
-      dev_ctx, x, kernel_size, out_dims, &rulebook, out);
+      dev_ctx, x, kernel_size, out_channels, out_dims, &rulebook, out);
 
   int n = rulebook.dims()[1];
   const int* counter_ptr = counter_per_kernel.data<int>();
