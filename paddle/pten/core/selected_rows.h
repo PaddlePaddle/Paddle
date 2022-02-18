@@ -27,9 +27,6 @@ limitations under the License. */
 #include "paddle/pten/core/enforce.h"
 #include "paddle/pten/core/utils/rw_lock.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/framework/mixed_vector.h"
-
 namespace egr {
 class EagerTensor;
 }  // namespace egr

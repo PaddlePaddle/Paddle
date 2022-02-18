@@ -13,12 +13,10 @@
 // limitations under the License.
 
 #pragma once
-
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/framework/mixed_vector.h"
+#include <vector>
 
 namespace pten {
-using LoD = std::vector<paddle::framework::Vector<size_t>>;
+using LoD = std::vector<std::vector<size_t>>;
 
 void AppendLoD(LoD* lod, const LoD& lod_length);
 
