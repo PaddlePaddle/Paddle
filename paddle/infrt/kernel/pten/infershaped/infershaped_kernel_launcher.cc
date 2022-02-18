@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/infrt/kernel/pten/infershaped/infershaped_kernel_launcher.h"
+#include "paddle/pten/core/dense_tensor.h"
 
 namespace infrt {
 namespace kernel {
@@ -25,6 +26,9 @@ void InferShapedKernelLauncher::CreateKernelFrameForInferShape(
     if (value->is_type<::pten::DenseTensor>()) {
       values.emplace_back(
           ::pten::MetaTensor{&value->get<::pten::DenseTensor>()});
+      infershape_kernel_frame_builder.AddArgument(values.back().get());
+    } else if (value->is_type<pten::DenseTensor>()) {
+      values.emplace_back(pten::MetaTensor{&value->get<pten::DenseTensor>()});
       infershape_kernel_frame_builder.AddArgument(values.back().get());
     } else {
       infershape_kernel_frame_builder.AddArgument(value);

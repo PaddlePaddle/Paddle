@@ -30,7 +30,7 @@ void Copy(const Context& dev_ctx,
           bool blocking,
           DenseTensor* dst) {
   auto* src_ptr = src.data();
-  auto* dst_ptr = dev_ctx.Alloc(dst);
+  auto* dst_ptr = dev_ctx.Alloc(dst, src.dtype());
   const auto& src_place = src.place();
   const auto& dst_place = dst->place();
 

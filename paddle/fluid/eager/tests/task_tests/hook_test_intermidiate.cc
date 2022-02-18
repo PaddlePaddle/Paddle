@@ -220,7 +220,6 @@ TEST(Hook_intermidiate, Matmul_v2) {
              static_cast<float>(100.0f));
   }
 }
-
 }  // namespace egr
 
 USE_OP(sigmoid);
