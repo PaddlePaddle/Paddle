@@ -1,12 +1,5 @@
 add_subdirectory(eigen)
 
-cc_library(pten_transpose_cpu SRCS transpose.cc DEPS dense_tensor pten_context)
-if(WITH_GPU)
-  nv_library(pten_transpose_gpu SRCS transpose.cu DEPS dense_tensor malloc pten_context)
-elseif(WITH_ROCM)
-  hip_library(pten_transpose_gpu SRCS transpose.cu DEPS dense_tensor malloc pten_context)
-endif()
-
 function(math_library TARGET)
     # math_library is a function to create math library.
     # The interface is the same as cc_library.
@@ -47,10 +40,3 @@ function(math_library TARGET)
 endfunction()
 
 math_library(math_function DEPS blas dense_tensor tensor)
-cc_test(math_function_test SRCS math_function_test.cc DEPS math_function)
-if(WITH_GPU)
-    nv_test(math_function_gpu_test SRCS math_function_test.cu DEPS math_function)
-endif()
-if(WITH_ROCM)
-    hip_test(math_function_gpu_test SRCS math_function_test.cu DEPS math_function tensor)
-endif()

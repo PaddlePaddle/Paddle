@@ -15,6 +15,8 @@ limitations under the License. */
 #include <iostream>
 #include <sstream>
 
+#include "paddle/pten/common/float16.h"
+#include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_factory.h"
 #include "paddle/pten/core/kernel_registry.h"
 
@@ -47,5 +49,42 @@ TEST(KernelFactory, SelectedKernelMap) {
   }
 }
 
+template <typename T, typename Context>
+void TestKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const DenseTensor& param,
+                DenseTensor* out) {}
+
+TEST(KernelRegistry, SetFP32Input) {
+  pten::KernelKey kernel_key(pten::Backend::CPU,
+                             pten::DataLayout::ALL_LAYOUT,
+                             pten::DataType::FLOAT16);
+  auto test_kernel =
+      pten::KernelFactory::Instance().SelectKernel("test", kernel_key);
+  EXPECT_TRUE(test_kernel.IsValid());
+  auto& arg_defs = test_kernel.args_def();
+  auto& input_defs = arg_defs.input_defs();
+  auto& attr_defs = arg_defs.attribute_defs();
+  auto& output_defs = arg_defs.output_defs();
+  EXPECT_EQ(input_defs.size(), 2UL);
+  EXPECT_EQ(attr_defs.size(), 0UL);
+  EXPECT_EQ(output_defs.size(), 1UL);
+  EXPECT_EQ(input_defs.at(0).dtype, pten::DataType::FLOAT16);
+  EXPECT_EQ(input_defs.at(1).dtype, pten::DataType::FLOAT32);
+  EXPECT_EQ(output_defs.at(0).dtype, pten::DataType::FLOAT16);
+}
+
 }  // namespace tests
 }  // namespace pten
+
+PT_REGISTER_KERNEL(test,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::tests::TestKernel,
+                   float,
+                   double,
+                   pten::dtype::float16) {
+  if (kernel_key.dtype() == pten::DataType::FLOAT16) {
+    kernel->InputAt(1).SetDataType(pten::DataType::FLOAT32);
+  }
+}

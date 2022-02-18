@@ -54,10 +54,11 @@ TensorMap LoadParams(const std::string &path) {
 }
 
 void TensorMapGetTensor(TensorMap map,
-                        const std::string &name,
-                        DenseHostTensor *out) {
-  auto it = map.find(name);
-  CHECK(it != map.end()) << "No tensor called " << name << " in the TensorMap";
+                        DenseHostTensor *out,
+                        Attribute<std::string> name) {
+  auto it = map.find(name.get());
+  CHECK(it != map.end()) << "No tensor called " << name.get()
+                         << " in the TensorMap";
   *out = *it->second;
 }
 
