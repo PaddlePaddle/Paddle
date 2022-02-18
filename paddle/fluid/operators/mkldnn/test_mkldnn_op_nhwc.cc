@@ -86,9 +86,9 @@ TEST(test_pool2d_transpose_nhwc, cpu_place) {
   op_transpose->Run(scope, p);
   pool.Get(p)->Wait();
 
-  // Reset model to NCHW (default) 
-  platform::MKLDNNDeviceContext::tls()
-      .set_cur_paddle_data_layout(framework::DataLayout::kNCHW);
+  // Reset model to NCHW (default)
+  platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
+      framework::DataLayout::kNCHW);
 
   // Verify shape of output
   PADDLE_ENFORCE_EQ(z->dims(), expected_dims,
@@ -98,7 +98,7 @@ TEST(test_pool2d_transpose_nhwc, cpu_place) {
 
 TEST(test_pool2d_relu_relu_nhwc, cpu_place) {
   framework::DDim dims({1, 4, 8, 512});           // NHWC shape
-  framework::DDim expected_dims({1, 512, 3, 7});  // NHWC expected shape
+  framework::DDim expected_dims({1, 3, 7, 512});  // NHWC expected shape
   platform::CPUPlace p;
   framework::Scope scope;
 
@@ -149,9 +149,9 @@ TEST(test_pool2d_relu_relu_nhwc, cpu_place) {
 
   pool.Get(p)->Wait();
 
-  // Reset model to NCHW (default) 
-  platform::MKLDNNDeviceContext::tls()
-      .set_cur_paddle_data_layout(framework::DataLayout::kNCHW);
+  // Reset model to NCHW (default)
+  platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
+      framework::DataLayout::kNCHW);
 
   // Verify shape of output
   PADDLE_ENFORCE_EQ(z->dims(), expected_dims,
