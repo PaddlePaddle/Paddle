@@ -246,7 +246,8 @@ GradNodeBase::ApplyGradientHooks(
       VLOG(8) << "Run Hook for tensor: " << tensors[slot_id][rank].name();
       out = hook(tensors[slot_id][rank]);
     } else {
-      // TODO(jiabin): Why this?
+      // If more than one hook is registered, the input to the next hook func
+      // should be the output of the previous hook
       out = hook(out);
     }
   }
