@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import json
+import sys
 
 attr_type_converter = {"i": 'SI32Attr', "b": 'BoolAttr', "l": 'SI64Attr'}
 supported_kernels = ['sign', 'dot', 'digamma', 'conj']
@@ -44,13 +45,9 @@ def generate_kernel_name(op_name, place_str):
     target_ = target_type_converter[target_.strip()]
     layout_ = layout_type_converter[layout_.strip()]
     precision_ = precision_type_converter[precision_.strip()]
-    alias_ = op_name + "." + ".".join(
-        [target_.strip(), layout_.strip(), precision_.strip()])
+    alias_ = "{}.{}".format(op_name, ".".join(
+        [target_.strip(), layout_.strip(), precision_.strip()]))
     return alias_
-
-
-def convert_attrtype_from_paddle2mlir(attr_type):
-    yield
 
 
 def generate_attrs_info(op_name, attrs_info):
@@ -77,7 +74,7 @@ def generate_attrs_info(op_name, attrs_info):
             attr_name = kernel_attrs_names[op_name][index]
             attr_type = attr_type_converter[attrs_info[index]]
             attrs_args_ += '{type_}:${name_},'.format(
-                type_=attr_type, name_=name)
+                type_=attr_type, name_=attr_name)
     return attrs_args_[:-1]
 
 
@@ -89,9 +86,8 @@ def generate_inputs_info(input_info):
         target_ = target_type_converter[target_.strip()]
         layout_ = layout_type_converter[layout_.strip()]
         precision_ = precision_type_converter[precision_.strip()]
-        input_args_ += " DTTensorType<\"" + target_.strip(
-        ) + "\",\"" + layout_.strip() + "\",\"" + precision_.strip(
-        ) + "\">:$in" + str(index) + ","
+        input_args_ += " DTTensorType<\"{}\",\"{}\",\"{}\">:$in{},".format(
+            target_.strip(), layout_.strip(), precision_.strip(), str(index))
     input_args_ = input_args_[:-1]
     return input_args_
 
@@ -99,8 +95,8 @@ def generate_inputs_info(input_info):
 def generate_arguments_info(op_name, input_info, attr_info):
     input_args = generate_inputs_info(input_info)
     attr_args = generate_attrs_info(op_name, attr_info)
-    argument_ = input_args + "," + attr_args
-    return ("let arguments = (ins " + argument_.strip(",") + ");")
+    argument_ = "{},{}".format(input_args, attr_args)
+    return (("let arguments = (ins {});".format(argument_.strip(","))))
 
 
 def generate_results_info(output_info):
@@ -111,10 +107,9 @@ def generate_results_info(output_info):
         target_ = target_type_converter[target_.strip()]
         layout_ = layout_type_converter[layout_.strip()]
         precision_ = precision_type_converter[precision_.strip()]
-        output_args_ += " DTTensorType<\"" + target_.strip(
-        ) + "\",\"" + layout_.strip() + "\",\"" + precision_.strip(
-        ) + "\">:$out" + str(index) + ","
-    return (output_args_[:-1] + ");")
+        output_args_ += " DTTensorType<\"{}\",\"{}\",\"{}\">:$out{},".format(
+            target_.strip(), layout_.strip(), precision_.strip(), str(index))
+    return ("{});".format(output_args_[:-1]))
 
 
 def generate_supported_kernel_list(load_dict):
@@ -204,25 +199,29 @@ include \"paddle/infrt/dialect/dense_tensor.td\"\n"
     return (comment_ + includes_)
 
 
-with open("kernels.json", "r") as f:
-    load_dict = json.load(f)
+def main(path_):
+    with open(path_, "r") as f:
+        load_dict = json.load(f)
 
-    head = generate_dialect_head()
+        head = generate_dialect_head()
 
-    registry_ = ""
-    for op_name in load_dict:
-        if op_name not in supported_kernels:
-            continue
-        kernel_list = load_dict[op_name]
-        for kernel_info in kernel_list:
-            for kernel_alias_ in kernel_info:
-                kernel_registry = generate_kernel_dialect(
-                    op_name, kernel_alias_, kernel_info[kernel_alias_])
-                registry_ += kernel_registry
+        registry_ = ""
+        for op_name in load_dict:
+            if op_name not in supported_kernels:
+                continue
+            kernel_list = load_dict[op_name]
+            for kernel_info in kernel_list:
+                for kernel_alias_ in kernel_info:
+                    kernel_registry = generate_kernel_dialect(
+                        op_name, kernel_alias_, kernel_info[kernel_alias_])
+                    registry_ += kernel_registry
 
-    end = "#endif  // PTEN_KERNELS"
+        end = "#endif  // PTEN_KERNELS"
+        with open("pten_kernels.td", "w") as dst:
+            dst.write('{start_}\n{dialect_}\n{end_}'.format(
+                start_=head, dialect_=registry_, end_=end))
 
-    dst_dialect_file = "../../paddle/infrt/dialect/pten/pten_kernels.td"
-    with open(dst_dialect_file, "w") as dst:
-        dst.write('{start_}\n{dialect_}\n{end_}'.format(
-            start_=head, dialect_=registry_, end_=end))
+
+if __name__ == '__main__':
+    path = sys.argv[1]
+    main(path)
