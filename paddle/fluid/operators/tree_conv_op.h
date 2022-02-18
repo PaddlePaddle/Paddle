@@ -16,8 +16,8 @@
 
 #include <iostream>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/tree2col.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -37,7 +37,7 @@ class TreeConvKernel : public framework::OpKernel<T> {
     int max_depth = ctx.Attr<int>("max_depth");
 
     auto &dev_ctx = ctx.template device_context<DeviceContext>();
-    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(dev_ctx);
 
     Tensor W;
     W.ShareDataWith(*Filter);
@@ -88,7 +88,7 @@ class TreeConvGradKernel : public framework::OpKernel<T> {
     math::Col2TreeFunctor<DeviceContext, T> col2tree;
     pten::funcs::SetConstant<DeviceContext, T> constant;
     auto &dev_ctx = ctx.template device_context<DeviceContext>();
-    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(dev_ctx);
 
     Tensor W;
     W.ShareDataWith(*Filter);
