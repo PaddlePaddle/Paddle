@@ -184,7 +184,7 @@ struct KernelRegistrar {
     KernelKey kernel_key(backend, layout, dtype);
     Kernel kernel(kernel_fn, variadic_kernel_fn);
     args_parse_fn(kernel_key, kernel.mutable_args_def());
-    args_def_fn(&kernel);
+    args_def_fn(kernel_key, &kernel);
     KernelFactory::Instance().kernels()[kernel_name][kernel_key] = kernel;
   }
 };
@@ -231,7 +231,7 @@ struct KernelRegistrar {
     kernel_name, backend, layout, meta_kernel_fn, ...)                      \
   PT_KERNEL_INSTANTIATION(meta_kernel_fn, backend, __VA_ARGS__);            \
   static void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
-      ::pten::Kernel*);                                                     \
+      const ::pten::KernelKey& kernel_key, ::pten::Kernel* kernel);         \
   PT_KERNEL_REGISTRAR_INIT(                                                 \
       kernel_name,                                                          \
       backend,                                                              \
@@ -240,7 +240,7 @@ struct KernelRegistrar {
       meta_kernel_fn,                                                       \
       __VA_ARGS__);                                                         \
   void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(        \
-      ::pten::Kernel* kernel)
+      const ::pten::KernelKey& kernel_key, ::pten::Kernel* kernel)
 #else
 /**
  * `template decltype(fn) fn` can work on gcc and clang,
@@ -257,7 +257,7 @@ struct KernelRegistrar {
 #define _PT_REGISTER_2TA_KERNEL(                                            \
     kernel_name, backend, layout, meta_kernel_fn, ...)                      \
   static void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
-      ::pten::Kernel*);                                                     \
+      const ::pten::KernelKey& kernel_key, ::pten::Kernel* kernel);         \
   PT_EXPAND(PT_KERNEL_REGISTRAR_INIT(                                       \
       kernel_name,                                                          \
       backend,                                                              \
@@ -266,7 +266,7 @@ struct KernelRegistrar {
       meta_kernel_fn,                                                       \
       __VA_ARGS__));                                                        \
   void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(        \
-      ::pten::Kernel* kernel)
+      const ::pten::KernelKey& kernel_key, ::pten::Kernel* kernel)
 #endif
 
 #define PT_KERNEL_INSTANTIATION(meta_kernel_fn, backend, ...) \
@@ -786,7 +786,7 @@ struct KernelRegistrar {
     kernel_name, backend, layout, kernel_fn, dtype)                         \
   template decltype(kernel_fn) kernel_fn;                                   \
   static void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
-      ::pten::Kernel*);                                                     \
+      const ::pten::KernelKey& kernel_key, ::pten::Kernel* kernel);         \
   static const ::pten::KernelRegistrar                                      \
       __reg_pt_kernel_##kernel_name##_##backend##_##layout(                 \
           #kernel_name,                                                     \
@@ -800,12 +800,12 @@ struct KernelRegistrar {
     return 0;                                                               \
   }                                                                         \
   void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(        \
-      ::pten::Kernel* kernel)
+      const ::pten::KernelKey& kernel_key, ::pten::Kernel* kernel)
 #else
 #define _PT_REGISTER_GENERAL_KERNEL(                                        \
     kernel_name, backend, layout, kernel_fn, dtype)                         \
   static void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
-      ::pten::Kernel*);                                                     \
+      const ::pten::KernelKey& kernel_key, ::pten::Kernel* kernel);         \
   static const ::pten::KernelRegistrar                                      \
       __reg_pt_kernel_##kernel_name##_##backend##_##layout(                 \
           #kernel_name,                                                     \
@@ -819,7 +819,7 @@ struct KernelRegistrar {
     return 0;                                                               \
   }                                                                         \
   void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(        \
-      ::pten::Kernel* kernel)
+      const ::pten::KernelKey& kernel_key, ::pten::Kernel* kernel)
 #endif
 
 /** PT_DECLARE_KERNEL

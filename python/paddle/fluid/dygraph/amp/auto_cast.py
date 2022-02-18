@@ -75,19 +75,29 @@ PURE_FP16_BLACK_LIST = {
     'lookup_table', 'lookup_table_v2', 'scatter', 'scatter_grad'
 }
 
+BF16_WHITE_LIST = {'conv2d'}
+BF16_BLACK_LIST = {' '}
+
 
 #NOTE(zhiqiu): similar as paddle.fluid.contrib.mixed_precision.fp16_lists.AutoMixedPrecisionLists._update_list
 # The reason why not use AutoMixedPrecisionLists is that custom_black_varnames is not suitable for imperative mode.
-def _update_list(custom_white_list, custom_black_list, level='O1'):
+def _update_list(custom_white_list,
+                 custom_black_list,
+                 level='O1',
+                 dtype='float16'):
     """
     Update black and white list according to users' custom list.
     """
-    if level == 'O1':
-        _white_list = copy.copy(WHITE_LIST)
-        _black_list = copy.copy(BLACK_LIST)
+    if dtype == 'float16':
+        if level == 'O1':
+            _white_list = copy.copy(WHITE_LIST)
+            _black_list = copy.copy(BLACK_LIST)
+        else:
+            _white_list = copy.copy(PURE_FP16_WHITE_LIST)
+            _black_list = copy.copy(PURE_FP16_BLACK_LIST)
     else:
-        _white_list = copy.copy(PURE_FP16_WHITE_LIST)
-        _black_list = copy.copy(PURE_FP16_BLACK_LIST)
+        _white_list = copy.copy(BF16_WHITE_LIST)
+        _black_list = copy.copy(BF16_BLACK_LIST)
     if custom_white_list and custom_black_list:
         for op_name in custom_white_list:
             if op_name in custom_black_list:
@@ -123,6 +133,27 @@ def _in_amp_guard():
 def _in_pure_fp16_guard():
     tracer = _dygraph_tracer()
     return tracer and tracer._amp_level == core.AmpLevel.O2
+
+
+def _is_gpu_float16_supported():
+    """
+    Judge whether current gpu support float16 amp.
+    """
+    prop = paddle.device.cuda.get_device_capability()
+    return prop[0] >= 7
+
+
+def _is_gpu_bfloat16_supported():
+    """
+    Judge whether current gpu support bfloat16 amp.
+    """
+    prop = paddle.device.cuda.get_device_capability()
+    cuda_version = paddle.version.cuda()
+    if cuda_version is not None:
+        cuda_version_check = int(cuda_version.split('.')[0]) >= 11
+    else:
+        cuda_version_check = False
+    return prop[0] >= 8 and cuda_version_check
 
 
 @dygraph_only
@@ -165,7 +196,8 @@ def check_optimizers(optimizers):
 def amp_guard(enable=True,
               custom_white_list=None,
               custom_black_list=None,
-              level='O1'):
+              level='O1',
+              dtype='float16'):
     """
     :api_attr: imperative
 
@@ -186,6 +218,7 @@ def amp_guard(enable=True,
              observed in downstream ops. These ops will not be converted to fp16.
         level(str, optional): Auto mixed precision level. Accepted values are "O1" and "O2": O1 represent mixed precision, the input data type of each operator will be casted by white_list and black_list; 
              O2 represent Pure fp16, all operators parameters and input data will be casted to fp16, except operators in black_list, don't support fp16 kernel and batchnorm. Default is O1(amp)
+        dtype(str, optional): Whether to use 'float16' or 'bfloat16'. Default is 'float16'.
 
         
     Examples:
@@ -207,49 +240,88 @@ def amp_guard(enable=True,
                 print(conv.dtype) # FP32
 
     """
+    # check amp_level: O0-O2
+    level = level.upper()
     if not (level in ['O0', 'O1', 'O2']):
         raise ValueError(
-            "level should be O0, O1 or O2. O0 represents fp32 train mode, O1 represents AMP train mode, O2 represents pure fp16 train mode."
+            "level should be O0, O1 or O2. O0 represents fp32 train mode, O1 represents AMP train mode, O2 represents pure fp16/bf16 train mode."
         )
 
+    # check amp_dtype: float16 or bfloat16
+    dtype = dtype.lower()
+    if not (dtype in ['float16', 'bfloat16']):
+        raise ValueError("dtype should be 'float16' or 'bfloat16'.")
+
+    # check tracer
     tracer = _dygraph_tracer()
     if not tracer:
         raise ValueError(
             "current_tracer is None, maybe it is not in imperative mode.")
 
+    # check device_type:
+    # NOTE: Now, amp only support gpu for float16 and bfloat16, xpu for float16.
+    # Maybe we will support cpu for bfloat16.
     if enable and not (tracer._expected_place.is_gpu_place() or
                        tracer._expected_place.is_xpu_place()):
         warnings.warn(
             'amp_guard can only be enabled on CUDAPlace and XPUPlace, current place is %s, so it makes no effect.'
             % tracer._expected_place)
         enable = False
-
+    # For xpu:
+    if tracer._expected_place.is_xpu_place() and (dtype == 'bfloat16'):
+        warnings.warn('XPUPlace only support float16 amp.')
+        enable = False
+    # For gpu float16: Compute Capability should >= 7.
+    # For gpu bfloat16: Compute Capability should >= 8 & CUDA Version should >= 11.
     if tracer._expected_place.is_gpu_place():
-        prop = paddle.device.cuda.get_device_capability()
-        if prop[0] < 7:
+        if (dtype == 'float16') and not _is_gpu_float16_supported():
+            prop = paddle.device.cuda.get_device_capability()
             warnings.warn(
-                "AMP only support NVIDIA GPU with Compute Capability 7.0 or higher, current GPU is: %s, with Compute Capability: %d.%d."
+                "For float16, amp only support NVIDIA GPU with Compute Capability 7.0 or higher, current GPU is: %s, with Compute Capability: %d.%d."
                 % (paddle.device.cuda.get_device_name(), prop[0], prop[1]))
+        elif (dtype == 'bfloat16') and not _is_gpu_bfloat16_supported():
+            prop = paddle.device.cuda.get_device_capability()
+            cuda_version = paddle.version.cuda()
+            warnings.warn(
+                "For bfloat16, amp only support NVIDIA GPU with Compute Capability 8.0 or higher and CUDA Version 11.0 or higher, current GPU is: %s, with Compute Capability: %d.%d, current CUDA Version is: %s."
+                % (paddle.device.cuda.get_device_name(), prop[0], prop[1],
+                   cuda_version))
+
+    amp_dtype = dtype
 
     if level == 'O1':
         amp_level = AMP_LEVEL.O1
-        _white_list = WHITE_LIST
-        _black_list = BLACK_LIST
+        if dtype == 'float16':
+            _white_list = WHITE_LIST
+            _black_list = BLACK_LIST
+        elif dtype == 'bfloat16':
+            _white_list = BF16_WHITE_LIST
+            _black_list = BF16_BLACK_LIST
+
     elif level == 'O2':
         amp_level = AMP_LEVEL.O2
-        _white_list = PURE_FP16_WHITE_LIST
-        _black_list = PURE_FP16_BLACK_LIST
+        if dtype == 'float16':
+            _white_list = PURE_FP16_WHITE_LIST
+            _black_list = PURE_FP16_BLACK_LIST
+        elif dtype == 'bfloat16':
+            _white_list = BF16_WHITE_LIST
+            _black_list = BF16_BLACK_LIST
     elif level == 'O0':
         amp_level = AMP_LEVEL.O0
-        _white_list = WHITE_LIST
-        _black_list = BLACK_LIST
+        if dtype == 'float16':
+            _white_list = WHITE_LIST
+            _black_list = BLACK_LIST
+        elif dtype == 'bfloat16':
+            _white_list = BF16_WHITE_LIST
+            _black_list = BF16_BLACK_LIST
 
     if custom_white_list or custom_black_list:
         _white_list, _black_list = _update_list(custom_white_list,
-                                                custom_black_list, level)
+                                                custom_black_list, level, dtype)
 
     if not enable:
         amp_level = AMP_LEVEL.O0
+        amp_dtype = "float32"
 
     if tracer:
         # enable auto_cast
@@ -268,6 +340,10 @@ def amp_guard(enable=True,
         # original_flags = get_flags(AMP_RELATED_FLAGS)
         # set_flags(AMP_RELATED_FLAGS_SETTING)
 
+        # set amp dtype
+        original_amp_dtype = tracer._amp_dtype
+        tracer._amp_dtype = amp_dtype
+
     # restore status
     try:
         yield
@@ -276,6 +352,7 @@ def amp_guard(enable=True,
             tracer._amp_level = original_amp_level
             tracer._set_amp_op_list(original_white_list, original_black_list)
             # set_flags(original_flags)
+            tracer._amp_dtype = original_amp_dtype
 
 
 class StateDictHook(object):
