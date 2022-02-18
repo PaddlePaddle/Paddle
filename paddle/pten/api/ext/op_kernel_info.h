@@ -633,10 +633,6 @@ class PADDLE_API OpKernelInfoBuilder {
 // Call after PD_REGISTER_KERNEL(...)
 void RegisterAllCustomKernel();
 
-// Using this api to load compiled custom kernel's dynamic library and
-// register custom kernels
-void LoadCustomKernelLib(const std::string& dso_name);
-
 //////////////// Custom kernel register macro /////////////////////
 // Refer to paddle/pten/core/kernel_registry.h, we can not use
 // PT_REGISTER_KERNEL directly, common macros and functions are
