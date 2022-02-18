@@ -15,9 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/matrix_solve.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/solve_op.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace platform {
@@ -65,10 +65,10 @@ class MatrixSolveFunctor<platform::CUDADeviceContext, T> {
     // copy input A to a temporary tensor tmp_a,
     // LU factorization, written back to original matrix A, so in the beginning,
     // it's necessary to create a temporary tensor tmp_a.
-    Tensor tmp_a(a.type());
+    Tensor tmp_a(a.dtype());
     tmp_a.Resize(a.dims());
     tmp_a.mutable_data<T>(context.GetPlace());
-    TensorCopy(a, context.GetPlace(), &tmp_a);
+    framework::TensorCopy(a, context.GetPlace(), &tmp_a);
 
     // copy input B to a temporary tensor tmp_b, and transpose tmp_b,
     // because cuBlas assumes column-major while Paddle uses row-majar.
@@ -76,7 +76,7 @@ class MatrixSolveFunctor<platform::CUDADeviceContext, T> {
     const auto& new_dims_vec = getNewDimsVec(b_dims);
     tmp_b.Resize(framework::make_ddim(new_dims_vec));
     tmp_b.mutable_data<T>(context.GetPlace());
-    math::TransposeNormal<platform::CUDADeviceContext, T> trans;
+    pten::funcs::TransposeNormal<platform::CUDADeviceContext, T> trans;
     std::vector<int> new_axis = getNewAxis(b_rank);
     trans(context, b, &tmp_b, new_axis);
 
@@ -92,9 +92,8 @@ class MatrixSolveFunctor<platform::CUDADeviceContext, T> {
     // Copy the addresses of A and tmp_b from host to device.
     memory::allocation::AllocationPtr tmp_gpu_ptrs_data =
         memory::Alloc(context, cpu_ptrs.size() * sizeof(T*));
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()),
-                 tmp_gpu_ptrs_data->ptr(), platform::CPUPlace(),
-                 static_cast<void*>(cpu_ptrs.data()),
+    memory::Copy(context.GetPlace(), tmp_gpu_ptrs_data->ptr(),
+                 platform::CPUPlace(), static_cast<void*>(cpu_ptrs.data()),
                  cpu_ptrs.size() * sizeof(T*), context.stream());
 
     T** gpu_tmp_b_ptrs =
@@ -122,8 +121,7 @@ class MatrixSolveFunctor<platform::CUDADeviceContext, T> {
                       gpu_pivot_ptr, gpu_info_ptr, batch_size);
 
     // check whether BatchedGETRF is executed successfully or not
-    memory::Copy(platform::CPUPlace(), info.data(),
-                 BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()),
+    memory::Copy(platform::CPUPlace(), info.data(), context.GetPlace(),
                  gpu_info_ptr, sizeof(int) * batch_size, context.stream());
     for (int i = 0; i < batch_size; ++i) {
       PADDLE_ENFORCE_EQ(info[i], 0,
@@ -151,7 +149,7 @@ class MatrixSolveFunctor<platform::CUDADeviceContext, T> {
                           -host_info));
 
     // transpose tmp_b to get the final result in row-major form.
-    math::TransposeNormal<platform::CUDADeviceContext, T> trans2;
+    pten::funcs::TransposeNormal<platform::CUDADeviceContext, T> trans2;
     trans2(context, tmp_b, out, new_axis);
 
 #else
@@ -207,9 +205,8 @@ class TriangularSolveFunctor<platform::CUDADeviceContext, T> {
       // Copy the addresses of A and tmp_b from host to device.
       memory::allocation::AllocationPtr tmp_gpu_ptrs_data =
           memory::Alloc(context, cpu_ptrs.size() * sizeof(T*));
-      memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()),
-                   tmp_gpu_ptrs_data->ptr(), platform::CPUPlace(),
-                   static_cast<void*>(cpu_ptrs.data()),
+      memory::Copy(context.GetPlace(), tmp_gpu_ptrs_data->ptr(),
+                   platform::CPUPlace(), static_cast<void*>(cpu_ptrs.data()),
                    cpu_ptrs.size() * sizeof(T*), context.stream());
 
       const T** gpu_a_ptrs =

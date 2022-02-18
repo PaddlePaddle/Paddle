@@ -16,9 +16,10 @@
 
 #include <memory>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/im2col.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -29,15 +30,6 @@ inline int CalcOutputSize(int input_size, int filter_size, int dilation,
                           int padding1, int padding2, int stride) {
   const int dkernel = dilation * (filter_size - 1) + 1;
   int output_size = (input_size + padding1 + padding2 - dkernel) / stride + 1;
-  PADDLE_ENFORCE_GT(
-      output_size, 0UL,
-      platform::errors::InvalidArgument(
-          "Due to the settings of padding(%d, %d), filter_size(%d), "
-          "dilation(%d) and "
-          "stride(%d), the output size is less than 0, please check "
-          "again. Input_size:%d",
-          padding1, padding2, filter_size, dilation, stride, input_size));
-
   return output_size;
 }
 
@@ -114,7 +106,7 @@ class UnfoldGradOpKernel : public framework::OpKernel<T> {
     math::Col2ImFunctor<math::ColFormat::kCFO, DeviceContext, T> col2im;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
-    math::SetConstant<DeviceContext, T> set_zero;
+    pten::funcs::SetConstant<DeviceContext, T> set_zero;
     set_zero(dev_ctx, input_grad, static_cast<T>(0));
     for (int i = 0; i < batch_size; i++) {
       Tensor out_grad_batch =

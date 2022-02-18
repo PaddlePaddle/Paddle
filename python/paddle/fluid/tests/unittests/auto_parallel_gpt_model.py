@@ -34,6 +34,7 @@ paddle.enable_static()
 
 def init_global():
     global _global_parallel_strategy
+    _global_parallel_strategy = None
     global _global_process_mesh
     global PP_MESH_LIST
     global DPPP_MESH_LIST
@@ -894,7 +895,6 @@ class GPTModel(nn.Layer):
                     "dims_mapping":
                     [0] + [-1 for i in range(len(input_ids.shape) - 1)]
                 })
-        attention_mask.stop_gradient = True
         encoder_outputs = self.decoder(
             embedding_output,
             memory=None,
@@ -967,23 +967,4 @@ class GPTPretrainingCriterion(nn.Layer):
         loss_mask = loss_mask.reshape([-1])
         masked_lm_loss = paddle.sum(masked_lm_loss.reshape([-1]) * loss_mask)
         total_loss = masked_lm_loss / loss_mask.sum()
-        pp_total_loss = None
-        loss = total_loss
-        if "pp" in _global_parallel_strategy:
-            total_loss = total_loss
-            masked_lm_loss.persistable = True
-            total_loss.persistable = True
-            total_loss.persistable = True
-            pp_total_loss = paddle.fluid.layers.fill_constant([1, ], "float32",
-                                                              0.0)
-            pp_total_loss.persistable = True
-            block = paddle.static.default_main_program().global_block()
-            acc_steps = 1
-            tmp = total_loss / acc_steps
-            block.append_op(
-                type="elementwise_add",
-                inputs={"X": [pp_total_loss],
-                        "Y": [tmp]},
-                outputs={"Out": [pp_total_loss]})
-            loss = pp_total_loss
-        return loss
+        return total_loss

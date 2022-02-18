@@ -65,9 +65,9 @@ class ShardingOptimizerStage2(Optimizer):
                  params,
                  optim,
                  group=None,
-                 broadcast_fp16=False,
                  offload=False,
                  device="gpu",
+                 pertrain_sync_models=True,
                  **kw):
 
         super().__init__(optim._learning_rate, params, kw)
@@ -83,8 +83,6 @@ class ShardingOptimizerStage2(Optimizer):
         # Default information
         self._optim_defaults = kw
         self._optim = optim
-        self._ori_parameter_list = self._optim._parameter_list
-        self._ori_param_groups = self._optim._param_groups
 
         assert hasattr(self._optim, "_master_weights"
                        ), "Must use optimizer with _master_weights attribute"
@@ -100,8 +98,12 @@ class ShardingOptimizerStage2(Optimizer):
 
         self.world_size = self.group.nranks
         self.rank = self.group.rank
+        self._global_root_rank = 0
 
-        self.broadcast_fp16 = broadcast_fp16
+        # Synchronous all ranks models
+        if pertrain_sync_models:
+            self._sync_params_and_buffers()
+
         self.param_storages = {}  # {dtype: {rank: InternalStorage}}
 
         if isinstance(self._optim._grad_clip, ClipGradByGlobalNorm):
@@ -111,6 +113,13 @@ class ShardingOptimizerStage2(Optimizer):
             self._optim._grad_clip = ShardingClipGrad(self._optim._grad_clip,
                                                       paddle.get_device(),
                                                       self.group)
+            if self._optim._parameter_list and isinstance(
+                    self._optim._parameter_list[0], dict):
+                for item in self._optim._param_groups:
+                    if "grad_clip" in item.keys():
+                        item["grad_clip"] = ShardingClipGrad(
+                            self._optim._grad_clip,
+                            paddle.get_device(), self.group)
 
         if offload:
             assert self._pfp16, "Only support offload strategy while using \'Adam\', \'AdamW\' and \'Momentum\' optimizer with AMP/Pure FP16"
@@ -126,6 +135,22 @@ class ShardingOptimizerStage2(Optimizer):
 
         # Update optimizer parameters and adjust parameter storage and use according to rank.
         self._update_opt_status()
+
+    @paddle.no_grad()
+    def _sync_params_and_buffers(self):
+        """
+        Sync all model states for all ranks
+        """
+
+        for p in self._local_params:
+            dist.broadcast(
+                p,
+                src=self._global_root_rank,
+                group=self.group,
+                use_calc_stream=True)
+
+        # Multi stream operation will be supported later
+        dist.wait(tensor=p, group=self.group, use_calc_stream=True)
 
     def _generate_master_params(self, trainable_params):
         if self.offload:
@@ -336,24 +361,11 @@ class ShardingOptimizerStage2(Optimizer):
 
         if self.offload:
             params_list = [self.offload_params.buffer]
-        else:
-            # Synchronize optimizer parameters for the current rank
-            params_list = []
-            for dtype in self.dtype_rank_params.keys():
-                params_list.extend(self.dtype_rank_params[dtype][self.rank])
 
-        params_name_list = list(map(lambda p: p.name, params_list))
-        if not isinstance(self._optim._param_groups[0], dict):
-            self._optim._parameter_list = params_list
-            self._optim._param_groups = params_list
-        else:
-            for param_group in self._optim._param_groups:
-                p_group = []
-                for param in param_group['params']:
-                    if param.name in params_name_list:
-                        p_group.append(params_list[params_name_list.index(
-                            param.name)])
-                param_group['params'] = p_group
+            #TODO(Baibaifan): Offload will support param_groups later
+            if not isinstance(self._optim._param_groups[0], dict):
+                self._optim._parameter_list = params_list
+                self._optim._param_groups = params_list
 
         # Run the optimizer of the current rank step
         if self.offload:
@@ -371,9 +383,9 @@ class ShardingOptimizerStage2(Optimizer):
         # Synchronize all the updated shards in between the ranks
         self._broadcast_params()
 
-        # Return full parameters to optimizer parameters
-        self._optim._parameter_list = self._ori_parameter_list
-        self._optim._param_groups = self._ori_param_groups
+    def minimize(self):
+        raise RuntimeError(
+            "optimizer.minimize() not support now, please use optimizer.step()")
 
     def _clear_cache(self):
         self.__segment_params.clear()

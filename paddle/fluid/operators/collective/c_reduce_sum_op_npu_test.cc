@@ -27,8 +27,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/operators/dropout_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 #include "paddle/fluid/operators/collective/c_reduce_op.h"
 #include "paddle/fluid/operators/collective/gen_hccl_id_op_helper.h"
@@ -40,7 +40,6 @@ limitations under the License. */
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
-namespace m = paddle::operators::math;
 
 USE_OP(c_reduce_sum);
 USE_NO_KERNEL_OP(c_gen_hccl_id);
@@ -137,7 +136,7 @@ void TestHCCLReduceOp(f::Scope* scope, const p::DeviceContext& ctx, int iter) {
 
   auto place = ctx.GetPlace();
 
-  TensorFromVector(init, ctx, tensor_x);
+  paddle::framework::TensorFromVector(init, ctx, tensor_x);
   tensor_x->Resize({num1, num2});
   ctx.Wait();
 
@@ -161,7 +160,7 @@ void TestHCCLReduceOp(f::Scope* scope, const p::DeviceContext& ctx, int iter) {
   ctx.Wait();
 
   std::vector<float> out_vec;
-  TensorToVector(*tensor_out, ctx, &out_vec);
+  paddle::framework::TensorToVector(*tensor_out, ctx, &out_vec);
   ctx.Wait();
 
   PrintDebugInfo("output data", out_vec);

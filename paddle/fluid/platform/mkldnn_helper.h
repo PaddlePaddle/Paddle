@@ -269,9 +269,13 @@ inline dnnl::memory::format_tag GetMKLDNNFormat(dnnl::memory::desc mem_desc) {
     if (inner_nblks == 0) {
       if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
           strides[2] >= strides[3] && strides[3] >= strides[4]) {
-        return dnnl::memory::format_tag::ncdhw;
-      } else {
-        return dnnl::memory::format_tag::ndhwc;
+        return dnnl::memory::format_tag::abcde;
+      } else if (strides[0] >= strides[2] && strides[2] >= strides[1] &&
+                 strides[1] >= strides[3] && strides[3] >= strides[4]) {
+        return dnnl::memory::format_tag::acbde;
+      } else if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
+                 strides[3] >= strides[4] && strides[4] >= strides[1]) {
+        return dnnl::memory::format_tag::acdeb;
       }
     } else if (inner_nblks == 1) {
       if (inner_blks[0] == 8 && inner_idxs[0] == 0) {
@@ -310,6 +314,10 @@ inline dnnl::memory::format_tag GetMKLDNNFormat(dnnl::memory::desc mem_desc) {
           strides[2] >= strides[3] && strides[3] >= strides[4] &&
           strides[4] >= strides[5]) {
         return dnnl::memory::format_tag::abcdef;
+      } else if (strides[0] >= strides[2] && strides[2] >= strides[1] &&
+                 strides[1] >= strides[3] && strides[3] >= strides[4] &&
+                 strides[4] >= strides[5]) {
+        return dnnl::memory::format_tag::acbdef;
       }
     }
   }
@@ -338,31 +346,22 @@ inline dnnl::memory::format_tag GetPlainMKLDNNFormat(int tensor_rank) {
   switch (tensor_rank) {
     case 1:
       return dnnl::memory::format_tag::a;
-      break;
     case 2:
       return dnnl::memory::format_tag::ab;
-      break;
     case 3:
       return dnnl::memory::format_tag::abc;
-      break;
     case 4:
       return dnnl::memory::format_tag::abcd;
-      break;
     case 5:
       return dnnl::memory::format_tag::abcde;
-      break;
     case 6:
       return dnnl::memory::format_tag::abcdef;
-      break;
     case 7:
       return dnnl::memory::format_tag::abcdefg;
-      break;
     case 8:
       return dnnl::memory::format_tag::abcdefgh;
-      break;
     case 9:
       return dnnl::memory::format_tag::abcdefghi;
-      break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Paddle support tensors with rank in range <1, 9>, but received "
@@ -397,7 +396,9 @@ inline MKLDNNMemoryFormat MKLDNNFormatForSize(size_t dims_size,
       return MKLDNNMemoryFormat::ndhwc;
     }
   } else if (dims_size == 6) {
-    return MKLDNNMemoryFormat::abcdef;
+    if (data_format == MKLDNNMemoryFormat::nchw) {
+      return MKLDNNMemoryFormat::abcdef;
+    }
   }
   return data_format;
 }

@@ -20,11 +20,11 @@
 #include <vector>
 
 #include "paddle/fluid/operators/conj_op.h"
-#include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/spectral_helper.h"
 #include "paddle/fluid/operators/spectral_op.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/kernels/funcs/complex_functors.h"
 
 namespace paddle {
 namespace operators {
@@ -73,10 +73,13 @@ FFTConfigKey create_fft_configkey(const framework::Tensor& input,
                                   const framework::Tensor& output,
                                   int signal_ndim) {
   // Create the transform plan (either from cache or locally)
-  const auto value_type = framework::IsComplexType(input.type())
-                              ? framework::ToRealType(input.type())
-                              : input.type();
-  auto fft_type = GetFFTTransformType(input.type(), output.type());
+  const auto value_type =
+      framework::IsComplexType(framework::TransToProtoVarType(input.dtype()))
+          ? framework::ToRealType(framework::TransToProtoVarType(input.dtype()))
+          : framework::TransToProtoVarType(input.dtype());
+  auto fft_type =
+      GetFFTTransformType(framework::TransToProtoVarType(input.dtype()),
+                          framework::TransToProtoVarType(output.dtype()));
   // signal sizes
   std::vector<int64_t> signal_size(signal_ndim + 1);
 
@@ -112,25 +115,22 @@ void exec_cufft_plan(const DeviceContext& ctx, const FFTConfig& config,
     framework::Tensor input_conj(input->type());
     input_conj.mutable_data<Ti>(input->dims(), ctx.GetPlace());
     platform::ForRange<DeviceContext> for_range(ctx, input->numel());
-    math::ConjFunctor<Ti> functor(input->data<Ti>(), input->numel(),
-                                  input_conj.data<Ti>());
+    pten::funcs::ConjFunctor<Ti> functor(input->data<Ti>(), input->numel(),
+                                         input_conj.data<Ti>());
     for_range(functor);
-    exec_cufft_plan_raw(config, input_conj.data<void>(), output->data<void>(),
-                        forward);
+    exec_cufft_plan_raw(config, input_conj.data(), output->data(), forward);
   } else if (fft_type == FFTTransformType::R2C && !forward) {
     forward = true;
     framework::Tensor out_conj(output->type());
     out_conj.mutable_data<To>(output->dims(), ctx.GetPlace());
-    exec_cufft_plan_raw(config, input->data<void>(), out_conj.data<void>(),
-                        forward);
+    exec_cufft_plan_raw(config, input->data(), out_conj.data(), forward);
 
     platform::ForRange<DeviceContext> for_range(ctx, output->numel());
-    math::ConjFunctor<To> functor(out_conj.data<To>(), output->numel(),
-                                  output->data<To>());
+    pten::funcs::ConjFunctor<To> functor(out_conj.data<To>(), output->numel(),
+                                         output->data<To>());
     for_range(functor);
   } else {
-    exec_cufft_plan_raw(config, input->data<void>(), output->data<void>(),
-                        forward);
+    exec_cufft_plan_raw(config, input->data(), output->data(), forward);
   }
 }
 
@@ -140,10 +140,13 @@ FFTConfigKey create_fft_configkey(const framework::Tensor& input,
                                   const framework::Tensor& output,
                                   int signal_ndim) {
   // Create the transform plan (either from cache or locally)
-  const auto value_type = framework::IsComplexType(input.type())
-                              ? framework::ToRealType(input.type())
-                              : input.type();
-  auto fft_type = GetFFTTransformType(input.type(), output.type());
+  const auto value_type =
+      framework::IsComplexType(framework::TransToProtoVarType(input.dtype()))
+          ? framework::ToRealType(framework::TransToProtoVarType(input.dtype()))
+          : framework::TransToProtoVarType(input.dtype());
+  auto fft_type =
+      GetFFTTransformType(framework::TransToProtoVarType(input.dtype()),
+                          framework::TransToProtoVarType(output.type()));
   // signal sizes
   std::vector<int64_t> signal_size(signal_ndim + 1);
 
@@ -224,25 +227,22 @@ void exec_hipfft_plan(const DeviceContext& ctx, const FFTConfig& config,
     framework::Tensor input_conj(input->type());
     input_conj.mutable_data<Ti>(input->dims(), ctx.GetPlace());
     platform::ForRange<DeviceContext> for_range(ctx, input->numel());
-    math::ConjFunctor<Ti> functor(input->data<Ti>(), input->numel(),
-                                  input_conj.data<Ti>());
+    pten::funcs::ConjFunctor<Ti> functor(input->data<Ti>(), input->numel(),
+                                         input_conj.data<Ti>());
     for_range(functor);
-    exec_hipfft_plan_raw(config, input_conj.data<void>(), output->data<void>(),
-                         forward);
+    exec_hipfft_plan_raw(config, input_conj.data(), output->data(), forward);
   } else if (fft_type == FFTTransformType::R2C && !forward) {
     forward = true;
     framework::Tensor out_conj(output->type());
     out_conj.mutable_data<To>(output->dims(), ctx.GetPlace());
-    exec_hipfft_plan_raw(config, input->data<void>(), out_conj.data<void>(),
-                         forward);
+    exec_hipfft_plan_raw(config, input->data(), out_conj.data(), forward);
 
     platform::ForRange<DeviceContext> for_range(ctx, output->numel());
-    math::ConjFunctor<To> functor(out_conj.data<To>(), output->numel(),
-                                  output->data<To>());
+    pten::funcs::ConjFunctor<To> functor(out_conj.data<To>(), output->numel(),
+                                         output->data<To>());
     for_range(functor);
   } else {
-    exec_hipfft_plan_raw(config, input->data<void>(), output->data<void>(),
-                         forward);
+    exec_hipfft_plan_raw(config, input->data(), output->data(), forward);
   }
 }
 

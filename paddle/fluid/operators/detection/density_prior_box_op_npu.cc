@@ -43,7 +43,8 @@ struct DensityPriorBoxFunction {
     runner.Run(stream);
   }
   void Cast(const Tensor* x, Tensor* y) {
-    auto dst_dtype = ConvertToNpuDtype(y->type());
+    auto dst_dtype =
+        ConvertToNpuDtype(framework::TransToProtoVarType(y->type()));
     const auto& runner = NpuOpRunner(
         "Cast", {*x}, {*y}, {{"dst_type", static_cast<int>(dst_dtype)}});
     runner.Run(stream);
@@ -121,7 +122,7 @@ struct DensityPriorBoxFunction {
 
 template <>
 void DensityPriorBoxFunction<fp16>::Arange(int n, Tensor* x) {
-  Tensor x_fp32(framework::proto::VarType::FP32);
+  Tensor x_fp32(experimental::DataType::FLOAT32);
   x_fp32.mutable_data<float>(x->dims(), place);
   FillNpuTensorWithConstant<float>(&tn, static_cast<float>(n));
   const auto& runner = NpuOpRunner("Range", {t0, tn, t1}, {x_fp32}, {});
@@ -132,7 +133,7 @@ void DensityPriorBoxFunction<fp16>::Arange(int n, Tensor* x) {
 template <>
 void DensityPriorBoxFunction<fp16>::FloatVec2Tsr(const std::vector<float>& vec,
                                                  Tensor* tsr_dst) {
-  Tensor tsr_fp32(framework::proto::VarType::FP32);
+  Tensor tsr_fp32(experimental::DataType::FLOAT32);
   tsr_fp32.mutable_data<float>(tsr_dst->dims(), place);
   framework::TensorFromVector<float>(vec, ctx.device_context(), &tsr_fp32);
   ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
@@ -164,7 +165,7 @@ class DensityPriorBoxOpNPUKernel : public framework::OpKernel<T> {
     int layer_w = input->dims()[3];
     int layer_h = input->dims()[2];
 
-    auto _type = input->type();
+    auto _type = input->dtype();
     auto place = ctx.GetPlace();
     DensityPriorBoxFunction<T> F(ctx);
 

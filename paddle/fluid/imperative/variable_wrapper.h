@@ -19,6 +19,7 @@
 #include <string>
 #include <utility>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/variable.h"
@@ -104,8 +105,8 @@ class VariableWrapper {
       const framework::Tensor* tensor = nullptr;
       if (var_.IsType<framework::LoDTensor>()) {
         tensor = &(var_.Get<framework::LoDTensor>());
-      } else if (var_.IsType<framework::SelectedRows>()) {
-        tensor = &(var_.Get<framework::SelectedRows>().value());
+      } else if (var_.IsType<pten::SelectedRows>()) {
+        tensor = &(var_.Get<pten::SelectedRows>().value());
       } else {
         PADDLE_THROW(platform::errors::PermissionDenied(
             "Only support LoDTensor and SelectedRows for gradient var"));
@@ -153,7 +154,7 @@ class VariableWrapper {
       if (type_ == framework::proto::VarType::LOD_TENSOR) {
         tensor = &(var_.Get<framework::LoDTensor>());
       } else if (type_ == framework::proto::VarType::SELECTED_ROWS) {
-        tensor = &(var_.Get<framework::SelectedRows>().value());
+        tensor = &(var_.Get<pten::SelectedRows>().value());
       } else if (type_ == framework::proto::VarType::VOCAB) {
         const framework::Vocab* data = nullptr;
         data = &(var_.Get<framework::Vocab>());
@@ -169,7 +170,7 @@ class VariableWrapper {
       }
     }
     if (tensor && tensor->IsInitialized()) {
-      return tensor->type();
+      return framework::TransToProtoVarType(tensor->dtype());
     } else {
       VLOG(6) << "The tensor of variable " << name_ << " is not initialized";
 
@@ -193,7 +194,7 @@ class VariableWrapper {
       if (type_ == framework::proto::VarType::LOD_TENSOR) {
         tensor = &(var_.Get<framework::LoDTensor>());
       } else if (type_ == framework::proto::VarType::SELECTED_ROWS) {
-        tensor = &(var_.Get<framework::SelectedRows>().value());
+        tensor = &(var_.Get<pten::SelectedRows>().value());
       } else {
         VLOG(6) << "Variable " << name_ << " is not initialized";
         return place;

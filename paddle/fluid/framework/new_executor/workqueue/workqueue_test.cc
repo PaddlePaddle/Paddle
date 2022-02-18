@@ -44,7 +44,8 @@ TEST(WorkQueue, TestSingleThreadedWorkQueue) {
   constexpr unsigned kLoopNum = 1000000;
   // CreateSingleThreadedWorkQueue
   EventsWaiter events_waiter;
-  WorkQueueOptions options(/*num_threads*/ 1, /*allow_spinning*/ true,
+  WorkQueueOptions options(/*name*/ "SingleThreadedWorkQueueForTesting",
+                           /*num_threads*/ 1, /*allow_spinning*/ true,
                            /*track_task*/ true, /*detached*/ true,
                            &events_waiter);
   auto work_queue = CreateSingleThreadedWorkQueue(options);
@@ -78,7 +79,8 @@ TEST(WorkQueue, TestMultiThreadedWorkQueue) {
   constexpr unsigned kLoopNum = 1000000;
   // CreateMultiThreadedWorkQueue
   EventsWaiter events_waiter;
-  WorkQueueOptions options(/*num_threads*/ 10, /*allow_spinning*/ true,
+  WorkQueueOptions options(/*name*/ "MultiThreadedWorkQueueForTesting",
+                           /*num_threads*/ 10, /*allow_spinning*/ true,
                            /*track_task*/ true, /*detached*/ false,
                            &events_waiter);
   auto work_queue = CreateMultiThreadedWorkQueue(options);
@@ -117,10 +119,12 @@ TEST(WorkQueue, TestWorkQueueGroup) {
   constexpr unsigned kLoopNum = 1000000;
   // ThreadedWorkQueueGroup
   EventsWaiter events_waiter;
-  WorkQueueOptions sq_options(/*num_threads*/ 1, /*allow_spinning*/ true,
+  WorkQueueOptions sq_options(/*name*/ "SingleThreadedWorkQueueForTesting",
+                              /*num_threads*/ 1, /*allow_spinning*/ true,
                               /*track_task*/ true, /*detached*/ false,
                               &events_waiter);
-  WorkQueueOptions mq_options(/*num_threads*/ 10, /*allow_spinning*/ true,
+  WorkQueueOptions mq_options(/*name*/ "MultiThreadedWorkQueueForTesting",
+                              /*num_threads*/ 10, /*allow_spinning*/ true,
                               /*track_task*/ true, /*detached*/ false,
                               &events_waiter);
   auto queue_group = CreateWorkQueueGroup({sq_options, mq_options});

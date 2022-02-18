@@ -15191,6 +15191,9 @@ def mish(x, threshold=20, name=None):
         out, = exe.run(feed={'x':x_data}, fetch_list=[y.name])
         print(out)  # [[0.66666667, 1.66666667, 3., 4.]]
     """
+    if in_dygraph_mode():
+        return _C_ops.mish(x, 'threshold', threshold)
+
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'mish')
     check_type(threshold, 'threshold', (float, int), 'mish')
     assert threshold > 0, "threshold of mish should be greater than 0, " \
@@ -15202,7 +15205,7 @@ def mish(x, threshold=20, name=None):
         type='mish',
         inputs={'X': x},
         outputs={'Out': out},
-        attrs={'threshold': threshold or -1})
+        attrs={'threshold': threshold})
     return out
 
 

@@ -16,9 +16,12 @@
 #include <unordered_set>
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
+#include "paddle/fluid/framework/new_executor/garbage_collector/event_garbage_collector.h"
+#include "paddle/fluid/framework/new_executor/garbage_collector/fast_garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/os_info.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace, true,
                             "Use inplace in new executor");
@@ -28,13 +31,20 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope, true,
 
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);
+DECLARE_bool(fast_eager_deletion_mode);
+DECLARE_bool(use_stream_safe_cuda_allocator);
 
 constexpr const char* kExceptionCaught = "ExceptionCaught";
+constexpr const char* kTaskCompletion = "TaskCompletion";
 
 namespace paddle {
 namespace framework {
 // NOTE(Aurelius84): Need a better strategy to determine it.
 static constexpr size_t kHostNumThreads = 4;
+
+bool IsInterpretercoreFastGCEnabled() {
+  return FLAGS_fast_eager_deletion_mode && FLAGS_use_stream_safe_cuda_allocator;
+}
 
 InterpreterCore::InterpreterCore(const platform::Place& place,
                                  const BlockDesc& block,
@@ -46,9 +56,19 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
   is_build_ = false;
   async_work_queue_.reset(
       new interpreter::AsyncWorkQueue(kHostNumThreads, &main_thread_blocker_));
-  gc_.reset(new InterpreterCoreGarbageCollector());
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (IsInterpretercoreFastGCEnabled()) {
+    gc_ = std::make_unique<InterpreterCoreFastGarbageCollector>();
+  } else {
+    gc_ = std::make_unique<InterpreterCoreEventGarbageCollector>();
+  }
+#else
+  gc_ = std::make_unique<InterpreterCoreEventGarbageCollector>();
+#endif
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
+  completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
 
   create_local_scope_ = FLAGS_new_executor_use_local_scope;
   if (FLAGS_new_executor_use_local_scope) {
@@ -68,6 +88,9 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
 InterpreterCore::~InterpreterCore() {
   // cancle gc's thread
   gc_.reset(nullptr);
+
+  exception_notifier_->UnregisterEvent();
+  completion_notifier_->UnregisterEvent();
 
   async_work_queue_.reset(nullptr);
 }
@@ -368,7 +391,8 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
     platform::RecordEvent infershape_event("InferShape");
     // If it is OperatorBase, InferShape do nothing.
     if (op_with_kernel != nullptr)
-      op_with_kernel->InferShape(instr_node.InnerInferShapeContext().get());
+      op_with_kernel->Info().infer_shape_(
+          instr_node.InnerInferShapeContext().get());
   }
 
   if (op_with_kernel != nullptr &&
@@ -388,7 +412,22 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
     if (op_with_kernel == nullptr) {
       instr_node.OpBase()->Run(*local_scope, place_);
     } else {
-      instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
+      // fit for pten
+      if (instr_node.PtenKernel() && instr_node.PtenKernel()->IsValid()) {
+        VLOG(4) << "Run pten kernel: " << op->Type();
+        VLOG(4) << instr_node.InnerRuntimeContext().get() << " "
+                << &instr_node.DeviceContext();
+        pten::KernelContext pt_kernel_context;
+        op_with_kernel->BuildPtenKernelContext(
+            *instr_node.InnerRuntimeContext().get(),
+            const_cast<platform::DeviceContext*>(&instr_node.DeviceContext()),
+            &pt_kernel_context);
+
+        (*instr_node.PtenKernel())(&pt_kernel_context);
+
+      } else {
+        instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
+      }
     }
   }
 
@@ -417,7 +456,7 @@ void InterpreterCore::ExecuteInstructionList(
     const std::vector<Instruction>& vec_instr) {
   async_work_queue_->PrepareAtomicDeps(dependecy_count_);
   async_work_queue_->PrepareAtomicVarRef(global_scope_->VecMetaInfo());
-  op_run_number_ = 0;
+  unfinished_op_numer_ = vec_instr.size();
 
   exception_holder_.Clear();
 
@@ -429,19 +468,21 @@ void InterpreterCore::ExecuteInstructionList(
   }
 
   auto event_name = main_thread_blocker_.WaitEvent();
-  VLOG(3) << "event_name: " << event_name;
+  VLOG(1) << "event_name: " << event_name;
 
   if (UNLIKELY(exception_holder_.IsCaught())) {
-    VLOG(4) << "Exception caught " << exception_holder_.Type();
-    async_work_queue_->Cancel();
+    VLOG(1) << "Exception caught " << exception_holder_.Type();
+    // Graceful exit when the executor encountered a fatal error.
+    // EOF is not a fatal error.
+    if (exception_holder_.Type() != "EOF") {
+      async_work_queue_->Cancel();
+    }
+    PADDLE_ENFORCE_EQ(
+        main_thread_blocker_.Clear(), 0,
+        platform::errors::PreconditionNotMet(
+            "main_thread_blocker_.Clear() return -1, clear failed"));
     exception_holder_.ReThrow();
   }
-
-  PADDLE_ENFORCE_EQ(
-      op_run_number_.load(), vec_instr.size(),
-      platform::errors::Fatal(
-          "Required op_run_number == %d, but received op_run_number = %d.",
-          vec_instr.size(), op_run_number_.load()));
 }
 
 void InterpreterCore::RunNextInstructions(
@@ -508,13 +549,23 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
     instr_id = ready_ops.front();
     ready_ops.pop();
     auto& instr_node = vec_instruction_.at(instr_id);
+    VLOG(5) << __func__ << " OP id:" << instr_node.Id()
+            << " name:" << instr_node.OpBase()->Type()
+            << " type:" << (instr_node.KernelType() == OpFuncType::kQueueSync
+                                ? "kQueueSync"
+                                : "kQueueAsync")
+            << " runs on " << platform::GetCurrentThreadName();
+
     auto* op = instr_node.OpBase();
     platform::RecordEvent instruction_event(op->Type().c_str());
     interpreter::WaitEvent(instr_node, place_);
 
     try {
       RunInstruction(instr_node);
-      // GC infomation
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      RecordStreamForGC(instr_node);
+#endif
       CheckGC(instr_node);
     } catch (platform::EnforceNotMet& ex) {
       framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
@@ -539,12 +590,113 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
       return;
     }
 
+    VLOG(4) << "unfinished_op_numer_: " << unfinished_op_numer_;
+    if (UNLIKELY(unfinished_op_numer_.fetch_sub(1, std::memory_order_relaxed) ==
+                 1)) {
+      if (completion_notifier_ != nullptr) {
+        completion_notifier_->NotifyEvent();
+      }
+    }
+
     interpreter::RecordEvent(instr_node, place_);
-    op_run_number_.fetch_add(1, std::memory_order_relaxed);
 
     RunNextInstructions(instr_node, &ready_ops);
   }
 }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
+  if (!IsInterpretercoreFastGCEnabled() ||
+      instr.KernelType() != OpFuncType::kQueueAsync) {
+    return;
+  }
+
+  gpuStream_t stream = reinterpret_cast<const platform::CUDADeviceContext&>(
+                           instr.DeviceContext())
+                           .stream();
+  auto TensorRecordStream = [&stream](Tensor& tensor) {
+    auto allocation = tensor.Holder();
+    if (allocation == nullptr) {
+      return;
+    }
+
+    const platform::Place& place = allocation->place();
+    if (platform::is_gpu_place(place)) {
+      memory::RecordStream(allocation, stream);
+    } else if (platform::is_cuda_pinned_place(place)) {
+      // TODO(Ruibiao): Here should do something to make sure that the tensor is
+      // not freed until the H2D copies done. However, simplely launch a CUDA
+      // runtime callback to the H2D stream may lead a high performance
+      // overhead. As all the cases we meet in H2D are copies from CPUPlace at
+      // present, we just log a WARNING here. A better design is required.
+      LOG(WARNING) << "Copy data from a CUDAPinned tensor in an asynchronous "
+                      "manner may lead a data inconsistent";
+    } else {
+      // memory copies involve CPUPlace are always synchronous, so just do
+      // nothing here
+    }
+  };
+
+  /* NOTE(Ruibiao)：Cross-stream tensor synchronization is required only when
+   * all the following conditions are satisfied:
+   * 1. The tensor will be GC after running the instruction, i.e., in
+   * instr.GCCheckVars.
+   * 2. The stream which initializes this tensor is different from the stream
+   * which the instruction run in.
+   * 3. The tensor is the instruction's input, cause we assume that instruction
+   * will initialize all output tensors with its running stream.
+   * 4. In the OP function of this instruction, the tensor is an input of a
+   * async CUDA kernel.
+   *
+   * Here we only process the first condition, because:
+   * 1. Since the RecordStream function will directly return when the recored
+   * stream is equal to the owning stream, recording a stream same as which
+   * initialized this tensor has less time overhead. Conversely, it may take
+   * more time if we try to extract those cross-stream input vars from
+   * instr.GCCheckVars.
+   * 2. Now the instruction has no idea of which vars involving async running in
+   * OP function, and thus we can not recognize condition 4. It should be
+   * supported later.
+   */
+  for (int var_id : instr.GCCheckVars()) {
+    VLOG(4) << "GC sync " << global_scope_->GetNameById(var_id) << " "
+            << global_scope_->VarDesc(var_id);
+
+    // persistable var will be ignore while GC
+    if (global_scope_->VarDesc(var_id) &&
+        global_scope_->VarDesc(var_id)->Persistable()) {
+      continue;
+    }
+
+    paddle::framework::Variable* var = global_scope_->Var(var_id);
+    if (var == nullptr) {
+      continue;
+    }
+
+    if (var->IsType<LoDTensor>()) {
+      TensorRecordStream(*(var->GetMutable<LoDTensor>()));
+    } else if (var->IsType<
+                   operators::reader::
+                       OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {
+      // do nothing
+    } else if (var->IsType<pten::SelectedRows>()) {
+      TensorRecordStream(
+          *(var->GetMutable<pten::SelectedRows>()->mutable_value()));
+    } else if (var->IsType<LoDTensorArray>()) {
+      auto* tensor_arr = var->GetMutable<LoDTensorArray>();
+      for (auto& tensor : *tensor_arr) {
+        TensorRecordStream(tensor);
+      }
+    } else if (var->IsType<std::vector<Scope*>>()) {
+      // do nothing
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "The variable(%s) is not supported in eager deletion.",
+          framework::ToTypeName(var->Type())));
+    }
+  }
+}
+#endif
 
 void InterpreterCore::CheckGC(const Instruction& instr) {
   size_t instr_id = instr.Id();
@@ -564,8 +716,21 @@ void InterpreterCore::CheckGC(const Instruction& instr) {
     if (is_ready) {
       VLOG(6) << "Async delete variable with name : "
               << var_scope.GetNameById(var_id);
-      gc_->Add(var_scope.Var(var_id), gc_event_.at(instr_id),
-               &instr.DeviceContext());
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      if (IsInterpretercoreFastGCEnabled()) {
+        static_cast<InterpreterCoreFastGarbageCollector*>(gc_.get())->Add(
+            var_scope.Var(var_id));
+
+      } else {
+        static_cast<InterpreterCoreEventGarbageCollector*>(gc_.get())->Add(
+            var_scope.Var(var_id), &gc_event_.at(instr_id),
+            &instr.DeviceContext());
+      }
+#else
+      static_cast<InterpreterCoreEventGarbageCollector*>(gc_.get())->Add(
+          var_scope.Var(var_id), &gc_event_.at(instr_id),
+          &instr.DeviceContext());
+#endif
     }
   }
 }

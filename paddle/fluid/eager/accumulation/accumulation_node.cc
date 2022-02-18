@@ -13,12 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
-#include "paddle/fluid/eager/accumulation/gradient_accumulation.h"
 #include "paddle/fluid/eager/eager_tensor.h"
+#include "paddle/fluid/imperative/gradient_accumulator.h"
 
 #include "paddle/pten/api/all.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/include/core.h"
 
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -26,26 +25,28 @@
 
 #include "glog/logging.h"
 
-static void CopyOrAddTensor(egr::EagerTensor* tensor,
-                            const egr::EagerTensor& t) {
+static void CopyOrAddTensor(paddle::experimental::Tensor* tensor,
+                            const paddle::experimental::Tensor& t) {
   if (!tensor->defined() || !tensor->initialized()) {
     // Simply copy tensor->impl
     *tensor = t;
   } else {
     // Accumulation
-    egr::TensorAdd(t, tensor);
+    paddle::imperative::TensorAdd<paddle::experimental::Tensor>(t, tensor);
   }
 }
 
 namespace egr {
 
 void GradNodeAccumulation::RetainGrad(
-    const std::function<egr::EagerTensor(const egr::EagerTensor&)>& hook) {
+    const std::function<paddle::experimental::Tensor(
+        const paddle::experimental::Tensor&)>& hook) {
   retain_grad_hook_ = hook;
 }
 
-std::vector<std::vector<egr::EagerTensor>> GradNodeAccumulation::operator()(
-    const std::vector<std::vector<egr::EagerTensor>>& grads) {
+std::vector<std::vector<paddle::experimental::Tensor>> GradNodeAccumulation::
+operator()(
+    const std::vector<std::vector<paddle::experimental::Tensor>>& grads) {
   PADDLE_ENFORCE(grads.size() == 1,
                  paddle::platform::errors::Fatal(
                      "GradNodeAccumulation should take exactly 1 grad tensor"
@@ -58,7 +59,7 @@ std::vector<std::vector<egr::EagerTensor>> GradNodeAccumulation::operator()(
                      grads[0].size(), 0));
   // Apply Gradient Hooks
   if (GradientHooksRegistered()) {
-    std::vector<std::vector<egr::EagerTensor>> hooked_grads =
+    std::vector<std::vector<paddle::experimental::Tensor>> hooked_grads =
         ApplyGradientHooks(grads);
     // TODO(jiabin): It's little weird
     CopyOrAddTensor(&accumulated_grad, hooked_grads[0][0]);

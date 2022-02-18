@@ -16,7 +16,7 @@ from .common import infer_shape
 from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl, set_comm_op_dist_attr_for_program, naive_copy_op_dist_attr_for_program
+from .common import register_distributed_operator_impl, set_comm_op_dist_attr_for_program, naive_copy_op_dist_attr_for_program, is_parameter_related
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
 from ..utils import is_valid_list_index
@@ -26,7 +26,7 @@ from ..utils import compute_compatible_and_update_dim_mapping
 from ..dist_attribute import OperatorDistributedAttribute, TensorDistributedAttribute
 from paddle.fluid import core, unique_name
 from paddle.fluid.framework import in_dygraph_mode
-from paddle.fluid.framework import Program, Parameter, Variable, program_guard
+from paddle.fluid.framework import Program, Parameter, Variable
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 from ..process_group import new_process_group
@@ -34,22 +34,20 @@ from ..utils import _get_comm_group, _get_idx_in_axis, _get_corresponding_rank
 
 
 class DistributedEmbedding(DistributedOperatorImplContainer):
-    def __init__(self, name):
-        super(DistributedEmbedding, self).__init__()
-        self._name = name
+    def __init__(self, op_type):
+        super(DistributedEmbedding, self).__init__(op_type)
 
 
-register_distributed_operator_impl_container("lookup_table_v2",
-                                             DistributedEmbedding("embedding"))
-register_distributed_operator_impl_container("c_embedding",
-                                             DistributedEmbedding("embedding"))
+register_distributed_operator_impl_container(
+    DistributedEmbedding("lookup_table_v2"))
+register_distributed_operator_impl_container(
+    DistributedEmbedding("c_embedding"))
 
 
 # RowParallel
 class DistributedEmbeddingImpl(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedEmbeddingImpl, self).__init__()
-        self._name = name
+        super(DistributedEmbeddingImpl, self).__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
 
@@ -81,6 +79,10 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         return True
 
     def is_auto_compatible(self, dist_op):
+        if (not self.is_input_compatible(dist_op)) or \
+            (not self.is_output_compatible(dist_op)):
+            return False
+
         op_desc = dist_op.serial_op.desc
         op_dist_attr = dist_op.dist_attr
         ids_name = op_desc.input('Ids')[0]
@@ -89,18 +91,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
         ids_dims_mapping = op_dist_attr.get_input_dims_mapping(ids_name)
         w_dims_mapping = op_dist_attr.get_input_dims_mapping(w_name)
-        if is_dim_replicate(w_dims_mapping[-2]) or is_dim_shard(w_dims_mapping[
-                -1]):
-            return False
-        # Other dimensions must be replicate except the batch dimension
-        for mapping in ids_dims_mapping[1:]:
-            if is_dim_shard(mapping):
-                return False
-        for mapping in out_dims_mapping[1:]:
-            if is_dim_shard(mapping):
-                return False
-        if w_dims_mapping[-1] != out_dims_mapping[-1]:
-            return False
+
         if ids_dims_mapping != out_dims_mapping[:len(ids_dims_mapping)]:
             return False
 
@@ -248,6 +239,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         # matmulv2
         embedding_op_dist_attr = OperatorDistributedAttribute()
         embedding_op_dist_attr.process_mesh = op_dist_attr.process_mesh
+        embedding_op_dist_attr.impl_type = op_dist_attr.impl_type
         embedding_op_dist_attr.impl_idx = op_dist_attr.impl_idx
         for input_varname in c_embedding_op.desc.input_arg_names():
             input_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
@@ -266,6 +258,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         # allreduce
         allreduce_op_dist_attr = OperatorDistributedAttribute()
         allreduce_op_dist_attr.process_mesh = op_dist_attr.process_mesh
+        allreduce_op_dist_attr.impl_type = op_dist_attr.impl_type
         allreduce_op_dist_attr.impl_idx = op_dist_attr.impl_idx
         for input_varname in c_allreduce_sum_op.desc.input_arg_names():
             input_var = main_block.var(input_varname)
@@ -283,34 +276,35 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                                          allreduce_op_dist_attr)
 
         # param initialization sync
-        assert Weight_var.name not in dist_op_context.already_init_sync_vars
-        dist_op_context.already_init_sync_vars.add(Weight_var.name)
-        param = startup_block.var(Weight_var.name)
-        param_dist_attr = ctx.get_tensor_dist_attr_for_program(param)
-        process_mesh = param_dist_attr.process_mesh
-        dim_mapping = param_dist_attr.dims_mapping
+        if Weight_var.is_parameter and not op_dist_attr.is_recompute:
+            assert Weight_var.name not in dist_op_context.already_init_sync_vars
+            dist_op_context.already_init_sync_vars.add(Weight_var.name)
+            param = startup_block.var(Weight_var.name)
+            param_dist_attr = ctx.get_tensor_dist_attr_for_program(param)
+            process_mesh = param_dist_attr.process_mesh
+            dim_mapping = param_dist_attr.dims_mapping
 
-        # NOTE all not splited axis should be presented in mesh
-        for axis, size in enumerate(process_mesh.topology):
-            if size <= 1 or axis in dim_mapping:
-                pass
-            else:
-                group_ranks = _get_comm_group(process_mesh.processes,
-                                              process_mesh.topology, axis,
-                                              rank_id)
-                sync_group = new_process_group(group_ranks)
+            # NOTE all not splited axis should be presented in mesh
+            for axis, size in enumerate(process_mesh.topology):
+                if size <= 1 or axis in dim_mapping:
+                    pass
+                else:
+                    group_ranks = _get_comm_group(process_mesh.processes,
+                                                  process_mesh.topology, axis,
+                                                  rank_id)
+                    sync_group = new_process_group(group_ranks)
 
-                startup_block.append_op(
-                    type='c_broadcast',
-                    inputs={'X': param},
-                    outputs={'Out': param},
-                    attrs={
-                        'ring_id': sync_group.id,
-                        'root': 0,
-                        'use_calc_stream': True,
-                        OP_ROLE_KEY: OpRole.Forward
-                    })
-        startup_block._sync_with_cpp()
+                    startup_block.append_op(
+                        type='c_broadcast',
+                        inputs={'X': param},
+                        outputs={'Out': param},
+                        attrs={
+                            'ring_id': sync_group.id,
+                            'root': 0,
+                            'use_calc_stream': True,
+                            OP_ROLE_KEY: OpRole.Forward
+                        })
+            startup_block._sync_with_cpp()
 
     @staticmethod
     def backward(ctx, *args, **kwargs):

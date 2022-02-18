@@ -267,5 +267,58 @@ class TestXPUBatchNormOp(unittest.TestCase):
                         outputs[name], outs[id], atol=1e-4), True)
 
 
+class TestXPUBatchNormOpUseGlobalStats(unittest.TestCase):
+    def setUp(self):
+        self.places = [paddle.XPUPlace(0)]
+        self.init_test()
+
+    ### train mode
+    def init_test(self):
+        self.use_global_stats = True
+        self.trainable_statistics = False
+
+    def test_global_stats(self):
+        for p in self.places:
+            with fluid.dygraph.guard(p):
+                x = paddle.randn([2, 6, 6, 4])
+                net1 = paddle.fluid.dygraph.BatchNorm(
+                    6,
+                    param_attr=fluid.ParamAttr(
+                        initializer=fluid.initializer.Constant(1.0)),
+                    use_global_stats=self.use_global_stats,
+                    trainable_statistics=self.trainable_statistics)
+                net2 = paddle.nn.BatchNorm2D(
+                    6, use_global_stats=self.use_global_stats)
+                net2.weight = net1.weight
+                net2.bias = net1.bias
+                if self.trainable_statistics == True:
+                    net1.training = False
+                    net2.training = False
+                y1 = net1(x)
+                y2 = net2(x)
+                self.assertEqual(np.allclose(y1.numpy(), y2.numpy()), True)
+
+
+class TestXPUBatchNormUseGlobalStatsCase1(TestXPUBatchNormOpUseGlobalStats):
+    ### test mode
+    def init_test(self):
+        self.use_global_stats = False
+        self.trainable_statistics = True
+
+
+class TestXPUBatchNormUseGlobalStatsCase2(TestXPUBatchNormOpUseGlobalStats):
+    ### train mode
+    def init_test(self):
+        self.use_global_stats = False
+        self.trainable_statistics = False
+
+
+class TestXPUBatchNormUseGlobalStatsCase3(TestXPUBatchNormOpUseGlobalStats):
+    ### test mode
+    def init_test(self):
+        self.use_global_stats = True
+        self.trainable_statistics = True
+
+
 if __name__ == "__main__":
     unittest.main()

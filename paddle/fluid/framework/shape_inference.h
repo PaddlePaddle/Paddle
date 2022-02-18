@@ -61,6 +61,7 @@ class InferShapeContext {
   virtual ~InferShapeContext() = default;
   virtual bool HasInput(const std::string &name) const = 0;
   virtual bool HasOutput(const std::string &name) const = 0;
+  virtual bool HasAttr(const std::string &name) const = 0;
 
   virtual std::vector<proto::VarType::Type> GetInputsVarType(
       const std::string &name) const = 0;
@@ -101,6 +102,8 @@ class InferShapeContext {
                            size_t j = 0) const = 0;
 
   virtual bool IsRuntime() const = 0;
+
+  virtual bool IsRunMKLDNNKernel() const = 0;
 
   virtual std::vector<InferShapeVarPtr> GetInputVarPtrs(
       const std::string &name) const = 0;

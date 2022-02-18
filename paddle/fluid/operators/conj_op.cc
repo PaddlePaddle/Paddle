@@ -22,22 +22,16 @@
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/pten/core/infermeta_utils.h"
+#include "paddle/pten/infermeta/unary.h"
+
 namespace paddle {
 namespace operators {
 
 class ConjOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "conj");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "conj");
-
-    auto in_dims = ctx->GetInputDim("X");
-
-    ctx->SetOutputDim("Out", in_dims);
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
 };
 
 class ConjOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -72,9 +66,12 @@ class ConjGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
+DELCARE_INFER_SHAPE_FUNCTOR(conj, ConjInferShapeFunctor,
+                            PT_INFER_META(pten::UnchangedInferMeta));
 REGISTER_OPERATOR(conj, ops::ConjOp, ops::ConjOpMaker,
                   ops::ConjGradMaker<paddle::framework::OpDesc>,
-                  ops::ConjGradMaker<paddle::imperative::OpBase>);
+                  ops::ConjGradMaker<paddle::imperative::OpBase>,
+                  ConjInferShapeFunctor);
 
 REGISTER_OP_CPU_KERNEL(
     conj, ops::ConjKernel<paddle::platform::CPUDeviceContext,

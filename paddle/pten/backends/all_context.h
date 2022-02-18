@@ -22,10 +22,11 @@ limitations under the License. */
 
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
-#include "paddle/pten/backends/npu/npu_context.h"
 #include "paddle/pten/backends/xpu/xpu_context.h"
 
+// TODO(wilber): DeviceContextPool nees include fluid file.
+#include "paddle/fluid/platform/device_context.h"
+
 namespace pten {
-using DeviceContext = paddle::platform::DeviceContext;
 using DeviceContextPool = paddle::platform::DeviceContextPool;
 }  // namespace pten

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/cross_entropy.h"
@@ -24,6 +25,48 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
+template <typename T, typename Visitor>
+struct SoftmaxWithCrossEntropyFunctor {
+ public:
+  SoftmaxWithCrossEntropyFunctor(const framework::ExecutionContext& context,
+                                 const framework::Tensor& labels,
+                                 const bool soft_label, const Visitor& visitor)
+      : context_(context),
+        labels_(labels),
+        soft_label_(soft_label),
+        visitor_(visitor) {}
+
+  template <typename U>
+  void apply() const {
+    visitor_.template Apply<U>(context_, labels_, soft_label_);
+  }
+
+ private:
+  const framework::ExecutionContext& context_;
+  const framework::Tensor& labels_;
+  const bool soft_label_;
+  const Visitor& visitor_;
+};
+
+template <typename T, typename Visitor>
+static void RunSoftmaxWithCrossEntropyFunctor(
+    const framework::ExecutionContext& context, const Visitor& visitor) {
+  const auto* labels = context.Input<framework::Tensor>("Label");
+  const bool soft_label = context.Attr<bool>("soft_label");
+  SoftmaxWithCrossEntropyFunctor<T, Visitor> functor(context, *labels,
+                                                     soft_label, visitor);
+  auto dtype = framework::TransToProtoVarType(labels->dtype());
+  if (soft_label) {
+    PADDLE_ENFORCE_EQ(
+        dtype, framework::DataTypeTrait<T>::DataType(),
+        platform::errors::InvalidArgument("The Input(Label) should be with the "
+                                          "same data type as Input(Logits)."));
+    functor.template apply<T>();
+  } else {
+    framework::VisitIntDataType(dtype, functor);
+  }
+}
+
 template <typename T>
 class SoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
  public:
@@ -32,14 +75,14 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
         platform::is_cpu_place(context.GetPlace()), true,
         platform::errors::Unimplemented("This kernel only runs on CPU."));
     const bool use_softmax = context.Attr<bool>("use_softmax");
+    const Tensor* labels = context.Input<Tensor>("Label");
+    const bool soft_label = context.Attr<bool>("soft_label");
 
     // do not with softmax op, and input is softmax
     if (!use_softmax) {
       const Tensor* softmax = context.Input<Tensor>("Logits");
-      const Tensor* labels = context.Input<Tensor>("Label");
       Tensor* softmax_out = context.Output<Tensor>("Softmax");
       Tensor* loss = context.Output<Tensor>("Loss");
-      const bool soft_label = context.Attr<bool>("soft_label");
       const int rank = softmax->dims().size();
       const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
       int axis_dim = softmax->dims()[axis];
@@ -86,10 +129,8 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
     }
 
     const Tensor* logits = context.Input<Tensor>("Logits");
-    const Tensor* labels = context.Input<Tensor>("Label");
     Tensor* softmax = context.Output<Tensor>("Softmax");
     Tensor* loss = context.Output<Tensor>("Loss");
-    const bool soft_label = context.Attr<bool>("soft_label");
 
     const int rank = logits->dims().size();
     const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
@@ -132,9 +173,14 @@ template <typename T>
 class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+    RunSoftmaxWithCrossEntropyFunctor<T>(context, *this);
+  }
+
+  template <typename LabelT>
+  static void Apply(const framework::ExecutionContext& context,
+                    const framework::Tensor& labels, const bool soft_label) {
     const Tensor* out_grad =
         context.Input<Tensor>(framework::GradVarName("Loss"));
-    const Tensor* labels = context.Input<Tensor>("Label");
     Tensor* logit_grad =
         context.Output<Tensor>(framework::GradVarName("Logits"));
     const Tensor* softmax = context.Input<Tensor>("Softmax");
@@ -143,7 +189,6 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
       framework::TensorCopy(*softmax, context.GetPlace(),
                             context.device_context(), logit_grad);
     }
-    const bool soft_label = context.Attr<bool>("soft_label");
     auto ignore_index = context.Attr<int>("ignore_index");
 
     const int rank = logit_grad->dims().size();
@@ -166,7 +211,7 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
     const int d = SizeFromAxis(axis, logit_grad->dims());
     Tensor logit_grad_2d, labels_2d, out_grad_2d;
     logit_grad_2d.ShareDataWith(*logit_grad).Resize({n, d});
-    labels_2d.ShareDataWith(*labels).Resize({n, labels->numel() / n});
+    labels_2d.ShareDataWith(labels).Resize({n, labels.numel() / n});
     out_grad_2d.ShareDataWith(*out_grad).Resize({n, d / axis_dim});
     auto out_grad_mat = framework::EigenMatrix<T>::From(out_grad_2d);
     auto logit_grad_mat = framework::EigenMatrix<T>::From(logit_grad_2d);
@@ -183,23 +228,24 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
             logit_grad_mat;
       } else {
         // use_softmax step2
-        const int64_t* label_data = labels->data<int64_t>();
-        T* logit_grad_data = logit_grad->data<T>();
-        const T* out_grad_data = out_grad->data<T>();
+        const auto* label_data = labels.template data<LabelT>();
+        T* logit_grad_data = logit_grad->template data<T>();
+        const T* out_grad_data = out_grad->template data<T>();
         const int remain = d / axis_dim;
         for (int i = 0; i < n; ++i) {         // for each sample_1_dim
           for (int j = 0; j < remain; j++) {  // for each sample_other_dims
             int idx = i * remain + j;  // this sample's label_idx. for 1d case,
                                        // remain=1 and j=0, so, idx = i
-            if (label_data[idx] == ignore_index) {
+            auto lbl = static_cast<int64_t>(label_data[idx]);
+            if (lbl == ignore_index) {
               for (int k = 0; k < axis_dim; ++k) {  // for each class id's label
                 logit_grad_data[i * d + k * remain + j] = 0;
               }
             } else {
               // only for this sample's label_idx, the label is 1, others is 0,
               // so, only compute this label_idx's class
-              logit_grad_data[i * d + label_data[idx] * remain + j] =
-                  (-1 / logit_grad_data[i * d + label_data[idx] * remain + j]) *
+              logit_grad_data[i * d + lbl * remain + j] =
+                  (-1 / logit_grad_data[i * d + lbl * remain + j]) *
                   out_grad_data[idx];
               for (int k = 0; k < axis_dim; ++k) {  // for each class id's label
                 if (k !=
@@ -233,15 +279,16 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
           logit_grad_mat *  // element_wise multiply
           out_grad_mat.broadcast(Eigen::DSizes<int, 2>(1, axis_dim));
 
-      const int64_t* label_data = labels->data<int64_t>();
-      T* logit_grad_data = logit_grad->data<T>();
-      const T* out_grad_data = out_grad->data<T>();
+      const auto* label_data = labels.template data<LabelT>();
+      T* logit_grad_data = logit_grad->template data<T>();
+      const T* out_grad_data = out_grad->template data<T>();
       const int remain = d / axis_dim;
       for (int i = 0; i < n; ++i) {         // for each sample_1_dim
         for (int j = 0; j < remain; j++) {  // for each sample_other_dims
           int idx = i * remain + j;  // this sample's label_idx. for 1d case,
                                      // remain=1 and j=0, so, idx = i
-          if (label_data[idx] == ignore_index) {
+          auto lbl = static_cast<int64_t>(label_data[idx]);
+          if (lbl == ignore_index) {
             for (int k = 0; k < axis_dim; ++k) {  // for each class id's label
               logit_grad_data[i * d + k * remain + j] = 0;
             }
@@ -258,8 +305,7 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
             // out_grad_data[idx]
             // means:           dy/dp * dy=   ( p - y ) * dy
 
-            logit_grad_data[i * d + label_data[idx] * remain + j] -=
-                out_grad_data[idx];
+            logit_grad_data[i * d + lbl * remain + j] -= out_grad_data[idx];
           }
         }
       }

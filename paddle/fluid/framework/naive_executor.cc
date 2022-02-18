@@ -20,6 +20,9 @@
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#if PADDLE_WITH_TENSORRT
+#include "paddle/fluid/operators/tensorrt/tensorrt_engine_op.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -128,9 +131,42 @@ NaiveExecutor::~NaiveExecutor() {
 #ifdef PADDLE_WITH_MKLDNN
   // Clear mkl-dnn cache,
   // this is needed to have mkl-dnn unit tests working
-  ClearMKLDNNCache(place_, this);
+  platform::ClearMKLDNNCache(place_, this);
 #endif
 }
 
+void NaiveExecutor::ResetTrtOps(int num) {
+#if PADDLE_WITH_TENSORRT
+  for (auto &op : ops_) {
+    if (op->Type() == "tensorrt_engine") {
+      operators::TensorRTEngineOp *trtop =
+          dynamic_cast<operators::TensorRTEngineOp *>(op.get());
+      if (!trtop) return;
+      std::string engine_key = trtop->Attr<std::string>("engine_key");
+      int engine_predictor_id = trtop->Attr<int>("predictor_id");
+      std::string engine_name =
+          engine_key + std::to_string(engine_predictor_id);
+      operators::TensorRTEngine *trt_engine =
+          paddle::inference::Singleton<
+              inference::tensorrt::TRTEngineManager>::Global()
+              .Get(engine_name);
+      if (trt_engine->with_dynamic_shape()) {
+        LOG(INFO) << "rebuild trt engine, this may cost a lot of time!";
+        trt_engine->ResetContext();
+        trt_engine->ClearTensorMap();
+        trt_engine->SetProfileNum(num);
+        auto *anc = scope_->parent();
+        while (anc && anc->parent()) {
+          anc = anc->parent();
+        }
+        if (anc == nullptr) {
+          anc = scope_;
+        }
+        trtop->PrepareTRTEngine(*anc, trt_engine);
+      }
+    }
+  }
+#endif
+}
 }  // namespace framework
 }  // namespace paddle

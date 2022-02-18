@@ -61,8 +61,7 @@ class PoissonKernel<platform::CUDADeviceContext, T>
     const T* x_data = x->data<T>();
     T* out_data = out->mutable_data<T>(ctx.GetPlace());
     auto size = x->numel();
-    int64_t device_id =
-        BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace()).GetDeviceId();
+    int64_t device_id = ctx.GetPlace().GetDeviceId();
 
     auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
     auto seed_offset = gen_cuda->IncrementOffset(20);

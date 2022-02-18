@@ -13,11 +13,12 @@
 #include <algorithm>
 #include <string>
 #include <vector>
-#include "paddle/fluid/distributed/fleet.h"
+#include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
+#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -39,8 +40,8 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
 
     if (var->IsType<framework::LoDTensor>()) {
       emb_dim = var->Get<framework::LoDTensor>().dims()[1];
-    } else if (var->IsType<framework::SelectedRows>()) {
-      emb_dim = var->Get<framework::SelectedRows>().value().dims()[1];
+    } else if (var->IsType<pten::SelectedRows>()) {
+      emb_dim = var->Get<pten::SelectedRows>().value().dims()[1];
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Expected type of `W` must be Tensor, SelectedRows.But got "
@@ -51,13 +52,15 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
     auto inputs = context.MultiInput<framework::LoDTensor>("Ids");
     auto outputs = context.MultiOutput<framework::LoDTensor>("Outputs");
 
-    auto fleet = distributed::FleetWrapper::GetInstance();
+    // auto fleet = distributed::FleetWrapper::GetInstance();
+    auto *communicator = (distributed::AsyncCommunicator *)
+        distributed::Communicator::GetInstance();
 
     if (platform::is_cpu_place(context.GetPlace())) {
-      fleet->PullSparseToTensorSync(static_cast<uint64_t>(table_id), emb_dim,
-                                    static_cast<uint64_t>(padding_idx),
-                                    context.GetPlace(), !is_test, &inputs,
-                                    &outputs);
+      communicator->PullSparseToTensorSync(
+          static_cast<uint64_t>(table_id), emb_dim,
+          static_cast<uint64_t>(padding_idx), context.GetPlace(), !is_test,
+          &inputs, &outputs);
     } else {
       auto inputs_variable = context.MultiInputVar("Ids");
       auto outputs_variable = context.MultiOutputVar("Outputs");
@@ -93,10 +96,10 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
       }
 
       // use fleet->PullSparse
-      fleet->PullSparseToTensorSync(static_cast<uint64_t>(table_id), emb_dim,
-                                    static_cast<uint64_t>(padding_idx),
-                                    cpu_place, !is_test, &tmp_input_vec,
-                                    &tmp_output_vec);
+      communicator->PullSparseToTensorSync(
+          static_cast<uint64_t>(table_id), emb_dim,
+          static_cast<uint64_t>(padding_idx), cpu_place, !is_test,
+          &tmp_input_vec, &tmp_output_vec);
 
       // cp temp to origin
       for (size_t idx = 0; idx < output_var_size; ++idx) {

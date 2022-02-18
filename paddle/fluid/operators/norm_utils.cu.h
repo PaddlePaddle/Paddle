@@ -25,8 +25,8 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 #include "paddle/fluid/framework/data_layout.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 #ifdef __HIPCC__
 #define LAUNCH_BOUNDS(BlockDim) __launch_bounds__(BlockDim)
@@ -405,7 +405,7 @@ void NormDoubleGradFunctor(const framework::ExecutionContext &ctx,
   const T *ddbias_data = (ddBias == nullptr ? nullptr : ddBias->data<T>());
 
   auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-  math::SetConstant<platform::CUDADeviceContext, T> set_constant;
+  pten::funcs::SetConstant<platform::CUDADeviceContext, T> set_constant;
 
   auto &x_dims = X->dims();
   const int C = (data_layout == DataLayout::kNCHW ? x_dims[1]

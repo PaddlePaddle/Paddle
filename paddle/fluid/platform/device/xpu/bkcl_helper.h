@@ -26,8 +26,8 @@
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/place.h"
 #include "xpu/bkcl.h"
@@ -58,9 +58,7 @@ struct BKCLContext {
 
   BKCLContext_t comm() const { return comm_; }
 
-  int device_id() const {
-    return BOOST_GET_CONST(platform::XPUPlace, ctx_->GetPlace()).device;
-  }
+  int device_id() const { return ctx_->GetPlace().device; }
 };
 
 struct InitBKCLPara {
@@ -73,13 +71,9 @@ struct InitBKCLPara {
 
 static void *init_bkcl_context_func(void *args) {
   struct InitBKCLPara *para = (struct InitBKCLPara *)args;
-  PADDLE_ENFORCE_EQ(xpu_set_device(para->dev_id), XPU_SUCCESS,
-                    platform::errors::PreconditionNotMet(
-                        "xpu_set_device failed[%d]", para->dev_id));
-  PADDLE_ENFORCE_EQ(
-      bkcl_init_rank(para->ctx, para->rank, para->nranks, para->bkcl_id),
-      BKCL_SUCCESS,
-      platform::errors::PreconditionNotMet("bkcl_init_rank failed"));
+  platform::SetXPUDeviceId(para->dev_id);
+  PADDLE_ENFORCE_XPU_SUCCESS(
+      bkcl_init_rank(para->ctx, para->rank, para->nranks, para->bkcl_id));
   return nullptr;
 }
 
@@ -108,7 +102,7 @@ struct BKCLContextMap {
                           "The BKCL place should not be empty."));
     order_.reserve(places_.size());
     for (auto &p : places_) {
-      int dev_id = BOOST_GET_CONST(platform::XPUPlace, p).device;
+      int dev_id = p.device;
       order_.emplace_back(dev_id);
       contexts_.emplace(dev_id, BKCLContext(dev_id));
     }
@@ -169,13 +163,9 @@ struct BKCLContextMap {
 
   XPUDeviceContext *DevCtx(int dev_id) const { return at(dev_id).ctx_.get(); }
 
-  XPUDeviceContext *DevCtx(platform::Place p) const {
-    return DevCtx(BOOST_GET_CONST(platform::XPUPlace, p).device);
-  }
+  XPUDeviceContext *DevCtx(platform::Place p) const { return DevCtx(p.device); }
 
-  const BKCLContext &at(platform::Place p) const {
-    return this->at(BOOST_GET_CONST(platform::XPUPlace, p).device);
-  }
+  const BKCLContext &at(platform::Place p) const { return this->at(p.device); }
 
   const BKCLContext &at(int dev_id) const { return contexts_.at(dev_id); }
 

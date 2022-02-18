@@ -21,29 +21,28 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/ps.pb.h"
-#include "paddle/fluid/distributed/service/brpc_ps_client.h"
-#include "paddle/fluid/distributed/service/brpc_ps_server.h"
-#include "paddle/fluid/distributed/service/env.h"
-#include "paddle/fluid/distributed/service/graph_brpc_client.h"
-#include "paddle/fluid/distributed/service/graph_brpc_server.h"
-#include "paddle/fluid/distributed/service/graph_py_service.h"
-#include "paddle/fluid/distributed/service/ps_client.h"
-#include "paddle/fluid/distributed/service/sendrecv.pb.h"
-#include "paddle/fluid/distributed/service/service.h"
-#include "paddle/fluid/distributed/table/graph/graph_node.h"
+#include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
+#include "paddle/fluid/distributed/ps/service/brpc_ps_server.h"
+#include "paddle/fluid/distributed/ps/service/env.h"
+#include "paddle/fluid/distributed/ps/service/graph_brpc_client.h"
+#include "paddle/fluid/distributed/ps/service/graph_brpc_server.h"
+#include "paddle/fluid/distributed/ps/service/ps_client.h"
+#include "paddle/fluid/distributed/ps/service/ps_service/graph_py_service.h"
+#include "paddle/fluid/distributed/ps/service/ps_service/service.h"
+#include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
+#include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 namespace operators = paddle::operators;
-namespace math = paddle::operators::math;
 namespace memory = paddle::memory;
 namespace distributed = paddle::distributed;
 

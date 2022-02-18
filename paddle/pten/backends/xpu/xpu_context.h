@@ -14,13 +14,56 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_WITH_XPU
+#include <memory>
+#include "paddle/pten/backends/xpu/forwards.h"
+#include "paddle/pten/common/place.h"
+#include "paddle/pten/core/device_context.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/pten/backends/xpu/xpu_header.h"
+#include "paddle/pten/backends/xpu/xpu_info.h"
+
+namespace xpu = baidu::xpu::api;
 
 namespace pten {
-using XPUContext = paddle::platform::XPUDeviceContext;
-}  // namespace pten
 
-#endif  // PADDLE_WITH_XPU
+class XPUContext : public DeviceContext {
+ public:
+  XPUContext();
+
+  explicit XPUContext(const XPUPlace&);
+
+  virtual ~XPUContext();
+
+  const Place& GetPlace() const override;
+
+  backends::xpu::XPUVersion xpu_version() const;
+
+  xpu::Context* x_context() const;
+
+  // Return bkcl context.
+  xpu::BKCLContext_t bkcl_context() const;
+  void SetBkclContext(xpu::BKCLContext_t context);
+
+  // Wait for all operations completion in the stream.
+  void Wait() const override;
+
+ public:
+  // NOTE: DeviceContext hold resources. Used in training scenarios.
+  // The interface used by the training scene, DeviceContext will initialize
+  // all resources and delete them when destructing.
+  void Init();
+
+ public:
+  // NOTE: External users manage resources. Used in inference scenarios.
+  // The Set interface is for inference only, DeviceContext will mark the
+  // resource as external, and will not delete any resource when destructing.
+  void SetXContext(xpu::Context*);
+
+  void SetL3Cache(int l3_size = 14155776);
+
+ private:
+  struct Impl;
+  std::unique_ptr<Impl> impl_;
+};
+
+}  // namespace pten

@@ -205,6 +205,13 @@ def lambda_lr(epoch_num, learning_rate, lr_lambda, verbose=False):
     return learning_rate * lr_lambda(epoch_num)
 
 
+def multiplicative_lr(epoch_num, learning_rate, lr_lambda, verbose=False):
+    latest_lr = learning_rate
+    for i in range(epoch_num):
+        latest_lr = latest_lr * lr_lambda(i + 1)
+    return latest_lr
+
+
 def piecewise_lr(epoch_num, boundaries, values, verbose=False):
     assert len(boundaries) + 1 == len(values)
     for i in range(len(boundaries)):
@@ -316,15 +323,15 @@ def step_lr(epoch_num, learning_rate, step_size, gamma=0.1, verbose=False):
 
 class TestLRScheduler(unittest.TestCase):
     def _test_static(self, python_func, paddle_api, kwarg, place):
+        scheduler = paddle_api(**kwarg)
+        adam = paddle.optimizer.Adam(learning_rate=scheduler)
+
         main_prog = paddle.static.Program()
         start_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
             x = paddle.static.data(name='x', shape=[3, 4, 5])
-            y = paddle.static.data(name='y', shape=[3, 4, 5])
-            z = paddle.static.nn.fc(x, 100)
-            loss = paddle.mean(z)
-            scheduler = paddle_api(**kwarg)
-            adam = paddle.optimizer.Adam(learning_rate=scheduler)
+            loss = paddle.mean(x)
+
             adam.minimize(loss)
             lr_var = adam._global_learning_rate()
             test_prog = main_prog.clone()
@@ -332,14 +339,12 @@ class TestLRScheduler(unittest.TestCase):
         num = 0
         exe = paddle.static.Executor(place)
         exe.run(start_prog)
+
         for epoch in range(5):
             for batch_id in range(2):
                 out = exe.run(
                     main_prog,
-                    feed={
-                        'x': np.random.randn(3, 4, 5).astype('float32'),
-                        'y': np.random.randn(3, 4, 5).astype('float32')
-                    },
+                    feed={'x': np.random.randn(3, 4, 5).astype('float32')},
                     fetch_list=lr_var.name)
             self.assertEqual(out, np.array(python_func(num, **kwarg)))
             scheduler.step()
@@ -349,10 +354,7 @@ class TestLRScheduler(unittest.TestCase):
             for batch_id in range(2):
                 out = exe.run(
                     test_prog,
-                    feed={
-                        'x': np.random.randn(3, 4, 5).astype('float32'),
-                        'y': np.random.randn(3, 4, 5).astype('float32')
-                    },
+                    feed={'x': np.random.randn(3, 4, 5).astype('float32')},
                     fetch_list=lr_var.name)
             self.assertEqual(out, np.array(python_func(num, **kwarg)))
             scheduler.step()
@@ -365,13 +367,12 @@ class TestLRScheduler(unittest.TestCase):
             for epoch in range(5):
                 python_result = python_func(num, **kwarg)
                 for batch_id in range(2):
-                    _ = exe.run(
-                        compiled_train_prog,
-                        feed={
-                            'x': np.random.randn(12, 4, 5).astype('float32'),
-                            'y': np.random.randn(12, 4, 5).astype('float32')
-                        },
-                        fetch_list=lr_var.name)
+                    _ = exe.run(compiled_train_prog,
+                                feed={
+                                    'x':
+                                    np.random.randn(12, 4, 5).astype('float32')
+                                },
+                                fetch_list=lr_var.name)
                 scopes = compiled_train_prog._executor.local_scopes()
                 out = np.array(scopes[0].var(lr_var.name).get_tensor())
                 self.assertEqual(out, np.array(python_result))
@@ -392,13 +393,12 @@ class TestLRScheduler(unittest.TestCase):
             for epoch in range(5):
                 python_result = python_func(num, **kwarg)
                 for batch_id in range(2):
-                    _ = exe.run(
-                        compiled_test_prog,
-                        feed={
-                            'x': np.random.randn(12, 4, 5).astype('float32'),
-                            'y': np.random.randn(12, 4, 5).astype('float32')
-                        },
-                        fetch_list=lr_var.name)
+                    _ = exe.run(compiled_test_prog,
+                                feed={
+                                    'x':
+                                    np.random.randn(12, 4, 5).astype('float32')
+                                },
+                                fetch_list=lr_var.name)
                 scopes = compiled_test_prog._executor.local_scopes()
                 out = np.array(scopes[0].var(lr_var.name).get_tensor())
                 self.assertEqual(out, np.array(python_result))
@@ -518,6 +518,10 @@ class TestLRScheduler(unittest.TestCase):
         }), (lambda_lr, paddle.optimizer.lr.LambdaDecay, {
             "learning_rate": 0.5,
             "lr_lambda": lambda x: 0.95**x,
+            "verbose": True
+        }), (multiplicative_lr, paddle.optimizer.lr.MultiplicativeDecay, {
+            "learning_rate": 0.5,
+            "lr_lambda": lambda x: 0.95,
             "verbose": True
         }), (cosine_annealing_lr, paddle.optimizer.lr.CosineAnnealingDecay, {
             "learning_rate": 0.5,

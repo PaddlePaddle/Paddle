@@ -132,5 +132,26 @@ class TestExpandNet(unittest.TestCase):
         self.assertTrue(np.allclose(npu_loss, cpu_loss))
 
 
+# ------------------------------------------------
+# Special Cases for NPU
+# ------------------------------------------------
+
+
+class TestExpand_expand_times_all_one(TestExpand):
+    def setUp(self):
+        self.set_npu()
+        self.op_type = "expand"
+        self.place = paddle.NPUPlace(0)
+
+        self.init_dtype()
+        np.random.seed(SEED)
+        x = np.random.randn(3, 1, 7).astype(self.dtype)
+        out = np.tile(x, [1, 1, 1])
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.attrs = {'expand_times': [1, 1, 1]}
+        self.outputs = {'Out': out}
+
+
 if __name__ == '__main__':
     unittest.main()

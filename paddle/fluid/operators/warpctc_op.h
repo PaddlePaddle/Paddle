@@ -17,10 +17,10 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sequence_padding.h"
 #include "paddle/fluid/operators/math/sequence_scale.h"
 #include "paddle/fluid/platform/dynload/warpctc.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -138,7 +138,7 @@ class WarpCTCFunctor {
         framework::make_ddim({static_cast<int64_t>(workspace_elements)}),
         dev_ctx);
     T* workspace_data = workspace.data<T>();
-    math::SetConstant<DeviceContext, T>()(
+    pten::funcs::SetConstant<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), &workspace,
         static_cast<T>(0));
 
@@ -299,7 +299,8 @@ class WarpCTCKernel : public framework::OpKernel<T> {
         ctx.AllocateTmpTensor<T, DeviceContext>(warpctc_logits_dims, dev_ctx);
     warpctc_logits.ShareDataWith(warpctc_logits_tmp);
     if (ctx.HasInput("LogitsLength")) {
-      TensorCopySync(*logits, ctx.GetPlace(), &warpctc_logits);
+      paddle::framework::TensorCopySync(*logits, ctx.GetPlace(),
+                                        &warpctc_logits);
     } else {
       LoDTensor cpu_pad_value;
       T* pad_value_data =
@@ -309,7 +310,8 @@ class WarpCTCKernel : public framework::OpKernel<T> {
       if (platform::is_cpu_place(ctx.GetPlace())) {
         pad_value = cpu_pad_value;
       } else {
-        TensorCopySync(cpu_pad_value, ctx.GetPlace(), &pad_value);
+        paddle::framework::TensorCopySync(cpu_pad_value, ctx.GetPlace(),
+                                          &pad_value);
       }
 
       math::PaddingLoDTensorFunctor<DeviceContext, T>()(
@@ -332,7 +334,7 @@ class WarpCTCKernel : public framework::OpKernel<T> {
     T* warpctc_grad_data =
         warpctc_grad->mutable_data<T>(warpctc_logits.dims(), ctx.GetPlace());
 
-    math::SetConstant<DeviceContext, T>()(
+    pten::funcs::SetConstant<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), warpctc_grad,
         static_cast<T>(0));
 
@@ -361,10 +363,12 @@ class WarpCTCKernel : public framework::OpKernel<T> {
             ctx.template device_context<DeviceContext>(), *label, &gpu_label,
             label->dims()[1] /*pad_seq_len*/, 0 /*lod_level*/,
             false /*norm_by_times*/, math::kBatchLengthWidth);
-        TensorCopySync(gpu_label, platform::CPUPlace(), &warpctc_label);
+        paddle::framework::TensorCopySync(gpu_label, platform::CPUPlace(),
+                                          &warpctc_label);
       }
     } else {
-      TensorCopySync(*label, platform::CPUPlace(), &warpctc_label);
+      paddle::framework::TensorCopySync(*label, platform::CPUPlace(),
+                                        &warpctc_label);
     }
 
     const int* warpctc_label_data = warpctc_label.data<int>();
@@ -381,7 +385,8 @@ class WarpCTCKernel : public framework::OpKernel<T> {
         sequence_width, num_sequences, blank, warpctc_loss_data);
 
     // Copy the loss back
-    TensorCopy(warpctc_loss, ctx.GetPlace(), ctx.device_context(), loss);
+    paddle::framework::TensorCopy(warpctc_loss, ctx.GetPlace(),
+                                  ctx.device_context(), loss);
   }
 };
 

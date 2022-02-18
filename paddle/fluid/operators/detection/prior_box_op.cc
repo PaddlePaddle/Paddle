@@ -19,6 +19,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#include "paddle/fluid/framework/convert_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -101,7 +102,8 @@ class PriorBoxOp : public framework::OperatorWithKernel {
         this->CanMKLDNNBeUsed(ctx, input_input_type)) {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
-      auto input_image_type = ctx.Input<framework::Tensor>("Image")->type();
+      auto input_image_type = framework::TransToProtoVarType(
+          ctx.Input<framework::Tensor>("Image")->dtype());
       int customized_type_value =
           framework::OpKernelType::kDefaultCustomizedTypeValue;
       if (input_image_type == framework::DataTypeTrait<float>::DataType()) {

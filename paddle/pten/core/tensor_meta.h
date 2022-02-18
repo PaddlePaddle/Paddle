@@ -19,9 +19,7 @@ limitations under the License. */
 #include "paddle/pten/common/backend.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
-
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/framework/ddim.h"
+#include "paddle/pten/core/ddim.h"
 
 // Note: mixed_vector include many header now, LoD will be
 // used on CUDA device? Can we use small_vector here?
@@ -30,7 +28,7 @@ limitations under the License. */
 
 namespace pten {
 
-using DDim = paddle::framework::DDim;
+using DDim = pten::framework::DDim;
 using LoD = std::vector<paddle::framework::Vector<size_t>>;
 /// \brief The meta data of dense tensor. Take the structure type
 /// and use all default operations.
@@ -41,18 +39,20 @@ struct DenseTensorMeta {
 
   DenseTensorMeta() = default;
   DenseTensorMeta(DataType dtype, const DDim& dims);
-  DenseTensorMeta(DataType dtype, const DDim& dims, DataLayout layout);
   DenseTensorMeta(DataType dtype,
                   const DDim& dims,
                   DataLayout layout,
-                  const LoD& lod);
+                  size_t offset = 0);
+  DenseTensorMeta(DataType dtype,
+                  const DDim& dims,
+                  DataLayout layout,
+                  const LoD& lod,
+                  size_t offset = 0);
 
   /// \brief Test whether the metadata is valid. Does not throw exceptions.
   /// \return Whether the metadata is valid.
   bool valid() const noexcept;
 
-  /// During the entire life cycle of a DenseTensor, the following attributes
-  /// marked with `const` are expected to remain unchanged.
   bool is_scalar{false};
   DDim dims;
   DataType dtype{DataType::UNDEFINED};

@@ -19,9 +19,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
+
+#include "paddle/fluid/framework/pten_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -73,8 +75,8 @@ class TestKernel : public OpKernel<float> {
     output->Resize(input->dims());
     output->mutable_data<T>(ctx.GetPlace());
 
-    operators::TransformFunctor<AddFunctor<T>, T, DeviceContext> functor(
-        input, input, output, ctx.template device_context<DeviceContext>(),
+    pten::funcs::TransformFunctor<AddFunctor<T>, T, DeviceContext> functor(
+        *input, *input, output, ctx.template device_context<DeviceContext>(),
         AddFunctor<T>());
     functor.Run();
   }

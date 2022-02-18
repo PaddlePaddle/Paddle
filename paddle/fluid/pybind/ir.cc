@@ -143,6 +143,7 @@ void BindNode(py::module *m) {
       .def("var", &Node::Var, return_value_policy::reference)
       .def("op", &Node::Op, return_value_policy::reference)
       .def("id", &Node::id)
+      .def("original_desc_id", &Node::OriginalDescId)
       .def("is_op", &Node::IsOp)
       .def("is_var", &Node::IsVar)
       .def("is_ctrl_var", &Node::IsCtrlVar)

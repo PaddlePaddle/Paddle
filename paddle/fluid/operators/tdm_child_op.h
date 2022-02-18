@@ -108,7 +108,8 @@ class TDMChildKernel : public framework::OpKernel<T> {
     auto *tree_info_var = ctx.InputVar("TreeInfo");
 
     auto &input_tensor = input_var->Get<LoDTensor>();
-    const auto &input_type = input_tensor.type();
+    const auto &input_type =
+        framework::TransToProtoVarType(input_tensor.dtype());
     bool input_type_match = input_type == framework::proto::VarType::INT32 ||
                             input_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(input_type_match, true,
@@ -122,7 +123,8 @@ class TDMChildKernel : public framework::OpKernel<T> {
                               framework::proto::VarType::INT64)));
 
     auto &tree_info_tensor = tree_info_var->Get<LoDTensor>();
-    const auto &info_type = tree_info_tensor.type();
+    const auto &info_type =
+        framework::TransToProtoVarType(tree_info_tensor.dtype());
     bool info_type_match = info_type == framework::proto::VarType::INT32 ||
                            info_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(

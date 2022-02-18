@@ -34,11 +34,6 @@
 #include "gperftools/profiler.h"
 #endif
 
-// Disable pten path
-DECLARE_bool(run_pten_kernel);
-
-TEST(Benchmark, Init) { FLAGS_run_pten_kernel = false; }
-
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 namespace paddle {
@@ -250,10 +245,10 @@ TEST(Benchmark, FluidMLPCUDA) {
 }  // namespace imperative
 }  // namespace paddle
 
-USE_OP(scale);
-USE_OP(matmul_v2);
+USE_OP_ITSELF(scale);
+USE_OP_ITSELF(matmul_v2);
 USE_OP(reduce_sum);
 USE_OP(reduce_sum_grad);
-USE_OP(elementwise_add);
+USE_OP_ITSELF(elementwise_add);
 
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP

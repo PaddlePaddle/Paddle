@@ -24,89 +24,111 @@ PADDLE_DEFINE_EXPORTED_bool(
 namespace paddle {
 namespace platform {
 
-namespace detail {
-
-class PlacePrinter : public boost::static_visitor<> {
- public:
-  explicit PlacePrinter(std::ostream &os) : os_(os) {}
-  void operator()(const CPUPlace &) { os_ << "CPUPlace"; }
-  void operator()(const CUDAPlace &p) {
-    os_ << "CUDAPlace(" << p.device << ")";
-  }
-  void operator()(const XPUPlace &p) { os_ << "XPUPlace(" << p.device << ")"; }
-  void operator()(const MLUPlace &p) { os_ << "MLUPlace(" << p.device << ")"; }
-  void operator()(const NPUPlace &p) { os_ << "NPUPlace(" << p.device << ")"; }
-  void operator()(const NPUPinnedPlace &p) { os_ << "NPUPinnedPlace"; }
-  void operator()(const IPUPlace &p) { os_ << "IPUPlace(" << p.device << ")"; }
-  void operator()(const CUDAPinnedPlace &p) { os_ << "CUDAPinnedPlace"; }
-
- private:
-  std::ostream &os_;
-};
-
-}  // namespace detail
-
 bool is_gpu_place(const Place &p) {
-  return boost::apply_visitor(IsCUDAPlace(), p);
+  return p.GetType() == pten::AllocationType::GPU;
 }
 
 bool is_xpu_place(const Place &p) {
-  return boost::apply_visitor(IsXPUPlace(), p);
+  return p.GetType() == pten::AllocationType::XPU;
 }
 
 bool is_mlu_place(const Place &p) {
-  return boost::apply_visitor(IsMLUPlace(), p);
+  return p.GetType() == pten::AllocationType::MLU;
 }
 
 bool is_npu_place(const Place &p) {
-  return boost::apply_visitor(IsNPUPlace(), p);
+  return p.GetType() == pten::AllocationType::NPU;
 }
 
 bool is_ipu_place(const Place &p) {
-  return boost::apply_visitor(IsIPUPlace(), p);
+  return p.GetType() == pten::AllocationType::IPU;
 }
 
 bool is_cpu_place(const Place &p) {
-  return boost::apply_visitor(IsCPUPlace(), p);
+  return p.GetType() == pten::AllocationType::CPU;
 }
 
 bool is_cuda_pinned_place(const Place &p) {
-  return boost::apply_visitor(IsCUDAPinnedPlace(), p);
+  return p.GetType() == pten::AllocationType::GPUPINNED;
 }
 
 bool is_npu_pinned_place(const Place &p) {
-  return boost::apply_visitor(IsNPUPinnedPlace(), p);
+  return p.GetType() == pten::AllocationType::NPUPINNED;
+}
+
+bool is_custom_place(const Place &p) {
+  return p.GetType() == pten::AllocationType::CUSTOM;
 }
 
 bool places_are_same_class(const Place &p1, const Place &p2) {
-  return p1.which() == p2.which();
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (is_custom_place(p1) && is_custom_place(p2)) {
+    return p1.GetDeviceType() == p2.GetDeviceType();
+  }
+#endif
+  return p1.GetType() == p2.GetType();
 }
 
 bool is_same_place(const Place &p1, const Place &p2) {
   if (places_are_same_class(p1, p2)) {
-    if (is_cpu_place(p1) || is_cuda_pinned_place(p1)) {
+    if (is_cpu_place(p1) || is_cuda_pinned_place(p1) ||
+        is_npu_pinned_place(p1)) {
       return true;
     } else if (is_xpu_place(p1)) {
-      return BOOST_GET_CONST(XPUPlace, p1) == BOOST_GET_CONST(XPUPlace, p2);
+      return p1 == p2;
     } else if (is_mlu_place(p1)) {
-      return BOOST_GET_CONST(MLUPlace, p1) == BOOST_GET_CONST(MLUPlace, p2);
+      return p1 == p2;
     } else if (is_npu_place(p1)) {
-      return BOOST_GET_CONST(NPUPlace, p1) == BOOST_GET_CONST(NPUPlace, p2);
+      return p1 == p2;
     } else if (is_ipu_place(p1)) {
-      return BOOST_GET_CONST(IPUPlace, p1) == BOOST_GET_CONST(IPUPlace, p2);
+      return p1 == p2;
+    } else if (is_custom_place(p1)) {
+      return p1 == p2;
     } else {
-      return BOOST_GET_CONST(CUDAPlace, p1) == BOOST_GET_CONST(CUDAPlace, p2);
+      return p1 == p2;
     }
   } else {
     return false;
   }
 }
 
-std::ostream &operator<<(std::ostream &os, const Place &p) {
-  detail::PlacePrinter printer(os);
-  boost::apply_visitor(printer, p);
-  return os;
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+std::string PlaceHelper::GetDeviceType(const Place &place) {
+  if (is_cpu_place(place)) {
+    return "cpu";
+  } else if (is_gpu_place(place)) {
+    return "gpu";
+  } else if (is_npu_place(place)) {
+    return "npu";
+  } else if (is_xpu_place(place)) {
+    return "xpu";
+  } else if (is_custom_place(place)) {
+    return place.GetDeviceType();
+  } else {
+    PADDLE_THROW(platform::errors::Fatal(
+        "Unknown device type. Please check available devices by "
+        "paddle.device.get_available_device()"));
+  }
 }
+
+size_t PlaceHelper::GetDeviceId(const Place &place) {
+  return place.GetDeviceId();
+}
+
+Place PlaceHelper::CreatePlace(const std::string &dev_type, size_t dev_id) {
+  if (dev_type == "cpu") {
+    return platform::CPUPlace();
+  } else if (dev_type == "gpu") {
+    return platform::CUDAPlace(dev_id);
+  } else if (dev_type == "npu") {
+    return platform::NPUPlace(dev_id);
+  } else if (dev_type == "xpu") {
+    return platform::XPUPlace(dev_id);
+  } else {
+    return platform::CustomPlace(dev_type, dev_id);
+  }
+}
+#endif
 
 }  // namespace platform
 }  // namespace paddle

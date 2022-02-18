@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,32 +14,48 @@ limitations under the License. */
 
 #include "paddle/pten/core/dense_tensor.h"
 
+#include "paddle/pten/common/bfloat16.h"
+#include "paddle/pten/common/complex.h"
+#include "paddle/pten/common/float16.h"
+#include "paddle/pten/core/compat/convert_utils.h"
+
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/memory/malloc.h"
 
 namespace pten {
 
-DenseTensor::DenseTensor(const std::shared_ptr<Allocator>& a,
+DenseTensor::DenseTensor(Allocator* a, const DenseTensorMeta& meta)
+    : meta_(meta), holder_(a->Allocate(SizeOf(dtype()) * numel())) {}
+
+DenseTensor::DenseTensor(Allocator* a, DenseTensorMeta&& meta)
+    : meta_(std::move(meta)), holder_(a->Allocate(SizeOf(dtype()) * numel())) {}
+
+DenseTensor::DenseTensor(const std::shared_ptr<pten::Allocation>& holder,
                          const DenseTensorMeta& meta)
-    : meta_(meta),
-      storage_(make_intrusive<TensorStorage>(a, SizeOf(dtype()) * numel())) {}
+    : meta_(meta), holder_(holder) {}
 
-DenseTensor::DenseTensor(const std::shared_ptr<Allocator>& a,
-                         DenseTensorMeta&& meta)
-    : meta_(std::move(meta)),
-      storage_(make_intrusive<TensorStorage>(a, SizeOf(dtype()) * numel())) {}
+DenseTensor::DenseTensor(const DenseTensor& other) : meta_(other.meta()) {
+  holder_ = other.holder_;
 
-DenseTensor::DenseTensor(intrusive_ptr<Storage> storage,
-                         const DenseTensorMeta& meta)
-    : meta_(meta), storage_(std::move(storage)) {}
+#ifdef PADDLE_WITH_MKLDNN
+  format_ = other.format_;
+#endif
+}
 
-DenseTensor::DenseTensor(intrusive_ptr<Storage> storage, DenseTensorMeta&& meta)
-    : meta_(std::move(meta)), storage_(std::move(storage)) {}
+DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
+  meta_ = other.meta();
+  holder_ = other.holder_;
+#ifdef PADDLE_WITH_MKLDNN
+  format_ = other.format_;
+#endif
+  return *this;
+}
 
-DenseTensor::DenseTensor(const DenseTensor& other)
-    : meta_(other.meta()), storage_(copy_intrusive(other.storage_)) {}
+DenseTensor& DenseTensor::operator=(DenseTensor&& other) {
+  meta_ = std::move(other.meta_);
+  std::swap(holder_, other.holder_);
+  return *this;
+}
 
 int64_t DenseTensor::numel() const {
   if (meta_.is_scalar) {
@@ -49,60 +65,51 @@ int64_t DenseTensor::numel() const {
 }
 
 bool DenseTensor::IsSharedWith(const DenseTensor& b) const {
-  return storage_.get() == b.storage_.get() && storage_.get() != nullptr;
+  return holder_ && holder_ == b.Holder();
 }
 
-void* DenseTensor::mutable_data(size_t request_bytes) {
+void* DenseTensor::AllocateFrom(Allocator* allocator,
+                                DataType dtype,
+                                size_t requested_size) {
+  PADDLE_ENFORCE_NOT_NULL(
+      allocator,
+      paddle::platform::errors::InvalidArgument(
+          "Required allocator shall not be nullptr, but received nullptr."));
+  if (this->dtype() != dtype) {
+    VLOG(10) << "change data type in mutbale_data, target dtype - " << dtype;
+    meta_.dtype = dtype;
+  }
   PADDLE_ENFORCE(
       valid(),
       paddle::platform::errors::PreconditionNotMet(
           "The meta data must be valid when call the mutable data function."));
-  PADDLE_ENFORCE_NOT_NULL(
-      storage_,
-      paddle::platform::errors::PreconditionNotMet(
-          "The storage must be valid when call the mutable data function."));
-  size_t bytes = numel() * SizeOf(dtype());
-  if (request_bytes) {
-    PADDLE_ENFORCE_GE(request_bytes,
+  size_t bytes = numel() * SizeOf(this->dtype());
+  if (requested_size) {
+    PADDLE_ENFORCE_GE(requested_size,
                       bytes,
                       paddle::platform::errors::InvalidArgument(
                           "The reserved size %d should be enough to meet the "
                           "volume required by metadata %d.",
-                          request_bytes,
+                          requested_size,
                           bytes));
-    bytes = request_bytes;
+    bytes = requested_size;
   }
-  if (storage_->size() < bytes || storage_->size() == 0) {
-    VLOG(10) << "mutbale data realloc, original size: " << storage_->size()
-             << ", new size: " << bytes;
-    storage_->Realloc(bytes);
+  // TODO(paddle-dev): In case of the allocator of storage_ is different with
+  // the incoming allocator, we should re-alloc data using the incoming
+  // allocator.
+  if (!holder_ || holder_->size() < bytes + meta_.offset) {
+    meta_.offset = 0;
+    VLOG(10) << "Allocate data with bytes: " << bytes;
+    ResetHolder(allocator->Allocate(bytes));
   }
-  return storage_->data();
-}
 
-template <typename T>
-T* DenseTensor::mutable_data() {
-  // In order to be compatible with the original Tensor design and
-  // execution system, we have to reset the datatype in mutable_data<T>.
-  // When the compatibility phase is over in the future, we can delete it
-  if (meta_.dtype == DataType::UNDEFINED) {
-    VLOG(10) << "change data type in mutbale_data, target dtype - "
-             << paddle::experimental::CppTypeToDataType<T>::Type();
-    const_cast<DataType&>(meta_.dtype) =
-        paddle::experimental::CppTypeToDataType<T>::Type();
-  }
-  PADDLE_ENFORCE(
-      (dtype() == paddle::experimental::CppTypeToDataType<T>::Type()),
-      paddle::platform::errors::InvalidArgument(
-          "The type of data (%d) we are trying to retrieve does not match the "
-          "type of data currently contained in the container (%d).",
-          static_cast<int>(paddle::experimental::CppTypeToDataType<T>::Type()),
-          static_cast<int>(dtype())));
-  return static_cast<T*>(mutable_data());
+  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
+                                 meta_.offset);
 }
 
 template <typename T>
 const T* DenseTensor::data() const {
+  check_memory_size();
   PADDLE_ENFORCE(
       (dtype() == paddle::experimental::CppTypeToDataType<T>::Type()),
       paddle::platform::errors::InvalidArgument(
@@ -111,12 +118,35 @@ const T* DenseTensor::data() const {
   return static_cast<const T*>(data());
 }
 
-const void* DenseTensor::data() const {
+template <typename T>
+T* DenseTensor::data() {
+  check_memory_size();
+  PADDLE_ENFORCE(
+      (dtype() == paddle::experimental::CppTypeToDataType<T>::Type()),
+      paddle::platform::errors::InvalidArgument(
+          "The type of data we are trying to retrieve does not match the "
+          "type of data currently contained in the container."));
+  return static_cast<T*>(data());
+}
+
+void* DenseTensor::data() {
+  check_memory_size();
   PADDLE_ENFORCE_NOT_NULL(
-      storage_,
+      holder_,
       paddle::platform::errors::PreconditionNotMet(
-          "The storage must be valid when call the mutable data function."));
-  return storage_->data();
+          "The storage must be valid when call the data function."));
+  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
+                                 meta_.offset);
+}
+
+const void* DenseTensor::data() const {
+  check_memory_size();
+  PADDLE_ENFORCE_NOT_NULL(
+      holder_,
+      paddle::platform::errors::PreconditionNotMet(
+          "The storage must be valid when call the data function."));
+  return reinterpret_cast<const void*>(
+      reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset);
 }
 
 void DenseTensor::set_meta(DenseTensorMeta&& meta) {
@@ -127,16 +157,41 @@ void DenseTensor::set_meta(DenseTensorMeta&& meta) {
   meta_ = std::move(meta);
 }
 
-void DenseTensor::Resize(const DDim& dims) {
+void DenseTensor::set_meta(const DenseTensorMeta& meta) {
+  PADDLE_ENFORCE(
+      meta.valid(),
+      paddle::platform::errors::InvalidArgument(
+          "Input meta is invalid, please check the meta attribute."));
+  meta_.dims = meta.dims;
+  meta_.dtype = meta.dtype;
+  meta_.is_scalar = meta.is_scalar;
+  meta_.layout = meta.layout;
+  meta_.lod = meta.lod;
+  meta_.offset = meta.offset;
+}
+
+/* @jim19930609: This interface will be further modified util we finalized the
+   design for Allocator - Allocation
+   For now, we have to temporarily accommodate two independent use cases:
+   1. Designed behaviour: DenseTensor constructed with its underlying storage_
+   initialized
+   2. Legacy behaviour(fluid): DenseTensor constructed using default
+   constructor, where
+                               storage_ won't be initialized until the first
+   call to mutable_data(place)
+   */
+void DenseTensor::ResizeAndAllocate(const DDim& dims) {
   meta_.dims = dims;
-  mutable_data();
+  if (holder_ != nullptr && place().GetType() != AllocationType::UNDEFINED) {
+    mutable_data(place());
+  }
 }
 
 void DenseTensor::ResetLoD(const LoD& lod) { meta_.lod = lod; }
 
-#define DATA_MEMBER_FUNC_INSTANTIATION(dtype)  \
-  template dtype* DenseTensor::mutable_data(); \
-  template const dtype* DenseTensor::data() const;
+#define DATA_MEMBER_FUNC_INSTANTIATION(dtype)      \
+  template const dtype* DenseTensor::data() const; \
+  template dtype* DenseTensor::data();
 
 DATA_MEMBER_FUNC_INSTANTIATION(bool);
 DATA_MEMBER_FUNC_INSTANTIATION(int8_t);
@@ -147,12 +202,12 @@ DATA_MEMBER_FUNC_INSTANTIATION(int32_t);
 DATA_MEMBER_FUNC_INSTANTIATION(uint32_t);
 DATA_MEMBER_FUNC_INSTANTIATION(int64_t);
 DATA_MEMBER_FUNC_INSTANTIATION(uint64_t);
-DATA_MEMBER_FUNC_INSTANTIATION(::paddle::platform::bfloat16);
-DATA_MEMBER_FUNC_INSTANTIATION(::paddle::platform::float16);
+DATA_MEMBER_FUNC_INSTANTIATION(::pten::dtype::bfloat16);
+DATA_MEMBER_FUNC_INSTANTIATION(::pten::dtype::float16);
 DATA_MEMBER_FUNC_INSTANTIATION(float);
 DATA_MEMBER_FUNC_INSTANTIATION(double);
-DATA_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex64);
-DATA_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex128);
+DATA_MEMBER_FUNC_INSTANTIATION(::pten::dtype::complex<float>);
+DATA_MEMBER_FUNC_INSTANTIATION(::pten::dtype::complex<double>);
 
 #undef DATA_MEMBER_FUNC_INSTANTIATION
 

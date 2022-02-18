@@ -25,12 +25,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/operators/dropout_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
-namespace m = paddle::operators::math;
 
 USE_OP(gelu);
 USE_OP_DEVICE_KERNEL(gelu, NPU);
@@ -46,7 +45,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
     init_x.push_back(static_cast<T>(1.0));
   }
 
-  TensorFromVector(init_x, ctx, tensor_x);
+  paddle::framework::TensorFromVector(init_x, ctx, tensor_x);
   tensor_x->Resize({10, 10});
 
   auto out = scope->Var("Out");
@@ -82,7 +81,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 
   // eval value
   std::vector<T> out_vec;
-  TensorToVector(*tensor_out, ctx, &out_vec);
+  paddle::framework::TensorToVector(*tensor_out, ctx, &out_vec);
 
   float expected = 0.841192;
   for (uint32_t i = 0; i < out_vec.size(); i++) {
@@ -108,9 +107,9 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
     init_x.push_back(static_cast<T>(1.0));
   }
 
-  TensorFromVector(init_dout, ctx, tensor_dout);
+  paddle::framework::TensorFromVector(init_dout, ctx, tensor_dout);
   tensor_dout->Resize({10, 10});
-  TensorFromVector(init_x, ctx, tensor_x);
+  paddle::framework::TensorFromVector(init_x, ctx, tensor_x);
   tensor_x->Resize({10, 10});
 
   auto dx = scope->Var("DX");
@@ -147,7 +146,7 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
 
   // eval value
   std::vector<T> dx_vec;
-  TensorToVector(*tensor_dx, ctx, &dx_vec);
+  paddle::framework::TensorToVector(*tensor_dx, ctx, &dx_vec);
 
   float expected = 1.082964;
   for (uint32_t i = 0; i < dx_vec.size(); i++) {

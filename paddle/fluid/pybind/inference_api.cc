@@ -615,6 +615,10 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_tensorrt_dla", &AnalysisConfig::EnableTensorRtDLA,
            py::arg("dla_core") = 0)
       .def("tensorrt_dla_enabled", &AnalysisConfig::tensorrt_dla_enabled)
+      .def("enable_tensorrt_inspector",
+           &AnalysisConfig::EnableTensorRtInspector)
+      .def("tensorrt_inspector_enabled",
+           &AnalysisConfig::tensorrt_inspector_enabled)
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
       .def("enable_dlnne", &AnalysisConfig::EnableDlnne,
            py::arg("min_subgraph_size") = 3)
@@ -742,7 +746,13 @@ void BindPaddleInferPredictor(py::module *m) {
       .def("get_output_names", &paddle_infer::Predictor::GetOutputNames)
       .def("get_input_handle", &paddle_infer::Predictor::GetInputHandle)
       .def("get_output_handle", &paddle_infer::Predictor::GetOutputHandle)
-      .def("run", &paddle_infer::Predictor::Run)
+      .def("run",
+           [](paddle_infer::Predictor &self) {
+#ifdef PADDLE_WITH_ASCEND_CL
+             pybind11::gil_scoped_release release;
+#endif
+             self.Run();
+           })
       .def("clone", &paddle_infer::Predictor::Clone)
       .def("try_shrink_memory", &paddle_infer::Predictor::TryShrinkMemory)
       .def("clear_intermediate_tensor",

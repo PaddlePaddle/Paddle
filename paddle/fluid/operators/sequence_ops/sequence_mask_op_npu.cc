@@ -36,7 +36,8 @@ class SequenceMaskNPUKernel : public framework::OpKernel<T> {
                                   "Input(MaxLenTensor) should not be NULL."
                                   "But received Input(MaxLenTensor) is NULL"));
       framework::Tensor temp;
-      TensorCopySync(*max_len_tensor, platform::CPUPlace(), &temp);
+      paddle::framework::TensorCopySync(*max_len_tensor, platform::CPUPlace(),
+                                        &temp);
       maxlen = *temp.data<int32_t>();
       PADDLE_ENFORCE_GT(
           maxlen, 0,
@@ -58,9 +59,10 @@ class SequenceMaskNPUKernel : public framework::OpKernel<T> {
 
     Tensor cast_x;
     cast_x.mutable_data<int32_t>(x->dims(), ctx.GetPlace());
-    const auto& cast1_runner =
-        NpuOpRunner("Cast", {*x}, {cast_x},
-                    {{"dst_type", ConvertToNpuDtype(cast_x.type())}});
+    const auto& cast1_runner = NpuOpRunner(
+        "Cast", {*x}, {cast_x},
+        {{"dst_type",
+          ConvertToNpuDtype(framework::TransToProtoVarType(cast_x.dtype()))}});
     cast1_runner.Run(dev_ctx.stream());
 
     Tensor tmp;

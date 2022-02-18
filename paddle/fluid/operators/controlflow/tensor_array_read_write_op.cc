@@ -55,7 +55,7 @@ class WriteToArrayOp : public ArrayOp {
           platform::DeviceContextPool::Instance();
       auto &dev_ctx = *pool.Get(place);
 
-      TensorCopy(x_tensor, place, dev_ctx, out_tensor);
+      paddle::framework::TensorCopy(x_tensor, place, dev_ctx, out_tensor);
     } else {
       VLOG(10) << "WARNING: The input tensor 'x_tensor' holds no memory, so "
                   "nothing has been written to output array["
@@ -169,7 +169,7 @@ class ReadFromArrayOp : public ArrayOp {
       auto &fw_var_tensor = fw_var->Get<framework::LoDTensor>();
 
       framework::AttributeMap attrs;
-      attrs["dtype"] = fw_var_tensor.type();
+      attrs["dtype"] = framework::TransToProtoVarType(fw_var_tensor.dtype());
       attrs["shape"] = framework::vectorize<int>(fw_var_tensor.dims());
       attrs["value"] = 0.0f;
 

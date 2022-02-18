@@ -136,7 +136,7 @@ class GroupNormNPUKernel : public framework::OpKernel<T> {
       xnorm.Resize({x->dims()[0], x->dims()[3], x->dims()[1], x->dims()[2]});
       F.Transpose(x, &xnorm, std::vector<int>{0, 3, 1, 2});
     } else {
-      TensorCopy(*x, platform::NPUPlace(), &xnorm);
+      paddle::framework::TensorCopy(*x, platform::NPUPlace(), &xnorm);
     }
     auto N = xnorm.dims()[0];
     auto C = xnorm.dims()[1];

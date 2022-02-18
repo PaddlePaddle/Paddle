@@ -1,0 +1,35 @@
+- backward_api : matmul_grad
+  forward : matmul (Tensor x, Tensor y, bool transpose_x=false, bool transpose_y=false) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad, bool transpose_x=false, bool transpose_y=false)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : matmul_grad
+
+- backward_api : scale_grad
+  forward : scale (Tensor x, Scalar scale, float bias, bool bias_after_scale) -> Tensor(out)
+  args : (Tensor out_grad, Scalar scale, float bias=0.0, bool bias_after_scale=true)
+  output : Tensor(x_grad)
+  invoke : scale(out_grad, scale, bias, bias_after_scale)
+
+# TODO(zhangyunfei) The config of double grad and triple grad will be supported in the future.
+#
+# - backward_api : matmul_double_grad
+#   forward : matmul_grad (Tensor x, Tensor y, Tensor out_grad, bool transpose_x, bool transpose_y) -> Tensor(dx), Tensor>(dy)
+#   args : (Tensor x, Tensor y, Tensor out_grad, Tensor dx_grad, Tensor dy_grad, bool transpose_x, bool transpose_y)
+#   output : Tensor(d2x), Tensor(d2y), Tensor(dout_grad)
+#   infer_meta :
+#     func : MatmulDoubleGradInferMeta
+#   kernel :
+#     func : matmul_double_grad
+
+# - backward_api : matmul_triple_grad
+#   forward : matmul_double_grad (Tensor x, Tensor y, Tensor out_grad, Tensor dx_grad, Tensor dy_grad, bool transpose_x, bool transpose_y) -> Tensor(d2x), Tensor(d2y), Tensor(dout_grad)
+#   args : (Tensor x, Tensor y, Tensor out_grad, Tensor dx_grad, Tensor dy_grad, Tensor d2x_grad, Tensor d2y_grad, Tensor dout_grad_grad, bool transpose_x, bool transpose_y)
+#   output : Tensor(d3x), Tensor(d3y), Tensor(d2out_grad), Tensor(ddx_grad), Tensor(ddy_grad)
+#   infer_meta :
+#     func : MatmulTripleGradInferMeta
+#   kernel :
+#     func : matmul_triple_grad

@@ -25,13 +25,12 @@ limitations under the License. */
     !defined(__OSX__)
 #include "paddle/fluid/operators/jit/kernels.h"
 #endif
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace platform {
 class CPUDeviceContext;
 class CUDADeviceContext;
-class DeviceContext;
 }  // namespace platform
 }  // namespace paddle
 
@@ -58,7 +57,7 @@ class RowwiseMean2D<platform::CUDADeviceContext, T> {
       : left_(left), right_(right) {
     framework::DDim ones_dim({right_});
     divisor_.mutable_data<T>(ones_dim, dev_ctx.GetPlace());
-    math::set_constant(dev_ctx, &divisor_, 1.0 / right);
+    pten::funcs::set_constant(dev_ctx, &divisor_, 1.0 / right);
   }
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input, framework::Tensor* out) {
@@ -85,7 +84,7 @@ class RowwiseMean2D<platform::CPUDeviceContext, T> {
   }
 
  private:
-  math::RowwiseMean<platform::CPUDeviceContext, T> row_mean_;
+  pten::funcs::RowwiseMean<platform::CPUDeviceContext, T> row_mean_;
 };
 
 template <typename DeviceContext, typename T>
@@ -104,7 +103,7 @@ class ColwiseSum2D<platform::CUDADeviceContext, T> {
       : left_(left), right_(right) {
     framework::DDim ones_dim({left_});
     divisor_.mutable_data<T>(ones_dim, dev_ctx.GetPlace());
-    math::set_constant(dev_ctx, &divisor_, 1.0);
+    pten::funcs::set_constant(dev_ctx, &divisor_, 1.0);
   }
 
   void operator()(const platform::CUDADeviceContext& context,
@@ -132,7 +131,7 @@ class ColwiseSum2D<platform::CPUDeviceContext, T> {
   }
 
  private:
-  math::ColwiseSum<platform::CPUDeviceContext, T> col_wise_;
+  pten::funcs::ColwiseSum<platform::CPUDeviceContext, T> col_wise_;
 };
 
 template <typename T>

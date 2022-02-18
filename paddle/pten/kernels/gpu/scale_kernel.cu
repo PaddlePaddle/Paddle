@@ -16,20 +16,62 @@ limitations under the License. */
 
 #include "paddle/pten/backends/gpu/gpu_context.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/impl/scale_kernel_impl.h"
-
+#include "paddle/pten/kernels/funcs/elementwise_base.h"
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/common/float16.h"
 
-PT_REGISTER_CTX_KERNEL(scale,
-                       GPU,
-                       ALL_LAYOUT,
-                       pten::Scale,
-                       float,
-                       double,
-                       paddle::platform::float16,
-                       uint8_t,
-                       int8_t,
-                       int16_t,
-                       int,
-                       int64_t) {}
+namespace pten {
+
+template <typename InT>
+struct ScaleFunctor {
+  InT bias;
+  InT scale;
+  bool bias_after_scale;
+
+  ScaleFunctor(InT scale_data, InT bias_data, bool is_bias_after_sacle)
+      : bias(bias_data),
+        scale(scale_data),
+        bias_after_scale(is_bias_after_sacle) {}
+
+  __device__ __forceinline__ InT operator()(const InT x) const {
+    if (bias_after_scale) {
+      return scale * x + bias;
+    } else {
+      return scale * (x + bias);
+    }
+  }
+};
+
+template <typename T, typename Context>
+void ScaleKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 const Scalar& scale,
+                 float bias,
+                 bool bias_after_scale,
+                 DenseTensor* out) {
+  std::vector<const DenseTensor*> inputs;
+  std::vector<DenseTensor*> outputs;
+  inputs.emplace_back(&x);
+  outputs.emplace_back(out);
+  dev_ctx.template Alloc<T>(out);
+  pten::funcs::LaunchSameDimsElementwiseCudaKernel<T>(
+      dev_ctx,
+      inputs,
+      &outputs,
+      ScaleFunctor<T>(scale.to<T>(), static_cast<T>(bias), bias_after_scale));
+}
+
+}  // namespace pten
+
+PT_REGISTER_KERNEL(scale,
+                   GPU,
+                   ALL_LAYOUT,
+                   pten::ScaleKernel,
+                   float,
+                   double,
+                   pten::dtype::float16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}

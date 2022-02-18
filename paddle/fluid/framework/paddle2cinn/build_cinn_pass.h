@@ -21,6 +21,12 @@ namespace framework {
 namespace paddle2cinn {
 
 constexpr char kCinnLaunchOp[] = "cinn_launch";
+constexpr char kInputVars[] = "InputVars";
+constexpr char kNoNeedBufferFeeds[] = "NoNeedBufferFeeds";
+constexpr char kInternalVars[] = "InternalVars";
+constexpr char kOutputVars[] = "OutputVars";
+constexpr char kMemOptVarInfoFromMainGraph[] =
+    "mem_opt_var_info_from_main_graph";
 
 // A pass named BuildCinnPass, the function of this pass is:
 //
