@@ -25,7 +25,8 @@ from setuptools.command.build_ext import build_ext
 # for C/ObjC but not for C++
 class BuildExt(build_ext):
     def build_extensions(self):
-        self.compiler.compiler_so.remove('-Wstrict-prototypes')
+        if '-Wstrict-prototypes' in self.compiler.compiler_so:
+            self.compiler.compiler_so.remove('-Wstrict-prototypes')
         super(BuildExt, self).build_extensions()
 
 
