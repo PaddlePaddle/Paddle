@@ -39,7 +39,6 @@ struct PrelnSkipLayerNorm : public PatternBase {
   void operator()(PDNode *x, PDNode *y);
 
   // declare operator node's name
-  PATTERN_DECL_NODE(fused_skipe_layernorm);
   PATTERN_DECL_NODE(elementwise);
   PATTERN_DECL_NODE(layer_norm);
   // declare variable node's name
@@ -62,8 +61,13 @@ void PrelnSkipLayerNorm::operator()(PDNode *x, PDNode *y) {
   auto *elementwise_out_var = pattern->NewNode(elementwise_out_repr())
                                   ->assert_is_op_output("elementwise_add")
                                   ->assert_is_op_input("layer_norm", "X")
-                                  ->assert_is_op_input("elementwise_add", "Y");
-
+                                  ->assert_more([](Node *x) {
+                                    if (x->outputs.size() == 2) {
+                                      return true;
+                                    } else {
+                                      return false;
+                                    }
+                                  });
   // Add links for elementwise_add op.
   elementwise->LinksFrom({x, y}).LinksTo({elementwise_out_var});
 
