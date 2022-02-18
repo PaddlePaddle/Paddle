@@ -10,6 +10,8 @@ if ((NOT WITH_NCCL) AND (NOT WITH_RCCL))
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_dgc_nccl")
 endif()
 
+string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
+
 if ((NOT WITH_GPU) AND (NOT WITH_XPU) AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_grad_clip")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_heter_ctr")
@@ -17,7 +19,6 @@ if ((NOT WITH_GPU) AND (NOT WITH_XPU) AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 
-string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_mnist)
 list(APPEND DIST_TEST_OPS test_pipeline)
 list(APPEND DIST_TEST_OPS test_ir_pass_pipeline)
