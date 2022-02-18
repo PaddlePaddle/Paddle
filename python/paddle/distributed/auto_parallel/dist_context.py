@@ -511,7 +511,7 @@ class DistributedOperatorContext:
         self._dst_main_program = None
         self._main_block = None
         self._dst_startup_program = None
-
+        self._startup_block = None
         self._cur_src_op = None
         self._cur_dist_attr = None
         self.grad_op_id_to_op_id = {}
@@ -525,7 +525,10 @@ class DistributedOperatorContext:
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            if k in ["_dst_main_program", "_dst_startup_program", "_cur_src_op", "_work_block", "_main_block"]
+            if k in [
+                    "_dst_main_program", "_dst_startup_program", "_cur_src_op",
+                    "_work_block", "_main_block", "_startup_block"
+            ]:
                 setattr(result, k, v)
             else:
                 setattr(result, k, copy.deepcopy(v, memo))

@@ -47,10 +47,7 @@ def get_dist_prog(train_program,
     complete_train_program = completer.complete_forward_annotation(
         train_program
     ) if complete_train_program is None else complete_train_program
-    print(dist_context.block_state.nblock, "$$$$$" * 8)
     dist_context.block_state.parse_forward_blocks(complete_train_program)
-    print(dist_context.block_state.nblock, "$$$$$" * 8)
-    print(complete_train_program)
 
     params_grads = parallelizer._generate_backward(
         complete_train_program,
