@@ -8,5 +8,6 @@ func @basic_tensor() {
   %d = "pten_kernel.fake_pten_kernel" (%b, %c, %c) {transpose_x=false, transpose_y=false} : (!pten.CPU_context, !infrt.tensor<X86, NCHW, F32>, !infrt.tensor<X86, NCHW, F32>) -> (!infrt.tensor<X86, NCHW, F32>)
 
 
+  %d = "pten_dt.fake_pten_kernel" (%b, %c, %c) {transpose_x=false} : (!pten.CPU_context, !infrt.tensor<X86, NCHW, F32>, !infrt.tensor<X86, NCHW, F32>) -> (!infrt.tensor<X86, NCHW, F32>)
   infrt.return
 }

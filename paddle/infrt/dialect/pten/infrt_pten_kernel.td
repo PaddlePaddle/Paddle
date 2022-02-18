@@ -21,10 +21,4 @@ def PTEN_KernelDialect : Dialect {
 class PDT_Kernel<string mnemonic, list<OpTrait> traits = []> : Op<PTEN_KernelDialect, mnemonic, !listconcat(traits, [IsolatedFromAbove])> {
 }
 
-def FakeKernelOp : PDT_Kernel<"fake_pten_kernel"> {
-  let arguments = (ins CPU_Context:$dev_ctx, TensorType:$x, TensorType:$y, BoolAttr:$transpose_x, BoolAttr:$transpose_y);
-  let results = (outs TensorType:$output);
-}
-
 #endif
-

@@ -28,8 +28,10 @@ void InferShapedKernelLauncher::CreateKernelFrameForInferShape(
           ::pten::MetaTensor{&value->get<::pten::DenseTensor>()});
       infershape_kernel_frame_builder.AddArgument(values.back().get());
     } else if (value->is_type<host_context::None>()) {
+      infershape_kernel_frame_builder.AddArgument(value);
       // infershape_kernel_frame_builder.AddResult(value);
     } else {
+      infershape_kernel_frame_builder.AddArgument(value);
       // infershape_kernel_frame_builder.AddAttribute(value);
     }
   }
