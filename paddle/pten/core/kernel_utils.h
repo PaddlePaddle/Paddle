@@ -25,6 +25,13 @@
 #include "paddle/pten/core/sparse_csr_tensor.h"
 #include "paddle/pten/core/type_defs.h"
 
+namespace paddle {
+namespace framework {
+class Scope;
+class BlockDesc;
+}
+}
+
 namespace pten {
 
 #define PT_KERNEL(...) \
@@ -239,6 +246,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const ScalarArray&);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<int>&);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::string&);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(paddle::framework::BlockDesc*);
 
   /* Output Helpers */
 
@@ -251,6 +259,8 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
 
   PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SparseCsrTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(SparseCsrTensor);
+
+  PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(paddle::framework::Scope);
 
   /* End case */
   template <typename T>

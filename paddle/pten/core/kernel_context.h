@@ -69,12 +69,16 @@ class KernelContext {
 
   template <typename TensorType>
   const TensorType& InputAt(size_t idx) const {
-    return static_cast<const TensorType&>(*(inputs_.at(idx)));
+    VLOG(1) << "InputAt " << idx << ", " << inputs_.at(idx).type().name();
+    VLOG(1) << typeid(const TensorType*).name();
+    return static_cast<const TensorType&>(
+        *(paddle::any_cast<const TensorBase*>(inputs_.at(idx))));
   }
 
   template <typename TensorType>
   paddle::optional<const TensorType&> OptionalInputAt(size_t idx) const {
-    const auto& input = inputs_.at(idx);
+    VLOG(1) << "OptionalInputAt: " << idx;
+    const auto& input = paddle::any_cast<const TensorBase*>(inputs_.at(idx));
     return input ? paddle::optional<const TensorType&>{static_cast<
                        const TensorType&>(*input)}
                  : paddle::optional<const TensorType&>{paddle::none};
@@ -82,9 +86,11 @@ class KernelContext {
 
   template <typename TensorType>
   std::vector<TensorType> MoveInputsBetween(size_t start, size_t end) {
+    VLOG(1) << "MoveInputsBetween: " << start << "," << end;
     std::vector<TensorType> v;
     for (size_t i = start; i < end; ++i) {
-      auto t = static_cast<const TensorType*>(inputs_.at(i));
+      auto t = static_cast<const TensorType*>(
+          paddle::any_cast<const TensorBase*>(inputs_.at(i)));
       v.emplace_back(*t);
       inputs_[i] = nullptr;
     }
@@ -93,14 +99,18 @@ class KernelContext {
 
   template <typename TensorType>
   TensorType* MutableOutputAt(size_t idx) {
-    return static_cast<TensorType*>(outputs_.at(idx));
+    VLOG(1) << "MutableOutputAt: " << idx;
+    return static_cast<TensorType*>(
+        paddle::any_cast<TensorBase*>(outputs_.at(idx)));
   }
 
   template <typename TensorType>
   std::vector<TensorType*> MutableOutputBetween(size_t start, size_t end) {
+    VLOG(1) << "MutableOutputBetween: " << start << "," << end;
     std::vector<TensorType*> v;
     for (size_t i = start; i < end; ++i) {
-      v.emplace_back(static_cast<TensorType*>(outputs_.at(i)));
+      v.emplace_back(static_cast<TensorType*>(
+          paddle::any_cast<TensorBase*>(outputs_.at(i))));
     }
     return v;
   }
@@ -122,8 +132,8 @@ class KernelContext {
  private:
   DeviceContext* dev_ctx_;
 
-  paddle::SmallVector<const TensorBase*> inputs_;
-  paddle::SmallVector<TensorBase*> outputs_;
+  paddle::SmallVector<paddle::any> inputs_;
+  paddle::SmallVector<paddle::any> outputs_;
   paddle::SmallVector<paddle::any> attrs_;
 
   paddle::SmallVector<std::pair<int, int>> input_range_;
