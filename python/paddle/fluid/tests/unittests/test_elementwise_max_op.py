@@ -49,18 +49,6 @@ class TestElementwiseOp(OpTest):
             ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y'))
 
 
-# Get cuda version from command line
-def get_cuda_runtime_version():
-    command = os.popen("nvcc --version").read()
-    command = re.split(' ', command)
-    tag = 0
-    for _ in command:
-        tag += 1
-        if _ == 'release':
-            break
-    return int(float(command[tag].replace(',', '')) * 1000)
-
-
 @unittest.skipIf(
     core.is_compiled_with_cuda() and core.cudnn_version() < 8100,
     "run test when gpu is availble and the minimum cudnn version is 8.1.0.")
