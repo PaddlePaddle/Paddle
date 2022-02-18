@@ -20,7 +20,7 @@ def _make_divisible(v, divisor=8, min_value=None):
 
     Args:
         divisor (int): The divisor for number of channels. Default: 8.
-        min_value (Optional[int]): The minimum value of number of channels, if it is None,
+        min_value (int, optional): The minimum value of number of channels, if it is None,
                 the default is divisor. Default: None.
     """
     if min_value is None:
