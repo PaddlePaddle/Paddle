@@ -47,8 +47,11 @@ namespace host_context {
 
 struct MlirFunctionExecutable;
 
+struct None {};
+
 using ValueVariantType =
-    Variant<int16_t,
+    Variant<None,
+            int16_t,
             int32_t,
             int64_t,
             float,

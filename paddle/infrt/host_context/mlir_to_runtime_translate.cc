@@ -151,6 +151,17 @@ boost::optional<float> MlirToRuntimeTranslator::EmitAttribute(
 }
 
 template <>
+boost::optional<bool> MlirToRuntimeTranslator::EmitAttribute(
+    const mlir::Attribute& attr) {
+  if (!attr.isa<mlir::BoolAttr>()) return boost::none;
+  if (attr.isa<mlir::BoolAttr>()) {
+    auto val = attr.cast<mlir::BoolAttr>();
+    return val.getValue();
+  }
+  return boost::none;
+}
+
+template <>
 boost::optional<double> MlirToRuntimeTranslator::EmitAttribute(
     const mlir::Attribute& attr) {
   if (!attr.isa<mlir::FloatAttr>()) return boost::none;
@@ -187,6 +198,7 @@ boost::optional<std::string> MlirToRuntimeTranslator::EmitAttribute(
     return res;                                                                \
   }
 
+PROCESS_ARRAY_INT(bool, 1);
 PROCESS_ARRAY_INT(int16_t, 16);
 PROCESS_ARRAY_INT(int32_t, 32);
 PROCESS_ARRAY_INT(int64_t, 64);
@@ -296,6 +308,8 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(mlir::Operation* op) {
       impl_->cur_op->AppendAttribute(new Value(*v));
     } else if (auto v = EmitAttribute<std::string>(attr.getValue())) {
       impl_->cur_op->AppendAttribute(new Value(std::move(*v)));
+    } else if (auto v = EmitAttribute<bool>(attr.getValue())) {
+      impl_->cur_op->AppendAttribute(new Value(*v));
     } else if (auto v = EmitAttribute<std::vector<int16_t>>(attr.getValue())) {
       impl_->cur_op->AppendAttribute(new Value(std::move(*v)));
     } else if (auto v = EmitAttribute<std::vector<int32_t>>(attr.getValue())) {
