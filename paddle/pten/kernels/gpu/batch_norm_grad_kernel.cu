@@ -943,7 +943,14 @@ PT_REGISTER_KERNEL(batch_norm_grad,
                    pten::BatchNormGradKernel,
                    float,
                    double,
-                   pten::dtype::float16) {}
+                   pten::dtype::float16) {
+  if (kernel_key.dtype() == pten::DataType::FLOAT16) {
+    kernel->OutputAt(1).SetDataType(pten::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(pten::DataType::FLOAT32);
+    kernel->OutputAt(3).SetDataType(pten::DataType::FLOAT32);
+    kernel->OutputAt(4).SetDataType(pten::DataType::FLOAT32);
+  }
+}
 
 PT_REGISTER_KERNEL(batch_norm_grad_raw,
                    GPU,
@@ -951,6 +958,13 @@ PT_REGISTER_KERNEL(batch_norm_grad_raw,
                    pten::BatchNormGradRawKernel,
                    float,
                    double,
-                   pten::dtype::float16) {}
+                   pten::dtype::float16) {
+  if (kernel_key.dtype() == pten::DataType::FLOAT16) {
+    kernel->OutputAt(1).SetDataType(pten::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(pten::DataType::FLOAT32);
+    kernel->OutputAt(3).SetDataType(pten::DataType::FLOAT32);
+    kernel->OutputAt(4).SetDataType(pten::DataType::FLOAT32);
+  }
+}
 
 #endif

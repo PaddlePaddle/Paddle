@@ -32,25 +32,31 @@ void Copy(const Context& dev_ctx,
           DenseTensor* dst) {
   auto* src_ptr = src.data();
   const auto& src_place = src.place();
-  auto dst_place = dst->place();
+  //   auto dst_place = dst->place();
 
-  if (src_place == dst_place && paddle::platform::is_cpu_place(src_place)) {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "The src and dst tensor are all CPU tensor, you should call copy "
-        "function in CPU mode."));
-  }
+  //   if (src_place == dst_place && paddle::platform::is_cpu_place(src_place))
+  //   {
+  //     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+  //         "The src and dst tensor are all CPU tensor, you should call copy "
+  //         "function in CPU mode."));
+  //   }
 
-  VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
-          << dst_place;
+  //   VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to
+  //   "
+  //           << dst_place;
   dst->set_meta(src.meta());
-  dst->ResizeAndAllocate(src.dims());
-  auto* dst_ptr = dst->mutable_data(dst_place);
+  // dst->ResizeAndAllocate(src.dims());
+  // LOG(ERROR) << dst;
+  // dev_ctx.template Alloc( dst );
+  dst->mutable_data(src_place);
+  auto dst_place = src_place;
+  auto* dst_ptr = dst->data();  // mutable_data(src_place);
 
-  if (src_ptr == dst_ptr && src_place == dst_place) {
-    VLOG(3) << "Skip copy the same data async from " << src_place << " to "
-            << dst_place;
-    return;
-  }
+  //   if (src_ptr == dst_ptr && src_place == dst_place) {
+  //     VLOG(3) << "Skip copy the same data async from " << src_place << " to "
+  //             << dst_place;
+  //     return;
+  //   }
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
 
   CHECK(dst->layout() == src.layout());

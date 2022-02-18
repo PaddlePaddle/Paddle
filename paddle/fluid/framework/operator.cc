@@ -2199,8 +2199,6 @@ void OperatorWithKernel::BuildPtenKernelContext(
                                                        vector_int_attr.end());
           pt_kernel_context->EmplaceBackAttr(vector_int64_attr);
         }
-        // TODO(YuanRisheng) Need support vector<int64_t> attr
-
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<int32_t>))) {
         const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
