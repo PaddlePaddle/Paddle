@@ -51,6 +51,8 @@ class Buffer {
 
   size_t Size() const { return allocation_ ? 0 : allocation_->size(); }
 
+  platform::Place GetPlace() const { return place_; }
+
  private:
   AllocationPtr allocation_;
   platform::Place place_;
