@@ -10,4 +10,6 @@ add_mlir_dialect(infrt_pten_kernel pten_kernel)
 
 gather_srcs(infrt_src SRCS
     pten_base.cc infrt_pten_tensor.cc
-    infrt_pten_tensor.cc)
+    infrt_pten_tensor.cc
+    infrt_pten_kernel.cc
+    )

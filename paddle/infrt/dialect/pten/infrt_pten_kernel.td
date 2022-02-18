@@ -1,7 +1,11 @@
-#ifndef PTEN_KERNEL
+#ifdef PTEN_KERNEL
+#else
 #define PTEN_KERNEL
 
-include "paddle/infrt/dialect/pten/infrt_pten_tensor.td"
+include "mlir/Interfaces/SideEffectInterfaces.td"
+include "mlir/IR/OpBase.td"
+include "paddle/infrt/dialect/infrt_base.td"
+include "paddle/infrt/dialect/pten/infrt_pten_base.td"
 
 def PTEN_KernelDialect : Dialect {
   let name = "pten_kernel";
@@ -17,7 +21,7 @@ def PTEN_KernelDialect : Dialect {
 class PDT_Kernel<string mnemonic, list<OpTrait> traits = []> : Op<PTEN_KernelDialect, mnemonic, !listconcat(traits, [IsolatedFromAbove])> {
 }
 
-def FakeKernelOp : PDT_Kernel<"pten.matmul.host.fp32"> {
+def FakeKernelOp : PDT_Kernel<"fake_pten_kernel"> {
   let arguments = (ins CPU_Context:$dev_ctx, TensorType:$x, TensorType:$y, BoolAttr:$transpose_x, BoolAttr:$transpose_y);
   let results = (outs TensorType:$output);
 }
