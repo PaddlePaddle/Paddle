@@ -15,10 +15,10 @@
 # limitations under the License.
 
 function make_ubuntu_dockerfile(){
-  cat >Dockerfile.cuda10_cudnn7_gcc82_ubuntu16 <<EOF
+cat > Dockerfile.cuda10_cudnn7_gcc82_ubuntu16 << EOF
     FROM nvidia/cuda:10.1-cudnn7-devel-ubuntu16.04
     RUN apt install -y pzstd
-  EOF
+EOF
 }
 
 
