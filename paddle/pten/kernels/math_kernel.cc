@@ -140,7 +140,8 @@ PT_REGISTER_KERNEL(multiply,
                    int64_t,
                    bool,
                    complex64,
-                   complex128) {}
+                   complex128,
+                   pten::dtype::bfloat16) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PT_REGISTER_KERNEL(mean,

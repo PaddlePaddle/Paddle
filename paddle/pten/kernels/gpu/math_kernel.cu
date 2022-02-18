@@ -141,7 +141,8 @@ PT_REGISTER_KERNEL(multiply_raw,
                    bool,
                    float16,
                    complex64,
-                   complex128) {}
+                   complex128,
+                   bfloat16) {}
 PT_REGISTER_KERNEL(sum_raw,
                    GPU,
                    ALL_LAYOUT,

@@ -160,7 +160,8 @@ PT_REGISTER_KERNEL(multiply_raw,
                    int64_t,
                    bool,
                    complex64,
-                   complex128) {}
+                   complex128,
+                   bfloat16) {}
 PT_REGISTER_KERNEL(sum_raw,
                    CPU,
                    ALL_LAYOUT,

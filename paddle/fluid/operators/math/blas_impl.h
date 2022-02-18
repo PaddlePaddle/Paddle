@@ -85,6 +85,14 @@ struct CBlas<platform::bfloat16> {
       z[i] = x[i] + y[i];
     }
   }
+
+  template <typename... ARGS>
+  static void VMUL(int n, const pten::dtype::bfloat16 *x,
+                   const pten::dtype::bfloat16 *y, pten::dtype::bfloat16 *z) {
+    for (int i = 0; i < n; ++i) {
+      z[i] = x[i] * y[i];
+    }
+  }
 };
 
 #ifdef PADDLE_WITH_MKLML
