@@ -117,7 +117,6 @@ if(WITH_GPU AND (NOT WITH_ROCM))
     endif()
 endif()
 
-cc_test(cpu_vec_test SRCS cpu_vec_test.cc DEPS blas cpu_info)
 if(WITH_TESTING AND TEST im2col_test)
     set_tests_properties(im2col_test PROPERTIES TIMEOUT 120)
 endif()

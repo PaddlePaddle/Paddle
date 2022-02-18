@@ -15,9 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/fusion_seqexpand_concat_fc_op.h"
 #include <string>
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/cpu_vec.h"
 #include "paddle/fluid/operators/math/fc.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/pten/kernels/funcs/cpu_vec.h"
 
 namespace paddle {
 namespace operators {
@@ -196,10 +196,10 @@ class FusionSeqExpandConcatFCOpKernel : public framework::OpKernel<T> {
     std::function<void(const int, const T*, T*)> fc_act;
     auto& fc_act_str = ctx.Attr<std::string>("fc_activation");
     if (platform::MayIUse(platform::avx)) {
-      math::VecActivations<T, platform::avx> act_functor;
+      pten::funcs::VecActivations<T, platform::avx> act_functor;
       fc_act = act_functor(fc_act_str);
     } else {
-      math::VecActivations<T, platform::isa_any> act_functor;
+      pten::funcs::VecActivations<T, platform::isa_any> act_functor;
       fc_act = act_functor(fc_act_str);
     }
 

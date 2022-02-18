@@ -18,7 +18,10 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/operators/math/cpu_vec.h"
+#include "paddle/pten/kernels/funcs/cpu_vec.h"
+
+namespace pten {
+namespace tests {
 
 inline double GetCurrentUS() {
   struct timeval time;
@@ -62,7 +65,9 @@ void ref_relu(const int n, const T* x, T* y) {
 }
 
 template <typename T>
-void RandomVec(const int n, T* a, const T lower = static_cast<T>(-20.f),
+void RandomVec(const int n,
+               T* a,
+               const T lower = static_cast<T>(-20.f),
                const T upper = static_cast<T>(20.f)) {
   static unsigned int seed = 100;
   std::mt19937 rng(seed++);
@@ -73,7 +78,8 @@ void RandomVec(const int n, T* a, const T lower = static_cast<T>(-20.f),
 }
 
 template <typename T>
-void TestAndBench(const int n, std::function<void(const int, const T*, T*)> tgt,
+void TestAndBench(const int n,
+                  std::function<void(const int, const T*, T*)> tgt,
                   std::function<void(const int, const T*, T*)> ref) {
   std::vector<T> x(n);
   std::vector<T> ytgt(n), yref(n);
@@ -101,47 +107,48 @@ void TestAndBench(const int n, std::function<void(const int, const T*, T*)> tgt,
 
 TEST(CpuVecTest, sigmoid) {
   namespace platform = paddle::platform;
-  using namespace paddle::operators::math;  // NOLINT
+  using namespace pten::funcs;  // NOLINT
   for (auto sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
     TestAndBench<float>(sz, vec_sigmoid<float>, ref_sigmoid<float>);
-    TestAndBench<float>(sz, vec_sigmoid<float, platform::avx>,
-                        ref_sigmoid<float>);
-    TestAndBench<float>(sz, vec_sigmoid<float, platform::avx2>,
-                        ref_sigmoid<float>);
-    TestAndBench<float>(sz, vec_sigmoid<float, platform::avx512f>,
-                        ref_sigmoid<float>);
+    TestAndBench<float>(
+        sz, vec_sigmoid<float, platform::avx>, ref_sigmoid<float>);
+    TestAndBench<float>(
+        sz, vec_sigmoid<float, platform::avx2>, ref_sigmoid<float>);
+    TestAndBench<float>(
+        sz, vec_sigmoid<float, platform::avx512f>, ref_sigmoid<float>);
   }
   TestAndBench<double>(30, vec_sigmoid<double>, ref_sigmoid<double>);
 }
 
 TEST(CpuVecTest, tanh) {
   namespace platform = paddle::platform;
-  using namespace paddle::operators::math;  // NOLINT
+  using namespace pten::funcs;  // NOLINT
   for (auto sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
     TestAndBench<float>(sz, vec_tanh<float>, ref_tanh<float>);
     TestAndBench<float>(sz, vec_tanh<float, platform::avx>, ref_tanh<float>);
     TestAndBench<float>(sz, vec_tanh<float, platform::avx2>, ref_tanh<float>);
-    TestAndBench<float>(sz, vec_tanh<float, platform::avx512f>,
-                        ref_tanh<float>);
+    TestAndBench<float>(
+        sz, vec_tanh<float, platform::avx512f>, ref_tanh<float>);
   }
   TestAndBench<double>(30, vec_tanh<double>, ref_tanh<double>);
 }
 
 TEST(CpuVecTest, relu) {
   namespace platform = paddle::platform;
-  using namespace paddle::operators::math;  // NOLINT
+  using namespace pten::funcs;  // NOLINT
   for (auto sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
     TestAndBench<float>(sz, vec_relu<float>, ref_relu<float>);
     TestAndBench<float>(sz, vec_relu<float, platform::avx>, ref_relu<float>);
     TestAndBench<float>(sz, vec_relu<float, platform::avx2>, ref_relu<float>);
-    TestAndBench<float>(sz, vec_relu<float, platform::avx512f>,
-                        ref_relu<float>);
+    TestAndBench<float>(
+        sz, vec_relu<float, platform::avx512f>, ref_relu<float>);
   }
   TestAndBench<double>(30, vec_relu<double>, ref_relu<double>);
 }
 
 template <typename T>
-void compare_sum(size_t n, std::function<void(const size_t, const T*, T*)> tgt,
+void compare_sum(size_t n,
+                 std::function<void(const size_t, const T*, T*)> tgt,
                  std::function<void(const size_t, const T*, T*)> ref) {
   std::vector<T> x(n);
   T ytgt_data, yref_data;
@@ -155,18 +162,19 @@ void compare_sum(size_t n, std::function<void(const size_t, const T*, T*)> tgt,
 
 TEST(CpuVecTest, vec_sum) {
   namespace platform = paddle::platform;
-  using namespace paddle::operators::math;  // NOLINT
+  using namespace pten::funcs;  // NOLINT
   for (size_t sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
     compare_sum<float>(sz, vec_sum<float>, vec_sum<float, platform::isa_any>);
-    compare_sum<float>(sz, vec_sum<float, platform::avx>,
-                       vec_sum<float, platform::isa_any>);
+    compare_sum<float>(
+        sz, vec_sum<float, platform::avx>, vec_sum<float, platform::isa_any>);
   }
   compare_sum<double>(30U, vec_sum<double>, vec_sum<double, platform::isa_any>);
 }
 
 template <typename T>
 void compare_clip(
-    size_t n, T threshold,
+    size_t n,
+    T threshold,
     std::function<void(const size_t, const T, const T*, T*)> tgt,
     std::function<void(const size_t, const T, const T*, T*)> ref) {
   std::vector<T> x(n);
@@ -185,20 +193,23 @@ void compare_clip(
 
 TEST(CpuVecTest, vec_clip) {
   namespace platform = paddle::platform;
-  using namespace paddle::operators::math;  // NOLINT
+  using namespace pten::funcs;  // NOLINT
   for (size_t sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
-    compare_clip<float>(sz, -4.f, vec_clip<float>,
-                        vec_clip<float, platform::isa_any>);
-    compare_clip<float>(sz, -1.1f, vec_clip<float, platform::avx>,
+    compare_clip<float>(
+        sz, -4.f, vec_clip<float>, vec_clip<float, platform::isa_any>);
+    compare_clip<float>(sz,
+                        -1.1f,
+                        vec_clip<float, platform::avx>,
                         vec_clip<float, platform::isa_any>);
   }
-  compare_clip<double>(30U, 1.0, vec_clip<double>,
-                       vec_clip<double, platform::isa_any>);
+  compare_clip<double>(
+      30U, 1.0, vec_clip<double>, vec_clip<double, platform::isa_any>);
 }
 
 template <typename T>
 void compare_mul(
-    size_t n, std::function<void(const size_t, const T*, const T*, T*)> tgt,
+    size_t n,
+    std::function<void(const size_t, const T*, const T*, T*)> tgt,
     std::function<void(const size_t, const T*, const T*, T*)> ref) {
   std::vector<T> x(n), y(n);
   std::vector<T> ztgt(n), zref(n);
@@ -220,18 +231,19 @@ void compare_mul(
 
 TEST(CpuVecTest, vec_mul) {
   namespace platform = paddle::platform;
-  using namespace paddle::operators::math;  // NOLINT
+  using namespace pten::funcs;  // NOLINT
   for (size_t sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
     compare_mul<float>(sz, vec_mul<float>, vec_mul<float, platform::isa_any>);
-    compare_mul<float>(sz, vec_mul<float, platform::avx>,
-                       vec_mul<float, platform::isa_any>);
+    compare_mul<float>(
+        sz, vec_mul<float, platform::avx>, vec_mul<float, platform::isa_any>);
   }
   compare_mul<double>(30U, vec_mul<double>, vec_mul<double, platform::isa_any>);
 }
 
 template <typename T>
 void compare_mul_reduce(
-    size_t n, std::function<void(const size_t, const T*, const T*, T*)> tgt,
+    size_t n,
+    std::function<void(const size_t, const T*, const T*, T*)> tgt,
     std::function<void(const size_t, const T*, const T*, T*)> ref) {
   std::vector<T> x(n), y(n);
   T ztgt_data, zref_data;
@@ -249,19 +261,21 @@ void compare_mul_reduce(
 
 TEST(CpuVecTest, vec_mul_reduce) {
   namespace platform = paddle::platform;
-  using namespace paddle::operators::math;  // NOLINT
+  using namespace pten::funcs;  // NOLINT
   for (size_t sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
-    compare_mul_reduce<float>(sz, vec_mul_reduce<float>,
-                              vec_mul_reduce<float, platform::isa_any>);
-    compare_mul_reduce<float>(sz, vec_mul_reduce<float, platform::avx>,
+    compare_mul_reduce<float>(
+        sz, vec_mul_reduce<float>, vec_mul_reduce<float, platform::isa_any>);
+    compare_mul_reduce<float>(sz,
+                              vec_mul_reduce<float, platform::avx>,
                               vec_mul_reduce<float, platform::isa_any>);
   }
-  compare_mul_reduce<double>(30U, vec_mul_reduce<double>,
-                             vec_mul_reduce<double, platform::isa_any>);
+  compare_mul_reduce<double>(
+      30U, vec_mul_reduce<double>, vec_mul_reduce<double, platform::isa_any>);
 }
 
 template <typename T>
-void TestInplace(const int n, std::function<void(const int, const T*, T*)> tgt,
+void TestInplace(const int n,
+                 std::function<void(const int, const T*, T*)> tgt,
                  std::function<void(const int, const T*, T*)> ref) {
   std::vector<T> x(n);
   std::vector<T> ytgt(n), yref(n);
@@ -283,22 +297,22 @@ void TestInplace(const int n, std::function<void(const int, const T*, T*)> tgt,
 
 TEST(CpuVecTest, inplace_sigmoid) {
   namespace platform = paddle::platform;
-  using namespace paddle::operators::math;  // NOLINT
+  using namespace pten::funcs;  // NOLINT
   for (auto sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
     TestInplace<float>(sz, vec_sigmoid<float>, ref_sigmoid<float>);
-    TestInplace<float>(sz, vec_sigmoid<float, platform::avx>,
-                       ref_sigmoid<float>);
-    TestInplace<float>(sz, vec_sigmoid<float, platform::avx2>,
-                       ref_sigmoid<float>);
-    TestInplace<float>(sz, vec_sigmoid<float, platform::avx512f>,
-                       ref_sigmoid<float>);
+    TestInplace<float>(
+        sz, vec_sigmoid<float, platform::avx>, ref_sigmoid<float>);
+    TestInplace<float>(
+        sz, vec_sigmoid<float, platform::avx2>, ref_sigmoid<float>);
+    TestInplace<float>(
+        sz, vec_sigmoid<float, platform::avx512f>, ref_sigmoid<float>);
   }
   TestInplace<double>(30, vec_sigmoid<double>, ref_sigmoid<double>);
 }
 
 TEST(CpuVecTest, inplace_tanh) {
   namespace platform = paddle::platform;
-  using namespace paddle::operators::math;  // NOLINT
+  using namespace pten::funcs;  // NOLINT
   for (auto sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
     TestInplace<float>(sz, vec_tanh<float>, ref_tanh<float>);
     TestInplace<float>(sz, vec_tanh<float, platform::avx>, ref_tanh<float>);
@@ -310,7 +324,7 @@ TEST(CpuVecTest, inplace_tanh) {
 
 TEST(CpuVecTest, inplace_relu) {
   namespace platform = paddle::platform;
-  using namespace paddle::operators::math;  // NOLINT
+  using namespace pten::funcs;  // NOLINT
   for (auto sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
     TestInplace<float>(sz, vec_relu<float>, ref_relu<float>);
     TestInplace<float>(sz, vec_relu<float, platform::avx>, ref_relu<float>);
@@ -319,3 +333,5 @@ TEST(CpuVecTest, inplace_relu) {
   }
   TestInplace<double>(30, vec_relu<double>, ref_relu<double>);
 }
+}  // namespace tests
+}  // namespace pten

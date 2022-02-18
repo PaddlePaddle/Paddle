@@ -15,9 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/attention_lstm_op.h"
 #include <string>
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/cpu_vec.h"
 #include "paddle/fluid/operators/math/fc.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/pten/kernels/funcs/cpu_vec.h"
 
 namespace paddle {
 namespace operators {
@@ -269,10 +269,10 @@ use lstm_x_t as input and compute as standard LSTM.
 template <typename T>
 inline void bias_relu(const int n, const T* x, const T* bias, T* y) {
   if (bias) {
-    math::vec_add_bias<T, platform::avx>(n, *bias, x, y);
-    math::vec_relu<T, platform::avx>(n, y, y);
+    pten::funcs::vec_add_bias<T, platform::avx>(n, *bias, x, y);
+    pten::funcs::vec_relu<T, platform::avx>(n, y, y);
   } else {
-    math::vec_relu<T, platform::avx>(n, x, y);
+    pten::funcs::vec_relu<T, platform::avx>(n, x, y);
   }
 }
 
@@ -283,14 +283,14 @@ inline void vec_softmax(const int n, const T* x, T* y) {
   for (int i = 1; i < n; ++i) {
     scalar = scalar < x[i] ? x[i] : scalar;
   }
-  math::vec_add_bias<T, platform::avx>(n, -scalar, x, y);  // sub
-  math::vec_exp<T>(n, y, y);                               // exp
+  pten::funcs::vec_add_bias<T, platform::avx>(n, -scalar, x, y);  // sub
+  pten::funcs::vec_exp<T>(n, y, y);                               // exp
   // sum
   scalar = T(0);
   for (int i = 0; i < n; ++i) {
     scalar += y[i];
   }
-  math::vec_scal<T>(n, static_cast<T>(1) / scalar, y);  // scale
+  pten::funcs::vec_scal<T>(n, static_cast<T>(1) / scalar, y);  // scale
 }
 
 template <typename T>
@@ -344,12 +344,12 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
     auto& act_cell_str = ctx.Attr<std::string>("cell_activation");
     auto& act_cand_str = ctx.Attr<std::string>("candidate_activation");
     if (platform::MayIUse(platform::avx)) {
-      math::VecActivations<T, platform::avx> act_functor;
+      pten::funcs::VecActivations<T, platform::avx> act_functor;
       act_gate = act_functor(act_gate_str);
       act_cell = act_functor(act_cell_str);
       act_cand = act_functor(act_cand_str);
     } else {
-      math::VecActivations<T, platform::isa_any> act_functor;
+      pten::funcs::VecActivations<T, platform::isa_any> act_functor;
       act_gate = act_functor(act_gate_str);
       act_cell = act_functor(act_cell_str);
       act_cand = act_functor(act_cand_str);

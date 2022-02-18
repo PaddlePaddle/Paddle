@@ -21,3 +21,5 @@ endif()
 if(WITH_ROCM)
     hip_test(test_math_function_gpu SRCS test_math_function.cu DEPS math_function)
 endif()
+
+cc_test(test_cpu_vec SRCS test_cpu_vec.cc DEPS blas cpu_info)
