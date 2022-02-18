@@ -41,12 +41,10 @@ using framework::ProgramDesc;
 using framework::LoDTensor;
 using framework::ir::Graph;
 using framework::ParallelExecutor;
+using framework::paddle2cinn::Name2VarInfoMap;
 using CinnShape = ::cinn::hlir::framework::Shape;
 using CinnInstruction = ::cinn::hlir::framework::Instruction;
 using CinnRuntimeProgram = ::cinn::hlir::framework::Program;
-using Name2VarInfoType =
-    std::unordered_map<std::string,
-                       std::shared_ptr<framework::ir::MemOptVarInfo>>;
 
 const Graph& InitDefaultSubgraph() {
   static std::once_flag initialized;
@@ -83,7 +81,7 @@ const Graph& InitDefaultSubgraph() {
     graph->Set<std::vector<std::string>>(
         framework::paddle2cinn::kOutputVars,
         new std::vector<std::string>({"var5"}));
-    graph->GetOrInit<Name2VarInfoType>(
+    graph->GetOrInit<Name2VarInfoMap>(
         framework::paddle2cinn::kMemOptVarInfoFromMainGraph);
   });
   return *graph.get();

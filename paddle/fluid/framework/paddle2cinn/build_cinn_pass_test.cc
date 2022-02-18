@@ -664,7 +664,7 @@ TEST(BuildCinnPassTest, NoNeedBufferInput) {
   const auto& output_vars = subgraph.Get<std::vector<std::string>>(kOutputVars);
   EXPECT_EQ(
       std::unordered_set<std::string>(output_vars.begin(), output_vars.end()),
-      std::unordered_set<std::string>("var5", "var6"));
+      std::unordered_set<std::string>({"var5", "var6"}));
 }
 
 }  // namespace paddle2cinn

@@ -102,7 +102,7 @@ void IpuBackend::SetCustomOps(
   compiler_->SetCustomOps(custom_ops);
 }
 
-void IpuBackend::SaveMoldeProto(const std::string& path) {
+void IpuBackend::SaveModelProto(const std::string& path) {
   if (ipu_strategy_->is_training && is_prepared_) {
     executor_->SaveModelToHost(path);
   } else if (is_compiled_) {

@@ -151,8 +151,8 @@ class CinnLaunchContext {
   // a ParallelExecutor for running the compiled graph
   std::unique_ptr<framework::ParallelExecutor> parallel_executor_;
 
-  // because a cinn_pod_value_t does not own the cinn_buffer_t object,
-  // an extra stroage is necessary to keep the object and it can
+  // because a cinn_pod_value_t does not own a cinn_buffer_t object,
+  // an extra stroage is necessary to keep those objects and they can
   // not be released until the runtime program finish execution.
   std::vector<std::unique_ptr<cinn_buffer_t>> hold_buffers_;
   // this map saves all execution arguments with their cinn names as key,

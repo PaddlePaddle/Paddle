@@ -56,7 +56,7 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
       var_names.begin(), var_names.end(),
       std::inserter(cinn_argument_names_, cinn_argument_names_.end()),
       [](const auto& name_view) { return std::string(name_view.data()); });
-  // build name map between original variables and compiled ones
+  // build name map between the original variables and compiled ones
   BuildVarNameMap(compiled_obj.paddle2cinn_varmap, cinn_argument_names_);
 
   const auto& input_var_names =
@@ -161,21 +161,21 @@ CinnTensor CinnLaunchContext::GetCinnTensorOfVar(const std::string& var_name) {
 std::unordered_set<std::string> CinnLaunchContext::ExtractInternalVarNames(
     const std::vector<std::string>& input_var_names,
     const std::vector<std::string>& output_var_names) {
-  std::unordered_set<std::string> all_parameters;
-  all_parameters.reserve(paddle2cinn_varmap_.size());
+  std::unordered_set<std::string> remain_var_names;
+  remain_var_names.reserve(paddle2cinn_varmap_.size());
   std::transform(paddle2cinn_varmap_.begin(), paddle2cinn_varmap_.end(),
-                 std::inserter(all_parameters, all_parameters.end()),
+                 std::inserter(remain_var_names, remain_var_names.end()),
                  [](const auto& name_pair) { return name_pair.first; });
 
   // exclude the input variables and output variables
-  auto exclude_names_fn = [&all_parameters](const std::string& var_name) {
-    all_parameters.erase(var_name);
+  auto exclude_names_fn = [&remain_var_names](const std::string& var_name) {
+    remain_var_names.erase(var_name);
   };
   std::for_each(input_var_names.begin(), input_var_names.end(),
                 exclude_names_fn);
   std::for_each(output_var_names.begin(), output_var_names.end(),
                 exclude_names_fn);
-  return all_parameters;
+  return remain_var_names;
 }
 
 void CinnLaunchContext::CheckTensorEquivalent(
@@ -232,6 +232,8 @@ void CinnLaunchContext::AssignExternalVariable(const std::string& var_name) {
         // Do nothing
         return 0;
       });
+
+  return AppendArgument(cinn_arg_name, std::move(cinn_buffer));
 }
 
 void CinnLaunchContext::AssignInternalVariable(const std::string& var_name) {
