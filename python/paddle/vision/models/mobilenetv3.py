@@ -18,10 +18,14 @@ from __future__ import print_function
 
 import paddle
 import paddle.nn as nn
-from paddle.nn import functional as F
 from paddle.fluid.param_attr import ParamAttr
+from paddle.nn import functional as F
 from paddle.regularizer import L2Decay
 from paddle.utils.download import get_weights_path_from_url
+
+from ._utils import _make_divisible
+
+__all__ = []
 
 model_urls = {
     "mobilenet_v3_small_x0.35":
@@ -55,16 +59,6 @@ model_urls = {
     ("https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/legendary_models/MobileNetV3_large_x1_25_pretrained.pdparams",
      "0a092f2906ef0ae8267e4756449cc90a"),
 }
-
-
-def _make_divisible(v, divisor=8, min_value=None):
-    if min_value is None:
-        min_value = divisor
-    new_v = max(min_value, int(v + divisor / 2) // divisor * divisor)
-    # Make sure that round down does not go down by more than 10%.
-    if new_v < 0.9 * v:
-        new_v += divisor
-    return new_v
 
 
 def _create_act(act):
