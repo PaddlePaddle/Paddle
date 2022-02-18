@@ -25,8 +25,8 @@ PT_REGISTER_KERNEL(matmul_grad,
                    pten::MatmulGradKernel,
                    float,
                    double,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(matmul_double_grad,
                    CPU,
@@ -34,8 +34,8 @@ PT_REGISTER_KERNEL(matmul_double_grad,
                    pten::MatmulDoubleGradKernel,
                    float,
                    double,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(matmul_triple_grad,
                    CPU,
@@ -43,5 +43,5 @@ PT_REGISTER_KERNEL(matmul_triple_grad,
                    pten::MatmulTripleGradKernel,
                    float,
                    double,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}

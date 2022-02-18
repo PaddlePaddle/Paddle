@@ -95,8 +95,8 @@ template const paddle::platform::Place &GetPlace<VarBase>(
     const std::shared_ptr<VarBase> &var);
 template const paddle::platform::Place &GetPlace<VariableWrapper>(
     const std::shared_ptr<VariableWrapper> &var);
-template const paddle::platform::Place &GetPlace<egr::EagerTensor>(
-    const std::shared_ptr<egr::EagerTensor> &var);
+template const paddle::platform::Place &GetPlace<egr::EagerVariable>(
+    const std::shared_ptr<egr::EagerVariable> &var);
 
 /* GetNameFromVar */
 template <typename VarType>
@@ -104,8 +104,8 @@ const std::string &GetNameFromVar(std::shared_ptr<VarType> var) {
   return var->Name();
 }
 template <>
-const std::string &GetNameFromVar<egr::EagerTensor>(
-    std::shared_ptr<egr::EagerTensor> tensor) {
+const std::string &GetNameFromVar<egr::EagerVariable>(
+    std::shared_ptr<egr::EagerVariable> tensor) {
   return tensor->name();
 }
 template const std::string &GetNameFromVar<VariableWrapper>(
@@ -120,8 +120,8 @@ void SetType(std::shared_ptr<VarType> var,
   var->SetType(type);
 }
 template <>
-void SetType<egr::EagerTensor>(std::shared_ptr<egr::EagerTensor> var,
-                               framework::proto::VarType::Type type) {
+void SetType<egr::EagerVariable>(std::shared_ptr<egr::EagerVariable> var,
+                                 framework::proto::VarType::Type type) {
   switch (type) {
     case paddle::framework::proto::VarType::LOD_TENSOR: {
       var->MutableVar()->GetMutable<paddle::framework::LoDTensor>();
@@ -149,8 +149,8 @@ framework::proto::VarType::Type GetType(std::shared_ptr<VarType> var) {
   return var->Type();
 }
 template <>
-framework::proto::VarType::Type GetType<egr::EagerTensor>(
-    std::shared_ptr<egr::EagerTensor> var) {
+framework::proto::VarType::Type GetType<egr::EagerVariable>(
+    std::shared_ptr<egr::EagerVariable> var) {
   if (var->Var().IsInitialized()) {
     return paddle::framework::ToVarType(var->Var().Type());
   } else {
@@ -168,8 +168,8 @@ framework::proto::VarType::Type GetDataType(std::shared_ptr<VarType> var) {
   return var->DataType();
 }
 template <>
-framework::proto::VarType::Type GetDataType<egr::EagerTensor>(
-    std::shared_ptr<egr::EagerTensor> var) {
+framework::proto::VarType::Type GetDataType<egr::EagerVariable>(
+    std::shared_ptr<egr::EagerVariable> var) {
   if (var->Var().IsType<pten::SelectedRows>()) {
     return framework::TransToProtoVarType(
         var->Var().Get<pten::SelectedRows>().value().type());
@@ -197,8 +197,8 @@ bool CheckCachedKey(std::shared_ptr<VarType> var,
   return GetVariableWrapper(var)->hasCacheKey(key);
 }
 template <>
-bool CheckCachedKey<egr::EagerTensor>(
-    std::shared_ptr<egr::EagerTensor> tensor,
+bool CheckCachedKey<egr::EagerVariable>(
+    std::shared_ptr<egr::EagerVariable> tensor,
     const paddle::framework::OpKernelType &key) {
   // TODO(jiabin): Support this later
   // VLOG(10) << "CheckCachedKey with tensor: " << tensor->name() << "and key is
@@ -219,7 +219,7 @@ std::shared_ptr<VariableWrapper> GetCachedValue(
 }
 template <>
 std::shared_ptr<VariableWrapper> GetCachedValue(
-    std::shared_ptr<egr::EagerTensor> var,
+    std::shared_ptr<egr::EagerVariable> var,
     const paddle::framework::OpKernelType &key) {
   // TODO(jiabin): Support this later
   //   PADDLE_THROW(platform::errors::Fatal("In eager mode program should not
@@ -243,10 +243,10 @@ void SetCachedValue(std::shared_ptr<VarType> var,
   GetVariableWrapper(var)->setCacheValue(key, GetVariableWrapper(res));
 }
 template <>
-void SetCachedValue<egr::EagerTensor>(
-    std::shared_ptr<egr::EagerTensor> tensor,
+void SetCachedValue<egr::EagerVariable>(
+    std::shared_ptr<egr::EagerVariable> tensor,
     const paddle::framework::OpKernelType &key,
-    std::shared_ptr<egr::EagerTensor> res) {
+    std::shared_ptr<egr::EagerVariable> res) {
   //   PADDLE_THROW(platform::errors::Fatal("In eager mode program should not
   //   reach this, support cache and remove this error check later, or this
   //   should not be supported."));

@@ -345,7 +345,7 @@ PADDLE_API {self.outputs['return_type']} {self.api}({self.args_str['args_declare
         if len(input_names) > 0:
             if self.support_selected_rows_kernel:
                 kernel_select_code = kernel_select_code + f"""
-  KernelType kernel_type;
+  KernelType kernel_type = ParseKernelTypeByInputArgs({", ".join(input_names)});
 """
 
             kernel_select_code = kernel_select_code + f"""
@@ -354,7 +354,6 @@ PADDLE_API {self.outputs['return_type']} {self.api}({self.args_str['args_declare
         || kernel_data_type == DataType::UNDEFINED ) {{
     auto kernel_key_set = ParseKernelKeyByInputArgs({kernel_select_args});
     auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
-    {'kernel_type = kernel_key_set.kernel_type;' if self.support_selected_rows_kernel else ''}
     if (kernel_backend == Backend::UNDEFINED) {{
       kernel_backend = kernel_key.backend();
     }}

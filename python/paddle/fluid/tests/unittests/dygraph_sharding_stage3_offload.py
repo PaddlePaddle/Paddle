@@ -91,11 +91,7 @@ def train_mlp(model,
         scaler = ShardingScaler(scaler)
 
     model = ShardingStage3(
-        model,
-        optimizer=optimizer,
-        group=group,
-        offload=offload,
-        accumulate_grads=accumulate_grad)
+        model, optimizer=optimizer, group=group, offload=offload)
 
     train_reader = paddle.batch(
         reader_decorator(), batch_size=batch_size, drop_last=True)

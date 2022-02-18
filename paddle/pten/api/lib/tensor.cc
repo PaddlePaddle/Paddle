@@ -22,13 +22,12 @@ limitations under the License. */
 #include "paddle/pten/api/lib/ext_compat_utils.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/api/lib/utils/storage.h"
-#include "paddle/pten/core/compat/convert_utils.h"
+
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/selected_rows.h"
 #include "paddle/pten/core/tensor_base.h"
 #include "paddle/pten/core/tensor_meta.h"
 #include "paddle/pten/core/tensor_utils.h"
-
 /**
  * [ Why still include the fluid headers? ]
  *
@@ -57,10 +56,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace experimental {
-
-// declare cast api
-Tensor cast(const Tensor &x, DataType out_dtype);
-Tensor copy_to(const Tensor &x, Backend backend, bool blocking);
 
 /////// Tensor Methods ////////
 
@@ -133,7 +128,9 @@ DataLayout Tensor::layout() const { return impl_->layout(); }
 bool Tensor::is_dense_tensor() const {
   return pten::DenseTensor::classof(impl_.get());
 }
-
+bool Tensor::is_selected_rows() const {
+  return pten::SelectedRows::classof(impl_.get());
+}
 /* Part 3: Device and Backend methods */
 
 PlaceType Tensor::place() const {
@@ -175,12 +172,12 @@ template PADDLE_API uint8_t *Tensor::mutable_data<uint8_t>();
 template PADDLE_API int8_t *Tensor::mutable_data<int8_t>();
 template PADDLE_API int16_t *Tensor::mutable_data<int16_t>();
 template PADDLE_API bool *Tensor::mutable_data<bool>();
-template PADDLE_API paddle::platform::complex<float>
-    *Tensor::mutable_data<paddle::platform::complex<float>>();
-template PADDLE_API paddle::platform::complex<double>
-    *Tensor::mutable_data<paddle::platform::complex<double>>();
-template PADDLE_API paddle::platform::float16 *
-Tensor::mutable_data<paddle::platform::float16>();
+template PADDLE_API pten::dtype::complex<float>
+    *Tensor::mutable_data<pten::dtype::complex<float>>();
+template PADDLE_API pten::dtype::complex<double>
+    *Tensor::mutable_data<pten::dtype::complex<double>>();
+template PADDLE_API pten::dtype::float16 *
+Tensor::mutable_data<pten::dtype::float16>();
 
 template <typename T>
 T *Tensor::mutable_data(const PlaceType &place) {
@@ -213,12 +210,12 @@ template PADDLE_API int8_t *Tensor::mutable_data<int8_t>(
 template PADDLE_API int16_t *Tensor::mutable_data<int16_t>(
     const PlaceType &place);
 template PADDLE_API bool *Tensor::mutable_data<bool>(const PlaceType &place);
-template PADDLE_API paddle::platform::complex<float> *
-Tensor::mutable_data<paddle::platform::complex<float>>(const PlaceType &place);
-template PADDLE_API paddle::platform::complex<double> *
-Tensor::mutable_data<paddle::platform::complex<double>>(const PlaceType &place);
-template PADDLE_API paddle::platform::float16 *
-Tensor::mutable_data<paddle::platform::float16>(const PlaceType &place);
+template PADDLE_API pten::dtype::complex<float>
+    *Tensor::mutable_data<pten::dtype::complex<float>>(const PlaceType &place);
+template PADDLE_API pten::dtype::complex<double>
+    *Tensor::mutable_data<pten::dtype::complex<double>>(const PlaceType &place);
+template PADDLE_API pten::dtype::float16 *
+Tensor::mutable_data<pten::dtype::float16>(const PlaceType &place);
 
 template <typename T>
 const T *Tensor::data() const {
@@ -240,14 +237,14 @@ template PADDLE_API const uint8_t *Tensor::data<uint8_t>() const;
 template PADDLE_API const int8_t *Tensor::data<int8_t>() const;
 template PADDLE_API const int16_t *Tensor::data<int16_t>() const;
 template PADDLE_API const bool *Tensor::data<bool>() const;
-template PADDLE_API const paddle::platform::complex<float>
-    *Tensor::data<paddle::platform::complex<float>>() const;
-template PADDLE_API const paddle::platform::complex<double>
-    *Tensor::data<paddle::platform::complex<double>>() const;
-template PADDLE_API const paddle::platform::float16 *
-Tensor::data<paddle::platform::float16>() const;
-template PADDLE_API const paddle::platform::bfloat16 *
-Tensor::data<paddle::platform::bfloat16>() const;
+template PADDLE_API const pten::dtype::complex<float>
+    *Tensor::data<pten::dtype::complex<float>>() const;
+template PADDLE_API const pten::dtype::complex<double>
+    *Tensor::data<pten::dtype::complex<double>>() const;
+template PADDLE_API const pten::dtype::float16 *
+Tensor::data<pten::dtype::float16>() const;
+template PADDLE_API const pten::dtype::bfloat16 *
+Tensor::data<pten::dtype::bfloat16>() const;
 
 template <typename T>
 T *Tensor::data() {
@@ -266,12 +263,11 @@ template PADDLE_API uint8_t *Tensor::data<uint8_t>();
 template PADDLE_API int8_t *Tensor::data<int8_t>();
 template PADDLE_API int16_t *Tensor::data<int16_t>();
 template PADDLE_API bool *Tensor::data<bool>();
-template PADDLE_API paddle::platform::complex<float>
-    *Tensor::data<paddle::platform::complex<float>>();
-template PADDLE_API paddle::platform::complex<double>
-    *Tensor::data<paddle::platform::complex<double>>();
-template PADDLE_API paddle::platform::float16 *
-Tensor::data<paddle::platform::float16>();
+template PADDLE_API pten::dtype::complex<float>
+    *Tensor::data<pten::dtype::complex<float>>();
+template PADDLE_API pten::dtype::complex<double>
+    *Tensor::data<pten::dtype::complex<double>>();
+template PADDLE_API pten::dtype::float16 *Tensor::data<pten::dtype::float16>();
 
 // TODO(chenweihang): replace slice impl by API
 Tensor Tensor::slice(int64_t begin_idx, int64_t end_idx) const {
@@ -299,75 +295,7 @@ gpuStream_t Tensor::stream() const {
 }
 #endif
 
-/* Part 5: Data Transform methods */
-
-template <typename T>
-Tensor Tensor::copy_to(const PlaceType &target_place) const {
-  LOG(WARNING) << "The Tensor's `copy_to` method is deprecated since version "
-                  "2.3, and will be removed in version 2.4, please use "
-                  "`copy_to` method without template argument instead. "
-                  "reason: copying a Tensor to another device does not need "
-                  "to specify the data type template argument.";
-  return copy_to(ConvertExtPlaceToBackend(target_place), /*blocking=*/false);
-}
-
-template PADDLE_API Tensor
-Tensor::copy_to<float>(const PlaceType &target_place) const;
-template PADDLE_API Tensor
-Tensor::copy_to<double>(const PlaceType &target_place) const;
-template PADDLE_API Tensor
-Tensor::copy_to<int64_t>(const PlaceType &target_place) const;
-template PADDLE_API Tensor
-Tensor::copy_to<int32_t>(const PlaceType &target_place) const;
-template PADDLE_API Tensor
-Tensor::copy_to<uint8_t>(const PlaceType &target_place) const;
-template PADDLE_API Tensor
-Tensor::copy_to<int8_t>(const PlaceType &target_place) const;
-template PADDLE_API Tensor
-Tensor::copy_to<int16_t>(const PlaceType &target_place) const;
-template PADDLE_API Tensor
-Tensor::copy_to<bool>(const PlaceType &target_place) const;
-template PADDLE_API Tensor Tensor::copy_to<paddle::platform::complex<float>>(
-    const PlaceType &target_place) const;
-template PADDLE_API Tensor Tensor::copy_to<paddle::platform::complex<double>>(
-    const PlaceType &target_place) const;
-template PADDLE_API Tensor
-Tensor::copy_to<paddle::platform::float16>(const PlaceType &target_place) const;
-
-Tensor Tensor::copy_to(Backend backend, bool blocking) const {
-  return experimental::copy_to(*this, backend, blocking);
-}
-
-void Tensor::copy_(const Tensor &src, bool blocking) {
-  if (!src.is_initialized()) {
-    return;
-  }
-  VLOG(3) << "Deep copy Tensor from " << src.name() << " to " << name();
-  if (defined()) {
-    PADDLE_ENFORCE_EQ(dtype(),
-                      src.dtype(),
-                      platform::errors::PreconditionNotMet(
-                          "Tensor %s has different data type with Tensor %s, "
-                          "Tensor Copy cannot be performed!",
-                          name(),
-                          src.name()));
-    PADDLE_ENFORCE_EQ(impl()->type_info().id(),
-                      src.impl()->type_info().id(),
-                      platform::errors::PreconditionNotMet(
-                          "Tensor %s has different type with Tensor %s, Tensor "
-                          "Copy cannot be performed!",
-                          name(),
-                          src.name()));
-  }
-  auto copy_tensor =
-      src.copy_to(pten::TransToPtenBackend(src.inner_place()), blocking);
-  set_impl(copy_tensor.impl());
-}
-Tensor Tensor::cast(DataType target_type) const {
-  return experimental::cast(*this, target_type);
-}
-
-/* Part 6: Status utils methods */
+/* Part 5: Status utils methods */
 
 bool Tensor::defined() const { return impl_ != nullptr; }
 
@@ -379,7 +307,7 @@ bool Tensor::is_initialized() const {
 
 void Tensor::reset() { impl_.reset(); }
 
-/* Part 7: Operator overloading */
+/* Part 6: Operator overloading */
 
 Tensor &Tensor::operator=(const Tensor &x) & {
   impl_ = x.impl_;
