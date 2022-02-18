@@ -80,19 +80,16 @@ TEST(mixed_vector, MultiGPU) {
   paddle::platform::CUDAPlace gpu0(0);
   paddle::platform::SetDeviceId(0);
 
-  VLOG(2) << "here";
 #ifdef PADDLE_WITH_HIP
   hipLaunchKernelGGL(multiply_10, dim3(1), dim3(1), 0, GetCUDAStream(gpu0),
                      tmp.MutableData(gpu0));
 #else
   multiply_10<<<1, 1, 0, GetCUDAStream(gpu0)>>>(tmp.MutableData(gpu0));
 #endif
-  VLOG(2) << "here";
   paddle::platform::CUDAPlace gpu1(1);
   auto* gpu1_ptr = tmp.MutableData(gpu1);
   paddle::platform::SetDeviceId(1);
 
-  VLOG(2) << "here";
 #ifdef PADDLE_WITH_HIP
   hipLaunchKernelGGL(multiply_10, dim3(1), dim3(1), 0, GetCUDAStream(gpu1),
                      gpu1_ptr);

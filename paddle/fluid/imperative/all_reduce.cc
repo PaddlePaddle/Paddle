@@ -125,8 +125,7 @@ static void AllReduce(const pten::SelectedRows &src, pten::SelectedRows *dst,
   dst_rows->resize(rows_num);
   paddle::framework::MixVector<int64_t> mixv_dst_rows(dst_rows);
   auto *dst_rows_ptr = mixv_dst_rows.CUDAMutableData(place);
-  paddle::framework::MixVector<int64_t> mixv_src_rows(
-      const_cast<std::vector<int64_t> *>(&src_rows));
+  paddle::framework::MixVector<int64_t> mixv_src_rows(&src_rows);
   const auto *src_rows_ptr = mixv_src_rows.CUDAData(place);
 
   auto *dst_tensor = dst->mutable_value();
@@ -151,27 +150,30 @@ static void AllReduce(const pten::SelectedRows &src, pten::SelectedRows *dst,
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
         src_rows_ptr, dst_rows_ptr, row_sendcount, ncclInt64, comm->comm(),
         stream));
-    mixv_dst_rows.CopyToCPU();
     auto value_sendcount = cpu_rows_num_ptr[0] * feature_size;
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
         src_tensor_ptr, dst_tensor_ptr, value_sendcount, nccl_dtype,
         comm->comm(), stream));
-    return;
-  }
-  for (int i = 0; i < strategy.nranks_; ++i) {
-    if (cpu_rows_num_ptr[i] > 0) {
-      // 2. Broadcast the rows of SelectedRows
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBroadcast(
-          src_rows_ptr, dst_rows_ptr + row_offset, cpu_rows_num_ptr[i],
-          ncclInt64, i, comm->comm(), stream));
-      // 3. Broadcast the tensor data of SelectedRows
-      auto *dst_tensor_ptr_i = reinterpret_cast<uint8_t *>(dst_tensor_ptr) +
-                               row_offset * feature_size * sizeof_dtype;
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBroadcast(
-          src_tensor_ptr, dst_tensor_ptr_i, cpu_rows_num_ptr[i] * feature_size,
-          nccl_dtype, i, comm->comm(), stream));
-      row_offset += cpu_rows_num_ptr[i];
+  } else {
+    for (int i = 0; i < strategy.nranks_; ++i) {
+      if (cpu_rows_num_ptr[i] > 0) {
+        // 2. Broadcast the rows of SelectedRows
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBroadcast(
+            src_rows_ptr, dst_rows_ptr + row_offset, cpu_rows_num_ptr[i],
+            ncclInt64, i, comm->comm(), stream));
+        // 3. Broadcast the tensor data of SelectedRows
+        auto *dst_tensor_ptr_i = reinterpret_cast<uint8_t *>(dst_tensor_ptr) +
+                                 row_offset * feature_size * sizeof_dtype;
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBroadcast(
+            src_tensor_ptr, dst_tensor_ptr_i,
+            cpu_rows_num_ptr[i] * feature_size, nccl_dtype, i, comm->comm(),
+            stream));
+        row_offset += cpu_rows_num_ptr[i];
+      }
     }
+  }
+  if (!use_calc_stream) {
+    platform::GpuStreamSync(stream);
   }
   mixv_dst_rows.CopyToCPU();
   VLOG(3) << "Original SelectedRows rows: "

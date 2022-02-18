@@ -117,7 +117,9 @@ class TargetAssignKernel : public framework::OpKernel<T> {
     TargetAssignFunctor<T, WT> functor(x_data, match_idx_data, x_lod_data,
                                        mismatch_value, n, m, p, k, out_data,
                                        out_wt_data);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     mixv_x_lod.CopyToCPU();
+#endif
 
     auto& device_ctx = ctx.template device_context<DeviceContext>();
     platform::ForRange<DeviceContext> for_range(device_ctx, n * m);
@@ -140,7 +142,9 @@ class TargetAssignKernel : public framework::OpKernel<T> {
       NegTargetAssignFunctor<DeviceContext, T, WT> neg_trg_functor;
       neg_trg_functor(device_ctx, neg_idx_data, neg_lod_data, n, m, k,
                       mismatch_value, out_data, out_wt_data);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       mixv_neg_lod.CopyToCPU();
+#endif
     }
   }
 };

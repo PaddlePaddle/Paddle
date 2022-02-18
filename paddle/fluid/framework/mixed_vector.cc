@@ -64,6 +64,7 @@ void CopyCPUDataToCUDAHelper(std::vector<T> *cpu_,
   auto stream = dev_ctx->stream();
   paddle::memory::Copy(OptionalCUDAPlace(*gpu_).get(), dst,
                        platform::CPUPlace(), src, *gpu_memory_size_, stream);
+  dev_ctx->Wait();
 #endif
 }
 

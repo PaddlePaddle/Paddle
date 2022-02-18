@@ -258,8 +258,8 @@ class MixVector {
  public:
   // implicit cast from std::vector.
   template <typename U>
-  MixVector(std::vector<U> *dat) {  // NOLINT
-    m_.reset(new VectorData(dat));
+  MixVector(const std::vector<U> *dat) {  // NOLINT
+    m_.reset(new VectorData(const_cast<std::vector<U> *>(dat)));
   }
 
   // Copy ctor

@@ -158,8 +158,7 @@ void GLOOParallelContext::AllReduce(const pten::SelectedRows &src,
   dst_rows->resize(rows_num);
   paddle::framework::MixVector<int64_t> mixv_dst_rows(dst_rows);
   auto *dst_rows_ptr = mixv_dst_rows.MutableData(place);
-  paddle::framework::MixVector<int64_t> mixv_src_rows(
-      const_cast<std::vector<int64_t> *>(&src_rows));
+  paddle::framework::MixVector<int64_t> mixv_src_rows(&src_rows);
   const int64_t *src_rows_ptr = mixv_src_rows.Data(place);
 
   auto *dst_tensor = dst->mutable_value();

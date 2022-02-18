@@ -345,8 +345,7 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
       auto& grad_merge = *grad_merge_ptr;
       auto& grad_tensor = grad_merge.value();
       const T* grad_data = grad_tensor.template data<T>();
-      auto* grad_merge_rows =
-          const_cast<std::vector<int64_t>*>(&grad_merge.rows());
+      auto* grad_merge_rows = &grad_merge.rows();
       paddle::framework::MixVector<int64_t> mixv_grad_merge_rows(
           grad_merge_rows);
       const int64_t* rows = mixv_grad_merge_rows.Data(ctx.GetPlace());

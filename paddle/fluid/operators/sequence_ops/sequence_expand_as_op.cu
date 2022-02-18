@@ -81,8 +81,7 @@ struct SequenceExpandAsFunctor<platform::CUDADeviceContext, T> {
 
     dim3 block_size(thread_x);
     dim3 grid_size(block_x);
-    paddle::framework::MixVector<size_t> mixv_ref_lod(
-        const_cast<std::vector<size_t> *>(&ref_lod));
+    paddle::framework::MixVector<size_t> mixv_ref_lod(&ref_lod);
     sequence_expand_as_kernel<<<grid_size, block_size, 0, context.stream()>>>(
         x.data<T>(), mixv_ref_lod.CUDAData(context.GetPlace()), height, width,
         out->mutable_data<T>(context.GetPlace()));
@@ -109,8 +108,7 @@ struct SequenceExpandAsGradFunctor<platform::CUDADeviceContext, T> {
 
     dim3 block_size(thread_x);
     dim3 grid_size(block_x);
-    paddle::framework::MixVector<size_t> mixv_ref_lod(
-        const_cast<std::vector<size_t> *>(&ref_lod));
+    paddle::framework::MixVector<size_t> mixv_ref_lod(&ref_lod);
     sequence_expand_as_grad_kernel<<<grid_size, block_size, 0,
                                      context.stream()>>>(
         dout.data<T>(), mixv_ref_lod.CUDAData(context.GetPlace()), height,

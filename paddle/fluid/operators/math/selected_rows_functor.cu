@@ -162,8 +162,7 @@ struct SelectedRowsAddTensor<platform::CUDADeviceContext, T> {
     const int block_size = 256;
     dim3 threads(block_size, 1);
     dim3 grid(in1_rows.size(), 1);
-    paddle::framework::MixVector<int64_t> mixv_in1_rows(
-        const_cast<std::vector<int64_t>*>(&in1_rows));
+    paddle::framework::MixVector<int64_t> mixv_in1_rows(&in1_rows);
     SelectedRowsAddTensorKernel<
         T, block_size><<<grid, threads, 0, context.stream()>>>(
         in1_data, mixv_in1_rows.CUDAData(context.GetPlace()), out_data,
@@ -201,8 +200,7 @@ struct SelectedRowsAddTo<platform::CUDADeviceContext, T> {
     auto* in2_value = input2->mutable_value();
 
     // concat rows
-    paddle::framework::MixVector<int64_t> mixv_in2_rows(
-        const_cast<std::vector<int64_t>*>(&in2_rows));
+    paddle::framework::MixVector<int64_t> mixv_in2_rows(&in2_rows);
     if (in1_rows.size()) {
       mixv_in2_rows.Extend(in1_rows.begin(), in1_rows.end());
     }
@@ -279,8 +277,7 @@ struct SelectedRowsAddToTensor<platform::CUDADeviceContext, T> {
     const int block_size = 256;
     dim3 threads(block_size, 1);
     dim3 grid(in1_rows.size(), 1);
-    paddle::framework::MixVector<int64_t> mixv_in1_rows(
-        const_cast<std::vector<int64_t>*>(&in1_rows));
+    paddle::framework::MixVector<int64_t> mixv_in1_rows(&in1_rows);
     SelectedRowsAddToTensorKernel<
         T, block_size><<<grid, threads, 0, context.stream()>>>(
         in1_data, mixv_in1_rows.CUDAData(context.GetPlace()), in2_data,
@@ -436,8 +433,7 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
       auto& input_rows = input->rows();
       dim3 grid1(input_rows.size(), 1);
 
-      paddle::framework::MixVector<int64_t> mix_vector_input(
-          const_cast<std::vector<int64_t>*>(&input_rows));
+      paddle::framework::MixVector<int64_t> mix_vector_input(&input_rows);
       paddle::framework::MixVector<int64_t> mix_vector_out(out.mutable_rows());
       MergeAddKernel<T, 256><<<grid1, threads, 0, context.stream()>>>(
           input_data, mix_vector_input.CUDAData(context.GetPlace()), out_data,
