@@ -29,6 +29,7 @@ namespace operators {
 
 using DataLayout = framework::DataLayout;
 enum GroupNormKernelFlags { kHasScale = 1, kHasBias = 2 };
+#define ALIGN_BYTES 16
 
 #define CHECK_CASE(i, flags, kernel_name, ...)                              \
   if (i == flags) {                                                         \
@@ -81,18 +82,63 @@ __global__ void GroupNormForwardGetMeanAndVar(const T* x, int N, int C, int W,
   CudaAtomicAddWithWarp(&var[bid * groups + gid], x_var);
 }
 
-template <typename T, int BlockDim>
+template <typename T, typename AccT, int VecSize>
+__device__ __forceinline__ void ThreadReduce(const T* input, int size,
+                                             const int offset, AccT* mean,
+                                             AccT* var) {
+  using VecT = kps::details::VectorType<T, VecSize>;
+  int tid = threadIdx.x;
+
+  if (offset > 0) {
+    input -= offset;
+    size += offset;
+    if (tid >= offset) {
+      AccT temp = input[tid];
+      *mean += temp;
+      *var += temp * temp;
+    }
+    size -= blockDim.x;
+    input += blockDim.x;
+  }
+  int remain = size % (VecSize * blockDim.x);
+
+  T ins[VecSize];
+  VecT* ins_vec = reinterpret_cast<VecT*>(&ins);
+
+  // vector part
+  for (; VecSize * tid < (size - remain); tid += blockDim.x) {
+    *ins_vec = reinterpret_cast<const VecT*>(input)[tid];
+
+#pragma unroll
+    for (int i = 0; i < VecSize; ++i) {
+      AccT temp = ins[i];
+      *mean += temp;
+      *var += temp * temp;
+    }
+  }
+
+  // scalar part
+  tid = size - remain + threadIdx.x;
+  for (; tid < size; tid += blockDim.x) {
+    AccT temp = input[tid];
+    *mean += temp;
+    *var += temp * temp;
+  }
+}
+
+template <typename T, typename AccT, int VecSize, int BlockDim>
 __global__ void GroupNormForwardGetMeanAndVarNCHW(
     const T* x, int N, int C, int W, int imsize, int groups, int group_size,
     T* mean, T* var, const DataLayout data_layout) {
-  T x_mean = 0, x_var = 0;
-  int i = blockIdx.x;
-  for (int j = threadIdx.x; j < group_size * imsize; j += blockDim.x) {
-    T val;
-    val = x[i * group_size * imsize + j];
-    x_mean += val;
-    x_var += val * val;
-  }
+  // each block deal with one batch
+  x += blockIdx.x * group_size * imsize;
+  const int input_offset = ((uint64_t)x) % ALIGN_BYTES / sizeof(T);
+
+  AccT x_mean = static_cast<AccT>(0);
+  AccT x_var = static_cast<AccT>(0);
+  ThreadReduce<T, AccT, VecSize>(x, group_size * imsize, input_offset, &x_mean,
+                                 &x_var);
+
   x_mean /= group_size * imsize;
   x_var /= group_size * imsize;
   if (blockDim.x <= 32) {
@@ -144,9 +190,7 @@ __global__ void GroupNormForward(const T* x, const T* mean, const T* var,
     }
     val = (val - x_mean) * var_inv;
     if (flags & kHasScale) val *= scale[gid * group_size + cid];
-    if (flags & kHasBias) {
-      val += bias[gid * group_size + cid];
-    }
+    if (flags & kHasBias) val += bias[gid * group_size + cid];
     if (data_layout == DataLayout::kNCHW) {
       y[(bid * C + ccid) * imsize + imid] = val;
     } else {
@@ -215,18 +259,33 @@ class GroupNormKernel<platform::CUDADeviceContext, T>
         imsize *= x_dims[i];
       }
     }
+
 #ifdef __HIPCC__
     int block_size = std::max(std::min(256, imsize), 64);
+    const int block_dim = 256;
 #else
     int block_size = std::min(1024, imsize);
-    int block_size_nchw = std::min(1024, group_size * imsize);
+    const int block_dim = 1024;
 #endif
+
     dim3 grid(group_size, groups, x_dims[0]);
     dim3 threads(block_size, 1, 1);
     if (data_layout == DataLayout::kNCHW) {
+      using AccT = typename details::MPTypeTrait<T>::Type;
+      constexpr int vec_size = sizeof(float4) / sizeof(T);
+      const int max_num_threads = 1024;
+      int max_block_size =
+          std::min(group_size * imsize / vec_size, max_num_threads);
+
+      int block_size_nchw = 1;
+      while (block_size_nchw < max_block_size) {
+        block_size_nchw *= 2;
+      }
+      block_size_nchw = std::max(max_block_size, kps::details::kWarpSize);
+      dim3 grids(x_dims[0] * groups);
+      dim3 blocks(block_size_nchw);
       GroupNormForwardGetMeanAndVarNCHW<
-          T,
-          1024><<<x_dims[0] * groups, block_size_nchw, 0, dev_ctx.stream()>>>(
+          T, AccT, vec_size, block_dim><<<grids, blocks, 0, dev_ctx.stream()>>>(
           x_data, x_dims[0], C, W, imsize, groups, group_size, mean_data,
           temp_var_data, data_layout);
     } else {
