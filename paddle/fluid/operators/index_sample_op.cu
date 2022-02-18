@@ -44,6 +44,7 @@ __global__ void IndexSampleForward(const IndexT* index, const T* in_data,
   unsigned int index_i = blockDim.x * blockIdx.x + threadIdx.x;
   unsigned int index_j = blockDim.y * blockIdx.y + threadIdx.y;
   for (; index_j < batch_size; index_j += blockDim.y * gridDim.y) {
+    index_i = blockDim.x * blockIdx.x + threadIdx.x;
     for (; index_i < index_length; index_i += blockDim.x * gridDim.x) {
       unsigned int index_idx = index_j * index_length + index_i;
       unsigned int in_idx = index_j * input_length + index_i;
@@ -62,6 +63,7 @@ __global__ void IndexSampleGrad(const IndexT* index, T* in_grad,
   unsigned int index_j = blockDim.y * blockIdx.y + threadIdx.y;
 
   for (; index_j < batch_size; index_j += blockDim.y * gridDim.y) {
+    index_i = blockDim.x * blockIdx.x + threadIdx.x;
     for (; index_i < index_length; index_i += blockDim.x * gridDim.x) {
       unsigned int index_idx = index_j * index_length + index_i;
       unsigned int in_idx = index_j * input_length + index_i;
