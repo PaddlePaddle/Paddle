@@ -370,6 +370,7 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
         input_data, mix_vector_input.CUDAData(context.GetPlace()), out_data,
         mix_vector_out.CUDAMutableData(context.GetPlace()), out.rows().size(),
         input_width);
+    mix_vector_out.CopyToCPU();
   }
 
   void operator()(const platform::CUDADeviceContext& context,
@@ -442,6 +443,7 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
           input_data, mix_vector_input.CUDAData(context.GetPlace()), out_data,
           mix_vector_out.CUDAMutableData(context.GetPlace()), out.rows().size(),
           input_width);
+      mix_vector_out.CopyToCPU();
     }
   }
 };

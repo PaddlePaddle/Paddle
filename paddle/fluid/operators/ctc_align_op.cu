@@ -115,6 +115,7 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
           num_tokens, tokens, num_seq,
           mixv_input_lod.CUDAMutableData(ctx.GetPlace()), blank, merge_repeated,
           dev_out_lod0_ptr, output_data);
+      mixv_input_lod.CopyToCPU();
 
       // set output lod
       std::vector<size_t> host_out_lod0(dev_out_lod0.begin(),

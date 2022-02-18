@@ -57,6 +57,7 @@ class ScaleLoDTensorFunctor<platform::CUDADeviceContext, T> {
         seq_data, mix_vector.CUDAMutableData(context.GetPlace()), scales,
         seq_width);
 #endif
+    mix_vector.CopyToCPU();
   }
 };
 

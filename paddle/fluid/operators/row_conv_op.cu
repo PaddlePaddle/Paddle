@@ -353,6 +353,7 @@ class RowConvKernel<platform::CUDADeviceContext, T>
       RowConvForward<T><<<grid_dim, block_dim, 0, stream>>>(
           in, weight, num_sequence, input_dim, future_context, idx, out);
     }
+    mix_vector.CopyToCPU();
   }
 };
 
@@ -446,6 +447,7 @@ class RowConvGradKernel<platform::CUDADeviceContext, T>
             dout, weights, num_sequence, input_dim, future_context, idx, din);
       }
     }
+    mixv_batch_indices.CopyToCPU();
   }
 };
 }  // namespace operators

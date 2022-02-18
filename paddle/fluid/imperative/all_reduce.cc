@@ -88,6 +88,7 @@ static void AllReduce(const pten::SelectedRows &src, pten::SelectedRows *dst,
       platform::DeviceContextPool::Instance().Get(place));
 
   bool use_calc_stream = (dev_ctx->stream() == stream);
+  VLOG(4) << "Is use calculate stream: " << use_calc_stream;
 
   // 1. Gather rows number from all workers. Here use ncclAllGather to do this,
   // but we can use other ways to implement is in the future
@@ -97,10 +98,10 @@ static void AllReduce(const pten::SelectedRows &src, pten::SelectedRows *dst,
   // CUDAMutableData use CalStream
   paddle::framework::MixVector<int64_t> mixv_rows_num_vector(&rows_num_vector);
   auto *gpu_rows_num_ptr = mixv_rows_num_vector.CUDAMutableData(place);
+  VLOG(4) << "start dev_ctx->wait";
   if (!use_calc_stream) {
     dev_ctx->Wait();
   }
-  mixv_rows_num_vector.CopyToCPU();
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
       gpu_rows_num_ptr + strategy.local_rank_, gpu_rows_num_ptr, 1, ncclInt64,
       comm->comm(), stream));
@@ -109,6 +110,7 @@ static void AllReduce(const pten::SelectedRows &src, pten::SelectedRows *dst,
     platform::GpuStreamSync(stream);
   }
 
+  mixv_rows_num_vector.CopyToCPU();
   const auto *cpu_rows_num_ptr = rows_num_vector.data();
   auto rows_num =
       std::accumulate(cpu_rows_num_ptr, cpu_rows_num_ptr + strategy.nranks_,
@@ -149,6 +151,7 @@ static void AllReduce(const pten::SelectedRows &src, pten::SelectedRows *dst,
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
         src_rows_ptr, dst_rows_ptr, row_sendcount, ncclInt64, comm->comm(),
         stream));
+    mixv_dst_rows.CopyToCPU();
     auto value_sendcount = cpu_rows_num_ptr[0] * feature_size;
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
         src_tensor_ptr, dst_tensor_ptr, value_sendcount, nccl_dtype,

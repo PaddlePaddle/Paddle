@@ -103,6 +103,7 @@ struct SparseAdagradFunctor<platform::CUDADeviceContext, T> {
                       .stream()>>>(
         grad_merge_data, mixv_merge_rows.CUDAMutableData(context.GetPlace()),
         lr, param_data, moment_data, grad_width, epsilon);
+    mixv_merge_rows.CopyToCPU();
   }
 };
 

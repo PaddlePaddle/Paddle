@@ -61,6 +61,7 @@ class GPUBoxClipKernel : public framework::OpKernel<T> {
     GPUBoxClip<T, 512><<<batch_size, 512, 0, stream>>>(
         input->data<T>(), mix_vector.CUDAMutableData(dev_ctx.GetPlace()),
         bbox_width, im_info->data<T>(), output_data);
+    mix_vector.CopyToCPU();
   }
 };
 

@@ -271,10 +271,6 @@ class MixVector {
   // Move ctor
   MixVector(MixVector<T> &&other) = delete;
 
-  ~MixVector() {
-    CopyToCPU();  // copy to cpu and release.
-  }
-
   // CPU data access method. Mutable.
   T &operator[](size_t i) { return (*m_)[i]; }
 
