@@ -7,5 +7,6 @@ func @basic_tensor() {
   %c = "pten_dt.create_dense_tensor.cpu.f32.nchw" (%a) {dims=[1:i64], lod=[1:i64]}: (!pten.CPU_allocator) -> (!infrt.tensor<X86, NCHW, F32>)
   // "pten_dt.fill_dense_tensor.f32" (%c) {value=[1.0:f32]} : (!infrt.tensor<X86, NCHW, F32>) -> ()
 
+  %d = "pten_dt.fake_pten_kernel" (%b, %c, %c) {transpose_x=false} : (!pten.CPU_context, !infrt.tensor<X86, NCHW, F32>, !infrt.tensor<X86, NCHW, F32>) -> (!infrt.tensor<X86, NCHW, F32>)
   infrt.return
 }

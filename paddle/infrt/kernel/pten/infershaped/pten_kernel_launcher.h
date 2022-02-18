@@ -22,6 +22,17 @@
 namespace infrt {
 namespace kernel {
 
+static void FakePtenInferShape(const ::pten::MetaTensor& a,
+                               const ::pten::MetaTensor& b,
+                               bool arg_0,
+                               ::pten::MetaTensor* c) {}
+
+static void FakePtenKernel(const ::pten::CPUContext& /*Context*/,
+                           const ::pten::DenseTensor& a,
+                           const ::pten::DenseTensor& b,
+                           bool arg_0,
+                           ::pten::DenseTensor* c) {}
+
 template <typename KernelFunc,
           KernelFunc kernel,
           typename InferShapedFunc,

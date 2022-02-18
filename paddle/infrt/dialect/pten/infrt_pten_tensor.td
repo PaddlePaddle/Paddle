@@ -53,4 +53,9 @@ def PDT_FillDenseTensorOp_f32 : FillDenseTensorOp<F32ArrayAttr, "f32">;
 def PDT_CreateAllocatorOp_cpu : CreateCPUAllocatorOp;
 def PDT_CreateContextOp_cpu : CreateCPUContextOp;
 
+def FakeKernelOp : PDT_Op<"fake_pten_kernel"> {
+  let arguments = (ins CPU_Context:$dev_ctx, TensorType:$x, TensorType:$y, BoolAttr:$transpose_x);
+  let results = (outs TensorType:$output);
+}
+
 #endif
