@@ -329,13 +329,15 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
                  const std::vector<bool> &is_sparse_gradient,
                  std::shared_ptr<imperative::ParallelContext> parallel_ctx,
                  const std::vector<size_t> &group_size_limits,
-                 bool find_unused_vars)
+                 bool find_unused_vars,
+                 const std::unordered_map<std::string, size_t> recompute_map)
     : vars_(vars),
       group_indices_(group_indices),
       is_sparse_gradient_(is_sparse_gradient),
       parallel_ctx_(parallel_ctx),
       group_size_limits_(group_size_limits),
-      find_unused_vars_each_step_(find_unused_vars) {
+      find_unused_vars_each_step_(find_unused_vars),
+      recompute_params_map_(recompute_map) {
   VLOG(3) << "Start construct the Reducer ...";
   nrings_ = parallel_ctx->GetNRings();
   nranks_ = parallel_ctx->GetNRanks();
@@ -487,20 +489,24 @@ void Reducer::PrepareDeps(const std::unordered_set<GradOpNode *> &init_nodes) {
           grad_pending_node,
           platform::errors::NotFound("Grad pending node should not be null"));
       // py_layer is not supported in DataParallel
-      auto begin = grad_pending_node->begin();
-      auto end = grad_pending_node->end();
-      for (auto op_base = begin; op_base != end; op_base++) {
-        PADDLE_ENFORCE_EQ(
-            op_base->Type() != "py_layer", true,
-            platform::errors::PreconditionNotMet(
-                "Note: Currently PyLayer is not supported in DataParallel. For "
-                "using PyLayer in a DataParallel model, you can skip gradient "
-                "synchronization among multiple cards by 'no_sync', and "
-                "manually implement 'all_reduce' before model optimization. "
-                "There is an example showing specific implemetation processing "
-                "in offical docs: https://www.paddlepaddle.org.cn/documentation"
-                "/docs/api/paddle/DataParallel_cn.html"));
-      }
+      // auto begin = grad_pending_node->begin();
+      // auto end = grad_pending_node->end();
+      // for (auto op_base = begin; op_base != end; op_base++) {
+      //   PADDLE_ENFORCE_EQ(
+      //       op_base->Type() != "py_layer", true,
+      //       platform::errors::PreconditionNotMet(
+      //           "Note: Currently PyLayer is not supported in DataParallel.
+      //           For "
+      //           "using PyLayer in a DataParallel model, you can skip gradient
+      //           "
+      //           "synchronization among multiple cards by 'no_sync', and "
+      //           "manually implement 'all_reduce' before model optimization. "
+      //           "There is an example showing specific implemetation
+      //           processing "
+      //           "in offical docs:
+      //           https://www.paddlepaddle.org.cn/documentation"
+      //           "/docs/api/paddle/DataParallel_cn.html"));
+      // }
       ++node_deps_[grad_pending_node.get()];
       if (visited.count(grad_pending_node.get()) == 0) {
         visited.insert(grad_pending_node.get());
@@ -567,7 +573,8 @@ void Reducer::TraverseBackwardGraph(
   }
 
   for (const auto &it : var_index_map_) {
-    if (var_visited.count(it.first) == 0) {
+    if (var_visited.count(it.first) == 0 &&
+        recompute_params_map_[it.first->Name()] == 0) {
       unused_vars_.push_back(it.second);
       VLOG(3) << "Var[" << it.second << "] [" << it.first->Name()
               << "] is not used";

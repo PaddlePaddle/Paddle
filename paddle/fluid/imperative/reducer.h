@@ -130,7 +130,8 @@ class Reducer {
       const std::vector<std::vector<size_t>>& group_indices,
       const std::vector<bool>& is_sparse_gradient,
       std::shared_ptr<imperative::ParallelContext> parallel_ctx,
-      const std::vector<size_t>& group_size_limits, bool find_unused_vars);
+      const std::vector<size_t>& group_size_limits, bool find_unused_vars,
+      const std::unordered_map<std::string, size_t> recompute_map);
 
   virtual ~Reducer() {}
 
@@ -197,6 +198,7 @@ class Reducer {
   bool find_unused_vars_each_step_{false};
   bool find_unused_vars_once_{true};
   bool groups_need_finalize_{false};
+  std::unordered_map<std::string, size_t> recompute_params_map_;
 #ifdef PADDLE_WITH_XPU_BKCL
   // comm_pool_ is used for scheduling allreduce in multi Kunlun cards training.
   std::unique_ptr<::ThreadPool> comm_pool_{nullptr};

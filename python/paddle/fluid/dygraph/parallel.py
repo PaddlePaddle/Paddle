@@ -560,13 +560,15 @@ class DataParallel(layers.Layer):
                  strategy=None,
                  comm_buffer_size=25,
                  last_comm_buffer_size=1,
-                 find_unused_parameters=False):
+                 find_unused_parameters=False,
+                 recompute_params=[]):
         super(DataParallel,
               self).__init__(layers.full_name() + "_data_parallel")
 
         self._layers = layers
         self.find_unused_parameters = find_unused_parameters
         self.grad_need_sync = True
+        self._recompute_params = recompute_params
 
         # NOTE(chenweihang): The ParallelStrategy here is not strictly a strategy. 
         # It just stores some environment variables, which can be constructed by 
@@ -606,6 +608,7 @@ class DataParallel(layers.Layer):
     def init_reducer(self):
         layers_param = []
         params_set = set()
+        recompute_params_map = dict()
         for sublayer in self.sublayers():
             for _, param in sublayer.named_parameters(include_sublayers=False):
                 if param is None or param in params_set:
@@ -618,6 +621,12 @@ class DataParallel(layers.Layer):
                     layers_param.append((sublayer, param))
 
         trainable_parameters = [param for _, param in layers_param]
+
+        for param in trainable_parameters:
+            if param.name in self._recompute_params:
+                recompute_params_map[param.name + "@GRAD"] = 1
+            else:
+                recompute_params_map[param.name + "@GRAD"] = 0
 
         assert len(trainable_parameters) > 0, \
             "This model does not have any parameters to train, and " \
@@ -649,7 +658,7 @@ class DataParallel(layers.Layer):
             list(reversed(self.group_indices)), is_sparse_gradient,
             parallel_helper.__parallel_ctx__clz__,
             [self.last_comm_buffer_size, self.comm_buffer_size],
-            self.find_unused_parameters)
+            self.find_unused_parameters, recompute_params_map)
 
     def _find_varbase(self, obj):
         if isinstance(obj, core.VarBase):
@@ -661,7 +670,7 @@ class DataParallel(layers.Layer):
         return []
 
     @contextmanager
-    def no_sync(self):
+    def no_sync(self, enable=True):
         """
         A context manager to stop gradient synchronization. Within no_sync(), 
         gradients of parameters will only be accumulated on model and not 
@@ -699,7 +708,7 @@ class DataParallel(layers.Layer):
 
         """
         tmp_grad_need_sync = self.grad_need_sync
-        self.grad_need_sync = False
+        self.grad_need_sync = not enable
         try:
             yield
         finally:

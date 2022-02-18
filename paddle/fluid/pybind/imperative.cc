@@ -2497,7 +2497,8 @@ void BindImperative(py::module *m_ptr) {
                     const std::vector<std::vector<size_t>> &,
                     const std::vector<bool> &,
                     std::shared_ptr<imperative::ParallelContext>,
-                    const std::vector<size_t> &, bool>())
+                    const std::vector<size_t> &, bool,
+                    const std::unordered_map<std::string, size_t>>())
       .def("prepare_for_backward", &imperative::Reducer::PrepareForBackward,
            py::arg("vars"), py::call_guard<py::gil_scoped_release>());
 
