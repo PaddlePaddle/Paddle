@@ -27,8 +27,6 @@ namespace pten {
 template <typename T, typename Context, typename VType>
 void FullValue(const Context& dev_ctx, DenseTensor* tensor, VType val) {
   dev_ctx.template Alloc<T>(tensor);
-  VLOG(1) << "####### data: " << tensor->data();
-  VLOG(1) << "####### EigenVector: " << tensor;
   auto t = pten::EigenVector<T>::Flatten(*tensor);
   t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(val));
 }
@@ -38,9 +36,7 @@ void FullKernel(const Context& dev_ctx,
                 const ScalarArray& shape,
                 const Scalar& val,
                 DenseTensor* out) {
-  VLOG(1) << "####### OUT: " << out << " initialized:" << out->initialized();
   out->Resize(pten::framework::make_ddim(shape.GetData()));
-  VLOG(1) << "####### out size: " << out->dims();
   FullValue<T>(dev_ctx, out, val.to<T>());
 }
 
