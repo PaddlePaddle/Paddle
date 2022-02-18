@@ -399,7 +399,7 @@ class CompileTimeStrategy(object):
         trainer_id = self.get_role_id()
         aggregate = True
         ctx = CommContext(name, names, eps, sections, origin_varnames,
-                          trainer_id, aggregate, is_sparse, is_distributed, -1)
+                          trainer_id, aggregate, is_sparse, is_distributed)
         return ctx
 
     def get_trainer_send_context(self):
@@ -450,7 +450,7 @@ class CompileTimeStrategy(object):
                                   param_ctx.trainer_id(),
                                   param_ctx.aggregate(),
                                   param_ctx.is_sparse(),
-                                  param_ctx.is_distributed(), -1)
+                                  param_ctx.is_distributed())
 
                 send_ctx[ctx.var_name()] = ctx
                 idx += 1
