@@ -578,25 +578,5 @@ bool constexpr is_int8() {
   return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
 }
 
-inline const std::vector<int>& GetNCHWToNHWCPermute(int tensor_rank) {
-  static std::unordered_map<int, std::vector<int>> nchw_to_nhwc_permute_map = {
-      {3, {0, 2, 1}},       // ncw   ->  nwc
-      {4, {0, 3, 1, 2}},    // nchw  ->  nhwc
-      {5, {0, 4, 1, 2, 3}}  // ncdhw ->  ndhwc
-  };
-
-  return nchw_to_nhwc_permute_map[tensor_rank];
-}
-
-inline const std::vector<int>& GetNHWCToNCHWPermute(int tensor_rank) {
-  static std::unordered_map<int, std::vector<int>> nhwc_to_nchw_permute_map = {
-      {3, {0, 2, 1}},       // nwc   -> ncw
-      {4, {0, 2, 3, 1}},    // nhwc  -> nchw
-      {5, {0, 2, 3, 4, 1}}  // ndhwc -> ncdhw
-  };
-
-  return nhwc_to_nchw_permute_map[tensor_rank];
-}
-
 }  // namespace platform
 }  // namespace paddle
