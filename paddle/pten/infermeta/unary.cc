@@ -236,7 +236,8 @@ void ReshapeInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_NOT_NULL(out,
                           pten::errors::InvalidArgument(
                               "Output(Out) of ReshapeOp should not be null."));
-  if (!config.is_runtime && shape_data.size() == 0) {
+  if (!config.is_runtime && shape.FromTensor()) {
+    out->set_dims(pten::framework::make_ddim(shape_data));
     out->share_lod(x);
     return;
   }

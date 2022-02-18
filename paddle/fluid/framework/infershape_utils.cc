@@ -330,12 +330,13 @@ pten::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
       if (ctx->HasInputs(attr_name) || ctx->HasInput(attr_name)) {
         const auto& infershape_inputs = ctx->GetInputVarPtrs(attr_name);
         if (ctx->IsRuntime()) {
+          // If is in runtime, we will get tensor's value for ScalarArray
+          // and push it into attrs
           std::vector<Variable*> vars;
           vars.reserve(infershape_inputs.size());
           for (size_t i = 0; i < infershape_inputs.size(); i++) {
             vars.push_back(BOOST_GET_CONST(Variable*, infershape_inputs[i]));
           }
-
           if (infershape_inputs.size() != 1) {
             infer_meta_context.EmplaceBackAttr(
                 std::move(experimental::MakePtenScalarArrayFromVarList(vars)));
@@ -344,9 +345,22 @@ pten::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
                 std::move(experimental::MakePtenScalarArrayFromVar(*vars[0])));
           }
         } else {
-          VLOG(6) << "Not in Runtime, the Attr( " << attr_name
-                  << ") ScalarArray value will be set empty";
-          infer_meta_context.EmplaceBackAttr(std::move(pten::ScalarArray()));
+          // If is not in runtime, we will set default value(-1) for ScalarArray
+          int64_t num_ele = 1;
+          std::vector<VarDesc*> vars;
+          vars.reserve(infershape_inputs.size());
+          for (size_t i = 0; i < infershape_inputs.size(); i++) {
+            vars.push_back(BOOST_GET_CONST(VarDesc*, infershape_inputs[i]));
+          }
+          for (auto& var : vars) {
+            const auto& tensor_dims = var->GetShape();
+            for (size_t i = 0; i < tensor_dims.size(); ++i) {
+              num_ele *= tensor_dims[i];
+            }
+          }
+          pten::ScalarArray tensor_attr(std::vector<int32_t>(num_ele, -1));
+          tensor_attr.SetInitFromTensor(true);
+          infer_meta_context.EmplaceBackAttr(std::move(tensor_attr));
         }
       } else if (ctx->HasAttr(attr_name)) {
         auto& attr = attr_reader.GetAttr(attr_name);
