@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/diagonal_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -169,18 +169,10 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(DiagonalGradNoNeedBufferVarsInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
 REGISTER_OPERATOR(diagonal, ops::DiagonalOp, ops::DiagonalOpMaker,
                   ops::DiagonalGradOpMaker<paddle::framework::OpDesc>,
                   ops::DiagonalGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(diagonal_grad, ops::DiagonalGradOp,
                   ops::DiagonalGradNoNeedBufferVarsInferer)
-
-REGISTER_OP_CPU_KERNEL(diagonal, ops::DiagonalKernel<int>,
-                       ops::DiagonalKernel<int64_t>, ops::DiagonalKernel<float>,
-                       ops::DiagonalKernel<double>, ops::DiagonalKernel<bool>);
-
-REGISTER_OP_CPU_KERNEL(diagonal_grad, ops::DiagonalGradKernel<int>,
-                       ops::DiagonalGradKernel<int64_t>,
-                       ops::DiagonalGradKernel<float>,
-                       ops::DiagonalGradKernel<double>);

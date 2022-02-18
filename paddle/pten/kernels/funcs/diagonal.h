@@ -17,11 +17,13 @@
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
+#include "paddle/pten/kernels/primitive/kernel_primitives.h"
 #endif
 
 #include <algorithm>
 
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/core/dense_tensor.h"
 
 namespace pten {
 namespace funcs {
@@ -125,6 +127,89 @@ DenseTensor Diagonal(const DeviceContext& context,
     return {};
   }
 }
+
+template <typename T>
+std::vector<T> ComputeDimStride(const std::vector<T> dim) {
+  size_t dim_size = dim.size();
+  std::vector<T> dim_strides;
+  dim_strides.resize(dim_size);
+  for (size_t i = 0; i < dim_size - 1; i++) {
+    size_t temp_stride = 1;
+    for (size_t j = i + 1; j < dim_size; j++) {
+      temp_stride = temp_stride * dim[j];
+    }
+    dim_strides[i] = temp_stride;
+  }
+  dim_strides[dim_size - 1] = 1;
+  return dim_strides;
+}
+
+#if defined(__NVCC__) || defined(__HIPCC__)
+template <typename T, int X_DIM_SIZE, int OUT_DIM_SIZE>
+__global__ void DiagonalCuda(const T* data1,
+                             T* data2,
+                             const int64_t offset_,
+                             int64_t axis1_,
+                             int64_t axis2_,
+                             int64_t* x_stride,
+                             int64_t* out_stride,
+                             int64_t numel,
+                             bool is_grad) {
+  CUDA_KERNEL_LOOP(idx, numel) {
+    int64_t idx_dim[X_DIM_SIZE] = {0};
+    int64_t temp = 0;
+    for (size_t i = 0; i < X_DIM_SIZE - 1; i++) {
+      idx_dim[i] = (idx - temp) / x_stride[i];
+      temp = temp + idx_dim[i] * x_stride[i];
+    }
+    idx_dim[X_DIM_SIZE - 1] = idx - temp;
+
+    int64_t axis1_dim = idx_dim[axis1_];
+    int64_t axis2_dim = idx_dim[axis2_];
+
+    int64_t out_dim[OUT_DIM_SIZE] = {0};
+    int temp_pos = 0;
+    for (int i = 0; i < X_DIM_SIZE; i++) {
+      if (i != axis1_ && i != axis2_) {
+        out_dim[temp_pos] = idx_dim[i];
+        temp_pos++;
+      }
+    }
+    bool flag = false;
+    if (offset_ == 0 && axis1_dim == axis2_dim) {
+      out_dim[temp_pos] = axis1_dim;
+      flag = true;
+    } else if (offset_ > 0 && (axis1_dim + offset_) == axis2_dim) {
+      out_dim[temp_pos] = axis1_dim;
+      flag = true;
+    } else if (offset_ < 0 && (axis1_dim + offset_) == axis2_dim) {
+      out_dim[temp_pos] = axis2_dim;
+      flag = true;
+    }
+    if (!is_grad) {
+      if (flag) {
+        int64_t idx_output = 0;
+        for (size_t i = 0; i < OUT_DIM_SIZE - 1; i++) {
+          idx_output = idx_output + out_dim[i] * out_stride[i];
+        }
+        idx_output = idx_output + out_dim[OUT_DIM_SIZE - 1];
+        data2[idx_output] = data1[idx];
+      }
+    } else {
+      if (flag) {
+        int64_t idx_output = 0;
+        for (size_t i = 0; i < OUT_DIM_SIZE - 1; i++) {
+          idx_output = idx_output + out_dim[i] * out_stride[i];
+        }
+        idx_output = idx_output + out_dim[OUT_DIM_SIZE - 1];
+        data2[idx] = data1[idx_output];
+      } else {
+        data2[idx] = static_cast<T>(0);
+      }
+    }
+  }
+}
+#endif
 
 }  // namespace funcs
 }  // namespace pten

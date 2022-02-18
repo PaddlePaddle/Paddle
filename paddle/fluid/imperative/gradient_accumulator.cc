@@ -24,6 +24,7 @@
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
@@ -417,6 +418,22 @@ void TensorAdd(const VarType& src, VarType* dst) {
 #endif
     } else if (platform::is_cpu_place(place)) {
       return TensorAddImpl<platform::CPUDeviceContext, platform::float16>(
+          src_tensor, dst_tensor, place);
+    }
+  }
+  if (data_type == framework::proto::VarType::BF16) {
+    if (platform::is_gpu_place(place)) {
+#if defined(PADDLE_WITH_CUDA)
+      return TensorAddImpl<platform::CUDADeviceContext, platform::bfloat16>(
+          src_tensor, dst_tensor, place);
+#else
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Gradient accumulation of data type (%s) on place (%s) is not "
+          "supported in imperative mode",
+          framework::DataTypeToString(data_type), place));
+#endif
+    } else if (platform::is_cpu_place(place)) {
+      return TensorAddImpl<platform::CPUDeviceContext, platform::bfloat16>(
           src_tensor, dst_tensor, place);
     }
   }

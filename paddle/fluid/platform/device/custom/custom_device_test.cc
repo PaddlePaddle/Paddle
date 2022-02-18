@@ -30,8 +30,8 @@ void RegisterDevice() {
   runtime_params.interface->size = sizeof(C_DeviceInterface);
 
   InitFakeCPUDevice(&runtime_params);
-  EXPECT_TRUE(paddle::platform::LoadCustomRuntimeLib(
-      runtime_params, std::move(device_interface), nullptr));
+  paddle::platform::LoadCustomRuntimeLib(
+      runtime_params, std::move(device_interface), "", nullptr);
 }
 
 void InitDevice() {

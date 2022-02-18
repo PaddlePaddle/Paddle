@@ -2230,6 +2230,8 @@ void BindImperative(py::module *m_ptr) {
                     &imperative::Tracer::SetEnableProgramDescTracing)
       .def_property("_amp_level", &imperative::Tracer::GetAmpLevel,
                     &imperative::Tracer::SetAmpLevel)
+      .def_property("_amp_dtype", &imperative::Tracer::GetAmpDtype,
+                    &imperative::Tracer::SetAmpDtype)
       .def_property("_has_grad", &imperative::Tracer::HasGrad,
                     &imperative::Tracer::SetHasGrad)
       .def_property(
