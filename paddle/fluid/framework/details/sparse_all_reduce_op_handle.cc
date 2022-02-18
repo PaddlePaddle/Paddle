@@ -280,6 +280,8 @@ bool SparseAllReduceOpHandle::IsEncoded() {
 }
 
 void SparseAllReduceOpHandle::RunImpl() {
+  platform::RecordEvent record_event(
+      Name(), platform::TracerEventType::Communication, 1);
   if (!IsEncoded()) {
     AllReduceOpHandle::RunImpl();
     return;

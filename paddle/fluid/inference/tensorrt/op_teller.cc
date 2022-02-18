@@ -225,6 +225,13 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                 << desc.Output("Out").size();
         return false;
       }
+      if (desc.HasAttr("data_format")) {
+        std::string data_format =
+            BOOST_GET_CONST(std::string, desc.GetAttr("data_format"));
+        if (data_format == "NHWC" || data_format == "NDHWC") {
+          return false;
+        }
+      }
       if (!desc.HasAttr("pooling_type")) {
         return false;
       } else {
