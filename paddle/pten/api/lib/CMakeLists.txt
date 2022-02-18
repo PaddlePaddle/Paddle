@@ -17,8 +17,12 @@ set(api_gen_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/api_gen.py)
 set(api_yaml_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/api.yaml)
 set(api_header_file ${CMAKE_SOURCE_DIR}/paddle/pten/api/include/api.h)
 set(api_source_file ${CMAKE_SOURCE_DIR}/paddle/pten/api/lib/api.cc)
+set(dygraph_api_header_file ${CMAKE_SOURCE_DIR}/paddle/pten/api/lib/dygraph_api.h)
+set(dygraph_api_source_file ${CMAKE_SOURCE_DIR}/paddle/pten/api/lib/dygraph_api.cc)
 set(api_header_file_tmp ${api_header_file}.tmp)
 set(api_source_file_tmp ${api_source_file}.tmp)
+set(dygraph_api_header_file_tmp ${dygraph_api_header_file}.tmp)
+set(dygraph_api_source_file_tmp ${dygraph_api_source_file}.tmp)
 
 # backward api file
 set(bw_api_gen_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/backward_api_gen.py)
@@ -40,14 +44,18 @@ endif()
 
 # generate forward api
 add_custom_command(
-  OUTPUT ${api_header_file} ${api_source_file}
+  OUTPUT ${api_header_file} ${api_source_file} ${dygraph_api_header_file} ${dygraph_api_source_file}
   COMMAND ${PYTHON_EXECUTABLE} -m pip install pyyaml
   COMMAND ${PYTHON_EXECUTABLE} ${api_gen_file}
                  --api_yaml_path ${api_yaml_file}
                  --api_header_path ${api_header_file_tmp}
                  --api_source_path ${api_source_file_tmp}
+                 --dygraph_api_header_path ${dygraph_api_header_file_tmp}
+                 --dygraph_api_source_path ${dygraph_api_source_file_tmp}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_header_file_tmp} ${api_header_file}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_source_file_tmp} ${api_source_file}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${dygraph_api_header_file_tmp} ${dygraph_api_header_file}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${dygraph_api_source_file_tmp} ${dygraph_api_source_file}
   COMMENT "copy_if_different ${api_header_file} ${api_source_file}"
   DEPENDS ${api_yaml_file} ${api_gen_file} ${api_gen_base}
   VERBATIM)
@@ -81,6 +89,7 @@ cc_library(api_custom_impl SRCS api_custom_impl.cc DEPS pten_tensor_raw pten ker
 
 cc_library(sparse_api SRCS sparse_api.cc DEPS pten_tensor_raw pten kernel_dispatch pten_data_transform)
 cc_library(pten_function_api SRCS ${api_source_file} DEPS pten_tensor_raw pten kernel_dispatch pten_data_transform api_custom_impl)
+cc_library(pten_dygraph_api SRCS ${dygraph_api_source_file} DEPS pten_tensor_raw pten kernel_dispatch pten_data_transform)
 cc_library(pten_bw_function_api SRCS ${bw_api_source_file} DEPS pten_tensor_raw pten kernel_dispatch backward_infermeta pten_data_transform pten_function_api api_custom_impl)
 cc_library(wrapped_infermeta SRCS ${wrapped_infermeta_source_file} DEPS pten)
 

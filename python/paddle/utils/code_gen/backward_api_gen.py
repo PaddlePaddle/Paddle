@@ -69,7 +69,11 @@ class BackwardAPI(BaseAPI):
         return out_type_list[0] if len(
             out_type_list) == 1 else "std::vector<std::vector<Tensor>>"
 
-    def gene_output(self, output_type_list, set_out_func, code_indent):
+    def gene_output(self,
+                    output_type_list,
+                    set_out_func,
+                    code_indent,
+                    inplace_flag=False):
         kernel_output = ""
         output_names = []
         output_create = ""
@@ -77,8 +81,11 @@ class BackwardAPI(BaseAPI):
         if len(output_type_list) == 1:
             kernel_output = 'kernel_out'
             output_names.append('kernel_out')
+            inplace_assign = " = " + self.inplace_map[self.outputs['names'][
+                0]] if inplace_flag and self.inplace_map is not None and self.outputs[
+                    'names'][0] in self.inplace_map else ""
             output_create = f"""
-{code_indent}  {self.outputs['return_type']} out;
+{code_indent}  {self.outputs['return_type']} out{inplace_assign};
 {code_indent}  auto kernel_out = {set_out_func}(kernel_backend, &out);"""
 
         elif len(output_type_list) > 1:
@@ -90,11 +97,22 @@ class BackwardAPI(BaseAPI):
                 output_names.append(f'kernel_out_{i}')
                 if out_type_item == 'Tensor':
                     get_out_code = f'&out[{i}][0]'
-                    output_create = output_create + f"""
+                    if inplace_flag and self.inplace_map is not None and self.outputs[
+                            'names'][i] in self.inplace_map:
+                        output_create = output_create + f"""
+{code_indent}  out[{i}].emplace_back({self.inplace_map[self.outputs['names'][i]]});"""
+
+                    else:
+                        output_create = output_create + f"""
 {code_indent}  out[{i}].emplace_back();"""
 
                 else:
                     get_out_code = f'&out[{i}]'
+                    if inplace_flag and self.inplace_map is not None and self.outputs[
+                            'names'][i] in self.inplace_map:
+                        output_create = output_create + f"""
+{code_indent}  out[{i}] = {self.inplace_map[self.outputs['names'][i]]};"""
+
                 output_create = output_create + f"""
 {code_indent}  auto kernel_out_{i} = {set_out_func}(kernel_backend, {get_out_code});"""
 
