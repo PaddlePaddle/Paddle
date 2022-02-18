@@ -13,7 +13,7 @@
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -65,7 +65,7 @@ static inline void CalcMatrixSigmaAndNormWeight(
     Tensor* sigma, Tensor* u, Tensor* v, Tensor* weight, const int power_iters,
     const float eps, const framework::ExecutionContext& ctx) {
   auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
-  auto blas = math::GetBlas<DeviceContext, T>(ctx);
+  auto blas = pten::funcs::GetBlas<DeviceContext, T>(ctx);
   auto sigma_t = EigenTensor<T, 2>::From(*sigma);
   auto weight_t = EigenTensor<T, 2>::From(*weight);
   auto u_t = EigenTensor<T, 2>::From(*u);
@@ -179,7 +179,7 @@ class SpectralNormGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    auto blas = math::GetBlas<DeviceContext, T>(ctx);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(ctx);
     auto weight = ctx.Input<Tensor>("Weight");
     auto u = ctx.Input<Tensor>("U");
     auto v = ctx.Input<Tensor>("V");

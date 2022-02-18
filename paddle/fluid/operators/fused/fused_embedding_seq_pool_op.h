@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/operators/jit/kernels.h"
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -179,7 +179,7 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
       const int m = batch_size * idx_width;
       const int n = table_width;
       const int k = table_height;
-      auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+      auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(context);
       blas.CSRMM(&transa, &m, &n, &k, &alpha, matdescra, (const T *)csr_vals,
                  (const int *)csr_colmuns, (const int *)csr_row_idx,
                  (const int *)csr_row_idx + 1, weights, &n, &beta, output, &n);
@@ -277,7 +277,7 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
                           csr_colmuns, csr_row_idx, padding_idx);
 
       auto *d_output_data = d_output->data<T>();
-      auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+      auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(context);
       int width = static_cast<int>(table_dim[1]);
       int num_seq = batch_size * idx_width;
       LOG(INFO) << "num seq = " << num_seq << " width = " << width;

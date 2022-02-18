@@ -17,6 +17,7 @@ limitations under the License. */
 #include <ostream>
 
 #include "paddle/pten/api/ext/exception.h"
+#include "paddle/pten/common/place.h"
 
 namespace paddle {
 namespace experimental {
@@ -114,8 +115,17 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
     case Backend::GPUDNN:
       os << "GPUDNN";
       break;
-    default:
-      PD_THROW("Invalid enum backend type `", static_cast<int>(backend), "`.");
+    default: {
+      size_t device_type_id_ = static_cast<size_t>(backend) -
+                               static_cast<size_t>(Backend::NUM_BACKENDS);
+      std::string device_type = pten::GetGlobalDeviceType(device_type_id_);
+      if (!device_type.empty()) {
+        os << device_type;
+      } else {
+        PD_THROW(
+            "Invalid enum backend type `", static_cast<int>(backend), "`.");
+      }
+    }
   }
   return os;
 }

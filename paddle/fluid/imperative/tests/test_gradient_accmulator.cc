@@ -29,6 +29,57 @@ namespace framework = paddle::framework;
 namespace paddle {
 namespace imperative {
 
+TEST(Test__SelectedRowsMerge_Test, SelectedRowsMerge) {
+  pten::CPUPlace cpu;
+
+  std::vector<int64_t> rows{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+  int64_t table_size = 10;
+  int64_t embedding_width = 10;
+
+  auto sr1 = std::make_shared<pten::SelectedRows>(rows, table_size);
+  auto sr2 = std::make_shared<pten::SelectedRows>(rows, table_size);
+
+  // initialize a sparse table 1
+  sr1->mutable_value()->Resize(
+      pten::framework::make_ddim({table_size, embedding_width}));
+  auto* data_sr1 = sr1->mutable_value()->mutable_data<float>(cpu);
+  for (int64_t i = 0; i < table_size; ++i) {
+    for (int64_t j = 0; j < embedding_width; ++j) {
+      data_sr1[i * embedding_width + j] = static_cast<float>(i);
+    }
+  }
+
+  // initialize a sparse table 2
+  sr2->mutable_value()->Resize(
+      pten::framework::make_ddim({table_size, embedding_width}));
+  auto* data_sr2 = sr2->mutable_value()->mutable_data<float>(cpu);
+  for (int64_t i = 0; i < table_size; ++i) {
+    for (int64_t j = 0; j < embedding_width; ++j) {
+      data_sr2[i * embedding_width + j] = static_cast<float>(i);
+    }
+  }
+  // new 2 pten::Tensor
+  paddle::experimental::Tensor t1(sr1);
+  paddle::experimental::Tensor t2(sr2);
+
+  // call SelectedRowsMerge
+  auto new_buffer =
+      paddle::imperative::SelectedRowsMerge<paddle::experimental::Tensor>(t1,
+                                                                          t2);
+  auto* new_buffer_tensor =
+      static_cast<pten::SelectedRows*>(new_buffer->impl().get());
+  auto* new_buffer_data_sr1 =
+      new_buffer_tensor->mutable_value()->mutable_data<float>(cpu);
+
+  // verify the MergeAdd result
+  for (int64_t i = 0; i < table_size; ++i) {
+    for (int64_t j = 0; j < embedding_width; ++j) {
+      EXPECT_EQ(new_buffer_data_sr1[i * embedding_width + j],
+                (static_cast<float>(i) + static_cast<float>(i)));
+    }
+  }
+}
+
 template <typename Place1, typename Place2, typename T>
 int TensorddTest(Place1 place1, Place2 place2, T t1, T t2) {
   framework::Variable var1;
@@ -112,8 +163,28 @@ TEST(test_add_functor, add_functor) {
   gpu_res = TensorddTest(gpu_place, gpu_place, static_cast<double>(1.0),
                          static_cast<double>(2.0));
   EXPECT_EQ(gpu_res, 0);
+
+  // normal
+  gpu_res = TensorddTest(gpu_place, gpu_place, static_cast<float>(1.0),
+                         static_cast<float>(2.0));
+  EXPECT_EQ(gpu_res, 0);
   gpu_res =
       TensorddTest(gpu_place, gpu_place, static_cast<platform::float16>(1.0),
+                   static_cast<platform::float16>(2.0));
+  EXPECT_EQ(gpu_res, 0);
+  // different places
+  gpu_res = TensorddTest(cpu_place, gpu_place, static_cast<float>(1.0),
+                         static_cast<float>(2.0));
+  EXPECT_EQ(gpu_res, 0);
+  gpu_res = TensorddTest(gpu_place, cpu_place, static_cast<float>(1.0),
+                         static_cast<float>(2.0));
+  EXPECT_EQ(gpu_res, 0);
+  gpu_res =
+      TensorddTest(cpu_place, gpu_place, static_cast<platform::float16>(1.0),
+                   static_cast<platform::float16>(2.0));
+  EXPECT_EQ(gpu_res, 0);
+  gpu_res =
+      TensorddTest(gpu_place, cpu_place, static_cast<platform::float16>(1.0),
                    static_cast<platform::float16>(2.0));
   EXPECT_EQ(gpu_res, 0);
 #endif

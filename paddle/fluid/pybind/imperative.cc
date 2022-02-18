@@ -136,10 +136,13 @@ static const platform::Place PyObjectToPlace(const py::object &place_obj) {
     return place_obj.cast<platform::Place>();
   } else if (py::isinstance<platform::MLUPlace>(place_obj)) {
     return place_obj.cast<platform::MLUPlace>();
+  } else if (py::isinstance<platform::CustomPlace>(place_obj)) {
+    return place_obj.cast<platform::CustomPlace>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
-        "Place/CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace/MLUPlace"));
+        "Place/CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace/MLUPlace/"
+        "CustomPlace"));
   }
 }
 
@@ -183,6 +186,9 @@ static void InitVarBaseAndTensor(
     SetTensorFromPyArray<platform::NPUPlace>(tensor, array, place, zero_copy);
   } else if (platform::is_mlu_place(place)) {
     SetTensorFromPyArray<platform::MLUPlace>(tensor, array, place, zero_copy);
+  } else if (platform::is_custom_place(place)) {
+    SetTensorFromPyArray<platform::CustomPlace>(tensor, array, place,
+                                                zero_copy);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
@@ -941,6 +947,10 @@ void BindImperative(py::module *m_ptr) {
            py::arg("value"), py::arg("place"), py::arg("persistable") = false,
            py::arg("zero_copy") = false, py::arg("name") = "",
            py::arg("stop_gradient") = -1)
+      .def("__init__", &InitVarBaseFromNumpyWithArg<platform::CustomPlace>,
+           py::arg("value"), py::arg("place"), py::arg("persistable") = false,
+           py::arg("zero_copy") = false, py::arg("name") = "",
+           py::arg("stop_gradient") = -1)
       .def("__init__", &InitVarBaseFromNumpyWithArgDefault, py::arg("value"))
       .def("__init__", &InitVarBaseFromTensorWithArgDefault, py::arg("tensor"),
            py::arg("name") = "")
@@ -955,6 +965,8 @@ void BindImperative(py::module *m_ptr) {
       .def("__init__", &InitVarBaseFromTensorWithArg<platform::NPUPlace>,
            py::arg("tensor"), py::arg("place"), py::arg("name") = "")
       .def("__init__", &InitVarBaseFromTensorWithArg<platform::MLUPlace>,
+           py::arg("tensor"), py::arg("place"), py::arg("name") = "")
+      .def("__init__", &InitVarBaseFromTensorWithArg<platform::CustomPlace>,
            py::arg("tensor"), py::arg("place"), py::arg("name") = "")
       .def("__init__", &InitVarBaseFromNumpyWithKwargs)
       .def(
@@ -2218,6 +2230,8 @@ void BindImperative(py::module *m_ptr) {
                     &imperative::Tracer::SetEnableProgramDescTracing)
       .def_property("_amp_level", &imperative::Tracer::GetAmpLevel,
                     &imperative::Tracer::SetAmpLevel)
+      .def_property("_amp_dtype", &imperative::Tracer::GetAmpDtype,
+                    &imperative::Tracer::SetAmpDtype)
       .def_property("_has_grad", &imperative::Tracer::HasGrad,
                     &imperative::Tracer::SetHasGrad)
       .def_property(
@@ -2255,6 +2269,11 @@ void BindImperative(py::module *m_ptr) {
                       << " set expected place " << *p;
             } else if (py::isinstance<platform::MLUPlace>(obj)) {
               auto p = obj.cast<platform::MLUPlace *>();
+              self.SetExpectedPlace(*p);
+              VLOG(4) << "Tracer(" << &self << ")"
+                      << " set expected place " << *p;
+            } else if (py::isinstance<platform::CustomPlace>(obj)) {
+              auto p = obj.cast<platform::CustomPlace *>();
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
@@ -2300,6 +2319,21 @@ void BindImperative(py::module *m_ptr) {
              return std::make_tuple(
                  *(imperative::AmpOperators::Instance().GetMutableAllowOps()),
                  *(imperative::AmpOperators::Instance().GetMutableBlockOps()));
+           })
+      .def("trace",
+           [](imperative::Tracer &self, const std::string &type,
+              const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,
+              framework::AttributeMap attrs, const platform::CustomPlace &place,
+              bool trace_backward,
+              const std::map<std::string, std::string> &inplace_map = {}) {
+             auto ins_map = ConvertToNameVarBaseMap(ins);
+             auto outs_map = ConvertToNameVarBaseMap(outs);
+             {
+               py::gil_scoped_release release;
+               self.TraceOp<imperative::VarBase>(
+                   type, std::move(ins_map), std::move(outs_map),
+                   std::move(attrs), place, trace_backward, inplace_map);
+             }
            })
       .def("trace",
            [](imperative::Tracer &self, const std::string &type,
