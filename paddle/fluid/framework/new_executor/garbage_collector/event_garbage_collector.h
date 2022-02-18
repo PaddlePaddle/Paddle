@@ -14,7 +14,7 @@
 #pragma once
 
 #include <queue>
-#include "paddle/fluid/framework/new_executor/interpretercore_garbage_collector.h"
+#include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/workqueue/workqueue.h"
 
 namespace paddle {
@@ -26,15 +26,17 @@ class InterpreterCoreEventGarbageCollector
   InterpreterCoreEventGarbageCollector();
   ~InterpreterCoreEventGarbageCollector();
 
-  virtual void Add(Variable* var, platform::DeviceEvent& event,
-                   const platform::DeviceContext* ctx) override;
+  void Add(Variable* var) override;
+
+  virtual void Add(Variable* var, platform::DeviceEvent* event,
+                   const platform::DeviceContext* ctx);
 
  private:
-  void Add(Garbage garbage, platform::DeviceEvent& event,
+  void Add(Garbage garbage, platform::DeviceEvent* event,
            const platform::DeviceContext* ctx);
-  void Free(GarbageQueue* garbages, platform::DeviceEvent& event,
+  void Free(GarbageQueue* garbages, platform::DeviceEvent* event,
             const platform::DeviceContext* ctx);
-  void Free(Garbage& garbage, platform::DeviceEvent& event,
+  void Free(const Garbage& garbage, platform::DeviceEvent* event,
             const platform::DeviceContext* ctx);
 
   std::unique_ptr<WorkQueue> queue_;
