@@ -66,7 +66,7 @@ class SequenceConvKernel : public framework::OpKernel<T> {
     // Because if padding_trainable is false, padding data should be zeros.
     pten::funcs::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     set_zero(dev_ctx, &col, static_cast<T>(0));
     math::ContextProjectFunctor<DeviceContext, T> seq_project_functor;
 
@@ -109,7 +109,7 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
 
     pten::funcs::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     // use col_shape in the im2col calculation
     framework::DDim col_shape = {in->dims()[0],
                                  sequence_width * context_length};

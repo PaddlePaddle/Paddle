@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/attention_lstm_op.h"
 #include <string>
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/fc.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 #include "paddle/pten/kernels/funcs/cpu_vec.h"
 
 namespace paddle {
@@ -373,7 +373,7 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
     T* lstm_x_data = lstm_x->mutable_data<T>(ctx.GetPlace());
     T* lstm_out_data = lstm_out->mutable_data<T>(ctx.GetPlace());
 
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
+    auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(ctx);
 
     // x(TxM) * fc (Mx1) part of atten_wgt(M+D)x1
     auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
