@@ -115,6 +115,7 @@ DEFINE_CPU_ELEMENTWISE_OP(Multiply)
 
 using complex64 = ::pten::dtype::complex<float>;
 using complex128 = ::pten::dtype::complex<double>;
+using bfloat16 = ::pten::dtype::bfloat16;
 
 // NOTE(chenweihang): using bfloat16 will cause redefine with xpu bfloat16
 // using bfloat16 = ::pten::dtype::bfloat16;
@@ -127,7 +128,8 @@ PT_REGISTER_KERNEL(add_raw,
                    int,
                    int64_t,
                    complex64,
-                   complex128) {}
+                   complex128,
+                   bfloat16) {}
 PT_REGISTER_KERNEL(subtract_raw,
                    CPU,
                    ALL_LAYOUT,

@@ -92,6 +92,7 @@ DEFINE_CUDA_ELEMENTWISE_OP(Divide)
 }  // namespace pten
 
 using float16 = pten::dtype::float16;
+using bfloat16 = pten::dtype::bfloat16;
 using complex64 = ::pten::dtype::complex<float>;
 using complex128 = ::pten::dtype::complex<double>;
 
@@ -104,6 +105,7 @@ PT_REGISTER_KERNEL(add_raw,
                    int,
                    int64_t,
                    float16,
+                   bfloat16,
                    complex64,
                    complex128) {}
 PT_REGISTER_KERNEL(subtract_raw,

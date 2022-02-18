@@ -132,6 +132,8 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext,
+                              paddle::platform::bfloat16>,
+    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext,
                               paddle::platform::complex<float>>,
     ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext,
                               paddle::platform::complex<double>>);

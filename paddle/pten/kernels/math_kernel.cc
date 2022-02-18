@@ -108,7 +108,8 @@ PT_REGISTER_KERNEL(add,
                    int,
                    int64_t,
                    complex64,
-                   complex128) {}
+                   complex128,
+                   pten::dtype::bfloat16) {}
 PT_REGISTER_KERNEL(subtract,
                    CPU,
                    ALL_LAYOUT,
@@ -173,6 +174,7 @@ PT_REGISTER_KERNEL(add,
                    int,
                    int64_t,
                    pten::dtype::float16,
+                   pten::dtype::bfloat16,
                    complex64,
                    complex128) {}
 PT_REGISTER_KERNEL(subtract,
