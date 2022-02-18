@@ -192,7 +192,7 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
 
 void FetchAsyncOpHandle::RunImpl() {
   platform::RecordEvent record_event(Name(),
-                                     platform::TracerEventType::UserDefined, 2);
+                                     platform::TracerEventType::Operator, 1);
   WaitInputVarGenerated(true);
 
   // get src vars

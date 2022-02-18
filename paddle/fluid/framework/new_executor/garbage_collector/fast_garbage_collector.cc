@@ -12,10 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/new_executor/interpretercore_fast_garbage_collector.h"
+#include "paddle/fluid/framework/new_executor/garbage_collector/fast_garbage_collector.h"
 
 namespace paddle {
 namespace framework {
+
+void InterpreterCoreFastGarbageCollector::Add(
+    Variable* var, platform::DeviceEvent* event,
+    const platform::DeviceContext* ctx) {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "Not implemented for InterpreterCoreFastGarbageCollector."));
+}
 
 void InterpreterCoreFastGarbageCollector::Add(Variable* var) {
   if (UNLIKELY(max_memory_size_ < 0) || var == nullptr) {

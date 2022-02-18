@@ -36,13 +36,13 @@ except ImportError:
             return wrapped
 
 
-class record_event(ContextDecorator):
+class Record_Event(ContextDecorator):
     '''
   Interface for recording a time range.
   Examples:
     .. code-block:: python
     import paddle.profiler as profiler
-    with profiler.record_event(name='op1'):
+    with profiler.Record_Event(name='op1'):
       op1()
   '''
 
@@ -53,8 +53,14 @@ class record_event(ContextDecorator):
         self.event_type = event_type
 
     def __enter__(self):
-        self.event = _RecordEvent(self.name, self.event_type)
+        self.begin()
         return self
 
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any):
+        self.end()
+
+    def begin(self):
+        self.event = _RecordEvent(self.name, self.event_type)
+
+    def end(self):
         self.event.end()

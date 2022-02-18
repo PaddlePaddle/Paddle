@@ -68,9 +68,8 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
 #endif
 
 void AllReduceOpHandle::RunImpl() {
-  platform::RecordEvent record_event(Name(),
-                                     platform::TracerEventType::UserDefined, 2);
-
+  platform::RecordEvent record_event(
+      Name(), platform::TracerEventType::Communication, 1);
   WaitInputVarGenerated();
   std::vector<VarHandleBase *> inputs = this->Inputs();
   std::vector<VarHandleBase *> outputs = this->Outputs();
