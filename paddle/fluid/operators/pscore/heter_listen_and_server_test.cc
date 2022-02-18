@@ -17,9 +17,8 @@ limitations under the License. */
 #include <string>
 #include <thread>  // NOLINT
 
-
-#include <sstream>
 #include <random>
+#include <sstream>
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/ps/service/heter_client.h"
@@ -40,26 +39,18 @@ DECLARE_double(eager_delete_tensor_gb);
 USE_OP_ITSELF(scale);
 USE_NO_KERNEL_OP(heter_listen_and_serv);
 
-
-
 std::string get_ip_port() {
-
-   std::mt19937 rng;
-   rng.seed(std::random_device()());
-   std::uniform_int_distribution<std::mt19937::result_type> dist(4444,16000);
-   int port = dist(rng);
-
-   std::string ip_port;
-   std::stringstream temp_str;
-   temp_str << "127.0.0.1:";
-   temp_str << port;
-   temp_str >> ip_port;
-
-   return ip_port;
-
- }
-
-
+  std::mt19937 rng;
+  rng.seed(std::random_device()());
+  std::uniform_int_distribution<std::mt19937::result_type> dist(4444, 16000);
+  int port = dist(rng);
+  std::string ip_port;
+  std::stringstream temp_str;
+  temp_str << "127.0.0.1:";
+  temp_str << port;
+  temp_str >> ip_port;
+  return ip_port;
+}
 
 framework::BlockDesc* AppendSendAndRecvBlock(framework::ProgramDesc* program) {
   framework::BlockDesc* block =
@@ -78,7 +69,8 @@ framework::BlockDesc* AppendSendAndRecvBlock(framework::ProgramDesc* program) {
   return block;
 }
 
-void GetHeterListenAndServProgram(framework::ProgramDesc* program, std::string endpoint) {
+void GetHeterListenAndServProgram(framework::ProgramDesc* program,
+                                  std::string endpoint) {
   auto root_block = program->MutableBlock(0);
   auto* sub_block = AppendSendAndRecvBlock(program);
   std::vector<framework::BlockDesc*> optimize_blocks;
@@ -171,16 +163,12 @@ void StartHeterServer(std::string endpoint) {
 TEST(HETER_LISTEN_AND_SERV, CPU) {
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
-
   std::string endpoint = get_ip_port();
   std::string previous_endpoint = endpoint;
-
-
   LOG(INFO) << "before StartSendAndRecvServer";
   FLAGS_eager_delete_tensor_gb = -1;
   std::thread server_thread(StartHeterServer, endpoint);
   sleep(1);
-
   auto b_rpc_service = distributed::HeterServer::GetInstance();
   b_rpc_service->WaitServerReady();
   using MicroScope =
