@@ -238,7 +238,7 @@ __device__ void ElementwiseBroadcastKernelImpl(
 
 #pragma unroll
   for (int i = 0; i < Arity; i++) {
-    // kps::Init<InT, VecSize>(args[i], static_cast<InT>(1.0));
+    kps::Init<InT, VecSize>(args[i], static_cast<InT>(1.0f));
     LoadData<InT, VecSize, Rank, IsBoundary>(args[i],
                                              ins[i],
                                              block_offset,
