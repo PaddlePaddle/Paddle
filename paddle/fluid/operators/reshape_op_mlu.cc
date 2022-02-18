@@ -93,7 +93,7 @@ class Reshape2MLUKernel : public framework::OpKernel<T> {
       target_shape_vector[index] = ddim_out_product / reshape_out_product;
     }
 
-    auto out_dims = framework::make_ddim(target_shape_vector);
+    auto out_dims = pten::make_ddim(target_shape_vector);
     out->mutable_data<T>(out_dims, ctx.GetPlace());
 
     // output should copy to mlu
