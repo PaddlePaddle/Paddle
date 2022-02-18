@@ -16,9 +16,9 @@ limitations under the License. */
 #include <math.h>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/algorithm.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/algorithm.h"
 
 namespace paddle {
 namespace operators {
@@ -42,7 +42,8 @@ struct SparseRmspropGradFunctor {
         row_count_(row_count) {}
 
   HOSTDEVICE inline T operator()(int64_t idx) const {
-    auto row_idx = math::BinarySearch(rows_, row_count_, idx / row_numel_);
+    auto row_idx =
+        pten::funcs::BinarySearch(rows_, row_count_, idx / row_numel_);
     return row_idx >= 0 ? grad_[row_idx * row_numel_ + idx % row_numel_] : 0;
   }
 

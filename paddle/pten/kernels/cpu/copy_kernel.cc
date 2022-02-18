@@ -37,7 +37,7 @@ void Copy(const Context& dev_ctx,
           << src_place;
 
   dst->Resize(src.dims());
-  auto* dst_ptr = dev_ctx.Alloc(dst);
+  auto* dst_ptr = dev_ctx.Alloc(dst, src.dtype());
 
   if (src_ptr == dst_ptr) {
     VLOG(3) << "Skip copy the same data async from " << src_place << " to "
@@ -47,8 +47,7 @@ void Copy(const Context& dev_ctx,
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
   CHECK(dst->layout() == src.layout());
 
-  auto size = src.numel() *
-              paddle::framework::SizeOfType(TransToProtoVarType(src.dtype()));
+  auto size = src.numel() * paddle::experimental::SizeOf(src.dtype());
 
   if (paddle::platform::is_cpu_place(src_place)) {
     paddle::memory::Copy(src_place, dst_ptr, src_place, src_ptr, size);

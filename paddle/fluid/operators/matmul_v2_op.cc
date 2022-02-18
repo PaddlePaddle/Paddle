@@ -272,8 +272,9 @@ class MatMulV2Op : public framework::OperatorWithKernel {
       const framework::OpKernelType& expected_kernel_type) const {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(tensor.type(), tensor.place(),
-                                     tensor.layout());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+          tensor.layout());
     } else {
       return framework::OpKernelType(expected_kernel_type.data_type_,
                                      tensor.place(), tensor.layout());
@@ -367,8 +368,9 @@ class MatMulV2OpGrad : public framework::OperatorWithKernel {
       const framework::OpKernelType& expected_kernel_type) const {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(tensor.type(), tensor.place(),
-                                     tensor.layout());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+          tensor.layout());
     } else {
       return framework::OpKernelType(expected_kernel_type.data_type_,
                                      tensor.place(), tensor.layout());
@@ -525,7 +527,7 @@ REGISTER_OPERATOR(matmul_v2, ops::MatMulV2Op, ops::MatMulV2OpMaker,
                   ops::MatMulV2GradOpMaker<paddle::imperative::OpBase>);
 
 DELCARE_INFER_SHAPE_FUNCTOR(matmul_v2_grad, MatMulV2GradInferShapeFunctor,
-                            PT_INFER_META(pten::MatmulGradInferMeta));
+                            PT_INFER_META(pten::GeneralBinaryGradInferMeta));
 REGISTER_OPERATOR(matmul_v2_grad, ops::MatMulV2OpGrad,
                   ops::MatMulV2OpDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::MatMulV2OpDoubleGradMaker<paddle::imperative::OpBase>,
@@ -536,37 +538,3 @@ REGISTER_OPERATOR(matmul_v2_grad_grad, ops::MatMulV2OpDoubleGrad,
                   ops::MatMulV2OpTripleGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(matmul_v2_triple_grad, ops::MatMulV2OpTripleGrad);
-
-REGISTER_OP_CPU_KERNEL(
-    matmul_v2, ops::MatMulV2Kernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MatMulV2Kernel<paddle::platform::CPUDeviceContext, double>,
-    ops::MatMulV2Kernel<paddle::platform::CPUDeviceContext,
-                        paddle::platform::complex<float>>,
-    ops::MatMulV2Kernel<paddle::platform::CPUDeviceContext,
-                        paddle::platform::complex<double>>);
-
-REGISTER_OP_CPU_KERNEL(
-    matmul_v2_grad,
-    ops::MatMulV2GradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MatMulV2GradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::MatMulV2GradKernel<paddle::platform::CPUDeviceContext,
-                            paddle::platform::complex<float>>,
-    ops::MatMulV2GradKernel<paddle::platform::CPUDeviceContext,
-                            paddle::platform::complex<double>>);
-REGISTER_OP_CPU_KERNEL(
-    matmul_v2_grad_grad,
-    ops::MatMulV2DoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MatMulV2DoubleGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::MatMulV2DoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex<float>>,
-    ops::MatMulV2DoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex<double>>);
-
-REGISTER_OP_CPU_KERNEL(
-    matmul_v2_triple_grad,
-    ops::MatMulV2TripleGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MatMulV2TripleGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::MatMulV2TripleGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex<float>>,
-    ops::MatMulV2TripleGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex<double>>);

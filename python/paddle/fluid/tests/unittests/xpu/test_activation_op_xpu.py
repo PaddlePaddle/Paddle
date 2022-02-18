@@ -358,6 +358,59 @@ class TestXPUReciprocal(TestXPUActivation):
             self.check_grad_with_place(place, ['X'], 'Out')
 
 
+@unittest.skipIf(not paddle.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
+class TestXPUSoftPlus(TestXPUActivation):
+    def setUp(self):
+        self.op_type = "softplus"
+        self.init_dtype()
+        self.init_config()
+
+        beta = np.random.uniform(0, 1)
+        threshold = np.random.uniform(0, 1)
+        out = ref_softplus(self.x, beta, threshold)
+
+        self.inputs = {'X': self.x}
+        self.outputs = {'Out': out}
+        self.attrs = {'use_xpu': True, 'beta': beta, 'threshold': threshold}
+
+    def init_config(self):
+        self.x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+
+    def test_check_grad(self):
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(place, ['X'], 'Out')
+
+
+@unittest.skipIf(not paddle.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
+class TestXPUSoftPlus2(TestXPUSoftPlus):
+    def init_config(self):
+        self.x = np.random.uniform(-2, 2, [1024, 8]).astype(self.dtype)
+
+
+@unittest.skipIf(not paddle.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
+class TestXPUSoftPlus3(TestXPUSoftPlus):
+    def init_config(self):
+        self.x = np.random.uniform(-2, 2, [4, 512, 15, 15]).astype(self.dtype)
+
+
+@unittest.skipIf(not paddle.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
+class TestXPUSoftPlus4(TestXPUSoftPlus):
+    def init_config(self):
+        self.x = np.random.uniform(-2, 2, [4, 256, 22, 22]).astype(self.dtype)
+
+
+def ref_softplus(x, beta=1, threshold=20):
+    x_beta = beta * x
+    out = np.select([x_beta <= threshold, x_beta > threshold],
+                    [np.log(1 + np.exp(x_beta)) / beta, x])
+    return out
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

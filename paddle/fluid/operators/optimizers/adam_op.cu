@@ -104,7 +104,7 @@ __global__ void SparseAdamCUDAKernelREG(
 
   for (; id < ndim; id += blockDim.x * gridDim.x) {
     auto row_idx =
-        math::BinarySearch<int64_t>(rows_, row_count, id / row_numel);
+        pten::funcs::BinarySearch<int64_t>(rows_, row_count, id / row_numel);
     if (lazy_mode && row_idx < 0) {
       return;
     } else {

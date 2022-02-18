@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,10 +16,8 @@ limitations under the License. */
 
 #include "paddle/pten/backends/cpu/cpu_context.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
-#include "paddle/pten/core/kernel_registry.h"
-
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/pten/common/bfloat16.h"
+#include "paddle/pten/core/kernel_registry.h"
 namespace pten {
 
 template <typename T, typename Context>
@@ -29,7 +27,8 @@ void ScaleSR(const Context& dev_ctx,
              float bias,
              bool bias_after_scale,
              SelectedRows* out) {
-  if (x.value().data() != out->value().data()) {
+  if (x.value().Holder() != out->value().Holder() ||
+      x.value().data() != out->value().data()) {
     out->set_rows(x.rows());
     out->set_height(x.height());
   }

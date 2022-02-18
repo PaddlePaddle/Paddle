@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/pten/core/compat/convert_utils.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/meta_tensor.h"
+#include "paddle/pten/core/selected_rows.h"
 
 namespace paddle {
 namespace experimental {
@@ -43,6 +44,11 @@ inline std::unique_ptr<std::vector<pten::DenseTensor>> TensorToDenseTensor(
   return std::move(pt_tensors);
 }
 
+inline std::shared_ptr<pten::SelectedRows> TensorToSelectedRows(
+    const Tensor& tensor) {
+  return std::dynamic_pointer_cast<pten::SelectedRows>(tensor.impl());
+}
+
 /* ----------------- for infer_meta --------------------- */
 
 inline pten::MetaTensor MakeMetaTensor(const pten::DenseTensor& tensor) {
@@ -59,14 +65,21 @@ inline std::vector<pten::MetaTensor> MakeMetaTensor(
   return meta_tensors;
 }
 
+inline pten::MetaTensor MakeMetaTensor(const pten::SelectedRows& tensor) {
+  return pten::MetaTensor(tensor);
+}
+
 /* ------------------ for output ----------------------- */
 
 inline pten::DenseTensor* SetKernelOutput(Backend backend, Tensor* out) {
-  auto dense_tensor = std::make_shared<pten::DenseTensor>(
-      pten::make_intrusive<SharedStorage>(pten::TransToPtenPlace(backend)),
-      pten::DenseTensorMeta());
-  out->set_impl(dense_tensor);
-  return dense_tensor.get();
+  if (!out->initialized()) {
+    auto dense_tensor = std::make_shared<pten::DenseTensor>(
+        pten::make_intrusive<SharedStorage>(pten::TransToPtenPlace(backend)),
+        pten::DenseTensorMeta());
+    out->set_impl(dense_tensor);
+    return dense_tensor.get();
+  }
+  return static_cast<pten::DenseTensor*>(out->impl().get());
 }
 
 inline std::vector<pten::DenseTensor*> SetKernelOutput(
@@ -82,6 +95,16 @@ inline std::vector<pten::DenseTensor*> SetKernelOutput(
     out->back().set_impl(tensor_ptr);
   }
   return results;
+}
+
+inline pten::SelectedRows* SetSelectedRowsKernelOutput(Backend backend,
+                                                       Tensor* out) {
+  if (!out->initialized()) {
+    auto select_rows = std::make_shared<pten::SelectedRows>();
+    out->set_impl(select_rows);
+    return select_rows.get();
+  }
+  return static_cast<pten::SelectedRows*>(out->impl().get());
 }
 
 }  // namespace experimental

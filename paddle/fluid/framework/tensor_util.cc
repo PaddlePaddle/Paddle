@@ -19,6 +19,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/complex.h"
@@ -55,10 +56,10 @@ void TensorCopyImpl(const TENSOR& src, const platform::Place& dst_place,
   // than numel()*size(type())
   auto dst_ptr =
       src.layout() == DataLayout::kMKLDNN
-          ? dst->mutable_data(dst_place, src.type(), src.memory_size())
-          : dst->mutable_data(dst_place, src.type());
+          ? dst->mutable_data(dst_place, src.dtype(), src.memory_size())
+          : dst->mutable_data(dst_place, src.dtype());
 #else
-  auto dst_ptr = dst->mutable_data(dst_place, src.type());
+  auto dst_ptr = dst->mutable_data(dst_place, src.dtype());
 #endif
   if (src_ptr == dst_ptr && src_place == dst_place) {
     VLOG(3) << "Skip copy the same data async from " << src_place << " to "
@@ -70,9 +71,9 @@ void TensorCopyImpl(const TENSOR& src, const platform::Place& dst_place,
 #ifdef PADDLE_WITH_MKLDNN
   auto size = src.layout() == DataLayout::kMKLDNN
                   ? src.memory_size()
-                  : src.numel() * SizeOfType(src.type());
+                  : src.numel() * framework::DataTypeSize(src.dtype());
 #else
-  auto size = src.numel() * SizeOfType(src.type());
+  auto size = src.numel() * framework::DataTypeSize(src.dtype());
 #endif
 
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
@@ -90,7 +91,29 @@ void TensorCopyImpl(const TENSOR& src, const platform::Place& dst_place,
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #endif
-
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  else if (platform::is_custom_place(src_place) &&  // NOLINT
+           platform::is_cpu_place(dst_place)) {
+    auto stream =
+        reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream();
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
+  } else if (platform::is_cpu_place(src_place) &&  // NOLINT
+             platform::is_custom_place(dst_place)) {
+    auto stream =
+        reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream();
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
+  } else if (platform::is_custom_place(src_place) &&  // NOLINT
+             platform::is_custom_place(dst_place)) {
+    if (src_ptr == dst_ptr) {
+      VLOG(3) << "Skip copy the same data async from " << src_place << " to "
+              << dst_place;
+      return;
+    }
+    auto stream =
+        reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream();
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
+  }
+#endif
 #ifdef PADDLE_WITH_XPU
   else if (platform::is_xpu_place(src_place) &&  // NOLINT
            platform::is_cpu_place(dst_place)) {
@@ -126,7 +149,7 @@ void TensorCopyImpl(const TENSOR& src, const platform::Place& dst_place,
     Tensor npu_pinned_tensor;
     npu_pinned_tensor.Resize(src.dims());
     auto npu_pinned_ptr =
-        npu_pinned_tensor.mutable_data(npu_pinned_place, src.type());
+        npu_pinned_tensor.mutable_data(npu_pinned_place, src.dtype());
     memory::Copy(npu_pinned_place, npu_pinned_ptr, src_place, src_ptr, size);
 
     //  2. async copy npu pinned tensor -> npu tensor
@@ -375,7 +398,8 @@ void TensorCopyImpl(const TENSOR& src, const platform::Place& dst_place,
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   const platform::DeviceContext* dev_ctx;
   if (platform::is_gpu_place(dst_place) || platform::is_npu_place(dst_place) ||
-      platform::is_mlu_place(dst_place)) {
+      platform::is_mlu_place(dst_place) ||
+      platform::is_custom_place(dst_place)) {
     dev_ctx = pool.Get(dst_place);
   } else {
     dev_ctx = pool.Get(src.place());
@@ -410,7 +434,7 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
 #endif
   auto src_place = src.place();
   auto src_ptr = src.data();
-  auto dst_ptr = dst->mutable_data(dst_place, src.type());
+  auto dst_ptr = dst->mutable_data(dst_place, src.dtype());
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
 
   if (src_ptr == dst_ptr && src_place == dst_place) {
@@ -419,7 +443,7 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
     return;
   }
 
-  auto size = src.numel() * SizeOfType(src.type());
+  auto size = src.numel() * framework::DataTypeSize(src.dtype());
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
@@ -433,6 +457,26 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
   } else {  // NOLINT
     PADDLE_THROW(platform::errors::Unimplemented(
         "Copy from %s to %s is not supported.", src_place, dst_place));
+  }
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  else if (platform::is_custom_place(src_place) &&  // NOLINT
+           platform::is_cpu_place(dst_place)) {     /* custom_device -> cpu*/
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
+  }
+  else if (platform::is_cpu_place(src_place) &&    // NOLINT
+           platform::is_custom_place(dst_place)) { /* cpu -> custom_device*/
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
+  }
+  else if (platform::is_custom_place(src_place) &&  // NOLINT
+           platform::is_custom_place(
+               dst_place)) { /* custom_device -> custom_device*/
+    if (src_ptr == dst_ptr) {
+      VLOG(3) << "Skip copy the same data sync from " << src_place << " to "
+              << dst_place;
+      return;
+    }
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
   }
 #endif
 #ifdef PADDLE_WITH_XPU
@@ -582,8 +626,9 @@ struct AnyDTypeVisitor {
 template <typename Predicate, typename DevCtx>
 inline void AnyImpl(Predicate predicate, const framework::Tensor& tensor,
                     const DevCtx& ctx, framework::Tensor* out) {
-  VisitDataType(tensor.type(), AnyDTypeVisitor<Predicate, DevCtx>(
-                                   predicate, tensor, ctx, out));
+  VisitDataType(
+      framework::TransToProtoVarType(tensor.dtype()),
+      AnyDTypeVisitor<Predicate, DevCtx>(predicate, tensor, ctx, out));
 }
 
 template <typename Predicate>
@@ -662,6 +707,13 @@ class AnyVisitor : public boost::static_visitor<bool> {
                  const platform::CUDAPinnedPlace& cpu) const {
     return *out.data<bool>();
   }
+
+  bool GetResult(const framework::Tensor& out,
+                 const platform::CustomPlace& custom_dev) const {
+    PADDLE_THROW(platform::errors::Unimplemented("Not supported on place (%s) ",
+                                                 custom_dev));
+    return false;
+  }
 };
 
 template <typename Predicate>
@@ -722,8 +774,9 @@ struct AllDTypeVisitor {
 template <typename Predicate, typename DevCtx>
 inline void AllImpl(Predicate predicate, const framework::Tensor& tensor,
                     const DevCtx& ctx, framework::Tensor* out) {
-  VisitDataType(tensor.type(), AllDTypeVisitor<Predicate, DevCtx>(
-                                   predicate, tensor, ctx, out));
+  VisitDataType(
+      framework::TransToProtoVarType(tensor.dtype()),
+      AllDTypeVisitor<Predicate, DevCtx>(predicate, tensor, ctx, out));
 }
 
 template <typename Predicate>
@@ -900,6 +953,11 @@ struct BothFalseVisitor : public boost::static_visitor<> {
       out_ptr[i] = lhs && rhs;
     }
   }
+
+  void VisitorImpl(const platform::CustomPlace& custom_dev) const {
+    PADDLE_THROW(
+        platform::errors::Unimplemented("CustomPlace is not supported"));
+  }
 };
 
 void TensorIsfinite(const framework::Tensor& tensor, framework::Tensor* out) {
@@ -930,7 +988,7 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
      // int32_t  size
      // void*    protobuf message
     proto::VarType::TensorDesc desc;
-    desc.set_data_type(tensor.type());
+    desc.set_data_type(framework::TransToProtoVarType(tensor.dtype()));
     auto dims = framework::vectorize(tensor.dims());
     auto* pb_dims = desc.mutable_dims();
     pb_dims->Resize(static_cast<int>(dims.size()), 0);
@@ -941,7 +999,7 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
     os.write(out.data(), size);
   }
   {  // the 3rd field, tensor data
-    uint64_t size = tensor.numel() * framework::SizeOfType(tensor.type());
+    uint64_t size = tensor.numel() * framework::DataTypeSize(tensor.dtype());
 
     auto* data_ptr = tensor.data();
     PADDLE_ENFORCE_LT(size, (std::numeric_limits<std::streamsize>::max)(),
@@ -1034,6 +1092,29 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
       PADDLE_THROW(platform::errors::Unimplemented(
           "NPUPlace is not supported when not compiled with NPU"));
 #endif
+    } else if (platform::is_custom_place(tensor.place())) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
+      std::unique_ptr<char[]> buf(new char[kBufSize]);
+      auto& custom_device_context =
+          static_cast<const platform::CustomDeviceContext&>(dev_ctx);
+      platform::CPUPlace cpu;
+      uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
+      while (size != 0) {
+        size_t size_to_write = std::min(kBufSize, static_cast<size_t>(size));
+        memory::Copy(cpu, buf.get(), tensor.place(),
+                     reinterpret_cast<const void*>(data), size_to_write,
+                     custom_device_context.stream());
+        custom_device_context.Wait();
+        os.write(buf.get(), size_to_write);
+        data += size_to_write;
+        size -= size_to_write;
+      }
+#else
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "CustomPlace is not supported when not compiled with "
+          "CustomDevice"));
+#endif
     } else {
       os.write(static_cast<const char*>(data_ptr),
                static_cast<std::streamsize>(size));
@@ -1090,10 +1171,11 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
     if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
         platform::is_xpu_place(dev_ctx.GetPlace()) ||
         platform::is_mlu_place(dev_ctx.GetPlace()) ||
-        platform::is_npu_place(dev_ctx.GetPlace())) {
+        platform::is_npu_place(dev_ctx.GetPlace()) ||
+        platform::is_custom_place(dev_ctx.GetPlace())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_MLU) ||  \
-    defined(PADDLE_WITH_ASCEND_CL)
+    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
       Tensor cpu_tensor;
       cpu_tensor.Resize(framework::make_ddim(shape));
       framework::VisitDataType(
@@ -1102,7 +1184,8 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
       is.read(static_cast<char*>(buf), size);
       auto dst_place = dev_ctx.GetPlace();
       framework::TensorCopy(cpu_tensor, dst_place, dev_ctx, tensor);
-      if (platform::is_npu_place(dev_ctx.GetPlace())) {
+      if (platform::is_npu_place(dev_ctx.GetPlace()) ||
+          platform::is_custom_place(dev_ctx.GetPlace())) {
         dev_ctx.Wait();
       }
 #else
@@ -1160,10 +1243,11 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
     if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
         platform::is_xpu_place(dev_ctx.GetPlace()) ||
         platform::is_mlu_place(dev_ctx.GetPlace()) ||
-        platform::is_npu_place(dev_ctx.GetPlace())) {
+        platform::is_npu_place(dev_ctx.GetPlace()) ||
+        platform::is_custom_place(dev_ctx.GetPlace())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_MLU) ||  \
-    defined(PADDLE_WITH_ASCEND_CL)
+    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
       Tensor cpu_tensor;
       cpu_tensor.Resize(framework::make_ddim(dims));
       framework::VisitDataType(
@@ -1172,7 +1256,8 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
       is.read(static_cast<char*>(buf), size);
       auto dst_place = dev_ctx.GetPlace();
       framework::TensorCopy(cpu_tensor, dst_place, dev_ctx, tensor);
-      if (platform::is_npu_place(dev_ctx.GetPlace())) {
+      if (platform::is_npu_place(dev_ctx.GetPlace()) ||
+          platform::is_custom_place(dev_ctx.GetPlace())) {
         dev_ctx.Wait();
       }
 #else
@@ -1185,9 +1270,12 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
       } else if (platform::is_mlu_place(dev_ctx.GetPlace())) {
         PADDLE_THROW(platform::errors::Unimplemented(
             "MLUPlace is not supported when not compiled with MLU"));
-      } else {
+      } else if (platform::is_npu_place(dev_ctx.GetPlace())) {
         PADDLE_THROW(platform::errors::Unimplemented(
             "NPUPlace is not supported when not compiled with NPU"));
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "CutomPlace is not supported when not compiled with CustomDevice"));
       }
 #endif
     } else {
@@ -1412,13 +1500,14 @@ std::ostream& operator<<(std::ostream& os, const pten::DenseTensor& t) {
     dev_ctx.Wait();
   }
 
-#define PrintTensorCallback(cpp_type, proto_type)            \
-  do {                                                       \
-    if (tensor.type() == proto_type) {                       \
-      os << "  - dtype: " << proto_type << "\n";             \
-      paddle::framework::print_tensor<cpp_type>(os, tensor); \
-      return os;                                             \
-    }                                                        \
+#define PrintTensorCallback(cpp_type, proto_type)                 \
+  do {                                                            \
+    if (paddle::framework::TransToProtoVarType(tensor.dtype()) == \
+        proto_type) {                                             \
+      os << "  - dtype: " << proto_type << "\n";                  \
+      paddle::framework::print_tensor<cpp_type>(os, tensor);      \
+      return os;                                                  \
+    }                                                             \
   } while (0)
 
   _ForEachDataType_(PrintTensorCallback);

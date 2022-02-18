@@ -62,41 +62,59 @@ class BackwardAPI(BaseAPI):
 
         # check the output of backward
         assert len(self.outputs['types']) <= len(fw_inputs['names']), \
-            f"{self.api} : Output error: The number of ouputs should be less then the number of inputs of forward api. \
+            f"{self.api} : Output error: The number of outputs should be less then the number of inputs of forward api. \
              Please check the output of {self.api} in yaml."
 
     def get_return_type(self, out_type_list):
         return out_type_list[0] if len(
             out_type_list) == 1 else "std::vector<std::vector<Tensor>>"
 
-    def gene_output(self, output_type_list):
+    def gene_output(self,
+                    output_type_list,
+                    set_out_func,
+                    code_indent,
+                    inplace_flag=False):
         kernel_output = ""
         output_names = []
         output_create = ""
 
         if len(output_type_list) == 1:
-            kernel_output = 'dense_out'
-            output_names.append('dense_out')
+            kernel_output = 'kernel_out'
+            output_names.append('kernel_out')
+            inplace_assign = " = " + self.inplace_map[self.outputs['names'][
+                0]] if inplace_flag and self.inplace_map is not None and self.outputs[
+                    'names'][0] in self.inplace_map else ""
             output_create = f"""
-  {self.outputs['return_type']} out;
-  auto dense_out = SetKernelOutput(kernel_backend, &out);"""
+{code_indent}  {self.outputs['return_type']} out{inplace_assign};
+{code_indent}  auto kernel_out = {set_out_func}(kernel_backend, &out);"""
 
         elif len(output_type_list) > 1:
             output_create = f"""
-  {self.outputs['return_type']} out({len(output_type_list)});"""
+{code_indent}  {self.outputs['return_type']} out({len(output_type_list)});"""
 
             for i, out_type_item in enumerate(output_type_list):
-                kernel_output = kernel_output + f'dense_out_{i}, '
-                output_names.append(f'dense_out_{i}')
+                kernel_output = kernel_output + f'kernel_out_{i}, '
+                output_names.append(f'kernel_out_{i}')
                 if out_type_item == 'Tensor':
                     get_out_code = f'&out[{i}][0]'
-                    output_create = output_create + f"""
-  out[{i}].emplace_back();"""
+                    if inplace_flag and self.inplace_map is not None and self.outputs[
+                            'names'][i] in self.inplace_map:
+                        output_create = output_create + f"""
+{code_indent}  out[{i}].emplace_back({self.inplace_map[self.outputs['names'][i]]});"""
+
+                    else:
+                        output_create = output_create + f"""
+{code_indent}  out[{i}].emplace_back();"""
 
                 else:
                     get_out_code = f'&out[{i}]'
+                    if inplace_flag and self.inplace_map is not None and self.outputs[
+                            'names'][i] in self.inplace_map:
+                        output_create = output_create + f"""
+{code_indent}  out[{i}] = {self.inplace_map[self.outputs['names'][i]]};"""
+
                 output_create = output_create + f"""
-  auto dense_out_{i} = SetKernelOutput(kernel_backend, {get_out_code});"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}(kernel_backend, {get_out_code});"""
 
             kernel_output = kernel_output[:-2]
         else:

@@ -70,6 +70,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/npu/enforce_npu.h"
 #include "paddle/fluid/platform/device/npu/npu_stream.h"
 #endif
+
+#include "paddle/fluid/platform/device/device_ext.h"
+#include "paddle/fluid/platform/device/stream.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace Eigen {
@@ -812,6 +815,46 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   std::shared_ptr<ExecShape> p_exec_items_;
   std::shared_ptr<std::mutex> p_mutex_;
   bool block_next_cache_clearing_ = false;
+};
+#endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+class CustomDeviceContext : public DeviceContext {
+ public:
+  explicit CustomDeviceContext(CustomPlace place);
+  virtual ~CustomDeviceContext();
+
+  const Place& GetPlace() const override;
+  void Wait() const override;
+  Eigen::DefaultDevice* eigen_device() const { return nullptr; }
+  C_Stream stream() const {
+    return reinterpret_cast<C_Stream>(stream_->raw_stream());
+  }
+
+  template <typename Callback>
+  void AddStreamCallback(Callback&& callback) const {
+    return stream_->AddCallback(callback);
+  }
+
+  void WaitStreamCallback() const { return stream_->WaitCallback(); }
+
+ private:
+  std::string device_type_;
+
+  CustomPlace place_;
+
+  std::shared_ptr<platform::stream::Stream> stream_;
+
+  CustomDeviceContext();
+};
+template <>
+struct DefaultDeviceContextType<platform::CustomPlace> {
+  using TYPE = CustomDeviceContext;
+};
+#else
+template <>
+struct DefaultDeviceContextType<platform::CustomPlace> {
+  using TYPE = DeviceContext;
 };
 #endif
 

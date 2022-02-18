@@ -18,10 +18,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/operators/math/algorithm.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/algorithm.h"
 
 namespace paddle {
 namespace operators {
@@ -345,7 +345,7 @@ class SparseMomentumFunctor<T, MT, UseNesterov> {
 
   inline HOSTDEVICE void operator()(size_t i) {
     auto row_idx =
-        math::BinarySearch<int64_t>(rows_, row_height_, i / row_numel_);
+        pten::funcs::BinarySearch<int64_t>(rows_, row_height_, i / row_numel_);
     MT grad =
         row_idx >= 0
             ? static_cast<MT>(grad_[row_idx * row_numel_ + i % row_numel_]) *
@@ -418,7 +418,7 @@ class SparseMomentumFunctor<T, MT, NoNesterov> {
 
   inline HOSTDEVICE void operator()(size_t i) {
     auto row_idx =
-        math::BinarySearch<int64_t>(rows_, row_height_, i / row_numel_);
+        pten::funcs::BinarySearch<int64_t>(rows_, row_height_, i / row_numel_);
     MT grad =
         row_idx >= 0
             ? static_cast<MT>(grad_[row_idx * row_numel_ + i % row_numel_]) *

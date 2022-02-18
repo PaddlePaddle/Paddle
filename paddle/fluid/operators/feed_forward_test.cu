@@ -27,7 +27,7 @@ namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 
 USE_OP(matmul);
-USE_OP(elementwise_add);
+USE_OP_ITSELF(elementwise_add);
 
 // get paddle matmul op results as baseline
 template <typename T>
