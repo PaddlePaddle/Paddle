@@ -86,7 +86,9 @@ size_t GetOrRegisterGlobalDeviceTypeId(const std::string &device_type) {
 }
 
 std::string GetGlobalDeviceType(size_t device_type_id) {
-  if (device_type_id == 0) return "";
+  if (global_registered_device_type.find(device_type_id) ==
+      global_registered_device_type.end())
+    return "";
   return global_registered_device_type[device_type_id];
 }
 
