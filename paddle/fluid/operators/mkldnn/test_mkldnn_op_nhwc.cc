@@ -86,6 +86,10 @@ TEST(test_pool2d_transpose_nhwc, cpu_place) {
   op_transpose->Run(scope, p);
   pool.Get(p)->Wait();
 
+  // Reset model to NCHW (default) 
+  platform::MKLDNNDeviceContext::tls()
+      .set_cur_paddle_data_layout(framework::DataLayout::kNCHW);
+
   // Verify shape of output
   PADDLE_ENFORCE_EQ(z->dims(), expected_dims,
                     platform::errors::InvalidArgument(
@@ -144,6 +148,10 @@ TEST(test_pool2d_relu_relu_nhwc, cpu_place) {
   op_relu2->Run(scope, p);
 
   pool.Get(p)->Wait();
+
+  // Reset model to NCHW (default) 
+  platform::MKLDNNDeviceContext::tls()
+      .set_cur_paddle_data_layout(framework::DataLayout::kNCHW);
 
   // Verify shape of output
   PADDLE_ENFORCE_EQ(z->dims(), expected_dims,
