@@ -62,8 +62,8 @@ def get_cuda_runtime_version():
 
 
 @unittest.skipIf(
-    core.is_compiled_with_cuda() and get_cuda_runtime_version() < 11000,
-    "run test when gpu is availble and the minimum cuda version is 11.")
+    core.is_compiled_with_cuda() and core.cudnn_version() < 8100,
+    "run test when gpu is availble and the minimum cudnn version is 8.1.0.")
 class TestElementwiseBF16Op(OpTest):
     def setUp(self):
         self.op_type = "elementwise_max"
