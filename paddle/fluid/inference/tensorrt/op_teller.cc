@@ -718,13 +718,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
 
-      auto align_mode = BOOST_GET_CONST(bool, desc.GetAttr("align_mode"));
-      if (align_corners == false && align_mode == 0) {
-        VLOG(3) << "The bilinear_interp only supports align_corners with false "
-                   "and align_mode = 0 while TRT version is less than 8.0.";
-        return false;
-      }
-
       // when the Scale and OutSize vector doesn't exist, fallback to the attr
       // scale or
       // out_h / in_h, out_w / in_w
