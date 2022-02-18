@@ -140,16 +140,11 @@ class TrtConvertBilinearInterpV2Test(TrtLayerAutoScanTest):
         else:
 
             def teller1(program_config, predictor_config):
-                if program_config.ops[0].attrs[
-                        'align_corners'] == False and program_config.ops[
-                            0].attrs['align_mode'] == 1:
-                    return False
                 return True
 
             self.add_skip_case(
                 teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
-                "Limited Implementation: only support align_corners == False and align_mode = 1"
-            )
+                "Limited Implementation: only support TRT higher than 8.0.1")
 
     def test(self):
         self.add_skip_trt_case()
