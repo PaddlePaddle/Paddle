@@ -129,9 +129,7 @@ class SelectedRows : public TensorBase,
   /*
    * @brief Get complete Dims before
    */
-  DDim GetCompleteDims() const {
-    return impl_->GetCompleteDims();
-  }
+  DDim GetCompleteDims() const { return impl_->GetCompleteDims(); }
 
   /// \brief Returns the name of the class for type traits.
   /// \return The name of the class.
@@ -145,7 +143,7 @@ class SelectedRows : public TensorBase,
   /// \return The dims of the tensor.
   const DDim& dims() const noexcept override {
     return impl_->dims();
-    // return paddle::framework::make_ddim(dims);
+    // return pten::make_ddim(dims);
   }
 
   /// \brief Returns the data type of the tensor.
