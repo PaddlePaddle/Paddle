@@ -160,7 +160,7 @@ void TransposeNormal<DeviceContext, T>::operator()(
 
   // copy in_stride, out_stride, axis to gpu device
   const paddle::platform::CUDAPlace& cuda_place = context.GetPlace();
-  paddle::platform::CPUPlace cpu_place = paddle::platform::CPUPlace();
+  pten::CPUPlace cpu_place = pten::CPUPlace();
   size_t size = 3 * rank * sizeof(int64_t);
   auto cpu_buf_holder = paddle::memory::Alloc(cpu_place, size);
   auto cuda_buf_holder = paddle::memory::Alloc(cuda_place, size);
@@ -259,7 +259,7 @@ struct RowwiseAdd<paddle::platform::CUDADeviceContext, T> {
     PADDLE_ENFORCE_EQ(
         vector.numel(),
         size,
-        paddle::platform::errors::InvalidArgument(
+        pten::errors::InvalidArgument(
             "The input vector size"
             " should be equal to the size of each row of input tensor."
             " Expected vector size=%d, but received %d",
@@ -270,7 +270,7 @@ struct RowwiseAdd<paddle::platform::CUDADeviceContext, T> {
     PADDLE_ENFORCE_EQ(
         out_dims,
         in_dims,
-        paddle::platform::errors::InvalidArgument(
+        pten::errors::InvalidArgument(
             "The output tensor shape should be same as the input tensor"
             " shape. Expected output tensor shape: %s,"
             " but received %s",
@@ -305,7 +305,7 @@ void ColwiseSum<paddle::platform::CUDADeviceContext, double>::operator()(
   auto size = input.numel() / in_dims[0];
   PADDLE_ENFORCE_EQ(vector->numel(),
                     size,
-                    paddle::platform::errors::InvalidArgument(
+                    pten::errors::InvalidArgument(
                         "The size of input vector"
                         " should be equal to the size of input tensor column"
                         " dimension. Expected vector size=%d, but received %d",
@@ -342,7 +342,7 @@ void RowwiseSum<paddle::platform::CUDADeviceContext, double>::operator()(
   auto size = input.numel() / in_dims[0];
   PADDLE_ENFORCE_EQ(vector->numel(),
                     in_dims[0],
-                    paddle::platform::errors::InvalidArgument(
+                    pten::errors::InvalidArgument(
                         "The size of input vector"
                         " should be equal to the size of input tensor row"
                         " dimension. Expected vector size=%d, but received %d",

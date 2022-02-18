@@ -186,7 +186,7 @@ struct TensorSetConstantCPU {
       : tensor_(tensor), value_(value) {}
   template <typename T>
   void apply() const {
-    auto cpu = paddle::platform::CPUPlace();
+    auto cpu = pten::CPUPlace();
     auto* begin = tensor_->mutable_data<T>(cpu);
     std::fill(begin, begin + tensor_->numel(), static_cast<T>(value_));
   }
@@ -199,8 +199,7 @@ void set_constant_with_place<paddle::platform::XPUPlace>(
     const paddle::platform::DeviceContext& context,
     paddle::framework::Tensor* tensor,
     float value) {
-  PADDLE_THROW(
-      paddle::platform::errors::Unimplemented("XPUPlace is not supported"));
+  PADDLE_THROW(pten::errors::Unimplemented("XPUPlace is not supported"));
 }
 
 template <>
@@ -208,8 +207,7 @@ void set_constant_with_place<paddle::platform::NPUPlace>(
     const paddle::platform::DeviceContext& context,
     paddle::framework::Tensor* tensor,
     float value) {
-  PADDLE_THROW(
-      paddle::platform::errors::Unimplemented("NPUPlace is not supported"));
+  PADDLE_THROW(pten::errors::Unimplemented("NPUPlace is not supported"));
 }
 
 template <>
@@ -217,8 +215,7 @@ void set_constant_with_place<paddle::platform::NPUPinnedPlace>(
     const paddle::platform::DeviceContext& context,
     paddle::framework::Tensor* tensor,
     float value) {
-  PADDLE_THROW(paddle::platform::errors::Unimplemented(
-      "NPUPinnedPlace is not supported"));
+  PADDLE_THROW(pten::errors::Unimplemented("NPUPinnedPlace is not supported"));
 }
 
 template <>
@@ -226,8 +223,7 @@ void set_constant_with_place<paddle::platform::IPUPlace>(
     const paddle::platform::DeviceContext& context,
     paddle::framework::Tensor* tensor,
     float value) {
-  PADDLE_THROW(
-      paddle::platform::errors::Unimplemented("IPUPlace is not supported"));
+  PADDLE_THROW(pten::errors::Unimplemented("IPUPlace is not supported"));
 }
 
 template <>
@@ -235,12 +231,11 @@ void set_constant_with_place<paddle::platform::CustomPlace>(
     const paddle::platform::DeviceContext& context,
     paddle::framework::Tensor* tensor,
     float value) {
-  PADDLE_THROW(
-      paddle::platform::errors::Unimplemented("CustomPlace is not supported"));
+  PADDLE_THROW(pten::errors::Unimplemented("CustomPlace is not supported"));
 }
 
 template <>
-void set_constant_with_place<paddle::platform::CPUPlace>(
+void set_constant_with_place<pten::CPUPlace>(
     const paddle::platform::DeviceContext& context,
     paddle::framework::Tensor* tensor,
     float value) {
@@ -252,8 +247,7 @@ void set_constant_with_place<paddle::platform::MLUPlace>(
     const paddle::platform::DeviceContext& context,
     paddle::framework::Tensor* tensor,
     float value) {
-  PADDLE_THROW(
-      paddle::platform::errors::Unimplemented("MLUPlace is not supported"));
+  PADDLE_THROW(pten::errors::Unimplemented("MLUPlace is not supported"));
 }
 
 template <>
@@ -288,7 +282,7 @@ void set_constant(const paddle::platform::DeviceContext& context,
   // tensor->place().apply_visitor(func);
   paddle::platform::VisitPlace(tensor->place(), func);
 #else
-  func(paddle::platform::CPUPlace());
+  func(pten::CPUPlace());
 #endif
 }
 
@@ -304,7 +298,7 @@ struct RowwiseAdd<paddle::platform::CPUDeviceContext, T> {
     PADDLE_ENFORCE_EQ(
         vector.numel(),
         size,
-        paddle::platform::errors::InvalidArgument(
+        pten::errors::InvalidArgument(
             "The input vector size"
             " should be equal to the size of each row of input tensor."
             " Expected vector size=%d, but received %d",
@@ -314,7 +308,7 @@ struct RowwiseAdd<paddle::platform::CPUDeviceContext, T> {
     const char* out_dims_cstr = out_dims.to_str().c_str();
     PADDLE_ENFORCE_EQ(out_dims,
                       in_dims,
-                      paddle::platform::errors::InvalidArgument(
+                      pten::errors::InvalidArgument(
                           "The output tensor shape should be same as the input"
                           " tensor shape. Expected output tensor shape: %s,"
                           " but received %s",

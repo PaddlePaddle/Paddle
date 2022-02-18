@@ -29,7 +29,7 @@ struct ReAllocateVisitor {
   template <typename T>
   void operator()() const {
     pten::DenseTensor cpu_tensor;
-    paddle::platform::CPUPlace cpu;
+    pten::CPUPlace cpu;
     T* ptr = cpu_tensor.mutable_data<T>(dims_, cpu);
     const T* old_ptr =
         tensor_->memory_size() == 0 ? nullptr : tensor_->data<T>();
@@ -58,7 +58,7 @@ struct TensorCopyVisitor {
   template <typename T>
   void apply() const {
     // TODO(Yancey1989): support other place
-    paddle::platform::CPUPlace cpu;
+    pten::CPUPlace cpu;
     paddle::memory::Copy(cpu,
                          dst_->mutable_data<T>(cpu) + dst_offset_,
                          cpu,
@@ -83,7 +83,7 @@ struct TensorFillVisitor {
   template <typename T>
   void apply() const {
     // TODO(qiao): support other place
-    paddle::platform::CPUPlace cpu;
+    pten::CPUPlace cpu;
     auto* tensor_data = dst_->mutable_data<T>(cpu);
     auto* start = tensor_data + dst_offset_;
     auto* end = start + size_;
@@ -122,16 +122,16 @@ int64_t SelectedRows::AutoGrownIndex(int64_t key,
   auto iter = id_to_index_.find(key);
   if (iter == id_to_index_.end()) {
     rwlock_->UNLock();
-    PADDLE_ENFORCE_EQ(auto_grown,
-                      true,
-                      paddle::platform::errors::NotFound(
-                          "Input key(%lld) is not found.", key));
+    PADDLE_ENFORCE_EQ(
+        auto_grown,
+        true,
+        pten::errors::NotFound("Input key(%lld) is not found.", key));
     rwlock_->WRLock();
     auto map_size = id_to_index_.size();
     auto vector_size = rows_.size();
     if (map_size != vector_size) {
       rwlock_->UNLock();
-      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+      PADDLE_THROW(pten::errors::InvalidArgument(
           "Row map size(%zu) should be equal to rows size(%zu).",
           map_size,
           vector_size));
@@ -141,7 +141,7 @@ int64_t SelectedRows::AutoGrownIndex(int64_t key,
       int row_num = rows_.size();
       if (row_num == value_->dims()[0]) {
         rwlock_->UNLock();
-        PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        PADDLE_THROW(pten::errors::InvalidArgument(
             "Selected rows is full, then length exceed the length of first "
             "dimension (%d).",
             row_num));
@@ -177,10 +177,10 @@ void SelectedRows::Get(const pten::DenseTensor& ids,
                        pten::DenseTensor* value,
                        bool auto_grown,
                        bool is_test) {
-  PADDLE_ENFORCE_EQ(value->IsInitialized(),
-                    true,
-                    paddle::platform::errors::InvalidArgument(
-                        "The value tensor is not initialized."));
+  PADDLE_ENFORCE_EQ(
+      value->IsInitialized(),
+      true,
+      pten::errors::InvalidArgument("The value tensor is not initialized."));
   if (ids.numel() == 0) {
     VLOG(3) << "keys is empty, please check data!";
   } else {
@@ -188,7 +188,7 @@ void SelectedRows::Get(const pten::DenseTensor& ids,
     PADDLE_ENFORCE_EQ(
         value_width,
         value->numel() / value->dims()[0],
-        paddle::platform::errors::InvalidArgument(
+        pten::errors::InvalidArgument(
             "Output tensor should have the same shape with table "
             "except the first dimmension, excepted value width not counting "
             "the first dimension is %d, actual value width is %d.",

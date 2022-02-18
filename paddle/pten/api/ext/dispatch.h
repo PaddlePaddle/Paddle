@@ -297,7 +297,7 @@ namespace paddle {
                            paddle::experimental::complex128,                  \
                            __VA_ARGS__)                                       \
       default:                                                                \
-        PADDLE_THROW(paddle::platform::errors::InvalidArgument(               \
+        PADDLE_THROW(pten::errors::InvalidArgument(                           \
             "Invalid enum data type `%d`.", static_cast<int>(__dtype__)));    \
     }                                                                         \
   }()

@@ -59,7 +59,7 @@ struct DimensionsTransform {
             in_idx++;
             axis++;
           } else {
-            PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+            PADDLE_THROW(pten::errors::InvalidArgument(
                 "The %d-th dimension of input tensor is expected to be equal "
                 "with the %d-th dimension of output tensor %d or 1, but "
                 "recieved %d.",
@@ -76,7 +76,7 @@ struct DimensionsTransform {
           if (in_dim[in_idx] == out_dims[in_idx] || in_dim[in_idx] == 1) {
             in_idx++;
           } else {
-            PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+            PADDLE_THROW(pten::errors::InvalidArgument(
                 "The %d-th dimension of input tensor is expected to be equal "
                 "with the %d-th dimension of output tensor %d or 1, but "
                 "recieved %d.",
@@ -448,7 +448,7 @@ void LaunchBroadcastKernelForDifferentVecSize(
     CALL_BROADCAST_FOR_DIM_SIZE(7);
     CALL_BROADCAST_FOR_DIM_SIZE(8);
     default: {
-      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+      PADDLE_THROW(pten::errors::InvalidArgument(
           "The maximum dimension of input tensor is expected to be less than "
           "%d, but recieved %d.\n",
           merge_dims.dim_size,
@@ -474,7 +474,7 @@ void LaunchBroadcastElementwiseCudaKernel(
       Traits::has_pointer_args ? static_cast<int>(ET) : Traits::arity;
   PADDLE_ENFORCE_EQ(ins.size(),
                     kArity,
-                    paddle::platform::errors::InvalidArgument(
+                    pten::errors::InvalidArgument(
                         "The number of inputs is expected to be equal to the "
                         "arity of functor. But recieved: the number of inputs "
                         "is %d, the arity of functor is %d.",
@@ -482,13 +482,13 @@ void LaunchBroadcastElementwiseCudaKernel(
                         kArity));
   PADDLE_ENFORCE_LE(kArity,
                     3,
-                    paddle::platform::errors::InvalidArgument(
+                    pten::errors::InvalidArgument(
                         "Currently only broadcast of ternary is supported "
                         "and verified, but received %d.",
                         kArity));
   PADDLE_ENFORCE_EQ(outs->size(),
                     NumOuts,
-                    paddle::platform::errors::InvalidArgument(
+                    pten::errors::InvalidArgument(
                         "Number of outputs shall equal to number of functions, "
                         "but number of outputs is %d, of functions is %d.",
                         outs->size(),
@@ -500,7 +500,7 @@ void LaunchBroadcastElementwiseCudaKernel(
       PADDLE_ENFORCE_EQ(
           (*outs)[i]->dims(),
           (*outs)[0]->dims(),
-          paddle::platform::errors::InvalidArgument(
+          pten::errors::InvalidArgument(
               "The shape of each output tensor shall be identical yet, but "
               "%dth output tensor`s shape is not.",
               i));
@@ -550,7 +550,7 @@ void LaunchBroadcastElementwiseCudaKernel(
       break;
     }
     default: {
-      PADDLE_THROW(paddle::platform::errors::Unimplemented(
+      PADDLE_THROW(pten::errors::Unimplemented(
           "Unsupported vectorized size: %d !", vec_size));
       break;
     }
@@ -1265,7 +1265,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
                              DX_OP dx_op,
                              DY_OP dy_op) {
   const auto gplace = ctx.GetPlace();
-  auto cplace = paddle::platform::CPUPlace();
+  auto cplace = pten::CPUPlace();
   const T *x_data = x.data<T>();
   const T *y_data = y.data<T>();
   const Tout *out_data = out.data<Tout>();
@@ -1890,12 +1890,12 @@ void ElemwiseGradComputeWithBroadcast(const GPUContext &ctx,
   PADDLE_ENFORCE_GE(
       axis,
       0,
-      paddle::platform::errors::InvalidArgument(
+      pten::errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
   PADDLE_ENFORCE_LT(axis,
                     max_dim,
-                    paddle::platform::errors::InvalidArgument(
+                    pten::errors::InvalidArgument(
                         "Axis should be less than %d, but received axis is %d.",
                         max_dim,
                         axis));

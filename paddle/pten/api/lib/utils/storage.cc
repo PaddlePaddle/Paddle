@@ -19,7 +19,7 @@ namespace experimental {
 
 ExternalStorage::ExternalStorage(void* ptr,
                                  size_t size,
-                                 const paddle::platform::Place& place)
+                                 const pten::Place& place)
     : pten::Storage(std::make_shared<pten::Allocation>(ptr, size, place)),
       size_(size) {}
 
@@ -29,11 +29,11 @@ ExternalStorage::ExternalStorage(const pten::intrusive_ptr<pten::Storage>& root,
     : Storage(std::make_shared<pten::Allocation>(
           static_cast<uint8_t*>(root->data()) + delta, size, root->place())),
       size_(size) {
-  PADDLE_ENFORCE_LE(static_cast<size_t>(delta + size),
-                    root->size(),
-                    paddle::platform::errors::InvalidArgument(
-                        "The size of the external storage does "
-                        "not meet the metadata requirements."));
+  PADDLE_ENFORCE_LE(
+      static_cast<size_t>(delta + size),
+      root->size(),
+      pten::errors::InvalidArgument("The size of the external storage does "
+                                    "not meet the metadata requirements."));
 }
 
 }  // namespace experimental

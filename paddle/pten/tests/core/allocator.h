@@ -29,8 +29,7 @@ class FancyAllocator : public pten::Allocator {
 
   AllocationPtr Allocate(size_t bytes_size) override {
     void* data = ::operator new(bytes_size);
-    auto* allocation =
-        new pten::Allocation(data, bytes_size, paddle::platform::CPUPlace());
+    auto* allocation = new pten::Allocation(data, bytes_size, pten::CPUPlace());
     return AllocationPtr(allocation, Delete);
   }
 };

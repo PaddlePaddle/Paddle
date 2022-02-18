@@ -20,6 +20,8 @@ limitations under the License. */
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
 #include "paddle/pten/core/ddim.h"
+#include "paddle/utils/any.h"
+#include "paddle/utils/optional.h"
 
 namespace pten {
 

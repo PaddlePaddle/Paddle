@@ -328,7 +328,7 @@ void ConcatImpl(const Context& context,
         inputs_data, in_num);
     paddle::memory::Copy(context.GetPlace(),
                          tmp_dev_ins_data->ptr(),
-                         paddle::platform::CPUPlace(),
+                         pten::CPUPlace(),
                          restored,
                          in_num * sizeof(T*),
                          context.stream());
@@ -375,7 +375,7 @@ void ConcatImpl(const Context& context,
         inputs_col, inputs_col_num);
     paddle::memory::Copy(context.GetPlace(),
                          tmp_dev_ins_col_data->ptr(),
-                         paddle::platform::CPUPlace(),
+                         pten::CPUPlace(),
                          restored,
                          inputs_col_num * sizeof(int64_t),
                          context.stream());
@@ -487,7 +487,7 @@ void SplitImpl(const Context& context,
         outputs_data, o_num);
     paddle::memory::Copy(context.GetPlace(),
                          tmp_dev_outs_data->ptr(),
-                         paddle::platform::CPUPlace(),
+                         pten::CPUPlace(),
                          restored,
                          o_num * sizeof(T*),
                          context.stream());
@@ -534,7 +534,7 @@ void SplitImpl(const Context& context,
         outputs_cols, outputs_cols_num);
     paddle::memory::Copy(context.GetPlace(),
                          tmp_dev_ins_col_data->ptr(),
-                         paddle::platform::CPUPlace(),
+                         pten::CPUPlace(),
                          restored,
                          outputs_cols_num * sizeof(int64_t),
                          context.stream());

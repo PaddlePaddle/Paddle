@@ -21,7 +21,6 @@
 #include "paddle/pten/core/enforce.h"
 #include "paddle/pten/core/tensor_base.h"
 #include "paddle/pten/core/tensor_utils.h"
-#include "paddle/utils/any.h"
 #include "paddle/utils/small_vector.h"
 
 namespace pten {

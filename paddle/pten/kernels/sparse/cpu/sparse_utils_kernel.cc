@@ -41,7 +41,7 @@ inline int64_t GetNonZeroNum(const DenseTensor& dense,
   PADDLE_ENFORCE_GE(
       dims.size(),
       sparse_dim,
-      paddle::platform::errors::InvalidArgument(
+      pten::errors::InvalidArgument(
           "sparse_dim(%d) should be less than or equal to dense.dim(%d)",
           sparse_dim,
           dims.size()));
@@ -161,7 +161,7 @@ void SparseCooToCsrKernel(const Context& dev_ctx,
   bool valid = x_dims.size() == 2 || x_dims.size() == 3;
   PADDLE_ENFORCE_EQ(valid,
                     true,
-                    paddle::platform::errors::InvalidArgument(
+                    pten::errors::InvalidArgument(
                         "SparseCsrTensor only support 2-D or 3-D matrix"));
   const int64_t non_zero_num = x.nnz();
   if (non_zero_num <= 0) return;
