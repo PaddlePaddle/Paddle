@@ -248,7 +248,8 @@ class DownpourSGD(DeviceWorker):
 
         ## add for gpups
         ps_param = opt_info["fleet_desc"]
-        sparse_tables = ps_param.server_param.sparse_table
+        sparse_tables = ps_param.server_param.downpour_server_param.downpour_table_param
+
         for i in worker.get_desc().dense_table:
             if i.table_id in dense_table_set:
                 dense_table = pull_thread.dense_table.add()
@@ -257,9 +258,7 @@ class DownpourSGD(DeviceWorker):
                     i.table_id
 
         sparse_len = len(worker.get_desc().sparse_table)
-        assert sparse_len == len(
-            sparse_tables
-        ), "the number of sparse table should be the same in worker and server"
+
         for i in range(sparse_len):
             sparse_table = downpour.sparse_table.add()
             sparse_table.table_id = worker.get_desc().sparse_table[i].table_id
@@ -269,65 +268,78 @@ class DownpourSGD(DeviceWorker):
                                                   .sparse_table[i].slot_value)
             sparse_table.sparse_grad_name.extend(worker.get_desc().sparse_table[
                 i].slot_gradient)
+
             ## add for gpups
-            accessor_class = table.accessor.accessor_class
-            if accessor_class == 'DownpourFeatureValueAccessor' \
-                    or accessor_class == 'DownpourCtrAccessor' \
-                    or accessor_class == 'DownpourCtrDoubleAccessor':
-                sparse_table.sparse_nonclk_coeff = sparse_tables[
-                    i].accessor.downpour_accessor_param.nonclk_coeff
-                sparse_table.sparse_click_coeff = sparse_tables[
-                    i].accessor.downpour_accessor_param.click_coeff
-                sparse_table.sparse_learning_rate = sparse_tables[
-                    i].accessor.sparse_sgd_param.learning_rate
-                sparse_table.sparse_initial_g2sum = sparse_tables[
-                    i].accessor.sparse_sgd_param.initial_g2sum
-                sparse_table.sparse_initial_range = sparse_tables[
-                    i].accessor.sparse_sgd_param.initial_range
-                sparse_table.sparse_weight_bounds = sparse_tables[
-                    i].accessor.sparse_sgd_param.weight_bounds
-                sparse_table.sparse_embedx_threshold = sparse_tables[
-                    i].accessor.embedx_threshold
-            elif accessor_class == 'DownpourSparseValueAccessor':
-                optimizer_name = table.accessor.sparse_commonsgd_param.name
-                if optimizer_name == "naive":
-                    sparse_table.sparse_learning_rate = sparse_tables[
-                        i].accessor.sparse_commonsgd_param.naive.learning_rate
-                    sparse_table.sparse_initial_range = sparse_tables[
-                        i].accessor.sparse_commonsgd_param.naive.initial_range
-                    sparse_table.sparse_weight_bounds = sparse_tables[
-                        i].accessor.sparse_commonsgd_param.naive.weight_bounds
-                elif optimizer_name == "adagrad":
-                    sparse_table.sparse_learning_rate = sparse_tables[
-                        i].accessor.sparse_commonsgd_param.adagrad.learning_rate
-                    sparse_table.sparse_initial_range = sparse_tables[
-                        i].accessor.sparse_commonsgd_param.adagrad.initial_range
-                    sparse_table.sparse_initial_g2sum = sparse_tables[
-                        i].accessor.sparse_commonsgd_param.adagrad.initial_g2sum
-                    sparse_table.sparse_weight_bounds = sparse_tables[
-                        i].accessor.sparse_commonsgd_param.adagrad.weight_bounds
-                elif optimizer_name == "adam":
-                    sparse_table.sparse_learning_rate = sparse_tables[
-                        i].accessor.sparse_commonsgd_param.adam.learning_rate
-                    sparse_table.sparse_initial_range = sparse_tables[
-                        i].accessor.sparse_commonsgd_param.adam.initial_range
-                    sparse_table.sparse_weight_bounds = sparse_tables[
-                        i].accessor.sparse_commonsgd_param.adam.weight_bounds
-            elif accessor_class == 'DownpourUnitAccessor' or accessor_class == 'DownpourDoubleUnitAccessor':
-                sparse_table.sparse_embedx_threshold = sparse_tables[
-                    i].accessor.embedx_threshold
-                sparse_table.sparse_nonclk_coeff = sparse_tables[
-                    i].accessor.downpour_accessor_param.nonclk_coeff
-                sparse_table.sparse_click_coeff = sparse_tables[
-                    i].accessor.downpour_accessor_param.click_coeff
-                sparse_table.embedx_sparse_learning_rate = sparse_tables[
-                    i].accessor.embedx_sgd_param.embedx_sparse_learning_rate
-                sparse_table.embedx_sparse_initial_g2sum = sparse_tables[
-                    i].accessor.embedx_sgd_param.embedx_sparse_initial_g2sum
-                sparse_table.embedx_sparse_initial_range = sparse_tables[
-                    i].accessor.embedx_sgd_param.embedx_sparse_initial_range
-                sparse_table.embedx_sparse_weight_bounds = sparse_tables[
-                    i].accessor.embedx_sgd_param.embedx_sparse_weight_bounds
+            for i in range(len(sparse_tables)):
+                if sparse_tables[i].table_id == sparse_table.table_id:
+                    accessor_class = sparse_tables[i].accessor.accessor_class
+                    if accessor_class == 'DownpourFeatureValueAccessor' \
+                            or accessor_class == 'DownpourCtrAccessor' \
+                            or accessor_class == 'DownpourCtrDoubleAccessor':
+
+                        sparse_table.sparse_nonclk_coeff = sparse_tables[
+                            i].accessor.downpour_accessor_param.nonclk_coeff
+                        sparse_table.sparse_click_coeff = sparse_tables[
+                            i].accessor.downpour_accessor_param.click_coeff
+                        sparse_table.sparse_learning_rate = sparse_tables[
+                            i].accessor.sparse_sgd_param.learning_rate
+                        sparse_table.sparse_initial_g2sum = sparse_tables[
+                            i].accessor.sparse_sgd_param.initial_g2sum
+                        sparse_table.sparse_initial_range = sparse_tables[
+                            i].accessor.sparse_sgd_param.initial_range
+
+                        sparse_table.sparse_weight_bounds.extend(sparse_tables[
+                            i].accessor.sparse_sgd_param.weight_bounds)
+                        #sparse_table.sparse_weight_bounds = sparse_tables[
+                        #    i].accessor.sparse_sgd_param.weight_bounds
+
+                        sparse_table.sparse_embedx_threshold = sparse_tables[
+                            i].accessor.embedx_threshold
+
+                    elif accessor_class == 'DownpourSparseValueAccessor':
+                        optimizer_name = table.accessor.sparse_commonsgd_param.name
+                        if optimizer_name == "naive":
+                            sparse_table.sparse_learning_rate = sparse_tables[
+                                i].accessor.sparse_commonsgd_param.naive.learning_rate
+                            sparse_table.sparse_initial_range = sparse_tables[
+                                i].accessor.sparse_commonsgd_param.naive.initial_range
+                            sparse_table.sparse_weight_bounds.extend(
+                                sparse_tables[i].accessor.
+                                sparse_commonsgd_param.naive.weight_bounds)
+                        elif optimizer_name == "adagrad":
+                            sparse_table.sparse_learning_rate = sparse_tables[
+                                i].accessor.sparse_commonsgd_param.adagrad.learning_rate
+                            sparse_table.sparse_initial_range = sparse_tables[
+                                i].accessor.sparse_commonsgd_param.adagrad.initial_range
+                            sparse_table.sparse_initial_g2sum = sparse_tables[
+                                i].accessor.sparse_commonsgd_param.adagrad.initial_g2sum
+                            sparse_table.sparse_weight_bounds.extend(
+                                sparse_tables[i].accessor.
+                                sparse_commonsgd_param.adagrad.weight_bounds)
+                        elif optimizer_name == "adam":
+                            sparse_table.sparse_learning_rate = sparse_tables[
+                                i].accessor.sparse_commonsgd_param.adam.learning_rate
+                            sparse_table.sparse_initial_range = sparse_tables[
+                                i].accessor.sparse_commonsgd_param.adam.initial_range
+                            sparse_table.sparse_weight_bounds.extend(
+                                sparse_tables[i].accessor.
+                                sparse_commonsgd_param.adam.weight_bounds)
+                    elif accessor_class == 'DownpourUnitAccessor' or accessor_class == 'DownpourDoubleUnitAccessor':
+                        sparse_table.sparse_embedx_threshold = sparse_tables[
+                            i].accessor.embedx_threshold
+                        sparse_table.sparse_nonclk_coeff = sparse_tables[
+                            i].accessor.downpour_accessor_param.nonclk_coeff
+                        sparse_table.sparse_click_coeff = sparse_tables[
+                            i].accessor.downpour_accessor_param.click_coeff
+                        sparse_table.embedx_sparse_learning_rate = sparse_tables[
+                            i].accessor.embedx_sgd_param.embedx_sparse_learning_rate
+                        sparse_table.embedx_sparse_initial_g2sum = sparse_tables[
+                            i].accessor.embedx_sgd_param.embedx_sparse_initial_g2sum
+                        sparse_table.embedx_sparse_initial_range = sparse_tables[
+                            i].accessor.embedx_sgd_param.embedx_sparse_initial_range
+                        sparse_table.embedx_sparse_weight_bounds.extend(
+                            sparse_tables[i].accessor.embedx_sgd_param.
+                            embedx_sparse_weight_bounds)
 
             if opt_info["use_cvm"] or "no_cvm" in opt_info and opt_info[
                     "no_cvm"] == True:

@@ -56,7 +56,7 @@ void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
   config["initial_range"] = sparse_table.sparse_initial_range();
   if (sparse_table.sparse_weight_bounds_size() == 2) {
     config["min_bound"] = sparse_table.sparse_weight_bounds()[0];
-    config["max_boud"] = sparse_table.sparse_weight_bounds()[1];
+    config["max_bound"] = sparse_table.sparse_weight_bounds()[1];
   }
 
   config["mf_create_thresholds"] = sparse_table.sparse_embedx_threshold();
