@@ -174,7 +174,6 @@ static void AllReduce(const pten::SelectedRows &src, pten::SelectedRows *dst,
     }
   }
   mixv_dst_rows.CopyToCPU();
-  mixv_src_rows.CopyToCPU();
   VLOG(3) << "Original SelectedRows rows: "
           << string::join_strings(src_rows, ',');
   VLOG(3) << "Result SelectedRows rows: "
