@@ -41,7 +41,7 @@ class KernelFrame {
   //! argument, an attribute or a result.
   template <typename T>
   T& GetElementAt(int index) {
-    CHECK_LT(index, GetNumArgs() + GetNumAttributes() + GetNumResults());
+    CHECK_LT(static_cast<size_t>(index), GetNumElements());
     return value_or_attrs_[index]->template get_or_default<T>();
   }
 
@@ -70,8 +70,8 @@ class KernelFrame {
   }
 
   Value* GetAttributeAt(int idx) {
-    CHECK_NE(num_results_, -1)
-        << "Must call SetNumResults before GetAttributeAt";
+    // CHECK_NE(num_results_, -1)
+    //<< "Must call SetNumResults before GetAttributeAt";
     CHECK_LT(idx,
              static_cast<int>(value_or_attrs_.size() - num_arguments_ -
                               num_results_));
@@ -120,6 +120,10 @@ class KernelFrame {
     if (length == 0) return {};
     return llvm::makeMutableArrayRef(&value_or_attrs_[from], length);
   }
+
+#ifndef NDEBUG
+  std::string DumpArgTypes() const;
+#endif
 
   bool IsEmpty() const { return value_or_attrs_.empty(); }
 

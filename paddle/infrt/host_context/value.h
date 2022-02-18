@@ -127,6 +127,7 @@ class Value : public common::Object {
 
   template <typename T>
   T& get() {
+    LOG(INFO) << data.index();
     CHECK(data.template is<T>());
     return data.get<T>();
   }

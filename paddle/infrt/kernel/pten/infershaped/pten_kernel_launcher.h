@@ -24,13 +24,13 @@ namespace kernel {
 
 static void FakePtenInferShape(const ::pten::MetaTensor& a,
                                const ::pten::MetaTensor& b,
-                               bool arg_0,
+                               host_context::Attribute<bool> arg_0,
                                ::pten::MetaTensor* c) {}
 
 static void FakePtenKernel(const ::pten::CPUContext& /*Context*/,
                            const ::pten::DenseTensor& a,
                            const ::pten::DenseTensor& b,
-                           bool arg_0,
+                           host_context::Attribute<bool> arg_0,
                            ::pten::DenseTensor* c) {}
 
 template <typename KernelFunc,
@@ -42,19 +42,29 @@ class KernelLauncher : public InferShapedKernelLauncher {
   static const uint16_t num_input_tensors{InferShapeHelper<KernelFunc>::count};
   static const bool turn_on_infer_shape_cache{true};
   void Invoke(host_context::KernelFrame* frame) override {
+#ifndef NDEBUG
+    LOG(INFO) << "Kernel.frame: " << frame->DumpArgTypes();
+#endif
     // Build the infershape KernelFrame if needed.
     // TODO(Superjomn) add unlikely here.
     if (infershape_kernel_frame_builder.IsEmpty()) {
       CreateKernelFrameForInferShape(frame);
+#ifndef NDEBUG
+      LOG(INFO) << "infershape.frame: "
+                << infershape_kernel_frame_builder.DumpArgTypes();
+#endif
     }
+
     if (turn_on_infer_shape_cache) {
       if (!turn_on_infer_shape_cache || IsShapeChanged(num_input_tensors)) {
+        // INFRT_KERNEL(infershape)::Invoke(&infershape_kernel_frame_builder);
         ::infrt::host_context::KernelImpl<InferShapedFunc, infershape>::Invoke(
             &infershape_kernel_frame_builder);
         BuildInferShapeCache(num_input_tensors);
       }
     }
     ::infrt::host_context::KernelImpl<KernelFunc, kernel>::Invoke(frame);
+    // INFRT_KERNEL(kernel)::Invoke(frame);
   }
 };
 
