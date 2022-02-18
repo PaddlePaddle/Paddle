@@ -45,19 +45,24 @@ class KernelLauncher : public InferShapedKernelLauncher {
   static const uint16_t num_input_tensors{InferShapeHelper<KernelFunc>::count};
   static const bool turn_on_infer_shape_cache{true};
   void Invoke(host_context::KernelFrame* frame) override {
+    LOG(INFO) << "======  ~~~ num_input_tensors = " << num_input_tensors;
     // Build the infershape KernelFrame if needed.
     // TODO(Superjomn) add unlikely here.
     if (infershape_kernel_frame_builder.IsEmpty()) {
+      LOG(INFO) << "1";
       CreateKernelFrameForInferShape(frame);
     }
     if (turn_on_infer_shape_cache) {
+      LOG(INFO) << "2";
       if (!turn_on_infer_shape_cache || IsShapeChanged(num_input_tensors)) {
+        LOG(INFO) << "3";
         ::infrt::host_context::KernelImpl<InferShapedFunc, infershape>::Invoke(
             &infershape_kernel_frame_builder);
+        LOG(INFO) << "4";
         BuildInferShapeCache(num_input_tensors);
       }
     }
-
+    LOG(INFO) << "5";
     ::infrt::host_context::KernelImpl<KernelFunc, kernel>::Invoke(frame);
   }
 };

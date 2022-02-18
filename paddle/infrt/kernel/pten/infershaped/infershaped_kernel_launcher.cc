@@ -31,7 +31,7 @@ void InferShapedKernelLauncher::CreateKernelFrameForInferShape(
           llvm::ArrayRef<host_context::Value*>{new host_context::Value()});
     } else {
       LOG(INFO) << "value.data.index_ = " << value->data.index();
-      infershape_kernel_frame_builder.AddArgument(value);
+      infershape_kernel_frame_builder.AddAttribute(value);
     }
   }
 }
@@ -40,6 +40,7 @@ void InferShapedKernelLauncher::BuildInferShapeCache(
     const uint16_t num_inputs) {
   tensor_shape_cache.resize(num_inputs);
   for (uint16_t i = 0; i < num_inputs; i++) {
+    LOG(INFO) << "i = " << i;
     tensor_shape_cache[i] = infershape_kernel_frame_builder.GetArgAt(i)
                                 ->get<::pten::MetaTensor>()
                                 .dims();
@@ -53,6 +54,7 @@ bool InferShapedKernelLauncher::IsShapeChanged(
 
   bool changed = false;
   for (uint16_t i = 0; i < num_inputs && !changed; i++) {
+    LOG(INFO) << "i = " << i;
     changed = changed ||
               (tensor_shape_cache[i] !=
                infershape_kernel_frame_builder.GetArgAt<::pten::MetaTensor>(i)

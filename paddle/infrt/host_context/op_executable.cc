@@ -100,10 +100,12 @@ void OpExecutableBuilder::SetResults(llvm::ArrayRef<std::string> result_names) {
 }
 
 void OpExecutableBuilder::SetResults(llvm::ArrayRef<Value*> results) {
+  LOG(INFO) << "SetResults";
   impl_->frame.SetResults(results);
 }
 
 void OpExecutableBuilder::AppendAttribute(Value* value) {
+  LOG(INFO) << "AppendAttribute";
   impl_->frame.AddAttribute(value);
 }
 
