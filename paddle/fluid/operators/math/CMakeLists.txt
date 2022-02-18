@@ -1,5 +1,3 @@
-add_subdirectory(detail)
-
 function(math_library TARGET)
     # math_library is a function to create math library.
     # The interface is the same as cc_library.
@@ -56,9 +54,6 @@ math_library(depthwise_conv)
 math_library(im2col)
 math_library(sample_prob)
 math_library(sampler DEPS generator)
-
-math_library(gru_compute DEPS activation_functions math_function)
-math_library(lstm_compute DEPS activation_functions)
 
 cc_library(blas SRCS blas.cc DEPS cblas framework_proto device_context)
 # math_library(math_function DEPS blas dense_tensor tensor)

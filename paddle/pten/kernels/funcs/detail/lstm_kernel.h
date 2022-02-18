@@ -14,12 +14,11 @@ limitations under the License. */
 
 #pragma once
 #include <type_traits>
-#include "paddle/fluid/operators/math/detail/activation_functions.h"
 #include "paddle/pten/core/hostdevice.h"
+#include "paddle/pten/kernels/funcs/detail/activation_functions.h"
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace pten {
+namespace funcs {
 namespace detail {
 
 namespace forward {
@@ -27,9 +26,18 @@ namespace forward {
 template <class T>
 class lstm {
  public:
-  HOSTDEVICE void operator()(T *value_in, T *value_ig, T *value_fg, T *value_og,
-                             T *prev_state, T *state, T *state_atv, T *output,
-                             T *checkI, T *checkF, T *checkO, T *cell_clip,
+  HOSTDEVICE void operator()(T *value_in,
+                             T *value_ig,
+                             T *value_fg,
+                             T *value_og,
+                             T *prev_state,
+                             T *state,
+                             T *state_atv,
+                             T *output,
+                             T *checkI,
+                             T *checkF,
+                             T *checkO,
+                             T *cell_clip,
                              ActivationType active_node,
                              ActivationType active_gate,
                              ActivationType active_state) {
@@ -57,11 +65,18 @@ class lstm {
   // Only float support AVX optimization
   static const bool avx = std::is_same<T, float>::value;
 
-  HOSTDEVICE void operator()(__m256 *value_in, __m256 *value_ig,
-                             __m256 *value_fg, __m256 *value_og,
-                             __m256 *prev_state, __m256 *state,
-                             __m256 *state_atv, __m256 *output, __m256 *checkI,
-                             __m256 *checkF, __m256 *checkO, T *cell_clip,
+  HOSTDEVICE void operator()(__m256 *value_in,
+                             __m256 *value_ig,
+                             __m256 *value_fg,
+                             __m256 *value_og,
+                             __m256 *prev_state,
+                             __m256 *state,
+                             __m256 *state_atv,
+                             __m256 *output,
+                             __m256 *checkI,
+                             __m256 *checkF,
+                             __m256 *checkO,
+                             T *cell_clip,
                              ActivationType active_node,
                              ActivationType active_gate,
                              ActivationType active_state) {
@@ -97,12 +112,27 @@ namespace backward {
 template <class T>
 class lstm {
  public:
-  HOSTDEVICE void operator()(T *value_in, T *value_ig, T *value_fg, T *value_og,
-                             T *grad_in, T *grad_ig, T *grad_fg, T *grad_og,
-                             T *prev_state, T *prev_state_grad, T *state,
-                             T *state_grad, T *state_atv, T *output_grad,
-                             T *checkI, T *checkF, T *checkO, T *checkIGrad,
-                             T *checkFGrad, T *checkOGrad, T *cell_clip,
+  HOSTDEVICE void operator()(T *value_in,
+                             T *value_ig,
+                             T *value_fg,
+                             T *value_og,
+                             T *grad_in,
+                             T *grad_ig,
+                             T *grad_fg,
+                             T *grad_og,
+                             T *prev_state,
+                             T *prev_state_grad,
+                             T *state,
+                             T *state_grad,
+                             T *state_atv,
+                             T *output_grad,
+                             T *checkI,
+                             T *checkF,
+                             T *checkO,
+                             T *checkIGrad,
+                             T *checkFGrad,
+                             T *checkOGrad,
+                             T *cell_clip,
                              ActivationType active_node,
                              ActivationType active_gate,
                              ActivationType active_state) {
@@ -138,17 +168,32 @@ class lstm {
 #else
   // Only float support AVX optimization
   static const bool avx = std::is_same<T, float>::value;
-  HOSTDEVICE void operator()(
-      __m256 *value_in, __m256 *value_ig, __m256 *value_fg, __m256 *value_og,
-      __m256 *grad_in, __m256 *grad_ig, __m256 *grad_fg, __m256 *grad_og,
-      __m256 *prev_state, __m256 *prev_state_grad, __m256 *state,
-      __m256 *state_grad, __m256 *state_atv, __m256 *output_grad,
-      __m256 *checkI, __m256 *checkF, __m256 *checkO, __m256 *checkIGrad,
-      __m256 *checkFGrad, __m256 *checkOGrad, T *cell_clip,
-      ActivationType active_node, ActivationType active_gate,
-      ActivationType active_state) {
-    *grad_og = activation(_mm256_mul_ps(*output_grad, *state_atv), *value_og,
-                          active_gate);
+  HOSTDEVICE void operator()(__m256 *value_in,
+                             __m256 *value_ig,
+                             __m256 *value_fg,
+                             __m256 *value_og,
+                             __m256 *grad_in,
+                             __m256 *grad_ig,
+                             __m256 *grad_fg,
+                             __m256 *grad_og,
+                             __m256 *prev_state,
+                             __m256 *prev_state_grad,
+                             __m256 *state,
+                             __m256 *state_grad,
+                             __m256 *state_atv,
+                             __m256 *output_grad,
+                             __m256 *checkI,
+                             __m256 *checkF,
+                             __m256 *checkO,
+                             __m256 *checkIGrad,
+                             __m256 *checkFGrad,
+                             __m256 *checkOGrad,
+                             T *cell_clip,
+                             ActivationType active_node,
+                             ActivationType active_gate,
+                             ActivationType active_state) {
+    *grad_og = activation(
+        _mm256_mul_ps(*output_grad, *state_atv), *value_og, active_gate);
     if (*cell_clip > 0.0f) {
       T *state_ = reinterpret_cast<T *>(state);
       if (*state_ >= (*cell_clip) || *state_ <= (0.0f - (*cell_clip))) {
@@ -156,18 +201,19 @@ class lstm {
       } else {
         *state_grad =
             _mm256_add_ps(activation(_mm256_mul_ps(*output_grad, *value_og),
-                                     *state_atv, active_state),
+                                     *state_atv,
+                                     active_state),
                           *state_grad);
         *state_grad =
             _mm256_add_ps(_mm256_mul_ps(*grad_og, *checkO), *state_grad);
       }
     }
-    *grad_in = activation(_mm256_mul_ps(*state_grad, *value_ig), *value_in,
-                          active_node);
-    *grad_ig = activation(_mm256_mul_ps(*state_grad, *value_in), *value_ig,
-                          active_gate);
-    *grad_fg = activation(_mm256_mul_ps(*state_grad, *prev_state), *value_fg,
-                          active_gate);
+    *grad_in = activation(
+        _mm256_mul_ps(*state_grad, *value_ig), *value_in, active_node);
+    *grad_ig = activation(
+        _mm256_mul_ps(*state_grad, *value_in), *value_ig, active_gate);
+    *grad_fg = activation(
+        _mm256_mul_ps(*state_grad, *prev_state), *value_fg, active_gate);
     *prev_state_grad = _mm256_add_ps(_mm256_mul_ps(*grad_ig, *checkI),
                                      _mm256_mul_ps(*grad_fg, *checkF));
     *prev_state_grad =
@@ -183,6 +229,5 @@ class lstm {
 }  // namespace backward
 
 }  // namespace detail
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace pten

@@ -75,7 +75,7 @@ class GRUKernel : public framework::OpKernel<T> {
     }
 
     int frame_size = hidden_dims[1];
-    math::GRUMetaValue<T> gru_value;
+    pten::funcs::GRUMetaValue<T> gru_value;
     gru_value.gate_weight = const_cast<T*>(weight_data);
     gru_value.state_weight =
         const_cast<T*>(weight_data + 2 * frame_size * frame_size);
@@ -96,9 +96,9 @@ class GRUKernel : public framework::OpKernel<T> {
     }
     auto batch_starts = batch_gate->lod()[0];
     size_t num_batch = batch_starts.size() - 1;
-    auto active_node = math::detail::GetActivationType(
+    auto active_node = pten::funcs::detail::GetActivationType(
         context.Attr<std::string>("activation"));
-    auto active_gate = math::detail::GetActivationType(
+    auto active_gate = pten::funcs::detail::GetActivationType(
         context.Attr<std::string>("gate_activation"));
     for (size_t n = 0; n < num_batch; n++) {
       int bstart = static_cast<int>(batch_starts[n]);
@@ -111,7 +111,7 @@ class GRUKernel : public framework::OpKernel<T> {
       gru_value.output_value = hidden_t.data<T>();
       gru_value.gate_value = gate_t.data<T>();
       gru_value.reset_output_value = reset_hidden_prev_t.data<T>();
-      math::GRUUnitFunctor<DeviceContext, T>::compute(
+      pten::funcs::GRUUnitFunctor<DeviceContext, T>::compute(
           dev_ctx, gru_value, frame_size, cur_batch_size, active_node,
           active_gate, origin_mode);
       gru_value.prev_out_value = gru_value.output_value;

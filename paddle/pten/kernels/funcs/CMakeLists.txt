@@ -1,4 +1,5 @@
 add_subdirectory(eigen)
+add_subdirectory(detail)
 
 function(math_library TARGET)
     # math_library is a function to create math library.
@@ -41,3 +42,5 @@ endfunction()
 
 math_library(math_function DEPS blas dense_tensor tensor)
 math_library(sequence2batch)
+math_library(gru_compute DEPS activation_functions math_function)
+math_library(lstm_compute DEPS activation_functions)

@@ -16,8 +16,8 @@ limitations under the License. */
 #include <type_traits>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/activation_op.h"
-#include "paddle/fluid/operators/math/detail/activation_functions.h"
-#include "paddle/fluid/operators/math/lstm_compute.h"
+#include "paddle/pten/kernels/funcs/detail/activation_functions.h"
+#include "paddle/pten/kernels/funcs/lstm_compute.h"
 
 #if defined(_WIN32)
 #if defined(__AVX2__) || defined(__AVX__)
@@ -25,21 +25,23 @@ inline __m256 operator+=(__m256 a, __m256 b) { return _mm256_add_ps(a, b); }
 #endif
 #endif
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace pten {
+namespace funcs {
 namespace detail {
 
 using Array1 = Eigen::DSizes<int64_t, 1>;
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+using EigenVector = paddle::framework::EigenVector<T, MajorType, IndexType>;
 
 #if !defined(__NVCC__) && !defined(__HIPCC___)  // @{ Group LSTM CPU
 
 template <class T, class Op>
-void naive_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value,
-                                     int frame_size, T cell_clip,
+void naive_lstm_forward_one_sequence(Op op,
+                                     pten::funcs::LstmMetaValue<T> value,
+                                     int frame_size,
+                                     T cell_clip,
                                      ActivationType active_node,
                                      ActivationType active_gate,
                                      ActivationType active_state,
@@ -79,9 +81,21 @@ void naive_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value,
       r_prev_state = value.prev_state_value[i];
     }
 
-    op(&r_value_in, &r_value_ig, &r_value_fg, &r_value_og, &r_prev_state,
-       &r_state, &r_state_atv, &r_out, &r_checkI, &r_checkF, &r_checkO,
-       &cell_clip, active_node, active_gate, active_state);
+    op(&r_value_in,
+       &r_value_ig,
+       &r_value_fg,
+       &r_value_og,
+       &r_prev_state,
+       &r_state,
+       &r_state_atv,
+       &r_out,
+       &r_checkI,
+       &r_checkF,
+       &r_checkO,
+       &cell_clip,
+       active_node,
+       active_gate,
+       active_state);
 
     value_in[i] = r_value_in;
     value_ig[i] = r_value_ig;
@@ -94,9 +108,12 @@ void naive_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value,
 }
 
 template <class T, class Op>
-void naive_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
-                                      LstmMetaGrad<T> grad, int frame_size,
-                                      T cell_clip, ActivationType active_node,
+void naive_lstm_backward_one_sequence(Op op,
+                                      pten::funcs::LstmMetaValue<T> value,
+                                      pten::funcs::LstmMetaGrad<T> grad,
+                                      int frame_size,
+                                      T cell_clip,
+                                      ActivationType active_node,
                                       ActivationType active_gate,
                                       ActivationType active_state,
                                       bool old_api_version) {
@@ -157,11 +174,30 @@ void naive_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
       r_prev_state = value.prev_state_value[i];
     }
 
-    op(&r_value_in, &r_value_ig, &r_value_fg, &r_value_og, &r_grad_in,
-       &r_grad_ig, &r_grad_fg, &r_grad_og, &r_prev_state, &r_prev_state_grad,
-       &r_state, &r_state_grad, &r_state_atv, &r_output_grad, &r_checkI,
-       &r_checkF, &r_checkO, &r_checkIGrad, &r_checkFGrad, &r_checkOGrad,
-       &cell_clip, active_node, active_gate, active_state);
+    op(&r_value_in,
+       &r_value_ig,
+       &r_value_fg,
+       &r_value_og,
+       &r_grad_in,
+       &r_grad_ig,
+       &r_grad_fg,
+       &r_grad_og,
+       &r_prev_state,
+       &r_prev_state_grad,
+       &r_state,
+       &r_state_grad,
+       &r_state_atv,
+       &r_output_grad,
+       &r_checkI,
+       &r_checkF,
+       &r_checkO,
+       &r_checkIGrad,
+       &r_checkFGrad,
+       &r_checkOGrad,
+       &cell_clip,
+       active_node,
+       active_gate,
+       active_state);
 
     grad_in[i] = r_grad_in;
     grad_ig[i] = r_grad_ig;
@@ -179,8 +215,10 @@ void naive_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
 }
 
 template <class T, class Op>
-void avx_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value,
-                                   int frame_size, T cell_clip,
+void avx_lstm_forward_one_sequence(Op op,
+                                   pten::funcs::LstmMetaValue<T> value,
+                                   int frame_size,
+                                   T cell_clip,
                                    ActivationType active_node,
                                    ActivationType active_gate,
                                    ActivationType active_state,
@@ -226,9 +264,21 @@ void avx_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value,
           (reinterpret_cast<__m256 const *>(value.prev_state_value))[i];
     }
 
-    op(&r_value_in, &r_value_ig, &r_value_fg, &r_value_og, &r_prev_state,
-       &r_state, &r_state_atv, &r_out, &r_checkI, &r_checkF, &r_checkO,
-       &cell_clip, active_node, active_gate, active_state);
+    op(&r_value_in,
+       &r_value_ig,
+       &r_value_fg,
+       &r_value_og,
+       &r_prev_state,
+       &r_state,
+       &r_state_atv,
+       &r_out,
+       &r_checkI,
+       &r_checkF,
+       &r_checkO,
+       &cell_clip,
+       active_node,
+       active_gate,
+       active_state);
 
     value_in[i] = r_value_in;
     value_ig[i] = r_value_ig;
@@ -242,9 +292,12 @@ void avx_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value,
 }
 
 template <class T, class Op>
-void avx_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
-                                    LstmMetaGrad<T> grad, int frame_size,
-                                    T cell_clip, ActivationType active_node,
+void avx_lstm_backward_one_sequence(Op op,
+                                    pten::funcs::LstmMetaValue<T> value,
+                                    pten::funcs::LstmMetaGrad<T> grad,
+                                    int frame_size,
+                                    T cell_clip,
+                                    ActivationType active_node,
                                     ActivationType active_gate,
                                     ActivationType active_state,
                                     bool old_api_version) {
@@ -311,11 +364,30 @@ void avx_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
           (reinterpret_cast<__m256 const *>(value.prev_state_value))[i];
     }
 
-    op(&r_value_in, &r_value_ig, &r_value_fg, &r_value_og, &r_grad_in,
-       &r_grad_ig, &r_grad_fg, &r_grad_og, &r_prev_state, &r_prev_state_grad,
-       &r_state, &r_state_grad, &r_state_atv, &r_output_grad, &r_checkI,
-       &r_checkF, &r_checkO, &r_checkIGrad, &r_checkFGrad, &r_checkOGrad,
-       &cell_clip, active_node, active_gate, active_state);
+    op(&r_value_in,
+       &r_value_ig,
+       &r_value_fg,
+       &r_value_og,
+       &r_grad_in,
+       &r_grad_ig,
+       &r_grad_fg,
+       &r_grad_og,
+       &r_prev_state,
+       &r_prev_state_grad,
+       &r_state,
+       &r_state_grad,
+       &r_state_atv,
+       &r_output_grad,
+       &r_checkI,
+       &r_checkF,
+       &r_checkO,
+       &r_checkIGrad,
+       &r_checkFGrad,
+       &r_checkOGrad,
+       &cell_clip,
+       active_node,
+       active_gate,
+       active_state);
 
     grad_in[i] = r_grad_in;
     grad_ig[i] = r_grad_ig;
@@ -338,8 +410,10 @@ void avx_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
 }
 
 template <class T>
-void eigen_lstm_forward_one_sequence(const platform::CPUDeviceContext &context,
-                                     LstmMetaValue<T> value, int frame_size) {
+void eigen_lstm_forward_one_sequence(
+    const paddle::platform::CPUDeviceContext &context,
+    pten::funcs::LstmMetaValue<T> value,
+    int frame_size) {
   auto eigen_value_ig =
       typename EigenVector<T>::Type(value.gate_value, Array1(frame_size));
   auto eigen_value_fg = typename EigenVector<T>::Type(
@@ -356,10 +430,10 @@ void eigen_lstm_forward_one_sequence(const platform::CPUDeviceContext &context,
       typename EigenVector<T>::Type(value.output_value, Array1(frame_size));
 
   auto &place = *context.eigen_device();
-  TanhFunctor<T>()(place, eigen_value_in, eigen_value_in);
-  SigmoidFunctor<T>()(place, eigen_value_ig, eigen_value_ig);
-  SigmoidFunctor<T>()(place, eigen_value_fg, eigen_value_fg);
-  SigmoidFunctor<T>()(place, eigen_value_og, eigen_value_og);
+  paddle::operators::TanhFunctor<T>()(place, eigen_value_in, eigen_value_in);
+  paddle::operators::SigmoidFunctor<T>()(place, eigen_value_ig, eigen_value_ig);
+  paddle::operators::SigmoidFunctor<T>()(place, eigen_value_fg, eigen_value_fg);
+  paddle::operators::SigmoidFunctor<T>()(place, eigen_value_og, eigen_value_og);
 
   eigen_state.device(place) = eigen_value_in * eigen_value_ig;
   if (value.prev_state_value) {
@@ -368,14 +442,16 @@ void eigen_lstm_forward_one_sequence(const platform::CPUDeviceContext &context,
     eigen_state.device(place) = eigen_state + eigen_prev_state * eigen_value_fg;
   }
 
-  TanhFunctor<T>()(place, eigen_state, eigen_state_act);
+  paddle::operators::TanhFunctor<T>()(place, eigen_state, eigen_state_act);
   eigen_output.device(place) = eigen_value_og * eigen_state_act;
 }
 
 template <class T>
-void eigen_lstm_backward_one_sequence(const platform::CPUDeviceContext &context,
-                                      LstmMetaValue<T> value,
-                                      LstmMetaGrad<T> grad, int frame_size) {
+void eigen_lstm_backward_one_sequence(
+    const paddle::platform::CPUDeviceContext &context,
+    pten::funcs::LstmMetaValue<T> value,
+    pten::funcs::LstmMetaGrad<T> grad,
+    int frame_size) {
   auto eigen_value_ig =
       typename EigenVector<T>::Type(value.gate_value, Array1(frame_size));
   auto eigen_value_fg = typename EigenVector<T>::Type(
@@ -401,23 +477,38 @@ void eigen_lstm_backward_one_sequence(const platform::CPUDeviceContext &context,
       typename EigenVector<T>::Type(grad.state_grad, Array1(frame_size));
 
   auto &place = *context.eigen_device();
-  SigmoidGradFunctor<T>()(place, 1 /*useless*/, eigen_value_og,
-                          eigen_grad_output * eigen_state_act, eigen_grad_og);
+  paddle::operators::SigmoidGradFunctor<T>()(
+      place,
+      1 /*useless*/,
+      eigen_value_og,
+      eigen_grad_output * eigen_state_act,
+      eigen_grad_og);
   eigen_grad_state.device(place) =
       eigen_grad_state +
       eigen_grad_output * eigen_value_og *
           (static_cast<T>(1) - eigen_state_act * eigen_state_act);
-  TanhGradFunctor<T>()(place, 1, eigen_value_in,
-                       eigen_grad_state * eigen_value_ig, eigen_grad_in);
-  SigmoidGradFunctor<T>()(place, 1, eigen_value_ig,
-                          eigen_grad_state * eigen_value_in, eigen_grad_ig);
+  paddle::operators::TanhGradFunctor<T>()(place,
+                                          1,
+                                          eigen_value_in,
+                                          eigen_grad_state * eigen_value_ig,
+                                          eigen_grad_in);
+  paddle::operators::SigmoidGradFunctor<T>()(place,
+                                             1,
+                                             eigen_value_ig,
+                                             eigen_grad_state * eigen_value_in,
+                                             eigen_grad_ig);
   if (value.prev_state_value) {
     auto eigen_prev_state = typename EigenVector<T>::ConstType(
         value.prev_state_value, Array1(frame_size));
-    SigmoidGradFunctor<T>()(place, 1, eigen_value_fg,
-                            eigen_grad_state * eigen_prev_state, eigen_grad_fg);
+    paddle::operators::SigmoidGradFunctor<T>()(
+        place,
+        1,
+        eigen_value_fg,
+        eigen_grad_state * eigen_prev_state,
+        eigen_grad_fg);
   } else {
-    SigmoidGradFunctor<T>()(place, 1, eigen_value_fg, 0, eigen_grad_fg);
+    paddle::operators::SigmoidGradFunctor<T>()(
+        place, 1, eigen_value_fg, 0, eigen_grad_fg);
   }
   if (grad.prev_state_grad) {
     auto eigen_grad_pre_state =
@@ -427,42 +518,74 @@ void eigen_lstm_backward_one_sequence(const platform::CPUDeviceContext &context,
 }
 
 template <class T, class Op>
-void cpu_lstm_forward(const platform::CPUDeviceContext &context, Op op,
-                      LstmMetaValue<T> value, int frame_size, T cell_clip,
-                      ActivationType active_node, ActivationType active_gate,
-                      ActivationType active_state, bool old_api_version) {
+void cpu_lstm_forward(const paddle::platform::CPUDeviceContext &context,
+                      Op op,
+                      pten::funcs::LstmMetaValue<T> value,
+                      int frame_size,
+                      T cell_clip,
+                      ActivationType active_node,
+                      ActivationType active_gate,
+                      ActivationType active_state,
+                      bool old_api_version) {
   if (!old_api_version) {
     eigen_lstm_forward_one_sequence<T>(context, value, frame_size);
   } else {
     if (Op::avx && !(frame_size & (8 - 1)) && (std::is_same<T, float>::value)) {
-      avx_lstm_forward_one_sequence<T>(op, value, frame_size, cell_clip,
-                                       active_node, active_gate, active_state,
+      avx_lstm_forward_one_sequence<T>(op,
+                                       value,
+                                       frame_size,
+                                       cell_clip,
+                                       active_node,
+                                       active_gate,
+                                       active_state,
                                        old_api_version);
     } else {
-      naive_lstm_forward_one_sequence<T>(op, value, frame_size, cell_clip,
-                                         active_node, active_gate, active_state,
+      naive_lstm_forward_one_sequence<T>(op,
+                                         value,
+                                         frame_size,
+                                         cell_clip,
+                                         active_node,
+                                         active_gate,
+                                         active_state,
                                          old_api_version);
     }
   }
 }
 
 template <class T, class Op>
-void cpu_lstm_backward(const platform::CPUDeviceContext &context, Op op,
-                       LstmMetaValue<T> value, LstmMetaGrad<T> grad,
-                       int frame_size, T cell_clip, ActivationType active_node,
-                       ActivationType active_gate, ActivationType active_state,
+void cpu_lstm_backward(const paddle::platform::CPUDeviceContext &context,
+                       Op op,
+                       pten::funcs::LstmMetaValue<T> value,
+                       pten::funcs::LstmMetaGrad<T> grad,
+                       int frame_size,
+                       T cell_clip,
+                       ActivationType active_node,
+                       ActivationType active_gate,
+                       ActivationType active_state,
                        bool old_api_version) {
   if (!old_api_version) {
     eigen_lstm_backward_one_sequence<T>(context, value, grad, frame_size);
   } else {
     if (Op::avx && !(frame_size & (8 - 1)) && (std::is_same<T, float>::value)) {
-      avx_lstm_backward_one_sequence<T>(op, value, grad, frame_size, cell_clip,
-                                        active_node, active_gate, active_state,
+      avx_lstm_backward_one_sequence<T>(op,
+                                        value,
+                                        grad,
+                                        frame_size,
+                                        cell_clip,
+                                        active_node,
+                                        active_gate,
+                                        active_state,
                                         old_api_version);
     } else {
-      naive_lstm_backward_one_sequence<T>(op, value, grad, frame_size,
-                                          cell_clip, active_node, active_gate,
-                                          active_state, old_api_version);
+      naive_lstm_backward_one_sequence<T>(op,
+                                          value,
+                                          grad,
+                                          frame_size,
+                                          cell_clip,
+                                          active_node,
+                                          active_gate,
+                                          active_state,
+                                          old_api_version);
     }
   }
 }
@@ -470,6 +593,5 @@ void cpu_lstm_backward(const platform::CPUDeviceContext &context, Op op,
 #endif  // @{ End Group LSTM CPU
 
 }  // namespace detail
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace pten

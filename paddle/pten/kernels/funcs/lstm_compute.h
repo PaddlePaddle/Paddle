@@ -14,13 +14,12 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/operators/math/detail/activation_functions.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/kernels/funcs/detail/activation_functions.h"
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace pten {
+namespace funcs {
 
 template <class T>
 struct LstmMetaValue {
@@ -49,25 +48,31 @@ struct LstmMetaGrad {
 template <typename DeviceContext, typename T>
 class LstmUnitFunctor {
  public:
-  static void compute(const DeviceContext &context, LstmMetaValue<T> value,
-                      int frame_size, int batch_size, T cell_clip,
-                      const detail::ActivationType &gate_act,
-                      const detail::ActivationType &cell_act,
-                      const detail::ActivationType &cand_act,
+  static void compute(const DeviceContext &context,
+                      LstmMetaValue<T> value,
+                      int frame_size,
+                      int batch_size,
+                      T cell_clip,
+                      const pten::funcs::detail::ActivationType &gate_act,
+                      const pten::funcs::detail::ActivationType &cell_act,
+                      const pten::funcs::detail::ActivationType &cand_act,
                       bool old_api_version = true);
 };
 
 template <typename DeviceContext, typename T>
 class LstmUnitGradFunctor {
  public:
-  static void compute(const DeviceContext &context, LstmMetaValue<T> value,
-                      LstmMetaGrad<T> grad, int frame_size, int batch_size,
-                      T cell_clip, const detail::ActivationType &gate_act,
-                      const detail::ActivationType &cell_act,
-                      const detail::ActivationType &cand_act,
+  static void compute(const DeviceContext &context,
+                      LstmMetaValue<T> value,
+                      LstmMetaGrad<T> grad,
+                      int frame_size,
+                      int batch_size,
+                      T cell_clip,
+                      const pten::funcs::detail::ActivationType &gate_act,
+                      const pten::funcs::detail::ActivationType &cell_act,
+                      const pten::funcs::detail::ActivationType &cand_act,
                       bool old_api_version = true);
 };
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace pten

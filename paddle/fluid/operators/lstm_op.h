@@ -16,8 +16,8 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/detail/activation_functions.h"
-#include "paddle/fluid/operators/math/lstm_compute.h"
+#include "paddle/pten/kernels/funcs/detail/activation_functions.h"
+#include "paddle/pten/kernels/funcs/lstm_compute.h"
 #include "paddle/pten/kernels/funcs/sequence2batch.h"
 
 namespace paddle {
@@ -80,7 +80,7 @@ class LSTMKernel : public framework::OpKernel<T> {
       add_bias(device_ctx, *batch_gate, gate_bias, batch_gate);
     }
 
-    math::LstmMetaValue<T> lstm_value;
+    pten::funcs::LstmMetaValue<T> lstm_value;
     if (bias && ctx.Attr<bool>("use_peepholes")) {
       T* bias_data = const_cast<T*>(bias->data<T>());
       // the code style in LstmMetaValue will be updated later.
@@ -121,11 +121,11 @@ class LSTMKernel : public framework::OpKernel<T> {
 
     auto batch_starts = batch_gate->lod()[0];
     size_t num_batch = batch_starts.size() - 1;
-    auto gate_act = math::detail::GetActivationType(
+    auto gate_act = pten::funcs::detail::GetActivationType(
         ctx.Attr<std::string>("gate_activation"));
-    auto cell_act = math::detail::GetActivationType(
+    auto cell_act = pten::funcs::detail::GetActivationType(
         ctx.Attr<std::string>("cell_activation"));
-    auto cand_act = math::detail::GetActivationType(
+    auto cand_act = pten::funcs::detail::GetActivationType(
         ctx.Attr<std::string>("candidate_activation"));
 
     auto blas = math::GetBlas<DeviceContext, T>(device_ctx);
@@ -166,7 +166,7 @@ class LSTMKernel : public framework::OpKernel<T> {
       lstm_value.state_value = cell_t.data<T>();
       lstm_value.state_active_value = cell_pre_act_t.data<T>();
       T cell_clip = 0.0;
-      math::LstmUnitFunctor<DeviceContext, T>::compute(
+      pten::funcs::LstmUnitFunctor<DeviceContext, T>::compute(
           device_ctx, lstm_value, frame_size, cur_batch_size, cell_clip,
           gate_act, cell_act, cand_act);
       lstm_value.prev_state_value = lstm_value.state_value;
@@ -241,7 +241,7 @@ class LSTMGradKernel : public framework::OpKernel<T> {
                 ") should be %d, but received %d in LSTM@Grad operator.",
             frame_size, out_dims[1]));
 
-    math::LstmMetaValue<T> lstm_value;
+    pten::funcs::LstmMetaValue<T> lstm_value;
     if (bias && ctx.Attr<bool>("use_peepholes")) {
       T* bias_data = const_cast<T*>(bias->data<T>());
       lstm_value.check_ig = bias_data + 4 * frame_size;
@@ -253,7 +253,7 @@ class LSTMGradKernel : public framework::OpKernel<T> {
       lstm_value.check_og = nullptr;
     }
 
-    math::LstmMetaGrad<T> lstm_grad;
+    pten::funcs::LstmMetaGrad<T> lstm_grad;
 
     if (bias && bias_g) {
       bias_g->mutable_data<T>(ctx.GetPlace());
@@ -293,11 +293,11 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     batch_gate_g.mutable_data<T>(batch_gate->dims(), ctx.GetPlace());
     batch_gate_g.set_lod(batch_gate->lod());
 
-    auto gate_act = math::detail::GetActivationType(
+    auto gate_act = pten::funcs::detail::GetActivationType(
         ctx.Attr<std::string>("gate_activation"));
-    auto cell_act = math::detail::GetActivationType(
+    auto cell_act = pten::funcs::detail::GetActivationType(
         ctx.Attr<std::string>("cell_activation"));
-    auto cand_act = math::detail::GetActivationType(
+    auto cand_act = pten::funcs::detail::GetActivationType(
         ctx.Attr<std::string>("candidate_activation"));
 
     auto batch_starts = batch_gate->lod()[0];
@@ -338,7 +338,7 @@ class LSTMGradKernel : public framework::OpKernel<T> {
       lstm_grad.state_active_grad = nullptr;
       int cur_batch_size = bend - bstart;
       T cell_clip = 0.0;
-      math::LstmUnitGradFunctor<DeviceContext, T>::compute(
+      pten::funcs::LstmUnitGradFunctor<DeviceContext, T>::compute(
           device_ctx, lstm_value, lstm_grad, frame_size, cur_batch_size,
           cell_clip, gate_act, cell_act, cand_act);
 

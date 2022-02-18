@@ -19,10 +19,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/detail/activation_functions.h"
-#include "paddle/fluid/operators/math/lstm_compute.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/transform.h"
+#include "paddle/pten/kernels/funcs/detail/activation_functions.h"
+#include "paddle/pten/kernels/funcs/lstm_compute.h"
 #include "paddle/pten/kernels/funcs/sequence2batch.h"
 
 namespace paddle {
@@ -81,15 +81,15 @@ template <typename DeviceContext, typename T>
 class LSTMPKernel : public framework::OpKernel<T> {
  public:
   template <typename Device, typename X, typename Y>
-  void ActCompute(const math::detail::ActivationType act_type, const Device& d,
-                  X x, Y y, platform::Place place) const {
-    if (act_type == math::detail::ActivationType::kIdentity) {
+  void ActCompute(const pten::funcs::detail::ActivationType act_type,
+                  const Device& d, X x, Y y, platform::Place place) const {
+    if (act_type == pten::funcs::detail::ActivationType::kIdentity) {
       y.device(d) = x;
-    } else if (act_type == math::detail::ActivationType::kSigmoid) {
+    } else if (act_type == pten::funcs::detail::ActivationType::kSigmoid) {
       SigmoidFunctor<T>()(d, x, y);
-    } else if (act_type == math::detail::ActivationType::kTanh) {
+    } else if (act_type == pten::funcs::detail::ActivationType::kTanh) {
       TanhFunctor<T>()(d, x, y);
-    } else if (act_type == math::detail::ActivationType::kReLU) {
+    } else if (act_type == pten::funcs::detail::ActivationType::kReLU) {
       if (place == platform::CPUPlace())
         ReluCPUFunctor<T>()(d, x, y);
       else
@@ -137,7 +137,7 @@ class LSTMPKernel : public framework::OpKernel<T> {
       add_bias(device_ctx, *batch_gate, gate_bias, batch_gate);
     }
 
-    math::LstmMetaValue<T> lstmp_value;
+    pten::funcs::LstmMetaValue<T> lstmp_value;
     if (bias && ctx.Attr<bool>("use_peepholes")) {
       T* bias_data = const_cast<T*>(bias->data<T>());
       // the code style in LstmpMetaValue will be updated later.
@@ -176,13 +176,13 @@ class LSTMPKernel : public framework::OpKernel<T> {
 
     auto batch_starts = batch_gate->lod()[0];
     size_t num_batch = batch_starts.size() - 1;
-    auto gate_act = math::detail::GetActivationType(
+    auto gate_act = pten::funcs::detail::GetActivationType(
         ctx.Attr<std::string>("gate_activation"));
-    auto cell_act = math::detail::GetActivationType(
+    auto cell_act = pten::funcs::detail::GetActivationType(
         ctx.Attr<std::string>("cell_activation"));
-    auto cand_act = math::detail::GetActivationType(
+    auto cand_act = pten::funcs::detail::GetActivationType(
         ctx.Attr<std::string>("candidate_activation"));
-    auto proj_act = math::detail::GetActivationType(
+    auto proj_act = pten::funcs::detail::GetActivationType(
         ctx.Attr<std::string>("proj_activation"));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
     auto blas = math::GetBlas<DeviceContext, T>(device_ctx);
@@ -222,13 +222,13 @@ class LSTMPKernel : public framework::OpKernel<T> {
       lstmp_value.output_value = hidden_t.data<T>();
       lstmp_value.state_value = cell_t.data<T>();
       lstmp_value.state_active_value = cell_pre_act_t.data<T>();
-      math::LstmUnitFunctor<DeviceContext, T>::compute(
+      pten::funcs::LstmUnitFunctor<DeviceContext, T>::compute(
           device_ctx, lstmp_value, frame_size, cur_batch_size, cell_clip,
           gate_act, cell_act, cand_act);
       lstmp_value.prev_state_value = lstmp_value.state_value;
       blas.MatMul(hidden_t, false, *proj_weight, false, static_cast<T>(1.0),
                   &proj_t, static_cast<T>(0.0));
-      if (proj_act != math::detail::ActivationType::kIdentity) {
+      if (proj_act != pten::funcs::detail::ActivationType::kIdentity) {
         auto proj_t_dev = EigenMatrix<T>::From(proj_t);
         ActCompute(cell_act, place, proj_t_dev, proj_t_dev, ctx.GetPlace());
       }
@@ -257,16 +257,16 @@ template <typename DeviceContext, typename T>
 class LSTMPGradKernel : public framework::OpKernel<T> {
  public:
   template <typename Device, typename X, typename Y, typename DX, typename DY>
-  void ActGradCompute(const math::detail::ActivationType act_type,
+  void ActGradCompute(const pten::funcs::detail::ActivationType act_type,
                       const Device& d, X x, Y y, DX dx, DY dy) const {
     // x is dummy and won't be used even in Relu(use y instead)
-    if (act_type == math::detail::ActivationType::kIdentity)
+    if (act_type == pten::funcs::detail::ActivationType::kIdentity)
       dx.device(d) = dy;
-    else if (act_type == math::detail::ActivationType::kSigmoid)
+    else if (act_type == pten::funcs::detail::ActivationType::kSigmoid)
       SigmoidGradFunctor<T>()(d, x, y, dy, dx);
-    else if (act_type == math::detail::ActivationType::kTanh)
+    else if (act_type == pten::funcs::detail::ActivationType::kTanh)
       TanhGradFunctor<T>()(d, x, y, dy, dx);
-    else if (act_type == math::detail::ActivationType::kReLU)
+    else if (act_type == pten::funcs::detail::ActivationType::kReLU)
       ReluGradFunctor<T>()(d, x, y, dy, dx);
     else
       PADDLE_THROW(
@@ -340,7 +340,7 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
                           "but received %d in LSTMP@Grad operator.",
                           frame_size, out_dims[1]));
 
-    math::LstmMetaValue<T> lstmp_value;
+    pten::funcs::LstmMetaValue<T> lstmp_value;
     if (bias && ctx.Attr<bool>("use_peepholes")) {
       T* bias_data = const_cast<T*>(bias->data<T>());
       lstmp_value.check_ig = bias_data + 4 * frame_size;
@@ -352,7 +352,7 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
       lstmp_value.check_og = nullptr;
     }
 
-    math::LstmMetaGrad<T> lstmp_grad;
+    pten::funcs::LstmMetaGrad<T> lstmp_grad;
 
     if (bias && bias_g) {
       bias_g->mutable_data<T>(ctx.GetPlace());
@@ -393,13 +393,13 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
     batch_gate_g.mutable_data<T>(batch_gate->dims(), ctx.GetPlace());
     batch_gate_g.set_lod(batch_gate->lod());
 
-    auto gate_act = math::detail::GetActivationType(
+    auto gate_act = pten::funcs::detail::GetActivationType(
         ctx.Attr<std::string>("gate_activation"));
-    auto cell_act = math::detail::GetActivationType(
+    auto cell_act = pten::funcs::detail::GetActivationType(
         ctx.Attr<std::string>("cell_activation"));
-    auto cand_act = math::detail::GetActivationType(
+    auto cand_act = pten::funcs::detail::GetActivationType(
         ctx.Attr<std::string>("candidate_activation"));
-    auto proj_act = math::detail::GetActivationType(
+    auto proj_act = pten::funcs::detail::GetActivationType(
         ctx.Attr<std::string>("proj_activation"));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
 
@@ -423,7 +423,7 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
               _ClipGradFunctor<T>(-1.0 * proj_clip, proj_clip));
       }
 
-      if (proj_act != math::detail::ActivationType::kIdentity) {
+      if (proj_act != pten::funcs::detail::ActivationType::kIdentity) {
         auto cur_proj_dev = EigenMatrix<T>::From(cur_proj);
         auto proj_g_dev = EigenMatrix<T>::From(proj_g);
         ActGradCompute(cell_act, place, cur_proj_dev, cur_proj_dev, proj_g_dev,
@@ -470,7 +470,7 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
       lstmp_value.output_value = nullptr;
       lstmp_grad.state_active_grad = nullptr;
 
-      math::LstmUnitGradFunctor<DeviceContext, T>::compute(
+      pten::funcs::LstmUnitGradFunctor<DeviceContext, T>::compute(
           device_ctx, lstmp_value, lstmp_grad, frame_size, cur_batch_size,
           cell_clip, gate_act, cell_act, cand_act);
 

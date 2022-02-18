@@ -16,8 +16,8 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/detail/activation_functions.h"
-#include "paddle/fluid/operators/math/gru_compute.h"
+#include "paddle/pten/kernels/funcs/detail/activation_functions.h"
+#include "paddle/pten/kernels/funcs/gru_compute.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
 #include "paddle/pten/kernels/funcs/sequence2batch.h"
 
@@ -93,12 +93,12 @@ class GRUGradKernel : public framework::OpKernel<T> {
     batch_hidden_grad.set_lod(batch_hidden->lod());
     to_batch(dev_ctx, *hidden_grad, &batch_hidden_grad, false, is_reverse);
 
-    math::GRUMetaValue<T> gru_value;
+    pten::funcs::GRUMetaValue<T> gru_value;
     gru_value.gate_weight = const_cast<T*>(weight_data);
     gru_value.state_weight =
         const_cast<T*>(weight_data + 2 * frame_size * frame_size);
 
-    math::GRUMetaGrad<T> gru_grad;
+    pten::funcs::GRUMetaGrad<T> gru_grad;
     if (weight_grad) {
       gru_grad.gate_weight_grad =
           weight_grad->mutable_data<T>(context.GetPlace());
@@ -112,9 +112,9 @@ class GRUGradKernel : public framework::OpKernel<T> {
 
     auto batch_starts = batch_hidden_grad.lod()[0];
     size_t num_batch = batch_starts.size() - 1;
-    auto active_node = math::detail::GetActivationType(
+    auto active_node = pten::funcs::detail::GetActivationType(
         context.Attr<std::string>("activation"));
-    auto active_gate = math::detail::GetActivationType(
+    auto active_gate = pten::funcs::detail::GetActivationType(
         context.Attr<std::string>("gate_activation"));
     for (int n = static_cast<int>(num_batch) - 1; n >= 0; n--) {
       int bstart = static_cast<int>(batch_starts[n]);
@@ -145,7 +145,7 @@ class GRUGradKernel : public framework::OpKernel<T> {
         gru_grad.prev_out_grad = hidden_prev_grad_t.data<T>();
       }
       gru_value.output_value = nullptr;
-      math::GRUUnitGradFunctor<DeviceContext, T>::compute(
+      pten::funcs::GRUUnitGradFunctor<DeviceContext, T>::compute(
           dev_ctx, gru_value, gru_grad, frame_size, cur_batch_size, active_node,
           active_gate, origin_mode);
     }

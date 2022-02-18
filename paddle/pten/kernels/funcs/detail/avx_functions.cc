@@ -14,12 +14,11 @@ limitations under the License. */
 
 #ifdef __AVX__
 
-#include "paddle/fluid/operators/math/detail/activation_functions.h"
-#include "paddle/fluid/operators/math/detail/avx_mathfun.h"
+#include "paddle/pten/kernels/funcs/detail/activation_functions.h"
+#include "paddle/pten/kernels/funcs/detail/avx_mathfun.h"
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace pten {
+namespace funcs {
 namespace detail {
 
 __m256 Exp(__m256 a) { return exp256_ps(a); }
@@ -77,8 +76,9 @@ namespace backward {
 namespace avx {
 __m256 Relu(const __m256 a, const __m256 b) {
   return _mm256_mul_ps(
-      a, _mm256_and_ps(_mm256_cmp_ps(b, _mm256_set1_ps(0.0f), _CMP_GT_OS),
-                       _mm256_set1_ps(1.0f)));
+      a,
+      _mm256_and_ps(_mm256_cmp_ps(b, _mm256_set1_ps(0.0f), _CMP_GT_OS),
+                    _mm256_set1_ps(1.0f)));
 }
 
 __m256 Sigmoid(const __m256 a, const __m256 b) {
@@ -96,8 +96,7 @@ __m256 Identity(const __m256 a, const __m256 b) { return a; }
 }  // namespace backward
 
 }  // namespace detail
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace pten
 
 #endif

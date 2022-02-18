@@ -15,14 +15,13 @@ limitations under the License. */
 #pragma once
 #include <type_traits>
 
-#include "paddle/fluid/operators/math/detail/activation_functions.h"
-#include "paddle/fluid/operators/math/lstm_compute.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/pten/kernels/funcs/detail/activation_functions.h"
+#include "paddle/pten/kernels/funcs/lstm_compute.h"
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace pten {
+namespace funcs {
 namespace detail {
 
 /*
@@ -30,8 +29,11 @@ namespace detail {
  * grid(frame_blocks, batch_blocks)
  */
 template <class T, class Op, bool is_batch>
-__global__ void KeLstmForward(Op op, LstmMetaValue<T> value, int frame_size,
-                              int batch_size, T cell_clip,
+__global__ void KeLstmForward(Op op,
+                              pten::funcs::LstmMetaValue<T> value,
+                              int frame_size,
+                              int batch_size,
+                              T cell_clip,
                               ActivationType active_node,
                               ActivationType active_gate,
                               ActivationType active_state) {
@@ -71,9 +73,21 @@ __global__ void KeLstmForward(Op op, LstmMetaValue<T> value, int frame_size,
     r_prev_state = value.prev_state_value[frame_idx];
   }
 
-  op(&r_value_in, &r_value_ig, &r_value_fg, &r_value_og, &r_prev_state,
-     &r_state, &r_state_atv, &r_out, &r_checkI, &r_checkF, &r_checkO,
-     &cell_clip, active_node, active_gate, active_state);
+  op(&r_value_in,
+     &r_value_ig,
+     &r_value_fg,
+     &r_value_og,
+     &r_prev_state,
+     &r_state,
+     &r_state_atv,
+     &r_out,
+     &r_checkI,
+     &r_checkF,
+     &r_checkO,
+     &cell_clip,
+     active_node,
+     active_gate,
+     active_state);
 
   value.gate_value[frame_idx] = r_value_in;
   value.gate_value[frame_idx + frame_size] = r_value_ig;
@@ -90,9 +104,12 @@ __global__ void KeLstmForward(Op op, LstmMetaValue<T> value, int frame_size,
  * grid(frame_blocks, batch_blocks)
  */
 template <class T, class Op, bool is_batch>
-__global__ void KeLstmBackward(Op op, LstmMetaValue<T> value,
-                               LstmMetaGrad<T> grad, int frame_size,
-                               int batch_size, T cell_clip,
+__global__ void KeLstmBackward(Op op,
+                               pten::funcs::LstmMetaValue<T> value,
+                               pten::funcs::LstmMetaGrad<T> grad,
+                               int frame_size,
+                               int batch_size,
+                               T cell_clip,
                                ActivationType active_node,
                                ActivationType active_gate,
                                ActivationType active_state) {
@@ -147,11 +164,30 @@ __global__ void KeLstmBackward(Op op, LstmMetaValue<T> value,
     r_prev_state = value.prev_state_value[frame_idx];
   }
 
-  op(&r_value_in, &r_value_ig, &r_value_fg, &r_value_og, &r_grad_in, &r_grad_ig,
-     &r_grad_fg, &r_grad_og, &r_prev_state, &r_prev_state_grad, &r_state,
-     &r_state_grad, &r_state_atv, &r_output_grad, &r_checkI, &r_checkF,
-     &r_checkO, &r_checkIGrad, &r_checkFGrad, &r_checkOGrad, &cell_clip,
-     active_node, active_gate, active_state);
+  op(&r_value_in,
+     &r_value_ig,
+     &r_value_fg,
+     &r_value_og,
+     &r_grad_in,
+     &r_grad_ig,
+     &r_grad_fg,
+     &r_grad_og,
+     &r_prev_state,
+     &r_prev_state_grad,
+     &r_state,
+     &r_state_grad,
+     &r_state_atv,
+     &r_output_grad,
+     &r_checkI,
+     &r_checkF,
+     &r_checkO,
+     &r_checkIGrad,
+     &r_checkFGrad,
+     &r_checkOGrad,
+     &cell_clip,
+     active_node,
+     active_gate,
+     active_state);
 
   grad.gate_grad[frame_idx] = r_grad_in;
   grad.gate_grad[frame_idx + frame_size] = r_grad_ig;
@@ -185,10 +221,15 @@ __global__ void KeLstmBackward(Op op, LstmMetaValue<T> value,
 }
 
 template <class T, class Op>
-void gpu_lstm_forward(const platform::DeviceContext& context, Op op,
-                      LstmMetaValue<T> value, int frame_size, int batch_size,
-                      T cell_clip, ActivationType active_node,
-                      ActivationType active_gate, ActivationType active_state) {
+void gpu_lstm_forward(const paddle::platform::DeviceContext& context,
+                      Op op,
+                      pten::funcs::LstmMetaValue<T> value,
+                      int frame_size,
+                      int batch_size,
+                      T cell_clip,
+                      ActivationType active_node,
+                      ActivationType active_gate,
+                      ActivationType active_state) {
   dim3 threads;
   dim3 grid;
   if (batch_size == 1) {
@@ -203,25 +244,45 @@ void gpu_lstm_forward(const platform::DeviceContext& context, Op op,
   }
 
   auto stream =
-      reinterpret_cast<const platform::CUDADeviceContext&>(context).stream();
+      reinterpret_cast<const paddle::platform::CUDADeviceContext&>(context)
+          .stream();
   if (batch_size == 1) {
-    KeLstmForward<T, Op,
+    KeLstmForward<T,
+                  Op,
                   /* is_batch= */ false><<<grid, threads, 0, stream>>>(
-        op, value, frame_size, batch_size, cell_clip, active_node, active_gate,
+        op,
+        value,
+        frame_size,
+        batch_size,
+        cell_clip,
+        active_node,
+        active_gate,
         active_state);
   } else {
-    KeLstmForward<T, Op,
+    KeLstmForward<T,
+                  Op,
                   /* is_batch= */ true><<<grid, threads, 0, stream>>>(
-        op, value, frame_size, batch_size, cell_clip, active_node, active_gate,
+        op,
+        value,
+        frame_size,
+        batch_size,
+        cell_clip,
+        active_node,
+        active_gate,
         active_state);
   }
 }
 
 template <class T, class Op>
-void gpu_lstm_backward(const platform::DeviceContext& context, Op op,
-                       LstmMetaValue<T> value, LstmMetaGrad<T> grad,
-                       int frame_size, int batch_size, T cell_clip,
-                       ActivationType active_node, ActivationType active_gate,
+void gpu_lstm_backward(const paddle::platform::DeviceContext& context,
+                       Op op,
+                       pten::funcs::LstmMetaValue<T> value,
+                       pten::funcs::LstmMetaGrad<T> grad,
+                       int frame_size,
+                       int batch_size,
+                       T cell_clip,
+                       ActivationType active_node,
+                       ActivationType active_gate,
                        ActivationType active_state) {
   dim3 threads;
   dim3 grid;
@@ -237,21 +298,37 @@ void gpu_lstm_backward(const platform::DeviceContext& context, Op op,
   }
 
   auto stream =
-      reinterpret_cast<const platform::CUDADeviceContext&>(context).stream();
+      reinterpret_cast<const paddle::platform::CUDADeviceContext&>(context)
+          .stream();
   if (batch_size == 1) {
-    KeLstmBackward<T, Op,
+    KeLstmBackward<T,
+                   Op,
                    /* is_batch= */ false><<<grid, threads, 0, stream>>>(
-        op, value, grad, frame_size, batch_size, cell_clip, active_node,
-        active_gate, active_state);
+        op,
+        value,
+        grad,
+        frame_size,
+        batch_size,
+        cell_clip,
+        active_node,
+        active_gate,
+        active_state);
   } else {
-    KeLstmBackward<T, Op,
+    KeLstmBackward<T,
+                   Op,
                    /* is_batch= */ true><<<grid, threads, 0, stream>>>(
-        op, value, grad, frame_size, batch_size, cell_clip, active_node,
-        active_gate, active_state);
+        op,
+        value,
+        grad,
+        frame_size,
+        batch_size,
+        cell_clip,
+        active_node,
+        active_gate,
+        active_state);
   }
 }
 
 }  // namespace detail
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace pten
