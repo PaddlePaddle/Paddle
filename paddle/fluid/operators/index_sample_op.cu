@@ -22,10 +22,6 @@
 #define PREDEFINED_BLOCK_SIZE 1024
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
-#define PREDEFINED_BLOCK_SIZE_X 512
-#define PREDEFINED_BLOCK_SIZE 1024
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-
 namespace paddle {
 namespace operators {
 
