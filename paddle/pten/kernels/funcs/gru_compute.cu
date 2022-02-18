@@ -10,7 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <paddle/fluid/platform/device_context.h>
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 #include "paddle/pten/kernels/funcs/detail/gru_gpu_kernel.h"
 #include "paddle/pten/kernels/funcs/detail/gru_kernel.h"
 #include "paddle/pten/kernels/funcs/gru_compute.h"
@@ -101,8 +101,7 @@ struct GRUUnitFunctor<paddle::platform::CUDADeviceContext, T> {
       grid = dim3((frame_size + 32 - 1) / 32, (batch_size + 32 - 1) / 32);
     }
     auto blas =
-        paddle::operators::math::GetBlas<paddle::platform::CUDADeviceContext,
-                                         T>(context);
+        pten::funcs::GetBlas<paddle::platform::CUDADeviceContext, T>(context);
     if (value.prev_out_value) {
       blas.GEMM(false,
                 false,
@@ -245,8 +244,7 @@ struct GRUUnitGradFunctor<paddle::platform::CUDADeviceContext, T> {
     }
 
     auto blas =
-        paddle::operators::math::GetBlas<paddle::platform::CUDADeviceContext,
-                                         T>(context);
+        pten::funcs::GetBlas<paddle::platform::CUDADeviceContext, T>(context);
 
     if (value.prev_out_value && grad.prev_out_grad) {
       blas.GEMM(false,

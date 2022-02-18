@@ -15,8 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/fusion_lstm_op.h"
 #include <string>
 #include "paddle/fluid/operators/jit/kernels.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/fc.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 #include "paddle/pten/kernels/funcs/sequence2batch.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -343,7 +343,7 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     T* xx_data = xx->mutable_data<T>(place);
     T* h_out_data = hidden_out->mutable_data<T>(place);
     T* c_out_data = cell_out->mutable_data<T>(place);
-    auto blas = math::GetBlas<DeviceContext, T>(ctx);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(ctx);
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     math::FCFunctor<DeviceContext, T> fc;
@@ -423,7 +423,7 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
 
     pten::funcs::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     math::FCFunctor<DeviceContext, T> fc;
     if (M > D4) {
       fc(dev_ctx, x_dims[0], D4, M, x_data, wx_data, xx_data, bias->data<T>());

@@ -11,7 +11,7 @@ limitations under the License. */
 
 #include "paddle/pten/kernels/funcs/gru_compute.h"
 
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 #include "paddle/pten/kernels/funcs/detail/gru_cpu_kernel.h"
 #include "paddle/pten/kernels/funcs/detail/gru_kernel.h"
 
@@ -29,8 +29,7 @@ struct GRUUnitFunctor<paddle::platform::CPUDeviceContext, T> {
                       bool origin_mode) {
 #if !defined(__NVCC__) && !defined(__HIPCC___)
     auto blas =
-        paddle::operators::math::GetBlas<paddle::platform::CPUDeviceContext, T>(
-            context);
+        pten::funcs::GetBlas<paddle::platform::CPUDeviceContext, T>(context);
     if (value.prev_out_value) {
       blas.GEMM(false,
                 false,
@@ -105,8 +104,7 @@ struct GRUUnitGradFunctor<paddle::platform::CPUDeviceContext, T> {
         active_node,
         origin_mode);
     auto blas =
-        paddle::operators::math::GetBlas<paddle::platform::CPUDeviceContext, T>(
-            context);
+        pten::funcs::GetBlas<paddle::platform::CPUDeviceContext, T>(context);
     if (value.prev_out_value && grad.prev_out_grad) {
       blas.GEMM(false,
                 true,
@@ -191,8 +189,7 @@ struct GRUUnitFunctorV2<paddle::platform::CPUDeviceContext, T> {
                       const pten::funcs::detail::ActivationType active_gate) {
 #if !defined(__NVCC__) && !defined(__HIPCC___)
     auto blas =
-        paddle::operators::math::GetBlas<paddle::platform::CPUDeviceContext, T>(
-            context);
+        pten::funcs::GetBlas<paddle::platform::CPUDeviceContext, T>(context);
     if (value.prev_out_value) {
       blas.GEMM(CblasNoTrans,
                 CblasTrans,
@@ -257,8 +254,7 @@ struct GRUUnitGradFunctorV2<paddle::platform::CPUDeviceContext, T> {
                              active_node,
                              active_gate);
     auto blas =
-        paddle::operators::math::GetBlas<paddle::platform::CPUDeviceContext, T>(
-            context);
+        pten::funcs::GetBlas<paddle::platform::CPUDeviceContext, T>(context);
     if (grad.prev_out_grad && value.prev_out_value) {
       // update prev_out_grad
       blas.GEMM(false,

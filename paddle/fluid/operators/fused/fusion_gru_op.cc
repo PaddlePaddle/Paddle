@@ -18,8 +18,8 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/jit/kernels.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/fc.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 #include "paddle/pten/kernels/funcs/sequence2batch.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -295,7 +295,7 @@ class FusionGRUKernel : public framework::OpKernel<T> {
     const T* h0_data = h0 ? h0->data<T>() : nullptr;
     const T* wh_state_data = wh_data + D * D2;
     T* hidden_out_data = hidden_out->mutable_data<T>(place);
-    auto blas = math::GetBlas<DeviceContext, T>(ctx);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(ctx);
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     math::FCFunctor<DeviceContext, T> fc;
@@ -367,7 +367,7 @@ class FusionGRUKernel : public framework::OpKernel<T> {
     T* batched_out_data = batched_out->mutable_data<T>(place);
     hidden_out->mutable_data<T>(place);
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     pten::funcs::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
 
     math::FCFunctor<DeviceContext, T> fc;

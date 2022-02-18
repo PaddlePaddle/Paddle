@@ -13,17 +13,16 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace pten {
 namespace tests {
 
 template <typename T>
-inline paddle::operators::math::BlasT<paddle::platform::CPUDeviceContext, T>
-GetBlas(const paddle::platform::CPUDeviceContext& context) {
-  return paddle::operators::math::GetBlas<paddle::platform::CPUDeviceContext,
-                                          T>(context);
+inline pten::funcs::BlasT<paddle::platform::CPUDeviceContext, T> GetBlas(
+    const paddle::platform::CPUDeviceContext& context) {
+  return pten::funcs::GetBlas<paddle::platform::CPUDeviceContext, T>(context);
 }
 
 TEST(math_function, gemm_notrans_cblas) {
@@ -98,36 +97,36 @@ void MklSmmCompare(int m, int n, int k) {
   auto smm = [&, m, n, k, lda, ldb, ldc, alpha, beta]() {
     const char transa = 'N';
     const char transb = 'N';
-    paddle::operators::math::CBlas<T>::SMM_GEMM(&transa,
-                                                &transb,
-                                                &n,
-                                                &m,
-                                                &k,
-                                                &alpha,
-                                                B,
-                                                &ldb,
-                                                A,
-                                                &lda,
-                                                &beta,
-                                                CSMM,
-                                                &ldc);
+    pten::funcs::CBlas<T>::SMM_GEMM(&transa,
+                                    &transb,
+                                    &n,
+                                    &m,
+                                    &k,
+                                    &alpha,
+                                    B,
+                                    &ldb,
+                                    A,
+                                    &lda,
+                                    &beta,
+                                    CSMM,
+                                    &ldc);
   };
 
   auto mkl = [&, m, n, k, lda, ldb, ldc, alpha, beta]() {
-    paddle::operators::math::CBlas<T>::GEMM(CblasRowMajor,
-                                            CblasNoTrans,
-                                            CblasNoTrans,
-                                            m,
-                                            n,
-                                            k,
-                                            alpha,
-                                            A,
-                                            lda,
-                                            B,
-                                            ldb,
-                                            beta,
-                                            CMKL,
-                                            ldc);
+    pten::funcs::CBlas<T>::GEMM(CblasRowMajor,
+                                CblasNoTrans,
+                                CblasNoTrans,
+                                m,
+                                n,
+                                k,
+                                alpha,
+                                A,
+                                lda,
+                                B,
+                                ldb,
+                                beta,
+                                CMKL,
+                                ldc);
   };
 
   smm();
@@ -321,20 +320,20 @@ void GemmWarpTest(int m, int n, int k, T alpha, T beta) {
   int lda = k;
   int ldb = n;
   int ldc = n;
-  paddle::operators::math::CBlas<T>::GEMM(CblasRowMajor,
-                                          CblasNoTrans,
-                                          CblasNoTrans,
-                                          m,
-                                          n,
-                                          k,
-                                          alpha,
-                                          A,
-                                          lda,
-                                          B,
-                                          ldb,
-                                          beta,
-                                          CMKL,
-                                          ldc);
+  pten::funcs::CBlas<T>::GEMM(CblasRowMajor,
+                              CblasNoTrans,
+                              CblasNoTrans,
+                              m,
+                              n,
+                              k,
+                              alpha,
+                              A,
+                              lda,
+                              B,
+                              ldb,
+                              beta,
+                              CMKL,
+                              ldc);
 
   for (int i = 0; i < mat_c_mkl.numel(); ++i) {
     EXPECT_FLOAT_EQ(CREF[i], CMKL[i]);
