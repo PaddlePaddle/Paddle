@@ -142,8 +142,8 @@ class LUKernel : public framework::OpKernel<T> {
       auto out_data_item = &out_data[b * m * n];
       int *info_data_item = &info_data[b];
       int *ipiv_data_item = &ipiv_data[b * std::min(m, n)];
-      math::lapackLu<T>(m, n, out_data_item, lda, ipiv_data_item,
-                        info_data_item);
+      pten::funcs::lapackLu<T>(m, n, out_data_item, lda, ipiv_data_item,
+                               info_data_item);
     }
     *out = helper.Transpose(*out);
   }

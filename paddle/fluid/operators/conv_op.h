@@ -21,10 +21,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/layout_utils.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/depthwise_conv.h"
 #include "paddle/fluid/operators/math/im2col.h"
 #include "paddle/fluid/operators/math/vol2col.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -331,7 +331,7 @@ class GemmConvKernel : public framework::OpKernel<T> {
     math::Vol2ColFunctor<DeviceContext, T> vol2col;
     math::Im2ColFunctor<math::ColFormat::kCFO, DeviceContext, T> im2col;
 
-    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     for (int i = 0; i < batch_size; i++) {
       Tensor in_batch =
           transformed_input.Slice(i, i + 1).Resize(in_matrix_shape);
@@ -484,7 +484,7 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
     }
 
     pten::funcs::SetConstant<DeviceContext, T> set_zero;
-    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(dev_ctx);
 
     if (input_grad) {
       input_grad->mutable_data<T>(context.GetPlace());
@@ -690,7 +690,7 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
     }
 
     pten::funcs::SetConstant<DeviceContext, T> set_zero;
-    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(dev_ctx);
 
     // dx convolution double grad:  gemm + col2im(col2vol)
     // dx = ddw * dy  ==> dx(N, Cin, H, W), ddw(Cout, Cin, kh, kw), dy(N, Cout,

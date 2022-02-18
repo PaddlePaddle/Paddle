@@ -12,18 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace pten {
+namespace funcs {
 MatDescriptor CreateMatrixDescriptor(const framework::DDim &tensor_dim,
-                                     int num_flatten_cols, bool trans) {
+                                     int num_flatten_cols,
+                                     bool trans) {
   PADDLE_ENFORCE_GT(
-      tensor_dim.size(), 1,
-      platform::errors::InvalidArgument("The tensor dim size should be greater "
-                                        "than 1, but reveived dim size is %d",
-                                        tensor_dim.size()));
+      tensor_dim.size(),
+      1,
+      pten::errors::InvalidArgument("The tensor dim size should be greater "
+                                    "than 1, but reveived dim size is %d",
+                                    tensor_dim.size()));
   MatDescriptor retv;
   if (num_flatten_cols > 1) {
     auto flatten_dim = pten::flatten_to_2d(tensor_dim, num_flatten_cols);
@@ -50,6 +51,5 @@ MatDescriptor CreateMatrixDescriptor(const framework::DDim &tensor_dim,
   retv.trans_ = trans;
   return retv;
 }
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace pten

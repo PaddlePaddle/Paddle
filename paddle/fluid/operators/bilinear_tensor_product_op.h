@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -61,7 +61,7 @@ class BilinearTensorProductKernel : public framework::OpKernel<T> {
       auto output_col_vec = output_mat.chip(i, 1);
       Tensor weight_mat =
           weight->Slice(i, i + 1).Resize(pten::make_ddim({x_dim, y_dim}));
-      math::GetBlas<DeviceContext, T>(dev_ctx).GEMM(
+      pten::funcs::GetBlas<DeviceContext, T>(dev_ctx).GEMM(
           CblasNoTrans, CblasNoTrans, batch_size, y_dim, x_dim, 1, x->data<T>(),
           weight_mat.data<T>(), 0, left_mul.data<T>());
       output_col_vec.device(place) =
@@ -127,7 +127,7 @@ class BilinearTensorProductGradKernel : public framework::OpKernel<T> {
       d_weight->mutable_data<T>(ctx.GetPlace());
     }
 
-    auto blas = math::GetBlas<DeviceContext, T>(ctx);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(ctx);
 
     // Caculate the Output(X@Grad) and Output(Y@Grad).
     if (d_x || d_y || d_weight) {

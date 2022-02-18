@@ -20,10 +20,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/matrix_solve.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
 #include "paddle/fluid/operators/squeeze_op.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
@@ -523,10 +523,12 @@ class SolveGradKernel : public framework::OpKernel<T> {
     if (dx) {
       dx->mutable_data<T>(ctx.GetPlace());
       // to get dx
-      auto blas = math::GetBlas<DeviceContext, T>(ctx);
+      auto blas = pten::funcs::GetBlas<DeviceContext, T>(ctx);
       if (input->dims().size() == 2 && y->dims().size() == 2) {
-        auto mat_dim_a1 = math::CreateMatrixDescriptor(tmp_dy.dims(), 0, false);
-        auto mat_dim_b1 = math::CreateMatrixDescriptor(out->dims(), 0, true);
+        auto mat_dim_a1 =
+            pten::funcs::CreateMatrixDescriptor(tmp_dy.dims(), 0, false);
+        auto mat_dim_b1 =
+            pten::funcs::CreateMatrixDescriptor(out->dims(), 0, true);
         blas.MatMul(tmp_dy, mat_dim_a1, *out, mat_dim_b1, T(-1), &tmp_dx, T(0));
       } else if (is_vector_rhs(*input, *y)) {
         Tensor tmp_dy_;
@@ -538,14 +540,16 @@ class SolveGradKernel : public framework::OpKernel<T> {
         to_unsqueeze(ctx, *out, &tmp_out_);
 
         auto mat_dim_a1 =
-            math::CreateMatrixDescriptor(tmp_dy_.dims(), 0, false);
+            pten::funcs::CreateMatrixDescriptor(tmp_dy_.dims(), 0, false);
         auto mat_dim_b1 =
-            math::CreateMatrixDescriptor(tmp_out_.dims(), 0, true);
+            pten::funcs::CreateMatrixDescriptor(tmp_out_.dims(), 0, true);
         blas.MatMul(tmp_dy_, mat_dim_a1, tmp_out_, mat_dim_b1, T(-1), &tmp_dx,
                     T(0));
       } else {
-        auto mat_dim_a1 = math::CreateMatrixDescriptor(tmp_dy.dims(), 0, false);
-        auto mat_dim_b1 = math::CreateMatrixDescriptor(out->dims(), 0, true);
+        auto mat_dim_a1 =
+            pten::funcs::CreateMatrixDescriptor(tmp_dy.dims(), 0, false);
+        auto mat_dim_b1 =
+            pten::funcs::CreateMatrixDescriptor(out->dims(), 0, true);
         blas.MatMul(tmp_dy, mat_dim_a1, *out, mat_dim_b1, T(-1), &tmp_dx, T(0));
       }
     }

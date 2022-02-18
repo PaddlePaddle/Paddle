@@ -28,8 +28,8 @@
 #include "paddle/fluid/operators/deformable_conv_filter.cu.h"
 #include "paddle/fluid/operators/deformable_conv_func.h"
 #include "paddle/fluid/operators/deformable_conv_v1_op.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -380,7 +380,7 @@ class DeformableConvV1CUDAKernel : public framework::OpKernel<T> {
     int input_dim = input->numel() / input->dims()[0];
     int input_offset_dim = offset.numel() / offset.dims()[0];
 
-    auto blas = math::GetBlas<CUDADeviceContext, T>(dev_ctx);
+    auto blas = pten::funcs::GetBlas<CUDADeviceContext, T>(dev_ctx);
 
     const T* input_ptr = input->data<T>();
     const T* offset_ptr = offset.data<T>();
@@ -486,7 +486,7 @@ class DeformableConvV1GradCUDAKernel : public framework::OpKernel<T> {
     col_buffer_3d.ShareDataWith(col_buffer).Resize(col_buffer_3d_shape);
 
     pten::funcs::SetConstant<CUDADeviceContext, T> set_zero;
-    auto blas = math::GetBlas<CUDADeviceContext, T>(dev_ctx);
+    auto blas = pten::funcs::GetBlas<CUDADeviceContext, T>(dev_ctx);
 
     col_buffer.mutable_data<T>(ctx.GetPlace());
     col_buffer_3d.mutable_data<T>(ctx.GetPlace());

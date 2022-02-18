@@ -17,8 +17,8 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/matmul_v2_op.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -49,8 +49,8 @@ class FusedFeedForwardOp : public framework::OperatorWithKernel {
                    "fused_feedforward");
 
     auto dim_x = context->GetInputDim("X");
-    auto mat_dim_x =
-        math::CreateMatrixDescriptor(RowMatrixFromVector(dim_x), 0, false);
+    auto mat_dim_x = pten::funcs::CreateMatrixDescriptor(
+        RowMatrixFromVector(dim_x), 0, false);
     // verify for the pre layer_norm, the feature size must be larger than 1
     PADDLE_ENFORCE_GT(
         mat_dim_x.width_, static_cast<size_t>(1),

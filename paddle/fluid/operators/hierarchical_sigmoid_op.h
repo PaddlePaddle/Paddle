@@ -166,7 +166,7 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
 
     // softrelu derivative
 
-    auto blas = math::GetBlas<DeviceContext, T>(ctx);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(ctx);
 
     auto* pre_out_grad_data = pre_out_grad.data<T>();
     auto* pre_out_data = pre_out.template data<T>();

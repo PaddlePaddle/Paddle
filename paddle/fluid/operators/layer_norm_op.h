@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 #if !defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && !defined(__APPLE__) && \
     !defined(__OSX__)
 #include "paddle/fluid/operators/jit/kernels.h"
@@ -61,7 +61,7 @@ class RowwiseMean2D<platform::CUDADeviceContext, T> {
   }
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input, framework::Tensor* out) {
-    math::GetBlas<platform::CUDADeviceContext, T>(context).GEMV(
+    pten::funcs::GetBlas<platform::CUDADeviceContext, T>(context).GEMV(
         false, left_, right_, 1., input.data<T>(), divisor_.data<T>(), 0.,
         out->data<T>());
   }
@@ -108,7 +108,7 @@ class ColwiseSum2D<platform::CUDADeviceContext, T> {
 
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input, framework::Tensor* out) {
-    math::GetBlas<platform::CUDADeviceContext, T>(context).GEMV(
+    pten::funcs::GetBlas<platform::CUDADeviceContext, T>(context).GEMV(
         true, left_, right_, 1., input.data<T>(), divisor_.data<T>(), 0.,
         out->data<T>());
   }

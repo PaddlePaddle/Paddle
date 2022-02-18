@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -109,8 +109,8 @@ class LookupTableKernel : public framework::OpKernel<T> {
                 memcpy(output + i * row_width, table + id_index * row_width,
                        row_width * sizeof(T));
               } else {
-                auto blas =
-                    math::GetBlas<platform::CPUDeviceContext, T>(context);
+                auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(
+                    context);
                 blas.VCOPY(row_width, table + id_index * row_width,
                            output + i * row_width);
               }
@@ -137,7 +137,8 @@ class LookupTableKernel : public framework::OpKernel<T> {
               memcpy(output + i * row_width, table + id_index * row_width,
                      row_width * sizeof(T));
             } else {
-              auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+              auto blas =
+                  pten::funcs::GetBlas<platform::CPUDeviceContext, T>(context);
               blas.VCOPY(row_width, table + id_index * row_width,
                          output + i * row_width);
             }

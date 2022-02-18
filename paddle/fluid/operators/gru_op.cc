@@ -15,9 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/gru_op.h"
 #include <memory>
 #include <string>
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/detail/gru_cpu_kernel.h"
 #include "paddle/fluid/operators/math/detail/gru_kernel.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 
 DECLARE_int32(paddle_num_threads);
 
@@ -355,7 +355,7 @@ class GRUCPUKernel : public framework::OpKernel<T> {
 #ifdef PADDLE_WITH_MKLML
     // use MKL packed to speedup GEMM
     if (FLAGS_paddle_num_threads >= 4) {
-      auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+      auto blas = pten::funcs::GetBlas<DeviceContext, T>(dev_ctx);
       T* packed_gate = blas.GEMM_ALLOC(CblasBMatrix, 1 /*height of C*/,
                                        frame_size * 2 /*width of weight*/,
                                        frame_size /*height of height*/);

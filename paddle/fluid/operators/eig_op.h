@@ -17,12 +17,12 @@
 #include <math.h>
 #include <algorithm>
 #include <complex>
-#include "paddle/fluid/operators/math/lapack_function.h"
 #include "paddle/fluid/operators/math/matrix_solve.h"
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/pten/kernels/funcs/complex_functors.h"
+#include "paddle/pten/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
 #define EPSILON 1e-6
 
@@ -94,7 +94,7 @@ void LapackEig(Tensor* input, Tensor* values, Tensor* vectors, int info,
 
   // call lapackEig once to compute the size of work;
   T computed_work_size;
-  math::lapackEig<T, pten::funcs::Real<T>>(
+  pten::funcs::lapackEig<T, pten::funcs::Real<T>>(
       jobvl, jobvr, order, input_data, lda, values_data, lvector_data, ldvl,
       rvector_data, ldvr, &computed_work_size, lwork, rwork_data, &info);
 
@@ -109,7 +109,7 @@ void LapackEig(Tensor* input, Tensor* values, Tensor* vectors, int info,
     T* current_values = &values_data[i * values_stride];
     T* current_rvectors = &rvector_data[i * matrix_stride];
 
-    math::lapackEig<T, pten::funcs::Real<T>>(
+    pten::funcs::lapackEig<T, pten::funcs::Real<T>>(
         jobvl, jobvr, order, current_matrix, lda, current_values, lvector_data,
         ldvl, current_rvectors, ldvr, work_data, lwork, rwork_data, &info);
     PADDLE_ENFORCE_EQ(

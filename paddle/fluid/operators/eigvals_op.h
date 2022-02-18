@@ -19,10 +19,10 @@
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/operators/math/lapack_function.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/pten/core/ddim.h"
 #include "paddle/pten/kernels/funcs/complex_functors.h"
+#include "paddle/pten/kernels/funcs/lapack/lapack_function.h"
 
 namespace paddle {
 namespace operators {
@@ -104,11 +104,11 @@ LapackEigvals(const framework::ExecutionContext& ctx, const Tensor& input,
           required_work_mem, work_mem));
 
   int info = 0;
-  math::lapackEig<T>('N', 'N', static_cast<int>(n_dim), a.template data<T>(),
-                     static_cast<int>(n_dim), w_data, NULL, 1, NULL, 1,
-                     work->template data<T>(),
-                     static_cast<int>(work_mem / sizeof(T)),
-                     static_cast<T*>(NULL), &info);
+  pten::funcs::lapackEig<T>('N', 'N', static_cast<int>(n_dim),
+                            a.template data<T>(), static_cast<int>(n_dim),
+                            w_data, NULL, 1, NULL, 1, work->template data<T>(),
+                            static_cast<int>(work_mem / sizeof(T)),
+                            static_cast<T*>(NULL), &info);
 
   std::string name = "framework::platform::dynload::dgeev_";
   if (framework::TransToProtoVarType(input.dtype()) ==
@@ -154,7 +154,7 @@ LapackEigvals(const framework::ExecutionContext& ctx, const Tensor& input,
           required_rwork_mem, rwork_mem));
 
   int info = 0;
-  math::lapackEig<T, pten::funcs::Real<T>>(
+  pten::funcs::lapackEig<T, pten::funcs::Real<T>>(
       'N', 'N', static_cast<int>(n_dim), a.template data<T>(),
       static_cast<int>(n_dim), output->template data<T>(), NULL, 1, NULL, 1,
       work->template data<T>(), static_cast<int>(work_mem / sizeof(T)),
@@ -188,10 +188,10 @@ class EigvalsKernel : public framework::OpKernel<T> {
     // query workspace size
     T qwork;
     int info;
-    math::lapackEig<T, pten::funcs::Real<T>>(
+    pten::funcs::lapackEig<T, pten::funcs::Real<T>>(
         'N', 'N', static_cast<int>(n_dim), input_matrices[0].template data<T>(),
         static_cast<int>(n_dim), NULL, NULL, 1, NULL, 1, &qwork, -1,
-        static_cast<pten::funcs::Real<T>*>(NULL), &info);
+        static_cast<Real<T>*>(NULL), &info);
     int64_t lwork = static_cast<int64_t>(qwork);
 
     Tensor work, rwork;

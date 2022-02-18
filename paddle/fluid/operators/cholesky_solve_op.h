@@ -15,11 +15,11 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/lapack_function.h"
 #include "paddle/fluid/operators/solve_op.h"
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/operators/triangular_solve_op.h"
 #include "paddle/fluid/platform/complex.h"
+#include "paddle/pten/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/pten/kernels/math_kernel.h"
 
 namespace paddle {
@@ -38,8 +38,8 @@ class CholeskySolveFunctor<paddle::platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext &dev_ctx, bool upper, int n,
                   int nrhs, T *Adata, int lda, T *Bdata, int *devInfo) {
     char uplo = upper ? 'U' : 'L';
-    math::lapackCholeskySolve<T>(uplo, n, nrhs, Adata, lda, Bdata, lda,
-                                 devInfo);
+    pten::funcs::lapackCholeskySolve<T>(uplo, n, nrhs, Adata, lda, Bdata, lda,
+                                        devInfo);
   }
 };
 
@@ -168,7 +168,7 @@ class CholeskySolveGradKernel : public framework::OpKernel<T> {
         db->Resize(bin->dims());
       }
 
-      auto blas = math::GetBlas<DeviceContext, T>(ctx);
+      auto blas = pten::funcs::GetBlas<DeviceContext, T>(ctx);
 
       // calculate out's conjugate for complex
       framework::Tensor out_conj(out->type());
@@ -182,8 +182,8 @@ class CholeskySolveGradKernel : public framework::OpKernel<T> {
       framework::Tensor commonterm(out->type());
       auto outdims = out_conj.dims();
       auto dbdims = db_bst.dims();
-      auto mat_dim_a = math::CreateMatrixDescriptor(outdims, 0, false);
-      auto mat_dim_b = math::CreateMatrixDescriptor(dbdims, 0, false);
+      auto mat_dim_a = pten::funcs::CreateMatrixDescriptor(outdims, 0, false);
+      auto mat_dim_b = pten::funcs::CreateMatrixDescriptor(dbdims, 0, false);
       auto cmtdim = outdims;
       cmtdim[cmtdim.size() - 2] = dbdims[dbdims.size() - 2];
       commonterm.Resize(cmtdim);
@@ -207,9 +207,10 @@ class CholeskySolveGradKernel : public framework::OpKernel<T> {
               DeviceContext>::TYPE &>(dev_ctx),
           commonterm, commonterm_conj, -1, &commonterm);
 
-      auto mat_dim_u = math::CreateMatrixDescriptor(u_bst.dims(), 0, false);
+      auto mat_dim_u =
+          pten::funcs::CreateMatrixDescriptor(u_bst.dims(), 0, false);
       auto mat_dim_c =
-          math::CreateMatrixDescriptor(commonterm.dims(), 0, false);
+          pten::funcs::CreateMatrixDescriptor(commonterm.dims(), 0, false);
 
       Tensor du_bst(uin->type());
       // get upper or lower triangular

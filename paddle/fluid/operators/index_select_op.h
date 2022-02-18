@@ -15,7 +15,7 @@
 #pragma once
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -141,7 +141,7 @@ struct IndexSelectAdd<
     typename std::enable_if<std::is_floating_point<T>::value>::type> {
   void operator()(const framework::ExecutionContext& ctx, int slice_size,
                   const T* src_pointer, const T* p_pointer, T* dist_pointer) {
-    auto blas = math::GetBlas<DeviceContext, T>(ctx);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(ctx);
     blas.VADD(slice_size, src_pointer, p_pointer, dist_pointer);
   }
 };

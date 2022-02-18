@@ -18,8 +18,8 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/im2col.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -223,7 +223,7 @@ class ContextProjectGradFunctor {
     int input_row_begin, input_row_end;
     int sequence_height, sequence_width;
     sequence_width = in.dims()[1];
-    auto blas = math::GetBlas<DeviceContext, T>(context);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(context);
 
     if (input_grad) {
       for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {

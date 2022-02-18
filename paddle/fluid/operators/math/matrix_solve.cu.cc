@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/matrix_solve.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/solve_op.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -105,7 +105,7 @@ class MatrixSolveFunctor<platform::CUDADeviceContext, T> {
         memory::Alloc(context, num_ints * sizeof(int));
     int* gpu_info_ptr = reinterpret_cast<int*>(tmp_gpu_info_data->ptr());
 
-    auto blas = math::GetBlas<platform::CUDADeviceContext, T>(context);
+    auto blas = pten::funcs::GetBlas<platform::CUDADeviceContext, T>(context);
 
     // only for singular checking
     std::vector<int> info;
@@ -189,7 +189,7 @@ class TriangularSolveFunctor<platform::CUDADeviceContext, T> {
       batch_size *= a_dim[i];
     }
 
-    auto blas = math::GetBlas<platform::CUDADeviceContext, T>(context);
+    auto blas = pten::funcs::GetBlas<platform::CUDADeviceContext, T>(context);
     if (batch_size <= 8 && M >= 64) {
       for (auto i = 0; i < batch_size; i++) {
         blas.TRSM(side, uplo, transA, diag, M, N, static_cast<T>(1.0),
