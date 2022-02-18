@@ -80,14 +80,12 @@ class MLUConvOpKernel : public framework::OpKernel<T> {
                               true /*need_reshape_or_alloc*/);
 
     cnnlTensorLayout_t data_layout = CNNL_LAYOUT_NHWC;
-    MLUCnnlTensorDesc input_desc(
-        input_tensor, data_layout,
-        ToCnnlDataType(framework::TransToProtoVarType(input_tensor.dtype())));
+    MLUCnnlTensorDesc input_desc(input_tensor, data_layout,
+                                 ToCnnlDataType(input_tensor.dtype()));
     MLUCnnlTensorDesc filter_desc(trans_filter, data_layout,
                                   ToCnnlDataType(trans_filter.type()));
-    MLUCnnlTensorDesc output_desc(
-        output_tensor, data_layout,
-        ToCnnlDataType(framework::TransToProtoVarType(output_tensor.dtype())));
+    MLUCnnlTensorDesc output_desc(output_tensor, data_layout,
+                                  ToCnnlDataType(output_tensor.dtype()));
 
     MLUCnnlConvolutionDesc conv_desc(in_dims_size, paddings.data(),
                                      strides.data(), dilations.data(), groups,

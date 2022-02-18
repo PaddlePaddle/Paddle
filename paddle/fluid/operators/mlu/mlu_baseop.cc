@@ -178,9 +178,8 @@ MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
 }
 
 MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor)
-    : MLUCnnlTensorDesc(
-          tensor, CNNL_LAYOUT_ARRAY,
-          ToCnnlDataType(framework::TransToProtoVarType(tensor.dtype()))) {}
+    : MLUCnnlTensorDesc(tensor, CNNL_LAYOUT_ARRAY,
+                        ToCnnlDataType(tensor.dtype())) {}
 
 MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
                                      cnnlTensorLayout_t layout,
