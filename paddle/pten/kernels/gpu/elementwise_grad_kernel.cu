@@ -165,6 +165,7 @@ PT_REGISTER_KERNEL(subtract_grad,
                    int,
                    int64_t,
                    pten::dtype::float16,
+                   pten::dtype::bfloat16,
                    pten::dtype::complex<float>,
                    pten::dtype::complex<double>) {}
 
@@ -177,5 +178,6 @@ PT_REGISTER_KERNEL(subtract_double_grad,
                    int,
                    int64_t,
                    pten::dtype::float16,
+                   pten::dtype::bfloat16,
                    pten::dtype::complex<float>,
                    pten::dtype::complex<double>) {}

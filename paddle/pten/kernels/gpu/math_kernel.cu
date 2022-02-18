@@ -117,6 +117,7 @@ PT_REGISTER_KERNEL(subtract_raw,
                    int,
                    int64_t,
                    float16,
+                   bfloat16,
                    complex64,
                    complex128) {}
 PT_REGISTER_KERNEL(divide_raw,
