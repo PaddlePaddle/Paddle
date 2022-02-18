@@ -197,10 +197,10 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
     def forward(ctx, *args, **kwargs):
 
         dist_op_context = ctx.dist_op_context
-        main_block = dist_op_context.get_work_block()
-        startup_block = dist_op_context.get_dst_startup_program().global_block()
-        src_op = dist_op_context.get_cur_src_op()
-        rank_id = dist_op_context.get_rank_id()
+        main_block = dist_op_context.work_block
+        startup_block = dist_op_context.startup_block
+        src_op = dist_op_context.cur_src_op
+        rank_id = dist_op_context.rank_id
 
         # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():
@@ -283,12 +283,12 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
 
         # by now the backward function only insert the gradient allreduce for dist op itself
         dist_op_context = ctx.dist_op_context
-        main_block = dist_op_context.get_work_block()
-        backward_op = dist_op_context.get_cur_src_op()
+        main_block = dist_op_context.work_block
+        backward_op = dist_op_context.cur_src_op
         dist_attr = ctx.get_op_dist_attr_for_program(backward_op)
         assert dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
             str(backward_op))
-        rank_id = dist_op_context.get_rank_id()
+        rank_id = dist_op_context.rank_id
 
         # check validation of inputs / outputs
         for input_name in backward_op.desc.input_names():

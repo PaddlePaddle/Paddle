@@ -509,65 +509,72 @@ class DistributedOperatorContext:
 
     def __init__(self):
         self._dst_main_program = None
+        self._main_block = None
         self._dst_startup_program = None
-        self._varname_mapping = None
-        self._rank_id = None
+
         self._cur_src_op = None
         self._cur_dist_attr = None
         self.grad_op_id_to_op_id = {}
-        self.already_init_sync_vars = set()
         self._work_block = None
+        self.already_init_sync_vars = set()
+        self.varname_mapping = None
+        self.rank_id = None
 
     def __deepcopy__(self, memo):
         cls = self.__class__
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            if k == "_dst_main_program" or k == "_dst_startup_program" or k == "_cur_src_op" or k == "_work_block":
+            if k in ["_dst_main_program", "_dst_startup_program", "_cur_src_op", "_work_block", "_main_block"]
                 setattr(result, k, v)
             else:
                 setattr(result, k, copy.deepcopy(v, memo))
         return result
 
-    def set_dst_main_program(self, prog):
-        self._dst_main_program = prog
-
-    def get_dst_main_program(self):
+    @property
+    def dst_main_program(self):
         return self._dst_main_program
 
-    def set_dst_startup_program(self, prog):
-        self._dst_startup_program = prog
+    @dst_main_program.setter
+    def dst_main_program(self, prog):
+        self._dst_main_program = prog
+        self._main_block = prog.blocks[0]
 
-    def get_dst_startup_program(self):
+    @property
+    def main_block(self):
+        return self._main_block
+
+    @property
+    def dst_startup_program(self):
         return self._dst_startup_program
 
-    def set_work_block(self, block):
-        self._work_block = block
+    @dst_startup_program.setter
+    def dst_startup_program(self, prog):
+        self._dst_startup_program = prog
+        self._startup_block = prog.blocks[0]
 
-    def get_work_block(self):
+    @property
+    def startup_block(self):
+        return self._startup_block
+
+    @property
+    def work_block(self):
+        assert self._work_block is not None
         return self._work_block
 
-    def set_varname_mapping(self, mapping):
-        self._varname_mapping = mapping
+    @work_block.setter
+    def work_block(self, block):
+        assert block is not None
+        self._work_block = block
 
-    def get_varname_mapping(self):
-        return self._varname_mapping
-
-    def set_rank_id(self, rank_id):
-        self._rank_id = rank_id
-
-    def get_rank_id(self):
-        return self._rank_id
-
-    def set_cur_src_op(self, cur_src_op):
-        self._cur_src_op = cur_src_op
-
-    def get_cur_src_op(self):
+    @property
+    def cur_src_op(self):
+        assert self._cur_src_op is not None
         return self._cur_src_op
 
     def prepare_context(self, src_op):
 
-        self.set_cur_src_op(src_op)
+        self._cur_src_op = src_op
 
         # build input varname mapping
         kinputs = {}

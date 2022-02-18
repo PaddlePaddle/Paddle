@@ -78,8 +78,8 @@ class Partitioner(object):
 
         # init distop helper
         dist_op_context = self._dist_context.dist_op_context
-        dist_op_context.set_varname_mapping(self._serial2dist_varname_mapping)
-        dist_op_context.set_rank_id(self._rank_id)
+        dist_op_context.varname_mapping = self._serial2dist_varname_mapping
+        dist_op_context.rank_id = self._rank_id
 
         # partition startup program
         if serial_startup_program == None:
@@ -87,7 +87,7 @@ class Partitioner(object):
         else:
             partitioned_startup_prog = self.partition_startup_program(
                 serial_main_program, serial_startup_program)
-        dist_op_context.set_dst_startup_program(partitioned_startup_prog)
+        dist_op_context.dst_startup_program = partitioned_startup_prog
 
         # partition main program
         partitioned_main_prog, partitioned_params_grads = self.partition_main_program(
@@ -162,21 +162,19 @@ class Partitioner(object):
 
         partitioned_main_prog = fluid.Program()
         dist_op_context = self._dist_context.dist_op_context
-        dist_op_context.set_dst_main_program(partitioned_main_prog)
+        dist_op_context.dst_main_program = partitioned_main_prog
 
         for idx in range(self._dist_context.block_state.nblock):
             ref_block = serial_main_program.blocks[idx]
 
             if idx == 0:
-                dist_op_context.set_work_block(partitioned_main_prog.blocks[0])
                 target_block = partitioned_main_prog.blocks[0]
             else:
                 target_block = partitioned_main_prog._create_block(
                     parent_idx=ref_block.parent_idx)
                 assert ref_block.idx == target_block.idx
                 target_block._set_forward_block_idx(ref_block.forward_block_idx)
-                dist_op_context.set_work_block(target_block)
-
+            dist_op_context.work_block = target_block
             self.partition_block(ref_block, target_block)
 
         partitioned_main_prog.current_block_idx = 0
