@@ -21,10 +21,10 @@ limitations under the License. */
 namespace pten {
 
 template <typename T, typename Context>
-void SoftmaxRawKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      int axis,
-                      DenseTensor* out) {
+void SoftmaxRawGPUDNNKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            int axis,
+                            DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
   SoftmaxForwardCUDAKernelDriver<T>(dev_ctx, x, axis, out);
 }
@@ -35,14 +35,14 @@ void SoftmaxRawKernel(const Context& dev_ctx,
 PT_REGISTER_KERNEL(softmax,
                    GPUDNN,
                    ALL_LAYOUT,
-                   pten::SoftmaxRawKernel,
+                   pten::SoftmaxRawGPUDNNKernel,
                    float,
                    pten::dtype::float16) {}
 #else
 PT_REGISTER_KERNEL(softmax,
                    GPUDNN,
                    ALL_LAYOUT,
-                   pten::SoftmaxRawKernel,
+                   pten::SoftmaxRawGPUDNNKernel,
                    float,
                    double,
                    pten::dtype::float16) {}
