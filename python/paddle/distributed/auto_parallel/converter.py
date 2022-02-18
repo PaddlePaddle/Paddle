@@ -14,180 +14,193 @@
 
 import paddle
 import warnings
+import logging
 import numpy as np
 
 
 class Converter(object):
     """
-    Merge and Slice
+    Parameters Merge and Slice
 
     Args:
-        variables(list[varname]): all variables of current process
-        vars_dict(dict): variables' value of all ranks that to be converted. 
-                         key is var's name(str), value is all ranks' data(list(numpy.ndarray))
-        pre_dist_attr(dict): variables' dist_attr of last training process.
-        cur_dist_attr(dict): variables' dist_attr of current training process.
+        params_dict(dict): parameters' value of all ranks that to be converted. 
+                           key is param's name(str), value is all ranks' data(list(numpy.ndarray))
+        pre_strategy(dict): parameters' dist_attr of last training process.
+        cur_strategy(dict): parameters' dist_attr of current rank training process.
     """
 
-    def __init__(self, variables, vars_dict, pre_dist_attr, cur_dist_attr):
-        self.variables = variables
-        self.vars_dict = vars_dict
-        self.pre_dist_attr = pre_dist_attr
-        self.cur_dist_attr = cur_dist_attr
+    def __init__(self, params_dict, pre_strategy, cur_strategy):
+        self._params_dict = params_dict
+        self._pre_strategy = pre_strategy
+        self._cur_strategy = cur_strategy
 
-    @variables.setter
-    def variables(self, variables):
-        if not isinstance(variables, list):
-            raise TypeError("The type of variables should be 'list', "
-                            "but got {}".format(str(type(variables))))
-        if not all(isinstance(v, str) for v in variables):
-            raise TypeError("The type of variables should be 'list[str]', "
-                            "but got {}".format(str(type(variables))))
-        self.variables = variables
+    @property
+    def params_dict(self):
+        return self._params_dict
 
-    @vars_dict.setter
-    def vars_dict(self, vars_dict):
-        assert isinstance(vars_dict, dict), \
-            "The type of 'vars_dict' should be 'dict', but got {}.".format(
-                str(type(vars_dict)))
-        for name, value in vars_dict.items():
-            if not isinstance(name, str):
-                raise TypeError("The key of 'vars_dict' is var's name, "
-                                "and its type should be 'str', but got {}."
-                                .format(str(type(name))))
-            if not isinstance(value, list) or not all(
-                    isinstance(v, np.ndarray) for v in value):
-                raise TypeError(
-                    "The value of 'vars_dict' is var's value of all ranks, "
-                    "and its type should be 'list(numpy.ndarray)'.")
-        self.vars_dict = vars_dict
+    @property
+    def pre_strategy(self):
+        return self._pre_strategy
 
-    @pre_dist_attr.setter
-    def pre_dist_attr(self, pre_dist_attr):
-        if not pre_dist_attr:
-            raise ValueError("'pre_dist_attr' can not be None.")
-        elif not isinstance(pre_dist_attr, dict):
-            raise TypeError("The type of 'pre_dist_attr' should be 'dict', "
-                            "but got '{}'.".format(str(type(pre_dist_attr))))
+    @property
+    def cur_strategy(self):
+        return self._cur_strategy
+
+    @params_dict.setter
+    def params_dict(self, params_dict):
+        if not params_dict:
+            raise ValueError("'params_dict' is None, "
+                             "the parameters to be converted cannot be None.")
+        if not isinstance(params_dict, dict):
+            raise TypeError(
+                "The type of 'params_dict' should be 'dict', but got {}.".
+                format(str(type(params_dict))))
+        self._params_dict = params_dict
+
+    @pre_strategy.setter
+    def pre_strategy(self, pre_strategy):
+        if not pre_strategy:
+            raise ValueError("'pre_strategy' is None, "
+                             "there are not parameter in pre process.")
+        if not isinstance(pre_strategy, dict):
+            raise TypeError("The type of 'pre_strategy' should be 'dict', "
+                            "but got '{}'.".format(str(type(pre_strategy))))
+        self._pre_strategy = pre_strategy
+
+    @cur_strategy.setter
+    def cur_strategy(self, cur_strategy):
+        if not cur_strategy:
+            warnings.warn("'cur_strategy' is None, "
+                          "there are not parameter in cur process")
+        if not isinstance(cur_strategy, dict):
+            raise TypeError("The type of 'cur_strategy' should be 'dict', "
+                            "but got '{}'.".format(str(type(cur_strategy))))
+        self._cur_strategy = cur_strategy
+
+    def convert(self, prefix_match=False):
+        params_dict = {}
+        # the name which is in cur_process but not in pre_process
+        param_not_in_pre = []
+        # the name which is in pre_process but not in cur_process
+        param_not_in_cur = []
+        # the name which is in strategy but not in ckpt files
+        param_not_in_ckpt = []
+        logging.info("Start to merge and slice parameters.")
+        for param_name in self._cur_strategy:
+            if param_name not in self._pre_strategy:
+                param_not_in_pre.append(param_name)
+                continue
+            if param_name not in self._params_dict:
+                param_not_in_ckpt.append(param_name)
+                continue
+
+            param_list = self._params_dict[param_name]
+            pre_dist_attr = self._pre_strategy[param_name]
+            cur_dist_attr = self._cur_strategy[param_name]
+            params_dict[param_name] = Converter.merge_and_slice(
+                param_list, pre_dist_attr, cur_dist_attr)
+
+        for param_name in self._pre_strategy:
+            if param_name not in self._cur_strategy:
+                param_not_in_cur.append(param_name)
+
+        if prefix_match:
+            params_dict, param_match_with_pre, param_match_with_cur = self.convert_with_prefix_match(
+                params_dict, param_not_in_pre, param_not_in_cur)
         else:
-            for name, value in pre_dist_attr.items():
-                if not isinstance(name, str):
-                    raise TypeError("The key of 'pre_dist_attr' is var's name, "
-                                    "and its type should be 'str', "
-                                    "but got '{}'.".format(str(type(name))))
-                if not isinstance(value, dict):
-                    raise TypeError(
-                        "The type of distributed attribute should be 'dict', "
-                        "but got '{}'".format(str(type(value))))
-                attr = ['process_shape', 'process_group', 'dims_mapping']
-                if list(value.keys()) != attr:
-                    raise ValueError(
-                        "The key of distributed attribute should be "
-                        "'['process_shape', 'process_group', 'dims_mapping']', "
-                        "but got {}.".format(str(value.keys())))
-        self.pre_dist_attr = pre_dist_attr
+            params_dict, param_match_with_pre, param_match_with_cur = params_dict, [], []
 
-    @cur_dist_attr.setter
-    def cur_dist_attr(self, cur_dist_attr):
-        if not cur_dist_attr:
-            raise ValueError("'cur_dist_attr' can not be None.")
-        elif not isinstance(cur_dist_attr, dict):
-            raise TypeError("The type of 'cur_dist_attr' should be 'dict', "
-                            "but got '{}'.".format(str(type(cur_dist_attr))))
-        else:
-            for name, value in cur_dist_attr.items():
-                if not isinstance(name, str):
-                    raise TypeError("The key of 'cur_dist_attr' is var's name, "
-                                    "and its type should be 'str', "
-                                    "but got '{}'.".format(str(type(name))))
-                if not isinstance(value, dict):
-                    raise TypeError(
-                        "The type of distributed attribute should be 'dict', "
-                        "but got '{}'".format(str(type(value))))
-                attr = ['process_shape', 'process_group', 'dims_mapping']
-                if list(value.keys()) != attr:
-                    raise ValueError(
-                        "The key of distributed attribute should be "
-                        "'['process_shape', 'process_group', 'dims_mapping']', "
-                        "but got {}.".format(str(value.keys())))
-        self.cur_dist_attr = cur_dist_attr
-
-    def convert(self):
-        var_not_in_pre = []
-        var_not_in_cur = []
-        var_not_in_ckpt = []
-        # logging.info("Start to merge and slice variables.")
-        for varname in self.variables:
-            if varname not in self.pre_dist_attr:
-                var_not_in_pre.append(varname)
-                continue
-            if varname not in self.cur_dist_attr:
-                var_not_in_cur.append(varname)
-                self.vars_dict.pop(varname)
-                continue
-            if varname not in self.vars_dict:
-                var_not_in_ckpt.append(varname)
-                continue
-
-            pre_attr = self.pre_dist_attr[varname]
-            cur_attr = self.cur_dist_attr[varname]
-            var_list = self.vars_dict[varname]
-            self.vars_dict[varname] = self.merge_and_slice(var_list, pre_attr,
-                                                           cur_attr)
-
-        if var_not_in_pre:
+        if param_not_in_pre:
             warnings.warn(
-                "variables '{}' are not found in last training process."
-                .format(str(var_not_in_pre)))
-        if var_not_in_cur:
+                "parameters '{}' are not found in last training strategy."
+                .format(
+                    str(set(param_not_in_pre) - set(param_match_with_pre))))
+        if param_not_in_cur:
             warnings.warn(
-                "variables '{}' are not found in current training process."
-                .format(str(var_not_in_cur)))
-        if var_not_in_ckpt:
-            warnings.warn("variables '{}' are not found in checkpoint files."
-                          .format(str(var_not_in_ckpt)))
-        return self.vars_dict
+                "parameters '{}' are not found in current training strategy."
+                .format(
+                    str(set(param_not_in_cur) - set(param_match_with_cur))))
+        if param_not_in_ckpt:
+            warnings.warn(
+                "parameters '{}' are found in pre_strategy, but are not found"
+                "in checkpoint files, please check your checkpoint files."
+                .format(str(param_not_in_ckpt)))
 
-    def merge_and_slice(self, var, pre_attr, cur_attr):
+        return params_dict
+
+    def convert_with_prefix_match(self, params_dict, param_not_in_pre,
+                                  param_not_in_cur):
+        # the name which in cur_process and can match with pre_process
+        param_match_with_pre = []
+        # the name which in pre_process and can match with cur_process
+        param_match_with_cur = []
+        for cur_name in param_not_in_pre:
+            prefix_name = cur_name
+            while prefix_name.find("_") != -1:
+                prefix_name = prefix_name[:prefix_name.rfind("_")]
+                for pre_name in param_not_in_cur:
+                    if prefix_name in pre_name:
+                        # 'cur_name' of cur_process can match with 'pre_name' of pre_process
+                        pre_param_list = self._params_dict[pre_name]
+                        pre_dist_attr = self._pre_strategy[pre_name]
+                        cur_dist_attr = self._cur_strategy[cur_name]
+                        params_dict[cur_name] = Converter.merge_and_slice(
+                            pre_param_list, pre_dist_attr, cur_dist_attr)
+                        logging.info("param {} is placed with param {}".format(
+                            cur_name, pre_name))
+                        param_match_with_pre.append(cur_name)
+                        param_match_with_cur.append(pre_name)
+                        break
+                break
+
+        return params_dict, param_match_with_pre, param_match_with_cur
+
+    @staticmethod
+    def merge_and_slice(param_list, pre_dist_attr, cur_dist_attr):
         """
-        Merge variable with previous dist_attr and slice variable with current dist_attr
+        Merge parameters with previous dist_attr and slice parameters with current dist_attr
 
         Returns:
-            var(numpy.narray): a variable's value of current rank.
+            param(numpy.narray): a parameters's value of current rank.
         """
-        if pre_attr == cur_attr:
-            # skip merge and slice var
+        assert isinstance(param_list, list)
+        assert all(isinstance(p, np.ndarray) for p in param_list)
+
+        if pre_dist_attr == cur_dist_attr:
+            # skip merge and slice param
             rank_id = paddle.distributed.get_rank()
-            index = cur_attr["process_group"].index(rank_id)
-            var = var[index]
+            index = cur_dist_attr["process_group"].index(rank_id)
+            param = param_list[index]
         else:
-            pre_dims_mapping = pre_attr["dims_mapping"]
-            cur_dims_mapping = cur_attr["dims_mapping"]
+            pre_dims_mapping = pre_dist_attr["dims_mapping"]
+            cur_dims_mapping = cur_dist_attr["dims_mapping"]
             if len(set(pre_dims_mapping)) > 1 or -1 not in pre_dims_mapping:
-                # merge var
-                var = self.merge_with_dist_attr(var, pre_attr)
+                # merge param
+                param = Converter.merge_with_dist_attr(param_list,
+                                                       pre_dist_attr)
             else:
-                # skip merge var
-                var = var[0]
+                # skip merge param
+                param = param_list[0]
 
             if len(set(cur_dims_mapping)) > 1 or -1 not in cur_dims_mapping:
-                # slice var
-                var = self.slice_with_dist_attr(var, cur_attr)
+                # slice param
+                param = Converter.slice_with_dist_attr(param, cur_dist_attr)
 
-        return var
+        return param
 
-    def merge_with_dist_attr(self, var_list, dist_attr):
-        """ Merge variable with distributed attribute """
+    @staticmethod
+    def merge_with_dist_attr(param_list, dist_attr):
+        """ Merge param with distributed attribute """
         from .reshard import _compute_complete_shape, _compute_partition_index
 
         dims_mapping = dist_attr["dims_mapping"]
         process_shape = dist_attr["process_shape"]
         process_group = dist_attr["process_group"]
-        # get the complete shape of the variable
-        complete_shape = _compute_complete_shape(var_list[0].shape,
+        # get the complete shape of the parameter
+        complete_shape = _compute_complete_shape(param_list[0].shape,
                                                  process_shape, dims_mapping)
-        # merge the variable with dist_attr
-        partition_var_list = []
+        # merge the parameter with dist_attr
+        partition_param_list = []
         merged_partiton = []
         for process in process_group:
             partition_index = _compute_partition_index(
@@ -196,35 +209,36 @@ class Converter(object):
             index = process_group.index(process)
             if partition_index not in merged_partiton:
                 merged_partiton.append(partition_index)
-                self.merge(partition_var_list, var_list[index], partition_index,
-                           complete_shape)
+                Converter.merge(partition_param_list, param_list[index],
+                                partition_index, complete_shape)
 
-        assert len(partition_var_list) == 1 or not partition_var_list, \
-            "Fail to merge variable"
-        complete_var = partition_var_list[0][0]
-        return complete_var
+        assert len(partition_param_list) == 1 or not partition_param_list, \
+            "Fail to merge parameter"
+        complete_param = partition_param_list[0][0]
+        return complete_param
 
-    def slice_with_dist_attr(self, var, dist_attr):
-        """ Slice variable with distributed attribute """
-        var = np.array(var) if isinstance(var, paddle.fluid.LoDTensor) else var
+    @staticmethod
+    def slice_with_dist_attr(param, dist_attr):
+        """ Slice parameter with distributed attribute """
         dims_mapping = dist_attr["dims_mapping"]
         process_shape = dist_attr["process_shape"]
         process_group = dist_attr["process_group"]
-        # slice the variable with dist_attr
-        partition_index_list = self._get_split_indices(
-            var.shape, dims_mapping, process_shape, process_group)
-        sliced_var_list = self.split(var, partition_index_list,
-                                     len(partition_index_list))
-        # get the current variable's index in sliced_var_list
+        # slice the parameter with dist_attr
+        partition_index_list = Converter._get_split_indices(
+            param.shape, dims_mapping, process_shape, process_group)
+        sliced_param_list = Converter.split(param, partition_index_list,
+                                            len(partition_index_list))
+        # get the current parameter's index in sliced_param_list
         rank_id = paddle.distributed.get_rank()
-        sliced_var_index = self._get_sliced_index(
-            rank_id, var.shape, dims_mapping, process_shape, process_group)
-        sliced_var = sliced_var_list[sliced_var_index]
-        return sliced_var
+        sliced_param_index = Converter._get_sliced_index(
+            rank_id, param.shape, dims_mapping, process_shape, process_group)
+        sliced_param = sliced_param_list[sliced_param_index]
+        return sliced_param
 
-    def merge(self, partition_var_list, var, partition_index, complete_shape):
+    @staticmethod
+    def merge(partition_param_list, param, partition_index, complete_shape):
         """
-        Merge partitial variables to a complete one.
+        Merge partitial parameters to a complete one.
 
         Returns:
             None
@@ -233,90 +247,94 @@ class Converter(object):
             .. code-block:: python
 
                 import numpy as np
-                partition_var_list = [(np.array([[[1.11, 1.12]]]), [[0,1],[0,1],[0,2]])]
-                var = np.array([[[1.13, 1.14]]])
+                partition_param_list = [(np.array([[[1.11, 1.12]]]), [[0,1],[0,1],[0,2]])]
+                param = np.array([[[1.13, 1.14]]])
                 partition_index = [[0,1],[0,1],[2,4]]
 
-                _merge_variable(partition_var_list, var, partition_index)
-                # partition_var_list: [(np.array([[[1.11, 1.12, 1.13, 1.14]]]), [[0,1],[0,1],[0,4]])]
+                _merge_parameter(partition_param_list, param, partition_index)
+                # partition_param_list: [(np.array([[[1.11, 1.12, 1.13, 1.14]]]), [[0,1],[0,1],[0,4]])]
         """
         from .reshard import _compute_concat_info
 
-        if len(partition_var_list) == 1:
+        if len(partition_param_list) == 1:
             is_complete_data = True
-            for idx, item in enumerate(partition_var_list[0][1]):
+            for idx, item in enumerate(partition_param_list[0][1]):
                 if item[0] != 0 or item[1] != complete_shape[idx]:
                     is_complete_data = False
                     break
             if is_complete_data:
                 return
 
-        if not partition_var_list:
-            partition_var_list.append((var, partition_index))
+        if not partition_param_list:
+            partition_param_list.append((param, partition_index))
         else:
             i = 0
-            while i < len(partition_var_list):
+            while i < len(partition_param_list):
                 concat_axis, first_order, new_partition = _compute_concat_info(
-                    partition_var_list[i][1], partition_index)
+                    partition_param_list[i][1], partition_index)
                 if concat_axis != -1:
                     if first_order == 0:
-                        new_var = np.concatenate(
-                            (partition_var_list[i][0], var), axis=concat_axis)
+                        new_param = np.concatenate(
+                            (partition_param_list[i][0], param),
+                            axis=concat_axis)
                     else:
-                        new_var = np.concatenate(
-                            (var, partition_var_list[i][0]), axis=concat_axis)
+                        new_param = np.concatenate(
+                            (param, partition_param_list[i][0]),
+                            axis=concat_axis)
 
-                    partition_var_list.pop(i)
-                    self.merge(partition_var_list, new_var, new_partition,
-                               complete_shape)
+                    partition_param_list.pop(i)
+                    Converter.merge(partition_param_list, new_param,
+                                    new_partition, complete_shape)
                     break
                 i += 1
 
-    def split(self, complete_var, partition_index_list, length):
+    @staticmethod
+    def split(complete_param, partition_index_list, length):
         """
-        Slice a complete variable.
+        Slice a complete parameter.
 
         Returns:
-            sliced_var_list(list): sliced variables with 'partition_index_list'
+            sliced_param_list(list): sliced parameters with 'partition_index_list'
 
         Examples:
             .. code-block:: python
 
                 import numpy as np
-                complete_var = np.array([[[1.11, 1.12, 1.13, 1.14, 1.15, 1.16]]])
+                complete_param = np.array([[[1.11, 1.12, 1.13, 1.14, 1.15, 1.16]]])
                 rank = 2
                 complete_shape = [1, 1, 6]
                 dims_mapping = [-1, -1, 0]
                 process_shape = [3]
                 process_group = [0, 1, 2]
 
-                sliced_var_list = split(complete_var, [[], [], [2, 4]], 3)
+                sliced_param_list = split(complete_param, [[], [], [2, 4]], 3)
                 # [array([[[1.11, 1.12]]]), array([[[1.13, 1.14]]]), array([[[1.15, 1.16]]])]
         """
-        sliced_var_list = []
-        axis = len(complete_var.shape) - length
-        sliced_var = np.split(
-            complete_var, partition_index_list[axis], axis=axis)
+        sliced_param_list = []
+        axis = len(complete_param.shape) - length
+        sliced_param = np.split(
+            complete_param, partition_index_list[axis], axis=axis)
         if length == 1:
-            return sliced_var
-        for var in sliced_var:
-            sliced_var_list.extend(
-                self.split(var, partition_index_list, length - 1))
-        return sliced_var_list
+            return sliced_param
+        for param in sliced_param:
+            sliced_param_list.extend(
+                Converter.split(param, partition_index_list, length - 1))
+        return sliced_param_list
 
-    def _get_split_indices(self, complete_shape, dims_mapping, process_shape,
+    @staticmethod
+    def _get_split_indices(complete_shape, dims_mapping, process_shape,
                            process_group):
         """
         Get split indices of every dimension.
 
         Returns:
-            split_indices_list(list): the split indices of every dimension of the variable
+            split_indices_list(list): the split indices of every dimension of the parameter
 
         Examples:
             .. code-block:: python
 
                 import numpy as np
-                complete_var = np.array([[[1.11, 1.12, 1.13, 1.14, 1.15, 1.16]]])
+                complete_param = np.array([[[1.11, 1.12, 1.13, 1.14, 1.15, 1.16]]])
                 complete_shape = [1, 1, 6]
                 dims_mapping = [-1, -1, 0]
                 process_shape = [3]
@@ -343,27 +361,28 @@ class Converter(object):
         split_indices_list = [sorted(x) for x in split_indices_list]
         return split_indices_list
 
-    def _get_sliced_index(self, rank_id, complete_shape, dims_mapping,
-                          process_shape, process_group):
+    @staticmethod
+    def _get_sliced_index(rank_id, complete_shape, dims_mapping, process_shape,
+                          process_group):
         """
-        Get sliced_var's index of current rank in all sliced variables list.
+        Get sliced_param's index of current rank in all sliced parameters list.
 
         Returns:
-            sliced_var_index(int): the index of sliced var in sliced_var_list
+            sliced_param_index(int): the index of sliced param in sliced_param_list
 
         Examples:
             .. code-block:: python
 
                 import numpy as np
-                complete_var = np.array([[[1.11, 1.12, 1.13, 1.14, 1.15, 1.16]]])
+                complete_param = np.array([[[1.11, 1.12, 1.13, 1.14, 1.15, 1.16]]])
                 rank = 2
                 complete_shape = [1, 1, 6]
                 dims_mapping = [-1, -1, 0]
                 process_shape = [3]
                 process_group = [0, 1, 2]
 
-                slice_var = _slice_variable(complete_var, [[], [], [2, 4]], 3)
-                # slice_var: 
+                slice_param = _slice_parameter(complete_param, [[], [], [2, 4]], 3)
+                # slice_param: 
                 # [array([[[1.11, 1.12]]]), array([[[1.13, 1.14]]]), array([[[1.15, 1.16]]])]
 
                 index = _get_sliced_index(rank, complete_shape, dims_mapping
