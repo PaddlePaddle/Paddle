@@ -294,9 +294,11 @@ class AllocatorFacadePrivate {
 
     CheckAllocThreadSafe();
 
+#ifdef PADDLE_WITH_CUDA
     if (UNLIKELY(platform::CUDAGraph::IsThisThreadCapturing())) {
       WrapCUDAGraphAllocator();
     }
+#endif
   }
 
   inline const std::shared_ptr<Allocator>& GetAllocator(
