@@ -30,12 +30,6 @@ void RegisterAllCustomKernel() {
   framework::RegisterWithOpKernelInfoMap(op_kernel_info_map);
 }
 
-// Using this api to load compiled custom kernel's dynamic library and
-// register custom kernels
-void LoadCustomKernelLib(const std::string& dso_name) {
-  framework::LoadCustomKernelLib(dso_name);
-}
-
 }  // namespace paddle
 
 #ifdef __cplusplus

@@ -19,9 +19,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/custom_kernel.h"
 
-#include <dirent.h>
 #include <algorithm>
-#include <regex>
 #include "paddle/pten/core/enforce.h"
 #include "paddle/pten/core/kernel_factory.h"
 
@@ -67,25 +65,15 @@ void RegisterWithOpKernelInfoMap(
   }
 }
 
-void LoadCustomKernelLib(const std::string& dso_lib_path) {
+void LoadCustomKernelLib(const std::string& dso_lib_path, void* dso_handle) {
 #ifdef _LINUX
-  void* dso_handle = nullptr;
-  int dynload_flags = RTLD_NOW | RTLD_LOCAL;
-  dso_handle = dlopen(dso_lib_path.c_str(), dynload_flags);
-
-  // MUST valid dso_lib_path
-  PADDLE_ENFORCE_NOT_NULL(
-      dso_handle,
-      platform::errors::InvalidArgument(
-          "Fail to open library: %s with error: %s", dso_lib_path, dlerror()));
-
   typedef OpKernelInfoMap& get_op_kernel_info_map_t();
   auto* func = reinterpret_cast<get_op_kernel_info_map_t*>(
       dlsym(dso_handle, "PD_GetOpKernelInfoMap"));
 
   if (func == nullptr) {
-    LOG(INFO) << "Skipped lib [" << dso_lib_path << "]: fail to find "
-              << "PD_GetOpKernelInfoMap symbol in this lib.";
+    LOG(WARNING) << "Skipped lib [" << dso_lib_path << "]: fail to find "
+                 << "PD_GetOpKernelInfoMap symbol in this lib.";
     return;
   }
   auto& op_kernel_info_map = func();
@@ -95,43 +83,6 @@ void LoadCustomKernelLib(const std::string& dso_lib_path) {
   VLOG(3) << "Unsupported: Custom kernel is only implemented on Linux.";
 #endif
   return;
-}
-
-// List all libs with given path
-std::vector<std::string> ListAllLib(const std::string& libs_path) {
-  DIR* dir = nullptr;
-  dir = opendir(libs_path.c_str());
-
-  // MUST valid libs_path
-  PADDLE_ENFORCE_NOT_NULL(dir, platform::errors::InvalidArgument(
-                                   "Fail to open path: %s", libs_path));
-
-  dirent* ptr = nullptr;
-  std::vector<std::string> libs;
-  std::regex express(".*\\.so");
-  std::match_results<std::string::iterator> results;
-  while ((ptr = readdir(dir)) != nullptr) {
-    std::string filename(ptr->d_name);
-    if (std::regex_match(filename.begin(), filename.end(), results, express)) {
-      libs.emplace_back(libs_path + '/' + filename);
-      LOG(INFO) << "Found lib [" << filename << "]";
-    } else {
-      VLOG(3) << "Skipped file [" << filename << "] without .so postfix";
-    }
-  }
-  closedir(dir);
-  return libs;
-}
-
-// Load custom kernels with given path
-void LoadCustomKernel(const std::string& libs_path) {
-  VLOG(3) << "Try loading custom libs from: [" << libs_path << "]";
-  std::vector<std::string> libs = ListAllLib(libs_path);
-  for (auto& lib_path : libs) {
-    LoadCustomKernelLib(lib_path);
-  }
-  LOG(INFO) << "Finished in LoadCustomKernel with libs_path: [" << libs_path
-            << "]";
 }
 
 }  // namespace framework

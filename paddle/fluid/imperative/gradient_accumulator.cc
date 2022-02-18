@@ -300,13 +300,10 @@ void TensorAdd(const VarType& src, VarType* dst) {
                         "should be equal, Otherwise, the calculation results "
                         "will be incorrect."));
 
-#ifdef PADDLE_WITH_XPU
   // if src and dst are in different place, copy dst to src's place
   if (dst_tensor->place() != place) {
     paddle::framework::TensorCopySync(*dst_tensor, place, dst_tensor);
   }
-#endif
-
 #define PADDLE_TENSOR_ADD(cpp_type)                                  \
   if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) { \
     TensorAddFunctor<cpp_type> func(                                 \
@@ -386,9 +383,9 @@ void TensorAdd(const VarType& src, VarType* dst) {
     operators::MLUCnnlTensorDesc src_tensor_desc(src_tensor);
     operators::MLUCnnlTensorDesc dst_tensor_desc(*dst_tensor);
     PADDLE_ENFORCE_MLU_SUCCESS(cnnlAssignAdd(
-        dev_ctx->cnnl_handle(), static_cast<void*>(&alpha),
+        dev_ctx->cnnl_handle(), static_cast<const void*>(&alpha),
         src_tensor_desc.get(), operators::GetBasePtr(&src_tensor), nullptr, 0,
-        static_cast<void*>(&beta), dst_tensor_desc.get(),
+        static_cast<const void*>(&beta), dst_tensor_desc.get(),
         operators::GetBasePtr(dst_tensor)));
     return;
   }

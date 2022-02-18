@@ -19,6 +19,10 @@ limitations under the License. */
 #include "paddle/pten/common/place.h"
 #include "paddle/pten/core/compat/op_utils.h"
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/fluid/platform/device/device_manager.h"
+#endif
+
 namespace pten {
 
 Backend TransToPtenBackend(const pten::Place& place) {
@@ -26,6 +30,10 @@ Backend TransToPtenBackend(const pten::Place& place) {
     return Backend::CPU;
   } else if (place.GetType() == pten::AllocationType::GPU) {
     return Backend::GPU;
+  } else if (place.GetType() == pten::AllocationType::CUSTOM) {
+    return static_cast<Backend>(
+        static_cast<size_t>(Backend::NUM_BACKENDS) +
+        GetOrRegisterGlobalDeviceTypeId(place.GetDeviceType()));
   } else {
     return Backend::UNDEFINED;
   }
@@ -57,10 +65,23 @@ pten::Place TransToPtenPlace(const Backend& backend, bool set_device_id) {
       return pten::XPUPlace(
           set_device_id ? pten::backends::xpu::GetXPUCurrentDeviceId() : 0);
 #endif
-    default:
+    default: {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      size_t device_type_id_ = static_cast<size_t>(backend) -
+                               static_cast<size_t>(Backend::NUM_BACKENDS);
+      std::string device_type = pten::GetGlobalDeviceType(device_type_id_);
+      if (!device_type.empty()) {
+        return pten::CustomPlace(
+            device_type,
+            set_device_id
+                ? paddle::platform::DeviceManager::GetDevice(device_type)
+                : 0);
+      }
+#endif
       PADDLE_THROW(pten::errors::Unimplemented(
           "Unsupported backend `%s` when casting it to paddle place type.",
           backend));
+    }
   }
 }
 
