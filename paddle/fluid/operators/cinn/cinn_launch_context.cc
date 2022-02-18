@@ -20,8 +20,8 @@
 #include "cinn/hlir/framework/scope.h"
 #include "cinn/hlir/framework/tensor.h"
 #include "cinn/runtime/cinn_runtime.h"
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/pten/core/ddim.h"
 
 namespace paddle {
 namespace operators::details {
