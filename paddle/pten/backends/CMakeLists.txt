@@ -2,6 +2,8 @@ add_subdirectory(dynload)
 
 add_subdirectory(cpu)
 
+add_subdirectory(custom)
+
 if(WITH_GPU OR WITH_ROCM)
   add_subdirectory(gpu)
 endif()
