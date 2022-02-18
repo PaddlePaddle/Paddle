@@ -162,13 +162,13 @@ class DeviceManager {
       device_map_;
 };
 
-bool LoadCustomRuntimeLib(void* dso_handle);
+std::vector<std::string> ListAllLibraries(const std::string& library_dir);
 
-bool LoadCustomRuntimeLib(const CustomRuntimeParams& runtime_params,
+void LoadCustomRuntimeLib(const std::string& dso_lib_path, void* dso_handle);
+
+void LoadCustomRuntimeLib(const CustomRuntimeParams& runtime_params,
                           std::unique_ptr<C_DeviceInterface> device_interface,
-                          void* dso_handle);
-
-bool LoadCustomDevice(const std::string& library_path);
+                          const std::string& dso_lib_path, void* dso_handle);
 
 class Registrar {
  public:

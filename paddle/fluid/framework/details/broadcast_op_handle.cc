@@ -25,9 +25,8 @@ namespace framework {
 namespace details {
 
 void BroadcastOpHandle::RunImpl() {
-  platform::RecordEvent record_event(Name(),
-                                     platform::TracerEventType::UserDefined, 2);
-
+  platform::RecordEvent record_event(
+      Name(), platform::TracerEventType::Communication, 1);
   if (places_.size() == 1) return;
 
   // The input and output may have dummy vars.

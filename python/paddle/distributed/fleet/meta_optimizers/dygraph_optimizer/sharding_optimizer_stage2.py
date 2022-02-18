@@ -98,7 +98,7 @@ class ShardingOptimizerStage2(Optimizer):
 
         self.world_size = self.group.nranks
         self.rank = self.group.rank
-        self._global_root_rank = 0
+        self._global_root_rank = self.group.ranks[0]
 
         # Synchronous all ranks models
         if pertrain_sync_models:
@@ -403,7 +403,7 @@ class ShardingOptimizerStage2(Optimizer):
             for dst_rank, internal_storage in dtype_per_rank.items():
                 dist.broadcast(
                     tensor=internal_storage.buffer,
-                    src=dst_rank,
+                    src=self.group.ranks[dst_rank],
                     group=self.group,
                     use_calc_stream=True)
 

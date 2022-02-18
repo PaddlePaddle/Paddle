@@ -846,7 +846,6 @@ class CustomDeviceContext : public DeviceContext {
   std::shared_ptr<platform::stream::Stream> stream_;
 
   CustomDeviceContext();
-  DISABLE_COPY_AND_ASSIGN(CustomDeviceContext);
 };
 template <>
 struct DefaultDeviceContextType<platform::CustomPlace> {

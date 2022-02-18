@@ -62,7 +62,7 @@ TEST(API, scale_sr) {
       experimental::full({3, 4}, 1.0, pten::DataType::FLOAT32).impl());
   *(selected_rows->mutable_value()) = *dense_tensor;
   experimental::Tensor x(selected_rows);
-  const auto out = experimental::scale(x, 2.0, 1.0, true);
+  auto out = experimental::scale(x, 2.0, 1.0, true);
 
   ASSERT_EQ(out.dims().size(), 2);
   ASSERT_EQ(out.dims()[0], 3);
