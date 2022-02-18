@@ -95,9 +95,9 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
     }
 
     if (activation == "none" && auxiliary_key.size() > 0) {
-      VLOG(0)
-          << "[Warning] auxiliary_key:The auxiliary_key would not be used when "
-          << "activation = \"none\"";
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "auxiliary_key:The auxiliary_key would not be used when activation = "
+          "\"none\""));
     }
     // cublasLt's restriction for auxiliary.
     if (auxiliary_key.size() > 0 && activation != "none") {

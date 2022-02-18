@@ -195,7 +195,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActFwd(
 }
 
 ir::Graph *FuseGemmEpiloguePass::FuseLinearBwd(ir::Graph *graph,
-                                               bool is_first_gemm) const {
+                                               bool without_x_gradient) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init("gemm_epilogue", graph);
@@ -209,7 +209,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearBwd(ir::Graph *graph,
 
   patterns::ElewiseAddMatmulAct ele_add_matmul_act_pattern(
       gpd.mutable_pattern(), "ele_add_matmul_act");
-  ele_add_matmul_act_pattern(dout, {}, is_first_gemm);
+  ele_add_matmul_act_pattern(dout, {}, without_x_gradient);
 
   int found_ele_add_matmul_act_count = 0;
 
@@ -235,7 +235,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearBwd(ir::Graph *graph,
                               ele_add_matmul_act_pattern);
 
     Node *matmul_grad_dx = nullptr;
-    if (!is_first_gemm) {
+    if (!without_x_gradient) {
       GET_IR_NODE_FROM_SUBGRAPH(matmul_grad_dx_ptr, matmul_grad_dx,
                                 ele_add_matmul_act_pattern);
       matmul_grad_dx = matmul_grad_dx_ptr;

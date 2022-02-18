@@ -903,7 +903,7 @@ struct ElewiseAddMatmulAct : public PatternBase {
 
   PDNode* operator()(PDNode* x,
                      const std::unordered_set<std::string>& act_grad_types,
-                     bool is_first_matmul);
+                     bool without_x_gradient);
 
   // declare operator node's name
   PATTERN_DECL_NODE(ele_add_grad);
