@@ -575,6 +575,11 @@ foreach(TEST_OP ${TEST_OPS_WITH_GC})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${GC_ENVS})
 endforeach()
 
+if ((NOT WITH_GPU) AND (NOT WITH_XPU) AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
+    list(REMOVE_ITEM TEST_OPS "test_fleet_graph_execution_meta_optimizer")
+    list(REMOVE_ITEM TEST_OPS "test_gen_nccl_id_op")
+endif()
+
 foreach(TEST_OP ${TEST_OPS})
     py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach(TEST_OP)
