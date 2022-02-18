@@ -422,7 +422,16 @@ void BuildDygraphPtenKernelContext(
       } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
         kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
       } else if (attr_defs[i].type_index == std::type_index(typeid(int64_t))) {
-        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(int64_t, attr));
+        auto in_it = ins.find(attr_names[i]);
+        if (in_it != ins.end()) {
+          // get data from here
+          auto val =
+              experimental::MakePtenScalarFromVar(in_it->second[0]->Var());
+          int64_t val_int = val.template to<int64_t>();
+          kernel_ctx->EmplaceBackAttr(val_int);
+        } else {
+          kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(int64_t, attr));
+        }
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::string))) {
         kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(std::string, attr));

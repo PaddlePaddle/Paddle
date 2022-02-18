@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/pten/core/kernel_registry.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 #include "paddle/pten/kernels/one_hot_kernel.h"
 
 namespace pten {
@@ -52,7 +52,7 @@ struct OneHotV2OpCUDAFunctor {
     auto numel = in_->numel();
     auto* p_out_data = out_->mutable_data<OutT>(ctx_.GetPlace());
     auto stream = ctx_.stream();
-    paddle::operators::math::set_constant(ctx_, out_, 0.0);
+    funcs::set_constant(ctx_, out_, 0.0);
 
     FillOutputKernel<<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
                            PADDLE_CUDA_NUM_THREADS,
@@ -65,23 +65,22 @@ struct OneHotV2OpCUDAFunctor {
 template <typename T, typename Context>
 void OneHotKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  const Scalar& depth,
+                  int32_t depth,
                   int dtype,
                   bool allow_out_of_range,
                   DenseTensor* out) {
-  int depth_val = depth.to<int>();
   auto out_dims = out->dims();
   if (out_dims[out_dims.size() - 1] == -1) {
-    out_dims[out_dims.size() - 1] = depth_val;
+    out_dims[out_dims.size() - 1] = depth;
     out->Resize(out_dims);
   }
-  out->mutable_data<T>(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<T>(out);
   paddle::framework::VisitDataType(
       static_cast<paddle::framework::proto::VarType::Type>(dtype),
-      OneHotV2OpCUDAFunctor<Context, T>(&x, out, depth_val, dev_ctx));
+      OneHotV2OpCUDAFunctor<Context, T>(&x, out, depth, dev_ctx));
 }
 
 }  // namespace pten
 
-PT_REGISTER_KERNEL(one_hot, GPU, ALL_LAYOUT, pten::OneHotKernel, int, int64_t) {
-}
+PT_REGISTER_KERNEL(
+    one_hot_raw, GPU, ALL_LAYOUT, pten::OneHotKernel, int, int64_t) {}

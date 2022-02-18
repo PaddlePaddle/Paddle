@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/pten/kernels/one_hot_kernel.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/pten/core/kernel_registry.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace pten {
 
@@ -42,7 +42,7 @@ struct OneHotV2OpFunctor {
     auto* p_in_data = in_->data<InT>();
     auto numel = in_->numel();
     auto* p_out_data = out_->mutable_data<OutT>(ctx_.GetPlace());
-    paddle::operators::math::set_constant(ctx_, out_, 0.0);
+    funcs::set_constant(ctx_, out_, 0.0);
 
     if (allow_out_of_range_) {
       for (int i = 0; i < numel; ++i) {
@@ -77,25 +77,23 @@ struct OneHotV2OpFunctor {
 template <typename T, typename Context>
 void OneHotKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  const Scalar& depth,
+                  int32_t depth,
                   int dtype,
                   bool allow_out_of_range,
                   DenseTensor* out) {
-  int depth_val = depth.to<int>();
-
   auto out_dims = out->dims();
   if (out_dims[out_dims.size() - 1] == -1) {
-    out_dims[out_dims.size() - 1] = depth_val;
+    out_dims[out_dims.size() - 1] = depth;
     out->Resize(out_dims);
   }
   out->mutable_data<T>(dev_ctx.GetPlace());
   paddle::framework::VisitDataType(
       static_cast<paddle::framework::proto::VarType::Type>(dtype),
       OneHotV2OpFunctor<Context, T>(
-          &x, out, depth_val, dev_ctx, allow_out_of_range));
+          &x, out, depth, dev_ctx, allow_out_of_range));
 }
 
 }  // namespace pten
 
-PT_REGISTER_KERNEL(one_hot, CPU, ALL_LAYOUT, pten::OneHotKernel, int, int64_t) {
-}
+PT_REGISTER_KERNEL(
+    one_hot_raw, CPU, ALL_LAYOUT, pten::OneHotKernel, int, int64_t) {}

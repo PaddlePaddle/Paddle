@@ -22,7 +22,7 @@ namespace pten {
 template <typename T, typename Context>
 void OneHotKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  const Scalar& depth,
+                  int32_t depth,
                   int dtype,
                   bool allow_out_of_range,
                   DenseTensor* out);
