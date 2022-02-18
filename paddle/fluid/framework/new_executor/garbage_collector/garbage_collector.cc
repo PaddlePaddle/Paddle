@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/new_executor/interpretercore_garbage_collector.h"
+#include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
 #include "paddle/fluid/framework/garbage_collector.h"
 
 namespace paddle {
@@ -22,20 +22,6 @@ InterpreterCoreGarbageCollector::InterpreterCoreGarbageCollector() {
   garbages_ = std::make_unique<GarbageQueue>();
   max_memory_size_ = static_cast<int64_t>(GetEagerDeletionThreshold());
   cur_memory_size_ = 0;
-}
-
-void InterpreterCoreGarbageCollector::Add(Variable* var) {
-  PADDLE_THROW(
-      platform::errors::Unimplemented("Not allowed to call the member function "
-                                      "of InterpreterCoreGarbageCollector"));
-}
-
-void InterpreterCoreGarbageCollector::Add(Variable* var,
-                                          platform::DeviceEvent& event,
-                                          const platform::DeviceContext* ctx) {
-  PADDLE_THROW(
-      platform::errors::Unimplemented("Not allowed to call the member function "
-                                      "of InterpreterCoreGarbageCollector"));
 }
 
 }  // namespace framework

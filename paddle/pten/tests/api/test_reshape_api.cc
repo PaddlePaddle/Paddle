@@ -67,6 +67,25 @@ TEST(API, reshape) {
   ASSERT_EQ(value_equal, true);
 }
 
+TEST(API, reshape_) {
+  // 1. create tensor
+  auto x = paddle::experimental::full(
+      {3, 2, 2, 3}, 1.0, experimental::DataType::FLOAT32);
+
+  // 2. test API
+  paddle::experimental::Tensor out = paddle::experimental::reshape_(x, {12, 3});
+  // 3. check result
+  std::vector<int64_t> expect_shape = {12, 3};
+  ASSERT_EQ(out.shape()[0], expect_shape[0]);
+  ASSERT_EQ(out.shape()[1], expect_shape[1]);
+  ASSERT_EQ(out.numel(), 36);
+  ASSERT_EQ(out.is_cpu(), true);
+  ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
+  ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(out.initialized(), true);
+  ASSERT_EQ(out.data<float>(), x.data<float>());
+}
+
 TEST(Tensor, old_reshape) {
   paddle::experimental::Tensor x(paddle::PlaceType::kCPU);
   x.reshape({3, 4});

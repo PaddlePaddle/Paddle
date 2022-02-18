@@ -16,14 +16,10 @@ set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} eigen_function blas math_function f
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} pten_api_utils)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} infermeta)
 
-set(MATH_KERNEL_DEPS ${COMMON_KERNEL_DEPS} cast_kernel copy_kernel pten_transpose_cpu)
-if(WITH_GPU OR WITH_ROCM)
-  set(MATH_KERNEL_DEPS ${MATH_KERNEL_DEPS} pten_transpose_gpu)
-endif()
-
 # auto build kernel targets by cmake
-register_kernels(EXCLUDES math_kernel DEPS ${COMMON_KERNEL_DEPS})
-kernel_library(math_kernel DEPS ${MATH_KERNEL_DEPS})
+register_kernels(DEPS ${COMMON_KERNEL_DEPS})
+
+# pten sparse kernels
 add_subdirectory(sparse)
 
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})

@@ -24,6 +24,6 @@ PT_REGISTER_KERNEL(expand_grad,
                    pten::ExpandGradKernel,
                    float,
                    double,
-                   paddle::platform::float16,
+                   pten::dtype::float16,
                    int,
                    int64_t) {}
