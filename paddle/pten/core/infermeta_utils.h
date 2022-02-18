@@ -27,7 +27,6 @@ limitations under the License. */
 #include "paddle/pten/core/type_defs.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
-
 namespace pten {
 
 class InferMetaContext {
