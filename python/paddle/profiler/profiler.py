@@ -197,11 +197,10 @@ class Profiler:
             self.targets = supported_targets
         profileoption = ProfilerOptions()
         profileoption.trace_level = 2
-        if ProfilerTarget.CPU in supported_targets:
+        if ProfilerTarget.CPU in self.targets:
             profileoption.trace_switch |= 1
-        if ProfilerTarget.GPU in supported_targets:
+        if ProfilerTarget.GPU in self.targets:
             profileoption.trace_switch |= (1 << 1)
-
         self.profiler = _Profiler.Create(profileoption)
         if callable(schedule):
             self.schedule = schedule

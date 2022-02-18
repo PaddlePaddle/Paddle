@@ -47,12 +47,12 @@ std::unique_ptr<Profiler> Profiler::Create(const ProfilerOptions& options) {
 Profiler::Profiler(const ProfilerOptions& options) {
   options_ = options;
   HostTracerOptions host_tracer_options;
-  host_tracer_options.trace_level = options.trace_level;
+  host_tracer_options.trace_level = options_.trace_level;
   uint8_t trace_switch = 1;
-  if (options.trace_switch & trace_switch) {
+  if (options_.trace_switch & trace_switch) {
     tracers_.emplace_back(new HostTracer(host_tracer_options), true);
   }
-  if (options.trace_switch & (trace_switch << 1)) {
+  if (options_.trace_switch & (trace_switch << 1)) {
     tracers_.emplace_back(&CudaTracer::GetInstance(), false);
   }
 }
