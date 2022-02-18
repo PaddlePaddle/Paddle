@@ -20,7 +20,7 @@
 #include "paddle/pten/kernels/funcs/reduce_function.h"
 
 namespace pten {
-  
+
 template <typename T,
           template <typename> class ReduceOp,
           template <typename, typename> class TransformOp>
