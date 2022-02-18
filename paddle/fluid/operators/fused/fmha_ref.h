@@ -12,10 +12,13 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/operators/dropout_impl.cu.h"
+#include "paddle/fluid/operators/dropout_impl_v2.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/softmax_cudnn_op.cu.h"
 #include "paddle/fluid/operators/transpose_op.cu.h"
+
+DECLARE_bool(use_curand);
 
 namespace paddle {
 namespace operators {
@@ -139,14 +142,25 @@ class FMHARef {
     stride_b = gemm_k * gemm_n;
 
     if (dropout_param_.dropout_prob_) {
-      DropoutFwGPUKernelDriver<T>(
-          dev_ctx_, dropout_param_.is_test_,
-          static_cast<const std::string>(
-              dropout_param_.dropout_implementation_),
-          dropout_param_.dropout_prob_, dropout_param_.is_upscale_in_train_,
-          dropout_param_.is_fix_seed_, dropout_param_.seed_val_,
-          static_cast<const Tensor&>(*softmax_out_tensor), dropout_param_.seed_,
-          dropout_mask_out_tensor, dropout_out_tensor);
+      if (FLAGS_use_curand) {
+        DropoutFwGPUKernelDriverV2<T>(
+            dev_ctx_, dropout_param_.is_test_,
+            static_cast<const std::string>(
+                dropout_param_.dropout_implementation_),
+            dropout_param_.dropout_prob_, dropout_param_.is_upscale_in_train_,
+            dropout_param_.is_fix_seed_, dropout_param_.seed_val_,
+            static_cast<const Tensor&>(*softmax_out_tensor),
+            dropout_param_.seed_, dropout_mask_out_tensor, dropout_out_tensor);
+      } else {
+        DropoutFwGPUKernelDriver<T>(
+            dev_ctx_, dropout_param_.is_test_,
+            static_cast<const std::string>(
+                dropout_param_.dropout_implementation_),
+            dropout_param_.dropout_prob_, dropout_param_.is_upscale_in_train_,
+            dropout_param_.is_fix_seed_, dropout_param_.seed_val_,
+            static_cast<const Tensor&>(*softmax_out_tensor),
+            dropout_param_.seed_, dropout_mask_out_tensor, dropout_out_tensor);
+      }
       blas.BatchedGEMM(transA, transB, gemm_m, gemm_n, gemm_k, alpha,
                        dropout_out_data, v_ptr, beta, qktv_out_data,
                        gemm_batch_size, stride_a, stride_b);

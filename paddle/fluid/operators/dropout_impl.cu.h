@@ -227,6 +227,11 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     GetSeedDataAndIncrement(dev_ctx, seed, is_fix_seed, seed_val, offset,
                             &seed_data, &increment);
 
+// VLOG(0) << "grid_size: " << gpu_config.GetGridSize() << "\n";
+// VLOG(0) << "block_size: " << gpu_config.GetBlockSize() << "\n";
+// VLOG(0) << "increment: " << offset << "\n";
+// VLOG(0) << "offset: " << increment << "\n";
+
 #ifdef __HIPCC__
     if (vec_size == 4 && size % 4 == 0) {
       hipLaunchKernelGGL(

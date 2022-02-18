@@ -16,9 +16,12 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/dropout_impl.cu.h"
+#include "paddle/fluid/operators/dropout_impl_v2.cu.h"
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
+
+DECLARE_bool(use_curand);
 
 namespace paddle {
 namespace operators {
@@ -49,9 +52,15 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
 
     bool is_fix_seed = context.Attr<bool>("fix_seed");
     int seed_val = context.Attr<int>("seed");
-    DropoutFwGPUKernelDriver<T>(dev_ctx, is_test, dropout_implementation,
-                                dropout_prob, upscale_in_train, is_fix_seed,
-                                seed_val, *x, seed, mask, y);
+    if (FLAGS_use_curand) {
+      DropoutFwGPUKernelDriverV2<T>(dev_ctx, is_test, dropout_implementation,
+                                    dropout_prob, upscale_in_train, is_fix_seed,
+                                    seed_val, *x, seed, mask, y);
+    } else {
+      DropoutFwGPUKernelDriver<T>(dev_ctx, is_test, dropout_implementation,
+                                  dropout_prob, upscale_in_train, is_fix_seed,
+                                  seed_val, *x, seed, mask, y);
+    }
   }
 };
 
