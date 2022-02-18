@@ -138,10 +138,10 @@ TEST(test_pool2d_relu_relu_nhwc, cpu_place) {
   axis[3] = 1;
   auto op_relu1 = framework::OpRegistry::CreateOp(
       "relu", {{"X", {"y"}}}, {{"Out", {"u"}}},
-      {{"axis", {axis}}, {"use_mkldnn", {false}}});
+      {{"axis", {axis}}, {"use_mkldnn", {true}}});
 
   auto op_relu2 = framework::OpRegistry::CreateOp(
-      "relu", {{"X", {"u"}}}, {{"Out", {"z"}}}, {{"use_mkldnn", {true}}});
+      "relu", {{"X", {"u"}}}, {{"Out", {"z"}}}, {{"use_mkldnn", {false}}});
 
   op_pool->Run(scope, p);
   op_relu1->Run(scope, p);
