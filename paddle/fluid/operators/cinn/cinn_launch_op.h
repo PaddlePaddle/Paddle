@@ -155,7 +155,8 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
       //     Here we directly use the names from CinnScope as Paddle variable
       //     names, because they will not be used outside the graph
       //     and should be destructed after computation finished.
-      auto internal_variable_names = launch_context->GetInternalVariableNames();
+      auto internal_variable_names = launch_context->ExtractInternalVarNames(
+          input_x_variable_names, output_variable_names);
       for (const auto& var_name : internal_variable_names) {
         launch_context->AssignInternalVariable(var_name);
       }
