@@ -36,11 +36,11 @@ void RegisterGradientHookForTensor(
 void RegisterReduceHookForTensor(const paddle::experimental::Tensor& tensor,
                                  const std::function<void(void)>& hook) {
   if (IsLeafTensor(tensor)) {
-    // Add RetainGrad as PostHook to AccumulationNode
+    VLOG(6) << "Register ReduceHook for leaf tensor";
     std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(tensor);
     PADDLE_ENFORCE(
         grad_node.get() != nullptr,
-        paddle::platform::errors::Fatal("Detected NULL grad_node"
+        paddle::platform::errors::Fatal("Detected NULL grad_node,"
                                         "Leaf tensor should have had grad_node "
                                         "with type: GradNodeAccumulation"));
     auto accumulation_grad_node =
