@@ -59,22 +59,22 @@ T* data();
 void* data();
 
 template <typename T>
-T* mutable_data(const paddle::platform::Place& place,
+T* mutable_data(const pten::Place& place,
                 size_t requested_size = 0);
 
 template <typename T>
 T* mutable_data(const DDim& dims,
-                const paddle::platform::Place& place,
+                const pten::Place& place,
                 size_t requested_size = 0);
 
-void* mutable_data(const paddle::platform::Place& place,
+void* mutable_data(const pten::Place& place,
                     paddle::framework::proto::VarType::Type type,
                     size_t requested_size = 0);
 
-void* mutable_data(const paddle::platform::Place& place,
+void* mutable_data(const pten::Place& place,
                     size_t requested_size = 0);
 
-void* mutable_data(const paddle::platform::Place& place,
+void* mutable_data(const pten::Place& place,
                     paddle::framework::proto::VarType::Type type,
                     const pten::Stream& stream);
 

@@ -69,13 +69,11 @@ class SelectedRows : public TensorBase,
 
   void set_height(int64_t height) { height_ = height; }
 
-  const paddle::framework::Vector<int64_t>& rows() const { return rows_; }
+  const std::vector<int64_t>& rows() const { return rows_; }
 
-  paddle::framework::Vector<int64_t>* mutable_rows() { return &rows_; }
+  std::vector<int64_t>* mutable_rows() { return &rows_; }
 
-  void set_rows(const paddle::framework::Vector<int64_t>& rows) {
-    rows_ = rows;
-  }
+  void set_rows(const std::vector<int64_t>& rows) { rows_ = rows; }
 
   /*
    * @brief Get the index of key in rows
@@ -190,7 +188,7 @@ class SelectedRows : public TensorBase,
   // Notice: rows can be duplicate. We can have {0, 4, 7, 0, 5, 7, 9} here.
   // SelectedRows are simply concated when adding together. Until a
   // SelectedRows add a Tensor, will the duplicate rows be handled.
-  paddle::framework::Vector<int64_t> rows_;
+  std::vector<int64_t> rows_;
   std::unordered_map<int64_t, int64_t>
       id_to_index_;  // should not be used when rows_ has duplicate member
   std::unique_ptr<DenseTensor> value_{nullptr};

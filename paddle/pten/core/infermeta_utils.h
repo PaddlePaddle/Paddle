@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/pten/core/macros.h"
 #include "paddle/pten/core/meta_tensor.h"
 #include "paddle/pten/core/type_defs.h"
+#include "paddle/utils/any.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
 

@@ -48,7 +48,7 @@ struct Transpose {
     auto* dev = dev_ctx.eigen_device();
     // use 32bit index to speed up computation
     bool use_32bit_index = eigen_out.size() < Eigen::NumTraits<int>::highest();
-    bool is_gpu_place = paddle::platform::is_gpu_place(dev_ctx.GetPlace());
+    bool is_gpu_place = pten::is_gpu_place(dev_ctx.GetPlace());
     if (use_32bit_index && is_gpu_place) {
       To32BitIndex(eigen_out).device(*dev) =
           To32BitIndex(eigen_in).shuffle(permute);

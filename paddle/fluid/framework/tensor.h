@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/pten/core/stream.h"
 
+#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/pten/core/dense_tensor.h"
 
 namespace paddle {
