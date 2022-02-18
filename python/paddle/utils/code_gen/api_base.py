@@ -48,9 +48,13 @@ class BaseAPI(object):
             self.support_selected_rows_kernel = False if len(self.kernel[
                 'func']) == 1 else True
             self.data_transform = self.parse_data_transform(api_item_yaml)
+            self.inplace_map = self.parse_inplace(api_item_yaml)
 
     def get_api_name(self, api_item_yaml):
         return api_item_yaml['api']
+
+    def get_api_func_name(self):
+        return self.api
 
     def parse_args(self, api_name, api_item_yaml):
         inputs, attrs, args_str = self.parse_input_and_attr(
@@ -225,13 +229,37 @@ class BaseAPI(object):
 
         return data_transform
 
+    def parse_inplace(self, api_item_yaml):
+        if 'inplace' in api_item_yaml:
+            inplace_map = {}
+            inplace_list = api_item_yaml['inplace'].split(',')
+            for item in inplace_list:
+                result = re.search(r"(?P<in>\w+)\s*->\s(?P<out>\w+)", item)
+                in_val = result.group('in')
+                out_val = result.group('out')
+                assert in_val in self.inputs['names'], \
+                    f"{self.api} : Inplace input error: the input var name('{in_val}') is not found in the input args of {self.api}."
+                assert out_val in self.outputs['names'], \
+                    f"{self.api} : Inplace output error: the output var name('{out_val}') is not found in the output args of {self.api}."
+
+                inplace_map[out_val] = in_val
+
+            return inplace_map
+        else:
+            return None
+
     # Override by child class
     def get_return_type(self, out_type_list):
         return None
 
     def gene_api_declaration(self):
         api_declaration = f"""
-PADDLE_API {self.outputs['return_type']} {self.api}({self.args_str['args_declare']});
+PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_str['args_declare']});
+"""
+
+        if self.is_base_api and self.inplace_map is not None:
+            api_declaration = api_declaration + f"""
+PADDLE_API {self.outputs['return_type']} {self.get_api_func_name() + '_'}({self.args_str['args_declare']});
 """
 
         return api_declaration
@@ -527,14 +555,18 @@ PADDLE_API {self.outputs['return_type']} {self.api}({self.args_str['args_declare
         return input_tensor_code, kernel_args[:-2], kernel_signature
 
     # Override by child class
-    def gene_output(self, output_type_list, set_out_func, code_indent):
+    def gene_output(self,
+                    output_type_list,
+                    set_out_func,
+                    code_indent,
+                    inplace_flag=False):
         return None, None, None
 
-    def gen_dense_tensor_kernel_code(self, code_indent):
+    def gen_dense_tensor_kernel_code(self, code_indent, inplace_flag=False):
         input_tensors, kernel_args, kernel_signature = self.get_kernel_args(
             code_indent)
         outputs_args, kernel_output_names, output_create = self.gene_output(
-            self.outputs['types'], 'SetKernelOutput', code_indent)
+            self.outputs['types'], 'SetKernelOutput', code_indent, inplace_flag)
         return f"""
 {code_indent}  auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
 {code_indent}      "{self.kernel['func'][0]}", {{kernel_backend, kernel_layout, kernel_data_type}});
@@ -552,11 +584,12 @@ PADDLE_API {self.outputs['return_type']} {self.api}({self.args_str['args_declare
 
 {code_indent}  return out;"""
 
-    def gen_selected_rows_kernel_code(self, code_indent):
+    def gen_selected_rows_kernel_code(self, code_indent, inplace_flag=False):
         input_tensors, kernel_args, kernel_signature = self.get_selected_rows_kernel_args(
             code_indent)
         outputs_args, kernel_output_names, output_create = self.gene_output(
-            self.outputs['types'], 'SetSelectedRowsKernelOutput', code_indent)
+            self.outputs['types'], 'SetSelectedRowsKernelOutput', code_indent,
+            inplace_flag)
         return f"""
 {code_indent}  auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
 {code_indent}      "{self.kernel['func'][1]}", {{kernel_backend, kernel_layout, kernel_data_type}});
@@ -574,31 +607,37 @@ PADDLE_API {self.outputs['return_type']} {self.api}({self.args_str['args_declare
 
 {code_indent}  return out;"""
 
-    def gene_api_code(self):
-        if self.is_base_api:
-            api_code = f"""
-PADDLE_API {self.outputs['return_type']} {self.api}({self.args_str["args_define"]}) {{
+    def gene_base_api_code(self, inplace_flag=False):
+        api_func_name = self.get_api_func_name() + ('_' if inplace_flag else '')
+        api_code = f"""
+PADDLE_API {self.outputs['return_type']} {api_func_name}({self.args_str["args_define"]}) {{
 {self.gene_kernel_select()}
 """
 
-            if self.support_selected_rows_kernel:
-                code_indent = '  '
-                api_code = api_code + f"""
+        if self.support_selected_rows_kernel:
+            code_indent = '  '
+            return api_code + f"""
   if(kernel_type == KernelType::DENSE_TENSOR_KENREL){{
-{self.gen_dense_tensor_kernel_code(code_indent)}
+{self.gen_dense_tensor_kernel_code(code_indent, inplace_flag)}
   }} else {{
-{self.gen_selected_rows_kernel_code(code_indent)}      
+{self.gen_selected_rows_kernel_code(code_indent, inplace_flag)}
   }}
 }}
 """
 
-                return api_code
-            else:
-                code_indent = ''
-                return api_code + self.gen_dense_tensor_kernel_code(
-                    code_indent) + """
+        else:
+            code_indent = ''
+            return api_code + self.gen_dense_tensor_kernel_code(
+                code_indent, inplace_flag) + """
 }
 """
+
+    def gene_api_code(self):
+        if self.is_base_api:
+            api_code = self.gene_base_api_code()
+            if self.inplace_map is not None:
+                api_code = api_code + self.gene_base_api_code(inplace_flag=True)
+            return api_code
 
         else:
             inveke_func_name = self.invoke.split('(')[0].strip()
