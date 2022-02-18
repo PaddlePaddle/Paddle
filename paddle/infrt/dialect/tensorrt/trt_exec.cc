@@ -32,17 +32,34 @@ int main(int argc, char** argv) {
   mlir::MLIRContext* context = infrt::Global::getMLIRContext();
   auto module = infrt::dialect::LoadMlirFile(input_file.c_str(), context);
 
+  std::cout << "Input IR dump:\n";
   module->dump();
   mlir::PassManager pm(context);
 
   mlir::OpPassManager& trt_pass_manager = pm.nest<mlir::FuncOp>();
   trt_pass_manager.addPass(std::make_unique<infrt::trt::trtOpTellerPass>());
-  trt_pass_manager.addPass(std::make_unique<infrt::trt::trtGraphFusePass>());
-  trt_pass_manager.addPass(std::make_unique<infrt::trt::trtGraphSplitPass>(10));
   if (mlir::failed(pm.run(*module))) {
-    std::cout << "\npass failed!\n" << std::endl;
+    std::cout << "\ntrtGraphFusePass pass failed!\n" << std::endl;
     return 4;
   }
+  std::cout << "\nAfter trtOpTellerPass IR dump:\n";
   module->dump();
+
+  trt_pass_manager.addPass(std::make_unique<infrt::trt::trtGraphFusePass>());
+  if (mlir::failed(pm.run(*module))) {
+    std::cout << "\ntrtGraphFusePass pass failed!\n" << std::endl;
+    return 4;
+  }
+  std::cout << "\nAfter trtGraphFusePass IR dump:\n";
+  module->dump();
+
+  trt_pass_manager.addPass(std::make_unique<infrt::trt::trtGraphSplitPass>(10));
+  if (mlir::failed(pm.run(*module))) {
+    std::cout << "\ntrtGraphSplitPass pass failed!\n" << std::endl;
+    return 4;
+  }
+  std::cout << "\nAfter trtGraphSplitPass IR dump:\n";
+  module->dump();
+
   return 0;
 }
