@@ -23,17 +23,6 @@
 
 namespace pten {
 
-// template <typename T, typename Context>
-// void FullKernel(const Context& dev_ctx,
-//                 const ScalarArray& shape,
-//                 const Scalar& val,
-//                 DenseTensor* out);
-
-// template <typename T, typename Context>
-// void FullLikeKernel(const Context& dev_ctx,
-//                     const Scalar& val,
-//                     DenseTensor* out);
-
 template <typename T, typename Context>
 void FullKernel(const Context& dev_ctx,
                 const ScalarArray& shape,
