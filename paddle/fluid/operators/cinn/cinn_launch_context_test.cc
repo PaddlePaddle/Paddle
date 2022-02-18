@@ -197,12 +197,10 @@ TEST_F(CinnLaunchContextTest, TestBuildCompiledProgram) {
   ParallelExecutor* pe = nullptr;
   ASSERT_NO_THROW((pe = launch_context->InitializePE(place, &scope)));
 
-  LOG(INFO) << "InitializePE done:" << pe;
   // check details of program build by compiled instructions
   const ProgramDesc& program = pe->Graph().OriginProgram();
   ASSERT_EQ(program.Size(), 1);
   const auto& block = program.Block(0);
-  LOG(INFO) << "Check vars";
   // vars
   std::set<std::string> var_names = block.LocalVarNames();
   ASSERT_EQ(var_names.size(), 5);
@@ -218,7 +216,6 @@ TEST_F(CinnLaunchContextTest, TestBuildCompiledProgram) {
   ASSERT_TRUE(block.FindVar("var5")->IsParameter());
   ASSERT_FALSE(block.FindVar("var1")->IsParameter());
   // ops
-  LOG(INFO) << "Check ops";
   ASSERT_EQ(block.OpSize(), 3);
   auto* op1 = block.Op(0);
   ASSERT_EQ(op1->Type(), "cinn_instruction_run");

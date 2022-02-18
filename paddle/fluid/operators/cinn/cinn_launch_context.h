@@ -41,7 +41,6 @@ class VarDesc;
 
 namespace ir {
 class Graph;
-class MemOptVarInfo;
 }  // namespace ir
 
 namespace paddle2cinn {
@@ -67,7 +66,7 @@ class CinnLaunchContext {
   explicit CinnLaunchContext(const framework::ir::Graph& graph,
                              const CinnCompiledObject& compiled_obj);
 
-  // Initialize a ParallelExecutor for running the compiled graph,
+  // Initialize a ParallelExecutor for running the runtime graph,
   // if it has been initialized then return immediately
   framework::ParallelExecutor* InitializePE(const platform::Place& place,
                                             framework::Scope* scope);
@@ -147,8 +146,8 @@ class CinnLaunchContext {
   const std::shared_ptr<CinnScope> cinn_scope_;
 
   // the ir::Graph object converted from the program compiled by CINN
-  std::unique_ptr<framework::ir::Graph> compiled_graph_;
-  // a ParallelExecutor for running the compiled graph
+  std::unique_ptr<framework::ir::Graph> runtime_graph_;
+  // a ParallelExecutor for running the runtime graph
   std::unique_ptr<framework::ParallelExecutor> parallel_executor_;
 
   // because a cinn_pod_value_t does not own a cinn_buffer_t object,

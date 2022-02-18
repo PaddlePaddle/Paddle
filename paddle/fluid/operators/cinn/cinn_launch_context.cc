@@ -88,9 +88,9 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
   }
 
   // Convert cinn program to graph and apply memory pass
-  compiled_graph_ = std::make_unique<framework::ir::Graph>(
+  runtime_graph_ = std::make_unique<framework::ir::Graph>(
       BuildCompiledProgram(graph, compiled_obj));
-  compiled_graph_->SetNotOwned<Name2VarInfoMap>(
+  runtime_graph_->SetNotOwned<Name2VarInfoMap>(
       kMemOptVarInfoFromMainGraph,
       &graph.Get<Name2VarInfoMap>(kMemOptVarInfoFromMainGraph));
 }
@@ -151,9 +151,9 @@ bool CinnLaunchContext::IsVariableUsed(const std::string& var_name) const {
 }
 
 CinnTensor CinnLaunchContext::GetCinnTensorOfVar(const std::string& var_name) {
-  PADDLE_ENFORCE_EQ(IsVariableUsed(var_name), true,
-                    platform::errors::InvalidArgument(
-                        "Variable(%s) not applied in CINN", var_name));
+  PADDLE_ENFORCE_EQ(
+      IsVariableUsed(var_name), true,
+      platform::errors::NotFound("Variable(%s) not applied in CINN", var_name));
   const auto& arg_name = paddle2cinn_varmap_.at(var_name);
   return cinn_scope_->GetTensor(arg_name);
 }
@@ -232,8 +232,6 @@ void CinnLaunchContext::AssignExternalVariable(const std::string& var_name) {
         // Do nothing
         return 0;
       });
-
-  return AppendArgument(cinn_arg_name, std::move(cinn_buffer));
 }
 
 void CinnLaunchContext::AssignInternalVariable(const std::string& var_name) {
@@ -351,7 +349,7 @@ ParallelExecutor* CinnLaunchContext::InitializePE(const platform::Place& place,
     framework::details::ExecutionStrategy exec_strategy;
     framework::details::BuildStrategy build_strategy;
     parallel_executor_ = std::make_unique<ParallelExecutor>(
-        place, scope, exec_strategy, build_strategy, compiled_graph_.get());
+        place, scope, exec_strategy, build_strategy, runtime_graph_.get());
   }
 
   // need to update scope bound to OpHandle and rebuild temporary variables
