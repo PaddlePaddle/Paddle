@@ -25,4 +25,6 @@ void GeneralBinaryGradInferMeta(const MetaTensor& x,
                                 MetaTensor* dx,
                                 MetaTensor* dy);
 
+void TruncGradInferMeta(const MetaTensor& out_grad, MetaTensor* in_grad);
+
 }  // namespace pten

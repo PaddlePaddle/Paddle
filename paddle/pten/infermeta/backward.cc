@@ -28,4 +28,17 @@ void GeneralBinaryGradInferMeta(const MetaTensor& x,
   }
 }
 
+void TruncGradInferMeta(const MetaTensor& out_grad, MetaTensor* in_grad) {
+  PADDLE_ENFORCE_NOT_NULL(
+      out_grad,
+      pten::errors::InvalidArgument(
+          "The Input(out_grad) of TruncGradOp should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(
+      in_grad,
+      pten::errors::InvalidArgument(
+          "The Output(in_grad) of TruncGradOp should not be null."));
+  auto dout_dims = out_grad.dims();
+  in_grad->set_dims(dout_dims);
+}
+
 }  // namespace pten

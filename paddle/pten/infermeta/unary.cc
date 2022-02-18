@@ -499,4 +499,17 @@ void TraceInferMeta(
   out->set_dims(framework::make_ddim(sizes));
 }
 
+void TruncInferMeta(const MetaTensor& x, MetaTensor* out) {
+  PADDLE_ENFORCE_NOT_NULL(x,
+                          pten::errors::InvalidArgument(
+                              "The Input(x) of TruncOp should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(
+      out,
+      pten::errors::InvalidArgument(
+          "The Output(out) of TruncOp should not be null."));
+  auto input_dims = x.dims();
+  out->set_dims(input_dims);
+  out->share_lod(x);
+}
+
 }  // namespace pten
