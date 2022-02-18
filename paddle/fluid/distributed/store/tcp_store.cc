@@ -262,7 +262,7 @@ void TCPStore::wait(const std::string& key) {
 
 TCPStore::~TCPStore() {
   _client->send_command_for_key(Command::STOP, "");
-  auto ret = _client->receive_value<ReplyType>();
+  ReplyType ret = _client->receive_value<ReplyType>();
   PADDLE_ENFORCE_EQ(ret, ReplyType::STOP_WAIT,
                     platform::errors::InvalidArgument(
                         "The reply for TCPStore destructure must be 0."));
