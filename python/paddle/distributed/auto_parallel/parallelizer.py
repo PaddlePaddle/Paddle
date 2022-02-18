@@ -123,6 +123,9 @@ class AutoParallelizer:
     def _generate_backward(self, main_program, startup_program, loss,
                            parameter_list, no_grad_set, callbacks):
 
+        # parse forward sub block
+        self._dist_context.block_state.parse_forward_blocks(main_program)
+
         with program_guard(main_program, startup_program):
             params_grads = append_backward(
                 loss,
@@ -174,9 +177,6 @@ class AutoParallelizer:
         serial_main_program = self._main_program.clone()
         serial_startup_program = self._startup_program.clone()
         serial_loss = serial_main_program.global_block().var(self._loss.name)
-
-        # parse forward sub block
-        dist_context.block_state.parse_forward_blocks(serial_main_program)
 
         # generating serial 
         if dist_context is None:
