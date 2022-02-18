@@ -2010,7 +2010,7 @@ void default_elementwise_add_grad(const GPUContext &ctx,
     auto *dx_data = dx->mutable_data<T>(ctx.GetPlace());
     if (dx->dims() == dout.dims()) {
       if (dx_data != dout_data) {
-        pten::Copy(ctx, dout, false, dx);
+        pten::Copy(ctx, dout, ctx.GetPlace(), false, dx);
       }
     } else {
       // For inplace strategy, dx will be stored in addr of dout, which makes
@@ -2031,7 +2031,7 @@ void default_elementwise_add_grad(const GPUContext &ctx,
     auto *dy_data = dy->mutable_data<T>(ctx.GetPlace());
     if (dy->dims() == dout.dims()) {
       if (dy_data != dout_data) {
-        pten::Copy(ctx, dout, false, dy);
+        pten::Copy(ctx, dout, ctx.GetPlace(), false, dy);
       }
     } else {
       std::vector<int> reduce_dims =
@@ -2057,11 +2057,11 @@ void elementwise_add_grad(const GPUContext &ctx,
   if (dx_data == dout_data && dy_data != dout_data) {
     VLOG(4) << "Special case when dx_data is the same as dout_data, "
                "only need copy dout to dy";
-    pten::Copy(ctx, dout, false, dy);
+    pten::Copy(ctx, dout, ctx.GetPlace(), false, dy);
   } else if (dx_data != dout_data && dy_data == dout_data) {
     VLOG(4) << "Special case when dy_data is the same as dout_data, "
                "only need copy dout to dx";
-    pten::Copy(ctx, dout, false, dx);
+    pten::Copy(ctx, dout, ctx.GetPlace(), false, dx);
   } else if (dx_data != dout_data && dy_data != dout_data) {
     auto size = x.numel();
     int vec_size = max(static_cast<int>(sizeof(float4) / sizeof(T)), 1);
@@ -2121,7 +2121,7 @@ void default_elementwise_sub_grad(const GPUContext &ctx,
     auto *dx_data = dx->mutable_data<T>(ctx.GetPlace());
     if (dx->dims() == dout.dims()) {
       if (dx_data != dout_data) {
-        pten::Copy(ctx, dout, false, dx);
+        pten::Copy(ctx, dout, ctx.GetPlace(), false, dx);
       }
     } else {
       // For inplace strategy, dx will be stored in addr of dout, which makes

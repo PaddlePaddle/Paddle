@@ -231,10 +231,11 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(double);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(int);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(int64_t);
-  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(paddle::platform::float16);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(pten::dtype::float16);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const Scalar&);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataType);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataLayout);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(Place);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<int64_t>&);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const ScalarArray&);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<int>&);

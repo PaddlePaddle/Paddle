@@ -41,39 +41,36 @@ namespace paddle {
 namespace experimental {
 
 PADDLE_API Tensor copy_to(const Tensor& x, Backend backend, bool blocking) {
-  // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   kernel_key_set.backend_set = kernel_key_set.backend_set | BackendSet(backend);
   auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
   auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
       "copy", kernel_key);
 
-  VLOG(0) << "to API kernel key: " << kernel_key;
-  VLOG(0) << "to API kernel: " << kernel;
+  VLOG(6) << "to API kernel key: " << kernel_key;
+  VLOG(6) << "to API kernel: " << kernel;
 
-  // 2. Get Device Context
   auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
-  auto kernel_context = pten::KernelContext(dev_ctx);
 
-  // 3. Auto data transform
-  auto dense_x = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
-  kernel_context.EmplaceBackInput(dense_x.get());
-  kernel_context.EmplaceBackAttr(blocking);
+  auto dense_x = TensorToDenseTensor(x);
 
-  // 4. Prepare outputs & InferMeta
-  auto dense_out = std::make_shared<pten::DenseTensor>(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(
-          pten::TransToPtenPlace(backend)),
-      pten::DenseTensorMeta());
-  pten::MetaTensor meta_out(dense_out.get());
-  pten::UnchangedInferMeta(*dense_x, &meta_out);
-  dense_out->mutable_data(pten::TransToPtenPlace(backend));
-  kernel_context.EmplaceBackOutput(dense_out.get());
   Tensor out;
-  out.set_impl(dense_out);
+  auto kernel_out = SetKernelOutput(kernel_key.backend(), &out);
+  pten::MetaTensor meta_out(kernel_out);
+  pten::UnchangedInferMeta(*dense_x, &meta_out);
 
-  // 5. Call kernel
-  kernel(&kernel_context);
+  using kernel_signature = void (*)(const platform::DeviceContext&,
+                                    const pten::DenseTensor&,
+                                    pten::Place,
+                                    bool,
+                                    pten::DenseTensor*);
+
+  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+  (*kernel_fn)(*dev_ctx,
+               *dense_x,
+               pten::TransToPtenPlace(backend),
+               blocking,
+               kernel_out);
 
   return out;
 }

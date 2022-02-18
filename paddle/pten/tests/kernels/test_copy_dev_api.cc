@@ -62,7 +62,8 @@ TEST(DEV_API, copy) {
                            .GetAllocator(paddle::platform::CPUPlace())
                            .get());
   dev_ctx.Init();
-  pten::Copy(dev_ctx, *(dense_src.get()), false, dense_dst.get());
+  pten::Copy(
+      dev_ctx, *(dense_src.get()), pten::CPUPlace(), false, dense_dst.get());
 
   // 3. check result
   for (int64_t i = 0; i < dense_src->numel(); i++) {

@@ -26,7 +26,7 @@ void FlattenGradKernel(const Context& dev_ctx,
                        DenseTensor* x_grad) {
   auto xshape_dims = xshape.dims();
   auto x_dims = pten::framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
-  pten::Copy(dev_ctx, out_grad, false, x_grad);
+  pten::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
   x_grad->ResizeAndAllocate(x_dims);
 }
 

@@ -53,8 +53,8 @@ inline void CheckResult(
                          DenseTensorMeta(real_elements.dtype(),
                                          real_elements.dims(),
                                          real_elements.layout()));
-    pten::Copy(*dev_ctx_gpu, real_indices, true, &indices);
-    pten::Copy(*dev_ctx_gpu, real_elements, true, &elements);
+    pten::Copy(*dev_ctx_gpu, real_indices, indices.place(), true, &indices);
+    pten::Copy(*dev_ctx_gpu, real_elements, elements.place(), true, &elements);
 
     int cmp_indices = memcmp(indices.data<IndicesT>(),
                              non_zero_indices.data(),
@@ -122,7 +122,7 @@ void TestDenseToSparseCoo(const DenseTensor& dense_x,
       cuda_alloc.get(),
       DenseTensorMeta(dense_x.dtype(), dense_x.dims(), dense_x.layout()));
 
-  pten::Copy(dev_ctx_gpu, dense_x, true, &d_dense_x);
+  pten::Copy(dev_ctx_gpu, dense_x, pten::GPUPlace(), true, &d_dense_x);
   auto sparse_out =
       sparse::DenseToSparseCoo<T>(dev_ctx_gpu, d_dense_x, sparse_dim);
   CheckResult<T, int64_t>(&dev_ctx_gpu,
@@ -327,9 +327,9 @@ void TestSparseCsrToCoo(const DDim& dense_dims,
   pten::DenseTensor d_crows(cuda_alloc.get(), crows_meta);
   pten::DenseTensor d_cols(cuda_alloc.get(), cols_meta);
   pten::DenseTensor d_values(cuda_alloc.get(), values_meta);
-  pten::Copy(dev_ctx_gpu, crows, true, &d_crows);
-  pten::Copy(dev_ctx_gpu, cols, true, &d_cols);
-  pten::Copy(dev_ctx_gpu, values, true, &d_values);
+  pten::Copy(dev_ctx_gpu, crows, d_crows.place(), true, &d_crows);
+  pten::Copy(dev_ctx_gpu, cols, d_cols.place(), true, &d_cols);
+  pten::Copy(dev_ctx_gpu, values, d_values.place(), true, &d_values);
   pten::SparseCsrTensor d_csr(d_crows, d_cols, d_values, dense_dims);
   auto cuda_sparse_out = sparse::SparseCsrToCoo<T>(dev_ctx_gpu, d_csr);
   CheckResult<T, int64_t>(&dev_ctx_gpu,
@@ -406,9 +406,9 @@ inline void CheckCsrResult(
                          DenseTensorMeta(real_elements.dtype(),
                                          real_elements.dims(),
                                          real_elements.layout()));
-    pten::Copy(*dev_ctx_gpu, real_crows, true, &crows);
-    pten::Copy(*dev_ctx_gpu, real_cols, true, &cols);
-    pten::Copy(*dev_ctx_gpu, real_elements, true, &elements);
+    pten::Copy(*dev_ctx_gpu, real_crows, crows.place(), true, &crows);
+    pten::Copy(*dev_ctx_gpu, real_cols, cols.place(), true, &cols);
+    pten::Copy(*dev_ctx_gpu, real_elements, elements.place(), true, &elements);
 
     int cmp_crows = memcmp(crows.data<IndicesT>(),
                            non_zero_crows.data(),
@@ -500,8 +500,8 @@ void TestCooToCsr(const DDim& dense_dims,
   dev_ctx_gpu.PartialInitWithAllocator();
   pten::DenseTensor d_indices(cuda_alloc.get(), indices_meta);
   pten::DenseTensor d_values(cuda_alloc.get(), values_meta);
-  pten::Copy(dev_ctx_gpu, indices, true, &d_indices);
-  pten::Copy(dev_ctx_gpu, values, true, &d_values);
+  pten::Copy(dev_ctx_gpu, indices, pten::GPUPlace(), true, &d_indices);
+  pten::Copy(dev_ctx_gpu, values, pten::GPUPlace(), true, &d_values);
   pten::SparseCooTensor d_coo(d_indices, d_values, dense_dims);
   auto cuda_sparse_out = sparse::SparseCooToCsr<T>(dev_ctx_gpu, d_coo);
   CheckCsrResult<T, int64_t>(&dev_ctx_gpu,
@@ -593,7 +593,7 @@ void TestDenseToSparseCsr(const DenseTensor& dense_x,
           .GetAllocator(pten::CPUPlace())
           .get());
   dev_ctx_gpu.PartialInitWithAllocator();
-  pten::Copy(dev_ctx_gpu, dense_x, true, &d_dense_x);
+  pten::Copy(dev_ctx_gpu, dense_x, pten::GPUPlace(), true, &d_dense_x);
   auto sparse_out = sparse::DenseToSparseCsr<T>(dev_ctx_gpu, d_dense_x);
 
   CheckCsrResult<T, int64_t>(&dev_ctx_gpu,
@@ -720,8 +720,10 @@ void TestSparseCooToDense(const DDim& dense_dims,
   dev_ctx_gpu.PartialInitWithAllocator();
   DenseTensor d_dense_indices(cuda_alloc.get(), dense_indices.meta());
   DenseTensor d_dense_elements(cuda_alloc.get(), dense_elements.meta());
-  pten::Copy(dev_ctx_gpu, dense_indices, true, &d_dense_indices);
-  pten::Copy(dev_ctx_gpu, dense_elements, true, &d_dense_elements);
+  pten::Copy(
+      dev_ctx_gpu, dense_indices, pten::GPUPlace(), true, &d_dense_indices);
+  pten::Copy(
+      dev_ctx_gpu, dense_elements, pten::GPUPlace(), true, &d_dense_elements);
   SparseCooTensor coo_cuda(d_dense_indices, d_dense_elements, dense_dims);
   auto dense_out_cuda = sparse::SparseCooToDense<T>(dev_ctx_gpu, coo_cuda);
 
@@ -729,7 +731,8 @@ void TestSparseCooToDense(const DDim& dense_dims,
                           DenseTensorMeta(dense_out_cuda.dtype(),
                                           dense_out_cuda.dims(),
                                           dense_out_cuda.layout()));
-  pten::Copy(dev_ctx_gpu, dense_out_cuda, true, &h_dense_out);
+  pten::Copy(
+      dev_ctx_gpu, dense_out_cuda, h_dense_out.place(), true, &h_dense_out);
   int cmp_cuda = memcmp(
       &dense_data[0], h_dense_out.data<T>(), sizeof(T) * dense_data.size());
   ASSERT_EQ(cmp_cuda, 0);
@@ -859,13 +862,12 @@ void TestSparseCsrToDense(const DDim& dense_dims,
   pten::DenseTensor d_crows(cuda_alloc.get(), crows_meta);
   pten::DenseTensor d_cols(cuda_alloc.get(), cols_meta);
   pten::DenseTensor d_values(cuda_alloc.get(), values_meta);
-  pten::Copy(dev_ctx_gpu, crows, true, &d_crows);
-  pten::Copy(dev_ctx_gpu, cols, true, &d_cols);
-  pten::Copy(dev_ctx_gpu, values, true, &d_values);
+  pten::Copy(dev_ctx_gpu, cols, pten::GPUPlace(), true, &d_cols);
+  pten::Copy(dev_ctx_gpu, values, pten::GPUPlace(), true, &d_values);
   pten::SparseCsrTensor d_csr(d_crows, d_cols, d_values, dense_dims);
   auto cuda_sparse_out = sparse::SparseCsrToDense<T>(dev_ctx_gpu, d_csr);
   pten::DenseTensor h_out(alloc.get(), cpu_sparse_out.meta());
-  pten::Copy(dev_ctx_gpu, cuda_sparse_out, true, &h_out);
+  pten::Copy(dev_ctx_gpu, cuda_sparse_out, h_out.place(), true, &h_out);
   int cmp_cuda =
       memcmp(h_out.data<T>(), dense_data.data(), sizeof(T) * dense_data.size());
   ASSERT_EQ(cmp_cuda, 0);

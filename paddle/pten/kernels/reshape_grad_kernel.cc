@@ -24,7 +24,7 @@ void ReshapeGradKernel(const Context& dev_ctx,
                        const DenseTensor& out_grad,
                        DenseTensor* x_grad) {
   auto x_dims = x_grad->dims();
-  pten::Copy(dev_ctx, out_grad, false, x_grad);
+  pten::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
   x_grad->Resize(x_dims);
 }
 
