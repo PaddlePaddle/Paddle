@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifdef PADDLE_USE_CUSTOM_KERNEL
+
 #include "paddle/pten/api/ext/op_kernel_info.h"
 #include "paddle/fluid/framework/custom_kernel.h"
 
@@ -112,3 +114,5 @@ paddle::OpKernelInfoMap& PD_GetOpKernelInfoMap() {
 #ifdef __cplusplus
 }  // end extern "C"
 #endif
+
+#endif  // PADDLE_USE_CUSTOM_KERNEL

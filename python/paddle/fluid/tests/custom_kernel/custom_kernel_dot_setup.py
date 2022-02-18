@@ -18,7 +18,10 @@ from distutils.sysconfig import get_python_lib
 from distutils.core import setup, Extension
 
 # cc flags
-paddle_extra_compile_args = ['-std=c++14', '-shared', '-fPIC']
+paddle_extra_compile_args = [
+    '-std=c++14', '-shared', '-fPIC', '-DPADDLE_USE_CUSTOM_KERNEL'
+]
+
 if core.is_compiled_with_npu():
     paddle_extra_compile_args += ['-D_GLIBCXX_USE_CXX11_ABI=0']
 

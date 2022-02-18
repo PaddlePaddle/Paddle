@@ -223,3 +223,7 @@ endif(WITH_CRYPTO)
 if(WITH_CUSTOM_DEVICE AND NOT WIN32)
     add_definitions(-DPADDLE_WITH_CUSTOM_DEVICE)
 endif()
+
+if(WITH_CUSTOM_KERNEL AND NOT WIN32)
+    add_definitions(-DPADDLE_USE_CUSTOM_KERNEL)
+endif()

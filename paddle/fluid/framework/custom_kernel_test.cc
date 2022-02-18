@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifdef PADDLE_USE_CUSTOM_KERNEL
+
 #if defined _WIN32 || defined __APPLE__
 #else
 #define _LINUX
@@ -323,3 +325,4 @@ TEST(OpKernelInfoHelper, op_kernel_info_help_getters) {
   EXPECT_EQ(11, static_cast<int>(attribute_defs.size()));
 }
 #endif
+#endif  // PADDLE_USE_CUSTOM_KERNEL

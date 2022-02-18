@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifdef PADDLE_USE_CUSTOM_KERNEL
+
 #if defined _WIN32 || defined __APPLE__
 #else
 #define _LINUX
@@ -412,3 +414,5 @@ void LoadCustomKernel(const std::string& libs_path) {
 
 }  // namespace framework
 }  // namespace paddle
+
+#endif  // PADDLE_USE_CUSTOM_KERNEL

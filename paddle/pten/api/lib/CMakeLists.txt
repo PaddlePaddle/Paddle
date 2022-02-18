@@ -82,7 +82,10 @@ cc_library(manual_api SRCS manual_api.cc DEPS pten_tensor_raw pten kernel_dispat
 cc_library(pten_tensor SRCS tensor_method.cc DEPS pten_tensor_raw pten_function_api)
 
 cc_library(op_meta_info SRCS op_meta_info.cc DEPS pten_tensor)
-cc_library(op_kernel_info SRCS op_kernel_info.cc DEPS pten_tensor_raw)
+
+if(WITH_CUSTOM_KERNEL)
+  cc_library(op_kernel_info SRCS op_kernel_info.cc DEPS pten_tensor_raw)
+endif()
 
 cc_library(sparse_api SRCS sparse_api.cc DEPS pten_tensor pten kernel_dispatch pten_data_transform)
 cc_library(pten_function_api SRCS ${api_source_file} DEPS pten_tensor pten kernel_dispatch pten_data_transform)

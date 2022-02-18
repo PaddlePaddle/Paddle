@@ -54,7 +54,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
 #endif
 
+#ifdef PADDLE_USE_CUSTOM_KERNEL
 #include "paddle/fluid/framework/custom_kernel.h"
+#endif
 
 DECLARE_int32(paddle_num_threads);
 PADDLE_DEFINE_EXPORTED_int32(
@@ -234,7 +236,9 @@ void InitDevices(const std::vector<int> devices) {
     std::string custom_kernel_root(custom_kernel_root_p);
     if (!custom_kernel_root.empty()) {
       LOG(INFO) << "ENV [CUSTOM_DEVICE_ROOT]=" << custom_kernel_root;
+#ifdef PADDLE_USE_CUSTOM_KERNEL
       framework::LoadCustomKernel(custom_kernel_root);
+#endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       if (platform::LoadCustomDevice(custom_kernel_root)) {
         auto device_types = platform::DeviceManager::GetAllCustomDeviceTypes();
