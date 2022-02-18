@@ -137,12 +137,12 @@ class ConvBNLayer(nn.Layer):
             stride=stride,
             padding=padding,
             groups=num_groups,
-            bias_attr=False, )
+            bias_attr=False)
         self.bn = nn.BatchNorm(
             num_channels=out_channels,
             act=None,
             param_attr=ParamAttr(regularizer=L2Decay(0.0)),
-            bias_attr=ParamAttr(regularizer=L2Decay(0.0)), )
+            bias_attr=ParamAttr(regularizer=L2Decay(0.0)))
         self.act = _create_act(act)
 
     def forward(self, x):
@@ -180,7 +180,7 @@ class InvertedResidual(nn.Layer):
             stride=stride,
             padding=int((filter_size - 1) // 2),
             num_groups=expanded_channels,
-            act=act, )
+            act=act)
         if self.if_se:
             self.mid_se = SqueezeExcitation(expanded_channels)
         self.linear_conv = ConvBNLayer(
@@ -252,7 +252,7 @@ class MobileNetV3(nn.Layer):
             stride=2,
             padding=1,
             num_groups=1,
-            act="hardswish", )
+            act="hardswish")
 
         self.blocks = nn.Sequential(*[
             InvertedResidual(
@@ -263,7 +263,7 @@ class MobileNetV3(nn.Layer):
                 filter_size=cfg.kernel,
                 stride=cfg.stride,
                 use_se=cfg.use_se,
-                act=cfg.activation, ) for cfg in self.config
+                act=cfg.activation) for cfg in self.config
         ])
 
         self.last_second_conv = ConvBNLayer(
@@ -274,7 +274,7 @@ class MobileNetV3(nn.Layer):
             stride=1,
             padding=0,
             num_groups=1,
-            act="hardswish", )
+            act="hardswish")
 
         if with_pool:
             self.avg_pool = nn.AdaptiveAvgPool2D(1)
@@ -287,7 +287,7 @@ class MobileNetV3(nn.Layer):
                 kernel_size=1,
                 stride=1,
                 padding=0,
-                bias_attr=False, )
+                bias_attr=False)
 
             self.hardswish = nn.Hardswish()
             self.dropout = nn.Dropout(p=0.2, mode="downscale_in_infer")
@@ -339,12 +339,11 @@ class MobileNetV3Small(MobileNetV3):
             print(out.shape)
     """
 
-    def __init__(
-            self,
-            scale=1.0,
-            last_channel=1280,
-            num_classes=1000,
-            with_pool=True, ):
+    def __init__(self,
+                 scale=1.0,
+                 last_channel=1280,
+                 num_classes=1000,
+                 with_pool=True):
         config = [
             InvertedResidualConfig(16, 3, 16, 16, True, "relu", 2),
             InvertedResidualConfig(16, 3, 72, 24, False, "relu", 2),
@@ -392,12 +391,11 @@ class MobileNetV3Large(MobileNetV3):
             print(out.shape)
     """
 
-    def __init__(
-            self,
-            scale=1.0,
-            last_channel=1280,
-            num_classes=1000,
-            with_pool=True, ):
+    def __init__(self,
+                 scale=1.0,
+                 last_channel=1280,
+                 num_classes=1000,
+                 with_pool=True):
         config = [
             InvertedResidualConfig(16, 3, 16, 16, False, "relu", 1),
             InvertedResidualConfig(16, 3, 64, 24, False, "relu", 2),
