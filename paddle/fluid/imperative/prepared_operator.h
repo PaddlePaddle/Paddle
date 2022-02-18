@@ -326,8 +326,8 @@ void BuildDygraphPtenKernelContext(
 
       experimental::ResetTensorDtypeAndLayoutByArgDef(tensor_out,
                                                       output_defs.at(i));
-      // framework::SetAllocationForOutputTenosr(
-      //     tensor_out, pten::TransToPtenPlace(output_defs.at(i).backend));
+      framework::SetAllocationForOutputTenosr(
+          tensor_out, pten::TransToPtenPlace(output_defs.at(i).backend));
 
       kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
     }
