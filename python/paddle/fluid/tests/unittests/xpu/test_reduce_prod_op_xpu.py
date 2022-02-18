@@ -47,7 +47,7 @@ class XPUTestReduceProdOP(XPUOpTestWrapper):
                 'keep_dim': self.keep_dim,
                 'reduce_all': self.reduce_all
             }
-            self.inputs = {'X': np.random.random(self.shape).astype("float32")}
+            self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
             if self.attrs['reduce_all']:
                 self.outputs = {'Out': self.inputs['X'].prod()}
             else:
