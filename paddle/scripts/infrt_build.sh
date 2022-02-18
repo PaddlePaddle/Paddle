@@ -18,7 +18,7 @@
 #                   Utils
 #=================================================
 
-set -ex
+set -e
 
 if [ -z ${BRANCH} ]; then
     BRANCH="develop"
@@ -26,6 +26,22 @@ fi
 
 EXIT_CODE=0;
 tmp_dir=`mktemp -d`
+
+function update_pd_ops() {
+   PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
+   # compile and install paddle
+   rm -rf ${PADDLE_ROOT}/build && mkdir -p ${PADDLE_ROOT}/build
+   cd ${PADDLE_ROOT}/build
+   cmake .. -DWITH_PYTHON=ON -DWITH_GPU=OFF -DPYTHON_EXECUTABLE=`which python3` -DWITH_XBYAK=OFF -DWITH_NCCL=OFF -DWITH_RCCL=OFF -DWITH_CRYPTO=OFF
+   make -j8 paddle_python
+   cd ${PADDLE_ROOT}/build
+   cd python/dist/
+   python3 -m pip uninstall -y paddlepaddle
+   python3 -m pip install  *whl
+   # update pd_ops.td
+   cd ${PADDLE_ROOT}/tools/infrt/
+   python3 generate_pd_op_dialect_from_paddle_op_maker.py
+}
 
 function init() {
     RED='\033[0;31m'
@@ -62,7 +78,11 @@ function infrt_gen_and_build() {
     fi
     startTime_s=`date +%s`
     set +e
+
     mkdir -p ${PADDLE_ROOT}/build
+    # step1. reinstall paddle and generate pd_ops.td
+    update_pd_ops
+    # step2. compile infrt
     cd ${PADDLE_ROOT}/build
     rm -f infrt_summary.txt
     cmake ..  -DWITH_MKL=OFF -DWITH_GPU=OFF -DWITH_CRYPTO=OFF -DCMAKE_BUILD_TYPE=Release -DWITH_INFRT=ON -DWITH_PYTHON=OFF -DWITH_TESTING==${WITH_TESTING:-ON}; build_error=$?
@@ -70,7 +90,7 @@ function infrt_gen_and_build() {
         exit 7;
     fi
 
-    make -j ${parallel_number} infrt infrtopt infrt-exec test_infrt_exec trt-exec infrt_lib_dist;build_error=$?
+    make -j ${parallel_number} infrt infrtopt infrtexec test_infrt_exec trt-exec infrt_lib_dist paddle-mlir-convert;build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
@@ -80,7 +100,20 @@ function infrt_gen_and_build() {
     echo "ipipe_log_param_Infrt_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/infrt_summary.txt
 }
 
+function create_fake_models() {
+    cd ${PADDLE_ROOT}/build
+    # create multi_fc model, this will generate "multi_fc_model"
+    python3 -m pip uninstall -y paddlepaddle
+    python3 -m pip install paddlepaddle
+    python3 ${PADDLE_ROOT}/tools/infrt/fake_models/multi_fc.py
+}
+
 function test_infrt() {
+    create_fake_models
+
+    # install llvm-lit toolkit
+    python3 -m pip install lit
+
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
@@ -104,9 +137,19 @@ EOF
 }
 
 function main() {
-    local CMD=$1 
+    local CMD=$1
     local parallel_number=$2
+    if [ -z "$1" ]; then
+        echo "Usage:"
+        echo "      (1)bash infrt_build.sh build_and_test"
+        echo "      (2)bash infrt_build.sh build_only"
+        echo "      (3)bash infrt_build.sh test_only"
+        echo "      optional command: --update_pd_ops : pd_ops.td will be updated according to paddle's code."
+        exit 0
+    fi
+
     init
+
     case $CMD in
       build_and_test)
         infrt_gen_and_build ${parallel_number}
@@ -122,14 +165,15 @@ function main() {
         print_usage
         exit 1
         ;;
-      esac
-      set +x
-      if [[ -f ${PADDLE_ROOT}/build/infrt_summary.txt ]];then
-        echo "=====================build summary======================"
-        cat ${PADDLE_ROOT}/build/infrt_summary.txt
-        echo "========================================================"
-      fi
-      echo "paddle_build script finished as expected!"
+    esac
+
+    set +x
+    if [[ -f ${PADDLE_ROOT}/build/infrt_summary.txt ]];then
+      echo "=====================build summary======================"
+      cat ${PADDLE_ROOT}/build/infrt_summary.txt
+      echo "========================================================"
+    fi
+    echo "paddle_build script finished as expected!"
 }
 
 main $@

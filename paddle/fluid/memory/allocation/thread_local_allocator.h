@@ -83,11 +83,11 @@ class ThreadLocalCUDAAllocator : public Allocator {
   bool IsAllocThreadSafe() const override { return true; }
 
  protected:
-  Allocation* AllocateImpl(size_t size) override {
+  pten::Allocation* AllocateImpl(size_t size) override {
     return ThreadLocalCUDAAllocatorPool::Instance().Get(gpu_id_)->AllocateImpl(
         size);
   }
-  void FreeImpl(Allocation* allocation) override {
+  void FreeImpl(pten::Allocation* allocation) override {
     auto* tl_allocation = static_cast<ThreadLocalAllocation*>(allocation);
     auto allocator_impl = tl_allocation->GetAllocator();
     allocator_impl->FreeImpl(tl_allocation);

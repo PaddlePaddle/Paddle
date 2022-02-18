@@ -29,7 +29,8 @@ class CropNPUKernel : public framework::OpKernel<T> {
     std::vector<int> offset_list;
     if (ctx.HasInput("Offsets")) {
       auto* offsets_tensor = ctx.Input<framework::Tensor>("Offsets");
-      TensorToVector(*offsets_tensor, ctx.device_context(), &offset_list);
+      paddle::framework::TensorToVector(*offsets_tensor, ctx.device_context(),
+                                        &offset_list);
       if (offset_list.empty()) {
         offset_list.resize(x->dims().size(), 0);
       }
@@ -79,7 +80,7 @@ class CropNPUKernel : public framework::OpKernel<T> {
                             "Input(shape) should be equal to the shape of dims "
                             "(%d) of the Input(X).",
                             shape_size.size(), x->dims().size()));
-      Tensor tmp_shape(x->type());
+      Tensor tmp_shape(x->dtype());
       tmp_shape.Resize(framework::make_ddim(shape_size));
       tmp_shape.mutable_data<T>(ctx.GetPlace());
       const auto& runner =

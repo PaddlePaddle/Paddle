@@ -13,40 +13,118 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/os_info.h"
+#include <functional>
 #include <sstream>
+#include <thread>
+#include <vector>
 #if defined(__linux__)
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <unistd.h>
 #elif defined(_MSC_VER)
 #include <processthreadsapi.h>
+#else
+#include <unistd.h>
 #endif
+#include "paddle/fluid/framework/new_executor/workqueue/thread_data_registry.h"
+#include "paddle/fluid/platform/macros.h"  // import DISABLE_COPY_AND_ASSIGN
 
 namespace paddle {
 namespace platform {
+namespace internal {
 
-ThreadId::ThreadId() {
+using framework::ThreadDataRegistry;
+
+class InternalThreadId {
+ public:
+  InternalThreadId();
+
+  const ThreadId& GetTid() const { return id_; }
+
+ private:
+  ThreadId id_;
+};
+
+InternalThreadId::InternalThreadId() {
   // C++ std tid
-  std_tid_ = std::hash<std::thread::id>()(std::this_thread::get_id());
+  id_.std_tid = std::hash<std::thread::id>()(std::this_thread::get_id());
 // system tid
 #if defined(__linux__)
-  sys_tid_ = syscall(SYS_gettid);
+  id_.sys_tid = static_cast<uint64_t>(syscall(SYS_gettid));
 #elif defined(_MSC_VER)
-  sys_tid_ = GetCurrentThreadId();
-#else  // unsupported platforms
-  sys_tid_ = 0;
+  id_.sys_tid = static_cast<uint64_t>(::GetCurrentThreadId());
+#else  // unsupported platforms, use std_tid
+  id_.sys_tid = id_.std_tid;
 #endif
   // cupti tid
   std::stringstream ss;
   ss << std::this_thread::get_id();
-  cupti_tid_ = static_cast<uint32_t>(std::stoull(ss.str()));
+  id_.cupti_tid = static_cast<uint32_t>(std::stoull(ss.str()));
 }
 
-ThreadIdRegistry::~ThreadIdRegistry() {
-  std::lock_guard<std::mutex> lock(lock_);
-  for (auto id_pair : id_map_) {
-    delete id_pair.second;
+}  // namespace internal
+
+uint64_t GetCurrentThreadSysId() {
+  return internal::ThreadDataRegistry<internal::InternalThreadId>::GetInstance()
+      .GetCurrentThreadData()
+      .GetTid()
+      .sys_tid;
+}
+
+uint64_t GetCurrentThreadStdId() {
+  return internal::ThreadDataRegistry<internal::InternalThreadId>::GetInstance()
+      .GetCurrentThreadData()
+      .GetTid()
+      .std_tid;
+}
+
+ThreadId GetCurrentThreadId() {
+  return internal::ThreadDataRegistry<internal::InternalThreadId>::GetInstance()
+      .GetCurrentThreadData()
+      .GetTid();
+}
+
+std::unordered_map<uint64_t, ThreadId> GetAllThreadIds() {
+  auto tids =
+      internal::ThreadDataRegistry<internal::InternalThreadId>::GetInstance()
+          .GetAllThreadDataByValue();
+  std::unordered_map<uint64_t, ThreadId> res;
+  for (const auto& kv : tids) {
+    res[kv.first] = kv.second.GetTid();
   }
+  return res;
+}
+
+static constexpr const char* kDefaultThreadName = "unset";
+
+std::string GetCurrentThreadName() {
+  const auto& thread_name =
+      internal::ThreadDataRegistry<std::string>::GetInstance()
+          .GetCurrentThreadData();
+  return thread_name.empty() ? kDefaultThreadName : thread_name;
+}
+
+std::unordered_map<uint64_t, std::string> GetAllThreadNames() {
+  return internal::ThreadDataRegistry<std::string>::GetInstance()
+      .GetAllThreadDataByValue();
+}
+
+bool SetCurrentThreadName(const std::string& name) {
+  auto& instance = internal::ThreadDataRegistry<std::string>::GetInstance();
+  const auto& cur_name = instance.GetCurrentThreadData();
+  if (!cur_name.empty() || cur_name == kDefaultThreadName) {
+    return false;
+  }
+  instance.SetCurrentThreadData(name);
+  return true;
+}
+
+uint32_t GetProcessId() {
+#if defined(_MSC_VER)
+  return static_cast<uint32_t>(GetCurrentProcessId());
+#else
+  return static_cast<uint32_t>(getpid());
+#endif
 }
 
 }  // namespace platform

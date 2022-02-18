@@ -28,9 +28,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -2696,8 +2696,8 @@ class PowKernel : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
       auto* factor_data = factor_tensor->data<float>();
       framework::Tensor cpu_factor_tensor;
       if (platform::is_gpu_place(factor_tensor->place())) {
-        TensorCopySync(*factor_tensor, platform::CPUPlace(),
-                       &cpu_factor_tensor);
+        framework::TensorCopySync(*factor_tensor, platform::CPUPlace(),
+                                  &cpu_factor_tensor);
         factor_data = cpu_factor_tensor.data<float>();
       }
       auto factor =
@@ -2751,8 +2751,8 @@ class PowGradKernel
       auto* factor_data = factor_tensor->data<float>();
       framework::Tensor cpu_factor_tensor;
       if (platform::is_gpu_place(factor_tensor->place())) {
-        TensorCopySync(*factor_tensor, platform::CPUPlace(),
-                       &cpu_factor_tensor);
+        framework::TensorCopySync(*factor_tensor, platform::CPUPlace(),
+                                  &cpu_factor_tensor);
         factor_data = cpu_factor_tensor.data<float>();
       }
       auto factor =

@@ -81,7 +81,7 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
       slice_dims_for_assign = framework::make_ddim(slice_dims_with_none);
     }
 
-    TensorCopy(*in, ctx.GetPlace(), out);
+    paddle::framework::TensorCopy(*in, ctx.GetPlace(), out);
 
     auto starts_indices = std::vector<int64_t>(in_dims.size(), 0);
     auto ends_indices = std::vector<int64_t>(in_dims.size(), 0);
@@ -135,7 +135,8 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
       CheckIsDimsMatch(slice_dims_for_assign, value_dims);
 
       value_t.mutable_data<T>(value_dims, ctx.GetPlace());
-      auto value_name = GetValueName(in->type());
+      auto value_name =
+          GetValueName(framework::TransToProtoVarType(in->dtype()));
       CopyVecotorToTensor<T>(value_name.c_str(), &value_t, ctx);
       value_t.Resize(value_dims);
     }

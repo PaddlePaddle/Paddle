@@ -1,63 +1,29 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-
-licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #pragma once
 
-#include <cstring>
-#include <mutex>
 #include <string>
 #include <type_traits>
-#include <unordered_map>
 #include <vector>
-#include "paddle/fluid/platform/event.h"
+#include "paddle/fluid/framework/new_executor/workqueue/thread_data_registry.h"
+#include "paddle/fluid/platform/macros.h"
+#include "paddle/fluid/platform/os_info.h"
+#include "paddle/fluid/platform/profiler/common_event.h"
 
 namespace paddle {
 namespace platform {
-
-struct CommonEvent {
- public:
-  CommonEvent(const char *name, uint64_t start_ns, uint64_t end_ns,
-              EventRole role)
-      : name(name), start_ns(start_ns), end_ns(end_ns), role(role) {}
-
-  CommonEvent(std::function<void *(size_t)> &arena_allocator,
-              const std::string &name_str, uint64_t start_ns, uint64_t end_ns,
-              EventRole role, const std::string &attr_str)
-      : start_ns(start_ns), end_ns(end_ns), role(role) {
-    auto buf = static_cast<char *>(arena_allocator(name_str.length() + 1));
-    strncpy(buf, name_str.c_str(), name_str.length() + 1);
-    name = buf;
-    buf = static_cast<char *>(arena_allocator(attr_str.length() + 1));
-    strncpy(buf, attr_str.c_str(), attr_str.length() + 1);
-    attr = buf;
-  }
-
-  CommonEvent(const std::function<void *(size_t)> &arena_allocator,
-              const std::string &name_str, uint64_t start_ns, uint64_t end_ns,
-              EventRole role)
-      : start_ns(start_ns), end_ns(end_ns), role(role) {
-    auto buf = static_cast<char *>(arena_allocator(name_str.length() + 1));
-    strncpy(buf, name_str.c_str(), name_str.length() + 1);
-    name = buf;
-  }
-
-  const char *name = nullptr;  // not owned, designed for performance
-  uint64_t start_ns = 0;
-  uint64_t end_ns = 0;
-  EventRole role = EventRole::kOrdinary;
-  const char *attr = nullptr;  // not owned, designed for performance
-};
 
 template <typename HeadType, typename... RestTypes>
 struct ContainsStdString
@@ -223,7 +189,8 @@ struct ThreadEventSection {
 
 class ThreadEventRecorder {
  public:
-  ThreadEventRecorder();
+  ThreadEventRecorder() { thread_id_ = GetCurrentThreadSysId(); }
+
   DISABLE_COPY_AND_ASSIGN(ThreadEventRecorder);
 
  public:
@@ -261,34 +228,43 @@ class HostEventRecorder {
     return instance;
   }
 
+  // thread-safe
   // If your string argument has a longer lifetime than the Event,
   // use 'const char*'. e.g.: string literal, op name, etc.
   // Do your best to avoid using 'std::string' as the argument type.
   // It will cause deep-copy to harm performance.
   template <typename... Args>
   void RecordEvent(Args &&... args) {
-    GetThreadLocalRecorder().RecordEvent(std::forward<Args>(args)...);
+    GetThreadLocalRecorder()->RecordEvent(std::forward<Args>(args)...);
   }
 
+  // thread-unsafe, make sure make sure there is no running tracing.
   // Poor performance, call it at the ending
-  HostEventSection GatherEvents();
-
-  void RegisterThreadRecorder(uint64_t tid, ThreadEventRecorder *recorder) {
-    const std::lock_guard<std::mutex> guard(thread_recorders_lock_);
-    thread_recorders_[tid] = recorder;
+  HostEventSection GatherEvents() {
+    auto thr_recorders =
+        ThreadEventRecorderRegistry::GetInstance().GetAllThreadDataByRef();
+    HostEventSection host_sec;
+    host_sec.process_id = GetProcessId();
+    host_sec.thr_sections.reserve(thr_recorders.size());
+    for (auto &kv : thr_recorders) {
+      auto &thr_recorder = kv.second.get();
+      host_sec.thr_sections.emplace_back(
+          std::move(thr_recorder.GatherEvents()));
+    }
+    return host_sec;
   }
 
  private:
+  using ThreadEventRecorderRegistry =
+      framework::ThreadDataRegistry<ThreadEventRecorder>;
+
   HostEventRecorder() = default;
   DISABLE_COPY_AND_ASSIGN(HostEventRecorder);
 
-  ThreadEventRecorder &GetThreadLocalRecorder() {
-    static thread_local ThreadEventRecorder tls_recorder;
-    return tls_recorder;
+  ThreadEventRecorder *GetThreadLocalRecorder() {
+    return ThreadEventRecorderRegistry::GetInstance()
+        .GetMutableCurrentThreadData();
   }
-
-  std::mutex thread_recorders_lock_;
-  std::unordered_map<uint64_t, ThreadEventRecorder *> thread_recorders_;
 };
 
 }  // namespace platform

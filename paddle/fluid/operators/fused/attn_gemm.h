@@ -11,8 +11,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
@@ -56,7 +56,7 @@ class AttnMatMul {
     T beta = static_cast<T>(0.0);
 
     // here: (m, n, k) = bsz_seq, output_size, input_size, (input, weight, out)
-    auto blas = math::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
+    auto blas = pten::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
     blas.GEMM(transA, transB, bsz_seq_, output_size_, input_size_, alpha,
               input->data<T>(), weight->data<T>(), beta, output->data<T>());
     if (compute_bias_) {
@@ -67,7 +67,8 @@ class AttnMatMul {
       ins.emplace_back(bias);
       outs.emplace_back(bias_out);
       int elewise_add_axis = -1;
-      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+      paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary,
+                                                     T, T>(
           dev_ctx_, ins, &outs, elewise_add_axis, AddFunctor<T>());
     }
   }
@@ -79,7 +80,7 @@ class AttnMatMul {
                        framework::Tensor* d_bias) {
     T alpha = static_cast<T>(1.0);
     T beta = static_cast<T>(0.0);
-    auto blas = math::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
+    auto blas = pten::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
 
     CBLAS_TRANSPOSE dB_transA = CblasNoTrans;
     CBLAS_TRANSPOSE dB_transB = CblasNoTrans;
@@ -164,8 +165,9 @@ class AttnMatMul {
            (input_dims[2] == output_dims[0]));
       if (support_case_1 || support_case_2) {
         gpuStream_t stream = dev_ctx_.stream();
-        TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-            *d_output, d_bias, kps::IdentityFunctor<T>(), {0, 1}, stream);
+        TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+            dev_ctx_, *d_output, d_bias, kps::IdentityFunctor<T>(), {0, 1},
+            stream);
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "Only support reduce when the input dims are [0,1,2,3,4] and "

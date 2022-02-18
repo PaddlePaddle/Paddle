@@ -19,15 +19,15 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/dropout_op.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/math/detail/activation_functions.h"
 #include "paddle/fluid/operators/math/fc.h"
 #include "paddle/fluid/operators/math/gru_compute.h"
 #include "paddle/fluid/operators/math/lstm_compute.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/unique_op.h"
 #include "paddle/fluid/operators/utils.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -108,9 +108,12 @@ struct SimpleRNNCell : Cell<T> {
                   const Tensor* init_c, Tensor* last_h, Tensor* last_c,
                   Tensor* last_c_act, Tensor* output, const Tensor* bias_hh,
                   Tensor* weight_hh_gru) const override {
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(*device_ctx);
-    auto mat_dim_a = math::CreateMatrixDescriptor(init_h->dims(), 0, false);
-    auto mat_dim_b = math::CreateMatrixDescriptor(weight_hh->dims(), 0, true);
+    auto blas =
+        pten::funcs::GetBlas<platform::CPUDeviceContext, T>(*device_ctx);
+    auto mat_dim_a =
+        pten::funcs::CreateMatrixDescriptor(init_h->dims(), 0, false);
+    auto mat_dim_b =
+        pten::funcs::CreateMatrixDescriptor(weight_hh->dims(), 0, true);
     mat_dim_a.height_ *= mat_dim_a.batch_size_;
     mat_dim_a.batch_size_ = 0;
     // convert the batch matmul to matmul, this operator could be speed faster
@@ -134,10 +137,12 @@ struct GRUCell : Cell<T> {
                   const Tensor* init_c, Tensor* last_h, Tensor* last_c,
                   Tensor* last_c_act, Tensor* output, const Tensor* bias_hh,
                   Tensor* weight_hh_gru) const override {
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(*device_ctx);
-    auto mat_dim_a = math::CreateMatrixDescriptor(init_h->dims(), 0, false);
+    auto blas =
+        pten::funcs::GetBlas<platform::CPUDeviceContext, T>(*device_ctx);
+    auto mat_dim_a =
+        pten::funcs::CreateMatrixDescriptor(init_h->dims(), 0, false);
     auto mat_dim_b =
-        math::CreateMatrixDescriptor(weight_hh_gru->dims(), 0, true);
+        pten::funcs::CreateMatrixDescriptor(weight_hh_gru->dims(), 0, true);
     mat_dim_a.height_ *= mat_dim_a.batch_size_;
     mat_dim_a.batch_size_ = 0;
     // convert the batch matmul to matmul, this operator could be speed faster
@@ -171,9 +176,12 @@ struct LSTMCell : Cell<T> {
                   const Tensor* init_c, Tensor* last_h, Tensor* last_c,
                   Tensor* last_c_act, Tensor* output, const Tensor* bias_hh,
                   Tensor* weight_hh_gru) const override {
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(*device_ctx);
-    auto mat_dim_a = math::CreateMatrixDescriptor(init_h->dims(), 0, false);
-    auto mat_dim_b = math::CreateMatrixDescriptor(weight_hh->dims(), 0, true);
+    auto blas =
+        pten::funcs::GetBlas<platform::CPUDeviceContext, T>(*device_ctx);
+    auto mat_dim_a =
+        pten::funcs::CreateMatrixDescriptor(init_h->dims(), 0, false);
+    auto mat_dim_b =
+        pten::funcs::CreateMatrixDescriptor(weight_hh->dims(), 0, true);
     mat_dim_a.height_ *= mat_dim_a.batch_size_;
     mat_dim_a.batch_size_ = 0;
     // convert the batch matmul to matmul, this operator could be speed faster
@@ -281,9 +289,11 @@ struct Layer {
     if (is_test) {
       cache_input->mutable_data<T>(context.GetPlace());
     }
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(dev_ctx);
-    auto mat_dim_a = math::CreateMatrixDescriptor(input->dims(), 0, false);
-    auto mat_dim_b = math::CreateMatrixDescriptor(weight.dims(), 0, true);
+    auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(dev_ctx);
+    auto mat_dim_a =
+        pten::funcs::CreateMatrixDescriptor(input->dims(), 0, false);
+    auto mat_dim_b =
+        pten::funcs::CreateMatrixDescriptor(weight.dims(), 0, true);
     // convert the batch matmul to matmul, this operator could be speed faster
     mat_dim_a.height_ *= mat_dim_a.batch_size_;
     mat_dim_a.batch_size_ = 0;
@@ -305,7 +315,7 @@ struct Layer {
       framework::TensorCopy(bias_hh, context.GetPlace(), dev_ctx, &bias_hh_tmp);
       bias_hh_tmp.Resize({3, bias_hh_tmp.numel() / 3});
       auto bias_hh_tmp_unbind = Unbind(bias_hh_tmp);
-      math::SetConstant<platform::CPUDeviceContext, T> zero;
+      pten::funcs::SetConstant<platform::CPUDeviceContext, T> zero;
       zero(dev_ctx, &bias_hh_tmp_unbind[2], static_cast<T>(0.0));
 
       auto bias_hh_after_mask = framework::EigenMatrix<T>::From(
@@ -439,7 +449,7 @@ struct Layer {
                             &weight_hh_tmp);
       weight_hh_tmp.Resize({3, weight_hh_tmp.numel() / 3});
       auto weight_hh_tmp_unbind = Unbind(weight_hh_tmp);
-      math::SetConstant<platform::CPUDeviceContext, T> zero;
+      pten::funcs::SetConstant<platform::CPUDeviceContext, T> zero;
       zero(dev_ctx, &weight_hh_tmp_unbind[2], static_cast<T>(0.0));
       weight_hh_tmp.Resize(vec[1 + offset * 4].dims());
     }
@@ -585,7 +595,7 @@ struct Layer {
                             &weight_hh_tmp);
       weight_hh_tmp.Resize({3, weight_hh_tmp.numel() / 3});
       auto weight_hh_tmp_unbind = Unbind(weight_hh_tmp);
-      math::SetConstant<platform::CPUDeviceContext, T> zero;
+      pten::funcs::SetConstant<platform::CPUDeviceContext, T> zero;
       zero(dev_ctx, &weight_hh_tmp_unbind[2], static_cast<T>(0.0));
       weight_hh_tmp.Resize(vec[1 + offset * 4].dims());
     }
@@ -966,7 +976,7 @@ class RNNCPUKernel : public framework::OpKernel<T> {
     dropout_mask->mutable_data<uint8_t>(output->dims(), ctx.GetPlace());
 
     auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
-    math::SetConstant<platform::CPUDeviceContext, uint8_t> ones;
+    pten::funcs::SetConstant<platform::CPUDeviceContext, uint8_t> ones;
     ones(dev_ctx, dropout_mask, static_cast<uint8_t>(1));
     // init the output and allocate the memory
     output->mutable_data<T>(ctx.GetPlace());
@@ -1095,7 +1105,7 @@ struct GradLayer {
     Tensor c, d;
     Tensor* dynamic_grad_pre_h = &c;
     Tensor* dynamic_grad_pre_c = &d;
-    math::SetConstant<platform::CPUDeviceContext, T> zero;
+    pten::funcs::SetConstant<platform::CPUDeviceContext, T> zero;
     if (init_h_grad_unbind->size() > 0) {
       dynamic_grad_pre_h->ShareDataWith(
           (*init_h_grad_unbind)[current_layer_idx]);
@@ -1268,12 +1278,13 @@ struct GradLayer {
     }
     auto& device_ctx =
         context.template device_context<platform::CPUDeviceContext>();
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(device_ctx);
+    auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(device_ctx);
 
     // calc the gradient for the w_hi
     auto mat_dim_out_grad =
-        math::CreateMatrixDescriptor(grad_gate.dims(), 0, true);
-    auto mat_dim_input = math::CreateMatrixDescriptor(input.dims(), 0, false);
+        pten::funcs::CreateMatrixDescriptor(grad_gate.dims(), 0, true);
+    auto mat_dim_input =
+        pten::funcs::CreateMatrixDescriptor(input.dims(), 0, false);
     mat_dim_out_grad.width_ *= mat_dim_out_grad.batch_size_;
     mat_dim_out_grad.batch_size_ = 0;
     mat_dim_input.height_ *= mat_dim_input.batch_size_;
@@ -1284,16 +1295,16 @@ struct GradLayer {
 
     // calc the gradient for the X
     auto mat_dim_out_grad_new =
-        math::CreateMatrixDescriptor(grad_gate.dims(), 0, false);
+        pten::funcs::CreateMatrixDescriptor(grad_gate.dims(), 0, false);
     mat_dim_out_grad_new.height_ *= mat_dim_out_grad_new.batch_size_;
     mat_dim_out_grad_new.batch_size_ = 0;
     auto mat_dim_parameter =
-        math::CreateMatrixDescriptor(parameters[0].dims(), 0, false);
+        pten::funcs::CreateMatrixDescriptor(parameters[0].dims(), 0, false);
     blas.MatMul(grad_gate, mat_dim_out_grad_new, parameters[begin_idx + 0],
                 mat_dim_parameter, static_cast<T>(1.0), input_grad, T(1));
 
     // calc the gradient of Bias_hi, Bias_hh
-    math::ColwiseSum<platform::CPUDeviceContext, T> col_sum;
+    pten::funcs::ColwiseSum<platform::CPUDeviceContext, T> col_sum;
     Tensor tmp_grad_gate;
     tmp_grad_gate.ShareDataWith(grad_gate);
     tmp_grad_gate.Resize(
@@ -1328,7 +1339,7 @@ struct SingleGradLayer : GradLayer<T, GradCellType> {
       const int& gate_num) {
     auto& device_ctx =
         context.template device_context<platform::CPUDeviceContext>();
-    math::SetConstant<platform::CPUDeviceContext, T> zero;
+    pten::funcs::SetConstant<platform::CPUDeviceContext, T> zero;
     zero(device_ctx, input_grad, static_cast<T>(0.0));
 
     const bool& is_bidirec = context.Attr<bool>("is_bidirec");
@@ -1425,7 +1436,7 @@ struct BidirGradLayer : GradLayer<T, GradCellType> {
     // split the output two tensor to output_forward, output_backward
     auto& device_ctx =
         context.template device_context<platform::CPUDeviceContext>();
-    math::SetConstant<platform::CPUDeviceContext, T> zero;
+    pten::funcs::SetConstant<platform::CPUDeviceContext, T> zero;
     zero(device_ctx, input_grad, static_cast<T>(0.0));
 
     std::vector<Tensor*> output_vec;
@@ -1583,13 +1594,14 @@ struct GradCell {
       bool has_sequence_length) const {
     auto& device_ctx =
         context.template device_context<platform::CPUDeviceContext>();
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(device_ctx);
+    auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(device_ctx);
     Tensor* grad_gate_tmp = grad_gate;
     auto mat_dim_a =
-        math::CreateMatrixDescriptor(grad_gate_tmp->dims(), 0, false);
+        pten::funcs::CreateMatrixDescriptor(grad_gate_tmp->dims(), 0, false);
     mat_dim_a.height_ *= mat_dim_a.batch_size_;
     mat_dim_a.batch_size_ = 0;
-    auto mat_dim_b = math::CreateMatrixDescriptor(weight_hh->dims(), 0, false);
+    auto mat_dim_b =
+        pten::funcs::CreateMatrixDescriptor(weight_hh->dims(), 0, false);
     blas.MatMul(*grad_gate_tmp, mat_dim_a, *weight_hh, mat_dim_b,
                 static_cast<T>(1.0), grad_pre_hidden, 0);
     postprocess_pre_hidden_grad(context, grad_pre_hidden, grad_pre_hidden_bak,
@@ -1602,11 +1614,13 @@ struct GradCell {
                                      Tensor* grad_weight_hh) const {
     auto& device_ctx =
         context.template device_context<platform::CPUDeviceContext>();
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(device_ctx);
-    auto mat_dim_c = math::CreateMatrixDescriptor(grad_gate->dims(), 0, true);
+    auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(device_ctx);
+    auto mat_dim_c =
+        pten::funcs::CreateMatrixDescriptor(grad_gate->dims(), 0, true);
     mat_dim_c.height_ *= mat_dim_c.batch_size_;
     mat_dim_c.batch_size_ = 0;
-    auto mat_dim_d = math::CreateMatrixDescriptor(pre_hidden->dims(), 0, false);
+    auto mat_dim_d =
+        pten::funcs::CreateMatrixDescriptor(pre_hidden->dims(), 0, false);
     mat_dim_d.height_ *= mat_dim_d.batch_size_;
     mat_dim_d.batch_size_ = 0;
     blas.MatMul(*grad_gate, mat_dim_c, *pre_hidden, mat_dim_d,
@@ -1675,7 +1689,7 @@ struct GRUGradCell : GradCell<T> {
       backup_tensor<T>(context, &grad_pre_hidden_bak, grad_pre_hidden);
     }
     // zero pre_hidden
-    math::SetConstant<platform::CPUDeviceContext, T> zero;
+    pten::funcs::SetConstant<platform::CPUDeviceContext, T> zero;
     zero(device_ctx, grad_pre_hidden, static_cast<T>(0.0));
     math::GRUMetaValue<T> gru_value;
     math::GRUMetaGrad<T> gru_grad;

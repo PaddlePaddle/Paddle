@@ -12,50 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/scale_op.h"
 #include <string>
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/pten/ops/compat/scale_args_fn.h"
-
-namespace paddle {
-namespace framework {
-class InferShapeContext;
-class OpDesc;
-}  // namespace framework
-namespace imperative {
-class OpBase;
-}  // namespace imperative
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
-}  // namespace paddle
+#include "paddle/pten/core/infermeta_utils.h"
+#include "paddle/pten/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
 
 class ScaleOp : public framework::OperatorWithKernel {
  public:
-  ScaleOp(const std::string &type, const framework::VariableNameMap &inputs,
-          const framework::VariableNameMap &outputs,
-          const framework::AttributeMap &attrs)
-      : OperatorWithKernel(type, inputs, outputs, attrs) {}
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "scale");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "scale");
-
-    if (ctx->IsRuntime() && ctx->HasInput("ScaleTensor")) {
-      auto scale = ctx->Inputs("ScaleTensor");
-      PADDLE_ENFORCE_EQ(scale.size(), 1,
-                        platform::errors::InvalidArgument(
-                            "Input(ScaleTensor) size must be 1, "
-                            "but received size is %d.",
-                            scale.size()));
-    }
-
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
@@ -70,12 +39,6 @@ class ScaleOp : public framework::OperatorWithKernel {
     }
 #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
-  }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext &ctx) const override {
-    framework::ExecutionArgumentMappingContext arg_mapping_ctx(ctx);
-    return pten::ScaleOpArgumentMapping(arg_mapping_ctx);
   }
 };
 
@@ -112,7 +75,8 @@ $$Out = scale*(X + bias)$$
         .SetDefault(true);
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
   }
 };
 
@@ -135,11 +99,19 @@ class ScaleGradMaker : public framework::SingleGradOpMaker<T> {
       grad_op->SetInput("ScaleTensor", this->Input("ScaleTensor"));
     }
     grad_op->SetOutput("Out", this->InputGrad("X"));
+    VLOG(6) << "Finish SetOutput";
     grad_op->SetAttr("scale", this->GetAttr("scale"));
+    VLOG(6) << "Finish Set Attr scale";
     grad_op->SetAttr("bias", 0.0f);
+    VLOG(6) << "Finish Set Attr bias";
     grad_op->SetAttr("bias_after_scale", true);
-    if (grad_op->HasAttr("use_mkldnn"))
+    VLOG(6) << "Finish Set Attr bias_after_scale";
+    if (grad_op->HasAttr("use_mkldnn")) {
+      VLOG(6) << "Finish Check Attr use_mkldnn";
       grad_op->SetAttr("use_mkldnn", this->GetAttr("use_mkldnn"));
+      VLOG(6) << "Finish Set Attr use_mkldnn";
+    }
+    VLOG(6) << "Finish Apply";
   }
 };
 
@@ -149,32 +121,10 @@ DECLARE_INPLACE_OP_INFERER(ScaleOpInplaceInferer, {"X", "Out"});
 
 namespace ops = paddle::operators;
 
+DELCARE_INFER_SHAPE_FUNCTOR(scale, ScaleInferShapeFunctor,
+                            PT_INFER_META(pten::UnchangedInferMeta));
 REGISTER_OPERATOR(scale, ops::ScaleOp, ops::ScaleOpMaker,
                   ops::ScaleGradMaker<paddle::framework::OpDesc>,
                   ops::ScaleGradMaker<paddle::imperative::OpBase>,
-                  ops::ScaleOpVarTypeInference, ops::ScaleOpInplaceInferer);
-REGISTER_OP_CPU_KERNEL(
-    scale, ops::ScaleKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ScaleKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ScaleKernel<paddle::platform::CPUDeviceContext,
-                     paddle::platform::bfloat16>,
-    ops::ScaleKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::ScaleKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::ScaleKernel<paddle::platform::CPUDeviceContext, int16_t>,
-    ops::ScaleKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ScaleKernel<paddle::platform::CPUDeviceContext, int64_t>);
-
-REGISTER_OP_CUDA_KERNEL(
-    scale,
-    paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext, float>,
-    paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext, double>,
-    paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext,
-                                   uint8_t>,
-    paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext, int8_t>,
-    paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext,
-                                   int16_t>,
-    paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext, int>,
-    paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext,
-                                   int64_t>,
-    paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext,
-                                   paddle::platform::float16>);
+                  ScaleInferShapeFunctor, ops::ScaleOpVarTypeInference,
+                  ops::ScaleOpInplaceInferer);

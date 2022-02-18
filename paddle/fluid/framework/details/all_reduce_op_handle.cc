@@ -13,8 +13,10 @@
 // limitations under the License.
 #include "paddle/fluid/framework/details/all_reduce_op_handle.h"
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -126,7 +128,7 @@ void AllReduceOpHandle::AllReduceImpl(
           platform::errors::PreconditionNotMet(
               "The numel of tensor %s should be > 0, but got numel is %d.",
               in_var_handles[i]->name(), numel));
-      dtype = lod_tensor.type();
+      dtype = framework::TransToProtoVarType(lod_tensor.dtype());
       is_gpu_place = platform::is_gpu_place(lod_tensor.place());
 #if defined(PADDLE_WITH_XPU_BKCL)
       is_xpu_place = platform::is_xpu_place(lod_tensor.place());
@@ -138,7 +140,7 @@ void AllReduceOpHandle::AllReduceImpl(
             "The size of tensors of the same variable in different local "
             "scopes should be equal."));
     PADDLE_ENFORCE_EQ(
-        dtype, lod_tensor.type(),
+        dtype, framework::TransToProtoVarType(lod_tensor.dtype()),
         platform::errors::PreconditionNotMet(
             "The dtype of tensors of the same variable in different local "
             "scopes should be equal."));
@@ -181,7 +183,7 @@ void AllReduceOpHandle::AllReduceFunc(
     const framework::proto::VarType::Type &dtype, int64_t numel,
     const std::vector<platform::Place> &places,
     const std::vector<std::string> &out_var_names) {
-  if (is_gpu_place(places[0])) {
+  if (platform::is_gpu_place(places[0])) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     PADDLE_ENFORCE_NOT_NULL(nccl_ctxs_,
                             platform::errors::InvalidArgument(
@@ -200,7 +202,7 @@ void AllReduceOpHandle::AllReduceFunc(
     PADDLE_THROW(
         platform::errors::PreconditionNotMet("Not compiled with GPU."));
 #endif
-  } else if (is_xpu_place(places[0])) {
+  } else if (platform::is_xpu_place(places[0])) {
 #if defined(PADDLE_WITH_XPU_BKCL)
     PADDLE_ENFORCE_NOT_NULL(bkcl_ctxs_,
                             platform::errors::InvalidArgument(
@@ -226,14 +228,15 @@ void AllReduceOpHandle::AllReduceFunc(
 
     // Reduce All Tensor to trg in CPU
     ReduceBufferData func(lod_tensor_data, trg.data(), numel);
-    VisitDataType(trg.type(), func);
+    VisitDataType(framework::TransToProtoVarType(trg.dtype()), func);
 
     for (size_t i = 1; i < local_exec_scopes_.size(); ++i) {
       auto &scope = local_exec_scopes_[i];
       auto &p = places[i];
       auto *var = scope->FindVar(out_var_names[i]);
 
-      size_t size = numel * SizeOfType(trg.type());
+      size_t size =
+          numel * SizeOfType(framework::TransToProtoVarType(trg.dtype()));
       RunAndRecordEvent(p, [&trg, var, p, size] {
         auto dst_ptr = var->GetMutable<framework::LoDTensor>()->data();
         platform::CPUPlace cpu_place;
@@ -286,7 +289,7 @@ void AllReduceOpHandle::NCCLAllReduceFunc(
 void AllReduceOpHandle::SyncNCCLAllReduce() {
   if (FLAGS_sync_nccl_allreduce) {
     for (auto &p : places_) {
-      int dev_id = BOOST_GET_CONST(platform::CUDAPlace, p).device;
+      int dev_id = p.device;
       auto *nccl_ctxs =
           nccl_ctxs_->GetRunEnvNCCLCtx(run_order_, use_hierarchical_allreduce_);
       auto &nccl_ctx = nccl_ctxs->at(dev_id);

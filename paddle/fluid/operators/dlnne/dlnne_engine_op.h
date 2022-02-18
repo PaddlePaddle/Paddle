@@ -196,7 +196,7 @@ class DlnneEngineOp : public framework::OperatorBase {
       index++;
       int64_t data_bytes;
       int32_t dtype;
-      auto type = t.type();
+      auto type = framework::TransToProtoVarType(t.dtype());
       data_bytes = 1;
       void *buffer = nullptr;
       if (type == framework::proto::VarType::FP32) {
@@ -272,8 +272,7 @@ class DlnneEngineOp : public framework::OperatorBase {
       fluid_t->Resize(framework::make_ddim(out_shapes[bind_index]));
 
       int32_t dtype;
-      output_buffers[bind_index] = fluid_t->mutable_data<float>(
-          BOOST_GET_CONST(platform::CPUPlace, dev_place));
+      output_buffers[bind_index] = fluid_t->mutable_data<float>(dev_place);
       dtype = 0;
       cpu_output_buffers[bind_index] =
           output_buffers[bind_index];  // malloc(data_bytes);

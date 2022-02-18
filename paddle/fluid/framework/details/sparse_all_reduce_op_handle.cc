@@ -17,6 +17,7 @@
 #include <utility>
 
 #include "dgc/dgc.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
@@ -151,7 +152,9 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
     auto &out = *outs[i];
     float *out_tensor_buf = out.data<float>();
 
-    dtype = (dtype == -1) ? platform::ToNCCLDataType(in.type()) : dtype;
+    dtype = (dtype == -1) ? platform::ToNCCLDataType(
+                                framework::TransToProtoVarType(in.dtype()))
+                          : dtype;
     in_numel = (in_numel == 0) ? static_cast<size_t>(in.numel()) : in_numel;
     PADDLE_ENFORCE_EQ(in_numel % 2, 0,
                       platform::errors::InvalidArgument(
@@ -165,7 +168,7 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
                           in_numel));
     out_numel = (out_numel == 0) ? static_cast<size_t>(out.numel()) : out_numel;
 
-    int dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
+    int dev_id = place.device;
     auto *nccl_ctxs = nccl_ctxs_->GetRunEnvNCCLCtx(run_order_, false);
     auto &nccl_ctx = nccl_ctxs->at(dev_id);
     auto stream = nccl_ctx.stream();

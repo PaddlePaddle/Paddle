@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/operators/fused/fusion_lstm_op.h"
 #include "paddle/fluid/operators/fused/mkldnn/fusion_rnn_mkldnn.h"
 
@@ -40,7 +42,7 @@ class LSTMMKLDNNHandler
             ctx, dev_ctx, mkldnn_engine, ctx.GetPlace(), input, weight_h, h0,
             is_reverse, N, Ti, IC, OC, 4,
             ctx.InputName("X") + ctx.InputName("WeightH")) {
-    if (!this->isCached()) {
+    if (unlikely(!this->isCached())) {
       const bool is_INT8 = std::is_same<T, uint8_t>::value;
       const bool use_peepholes = ctx.Attr<bool>("use_peepholes");
       // oneDNN kernel has hardcoded activation functions
@@ -113,7 +115,7 @@ class LSTMMKLDNNHandler
   void ReorderGates(U* weights, int64_t I) {
     size_t inner_block_size = this->OC;
     size_t block_size = inner_block_size * this->G;
-    for (size_t i = 0; i < (size_t)I; ++i) {
+    for (size_t i = 0; i < (size_t)I; ++i) {  // NOLINT
       size_t offset = i * block_size;
 
       U* base_pos = weights + offset;
@@ -340,13 +342,14 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
     std::shared_ptr<dnnl::memory> h0_memory_p, weight_h_memory_p,
         weight_x_memory_p;
 
-    if (weight_h->type() == paddle::framework::proto::VarType_Type_FP32) {
+    if (framework::TransToProtoVarType(weight_h->dtype()) ==
+        paddle::framework::proto::VarType_Type_FP32) {
       h0_memory_p = handler.template AcquireH0Memory<float>(h0);
       weight_x_memory_p =
           handler.template AcquireWeightXMemory<float>(weight_x);
       weight_h_memory_p =
           handler.template AcquireWeightHMemory<float>(weight_h);
-    } else if (weight_h->type() ==
+    } else if (framework::TransToProtoVarType(weight_h->dtype()) ==
                paddle::framework::proto::VarType_Type_BF16) {
       h0_memory_p =
           handler.template AcquireH0Memory<paddle::platform::bfloat16>(h0);

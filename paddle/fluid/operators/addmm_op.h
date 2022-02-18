@@ -19,8 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
@@ -94,7 +94,7 @@ class AddMMKernel : public framework::OpKernel<T> {
     float alpha = context.template Attr<float>("Alpha");
     float beta = context.template Attr<float>("Beta");
 
-    auto blas = math::GetBlas<DeviceContext, T>(context);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(context);
 
     // calc broadcast dim
     Array2 bcast_dims;
@@ -146,7 +146,7 @@ class AddMMGradKernel : public framework::OpKernel<T> {
     }
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     if (dinput) {
       dinput->mutable_data<T>(ctx.GetPlace());
       total_elems = in_dims[0] * in_dims[1];

@@ -15,11 +15,11 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/lapack_function.h"
 #include "paddle/fluid/operators/set_value_op.h"
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/operators/triangular_solve_op.h"
 #include "paddle/fluid/operators/tril_triu_op.h"
+#include "paddle/pten/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/pten/kernels/math_kernel.h"
 
 namespace paddle {
@@ -38,7 +38,7 @@ void SetValueCompute(const framework::ExecutionContext& ctx,
   std::vector<int64_t> decrease_axes = {};
   std::vector<int64_t> none_axes = {};
 
-  auto dtype = in->type();
+  auto dtype = framework::TransToProtoVarType(in->dtype());
 
   auto in_dims = in->dims();
   CheckAndUpdateSliceAttrs<int64_t>(in_dims, axes, starts, ends, &steps);
@@ -86,9 +86,10 @@ void SetValueCompute(const framework::ExecutionContext& ctx,
   // be two ops points to the output in graph: op1 -> output <- set_value.
   // In this case, we have to find a way to handle the running order of
   // set_value is what we want.
-  TensorCopy(*in, place, out);
+  paddle::framework::TensorCopy(*in, place, out);
 
-  Tensor slice_tensor(dtype), pad_tensor(dtype);
+  Tensor slice_tensor(framework::TransToPtenDataType(dtype)),
+      pad_tensor(framework::TransToPtenDataType(dtype));
   slice_tensor.mutable_data<T>(slice_dims, place);
   pad_tensor.mutable_data<T>(in_dims, place);
 
@@ -146,7 +147,7 @@ void SetValueCompute(const framework::ExecutionContext& ctx,
     ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
         ctx, &slice_tensor, value_tensor, -1, SubFunctor<T>(), &slice_tensor);
   } else {
-    Tensor value_t(dtype);
+    Tensor value_t(framework::TransToPtenDataType(dtype));
     auto value_dims = framework::make_ddim(shape);
     CheckIsDimsMatch(slice_dims_for_assign, value_dims);
 
@@ -210,8 +211,9 @@ void Tensor_Conj(const DeviceContext& dev_ctx, const framework::Tensor& tensor,
                  framework::Tensor* out) {
   out->Resize(tensor.dims());
   platform::ForRange<DeviceContext> out_for_range(dev_ctx, tensor.numel());
-  math::ConjFunctor<T> out_functor(tensor.data<T>(), tensor.numel(),
-                                   out->mutable_data<T>(dev_ctx.GetPlace()));
+  pten::funcs::ConjFunctor<T> out_functor(
+      tensor.data<T>(), tensor.numel(),
+      out->mutable_data<T>(dev_ctx.GetPlace()));
   out_for_range(out_functor);
 }
 
@@ -220,11 +222,12 @@ void Tensor_Add(const DeviceContext& dev_ctx, const framework::Tensor& src1,
                 const framework::Tensor& src2, framework::Tensor* out) {
   out->Resize(src1.dims());
   out->mutable_data<T>(dev_ctx.GetPlace());
-  auto pt_x = paddle::experimental::MakePtenDenseTensor(src1);
-  auto pt_y = paddle::experimental::MakePtenDenseTensor(src2);
-  auto pt_z = paddle::experimental::MakePtenDenseTensor(*out);
-  pten::AddKernel<T, DeviceContext>(dev_ctx, *pt_x.get(), *pt_y.get(), -1,
-                                    pt_z.get());
+
+  pten::AddRawKernel<
+      T, typename paddle::framework::ConvertToPtenContext<DeviceContext>::TYPE>(
+      static_cast<const typename paddle::framework::ConvertToPtenContext<
+          DeviceContext>::TYPE&>(dev_ctx),
+      src1, src2, -1, out);
 }
 
 template <typename DeviceContext, typename T>
@@ -232,11 +235,12 @@ void Tensor_Sub(const DeviceContext& dev_ctx, const framework::Tensor& src1,
                 const framework::Tensor& src2, framework::Tensor* out) {
   out->Resize(src1.dims());
   out->mutable_data<T>(dev_ctx.GetPlace());
-  auto pt_x = paddle::experimental::MakePtenDenseTensor(src1);
-  auto pt_y = paddle::experimental::MakePtenDenseTensor(src2);
-  auto pt_z = paddle::experimental::MakePtenDenseTensor(*out);
-  pten::SubtractKernel<T, DeviceContext>(dev_ctx, *pt_x.get(), *pt_y.get(), -1,
-                                         pt_z.get());
+
+  pten::SubtractRawKernel<
+      T, typename paddle::framework::ConvertToPtenContext<DeviceContext>::TYPE>(
+      static_cast<const typename paddle::framework::ConvertToPtenContext<
+          DeviceContext>::TYPE&>(dev_ctx),
+      src1, src2, -1, out);
 }
 
 template <typename DeviceContext, typename T, size_t D>
@@ -413,7 +417,7 @@ void LU_Unpack(const DeviceContext& dev_ctx, const framework::Tensor* LU,
   batchsize = std::max(static_cast<int>(batchsize), 1);
   arange<DeviceContext>(dev_ctx, &rowtensor, dim, batchsize, H);
   auto idtptr = rowtensor.data<int32_t>();
-  if (is_gpu_place(dev_ctx.GetPlace())) {
+  if (platform::is_gpu_place(dev_ctx.GetPlace())) {
     framework::TensorCopy(rowtensor, dev_ctx.GetPlace(), &rt_dev);
     idtptr = rt_dev.data<int32_t>();
   }
@@ -453,7 +457,7 @@ void Unpack_Pivot(const DeviceContext& dev_ctx, const framework::Tensor& Pivot,
   auto Pdim = framework::make_ddim(Pdimvec);
   P->Resize(Pdim);
   auto pdata = P->mutable_data<T>(dev_ctx.GetPlace());
-  math::SetConstant<DeviceContext, T> setter;
+  pten::funcs::SetConstant<DeviceContext, T> setter;
   setter(dev_ctx, P, static_cast<T>(0));
 
   auto batchsize = product(framework::slice_ddim(dims, 0, prank - 1));
@@ -485,7 +489,7 @@ class LUGradKernel : public framework::OpKernel<T> {
 
     const auto& dev_ctx = ctx.template device_context<DeviceContext>();
     math::DeviceIndependenceTensorOperations<DeviceContext, T> helper(ctx);
-    auto blas = math::GetBlas<DeviceContext, T>(ctx);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(ctx);
 
     auto xdims = xin->dims();
     int xrank = xdims.size();
@@ -515,9 +519,9 @@ class LUGradKernel : public framework::OpKernel<T> {
     phi_L.mutable_data<T>(ctx.GetPlace());
     phi_U.Resize(UmHdims);
     phi_U.mutable_data<T>(ctx.GetPlace());
-    auto mat_dim_l = math::CreateMatrixDescriptor(LmHdims, 0, false);
-    auto mat_dim_u = math::CreateMatrixDescriptor(UmHdims, 0, false);
-    auto mat_dim_g = math::CreateMatrixDescriptor(graddims, 0, false);
+    auto mat_dim_l = pten::funcs::CreateMatrixDescriptor(LmHdims, 0, false);
+    auto mat_dim_u = pten::funcs::CreateMatrixDescriptor(UmHdims, 0, false);
+    auto mat_dim_g = pten::funcs::CreateMatrixDescriptor(graddims, 0, false);
     blas.MatMul(L_narrow_mH, mat_dim_l, grad_narrow, mat_dim_g,
                 static_cast<T>(1), &phi_L, static_cast<T>(0));
 
@@ -541,7 +545,7 @@ class LUGradKernel : public framework::OpKernel<T> {
     Tensor_Add<DeviceContext, T>(dev_ctx, phi_L, phi_U, &phi);
     psi.Resize(xdims);
     psi.mutable_data<T>(ctx.GetPlace());
-    math::SetConstant<DeviceContext, T> setter;
+    pten::funcs::SetConstant<DeviceContext, T> setter;
     setter(dev_ctx, &psi, static_cast<T>(0));
 
     std::vector<int64_t> axes = {xrank - 2, xrank - 1};
@@ -563,10 +567,10 @@ class LUGradKernel : public framework::OpKernel<T> {
         Tensor_Conj<DeviceContext, T>(dev_ctx, U_complement_mH,
                                       &U_complement_mH);
 
-        auto mat_dim_g =
-            math::CreateMatrixDescriptor(U_grad_complement.dims(), 0, false);
-        auto mat_dim_u =
-            math::CreateMatrixDescriptor(U_complement_mH.dims(), 0, false);
+        auto mat_dim_g = pten::funcs::CreateMatrixDescriptor(
+            U_grad_complement.dims(), 0, false);
+        auto mat_dim_u = pten::funcs::CreateMatrixDescriptor(
+            U_complement_mH.dims(), 0, false);
         auto phidims = UmHdims;
         phidims[UmHdims.size() - 2] = k;
         phidims[UmHdims.size() - 1] = k;
@@ -619,8 +623,10 @@ class LUGradKernel : public framework::OpKernel<T> {
       triangular_solve<DeviceContext, T>(dev_ctx, L_narrow_mH, psi, &psi_tmp,
                                          true, false, true);
 
-      auto mat_dim_p = math::CreateMatrixDescriptor(Pmat.dims(), 0, false);
-      auto mat_dim_b = math::CreateMatrixDescriptor(psi_tmp.dims(), 0, false);
+      auto mat_dim_p =
+          pten::funcs::CreateMatrixDescriptor(Pmat.dims(), 0, false);
+      auto mat_dim_b =
+          pten::funcs::CreateMatrixDescriptor(psi_tmp.dims(), 0, false);
       blas.MatMul(Pmat, mat_dim_p, psi_tmp, mat_dim_b, static_cast<T>(1), dx,
                   static_cast<T>(0));
     } else {
@@ -632,10 +638,10 @@ class LUGradKernel : public framework::OpKernel<T> {
       framework::Tensor L_complement_mH = helper.Transpose(L_complement);
       Tensor_Conj<DeviceContext, T>(dev_ctx, L_complement_mH, &L_complement_mH);
 
-      auto mat_dim_g =
-          math::CreateMatrixDescriptor(L_grad_complement.dims(), 0, false);
+      auto mat_dim_g = pten::funcs::CreateMatrixDescriptor(
+          L_grad_complement.dims(), 0, false);
       auto mat_dim_u =
-          math::CreateMatrixDescriptor(L_complement_mH.dims(), 0, false);
+          pten::funcs::CreateMatrixDescriptor(L_complement_mH.dims(), 0, false);
       auto phidims = LmHdims;
       phidims[LmHdims.size() - 2] = k;
       phidims[LmHdims.size() - 1] = k;
@@ -681,8 +687,10 @@ class LUGradKernel : public framework::OpKernel<T> {
 
       psi_tmp.Resize(psi.dims());
       psi_tmp.mutable_data<T>(ctx.GetPlace());
-      auto mat_dim_p = math::CreateMatrixDescriptor(Pmat.dims(), 0, false);
-      auto mat_dim_b = math::CreateMatrixDescriptor(psi.dims(), 0, false);
+      auto mat_dim_p =
+          pten::funcs::CreateMatrixDescriptor(Pmat.dims(), 0, false);
+      auto mat_dim_b =
+          pten::funcs::CreateMatrixDescriptor(psi.dims(), 0, false);
       blas.MatMul(Pmat, mat_dim_p, psi, mat_dim_b, static_cast<T>(1), &psi_tmp,
                   static_cast<T>(0));
       psi_tmp = helper.Transpose(psi_tmp);

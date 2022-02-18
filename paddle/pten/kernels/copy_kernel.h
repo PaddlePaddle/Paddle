@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/sparse_csr_tensor.h"
 
 namespace pten {
 
@@ -23,5 +24,4 @@ void Copy(const Context& dev_ctx,
           const DenseTensor& src,
           bool blocking,
           DenseTensor* dst);
-
 }  // namespace pten

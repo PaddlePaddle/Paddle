@@ -18,12 +18,12 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-#include "paddle/fluid/operators/math/complex_functors.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/matrix_rank_op.h"
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/platform/dynload/cusolver.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/complex_functors.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -81,7 +81,7 @@ class MatrixRankGPUKernel : public framework::OpKernel<T> {
 
     // Must Copy X once, because the gesvdj will destory the content when exit.
     Tensor x_tmp;
-    TensorCopy(*x, context.GetPlace(), &x_tmp);
+    paddle::framework::TensorCopy(*x, context.GetPlace(), &x_tmp);
     auto info = memory::Alloc(dev_ctx, sizeof(int) * batches);
     int* info_ptr = reinterpret_cast<int*>(info->ptr());
 
@@ -93,8 +93,8 @@ class MatrixRankGPUKernel : public framework::OpKernel<T> {
                    info_ptr);
       platform::ForRange<platform::CUDADeviceContext> for_range(
           dev_ctx, eigenvalue_tensor.numel());
-      math::AbsFunctor<T> functor(eigenvalue_data, eigenvalue_data,
-                                  eigenvalue_tensor.numel());
+      pten::funcs::AbsFunctor<T> functor(eigenvalue_data, eigenvalue_data,
+                                         eigenvalue_tensor.numel());
       for_range(functor);
     } else {
       Tensor U, VH;
@@ -129,10 +129,10 @@ class MatrixRankGPUKernel : public framework::OpKernel<T> {
     compare_result.mutable_data<int64_t>(detail::NewAxisDim(dim_out, k),
                                          context.GetPlace());
     int axis = -1;
-    ElementwiseComputeEx<GreaterThanFunctor<T>, platform::CUDADeviceContext, T,
-                         int64_t>(context, &eigenvalue_tensor, &tol_tensor,
-                                  axis, GreaterThanFunctor<T>(),
-                                  &compare_result);
+    ElementwiseComputeEx<GreaterThanFunctor<T, int64_t>,
+                         platform::CUDADeviceContext, T, int64_t>(
+        context, &eigenvalue_tensor, &tol_tensor, axis,
+        GreaterThanFunctor<T, int64_t>(), &compare_result);
     auto dito_int =
         math::DeviceIndependenceTensorOperations<platform::CUDADeviceContext,
                                                  int64_t>(context);
@@ -178,8 +178,7 @@ void MatrixRankGPUKernel<float>::GesvdjBatched(
         U + stride_U * i, ldu, V + stride_V * i, ldt, workspace_ptr, lwork,
         info, gesvdj_params));
     int error_info;
-    memory::Copy(platform::CPUPlace(), &error_info,
-                 BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()), info,
+    memory::Copy(platform::CPUPlace(), &error_info, dev_ctx.GetPlace(), info,
                  sizeof(int), dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         error_info, 0,
@@ -220,8 +219,7 @@ void MatrixRankGPUKernel<double>::GesvdjBatched(
         info, gesvdj_params));
     // check the error info
     int error_info;
-    memory::Copy(platform::CPUPlace(), &error_info,
-                 BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()), info,
+    memory::Copy(platform::CPUPlace(), &error_info, dev_ctx.GetPlace(), info,
                  sizeof(int), dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         error_info, 0,
@@ -259,8 +257,7 @@ void MatrixRankGPUKernel<float>::SyevjBatched(
         lwork, info, params));
 
     int error_info;
-    memory::Copy(platform::CPUPlace(), &error_info,
-                 BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()), info,
+    memory::Copy(platform::CPUPlace(), &error_info, dev_ctx.GetPlace(), info,
                  sizeof(int), dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         error_info, 0,
@@ -297,8 +294,7 @@ void MatrixRankGPUKernel<double>::SyevjBatched(
         handle, jobz, uplo, n, A + stride_A * i, lda, W + n * i, workspace_ptr,
         lwork, info, params));
     int error_info;
-    memory::Copy(platform::CPUPlace(), &error_info,
-                 BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()), info,
+    memory::Copy(platform::CPUPlace(), &error_info, dev_ctx.GetPlace(), info,
                  sizeof(int), dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         error_info, 0,

@@ -14,11 +14,40 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/pten/common/complex.h"
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/infermeta/unary.h"
+#include "paddle/pten/kernels/empty_kernel.h"
 
 namespace pten {
 
 template <typename T, typename Context>
-void Conj(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out);
+void ConjKernel(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out);
+
+// If T is complex
+template <
+    typename T,
+    typename Context,
+    std::enable_if_t<std::is_same<T, pten::dtype::complex<float>>::value ||
+                         std::is_same<T, pten::dtype::complex<double>>::value,
+                     bool> = true>
+DenseTensor Conj(const Context& dev_ctx, const DenseTensor& x) {
+  auto dense_out = pten::Empty<T, Context>(dev_ctx);
+  MetaTensor meta_out(&dense_out);
+  UnchangedInferMeta(x, &meta_out);
+  ConjKernel<T>(dev_ctx, x, &dense_out);
+  return dense_out;
+}
+
+// If T is not complex
+template <
+    typename T,
+    typename Context,
+    std::enable_if_t<!std::is_same<T, pten::dtype::complex<float>>::value &&
+                         !std::is_same<T, pten::dtype::complex<double>>::value,
+                     bool> = true>
+DenseTensor Conj(const Context& dev_ctx, const DenseTensor& x) {
+  return x;
+}
 
 }  // namespace pten

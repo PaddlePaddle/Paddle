@@ -20,7 +20,7 @@
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -112,18 +112,18 @@ inline void TransToChannelFirst(const framework::ExecutionContext& context,
   if (dim == 3) {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     std::vector<int> axis{0, 4, 1, 2, 3};
-    math::Transpose<DeviceContext, T, 5> trans5;
+    pten::funcs::Transpose<DeviceContext, T, 5> trans5;
     trans5(dev_ctx, *input, transformed_input, axis);
 
   } else if (dim == 2) {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     std::vector<int> axis{0, 3, 1, 2};
-    math::Transpose<DeviceContext, T, 4> trans4;
+    pten::funcs::Transpose<DeviceContext, T, 4> trans4;
     trans4(dev_ctx, *input, transformed_input, axis);
   } else if (dim == 1) {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     std::vector<int> axis{0, 2, 1};
-    math::Transpose<DeviceContext, T, 3> trans3;
+    pten::funcs::Transpose<DeviceContext, T, 3> trans3;
     trans3(dev_ctx, *input, transformed_input, axis);
   }
 }
@@ -135,18 +135,18 @@ inline void TransToChannelLast(const framework::ExecutionContext& context,
   if (dim == 3) {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     std::vector<int> axis{0, 2, 3, 4, 1};
-    math::Transpose<DeviceContext, T, 5> trans5;
+    pten::funcs::Transpose<DeviceContext, T, 5> trans5;
     trans5(dev_ctx, *input, transformed_input, axis);
 
   } else if (dim == 2) {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     std::vector<int> axis{0, 2, 3, 1};
-    math::Transpose<DeviceContext, T, 4> trans4;
+    pten::funcs::Transpose<DeviceContext, T, 4> trans4;
     trans4(dev_ctx, *input, transformed_input, axis);
   } else if (dim == 1) {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     std::vector<int> axis{0, 2, 1};
-    math::Transpose<DeviceContext, T, 3> trans3;
+    pten::funcs::Transpose<DeviceContext, T, 3> trans3;
     trans3(dev_ctx, *input, transformed_input, axis);
   }
 }

@@ -27,8 +27,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/operators/dropout_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 #include "paddle/fluid/operators/collective/c_allgather_op.h"
 #include "paddle/fluid/operators/collective/c_allreduce_op.h"
@@ -43,7 +43,6 @@ limitations under the License. */
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
-namespace m = paddle::operators::math;
 
 USE_OP(c_allgather);
 USE_NO_KERNEL_OP(c_gen_hccl_id);
@@ -139,7 +138,7 @@ void TestHCCLAllGatherOp(f::Scope* scope, const p::DeviceContext& ctx) {
   }
   PrintDebugInfo("input data", init);
 
-  TensorFromVector(init, ctx, tensor_x);
+  paddle::framework::TensorFromVector(init, ctx, tensor_x);
   tensor_x->Resize({num1, num2});
   ctx.Wait();
 
@@ -165,7 +164,7 @@ void TestHCCLAllGatherOp(f::Scope* scope, const p::DeviceContext& ctx) {
   ctx.Wait();
 
   std::vector<float> out_vec;
-  TensorToVector(*tensor_out, ctx, &out_vec);
+  paddle::framework::TensorToVector(*tensor_out, ctx, &out_vec);
   ctx.Wait();
 
   PrintDebugInfo("output data", out_vec);

@@ -19,11 +19,11 @@
 #include <cmath>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/math/matrix_inverse.h"
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/complex_functors.h"
 
 namespace paddle {
 namespace operators {
@@ -150,7 +150,7 @@ inline bool CheckMatrixInvertible(const framework::ExecutionContext& ctx,
   auto* data = dev_tensor.mutable_data<bool>({1}, ctx.GetPlace());
 
   // set false
-  math::SetConstant<DeviceContext, bool> zero;
+  pten::funcs::SetConstant<DeviceContext, bool> zero;
   zero(dev_ctx, &dev_tensor, false);
 
   // find whether zero
@@ -208,7 +208,7 @@ class DeterminantGradKernel : public framework::OpKernel<T> {
       VLOG(3) << "The input matrix not invertible!";
       ddet->Resize(input->dims());
       ddet->mutable_data<T>(context.GetPlace());
-      math::SetConstant<DeviceContext, T> zero;
+      pten::funcs::SetConstant<DeviceContext, T> zero;
       zero(dev_ctx, ddet, static_cast<T>(0.0f));
       return;
     }
@@ -363,7 +363,7 @@ class SlogDeterminantGradKernel : public framework::OpKernel<T> {
       VLOG(3) << "The input matrix not invertible!";
       dslogdet->Resize(input->dims());
       dslogdet->mutable_data<T>(context.GetPlace());
-      math::SetConstant<DeviceContext, T> zero;
+      pten::funcs::SetConstant<DeviceContext, T> zero;
       zero(dev_ctx, dslogdet, std::numeric_limits<T>::quiet_NaN());
       return;
     }
@@ -395,7 +395,7 @@ class SlogDeterminantGradKernel : public framework::OpKernel<T> {
                                                      size_t(numel * sizeof(T)));
 
     platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
-    math::ConjFunctor<T> functor(inverse_A.data<T>(), numel, conj_data);
+    pten::funcs::ConjFunctor<T> functor(inverse_A.data<T>(), numel, conj_data);
     for_range(functor);
 
     VLOG(3) << "inverse(A).conj() dims: " << conj_inverse_A.dims();

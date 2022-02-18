@@ -17,9 +17,10 @@
 #include <memory>
 #include <utility>
 #include <vector>
-
+#include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/layer.h"
+#include "paddle/pten/api/include/tensor.h"
 
 namespace paddle {
 namespace imperative {
@@ -31,7 +32,7 @@ class GradientAccumulator {
     if (var && var->Var().IsInitialized()) {
       if (var->Var().IsType<framework::LoDTensor>()) {
         var->SetType(framework::proto::VarType::LOD_TENSOR);
-      } else if (var->Var().IsType<framework::SelectedRows>()) {
+      } else if (var->Var().IsType<pten::SelectedRows>()) {
         var->SetType(framework::proto::VarType::SELECTED_ROWS);
       } else {
         PADDLE_THROW(platform::errors::PermissionDenied(
@@ -162,6 +163,21 @@ class SortedGradientAccumulator : public GradientAccumulator {
 
   std::vector<SavedVarInfo> tmp_grad_vars_;
 };
+
+template <typename ReturnVarType, typename VarType>
+std::shared_ptr<ReturnVarType> SelectedRowsMerge(const VarType& src1,
+                                                 const VarType& src2);
+
+template <typename VarType>
+void SelectedRowsAddToTensor(const VarType& src, VarType* dst);
+
+template <typename VarType>
+void SelectedRowsAddTensor(const VarType& src_selected_rows_var,
+                           const VarType& src_tensor_var,
+                           VarType* dst_tensor_var);
+
+template <typename VarType>
+void TensorAdd(const VarType& src, VarType* dst);
 
 }  // namespace imperative
 }  // namespace paddle

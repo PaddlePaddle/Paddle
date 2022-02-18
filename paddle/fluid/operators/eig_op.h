@@ -17,13 +17,13 @@
 #include <math.h>
 #include <algorithm>
 #include <complex>
-#include "paddle/fluid/operators/math/complex_functors.h"
-#include "paddle/fluid/operators/math/lapack_function.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/matrix_solve.h"
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/complex_functors.h"
+#include "paddle/pten/kernels/funcs/lapack/lapack_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 #define EPSILON 1e-6
 
 namespace paddle {
@@ -87,18 +87,19 @@ void LapackEig(Tensor* input, Tensor* values, Tensor* vectors, int info,
   int values_stride = values->dims()[values->dims().size() - 1];
 
   Tensor rwork;
-  math::Real<T>* rwork_data = nullptr;
+  pten::funcs::Real<T>* rwork_data = nullptr;
 
   rwork.Resize(framework::make_ddim({lda * 2}));
-  rwork_data = rwork.mutable_data<math::Real<T>>(context.GetPlace());
+  rwork_data = rwork.mutable_data<pten::funcs::Real<T>>(context.GetPlace());
 
   // call lapackEig once to compute the size of work;
   T computed_work_size;
-  math::lapackEig<T, math::Real<T>>(
+  pten::funcs::lapackEig<T, pten::funcs::Real<T>>(
       jobvl, jobvr, order, input_data, lda, values_data, lvector_data, ldvl,
       rvector_data, ldvr, &computed_work_size, lwork, rwork_data, &info);
 
-  lwork = std::max<int>(1, static_cast<int>(math::Real<T>(computed_work_size)));
+  lwork = std::max<int>(
+      1, static_cast<int>(pten::funcs::Real<T>(computed_work_size)));
   Tensor work;
   work.Resize(framework::make_ddim({lwork}));
   T* work_data = work.mutable_data<T>(context.GetPlace());
@@ -108,7 +109,7 @@ void LapackEig(Tensor* input, Tensor* values, Tensor* vectors, int info,
     T* current_values = &values_data[i * values_stride];
     T* current_rvectors = &rvector_data[i * matrix_stride];
 
-    math::lapackEig<T, math::Real<T>>(
+    pten::funcs::lapackEig<T, pten::funcs::Real<T>>(
         jobvl, jobvr, order, current_matrix, lda, current_values, lvector_data,
         ldvl, current_rvectors, ldvr, work_data, lwork, rwork_data, &info);
     PADDLE_ENFORCE_EQ(
@@ -189,7 +190,7 @@ class EigKernel : public framework::OpKernel<T> {
     auto* out_values = context.Output<Tensor>("Eigenvalues");
     auto* out_vectors = context.Output<Tensor>("Eigenvectors");
 
-    if (!framework::IsComplexType(x->type())) {
+    if (!framework::IsComplexType(framework::TransToProtoVarType(x->dtype()))) {
       out_values->mutable_data<Tout>(context.GetPlace());
       out_vectors->mutable_data<Tout>(context.GetPlace());
 
@@ -207,26 +208,27 @@ class EigKernel : public framework::OpKernel<T> {
       origin_dim.push_back(last_item * 2);
       framework::DDim big_dim = framework::make_ddim(origin_dim);
 
-      real_values.mutable_data<math::Real<T>>(big_dim, context.GetPlace());
-      real_vectors.mutable_data<math::Real<T>>(x->dims(), context.GetPlace());
+      real_values.mutable_data<pten::funcs::Real<T>>(big_dim,
+                                                     context.GetPlace());
+      real_vectors.mutable_data<pten::funcs::Real<T>>(x->dims(),
+                                                      context.GetPlace());
 
-      ApplyEigKernel<DeviceContext, math::Real<T>>(*x, &real_values,
-                                                   &real_vectors, context);
-      auto dito =
-          math::DeviceIndependenceTensorOperations<DeviceContext, math::Real<T>,
-                                                   Tout>(context);
+      ApplyEigKernel<DeviceContext, pten::funcs::Real<T>>(
+          *x, &real_values, &real_vectors, context);
+      auto dito = math::DeviceIndependenceTensorOperations<
+          DeviceContext, pten::funcs::Real<T>, Tout>(context);
 
       // 1. extract real part & imag part from real_values
       Tensor real_part = dito.Slice(real_values, {-1}, {0}, {order});
       Tensor imag_part = dito.Slice(real_values, {-1}, {order}, {order * 2});
 
       // 2. construct complex values
-      auto* real_part_data = real_part.data<math::Real<T>>();
-      auto* imag_part_data = imag_part.data<math::Real<T>>();
+      auto* real_part_data = real_part.data<pten::funcs::Real<T>>();
+      auto* imag_part_data = imag_part.data<pten::funcs::Real<T>>();
       int out_values_numel = out_values->numel();
       platform::ForRange<DeviceContext> for_range(
           context.template device_context<DeviceContext>(), out_values_numel);
-      math::RealImagToComplexFunctor<Tout> functor(
+      pten::funcs::RealImagToComplexFunctor<Tout> functor(
           real_part_data, imag_part_data,
           out_values->mutable_data<Tout>(context.GetPlace()), out_values_numel);
       for_range(functor);
@@ -235,7 +237,7 @@ class EigKernel : public framework::OpKernel<T> {
       Tensor real_vector_trans = dito.Transpose(real_vectors);
       Tensor out_vectors_trans;
       out_vectors_trans.mutable_data<Tout>(x->dims(), context.GetPlace());
-      ConstructComplexVectors<math::Real<T>, Tout>(
+      ConstructComplexVectors<pten::funcs::Real<T>, Tout>(
           &out_vectors_trans, *out_values, real_vector_trans, context,
           batch_count, order);
       TransposeTwoAxis<DeviceContext, Tout>(out_vectors_trans, out_vectors,
@@ -271,14 +273,14 @@ void ComputeBackwardForComplexInput(
   // turn diag_unsqueezed into complex
   auto numel = diag_unsqueezed.numel();
   Tensor diag_unsqueezed_complex;
-  auto* data_diag_un = diag_unsqueezed.data<math::Real<Tout>>();
+  auto* data_diag_un = diag_unsqueezed.data<pten::funcs::Real<Tout>>();
   auto* data_diag_un_com = diag_unsqueezed_complex.mutable_data<Tout>(
       diag_unsqueezed.dims(), context.GetPlace(),
       static_cast<size_t>(numel * sizeof(Tout)));
   auto& dev_ctx = context.template device_context<DeviceContext>();
   platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
-  math::RealToComplexFunctor<Tout> functor(data_diag_un, data_diag_un_com,
-                                           numel);
+  pten::funcs::RealToComplexFunctor<Tout> functor(data_diag_un,
+                                                  data_diag_un_com, numel);
   for_range(functor);
   // real tensor multiply complex tensor in broadcast manner
   Tensor res1 = dito.RealMulComplex(V, diag_unsqueezed_complex);

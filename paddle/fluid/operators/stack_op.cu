@@ -64,8 +64,7 @@ class StackGPUKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = ctx.template device_context<plat::CUDADeviceContext>();
     auto tmp_x_data = memory::Alloc(dev_ctx, x_datas.size() * sizeof(T*));
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
-                 tmp_x_data->ptr(), platform::CPUPlace(),
+    memory::Copy(dev_ctx.GetPlace(), tmp_x_data->ptr(), platform::CPUPlace(),
                  reinterpret_cast<void*>(x_datas.data()),
                  x_datas.size() * sizeof(T*), dev_ctx.stream());
 
@@ -169,8 +168,7 @@ class StackGradGPUKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = ctx.template device_context<plat::CUDADeviceContext>();
     auto tmp_out_data = memory::Alloc(dev_ctx, outputs.size() * sizeof(T*));
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
-                 tmp_out_data->ptr(), platform::CPUPlace(),
+    memory::Copy(dev_ctx.GetPlace(), tmp_out_data->ptr(), platform::CPUPlace(),
                  reinterpret_cast<void*>(outputs.data()),
                  outputs.size() * sizeof(T*), dev_ctx.stream());
 
@@ -198,10 +196,12 @@ class StackGradGPUKernel : public framework::OpKernel<T> {
 REGISTER_OP_CUDA_KERNEL(stack, ops::StackGPUKernel<float>,
                         ops::StackGPUKernel<double>, ops::StackGPUKernel<int>,
                         ops::StackGPUKernel<int64_t>,
-                        ops::StackGPUKernel<plat::float16>);
+                        ops::StackGPUKernel<plat::float16>,
+                        ops::StackGPUKernel<plat::bfloat16>);
 
 REGISTER_OP_CUDA_KERNEL(stack_grad, ops::StackGradGPUKernel<float>,
                         ops::StackGradGPUKernel<double>,
                         ops::StackGradGPUKernel<int>,
                         ops::StackGradGPUKernel<int64_t>,
-                        ops::StackGradGPUKernel<plat::float16>);
+                        ops::StackGradGPUKernel<plat::float16>,
+                        ops::StackGradGPUKernel<plat::bfloat16>);

@@ -156,7 +156,7 @@ class GPUROIPoolOpKernel : public framework::OpKernel<T> {
     auto cplace = platform::CPUPlace();
     int* roi_batch_id_data = roi_batch_id_list.mutable_data<int>(cplace);
     auto& dev_ctx = ctx.cuda_device_context();
-    auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+    auto gplace = ctx.GetPlace();
     if (ctx.HasInput("RoisNum")) {
       auto* rois_num_t = ctx.Input<Tensor>("RoisNum");
       int rois_batch_size = rois_num_t->numel();
@@ -244,7 +244,7 @@ class GPUROIPoolGradOpKernel : public framework::OpKernel<T> {
       int* roi_batch_id_data = roi_batch_id_list.mutable_data<int>(cplace);
 
       auto& dev_ctx = ctx.cuda_device_context();
-      auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+      auto gplace = ctx.GetPlace();
       if (ctx.HasInput("RoisNum")) {
         auto* rois_num_t = ctx.Input<Tensor>("RoisNum");
         int rois_batch_size = rois_num_t->numel();
@@ -274,7 +274,7 @@ class GPUROIPoolGradOpKernel : public framework::OpKernel<T> {
                    dev_ctx.stream());
 
       x_grad->mutable_data<T>(ctx.GetPlace());
-      math::SetConstant<Place, T> set_zero;
+      pten::funcs::SetConstant<Place, T> set_zero;
       set_zero(dev_ctx, x_grad, static_cast<T>(0));
 
       int output_grad_size = out_grad->numel();

@@ -13,9 +13,11 @@
 // limitations under the License.
 #include "paddle/fluid/framework/details/fused_all_reduce_op_handle.h"
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
 #include "paddle/fluid/platform/device_memory_aligment.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DEFINE_bool(skip_fused_all_reduce_check, false, "");
@@ -102,7 +104,7 @@ void FusedAllReduceOpHandle::RunImpl() {
   gpuStream_t compute_stream{nullptr};
 
   if (FLAGS_allreduce_record_one_event) {
-    auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, places_[0]);
+    auto gpu_place = platform::CUDAPlace(places_[0].GetDeviceId());
     compute_stream =
         platform::DeviceContextPool::Instance().GetByPlace(gpu_place)->stream();
     auto flat_nccl_ctxs = nccl_ctxs_->GetFlatCtx(run_order_);
@@ -291,7 +293,7 @@ bool FusedAllReduceOpHandle::InputIsInDifferentPlace(
           var, platform::errors::NotFound(
                    "The variable '%s' is not found in local scope.", var_name));
       auto &lod_tensor = var->Get<LoDTensor>();
-      if (!is_same_place(lod_tensor.place(), places_.at(scope_idx))) {
+      if (!platform::is_same_place(lod_tensor.place(), places_.at(scope_idx))) {
         return true;
       }
     }
@@ -336,7 +338,8 @@ void FusedAllReduceOpHandle::GetDTypeAndNumel(
   size_t size_of_dtype = 0;
   for (size_t i = 0; i < grad_tensor.size(); ++i) {
     // Get dtype
-    auto ele_dtype = grad_tensor.at(i).second->type();
+    auto ele_dtype =
+        framework::TransToProtoVarType(grad_tensor.at(i).second->dtype());
     if (i == 0) {
       *dtype = ele_dtype;
       size_of_dtype = framework::SizeOfType(ele_dtype);

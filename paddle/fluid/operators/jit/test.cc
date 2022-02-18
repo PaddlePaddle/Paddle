@@ -842,6 +842,72 @@ void TestKernelStrideScal() {
 }
 
 template <typename KernelTuple, typename PlaceType>
+void TestKernelAdam() {
+  using T = typename KernelTuple::data_type;
+  VLOG(10) << "Test JITKernel: " << jit::to_string(KernelTuple::kernel_type);
+  const T lr = 0.1;
+  const T beta1 = 0.99;
+  const T beta2 = 0.95;
+  const T beta1_pow = beta1 * beta1;
+  const T beta2_pow = beta2 * beta2;
+
+  const T epsilon = 0.000001;
+  const int64_t numel = 123;
+
+  T learning_rate = lr * (sqrt(1 - beta2_pow) / (1 - beta1_pow));
+  T eps = epsilon * sqrt(1 - beta2_pow);
+
+  std::vector<T> param(numel);
+  std::vector<T> grad(numel);
+  std::vector<T> mom1(numel);
+  std::vector<T> mom2(numel);
+
+  std::vector<T> param_out(param.size());
+  std::vector<T> mom1_out(mom1.size());
+  std::vector<T> mom2_out(mom2.size());
+
+  RandomVec<T>(numel, param.data(), 0.5f);
+  RandomVec<T>(numel, grad.data(), 0.5f);
+  RandomVec<T>(numel, mom1.data(), 0.5f);
+  RandomVec<T>(numel, mom2.data(), 0.5f);
+
+  auto ref = jit::GetReferFunc<KernelTuple>();
+  EXPECT_TRUE(ref != nullptr);
+  jit::adam_attr_t attr(beta1, beta2);
+  ref(beta1, beta2, -learning_rate, eps, numel, grad.data(), mom1.data(),
+      mom2.data(), param.data(), mom1_out.data(), mom2_out.data(),
+      param_out.data());
+
+  auto verifier = [](
+      const typename KernelTuple::func_type tgt, T beta1, T beta2, T lr, T eps,
+      int64_t numel, const std::vector<T>& grad, const std::vector<T>& mom1,
+      const std::vector<T>& mom2, const std::vector<T>& param,
+      const std::vector<T>& ref_mom1_out, const std::vector<T>& ref_mom2_out,
+      const std::vector<T>& ref_param_out) {
+    EXPECT_TRUE(tgt != nullptr);
+    EXPECT_EQ(param.size(), static_cast<size_t>(numel));
+    EXPECT_EQ(grad.size(), static_cast<size_t>(numel));
+    EXPECT_EQ(mom1.size(), static_cast<size_t>(numel));
+    EXPECT_EQ(mom2.size(), static_cast<size_t>(numel));
+
+    std::vector<T> jit_mom1_out(ref_mom1_out.size());
+    std::vector<T> jit_mom2_out(ref_mom2_out.size());
+    std::vector<T> jit_param_out(ref_param_out.size());
+
+    tgt(beta1, beta2, -lr, eps, numel, grad.data(), mom1.data(), mom2.data(),
+        param.data(), jit_mom1_out.data(), jit_mom2_out.data(),
+        jit_param_out.data());
+
+    ExpectEQ<T>(ref_mom1_out.data(), jit_mom1_out.data(), numel);
+    ExpectEQ<T>(ref_mom2_out.data(), jit_mom2_out.data(), numel);
+    ExpectEQ<T>(ref_param_out.data(), jit_param_out.data(), numel);
+  };
+  TestAllImpls<KernelTuple, PlaceType>(
+      attr, verifier, beta1, beta2, learning_rate, eps, numel, grad, mom1, mom2,
+      param, mom1_out, mom2_out, param_out);
+}
+
+template <typename KernelTuple, typename PlaceType>
 void TestKernelSgd() {
   using T = typename KernelTuple::data_type;
   VLOG(10) << "Test JITKernel: " << jit::to_string(KernelTuple::kernel_type);
@@ -980,7 +1046,7 @@ TEST(JITKernel_pool, jitcreator) {
 #if defined(_WIN32) || defined(__APPLE__) || defined(__OSX__)
   EXPECT_EQ(jitcreators.size(), 0UL);
 #else
-  EXPECT_EQ(jitcreators.size(), 25UL);
+  EXPECT_EQ(jitcreators.size(), 26UL);
 #endif
 }
 
@@ -1014,7 +1080,7 @@ TEST(JITKernel_pool, more) {
 
 TEST(JITKernel_pool, refer) {
   const auto& kers = jit::ReferKernelPool::Instance().AllKernels();
-  EXPECT_EQ(kers.size(), 31UL);
+  EXPECT_EQ(kers.size(), 32UL);
 }
 
 // test helper
@@ -1147,9 +1213,10 @@ TEST(JITKernel_helper, attr) {
       << jit::to_string(jit::kVExp) << jit::to_string(jit::kVIdentity)
       << jit::to_string(jit::kVMul) << jit::to_string(jit::kVRelu)
       << jit::to_string(jit::kVScal) << jit::to_string(jit::kSgd)
-      << jit::to_string(jit::kVSigmoid) << jit::to_string(jit::kVSquare)
-      << jit::to_string(jit::kVSub) << jit::to_string(jit::kVTanh);
-  EXPECT_EQ(out.str().size(), 234UL);
+      << jit::to_string(jit::kAdam) << jit::to_string(jit::kVSigmoid)
+      << jit::to_string(jit::kVSquare) << jit::to_string(jit::kVSub)
+      << jit::to_string(jit::kVTanh);
+  EXPECT_EQ(out.str().size(), 239UL);
 
   // SeqPoolTypes
   out.str("");
@@ -1296,6 +1363,19 @@ TEST(JITKernel_key, emb_seq_pool) {
   EXPECT_TRUE(key4 != key5);
 }
 
+TEST(JITKernel_key, adam) {
+  jit::adam_attr_t attr1(0.4f, 0.9f);
+  jit::adam_attr_t attr2(0.4f, 0.9f);
+  jit::adam_attr_t attr3(0.1f, 0.3f);
+
+  auto key1 = jit::JitCodeKey<jit::adam_attr_t>(attr1);
+  auto key2 = jit::JitCodeKey<jit::adam_attr_t>(attr2);
+  auto key3 = jit::JitCodeKey<jit::adam_attr_t>(attr3);
+
+  EXPECT_TRUE(key1 == key2);
+  EXPECT_TRUE(key2 != key3);
+}
+
 TEST(JITKernel_key, sgd) {
   jit::sgd_attr_t attr1(1, 2, 3, 4, 5);
   jit::sgd_attr_t attr2(1, 2, 3, 4, 5);
@@ -1316,7 +1396,7 @@ TEST(JITKernel_key, sgd) {
   EXPECT_TRUE(key4 != key5);
 }
 
-// test kernerls
+// test kernels
 #define TestKernelVMul TestKernelXYZN
 #define TestKernelVAdd TestKernelXYZN
 #define TestKernelVAddRelu TestKernelXYZN
@@ -1383,6 +1463,7 @@ TEST_CPU_KERNEL(SeqPool);
 TEST_CPU_KERNEL(EmbSeqPool);
 TEST_CPU_KERNEL(MatMul);
 TEST_CPU_KERNEL(Softmax);
+TEST_CPU_KERNEL(Adam);
 TEST_CPU_KERNEL(Sgd);
 TEST_CPU_KERNEL(VBroadcast);
 

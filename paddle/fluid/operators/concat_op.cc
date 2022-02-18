@@ -19,6 +19,8 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/pten/kernels/funcs/concat_funcs.h"
+
 #ifdef PADDLE_WITH_MKLDNN
 #include <paddle/fluid/platform/mkldnn_helper.h>
 #endif
@@ -56,8 +58,8 @@ class ConcatOp : public framework::OperatorWithKernel {
       size_t axis =
           ComputeAxis(static_cast<int64_t>(ctx->Attrs().Get<int>("axis")),
                       static_cast<int64_t>(inputs_dims[0].size()));
-      framework::DDim out_dims =
-          ComputeAndCheckShape(ctx->IsRuntime(), inputs_dims, axis);
+      framework::DDim out_dims = pten::funcs::ComputeAndCheckShape(
+          ctx->IsRuntime(), inputs_dims, axis);
       if (out_dims[axis] < 0) {
         out_dims[axis] = -1;
       }
@@ -74,7 +76,7 @@ class ConcatOp : public framework::OperatorWithKernel {
     bool flag = 0;
     for (auto *input : inputs) {
       if (input->IsInitialized() && input->numel() > 0) {
-        input_data_type = input->type();
+        input_data_type = framework::TransToProtoVarType(input->dtype());
         flag = 1;
         break;
       }
@@ -242,19 +244,7 @@ REGISTER_OPERATOR(concat_grad, ops::ConcatOpGrad,
                   ops::ConcatDoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::ConcatDoubleGradOpMaker<paddle::imperative::OpBase>,
                   ops::ConcatOpGradNoNeedBufferVarInferer);
-REGISTER_OP_CPU_KERNEL(
-    concat, ops::ConcatKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::float16>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::complex<float>>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::complex<double>>);
+
 REGISTER_OP_CPU_KERNEL(
     concat_grad,
     ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, double>,

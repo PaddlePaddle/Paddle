@@ -33,7 +33,7 @@ class AllReduceOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(place), true,
                       platform::errors::PreconditionNotMet(
                           "AllReduce op can run on gpu place only for now."));
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -41,7 +41,8 @@ class AllReduceOpKernel : public framework::OpKernel<T> {
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
 
-    int dtype = platform::ToNCCLDataType(in->type());
+    int dtype =
+        platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
     int64_t numel = in->numel();
     auto* sendbuff = in->data();
     out->Resize(in->dims());

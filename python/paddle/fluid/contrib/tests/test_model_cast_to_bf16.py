@@ -19,11 +19,26 @@ import paddle.fluid as fluid
 import contextlib
 import unittest
 import numpy as np
+import struct
 import paddle.fluid.layers as layers
 import paddle.static.amp as amp
 from paddle.fluid import core
 
 paddle.enable_static()
+
+
+def convert_uint16_to_float(in_list):
+    if in_list.dtype == np.uint16:
+        in_list = np.asarray(in_list)
+        out = np.vectorize(
+            lambda x: struct.unpack('<f', struct.pack('<I', x << 16))[0],
+            otypes=[np.float32])(in_list.flat)
+        return np.reshape(out, in_list.shape)
+    else:
+        return in_list
+
+
+cutf = convert_uint16_to_float
 
 
 @unittest.skipIf(not core.supports_bfloat16(),
@@ -111,10 +126,13 @@ class TestModelCastBF16(unittest.TestCase):
                     'tt_bf16': nn_bf16,
                 },
                 fetch_list=[ret_bf16, ret, ret_fp32bf16],
-                amp_fun=lambda prog: amp.bf16.rewrite_program_bf16(prog))
+                amp_fun=_amp_fun,
+                startup_prog=startup_prog)
 
-        self.assertTrue(np.allclose(static_ret_bf16, static_ret, 1e-2))
-        self.assertTrue(np.allclose(static_ret_bf16, ret_fp32bf16, 1e-2))
+        self.assertTrue(
+            np.allclose(cutf(static_ret_bf16), cutf(static_ret), 1e-2))
+        self.assertTrue(
+            np.allclose(cutf(static_ret_bf16), cutf(ret_fp32bf16), 1e-2))
 
         with self.static_graph():
             t = layers.data(name='t', shape=[size, size], dtype='float32')
@@ -141,6 +159,7 @@ class TestModelCastBF16(unittest.TestCase):
         self._graph_common(lambda prog: amp.bf16.rewrite_program_bf16(
             prog,
             amp.bf16.AutoMixedPrecisionListsBF16(
+                custom_bf16_list={'elementwise_add'},
                 custom_fp32_varnames={'elementwise_add_0.tmp_0'})
         ))
 
@@ -149,6 +168,7 @@ class TestModelCastBF16(unittest.TestCase):
             prog,
             startup_prog,
             amp.bf16.AutoMixedPrecisionListsBF16(
+                custom_bf16_list={'elementwise_add'},
                 custom_fp32_list={'elementwise_mul'}),
             use_bf16_guard=True
         ), startup_prog=fluid.default_startup_program())

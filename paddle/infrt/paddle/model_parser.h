@@ -25,7 +25,8 @@
 #include "paddle/infrt/paddle/scope.h"
 #include "paddle/infrt/paddle/tensor.h"
 
-namespace infrt::paddle {
+namespace infrt {
+namespace paddle {
 namespace framework_proto = ::paddle::framework::proto;
 
 // Read a __model__ file.
@@ -52,4 +53,5 @@ void TensorFromStream(
     const common::Target& target = common::DefaultHostTarget());
 void ReadBinaryFile(const std::string& filename, std::string* contents);
 
-}  // namespace infrt::paddle
+}  // namespace paddle
+}  // namespace infrt

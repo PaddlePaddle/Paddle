@@ -29,27 +29,58 @@
 #include "paddle/infrt/tensor/tensor_map.h"
 #include "paddle/infrt/tensor/tensor_shape.h"
 
+#ifdef INFRT_WITH_PTEN
+#include "paddle/infrt/backends/host/pten_allocator.h"
+#include "paddle/infrt/backends/host/pten_context.h"
+#include "paddle/pten/backends/all_context.h"
+#include "paddle/pten/common/backend.h"
+#include "paddle/pten/common/data_type.h"
+#include "paddle/pten/common/layout.h"
+#include "paddle/pten/common/scalar.h"
+#include "paddle/pten/common/scalar_array.h"
+#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/core/meta_tensor.h"
+#endif
+
 namespace infrt {
 namespace host_context {
 
 struct MlirFunctionExecutable;
 
-using ValueVariantType = Variant<int16_t,
-                                 int32_t,
-                                 int64_t,
-                                 float,
-                                 double,
-                                 bool,
-                                 std::string,
-                                 tensor::TensorShape,
-                                 tensor::DenseHostTensor,
-                                 MlirFunctionExecutable*,
-                                 tensor::TensorMap,
-                                 std::vector<int16_t>,
-                                 std::vector<int32_t>,
-                                 std::vector<int64_t>,
-                                 std::vector<float>,
-                                 std::vector<double>>;
+using ValueVariantType =
+    Variant<int16_t,
+            int32_t,
+            int64_t,
+            float,
+            double,
+            bool,
+            uint32_t,
+            uint64_t,
+            std::string,
+            tensor::TensorShape,
+            tensor::DenseHostTensor,
+            MlirFunctionExecutable*,
+            tensor::TensorMap,
+#ifdef INFRT_WITH_PTEN
+            ::pten::MetaTensor,
+            ::pten::DenseTensor,
+            backends::CpuPtenAllocator,
+            backends::CpuPtenContext,
+            ::pten::CPUContext,
+            std::vector<pten::DenseTensor>,
+            paddle::experimental::ScalarBase<pten::DenseTensor>,
+            paddle::experimental::ScalarArrayBase<pten::DenseTensor>,
+            std::vector<pten::MetaTensor>,
+            pten::MetaConfig,
+            paddle::experimental::Backend,
+            paddle::experimental::DataLayout,
+            paddle::experimental::DataType,
+#endif
+            std::vector<int16_t>,
+            std::vector<int32_t>,
+            std::vector<int64_t>,
+            std::vector<float>,
+            std::vector<double>>;
 
 //! Copy content from \param from to \param to.
 void CopyTo(const Value& from, Value* to);
@@ -77,14 +108,33 @@ class Value : public common::Object {
   explicit Value(tensor::TensorShape&& x) : data(std::move(x)) {}
   explicit Value(tensor::DenseHostTensor&& x) : data(std::move(x)) {}
   explicit Value(MlirFunctionExecutable* x) : data(x) {}
+#ifdef INFRT_WITH_PTEN
+  explicit Value(backends::CpuPtenContext&& x) : data(std::move(x)) {}
+  explicit Value(::pten::CPUContext&& x) : data(std::move(x)) {}
+  explicit Value(::pten::DenseTensor&& x) : data(std::move(x)) {}
+  explicit Value(::pten::MetaTensor&& x) : data(std::move(x)) {}
+  explicit Value(backends::CpuPtenAllocator&& x) : data(std::move(x)) {}
+#endif
 
   template <typename T>
   const T& get() const {
+    CHECK(data.template is<T>());
     return data.get<T>();
   }
+
   template <typename T>
   T& get() {
+    CHECK(data.template is<T>());
     return data.get<T>();
+  }
+
+  //! Get the value if assigned before or return a default value instead.
+  template <class T>
+  T& get_or_default() {
+    if (!data.template is<T>()) {
+      this->set(T{});
+    }
+    return get<T>();
   }
 
   template <typename T>
@@ -95,6 +145,11 @@ class Value : public common::Object {
   void set(Value* v) { data = std::move(v->data); }
 
   bool valid() const { return true; }
+
+  template <typename T>
+  bool is_type() const {
+    return data.template is<T>();
+  }
 
   const char* type_info() const override;
 
@@ -117,11 +172,16 @@ class ValueRef : common::Shared<Value> {
   explicit ValueRef(float val);
   explicit ValueRef(double val);
   explicit ValueRef(bool val);
+  explicit ValueRef(::pten::MetaTensor&& val);
+  explicit ValueRef(backends::CpuPtenContext&& x);
+  explicit ValueRef(::pten::CPUContext&& x);
+  explicit ValueRef(::pten::DenseTensor&& x);
 
   using common::Shared<Value>::get;
   using common::Shared<Value>::Reset;
   using common::Shared<Value>::operator->;
   using common::Shared<Value>::operator*;
+
   //! Get a readonly data.
   template <typename T>
   const T& get() const {

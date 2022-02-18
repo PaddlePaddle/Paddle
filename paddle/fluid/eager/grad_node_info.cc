@@ -47,45 +47,15 @@ void GradNodeBase::AddEdges(std::vector<AutogradMeta*>* metas, size_t slot_id) {
     // adj_edges has as same rank as fwd inputs, and record it's output rank
     // from
     // its pre-ops
-    if (meta) {
+    if (meta && !meta->StopGradient()) {
       auto node = meta->GetMutableGradNode();
       if (node) {
         adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
                                          meta->OutRankInfo());
       } else {
-        if (!meta->StopGradient()) {
-          meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
-          adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
-                                           meta->OutRankInfo());
-        }
-      }
-    }
-  }
-}
-
-void GradNodeBase::AddEdges(const std::vector<AutogradMeta*>& metas,
-                            size_t slot_id) {
-  PADDLE_ENFORCE_LT(
-      slot_id, adj_edges_.size(),
-      paddle::platform::errors::InvalidArgument(
-          "Given slot id is out of range of adj_edges outter size, "
-          "adj_edges is designed to has the same size of grad "
-          "inputs's slot num."));
-  for (const auto& meta : metas) {
-    // adj_edges has as same rank as fwd inputs, and record it's output rank
-    // from
-    // its pre-ops
-    if (meta) {
-      auto node = meta->GetMutableGradNode();
-      if (node) {
+        meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
         adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
                                          meta->OutRankInfo());
-      } else {
-        if (!meta->StopGradient()) {
-          meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
-          adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
-                                           meta->OutRankInfo());
-        }
       }
     }
   }
@@ -98,17 +68,16 @@ void GradNodeBase::AddEdges(AutogradMeta* meta, size_t slot_id) {
           "Given slot id is out of range of adj_edges outter size, "
           "adj_edges is designed to has the same size of grad "
           "inputs's slot num."));
-  if (meta) {
+  if (meta && !meta->StopGradient()) {
+    VLOG(6) << "Add Edges for slot: " << slot_id;
     auto node = meta->GetMutableGradNode();
     if (node) {
       adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
                                        meta->OutRankInfo());
     } else {
-      if (!meta->StopGradient()) {
-        meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
-        adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
-                                         meta->OutRankInfo());
-      }
+      meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
+      adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
+                                       meta->OutRankInfo());
     }
   }
 }
@@ -121,9 +90,9 @@ const std::vector<GradSlotMeta>& GradNodeBase::OutputMeta() const {
   return bwd_out_meta_;
 }
 
-void GradNodeBase::SetGradInMeta(const std::vector<AutogradMeta*>& fwd_out,
+void GradNodeBase::SetGradInMeta(std::vector<AutogradMeta*>* fwd_out,
                                  size_t slot_rank) {
-  size_t slot_size = fwd_out.size();
+  size_t slot_size = fwd_out->size();
   PADDLE_ENFORCE_LE(
       slot_rank, (bwd_in_meta_.size() - 1),
       paddle::platform::errors::InvalidArgument(
@@ -139,21 +108,20 @@ void GradNodeBase::SetGradInMeta(const std::vector<AutogradMeta*>& fwd_out,
   // Init stop gradient vector before use to avoid push back
   meta.Init(slot_size);
   for (size_t i = 0; i < slot_size; i++) {
-    PADDLE_ENFORCE_NOT_NULL(fwd_out[i],
+    PADDLE_ENFORCE_NOT_NULL((*fwd_out)[i],
                             paddle::platform::errors::PreconditionNotMet(
                                 "Bwd_in_meta should only be called while "
                                 "autograd_meta is not null. If you got this "
                                 "error, it indicates bugs in framework."));
-    if (fwd_out[i]->StopGradient()) {
+    if ((*fwd_out)[i]->StopGradient()) {
       // Set Stop Gradient only when its true or non-initialized autograd_meta,
       // since all default value is false.
-      meta.SetStopGradient(i, fwd_out[i]->StopGradient());
+      meta.SetStopGradient(i, (*fwd_out)[i]->StopGradient());
     }
   }
 }
 
-void GradNodeBase::SetGradInMeta(const AutogradMeta& fwd_out,
-                                 size_t slot_rank) {
+void GradNodeBase::SetGradInMeta(AutogradMeta* fwd_out, size_t slot_rank) {
   PADDLE_ENFORCE_LE(
       slot_rank, (bwd_in_meta_.size() - 1),
       paddle::platform::errors::InvalidArgument(
@@ -169,12 +137,12 @@ void GradNodeBase::SetGradInMeta(const AutogradMeta& fwd_out,
   // Init stop gradient vector before use to avoid push back
   VLOG(7) << "Init bwd_in_meta_ with slot rank: " << slot_rank;
   meta.Init(1);
-  meta.SetStopGradient(0, fwd_out.StopGradient());
+  meta.SetStopGradient(0, fwd_out->StopGradient());
 }
 
-void GradNodeBase::SetGradOutMeta(const std::vector<AutogradMeta*>& fwd_in,
+void GradNodeBase::SetGradOutMeta(std::vector<AutogradMeta*>* fwd_in,
                                   size_t slot_rank) {
-  size_t slot_size = fwd_in.size();
+  size_t slot_size = fwd_in->size();
   PADDLE_ENFORCE_LE(
       slot_rank, (bwd_out_meta_.size() - 1),
       paddle::platform::errors::InvalidArgument(
@@ -190,20 +158,19 @@ void GradNodeBase::SetGradOutMeta(const std::vector<AutogradMeta*>& fwd_in,
   // Init stop gradient vector before use to avoid push back
   meta.Init(slot_size);
   for (size_t i = 0; i < slot_size; i++) {
-    if (!fwd_in[i]) {
+    if (!(*fwd_in)[i]) {
       meta.SetStopGradient(i, true);
       continue;
     }
-    if (fwd_in[i]->StopGradient()) {
+    if ((*fwd_in)[i]->StopGradient()) {
       // Set Stop Gradient only when its true or non-initialized autograd_meta,
       // since all default value is false.
-      meta.SetStopGradient(i, fwd_in[i]->StopGradient());
+      meta.SetStopGradient(i, (*fwd_in)[i]->StopGradient());
     }
   }
 }
 
-void GradNodeBase::SetGradOutMeta(const AutogradMeta& fwd_in,
-                                  size_t slot_rank) {
+void GradNodeBase::SetGradOutMeta(AutogradMeta* fwd_in, size_t slot_rank) {
   PADDLE_ENFORCE_LE(
       (slot_rank + 1), bwd_out_meta_.size(),
       paddle::platform::errors::InvalidArgument(
@@ -218,7 +185,11 @@ void GradNodeBase::SetGradOutMeta(const AutogradMeta& fwd_in,
                         "error, it indicates bugs in framework."));
   // Init stop gradient vector before use to avoid push back
   meta.Init(1);
-  meta.SetStopGradient(0, fwd_in.StopGradient());
+  if (fwd_in) {
+    meta.SetStopGradient(0, fwd_in->StopGradient());
+  } else {
+    meta.SetStopGradient(0, true);
+  }
 }
 
 void GradNodeBase::SetDefaultGradInOutMeta() {
@@ -238,7 +209,8 @@ const std::vector<std::vector<Edge>>& GradNodeBase::GetEdges() const {
 
 void GradNodeBase::RegisterGradientHook(
     size_t slot_id, size_t rank,
-    const std::function<egr::EagerTensor(const egr::EagerTensor&)>& hook) {
+    const std::function<paddle::experimental::Tensor(
+        const paddle::experimental::Tensor&)>& hook) {
   gradient_hooks_.emplace_back(std::make_tuple(slot_id, rank, hook));
 }
 
@@ -246,14 +218,15 @@ void GradNodeBase::RegisterReduceHook(const std::function<void(void)>& hook) {
   reduce_hooks_.emplace_back(hook);
 }
 
-std::vector<std::vector<egr::EagerTensor>> GradNodeBase::ApplyGradientHooks(
-    const std::vector<std::vector<egr::EagerTensor>>& tensors) {
-  std::vector<std::vector<egr::EagerTensor>> outs(tensors.size());
+std::vector<std::vector<paddle::experimental::Tensor>>
+GradNodeBase::ApplyGradientHooks(
+    const std::vector<std::vector<paddle::experimental::Tensor>>& tensors) {
+  std::vector<std::vector<paddle::experimental::Tensor>> outs(tensors.size());
   for (auto& tuple : gradient_hooks_) {
     size_t slot_id = std::get<0>(tuple);
     size_t rank = std::get<1>(tuple);
-    std::function<egr::EagerTensor(const egr::EagerTensor&)>& hook =
-        std::get<2>(tuple);
+    std::function<paddle::experimental::Tensor(
+        const paddle::experimental::Tensor&)>& hook = std::get<2>(tuple);
 
     PADDLE_ENFORCE(slot_id < tensors.size(),
                    paddle::platform::errors::Fatal(
@@ -266,14 +239,15 @@ std::vector<std::vector<egr::EagerTensor>> GradNodeBase::ApplyGradientHooks(
                        "than rank size of grad_tensors",
                        slot_id));
 
-    std::vector<egr::EagerTensor>& slot_out = outs[slot_id];
+    std::vector<paddle::experimental::Tensor>& slot_out = outs[slot_id];
     slot_out.resize(tensors[slot_id].size());
-    egr::EagerTensor& out = slot_out[rank];
+    paddle::experimental::Tensor& out = slot_out[rank];
     if (!out.defined() || !out.initialized()) {
       VLOG(8) << "Run Hook for tensor: " << tensors[slot_id][rank].name();
       out = hook(tensors[slot_id][rank]);
     } else {
-      // TODO(jiabin): Why this?
+      // If more than one hook is registered, the input to the next hook func
+      // should be the output of the previous hook
       out = hook(out);
     }
   }

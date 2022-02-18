@@ -21,8 +21,9 @@ namespace cub = hipcub;
 #endif
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -149,7 +150,7 @@ class FusedFCElementwiseLayerNormOpKernel : public framework::OpKernel<T> {
     T* out_data = out->mutable_data<T>(ctx.GetPlace());
 
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    auto blas = math::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
+    auto blas = pten::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
     blas.GEMM(false, false, M, N, K, static_cast<T>(1.0), x_data, K, w_data, N,
               static_cast<T>(0.0), out_data, N);
 

@@ -23,14 +23,13 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/device/gpu/cuda/cudnn_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 
-namespace paddle {
-namespace framework {
-class Tensor;
-}  // namespace framework
-}  // namespace paddle
+namespace pten {
+class DenseTensor;
+}  // namespace pten
 
 namespace paddle {
 namespace platform {
@@ -154,8 +153,9 @@ class TensorDescriptor {
       dims_with_group[1] = dims_with_group[1] / groups;
     }
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetTensorNdDescriptor(
-        desc_.get(), ToCudnnDataType(tensor.type()), dims_with_group.size(),
-        dims_with_group.data(), strides.data()));
+        desc_.get(),
+        ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype())),
+        dims_with_group.size(), dims_with_group.data(), strides.data()));
   }
 
   void set(const std::vector<int>& dims, const cudnnTensorFormat_t format,
@@ -173,7 +173,8 @@ class TensorDescriptor {
 
   void set(const Tensor& tensor, const cudnnTensorFormat_t format) {
     auto dims = framework::vectorize<int>(tensor.dims());
-    auto dtype = ToCudnnDataType(tensor.type());
+    auto dtype =
+        ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype()));
     set(dims, format, dtype);
   }
 
@@ -219,7 +220,8 @@ class FilterDescriptor {
   void set(const Tensor& tensor, const cudnnTensorFormat_t format,
            const int groups = 1) {
     auto dims = framework::vectorize<int>(tensor.dims());
-    auto dtype = ToCudnnDataType(tensor.type());
+    auto dtype =
+        ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype()));
     set(dims, format, dtype, groups);
   }
 

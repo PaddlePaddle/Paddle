@@ -30,20 +30,22 @@ class GradTestNode : public egr::GradNodeBase {
   GradTestNode(float val, int in_num, int out_num)
       : GradNodeBase(in_num, out_num), val_(val) {}
   GradTestNode() : GradNodeBase() { val_ = 1.0; }
-  std::vector<std::vector<egr::EagerTensor>> operator()(
-      const std::vector<std::vector<egr::EagerTensor>>& grads) override {
+  std::vector<std::vector<paddle::experimental::Tensor>> operator()(
+      const std::vector<std::vector<paddle::experimental::Tensor>>& grads)
+      override {
     val_ = std::dynamic_pointer_cast<pten::DenseTensor>(grads[0][0].impl())
                ->data<float>()[0];
     pten::DenseTensorMeta meta = pten::DenseTensorMeta(
         pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 1}));
     std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
-        std::make_shared<paddle::experimental::DefaultAllocator>(
-            paddle::platform::CPUPlace()),
+        std::make_unique<paddle::experimental::DefaultAllocator>(
+            paddle::platform::CPUPlace())
+            .get(),
         meta);
-    auto* dt_ptr = dt->mutable_data<float>();
+    auto* dt_ptr = dt->mutable_data<float>(paddle::platform::CPUPlace());
     dt_ptr[0] = 6.0f;
-    egr::EagerTensor et1(dt);
-    std::vector<std::vector<egr::EagerTensor>> res = {{et1}};
+    paddle::experimental::Tensor et1(dt);
+    std::vector<std::vector<paddle::experimental::Tensor>> res = {{et1}};
     return res;
   }
   float val_;

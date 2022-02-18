@@ -18,18 +18,18 @@
 #include "paddle/pten/core/kernel_registry.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/complex.h"
+#include "paddle/pten/common/complex.h"
 
 namespace pten {
 
 template <typename T, typename Context>
-void Dot(const Context& dev_ctx,
-         const DenseTensor& x,
-         const DenseTensor& y,
-         DenseTensor* out) {
+void DotKernel(const Context& dev_ctx,
+               const DenseTensor& x,
+               const DenseTensor& y,
+               DenseTensor* out) {
   auto const *x_ptr = x.data<T>(), *x_ptr_ = &x_ptr[0];
   auto const *y_ptr = y.data<T>(), *y_ptr_ = &y_ptr[0];
-  auto* z = out->mutable_data<T>();
+  T* z = dev_ctx.template Alloc<T>(out);
 
   // Loop over the total N elements of both operands while sum-reducing every
   // B pairs along the way where B is the dimension of the least ordered axis
@@ -46,16 +46,16 @@ void Dot(const Context& dev_ctx,
 
 }  // namespace pten
 
-using complex64 = ::paddle::platform::complex<float>;
-using complex128 = ::paddle::platform::complex<double>;
+using complex64 = ::pten::dtype::complex<float>;
+using complex128 = ::pten::dtype::complex<double>;
 
-PT_REGISTER_CTX_KERNEL(dot,
-                       CPU,
-                       ALL_LAYOUT,
-                       pten::Dot,
-                       float,
-                       double,
-                       int,
-                       int64_t,
-                       complex64,
-                       complex128) {}
+PT_REGISTER_KERNEL(dot,
+                   CPU,
+                   ALL_LAYOUT,
+                   pten::DotKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   complex64,
+                   complex128) {}

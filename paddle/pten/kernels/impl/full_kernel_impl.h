@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/hybird/eigen/common.h"
+#include "paddle/pten/kernels/funcs/eigen/common.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/operators/eigen/eigen_function.h"
@@ -26,7 +26,7 @@ namespace pten {
 
 template <typename T, typename Context, typename VType>
 void FullValue(const Context& dev_ctx, DenseTensor* tensor, VType val) {
-  tensor->mutable_data<T>();
+  dev_ctx.template Alloc<T>(tensor);
   auto t = pten::EigenVector<T>::Flatten(*tensor);
   t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(val));
 }
@@ -36,7 +36,7 @@ void FullKernel(const Context& dev_ctx,
                 const ScalarArray& shape,
                 const Scalar& val,
                 DenseTensor* out) {
-  out->Resize(paddle::framework::make_ddim(shape.GetData()));
+  out->ResizeAndAllocate(pten::framework::make_ddim(shape.GetData()));
   FullValue<T>(dev_ctx, out, val.to<T>());
 }
 
@@ -47,10 +47,9 @@ void FullLikeKernel(const Context& dev_ctx,
   auto value = val.to<float>();
   using CommonType = typename std::common_type<
       float,
-      typename std::conditional<
-          std::is_same<T, paddle::platform::float16>::value,
-          float,
-          T>::type>::type;
+      typename std::conditional<std::is_same<T, pten::dtype::float16>::value,
+                                float,
+                                T>::type>::type;
 
   auto common_type_value = static_cast<CommonType>(value);
 
