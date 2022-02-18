@@ -16,7 +16,7 @@ import os
 import yaml
 import argparse
 
-from api_base import BaseAPI
+from api_gen import ForwardAPI
 
 
 def get_wrapped_infermeta_name(api_name):
@@ -24,7 +24,7 @@ def get_wrapped_infermeta_name(api_name):
 
 
 def gene_wrapped_infermeta_and_register(api):
-    if api.is_base_api:
+    if api.is_base_api and not api.is_dygraph_api:
         register_code = f"""
 PT_REGISTER_INFER_META_FN({api.kernel['func'][0]}, pten::{api.infer_meta['func']});"""
 
@@ -76,20 +76,6 @@ PT_REGISTER_INFER_META_FN({api.kernel['func'][0]}, pten::{get_wrapped_infermeta_
         return '', '', ''
 
 
-def gene_infermeta_register(api):
-    if api.is_base_api:
-        if api.infer_meta['param'] is None:
-            return f"""
-PT_REGISTER_INFER_META_FN({api.kernel['func'][0]}, pten::{api.infer_meta['func']});"""
-
-        else:
-            return f"""
-PT_REGISTER_INFER_META_FN({api.kernel['func'][0]}, pten::{get_wrapped_infermeta_name(api.kernel['func'][0])});"""
-
-    else:
-        return ''
-
-
 def header_include():
     return """
 #include "paddle/pten/core/meta_tensor.h"
@@ -138,7 +124,7 @@ def generate_wrapped_infermeta_and_register(api_yaml_path, header_file_path,
     infermeta_register_code = ''
 
     for api in apis:
-        api_item = BaseAPI(api)
+        api_item = ForwardAPI(api)
         declare_code, defind_code, register_code = gene_wrapped_infermeta_and_register(
             api_item)
         header_file.write(declare_code)
