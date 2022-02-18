@@ -37,12 +37,9 @@ class StreamSafeCUDAAllocation : public Allocation {
   StreamSafeCUDAAllocation(DecoratedAllocationPtr underlying_allocation,
                            gpuStream_t owning_stream,
                            StreamSafeCUDAAllocator *allocator);
-  ~StreamSafeCUDAAllocation() {
-    VLOG(1) << "StreamSafeCUDAAllocation Deconstruct: " << this;
-  }
+
   void RecordStream(const gpuStream_t &stream);
   bool CanBeFreed();
-
   const gpuStream_t &GetOwningStream() const;
 
  private:
@@ -53,7 +50,7 @@ class StreamSafeCUDAAllocation : public Allocation {
   std::map<gpuStream_t, gpuEvent_t> outstanding_event_map_;
   gpuStream_t owning_stream_;
   SpinLock outstanding_event_map_lock_;
-  // To compatiable with CUDA Graph, hold the allocator to that Allocator will
+  // To compatiable with CUDA Graph, hold the allocator so that Allocator will
   // not deconstruct before Allocation
   std::shared_ptr<Allocator> allocator_;
 };

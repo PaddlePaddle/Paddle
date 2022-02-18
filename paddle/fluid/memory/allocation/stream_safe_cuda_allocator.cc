@@ -13,7 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/stream_safe_cuda_allocator.h"
+
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_graph.h"
+#endif
 
 namespace paddle {
 namespace memory {
@@ -27,9 +30,7 @@ StreamSafeCUDAAllocation::StreamSafeCUDAAllocation(
                  underlying_allocation->size(), underlying_allocation->place()),
       underlying_allocation_(std::move(underlying_allocation)),
       owning_stream_(std::move(owning_stream)),
-      allocator_(allocator->shared_from_this()) {
-  VLOG(1) << "StreamSafeCUDAAllocatino Construct: " << this;
-}
+      allocator_(allocator->shared_from_this()) {}
 
 void StreamSafeCUDAAllocation::RecordStream(const gpuStream_t& stream) {
   VLOG(8) << "Try record stream " << stream << " for address " << ptr();

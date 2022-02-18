@@ -99,8 +99,10 @@ class AllocatorFacade {
  private:
   AllocatorFacade();
   AllocatorFacadePrivate* m_;
+#ifdef PADDLE_WITH_CUDA
   std::unordered_map<CUDAGraphID, std::unique_ptr<AllocatorFacadePrivate>>
       cuda_graph_map_;
+#endif
 };
 
 }  // namespace allocation

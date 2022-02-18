@@ -863,14 +863,6 @@ const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (FLAGS_use_stream_safe_cuda_allocator && platform::is_gpu_place(place) &&
       FLAGS_use_system_allocator == false) {
-#ifdef PADDLE_WITH_CUDA
-    if (UNLIKELY(platform::CUDAGraph::IsThisThreadCapturing())) {
-      return GetPrivate()->GetAllocator(
-          place,
-          /* A non-zero num to choose allocator_ */ 1);
-    }
-#endif
-
     platform::CUDAPlace cuda_place(place.GetDeviceId());
     return GetPrivate()->GetAllocator(
         cuda_place, GetPrivate()->GetDefaultStream(cuda_place));
@@ -901,13 +893,6 @@ const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
     const platform::Place& place, const gpuStream_t& stream) {
   if (FLAGS_use_stream_safe_cuda_allocator && platform::is_gpu_place(place) &&
       FLAGS_use_system_allocator == false) {
-#ifdef PADDLE_WITH_CUDA
-    if (UNLIKELY(platform::CUDAGraph::IsThisThreadCapturing())) {
-      return GetPrivate()->GetAllocator(
-          place,
-          /* A non-zero num to choose allocator_ */ 1);
-    }
-#endif
     return GetPrivate()->GetAllocator(place, stream,
                                       /*create_if_not_found=*/true);
   }
