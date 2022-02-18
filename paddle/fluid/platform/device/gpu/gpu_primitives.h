@@ -150,7 +150,6 @@ CUDA_ATOMIC_WRAPPER(Add, float16) {
 #endif
 #endif
 
-#ifdef PADDLE_CUDA_BF16
 // NOTE(zhangbo): cuda do not have atomicCAS for __nv_bfloat16.
 inline static __device__ uint32_t bf16_add_to_low_half(uint32_t val, float x) {
   bfloat16 low_half;
@@ -215,7 +214,6 @@ CUDA_ATOMIC_WRAPPER(Add, bfloat16) {
     return ret;
   }
 }
-#endif
 #endif
 
 CUDA_ATOMIC_WRAPPER(Add, complex<float>) {
