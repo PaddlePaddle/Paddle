@@ -16,7 +16,7 @@
 
 namespace pten {
 namespace funcs {
-MatDescriptor CreateMatrixDescriptor(const framework::DDim &tensor_dim,
+MatDescriptor CreateMatrixDescriptor(const DDim &tensor_dim,
                                      int num_flatten_cols,
                                      bool trans) {
   PADDLE_ENFORCE_GT(
