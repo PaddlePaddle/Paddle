@@ -6,6 +6,7 @@ endif()
 add_mlir_dialect(infrt_pten_base pten)
 add_mlir_dialect(infrt_pten_tensor pten_dt)
 add_mlir_dialect(infrt_pten_kernel pten_kernel)
+add_mlir_dialect(pten_kernels pten_kernel)
 #mlir_tablegen_on(infrt_pten_tensor)
 
 gather_srcs(infrt_src SRCS

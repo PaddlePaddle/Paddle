@@ -22,8 +22,21 @@
 namespace infrt {
 namespace dt {
 enum class TargetType : uint8_t { X86, CUDA };
-enum class LayoutType : uint8_t { NCHW, NHWC };
-enum class PrecisionType : uint8_t { I32, F32 };
+enum class LayoutType : uint8_t { NCHW, NHWC, ANY };
+enum class PrecisionType : uint8_t {
+  U8,
+  I8,
+  I16,
+  I32,
+  I64,
+  F16,
+  BF16,
+  F32,
+  F64,
+  C64,
+  C128,
+  B
+};
 
 llvm::Optional<TargetType> GetTargetType(mlir::StringRef key);
 llvm::Optional<LayoutType> GetLayoutType(mlir::StringRef key);

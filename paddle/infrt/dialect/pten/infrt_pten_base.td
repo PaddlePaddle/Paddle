@@ -13,6 +13,9 @@ def PTEN_Dialect : Dialect {
   let cppNamespace = "::infrt::pten";
 }
 
+class PTEN_KERNEL<string mnemonic, list<OpTrait> traits = []> :
+      Op<PTEN_Dialect, mnemonic, traits>;
+
 class AllocatorTypeOf<string place, list<Trait> traits=[]>:
     TypeDef<PTEN_Dialect, place # "Allocator", traits> {
     let summary = !strconcat("!pten.allocator_", place, " type");

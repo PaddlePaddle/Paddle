@@ -41,6 +41,7 @@ function update_pd_ops() {
    # update pd_ops.td
    cd ${PADDLE_ROOT}/tools/infrt/
    python3 generate_pd_op_dialect_from_paddle_op_maker.py
+   python3 generate_pten_kernel_dialect.py
 }
 
 function init() {
