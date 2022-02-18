@@ -729,3 +729,5 @@ if __name__ == '__main__':
             exit(1)
 
     logger.info("Sample code check is successful!")
+
+    exec_gen_doc()
