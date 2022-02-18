@@ -179,4 +179,3 @@ USE_OP_ITSELF(scale);
 USE_OP_ITSELF(elementwise_add);
 USE_OP_ITSELF(matmul_v2);
 USE_OP_ITSELF(reduce_sum);
-

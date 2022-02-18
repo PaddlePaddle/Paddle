@@ -162,4 +162,6 @@ PT_REGISTER_KERNEL(mean_raw,
                    float,
                    double,
                    bool,
-                   float16) {}
+                   float16,
+                   int,
+                   int64_t) {}
