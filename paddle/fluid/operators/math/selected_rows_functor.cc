@@ -225,7 +225,7 @@ struct SelectedRowsSumTo<platform::CPUDeviceContext, T> {
 
     auto* in2_value = input2->mutable_value();
     auto* in2_data = in2_value->data<T>();
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+    auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(context);
     size_t offset = 0u;
     for (size_t i = 0u; i != input1.size(); ++i) {
       auto& in_value = input1[i]->value();
@@ -296,15 +296,15 @@ namespace scatter {
 
 template <typename T>
 typename std::enable_if<!std::is_integral<T>::value>::type elementwise_add_to(
-    BlasT<platform::CPUDeviceContext, T>* blas, size_t data_len, const T* in,
-    T* out) {
+    pten::funcs::BlasT<platform::CPUDeviceContext, T>* blas, size_t data_len,
+    const T* in, T* out) {
   blas->AXPY(data_len, T(1.f), in, out);
 }
 
 template <typename T>
 typename std::enable_if<std::is_integral<T>::value>::type elementwise_add_to(
-    BlasT<platform::CPUDeviceContext, T>* blas, size_t data_len, const T* in,
-    T* out) {
+    pten::funcs::BlasT<platform::CPUDeviceContext, T>* blas, size_t data_len,
+    const T* in, T* out) {
   for (size_t i = 0; i < data_len; i++) {
     out[i] += in[i];
   }
@@ -317,7 +317,7 @@ add_sparse_inputs(const std::vector<const pten::SelectedRows*>& inputs,
                   int64_t input_width,
                   const platform::CPUDeviceContext& context, T* out_data) {
 #ifndef PADDLE_WITH_MKLDNN
-  auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+  auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(context);
 #endif
   for (auto* input : inputs) {
     if (input->rows().size() == 0) {
@@ -351,7 +351,7 @@ add_sparse_inputs(const std::vector<const pten::SelectedRows*>& inputs,
                   int64_t input_width,
                   const platform::CPUDeviceContext& context, T* out_data) {
   VLOG(4) << "[CPU] add_sparse_inputs <" << typeid(T).name();
-  auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+  auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(context);
   for (auto* input : inputs) {
     if (input->rows().size() == 0) {
       continue;
@@ -698,7 +698,7 @@ struct MergeAverage<platform::CPUDeviceContext, T> {
       rows_to_id[merge_rows[i]] = i;
     }
 
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+    auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(context);
     for (auto* input : inputs) {
       if (input->rows().size() == 0) {
         continue;

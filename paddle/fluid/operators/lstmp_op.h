@@ -18,12 +18,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/activation_op.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/detail/activation_functions.h"
 #include "paddle/fluid/operators/math/lstm_compute.h"
 #include "paddle/fluid/operators/math/sequence2batch.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/transform.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -185,7 +185,7 @@ class LSTMPKernel : public framework::OpKernel<T> {
     auto proj_act = math::detail::GetActivationType(
         ctx.Attr<std::string>("proj_activation"));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
-    auto blas = math::GetBlas<DeviceContext, T>(device_ctx);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(device_ctx);
     for (size_t n = 0; n < num_batch; n++) {
       int bstart = static_cast<int>(batch_starts[n]);
       int bend = static_cast<int>(batch_starts[n + 1]);
@@ -405,7 +405,7 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
 
     auto batch_starts = batch_gate->lod()[0];
     size_t num_batch = batch_starts.size() - 1;
-    auto blas = math::GetBlas<DeviceContext, T>(device_ctx);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(device_ctx);
     for (int n = static_cast<int>(num_batch) - 1; n >= 0; n--) {
       int bstart = static_cast<int>(batch_starts[n]);
       int bend = static_cast<int>(batch_starts[n + 1]);

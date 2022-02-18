@@ -16,10 +16,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 #include "paddle/pten/kernels/funcs/eigen/common.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
 #include "paddle/pten/kernels/funcs/math_function_impl.h"
@@ -315,8 +315,7 @@ void ColwiseSum<paddle::platform::CUDADeviceContext, double>::operator()(
   one.mutable_data<double>({in_dims[0]}, context.GetPlace());
   SetConstant<paddle::platform::CUDADeviceContext, double> set;
   set(context, &one, static_cast<double>(1.0));
-  paddle::operators::math::GetBlas<paddle::platform::CUDADeviceContext, double>(
-      context)
+  pten::funcs::GetBlas<paddle::platform::CUDADeviceContext, double>(context)
       .GEMV(true,
             static_cast<int>(in_dims[0]),
             static_cast<int>(in_dims[1]),
@@ -352,8 +351,7 @@ void RowwiseSum<paddle::platform::CUDADeviceContext, double>::operator()(
   one.mutable_data<double>({size}, context.GetPlace());
   SetConstant<paddle::platform::CUDADeviceContext, double> set;
   set(context, &one, static_cast<double>(1.0));
-  paddle::operators::math::GetBlas<paddle::platform::CUDADeviceContext, double>(
-      context)
+  pten::funcs::GetBlas<paddle::platform::CUDADeviceContext, double>(context)
       .GEMV(true,
             static_cast<int>(in_dims[1]),
             static_cast<int>(in_dims[0]),

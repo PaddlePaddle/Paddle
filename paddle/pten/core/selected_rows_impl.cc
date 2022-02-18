@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/core/selected_rows.h"
+#include "paddle/pten/core/selected_rows_impl.h"
 
 #include "paddle/pten/core/utils/data_type.h"
 
@@ -95,20 +95,20 @@ struct TensorFillVisitor {
   int64_t size_;
 };
 
-void* SelectedRows::AllocateFrom(Allocator* allocator,
-                                 DataType dtype,
-                                 size_t requested_size) {
+void* SelectedRowsImpl::AllocateFrom(Allocator* allocator,
+                                     DataType dtype,
+                                     size_t requested_size) {
   return value_->AllocateFrom(allocator, dtype, requested_size);
 }
 
-bool SelectedRows::HasKey(int64_t key) const {
+bool SelectedRowsImpl::HasKey(int64_t key) const {
   return std::find(rows_.begin(), rows_.end(), key) == rows_.end() ? false
                                                                    : true;
 }
 
-int64_t SelectedRows::AutoGrownIndex(int64_t key,
-                                     bool auto_grown,
-                                     bool is_test) {
+int64_t SelectedRowsImpl::AutoGrownIndex(int64_t key,
+                                         bool auto_grown,
+                                         bool is_test) {
   if (is_test) {
     auto iter = id_to_index_.find(key);
     if (iter == id_to_index_.end()) {
@@ -164,7 +164,7 @@ int64_t SelectedRows::AutoGrownIndex(int64_t key,
   }
 }
 
-void SelectedRows::SyncIndex() {
+void SelectedRowsImpl::SyncIndex() {
   rwlock_->WRLock();
   id_to_index_.clear();
   for (size_t i = 0; i < rows_.size(); ++i) {
@@ -173,14 +173,14 @@ void SelectedRows::SyncIndex() {
   rwlock_->UNLock();
 }
 
-void SelectedRows::Get(const pten::DenseTensor& ids,
-                       pten::DenseTensor* value,
-                       bool auto_grown,
-                       bool is_test) {
-  PADDLE_ENFORCE_EQ(
-      value->IsInitialized(),
-      true,
-      pten::errors::InvalidArgument("The value tensor is not initialized."));
+void SelectedRowsImpl::Get(const pten::DenseTensor& ids,
+                           pten::DenseTensor* value,
+                           bool auto_grown,
+                           bool is_test) {
+  PADDLE_ENFORCE_EQ(value->IsInitialized(),
+                    true,
+                    paddle::platform::errors::InvalidArgument(
+                        "The value tensor is not initialized."));
   if (ids.numel() == 0) {
     VLOG(3) << "keys is empty, please check data!";
   } else {
