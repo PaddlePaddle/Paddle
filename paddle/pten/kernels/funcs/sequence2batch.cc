@@ -12,47 +12,45 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/sequence2batch.h"
+#include "paddle/pten/kernels/funcs/sequence2batch.h"
 
-namespace paddle {
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
-namespace operators {
-namespace math {
+namespace pten {
+namespace funcs {
 
 template <typename T>
-class CopyMatrixRowsFunctor<platform::CPUDeviceContext, T> {
+class CopyMatrixRowsFunctor<paddle::platform::CPUDeviceContext, T> {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
-                  const framework::Tensor& src,
-                  framework::Vector<size_t> index_lod, framework::Tensor* dst,
+  void operator()(const paddle::platform::CPUDeviceContext& context,
+                  const paddle::framework::Tensor& src,
+                  paddle::framework::Vector<size_t> index_lod,
+                  paddle::framework::Tensor* dst,
                   bool is_src_index) {
     size_t* index = index_lod.data();
     auto src_dims = src.dims();
     auto dst_dims = dst->dims();
-    PADDLE_ENFORCE_EQ(src_dims.size(), 2UL,
-                      platform::errors::InvalidArgument(
+    PADDLE_ENFORCE_EQ(src_dims.size(),
+                      2UL,
+                      pten::errors::InvalidArgument(
                           "The source tensor must be a matrix with rank 2, but "
                           "got the source tensor rank is %lu. "
                           "Please check the rank of the source tensor",
                           src_dims.size()));
-    PADDLE_ENFORCE_EQ(dst_dims.size(), 2UL,
-                      platform::errors::InvalidArgument(
+    PADDLE_ENFORCE_EQ(dst_dims.size(),
+                      2UL,
+                      pten::errors::InvalidArgument(
                           "The destination tensor must be a matrix with rank, "
                           "but got the destination tensor rank is %lu. "
                           "Please check the rank of the destination tensor",
                           dst_dims.size()));
     PADDLE_ENFORCE_EQ(
-        src_dims[1], dst_dims[1],
-        platform::errors::InvalidArgument(
+        src_dims[1],
+        dst_dims[1],
+        pten::errors::InvalidArgument(
             "The width of the source tensor and the destination tensor must be "
             "same. But got %lu != %lu.Please check the rank of the source "
             "tensor",
-            src_dims.size(), dst_dims.size()));
+            src_dims.size(),
+            dst_dims.size()));
     auto height = dst_dims[0];
     auto width = dst_dims[1];
     auto* src_data = src.data<T>();
@@ -70,14 +68,18 @@ class CopyMatrixRowsFunctor<platform::CPUDeviceContext, T> {
   }
 };
 
-template class CopyMatrixRowsFunctor<platform::CPUDeviceContext, float>;
-template class CopyMatrixRowsFunctor<platform::CPUDeviceContext, double>;
+template class CopyMatrixRowsFunctor<paddle::platform::CPUDeviceContext, float>;
+template class CopyMatrixRowsFunctor<paddle::platform::CPUDeviceContext,
+                                     double>;
 
-template class LoDTensor2BatchFunctor<platform::CPUDeviceContext, float>;
-template class LoDTensor2BatchFunctor<platform::CPUDeviceContext, double>;
-template class Batch2LoDTensorFunctor<platform::CPUDeviceContext, float>;
-template class Batch2LoDTensorFunctor<platform::CPUDeviceContext, double>;
+template class LoDTensor2BatchFunctor<paddle::platform::CPUDeviceContext,
+                                      float>;
+template class LoDTensor2BatchFunctor<paddle::platform::CPUDeviceContext,
+                                      double>;
+template class Batch2LoDTensorFunctor<paddle::platform::CPUDeviceContext,
+                                      float>;
+template class Batch2LoDTensorFunctor<paddle::platform::CPUDeviceContext,
+                                      double>;
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace pten

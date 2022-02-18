@@ -40,3 +40,4 @@ function(math_library TARGET)
 endfunction()
 
 math_library(math_function DEPS blas dense_tensor tensor)
+math_library(sequence2batch)

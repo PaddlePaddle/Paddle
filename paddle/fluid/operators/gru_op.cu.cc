@@ -65,7 +65,7 @@ class GRUKernel : public framework::OpKernel<T> {
     batch_hidden->mutable_data<T>(context.GetPlace());
 
     bool is_reverse = context.Attr<bool>("is_reverse");
-    math::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
+    pten::funcs::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
     auto& dev_ctx = context.template device_context<DeviceContext>();
     to_batch(dev_ctx, *input, batch_gate, true, is_reverse);
 
@@ -117,7 +117,7 @@ class GRUKernel : public framework::OpKernel<T> {
       gru_value.prev_out_value = gru_value.output_value;
     }
 
-    math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
+    pten::funcs::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
     batch_hidden->set_lod(batch_gate->lod());
     to_seq(dev_ctx, *batch_hidden, hidden);
   }

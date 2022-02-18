@@ -18,8 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/detail/activation_functions.h"
 #include "paddle/fluid/operators/math/gru_compute.h"
-#include "paddle/fluid/operators/math/sequence2batch.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/pten/kernels/funcs/sequence2batch.h"
 
 namespace paddle {
 namespace operators {
@@ -32,7 +32,7 @@ inline void ReorderInitState(const DeviceContext& ctx,
                              const framework::Tensor& src,
                              framework::Vector<size_t> index_lod,
                              framework::Tensor* dst, bool indexed_src) {
-  math::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
+  pten::funcs::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
   dst->mutable_data<T>(src.dims(), ctx.GetPlace());
   row_shuffle(ctx, src, index_lod, dst, indexed_src);
 }
@@ -63,7 +63,7 @@ class GRUGradKernel : public framework::OpKernel<T> {
     auto hidden_dims = hidden->dims();
     int frame_size = hidden_dims[1];
 
-    math::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
+    pten::funcs::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
     LoDTensor batch_hidden_grad, batch_gate_grad, batch_reset_hidden_prev_grad;
     batch_hidden_grad.mutable_data<T>(hidden_dims, context.GetPlace());
     batch_gate_grad.mutable_data<T>(gate_dims, context.GetPlace());
@@ -151,7 +151,7 @@ class GRUGradKernel : public framework::OpKernel<T> {
     }
     if (input_grad) {
       input_grad->mutable_data<T>(context.GetPlace());
-      math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
+      pten::funcs::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
       batch_gate_grad.set_lod(batch_gate->lod());
       to_seq(dev_ctx, batch_gate_grad, input_grad);
     }

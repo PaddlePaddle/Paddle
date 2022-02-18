@@ -16,8 +16,8 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/cpu_vec.h"
-#include "paddle/fluid/operators/math/sequence2batch.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/pten/kernels/funcs/sequence2batch.h"
 
 namespace paddle {
 namespace operators {
@@ -473,7 +473,7 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
     hidden_out->mutable_data<T>(place);
     cell_out->mutable_data<T>(place);
 
-    math::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
+    pten::funcs::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
 
@@ -591,7 +591,7 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
 #undef MOVE_ONE_BATCH
 #undef DEFINE_CUR
 
-    math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
+    pten::funcs::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
     batched_h_out->set_lod(batched_lod);
     to_seq(dev_ctx, *batched_h_out, hidden_out);
     batched_c_out->set_lod(batched_lod);

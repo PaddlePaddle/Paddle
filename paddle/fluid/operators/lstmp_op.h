@@ -21,9 +21,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/detail/activation_functions.h"
 #include "paddle/fluid/operators/math/lstm_compute.h"
-#include "paddle/fluid/operators/math/sequence2batch.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/transform.h"
+#include "paddle/pten/kernels/funcs/sequence2batch.h"
 
 namespace paddle {
 namespace operators {
@@ -72,7 +72,7 @@ inline void ReorderInitState(const DeviceContext& ctx,
                              const framework::Tensor& src,
                              framework::Vector<size_t> index,
                              framework::Tensor* dst, bool indexed_src) {
-  math::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
+  pten::funcs::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
   dst->mutable_data<T>(src.dims(), ctx.GetPlace());
   row_shuffle(ctx, src, index, dst, indexed_src);
 }
@@ -120,7 +120,7 @@ class LSTMPKernel : public framework::OpKernel<T> {
     cell_out->mutable_data<T>(ctx.GetPlace());
 
     bool is_reverse = ctx.Attr<bool>("is_reverse");
-    math::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
+    pten::funcs::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
     auto& device_ctx = ctx.template device_context<DeviceContext>();
     to_batch(device_ctx, *input, batch_gate, true, is_reverse);
 
@@ -242,7 +242,7 @@ class LSTMPKernel : public framework::OpKernel<T> {
       }
     }
 
-    math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
+    pten::funcs::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
     batch_proj.set_lod(batch_gate->lod());
     // restore the output hidden in LoDTensor from the batch hidden
     to_seq(device_ctx, batch_proj, proj_out);
@@ -369,7 +369,7 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
       lstmp_grad.check_og_grad = nullptr;
     }
 
-    math::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
+    pten::funcs::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
 
     auto ToBatch = [&batch_gate, &to_batch](
         const DeviceContext& ctx, const framework::LoDTensor& src,
@@ -503,7 +503,7 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
       }
     }
 
-    math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
+    pten::funcs::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
     if (in_g) {
       /* backward data */
       in_g->mutable_data<T>(ctx.GetPlace());

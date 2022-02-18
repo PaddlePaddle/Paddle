@@ -20,13 +20,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace pten {
+namespace funcs {
 
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+using EigenMatrix = paddle::framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T>
 class CopyMatrixRowsFunctor {
@@ -36,8 +36,10 @@ class CopyMatrixRowsFunctor {
   // If is_src_index is false,
   // copy the input src to the indexed rows of output dst.
   // The indexed rows are based on the input index.
-  void operator()(const DeviceContext& context, const framework::Tensor& src,
-                  framework::Vector<size_t> index_lod, framework::Tensor* dst,
+  void operator()(const DeviceContext& context,
+                  const paddle::framework::Tensor& src,
+                  paddle::framework::Vector<size_t> index_lod,
+                  paddle::framework::Tensor* dst,
                   bool is_src_index);
 };
 
@@ -59,32 +61,37 @@ class LoDTensor2BatchFunctor {
 
  public:
   void operator()(const DeviceContext& context,
-                  const framework::LoDTensor& lod_tensor,
-                  framework::LoDTensor* batch, bool is_cal_batch_lod,
+                  const paddle::framework::LoDTensor& lod_tensor,
+                  paddle::framework::LoDTensor* batch,
+                  bool is_cal_batch_lod,
                   bool is_reverse = false) const {
     if (!is_cal_batch_lod) {
       auto lods = batch->lod();
       PADDLE_ENFORCE_GT(
-          lods.size(), 2UL,
-          platform::errors::InvalidArgument(
+          lods.size(),
+          2UL,
+          pten::errors::InvalidArgument(
               "The LoD of LoDTensor should inlcude at least 2-level "
               "sequence information, but got the LoD level is %lu. Please "
               "check the input value.",
               lods.size()));
       PADDLE_ENFORCE_EQ(
-          lods[1].size(), static_cast<size_t>(lod_tensor.dims()[0]),
-          platform::errors::InvalidArgument(
+          lods[1].size(),
+          static_cast<size_t>(lod_tensor.dims()[0]),
+          pten::errors::InvalidArgument(
               "The LoD information should be consistent with the dims, but got "
               "%lu != %lu. Please check the input value.",
-              lods[1].size(), static_cast<size_t>(lod_tensor.dims()[0])));
+              lods[1].size(),
+              static_cast<size_t>(lod_tensor.dims()[0])));
       CopyMatrixRowsFunctor<DeviceContext, T> to_batch;
       to_batch(context, lod_tensor, lods[1], batch, true);
       return;
     }
 
     auto lods = lod_tensor.lod();
-    PADDLE_ENFORCE_EQ(lods.size(), 1UL,
-                      platform::errors::InvalidArgument(
+    PADDLE_ENFORCE_EQ(lods.size(),
+                      1UL,
+                      pten::errors::InvalidArgument(
                           "Only support one level sequence now, but got the "
                           "LoD level is %lu. Please check the input value.",
                           lods.size()));
@@ -97,8 +104,9 @@ class LoDTensor2BatchFunctor {
       seq_info.emplace_back(lod[seq_id], length, seq_id);
     }
 
-    std::sort(seq_info.begin(), seq_info.end(),
-              [](SeqInfo a, SeqInfo b) { return a.length > b.length; });
+    std::sort(seq_info.begin(), seq_info.end(), [](SeqInfo a, SeqInfo b) {
+      return a.length > b.length;
+    });
 
     // Calculate the start position of each batch.
     // example:  sequences = {s0, s1, s2}
@@ -169,27 +177,29 @@ template <typename DeviceContext, typename T>
 class Batch2LoDTensorFunctor {
  public:
   void operator()(const DeviceContext& context,
-                  const framework::LoDTensor& batch,
-                  framework::LoDTensor* lod_tensor) const {
+                  const paddle::framework::LoDTensor& batch,
+                  paddle::framework::LoDTensor* lod_tensor) const {
     auto in_lod = batch.lod();
     PADDLE_ENFORCE_GT(
-        in_lod.size(), 2UL,
-        platform::errors::InvalidArgument(
+        in_lod.size(),
+        2UL,
+        pten::errors::InvalidArgument(
             "The LoD of LoDTensor should inlcude at least 2-level "
             "sequence information, but got the LoD level is %lu. Please check "
             "the input value.",
             in_lod.size()));
     PADDLE_ENFORCE_EQ(
-        in_lod[1].size(), static_cast<size_t>(lod_tensor->dims()[0]),
-        platform::errors::InvalidArgument(
+        in_lod[1].size(),
+        static_cast<size_t>(lod_tensor->dims()[0]),
+        pten::errors::InvalidArgument(
             "The LoD information should be consistent with the dims, but got "
             "%lu != %lu. Please check the input value.",
-            in_lod[1].size(), static_cast<size_t>(lod_tensor->dims()[0])));
+            in_lod[1].size(),
+            static_cast<size_t>(lod_tensor->dims()[0])));
     CopyMatrixRowsFunctor<DeviceContext, T> to_seq;
     to_seq(context, batch, in_lod[1], lod_tensor, false);
   }
 };
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace pten

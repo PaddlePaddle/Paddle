@@ -71,7 +71,6 @@ else()
     math_library(selected_rows_functor DEPS selected_rows_utils math_function blas)
 endif()
 
-math_library(sequence2batch)
 math_library(sequence_padding)
 math_library(sequence_pooling DEPS math_function jit_kernel_helper)
 math_library(sequence_scale)
