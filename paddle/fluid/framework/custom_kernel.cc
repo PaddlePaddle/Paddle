@@ -237,6 +237,17 @@ static void RunKernelFunc(pten::KernelContext* ctx,
   if (backend == pten::Backend::CPU) {
     // do nothing
   } else {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    size_t device_type_id_ = static_cast<size_t>(backend) -
+                             static_cast<size_t>(pten::Backend::ALL_BACKEND);
+    std::string device_type = pten::GetGlobalDeviceType(device_type_id_);
+    if (!device_type.empty()) {
+      auto custom_ctx =
+          ctx->GetDeviceContext<paddle::platform::CustomDeviceContext>();
+      dev_ctx.set_stream(custom_ctx.stream());
+      return;
+    }
+#endif
     LOG(ERROR) << "[CUSTOM KERNEL] Unsupported kernel backend: " << backend
                << " with compiled Paddle.";
     return;
