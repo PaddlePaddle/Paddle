@@ -18,19 +18,14 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/framework/custom_kernel.h"
-
 #include <gtest/gtest.h>
-#include "paddle/extension.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/pten/api/ext/op_kernel_info.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/api/lib/utils/storage.h"
-#include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/kernel_context.h"
-#include "paddle/pten/core/kernel_factory.h"
+#include "paddle/pten/core/meta_tensor.h"
 #include "paddle/pten/infermeta/binary.h"
-#include "paddle/utils/small_vector.h"
 
 #ifdef _LINUX
 // user kernel function

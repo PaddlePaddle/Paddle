@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/extension.h"
+#include "paddle/pten/api/ext/op_kernel_info.h"
 
 namespace paddle {
 
