@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,19 +14,76 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-PADDLE_ROOT=/home
-mkdir ${PADDLE_ROOT}
-cd ${PADDLE_ROOT}
-pip install /paddle/build/opt/paddle/share/wheels/*.whl
-git clone https://github.com/PaddlePaddle/FluidDoc
-git clone https://github.com/tianshuo78520a/PaddlePaddle.org.git
-cd  ${PADDLE_ROOT}/PaddlePaddle.org
-git reset 3feaa68376d8423e41d076814e901e6bf108c705
-cd ${PADDLE_ROOT}/FluidDoc/doc/fluid/api
-sh gen_doc.sh
-apt-get update && apt-get install -y python-dev build-essential
-cd ${PADDLE_ROOT}/PaddlePaddle.org/portal
-pip install -r requirements.txt
-#If the default port is not occupied, you can use port 8000, you need to replace it with a random port on the CI.
-sed -i "s#8000#$1#g" runserver
-nohup ./runserver --paddle ${PADDLE_ROOT}/FluidDoc &
+is_shell_attribute_set() { # attribute, like "x"
+  case "$-" in
+    *"$1"*) return 0 ;;
+    *)    return 1 ;;
+  esac
+}
+
+# Attention: this script will rm folder /FluidDoc and /docs first, then reuse the two folders.
+
+# build all the Chinese and English docs, and upload them. Controlled with Env BUILD_DOC and UPLOAD_DOC
+PREVIEW_URL_PROMPT="ipipe_log_param_preview_url: None"
+BUILD_DOC=${BUILD_DOC:=false}
+UPLOAD_DOC=${UPLOAD_DOC:=false}
+
+CURPWD=${PWD}
+
+if [ "${BUILD_DOC}" = "true" ] &&  [ -x /usr/local/bin/sphinx-build ] ; then
+    export FLUIDDOCDIR=/FluidDoc
+    export OUTPUTDIR=/docs
+    export VERSIONSTR=$(echo ${BRANCH} | sed 's@release/@@g')
+
+    if [ -d ${FluidDoc} ] ; then
+        echo "$0: rm -rf ${FluidDoc}"
+        rm -rf ${FluidDoc}
+        git clone https://github.com/PaddlePaddle/docs.git ${FluidDoc}
+        # TODO: checkout the required docs PR?
+    fi
+    if [ -d ${OUTPUTDIR} ] ; then
+        echo "$0: rm -rf ${OUTPUTDIR}"
+        rm -rf ${OUTPUTDIR}
+        mkdir -p ${OUTPUTDIR}
+    fi
+    # install requirements
+
+    # build doc
+    /bin/bash -x ${FLUIDDOCDIR}/ci_scripts/gendoc.sh
+    if [ $? -ne 0 ];then
+        echo 'gendoc error'
+        exit 1
+    fi
+
+    if [ "${UPLOAD_DOC}" = "true" ] ; then
+        BCECMD=
+        BCECMD_CONFIG=
+
+        is_shell_attribute_set x
+        xdebug_setted=$?
+        if [ $xdebug_setted ] ; then
+            set +x
+        fi
+        if [ -n "${BOS_CREDENTIAL_AK}" ] && [ -n "${BOS_CREDENTIAL_SK}" ] ; then
+            echo "Ak = ${BOS_CREDENTIAL_AK}" >> ${BCECMD_CONFIG}/credentials
+            echo "Sk = ${BOS_CREDENTIAL_SK}" >> ${BCECMD_CONFIG}/credentials
+        fi
+        if [ $xdebug_setted ] ; then
+            set -x
+        fi
+        PREVIEW_JOB_NAME="preview-paddle-pr-${GIT_PR_ID}"
+        BOSBUCKET=${BOSBUCKET:=paddle-site-web-dev}
+        ${BCECMD} --conf-path ${BCECMD_CONFIG} bos sync "${OUTPUTDIR}/en/${VERSIONSTR}" "bos:/${BOSBUCKET}/documentation/en/${PREVIEW_JOB_NAME}" \
+            --delete --yes --exclude "${OUTPUTDIR}/en/${VERSIONSTR}/_sources/"
+        ${BCECMD} --conf-path ${BCECMD_CONFIG} bos sync "${OUTPUTDIR}/en/${VERSIONSTR}" "bos:/${BOSBUCKET}/documentation/en/${PREVIEW_JOB_NAME}" \
+            --delete --yes --exclude "${OUTPUTDIR}/en/${VERSIONSTR}/_sources/"
+        ${BCECMD} --conf-path ${BCECMD_CONFIG} bos sync "${OUTPUTDIR}/zh/${VERSIONSTR}" "bos:/${BOSBUCKET}/documentation/zh/${PREVIEW_JOB_NAME}" \
+            --delete --yes --exclude "${OUTPUTDIR}/zh/${VERSIONSTR}/_sources/"
+        ${BCECMD} --conf-path ${BCECMD_CONFIG} bos sync "${OUTPUTDIR}/zh/${VERSIONSTR}" "bos:/${BOSBUCKET}/documentation/zh/${PREVIEW_JOB_NAME}" \
+            --delete --yes --exclude "${OUTPUTDIR}/zh/${VERSIONSTR}/_sources/"
+        # print preview url
+        PREVIEW_URL_PROMPT="ipipe_log_param_preview_url: http://${PREVIEW_JOB_NAME}.${PREVIEW_SITE:-preview.paddlepaddle.org}/documentation/docs/zh/api/index_cn.html"
+    fi
+fi
+cd ${CURPWD}
+echo "${PREVIEW_URL_PROMPT}"
