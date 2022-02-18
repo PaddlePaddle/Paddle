@@ -31,6 +31,8 @@ GatherOpHandle::GatherOpHandle(ir::Node *node,
     : OpHandleBase(node), local_scopes_(local_scopes), places_(places) {}
 
 void GatherOpHandle::RunImpl() {
+  platform::RecordEvent record_event(Name(),
+                                     platform::TracerEventType::Operator, 1);
   if (places_.size() == 1) return;
   // the input and output may have dummy var.
   auto in_var_handles = DynamicCast<VarHandle>(inputs_);

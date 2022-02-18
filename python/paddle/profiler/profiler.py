@@ -22,7 +22,7 @@ from warnings import warn
 import paddle
 from paddle.fluid.core import (_Profiler, _ProfilerResult, ProfilerOptions,
                                TracerEventType)
-from .utils import record_event
+from .utils import Record_Event
 
 
 class ProfilerState(Enum):
@@ -246,16 +246,16 @@ class Profiler:
         elif self.current_state == ProfilerState.RECORD_AND_RETURN:
             self.profiler.Prepare()
             self.profiler.Start()
-        self.record_event = record_event(
+        self.record_event = Record_Event(
             name="ProfileStep#{}".format(self.step_num),
             event_type=TracerEventType.ProfileStep)
-        self.record_event.__enter__()
+        self.record_event.begin()
 
     def stop(self):
         # self.current_state -> CLOSED
         # In this situation, RECORD state is regarded as RECORD_AND_RETURN
         if self.record_event:
-            self.record_event.__exit__(None, None, None)
+            self.record_event.end()
             self.record_event = None
         if self.current_state == ProfilerState.READY:
             warn(
@@ -274,16 +274,16 @@ class Profiler:
     Get the new ProfilerState and trigger corresponding action.
     """
         if self.record_event:
-            self.record_event.__exit__(None, None, None)
+            self.record_event.end()
             self.record_event = None
         self.previous_state = self.current_state
         self.step_num += 1
         self.current_state = self.schedule(self.step_num)
         self._trigger_action()
-        self.record_event = record_event(
+        self.record_event = Record_Event(
             name="ProfileStep#{}".format(self.step_num),
             event_type=TracerEventType.ProfileStep)
-        self.record_event.__enter__()
+        self.record_event.begin()
 
     def _trigger_action(self):
         if self.previous_state == ProfilerState.CLOSED:

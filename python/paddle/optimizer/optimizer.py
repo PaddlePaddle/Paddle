@@ -22,6 +22,7 @@ from collections import defaultdict
 import paddle
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
+import paddle.profiler as profiler
 
 from ..fluid import framework
 from ..fluid import layers
@@ -1200,7 +1201,9 @@ class Optimizer(object):
                 adam.step()
                 adam.clear_grad()
         """
-
+        record_event = profiler.Record_Event(
+            name="Optimizer Step", event_type=TracerEventType.Optimization)
+        record_event.begin()
         if not isinstance(self._param_groups[0], dict):
             params_grads = []
             for param in self._param_groups:
@@ -1228,6 +1231,7 @@ class Optimizer(object):
                      for k, v in param_group.items() if k != 'params'})
                 self._apply_optimize(
                     loss=None, startup_program=None, params_grads=params_grads)
+        record_event.end()
 
     def _add_param_group(self, param_group):
         """

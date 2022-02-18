@@ -903,8 +903,8 @@ class Layer(object):
 
             self._built = True
 
-        with profiler.record_event(self.full_name(),
-                                   profiler.TracerEventType.PythonOp):
+        with profiler.Record_Event(self.full_name(),
+                                   profiler.TracerEventType.Forward):
             outputs = self.forward(*inputs, **kwargs)
         for forward_post_hook in self._forward_post_hooks.values():
             hook_result = forward_post_hook(self, inputs, outputs)

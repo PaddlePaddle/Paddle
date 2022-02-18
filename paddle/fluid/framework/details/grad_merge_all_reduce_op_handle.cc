@@ -47,6 +47,8 @@ GradMergeAllReduceOpHandle::GradMergeAllReduceOpHandle(
 #endif
 
 void GradMergeAllReduceOpHandle::RunImpl() {
+  platform::RecordEvent record_event(
+      Name(), platform::TracerEventType::Communication, 1);
   PADDLE_ENFORCE_GT(local_scopes_.size(), 0,
                     platform::errors::PreconditionNotMet(
                         "The number of local scope should be > 0, but got %zu.",
@@ -96,6 +98,8 @@ FusedGradMergeAllReduceOpHandle::FusedGradMergeAllReduceOpHandle(
 #endif
 
 void FusedGradMergeAllReduceOpHandle::RunImpl() {
+  platform::RecordEvent record_event(
+      Name(), platform::TracerEventType::Communication, 1);
   PADDLE_ENFORCE_GT(local_scopes_.size(), 0,
                     platform::errors::PreconditionNotMet(
                         "The number of local scope should be > 0, but got %zu.",

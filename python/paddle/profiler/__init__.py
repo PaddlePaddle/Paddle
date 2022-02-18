@@ -16,9 +16,9 @@ from .profiler import ProfilerState, ProfilerTarget
 from .profiler import shedule, export_chrome_tracing
 from .profiler import Profiler
 from .profiler import TracerEventType
-from .utils import record_event
+from .utils import Record_Event
 
 __all__ = [
     'ProfilerState', 'ProfilerTarget', 'TracerEventType', 'shedule',
-    'export_chrome_tracing', 'Profiler', 'record_event'
+    'export_chrome_tracing', 'Profiler', 'Record_Event'
 ]
