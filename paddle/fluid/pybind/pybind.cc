@@ -532,6 +532,7 @@ PYBIND11_MODULE(core_noavx, m) {
   BindEager(&m);
 #endif
   BindCudaStream(&m);
+
   // Not used, just make sure cpu_info.cc is linked.
   paddle::platform::CpuTotalPhysicalMemory();
 
