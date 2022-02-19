@@ -19,13 +19,13 @@
 #include <complex>
 #include "paddle/fluid/operators/eig_op.h"
 #include "paddle/fluid/operators/math/eigen_values_vectors.h"
-#include "paddle/fluid/operators/math/lapack_function.h"
 #include "paddle/fluid/operators/math/matrix_solve.h"
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/operators/triangular_solve_op.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/pten/kernels/funcs/complex_functors.h"
+#include "paddle/pten/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
 
 #define EPSILON 1e-6
@@ -153,20 +153,21 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
     int iwkopt = 0;
 
     if (driver == LapackDriverType::Gels) {
-      math::lapackGels('N', m, n, nrhs, x_vector, lda, y_vector, ldb, &wkopt,
-                       lwork, &info);
+      pten::funcs::lapackGels('N', m, n, nrhs, x_vector, lda, y_vector, ldb,
+                              &wkopt, lwork, &info);
     } else if (driver == LapackDriverType::Gelsd) {
-      math::lapackGelsd(m, n, nrhs, x_vector, lda, y_vector, ldb, s_working_ptr,
-                        static_cast<ValueType>(rcond), &rank_32, &wkopt, lwork,
-                        &rwkopt, &iwkopt, &info);
+      pten::funcs::lapackGelsd(m, n, nrhs, x_vector, lda, y_vector, ldb,
+                               s_working_ptr, static_cast<ValueType>(rcond),
+                               &rank_32, &wkopt, lwork, &rwkopt, &iwkopt,
+                               &info);
     } else if (driver == LapackDriverType::Gelsy) {
-      math::lapackGelsy(m, n, nrhs, x_vector, lda, y_vector, ldb, jpvt_data,
-                        static_cast<ValueType>(rcond), &rank_32, &wkopt, lwork,
-                        &rwkopt, &info);
+      pten::funcs::lapackGelsy(m, n, nrhs, x_vector, lda, y_vector, ldb,
+                               jpvt_data, static_cast<ValueType>(rcond),
+                               &rank_32, &wkopt, lwork, &rwkopt, &info);
     } else if (driver == LapackDriverType::Gelss) {
-      math::lapackGelss(m, n, nrhs, x_vector, lda, y_vector, ldb, s_working_ptr,
-                        static_cast<ValueType>(rcond), &rank_32, &wkopt, lwork,
-                        &rwkopt, &info);
+      pten::funcs::lapackGelss(m, n, nrhs, x_vector, lda, y_vector, ldb,
+                               s_working_ptr, static_cast<ValueType>(rcond),
+                               &rank_32, &wkopt, lwork, &rwkopt, &info);
     }
 
     lwork = std::max<int>(1, static_cast<int>(pten::funcs::Real<T>(wkopt)));
@@ -206,20 +207,21 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
       s_working_ptr = s_working_ptr ? &s_data[i * s_stride] : nullptr;
 
       if (driver == LapackDriverType::Gels) {
-        math::lapackGels('N', m, n, nrhs, x_input, lda, y_input, ldb, work_data,
-                         lwork, &info);
+        pten::funcs::lapackGels('N', m, n, nrhs, x_input, lda, y_input, ldb,
+                                work_data, lwork, &info);
       } else if (driver == LapackDriverType::Gelsd) {
-        math::lapackGelsd(m, n, nrhs, x_input, lda, y_input, ldb, s_working_ptr,
-                          static_cast<ValueType>(rcond), &rank_32, work_data,
-                          lwork, rwork_data, iwork_data, &info);
+        pten::funcs::lapackGelsd(m, n, nrhs, x_input, lda, y_input, ldb,
+                                 s_working_ptr, static_cast<ValueType>(rcond),
+                                 &rank_32, work_data, lwork, rwork_data,
+                                 iwork_data, &info);
       } else if (driver == LapackDriverType::Gelsy) {
-        math::lapackGelsy(m, n, nrhs, x_input, lda, y_input, ldb, jpvt_data,
-                          static_cast<ValueType>(rcond), &rank_32, work_data,
-                          lwork, rwork_data, &info);
+        pten::funcs::lapackGelsy(m, n, nrhs, x_input, lda, y_input, ldb,
+                                 jpvt_data, static_cast<ValueType>(rcond),
+                                 &rank_32, work_data, lwork, rwork_data, &info);
       } else if (driver == LapackDriverType::Gelss) {
-        math::lapackGelss(m, n, nrhs, x_input, lda, y_input, ldb, s_working_ptr,
-                          static_cast<ValueType>(rcond), &rank_32, work_data,
-                          lwork, rwork_data, &info);
+        pten::funcs::lapackGelss(m, n, nrhs, x_input, lda, y_input, ldb,
+                                 s_working_ptr, static_cast<ValueType>(rcond),
+                                 &rank_32, work_data, lwork, rwork_data, &info);
       }
 
       PADDLE_ENFORCE_EQ(

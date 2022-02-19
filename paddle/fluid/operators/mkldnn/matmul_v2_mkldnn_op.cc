@@ -84,11 +84,10 @@ std::vector<int64_t> GetInputStrides(const ExecutionContext& ctx,
 
   auto& MatrixDimsFromVector =
       input_name == "X" ? RowMatrixDimsFromVector : ColumnMatrixDimsFromVector;
-  paddle::operators::math::MatDescriptor mat_dim =
-      paddle::operators::math::CreateMatrixDescriptor(
-          MatrixDimsFromVector(new_dims), 0,
-          ctx.Attr<bool>(std::string("trans_") +
-                         static_cast<char>(std::tolower(input_name[0]))));
+  pten::funcs::MatDescriptor mat_dim = pten::funcs::CreateMatrixDescriptor(
+      MatrixDimsFromVector(new_dims), 0,
+      ctx.Attr<bool>(std::string("trans_") +
+                     static_cast<char>(std::tolower(input_name[0]))));
 
   std::vector<int64_t> strides;
   if (!shape.empty()) {
