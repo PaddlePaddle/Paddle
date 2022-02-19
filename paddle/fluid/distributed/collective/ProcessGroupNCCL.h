@@ -22,7 +22,7 @@
 
 #include "paddle/fluid/distributed/collective/NCCLTools.h"
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
-#include "paddle/fluid/eager/api/utils/tensor_utils.h"
+// #include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
