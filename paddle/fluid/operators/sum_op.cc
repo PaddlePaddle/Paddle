@@ -64,10 +64,10 @@ class SumOp : public framework::OperatorWithKernel {
           x_dim.size() == 1) {
         continue;
       }
-      if (framework::product(x_dim) == 0) {
+      if (pten::product(x_dim) == 0) {
         continue;
       }
-      if (framework::product(in_dim) == 0) {
+      if (pten::product(in_dim) == 0) {
         in_dim = x_dim;
       } else {
         if (ctx->IsRuntime()) {

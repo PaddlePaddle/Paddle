@@ -417,7 +417,7 @@ void FusedElemwiseAndActComputeNoBroadcast(
     const framework::Tensor &x, const framework::Tensor &y,
     CompoundFunctor compound_functor, framework::Tensor *out,
     framework::Tensor *intermediate_out) {
-  size_t N = static_cast<size_t>(framework::product(x_dim));
+  size_t N = static_cast<size_t>(pten::product(x_dim));
 
   platform::ForRange<DeviceContext> for_range(
       ctx.template device_context<DeviceContext>(), N);
@@ -547,7 +547,7 @@ void FusedElemwiseAndActGradComputeNoBroadcast(
     framework::Tensor *dx, framework::Tensor *dy,
     framework::Tensor *dintermediate, DX_OP dx_op, DY_OP dy_op,
     DIntermediate_OP dintermediate_op) {
-  size_t N = static_cast<size_t>(framework::product(x_dim));
+  size_t N = static_cast<size_t>(pten::product(x_dim));
   platform::ForRange<DeviceContext> for_range(
       ctx.template device_context<DeviceContext>(), N);
   const T *x_data = nullptr;

@@ -71,11 +71,11 @@ class FillConstantNPUKernel : public framework::OpKernel<T> {
           .AddOutput(*out_var)
           .AddAttrs(
               {{ "dims",
-                 framework::vectorize(shape) }})
+                 pten::vectorize(shape) }})
           .Run(stream);
 #else
       runner.SetType("Fill")
-          .AddInput(framework::vectorize(shape))
+          .AddInput(pten::vectorize(shape))
           .AddInput(tensor_value)
           .AddOutput(*out_var)
           .Run(stream);
@@ -94,7 +94,7 @@ class FillConstantNPUKernel : public framework::OpKernel<T> {
 
         NpuOpRunner runner;
         runner.SetType("Fill")
-            .AddInput(framework::vectorize(shape))
+            .AddInput(pten::vectorize(shape))
             .AddInput(tensor_value)
             .AddOutput(outputs[0])
             .Run(dev_ctx.stream());

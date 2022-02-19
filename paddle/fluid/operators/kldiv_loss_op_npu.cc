@@ -115,7 +115,7 @@ class KLDivLossGradNPUKernel : public framework::OpKernel<T> {
       NpuOpRunner broadcast_runner;
       broadcast_runner.SetType("BroadcastTo");
       broadcast_runner.AddInput(*loss_grad);
-      broadcast_runner.AddInput(framework::vectorize<int>(input_grad->dims()));
+      broadcast_runner.AddInput(pten::vectorize<int>(input_grad->dims()));
       broadcast_runner.AddOutput(loss_grad_transformed);
       broadcast_runner.Run(stream);
     }

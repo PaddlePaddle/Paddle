@@ -31,7 +31,7 @@ using paddle::platform::CreateKey;
 using paddle::platform::MKLDNNGetDataType;
 using paddle::platform::MKLDNNMemDesc;
 using platform::to_void_cast;
-using framework::vectorize;
+using pten::vectorize;
 using Direction = dnnl::rnn_direction;
 
 namespace {

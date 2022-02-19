@@ -146,8 +146,8 @@ void VarConv2dOP::InferShape(framework::InferShapeContext* ctx) const {
     out_dims_vec.push_back(1);
     std::vector<int64_t> col_dims_vec{-1};
     col_dims_vec.push_back(1);
-    ctx->SetOutputDim("Out", framework::make_ddim(out_dims_vec));
-    ctx->SetOutputDim("Col", framework::make_ddim(col_dims_vec));
+    ctx->SetOutputDim("Out", pten::make_ddim(out_dims_vec));
+    ctx->SetOutputDim("Col", pten::make_ddim(col_dims_vec));
   }
 }
 
@@ -199,8 +199,8 @@ class CPUVarConv2dOPKernel : public framework::OpKernel<T> {
     col->set_lod(col_lod);
     std::vector<int64_t> col_dims_vec{top_size};
     col_dims_vec.push_back(1);
-    auto* top_data = col->mutable_data<T>(framework::make_ddim(col_dims_vec),
-                                          ctx.GetPlace());
+    auto* top_data =
+        col->mutable_data<T>(pten::make_ddim(col_dims_vec), ctx.GetPlace());
     auto* bottom_data = input.data<T>();
 
     int kernel_win_size = kernel_h * kernel_w;
@@ -294,8 +294,8 @@ class CPUVarConv2dOPKernel : public framework::OpKernel<T> {
     top->set_lod(top_lod);
     std::vector<int64_t> top_dims_vec{top_size};
     top_dims_vec.push_back(1);
-    auto* top_data = top->mutable_data<T>(framework::make_ddim(top_dims_vec),
-                                          ctx.GetPlace());
+    auto* top_data =
+        top->mutable_data<T>(pten::make_ddim(top_dims_vec), ctx.GetPlace());
 
     auto* w_data = w->data<T>();
     auto* col_data = col->data<T>();

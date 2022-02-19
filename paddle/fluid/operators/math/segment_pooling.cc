@@ -50,7 +50,7 @@ class SegmentPoolFunctor<platform::CPUDeviceContext, T, IndexT> {
 
       int64_t h = idx - last_idx;
       auto in_e =
-          framework::EigenMatrix<T>::From(in_t, framework::make_ddim({h, w}));
+          framework::EigenMatrix<T>::From(in_t, pten::make_ddim({h, w}));
       auto out_e = framework::EigenVector<T>::Flatten(out_t);
 
       auto reduce_dim = Eigen::array<int, 1>({{0}});

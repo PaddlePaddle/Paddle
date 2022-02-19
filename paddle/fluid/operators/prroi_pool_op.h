@@ -314,8 +314,8 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
     int rois_num = rois->dims()[0];
     if (rois_num == 0) return;
 
-    auto in_stride = framework::stride(in_dims);
-    auto out_stride = framework::stride(out->dims());
+    auto in_stride = pten::stride(in_dims);
+    auto out_stride = pten::stride(out->dims());
 
     const T* input_data = in->data<T>();
 

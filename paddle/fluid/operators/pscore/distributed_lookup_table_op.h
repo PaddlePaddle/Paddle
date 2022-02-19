@@ -126,9 +126,9 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
         auto *out_tensor = out_var->GetMutable<framework::LoDTensor>();
 
         auto id_dims = id_tensor->dims();
-        out_tensor->Resize(framework::make_ddim(
-            {static_cast<int64_t>(id_dims[0]), static_cast<int64_t>(id_dims[1]),
-             static_cast<int64_t>(emb_dim)}));
+        out_tensor->Resize(pten::make_ddim({static_cast<int64_t>(id_dims[0]),
+                                            static_cast<int64_t>(id_dims[1]),
+                                            static_cast<int64_t>(emb_dim)}));
       }
     }
   }

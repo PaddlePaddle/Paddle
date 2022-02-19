@@ -16,11 +16,11 @@
 
 #include <math.h>
 
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/core/ddim.h"
 #include "paddle/pten/kernels/funcs/algorithm.h"
 
 namespace paddle {

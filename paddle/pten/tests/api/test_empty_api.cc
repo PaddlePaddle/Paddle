@@ -25,7 +25,7 @@ namespace paddle {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = pten::framework::DDim;
+using DDim = pten::DDim;
 
 // TODO(chenweihang): Remove this test after the API is used in the dygraph
 TEST(API, empty_like) {
@@ -35,7 +35,7 @@ TEST(API, empty_like) {
   auto dense_x = std::make_shared<pten::DenseTensor>(
       alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            pten::framework::make_ddim({3, 2}),
+                            pten::make_ddim({3, 2}),
                             pten::DataLayout::NCHW));
 
   paddle::experimental::Tensor x(dense_x);
@@ -58,9 +58,8 @@ TEST(API, empty1) {
 
   auto dense_shape = std::make_shared<pten::DenseTensor>(
       alloc.get(),
-      pten::DenseTensorMeta(pten::DataType::INT64,
-                            pten::framework::make_ddim({2}),
-                            pten::DataLayout::NCHW));
+      pten::DenseTensorMeta(
+          pten::DataType::INT64, pten::make_ddim({2}), pten::DataLayout::NCHW));
   auto* shape_data =
       dense_shape->mutable_data<int64_t>(paddle::platform::CPUPlace());
   shape_data[0] = 2;
@@ -85,9 +84,8 @@ TEST(API, empty2) {
 
   auto dense_scalar = std::make_shared<pten::DenseTensor>(
       alloc.get(),
-      pten::DenseTensorMeta(pten::DataType::INT32,
-                            pten::framework::make_ddim({1}),
-                            pten::DataLayout::NCHW));
+      pten::DenseTensorMeta(
+          pten::DataType::INT32, pten::make_ddim({1}), pten::DataLayout::NCHW));
   dense_scalar->mutable_data<int32_t>(paddle::platform::CPUPlace())[0] = 2;
 
   paddle::experimental::Tensor shape_scalar1(dense_scalar);

@@ -21,7 +21,6 @@
 #include "paddle/pten/core/utils/dim.h"
 
 namespace pten {
-namespace framework {
 
 #define PADDLE_VISIT_DDIM_BASE(rank, callback) \
   case (rank): {                               \
@@ -253,5 +252,12 @@ DDim flatten_to_1d(const DDim& src);
 DDim stride(const DDim& ddim);
 
 DDim stride_numel(const DDim& ddim);
-}  // namespace framework
 }  // namespace pten
+
+namespace paddle {
+namespace framework {
+
+using DDim = pten::DDim;
+
+}  // namespace framework
+}  // namespace paddle

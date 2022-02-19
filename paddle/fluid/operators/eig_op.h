@@ -89,7 +89,7 @@ void LapackEig(Tensor* input, Tensor* values, Tensor* vectors, int info,
   Tensor rwork;
   pten::funcs::Real<T>* rwork_data = nullptr;
 
-  rwork.Resize(framework::make_ddim({lda * 2}));
+  rwork.Resize(pten::make_ddim({lda * 2}));
   rwork_data = rwork.mutable_data<pten::funcs::Real<T>>(context.GetPlace());
 
   // call lapackEig once to compute the size of work;
@@ -101,7 +101,7 @@ void LapackEig(Tensor* input, Tensor* values, Tensor* vectors, int info,
   lwork = std::max<int>(
       1, static_cast<int>(pten::funcs::Real<T>(computed_work_size)));
   Tensor work;
-  work.Resize(framework::make_ddim({lwork}));
+  work.Resize(pten::make_ddim({lwork}));
   T* work_data = work.mutable_data<T>(context.GetPlace());
 
   for (auto i = 0; i < batch_count; ++i) {
@@ -201,12 +201,11 @@ class EigKernel : public framework::OpKernel<T> {
       Tensor real_vectors;
       // double the size of real_values, the first half stores the real part,
       // the next half stores the imag part
-      std::vector<int> origin_dim =
-          framework::vectorize<int>(out_values->dims());
+      std::vector<int> origin_dim = pten::vectorize<int>(out_values->dims());
       int last_item = origin_dim.back();
       origin_dim.pop_back();
       origin_dim.push_back(last_item * 2);
-      framework::DDim big_dim = framework::make_ddim(origin_dim);
+      framework::DDim big_dim = pten::make_ddim(origin_dim);
 
       real_values.mutable_data<pten::funcs::Real<T>>(big_dim,
                                                      context.GetPlace());
