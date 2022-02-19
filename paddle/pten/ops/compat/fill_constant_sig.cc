@@ -70,45 +70,50 @@ KernelSignature FillConstantOpArgumentMapping(
     if (ctx.HasInput("ShapeTensor")) {
       if (ctx.HasInput("ValueTensor")) {
         return KernelSignature(
-            "full_sr", {}, {"ShapeTensor", "ValueTensor"}, {"Out"});
+            "full_sr", {}, {"ShapeTensor", "ValueTensor", "dtype"}, {"Out"});
       } else {
         const auto& str_value =
             paddle::any_cast<std::string>(ctx.Attr("str_value"));
         if (str_value.empty()) {
           return KernelSignature(
-              "full_sr", {}, {"ShapeTensor", "value"}, {"Out"});
+              "full_sr", {}, {"ShapeTensor", "value", "dtype"}, {"Out"});
         } else {
           return KernelSignature(
-              "full_sr", {}, {"ShapeTensor", "str_value"}, {"Out"});
+              "full_sr", {}, {"ShapeTensor", "str_value", "dtype"}, {"Out"});
         }
       }
     } else if (ctx.InputSize("ShapeTensorList") > 0) {
       if (ctx.HasInput("ValueTensor")) {
-        return KernelSignature(
-            "full_sr", {}, {"ShapeTensorList", "ValueTensor"}, {"Out"});
+        return KernelSignature("full_sr",
+                               {},
+                               {"ShapeTensorList", "ValueTensor", "dtype"},
+                               {"Out"});
       } else {
         const auto& str_value =
             paddle::any_cast<std::string>(ctx.Attr("str_value"));
         if (str_value.empty()) {
           return KernelSignature(
-              "full_sr", {}, {"ShapeTensorList", "value"}, {"Out"});
+              "full_sr", {}, {"ShapeTensorList", "value", "dtype"}, {"Out"});
         } else {
-          return KernelSignature(
-              "full_sr", {}, {"ShapeTensorList", "str_value"}, {"Out"});
+          return KernelSignature("full_sr",
+                                 {},
+                                 {"ShapeTensorList", "str_value", "dtype"},
+                                 {"Out"});
         }
       }
     } else {
       if (ctx.HasInput("ValueTensor")) {
         return KernelSignature(
-            "full_sr", {}, {"shape", "ValueTensor"}, {"Out"});
+            "full_sr", {}, {"shape", "ValueTensor", "dtype"}, {"Out"});
       } else {
         const auto& str_value =
             paddle::any_cast<std::string>(ctx.Attr("str_value"));
         if (str_value.empty()) {
-          return KernelSignature("full_sr", {}, {"shape", "value"}, {"Out"});
+          return KernelSignature(
+              "full_sr", {}, {"shape", "value", "dtype"}, {"Out"});
         } else {
           return KernelSignature(
-              "full_sr", {}, {"shape", "str_value"}, {"Out"});
+              "full_sr", {}, {"shape", "str_value", "dtype"}, {"Out"});
         }
       }
     }
