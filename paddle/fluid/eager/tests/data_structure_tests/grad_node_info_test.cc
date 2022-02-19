@@ -119,19 +119,6 @@ TEST(GradNodeInfo, GradNodeBase) {
       std::dynamic_pointer_cast<pten::DenseTensor>(grad_hook_res[0][0].impl())
           ->data<float>()[0],
       11.0);
-
-  VLOG(6) << "Test Reduce Hook";
-  auto reduce_hook = [&](void) -> void {
-    auto* et_ptr =
-        std::dynamic_pointer_cast<pten::DenseTensor>(et1.impl())->data<float>();
-    et_ptr[0] = 100.0;
-    VLOG(6) << "Running Reduce Hook";
-  };
-  grad_test_node0->RegisterReduceHook(reduce_hook);
-  grad_test_node0->ApplyReduceHooks();
-  CHECK_EQ(std::dynamic_pointer_cast<pten::DenseTensor>(et1.impl())
-               ->data<float>()[0],
-           100.0);
 }
 
 TEST(GradNodeInfo, Edge) {

@@ -79,13 +79,10 @@ void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
   out->set_layout(x.layout());
 }
 
-void CreateLikeInferMeta(const MetaTensor& x,
-                         DataType dtype,
-                         DataLayout layout,
-                         MetaTensor* out) {
+void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(dtype == DataType::UNDEFINED ? x.dtype() : dtype);
-  out->set_layout(layout == DataLayout::UNDEFINED ? x.layout() : layout);
+  out->set_layout(x.layout());
 }
 
 static pten::DDim ValidateShape(const std::vector<int64_t> shape,

@@ -171,10 +171,6 @@ operator()(
              &out);
   }
 
-  // Apply Reduce Hooks
-  if (ReduceHooksRegistered()) {
-    ApplyReduceHooks();
-  }
   return {{out}};
 }
 
