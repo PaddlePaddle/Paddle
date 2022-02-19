@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/pten/kernels/copy_kernel.h"
-#include "paddle/pten/kernels/funcs/broadcast_base.h"
+#include "paddle/pten/kernels/funcs/broadcast_function.h"
 #include "paddle/pten/kernels/funcs/common_shape.h"
 #include "paddle/pten/kernels/gpu/reduce.h"
 

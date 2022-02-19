@@ -22,7 +22,7 @@
 #include <numeric>
 #include <set>
 #include <vector>
-#include "paddle/pten/kernels/funcs/broadcast_base.h"
+#include "paddle/pten/kernels/funcs/broadcast_function.h"
 
 namespace pten {
 
