@@ -82,7 +82,7 @@ void SparseCooTensor::Resize(const DDim& dense_dims,
       paddle::platform::errors::InvalidArgument(
           "the sparse_dim must be less than or equal dense_dims."));
 
-  DDim indices_dims = pten::framework::make_ddim({sparse_dim, non_zero_num});
+  DDim indices_dims = pten::make_ddim({sparse_dim, non_zero_num});
   auto dense_dim = dense_dims.size() - sparse_dim;
   DDim values_dims;
   if (dense_dim) {
@@ -91,9 +91,9 @@ void SparseCooTensor::Resize(const DDim& dense_dims,
     memcpy(&dense_dim_vec[1],
            dense_dims.Get() + sparse_dim,
            dense_dim * sizeof(dense_dims[0]));
-    values_dims = pten::framework::make_ddim(dense_dim_vec);
+    values_dims = pten::make_ddim(dense_dim_vec);
   } else {
-    values_dims = pten::framework::make_ddim({non_zero_num});
+    values_dims = pten::make_ddim({non_zero_num});
   }
 
   this->non_zero_indices_.Resize(indices_dims);

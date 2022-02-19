@@ -60,7 +60,7 @@ struct FillConstantVisitor {
 
       const auto &runner =
           NpuOpRunner("FillD", {tensor_tmp}, {*tensor_},
-                      {{"dims", framework::vectorize(tensor_->dims())}});
+                      {{"dims", pten::vectorize(tensor_->dims())}});
       auto stream =
           context_.template device_context<paddle::platform::NPUDeviceContext>()
               .stream();
@@ -192,8 +192,7 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
     // Alloc the continuous space
     auto fused_tensor = context.Output<framework::LoDTensor>("FusedOutput");
     void *fused_tensor_ptr =
-        fused_tensor
-            ->Resize(framework::make_ddim({static_cast<int64_t>(numel)}))
+        fused_tensor->Resize(pten::make_ddim({static_cast<int64_t>(numel)}))
             .mutable_data(context.GetPlace(),
                           framework::TransToPtenDataType(dtype));
     VLOG(10) << "Fused tensor addr " << fused_tensor_ptr;
@@ -344,7 +343,7 @@ class CoalesceTensorOp : public framework::OperatorWithKernel {
       int64_t numel = 0;
       auto dims = ctx->GetInputsDim("Input");
       for (const auto &dim : dims) {
-        auto size = framework::product(dim);
+        auto size = pten::product(dim);
         auto len = use_align
                        ? alignment(static_cast<size_t>(size) * size_of_dtype,
                                    align_size) /
@@ -352,8 +351,8 @@ class CoalesceTensorOp : public framework::OperatorWithKernel {
                        : static_cast<size_t>(size);
         numel += len;
       }
-      ctx->SetOutputDim("FusedOutput", framework::make_ddim({numel}));
-      VLOG(4) << "FusedOutput size:" << framework::make_ddim({numel});
+      ctx->SetOutputDim("FusedOutput", pten::make_ddim({numel}));
+      VLOG(4) << "FusedOutput size:" << pten::make_ddim({numel});
     }
   }
 

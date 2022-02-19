@@ -88,10 +88,10 @@ void SparseCsrTensor::Resize(const DDim& dense_dims,
     crows_size = dense_dims[0] * (dense_dims[1] + 1);
   }
 
-  DDim crows_dims = pten::framework::make_ddim({crows_size});
+  DDim crows_dims = pten::make_ddim({crows_size});
   this->non_zero_crows_.Resize(crows_dims);
 
-  DDim col_dims = pten::framework::make_ddim({non_zero_num});
+  DDim col_dims = pten::make_ddim({non_zero_num});
   this->non_zero_cols_.Resize(col_dims);
   this->non_zero_elements_.Resize(col_dims);
 }

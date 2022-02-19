@@ -24,7 +24,7 @@ namespace tests {
 
 TEST(sparse_csr_tensor, construct) {
   pten::CPUPlace cpu;
-  auto dense_dims = pten::framework::make_ddim({3, 3});
+  auto dense_dims = pten::make_ddim({3, 3});
   std::vector<float> non_zero_data = {1.0, 2.0, 3.0};
   std::vector<int64_t> crows_data = {0, 1, 1, 3};
   std::vector<int64_t> cols_data = {1, 0, 2};
@@ -32,8 +32,7 @@ TEST(sparse_csr_tensor, construct) {
   auto fancy_allocator = std::unique_ptr<Allocator>(new FancyAllocator);
   auto alloc = fancy_allocator.get();
   // create non_zero_crows
-  auto crows_dims =
-      pten::framework::make_ddim({static_cast<int>(crows_data.size())});
+  auto crows_dims = pten::make_ddim({static_cast<int>(crows_data.size())});
   DenseTensorMeta crows_meta(DataType::INT64, crows_dims, DataLayout::NCHW);
   DenseTensor crows(alloc, crows_meta);
   memcpy(crows.mutable_data<int64_t>(cpu),
@@ -41,8 +40,7 @@ TEST(sparse_csr_tensor, construct) {
          crows_data.size() * sizeof(int64_t));
 
   // create non_zero_cols
-  auto cols_dims =
-      pten::framework::make_ddim({static_cast<int>(cols_data.size())});
+  auto cols_dims = pten::make_ddim({static_cast<int>(cols_data.size())});
   DenseTensorMeta cols_meta(DataType::INT64, cols_dims, DataLayout::NCHW);
   DenseTensor cols(alloc, cols_meta);
   memcpy(cols.mutable_data<int64_t>(cpu),
@@ -51,7 +49,7 @@ TEST(sparse_csr_tensor, construct) {
 
   // create non_zero_elements
   auto elements_dims =
-      pten::framework::make_ddim({static_cast<int>(non_zero_data.size())});
+      pten::make_ddim({static_cast<int>(non_zero_data.size())});
   DenseTensorMeta elements_meta(
       DataType::FLOAT32, elements_dims, DataLayout::NCHW);
   DenseTensor elements(alloc, elements_meta);
@@ -74,13 +72,13 @@ TEST(sparse_csr_tensor, construct) {
 TEST(sparse_csr_tensor, other_function) {
   auto fancy_allocator = std::unique_ptr<Allocator>(new FancyAllocator);
   auto alloc = fancy_allocator.get();
-  auto dense_dims = pten::framework::make_ddim({4, 4});
-  auto crows_dims = pten::framework::make_ddim({dense_dims[0] + 1});
+  auto dense_dims = pten::make_ddim({4, 4});
+  auto crows_dims = pten::make_ddim({dense_dims[0] + 1});
   DenseTensorMeta crows_meta(DataType::INT64, crows_dims, DataLayout::NCHW);
   DenseTensor crows(alloc, crows_meta);
 
   const int64_t non_zero_num = 5;
-  auto cols_dims = pten::framework::make_ddim({non_zero_num});
+  auto cols_dims = pten::make_ddim({non_zero_num});
   DenseTensorMeta cols_meta(DataType::INT64, cols_dims, DataLayout::NCHW);
   DenseTensor cols(alloc, cols_meta);
   DenseTensorMeta values_meta(DataType::FLOAT32, cols_dims, DataLayout::NCHW);
@@ -91,7 +89,7 @@ TEST(sparse_csr_tensor, other_function) {
   CHECK_EQ(csr.dims(), dense_dims);
 
   // Test Resize
-  auto dense_dims_3d = pten::framework::make_ddim({2, 4, 4});
+  auto dense_dims_3d = pten::make_ddim({2, 4, 4});
   csr.Resize(dense_dims_3d, 2);
   CHECK_EQ(csr.non_zero_cols().numel(), 2);
 

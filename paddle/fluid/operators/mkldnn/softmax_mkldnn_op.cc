@@ -46,7 +46,7 @@ class SoftmaxMKLDNNHandler
         platform::errors::InvalidArgument(
             "The shape of input and output tensor must be identical."));
 
-    auto softmax_tz = framework::vectorize(input->dims());
+    auto softmax_tz = pten::vectorize(input->dims());
     auto md = memory::desc(softmax_tz, platform::MKLDNNGetDataType<T>(),
                            input->format());
 
@@ -71,7 +71,7 @@ class SoftmaxMKLDNNHandler
 
     auto dims = out_grad->dims();  // input and output share the same shape
     const int axis = CanonicalAxis(ctx.Attr<int>("axis"), dims.size());
-    auto softmax_tz = framework::vectorize<int64_t>(dims);
+    auto softmax_tz = pten::vectorize<int64_t>(dims);
 
     auto data_softmax_md = MKLDNNMemDesc(
         softmax_tz, platform::MKLDNNGetDataType<T>(), out->format());

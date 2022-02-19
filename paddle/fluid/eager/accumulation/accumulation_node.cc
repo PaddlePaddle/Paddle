@@ -79,4 +79,14 @@ operator()(
   return {{accumulated_grad}};
 }
 
+void GradNodeAccumulation::RegisterReduceHook(
+    const std::function<void(void)>& hook) {
+  reduce_hooks_.emplace_back(hook);
+}
+
+void GradNodeAccumulation::ApplyReduceHooks() {
+  for (auto& hook : reduce_hooks_) {
+    hook();
+  }
+}
 }  // namespace egr

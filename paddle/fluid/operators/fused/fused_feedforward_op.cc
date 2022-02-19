@@ -72,7 +72,7 @@ class FusedFeedForwardOp : public framework::OperatorWithKernel {
       context->SetOutputDim("Dropout2Mask", dim_x);
     }
     framework::DDim mean_dim =
-        framework::make_ddim({mat_dim_x.batch_size_ * mat_dim_x.height_});
+        pten::make_ddim({mat_dim_x.batch_size_ * mat_dim_x.height_});
     bool pre_layer_norm = context->Attrs().Get<bool>("pre_layer_norm");
     if (pre_layer_norm) {
       OP_INOUT_CHECK(context->HasOutput("Ln1Mean"), "Output", "Ln1Mean",

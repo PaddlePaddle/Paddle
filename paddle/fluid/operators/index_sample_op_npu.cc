@@ -95,7 +95,7 @@ void IndexSampleGradScatter(const paddle::platform::NPUDeviceContext& dev_ctx,
   runner.SetType("ScatterNd")
       .AddInput(scatter_index)
       .AddInput(*out_grad)
-      .AddInput(framework::vectorize<IndexT>(x_grad->dims()))
+      .AddInput(pten::vectorize<IndexT>(x_grad->dims()))
       .AddOutput(*x_grad);
   runner.Run(dev_ctx.stream());
 }

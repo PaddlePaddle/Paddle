@@ -62,7 +62,7 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& engine = dev_ctx.GetEngine();
 
-    auto src_tz = paddle::framework::vectorize(input->dims());
+    auto src_tz = pten::vectorize(input->dims());
 
     float reorder_scale = scale_out / scale_in;
 
@@ -81,7 +81,7 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     const T* input_data = input->data<T>();
 
     if (reorder_p == nullptr) {
-      auto dst_tz = framework::vectorize(output->dims());
+      auto dst_tz = pten::vectorize(output->dims());
       auto src_dt = framework::ToMKLDNNDataType(
           framework::TransToProtoVarType(input->dtype()));
       auto dst_dt = with_shift ? framework::MKLDNNDataType::u8 : src_dt;

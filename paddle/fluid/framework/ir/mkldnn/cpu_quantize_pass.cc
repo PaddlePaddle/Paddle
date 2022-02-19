@@ -980,7 +980,7 @@ void CPUQuantizePass::QuantizeMultiGru(Graph* graph) const {
 
       VarDesc scale_var_desc(patterns::PDNodeName("multi_gru", "w_scale"));
 
-      scale_var_desc.SetShape(framework::vectorize(scale_tensor_src.dims()));
+      scale_var_desc.SetShape(pten::vectorize(scale_tensor_src.dims()));
       scale_var_desc.SetDataType(proto::VarType::FP32);
       scale_var_desc.SetLoDLevel(scale_tensor_src.lod().size());
       scale_var_desc.SetPersistable(true);

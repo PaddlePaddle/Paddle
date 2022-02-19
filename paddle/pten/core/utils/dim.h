@@ -24,7 +24,6 @@
 #include "paddle/pten/core/utils/array.h"
 
 namespace pten {
-namespace framework {
 
 // Statically sized, statically indexed dimension
 template <int D>
@@ -96,5 +95,12 @@ inline void static_dim_assign(const T1* in, T2* out) {
   UnrollAssign<D>::Run(in, out);
 }
 
-}  // namespace framework
 }  // namespace pten
+
+namespace paddle {
+namespace framework {
+template <int D>
+using Dim = pten::Dim<D>;
+
+}  // namespace framework
+}  // namespace paddle

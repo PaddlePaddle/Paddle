@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,15 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
+#include "paddle/pten/kernels/sign_kernel.h"
+#include "paddle/pten/kernels/impl/sign_kernel_impl.h"
 
-#include "paddle/pten/core/ddim.h"
+#include "paddle/pten/backends/gpu/gpu_context.h"
+#include "paddle/pten/core/kernel_registry.h"
 
-namespace paddle {
-namespace framework {
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/pten/common/float16.h"
 
-using DDim = pten::framework::DDim;
-using namespace pten::framework;  // NOLINT
+using float16 = pten::dtype::float16;
 
-}  // namespace framework
-}  // namespace paddle
+PT_REGISTER_KERNEL(
+    sign, GPU, ALL_LAYOUT, pten::SignKernel, float, double, float16) {}

@@ -50,7 +50,7 @@ class LabelSmoothOp : public framework::OperatorWithKernel {
     auto in_dims = ctx->GetInputDim("X");
     if (ctx->HasInput("PriorDist")) {
       auto noise_dims = ctx->GetInputDim("PriorDist");
-      auto noise_numel = paddle::framework::product(noise_dims);
+      auto noise_numel = pten::product(noise_dims);
       PADDLE_ENFORCE_EQ(
           in_dims[in_dims.size() - 1], noise_numel,
           platform::errors::InvalidArgument(

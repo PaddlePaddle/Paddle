@@ -14,13 +14,13 @@ limitations under the License. */
 
 #pragma once
 #include "glog/logging.h"
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 #include "paddle/fluid/operators/solve_op.h"
 #include "paddle/fluid/operators/tril_triu_op.h"
+#include "paddle/pten/core/ddim.h"
 #include "paddle/pten/kernels/funcs/blas/blas.h"
 #include "paddle/pten/kernels/funcs/complex_functors.h"
 
@@ -48,11 +48,11 @@ static void triangular_solve(const DeviceContext& context, const Tensor& x,
   // x_clone should be a copy of 'x' after broadcast
   // out should be a copy of 'y' after broadcast
   Tensor x_clone(x.type());
-  x_clone.Resize(framework::make_ddim(x_bst_dims_vec));
+  x_clone.Resize(pten::make_ddim(x_bst_dims_vec));
   x_clone.mutable_data<T>(context.GetPlace());
   framework::TensorCopy(x_bst, context.GetPlace(), context, &x_clone);
 
-  out->Resize(framework::make_ddim(y_bst_dims_vec));
+  out->Resize(pten::make_ddim(y_bst_dims_vec));
   out->mutable_data<T>(context.GetPlace());
   framework::TensorCopy(y_bst, context.GetPlace(), context, out);
 
@@ -75,10 +75,9 @@ class MatrixReduceSumFunctor<platform::CPUDeviceContext, T> {
                   const framework::ExecutionContext& ctx) {
     // For example: in's dim = [5, 3, 2, 7, 3] ; out's dim = [3, 1, 7, 3]
     // out_reduce_dim should be [0, 2]
-    const std::vector<std::int64_t> in_dims = framework::vectorize(in.dims());
+    const std::vector<std::int64_t> in_dims = pten::vectorize(in.dims());
     auto in_size = in_dims.size();
-    const std::vector<std::int64_t> out_dims =
-        framework::vectorize(out->dims());
+    const std::vector<std::int64_t> out_dims = pten::vectorize(out->dims());
     auto out_size = out_dims.size();
 
     std::vector<std::int64_t> out_bst_dims(in_size);
@@ -86,7 +85,7 @@ class MatrixReduceSumFunctor<platform::CPUDeviceContext, T> {
     std::fill(out_bst_dims.data(), out_bst_dims.data() + in_size - out_size, 1);
     std::copy(out_dims.data(), out_dims.data() + out_size,
               out_bst_dims.data() + in_size - out_size);
-    out->Resize(framework::make_ddim(out_bst_dims));
+    out->Resize(pten::make_ddim(out_bst_dims));
 
     std::vector<int> out_reduce_dims;
     for (size_t idx = 0; idx <= in_size - 3; idx++) {
@@ -98,7 +97,7 @@ class MatrixReduceSumFunctor<platform::CPUDeviceContext, T> {
     ReduceKernelFunctor<platform::CPUDeviceContext, T, SumFunctor>(
         &in, out, out_reduce_dims, true, false, ctx)
         .template apply<T>();
-    out->Resize(framework::make_ddim(out_dims));
+    out->Resize(pten::make_ddim(out_dims));
   }
 };
 
@@ -146,7 +145,7 @@ class TriangularSolveGradKernel : public framework::OpKernel<T> {
     Tensor dy_bst(y->type());
     if (dy) {
       dy->mutable_data<T>(y->dims(), dev_ctx.GetPlace());
-      dy_bst.Resize(framework::make_ddim(y_bst_dims_vec));
+      dy_bst.Resize(pten::make_ddim(y_bst_dims_vec));
       dy_bst.mutable_data<T>(dev_ctx.GetPlace());
 
       // calculate x's conjugate for complex
@@ -173,7 +172,7 @@ class TriangularSolveGradKernel : public framework::OpKernel<T> {
     Tensor dx_bst(x->type());
     if (dx) {
       dx->mutable_data<T>(x->dims(), dev_ctx.GetPlace());
-      dx_bst.Resize(framework::make_ddim(x_bst_dims_vec));
+      dx_bst.Resize(pten::make_ddim(x_bst_dims_vec));
       dx_bst.mutable_data<T>(dev_ctx.GetPlace());
 
       // calculate out's conjugate for complex

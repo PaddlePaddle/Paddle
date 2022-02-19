@@ -197,7 +197,8 @@ class MKLDNNHandlerNoCachingT {
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
     platform::RecordEvent record_reorder("int_reorder",
-                                         platform::EventRole::kUniqueOp);
+                                         platform::TracerEventType::UserDefined,
+                                         2, platform::EventRole::kUniqueOp);
     reorder_p->execute(astream, {{DNNL_ARG_FROM, *user_memory_p},
                                  {DNNL_ARG_TO, *target_memory_p}});
     astream.wait();
@@ -221,8 +222,9 @@ class MKLDNNHandlerNoCachingT {
           std::make_shared<dnnl::reorder>(*user_memory_p, *target_memory_p);
 
       auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-      platform::RecordEvent record_reorder("int_reorder",
-                                           platform::EventRole::kUniqueOp);
+      platform::RecordEvent record_reorder(
+          "int_reorder", platform::TracerEventType::UserDefined, 2,
+          platform::EventRole::kUniqueOp);
       reorder_p->execute(astream, {{DNNL_ARG_FROM, *user_memory_p},
                                    {DNNL_ARG_TO, *target_memory_p}});
       astream.wait();
@@ -514,7 +516,8 @@ class MKLDNNHandlerT {
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
     platform::RecordEvent record_reorder("int_reorder",
-                                         platform::EventRole::kUniqueOp);
+                                         platform::TracerEventType::UserDefined,
+                                         2, platform::EventRole::kUniqueOp);
     reorder_p->execute(astream, {{DNNL_ARG_FROM, *user_memory_p},
                                  {DNNL_ARG_TO, *target_memory_p}});
     astream.wait();
@@ -558,8 +561,9 @@ class MKLDNNHandlerT {
         dev_ctx_.SetBlob(key_reorder_p, reorder_p);
 
         auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-        platform::RecordEvent record_reorder("int_reorder",
-                                             platform::EventRole::kUniqueOp);
+        platform::RecordEvent record_reorder(
+            "int_reorder", platform::TracerEventType::UserDefined, 2,
+            platform::EventRole::kUniqueOp);
         reorder_p->execute(astream, {{DNNL_ARG_FROM, *user_memory_p},
                                      {DNNL_ARG_TO, *target_memory_p}});
         astream.wait();
@@ -580,8 +584,9 @@ class MKLDNNHandlerT {
       auto reorder_p = std::static_pointer_cast<dnnl::reorder>(
           dev_ctx_.GetBlob(key_reorder_p));
       if (reorder_p != nullptr) {
-        platform::RecordEvent record_reorder("int_reorder",
-                                             platform::EventRole::kUniqueOp);
+        platform::RecordEvent record_reorder(
+            "int_reorder", platform::TracerEventType::UserDefined, 2,
+            platform::EventRole::kUniqueOp);
         reorder_p->execute(astream, {{DNNL_ARG_FROM, *user_memory_p},
                                      {DNNL_ARG_TO, *target_memory_p}});
         astream.wait();
@@ -635,13 +640,13 @@ class BinaryMKLDNNHandler
                           "Wrong format set for Y tensor : %d (undef)",
                           static_cast<unsigned int>(y->format())));
 
-    const auto src_x_tz = framework::vectorize(x->dims());
-    const auto src_y_tz = framework::vectorize(y->dims());
+    const auto src_x_tz = pten::vectorize(x->dims());
+    const auto src_y_tz = pten::vectorize(y->dims());
     // if output tensor(z) is nullptr then we are computing into oneDNN
     // managed buffer
     auto rankdiff = x->dims().size() - y->dims().size();
     const auto dst_tz = (z == nullptr) ? (rankdiff > 0 ? src_x_tz : src_y_tz)
-                                       : framework::vectorize(z->dims());
+                                       : pten::vectorize(z->dims());
 
     auto src0_md = dnnl::memory::desc(
         src_x_tz, platform::MKLDNNGetDataType<T>(), x->format());
@@ -734,7 +739,7 @@ class BroadcastDataMKLDNNHandler
         x->format(), MKLDNNMemoryFormat::undef,
         platform::errors::InvalidArgument("Wrong format set for X tensor."));
 
-    const auto src0_tz = framework::vectorize(out->dims());
+    const auto src0_tz = pten::vectorize(out->dims());
 
     const auto src0_md = dnnl::memory::desc(
         src0_tz, platform::MKLDNNGetDataType<T>(), out->format());
@@ -776,7 +781,7 @@ class ReductionMKLDNNHandler
         x->format(), MKLDNNMemoryFormat::undef,
         platform::errors::InvalidArgument("Wrong format set for X tensor."));
 
-    const auto x_tz = framework::vectorize(x->dims());
+    const auto x_tz = pten::vectorize(x->dims());
 
     const auto x_md =
         dnnl::memory::desc(x_tz, platform::MKLDNNGetDataType<T>(), x->format());
@@ -947,7 +952,7 @@ class ActivationMKLDNNHandler
                        "5, or 6, but now the dimension size is",
                        in_x->dims().size()));
 
-    auto src_tz = framework::vectorize<int64_t>(in_x->dims());
+    auto src_tz = pten::vectorize<int64_t>(in_x->dims());
     auto src_fmt = src_tz.size() == 2 ? MKLDNNMemoryFormat::nc : in_x->format();
     auto md =
         dnnl::memory::desc(src_tz, platform::MKLDNNGetDataType<T>(), src_fmt);
@@ -980,14 +985,14 @@ class ActivationMKLDNNHandler
                                  : ctx.Attr<float>("max");
     }
 
-    auto diff_dst_tz = framework::vectorize<int64_t>(out_grad->dims());
+    auto diff_dst_tz = pten::vectorize<int64_t>(out_grad->dims());
 
     auto src_fmt =
         diff_dst_tz.size() == 2 ? MKLDNNMemoryFormat::nc : in_x->format();
     auto diff_fmt =
         diff_dst_tz.size() == 2 ? MKLDNNMemoryFormat::nc : out_grad->format();
 
-    auto dims = framework::vectorize(in_x->dims());
+    auto dims = pten::vectorize(in_x->dims());
     auto diff_dst_md = platform::MKLDNNMemDesc(
         dims, platform::MKLDNNGetDataType<T>(), diff_fmt);
     auto src_md = platform::MKLDNNMemDesc(

@@ -58,7 +58,7 @@ void SetupTensor(paddle::framework::LoDTensor* input,
 template <typename T>
 void SetupTensor(paddle::framework::LoDTensor* input,
                  paddle::framework::DDim dims, const std::vector<T>& data) {
-  CHECK_EQ(paddle::framework::product(dims), static_cast<int64_t>(data.size()));
+  CHECK_EQ(pten::product(dims), static_cast<int64_t>(data.size()));
   T* input_ptr = input->mutable_data<T>(dims, paddle::platform::CPUPlace());
   memcpy(input_ptr, data.data(), input->numel() * sizeof(T));
 }

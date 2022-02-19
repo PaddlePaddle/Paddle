@@ -32,7 +32,7 @@ void DiagonalKernel(const Context& dev_ctx,
   auto input_dim = input->dims().Get();
   auto input_dim_size = input->dims().size();
 
-  std::vector<int64_t> res_in = vectorize(framework::stride(input->dims()));
+  std::vector<int64_t> res_in = vectorize(pten::stride(input->dims()));
   DenseTensor input_stride_tensor;
   paddle::framework::TensorFromVector<int64_t>(
       res_in, dev_ctx, &input_stride_tensor);
@@ -43,7 +43,7 @@ void DiagonalKernel(const Context& dev_ctx,
   auto output_dim = output->dims().Get();
   auto output_dim_size = output->dims().size();
 
-  std::vector<int64_t> res_out = vectorize(framework::stride(output->dims()));
+  std::vector<int64_t> res_out = vectorize(pten::stride(output->dims()));
   DenseTensor output_stride_tensor;
   paddle::framework::TensorFromVector<int64_t>(
       res_out, dev_ctx, &output_stride_tensor);

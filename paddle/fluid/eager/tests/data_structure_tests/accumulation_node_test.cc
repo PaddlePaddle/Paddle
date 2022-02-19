@@ -29,8 +29,8 @@ using namespace egr;  // NOLINT
 
 TEST(AccumulationNode, Tensor) {
   // Construct Eager Tensor
-  pten::DenseTensorMeta meta = pten::DenseTensorMeta(
-      pten::DataType::FLOAT16, paddle::framework::make_ddim({1, 1}));
+  pten::DenseTensorMeta meta =
+      pten::DenseTensorMeta(pten::DataType::FLOAT16, pten::make_ddim({1, 1}));
   std::shared_ptr<pten::DenseTensor> dt0 = std::make_shared<pten::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
@@ -61,7 +61,7 @@ TEST(AccumulationNode, Tensor) {
   // AccumulationNode
   GradNodeAccumulation node = GradNodeAccumulation();
 
-  // Hook
+  // Hook, RetainGrad
   std::function<paddle::experimental::Tensor(
       const paddle::experimental::Tensor&)>
       hook = [&grad_et](const paddle::experimental::Tensor& t) {
@@ -88,4 +88,46 @@ TEST(AccumulationNode, Tensor) {
       std::dynamic_pointer_cast<pten::DenseTensor>(grad_et.impl())
           ->data<paddle::platform::float16>();
   CHECK_EQ(ret_grad_et_ptr[0], paddle::platform::float16(30.0f));
+
+  // Reduce Hook case 1: Call RegisterReduceHook and run operator()
+  VLOG(6) << "Test Reduce Hook";
+  auto reduce_hook_1 = [&](void) -> void {
+    auto* grad_et_ptr =
+        std::dynamic_pointer_cast<pten::DenseTensor>(grad_et.impl())
+            ->data<paddle::platform::float16>();
+    grad_et_ptr[0] = 36.0;
+    VLOG(6) << "Running Reduce Hook";
+  };
+
+  node.RegisterReduceHook(reduce_hook_1);
+
+  // operator()
+  paddle::experimental::Tensor _ret = node({{et0}})[0][0];
+
+  // Check operator() result, should be 36.0
+  auto* _ret_ptr = std::dynamic_pointer_cast<pten::DenseTensor>(_ret.impl())
+                       ->data<paddle::platform::float16>();
+  CHECK_EQ(_ret_ptr[0], paddle::platform::float16(36.0f));
+
+  // Check Retain Grad, should be 36.0
+  auto* _ret_grad_et_ptr =
+      std::dynamic_pointer_cast<pten::DenseTensor>(grad_et.impl())
+          ->data<paddle::platform::float16>();
+  CHECK_EQ(_ret_grad_et_ptr[0], paddle::platform::float16(36.0f));
+
+  // Reduce Hook case 2: Call RegisterReduceHook and ApplyReduceHooks directly
+  VLOG(6) << "Test Reduce Hook";
+  auto reduce_hook_2 = [&](void) -> void {
+    auto* ret_et0_ptr = std::dynamic_pointer_cast<pten::DenseTensor>(et0.impl())
+                            ->data<paddle::platform::float16>();
+    ret_et0_ptr[0] = 100.0;  // set to 100.0
+    VLOG(6) << "Running Reduce Hook";
+  };
+  node.RegisterReduceHook(reduce_hook_2);
+  node.ApplyReduceHooks();
+
+  // Check ApplyReduceHooks result
+  CHECK_EQ(std::dynamic_pointer_cast<pten::DenseTensor>(et0.impl())
+               ->data<paddle::platform::float16>()[0],
+           paddle::platform::float16(100.0f));
 }

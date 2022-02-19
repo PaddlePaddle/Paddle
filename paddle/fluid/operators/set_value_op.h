@@ -215,7 +215,7 @@ class SetValueKernel : public framework::OpKernel<T> {
         none_axes_cur++;
       }
 
-      slice_dims_for_assign = framework::make_ddim(slice_dims_with_none);
+      slice_dims_for_assign = pten::make_ddim(slice_dims_with_none);
     }
 
     auto place = ctx.GetPlace();
@@ -293,7 +293,7 @@ class SetValueKernel : public framework::OpKernel<T> {
           ctx, &slice_tensor, value_tensor, -1, SubFunctor<T>(), &slice_tensor);
     } else {
       Tensor value_t(in->dtype());
-      auto value_dims = framework::make_ddim(shape);
+      auto value_dims = pten::make_ddim(shape);
       CheckIsDimsMatch(slice_dims_for_assign, value_dims);
 
       value_t.mutable_data<T>(value_dims, place);
@@ -405,7 +405,7 @@ class SetValueGradKernel : public framework::OpKernel<T> {
                         decrease_axis, out_dims_vector.data(), axes.size(),
                         false);
 
-    framework::DDim out_dims(framework::make_ddim(out_dims_vector));
+    framework::DDim out_dims(pten::make_ddim(out_dims_vector));
 
     std::vector<int> reverse_vector(starts.size(), 0);
     StridedSliceFunctor(starts.data(), ends.data(), steps.data(), axes.data(),
