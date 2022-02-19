@@ -80,6 +80,7 @@ void BindDistributed(py::module *m) {
                py::arg("tensor"), py::arg("source_rank"),
                py::call_guard<py::gil_scoped_release>());
 
+#if defined(PADDLE_WITH_NCCL)
   py::class_<distributed::ProcessGroupNCCL,
              std::shared_ptr<distributed::ProcessGroupNCCL>>(
       *m, "ProcessGroupNCCL", ProcessGroup)
@@ -87,13 +88,14 @@ void BindDistributed(py::module *m) {
            py::call_guard<py::gil_scoped_release>());
 
   py::class_<distributed::ProcessGroup::Task,
-             std::shared_ptr<distributed::ProcessGroup::Task>>(*m, "work")
+             std::shared_ptr<distributed::ProcessGroup::Task>>(*m, "task")
       .def("is_completed", &distributed::ProcessGroup::Task::IsCompleted)
       .def("wait", &distributed::ProcessGroup::Task::Wait,
            py::arg("timeout") = kWaitTimeout,
            py::call_guard<py::gil_scoped_release>())
       .def("synchronize", &distributed::ProcessGroup::Task::Synchronize,
            py::call_guard<py::gil_scoped_release>());
+#endif
 
   // define parallel strategy, it will be removed
   py::class_<distributed::ProcessGroupStrategy> pg_strategy(
