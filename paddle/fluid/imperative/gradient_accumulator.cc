@@ -22,12 +22,13 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/imperative/layer.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_XPU
 #include "xpu/refactor/math.h"
@@ -85,7 +86,7 @@ class TensorAddFunctor : public boost::static_visitor<> {
   void operator()(const platform::CPUPlace& place) const {
     platform::CPUDeviceContext* ctx = dynamic_cast<platform::CPUDeviceContext*>(
         platform::DeviceContextPool::Instance().Get(place));
-    auto blas = operators::math::GetBlas<platform::CPUDeviceContext, T>(*ctx);
+    auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(*ctx);
     blas.AXPY(numel_, 1., x_, y_);
   }
 
@@ -117,7 +118,7 @@ class TensorAddFunctor : public boost::static_visitor<> {
     platform::CUDADeviceContext* ctx =
         dynamic_cast<platform::CUDADeviceContext*>(
             platform::DeviceContextPool::Instance().Get(place));
-    auto blas = operators::math::GetBlas<platform::CUDADeviceContext, T>(*ctx);
+    auto blas = pten::funcs::GetBlas<platform::CUDADeviceContext, T>(*ctx);
     blas.AXPY(numel_, 1., x_, y_);
   }
 #else
@@ -300,13 +301,10 @@ void TensorAdd(const VarType& src, VarType* dst) {
                         "should be equal, Otherwise, the calculation results "
                         "will be incorrect."));
 
-#ifdef PADDLE_WITH_XPU
   // if src and dst are in different place, copy dst to src's place
   if (dst_tensor->place() != place) {
     paddle::framework::TensorCopySync(*dst_tensor, place, dst_tensor);
   }
-#endif
-
 #define PADDLE_TENSOR_ADD(cpp_type)                                  \
   if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) { \
     TensorAddFunctor<cpp_type> func(                                 \
@@ -386,9 +384,9 @@ void TensorAdd(const VarType& src, VarType* dst) {
     operators::MLUCnnlTensorDesc src_tensor_desc(src_tensor);
     operators::MLUCnnlTensorDesc dst_tensor_desc(*dst_tensor);
     PADDLE_ENFORCE_MLU_SUCCESS(cnnlAssignAdd(
-        dev_ctx->cnnl_handle(), static_cast<void*>(&alpha),
+        dev_ctx->cnnl_handle(), static_cast<const void*>(&alpha),
         src_tensor_desc.get(), operators::GetBasePtr(&src_tensor), nullptr, 0,
-        static_cast<void*>(&beta), dst_tensor_desc.get(),
+        static_cast<const void*>(&beta), dst_tensor_desc.get(),
         operators::GetBasePtr(dst_tensor)));
     return;
   }
@@ -420,6 +418,22 @@ void TensorAdd(const VarType& src, VarType* dst) {
 #endif
     } else if (platform::is_cpu_place(place)) {
       return TensorAddImpl<platform::CPUDeviceContext, platform::float16>(
+          src_tensor, dst_tensor, place);
+    }
+  }
+  if (data_type == framework::proto::VarType::BF16) {
+    if (platform::is_gpu_place(place)) {
+#if defined(PADDLE_WITH_CUDA)
+      return TensorAddImpl<platform::CUDADeviceContext, platform::bfloat16>(
+          src_tensor, dst_tensor, place);
+#else
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Gradient accumulation of data type (%s) on place (%s) is not "
+          "supported in imperative mode",
+          framework::DataTypeToString(data_type), place));
+#endif
+    } else if (platform::is_cpu_place(place)) {
+      return TensorAddImpl<platform::CPUDeviceContext, platform::bfloat16>(
           src_tensor, dst_tensor, place);
     }
   }

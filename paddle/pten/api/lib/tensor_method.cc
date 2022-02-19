@@ -12,16 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/kernels/impl/sign_kernel_impl.h"
-#include "paddle/pten/kernels/sign_kernel.h"
+#include "paddle/pten/api/include/tensor.h"
 
-#include "paddle/pten/backends/gpu/gpu_context.h"
-#include "paddle/pten/core/kernel_registry.h"
+namespace paddle {
+namespace experimental {
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/pten/common/float16.h"
+// declare cast api
+Tensor cast(const Tensor &x, DataType out_dtype);
 
-using float16 = pten::dtype::float16;
+Tensor Tensor::cast(DataType target_type) const {
+  return experimental::cast(*this, target_type);
+}
 
-PT_REGISTER_KERNEL(
-    sign, GPU, ALL_LAYOUT, pten::SignKernel, float, double, float16) {}
+}  // namespace experimental
+}  // namespace paddle

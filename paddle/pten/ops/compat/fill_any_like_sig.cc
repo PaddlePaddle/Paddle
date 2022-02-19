@@ -18,7 +18,7 @@ namespace pten {
 
 KernelSignature FillAnyLikeOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("full_like", {}, {"value"}, {"Out"});
+  return KernelSignature("full_like", {"X"}, {"value", "dtype"}, {"Out"});
 }
 
 }  // namespace pten

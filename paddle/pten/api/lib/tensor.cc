@@ -58,9 +58,6 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-// declare cast api
-Tensor cast(const Tensor &x, DataType out_dtype);
-
 /////// Tensor Methods ////////
 
 /* Part 1: Construction and destruction methods */
@@ -252,10 +249,13 @@ Tensor::data<pten::dtype::bfloat16>() const;
 
 template <typename T>
 T *Tensor::data() {
-  PADDLE_THROW(pten::errors::Unimplemented(
-      "It is not currently supported to directly obtain the modifiable data "
-      "address through the tensor::data<T>() method, please use the "
-      "tensor::mutable_data<T>() method."));
+  if (is_dense_tensor()) {
+    return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->data<T>();
+  } else if (pten::SelectedRows::classof(impl_.get())) {
+    return std::dynamic_pointer_cast<pten::SelectedRows>(impl_)
+        ->mutable_value()
+        ->data<T>();
+  }
   return nullptr;
 }
 
@@ -362,9 +362,6 @@ void Tensor::copy_(const Tensor &src, bool blocking) {
   auto copy_tensor =
       src.copy_to(pten::TransToPtenBackend(src.inner_place()), blocking);
   set_impl(copy_tensor.impl());
-}
-Tensor Tensor::cast(DataType target_type) const {
-  return experimental::cast(*this, target_type);
 }
 
 /* Part 6: Status utils methods */

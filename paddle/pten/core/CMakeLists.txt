@@ -23,7 +23,7 @@ cc_library(sparse_csr_tensor SRCS sparse_csr_tensor.cc DEPS dense_tensor tensor_
 
 cc_library(meta_tensor SRCS meta_tensor.cc DEPS tensor_base tensor_meta dense_tensor)
 cc_library(infermeta_utils SRCS infermeta_utils.cc DEPS meta_tensor)
-cc_library(selected_rows SRCS selected_rows.cc DEPS dense_tensor mixed_vector pten_enforce ddim)
+cc_library(selected_rows SRCS selected_rows_impl.cc DEPS dense_tensor mixed_vector pten_enforce ddim)
 
 # Will remove once we implemented MKLDNN_Tensor
 if(WITH_MKLDNN)
