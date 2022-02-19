@@ -21,7 +21,7 @@
 #include "iomanip"
 #include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
 #include "paddle/fluid/framework/archive.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/fluid/platform/profiler.h"
 namespace paddle {
 namespace distributed {
 
