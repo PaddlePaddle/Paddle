@@ -13,10 +13,11 @@
 // limitations under the License.
 
 #pragma once
+#include <cstddef>
 #include <vector>
 
 namespace pten {
-using LoD = std::vector<std::vector<size_t>>;
+using LoD = std::vector<std::vector<std::size_t>>;
 
 void AppendLoD(LoD* lod, const LoD& lod_length);
 
