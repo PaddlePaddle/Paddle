@@ -13,7 +13,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/detail/gru_gpu_kernel.h"
 #include "paddle/fluid/operators/math/detail/gru_kernel.h"
 #include "paddle/fluid/operators/math/gru_compute.h"
-#include "paddle/pten/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {

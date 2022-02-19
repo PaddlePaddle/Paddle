@@ -16,7 +16,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "gflags/gflags.h"
-#include "paddle/pten/backends/dynload/dynamic_loader.h"
+#include "paddle/phi/backends/dynload/dynamic_loader.h"
 
 namespace paddle {
 namespace platform {

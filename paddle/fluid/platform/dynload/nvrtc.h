@@ -17,7 +17,7 @@ limitations under the License. */
 #include <nvrtc.h>
 #include <mutex>  // NOLINT
 
-#include "paddle/pten/backends/dynload/nvrtc.h"
+#include "paddle/phi/backends/dynload/nvrtc.h"
 
 namespace paddle {
 namespace platform {

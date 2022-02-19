@@ -17,7 +17,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "paddle/pten/core/ddim.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace operators {

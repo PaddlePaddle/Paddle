@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/platform/complex.h"
-#include "paddle/pten/core/utils/array.h"
-#include "paddle/pten/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/core/utils/array.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
 namespace paddle {
 namespace operators {

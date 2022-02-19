@@ -129,9 +129,9 @@ def header_include():
     return """
 #include <tuple>
 
-#include "paddle/pten/api/include/tensor.h"
-#include "paddle/pten/common/scalar.h"
-#include "paddle/pten/common/scalar_array.h"
+#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/common/scalar_array.h"
 """
 
 
@@ -142,14 +142,14 @@ def source_include(header_file_path):
 
 #include "glog/logging.h"
 
-#include "paddle/pten/api/lib/api_registry.h"
-#include "paddle/pten/api/lib/api_utils.h"
-#include "paddle/pten/api/lib/data_transform.h"
-#include "paddle/pten/api/lib/kernel_dispatch.h"
-#include "paddle/pten/api/lib/utils/storage.h"
-#include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/api/include/api.h"
-#include "paddle/pten/infermeta/backward.h"
+#include "paddle/phi/api/lib/api_registry.h"
+#include "paddle/phi/api/lib/api_utils.h"
+#include "paddle/phi/api/lib/data_transform.h"
+#include "paddle/phi/api/lib/kernel_dispatch.h"
+#include "paddle/phi/api/lib/utils/storage.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/api/include/api.h"
+#include "paddle/phi/infermeta/backward.h"
 """
 
 
@@ -179,7 +179,7 @@ def generate_backward_api(backward_yaml_path, header_file_path,
     header_file.write(header_include())
     header_file.write(namespace[0])
 
-    include_header_file = "paddle/pten/api/backward/backward_api.h"
+    include_header_file = "paddle/phi/api/backward/backward_api.h"
     source_file.write(source_include(include_header_file))
     source_file.write(namespace[0])
 
@@ -205,12 +205,12 @@ def main():
     parser.add_argument(
         '--backward_header_path',
         help='output of generated backward header code file',
-        default='paddle/pten/api/backward/backward_api.h')
+        default='paddle/phi/api/backward/backward_api.h')
 
     parser.add_argument(
         '--backward_source_path',
         help='output of generated backward source code file',
-        default='paddle/pten/api/lib/backward_api.cc')
+        default='paddle/phi/api/lib/backward_api.cc')
 
     options = parser.parse_args()
 

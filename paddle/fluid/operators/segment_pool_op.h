@@ -18,8 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/segment_pooling.h"
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/pten/common/place.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {

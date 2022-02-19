@@ -21,7 +21,7 @@
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/grad_tensor_holder.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
-#include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/phi/api/lib/utils/allocator.h"
 
 namespace egr {
 

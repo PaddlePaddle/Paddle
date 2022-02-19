@@ -17,7 +17,7 @@ limitations under the License. */
 #include <hip/hip_runtime.h>
 #include <mutex>  // NOLINT
 
-#include "paddle/pten/backends/dynload/rocm_driver.h"
+#include "paddle/phi/backends/dynload/rocm_driver.h"
 
 namespace paddle {
 namespace platform {

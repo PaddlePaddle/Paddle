@@ -24,10 +24,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_kernel_info_helper.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/pten/api/ext/op_kernel_info.h"
-#include "paddle/pten/core/compat/convert_utils.h"
-#include "paddle/pten/core/kernel_context.h"
-#include "paddle/pten/core/kernel_registry.h"
+#include "paddle/phi/api/ext/op_kernel_info.h"
+#include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/kernel_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace paddle {
 

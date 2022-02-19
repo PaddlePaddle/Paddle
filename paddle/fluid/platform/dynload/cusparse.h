@@ -17,7 +17,7 @@ limitations under the License. */
 #include <cusparse.h>
 #include <mutex>  // NOLINT
 
-#include "paddle/pten/backends/dynload/cusparse.h"
+#include "paddle/phi/backends/dynload/cusparse.h"
 
 namespace paddle {
 namespace platform {

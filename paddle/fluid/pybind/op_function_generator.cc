@@ -33,7 +33,7 @@
 #endif
 
 // pten
-#include "paddle/pten/kernels/declarations.h"
+#include "paddle/phi/kernels/declarations.h"
 
 // NOTE(pangyoki): Inplace OP with duplicable input.
 // The set includes inplace ops that have duplicable input.

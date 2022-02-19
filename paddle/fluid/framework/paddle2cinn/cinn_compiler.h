@@ -25,7 +25,7 @@
 #include "paddle/fluid/framework/paddle2cinn/cinn_cache_key.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/pten/core/utils/rw_lock.h"
+#include "paddle/phi/core/utils/rw_lock.h"
 
 namespace cinn {
 namespace common {

@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/common/float16.h"
+#include "paddle/phi/common/float16.h"
 
 namespace paddle {
 namespace platform {

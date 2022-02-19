@@ -16,8 +16,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/solve_op.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/pten/kernels/funcs/blas/blas.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace platform {

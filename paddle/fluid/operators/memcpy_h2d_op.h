@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/pten/core/stream.h"
+#include "paddle/phi/core/stream.h"
 
 namespace pten {
 class DenseTensor;

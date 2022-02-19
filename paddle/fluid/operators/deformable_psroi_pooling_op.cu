@@ -31,8 +31,8 @@
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/deformable_psroi_pooling_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
-#include "paddle/pten/kernels/funcs/blas/blas.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {

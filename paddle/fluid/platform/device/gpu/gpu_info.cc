@@ -40,7 +40,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/split.h"
 
-#include "paddle/pten/backends/gpu/gpu_info.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 
 DECLARE_double(fraction_of_gpu_memory_to_use);
 DECLARE_uint64(initial_gpu_memory_in_mb);

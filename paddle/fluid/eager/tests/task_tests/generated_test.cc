@@ -28,7 +28,7 @@
 #include "paddle/fluid/imperative/tracer.h"
 
 #include "paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h"
-#include "paddle/pten/core/kernel_registry.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace egr {
 

@@ -19,7 +19,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/pten/kernels/funcs/concat_funcs.h"
+#include "paddle/phi/kernels/funcs/concat_funcs.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include <paddle/fluid/platform/mkldnn_helper.h>

@@ -16,7 +16,7 @@ limitations under the License. */
 #include <curand.h>
 #include <mutex>  // NOLINT
 
-#include "paddle/pten/backends/dynload/curand.h"
+#include "paddle/phi/backends/dynload/curand.h"
 
 namespace paddle {
 namespace platform {

@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/dynload/cuda_driver.h"
-#include "paddle/pten/backends/dynload/cuda_driver.h"
+#include "paddle/phi/backends/dynload/cuda_driver.h"
 
 namespace paddle {
 namespace platform {

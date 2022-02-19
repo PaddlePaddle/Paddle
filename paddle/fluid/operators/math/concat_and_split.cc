@@ -14,12 +14,12 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/concat_and_split.h"
 
-#include "paddle/pten/kernels/cpu/concat_and_split.h"
+#include "paddle/phi/kernels/cpu/concat_and_split.h"
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #endif
-#include "paddle/pten/common/bfloat16.h"
-#include "paddle/pten/common/float16.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
 
 namespace pten {
 class DenseTensor;

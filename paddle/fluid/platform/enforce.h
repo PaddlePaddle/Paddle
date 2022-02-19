@@ -68,34 +68,34 @@ limitations under the License. */
 #include "paddle/fluid/platform/variant.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/to_string.h"
-#include "paddle/pten/backends/dynload/port.h"
+#include "paddle/phi/backends/dynload/port.h"
 
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/pten/backends/dynload/cublas.h"
-#include "paddle/pten/backends/dynload/cudnn.h"
-#include "paddle/pten/backends/dynload/curand.h"
-#include "paddle/pten/backends/dynload/cusolver.h"
+#include "paddle/phi/backends/dynload/cublas.h"
+#include "paddle/phi/backends/dynload/cudnn.h"
+#include "paddle/phi/backends/dynload/curand.h"
+#include "paddle/phi/backends/dynload/cusolver.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include <error.h>
-#include "paddle/pten/backends/dynload/nccl.h"
+#include "paddle/phi/backends/dynload/nccl.h"
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_CUDA
 
 #ifdef PADDLE_WITH_HIP
-#include "paddle/pten/backends/dynload/hipfft.h"
-#include "paddle/pten/backends/dynload/hiprand.h"
-#include "paddle/pten/backends/dynload/miopen.h"
-#include "paddle/pten/backends/dynload/rocblas.h"
+#include "paddle/phi/backends/dynload/hipfft.h"
+#include "paddle/phi/backends/dynload/hiprand.h"
+#include "paddle/phi/backends/dynload/miopen.h"
+#include "paddle/phi/backends/dynload/rocblas.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
 #include <error.h>  // NOLINT
-#include "paddle/pten/backends/dynload/rccl.h"
+#include "paddle/phi/backends/dynload/rccl.h"
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_HIP
 
 // Note: these headers for simplify demangle type string
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/imperative/type_defs.h"
-#include "paddle/pten/core/enforce.h"
+#include "paddle/phi/core/enforce.h"
 // Note: this header for simplify HIP and CUDA type string
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"

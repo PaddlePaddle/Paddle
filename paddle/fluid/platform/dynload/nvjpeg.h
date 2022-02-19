@@ -14,7 +14,7 @@ limitations under the License. */
 #include <nvjpeg.h>
 #include <mutex>  // NOLINT
 
-#include "paddle/pten/backends/dynload/nvjpeg.h"
+#include "paddle/phi/backends/dynload/nvjpeg.h"
 
 namespace paddle {
 namespace platform {

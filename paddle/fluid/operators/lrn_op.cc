@@ -16,8 +16,8 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/pten/kernels/funcs/blas/blas.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif

@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/kernel/pten/infershaped/infershaped_kernel_launcher.h"
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/infrt/kernel/phi/infershaped/infershaped_kernel_launcher.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace infrt {
 namespace kernel {

@@ -16,7 +16,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/elementwise/test_elementwise_op_grad_grad.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/pten/core/ddim.h"
+#include "paddle/phi/core/ddim.h"
 
 USE_OP_ITSELF(elementwise_add);
 

@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <mutex>  // NOLINT
 
-#include "paddle/pten/backends/dynload/warpctc.h"
+#include "paddle/phi/backends/dynload/warpctc.h"
 
 namespace paddle {
 namespace platform {

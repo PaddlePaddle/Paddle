@@ -23,8 +23,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/squared_l2_norm.h"
 #include "paddle/fluid/operators/tensor_to_string.h"
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/pten/kernels/funcs/algorithm.h"
-#include "paddle/pten/kernels/funcs/eigen/extensions.h"
+#include "paddle/phi/kernels/funcs/algorithm.h"
+#include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
 namespace paddle {
 namespace operators {

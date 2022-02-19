@@ -26,12 +26,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_kernel_info_helper.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/pten/api/lib/utils/allocator.h"
-#include "paddle/pten/api/lib/utils/storage.h"
-#include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/kernel_context.h"
-#include "paddle/pten/core/kernel_factory.h"
-#include "paddle/pten/infermeta/binary.h"
+#include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/api/lib/utils/storage.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_context.h"
+#include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/infermeta/binary.h"
 #include "paddle/utils/small_vector.h"
 
 #ifdef _LINUX

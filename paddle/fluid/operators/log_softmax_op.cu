@@ -16,8 +16,8 @@
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/log_softmax_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
-#include "paddle/pten/kernels/funcs/elementwise_functor.h"
-#include "paddle/pten/kernels/funcs/functors.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/funcs/functors.h"
 
 namespace paddle {
 namespace operators {

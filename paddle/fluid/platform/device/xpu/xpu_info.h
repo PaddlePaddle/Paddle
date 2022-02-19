@@ -13,7 +13,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 #include <vector>
 #include "paddle/fluid/platform/place.h"
-#include "paddle/pten/backends/xpu/xpu_info.h"
+#include "paddle/phi/backends/xpu/xpu_info.h"
 
 namespace paddle {
 namespace platform {

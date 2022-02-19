@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/pten/core/stream.h"
+#include "paddle/phi/core/stream.h"
 
 namespace paddle {
 namespace memory {

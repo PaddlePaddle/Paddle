@@ -27,10 +27,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/pten/core/ddim.h"
-#include "paddle/pten/core/stream.h"
+#include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/stream.h"
 
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
 

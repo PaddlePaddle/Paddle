@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/pten/common/bfloat16.h"
+#include "paddle/phi/common/bfloat16.h"
 
 namespace paddle {
 namespace platform {

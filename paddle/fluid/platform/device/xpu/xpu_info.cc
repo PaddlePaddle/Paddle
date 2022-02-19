@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 
-#include "paddle/pten/backends/xpu/xpu_info.h"
+#include "paddle/phi/backends/xpu/xpu_info.h"
 
 namespace paddle {
 namespace platform {

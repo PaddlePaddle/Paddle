@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <hip/hiprtc.h>
 #include <mutex>  // NOLINT
-#include "paddle/pten/backends/dynload/hiprtc.h"
+#include "paddle/phi/backends/dynload/hiprtc.h"
 
 namespace paddle {
 namespace platform {

@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/sequence2batch.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/transform.h"
-#include "paddle/pten/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {

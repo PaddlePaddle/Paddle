@@ -21,10 +21,10 @@
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
 #include "paddle/fluid/imperative/tracer.h"
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 #include "paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h"
-#include "paddle/pten/core/kernel_registry.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace egr {
 

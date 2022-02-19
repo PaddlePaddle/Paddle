@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 #include "xpu/refactor/math.h"
 
-#include "paddle/pten/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 
 namespace paddle {
 namespace operators {

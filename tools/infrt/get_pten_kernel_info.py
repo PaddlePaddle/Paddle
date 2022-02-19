@@ -41,7 +41,7 @@ def parse_args():
         "--generate_file",
         type=str,
         required=True,
-        default="../paddle/infrt/kernel/pten/infershaped/infershaped_kernel_launchers.cc",
+        default="../paddle/infrt/kernel/phi/infershaped/infershaped_kernel_launchers.cc",
         help="generated file.")
     args = parser.parse_args()
     return args
@@ -91,12 +91,12 @@ def gen_warn_info():
 
 def gen_include_headers():
     return """
-#include "paddle/infrt/kernel/pten/infershaped/infershaped_kernel_launchers.h"
-#include "paddle/infrt/kernel/pten/infershaped/pten_kernel_launcher.h"
-#include "paddle/pten/backends/all_context.h"
-#include "paddle/pten/include/kernels.h"
-#include "paddle/pten/include/infermeta.h"
-#include "paddle/pten/infermeta/generated.h"
+#include "paddle/infrt/kernel/phi/infershaped/infershaped_kernel_launchers.h"
+#include "paddle/infrt/kernel/phi/infershaped/pten_kernel_launcher.h"
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/include/kernels.h"
+#include "paddle/phi/include/infermeta.h"
+#include "paddle/phi/infermeta/generated.h"
 """
 
 

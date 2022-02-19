@@ -20,7 +20,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/utils.h"
-#include "paddle/pten/kernels/split_kernel.h"
+#include "paddle/phi/kernels/split_kernel.h"
 namespace paddle {
 namespace operators {
 static inline std::vector<framework::DDim> UpdateOutsDims(

@@ -20,9 +20,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 #include "paddle/fluid/operators/solve_op.h"
 #include "paddle/fluid/operators/tril_triu_op.h"
-#include "paddle/pten/core/ddim.h"
-#include "paddle/pten/kernels/funcs/blas/blas.h"
-#include "paddle/pten/kernels/funcs/complex_functors.h"
+#include "paddle/phi/core/ddim.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/complex_functors.h"
 
 namespace paddle {
 namespace operators {

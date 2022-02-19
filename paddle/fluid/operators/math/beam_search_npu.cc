@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/beam_search.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
-#include "paddle/pten/common/data_type.h"
+#include "paddle/phi/common/data_type.h"
 
 namespace pten {
 class DenseTensor;

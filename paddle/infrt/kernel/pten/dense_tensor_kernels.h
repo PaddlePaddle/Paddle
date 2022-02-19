@@ -16,7 +16,7 @@
 
 #include "paddle/infrt/backends/host/pten_allocator.h"
 #include "paddle/infrt/host_context/kernel_utils.h"
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace infrt {
 namespace kernel {

@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/fill_any_like_op.h"
 
-#include "paddle/pten/kernels/full_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace paddle {
 namespace operators {

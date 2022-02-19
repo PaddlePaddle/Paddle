@@ -19,7 +19,7 @@ limitations under the License. */
 #include <mutex>  // NOLINT
 #include <type_traits>
 
-#include "paddle/pten/backends/dynload/rocblas.h"
+#include "paddle/phi/backends/dynload/rocblas.h"
 
 namespace paddle {
 namespace platform {

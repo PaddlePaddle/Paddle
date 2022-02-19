@@ -11,7 +11,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 
 namespace infrt {
 namespace backends {

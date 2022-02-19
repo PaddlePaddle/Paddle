@@ -17,8 +17,8 @@
 #include <vector>
 
 #include "paddle/fluid/framework/infershape_utils.h"
-#include "paddle/pten/core/infermeta_utils.h"
-#include "paddle/pten/infermeta/backward.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
 
 namespace paddle {
 namespace operators {

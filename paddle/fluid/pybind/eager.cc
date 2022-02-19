@@ -24,9 +24,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
-#include "paddle/pten/common/data_type.h"
-#include "paddle/pten/core/compat/convert_utils.h"
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "pybind11/detail/internals.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
@@ -34,8 +34,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/pybind/eager_op_function_impl.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-#include "paddle/pten/api/lib/utils/storage.h"
-#include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/phi/api/lib/utils/storage.h"
+#include "paddle/phi/api/lib/utils/tensor_utils.h"
 namespace paddle {
 namespace pybind {
 

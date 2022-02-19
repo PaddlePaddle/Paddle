@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/slice_utils.h"
 #include "paddle/fluid/operators/utils.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {

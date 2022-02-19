@@ -17,7 +17,7 @@ limitations under the License. */
 #include <cuda.h>
 #include <mutex>  // NOLINT
 
-#include "paddle/pten/backends/dynload/cuda_driver.h"
+#include "paddle/phi/backends/dynload/cuda_driver.h"
 
 namespace paddle {
 namespace platform {

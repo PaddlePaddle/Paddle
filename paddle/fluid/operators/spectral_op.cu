@@ -24,7 +24,7 @@
 #include "paddle/fluid/operators/spectral_op.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/pten/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/complex_functors.h"
 
 namespace paddle {
 namespace operators {

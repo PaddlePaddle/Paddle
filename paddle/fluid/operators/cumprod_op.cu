@@ -16,7 +16,7 @@
 #include "paddle/fluid/operators/cumprod_op.h"
 #include "paddle/fluid/operators/math/inclusive_scan.h"
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/pten/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/complex_functors.h"
 
 namespace paddle {
 namespace operators {

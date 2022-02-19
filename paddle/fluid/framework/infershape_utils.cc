@@ -20,13 +20,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/pten/core/compat/arg_map_context.h"
-#include "paddle/pten/core/compat/convert_utils.h"
-#include "paddle/pten/core/compat/op_utils.h"
-#include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/infermeta_utils.h"
-#include "paddle/pten/core/meta_tensor.h"
-#include "paddle/pten/core/tensor_utils.h"
+#include "paddle/phi/core/compat/arg_map_context.h"
+#include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {
 namespace framework {

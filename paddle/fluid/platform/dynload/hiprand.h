@@ -17,7 +17,7 @@ limitations under the License. */
 
 #include <mutex>  // NOLINT
 
-#include "paddle/pten/backends/dynload/hiprand.h"
+#include "paddle/phi/backends/dynload/hiprand.h"
 
 namespace paddle {
 namespace platform {

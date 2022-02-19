@@ -18,8 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/transform.h"
 
-#include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/kernels/cast_kernel.h"
+#include "paddle/phi/api/lib/utils/tensor_utils.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 
 namespace paddle {
 namespace operators {

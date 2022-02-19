@@ -18,7 +18,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
-#include "paddle/pten/core/utils/rw_lock.h"
+#include "paddle/phi/core/utils/rw_lock.h"
 
 // When in inference scenario, the scopes will not be written by two threads in
 // a mean time, but a scope may be read by multiple threads concurrently, and

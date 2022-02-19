@@ -36,7 +36,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-#include "paddle/pten/kernels/funcs/cuda_kernel_config.h"
+#include "paddle/phi/kernels/funcs/cuda_kernel_config.h"
 
 namespace paddle {
 namespace operators {

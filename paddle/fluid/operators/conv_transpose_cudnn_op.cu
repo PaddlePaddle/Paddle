@@ -22,7 +22,7 @@ limitations under the License. */
 #endif
 #include "paddle/fluid/operators/conv_transpose_op.h"
 #include "paddle/fluid/operators/math/padding.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {

@@ -20,7 +20,7 @@
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/layer.h"
-#include "paddle/pten/api/include/tensor.h"
+#include "paddle/phi/api/include/tensor.h"
 
 namespace paddle {
 namespace imperative {

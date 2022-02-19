@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/cusparse.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/pten/backends/gpu/gpu_decls.h"
+#include "paddle/phi/backends/gpu/gpu_decls.h"
 
 namespace paddle {
 namespace platform {

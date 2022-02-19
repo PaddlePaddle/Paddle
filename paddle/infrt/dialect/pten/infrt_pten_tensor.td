@@ -2,7 +2,7 @@
 #else
 #define PTEN_TENSOR
 
-include "paddle/infrt/dialect/pten/infrt_pten_base.td"
+include "paddle/infrt/dialect/phi/infrt_pten_base.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "mlir/IR/OpBase.td"
 include "paddle/infrt/dialect/infrt_base.td"

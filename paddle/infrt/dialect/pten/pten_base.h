@@ -19,11 +19,11 @@
 
 #include <string>
 
-#include "paddle/infrt/dialect/pten/infrt_pten_base.h.inc"
-#include "paddle/infrt/dialect/pten/infrt_pten_baseDialect.h.inc"
+#include "paddle/infrt/dialect/phi/infrt_pten_base.h.inc"
+#include "paddle/infrt/dialect/phi/infrt_pten_baseDialect.h.inc"
 
 #define GET_TYPEDEF_CLASSES
-#include "paddle/infrt/dialect/pten/infrt_pten_baseTypes.h.inc"
+#include "paddle/infrt/dialect/phi/infrt_pten_baseTypes.h.inc"
 
 namespace infrt {
 namespace pten {}  // namespace pten

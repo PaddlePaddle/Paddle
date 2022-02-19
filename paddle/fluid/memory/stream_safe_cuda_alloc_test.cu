@@ -30,7 +30,7 @@
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/pten/core/stream.h"
+#include "paddle/phi/core/stream.h"
 
 namespace paddle {
 namespace memory {

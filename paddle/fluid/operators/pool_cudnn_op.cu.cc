@@ -15,7 +15,7 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/pool_op.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/operator.h"

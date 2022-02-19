@@ -18,7 +18,7 @@ limitations under the License. */
 #include <miopen/miopen.h>
 #include <miopen/version.h>
 #include <mutex>  // NOLINT
-#include "paddle/pten/backends/dynload/miopen.h"
+#include "paddle/phi/backends/dynload/miopen.h"
 
 namespace paddle {
 namespace platform {

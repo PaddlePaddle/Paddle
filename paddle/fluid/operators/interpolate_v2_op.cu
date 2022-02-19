@@ -16,7 +16,7 @@
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/fast_divmod.h"
-#include "paddle/pten/kernels/funcs/math_cuda_utils.h"
+#include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 
 namespace paddle {
 namespace operators {

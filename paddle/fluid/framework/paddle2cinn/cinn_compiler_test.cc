@@ -36,7 +36,7 @@
 #include "paddle/fluid/operators/cinn/cinn_launch_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/pten/core/ddim.h"
+#include "paddle/phi/core/ddim.h"
 
 DECLARE_string(allow_cinn_ops);
 DECLARE_string(deny_cinn_ops);

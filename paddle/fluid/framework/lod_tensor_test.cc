@@ -16,7 +16,7 @@
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/pten/core/lod_utils.h"
+#include "paddle/phi/core/lod_utils.h"
 
 namespace paddle {
 namespace framework {

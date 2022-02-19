@@ -17,7 +17,7 @@
 #include <memory>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/pten/kernels/funcs/algorithm.h"
+#include "paddle/phi/kernels/funcs/algorithm.h"
 
 namespace paddle {
 namespace operators {

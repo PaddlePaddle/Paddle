@@ -19,9 +19,9 @@
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/utils.h"
 
-#include "paddle/pten/api/all.h"
-#include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/tensor_meta.h"
+#include "paddle/phi/api/all.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/tensor_meta.h"
 
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"

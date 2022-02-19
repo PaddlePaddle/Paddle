@@ -29,7 +29,7 @@
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/operators/reader/py_reader.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/pten/core/ddim.h"
+#include "paddle/phi/core/ddim.h"
 #include "pybind11/stl.h"
 
 PADDLE_DEFINE_EXPORTED_bool(

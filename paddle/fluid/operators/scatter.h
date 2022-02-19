@@ -19,8 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/pten/core/ddim.h"
-#include "paddle/pten/kernels/funcs/blas/blas.h"
+#include "paddle/phi/core/ddim.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "unordered_set"
 
 namespace paddle {

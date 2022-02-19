@@ -18,7 +18,7 @@ limitations under the License. */
 #include <unordered_map>
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {

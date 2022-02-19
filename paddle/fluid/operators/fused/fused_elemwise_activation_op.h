@@ -19,9 +19,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-#include "paddle/pten/kernels/funcs/compound_functors.h"
-#include "paddle/pten/kernels/funcs/elementwise_functor.h"
-#include "paddle/pten/kernels/funcs/functors.h"
+#include "paddle/phi/kernels/funcs/compound_functors.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/funcs/functors.h"
 
 namespace paddle {
 namespace operators {

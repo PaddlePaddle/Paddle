@@ -18,7 +18,7 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <mutex>  // NOLINT
 
-#include "paddle/pten/backends/dynload/cudnn.h"
+#include "paddle/phi/backends/dynload/cudnn.h"
 
 namespace paddle {
 namespace platform {

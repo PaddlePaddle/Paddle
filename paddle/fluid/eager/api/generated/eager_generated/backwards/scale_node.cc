@@ -16,7 +16,7 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 
-#include "paddle/pten/kernels/scale_kernel.h"
+#include "paddle/phi/kernels/scale_kernel.h"
 
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"

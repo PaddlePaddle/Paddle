@@ -17,7 +17,7 @@ limitations under the License. */
 #include <cusolverDn.h>
 #include <mutex>  // NOLINT
 
-#include "paddle/pten/backends/dynload/cusolver.h"
+#include "paddle/phi/backends/dynload/cusolver.h"
 
 namespace paddle {
 namespace platform {

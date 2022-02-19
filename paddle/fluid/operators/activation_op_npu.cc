@@ -19,7 +19,7 @@ limitations under the Licnse. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
-#include "paddle/pten/core/ddim.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace operators {

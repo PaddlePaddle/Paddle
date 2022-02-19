@@ -16,7 +16,7 @@
 #include "gtest/gtest.h"
 
 #include "paddle/fluid/eager/eager_tensor.h"
-#include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/phi/api/lib/utils/allocator.h"
 
 namespace eager_test {
 using AbstractAutogradMeta = paddle::experimental::AbstractAutogradMeta;

@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/operators/reader/py_reader.h"
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
-#include "paddle/pten/core/ddim.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace operators {

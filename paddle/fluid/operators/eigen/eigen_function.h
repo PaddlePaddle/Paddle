@@ -18,7 +18,7 @@ limitations under the License. */
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
-#include "paddle/pten/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
 namespace paddle {
 namespace operators {

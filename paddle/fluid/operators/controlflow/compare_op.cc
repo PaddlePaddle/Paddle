@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-#include "paddle/pten/common/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace operators {

@@ -18,7 +18,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 
-#include "paddle/pten/core/lod_utils.h"
+#include "paddle/phi/core/lod_utils.h"
 
 namespace paddle {
 namespace operators {

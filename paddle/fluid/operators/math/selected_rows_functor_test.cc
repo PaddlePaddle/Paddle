@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 
 #include "gtest/gtest.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 TEST(selected_rows_functor, cpu_add) {
   paddle::platform::CPUPlace cpu_place;

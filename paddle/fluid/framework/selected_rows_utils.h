@@ -21,7 +21,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/pten/core/selected_rows.h"
+#include "paddle/phi/core/selected_rows.h"
 
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"

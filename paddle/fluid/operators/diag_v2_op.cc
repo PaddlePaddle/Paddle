@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/diag_v2_op.h"
 #include <algorithm>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {

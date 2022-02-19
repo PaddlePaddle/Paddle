@@ -250,7 +250,7 @@ if [ "${EMPTY_GRAD_OP_REGISTERED}" != "" ] && [ "${GIT_PT_ID}" != "" ]; then
     check_approval 1 43953930 46782768 22165420 22361972
 fi
 
-HAS_MODIFIED_PTEN_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/pten/" || true`
+HAS_MODIFIED_PTEN_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/" || true`
 PTEN_INCLUDE_FLUID_FILES=""
 for CHANGE_FILE in ${HAS_MODIFIED_PTEN_FILES}; do
     PTEN_DIR_ADDED_LINES=`git diff -U0 upstream/$BRANCH -- ${PADDLE_ROOT}/${CHANGE_FILE} | grep "^+" | grep "#include \"paddle/fluid/" || true`
@@ -259,11 +259,11 @@ for CHANGE_FILE in ${HAS_MODIFIED_PTEN_FILES}; do
     fi 
 done
 if [ "${PTEN_INCLUDE_FLUID_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD (chenwhql, MingMingShangTian, YuanRisheng or zyfncg) approval for the including paddle/fluid header in paddle/pten files(${PTEN_INCLUDE_FLUID_FILES}).\n"
+    echo_line="You must have one RD (chenwhql, MingMingShangTian, YuanRisheng or zyfncg) approval for the including paddle/fluid header in paddle/phi files(${PTEN_INCLUDE_FLUID_FILES}).\n"
     check_approval 1 chenwhql MingMingShangTian YuanRisheng zyfncg
 fi
 
-HAS_MODIFIED_PTEN_KERNEL_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/pten/kernels" || true`
+HAS_MODIFIED_PTEN_KERNEL_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/kernels" || true`
 PTEN_USE_MUTABLE_DATA_FILES=""
 for CHANGE_FILE in ${HAS_MODIFIED_PTEN_KERNEL_FILES}; do
     PTEN_DIR_ADDED_LINES=`git diff -U0 upstream/$BRANCH -- ${PADDLE_ROOT}/${CHANGE_FILE} | grep "^+" | grep -w "mutable_data" || true`
@@ -272,7 +272,7 @@ for CHANGE_FILE in ${HAS_MODIFIED_PTEN_KERNEL_FILES}; do
     fi 
 done
 if [ "${PTEN_USE_MUTABLE_DATA_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You can not use the DenseTensor::mutable_data() method in paddle/pten/kernels files(${PTEN_USE_MUTABLE_DATA_FILES}). If you want to alloc memory, use pten::DeviceContext::Alloc() or pten::DeviceContext::HostAlloc() instead and if you want to get mutable data, use DenseTensor::data(). If you have any questions, you can have one RD (chenwhql, Shixiaowei02, MingMingShangTian, YuanRisheng or zyfncg) review and approve.\n"
+    echo_line="You can not use the DenseTensor::mutable_data() method in paddle/phi/kernels files(${PTEN_USE_MUTABLE_DATA_FILES}). If you want to alloc memory, use pten::DeviceContext::Alloc() or pten::DeviceContext::HostAlloc() instead and if you want to get mutable data, use DenseTensor::data(). If you have any questions, you can have one RD (chenwhql, Shixiaowei02, MingMingShangTian, YuanRisheng or zyfncg) review and approve.\n"
     check_approval 1 chenwhql Shixiaowei02 MingMingShangTian YuanRisheng zyfncg
 fi
   

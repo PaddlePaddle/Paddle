@@ -16,7 +16,7 @@ limitations under the License. */
 #include <nccl.h>
 #include <mutex>  // NOLINT
 
-#include "paddle/pten/backends/dynload/nccl.h"
+#include "paddle/phi/backends/dynload/nccl.h"
 
 namespace paddle {
 namespace platform {

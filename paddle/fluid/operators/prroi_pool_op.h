@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 #include <algorithm>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #endif

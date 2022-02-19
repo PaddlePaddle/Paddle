@@ -28,7 +28,7 @@ namespace cub = hipcub;
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/pten/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/complex_functors.h"
 
 namespace paddle {
 namespace operators {

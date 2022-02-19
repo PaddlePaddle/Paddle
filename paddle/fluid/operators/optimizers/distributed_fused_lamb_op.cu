@@ -21,7 +21,7 @@
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/fluid/string/string_helper.h"
-#include "paddle/pten/core/utils/data_type.h"
+#include "paddle/phi/core/utils/data_type.h"
 
 #ifdef __NVCC__
 #include "cub/cub.cuh"

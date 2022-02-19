@@ -29,7 +29,7 @@
 #include "paddle/infrt/kernel/tensor_shape_kernels.h"
 #include "paddle/infrt/kernel/test_kernels.h"
 #ifdef INFRT_WITH_PTEN
-#include "paddle/infrt/kernel/pten/registry.h"
+#include "paddle/infrt/kernel/phi/registry.h"
 #endif
 
 static llvm::cl::list<std::string> cl_shared_libs(  // NOLINT

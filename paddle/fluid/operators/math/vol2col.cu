@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/vol2col.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
-#include "paddle/pten/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 
 namespace paddle {
 namespace operators {

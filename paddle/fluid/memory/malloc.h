@@ -18,8 +18,8 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/pten/core/device_context.h"
-#include "paddle/pten/core/stream.h"
+#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/stream.h"
 
 namespace paddle {
 namespace memory {

@@ -11,7 +11,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/core/allocator.h"
+#include "paddle/phi/core/allocator.h"
 
 namespace infrt {
 namespace backends {

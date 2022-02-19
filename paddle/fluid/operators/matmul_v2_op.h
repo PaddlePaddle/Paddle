@@ -22,13 +22,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/dot_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
-#include "paddle/pten/kernels/funcs/blas/blas.h"
-#include "paddle/pten/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/complex_functors.h"
 
-// only can include the headers in paddle/pten/api dirs
-#include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/kernels/matmul_grad_kernel.h"
-#include "paddle/pten/kernels/matmul_kernel.h"
+// only can include the headers in paddle/phi/api dirs
+#include "paddle/phi/api/lib/utils/tensor_utils.h"
+#include "paddle/phi/kernels/matmul_grad_kernel.h"
+#include "paddle/phi/kernels/matmul_kernel.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"

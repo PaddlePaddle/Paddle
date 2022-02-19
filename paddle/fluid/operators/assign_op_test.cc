@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/pten/core/ddim.h"
+#include "paddle/phi/core/ddim.h"
 
 TEST(AssignOp, AssignLoDTensor) {
   paddle::platform::CPUPlace cpu_place;

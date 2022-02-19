@@ -18,7 +18,7 @@ limitations under the License. */
 #include "cinn/runtime/cinn_runtime.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/pten/core/ddim.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace operators::details {

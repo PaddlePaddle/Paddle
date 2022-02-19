@@ -29,11 +29,11 @@
 #include <mlir/Interfaces/LoopLikeInterface.h>
 #include <mlir/Interfaces/SideEffectInterfaces.h>
 
-#include "paddle/infrt/dialect/pten/infrt_pten_tensorDialect.h.inc"
-#include "paddle/infrt/dialect/pten/infrt_pten_tensorTypes.h.inc"
+#include "paddle/infrt/dialect/phi/infrt_pten_tensorDialect.h.inc"
+#include "paddle/infrt/dialect/phi/infrt_pten_tensorTypes.h.inc"
 
 #include "paddle/infrt/dialect/dense_tensor.h"
-#include "paddle/infrt/dialect/pten/pten_base.h"
+#include "paddle/infrt/dialect/phi/pten_base.h"
 // NOLINT
 #define GET_OP_CLASSES
-#include "paddle/infrt/dialect/pten/infrt_pten_tensor.h.inc"
+#include "paddle/infrt/dialect/phi/infrt_pten_tensor.h.inc"

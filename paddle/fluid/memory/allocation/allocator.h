@@ -22,7 +22,7 @@
 #include "paddle/fluid/framework/inlined_vector.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/pten/core/allocator.h"
+#include "paddle/phi/core/allocator.h"
 
 DECLARE_string(allocator_strategy);
 

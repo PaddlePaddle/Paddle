@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/pten/core/errors.h"
+#include "paddle/phi/core/errors.h"
 namespace paddle {
 namespace platform {
 namespace errors = ::pten::errors;

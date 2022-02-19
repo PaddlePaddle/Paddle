@@ -19,7 +19,7 @@
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/utils.h"
 
-#include "paddle/pten/api/all.h"
+#include "paddle/phi/api/all.h"
 
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/pten_utils.h"

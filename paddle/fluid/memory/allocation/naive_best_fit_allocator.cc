@@ -27,7 +27,7 @@
 
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/split.h"
-#include "paddle/pten/common/place.h"
+#include "paddle/phi/common/place.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif

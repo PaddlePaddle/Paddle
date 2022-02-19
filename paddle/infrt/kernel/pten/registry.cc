@@ -12,20 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/kernel/pten/registry.h"
+#include "paddle/infrt/kernel/phi/registry.h"
 
 #include <iostream>
 #include <string>
 
 #include "paddle/infrt/host_context/kernel_registry.h"
 #include "paddle/infrt/host_context/kernel_utils.h"
-#include "paddle/infrt/kernel/pten/allocator_kernels.h"
-#include "paddle/infrt/kernel/pten/context_kernels.h"
-#include "paddle/infrt/kernel/pten/dense_tensor_kernels.h"
-#include "paddle/infrt/kernel/pten/infershaped/pten_kernel_launcher.h"
-#include "paddle/pten/include/infermeta.h"
-#include "paddle/pten/include/kernels.h"
-#include "paddle/pten/kernels/matmul_kernel.h"
+#include "paddle/infrt/kernel/phi/allocator_kernels.h"
+#include "paddle/infrt/kernel/phi/context_kernels.h"
+#include "paddle/infrt/kernel/phi/dense_tensor_kernels.h"
+#include "paddle/infrt/kernel/phi/infershaped/pten_kernel_launcher.h"
+#include "paddle/phi/include/infermeta.h"
+#include "paddle/phi/include/kernels.h"
+#include "paddle/phi/kernels/matmul_kernel.h"
 
 using infrt::host_context::Attribute;
 

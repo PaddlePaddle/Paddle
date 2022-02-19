@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include "paddle/fluid/operators/math/fc.h"
-#include "paddle/pten/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {

@@ -26,8 +26,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/lstm_compute.h"
 #include "paddle/fluid/operators/unique_op.h"
 #include "paddle/fluid/operators/utils.h"
-#include "paddle/pten/kernels/funcs/blas/blas.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {

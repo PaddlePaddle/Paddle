@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/svd_helper.h"
-#include "paddle/pten/kernels/funcs/lapack/lapack_function.h"
+#include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cusolver.h"
 #endif  // PADDLE_WITH_CUDA

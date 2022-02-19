@@ -28,7 +28,7 @@
 #include "paddle/fluid/string/string_helper.h"
 
 // pten
-#include "paddle/pten/kernels/declarations.h"
+#include "paddle/phi/kernels/declarations.h"
 
 #define NUM_CREATED_DUP_INPUTS 4
 
@@ -2099,7 +2099,7 @@ static std::string GenerateDygraphHFileIncludes() {
       "#pragma once\n"
       "#include \"glog/logging.h\"\n"
       "#include \"paddle/fluid/eager/autograd_meta.h\"\n"
-      "#include \"paddle/pten/api/all.h\"\n"
+      "#include \"paddle/phi/api/all.h\"\n"
       "#include \"paddle/fluid/eager/utils.h\"\n"
       "#include \"paddle/fluid/imperative/tracer.h\"\n"
       "#include \"paddle/fluid/framework/op_registry.h\"\n\n";
@@ -2158,7 +2158,7 @@ static void GenerateNodeCCFile(const std::string& node_cc_path,
                                const std::string& grad_function_str) {
   const char* NODE_CC_INCLUDE_TEMPLATE =
       "#include \"glog/logging.h\"\n"
-      "#include \"paddle/pten/api/all.h\"\n"
+      "#include \"paddle/phi/api/all.h\"\n"
       "#include \"paddle/fluid/imperative/tracer.h\"\n"
       "#include \"paddle/fluid/framework/op_registry.h\"\n"
       "#include \"paddle/fluid/eager/utils.h\"\n"

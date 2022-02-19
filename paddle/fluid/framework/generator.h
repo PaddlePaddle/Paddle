@@ -25,7 +25,7 @@ limitations under the License. */
 #include <typeinfo>
 #include <utility>
 
-#include "paddle/pten/core/generator.h"
+#include "paddle/phi/core/generator.h"
 
 namespace paddle {
 namespace framework {

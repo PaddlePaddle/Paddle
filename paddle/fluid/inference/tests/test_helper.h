@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/pten/backends/dynload/port.h"
+#include "paddle/phi/backends/dynload/port.h"
 
 DECLARE_bool(use_mkldnn);
 

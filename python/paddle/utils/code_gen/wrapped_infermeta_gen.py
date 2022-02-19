@@ -84,20 +84,20 @@ PT_REGISTER_INFER_META_FN({api.kernel['func'][0]}, pten::{get_wrapped_infermeta_
 
 def header_include():
     return """
-#include "paddle/pten/core/meta_tensor.h"
-#include "paddle/pten/common/scalar.h"
-#include "paddle/pten/common/scalar_array.h"
+#include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/common/scalar_array.h"
 """
 
 
 def source_include(header_file_path):
     return f"""
 #include "{header_file_path}"
-#include "paddle/pten/core/infermeta_utils.h"
-#include "paddle/pten/infermeta/binary.h"
-#include "paddle/pten/infermeta/multiary.h"
-#include "paddle/pten/infermeta/nullary.h"
-#include "paddle/pten/infermeta/unary.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/binary.h"
+#include "paddle/phi/infermeta/multiary.h"
+#include "paddle/phi/infermeta/nullary.h"
+#include "paddle/phi/infermeta/unary.h"
 """
 
 
@@ -123,7 +123,7 @@ def generate_wrapped_infermeta_and_register(api_yaml_path, header_file_path,
     header_file.write(header_include())
     header_file.write(namespace[0])
 
-    include_header_file = "paddle/pten/infermeta/generated.h"
+    include_header_file = "paddle/phi/infermeta/generated.h"
     source_file.write(source_include(include_header_file))
     source_file.write(namespace[0])
 
@@ -156,12 +156,12 @@ def main():
     parser.add_argument(
         '--wrapped_infermeta_header_path',
         help='output of generated wrapped_infermeta header code file',
-        default='paddle/pten/infermeta/generated.h')
+        default='paddle/phi/infermeta/generated.h')
 
     parser.add_argument(
         '--wrapped_infermeta_source_path',
         help='output of generated wrapped_infermeta source code file',
-        default='paddle/pten/infermeta/generated.cc')
+        default='paddle/phi/infermeta/generated.cc')
 
     options = parser.parse_args()
 

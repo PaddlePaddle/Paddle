@@ -14,13 +14,13 @@
 
 #include <gtest/gtest.h>
 
-#include "paddle/infrt/kernel/pten/infershaped/infershaped_kernel_launcher.h"
-#include "paddle/infrt/kernel/pten/infershaped/infershaped_kernel_launchers.h"
-#include "paddle/infrt/kernel/pten/infershaped/infershaped_utils.h"
-#include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/common/place.h"
-#include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/meta_tensor.h"
+#include "paddle/infrt/kernel/phi/infershaped/infershaped_kernel_launcher.h"
+#include "paddle/infrt/kernel/phi/infershaped/infershaped_kernel_launchers.h"
+#include "paddle/infrt/kernel/phi/infershaped/infershaped_utils.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/meta_tensor.h"
 
 namespace infrt {
 namespace kernel {

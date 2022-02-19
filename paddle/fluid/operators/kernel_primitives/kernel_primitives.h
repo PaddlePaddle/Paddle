@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/pten/kernels/primitive/kernel_primitives.h"
+#include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 namespace paddle {
 namespace operators {

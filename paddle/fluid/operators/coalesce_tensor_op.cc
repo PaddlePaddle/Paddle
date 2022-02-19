@@ -19,7 +19,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/device_memory_aligment.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #endif

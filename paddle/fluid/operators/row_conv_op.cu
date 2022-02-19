@@ -13,7 +13,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/row_conv_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {

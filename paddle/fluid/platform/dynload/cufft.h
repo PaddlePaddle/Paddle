@@ -19,7 +19,7 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <mutex>  // NOLINT
 
-#include "paddle/pten/backends/dynload/cufft.h"
+#include "paddle/phi/backends/dynload/cufft.h"
 
 namespace paddle {
 namespace platform {

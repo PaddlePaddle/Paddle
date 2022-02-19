@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/fused/attn_bias_add.cu.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/pten/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {

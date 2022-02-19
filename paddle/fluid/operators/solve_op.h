@@ -23,8 +23,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/matrix_solve.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
 #include "paddle/fluid/operators/squeeze_op.h"
-#include "paddle/pten/kernels/funcs/blas/blas.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #endif

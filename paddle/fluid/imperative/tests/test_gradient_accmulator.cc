@@ -21,7 +21,7 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace imperative = paddle::imperative;
 namespace platform = paddle::platform;

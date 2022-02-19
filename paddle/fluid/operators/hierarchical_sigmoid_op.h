@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/clip_op.h"
 #include "paddle/fluid/operators/math/matrix_bit_code.h"
 #include "paddle/fluid/platform/transform.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {

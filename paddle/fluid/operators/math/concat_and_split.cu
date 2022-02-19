@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/concat_and_split.h"
 
-#include "paddle/pten/kernels/gpu/concat_and_split.h"
+#include "paddle/phi/kernels/gpu/concat_and_split.h"
 namespace paddle {
 namespace operators {
 namespace math {

@@ -32,7 +32,7 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/string_helper.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 DECLARE_bool(sort_sum_gradient);
 

@@ -19,7 +19,7 @@
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
-#include "paddle/pten/core/kernel_factory.h"
+#include "paddle/phi/core/kernel_factory.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
     new_executor_sequential_run, false,

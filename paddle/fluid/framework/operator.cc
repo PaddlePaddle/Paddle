@@ -33,10 +33,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/pten/common/scalar.h"
-#include "paddle/pten/common/scalar_array.h"
-#include "paddle/pten/core/kernel_factory.h"
-#include "paddle/pten/ops/compat/signatures.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/ops/compat/signatures.h"
 
 namespace pten {
 class DenseTensor;

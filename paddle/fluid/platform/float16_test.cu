@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/pten/kernels/funcs/eigen/extensions.h"
+#include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
 #define ARITHMETIC_KERNEL(op_type, sign)                                 \
   __global__ void op_type(const half *in1, const half *in2, half *out) { \

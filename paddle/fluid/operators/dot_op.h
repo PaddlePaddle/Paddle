@@ -17,12 +17,12 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/pten/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/complex_functors.h"
 
-// only can include the headers in paddle/pten/api dirs
-#include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/kernels/dot_grad_kernel.h"
-#include "paddle/pten/kernels/dot_kernel.h"
+// only can include the headers in paddle/phi/api dirs
+#include "paddle/phi/api/lib/utils/tensor_utils.h"
+#include "paddle/phi/kernels/dot_grad_kernel.h"
+#include "paddle/phi/kernels/dot_kernel.h"
 
 namespace paddle {
 namespace operators {

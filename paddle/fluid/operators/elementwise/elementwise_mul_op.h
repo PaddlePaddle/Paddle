@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
-#include "paddle/pten/kernels/math_kernel.h"
+#include "paddle/phi/kernels/math_kernel.h"
 
 namespace paddle {
 namespace operators {

@@ -17,7 +17,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "paddle/pten/core/ddim.h"
+#include "paddle/phi/core/ddim.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif

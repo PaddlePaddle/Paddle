@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/framework/data_layout_transform.h"
 
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 #endif

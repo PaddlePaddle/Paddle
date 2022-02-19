@@ -32,14 +32,14 @@
 #ifdef INFRT_WITH_PTEN
 #include "paddle/infrt/backends/host/pten_allocator.h"
 #include "paddle/infrt/backends/host/pten_context.h"
-#include "paddle/pten/backends/all_context.h"
-#include "paddle/pten/common/backend.h"
-#include "paddle/pten/common/data_type.h"
-#include "paddle/pten/common/layout.h"
-#include "paddle/pten/common/scalar.h"
-#include "paddle/pten/common/scalar_array.h"
-#include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/meta_tensor.h"
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/common/backend.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/layout.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/meta_tensor.h"
 #endif
 
 namespace infrt {

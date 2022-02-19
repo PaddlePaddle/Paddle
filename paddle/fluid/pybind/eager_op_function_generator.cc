@@ -33,7 +33,7 @@
 #include "paddle/fluid/pybind/op_function_generator.h"
 
 // pten
-#include "paddle/pten/kernels/declarations.h"
+#include "paddle/phi/kernels/declarations.h"
 
 // clang-format off
 const char* OUT_INITIALIZER_TEMPLATE =

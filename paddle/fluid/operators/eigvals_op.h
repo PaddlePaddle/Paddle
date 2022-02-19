@@ -20,9 +20,9 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/pten/core/ddim.h"
-#include "paddle/pten/kernels/funcs/complex_functors.h"
-#include "paddle/pten/kernels/funcs/lapack/lapack_function.h"
+#include "paddle/phi/core/ddim.h"
+#include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 
 namespace paddle {
 namespace operators {

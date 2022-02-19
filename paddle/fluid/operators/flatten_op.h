@@ -18,11 +18,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/operators/math/pooling.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/pten/kernels/empty_kernel.h"
-#include "paddle/pten/kernels/flatten_grad_kernel.h"
-#include "paddle/pten/kernels/flatten_kernel.h"
-#include "paddle/pten/kernels/funcs/blas/blas.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/flatten_grad_kernel.h"
+#include "paddle/phi/kernels/flatten_kernel.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {

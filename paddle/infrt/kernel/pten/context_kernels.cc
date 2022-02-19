@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/kernel/pten/context_kernels.h"
+#include "paddle/infrt/kernel/phi/context_kernels.h"
 
 namespace infrt {
 namespace kernel {

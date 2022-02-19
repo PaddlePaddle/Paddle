@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 
-#include "paddle/pten/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 
 namespace paddle {
 namespace platform {

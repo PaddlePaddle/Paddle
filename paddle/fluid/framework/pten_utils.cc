@@ -22,9 +22,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/string/string_helper.h"
-#include "paddle/pten/core/compat/convert_utils.h"
-#include "paddle/pten/core/compat/op_utils.h"
-#include "paddle/pten/core/kernel_factory.h"
+#include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/core/kernel_factory.h"
 
 namespace paddle {
 namespace framework {

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
-#include "paddle/pten/kernels/gpu/reduce.h"
+#include "paddle/phi/kernels/gpu/reduce.h"
 
 namespace paddle {
 namespace operators {

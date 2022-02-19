@@ -16,7 +16,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/pten/core/ddim.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace operators {

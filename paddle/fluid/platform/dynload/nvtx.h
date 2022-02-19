@@ -17,7 +17,7 @@ limitations under the License. */
 #include <nvToolsExt.h>
 #include <mutex>  // NOLINT
 
-#include "paddle/pten/backends/dynload/nvtx.h"
+#include "paddle/phi/backends/dynload/nvtx.h"
 
 namespace paddle {
 namespace platform {

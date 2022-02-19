@@ -20,7 +20,7 @@ limitations under the License. */
 #include <mutex>  // NOLINT
 #include <type_traits>
 
-#include "paddle/pten/backends/dynload/cublas.h"
+#include "paddle/phi/backends/dynload/cublas.h"
 
 namespace paddle {
 namespace platform {

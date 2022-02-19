@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/eigen.h"
-#include "paddle/pten/core/ddim.h"
+#include "paddle/phi/core/ddim.h"
 
 #include <gtest/gtest.h>
 

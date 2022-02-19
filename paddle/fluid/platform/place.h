@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/npu/enforce_npu.h"
 #endif
 
-#include "paddle/pten/common/place.h"
+#include "paddle/phi/common/place.h"
 namespace paddle {
 namespace platform {
 

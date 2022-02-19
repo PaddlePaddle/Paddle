@@ -23,8 +23,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/pten/core/compat/op_utils.h"
-#include "paddle/pten/core/infermeta_utils.h"
+#include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/core/infermeta_utils.h"
 
 namespace paddle {
 namespace framework {

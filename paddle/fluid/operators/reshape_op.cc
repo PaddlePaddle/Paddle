@@ -17,12 +17,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/pten_utils.h"
 
-// only can include the headers in paddle/pten/api dirs
-#include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/common/scalar_array.h"
-#include "paddle/pten/kernels/reshape_grad_kernel.h"
-#include "paddle/pten/kernels/reshape_kernel.h"
+// only can include the headers in paddle/phi/api dirs
+#include "paddle/phi/api/lib/utils/tensor_utils.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/kernels/reshape_grad_kernel.h"
+#include "paddle/phi/kernels/reshape_kernel.h"
 namespace paddle {
 namespace framework {
 class InferShapeContext;

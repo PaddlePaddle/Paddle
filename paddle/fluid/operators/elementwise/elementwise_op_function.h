@@ -29,8 +29,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/transform.h"
 
-#include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/kernels/cpu/elementwise.h"
+#include "paddle/phi/api/lib/utils/tensor_utils.h"
+#include "paddle/phi/kernels/cpu/elementwise.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #ifdef __NVCC__
@@ -48,7 +48,7 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 #define DIVUP(x, y) (((x) + (y)-1) / (y))
 

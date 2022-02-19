@@ -24,8 +24,8 @@
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
 
-#include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/tensor_meta.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/tensor_meta.h"
 
 namespace egr {
 

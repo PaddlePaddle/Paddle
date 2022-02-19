@@ -17,7 +17,7 @@ limitations under the License. */
 #include <mkl.h>
 #include <mutex>  // NOLINT
 
-#include "paddle/pten/backends/dynload/mklml.h"
+#include "paddle/phi/backends/dynload/mklml.h"
 
 namespace paddle {
 namespace platform {

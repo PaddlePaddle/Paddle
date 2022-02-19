@@ -22,7 +22,7 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 #include "paddle/fluid/platform/place.h"
-#include "paddle/pten/core/stream.h"
+#include "paddle/phi/core/stream.h"
 
 namespace paddle {
 namespace memory {

@@ -17,9 +17,9 @@
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/pten/api/include/tensor.h"
-#include "paddle/pten/core/ddim.h"
-#include "paddle/pten/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/core/ddim.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
 
 namespace paddle {
 namespace operators {

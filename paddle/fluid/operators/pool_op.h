@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/pooling.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #if defined(__HIPCC__) || defined(__NVCC__)
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #endif

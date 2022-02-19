@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/pten/kernels/scale_kernel.h"
+#include "paddle/phi/kernels/scale_kernel.h"
 
 namespace paddle {
 namespace operators {

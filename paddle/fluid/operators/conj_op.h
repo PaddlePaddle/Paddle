@@ -17,9 +17,9 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
-// only can include the headers in paddle/pten/api dirs
-#include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/kernels/complex_kernel.h"
+// only can include the headers in paddle/phi/api dirs
+#include "paddle/phi/api/lib/utils/tensor_utils.h"
+#include "paddle/phi/kernels/complex_kernel.h"
 
 namespace paddle {
 namespace operators {

@@ -22,8 +22,8 @@
 
 #include "paddle/fluid/framework/tensor.h"
 
-#include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/gpu/reduce.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/gpu/reduce.h"
 
 namespace paddle {
 namespace operators {
