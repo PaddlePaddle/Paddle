@@ -15,13 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/tensor.h"
-
-namespace paddle {
-namespace framework {
-class ExecutionContext;
-}  // namespace framework
-}  // namespace paddle
+#include "paddle/pten/core/dense_tensor.h"
 
 #ifdef PADDLE_WITH_MKLML
 #include "paddle/fluid/platform/dynload/mklml.h"
@@ -35,9 +29,8 @@ class ExecutionContext;
 #include <cblas.h>
 #endif
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace pten {
+namespace funcs {
 
 /**
  * Matrix Descriptor of a memory buffer.
@@ -81,7 +74,8 @@ struct MatDescriptor {
  * @param trans: True if the matrix is transposed.
  */
 extern MatDescriptor CreateMatrixDescriptor(const framework::DDim& tensor_dim,
-                                            int num_flatten_cols, bool trans);
+                                            int num_flatten_cols,
+                                            bool trans);
 
 template <typename DeviceContext>
 class Blas {
@@ -89,73 +83,149 @@ class Blas {
   explicit Blas(const DeviceContext& context) : context_(context) {}
 
   template <typename T>
-  void GEMM(CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
-            T alpha, const T* A, const T* B, T beta, T* C) const;
+  void GEMM(CBLAS_TRANSPOSE transA,
+            CBLAS_TRANSPOSE transB,
+            int M,
+            int N,
+            int K,
+            T alpha,
+            const T* A,
+            const T* B,
+            T beta,
+            T* C) const;
 
   template <typename T>
-  void GEMM(bool transA, bool transB, int M, int N, int K, T alpha, const T* A,
-            int lda, const T* B, int ldb, T beta, T* C, int ldc) const;
+  void GEMM(bool transA,
+            bool transB,
+            int M,
+            int N,
+            int K,
+            T alpha,
+            const T* A,
+            int lda,
+            const T* B,
+            int ldb,
+            T beta,
+            T* C,
+            int ldc) const;
 
   template <typename T>
-  void GEMM(CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
-            T alpha, const T* A, int lda, const T* B, int ldb, T beta, T* C,
+  void GEMM(CBLAS_TRANSPOSE transA,
+            CBLAS_TRANSPOSE transB,
+            int M,
+            int N,
+            int K,
+            T alpha,
+            const T* A,
+            int lda,
+            const T* B,
+            int ldb,
+            T beta,
+            T* C,
             int ldc) const;
 
 #ifdef PADDLE_WITH_MKLML  // @{ Group MKLML: class Blas
   template <typename T>
-  T* GEMM_ALLOC(const CBLAS_IDENTIFIER id, const int M, const int N,
+  T* GEMM_ALLOC(const CBLAS_IDENTIFIER id,
+                const int M,
+                const int N,
                 const int K) const;
 
   template <typename T>
-  void GEMM_PACK(const CBLAS_IDENTIFIER id, const CBLAS_TRANSPOSE trans, int M,
-                 int N, int K, const T alpha, const T* src, const int ld,
+  void GEMM_PACK(const CBLAS_IDENTIFIER id,
+                 const CBLAS_TRANSPOSE trans,
+                 int M,
+                 int N,
+                 int K,
+                 const T alpha,
+                 const T* src,
+                 const int ld,
                  T* dst) const;
 
   template <typename T>
-  void GEMM_COMPUTE(int transA, int transB, int M, int N, int K, const T* A,
-                    const int lda, const T* B, const int ldb, T beta, T* C,
+  void GEMM_COMPUTE(int transA,
+                    int transB,
+                    int M,
+                    int N,
+                    int K,
+                    const T* A,
+                    const int lda,
+                    const T* B,
+                    const int ldb,
+                    T beta,
+                    T* C,
                     const int ldc) const;
 
   template <typename T>
   void GEMM_FREE(T* data) const;
 
   template <typename T>
-  void CSRMM(const char* transa, const int* m, const int* n, const int* k,
-             const T* alpha, const char* matdescra, const T* val,
-             const int* indx, const int* pntrb, const int* pntre, const T* b,
-             const int* ldb, const T* beta, T* c, const int* ldc) const;
+  void CSRMM(const char* transa,
+             const int* m,
+             const int* n,
+             const int* k,
+             const T* alpha,
+             const char* matdescra,
+             const T* val,
+             const int* indx,
+             const int* pntrb,
+             const int* pntre,
+             const T* b,
+             const int* ldb,
+             const T* beta,
+             T* c,
+             const int* ldc) const;
 
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
   template <typename T>
-  void MatMulWithHead(const framework::Tensor& mat_a,
+  void MatMulWithHead(const pten::DenseTensor& mat_a,
                       const MatDescriptor& dim_a,
-                      const framework::Tensor& mat_b,
-                      const MatDescriptor& dim_b, T alpha, int head_number,
-                      framework::Tensor* mat_out, T beta,
+                      const pten::DenseTensor& mat_b,
+                      const MatDescriptor& dim_b,
+                      T alpha,
+                      int head_number,
+                      pten::DenseTensor* mat_out,
+                      T beta,
                       bool mat_y_split_vertical) const;
 #endif
 #endif  // @} End Group MKLML: class Blas
 
   template <typename T>
-  void MatMul(const int M, const int N, const int K, const T* A, const T* B,
+  void MatMul(const int M,
+              const int N,
+              const int K,
+              const T* A,
+              const T* B,
               T* C) const;
 
   template <typename T>
-  void MatMul(const framework::Tensor& mat_a, bool trans_a,
-              const framework::Tensor& mat_b, bool trans_b, T alpha,
-              framework::Tensor* mat_out, T beta) const;
+  void MatMul(const pten::DenseTensor& mat_a,
+              bool trans_a,
+              const pten::DenseTensor& mat_b,
+              bool trans_b,
+              T alpha,
+              pten::DenseTensor* mat_out,
+              T beta) const;
 
   template <typename T>
-  void MatMul(const framework::Tensor& mat_a, bool trans_a,
-              const framework::Tensor& mat_b, bool trans_b,
-              framework::Tensor* mat_out) const {
-    MatMul(mat_a, trans_a, mat_b, trans_b, static_cast<T>(1.0), mat_out,
+  void MatMul(const pten::DenseTensor& mat_a,
+              bool trans_a,
+              const pten::DenseTensor& mat_b,
+              bool trans_b,
+              pten::DenseTensor* mat_out) const {
+    MatMul(mat_a,
+           trans_a,
+           mat_b,
+           trans_b,
+           static_cast<T>(1.0),
+           mat_out,
            static_cast<T>(0.0));
   }
 
   template <typename T>
-  void MatMul(const framework::Tensor& mat_a, const framework::Tensor& mat_b,
-              framework::Tensor* mat_out) const {
+  void MatMul(const pten::DenseTensor& mat_a,
+              const pten::DenseTensor& mat_b,
+              pten::DenseTensor* mat_out) const {
     this->template MatMul<T>(mat_a, false, mat_b, false, mat_out);
   }
 
@@ -187,7 +257,13 @@ class Blas {
   void VPOW(int n, const T* x, T alpha, T* y) const;
 
   template <typename T>
-  void GEMV(bool trans_a, int M, int N, T alpha, const T* A, const T* B, T beta,
+  void GEMV(bool trans_a,
+            int M,
+            int N,
+            T alpha,
+            const T* A,
+            const T* B,
+            T beta,
             T* C) const;
 
   template <typename T>
@@ -200,33 +276,71 @@ class Blas {
   T ASUM(int n, T* x, int inc) const;
 
   template <typename T>
-  void BatchedGEMM(CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N,
-                   int K, T alpha, const T* A, const T* B, T beta, T* C,
-                   int batchCount, int64_t strideA, int64_t strideB) const;
+  void BatchedGEMM(CBLAS_TRANSPOSE transA,
+                   CBLAS_TRANSPOSE transB,
+                   int M,
+                   int N,
+                   int K,
+                   T alpha,
+                   const T* A,
+                   const T* B,
+                   T beta,
+                   T* C,
+                   int batchCount,
+                   int64_t strideA,
+                   int64_t strideB) const;
 
   template <typename T>
-  void BatchedGEMM(CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N,
-                   int K, T alpha, const T** A, const T** B, T beta, T** C,
+  void BatchedGEMM(CBLAS_TRANSPOSE transA,
+                   CBLAS_TRANSPOSE transB,
+                   int M,
+                   int N,
+                   int K,
+                   T alpha,
+                   const T** A,
+                   const T** B,
+                   T beta,
+                   T** C,
                    int batchCount) const;
 
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
     !defined(PADDLE_WITH_HIP)
   template <typename T>
-  void BatchedGEMMWithHead(CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB,
-                           int W1, int H1, int W2, int H2, T alpha, const T* A,
-                           const T* B, T beta, T* C, int batchCount,
-                           int64_t strideA, int64_t strideB,
-                           int64_t head_number, bool split_b_vertical) const;
+  void BatchedGEMMWithHead(CBLAS_TRANSPOSE transA,
+                           CBLAS_TRANSPOSE transB,
+                           int W1,
+                           int H1,
+                           int W2,
+                           int H2,
+                           T alpha,
+                           const T* A,
+                           const T* B,
+                           T beta,
+                           T* C,
+                           int batchCount,
+                           int64_t strideA,
+                           int64_t strideB,
+                           int64_t head_number,
+                           bool split_b_vertical) const;
 #endif
 
   template <typename T>
-  void MatMul(const framework::Tensor& mat_a, const MatDescriptor& dim_a,
-              const framework::Tensor& mat_b, const MatDescriptor& dim_b,
-              T alpha, framework::Tensor* mat_out, T beta) const;
+  void MatMul(const pten::DenseTensor& mat_a,
+              const MatDescriptor& dim_a,
+              const pten::DenseTensor& mat_b,
+              const MatDescriptor& dim_b,
+              T alpha,
+              pten::DenseTensor* mat_out,
+              T beta) const;
 
   template <typename T>
-  void MatMul(const T* mat_a, const MatDescriptor& dim_a, const T* mat_b,
-              const MatDescriptor& dim_b, T alpha, T* mat_out, T beta) const;
+  void MatMul(const T* mat_a,
+              const MatDescriptor& dim_a,
+              const T* mat_b,
+              const MatDescriptor& dim_b,
+              T alpha,
+              T* mat_out,
+              T beta) const;
 
   template <typename T>
   void VINV(int n, const T* a, T* y) const;
@@ -235,8 +349,16 @@ class Blas {
   void VMERF(int n, const T* a, T* y, int64_t mode) const;
 
   template <typename T>
-  void TRSM(CBLAS_SIDE side, CBLAS_UPLO uplo, CBLAS_TRANSPOSE transA,
-            CBLAS_DIAG diag, int M, int N, T alpha, const T* A, int lda, T* B,
+  void TRSM(CBLAS_SIDE side,
+            CBLAS_UPLO uplo,
+            CBLAS_TRANSPOSE transA,
+            CBLAS_DIAG diag,
+            int M,
+            int N,
+            T alpha,
+            const T* A,
+            int lda,
+            T* B,
             int ldb) const;
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -244,24 +366,44 @@ class Blas {
   void BatchedGETRF(int n, T** a, int* ipiv, int* info, int batch_size) const;
 
   template <typename T>
-  void BatchedGETRI(int n, const T** a, const int* ipiv, T** a_inv, int* info,
+  void BatchedGETRI(int n,
+                    const T** a,
+                    const int* ipiv,
+                    T** a_inv,
+                    int* info,
                     int batch_size) const;
 
   template <typename T>
-  void BatchedMatInv(int n, const T** a, T** a_inv, int* info,
-                     int batch_size) const;
+  void BatchedMatInv(
+      int n, const T** a, T** a_inv, int* info, int batch_size) const;
 
   // cuBlas solve
   template <typename T>
-  void BatchedGETRS(CBLAS_TRANSPOSE trans, int n, int nrhs, const T** a,
-                    int lda, int* ipiv, T** b, int ldb, int* info,
+  void BatchedGETRS(CBLAS_TRANSPOSE trans,
+                    int n,
+                    int nrhs,
+                    const T** a,
+                    int lda,
+                    int* ipiv,
+                    T** b,
+                    int ldb,
+                    int* info,
                     int batch_size) const;
 
   // cuBlas triangular_solve
   template <typename T>
-  void BatchedTRSM(CBLAS_SIDE side, CBLAS_UPLO uplo, CBLAS_TRANSPOSE transA,
-                   CBLAS_DIAG diag, int M, int N, T alpha, const T** a, int lda,
-                   T** b, int ldb, int batch_size) const;
+  void BatchedTRSM(CBLAS_SIDE side,
+                   CBLAS_UPLO uplo,
+                   CBLAS_TRANSPOSE transA,
+                   CBLAS_DIAG diag,
+                   int M,
+                   int N,
+                   T alpha,
+                   const T** a,
+                   int lda,
+                   T** b,
+                   int ldb,
+                   int batch_size) const;
 #endif
 
  private:
@@ -439,7 +581,7 @@ class BlasT : private Blas<DeviceContext> {
 
 template <typename DeviceContext, typename T>
 inline BlasT<DeviceContext, T> GetBlas(
-    const framework::ExecutionContext& exe_ctx) {
+    const paddle::framework::ExecutionContext& exe_ctx) {
   return BlasT<DeviceContext, T>(
       exe_ctx.template device_context<DeviceContext>());
 }
@@ -449,14 +591,13 @@ inline BlasT<DeviceContext, T> GetBlas(const DeviceContext& dev_ctx) {
   return BlasT<DeviceContext, T>(dev_ctx);
 }
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace pten
 
-#include "paddle/fluid/operators/math/blas_impl.h"
+#include "paddle/pten/kernels/funcs/blas/blas_impl.h"
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/operators/math/blas_impl.cu.h"
+#include "paddle/pten/kernels/funcs/blas/blas_impl.cu.h"
 #endif
 #ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/operators/math/blas_impl.hip.h"
+#include "paddle/pten/kernels/funcs/blas/blas_impl.hip.h"
 #endif

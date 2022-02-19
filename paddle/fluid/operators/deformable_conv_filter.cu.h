@@ -22,7 +22,7 @@
 // \author Yi Li, Guodong Zhang, Jifeng Dai
 
 #pragma once
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
 
 template <typename T>

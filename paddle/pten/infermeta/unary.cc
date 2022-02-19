@@ -86,13 +86,10 @@ void CopyToInferMeta(const MetaTensor& x,
   UnchangedInferMeta(x, out);
 }
 
-void CreateLikeInferMeta(const MetaTensor& x,
-                         DataType dtype,
-                         DataLayout layout,
-                         MetaTensor* out) {
+void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(dtype == DataType::UNDEFINED ? x.dtype() : dtype);
-  out->set_layout(layout == DataLayout::UNDEFINED ? x.layout() : layout);
+  out->set_layout(x.layout());
 }
 
 static pten::framework::DDim ValidateShape(

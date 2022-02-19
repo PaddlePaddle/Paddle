@@ -46,10 +46,7 @@ void CopyToInferMeta(const MetaTensor& x,
                      bool blocking,
                      MetaTensor* out);
 
-void CreateLikeInferMeta(const MetaTensor& x,
-                         DataType dtype,
-                         DataLayout layout,
-                         MetaTensor* out);
+void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out);
 
 void InferMetaFromVecValue(const MetaTensor& x,
                            const std::vector<int64_t>& shape,

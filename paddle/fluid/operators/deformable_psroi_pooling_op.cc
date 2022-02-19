@@ -16,7 +16,7 @@
 #include <iostream>
 #include <memory>
 #include <vector>
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
