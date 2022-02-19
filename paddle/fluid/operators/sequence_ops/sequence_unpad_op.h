@@ -62,7 +62,7 @@ class SequenceUnpadOpKernel : public framework::OpKernel<T> {
         out_dims_vec.push_back(x_t->dims()[i]);
       }
     }
-    out_t->Resize(framework::make_ddim(out_dims_vec));
+    out_t->Resize(pten::make_ddim(out_dims_vec));
 
     // after set the lod of output, allocate the memory
     out_t->mutable_data<T>(ctx.GetPlace());

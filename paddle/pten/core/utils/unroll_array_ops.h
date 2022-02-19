@@ -19,10 +19,7 @@
 #include "paddle/pten/core/hostdevice.h"
 
 namespace pten {
-namespace framework {
-
 namespace detail {
-
 template <size_t kStart, size_t kEnd, bool kStop>
 struct UnrollFillConstant {
   template <typename T>
@@ -111,7 +108,6 @@ struct UnrollProduct<kStart, kEnd, true> {
     return 1;
   }
 };
-
 }  // namespace detail
 
 template <size_t N>
@@ -129,5 +125,4 @@ using UnrollCompare = detail::UnrollCompare<0, N, N == 0>;
 template <size_t N>
 using UnrollProduct = detail::UnrollProduct<0, N, N == 0>;
 
-}  // namespace framework
 }  // namespace pten

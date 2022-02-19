@@ -16,11 +16,10 @@ limitations under the License. */
 
 #include <memory>
 
-// TODO(wilber): Do we need to use place in pten kernel?
-#include "paddle/pten/common/place.h"
-
 #include "paddle/pten/common/data_type.h"
+#include "paddle/pten/common/place.h"
 #include "paddle/pten/core/allocator.h"
+#include "paddle/pten/core/generator.h"
 
 namespace pten {
 class TensorBase;
@@ -49,6 +48,11 @@ class DeviceContext {
    * @brief Move construct.
    */
   DeviceContext(DeviceContext&&);
+
+  /**
+   * @brief Move assign operator.
+   */
+  DeviceContext& operator=(DeviceContext&&);
 
   /**
    * @brief Default destruct.
@@ -95,9 +99,7 @@ class DeviceContext {
   /**
    * @brief Allocate device memory for tensor.
    */
-  void* Alloc(TensorBase*,
-              DataType dtype = DataType::UNDEFINED,
-              size_t requested_size = 0) const;
+  void* Alloc(TensorBase*, DataType dtype, size_t requested_size = 0) const;
 
   template <typename T>
   T* Alloc(TensorBase* tensor, size_t requested_size = 0) const;
@@ -106,18 +108,29 @@ class DeviceContext {
    * @brief Allocate host memory for tensor.
    */
   void* HostAlloc(TensorBase* tensor,
-                  DataType dtype = DataType::UNDEFINED,
+                  DataType dtype,
                   size_t requested_size = 0) const;
 
   template <typename T>
   T* HostAlloc(TensorBase* tensor, size_t requested_size = 0) const;
 
-  // TODO(wilber): Just for the convenience of migrating the code, it will be
-  // modified or removed later.
   virtual const Place& GetPlace() const = 0;
   // TODO(wilber): The fluid framework uses wait() in many places, how to delete
   // this API interface.
   virtual void Wait() const {}
+
+  /**
+  * @brief Set the generator for special op.
+  *
+  * @param Generator
+  */
+  void SetGenerator(Generator*);
+  /**
+   * @brief Get the generator object.
+   *
+   * @return Generator
+   */
+  Generator* GetGenerator() const;
 
  private:
   struct Impl;

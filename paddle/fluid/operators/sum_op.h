@@ -80,7 +80,7 @@ void SelectedRowsCompute(const framework::ExecutionContext &context) {
 
   } else {
     // no data, just set a empty out tensor.
-    out->mutable_value()->mutable_data<T>(framework::make_ddim({0}),
+    out->mutable_value()->mutable_data<T>(pten::make_ddim({0}),
                                           context.GetPlace());
   }
 }

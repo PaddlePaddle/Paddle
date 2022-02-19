@@ -67,8 +67,7 @@ void SegmentKernelLaunchHelper(const framework::ExecutionContext& context) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (!cpu_place) {
     Tensor length;
-    length.mutable_data<IndexT>(framework::make_ddim({1}),
-                                platform::CPUPlace());
+    length.mutable_data<IndexT>(pten::make_ddim({1}), platform::CPUPlace());
     IndexT* length_data = length.data<IndexT>();
     const IndexT* segment_ids = segment->data<IndexT>();
 
@@ -122,7 +121,7 @@ class SegmentPoolKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* segment = context.Input<Tensor>("SegmentIds");
-    auto index_type = segment->type();
+    auto index_type = framework::TransToProtoVarType(segment->dtype());
     if (index_type == framework::proto::VarType::INT32) {
       SegmentKernelLaunchHelper<DeviceContext, T, int>(context);
     } else if (index_type == framework::proto::VarType::INT64) {
@@ -156,7 +155,7 @@ class SegmentPoolGradKernel : public framework::OpKernel<T> {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     set_zero(dev_ctx, in_g, static_cast<T>(0));
 
-    auto index_type = segment->type();
+    auto index_type = framework::TransToProtoVarType(segment->dtype());
     if (index_type == framework::proto::VarType::INT32) {
       SegmentPoolGradFunctor<DeviceContext, T, int> pool;
       pool(context.template device_context<DeviceContext>(), *input, *output,

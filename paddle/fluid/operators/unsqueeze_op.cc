@@ -60,7 +60,7 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
                         platform::errors::InvalidArgument(
                             "The output tensor's rank should be less than 6."));
       std::vector<int> vec_out_dims(output_size, -1);
-      ctx->SetOutputDim("Out", framework::make_ddim(vec_out_dims));
+      ctx->SetOutputDim("Out", pten::make_ddim(vec_out_dims));
     } else if (ctx->HasInput("AxesTensor")) {
       auto axes_dims = ctx->GetInputDim("AxesTensor");
       PADDLE_ENFORCE_EQ(axes_dims.size(), 1,
@@ -81,7 +81,7 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
                         platform::errors::InvalidArgument(
                             "The output tensor's rank should be less than 6."));
       std::vector<int> vec_out_dims(output_size, -1);
-      ctx->SetOutputDim("Out", framework::make_ddim(vec_out_dims));
+      ctx->SetOutputDim("Out", pten::make_ddim(vec_out_dims));
     }
   }
 
@@ -126,14 +126,16 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
       }
     }
 
-    return framework::make_ddim(output_shape);
+    return pten::make_ddim(output_shape);
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        framework::TransToProtoVarType(
+            ctx.Input<framework::LoDTensor>("X")->type()),
+        ctx.device_context());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
@@ -259,7 +261,7 @@ class Unsqueeze2Op : public UnsqueezeOp {
     for (int i = 0; i < x_dims.size(); ++i) {
       xshape_dims[i + 1] = x_dims[i];
     }
-    ctx->SetOutputDim("XShape", framework::make_ddim(xshape_dims));
+    ctx->SetOutputDim("XShape", pten::make_ddim(xshape_dims));
     ctx->ShareLoD("X", /*->*/ "XShape");
   }
 };
@@ -301,7 +303,7 @@ class Unsqueeze2GradOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "Input(Out@GRAD) shouldn't be null."));
     auto xshape_dims = context->GetInputDim("XShape");
-    auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    auto x_dims = pten::slice_ddim(xshape_dims, 1, xshape_dims.size());
     context->SetOutputDim(framework::GradVarName("X"), x_dims);
     context->ShareLoD("XShape", framework::GradVarName("X"));
   }

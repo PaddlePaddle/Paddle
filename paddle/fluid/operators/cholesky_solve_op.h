@@ -15,11 +15,11 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/lapack_function.h"
 #include "paddle/fluid/operators/solve_op.h"
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/operators/triangular_solve_op.h"
 #include "paddle/fluid/platform/complex.h"
+#include "paddle/pten/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/pten/kernels/math_kernel.h"
 
 namespace paddle {
@@ -38,8 +38,8 @@ class CholeskySolveFunctor<paddle::platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext &dev_ctx, bool upper, int n,
                   int nrhs, T *Adata, int lda, T *Bdata, int *devInfo) {
     char uplo = upper ? 'U' : 'L';
-    math::lapackCholeskySolve<T>(uplo, n, nrhs, Adata, lda, Bdata, lda,
-                                 devInfo);
+    pten::funcs::lapackCholeskySolve<T>(uplo, n, nrhs, Adata, lda, Bdata, lda,
+                                        devInfo);
   }
 };
 
@@ -64,7 +64,7 @@ void cholesky_solve_fn(const paddle::framework::ExecutionContext &ctx,
   // calculate u's conjugate for complex
   framework::Tensor u_conj(u_bst.type());
   platform::ForRange<DeviceContext> u_for_range(dev_ctx, u_bst.numel());
-  math::ConjFunctor<T> u_functor(
+  pten::funcs::ConjFunctor<T> u_functor(
       u_bst.data<T>(), u_bst.numel(),
       u_conj.mutable_data<T>(u_bst.dims(), dev_ctx.GetPlace()));
   u_for_range(u_functor);
@@ -73,7 +73,7 @@ void cholesky_solve_fn(const paddle::framework::ExecutionContext &ctx,
   // calculate b's conjugate for complex
   framework::Tensor b_conj(b_bst.type());
   platform::ForRange<DeviceContext> b_for_range(dev_ctx, b_bst.numel());
-  math::ConjFunctor<T> b_functor(
+  pten::funcs::ConjFunctor<T> b_functor(
       b_bst.data<T>(), b_bst.numel(),
       b_conj.mutable_data<T>(b_bst.dims(), dev_ctx.GetPlace()));
   b_for_range(b_functor);
@@ -94,12 +94,12 @@ void cholesky_solve_fn(const paddle::framework::ExecutionContext &ctx,
   framework::TensorCopy(b_conj, dev_ctx.GetPlace(), out);
   T *out_data = out->mutable_data<T>(dev_ctx.GetPlace());
 
-  auto info_dims = slice_ddim(bindims, 0, binrank - 2);
+  auto info_dims = pten::slice_ddim(bindims, 0, binrank - 2);
   auto batchsize = product(info_dims);
 
   framework::Tensor tmp;
   std::vector<int> tmpdim(1, batchsize);
-  tmp.Resize(framework::make_ddim(tmpdim));
+  tmp.Resize(pten::make_ddim(tmpdim));
   int *info = tmp.mutable_data<int>(dev_ctx.GetPlace());
 
   CholeskySolveFunctor<DeviceContext, T> functor;
@@ -113,7 +113,7 @@ void cholesky_solve_fn(const paddle::framework::ExecutionContext &ctx,
 
   // calculate out's conjugate for complex
   platform::ForRange<DeviceContext> out_for_range(dev_ctx, out->numel());
-  math::ConjFunctor<T> out_functor(
+  pten::funcs::ConjFunctor<T> out_functor(
       out->data<T>(), out->numel(),
       out->mutable_data<T>(out->dims(), dev_ctx.GetPlace()));
   out_for_range(out_functor);
@@ -168,12 +168,12 @@ class CholeskySolveGradKernel : public framework::OpKernel<T> {
         db->Resize(bin->dims());
       }
 
-      auto blas = math::GetBlas<DeviceContext, T>(ctx);
+      auto blas = pten::funcs::GetBlas<DeviceContext, T>(ctx);
 
       // calculate out's conjugate for complex
       framework::Tensor out_conj(out->type());
       platform::ForRange<DeviceContext> out_for_range(dev_ctx, out->numel());
-      math::ConjFunctor<T> out_functor(
+      pten::funcs::ConjFunctor<T> out_functor(
           out->data<T>(), out->numel(),
           out_conj.mutable_data<T>(out->dims(), dev_ctx.GetPlace()));
       out_for_range(out_functor);
@@ -182,8 +182,8 @@ class CholeskySolveGradKernel : public framework::OpKernel<T> {
       framework::Tensor commonterm(out->type());
       auto outdims = out_conj.dims();
       auto dbdims = db_bst.dims();
-      auto mat_dim_a = math::CreateMatrixDescriptor(outdims, 0, false);
-      auto mat_dim_b = math::CreateMatrixDescriptor(dbdims, 0, false);
+      auto mat_dim_a = pten::funcs::CreateMatrixDescriptor(outdims, 0, false);
+      auto mat_dim_b = pten::funcs::CreateMatrixDescriptor(dbdims, 0, false);
       auto cmtdim = outdims;
       cmtdim[cmtdim.size() - 2] = dbdims[dbdims.size() - 2];
       commonterm.Resize(cmtdim);
@@ -195,7 +195,7 @@ class CholeskySolveGradKernel : public framework::OpKernel<T> {
       framework::Tensor commonterm_conj(commonterm.type());
       platform::ForRange<DeviceContext> commonterm_for_range(
           dev_ctx, commonterm.numel());
-      math::ConjFunctor<T> commonterm_functor(
+      pten::funcs::ConjFunctor<T> commonterm_functor(
           commonterm.data<T>(), commonterm.numel(),
           commonterm_conj.mutable_data<T>(commonterm.dims(),
                                           dev_ctx.GetPlace()));
@@ -207,9 +207,10 @@ class CholeskySolveGradKernel : public framework::OpKernel<T> {
               DeviceContext>::TYPE &>(dev_ctx),
           commonterm, commonterm_conj, -1, &commonterm);
 
-      auto mat_dim_u = math::CreateMatrixDescriptor(u_bst.dims(), 0, false);
+      auto mat_dim_u =
+          pten::funcs::CreateMatrixDescriptor(u_bst.dims(), 0, false);
       auto mat_dim_c =
-          math::CreateMatrixDescriptor(commonterm.dims(), 0, false);
+          pten::funcs::CreateMatrixDescriptor(commonterm.dims(), 0, false);
 
       Tensor du_bst(uin->type());
       // get upper or lower triangular

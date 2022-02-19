@@ -39,8 +39,8 @@ TEST(AutogradMeta, MemberFunction) {
   VLOG(6) << "Test Grad";
   CHECK(tmp_auto->Grad().defined() == false);
   auto* grad_t = tmp_auto->MutableGrad();
-  pten::DenseTensorMeta meta = pten::DenseTensorMeta(
-      pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 2}));
+  pten::DenseTensorMeta meta =
+      pten::DenseTensorMeta(pten::DataType::FLOAT32, pten::make_ddim({1, 2}));
   std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())

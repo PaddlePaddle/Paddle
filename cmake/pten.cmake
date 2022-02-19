@@ -114,6 +114,9 @@ function(kernel_library TARGET)
             if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/gpu/${TARGET}.cu)
                 list(APPEND gpu_srcs ${CMAKE_CURRENT_SOURCE_DIR}/gpu/${TARGET}.cu)
             endif()
+            if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/gpu/${TARGET}.cu.cc)
+                list(APPEND gpu_srcs ${CMAKE_CURRENT_SOURCE_DIR}/gpu/${TARGET}.cu.cc)
+            endif()
         endif()
         if (WITH_XPU)
             if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/xpu/${TARGET}.cc)
@@ -161,7 +164,7 @@ function(kernel_library TARGET)
 
     # Build Target according different src organization
     if((${cpu_srcs_len} GREATER 0 OR ${gpu_srcs_len} GREATER 0 OR
-        ${xpu_srcs_len} GREATER 0) AND (${common_srcs_len} GREATER 0 OR 
+        ${xpu_srcs_len} GREATER 0) AND (${common_srcs_len} GREATER 0 OR
         ${selected_rows_srcs_len} GREATER 0))
         # If the common_srcs/selected_rows_srcs depends on specific device srcs, build target using this rule.
         if (WITH_GPU)
@@ -225,11 +228,11 @@ function(kernel_library TARGET)
             cc_library(${TARGET} SRCS ${selected_rows_srcs} DEPS ${kernel_library_DEPS} ${kernel_deps})
         endif()
     else()
-         message(FATAL_ERROR "Cannot find any implementation for ${TARGET}")
+        message(FATAL_ERROR "Cannot find any implementation for ${TARGET}")
     endif()
 
     if (${common_srcs_len} GREATER 0 OR ${cpu_srcs_len} GREATER 0 OR
-        ${gpu_srcs_len} GREATER 0 OR ${xpu_srcs_len} GREATER 0 OR 
+        ${gpu_srcs_len} GREATER 0 OR ${xpu_srcs_len} GREATER 0 OR
         ${selected_rows_srcs_len} GREATER 0)
         # append target into PTEN_KERNELS property
         get_property(pten_kernels GLOBAL PROPERTY PTEN_KERNELS)
@@ -285,7 +288,7 @@ function(append_op_util_declare TARGET)
     string(REGEX MATCH "(PT_REGISTER_BASE_KERNEL_NAME|PT_REGISTER_ARG_MAPPING_FN)\\([ \t\r\n]*[a-z0-9_]*" util_registrar "${target_content}")
     string(REPLACE "PT_REGISTER_ARG_MAPPING_FN" "PT_DECLARE_ARG_MAPPING_FN" util_declare "${util_registrar}")
     string(REPLACE "PT_REGISTER_BASE_KERNEL_NAME" "PT_DECLARE_BASE_KERNEL_NAME" util_declare "${util_declare}")
-    string(APPEND util_declare ");")
+    string(APPEND util_declare ");\n")
     file(APPEND ${op_utils_header} "${util_declare}")
 endfunction()
 

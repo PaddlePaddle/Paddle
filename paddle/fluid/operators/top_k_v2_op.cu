@@ -76,8 +76,8 @@ class TopkV2OpCUDAKernel : public framework::OpKernel<T> {
 
     if (axis == in_dims.size() - 1) {
       // if get the topK from the last axis
-      const int64_t& input_height = framework::product(
-          framework::slice_ddim(in_dims, 0, in_dims.size() - 1));
+      const int64_t& input_height =
+          pten::product(pten::slice_ddim(in_dims, 0, in_dims.size() - 1));
       const int64_t& input_width = in_dims[in_dims.size() - 1];
       const auto& dev_ctx = ctx.cuda_device_context();
 
@@ -155,8 +155,8 @@ class TopkV2OpCUDAKernel : public framework::OpKernel<T> {
       Tensor trans_out;
       trans_out.mutable_data<T>(trans_out_dims, ctx.GetPlace());
 
-      const int64_t input_height = framework::product(
-          framework::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+      const int64_t input_height =
+          pten::product(pten::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
       const int64_t input_width = trans_dims[trans_dims.size() - 1];
 
       if (k > input_width) k = input_width;

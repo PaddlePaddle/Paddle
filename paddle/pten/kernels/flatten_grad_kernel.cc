@@ -25,7 +25,7 @@ void FlattenGradKernel(const Context& dev_ctx,
                        const DenseTensor& xshape,
                        DenseTensor* x_grad) {
   auto xshape_dims = xshape.dims();
-  auto x_dims = pten::framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
+  auto x_dims = pten::slice_ddim(xshape_dims, 1, xshape_dims.size());
   pten::Copy(dev_ctx, out_grad, false, x_grad);
   x_grad->ResizeAndAllocate(x_dims);
 }
@@ -49,7 +49,7 @@ PT_REGISTER_KERNEL(flatten_grad,
                    ALL_LAYOUT,
                    pten::FlattenGradKernel,
                    float,
-                   paddle::platform::float16,
+                   pten::dtype::float16,
                    double,
                    uint8_t,
                    int8_t,
@@ -64,7 +64,7 @@ PT_REGISTER_KERNEL(flatten_grad,
                    ALL_LAYOUT,
                    pten::FlattenGradKernel,
                    float,
-                   paddle::platform::float16,
+                   pten::dtype::float16,
                    int8_t,
                    int,
                    int64_t) {}

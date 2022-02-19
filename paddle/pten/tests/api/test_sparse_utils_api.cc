@@ -31,7 +31,7 @@ TEST(API, to_sparse_coo) {
   auto dense_x = std::make_shared<pten::DenseTensor>(
       alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            pten::framework::make_ddim({3, 3}),
+                            pten::make_ddim({3, 3}),
                             pten::DataLayout::NCHW));
 
   pten::CPUPlace cpu;
@@ -65,7 +65,7 @@ TEST(API, to_sparse_coo) {
   ASSERT_EQ(cmp_elements, 0);
 
   // 1. test sparse_csr_to_coo
-  auto dense_dims = pten::framework::make_ddim({3, 3});
+  auto dense_dims = pten::make_ddim({3, 3});
   pten::DenseTensorMeta crows_meta(
       pten::DataType::INT64, {dense_dims[0] + 1}, pten::DataLayout::NCHW);
   pten::DenseTensorMeta cols_meta(
@@ -111,7 +111,7 @@ TEST(API, to_sparse_csr) {
   auto dense_x = std::make_shared<pten::DenseTensor>(
       alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            pten::framework::make_ddim({3, 3}),
+                            pten::make_ddim({3, 3}),
                             pten::DataLayout::NCHW));
 
   pten::CPUPlace cpu;
@@ -150,7 +150,7 @@ TEST(API, to_sparse_csr) {
   check(*csr);
 
   // 1. test sparse_coo_to_csr
-  auto dense_dims = pten::framework::make_ddim({3, 3});
+  auto dense_dims = pten::make_ddim({3, 3});
   pten::DenseTensorMeta indices_meta(pten::DataType::INT64,
                                      {sparse_dim, non_zero_num},
                                      pten::DataLayout::NCHW);
@@ -188,7 +188,7 @@ TEST(API, to_dense) {
   std::vector<int64_t> cols_data = {1, 0, 2, 0};
   std::vector<int64_t> crows_data = {0, 1, 3, 4};
   const int64_t non_zero_num = 4;
-  auto dense_dims = pten::framework::make_ddim({3, 3});
+  auto dense_dims = pten::make_ddim({3, 3});
 
   pten::CPUContext dev_ctx_cpu;
 

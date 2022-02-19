@@ -19,10 +19,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/buffer.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/operators/math/algorithm.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/operators/math/squared_l2_norm.h"
+#include "paddle/fluid/operators/tensor_to_string.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/algorithm.h"
 #include "paddle/pten/kernels/funcs/eigen/extensions.h"
 
 namespace paddle {
@@ -233,7 +234,7 @@ struct SparseLambMomentREGUpdateFunctor {
   inline HOSTDEVICE void operator()(size_t i) const {
     if (skip_update_ && *skip_update_) return;
     auto row_idx =
-        math::BinarySearch<int64_t>(rows_, row_count_, i / row_numel_);
+        pten::funcs::BinarySearch<int64_t>(rows_, row_count_, i / row_numel_);
     T g = row_idx >= 0 ? grad_[row_idx * row_numel_ + i % row_numel_]
                        : static_cast<T>(0);
     update(i, g);
@@ -312,7 +313,7 @@ struct SparseLambMomentMENUpdateFunctor {
   inline HOSTDEVICE void operator()(size_t i) const {
     if (skip_update_ && *skip_update_) return;
     auto row_idx =
-        math::BinarySearch<int64_t>(rows_, row_count_, i / row_numel_);
+        pten::funcs::BinarySearch<int64_t>(rows_, row_count_, i / row_numel_);
     T g = row_idx >= 0 ? grad_[row_idx * row_numel_ + i % row_numel_]
                        : static_cast<T>(0);
     update(i, g);
@@ -657,6 +658,16 @@ class LambOpKernel : public framework::OpKernel<T> {
         p_norm_ptr, numel, &buffer);
     math::SquaredL2Norm(dev_ctx, trust_ratio_div_ptr, trust_ratio_div_norm_ptr,
                         numel, &buffer);
+
+    if (VLOG_IS_ON(1)) {
+      const auto& name = ctx.GetOp().Input("Param");
+      auto pn = ToVector(p_norm_ptr, 1, dev_ctx.GetPlace());
+      auto tn = ToVector(trust_ratio_div_norm_ptr, 1, dev_ctx.GetPlace());
+      auto dtype =
+          framework::DataTypeToString(framework::DataTypeTrait<T>::DataType());
+      VLOG(1) << "Param " << dtype << " " << name << " pn = " << pn[0]
+              << " , tn = " << tn[0];
+    }
 
 #define CALL_PADDLE_UPDATE_LAMB_PARAM_FUNC(__should_update_beta_pow)         \
   do {                                                                       \

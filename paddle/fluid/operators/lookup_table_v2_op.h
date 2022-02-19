@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -100,7 +100,8 @@ struct LookupTableV2CPUFunctor {
       int64_t row_width = table_t.value().dims()[1];
       const auto *table = table_t.value().template data<T>();
       auto *output = output_t->template mutable_data<T>(context_.GetPlace());
-      auto input_data_type = table_t.value().type();
+      auto input_data_type =
+          framework::TransToProtoVarType(table_t.value().dtype());
 
       for (int64_t i = 0; i < ids_numel; ++i) {
         if (padding_idx != kNoPadding && ids[i] == padding_idx) {
@@ -123,7 +124,8 @@ struct LookupTableV2CPUFunctor {
             memcpy(output + i * row_width, table + id_index * row_width,
                    row_width * sizeof(T));
           } else {
-            auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context_);
+            auto blas =
+                pten::funcs::GetBlas<platform::CPUDeviceContext, T>(context_);
             blas.VCOPY(row_width, table + id_index * row_width,
                        output + i * row_width);
           }
@@ -143,7 +145,8 @@ class LookupTableV2Kernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     const auto *ids = context.Input<Tensor>("Ids");
     LookupTableV2CPUFunctor<T> functor(context, ids);
-    framework::VisitIntDataType(ids->type(), functor);
+    framework::VisitIntDataType(framework::TransToProtoVarType(ids->dtype()),
+                                functor);
   }
 };
 
@@ -195,7 +198,7 @@ struct LookupTableV2GradCPUFunctor {
 
       auto d_output_dims = d_output->dims();
       auto d_output_dims_2d =
-          framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
+          pten::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
       PADDLE_ENFORCE_EQ(d_table_value->dims(), d_output_dims_2d,
                         platform::errors::InvalidArgument(
                             "ShapeError: The shape of lookup_table@Grad and "
@@ -257,7 +260,8 @@ class LookupTableV2GradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     const auto *ids = context.Input<Tensor>("Ids");
     LookupTableV2GradCPUFunctor<T> functor(context, ids);
-    framework::VisitIntDataType(ids->type(), functor);
+    framework::VisitIntDataType(framework::TransToProtoVarType(ids->dtype()),
+                                functor);
   }
 };
 

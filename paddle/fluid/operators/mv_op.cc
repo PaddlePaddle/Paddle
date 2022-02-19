@@ -58,7 +58,7 @@ class MVOp : public framework::OperatorWithKernel {
                           "but recieved X'shape = [%s], Vec's shape = [%s]",
                           dim_x, dim_vec));
 
-    framework::DDim dim_out = framework::make_ddim({dim_x[0]});
+    framework::DDim dim_out = pten::make_ddim({dim_x[0]});
 
     context->SetOutputDim("Out", dim_out);
     context->ShareLoD("X", /*->*/ "Out");

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/operator.h"
@@ -161,7 +162,7 @@ MLUCnnlTensorDesc::MLUCnnlTensorDesc(const int tensor_dim,
 MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
                                      const cnnlTensorLayout_t layout,
                                      const cnnlDataType_t tensor_dtype) {
-  auto dims = framework::vectorize<int>(tensor.dims());
+  auto dims = pten::vectorize<int>(tensor.dims());
   int tensor_dim = dims.size();
   raw_tensor_desc = g_cnnl_tensor_desc_pool.Pop();
   if (tensor_dim == 0) {
@@ -178,7 +179,7 @@ MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
 
 MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor)
     : MLUCnnlTensorDesc(tensor, CNNL_LAYOUT_ARRAY,
-                        ToCnnlDataType(tensor.type())) {}
+                        ToCnnlDataType(tensor.dtype())) {}
 
 MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
                                      cnnlTensorLayout_t layout,
@@ -1149,6 +1150,18 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
       output_desc, output, workspace_ptr, workspace_size));
 }
 
+/* static */ void MLUCnnl::AdaptivePoolingForward(
+    const ExecutionContext& ctx, cnnlPoolingMode_t pool_mode,
+    const cnnlTensorDescriptor_t input_desc, const void* input,
+    const cnnlTensorDescriptor_t output_desc, void* output,
+    const cnnlTensorDescriptor_t index_desc, void* index) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  PADDLE_ENFORCE_MLU_SUCCESS(
+      cnnlAdaptivePoolingForward(handle, input_desc, input, pool_mode,
+                                 output_desc, output, index_desc, index));
+}
+
 /* static */ void MLUCnnl::Pool3D(
     const ExecutionContext& ctx, cnnlPoolingMode_t pool_mode,
     const std::vector<int64_t>& output_shape,
@@ -1798,6 +1811,17 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
   PADDLE_ENFORCE_MLU_SUCCESS(cnnlPoolingBackward(
       handle, const_cast<cnnlPoolingDescriptor_t>(pooling_desc), alpha, y_desc,
       y, diff_y_desc, diff_y, x_desc, x, beta, diff_x_desc, diff_x));
+}
+
+/* static */ void MLUCnnl::AdaptivePoolingBackward(
+    const ExecutionContext& ctx, const cnnlPoolingMode_t pool_mode,
+    const cnnlTensorDescriptor_t y_desc, const void* y,
+    const cnnlTensorDescriptor_t index_desc, const void* index,
+    const cnnlTensorDescriptor_t diff_x_desc, void* diff_x) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlAdaptivePoolingBackward(
+      handle, y_desc, y, index_desc, index, pool_mode, diff_x_desc, diff_x));
 }
 
 /* static */ void MLUCnnl::NonMaxSuppression(

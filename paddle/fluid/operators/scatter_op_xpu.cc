@@ -36,7 +36,7 @@ class ScatterOpXPUKernel : public framework::OpKernel<T> {
     // In place output: Out = X, Out[ids] = Updates
     framework::TensorCopy(*x, ctx.GetPlace(), out);
     // Apply ScatterUpdate: Out[index] = Updates[:]
-    const auto &index_type = index->type();
+    const auto &index_type = framework::TransToProtoVarType(index->dtype());
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(index_type_match, true,
@@ -73,7 +73,7 @@ class ScatterOpXPUKernel : public framework::OpKernel<T> {
 
     int dim0 = static_cast<int>(x->dims()[0]);
     int dim1 = static_cast<int>(
-        framework::product(framework::slice_ddim(x_dims, 1, x_dims.size())));
+        pten::product(pten::slice_ddim(x_dims, 1, x_dims.size())));
     T *out_data = out->data<T>();
     const T *updates_data = updates->data<T>();
 

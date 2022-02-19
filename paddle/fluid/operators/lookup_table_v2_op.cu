@@ -109,7 +109,8 @@ class LookupTableV2CUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     const auto *ids_t = context.Input<framework::Tensor>("Ids");
     LookupTableV2CUDAFunctor<T> functor(context, ids_t);
-    framework::VisitIntDataType(ids_t->type(), functor);
+    framework::VisitIntDataType(framework::TransToProtoVarType(ids_t->dtype()),
+                                functor);
   }
 };
 
@@ -169,7 +170,7 @@ struct LookupTableV2GradCUDAFunctor {
       auto *d_output_data = d_output->template data<T>();
       auto d_output_dims = d_output->dims();
       auto d_output_dims_2d =
-          framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
+          pten::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
       PADDLE_ENFORCE_EQ(d_table_value->dims(), d_output_dims_2d,
                         platform::errors::InvalidArgument(
                             "ShapeError: The shape of lookup_table@Grad and "
@@ -216,7 +217,8 @@ class LookupTableV2GradCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     const auto *ids_t = context.Input<framework::Tensor>("Ids");
     LookupTableV2GradCUDAFunctor<T> functor(context, ids_t);
-    framework::VisitIntDataType(ids_t->type(), functor);
+    framework::VisitIntDataType(framework::TransToProtoVarType(ids_t->dtype()),
+                                functor);
   }
 };
 

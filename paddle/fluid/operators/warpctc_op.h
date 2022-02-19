@@ -135,8 +135,7 @@ class WarpCTCFunctor {
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     size_t workspace_elements = workspace_bytes / sizeof(T) + 1UL;
     Tensor workspace = ctx.AllocateTmpTensor<T, DeviceContext>(
-        framework::make_ddim({static_cast<int64_t>(workspace_elements)}),
-        dev_ctx);
+        pten::make_ddim({static_cast<int64_t>(workspace_elements)}), dev_ctx);
     T* workspace_data = workspace.data<T>();
     pten::funcs::SetConstant<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), &workspace,
@@ -285,15 +284,14 @@ class WarpCTCKernel : public framework::OpKernel<T> {
       max_sequence_length = math::MaximumSequenceLength(logits_lod);
     }
 
-    auto loss_dims =
-        framework::make_ddim({static_cast<int64_t>(num_sequences), 1});
+    auto loss_dims = pten::make_ddim({static_cast<int64_t>(num_sequences), 1});
 
     // warpctc needs sequences data stored in transposed padding format
     LoDTensor warpctc_logits;
     auto warpctc_logits_dims =
-        framework::make_ddim({static_cast<int64_t>(max_sequence_length),
-                              static_cast<int64_t>(num_sequences),
-                              static_cast<int64_t>(sequence_width)});
+        pten::make_ddim({static_cast<int64_t>(max_sequence_length),
+                         static_cast<int64_t>(num_sequences),
+                         static_cast<int64_t>(sequence_width)});
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     Tensor warpctc_logits_tmp =
         ctx.AllocateTmpTensor<T, DeviceContext>(warpctc_logits_dims, dev_ctx);

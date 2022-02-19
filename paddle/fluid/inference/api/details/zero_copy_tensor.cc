@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
@@ -40,7 +41,7 @@ void Tensor::Reshape(const std::vector<int> &shape) {
       var, paddle::platform::errors::PreconditionNotMet(
                "No tensor called [%s] in the runtime scope", name_));
   auto *tensor = var->GetMutable<paddle::framework::LoDTensor>();
-  tensor->Resize(paddle::framework::make_ddim(shape));
+  tensor->Resize(pten::make_ddim(shape));
 }
 
 void Tensor::ReshapeStrings(const size_t &shape) {
@@ -122,7 +123,7 @@ T *Tensor::data(PlaceType *place, int *size) const {
 
 DataType Tensor::type() const {
   EAGER_GET_TENSOR(paddle::framework::LoDTensor);
-  auto type = tensor->type();
+  auto type = paddle::framework::TransToProtoVarType(tensor->dtype());
   if (type == paddle::framework::proto::VarType::FP32) {
     return DataType::FLOAT32;
   } else if (type == paddle::framework::proto::VarType::FP16) {
@@ -445,18 +446,17 @@ std::vector<int> Tensor::shape() const {
     // at last nhwC, so for dim==2 these layouts are the same and nothing should
     // be done. Similarly for dim==1 when you have just one possible
     // combination.
-    if (tensor->dims().size() < 3)
-      return paddle::framework::vectorize<int>(tensor->dims());
+    if (tensor->dims().size() < 3) return pten::vectorize<int>(tensor->dims());
     if (out_layout == paddle::framework::DataLayout::kNHWC) {
-      auto dims = paddle::framework::vectorize<int>(tensor->dims());
+      auto dims = pten::vectorize<int>(tensor->dims());
       std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
       return dims;
     } else {
-      return paddle::framework::vectorize<int>(tensor->dims());
+      return pten::vectorize<int>(tensor->dims());
     }
   }
 #endif
-  return paddle::framework::vectorize<int>(tensor->dims());
+  return pten::vectorize<int>(tensor->dims());
 }
 
 void Tensor::SetLoD(const std::vector<std::vector<size_t>> &x) {

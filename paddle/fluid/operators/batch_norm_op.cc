@@ -115,8 +115,8 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
                         bias_dim, bias_dim.size()));
 
   bool check = true;
-  if ((!ctx->IsRuntime()) && (framework::product(scale_dim) <= 0 ||
-                              framework::product(bias_dim) <= 0)) {
+  if ((!ctx->IsRuntime()) &&
+      (pten::product(scale_dim) <= 0 || pten::product(bias_dim) <= 0)) {
     check = false;
   }
 
@@ -151,15 +151,19 @@ framework::OpKernelType BatchNormOp::GetExpectedKernelType(
     bn_param_type = framework::proto::VarType::FP64;
   }
   PADDLE_ENFORCE_EQ(
-      bn_param_type, ctx.Input<Tensor>("Scale")->type(),
+      bn_param_type,
+      framework::TransToProtoVarType(ctx.Input<Tensor>("Scale")->dtype()),
       platform::errors::InvalidArgument("Scale input should be of float type"));
   PADDLE_ENFORCE_EQ(
-      bn_param_type, ctx.Input<Tensor>("Bias")->type(),
+      bn_param_type,
+      framework::TransToProtoVarType(ctx.Input<Tensor>("Bias")->dtype()),
       platform::errors::InvalidArgument("Bias input should be of float type"));
   PADDLE_ENFORCE_EQ(
-      bn_param_type, ctx.Input<Tensor>("Mean")->type(),
+      bn_param_type,
+      framework::TransToProtoVarType(ctx.Input<Tensor>("Mean")->dtype()),
       platform::errors::InvalidArgument("Mean input should be of float type"));
-  PADDLE_ENFORCE_EQ(bn_param_type, ctx.Input<Tensor>("Variance")->type(),
+  PADDLE_ENFORCE_EQ(bn_param_type, framework::TransToProtoVarType(
+                                       ctx.Input<Tensor>("Variance")->dtype()),
                     platform::errors::InvalidArgument(
                         "Variance input should be of float type"));
 

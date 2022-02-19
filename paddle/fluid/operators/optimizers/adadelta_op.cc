@@ -74,7 +74,7 @@ class AdadeltaOp : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument(
             "Param and grad input of AdadeltaOp should have same dimension."));
     PADDLE_ENFORCE_NE(
-        framework::product(ctx->GetInputDim("AvgSquaredGrad")), 0,
+        pten::product(ctx->GetInputDim("AvgSquaredGrad")), 0,
         platform::errors::InvalidArgument(
             "Maybe the Input variable AvgSquaredGrad has not "
             "been initialized. You may need to confirm if you put "

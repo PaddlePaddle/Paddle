@@ -27,7 +27,7 @@ namespace pten {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = pten::framework::DDim;
+using DDim = pten::DDim;
 
 // TODO(YuanRisheng): This TEST file need to be refactored after 'copy' realized
 // in 'paddle/api'
@@ -38,7 +38,7 @@ TEST(DEV_API, copy) {
   auto dense_src = std::make_shared<pten::DenseTensor>(
       alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            pten::framework::make_ddim({2, 3}),
+                            pten::make_ddim({2, 3}),
                             pten::DataLayout::NCHW));
   auto* dense_x_data =
       dense_src->mutable_data<float>(paddle::platform::CPUPlace());
@@ -46,7 +46,7 @@ TEST(DEV_API, copy) {
   auto dense_dst = std::make_shared<pten::DenseTensor>(
       alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            pten::framework::make_ddim({2, 3}),
+                            pten::make_ddim({2, 3}),
                             pten::DataLayout::NCHW));
 
   for (size_t i = 0; i < 2; ++i) {

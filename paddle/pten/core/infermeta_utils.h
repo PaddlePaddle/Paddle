@@ -15,6 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+#include <typeindex>
+#include <typeinfo>
 #include <utility>
 
 #include "paddle/pten/common/scalar.h"
@@ -55,9 +57,12 @@ class InferMetaContext {
   AttrType AttrAt(size_t idx) {
     try {
       return paddle::any_cast<AttrType>(attrs_.at(idx));
-    } catch (paddle::bad_any_cast&) {
+    } catch (paddle::bad_any_cast& e) {
       PADDLE_THROW(pten::errors::InvalidArgument(
-          "Attribute cast error in InferMeta Context."));
+          "Attribute cast error in InferMeta Context, the expected attribute "
+          "type is `%s`, but actual attribute type is `%s`.",
+          std::type_index(typeid(AttrType)).name(),
+          std::type_index(attrs_.at(idx).type()).name()));
     }
   }
 
@@ -146,13 +151,22 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
     }
   };
 
+  // TODO(chenweihang): support other attr type later
   PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(bool);
   PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(int);
   PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(int64_t);
+  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(float);
+  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::string&);
+  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::vector<bool>&);
   PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::vector<int>&);
   PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(
       const std::vector<int64_t>&);
+  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::vector<float>&);
+  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::vector<double>&);
+  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(
+      const std::vector<std::string>&);
   PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(DataType);
+  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(Backend);
   PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(DataLayout);
   PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const Scalar&);
   PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const ScalarArray&);
@@ -194,9 +208,9 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
   };
 };
 
-class MetaFunctionMap {
+class MetaFnFactory {
  public:
-  static MetaFunctionMap& Instance();
+  static MetaFnFactory& Instance();
 
   bool Contains(const std::string& kernel_name_prefix) const {
     return meta_fn_map_.count(kernel_name_prefix) > 0;
@@ -225,7 +239,7 @@ class MetaFunctionMap {
   }
 
  private:
-  MetaFunctionMap() = default;
+  MetaFnFactory() = default;
 
   /**
    * [ Why use kernel name prefix? ]
@@ -243,14 +257,14 @@ class MetaFunctionMap {
    */
   paddle::flat_hash_map<std::string, InferMetaFn> meta_fn_map_;
 
-  DISABLE_COPY_AND_ASSIGN(MetaFunctionMap);
+  DISABLE_COPY_AND_ASSIGN(MetaFnFactory);
 };
 
 struct InferMetaFnRegistrar {
   InferMetaFnRegistrar(const char* kernel_name_prefix,
                        InferMetaFn infer_meta_fn) {
-    MetaFunctionMap::Instance().Insert(kernel_name_prefix,
-                                       std::move(infer_meta_fn));
+    MetaFnFactory::Instance().Insert(kernel_name_prefix,
+                                     std::move(infer_meta_fn));
   }
 };
 

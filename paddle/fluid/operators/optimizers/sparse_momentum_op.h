@@ -17,10 +17,10 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/operators/math/algorithm.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/for_range.h"
 
@@ -145,7 +145,7 @@ class SparseMomentumOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("VelocityOut"), "Output", "VelocityOut",
                    "SparseMomentum");
 
-    auto lr_dims = framework::product(ctx->GetInputDim("LearningRate"));
+    auto lr_dims = pten::product(ctx->GetInputDim("LearningRate"));
     PADDLE_ENFORCE_EQ(lr_dims != 0 && lr_dims == 1, true,
                       platform::errors::InvalidArgument(
                           "Learning_rate should be a scalar. But Received "
@@ -286,7 +286,7 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
     const bool multi_precision = ctx.Attr<bool>("multi_precision");
     bool use_nesterov = ctx.Attr<bool>("use_nesterov");
     auto index = ctx.Input<framework::Tensor>("Index");
-    const auto& index_type = index->type();
+    const auto& index_type = framework::TransToProtoVarType(index->dtype());
     if (multi_precision) {
       if (use_nesterov) {
         auto update_method = UseNesterov<MPDType>();
@@ -354,7 +354,8 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
       Tensor cpu_axis;
       const Tensor* axis_tensor = ctx.Input<Tensor>("Axis");
       framework::TensorCopy(*axis_tensor, platform::CPUPlace(), &cpu_axis);
-      const auto& axis_type = axis_tensor->type();
+      const auto& axis_type =
+          framework::TransToProtoVarType(axis_tensor->dtype());
       if (axis_type == framework::proto::VarType::INT32) {
         axis = static_cast<int>(cpu_axis.data<int32_t>()[0]);
       } else if (axis_type == framework::proto::VarType::INT64) {

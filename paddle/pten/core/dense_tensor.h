@@ -20,9 +20,6 @@ limitations under the License. */
 #include "paddle/pten/core/tensor_base.h"
 #include "paddle/pten/core/tensor_meta.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/framework/data_type.h"
-
 /* @jim19930609: Move to MKLDNN_Tensor in the future
     */
 #ifdef PADDLE_WITH_MKLDNN
@@ -161,6 +158,11 @@ class DenseTensor : public TensorBase,
   /// \brief Get the const data pointer value of raw type.
   /// \return The const data pointer value of raw type.
   const void* data() const;
+
+  template <typename T>
+  T* data();
+
+  void* data();
 
  private:
   friend class DenseTensorUtils;

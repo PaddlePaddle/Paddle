@@ -22,9 +22,12 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include "paddle/extension.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_kernel_info_helper.h"
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
-#include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/api/lib/utils/storage.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/kernel_context.h"
 #include "paddle/pten/core/kernel_factory.h"
@@ -182,16 +185,16 @@ TEST(CustomKernel, custom_kernel_dot) {
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
   auto dense_x = std::make_shared<pten::DenseTensor>(
-      alloc.get(), pten::DenseTensorMeta(pten::DataType::UINT8,
-                                         paddle::framework::make_ddim({2, 3}),
-                                         pten::DataLayout::NCHW));
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::UINT8, pten::make_ddim({2, 3}),
+                            pten::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x->mutable_data<uint8_t>(paddle::platform::CPUPlace());
 
   auto dense_y = std::make_shared<pten::DenseTensor>(
-      alloc.get(), pten::DenseTensorMeta(pten::DataType::UINT8,
-                                         paddle::framework::make_ddim({2, 3}),
-                                         pten::DataLayout::NCHW));
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::UINT8, pten::make_ddim({2, 3}),
+                            pten::DataLayout::NCHW));
   auto* dense_y_data =
       dense_y->mutable_data<uint8_t>(paddle::platform::CPUPlace());
 
@@ -231,8 +234,7 @@ TEST(CustomKernel, custom_kernel_dot) {
   pten::DataType fake_attr_dtype = pten::DataType::UINT32;
   paddle::framework::LoDTensor tmp_tensor;
   tmp_tensor.mutable_data<uint8_t>({1}, pten::TransToPtenPlace(backend));
-  pten::Scalar fake_attr_scalar =
-      paddle::experimental::MakePtenScalar(tmp_tensor);
+  pten::Scalar fake_attr_scalar{tmp_tensor};
   pten::ScalarArray fake_attr_scalar_array;
   std::vector<int64_t> fake_attr_int64_vec;
   std::vector<int> fake_attr_int_vec;

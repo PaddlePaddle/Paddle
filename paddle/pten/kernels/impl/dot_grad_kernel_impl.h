@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/pten/kernels/complex_kernel.h"
 
 #include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/operators/math/complex_functors.h"
+#include "paddle/pten/kernels/funcs/complex_functors.h"
 
 namespace pten {
 
@@ -35,9 +35,7 @@ struct DotGradFunction {
 };
 
 template <typename DeviceContext, typename T>
-struct DotGradFunction<DeviceContext,
-                       T,
-                       paddle::operators::math::EnableComplex<T>> {
+struct DotGradFunction<DeviceContext, T, pten::funcs::EnableComplex<T>> {
   void operator()(const DeviceContext& ctx,
                   const DenseTensor* tensor_x,
                   const DenseTensor* tensor_y,
@@ -103,7 +101,7 @@ struct DotGradFunction<DeviceContext,
       auto* data_dx = ctx.template Alloc<T>(tensor_dx);
       const auto* data_y = tensor_y->data<T>();
       const DDim& dim = tensor_x->dims();
-      size_t N = static_cast<size_t>(pten::framework::product(dim));
+      size_t N = static_cast<size_t>(pten::product(dim));
 
       auto step = dim[dim.size() - 1];
 
@@ -118,7 +116,7 @@ struct DotGradFunction<DeviceContext,
       auto* data_dy = ctx.template Alloc<T>(tensor_dy);
       const auto* data_x = tensor_x->data<T>();
       const DDim& dim = tensor_y->dims();
-      size_t N = static_cast<size_t>(pten::framework::product(dim));
+      size_t N = static_cast<size_t>(pten::product(dim));
 
       auto step = dim[dim.size() - 1];
 
@@ -133,9 +131,7 @@ struct DotGradFunction<DeviceContext,
 };
 
 template <typename DeviceContext, typename T>
-struct DotGradFunction<DeviceContext,
-                       T,
-                       paddle::operators::math::DisableComplex<T>> {
+struct DotGradFunction<DeviceContext, T, pten::funcs::DisableComplex<T>> {
   void operator()(const DeviceContext& ctx,
                   const DenseTensor* tensor_x,
                   const DenseTensor* tensor_y,
@@ -221,9 +217,7 @@ struct DotDoubleGradFunction {
 };
 
 template <typename DeviceContext, typename T>
-struct DotDoubleGradFunction<DeviceContext,
-                             T,
-                             paddle::operators::math::EnableComplex<T>> {
+struct DotDoubleGradFunction<DeviceContext, T, pten::funcs::EnableComplex<T>> {
   void operator()(const DeviceContext& ctx,
                   const DenseTensor* tensor_x,
                   const DenseTensor* tensor_y,
@@ -334,9 +328,7 @@ struct DotDoubleGradFunction<DeviceContext,
 };
 
 template <typename DeviceContext, typename T>
-struct DotDoubleGradFunction<DeviceContext,
-                             T,
-                             paddle::operators::math::DisableComplex<T>> {
+struct DotDoubleGradFunction<DeviceContext, T, pten::funcs::DisableComplex<T>> {
   void operator()(const DeviceContext& ctx,
                   const DenseTensor* tensor_x,
                   const DenseTensor* tensor_y,
@@ -461,9 +453,7 @@ struct DotTripleGradFunction {
 // TODO(wuweilong): enable this function when the unittests framewark for multi
 // grad is ok (dtype: complex64 or complex128).
 template <typename DeviceContext, typename T>
-struct DotTripleGradFunction<DeviceContext,
-                             T,
-                             paddle::operators::math::EnableComplex<T>> {
+struct DotTripleGradFunction<DeviceContext, T, pten::funcs::EnableComplex<T>> {
   void operator()(const DeviceContext& ctx,
                   const DenseTensor* in_tensor_x,
                   const DenseTensor* in_tensor_y,
@@ -656,9 +646,7 @@ struct DotTripleGradFunction<DeviceContext,
 };
 
 template <typename DeviceContext, typename T>
-struct DotTripleGradFunction<DeviceContext,
-                             T,
-                             paddle::operators::math::DisableComplex<T>> {
+struct DotTripleGradFunction<DeviceContext, T, pten::funcs::DisableComplex<T>> {
   void operator()(const DeviceContext& ctx,
                   const DenseTensor* in_tensor_x,
                   const DenseTensor* in_tensor_y,

@@ -66,7 +66,8 @@ struct ArrayToLoDFunctor : public boost::static_visitor<void> {
     ArrayToLoDFunctorImpl<DeviceContext> functor;
     functor.dev_ctx_ = dev_ctx;
     functor.prev_functor_ = this;
-    framework::VisitDataType(out->type(), functor);
+    framework::VisitDataType(framework::TransToProtoVarType(out->dtype()),
+                             functor);
   }
 };
 
@@ -101,14 +102,13 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
                           "There's no element in the input array."));
     int rank = x[0].dims().size();
     platform::Place place = x[0].place();
-    auto data_type = x[0].type();
+    auto data_type = x[0].dtype();
     int64_t batch_size = x[0].dims()[0];
-    framework::DDim ins_dims = rank > 1
-                                   ? framework::slice_ddim(x[0].dims(), 1, rank)
-                                   : framework::make_ddim({0});
+    framework::DDim ins_dims = rank > 1 ? pten::slice_ddim(x[0].dims(), 1, rank)
+                                        : pten::make_ddim({0});
     for (size_t i = 1; i < x.size(); ++i) {
-      auto ins_i_dims = rank > 1 ? framework::slice_ddim(x[i].dims(), 1, rank)
-                                 : framework::make_ddim({0});
+      auto ins_i_dims = rank > 1 ? pten::slice_ddim(x[i].dims(), 1, rank)
+                                 : pten::make_ddim({0});
       PADDLE_ENFORCE_EQ(
           ins_i_dims, ins_dims,
           platform::errors::InvalidArgument(
@@ -124,17 +124,17 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
               "The current place is %d, and the previous place is %d.",
               i, x[i].place(), place));
       PADDLE_ENFORCE_EQ(
-          x[i].type(), data_type,
+          x[i].dtype(), data_type,
           platform::errors::InvalidArgument(
               "The date type of the %zu'th element in LoDTensorArray "
               "differs from previous ones."
               "The current data type is %d, and the previous data type is %d.",
-              i, x[i].type(), data_type));
+              i, x[i].dtype(), data_type));
       batch_size += x[i].dims()[0];
     }
-    auto ins_dim_vec = framework::vectorize(ins_dims);
+    auto ins_dim_vec = pten::vectorize(ins_dims);
     ins_dim_vec.insert(ins_dim_vec.begin(), batch_size);
-    framework::DDim out_dims = framework::make_ddim(ins_dim_vec);
+    framework::DDim out_dims = pten::make_ddim(ins_dim_vec);
     out->Resize(out_dims);
     out->mutable_data(place, data_type);
 

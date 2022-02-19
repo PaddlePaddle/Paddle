@@ -44,7 +44,7 @@ class CosSimKernel : public framework::OpKernel<T> {
     out_y_norm->mutable_data<T>(context.GetPlace());
     out_z->set_lod(in_x->lod());
 
-    int cols = framework::product(in_x->dims()) / rows_x;
+    int cols = pten::product(in_x->dims()) / rows_x;
 
     if (rows_x == rows_y) {
       math::CosSimFunctor<T, true> functor(
@@ -81,7 +81,7 @@ class CosSimGradKernel : public framework::OpKernel<T> {
     // compute gradident
     int rows_x = in_x->dims()[0];
     int rows_y = in_y->dims()[0];
-    int cols = framework::product(in_x->dims()) / rows_x;
+    int cols = pten::product(in_x->dims()) / rows_x;
 
     if (rows_x == rows_y) {
       if (out_grad_x) {

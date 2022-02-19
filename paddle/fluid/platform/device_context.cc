@@ -28,7 +28,9 @@ limitations under the License. */
 #endif
 #include "glog/logging.h"
 #include "paddle/fluid/framework/expect.h"
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -160,11 +162,14 @@ inline void EmplaceDeviceContext(
                                     .GetAllocator(p, cuda_ctx->stream())
                                     .get());
           cuda_ctx->PartialInitWithAllocator();
+          dev_ctx->SetGenerator(
+              framework::GetDefaultCUDAGenerator(p.GetDeviceId()).get());
 #endif
         } else {
           dev_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
                                     .GetAllocator(p)
                                     .get());
+          dev_ctx->SetGenerator(framework::DefaultCPUGenerator().get());
         }
         dev_ctx->SetHostAllocator(
             memory::allocation::AllocatorFacade::Instance()
@@ -251,6 +256,15 @@ DeviceContextPool::DeviceContextPool(
       PADDLE_THROW(platform::errors::Unimplemented(
           "NPUPinnedPlace is not supported. Please re-compile with "
           "WITH_ASCEND_CL "
+          "option."));
+#endif
+    } else if (platform::is_custom_place(p)) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      EmplaceDeviceContext<CustomDeviceContext>(&device_contexts_, p);
+#else
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "CustomPlace is not supported. Please re-compile with "
+          "WITH_CUSTOM_DEVICE "
           "option."));
 #endif
     }
@@ -881,6 +895,24 @@ MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
   return key_it->second;
 }
 
+#endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+CustomDeviceContext::CustomDeviceContext(CustomPlace place) : place_(place) {
+  DeviceGuard guard(place_);
+  stream_.reset(new stream::Stream());
+  stream_->Init(place_);
+}
+
+CustomDeviceContext::~CustomDeviceContext() {}
+
+const Place& CustomDeviceContext::GetPlace() const { return place_; }
+
+void CustomDeviceContext::Wait() const {
+  // platform::RecordEvent record_event("NPUDeviceContext/wait");
+  VLOG(4) << "CustomDevice context(" << this << ")  Wait";
+  stream_->Wait();
+}
 #endif
 }  // namespace platform
 }  // namespace paddle

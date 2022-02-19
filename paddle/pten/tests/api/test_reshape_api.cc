@@ -25,7 +25,7 @@ namespace paddle {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = pten::framework::DDim;
+using DDim = pten::DDim;
 
 // TODO(chenweihang): Remove this test after the API is used in the dygraph
 TEST(API, reshape) {
@@ -35,7 +35,7 @@ TEST(API, reshape) {
   auto dense_x = std::make_shared<pten::DenseTensor>(
       alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            pten::framework::make_ddim({3, 2, 2, 3}),
+                            pten::make_ddim({3, 2, 2, 3}),
                             pten::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x->mutable_data<float>(paddle::platform::CPUPlace());
@@ -65,6 +65,25 @@ TEST(API, reshape) {
       value_equal = false;
   }
   ASSERT_EQ(value_equal, true);
+}
+
+TEST(API, reshape_) {
+  // 1. create tensor
+  auto x = paddle::experimental::full(
+      {3, 2, 2, 3}, 1.0, experimental::DataType::FLOAT32);
+
+  // 2. test API
+  paddle::experimental::Tensor out = paddle::experimental::reshape_(x, {12, 3});
+  // 3. check result
+  std::vector<int64_t> expect_shape = {12, 3};
+  ASSERT_EQ(out.shape()[0], expect_shape[0]);
+  ASSERT_EQ(out.shape()[1], expect_shape[1]);
+  ASSERT_EQ(out.numel(), 36);
+  ASSERT_EQ(out.is_cpu(), true);
+  ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
+  ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(out.initialized(), true);
+  ASSERT_EQ(out.data<float>(), x.data<float>());
 }
 
 TEST(Tensor, old_reshape) {

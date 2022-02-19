@@ -40,7 +40,7 @@ class CPURandintKernel : public framework::OpKernel<T> {
       }
     }
     auto* out = ctx.Output<framework::LoDTensor>("Out");
-    if (!new_shape.empty()) out->Resize(framework::make_ddim(new_shape));
+    if (!new_shape.empty()) out->Resize(pten::make_ddim(new_shape));
     T* data = out->mutable_data<T>(ctx.GetPlace());
     int64_t size = out->numel();
 
@@ -80,7 +80,7 @@ class RandintOp : public framework::OperatorWithKernel {
               "Please check the Attr(shape)'s size of"
               "Op(fluid.layers.randint).)"));
       auto out_dims = std::vector<int>(inputs_name.size(), -1);
-      ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
+      ctx->SetOutputDim("Out", pten::make_ddim(out_dims));
 
       return;
     }
@@ -99,7 +99,7 @@ class RandintOp : public framework::OperatorWithKernel {
         num_ele *= shape_dims[i];
       }
       auto vec_dims = std::vector<int64_t>(num_ele, -1);
-      auto out_dims = framework::make_ddim(vec_dims);
+      auto out_dims = pten::make_ddim(vec_dims);
       ctx->SetOutputDim("Out", out_dims);
       return;
     }
@@ -116,7 +116,7 @@ class RandintOp : public framework::OperatorWithKernel {
     for (auto dim : shape) {
       tensor_shape.push_back(static_cast<int64_t>(dim));
     }
-    ctx->SetOutputDim("Out", framework::make_ddim(tensor_shape));
+    ctx->SetOutputDim("Out", pten::make_ddim(tensor_shape));
   }
 
  protected:

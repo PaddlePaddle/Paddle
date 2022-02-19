@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 // See Note [ Why still include the fluid headers? ]
+#include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
 #include "paddle/pten/core/meta_tensor.h"
 
@@ -40,10 +41,7 @@ void FlattenInferMeta(const MetaTensor& x,
 
 void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out);
 
-void CreateLikeInferMeta(const MetaTensor& x,
-                         DataType dtype,
-                         DataLayout layout,
-                         MetaTensor* out);
+void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out);
 
 void InferMetaFromVecValue(const MetaTensor& x,
                            const std::vector<int64_t>& shape,
@@ -73,5 +71,14 @@ void SumInferMeta(const MetaTensor& x,
 void TransferLayoutInferMeta(const MetaTensor& x,
                              DataLayout layout,
                              MetaTensor* out);
+
+void SplitInferMeta(const MetaTensor& x_meta,
+                    const ScalarArray& num_or_sections,
+                    const Scalar& axis,
+                    std::vector<MetaTensor>* out,
+                    MetaConfig config = MetaConfig());
+
+void TraceInferMeta(
+    const MetaTensor& x, int offset, int axis1, int axis2, MetaTensor* out);
 
 }  // namespace pten

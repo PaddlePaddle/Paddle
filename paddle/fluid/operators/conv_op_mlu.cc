@@ -47,12 +47,12 @@ class MLUConvOpKernel : public framework::OpKernel<T> {
     framework::DDim filter_data_dims;
 
     if (channel_last) {
-      in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
+      in_data_dims = pten::slice_ddim(in_dims, 1, in_dims.size() - 1);
     } else {
-      in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+      in_data_dims = pten::slice_ddim(in_dims, 2, in_dims.size());
     }
-    filter_data_dims = framework::slice_ddim(filter_dims, 2, in_dims.size());
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+    filter_data_dims = pten::slice_ddim(filter_dims, 2, in_dims.size());
+    std::vector<int> ksize = pten::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 
@@ -81,11 +81,11 @@ class MLUConvOpKernel : public framework::OpKernel<T> {
 
     cnnlTensorLayout_t data_layout = CNNL_LAYOUT_NHWC;
     MLUCnnlTensorDesc input_desc(input_tensor, data_layout,
-                                 ToCnnlDataType(input_tensor.type()));
+                                 ToCnnlDataType(input_tensor.dtype()));
     MLUCnnlTensorDesc filter_desc(trans_filter, data_layout,
                                   ToCnnlDataType(trans_filter.type()));
     MLUCnnlTensorDesc output_desc(output_tensor, data_layout,
-                                  ToCnnlDataType(output_tensor.type()));
+                                  ToCnnlDataType(output_tensor.dtype()));
 
     MLUCnnlConvolutionDesc conv_desc(in_dims_size, paddings.data(),
                                      strides.data(), dilations.data(), groups,
@@ -134,13 +134,13 @@ class MLUConvGradOpKernel : public framework::OpKernel<T> {
     framework::DDim filter_data_dims;
 
     if (channel_last) {
-      in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
+      in_data_dims = pten::slice_ddim(in_dims, 1, in_dims.size() - 1);
     } else {
-      in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+      in_data_dims = pten::slice_ddim(in_dims, 2, in_dims.size());
     }
-    filter_data_dims = framework::slice_ddim(filter_dims, 2, in_dims.size());
+    filter_data_dims = pten::slice_ddim(filter_dims, 2, in_dims.size());
 
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+    std::vector<int> ksize = pten::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 

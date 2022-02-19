@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#pragma once
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
@@ -21,17 +23,16 @@ using paddle::framework::LoDTensor;
 using paddle::framework::Tensor;
 using platform::to_void_cast;
 
-inline std::vector<int64_t> CalculateReducedDims(const Tensor* input,
-                                                 const Tensor* output,
-                                                 std::vector<int>& reduce_dims,
-                                                 bool reduce_all,
-                                                 bool keep_dim) {
-  if (keep_dim) return framework::vectorize(output->dims());
+inline std::vector<int64_t> CalculateReducedDims(
+    const Tensor* input, const Tensor* output,
+    std::vector<int>& reduce_dims,  // NOLINT
+    bool reduce_all, bool keep_dim) {
+  if (keep_dim) return pten::vectorize(output->dims());
 
   if (reduce_all)
-    return std::vector<int64_t>(framework::vectorize(input->dims()).size(), 1);
+    return std::vector<int64_t>(pten::vectorize(input->dims()).size(), 1);
 
-  std::vector<int64_t> output_dims(framework::vectorize(input->dims()));
+  std::vector<int64_t> output_dims(pten::vectorize(input->dims()));
   for (size_t i = 0; i < reduce_dims.size(); ++i) {
     reduce_dims[i] = (reduce_dims[i] >= 0)
                          ? reduce_dims[i]
@@ -60,7 +61,7 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
 
     auto output_dims =
         CalculateReducedDims(input, output, reduce_dims, reduce_all, keep_dim);
-    auto input_dims = framework::vectorize(input->dims());
+    auto input_dims = pten::vectorize(input->dims());
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
@@ -69,10 +70,11 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
     // In that case reorder must be executed to maintain compatibility with
     // PaddlePaddle reduce op
     if (input_dims == output_dims) {
-      dnnl::memory::data_type input_type =
-          framework::ToMKLDNNDataType(input->type());
-      platform::ReorderMKLDNNHandler reorder_handler(input_dims, input->type(),
-                                                     input_type, onednn_engine);
+      dnnl::memory::data_type input_type = framework::ToMKLDNNDataType(
+          framework::TransToProtoVarType(input->dtype()));
+      platform::ReorderMKLDNNHandler reorder_handler(
+          input_dims, framework::TransToProtoVarType(input->dtype()),
+          input_type, onednn_engine);
 
       auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
           input->format(), platform::to_void_cast(input->data<T>()));
@@ -83,16 +85,13 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
       auto reorder_p = reorder_handler.AcquireReorder(reorder_src_memory_p,
                                                       reorder_dst_memory_p);
 
-      platform::RecordEvent record_reorder("int_reorder",
-                                           platform::EventRole::kUniqueOp);
-
       reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
       astream.wait();
 
       output->set_layout(framework::DataLayout::kMKLDNN);
       output->set_format(
           platform::GetMKLDNNFormat(reorder_dst_memory_p->get_desc().reshape(
-              paddle::framework::vectorize<int64_t>(output->dims()))));
+              pten::vectorize<int64_t>(output->dims()))));
     } else {
       platform::ReductionMKLDNNHandler<T> handler(reduction_type, 0.0f, 0.0f,
                                                   onednn_engine, ctx.GetPlace(),
@@ -111,7 +110,7 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
       output->set_layout(framework::DataLayout::kMKLDNN);
       output->set_format(
           platform::GetMKLDNNFormat(dst_memory_p->get_desc().reshape(
-              paddle::framework::vectorize<int64_t>(output->dims()))));
+              pten::vectorize<int64_t>(output->dims()))));
     }
   }
 };
@@ -135,12 +134,12 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
     dnnl::memory::format_tag x_format_tag;
     auto input_dims =
         CalculateReducedDims(output_dx, input_dy, dims, reduce_all, keep_dim);
-    auto output_dims = framework::vectorize(output_dx->dims());
+    auto output_dims = pten::vectorize(output_dx->dims());
 
     if (input_dims != output_dims) {
-      auto input_dy_md = dnnl::memory::desc(
-          framework::vectorize(input_dy->dims()),
-          platform::MKLDNNGetDataType<T>(), input_dy->format());
+      auto input_dy_md = dnnl::memory::desc(pten::vectorize(input_dy->dims()),
+                                            platform::MKLDNNGetDataType<T>(),
+                                            input_dy->format());
       auto input_dy_ex_md = input_dy_md.reshape(input_dims);
       // TODO(jczaja): once MD is stored in Tensor we no longer need to guess
       // formats

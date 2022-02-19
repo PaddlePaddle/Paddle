@@ -54,7 +54,7 @@ class FillAnyLikeNPUKernel : public framework::OpKernel<T> {
         std::isnan(value), false,
         platform::errors::InvalidArgument("The filled value is NaN."));
 
-    Tensor tensor_tmp(data_type);
+    Tensor tensor_tmp(framework::TransToPtenDataType(data_type));
     tensor_tmp.mutable_data<T>({1}, context.GetPlace());
     FillNpuTensorWithConstant<T>(&tensor_tmp, static_cast<T>(value));
 
@@ -65,7 +65,7 @@ class FillAnyLikeNPUKernel : public framework::OpKernel<T> {
     auto shape = out->dims();
     NpuOpRunner runner;
     runner.SetType("Fill")
-        .AddInput(framework::vectorize(shape))
+        .AddInput(pten::vectorize(shape))
         .AddInput(tensor_tmp)
         .AddOutput(*out)
         .Run(stream);

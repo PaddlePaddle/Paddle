@@ -15,10 +15,10 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#include "paddle/pten/core/ddim.h"
 
 namespace paddle {
 namespace operators {
@@ -56,16 +56,16 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
 
     // only achive the default `upscale_in_train` method
     if (!is_test) {
-      Tensor tmp_x(x->type());
-      Tensor tmp_out(out->type());
+      Tensor tmp_x(x->dtype());
+      Tensor tmp_out(out->dtype());
       tmp_x.ShareDataWith(*x);
       tmp_out.ShareDataWith(*out);
       if (x->dims().size() == 1) {
         // DropOutDoMask will get error result when input
         // is 1-D. Make it become 2-D.
-        std::vector<int> vec_dim = framework::vectorize<int>(x->dims());
-        tmp_x.Resize(framework::make_ddim({vec_dim[0], 1}));
-        tmp_out.Resize(framework::make_ddim({vec_dim[0], 1}));
+        std::vector<int> vec_dim = pten::vectorize<int>(x->dims());
+        tmp_x.Resize(pten::make_ddim({vec_dim[0], 1}));
+        tmp_out.Resize(pten::make_ddim({vec_dim[0], 1}));
       }
 
       int seed = 0;
@@ -80,7 +80,7 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
         seed = ctx.Attr<bool>("fix_seed") ? ctx.Attr<int>("seed") : 0;
       }
 
-      Tensor keep_prob_tensor(x->type());
+      Tensor keep_prob_tensor(x->dtype());
       keep_prob_tensor.mutable_data<T>({1}, ctx.GetPlace());
       FillNpuTensorWithConstant<T>(&keep_prob_tensor,
                                    static_cast<T>(keep_prob));
@@ -89,9 +89,9 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
 
       // mask used in `DropOutGenMask` NPU OP is different from
       // the output `Mask`.
-      Tensor npu_mask(framework::proto::VarType::UINT8);
+      Tensor npu_mask(experimental::DataType::UINT8);
       uint32_t length = (x->numel() + 128 - 1) / 128 * 128;
-      npu_mask.Resize(framework::make_ddim({length / 8}));
+      npu_mask.Resize(pten::make_ddim({length / 8}));
       npu_mask.mutable_data<uint8_t>(ctx.GetPlace());
 
       // TODO(pangyoki): `keep_prob` used in `DropOutGenMask` NPU
@@ -100,7 +100,7 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
       // in `npu_op_runner.cc`, which needs to be optimized later.
       NpuOpRunner runner_gen_mask;
       runner_gen_mask.SetType("DropOutGenMask")
-          .AddInput(framework::vectorize(tmp_out.dims()))
+          .AddInput(pten::vectorize(tmp_out.dims()))
           .AddInput(keep_prob_tensor)
           .AddOutput(npu_mask)
           .AddAttr("seed", seed)
@@ -116,17 +116,19 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
       runner_dropout.Run(stream);
 
       // cast `out` from float/float16 to bool
-      Tensor cast_mask(framework::proto::VarType::BOOL);
+      Tensor cast_mask(experimental::DataType::BOOL);
       cast_mask.Resize(mask->dims());
       cast_mask.mutable_data<bool>(ctx.GetPlace());
-      auto dst_dtype_bool = ConvertToNpuDtype(cast_mask.type());
+      auto dst_dtype_bool =
+          ConvertToNpuDtype(framework::TransToProtoVarType(cast_mask.dtype()));
       const auto& runner_cast_mask_bool =
           NpuOpRunner("Cast", {*out}, {cast_mask},
                       {{"dst_type", static_cast<int>(dst_dtype_bool)}});
       runner_cast_mask_bool.Run(stream);
 
       // cast cast_mask from bool to uint8
-      auto dst_dtype_uint8 = ConvertToNpuDtype(mask->type());
+      auto dst_dtype_uint8 =
+          ConvertToNpuDtype(framework::TransToProtoVarType(mask->dtype()));
       const auto& runner_cast_mask_uint8 =
           NpuOpRunner("Cast", {cast_mask}, {*mask},
                       {{"dst_type", static_cast<int>(dst_dtype_uint8)}});
@@ -167,10 +169,11 @@ class DropoutGradNPUKernel : public framework::OpKernel<T> {
     }
 
     // cast mask from uint8 to float32/float16
-    Tensor cast_mask(dx->type());
+    Tensor cast_mask(dx->dtype());
     cast_mask.Resize(mask->dims());
     cast_mask.mutable_data<T>(ctx.GetPlace());
-    auto dst_dtype = ConvertToNpuDtype(dx->type());
+    auto dst_dtype =
+        ConvertToNpuDtype(framework::TransToProtoVarType(dx->dtype()));
     const auto& runner_cast_mask =
         NpuOpRunner("Cast", {*mask}, {cast_mask},
                     {{"dst_type", static_cast<int>(dst_dtype)}});

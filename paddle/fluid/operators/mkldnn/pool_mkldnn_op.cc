@@ -80,7 +80,7 @@ class PoolingMKLDNNHandler
 
     const auto input_dims = input->dims();
     framework::DDim data_dims =
-        framework::slice_ddim(input_dims, 2, input_dims.size());
+        pten::slice_ddim(input_dims, 2, input_dims.size());
 
     if (global_pooling) {
       operators::UpdateKsize(&ksize, data_dims);
@@ -89,12 +89,13 @@ class PoolingMKLDNNHandler
     operators::UpdatePadding(&paddings, global_pooling, 0, padding_algorithm,
                              data_dims, strides, ksize);
 
-    const auto src_tz = paddle::framework::vectorize(input->dims());
-    const auto dst_tz = paddle::framework::vectorize(output->dims());
+    const auto src_tz = pten::vectorize(input->dims());
+    const auto dst_tz = pten::vectorize(output->dims());
 
     const auto is_test = ctx.Attr<bool>("is_test");
 
-    const auto dt = framework::ToMKLDNNDataType(input->type());
+    const auto dt = framework::ToMKLDNNDataType(
+        framework::TransToProtoVarType(input->dtype()));
 
     const auto exclude_padding = ctx.Attr<bool>("exclusive");
 
@@ -170,7 +171,7 @@ class PoolingMKLDNNHandler
 
     auto in_x_dims = in_x->dims();
     framework::DDim data_dims =
-        framework::slice_ddim(in_x_dims, 2, in_x_dims.size());
+        pten::slice_ddim(in_x_dims, 2, in_x_dims.size());
 
     if (global_pooling) {
       operators::UpdateKsize(&ksize, data_dims);
@@ -179,11 +180,12 @@ class PoolingMKLDNNHandler
     operators::UpdatePadding(&paddings, global_pooling, 0, padding_algorithm,
                              data_dims, strides, ksize);
 
-    auto src_tz = paddle::framework::vectorize<int64_t>(in_x->dims());
-    auto diff_src_tz = paddle::framework::vectorize<int64_t>(in_x_grad->dims());
-    auto diff_dst_tz = paddle::framework::vectorize<int64_t>(out_grad->dims());
+    auto src_tz = pten::vectorize<int64_t>(in_x->dims());
+    auto diff_src_tz = pten::vectorize<int64_t>(in_x_grad->dims());
+    auto diff_dst_tz = pten::vectorize<int64_t>(out_grad->dims());
 
-    const auto dt = framework::ToMKLDNNDataType(in_x->type());
+    const auto dt = framework::ToMKLDNNDataType(
+        framework::TransToProtoVarType(in_x->dtype()));
     auto src_md = dnnl::memory::desc(src_tz, dt, in_x->format());
     auto dst_md = dnnl::memory::desc(diff_dst_tz, dt, MKLDNNMemoryFormat::any);
     auto diff_dst_md = dnnl::memory::desc(

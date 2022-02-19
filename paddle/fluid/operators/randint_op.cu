@@ -13,6 +13,7 @@
 // limitations under the License.
 #include <thrust/random.h>
 #include <thrust/transform.h>
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/uniform_random_op.h"
@@ -40,12 +41,12 @@ class GPURandintKernel : public framework::OpKernel<T> {
     auto dtype = static_cast<framework::proto::VarType::Type>(
         context.Attr<int>("dtype"));
     auto* out = context.Output<framework::LoDTensor>("Out");
-    if (!new_shape.empty()) out->Resize(framework::make_ddim(new_shape));
+    if (!new_shape.empty()) out->Resize(pten::make_ddim(new_shape));
     T low = static_cast<T>(context.Attr<int>("low"));
     T high = static_cast<T>(context.Attr<int>("high")) - 1;
     framework::LoDTensor tensor;
     tensor.Resize(out->dims());
-    tensor.mutable_data(cpu, dtype);
+    tensor.mutable_data(cpu, framework::TransToPtenDataType(dtype));
     T* data = tensor.mutable_data<T>(cpu);
 
     int64_t size = out->numel();

@@ -20,11 +20,11 @@
 #include <vector>
 
 #include "paddle/fluid/operators/conj_op.h"
-#include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/spectral_helper.h"
 #include "paddle/fluid/operators/spectral_op.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/kernels/funcs/complex_functors.h"
 
 namespace paddle {
 namespace operators {
@@ -73,10 +73,13 @@ FFTConfigKey create_fft_configkey(const framework::Tensor& input,
                                   const framework::Tensor& output,
                                   int signal_ndim) {
   // Create the transform plan (either from cache or locally)
-  const auto value_type = framework::IsComplexType(input.type())
-                              ? framework::ToRealType(input.type())
-                              : input.type();
-  auto fft_type = GetFFTTransformType(input.type(), output.type());
+  const auto value_type =
+      framework::IsComplexType(framework::TransToProtoVarType(input.dtype()))
+          ? framework::ToRealType(framework::TransToProtoVarType(input.dtype()))
+          : framework::TransToProtoVarType(input.dtype());
+  auto fft_type =
+      GetFFTTransformType(framework::TransToProtoVarType(input.dtype()),
+                          framework::TransToProtoVarType(output.dtype()));
   // signal sizes
   std::vector<int64_t> signal_size(signal_ndim + 1);
 
@@ -86,8 +89,8 @@ FFTConfigKey create_fft_configkey(const framework::Tensor& input,
     auto out_size = output.dims()[i];
     signal_size[i] = std::max(in_size, out_size);
   }
-  FFTConfigKey key(framework::vectorize(input.dims()),
-                   framework::vectorize(output.dims()), signal_size, fft_type,
+  FFTConfigKey key(pten::vectorize(input.dims()),
+                   pten::vectorize(output.dims()), signal_size, fft_type,
                    value_type);
   return key;
 }
@@ -112,8 +115,8 @@ void exec_cufft_plan(const DeviceContext& ctx, const FFTConfig& config,
     framework::Tensor input_conj(input->type());
     input_conj.mutable_data<Ti>(input->dims(), ctx.GetPlace());
     platform::ForRange<DeviceContext> for_range(ctx, input->numel());
-    math::ConjFunctor<Ti> functor(input->data<Ti>(), input->numel(),
-                                  input_conj.data<Ti>());
+    pten::funcs::ConjFunctor<Ti> functor(input->data<Ti>(), input->numel(),
+                                         input_conj.data<Ti>());
     for_range(functor);
     exec_cufft_plan_raw(config, input_conj.data(), output->data(), forward);
   } else if (fft_type == FFTTransformType::R2C && !forward) {
@@ -123,8 +126,8 @@ void exec_cufft_plan(const DeviceContext& ctx, const FFTConfig& config,
     exec_cufft_plan_raw(config, input->data(), out_conj.data(), forward);
 
     platform::ForRange<DeviceContext> for_range(ctx, output->numel());
-    math::ConjFunctor<To> functor(out_conj.data<To>(), output->numel(),
-                                  output->data<To>());
+    pten::funcs::ConjFunctor<To> functor(out_conj.data<To>(), output->numel(),
+                                         output->data<To>());
     for_range(functor);
   } else {
     exec_cufft_plan_raw(config, input->data(), output->data(), forward);
@@ -137,10 +140,13 @@ FFTConfigKey create_fft_configkey(const framework::Tensor& input,
                                   const framework::Tensor& output,
                                   int signal_ndim) {
   // Create the transform plan (either from cache or locally)
-  const auto value_type = framework::IsComplexType(input.type())
-                              ? framework::ToRealType(input.type())
-                              : input.type();
-  auto fft_type = GetFFTTransformType(input.type(), output.type());
+  const auto value_type =
+      framework::IsComplexType(framework::TransToProtoVarType(input.dtype()))
+          ? framework::ToRealType(framework::TransToProtoVarType(input.dtype()))
+          : framework::TransToProtoVarType(input.dtype());
+  auto fft_type =
+      GetFFTTransformType(framework::TransToProtoVarType(input.dtype()),
+                          framework::TransToProtoVarType(output.type()));
   // signal sizes
   std::vector<int64_t> signal_size(signal_ndim + 1);
 
@@ -150,8 +156,8 @@ FFTConfigKey create_fft_configkey(const framework::Tensor& input,
     auto out_size = output.dims()[i];
     signal_size[i] = std::max(in_size, out_size);
   }
-  FFTConfigKey key(framework::vectorize(input.dims()),
-                   framework::vectorize(output.dims()), signal_size, fft_type,
+  FFTConfigKey key(pten::vectorize(input.dims()),
+                   pten::vectorize(output.dims()), signal_size, fft_type,
                    value_type);
   return key;
 }
@@ -221,8 +227,8 @@ void exec_hipfft_plan(const DeviceContext& ctx, const FFTConfig& config,
     framework::Tensor input_conj(input->type());
     input_conj.mutable_data<Ti>(input->dims(), ctx.GetPlace());
     platform::ForRange<DeviceContext> for_range(ctx, input->numel());
-    math::ConjFunctor<Ti> functor(input->data<Ti>(), input->numel(),
-                                  input_conj.data<Ti>());
+    pten::funcs::ConjFunctor<Ti> functor(input->data<Ti>(), input->numel(),
+                                         input_conj.data<Ti>());
     for_range(functor);
     exec_hipfft_plan_raw(config, input_conj.data(), output->data(), forward);
   } else if (fft_type == FFTTransformType::R2C && !forward) {
@@ -232,8 +238,8 @@ void exec_hipfft_plan(const DeviceContext& ctx, const FFTConfig& config,
     exec_hipfft_plan_raw(config, input->data(), out_conj.data(), forward);
 
     platform::ForRange<DeviceContext> for_range(ctx, output->numel());
-    math::ConjFunctor<To> functor(out_conj.data<To>(), output->numel(),
-                                  output->data<To>());
+    pten::funcs::ConjFunctor<To> functor(out_conj.data<To>(), output->numel(),
+                                         output->data<To>());
     for_range(functor);
   } else {
     exec_hipfft_plan_raw(config, input->data(), output->data(), forward);
@@ -247,7 +253,7 @@ void exec_hipfft_plan(const DeviceContext& ctx, const FFTConfig& config,
 template <typename DeviceContext, typename Ti, typename To>
 void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
               const std::vector<int64_t>& dim, bool forward) {
-  const auto x_dims = framework::vectorize(X->dims());
+  const auto x_dims = pten::vectorize(X->dims());
   const int64_t ndim = static_cast<int64_t>(X->dims().size());
   auto tensor_place = ctx.GetPlace();
 
@@ -276,7 +282,7 @@ void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
   const int64_t signal_ndim = static_cast<int64_t>(dim.size());
   std::vector<int64_t> collapsed_input_shape(signal_ndim + 1);
 
-  auto transposed_input_shape_ = framework::vectorize(transposed_input_shape);
+  auto transposed_input_shape_ = pten::vectorize(transposed_input_shape);
   const int64_t batch_dims = ndim - signal_ndim;
   auto batch_size =
       std::accumulate(transposed_input_shape_.begin(),
@@ -288,17 +294,17 @@ void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
             transposed_input_shape_.end(), collapsed_input_shape.begin() + 1);
 
   framework::Tensor& collapsed_input = transposed_input;
-  collapsed_input.Resize(framework::make_ddim(collapsed_input_shape));
+  collapsed_input.Resize(pten::make_ddim(collapsed_input_shape));
 
   // make a collpased output
-  const auto out_dims = framework::vectorize(out->dims());
+  const auto out_dims = pten::vectorize(out->dims());
   std::vector<int64_t> collapsed_output_shape(1 + signal_ndim);
   collapsed_output_shape[0] = batch_size;
   for (size_t i = 0; i < dim.size(); ++i) {
     collapsed_output_shape[i + 1] = out_dims[dim[i]];
   }
   framework::Tensor collapsed_output;
-  collapsed_output.Resize(framework::make_ddim(collapsed_output_shape));
+  collapsed_output.Resize(pten::make_ddim(collapsed_output_shape));
   collapsed_output.mutable_data<To>(tensor_place);
 
   FFTConfig* config = nullptr;
@@ -402,7 +408,7 @@ struct FFTC2CFunctor<platform::CUDADeviceContext, Ti, To> {
     }
 
     framework::Tensor* p_out = out;
-    std::vector<int64_t> out_dims = framework::vectorize(X->dims());
+    std::vector<int64_t> out_dims = pten::vectorize(X->dims());
     std::vector<int64_t> working_axes(axes.begin(), axes.end());
     std::vector<int64_t> first_dims;
     size_t max_dims;
@@ -437,8 +443,8 @@ struct FFTC2RFunctor<platform::CUDADeviceContext, Ti, To> {
   void operator()(const platform::CUDADeviceContext& ctx, const Tensor* X,
                   Tensor* out, const std::vector<int64_t>& axes,
                   FFTNormMode normalization, bool forward) {
-    std::vector<int64_t> in_dims = framework::vectorize(X->dims());
-    std::vector<int64_t> out_dims = framework::vectorize(out->dims());
+    std::vector<int64_t> in_dims = pten::vectorize(X->dims());
+    std::vector<int64_t> out_dims = pten::vectorize(out->dims());
 
     if (use_optimized_fft_path(axes)) {
       framework::Tensor x_copy(X->type());
@@ -471,7 +477,7 @@ struct FFTR2CFunctor<platform::CUDADeviceContext, Ti, To> {
     // Step1: R2C transform on the last dimension
     framework::Tensor* r2c_out = out;
     const std::vector<int64_t> last_dim{axes.back()};
-    std::vector<int64_t> out_dims = framework::vectorize(out->dims());
+    std::vector<int64_t> out_dims = pten::vectorize(out->dims());
     exec_fft<platform::CUDADeviceContext, Ti, To>(ctx, X, r2c_out, last_dim,
                                                   forward);
 
@@ -485,7 +491,7 @@ struct FFTR2CFunctor<platform::CUDADeviceContext, Ti, To> {
                    forward);
     }
 
-    const auto in_sizes = framework::vectorize(X->dims());
+    const auto in_sizes = pten::vectorize(X->dims());
     framework::Tensor* norm_tensor = axes.size() > 1 ? &c2c_out : r2c_out;
     exec_normalization<platform::CUDADeviceContext, To>(
         ctx, norm_tensor, out, normalization, in_sizes, axes);

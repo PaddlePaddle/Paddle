@@ -25,8 +25,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
 
-USE_OP(elementwise_add);
-USE_OP(fill_constant);
+USE_OP_ITSELF(elementwise_add);
+USE_OP_ITSELF(fill_constant);
 
 namespace paddle {
 namespace distributed {
@@ -34,7 +34,7 @@ namespace distributed {
 std::vector<framework::OperatorBase*> GetOps() {
   framework::AttributeMap attrs;
   attrs["dtype"] = framework::proto::VarType::FP32;
-  attrs["shape"] = framework::vectorize<int>({2, 3});
+  attrs["shape"] = pten::vectorize<int>({2, 3});
   attrs["value"] = 1.0f;
 
   auto zero_op = framework::OpRegistry::CreateOp("fill_constant", {},

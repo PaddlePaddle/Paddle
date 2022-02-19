@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/expand_v2_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -28,7 +29,7 @@ class ExpandV2NPUKernel : public framework::OpKernel<T> {
 
     auto in_dims = X->dims();
     auto expand_shape = get_expand_shape(ctx);
-    auto vec_in_dims = framework::vectorize<int>(in_dims);
+    auto vec_in_dims = pten::vectorize<int>(in_dims);
     auto diff = expand_shape.size() - vec_in_dims.size();
     vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
     std::vector<int> final_expand_shape(vec_in_dims.size());
@@ -102,7 +103,7 @@ class ExpandV2NPUKernel : public framework::OpKernel<T> {
                           "less than or equal to %d.",
                           shape_size, MAX_RANK_SUPPORTED));
 
-    framework::DDim out_dims = framework::make_ddim(final_expand_shape);
+    framework::DDim out_dims = pten::make_ddim(final_expand_shape);
     Out->Resize(out_dims);
     Out->mutable_data<T>(ctx.GetPlace());
 
@@ -116,11 +117,13 @@ class ExpandV2NPUKernel : public framework::OpKernel<T> {
       runner.Run(dev_ctx.stream());
     };
 
-    if (X->type() == framework::proto::VarType::BOOL) {
+    if (framework::TransToProtoVarType(X->dtype()) ==
+        framework::proto::VarType::BOOL) {
       NpuOpRunner::TypeAdapter({*X}, {*Out}, attr_input, dev_ctx, op_func,
                                {framework::proto::VarType::UINT8},
                                {framework::proto::VarType::UINT8});
-    } else if (X->type() == framework::proto::VarType::INT64) {
+    } else if (framework::TransToProtoVarType(X->dtype()) ==
+               framework::proto::VarType::INT64) {
       NpuOpRunner::TypeAdapter({*X}, {*Out}, attr_input, dev_ctx, op_func,
                                {framework::proto::VarType::INT32},
                                {framework::proto::VarType::INT32});
@@ -151,16 +154,16 @@ class ExpandV2NPUGradKernel : public framework::OpKernel<T> {
       axes.push_back(i);
     }
 
-    Tensor tmp_dout(dout->type());
-    Tensor reduced_dout(dx->type());
+    Tensor tmp_dout(dout->dtype());
+    Tensor reduced_dout(dx->dtype());
     tmp_dout.ShareDataWith(*dout);
     if (axes.size() != 0) {
       std::vector<int64_t> reduced_dout_dims;
       for (auto i = reduce_ndim; i < dout->dims().size(); ++i) {
         reduced_dout_dims.push_back(dout->dims()[i]);
       }
-      tmp_dout.Resize(framework::make_ddim(reduced_dout_dims));
-      reduced_dout.Resize(framework::make_ddim(reduced_dout_dims));
+      tmp_dout.Resize(pten::make_ddim(reduced_dout_dims));
+      reduced_dout.Resize(pten::make_ddim(reduced_dout_dims));
       reduced_dout.mutable_data<T>(ctx.GetPlace());
       const auto& runner = NpuOpRunner("ReduceSumD", {*dout}, {reduced_dout},
                                        {{"axes", axes}, {"keep_dims", false}});

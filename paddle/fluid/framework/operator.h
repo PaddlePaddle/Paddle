@@ -40,6 +40,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/variant.h"
 #include "paddle/utils/flat_hash_map.h"
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/pten/core/compat/arg_map_context.h"
 #include "paddle/pten/core/compat/op_utils.h"
 #include "paddle/pten/core/kernel_context.h"
@@ -416,14 +417,14 @@ class ExecutionContext {
         std::shared_ptr<pten::Allocation>(allocation_ptr, deleter);
 
     PADDLE_ENFORCE_GE(
-        allocation_ptr->size(), framework::product(dim) * sizeof(T),
+        allocation_ptr->size(), pten::product(dim) * sizeof(T),
         platform::errors::PreconditionNotMet(
             "The data memory size(%d) is less than the tensor needed memory "
             "size(%d).",
-            allocation_ptr->size(), framework::product(dim) * sizeof(T)));
+            allocation_ptr->size(), pten::product(dim) * sizeof(T)));
 
-    paddle::framework::Tensor temp_tensor(
-        framework::ToDataType(std::type_index(typeid(T))));
+    paddle::framework::Tensor temp_tensor(framework::TransToPtenDataType(
+        framework::ToDataType(std::type_index(typeid(T)))));
     temp_tensor.Resize(dim);
     temp_tensor.ResetHolder(std::move(shared_allocation));
     return temp_tensor;
@@ -453,6 +454,10 @@ class ExecutionArgumentMappingContext : public pten::ArgumentMappingContext {
 
   bool HasOutput(const std::string& name) const override {
     return ctx_.HasOutput(name);
+  }
+
+  bool HasAttr(const std::string& name) const override {
+    return ctx_.HasAttr(name);
   }
 
   paddle::any Attr(const std::string& name) const override {

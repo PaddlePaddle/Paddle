@@ -65,7 +65,7 @@ static framework::DDim GetNewDims(const framework::DDim& in_dims, int rank) {
   } else {
     new_dims_vec = vectorize(in_dims);
   }
-  return framework::make_ddim(new_dims_vec);
+  return pten::make_ddim(new_dims_vec);
 }
 
 template <typename DeviceContext, typename T, int Rank>
@@ -153,7 +153,7 @@ static void DistGradFunction(const framework::ExecutionContext& context) {
     new_dims_vec[i] = std::max(x_new_dims[i], y_new_dims[i]);
     out_bcast_dims[i] = new_dims_vec[i];
   }
-  framework::DDim new_dims = framework::make_ddim(new_dims_vec);
+  framework::DDim new_dims = pten::make_ddim(new_dims_vec);
 
   auto& place =
       *context.template device_context<DeviceContext>().eigen_device();

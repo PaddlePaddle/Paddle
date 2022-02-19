@@ -33,12 +33,13 @@ struct FullFuctor {
   }
 };
 
-template <typename T, typename ContextT>
-void FullKernel(const ContextT& dev_ctx,
+template <typename T, typename Context>
+void FullKernel(const Context& dev_ctx,
                 const ScalarArray& shape,
                 const Scalar& val,
+                DataType dtype,
                 DenseTensor* out) {
-  out->Resize(paddle::framework::make_ddim(shape.GetData()));
+  out->Resize(pten::make_ddim(shape.GetData()));
   int numel = out->numel();
   out->mutable_data<T>(dev_ctx.GetPlace());
   if (numel > 0) {
@@ -53,9 +54,11 @@ void FullKernel(const ContextT& dev_ctx,
   }
 }
 
-template <typename T, typename ContextT>
-void FullLikeKernel(const ContextT& dev_ctx,
+template <typename T, typename Context>
+void FullLikeKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
                     const Scalar& val,
+                    DataType dtype,
                     DenseTensor* out) {
   auto value = val.to<float>();
   using CommonType = typename std::common_type<
@@ -106,9 +109,9 @@ PT_REGISTER_KERNEL(full,
                    int,
                    int64_t,
                    bool,
-                   paddle::platform::float16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::float16,
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(full_like,
                    GPU,
@@ -119,4 +122,4 @@ PT_REGISTER_KERNEL(full_like,
                    int,
                    int64_t,
                    bool,
-                   paddle::platform::float16) {}
+                   pten::dtype::float16) {}

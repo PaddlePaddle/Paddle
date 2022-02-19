@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/pten/api/ext/dispatch.h"
 #include "paddle/pten/backends/all_context.h"
 #include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/funcs/transpose.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace pten {
 
@@ -42,7 +42,7 @@ void CastDataLayout(const Context& dev_ctx,
                     const DenseTensor& x,
                     const std::vector<int>& axis,
                     DenseTensor* out) {
-  math::Transpose<Context, T, 4> trans4;
+  funcs::Transpose<Context, T, 4> trans4;
   trans4(dev_ctx, x, out, axis);
 }
 
@@ -61,7 +61,7 @@ void TransferLayoutKernel(const Context& dev_ctx,
     dst_dim[i] = src_dim[axis[i]];
   }
 
-  out->ResizeAndAllocate(framework::make_ddim(dst_dim));
+  out->ResizeAndAllocate(pten::make_ddim(dst_dim));
 
   PD_VISIT_ALL_TYPES(x.dtype(), "CastDataLayout", ([&] {
                        CastDataLayout<data_t, Context>(dev_ctx, x, axis, out);

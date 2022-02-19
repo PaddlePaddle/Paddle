@@ -23,6 +23,7 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/device/gpu/cuda/cudnn_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 
@@ -141,7 +142,7 @@ class TensorDescriptor {
   T* desc() { return desc_.get(); }
   T* desc() const { return desc_.get(); }
   void set(const Tensor& tensor, const int groups = 1) {
-    auto dims = framework::vectorize<int>(tensor.dims());
+    auto dims = pten::vectorize<int>(tensor.dims());
     std::vector<int> strides(dims.size());
     strides[dims.size() - 1] = 1;
     for (int i = dims.size() - 2; i >= 0; i--) {
@@ -152,8 +153,9 @@ class TensorDescriptor {
       dims_with_group[1] = dims_with_group[1] / groups;
     }
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetTensorNdDescriptor(
-        desc_.get(), ToCudnnDataType(tensor.type()), dims_with_group.size(),
-        dims_with_group.data(), strides.data()));
+        desc_.get(),
+        ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype())),
+        dims_with_group.size(), dims_with_group.data(), strides.data()));
   }
 
   void set(const std::vector<int>& dims, const cudnnTensorFormat_t format,
@@ -170,8 +172,9 @@ class TensorDescriptor {
   }
 
   void set(const Tensor& tensor, const cudnnTensorFormat_t format) {
-    auto dims = framework::vectorize<int>(tensor.dims());
-    auto dtype = ToCudnnDataType(tensor.type());
+    auto dims = pten::vectorize<int>(tensor.dims());
+    auto dtype =
+        ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype()));
     set(dims, format, dtype);
   }
 
@@ -216,8 +219,9 @@ class FilterDescriptor {
 
   void set(const Tensor& tensor, const cudnnTensorFormat_t format,
            const int groups = 1) {
-    auto dims = framework::vectorize<int>(tensor.dims());
-    auto dtype = ToCudnnDataType(tensor.type());
+    auto dims = pten::vectorize<int>(tensor.dims());
+    auto dtype =
+        ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype()));
     set(dims, format, dtype, groups);
   }
 

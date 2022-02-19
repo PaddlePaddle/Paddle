@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/pten/kernels/funcs/math_function.h"
 
 // only can include the headers in paddle/pten/api dirs
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/pten/api/lib/utils/tensor_utils.h"
 #include "paddle/pten/kernels/cpu/reduce.h"
 
@@ -242,8 +243,8 @@ class ReduceKernel : public framework::OpKernel<T> {
     auto* input = context.Input<Tensor>("X");
 
     if (out_dtype < 0) {
-      cast_out_dtype =
-          static_cast<framework::proto::VarType::Type>(input->type());
+      cast_out_dtype = static_cast<framework::proto::VarType::Type>(
+          framework::TransToProtoVarType(input->dtype()));
     } else {
       cast_out_dtype = static_cast<framework::proto::VarType::Type>(out_dtype);
     }
@@ -261,7 +262,7 @@ class ReduceKernel : public framework::OpKernel<T> {
         static_cast<const typename framework::ConvertToPtenContext<
             DeviceContext>::TYPE&>(dev_ctx),
         *input, reduce_all, tmp_dims, keep_dim,
-        pten::TransToPtenDataType(cast_out_dtype), output);
+        framework::TransToPtenDataType(cast_out_dtype), output);
   }
 };
 template <typename DeviceContext, typename OutT, typename Functor>
@@ -438,8 +439,9 @@ class ReduceGradKernel : public framework::OpKernel<T> {
     if (in_dtype >= 0) {
       Tensor tmp_tensor;
       auto* pre_input = context.Input<Tensor>(framework::GradVarName("Out"));
-      auto in_kernel_type =
-          framework::OpKernelType(pre_input->type(), context.GetPlace());
+      auto in_kernel_type = framework::OpKernelType(
+          framework::TransToProtoVarType(pre_input->dtype()),
+          context.GetPlace());
       auto out_kernel_type = framework::OpKernelType(
           static_cast<framework::proto::VarType::Type>(in_dtype),
           context.GetPlace());
@@ -491,8 +493,8 @@ class ReduceOp : public framework::OperatorWithKernel {
     bool keep_dim = ctx->Attrs().Get<bool>("keep_dim");
     if (reduce_all) {
       if (keep_dim)
-        ctx->SetOutputDim(
-            "Out", framework::make_ddim(std::vector<int64_t>(x_rank, 1)));
+        ctx->SetOutputDim("Out",
+                          pten::make_ddim(std::vector<int64_t>(x_rank, 1)));
       else
         ctx->SetOutputDim("Out", {1});
     } else {
@@ -513,7 +515,7 @@ class ReduceOp : public framework::OperatorWithKernel {
       if (!keep_dim && dims_vector.size() == 0) {
         dims_vector.push_back(1);
       }
-      auto out_dims = framework::make_ddim(dims_vector);
+      auto out_dims = pten::make_ddim(dims_vector);
       ctx->SetOutputDim("Out", out_dims);
       if (dims.size() > 0 && dims[0] != 0) {
         // Only pass LoD when not reducing on the first dim.
@@ -681,24 +683,19 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
     const Tensor* input = context.Input<Tensor>("X");
     Tensor* output = context.Output<Tensor>("Out");
     auto out_dtype = context.Attr<int>("out_dtype");
+    auto pt_out_dtype = paddle::framework::TransToPtenDataType(
+        static_cast<framework::proto::VarType::Type>(out_dtype));
     std::vector<int> dims = context.Attr<std::vector<int>>("dim");
 
     auto& dev_ctx = context.cuda_device_context();
 
     if (out_dtype >= 0) {
-      output->mutable_data(
-          dev_ctx.GetPlace(),
-          static_cast<framework::proto::VarType::Type>(out_dtype));
+      output->mutable_data(dev_ctx.GetPlace(), pt_out_dtype);
     } else {
-      output->mutable_data(
-          dev_ctx.GetPlace(),
-          static_cast<framework::proto::VarType::Type>(input->type()));
+      output->mutable_data(dev_ctx.GetPlace(), input->dtype());
     }
 
     std::vector<int64_t> dims_int64{dims.begin(), dims.end()};
-
-    auto pt_out_dtype = pten::TransToPtenDataType(
-        static_cast<framework::proto::VarType::Type>(out_dtype));
 
     pten::Reduce<T, ReduceOp, TransformOp>(
         dev_ctx, *input, reduce_all, dims_int64, false, pt_out_dtype, output);
@@ -716,6 +713,8 @@ class ReduceCudaGradKernel : public framework::OpKernel<T> {
         context.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* d_x = context.Output<framework::Tensor>(framework::GradVarName("X"));
     auto out_dtype = context.Attr<int>("in_dtype");
+    auto pt_out_dtype = framework::TransToPtenDataType(
+        static_cast<framework::proto::VarType::Type>(out_dtype));
     // get reduce_dim and reduce_num for reduce_mean_grad
     int dim_size = in_x->dims().size();
     std::vector<int> reduce_dims = GetReduceDim(dims, dim_size, reduce_all);
@@ -728,24 +727,17 @@ class ReduceCudaGradKernel : public framework::OpKernel<T> {
     // make new tensor
     framework::Tensor new_d_out(d_out->type());
     new_d_out.ShareDataWith(*d_out);
-    new_d_out.Resize(paddle::framework::make_ddim(update_dims));
+    new_d_out.Resize(pten::make_ddim(update_dims));
     auto& dev_ctx = context.cuda_device_context();
     if (out_dtype > 0) {
-      d_x->mutable_data(
-          dev_ctx.GetPlace(),
-          static_cast<framework::proto::VarType::Type>(out_dtype));
+      d_x->mutable_data(dev_ctx.GetPlace(), pt_out_dtype);
     } else {
-      d_x->mutable_data(
-          dev_ctx.GetPlace(),
-          static_cast<framework::proto::VarType::Type>(d_out->type()));
+      d_x->mutable_data(dev_ctx.GetPlace(), d_out->dtype());
     }
     auto pt_d_out = paddle::experimental::MakePtenDenseTensor(new_d_out);
     auto pt_d_x = paddle::experimental::MakePtenDenseTensor(*d_x);
-    auto pt_out_dtype = pten::TransToPtenDataType(
-        static_cast<framework::proto::VarType::Type>(out_dtype));
     if (out_dtype <= 0) {
-      pt_out_dtype = pten::TransToPtenDataType(
-          static_cast<framework::proto::VarType::Type>(d_out->type()));
+      pt_out_dtype = d_out->dtype();
     }
     using MPType = typename kps::details::MPTypeTrait<T>::Type;
     pten::ReduceGrad<T, TransformOp<T, MPType>>(

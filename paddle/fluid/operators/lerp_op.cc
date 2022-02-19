@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/lerp_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -46,7 +46,7 @@ class LerpOp : public framework::OperatorWithKernel {
     if (s_dims.size() > l_dims.size()) {
       return GetOutputDims(l_dims, s_dims);
     }
-    std::vector<int64_t> shapes = framework::vectorize<int64_t>(l_dims);
+    std::vector<int64_t> shapes = pten::vectorize<int64_t>(l_dims);
     for (int i = s_dims.size() - 1, j = l_dims.size() - 1; i >= 0; --i, --j) {
       int64_t s = s_dims[i];
       int64_t l = l_dims[j];
@@ -61,7 +61,7 @@ class LerpOp : public framework::OperatorWithKernel {
         }
       }
     }
-    return framework::make_ddim(shapes);
+    return pten::make_ddim(shapes);
   }
 };
 
@@ -132,15 +132,3 @@ REGISTER_OPERATOR(
     paddle::operators::LerpInplaceInferer);
 
 REGISTER_OPERATOR(lerp_grad, paddle::operators::LerpGradOp);
-
-REGISTER_OP_CPU_KERNEL(
-    lerp,
-    paddle::operators::LerpKernel<paddle::platform::CPUDeviceContext, float>,
-    paddle::operators::LerpKernel<paddle::platform::CPUDeviceContext, double>);
-
-REGISTER_OP_CPU_KERNEL(
-    lerp_grad,
-    paddle::operators::LerpGradKernel<paddle::platform::CPUDeviceContext,
-                                      float>,
-    paddle::operators::LerpGradKernel<paddle::platform::CPUDeviceContext,
-                                      double>);

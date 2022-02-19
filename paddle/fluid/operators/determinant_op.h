@@ -19,11 +19,11 @@
 #include <cmath>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/math/matrix_inverse.h"
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/complex_functors.h"
 
 namespace paddle {
 namespace operators {
@@ -112,8 +112,7 @@ class DeterminantKernel : public framework::OpKernel<T> {
                           "the input matrix should be square matrix."));
     auto rank = input_dim[input_dim_size - 1];  // square matrix length
     DeterminantFunctor<T>()(*input, context, rank, batch_count, output);
-    auto output_dims =
-        framework::slice_ddim(input->dims(), 0, input_dim_size - 2);
+    auto output_dims = pten::slice_ddim(input->dims(), 0, input_dim_size - 2);
     if (input_dim_size > 2) {
       output->Resize(output_dims);
     } else {
@@ -322,7 +321,7 @@ class SlogDeterminantKernel : public framework::OpKernel<T> {
     }
     output_dim_vec.insert(output_dim_vec.begin(),
                           2);  // make the output dims as same as numpy
-    auto output_dims = framework::make_ddim(output_dim_vec);
+    auto output_dims = pten::make_ddim(output_dim_vec);
     output->Resize(output_dims);
     VLOG(2) << "output dim:" << output->dims();
   }
@@ -395,7 +394,7 @@ class SlogDeterminantGradKernel : public framework::OpKernel<T> {
                                                      size_t(numel * sizeof(T)));
 
     platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
-    math::ConjFunctor<T> functor(inverse_A.data<T>(), numel, conj_data);
+    pten::funcs::ConjFunctor<T> functor(inverse_A.data<T>(), numel, conj_data);
     for_range(functor);
 
     VLOG(3) << "inverse(A).conj() dims: " << conj_inverse_A.dims();

@@ -136,7 +136,7 @@ class FillDiagonalTensorKernel : public framework::OpKernel<T> {
     framework::TensorCopy(*xin, ctx.GetPlace(), out);
     auto out_dims = out->dims();
     auto matdims = srctensor->dims();
-    auto fill_dims = flatten_to_2d(matdims, matdims.size() - 1);
+    auto fill_dims = pten::flatten_to_2d(matdims, matdims.size() - 1);
 
     int64_t new_dims[2], strides[2];
     std::vector<int64_t> matdim;
@@ -187,7 +187,8 @@ class FillDiagonalTensorGradOp : public framework::OperatorWithKernel {
     // Note: don't get data type from ctx.Input<framework::Tensor>("Input");
     auto dtype =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"))->type();
-    return framework::OpKernelType(dtype, ctx.GetPlace());
+    return framework::OpKernelType(framework::TransToProtoVarType(dtype),
+                                   ctx.GetPlace());
   }
 };
 

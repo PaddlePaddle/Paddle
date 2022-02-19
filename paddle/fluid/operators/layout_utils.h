@@ -36,31 +36,31 @@ inline void ResizeToChannelFirst(const framework::ExecutionContext& context,
     // input
     transformed_input->Resize(input->dims());
 
-    auto in_dims_vec = framework::vectorize(input->dims());
+    auto in_dims_vec = pten::vectorize(input->dims());
     in_dims_vec[1] = input->dims()[4];
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
     in_dims_vec[4] = input->dims()[3];
-    transformed_input->Resize(framework::make_ddim(in_dims_vec));
+    transformed_input->Resize(pten::make_ddim(in_dims_vec));
     transformed_input->mutable_data<T>(context.GetPlace());
 
   } else if (dim == 2) {
     // input
     transformed_input->Resize(input->dims());
 
-    auto in_dims_vec = framework::vectorize(input->dims());
+    auto in_dims_vec = pten::vectorize(input->dims());
     in_dims_vec[1] = input->dims()[3];
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
-    transformed_input->Resize(framework::make_ddim(in_dims_vec));
+    transformed_input->Resize(pten::make_ddim(in_dims_vec));
     transformed_input->mutable_data<T>(context.GetPlace());
   } else if (dim == 1) {
     transformed_input->Resize(input->dims());
 
-    auto in_dims_vec = framework::vectorize(input->dims());
+    auto in_dims_vec = pten::vectorize(input->dims());
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[1];
-    transformed_input->Resize(framework::make_ddim(in_dims_vec));
+    transformed_input->Resize(pten::make_ddim(in_dims_vec));
     transformed_input->mutable_data<T>(context.GetPlace());
   }
 }
@@ -74,31 +74,31 @@ inline void ResizeToChannelLast(const framework::ExecutionContext& context,
     // input
     transformed_input->Resize(input->dims());
 
-    auto in_dims_vec = framework::vectorize(input->dims());
+    auto in_dims_vec = pten::vectorize(input->dims());
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[3];
     in_dims_vec[3] = input->dims()[4];
     in_dims_vec[4] = input->dims()[1];
-    transformed_input->Resize(framework::make_ddim(in_dims_vec));
+    transformed_input->Resize(pten::make_ddim(in_dims_vec));
     transformed_input->mutable_data<T>(context.GetPlace());
 
   } else if (dim == 2) {
     // input
     transformed_input->Resize(input->dims());
 
-    auto in_dims_vec = framework::vectorize(input->dims());
+    auto in_dims_vec = pten::vectorize(input->dims());
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[3];
     in_dims_vec[3] = input->dims()[1];
-    transformed_input->Resize(framework::make_ddim(in_dims_vec));
+    transformed_input->Resize(pten::make_ddim(in_dims_vec));
     transformed_input->mutable_data<T>(context.GetPlace());
   } else if (dim == 1) {
     transformed_input->Resize(input->dims());
 
-    auto in_dims_vec = framework::vectorize(input->dims());
+    auto in_dims_vec = pten::vectorize(input->dims());
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[1];
-    transformed_input->Resize(framework::make_ddim(in_dims_vec));
+    transformed_input->Resize(pten::make_ddim(in_dims_vec));
     transformed_input->mutable_data<T>(context.GetPlace());
   }
 }

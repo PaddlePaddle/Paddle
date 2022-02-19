@@ -32,7 +32,7 @@ static void Mul(const framework::ExecutionContext& ctx,
     const auto& runner_dx = NpuOpRunner("Mul", {X, Y}, {*Out}, {});
     runner_dx.Run(stream);
   } else {
-    Tensor Out_temp(Out->type());
+    Tensor Out_temp(Out->dtype());
     Out_temp.mutable_data<T>(Out->dims(), ctx.GetPlace());
     const auto& runner_dx = NpuOpRunner("Mul", {X, Y}, {Out_temp}, {});
     runner_dx.Run(stream);
@@ -53,7 +53,7 @@ static void Dot(const framework::ExecutionContext& ctx,
     const auto& runner = NpuOpRunner("Dot", {X, Y}, {*Out});
     runner.Run(stream);
   } else {
-    Tensor Out_temp(Out->type());
+    Tensor Out_temp(Out->dtype());
     Out_temp.mutable_data<T>(Out->dims(), ctx.GetPlace());
     const auto& out_temp_runner = NpuOpRunner("Dot", {X, Y}, {Out_temp});
     out_temp_runner.Run(stream);
@@ -77,7 +77,7 @@ static void MatMul2D(const framework::ExecutionContext& ctx,
                     {{"transpose_x1", trans_x}, {"transpose_x2", trans_y}});
     runner.Run(stream);
   } else {
-    Tensor Out_temp(Out->type());
+    Tensor Out_temp(Out->dtype());
     Out_temp.mutable_data<T>(Out->dims(), ctx.GetPlace());
     const auto& out_temp_runner =
         NpuOpRunner("MatMul", {X, Y}, {Out_temp},
@@ -103,7 +103,7 @@ static void MatMulND(const framework::ExecutionContext& ctx,
                     {{"adj_x1", trans_x}, {"adj_x2", trans_y}});
     runner.Run(stream);
   } else {
-    Tensor Out_temp(Out->type());
+    Tensor Out_temp(Out->dtype());
     Out_temp.mutable_data<T>(Out->dims(), ctx.GetPlace());
     const auto& out_temp_runner =
         NpuOpRunner("BatchMatMul", {X, Y}, {Out_temp},
@@ -151,9 +151,9 @@ class MatMulNPUKernel : public framework::OpKernel<T> {
     bool transpose_y = ctx.Attr<bool>("transpose_Y");
     float alpha = static_cast<T>(ctx.Attr<float>("alpha"));
 
-    std::vector<int64_t> x_dims = framework::vectorize(X->dims());
-    std::vector<int64_t> y_dims = framework::vectorize(Y->dims());
-    std::vector<int64_t> out_dims = framework::vectorize(Out->dims());
+    std::vector<int64_t> x_dims = pten::vectorize(X->dims());
+    std::vector<int64_t> y_dims = pten::vectorize(Y->dims());
+    std::vector<int64_t> out_dims = pten::vectorize(Out->dims());
     int x_ndim = x_dims.size();
     int y_ndim = y_dims.size();
     int out_ndim = out_dims.size();
@@ -181,14 +181,14 @@ class MatMulNPUKernel : public framework::OpKernel<T> {
     if (x_ndim == 1) {
       x_dims.insert(x_dims.begin(), 1);
       out_dims.insert(out_dims.end() - 1, 1);
-      x_temp.Resize(framework::make_ddim(x_dims));
+      x_temp.Resize(pten::make_ddim(x_dims));
       x_ndim = 2;
       out_ndim += 1;
     }
     if (y_ndim == 1) {
       y_dims.push_back(1);
       out_dims.push_back(1);
-      y_temp.Resize(framework::make_ddim(y_dims));
+      y_temp.Resize(pten::make_ddim(y_dims));
       y_ndim = 2;
       out_ndim += 1;
     }
@@ -221,7 +221,7 @@ class MatMulNPUKernel : public framework::OpKernel<T> {
     // Equal: [B * M, K] x [K, N] = [B * M, N] => [B, M, N]
     if (transpose_x == false && y_ndim == 2) {
       std::vector<int64_t> vec_dim = {x_temp.numel() / K, K};
-      x_temp.Resize(framework::make_ddim(vec_dim));
+      x_temp.Resize(pten::make_ddim(vec_dim));
       MatMul2D<T>(ctx, stream, x_temp, y_temp, Out, transpose_x, transpose_y,
                   alpha);
       return;
@@ -235,12 +235,12 @@ class MatMulNPUKernel : public framework::OpKernel<T> {
     std::copy(x_dims.end() - 2, x_dims.end(), x_broadcast_dims.end() - 2);
     std::copy(y_dims.end() - 2, y_dims.end(), y_broadcast_dims.end() - 2);
 
-    Tensor x_temp_brd(X->type());
+    Tensor x_temp_brd(X->dtype());
     if (x_dims == x_broadcast_dims) {
       x_temp_brd.ShareDataWith(*X);
-      x_temp_brd.Resize(framework::make_ddim(x_broadcast_dims));
+      x_temp_brd.Resize(pten::make_ddim(x_broadcast_dims));
     } else {
-      x_temp_brd.Resize(framework::make_ddim(x_broadcast_dims));
+      x_temp_brd.Resize(pten::make_ddim(x_broadcast_dims));
       x_temp_brd.mutable_data<T>(ctx.GetPlace());
       NpuOpRunner runner_brd;
       runner_brd.SetType("BroadcastTo")
@@ -250,12 +250,12 @@ class MatMulNPUKernel : public framework::OpKernel<T> {
           .Run(stream);
     }
 
-    Tensor y_temp_brd(Y->type());
+    Tensor y_temp_brd(Y->dtype());
     if (y_dims == y_broadcast_dims) {
       y_temp_brd.ShareDataWith(*Y);
-      y_temp_brd.Resize(framework::make_ddim(y_broadcast_dims));
+      y_temp_brd.Resize(pten::make_ddim(y_broadcast_dims));
     } else {
-      y_temp_brd.Resize(framework::make_ddim(y_broadcast_dims));
+      y_temp_brd.Resize(pten::make_ddim(y_broadcast_dims));
       y_temp_brd.mutable_data<T>(ctx.GetPlace());
       NpuOpRunner runner_brd;
       runner_brd.SetType("BroadcastTo")
@@ -282,9 +282,9 @@ class MatMulGradNPUKernel : public framework::OpKernel<T> {
     bool transpose_y = ctx.Attr<bool>("transpose_Y");
     float alpha = static_cast<T>(ctx.Attr<float>("alpha"));
 
-    std::vector<int64_t> x_dims = framework::vectorize(X->dims());
-    std::vector<int64_t> y_dims = framework::vectorize(Y->dims());
-    std::vector<int64_t> out_dims = framework::vectorize(dOut->dims());
+    std::vector<int64_t> x_dims = pten::vectorize(X->dims());
+    std::vector<int64_t> y_dims = pten::vectorize(Y->dims());
+    std::vector<int64_t> out_dims = pten::vectorize(dOut->dims());
     int x_ndim = x_dims.size();
     int y_ndim = y_dims.size();
     int out_ndim = out_dims.size();
@@ -293,7 +293,7 @@ class MatMulGradNPUKernel : public framework::OpKernel<T> {
 
     // Case 1: [K] x [K] = [1]
     if (x_ndim == 1 && y_ndim == 1) {
-      Tensor dout_temp(dOut->type());
+      Tensor dout_temp(dOut->dtype());
       dout_temp.Resize(X->dims());
       dout_temp.mutable_data<T>(ctx.GetPlace());
       NpuOpRunner runner;
@@ -320,16 +320,16 @@ class MatMulGradNPUKernel : public framework::OpKernel<T> {
     if (x_ndim == 1) {
       x_dims.insert(x_dims.begin(), 1);
       out_dims.insert(out_dims.end() - 1, 1);
-      x_temp.Resize(framework::make_ddim(x_dims));
-      dout_temp.Resize(framework::make_ddim(out_dims));
+      x_temp.Resize(pten::make_ddim(x_dims));
+      dout_temp.Resize(pten::make_ddim(out_dims));
       x_ndim = 2;
       out_ndim += 1;
     }
     if (y_ndim == 1) {
       y_dims.push_back(1);
       out_dims.push_back(1);
-      y_temp.Resize(framework::make_ddim(y_dims));
-      dout_temp.Resize(framework::make_ddim(out_dims));
+      y_temp.Resize(pten::make_ddim(y_dims));
+      dout_temp.Resize(pten::make_ddim(out_dims));
       y_ndim = 2;
       out_ndim += 1;
     }
@@ -337,7 +337,7 @@ class MatMulGradNPUKernel : public framework::OpKernel<T> {
     // Case 2: [M, K] x [K, N] = [M, N]
     if (out_ndim == 2) {
       if (dX) {
-        dX->Resize(framework::make_ddim(x_dims));
+        dX->Resize(pten::make_ddim(x_dims));
         if (transpose_x) {
           MatMul2D<T>(ctx, stream, y_temp, dout_temp, dX, transpose_y, true,
                       alpha);
@@ -348,7 +348,7 @@ class MatMulGradNPUKernel : public framework::OpKernel<T> {
         dX->Resize(X->dims());
       }
       if (dY) {
-        dY->Resize(framework::make_ddim(y_dims));
+        dY->Resize(pten::make_ddim(y_dims));
         if (transpose_y) {
           MatMul2D<T>(ctx, stream, dout_temp, x_temp, dY, true, transpose_x,
                       alpha);
@@ -369,15 +369,15 @@ class MatMulGradNPUKernel : public framework::OpKernel<T> {
     if (transpose_x == false && y_ndim == 2) {
       std::vector<int64_t> x_vec_dim = {x_temp.numel() / K, K};
       dout_temp.Resize(
-          framework::make_ddim(std::vector<int64_t>{dout_temp.numel() / N, N}));
+          pten::make_ddim(std::vector<int64_t>{dout_temp.numel() / N, N}));
       if (dX) {
-        dX->Resize(framework::make_ddim(x_vec_dim));
+        dX->Resize(pten::make_ddim(x_vec_dim));
         MatMul2D<T>(ctx, stream, dout_temp, y_temp, dX, false, !transpose_y,
                     alpha);
         dX->Resize(X->dims());
       }
       if (dY) {
-        x_temp.Resize(framework::make_ddim(x_vec_dim));
+        x_temp.Resize(pten::make_ddim(x_vec_dim));
         if (transpose_y) {
           MatMul2D<T>(ctx, stream, dout_temp, x_temp, dY, true, false, alpha);
         } else {
@@ -395,12 +395,12 @@ class MatMulGradNPUKernel : public framework::OpKernel<T> {
     std::copy(x_dims.end() - 2, x_dims.end(), x_broadcast_dims.end() - 2);
     std::copy(y_dims.end() - 2, y_dims.end(), y_broadcast_dims.end() - 2);
 
-    Tensor x_temp_brd(X->type());
+    Tensor x_temp_brd(X->dtype());
     if (x_dims == x_broadcast_dims) {
       x_temp_brd.ShareDataWith(*X);
-      x_temp_brd.Resize(framework::make_ddim(x_broadcast_dims));
+      x_temp_brd.Resize(pten::make_ddim(x_broadcast_dims));
     } else {
-      x_temp_brd.Resize(framework::make_ddim(x_broadcast_dims));
+      x_temp_brd.Resize(pten::make_ddim(x_broadcast_dims));
       x_temp_brd.mutable_data<T>(ctx.GetPlace());
       NpuOpRunner runner_brd;
       runner_brd.SetType("BroadcastTo")
@@ -410,12 +410,12 @@ class MatMulGradNPUKernel : public framework::OpKernel<T> {
           .Run(stream);
     }
 
-    Tensor y_temp_brd(Y->type());
+    Tensor y_temp_brd(Y->dtype());
     if (y_dims == y_broadcast_dims) {
       y_temp_brd.ShareDataWith(*Y);
-      y_temp_brd.Resize(framework::make_ddim(y_broadcast_dims));
+      y_temp_brd.Resize(pten::make_ddim(y_broadcast_dims));
     } else {
-      y_temp_brd.Resize(framework::make_ddim(y_broadcast_dims));
+      y_temp_brd.Resize(pten::make_ddim(y_broadcast_dims));
       y_temp_brd.mutable_data<T>(ctx.GetPlace());
       NpuOpRunner runner_brd;
       runner_brd.SetType("BroadcastTo")
@@ -435,8 +435,8 @@ class MatMulGradNPUKernel : public framework::OpKernel<T> {
                       !transpose_y, alpha);
         }
       } else {
-        Tensor dx_temp(X->type());
-        dx_temp.Resize(framework::make_ddim(x_broadcast_dims));
+        Tensor dx_temp(X->dtype());
+        dx_temp.Resize(pten::make_ddim(x_broadcast_dims));
         if (transpose_x) {
           MatMulND<T>(ctx, stream, y_temp_brd, dout_temp, &dx_temp, transpose_y,
                       true, alpha);
@@ -457,8 +457,8 @@ class MatMulGradNPUKernel : public framework::OpKernel<T> {
                       false, alpha);
         }
       } else {
-        Tensor dy_temp(Y->type());
-        dy_temp.Resize(framework::make_ddim(y_broadcast_dims));
+        Tensor dy_temp(Y->dtype());
+        dy_temp.Resize(pten::make_ddim(y_broadcast_dims));
         if (transpose_y) {
           MatMulND<T>(ctx, stream, dout_temp, x_temp_brd, &dy_temp, true,
                       transpose_x, alpha);

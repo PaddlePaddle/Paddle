@@ -28,7 +28,7 @@ limitations under the License. */
 
 namespace pten {
 
-using DDim = pten::framework::DDim;
+using DDim = pten::DDim;
 using LoD = std::vector<paddle::framework::Vector<size_t>>;
 /// \brief The meta data of dense tensor. Take the structure type
 /// and use all default operations.

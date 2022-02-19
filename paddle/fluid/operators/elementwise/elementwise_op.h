@@ -111,13 +111,13 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       if (should_rotate) {
         // Pick bigger shape and rotate this one
         bool x_over_y = (x_dims.size() > y_dims.size());
-        auto vdims = x_over_y ? framework::vectorize<int>(x_dims)
-                              : framework::vectorize<int>(y_dims);
+        auto vdims = x_over_y ? pten::vectorize<int>(x_dims)
+                              : pten::vectorize<int>(y_dims);
         std::rotate(vdims.begin() + 1, vdims.begin() + 2, vdims.end());
         if (x_over_y) {
-          x_dims = framework::make_ddim(vdims);
+          x_dims = pten::make_ddim(vdims);
         } else {
-          y_dims = framework::make_ddim(vdims);
+          y_dims = pten::make_ddim(vdims);
         }
       }
 #endif
@@ -132,7 +132,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
                     out_dims_array.end());
       }
 #endif
-      ctx->SetOutputDim("Out", framework::make_ddim(out_dims_array));
+      ctx->SetOutputDim("Out", pten::make_ddim(out_dims_array));
       // to do
       ctx->ShareLoD("X", /*->*/ "Out");
     }
@@ -158,8 +158,9 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       const framework::OpKernelType &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(tensor.type(), tensor.place(),
-                                     tensor.layout());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+          tensor.layout());
     } else {
 #ifdef PADDLE_WITH_MKLDNN
       // When elementwise is first oneDNN op (there was some non oneDNN op
@@ -346,8 +347,9 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
       const framework::OpKernelType &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(tensor.type(), tensor.place(),
-                                     tensor.layout());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+          tensor.layout());
     } else {
       return framework::OpKernelType(expected_kernel_type.data_type_,
                                      tensor.place(), tensor.layout());
@@ -396,8 +398,9 @@ class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
       const framework::OpKernelType &expected_kernel_type) const {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(tensor.type(), tensor.place(),
-                                     tensor.layout());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+          tensor.layout());
     } else {
       return framework::OpKernelType(expected_kernel_type.data_type_,
                                      tensor.place(), tensor.layout());
@@ -449,8 +452,9 @@ class ElementwiseOpDoubleGradWithoutDXDY
       const framework::OpKernelType &expected_kernel_type) const {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(tensor.type(), tensor.place(),
-                                     tensor.layout());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+          tensor.layout());
     } else {
       return framework::OpKernelType(expected_kernel_type.data_type_,
                                      tensor.place(), tensor.layout());
@@ -506,8 +510,9 @@ class ElementwiseOpTripleGrad : public framework::OperatorWithKernel {
       const framework::OpKernelType &expected_kernel_type) const {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(tensor.type(), tensor.place(),
-                                     tensor.layout());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+          tensor.layout());
     } else {
       return framework::OpKernelType(expected_kernel_type.data_type_,
                                      tensor.place(), tensor.layout());
