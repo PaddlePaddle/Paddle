@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
 // we have to return every specific KernelSignature for infrt now
 KernelSignature FillConstantOpArgumentMapping(
@@ -121,8 +121,8 @@ KernelSignature FillConstantOpArgumentMapping(
   return KernelSignature("unregistered", {}, {}, {});
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_BASE_KERNEL_NAME(fill_constant, full);
 
-PT_REGISTER_ARG_MAPPING_FN(fill_constant, pten::FillConstantOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(fill_constant, phi::FillConstantOpArgumentMapping);

@@ -23,7 +23,7 @@
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/utils/array.h"
 
-namespace pten {
+namespace phi {
 
 // Statically sized, statically indexed dimension
 template <int D>
@@ -95,12 +95,12 @@ inline void static_dim_assign(const T1* in, T2* out) {
   UnrollAssign<D>::Run(in, out);
 }
 
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 namespace framework {
 template <int D>
-using Dim = pten::Dim<D>;
+using Dim = phi::Dim<D>;
 
 }  // namespace framework
 }  // namespace paddle

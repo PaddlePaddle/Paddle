@@ -95,7 +95,7 @@ struct normal_transform {
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 
-namespace kps = pten::kps;
+namespace kps = phi::kps;
 
 /*********************** Distribution Function *************************/
 template <typename T>

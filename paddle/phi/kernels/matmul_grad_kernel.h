@@ -17,7 +17,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/utils/optional.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void MatmulGradKernel(const Context& dev_ctx,
@@ -60,4 +60,4 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
                             DenseTensor* out_d_ddx,
                             DenseTensor* out_d_ddy);
 
-}  // namespace pten
+}  // namespace phi

@@ -436,7 +436,7 @@ class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T> {
     Tensor* input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
     Tensor* trans_grad = ctx.Output<Tensor>(framework::GradVarName("Trans"));
 
-    pten::funcs::SetConstant<DeviceContext, T> set_zero;
+    phi::funcs::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = ctx.cuda_device_context();
     if (input_grad) {
       input_grad->mutable_data<T>(ctx.GetPlace());

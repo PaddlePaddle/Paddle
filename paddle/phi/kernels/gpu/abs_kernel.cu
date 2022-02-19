@@ -21,20 +21,20 @@
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Enable = void>
 struct CudaAbsFunctor;
 
 template <typename T>
-struct CudaAbsFunctor<T, pten::funcs::Complex<T, pten::funcs::Real<T>>> {
-  __device__ __forceinline__ pten::funcs::Real<T> operator()(const T x) const {
+struct CudaAbsFunctor<T, phi::funcs::Complex<T, phi::funcs::Real<T>>> {
+  __device__ __forceinline__ phi::funcs::Real<T> operator()(const T x) const {
     return abs(x);
   }
 };
 
 template <typename T>
-struct CudaAbsFunctor<T, pten::funcs::NoComplex<T, pten::funcs::Real<T>>> {
+struct CudaAbsFunctor<T, phi::funcs::NoComplex<T, phi::funcs::Real<T>>> {
   __device__ __forceinline__ T operator()(const T x) const {
     return std::abs(x);
   }
@@ -42,25 +42,25 @@ struct CudaAbsFunctor<T, pten::funcs::NoComplex<T, pten::funcs::Real<T>>> {
 
 template <typename T, typename Context>
 void AbsKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
-  ctx.template Alloc<pten::funcs::Real<T>>(out);
+  ctx.template Alloc<phi::funcs::Real<T>>(out);
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};
   auto functor = CudaAbsFunctor<T>();
 
-  funcs::LaunchSameDimsElementwiseCudaKernel<pten::funcs::Real<T>>(
+  funcs::LaunchSameDimsElementwiseCudaKernel<phi::funcs::Real<T>>(
       ctx, ins, &outs, functor);
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(abs,
                    GPU,
                    ALL_LAYOUT,
-                   pten::AbsKernel,
+                   phi::AbsKernel,
                    float,
                    double,
                    int,
                    int64_t,
-                   pten::dtype::float16,
-                   pten::dtype::complex<float>,
-                   pten::dtype::complex<double>) {}
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

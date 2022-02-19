@@ -22,7 +22,7 @@
 #endif
 #include "paddle/phi/core/ddim.h"
 
-namespace pten {
+namespace phi {
 namespace kps {
 namespace details {
 
@@ -85,7 +85,7 @@ struct FastDivMod {
 template <int kDims>
 struct BroadcastConfig {
   FastDivMod divmoders[kDims];
-  uint32_t strides[pten::DDim::kMaxRank];
+  uint32_t strides[phi::DDim::kMaxRank];
   HOSTDEVICE BroadcastConfig() {}
 
   HOSTDEVICE BroadcastConfig(const std::vector<int64_t>& out_dims,
@@ -715,4 +715,4 @@ __device__ __forceinline__ void ReadDataBc(
 }
 
 }  // namespace kps
-}  // namespace pten
+}  // namespace phi

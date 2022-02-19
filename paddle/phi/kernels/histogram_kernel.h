@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void HistogramSelectKernel(const Context& dev_ctx,
@@ -25,4 +25,4 @@ void HistogramSelectKernel(const Context& dev_ctx,
                            int max,
                            DenseTensor* out);
 
-}  // namespace pten
+}  // namespace phi

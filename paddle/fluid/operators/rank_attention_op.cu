@@ -114,7 +114,7 @@ class RankAttentionCUDAKernel : public framework::OpKernel<T> {
     int64_t strideA = block_matrix_row;
     int64_t strideB = block_matrix_row * para_col;
 
-    auto blas = pten::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
     blas.BatchedGEMM(transA, transB, 1, para_col, block_matrix_row, alpha,
                      input_help_data, param_help_data, beta, out_data, ins_num,
                      strideA, strideB);
@@ -170,7 +170,7 @@ class RankAttentionGradOpCUDAKernel : public framework::OpKernel<T> {
     const T *ins_rank_data = ins_rank->data<T>();
     T *param_grad_data = param_grad.data<T>();
 
-    auto blas = pten::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
     T alpha = 1;
     T beta = 0;
 

@@ -27,19 +27,19 @@ namespace paddle {
 PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst) {
   PADDLE_ENFORCE_EQ(src.is_dense_tensor() && dst->is_dense_tensor(),
                     true,
-                    pten::errors::Unavailable(
+                    phi::errors::Unavailable(
                         "Now only supported DenseTensor in Custom Operator."));
   PADDLE_ENFORCE_EQ(
       src.initialized(),
       true,
-      pten::errors::Unavailable(
+      phi::errors::Unavailable(
           "The Custom OpKernel calculate output is not initialized."));
   PADDLE_ENFORCE_EQ(dst->defined(),
                     true,
-                    pten::errors::Unavailable(
+                    phi::errors::Unavailable(
                         "The Custom OpKernel origin output is not defined."));
-  auto& dense_src = static_cast<const pten::DenseTensor&>(*src.impl());
-  auto* dense_dst = static_cast<pten::DenseTensor*>(dst->impl().get());
+  auto& dense_src = static_cast<const phi::DenseTensor&>(*src.impl());
+  auto* dense_dst = static_cast<phi::DenseTensor*>(dst->impl().get());
   *dense_dst = dense_src;
 }
 
@@ -166,7 +166,7 @@ OpMetaInfoBuilder::OpMetaInfoBuilder(std::string&& name, size_t index) {
   PADDLE_ENFORCE_EQ(
       info_vector.size(),
       index_,
-      pten::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "The operator %s's meta info register failed. "
           "Please make sure you call marcos as order `PD_BUILD_OP`, "
           "`PD_BUILD_GRAD_OP`, `PD_BUILD_DOUBLE_GRAD_OP`.",
@@ -180,7 +180,7 @@ OpMetaInfoBuilder::OpMetaInfoBuilder(std::string&& name, size_t index) {
     case 2:
       name_ = name_ + "_grad_grad";
     default:
-      PADDLE_THROW(pten::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Not support index `%d` when construct OpMetaInfoBuilder, "
           "now only support `0, 1, 2`.",
           index_));
@@ -222,7 +222,7 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferDtypeFn(InferDtypeFunc func) {
   PADDLE_ENFORCE_EQ(
       index_,
       0UL,
-      pten::errors::Unimplemented(
+      phi::errors::Unimplemented(
           "Currently, the InferDtypeFn setting of Grad Op is not supported, "
           "And backward Tensor `X@GRAD` will use the dtype of forward Tensor "
           "`X` by default."));

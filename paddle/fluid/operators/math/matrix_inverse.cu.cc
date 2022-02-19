@@ -72,7 +72,7 @@ class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
         memory::Alloc(context, num_ints * sizeof(int));
     int* gpu_info_ptr = reinterpret_cast<int*>(tmp_gpu_info_data->ptr());
 
-    auto blas = pten::funcs::GetBlas<platform::CUDADeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(context);
 
     std::vector<int> info;  // only for singular checking
     info.resize(batch_size);

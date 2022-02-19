@@ -60,9 +60,9 @@ static void LogParamAndTrustRatioDivSquareNorm(
   fp16_indices.reserve(n);
   for (size_t i = 0; i < n; ++i) {
     const auto *t = tensors[i];
-    if (t->dtype() == pten::DataType::FLOAT32) {
+    if (t->dtype() == phi::DataType::FLOAT32) {
       fp32_indices.push_back(i);
-    } else if (t->dtype() == pten::DataType::FLOAT16) {
+    } else if (t->dtype() == phi::DataType::FLOAT16) {
       fp16_indices.push_back(i);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -797,7 +797,7 @@ static std::string GetMinMaxStr(const framework::Tensor *x) {
   if (!platform::is_gpu_place(x->place())) return "CPUTensor";
   std::string str;
   VisitDTypeFunctor functor(x, &str);
-  pten::VisitDataType(x->dtype(), functor);
+  phi::VisitDataType(x->dtype(), functor);
   return str;
 }
 

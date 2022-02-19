@@ -36,7 +36,7 @@ namespace imperative {
 void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
   framework::Tensor *tensor =
       is_sparse_
-          ? sparse_contents_->GetMutable<pten::SelectedRows>()->mutable_value()
+          ? sparse_contents_->GetMutable<phi::SelectedRows>()->mutable_value()
           : dense_contents_.GetMutable<framework::LoDTensor>();
 
   if (platform::is_gpu_place(tensor->place())) {
@@ -445,7 +445,7 @@ void Reducer::InitializeGroups(
       // process the dense gradient.
       InitializeDenseGroups(variable_indices_, &group);
       auto tensor = group.dense_contents_.GetMutable<framework::LoDTensor>();
-      tensor->Resize(pten::make_ddim({group.all_length_}))
+      tensor->Resize(phi::make_ddim({group.all_length_}))
           .mutable_data(place_, framework::TransToPtenDataType(group.dtype_));
     }
 
@@ -756,7 +756,7 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
             {static_cast<int64_t>(length)});
       } else {
         group_tensor.Resize({static_cast<int64_t>(length)});
-        pten::funcs::set_constant(*dev_ctx, &group_tensor, 0.0);
+        phi::funcs::set_constant(*dev_ctx, &group_tensor, 0.0);
       }
 #endif
     }
@@ -775,7 +775,7 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
     auto var_base = vars_[var_index]->GradVarBase();
     // need to check tensor type
     PADDLE_ENFORCE_EQ(
-        var_base->Var().IsType<pten::SelectedRows>(), true,
+        var_base->Var().IsType<phi::SelectedRows>(), true,
         platform::errors::PreconditionNotMet(
             "The sparse parameter[%d][%s] must have a selectedrows gradient. "
             "Before forward pass, the parameter type is inferred to be "
@@ -995,8 +995,8 @@ bool Reducer::HasGrad(size_t var_index) {
     if (var.Get<framework::LoDTensor>().IsInitialized()) {
       return true;
     }
-  } else if (var.IsType<pten::SelectedRows>()) {
-    if (var.Get<pten::SelectedRows>().value().IsInitialized()) {
+  } else if (var.IsType<phi::SelectedRows>()) {
+    if (var.Get<phi::SelectedRows>().value().IsInitialized()) {
       return true;
     }
   } else {

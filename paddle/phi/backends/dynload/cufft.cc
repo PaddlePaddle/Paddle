@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/cufft.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace pten {
+namespace phi {
 namespace dynload {
 std::once_flag cufft_dso_flag;
 void* cufft_dso_handle = nullptr;
@@ -39,4 +39,4 @@ void EnforceCUFFTLoaded(const char* fn_name) {
 }
 
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi

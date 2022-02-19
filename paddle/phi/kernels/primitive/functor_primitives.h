@@ -19,12 +19,12 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
-namespace pten {
+namespace phi {
 namespace kps {
 namespace details {
 
-static __device__ __forceinline__ pten::dtype::float16 Exp(
-    pten::dtype::float16 x) {
+static __device__ __forceinline__ phi::dtype::float16 Exp(
+    phi::dtype::float16 x) {
   return ::Eigen::numext::exp(x);
 }
 
@@ -32,8 +32,8 @@ static __device__ __forceinline__ float Exp(float x) { return expf(x); }
 
 static __device__ __forceinline__ double Exp(double x) { return exp(x); }
 
-static __device__ __forceinline__ pten::dtype::float16 Log(
-    pten::dtype::float16 x) {
+static __device__ __forceinline__ phi::dtype::float16 Log(
+    phi::dtype::float16 x) {
   return ::Eigen::numext::log(x);
 }
 
@@ -227,7 +227,7 @@ struct DivFunctor<T,
     // For int32/int64, need to check whether the divison is zero.
     PADDLE_ENFORCE_NE(b,
                       0,
-                      pten::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Integer division by zero encountered "
                           "in (floor) divide. Please check the input value."));
     return a / b;
@@ -244,7 +244,7 @@ struct FloorDivFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
     PADDLE_ENFORCE_NE(b,
                       0,
-                      pten::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Integer division by zero encountered "
                           "in (floor) divide. Please check the input value."));
     return static_cast<T>(std::trunc(a / b));
@@ -252,4 +252,4 @@ struct FloorDivFunctor {
 };
 
 }  // namespace kps
-}  // namespace pten
+}  // namespace phi

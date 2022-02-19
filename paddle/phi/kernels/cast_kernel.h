@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void CastKernel(const Context& dev_ctx,
@@ -29,11 +29,11 @@ template <typename T, typename Context>
 DenseTensor Cast(const Context& dev_ctx,
                  const DenseTensor& x,
                  DataType out_dtype) {
-  auto dense_out = pten::Empty<T, Context>(dev_ctx);
+  auto dense_out = phi::Empty<T, Context>(dev_ctx);
   MetaTensor meta_out(&dense_out);
   CastInferMeta(x, out_dtype, &meta_out);
   CastKernel<T, Context>(dev_ctx, x, out_dtype, &dense_out);
   return dense_out;
 }
 
-}  // namespace pten
+}  // namespace phi

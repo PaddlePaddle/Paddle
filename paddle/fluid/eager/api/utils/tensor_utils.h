@@ -25,8 +25,8 @@ namespace egr_utils_api {
 bool IsLeafTensor(const paddle::experimental::Tensor& target);
 
 paddle::experimental::Tensor CreateTensorWithValue(
-    const pten::DDim& ddim, const paddle::platform::Place& place,
-    const pten::DataType& dtype, const pten::DataLayout& layout, float value,
+    const phi::DDim& ddim, const paddle::platform::Place& place,
+    const phi::DataType& dtype, const phi::DataLayout& layout, float value,
     bool is_leaf = true);
 
 }  // namespace egr_utils_api

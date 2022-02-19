@@ -18,7 +18,7 @@
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void ConjKernel(const Context& dev_ctx,
@@ -29,8 +29,8 @@ void ConjKernel(const Context& dev_ctx,
   auto* out_data = dev_ctx.template Alloc<T>(out);
 
   paddle::platform::ForRange<Context> for_range(dev_ctx, numel);
-  pten::funcs::ConjFunctor<T> functor(x_data, numel, out_data);
+  phi::funcs::ConjFunctor<T> functor(x_data, numel, out_data);
   for_range(functor);
 }
 
-}  // namespace pten
+}  // namespace phi

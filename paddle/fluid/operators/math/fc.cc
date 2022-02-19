@@ -28,7 +28,7 @@ class FCFunctor<platform::CPUDeviceContext, T> {
                   const int N, const int K, const T* X, const T* W, T* Y,
                   const T* B = nullptr, bool relu = false,
                   bool padding_weights = false) {
-    auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(context);
     framework::Tensor Y1;
     T* Y1_data = nullptr;
     if (padding_weights) {

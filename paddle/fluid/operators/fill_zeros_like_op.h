@@ -26,7 +26,7 @@ class FillZerosLikeKernel : public framework::OpKernel<T> {
     auto* out = context.Output<framework::Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
 
-    pten::funcs::SetConstant<DeviceContext, T> setter;
+    phi::funcs::SetConstant<DeviceContext, T> setter;
     setter(context.template device_context<DeviceContext>(), out,
            static_cast<T>(0));
   }

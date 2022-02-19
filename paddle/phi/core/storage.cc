@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/storage.h"
 
-namespace pten {
+namespace phi {
 
 void TensorStorage::Realloc(size_t size) {
   this->Clear();
@@ -22,4 +22,4 @@ void TensorStorage::Realloc(size_t size) {
   size_ = size;
 }
 
-}  // namespace pten
+}  // namespace phi

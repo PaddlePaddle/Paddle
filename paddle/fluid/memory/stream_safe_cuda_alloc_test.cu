@@ -72,7 +72,7 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
 
       std::shared_ptr<Allocation> allocation =
           AllocShared(place_, workspace_size_,
-                      pten::Stream(reinterpret_cast<pten::StreamId>(stream)));
+                      phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
 #ifdef PADDLE_WITH_CUDA
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemset(allocation->ptr(), 0, allocation->size()));
@@ -288,7 +288,7 @@ TEST(StreamSafeCUDAAllocInterfaceTest, GetStreamInterfaceTest) {
 
   std::shared_ptr<Allocation> allocation_new_stream =
       AllocShared(place, alloc_size,
-                  pten::Stream(reinterpret_cast<pten::StreamId>(new_stream)));
+                  phi::Stream(reinterpret_cast<phi::StreamId>(new_stream)));
   EXPECT_EQ(GetStream(allocation_new_stream), new_stream);
 
 #ifdef PADDLE_WITH_CUDA
@@ -317,7 +317,7 @@ TEST(StreamSafeCUDAAllocInterfaceTest, CUDAGraphExceptionTest) {
                paddle::platform::EnforceNotMet);
   EXPECT_THROW(
       AllocShared(place, alloc_size,
-                  pten::Stream(reinterpret_cast<pten::StreamId>(nullptr))),
+                  phi::Stream(reinterpret_cast<phi::StreamId>(nullptr))),
       paddle::platform::EnforceNotMet);
   EXPECT_THROW(Alloc(place, alloc_size, nullptr),
                paddle::platform::EnforceNotMet);

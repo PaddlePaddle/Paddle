@@ -21,7 +21,7 @@ namespace experimental {
 namespace detail {
 
 BackendSet GetTensorBackendSet(const Tensor& t) {
-  BackendSet backend_set(pten::TransToPtenBackend(t.inner_place()));
+  BackendSet backend_set(phi::TransToPtenBackend(t.inner_place()));
   switch (t.layout()) {
     case DataLayout::MKLDNN:
       backend_set = backend_set | BackendSet(Backend::MKLDNN);
@@ -51,9 +51,9 @@ std::size_t CountLeadingZeros(uint64_t val) {
 
 }  // namespace detail
 
-pten::DeviceContext* GetDeviceContextByBackend(pten::Backend backend) {
+phi::DeviceContext* GetDeviceContextByBackend(phi::Backend backend) {
   auto& pool = paddle::platform::DeviceContextPool::Instance();
-  return pool.Get(pten::TransToPtenPlace(backend));
+  return pool.Get(phi::TransToPtenPlace(backend));
 }
 
 DataType ParseDataType(DataType dtype) { return dtype; }
@@ -83,7 +83,7 @@ DataType ParseDataTypeWithInputOrder(DataType dtype, const Tensor& tensor) {
 
 Backend ParseBackend(Backend backend) { return backend; }
 Backend ParseBackend(const Tensor& tensor) {
-  return pten::TransToPtenBackend(tensor.inner_place());
+  return phi::TransToPtenBackend(tensor.inner_place());
 }
 
 Backend ParseBackendWithInputOrder(Backend backend, const Tensor& tensor) {

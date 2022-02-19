@@ -21,7 +21,7 @@
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void ScaleKernel(const Context& dev_ctx,
@@ -54,12 +54,12 @@ void ScaleKernel(const Context& dev_ctx,
           "XPU scale kernel return wrong value[%d %s]", r, XPUAPIErrorMsg[r]));
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(scale,
                    XPU,
                    ALL_LAYOUT,
-                   pten::ScaleKernel,
+                   phi::ScaleKernel,
                    float,
-                   pten::dtype::float16,
+                   phi::dtype::float16,
                    int64_t) {}

@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
 
-namespace pten {
+namespace phi {
 
 template <typename Context>
 void Copy(const Context& dev_ctx,
@@ -87,7 +87,7 @@ void Copy(const Context& dev_ctx,
                           ctx_gpu_place));
     auto stream =
         blocking ? nullptr
-                 : reinterpret_cast<const pten::GPUContext&>(dev_ctx).stream();
+                 : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
     paddle::memory::Copy(
         dst_cpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
   } else if (paddle::platform::is_cpu_place(src_place) &&  // NOLINT
@@ -111,7 +111,7 @@ void Copy(const Context& dev_ctx,
                           ctx_gpu_place));
     auto stream =
         blocking ? nullptr
-                 : reinterpret_cast<const pten::GPUContext&>(dev_ctx).stream();
+                 : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
     paddle::memory::Copy(
         dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, stream);
   } else if (paddle::platform::is_gpu_place(src_place) &&  // NOLINT
@@ -136,7 +136,7 @@ void Copy(const Context& dev_ctx,
                           ctx_gpu_place.device));
     auto stream =
         blocking ? nullptr
-                 : reinterpret_cast<const pten::GPUContext&>(dev_ctx).stream();
+                 : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
     paddle::memory::Copy(
         dst_cuda_pinned_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
   } else if (paddle::platform::is_cuda_pinned_place(src_place) &&  // NOLINT
@@ -161,7 +161,7 @@ void Copy(const Context& dev_ctx,
                           ctx_gpu_place.device));
     auto stream =
         blocking ? nullptr
-                 : reinterpret_cast<const pten::GPUContext&>(dev_ctx).stream();
+                 : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
     paddle::memory::Copy(
         dst_gpu_place, dst_ptr, src_cuda_pinned_place, src_ptr, size, stream);
   } else if (paddle::platform::is_gpu_place(src_place) &&  // NOLINT
@@ -177,7 +177,7 @@ void Copy(const Context& dev_ctx,
             ctx_place));
     auto stream =
         blocking ? nullptr
-                 : reinterpret_cast<const pten::GPUContext&>(dev_ctx).stream();
+                 : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
     if (paddle::platform::is_same_place(src_place, dst_place)) {
       paddle::memory::Copy(
           dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
@@ -205,7 +205,7 @@ void Copy(const Context& dev_ctx,
   }
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_GENERAL_KERNEL(
-    copy, GPU, ALL_LAYOUT, pten::Copy<pten::GPUContext>, ALL_DTYPE) {}
+    copy, GPU, ALL_LAYOUT, phi::Copy<phi::GPUContext>, ALL_DTYPE) {}

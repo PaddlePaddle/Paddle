@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
 
-namespace pten {
+namespace phi {
 
 class DnnWorkspaceHandle {
  public:
@@ -220,4 +220,4 @@ class GPUContext : public DeviceContext {
   std::unique_ptr<Impl> impl_;
 };
 
-}  // namespace pten
+}  // namespace phi

@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/backends/dynload/port.h"
 
-namespace pten {
+namespace phi {
 namespace dynload {
 
 extern std::once_flag cublasLt_dso_flag;
@@ -42,7 +42,7 @@ extern void *cublasLt_dso_handle;
       using cublasLt_func =                                                 \
           decltype(::__name(std::declval<Args>()...)) (*)(Args...);         \
       std::call_once(cublasLt_dso_flag, []() {                              \
-        cublasLt_dso_handle = pten::dynload::GetCublasLtDsoHandle();        \
+        cublasLt_dso_handle = phi::dynload::GetCublasLtDsoHandle();         \
       });                                                                   \
       static void *p_##__name = dlsym(cublasLt_dso_handle, #__name);        \
       return reinterpret_cast<cublasLt_func>(p_##__name)(args...);          \
@@ -72,4 +72,4 @@ CUBLASLT_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUBLASLT_WRAP)
 
 #undef DECLARE_DYNAMIC_LOAD_CUBLASLT_WRAP
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi

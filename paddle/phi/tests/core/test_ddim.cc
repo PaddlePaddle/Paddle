@@ -17,19 +17,19 @@
 #include "gtest/gtest.h"
 #include "paddle/phi/core/ddim.h"
 
-namespace pten {
+namespace phi {
 namespace tests {
 
 TEST(DDim, Equality) {
   // construct a DDim from an initialization list
-  pten::DDim ddim = pten::make_ddim({9, 1, 5});
+  phi::DDim ddim = phi::make_ddim({9, 1, 5});
   EXPECT_EQ(ddim[0], 9);
   EXPECT_EQ(ddim[1], 1);
   EXPECT_EQ(ddim[2], 5);
 
   // construct a DDim from a vector
   std::vector<int64_t> vec({9, 1, 5});
-  pten::DDim vddim = pten::make_ddim(vec);
+  phi::DDim vddim = phi::make_ddim(vec);
   EXPECT_EQ(ddim[0], 9);
   EXPECT_EQ(ddim[1], 1);
   EXPECT_EQ(ddim[2], 5);
@@ -41,32 +41,32 @@ TEST(DDim, Equality) {
   EXPECT_EQ(ddim[0], 6);
 
   // vectorize a DDim
-  std::vector<int64_t> res_vec = pten::vectorize(vddim);
+  std::vector<int64_t> res_vec = phi::vectorize(vddim);
   EXPECT_EQ(res_vec[0], 9);
   EXPECT_EQ(res_vec[1], 1);
   EXPECT_EQ(res_vec[2], 5);
-  pten::Dim<3> d(3, 2, 1);
-  res_vec = pten::vectorize(pten::DDim(d));
+  phi::Dim<3> d(3, 2, 1);
+  res_vec = phi::vectorize(phi::DDim(d));
   EXPECT_EQ(res_vec[0], 3);
   EXPECT_EQ(res_vec[1], 2);
   EXPECT_EQ(res_vec[2], 1);
 
   // arity of a DDim
-  EXPECT_EQ(pten::arity(ddim), 3);
+  EXPECT_EQ(phi::arity(ddim), 3);
   EXPECT_EQ(ddim.size(), 3);
 
   // product of a DDim
-  EXPECT_EQ(pten::product(vddim), 45);
-  EXPECT_EQ(pten::product(pten::make_ddim({3, 2, 5, 3})), 90);
+  EXPECT_EQ(phi::product(vddim), 45);
+  EXPECT_EQ(phi::product(phi::make_ddim({3, 2, 5, 3})), 90);
 
   // slice a DDim
-  pten::DDim ddim2 = pten::make_ddim({1, 2, 3, 4, 5, 6});
-  pten::DDim ss = pten::slice_ddim(ddim2, 2, 5);
+  phi::DDim ddim2 = phi::make_ddim({1, 2, 3, 4, 5, 6});
+  phi::DDim ss = phi::slice_ddim(ddim2, 2, 5);
   EXPECT_EQ(arity(ss), 3);
   EXPECT_EQ(ss[0], 3);
   EXPECT_EQ(ss[1], 4);
   EXPECT_EQ(ss[2], 5);
-  pten::DDim ss2 = pten::slice_ddim(ddim2, 0, 6);
+  phi::DDim ss2 = phi::slice_ddim(ddim2, 0, 6);
   EXPECT_EQ(arity(ss2), 6);
   EXPECT_EQ(ss2[0], 1);
   EXPECT_EQ(ss2[1], 2);
@@ -79,10 +79,10 @@ TEST(DDim, Equality) {
 TEST(DDim, Print) {
   // print a DDim
   std::stringstream ss;
-  pten::DDim ddim = pten::make_ddim({2, 3, 4});
+  phi::DDim ddim = phi::make_ddim({2, 3, 4});
   ss << ddim;
   EXPECT_EQ("2, 3, 4", ss.str());
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi

@@ -22,11 +22,11 @@ limitations under the License. */
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/utils/type_registry.h"
 
-namespace pten {
+namespace phi {
 
 class TensorBase {
  public:
-  using DDim = pten::DDim;
+  using DDim = phi::DDim;
 
   virtual ~TensorBase() = default;
 
@@ -79,4 +79,4 @@ class TensorBase {
   TypeInfo<TensorBase> type_info_{TypeInfo<TensorBase>::kUnknownType};
 };
 
-}  // namespace pten
+}  // namespace phi

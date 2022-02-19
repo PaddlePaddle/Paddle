@@ -33,20 +33,20 @@ PT_DECLARE_KERNEL(copy, GPU, ALL_LAYOUT);
 PT_DECLARE_KERNEL(copy, XPU, ALL_LAYOUT);
 #endif
 
-namespace pten {
+namespace phi {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = pten::DDim;
+using DDim = phi::DDim;
 
 TEST(DEV_API, flatten) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  pten::make_ddim({3, 2, 2, 3}),
-                                                  pten::DataLayout::NCHW));
+  phi::DenseTensor dense_x(alloc.get(),
+                           phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                                                phi::make_ddim({3, 2, 2, 3}),
+                                                phi::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 
@@ -54,14 +54,14 @@ TEST(DEV_API, flatten) {
     dense_x_data[i] = i;
   }
   int start_axis = 1, stop_axis = 2;
-  pten::CPUContext dev_ctx;
+  phi::CPUContext dev_ctx;
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(paddle::platform::CPUPlace())
                            .get());
   dev_ctx.Init();
 
   // 2. test API
-  auto out = pten::Flatten<float>(dev_ctx, dense_x, start_axis, stop_axis);
+  auto out = phi::Flatten<float>(dev_ctx, dense_x, start_axis, stop_axis);
 
   // 3. check result
   std::vector<int> expect_shape = {3, 4, 3};
@@ -69,8 +69,8 @@ TEST(DEV_API, flatten) {
   ASSERT_EQ(out.dims()[1], expect_shape[1]);
   ASSERT_EQ(out.dims()[2], expect_shape[2]);
   ASSERT_EQ(out.numel(), 36);
-  ASSERT_EQ(out.meta().dtype, pten::DataType::FLOAT32);
-  ASSERT_EQ(out.meta().layout, pten::DataLayout::NCHW);
+  ASSERT_EQ(out.meta().dtype, phi::DataType::FLOAT32);
+  ASSERT_EQ(out.meta().layout, phi::DataLayout::NCHW);
 
   bool value_equal = true;
   auto* dense_out_data = out.data<float>();
@@ -82,4 +82,4 @@ TEST(DEV_API, flatten) {
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi

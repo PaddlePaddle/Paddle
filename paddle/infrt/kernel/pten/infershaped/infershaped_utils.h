@@ -22,7 +22,7 @@ namespace infrt {
 namespace kernel {
 namespace infershaped {
 
-using KeyType = const ::pten::DenseTensor&;
+using KeyType = const ::phi::DenseTensor&;
 using CountType = uint8_t;
 
 constexpr CountType value(std::true_type) { return 1; }

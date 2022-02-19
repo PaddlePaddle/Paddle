@@ -23,8 +23,8 @@ limitations under the License. */
 PT_REGISTER_KERNEL(matmul,
                    CPU,
                    ALL_LAYOUT,
-                   pten::MatmulKernel,
+                   phi::MatmulKernel,
                    float,
                    double,
-                   pten::dtype::complex<float>,
-                   pten::dtype::complex<double>) {}
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

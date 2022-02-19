@@ -31,7 +31,7 @@ typedef enum {
   MIOPEN_TENSOR_NHWC = 1,
 } miopenTensorFormat_t;
 
-namespace pten {
+namespace phi {
 namespace dynload {
 
 extern std::once_flag miopen_dso_flag;
@@ -69,7 +69,7 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
     auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) { \
       using miopen_func = decltype(&::__name);                       \
       std::call_once(miopen_dso_flag, []() {                         \
-        miopen_dso_handle = pten::dynload::GetCUDNNDsoHandle();      \
+        miopen_dso_handle = phi::dynload::GetCUDNNDsoHandle();       \
       });                                                            \
       EnforceCUDNNLoaded(#__name);                                   \
       static void* p_##__name = dlsym(miopen_dso_handle, #__name);   \
@@ -193,4 +193,4 @@ __macro(cudnnBatchNormalizationBackwardEx);                          \
 __macro(cudnnGetBatchNormalizationTrainingExReserveSpaceSize);*/
 MIOPEN_DNN_ROUTINE_EACH_AFTER_R7(DECLARE_DYNAMIC_LOAD_MIOPEN_WRAP)
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi

@@ -19,7 +19,7 @@
 #include "paddle/phi/kernels/funcs/diagonal.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void TraceKernel(const Context& ctx,
@@ -37,21 +37,21 @@ void TraceKernel(const Context& ctx,
     kernels::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
         ctx, diag, out, kps::IdentityFunctor<T>(), reduce_dims, stream);
   } else {
-    pten::funcs::SetConstant<Context, T> functor;
+    phi::funcs::SetConstant<Context, T> functor;
     functor(ctx, out, static_cast<T>(0));
   }
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(trace,
                    GPU,
                    ALL_LAYOUT,
-                   pten::TraceKernel,
+                   phi::TraceKernel,
                    float,
                    double,
                    int,
                    int64_t,
-                   pten::dtype::float16,
-                   pten::dtype::complex<float>,
-                   pten::dtype::complex<double>) {}
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

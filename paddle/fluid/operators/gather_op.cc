@@ -72,7 +72,7 @@ class GatherOp : public framework::OperatorWithKernel {
       for (int i = axis + 1; i < input_dim.size(); i++) {
         out_dim_vec.push_back(input_dim[i]);
       }
-      auto output_dims = pten::make_ddim(out_dim_vec);
+      auto output_dims = phi::make_ddim(out_dim_vec);
       ctx->SetOutputDim("Out", output_dims);
       ctx->ShareLoD("X", /*->*/ "Out");
     }

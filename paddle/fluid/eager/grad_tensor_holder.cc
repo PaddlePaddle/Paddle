@@ -48,7 +48,7 @@ void GradTensorHolder::add(size_t slot_id, size_t rank,
     // TODO(jiabin): Code bellow is ugly to divide which inner var we used,
     // remove framework::Variable
     // related code later.
-    // This if statement is trying to test neither pten::Tensor nor
+    // This if statement is trying to test neither phi::Tensor nor
     // framework::Variable is initialized.
     if ((!buffer_tensor.defined() || !buffer_tensor.initialized())) {
       // Simply copy tensor->impl
@@ -68,7 +68,7 @@ void GradTensorHolder::add(size_t slot_id, size_t rank,
         } else {
           // TODO(jiabin): Support Other TensorBase later
           paddle::experimental::Tensor new_buffer(
-              std::make_shared<pten::DenseTensor>(), "tmp_accumulator");
+              std::make_shared<phi::DenseTensor>(), "tmp_accumulator");
           paddle::imperative::SelectedRowsAddTensor(buffer_tensor, t,
                                                     &new_buffer);
           buffer_tensor.set_impl(new_buffer.impl());

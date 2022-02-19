@@ -35,9 +35,9 @@ class Variable;
 }  // namespace framework
 }  // namespace paddle
 
-namespace pten {
+namespace phi {
 class DenseTensor;
-}  // namespace pten
+}  // namespace phi
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;

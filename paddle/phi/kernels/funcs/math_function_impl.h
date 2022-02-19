@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace pten {
+namespace phi {
 namespace funcs {
 
 using paddle::framework::To32BitIndex;
@@ -30,7 +30,7 @@ void SetConstant<DeviceContext, T>::operator()(
 #ifdef PADDLE_WITH_XPU
   if (paddle::platform::is_xpu_place(context.GetPlace())) {
     xpu_place = true;
-    pten::VisitDataType(
+    phi::VisitDataType(
         tensor->dtype(),
         TensorSetConstantXPU<T>(tensor, num, context.GetPlace()));
   }
@@ -261,4 +261,4 @@ class RowwiseSum<paddle::platform::CPUDeviceContext, T> {
 };
 
 }  // namespace funcs
-}  // namespace pten
+}  // namespace phi

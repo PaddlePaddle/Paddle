@@ -16,13 +16,13 @@
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace pten {
+namespace phi {
 namespace tests {
 
 template <typename T>
-inline pten::funcs::BlasT<paddle::platform::CPUDeviceContext, T> GetBlas(
+inline phi::funcs::BlasT<paddle::platform::CPUDeviceContext, T> GetBlas(
     const paddle::platform::CPUDeviceContext& context) {
-  return pten::funcs::GetBlas<paddle::platform::CPUDeviceContext, T>(context);
+  return phi::funcs::GetBlas<paddle::platform::CPUDeviceContext, T>(context);
 }
 
 TEST(math_function, gemm_notrans_cblas) {
@@ -97,36 +97,36 @@ void MklSmmCompare(int m, int n, int k) {
   auto smm = [&, m, n, k, lda, ldb, ldc, alpha, beta]() {
     const char transa = 'N';
     const char transb = 'N';
-    pten::funcs::CBlas<T>::SMM_GEMM(&transa,
-                                    &transb,
-                                    &n,
-                                    &m,
-                                    &k,
-                                    &alpha,
-                                    B,
-                                    &ldb,
-                                    A,
-                                    &lda,
-                                    &beta,
-                                    CSMM,
-                                    &ldc);
+    phi::funcs::CBlas<T>::SMM_GEMM(&transa,
+                                   &transb,
+                                   &n,
+                                   &m,
+                                   &k,
+                                   &alpha,
+                                   B,
+                                   &ldb,
+                                   A,
+                                   &lda,
+                                   &beta,
+                                   CSMM,
+                                   &ldc);
   };
 
   auto mkl = [&, m, n, k, lda, ldb, ldc, alpha, beta]() {
-    pten::funcs::CBlas<T>::GEMM(CblasRowMajor,
-                                CblasNoTrans,
-                                CblasNoTrans,
-                                m,
-                                n,
-                                k,
-                                alpha,
-                                A,
-                                lda,
-                                B,
-                                ldb,
-                                beta,
-                                CMKL,
-                                ldc);
+    phi::funcs::CBlas<T>::GEMM(CblasRowMajor,
+                               CblasNoTrans,
+                               CblasNoTrans,
+                               m,
+                               n,
+                               k,
+                               alpha,
+                               A,
+                               lda,
+                               B,
+                               ldb,
+                               beta,
+                               CMKL,
+                               ldc);
   };
 
   smm();
@@ -197,7 +197,7 @@ TEST(math_function, zero) {
   auto* cpu_place = new paddle::platform::CPUPlace();
   float* t = tensor.mutable_data<float>({2, 2}, *cpu_place);
   paddle::platform::CPUDeviceContext context(*cpu_place);
-  pten::funcs::SetConstant<paddle::platform::CPUDeviceContext, float> functor;
+  phi::funcs::SetConstant<paddle::platform::CPUDeviceContext, float> functor;
   functor(context, &tensor, 0);
   EXPECT_EQ(t[0], 0);
   EXPECT_EQ(t[1], 0);
@@ -274,7 +274,7 @@ TEST(math_funciton, set_constant) {
   t.mutable_data<int>(paddle::platform::CPUPlace());
   auto* ctx = new paddle::platform::CPUDeviceContext();
   ctx->Init();
-  pten::funcs::set_constant(*ctx, &t, 10);
+  phi::funcs::set_constant(*ctx, &t, 10);
   for (int64_t i = 0; i < t.numel(); ++i) {
     PADDLE_ENFORCE_EQ(10,
                       t.data<int>()[i],
@@ -320,20 +320,20 @@ void GemmWarpTest(int m, int n, int k, T alpha, T beta) {
   int lda = k;
   int ldb = n;
   int ldc = n;
-  pten::funcs::CBlas<T>::GEMM(CblasRowMajor,
-                              CblasNoTrans,
-                              CblasNoTrans,
-                              m,
-                              n,
-                              k,
-                              alpha,
-                              A,
-                              lda,
-                              B,
-                              ldb,
-                              beta,
-                              CMKL,
-                              ldc);
+  phi::funcs::CBlas<T>::GEMM(CblasRowMajor,
+                             CblasNoTrans,
+                             CblasNoTrans,
+                             m,
+                             n,
+                             k,
+                             alpha,
+                             A,
+                             lda,
+                             B,
+                             ldb,
+                             beta,
+                             CMKL,
+                             ldc);
 
   for (int i = 0; i < mat_c_mkl.numel(); ++i) {
     EXPECT_FLOAT_EQ(CREF[i], CMKL[i]);
@@ -353,4 +353,4 @@ TEST(math_function, gemm_warp) {
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi

@@ -49,9 +49,9 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   paddle::framework::TensorFromVector(std::vector<int>({1, 10, 1}), ctx,
                                       expand_times_t);
 
-  in_t->Resize(pten::make_ddim({3, 1, 7}));
-  expand_times_t->Resize(pten::make_ddim({3}));
-  out_t->Resize(pten::make_ddim({3, 10, 7}));
+  in_t->Resize(phi::make_ddim({3, 1, 7}));
+  expand_times_t->Resize(phi::make_ddim({3}));
+  out_t->Resize(phi::make_ddim({3, 10, 7}));
   out_t->mutable_data<T>(place);
 
   f::AttributeMap attrs = {{}};

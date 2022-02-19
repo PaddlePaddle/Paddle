@@ -36,13 +36,13 @@ uint64_t Release(const platform::Place& place) {
 
 std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
                                         size_t size,
-                                        const pten::Stream& stream) {
+                                        const phi::Stream& stream) {
   return allocation::AllocatorFacade::Instance().AllocShared(place, size,
                                                              stream);
 }
 
 bool InSameStream(const std::shared_ptr<Allocation>& allocation,
-                  const pten::Stream& stream) {
+                  const phi::Stream& stream) {
   return allocation::AllocatorFacade::Instance().InSameStream(allocation,
                                                               stream);
 }

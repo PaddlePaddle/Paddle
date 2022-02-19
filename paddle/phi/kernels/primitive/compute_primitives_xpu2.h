@@ -18,7 +18,7 @@
 #include "xpu/kernel/debug.h"
 #include "xpu/kernel/math.h"
 
-namespace pten {
+namespace phi {
 namespace kps {
 namespace details {
 
@@ -33,7 +33,7 @@ class MPTypeTrait {
 };
 
 template <>
-class MPTypeTrait<pten::dtype::float16> {
+class MPTypeTrait<phi::dtype::float16> {
  public:
   using Type = float;
 };
@@ -362,4 +362,4 @@ __device__ __forceinline__ void ElementwiseConstant(OutT* out, OpFunc compute) {
 }
 
 }  // namespace kps
-}  // namespace pten
+}  // namespace phi

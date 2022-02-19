@@ -118,7 +118,7 @@ class EditDistanceGPUKernel : public framework::OpKernel<T> {
     }
 
     const size_t num_strs = hyp_lod.size() - 1;
-    pten::funcs::SetConstant<platform::CUDADeviceContext, int64_t> set_constant;
+    phi::funcs::SetConstant<platform::CUDADeviceContext, int64_t> set_constant;
     set_constant(ctx.template device_context<platform::CUDADeviceContext>(),
                  sequence_num, static_cast<int64_t>(num_strs));
 

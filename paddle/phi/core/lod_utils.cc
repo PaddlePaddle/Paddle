@@ -16,12 +16,12 @@
 
 #include "paddle/phi/core/enforce.h"
 
-namespace pten {
+namespace phi {
 
 void AppendLoD(LoD *lod, const LoD &lod_length) {
   PADDLE_ENFORCE(
       lod->empty() || lod->size() == lod_length.size(),
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The input LoD length should be equal to the appended LoD size, but "
           "received input LoD length is %d, actual LoD size is %d.",
           lod_length.size(),
@@ -56,4 +56,4 @@ LoD ConvertToLengthBasedLoD(const LoD &offset_lod) {
   return length_lod;
 }
 
-}  // namespace pten
+}  // namespace phi

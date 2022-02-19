@@ -22,7 +22,7 @@
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/phi/common/complex.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void DotKernel(const Context& dev_ctx,
@@ -31,31 +31,31 @@ void DotKernel(const Context& dev_ctx,
                DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
   if (1 == out->dims().size()) {
-    auto eigen_out = pten::EigenScalar<T>::From(*out);
-    auto eigen_x = pten::EigenVector<T>::Flatten(x);
-    auto eigen_y = pten::EigenVector<T>::Flatten(y);
+    auto eigen_out = phi::EigenScalar<T>::From(*out);
+    auto eigen_x = phi::EigenVector<T>::Flatten(x);
+    auto eigen_y = phi::EigenVector<T>::Flatten(y);
 
     auto& dev = *dev_ctx.eigen_device();
     eigen_out.device(dev) = (eigen_x * eigen_y).sum();
   } else {
-    auto eigen_out = pten::EigenMatrix<T>::From(*out);
-    auto eigen_x = pten::EigenMatrix<T>::From(x);
-    auto eigen_y = pten::EigenMatrix<T>::From(y);
+    auto eigen_out = phi::EigenMatrix<T>::From(*out);
+    auto eigen_x = phi::EigenMatrix<T>::From(x);
+    auto eigen_y = phi::EigenMatrix<T>::From(y);
 
     auto& dev = *dev_ctx.eigen_device();
     eigen_out.device(dev) = (eigen_x * eigen_y).sum(Eigen::DSizes<int, 1>(1));
   }
 }
 
-}  // namespace pten
+}  // namespace phi
 
-using complex64 = ::pten::dtype::complex<float>;
-using complex128 = ::pten::dtype::complex<double>;
+using complex64 = ::phi::dtype::complex<float>;
+using complex128 = ::phi::dtype::complex<double>;
 
 PT_REGISTER_KERNEL(dot,
                    GPU,
                    ALL_LAYOUT,
-                   pten::DotKernel,
+                   phi::DotKernel,
                    float,
                    double,
                    int,

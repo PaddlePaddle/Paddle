@@ -59,7 +59,7 @@ class GatherNdOp : public framework::OperatorWithKernel {
       result_dims.emplace_back(x_dims[i]);
     }
 
-    ctx->SetOutputDim("Out", pten::make_ddim(result_dims));
+    ctx->SetOutputDim("Out", phi::make_ddim(result_dims));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 

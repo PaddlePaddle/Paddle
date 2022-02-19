@@ -20,7 +20,7 @@
 #include "paddle/phi/infermeta/nullary.h"
 #include "paddle/phi/infermeta/unary.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void EmptyKernel(const Context& dev_ctx,
@@ -38,8 +38,8 @@ void EmptyLikeKernel(const Context& dev_ctx,
 // all kernel api call Empty here instead of making tensor self
 template <typename Context>
 DenseTensor Empty(const Context& dev_ctx, DenseTensorMeta&& meta) {
-  pten::DenseTensor dense_out(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(
+  phi::DenseTensor dense_out(
+      phi::make_intrusive<paddle::experimental::SharedStorage>(
           dev_ctx.GetPlace()),
       std::move(meta));
   return dense_out;
@@ -75,4 +75,4 @@ DenseTensor EmptyLike(const Context& dev_ctx,
   return dense_out;
 }
 
-}  // namespace pten
+}  // namespace phi

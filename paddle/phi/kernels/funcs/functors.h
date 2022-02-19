@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/math.h"
 
-namespace pten {
+namespace phi {
 namespace funcs {
 template <typename T>
 struct MulGradFunctor {
@@ -180,4 +180,4 @@ struct GeluGradFunctor {
 };
 
 }  // namespace funcs
-}  // namespace pten
+}  // namespace phi

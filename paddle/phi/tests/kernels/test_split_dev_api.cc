@@ -23,21 +23,21 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-namespace pten {
+namespace phi {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = pten::DDim;
+using DDim = phi::DDim;
 
 TEST(DEV_API, split) {
   // 1. create tensor
-  const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
-      pten::CPUPlace());
-  pten::DenseTensor dense_x(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  pten::make_ddim({4, 10}),
-                                                  pten::DataLayout::NCHW));
-  pten::CPUContext dev_ctx;
+  const auto alloc =
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace());
+  phi::DenseTensor dense_x(alloc.get(),
+                           phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                                                phi::make_ddim({4, 10}),
+                                                phi::DataLayout::NCHW));
+  phi::CPUContext dev_ctx;
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(paddle::platform::CPUPlace())
                            .get());
@@ -51,21 +51,21 @@ TEST(DEV_API, split) {
   }
 
   // 2. test API
-  auto out = pten::Split<float>(dev_ctx, dense_x, {2, 2}, 0);
+  auto out = phi::Split<float>(dev_ctx, dense_x, {2, 2}, 0);
 
   // 3. check result
   ASSERT_EQ(out.size(), static_cast<size_t>(2));
   ASSERT_EQ(out[0].dims().size(), 2);
   ASSERT_EQ(out[0].dims()[0], 2);
   ASSERT_EQ(out[0].dims()[1], 10);
-  ASSERT_EQ(out[0].meta().dtype, pten::DataType::FLOAT32);
-  ASSERT_EQ(out[0].meta().layout, pten::DataLayout::NCHW);
+  ASSERT_EQ(out[0].meta().dtype, phi::DataType::FLOAT32);
+  ASSERT_EQ(out[0].meta().layout, phi::DataLayout::NCHW);
 
   ASSERT_EQ(out[1].dims().size(), 2);
   ASSERT_EQ(out[1].dims()[0], 2);
   ASSERT_EQ(out[1].dims()[1], 10);
-  ASSERT_EQ(out[1].meta().dtype, pten::DataType::FLOAT32);
-  ASSERT_EQ(out[1].meta().layout, pten::DataLayout::NCHW);
+  ASSERT_EQ(out[1].meta().dtype, phi::DataType::FLOAT32);
+  ASSERT_EQ(out[1].meta().layout, phi::DataLayout::NCHW);
 
   auto out_data_0 = out[0].data<float>();
   auto out_data_1 = out[1].data<float>();
@@ -79,4 +79,4 @@ TEST(DEV_API, split) {
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi

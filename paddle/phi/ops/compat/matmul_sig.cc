@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
 KernelSignature MatmulGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.HasAttr("use_addto")) {
@@ -47,15 +47,15 @@ KernelSignature MatmulTripleGradOpArgumentMapping(
       {"D_X_out", "D_Y_out", "D_DOut_out", "D_DDX_out", "D_DDY_out"});
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_BASE_KERNEL_NAME(matmul_v2, matmul);
 PT_REGISTER_BASE_KERNEL_NAME(matmul_v2_grad, matmul_grad);
 PT_REGISTER_BASE_KERNEL_NAME(matmul_v2_grad_grad, matmul_double_grad);
 PT_REGISTER_BASE_KERNEL_NAME(matmul_v2_triple_grad, matmul_triple_grad);
 
-PT_REGISTER_ARG_MAPPING_FN(matmul_v2_grad, pten::MatmulGradOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(matmul_v2_grad, phi::MatmulGradOpArgumentMapping);
 PT_REGISTER_ARG_MAPPING_FN(matmul_v2_grad_grad,
-                           pten::MatmulDoubleGradOpArgumentMapping);
+                           phi::MatmulDoubleGradOpArgumentMapping);
 PT_REGISTER_ARG_MAPPING_FN(matmul_v2_triple_grad,
-                           pten::MatmulTripleGradOpArgumentMapping);
+                           phi::MatmulTripleGradOpArgumentMapping);

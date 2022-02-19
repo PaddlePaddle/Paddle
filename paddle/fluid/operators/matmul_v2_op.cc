@@ -108,8 +108,8 @@ class MatMulV2Op : public framework::OperatorWithKernel {
     bool trans_x = ctx->Attrs().Get<bool>("trans_x");
     bool trans_y = ctx->Attrs().Get<bool>("trans_y");
 
-    std::vector<int64_t> dims_x = pten::vectorize(GetDimForInput(*ctx, "X"));
-    std::vector<int64_t> dims_y = pten::vectorize(GetDimForInput(*ctx, "Y"));
+    std::vector<int64_t> dims_x = phi::vectorize(GetDimForInput(*ctx, "X"));
+    std::vector<int64_t> dims_y = phi::vectorize(GetDimForInput(*ctx, "Y"));
     auto ndims_x = dims_x.size();
     auto ndims_y = dims_y.size();
     PADDLE_ENFORCE_GT(ndims_x, 0,
@@ -167,7 +167,7 @@ class MatMulV2Op : public framework::OperatorWithKernel {
       new_dims.push_back(1);
     }
 
-    auto ddim_out = pten::make_ddim(new_dims);
+    auto ddim_out = phi::make_ddim(new_dims);
 
 #ifdef PADDLE_WITH_MKLDNN
     //  if mkldnn matmul_v2+transpose+reshape fuse activated
@@ -225,7 +225,7 @@ class MatMulV2Op : public framework::OperatorWithKernel {
       if (it != reshape_out.end()) {
         int index = std::distance(reshape_out.begin(), it);
 
-        auto ddim_out_vec = pten::vectorize(ddim_out);
+        auto ddim_out_vec = phi::vectorize(ddim_out);
 
         int ddim_out_product =
             std::accumulate(ddim_out_vec.begin(), ddim_out_vec.end(), 1,
@@ -525,7 +525,7 @@ REGISTER_OPERATOR(matmul_v2, ops::MatMulV2Op, ops::MatMulV2OpMaker,
                   ops::MatMulV2GradOpMaker<paddle::imperative::OpBase>);
 
 DELCARE_INFER_SHAPE_FUNCTOR(matmul_v2_grad, MatMulV2GradInferShapeFunctor,
-                            PT_INFER_META(pten::GeneralBinaryGradInferMeta));
+                            PT_INFER_META(phi::GeneralBinaryGradInferMeta));
 REGISTER_OPERATOR(matmul_v2_grad, ops::MatMulV2OpGrad,
                   ops::MatMulV2OpDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::MatMulV2OpDoubleGradMaker<paddle::imperative::OpBase>,

@@ -62,16 +62,16 @@ using ValueVariantType =
             MlirFunctionExecutable*,
             tensor::TensorMap,
 #ifdef INFRT_WITH_PTEN
-            ::pten::MetaTensor,
-            ::pten::DenseTensor,
+            ::phi::MetaTensor,
+            ::phi::DenseTensor,
             backends::CpuPtenAllocator,
             backends::CpuPtenContext,
-            ::pten::CPUContext,
-            std::vector<pten::DenseTensor>,
-            paddle::experimental::ScalarBase<pten::DenseTensor>,
-            paddle::experimental::ScalarArrayBase<pten::DenseTensor>,
-            std::vector<pten::MetaTensor>,
-            pten::MetaConfig,
+            ::phi::CPUContext,
+            std::vector<phi::DenseTensor>,
+            paddle::experimental::ScalarBase<phi::DenseTensor>,
+            paddle::experimental::ScalarArrayBase<phi::DenseTensor>,
+            std::vector<phi::MetaTensor>,
+            phi::MetaConfig,
             paddle::experimental::Backend,
             paddle::experimental::DataLayout,
             paddle::experimental::DataType,
@@ -110,9 +110,9 @@ class Value : public common::Object {
   explicit Value(MlirFunctionExecutable* x) : data(x) {}
 #ifdef INFRT_WITH_PTEN
   explicit Value(backends::CpuPtenContext&& x) : data(std::move(x)) {}
-  explicit Value(::pten::CPUContext&& x) : data(std::move(x)) {}
-  explicit Value(::pten::DenseTensor&& x) : data(std::move(x)) {}
-  explicit Value(::pten::MetaTensor&& x) : data(std::move(x)) {}
+  explicit Value(::phi::CPUContext&& x) : data(std::move(x)) {}
+  explicit Value(::phi::DenseTensor&& x) : data(std::move(x)) {}
+  explicit Value(::phi::MetaTensor&& x) : data(std::move(x)) {}
   explicit Value(backends::CpuPtenAllocator&& x) : data(std::move(x)) {}
 #endif
 
@@ -172,10 +172,10 @@ class ValueRef : common::Shared<Value> {
   explicit ValueRef(float val);
   explicit ValueRef(double val);
   explicit ValueRef(bool val);
-  explicit ValueRef(::pten::MetaTensor&& val);
+  explicit ValueRef(::phi::MetaTensor&& val);
   explicit ValueRef(backends::CpuPtenContext&& x);
-  explicit ValueRef(::pten::CPUContext&& x);
-  explicit ValueRef(::pten::DenseTensor&& x);
+  explicit ValueRef(::phi::CPUContext&& x);
+  explicit ValueRef(::phi::DenseTensor&& x);
 
   using common::Shared<Value>::get;
   using common::Shared<Value>::Reset;

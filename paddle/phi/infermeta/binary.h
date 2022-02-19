@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/meta_tensor.h"
 
-namespace pten {
+namespace phi {
 
 // Common InferMeta Functions for binary operators, The format like:
 //
@@ -45,4 +45,4 @@ void ElementwiseRawInferMeta(const MetaTensor& x_meta,
                              const MetaTensor& y_meta,
                              int axis,
                              MetaTensor* out);
-}  // namespace pten
+}  // namespace phi

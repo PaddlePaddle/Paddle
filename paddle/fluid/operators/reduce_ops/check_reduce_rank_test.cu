@@ -39,9 +39,9 @@ TEST(test_reduce_rank_check, all) {
       }
 
       if (is_valid) {
-        pten::kernels::details::CheckReduceRank(reduce_rank, rank);
+        phi::kernels::details::CheckReduceRank(reduce_rank, rank);
       } else {
-        ASSERT_THROW(pten::kernels::details::CheckReduceRank(reduce_rank, rank),
+        ASSERT_THROW(phi::kernels::details::CheckReduceRank(reduce_rank, rank),
                      paddle::platform::EnforceNotMet);
       }
     }

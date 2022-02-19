@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/dynload/nvrtc.h"
 
-namespace pten {
+namespace phi {
 namespace dynload {
 
 std::once_flag nvrtc_dso_flag;
@@ -31,4 +31,4 @@ bool HasNVRTC() {
 }
 
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi

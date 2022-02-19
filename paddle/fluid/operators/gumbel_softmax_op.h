@@ -155,7 +155,7 @@ struct OneHotGenerator<platform::CPUDeviceContext, T> {
 #undef CALL_ARG_MINMAX_FUNCTOR
     }
 
-    pten::funcs::set_constant(context, Out, 0.0);
+    phi::funcs::set_constant(context, Out, 0.0);
     for (int i = 0; i < size_to_axis; i++) {
       for (int j = 0; j < size_out_axis; j++) {
         *(Out->data<T>() + i * size_from_axis + j +

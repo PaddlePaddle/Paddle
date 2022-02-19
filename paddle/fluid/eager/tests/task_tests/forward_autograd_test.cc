@@ -35,12 +35,12 @@ TEST(Forward, SingleNode) {
 
   // Prepare Inputs
   std::vector<paddle::experimental::Tensor> target_tensors;
-  paddle::framework::DDim ddim = pten::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
   paddle::experimental::Tensor t = egr_utils_api::CreateTensorWithValue(
-      ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
-      pten::DataLayout::NCHW, 5.0 /*value*/, false /*is_leaf*/);
+      ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+      phi::DataLayout::NCHW, 5.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
   paddle::experimental::Tensor& tensor = target_tensors[0];
   EagerUtils::autograd_meta(&tensor)->SetStopGradient(false);
@@ -81,12 +81,12 @@ TEST(Forward, LinearNodes) {
 
   // Prepare Inputs
   std::vector<paddle::experimental::Tensor> target_tensors;
-  paddle::framework::DDim ddim = pten::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
   paddle::experimental::Tensor t = egr_utils_api::CreateTensorWithValue(
-      ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
-      pten::DataLayout::NCHW, 5.0 /*value*/, false /*is_leaf*/);
+      ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+      phi::DataLayout::NCHW, 5.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
   paddle::experimental::Tensor& tensor = target_tensors[0];
   EagerUtils::autograd_meta(&tensor)->SetStopGradient(false);
@@ -157,12 +157,12 @@ TEST(Forward, BranchedNodes) {
 
   // Prepare Inputs
   std::vector<paddle::experimental::Tensor> target_tensors;
-  paddle::framework::DDim ddim = pten::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
   paddle::experimental::Tensor t = egr_utils_api::CreateTensorWithValue(
-      ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
-      pten::DataLayout::NCHW, 5.0 /*value*/, false /*is_leaf*/);
+      ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+      phi::DataLayout::NCHW, 5.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
   paddle::experimental::Tensor& tensor = target_tensors[0];
   EagerUtils::autograd_meta(&tensor)->SetStopGradient(false);

@@ -20,10 +20,10 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-class ExternalStorage : public pten::Storage {
+class ExternalStorage : public phi::Storage {
  public:
-  ExternalStorage(void* ptr, size_t size, const pten::Place& place);
-  ExternalStorage(const pten::intrusive_ptr<pten::Storage>& root,
+  ExternalStorage(void* ptr, size_t size, const phi::Place& place);
+  ExternalStorage(const phi::intrusive_ptr<phi::Storage>& root,
                   size_t delta,
                   size_t size);
 
@@ -52,7 +52,7 @@ class ExternalStorage : public pten::Storage {
   }
 
   size_t size() const noexcept override { return size_; }
-  const pten::Place& place() const override {
+  const phi::Place& place() const override {
     PADDLE_ENFORCE_NOT_NULL(
         data_,
         paddle::platform::errors::Unavailable(
@@ -65,7 +65,7 @@ class ExternalStorage : public pten::Storage {
   int64_t size_{0};
 };
 
-class SharedStorage : public pten::Storage {
+class SharedStorage : public phi::Storage {
  public:
   explicit SharedStorage(
       const std::shared_ptr<paddle::memory::Allocation>& allocation)
@@ -78,7 +78,7 @@ class SharedStorage : public pten::Storage {
   // In order to be compatible with the original Tensor design and execution
   // system, we need to allow the uninitialized SharedStorage to exist,
   // and it can be removed after the compatibility phase is over in the future
-  explicit SharedStorage(const pten::Place& place) { place_ = place; }
+  explicit SharedStorage(const phi::Place& place) { place_ = place; }
 
   void Realloc(size_t n) override {
     this->Clear();
@@ -104,14 +104,14 @@ class SharedStorage : public pten::Storage {
 
   std::shared_ptr<paddle::memory::Allocation>&& move_data_shared() override {
     size_ = 0;
-    place_ = pten::Place();
+    place_ = phi::Place();
     return std::move(data_);
   }
 
   size_t size() const noexcept override {
     return data_ ? data_->size() : size_;
   }
-  const pten::Place& place() const override {
+  const phi::Place& place() const override {
     return data_ ? data_->place() : place_;
   }
   bool OwnsMemory() const noexcept override { return false; }
@@ -128,25 +128,25 @@ class SharedStorage : public pten::Storage {
   }
 
   // Temporary method: For compatible with fluid Tensor and improve performance
-  void ResetAllocationPlace(const pten::Place& place) { place_ = place; }
+  void ResetAllocationPlace(const phi::Place& place) { place_ = place; }
 
   // Temporary method: For compatible with fluid Tensor and improve performance
   void Reset() { this->Clear(); }
 
  private:
-  pten::Place place_;
+  phi::Place place_;
   int64_t size_{0};
 };
 
 class TensorStorage : public paddle::memory::allocation::Allocation {
  public:
-  explicit TensorStorage(pten::intrusive_ptr<pten::Storage> storage)
+  explicit TensorStorage(phi::intrusive_ptr<phi::Storage> storage)
       : paddle::memory::allocation::Allocation(
             storage->data(), storage->size(), storage->place()),
         storage_(std::move(storage)) {}
 
  private:
-  pten::intrusive_ptr<pten::Storage> storage_;
+  phi::intrusive_ptr<phi::Storage> storage_;
 };
 
 }  // namespace experimental

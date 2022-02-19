@@ -24,7 +24,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T>
 __global__ void ConcatKernel_(const T** inputs,
@@ -237,7 +237,7 @@ __global__ void SplitKernel_(const T* input_data,
   SplitKernelDetail<T>(input_data, in_row, in_col, fixed_out_col, outputs_data);
 }
 
-static inline void GetBlockDims(const pten::GPUContext& context,
+static inline void GetBlockDims(const phi::GPUContext& context,
                                 int64_t num_rows,
                                 int64_t num_cols,
                                 dim3* block_dims,
@@ -267,9 +267,9 @@ static inline void GetBlockDims(const pten::GPUContext& context,
  */
 template <typename T, typename Context>
 void ConcatImpl(const Context& context,
-                const std::vector<pten::DenseTensor>& input,
+                const std::vector<phi::DenseTensor>& input,
                 int axis,
-                pten::DenseTensor* output) {
+                phi::DenseTensor* output) {
   // TODO(zcd): Add input data validity checking
   int in_num = input.size();
   int64_t in_row = 1;
@@ -413,10 +413,10 @@ void ConcatImpl(const Context& context,
  */
 template <typename T, typename Context>
 void SplitImpl(const Context& context,
-               const pten::DenseTensor& input,
-               const std::vector<const pten::DenseTensor*>& ref_inputs,
+               const phi::DenseTensor& input,
+               const std::vector<const phi::DenseTensor*>& ref_inputs,
                int axis,
-               std::vector<pten::DenseTensor*>* outputs) {
+               std::vector<phi::DenseTensor*>* outputs) {
   // NOTE(zhiqiu): split a tensor of shape [0,3,4] at axis=1, result in 3
   // tensors of shape [0,1,4]
   if (input.numel() == 0) {
@@ -565,4 +565,4 @@ void SplitImpl(const Context& context,
 #endif
 }
 
-}  // namespace pten
+}  // namespace phi

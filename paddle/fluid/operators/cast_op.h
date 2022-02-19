@@ -67,7 +67,7 @@ class CastOpKernel : public framework::OpKernel<InT> {
         static_cast<framework::proto::VarType::Type>(out_dtype));
 
     // call new kernel
-    pten::CastKernel<InT>(
+    phi::CastKernel<InT>(
         static_cast<const typename paddle::framework::ConvertToPtenContext<
             DeviceContext>::TYPE&>(dev_ctx),
         *in, pt_out_dtype, out);

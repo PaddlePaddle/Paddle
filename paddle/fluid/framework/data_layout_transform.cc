@@ -43,7 +43,7 @@ void CastDataLayout::apply() {
   auto place = ctx_->GetPlace();
 
   if (platform::is_cpu_place(place)) {
-    pten::funcs::Transpose<platform::CPUDeviceContext, T, 4> trans4;
+    phi::funcs::Transpose<platform::CPUDeviceContext, T, 4> trans4;
     auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);
     trans4(*context, in_, out_, axis_);
   } else {
@@ -79,7 +79,7 @@ void TransDataLayout(const OpKernelType& kernel_type_for_var,
     dst_dim[i] = src_dim[axis[i]];
   }
 
-  out->Resize(pten::make_ddim(dst_dim));
+  out->Resize(phi::make_ddim(dst_dim));
   out->mutable_data(expected_kernel_type.place_, in.dtype());
 
   framework::VisitDataType(
@@ -151,7 +151,7 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
   auto* dev_ctx = dynamic_cast<platform::MKLDNNDeviceContext*>(pool.Get(place));
   auto& cpu_engine = dev_ctx->GetEngine();
 
-  auto in_tz = pten::vectorize<int64_t>(in.dims());
+  auto in_tz = phi::vectorize<int64_t>(in.dims());
   auto out_tz = in_tz;
 
   memory::data_type in_type =

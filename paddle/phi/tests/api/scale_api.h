@@ -53,28 +53,28 @@ PADDLE_API Tensor scale_kernel_context(const Tensor& x,
       kernel_data_type = kernel_key.dtype();
     }
   }
-  auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
+  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "scale", {kernel_backend, kernel_layout, kernel_data_type});
   VLOG(6) << "scale API kernel key: [" << kernel_backend << ", "
           << kernel_layout << ", " << kernel_data_type << "]";
   VLOG(6) << "scale API kernel: " << kernel;
 
   auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
-  auto kernel_context = pten::KernelContext(dev_ctx);
+  auto kernel_context = phi::KernelContext(dev_ctx);
 
-  auto dense_x = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
+  auto dense_x = std::dynamic_pointer_cast<phi::DenseTensor>(x.impl());
   kernel_context.EmplaceBackInput(dense_x.get());
 
-  kernel_context.EmplaceBackAttr(pten::Scalar(scale));
+  kernel_context.EmplaceBackAttr(phi::Scalar(scale));
   kernel_context.EmplaceBackAttr(bias);
   kernel_context.EmplaceBackAttr(bias_after_scale);
 
-  auto dense_out = std::make_shared<pten::DenseTensor>(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(
-          pten::TransToPtenPlace(kernel_backend)),
-      pten::DenseTensorMeta());
-  pten::MetaTensor meta_out(dense_out.get());
-  pten::UnchangedInferMeta(*dense_x, &meta_out);
+  auto dense_out = std::make_shared<phi::DenseTensor>(
+      phi::make_intrusive<paddle::experimental::SharedStorage>(
+          phi::TransToPtenPlace(kernel_backend)),
+      phi::DenseTensorMeta());
+  phi::MetaTensor meta_out(dense_out.get());
+  phi::UnchangedInferMeta(*dense_x, &meta_out);
   kernel_context.EmplaceBackOutput(dense_out.get());
 
   Tensor out;
@@ -85,51 +85,51 @@ PADDLE_API Tensor scale_kernel_context(const Tensor& x,
 }
 
 static void ScaleCPU(DataType kernel_dtype,
-                     const pten::CPUContext& dev_ctx,
-                     const pten::DenseTensor& x,
+                     const phi::CPUContext& dev_ctx,
+                     const phi::DenseTensor& x,
                      const Scalar& scale,
                      float bias,
                      bool bias_after_scale,
-                     pten::DenseTensor* dense_out) {
+                     phi::DenseTensor* dense_out) {
   switch (kernel_dtype) {
-    case pten::DataType::FLOAT64: {
-      pten::ScaleKernel<double>(
-          dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
+    case phi::DataType::FLOAT64: {
+      phi::ScaleKernel<double>(
+          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
-    case pten::DataType::FLOAT32: {
-      pten::ScaleKernel<float>(
-          dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
+    case phi::DataType::FLOAT32: {
+      phi::ScaleKernel<float>(
+          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
-    case pten::DataType::BFLOAT16: {
-      pten::ScaleKernel<pten::dtype::bfloat16>(
-          dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
+    case phi::DataType::BFLOAT16: {
+      phi::ScaleKernel<phi::dtype::bfloat16>(
+          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
-    case pten::DataType::INT64: {
-      pten::ScaleKernel<int64_t>(
-          dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
+    case phi::DataType::INT64: {
+      phi::ScaleKernel<int64_t>(
+          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
-    case pten::DataType::INT32: {
-      pten::ScaleKernel<int32_t>(
-          dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
+    case phi::DataType::INT32: {
+      phi::ScaleKernel<int32_t>(
+          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
-    case pten::DataType::INT16: {
-      pten::ScaleKernel<int16_t>(
-          dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
+    case phi::DataType::INT16: {
+      phi::ScaleKernel<int16_t>(
+          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
-    case pten::DataType::INT8: {
-      pten::ScaleKernel<int8_t>(
-          dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
+    case phi::DataType::INT8: {
+      phi::ScaleKernel<int8_t>(
+          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
-    case pten::DataType::UINT8: {
-      pten::ScaleKernel<uint8_t>(
-          dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
+    case phi::DataType::UINT8: {
+      phi::ScaleKernel<uint8_t>(
+          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
     default: {
@@ -144,51 +144,51 @@ static void ScaleCPU(DataType kernel_dtype,
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 static void ScaleGPU(DataType kernel_dtype,
-                     const pten::GPUContext& dev_ctx,
-                     const pten::DenseTensor& x,
+                     const phi::GPUContext& dev_ctx,
+                     const phi::DenseTensor& x,
                      const Scalar& scale,
                      float bias,
                      bool bias_after_scale,
-                     pten::DenseTensor* dense_out) {
+                     phi::DenseTensor* dense_out) {
   switch (kernel_dtype) {
-    case pten::DataType::FLOAT64: {
-      pten::ScaleKernel<double>(
-          dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
+    case phi::DataType::FLOAT64: {
+      phi::ScaleKernel<double>(
+          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
-    case pten::DataType::FLOAT32: {
-      pten::ScaleKernel<float>(
-          dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
+    case phi::DataType::FLOAT32: {
+      phi::ScaleKernel<float>(
+          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
-    case pten::DataType::FLOAT16: {
-      pten::ScaleKernel<pten::dtype::float16>(
-          dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
+    case phi::DataType::FLOAT16: {
+      phi::ScaleKernel<phi::dtype::float16>(
+          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
-    case pten::DataType::INT64: {
-      pten::ScaleKernel<int64_t>(
-          dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
+    case phi::DataType::INT64: {
+      phi::ScaleKernel<int64_t>(
+          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
-    case pten::DataType::INT32: {
-      pten::ScaleKernel<int32_t>(
-          dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
+    case phi::DataType::INT32: {
+      phi::ScaleKernel<int32_t>(
+          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
-    case pten::DataType::INT16: {
-      pten::ScaleKernel<int16_t>(
-          dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
+    case phi::DataType::INT16: {
+      phi::ScaleKernel<int16_t>(
+          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
-    case pten::DataType::INT8: {
-      pten::ScaleKernel<int8_t>(
-          dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
+    case phi::DataType::INT8: {
+      phi::ScaleKernel<int8_t>(
+          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
-    case pten::DataType::UINT8: {
-      pten::ScaleKernel<uint8_t>(
-          dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
+    case phi::DataType::UINT8: {
+      phi::ScaleKernel<uint8_t>(
+          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
     default: {
@@ -226,7 +226,7 @@ Tensor scale_switch_case(const Tensor& x,
       kernel_data_type = kernel_key.dtype();
     }
   }
-  auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
+  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "scale", {kernel_backend, kernel_layout, kernel_data_type});
   VLOG(6) << "scale API kernel key: [" << kernel_backend << ", "
           << kernel_layout << ", " << kernel_data_type << "]";
@@ -234,14 +234,14 @@ Tensor scale_switch_case(const Tensor& x,
 
   auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
 
-  auto dense_x = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
+  auto dense_x = std::dynamic_pointer_cast<phi::DenseTensor>(x.impl());
 
-  auto dense_out = std::make_shared<pten::DenseTensor>(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(
-          pten::TransToPtenPlace(kernel_backend)),
-      pten::DenseTensorMeta());
-  pten::MetaTensor meta_out(dense_out.get());
-  pten::UnchangedInferMeta(*dense_x, &meta_out);
+  auto dense_out = std::make_shared<phi::DenseTensor>(
+      phi::make_intrusive<paddle::experimental::SharedStorage>(
+          phi::TransToPtenPlace(kernel_backend)),
+      phi::DenseTensorMeta());
+  phi::MetaTensor meta_out(dense_out.get());
+  phi::UnchangedInferMeta(*dense_x, &meta_out);
 
   Tensor out;
   out.set_impl(dense_out);
@@ -249,7 +249,7 @@ Tensor scale_switch_case(const Tensor& x,
   switch (kernel_backend) {
     case Backend::CPU:
       ScaleCPU(kernel_data_type,
-               static_cast<const pten::CPUContext&>(*dev_ctx),
+               static_cast<const phi::CPUContext&>(*dev_ctx),
                *dense_x,
                scale,
                bias,
@@ -259,7 +259,7 @@ Tensor scale_switch_case(const Tensor& x,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     case Backend::GPU:
       ScaleGPU(kernel_data_type,
-               static_cast<const pten::GPUContext&>(*dev_ctx),
+               static_cast<const phi::GPUContext&>(*dev_ctx),
                *dense_x,
                scale,
                bias,

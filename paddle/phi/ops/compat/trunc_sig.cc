@@ -14,7 +14,7 @@
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
 KernelSignature TruncOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("trunc", {"X"}, {}, {"Out"});
@@ -25,7 +25,7 @@ KernelSignature TruncGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
       "trunc_grad", {GradVarName("Out")}, {}, {GradVarName("X")});
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(trunc, pten::TruncOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(trunc_grad, pten::TruncGradOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(trunc, phi::TruncOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(trunc_grad, phi::TruncGradOpArgumentMapping);

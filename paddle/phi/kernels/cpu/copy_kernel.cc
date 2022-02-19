@@ -22,7 +22,7 @@ limitations under the License. */
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/memory/memcpy.h"
 
-namespace pten {
+namespace phi {
 
 // NOTE(chenweihang): blocking is useless in cpu kernel
 template <typename Context>
@@ -54,7 +54,7 @@ void Copy(const Context& dev_ctx,
   }
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_GENERAL_KERNEL(
-    copy, CPU, ALL_LAYOUT, pten::Copy<pten::CPUContext>, ALL_DTYPE) {}
+    copy, CPU, ALL_LAYOUT, phi::Copy<phi::CPUContext>, ALL_DTYPE) {}

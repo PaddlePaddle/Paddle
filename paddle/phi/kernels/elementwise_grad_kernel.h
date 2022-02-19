@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/utils/optional.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void AddGradKernel(const Context& dev_ctx,
@@ -64,4 +64,4 @@ void SubtractDoubleGradKernel(const Context& dev_ctx,
                               int axis,
                               DenseTensor* ddout);
 
-}  // namespace pten
+}  // namespace phi

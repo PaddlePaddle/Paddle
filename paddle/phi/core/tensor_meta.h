@@ -26,9 +26,9 @@ limitations under the License. */
 // @zhanlve: Rollback to original LoD for now
 #include "paddle/fluid/framework/mixed_vector.h"
 
-namespace pten {
+namespace phi {
 
-using DDim = pten::DDim;
+using DDim = phi::DDim;
 using LoD = std::vector<paddle::framework::Vector<size_t>>;
 /// \brief The meta data of dense tensor. Take the structure type
 /// and use all default operations.
@@ -67,4 +67,4 @@ inline bool operator==(const DenseTensorMeta& lhs, const DenseTensorMeta& rhs) {
          (lhs.lod == rhs.lod) && (lhs.offset == rhs.offset);
 }
 
-}  // namespace pten
+}  // namespace phi

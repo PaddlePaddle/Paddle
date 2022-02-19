@@ -46,7 +46,7 @@
 #define HOST
 #endif
 
-namespace pten {
+namespace phi {
 namespace dtype {
 
 struct PADDLE_ALIGN(2) bfloat16 {
@@ -316,43 +316,43 @@ inline std::ostream& operator<<(std::ostream& os, const bfloat16& a) {
 }
 
 }  // namespace dtype
-}  // namespace pten
+}  // namespace phi
 
 namespace std {
 
 template <>
-struct is_pod<pten::dtype::bfloat16> {
-  static const bool value = is_trivial<pten::dtype::bfloat16>::value &&
-                            is_standard_layout<pten::dtype::bfloat16>::value;
+struct is_pod<phi::dtype::bfloat16> {
+  static const bool value = is_trivial<phi::dtype::bfloat16>::value &&
+                            is_standard_layout<phi::dtype::bfloat16>::value;
 };
 
 template <>
-struct is_floating_point<pten::dtype::bfloat16>
+struct is_floating_point<phi::dtype::bfloat16>
     : std::integral_constant<
           bool,
           std::is_same<
-              pten::dtype::bfloat16,
-              typename std::remove_cv<pten::dtype::bfloat16>::type>::value> {};
+              phi::dtype::bfloat16,
+              typename std::remove_cv<phi::dtype::bfloat16>::type>::value> {};
 template <>
-struct is_signed<pten::dtype::bfloat16> {
+struct is_signed<phi::dtype::bfloat16> {
   static const bool value = true;
 };
 
 template <>
-struct is_unsigned<pten::dtype::bfloat16> {
+struct is_unsigned<phi::dtype::bfloat16> {
   static const bool value = false;
 };
 
-inline bool isnan(const pten::dtype::bfloat16& a) {
-  return pten::dtype::isnan(a);
+inline bool isnan(const phi::dtype::bfloat16& a) {
+  return phi::dtype::isnan(a);
 }
 
-inline bool isinf(const pten::dtype::bfloat16& a) {
-  return pten::dtype::isinf(a);
+inline bool isinf(const phi::dtype::bfloat16& a) {
+  return phi::dtype::isinf(a);
 }
 
 template <>
-struct numeric_limits<pten::dtype::bfloat16> {
+struct numeric_limits<phi::dtype::bfloat16> {
   static const bool is_specialized = true;
   static const bool is_signed = true;
   static const bool is_integer = false;
@@ -377,32 +377,32 @@ struct numeric_limits<pten::dtype::bfloat16> {
   static const bool traps = true;
   static const bool tinyness_before = false;
 
-  static pten::dtype::bfloat16(min)() {
-    return pten::dtype::raw_uint16_to_bfloat16(0x007f);
+  static phi::dtype::bfloat16(min)() {
+    return phi::dtype::raw_uint16_to_bfloat16(0x007f);
   }
-  static pten::dtype::bfloat16 lowest() {
-    return pten::dtype::raw_uint16_to_bfloat16(0xff7f);
+  static phi::dtype::bfloat16 lowest() {
+    return phi::dtype::raw_uint16_to_bfloat16(0xff7f);
   }
-  static pten::dtype::bfloat16(max)() {
-    return pten::dtype::raw_uint16_to_bfloat16(0x7f7f);
+  static phi::dtype::bfloat16(max)() {
+    return phi::dtype::raw_uint16_to_bfloat16(0x7f7f);
   }
-  static pten::dtype::bfloat16 epsilon() {
-    return pten::dtype::raw_uint16_to_bfloat16(0x3400);
+  static phi::dtype::bfloat16 epsilon() {
+    return phi::dtype::raw_uint16_to_bfloat16(0x3400);
   }
-  static pten::dtype::bfloat16 round_error() {
-    return pten::dtype::bfloat16(0.5);
+  static phi::dtype::bfloat16 round_error() {
+    return phi::dtype::bfloat16(0.5);
   }
-  static pten::dtype::bfloat16 infinity() {
-    return pten::dtype::raw_uint16_to_bfloat16(0x7f80);
+  static phi::dtype::bfloat16 infinity() {
+    return phi::dtype::raw_uint16_to_bfloat16(0x7f80);
   }
-  static pten::dtype::bfloat16 quiet_NaN() {
-    return pten::dtype::raw_uint16_to_bfloat16(0xffc1);
+  static phi::dtype::bfloat16 quiet_NaN() {
+    return phi::dtype::raw_uint16_to_bfloat16(0xffc1);
   }
-  static pten::dtype::bfloat16 signaling_NaN() {
-    return pten::dtype::raw_uint16_to_bfloat16(0xff81);
+  static phi::dtype::bfloat16 signaling_NaN() {
+    return phi::dtype::raw_uint16_to_bfloat16(0xff81);
   }
-  static pten::dtype::bfloat16 denorm_min() {
-    return pten::dtype::raw_uint16_to_bfloat16(0x0001);
+  static phi::dtype::bfloat16 denorm_min() {
+    return phi::dtype::raw_uint16_to_bfloat16(0x0001);
   }
 };
 

@@ -18,10 +18,10 @@ limitations under the License. */
 
 #include "paddle/phi/core/allocator.h"
 
-namespace pten {
+namespace phi {
 namespace tests {
 
-class FancyAllocator : public pten::Allocator {
+class FancyAllocator : public phi::Allocator {
  public:
   static void Delete(Allocation* allocation) {
     ::operator delete(allocation->ptr());
@@ -30,10 +30,10 @@ class FancyAllocator : public pten::Allocator {
   AllocationPtr Allocate(size_t bytes_size) override {
     void* data = ::operator new(bytes_size);
     auto* allocation =
-        new pten::Allocation(data, bytes_size, paddle::platform::CPUPlace());
+        new phi::Allocation(data, bytes_size, paddle::platform::CPUPlace());
     return AllocationPtr(allocation, Delete);
   }
 };
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi

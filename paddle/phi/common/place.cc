@@ -20,7 +20,7 @@ limitations under the License. */
 
 #include "paddle/phi/api/ext/exception.h"
 
-namespace pten {
+namespace phi {
 
 const char *AllocationTypeStr(AllocationType type) {
   switch (type) {
@@ -92,4 +92,4 @@ std::string GetGlobalDeviceType(size_t device_type_id) {
   return global_registered_device_type[device_type_id];
 }
 
-}  // namespace pten
+}  // namespace phi

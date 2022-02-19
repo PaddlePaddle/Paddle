@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/device_guard.h"
 #include "paddle/fluid/platform/device/stream.h"
 
-namespace pten {
+namespace phi {
 
 struct CustomContext::Impl {
   explicit Impl(const CustomPlace& place) : place_(place) {}
@@ -56,4 +56,4 @@ CustomContext::CustomContext(const CustomPlace& place)
 
 CustomContext::~CustomContext() {}
 
-}  // namespace pten
+}  // namespace phi

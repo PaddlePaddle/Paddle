@@ -17,7 +17,7 @@
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void MeanKernel(const Context& dev_ctx,
@@ -76,22 +76,22 @@ void MultiplyKernel(const Context& dev_ctx,
   MultiplyRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
-}  // namespace pten
+}  // namespace phi
 
-using complex64 = ::pten::dtype::complex<float>;
-using complex128 = ::pten::dtype::complex<double>;
+using complex64 = ::phi::dtype::complex<float>;
+using complex128 = ::phi::dtype::complex<double>;
 
 PT_REGISTER_KERNEL(
-    mean, CPU, ALL_LAYOUT, pten::MeanKernel, float, double, bool) {}
+    mean, CPU, ALL_LAYOUT, phi::MeanKernel, float, double, bool) {}
 
 PT_REGISTER_KERNEL(sum,
                    CPU,
                    ALL_LAYOUT,
-                   pten::SumKernel,
+                   phi::SumKernel,
                    bool,
                    float,
                    double,
-                   pten::dtype::float16,
+                   phi::dtype::float16,
                    int,
                    int64_t,
                    complex64,
@@ -102,7 +102,7 @@ PT_REGISTER_KERNEL(sum,
 PT_REGISTER_KERNEL(add,
                    CPU,
                    ALL_LAYOUT,
-                   pten::AddKernel,
+                   phi::AddKernel,
                    float,
                    double,
                    int,
@@ -112,7 +112,7 @@ PT_REGISTER_KERNEL(add,
 PT_REGISTER_KERNEL(subtract,
                    CPU,
                    ALL_LAYOUT,
-                   pten::SubtractKernel,
+                   phi::SubtractKernel,
                    float,
                    double,
                    int,
@@ -122,7 +122,7 @@ PT_REGISTER_KERNEL(subtract,
 PT_REGISTER_KERNEL(divide,
                    CPU,
                    ALL_LAYOUT,
-                   pten::DivideKernel,
+                   phi::DivideKernel,
                    float,
                    double,
                    int,
@@ -132,7 +132,7 @@ PT_REGISTER_KERNEL(divide,
 PT_REGISTER_KERNEL(multiply,
                    CPU,
                    ALL_LAYOUT,
-                   pten::MultiplyKernel,
+                   phi::MultiplyKernel,
                    float,
                    double,
                    int,
@@ -145,19 +145,19 @@ PT_REGISTER_KERNEL(multiply,
 PT_REGISTER_KERNEL(mean,
                    GPU,
                    ALL_LAYOUT,
-                   pten::MeanKernel,
+                   phi::MeanKernel,
                    float,
                    double,
                    bool,
-                   pten::dtype::float16) {}
+                   phi::dtype::float16) {}
 PT_REGISTER_KERNEL(sum,
                    GPU,
                    ALL_LAYOUT,
-                   pten::SumKernel,
+                   phi::SumKernel,
                    bool,
                    float,
                    double,
-                   pten::dtype::float16,
+                   phi::dtype::float16,
                    int,
                    int64_t,
                    complex64,
@@ -167,46 +167,46 @@ PT_REGISTER_KERNEL(sum,
 PT_REGISTER_KERNEL(add,
                    GPU,
                    ALL_LAYOUT,
-                   pten::AddKernel,
+                   phi::AddKernel,
                    float,
                    double,
                    int,
                    int64_t,
-                   pten::dtype::float16,
+                   phi::dtype::float16,
                    complex64,
                    complex128) {}
 PT_REGISTER_KERNEL(subtract,
                    GPU,
                    ALL_LAYOUT,
-                   pten::SubtractKernel,
+                   phi::SubtractKernel,
                    float,
                    double,
                    int,
                    int64_t,
-                   pten::dtype::float16,
+                   phi::dtype::float16,
                    complex64,
                    complex128) {}
 PT_REGISTER_KERNEL(divide,
                    GPU,
                    ALL_LAYOUT,
-                   pten::DivideKernel,
+                   phi::DivideKernel,
                    float,
                    double,
                    int,
                    int64_t,
-                   pten::dtype::float16,
+                   phi::dtype::float16,
                    complex64,
                    complex128) {}
 PT_REGISTER_KERNEL(multiply,
                    GPU,
                    ALL_LAYOUT,
-                   pten::MultiplyKernel,
+                   phi::MultiplyKernel,
                    float,
                    double,
                    int,
                    int64_t,
                    bool,
-                   pten::dtype::float16,
+                   phi::dtype::float16,
                    complex64,
                    complex128) {}
 #endif

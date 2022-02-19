@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/hostdevice.h"
 
-namespace pten {
+namespace phi {
 namespace funcs {
 
 // Define the binary functors used in elementwise ops.
@@ -93,4 +93,4 @@ struct InverseDivideFunctor {
 };
 
 }  // namespace funcs
-}  // namespace pten
+}  // namespace phi

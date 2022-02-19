@@ -18,7 +18,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/trunc_kernel.h"
 
-namespace pten {
+namespace phi {
 
 using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 
@@ -75,7 +75,7 @@ void TruncKernel(const Context& dev_ctx,
   Trunc<<<blocks, theads>>>(x_data, out_data, numel);
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(
-    trunc, GPU, ALL_LAYOUT, pten::TruncKernel, float, double, int, int64_t) {}
+    trunc, GPU, ALL_LAYOUT, phi::TruncKernel, float, double, int, int64_t) {}

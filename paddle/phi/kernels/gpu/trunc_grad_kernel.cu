@@ -18,7 +18,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/trunc_grad_kernel.h"
 
-namespace pten {
+namespace phi {
 
 using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 
@@ -42,12 +42,12 @@ void TruncGradKernel(const Context& dev_ctx,
   TruncGrad<<<blocks, theads>>>(in_grad_data, numel);
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(trunc_grad,
                    GPU,
                    ALL_LAYOUT,
-                   pten::TruncGradKernel,
+                   phi::TruncGradKernel,
                    float,
                    double,
                    int,

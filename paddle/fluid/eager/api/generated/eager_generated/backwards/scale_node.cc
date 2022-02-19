@@ -27,22 +27,13 @@
 namespace egr {
 
 template <typename DeviceContext>
-static void ScaleDeviceDispatch(const pten::DenseTensor& dense_tensor,
+static void ScaleDeviceDispatch(const phi::DenseTensor& dense_tensor,
                                 const DeviceContext& dev_ctx, float scale,
                                 float bias, bool bias_after_scale,
-                                pten::DenseTensor* dense_out) {
+                                phi::DenseTensor* dense_out) {
   switch (dense_tensor.dtype()) {
-    case pten::DataType::FLOAT64: {
-      pten::ScaleKernel<double, typename paddle::framework::
-                                    ConvertToPtenContext<DeviceContext>::TYPE>(
-          static_cast<const typename paddle::framework::ConvertToPtenContext<
-              DeviceContext>::TYPE&>(dev_ctx),
-          dense_tensor /* tensor */, scale /* scale */, bias /* bias */,
-          bias_after_scale /* bias_after_scale */, dense_out /* out tensor */);
-      break;
-    }
-    case pten::DataType::FLOAT32: {
-      pten::ScaleKernel<float, typename paddle::framework::ConvertToPtenContext<
+    case phi::DataType::FLOAT64: {
+      phi::ScaleKernel<double, typename paddle::framework::ConvertToPtenContext<
                                    DeviceContext>::TYPE>(
           static_cast<const typename paddle::framework::ConvertToPtenContext<
               DeviceContext>::TYPE&>(dev_ctx),
@@ -50,18 +41,27 @@ static void ScaleDeviceDispatch(const pten::DenseTensor& dense_tensor,
           bias_after_scale /* bias_after_scale */, dense_out /* out tensor */);
       break;
     }
-    case pten::DataType::INT64: {
-      pten::ScaleKernel<int64_t, typename paddle::framework::
-                                     ConvertToPtenContext<DeviceContext>::TYPE>(
+    case phi::DataType::FLOAT32: {
+      phi::ScaleKernel<float, typename paddle::framework::ConvertToPtenContext<
+                                  DeviceContext>::TYPE>(
           static_cast<const typename paddle::framework::ConvertToPtenContext<
               DeviceContext>::TYPE&>(dev_ctx),
           dense_tensor /* tensor */, scale /* scale */, bias /* bias */,
           bias_after_scale /* bias_after_scale */, dense_out /* out tensor */);
       break;
     }
-    case pten::DataType::INT32: {
-      pten::ScaleKernel<int32_t, typename paddle::framework::
-                                     ConvertToPtenContext<DeviceContext>::TYPE>(
+    case phi::DataType::INT64: {
+      phi::ScaleKernel<int64_t, typename paddle::framework::
+                                    ConvertToPtenContext<DeviceContext>::TYPE>(
+          static_cast<const typename paddle::framework::ConvertToPtenContext<
+              DeviceContext>::TYPE&>(dev_ctx),
+          dense_tensor /* tensor */, scale /* scale */, bias /* bias */,
+          bias_after_scale /* bias_after_scale */, dense_out /* out tensor */);
+      break;
+    }
+    case phi::DataType::INT32: {
+      phi::ScaleKernel<int32_t, typename paddle::framework::
+                                    ConvertToPtenContext<DeviceContext>::TYPE>(
           static_cast<const typename paddle::framework::ConvertToPtenContext<
               DeviceContext>::TYPE&>(dev_ctx),
           dense_tensor /* tensor */, scale /* scale */, bias /* bias */,
@@ -82,15 +82,15 @@ void ScaleAPI(const paddle::experimental::Tensor& x, float scale, float bias,
   // TODO(jiabin): Support multiple tensor here, Create DenseTensor is not a
   // proper way to Demo it
   // Run Forward Function
-  auto dense_tensor = std::dynamic_pointer_cast<pten::DenseTensor>(x.impl());
+  auto dense_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(x.impl());
   // Init output tensor
-  auto tensor_meta = pten::DenseTensorMeta(
+  auto tensor_meta = phi::DenseTensorMeta(
       dense_tensor->dtype(), dense_tensor->dims(), dense_tensor->layout());
   auto place = dense_tensor->place();
   size_t bytes_size =
-      pten::product(dense_tensor->dims()) * SizeOf(dense_tensor->dtype());
-  auto dense_out = std::make_shared<pten::DenseTensor>(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(
+      phi::product(dense_tensor->dims()) * SizeOf(dense_tensor->dtype());
+  auto dense_out = std::make_shared<phi::DenseTensor>(
+      phi::make_intrusive<paddle::experimental::SharedStorage>(
           paddle::memory::Alloc(place, bytes_size)),
       std::move(tensor_meta));
   // Handle Device Context
@@ -161,7 +161,7 @@ operator()(
   // Apply Gradient Hooks
   if (GradientHooksRegistered()) {
     // TODO(jiabin): Shall we apply hook slot by slot here or accept
-    // vector<vector<pten::tensor>> to apply all hooks?
+    // vector<vector<phi::tensor>> to apply all hooks?
     std::vector<std::vector<paddle::experimental::Tensor>> hooked_grads =
         ApplyGradientHooks(grads);
     ScaleAPI(/* slot by slot set */ hooked_grads[0][0], scale_, 0.0 /* bias */,

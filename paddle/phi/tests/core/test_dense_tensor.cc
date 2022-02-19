@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/tests/core/allocator.h"
 
-namespace pten {
+namespace phi {
 namespace tests {
 
 TEST(dense_tensor, meta) {
@@ -130,4 +130,4 @@ TEST(dense_tensor, shallow_copy) {
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi

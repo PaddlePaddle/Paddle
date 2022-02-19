@@ -21,11 +21,11 @@
 PT_REGISTER_KERNEL(trace_grad,
                    GPU,
                    ALL_LAYOUT,
-                   pten::TraceGradKernel,
+                   phi::TraceGradKernel,
                    float,
                    double,
                    int,
                    int64_t,
-                   pten::dtype::float16,
-                   pten::dtype::complex<float>,
-                   pten::dtype::complex<double>) {}
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

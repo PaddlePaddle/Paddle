@@ -23,7 +23,7 @@ limitations under the License. */
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/phi/common/bfloat16.h"
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void ScaleKernel(const Context& dev_ctx,
@@ -34,8 +34,8 @@ void ScaleKernel(const Context& dev_ctx,
                  DenseTensor* out) {
   // calc
   dev_ctx.template Alloc<T>(out);
-  auto eigen_out = pten::EigenVector<T>::Flatten(*out);
-  auto eigen_x = pten::EigenVector<T>::Flatten(x);
+  auto eigen_out = phi::EigenVector<T>::Flatten(*out);
+  auto eigen_x = phi::EigenVector<T>::Flatten(x);
   auto& dev = *dev_ctx.eigen_device();
   // TODO(chenweihang): now the eigen function here need the dtype of scale,
   // eigen_x, bias should be same, so here need cast for two scalar arg,
@@ -49,15 +49,15 @@ void ScaleKernel(const Context& dev_ctx,
       bias_after_scale);
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(scale,
                    CPU,
                    ALL_LAYOUT,
-                   pten::ScaleKernel,
+                   phi::ScaleKernel,
                    float,
                    double,
-                   pten::dtype::bfloat16,
+                   phi::dtype::bfloat16,
                    uint8_t,
                    int8_t,
                    int16_t,

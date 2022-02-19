@@ -20,17 +20,17 @@ limitations under the License. */
 #include "paddle/phi/infermeta/generated.h"
 #include "paddle/phi/infermeta/unary.h"
 
-namespace pten {
+namespace phi {
 namespace tests {
 
 TEST(WrappedInferMeta, Scale) {
-  pten::DenseTensor dense_x;
-  dense_x.Resize(pten::make_ddim({3, 4}));
+  phi::DenseTensor dense_x;
+  dense_x.Resize(phi::make_ddim({3, 4}));
 
-  pten::MetaTensor meta_x(&dense_x);
-  pten::DenseTensor dense_out1;
-  pten::MetaTensor meta_out(&dense_out1);
-  pten::ScaleInferMeta(meta_x, 0, 0, false, &meta_out);
+  phi::MetaTensor meta_x(&dense_x);
+  phi::DenseTensor dense_out1;
+  phi::MetaTensor meta_out(&dense_out1);
+  phi::ScaleInferMeta(meta_x, 0, 0, false, &meta_out);
 
   EXPECT_EQ(dense_out1.dims().size(), dense_x.dims().size());
   EXPECT_EQ(dense_out1.dims()[0], dense_x.dims()[0]);
@@ -38,22 +38,22 @@ TEST(WrappedInferMeta, Scale) {
 }
 
 TEST(MetaFnFactory, InferMetaFnExists) {
-  pten::DenseTensor dense_x;
-  dense_x.Resize(pten::make_ddim({3, 4}));
+  phi::DenseTensor dense_x;
+  dense_x.Resize(phi::make_ddim({3, 4}));
 
-  pten::MetaTensor meta_x(&dense_x);
-  pten::DenseTensor dense_out1;
-  pten::MetaTensor meta_out(&dense_out1);
-  pten::UnchangedInferMeta(meta_x, &meta_out);
+  phi::MetaTensor meta_x(&dense_x);
+  phi::DenseTensor dense_out1;
+  phi::MetaTensor meta_out(&dense_out1);
+  phi::UnchangedInferMeta(meta_x, &meta_out);
 
-  auto shared_meat_x = std::make_shared<pten::MetaTensor>(&dense_x);
-  pten::DenseTensor dense_out2;
-  auto shared_meta_out = std::make_shared<pten::MetaTensor>(&dense_out2);
-  pten::InferMetaContext ctx;
+  auto shared_meat_x = std::make_shared<phi::MetaTensor>(&dense_x);
+  phi::DenseTensor dense_out2;
+  auto shared_meta_out = std::make_shared<phi::MetaTensor>(&dense_out2);
+  phi::InferMetaContext ctx;
   ctx.EmplaceBackInput(shared_meat_x);
   ctx.EmplaceBackOutput(shared_meta_out);
   ctx.SetMetaConfig(/*is_runtime=*/true);
-  pten::MetaFnFactory::Instance().Get("sign")(&ctx);
+  phi::MetaFnFactory::Instance().Get("sign")(&ctx);
 
   EXPECT_EQ(dense_out1.dims().size(), dense_out2.dims().size());
   EXPECT_EQ(dense_out1.dims()[0], dense_out2.dims()[0]);
@@ -61,4 +61,4 @@ TEST(MetaFnFactory, InferMetaFnExists) {
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi

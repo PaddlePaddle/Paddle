@@ -17,7 +17,7 @@ limitations under the License. */
 #include <random>
 #include <type_traits>
 
-namespace pten {
+namespace phi {
 namespace tests {
 
 template <typename T,
@@ -44,4 +44,4 @@ auto make_generator(Container const&) -> decltype(RandomGenerator<T>()) {
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi

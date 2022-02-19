@@ -16,7 +16,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/tensor_base.h"
 
-namespace pten {
+namespace phi {
 using DataType = paddle::experimental::DataType;
 
 struct DeviceContext::Impl {
@@ -26,7 +26,7 @@ struct DeviceContext::Impl {
   void SetAllocator(const Allocator* allocator) {
     PADDLE_ENFORCE_NOT_NULL(
         allocator,
-        pten::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Required allocator shall not be nullptr, but received nullptr."));
     device_allocator_ = allocator;
   }
@@ -34,7 +34,7 @@ struct DeviceContext::Impl {
   void SetHostAllocator(const Allocator* allocator) {
     PADDLE_ENFORCE_NOT_NULL(
         allocator,
-        pten::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Required allocator shall not be nullptr, but received nullptr."));
     host_allocator_ = allocator;
   }
@@ -42,7 +42,7 @@ struct DeviceContext::Impl {
   void SetZeroAllocator(const Allocator* allocator) {
     PADDLE_ENFORCE_NOT_NULL(
         allocator,
-        pten::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Required allocator shall not be nullptr, but received nullptr."));
     zero_allocator_ = allocator;
   }
@@ -50,24 +50,24 @@ struct DeviceContext::Impl {
   const Allocator& GetAllocator() const {
     PADDLE_ENFORCE_NOT_NULL(
         device_allocator_,
-        pten::errors::InvalidArgument("Required device_allocator_ shall not be "
-                                      "nullptr, but received nullptr."));
+        phi::errors::InvalidArgument("Required device_allocator_ shall not be "
+                                     "nullptr, but received nullptr."));
     return *device_allocator_;
   }
 
   const Allocator& GetHostAllocator() const {
     PADDLE_ENFORCE_NOT_NULL(
         host_allocator_,
-        pten::errors::InvalidArgument("Required host_allocator_ shall not be "
-                                      "nullptr, but received nullptr."));
+        phi::errors::InvalidArgument("Required host_allocator_ shall not be "
+                                     "nullptr, but received nullptr."));
     return *host_allocator_;
   }
 
   const Allocator& GetZeroAllocator() const {
     PADDLE_ENFORCE_NOT_NULL(
         zero_allocator_,
-        pten::errors::InvalidArgument("Required host_allocator_ shall not be "
-                                      "nullptr, but received nullptr."));
+        phi::errors::InvalidArgument("Required host_allocator_ shall not be "
+                                     "nullptr, but received nullptr."));
     return *zero_allocator_;
   }
 
@@ -76,7 +76,7 @@ struct DeviceContext::Impl {
               size_t requested_size = 0) const {
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
-        pten::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Required tensor shall not be nullptr, but received nullptr."));
     if (dtype == DataType::UNDEFINED) {
       dtype = tensor->dtype();
@@ -98,7 +98,7 @@ struct DeviceContext::Impl {
                   size_t requested_size = 0) const {
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
-        pten::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Required tensor shall not be nullptr, but received nullptr."));
     if (dtype == DataType::UNDEFINED) {
       dtype = tensor->dtype();
@@ -109,7 +109,7 @@ struct DeviceContext::Impl {
   }
 
   template <typename T>
-  T* HostAlloc(pten::TensorBase* tensor, size_t requested_size = 0) const {
+  T* HostAlloc(phi::TensorBase* tensor, size_t requested_size = 0) const {
     DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
     return static_cast<T*>(HostAlloc(tensor, dtype, requested_size));
   }
@@ -117,7 +117,7 @@ struct DeviceContext::Impl {
   void SetGenerator(Generator* gen) {
     PADDLE_ENFORCE_NOT_NULL(
         gen,
-        pten::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Required generator shall not be nullptr, but received nullptr."));
     generator_ = gen;
   }
@@ -125,8 +125,8 @@ struct DeviceContext::Impl {
   Generator* GetGenerator() const {
     PADDLE_ENFORCE_NOT_NULL(
         generator_,
-        pten::errors::InvalidArgument("Required generator_ shall not be "
-                                      "nullptr, but received nullptr."));
+        phi::errors::InvalidArgument("Required generator_ shall not be "
+                                     "nullptr, but received nullptr."));
     return generator_;
   }
 
@@ -224,4 +224,4 @@ void DeviceContext::SetGenerator(Generator* gen) { impl_->SetGenerator(gen); }
 
 Generator* DeviceContext::GetGenerator() const { return impl_->GetGenerator(); }
 
-}  // namespace pten
+}  // namespace phi

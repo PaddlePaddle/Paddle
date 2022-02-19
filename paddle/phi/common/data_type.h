@@ -23,10 +23,10 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-using complex64 = ::pten::dtype::complex<float>;
-using complex128 = ::pten::dtype::complex<double>;
-using float16 = ::pten::dtype::float16;
-using bfloat16 = ::pten::dtype::bfloat16;
+using complex64 = ::phi::dtype::complex<float>;
+using complex128 = ::phi::dtype::complex<double>;
+using float16 = ::phi::dtype::float16;
+using bfloat16 = ::phi::dtype::bfloat16;
 
 enum class DataType {
   UNDEFINED = 0,
@@ -184,9 +184,9 @@ inline std::ostream& operator<<(std::ostream& os, DataType dtype) {
 }  // namespace experimental
 }  // namespace paddle
 
-namespace pten {
+namespace phi {
 using DataType = paddle::experimental::DataType;
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 // In order to be compatible with the original custom operator Tensor interface

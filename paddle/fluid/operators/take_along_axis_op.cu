@@ -63,7 +63,7 @@ class TakeAlongAxisGradOpCUDAKernel : public framework::OpKernel<T> {
 
     // Set to zero tensor.
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    pten::funcs::SetConstant<platform::CUDADeviceContext, T> functor;
+    phi::funcs::SetConstant<platform::CUDADeviceContext, T> functor;
     functor(reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx),
             input_grad, static_cast<T>(0));
     const auto &index_type = framework::TransToProtoVarType(index->dtype());

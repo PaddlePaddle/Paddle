@@ -31,13 +31,13 @@ void SetLoD(DstLoD* dst, const SrcLoD& src) {
   }
 }
 
-std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
+std::unique_ptr<phi::DenseTensor> MakePtenDenseTensor(
     const paddle::framework::Tensor& src) {
-  return std::make_unique<pten::DenseTensor>(src);
+  return std::make_unique<phi::DenseTensor>(src);
 }
 
-pten::Scalar MakePtenScalarFromVar(const framework::Variable& variable) {
-  auto expected_place = pten::TransToPtenPlace(pten::Backend::CPU);
+phi::Scalar MakePtenScalarFromVar(const framework::Variable& variable) {
+  auto expected_place = phi::TransToPtenPlace(phi::Backend::CPU);
   if (variable.IsType<framework::LoDTensor>()) {
     const auto& tensor = variable.Get<framework::LoDTensor>();
     if (!platform::is_same_place(tensor.place(), expected_place)) {
@@ -55,13 +55,13 @@ pten::Scalar MakePtenScalarFromVar(const framework::Variable& variable) {
   }
 }
 
-pten::ScalarArray MakePtenScalarArray(const paddle::framework::Tensor& src) {
+phi::ScalarArray MakePtenScalarArray(const paddle::framework::Tensor& src) {
   return {src};
 }
 
-pten::ScalarArray MakePtenScalarArrayFromVar(
+phi::ScalarArray MakePtenScalarArrayFromVar(
     const framework::Variable& variable) {
-  auto expected_place = pten::TransToPtenPlace(pten::Backend::CPU);
+  auto expected_place = phi::TransToPtenPlace(phi::Backend::CPU);
   if (variable.IsType<framework::LoDTensor>()) {
     const auto& tensor = variable.Get<framework::LoDTensor>();
     if (!platform::is_same_place(tensor.place(), expected_place)) {
@@ -80,12 +80,12 @@ pten::ScalarArray MakePtenScalarArrayFromVar(
 }
 
 // TODO(chentianyu03): Inplace with ScalarArray constructor
-pten::ScalarArray MakePtenScalarArrayFromVarList(
+phi::ScalarArray MakePtenScalarArrayFromVarList(
     const std::vector<framework::Variable*>& variable_list) {
   if (variable_list.size() == 0) {
-    return pten::ScalarArray();
+    return phi::ScalarArray();
   }
-  auto expected_place = pten::TransToPtenPlace(pten::Backend::CPU);
+  auto expected_place = phi::TransToPtenPlace(phi::Backend::CPU);
 
   std::vector<int64_t> vector_data;
   vector_data.reserve(variable_list.size());
@@ -116,42 +116,42 @@ pten::ScalarArray MakePtenScalarArrayFromVarList(
           vector_data.push_back(*tensor.data<int32_t>());
         }
       } else {
-        PADDLE_THROW(pten::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "Data type error. When cast a LoDTensor to VectorTensor, "
             "the data type of LoDTensor must be int32 or int64, "
             "but now data type is %s.",
             data_type));
       }
     } else {
-      PADDLE_THROW(pten::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupport casting input `%s` type to VectorTensor when call pt "
           "kernel.",
           framework::ToTypeName(var->Type())));
     }
   }
 
-  pten::ScalarArray result{vector_data};
+  phi::ScalarArray result{vector_data};
   result.setInitByTensor(true);
 
   return result;
 }
 
-void ResetTensorDtypeAndLayoutByArgDef(pten::TensorBase* dst,
-                                       const pten::TensorArgDef& arg_def) {
+void ResetTensorDtypeAndLayoutByArgDef(phi::TensorBase* dst,
+                                       const phi::TensorArgDef& arg_def) {
   VLOG(5) << "ResetTensor by TensorArgDef.";
-  if (pten::DenseTensor::classof(dst)) {
-    auto* dense_t = static_cast<pten::DenseTensor*>(dst);
-    auto* meta = pten::DenseTensorUtils::GetMutableMeta(dense_t);
+  if (phi::DenseTensor::classof(dst)) {
+    auto* dense_t = static_cast<phi::DenseTensor*>(dst);
+    auto* meta = phi::DenseTensorUtils::GetMutableMeta(dense_t);
     meta->dtype = arg_def.dtype;
     meta->layout = arg_def.layout;
-  } else if (pten::SelectedRows::classof(dst)) {
-    auto* selected_rows = static_cast<pten::SelectedRows*>(dst);
+  } else if (phi::SelectedRows::classof(dst)) {
+    auto* selected_rows = static_cast<phi::SelectedRows*>(dst);
     auto* meta =
-        pten::DenseTensorUtils::GetMutableMeta(selected_rows->mutable_value());
+        phi::DenseTensorUtils::GetMutableMeta(selected_rows->mutable_value());
     meta->dtype = arg_def.dtype;
     meta->layout = arg_def.layout;
   } else {
-    PADDLE_THROW(pten::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported tensor type is received when reseting tensor dtype and "
         "layout by argument definition."));
   }

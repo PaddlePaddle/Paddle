@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
-namespace pten {
+namespace phi {
 
 void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   auto x_dims = x.dims();
@@ -64,8 +64,8 @@ void MatmulInferMeta(const MetaTensor& x,
                      bool trans_x,
                      bool trans_y,
                      MetaTensor* out) {
-  std::vector<int64_t> dims_x = pten::vectorize(x.dims());
-  std::vector<int64_t> dims_y = pten::vectorize(y.dims());
+  std::vector<int64_t> dims_x = phi::vectorize(x.dims());
+  std::vector<int64_t> dims_y = phi::vectorize(y.dims());
   auto ndims_x = dims_x.size();
   auto ndims_y = dims_y.size();
   PADDLE_ENFORCE_GT(ndims_x,
@@ -125,7 +125,7 @@ void MatmulInferMeta(const MetaTensor& x,
     new_dims.push_back(1);
   }
 
-  auto ddim_out = pten::make_ddim(new_dims);
+  auto ddim_out = phi::make_ddim(new_dims);
 
   out->set_dims(ddim_out);
   out->set_dtype(x.dtype());
@@ -177,7 +177,7 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
                                   out_dims_array.data(),
                                   max_dim,
                                   axis);
-    auto out_dims = pten::make_ddim(out_dims_array);
+    auto out_dims = phi::make_ddim(out_dims_array);
     out->set_dims(out_dims);
   } else {
     out->set_dims(x.dims());
@@ -188,4 +188,4 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
-}  // namespace pten
+}  // namespace phi

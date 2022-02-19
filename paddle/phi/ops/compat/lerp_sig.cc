@@ -14,7 +14,7 @@
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
 KernelSignature LerpOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("lerp", {"X", "Y", "Weight"}, {}, {"Out"});
@@ -27,7 +27,7 @@ KernelSignature LerpGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
                          {GradVarName("X"), GradVarName("Y")});
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(lerp, pten::LerpOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(lerp_grad, pten::LerpGradOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(lerp, phi::LerpOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(lerp_grad, phi::LerpGradOpArgumentMapping);

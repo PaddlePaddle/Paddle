@@ -23,7 +23,7 @@ limitations under the License. */
 
 #include <algorithm>
 
-namespace pten {
+namespace phi {
 namespace funcs {
 
 template <typename T>
@@ -315,4 +315,4 @@ __inline__ __device__ T PartialBlockReduceMin(T val, unsigned mask) {
 }
 
 }  // namespace funcs
-}  // namespace pten
+}  // namespace phi

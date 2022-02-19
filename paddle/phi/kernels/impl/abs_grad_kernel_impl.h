@@ -18,7 +18,7 @@
 #include "paddle/phi/kernels/abs_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void AbsGradKernel(const Context& ctx,
@@ -26,14 +26,14 @@ void AbsGradKernel(const Context& ctx,
                    const DenseTensor& dout,
                    DenseTensor* dx) {
   auto numel = dout.numel();
-  auto* dout_data = dout.data<pten::funcs::Real<T>>();
+  auto* dout_data = dout.data<phi::funcs::Real<T>>();
   auto* x_data = x.data<T>();
 
   ctx.template Alloc<T>(dx, static_cast<size_t>(numel * sizeof(T)));
   auto* dx_data = dx->data<T>();
 
   paddle::platform::ForRange<Context> for_range(ctx, numel);
-  pten::funcs::AbsGradFunctor<T> functor(dout_data, x_data, dx_data, numel);
+  phi::funcs::AbsGradFunctor<T> functor(dout_data, x_data, dx_data, numel);
   for_range(functor);
 }
 
@@ -49,9 +49,9 @@ void AbsDoubleGradKernel(const Context& ctx,
   auto* ddout_data = ddout->data<T>();
 
   paddle::platform::ForRange<Context> for_range(ctx, numel);
-  pten::funcs::AbsGradGradFunctor<T> functor(
+  phi::funcs::AbsGradGradFunctor<T> functor(
       ddx_data, x_data, ddout_data, numel);
   for_range(functor);
 }
 
-}  // namespace pten
+}  // namespace phi

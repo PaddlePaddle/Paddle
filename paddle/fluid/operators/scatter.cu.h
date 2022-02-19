@@ -209,8 +209,8 @@ void GPUScatterNdAdd(const framework::ExecutionContext& context,
   // final dim
   int64_t end_size = index_dims[index_dims_size - 1];
   // remain dim
-  auto remain_ddim = pten::slice_ddim(index_dims, 0, index_dims_size - 1);
-  int64_t remain_numel = pten::product(remain_ddim);
+  auto remain_ddim = phi::slice_ddim(index_dims, 0, index_dims_size - 1);
+  int64_t remain_numel = phi::product(remain_ddim);
   // slice size
   int64_t slice_size = 1;
   for (int64_t i = end_size; i < output_dims_size; ++i) {

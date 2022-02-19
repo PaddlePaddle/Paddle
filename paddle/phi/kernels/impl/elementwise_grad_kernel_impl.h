@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context, typename GradFunc>
 void AddGradImpl(const Context& dev_ctx,
@@ -29,19 +29,19 @@ void AddGradImpl(const Context& dev_ctx,
                  DenseTensor* x_grad,
                  DenseTensor* y_grad,
                  GradFunc grad_func) {
-  pten::funcs::ElementwiseGradPreProcess(out_grad, x_grad);
+  phi::funcs::ElementwiseGradPreProcess(out_grad, x_grad);
   auto* out = &out_grad;
   // Special case when y_grad is not needed and x_grad doesn't reduce
   if (x_grad != nullptr && y_grad == nullptr &&
       x_grad->dims() == out_grad.dims()) {
     VLOG(4) << "Special case when y_grad is not needed and x_grad doesn't "
                "reduce";
-    pten::Copy(dev_ctx, out_grad, false, x_grad);
+    phi::Copy(dev_ctx, out_grad, false, x_grad);
   } else if (x_grad == nullptr && y_grad != nullptr &&
              y_grad->dims() == out_grad.dims()) {
     VLOG(4) << "Special case when x_grad is not needed and y_grad doesn't "
                "reduce";
-    pten::Copy(dev_ctx, out_grad, false, y_grad);
+    phi::Copy(dev_ctx, out_grad, false, y_grad);
   } else {
     grad_func(dev_ctx, x, y, *out, out_grad, x_grad, y_grad, axis);
   }
@@ -108,4 +108,4 @@ void SubtractDoubleGradImpl(const Context& dev_ctx,
   }
 }
 
-}  // namespace pten
+}  // namespace phi

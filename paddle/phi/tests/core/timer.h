@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <chrono>  // NOLINT
 
-namespace pten {
+namespace phi {
 namespace tests {
 
 class Timer {
@@ -36,4 +36,4 @@ class Timer {
 };
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi

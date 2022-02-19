@@ -16,7 +16,7 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void LerpKernel(const Context& ctx,
@@ -25,4 +25,4 @@ void LerpKernel(const Context& ctx,
                 const DenseTensor& weight,
                 DenseTensor* out);
 
-}  // namespace pten
+}  // namespace phi

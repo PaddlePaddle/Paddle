@@ -24,57 +24,57 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-namespace pten {
+namespace phi {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = pten::DDim;
+using DDim = phi::DDim;
 
 TEST(DEV_API, empty) {
   // 1. create input
-  pten::CPUContext dev_ctx;
+  phi::CPUContext dev_ctx;
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(paddle::platform::CPUPlace())
                            .get());
   dev_ctx.Init();
 
   // 2. test API
-  auto out = pten::Empty<float>(dev_ctx, {3, 2}, pten::DataType::INT32);
+  auto out = phi::Empty<float>(dev_ctx, {3, 2}, phi::DataType::INT32);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);
   ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.numel(), 6);
-  ASSERT_EQ(out.meta().dtype, pten::DataType::INT32);
-  ASSERT_EQ(out.meta().layout, pten::DataLayout::NCHW);
+  ASSERT_EQ(out.meta().dtype, phi::DataType::INT32);
+  ASSERT_EQ(out.meta().layout, phi::DataLayout::NCHW);
 }
 
 TEST(DEV_API, empty_like) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  pten::make_ddim({3, 2}),
-                                                  pten::DataLayout::NCHW));
+  phi::DenseTensor dense_x(alloc.get(),
+                           phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                                                phi::make_ddim({3, 2}),
+                                                phi::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x.mutable_data<float>(paddle::platform::CPUPlace());
   dense_x_data[0] = 0;
 
   // 2. test API
-  pten::CPUContext dev_ctx;
+  phi::CPUContext dev_ctx;
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(paddle::platform::CPUPlace())
                            .get());
   dev_ctx.Init();
-  auto out = pten::EmptyLike<float>(dev_ctx, dense_x);
+  auto out = phi::EmptyLike<float>(dev_ctx, dense_x);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);
   ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.numel(), 6);
-  ASSERT_EQ(out.meta().dtype, pten::DataType::FLOAT32);
-  ASSERT_EQ(out.meta().layout, pten::DataLayout::NCHW);
+  ASSERT_EQ(out.meta().dtype, phi::DataType::FLOAT32);
+  ASSERT_EQ(out.meta().layout, phi::DataLayout::NCHW);
 }
 
 TEST(DEV_API, full) {
@@ -82,19 +82,19 @@ TEST(DEV_API, full) {
   float val = 1.0;
 
   // 2. test API
-  pten::CPUContext dev_ctx;
+  phi::CPUContext dev_ctx;
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(paddle::platform::CPUPlace())
                            .get());
   dev_ctx.Init();
-  auto out = pten::Full<float>(dev_ctx, {3, 2}, val, pten::DataType::FLOAT32);
+  auto out = phi::Full<float>(dev_ctx, {3, 2}, val, phi::DataType::FLOAT32);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);
   ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.numel(), 6);
-  ASSERT_EQ(out.meta().dtype, pten::DataType::FLOAT32);
-  ASSERT_EQ(out.meta().layout, pten::DataLayout::NCHW);
+  ASSERT_EQ(out.meta().dtype, phi::DataType::FLOAT32);
+  ASSERT_EQ(out.meta().layout, phi::DataLayout::NCHW);
 
   auto* actual_result = out.data<float>();
   for (auto i = 0; i < 6; i++) {
@@ -106,30 +106,30 @@ TEST(DEV_API, full_like) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  pten::make_ddim({3, 2}),
-                                                  pten::DataLayout::NCHW));
+  phi::DenseTensor dense_x(alloc.get(),
+                           phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                                                phi::make_ddim({3, 2}),
+                                                phi::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x.mutable_data<float>(paddle::platform::CPUPlace());
   dense_x_data[0] = 0;
   float val = 1.0;
 
-  pten::CPUContext dev_ctx;
+  phi::CPUContext dev_ctx;
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(paddle::platform::CPUPlace())
                            .get());
   dev_ctx.Init();
 
   // 2. test API
-  auto out = pten::FullLike<float>(dev_ctx, dense_x, val);
+  auto out = phi::FullLike<float>(dev_ctx, dense_x, val);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);
   ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.numel(), 6);
-  ASSERT_EQ(out.meta().dtype, pten::DataType::FLOAT32);
-  ASSERT_EQ(out.meta().layout, pten::DataLayout::NCHW);
+  ASSERT_EQ(out.meta().dtype, phi::DataType::FLOAT32);
+  ASSERT_EQ(out.meta().layout, phi::DataLayout::NCHW);
 
   auto* actual_result = out.data<float>();
   for (auto i = 0; i < 6; i++) {
@@ -138,4 +138,4 @@ TEST(DEV_API, full_like) {
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi

@@ -24,7 +24,7 @@
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
-namespace pten {
+namespace phi {
 
 using IndexType = int64_t;
 using paddle::platform::PADDLE_CUDA_NUM_THREADS;
@@ -88,7 +88,7 @@ void HistogramKernel(const Context& dev_ctx,
   const int input_numel = input.numel();
 
   int64_t* out_data = output->mutable_data<int64_t>(dev_ctx.GetPlace());
-  pten::funcs::SetConstant<Context, int64_t>()(
+  phi::funcs::SetConstant<Context, int64_t>()(
       dev_ctx, output, static_cast<int64_t>(0));
 
   if (input_data == nullptr) return;
@@ -97,13 +97,13 @@ void HistogramKernel(const Context& dev_ctx,
   T output_max = static_cast<T>(maxval);
 
   if (output_min == output_max) {
-    auto input_x = pten::EigenVector<T>::Flatten(input);
+    auto input_x = phi::EigenVector<T>::Flatten(input);
 
     DenseTensor input_min_t, input_max_t;
     auto* input_min_data = input_min_t.mutable_data<T>({1}, dev_ctx.GetPlace());
     auto* input_max_data = input_max_t.mutable_data<T>({1}, dev_ctx.GetPlace());
-    auto input_min_scala = pten::EigenScalar<T>::From(input_min_t);
-    auto input_max_scala = pten::EigenScalar<T>::From(input_max_t);
+    auto input_min_scala = phi::EigenScalar<T>::From(input_min_t);
+    auto input_max_scala = phi::EigenScalar<T>::From(input_max_t);
 
     auto* place = dev_ctx.eigen_device();
     input_min_scala.device(*place) = input_x.minimum();
@@ -123,17 +123,16 @@ void HistogramKernel(const Context& dev_ctx,
     output_max = output_max + 1;
   }
 
-  PADDLE_ENFORCE_EQ(
-      (std::isinf(static_cast<float>(output_min)) ||
-       std::isnan(static_cast<float>(output_max)) ||
-       std::isinf(static_cast<float>(output_min)) ||
-       std::isnan(static_cast<float>(output_max))),
-      false,
-      pten::errors::OutOfRange("range of min, max is not finite"));
+  PADDLE_ENFORCE_EQ((std::isinf(static_cast<float>(output_min)) ||
+                     std::isnan(static_cast<float>(output_max)) ||
+                     std::isinf(static_cast<float>(output_min)) ||
+                     std::isnan(static_cast<float>(output_max))),
+                    false,
+                    phi::errors::OutOfRange("range of min, max is not finite"));
   PADDLE_ENFORCE_GE(
       output_max,
       output_min,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "max must be larger or equal to min. If min and max are both zero, "
           "the minimum and maximum values of the data are used. "
           "But received max is %d, min is %d",
@@ -148,12 +147,12 @@ void HistogramKernel(const Context& dev_ctx,
       input_data, input_numel, nbins, output_min, output_max, out_data);
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(histogram,
                    GPU,
                    ALL_LAYOUT,
-                   pten::HistogramKernel,
+                   phi::HistogramKernel,
                    float,
                    double,
                    int,

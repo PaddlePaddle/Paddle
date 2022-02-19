@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/sparse_csr_tensor.h"
 
-namespace pten {
+namespace phi {
 
 inline void check_shape(const DDim& dims) {
   bool valid = dims.size() == 2 || dims.size() == 3;
@@ -88,10 +88,10 @@ void SparseCsrTensor::Resize(const DDim& dense_dims,
     crows_size = dense_dims[0] * (dense_dims[1] + 1);
   }
 
-  DDim crows_dims = pten::make_ddim({crows_size});
+  DDim crows_dims = phi::make_ddim({crows_size});
   this->non_zero_crows_.Resize(crows_dims);
 
-  DDim col_dims = pten::make_ddim({non_zero_num});
+  DDim col_dims = phi::make_ddim({non_zero_num});
   this->non_zero_cols_.Resize(col_dims);
   this->non_zero_elements_.Resize(col_dims);
 }
@@ -107,4 +107,4 @@ void SparseCsrTensor::SetMember(const DenseTensor& non_zero_crows,
   this->dims_ = dims;
 }
 
-}  // namespace pten
+}  // namespace phi

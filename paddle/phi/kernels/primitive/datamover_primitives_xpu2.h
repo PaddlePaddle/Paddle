@@ -17,7 +17,7 @@
 #include "xpu/kernel/debug.h"
 #include "xpu/kernel/math.h"
 
-namespace pten {
+namespace phi {
 namespace kps {
 namespace details {
 
@@ -643,4 +643,4 @@ __device__ __inline__ void ReadDataBc(T* dst,
 }
 
 }  // namespace kps
-}  // namespace pten
+}  // namespace phi

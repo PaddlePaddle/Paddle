@@ -22,7 +22,7 @@ limitations under the License. */
 // without eigen.
 #include "unsupported/Eigen/CXX11/Tensor"
 
-namespace pten {
+namespace phi {
 namespace tests {
 
 class InferenceCPUContext : public CPUContext {
@@ -35,7 +35,7 @@ class InferenceCPUContext : public CPUContext {
 TEST(DeviceContext, cpu_context) {
   std::cout << "test training scenarios" << std::endl;
   {
-    pten::CPUContext ctx;
+    phi::CPUContext ctx;
     ctx.Init();
     EXPECT_TRUE(ctx.eigen_device() != nullptr);
   }
@@ -51,4 +51,4 @@ TEST(DeviceContext, cpu_context) {
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi

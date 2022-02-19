@@ -17,10 +17,10 @@
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace pten {
+namespace phi {
 namespace tests {
 
-void fill_fp16_data(pten::dtype::float16* in_ptr,
+void fill_fp16_data(phi::dtype::float16* in_ptr,
                     size_t size,
                     const std::vector<float>& data) {
   PADDLE_ENFORCE_EQ(
@@ -32,14 +32,14 @@ void fill_fp16_data(pten::dtype::float16* in_ptr,
           size,
           data.size()));
   for (size_t i = 0; i < data.size(); ++i) {
-    in_ptr[i] = pten::dtype::float16(data[i]);
+    in_ptr[i] = phi::dtype::float16(data[i]);
   }
 }
 
 template <typename T>
-inline pten::funcs::BlasT<paddle::platform::CUDADeviceContext, T> GetBlas(
+inline phi::funcs::BlasT<paddle::platform::CUDADeviceContext, T> GetBlas(
     const paddle::platform::CUDADeviceContext& context) {
-  return pten::funcs::GetBlas<paddle::platform::CUDADeviceContext, T>(context);
+  return phi::funcs::GetBlas<paddle::platform::CUDADeviceContext, T>(context);
 }
 
 TEST(math_function, notrans_mul_trans_fp32) {
@@ -98,26 +98,26 @@ TEST(math_function, notrans_mul_trans_fp16) {
     return;
   }
 
-  pten::dtype::float16* input1_ptr =
-      input1.mutable_data<pten::dtype::float16>({2, 3}, cpu_place);
+  phi::dtype::float16* input1_ptr =
+      input1.mutable_data<phi::dtype::float16>({2, 3}, cpu_place);
   fill_fp16_data(input1_ptr, input1.numel(), {0, 1, 2, 3, 4, 5});
 
   paddle::framework::TensorCopySync(input1, gpu_place, &input1_gpu);
   paddle::framework::TensorCopySync(input1, gpu_place, &input2_gpu);
 
-  out_gpu.mutable_data<pten::dtype::float16>({2, 2}, gpu_place);
+  out_gpu.mutable_data<phi::dtype::float16>({2, 2}, gpu_place);
 
-  GetBlas<pten::dtype::float16>(context).MatMul(input1_gpu,
-                                                false,
-                                                input2_gpu,
-                                                true,
-                                                pten::dtype::float16(1),
-                                                &out_gpu,
-                                                pten::dtype::float16(0));
+  GetBlas<phi::dtype::float16>(context).MatMul(input1_gpu,
+                                               false,
+                                               input2_gpu,
+                                               true,
+                                               phi::dtype::float16(1),
+                                               &out_gpu,
+                                               phi::dtype::float16(0));
 
   paddle::framework::TensorCopySync(out_gpu, cpu_place, &out);
 
-  pten::dtype::float16* out_ptr = out.data<pten::dtype::float16>();
+  phi::dtype::float16* out_ptr = out.data<phi::dtype::float16>();
   context.Wait();
   EXPECT_EQ(static_cast<float>(out_ptr[0]), 5);
   EXPECT_EQ(static_cast<float>(out_ptr[1]), 14);
@@ -187,26 +187,26 @@ TEST(math_function, trans_mul_notrans_fp16) {
     return;
   }
 
-  pten::dtype::float16* input1_ptr =
-      input1.mutable_data<pten::dtype::float16>({2, 3}, cpu_place);
+  phi::dtype::float16* input1_ptr =
+      input1.mutable_data<phi::dtype::float16>({2, 3}, cpu_place);
   fill_fp16_data(input1_ptr, input1.numel(), {0, 1, 2, 3, 4, 5});
 
   paddle::framework::TensorCopySync(input1, gpu_place, &input1_gpu);
   paddle::framework::TensorCopySync(input1, gpu_place, &input2_gpu);
 
-  out_gpu.mutable_data<pten::dtype::float16>({3, 3}, gpu_place);
+  out_gpu.mutable_data<phi::dtype::float16>({3, 3}, gpu_place);
 
-  GetBlas<pten::dtype::float16>(context).MatMul(input1_gpu,
-                                                true,
-                                                input2_gpu,
-                                                false,
-                                                pten::dtype::float16(1),
-                                                &out_gpu,
-                                                pten::dtype::float16(0));
+  GetBlas<phi::dtype::float16>(context).MatMul(input1_gpu,
+                                               true,
+                                               input2_gpu,
+                                               false,
+                                               phi::dtype::float16(1),
+                                               &out_gpu,
+                                               phi::dtype::float16(0));
 
   paddle::framework::TensorCopySync(out_gpu, cpu_place, &out);
 
-  pten::dtype::float16* out_ptr = out.data<pten::dtype::float16>();
+  phi::dtype::float16* out_ptr = out.data<phi::dtype::float16>();
   context.Wait();
   EXPECT_EQ(static_cast<float>(out_ptr[0]), 9);
   EXPECT_EQ(static_cast<float>(out_ptr[1]), 12);
@@ -301,37 +301,37 @@ TEST(math_function, gemm_notrans_cublas_fp16) {
   int m = 2;
   int n = 3;
   int k = 3;
-  pten::dtype::float16* input1_ptr =
-      input1.mutable_data<pten::dtype::float16>({2, 3}, cpu_place);
+  phi::dtype::float16* input1_ptr =
+      input1.mutable_data<phi::dtype::float16>({2, 3}, cpu_place);
   fill_fp16_data(input1_ptr, input1.numel(), {0, 1, 2, 3, 4, 5});
-  pten::dtype::float16* input2_ptr =
-      input2.mutable_data<pten::dtype::float16>({3, 4}, cpu_place);
+  phi::dtype::float16* input2_ptr =
+      input2.mutable_data<phi::dtype::float16>({3, 4}, cpu_place);
   fill_fp16_data(
       input2_ptr, input2.numel(), {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11});
-  pten::dtype::float16* input3_ptr =
-      input3.mutable_data<pten::dtype::float16>({2, 4}, cpu_place);
+  phi::dtype::float16* input3_ptr =
+      input3.mutable_data<phi::dtype::float16>({2, 4}, cpu_place);
   fill_fp16_data(input3_ptr, input3.numel(), {0, 1, 2, 3, 4, 5, 6, 7});
 
   paddle::framework::TensorCopySync(input1, gpu_place, &input1_gpu);
   paddle::framework::TensorCopySync(input2, gpu_place, &input2_gpu);
   paddle::framework::TensorCopySync(input3, gpu_place, &input3_gpu);
-  pten::dtype::float16* a = input1_gpu.data<pten::dtype::float16>();
-  pten::dtype::float16* b = input2_gpu.data<pten::dtype::float16>();
-  pten::dtype::float16* c =
-      input3_gpu.mutable_data<pten::dtype::float16>(gpu_place);
+  phi::dtype::float16* a = input1_gpu.data<phi::dtype::float16>();
+  phi::dtype::float16* b = input2_gpu.data<phi::dtype::float16>();
+  phi::dtype::float16* c =
+      input3_gpu.mutable_data<phi::dtype::float16>(gpu_place);
 
-  GetBlas<pten::dtype::float16>(context).GEMM(
+  GetBlas<phi::dtype::float16>(context).GEMM(
       false,
       false,
       m,
       n,
       k,
-      static_cast<pten::dtype::float16>(1),
+      static_cast<phi::dtype::float16>(1),
       a,
       3,
       b + 1,
       4,
-      static_cast<pten::dtype::float16>(1),
+      static_cast<phi::dtype::float16>(1),
       c + 1,
       4);
 
@@ -430,37 +430,37 @@ TEST(math_function, gemm_trans_cublas_fp16) {
   int m = 2;
   int n = 3;
   int k = 3;
-  pten::dtype::float16* input1_ptr =
-      input1.mutable_data<pten::dtype::float16>({2, 3}, cpu_place);
+  phi::dtype::float16* input1_ptr =
+      input1.mutable_data<phi::dtype::float16>({2, 3}, cpu_place);
   fill_fp16_data(input1_ptr, input1.numel(), {0, 1, 2, 3, 4, 5});
-  pten::dtype::float16* input2_ptr =
-      input2.mutable_data<pten::dtype::float16>({4, 3}, cpu_place);
+  phi::dtype::float16* input2_ptr =
+      input2.mutable_data<phi::dtype::float16>({4, 3}, cpu_place);
   fill_fp16_data(
       input2_ptr, input2.numel(), {0, 4, 8, 1, 5, 9, 2, 6, 10, 3, 7, 11});
-  pten::dtype::float16* input3_ptr =
-      input3.mutable_data<pten::dtype::float16>({2, 4}, cpu_place);
+  phi::dtype::float16* input3_ptr =
+      input3.mutable_data<phi::dtype::float16>({2, 4}, cpu_place);
   fill_fp16_data(input3_ptr, input3.numel(), {0, 1, 2, 3, 4, 5, 6, 7});
 
   paddle::framework::TensorCopySync(input1, gpu_place, &input1_gpu);
   paddle::framework::TensorCopySync(input2, gpu_place, &input2_gpu);
   paddle::framework::TensorCopySync(input3, gpu_place, &input3_gpu);
-  pten::dtype::float16* a = input1_gpu.data<pten::dtype::float16>();
-  pten::dtype::float16* b = input2_gpu.data<pten::dtype::float16>();
-  pten::dtype::float16* c =
-      input3_gpu.mutable_data<pten::dtype::float16>(gpu_place);
+  phi::dtype::float16* a = input1_gpu.data<phi::dtype::float16>();
+  phi::dtype::float16* b = input2_gpu.data<phi::dtype::float16>();
+  phi::dtype::float16* c =
+      input3_gpu.mutable_data<phi::dtype::float16>(gpu_place);
 
-  GetBlas<pten::dtype::float16>(context).GEMM(
+  GetBlas<phi::dtype::float16>(context).GEMM(
       false,
       true,
       m,
       n,
       k,
-      static_cast<pten::dtype::float16>(1),
+      static_cast<phi::dtype::float16>(1),
       a,
       3,
       b + 3,
       3,
-      static_cast<pten::dtype::float16>(1),
+      static_cast<phi::dtype::float16>(1),
       c + 1,
       4);
 
@@ -550,4 +550,4 @@ TEST(math_function, gemv) {
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi

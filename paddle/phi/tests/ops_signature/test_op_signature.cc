@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/ops/compat/signatures.h"
 
-namespace pten {
+namespace phi {
 namespace tests {
 
 // The unittests in this file are just order to pass the CI-Coverage，
@@ -115,4 +115,4 @@ TEST(ARG_MAP, fill_constant) {
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi

@@ -16,7 +16,7 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void NormGradKernel(const Context& ctx,
@@ -28,4 +28,4 @@ void NormGradKernel(const Context& ctx,
                     bool is_test,
                     DenseTensor* x_grad);
 
-}  // namespace pten
+}  // namespace phi

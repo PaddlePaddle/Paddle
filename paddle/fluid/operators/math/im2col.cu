@@ -258,17 +258,17 @@ template class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
 template class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
                              platform::CUDADeviceContext, double>;
 template class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
-                             pten::GPUContext, float>;
+                             phi::GPUContext, float>;
 template class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
-                             pten::GPUContext, double>;
+                             phi::GPUContext, double>;
 template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
                              platform::CUDADeviceContext, float>;
 template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
                              platform::CUDADeviceContext, double>;
 template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
-                             pten::GPUContext, float>;
+                             phi::GPUContext, float>;
 template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
-                             pten::GPUContext, double>;
+                             phi::GPUContext, double>;
 
 template <class T>
 __global__ void im2colOCF(const T* im_data, int im_channels, int im_height,
@@ -472,18 +472,18 @@ template class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
 template class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
                              platform::CUDADeviceContext, double>;
 template class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
-                             pten::GPUContext, float>;
+                             phi::GPUContext, float>;
 template class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
-                             pten::GPUContext, double>;
+                             phi::GPUContext, double>;
 
 template class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
                              platform::CUDADeviceContext, float>;
 template class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
                              platform::CUDADeviceContext, double>;
 template class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
-                             pten::GPUContext, float>;
+                             phi::GPUContext, float>;
 template class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
-                             pten::GPUContext, double>;
+                             phi::GPUContext, double>;
 
 }  // namespace math
 }  // namespace operators

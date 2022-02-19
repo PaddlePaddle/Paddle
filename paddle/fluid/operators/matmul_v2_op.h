@@ -56,7 +56,7 @@ static framework::DDim RowMatrixFromVector(const framework::DDim& x_dim) {
   if (x_dim.size() > 1) {
     return x_dim;
   }
-  return pten::make_ddim({1, x_dim[0]});
+  return phi::make_ddim({1, x_dim[0]});
 }
 
 /**
@@ -67,7 +67,7 @@ static framework::DDim ColumnMatrixFromVector(const framework::DDim& y_dim) {
   if (y_dim.size() > 1) {
     return y_dim;
   }
-  return pten::make_ddim({y_dim[0], 1});
+  return phi::make_ddim({y_dim[0], 1});
 }
 
 /**
@@ -77,7 +77,7 @@ static framework::DDim ColumnMatrixFromVector(const framework::DDim& y_dim) {
  * If transposed, `H,W` will be swapped.
  */
 static void ReshapeTensorIntoMatrixSequence(
-    framework::Tensor* x, const pten::funcs::MatDescriptor& descriptor) {
+    framework::Tensor* x, const phi::funcs::MatDescriptor& descriptor) {
   int64_t h, w;
   h = descriptor.height_;
   w = descriptor.width_;
@@ -97,8 +97,8 @@ static void ReshapeXYOutIntoMatrixSequence(framework::Tensor* x,
                                            bool trans_y) {
   auto x_dim = RowMatrixFromVector(x->dims());
   auto y_dim = ColumnMatrixFromVector(y->dims());
-  auto mat_dim_x = pten::funcs::CreateMatrixDescriptor(x_dim, 0, trans_x);
-  auto mat_dim_y = pten::funcs::CreateMatrixDescriptor(y_dim, 0, trans_y);
+  auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(x_dim, 0, trans_x);
+  auto mat_dim_y = phi::funcs::CreateMatrixDescriptor(y_dim, 0, trans_y);
   if (mat_dim_x.batch_size_ == 0 && mat_dim_y.batch_size_ == 0) {
     out->Resize({mat_dim_x.height_, mat_dim_y.width_});
   } else {

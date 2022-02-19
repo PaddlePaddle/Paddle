@@ -36,12 +36,12 @@ class AngleKernel : public framework::OpKernel<T> {
 
     auto numel = x->numel();
     auto* x_data = x->data<T>();
-    auto* out_data = out->mutable_data<pten::funcs::Real<T>>(
-        context.GetPlace(), size_t(x->numel() * sizeof(pten::funcs::Real<T>)));
+    auto* out_data = out->mutable_data<phi::funcs::Real<T>>(
+        context.GetPlace(), size_t(x->numel() * sizeof(phi::funcs::Real<T>)));
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
     platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
-    pten::funcs::AngleFunctor<T> functor(x_data, out_data, numel);
+    phi::funcs::AngleFunctor<T> functor(x_data, out_data, numel);
     for_range(functor);
   }
 };
@@ -57,14 +57,14 @@ class AngleGradKernel : public framework::OpKernel<T> {
         ctx.Output<framework::Tensor>(framework::GradVarName("X"));
 
     auto numel = d_out->numel();
-    auto* dout_data = d_out->data<pten::funcs::Real<T>>();
+    auto* dout_data = d_out->data<phi::funcs::Real<T>>();
     auto* x_data = x->data<T>();
     auto* dx_data = d_x->mutable_data<T>(
         ctx.GetPlace(), static_cast<size_t>(numel * sizeof(T)));
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
-    pten::funcs::AngleGradFunctor<T> functor(dout_data, x_data, dx_data, numel);
+    phi::funcs::AngleGradFunctor<T> functor(dout_data, x_data, dx_data, numel);
     for_range(functor);
   }
 };

@@ -79,7 +79,7 @@ class CompareOp : public framework::OperatorWithKernel {
       GetBroadcastDimsArrays(dim_x, dim_y, x_dims_array.data(),
                              y_dims_array.data(), out_dims_array.data(),
                              max_dim, axis);
-      context->SetOutputDim("Out", pten::make_ddim(out_dims_array));
+      context->SetOutputDim("Out", phi::make_ddim(out_dims_array));
       // to do
       context->ShareLoD("X", /*->*/ "Out");
     }
@@ -94,7 +94,7 @@ class CompareOp : public framework::OperatorWithKernel {
       kt.place_ = platform::CPUPlace();
     } else {
       if (ctx.Input<framework::LoDTensor>("X")->place().GetType() !=
-          pten::AllocationType::GPUPINNED) {
+          phi::AllocationType::GPUPINNED) {
         kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
       } else {
         kt.place_ = ctx.GetPlace();

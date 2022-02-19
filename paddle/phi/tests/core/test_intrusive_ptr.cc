@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/phi/core/utils/intrusive_ptr.h"
 #include "paddle/phi/core/utils/intrusive_ref_counter.h"
 
-namespace pten {
+namespace phi {
 namespace tests {
 
 struct SharedObject : public intrusive_ref_counter<SharedObject> {
@@ -94,4 +94,4 @@ TEST(intrusive_ptr, op_comp) {
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi

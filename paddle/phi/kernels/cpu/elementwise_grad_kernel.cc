@@ -21,7 +21,7 @@
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/impl/elementwise_grad_kernel_impl.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T>
 void AddGradFunc(const CPUContext& dev_ctx,
@@ -57,7 +57,7 @@ void AddGradKernel(const Context& dev_ctx,
                    int axis,
                    DenseTensor* dx,
                    DenseTensor* dy) {
-  pten::AddGradImpl<T>(dev_ctx, x, y, dout, axis, dx, dy, AddGradFunc<T>);
+  phi::AddGradImpl<T>(dev_ctx, x, y, dout, axis, dx, dy, AddGradFunc<T>);
 }
 
 template <typename T, typename Context>
@@ -68,16 +68,15 @@ void AddDoubleGradKernel(const Context& dev_ctx,
                          const DenseTensor& dout,
                          int axis,
                          DenseTensor* ddout) {
-  pten::AddDoubleGradImpl<T>(
-      dev_ctx,
-      y,
-      ddx,
-      ddy,
-      dout,
-      axis,
-      ddout,
-      ElementwiseCompute<funcs::AddFunctor<T>, T>,
-      ElementwiseCompute<funcs::InverseAddFunctor<T>, T>);
+  phi::AddDoubleGradImpl<T>(dev_ctx,
+                            y,
+                            ddx,
+                            ddy,
+                            dout,
+                            axis,
+                            ddout,
+                            ElementwiseCompute<funcs::AddFunctor<T>, T>,
+                            ElementwiseCompute<funcs::InverseAddFunctor<T>, T>);
 }
 
 template <typename T, typename Context>
@@ -88,7 +87,7 @@ void AddTripleGradKernel(const Context& dev_ctx,
                          int axis,
                          DenseTensor* d_ddx,
                          DenseTensor* d_ddy) {
-  pten::AddGradImpl<T>(
+  phi::AddGradImpl<T>(
       dev_ctx, ddx, ddy, d_ddout, axis, d_ddx, d_ddy, AddGradFunc<T>);
 }
 
@@ -113,7 +112,7 @@ void SubtractDoubleGradKernel(const Context& dev_ctx,
                               const DenseTensor& dout,
                               int axis,
                               DenseTensor* ddout) {
-  pten::SubtractDoubleGradImpl<T>(
+  phi::SubtractDoubleGradImpl<T>(
       dev_ctx,
       y,
       ddx,
@@ -124,59 +123,59 @@ void SubtractDoubleGradKernel(const Context& dev_ctx,
       ElementwiseCompute<funcs::SubtractFunctor<T>, T>);
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(add_grad,
                    CPU,
                    ALL_LAYOUT,
-                   pten::AddGradKernel,
+                   phi::AddGradKernel,
                    float,
                    double,
                    int,
                    int64_t,
-                   pten::dtype::complex<float>,
-                   pten::dtype::complex<double>) {}
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(add_double_grad,
                    CPU,
                    ALL_LAYOUT,
-                   pten::AddDoubleGradKernel,
+                   phi::AddDoubleGradKernel,
                    float,
                    double,
                    int,
                    int64_t,
-                   pten::dtype::complex<float>,
-                   pten::dtype::complex<double>) {}
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(add_triple_grad,
                    CPU,
                    ALL_LAYOUT,
-                   pten::AddTripleGradKernel,
+                   phi::AddTripleGradKernel,
                    float,
                    double,
                    int,
                    int64_t,
-                   pten::dtype::complex<float>,
-                   pten::dtype::complex<double>) {}
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(subtract_grad,
                    CPU,
                    ALL_LAYOUT,
-                   pten::SubtractGradKernel,
+                   phi::SubtractGradKernel,
                    float,
                    double,
                    int,
                    int64_t,
-                   pten::dtype::complex<float>,
-                   pten::dtype::complex<double>) {}
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(subtract_double_grad,
                    CPU,
                    ALL_LAYOUT,
-                   pten::SubtractDoubleGradKernel,
+                   phi::SubtractDoubleGradKernel,
                    float,
                    double,
                    int,
                    int64_t,
-                   pten::dtype::complex<float>,
-                   pten::dtype::complex<double>) {}
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <string>
 
-namespace pten {
+namespace phi {
 
 enum class AllocationType : int8_t {
   UNDEFINED = 0,
@@ -204,4 +204,4 @@ class CustomPlace : public Place {
 
 std::ostream& operator<<(std::ostream&, const Place&);
 
-}  // namespace pten
+}  // namespace phi

@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/meta_tensor.h"
 
-namespace pten {
+namespace phi {
 
 // Common InferMeta Functions for 0-nary operators(no input tensor), The format
 // like:
@@ -35,4 +35,4 @@ void CreateInferMetaBase(const std::vector<int64_t>& shape,
 
 void CreateInferMeta(const ScalarArray& shape, DataType dtype, MetaTensor* out);
 
-}  // namespace pten
+}  // namespace phi

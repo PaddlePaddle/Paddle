@@ -52,7 +52,7 @@ limitations under the License. */
 // TODO(pten): remove fluid header.
 #include "paddle/fluid/platform/enforce.h"
 
-namespace pten {
+namespace phi {
 
 namespace internal {
 
@@ -364,25 +364,25 @@ struct GPUContext::Impl {
 
   void InitBlasHandle() {
 #ifdef PADDLE_WITH_HIP
-    pten::dynload::rocblas_create_handle(&blas_handle_);
-    pten::dynload::rocblas_set_stream(blas_handle_, stream_);
+    phi::dynload::rocblas_create_handle(&blas_handle_);
+    phi::dynload::rocblas_set_stream(blas_handle_, stream_);
 #else  // PADDLE_WITH_CUDA
-    PADDLE_RETRY_CUDA_SUCCESS(pten::dynload::cublasCreate(&blas_handle_));
+    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasCreate(&blas_handle_));
     PADDLE_RETRY_CUDA_SUCCESS(
-        pten::dynload::cublasSetStream(blas_handle_, stream_));
+        phi::dynload::cublasSetStream(blas_handle_, stream_));
 #if CUDA_VERSION >= 9000
     PADDLE_RETRY_CUDA_SUCCESS(
-        pten::dynload::cublasCreate(&blas_tensor_core_handle_));
+        phi::dynload::cublasCreate(&blas_tensor_core_handle_));
     PADDLE_RETRY_CUDA_SUCCESS(
-        pten::dynload::cublasSetStream(blas_tensor_core_handle_, stream_));
-    PADDLE_RETRY_CUDA_SUCCESS(pten::dynload::cublasSetMathMode(
+        phi::dynload::cublasSetStream(blas_tensor_core_handle_, stream_));
+    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
         blas_tensor_core_handle_, CUBLAS_TENSOR_OP_MATH));
 #if CUDA_VERSION >= 11000
     PADDLE_RETRY_CUDA_SUCCESS(
-        pten::dynload::cublasCreate(&blas_tf32_tensor_core_handle_));
+        phi::dynload::cublasCreate(&blas_tf32_tensor_core_handle_));
     PADDLE_RETRY_CUDA_SUCCESS(
-        pten::dynload::cublasSetStream(blas_tf32_tensor_core_handle_, stream_));
-    PADDLE_RETRY_CUDA_SUCCESS(pten::dynload::cublasSetMathMode(
+        phi::dynload::cublasSetStream(blas_tf32_tensor_core_handle_, stream_));
+    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
         blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
 #endif  // CUDA_VERSION >= 11000
 #endif  // CUDA_VERSION >= 9000
@@ -392,20 +392,20 @@ struct GPUContext::Impl {
   void DestroyInternalBlasHandle() {
 #ifdef PADDLE_WITH_HIP
     if (owned_ && blas_handle_ != nullptr) {
-      pten::dynload::rocblas_destroy_handle(blas_handle_);
+      phi::dynload::rocblas_destroy_handle(blas_handle_);
       blas_handle_ = nullptr;
     }
 #else
     if (owned_ && blas_handle_ != nullptr) {
-      pten::dynload::cublasDestroy(blas_handle_);
+      phi::dynload::cublasDestroy(blas_handle_);
       blas_handle_ = nullptr;
     }
     if (owned_ && blas_tensor_core_handle_ != nullptr) {
-      pten::dynload::cublasDestroy(blas_tensor_core_handle_);
+      phi::dynload::cublasDestroy(blas_tensor_core_handle_);
       blas_tensor_core_handle_ = nullptr;
     }
     if (owned_ && blas_tf32_tensor_core_handle_ != nullptr) {
-      pten::dynload::cublasDestroy(blas_tf32_tensor_core_handle_);
+      phi::dynload::cublasDestroy(blas_tf32_tensor_core_handle_);
       blas_tf32_tensor_core_handle_ = nullptr;
     }
 #endif  // PADDLE_WITH_HIP
@@ -419,7 +419,7 @@ struct GPUContext::Impl {
   void SetBlasHandle(blasHandle_t blas) { blas_handle_ = blas; }
 
   void InitDNNHandle() {
-    if (pten::dynload::HasCUDNN()) {
+    if (phi::dynload::HasCUDNN()) {
 #ifdef PADDLE_WITH_HIP
       size_t miopen_major, miopen_minor, miopen_patch;
       PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenGetVersion(
@@ -443,7 +443,7 @@ struct GPUContext::Impl {
       PADDLE_ENFORCE_GPU_SUCCESS(
           dynload::miopenSetStream(dnn_handle_, stream_));
 #else
-      auto local_cudnn_version = pten::dynload::cudnnGetVersion() / 100;
+      auto local_cudnn_version = phi::dynload::cudnnGetVersion() / 100;
       auto compile_cudnn_version = CUDNN_VERSION / 100;
       if (local_cudnn_version < static_cast<size_t>(compile_cudnn_version)) {
         LOG_FIRST_N(WARNING, 1)
@@ -456,9 +456,9 @@ struct GPUContext::Impl {
             << "Please recompile or reinstall Paddle with compatible CUDNN "
                "version.";
       }
-      PADDLE_RETRY_CUDA_SUCCESS(pten::dynload::cudnnCreate(&dnn_handle_));
+      PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cudnnCreate(&dnn_handle_));
       PADDLE_RETRY_CUDA_SUCCESS(
-          pten::dynload::cudnnSetStream(dnn_handle_, stream_));
+          phi::dynload::cudnnSetStream(dnn_handle_, stream_));
 #endif
     } else {
       dnn_handle_ = nullptr;
@@ -473,12 +473,12 @@ struct GPUContext::Impl {
   void DestroyInternalDnnHandle() {
 #ifdef PADDLE_WITH_HIP
     if (owned_ && dnn_handle_ != nullptr) {
-      PADDLE_ENFORCE_GPU_SUCCESS(pten::dynload::miopenDestroy(dnn_handle_));
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenDestroy(dnn_handle_));
       dnn_handle_ = nullptr;
     }
 #else
     if (owned_ && dnn_handle_ != nullptr) {
-      PADDLE_ENFORCE_GPU_SUCCESS(pten::dynload::cudnnDestroy(dnn_handle_));
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnDestroy(dnn_handle_));
       dnn_handle_ = nullptr;
     }
 #endif  // PADDLE_WITH_HIP
@@ -488,9 +488,9 @@ struct GPUContext::Impl {
 
   void InitSolverHandle() {
 #ifndef PADDLE_WITH_HIP
-    PADDLE_RETRY_CUDA_SUCCESS(pten::dynload::cusolverDnCreate(&solver_handle_));
+    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cusolverDnCreate(&solver_handle_));
     PADDLE_RETRY_CUDA_SUCCESS(
-        pten::dynload::cusolverDnSetStream(solver_handle_, stream_));
+        phi::dynload::cusolverDnSetStream(solver_handle_, stream_));
 #endif
   }
 
@@ -498,7 +498,7 @@ struct GPUContext::Impl {
 #ifndef PADDLE_WITH_HIP
     if (owned_ && solver_handle_ != nullptr) {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          pten::dynload::cusolverDnDestroy(solver_handle_));
+          phi::dynload::cusolverDnDestroy(solver_handle_));
       solver_handle_ = nullptr;
     }
 #endif
@@ -654,7 +654,7 @@ struct GPUContext::Impl {
 
   void WaitStreamCallback() const {
 #if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUDA)
-    pten::backends::gpu::GpuStreamSync(stream_);
+    phi::backends::gpu::GpuStreamSync(stream_);
 #endif
     {
       std::lock_guard<std::mutex> lock(stream_call_back_mtx_);
@@ -862,4 +862,4 @@ void GPUContext::SetDriverVersion(int val) { impl_->driver_version_ = val; }
 
 void GPUContext::SetRuntimeVersion(int val) { impl_->runtime_version_ = val; }
 
-}  // namespace pten
+}  // namespace phi

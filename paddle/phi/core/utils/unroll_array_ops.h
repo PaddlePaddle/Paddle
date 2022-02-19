@@ -18,7 +18,7 @@
 
 #include "paddle/phi/core/hostdevice.h"
 
-namespace pten {
+namespace phi {
 namespace detail {
 template <size_t kStart, size_t kEnd, bool kStop>
 struct UnrollFillConstant {
@@ -125,4 +125,4 @@ using UnrollCompare = detail::UnrollCompare<0, N, N == 0>;
 template <size_t N>
 using UnrollProduct = detail::UnrollProduct<0, N, N == 0>;
 
-}  // namespace pten
+}  // namespace phi

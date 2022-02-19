@@ -24,7 +24,7 @@
 #include "paddle/utils/any.h"
 #include "paddle/utils/small_vector.h"
 
-namespace pten {
+namespace phi {
 
 /**
  * Note: KernelContext doesn't manage the life of DeviceContext and Tensor
@@ -110,7 +110,7 @@ class KernelContext {
     try {
       return paddle::any_cast<AttrType>(attrs_.at(idx));
     } catch (paddle::bad_any_cast&) {
-      PADDLE_THROW(pten::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Attribute cast error in Op Kernel Context."));
     }
   }
@@ -130,4 +130,4 @@ class KernelContext {
   paddle::SmallVector<std::pair<int, int>> output_range_;
 };
 
-}  // namespace pten
+}  // namespace phi

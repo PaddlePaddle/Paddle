@@ -23,7 +23,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/selected_rows_impl.h"
 
-namespace pten {
+namespace phi {
 class SelectedRows : public TensorBase,
                      public TypeInfoTraits<TensorBase, SelectedRows> {
   /*
@@ -43,9 +43,9 @@ class SelectedRows : public TensorBase,
    */
  public:
   SelectedRows(const std::vector<int64_t>& rows, const int64_t& height)
-      : impl_(std::make_shared<pten::SelectedRowsImpl>(rows, height)) {}
+      : impl_(std::make_shared<phi::SelectedRowsImpl>(rows, height)) {}
 
-  SelectedRows() : impl_(std::make_shared<pten::SelectedRowsImpl>()) {}
+  SelectedRows() : impl_(std::make_shared<phi::SelectedRowsImpl>()) {}
 
   const DenseTensor& value() const { return impl_->value(); }
 
@@ -143,7 +143,7 @@ class SelectedRows : public TensorBase,
   /// \return The dims of the tensor.
   const DDim& dims() const noexcept override {
     return impl_->dims();
-    // return pten::make_ddim(dims);
+    // return phi::make_ddim(dims);
   }
 
   /// \brief Returns the data type of the tensor.
@@ -167,7 +167,7 @@ class SelectedRows : public TensorBase,
   bool initialized() const override { return impl_->initialized(); }
 
  private:
-  std::shared_ptr<pten::SelectedRowsImpl> impl_{nullptr};
+  std::shared_ptr<phi::SelectedRowsImpl> impl_{nullptr};
 };
 
-}  // namespace pten
+}  // namespace phi

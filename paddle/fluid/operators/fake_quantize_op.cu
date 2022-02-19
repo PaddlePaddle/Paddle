@@ -64,7 +64,7 @@ struct FindAbsMaxFunctor<platform::CUDADeviceContext, T> {
     grid = (grid > block) ? block : grid;
 
     framework::Tensor max;
-    T* max_data = max.mutable_data<T>(pten::make_ddim({grid}), ctx.GetPlace());
+    T* max_data = max.mutable_data<T>(phi::make_ddim({grid}), ctx.GetPlace());
     FindAbsMaxKernel<T><<<grid, block, 1024 * sizeof(T), ctx.stream()>>>(
         in, num, max_data);
     FindAbsMaxKernel<T><<<1, block, 1024 * sizeof(T), ctx.stream()>>>(

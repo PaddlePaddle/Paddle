@@ -17,7 +17,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void MaskedSelectKernel(const Context& dev_ctx,
@@ -33,7 +33,7 @@ void MaskedSelectKernel(const Context& dev_ctx,
   auto mask_dim = mask.dims();
   PADDLE_ENFORCE_EQ(input_dim,
                     mask_dim,
-                    pten::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The dim size of input and mask in OP(masked_selected) "
                         "must be equal, but got input dim:(%ld), mask dim: "
                         "(%ld). Please check input "
@@ -59,15 +59,15 @@ void MaskedSelectKernel(const Context& dev_ctx,
   }
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(masked_select,
                    CPU,
                    ALL_LAYOUT,
-                   pten::MaskedSelectKernel,
+                   phi::MaskedSelectKernel,
                    float,
                    double,
                    int,
                    int64_t) {
-  kernel->InputAt(1).SetDataType(pten::DataType::BOOL);
+  kernel->InputAt(1).SetDataType(phi::DataType::BOOL);
 }

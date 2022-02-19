@@ -29,7 +29,7 @@ namespace cub = hipcub;
 
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
-namespace pten {
+namespace phi {
 
 __device__ __forceinline__ dtype::float16 square_root(dtype::float16 x) {
   return static_cast<dtype::float16>(sqrtf(static_cast<float>(x)));
@@ -122,12 +122,12 @@ void NormKernel(const Context& ctx,
       x_ptr, pre, n, post, eps, y, norm_ptr);
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(norm,
                    GPU,
                    ALL_LAYOUT,
-                   pten::NormKernel,
+                   phi::NormKernel,
                    float,
                    double,
-                   pten::dtype::float16) {}
+                   phi::dtype::float16) {}

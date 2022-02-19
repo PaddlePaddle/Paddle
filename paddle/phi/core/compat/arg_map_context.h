@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
 
-namespace pten {
+namespace phi {
 
 constexpr char kGradVarSuffix[] = "@GRAD";
 
@@ -93,4 +93,4 @@ class ArgumentMappingContext {
   virtual bool IsSelectedRowsOutput(const std::string& name) const = 0;
 };
 
-}  // namespace pten
+}  // namespace phi

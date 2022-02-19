@@ -55,9 +55,9 @@ size_t PyArray_Size_(PyObject* numpy_data) {
   return res;
 }
 
-class EagerNumpyAllocation : public pten::Allocation {
+class EagerNumpyAllocation : public phi::Allocation {
  public:
-  explicit EagerNumpyAllocation(PyObject* numpy_data, pten::DataType dtype)
+  explicit EagerNumpyAllocation(PyObject* numpy_data, phi::DataType dtype)
       : Allocation(
             static_cast<void*>(pybind11::detail::array_proxy(numpy_data)->data),
             framework::DataTypeSize(dtype) * PyArray_Size_(numpy_data),
@@ -135,7 +135,7 @@ static PyObject* eager_api_tensor_copy(PyObject* self, PyObject* args,
   auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 2), 2);
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 3), 3);
 
-  dst = src.copy_to(pten::TransToPtenBackend(place), blocking);
+  dst = src.copy_to(phi::TransToPtenBackend(place), blocking);
   egr::EagerUtils::autograd_meta(&dst)->SetStopGradient(
       egr::EagerUtils::autograd_meta(&(src))->StopGradient());
   egr::EagerUtils::autograd_meta(&dst)->SetPersistable(
@@ -158,7 +158,7 @@ static PyObject* eager_api_read_next_tensor_list(PyObject* self, PyObject* args,
     auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
     autograd_meta->SetPersistable(false);
     autograd_meta->SetStopGradient(true);
-    tensor.set_impl(std::make_shared<pten::DenseTensor>(tensor_base));
+    tensor.set_impl(std::make_shared<phi::DenseTensor>(tensor_base));
     return tensor;
   };
   for (auto& tensor_base : tensor_base_list) {

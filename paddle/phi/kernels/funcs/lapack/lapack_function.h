@@ -14,7 +14,7 @@
 
 #pragma once
 
-namespace pten {
+namespace phi {
 namespace funcs {
 
 // LU (for example)
@@ -125,4 +125,4 @@ void lapackCholeskySolve(
     char uplo, int n, int nrhs, T *a, int lda, T *b, int ldb, int *info);
 
 }  // namespace funcs
-}  // namespace pten
+}  // namespace phi

@@ -17,7 +17,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/kernels/empty_kernel.h"
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void DotKernel(const Context& dev_ctx,
@@ -29,10 +29,10 @@ template <typename T, typename Context>
 DenseTensor Dot(const Context& dev_ctx,
                 const DenseTensor& x,
                 const DenseTensor& y) {
-  auto dense_out = pten::Empty<T, Context>(dev_ctx);
+  auto dense_out = phi::Empty<T, Context>(dev_ctx);
   MetaTensor meta_out(&dense_out);
   DotInferMeta(x, y, &meta_out);
   DotKernel<T, Context>(dev_ctx, x, y, &dense_out);
   return dense_out;
 }
-}  // namespace pten
+}  // namespace phi

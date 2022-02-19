@@ -71,7 +71,7 @@ void* mutable_data(const paddle::platform::Place& place,
 
 void* mutable_data(const paddle::platform::Place& place,
                     paddle::experimental::DataType type,
-                    const pten::Stream& stream);
+                    const phi::Stream& stream);
 
 /* @jim19930609: Remove dependency on protobuf after Tensor Unification.
 */
@@ -99,18 +99,18 @@ bool IsSharedBufferWith(const DenseTensor& src) const {
   return holder_ && holder_ == src.Holder();
 }
 
-const std::shared_ptr<pten::Allocation>& Holder() const { return holder_; }
+const std::shared_ptr<phi::Allocation>& Holder() const { return holder_; }
 
 void set_offset(size_t offset) { meta_.offset = offset; }
 size_t offset() const { return meta_.offset; }
 
-std::shared_ptr<pten::Allocation> MoveMemoryHolder() {
+std::shared_ptr<phi::Allocation> MoveMemoryHolder() {
   return std::move(holder_);
 }
 
-void ResetHolder(const std::shared_ptr<pten::Allocation>& holder);
+void ResetHolder(const std::shared_ptr<phi::Allocation>& holder);
 
-void ResetHolderWithType(const std::shared_ptr<pten::Allocation>& holder,
+void ResetHolderWithType(const std::shared_ptr<phi::Allocation>& holder,
                         paddle::experimental::DataType type);
 
 void set_type(paddle::experimental::DataType type);

@@ -16,7 +16,7 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void TraceKernel(const Context& ctx,
@@ -26,4 +26,4 @@ void TraceKernel(const Context& ctx,
                  int axis2,
                  DenseTensor* out);
 
-}  // namespace pten
+}  // namespace phi

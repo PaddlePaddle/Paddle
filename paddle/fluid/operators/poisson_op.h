@@ -31,7 +31,7 @@ class PoissonGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     dx->mutable_data<T>(ctx.GetPlace());
-    pten::funcs::SetConstant<DeviceContext, T> functor;
+    phi::funcs::SetConstant<DeviceContext, T> functor;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     functor(dev_ctx, dx, static_cast<T>(0));
   }

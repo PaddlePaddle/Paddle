@@ -30,14 +30,14 @@ namespace egr {
 
 paddle::experimental::Tensor hook_function(
     const paddle::experimental::Tensor& t) {
-  auto t_dense = std::dynamic_pointer_cast<pten::DenseTensor>(t.impl());
+  auto t_dense = std::dynamic_pointer_cast<phi::DenseTensor>(t.impl());
 
-  auto ret_meta = pten::DenseTensorMeta(t_dense->dtype(), t_dense->dims(),
-                                        t_dense->layout());
+  auto ret_meta = phi::DenseTensorMeta(t_dense->dtype(), t_dense->dims(),
+                                       t_dense->layout());
   auto place = t_dense->place();
-  size_t bytes_size = pten::product(t_dense->dims()) * SizeOf(t_dense->dtype());
-  auto ret_dense = std::make_shared<pten::DenseTensor>(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(
+  size_t bytes_size = phi::product(t_dense->dims()) * SizeOf(t_dense->dtype());
+  auto ret_dense = std::make_shared<phi::DenseTensor>(
+      phi::make_intrusive<paddle::experimental::SharedStorage>(
           paddle::memory::Alloc(place, bytes_size)),
       std::move(ret_meta));
 
@@ -47,7 +47,7 @@ paddle::experimental::Tensor hook_function(
     ret_ptr[i] = t_ptr[i] + 3.0;
   }
 
-  auto ret_impl = std::dynamic_pointer_cast<pten::TensorBase>(ret_dense);
+  auto ret_impl = std::dynamic_pointer_cast<phi::TensorBase>(ret_dense);
   paddle::experimental::Tensor ret = paddle::experimental::Tensor();
   ret.set_impl(ret_impl);
 
@@ -60,12 +60,12 @@ TEST(Hook_intermidiate, Sigmoid) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   VLOG(6) << "Make Dim";
-  paddle::framework::DDim ddim = pten::make_ddim({2, 4, 4, 4});
+  paddle::framework::DDim ddim = phi::make_ddim({2, 4, 4, 4});
 
   VLOG(6) << "Make paddle::experimental::Tensor";
   paddle::experimental::Tensor tensor = egr_utils_api::CreateTensorWithValue(
-      ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
-      pten::DataLayout::NCHW, 0.0, true);
+      ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+      phi::DataLayout::NCHW, 0.0, true);
 
   VLOG(6) << "Make Hook function";
   std::function<paddle::experimental::Tensor(
@@ -74,7 +74,7 @@ TEST(Hook_intermidiate, Sigmoid) {
 
   VLOG(6) << "Make ReduceHook function";
   auto reduce_hook = [&](void) -> void {
-    auto* t_ptr = std::dynamic_pointer_cast<pten::DenseTensor>(tensor.impl())
+    auto* t_ptr = std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl())
                       ->data<float>();
     for (int i = 0; i < tensor.numel(); i++) {
       t_ptr[i] = 100.0;  // set to 100.0
@@ -106,7 +106,7 @@ TEST(Hook_intermidiate, Sigmoid) {
 
   VLOG(6) << "Checking ReduceHook results";
   for (int i = 0; i < tensor.numel(); i++) {
-    CHECK_EQ(std::dynamic_pointer_cast<pten::DenseTensor>(tensor.impl())
+    CHECK_EQ(std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl())
                  ->data<float>()[i],
              static_cast<float>(100.0f));
   }
@@ -121,16 +121,16 @@ TEST(Hook_intermidiate, ElementwiseAdd) {
   paddle::imperative::SetCurrentTracer(tracer);
 
   // 1. Prepare Input
-  paddle::framework::DDim ddimX = pten::make_ddim({4, 16});
+  paddle::framework::DDim ddimX = phi::make_ddim({4, 16});
   paddle::experimental::Tensor X = egr_utils_api::CreateTensorWithValue(
-      ddimX, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
-      pten::DataLayout::NCHW, 3.0, true);
+      ddimX, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+      phi::DataLayout::NCHW, 3.0, true);
   egr_utils_api::RetainGradForTensor(X);
 
-  paddle::framework::DDim ddimY = pten::make_ddim({4, 16});
+  paddle::framework::DDim ddimY = phi::make_ddim({4, 16});
   paddle::experimental::Tensor Y = egr_utils_api::CreateTensorWithValue(
-      ddimY, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
-      pten::DataLayout::NCHW, 2.0, true);
+      ddimY, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+      phi::DataLayout::NCHW, 2.0, true);
 
   std::function<paddle::experimental::Tensor(
       const paddle::experimental::Tensor&)>
@@ -138,7 +138,7 @@ TEST(Hook_intermidiate, ElementwiseAdd) {
 
   auto reduce_hook = [&](void) -> void {
     auto* t_ptr =
-        std::dynamic_pointer_cast<pten::DenseTensor>(Y.impl())->data<float>();
+        std::dynamic_pointer_cast<phi::DenseTensor>(Y.impl())->data<float>();
     for (int i = 0; i < Y.numel(); i++) {
       t_ptr[i] = 100.0;  // set to 100.0
     }
@@ -160,9 +160,9 @@ TEST(Hook_intermidiate, ElementwiseAdd) {
 
   // Checking ReduceHook results
   for (int i = 0; i < Y.numel(); i++) {
-    CHECK_EQ(std::dynamic_pointer_cast<pten::DenseTensor>(Y.impl())
-                 ->data<float>()[i],
-             static_cast<float>(100.0f));
+    CHECK_EQ(
+        std::dynamic_pointer_cast<phi::DenseTensor>(Y.impl())->data<float>()[i],
+        static_cast<float>(100.0f));
   }
 }
 
@@ -174,16 +174,16 @@ TEST(Hook_intermidiate, Matmul_v2) {
   paddle::imperative::SetCurrentTracer(tracer);
 
   // 1. Prepare Input
-  paddle::framework::DDim ddimX = pten::make_ddim({4, 16});
+  paddle::framework::DDim ddimX = phi::make_ddim({4, 16});
   paddle::experimental::Tensor X = egr_utils_api::CreateTensorWithValue(
-      ddimX, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
-      pten::DataLayout::NCHW, 3.0, true);
+      ddimX, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+      phi::DataLayout::NCHW, 3.0, true);
   egr_utils_api::RetainGradForTensor(X);
 
-  paddle::framework::DDim ddimY = pten::make_ddim({16, 20});
+  paddle::framework::DDim ddimY = phi::make_ddim({16, 20});
   paddle::experimental::Tensor Y = egr_utils_api::CreateTensorWithValue(
-      ddimY, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
-      pten::DataLayout::NCHW, 2.0, true);
+      ddimY, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+      phi::DataLayout::NCHW, 2.0, true);
 
   std::function<paddle::experimental::Tensor(
       const paddle::experimental::Tensor&)>
@@ -191,7 +191,7 @@ TEST(Hook_intermidiate, Matmul_v2) {
 
   auto reduce_hook = [&](void) -> void {
     auto* t_ptr =
-        std::dynamic_pointer_cast<pten::DenseTensor>(Y.impl())->data<float>();
+        std::dynamic_pointer_cast<phi::DenseTensor>(Y.impl())->data<float>();
     for (int i = 0; i < Y.numel(); i++) {
       t_ptr[i] = 100.0;  // set to 100.0
     }
@@ -214,9 +214,9 @@ TEST(Hook_intermidiate, Matmul_v2) {
 
   // Checking ReduceHook results
   for (int i = 0; i < Y.numel(); i++) {
-    CHECK_EQ(std::dynamic_pointer_cast<pten::DenseTensor>(Y.impl())
-                 ->data<float>()[i],
-             static_cast<float>(100.0f));
+    CHECK_EQ(
+        std::dynamic_pointer_cast<phi::DenseTensor>(Y.impl())->data<float>()[i],
+        static_cast<float>(100.0f));
   }
 }
 }  // namespace egr

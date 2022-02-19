@@ -16,7 +16,7 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void TraceGradKernel(const Context& ctx,
@@ -27,4 +27,4 @@ void TraceGradKernel(const Context& ctx,
                      int axis2,
                      DenseTensor* in_grad);
 
-}  // namespace pten
+}  // namespace phi

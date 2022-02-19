@@ -15,7 +15,7 @@
 #include "paddle/phi/backends/dynload/tensorrt.h"
 #include <string>
 
-namespace pten {
+namespace phi {
 namespace dynload {
 
 std::once_flag tensorrt_dso_flag;
@@ -80,4 +80,4 @@ void* GetTensorRtPluginHandle() {
 }
 
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi

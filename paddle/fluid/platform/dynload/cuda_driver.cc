@@ -26,7 +26,7 @@ CUDA_ROUTINE_EACH_VVM(DEFINE_WRAP);
 #endif
 CUDA_ROUTINE_EACH(DEFINE_WRAP);
 
-bool HasCUDADriver() { return pten::dynload::HasCUDADriver(); }
+bool HasCUDADriver() { return phi::dynload::HasCUDADriver(); }
 
 }  // namespace dynload
 }  // namespace platform

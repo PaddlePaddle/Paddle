@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
-namespace pten {
+namespace phi {
 namespace funcs {
 
 template <typename T>
@@ -50,4 +50,4 @@ template struct EigenScale<Eigen::DefaultDevice, dtype::complex<float>>;
 template struct EigenScale<Eigen::DefaultDevice, dtype::complex<double>>;
 
 }  // namespace funcs
-}  // namespace pten
+}  // namespace phi

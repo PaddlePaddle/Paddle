@@ -27,7 +27,7 @@
 #include "paddle/phi/backends/dynload/cudnn.h"
 #endif
 
-namespace pten {
+namespace phi {
 
 #ifdef PADDLE_WITH_HIP
 #define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE) \
@@ -68,6 +68,6 @@ DECLARE_CONSTANT_FOR_GPU(gpuErrorNotReady, cudaErrorNotReady, hipErrorNotReady);
 DECLARE_CONSTANT_FOR_GPU(gpuSuccess, cudaSuccess, hipSuccess);
 
 #undef DECLARE_CONSTANT_FOR_GPU
-}  // namespace pten
+}  // namespace phi
 
 #endif  // defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/dynload/mklrt.h"
 
-namespace pten {
+namespace phi {
 namespace dynload {
 
 std::once_flag mklrt_dso_flag;
@@ -47,4 +47,4 @@ DFTI_EXTERN MKL_LONG DftiCreateDescriptorX(DFTI_DESCRIPTOR_HANDLE* desc,
 }
 
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi

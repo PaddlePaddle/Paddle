@@ -51,7 +51,7 @@
 #define PADDLE_WITH_CUDA_OR_HIP_COMPLEX
 #endif
 
-namespace pten {
+namespace phi {
 namespace dtype {
 
 template <typename T>
@@ -457,41 +457,41 @@ inline std::ostream& operator<<(std::ostream& os, const complex<T>& a) {
   return os;
 }
 }  // namespace dtype
-}  // namespace pten
+}  // namespace phi
 
 namespace std {
 
 template <typename T>
-struct is_pod<pten::dtype::complex<T>> {
+struct is_pod<phi::dtype::complex<T>> {
   static const bool value = true;
 };
 
 template <typename T>
-struct is_floating_point<pten::dtype::complex<T>>
+struct is_floating_point<phi::dtype::complex<T>>
     : std::integral_constant<bool, false> {};
 
 template <typename T>
-struct is_signed<pten::dtype::complex<T>> {
+struct is_signed<phi::dtype::complex<T>> {
   static const bool value = false;
 };
 
 template <typename T>
-struct is_unsigned<pten::dtype::complex<T>> {
+struct is_unsigned<phi::dtype::complex<T>> {
   static const bool value = false;
 };
 
 template <typename T>
-inline bool isnan(const pten::dtype::complex<T>& a) {
-  return pten::dtype::isnan(a);
+inline bool isnan(const phi::dtype::complex<T>& a) {
+  return phi::dtype::isnan(a);
 }
 
 template <typename T>
-inline bool isinf(const pten::dtype::complex<T>& a) {
-  return pten::dtype::isinf(a);
+inline bool isinf(const phi::dtype::complex<T>& a) {
+  return phi::dtype::isinf(a);
 }
 
 template <typename T>
-struct numeric_limits<pten::dtype::complex<T>> {
+struct numeric_limits<phi::dtype::complex<T>> {
   static const bool is_specialized = false;
   static const bool is_signed = false;
   static const bool is_integer = false;
@@ -516,32 +516,32 @@ struct numeric_limits<pten::dtype::complex<T>> {
   static const bool traps = false;
   static const bool tinyness_before = false;
 
-  static pten::dtype::complex<T>(min)() {
-    return pten::dtype::complex<T>(0.0, 0.0);
+  static phi::dtype::complex<T>(min)() {
+    return phi::dtype::complex<T>(0.0, 0.0);
   }
-  static pten::dtype::complex<T> lowest() {
-    return pten::dtype::complex<T>(0.0, 0.0);
+  static phi::dtype::complex<T> lowest() {
+    return phi::dtype::complex<T>(0.0, 0.0);
   }
-  static pten::dtype::complex<T>(max)() {
-    return pten::dtype::complex<T>(0.0, 0.0);
+  static phi::dtype::complex<T>(max)() {
+    return phi::dtype::complex<T>(0.0, 0.0);
   }
-  static pten::dtype::complex<T> epsilon() {
-    return pten::dtype::complex<T>(0.0, 0.0);
+  static phi::dtype::complex<T> epsilon() {
+    return phi::dtype::complex<T>(0.0, 0.0);
   }
-  static pten::dtype::complex<T> round_error() {
-    return pten::dtype::complex<T>(0.0, 0.0);
+  static phi::dtype::complex<T> round_error() {
+    return phi::dtype::complex<T>(0.0, 0.0);
   }
-  static pten::dtype::complex<T> infinity() {
-    return pten::dtype::complex<T>(0.0, 0.0);
+  static phi::dtype::complex<T> infinity() {
+    return phi::dtype::complex<T>(0.0, 0.0);
   }
-  static pten::dtype::complex<T> quiet_NaN() {
-    return pten::dtype::complex<T>(0.0, 0.0);
+  static phi::dtype::complex<T> quiet_NaN() {
+    return phi::dtype::complex<T>(0.0, 0.0);
   }
-  static pten::dtype::complex<T> signaling_NaN() {
-    return pten::dtype::complex<T>(0.0, 0.0);
+  static phi::dtype::complex<T> signaling_NaN() {
+    return phi::dtype::complex<T>(0.0, 0.0);
   }
-  static pten::dtype::complex<T> denorm_min() {
-    return pten::dtype::complex<T>(0.0, 0.0);
+  static phi::dtype::complex<T> denorm_min() {
+    return phi::dtype::complex<T>(0.0, 0.0);
   }
 };
 

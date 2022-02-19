@@ -16,7 +16,7 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void NormKernel(const Context& ctx,
@@ -27,4 +27,4 @@ void NormKernel(const Context& ctx,
                 DenseTensor* out,
                 DenseTensor* norm);
 
-}  // namespace pten
+}  // namespace phi

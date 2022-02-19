@@ -530,7 +530,7 @@ __inline__ __device__ T PartialBlockMin(T val, size_t threads_num_in_block,
 
   if (threadIdx.x < threshold) {
     shared_last_idx = (threshold >> 5) - 1;
-    val = pten::funcs::warpReduceMin(val, mask);
+    val = phi::funcs::warpReduceMin(val, mask);
     if (lane == 0) {
       shared[wid] = val;
     }
@@ -545,7 +545,7 @@ __inline__ __device__ T PartialBlockMin(T val, size_t threads_num_in_block,
   if (threadIdx.x < threshold) {
     val = (lane <= shared_last_idx) ? shared[lane]
                                     : std::numeric_limits<T>::max();
-    val = pten::funcs::warpReduceMin(val, mask);
+    val = phi::funcs::warpReduceMin(val, mask);
     shared_last_val = val;
   }
   __syncthreads();
@@ -600,14 +600,13 @@ __global__ void KeBilinearInterpBwShareMemory(
     s_data[1][threadIdx.x] = 0.f;
     int remain = nthreads - (tid & (-blockDim.x));
     int in_top_max_index =
-        pten::funcs::blockReduceMax(top_right_index, FINAL_MASK);
+        phi::funcs::blockReduceMax(top_right_index, FINAL_MASK);
     int in_bot_max_index =
-        pten::funcs::blockReduceMax(bot_right_index, FINAL_MASK);
+        phi::funcs::blockReduceMax(bot_right_index, FINAL_MASK);
 
     if (remain > blockDim.x) {
-      in_top_min_index = pten::funcs::blockReduceMin(input_index, FINAL_MASK);
-      in_bot_min_index =
-          pten::funcs::blockReduceMin(bot_left_index, FINAL_MASK);
+      in_top_min_index = phi::funcs::blockReduceMin(input_index, FINAL_MASK);
+      in_bot_min_index = phi::funcs::blockReduceMin(bot_left_index, FINAL_MASK);
     } else {
       in_top_min_index = PartialBlockMin(input_index, remain, FINAL_MASK);
       in_bot_min_index = PartialBlockMin(bot_left_index, remain, FINAL_MASK);
@@ -1686,7 +1685,7 @@ static void Interpolate1DCUDABwd(const framework::ExecutionContext& ctx,
   input_grad->mutable_data<T>(dim_grad, ctx.GetPlace());
   auto* input_grad_data = input_grad->mutable_data<T>(dim_grad, ctx.GetPlace());
   auto& device_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-  pten::funcs::SetConstant<platform::CUDADeviceContext, T> zero;
+  phi::funcs::SetConstant<platform::CUDADeviceContext, T> zero;
   zero(device_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_w == out_w) {
@@ -1808,7 +1807,7 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
   input_grad->mutable_data<T>(dim_grad, ctx.GetPlace());
   auto* input_grad_data = input_grad->mutable_data<T>(dim_grad, ctx.GetPlace());
   auto& device_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-  pten::funcs::SetConstant<platform::CUDADeviceContext, T> zero;
+  phi::funcs::SetConstant<platform::CUDADeviceContext, T> zero;
   zero(device_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_h == out_h && in_w == out_w) {
@@ -1993,7 +1992,7 @@ static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx,
   }
   auto* input_grad_data = input_grad->mutable_data<T>(dim_grad, ctx.GetPlace());
   auto& device_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-  pten::funcs::SetConstant<platform::CUDADeviceContext, T> zero;
+  phi::funcs::SetConstant<platform::CUDADeviceContext, T> zero;
   zero(device_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_d == out_d && in_h == out_h && in_w == out_w) {

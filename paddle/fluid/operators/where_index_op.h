@@ -70,7 +70,7 @@ class CPUWhereIndexKernel : public framework::OpKernel<T> {
     }
     auto true_num = true_index.size();
 
-    out->Resize(pten::make_ddim({static_cast<int64_t>(true_num), rank}));
+    out->Resize(phi::make_ddim({static_cast<int64_t>(true_num), rank}));
     auto out_ptr = out->mutable_data<int64_t>(context.GetPlace());
 
     if (true_num == 0) {

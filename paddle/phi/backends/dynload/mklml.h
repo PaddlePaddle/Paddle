@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/backends/dynload/port.h"
 
-namespace pten {
+namespace phi {
 namespace dynload {
 
 extern std::once_flag mklml_dso_flag;
@@ -37,7 +37,7 @@ extern void *mklml_dso_handle;
     auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) { \
       using mklmlFunc = decltype(&::__name);                         \
       std::call_once(mklml_dso_flag, []() {                          \
-        mklml_dso_handle = pten::dynload::GetMKLMLDsoHandle();       \
+        mklml_dso_handle = phi::dynload::GetMKLMLDsoHandle();        \
       });                                                            \
       static void *p_##_name = dlsym(mklml_dso_handle, #__name);     \
       return reinterpret_cast<mklmlFunc>(p_##_name)(args...);        \
@@ -120,4 +120,4 @@ DYNAMIC_LOAD_MKLML_WRAP(mkl_dcsrmm);
 #undef DYNAMIC_LOAD_MKLML_WRAP
 
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi

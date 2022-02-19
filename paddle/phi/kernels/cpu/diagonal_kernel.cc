@@ -17,7 +17,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/diagonal.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void DiagonalKernel(const Context& dev_ctx,
@@ -78,11 +78,11 @@ void DiagonalKernel(const Context& dev_ctx,
     }
   }
 }
-}  // namespace pten
+}  // namespace phi
 PT_REGISTER_KERNEL(diagonal,
                    CPU,
                    ALL_LAYOUT,
-                   pten::DiagonalKernel,
+                   phi::DiagonalKernel,
                    float,
                    double,
                    int,

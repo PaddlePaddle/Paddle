@@ -16,7 +16,7 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void DiagonalGradKernel(const Context& dev_ctx,
@@ -26,4 +26,4 @@ void DiagonalGradKernel(const Context& dev_ctx,
                         int axis1,
                         int axis2,
                         DenseTensor* in_grad);
-}  // namespace pten
+}  // namespace phi

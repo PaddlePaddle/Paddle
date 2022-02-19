@@ -56,7 +56,7 @@ class AttnMatMul {
     T beta = static_cast<T>(0.0);
 
     // here: (m, n, k) = bsz_seq, output_size, input_size, (input, weight, out)
-    auto blas = pten::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
+    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
     blas.GEMM(transA, transB, bsz_seq_, output_size_, input_size_, alpha,
               input->data<T>(), weight->data<T>(), beta, output->data<T>());
     if (compute_bias_) {
@@ -80,7 +80,7 @@ class AttnMatMul {
                        framework::Tensor* d_bias) {
     T alpha = static_cast<T>(1.0);
     T beta = static_cast<T>(0.0);
-    auto blas = pten::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
+    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
 
     CBLAS_TRANSPOSE dB_transA = CblasNoTrans;
     CBLAS_TRANSPOSE dB_transB = CblasNoTrans;

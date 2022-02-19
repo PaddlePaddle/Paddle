@@ -19,7 +19,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/unroll_array_ops.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, size_t N>
 class Array {
@@ -56,7 +56,7 @@ class Array {
   HOSTDEVICE inline T &at(size_t i) {
 #if !defined(__CUDA_ARCH__) && !defined(__HIPCC__)
     PADDLE_ENFORCE_LT(
-        i, N, pten::errors::OutOfRange("Array index out of bounds."));
+        i, N, phi::errors::OutOfRange("Array index out of bounds."));
 #endif
     return (*this)[i];
   }
@@ -64,7 +64,7 @@ class Array {
   HOSTDEVICE inline const T &at(size_t i) const {
 #if !defined(__CUDA_ARCH__) && !defined(__HIPCC__)
     PADDLE_ENFORCE_LT(
-        i, N, pten::errors::OutOfRange("Array index out of bounds."));
+        i, N, phi::errors::OutOfRange("Array index out of bounds."));
 #endif
     return (*this)[i];
   }
@@ -109,7 +109,7 @@ class Array<T, 0> {
     static T obj{};
     return obj;
 #else
-    PADDLE_THROW(pten::errors::Unavailable("Array<T, 0> has no element."));
+    PADDLE_THROW(phi::errors::Unavailable("Array<T, 0> has no element."));
 #endif
   }
 
@@ -120,7 +120,7 @@ class Array<T, 0> {
     static const T obj{};
     return obj;
 #else
-    PADDLE_THROW(pten::errors::Unavailable("Array<T, 0> has no element."));
+    PADDLE_THROW(phi::errors::Unavailable("Array<T, 0> has no element."));
 #endif
   }
 
@@ -139,4 +139,4 @@ class Array<T, 0> {
   }
 };
 
-}  // namespace pten
+}  // namespace phi

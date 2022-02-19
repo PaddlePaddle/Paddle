@@ -18,27 +18,27 @@
 #include "paddle/phi/kernels/abs_grad_kernel.h"
 #include "paddle/phi/kernels/impl/abs_grad_kernel_impl.h"
 
-using pten::dtype::complex;
+using phi::dtype::complex;
 
 PT_REGISTER_KERNEL(abs_grad,
                    GPU,
                    ALL_LAYOUT,
-                   pten::AbsGradKernel,
+                   phi::AbsGradKernel,
                    float,
                    double,
                    int,
                    int64_t,
-                   pten::dtype::float16,
+                   phi::dtype::float16,
                    complex<float>,
                    complex<double>) {}
 PT_REGISTER_KERNEL(abs_double_grad,
                    GPU,
                    ALL_LAYOUT,
-                   pten::AbsDoubleGradKernel,
+                   phi::AbsDoubleGradKernel,
                    float,
                    double,
                    int,
                    int64_t,
-                   pten::dtype::float16,
+                   phi::dtype::float16,
                    complex<float>,
                    complex<double>) {}

@@ -38,9 +38,9 @@ TEST(GradNodeInfo, GradNodeBase) {
       /* val */ 5.0, /* in_num */ 2, /* out_num */ 2);
   auto grad_test_node1 = std::make_shared<eager_test::GradTestNode>();
   std::vector<std::vector<paddle::experimental::Tensor>> grads;
-  pten::DenseTensorMeta meta =
-      pten::DenseTensorMeta(pten::DataType::FLOAT32, pten::make_ddim({1, 1}));
-  std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
+  phi::DenseTensorMeta meta =
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 1}));
+  std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
           .get(),
@@ -51,7 +51,7 @@ TEST(GradNodeInfo, GradNodeBase) {
   grads = {{et1}};
   VLOG(6) << "Test Grad Node Call";
   auto res = (*grad_test_node0)(grads);
-  CHECK_EQ(std::dynamic_pointer_cast<pten::DenseTensor>(res[0][0].impl())
+  CHECK_EQ(std::dynamic_pointer_cast<phi::DenseTensor>(res[0][0].impl())
                ->data<float>()[0],
            6.0f);
   VLOG(6) << "Test Add Edges";
@@ -96,9 +96,9 @@ TEST(GradNodeInfo, GradNodeBase) {
   auto gradient_hook = [](
       const paddle::experimental::Tensor& et) -> paddle::experimental::Tensor {
     paddle::experimental::Tensor res;
-    pten::DenseTensorMeta meta =
-        pten::DenseTensorMeta(pten::DataType::FLOAT32, pten::make_ddim({1, 1}));
-    std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
+    phi::DenseTensorMeta meta =
+        phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 1}));
+    std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
         std::make_unique<paddle::experimental::DefaultAllocator>(
             paddle::platform::CPUPlace())
             .get(),
@@ -106,7 +106,7 @@ TEST(GradNodeInfo, GradNodeBase) {
     auto* dt_ptr = dt->mutable_data<float>(paddle::platform::CPUPlace());
     dt_ptr[0] = 6.0f;
     auto* et_ptr =
-        std::dynamic_pointer_cast<pten::DenseTensor>(et.impl())->data<float>();
+        std::dynamic_pointer_cast<phi::DenseTensor>(et.impl())->data<float>();
     dt_ptr[0] += et_ptr[0];
     res.set_impl(dt);
     VLOG(6) << "Running Gradient Hook";
@@ -116,7 +116,7 @@ TEST(GradNodeInfo, GradNodeBase) {
   // 5 + 6
   auto grad_hook_res = grad_test_node0->ApplyGradientHooks(grads);
   CHECK_EQ(
-      std::dynamic_pointer_cast<pten::DenseTensor>(grad_hook_res[0][0].impl())
+      std::dynamic_pointer_cast<phi::DenseTensor>(grad_hook_res[0][0].impl())
           ->data<float>()[0],
       11.0);
 }

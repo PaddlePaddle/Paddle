@@ -45,7 +45,7 @@ class MVKernel : public framework::OpKernel<T> {
     T *out_data = out->mutable_data<T>(context.GetPlace());
 
     auto &dev_ctx = context.template device_context<DeviceContext>();
-    auto blas = pten::funcs::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
 
     blas.GEMV(false, dim_x[0], dim_x[1], static_cast<T>(1), x_data, vec_data,
               static_cast<T>(0), out_data);
@@ -93,7 +93,7 @@ class MVGradKernel : public framework::OpKernel<T> {
       T *dvec_data = dvec->mutable_data<T>(context.GetPlace());
 
       auto &dev_ctx = context.template device_context<DeviceContext>();
-      auto blas = pten::funcs::GetBlas<DeviceContext, T>(dev_ctx);
+      auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
 
       blas.GEMV(true, dim_x[0], dim_x[1], static_cast<T>(1), x_data, dout_data,
                 static_cast<T>(0), dvec_data);

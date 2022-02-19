@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace pten {
+namespace phi {
 
 template <typename Context>
 void ReshapeGradKernel(const Context& dev_ctx,
@@ -28,4 +28,4 @@ void ReshapeDoubleGradKernel(const Context& dev_ctx,
                              const DenseTensor& x_grad_grad,
                              DenseTensor* out_grad_grad);
 
-}  // namespace pten
+}  // namespace phi

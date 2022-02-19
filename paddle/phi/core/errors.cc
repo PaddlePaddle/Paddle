@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <stdexcept>
 
-namespace pten {
+namespace phi {
 std::string error_name(ErrorCode code) {
   switch (code) {
     case ErrorCode::LEGACY:
@@ -70,4 +70,4 @@ std::string ErrorSummary::to_string() const {
   result += error_message();
   return result;
 }
-}  // namespace pten
+}  // namespace phi

@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
 
-namespace pten {
+namespace phi {
 
 class CustomContext : public DeviceContext {
  public:
@@ -48,4 +48,4 @@ class CustomContext : public DeviceContext {
   std::unique_ptr<Impl> impl_;
 };
 
-}  // namespace pten
+}  // namespace phi

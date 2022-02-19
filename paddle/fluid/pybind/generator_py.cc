@@ -32,11 +32,11 @@ namespace paddle {
 namespace pybind {
 void BindGenerator(py::module* m_ptr) {
   auto& m = *m_ptr;
-  py::class_<pten::Generator::GeneratorState,
-             std::shared_ptr<pten::Generator::GeneratorState>>(m,
-                                                               "GeneratorState")
+  py::class_<phi::Generator::GeneratorState,
+             std::shared_ptr<phi::Generator::GeneratorState>>(m,
+                                                              "GeneratorState")
       .def("current_seed",
-           [](std::shared_ptr<pten::Generator::GeneratorState>& self) {
+           [](std::shared_ptr<phi::Generator::GeneratorState>& self) {
              return self->current_seed;
            });
   py::class_<std::mt19937_64>(m, "mt19937_64", "");

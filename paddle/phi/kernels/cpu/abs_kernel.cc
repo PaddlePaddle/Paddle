@@ -19,30 +19,30 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void AbsKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   auto numel = x.numel();
   auto* x_data = x.data<T>();
-  ctx.template Alloc<pten::funcs::Real<T>>(
-      out, size_t(x.numel() * sizeof(pten::funcs::Real<T>)));
-  auto* out_data = out->data<pten::funcs::Real<T>>();
+  ctx.template Alloc<phi::funcs::Real<T>>(
+      out, size_t(x.numel() * sizeof(phi::funcs::Real<T>)));
+  auto* out_data = out->data<phi::funcs::Real<T>>();
 
   paddle::platform::ForRange<Context> for_range(ctx, numel);
-  pten::funcs::AbsFunctor<T> functor(x_data, out_data, numel);
+  phi::funcs::AbsFunctor<T> functor(x_data, out_data, numel);
   for_range(functor);
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(abs,
                    CPU,
                    ALL_LAYOUT,
-                   pten::AbsKernel,
+                   phi::AbsKernel,
                    float,
                    double,
                    int,
                    int64_t,
-                   pten::dtype::complex<float>,
-                   pten::dtype::complex<double>) {}
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

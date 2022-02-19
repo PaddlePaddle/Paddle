@@ -23,7 +23,7 @@ namespace dynload {
 
 CUFFT_FFT_ROUTINE_EACH(DEFINE_WRAP);
 
-bool HasCUFFT() { return pten::dynload::HasCUFFT(); }
+bool HasCUFFT() { return phi::dynload::HasCUFFT(); }
 
 }  // namespace dynload
 }  // namespace platform

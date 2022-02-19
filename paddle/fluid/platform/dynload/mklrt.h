@@ -32,8 +32,8 @@ extern void* mklrt_dso_handle;
  * (for each function) to dynamic load mkldfti routine
  * via operator overloading.
  */
-#define DYNAMIC_LOAD_MKLRT_WRAP(__name)                       \
-  using DynLoad__##__name = pten::dynload::DynLoad__##__name; \
+#define DYNAMIC_LOAD_MKLRT_WRAP(__name)                      \
+  using DynLoad__##__name = phi::dynload::DynLoad__##__name; \
   extern DynLoad__##__name __name
 
 // mkl_dfti.h has a macro that shadows the function with the same name

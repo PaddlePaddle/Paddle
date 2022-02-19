@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void ScaleSR(const Context& dev_ctx,
@@ -32,19 +32,19 @@ void ScaleSR(const Context& dev_ctx,
     out->set_rows(x.rows());
     out->set_height(x.height());
   }
-  pten::ScaleKernel<T>(
+  phi::ScaleKernel<T>(
       dev_ctx, x.value(), scale, bias, bias_after_scale, out->mutable_value());
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(scale_sr,
                    CPU,
                    ALL_LAYOUT,
-                   pten::ScaleSR,
+                   phi::ScaleSR,
                    float,
                    double,
-                   pten::dtype::bfloat16,
+                   phi::dtype::bfloat16,
                    uint8_t,
                    int8_t,
                    int16_t,
@@ -55,10 +55,10 @@ PT_REGISTER_KERNEL(scale_sr,
 PT_REGISTER_KERNEL(scale_sr,
                    GPU,
                    ALL_LAYOUT,
-                   pten::ScaleSR,
+                   phi::ScaleSR,
                    float,
                    double,
-                   pten::dtype::float16,
+                   phi::dtype::float16,
                    uint8_t,
                    int8_t,
                    int16_t,

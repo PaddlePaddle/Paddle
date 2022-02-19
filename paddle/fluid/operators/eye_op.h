@@ -47,7 +47,7 @@ class EyeKernel : public framework::OpKernel<T> {
     auto* out_tensor = ctx.Output<framework::Tensor>("Out");
     T* out_data = out_tensor->mutable_data<T>(ctx.GetPlace());
 
-    pten::funcs::SetConstant<DeviceContext, T> set_zero;
+    phi::funcs::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     set_zero(dev_ctx, out_tensor, static_cast<T>(0));
 

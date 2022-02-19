@@ -30,21 +30,21 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-std::unique_ptr<pten::DenseTensor> MakePtenDenseTensor(
+std::unique_ptr<phi::DenseTensor> MakePtenDenseTensor(
     const paddle::framework::Tensor& src);
 
-pten::ScalarArray MakePtenScalarArray(const paddle::framework::Tensor& src);
+phi::ScalarArray MakePtenScalarArray(const paddle::framework::Tensor& src);
 
-pten::Scalar MakePtenScalarFromVar(const framework::Variable& variable);
+phi::Scalar MakePtenScalarFromVar(const framework::Variable& variable);
 
-pten::ScalarArray MakePtenScalarArrayFromVar(
+phi::ScalarArray MakePtenScalarArrayFromVar(
     const framework::Variable& variable);
 
-pten::ScalarArray MakePtenScalarArrayFromVarList(
+phi::ScalarArray MakePtenScalarArrayFromVarList(
     const std::vector<framework::Variable*>& variable_list);
 
-void ResetTensorDtypeAndLayoutByArgDef(pten::TensorBase* dst,
-                                       const pten::TensorArgDef& arg_def);
+void ResetTensorDtypeAndLayoutByArgDef(phi::TensorBase* dst,
+                                       const phi::TensorArgDef& arg_def);
 
 }  // namespace experimental
 }  // namespace paddle

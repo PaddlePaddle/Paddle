@@ -16,10 +16,10 @@ limitations under the License. */
 namespace infrt {
 namespace backends {
 
-class CpuPtenContext : public pten::CPUContext {
+class CpuPtenContext : public phi::CPUContext {
  public:
-  using Base = pten::CPUContext;
-  using pten::CPUContext::SetEigenDevice;
+  using Base = phi::CPUContext;
+  using phi::CPUContext::SetEigenDevice;
 };
 
 }  // namespace backends

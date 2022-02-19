@@ -17,7 +17,7 @@
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/mixed_vector.h"
 
-namespace pten {
+namespace phi {
 using LoD = std::vector<paddle::framework::Vector<size_t>>;
 
 void AppendLoD(LoD* lod, const LoD& lod_length);

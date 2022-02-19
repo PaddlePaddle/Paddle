@@ -17,7 +17,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/diagonal.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void DiagonalGradKernel(const Context& dev_ctx,
@@ -81,11 +81,11 @@ void DiagonalGradKernel(const Context& dev_ctx,
     }
   }
 }
-}  // namespace pten
+}  // namespace phi
 PT_REGISTER_KERNEL(diagonal_grad,
                    CPU,
                    ALL_LAYOUT,
-                   pten::DiagonalGradKernel,
+                   phi::DiagonalGradKernel,
                    float,
                    double,
                    int,

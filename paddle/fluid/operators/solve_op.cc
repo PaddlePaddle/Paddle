@@ -37,8 +37,8 @@ class SolveOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
 
-    std::vector<int64_t> x_dims_vec = pten::vectorize(ctx->GetInputDim("X"));
-    std::vector<int64_t> y_dims_vec = pten::vectorize(ctx->GetInputDim("Y"));
+    std::vector<int64_t> x_dims_vec = phi::vectorize(ctx->GetInputDim("X"));
+    std::vector<int64_t> y_dims_vec = phi::vectorize(ctx->GetInputDim("Y"));
 
     auto x_dims_n = x_dims_vec.size();
     auto y_dims_n = y_dims_vec.size();
@@ -106,7 +106,7 @@ class SolveOp : public framework::OperatorWithKernel {
       new_dims.push_back(1);
     }
 
-    auto out_dims = pten::make_ddim(new_dims);
+    auto out_dims = phi::make_ddim(new_dims);
     ctx->SetOutputDim("Out", out_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
   }

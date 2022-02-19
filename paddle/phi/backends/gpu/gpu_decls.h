@@ -16,7 +16,7 @@
 
 #include "paddle/phi/backends/gpu/forwards.h"
 
-namespace pten {
+namespace phi {
 
 #ifdef PADDLE_WITH_HIP
 #define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE) \
@@ -67,4 +67,4 @@ DECLARE_TYPE_FOR_GPU(sparseHandle_t, cusparseHandle_t, rocsparse_handle);
 
 using CUDAGraphID = unsigned long long;  // NOLINT
 
-}  // namespace pten
+}  // namespace phi

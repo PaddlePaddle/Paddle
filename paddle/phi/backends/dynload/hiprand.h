@@ -20,7 +20,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 
-namespace pten {
+namespace phi {
 namespace dynload {
 extern std::once_flag hiprand_dso_flag;
 extern void *hiprand_dso_handle;
@@ -31,7 +31,7 @@ extern void *hiprand_dso_handle;
     hiprandStatus_t operator()(Args... args) {                      \
       using hiprandFunc = decltype(&::__name);                      \
       std::call_once(hiprand_dso_flag, []() {                       \
-        hiprand_dso_handle = pten::dynload::GetCurandDsoHandle();   \
+        hiprand_dso_handle = phi::dynload::GetCurandDsoHandle();    \
       });                                                           \
       static void *p_##__name = dlsym(hiprand_dso_handle, #__name); \
       return reinterpret_cast<hiprandFunc>(p_##__name)(args...);    \
@@ -51,4 +51,4 @@ extern void *hiprand_dso_handle;
 HIPRAND_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CURAND_WRAP);
 
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi

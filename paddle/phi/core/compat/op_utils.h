@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/phi/core/type_defs.h"
 #include "paddle/utils/flat_hash_map.h"
 
-namespace pten {
+namespace phi {
 
 const std::unordered_set<std::string> standard_kernel_suffixs({
     "sr",  // SelectedRows kernel
@@ -60,7 +60,7 @@ class DefaultKernelSignatureMap {
     PADDLE_ENFORCE_NE(
         it,
         map_.end(),
-        pten::errors::NotFound(
+        phi::errors::NotFound(
             "Operator `%s`'s kernel signature is not registered.", op_type));
     return it->second;
   }
@@ -69,7 +69,7 @@ class DefaultKernelSignatureMap {
     PADDLE_ENFORCE_NE(
         Has(op_type),
         true,
-        pten::errors::AlreadyExists(
+        phi::errors::AlreadyExists(
             "Operator (%s)'s Kernel Siginature has been registered.", op_type));
     map_.insert({std::move(op_type), std::move(signature)});
   }
@@ -95,7 +95,7 @@ class OpUtilsMap {
     PADDLE_ENFORCE_EQ(
         base_kernel_name_map_.count(op_type),
         0UL,
-        pten::errors::AlreadyExists(
+        phi::errors::AlreadyExists(
             "Operator (%s)'s api name has been registered.", op_type));
     base_kernel_name_map_.insert(
         {std::move(op_type), std::move(base_kernel_name)});
@@ -105,7 +105,7 @@ class OpUtilsMap {
     PADDLE_ENFORCE_EQ(
         arg_mapping_fn_map_.count(op_type),
         0UL,
-        pten::errors::AlreadyExists(
+        phi::errors::AlreadyExists(
             "Operator (%s)'s argu,emt mapping function has been registered.",
             op_type));
     arg_mapping_fn_map_.insert({std::move(op_type), std::move(fn)});
@@ -168,7 +168,7 @@ struct ArgumentMappingFnRegistrar {
   PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                           \
       pt_register_base_kernel_name_ns_check_##op_type,                         \
       "PT_REGISTER_BASE_KERNEL_NAME must be called in global namespace.");     \
-  static const ::pten::BaseKernelNameRegistrar                                 \
+  static const ::phi::BaseKernelNameRegistrar                                  \
       __registrar_base_kernel_name_for_##op_type(#op_type, #base_kernel_name); \
   int TouchBaseKernelNameSymbol_##op_type() { return 0; }
 
@@ -184,7 +184,7 @@ struct ArgumentMappingFnRegistrar {
   PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                     \
       pt_register_arg_map_fn_ns_check_##op_type,                         \
       "PT_REGISTER_ARG_MAPPING_FN must be called in global namespace."); \
-  static const ::pten::ArgumentMappingFnRegistrar                        \
+  static const ::phi::ArgumentMappingFnRegistrar                         \
       __registrar_arg_map_fn_for_##op_type(#op_type, arg_mapping_fn);    \
   int TouchArgumentMappingFnSymbol_##op_type() { return 0; }
 
@@ -196,4 +196,4 @@ struct ArgumentMappingFnRegistrar {
   UNUSED static int __declare_arg_map_fn_symbol_for_##op_type =         \
       TouchArgumentMappingFnSymbol_##op_type()
 
-}  // namespace pten
+}  // namespace phi

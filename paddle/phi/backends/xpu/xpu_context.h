@@ -24,7 +24,7 @@ limitations under the License. */
 
 namespace xpu = baidu::xpu::api;
 
-namespace pten {
+namespace phi {
 
 class XPUContext : public DeviceContext {
  public:
@@ -66,4 +66,4 @@ class XPUContext : public DeviceContext {
   std::unique_ptr<Impl> impl_;
 };
 
-}  // namespace pten
+}  // namespace phi

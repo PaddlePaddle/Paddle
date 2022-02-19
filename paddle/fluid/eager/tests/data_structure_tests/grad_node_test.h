@@ -33,11 +33,11 @@ class GradTestNode : public egr::GradNodeBase {
   std::vector<std::vector<paddle::experimental::Tensor>> operator()(
       const std::vector<std::vector<paddle::experimental::Tensor>>& grads)
       override {
-    val_ = std::dynamic_pointer_cast<pten::DenseTensor>(grads[0][0].impl())
+    val_ = std::dynamic_pointer_cast<phi::DenseTensor>(grads[0][0].impl())
                ->data<float>()[0];
-    pten::DenseTensorMeta meta =
-        pten::DenseTensorMeta(pten::DataType::FLOAT32, pten::make_ddim({1, 1}));
-    std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
+    phi::DenseTensorMeta meta =
+        phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 1}));
+    std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
         std::make_unique<paddle::experimental::DefaultAllocator>(
             paddle::platform::CPUPlace())
             .get(),

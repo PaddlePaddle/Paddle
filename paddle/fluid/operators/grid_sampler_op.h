@@ -520,7 +520,7 @@ class GridSampleOpKernel : public framework::OpKernel<T> {
 
     auto* output = ctx.Output<Tensor>("Output");
     output->mutable_data<T>({n, c, out_h, out_w}, ctx.GetPlace());
-    pten::funcs::SetConstant<DeviceContext, T>()(
+    phi::funcs::SetConstant<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), output,
         static_cast<T>(0));
 
@@ -563,7 +563,7 @@ class GridSampleGradOpKernel : public framework::OpKernel<T> {
 
     auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     input_grad->mutable_data<T>({n, c, in_h, in_w}, ctx.GetPlace());
-    pten::funcs::SetConstant<DeviceContext, T>()(
+    phi::funcs::SetConstant<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), input_grad,
         static_cast<T>(0));
 
@@ -571,7 +571,7 @@ class GridSampleGradOpKernel : public framework::OpKernel<T> {
     if (ctx.HasOutput(framework::GradVarName("Grid"))) {
       grid_grad = ctx.Output<Tensor>(framework::GradVarName("Grid"));
       grid_grad->mutable_data<T>({n, out_h, out_w, 2}, ctx.GetPlace());
-      pten::funcs::SetConstant<DeviceContext, T>()(
+      phi::funcs::SetConstant<DeviceContext, T>()(
           ctx.template device_context<DeviceContext>(), grid_grad,
           static_cast<T>(0));
     }

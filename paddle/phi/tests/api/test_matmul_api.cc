@@ -29,26 +29,26 @@ namespace paddle {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = pten::DDim;
+using DDim = phi::DDim;
 
 TEST(API, matmul_cpu) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  auto dense_x = std::make_shared<pten::DenseTensor>(
+  auto dense_x = std::make_shared<phi::DenseTensor>(
       alloc.get(),
-      pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            pten::make_ddim({3, 3}),
-                            pten::DataLayout::NCHW));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                           phi::make_ddim({3, 3}),
+                           phi::DataLayout::NCHW));
 
   auto* dense_x_data =
       dense_x->mutable_data<float>(paddle::platform::CPUPlace());
 
-  auto dense_y = std::make_shared<pten::DenseTensor>(
+  auto dense_y = std::make_shared<phi::DenseTensor>(
       alloc.get(),
-      pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            pten::make_ddim({3, 3}),
-                            pten::DataLayout::NCHW));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                           phi::make_ddim({3, 3}),
+                           phi::DataLayout::NCHW));
   auto* dense_y_data =
       dense_y->mutable_data<float>(paddle::platform::CPUPlace());
 
@@ -69,11 +69,11 @@ TEST(API, matmul_cpu) {
   ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.dims()[1], 3);
   ASSERT_EQ(out.numel(), 9);
-  ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
-  ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(out.type(), phi::DataType::FLOAT32);
+  ASSERT_EQ(out.layout(), phi::DataLayout::NCHW);
   ASSERT_EQ(out.initialized(), true);
 
-  auto dense_out = std::dynamic_pointer_cast<pten::DenseTensor>(out.impl());
+  auto dense_out = std::dynamic_pointer_cast<phi::DenseTensor>(out.impl());
 
   for (size_t i = 0; i < 9; i++) {
     ASSERT_NEAR(sum[i], dense_out->data<float>()[i], 1e-6f);
@@ -86,19 +86,19 @@ TEST(API, matmul_cuda) {
   const auto alloc_cpu =
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace());
-  auto ref_x = std::make_shared<pten::DenseTensor>(
+  auto ref_x = std::make_shared<phi::DenseTensor>(
       alloc_cpu.get(),
-      pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            pten::make_ddim({3, 3}),
-                            pten::DataLayout::NCHW));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                           phi::make_ddim({3, 3}),
+                           phi::DataLayout::NCHW));
 
   auto* ref_x_data = ref_x->mutable_data<float>(paddle::platform::CPUPlace());
 
-  auto ref_y = std::make_shared<pten::DenseTensor>(
+  auto ref_y = std::make_shared<phi::DenseTensor>(
       alloc_cpu.get(),
-      pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            pten::make_ddim({3, 3}),
-                            pten::DataLayout::NCHW));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                           phi::make_ddim({3, 3}),
+                           phi::DataLayout::NCHW));
   auto* ref_y_data = ref_y->mutable_data<float>(paddle::platform::CPUPlace());
 
   for (size_t i = 0; i < 9; ++i) {
@@ -111,24 +111,24 @@ TEST(API, matmul_cuda) {
   const auto alloc_cuda =
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CUDAPlace());
-  auto dense_x = std::make_shared<pten::DenseTensor>(
+  auto dense_x = std::make_shared<phi::DenseTensor>(
       alloc_cuda.get(),
-      pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            pten::make_ddim({3, 3}),
-                            pten::DataLayout::NCHW));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                           phi::make_ddim({3, 3}),
+                           phi::DataLayout::NCHW));
 
-  auto dense_y = std::make_shared<pten::DenseTensor>(
+  auto dense_y = std::make_shared<phi::DenseTensor>(
       alloc_cuda.get(),
-      pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            pten::make_ddim({3, 3}),
-                            pten::DataLayout::NCHW));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                           phi::make_ddim({3, 3}),
+                           phi::DataLayout::NCHW));
 
   auto& pool = paddle::platform::DeviceContextPool::Instance();
   auto place = paddle::platform::CUDAPlace();
-  auto* dev_ctx = static_cast<const pten::GPUContext*>(pool.GetByPlace(place));
+  auto* dev_ctx = static_cast<const phi::GPUContext*>(pool.GetByPlace(place));
 
-  pten::Copy(*dev_ctx, *ref_x.get(), false, dense_x.get());
-  pten::Copy(*dev_ctx, *ref_y.get(), false, dense_y.get());
+  phi::Copy(*dev_ctx, *ref_x.get(), false, dense_x.get());
+  phi::Copy(*dev_ctx, *ref_y.get(), false, dense_y.get());
 
   paddle::experimental::Tensor x(dense_x);
   paddle::experimental::Tensor y(dense_y);
@@ -141,18 +141,18 @@ TEST(API, matmul_cuda) {
   ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.dims()[1], 3);
   ASSERT_EQ(out.numel(), 9);
-  ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
-  ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(out.type(), phi::DataType::FLOAT32);
+  ASSERT_EQ(out.layout(), phi::DataLayout::NCHW);
   ASSERT_EQ(out.initialized(), true);
 
-  auto dense_out = std::dynamic_pointer_cast<pten::DenseTensor>(out.impl());
+  auto dense_out = std::dynamic_pointer_cast<phi::DenseTensor>(out.impl());
 
-  auto ref_out = std::make_shared<pten::DenseTensor>(
+  auto ref_out = std::make_shared<phi::DenseTensor>(
       alloc_cpu.get(),
-      pten::DenseTensorMeta(
-          pten::DataType::FLOAT32, out.dims(), pten::DataLayout::NCHW));
+      phi::DenseTensorMeta(
+          phi::DataType::FLOAT32, out.dims(), phi::DataLayout::NCHW));
 
-  pten::Copy(*dev_ctx, *dense_out.get(), false, ref_out.get());
+  phi::Copy(*dev_ctx, *dense_out.get(), false, ref_out.get());
 
   for (size_t i = 0; i < 9; i++) {
     ASSERT_NEAR(sum[i], ref_out->data<float>()[i], 1e-6f);

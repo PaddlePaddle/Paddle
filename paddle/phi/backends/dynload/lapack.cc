@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/lapack.h"
 #include <mutex>
 
-namespace pten {
+namespace phi {
 namespace dynload {
 
 std::once_flag lapack_dso_flag;
@@ -26,4 +26,4 @@ void* lapack_dso_handle = nullptr;
 LAPACK_ROUTINE_EACH(DEFINE_WRAP);
 
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi

@@ -26,7 +26,7 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 
-namespace pten {
+namespace phi {
 namespace tests {
 
 template <typename ValueT, typename IndicesT>
@@ -42,8 +42,8 @@ inline void CheckResult(
   ASSERT_EQ(coo.nnz(), non_zero_num);
 
 #if defined(PADDLE_WITH_CUDA)
-  if (coo.place() == pten::GPUPlace()) {
-    const auto* dev_ctx_gpu = static_cast<const pten::GPUContext*>(dev_ctx);
+  if (coo.place() == phi::GPUPlace()) {
+    const auto* dev_ctx_gpu = static_cast<const phi::GPUContext*>(dev_ctx);
     DenseTensor indices(
         alloc.get(),
         DenseTensorMeta(
@@ -53,8 +53,8 @@ inline void CheckResult(
                          DenseTensorMeta(real_elements.dtype(),
                                          real_elements.dims(),
                                          real_elements.layout()));
-    pten::Copy(*dev_ctx_gpu, real_indices, true, &indices);
-    pten::Copy(*dev_ctx_gpu, real_elements, true, &elements);
+    phi::Copy(*dev_ctx_gpu, real_indices, true, &indices);
+    phi::Copy(*dev_ctx_gpu, real_elements, true, &elements);
 
     int cmp_indices = memcmp(indices.data<IndicesT>(),
                              non_zero_indices.data(),
@@ -88,7 +88,7 @@ void TestDenseToSparseCoo(const DenseTensor& dense_x,
   const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
 
-  pten::CPUContext dev_ctx_cpu;
+  phi::CPUContext dev_ctx_cpu;
   dev_ctx_cpu.Init();
 
   // 1. test cpu
@@ -103,7 +103,7 @@ void TestDenseToSparseCoo(const DenseTensor& dense_x,
 
 // 2. test cuda
 #if defined(PADDLE_WITH_CUDA)
-  pten::GPUContext dev_ctx_gpu;
+  phi::GPUContext dev_ctx_gpu;
   dev_ctx_gpu.PartialInitWithoutAllocator();
   dev_ctx_gpu.SetAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
@@ -111,7 +111,7 @@ void TestDenseToSparseCoo(const DenseTensor& dense_x,
           .get());
   dev_ctx_gpu.SetHostAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(pten::CPUPlace())
+          .GetAllocator(phi::CPUPlace())
           .get());
   dev_ctx_gpu.PartialInitWithAllocator();
 
@@ -122,7 +122,7 @@ void TestDenseToSparseCoo(const DenseTensor& dense_x,
       cuda_alloc.get(),
       DenseTensorMeta(dense_x.dtype(), dense_x.dims(), dense_x.layout()));
 
-  pten::Copy(dev_ctx_gpu, dense_x, true, &d_dense_x);
+  phi::Copy(dev_ctx_gpu, dense_x, true, &d_dense_x);
   auto sparse_out =
       sparse::DenseToSparseCoo<T>(dev_ctx_gpu, d_dense_x, sparse_dim);
   CheckResult<T, int64_t>(&dev_ctx_gpu,
@@ -146,7 +146,7 @@ TEST(DEV_API, to_sparse_coo) {
       alloc.get(),
       DenseTensorMeta(DataType::FLOAT32, {rows, cols}, DataLayout::NCHW));
 
-  pten::CPUPlace cpu;
+  phi::CPUPlace cpu;
   auto* dense_x_data = dense_x.mutable_data<float>(cpu);
   std::vector<float> dense_data(rows * cols);
   std::vector<float> non_zero_data;
@@ -193,7 +193,7 @@ TEST(DEV_API, to_sparse_coo_hybird) {
       alloc.get(),
       DenseTensorMeta(DataType::FLOAT32, {3, 3}, DataLayout::NCHW));
 
-  pten::CPUPlace cpu;
+  phi::CPUPlace cpu;
   const int64_t sparse_dim = 1;  // the non zero element is a vector
   auto* dense_x_data = dense_x.mutable_data<float>(cpu);
   float dense_data[3][3] = {{0.0, 1.0, 0.0}, {0.0, 0.0, 0.0}, {3.2, 0.0, 0.0}};
@@ -215,15 +215,15 @@ TEST(DEV_API, to_sparse_coo_fp16) {
       alloc.get(),
       DenseTensorMeta(DataType::FLOAT16, {3, 3}, DataLayout::NCHW));
 
-  pten::CPUPlace cpu;
+  phi::CPUPlace cpu;
   const int64_t sparse_dim = 2;
   const int64_t non_zero_num = 2;
-  auto* dense_x_data = dense_x.mutable_data<pten::dtype::float16>(cpu);
+  auto* dense_x_data = dense_x.mutable_data<phi::dtype::float16>(cpu);
   float dense_data[3][3] = {{0.0, 1.0, 0.0}, {0.0, 0.0, 0.0}, {3.2, 0.0, 0.0}};
   std::vector<float> data = {1.0, 3.2};
-  std::vector<pten::dtype::float16> non_zero_data(non_zero_num);
+  std::vector<phi::dtype::float16> non_zero_data(non_zero_num);
   for (int i = 0; i < non_zero_num; i++) {
-    non_zero_data[i] = static_cast<pten::dtype::float16>(data[i]);
+    non_zero_data[i] = static_cast<phi::dtype::float16>(data[i]);
   }
   std::vector<int64_t> indices_data = {0, 2, 1, 0};
 
@@ -240,7 +240,7 @@ TEST(DEV_API, to_sparse_coo_batch) {
       alloc.get(),
       DenseTensorMeta(DataType::FLOAT32, {2, 3, 3}, DataLayout::NCHW));
 
-  pten::CPUPlace cpu;
+  phi::CPUPlace cpu;
   const int64_t sparse_dim = 3;
   const int64_t non_zero_num = 4;
   auto* dense_x_data = dense_x.mutable_data<float>(cpu);
@@ -273,20 +273,20 @@ void TestSparseCsrToCoo(const DDim& dense_dims,
     batchs = dense_dims[0];
     rows = dense_dims[1];
   }
-  pten::DenseTensorMeta crows_meta(
+  phi::DenseTensorMeta crows_meta(
       DataType::INT64, {batchs * (rows + 1)}, DataLayout::NCHW);
-  pten::DenseTensorMeta cols_meta(
+  phi::DenseTensorMeta cols_meta(
       DataType::INT64, {non_zero_num}, DataLayout::NCHW);
-  pten::DenseTensorMeta values_meta(
+  phi::DenseTensorMeta values_meta(
       paddle::experimental::CppTypeToDataType<T>::Type(),
       {non_zero_num},
       DataLayout::NCHW);
   const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::CPUPlace place;
-  pten::DenseTensor crows(alloc.get(), crows_meta);
-  pten::DenseTensor cols(alloc.get(), cols_meta);
-  pten::DenseTensor values(alloc.get(), values_meta);
+  phi::CPUPlace place;
+  phi::DenseTensor crows(alloc.get(), crows_meta);
+  phi::DenseTensor cols(alloc.get(), cols_meta);
+  phi::DenseTensor values(alloc.get(), values_meta);
   memcpy(crows.mutable_data<int64_t>(place),
          crows_data.data(),
          crows_data.size() * sizeof(int64_t));
@@ -296,10 +296,10 @@ void TestSparseCsrToCoo(const DDim& dense_dims,
   memcpy(values.mutable_data<T>(place),
          non_zero_data.data(),
          non_zero_data.size() * sizeof(T));
-  pten::SparseCsrTensor csr(crows, cols, values, dense_dims);
+  phi::SparseCsrTensor csr(crows, cols, values, dense_dims);
 
   // 1. test cpu
-  pten::CPUContext dev_ctx_cpu;
+  phi::CPUContext dev_ctx_cpu;
   auto cpu_sparse_out = sparse::SparseCsrToCoo<T>(dev_ctx_cpu, csr);
   CheckResult<T, int64_t>(&dev_ctx_cpu,
                           cpu_sparse_out,
@@ -309,7 +309,7 @@ void TestSparseCsrToCoo(const DDim& dense_dims,
                           alloc);
 // 2. test cuda
 #if defined(PADDLE_WITH_CUDA)
-  pten::GPUContext dev_ctx_gpu;
+  phi::GPUContext dev_ctx_gpu;
   dev_ctx_gpu.PartialInitWithoutAllocator();
   dev_ctx_gpu.SetAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
@@ -317,20 +317,20 @@ void TestSparseCsrToCoo(const DDim& dense_dims,
           .get());
   dev_ctx_gpu.SetHostAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(pten::CPUPlace())
+          .GetAllocator(phi::CPUPlace())
           .get());
   dev_ctx_gpu.PartialInitWithAllocator();
 
   const auto cuda_alloc =
       std::make_shared<paddle::experimental::DefaultAllocator>(
           paddle::platform::CUDAPlace());
-  pten::DenseTensor d_crows(cuda_alloc.get(), crows_meta);
-  pten::DenseTensor d_cols(cuda_alloc.get(), cols_meta);
-  pten::DenseTensor d_values(cuda_alloc.get(), values_meta);
-  pten::Copy(dev_ctx_gpu, crows, true, &d_crows);
-  pten::Copy(dev_ctx_gpu, cols, true, &d_cols);
-  pten::Copy(dev_ctx_gpu, values, true, &d_values);
-  pten::SparseCsrTensor d_csr(d_crows, d_cols, d_values, dense_dims);
+  phi::DenseTensor d_crows(cuda_alloc.get(), crows_meta);
+  phi::DenseTensor d_cols(cuda_alloc.get(), cols_meta);
+  phi::DenseTensor d_values(cuda_alloc.get(), values_meta);
+  phi::Copy(dev_ctx_gpu, crows, true, &d_crows);
+  phi::Copy(dev_ctx_gpu, cols, true, &d_cols);
+  phi::Copy(dev_ctx_gpu, values, true, &d_values);
+  phi::SparseCsrTensor d_csr(d_crows, d_cols, d_values, dense_dims);
   auto cuda_sparse_out = sparse::SparseCsrToCoo<T>(dev_ctx_gpu, d_csr);
   CheckResult<T, int64_t>(&dev_ctx_gpu,
                           cuda_sparse_out,
@@ -342,7 +342,7 @@ void TestSparseCsrToCoo(const DDim& dense_dims,
 }
 
 TEST(DEV_API, sparse_csr_to_coo) {
-  DDim dense_dims = pten::make_ddim({3, 3});
+  DDim dense_dims = phi::make_ddim({3, 3});
   std::vector<float> non_zero_data = {1.0, 2.0, 3.0, 3.2};
   std::vector<int64_t> indices_data = {0, 1, 1, 2, 1, 0, 2, 0};
   std::vector<int64_t> cols_data = {1, 0, 2, 0};
@@ -357,14 +357,14 @@ TEST(DEV_API, sparse_csr_to_coo) {
 }
 
 TEST(DEV_API, sparse_csr_to_coo_batch_and_fp16) {
-  DDim dense_dims = pten::make_ddim({2, 3, 3});
+  DDim dense_dims = phi::make_ddim({2, 3, 3});
   std::vector<float> non_zero_data = {1.0, 2.0, 3.0, 3.2, 1.0, 2.0, 3.0, 3.2};
   std::vector<int64_t> cols_data = {1, 0, 2, 0, 1, 0, 2, 0};
   std::vector<int64_t> crows_data = {0, 1, 3, 4, 0, 1, 3, 4};
   std::vector<int64_t> indices_data = {0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 2,
                                        0, 1, 1, 2, 1, 0, 2, 0, 1, 0, 2, 0};
   const int64_t non_zero_num = 8;
-  using float16 = pten::dtype::float16;
+  using float16 = phi::dtype::float16;
   std::vector<float16> non_zero_data_fp16(non_zero_num);
   for (int64_t i = 0; i < non_zero_num; i++) {
     non_zero_data_fp16[i] = static_cast<float16>(non_zero_data[i]);
@@ -393,7 +393,7 @@ inline void CheckCsrResult(
 
 #if defined(PADDLE_WITH_CUDA)
   if (csr.place() == paddle::platform::CUDAPlace()) {
-    const auto* dev_ctx_gpu = static_cast<const pten::GPUContext*>(dev_ctx);
+    const auto* dev_ctx_gpu = static_cast<const phi::GPUContext*>(dev_ctx);
     DenseTensor crows(
         alloc.get(),
         DenseTensorMeta(
@@ -406,9 +406,9 @@ inline void CheckCsrResult(
                          DenseTensorMeta(real_elements.dtype(),
                                          real_elements.dims(),
                                          real_elements.layout()));
-    pten::Copy(*dev_ctx_gpu, real_crows, true, &crows);
-    pten::Copy(*dev_ctx_gpu, real_cols, true, &cols);
-    pten::Copy(*dev_ctx_gpu, real_elements, true, &elements);
+    phi::Copy(*dev_ctx_gpu, real_crows, true, &crows);
+    phi::Copy(*dev_ctx_gpu, real_cols, true, &cols);
+    phi::Copy(*dev_ctx_gpu, real_elements, true, &elements);
 
     int cmp_crows = memcmp(crows.data<IndicesT>(),
                            non_zero_crows.data(),
@@ -451,7 +451,7 @@ void TestCooToCsr(const DDim& dense_dims,
   const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
 
-  pten::CPUPlace cpu;
+  phi::CPUPlace cpu;
   DenseTensorMeta indices_meta(
       DataType::INT64,
       {static_cast<int64_t>(dense_dims.size()), non_zero_num},
@@ -469,10 +469,10 @@ void TestCooToCsr(const DDim& dense_dims,
   memcpy(values.mutable_data<T>(cpu),
          non_zero_data.data(),
          non_zero_data.size() * sizeof(T));
-  pten::SparseCooTensor coo(indices, values, dense_dims);
+  phi::SparseCooTensor coo(indices, values, dense_dims);
 
   // 1. test cpu
-  pten::CPUContext dev_ctx_cpu;
+  phi::CPUContext dev_ctx_cpu;
   auto cpu_sparse_out = sparse::SparseCooToCsr<T>(dev_ctx_cpu, coo);
   CheckCsrResult<T, int64_t>(&dev_ctx_cpu,
                              cpu_sparse_out,
@@ -487,7 +487,7 @@ void TestCooToCsr(const DDim& dense_dims,
   const auto cuda_alloc =
       std::make_shared<paddle::experimental::DefaultAllocator>(
           paddle::platform::CUDAPlace());
-  pten::GPUContext dev_ctx_gpu;
+  phi::GPUContext dev_ctx_gpu;
   dev_ctx_gpu.PartialInitWithoutAllocator();
   dev_ctx_gpu.SetAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
@@ -495,14 +495,14 @@ void TestCooToCsr(const DDim& dense_dims,
           .get());
   dev_ctx_gpu.SetHostAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(pten::CPUPlace())
+          .GetAllocator(phi::CPUPlace())
           .get());
   dev_ctx_gpu.PartialInitWithAllocator();
-  pten::DenseTensor d_indices(cuda_alloc.get(), indices_meta);
-  pten::DenseTensor d_values(cuda_alloc.get(), values_meta);
-  pten::Copy(dev_ctx_gpu, indices, true, &d_indices);
-  pten::Copy(dev_ctx_gpu, values, true, &d_values);
-  pten::SparseCooTensor d_coo(d_indices, d_values, dense_dims);
+  phi::DenseTensor d_indices(cuda_alloc.get(), indices_meta);
+  phi::DenseTensor d_values(cuda_alloc.get(), values_meta);
+  phi::Copy(dev_ctx_gpu, indices, true, &d_indices);
+  phi::Copy(dev_ctx_gpu, values, true, &d_values);
+  phi::SparseCooTensor d_coo(d_indices, d_values, dense_dims);
   auto cuda_sparse_out = sparse::SparseCooToCsr<T>(dev_ctx_gpu, d_coo);
   CheckCsrResult<T, int64_t>(&dev_ctx_gpu,
                              cuda_sparse_out,
@@ -522,7 +522,7 @@ TEST(DEV_API, coo_to_csr) {
   std::vector<int64_t> cols_data = {1, 0, 2, 0};
   std::vector<int64_t> crows_data = {0, 1, 3, 4};
   const int64_t non_zero_num = 4;
-  auto dense_dims = pten::make_ddim({3, 3});
+  auto dense_dims = phi::make_ddim({3, 3});
   TestCooToCsr<float>(dense_dims,
                       non_zero_num,
                       non_zero_data,
@@ -537,21 +537,21 @@ TEST(DEV_API, batch_coo_to_csr) {
   //  {{0.0, 1.0, 0.0}, {2.0, 0.0, 3.0}, {0.0, 0.0, 0.0}}};
   const int64_t non_zero_num = 7;
   std::vector<float> data = {1.0, 2.0, 3.0, 3.2, 1.0, 2.0, 3.0};
-  std::vector<pten::dtype::float16> non_zero_data(non_zero_num);
+  std::vector<phi::dtype::float16> non_zero_data(non_zero_num);
   for (int64_t i = 0; i < non_zero_num; i++) {
-    non_zero_data[i] = static_cast<pten::dtype::float16>(data[i]);
+    non_zero_data[i] = static_cast<phi::dtype::float16>(data[i]);
   }
   std::vector<int64_t> non_zero_indices = {0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 2,
                                            0, 1, 1, 1, 0, 2, 0, 1, 0, 2};
   std::vector<int64_t> cols_data = {1, 0, 2, 0, 1, 0, 2};
   std::vector<int64_t> crows_data = {0, 1, 3, 4, 0, 1, 3, 3};
-  auto dense_dims = pten::make_ddim({2, 3, 3});
-  TestCooToCsr<pten::dtype::float16>(dense_dims,
-                                     non_zero_num,
-                                     non_zero_data,
-                                     non_zero_indices,
-                                     cols_data,
-                                     crows_data);
+  auto dense_dims = phi::make_ddim({2, 3, 3});
+  TestCooToCsr<phi::dtype::float16>(dense_dims,
+                                    non_zero_num,
+                                    non_zero_data,
+                                    non_zero_indices,
+                                    cols_data,
+                                    crows_data);
 }
 
 template <typename T>
@@ -562,7 +562,7 @@ void TestDenseToSparseCsr(const DenseTensor& dense_x,
                           const std::vector<int64_t>& cols_data) {
   const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::CPUContext dev_ctx_cpu;
+  phi::CPUContext dev_ctx_cpu;
 
   // 1. test cpu
   auto cpu_sparse_out = sparse::DenseToSparseCsr<T>(dev_ctx_cpu, dense_x);
@@ -582,7 +582,7 @@ void TestDenseToSparseCsr(const DenseTensor& dense_x,
       cuda_alloc.get(),
       DenseTensorMeta(dense_x.dtype(), dense_x.dims(), dense_x.layout()));
 
-  pten::GPUContext dev_ctx_gpu;
+  phi::GPUContext dev_ctx_gpu;
   dev_ctx_gpu.PartialInitWithoutAllocator();
   dev_ctx_gpu.SetAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
@@ -590,10 +590,10 @@ void TestDenseToSparseCsr(const DenseTensor& dense_x,
           .get());
   dev_ctx_gpu.SetHostAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(pten::CPUPlace())
+          .GetAllocator(phi::CPUPlace())
           .get());
   dev_ctx_gpu.PartialInitWithAllocator();
-  pten::Copy(dev_ctx_gpu, dense_x, true, &d_dense_x);
+  phi::Copy(dev_ctx_gpu, dense_x, true, &d_dense_x);
   auto sparse_out = sparse::DenseToSparseCsr<T>(dev_ctx_gpu, d_dense_x);
 
   CheckCsrResult<T, int64_t>(&dev_ctx_gpu,
@@ -613,9 +613,9 @@ TEST(DEV_API, dense_to_sparse_csr) {
   DenseTensor dense_x(
       alloc.get(),
       DenseTensorMeta(
-          DataType::FLOAT32, pten::make_ddim({3, 3}), DataLayout::NCHW));
+          DataType::FLOAT32, phi::make_ddim({3, 3}), DataLayout::NCHW));
 
-  pten::CPUPlace cpu;
+  phi::CPUPlace cpu;
   auto* dense_x_data = dense_x.mutable_data<float>(cpu);
   float dense_data[3][3] = {{0.0, 1.0, 0.0}, {2.0, 0.0, 3.0}, {3.2, 0.0, 0.0}};
   std::vector<float> non_zero_data = {1.0, 2.0, 3.0, 3.2};
@@ -635,27 +635,27 @@ TEST(DEV_API, dense_to_sparse_csr_batch) {
   DenseTensor dense_x(
       alloc.get(),
       DenseTensorMeta(
-          DataType::FLOAT16, pten::make_ddim({2, 3, 3}), DataLayout::NCHW));
+          DataType::FLOAT16, phi::make_ddim({2, 3, 3}), DataLayout::NCHW));
 
-  pten::CPUPlace cpu;
-  auto* dense_x_data = dense_x.mutable_data<pten::dtype::float16>(cpu);
+  phi::CPUPlace cpu;
+  auto* dense_x_data = dense_x.mutable_data<phi::dtype::float16>(cpu);
   const int64_t non_zero_num = 7;
   float dense_data[2][3][3] = {
       {{0.0, 1.0, 0.0}, {2.0, 0.0, 3.0}, {3.2, 0.0, 0.0}},
       {{0.0, 1.0, 0.0}, {2.0, 0.0, 0.0}, {3.2, 0.0, 0.0}}};
   std::vector<float> data = {1.0, 2.0, 3.0, 3.2, 1.0, 2.0, 3.2};
-  std::vector<pten::dtype::float16> non_zero_data(non_zero_num);
+  std::vector<phi::dtype::float16> non_zero_data(non_zero_num);
   for (int64_t i = 0; i < non_zero_num; i++) {
-    non_zero_data[i] = static_cast<pten::dtype::float16>(data[i]);
+    non_zero_data[i] = static_cast<phi::dtype::float16>(data[i]);
   }
   std::vector<int64_t> cols_data = {1, 0, 2, 0, 1, 0, 0};
   std::vector<int64_t> crows_data = {0, 1, 3, 4, 0, 1, 2, 3};
 
   float* dense_ptr = &dense_data[0][0][0];
   for (int i = 0; i < 18; i++) {
-    dense_x_data[i] = static_cast<pten::dtype::float16>(dense_ptr[i]);
+    dense_x_data[i] = static_cast<phi::dtype::float16>(dense_ptr[i]);
   }
-  TestDenseToSparseCsr<pten::dtype::float16>(
+  TestDenseToSparseCsr<phi::dtype::float16>(
       dense_x, non_zero_num, non_zero_data, crows_data, cols_data);
 }
 
@@ -666,28 +666,28 @@ void TestSparseCooToDense(const DDim& dense_dims,
                           const std::vector<int64_t>& indices_data,
                           const int64_t non_zero_num,
                           const int64_t sparse_dim) {
-  pten::CPUContext dev_ctx_cpu;
+  phi::CPUContext dev_ctx_cpu;
   const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
 
   DenseTensor dense_indices(
       alloc.get(),
       DenseTensorMeta(DataType::INT64,
-                      pten::make_ddim({sparse_dim, non_zero_num}),
+                      phi::make_ddim({sparse_dim, non_zero_num}),
                       DataLayout::NCHW));
   std::vector<int64_t> dense_elements_vec;
   dense_elements_vec.push_back(non_zero_num);
   for (int64_t i = sparse_dim; i < dense_dims.size(); i++) {
     dense_elements_vec.push_back(dense_dims[i]);
   }
-  DDim dense_elements_dims = pten::make_ddim(dense_elements_vec);
+  DDim dense_elements_dims = phi::make_ddim(dense_elements_vec);
   DenseTensor dense_elements(
       alloc.get(),
       DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
                       dense_elements_dims,
                       DataLayout::NCHW));
 
-  pten::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   memcpy(dense_indices.mutable_data<int64_t>(cpu_place),
          indices_data.data(),
          indices_data.size() * sizeof(int64_t));
@@ -707,7 +707,7 @@ void TestSparseCooToDense(const DDim& dense_dims,
   const auto cuda_alloc =
       std::make_shared<paddle::experimental::DefaultAllocator>(
           paddle::platform::CUDAPlace());
-  pten::GPUContext dev_ctx_gpu;
+  phi::GPUContext dev_ctx_gpu;
   dev_ctx_gpu.PartialInitWithoutAllocator();
   dev_ctx_gpu.SetAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
@@ -715,13 +715,13 @@ void TestSparseCooToDense(const DDim& dense_dims,
           .get());
   dev_ctx_gpu.SetHostAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(pten::CPUPlace())
+          .GetAllocator(phi::CPUPlace())
           .get());
   dev_ctx_gpu.PartialInitWithAllocator();
   DenseTensor d_dense_indices(cuda_alloc.get(), dense_indices.meta());
   DenseTensor d_dense_elements(cuda_alloc.get(), dense_elements.meta());
-  pten::Copy(dev_ctx_gpu, dense_indices, true, &d_dense_indices);
-  pten::Copy(dev_ctx_gpu, dense_elements, true, &d_dense_elements);
+  phi::Copy(dev_ctx_gpu, dense_indices, true, &d_dense_indices);
+  phi::Copy(dev_ctx_gpu, dense_elements, true, &d_dense_elements);
   SparseCooTensor coo_cuda(d_dense_indices, d_dense_elements, dense_dims);
   auto dense_out_cuda = sparse::SparseCooToDense<T>(dev_ctx_gpu, coo_cuda);
 
@@ -729,7 +729,7 @@ void TestSparseCooToDense(const DDim& dense_dims,
                           DenseTensorMeta(dense_out_cuda.dtype(),
                                           dense_out_cuda.dims(),
                                           dense_out_cuda.layout()));
-  pten::Copy(dev_ctx_gpu, dense_out_cuda, true, &h_dense_out);
+  phi::Copy(dev_ctx_gpu, dense_out_cuda, true, &h_dense_out);
   int cmp_cuda = memcmp(
       &dense_data[0], h_dense_out.data<T>(), sizeof(T) * dense_data.size());
   ASSERT_EQ(cmp_cuda, 0);
@@ -742,7 +742,7 @@ TEST(DEV_API, sparse_coo_to_dense) {
   std::vector<float> dense_data = {0.0, 1.0, 0.0, 2.0, 0.0, 3.0, 3.2, 0.0, 0.0};
   std::vector<float> non_zero_data = {1.0, 2.0, 3.0, 3.2};
   std::vector<int64_t> indices_data = {0, 1, 1, 2, 1, 0, 2, 0};
-  DDim dense_dims = pten::make_ddim({3, 3});
+  DDim dense_dims = phi::make_ddim({3, 3});
   TestSparseCooToDense(dense_dims,
                        dense_data,
                        non_zero_data,
@@ -774,8 +774,8 @@ TEST(DEV_API, sparse_coo_to_dense_batch_and_fp16) {
   std::vector<int64_t> indices_data = {0, 0, 1, 1, 0, 2, 1, 2, 1, 0, 1, 0};
   const int non_zero_num = 4;
   const int sparse_dim = 3;
-  DDim dense_dims = pten::make_ddim({2, 3, 3});
-  using float16 = pten::dtype::float16;
+  DDim dense_dims = phi::make_ddim({2, 3, 3});
+  using float16 = phi::dtype::float16;
   std::vector<float16> dense_data_fp16(dense_data.size()),
       non_zero_data_fp16(non_zero_num);
   for (uint64_t i = 0; i < dense_data.size(); i++) {
@@ -805,22 +805,21 @@ void TestSparseCsrToDense(const DDim& dense_dims,
     batchs = dense_dims[0];
     rows = dense_dims[1];
   }
-  pten::DenseTensorMeta crows_meta(DataType::INT64,
-                                   pten::make_ddim({batchs * (rows + 1)}),
-                                   DataLayout::NCHW);
-  pten::DenseTensorMeta cols_meta(
-      DataType::INT64, pten::make_ddim({non_zero_num}), DataLayout::NCHW);
-  pten::DenseTensorMeta values_meta(
+  phi::DenseTensorMeta crows_meta(
+      DataType::INT64, phi::make_ddim({batchs * (rows + 1)}), DataLayout::NCHW);
+  phi::DenseTensorMeta cols_meta(
+      DataType::INT64, phi::make_ddim({non_zero_num}), DataLayout::NCHW);
+  phi::DenseTensorMeta values_meta(
       paddle::experimental::CppTypeToDataType<T>::Type(),
-      pten::make_ddim({non_zero_num}),
+      phi::make_ddim({non_zero_num}),
       DataLayout::NCHW);
   const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
 
-  pten::CPUPlace place;
-  pten::DenseTensor crows(alloc.get(), crows_meta);
-  pten::DenseTensor cols(alloc.get(), cols_meta);
-  pten::DenseTensor values(alloc.get(), values_meta);
+  phi::CPUPlace place;
+  phi::DenseTensor crows(alloc.get(), crows_meta);
+  phi::DenseTensor cols(alloc.get(), cols_meta);
+  phi::DenseTensor values(alloc.get(), values_meta);
   memcpy(crows.mutable_data<int64_t>(place),
          crows_data.data(),
          crows_data.size() * sizeof(int64_t));
@@ -830,10 +829,10 @@ void TestSparseCsrToDense(const DDim& dense_dims,
   memcpy(values.mutable_data<T>(place),
          non_zero_data.data(),
          non_zero_data.size() * sizeof(T));
-  pten::SparseCsrTensor csr(crows, cols, values, dense_dims);
+  phi::SparseCsrTensor csr(crows, cols, values, dense_dims);
 
   // 1. test cpu
-  pten::CPUContext dev_ctx_cpu;
+  phi::CPUContext dev_ctx_cpu;
   DenseTensor cpu_sparse_out = sparse::SparseCsrToDense<T>(dev_ctx_cpu, csr);
   int cmp_cpu = memcmp(cpu_sparse_out.data<T>(),
                        dense_data.data(),
@@ -845,7 +844,7 @@ void TestSparseCsrToDense(const DDim& dense_dims,
   const auto cuda_alloc =
       std::make_shared<paddle::experimental::DefaultAllocator>(
           paddle::platform::CUDAPlace());
-  pten::GPUContext dev_ctx_gpu;
+  phi::GPUContext dev_ctx_gpu;
   dev_ctx_gpu.PartialInitWithoutAllocator();
   dev_ctx_gpu.SetAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
@@ -853,19 +852,19 @@ void TestSparseCsrToDense(const DDim& dense_dims,
           .get());
   dev_ctx_gpu.SetHostAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(pten::CPUPlace())
+          .GetAllocator(phi::CPUPlace())
           .get());
   dev_ctx_gpu.PartialInitWithAllocator();
-  pten::DenseTensor d_crows(cuda_alloc.get(), crows_meta);
-  pten::DenseTensor d_cols(cuda_alloc.get(), cols_meta);
-  pten::DenseTensor d_values(cuda_alloc.get(), values_meta);
-  pten::Copy(dev_ctx_gpu, crows, true, &d_crows);
-  pten::Copy(dev_ctx_gpu, cols, true, &d_cols);
-  pten::Copy(dev_ctx_gpu, values, true, &d_values);
-  pten::SparseCsrTensor d_csr(d_crows, d_cols, d_values, dense_dims);
+  phi::DenseTensor d_crows(cuda_alloc.get(), crows_meta);
+  phi::DenseTensor d_cols(cuda_alloc.get(), cols_meta);
+  phi::DenseTensor d_values(cuda_alloc.get(), values_meta);
+  phi::Copy(dev_ctx_gpu, crows, true, &d_crows);
+  phi::Copy(dev_ctx_gpu, cols, true, &d_cols);
+  phi::Copy(dev_ctx_gpu, values, true, &d_values);
+  phi::SparseCsrTensor d_csr(d_crows, d_cols, d_values, dense_dims);
   auto cuda_sparse_out = sparse::SparseCsrToDense<T>(dev_ctx_gpu, d_csr);
-  pten::DenseTensor h_out(alloc.get(), cpu_sparse_out.meta());
-  pten::Copy(dev_ctx_gpu, cuda_sparse_out, true, &h_out);
+  phi::DenseTensor h_out(alloc.get(), cpu_sparse_out.meta());
+  phi::Copy(dev_ctx_gpu, cuda_sparse_out, true, &h_out);
   int cmp_cuda =
       memcmp(h_out.data<T>(), dense_data.data(), sizeof(T) * dense_data.size());
   ASSERT_EQ(cmp_cuda, 0);
@@ -873,7 +872,7 @@ void TestSparseCsrToDense(const DDim& dense_dims,
 }
 
 TEST(DEV_API, sparse_csr_to_dense) {
-  DDim dense_dims = pten::make_ddim({3, 3});
+  DDim dense_dims = phi::make_ddim({3, 3});
   std::vector<float> dense_data = {0.0, 1.0, 0.0, 2.0, 0.0, 3.0, 3.2, 0.0, 0.0};
   std::vector<float> non_zero_data = {1.0, 2.0, 3.0, 3.2};
   std::vector<int64_t> cols_data = {1, 0, 2, 0};
@@ -889,7 +888,7 @@ TEST(DEV_API, sparse_csr_to_dense) {
 }
 
 TEST(DEV_API, sparse_csr_to_dense_batch_and_fp16) {
-  DDim dense_dims = pten::make_ddim({2, 3, 3});
+  DDim dense_dims = phi::make_ddim({2, 3, 3});
   std::vector<float> dense_data = {0.0,
                                    1.0,
                                    0.0,
@@ -913,7 +912,7 @@ TEST(DEV_API, sparse_csr_to_dense_batch_and_fp16) {
   std::vector<int64_t> crows_data = {0, 1, 3, 4, 0, 1, 3, 4};
   const int64_t non_zero_num = 8;
 
-  using float16 = pten::dtype::float16;
+  using float16 = phi::dtype::float16;
   std::vector<float16> dense_data_fp16(dense_data.size()),
       non_zero_data_fp16(non_zero_num);
   for (uint64_t i = 0; i < dense_data.size(); i++) {
@@ -931,4 +930,4 @@ TEST(DEV_API, sparse_csr_to_dense_batch_and_fp16) {
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi

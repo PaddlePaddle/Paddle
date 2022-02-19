@@ -19,9 +19,9 @@
 namespace paddle {
 namespace platform {
 template <typename T>
-using complex = pten::dtype::complex<T>;
+using complex = phi::dtype::complex<T>;
 
-using namespace pten::dtype;  // NOLINT
+using namespace phi::dtype;  // NOLINT
 
 }  // namespace platform
 }  // namespace paddle

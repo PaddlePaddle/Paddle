@@ -23,27 +23,27 @@ namespace platform {
 
 // Note: XPU runtime api return int, not XPUError_t
 inline const char* xpuGetErrorString(int stat) {
-  return pten::backends::xpu::xpuGetErrorString(stat);
+  return phi::backends::xpu::xpuGetErrorString(stat);
 }
 
 inline const char* bkclGetErrorString(BKCLResult_t stat) {
-  return pten::backends::xpu::bkclGetErrorString(stat);
+  return phi::backends::xpu::bkclGetErrorString(stat);
 }
 
 inline const char* xdnnGetErrorString(int stat) {
-  return pten::backends::xpu::xdnnGetErrorString(stat);
+  return phi::backends::xpu::xdnnGetErrorString(stat);
 }
 
 inline std::string build_xpu_error_msg(int stat) {
-  return pten::backends::xpu::build_xpu_error_msg(stat);
+  return phi::backends::xpu::build_xpu_error_msg(stat);
 }
 
 inline std::string build_xpu_error_msg(BKCLResult_t stat) {
-  return pten::backends::xpu::build_xpu_error_msg(stat);
+  return phi::backends::xpu::build_xpu_error_msg(stat);
 }
 
 inline std::string build_xpu_xdnn_error_msg(int stat, std::string msg) {
-  return pten::backends::xpu::build_xpu_xdnn_error_msg(stat, msg);
+  return phi::backends::xpu::build_xpu_xdnn_error_msg(stat, msg);
 }
 
 }  // namespace platform

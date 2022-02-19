@@ -37,11 +37,11 @@ TEST(CrossBatchAccumulation, SingleScaleNode) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   std::vector<paddle::experimental::Tensor> target_tensors;
-  paddle::framework::DDim ddim = pten::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
   paddle::experimental::Tensor tensor = egr_utils_api::CreateTensorWithValue(
-      ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
-      pten::DataLayout::NCHW, 1.0 /*value*/, false /*is_leaf*/);
+      ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+      phi::DataLayout::NCHW, 1.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
   paddle::experimental::Tensor& target_tensor = target_tensors[0];
 

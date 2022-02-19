@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
-namespace pten {
+namespace phi {
 namespace funcs {
 
 inline void SetXShape(const DenseTensor &x, DenseTensor *xshape) {
@@ -28,7 +28,7 @@ inline void SetXShape(const DenseTensor &x, DenseTensor *xshape) {
   for (int i = 0; i < in_dims.size(); ++i) {
     xshape_dims[i + 1] = in_dims[i];
   }
-  xshape->ResizeAndAllocate(pten::make_ddim(xshape_dims));
+  xshape->ResizeAndAllocate(phi::make_ddim(xshape_dims));
   xshape->ResetLoD(x.meta().lod);
 }
 
@@ -129,4 +129,4 @@ static void GetBroadcastDims(const DDim &in_dims,
 }
 
 }  // namespace funcs
-}  // namespace pten
+}  // namespace phi

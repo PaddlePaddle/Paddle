@@ -319,7 +319,7 @@ static void FillConstantLike(const VariableWrapper &ref_var,
     dst_tensor->mutable_data(
         place, framework::TransToPtenDataType(ref_var.DataType()));
   }
-  pten::funcs::set_constant(*dev_ctx, dst_tensor, value);
+  phi::funcs::set_constant(*dev_ctx, dst_tensor, value);
 }
 
 /**

@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void ConjKernel(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out);
@@ -28,11 +28,11 @@ void ConjKernel(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out);
 template <
     typename T,
     typename Context,
-    std::enable_if_t<std::is_same<T, pten::dtype::complex<float>>::value ||
-                         std::is_same<T, pten::dtype::complex<double>>::value,
+    std::enable_if_t<std::is_same<T, phi::dtype::complex<float>>::value ||
+                         std::is_same<T, phi::dtype::complex<double>>::value,
                      bool> = true>
 DenseTensor Conj(const Context& dev_ctx, const DenseTensor& x) {
-  auto dense_out = pten::Empty<T, Context>(dev_ctx);
+  auto dense_out = phi::Empty<T, Context>(dev_ctx);
   MetaTensor meta_out(&dense_out);
   UnchangedInferMeta(x, &meta_out);
   ConjKernel<T>(dev_ctx, x, &dense_out);
@@ -43,11 +43,11 @@ DenseTensor Conj(const Context& dev_ctx, const DenseTensor& x) {
 template <
     typename T,
     typename Context,
-    std::enable_if_t<!std::is_same<T, pten::dtype::complex<float>>::value &&
-                         !std::is_same<T, pten::dtype::complex<double>>::value,
+    std::enable_if_t<!std::is_same<T, phi::dtype::complex<float>>::value &&
+                         !std::is_same<T, phi::dtype::complex<double>>::value,
                      bool> = true>
 DenseTensor Conj(const Context& dev_ctx, const DenseTensor& x) {
   return x;
 }
 
-}  // namespace pten
+}  // namespace phi

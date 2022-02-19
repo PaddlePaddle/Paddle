@@ -27,21 +27,21 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
-namespace kps = pten::kps;
+namespace kps = phi::kps;
 
 #endif
 
-namespace pten {
+namespace phi {
 
 enum ElementwiseType { kUnary = 1, kBinary = 2, kTernary = 3, kAny = -1 };
 /* Packing scalar type T(float, int etc.) into Array<T, NumOuts> type
    for supporting multiple-output feature in elementwise system.*/
 template <class T, int Num>
 using ConditionalT =
-    typename std::conditional_t<Num == 1, T, pten::Array<T, Num>>;
+    typename std::conditional_t<Num == 1, T, phi::Array<T, Num>>;
 
 namespace funcs {
-using DDim = pten::DDim;
+using DDim = phi::DDim;
 
 template <typename T, typename DX_OP, typename DY_OP, typename Tout = T>
 struct ElemwiseGradNoBroadcast {
@@ -305,9 +305,9 @@ inline DDim trim_trailing_singular_dims(const DDim &dims) {
     trim_dims[i] = dims[i];
   }
   if (trim_dims.size() == 0) {
-    return DDim(pten::make_dim());
+    return DDim(phi::make_dim());
   }
-  DDim actual_dims = pten::make_ddim(trim_dims);
+  DDim actual_dims = phi::make_ddim(trim_dims);
   return actual_dims;
 }
 
@@ -391,10 +391,10 @@ static inline void GetDoubleGradSafeTensor(const DeviceContext &dev_ctx,
   if (ddx) {
     *ddx_safe = *ddx;
   } else {
-    auto meta = pten::DenseTensorMeta(x.dtype(), x.dims(), x.layout());
-    *ddx_safe = pten::Empty(dev_ctx, std::move(meta));
+    auto meta = phi::DenseTensorMeta(x.dtype(), x.dims(), x.layout());
+    *ddx_safe = phi::Empty(dev_ctx, std::move(meta));
     ddx_safe->mutable_data(dev_ctx.GetPlace());
-    pten::funcs::SetConstant<DeviceContext, T> set_zero;
+    phi::funcs::SetConstant<DeviceContext, T> set_zero;
     set_zero(dev_ctx, ddx_safe, static_cast<T>(0));
   }
 }
@@ -416,7 +416,7 @@ void ElemwiseGradComputeNoBroadcast(const DeviceContext &dev_ctx,
                                     DenseTensor *dy,
                                     DX_OP dx_op,
                                     DY_OP dy_op) {
-  size_t N = static_cast<size_t>(pten::product(x_dim));
+  size_t N = static_cast<size_t>(phi::product(x_dim));
   paddle::platform::ForRange<DeviceContext> for_range(dev_ctx, N);
   for_range(ElemwiseGradNoBroadcast<T, DX_OP, DY_OP, Tout>{
       x.data<T>(),
@@ -614,7 +614,7 @@ struct SameDimsElementwisePrimitiveCaller {
 template <typename OutT, int VecSize, bool IsBoundary, int NumOuts>
 struct ElementwiseWriteDataCaller {
   __device__ __forceinline__ void operator()(
-      pten::Array<_ptr_ OutT *, NumOuts> outs,
+      phi::Array<_ptr_ OutT *, NumOuts> outs,
       ConditionalT<OutT, NumOuts> src[VecSize],
       int block_offset,
       int num) {
@@ -636,7 +636,7 @@ struct ElementwiseWriteDataCaller {
 
 template <typename OutT, int VecSize, bool IsBoundary>
 struct ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, 1> {
-  __device__ __forceinline__ void operator()(pten::Array<_ptr_ OutT *, 1> outs,
+  __device__ __forceinline__ void operator()(phi::Array<_ptr_ OutT *, 1> outs,
                                              OutT src[VecSize],
                                              int block_offset,
                                              int num) {
@@ -653,8 +653,8 @@ template <typename OutT,
           bool IsBoundary>
 __device__ void VectorizedElementwiseKernelImpl(
 
-    const pten::Array<const _ptr_ char *__restrict__, Arity> &in,
-    pten::Array<_ptr_ OutT *, NumOuts> outs,
+    const phi::Array<const _ptr_ char *__restrict__, Arity> &in,
+    phi::Array<_ptr_ OutT *, NumOuts> outs,
     int num,
     int data_offset,
     Functor func) {
@@ -678,8 +678,8 @@ __device__ void VectorizedElementwiseKernelImpl(
 
 template <typename OutT, typename Functor, int Arity, int NumOuts, int VecSize>
 __global__ void VectorizedElementwiseKernel(
-    pten::Array<const _ptr_ char *__restrict__, Arity> ins,
-    pten::Array<_ptr_ OutT *, NumOuts> outs,
+    phi::Array<const _ptr_ char *__restrict__, Arity> ins,
+    phi::Array<_ptr_ OutT *, NumOuts> outs,
     int size,
     int main_offset,
     Functor func) {
@@ -713,8 +713,8 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
                            Functor func) {
   auto numel =
       (*outs)[0]->numel();  // To avoid running errors when ins.size()== 0
-  pten::Array<const _ptr_ char *__restrict__, Arity> ins_data;
-  pten::Array<_ptr_ OutT *, NumOuts> outs_data;
+  phi::Array<const _ptr_ char *__restrict__, Arity> ins_data;
+  phi::Array<_ptr_ OutT *, NumOuts> outs_data;
 
   Unroller<InputSetter, VecSize, Arity>::step(ins, &ins_data);
   for (int i = 0; i < NumOuts; ++i) {
@@ -733,7 +733,7 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
       ins_data, outs_data, numel, main_offset, func);
 #else
   auto gpu_config =
-      pten::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, VecSize);
+      phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, VecSize);
   int main_offset = (numel / (VecSize * gpu_config.GetBlockSize())) * VecSize *
                     gpu_config.GetBlockSize();
   auto stream = ctx.stream();
@@ -806,4 +806,4 @@ void LaunchSameDimsElementwiseCudaKernel(
 #endif
 
 }  // namespace funcs
-}  // namespace pten
+}  // namespace phi

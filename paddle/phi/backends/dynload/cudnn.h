@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/backends/dynload/port.h"
 
-namespace pten {
+namespace phi {
 namespace dynload {
 
 extern std::once_flag cudnn_dso_flag;
@@ -34,7 +34,7 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
     auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) { \
       using cudnn_func = decltype(&::__name);                        \
       std::call_once(cudnn_dso_flag, []() {                          \
-        cudnn_dso_handle = pten::dynload::GetCUDNNDsoHandle();       \
+        cudnn_dso_handle = phi::dynload::GetCUDNNDsoHandle();        \
       });                                                            \
       EnforceCUDNNLoaded(#__name);                                   \
       static void* p_##__name = dlsym(cudnn_dso_handle, #__name);    \
@@ -194,6 +194,6 @@ CUDNN_DNN_ROUTINE_EACH_R8(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi
 
 #endif

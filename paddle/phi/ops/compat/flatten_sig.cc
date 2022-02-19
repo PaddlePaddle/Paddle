@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
 KernelSignature FlattenOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.HasOutput("XShape")) {
@@ -34,12 +34,12 @@ KernelSignature FlattenGradOpArgumentMapping(
       "flatten_grad", {GradVarName("Out"), "XShape"}, {}, {GradVarName("X")});
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_BASE_KERNEL_NAME(flatten_contiguous_range, flatten);
 PT_REGISTER_BASE_KERNEL_NAME(flatten_contiguous_range_grad, flatten_grad);
 
 PT_REGISTER_ARG_MAPPING_FN(flatten_contiguous_range,
-                           pten::FlattenOpArgumentMapping);
+                           phi::FlattenOpArgumentMapping);
 PT_REGISTER_ARG_MAPPING_FN(flatten_contiguous_range_grad,
-                           pten::FlattenGradOpArgumentMapping);
+                           phi::FlattenGradOpArgumentMapping);

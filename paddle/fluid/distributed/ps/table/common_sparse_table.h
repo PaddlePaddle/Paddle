@@ -110,7 +110,7 @@ struct Meta {
 
 class CommonSparseTable : public SparseTable {
  public:
-  CommonSparseTable() { rwlock_.reset(new pten::RWLock); }
+  CommonSparseTable() { rwlock_.reset(new phi::RWLock); }
   virtual ~CommonSparseTable() {}
 
   // unused method begin
@@ -193,7 +193,7 @@ class CommonSparseTable : public SparseTable {
   std::shared_ptr<SparseOptimizer> optimizer_;
   std::vector<std::shared_ptr<ValueBlock>> shard_values_;
   std::unordered_map<uint64_t, ReservoirValue<float>> pull_reservoir_;
-  std::unique_ptr<pten::RWLock> rwlock_{nullptr};
+  std::unique_ptr<phi::RWLock> rwlock_{nullptr};
 };
 
 }  // namespace distributed

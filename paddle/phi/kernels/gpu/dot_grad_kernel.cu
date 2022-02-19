@@ -23,10 +23,10 @@ limitations under the License. */
 PT_REGISTER_KERNEL(dot_grad,
                    GPU,
                    ALL_LAYOUT,
-                   pten::DotGradKernel,
+                   phi::DotGradKernel,
                    float,
                    double,
                    int,
                    int64_t,
-                   pten::dtype::complex<float>,
-                   pten::dtype::complex<double>) {}
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

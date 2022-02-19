@@ -29,7 +29,7 @@
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
 
-namespace pten {
+namespace phi {
 
 using DataType = paddle::experimental::DataType;
 using DataLayout = paddle::experimental::DataLayout;
@@ -258,4 +258,4 @@ std::ostream& operator<<(std::ostream& os, const Kernel& kernel);
 
 std::ostream& operator<<(std::ostream& os, KernelFactory& kernel_factory);
 
-}  // namespace pten
+}  // namespace phi

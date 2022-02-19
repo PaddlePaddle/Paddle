@@ -22,21 +22,21 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-namespace pten {
+namespace phi {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = pten::DDim;
+using DDim = phi::DDim;
 
 // TODO(chenweihang): Remove this test after the API is used in the dygraph
 TEST(DEV_API, reshape) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  pten::make_ddim({3, 2, 2, 3}),
-                                                  pten::DataLayout::NCHW));
+  phi::DenseTensor dense_x(alloc.get(),
+                           phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                                                phi::make_ddim({3, 2, 2, 3}),
+                                                phi::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 
@@ -46,19 +46,19 @@ TEST(DEV_API, reshape) {
   std::vector<int64_t> shape{12, 3};
 
   // 2. test API
-  pten::CPUContext dev_ctx;
+  phi::CPUContext dev_ctx;
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(paddle::platform::CPUPlace())
                            .get());
   dev_ctx.Init();
-  auto out = pten::Reshape<float>(dev_ctx, dense_x, shape);
+  auto out = phi::Reshape<float>(dev_ctx, dense_x, shape);
   // 3. check result
   std::vector<int64_t> expect_shape = {12, 3};
   ASSERT_EQ(out.dims()[0], expect_shape[0]);
   ASSERT_EQ(out.dims()[1], expect_shape[1]);
   ASSERT_EQ(out.numel(), 36);
-  ASSERT_EQ(out.meta().dtype, pten::DataType::FLOAT32);
-  ASSERT_EQ(out.meta().layout, pten::DataLayout::NCHW);
+  ASSERT_EQ(out.meta().dtype, phi::DataType::FLOAT32);
+  ASSERT_EQ(out.meta().layout, phi::DataLayout::NCHW);
 
   bool value_equal = true;
   auto* dense_out_data = out.data<float>();
@@ -70,4 +70,4 @@ TEST(DEV_API, reshape) {
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi

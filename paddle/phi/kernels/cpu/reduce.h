@@ -26,7 +26,7 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/operators/eigen/eigen_function.h"
-namespace pten {
+namespace phi {
 
 template <typename DeviceContext,
           typename T,
@@ -34,8 +34,8 @@ template <typename DeviceContext,
           size_t R_D,
           typename Functor>
 void ReduceFunctor(const DeviceContext& context,
-                   const pten::DenseTensor& input,
-                   pten::DenseTensor* output,
+                   const phi::DenseTensor& input,
+                   phi::DenseTensor* output,
                    const std::vector<int64_t>& dims,
                    bool keep_dim) {
   auto x = EigenTensor<T, D>::From(input);
@@ -50,13 +50,13 @@ void ReduceFunctor(const DeviceContext& context,
   DDim out_dims = output->dims();
   if (keep_dim && x_rank > 1) {
     const int kDelFlag = -2;
-    auto dims_vector = pten::vectorize(out_dims);
+    auto dims_vector = phi::vectorize(out_dims);
     for (size_t i = 0; i < dims_ref.size(); ++i) {
       dims_vector[dims_ref[i]] = kDelFlag;
     }
     dims_vector.erase(remove(dims_vector.begin(), dims_vector.end(), kDelFlag),
                       dims_vector.end());
-    out_dims = pten::make_ddim(dims_vector);
+    out_dims = phi::make_ddim(dims_vector);
   }
   auto& place = *context.eigen_device();
   Functor functor;
@@ -111,8 +111,8 @@ inline void GetShuffledDim(const DDim& src_dims,
 
 template <typename DeviceContext, typename OutT>
 void GetShuffledInput(const DeviceContext& dev_ctx,
-                      const pten::DenseTensor& input,
-                      pten::DenseTensor* shuffled_input,
+                      const phi::DenseTensor& input,
+                      phi::DenseTensor* shuffled_input,
                       const std::vector<int64_t>& dims) {
   DDim shuffled_dims(input.dims());
   std::vector<int> perm_axis(input.dims().size());
@@ -121,19 +121,19 @@ void GetShuffledInput(const DeviceContext& dev_ctx,
   shuffled_input->ResizeAndAllocate(shuffled_dims);
   dev_ctx.template Alloc<OutT>(shuffled_input);
 
-  pten::funcs::TransposeNormal<DeviceContext, OutT> trans;
+  phi::funcs::TransposeNormal<DeviceContext, OutT> trans;
   trans(dev_ctx, input, shuffled_input, perm_axis);
 }
 
 template <typename DeviceContext, typename OutT, typename Functor>
 void HandleLargeDim(const DeviceContext& dev_ctx,
-                    const pten::DenseTensor& input,
-                    pten::DenseTensor* output,
+                    const phi::DenseTensor& input,
+                    phi::DenseTensor* output,
                     const std::vector<int64_t>& dims,
                     bool keep_dim) {
   //  shuffle the reduced dim to the end
-  pten::DenseTensor shuffled_input = pten::DenseTensor(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(input.place()),
+  phi::DenseTensor shuffled_input = phi::DenseTensor(
+      phi::make_intrusive<paddle::experimental::SharedStorage>(input.place()),
       input.meta());
 
   GetShuffledInput<DeviceContext, OutT>(dev_ctx, input, &shuffled_input, dims);
@@ -153,8 +153,8 @@ void HandleLargeDim(const DeviceContext& dev_ctx,
 
 template <typename DeviceContext, typename T, typename OutT, typename Functor>
 void ReduceKernelImpl(const DeviceContext& dev_ctx,
-                      const pten::DenseTensor& input,
-                      pten::DenseTensor* output,
+                      const phi::DenseTensor& input,
+                      phi::DenseTensor* output,
                       const std::vector<int64_t>& dims,
                       bool keep_dim,
                       bool reduce_all) {
@@ -219,24 +219,24 @@ void Reduce(const DeviceContext& dev_ctx,
   reduce_all = (reduce_all || full_dim);
 
   // no need to cast dtype
-  if (out_dtype == pten::DataType::UNDEFINED || out_dtype == x.dtype()) {
+  if (out_dtype == phi::DataType::UNDEFINED || out_dtype == x.dtype()) {
     // do reduce sum
     PD_VISIT_ALL_TYPES(
         x.dtype(), "ReduceKernelImpl", ([&] {
-          pten::ReduceKernelImpl<DeviceContext, T, data_t, Functor>(
+          phi::ReduceKernelImpl<DeviceContext, T, data_t, Functor>(
               dev_ctx, x, out, dims, keep_dim, reduce_all);
         }));
   } else {
     // cast x tensor to out_dtype
-    auto tmp_tensor = pten::Cast<T, DeviceContext>(dev_ctx, x, out_dtype);
+    auto tmp_tensor = phi::Cast<T, DeviceContext>(dev_ctx, x, out_dtype);
 
     // do reduce sum
     PD_VISIT_ALL_TYPES(
         out_dtype, "ReduceKernelImpl", ([&] {
-          pten::ReduceKernelImpl<DeviceContext, T, data_t, Functor>(
+          phi::ReduceKernelImpl<DeviceContext, T, data_t, Functor>(
               dev_ctx, tmp_tensor, out, dims, keep_dim, reduce_all);
         }));
   }
 }
 
-}  // namespace pten
+}  // namespace phi

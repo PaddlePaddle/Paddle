@@ -17,7 +17,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/copy_kernel.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void FlattenGradKernel(const Context& dev_ctx,
@@ -25,17 +25,17 @@ void FlattenGradKernel(const Context& dev_ctx,
                        const DenseTensor& xshape,
                        DenseTensor* x_grad) {
   auto xshape_dims = xshape.dims();
-  auto x_dims = pten::slice_ddim(xshape_dims, 1, xshape_dims.size());
-  pten::Copy(dev_ctx, out_grad, false, x_grad);
+  auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
+  phi::Copy(dev_ctx, out_grad, false, x_grad);
   x_grad->ResizeAndAllocate(x_dims);
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(flatten_grad,
                    CPU,
                    ALL_LAYOUT,
-                   pten::FlattenGradKernel,
+                   phi::FlattenGradKernel,
                    float,
                    double,
                    uint8_t,
@@ -47,9 +47,9 @@ PT_REGISTER_KERNEL(flatten_grad,
 PT_REGISTER_KERNEL(flatten_grad,
                    GPU,
                    ALL_LAYOUT,
-                   pten::FlattenGradKernel,
+                   phi::FlattenGradKernel,
                    float,
-                   pten::dtype::float16,
+                   phi::dtype::float16,
                    double,
                    uint8_t,
                    int8_t,
@@ -62,9 +62,9 @@ PT_REGISTER_KERNEL(flatten_grad,
 PT_REGISTER_KERNEL(flatten_grad,
                    XPU,
                    ALL_LAYOUT,
-                   pten::FlattenGradKernel,
+                   phi::FlattenGradKernel,
                    float,
-                   pten::dtype::float16,
+                   phi::dtype::float16,
                    int8_t,
                    int,
                    int64_t) {}

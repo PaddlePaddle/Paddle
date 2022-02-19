@@ -22,28 +22,28 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-namespace pten {
+namespace phi {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = pten::DDim;
+using DDim = phi::DDim;
 
 TEST(DEV_API, dot) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
   DenseTensor dense_x(alloc.get(),
-                      pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                            pten::make_ddim({3, 3}),
-                                            pten::DataLayout::NCHW));
+                      phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                                           phi::make_ddim({3, 3}),
+                                           phi::DataLayout::NCHW));
 
   auto* dense_x_data =
       dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 
   DenseTensor dense_y(alloc.get(),
-                      pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                            pten::make_ddim({3, 3}),
-                                            pten::DataLayout::NCHW));
+                      phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                                           phi::make_ddim({3, 3}),
+                                           phi::DataLayout::NCHW));
   auto* dense_y_data =
       dense_y.mutable_data<float>(paddle::platform::CPUPlace());
 
@@ -54,7 +54,7 @@ TEST(DEV_API, dot) {
   std::vector<float> sum(9, 6.0);
 
   // 2. test API
-  pten::CPUContext dev_ctx;
+  phi::CPUContext dev_ctx;
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(paddle::platform::CPUPlace())
                            .get());
@@ -76,4 +76,4 @@ TEST(DEV_API, dot) {
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi

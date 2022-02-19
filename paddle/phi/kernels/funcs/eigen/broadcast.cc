@@ -14,7 +14,7 @@ limitations under the License. */
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
-namespace pten {
+namespace phi {
 namespace funcs {
 
 template <typename T, int Rank>
@@ -90,4 +90,4 @@ template struct EigenBroadcastGrad<Eigen::DefaultDevice, int64_t, 0>;
 #undef INSTANTIATION
 
 }  // namespace funcs
-}  // namespace pten
+}  // namespace phi

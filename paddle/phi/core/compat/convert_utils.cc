@@ -23,14 +23,14 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/device_manager.h"
 #endif
 
-namespace pten {
+namespace phi {
 
-Backend TransToPtenBackend(const pten::Place& place) {
-  if (place.GetType() == pten::AllocationType::CPU) {
+Backend TransToPtenBackend(const phi::Place& place) {
+  if (place.GetType() == phi::AllocationType::CPU) {
     return Backend::CPU;
-  } else if (place.GetType() == pten::AllocationType::GPU) {
+  } else if (place.GetType() == phi::AllocationType::GPU) {
     return Backend::GPU;
-  } else if (place.GetType() == pten::AllocationType::CUSTOM) {
+  } else if (place.GetType() == phi::AllocationType::CUSTOM) {
     return static_cast<Backend>(
         static_cast<size_t>(Backend::NUM_BACKENDS) +
         GetOrRegisterGlobalDeviceTypeId(place.GetDeviceType()));
@@ -39,46 +39,46 @@ Backend TransToPtenBackend(const pten::Place& place) {
   }
 }
 
-pten::Place TransToPtenPlace(const Backend& backend, bool set_device_id) {
+phi::Place TransToPtenPlace(const Backend& backend, bool set_device_id) {
   // NOTE(zhiqiu): GetCurrentDeviceId not always success, and device id is not
   // always needed.
   // So, add set_device_id parameter here.
   switch (backend) {
-    case pten::Backend::CPU:
-      return pten::CPUPlace();
+    case phi::Backend::CPU:
+      return phi::CPUPlace();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    case pten::Backend::GPU:
-      return pten::GPUPlace(
-          set_device_id ? pten::backends::gpu::GetCurrentDeviceId() : 0);
+    case phi::Backend::GPU:
+      return phi::GPUPlace(
+          set_device_id ? phi::backends::gpu::GetCurrentDeviceId() : 0);
 #endif
 #ifdef PADDLE_WITH_MKLDNN
-    case pten::Backend::MKLDNN:
-      return pten::CPUPlace();
+    case phi::Backend::MKLDNN:
+      return phi::CPUPlace();
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    case pten::Backend::CUDNN:
-      return pten::GPUPlace(
-          set_device_id ? pten::backends::gpu::GetCurrentDeviceId() : 0);
+    case phi::Backend::CUDNN:
+      return phi::GPUPlace(
+          set_device_id ? phi::backends::gpu::GetCurrentDeviceId() : 0);
 #endif
 #if defined(PADDLE_WITH_XPU)
-    case pten::Backend::XPU:
-      return pten::XPUPlace(
-          set_device_id ? pten::backends::xpu::GetXPUCurrentDeviceId() : 0);
+    case phi::Backend::XPU:
+      return phi::XPUPlace(
+          set_device_id ? phi::backends::xpu::GetXPUCurrentDeviceId() : 0);
 #endif
     default: {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       size_t device_type_id_ = static_cast<size_t>(backend) -
                                static_cast<size_t>(Backend::NUM_BACKENDS);
-      std::string device_type = pten::GetGlobalDeviceType(device_type_id_);
+      std::string device_type = phi::GetGlobalDeviceType(device_type_id_);
       if (!device_type.empty()) {
-        return pten::CustomPlace(
+        return phi::CustomPlace(
             device_type,
             set_device_id
                 ? paddle::platform::DeviceManager::GetDevice(device_type)
                 : 0);
       }
 #endif
-      PADDLE_THROW(pten::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported backend `%s` when casting it to paddle place type.",
           backend));
     }
@@ -102,4 +102,4 @@ const std::string& TransToFluidOpName(const std::string& pten_kernel_name) {
   return pten_kernel_name;
 }
 
-}  // namespace pten
+}  // namespace phi

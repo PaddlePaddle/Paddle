@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
 KernelSignature DigammaGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
@@ -22,6 +22,6 @@ KernelSignature DigammaGradOpArgumentMapping(
       "digamma_grad", {GradVarName("Out"), "X"}, {}, {GradVarName("X")});
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(digamma_grad, pten::DigammaGradOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(digamma_grad, phi::DigammaGradOpArgumentMapping);

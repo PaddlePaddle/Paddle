@@ -36,7 +36,7 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
     auto* decoded_path = ctx.Output<Tensor>("ViterbiPath");
 
     int64_t* path = decoded_path->mutable_data<int64_t>(platform::CPUPlace());
-    pten::funcs::SetConstant<DeviceContext, int64_t>()(
+    phi::funcs::SetConstant<DeviceContext, int64_t>()(
         ctx.template device_context<DeviceContext>(), decoded_path, 0);
 
     bool has_length = ctx.HasInput("Length");

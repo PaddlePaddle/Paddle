@@ -18,4 +18,4 @@
 #include "paddle/phi/kernels/impl/lerp_grad_kernel_impl.h"
 
 PT_REGISTER_KERNEL(
-    lerp_grad, CPU, ALL_LAYOUT, pten::LerpGradKernel, float, double) {}
+    lerp_grad, CPU, ALL_LAYOUT, phi::LerpGradKernel, float, double) {}

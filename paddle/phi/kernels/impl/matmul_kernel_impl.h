@@ -19,7 +19,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace pten {
+namespace phi {
 
 static void GetBroadcastFromDims(const int x_ndim,
                                  const std::int64_t* x_dims,
@@ -102,7 +102,7 @@ void MatMulFunction(const Context& dev_ctx,
   const T* x_data = X.data<T>();
   const T* y_data = Y.data<T>();
 
-  auto blas = pten::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
 
   if (x_ndim == 1 && y_ndim == 1) {
     const int M = X.numel();
@@ -164,7 +164,7 @@ void MatMulFunction(const Context& dev_ctx,
       std::copy_n(y_dims.cbegin(), y_ndim - 2, out_dims.begin());
       out_dims.back() = y_dims.back();
     }
-    Out->ResizeAndAllocate(pten::make_ddim(out_dims));
+    Out->ResizeAndAllocate(phi::make_ddim(out_dims));
     dev_ctx.template Alloc<T>(Out);
     if (trans_y) {
       const int M = Y.numel() / N;
@@ -242,7 +242,7 @@ void MatMulFunction(const Context& dev_ctx,
     } else {
       std::copy_n(x_dims.cbegin(), x_ndim - 1, out_dims.begin());
     }
-    Out->ResizeAndAllocate(pten::make_ddim(out_dims));
+    Out->ResizeAndAllocate(phi::make_ddim(out_dims));
     dev_ctx.template Alloc<T>(Out);
 
     if (trans_x) {
@@ -330,7 +330,7 @@ void MatMulFunction(const Context& dev_ctx,
   out_broadcast_dims[ndim - 2] = M;
   out_broadcast_dims[ndim - 1] = N;
 
-  Out->ResizeAndAllocate(pten::make_ddim(out_broadcast_dims));
+  Out->ResizeAndAllocate(phi::make_ddim(out_broadcast_dims));
   dev_ctx.template Alloc<T>(Out);
 
   const int batch_dim = ndim - 2;
@@ -493,12 +493,12 @@ void MatmulKernel(const Context& dev_ctx,
                   bool transpose_x,
                   bool transpose_y,
                   DenseTensor* out) {
-  PADDLE_ENFORCE_NE(pten::product(x.dims()),
+  PADDLE_ENFORCE_NE(phi::product(x.dims()),
                     0,
                     paddle::platform::errors::InvalidArgument(
                         "The Input(X) dims size must not be equal 0,"
                         " but reviced dims size is 0. "));
-  PADDLE_ENFORCE_NE(pten::product(y.dims()),
+  PADDLE_ENFORCE_NE(phi::product(y.dims()),
                     0,
                     paddle::platform::errors::InvalidArgument(
                         "The Input(Y) dims size must not be equal 0,"
@@ -506,4 +506,4 @@ void MatmulKernel(const Context& dev_ctx,
   MatMulFunction<Context, T>(dev_ctx, x, y, out, transpose_x, transpose_y);
 }
 
-}  // namespace pten
+}  // namespace phi

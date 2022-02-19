@@ -19,15 +19,15 @@ limitations under the License. */
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/memory/memcpy.h"
 
-namespace pten {
+namespace phi {
 
 struct ReAllocateVisitor {
-  ReAllocateVisitor(const pten::DDim& dims, pten::DenseTensor* tensor)
+  ReAllocateVisitor(const phi::DDim& dims, phi::DenseTensor* tensor)
       : dims_(dims), tensor_(tensor) {}
 
   template <typename T>
   void operator()() const {
-    pten::DenseTensor cpu_tensor;
+    phi::DenseTensor cpu_tensor;
     paddle::platform::CPUPlace cpu;
     T* ptr = cpu_tensor.mutable_data<T>(dims_, cpu);
     const T* old_ptr =
@@ -38,14 +38,14 @@ struct ReAllocateVisitor {
     tensor_->ShareDataWith(cpu_tensor);
   }
 
-  pten::DDim dims_;
-  pten::DenseTensor* tensor_;
+  phi::DDim dims_;
+  phi::DenseTensor* tensor_;
 };
 
 struct TensorCopyVisitor {
-  TensorCopyVisitor(pten::DenseTensor* dst,
+  TensorCopyVisitor(phi::DenseTensor* dst,
                     int64_t dst_offset,
-                    const pten::DenseTensor src,
+                    const phi::DenseTensor src,
                     int64_t src_offset,
                     int64_t size)
       : dst_(dst),
@@ -65,15 +65,15 @@ struct TensorCopyVisitor {
                          size_ * sizeof(T));
   }
 
-  pten::DenseTensor* dst_;
+  phi::DenseTensor* dst_;
   int64_t dst_offset_;
-  pten::DenseTensor src_;
+  phi::DenseTensor src_;
   int64_t src_offset_;
   int64_t size_;
 };
 
 struct TensorFillVisitor {
-  TensorFillVisitor(pten::DenseTensor* dst,
+  TensorFillVisitor(phi::DenseTensor* dst,
                     int64_t dst_offset,
                     int64_t size,
                     float value)
@@ -89,7 +89,7 @@ struct TensorFillVisitor {
     std::fill(start, end, static_cast<T>(0.0));
   }
 
-  pten::DenseTensor* dst_;
+  phi::DenseTensor* dst_;
   int64_t dst_offset_;
   int64_t size_;
 };
@@ -172,8 +172,8 @@ void SelectedRowsImpl::SyncIndex() {
   rwlock_->UNLock();
 }
 
-void SelectedRowsImpl::Get(const pten::DenseTensor& ids,
-                           pten::DenseTensor* value,
+void SelectedRowsImpl::Get(const phi::DenseTensor& ids,
+                           phi::DenseTensor* value,
                            bool auto_grown,
                            bool is_test) {
   PADDLE_ENFORCE_EQ(value->IsInitialized(),
@@ -198,18 +198,18 @@ void SelectedRowsImpl::Get(const pten::DenseTensor& ids,
       int64_t index = AutoGrownIndex(id, auto_grown, is_test);
       if (index < 0) {
         VLOG(5) << "id " << id << " not in the table, return 0";
-        pten::VisitDataType(
+        phi::VisitDataType(
             value_->dtype(),
             TensorFillVisitor(value, i * value_width, value_width, 0.0));
       } else {
-        pten::VisitDataType(value_->dtype(),
-                            TensorCopyVisitor(value,
-                                              i * value_width,
-                                              *value_.get(),
-                                              index * value_width,
-                                              value_width));
+        phi::VisitDataType(value_->dtype(),
+                           TensorCopyVisitor(value,
+                                             i * value_width,
+                                             *value_.get(),
+                                             index * value_width,
+                                             value_width));
       }
     }
   }
 }
-}  // namespace pten
+}  // namespace phi

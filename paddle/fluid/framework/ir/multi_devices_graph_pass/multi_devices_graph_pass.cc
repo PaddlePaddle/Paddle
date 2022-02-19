@@ -777,8 +777,8 @@ size_t BalanceVarSSAGraphBuilder::GetAppropriateDeviceID(
     PADDLE_ENFORCE_NOT_NULL(var_desc,
                             platform::errors::NotFound(
                                 "Can not find Var(%s) in Var Desc.", var_name));
-    auto dim = pten::make_ddim(var_desc->GetShape());
-    int64_t numel = pten::product(dim);
+    auto dim = phi::make_ddim(var_desc->GetShape());
+    int64_t numel = phi::product(dim);
     PADDLE_ENFORCE_GT(numel, 0,
                       platform::errors::InvalidArgument(
                           "The numel of Var(%s) must greater than 0"

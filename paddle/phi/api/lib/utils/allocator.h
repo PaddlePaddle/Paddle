@@ -22,7 +22,7 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-class DefaultAllocator : public pten::Allocator {
+class DefaultAllocator : public phi::Allocator {
  public:
   explicit DefaultAllocator(const paddle::platform::Place& place)
       : place_(place) {}

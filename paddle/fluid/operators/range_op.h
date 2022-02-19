@@ -52,7 +52,7 @@ class CPURangeKernel : public framework::OpKernel<T> {
     auto* out = context.Output<framework::Tensor>("Out");
     int64_t size = 0;
     GetSize(start, end, step, &size);
-    out->Resize(pten::make_ddim({size}));
+    out->Resize(phi::make_ddim({size}));
     T* out_data = out->mutable_data<T>(context.GetPlace());
     T value = start;
     for (int64_t i = 0; i < size; ++i) {

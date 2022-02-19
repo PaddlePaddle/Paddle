@@ -29,7 +29,7 @@
 #include <cblas.h>
 #endif
 
-namespace pten {
+namespace phi {
 namespace funcs {
 
 /**
@@ -178,13 +178,13 @@ class Blas {
 
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
   template <typename T>
-  void MatMulWithHead(const pten::DenseTensor& mat_a,
+  void MatMulWithHead(const phi::DenseTensor& mat_a,
                       const MatDescriptor& dim_a,
-                      const pten::DenseTensor& mat_b,
+                      const phi::DenseTensor& mat_b,
                       const MatDescriptor& dim_b,
                       T alpha,
                       int head_number,
-                      pten::DenseTensor* mat_out,
+                      phi::DenseTensor* mat_out,
                       T beta,
                       bool mat_y_split_vertical) const;
 #endif
@@ -199,20 +199,20 @@ class Blas {
               T* C) const;
 
   template <typename T>
-  void MatMul(const pten::DenseTensor& mat_a,
+  void MatMul(const phi::DenseTensor& mat_a,
               bool trans_a,
-              const pten::DenseTensor& mat_b,
+              const phi::DenseTensor& mat_b,
               bool trans_b,
               T alpha,
-              pten::DenseTensor* mat_out,
+              phi::DenseTensor* mat_out,
               T beta) const;
 
   template <typename T>
-  void MatMul(const pten::DenseTensor& mat_a,
+  void MatMul(const phi::DenseTensor& mat_a,
               bool trans_a,
-              const pten::DenseTensor& mat_b,
+              const phi::DenseTensor& mat_b,
               bool trans_b,
-              pten::DenseTensor* mat_out) const {
+              phi::DenseTensor* mat_out) const {
     MatMul(mat_a,
            trans_a,
            mat_b,
@@ -223,9 +223,9 @@ class Blas {
   }
 
   template <typename T>
-  void MatMul(const pten::DenseTensor& mat_a,
-              const pten::DenseTensor& mat_b,
-              pten::DenseTensor* mat_out) const {
+  void MatMul(const phi::DenseTensor& mat_a,
+              const phi::DenseTensor& mat_b,
+              phi::DenseTensor* mat_out) const {
     this->template MatMul<T>(mat_a, false, mat_b, false, mat_out);
   }
 
@@ -325,12 +325,12 @@ class Blas {
 #endif
 
   template <typename T>
-  void MatMul(const pten::DenseTensor& mat_a,
+  void MatMul(const phi::DenseTensor& mat_a,
               const MatDescriptor& dim_a,
-              const pten::DenseTensor& mat_b,
+              const phi::DenseTensor& mat_b,
               const MatDescriptor& dim_b,
               T alpha,
-              pten::DenseTensor* mat_out,
+              phi::DenseTensor* mat_out,
               T beta) const;
 
   template <typename T>
@@ -592,7 +592,7 @@ inline BlasT<DeviceContext, T> GetBlas(const DeviceContext& dev_ctx) {
 }
 
 }  // namespace funcs
-}  // namespace pten
+}  // namespace phi
 
 #include "paddle/phi/kernels/funcs/blas/blas_impl.h"
 #ifdef PADDLE_WITH_CUDA

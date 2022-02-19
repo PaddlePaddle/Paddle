@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/utils/type_registry.h"
 
-namespace pten {
+namespace phi {
 namespace tests {
 
 template <typename T>
@@ -26,7 +26,7 @@ class Base {
 
  private:
   template <typename T1, typename T2>
-  friend class pten::TypeInfoTraits;
+  friend class phi::TypeInfoTraits;
   TypeInfo<Base<T>> type_info_{TypeInfo<Base<T>>::kUnknownType};
 };
 
@@ -68,4 +68,4 @@ TEST(type_info, base) {
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi

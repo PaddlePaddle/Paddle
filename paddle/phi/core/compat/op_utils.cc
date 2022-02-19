@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
 DefaultKernelSignatureMap& DefaultKernelSignatureMap::Instance() {
   static DefaultKernelSignatureMap g_default_kernel_sig_map;
@@ -26,4 +26,4 @@ OpUtilsMap& OpUtilsMap::Instance() {
   return g_op_utils_map;
 }
 
-}  // namespace pten
+}  // namespace phi

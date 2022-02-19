@@ -14,7 +14,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/phi/common/place.h"
 
-namespace pten {
+namespace phi {
 
 class XPUContext;
 
@@ -49,18 +49,18 @@ std::vector<int> GetXPUSelectedDevices();
 void MemcpySyncH2D(void *dst,
                    const void *src,
                    size_t count,
-                   const pten::XPUPlace &dst_place);
+                   const phi::XPUPlace &dst_place);
 void MemcpySyncD2H(void *dst,
                    const void *src,
                    size_t count,
-                   const pten::XPUPlace &src_place,
-                   const pten::XPUContext &dev_ctx);
+                   const phi::XPUPlace &src_place,
+                   const phi::XPUContext &dev_ctx);
 void MemcpySyncD2D(void *dst,
-                   const pten::XPUPlace &dst_place,
+                   const phi::XPUPlace &dst_place,
                    const void *src,
-                   const pten::XPUPlace &src_place,
+                   const phi::XPUPlace &src_place,
                    size_t count,
-                   const pten::XPUContext &dev_ctx);
+                   const phi::XPUContext &dev_ctx);
 
 class XPUDeviceGuard {
  public:
@@ -90,4 +90,4 @@ XPUVersion get_xpu_version(int dev_id);
 
 }  // namespace xpu
 }  // namespace backends
-}  // namespace pten
+}  // namespace phi

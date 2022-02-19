@@ -214,14 +214,14 @@ __global__ void LogSoftmaxForwardCUDAKernelNotLastAxis(
       for (int d = threadIdx.x; d < dim_size; d += blockDim.x) {
         const AccT value =
             static_cast<AccT>(input[data_offset + d * dim_stride]);
-        max_value = pten::funcs::MaxFunctor<AccT>()(max_value, value);
+        max_value = phi::funcs::MaxFunctor<AccT>()(max_value, value);
       }
       // If there are more than 1 threads along block x, reduce all max_values
       // and get the global max_value, which is the max value along "axis".
       // If there is only one thread along block x, no need to reduce, as the
       // 'max_value' is the global max_value.
       if (blockDim.x > 1) {
-        max_value = BlockReduceAlongDimX<AccT, pten::funcs::MaxFunctor>(
+        max_value = BlockReduceAlongDimX<AccT, phi::funcs::MaxFunctor>(
             sdata, max_value);
       }
 
@@ -233,7 +233,7 @@ __global__ void LogSoftmaxForwardCUDAKernelNotLastAxis(
                         max_value);
       }
       if (blockDim.x > 1) {
-        sum = BlockReduceAlongDimX<AccT, pten::funcs::AddFunctor>(sdata, sum);
+        sum = BlockReduceAlongDimX<AccT, phi::funcs::AddFunctor>(sdata, sum);
       }
 
       // 3. input-max-log_sum and write to output

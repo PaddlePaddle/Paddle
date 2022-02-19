@@ -18,7 +18,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void ExpandGradKernel(const Context& ctx,
@@ -27,4 +27,4 @@ void ExpandGradKernel(const Context& ctx,
                       const ScalarArray& shape,
                       DenseTensor* in_grad);
 
-}  // namespace pten
+}  // namespace phi

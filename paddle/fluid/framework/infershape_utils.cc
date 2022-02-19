@@ -31,7 +31,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-class InferShapeArgumentMappingContext : public pten::ArgumentMappingContext {
+class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
  public:
   explicit InferShapeArgumentMappingContext(const InferShapeContext& ctx)
       : ctx_(ctx) {}
@@ -86,7 +86,7 @@ class InferShapeArgumentMappingContext : public pten::ArgumentMappingContext {
 };
 
 // TODO(chenweihang): Support TensorArray later
-class CompatMetaTensor : public pten::MetaTensor {
+class CompatMetaTensor : public phi::MetaTensor {
  public:
   CompatMetaTensor(InferShapeVarPtr var, bool is_runtime)
       : var_(std::move(var)), is_runtime_(is_runtime) {}
@@ -110,27 +110,27 @@ class CompatMetaTensor : public pten::MetaTensor {
   DDim dims() const override {
     if (is_runtime_) {
       auto* var = BOOST_GET_CONST(Variable*, var_);
-      if (var->IsType<pten::DenseTensor>()) {
-        return var->Get<pten::DenseTensor>().dims();
-      } else if (var->IsType<pten::SelectedRows>()) {
-        return var->Get<pten::SelectedRows>().dims();
+      if (var->IsType<phi::DenseTensor>()) {
+        return var->Get<phi::DenseTensor>().dims();
+      } else if (var->IsType<phi::SelectedRows>()) {
+        return var->Get<phi::SelectedRows>().dims();
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Currently, only can get dims from DenseTensor or SelectedRows."));
       }
     } else {
       auto* var = BOOST_GET_CONST(VarDesc*, var_);
-      return pten::make_ddim(var->GetShape());
+      return phi::make_ddim(var->GetShape());
     }
   }
 
-  pten::DataType dtype() const override {
+  phi::DataType dtype() const override {
     if (is_runtime_) {
       auto* var = BOOST_GET_CONST(Variable*, var_);
-      if (var->IsType<pten::DenseTensor>()) {
-        return var->Get<pten::DenseTensor>().dtype();
-      } else if (var->IsType<pten::SelectedRows>()) {
-        return var->Get<pten::SelectedRows>().dtype();
+      if (var->IsType<phi::DenseTensor>()) {
+        return var->Get<phi::DenseTensor>().dtype();
+      } else if (var->IsType<phi::SelectedRows>()) {
+        return var->Get<phi::SelectedRows>().dtype();
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Currently, only can get dtype from DenseTensor or SelectedRows."));
@@ -155,12 +155,12 @@ class CompatMetaTensor : public pten::MetaTensor {
   void set_dims(const DDim& dims) override {
     if (is_runtime_) {
       auto* var = BOOST_GET(Variable*, var_);
-      if (var->IsType<pten::DenseTensor>()) {
-        auto* tensor = var->GetMutable<pten::DenseTensor>();
-        pten::DenseTensorUtils::GetMutableMeta(tensor)->dims = dims;
-      } else if (var->IsType<pten::SelectedRows>()) {
-        auto* tensor = var->GetMutable<pten::SelectedRows>()->mutable_value();
-        pten::DenseTensorUtils::GetMutableMeta(tensor)->dims = dims;
+      if (var->IsType<phi::DenseTensor>()) {
+        auto* tensor = var->GetMutable<phi::DenseTensor>();
+        phi::DenseTensorUtils::GetMutableMeta(tensor)->dims = dims;
+      } else if (var->IsType<phi::SelectedRows>()) {
+        auto* tensor = var->GetMutable<phi::SelectedRows>()->mutable_value();
+        phi::DenseTensorUtils::GetMutableMeta(tensor)->dims = dims;
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Currently, only can set dims from DenseTensor or SelectedRows."));
@@ -171,15 +171,15 @@ class CompatMetaTensor : public pten::MetaTensor {
     }
   }
 
-  void set_dtype(pten::DataType dtype) override {
+  void set_dtype(phi::DataType dtype) override {
     if (is_runtime_) {
       auto* var = BOOST_GET(Variable*, var_);
-      if (var->IsType<pten::DenseTensor>()) {
-        auto* tensor = var->GetMutable<pten::DenseTensor>();
-        pten::DenseTensorUtils::GetMutableMeta(tensor)->dtype = dtype;
-      } else if (var->IsType<pten::SelectedRows>()) {
-        auto* tensor = var->GetMutable<pten::SelectedRows>()->mutable_value();
-        pten::DenseTensorUtils::GetMutableMeta(tensor)->dtype = dtype;
+      if (var->IsType<phi::DenseTensor>()) {
+        auto* tensor = var->GetMutable<phi::DenseTensor>();
+        phi::DenseTensorUtils::GetMutableMeta(tensor)->dtype = dtype;
+      } else if (var->IsType<phi::SelectedRows>()) {
+        auto* tensor = var->GetMutable<phi::SelectedRows>()->mutable_value();
+        phi::DenseTensorUtils::GetMutableMeta(tensor)->dtype = dtype;
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Currently, only can set dtype from DenseTensor or SelectedRows."));
@@ -194,8 +194,8 @@ class CompatMetaTensor : public pten::MetaTensor {
     if (is_runtime_) {
       auto* var = BOOST_GET(Variable*, var_);
       LoDTensor* tensor = var->GetMutable<LoDTensor>();
-      pten::DenseTensorUtils::GetMutableMeta(
-          static_cast<pten::DenseTensor*>(tensor))
+      phi::DenseTensorUtils::GetMutableMeta(
+          static_cast<phi::DenseTensor*>(tensor))
           ->layout = layout;
     } else {
       // NOTE(chenweihang): do nothing
@@ -206,9 +206,9 @@ class CompatMetaTensor : public pten::MetaTensor {
   void share_lod(const MetaTensor& meta_tensor) override {
     if (is_runtime_) {
       auto* var = BOOST_GET(Variable*, var_);
-      if (var->IsType<pten::DenseTensor>()) {
-        auto* tensor = var->GetMutable<pten::DenseTensor>();
-        pten::DenseTensorUtils::GetMutableMeta(tensor)->lod =
+      if (var->IsType<phi::DenseTensor>()) {
+        auto* tensor = var->GetMutable<phi::DenseTensor>();
+        phi::DenseTensorUtils::GetMutableMeta(tensor)->lod =
             static_cast<const CompatMetaTensor&>(meta_tensor).GetRuntimeLoD();
       } else {
         // NOTE(chenweihang): do nothing
@@ -233,8 +233,8 @@ class CompatMetaTensor : public pten::MetaTensor {
     // special case 2: share height and rows of SelectedRows in runtime
     if (is_runtime_) {
       auto* var = BOOST_GET(Variable*, var_);
-      if (var->IsType<pten::SelectedRows>()) {
-        auto* selected_rows = var->GetMutable<pten::SelectedRows>();
+      if (var->IsType<phi::SelectedRows>()) {
+        auto* selected_rows = var->GetMutable<phi::SelectedRows>();
         auto& input_selected_rows =
             static_cast<const CompatMetaTensor&>(meta_tensor).GetSelectedRows();
         selected_rows->set_rows(input_selected_rows.rows());
@@ -254,26 +254,26 @@ class CompatMetaTensor : public pten::MetaTensor {
     return var->GetLoDLevel();
   }
 
-  const pten::SelectedRows& GetSelectedRows() const {
+  const phi::SelectedRows& GetSelectedRows() const {
     PADDLE_ENFORCE_EQ(is_runtime_, true,
                       platform::errors::Unavailable(
                           "Only can get Tensor from MetaTensor in rumtime."));
     auto* var = BOOST_GET_CONST(Variable*, var_);
-    PADDLE_ENFORCE_EQ(var->IsType<pten::SelectedRows>(), true,
+    PADDLE_ENFORCE_EQ(var->IsType<phi::SelectedRows>(), true,
                       platform::errors::Unavailable(
                           "The Tensor in MetaTensor is not SelectedRows."));
-    return var->Get<pten::SelectedRows>();
+    return var->Get<phi::SelectedRows>();
   }
 
   InferShapeVarPtr var_;
   bool is_runtime_;
 };
 
-pten::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
-                                             const std::string& op_type) {
+phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
+                                            const std::string& op_type) {
   // 1. get kernel args
   InitDefaultKernelSignatureMap();
-  auto arg_map_fn = pten::OpUtilsMap::Instance().GetArgumentMappingFn(op_type);
+  auto arg_map_fn = phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_type);
   PADDLE_ENFORCE_NOT_NULL(
       arg_map_fn, platform::errors::NotFound(
                       "The ArgumentMappingFn of %s op is not found.", op_type));
@@ -282,14 +282,14 @@ pten::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
   VLOG(3) << "BuildInferMetaContext: op kernel signature - " << signature;
 
   // 2. build infermeta context
-  pten::InferMetaContext infer_meta_context(ctx->IsRuntime());
+  phi::InferMetaContext infer_meta_context(ctx->IsRuntime());
 
   auto& input_names = std::get<0>(signature.args);
   auto& attr_names = std::get<1>(signature.args);
   auto& output_names = std::get<2>(signature.args);
 
   // TODO(chenweihang): support multiple inputs and outputs later
-  pten::InferMetaContext infer_mete_context;
+  phi::InferMetaContext infer_mete_context;
   for (auto& in_name : input_names) {
     if (ctx->HasInput(in_name)) {
       infer_meta_context.EmplaceBackInput(std::make_shared<CompatMetaTensor>(

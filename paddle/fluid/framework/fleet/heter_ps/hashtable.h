@@ -81,7 +81,7 @@ class HashTable {
             << " push value size: " << push_grad_value_size_;
   }
 
-  std::unique_ptr<pten::RWLock> rwlock_{nullptr};
+  std::unique_ptr<phi::RWLock> rwlock_{nullptr};
 
  private:
   TableContainer<KeyType, ValType>* container_;

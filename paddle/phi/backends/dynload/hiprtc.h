@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/backends/dynload/port.h"
 
-namespace pten {
+namespace phi {
 namespace dynload {
 
 extern std::once_flag hiprtc_dso_flag;
@@ -32,7 +32,7 @@ extern bool HasNVRTC();
     auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) { \
       using hiprtc_func = decltype(&::__name);                       \
       std::call_once(hiprtc_dso_flag, []() {                         \
-        hiprtc_dso_handle = pten::dynload::GetNVRTCDsoHandle();      \
+        hiprtc_dso_handle = phi::dynload::GetNVRTCDsoHandle();       \
       });                                                            \
       static void* p_##__name = dlsym(hiprtc_dso_handle, #__name);   \
       return reinterpret_cast<hiprtc_func>(p_##__name)(args...);     \
@@ -59,4 +59,4 @@ HIPRTC_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_HIPRTC_WRAP);
 #undef DECLARE_DYNAMIC_LOAD_HIPRTC_WRAP
 
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi

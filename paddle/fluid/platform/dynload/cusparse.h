@@ -23,8 +23,8 @@ namespace paddle {
 namespace platform {
 namespace dynload {
 
-#define PLATFORM_DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP(__name)   \
-  using DynLoad__##__name = pten::dynload::DynLoad__##__name; \
+#define PLATFORM_DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP(__name)  \
+  using DynLoad__##__name = phi::dynload::DynLoad__##__name; \
   extern DynLoad__##__name __name
 
 #if defined(PADDLE_WITH_CUDA)

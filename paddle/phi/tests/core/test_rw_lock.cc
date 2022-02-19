@@ -17,16 +17,16 @@ limitations under the License. */
 #include <gtest/gtest.h>  // NOLINT
 #include <thread>         // NOLINT
 
-namespace pten {
+namespace phi {
 namespace tests {
 
-void f1(pten::RWLock *lock) {
+void f1(phi::RWLock *lock) {
   lock->RDLock();
   lock->UNLock();
 }
 
 TEST(RWLOCK, read_read) {
-  pten::RWLock lock;
+  phi::RWLock lock;
   lock.RDLock();
   std::thread t1(f1, &lock);
   std::thread t2(f1, &lock);
@@ -35,20 +35,20 @@ TEST(RWLOCK, read_read) {
   lock.UNLock();
 }
 
-void f2(pten::RWLock *lock, std::vector<int> *result) {
+void f2(phi::RWLock *lock, std::vector<int> *result) {
   lock->RDLock();
   ASSERT_EQ(result->size(), 0UL);
   lock->UNLock();
 }
 
-void f3(pten::RWLock *lock, std::vector<int> *result) {
+void f3(phi::RWLock *lock, std::vector<int> *result) {
   lock->WRLock();
   result->push_back(1);
   lock->UNLock();
 }
 
 TEST(RWLOCK, read_write) {
-  pten::RWLock lock;
+  phi::RWLock lock;
   std::vector<int> result;
 
   lock.RDLock();
@@ -62,14 +62,14 @@ TEST(RWLOCK, read_write) {
   ASSERT_EQ(result.size(), 1UL);
 }
 
-void f4(pten::RWLock *lock, std::vector<int> *result) {
+void f4(phi::RWLock *lock, std::vector<int> *result) {
   lock->RDLock();
   ASSERT_EQ(result->size(), 1UL);
   lock->UNLock();
 }
 
 TEST(RWLOCK, write_read) {
-  pten::RWLock lock;
+  phi::RWLock lock;
   std::vector<int> result;
 
   lock.WRLock();
@@ -80,4 +80,4 @@ TEST(RWLOCK, write_read) {
   t1.join();
 }
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi

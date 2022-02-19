@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/backends/dynload/port.h"
 
-namespace pten {
+namespace phi {
 namespace dynload {
 
 extern std::once_flag cupti_dso_flag;
@@ -41,7 +41,7 @@ extern void *cupti_dso_handle;
     inline CUptiResult CUPTIAPI operator()(Args... args) {        \
       using cuptiFunc = decltype(&::__name);                      \
       std::call_once(cupti_dso_flag, []() {                       \
-        cupti_dso_handle = pten::dynload::GetCUPTIDsoHandle();    \
+        cupti_dso_handle = phi::dynload::GetCUPTIDsoHandle();     \
       });                                                         \
       static void *p_##__name = dlsym(cupti_dso_handle, #__name); \
       return reinterpret_cast<cuptiFunc>(p_##__name)(args...);    \
@@ -69,6 +69,6 @@ CUPTI_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUPTI_WRAP);
 
 #undef DECLARE_DYNAMIC_LOAD_CUPTI_WRAP
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi
 
 #endif  // PADDLE_WITH_CUPTI

@@ -18,34 +18,34 @@ limitations under the License. */
 #include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/common/backend.h"
 
-namespace pten {
+namespace phi {
 namespace tests {
 
 TEST(Backend, OStream) {
   std::ostringstream oss;
-  oss << pten::Backend::UNDEFINED;
+  oss << phi::Backend::UNDEFINED;
   EXPECT_EQ(oss.str(), "Undefined");
   oss.str("");
-  oss << pten::Backend::CPU;
+  oss << phi::Backend::CPU;
   EXPECT_EQ(oss.str(), "CPU");
   oss.str("");
-  oss << pten::Backend::GPU;
+  oss << phi::Backend::GPU;
   EXPECT_EQ(oss.str(), "GPU");
   oss.str("");
-  oss << pten::Backend::XPU;
+  oss << phi::Backend::XPU;
   EXPECT_EQ(oss.str(), "XPU");
   oss.str("");
-  oss << pten::Backend::NPU;
+  oss << phi::Backend::NPU;
   EXPECT_EQ(oss.str(), "NPU");
   oss.str("");
-  oss << pten::Backend::MKLDNN;
+  oss << phi::Backend::MKLDNN;
   EXPECT_EQ(oss.str(), "MKLDNN");
   oss.str("");
-  oss << pten::Backend::CUDNN;
+  oss << phi::Backend::CUDNN;
   EXPECT_EQ(oss.str(), "CUDNN");
   oss.str("");
   try {
-    oss << pten::Backend::NUM_BACKENDS;
+    oss << phi::Backend::NUM_BACKENDS;
   } catch (const std::exception& exception) {
     std::string ex_msg = exception.what();
     EXPECT_TRUE(ex_msg.find("Invalid enum backend type") != std::string::npos);
@@ -53,4 +53,4 @@ TEST(Backend, OStream) {
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi

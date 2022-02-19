@@ -111,7 +111,7 @@ class CinnCompiler {
   std::unordered_map<std::int64_t, std::unique_ptr<CinnCompiledObject>>
       index2cache_;
   std::atomic_int64_t real_compiled_num_{0};
-  mutable pten::RWLock rwlock_;
+  mutable phi::RWLock rwlock_;
 
   DISABLE_COPY_AND_ASSIGN(CinnCompiler);
 };

@@ -19,52 +19,52 @@ limitations under the License. */
 #include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/common/data_type.h"
 
-namespace pten {
+namespace phi {
 namespace tests {
 
 TEST(DataType, OStream) {
   std::ostringstream oss;
-  oss << pten::DataType::UNDEFINED;
+  oss << phi::DataType::UNDEFINED;
   EXPECT_EQ(oss.str(), "Undefined");
   oss.str("");
-  oss << pten::DataType::BOOL;
+  oss << phi::DataType::BOOL;
   EXPECT_EQ(oss.str(), "bool");
   oss.str("");
-  oss << pten::DataType::INT8;
+  oss << phi::DataType::INT8;
   EXPECT_EQ(oss.str(), "int8");
   oss.str("");
-  oss << pten::DataType::UINT8;
+  oss << phi::DataType::UINT8;
   EXPECT_EQ(oss.str(), "uint8");
   oss.str("");
-  oss << pten::DataType::INT16;
+  oss << phi::DataType::INT16;
   EXPECT_EQ(oss.str(), "int16");
   oss.str("");
-  oss << pten::DataType::INT32;
+  oss << phi::DataType::INT32;
   EXPECT_EQ(oss.str(), "int32");
   oss.str("");
-  oss << pten::DataType::INT64;
+  oss << phi::DataType::INT64;
   EXPECT_EQ(oss.str(), "int64");
   oss.str("");
-  oss << pten::DataType::BFLOAT16;
+  oss << phi::DataType::BFLOAT16;
   EXPECT_EQ(oss.str(), "bfloat16");
   oss.str("");
-  oss << pten::DataType::FLOAT16;
+  oss << phi::DataType::FLOAT16;
   EXPECT_EQ(oss.str(), "float16");
   oss.str("");
-  oss << pten::DataType::FLOAT32;
+  oss << phi::DataType::FLOAT32;
   EXPECT_EQ(oss.str(), "float32");
   oss.str("");
-  oss << pten::DataType::FLOAT64;
+  oss << phi::DataType::FLOAT64;
   EXPECT_EQ(oss.str(), "float64");
   oss.str("");
-  oss << pten::DataType::COMPLEX64;
+  oss << phi::DataType::COMPLEX64;
   EXPECT_EQ(oss.str(), "complex64");
   oss.str("");
-  oss << pten::DataType::COMPLEX128;
+  oss << phi::DataType::COMPLEX128;
   EXPECT_EQ(oss.str(), "complex128");
   oss.str("");
   try {
-    oss << pten::DataType::NUM_DATA_TYPES;
+    oss << phi::DataType::NUM_DATA_TYPES;
   } catch (const std::exception& exception) {
     std::string ex_msg = exception.what();
     EXPECT_TRUE(ex_msg.find("Invalid enum data type") != std::string::npos);
@@ -72,4 +72,4 @@ TEST(DataType, OStream) {
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi

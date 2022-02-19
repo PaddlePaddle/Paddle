@@ -194,8 +194,8 @@ class Scope : public ScopeBase {
 #ifndef PADDLE_ON_INFERENCE
 
  private:
-  mutable pten::RWLock kids_lock_;
-  mutable pten::RWLock vars_lock_;
+  mutable phi::RWLock kids_lock_;
+  mutable phi::RWLock vars_lock_;
 #endif
 };
 

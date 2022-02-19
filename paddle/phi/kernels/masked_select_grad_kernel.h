@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void MaskedSelectGradKernel(const Context& dev_ctx,

@@ -19,7 +19,7 @@
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void NormKernel(const Context& ctx,
@@ -74,6 +74,6 @@ void NormKernel(const Context& ctx,
   y.device(*place) = x_r / norm_reshape.reshape(rshape).broadcast(bcast);
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_KERNEL(norm, CPU, ALL_LAYOUT, pten::NormKernel, float, double) {}
+PT_REGISTER_KERNEL(norm, CPU, ALL_LAYOUT, phi::NormKernel, float, double) {}

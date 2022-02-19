@@ -14,7 +14,7 @@
 
 #pragma once
 
-namespace pten {
+namespace phi {
 namespace funcs {
 
 //////// Sum Functor ///////
@@ -34,4 +34,4 @@ struct MeanFunctor {
 };
 
 }  // namespace funcs
-}  // namespace pten
+}  // namespace phi

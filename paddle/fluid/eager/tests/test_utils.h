@@ -34,7 +34,7 @@ bool CompareGradTensorWithValue(const paddle::experimental::Tensor& target,
                                 T value) {
   egr::AutogradMeta* meta = egr::EagerUtils::unsafe_autograd_meta(target);
   auto grad_dense =
-      std::dynamic_pointer_cast<pten::DenseTensor>(meta->Grad().impl());
+      std::dynamic_pointer_cast<phi::DenseTensor>(meta->Grad().impl());
   T* ptr = grad_dense->data<T>();
 
   std::vector<T> host_data(grad_dense->numel());
@@ -68,7 +68,7 @@ template <typename T>
 bool CompareTensorWithValue(const paddle::experimental::Tensor& target,
                             T value) {
   // TODO(jiabin): Support Selected Rows later
-  auto dense_t = std::dynamic_pointer_cast<pten::DenseTensor>(target.impl());
+  auto dense_t = std::dynamic_pointer_cast<phi::DenseTensor>(target.impl());
   T* ptr = dense_t->data<T>();
 
   std::vector<T> host_data(dense_t->numel());

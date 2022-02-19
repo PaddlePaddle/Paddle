@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/empty_kernel.h"
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void ScaleKernel(const Context& dev_ctx,
@@ -43,7 +43,7 @@ DenseTensor Scale(const Context& dev_ctx,
                   const Scalar& scale,
                   float bias,
                   bool bias_after_scale) {
-  auto dense_out = pten::Empty<T, Context>(dev_ctx);
+  auto dense_out = phi::Empty<T, Context>(dev_ctx);
   MetaTensor meta_out(&dense_out);
   UnchangedInferMeta(x, &meta_out);
   ScaleKernel<T, Context>(
@@ -51,4 +51,4 @@ DenseTensor Scale(const Context& dev_ctx,
   return dense_out;
 }
 
-}  // namespace pten
+}  // namespace phi

@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <string>
 
-namespace pten {
+namespace phi {
 
 template <typename BaseT>
 class TypeRegistry;
@@ -56,4 +56,4 @@ template <typename BaseT, typename DerivedT>
 const TypeInfo<BaseT> TypeInfoTraits<BaseT, DerivedT>::kType =
     RegisterStaticType<BaseT>(DerivedT::name());
 
-}  // namespace pten
+}  // namespace phi

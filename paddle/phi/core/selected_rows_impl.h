@@ -29,7 +29,7 @@ limitations under the License. */
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/mixed_vector.h"
-namespace pten {
+namespace phi {
 class SelectedRowsImpl {
   /*
    * @brief We can use the SelectedRowsImpl structure to reproduce a sparse
@@ -144,10 +144,10 @@ class SelectedRowsImpl {
   /*
    * @brief Get complete Dims before
    */
-  pten::DDim GetCompleteDims() const {
+  phi::DDim GetCompleteDims() const {
     std::vector<int64_t> dims = vectorize(value_->dims());
     dims[0] = height_;
-    return pten::make_ddim(dims);
+    return phi::make_ddim(dims);
   }
 
   /// \brief Returns the number of elements contained in tensor.
@@ -158,7 +158,7 @@ class SelectedRowsImpl {
   /// \return The dims of the tensor.
   const DDim& dims() const noexcept {
     return value_->dims();
-    // return pten::make_ddim(dims);
+    // return phi::make_ddim(dims);
   }
 
   /// \brief Returns the data type of the tensor.
@@ -193,4 +193,4 @@ class SelectedRowsImpl {
   std::unique_ptr<RWLock> rwlock_{nullptr};
 };
 
-}  // namespace pten
+}  // namespace phi

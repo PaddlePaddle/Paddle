@@ -27,14 +27,14 @@
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/core/type_defs.h"
 
-namespace pten {
+namespace phi {
 
 #define PT_KERNEL(...) \
-  ::pten::KernelImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::Compute
+  ::phi::KernelImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::Compute
 
-#define PT_VARIADIC_KERNEL(...)                                       \
-  reinterpret_cast<void*>(&::pten::KernelImpl<decltype(&__VA_ARGS__), \
-                                              &__VA_ARGS__>::VariadicCompute)
+#define PT_VARIADIC_KERNEL(...)                                      \
+  reinterpret_cast<void*>(&::phi::KernelImpl<decltype(&__VA_ARGS__), \
+                                             &__VA_ARGS__>::VariadicCompute)
 
 #define PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(dev_ctx)           \
   template <typename... Tail>                                                \
@@ -233,7 +233,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(double);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(int);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(int64_t);
-  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(pten::dtype::float16);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(phi::dtype::float16);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const Scalar&);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataType);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataLayout);
@@ -268,4 +268,4 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   };
 };
 
-}  // namespace pten
+}  // namespace phi

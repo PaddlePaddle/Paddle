@@ -105,7 +105,7 @@ class KthvalueCPUKernel : public framework::OpKernel<T> {
     auto out_dims = output->dims();
     if (axis == in_dims.size() - 1) {
       const int64_t& input_height =
-          pten::product(pten::slice_ddim(in_dims, 0, in_dims.size() - 1));
+          phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
       const int64_t& input_width = in_dims[in_dims.size() - 1];
       getKthvalue<T, int64_t>(input_height, input_width, in_dims.size(), input,
                               output_data, indices_data, k);
@@ -128,7 +128,7 @@ class KthvalueCPUKernel : public framework::OpKernel<T> {
         for (int i = axis + 1; i < in_dims.size(); i++) {
           tmp_out_shape.emplace_back(in_dims[i]);
         }
-        framework::DDim tmp_out_dims = pten::make_ddim(tmp_out_shape);
+        framework::DDim tmp_out_dims = phi::make_ddim(tmp_out_shape);
         output->Resize(tmp_out_dims);
         indices->Resize(tmp_out_dims);
       }
@@ -149,7 +149,7 @@ class KthvalueCPUKernel : public framework::OpKernel<T> {
                                                   &trans_inp, trans);
 
       const int64_t input_height =
-          pten::product(pten::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+          phi::product(phi::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
       const int64_t input_width = trans_dims[trans_dims.size() - 1];
       framework::Tensor tmp_out, tmp_indices;
       T* t_out = tmp_out.mutable_data<T>(trans_out_dims, context.GetPlace());
@@ -194,12 +194,12 @@ class KthvalueGradCPUKernel : public framework::OpKernel<T> {
       for (int i = axis + 1; i < in_dims.size(); i++) {
         tmp_out_shape.emplace_back(out_dims[i - 1]);
       }
-      out_dims = pten::make_ddim(tmp_out_shape);
+      out_dims = phi::make_ddim(tmp_out_shape);
     }
     T* x_grad_data = x_grad->mutable_data<T>(context.GetPlace());
     if (axis == in_dims.size() - 1) {
       const int64_t input_height =
-          pten::product(pten::slice_ddim(in_dims, 0, in_dims.size() - 1));
+          phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
       const int64_t input_width = in_dims[in_dims.size() - 1];
       memset(x_grad_data, 0, x_grad->numel() * sizeof(T));
       if (keepdim) {
@@ -264,8 +264,8 @@ class KthvalueGradCPUKernel : public framework::OpKernel<T> {
         TransCompute<platform::CPUDeviceContext, int64_t>(
             ndims, dev_context, indices_tmp, &trans_ind, trans);
       }
-      const int64_t input_height = pten::product(
-          pten::slice_ddim(trans_in_dims, 0, trans_in_dims.size() - 1));
+      const int64_t input_height = phi::product(
+          phi::slice_ddim(trans_in_dims, 0, trans_in_dims.size() - 1));
       const int64_t input_width = trans_in_dims[trans_in_dims.size() - 1];
       framework::Tensor tmp_out;
       T* t_out = tmp_out.mutable_data<T>(trans_in_dims, context.GetPlace());

@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 
-namespace pten {
+namespace phi {
 
 template <typename Context>
 void ReshapeKernel(const Context& dev_ctx,
@@ -45,4 +45,4 @@ DenseTensor Reshape(const Context& dev_ctx,
   return dense_out;
 }
 
-}  // namespace pten
+}  // namespace phi

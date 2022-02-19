@@ -17,12 +17,12 @@
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/impl/abs_grad_kernel_impl.h"
 
-using pten::dtype::complex;
+using phi::dtype::complex;
 
 PT_REGISTER_KERNEL(abs_grad,
                    CPU,
                    ALL_LAYOUT,
-                   pten::AbsGradKernel,
+                   phi::AbsGradKernel,
                    float,
                    double,
                    int,
@@ -32,7 +32,7 @@ PT_REGISTER_KERNEL(abs_grad,
 PT_REGISTER_KERNEL(abs_double_grad,
                    CPU,
                    ALL_LAYOUT,
-                   pten::AbsDoubleGradKernel,
+                   phi::AbsDoubleGradKernel,
                    float,
                    double,
                    int,

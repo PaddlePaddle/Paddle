@@ -17,7 +17,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void MaskedSelectGradKernel(const Context& dev_ctx,
@@ -41,12 +41,12 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
   }
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(masked_select_grad,
                    CPU,
                    ALL_LAYOUT,
-                   pten::MaskedSelectGradKernel,
+                   phi::MaskedSelectGradKernel,
                    float,
                    double,
                    int,

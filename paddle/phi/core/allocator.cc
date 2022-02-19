@@ -14,4 +14,4 @@ limitations under the License. */
 
 #include "paddle/phi/core/allocator.h"
 
-namespace pten {}  // namespace pten
+namespace phi {}  // namespace phi

@@ -14,7 +14,7 @@
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
 KernelSignature AbsOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("abs", {"X"}, {}, {"Out"});
@@ -30,9 +30,9 @@ KernelSignature AbsDoubleGradOpArgumentMapping(
   return KernelSignature("abs_double_grad", {"X", "DDX"}, {}, {"DDOut"});
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(abs, pten::AbsOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(abs_grad, pten::AbsGradOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(abs, phi::AbsOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(abs_grad, phi::AbsGradOpArgumentMapping);
 PT_REGISTER_ARG_MAPPING_FN(abs_double_grad,
-                           pten::AbsDoubleGradOpArgumentMapping);
+                           phi::AbsDoubleGradOpArgumentMapping);

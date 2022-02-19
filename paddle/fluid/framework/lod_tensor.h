@@ -30,7 +30,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-using LoDTensor = pten::DenseTensor;
+using LoDTensor = phi::DenseTensor;
 
 // Split Tensor and copy to each place specified in places.
 std::vector<LoDTensor> SplitLoDTensor(

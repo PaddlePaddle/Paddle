@@ -16,11 +16,11 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void TruncKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  DenseTensor* out);
 
-}  // namespace pten
+}  // namespace phi

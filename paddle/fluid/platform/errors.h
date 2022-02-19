@@ -16,7 +16,7 @@ limitations under the License. */
 #include "paddle/phi/core/errors.h"
 namespace paddle {
 namespace platform {
-namespace errors = ::pten::errors;
-using error = ::pten::ErrorCode;
+namespace errors = ::phi::errors;
+using error = ::phi::ErrorCode;
 }
 }

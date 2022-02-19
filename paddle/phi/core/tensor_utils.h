@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_meta.h"
 
-namespace pten {
+namespace phi {
 
 class DenseTensorUtils {
  public:
@@ -65,4 +65,4 @@ class DenseTensorUtils {
   }
 };
 
-}  // namespace pten
+}  // namespace phi

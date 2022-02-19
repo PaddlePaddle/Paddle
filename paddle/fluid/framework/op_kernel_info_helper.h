@@ -26,21 +26,21 @@ class OpKernelInfoHelper {
     return info.op_name_;
   }
 
-  static const pten::Backend& GetBackend(const paddle::OpKernelInfo& info) {
+  static const phi::Backend& GetBackend(const paddle::OpKernelInfo& info) {
     return info.backend_;
   }
 
-  static const pten::DataLayout& GetDataLayout(
+  static const phi::DataLayout& GetDataLayout(
       const paddle::OpKernelInfo& info) {
     return info.layout_;
   }
 
-  static const pten::DataType& GetDataType(const paddle::OpKernelInfo& info) {
+  static const phi::DataType& GetDataType(const paddle::OpKernelInfo& info) {
     return info.dtype_;
   }
 
-  static pten::KernelKey GetKernelKey(const paddle::OpKernelInfo& info) {
-    return pten::KernelKey(info.backend_, info.layout_, info.dtype_);
+  static phi::KernelKey GetKernelKey(const paddle::OpKernelInfo& info) {
+    return phi::KernelKey(info.backend_, info.layout_, info.dtype_);
   }
 
   static const CustomKernelFunc& GetKernelFn(const paddle::OpKernelInfo& info) {

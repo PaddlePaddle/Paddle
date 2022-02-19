@@ -84,7 +84,7 @@ class CenterLossKernel : public framework::OpKernel<T> {
     int numel = centers_diffacc.numel();
     std::memset(centers_diffacc_data, 0, sizeof(T) * numel);
 
-    auto blas = pten::funcs::GetBlas<DeviceContext, T>(ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
     int tLabel;
 
     const T *x_index;
@@ -145,8 +145,7 @@ class CenterLossGradKernel : public framework::OpKernel<T> {
         *context.template device_context<DeviceContext>().eigen_device();
     x_g->mutable_data<T>(context.GetPlace());
     // eigen matrix
-    auto x_grad =
-        EigenMatrix<T>::From(*x_g, pten::make_ddim({x_dims[0], cols}));
+    auto x_grad = EigenMatrix<T>::From(*x_g, phi::make_ddim({x_dims[0], cols}));
     x_grad.device(eigen_place) = grad_mat;
   }
 };

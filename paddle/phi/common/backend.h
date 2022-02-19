@@ -118,7 +118,7 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
     default: {
       size_t device_type_id_ = static_cast<size_t>(backend) -
                                static_cast<size_t>(Backend::NUM_BACKENDS);
-      std::string device_type = pten::GetGlobalDeviceType(device_type_id_);
+      std::string device_type = phi::GetGlobalDeviceType(device_type_id_);
       if (!device_type.empty()) {
         os << device_type;
       } else {
@@ -133,6 +133,6 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
 }  // namespace experimental
 }  // namespace paddle
 
-namespace pten {
+namespace phi {
 using Backend = paddle::experimental::Backend;
 }

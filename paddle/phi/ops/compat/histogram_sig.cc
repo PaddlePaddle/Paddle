@@ -14,12 +14,12 @@
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
 KernelSignature HistogramOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("histogram", {"X"}, {"bins", "min", "max"}, {"Out"});
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(histogram, pten::HistogramOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(histogram, phi::HistogramOpArgumentMapping);

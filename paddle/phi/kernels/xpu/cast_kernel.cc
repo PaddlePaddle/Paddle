@@ -22,7 +22,7 @@
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void CastKernel(const Context& dev_ctx,
@@ -30,43 +30,43 @@ void CastKernel(const Context& dev_ctx,
                 DataType out_dtype,
                 DenseTensor* out) {
   using XPUInTDType = typename XPUTypeTrait<T>::Type;
-  using float16 = typename XPUTypeTrait<pten::dtype::float16>::Type;
+  using float16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
 
   auto* in_data = x.data<T>();
   auto numel = x.numel();
 
   int r = -1;
   switch (out_dtype) {
-    case pten::DataType::FLOAT32:
+    case phi::DataType::FLOAT32:
       r = xpu::cast_v2<XPUInTDType, float>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUInTDType*>(in_data),
           out->mutable_data<float>(dev_ctx.GetPlace()),
           numel);
       break;
-    case pten::DataType::FLOAT16:
+    case phi::DataType::FLOAT16:
       r = xpu::cast_v2<XPUInTDType, float16>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUInTDType*>(in_data),
           reinterpret_cast<float16*>(
-              out->mutable_data<pten::dtype::float16>(dev_ctx.GetPlace())),
+              out->mutable_data<phi::dtype::float16>(dev_ctx.GetPlace())),
           numel);
       break;
-    case pten::DataType::INT64:
+    case phi::DataType::INT64:
       r = xpu::cast_v2<XPUInTDType, int64_t>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUInTDType*>(in_data),
           out->mutable_data<int64_t>(dev_ctx.GetPlace()),
           numel);
       break;
-    case pten::DataType::INT32:
+    case phi::DataType::INT32:
       r = xpu::cast_v2<XPUInTDType, int32_t>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUInTDType*>(in_data),
           out->mutable_data<int>(dev_ctx.GetPlace()),
           numel);
       break;
-    case pten::DataType::BOOL:
+    case phi::DataType::BOOL:
       r = xpu::cast_v2<XPUInTDType, bool>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUInTDType*>(in_data),
@@ -74,25 +74,25 @@ void CastKernel(const Context& dev_ctx,
           numel);
       break;
     default:
-      PADDLE_THROW(pten::errors::Unavailable(
+      PADDLE_THROW(phi::errors::Unavailable(
           "Not supported cast %d -> %d", x.dtype(), out_dtype));
   }
 
   PADDLE_ENFORCE_EQ(
       r,
       XPU_SUCCESS,
-      pten::errors::External(
+      phi::errors::External(
           "XPU CAST API return wrong value[%d %s].", r, XPUAPIErrorMsg[r]));
 }
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(cast,
                    XPU,
                    ALL_LAYOUT,
-                   pten::CastKernel,
+                   phi::CastKernel,
                    int32_t,
                    float,
-                   pten::dtype::float16,
+                   phi::dtype::float16,
                    int64_t,
                    bool) {
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);

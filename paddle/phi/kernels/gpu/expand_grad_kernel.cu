@@ -21,9 +21,9 @@
 PT_REGISTER_KERNEL(expand_grad,
                    GPU,
                    ALL_LAYOUT,
-                   pten::ExpandGradKernel,
+                   phi::ExpandGradKernel,
                    float,
                    double,
-                   pten::dtype::float16,
+                   phi::dtype::float16,
                    int,
                    int64_t) {}

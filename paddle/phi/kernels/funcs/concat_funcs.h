@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
-namespace pten {
+namespace phi {
 namespace funcs {
 
 static inline int64_t ComputeAxis(int64_t axis, int64_t rank) {
@@ -34,9 +34,9 @@ static inline int64_t ComputeAxis(int64_t axis, int64_t rank) {
   return axis > 0 ? axis : 0;
 }
 
-static inline pten::DDim ComputeAndCheckShape(
+static inline phi::DDim ComputeAndCheckShape(
     bool is_runtime,
-    const std::vector<pten::DDim>& inputs_dims,
+    const std::vector<phi::DDim>& inputs_dims,
     const size_t axis) {
   const size_t n = inputs_dims.size();
   auto out_dims = inputs_dims[0];

@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/infermeta_utils.h"
 
-namespace pten {
+namespace phi {
 
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->share_meta(x);
@@ -61,7 +61,7 @@ void FlattenInferMeta(const MetaTensor& x,
   for (int i = stop_axis + 1; i < in_dims_size; i++) {
     out_shape.push_back(x_dims[i]);
   }
-  const auto& out_dims = pten::make_ddim(out_shape);
+  const auto& out_dims = phi::make_ddim(out_shape);
   out->set_dims(out_dims);
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
@@ -85,10 +85,10 @@ void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out) {
   out->set_layout(x.layout());
 }
 
-static pten::DDim ValidateShape(const std::vector<int64_t> shape,
-                                const pten::DDim& in_dims) {
-  const int64_t in_size = pten::product(in_dims);
-  auto in_dims_vec = pten::vectorize(in_dims);
+static phi::DDim ValidateShape(const std::vector<int64_t> shape,
+                               const phi::DDim& in_dims) {
+  const int64_t in_size = phi::product(in_dims);
+  auto in_dims_vec = phi::vectorize(in_dims);
   bool all_positive = std::all_of(in_dims_vec.cbegin(),
                                   in_dims_vec.cend(),
                                   [](int64_t i) { return i > 0; });
@@ -108,7 +108,7 @@ static pten::DDim ValidateShape(const std::vector<int64_t> shape,
           paddle::platform::errors::InvalidArgument(
               "Only one dimension value of 'shape' in ReshapeOp can "
               "be -1. But received shape = [%s], shape[%d] is also -1.",
-              pten::make_ddim(shape),
+              phi::make_ddim(shape),
               i));
       unk_dim_idx = i;
     } else if (shape[i] == copy_dim_val) {
@@ -120,7 +120,7 @@ static pten::DDim ValidateShape(const std::vector<int64_t> shape,
               "the input tensor X's dimensions. "
               "But received shape = [%s], shape[%d] = 0, X's shape = [%s], "
               "X's dimensions = %d.",
-              pten::make_ddim(shape),
+              phi::make_ddim(shape),
               i,
               in_dims,
               in_dims.size()));
@@ -132,7 +132,7 @@ static pten::DDim ValidateShape(const std::vector<int64_t> shape,
               "Each dimension value of 'shape' in ReshapeOp must not "
               "be negative except one unknown dimension. "
               "But received  shape = [%s], shape[%d] = %d.",
-              pten::make_ddim(shape),
+              phi::make_ddim(shape),
               i,
               shape[i]));
     }
@@ -161,7 +161,7 @@ static pten::DDim ValidateShape(const std::vector<int64_t> shape,
               "'shape' is [%s], known capacity of 'shape' is %d.",
               in_dims,
               in_size,
-              pten::make_ddim(shape),
+              phi::make_ddim(shape),
               capacity));
     } else {
       output_shape[unk_dim_idx] = -1;
@@ -179,7 +179,7 @@ static pten::DDim ValidateShape(const std::vector<int64_t> shape,
               "[%s], the capacity of 'shape' is %d.",
               in_dims,
               in_size,
-              pten::make_ddim(shape),
+              phi::make_ddim(shape),
               capacity));
     }
   }
@@ -198,11 +198,11 @@ static pten::DDim ValidateShape(const std::vector<int64_t> shape,
             "capacity of 'Out' is %d.",
             in_dims,
             in_size,
-            pten::make_ddim(shape),
+            phi::make_ddim(shape),
             capacity));
   }
 
-  return pten::make_ddim(output_shape);
+  return phi::make_ddim(output_shape);
 }
 
 void InferMetaFromVecValue(const MetaTensor& x,
@@ -278,7 +278,7 @@ void ReduceInferMetaBase(const MetaTensor& x,
       out_dim_vector.push_back(1);
     }
   }
-  DDim out_dim = pten::make_ddim(out_dim_vector);
+  DDim out_dim = phi::make_ddim(out_dim_vector);
 
   DataType out_dtype;
   if (dtype != DataType::UNDEFINED) {
@@ -378,7 +378,7 @@ void SplitInferMeta(const MetaTensor& x,
                             "Only one dimension value of Attr(num_or_sections) "
                             "in SplitOp can be -1. "
                             "But received Attr(num_or_sections) = [%s].",
-                            pten::make_ddim(num_or_sections_data)));
+                            phi::make_ddim(num_or_sections_data)));
     }
 
     if (unknow_dim_idx != -1) {
@@ -394,7 +394,7 @@ void SplitInferMeta(const MetaTensor& x,
               "size "
               "along the split dimension. But received Attr(num_or_sections) "
               "= [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
-              pten::make_ddim(num_or_sections_data),
+              phi::make_ddim(num_or_sections_data),
               x.dims(),
               axis_value));
 
@@ -410,14 +410,14 @@ void SplitInferMeta(const MetaTensor& x,
               "size "
               "along the split dimension. But received Attr(num_or_sections)"
               " = [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
-              pten::make_ddim(num_or_sections_data),
+              phi::make_ddim(num_or_sections_data),
               x.dims(),
               axis_value));
     }
   }
 
   // setp2: fill out dims
-  std::vector<pten::DDim> out_dims(sections.size(), x.dims());
+  std::vector<phi::DDim> out_dims(sections.size(), x.dims());
   if (config.is_runtime || input_axis_dim > 0) {
     for (size_t i = 0; i < sections.size(); ++i) {
       out_dims[i][axis_value] = sections[i];
@@ -456,13 +456,13 @@ void TraceInferMeta(
   PADDLE_ENFORCE_GE(
       x_dims.size(),
       2,
-      pten::errors::OutOfRange(
+      phi::errors::OutOfRange(
           "Input's dim is out of range (expected at least 2, but got %ld).",
           x_dims.size()));
   PADDLE_ENFORCE_LT(
       dim1_,
       x_dims.size(),
-      pten::errors::OutOfRange(
+      phi::errors::OutOfRange(
           "Attr(dim1) is out of range (expected to be in range of [%ld, "
           "%ld], but got %ld).",
           -(x_dims.size()),
@@ -471,7 +471,7 @@ void TraceInferMeta(
   PADDLE_ENFORCE_LT(
       dim2_,
       x_dims.size(),
-      pten::errors::OutOfRange(
+      phi::errors::OutOfRange(
           "Attr(dim2) is out of range (expected to be in range of [%ld, "
           "%ld], but got %ld).",
           -(x_dims.size()),
@@ -480,10 +480,10 @@ void TraceInferMeta(
   PADDLE_ENFORCE_NE(
       dim1_,
       dim2_,
-      pten::errors::InvalidArgument("The dimensions should not be identical "
-                                    "%ld vs %ld.",
-                                    dim1,
-                                    dim2));
+      phi::errors::InvalidArgument("The dimensions should not be identical "
+                                   "%ld vs %ld.",
+                                   dim1,
+                                   dim2));
 
   auto sizes = vectorize(x_dims);
   if (x_dims.size() == 2) {
@@ -493,7 +493,7 @@ void TraceInferMeta(
     sizes.erase(sizes.begin() + std::max(dim1_, dim2_));
     sizes.erase(sizes.begin() + std::min(dim1_, dim2_));
   }
-  out->set_dims(pten::make_ddim(sizes));
+  out->set_dims(phi::make_ddim(sizes));
 }
 
-}  // namespace pten
+}  // namespace phi

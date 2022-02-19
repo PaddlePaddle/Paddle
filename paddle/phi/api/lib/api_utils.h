@@ -26,38 +26,38 @@ namespace experimental {
 
 /* ------------------ for input ----------------------- */
 
-inline std::shared_ptr<pten::DenseTensor> TensorToDenseTensor(
+inline std::shared_ptr<phi::DenseTensor> TensorToDenseTensor(
     const Tensor& tensor) {
-  return std::dynamic_pointer_cast<pten::DenseTensor>(tensor.impl());
+  return std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
 }
 
-inline std::unique_ptr<std::vector<pten::DenseTensor>> TensorToDenseTensor(
+inline std::unique_ptr<std::vector<phi::DenseTensor>> TensorToDenseTensor(
     const std::vector<Tensor>& tensors) {
-  auto pt_tensors = std::make_unique<std::vector<pten::DenseTensor>>();
+  auto pt_tensors = std::make_unique<std::vector<phi::DenseTensor>>();
   pt_tensors->reserve(tensors.size());
 
   for (const auto& t : tensors) {
     pt_tensors->push_back(
-        *std::dynamic_pointer_cast<pten::DenseTensor>(t.impl()));
+        *std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
   }
 
   return std::move(pt_tensors);
 }
 
-inline std::shared_ptr<pten::SelectedRows> TensorToSelectedRows(
+inline std::shared_ptr<phi::SelectedRows> TensorToSelectedRows(
     const Tensor& tensor) {
-  return std::dynamic_pointer_cast<pten::SelectedRows>(tensor.impl());
+  return std::dynamic_pointer_cast<phi::SelectedRows>(tensor.impl());
 }
 
 /* ----------------- for infer_meta --------------------- */
 
-inline pten::MetaTensor MakeMetaTensor(const pten::DenseTensor& tensor) {
-  return pten::MetaTensor(tensor);
+inline phi::MetaTensor MakeMetaTensor(const phi::DenseTensor& tensor) {
+  return phi::MetaTensor(tensor);
 }
 
-inline std::vector<pten::MetaTensor> MakeMetaTensor(
-    const std::vector<pten::DenseTensor>& tensors) {
-  std::vector<pten::MetaTensor> meta_tensors;
+inline std::vector<phi::MetaTensor> MakeMetaTensor(
+    const std::vector<phi::DenseTensor>& tensors) {
+  std::vector<phi::MetaTensor> meta_tensors;
   meta_tensors.reserve(tensors.size());
   for (const auto& t : tensors) {
     meta_tensors.emplace_back(t);
@@ -65,31 +65,31 @@ inline std::vector<pten::MetaTensor> MakeMetaTensor(
   return meta_tensors;
 }
 
-inline pten::MetaTensor MakeMetaTensor(const pten::SelectedRows& tensor) {
-  return pten::MetaTensor(tensor);
+inline phi::MetaTensor MakeMetaTensor(const phi::SelectedRows& tensor) {
+  return phi::MetaTensor(tensor);
 }
 
 /* ------------------ for output ----------------------- */
 
-inline pten::DenseTensor* SetKernelOutput(Backend backend, Tensor* out) {
+inline phi::DenseTensor* SetKernelOutput(Backend backend, Tensor* out) {
   if (!out->initialized()) {
-    auto dense_tensor = std::make_shared<pten::DenseTensor>(
-        pten::make_intrusive<SharedStorage>(pten::TransToPtenPlace(backend)),
-        pten::DenseTensorMeta());
+    auto dense_tensor = std::make_shared<phi::DenseTensor>(
+        phi::make_intrusive<SharedStorage>(phi::TransToPtenPlace(backend)),
+        phi::DenseTensorMeta());
     out->set_impl(dense_tensor);
     return dense_tensor.get();
   }
-  return static_cast<pten::DenseTensor*>(out->impl().get());
+  return static_cast<phi::DenseTensor*>(out->impl().get());
 }
 
-inline std::vector<pten::DenseTensor*> SetKernelOutput(
+inline std::vector<phi::DenseTensor*> SetKernelOutput(
     size_t out_size, Backend backend, std::vector<Tensor>* out) {
   out->reserve(out_size);
-  std::vector<pten::DenseTensor*> results(out_size);
+  std::vector<phi::DenseTensor*> results(out_size);
   for (size_t i = 0; i < out_size; ++i) {
-    auto tensor_ptr = std::make_shared<pten::DenseTensor>(
-        pten::make_intrusive<SharedStorage>(pten::TransToPtenPlace(backend)),
-        pten::DenseTensorMeta());
+    auto tensor_ptr = std::make_shared<phi::DenseTensor>(
+        phi::make_intrusive<SharedStorage>(phi::TransToPtenPlace(backend)),
+        phi::DenseTensorMeta());
     results[i] = tensor_ptr.get();
     out->emplace_back();
     out->back().set_impl(tensor_ptr);
@@ -97,14 +97,14 @@ inline std::vector<pten::DenseTensor*> SetKernelOutput(
   return results;
 }
 
-inline pten::SelectedRows* SetSelectedRowsKernelOutput(Backend backend,
-                                                       Tensor* out) {
+inline phi::SelectedRows* SetSelectedRowsKernelOutput(Backend backend,
+                                                      Tensor* out) {
   if (!out->initialized()) {
-    auto select_rows = std::make_shared<pten::SelectedRows>();
+    auto select_rows = std::make_shared<phi::SelectedRows>();
     out->set_impl(select_rows);
     return select_rows.get();
   }
-  return static_cast<pten::SelectedRows*>(out->impl().get());
+  return static_cast<phi::SelectedRows*>(out->impl().get());
 }
 
 }  // namespace experimental

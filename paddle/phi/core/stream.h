@@ -17,7 +17,7 @@ limitations under the License. */
 #include <cstdint>
 #include <memory>
 
-namespace pten {
+namespace phi {
 
 using StreamId = uint64_t;
 class Stream final {
@@ -29,4 +29,4 @@ class Stream final {
   StreamId id_;
 };
 
-}  // namespace pten
+}  // namespace phi

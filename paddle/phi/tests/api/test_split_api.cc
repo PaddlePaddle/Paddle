@@ -26,18 +26,18 @@ namespace paddle {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = pten::DDim;
+using DDim = phi::DDim;
 
 // TODO(chentianyu03): Remove this test after the API is used in the dygraph
 TEST(API, split) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  auto dense_x = std::make_shared<pten::DenseTensor>(
+  auto dense_x = std::make_shared<phi::DenseTensor>(
       alloc.get(),
-      pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            pten::make_ddim({4, 10}),
-                            pten::DataLayout::NCHW));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                           phi::make_ddim({4, 10}),
+                           phi::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x->mutable_data<float>(paddle::platform::CPUPlace());
 
@@ -57,19 +57,19 @@ TEST(API, split) {
   ASSERT_EQ(out[0].dims().size(), 2);
   ASSERT_EQ(out[0].dims()[0], 2);
   ASSERT_EQ(out[0].dims()[1], 10);
-  ASSERT_EQ(out[0].type(), pten::DataType::FLOAT32);
-  ASSERT_EQ(out[0].layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(out[0].type(), phi::DataType::FLOAT32);
+  ASSERT_EQ(out[0].layout(), phi::DataLayout::NCHW);
 
   ASSERT_EQ(out[1].dims().size(), 2);
   ASSERT_EQ(out[1].dims()[0], 2);
   ASSERT_EQ(out[1].dims()[1], 10);
-  ASSERT_EQ(out[1].type(), pten::DataType::FLOAT32);
-  ASSERT_EQ(out[1].layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(out[1].type(), phi::DataType::FLOAT32);
+  ASSERT_EQ(out[1].layout(), phi::DataLayout::NCHW);
 
-  auto out_data_0 = std::dynamic_pointer_cast<pten::DenseTensor>(out[0].impl())
-                        ->data<float>();
-  auto out_data_1 = std::dynamic_pointer_cast<pten::DenseTensor>(out[1].impl())
-                        ->data<float>();
+  auto out_data_0 =
+      std::dynamic_pointer_cast<phi::DenseTensor>(out[0].impl())->data<float>();
+  auto out_data_1 =
+      std::dynamic_pointer_cast<phi::DenseTensor>(out[1].impl())->data<float>();
   for (size_t i = 0; i < 4; ++i) {
     if (i < 20) {
       ASSERT_NEAR(dense_x_data[i], out_data_0[i], 1e-6);

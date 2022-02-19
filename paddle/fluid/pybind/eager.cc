@@ -64,9 +64,9 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
                             const std::vector<int>& dims = {},
                             framework::proto::VarType::Type var_type =
                                 paddle::framework::proto::VarType::LOD_TENSOR) {
-  auto ddims = pten::make_ddim(dims);
+  auto ddims = phi::make_ddim(dims);
   PADDLE_ENFORCE_GE(
-      pten::product(ddims), 0,
+      phi::product(ddims), 0,
       paddle::platform::errors::InvalidArgument(
           "Create Eager Tensor with dims contain minus num is ilegal"
           "Please check your code and make sure you new a "
@@ -77,11 +77,11 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
   autograd_meta->SetStopGradient(stop_gradient);
   if (var_type == paddle::framework::proto::VarType::LOD_TENSOR) {
     // TODO(jiabin): Maybe support LOD later
-    std::shared_ptr<pten::DenseTensor> dense_tensor =
-        std::make_shared<pten::DenseTensor>(
-            pten::make_intrusive<paddle::experimental::SharedStorage>(place),
-            pten::DenseTensorMeta(paddle::framework::TransToPtenDataType(dtype),
-                                  ddims));
+    std::shared_ptr<phi::DenseTensor> dense_tensor =
+        std::make_shared<phi::DenseTensor>(
+            phi::make_intrusive<paddle::experimental::SharedStorage>(place),
+            phi::DenseTensorMeta(paddle::framework::TransToPtenDataType(dtype),
+                                 ddims));
     dense_tensor->mutable_data(place);
     self->tensor.set_impl(dense_tensor);
   } else {
@@ -107,8 +107,8 @@ void InitTensorWithNumpyValue(TensorObject* self, const py::object& array,
           "EmptyTensorInitializer is "
           "forbidden. Please check your code and make sure you new a "
           "eager tensor before init it with NumPy."));
-  pten::DenseTensor* impl_ptr =
-      static_cast<pten::DenseTensor*>(self->tensor.impl().get());
+  phi::DenseTensor* impl_ptr =
+      static_cast<phi::DenseTensor*>(self->tensor.impl().get());
   paddle::platform::Place place = impl_ptr->place();
   if (platform::is_cpu_place(place)) {
     SetTensorFromPyArray<platform::CPUPlace>(impl_ptr, array, place, zero_copy);
@@ -135,12 +135,12 @@ void InitTensorWithTensor(TensorObject* self,
                           const std::string& name) {
   self->tensor.set_name(name);
   if (place == src.inner_place()) {
-    auto impl = std::static_pointer_cast<pten::DenseTensor>(src.impl());
+    auto impl = std::static_pointer_cast<phi::DenseTensor>(src.impl());
     self->tensor.set_impl(impl);
     VLOG(4) << "Same place, do ShareDataWith";
   } else {
     self->tensor.set_impl(
-        src.copy_to(pten::TransToPtenBackend(place), true).impl());
+        src.copy_to(phi::TransToPtenBackend(place), true).impl());
     VLOG(4) << "Different place, do TensorCopy";
   }
   egr::EagerUtils::autograd_meta(&(self->tensor))->SetStopGradient(true);
@@ -159,13 +159,13 @@ void InitTensorWithFrameworkTensor(TensorObject* self,
                                    const std::string& name) {
   self->tensor.set_name(name);
   if (place == src.place()) {
-    self->tensor.set_impl(std::make_shared<pten::DenseTensor>(src));
+    self->tensor.set_impl(std::make_shared<phi::DenseTensor>(src));
     VLOG(4) << "Same place, do ShareDataWith";
   } else {
     auto temp =
-        paddle::experimental::Tensor(std::make_shared<pten::DenseTensor>(src));
+        paddle::experimental::Tensor(std::make_shared<phi::DenseTensor>(src));
     self->tensor.set_impl(
-        temp.copy_to(pten::TransToPtenBackend(place), true).impl());
+        temp.copy_to(phi::TransToPtenBackend(place), true).impl());
     VLOG(4) << "Different place, do TensorCopy";
   }
   egr::EagerUtils::autograd_meta(&(self->tensor))->SetStopGradient(true);

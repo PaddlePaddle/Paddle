@@ -42,13 +42,13 @@ class XPUTypeTrait {
 };
 
 template <>
-class XPUTypeTrait<pten::dtype::float16> {
+class XPUTypeTrait<phi::dtype::float16> {
  public:
   using Type = float16;
 };
 
 template <>
-class XPUTypeTrait<pten::dtype::bfloat16> {
+class XPUTypeTrait<phi::dtype::bfloat16> {
  public:
   using Type = bfloat16;
 };

@@ -22,7 +22,7 @@
 PT_REGISTER_KERNEL(expand_grad,
                    CPU,
                    ALL_LAYOUT,
-                   pten::ExpandGradKernel,
+                   phi::ExpandGradKernel,
                    float,
                    double,
                    int,

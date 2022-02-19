@@ -25,20 +25,20 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-namespace pten {
+namespace phi {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = pten::DDim;
+using DDim = phi::DDim;
 
 TEST(DEV_API, cast) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                                                  pten::make_ddim({3, 4}),
-                                                  pten::DataLayout::NCHW));
+  phi::DenseTensor dense_x(alloc.get(),
+                           phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                                                phi::make_ddim({3, 4}),
+                                                phi::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 
@@ -48,22 +48,22 @@ TEST(DEV_API, cast) {
     sum += i * 1.0;
   }
 
-  pten::CPUContext dev_ctx;
+  phi::CPUContext dev_ctx;
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(paddle::platform::CPUPlace())
                            .get());
   dev_ctx.Init();
 
-  pten::DataType out_dtype = pten::DataType::FLOAT64;
+  phi::DataType out_dtype = phi::DataType::FLOAT64;
   // 2. test API
-  auto out = pten::Cast<float>(dev_ctx, dense_x, out_dtype);
+  auto out = phi::Cast<float>(dev_ctx, dense_x, out_dtype);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);
   ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.dims()[1], 4);
-  ASSERT_EQ(out.meta().dtype, pten::DataType::FLOAT64);
-  ASSERT_EQ(out.meta().layout, pten::DataLayout::NCHW);
+  ASSERT_EQ(out.meta().dtype, phi::DataType::FLOAT64);
+  ASSERT_EQ(out.meta().layout, phi::DataLayout::NCHW);
 
   auto actual_result = out.data<double>();
   for (size_t i = 0; i < 12; ++i) {
@@ -72,4 +72,4 @@ TEST(DEV_API, cast) {
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi

@@ -18,7 +18,7 @@ limitations under the License. */
 #include <memory>
 #include <random>
 
-namespace pten {
+namespace phi {
 
 class Generator {
  public:
@@ -58,4 +58,4 @@ class Generator {
   virtual uint64_t get_device_id() = 0;
 };
 
-}  // namespace pten
+}  // namespace phi

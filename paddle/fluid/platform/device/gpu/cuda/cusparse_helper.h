@@ -48,7 +48,7 @@ class CusparseHandleHolder {
   }
 
   inline void Call(
-      const std::function<void(pten::sparseHandle_t)>& callback) const {
+      const std::function<void(phi::sparseHandle_t)>& callback) const {
     std::lock_guard<std::mutex> guard(mtx_);
     callback(handle_);
   }

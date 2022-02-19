@@ -105,6 +105,6 @@ inline std::ostream& operator<<(std::ostream& os, DataLayout layout) {
 }  // namespace experimental
 }  // namespace paddle
 
-namespace pten {
+namespace phi {
 using DataLayout = paddle::experimental::DataLayout;
 }

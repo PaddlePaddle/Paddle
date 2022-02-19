@@ -16,15 +16,15 @@ limitations under the License. */
 namespace infrt {
 namespace backends {
 
-class CpuPtenAllocator : public pten::Allocator {
+class CpuPtenAllocator : public phi::Allocator {
  public:
-  static void deleter(pten::Allocation* ptr) { ::operator delete(ptr); }
+  static void deleter(phi::Allocation* ptr) { ::operator delete(ptr); }
 
   AllocationPtr Allocate(size_t bytes_size) {
     return AllocationPtr(
-        new pten::Allocation(::operator new(bytes_size),
-                             bytes_size,
-                             pten::Place(pten::AllocationType::CPU)),
+        new phi::Allocation(::operator new(bytes_size),
+                            bytes_size,
+                            phi::Place(phi::AllocationType::CPU)),
         deleter);
   }
 };

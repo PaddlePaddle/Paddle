@@ -343,7 +343,7 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     T* xx_data = xx->mutable_data<T>(place);
     T* h_out_data = hidden_out->mutable_data<T>(place);
     T* c_out_data = cell_out->mutable_data<T>(place);
-    auto blas = pten::funcs::GetBlas<DeviceContext, T>(ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     math::FCFunctor<DeviceContext, T> fc;
@@ -423,7 +423,7 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
 
     math::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    auto blas = pten::funcs::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     math::FCFunctor<DeviceContext, T> fc;
     if (M > D4) {
       fc(dev_ctx, x_dims[0], D4, M, x_data, wx_data, xx_data, bias->data<T>());

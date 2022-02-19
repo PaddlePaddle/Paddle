@@ -20,19 +20,19 @@ limitations under the License. */
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void SignKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
-  auto eigen_out = pten::EigenVector<T>::Flatten(*out);
-  auto eigen_x = pten::EigenVector<T>::Flatten(x);
+  auto eigen_out = phi::EigenVector<T>::Flatten(*out);
+  auto eigen_x = phi::EigenVector<T>::Flatten(x);
 
   auto& dev = *dev_ctx.eigen_device();
   paddle::operators::EigenSign<std::decay_t<decltype(dev)>, T>::Eval(
       dev, eigen_out, eigen_x);
 }
 
-}  // namespace pten
+}  // namespace phi

@@ -20,7 +20,7 @@ limitations under the License. */
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/phi/common/float16.h"
 
-namespace pten {
+namespace phi {
 
 template <typename InT>
 struct ScaleFunctor {
@@ -54,22 +54,22 @@ void ScaleKernel(const Context& dev_ctx,
   inputs.emplace_back(&x);
   outputs.emplace_back(out);
   dev_ctx.template Alloc<T>(out);
-  pten::funcs::LaunchSameDimsElementwiseCudaKernel<T>(
+  phi::funcs::LaunchSameDimsElementwiseCudaKernel<T>(
       dev_ctx,
       inputs,
       &outputs,
       ScaleFunctor<T>(scale.to<T>(), static_cast<T>(bias), bias_after_scale));
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(scale,
                    GPU,
                    ALL_LAYOUT,
-                   pten::ScaleKernel,
+                   phi::ScaleKernel,
                    float,
                    double,
-                   pten::dtype::float16,
+                   phi::dtype::float16,
                    uint8_t,
                    int8_t,
                    int16_t,

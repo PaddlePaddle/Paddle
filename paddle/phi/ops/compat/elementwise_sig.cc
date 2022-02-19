@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
 KernelSignature ElementwiseAddOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
@@ -100,7 +100,7 @@ KernelSignature ElementwiseSubGradOpArgumentMapping(
   return KernelSignature("unregistered", {}, {}, {});
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_BASE_KERNEL_NAME(elementwise_add, add);
 PT_REGISTER_BASE_KERNEL_NAME(elementwise_sub, subtract);
@@ -112,18 +112,18 @@ PT_REGISTER_BASE_KERNEL_NAME(elementwise_add_triple_grad, add_triple_grad);
 PT_REGISTER_BASE_KERNEL_NAME(elementwise_sub_grad, subtract_grad);
 
 PT_REGISTER_ARG_MAPPING_FN(elementwise_add,
-                           pten::ElementwiseAddOpArgumentMapping);
+                           phi::ElementwiseAddOpArgumentMapping);
 PT_REGISTER_ARG_MAPPING_FN(elementwise_sub,
-                           pten::ElementwiseSubOpArgumentMapping);
+                           phi::ElementwiseSubOpArgumentMapping);
 PT_REGISTER_ARG_MAPPING_FN(elementwise_mul,
-                           pten::ElementwiseMulOpArgumentMapping);
+                           phi::ElementwiseMulOpArgumentMapping);
 PT_REGISTER_ARG_MAPPING_FN(elementwise_div,
-                           pten::ElementwiseDivOpArgumentMapping);
+                           phi::ElementwiseDivOpArgumentMapping);
 PT_REGISTER_ARG_MAPPING_FN(elementwise_add_grad,
-                           pten::ElementwiseAddGradOpArgumentMapping);
+                           phi::ElementwiseAddGradOpArgumentMapping);
 PT_REGISTER_ARG_MAPPING_FN(elementwise_add_grad_grad,
-                           pten::ElementwiseAddDoubleGradOpArgumentMapping);
+                           phi::ElementwiseAddDoubleGradOpArgumentMapping);
 PT_REGISTER_ARG_MAPPING_FN(elementwise_add_triple_grad,
-                           pten::ElementwiseAddTripleGradOpArgumentMapping);
+                           phi::ElementwiseAddTripleGradOpArgumentMapping);
 PT_REGISTER_ARG_MAPPING_FN(elementwise_sub_grad,
-                           pten::ElementwiseSubGradOpArgumentMapping);
+                           phi::ElementwiseSubGradOpArgumentMapping);

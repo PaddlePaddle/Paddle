@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 
-namespace pten {
+namespace phi {
 namespace sparse {
 
 template <typename T>
@@ -76,8 +76,8 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
                                {sparse_dim, static_cast<int64_t>(non_zero_num)},
                                DataLayout::NCHW);
   DenseTensorMeta values_meta(x.meta().dtype, values_dims, x.meta().layout);
-  pten::DenseTensor indices = pten::Empty(dev_ctx, std::move(indices_meta));
-  pten::DenseTensor values = pten::Empty(dev_ctx, std::move(values_meta));
+  phi::DenseTensor indices = phi::Empty(dev_ctx, std::move(indices_meta));
+  phi::DenseTensor values = phi::Empty(dev_ctx, std::move(values_meta));
   int64_t* indices_data = indices.mutable_data<int64_t>(place);
   T* values_data = values.mutable_data<T>(place);
 
@@ -121,8 +121,8 @@ void SparseCsrToCooKernel(const Context& dev_ctx,
   DenseTensorMeta indices_meta(
       DataType::INT64, {sparse_dim, non_zero_num}, DataLayout::NCHW);
   DenseTensorMeta values_meta(x.dtype(), {non_zero_num}, x.layout());
-  pten::DenseTensor indices = pten::Empty(dev_ctx, std::move(indices_meta));
-  pten::DenseTensor values = pten::Empty(dev_ctx, std::move(values_meta));
+  phi::DenseTensor indices = phi::Empty(dev_ctx, std::move(indices_meta));
+  phi::DenseTensor values = phi::Empty(dev_ctx, std::move(values_meta));
   int64_t* coo_indices = indices.mutable_data<int64_t>(place);
   int64_t* batch_ptr = x_dims.size() == 2 ? nullptr : coo_indices;
   int64_t* coo_rows_data =
@@ -174,14 +174,14 @@ void SparseCooToCsrKernel(const Context& dev_ctx,
       DataType::INT64, {batchs * (rows + 1)}, DataLayout::NCHW);
   DenseTensorMeta cols_meta(DataType::INT64, {non_zero_num}, DataLayout::NCHW);
   DenseTensorMeta values_meta(x.dtype(), {non_zero_num}, x.layout());
-  pten::DenseTensor non_zero_crows(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(place),
+  phi::DenseTensor non_zero_crows(
+      phi::make_intrusive<paddle::experimental::SharedStorage>(place),
       std::move(crows_meta));
-  pten::DenseTensor non_zero_cols(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(place),
+  phi::DenseTensor non_zero_cols(
+      phi::make_intrusive<paddle::experimental::SharedStorage>(place),
       std::move(cols_meta));
-  pten::DenseTensor non_zero_elements(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(place),
+  phi::DenseTensor non_zero_elements(
+      phi::make_intrusive<paddle::experimental::SharedStorage>(place),
       std::move(values_meta));
   int64_t* csr_crows_data = non_zero_crows.mutable_data<int64_t>(place);
   int64_t* csr_cols_data = non_zero_cols.mutable_data<int64_t>(place);
@@ -282,12 +282,12 @@ void SparseCooToDenseKernel(const Context& dev_ctx,
 }
 
 }  // namespace sparse
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(dense_to_sparse_coo,
                    CPU,
                    ALL_LAYOUT,
-                   pten::sparse::DenseToSparseCooKernel,
+                   phi::sparse::DenseToSparseCooKernel,
                    float,
                    double,
                    paddle::float16,
@@ -300,7 +300,7 @@ PT_REGISTER_KERNEL(dense_to_sparse_coo,
 PT_REGISTER_KERNEL(sparse_csr_to_coo,
                    CPU,
                    ALL_LAYOUT,
-                   pten::sparse::SparseCsrToCooKernel,
+                   phi::sparse::SparseCsrToCooKernel,
                    float,
                    double,
                    paddle::float16,
@@ -313,10 +313,10 @@ PT_REGISTER_KERNEL(sparse_csr_to_coo,
 PT_REGISTER_KERNEL(sparse_coo_to_csr,
                    CPU,
                    ALL_LAYOUT,
-                   pten::sparse::SparseCooToCsrKernel,
+                   phi::sparse::SparseCooToCsrKernel,
                    float,
                    double,
-                   pten::dtype::float16,
+                   phi::dtype::float16,
                    uint8_t,
                    int8_t,
                    int16_t,
@@ -326,10 +326,10 @@ PT_REGISTER_KERNEL(sparse_coo_to_csr,
 PT_REGISTER_KERNEL(dense_to_sparse_csr,
                    CPU,
                    ALL_LAYOUT,
-                   pten::sparse::DenseToSparseCsrKernel,
+                   phi::sparse::DenseToSparseCsrKernel,
                    float,
                    double,
-                   pten::dtype::float16,
+                   phi::dtype::float16,
                    uint8_t,
                    int8_t,
                    int16_t,
@@ -339,10 +339,10 @@ PT_REGISTER_KERNEL(dense_to_sparse_csr,
 PT_REGISTER_KERNEL(sparse_coo_to_dense,
                    CPU,
                    ALL_LAYOUT,
-                   pten::sparse::SparseCooToDenseKernel,
+                   phi::sparse::SparseCooToDenseKernel,
                    float,
                    double,
-                   pten::dtype::float16,
+                   phi::dtype::float16,
                    uint8_t,
                    int8_t,
                    int16_t,
@@ -352,10 +352,10 @@ PT_REGISTER_KERNEL(sparse_coo_to_dense,
 PT_REGISTER_KERNEL(sparse_csr_to_dense,
                    CPU,
                    ALL_LAYOUT,
-                   pten::sparse::SparseCsrToDenseKernel,
+                   phi::sparse::SparseCsrToDenseKernel,
                    float,
                    double,
-                   pten::dtype::float16,
+                   phi::dtype::float16,
                    uint8_t,
                    int8_t,
                    int16_t,

@@ -163,7 +163,7 @@ class ConvShiftGradKernel<platform::CUDADeviceContext, T>
 
     auto &device_ctx =
         context.template device_context<platform::CUDADeviceContext>();
-    pten::funcs::SetConstant<platform::CUDADeviceContext, T> zero;
+    phi::funcs::SetConstant<platform::CUDADeviceContext, T> zero;
 
     const int x_per_block = 256;
     int num_x_blocks = DivUp(x_width, x_per_block);

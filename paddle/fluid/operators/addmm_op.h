@@ -94,7 +94,7 @@ class AddMMKernel : public framework::OpKernel<T> {
     float alpha = context.template Attr<float>("Alpha");
     float beta = context.template Attr<float>("Beta");
 
-    auto blas = pten::funcs::GetBlas<DeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
 
     // calc broadcast dim
     Array2 bcast_dims;
@@ -146,7 +146,7 @@ class AddMMGradKernel : public framework::OpKernel<T> {
     }
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    auto blas = pten::funcs::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     if (dinput) {
       dinput->mutable_data<T>(ctx.GetPlace());
       total_elems = in_dims[0] * in_dims[1];

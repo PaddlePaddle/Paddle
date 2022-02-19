@@ -30,7 +30,7 @@ TEST(API, scale) {
       {3, 4}, 1.0, experimental::DataType::FLOAT32, experimental::Backend::CPU);
 
   const size_t cycles = 300;
-  pten::tests::Timer timer;
+  phi::tests::Timer timer;
   double t1{}, t2{}, t3{};
 
   for (size_t i = 0; i < cycles; ++i) {

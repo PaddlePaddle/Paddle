@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/backends/dynload/port.h"
 
-namespace pten {
+namespace phi {
 namespace dynload {
 
 extern std::once_flag cufft_dso_flag;
@@ -36,7 +36,7 @@ extern void EnforceCUFFTLoaded(const char* fn_name);
     auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) { \
       using cufft_func = decltype(&::__name);                        \
       std::call_once(cufft_dso_flag, []() {                          \
-        cufft_dso_handle = pten::dynload::GetCUFFTDsoHandle();       \
+        cufft_dso_handle = phi::dynload::GetCUFFTDsoHandle();        \
       });                                                            \
       EnforceCUFFTLoaded(#__name);                                   \
       static void* p_##__name = dlsym(cufft_dso_handle, #__name);    \
@@ -106,6 +106,6 @@ extern void EnforceCUFFTLoaded(const char* fn_name);
 CUFFT_FFT_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUFFT_WRAP)
 
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi
 
 #endif

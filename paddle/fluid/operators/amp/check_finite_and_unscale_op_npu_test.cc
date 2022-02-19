@@ -42,7 +42,7 @@ struct InputVars {
 
 template <typename T>
 void Compare(f::Scope *scope, const p::DeviceContext &ctx) {
-  const f::DDim dims = pten::make_ddim({2, 2});
+  const f::DDim dims = phi::make_ddim({2, 2});
   auto place = ctx.GetPlace();
 
   // init input
@@ -59,7 +59,7 @@ void Compare(f::Scope *scope, const p::DeviceContext &ctx) {
 
   // Initialize input data
   const int num_inputs = input_names.size();
-  size_t numel = static_cast<size_t>(pten::product(dims));
+  size_t numel = static_cast<size_t>(phi::product(dims));
 
   for (int i = 0; i < num_inputs; ++i) {
     std::vector<T> init_xs;

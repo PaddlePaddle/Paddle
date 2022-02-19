@@ -23,7 +23,7 @@
 #include <set>
 #include <vector>
 #include "paddle/phi/kernels/gpu/elementwise.h"
-namespace pten {
+namespace phi {
 template <typename InT, typename Functor>
 void ReduceGrad(const GPUContext& dev_ctx,
                 DenseTensor* d_out,
@@ -34,11 +34,11 @@ void ReduceGrad(const GPUContext& dev_ctx,
   std::vector<DenseTensor*> outputs = {d_x};
   PD_VISIT_ALL_TYPES(
       out_dtype, "LaunchBroadcastElementwiseCudaKernel", ([&] {
-        LaunchBroadcastElementwiseCudaKernel<pten::ElementwiseType::kUnary,
+        LaunchBroadcastElementwiseCudaKernel<phi::ElementwiseType::kUnary,
                                              InT,
                                              data_t>(
             dev_ctx, inputs, &outputs, 0, functor);
       }));
 }
-}  // namespace pten
+}  // namespace phi
 #endif

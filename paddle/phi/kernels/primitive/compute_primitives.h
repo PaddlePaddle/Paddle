@@ -24,7 +24,7 @@
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/phi/common/float16.h"
 
-namespace pten {
+namespace phi {
 namespace kps {
 namespace details {
 
@@ -47,7 +47,7 @@ class MPTypeTrait {
 };
 
 template <>
-class MPTypeTrait<pten::dtype::float16> {
+class MPTypeTrait<phi::dtype::float16> {
  public:
   using Type = float;
 };
@@ -482,4 +482,4 @@ __device__ __forceinline__ void Cumsum(OutT* out,
 }
 
 }  // namespace kps
-}  // namespace pten
+}  // namespace phi

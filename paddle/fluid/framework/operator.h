@@ -119,7 +119,7 @@ inline std::string GradOriginalVarName(const std::string& grad_var_name) {
 }
 
 inline bool VarIsTensor(const Variable& var) {
-  return var.IsType<LoDTensor>() || var.IsType<pten::SelectedRows>();
+  return var.IsType<LoDTensor>() || var.IsType<phi::SelectedRows>();
 }
 
 const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var);
@@ -414,14 +414,14 @@ class ExecutionContext {
     auto& deleter = tmp_allocation_ptr.get_deleter();
     auto* allocation_ptr = tmp_allocation_ptr.release();
     auto shared_allocation =
-        std::shared_ptr<pten::Allocation>(allocation_ptr, deleter);
+        std::shared_ptr<phi::Allocation>(allocation_ptr, deleter);
 
     PADDLE_ENFORCE_GE(
-        allocation_ptr->size(), pten::product(dim) * sizeof(T),
+        allocation_ptr->size(), phi::product(dim) * sizeof(T),
         platform::errors::PreconditionNotMet(
             "The data memory size(%d) is less than the tensor needed memory "
             "size(%d).",
-            allocation_ptr->size(), pten::product(dim) * sizeof(T)));
+            allocation_ptr->size(), phi::product(dim) * sizeof(T)));
 
     paddle::framework::Tensor temp_tensor(framework::TransToPtenDataType(
         framework::ToDataType(std::type_index(typeid(T)))));
@@ -443,7 +443,7 @@ class ExecutionContext {
 };
 
 // TODO(chenweihang): split impl based OpProto or Dygraph if needed
-class ExecutionArgumentMappingContext : public pten::ArgumentMappingContext {
+class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
  public:
   explicit ExecutionArgumentMappingContext(const ExecutionContext& ctx)
       : ctx_(ctx) {}
@@ -478,7 +478,7 @@ class ExecutionArgumentMappingContext : public pten::ArgumentMappingContext {
   }
 
   bool IsSelectedRowsInput(const std::string& name) const override {
-    return ctx_.InputVar(name)->IsType<pten::SelectedRows>();
+    return ctx_.InputVar(name)->IsType<phi::SelectedRows>();
   }
 
   bool IsDenseTensorOutput(const std::string& name) const override {
@@ -486,7 +486,7 @@ class ExecutionArgumentMappingContext : public pten::ArgumentMappingContext {
   }
 
   bool IsSelectedRowsOutput(const std::string& name) const override {
-    return ctx_.OutputVar(name)->IsType<pten::SelectedRows>();
+    return ctx_.OutputVar(name)->IsType<phi::SelectedRows>();
   }
 
  private:
@@ -538,12 +538,12 @@ class OperatorWithKernel : public OperatorBase {
   }
 
   bool SupportGPU() const override {
-    auto pten_kernels = pten::KernelFactory::Instance().SelectKernelMap(
-        pten::TransToPtenKernelName(type_));
+    auto pten_kernels = phi::KernelFactory::Instance().SelectKernelMap(
+        phi::TransToPtenKernelName(type_));
     auto has_pten_kernel =
         std::any_of(pten_kernels.begin(), pten_kernels.end(),
-                    [](pten::KernelKeyMap::const_reference kern_pair) {
-                      return kern_pair.first.backend() == pten::Backend::GPU;
+                    [](phi::KernelKeyMap::const_reference kern_pair) {
+                      return kern_pair.first.backend() == phi::Backend::GPU;
                     });
     if (has_pten_kernel) {
       return true;
@@ -611,31 +611,31 @@ class OperatorWithKernel : public OperatorBase {
     * When selecting Kernel during Op execution, select the arguments of the
     * original Op according to the GetExpectedPtenKernelArgs returned arguments.
     */
-  pten::KernelSignature GetExpectedPtenKernelArgs(
+  phi::KernelSignature GetExpectedPtenKernelArgs(
       const ExecutionContext& ctx) const;
 
   /* member functions for adapting to pten lib */
-  pten::KernelKey ChoosePtenKernel(const ExecutionContext& ctx) const;
+  phi::KernelKey ChoosePtenKernel(const ExecutionContext& ctx) const;
 
   /**
    * Transfer data place for pten kernel
    * Is this really needed?
    */
-  Scope* PreparePtenData(const Scope& scope, const pten::Kernel& pt_kernel,
-                         const pten::KernelSignature& pt_kernel_signature,
+  Scope* PreparePtenData(const Scope& scope, const phi::Kernel& pt_kernel,
+                         const phi::KernelSignature& pt_kernel_signature,
                          RuntimeContext* ctx) const;
 
   void BuildPtenKernelContext(const RuntimeContext& ctx,
                               platform::DeviceContext* dev_ctx,
-                              pten::KernelContext* pt_kernel_context) const;
+                              phi::KernelContext* pt_kernel_context) const;
 
-  pten::KernelSignature* PtenKernelSignature() const {
+  phi::KernelSignature* PtenKernelSignature() const {
     return pt_kernel_signature_.get();
   }
 
-  pten::Kernel* PtenKernel() const { return pt_kernel_.get(); }
+  phi::Kernel* PtenKernel() const { return pt_kernel_.get(); }
 
-  void ResetPtenKernel(pten::Kernel* kernel) const {
+  void ResetPtenKernel(phi::Kernel* kernel) const {
     return pt_kernel_.reset(kernel);
   }
 
@@ -696,8 +696,8 @@ class OperatorWithKernel : public OperatorBase {
   // we may polish the implementation here
   mutable bool run_pten_kernel_ = false;
   mutable bool run_kp_kernel = false;
-  mutable std::unique_ptr<pten::KernelSignature> pt_kernel_signature_;
-  mutable std::unique_ptr<pten::Kernel> pt_kernel_;
+  mutable std::unique_ptr<phi::KernelSignature> pt_kernel_signature_;
+  mutable std::unique_ptr<phi::Kernel> pt_kernel_;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

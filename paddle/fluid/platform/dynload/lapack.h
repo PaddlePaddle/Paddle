@@ -28,8 +28,8 @@ namespace dynload {
  * (for each function) to dynamic load lapack routine
  * via operator overloading.
  */
-#define DYNAMIC_LOAD_LAPACK_WRAP(__name)                      \
-  using DynLoad__##__name = pten::dynload::DynLoad__##__name; \
+#define DYNAMIC_LOAD_LAPACK_WRAP(__name)                     \
+  using DynLoad__##__name = phi::dynload::DynLoad__##__name; \
   extern DynLoad__##__name __name
 
 #define DECLARE_DYNAMIC_LOAD_LAPACK_WRAP(__name) \

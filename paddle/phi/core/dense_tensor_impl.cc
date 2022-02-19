@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 
-namespace pten {
+namespace phi {
 /* --------------------------- */
 /*   From framework::Tensor    */
 /* --------------------------- */
@@ -42,12 +42,12 @@ size_t DenseTensor::memory_size() const {
 void DenseTensor::check_memory_size() const {
   PADDLE_ENFORCE_NOT_NULL(
       holder_,
-      pten::errors::PreconditionNotMet("Tensor holds no memory. "
-                                       "Call Tensor::mutable_data firstly."));
+      phi::errors::PreconditionNotMet("Tensor holds no memory. "
+                                      "Call Tensor::mutable_data firstly."));
   PADDLE_ENFORCE_LE(
       numel() * SizeOf(dtype()),
       memory_size(),
-      pten::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "Tensor's dimension is out of bound."
           "Tensor's dimension must be equal or less than the size of its "
           "memory."
@@ -59,7 +59,7 @@ void DenseTensor::check_memory_size() const {
 const Place& DenseTensor::place() const {
   PADDLE_ENFORCE_NOT_NULL(
       holder_,
-      pten::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "Tensor not initialized yet when DenseTensor::place() is called."));
   return holder_->place();
 }
@@ -71,7 +71,7 @@ void DenseTensor::set_layout(const paddle::framework::DataLayout layout) {
 }
 
 // Note: When you reset holder, you need to ensure the offset is correct
-void DenseTensor::ResetHolder(const std::shared_ptr<pten::Allocation>& holder) {
+void DenseTensor::ResetHolder(const std::shared_ptr<phi::Allocation>& holder) {
   if (holder_) {
     // TODO(zyfncg): The change of static_cast<> in check will recover back
     // when SetAllocationForOutputTenosr is deleted.
@@ -82,14 +82,14 @@ void DenseTensor::ResetHolder(const std::shared_ptr<pten::Allocation>& holder) {
         numel() * static_cast<int64_t>(SizeOf(dtype())) +
             static_cast<int64_t>(meta_.offset),
         static_cast<int64_t>(holder->size()),
-        pten::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The size of Holder is not enough to store the Tensor."));
   }
   holder_ = holder;
 }
 
 void DenseTensor::ResetHolderWithType(
-    const std::shared_ptr<pten::Allocation>& holder,
+    const std::shared_ptr<phi::Allocation>& holder,
     paddle::experimental::DataType type) {
   set_type(type);
   ResetHolder(holder);
@@ -106,7 +106,7 @@ void* DenseTensor::mutable_data(const Place& place,
   PADDLE_ENFORCE_GE(
       numel(),
       0,
-      pten::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "The Tensor's element number must be equal or greater than zero. "
           "The Tensor's shape is [",
           dims(),
@@ -133,12 +133,12 @@ void* DenseTensor::mutable_data(const Place& place, size_t requested_size) {
 
 void* DenseTensor::mutable_data(const Place& place,
                                 paddle::experimental::DataType type,
-                                const pten::Stream& stream) {
+                                const phi::Stream& stream) {
   set_type(type);
   PADDLE_ENFORCE_GE(
       numel(),
       0,
-      pten::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "The Tensor's element number must be equal or greater than zero. "
           "The Tensor's shape is [",
           dims(),
@@ -148,7 +148,7 @@ void* DenseTensor::mutable_data(const Place& place,
   /* some versions of boost::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + meta_.offset ||
-      !(place.GetType() == pten::AllocationType::GPU &&
+      !(place.GetType() == phi::AllocationType::GPU &&
         paddle::memory::InSameStream(holder_, stream))) {
     holder_.reset();
     holder_ = paddle::memory::AllocShared(place, size, stream);
@@ -201,10 +201,10 @@ LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int32_t)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int64_t)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(float)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(double)
-LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::pten::dtype::bfloat16)
-LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::pten::dtype::float16)
-LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::pten::dtype::complex<float>)
-LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::pten::dtype::complex<double>)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::bfloat16)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::float16)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::complex<float>)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::complex<double>)
 
 #undef LEGACY_DATA_MEMBER_FUNC_INSTANTIATION
 
@@ -230,7 +230,7 @@ std::pair<size_t, size_t> DenseTensor::lod_element(size_t level,
   PADDLE_ENFORCE_LT(
       level,
       NumLevels(),
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The input level of LoD is invalid, it should be less than LoD "
           "size. The input level is %zu, the LoD size is %zu.",
           level,
@@ -238,7 +238,7 @@ std::pair<size_t, size_t> DenseTensor::lod_element(size_t level,
 
   PADDLE_ENFORCE_LT(elem,
                     NumElements(level),
-                    pten::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The input element of LoD is invalid, it should be "
                         "less than the number of elements in its level."
                         "The input element is %zu, the number of elements in "
@@ -255,7 +255,7 @@ size_t DenseTensor::NumElements(size_t level) const {
   PADDLE_ENFORCE_LT(
       level,
       NumLevels(),
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The input level of LoD is invalid, it should be less than LoD "
           "size. The input level is %zu, the LoD size is %zu.",
           level,
@@ -275,17 +275,17 @@ DenseTensor DenseTensor::Slice(int64_t begin_idx, int64_t end_idx) const {
   PADDLE_ENFORCE_GE(
       begin_idx,
       0,
-      pten::errors::OutOfRange("The start row index must be greater than 0."
-                               "But received the start index is d%.",
-                               begin_idx));
+      phi::errors::OutOfRange("The start row index must be greater than 0."
+                              "But received the start index is d%.",
+                              begin_idx));
   PADDLE_ENFORCE_LE(
       end_idx,
       meta_.dims[0],
-      pten::errors::OutOfRange("The end row index is out of bound."));
+      phi::errors::OutOfRange("The end row index is out of bound."));
   PADDLE_ENFORCE_LT(
       begin_idx,
       end_idx,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The start row index must be less than the end row index."
           "But received the start index = %d, the end index = %d.",
           begin_idx,
@@ -311,15 +311,15 @@ std::vector<DenseTensor> DenseTensor::Split(int64_t split_size,
                                             int64_t axis) const {
   check_memory_size();
 
-  PADDLE_ENFORCE_GE(meta_.dims.size(),
-                    0,
-                    pten::errors::OutOfRange(
-                        "split expects at least a 1-dimensional tensor"));
+  PADDLE_ENFORCE_GE(
+      meta_.dims.size(),
+      0,
+      phi::errors::OutOfRange("split expects at least a 1-dimensional tensor"));
 
   PADDLE_ENFORCE_GE(
       split_size,
       0,
-      pten::errors::OutOfRange(
+      phi::errors::OutOfRange(
           "split expects split_size be non-negative, but got split_size is %d",
           split_size));
 
@@ -344,14 +344,14 @@ std::vector<DenseTensor> DenseTensor::Split(int64_t split_size,
 std::vector<DenseTensor> DenseTensor::Chunk(int64_t chunks,
                                             int64_t axis) const {
   check_memory_size();
-  PADDLE_ENFORCE_GE(meta_.dims.size(),
-                    0,
-                    pten::errors::OutOfRange(
-                        "split expects at least a 1-dimensional tensor"));
+  PADDLE_ENFORCE_GE(
+      meta_.dims.size(),
+      0,
+      phi::errors::OutOfRange("split expects at least a 1-dimensional tensor"));
   PADDLE_ENFORCE_GE(
       chunks,
       0,
-      pten::errors::OutOfRange(
+      phi::errors::OutOfRange(
           "chunks expects to be greater than 0, but got chunks is %d", chunks));
 
   int64_t numel_size = meta_.dims[axis];
@@ -372,10 +372,10 @@ DenseTensor& DenseTensor::ShareInplaceVersionCounterWith(
     const DenseTensor& src) {
   PADDLE_ENFORCE_NOT_NULL(
       inplace_version_counter_,
-      pten::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "Tensor does not hold inplace_version_counter_."));
 
   inplace_version_counter_ = src.inplace_version_counter_;
   return *this;
 }
-}  // namespace pten
+}  // namespace phi

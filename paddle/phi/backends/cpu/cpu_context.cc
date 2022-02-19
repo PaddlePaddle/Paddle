@@ -22,7 +22,7 @@
 #include "paddle/phi/core/device_context.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
-namespace pten {
+namespace phi {
 
 struct CPUContext::Impl {
   Impl() : place_(CPUPlace()) {}
@@ -74,4 +74,4 @@ void CPUContext::SetEigenDevice(Eigen::DefaultDevice* device) {
   impl_->eigen_device_ = device;
 }
 
-}  // namespace pten
+}  // namespace phi

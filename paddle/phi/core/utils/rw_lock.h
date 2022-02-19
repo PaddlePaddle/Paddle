@@ -22,7 +22,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/enforce.h"
 
-namespace pten {
+namespace phi {
 
 #if !defined(_WIN32)
 struct RWLock {
@@ -34,20 +34,20 @@ struct RWLock {
     PADDLE_ENFORCE_EQ(
         pthread_rwlock_rdlock(&lock_),
         0,
-        pten::errors::External("The pthread failed to acquire read lock."));
+        phi::errors::External("The pthread failed to acquire read lock."));
   }
 
   inline void WRLock() {
     PADDLE_ENFORCE_EQ(
         pthread_rwlock_wrlock(&lock_),
         0,
-        pten::errors::External("The pthread failed to acquire write lock."));
+        phi::errors::External("The pthread failed to acquire write lock."));
   }
 
   inline void UNLock() {
     PADDLE_ENFORCE_EQ(pthread_rwlock_unlock(&lock_),
                       0,
-                      pten::errors::External("The pthread failed to unlock."));
+                      phi::errors::External("The pthread failed to unlock."));
   }
 
  private:
@@ -100,4 +100,4 @@ class AutoRDLock {
   RWLock* lock_;
 };
 
-}  // namespace pten
+}  // namespace phi

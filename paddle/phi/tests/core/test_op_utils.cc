@@ -18,15 +18,15 @@ limitations under the License. */
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/ops/compat/signatures.h"
 
-namespace pten {
+namespace phi {
 namespace tests {
 
 TEST(OpUtilsMap, ArgMappingFnExists) {
   std::cout << "enter ArgMappingFnExists";
   auto scale_arg_mapping_fn =
-      pten::OpUtilsMap::Instance().GetArgumentMappingFn("scale");
+      phi::OpUtilsMap::Instance().GetArgumentMappingFn("scale");
   EXPECT_NE(scale_arg_mapping_fn, nullptr);
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi

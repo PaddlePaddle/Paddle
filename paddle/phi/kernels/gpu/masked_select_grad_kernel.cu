@@ -21,7 +21,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/masked_select_grad_kernel.h"
 
-namespace pten {
+namespace phi {
 
 __global__ void SetMaskArrayT(const bool* mask, int32_t* mask_array, int size) {
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
@@ -94,12 +94,12 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
       mask_prefix_sum_data, mask_data, input_data, out_data, mask_size);
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(masked_select_grad,
                    GPU,
                    ALL_LAYOUT,
-                   pten::MaskedSelectGradKernel,
+                   phi::MaskedSelectGradKernel,
                    float,
                    double,
                    int,

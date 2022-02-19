@@ -29,7 +29,7 @@ class ReduceMeanMLUKernel : public framework::OpKernel<T> {
 
     bool reduce_all = context.Attr<bool>("reduce_all");
     auto dims = context.Attr<std::vector<int>>("dim");
-    auto input_dims = pten::vectorize(input->dims());
+    auto input_dims = phi::vectorize(input->dims());
     const auto& input_dim_size = input->dims().size();
     std::vector<int> reduce_dims;
     if (reduce_all) {
@@ -73,7 +73,7 @@ class ReduceMeanGradMLUKernel : public framework::OpKernel<T> {
 
     bool reduce_all = context.Attr<bool>("reduce_all");
     auto reduce_dims = context.Attr<std::vector<int>>("dim");
-    auto input_dims = pten::vectorize(input->dims());
+    auto input_dims = phi::vectorize(input->dims());
 
     int reduce_numel = 1;
     if (reduce_all) {
@@ -95,7 +95,7 @@ class ReduceMeanGradMLUKernel : public framework::OpKernel<T> {
       tmp_output_dims[d] = 1;
     }
     tmp_output_grad.ShareDataWith(*output_grad);
-    tmp_output_grad.Resize(pten::make_ddim(tmp_output_dims));
+    tmp_output_grad.Resize(phi::make_ddim(tmp_output_dims));
 
     MLUCnnlTensorDesc output_grad_desc(tmp_output_grad, CNNL_LAYOUT_ARRAY,
                                        ToCnnlDataType(tmp_output_grad.dtype()));

@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/backends/dynload/port.h"
 
-namespace pten {
+namespace phi {
 namespace dynload {
 
 extern std::once_flag cuda_dso_flag;
@@ -33,7 +33,7 @@ extern bool HasCUDADriver();
     auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) { \
       using cuda_func = decltype(&::__name);                         \
       std::call_once(cuda_dso_flag, []() {                           \
-        cuda_dso_handle = pten::dynload::GetCUDADsoHandle();         \
+        cuda_dso_handle = phi::dynload::GetCUDADsoHandle();          \
       });                                                            \
       static void* p_##__name = dlsym(cuda_dso_handle, #__name);     \
       return reinterpret_cast<cuda_func>(p_##__name)(args...);       \
@@ -79,4 +79,4 @@ CUDA_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUDA_WRAP);
 #undef DECLARE_DYNAMIC_LOAD_CUDA_WRAP
 
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi

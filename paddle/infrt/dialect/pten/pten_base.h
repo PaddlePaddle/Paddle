@@ -26,5 +26,5 @@
 #include "paddle/infrt/dialect/phi/infrt_pten_baseTypes.h.inc"
 
 namespace infrt {
-namespace pten {}  // namespace pten
+namespace phi {}  // namespace phi
 }  // namespace infrt

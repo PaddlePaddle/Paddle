@@ -16,11 +16,11 @@ limitations under the License. */
 
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/meta_tensor.h"
-namespace pten {
+namespace phi {
 
 void ConcatInferMeta(const std::vector<MetaTensor>& x,
                      const Scalar& axis_scalar,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
 
-}  // namespace pten
+}  // namespace phi

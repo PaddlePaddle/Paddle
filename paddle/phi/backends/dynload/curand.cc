@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/dynload/curand.h"
 
-namespace pten {
+namespace phi {
 namespace dynload {
 
 std::once_flag curand_dso_flag;
@@ -25,4 +25,4 @@ void *curand_dso_handle;
 CURAND_RAND_ROUTINE_EACH(DEFINE_WRAP);
 
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi

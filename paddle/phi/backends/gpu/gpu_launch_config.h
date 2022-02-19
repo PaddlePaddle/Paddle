@@ -39,7 +39,7 @@
 #define PREDEFINED_BLOCK_SIZE 512
 #endif
 
-namespace pten {
+namespace phi {
 namespace backends {
 namespace gpu {
 
@@ -64,7 +64,7 @@ static inline int RoundToPowerOfTwo(int n) {
 #ifdef WITH_NV_JETSON
 // The number of threads cannot be assigned 1024 in some cases when the device
 // is nano or tx2 .
-inline void ChangeThreadNum(const pten::GPUContext& context,
+inline void ChangeThreadNum(const phi::GPUContext& context,
                             int* num_thread,
                             int alternative_num_thread = 512) {
   if (context.GetComputeCapability() == 53 ||
@@ -97,7 +97,7 @@ struct GpuLaunchConfig {
   * cuda performs better. And number of blocks should be greater (at least
   * 2x~4x) than number of SMs. Hence, SM count is took into account within
   * this function to determine the right number of threads per block. */
-inline GpuLaunchConfig GetGpuLaunchConfig1D(const pten::GPUContext& context,
+inline GpuLaunchConfig GetGpuLaunchConfig1D(const phi::GPUContext& context,
                                             int64_t numel,
                                             int vec_size = 1) {
   PADDLE_ENFORCE_GT(numel,
@@ -139,7 +139,7 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(const pten::GPUContext& context,
   return config;
 }
 
-inline GpuLaunchConfig GetGpuLaunchConfig2D(const pten::GPUContext& context,
+inline GpuLaunchConfig GetGpuLaunchConfig2D(const phi::GPUContext& context,
                                             int x_dim,
                                             int y_dim) {
   PADDLE_ENFORCE_GT(x_dim,
@@ -176,6 +176,6 @@ inline GpuLaunchConfig GetGpuLaunchConfig2D(const pten::GPUContext& context,
 
 }  // namespace gpu
 }  // namespace backends
-}  // namespace pten
+}  // namespace phi
 
 #endif

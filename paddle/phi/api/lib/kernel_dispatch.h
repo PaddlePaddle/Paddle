@@ -37,7 +37,7 @@ BackendSet GetTensorBackendSet(const Tensor& t);
 std::size_t CountLeadingZeros(uint64_t val);
 }  // namespace detail
 
-pten::DeviceContext* GetDeviceContextByBackend(pten::Backend backend);
+phi::DeviceContext* GetDeviceContextByBackend(phi::Backend backend);
 
 enum class KernelType {
   DENSE_TENSOR_KENREL,  // kernel for DenseTensor
@@ -51,11 +51,11 @@ struct KernelKeySet {
   DataType dtype{DataType::UNDEFINED};
 
   // TODO(chenweihang): iterate all kernelkey for kernel selection
-  pten::KernelKey GetHigestPriorityKernelKey() {
-    return pten::KernelKey(static_cast<Backend>(64 - detail::CountLeadingZeros(
-                                                         backend_set.bitset())),
-                           layout,
-                           dtype);
+  phi::KernelKey GetHigestPriorityKernelKey() {
+    return phi::KernelKey(static_cast<Backend>(64 - detail::CountLeadingZeros(
+                                                        backend_set.bitset())),
+                          layout,
+                          dtype);
   }
 };
 
@@ -125,7 +125,7 @@ struct KernelTypeParser : ArgsIterator<KernelTypeParser> {
   // TODO(chenweihang): deal with multiple diff input Tensors
   // TODO(chenweihang): add global device guard method to set backend
   void operator()(const Tensor& x) {
-    if (pten::SelectedRows::classof(x.impl().get())) {
+    if (phi::SelectedRows::classof(x.impl().get())) {
       kernel_type = KernelType::SELECTED_ROWS_KENREL;
     }
   }

@@ -17,18 +17,18 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T>
 inline T BernoulliFunctor(T p, T rand) {
-  PADDLE_ENFORCE_LE(p,
-                    1.0,
-                    pten::errors::OutOfRange(
-                        "The probability should be <= 1, but got %f", p));
-  PADDLE_ENFORCE_GE(p,
-                    0.0,
-                    pten::errors::OutOfRange(
-                        "The probability should be >= 0, but got %f", p));
+  PADDLE_ENFORCE_LE(
+      p,
+      1.0,
+      phi::errors::OutOfRange("The probability should be <= 1, but got %f", p));
+  PADDLE_ENFORCE_GE(
+      p,
+      0.0,
+      phi::errors::OutOfRange("The probability should be >= 0, but got %f", p));
   return static_cast<T>(rand < p);
 }
 
@@ -49,7 +49,7 @@ void BernoulliKernel(const Context& ctx,
   }
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(
-    bernoulli, CPU, ALL_LAYOUT, pten::BernoulliKernel, float, double) {}
+    bernoulli, CPU, ALL_LAYOUT, phi::BernoulliKernel, float, double) {}

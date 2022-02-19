@@ -27,7 +27,7 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
 
-namespace pten {
+namespace phi {
 namespace funcs {
 
 template <typename DeviceContext, typename T>
@@ -126,4 +126,4 @@ struct TensorSetConstantXPU {
 #endif
 
 }  // namespace funcs
-}  // namespace pten
+}  // namespace phi

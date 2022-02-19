@@ -119,7 +119,7 @@ class PnormGradKernel : public framework::OpKernel<T> {
     Eigen::DSizes<int, 3> bcast(1, n, 1);
 
     if (porder == 0) {
-      pten::funcs::SetConstant<DeviceContext, T> set_zero;
+      phi::funcs::SetConstant<DeviceContext, T> set_zero;
       auto& dev_ctx = ctx.template device_context<DeviceContext>();
       set_zero(dev_ctx, out_dx, static_cast<T>(0));
     } else if (porder == INFINITY || porder == -INFINITY) {

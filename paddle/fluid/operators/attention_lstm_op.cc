@@ -87,7 +87,7 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
             "Expected input(H0)'s dimension is 2. But received %d.",
             h_dims.size()));
     if (ctx->IsRuntime() ||
-        (pten::product(c_dims) > 0 && pten::product(h_dims) > 0)) {
+        (phi::product(c_dims) > 0 && phi::product(h_dims) > 0)) {
       PADDLE_ENFORCE_EQ(h_dims, c_dims,
                         platform::errors::InvalidArgument(
                             "The dimension of Input(H0) and Input(C0) "
@@ -373,7 +373,7 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
     T* lstm_x_data = lstm_x->mutable_data<T>(ctx.GetPlace());
     T* lstm_out_data = lstm_out->mutable_data<T>(ctx.GetPlace());
 
-    auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(ctx);
+    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(ctx);
 
     // x(TxM) * fc (Mx1) part of atten_wgt(M+D)x1
     auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();

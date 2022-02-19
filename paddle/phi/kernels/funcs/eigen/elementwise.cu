@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
-namespace pten {
+namespace phi {
 namespace funcs {
 
 template <typename T>
@@ -56,4 +56,4 @@ struct EigenSub<Eigen::GpuDevice, T> {
 template struct EigenSub<Eigen::GpuDevice, float>;
 
 }  // namespace fucns
-}  // namespace pten
+}  // namespace phi

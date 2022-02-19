@@ -14,7 +14,7 @@
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
 KernelSignature DiagonalGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
@@ -24,5 +24,5 @@ KernelSignature DiagonalGradOpArgumentMapping(
                          {GradVarName("Input")});
 }
 
-}  // namespace pten
-PT_REGISTER_ARG_MAPPING_FN(diagonal_grad, pten::DiagonalGradOpArgumentMapping);
+}  // namespace phi
+PT_REGISTER_ARG_MAPPING_FN(diagonal_grad, phi::DiagonalGradOpArgumentMapping);

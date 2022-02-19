@@ -18,24 +18,24 @@
 #include "gtest/gtest.h"
 #include "paddle/phi/core/utils/dim.h"
 
-namespace pten {
+namespace phi {
 namespace tests {
 
-__global__ void test(pten::Dim<2>* o) { o[0] = pten::make_dim(5, 6); }
+__global__ void test(phi::Dim<2>* o) { o[0] = phi::make_dim(5, 6); }
 
 __global__ void dyn_idx_gpu(int64_t* o) {
-  auto d = pten::make_dim(5, 6);
+  auto d = phi::make_dim(5, 6);
   o[0] = d[1];
 }
 
 TEST(Dim, Equality) {
   // construct a Dim on the CPU
-  auto a = pten::make_dim(3, 4);
+  auto a = phi::make_dim(3, 4);
   EXPECT_EQ(a[0], 3);
   EXPECT_EQ(a[1], 4);
 
   // construct a Dim on the GPU
-  thrust::device_vector<pten::Dim<2>> t(2);
+  thrust::device_vector<phi::Dim<2>> t(2);
 #ifdef PADDLE_WITH_HIP
   hipLaunchKernelGGL(
       test, dim3(1), dim3(1), 0, 0, thrust::raw_pointer_cast(t.data()));
@@ -47,10 +47,10 @@ TEST(Dim, Equality) {
   EXPECT_EQ(a[1], 6);
 
   // product
-  EXPECT_EQ(pten::product(a), 30);
+  EXPECT_EQ(phi::product(a), 30);
 
   // mutate a Dim
-  auto b = pten::make_dim(7, 8);
+  auto b = phi::make_dim(7, 8);
   b[1] = 10;
   EXPECT_EQ(b[0], 7);
   EXPECT_EQ(b[1], 10);
@@ -73,9 +73,9 @@ TEST(Dim, Equality) {
 }
 
 TEST(Dim, Bool) {
-  auto a = pten::make_dim(3, 4);
-  auto b = pten::make_dim(5, 6);
-  auto c = pten::make_dim(3, 4);
+  auto a = phi::make_dim(3, 4);
+  auto b = phi::make_dim(5, 6);
+  auto c = phi::make_dim(3, 4);
 
   // comparison
   EXPECT_TRUE(a == a);
@@ -86,16 +86,16 @@ TEST(Dim, Bool) {
 TEST(Dim, Print) {
   {
     std::stringstream ss;
-    auto a = pten::make_dim(2, 3);
+    auto a = phi::make_dim(2, 3);
     ss << a;
     EXPECT_EQ(ss.str(), "2, 3");
   }
   {
     std::stringstream ss;
-    ss << pten::make_dim(8);
+    ss << phi::make_dim(8);
     EXPECT_EQ(ss.str(), "8");
   }
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi

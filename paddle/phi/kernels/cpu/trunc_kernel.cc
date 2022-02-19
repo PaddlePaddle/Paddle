@@ -18,7 +18,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/trunc_kernel.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void TruncKernel(const Context& dev_ctx,
@@ -33,7 +33,7 @@ void TruncKernel(const Context& dev_ctx,
   }
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(
-    trunc, CPU, ALL_LAYOUT, pten::TruncKernel, float, double, int, int64_t) {}
+    trunc, CPU, ALL_LAYOUT, phi::TruncKernel, float, double, int, int64_t) {}

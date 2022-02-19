@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/dynload/warpctc.h"
 
-namespace pten {
+namespace phi {
 namespace dynload {
 
 std::once_flag warpctc_dso_flag;
@@ -25,4 +25,4 @@ void* warpctc_dso_handle = nullptr;
 WARPCTC_ROUTINE_EACH(DEFINE_WRAP);
 
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi

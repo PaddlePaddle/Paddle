@@ -44,9 +44,9 @@ OpKernelInfoMap::GetMap() const {
 //////////////// Op Kernel Info Builder /////////////////
 
 OpKernelInfoBuilder::OpKernelInfoBuilder(std::string&& op_name,
-                                         pten::Backend backend,
-                                         pten::DataLayout data_layout,
-                                         pten::DataType data_type) {
+                                         phi::Backend backend,
+                                         phi::DataLayout data_layout,
+                                         phi::DataType data_type) {
   // 1. member assign
   op_name_ = std::forward<std::string>(op_name);
   backend_ = backend;

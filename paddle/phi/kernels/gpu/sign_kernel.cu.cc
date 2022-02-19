@@ -21,7 +21,7 @@ limitations under the License. */
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/phi/common/float16.h"
 
-using float16 = pten::dtype::float16;
+using float16 = phi::dtype::float16;
 
 PT_REGISTER_KERNEL(
-    sign, GPU, ALL_LAYOUT, pten::SignKernel, float, double, float16) {}
+    sign, GPU, ALL_LAYOUT, phi::SignKernel, float, double, float16) {}

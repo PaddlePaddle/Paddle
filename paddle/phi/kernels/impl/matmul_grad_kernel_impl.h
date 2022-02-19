@@ -29,7 +29,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/gpu/reduce.h"
 #endif
 
-namespace pten {
+namespace phi {
 
 template <typename Context, typename T>
 struct ReduceSumForMatmulGrad {
@@ -47,7 +47,7 @@ struct ReduceSumForMatmulGrad<CPUContext, T> {
                   const std::vector<int>& reduce_dims) {
     std::vector<int64_t> reduce_dims_tmp(reduce_dims.begin(),
                                          reduce_dims.end());
-    ReduceKernelImpl<CPUContext, T, T, pten::funcs::SumFunctor>(
+    ReduceKernelImpl<CPUContext, T, T, phi::funcs::SumFunctor>(
         dev_ctx, input, output, reduce_dims_tmp, true, false);
   }
 };
@@ -105,9 +105,9 @@ void MatMul(const Context& dev_ctx,
             DenseTensor* out,
             bool flag = false) {
   dev_ctx.template Alloc<T>(out);
-  auto blas = pten::funcs::GetBlas<Context, T>(dev_ctx);
-  auto mat_dim_a = pten::funcs::CreateMatrixDescriptor(a.dims(), 0, trans_a);
-  auto mat_dim_b = pten::funcs::CreateMatrixDescriptor(b.dims(), 0, trans_b);
+  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a.dims(), 0, trans_a);
+  auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(b.dims(), 0, trans_b);
   if (a.dims().size() == 3 && b.dims().size() <= 2) {
     // the transpose_X must be false, if is true, the transpose cost much time
     if (!trans_a) {
@@ -132,7 +132,7 @@ static DDim RowMatrixFromVector(const DDim& x_dim) {
   if (x_dim.size() > 1) {
     return x_dim;
   }
-  return pten::make_ddim({1, x_dim[0]});
+  return phi::make_ddim({1, x_dim[0]});
 }
 
 /**
@@ -143,7 +143,7 @@ static DDim ColumnMatrixFromVector(const DDim& y_dim) {
   if (y_dim.size() > 1) {
     return y_dim;
   }
-  return pten::make_ddim({y_dim[0], 1});
+  return phi::make_ddim({y_dim[0], 1});
 }
 
 /**
@@ -153,7 +153,7 @@ static DDim ColumnMatrixFromVector(const DDim& y_dim) {
  * If transposed, `H,W` will be swapped.
  */
 static void ReshapeTensorIntoMatrixSequence(
-    DenseTensor* x, const pten::funcs::MatDescriptor& descriptor) {
+    DenseTensor* x, const phi::funcs::MatDescriptor& descriptor) {
   int64_t h, w;
   h = descriptor.height_;
   w = descriptor.width_;
@@ -174,8 +174,8 @@ static void ReshapeXYOutIntoMatrixSequence(DenseTensor* x,
                                            bool trans_y) {
   auto x_dim = RowMatrixFromVector(x->dims());
   auto y_dim = ColumnMatrixFromVector(y->dims());
-  auto mat_dim_x = pten::funcs::CreateMatrixDescriptor(x_dim, 0, trans_x);
-  auto mat_dim_y = pten::funcs::CreateMatrixDescriptor(y_dim, 0, trans_y);
+  auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(x_dim, 0, trans_x);
+  auto mat_dim_y = phi::funcs::CreateMatrixDescriptor(y_dim, 0, trans_y);
   if (mat_dim_x.batch_size_ == 0 && mat_dim_y.batch_size_ == 0) {
     out->Resize({mat_dim_x.height_, mat_dim_y.width_});
   } else {
@@ -1733,4 +1733,4 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
   }
 }
 
-}  // namespace pten
+}  // namespace phi

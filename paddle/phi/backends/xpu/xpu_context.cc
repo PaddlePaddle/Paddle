@@ -25,7 +25,7 @@
 
 namespace xpu = baidu::xpu::api;
 
-namespace pten {
+namespace phi {
 
 struct XPUContext::Impl {
   void SetL3Cache(int l3_size = 14155776) {
@@ -140,4 +140,4 @@ void XPUContext::SetBkclContext(xpu::BKCLContext_t context) {
 
 void XPUContext::Init() { impl_->Init(); }
 
-}  // namespace pten
+}  // namespace phi

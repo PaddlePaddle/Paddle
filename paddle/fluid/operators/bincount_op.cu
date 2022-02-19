@@ -105,7 +105,7 @@ void BincountCUDAInner(const framework::ExecutionContext& context) {
 
   if (!has_weights) {
     int64_t* output_data = output->mutable_data<int64_t>(context.GetPlace());
-    pten::funcs::SetConstant<DeviceContext, int64_t>()(
+    phi::funcs::SetConstant<DeviceContext, int64_t>()(
         context.template device_context<DeviceContext>(), output, 0L);
 
     KernelBincount<T, InputT, int64_t><<<GET_BLOCKS(input_numel),
@@ -116,7 +116,7 @@ void BincountCUDAInner(const framework::ExecutionContext& context) {
 
     if (weights_type == framework::proto::VarType::FP32) {
       float* output_data = output->mutable_data<float>(context.GetPlace());
-      pten::funcs::SetConstant<DeviceContext, float>()(
+      phi::funcs::SetConstant<DeviceContext, float>()(
           context.template device_context<DeviceContext>(), output,
           static_cast<float>(0));
 
@@ -125,7 +125,7 @@ void BincountCUDAInner(const framework::ExecutionContext& context) {
           input_data, input_numel, has_weights, weights_data, output_data);
     } else {
       double* output_data = output->mutable_data<double>(context.GetPlace());
-      pten::funcs::SetConstant<DeviceContext, double>()(
+      phi::funcs::SetConstant<DeviceContext, double>()(
           context.template device_context<DeviceContext>(), output,
           static_cast<double>(0));
 

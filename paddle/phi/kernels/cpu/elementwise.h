@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
-namespace pten {
+namespace phi {
 
 // FORWARD CODE
 
@@ -44,7 +44,7 @@ struct SameDimsAddFunctor<
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* z) {
-    auto blas = pten::funcs::GetBlas<DevCtx, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<DevCtx, T>(dev_ctx);
     blas.VADD(
         x.numel(), x.data<T>(), y.data<T>(), dev_ctx.template Alloc<T>(z));
   }
@@ -60,9 +60,9 @@ struct SameDimsAddFunctor<
                   const DenseTensor& y,
                   DenseTensor* z) {
     dev_ctx.template Alloc<T>(z);
-    auto eigen_x = pten::EigenVector<T>::Flatten(x);
-    auto eigen_y = pten::EigenVector<T>::Flatten(y);
-    auto eigen_z = pten::EigenVector<T>::Flatten(*z);
+    auto eigen_x = phi::EigenVector<T>::Flatten(x);
+    auto eigen_y = phi::EigenVector<T>::Flatten(y);
+    auto eigen_z = phi::EigenVector<T>::Flatten(*z);
     auto& place = *dev_ctx.eigen_device();
     eigen_z.device(place) = eigen_x + eigen_y;
   }
@@ -86,7 +86,7 @@ struct SameDimsSubtractFunctor<
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* z) {
-    auto blas = pten::funcs::GetBlas<DevCtx, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<DevCtx, T>(dev_ctx);
     blas.VSUB(
         x.numel(), x.data<T>(), y.data<T>(), dev_ctx.template Alloc<T>(z));
   }
@@ -101,9 +101,9 @@ struct SameDimsSubtractFunctor<
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* z) {
-    auto eigen_x = pten::EigenVector<T>::Flatten(x);
-    auto eigen_y = pten::EigenVector<T>::Flatten(y);
-    auto eigen_z = pten::EigenVector<T>::Flatten(*z);
+    auto eigen_x = phi::EigenVector<T>::Flatten(x);
+    auto eigen_y = phi::EigenVector<T>::Flatten(y);
+    auto eigen_z = phi::EigenVector<T>::Flatten(*z);
     auto& place = *dev_ctx.eigen_device();
     eigen_z.device(place) = eigen_x - eigen_y;
   }
@@ -142,7 +142,7 @@ struct SameDimsDivideFunctor<
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* z) {
-    auto blas = pten::funcs::GetBlas<DevCtx, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<DevCtx, T>(dev_ctx);
     blas.VDIV(
         x.numel(), x.data<T>(), y.data<T>(), dev_ctx.template Alloc<T>(z));
   }
@@ -166,7 +166,7 @@ struct SameDimsMultiplyFunctor<
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* z) {
-    auto blas = pten::funcs::GetBlas<DevCtx, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<DevCtx, T>(dev_ctx);
     blas.VMUL(
         x.numel(), x.data<T>(), y.data<T>(), dev_ctx.template Alloc<T>(z));
   }
@@ -181,9 +181,9 @@ struct SameDimsMultiplyFunctor<
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* z) {
-    auto eigen_x = pten::EigenVector<T>::Flatten(x);
-    auto eigen_y = pten::EigenVector<T>::Flatten(y);
-    auto eigen_z = pten::EigenVector<T>::Flatten(*z);
+    auto eigen_x = phi::EigenVector<T>::Flatten(x);
+    auto eigen_y = phi::EigenVector<T>::Flatten(y);
+    auto eigen_z = phi::EigenVector<T>::Flatten(*z);
     auto& place = *dev_ctx.eigen_device();
     eigen_z.device(place) = eigen_x * eigen_y;
   }
@@ -587,8 +587,8 @@ void CommonElementwiseBroadcastBackward(const CPUContext& ctx,
   }
 
   VLOG(3) << "CommonElementwiseBroadcastBackward xdims:"
-          << pten::make_ddim(x_dims_array)
-          << " ydim:" << pten::make_ddim(y_dims_array);
+          << phi::make_ddim(x_dims_array)
+          << " ydim:" << phi::make_ddim(y_dims_array);
 
   CommonGradBroadcastCPU<T, DX_OP, DY_OP, Tout>(x,
                                                 y,
@@ -714,7 +714,7 @@ void ElemwiseExplicitGradCompute(const CPUContext& dev_ctx,
   const DDim& x_dim = x.dims();
   const DDim& y_dim = y.dims();
   if (x.dims() == y.dims()) {
-    pten::funcs::ElemwiseGradComputeNoBroadcast<CPUContext, T, DX_OP, DY_OP>(
+    phi::funcs::ElemwiseGradComputeNoBroadcast<CPUContext, T, DX_OP, DY_OP>(
         dev_ctx,
         x_dim,
         y_dim,
@@ -763,7 +763,7 @@ elementwise_add_grad(const CPUContext& ctx,
                      DenseTensor* dx,
                      DenseTensor* dy,
                      int axis = -1) {
-  auto blas = pten::funcs::GetBlas<CPUContext, T>(ctx);
+  auto blas = phi::funcs::GetBlas<CPUContext, T>(ctx);
   if (dx) {
     blas.VCOPY(
         dout.numel(), dout.data<T>(), dx->mutable_data<T>(ctx.GetPlace()));
@@ -818,4 +818,4 @@ void elementwise_sub_grad(const CPUContext& ctx,
       ctx, x, y, out, dout, axis, dx, dy, SubGradDX<T>(), SubGradDY<T>());
 }
 
-}  // namespace pten
+}  // namespace phi

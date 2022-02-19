@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/dynload/hipfft.h"
 
-namespace pten {
+namespace phi {
 namespace dynload {
 
 std::once_flag hipfft_dso_flag;
@@ -25,4 +25,4 @@ void *hipfft_dso_handle;
 HIPFFT_FFT_ROUTINE_EACH(DEFINE_WRAP);
 
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi

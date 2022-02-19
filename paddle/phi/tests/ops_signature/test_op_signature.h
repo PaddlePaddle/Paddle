@@ -21,10 +21,10 @@ limitations under the License. */
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 namespace tests {
 
-class TestArgumentMappingContext : public pten::ArgumentMappingContext {
+class TestArgumentMappingContext : public phi::ArgumentMappingContext {
  public:
   TestArgumentMappingContext(
       std::unordered_set<std::string> dense_tensor_ins,
@@ -89,4 +89,4 @@ class TestArgumentMappingContext : public pten::ArgumentMappingContext {
 };
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi

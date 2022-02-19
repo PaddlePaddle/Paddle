@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
 
-namespace pten {
+namespace phi {
 
 class CompatibleDenseTensorUtils;
 
@@ -186,4 +186,4 @@ class SparseCsrTensor : public TensorBase,
    */
 };
 
-}  // namespace pten
+}  // namespace phi

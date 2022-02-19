@@ -239,7 +239,7 @@ class GroupNormGradKernel : public framework::OpKernel<T> {
     const int group_size = C / groups;
 
     d_x->mutable_data<T>(ctx.GetPlace());
-    pten::funcs::SetConstant<DeviceContext, T> set_zero;
+    phi::funcs::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
     auto* x_data = x->data<T>();

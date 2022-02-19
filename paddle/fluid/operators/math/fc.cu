@@ -85,7 +85,7 @@ class FCFunctor<platform::CUDADeviceContext, T> {
         padding_weights, false,
         platform::errors::PermissionDenied(
             "Weight padding in fc can not be used in GPU scope."));
-    auto blas = pten::funcs::GetBlas<platform::CUDADeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(context);
     blas.GEMM(false, false, M, N, K, static_cast<T>(1.0), X, K, W, N,
               static_cast<T>(0.0), Y, N);
     if (B == NULL) {

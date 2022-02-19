@@ -62,7 +62,7 @@ class TriangularSolveFunctor<platform::CPUDeviceContext, T> {
       batch_size *= a_dim[i];
     }
 
-    auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(context);
     for (int i = 0; i < batch_size; i++) {
       blas.TRSM(side, uplo, transA, diag, M, N, T(1), a_data + i * M * M, lda,
                 b_data + i * N * M, ldb);

@@ -61,14 +61,14 @@ class TransformFlag {
   bool trans_layout_ = true;
 };
 
-std::shared_ptr<pten::DenseTensor> PrepareData(
+std::shared_ptr<phi::DenseTensor> PrepareData(
     const Tensor& input,
-    const pten::TensorArgDef& target_args_def,
+    const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag);
 
-std::unique_ptr<std::vector<pten::DenseTensor>> PrepareData(
+std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
     const std::vector<Tensor>& inputs,
-    const pten::TensorArgDef& target_args_def,
+    const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag);
 
 }  // namespace experimental

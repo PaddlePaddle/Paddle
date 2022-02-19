@@ -25,12 +25,12 @@
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/memory/memcpy.h"
 
-namespace pten {
+namespace phi {
 
 template <typename InType, typename OutType>
-void TensorSetConstantXPU(pten::DenseTensor* tensor,
+void TensorSetConstantXPU(phi::DenseTensor* tensor,
                           InType value,
-                          pten::Place place) {
+                          phi::Place place) {
   auto* begin = tensor->mutable_data<OutType>(place);
   int64_t numel = tensor->numel();
   std::unique_ptr<OutType[]> data_cpu(new OutType[numel]);
@@ -38,7 +38,7 @@ void TensorSetConstantXPU(pten::DenseTensor* tensor,
       data_cpu.get(), data_cpu.get() + numel, static_cast<OutType>(value));
   paddle::memory::Copy(place,
                        begin,
-                       pten::CPUPlace(),
+                       phi::CPUPlace(),
                        static_cast<void*>(data_cpu.get()),
                        numel * sizeof(OutType));
 }
@@ -59,7 +59,7 @@ void FullKernel(const Context& dev_ctx,
                 const Scalar& val,
                 DataType dtype,
                 DenseTensor* out) {
-  out->ResizeAndAllocate(pten::make_ddim(shape.GetData()));
+  out->ResizeAndAllocate(phi::make_ddim(shape.GetData()));
   FullValueXPU<T>(dev_ctx, out, val.to<T>());
 }
 
@@ -73,7 +73,7 @@ void FullLikeKernel(const Context& dev_ctx,
   using XPUInTDType = typename XPUTypeTrait<T>::Type;
   using CommonType = typename std::common_type<
       float,
-      typename std::conditional<std::is_same<T, pten::dtype::float16>::value,
+      typename std::conditional<std::is_same<T, phi::dtype::float16>::value,
                                 float,
                                 T>::type>::type;
 
@@ -85,7 +85,7 @@ void FullLikeKernel(const Context& dev_ctx,
           (common_type_value <=
            static_cast<CommonType>(std::numeric_limits<T>::max())),
       true,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The filled value is out of range for target type, "
           "current kernel type is %s, the range should between %f "
           "and %f, but now value is %f.",
@@ -96,10 +96,10 @@ void FullLikeKernel(const Context& dev_ctx,
 
   PADDLE_ENFORCE_EQ(std::isnan(value),
                     false,
-                    pten::errors::InvalidArgument("The filled value is NaN."));
+                    phi::errors::InvalidArgument("The filled value is NaN."));
   PADDLE_ENFORCE_EQ(std::isinf(value),
                     false,
-                    pten::errors::InvalidArgument("The filled value is Inf."));
+                    phi::errors::InvalidArgument("The filled value is Inf."));
 
   auto out_data = reinterpret_cast<XPUInTDType*>(out->data<T>());
   int ret = xpu::constant(dev_ctx.x_context(),
@@ -109,17 +109,17 @@ void FullLikeKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       ret,
       XPU_SUCCESS,
-      pten::errors::External("XPU CONSTANT API return wrong value[%d %s].",
-                             ret,
-                             XPUAPIErrorMsg[ret]));
+      phi::errors::External("XPU CONSTANT API return wrong value[%d %s].",
+                            ret,
+                            XPUAPIErrorMsg[ret]));
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(full,
                    XPU,
                    ALL_LAYOUT,
-                   pten::FullKernel,
+                   phi::FullKernel,
                    float,
                    double,
                    uint8_t,
@@ -127,16 +127,16 @@ PT_REGISTER_KERNEL(full,
                    int,
                    int64_t,
                    bool,
-                   pten::dtype::float16,
-                   pten::dtype::bfloat16,
-                   pten::dtype::complex<float>,
-                   pten::dtype::complex<double>) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(full_like,
                    XPU,
                    ALL_LAYOUT,
-                   pten::FullLikeKernel,
+                   phi::FullLikeKernel,
                    float,
                    int,
                    int64_t,
-                   pten::dtype::float16) {}
+                   phi::dtype::float16) {}

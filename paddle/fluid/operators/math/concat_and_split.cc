@@ -21,9 +21,9 @@ limitations under the License. */
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 
-namespace pten {
+namespace phi {
 class DenseTensor;
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 namespace framework {}  // namespace framework
@@ -46,9 +46,9 @@ class ConcatFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& context,
                   const std::vector<framework::Tensor>& input, int axis,
                   framework::Tensor* output) {
-    std::vector<pten::DenseTensor> pt_input{input.begin(), input.end()};
-    pten::ConcatImpl<T, platform::CPUDeviceContext>(context, pt_input, axis,
-                                                    output);
+    std::vector<phi::DenseTensor> pt_input{input.begin(), input.end()};
+    phi::ConcatImpl<T, platform::CPUDeviceContext>(context, pt_input, axis,
+                                                   output);
   }
 };
 
@@ -63,12 +63,11 @@ class SplitFunctor<platform::CPUDeviceContext, T> {
                   const framework::Tensor& input,
                   const std::vector<const framework::Tensor*>& ref_inputs,
                   const int axis, std::vector<framework::Tensor*>* outputs) {
-    std::vector<const pten::DenseTensor*> pt_ref_inputs{ref_inputs.begin(),
-                                                        ref_inputs.end()};
-    std::vector<pten::DenseTensor*> pt_outputs{outputs->begin(),
-                                               outputs->end()};
-    pten::SplitImpl<T, platform::CPUDeviceContext>(
-        context, input, pt_ref_inputs, axis, &pt_outputs);
+    std::vector<const phi::DenseTensor*> pt_ref_inputs{ref_inputs.begin(),
+                                                       ref_inputs.end()};
+    std::vector<phi::DenseTensor*> pt_outputs{outputs->begin(), outputs->end()};
+    phi::SplitImpl<T, platform::CPUDeviceContext>(context, input, pt_ref_inputs,
+                                                  axis, &pt_outputs);
   }
 };
 

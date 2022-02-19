@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
-namespace pten {
+namespace phi {
 
 template <typename InT, typename OutT = InT>
 struct FullFuctor {
@@ -39,7 +39,7 @@ void FullKernel(const Context& dev_ctx,
                 const Scalar& val,
                 DataType dtype,
                 DenseTensor* out) {
-  out->Resize(pten::make_ddim(shape.GetData()));
+  out->Resize(phi::make_ddim(shape.GetData()));
   int numel = out->numel();
   out->mutable_data<T>(dev_ctx.GetPlace());
   if (numel > 0) {
@@ -49,7 +49,7 @@ void FullKernel(const Context& dev_ctx,
     // This function has no input, so the inputs.size() == 0. Use kUnary, but
     // the data will not be loaded in the kernel because the number of
     // parameters in the operator is 0
-    pten::funcs::LaunchSameDimsElementwiseCudaKernel<T>(
+    phi::funcs::LaunchSameDimsElementwiseCudaKernel<T>(
         dev_ctx, inputs, &outputs, FullFuctor<T>(val.to<T>()));
   }
 }
@@ -63,7 +63,7 @@ void FullLikeKernel(const Context& dev_ctx,
   auto value = val.to<float>();
   using CommonType = typename std::common_type<
       float,
-      typename std::conditional<std::is_same<T, pten::dtype::float16>::value,
+      typename std::conditional<std::is_same<T, phi::dtype::float16>::value,
                                 float,
                                 T>::type>::type;
 
@@ -75,7 +75,7 @@ void FullLikeKernel(const Context& dev_ctx,
           (common_type_value <=
            static_cast<CommonType>(std::numeric_limits<T>::max())),
       true,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The filled value is out of range for target type, "
           "current kernel type is %s, the range should between %f "
           "and %f, but now value is %f.",
@@ -91,17 +91,17 @@ void FullLikeKernel(const Context& dev_ctx,
   // the operator is 0
   int numel = out->numel();
   if (numel > 0) {
-    pten::funcs::LaunchSameDimsElementwiseCudaKernel<T>(
+    phi::funcs::LaunchSameDimsElementwiseCudaKernel<T>(
         dev_ctx, inputs, &outputs, FullFuctor<T>(value));
   }
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(full,
                    GPU,
                    ALL_LAYOUT,
-                   pten::FullKernel,
+                   phi::FullKernel,
                    float,
                    double,
                    uint8_t,
@@ -109,17 +109,17 @@ PT_REGISTER_KERNEL(full,
                    int,
                    int64_t,
                    bool,
-                   pten::dtype::float16,
-                   pten::dtype::complex<float>,
-                   pten::dtype::complex<double>) {}
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(full_like,
                    GPU,
                    ALL_LAYOUT,
-                   pten::FullLikeKernel,
+                   phi::FullLikeKernel,
                    float,
                    double,
                    int,
                    int64_t,
                    bool,
-                   pten::dtype::float16) {}
+                   phi::dtype::float16) {}

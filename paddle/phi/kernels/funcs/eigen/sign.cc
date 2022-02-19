@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
-namespace pten {
+namespace phi {
 namespace funcs {
 
 template <typename T>
@@ -33,4 +33,4 @@ template struct EigenSign<Eigen::DefaultDevice, float>;
 template struct EigenSign<Eigen::DefaultDevice, double>;
 
 }  // namespace funcs
-}  // namespace pten
+}  // namespace phi

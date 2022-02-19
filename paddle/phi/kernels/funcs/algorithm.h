@@ -20,7 +20,7 @@
 
 #include "paddle/phi/core/hostdevice.h"
 
-namespace pten {
+namespace phi {
 namespace funcs {
 
 template <typename T>
@@ -85,4 +85,4 @@ HOSTDEVICE inline size_t UpperBound(const T1 *x, size_t num, const T2 &val) {
 }
 
 }  // namespace funcs
-}  // namespace pten
+}  // namespace phi

@@ -18,7 +18,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T>
 class intrusive_ptr {
@@ -62,7 +62,7 @@ class intrusive_ptr {
   T& operator*() const {
     PADDLE_ENFORCE_NOT_NULL(
         px,
-        pten::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "The pointer must be non-null before the dereference operation."));
     return *px;
   }
@@ -70,7 +70,7 @@ class intrusive_ptr {
   T* operator->() const {
     PADDLE_ENFORCE_NOT_NULL(
         px,
-        pten::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "The pointer must be non-null before the dereference operation."));
     return px;
   }
@@ -160,4 +160,4 @@ inline intrusive_ptr<T> copy_intrusive(const intrusive_ptr<T>& rhs) {
   return intrusive_ptr<T>(rhs.get(), true);
 }
 
-}  // namespace pten
+}  // namespace phi

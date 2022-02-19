@@ -56,7 +56,7 @@
 #define HOST
 #endif
 
-namespace pten {
+namespace phi {
 namespace dtype {
 
 // Use PADDLE_ALIGNED(2) to ensure that each float16 will be allocated
@@ -989,7 +989,7 @@ inline std::ostream& operator<<(std::ostream& os, const float16& a) {
 }
 
 }  // namespace dtype
-}  // namespace pten
+}  // namespace phi
 
 namespace std {
 
@@ -1002,38 +1002,34 @@ namespace std {
 // constructor in float16. Hence, we override is_pod here following C++11
 // so that .cu files can be successfully compiled by nvcc.
 template <>
-struct is_pod<pten::dtype::float16> {
-  static const bool value = is_trivial<pten::dtype::float16>::value &&
-                            is_standard_layout<pten::dtype::float16>::value;
+struct is_pod<phi::dtype::float16> {
+  static const bool value = is_trivial<phi::dtype::float16>::value &&
+                            is_standard_layout<phi::dtype::float16>::value;
 };
 
 template <>
-struct is_floating_point<pten::dtype::float16>
+struct is_floating_point<phi::dtype::float16>
     : std::integral_constant<
           bool,
           std::is_same<
-              pten::dtype::float16,
-              typename std::remove_cv<pten::dtype::float16>::type>::value> {};
+              phi::dtype::float16,
+              typename std::remove_cv<phi::dtype::float16>::type>::value> {};
 template <>
-struct is_signed<pten::dtype::float16> {
+struct is_signed<phi::dtype::float16> {
   static const bool value = true;
 };
 
 template <>
-struct is_unsigned<pten::dtype::float16> {
+struct is_unsigned<phi::dtype::float16> {
   static const bool value = false;
 };
 
-inline bool isnan(const pten::dtype::float16& a) {
-  return pten::dtype::isnan(a);
-}
+inline bool isnan(const phi::dtype::float16& a) { return phi::dtype::isnan(a); }
 
-inline bool isinf(const pten::dtype::float16& a) {
-  return pten::dtype::isinf(a);
-}
+inline bool isinf(const phi::dtype::float16& a) { return phi::dtype::isinf(a); }
 
 template <>
-struct numeric_limits<pten::dtype::float16> {
+struct numeric_limits<phi::dtype::float16> {
   static const bool is_specialized = true;
   static const bool is_signed = true;
   static const bool is_integer = false;
@@ -1058,37 +1054,37 @@ struct numeric_limits<pten::dtype::float16> {
   static const bool traps = true;
   static const bool tinyness_before = false;
 
-  HOSTDEVICE static pten::dtype::float16(min)() {
-    return pten::dtype::raw_uint16_to_float16(0x400);
+  HOSTDEVICE static phi::dtype::float16(min)() {
+    return phi::dtype::raw_uint16_to_float16(0x400);
   }
-  HOSTDEVICE static pten::dtype::float16 lowest() {
-    return pten::dtype::raw_uint16_to_float16(0xfbff);
+  HOSTDEVICE static phi::dtype::float16 lowest() {
+    return phi::dtype::raw_uint16_to_float16(0xfbff);
   }
-  HOSTDEVICE static pten::dtype::float16(max)() {
-    return pten::dtype::raw_uint16_to_float16(0x7bff);
+  HOSTDEVICE static phi::dtype::float16(max)() {
+    return phi::dtype::raw_uint16_to_float16(0x7bff);
   }
-  HOSTDEVICE static pten::dtype::float16 epsilon() {
-    return pten::dtype::raw_uint16_to_float16(0x0800);
+  HOSTDEVICE static phi::dtype::float16 epsilon() {
+    return phi::dtype::raw_uint16_to_float16(0x0800);
   }
-  HOSTDEVICE static pten::dtype::float16 round_error() {
-    return pten::dtype::float16(0.5);
+  HOSTDEVICE static phi::dtype::float16 round_error() {
+    return phi::dtype::float16(0.5);
   }
-  HOSTDEVICE static pten::dtype::float16 infinity() {
-    return pten::dtype::raw_uint16_to_float16(0x7c00);
+  HOSTDEVICE static phi::dtype::float16 infinity() {
+    return phi::dtype::raw_uint16_to_float16(0x7c00);
   }
-  HOSTDEVICE static pten::dtype::float16 quiet_NaN() {
-    return pten::dtype::raw_uint16_to_float16(0x7e00);
+  HOSTDEVICE static phi::dtype::float16 quiet_NaN() {
+    return phi::dtype::raw_uint16_to_float16(0x7e00);
   }
-  HOSTDEVICE static pten::dtype::float16 signaling_NaN() {
-    return pten::dtype::raw_uint16_to_float16(0x7e00);
+  HOSTDEVICE static phi::dtype::float16 signaling_NaN() {
+    return phi::dtype::raw_uint16_to_float16(0x7e00);
   }
-  HOSTDEVICE static pten::dtype::float16 denorm_min() {
-    return pten::dtype::raw_uint16_to_float16(0x1);
+  HOSTDEVICE static phi::dtype::float16 denorm_min() {
+    return phi::dtype::raw_uint16_to_float16(0x1);
   }
 };
 
-HOSTDEVICE inline pten::dtype::float16 abs(const pten::dtype::float16& a) {
-  return pten::dtype::abs(a);
+HOSTDEVICE inline phi::dtype::float16 abs(const phi::dtype::float16& a) {
+  return phi::dtype::abs(a);
 }
 
 }  // namespace std

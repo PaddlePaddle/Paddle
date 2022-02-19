@@ -23,10 +23,10 @@ limitations under the License. */
 PT_REGISTER_KERNEL(matmul,
                    GPU,
                    ALL_LAYOUT,
-                   pten::MatmulKernel,
+                   phi::MatmulKernel,
                    float,
                    double,
-                   pten::dtype::float16,
-                   pten::dtype::bfloat16,
-                   pten::dtype::complex<float>,
-                   pten::dtype::complex<double>) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

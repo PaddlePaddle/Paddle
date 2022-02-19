@@ -14,7 +14,7 @@
 
 #pragma once
 
-namespace pten {
+namespace phi {
 namespace backends {
 namespace gpu {
 
@@ -69,4 +69,4 @@ namespace gpu {
 
 }  // namespace gpu
 }  // namespace backends
-}  // namespace pten
+}  // namespace phi

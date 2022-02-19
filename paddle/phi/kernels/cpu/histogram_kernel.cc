@@ -17,7 +17,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void HistogramKernel(const Context& dev_ctx,
@@ -34,7 +34,7 @@ void HistogramKernel(const Context& dev_ctx,
   auto input_numel = input.numel();
 
   int64_t* out_data = output->mutable_data<int64_t>(dev_ctx.GetPlace());
-  pten::funcs::SetConstant<Context, int64_t>()(
+  phi::funcs::SetConstant<Context, int64_t>()(
       dev_ctx, output, static_cast<int64_t>(0));
 
   if (input_data == nullptr) return;
@@ -50,17 +50,16 @@ void HistogramKernel(const Context& dev_ctx,
     output_max = output_max + 1;
   }
 
-  PADDLE_ENFORCE_EQ(
-      (std::isinf(static_cast<float>(output_min)) ||
-       std::isnan(static_cast<float>(output_max)) ||
-       std::isinf(static_cast<float>(output_min)) ||
-       std::isnan(static_cast<float>(output_max))),
-      false,
-      pten::errors::OutOfRange("range of min, max is not finite"));
+  PADDLE_ENFORCE_EQ((std::isinf(static_cast<float>(output_min)) ||
+                     std::isnan(static_cast<float>(output_max)) ||
+                     std::isinf(static_cast<float>(output_min)) ||
+                     std::isnan(static_cast<float>(output_max))),
+                    false,
+                    phi::errors::OutOfRange("range of min, max is not finite"));
   PADDLE_ENFORCE_GE(
       output_max,
       output_min,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "max must be larger or equal to min. If min and max are both zero, "
           "the minimum and maximum values of the data are used. "
           "But received max is %d, min is %d",
@@ -76,12 +75,12 @@ void HistogramKernel(const Context& dev_ctx,
   }
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(histogram,
                    CPU,
                    ALL_LAYOUT,
-                   pten::HistogramKernel,
+                   phi::HistogramKernel,
                    float,
                    double,
                    int,

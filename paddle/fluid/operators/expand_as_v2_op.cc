@@ -41,7 +41,7 @@ class ExpandAsV2Op : public framework::OperatorWithKernel {
                           "The rank of target_shape must be less than or equal "
                           "to %d. But received: rank %u.",
                           MAX_RANK_SUPPORTED, target_shape.size()));
-    ctx->SetOutputDim("Out", pten::make_ddim(target_shape));
+    ctx->SetOutputDim("Out", phi::make_ddim(target_shape));
   }
 };
 

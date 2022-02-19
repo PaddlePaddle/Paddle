@@ -336,13 +336,13 @@ void Col2VolFunctor<DeviceContext, T>::operator()(
 
 template class Vol2ColFunctor<platform::CUDADeviceContext, float>;
 template class Vol2ColFunctor<platform::CUDADeviceContext, double>;
-template class Vol2ColFunctor<pten::GPUContext, float>;
-template class Vol2ColFunctor<pten::GPUContext, double>;
+template class Vol2ColFunctor<phi::GPUContext, float>;
+template class Vol2ColFunctor<phi::GPUContext, double>;
 
 template class Col2VolFunctor<platform::CUDADeviceContext, float>;
 template class Col2VolFunctor<platform::CUDADeviceContext, double>;
-template class Col2VolFunctor<pten::GPUContext, float>;
-template class Col2VolFunctor<pten::GPUContext, double>;
+template class Col2VolFunctor<phi::GPUContext, float>;
+template class Col2VolFunctor<phi::GPUContext, double>;
 
 }  // namespace math
 }  // namespace operators

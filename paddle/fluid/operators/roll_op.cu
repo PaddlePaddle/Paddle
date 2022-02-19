@@ -28,9 +28,9 @@ using LoDTensor = framework::LoDTensor;
 
 template <typename T, size_t Rank>
 __global__ void RollCudaKernel(const T* input, T* output, int64_t N,
-                               pten::Array<int64_t, Rank> shifts,
-                               pten::Array<int64_t, Rank> strides,
-                               pten::Array<int64_t, Rank> sizes) {
+                               phi::Array<int64_t, Rank> shifts,
+                               phi::Array<int64_t, Rank> strides,
+                               phi::Array<int64_t, Rank> sizes) {
   int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= N) {
     return;
@@ -79,7 +79,7 @@ class RollKernel<platform::CUDADeviceContext, T>
 
     size_t nums = shifts.size();
     auto input_dim = in->dims();
-    auto stride_dim = pten::stride(input_dim);
+    auto stride_dim = phi::stride(input_dim);
 
     std::vector<int64_t> strides(nums), sizes(nums);
     if (dims.size() == 0) {
@@ -101,9 +101,9 @@ class RollKernel<platform::CUDADeviceContext, T>
 
 #define CALL_ROLL_CUDA_KERNEL(N)                                               \
   case N: {                                                                    \
-    pten::Array<int64_t, N> _strides;                                          \
-    pten::Array<int64_t, N> _shifts;                                           \
-    pten::Array<int64_t, N> _sizes;                                            \
+    phi::Array<int64_t, N> _strides;                                           \
+    phi::Array<int64_t, N> _shifts;                                            \
+    phi::Array<int64_t, N> _sizes;                                             \
     for (size_t idx = 0; idx < N; ++idx) {                                     \
       _strides[idx] = strides[idx];                                            \
       _shifts[idx] = shifts[idx];                                              \
@@ -163,7 +163,7 @@ class RollGradKernel<platform::CUDADeviceContext, T>
         context.template device_context<platform::CUDADeviceContext>().stream();
     size_t nums = shifts.size();
     auto input_dim = in->dims();
-    auto stride_dim = pten::stride(input_dim);
+    auto stride_dim = phi::stride(input_dim);
 
     std::vector<int64_t> strides(nums), sizes(nums);
     if (dims.size() == 0) {

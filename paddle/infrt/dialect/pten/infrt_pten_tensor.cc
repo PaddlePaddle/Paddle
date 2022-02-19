@@ -20,7 +20,7 @@
 #include "paddle/infrt/dialect/phi/infrt_pten_tensorTypes.cpp.inc"
 
 namespace infrt {
-namespace pten {
+namespace phi {
 
 void PTENDenseTensorDialect::initialize() {
 #define GET_OP_LIST
@@ -29,7 +29,7 @@ void PTENDenseTensorDialect::initialize() {
       >();
 }
 
-}  // namespace pten
+}  // namespace phi
 }  // namespace infrt
 
 #define GET_OP_CLASSES

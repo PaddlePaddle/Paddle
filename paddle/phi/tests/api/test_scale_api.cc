@@ -25,7 +25,7 @@ namespace paddle {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = pten::DDim;
+using DDim = phi::DDim;
 
 void CheckScaleResult(const experimental::Tensor* out) {
   ASSERT_EQ(out->dims().size(), 2);
@@ -33,8 +33,8 @@ void CheckScaleResult(const experimental::Tensor* out) {
   ASSERT_EQ(out->dims()[1], 4);
   ASSERT_EQ(out->numel(), 12);
   ASSERT_EQ(out->is_cpu(), true);
-  ASSERT_EQ(out->type(), pten::DataType::FLOAT32);
-  ASSERT_EQ(out->layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(out->type(), phi::DataType::FLOAT32);
+  ASSERT_EQ(out->layout(), phi::DataLayout::NCHW);
   ASSERT_EQ(out->initialized(), true);
   for (int64_t i = 0; i < out->numel(); ++i) {
     ASSERT_NEAR(3.0, out->data<float>()[i], 1e-6f);
@@ -43,12 +43,12 @@ void CheckScaleResult(const experimental::Tensor* out) {
 
 TEST(API, scale) {
   // 1. check `scale` is float value
-  auto x = experimental::full({3, 4}, 1.0, pten::DataType::FLOAT32);
+  auto x = experimental::full({3, 4}, 1.0, phi::DataType::FLOAT32);
   auto out1 = experimental::scale(x, 2.0, 1.0, true);
   CheckScaleResult(&out1);
 
   // 2. check `scale` is Tensor with shape [1]
-  auto scale = experimental::full({1}, 2.0, pten::DataType::FLOAT32);
+  auto scale = experimental::full({1}, 2.0, phi::DataType::FLOAT32);
   auto out2 = experimental::scale(x, scale, 1.0, true);
   CheckScaleResult(&out2);
 }
@@ -57,9 +57,9 @@ TEST(API, scale_sr) {
   // 1. check `scale` is float value
   std::vector<int64_t> rows{0, 4, 7};
   int64_t height = 10;
-  auto selected_rows = std::make_shared<pten::SelectedRows>(rows, height);
-  auto dense_tensor = std::dynamic_pointer_cast<pten::DenseTensor>(
-      experimental::full({3, 4}, 1.0, pten::DataType::FLOAT32).impl());
+  auto selected_rows = std::make_shared<phi::SelectedRows>(rows, height);
+  auto dense_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
+      experimental::full({3, 4}, 1.0, phi::DataType::FLOAT32).impl());
   *(selected_rows->mutable_value()) = *dense_tensor;
   experimental::Tensor x(selected_rows);
   auto out = experimental::scale(x, 2.0, 1.0, true);
@@ -69,8 +69,8 @@ TEST(API, scale_sr) {
   ASSERT_EQ(out.dims()[1], 4);
   ASSERT_EQ(out.numel(), 12);
   ASSERT_EQ(out.is_cpu(), true);
-  ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
-  ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(out.type(), phi::DataType::FLOAT32);
+  ASSERT_EQ(out.layout(), phi::DataLayout::NCHW);
   ASSERT_EQ(out.initialized(), true);
   for (int64_t i = 0; i < out.numel(); ++i) {
     ASSERT_NEAR(3.0, out.data<float>()[i], 1e-6f);

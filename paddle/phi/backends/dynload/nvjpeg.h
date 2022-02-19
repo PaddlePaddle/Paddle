@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/backends/dynload/port.h"
 
-namespace pten {
+namespace phi {
 namespace dynload {
 extern std::once_flag nvjpeg_dso_flag;
 extern void *nvjpeg_dso_handle;
@@ -28,7 +28,7 @@ extern void *nvjpeg_dso_handle;
     nvjpegStatus_t operator()(Args... args) {                      \
       using nvjpegFunc = decltype(&::__name);                      \
       std::call_once(nvjpeg_dso_flag, []() {                       \
-        nvjpeg_dso_handle = pten::dynload::GetNvjpegDsoHandle();   \
+        nvjpeg_dso_handle = phi::dynload::GetNvjpegDsoHandle();    \
       });                                                          \
       static void *p_##__name = dlsym(nvjpeg_dso_handle, #__name); \
       return reinterpret_cast<nvjpegFunc>(p_##__name)(args...);    \
@@ -46,6 +46,6 @@ extern void *nvjpeg_dso_handle;
 NVJPEG_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_NVJPEG_WRAP);
 
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi
 
 #endif

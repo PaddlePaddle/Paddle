@@ -16,7 +16,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void TruncGradKernel(const Context& dev_ctx,
@@ -28,12 +28,12 @@ void TruncGradKernel(const Context& dev_ctx,
   memset(dx_data, 0.0, numel * sizeof(T));
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(trunc_grad,
                    CPU,
                    ALL_LAYOUT,
-                   pten::TruncGradKernel,
+                   phi::TruncGradKernel,
                    float,
                    double,
                    int,

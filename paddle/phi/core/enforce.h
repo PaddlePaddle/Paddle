@@ -51,12 +51,12 @@ limitations under the License. */
 // Note: these headers for simplify demangle type string
 #include "paddle/phi/core/compat/type_defs.h"
 
-namespace pten {
+namespace phi {
 class ErrorSummary;
-}  // namespace pten
+}  // namespace phi
 
 DECLARE_int32(call_stack_level);
-namespace pten {
+namespace phi {
 namespace enforce {
 /** HELPER MACROS AND FUNCTIONS **/
 
@@ -193,10 +193,10 @@ inline std::string ReplaceComplexTypeStr(std::string str,
   return str;
 }
 
-#define __REPLACE_COMPLEX_TYPE_STR__(__TYPENAME, __STR)                       \
-  do {                                                                        \
-    __STR =                                                                   \
-        pten::enforce::ReplaceComplexTypeStr<__TYPENAME>(__STR, #__TYPENAME); \
+#define __REPLACE_COMPLEX_TYPE_STR__(__TYPENAME, __STR)                      \
+  do {                                                                       \
+    __STR =                                                                  \
+        phi::enforce::ReplaceComplexTypeStr<__TYPENAME>(__STR, #__TYPENAME); \
   } while (0)
 
 inline std::string SimplifyDemangleStr(std::string str) {
@@ -291,11 +291,11 @@ inline std::string SimplifyErrorTypeFormat(const std::string& str) {
 inline bool is_error(bool stat) { return !stat; }
 
 // Note: This Macro can only be used within enforce.h
-#define __THROW_ERROR_INTERNAL__(__ERROR_SUMMARY)                              \
-  do {                                                                         \
-    HANDLE_THE_ERROR                                                           \
-    throw ::pten::enforce::EnforceNotMet(__ERROR_SUMMARY, __FILE__, __LINE__); \
-    END_HANDLE_THE_ERROR                                                       \
+#define __THROW_ERROR_INTERNAL__(__ERROR_SUMMARY)                             \
+  do {                                                                        \
+    HANDLE_THE_ERROR                                                          \
+    throw ::phi::enforce::EnforceNotMet(__ERROR_SUMMARY, __FILE__, __LINE__); \
+    END_HANDLE_THE_ERROR                                                      \
   } while (0)
 
 /** ENFORCE EXCEPTION AND MACROS **/
@@ -320,7 +320,7 @@ struct EnforceNotMet : public std::exception {
     simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
   }
 
-  EnforceNotMet(const pten::ErrorSummary& error, const char* file, int line)
+  EnforceNotMet(const phi::ErrorSummary& error, const char* file, int line)
       : code_(error.code()),
         err_str_(GetTraceBackString(error.to_string(), file, line)) {
     simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
@@ -334,7 +334,7 @@ struct EnforceNotMet : public std::exception {
     }
   }
 
-  pten::ErrorCode code() const { return code_; }
+  phi::ErrorCode code() const { return code_; }
 
   const std::string& error_str() const { return err_str_; }
 
@@ -350,7 +350,7 @@ struct EnforceNotMet : public std::exception {
 
  private:
   // Used to determine the final type of exception thrown
-  pten::ErrorCode code_ = pten::ErrorCode::LEGACY;
+  phi::ErrorCode code_ = phi::ErrorCode::LEGACY;
   // Complete error message
   // e.g. InvalidArgumentError: ***
   std::string err_str_;
@@ -359,12 +359,12 @@ struct EnforceNotMet : public std::exception {
   std::string simple_err_str_;
 };
 
-#define PADDLE_THROW(...)                                       \
-  do {                                                          \
-    HANDLE_THE_ERROR                                            \
-    throw ::pten::enforce::EnforceNotMet(                       \
-        ::pten::ErrorSummary(__VA_ARGS__), __FILE__, __LINE__); \
-    END_HANDLE_THE_ERROR                                        \
+#define PADDLE_THROW(...)                                      \
+  do {                                                         \
+    HANDLE_THE_ERROR                                           \
+    throw ::phi::enforce::EnforceNotMet(                       \
+        ::phi::ErrorSummary(__VA_ARGS__), __FILE__, __LINE__); \
+    END_HANDLE_THE_ERROR                                       \
   } while (0)
 
 #if defined(__CUDA_ARCH__)
@@ -395,12 +395,12 @@ struct EnforceNotMet : public std::exception {
     }                                                              \
   } while (0)
 #else
-#define PADDLE_ENFORCE(COND, ...)                                \
-  do {                                                           \
-    auto __cond__ = (COND);                                      \
-    if (UNLIKELY(::pten::is_error(__cond__))) {                  \
-      __THROW_ERROR_INTERNAL__(pten::ErrorSummary(__VA_ARGS__)); \
-    }                                                            \
+#define PADDLE_ENFORCE(COND, ...)                               \
+  do {                                                          \
+    auto __cond__ = (COND);                                     \
+    if (UNLIKELY(::phi::is_error(__cond__))) {                  \
+      __THROW_ERROR_INTERNAL__(phi::ErrorSummary(__VA_ARGS__)); \
+    }                                                           \
   } while (0)
 #endif
 
@@ -418,16 +418,16 @@ struct EnforceNotMet : public std::exception {
  *    PADDLE_ENFORCE(a, b, "some simple enforce failed between %d numbers", 2)
  */
 
-#define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                     \
-  do {                                                          \
-    if (UNLIKELY(nullptr == (__VAL))) {                         \
-      auto __summary__ = pten::ErrorSummary(__VA_ARGS__);       \
-      auto __message__ = ::paddle::string::Sprintf(             \
-          "%s\n  [Hint: " #__VAL " should not be null.]",       \
-          __summary__.error_message());                         \
-      __THROW_ERROR_INTERNAL__(                                 \
-          pten::ErrorSummary(__summary__.code(), __message__)); \
-    }                                                           \
+#define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                    \
+  do {                                                         \
+    if (UNLIKELY(nullptr == (__VAL))) {                        \
+      auto __summary__ = phi::ErrorSummary(__VA_ARGS__);       \
+      auto __message__ = ::paddle::string::Sprintf(            \
+          "%s\n  [Hint: " #__VAL " should not be null.]",      \
+          __summary__.error_message());                        \
+      __THROW_ERROR_INTERNAL__(                                \
+          phi::ErrorSummary(__summary__.code(), __message__)); \
+    }                                                          \
   } while (0)
 
 #define __PADDLE_BINARY_COMPARE(__VAL1, __VAL2, __CMP, __INV_CMP, ...)  \
@@ -437,28 +437,28 @@ struct EnforceNotMet : public std::exception {
     using __TYPE1__ = decltype(__val1);                                 \
     using __TYPE2__ = decltype(__val2);                                 \
     using __COMMON_TYPE1__ =                                            \
-        ::pten::details::CommonType1<__TYPE1__, __TYPE2__>;             \
+        ::phi::details::CommonType1<__TYPE1__, __TYPE2__>;              \
     using __COMMON_TYPE2__ =                                            \
-        ::pten::details::CommonType2<__TYPE1__, __TYPE2__>;             \
+        ::phi::details::CommonType2<__TYPE1__, __TYPE2__>;              \
     bool __is_not_error = (static_cast<__COMMON_TYPE1__>(__val1))__CMP( \
         static_cast<__COMMON_TYPE2__>(__val2));                         \
     if (UNLIKELY(!__is_not_error)) {                                    \
-      auto __summary__ = pten::ErrorSummary(__VA_ARGS__);               \
+      auto __summary__ = phi::ErrorSummary(__VA_ARGS__);                \
       constexpr bool __kCanToString__ =                                 \
-          ::pten::details::CanToString<__TYPE1__>::kValue &&            \
-          ::pten::details::CanToString<__TYPE2__>::kValue;              \
+          ::phi::details::CanToString<__TYPE1__>::kValue &&             \
+          ::phi::details::CanToString<__TYPE2__>::kValue;               \
       auto __message__ = ::paddle::string::Sprintf(                     \
           "%s\n  [Hint: Expected %s " #__CMP                            \
           " %s, but received %s " #__INV_CMP " %s.]",                   \
           __summary__.error_message(),                                  \
           #__VAL1,                                                      \
           #__VAL2,                                                      \
-          ::pten::details::BinaryCompareMessageConverter<               \
+          ::phi::details::BinaryCompareMessageConverter<                \
               __kCanToString__>::Convert(#__VAL1, __val1),              \
-          ::pten::details::BinaryCompareMessageConverter<               \
+          ::phi::details::BinaryCompareMessageConverter<                \
               __kCanToString__>::Convert(#__VAL2, __val2));             \
       __THROW_ERROR_INTERNAL__(                                         \
-          pten::ErrorSummary(__summary__.code(), __message__));         \
+          phi::ErrorSummary(__summary__.code(), __message__));          \
     }                                                                   \
   } while (0)
 
@@ -504,13 +504,13 @@ struct EnforceNotMet : public std::exception {
   (([&]() -> std::add_lvalue_reference<decltype(*(__PTR))>::type {      \
     auto* __ptr = (__PTR);                                              \
     if (UNLIKELY(nullptr == __ptr)) {                                   \
-      auto __summary__ = pten::errors::NotFound(                        \
+      auto __summary__ = phi::errors::NotFound(                         \
           "Unable to get %s data of %s %s in operator %s. "             \
           "Possible reasons are:\n"                                     \
           "  1. The %s is not the %s of operator %s;\n"                 \
           "  2. The %s has no corresponding variable passed in;\n"      \
           "  3. The %s corresponding variable is not initialized.",     \
-          pten::demangle(                                               \
+          phi::demangle(                                                \
               typeid(std::add_lvalue_reference<decltype(*__ptr)>::type) \
                   .name()),                                             \
           __ROLE,                                                       \
@@ -525,7 +525,7 @@ struct EnforceNotMet : public std::exception {
           "%s\n  [Hint: pointer " #__PTR " should not be null.]",       \
           __summary__.error_message());                                 \
       __THROW_ERROR_INTERNAL__(                                         \
-          pten::ErrorSummary(__summary__.code(), __message__));         \
+          phi::ErrorSummary(__summary__.code(), __message__));          \
     }                                                                   \
     return *__ptr;                                                      \
   })())
@@ -549,10 +549,10 @@ struct EnforceNotMet : public std::exception {
     PADDLE_ENFORCE_EQ(                                                       \
         __EXPR,                                                              \
         true,                                                                \
-        pten::errors::NotFound(                                              \
+        phi::errors::NotFound(                                               \
             "No %s(%s) found for %s operator.", __ROLE, __NAME, __OP_TYPE)); \
   } while (0)
 
 }  // namespace enforce
 using namespace enforce;  // NOLINT
-}  // namespace pten
+}  // namespace phi

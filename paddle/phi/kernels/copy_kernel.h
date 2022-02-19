@@ -17,11 +17,11 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 
-namespace pten {
+namespace phi {
 
 template <typename Context>
 void Copy(const Context& dev_ctx,
           const DenseTensor& src,
           bool blocking,
           DenseTensor* dst);
-}  // namespace pten
+}  // namespace phi

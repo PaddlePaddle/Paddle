@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/port.h"
 #include "warpctc/include/ctc.h"
 
-namespace pten {
+namespace phi {
 namespace dynload {
 
 extern std::once_flag warpctc_dso_flag;
@@ -37,7 +37,7 @@ extern void* warpctc_dso_handle;
     auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) { \
       using warpctcFunc = decltype(&::__name);                       \
       std::call_once(warpctc_dso_flag, []() {                        \
-        warpctc_dso_handle = pten::dynload::GetWarpCTCDsoHandle();   \
+        warpctc_dso_handle = phi::dynload::GetWarpCTCDsoHandle();    \
       });                                                            \
       static void* p_##_name = dlsym(warpctc_dso_handle, #__name);   \
       return reinterpret_cast<warpctcFunc>(p_##_name)(args...);      \
@@ -61,4 +61,4 @@ WARPCTC_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_WARPCTC_WRAP);
 #undef DYNAMIC_LOAD_WARPCTC_WRAP
 
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi

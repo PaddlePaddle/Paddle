@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/generator.h"
 
-namespace pten {
+namespace phi {
 class TensorBase;
 
 /**
@@ -137,4 +137,4 @@ class DeviceContext {
   std::unique_ptr<Impl> impl_;
 };
 
-}  // namespace pten
+}  // namespace phi

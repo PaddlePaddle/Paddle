@@ -104,10 +104,10 @@ class YoloBoxOp : public framework::OperatorWithKernel {
 
     int box_num = dim_x[2] * dim_x[3] * anchor_num;
     std::vector<int64_t> dim_boxes({dim_x[0], box_num, 4});
-    ctx->SetOutputDim("Boxes", pten::make_ddim(dim_boxes));
+    ctx->SetOutputDim("Boxes", phi::make_ddim(dim_boxes));
 
     std::vector<int64_t> dim_scores({dim_x[0], box_num, class_num});
-    ctx->SetOutputDim("Scores", pten::make_ddim(dim_scores));
+    ctx->SetOutputDim("Scores", phi::make_ddim(dim_scores));
   }
 
  protected:

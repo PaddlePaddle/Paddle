@@ -22,7 +22,7 @@ limitations under the License. */
 
 #include "paddle/utils/string/printf.h"
 
-namespace pten {
+namespace phi {
 enum ErrorCode {
   // Legacy error.
   // Error type string: "Error"
@@ -98,7 +98,7 @@ class ErrorSummary {
   //   constructor now.
   template <typename... Args>
   explicit ErrorSummary(Args... args) {
-    code_ = pten::ErrorCode::LEGACY;
+    code_ = phi::ErrorCode::LEGACY;
     msg_ = paddle::string::Sprintf(args...);
   }
 
@@ -120,11 +120,11 @@ class ErrorSummary {
 
 namespace errors {
 
-#define REGISTER_ERROR(FUNC, CONST, ...)                             \
-  template <typename... Args>                                        \
-  ::pten::ErrorSummary FUNC(Args... args) {                          \
-    return ::pten::ErrorSummary(::pten::CONST,                       \
-                                ::paddle::string::Sprintf(args...)); \
+#define REGISTER_ERROR(FUNC, CONST, ...)                            \
+  template <typename... Args>                                       \
+  ::phi::ErrorSummary FUNC(Args... args) {                          \
+    return ::phi::ErrorSummary(::phi::CONST,                        \
+                               ::paddle::string::Sprintf(args...)); \
   }
 
 REGISTER_ERROR(InvalidArgument, ErrorCode::INVALID_ARGUMENT)
@@ -143,4 +143,4 @@ REGISTER_ERROR(External, ErrorCode::EXTERNAL)
 #undef REGISTER_ERROR
 
 }  // namespace errors
-}  // namespace pten
+}  // namespace phi

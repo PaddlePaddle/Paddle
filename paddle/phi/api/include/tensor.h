@@ -36,14 +36,14 @@ using gpuStream_t = hipStream_t;
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
 
-namespace pten {
+namespace phi {
 class DenseTensor;
-}  // namespace pten
+}  // namespace phi
 
-namespace pten {
+namespace phi {
 class TensorBase;
 class DDim;
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 
@@ -108,7 +108,7 @@ class PADDLE_API Tensor final {
    *
    * @param tensor_impl
    */
-  explicit Tensor(std::shared_ptr<pten::TensorBase> tensor_impl);
+  explicit Tensor(std::shared_ptr<phi::TensorBase> tensor_impl);
 
   /**
    * @brief Construct a new Tensor object on the target place.
@@ -133,8 +133,7 @@ class PADDLE_API Tensor final {
    *
    * @param tensor_impl
    */
-  Tensor(std::shared_ptr<pten::TensorBase> tensor_impl,
-         const std::string& name);
+  Tensor(std::shared_ptr<phi::TensorBase> tensor_impl, const std::string& name);
 
   /**
    * @brief Construct a new Tensor object with name
@@ -165,9 +164,9 @@ class PADDLE_API Tensor final {
   /**
    * @brief Return the dimensions of Tensor.
    *
-   * @return pten::DDim
+   * @return phi::DDim
    */
-  pten::DDim dims() const;
+  phi::DDim dims() const;
 
   /**
    * @brief Return the shape (dimensions) of Tensor.
@@ -245,7 +244,7 @@ class PADDLE_API Tensor final {
    *
    * @return paddle::platform::Place
    */
-  pten::Place inner_place() const;
+  phi::Place inner_place() const;
 
   /**
    * @brief Determine whether the tensor device is CPU
@@ -325,16 +324,16 @@ class PADDLE_API Tensor final {
   /**
    * @brief Return the implemention of current Tensor.
    *
-   * @return std::shared_ptr<pten::TensorBase>
+   * @return std::shared_ptr<phi::TensorBase>
    */
-  std::shared_ptr<pten::TensorBase> impl() const;
+  std::shared_ptr<phi::TensorBase> impl() const;
 
   /**
    * @brief Set the implemention of current Tensor.
    *
    * @param impl
    */
-  void set_impl(const std::shared_ptr<pten::TensorBase>& impl);
+  void set_impl(const std::shared_ptr<phi::TensorBase>& impl);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   /**
@@ -499,7 +498,7 @@ class PADDLE_API Tensor final {
    * heterogeneous Tensor implementation, so that the API level can be unified
    * to one `Tensor`.
    */
-  std::shared_ptr<pten::TensorBase> impl_;
+  std::shared_ptr<phi::TensorBase> impl_;
 
   /**
    * [ Why need abstract AbstractAutogradMeta here? ]

@@ -92,7 +92,7 @@ class Squeeze2GradKernel : public framework::OpKernel<T> {
     // auto in_dims = d_x->dims();
 
     auto xshape_dims = ctx.Input<framework::LoDTensor>("XShape")->dims();
-    auto x_dims = pten::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopySync(*d_out, ctx.GetPlace(), d_x);

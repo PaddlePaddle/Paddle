@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
 
-namespace pten {
+namespace phi {
 
 class InferMetaContext {
  public:
@@ -36,14 +36,14 @@ class InferMetaContext {
   explicit InferMetaContext(MetaConfig config) : config_(config) {}
 
   void SetMetaConfig(MetaConfig config);
-  void EmplaceBackInput(std::shared_ptr<pten::MetaTensor> input);
-  void EmplaceBackOutput(std::shared_ptr<pten::MetaTensor> output);
+  void EmplaceBackInput(std::shared_ptr<phi::MetaTensor> input);
+  void EmplaceBackOutput(std::shared_ptr<phi::MetaTensor> output);
   void EmplaceBackAttr(paddle::any attr);
 
   void EmplaceBackInputs(
-      paddle::SmallVector<std::shared_ptr<pten::MetaTensor>> inputs);
+      paddle::SmallVector<std::shared_ptr<phi::MetaTensor>> inputs);
   void EmplaceBackOutputs(
-      paddle::SmallVector<std::shared_ptr<pten::MetaTensor>> outputs);
+      paddle::SmallVector<std::shared_ptr<phi::MetaTensor>> outputs);
 
   const std::pair<int, int>& InputRangeAt(size_t idx) const;
   const std::pair<int, int>& OutputRangeAt(size_t idx) const;
@@ -58,7 +58,7 @@ class InferMetaContext {
     try {
       return paddle::any_cast<AttrType>(attrs_.at(idx));
     } catch (paddle::bad_any_cast& e) {
-      PADDLE_THROW(pten::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Attribute cast error in InferMeta Context, the expected attribute "
           "type is `%s`, but actual attribute type is `%s`.",
           std::type_index(typeid(AttrType)).name(),
@@ -73,8 +73,8 @@ class InferMetaContext {
   // objects are all created in each round, so we have to use smart pointer
   // here, maybe we can implemented a new InferMetaContext and a series utils
   // specifically for fluid to avoid using shared_ptr
-  paddle::SmallVector<std::shared_ptr<pten::MetaTensor>> inputs_;
-  paddle::SmallVector<std::shared_ptr<pten::MetaTensor>> outputs_;
+  paddle::SmallVector<std::shared_ptr<phi::MetaTensor>> inputs_;
+  paddle::SmallVector<std::shared_ptr<phi::MetaTensor>> outputs_;
   paddle::SmallVector<paddle::any> attrs_;
 
   paddle::SmallVector<std::pair<int, int>> input_range_;
@@ -82,7 +82,7 @@ class InferMetaContext {
 };
 
 #define PT_INFER_META(...) \
-  ::pten::InferMetaFnImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::Call
+  ::phi::InferMetaFnImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::Call
 
 #define PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(attr_type)           \
   template <typename... Tail>                                                  \
@@ -220,7 +220,7 @@ class MetaFnFactory {
     PADDLE_ENFORCE_NE(
         Contains(kernel_name_prefix),
         true,
-        pten::errors::AlreadyExists(
+        phi::errors::AlreadyExists(
             "`%s`'s Series Kernel's InferMetaFn has been registered.",
             kernel_name_prefix));
     meta_fn_map_.insert(
@@ -232,7 +232,7 @@ class MetaFnFactory {
     PADDLE_ENFORCE_NE(
         it,
         meta_fn_map_.end(),
-        pten::errors::NotFound(
+        phi::errors::NotFound(
             "`%s`'s Series Kernel's InferMetaFn is not registered.",
             kernel_name_prefix));
     return it->second;
@@ -272,8 +272,8 @@ struct InferMetaFnRegistrar {
   PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \
       pt_register_infer_meta_fn_ns_check_##kernel_name_prefix,                \
       "PT_REGISTER_INFER_META_FN must be called in global namespace.");       \
-  static const ::pten::InferMetaFnRegistrar                                   \
+  static const ::phi::InferMetaFnRegistrar                                    \
       __registrar_arg_map_fn_for_##kernel_name_prefix(                        \
           #kernel_name_prefix, PT_INFER_META(variadic_infer_meta_fn))
 
-}  // namespace pten
+}  // namespace phi

@@ -18,7 +18,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
-namespace pten {
+namespace phi {
 namespace funcs {
 
 // Z = BinaryFunctor(X, UnaryFunctor(Y))
@@ -262,4 +262,4 @@ struct UnaryCompoundGradDIntermediateFunctor {
 };
 
 }  // namespace funcs
-}  // namespace pten
+}  // namespace phi

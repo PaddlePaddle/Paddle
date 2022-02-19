@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/backends/dynload/port.h"
 
-namespace pten {
+namespace phi {
 namespace dynload {
 extern std::once_flag cusolver_dso_flag;
 extern void *cusolver_dso_handle;
@@ -31,7 +31,7 @@ extern void *cusolver_dso_handle;
     cusolverStatus_t operator()(Args... args) {                      \
       using cusolverFunc = decltype(&::__name);                      \
       std::call_once(cusolver_dso_flag, []() {                       \
-        cusolver_dso_handle = pten::dynload::GetCusolverDsoHandle(); \
+        cusolver_dso_handle = phi::dynload::GetCusolverDsoHandle();  \
       });                                                            \
       static void *p_##__name = dlsym(cusolver_dso_handle, #__name); \
       return reinterpret_cast<cusolverFunc>(p_##__name)(args...);    \
@@ -120,4 +120,4 @@ CUSOLVER_ROUTINE_EACH_R2(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP)
 
 #undef DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi

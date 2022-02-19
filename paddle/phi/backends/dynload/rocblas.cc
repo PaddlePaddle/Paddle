@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/dynload/rocblas.h"
 
-namespace pten {
+namespace phi {
 namespace dynload {
 std::once_flag rocblas_dso_flag;
 void *rocblas_dso_handle = nullptr;
@@ -35,4 +35,4 @@ ROCBLAS_BLAS_ROUTINE_EACH_R3(DEFINE_WRAP);
 ROCBLAS_BLAS_ROUTINE_EACH_R4(DEFINE_WRAP);
 #endif
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi

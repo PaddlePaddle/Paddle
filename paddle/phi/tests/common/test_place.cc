@@ -17,66 +17,66 @@ limitations under the License. */
 #include <map>  // NOLINT
 #include "gtest/gtest.h"
 
-namespace pten {
+namespace phi {
 namespace tests {
 
 TEST(PtenPlace, place) {
-  pten::Place place;
-  EXPECT_EQ(place.GetType(), pten::AllocationType::UNDEFINED);
+  phi::Place place;
+  EXPECT_EQ(place.GetType(), phi::AllocationType::UNDEFINED);
 
-  place.Reset(pten::AllocationType::GPU, 1);
-  EXPECT_EQ(place.GetType(), pten::AllocationType::GPU);
+  place.Reset(phi::AllocationType::GPU, 1);
+  EXPECT_EQ(place.GetType(), phi::AllocationType::GPU);
   EXPECT_EQ(place.GetDeviceId(), 1);
 }
 
 TEST(Place, cpu_place) {
-  pten::CPUPlace place;
-  EXPECT_EQ(place.GetType(), pten::AllocationType::CPU);
+  phi::CPUPlace place;
+  EXPECT_EQ(place.GetType(), phi::AllocationType::CPU);
   std::cout << "cpu place repr: " << place << std::endl;
 }
 
 TEST(Place, gpu_place) {
-  pten::GPUPlace place;
-  EXPECT_EQ(place.GetType(), pten::AllocationType::GPU);
+  phi::GPUPlace place;
+  EXPECT_EQ(place.GetType(), phi::AllocationType::GPU);
   EXPECT_EQ(place.GetDeviceId(), 0);
 
-  pten::GPUPlace place1(2);
-  EXPECT_EQ(place1.GetType(), pten::AllocationType::GPU);
+  phi::GPUPlace place1(2);
+  EXPECT_EQ(place1.GetType(), phi::AllocationType::GPU);
   EXPECT_EQ(place1.GetDeviceId(), 2);
   std::cout << "gpu place repr: " << place1 << std::endl;
 
-  pten::GPUPinnedPlace place2;
-  EXPECT_EQ(place2.GetType(), pten::AllocationType::GPUPINNED);
+  phi::GPUPinnedPlace place2;
+  EXPECT_EQ(place2.GetType(), phi::AllocationType::GPUPINNED);
   std::cout << "gpu pinned place repr: " << place2 << std::endl;
 
-  EXPECT_NE(place2, pten::CPUPlace());
+  EXPECT_NE(place2, phi::CPUPlace());
 }
 
 TEST(Place, convert_place) {
-  pten::Place base_place(pten::AllocationType::CPU);
-  pten::CPUPlace cpu_place = base_place;
+  phi::Place base_place(phi::AllocationType::CPU);
+  phi::CPUPlace cpu_place = base_place;
   EXPECT_EQ(cpu_place.GetType(), base_place.GetType());
-  base_place.Reset(pten::AllocationType::GPU, 2);
-  pten::GPUPlace gpu_place = base_place;
+  base_place.Reset(phi::AllocationType::GPU, 2);
+  phi::GPUPlace gpu_place = base_place;
   EXPECT_EQ(gpu_place.GetType(), base_place.GetType());
   EXPECT_EQ(gpu_place.GetDeviceId(), base_place.GetDeviceId());
-  pten::Place place = gpu_place;
+  phi::Place place = gpu_place;
   EXPECT_EQ(gpu_place.GetType(), place.GetType());
   EXPECT_EQ(gpu_place.GetDeviceId(), place.GetDeviceId());
   place = cpu_place;
   EXPECT_EQ(cpu_place.GetType(), place.GetType());
 
-  std::map<pten::Place, int> maps;
-  maps[pten::CPUPlace()] = 1;
-  maps[pten::GPUPlace(0)] = 2;
-  maps[pten::GPUPlace(1)] = 3;
-  maps[pten::GPUPlace(2)] = 4;
-  maps[pten::GPUPlace(3)] = 5;
-  maps[pten::GPUPinnedPlace()] = 6;
+  std::map<phi::Place, int> maps;
+  maps[phi::CPUPlace()] = 1;
+  maps[phi::GPUPlace(0)] = 2;
+  maps[phi::GPUPlace(1)] = 3;
+  maps[phi::GPUPlace(2)] = 4;
+  maps[phi::GPUPlace(3)] = 5;
+  maps[phi::GPUPinnedPlace()] = 6;
   for (auto iter = maps.begin(); iter != maps.end(); ++iter) {
     std::cout << iter->first << ":" << iter->second << std::endl;
   }
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi

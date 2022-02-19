@@ -243,12 +243,12 @@ class CumprodGradOpCUDAKernel : public framework::OpKernel<T> {
 
       platform::ForRange<platform::CUDADeviceContext> for_range_x(dev_ctx,
                                                                   numel);
-      pten::funcs::ConjFunctor<T> functor_x(x_data, numel, x_data_conj);
+      phi::funcs::ConjFunctor<T> functor_x(x_data, numel, x_data_conj);
       for_range_x(functor_x);
 
       platform::ForRange<platform::CUDADeviceContext> for_range_y(dev_ctx,
                                                                   numel);
-      pten::funcs::ConjFunctor<T> functor_y(y_data, numel, y_data_conj);
+      phi::funcs::ConjFunctor<T> functor_y(y_data, numel, y_data_conj);
       for_range_y(functor_y);
       x_data_deal = x_data_conj;
       y_data_deal = y_data_conj;

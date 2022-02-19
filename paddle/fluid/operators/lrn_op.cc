@@ -35,8 +35,8 @@ struct LRNFunctor<platform::CPUDeviceContext, T> {
                   framework::Tensor* mid, int N, int C, int H, int W, int n,
                   T k, T alpha, T beta, const DataLayout data_layout) {
     auto place = ctx.GetPlace();
-    auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(ctx);
-    pten::funcs::Transpose<platform::CPUDeviceContext, T, 4> transpose;
+    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(ctx);
+    phi::funcs::Transpose<platform::CPUDeviceContext, T, 4> transpose;
     auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
     Tensor in_transpose, mid_transpose, out_transpose;
     // if channel_last, transpose to channel_first
@@ -44,9 +44,9 @@ struct LRNFunctor<platform::CPUDeviceContext, T> {
       auto in_dims = input.dims();
       std::vector<int64_t> shape(
           {in_dims[0], in_dims[3], in_dims[1], in_dims[2]});
-      in_transpose.mutable_data<T>(pten::make_ddim(shape), place);
-      mid_transpose.mutable_data<T>(pten::make_ddim(shape), place);
-      out_transpose.mutable_data<T>(pten::make_ddim(shape), place);
+      in_transpose.mutable_data<T>(phi::make_ddim(shape), place);
+      mid_transpose.mutable_data<T>(phi::make_ddim(shape), place);
+      out_transpose.mutable_data<T>(phi::make_ddim(shape), place);
       std::vector<int> axis = {0, 3, 1, 2};
       transpose(dev_ctx, input, &in_transpose, axis);
     } else {

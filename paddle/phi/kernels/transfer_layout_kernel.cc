@@ -19,21 +19,20 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace pten {
+namespace phi {
 
 std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to) {
   PADDLE_ENFORCE_NE(
       from,
       to,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Layout transform should transform between different layout."));
   if (from == DataLayout::NCHW && to == DataLayout::NHWC) {
     return {0, 2, 3, 1};
   } else if (from == DataLayout::NHWC && to == DataLayout::NCHW) {
     return {0, 3, 1, 2};
   } else {
-    PADDLE_THROW(
-        pten::errors::InvalidArgument("Unsupported layout transform."));
+    PADDLE_THROW(phi::errors::InvalidArgument("Unsupported layout transform."));
   }
 }
 
@@ -61,17 +60,17 @@ void TransferLayoutKernel(const Context& dev_ctx,
     dst_dim[i] = src_dim[axis[i]];
   }
 
-  out->ResizeAndAllocate(pten::make_ddim(dst_dim));
+  out->ResizeAndAllocate(phi::make_ddim(dst_dim));
 
   PD_VISIT_ALL_TYPES(x.dtype(), "CastDataLayout", ([&] {
                        CastDataLayout<data_t, Context>(dev_ctx, x, axis, out);
                      }));
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_GENERAL_KERNEL(pten_transfer_layout,
                            CPU,
                            ALL_LAYOUT,
-                           pten::TransferLayoutKernel<pten::CPUContext>,
+                           phi::TransferLayoutKernel<phi::CPUContext>,
                            ALL_DTYPE) {}

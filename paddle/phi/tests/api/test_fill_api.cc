@@ -25,18 +25,18 @@ namespace paddle {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = pten::DDim;
+using DDim = phi::DDim;
 
 // TODO(chenweihang): Remove this test after the API is used in the dygraph
 TEST(API, full_like) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  auto dense_x = std::make_shared<pten::DenseTensor>(
+  auto dense_x = std::make_shared<phi::DenseTensor>(
       alloc.get(),
-      pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            pten::make_ddim({3, 2}),
-                            pten::DataLayout::NCHW));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                           phi::make_ddim({3, 2}),
+                           phi::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x->mutable_data<float>(paddle::platform::CPUPlace());
   dense_x_data[0] = 0;
@@ -46,18 +46,18 @@ TEST(API, full_like) {
   paddle::experimental::Tensor x(dense_x);
 
   // 2. test API
-  auto out = paddle::experimental::full_like(x, val, pten::DataType::FLOAT32);
+  auto out = paddle::experimental::full_like(x, val, phi::DataType::FLOAT32);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);
   ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.numel(), 6);
   ASSERT_EQ(out.is_cpu(), true);
-  ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
-  ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(out.type(), phi::DataType::FLOAT32);
+  ASSERT_EQ(out.layout(), phi::DataLayout::NCHW);
   ASSERT_EQ(out.initialized(), true);
 
-  auto dense_out = std::dynamic_pointer_cast<pten::DenseTensor>(out.impl());
+  auto dense_out = std::dynamic_pointer_cast<phi::DenseTensor>(out.impl());
   auto* actual_result = dense_out->data<float>();
   for (auto i = 0; i < 6; i++) {
     ASSERT_NEAR(actual_result[i], val, 1e-6f);
@@ -68,11 +68,11 @@ TEST(API, zeros_like) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  auto dense_x = std::make_shared<pten::DenseTensor>(
+  auto dense_x = std::make_shared<phi::DenseTensor>(
       alloc.get(),
-      pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            pten::make_ddim({3, 2}),
-                            pten::DataLayout::NCHW));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                           phi::make_ddim({3, 2}),
+                           phi::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x->mutable_data<float>(paddle::platform::CPUPlace());
   dense_x_data[0] = 1;
@@ -80,18 +80,18 @@ TEST(API, zeros_like) {
   paddle::experimental::Tensor x(dense_x);
 
   // 2. test API
-  auto out = paddle::experimental::zeros_like(x, pten::DataType::INT32);
+  auto out = paddle::experimental::zeros_like(x, phi::DataType::INT32);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);
   ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.numel(), 6);
   ASSERT_EQ(out.is_cpu(), true);
-  ASSERT_EQ(out.type(), pten::DataType::INT32);
-  ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(out.type(), phi::DataType::INT32);
+  ASSERT_EQ(out.layout(), phi::DataLayout::NCHW);
   ASSERT_EQ(out.initialized(), true);
 
-  auto dense_out = std::dynamic_pointer_cast<pten::DenseTensor>(out.impl());
+  auto dense_out = std::dynamic_pointer_cast<phi::DenseTensor>(out.impl());
   auto* actual_result = dense_out->data<int32_t>();
   for (auto i = 0; i < 6; i++) {
     ASSERT_EQ(actual_result[i], 0);
@@ -102,11 +102,10 @@ TEST(API, ones_like) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  auto dense_x = std::make_shared<pten::DenseTensor>(
+  auto dense_x = std::make_shared<phi::DenseTensor>(
       alloc.get(),
-      pten::DenseTensorMeta(pten::DataType::INT32,
-                            pten::make_ddim({3, 2}),
-                            pten::DataLayout::NCHW));
+      phi::DenseTensorMeta(
+          phi::DataType::INT32, phi::make_ddim({3, 2}), phi::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x->mutable_data<int32_t>(paddle::platform::CPUPlace());
   dense_x_data[0] = 0;
@@ -114,18 +113,18 @@ TEST(API, ones_like) {
   paddle::experimental::Tensor x(dense_x);
 
   // 2. test API
-  auto out = paddle::experimental::ones_like(x, pten::DataType::INT32);
+  auto out = paddle::experimental::ones_like(x, phi::DataType::INT32);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);
   ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.numel(), 6);
   ASSERT_EQ(out.is_cpu(), true);
-  ASSERT_EQ(out.type(), pten::DataType::INT32);
-  ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(out.type(), phi::DataType::INT32);
+  ASSERT_EQ(out.layout(), phi::DataLayout::NCHW);
   ASSERT_EQ(out.initialized(), true);
 
-  auto dense_out = std::dynamic_pointer_cast<pten::DenseTensor>(out.impl());
+  auto dense_out = std::dynamic_pointer_cast<phi::DenseTensor>(out.impl());
   auto* actual_result = dense_out->data<int32_t>();
   for (auto i = 0; i < 6; i++) {
     ASSERT_EQ(actual_result[i], 1);
@@ -137,20 +136,19 @@ TEST(API, full1) {
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
 
-  auto dense_shape = std::make_shared<pten::DenseTensor>(
+  auto dense_shape = std::make_shared<phi::DenseTensor>(
       alloc.get(),
-      pten::DenseTensorMeta(
-          pten::DataType::INT64, pten::make_ddim({2}), pten::DataLayout::NCHW));
+      phi::DenseTensorMeta(
+          phi::DataType::INT64, phi::make_ddim({2}), phi::DataLayout::NCHW));
   auto* shape_data =
       dense_shape->mutable_data<int64_t>(paddle::platform::CPUPlace());
   shape_data[0] = 2;
   shape_data[1] = 3;
 
-  auto dense_scalar = std::make_shared<pten::DenseTensor>(
+  auto dense_scalar = std::make_shared<phi::DenseTensor>(
       alloc.get(),
-      pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            pten::make_ddim({1}),
-                            pten::DataLayout::NCHW));
+      phi::DenseTensorMeta(
+          phi::DataType::FLOAT32, phi::make_ddim({1}), phi::DataLayout::NCHW));
   dense_scalar->mutable_data<float>(paddle::platform::CPUPlace())[0] = 1.0;
 
   paddle::experimental::Tensor value(dense_scalar);
@@ -161,18 +159,18 @@ TEST(API, full1) {
 
   // 2. test API
   auto out =
-      paddle::experimental::full(tensor_shape, value, pten::DataType::FLOAT32);
+      paddle::experimental::full(tensor_shape, value, phi::DataType::FLOAT32);
 
   // 3. check result
   ASSERT_EQ(out.shape().size(), 2UL);
   ASSERT_EQ(out.shape()[0], 2);
   ASSERT_EQ(out.numel(), 6);
   ASSERT_EQ(out.is_cpu(), true);
-  ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
-  ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(out.type(), phi::DataType::FLOAT32);
+  ASSERT_EQ(out.layout(), phi::DataLayout::NCHW);
   ASSERT_EQ(out.initialized(), true);
 
-  auto dense_out = std::dynamic_pointer_cast<pten::DenseTensor>(out.impl());
+  auto dense_out = std::dynamic_pointer_cast<phi::DenseTensor>(out.impl());
   auto* actual_result = dense_out->data<float>();
   for (auto i = 0; i < 6; i++) {
     ASSERT_NEAR(actual_result[i], val, 1e-6f);
@@ -183,10 +181,10 @@ TEST(API, full2) {
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
 
-  auto dense_scalar = std::make_shared<pten::DenseTensor>(
+  auto dense_scalar = std::make_shared<phi::DenseTensor>(
       alloc.get(),
-      pten::DenseTensorMeta(
-          pten::DataType::INT32, pten::make_ddim({1}), pten::DataLayout::NCHW));
+      phi::DenseTensorMeta(
+          phi::DataType::INT32, phi::make_ddim({1}), phi::DataLayout::NCHW));
   dense_scalar->mutable_data<int>(paddle::platform::CPUPlace())[0] = 2;
 
   paddle::experimental::Tensor shape_scalar1(dense_scalar);
@@ -197,17 +195,17 @@ TEST(API, full2) {
   float val = 1.0;
 
   auto out =
-      paddle::experimental::full(list_shape, val, pten::DataType::FLOAT32);
+      paddle::experimental::full(list_shape, val, phi::DataType::FLOAT32);
 
   ASSERT_EQ(out.shape().size(), 2UL);
   ASSERT_EQ(out.shape()[0], 2);
   ASSERT_EQ(out.numel(), 4);
   ASSERT_EQ(out.is_cpu(), true);
-  ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
-  ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(out.type(), phi::DataType::FLOAT32);
+  ASSERT_EQ(out.layout(), phi::DataLayout::NCHW);
   ASSERT_EQ(out.initialized(), true);
 
-  auto dense_out = std::dynamic_pointer_cast<pten::DenseTensor>(out.impl());
+  auto dense_out = std::dynamic_pointer_cast<phi::DenseTensor>(out.impl());
   auto* actual_result = dense_out->data<float>();
   for (auto i = 0; i < 4; i++) {
     ASSERT_NEAR(actual_result[i], val, 1e-6f);
@@ -220,17 +218,17 @@ TEST(API, full3) {
   float val = 1.0;
 
   auto out =
-      paddle::experimental::full(vector_shape, val, pten::DataType::INT32);
+      paddle::experimental::full(vector_shape, val, phi::DataType::INT32);
 
   ASSERT_EQ(out.shape().size(), 2UL);
   ASSERT_EQ(out.shape()[0], 2);
   ASSERT_EQ(out.numel(), 6);
   ASSERT_EQ(out.is_cpu(), true);
-  ASSERT_EQ(out.type(), pten::DataType::INT32);
-  ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(out.type(), phi::DataType::INT32);
+  ASSERT_EQ(out.layout(), phi::DataLayout::NCHW);
   ASSERT_EQ(out.initialized(), true);
 
-  auto dense_out = std::dynamic_pointer_cast<pten::DenseTensor>(out.impl());
+  auto dense_out = std::dynamic_pointer_cast<phi::DenseTensor>(out.impl());
   auto* actual_result = dense_out->data<int>();
   for (auto i = 0; i < 6; i++) {
     ASSERT_EQ(actual_result[i], 1);

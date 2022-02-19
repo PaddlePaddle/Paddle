@@ -29,7 +29,7 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
-using SelectedRows = pten::SelectedRows;
+using SelectedRows = phi::SelectedRows;
 using DDim = framework::DDim;
 
 template <typename T>

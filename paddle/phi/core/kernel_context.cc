@@ -14,7 +14,7 @@
 
 #include "paddle/phi/core/kernel_context.h"
 
-namespace pten {
+namespace phi {
 
 void KernelContext::EmplaceBackInput(const TensorBase* input) {
   int index = inputs_.size();
@@ -99,4 +99,4 @@ const std::pair<int, int>& KernelContext::OutputRangeAt(size_t idx) const {
   return output_range_.at(idx);
 }
 
-}  // namespace pten
+}  // namespace phi

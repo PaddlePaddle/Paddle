@@ -106,7 +106,7 @@ class UnfoldGradOpKernel : public framework::OpKernel<T> {
     math::Col2ImFunctor<math::ColFormat::kCFO, DeviceContext, T> col2im;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
-    pten::funcs::SetConstant<DeviceContext, T> set_zero;
+    phi::funcs::SetConstant<DeviceContext, T> set_zero;
     set_zero(dev_ctx, input_grad, static_cast<T>(0));
     for (int i = 0; i < batch_size; i++) {
       Tensor out_grad_batch =

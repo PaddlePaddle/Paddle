@@ -17,11 +17,11 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void BernoulliKernel(const Context& ctx,
                      const DenseTensor& x,
                      DenseTensor* out);
 
-}  // namespace pten
+}  // namespace phi

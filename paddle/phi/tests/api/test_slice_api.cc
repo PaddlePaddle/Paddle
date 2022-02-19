@@ -23,7 +23,7 @@ namespace paddle {
 namespace tests {
 
 TEST(Tensor, slice) {
-  auto x = paddle::experimental::full({4, 3}, 1, pten::DataType::INT64);
+  auto x = paddle::experimental::full({4, 3}, 1, phi::DataType::INT64);
   auto slice_x = x.slice(1, 2);
 
   // check slice result
@@ -32,8 +32,8 @@ TEST(Tensor, slice) {
   ASSERT_EQ(slice_x.dims()[1], 3);
   ASSERT_EQ(slice_x.numel(), 3);
   ASSERT_EQ(slice_x.is_cpu(), true);
-  ASSERT_EQ(slice_x.type(), pten::DataType::INT64);
-  ASSERT_EQ(slice_x.layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(slice_x.type(), phi::DataType::INT64);
+  ASSERT_EQ(slice_x.layout(), phi::DataLayout::NCHW);
   ASSERT_EQ(slice_x.initialized(), true);
   for (int64_t i = 0; i < slice_x.numel(); ++i) {
     ASSERT_EQ(slice_x.mutable_data<int64_t>()[i], 1);

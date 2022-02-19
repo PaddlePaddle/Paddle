@@ -139,7 +139,7 @@ class CUDAWhereIndexKernel : public framework::OpKernel<T> {
     dev_ctx.Wait();
 
     int64_t true_num = *h_total_true_num;
-    out->Resize(pten::make_ddim({static_cast<int64_t>(true_num), rank}));
+    out->Resize(phi::make_ddim({static_cast<int64_t>(true_num), rank}));
     auto out_data = out->mutable_data<int64_t>(context.GetPlace());
 
     if (true_num == 0) {

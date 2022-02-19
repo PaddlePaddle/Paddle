@@ -18,7 +18,7 @@
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
-namespace pten {
+namespace phi {
 
 template <typename Context, typename T, size_t D>
 static void LerpFunction(const Context& ctx,
@@ -29,20 +29,20 @@ static void LerpFunction(const Context& ctx,
   ctx.template Alloc<T>(out);
 
   auto out_dims = out->dims();
-  auto x_dims = pten::funcs::ExtendDims2Rank(x.dims(), D);
-  auto y_dims = pten::funcs::ExtendDims2Rank(y.dims(), D);
-  auto w_dims = pten::funcs::ExtendDims2Rank(weight.dims(), D);
+  auto x_dims = phi::funcs::ExtendDims2Rank(x.dims(), D);
+  auto y_dims = phi::funcs::ExtendDims2Rank(y.dims(), D);
+  auto w_dims = phi::funcs::ExtendDims2Rank(weight.dims(), D);
   Eigen::DSizes<int, D> x_bcast_dims;
   Eigen::DSizes<int, D> y_bcast_dims;
   Eigen::DSizes<int, D> w_bcast_dims;
-  pten::funcs::GetBroadcastDims<D>(x_dims, out_dims, &x_bcast_dims);
-  pten::funcs::GetBroadcastDims<D>(y_dims, out_dims, &y_bcast_dims);
-  pten::funcs::GetBroadcastDims<D>(w_dims, out_dims, &w_bcast_dims);
+  phi::funcs::GetBroadcastDims<D>(x_dims, out_dims, &x_bcast_dims);
+  phi::funcs::GetBroadcastDims<D>(y_dims, out_dims, &y_bcast_dims);
+  phi::funcs::GetBroadcastDims<D>(w_dims, out_dims, &w_bcast_dims);
 
-  auto eigen_x = pten::EigenTensor<T, D>::From(x, x_dims);
-  auto eigen_y = pten::EigenTensor<T, D>::From(y, y_dims);
-  auto eigen_w = pten::EigenTensor<T, D>::From(weight, w_dims);
-  auto eigen_out = pten::EigenTensor<T, D>::From(*out);
+  auto eigen_x = phi::EigenTensor<T, D>::From(x, x_dims);
+  auto eigen_y = phi::EigenTensor<T, D>::From(y, y_dims);
+  auto eigen_w = phi::EigenTensor<T, D>::From(weight, w_dims);
+  auto eigen_out = phi::EigenTensor<T, D>::From(*out);
 
   auto& place = *ctx.eigen_device();
   eigen_out.device(place) =
@@ -61,14 +61,14 @@ void LerpKernel(const Context& ctx,
   PADDLE_ENFORCE_GE(
       rank,
       1,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The number of dimensions for LerpOp must be "
           "greater than or equal to 1, but the value received is %d.",
           rank));
   PADDLE_ENFORCE_LE(
       rank,
       6,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The number of dimensions for LerpOp must be "
           "less than or equal to 6, but the value received is %d.",
           rank));
@@ -94,4 +94,4 @@ void LerpKernel(const Context& ctx,
   }
 }
 
-}  // namespace pten
+}  // namespace phi

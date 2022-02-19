@@ -20,7 +20,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/gpu/gpu_types.h"
 
-namespace pten {
+namespace phi {
 namespace backends {
 namespace gpu {
 
@@ -131,6 +131,6 @@ class GPUDeviceGuard {
 
 }  // namespace gpu
 }  // namespace backends
-}  // namespace pten
+}  // namespace phi
 
 #endif

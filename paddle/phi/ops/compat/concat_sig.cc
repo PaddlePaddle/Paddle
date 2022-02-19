@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
 KernelSignature ConcatOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.HasInput("AxisTensor")) {
@@ -23,6 +23,6 @@ KernelSignature ConcatOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("concat", {"X"}, {"axis"}, {"Out"});
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(concat, pten::ConcatOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(concat, phi::ConcatOpArgumentMapping);

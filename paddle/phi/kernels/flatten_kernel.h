@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void FlattenKernel(const Context& dev_ctx,
@@ -47,4 +47,4 @@ DenseTensor Flatten(const Context& dev_ctx,
   return dense_out;
 }
 
-}  // namespace pten
+}  // namespace phi

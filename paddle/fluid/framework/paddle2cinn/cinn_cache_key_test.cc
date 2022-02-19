@@ -44,7 +44,7 @@ TEST(CinnCacheKeyTest, TestAsUnorderedKeyByStructure) {
   std::map<std::string, const LoDTensor *> feed_tensors = {
       {"X", tensor_pointer}};
 
-  DDim ddim = pten::make_ddim({1, 2, 3});
+  DDim ddim = phi::make_ddim({1, 2, 3});
   std::map<std::string, DDim> feed_shapes = {{"X", ddim}};
 
   CinnCacheKeyByStructure cache_key0(empty_graph, feed_tensors, "x86");
@@ -117,7 +117,7 @@ TEST(CinnCacheKeyTest, TestAsUnorderedKeyByAddress) {
   std::map<std::string, const LoDTensor *> feed_tensors = {
       {"X", tensor_pointer}};
 
-  DDim ddim = pten::make_ddim({1, 2, 3});
+  DDim ddim = phi::make_ddim({1, 2, 3});
   std::map<std::string, DDim> feed_shapes = {{"X", ddim}};
 
   CinnCacheKeyByAddress cache_key0(empty_graph, feed_tensors, "x86");

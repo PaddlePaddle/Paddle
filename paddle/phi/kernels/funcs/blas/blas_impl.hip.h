@@ -21,7 +21,7 @@
 
 DECLARE_bool(enable_cublas_tensor_op_math);
 
-namespace pten {
+namespace phi {
 namespace funcs {
 
 template <typename T>
@@ -69,7 +69,7 @@ struct CUBlas<float> {
   // https://github.com/ROCm-Developer-Tools/HIP/blob/roc-3.5.x/docs/markdown/CUBLAS_API_supported_by_HIP.md
   template <typename... ARGS>
   static void GEMM_EX(ARGS... args) {
-    PADDLE_THROW(pten::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "cublasSgemmEx is not supported on HIP platform."));
   }
 
@@ -81,25 +81,25 @@ struct CUBlas<float> {
 
   template <typename... ARGS>
   static void GETRF_BATCH(ARGS... args) {
-    PADDLE_THROW(pten::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "cublasSgetrfBatched is not supported on HIP platform."));
   }
 
   template <typename... ARGS>
   static void GETRI_BATCH(ARGS... args) {
-    PADDLE_THROW(pten::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "cublasSgetriBatched is not supported on HIP platform."));
   }
 
   template <typename... ARGS>
   static void MATINV_BATCH(ARGS... args) {
-    PADDLE_THROW(pten::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "cublasSmatinvBatched is not supported on HIP platform."));
   }
 
   template <typename... ARGS>
   static void TRSM_BATCH(ARGS... args) {
-    PADDLE_THROW(pten::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "cublasStrsmBatched is not supported on HIP platform."));
   }
 };
@@ -145,7 +145,7 @@ struct CUBlas<double> {
   template <typename... ARGS>
   static void GEMM_EX(ARGS... args) {
     PADDLE_THROW(
-        pten::errors::Unimplemented("Currently there are not cublasDgemmEx."));
+        phi::errors::Unimplemented("Currently there are not cublasDgemmEx."));
   }
 
   template <typename... ARGS>
@@ -156,32 +156,32 @@ struct CUBlas<double> {
 
   template <typename... ARGS>
   static void GETRF_BATCH(ARGS... args) {
-    PADDLE_THROW(pten::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "cublasDgetrfBatched is not supported on HIP platform."));
   }
 
   template <typename... ARGS>
   static void GETRI_BATCH(ARGS... args) {
-    PADDLE_THROW(pten::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "cublasDgetriBatched is not supported on HIP platform."));
   }
 
   template <typename... ARGS>
   static void MATINV_BATCH(ARGS... args) {
-    PADDLE_THROW(pten::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "cublasDmatinvBatched is not supported on HIP platform."));
   }
 
   template <typename... ARGS>
   static void TRSM_BATCH(ARGS... args) {
-    PADDLE_THROW(pten::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "cublasDtrsmBatched is not supported on HIP platform."));
   }
 };
 
 template <>
-struct CUBlas<pten::dtype::float16> {
-  using float16 = pten::dtype::float16;
+struct CUBlas<phi::dtype::float16> {
+  using float16 = phi::dtype::float16;
 
   static void GEMM(rocblas_handle handle,
                    rocblas_operation transa,
@@ -305,7 +305,7 @@ struct CUBlas<pten::dtype::float16> {
     });
   }
   template <typename... ARGS>
-  static void GEMM_EX(pten::GPUContext *dev_ctx,
+  static void GEMM_EX(phi::GPUContext *dev_ctx,
                       rocblas_operation transa,
                       rocblas_operation transb,
                       int m,
@@ -355,18 +355,18 @@ struct CUBlas<pten::dtype::float16> {
 };
 
 template <>
-struct CUBlas<pten::dtype::complex<float>> {
+struct CUBlas<phi::dtype::complex<float>> {
   static void GEMV(rocblas_handle handle,
                    rocblas_operation transa,
                    int m,
                    int n,
-                   const pten::dtype::complex<float> *alpha,
-                   const pten::dtype::complex<float> *A,
+                   const phi::dtype::complex<float> *alpha,
+                   const phi::dtype::complex<float> *A,
                    int lda,
-                   const pten::dtype::complex<float> *B,
+                   const phi::dtype::complex<float> *B,
                    int ldb,
-                   const pten::dtype::complex<float> *beta,
-                   pten::dtype::complex<float> *C,
+                   const phi::dtype::complex<float> *beta,
+                   phi::dtype::complex<float> *C,
                    int ldc) {
     PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::rocblas_cgemv(
         handle,
@@ -385,10 +385,10 @@ struct CUBlas<pten::dtype::complex<float>> {
 
   static void AXPY(rocblas_handle handle,
                    int n,
-                   const pten::dtype::complex<float> *alpha,
-                   const pten::dtype::complex<float> *X,
+                   const phi::dtype::complex<float> *alpha,
+                   const phi::dtype::complex<float> *X,
                    const int incX,
-                   pten::dtype::complex<float> *Y,
+                   phi::dtype::complex<float> *Y,
                    const int incY) {
     PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::rocblas_caxpy(
         handle,
@@ -400,25 +400,24 @@ struct CUBlas<pten::dtype::complex<float>> {
         incY));
   }
 
-  static void GEMM_STRIDED_BATCH(
-      rocblas_handle handle,
-      rocblas_operation transa,
-      rocblas_operation transb,
-      int m,
-      int n,
-      int k,
-      const pten::dtype::complex<float> *alpha,
-      const pten::dtype::complex<float> *A,
-      int lda,
-      long long int strideA,                 // NOLINT
-      const pten::dtype::complex<float> *B,  // NOLINT
-      int ldb,
-      long long int strideB,  // NOLINT
-      const pten::dtype::complex<float> *beta,
-      pten::dtype::complex<float> *C,
-      int ldc,
-      long long int strideC,  // NOLINT
-      int batchCount) {
+  static void GEMM_STRIDED_BATCH(rocblas_handle handle,
+                                 rocblas_operation transa,
+                                 rocblas_operation transb,
+                                 int m,
+                                 int n,
+                                 int k,
+                                 const phi::dtype::complex<float> *alpha,
+                                 const phi::dtype::complex<float> *A,
+                                 int lda,
+                                 long long int strideA,                // NOLINT
+                                 const phi::dtype::complex<float> *B,  // NOLINT
+                                 int ldb,
+                                 long long int strideB,  // NOLINT
+                                 const phi::dtype::complex<float> *beta,
+                                 phi::dtype::complex<float> *C,
+                                 int ldc,
+                                 long long int strideC,  // NOLINT
+                                 int batchCount) {
     PADDLE_ENFORCE_GPU_SUCCESS(
         paddle::platform::dynload::rocblas_cgemm_strided_batched(
             handle,
@@ -447,13 +446,13 @@ struct CUBlas<pten::dtype::complex<float>> {
                    int m,
                    int n,
                    int k,
-                   const pten::dtype::complex<float> *alpha,
-                   const pten::dtype::complex<float> *A,
+                   const phi::dtype::complex<float> *alpha,
+                   const phi::dtype::complex<float> *A,
                    int lda,
-                   const pten::dtype::complex<float> *B,
+                   const phi::dtype::complex<float> *B,
                    int ldb,
-                   const pten::dtype::complex<float> *beta,
-                   pten::dtype::complex<float> *C,
+                   const phi::dtype::complex<float> *beta,
+                   phi::dtype::complex<float> *C,
                    int ldc) {
     PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::rocblas_cgemm(
         handle,
@@ -523,7 +522,7 @@ struct CUBlas<pten::dtype::complex<float>> {
     });
   }
   template <typename... ARGS>
-  static void GEMM_EX(pten::GPUContext *dev_ctx,
+  static void GEMM_EX(phi::GPUContext *dev_ctx,
                       rocblas_operation transa,
                       rocblas_operation transb,
                       int m,
@@ -573,18 +572,18 @@ struct CUBlas<pten::dtype::complex<float>> {
 };
 
 template <>
-struct CUBlas<pten::dtype::complex<double>> {
+struct CUBlas<phi::dtype::complex<double>> {
   static void GEMV(rocblas_handle handle,
                    rocblas_operation transa,
                    int m,
                    int n,
-                   const pten::dtype::complex<double> *alpha,
-                   const pten::dtype::complex<double> *A,
+                   const phi::dtype::complex<double> *alpha,
+                   const phi::dtype::complex<double> *A,
                    int lda,
-                   const pten::dtype::complex<double> *B,
+                   const phi::dtype::complex<double> *B,
                    int ldb,
-                   const pten::dtype::complex<double> *beta,
-                   pten::dtype::complex<double> *C,
+                   const phi::dtype::complex<double> *beta,
+                   phi::dtype::complex<double> *C,
                    int ldc) {
     PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::rocblas_zgemv(
         handle,
@@ -603,10 +602,10 @@ struct CUBlas<pten::dtype::complex<double>> {
 
   static void AXPY(rocblas_handle handle,
                    int n,
-                   const pten::dtype::complex<double> *alpha,
-                   const pten::dtype::complex<double> *X,
+                   const phi::dtype::complex<double> *alpha,
+                   const phi::dtype::complex<double> *X,
                    const int incX,
-                   pten::dtype::complex<double> *Y,
+                   phi::dtype::complex<double> *Y,
                    const int incY) {
     PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::rocblas_zaxpy(
         handle,
@@ -625,15 +624,15 @@ struct CUBlas<pten::dtype::complex<double>> {
       int m,
       int n,
       int k,
-      const pten::dtype::complex<double> *alpha,
-      const pten::dtype::complex<double> *A,
+      const phi::dtype::complex<double> *alpha,
+      const phi::dtype::complex<double> *A,
       int lda,
-      long long int strideA,                  // NOLINT
-      const pten::dtype::complex<double> *B,  // NOLINT
+      long long int strideA,                 // NOLINT
+      const phi::dtype::complex<double> *B,  // NOLINT
       int ldb,
       long long int strideB,  // NOLINT
-      const pten::dtype::complex<double> *beta,
-      pten::dtype::complex<double> *C,
+      const phi::dtype::complex<double> *beta,
+      phi::dtype::complex<double> *C,
       int ldc,
       long long int strideC,  // NOLINT
       int batchCount) {
@@ -665,13 +664,13 @@ struct CUBlas<pten::dtype::complex<double>> {
                    int m,
                    int n,
                    int k,
-                   const pten::dtype::complex<double> *alpha,
-                   const pten::dtype::complex<double> *A,
+                   const phi::dtype::complex<double> *alpha,
+                   const phi::dtype::complex<double> *A,
                    int lda,
-                   const pten::dtype::complex<double> *B,
+                   const phi::dtype::complex<double> *B,
                    int ldb,
-                   const pten::dtype::complex<double> *beta,
-                   pten::dtype::complex<double> *C,
+                   const phi::dtype::complex<double> *beta,
+                   phi::dtype::complex<double> *C,
                    int ldc) {
     PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::rocblas_zgemm(
         handle,
@@ -741,7 +740,7 @@ struct CUBlas<pten::dtype::complex<double>> {
     });
   }
   template <typename... ARGS>
-  static void GEMM_EX(pten::GPUContext *dev_ctx,
+  static void GEMM_EX(phi::GPUContext *dev_ctx,
                       rocblas_operation transa,
                       rocblas_operation transb,
                       int m,
@@ -831,16 +830,16 @@ void Blas<paddle::platform::CUDADeviceContext>::GEMM(CBLAS_TRANSPOSE transA,
 }
 template <>
 template <typename T>
-void Blas<pten::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
-                                  CBLAS_TRANSPOSE transB,
-                                  int M,
-                                  int N,
-                                  int K,
-                                  T alpha,
-                                  const T *A,
-                                  const T *B,
-                                  T beta,
-                                  T *C) const {
+void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
+                                 CBLAS_TRANSPOSE transB,
+                                 int M,
+                                 int N,
+                                 int K,
+                                 T alpha,
+                                 const T *A,
+                                 const T *B,
+                                 T beta,
+                                 T *C) const {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
@@ -877,11 +876,11 @@ inline void Blas<paddle::platform::CUDADeviceContext>::GEMM(
     int M,
     int N,
     int K,
-    pten::dtype::float16 alpha,
-    const pten::dtype::float16 *A,
-    const pten::dtype::float16 *B,
-    pten::dtype::float16 beta,
-    pten::dtype::float16 *C) const {
+    phi::dtype::float16 alpha,
+    const phi::dtype::float16 *A,
+    const phi::dtype::float16 *B,
+    phi::dtype::float16 beta,
+    phi::dtype::float16 *C) const {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
@@ -897,7 +896,7 @@ inline void Blas<paddle::platform::CUDADeviceContext>::GEMM(
   PADDLE_ENFORCE_GE(
       context_.GetComputeCapability(),
       53,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "cublas fp16 gemm requires GPU compute capability >= 53,"
           "but received %d",
           context_.GetComputeCapability()));
@@ -906,37 +905,37 @@ inline void Blas<paddle::platform::CUDADeviceContext>::GEMM(
   float h_beta = static_cast<float>(beta);
 
   auto &cuda_ctx = const_cast<paddle::platform::CUDADeviceContext &>(context_);
-  CUBlas<pten::dtype::float16>::GEMM_EX(&cuda_ctx,
-                                        cuTransB,
-                                        cuTransA,
-                                        N,
-                                        M,
-                                        K,
-                                        &h_alpha,
-                                        B,
-                                        rocblas_datatype_f16_r,
-                                        ldb,
-                                        A,
-                                        rocblas_datatype_f16_r,
-                                        lda,
-                                        &h_beta,
-                                        C,
-                                        rocblas_datatype_f16_r,
-                                        N,
-                                        rocblas_datatype_f32_r);
+  CUBlas<phi::dtype::float16>::GEMM_EX(&cuda_ctx,
+                                       cuTransB,
+                                       cuTransA,
+                                       N,
+                                       M,
+                                       K,
+                                       &h_alpha,
+                                       B,
+                                       rocblas_datatype_f16_r,
+                                       ldb,
+                                       A,
+                                       rocblas_datatype_f16_r,
+                                       lda,
+                                       &h_beta,
+                                       C,
+                                       rocblas_datatype_f16_r,
+                                       N,
+                                       rocblas_datatype_f32_r);
 }
 template <>
 template <>
-inline void Blas<pten::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
-                                         CBLAS_TRANSPOSE transB,
-                                         int M,
-                                         int N,
-                                         int K,
-                                         pten::dtype::float16 alpha,
-                                         const pten::dtype::float16 *A,
-                                         const pten::dtype::float16 *B,
-                                         pten::dtype::float16 beta,
-                                         pten::dtype::float16 *C) const {
+inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
+                                        CBLAS_TRANSPOSE transB,
+                                        int M,
+                                        int N,
+                                        int K,
+                                        phi::dtype::float16 alpha,
+                                        const phi::dtype::float16 *A,
+                                        const phi::dtype::float16 *B,
+                                        phi::dtype::float16 beta,
+                                        phi::dtype::float16 *C) const {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
@@ -952,7 +951,7 @@ inline void Blas<pten::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   PADDLE_ENFORCE_GE(
       context_.GetComputeCapability(),
       53,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "cublas fp16 gemm requires GPU compute capability >= 53,"
           "but received %d",
           context_.GetComputeCapability()));
@@ -960,25 +959,25 @@ inline void Blas<pten::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   float h_alpha = static_cast<float>(alpha);
   float h_beta = static_cast<float>(beta);
 
-  auto &cuda_ctx = const_cast<pten::GPUContext &>(context_);
-  CUBlas<pten::dtype::float16>::GEMM_EX(&cuda_ctx,
-                                        cuTransB,
-                                        cuTransA,
-                                        N,
-                                        M,
-                                        K,
-                                        &h_alpha,
-                                        B,
-                                        rocblas_datatype_f16_r,
-                                        ldb,
-                                        A,
-                                        rocblas_datatype_f16_r,
-                                        lda,
-                                        &h_beta,
-                                        C,
-                                        rocblas_datatype_f16_r,
-                                        N,
-                                        rocblas_datatype_f32_r);
+  auto &cuda_ctx = const_cast<phi::GPUContext &>(context_);
+  CUBlas<phi::dtype::float16>::GEMM_EX(&cuda_ctx,
+                                       cuTransB,
+                                       cuTransA,
+                                       N,
+                                       M,
+                                       K,
+                                       &h_alpha,
+                                       B,
+                                       rocblas_datatype_f16_r,
+                                       ldb,
+                                       A,
+                                       rocblas_datatype_f16_r,
+                                       lda,
+                                       &h_beta,
+                                       C,
+                                       rocblas_datatype_f16_r,
+                                       N,
+                                       rocblas_datatype_f32_r);
 }
 
 template <>
@@ -989,11 +988,11 @@ inline void Blas<paddle::platform::CUDADeviceContext>::GEMM(
     int M,
     int N,
     int K,
-    pten::dtype::bfloat16 alpha,
-    const pten::dtype::bfloat16 *A,
-    const pten::dtype::bfloat16 *B,
-    pten::dtype::bfloat16 beta,
-    pten::dtype::bfloat16 *C) const {
+    phi::dtype::bfloat16 alpha,
+    const phi::dtype::bfloat16 *A,
+    const phi::dtype::bfloat16 *B,
+    phi::dtype::bfloat16 beta,
+    phi::dtype::bfloat16 *C) const {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
@@ -1008,7 +1007,7 @@ inline void Blas<paddle::platform::CUDADeviceContext>::GEMM(
   PADDLE_ENFORCE_GE(
       context_.GetComputeCapability(),
       80,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "rocblas fp16 gemm requires GPU compute capability >= 80,"
           "but received %d",
           context_.GetComputeCapability()));
@@ -1048,16 +1047,16 @@ inline void Blas<paddle::platform::CUDADeviceContext>::GEMM(
 
 template <>
 template <>
-inline void Blas<pten::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
-                                         CBLAS_TRANSPOSE transB,
-                                         int M,
-                                         int N,
-                                         int K,
-                                         pten::dtype::bfloat16 alpha,
-                                         const pten::dtype::bfloat16 *A,
-                                         const pten::dtype::bfloat16 *B,
-                                         pten::dtype::bfloat16 beta,
-                                         pten::dtype::bfloat16 *C) const {
+inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
+                                        CBLAS_TRANSPOSE transB,
+                                        int M,
+                                        int N,
+                                        int K,
+                                        phi::dtype::bfloat16 alpha,
+                                        const phi::dtype::bfloat16 *A,
+                                        const phi::dtype::bfloat16 *B,
+                                        phi::dtype::bfloat16 beta,
+                                        phi::dtype::bfloat16 *C) const {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
@@ -1072,7 +1071,7 @@ inline void Blas<pten::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   PADDLE_ENFORCE_GE(
       context_.GetComputeCapability(),
       80,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "rocblas fp16 gemm requires GPU compute capability >= 80,"
           "but received %d",
           context_.GetComputeCapability()));
@@ -1118,11 +1117,11 @@ inline void Blas<paddle::platform::CUDADeviceContext>::GEMM(
     int M,
     int N,
     int K,
-    pten::dtype::complex<float> alpha,
-    const pten::dtype::complex<float> *A,
-    const pten::dtype::complex<float> *B,
-    pten::dtype::complex<float> beta,
-    pten::dtype::complex<float> *C) const {
+    phi::dtype::complex<float> alpha,
+    const phi::dtype::complex<float> *A,
+    const phi::dtype::complex<float> *B,
+    phi::dtype::complex<float> beta,
+    phi::dtype::complex<float> *C) const {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
@@ -1138,7 +1137,7 @@ inline void Blas<paddle::platform::CUDADeviceContext>::GEMM(
   PADDLE_ENFORCE_GE(
       context_.GetComputeCapability(),
       53,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "cublas complex64 gemm requires GPU compute capability >= 53,"
           "but received %d",
           context_.GetComputeCapability()));
@@ -1148,37 +1147,37 @@ inline void Blas<paddle::platform::CUDADeviceContext>::GEMM(
   thrust::complex<float> c_beta = thrust::complex<float>(beta.real, beta.imag);
 
   auto &cuda_ctx = const_cast<paddle::platform::CUDADeviceContext &>(context_);
-  CUBlas<pten::dtype::complex<float>>::GEMM_EX(&cuda_ctx,
-                                               cuTransB,
-                                               cuTransA,
-                                               N,
-                                               M,
-                                               K,
-                                               &c_alpha,
-                                               B,
-                                               rocblas_datatype_f32_c,
-                                               ldb,
-                                               A,
-                                               rocblas_datatype_f32_c,
-                                               lda,
-                                               &c_beta,
-                                               C,
-                                               rocblas_datatype_f32_c,
-                                               N,
-                                               rocblas_datatype_f32_c);
+  CUBlas<phi::dtype::complex<float>>::GEMM_EX(&cuda_ctx,
+                                              cuTransB,
+                                              cuTransA,
+                                              N,
+                                              M,
+                                              K,
+                                              &c_alpha,
+                                              B,
+                                              rocblas_datatype_f32_c,
+                                              ldb,
+                                              A,
+                                              rocblas_datatype_f32_c,
+                                              lda,
+                                              &c_beta,
+                                              C,
+                                              rocblas_datatype_f32_c,
+                                              N,
+                                              rocblas_datatype_f32_c);
 }
 template <>
 template <>
-inline void Blas<pten::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
-                                         CBLAS_TRANSPOSE transB,
-                                         int M,
-                                         int N,
-                                         int K,
-                                         pten::dtype::complex<float> alpha,
-                                         const pten::dtype::complex<float> *A,
-                                         const pten::dtype::complex<float> *B,
-                                         pten::dtype::complex<float> beta,
-                                         pten::dtype::complex<float> *C) const {
+inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
+                                        CBLAS_TRANSPOSE transB,
+                                        int M,
+                                        int N,
+                                        int K,
+                                        phi::dtype::complex<float> alpha,
+                                        const phi::dtype::complex<float> *A,
+                                        const phi::dtype::complex<float> *B,
+                                        phi::dtype::complex<float> beta,
+                                        phi::dtype::complex<float> *C) const {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
@@ -1194,7 +1193,7 @@ inline void Blas<pten::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   PADDLE_ENFORCE_GE(
       context_.GetComputeCapability(),
       53,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "cublas complex64 gemm requires GPU compute capability >= 53,"
           "but received %d",
           context_.GetComputeCapability()));
@@ -1203,25 +1202,25 @@ inline void Blas<pten::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
       thrust::complex<float>(alpha.real, alpha.imag);
   thrust::complex<float> c_beta = thrust::complex<float>(beta.real, beta.imag);
 
-  auto &cuda_ctx = const_cast<pten::GPUContext &>(context_);
-  CUBlas<pten::dtype::complex<float>>::GEMM_EX(&cuda_ctx,
-                                               cuTransB,
-                                               cuTransA,
-                                               N,
-                                               M,
-                                               K,
-                                               &c_alpha,
-                                               B,
-                                               rocblas_datatype_f32_c,
-                                               ldb,
-                                               A,
-                                               rocblas_datatype_f32_c,
-                                               lda,
-                                               &c_beta,
-                                               C,
-                                               rocblas_datatype_f32_c,
-                                               N,
-                                               rocblas_datatype_f32_c);
+  auto &cuda_ctx = const_cast<phi::GPUContext &>(context_);
+  CUBlas<phi::dtype::complex<float>>::GEMM_EX(&cuda_ctx,
+                                              cuTransB,
+                                              cuTransA,
+                                              N,
+                                              M,
+                                              K,
+                                              &c_alpha,
+                                              B,
+                                              rocblas_datatype_f32_c,
+                                              ldb,
+                                              A,
+                                              rocblas_datatype_f32_c,
+                                              lda,
+                                              &c_beta,
+                                              C,
+                                              rocblas_datatype_f32_c,
+                                              N,
+                                              rocblas_datatype_f32_c);
 }
 
 template <>
@@ -1232,11 +1231,11 @@ inline void Blas<paddle::platform::CUDADeviceContext>::GEMM(
     int M,
     int N,
     int K,
-    pten::dtype::complex<double> alpha,
-    const pten::dtype::complex<double> *A,
-    const pten::dtype::complex<double> *B,
-    pten::dtype::complex<double> beta,
-    pten::dtype::complex<double> *C) const {
+    phi::dtype::complex<double> alpha,
+    const phi::dtype::complex<double> *A,
+    const phi::dtype::complex<double> *B,
+    phi::dtype::complex<double> beta,
+    phi::dtype::complex<double> *C) const {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
@@ -1252,7 +1251,7 @@ inline void Blas<paddle::platform::CUDADeviceContext>::GEMM(
   PADDLE_ENFORCE_GE(
       context_.GetComputeCapability(),
       53,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "cublas complex128 gemm requires GPU compute capability >= 53,"
           "but received %d",
           context_.GetComputeCapability()));
@@ -1263,38 +1262,37 @@ inline void Blas<paddle::platform::CUDADeviceContext>::GEMM(
       thrust::complex<double>(beta.real, beta.imag);
 
   auto &cuda_ctx = const_cast<paddle::platform::CUDADeviceContext &>(context_);
-  CUBlas<pten::dtype::complex<double>>::GEMM_EX(&cuda_ctx,
-                                                cuTransB,
-                                                cuTransA,
-                                                N,
-                                                M,
-                                                K,
-                                                &c_alpha,
-                                                B,
-                                                rocblas_datatype_f64_c,
-                                                ldb,
-                                                A,
-                                                rocblas_datatype_f64_c,
-                                                lda,
-                                                &c_beta,
-                                                C,
-                                                rocblas_datatype_f64_c,
-                                                N,
-                                                rocblas_datatype_f64_c);
+  CUBlas<phi::dtype::complex<double>>::GEMM_EX(&cuda_ctx,
+                                               cuTransB,
+                                               cuTransA,
+                                               N,
+                                               M,
+                                               K,
+                                               &c_alpha,
+                                               B,
+                                               rocblas_datatype_f64_c,
+                                               ldb,
+                                               A,
+                                               rocblas_datatype_f64_c,
+                                               lda,
+                                               &c_beta,
+                                               C,
+                                               rocblas_datatype_f64_c,
+                                               N,
+                                               rocblas_datatype_f64_c);
 }
 template <>
 template <>
-inline void Blas<pten::GPUContext>::GEMM(
-    CBLAS_TRANSPOSE transA,
-    CBLAS_TRANSPOSE transB,
-    int M,
-    int N,
-    int K,
-    pten::dtype::complex<double> alpha,
-    const pten::dtype::complex<double> *A,
-    const pten::dtype::complex<double> *B,
-    pten::dtype::complex<double> beta,
-    pten::dtype::complex<double> *C) const {
+inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
+                                        CBLAS_TRANSPOSE transB,
+                                        int M,
+                                        int N,
+                                        int K,
+                                        phi::dtype::complex<double> alpha,
+                                        const phi::dtype::complex<double> *A,
+                                        const phi::dtype::complex<double> *B,
+                                        phi::dtype::complex<double> beta,
+                                        phi::dtype::complex<double> *C) const {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
@@ -1310,7 +1308,7 @@ inline void Blas<pten::GPUContext>::GEMM(
   PADDLE_ENFORCE_GE(
       context_.GetComputeCapability(),
       53,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "cublas complex128 gemm requires GPU compute capability >= 53,"
           "but received %d",
           context_.GetComputeCapability()));
@@ -1320,25 +1318,25 @@ inline void Blas<pten::GPUContext>::GEMM(
   thrust::complex<double> c_beta =
       thrust::complex<double>(beta.real, beta.imag);
 
-  auto &cuda_ctx = const_cast<pten::GPUContext &>(context_);
-  CUBlas<pten::dtype::complex<double>>::GEMM_EX(&cuda_ctx,
-                                                cuTransB,
-                                                cuTransA,
-                                                N,
-                                                M,
-                                                K,
-                                                &c_alpha,
-                                                B,
-                                                rocblas_datatype_f64_c,
-                                                ldb,
-                                                A,
-                                                rocblas_datatype_f64_c,
-                                                lda,
-                                                &c_beta,
-                                                C,
-                                                rocblas_datatype_f64_c,
-                                                N,
-                                                rocblas_datatype_f64_c);
+  auto &cuda_ctx = const_cast<phi::GPUContext &>(context_);
+  CUBlas<phi::dtype::complex<double>>::GEMM_EX(&cuda_ctx,
+                                               cuTransB,
+                                               cuTransA,
+                                               N,
+                                               M,
+                                               K,
+                                               &c_alpha,
+                                               B,
+                                               rocblas_datatype_f64_c,
+                                               ldb,
+                                               A,
+                                               rocblas_datatype_f64_c,
+                                               lda,
+                                               &c_beta,
+                                               C,
+                                               rocblas_datatype_f64_c,
+                                               N,
+                                               rocblas_datatype_f64_c);
 }
 
 template <>
@@ -1381,19 +1379,19 @@ void Blas<paddle::platform::CUDADeviceContext>::GEMM(bool transA,
 }
 template <>
 template <typename T>
-void Blas<pten::GPUContext>::GEMM(bool transA,
-                                  bool transB,
-                                  int M,
-                                  int N,
-                                  int K,
-                                  T alpha,
-                                  const T *A,
-                                  int lda,
-                                  const T *B,
-                                  int ldb,
-                                  T beta,
-                                  T *C,
-                                  int ldc) const {
+void Blas<phi::GPUContext>::GEMM(bool transA,
+                                 bool transB,
+                                 int M,
+                                 int N,
+                                 int K,
+                                 T alpha,
+                                 const T *A,
+                                 int lda,
+                                 const T *B,
+                                 int ldb,
+                                 T beta,
+                                 T *C,
+                                 int ldc) const {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   rocblas_operation cuTransA =
@@ -1426,13 +1424,13 @@ inline void Blas<paddle::platform::CUDADeviceContext>::GEMM(
     int M,
     int N,
     int K,
-    pten::dtype::float16 alpha,
-    const pten::dtype::float16 *A,
+    phi::dtype::float16 alpha,
+    const phi::dtype::float16 *A,
     int lda,
-    const pten::dtype::float16 *B,
+    const phi::dtype::float16 *B,
     int ldb,
-    pten::dtype::float16 beta,
-    pten::dtype::float16 *C,
+    phi::dtype::float16 beta,
+    phi::dtype::float16 *C,
     int ldc) const {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
@@ -1442,37 +1440,37 @@ inline void Blas<paddle::platform::CUDADeviceContext>::GEMM(
       transB ? rocblas_operation_transpose : rocblas_operation_none;
 
   context_.CublasCall([&](rocblas_handle handle) {
-    CUBlas<pten::dtype::float16>::GEMM(handle,
-                                       cuTransB,
-                                       cuTransA,
-                                       N,
-                                       M,
-                                       K,
-                                       &alpha,
-                                       B,
-                                       ldb,
-                                       A,
-                                       lda,
-                                       &beta,
-                                       C,
-                                       ldc);
+    CUBlas<phi::dtype::float16>::GEMM(handle,
+                                      cuTransB,
+                                      cuTransA,
+                                      N,
+                                      M,
+                                      K,
+                                      &alpha,
+                                      B,
+                                      ldb,
+                                      A,
+                                      lda,
+                                      &beta,
+                                      C,
+                                      ldc);
   });
 }
 template <>
 template <>
-inline void Blas<pten::GPUContext>::GEMM(bool transA,
-                                         bool transB,
-                                         int M,
-                                         int N,
-                                         int K,
-                                         pten::dtype::float16 alpha,
-                                         const pten::dtype::float16 *A,
-                                         int lda,
-                                         const pten::dtype::float16 *B,
-                                         int ldb,
-                                         pten::dtype::float16 beta,
-                                         pten::dtype::float16 *C,
-                                         int ldc) const {
+inline void Blas<phi::GPUContext>::GEMM(bool transA,
+                                        bool transB,
+                                        int M,
+                                        int N,
+                                        int K,
+                                        phi::dtype::float16 alpha,
+                                        const phi::dtype::float16 *A,
+                                        int lda,
+                                        const phi::dtype::float16 *B,
+                                        int ldb,
+                                        phi::dtype::float16 beta,
+                                        phi::dtype::float16 *C,
+                                        int ldc) const {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   rocblas_operation cuTransA =
@@ -1481,20 +1479,20 @@ inline void Blas<pten::GPUContext>::GEMM(bool transA,
       transB ? rocblas_operation_transpose : rocblas_operation_none;
 
   context_.CublasCall([&](rocblas_handle handle) {
-    CUBlas<pten::dtype::float16>::GEMM(handle,
-                                       cuTransB,
-                                       cuTransA,
-                                       N,
-                                       M,
-                                       K,
-                                       &alpha,
-                                       B,
-                                       ldb,
-                                       A,
-                                       lda,
-                                       &beta,
-                                       C,
-                                       ldc);
+    CUBlas<phi::dtype::float16>::GEMM(handle,
+                                      cuTransB,
+                                      cuTransA,
+                                      N,
+                                      M,
+                                      K,
+                                      &alpha,
+                                      B,
+                                      ldb,
+                                      A,
+                                      lda,
+                                      &beta,
+                                      C,
+                                      ldc);
   });
 }
 
@@ -1510,7 +1508,7 @@ void Blas<paddle::platform::CUDADeviceContext>::AXPY(int n,
 }
 template <>
 template <typename T>
-void Blas<pten::GPUContext>::AXPY(int n, T alpha, const T *x, T *y) const {
+void Blas<phi::GPUContext>::AXPY(int n, T alpha, const T *x, T *y) const {
   context_.CublasCall([&](rocblas_handle handle) {
     CUBlas<T>::AXPY(handle, n, &alpha, x, 1, y, 1);
   });
@@ -1526,7 +1524,7 @@ void Blas<paddle::platform::CUDADeviceContext>::SCAL(int n,
 }
 template <>
 template <typename T>
-void Blas<pten::GPUContext>::SCAL(int n, const T alpha, T *x) const {
+void Blas<phi::GPUContext>::SCAL(int n, const T alpha, T *x) const {
   context_.CublasCall(
       [&](rocblas_handle handle) { CUBlas<T>::SCAL(handle, n, &alpha, x, 1); });
 }
@@ -1541,7 +1539,7 @@ void Blas<paddle::platform::CUDADeviceContext>::VCOPY(int n,
 }
 template <>
 template <typename T>
-void Blas<pten::GPUContext>::VCOPY(int n, const T *x, T *y) const {
+void Blas<phi::GPUContext>::VCOPY(int n, const T *x, T *y) const {
   context_.CublasCall(
       [&](rocblas_handle handle) { CUBlas<T>::VCOPY(handle, n, x, 1, y, 1); });
 }
@@ -1565,14 +1563,14 @@ void Blas<paddle::platform::CUDADeviceContext>::GEMV(bool trans_a,
 }
 template <>
 template <typename T>
-void Blas<pten::GPUContext>::GEMV(bool trans_a,
-                                  int M,
-                                  int N,
-                                  T alpha,
-                                  const T *A,
-                                  const T *B,
-                                  T beta,
-                                  T *C) const {
+void Blas<phi::GPUContext>::GEMV(bool trans_a,
+                                 int M,
+                                 int N,
+                                 T alpha,
+                                 const T *A,
+                                 const T *B,
+                                 T beta,
+                                 T *C) const {
   rocblas_operation cuTransA =
       !trans_a ? rocblas_operation_transpose : rocblas_operation_none;
 
@@ -1587,36 +1585,36 @@ inline void Blas<paddle::platform::CUDADeviceContext>::GEMV(
     bool trans_a,
     int M,
     int N,
-    pten::dtype::float16 alpha,
-    const pten::dtype::float16 *A,
-    const pten::dtype::float16 *B,
-    pten::dtype::float16 beta,
-    pten::dtype::float16 *C) const {
+    phi::dtype::float16 alpha,
+    const phi::dtype::float16 *A,
+    const phi::dtype::float16 *B,
+    phi::dtype::float16 beta,
+    phi::dtype::float16 *C) const {
   // Because cublas doesn't support half gemv, we use cublasHgemm to achieve it.
   if (trans_a) {
-    this->template GEMM<pten::dtype::float16>(
+    this->template GEMM<phi::dtype::float16>(
         CblasNoTrans, CblasNoTrans, 1, N, M, alpha, B, A, beta, C);
   } else {
-    this->template GEMM<pten::dtype::float16>(
+    this->template GEMM<phi::dtype::float16>(
         CblasNoTrans, CblasNoTrans, M, 1, N, alpha, A, B, beta, C);
   }
 }
 template <>
 template <>
-inline void Blas<pten::GPUContext>::GEMV(bool trans_a,
-                                         int M,
-                                         int N,
-                                         pten::dtype::float16 alpha,
-                                         const pten::dtype::float16 *A,
-                                         const pten::dtype::float16 *B,
-                                         pten::dtype::float16 beta,
-                                         pten::dtype::float16 *C) const {
+inline void Blas<phi::GPUContext>::GEMV(bool trans_a,
+                                        int M,
+                                        int N,
+                                        phi::dtype::float16 alpha,
+                                        const phi::dtype::float16 *A,
+                                        const phi::dtype::float16 *B,
+                                        phi::dtype::float16 beta,
+                                        phi::dtype::float16 *C) const {
   // Because cublas doesn't support half gemv, we use cublasHgemm to achieve it.
   if (trans_a) {
-    this->template GEMM<pten::dtype::float16>(
+    this->template GEMM<phi::dtype::float16>(
         CblasNoTrans, CblasNoTrans, 1, N, M, alpha, B, A, beta, C);
   } else {
-    this->template GEMM<pten::dtype::float16>(
+    this->template GEMM<phi::dtype::float16>(
         CblasNoTrans, CblasNoTrans, M, 1, N, alpha, A, B, beta, C);
   }
 }
@@ -1627,36 +1625,36 @@ inline void Blas<paddle::platform::CUDADeviceContext>::GEMV(
     bool trans_a,
     int M,
     int N,
-    pten::dtype::bfloat16 alpha,
-    const pten::dtype::bfloat16 *A,
-    const pten::dtype::bfloat16 *B,
-    pten::dtype::bfloat16 beta,
-    pten::dtype::bfloat16 *C) const {
+    phi::dtype::bfloat16 alpha,
+    const phi::dtype::bfloat16 *A,
+    const phi::dtype::bfloat16 *B,
+    phi::dtype::bfloat16 beta,
+    phi::dtype::bfloat16 *C) const {
   // Because rocblas doesn't support bfloat16 gemv, we use gemmex to achieve it.
   if (trans_a) {
-    this->template GEMM<pten::dtype::bfloat16>(
+    this->template GEMM<phi::dtype::bfloat16>(
         CblasNoTrans, CblasNoTrans, 1, N, M, alpha, B, A, beta, C);
   } else {
-    this->template GEMM<pten::dtype::bfloat16>(
+    this->template GEMM<phi::dtype::bfloat16>(
         CblasNoTrans, CblasNoTrans, M, 1, N, alpha, A, B, beta, C);
   }
 }
 template <>
 template <>
-inline void Blas<pten::GPUContext>::GEMV(bool trans_a,
-                                         int M,
-                                         int N,
-                                         pten::dtype::bfloat16 alpha,
-                                         const pten::dtype::bfloat16 *A,
-                                         const pten::dtype::bfloat16 *B,
-                                         pten::dtype::bfloat16 beta,
-                                         pten::dtype::bfloat16 *C) const {
+inline void Blas<phi::GPUContext>::GEMV(bool trans_a,
+                                        int M,
+                                        int N,
+                                        phi::dtype::bfloat16 alpha,
+                                        const phi::dtype::bfloat16 *A,
+                                        const phi::dtype::bfloat16 *B,
+                                        phi::dtype::bfloat16 beta,
+                                        phi::dtype::bfloat16 *C) const {
   // Because rocblas doesn't support bfloat16 gemv, we use gemmex to achieve it.
   if (trans_a) {
-    this->template GEMM<pten::dtype::bfloat16>(
+    this->template GEMM<phi::dtype::bfloat16>(
         CblasNoTrans, CblasNoTrans, 1, N, M, alpha, B, A, beta, C);
   } else {
-    this->template GEMM<pten::dtype::bfloat16>(
+    this->template GEMM<phi::dtype::bfloat16>(
         CblasNoTrans, CblasNoTrans, M, 1, N, alpha, A, B, beta, C);
   }
 }
@@ -1713,19 +1711,19 @@ void Blas<paddle::platform::CUDADeviceContext>::BatchedGEMM(
 
 template <>
 template <typename T>
-void Blas<pten::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
-                                         CBLAS_TRANSPOSE transB,
-                                         int M,
-                                         int N,
-                                         int K,
-                                         T alpha,
-                                         const T *A,
-                                         const T *B,
-                                         T beta,
-                                         T *C,
-                                         int batchCount,
-                                         int64_t strideA,
-                                         int64_t strideB) const {
+void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
+                                        CBLAS_TRANSPOSE transB,
+                                        int M,
+                                        int N,
+                                        int K,
+                                        T alpha,
+                                        const T *A,
+                                        const T *B,
+                                        T beta,
+                                        T *C,
+                                        int batchCount,
+                                        int64_t strideA,
+                                        int64_t strideB) const {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
@@ -1768,11 +1766,11 @@ inline void Blas<paddle::platform::CUDADeviceContext>::BatchedGEMM(
     int M,
     int N,
     int K,
-    pten::dtype::bfloat16 alpha,
-    const pten::dtype::bfloat16 *A,
-    const pten::dtype::bfloat16 *B,
-    pten::dtype::bfloat16 beta,
-    pten::dtype::bfloat16 *C,
+    phi::dtype::bfloat16 alpha,
+    const phi::dtype::bfloat16 *A,
+    const phi::dtype::bfloat16 *B,
+    phi::dtype::bfloat16 beta,
+    phi::dtype::bfloat16 *C,
     int batchCount,
     int64_t strideA,
     int64_t strideB) const {
@@ -1827,19 +1825,19 @@ inline void Blas<paddle::platform::CUDADeviceContext>::BatchedGEMM(
 
 template <>
 template <>
-inline void Blas<pten::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
-                                                CBLAS_TRANSPOSE transB,
-                                                int M,
-                                                int N,
-                                                int K,
-                                                pten::dtype::bfloat16 alpha,
-                                                const pten::dtype::bfloat16 *A,
-                                                const pten::dtype::bfloat16 *B,
-                                                pten::dtype::bfloat16 beta,
-                                                pten::dtype::bfloat16 *C,
-                                                int batchCount,
-                                                int64_t strideA,
-                                                int64_t strideB) const {
+inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
+                                               CBLAS_TRANSPOSE transB,
+                                               int M,
+                                               int N,
+                                               int K,
+                                               phi::dtype::bfloat16 alpha,
+                                               const phi::dtype::bfloat16 *A,
+                                               const phi::dtype::bfloat16 *B,
+                                               phi::dtype::bfloat16 beta,
+                                               phi::dtype::bfloat16 *C,
+                                               int batchCount,
+                                               int64_t strideA,
+                                               int64_t strideB) const {
   int lda = (transA == CblasNoTrans) ? K : M;
   int ldb = (transB == CblasNoTrans) ? N : K;
   int ldc = N;
@@ -1911,17 +1909,17 @@ void Blas<paddle::platform::CUDADeviceContext>::BatchedGEMM(
 
 template <>
 template <typename T>
-void Blas<pten::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
-                                         CBLAS_TRANSPOSE transB,
-                                         int M,
-                                         int N,
-                                         int K,
-                                         T alpha,
-                                         const T **A,
-                                         const T **B,
-                                         T beta,
-                                         T **C,
-                                         int batchCount) const {
+void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
+                                        CBLAS_TRANSPOSE transB,
+                                        int M,
+                                        int N,
+                                        int K,
+                                        T alpha,
+                                        const T **A,
+                                        const T **B,
+                                        T beta,
+                                        T **C,
+                                        int batchCount) const {
   for (int k = 0; k < batchCount; ++k) {
     this->template GEMM<T>(
         transA, transB, M, N, K, alpha, A[k], B[k], beta, C[k]);
@@ -1936,32 +1934,32 @@ inline void Blas<paddle::platform::CUDADeviceContext>::BatchedGEMM(
     int M,
     int N,
     int K,
-    pten::dtype::float16 alpha,
-    const pten::dtype::float16 **A,
-    const pten::dtype::float16 **B,
-    pten::dtype::float16 beta,
-    pten::dtype::float16 **C,
+    phi::dtype::float16 alpha,
+    const phi::dtype::float16 **A,
+    const phi::dtype::float16 **B,
+    phi::dtype::float16 beta,
+    phi::dtype::float16 **C,
     int batchCount) const {
   for (int k = 0; k < batchCount; ++k) {
-    this->template GEMM<pten::dtype::float16>(
+    this->template GEMM<phi::dtype::float16>(
         transA, transB, M, N, K, alpha, A[k], B[k], beta, C[k]);
   }
 }
 template <>
 template <>
-inline void Blas<pten::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
-                                                CBLAS_TRANSPOSE transB,
-                                                int M,
-                                                int N,
-                                                int K,
-                                                pten::dtype::float16 alpha,
-                                                const pten::dtype::float16 **A,
-                                                const pten::dtype::float16 **B,
-                                                pten::dtype::float16 beta,
-                                                pten::dtype::float16 **C,
-                                                int batchCount) const {
+inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
+                                               CBLAS_TRANSPOSE transB,
+                                               int M,
+                                               int N,
+                                               int K,
+                                               phi::dtype::float16 alpha,
+                                               const phi::dtype::float16 **A,
+                                               const phi::dtype::float16 **B,
+                                               phi::dtype::float16 beta,
+                                               phi::dtype::float16 **C,
+                                               int batchCount) const {
   for (int k = 0; k < batchCount; ++k) {
-    this->template GEMM<pten::dtype::float16>(
+    this->template GEMM<phi::dtype::float16>(
         transA, transB, M, N, K, alpha, A[k], B[k], beta, C[k]);
   }
 }
@@ -1974,33 +1972,33 @@ inline void Blas<paddle::platform::CUDADeviceContext>::BatchedGEMM(
     int M,
     int N,
     int K,
-    pten::dtype::bfloat16 alpha,
-    const pten::dtype::bfloat16 **A,
-    const pten::dtype::bfloat16 **B,
-    pten::dtype::bfloat16 beta,
-    pten::dtype::bfloat16 **C,
+    phi::dtype::bfloat16 alpha,
+    const phi::dtype::bfloat16 **A,
+    const phi::dtype::bfloat16 **B,
+    phi::dtype::bfloat16 beta,
+    phi::dtype::bfloat16 **C,
     int batchCount) const {
   for (int k = 0; k < batchCount; ++k) {
-    this->template GEMM<pten::dtype::bfloat16>(
+    this->template GEMM<phi::dtype::bfloat16>(
         transA, transB, M, N, K, alpha, A[k], B[k], beta, C[k]);
   }
 }
 
 template <>
 template <>
-inline void Blas<pten::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
-                                                CBLAS_TRANSPOSE transB,
-                                                int M,
-                                                int N,
-                                                int K,
-                                                pten::dtype::bfloat16 alpha,
-                                                const pten::dtype::bfloat16 **A,
-                                                const pten::dtype::bfloat16 **B,
-                                                pten::dtype::bfloat16 beta,
-                                                pten::dtype::bfloat16 **C,
-                                                int batchCount) const {
+inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
+                                               CBLAS_TRANSPOSE transB,
+                                               int M,
+                                               int N,
+                                               int K,
+                                               phi::dtype::bfloat16 alpha,
+                                               const phi::dtype::bfloat16 **A,
+                                               const phi::dtype::bfloat16 **B,
+                                               phi::dtype::bfloat16 beta,
+                                               phi::dtype::bfloat16 **C,
+                                               int batchCount) const {
   for (int k = 0; k < batchCount; ++k) {
-    this->template GEMM<pten::dtype::bfloat16>(
+    this->template GEMM<phi::dtype::bfloat16>(
         transA, transB, M, N, K, alpha, A[k], B[k], beta, C[k]);
   }
 }
@@ -2038,17 +2036,17 @@ void Blas<paddle::platform::CUDADeviceContext>::TRSM(CBLAS_SIDE side,
 }
 template <>
 template <typename T>
-void Blas<pten::GPUContext>::TRSM(CBLAS_SIDE side,
-                                  CBLAS_UPLO uplo,
-                                  CBLAS_TRANSPOSE transA,
-                                  CBLAS_DIAG diag,
-                                  int M,
-                                  int N,
-                                  T alpha,
-                                  const T *A,
-                                  int lda,
-                                  T *B,
-                                  int ldb) const {
+void Blas<phi::GPUContext>::TRSM(CBLAS_SIDE side,
+                                 CBLAS_UPLO uplo,
+                                 CBLAS_TRANSPOSE transA,
+                                 CBLAS_DIAG diag,
+                                 int M,
+                                 int N,
+                                 T alpha,
+                                 const T *A,
+                                 int lda,
+                                 T *B,
+                                 int ldb) const {
   // solve row major `op ( A ) X = α B` by taking it as `X' op ( A' )  =  α B'`
   // where ' stands for transpose
   rocblas_side cuSide =
@@ -2078,7 +2076,7 @@ void Blas<paddle::platform::CUDADeviceContext>::BatchedGETRF(
 }
 template <>
 template <typename T>
-void Blas<pten::GPUContext>::BatchedGETRF(
+void Blas<phi::GPUContext>::BatchedGETRF(
     int n, T **a, int *ipiv, int *info, int batch_size) const {
   context_.CublasCall([&](rocblas_handle handle) {
     CUBlas<T>::GETRF_BATCH(handle, n, a, n, ipiv, info, batch_size);
@@ -2093,7 +2091,7 @@ void Blas<paddle::platform::CUDADeviceContext>::BatchedGETRI(
   PADDLE_ENFORCE_NE(
       a_inv,
       a,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "cuBLAS fuction 'cublas<S/D>getrfBatched' cannot be executed "
           "in-place. The memory space of output matrix (address: %p) cannot "
           "overlap memory space of input matrix (address: %p).",
@@ -2105,16 +2103,16 @@ void Blas<paddle::platform::CUDADeviceContext>::BatchedGETRI(
 }
 template <>
 template <typename T>
-void Blas<pten::GPUContext>::BatchedGETRI(int n,
-                                          const T **a,
-                                          const int *ipiv,
-                                          T **a_inv,
-                                          int *info,
-                                          int batch_size) const {
+void Blas<phi::GPUContext>::BatchedGETRI(int n,
+                                         const T **a,
+                                         const int *ipiv,
+                                         T **a_inv,
+                                         int *info,
+                                         int batch_size) const {
   PADDLE_ENFORCE_NE(
       a_inv,
       a,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "cuBLAS fuction 'cublas<S/D>getrfBatched' cannot be executed "
           "in-place. The memory space of output matrix (address: %p) cannot "
           "overlap memory space of input matrix (address: %p).",
@@ -2135,7 +2133,7 @@ void Blas<paddle::platform::CUDADeviceContext>::BatchedMatInv(
 }
 template <>
 template <typename T>
-void Blas<pten::GPUContext>::BatchedMatInv(
+void Blas<phi::GPUContext>::BatchedMatInv(
     int n, const T **a, T **a_inv, int *info, int batch_size) const {
   context_.CublasCall([&](rocblas_handle handle) {
     CUBlas<T>::MATINV_BATCH(handle, n, a, n, a_inv, n, info, batch_size);
@@ -2165,16 +2163,16 @@ void Blas<paddle::platform::CUDADeviceContext>::BatchedGETRS(
 }
 template <>
 template <typename T>
-void Blas<pten::GPUContext>::BatchedGETRS(CBLAS_TRANSPOSE trans,
-                                          int n,
-                                          int nrhs,
-                                          const T **a,
-                                          int lda,
-                                          int *ipiv,
-                                          T **b,
-                                          int ldb,
-                                          int *info,
-                                          int batch_size) const {
+void Blas<phi::GPUContext>::BatchedGETRS(CBLAS_TRANSPOSE trans,
+                                         int n,
+                                         int nrhs,
+                                         const T **a,
+                                         int lda,
+                                         int *ipiv,
+                                         T **b,
+                                         int ldb,
+                                         int *info,
+                                         int batch_size) const {
   rocblas_operation cuTrans = (trans == CblasNoTrans)
                                   ? rocblas_operation_none
                                   : rocblas_operation_transpose;
@@ -2230,18 +2228,18 @@ void Blas<paddle::platform::CUDADeviceContext>::BatchedTRSM(
 }
 template <>
 template <typename T>
-void Blas<pten::GPUContext>::BatchedTRSM(CBLAS_SIDE side,
-                                         CBLAS_UPLO uplo,
-                                         CBLAS_TRANSPOSE transA,
-                                         CBLAS_DIAG diag,
-                                         int M,
-                                         int N,
-                                         T alpha,
-                                         const T **A,
-                                         int lda,
-                                         T **B,
-                                         int ldb,
-                                         int batch_size) const {
+void Blas<phi::GPUContext>::BatchedTRSM(CBLAS_SIDE side,
+                                        CBLAS_UPLO uplo,
+                                        CBLAS_TRANSPOSE transA,
+                                        CBLAS_DIAG diag,
+                                        int M,
+                                        int N,
+                                        T alpha,
+                                        const T **A,
+                                        int lda,
+                                        T **B,
+                                        int ldb,
+                                        int batch_size) const {
   // solve row major `op ( A ) X = α B` by taking it as `X' op ( A' )  =  α B'`
   // where ' stands for transpose
   rocblas_side cuSide =
@@ -2273,4 +2271,4 @@ void Blas<pten::GPUContext>::BatchedTRSM(CBLAS_SIDE side,
 }
 
 }  // namespace funcs
-}  // namespace pten
+}  // namespace phi

@@ -16,11 +16,11 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void TruncGradKernel(const Context& dev_ctx,
                      const DenseTensor& out_grad,
                      DenseTensor* in_grad);
 
-}  // namespace pten
+}  // namespace phi

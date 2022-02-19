@@ -25,7 +25,7 @@
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/transform.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T>
 struct BernoulliCudaFunctor {
@@ -60,7 +60,7 @@ void BernoulliKernel(const Context& ctx,
   auto gen_cuda = ctx.GetGenerator();
   auto seed_offset = gen_cuda->IncrementOffset(1);
   int64_t gen_offset = numel * seed_offset.second;
-  paddle::platform::Transform<pten::GPUContext> trans;
+  paddle::platform::Transform<phi::GPUContext> trans;
   thrust::counting_iterator<int64_t> index_sequence_begin(0);
   trans(ctx,
         index_sequence_begin,
@@ -71,7 +71,7 @@ void BernoulliKernel(const Context& ctx,
                                 static_cast<int64_t>(gen_offset)));
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(
-    bernoulli, GPU, ALL_LAYOUT, pten::BernoulliKernel, float, double) {}
+    bernoulli, GPU, ALL_LAYOUT, phi::BernoulliKernel, float, double) {}

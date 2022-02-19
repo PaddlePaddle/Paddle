@@ -19,7 +19,7 @@
 
 #include "paddle/phi/kernels/empty_kernel.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void MatmulKernel(const Context& dev_ctx,
@@ -42,4 +42,4 @@ DenseTensor Matmul(const Context& dev_ctx,
   return dense_out;
 }
 
-}  // namespace pten
+}  // namespace phi

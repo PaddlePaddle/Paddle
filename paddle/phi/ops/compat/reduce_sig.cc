@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
 KernelSignature ReduceSumOpArgumentMapping(const ArgumentMappingContext& ctx) {
   bool reduce_all = paddle::any_cast<bool>(ctx.Attr("reduce_all"));
@@ -43,10 +43,10 @@ KernelSignature ReduceMeanOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("unregistered", {}, {}, {});
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_BASE_KERNEL_NAME(reduce_sum, sum);
 PT_REGISTER_BASE_KERNEL_NAME(reduce_mean, mean);
 
-PT_REGISTER_ARG_MAPPING_FN(reduce_sum, pten::ReduceSumOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(reduce_mean, pten::ReduceMeanOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(reduce_sum, phi::ReduceSumOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(reduce_mean, phi::ReduceMeanOpArgumentMapping);

@@ -29,7 +29,7 @@ namespace cub = hipcub;
 
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, int BlockDim>
 __global__ void NormalizeGradient(const T* x,
@@ -109,12 +109,12 @@ void NormGradKernel(const Context& ctx,
       x_data, x_norm, dy, pre, n, post, dx);
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(norm_grad,
                    GPU,
                    ALL_LAYOUT,
-                   pten::NormGradKernel,
+                   phi::NormGradKernel,
                    float,
                    double,
-                   pten::dtype::float16) {}
+                   phi::dtype::float16) {}

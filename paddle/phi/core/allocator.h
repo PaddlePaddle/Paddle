@@ -20,7 +20,7 @@ limitations under the License. */
 
 #include "paddle/phi/common/place.h"
 
-namespace pten {
+namespace phi {
 
 /// \brief Fancy pointer with deleter. The use of this data type
 /// is to be compatible with allocators from different frameworks
@@ -28,7 +28,7 @@ namespace pten {
 /// support being inherited.
 class Allocation {
  public:
-  using Place = pten::Place;
+  using Place = phi::Place;
   using DeleterFnPtr = void (*)(Allocation*);
 
   Allocation() = default;
@@ -106,4 +106,4 @@ class Allocator {
   virtual bool IsAllocThreadSafe() const { return false; }
 };
 
-}  // namespace pten
+}  // namespace phi

@@ -97,7 +97,7 @@ DEFINE_string(rccl_dir,
               "dlopen will search rccl from LD_LIBRARY_PATH");
 #endif
 
-namespace pten {
+namespace phi {
 namespace dynload {
 
 struct PathNode {
@@ -582,4 +582,4 @@ void* GetMKLRTDsoHandle() {
 }
 
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi

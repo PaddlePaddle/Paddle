@@ -70,14 +70,14 @@ class DiagEmbedKernel : public framework::OpKernel<T> {
     auto* input_data = input->data<T>();
 
     T* out_data = out->mutable_data<T>(context.GetPlace());
-    pten::funcs::SetConstant<DeviceContext, T> set_zero;
+    phi::funcs::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
     set_zero(dev_ctx, out, static_cast<T>(0.0));
 
     auto out_dims = out->dims();
     int dim1_ = dim1 < 0 ? out_dims.size() + dim1 : dim1;
     int dim2_ = dim2 < 0 ? out_dims.size() + dim2 : dim2;
-    auto stride = pten::stride(out_dims);
+    auto stride = phi::stride(out_dims);
     int64_t diag_size;
     int64_t storage_offset = 0;
     if (offset >= 0) {

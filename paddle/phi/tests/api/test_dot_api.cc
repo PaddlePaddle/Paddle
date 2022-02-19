@@ -25,26 +25,26 @@ namespace paddle {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = pten::DDim;
+using DDim = phi::DDim;
 
 // TODO(chenweihang): Remove this test after the API is used in the dygraph
 TEST(API, dot) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  auto dense_x = std::make_shared<pten::DenseTensor>(
+  auto dense_x = std::make_shared<phi::DenseTensor>(
       alloc.get(),
-      pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            pten::make_ddim({3, 10}),
-                            pten::DataLayout::NCHW));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                           phi::make_ddim({3, 10}),
+                           phi::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x->mutable_data<float>(paddle::platform::CPUPlace());
 
-  auto dense_y = std::make_shared<pten::DenseTensor>(
+  auto dense_y = std::make_shared<phi::DenseTensor>(
       alloc.get(),
-      pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            pten::make_ddim({3, 10}),
-                            pten::DataLayout::NCHW));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                           phi::make_ddim({3, 10}),
+                           phi::DataLayout::NCHW));
   auto* dense_y_data =
       dense_y->mutable_data<float>(paddle::platform::CPUPlace());
 
@@ -68,12 +68,12 @@ TEST(API, dot) {
   ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.numel(), 3);
   ASSERT_EQ(out.is_cpu(), true);
-  ASSERT_EQ(out.type(), pten::DataType::FLOAT32);
-  ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(out.type(), phi::DataType::FLOAT32);
+  ASSERT_EQ(out.layout(), phi::DataLayout::NCHW);
   ASSERT_EQ(out.initialized(), true);
 
   auto expect_result = sum;
-  auto dense_out = std::dynamic_pointer_cast<pten::DenseTensor>(out.impl());
+  auto dense_out = std::dynamic_pointer_cast<phi::DenseTensor>(out.impl());
   auto actual_result0 = dense_out->data<float>()[0];
   auto actual_result1 = dense_out->data<float>()[1];
   auto actual_result2 = dense_out->data<float>()[2];

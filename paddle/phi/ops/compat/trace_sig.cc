@@ -14,7 +14,7 @@
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
 KernelSignature TraceOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature(
@@ -28,7 +28,7 @@ KernelSignature TraceGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
                          {GradVarName("Input")});
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(trace, pten::TraceOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(trace_grad, pten::TraceGradOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(trace, phi::TraceOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(trace_grad, phi::TraceGradOpArgumentMapping);

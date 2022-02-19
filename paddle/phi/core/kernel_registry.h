@@ -28,11 +28,11 @@
 
 #include "paddle/phi/core/enforce.h"
 
-namespace pten {
+namespace phi {
 
-#define BACKEND(arg__) pten::Backend::arg__
-#define DATALAYOUT(arg__) pten::DataLayout::arg__
-#define DATATYPE(arg__) pten::DataType::arg__
+#define BACKEND(arg__) phi::Backend::arg__
+#define DATALAYOUT(arg__) phi::DataLayout::arg__
+#define DATATYPE(arg__) phi::DataType::arg__
 
 template <typename Func>
 struct KernelArgsParseFunctor;
@@ -49,8 +49,8 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
     // TODO(chenweihang): The fluid Tensor's default layout is NCHW,
     // it is not same as kernel's layout, we should fix this error on
     // fluid Tensor
-    auto default_tensor_layout = pten::DataLayout::NCHW;
-    if (default_key.layout() != pten::DataLayout::ANY) {
+    auto default_tensor_layout = phi::DataLayout::NCHW;
+    if (default_key.layout() != phi::DataLayout::ANY) {
       default_tensor_layout = default_key.layout();
     }
     auto args_type = ParseArgType(Indices{});
@@ -231,7 +231,7 @@ struct KernelRegistrar {
     kernel_name, backend, layout, meta_kernel_fn, ...)                      \
   PT_KERNEL_INSTANTIATION(meta_kernel_fn, backend, __VA_ARGS__);            \
   static void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
-      const ::pten::KernelKey& kernel_key, ::pten::Kernel* kernel);         \
+      const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel);           \
   PT_KERNEL_REGISTRAR_INIT(                                                 \
       kernel_name,                                                          \
       backend,                                                              \
@@ -240,7 +240,7 @@ struct KernelRegistrar {
       meta_kernel_fn,                                                       \
       __VA_ARGS__);                                                         \
   void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(        \
-      const ::pten::KernelKey& kernel_key, ::pten::Kernel* kernel)
+      const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel)
 #else
 /**
  * `template decltype(fn) fn` can work on gcc and clang,
@@ -257,7 +257,7 @@ struct KernelRegistrar {
 #define _PT_REGISTER_2TA_KERNEL(                                            \
     kernel_name, backend, layout, meta_kernel_fn, ...)                      \
   static void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
-      const ::pten::KernelKey& kernel_key, ::pten::Kernel* kernel);         \
+      const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel);           \
   PT_EXPAND(PT_KERNEL_REGISTRAR_INIT(                                       \
       kernel_name,                                                          \
       backend,                                                              \
@@ -266,7 +266,7 @@ struct KernelRegistrar {
       meta_kernel_fn,                                                       \
       __VA_ARGS__));                                                        \
   void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(        \
-      const ::pten::KernelKey& kernel_key, ::pten::Kernel* kernel)
+      const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel)
 #endif
 
 #define PT_KERNEL_INSTANTIATION(meta_kernel_fn, backend, ...) \
@@ -277,64 +277,64 @@ struct KernelRegistrar {
   PT_CONCATENATE(_PT_KERNEL_INSTANTIATION_, N)                    \
   (meta_kernel_fn, backend, __VA_ARGS__)
 
-#define _PT_KERNEL_INSTANTIATION_1(meta_kernel_fn, backend, cpp_dtype)   \
-  template decltype(meta_kernel_fn<cpp_dtype, ::pten::backend##Context>) \
-      meta_kernel_fn<cpp_dtype, ::pten::backend##Context>
+#define _PT_KERNEL_INSTANTIATION_1(meta_kernel_fn, backend, cpp_dtype)  \
+  template decltype(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>) \
+      meta_kernel_fn<cpp_dtype, ::phi::backend##Context>
 #define _PT_KERNEL_INSTANTIATION_2(meta_kernel_fn, backend, cpp_dtype, ...) \
-  template decltype(meta_kernel_fn<cpp_dtype, ::pten::backend##Context>)    \
-      meta_kernel_fn<cpp_dtype, ::pten::backend##Context>;                  \
+  template decltype(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)     \
+      meta_kernel_fn<cpp_dtype, ::phi::backend##Context>;                   \
   PT_EXPAND(_PT_KERNEL_INSTANTIATION_1(meta_kernel_fn, backend, __VA_ARGS__))
 #define _PT_KERNEL_INSTANTIATION_3(meta_kernel_fn, backend, cpp_dtype, ...) \
-  template decltype(meta_kernel_fn<cpp_dtype, ::pten::backend##Context>)    \
-      meta_kernel_fn<cpp_dtype, ::pten::backend##Context>;                  \
+  template decltype(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)     \
+      meta_kernel_fn<cpp_dtype, ::phi::backend##Context>;                   \
   PT_EXPAND(_PT_KERNEL_INSTANTIATION_2(meta_kernel_fn, backend, __VA_ARGS__))
 #define _PT_KERNEL_INSTANTIATION_4(meta_kernel_fn, backend, cpp_dtype, ...) \
-  template decltype(meta_kernel_fn<cpp_dtype, ::pten::backend##Context>)    \
-      meta_kernel_fn<cpp_dtype, ::pten::backend##Context>;                  \
+  template decltype(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)     \
+      meta_kernel_fn<cpp_dtype, ::phi::backend##Context>;                   \
   PT_EXPAND(_PT_KERNEL_INSTANTIATION_3(meta_kernel_fn, backend, __VA_ARGS__))
 #define _PT_KERNEL_INSTANTIATION_5(meta_kernel_fn, backend, cpp_dtype, ...) \
-  template decltype(meta_kernel_fn<cpp_dtype, ::pten::backend##Context>)    \
-      meta_kernel_fn<cpp_dtype, ::pten::backend##Context>;                  \
+  template decltype(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)     \
+      meta_kernel_fn<cpp_dtype, ::phi::backend##Context>;                   \
   PT_EXPAND(_PT_KERNEL_INSTANTIATION_4(meta_kernel_fn, backend, __VA_ARGS__))
 #define _PT_KERNEL_INSTANTIATION_6(meta_kernel_fn, backend, cpp_dtype, ...) \
-  template decltype(meta_kernel_fn<cpp_dtype, ::pten::backend##Context>)    \
-      meta_kernel_fn<cpp_dtype, ::pten::backend##Context>;                  \
+  template decltype(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)     \
+      meta_kernel_fn<cpp_dtype, ::phi::backend##Context>;                   \
   PT_EXPAND(_PT_KERNEL_INSTANTIATION_5(meta_kernel_fn, backend, __VA_ARGS__))
 #define _PT_KERNEL_INSTANTIATION_7(meta_kernel_fn, backend, cpp_dtype, ...) \
-  template decltype(meta_kernel_fn<cpp_dtype, ::pten::backend##Context>)    \
-      meta_kernel_fn<cpp_dtype, ::pten::backend##Context>;                  \
+  template decltype(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)     \
+      meta_kernel_fn<cpp_dtype, ::phi::backend##Context>;                   \
   PT_EXPAND(_PT_KERNEL_INSTANTIATION_6(meta_kernel_fn, backend, __VA_ARGS__))
 #define _PT_KERNEL_INSTANTIATION_8(meta_kernel_fn, backend, cpp_dtype, ...) \
-  template decltype(meta_kernel_fn<cpp_dtype, ::pten::backend##Context>)    \
-      meta_kernel_fn<cpp_dtype, ::pten::backend##Context>;                  \
+  template decltype(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)     \
+      meta_kernel_fn<cpp_dtype, ::phi::backend##Context>;                   \
   PT_EXPAND(_PT_KERNEL_INSTANTIATION_7(meta_kernel_fn, backend, __VA_ARGS__))
 #define _PT_KERNEL_INSTANTIATION_9(meta_kernel_fn, backend, cpp_dtype, ...) \
-  template decltype(meta_kernel_fn<cpp_dtype, ::pten::backend##Context>)    \
-      meta_kernel_fn<cpp_dtype, ::pten::backend##Context>;                  \
+  template decltype(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)     \
+      meta_kernel_fn<cpp_dtype, ::phi::backend##Context>;                   \
   PT_EXPAND(_PT_KERNEL_INSTANTIATION_8(meta_kernel_fn, backend, __VA_ARGS__))
 #define _PT_KERNEL_INSTANTIATION_10(meta_kernel_fn, backend, cpp_dtype, ...) \
-  template decltype(meta_kernel_fn<cpp_dtype, ::pten::backend##Context>)     \
-      meta_kernel_fn<cpp_dtype, ::pten::backend##Context>;                   \
+  template decltype(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)      \
+      meta_kernel_fn<cpp_dtype, ::phi::backend##Context>;                    \
   PT_EXPAND(_PT_KERNEL_INSTANTIATION_9(meta_kernel_fn, backend, __VA_ARGS__))
 #define _PT_KERNEL_INSTANTIATION_11(meta_kernel_fn, backend, cpp_dtype, ...) \
-  template decltype(meta_kernel_fn<cpp_dtype, ::pten::backend##Context>)     \
-      meta_kernel_fn<cpp_dtype, ::pten::backend##Context>;                   \
+  template decltype(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)      \
+      meta_kernel_fn<cpp_dtype, ::phi::backend##Context>;                    \
   PT_EXPAND(_PT_KERNEL_INSTANTIATION_10(meta_kernel_fn, backend, __VA_ARGS__))
 #define _PT_KERNEL_INSTANTIATION_12(meta_kernel_fn, backend, cpp_dtype, ...) \
-  template decltype(meta_kernel_fn<cpp_dtype, ::pten::backend##Context>)     \
-      meta_kernel_fn<cpp_dtype, ::pten::backend##Context>;                   \
+  template decltype(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)      \
+      meta_kernel_fn<cpp_dtype, ::phi::backend##Context>;                    \
   PT_EXPAND(_PT_KERNEL_INSTANTIATION_11(meta_kernel_fn, backend, __VA_ARGS__))
 #define _PT_KERNEL_INSTANTIATION_13(meta_kernel_fn, backend, cpp_dtype, ...) \
-  template decltype(meta_kernel_fn<cpp_dtype, ::pten::backend##Context>)     \
-      meta_kernel_fn<cpp_dtype, ::pten::backend##Context>;                   \
+  template decltype(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)      \
+      meta_kernel_fn<cpp_dtype, ::phi::backend##Context>;                    \
   PT_EXPAND(_PT_KERNEL_INSTANTIATION_12(meta_kernel_fn, backend, __VA_ARGS__))
 #define _PT_KERNEL_INSTANTIATION_14(meta_kernel_fn, backend, cpp_dtype, ...) \
-  template decltype(meta_kernel_fn<cpp_dtype, ::pten::backend##Context>)     \
-      meta_kernel_fn<cpp_dtype, ::pten::backend##Context>;                   \
+  template decltype(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)      \
+      meta_kernel_fn<cpp_dtype, ::phi::backend##Context>;                    \
   PT_EXPAND(_PT_KERNEL_INSTANTIATION_13(meta_kernel_fn, backend, __VA_ARGS__))
 #define _PT_KERNEL_INSTANTIATION_15(meta_kernel_fn, backend, cpp_dtype, ...) \
-  template decltype(meta_kernel_fn<cpp_dtype, ::pten::backend##Context>)     \
-      meta_kernel_fn<cpp_dtype, ::pten::backend##Context>;                   \
+  template decltype(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)      \
+      meta_kernel_fn<cpp_dtype, ::phi::backend##Context>;                    \
   PT_EXPAND(_PT_KERNEL_INSTANTIATION_14(meta_kernel_fn, backend, __VA_ARGS__))
 
 #define PT_KERNEL_REGISTRAR_INIT(                                   \
@@ -369,403 +369,388 @@ struct KernelRegistrar {
 
 // clang-format on
 
-#define _PT_KERNEL_REGISTRAR_INIT_1(kernel_name,                              \
-                                    backend,                                  \
-                                    layout,                                   \
-                                    registrar_id,                             \
-                                    args_def_fn,                              \
-                                    meta_kernel_fn,                           \
-                                    cpp_dtype)                                \
-  static const ::pten::KernelRegistrar PT_CONCATENATE(                        \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
-      #kernel_name,                                                           \
-      BACKEND(backend),                                                       \
-      DATALAYOUT(layout),                                                     \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),           \
-      ::pten::KernelArgsParseFunctor<decltype(                                \
-          &meta_kernel_fn<cpp_dtype, ::pten::backend##Context>)>::Parse,      \
-      args_def_fn,                                                            \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype, ::pten::backend##Context>),         \
-      PT_VARIADIC_KERNEL(                                                     \
-          meta_kernel_fn<cpp_dtype, ::pten::backend##Context>));              \
+#define _PT_KERNEL_REGISTRAR_INIT_1(kernel_name,                               \
+                                    backend,                                   \
+                                    layout,                                    \
+                                    registrar_id,                              \
+                                    args_def_fn,                               \
+                                    meta_kernel_fn,                            \
+                                    cpp_dtype)                                 \
+  static const ::phi::KernelRegistrar PT_CONCATENATE(                          \
+      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)(  \
+      #kernel_name,                                                            \
+      BACKEND(backend),                                                        \
+      DATALAYOUT(layout),                                                      \
+      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
+      ::phi::KernelArgsParseFunctor<decltype(                                  \
+          &meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)>::Parse,        \
+      args_def_fn,                                                             \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>),           \
+      PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)); \
   int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() { return 0; }
-#define _PT_KERNEL_REGISTRAR_INIT_2(kernel_name,                              \
-                                    backend,                                  \
-                                    layout,                                   \
-                                    registrar_id,                             \
-                                    args_def_fn,                              \
-                                    meta_kernel_fn,                           \
-                                    cpp_dtype,                                \
-                                    ...)                                      \
-  static const ::pten::KernelRegistrar PT_CONCATENATE(                        \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
-      #kernel_name,                                                           \
-      BACKEND(backend),                                                       \
-      DATALAYOUT(layout),                                                     \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),           \
-      ::pten::KernelArgsParseFunctor<decltype(                                \
-          &meta_kernel_fn<cpp_dtype, ::pten::backend##Context>)>::Parse,      \
-      args_def_fn,                                                            \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype, ::pten::backend##Context>),         \
-      PT_VARIADIC_KERNEL(                                                     \
-          meta_kernel_fn<cpp_dtype, ::pten::backend##Context>));              \
-  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_1(kernel_name,                          \
-                                        backend,                              \
-                                        layout,                               \
-                                        PT_ID,                                \
-                                        args_def_fn,                          \
-                                        meta_kernel_fn,                       \
+#define _PT_KERNEL_REGISTRAR_INIT_2(kernel_name,                               \
+                                    backend,                                   \
+                                    layout,                                    \
+                                    registrar_id,                              \
+                                    args_def_fn,                               \
+                                    meta_kernel_fn,                            \
+                                    cpp_dtype,                                 \
+                                    ...)                                       \
+  static const ::phi::KernelRegistrar PT_CONCATENATE(                          \
+      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)(  \
+      #kernel_name,                                                            \
+      BACKEND(backend),                                                        \
+      DATALAYOUT(layout),                                                      \
+      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
+      ::phi::KernelArgsParseFunctor<decltype(                                  \
+          &meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)>::Parse,        \
+      args_def_fn,                                                             \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>),           \
+      PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)); \
+  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_1(kernel_name,                           \
+                                        backend,                               \
+                                        layout,                                \
+                                        PT_ID,                                 \
+                                        args_def_fn,                           \
+                                        meta_kernel_fn,                        \
                                         __VA_ARGS__))
-#define _PT_KERNEL_REGISTRAR_INIT_3(kernel_name,                              \
-                                    backend,                                  \
-                                    layout,                                   \
-                                    registrar_id,                             \
-                                    args_def_fn,                              \
-                                    meta_kernel_fn,                           \
-                                    cpp_dtype,                                \
-                                    ...)                                      \
-  static const ::pten::KernelRegistrar PT_CONCATENATE(                        \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
-      #kernel_name,                                                           \
-      BACKEND(backend),                                                       \
-      DATALAYOUT(layout),                                                     \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),           \
-      ::pten::KernelArgsParseFunctor<decltype(                                \
-          &meta_kernel_fn<cpp_dtype, ::pten::backend##Context>)>::Parse,      \
-      args_def_fn,                                                            \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype, ::pten::backend##Context>),         \
-      PT_VARIADIC_KERNEL(                                                     \
-          meta_kernel_fn<cpp_dtype, ::pten::backend##Context>));              \
-  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_2(kernel_name,                          \
-                                        backend,                              \
-                                        layout,                               \
-                                        PT_ID,                                \
-                                        args_def_fn,                          \
-                                        meta_kernel_fn,                       \
+#define _PT_KERNEL_REGISTRAR_INIT_3(kernel_name,                               \
+                                    backend,                                   \
+                                    layout,                                    \
+                                    registrar_id,                              \
+                                    args_def_fn,                               \
+                                    meta_kernel_fn,                            \
+                                    cpp_dtype,                                 \
+                                    ...)                                       \
+  static const ::phi::KernelRegistrar PT_CONCATENATE(                          \
+      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)(  \
+      #kernel_name,                                                            \
+      BACKEND(backend),                                                        \
+      DATALAYOUT(layout),                                                      \
+      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
+      ::phi::KernelArgsParseFunctor<decltype(                                  \
+          &meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)>::Parse,        \
+      args_def_fn,                                                             \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>),           \
+      PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)); \
+  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_2(kernel_name,                           \
+                                        backend,                               \
+                                        layout,                                \
+                                        PT_ID,                                 \
+                                        args_def_fn,                           \
+                                        meta_kernel_fn,                        \
                                         __VA_ARGS__))
-#define _PT_KERNEL_REGISTRAR_INIT_4(kernel_name,                              \
-                                    backend,                                  \
-                                    layout,                                   \
-                                    registrar_id,                             \
-                                    args_def_fn,                              \
-                                    meta_kernel_fn,                           \
-                                    cpp_dtype,                                \
-                                    ...)                                      \
-  static const ::pten::KernelRegistrar PT_CONCATENATE(                        \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
-      #kernel_name,                                                           \
-      BACKEND(backend),                                                       \
-      DATALAYOUT(layout),                                                     \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),           \
-      ::pten::KernelArgsParseFunctor<decltype(                                \
-          &meta_kernel_fn<cpp_dtype, ::pten::backend##Context>)>::Parse,      \
-      args_def_fn,                                                            \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype, ::pten::backend##Context>),         \
-      PT_VARIADIC_KERNEL(                                                     \
-          meta_kernel_fn<cpp_dtype, ::pten::backend##Context>));              \
-  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_3(kernel_name,                          \
-                                        backend,                              \
-                                        layout,                               \
-                                        PT_ID,                                \
-                                        args_def_fn,                          \
-                                        meta_kernel_fn,                       \
+#define _PT_KERNEL_REGISTRAR_INIT_4(kernel_name,                               \
+                                    backend,                                   \
+                                    layout,                                    \
+                                    registrar_id,                              \
+                                    args_def_fn,                               \
+                                    meta_kernel_fn,                            \
+                                    cpp_dtype,                                 \
+                                    ...)                                       \
+  static const ::phi::KernelRegistrar PT_CONCATENATE(                          \
+      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)(  \
+      #kernel_name,                                                            \
+      BACKEND(backend),                                                        \
+      DATALAYOUT(layout),                                                      \
+      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
+      ::phi::KernelArgsParseFunctor<decltype(                                  \
+          &meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)>::Parse,        \
+      args_def_fn,                                                             \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>),           \
+      PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)); \
+  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_3(kernel_name,                           \
+                                        backend,                               \
+                                        layout,                                \
+                                        PT_ID,                                 \
+                                        args_def_fn,                           \
+                                        meta_kernel_fn,                        \
                                         __VA_ARGS__))
-#define _PT_KERNEL_REGISTRAR_INIT_5(kernel_name,                              \
-                                    backend,                                  \
-                                    layout,                                   \
-                                    registrar_id,                             \
-                                    args_def_fn,                              \
-                                    meta_kernel_fn,                           \
-                                    cpp_dtype,                                \
-                                    ...)                                      \
-  static const ::pten::KernelRegistrar PT_CONCATENATE(                        \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
-      #kernel_name,                                                           \
-      BACKEND(backend),                                                       \
-      DATALAYOUT(layout),                                                     \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),           \
-      ::pten::KernelArgsParseFunctor<decltype(                                \
-          &meta_kernel_fn<cpp_dtype, ::pten::backend##Context>)>::Parse,      \
-      args_def_fn,                                                            \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype, ::pten::backend##Context>),         \
-      PT_VARIADIC_KERNEL(                                                     \
-          meta_kernel_fn<cpp_dtype, ::pten::backend##Context>));              \
-  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_4(kernel_name,                          \
-                                        backend,                              \
-                                        layout,                               \
-                                        PT_ID,                                \
-                                        args_def_fn,                          \
-                                        meta_kernel_fn,                       \
+#define _PT_KERNEL_REGISTRAR_INIT_5(kernel_name,                               \
+                                    backend,                                   \
+                                    layout,                                    \
+                                    registrar_id,                              \
+                                    args_def_fn,                               \
+                                    meta_kernel_fn,                            \
+                                    cpp_dtype,                                 \
+                                    ...)                                       \
+  static const ::phi::KernelRegistrar PT_CONCATENATE(                          \
+      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)(  \
+      #kernel_name,                                                            \
+      BACKEND(backend),                                                        \
+      DATALAYOUT(layout),                                                      \
+      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
+      ::phi::KernelArgsParseFunctor<decltype(                                  \
+          &meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)>::Parse,        \
+      args_def_fn,                                                             \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>),           \
+      PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)); \
+  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_4(kernel_name,                           \
+                                        backend,                               \
+                                        layout,                                \
+                                        PT_ID,                                 \
+                                        args_def_fn,                           \
+                                        meta_kernel_fn,                        \
                                         __VA_ARGS__))
-#define _PT_KERNEL_REGISTRAR_INIT_6(kernel_name,                              \
-                                    backend,                                  \
-                                    layout,                                   \
-                                    registrar_id,                             \
-                                    args_def_fn,                              \
-                                    meta_kernel_fn,                           \
-                                    cpp_dtype,                                \
-                                    ...)                                      \
-  static const ::pten::KernelRegistrar PT_CONCATENATE(                        \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
-      #kernel_name,                                                           \
-      BACKEND(backend),                                                       \
-      DATALAYOUT(layout),                                                     \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),           \
-      ::pten::KernelArgsParseFunctor<decltype(                                \
-          &meta_kernel_fn<cpp_dtype, ::pten::backend##Context>)>::Parse,      \
-      args_def_fn,                                                            \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype, ::pten::backend##Context>),         \
-      PT_VARIADIC_KERNEL(                                                     \
-          meta_kernel_fn<cpp_dtype, ::pten::backend##Context>));              \
-  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_5(kernel_name,                          \
-                                        backend,                              \
-                                        layout,                               \
-                                        PT_ID,                                \
-                                        args_def_fn,                          \
-                                        meta_kernel_fn,                       \
+#define _PT_KERNEL_REGISTRAR_INIT_6(kernel_name,                               \
+                                    backend,                                   \
+                                    layout,                                    \
+                                    registrar_id,                              \
+                                    args_def_fn,                               \
+                                    meta_kernel_fn,                            \
+                                    cpp_dtype,                                 \
+                                    ...)                                       \
+  static const ::phi::KernelRegistrar PT_CONCATENATE(                          \
+      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)(  \
+      #kernel_name,                                                            \
+      BACKEND(backend),                                                        \
+      DATALAYOUT(layout),                                                      \
+      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
+      ::phi::KernelArgsParseFunctor<decltype(                                  \
+          &meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)>::Parse,        \
+      args_def_fn,                                                             \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>),           \
+      PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)); \
+  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_5(kernel_name,                           \
+                                        backend,                               \
+                                        layout,                                \
+                                        PT_ID,                                 \
+                                        args_def_fn,                           \
+                                        meta_kernel_fn,                        \
                                         __VA_ARGS__))
-#define _PT_KERNEL_REGISTRAR_INIT_7(kernel_name,                              \
-                                    backend,                                  \
-                                    layout,                                   \
-                                    registrar_id,                             \
-                                    args_def_fn,                              \
-                                    meta_kernel_fn,                           \
-                                    cpp_dtype,                                \
-                                    ...)                                      \
-  static const ::pten::KernelRegistrar PT_CONCATENATE(                        \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
-      #kernel_name,                                                           \
-      BACKEND(backend),                                                       \
-      DATALAYOUT(layout),                                                     \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),           \
-      ::pten::KernelArgsParseFunctor<decltype(                                \
-          &meta_kernel_fn<cpp_dtype, ::pten::backend##Context>)>::Parse,      \
-      args_def_fn,                                                            \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype, ::pten::backend##Context>),         \
-      PT_VARIADIC_KERNEL(                                                     \
-          meta_kernel_fn<cpp_dtype, ::pten::backend##Context>));              \
-  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_6(kernel_name,                          \
-                                        backend,                              \
-                                        layout,                               \
-                                        PT_ID,                                \
-                                        args_def_fn,                          \
-                                        meta_kernel_fn,                       \
+#define _PT_KERNEL_REGISTRAR_INIT_7(kernel_name,                               \
+                                    backend,                                   \
+                                    layout,                                    \
+                                    registrar_id,                              \
+                                    args_def_fn,                               \
+                                    meta_kernel_fn,                            \
+                                    cpp_dtype,                                 \
+                                    ...)                                       \
+  static const ::phi::KernelRegistrar PT_CONCATENATE(                          \
+      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)(  \
+      #kernel_name,                                                            \
+      BACKEND(backend),                                                        \
+      DATALAYOUT(layout),                                                      \
+      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
+      ::phi::KernelArgsParseFunctor<decltype(                                  \
+          &meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)>::Parse,        \
+      args_def_fn,                                                             \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>),           \
+      PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)); \
+  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_6(kernel_name,                           \
+                                        backend,                               \
+                                        layout,                                \
+                                        PT_ID,                                 \
+                                        args_def_fn,                           \
+                                        meta_kernel_fn,                        \
                                         __VA_ARGS__))
-#define _PT_KERNEL_REGISTRAR_INIT_8(kernel_name,                              \
-                                    backend,                                  \
-                                    layout,                                   \
-                                    registrar_id,                             \
-                                    args_def_fn,                              \
-                                    meta_kernel_fn,                           \
-                                    cpp_dtype,                                \
-                                    ...)                                      \
-  static const ::pten::KernelRegistrar PT_CONCATENATE(                        \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
-      #kernel_name,                                                           \
-      BACKEND(backend),                                                       \
-      DATALAYOUT(layout),                                                     \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),           \
-      ::pten::KernelArgsParseFunctor<decltype(                                \
-          &meta_kernel_fn<cpp_dtype, ::pten::backend##Context>)>::Parse,      \
-      args_def_fn,                                                            \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype, ::pten::backend##Context>),         \
-      PT_VARIADIC_KERNEL(                                                     \
-          meta_kernel_fn<cpp_dtype, ::pten::backend##Context>));              \
-  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_7(kernel_name,                          \
-                                        backend,                              \
-                                        layout,                               \
-                                        PT_ID,                                \
-                                        args_def_fn,                          \
-                                        meta_kernel_fn,                       \
+#define _PT_KERNEL_REGISTRAR_INIT_8(kernel_name,                               \
+                                    backend,                                   \
+                                    layout,                                    \
+                                    registrar_id,                              \
+                                    args_def_fn,                               \
+                                    meta_kernel_fn,                            \
+                                    cpp_dtype,                                 \
+                                    ...)                                       \
+  static const ::phi::KernelRegistrar PT_CONCATENATE(                          \
+      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)(  \
+      #kernel_name,                                                            \
+      BACKEND(backend),                                                        \
+      DATALAYOUT(layout),                                                      \
+      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
+      ::phi::KernelArgsParseFunctor<decltype(                                  \
+          &meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)>::Parse,        \
+      args_def_fn,                                                             \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>),           \
+      PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)); \
+  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_7(kernel_name,                           \
+                                        backend,                               \
+                                        layout,                                \
+                                        PT_ID,                                 \
+                                        args_def_fn,                           \
+                                        meta_kernel_fn,                        \
                                         __VA_ARGS__))
-#define _PT_KERNEL_REGISTRAR_INIT_9(kernel_name,                              \
-                                    backend,                                  \
-                                    layout,                                   \
-                                    registrar_id,                             \
-                                    args_def_fn,                              \
-                                    meta_kernel_fn,                           \
-                                    cpp_dtype,                                \
-                                    ...)                                      \
-  static const ::pten::KernelRegistrar PT_CONCATENATE(                        \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
-      #kernel_name,                                                           \
-      BACKEND(backend),                                                       \
-      DATALAYOUT(layout),                                                     \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),           \
-      ::pten::KernelArgsParseFunctor<decltype(                                \
-          &meta_kernel_fn<cpp_dtype, ::pten::backend##Context>)>::Parse,      \
-      args_def_fn,                                                            \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype, ::pten::backend##Context>),         \
-      PT_VARIADIC_KERNEL(                                                     \
-          meta_kernel_fn<cpp_dtype, ::pten::backend##Context>));              \
-  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_8(kernel_name,                          \
-                                        backend,                              \
-                                        layout,                               \
-                                        PT_ID,                                \
-                                        args_def_fn,                          \
-                                        meta_kernel_fn,                       \
+#define _PT_KERNEL_REGISTRAR_INIT_9(kernel_name,                               \
+                                    backend,                                   \
+                                    layout,                                    \
+                                    registrar_id,                              \
+                                    args_def_fn,                               \
+                                    meta_kernel_fn,                            \
+                                    cpp_dtype,                                 \
+                                    ...)                                       \
+  static const ::phi::KernelRegistrar PT_CONCATENATE(                          \
+      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)(  \
+      #kernel_name,                                                            \
+      BACKEND(backend),                                                        \
+      DATALAYOUT(layout),                                                      \
+      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
+      ::phi::KernelArgsParseFunctor<decltype(                                  \
+          &meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)>::Parse,        \
+      args_def_fn,                                                             \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>),           \
+      PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)); \
+  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_8(kernel_name,                           \
+                                        backend,                               \
+                                        layout,                                \
+                                        PT_ID,                                 \
+                                        args_def_fn,                           \
+                                        meta_kernel_fn,                        \
                                         __VA_ARGS__))
-#define _PT_KERNEL_REGISTRAR_INIT_10(kernel_name,                             \
-                                     backend,                                 \
-                                     layout,                                  \
-                                     registrar_id,                            \
-                                     args_def_fn,                             \
-                                     meta_kernel_fn,                          \
-                                     cpp_dtype,                               \
-                                     ...)                                     \
-  static const ::pten::KernelRegistrar PT_CONCATENATE(                        \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
-      #kernel_name,                                                           \
-      BACKEND(backend),                                                       \
-      DATALAYOUT(layout),                                                     \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),           \
-      ::pten::KernelArgsParseFunctor<decltype(                                \
-          &meta_kernel_fn<cpp_dtype, ::pten::backend##Context>)>::Parse,      \
-      args_def_fn,                                                            \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype, ::pten::backend##Context>),         \
-      PT_VARIADIC_KERNEL(                                                     \
-          meta_kernel_fn<cpp_dtype, ::pten::backend##Context>));              \
-  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_9(kernel_name,                          \
-                                        backend,                              \
-                                        layout,                               \
-                                        PT_ID,                                \
-                                        args_def_fn,                          \
-                                        meta_kernel_fn,                       \
+#define _PT_KERNEL_REGISTRAR_INIT_10(kernel_name,                              \
+                                     backend,                                  \
+                                     layout,                                   \
+                                     registrar_id,                             \
+                                     args_def_fn,                              \
+                                     meta_kernel_fn,                           \
+                                     cpp_dtype,                                \
+                                     ...)                                      \
+  static const ::phi::KernelRegistrar PT_CONCATENATE(                          \
+      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)(  \
+      #kernel_name,                                                            \
+      BACKEND(backend),                                                        \
+      DATALAYOUT(layout),                                                      \
+      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
+      ::phi::KernelArgsParseFunctor<decltype(                                  \
+          &meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)>::Parse,        \
+      args_def_fn,                                                             \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>),           \
+      PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)); \
+  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_9(kernel_name,                           \
+                                        backend,                               \
+                                        layout,                                \
+                                        PT_ID,                                 \
+                                        args_def_fn,                           \
+                                        meta_kernel_fn,                        \
                                         __VA_ARGS__))
-#define _PT_KERNEL_REGISTRAR_INIT_11(kernel_name,                             \
-                                     backend,                                 \
-                                     layout,                                  \
-                                     registrar_id,                            \
-                                     args_def_fn,                             \
-                                     meta_kernel_fn,                          \
-                                     cpp_dtype,                               \
-                                     ...)                                     \
-  static const ::pten::KernelRegistrar PT_CONCATENATE(                        \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
-      #kernel_name,                                                           \
-      BACKEND(backend),                                                       \
-      DATALAYOUT(layout),                                                     \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),           \
-      ::pten::KernelArgsParseFunctor<decltype(                                \
-          &meta_kernel_fn<cpp_dtype, ::pten::backend##Context>)>::Parse,      \
-      args_def_fn,                                                            \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype, ::pten::backend##Context>),         \
-      PT_VARIADIC_KERNEL(                                                     \
-          meta_kernel_fn<cpp_dtype, ::pten::backend##Context>));              \
-  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_10(kernel_name,                         \
-                                         backend,                             \
-                                         layout,                              \
-                                         PT_ID,                               \
-                                         args_def_fn,                         \
-                                         meta_kernel_fn,                      \
+#define _PT_KERNEL_REGISTRAR_INIT_11(kernel_name,                              \
+                                     backend,                                  \
+                                     layout,                                   \
+                                     registrar_id,                             \
+                                     args_def_fn,                              \
+                                     meta_kernel_fn,                           \
+                                     cpp_dtype,                                \
+                                     ...)                                      \
+  static const ::phi::KernelRegistrar PT_CONCATENATE(                          \
+      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)(  \
+      #kernel_name,                                                            \
+      BACKEND(backend),                                                        \
+      DATALAYOUT(layout),                                                      \
+      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
+      ::phi::KernelArgsParseFunctor<decltype(                                  \
+          &meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)>::Parse,        \
+      args_def_fn,                                                             \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>),           \
+      PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)); \
+  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_10(kernel_name,                          \
+                                         backend,                              \
+                                         layout,                               \
+                                         PT_ID,                                \
+                                         args_def_fn,                          \
+                                         meta_kernel_fn,                       \
                                          __VA_ARGS__))
-#define _PT_KERNEL_REGISTRAR_INIT_12(kernel_name,                             \
-                                     backend,                                 \
-                                     layout,                                  \
-                                     registrar_id,                            \
-                                     args_def_fn,                             \
-                                     meta_kernel_fn,                          \
-                                     cpp_dtype,                               \
-                                     ...)                                     \
-  static const ::pten::KernelRegistrar PT_CONCATENATE(                        \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
-      #kernel_name,                                                           \
-      BACKEND(backend),                                                       \
-      DATALAYOUT(layout),                                                     \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),           \
-      ::pten::KernelArgsParseFunctor<decltype(                                \
-          &meta_kernel_fn<cpp_dtype, ::pten::backend##Context>)>::Parse,      \
-      args_def_fn,                                                            \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype, ::pten::backend##Context>),         \
-      PT_VARIADIC_KERNEL(                                                     \
-          meta_kernel_fn<cpp_dtype, ::pten::backend##Context>));              \
-  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_11(kernel_name,                         \
-                                         backend,                             \
-                                         layout,                              \
-                                         PT_ID,                               \
-                                         args_def_fn,                         \
-                                         meta_kernel_fn,                      \
+#define _PT_KERNEL_REGISTRAR_INIT_12(kernel_name,                              \
+                                     backend,                                  \
+                                     layout,                                   \
+                                     registrar_id,                             \
+                                     args_def_fn,                              \
+                                     meta_kernel_fn,                           \
+                                     cpp_dtype,                                \
+                                     ...)                                      \
+  static const ::phi::KernelRegistrar PT_CONCATENATE(                          \
+      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)(  \
+      #kernel_name,                                                            \
+      BACKEND(backend),                                                        \
+      DATALAYOUT(layout),                                                      \
+      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
+      ::phi::KernelArgsParseFunctor<decltype(                                  \
+          &meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)>::Parse,        \
+      args_def_fn,                                                             \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>),           \
+      PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)); \
+  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_11(kernel_name,                          \
+                                         backend,                              \
+                                         layout,                               \
+                                         PT_ID,                                \
+                                         args_def_fn,                          \
+                                         meta_kernel_fn,                       \
                                          __VA_ARGS__))
-#define _PT_KERNEL_REGISTRAR_INIT_13(kernel_name,                             \
-                                     backend,                                 \
-                                     layout,                                  \
-                                     registrar_id,                            \
-                                     args_def_fn,                             \
-                                     meta_kernel_fn,                          \
-                                     cpp_dtype,                               \
-                                     ...)                                     \
-  static const ::pten::KernelRegistrar PT_CONCATENATE(                        \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
-      #kernel_name,                                                           \
-      BACKEND(backend),                                                       \
-      DATALAYOUT(layout),                                                     \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),           \
-      ::pten::KernelArgsParseFunctor<decltype(                                \
-          &meta_kernel_fn<cpp_dtype, ::pten::backend##Context>)>::Parse,      \
-      args_def_fn,                                                            \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype, ::pten::backend##Context>),         \
-      PT_VARIADIC_KERNEL(                                                     \
-          meta_kernel_fn<cpp_dtype, ::pten::backend##Context>));              \
-  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_12(kernel_name,                         \
-                                         backend,                             \
-                                         layout,                              \
-                                         PT_ID,                               \
-                                         args_def_fn,                         \
-                                         meta_kernel_fn,                      \
+#define _PT_KERNEL_REGISTRAR_INIT_13(kernel_name,                              \
+                                     backend,                                  \
+                                     layout,                                   \
+                                     registrar_id,                             \
+                                     args_def_fn,                              \
+                                     meta_kernel_fn,                           \
+                                     cpp_dtype,                                \
+                                     ...)                                      \
+  static const ::phi::KernelRegistrar PT_CONCATENATE(                          \
+      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)(  \
+      #kernel_name,                                                            \
+      BACKEND(backend),                                                        \
+      DATALAYOUT(layout),                                                      \
+      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
+      ::phi::KernelArgsParseFunctor<decltype(                                  \
+          &meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)>::Parse,        \
+      args_def_fn,                                                             \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>),           \
+      PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)); \
+  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_12(kernel_name,                          \
+                                         backend,                              \
+                                         layout,                               \
+                                         PT_ID,                                \
+                                         args_def_fn,                          \
+                                         meta_kernel_fn,                       \
                                          __VA_ARGS__))
-#define _PT_KERNEL_REGISTRAR_INIT_14(kernel_name,                             \
-                                     backend,                                 \
-                                     layout,                                  \
-                                     registrar_id,                            \
-                                     args_def_fn,                             \
-                                     meta_kernel_fn,                          \
-                                     cpp_dtype,                               \
-                                     ...)                                     \
-  static const ::pten::KernelRegistrar PT_CONCATENATE(                        \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
-      #kernel_name,                                                           \
-      BACKEND(backend),                                                       \
-      DATALAYOUT(layout),                                                     \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),           \
-      ::pten::KernelArgsParseFunctor<decltype(                                \
-          &meta_kernel_fn<cpp_dtype, ::pten::backend##Context>)>::Parse,      \
-      args_def_fn,                                                            \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype, ::pten::backend##Context>),         \
-      PT_VARIADIC_KERNEL(                                                     \
-          meta_kernel_fn<cpp_dtype, ::pten::backend##Context>));              \
-  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_13(kernel_name,                         \
-                                         backend,                             \
-                                         layout,                              \
-                                         PT_ID,                               \
-                                         args_def_fn,                         \
-                                         meta_kernel_fn,                      \
+#define _PT_KERNEL_REGISTRAR_INIT_14(kernel_name,                              \
+                                     backend,                                  \
+                                     layout,                                   \
+                                     registrar_id,                             \
+                                     args_def_fn,                              \
+                                     meta_kernel_fn,                           \
+                                     cpp_dtype,                                \
+                                     ...)                                      \
+  static const ::phi::KernelRegistrar PT_CONCATENATE(                          \
+      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)(  \
+      #kernel_name,                                                            \
+      BACKEND(backend),                                                        \
+      DATALAYOUT(layout),                                                      \
+      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
+      ::phi::KernelArgsParseFunctor<decltype(                                  \
+          &meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)>::Parse,        \
+      args_def_fn,                                                             \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>),           \
+      PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)); \
+  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_13(kernel_name,                          \
+                                         backend,                              \
+                                         layout,                               \
+                                         PT_ID,                                \
+                                         args_def_fn,                          \
+                                         meta_kernel_fn,                       \
                                          __VA_ARGS__))
-#define _PT_KERNEL_REGISTRAR_INIT_15(kernel_name,                             \
-                                     backend,                                 \
-                                     layout,                                  \
-                                     registrar_id,                            \
-                                     args_def_fn,                             \
-                                     meta_kernel_fn,                          \
-                                     cpp_dtype,                               \
-                                     ...)                                     \
-  static const ::pten::KernelRegistrar PT_CONCATENATE(                        \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
-      #kernel_name,                                                           \
-      BACKEND(backend),                                                       \
-      DATALAYOUT(layout),                                                     \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),           \
-      ::pten::KernelArgsParseFunctor<decltype(                                \
-          &meta_kernel_fn<cpp_dtype, ::pten::backend##Context>)>::Parse,      \
-      args_def_fn,                                                            \
-      PT_KERNEL(meta_kernel_fn<cpp_dtype, ::pten::backend##Context>),         \
-      PT_VARIADIC_KERNEL(                                                     \
-          meta_kernel_fn<cpp_dtype, ::pten::backend##Context>));              \
-  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_14(kernel_name,                         \
-                                         backend,                             \
-                                         layout,                              \
-                                         PT_ID,                               \
-                                         args_def_fn,                         \
-                                         meta_kernel_fn,                      \
+#define _PT_KERNEL_REGISTRAR_INIT_15(kernel_name,                              \
+                                     backend,                                  \
+                                     layout,                                   \
+                                     registrar_id,                             \
+                                     args_def_fn,                              \
+                                     meta_kernel_fn,                           \
+                                     cpp_dtype,                                \
+                                     ...)                                      \
+  static const ::phi::KernelRegistrar PT_CONCATENATE(                          \
+      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)(  \
+      #kernel_name,                                                            \
+      BACKEND(backend),                                                        \
+      DATALAYOUT(layout),                                                      \
+      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
+      ::phi::KernelArgsParseFunctor<decltype(                                  \
+          &meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)>::Parse,        \
+      args_def_fn,                                                             \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>),           \
+      PT_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, ::phi::backend##Context>)); \
+  PT_EXPAND(_PT_KERNEL_REGISTRAR_INIT_14(kernel_name,                          \
+                                         backend,                              \
+                                         layout,                               \
+                                         PT_ID,                                \
+                                         args_def_fn,                          \
+                                         meta_kernel_fn,                       \
                                          __VA_ARGS__))
 
 /** PT_REGISTER_GENERAL_KERNEL
@@ -786,13 +771,13 @@ struct KernelRegistrar {
     kernel_name, backend, layout, kernel_fn, dtype)                         \
   template decltype(kernel_fn) kernel_fn;                                   \
   static void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
-      const ::pten::KernelKey& kernel_key, ::pten::Kernel* kernel);         \
-  static const ::pten::KernelRegistrar                                      \
+      const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel);           \
+  static const ::phi::KernelRegistrar                                       \
       __reg_pt_kernel_##kernel_name##_##backend##_##layout(                 \
           #kernel_name,                                                     \
           BACKEND(backend),                                                 \
           DATALAYOUT(layout),                                               \
-          ::pten::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,      \
+          ::phi::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,       \
           &__PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout,    \
           PT_KERNEL(kernel_fn),                                             \
           PT_VARIADIC_KERNEL(kernel_fn));                                   \
@@ -800,18 +785,18 @@ struct KernelRegistrar {
     return 0;                                                               \
   }                                                                         \
   void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(        \
-      const ::pten::KernelKey& kernel_key, ::pten::Kernel* kernel)
+      const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel)
 #else
 #define _PT_REGISTER_GENERAL_KERNEL(                                        \
     kernel_name, backend, layout, kernel_fn, dtype)                         \
   static void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
-      const ::pten::KernelKey& kernel_key, ::pten::Kernel* kernel);         \
-  static const ::pten::KernelRegistrar                                      \
+      const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel);           \
+  static const ::phi::KernelRegistrar                                       \
       __reg_pt_kernel_##kernel_name##_##backend##_##layout(                 \
           #kernel_name,                                                     \
           BACKEND(backend),                                                 \
           DATALAYOUT(layout),                                               \
-          ::pten::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,      \
+          ::phi::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,       \
           &__PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout,    \
           PT_KERNEL(kernel_fn),                                             \
           PT_VARIADIC_KERNEL(kernel_fn));                                   \
@@ -819,7 +804,7 @@ struct KernelRegistrar {
     return 0;                                                               \
   }                                                                         \
   void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(        \
-      const ::pten::KernelKey& kernel_key, ::pten::Kernel* kernel)
+      const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel)
 #endif
 
 /** PT_DECLARE_KERNEL
@@ -836,4 +821,4 @@ struct KernelRegistrar {
       __declare_kernel_symbol_for_##kernel_name##_##backend##_##layout =  \
           TouchKernelSymbolFor_##kernel_name##_##backend##_##layout()
 
-}  // namespace pten
+}  // namespace phi

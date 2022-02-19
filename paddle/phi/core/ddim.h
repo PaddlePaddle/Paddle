@@ -20,7 +20,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/dim.h"
 
-namespace pten {
+namespace phi {
 
 #define PADDLE_VISIT_DDIM_BASE(rank, callback) \
   case (rank): {                               \
@@ -41,7 +41,7 @@ namespace pten {
     PADDLE_VISIT_DDIM_BASE(8, callback);                                   \
     PADDLE_VISIT_DDIM_BASE(9, callback);                                   \
     default:                                                               \
-      PADDLE_THROW(pten::errors::Unimplemented(                            \
+      PADDLE_THROW(phi::errors::Unimplemented(                             \
           "Invalid dimension to be accessed. Now only supports access to " \
           "dimension 0 to 9, but received dimension is %d.",               \
           rank));                                                          \
@@ -97,14 +97,14 @@ class DDim {
   int64_t& at(int idx) {
     PADDLE_ENFORCE_GE(idx,
                       0,
-                      pten::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Invalid DDim index to be accessed. The valid index "
                           "is between 0 and %d, but received index is %d.",
                           rank_,
                           idx));
     PADDLE_ENFORCE_LT(idx,
                       rank_,
-                      pten::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Invalid DDim index to be accessed. The valid index "
                           "is between 0 and %d, but received index is %d.",
                           rank_,
@@ -115,14 +115,14 @@ class DDim {
   int64_t at(int idx) const {
     PADDLE_ENFORCE_GE(idx,
                       0,
-                      pten::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Invalid DDim index to be accessed. The valid index "
                           "is between 0 and %d, but received index is %d.",
                           rank_,
                           idx));
     PADDLE_ENFORCE_LT(idx,
                       rank_,
-                      pten::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Invalid DDim index to be accessed. The valid index "
                           "is between 0 and %d, but received index is %d.",
                           rank_,
@@ -252,12 +252,12 @@ DDim flatten_to_1d(const DDim& src);
 DDim stride(const DDim& ddim);
 
 DDim stride_numel(const DDim& ddim);
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 namespace framework {
 
-using DDim = pten::DDim;
+using DDim = phi::DDim;
 
 }  // namespace framework
 }  // namespace paddle

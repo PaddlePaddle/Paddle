@@ -69,7 +69,7 @@ using LoD = std::vector<paddle::framework::Vector<size_t>>;
   Variable object but not a pointer.
 */
 
-using Tensor = pten::DenseTensor;
+using Tensor = phi::DenseTensor;
 
 }  // namespace framework
 }  // namespace paddle

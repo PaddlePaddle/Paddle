@@ -24,8 +24,8 @@ class CumOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     if (ctx->Attrs().Get<bool>("flatten")) {
-      ctx->SetOutputDim(
-          "Out", pten::make_ddim({pten::product(ctx->GetInputDim("X"))}));
+      ctx->SetOutputDim("Out",
+                        phi::make_ddim({phi::product(ctx->GetInputDim("X"))}));
     } else {
       ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     }

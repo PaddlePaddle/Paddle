@@ -16,7 +16,7 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void DigammaKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out);

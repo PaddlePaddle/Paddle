@@ -20,33 +20,33 @@ limitations under the License. */
 TEST(selected_rows_functor, cpu_add) {
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CPUDeviceContext ctx(cpu_place);
-  pten::funcs::SetConstant<paddle::platform::CPUDeviceContext, float> functor;
+  phi::funcs::SetConstant<paddle::platform::CPUDeviceContext, float> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
 
   std::vector<int64_t> rows1{0, 4, 7};
-  std::unique_ptr<pten::SelectedRows> selected_rows1{
-      new pten::SelectedRows(rows1, height)};
+  std::unique_ptr<phi::SelectedRows> selected_rows1{
+      new phi::SelectedRows(rows1, height)};
   auto* in1_value = selected_rows1->mutable_value();
   in1_value->mutable_data<float>(
-      pten::make_ddim({static_cast<int64_t>(rows1.size()), row_numel}),
+      phi::make_ddim({static_cast<int64_t>(rows1.size()), row_numel}),
       cpu_place);
   functor(ctx, in1_value, 1.0);
 
   std::vector<int64_t> rows2{0, 5, 7, 9};
-  std::unique_ptr<pten::SelectedRows> selected_rows2{
-      new pten::SelectedRows(rows2, height)};
+  std::unique_ptr<phi::SelectedRows> selected_rows2{
+      new phi::SelectedRows(rows2, height)};
   auto* in2_value = selected_rows2->mutable_value();
   in2_value->mutable_data<float>(
-      pten::make_ddim({static_cast<int64_t>(rows2.size()), row_numel}),
+      phi::make_ddim({static_cast<int64_t>(rows2.size()), row_numel}),
       cpu_place);
   functor(ctx, in2_value, 2.0);
 
-  std::unique_ptr<pten::SelectedRows> output{new pten::SelectedRows()};
+  std::unique_ptr<phi::SelectedRows> output{new phi::SelectedRows()};
   auto* out_value = output->mutable_value();
 
   // simplely concat two SelectedRows
-  out_value->mutable_data<float>(pten::make_ddim({7, 10}), cpu_place);
+  out_value->mutable_data<float>(phi::make_ddim({7, 10}), cpu_place);
 
   paddle::operators::math::SelectedRowsAdd<paddle::platform::CPUDeviceContext,
                                            float>
@@ -83,12 +83,12 @@ TEST(selected_rows_functor, cpu_add) {
 
   std::unique_ptr<paddle::framework::Tensor> tensor1{
       new paddle::framework::Tensor()};
-  tensor1->mutable_data<float>(pten::make_ddim({height, row_numel}), cpu_place);
+  tensor1->mutable_data<float>(phi::make_ddim({height, row_numel}), cpu_place);
   functor(ctx, tensor1.get(), 3.0);
 
   std::unique_ptr<paddle::framework::Tensor> tensor2{
       new paddle::framework::Tensor()};
-  tensor2->mutable_data<float>(pten::make_ddim({height, row_numel}), cpu_place);
+  tensor2->mutable_data<float>(phi::make_ddim({height, row_numel}), cpu_place);
 
   paddle::operators::math::SelectedRowsAddTensor<
       paddle::platform::CPUDeviceContext, float>
@@ -115,34 +115,34 @@ TEST(selected_rows_functor, cpu_add) {
 TEST(selected_rows_functor, cpu_add_to) {
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CPUDeviceContext ctx(cpu_place);
-  pten::funcs::SetConstant<paddle::platform::CPUDeviceContext, float> functor;
+  phi::funcs::SetConstant<paddle::platform::CPUDeviceContext, float> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
 
   std::vector<int64_t> rows1{0, 4, 7};
-  std::unique_ptr<pten::SelectedRows> selected_rows1{
-      new pten::SelectedRows(rows1, height)};
+  std::unique_ptr<phi::SelectedRows> selected_rows1{
+      new phi::SelectedRows(rows1, height)};
   auto* in1_value = selected_rows1->mutable_value();
   in1_value->mutable_data<float>(
-      pten::make_ddim({static_cast<int64_t>(rows1.size()), row_numel}),
+      phi::make_ddim({static_cast<int64_t>(rows1.size()), row_numel}),
       cpu_place);
   functor(ctx, in1_value, 1.0);
 
   std::vector<int64_t> rows2{0, 5, 7, 9};
-  std::unique_ptr<pten::SelectedRows> selected_rows2{
-      new pten::SelectedRows(rows2, height)};
+  std::unique_ptr<phi::SelectedRows> selected_rows2{
+      new phi::SelectedRows(rows2, height)};
   auto* in2_value = selected_rows2->mutable_value();
   in2_value->mutable_data<float>(
-      pten::make_ddim({static_cast<int64_t>(rows2.size()), row_numel}),
+      phi::make_ddim({static_cast<int64_t>(rows2.size()), row_numel}),
       cpu_place);
   functor(ctx, in2_value, 2.0);
 
-  std::unique_ptr<pten::SelectedRows> output{new pten::SelectedRows()};
+  std::unique_ptr<phi::SelectedRows> output{new phi::SelectedRows()};
   output->set_height(height);
   auto* out_value = output->mutable_value();
 
   // simplely concat two SelectedRows
-  out_value->mutable_data<float>(pten::make_ddim({7, 10}), cpu_place);
+  out_value->mutable_data<float>(phi::make_ddim({7, 10}), cpu_place);
 
   paddle::operators::math::SelectedRowsAddTo<paddle::platform::CPUDeviceContext,
                                              float>
@@ -180,7 +180,7 @@ TEST(selected_rows_functor, cpu_add_to) {
 
   std::unique_ptr<paddle::framework::Tensor> tensor1{
       new paddle::framework::Tensor()};
-  tensor1->mutable_data<float>(pten::make_ddim({height, row_numel}), cpu_place);
+  tensor1->mutable_data<float>(phi::make_ddim({height, row_numel}), cpu_place);
   functor(ctx, tensor1.get(), 3.0);
 
   paddle::operators::math::SelectedRowsAddToTensor<
@@ -208,23 +208,23 @@ TEST(selected_rows_functor, cpu_add_to) {
 TEST(selected_rows_functor, cpu_merge_average_float) {
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CPUDeviceContext ctx(cpu_place);
-  pten::funcs::SetConstant<paddle::platform::CPUDeviceContext, float> functor;
+  phi::funcs::SetConstant<paddle::platform::CPUDeviceContext, float> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
 
   std::vector<int64_t> rows{0, 4, 4, 7};
-  std::unique_ptr<pten::SelectedRows> selected_rows{
-      new pten::SelectedRows(rows, height)};
+  std::unique_ptr<phi::SelectedRows> selected_rows{
+      new phi::SelectedRows(rows, height)};
   auto* in_value = selected_rows->mutable_value();
   in_value->mutable_data<float>(
-      pten::make_ddim({static_cast<int64_t>(rows.size()), row_numel}),
+      phi::make_ddim({static_cast<int64_t>(rows.size()), row_numel}),
       cpu_place);
   functor(ctx, in_value, 1.0);
 
   paddle::operators::math::scatter::MergeAverage<
       paddle::platform::CPUDeviceContext, float>
       merge_average_functor;
-  pten::SelectedRows output = merge_average_functor(ctx, *selected_rows);
+  phi::SelectedRows output = merge_average_functor(ctx, *selected_rows);
 
   auto out_height = output.height();
   EXPECT_EQ(out_height, height);
@@ -244,20 +244,20 @@ TEST(selected_rows_functor, cpu_merge_average_float) {
 TEST(selected_rows_functor, cpu_merge_add_float) {
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CPUDeviceContext ctx(cpu_place);
-  pten::funcs::SetConstant<paddle::platform::CPUDeviceContext, float> functor;
+  phi::funcs::SetConstant<paddle::platform::CPUDeviceContext, float> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
 
   std::vector<int64_t> rows{0, 4, 4, 7};
-  std::unique_ptr<pten::SelectedRows> selected_rows{
-      new pten::SelectedRows(rows, height)};
+  std::unique_ptr<phi::SelectedRows> selected_rows{
+      new phi::SelectedRows(rows, height)};
   auto* in_value = selected_rows->mutable_value();
   in_value->mutable_data<float>(
-      pten::make_ddim({static_cast<int64_t>(rows.size()), row_numel}),
+      phi::make_ddim({static_cast<int64_t>(rows.size()), row_numel}),
       cpu_place);
   functor(ctx, in_value, 1.0);
 
-  std::unique_ptr<pten::SelectedRows> output{new pten::SelectedRows()};
+  std::unique_ptr<phi::SelectedRows> output{new phi::SelectedRows()};
 
   paddle::operators::math::scatter::MergeAdd<paddle::platform::CPUDeviceContext,
                                              float>
@@ -282,20 +282,20 @@ TEST(selected_rows_functor, cpu_merge_add_float) {
 TEST(selected_rows_functor, cpu_merge_add_int) {
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CPUDeviceContext ctx(cpu_place);
-  pten::funcs::SetConstant<paddle::platform::CPUDeviceContext, int> functor;
+  phi::funcs::SetConstant<paddle::platform::CPUDeviceContext, int> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
 
   std::vector<int64_t> rows{0, 4, 4, 7};
-  std::unique_ptr<pten::SelectedRows> selected_rows{
-      new pten::SelectedRows(rows, height)};
+  std::unique_ptr<phi::SelectedRows> selected_rows{
+      new phi::SelectedRows(rows, height)};
   auto* in_value = selected_rows->mutable_value();
   in_value->mutable_data<int>(
-      pten::make_ddim({static_cast<int64_t>(rows.size()), row_numel}),
+      phi::make_ddim({static_cast<int64_t>(rows.size()), row_numel}),
       cpu_place);
   functor(ctx, in_value, 1);
 
-  std::unique_ptr<pten::SelectedRows> output{new pten::SelectedRows()};
+  std::unique_ptr<phi::SelectedRows> output{new phi::SelectedRows()};
 
   paddle::operators::math::scatter::MergeAdd<paddle::platform::CPUDeviceContext,
                                              int>
@@ -320,42 +320,42 @@ TEST(selected_rows_functor, cpu_merge_add_int) {
 TEST(selected_rows_functor, cpu_merge_add_multi) {
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CPUDeviceContext ctx(cpu_place);
-  pten::funcs::SetConstant<paddle::platform::CPUDeviceContext, float> set_const;
+  phi::funcs::SetConstant<paddle::platform::CPUDeviceContext, float> set_const;
 
   int64_t height = 10;
   int64_t row_numel = 8;
 
   std::vector<int64_t> rows1{5, 2, 5, 3, 5};
-  std::unique_ptr<pten::SelectedRows> selected_rows1{
-      new pten::SelectedRows(rows1, height)};
+  std::unique_ptr<phi::SelectedRows> selected_rows1{
+      new phi::SelectedRows(rows1, height)};
   auto* in1_value = selected_rows1->mutable_value();
   in1_value->mutable_data<float>(
-      pten::make_ddim({static_cast<int64_t>(rows1.size()), row_numel}),
+      phi::make_ddim({static_cast<int64_t>(rows1.size()), row_numel}),
       cpu_place);
   set_const(ctx, in1_value, 1.0);
 
   std::vector<int64_t> rows2{2, 5, 3, 5, 3};
-  std::unique_ptr<pten::SelectedRows> selected_rows2{
-      new pten::SelectedRows(rows2, height)};
+  std::unique_ptr<phi::SelectedRows> selected_rows2{
+      new phi::SelectedRows(rows2, height)};
   auto* in2_value = selected_rows2->mutable_value();
   in2_value->mutable_data<float>(
-      pten::make_ddim({static_cast<int64_t>(rows2.size()), row_numel}),
+      phi::make_ddim({static_cast<int64_t>(rows2.size()), row_numel}),
       cpu_place);
   set_const(ctx, in2_value, 1.0);
 
-  std::unique_ptr<pten::SelectedRows> output{new pten::SelectedRows()};
+  std::unique_ptr<phi::SelectedRows> output{new phi::SelectedRows()};
   output->set_height(height);
   paddle::operators::math::scatter::MergeAdd<paddle::platform::CPUDeviceContext,
                                              float>
       merge_add_functor;
 
-  std::vector<const pten::SelectedRows*> inputs;
+  std::vector<const phi::SelectedRows*> inputs;
   inputs.push_back(selected_rows1.get());
   inputs.push_back(selected_rows2.get());
   merge_add_functor(ctx, inputs, output.get());
 
   EXPECT_EQ(output->height(), height);
-  EXPECT_EQ(output->value().dims(), pten::make_ddim({3, row_numel}));
+  EXPECT_EQ(output->value().dims(), phi::make_ddim({3, row_numel}));
 
   std::vector<int64_t> ret_rows{2, 3, 5};
   EXPECT_EQ(output->rows(), ret_rows);
@@ -371,42 +371,42 @@ TEST(selected_rows_functor, cpu_merge_add_multi) {
 TEST(selected_rows_functor, cpu_merge_add_multi_noduplicated) {
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CPUDeviceContext ctx(cpu_place);
-  pten::funcs::SetConstant<paddle::platform::CPUDeviceContext, float> set_const;
+  phi::funcs::SetConstant<paddle::platform::CPUDeviceContext, float> set_const;
 
   int64_t height = 10;
   int64_t row_numel = 8;
 
   std::vector<int64_t> rows1{1, 3, 5, 7, 9};
-  std::unique_ptr<pten::SelectedRows> selected_rows1{
-      new pten::SelectedRows(rows1, height)};
+  std::unique_ptr<phi::SelectedRows> selected_rows1{
+      new phi::SelectedRows(rows1, height)};
   auto* in1_value = selected_rows1->mutable_value();
   in1_value->mutable_data<float>(
-      pten::make_ddim({static_cast<int64_t>(rows1.size()), row_numel}),
+      phi::make_ddim({static_cast<int64_t>(rows1.size()), row_numel}),
       cpu_place);
   set_const(ctx, in1_value, 1.0);
 
   std::vector<int64_t> rows2{0, 2, 4, 6, 8};
-  std::unique_ptr<pten::SelectedRows> selected_rows2{
-      new pten::SelectedRows(rows2, height)};
+  std::unique_ptr<phi::SelectedRows> selected_rows2{
+      new phi::SelectedRows(rows2, height)};
   auto* in2_value = selected_rows2->mutable_value();
   in2_value->mutable_data<float>(
-      pten::make_ddim({static_cast<int64_t>(rows2.size()), row_numel}),
+      phi::make_ddim({static_cast<int64_t>(rows2.size()), row_numel}),
       cpu_place);
   set_const(ctx, in2_value, 2.0);
 
-  std::unique_ptr<pten::SelectedRows> output{new pten::SelectedRows()};
+  std::unique_ptr<phi::SelectedRows> output{new phi::SelectedRows()};
   output->set_height(height);
   paddle::operators::math::scatter::MergeAdd<paddle::platform::CPUDeviceContext,
                                              float>
       merge_add_functor;
 
-  std::vector<const pten::SelectedRows*> inputs;
+  std::vector<const phi::SelectedRows*> inputs;
   inputs.push_back(selected_rows1.get());
   inputs.push_back(selected_rows2.get());
   merge_add_functor(ctx, inputs, output.get());
 
   EXPECT_EQ(output->height(), height);
-  EXPECT_EQ(output->value().dims(), pten::make_ddim({10, row_numel}));
+  EXPECT_EQ(output->value().dims(), phi::make_ddim({10, row_numel}));
 
   std::vector<int64_t> ret_rows{1, 3, 5, 7, 9, 0, 2, 4, 6, 8};
   EXPECT_EQ(output->rows(), ret_rows);
@@ -428,36 +428,36 @@ TEST(selected_rows_functor, cpu_merge_add_multi_noduplicated) {
 TEST(selected_rows_functor, cpu_sum_to) {
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CPUDeviceContext ctx(cpu_place);
-  pten::funcs::SetConstant<paddle::platform::CPUDeviceContext, float> functor;
+  phi::funcs::SetConstant<paddle::platform::CPUDeviceContext, float> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
   std::vector<int64_t> rows1{0, 4, 7};
-  std::unique_ptr<pten::SelectedRows> selected_rows1{
-      new pten::SelectedRows(rows1, height)};
+  std::unique_ptr<phi::SelectedRows> selected_rows1{
+      new phi::SelectedRows(rows1, height)};
   auto* in1_value = selected_rows1->mutable_value();
   in1_value->mutable_data<float>(
-      pten::make_ddim({static_cast<int64_t>(rows1.size()), row_numel}),
+      phi::make_ddim({static_cast<int64_t>(rows1.size()), row_numel}),
       cpu_place);
 
   functor(ctx, in1_value, 1.0);
   std::vector<int64_t> rows2{0, 5, 7, 9};
-  std::unique_ptr<pten::SelectedRows> selected_rows2{
-      new pten::SelectedRows(rows2, height)};
+  std::unique_ptr<phi::SelectedRows> selected_rows2{
+      new phi::SelectedRows(rows2, height)};
   auto* in2_value = selected_rows2->mutable_value();
   in2_value->mutable_data<float>(
-      pten::make_ddim({static_cast<int64_t>(rows2.size()), row_numel}),
+      phi::make_ddim({static_cast<int64_t>(rows2.size()), row_numel}),
       cpu_place);
 
   functor(ctx, in2_value, 2.0);
-  std::unique_ptr<pten::SelectedRows> output{new pten::SelectedRows()};
+  std::unique_ptr<phi::SelectedRows> output{new phi::SelectedRows()};
   output->set_height(height);
   auto* out_value = output->mutable_value();
   // simplely concat two SelectedRows
-  out_value->mutable_data<float>(pten::make_ddim({7, 10}), cpu_place);
+  out_value->mutable_data<float>(phi::make_ddim({7, 10}), cpu_place);
   paddle::operators::math::SelectedRowsSumTo<paddle::platform::CPUDeviceContext,
                                              float>
       sum_to_functor;
-  sum_to_functor(ctx, std::vector<pten::SelectedRows*>(
+  sum_to_functor(ctx, std::vector<phi::SelectedRows*>(
                           {selected_rows1.get(), selected_rows2.get()}),
                  std::vector<int64_t>({0, in1_value->numel()}), output.get());
   auto out_height = output->height();
@@ -486,7 +486,7 @@ TEST(selected_rows_functor, cpu_sum_to) {
   EXPECT_EQ(out_data[6 * row_numel + 9], 2.0);
   std::unique_ptr<paddle::framework::Tensor> tensor1{
       new paddle::framework::Tensor()};
-  tensor1->mutable_data<float>(pten::make_ddim({height, row_numel}), cpu_place);
+  tensor1->mutable_data<float>(phi::make_ddim({height, row_numel}), cpu_place);
   functor(ctx, tensor1.get(), 3.0);
   paddle::operators::math::SelectedRowsAddToTensor<
       paddle::platform::CPUDeviceContext, float>

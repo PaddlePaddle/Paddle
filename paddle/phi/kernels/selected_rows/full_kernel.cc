@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void FullSR(const Context& dev_ctx,
@@ -31,15 +31,15 @@ void FullSR(const Context& dev_ctx,
             const Scalar& val,
             DataType dtype,
             SelectedRows* out) {
-  pten::FullKernel<T>(dev_ctx, shape, val, dtype, out->mutable_value());
+  phi::FullKernel<T>(dev_ctx, shape, val, dtype, out->mutable_value());
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(full_sr,
                    CPU,
                    ALL_LAYOUT,
-                   pten::FullSR,
+                   phi::FullSR,
                    float,
                    double,
                    uint8_t,
@@ -47,16 +47,16 @@ PT_REGISTER_KERNEL(full_sr,
                    int,
                    int64_t,
                    bool,
-                   pten::dtype::float16,
-                   pten::dtype::bfloat16,
-                   pten::dtype::complex<float>,
-                   pten::dtype::complex<double>) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PT_REGISTER_KERNEL(full_sr,
                    GPU,
                    ALL_LAYOUT,
-                   pten::FullSR,
+                   phi::FullSR,
                    float,
                    double,
                    uint8_t,
@@ -64,7 +64,7 @@ PT_REGISTER_KERNEL(full_sr,
                    int,
                    int64_t,
                    bool,
-                   pten::dtype::float16,
-                   pten::dtype::complex<float>,
-                   pten::dtype::complex<double>) {}
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 #endif

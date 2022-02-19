@@ -20,16 +20,16 @@
 
 namespace infrt {
 namespace kernel {
-namespace pten {
+namespace phi {
 
-::pten::DenseTensor CreateDenseTensorCpuF32Nchw(
+::phi::DenseTensor CreateDenseTensorCpuF32Nchw(
     backends::CpuPtenAllocator* allocator,
     host_context::Attribute<std::vector<int64_t>> dims,
     host_context::Attribute<std::vector<int64_t>> lod);
 
-void FillDenseTensorF32(::pten::DenseTensor* dense_tensor,
+void FillDenseTensorF32(::phi::DenseTensor* dense_tensor,
                         host_context::Attribute<std::vector<int64_t>> values);
 
-}  // namespace pten
+}  // namespace phi
 }  // namespace kernel
 }  // namespace infrt

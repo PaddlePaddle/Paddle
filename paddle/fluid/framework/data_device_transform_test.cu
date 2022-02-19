@@ -75,7 +75,7 @@ class TestKernel : public OpKernel<float> {
     output->Resize(input->dims());
     output->mutable_data<T>(ctx.GetPlace());
 
-    pten::funcs::TransformFunctor<AddFunctor<T>, T, DeviceContext> functor(
+    phi::funcs::TransformFunctor<AddFunctor<T>, T, DeviceContext> functor(
         *input, *input, output, ctx.template device_context<DeviceContext>(),
         AddFunctor<T>());
     functor.Run();

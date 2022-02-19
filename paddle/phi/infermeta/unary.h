@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/meta_tensor.h"
 
-namespace pten {
+namespace phi {
 
 class MetaConfig;
 
@@ -81,4 +81,4 @@ void SplitInferMeta(const MetaTensor& x_meta,
 void TraceInferMeta(
     const MetaTensor& x, int offset, int axis1, int axis2, MetaTensor* out);
 
-}  // namespace pten
+}  // namespace phi

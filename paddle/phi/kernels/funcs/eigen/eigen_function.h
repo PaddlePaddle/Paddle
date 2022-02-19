@@ -20,7 +20,7 @@ limitations under the License. */
 #endif
 #include "unsupported/Eigen/CXX11/Tensor"
 
-namespace pten {
+namespace phi {
 namespace funcs {
 
 template <typename EigenDevice, typename T, int Rank>
@@ -316,4 +316,4 @@ struct EigenL1NormGrad {
 };
 
 }  // namespace funcs
-}  // namespace pten
+}  // namespace phi

@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/string/string_helper.h"
 
-namespace pten {
+namespace phi {
 std::ostream& operator<<(std::ostream& os, KernelSignature signature) {
   os << "Kernel Signature - name: " << signature.name << "; inputs: "
      << paddle::string::join_strings(std::get<0>(signature.args), ", ")
@@ -28,4 +28,4 @@ std::ostream& operator<<(std::ostream& os, KernelSignature signature) {
   return os;
 }
 
-}  // namespace pten
+}  // namespace phi

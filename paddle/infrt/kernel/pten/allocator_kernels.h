@@ -19,10 +19,10 @@
 
 namespace infrt {
 namespace kernel {
-namespace pten {
+namespace phi {
 
 backends::CpuPtenAllocator CreateCpuAllocator();
 
-}  // namespace pten
+}  // namespace phi
 }  // namespace kernel
 }  // namespace infrt

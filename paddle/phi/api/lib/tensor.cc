@@ -62,32 +62,32 @@ namespace experimental {
 
 /* Part 1: Construction and destruction methods */
 
-Tensor::Tensor(std::shared_ptr<pten::TensorBase> tensor_impl)
+Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl)
     : impl_(std::move(tensor_impl)) {
-  PADDLE_ENFORCE_NOT_NULL(impl_,
-                          pten::errors::InvalidArgument(
-                              "TensorImpl with nullptr is not supported"));
+  PADDLE_ENFORCE_NOT_NULL(
+      impl_,
+      phi::errors::InvalidArgument("TensorImpl with nullptr is not supported"));
 }
 
 Tensor::Tensor(const PlaceType &place)
-    : impl_(std::move(std::make_shared<pten::DenseTensor>(
-          std::move(pten::make_intrusive<SharedStorage>(
+    : impl_(std::move(std::make_shared<phi::DenseTensor>(
+          std::move(phi::make_intrusive<SharedStorage>(
               ConvertExtPlaceToInnerPlace(place))),
-          std::move(pten::DenseTensorMeta(pten::DataType::UNDEFINED,
-                                          pten::make_ddim({}),
-                                          pten::DataLayout::NCHW))))),
+          std::move(phi::DenseTensorMeta(phi::DataType::UNDEFINED,
+                                         phi::make_ddim({}),
+                                         phi::DataLayout::NCHW))))),
       place_{place} {}
 
 Tensor::Tensor(const PlaceType &place, const std::vector<int64_t> &shape)
-    : impl_(std::move(std::make_shared<pten::DenseTensor>(
-          std::move(pten::make_intrusive<SharedStorage>(
+    : impl_(std::move(std::make_shared<phi::DenseTensor>(
+          std::move(phi::make_intrusive<SharedStorage>(
               ConvertExtPlaceToInnerPlace(place))),
-          std::move(pten::DenseTensorMeta(pten::DataType::UNDEFINED,
-                                          pten::make_ddim(shape),
-                                          pten::DataLayout::NCHW))))),
+          std::move(phi::DenseTensorMeta(phi::DataType::UNDEFINED,
+                                         phi::make_ddim(shape),
+                                         phi::DataLayout::NCHW))))),
       place_{place} {}
 
-Tensor::Tensor(std::shared_ptr<pten::TensorBase> tensor_impl,
+Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl,
                const std::string &name)
     : impl_(std::move(tensor_impl)), name_(std::move(name)) {}
 /* Part 2: Dimension, DataType and DataLayout methods */
@@ -96,10 +96,10 @@ int64_t Tensor::numel() const { return impl_->numel(); }
 
 int64_t Tensor::size() const { return impl_->numel(); }
 
-pten::DDim Tensor::dims() const { return impl_->dims(); }
+phi::DDim Tensor::dims() const { return impl_->dims(); }
 
 std::vector<int64_t> Tensor::shape() const {
-  return pten::vectorize<int64_t>(impl_->dims());
+  return phi::vectorize<int64_t>(impl_->dims());
 }
 
 void Tensor::reshape(const std::vector<int64_t> &shape) {
@@ -112,10 +112,10 @@ void Tensor::reshape(const std::vector<int64_t> &shape) {
                   "touching underlying data, this requires the total size of "
                   "the tensor to remain constant.";
   if (is_dense_tensor()) {
-    std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->set_meta(
-        pten::DenseTensorMeta(dtype(), pten::make_ddim(shape)));
+    std::dynamic_pointer_cast<phi::DenseTensor>(impl_)->set_meta(
+        phi::DenseTensorMeta(dtype(), phi::make_ddim(shape)));
   } else {
-    PADDLE_THROW(pten::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "Only support reshape operation on DenseTensor now."));
   }
 }
@@ -127,10 +127,10 @@ DataType Tensor::type() const { return impl_->dtype(); }
 DataLayout Tensor::layout() const { return impl_->layout(); }
 
 bool Tensor::is_dense_tensor() const {
-  return pten::DenseTensor::classof(impl_.get());
+  return phi::DenseTensor::classof(impl_.get());
 }
 bool Tensor::is_selected_rows() const {
-  return pten::SelectedRows::classof(impl_.get());
+  return phi::SelectedRows::classof(impl_.get());
 }
 /* Part 3: Device and Backend methods */
 
@@ -159,7 +159,7 @@ bool Tensor::is_cuda() const {
 template <typename T>
 T *Tensor::mutable_data() {
   if (is_dense_tensor()) {
-    return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->mutable_data<T>(
+    return std::dynamic_pointer_cast<phi::DenseTensor>(impl_)->mutable_data<T>(
         ConvertExtPlaceToInnerPlace(place()));
   }
   return nullptr;
@@ -173,12 +173,12 @@ template PADDLE_API uint8_t *Tensor::mutable_data<uint8_t>();
 template PADDLE_API int8_t *Tensor::mutable_data<int8_t>();
 template PADDLE_API int16_t *Tensor::mutable_data<int16_t>();
 template PADDLE_API bool *Tensor::mutable_data<bool>();
-template PADDLE_API pten::dtype::complex<float>
-    *Tensor::mutable_data<pten::dtype::complex<float>>();
-template PADDLE_API pten::dtype::complex<double>
-    *Tensor::mutable_data<pten::dtype::complex<double>>();
-template PADDLE_API pten::dtype::float16 *
-Tensor::mutable_data<pten::dtype::float16>();
+template PADDLE_API phi::dtype::complex<float>
+    *Tensor::mutable_data<phi::dtype::complex<float>>();
+template PADDLE_API phi::dtype::complex<double>
+    *Tensor::mutable_data<phi::dtype::complex<double>>();
+template PADDLE_API phi::dtype::float16 *
+Tensor::mutable_data<phi::dtype::float16>();
 
 template <typename T>
 T *Tensor::mutable_data(const PlaceType &place) {
@@ -187,11 +187,11 @@ T *Tensor::mutable_data(const PlaceType &place) {
     PADDLE_ENFORCE_EQ(
         platform::is_same_place(inner_place, impl_->place()),
         true,
-        pten::errors::Unimplemented("Modification of tensor place through "
-                                    "mutable_data is not supported now"));
+        phi::errors::Unimplemented("Modification of tensor place through "
+                                   "mutable_data is not supported now"));
   }
   if (is_dense_tensor()) {
-    return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->mutable_data<T>(
+    return std::dynamic_pointer_cast<phi::DenseTensor>(impl_)->mutable_data<T>(
         inner_place);
   }
   return nullptr;
@@ -211,19 +211,19 @@ template PADDLE_API int8_t *Tensor::mutable_data<int8_t>(
 template PADDLE_API int16_t *Tensor::mutable_data<int16_t>(
     const PlaceType &place);
 template PADDLE_API bool *Tensor::mutable_data<bool>(const PlaceType &place);
-template PADDLE_API pten::dtype::complex<float>
-    *Tensor::mutable_data<pten::dtype::complex<float>>(const PlaceType &place);
-template PADDLE_API pten::dtype::complex<double>
-    *Tensor::mutable_data<pten::dtype::complex<double>>(const PlaceType &place);
-template PADDLE_API pten::dtype::float16 *
-Tensor::mutable_data<pten::dtype::float16>(const PlaceType &place);
+template PADDLE_API phi::dtype::complex<float>
+    *Tensor::mutable_data<phi::dtype::complex<float>>(const PlaceType &place);
+template PADDLE_API phi::dtype::complex<double>
+    *Tensor::mutable_data<phi::dtype::complex<double>>(const PlaceType &place);
+template PADDLE_API phi::dtype::float16 *
+Tensor::mutable_data<phi::dtype::float16>(const PlaceType &place);
 
 template <typename T>
 const T *Tensor::data() const {
   if (is_dense_tensor()) {
-    return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->data<T>();
-  } else if (pten::SelectedRows::classof(impl_.get())) {
-    return std::dynamic_pointer_cast<pten::SelectedRows>(impl_)
+    return std::dynamic_pointer_cast<phi::DenseTensor>(impl_)->data<T>();
+  } else if (phi::SelectedRows::classof(impl_.get())) {
+    return std::dynamic_pointer_cast<phi::SelectedRows>(impl_)
         ->value()
         .data<T>();
   }
@@ -238,21 +238,21 @@ template PADDLE_API const uint8_t *Tensor::data<uint8_t>() const;
 template PADDLE_API const int8_t *Tensor::data<int8_t>() const;
 template PADDLE_API const int16_t *Tensor::data<int16_t>() const;
 template PADDLE_API const bool *Tensor::data<bool>() const;
-template PADDLE_API const pten::dtype::complex<float>
-    *Tensor::data<pten::dtype::complex<float>>() const;
-template PADDLE_API const pten::dtype::complex<double>
-    *Tensor::data<pten::dtype::complex<double>>() const;
-template PADDLE_API const pten::dtype::float16 *
-Tensor::data<pten::dtype::float16>() const;
-template PADDLE_API const pten::dtype::bfloat16 *
-Tensor::data<pten::dtype::bfloat16>() const;
+template PADDLE_API const phi::dtype::complex<float>
+    *Tensor::data<phi::dtype::complex<float>>() const;
+template PADDLE_API const phi::dtype::complex<double>
+    *Tensor::data<phi::dtype::complex<double>>() const;
+template PADDLE_API const phi::dtype::float16 *
+Tensor::data<phi::dtype::float16>() const;
+template PADDLE_API const phi::dtype::bfloat16 *
+Tensor::data<phi::dtype::bfloat16>() const;
 
 template <typename T>
 T *Tensor::data() {
   if (is_dense_tensor()) {
-    return std::dynamic_pointer_cast<pten::DenseTensor>(impl_)->data<T>();
-  } else if (pten::SelectedRows::classof(impl_.get())) {
-    return std::dynamic_pointer_cast<pten::SelectedRows>(impl_)
+    return std::dynamic_pointer_cast<phi::DenseTensor>(impl_)->data<T>();
+  } else if (phi::SelectedRows::classof(impl_.get())) {
+    return std::dynamic_pointer_cast<phi::SelectedRows>(impl_)
         ->mutable_value()
         ->data<T>();
   }
@@ -267,29 +267,29 @@ template PADDLE_API uint8_t *Tensor::data<uint8_t>();
 template PADDLE_API int8_t *Tensor::data<int8_t>();
 template PADDLE_API int16_t *Tensor::data<int16_t>();
 template PADDLE_API bool *Tensor::data<bool>();
-template PADDLE_API pten::dtype::complex<float>
-    *Tensor::data<pten::dtype::complex<float>>();
-template PADDLE_API pten::dtype::complex<double>
-    *Tensor::data<pten::dtype::complex<double>>();
-template PADDLE_API pten::dtype::float16 *Tensor::data<pten::dtype::float16>();
+template PADDLE_API phi::dtype::complex<float>
+    *Tensor::data<phi::dtype::complex<float>>();
+template PADDLE_API phi::dtype::complex<double>
+    *Tensor::data<phi::dtype::complex<double>>();
+template PADDLE_API phi::dtype::float16 *Tensor::data<phi::dtype::float16>();
 
 // TODO(chenweihang): replace slice impl by API
 Tensor Tensor::slice(int64_t begin_idx, int64_t end_idx) const {
   if (is_dense_tensor()) {
-    return Tensor(std::make_shared<pten::DenseTensor>(
-        std::move(pten::DenseTensorUtils::Slice(
-            *(std::dynamic_pointer_cast<pten::DenseTensor>(impl_).get()),
+    return Tensor(std::make_shared<phi::DenseTensor>(
+        std::move(phi::DenseTensorUtils::Slice(
+            *(std::dynamic_pointer_cast<phi::DenseTensor>(impl_).get()),
             begin_idx,
             end_idx))));
   } else {
-    PADDLE_THROW(pten::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "Only support slice operation on DenseTensor now."));
   }
 }
 
-std::shared_ptr<pten::TensorBase> Tensor::impl() const { return impl_; }
+std::shared_ptr<phi::TensorBase> Tensor::impl() const { return impl_; }
 
-void Tensor::set_impl(const std::shared_ptr<pten::TensorBase> &impl) {
+void Tensor::set_impl(const std::shared_ptr<phi::TensorBase> &impl) {
   impl_ = impl;
 }
 
@@ -327,12 +327,12 @@ template PADDLE_API Tensor
 Tensor::copy_to<int16_t>(const PlaceType &target_place) const;
 template PADDLE_API Tensor
 Tensor::copy_to<bool>(const PlaceType &target_place) const;
-template PADDLE_API Tensor Tensor::copy_to<pten::dtype::complex<float>>(
+template PADDLE_API Tensor Tensor::copy_to<phi::dtype::complex<float>>(
     const PlaceType &target_place) const;
-template PADDLE_API Tensor Tensor::copy_to<pten::dtype::complex<double>>(
+template PADDLE_API Tensor Tensor::copy_to<phi::dtype::complex<double>>(
     const PlaceType &target_place) const;
 template PADDLE_API Tensor
-Tensor::copy_to<pten::dtype::float16>(const PlaceType &target_place) const;
+Tensor::copy_to<phi::dtype::float16>(const PlaceType &target_place) const;
 
 Tensor Tensor::copy_to(Backend backend, bool blocking) const {
   return experimental::copy_to(*this, backend, blocking);
@@ -360,7 +360,7 @@ void Tensor::copy_(const Tensor &src, bool blocking) {
                           src.name()));
   }
   auto copy_tensor =
-      src.copy_to(pten::TransToPtenBackend(src.inner_place()), blocking);
+      src.copy_to(phi::TransToPtenBackend(src.inner_place()), blocking);
   set_impl(copy_tensor.impl());
 }
 

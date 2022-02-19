@@ -94,7 +94,7 @@ struct SequenceReverseFunctor {
 
   HOSTDEVICE void operator()(size_t idx_x) const {
     auto row_idx_x = idx_x / row_numel_;
-    auto lod_idx = pten::funcs::UpperBound(lod_, lod_count_, row_idx_x);
+    auto lod_idx = phi::funcs::UpperBound(lod_, lod_count_, row_idx_x);
     auto row_idx_y = lod_[lod_idx - 1] + (lod_[lod_idx] - 1 - row_idx_x);
     auto idx_y = row_idx_y * row_numel_ + idx_x % row_numel_;
     y_[idx_y] = x_[idx_x];

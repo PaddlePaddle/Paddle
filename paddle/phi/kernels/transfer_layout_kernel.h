@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 
-namespace pten {
+namespace phi {
 
 template <typename Context>
 void TransferLayoutKernel(const Context& dev_ctx,
@@ -30,10 +30,10 @@ template <typename Context>
 DenseTensor TransferLayout(const Context& dev_ctx,
                            const DenseTensor& x,
                            DataLayout dst_layout) {
-  pten::DenseTensor dense_out =
-      pten::Empty(dev_ctx, {x.dtype(), x.dims(), dst_layout});
+  phi::DenseTensor dense_out =
+      phi::Empty(dev_ctx, {x.dtype(), x.dims(), dst_layout});
   TransferLayoutKernel<Context>(dev_ctx, x, dst_layout, &dense_out);
   return dense_out;
 }
 
-}  // namespace pten
+}  // namespace phi

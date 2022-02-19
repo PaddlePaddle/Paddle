@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 #include <string>
 
-namespace pten {
+namespace phi {
 namespace dynload {
 
 #ifndef _WIN32
@@ -49,4 +49,4 @@ void* GetROCFFTDsoHandle();
 void SetPaddleLibPath(const std::string&);
 
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi

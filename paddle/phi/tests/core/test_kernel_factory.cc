@@ -24,17 +24,17 @@ limitations under the License. */
 
 PT_DECLARE_KERNEL(scale, CPU, ALL_LAYOUT);
 
-namespace pten {
+namespace phi {
 namespace tests {
 
 // TODO(chenweihang): add more unittests later
 
 TEST(KernelKey, ConstructAndOStream) {
-  pten::KernelKey key(
-      pten::Backend::CPU, pten::DataLayout::NCHW, pten::DataType::FLOAT32);
-  EXPECT_EQ(key.backend(), pten::Backend::CPU);
-  EXPECT_EQ(key.layout(), pten::DataLayout::NCHW);
-  EXPECT_EQ(key.dtype(), pten::DataType::FLOAT32);
+  phi::KernelKey key(
+      phi::Backend::CPU, phi::DataLayout::NCHW, phi::DataType::FLOAT32);
+  EXPECT_EQ(key.backend(), phi::Backend::CPU);
+  EXPECT_EQ(key.layout(), phi::DataLayout::NCHW);
+  EXPECT_EQ(key.dtype(), phi::DataType::FLOAT32);
   std::ostringstream oss;
   oss << key;
   std::cout << oss.str();
@@ -42,7 +42,7 @@ TEST(KernelKey, ConstructAndOStream) {
 }
 
 TEST(KernelFactory, SelectedKernelMap) {
-  auto kernel_map = pten::KernelFactory::Instance().SelectKernelMap("scale");
+  auto kernel_map = phi::KernelFactory::Instance().SelectKernelMap("scale");
   EXPECT_GT(kernel_map.size(), 1UL);
   for (auto& iter : kernel_map) {
     std::cout << iter.first << ": " << iter.second;
@@ -56,11 +56,10 @@ void TestKernel(const Context& dev_ctx,
                 DenseTensor* out) {}
 
 TEST(KernelRegistry, SetFP32Input) {
-  pten::KernelKey kernel_key(pten::Backend::CPU,
-                             pten::DataLayout::ALL_LAYOUT,
-                             pten::DataType::FLOAT16);
+  phi::KernelKey kernel_key(
+      phi::Backend::CPU, phi::DataLayout::ALL_LAYOUT, phi::DataType::FLOAT16);
   auto test_kernel =
-      pten::KernelFactory::Instance().SelectKernel("test", kernel_key);
+      phi::KernelFactory::Instance().SelectKernel("test", kernel_key);
   EXPECT_TRUE(test_kernel.IsValid());
   auto& arg_defs = test_kernel.args_def();
   auto& input_defs = arg_defs.input_defs();
@@ -69,22 +68,22 @@ TEST(KernelRegistry, SetFP32Input) {
   EXPECT_EQ(input_defs.size(), 2UL);
   EXPECT_EQ(attr_defs.size(), 0UL);
   EXPECT_EQ(output_defs.size(), 1UL);
-  EXPECT_EQ(input_defs.at(0).dtype, pten::DataType::FLOAT16);
-  EXPECT_EQ(input_defs.at(1).dtype, pten::DataType::FLOAT32);
-  EXPECT_EQ(output_defs.at(0).dtype, pten::DataType::FLOAT16);
+  EXPECT_EQ(input_defs.at(0).dtype, phi::DataType::FLOAT16);
+  EXPECT_EQ(input_defs.at(1).dtype, phi::DataType::FLOAT32);
+  EXPECT_EQ(output_defs.at(0).dtype, phi::DataType::FLOAT16);
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(test,
                    CPU,
                    ALL_LAYOUT,
-                   pten::tests::TestKernel,
+                   phi::tests::TestKernel,
                    float,
                    double,
-                   pten::dtype::float16) {
-  if (kernel_key.dtype() == pten::DataType::FLOAT16) {
-    kernel->InputAt(1).SetDataType(pten::DataType::FLOAT32);
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
   }
 }

@@ -19,7 +19,7 @@
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void FlattenKernel(const Context& dev_ctx,
@@ -28,7 +28,7 @@ void FlattenKernel(const Context& dev_ctx,
                    int stop_axis,
                    DenseTensor* out) {
   auto out_dims = out->dims();
-  pten::Copy(dev_ctx, x, false, out);
+  phi::Copy(dev_ctx, x, false, out);
   out->ResizeAndAllocate(out_dims);
 }
 
@@ -46,12 +46,12 @@ void FlattenWithXShape(const Context& dev_ctx,
   funcs::SetXShape(x, xshape);
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(flatten,
                    CPU,
                    ALL_LAYOUT,
-                   pten::FlattenKernel,
+                   phi::FlattenKernel,
                    float,
                    double,
                    uint8_t,
@@ -62,7 +62,7 @@ PT_REGISTER_KERNEL(flatten,
 PT_REGISTER_KERNEL(flatten_with_xshape,
                    CPU,
                    ALL_LAYOUT,
-                   pten::FlattenWithXShape,
+                   phi::FlattenWithXShape,
                    float,
                    double,
                    uint8_t,
@@ -74,9 +74,9 @@ PT_REGISTER_KERNEL(flatten_with_xshape,
 PT_REGISTER_KERNEL(flatten,
                    GPU,
                    ALL_LAYOUT,
-                   pten::FlattenKernel,
+                   phi::FlattenKernel,
                    float,
-                   pten::dtype::float16,
+                   phi::dtype::float16,
                    double,
                    uint8_t,
                    int8_t,
@@ -86,9 +86,9 @@ PT_REGISTER_KERNEL(flatten,
 PT_REGISTER_KERNEL(flatten_with_xshape,
                    GPU,
                    ALL_LAYOUT,
-                   pten::FlattenWithXShape,
+                   phi::FlattenWithXShape,
                    float,
-                   pten::dtype::float16,
+                   phi::dtype::float16,
                    double,
                    uint8_t,
                    int8_t,
@@ -100,9 +100,9 @@ PT_REGISTER_KERNEL(flatten_with_xshape,
 PT_REGISTER_KERNEL(flatten,
                    XPU,
                    ALL_LAYOUT,
-                   pten::FlattenKernel,
+                   phi::FlattenKernel,
                    float,
-                   pten::dtype::float16,
+                   phi::dtype::float16,
                    int8_t,
                    int,
                    int64_t) {}
@@ -110,9 +110,9 @@ PT_REGISTER_KERNEL(flatten,
 PT_REGISTER_KERNEL(flatten_with_xshape,
                    XPU,
                    ALL_LAYOUT,
-                   pten::FlattenWithXShape,
+                   phi::FlattenWithXShape,
                    float,
-                   pten::dtype::float16,
+                   phi::dtype::float16,
                    int8_t,
                    int,
                    int64_t) {}

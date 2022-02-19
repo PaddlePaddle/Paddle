@@ -419,8 +419,8 @@ void MergeLoDTensor(LoDTensor *target,
               "actual layout is %s.",
               DataLayoutToString(new_layout), DataLayoutToString(t->layout())));
       PADDLE_ENFORCE_EQ(
-          pten::product(new_dim) / new_dim[0],
-          pten::product(t->dims()) / t->dims()[0],
+          phi::product(new_dim) / new_dim[0],
+          phi::product(t->dims()) / t->dims()[0],
           platform::errors::InvalidArgument(
               "LoDTensor dimension does not match, all dimensions except the "
               "first dimension need to be equal,"

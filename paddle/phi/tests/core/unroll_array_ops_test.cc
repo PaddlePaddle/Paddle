@@ -17,7 +17,7 @@
 #include <gtest/gtest.h>
 #include <array>
 
-namespace pten {
+namespace phi {
 namespace framework {
 
 template <typename T>
@@ -79,4 +79,4 @@ TEST(unroll_ops, product) {
 }
 
 }  // namespace framework
-}  // namespace pten
+}  // namespace phi

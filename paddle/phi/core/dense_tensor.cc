@@ -22,7 +22,7 @@ limitations under the License. */
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/memory/malloc.h"
 
-namespace pten {
+namespace phi {
 
 DenseTensor::DenseTensor(Allocator* a, const DenseTensorMeta& meta)
     : meta_(meta), holder_(a->Allocate(SizeOf(dtype()) * numel())) {}
@@ -30,7 +30,7 @@ DenseTensor::DenseTensor(Allocator* a, const DenseTensorMeta& meta)
 DenseTensor::DenseTensor(Allocator* a, DenseTensorMeta&& meta)
     : meta_(std::move(meta)), holder_(a->Allocate(SizeOf(dtype()) * numel())) {}
 
-DenseTensor::DenseTensor(const std::shared_ptr<pten::Allocation>& holder,
+DenseTensor::DenseTensor(const std::shared_ptr<phi::Allocation>& holder,
                          const DenseTensorMeta& meta)
     : meta_(meta), holder_(holder) {}
 
@@ -202,13 +202,13 @@ DATA_MEMBER_FUNC_INSTANTIATION(int32_t);
 DATA_MEMBER_FUNC_INSTANTIATION(uint32_t);
 DATA_MEMBER_FUNC_INSTANTIATION(int64_t);
 DATA_MEMBER_FUNC_INSTANTIATION(uint64_t);
-DATA_MEMBER_FUNC_INSTANTIATION(::pten::dtype::bfloat16);
-DATA_MEMBER_FUNC_INSTANTIATION(::pten::dtype::float16);
+DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::bfloat16);
+DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::float16);
 DATA_MEMBER_FUNC_INSTANTIATION(float);
 DATA_MEMBER_FUNC_INSTANTIATION(double);
-DATA_MEMBER_FUNC_INSTANTIATION(::pten::dtype::complex<float>);
-DATA_MEMBER_FUNC_INSTANTIATION(::pten::dtype::complex<double>);
+DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::complex<float>);
+DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::complex<double>);
 
 #undef DATA_MEMBER_FUNC_INSTANTIATION
 
-}  // namespace pten
+}  // namespace phi

@@ -19,7 +19,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/enforce.h"
 
-namespace pten {
+namespace phi {
 namespace backends {
 namespace xpu {
 
@@ -165,35 +165,35 @@ DEFINE_EXTERNAL_API_TYPE(BKCLResult_t, BKCL_SUCCESS);
 
 }  // namespace details
 
-#define PADDLE_ENFORCE_XPU_SUCCESS(COND)                         \
-  do {                                                           \
-    auto __cond__ = (COND);                                      \
-    using __XPU_STATUS_TYPE__ = decltype(__cond__);              \
-    constexpr auto __success_type__ =                            \
-        ::pten::backends::xpu::details::ExternalApiType<         \
-            __XPU_STATUS_TYPE__>::kSuccess;                      \
-    if (UNLIKELY(__cond__ != __success_type__)) {                \
-      auto __summary__ = paddle::platform::errors::External(     \
-          ::pten::backends::xpu::build_xpu_error_msg(__cond__)); \
-      __THROW_ERROR_INTERNAL__(__summary__);                     \
-    }                                                            \
+#define PADDLE_ENFORCE_XPU_SUCCESS(COND)                        \
+  do {                                                          \
+    auto __cond__ = (COND);                                     \
+    using __XPU_STATUS_TYPE__ = decltype(__cond__);             \
+    constexpr auto __success_type__ =                           \
+        ::phi::backends::xpu::details::ExternalApiType<         \
+            __XPU_STATUS_TYPE__>::kSuccess;                     \
+    if (UNLIKELY(__cond__ != __success_type__)) {               \
+      auto __summary__ = paddle::platform::errors::External(    \
+          ::phi::backends::xpu::build_xpu_error_msg(__cond__)); \
+      __THROW_ERROR_INTERNAL__(__summary__);                    \
+    }                                                           \
   } while (0)
 
-#define PADDLE_ENFORCE_XDNN_SUCCESS(COND, MSG)                             \
-  do {                                                                     \
-    auto __cond__ = (COND);                                                \
-    if (UNLIKELY(__cond__ != baidu::xpu::api::Error_t::SUCCESS)) {         \
-      auto __summary__ = paddle::platform::errors::External(               \
-          ::pten::backends::xpu::build_xpu_xdnn_error_msg(__cond__, MSG)); \
-      __THROW_ERROR_INTERNAL__(__summary__);                               \
-    }                                                                      \
+#define PADDLE_ENFORCE_XDNN_SUCCESS(COND, MSG)                            \
+  do {                                                                    \
+    auto __cond__ = (COND);                                               \
+    if (UNLIKELY(__cond__ != baidu::xpu::api::Error_t::SUCCESS)) {        \
+      auto __summary__ = paddle::platform::errors::External(              \
+          ::phi::backends::xpu::build_xpu_xdnn_error_msg(__cond__, MSG)); \
+      __THROW_ERROR_INTERNAL__(__summary__);                              \
+    }                                                                     \
   } while (0)
 
 #define PADDLE_ENFORCE_XDNN_NOT_NULL(ptr)                    \
   do {                                                       \
     if (UNLIKELY(ptr == nullptr)) {                          \
       auto __summary__ = paddle::platform::errors::External( \
-          ::pten::backends::xpu::build_xpu_xdnn_error_msg(   \
+          ::phi::backends::xpu::build_xpu_xdnn_error_msg(    \
               baidu::xpu::api::Error_t::NO_ENOUGH_WORKSPACE, \
               "XPU memory is not enough"));                  \
       __THROW_ERROR_INTERNAL__(__summary__);                 \
@@ -202,4 +202,4 @@ DEFINE_EXTERNAL_API_TYPE(BKCLResult_t, BKCL_SUCCESS);
 
 }  // namespace xpu
 }  // namespace backends
-}  // namespace pten
+}  // namespace phi

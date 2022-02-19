@@ -85,10 +85,10 @@ class GpuAndCpuSearchSortedCompute {
       out_data_[idx] = seq_size_;
     } else {
       if (right_) {
-        out_data_[idx] = static_cast<OutType>(pten::funcs::UpperBound<T1, T2>(
+        out_data_[idx] = static_cast<OutType>(phi::funcs::UpperBound<T1, T2>(
             sequence_ptr, seq_size_, *value_ptr));
       } else {
-        out_data_[idx] = static_cast<OutType>(pten::funcs::LowerBound<T1, T2>(
+        out_data_[idx] = static_cast<OutType>(phi::funcs::LowerBound<T1, T2>(
             sequence_ptr, seq_size_, *value_ptr));
       }
     }

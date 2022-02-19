@@ -72,7 +72,7 @@ class TakeAlongAxisGradOpKernel : public framework::OpKernel<T> {
 
     // Set to zero tensor.
     auto &dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
-    pten::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
+    phi::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
     functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
             input_grad, static_cast<T>(0));
 

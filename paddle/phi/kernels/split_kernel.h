@@ -21,7 +21,7 @@
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void SplitKernel(const Context& dev_ctx,
@@ -48,7 +48,7 @@ std::vector<DenseTensor> Split(const Context& dev_ctx,
   result.reserve(out_number);
 
   for (size_t i = 0; i < out_number; ++i) {
-    auto dense_out = pten::Empty<T, Context>(dev_ctx);
+    auto dense_out = phi::Empty<T, Context>(dev_ctx);
     MetaTensor tmp_meta(&dense_out);
 
     result.push_back(dense_out);
@@ -67,4 +67,4 @@ std::vector<DenseTensor> Split(const Context& dev_ctx,
   return result;
 }
 
-}  // namespace pten
+}  // namespace phi

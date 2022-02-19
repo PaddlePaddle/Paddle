@@ -180,7 +180,7 @@ inline void MergeVars(const std::string &var_name,
 
     // set output tensor to 0.
     paddle::platform::CPUDeviceContext cpu_ctx;
-    pten::funcs::SetConstant<paddle::platform::CPUDeviceContext, T>
+    phi::funcs::SetConstant<paddle::platform::CPUDeviceContext, T>
         constant_functor;
     constant_functor(cpu_ctx, out_t, static_cast<T>(0));
     // sum all vars to out
@@ -194,15 +194,15 @@ inline void MergeVars(const std::string &var_name,
       result.device(*cpu_ctx.eigen_device()) =
           result / static_cast<T>(vars.size());
     }
-  } else if (var0->IsType<pten::SelectedRows>()) {
-    auto &slr0 = var0->Get<pten::SelectedRows>();
-    auto *out_slr = out_var->GetMutable<pten::SelectedRows>();
+  } else if (var0->IsType<phi::SelectedRows>()) {
+    auto &slr0 = var0->Get<phi::SelectedRows>();
+    auto *out_slr = out_var->GetMutable<phi::SelectedRows>();
     out_slr->mutable_rows()->clear();
     out_slr->mutable_value()->mutable_data<T>({{}}, cpu_place);
-    std::vector<const pten::SelectedRows *> inputs;
+    std::vector<const phi::SelectedRows *> inputs;
     inputs.reserve(vars.size());
     for (auto &var : vars) {
-      inputs.push_back(&var->Get<pten::SelectedRows>());
+      inputs.push_back(&var->Get<phi::SelectedRows>());
     }
     paddle::platform::CPUDeviceContext dev_ctx;
     if (merge_add) {

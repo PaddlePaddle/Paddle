@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void FlattenGradKernel(const Context& dev_ctx,
@@ -24,4 +24,4 @@ void FlattenGradKernel(const Context& dev_ctx,
                        const DenseTensor& xshape,
                        DenseTensor* x_grad);
 
-}  // namespace pten
+}  // namespace phi

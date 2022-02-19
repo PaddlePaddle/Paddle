@@ -68,7 +68,7 @@ class CreatePyReaderOp : public framework::OperatorBase {
       int shape_end_index = shape_start_index + ranks[i];
       auto shape = std::vector<int>(shape_concat.begin() + shape_start_index,
                                     shape_concat.begin() + shape_end_index);
-      dims.push_back(pten::make_ddim(shape));
+      dims.push_back(phi::make_ddim(shape));
       shape_start_index = shape_end_index;
     }
 

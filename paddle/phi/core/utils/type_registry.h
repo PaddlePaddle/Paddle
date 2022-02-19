@@ -20,7 +20,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/utils/type_info.h"
 
-namespace pten {
+namespace phi {
 
 template <typename BaseT>
 class TypeRegistry {
@@ -81,4 +81,4 @@ template <typename BaseT>
 const TypeInfo<BaseT> TypeInfo<BaseT>::kUnknownType =
     RegisterStaticType<BaseT>("Unknown");
 
-}  // namespace pten
+}  // namespace phi

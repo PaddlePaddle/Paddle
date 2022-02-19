@@ -21,31 +21,31 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
-namespace pten {
+namespace phi {
 
 #define _PtenForEachDataTypeHelper_(callback, cpp_type, data_type) \
   callback(cpp_type, data_type);
 
-#define _PtenForEachDataType_(callback)                              \
-  _PtenForEachDataTypeHelper_(callback, float, DataType::FLOAT32);   \
-  _PtenForEachDataTypeHelper_(                                       \
-      callback, ::pten::dtype::float16, DataType::FLOAT16);          \
-  _PtenForEachDataTypeHelper_(                                       \
-      callback, ::pten::dtype::bfloat16, DataType::BFLOAT16);        \
-  _PtenForEachDataTypeHelper_(callback, double, DataType::FLOAT64);  \
-  _PtenForEachDataTypeHelper_(callback, int, DataType::INT32);       \
-  _PtenForEachDataTypeHelper_(callback, int64_t, DataType::INT64);   \
-  _PtenForEachDataTypeHelper_(callback, bool, DataType::BOOL);       \
-  _PtenForEachDataTypeHelper_(callback, uint8_t, DataType::UINT8);   \
-  _PtenForEachDataTypeHelper_(callback, int16_t, DataType::INT16);   \
-  _PtenForEachDataTypeHelper_(callback, int8_t, DataType::INT8);     \
-  _PtenForEachDataTypeHelper_(                                       \
-      callback, ::pten::dtype::complex<float>, DataType::COMPLEX64); \
-  _PtenForEachDataTypeHelper_(                                       \
-      callback, ::pten::dtype::complex<double>, DataType::COMPLEX128);
+#define _PtenForEachDataType_(callback)                             \
+  _PtenForEachDataTypeHelper_(callback, float, DataType::FLOAT32);  \
+  _PtenForEachDataTypeHelper_(                                      \
+      callback, ::phi::dtype::float16, DataType::FLOAT16);          \
+  _PtenForEachDataTypeHelper_(                                      \
+      callback, ::phi::dtype::bfloat16, DataType::BFLOAT16);        \
+  _PtenForEachDataTypeHelper_(callback, double, DataType::FLOAT64); \
+  _PtenForEachDataTypeHelper_(callback, int, DataType::INT32);      \
+  _PtenForEachDataTypeHelper_(callback, int64_t, DataType::INT64);  \
+  _PtenForEachDataTypeHelper_(callback, bool, DataType::BOOL);      \
+  _PtenForEachDataTypeHelper_(callback, uint8_t, DataType::UINT8);  \
+  _PtenForEachDataTypeHelper_(callback, int16_t, DataType::INT16);  \
+  _PtenForEachDataTypeHelper_(callback, int8_t, DataType::INT8);    \
+  _PtenForEachDataTypeHelper_(                                      \
+      callback, ::phi::dtype::complex<float>, DataType::COMPLEX64); \
+  _PtenForEachDataTypeHelper_(                                      \
+      callback, ::phi::dtype::complex<double>, DataType::COMPLEX128);
 
 template <typename Visitor>
-inline void VisitDataType(pten::DataType type, Visitor visitor) {
+inline void VisitDataType(phi::DataType type, Visitor visitor) {
 #define PtenVisitDataTypeCallback(cpp_type, data_type) \
   do {                                                 \
     if (type == data_type) {                           \
@@ -56,8 +56,7 @@ inline void VisitDataType(pten::DataType type, Visitor visitor) {
 
   _PtenForEachDataType_(PtenVisitDataTypeCallback);
 #undef PtenVisitDataTypeCallback
-  PADDLE_THROW(pten::errors::Unimplemented(
-      "Not supported pten::DataType(%d) as data type.",
-      static_cast<int>(type)));
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Not supported phi::DataType(%d) as data type.", static_cast<int>(type)));
 }
-}  // namespace pten
+}  // namespace phi

@@ -48,11 +48,11 @@ static void triangular_solve(const DeviceContext& context, const Tensor& x,
   // x_clone should be a copy of 'x' after broadcast
   // out should be a copy of 'y' after broadcast
   Tensor x_clone(x.type());
-  x_clone.Resize(pten::make_ddim(x_bst_dims_vec));
+  x_clone.Resize(phi::make_ddim(x_bst_dims_vec));
   x_clone.mutable_data<T>(context.GetPlace());
   framework::TensorCopy(x_bst, context.GetPlace(), context, &x_clone);
 
-  out->Resize(pten::make_ddim(y_bst_dims_vec));
+  out->Resize(phi::make_ddim(y_bst_dims_vec));
   out->mutable_data<T>(context.GetPlace());
   framework::TensorCopy(y_bst, context.GetPlace(), context, out);
 
@@ -75,9 +75,9 @@ class MatrixReduceSumFunctor<platform::CPUDeviceContext, T> {
                   const framework::ExecutionContext& ctx) {
     // For example: in's dim = [5, 3, 2, 7, 3] ; out's dim = [3, 1, 7, 3]
     // out_reduce_dim should be [0, 2]
-    const std::vector<std::int64_t> in_dims = pten::vectorize(in.dims());
+    const std::vector<std::int64_t> in_dims = phi::vectorize(in.dims());
     auto in_size = in_dims.size();
-    const std::vector<std::int64_t> out_dims = pten::vectorize(out->dims());
+    const std::vector<std::int64_t> out_dims = phi::vectorize(out->dims());
     auto out_size = out_dims.size();
 
     std::vector<std::int64_t> out_bst_dims(in_size);
@@ -85,7 +85,7 @@ class MatrixReduceSumFunctor<platform::CPUDeviceContext, T> {
     std::fill(out_bst_dims.data(), out_bst_dims.data() + in_size - out_size, 1);
     std::copy(out_dims.data(), out_dims.data() + out_size,
               out_bst_dims.data() + in_size - out_size);
-    out->Resize(pten::make_ddim(out_bst_dims));
+    out->Resize(phi::make_ddim(out_bst_dims));
 
     std::vector<int> out_reduce_dims;
     for (size_t idx = 0; idx <= in_size - 3; idx++) {
@@ -97,7 +97,7 @@ class MatrixReduceSumFunctor<platform::CPUDeviceContext, T> {
     ReduceKernelFunctor<platform::CPUDeviceContext, T, SumFunctor>(
         &in, out, out_reduce_dims, true, false, ctx)
         .template apply<T>();
-    out->Resize(pten::make_ddim(out_dims));
+    out->Resize(phi::make_ddim(out_dims));
   }
 };
 
@@ -145,13 +145,13 @@ class TriangularSolveGradKernel : public framework::OpKernel<T> {
     Tensor dy_bst(y->type());
     if (dy) {
       dy->mutable_data<T>(y->dims(), dev_ctx.GetPlace());
-      dy_bst.Resize(pten::make_ddim(y_bst_dims_vec));
+      dy_bst.Resize(phi::make_ddim(y_bst_dims_vec));
       dy_bst.mutable_data<T>(dev_ctx.GetPlace());
 
       // calculate x's conjugate for complex
       Tensor x_conj(x->type());
       platform::ForRange<DeviceContext> x_for_range(dev_ctx, x->numel());
-      pten::funcs::ConjFunctor<T> x_functor(
+      phi::funcs::ConjFunctor<T> x_functor(
           x->data<T>(), x->numel(),
           x_conj.mutable_data<T>(x->dims(), dev_ctx.GetPlace()));
       x_for_range(x_functor);
@@ -172,30 +172,30 @@ class TriangularSolveGradKernel : public framework::OpKernel<T> {
     Tensor dx_bst(x->type());
     if (dx) {
       dx->mutable_data<T>(x->dims(), dev_ctx.GetPlace());
-      dx_bst.Resize(pten::make_ddim(x_bst_dims_vec));
+      dx_bst.Resize(phi::make_ddim(x_bst_dims_vec));
       dx_bst.mutable_data<T>(dev_ctx.GetPlace());
 
       // calculate out's conjugate for complex
       Tensor out_conj(out->type());
       platform::ForRange<DeviceContext> out_for_range(dev_ctx, out->numel());
-      pten::funcs::ConjFunctor<T> out_functor(
+      phi::funcs::ConjFunctor<T> out_functor(
           out->data<T>(), out->numel(),
           out_conj.mutable_data<T>(out->dims(), dev_ctx.GetPlace()));
       out_for_range(out_functor);
 
-      auto blas = pten::funcs::GetBlas<DeviceContext, T>(ctx);
+      auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
       if (transpose) {
         auto mat_dim_a =
-            pten::funcs::CreateMatrixDescriptor(out_conj.dims(), 0, false);
+            phi::funcs::CreateMatrixDescriptor(out_conj.dims(), 0, false);
         auto mat_dim_b =
-            pten::funcs::CreateMatrixDescriptor(dy_bst.dims(), 0, true);
+            phi::funcs::CreateMatrixDescriptor(dy_bst.dims(), 0, true);
         blas.MatMul(out_conj, mat_dim_a, dy_bst, mat_dim_b, static_cast<T>(-1),
                     &dx_bst, static_cast<T>(0));
       } else {
         auto mat_dim_a =
-            pten::funcs::CreateMatrixDescriptor(dy_bst.dims(), 0, false);
+            phi::funcs::CreateMatrixDescriptor(dy_bst.dims(), 0, false);
         auto mat_dim_b =
-            pten::funcs::CreateMatrixDescriptor(out_conj.dims(), 0, true);
+            phi::funcs::CreateMatrixDescriptor(out_conj.dims(), 0, true);
         blas.MatMul(dy_bst, mat_dim_a, out_conj, mat_dim_b, static_cast<T>(-1),
                     &dx_bst, static_cast<T>(0));
       }

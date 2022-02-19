@@ -28,7 +28,7 @@
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 
-namespace pten {
+namespace phi {
 
 #define DEFINE_CPU_ELEMENTWISE_OP(name)                                     \
   template <typename T, typename Context>                                   \
@@ -62,7 +62,7 @@ void MeanRawKernel(const Context& dev_ctx,
                    bool reduce_all,
                    DenseTensor* out) {
   auto out_dtype = x.dtype();
-  pten::Reduce<CPUContext, T, pten::funcs::MeanFunctor>(
+  phi::Reduce<CPUContext, T, phi::funcs::MeanFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
@@ -74,7 +74,7 @@ void SumRawKernel(const Context& dev_ctx,
                   bool reduce_all,
                   DataType out_dtype,
                   DenseTensor* out) {
-  pten::Reduce<CPUContext, T, pten::funcs::SumFunctor>(
+  phi::Reduce<CPUContext, T, phi::funcs::SumFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
@@ -111,17 +111,17 @@ DEFINE_CPU_ELEMENTWISE_OP(Subtract)
 // Create the definition of Multiply
 DEFINE_CPU_ELEMENTWISE_OP(Multiply)
 
-}  // namespace pten
+}  // namespace phi
 
-using complex64 = ::pten::dtype::complex<float>;
-using complex128 = ::pten::dtype::complex<double>;
+using complex64 = ::phi::dtype::complex<float>;
+using complex128 = ::phi::dtype::complex<double>;
 
 // NOTE(chenweihang): using bfloat16 will cause redefine with xpu bfloat16
-// using bfloat16 = ::pten::dtype::bfloat16;
+// using bfloat16 = ::phi::dtype::bfloat16;
 PT_REGISTER_KERNEL(add_raw,
                    CPU,
                    ALL_LAYOUT,
-                   pten::AddRawKernel,
+                   phi::AddRawKernel,
                    float,
                    double,
                    int,
@@ -131,7 +131,7 @@ PT_REGISTER_KERNEL(add_raw,
 PT_REGISTER_KERNEL(subtract_raw,
                    CPU,
                    ALL_LAYOUT,
-                   pten::SubtractRawKernel,
+                   phi::SubtractRawKernel,
                    float,
                    double,
                    int,
@@ -141,7 +141,7 @@ PT_REGISTER_KERNEL(subtract_raw,
 PT_REGISTER_KERNEL(divide_raw,
                    CPU,
                    ALL_LAYOUT,
-                   pten::DivideRawKernel,
+                   phi::DivideRawKernel,
                    float,
                    double,
                    int,
@@ -151,7 +151,7 @@ PT_REGISTER_KERNEL(divide_raw,
 PT_REGISTER_KERNEL(multiply_raw,
                    CPU,
                    ALL_LAYOUT,
-                   pten::MultiplyRawKernel,
+                   phi::MultiplyRawKernel,
                    float,
                    double,
                    int,
@@ -162,11 +162,11 @@ PT_REGISTER_KERNEL(multiply_raw,
 PT_REGISTER_KERNEL(sum_raw,
                    CPU,
                    ALL_LAYOUT,
-                   pten::SumRawKernel,
+                   phi::SumRawKernel,
                    bool,
                    float,
                    double,
-                   pten::dtype::float16,
+                   phi::dtype::float16,
                    int,
                    int64_t,
                    complex64,
@@ -174,4 +174,4 @@ PT_REGISTER_KERNEL(sum_raw,
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }
 PT_REGISTER_KERNEL(
-    mean_raw, CPU, ALL_LAYOUT, pten::MeanRawKernel, float, double, bool) {}
+    mean_raw, CPU, ALL_LAYOUT, phi::MeanRawKernel, float, double, bool) {}

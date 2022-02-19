@@ -14,15 +14,15 @@ limitations under the License. */
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
 KernelSignature FillAnyLikeOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("full_like", {"X"}, {"value", "dtype"}, {"Out"});
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_BASE_KERNEL_NAME(fill_any_like, full_like);
 
-PT_REGISTER_ARG_MAPPING_FN(fill_any_like, pten::FillAnyLikeOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(fill_any_like, phi::FillAnyLikeOpArgumentMapping);

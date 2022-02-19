@@ -53,17 +53,17 @@ template struct SetConstant<platform::CPUDeviceContext,
 template struct SetConstant<platform::CPUDeviceContext,
                             platform::complex<double>>;
 
-template struct SetConstant<pten::CPUContext, platform::float16>;
-template struct SetConstant<pten::CPUContext, platform::bfloat16>;
-template struct SetConstant<pten::CPUContext, float>;
-template struct SetConstant<pten::CPUContext, double>;
-template struct SetConstant<pten::CPUContext, int16_t>;
-template struct SetConstant<pten::CPUContext, int>;
-template struct SetConstant<pten::CPUContext, int64_t>;
-template struct SetConstant<pten::CPUContext, bool>;
-template struct SetConstant<pten::CPUContext, uint8_t>;
-template struct SetConstant<pten::CPUContext, platform::complex<float>>;
-template struct SetConstant<pten::CPUContext, platform::complex<double>>;
+template struct SetConstant<phi::CPUContext, platform::float16>;
+template struct SetConstant<phi::CPUContext, platform::bfloat16>;
+template struct SetConstant<phi::CPUContext, float>;
+template struct SetConstant<phi::CPUContext, double>;
+template struct SetConstant<phi::CPUContext, int16_t>;
+template struct SetConstant<phi::CPUContext, int>;
+template struct SetConstant<phi::CPUContext, int64_t>;
+template struct SetConstant<phi::CPUContext, bool>;
+template struct SetConstant<phi::CPUContext, uint8_t>;
+template struct SetConstant<phi::CPUContext, platform::complex<float>>;
+template struct SetConstant<phi::CPUContext, platform::complex<double>>;
 
 #ifdef PADDLE_WITH_XPU
 template struct SetConstant<platform::XPUDeviceContext, platform::float16>;
@@ -112,8 +112,8 @@ struct TransposeNormal<platform::CPUDeviceContext, T> {
                   const framework::Tensor& in, framework::Tensor* out,
                   const std::vector<int>& axis) {
     const int rank = axis.size();
-    auto in_stride = pten::stride(in.dims());
-    auto out_stride = pten::stride(out->dims());
+    auto in_stride = phi::stride(in.dims());
+    auto out_stride = phi::stride(out->dims());
     const T* in_ptr = in.data<T>();
     T* out_ptr = out->data<T>();
 

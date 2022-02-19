@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/backends/dynload/port.h"
 
-namespace pten {
+namespace phi {
 namespace dynload {
 extern std::once_flag hipfft_dso_flag;
 extern void *hipfft_dso_handle;
@@ -31,7 +31,7 @@ extern void *hipfft_dso_handle;
     auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) { \
       using hipfftFunc = decltype(&::__name);                        \
       std::call_once(hipfft_dso_flag, []() {                         \
-        hipfft_dso_handle = pten::dynload::GetROCFFTDsoHandle();     \
+        hipfft_dso_handle = phi::dynload::GetROCFFTDsoHandle();      \
       });                                                            \
       static void *p_##__name = dlsym(hipfft_dso_handle, #__name);   \
       return reinterpret_cast<hipfftFunc>(p_##__name)(args...);      \
@@ -117,6 +117,6 @@ inline const char *hipfftGetErrorString(hipfftResult_t status) {
   }
 }
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi
 
 #endif

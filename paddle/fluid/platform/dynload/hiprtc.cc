@@ -23,7 +23,7 @@ namespace dynload {
 
 HIPRTC_ROUTINE_EACH(DEFINE_WRAP);
 
-bool HasNVRTC() { return pten::dynload::HasNVRTC(); }
+bool HasNVRTC() { return phi::dynload::HasNVRTC(); }
 
 }  // namespace dynload
 }  // namespace platform

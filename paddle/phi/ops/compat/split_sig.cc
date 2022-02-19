@@ -14,7 +14,7 @@
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
 KernelSignature SplitOpArgumentMapping(const ArgumentMappingContext& ctx) {
   // priority:  num > SectionsTensorList > sections
@@ -44,6 +44,6 @@ KernelSignature SplitOpArgumentMapping(const ArgumentMappingContext& ctx) {
   }
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(split, pten::SplitOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(split, phi::SplitOpArgumentMapping);

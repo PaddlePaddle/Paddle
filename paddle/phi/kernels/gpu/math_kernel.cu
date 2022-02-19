@@ -33,7 +33,7 @@ namespace cub = hipcub;
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-namespace pten {
+namespace phi {
 
 #define DEFINE_CUDA_ELEMENTWISE_OP(name)                             \
   template <typename T, typename Context>                            \
@@ -64,7 +64,7 @@ void MeanRawKernel(const Context& dev_ctx,
                    bool reduce_all,
                    DenseTensor* out) {
   auto out_dtype = x.dtype();
-  pten::Reduce<T, kps::AddFunctor, kps::DivideFunctor>(
+  phi::Reduce<T, kps::AddFunctor, kps::DivideFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
@@ -76,7 +76,7 @@ void SumRawKernel(const Context& dev_ctx,
                   bool reduce_all,
                   DataType out_dtype,
                   DenseTensor* out) {
-  pten::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
+  phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
@@ -89,16 +89,16 @@ DEFINE_CUDA_ELEMENTWISE_OP(Multiply)
 // Create the definition of Divide
 DEFINE_CUDA_ELEMENTWISE_OP(Divide)
 
-}  // namespace pten
+}  // namespace phi
 
-using float16 = pten::dtype::float16;
-using complex64 = ::pten::dtype::complex<float>;
-using complex128 = ::pten::dtype::complex<double>;
+using float16 = phi::dtype::float16;
+using complex64 = ::phi::dtype::complex<float>;
+using complex128 = ::phi::dtype::complex<double>;
 
 PT_REGISTER_KERNEL(add_raw,
                    GPU,
                    ALL_LAYOUT,
-                   pten::AddRawKernel,
+                   phi::AddRawKernel,
                    float,
                    double,
                    int,
@@ -109,7 +109,7 @@ PT_REGISTER_KERNEL(add_raw,
 PT_REGISTER_KERNEL(subtract_raw,
                    GPU,
                    ALL_LAYOUT,
-                   pten::SubtractRawKernel,
+                   phi::SubtractRawKernel,
                    float,
                    double,
                    int,
@@ -120,7 +120,7 @@ PT_REGISTER_KERNEL(subtract_raw,
 PT_REGISTER_KERNEL(divide_raw,
                    GPU,
                    ALL_LAYOUT,
-                   pten::DivideRawKernel,
+                   phi::DivideRawKernel,
                    float,
                    double,
                    int,
@@ -131,7 +131,7 @@ PT_REGISTER_KERNEL(divide_raw,
 PT_REGISTER_KERNEL(multiply_raw,
                    GPU,
                    ALL_LAYOUT,
-                   pten::MultiplyRawKernel,
+                   phi::MultiplyRawKernel,
                    float,
                    double,
                    int,
@@ -143,7 +143,7 @@ PT_REGISTER_KERNEL(multiply_raw,
 PT_REGISTER_KERNEL(sum_raw,
                    GPU,
                    ALL_LAYOUT,
-                   pten::SumRawKernel,
+                   phi::SumRawKernel,
                    bool,
                    float,
                    double,
@@ -158,7 +158,7 @@ PT_REGISTER_KERNEL(sum_raw,
 PT_REGISTER_KERNEL(mean_raw,
                    GPU,
                    ALL_LAYOUT,
-                   pten::MeanRawKernel,
+                   phi::MeanRawKernel,
                    float,
                    double,
                    bool,

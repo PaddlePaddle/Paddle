@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
 /**
  * Note [ Why does the ArgumentMapping function need to be so complicated? ]
@@ -69,7 +69,7 @@ KernelSignature ScaleOpArgumentMapping(const ArgumentMappingContext& ctx) {
   }
 }
 
-}  // namespace pten
+}  // namespace phi
 
 // op_type, api_name, arg_mapping_fn
-PT_REGISTER_ARG_MAPPING_FN(scale, pten::ScaleOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(scale, phi::ScaleOpArgumentMapping);

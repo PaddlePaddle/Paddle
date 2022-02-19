@@ -34,26 +34,26 @@ namespace kernel {
 
 void RegisterPtenKernels(host_context::KernelRegistry* registry) {
   registry->AddKernel("pten_dt.create_allocator.cpu",
-                      INFRT_KERNEL(infrt::kernel::pten::CreateCpuAllocator));
+                      INFRT_KERNEL(infrt::kernel::phi::CreateCpuAllocator));
   registry->AddKernel("pten_dt.create_context.cpu",
-                      INFRT_KERNEL(infrt::kernel::pten::CreateCpuContext));
+                      INFRT_KERNEL(infrt::kernel::phi::CreateCpuContext));
   registry->AddKernel(
       "pten_dt.create_dense_tensor.cpu.f32.nchw",
-      INFRT_KERNEL(infrt::kernel::pten::CreateDenseTensorCpuF32Nchw));
+      INFRT_KERNEL(infrt::kernel::phi::CreateDenseTensorCpuF32Nchw));
   registry->AddKernel("pten_dt.fill_dense_tensor.f32",
-                      INFRT_KERNEL(infrt::kernel::pten::FillDenseTensorF32));
+                      INFRT_KERNEL(infrt::kernel::phi::FillDenseTensorF32));
   registry->AddKernel(
       "pten.matmul.host.fp32",
       std::bind(&kernel::KernelLauncherFunc<
-                    decltype(&::pten::MatmulKernel<float, ::pten::CPUContext>),
-                    &::pten::MatmulKernel<float, ::pten::CPUContext>,
-                    decltype(&::pten::MatmulInferMeta),
-                    &::pten::MatmulInferMeta>,
+                    decltype(&::phi::MatmulKernel<float, ::phi::CPUContext>),
+                    &::phi::MatmulKernel<float, ::phi::CPUContext>,
+                    decltype(&::phi::MatmulInferMeta),
+                    &::phi::MatmulInferMeta>,
                 kernel::KernelLauncher<
-                    decltype(&::pten::MatmulKernel<float, ::pten::CPUContext>),
-                    &::pten::MatmulKernel<float, ::pten::CPUContext>,
-                    decltype(&::pten::MatmulInferMeta),
-                    &::pten::MatmulInferMeta>(),
+                    decltype(&::phi::MatmulKernel<float, ::phi::CPUContext>),
+                    &::phi::MatmulKernel<float, ::phi::CPUContext>,
+                    decltype(&::phi::MatmulInferMeta),
+                    &::phi::MatmulInferMeta>(),
                 std::placeholders::_1));
 }
 

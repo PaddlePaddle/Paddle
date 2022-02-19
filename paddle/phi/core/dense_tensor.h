@@ -26,7 +26,7 @@ limitations under the License. */
 #include "dnnl.hpp"
 #endif
 
-namespace pten {
+namespace phi {
 
 class DenseTensorUtils;
 
@@ -48,7 +48,7 @@ class DenseTensor : public TensorBase,
   /// \param meta The meta data of dense tensor.
   DenseTensor(Allocator* a, DenseTensorMeta&& meta);
 
-  DenseTensor(const std::shared_ptr<pten::Allocation>& holder,
+  DenseTensor(const std::shared_ptr<phi::Allocation>& holder,
               const DenseTensorMeta& meta);
 
   /// \brief Because dense tensor is a kind of container, we give a default
@@ -169,8 +169,8 @@ class DenseTensor : public TensorBase,
 
  protected:
   DenseTensorMeta meta_;
-  std::shared_ptr<pten::Allocation> holder_;
+  std::shared_ptr<phi::Allocation> holder_;
 
 #include "paddle/phi/core/dense_tensor.inl"
 };
-}  // namespace pten
+}  // namespace phi

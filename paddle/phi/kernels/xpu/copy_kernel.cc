@@ -22,7 +22,7 @@ limitations under the License. */
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/memory/memcpy.h"
 
-namespace pten {
+namespace phi {
 
 template <typename Context>
 void Copy(const Context& dev_ctx,
@@ -67,7 +67,7 @@ void Copy(const Context& dev_ctx,
   }
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_GENERAL_KERNEL(
-    copy, XPU, ALL_LAYOUT, pten::Copy<pten::XPUContext>, ALL_DTYPE) {}
+    copy, XPU, ALL_LAYOUT, phi::Copy<phi::XPUContext>, ALL_DTYPE) {}

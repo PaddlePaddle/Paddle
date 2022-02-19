@@ -19,28 +19,28 @@ limitations under the License. */
 #include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/common/layout.h"
 
-namespace pten {
+namespace phi {
 namespace tests {
 
 TEST(DataLayout, OStream) {
   std::ostringstream oss;
-  oss << pten::DataLayout::UNDEFINED;
+  oss << phi::DataLayout::UNDEFINED;
   EXPECT_EQ(oss.str(), "Undefined(AnyLayout)");
   oss.str("");
-  oss << pten::DataLayout::ANY;
+  oss << phi::DataLayout::ANY;
   EXPECT_EQ(oss.str(), "Undefined(AnyLayout)");
   oss.str("");
-  oss << pten::DataLayout::NHWC;
+  oss << phi::DataLayout::NHWC;
   EXPECT_EQ(oss.str(), "NHWC");
   oss.str("");
-  oss << pten::DataLayout::NCHW;
+  oss << phi::DataLayout::NCHW;
   EXPECT_EQ(oss.str(), "NCHW");
   oss.str("");
-  oss << pten::DataLayout::MKLDNN;
+  oss << phi::DataLayout::MKLDNN;
   EXPECT_EQ(oss.str(), "MKLDNN");
   oss.str("");
   try {
-    oss << pten::DataLayout::NUM_DATA_LAYOUTS;
+    oss << phi::DataLayout::NUM_DATA_LAYOUTS;
   } catch (const std::exception& exception) {
     std::string ex_msg = exception.what();
     EXPECT_TRUE(ex_msg.find("Unknown Data Layout type") != std::string::npos);
@@ -48,4 +48,4 @@ TEST(DataLayout, OStream) {
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi

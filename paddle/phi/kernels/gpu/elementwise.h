@@ -35,7 +35,7 @@ constexpr int ELEMWISE_MAX_BLOCK_DIM = 1024;
     *mod = dividend_copy % divisor;            \
   } while (0)
 
-namespace pten {
+namespace phi {
 // FORWARD CODE
 struct DimensionsTransform {
   using DimVector = std::vector<int64_t>;
@@ -132,20 +132,20 @@ struct DimensionsTransform {
 
  public:
   explicit DimensionsTransform(const std::vector<const DenseTensor *> &ins,
-                               const pten::DDim &dims,
+                               const phi::DDim &dims,
                                int axis) {
     const int N = max(static_cast<int>(ins.size()), 2);
     dim_size = dims.size();
-    out_dims = pten::vectorize<int64_t>(dims);
+    out_dims = phi::vectorize<int64_t>(dims);
     in_dims.resize(N);
     if (ins.size() == 1) {
       // when ins.size() = 1, broadcast input to output
-      in_dims[0] = pten::vectorize<int64_t>(ins[0]->dims());
+      in_dims[0] = phi::vectorize<int64_t>(ins[0]->dims());
       in_dims[1] = out_dims;
       // Add out_dims to in_dims to avoid errors in dims merging
     } else {
       for (int j = 0; j < N; ++j) {
-        in_dims[j] = pten::vectorize<int64_t>(ins[j]->dims());
+        in_dims[j] = phi::vectorize<int64_t>(ins[j]->dims());
       }
     }
     InputDimensionsExtend(N, axis);
@@ -223,11 +223,11 @@ template <typename InT,
           int Rank,
           bool IsBoundary = false>
 __device__ void ElementwiseBroadcastKernelImpl(
-    const pten::Array<const _ptr_ InT *__restrict__, Arity> &ins,
-    pten::Array<_ptr_ OutT *, NumOuts> outs,
-    const pten::Array<int, Arity> &use_broadcast,
+    const phi::Array<const _ptr_ InT *__restrict__, Arity> &ins,
+    phi::Array<_ptr_ OutT *, NumOuts> outs,
+    const phi::Array<int, Arity> &use_broadcast,
     uint32_t numel,
-    const pten::Array<kps::details::BroadcastConfig<Rank>, Arity> &configs,
+    const phi::Array<kps::details::BroadcastConfig<Rank>, Arity> &configs,
     int num,
     int block_offset,
     Functor func) {
@@ -247,15 +247,15 @@ __device__ void ElementwiseBroadcastKernelImpl(
   }
   constexpr bool kCallElementwiseAny =
       paddle::platform::FunctionTraits<Functor>::has_pointer_args;
-  pten::funcs::ElementwisePrimitiveCaller<InT,
-                                          ConditionalT<OutT, NumOuts>,
-                                          VecSize,
-                                          Functor,
-                                          Arity,
-                                          kCallElementwiseAny>()(
+  phi::funcs::ElementwisePrimitiveCaller<InT,
+                                         ConditionalT<OutT, NumOuts>,
+                                         VecSize,
+                                         Functor,
+                                         Arity,
+                                         kCallElementwiseAny>()(
       func, args, result);
 
-  pten::funcs::ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, NumOuts>()(
+  phi::funcs::ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, NumOuts>()(
       outs, result, block_offset, num);
 }
 
@@ -267,11 +267,11 @@ template <typename InT,
           int VecSize,
           int Rank>
 __global__ void ElementwiseBroadcastKernel(
-    pten::Array<const _ptr_ InT *__restrict__, Arity> ins,
-    pten::Array<_ptr_ OutT *, NumOuts> outs,
-    pten::Array<int, Arity> use_broadcast,
+    phi::Array<const _ptr_ InT *__restrict__, Arity> ins,
+    phi::Array<_ptr_ OutT *, NumOuts> outs,
+    phi::Array<int, Arity> use_broadcast,
     uint32_t numel,
-    pten::Array<kps::details::BroadcastConfig<Rank>, Arity> configs,
+    phi::Array<kps::details::BroadcastConfig<Rank>, Arity> configs,
     int main_offset,
     int tail_tid,
     Functor func) {
@@ -352,10 +352,10 @@ void LaunchKernel(const KPDevice &ctx,
                   Functor func,
                   DimensionsTransform merge_dims) {
   int numel = (*outs)[0]->numel();
-  pten::Array<kps::details::BroadcastConfig<Rank>, Arity> configs;
-  pten::Array<int, Arity> use_broadcast;
-  pten::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
-  pten::Array<_ptr_ OutT *, NumOuts> outs_data;
+  phi::Array<kps::details::BroadcastConfig<Rank>, Arity> configs;
+  phi::Array<int, Arity> use_broadcast;
+  phi::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
+  phi::Array<_ptr_ OutT *, NumOuts> outs_data;
 
   for (int i = 0; i < NumOuts; ++i) {
     outs_data[i] = ctx.Alloc<OutT>((*outs)[i]);
@@ -451,7 +451,7 @@ void LaunchBroadcastKernelForDifferentVecSize(
           "The maximum dimension of input tensor is expected to be less than "
           "%d, but recieved %d.\n",
           merge_dims.dim_size,
-          pten::DDim::kMaxRank));
+          phi::DDim::kMaxRank));
     }
   }
 #undef CALL_BROADCAST_FOR_DIM_SIZE
@@ -573,14 +573,14 @@ void LaunchElementwiseCudaKernel(const KPDevice &ctx,
     dims_size.emplace_back(in->dims().size());
   }
   if (no_broadcast_flag) {
-    pten::funcs::LaunchSameDimsElementwiseCudaKernel<OutT, Functor, NumOuts>(
+    phi::funcs::LaunchSameDimsElementwiseCudaKernel<OutT, Functor, NumOuts>(
         ctx, ins, outs, func);
   } else {
     axis = axis == -1
                ? *std::max_element(dims_size.begin(), dims_size.end()) -
                      *std::min_element(dims_size.begin(), dims_size.end())
                : axis;
-    pten::LaunchBroadcastElementwiseCudaKernel<ET, InT, OutT, Functor, NumOuts>(
+    phi::LaunchBroadcastElementwiseCudaKernel<ET, InT, OutT, Functor, NumOuts>(
         ctx, ins, outs, axis, func);
   }
 }
@@ -595,7 +595,7 @@ void ElementwiseCompute(const GPUContext &dev_ctx,
   std::vector<const DenseTensor *> ins = {&x, &y};
   std::vector<DenseTensor *> outs = {z};
   z->mutable_data<OutType>(dev_ctx.GetPlace());
-  pten::LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, OutType>(
+  phi::LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, OutType>(
       dev_ctx, ins, &outs, axis, func);
 }
 
@@ -1846,8 +1846,8 @@ void CommonElementwiseBroadcastBackward(const GPUContext &ctx,
   }
 
   VLOG(3) << "CommonElementwiseBroadcastBackward xdims:"
-          << pten::make_ddim(x_dims_array)
-          << " ydim:" << pten::make_ddim(y_dims_array);
+          << phi::make_ddim(x_dims_array)
+          << " ydim:" << phi::make_ddim(y_dims_array);
 
   CommonGradBroadcastCUDA<T, DX_OP, DY_OP, Tout>(x,
                                                  y,
@@ -2009,7 +2009,7 @@ void default_elementwise_add_grad(const GPUContext &ctx,
     auto *dx_data = dx->mutable_data<T>(ctx.GetPlace());
     if (dx->dims() == dout.dims()) {
       if (dx_data != dout_data) {
-        pten::Copy(ctx, dout, false, dx);
+        phi::Copy(ctx, dout, false, dx);
       }
     } else {
       // For inplace strategy, dx will be stored in addr of dout, which makes
@@ -2030,7 +2030,7 @@ void default_elementwise_add_grad(const GPUContext &ctx,
     auto *dy_data = dy->mutable_data<T>(ctx.GetPlace());
     if (dy->dims() == dout.dims()) {
       if (dy_data != dout_data) {
-        pten::Copy(ctx, dout, false, dy);
+        phi::Copy(ctx, dout, false, dy);
       }
     } else {
       std::vector<int> reduce_dims =
@@ -2056,11 +2056,11 @@ void elementwise_add_grad(const GPUContext &ctx,
   if (dx_data == dout_data && dy_data != dout_data) {
     VLOG(4) << "Special case when dx_data is the same as dout_data, "
                "only need copy dout to dy";
-    pten::Copy(ctx, dout, false, dy);
+    phi::Copy(ctx, dout, false, dy);
   } else if (dx_data != dout_data && dy_data == dout_data) {
     VLOG(4) << "Special case when dy_data is the same as dout_data, "
                "only need copy dout to dx";
-    pten::Copy(ctx, dout, false, dx);
+    phi::Copy(ctx, dout, false, dx);
   } else if (dx_data != dout_data && dy_data != dout_data) {
     auto size = x.numel();
     int vec_size = max(static_cast<int>(sizeof(float4) / sizeof(T)), 1);
@@ -2120,7 +2120,7 @@ void default_elementwise_sub_grad(const GPUContext &ctx,
     auto *dx_data = dx->mutable_data<T>(ctx.GetPlace());
     if (dx->dims() == dout.dims()) {
       if (dx_data != dout_data) {
-        pten::Copy(ctx, dout, false, dx);
+        phi::Copy(ctx, dout, false, dx);
       }
     } else {
       // For inplace strategy, dx will be stored in addr of dout, which makes
@@ -2179,4 +2179,4 @@ void elementwise_sub_grad(const GPUContext &ctx,
       dy->mutable_data<T>(ctx.GetPlace()));
 }
 
-}  // namespace pten
+}  // namespace phi

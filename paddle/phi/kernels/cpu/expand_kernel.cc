@@ -22,7 +22,7 @@
 PT_REGISTER_KERNEL(expand,
                    CPU,
                    ALL_LAYOUT,
-                   pten::ExpandKernel,
+                   phi::ExpandKernel,
                    float,
                    double,
                    int,

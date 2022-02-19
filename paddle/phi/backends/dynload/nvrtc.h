@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/backends/dynload/port.h"
 
-namespace pten {
+namespace phi {
 namespace dynload {
 
 extern std::once_flag nvrtc_dso_flag;
@@ -33,7 +33,7 @@ extern bool HasNVRTC();
     auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) { \
       using nvrtc_func = decltype(&::__name);                        \
       std::call_once(nvrtc_dso_flag, []() {                          \
-        nvrtc_dso_handle = pten::dynload::GetNVRTCDsoHandle();       \
+        nvrtc_dso_handle = phi::dynload::GetNVRTCDsoHandle();        \
       });                                                            \
       static void* p_##__name = dlsym(nvrtc_dso_handle, #__name);    \
       return reinterpret_cast<nvrtc_func>(p_##__name)(args...);      \
@@ -60,4 +60,4 @@ NVRTC_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_NVRTC_WRAP);
 #undef DECLARE_DYNAMIC_LOAD_NVRTC_WRAP
 
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi

@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/backward.h"
 
-namespace pten {
+namespace phi {
 
 void GeneralBinaryGradInferMeta(const MetaTensor& x,
                                 const MetaTensor& y,
@@ -28,4 +28,4 @@ void GeneralBinaryGradInferMeta(const MetaTensor& x,
   }
 }
 
-}  // namespace pten
+}  // namespace phi

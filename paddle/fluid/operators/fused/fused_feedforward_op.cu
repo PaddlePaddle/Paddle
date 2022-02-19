@@ -32,11 +32,11 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
   void MatMul(const platform::CUDADeviceContext& ctx,
               const framework::Tensor& a, const framework::Tensor& b,
               framework::Tensor* c) const {
-    auto blas = pten::funcs::GetBlas<DeviceContext, T>(ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
     auto a_2d = FoldInitDims(a);
     auto b_2d = FoldInitDims(b);
-    auto mat_dim_a = pten::funcs::CreateMatrixDescriptor(a_2d.dims(), 0, false);
-    auto mat_dim_b = pten::funcs::CreateMatrixDescriptor(b_2d.dims(), 0, false);
+    auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a_2d.dims(), 0, false);
+    auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(b_2d.dims(), 0, false);
     T alpha = static_cast<T>(1.0);
     blas.MatMul(a, mat_dim_a, b, mat_dim_b, alpha, c, T(0));
   }
@@ -173,7 +173,7 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
     dropout2_out->mutable_data<T>(place);
 
     auto x_dim = x->dims();
-    auto mat_dim_x = pten::funcs::CreateMatrixDescriptor(
+    auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(
         RowMatrixFromVector(x_dim), 0, false);
 
     auto dim = linear1_weight->dims();
@@ -197,13 +197,13 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
                   const framework::Tensor& d_out, const framework::Tensor& a,
                   const framework::Tensor& b, framework::Tensor* d_a,
                   framework::Tensor* d_b) const {
-    auto blas = pten::funcs::GetBlas<DeviceContext, T>(ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
     auto a_2d = FoldInitDims(a);
     auto b_2d = FoldInitDims(b);
-    auto mat_dim_a = pten::funcs::CreateMatrixDescriptor(a_2d.dims(), 0, true);
-    auto mat_dim_b = pten::funcs::CreateMatrixDescriptor(b_2d.dims(), 0, true);
+    auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a_2d.dims(), 0, true);
+    auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(b_2d.dims(), 0, true);
     auto mat_dim_dout =
-        pten::funcs::CreateMatrixDescriptor(d_out.dims(), 0, false);
+        phi::funcs::CreateMatrixDescriptor(d_out.dims(), 0, false);
     T alpha = static_cast<T>(1.0);
     blas.MatMul(d_out, mat_dim_dout, b, mat_dim_b, alpha, d_a, T(0));
     blas.MatMul(a, mat_dim_a, d_out, mat_dim_dout, alpha, d_b, T(0));
@@ -404,7 +404,7 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
     d_linear2_weight->mutable_data<T>(place);
 
     auto x_dim = x.dims();
-    auto mat_dim_x = pten::funcs::CreateMatrixDescriptor(
+    auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(
         RowMatrixFromVector(x_dim), 0, false);
 
     auto linear1_weight_dim = linear1_weight.dims();

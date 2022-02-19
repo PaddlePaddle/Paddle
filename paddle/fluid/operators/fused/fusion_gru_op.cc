@@ -36,7 +36,7 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
   OP_INOUT_CHECK(ctx->HasOutput("Hidden"), "Output", "Hidden", "fusion_gru");
   auto x_dims = ctx->GetInputDim("X");
   auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)
-                        ? pten::flatten_to_2d(x_dims, 1)
+                        ? phi::flatten_to_2d(x_dims, 1)
                         : x_dims;
   PADDLE_ENFORCE_EQ(
       x_mat_dims.size(), 2,
@@ -253,7 +253,7 @@ class FusionGRUKernel : public framework::OpKernel<T> {
   auto x_lod = x->lod();                                   \
   auto x_dims = x->dims(); /* T x M*/                      \
   auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1) \
-                        ? pten::flatten_to_2d(x_dims, 1)   \
+                        ? phi::flatten_to_2d(x_dims, 1)    \
                         : x_dims;                          \
   auto wh_dims = wh->dims(); /* D x 3D*/                   \
   const int total_T = x_mat_dims[0];                       \
@@ -295,7 +295,7 @@ class FusionGRUKernel : public framework::OpKernel<T> {
     const T* h0_data = h0 ? h0->data<T>() : nullptr;
     const T* wh_state_data = wh_data + D * D2;
     T* hidden_out_data = hidden_out->mutable_data<T>(place);
-    auto blas = pten::funcs::GetBlas<DeviceContext, T>(ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     math::FCFunctor<DeviceContext, T> fc;
@@ -367,7 +367,7 @@ class FusionGRUKernel : public framework::OpKernel<T> {
     T* batched_out_data = batched_out->mutable_data<T>(place);
     hidden_out->mutable_data<T>(place);
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    auto blas = pten::funcs::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     math::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
 
     math::FCFunctor<DeviceContext, T> fc;

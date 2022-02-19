@@ -42,8 +42,8 @@
 // }
 int main(int argc, char **argv) {
   paddle::framework::InitDefaultKernelSignatureMap();
-  auto &kernel_signature_map = pten::DefaultKernelSignatureMap::Instance();
-  auto &kernel_factory = pten::KernelFactory::Instance();
+  auto &kernel_signature_map = phi::DefaultKernelSignatureMap::Instance();
+  auto &kernel_factory = phi::KernelFactory::Instance();
   std::cout << "{";
   for (const auto &op_kernel_pair : kernel_factory.kernels()) {
     if (kernel_signature_map.Has(op_kernel_pair.first)) {

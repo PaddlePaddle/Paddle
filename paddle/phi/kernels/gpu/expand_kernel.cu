@@ -22,10 +22,10 @@
 PT_REGISTER_KERNEL(expand,
                    GPU,
                    ALL_LAYOUT,
-                   pten::ExpandKernel,
+                   phi::ExpandKernel,
                    float,
                    double,
-                   pten::dtype::float16,
+                   phi::dtype::float16,
                    int,
                    int64_t,
                    bool) {}

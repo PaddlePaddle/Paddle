@@ -14,7 +14,7 @@
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
 KernelSignature MaskedSelectOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
@@ -29,8 +29,8 @@ KernelSignature MaskedSelectGradOpArgumentMapping(
                          {GradVarName("X")});
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(masked_select, pten::MaskedSelectOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(masked_select, phi::MaskedSelectOpArgumentMapping);
 PT_REGISTER_ARG_MAPPING_FN(masked_select_grad,
-                           pten::MaskedSelectGradOpArgumentMapping);
+                           phi::MaskedSelectGradOpArgumentMapping);

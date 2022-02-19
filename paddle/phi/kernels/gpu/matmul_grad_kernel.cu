@@ -22,30 +22,30 @@ limitations under the License. */
 PT_REGISTER_KERNEL(matmul_grad,
                    GPU,
                    ALL_LAYOUT,
-                   pten::MatmulGradKernel,
+                   phi::MatmulGradKernel,
                    float,
                    double,
-                   pten::dtype::float16,
-                   pten::dtype::bfloat16,
-                   pten::dtype::complex<float>,
-                   pten::dtype::complex<double>) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(matmul_double_grad,
                    GPU,
                    ALL_LAYOUT,
-                   pten::MatmulDoubleGradKernel,
+                   phi::MatmulDoubleGradKernel,
                    float,
                    double,
-                   pten::dtype::float16,
-                   pten::dtype::complex<float>,
-                   pten::dtype::complex<double>) {}
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(matmul_triple_grad,
                    GPU,
                    ALL_LAYOUT,
-                   pten::MatmulTripleGradKernel,
+                   phi::MatmulTripleGradKernel,
                    float,
                    double,
-                   pten::dtype::float16,
-                   pten::dtype::complex<float>,
-                   pten::dtype::complex<double>) {}
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

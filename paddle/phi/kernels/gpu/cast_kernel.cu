@@ -26,7 +26,7 @@
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 
-namespace pten {
+namespace phi {
 
 template <typename InT, typename OutT>
 struct CastFuctor {
@@ -44,7 +44,7 @@ void CastCUDAKernelImpl(const GPUContext& dev_ctx,
   inputs.emplace_back(&x);
   outputs.emplace_back(out);
   dev_ctx.Alloc<OutT>(out);
-  pten::funcs::LaunchSameDimsElementwiseCudaKernel<OutT>(
+  phi::funcs::LaunchSameDimsElementwiseCudaKernel<OutT>(
       dev_ctx, inputs, &outputs, CastFuctor<InT, OutT>());
 }
 
@@ -58,13 +58,13 @@ void CastKernel(const Context& dev_ctx,
                      }));
 }
 
-}  // namespace pten
+}  // namespace phi
 
 #define PTEN_REGISTER_CAST_CUDA_BASE_TYPE(op_name, ...) \
   PT_REGISTER_KERNEL(cast,                              \
                      GPU,                               \
                      ALL_LAYOUT,                        \
-                     pten::CastKernel,                  \
+                     phi::CastKernel,                   \
                      float,                             \
                      double,                            \
                      int,                               \
@@ -72,16 +72,16 @@ void CastKernel(const Context& dev_ctx,
                      int16_t,                           \
                      bool,                              \
                      uint8_t,                           \
-                     pten::dtype::float16,              \
-                     pten::dtype::complex<float>,       \
-                     pten::dtype::complex<double>,      \
+                     phi::dtype::float16,               \
+                     phi::dtype::complex<float>,        \
+                     phi::dtype::complex<double>,       \
                      ##__VA_ARGS__) {                   \
     kernel->OutputAt(0).SetDataType(                    \
         paddle::experimental::DataType::UNDEFINED);     \
   }
 
 #if !defined(PADDLE_WITH_HIP)
-PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast, pten::dtype::bfloat16)
+PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast, phi::dtype::bfloat16)
 #else
 PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast)
 #endif

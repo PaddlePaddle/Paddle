@@ -25,16 +25,15 @@ namespace paddle {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = pten::DDim;
+using DDim = phi::DDim;
 
 paddle::experimental::Tensor CreateInputTensor() {
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  auto dense_x = std::make_shared<pten::DenseTensor>(
+  auto dense_x = std::make_shared<phi::DenseTensor>(
       alloc.get(),
-      pten::DenseTensorMeta(pten::DataType::INT64,
-                            pten::make_ddim({3, 4}),
-                            pten::DataLayout::NCHW));
+      phi::DenseTensorMeta(
+          phi::DataType::INT64, phi::make_ddim({3, 4}), phi::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x->mutable_data<int64_t>(paddle::platform::CPUPlace());
 
@@ -50,8 +49,8 @@ void CheckOutputResult(const paddle::experimental::Tensor& out) {
   ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.dims()[1], 4);
   ASSERT_EQ(out.is_cpu(), true);
-  ASSERT_EQ(out.type(), pten::DataType::INT64);
-  ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(out.type(), phi::DataType::INT64);
+  ASSERT_EQ(out.layout(), phi::DataLayout::NCHW);
   ASSERT_EQ(out.initialized(), true);
 
   for (int64_t i = 0; i < 12; ++i) {
@@ -65,10 +64,10 @@ TEST(API, copy_to) {
 
 // 2. test API
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  auto tmp = paddle::experimental::copy_to(x, pten::Backend::GPU, false);
-  auto out = paddle::experimental::copy_to(tmp, pten::Backend::CPU, true);
+  auto tmp = paddle::experimental::copy_to(x, phi::Backend::GPU, false);
+  auto out = paddle::experimental::copy_to(tmp, phi::Backend::CPU, true);
 #else
-  auto out = paddle::experimental::copy_to(x, pten::Backend::CPU, false);
+  auto out = paddle::experimental::copy_to(x, phi::Backend::CPU, false);
 #endif
 
   // 3. check result
@@ -81,10 +80,10 @@ TEST(Tensor, copy_to) {
 
 // 2. test API
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  auto tmp = x.copy_to(pten::Backend::GPU, false);
-  auto out = tmp.copy_to(pten::Backend::CPU, true);
+  auto tmp = x.copy_to(phi::Backend::GPU, false);
+  auto out = tmp.copy_to(phi::Backend::CPU, true);
 #else
-  auto out = x.copy_to(pten::Backend::CPU, false);
+  auto out = x.copy_to(phi::Backend::CPU, false);
 #endif
 
   // 3. check result

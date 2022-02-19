@@ -21,7 +21,7 @@
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/transform.h"
 
-namespace pten {
+namespace phi {
 
 template <typename InT, typename OutT>
 struct CastOpTransformFunctor {
@@ -56,12 +56,12 @@ void CastKernel(const Context& dev_ctx,
                      }));
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(cast,
                    CPU,
                    ALL_LAYOUT,
-                   pten::CastKernel,
+                   phi::CastKernel,
                    float,
                    double,
                    int,
@@ -69,9 +69,9 @@ PT_REGISTER_KERNEL(cast,
                    int16_t,
                    bool,
                    uint8_t,
-                   pten::dtype::float16,
-                   pten::dtype::bfloat16,
-                   pten::dtype::complex<float>,
-                   pten::dtype::complex<double>) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }

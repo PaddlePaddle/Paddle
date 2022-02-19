@@ -17,14 +17,14 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/copy_kernel.h"
 
-namespace pten {
+namespace phi {
 
 template <typename Context>
 void ReshapeGradKernel(const Context& dev_ctx,
                        const DenseTensor& out_grad,
                        DenseTensor* x_grad) {
   auto x_dims = x_grad->dims();
-  pten::Copy(dev_ctx, out_grad, false, x_grad);
+  phi::Copy(dev_ctx, out_grad, false, x_grad);
   x_grad->Resize(x_dims);
 }
 
@@ -35,29 +35,29 @@ void ReshapeDoubleGradKernel(const Context& dev_ctx,
   ReshapeGradKernel(dev_ctx, x_grad_grad, out_grad_grad);
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_GENERAL_KERNEL(reshape_grad,
                            CPU,
                            ALL_LAYOUT,
-                           pten::ReshapeGradKernel<pten::CPUContext>,
+                           phi::ReshapeGradKernel<phi::CPUContext>,
                            ALL_DTYPE) {}
 PT_REGISTER_GENERAL_KERNEL(reshape_double_grad,
                            CPU,
                            ALL_LAYOUT,
-                           pten::ReshapeDoubleGradKernel<pten::CPUContext>,
+                           phi::ReshapeDoubleGradKernel<phi::CPUContext>,
                            ALL_DTYPE) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PT_REGISTER_GENERAL_KERNEL(reshape_grad,
                            GPU,
                            ALL_LAYOUT,
-                           pten::ReshapeGradKernel<pten::GPUContext>,
+                           phi::ReshapeGradKernel<phi::GPUContext>,
                            ALL_DTYPE) {}
 PT_REGISTER_GENERAL_KERNEL(reshape_double_grad,
                            GPU,
                            ALL_LAYOUT,
-                           pten::ReshapeDoubleGradKernel<pten::GPUContext>,
+                           phi::ReshapeDoubleGradKernel<phi::GPUContext>,
                            ALL_DTYPE) {}
 #endif
 
@@ -65,11 +65,11 @@ PT_REGISTER_GENERAL_KERNEL(reshape_double_grad,
 PT_REGISTER_GENERAL_KERNEL(reshape_grad,
                            XPU,
                            ALL_LAYOUT,
-                           pten::ReshapeGradKernel<pten::XPUContext>,
+                           phi::ReshapeGradKernel<phi::XPUContext>,
                            ALL_DTYPE) {}
 PT_REGISTER_GENERAL_KERNEL(reshape_double_grad,
                            XPU,
                            ALL_LAYOUT,
-                           pten::ReshapeDoubleGradKernel<pten::XPUContext>,
+                           phi::ReshapeDoubleGradKernel<phi::XPUContext>,
                            ALL_DTYPE) {}
 #endif

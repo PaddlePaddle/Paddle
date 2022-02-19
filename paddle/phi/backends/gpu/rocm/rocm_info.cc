@@ -22,7 +22,7 @@ static std::once_flag g_device_props_size_init_flag;
 static std::vector<std::unique_ptr<std::once_flag>> g_device_props_init_flags;
 static std::vector<paddle::gpuDeviceProp> g_device_props;
 
-namespace pten {
+namespace phi {
 namespace backends {
 namespace gpu {
 
@@ -328,4 +328,4 @@ bool IsGPUManagedMemoryOversubscriptionSupported(int dev_id) {
 
 }  // namespace gpu
 }  // namespace backends
-}  // namespace pten
+}  // namespace phi

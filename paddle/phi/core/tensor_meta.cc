@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/tensor_meta.h"
 
-namespace pten {
+namespace phi {
 
 DenseTensorMeta::DenseTensorMeta(DataType dtype, const DDim& dims)
     : dims(dims), dtype(dtype) {}
@@ -40,4 +40,4 @@ bool DenseTensorMeta::valid() const noexcept {
   return valid;
 }
 
-}  // namespace pten
+}  // namespace phi

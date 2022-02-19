@@ -103,7 +103,7 @@ void GetShuffledInput(const framework::ExecutionContext& context,
   shuffled_input->Resize(shuffled_dims);
   shuffled_input->mutable_data<OutT>(context.GetPlace());
 
-  pten::funcs::TransposeNormal<DeviceContext, OutT> trans;
+  phi::funcs::TransposeNormal<DeviceContext, OutT> trans;
   trans(context.template device_context<DeviceContext>(), *input,
         shuffled_input, perm_axis);
 }
@@ -167,7 +167,7 @@ void HandleLargeDimGrad(const framework::ExecutionContext& context,
   framework::TensorCopy(*dx, context.GetPlace(), &dx_tmp);
   dx_tmp.Resize(shuffled_dim);
   dx->Resize(x_dim);
-  pten::funcs::TransposeNormal<DeviceContext, T> trans;
+  phi::funcs::TransposeNormal<DeviceContext, T> trans;
   trans(context.template device_context<DeviceContext>(), dx_tmp, dx,
         origin_axis);
 }
@@ -257,8 +257,8 @@ class ReduceKernel : public framework::OpKernel<T> {
     std::vector<int64_t> tmp_dims(dims.begin(), dims.end());
 
     // call new kernel
-    pten::Reduce<typename framework::ConvertToPtenContext<DeviceContext>::TYPE,
-                 T, Functor>(
+    phi::Reduce<typename framework::ConvertToPtenContext<DeviceContext>::TYPE,
+                T, Functor>(
         static_cast<const typename framework::ConvertToPtenContext<
             DeviceContext>::TYPE&>(dev_ctx),
         *input, reduce_all, tmp_dims, keep_dim,
@@ -494,7 +494,7 @@ class ReduceOp : public framework::OperatorWithKernel {
     if (reduce_all) {
       if (keep_dim)
         ctx->SetOutputDim("Out",
-                          pten::make_ddim(std::vector<int64_t>(x_rank, 1)));
+                          phi::make_ddim(std::vector<int64_t>(x_rank, 1)));
       else
         ctx->SetOutputDim("Out", {1});
     } else {
@@ -515,7 +515,7 @@ class ReduceOp : public framework::OperatorWithKernel {
       if (!keep_dim && dims_vector.size() == 0) {
         dims_vector.push_back(1);
       }
-      auto out_dims = pten::make_ddim(dims_vector);
+      auto out_dims = phi::make_ddim(dims_vector);
       ctx->SetOutputDim("Out", out_dims);
       if (dims.size() > 0 && dims[0] != 0) {
         // Only pass LoD when not reducing on the first dim.
@@ -697,7 +697,7 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
 
     std::vector<int64_t> dims_int64{dims.begin(), dims.end()};
 
-    pten::Reduce<T, ReduceOp, TransformOp>(
+    phi::Reduce<T, ReduceOp, TransformOp>(
         dev_ctx, *input, reduce_all, dims_int64, false, pt_out_dtype, output);
   }
 };
@@ -727,7 +727,7 @@ class ReduceCudaGradKernel : public framework::OpKernel<T> {
     // make new tensor
     framework::Tensor new_d_out(d_out->type());
     new_d_out.ShareDataWith(*d_out);
-    new_d_out.Resize(pten::make_ddim(update_dims));
+    new_d_out.Resize(phi::make_ddim(update_dims));
     auto& dev_ctx = context.cuda_device_context();
     if (out_dtype > 0) {
       d_x->mutable_data(dev_ctx.GetPlace(), pt_out_dtype);
@@ -740,7 +740,7 @@ class ReduceCudaGradKernel : public framework::OpKernel<T> {
       pt_out_dtype = d_out->dtype();
     }
     using MPType = typename kps::details::MPTypeTrait<T>::Type;
-    pten::ReduceGrad<T, TransformOp<T, MPType>>(
+    phi::ReduceGrad<T, TransformOp<T, MPType>>(
         dev_ctx, pt_d_out.get(), pt_d_x.get(), pt_out_dtype,
         TransformOp<T, MPType>(reduce_num));
   }

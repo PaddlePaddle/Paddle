@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <atomic>
 
-namespace pten {
+namespace phi {
 
 template <typename DerivedT>
 class intrusive_ref_counter;
@@ -61,4 +61,4 @@ inline void intrusive_ptr_release(
   }
 }
 
-}  // namespace pten
+}  // namespace phi

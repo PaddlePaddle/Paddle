@@ -126,9 +126,9 @@ using ScalarArray =
 }  // namespace experimental
 }  // namespace paddle
 
-namespace pten {
+namespace phi {
 
 class DenseTensor;
 using ScalarArray = paddle::experimental::ScalarArrayBase<DenseTensor>;
 
-}  // namespace pten
+}  // namespace phi

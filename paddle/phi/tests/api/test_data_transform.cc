@@ -35,7 +35,7 @@ TEST(API, data_transform_same_place) {
   auto y = paddle::experimental::full(
       {3, 3}, 2.0, experimental::DataType::FLOAT32, experimental::Backend::CPU);
 
-  std::vector<pten::dtype::complex<double>> sum(9, 6.0);
+  std::vector<phi::dtype::complex<double>> sum(9, 6.0);
 
   // 2. test API
   auto out = paddle::experimental::matmul(x, y, false, false);
@@ -45,18 +45,18 @@ TEST(API, data_transform_same_place) {
   ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.dims()[1], 3);
   ASSERT_EQ(out.numel(), 9);
-  ASSERT_EQ(out.type(), pten::DataType::COMPLEX128);
-  ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(out.type(), phi::DataType::COMPLEX128);
+  ASSERT_EQ(out.layout(), phi::DataLayout::NCHW);
   ASSERT_EQ(out.initialized(), true);
 
-  auto dense_out = std::dynamic_pointer_cast<pten::DenseTensor>(out.impl());
+  auto dense_out = std::dynamic_pointer_cast<phi::DenseTensor>(out.impl());
 
   for (size_t i = 0; i < 9; i++) {
     ASSERT_NEAR(sum[i].real,
-                dense_out->data<pten::dtype::complex<double>>()[i].real,
+                dense_out->data<phi::dtype::complex<double>>()[i].real,
                 1e-6f);
     ASSERT_NEAR(sum[i].imag,
-                dense_out->data<pten::dtype::complex<double>>()[i].imag,
+                dense_out->data<phi::dtype::complex<double>>()[i].imag,
                 1e-6f);
   }
 }
@@ -80,15 +80,15 @@ TEST(Tensor, data_transform_diff_place) {
   ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.dims()[1], 3);
   ASSERT_EQ(out.numel(), 9);
-  ASSERT_EQ(out.dtype(), pten::DataType::FLOAT64);
-  ASSERT_EQ(out.layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(out.dtype(), phi::DataType::FLOAT64);
+  ASSERT_EQ(out.layout(), phi::DataLayout::NCHW);
   ASSERT_EQ(out.initialized(), true);
   ASSERT_EQ(out.impl()->place(),
-            pten::TransToPtenPlace(experimental::Backend::GPU));
+            phi::TransToPtenPlace(experimental::Backend::GPU));
 
   auto ref_out = experimental::copy_to(out, experimental::Backend::CPU, true);
 
-  auto dense_out = std::dynamic_pointer_cast<pten::DenseTensor>(ref_out.impl());
+  auto dense_out = std::dynamic_pointer_cast<phi::DenseTensor>(ref_out.impl());
   for (size_t i = 0; i < 9; i++) {
     ASSERT_NEAR(sum[i], dense_out->data<double>()[i], 1e-6f);
   }

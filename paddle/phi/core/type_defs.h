@@ -16,7 +16,7 @@
 
 #include <functional>
 
-namespace pten {
+namespace phi {
 
 class Kernel;
 class KernelKey;
@@ -35,4 +35,4 @@ using ArgumentMappingFn =
     std::function<KernelSignature(const ArgumentMappingContext&)>;
 using InferMetaFn = void (*)(InferMetaContext* ctx);
 
-}  // namespace pten
+}  // namespace phi

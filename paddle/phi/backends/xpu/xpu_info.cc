@@ -34,7 +34,7 @@ PADDLE_DEFINE_EXPORTED_string(
     "between XPU devices, use XPU_VISIBLE_DEVICES can only use"
     "share-memory only.");
 
-namespace pten {
+namespace phi {
 class XPUContext;
 
 namespace backends {
@@ -140,7 +140,7 @@ std::vector<int> GetXPUSelectedDevices() {
 void MemcpySyncH2D(void* dst,
                    const void* src,
                    size_t count,
-                   const pten::XPUPlace& dst_place) {
+                   const phi::XPUPlace& dst_place) {
   XPUDeviceGuard guard(dst_place.device);
   PADDLE_ENFORCE_XPU_SUCCESS(
       xpu_memcpy(dst, src, count, XPUMemcpyKind::XPU_HOST_TO_DEVICE));
@@ -149,8 +149,8 @@ void MemcpySyncH2D(void* dst,
 void MemcpySyncD2H(void* dst,
                    const void* src,
                    size_t count,
-                   const pten::XPUPlace& src_place,
-                   const pten::XPUContext& dev_ctx) {
+                   const phi::XPUPlace& src_place,
+                   const phi::XPUContext& dev_ctx) {
   XPUDeviceGuard guard(src_place.GetDeviceId());
   dev_ctx.Wait();
   PADDLE_ENFORCE_XPU_SUCCESS(
@@ -160,11 +160,11 @@ void MemcpySyncD2H(void* dst,
 // if src.device == dst.device and you need sync , after call this function,
 // need to call xpu_wait()
 void MemcpySyncD2D(void* dst,
-                   const pten::XPUPlace& dst_place,
+                   const phi::XPUPlace& dst_place,
                    const void* src,
-                   const pten::XPUPlace& src_place,
+                   const phi::XPUPlace& src_place,
                    size_t count,
-                   const pten::XPUContext& dev_ctx) {
+                   const phi::XPUContext& dev_ctx) {
   int dev_id = GetXPUCurrentDeviceId();
   if (dst_place.device == dev_id && src_place.device == dev_id) {
     PADDLE_ENFORCE_XDNN_SUCCESS(
@@ -196,4 +196,4 @@ XPUVersion get_xpu_version(int dev_id) {
 
 }  // namespace xpu
 }  // namespace backends
-}  // namespace pten
+}  // namespace phi

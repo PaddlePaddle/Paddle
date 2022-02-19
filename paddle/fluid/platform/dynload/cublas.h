@@ -33,8 +33,8 @@ namespace dynload {
  *
  * note: default dynamic linked libs
  */
-#define PLATFORM_DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name)     \
-  using DynLoad__##__name = pten::dynload::DynLoad__##__name; \
+#define PLATFORM_DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name)    \
+  using DynLoad__##__name = phi::dynload::DynLoad__##__name; \
   extern DynLoad__##__name __name
 
 #define CUBLAS_BLAS_ROUTINE_EACH(__macro) \

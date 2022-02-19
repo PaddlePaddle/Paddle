@@ -23,11 +23,11 @@ limitations under the License. */
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace pten {
+namespace phi {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = pten::DDim;
+using DDim = phi::DDim;
 
 // TODO(YuanRisheng): This TEST file need to be refactored after 'copy' realized
 // in 'paddle/api'
@@ -35,19 +35,19 @@ TEST(DEV_API, copy) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  auto dense_src = std::make_shared<pten::DenseTensor>(
+  auto dense_src = std::make_shared<phi::DenseTensor>(
       alloc.get(),
-      pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            pten::make_ddim({2, 3}),
-                            pten::DataLayout::NCHW));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                           phi::make_ddim({2, 3}),
+                           phi::DataLayout::NCHW));
   auto* dense_x_data =
       dense_src->mutable_data<float>(paddle::platform::CPUPlace());
 
-  auto dense_dst = std::make_shared<pten::DenseTensor>(
+  auto dense_dst = std::make_shared<phi::DenseTensor>(
       alloc.get(),
-      pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            pten::make_ddim({2, 3}),
-                            pten::DataLayout::NCHW));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                           phi::make_ddim({2, 3}),
+                           phi::DataLayout::NCHW));
 
   for (size_t i = 0; i < 2; ++i) {
     for (size_t j = 0; j < 3; ++j) {
@@ -57,12 +57,12 @@ TEST(DEV_API, copy) {
   const auto& a = paddle::platform::CPUPlace();
   std::cout << typeid(a).name() << std::endl;
   // 2. test API
-  pten::CPUContext dev_ctx;
+  phi::CPUContext dev_ctx;
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(paddle::platform::CPUPlace())
                            .get());
   dev_ctx.Init();
-  pten::Copy(dev_ctx, *(dense_src.get()), false, dense_dst.get());
+  phi::Copy(dev_ctx, *(dense_src.get()), false, dense_dst.get());
 
   // 3. check result
   for (int64_t i = 0; i < dense_src->numel(); i++) {
@@ -71,4 +71,4 @@ TEST(DEV_API, copy) {
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi

@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace pten {
+namespace phi {
 namespace dynload {
 
 std::once_flag cudnn_dso_flag;
@@ -60,4 +60,4 @@ void EnforceCUDNNLoaded(const char* fn_name) {
 }
 
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi

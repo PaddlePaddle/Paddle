@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-namespace pten {
+namespace phi {
 
 // Disable the copy and assignment operator for a class.
 #ifndef DISABLE_COPY_AND_ASSIGN
@@ -53,4 +53,4 @@ namespace pten {
 #define PT_CONCATENATE2(arg1, arg2) arg1##arg2
 #define PT_EXPAND(x) x
 
-}  // namespace pten
+}  // namespace phi

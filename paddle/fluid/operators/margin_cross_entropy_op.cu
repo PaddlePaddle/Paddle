@@ -344,7 +344,7 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     // step 6, prob = exp((logit - logit_max) - log(sum(exp(logit -
     // logit_max))))
     // loss = -((logit_i - logit_max) - log(sum(exp(logit - logit_max))))
-    pten::funcs::SetConstant<platform::CUDADeviceContext, T>()(
+    phi::funcs::SetConstant<platform::CUDADeviceContext, T>()(
         dev_ctx, loss, static_cast<T>(0.0));
     if (label_type == framework::proto::VarType::INT32) {
       typedef int32_t LabelT;

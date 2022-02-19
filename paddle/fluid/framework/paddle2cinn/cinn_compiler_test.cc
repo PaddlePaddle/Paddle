@@ -258,7 +258,7 @@ TEST(CinnCompilerTest, Compile) {
   std::unordered_map<std::string, LoDTensor> create_inputs;
   for (const auto& pair : inputs_info) {
     auto& tensor = create_inputs[pair.first];
-    tensor.Resize(pten::make_ddim(pair.second));
+    tensor.Resize(phi::make_ddim(pair.second));
     tensor.mutable_data<float>(platform::CPUPlace());
   }
   std::map<std::string, const LoDTensor*> input_tensors;

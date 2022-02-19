@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/dynload/nccl.h"
 
-namespace pten {
+namespace phi {
 namespace dynload {
 
 std::once_flag nccl_dso_flag;
@@ -41,4 +41,4 @@ NCCL_RAND_ROUTINE_EACH_AFTER_21100(DEFINE_WRAP)
 #endif
 
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi

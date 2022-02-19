@@ -21,7 +21,7 @@
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #define MAX_RANK_SUPPORTED 6
 
-namespace pten {
+namespace phi {
 using Tensor = DenseTensor;
 
 template <typename Context, typename T, int Rank>
@@ -31,7 +31,7 @@ void Expand(const Context& ctx,
             DenseTensor* out) {
   auto in_dims = x.dims();
   auto expand_shape = shape.GetData();
-  auto vec_in_dims = pten::vectorize<int>(in_dims);
+  auto vec_in_dims = phi::vectorize<int>(in_dims);
   auto diff = expand_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   std::vector<int> repeat_times(vec_in_dims.size());
@@ -39,12 +39,12 @@ void Expand(const Context& ctx,
     PADDLE_ENFORCE_NE(
         expand_shape[i],
         0,
-        pten::errors::InvalidArgument("The expanded size cannot be zero."));
+        phi::errors::InvalidArgument("The expanded size cannot be zero."));
     if (i < diff) {
       PADDLE_ENFORCE_GT(
           expand_shape[i],
           0,
-          pten::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The expanded size (%d) for non-existing dimensions must be "
               "positive for expand_v2 op.",
               expand_shape[i]));
@@ -54,7 +54,7 @@ void Expand(const Context& ctx,
         PADDLE_ENFORCE_EQ(
             vec_in_dims[i],
             expand_shape[i],
-            pten::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "The value (%d) of the non-singleton dimension does not match"
                 " the corresponding value (%d) in shape for expand_v2 op.",
                 vec_in_dims[i],
@@ -67,7 +67,7 @@ void Expand(const Context& ctx,
       PADDLE_ENFORCE_EQ(
           expand_shape[i],
           -1,
-          pten::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "When the value in shape is negative for expand_v2 op, "
               "only -1 is supported, but the value received is %d.",
               expand_shape[i]));
@@ -80,7 +80,7 @@ void Expand(const Context& ctx,
     bcast_dims[i] = repeat_times[i];
   }
 
-  DDim new_in_dims = pten::make_ddim(vec_in_dims);
+  DDim new_in_dims = phi::make_ddim(vec_in_dims);
   DDim out_dims(new_in_dims);
   for (size_t i = 0; i < repeat_times.size(); ++i) {
     out_dims[i] *= repeat_times[i];
@@ -96,10 +96,10 @@ void Expand(const Context& ctx,
   // use 32-bit index to speed up
   bool use_32bit_index = y.size() < Eigen::NumTraits<int>::highest();
   if (use_32bit_index) {
-    pten::funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
+    phi::funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
         place, To32BitIndex(y), To32BitIndex(x0), bcast_dims);
   } else {
-    pten::funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
+    phi::funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
         place, y, x0, bcast_dims);
   }
 }
@@ -113,14 +113,14 @@ void ExpandKernel(const Context& ctx,
   PADDLE_ENFORCE_GE(
       rank,
       1,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The rank of the input 'X' for expand_v2 op must be positive, "
           "but the value received is %d.",
           rank));
   PADDLE_ENFORCE_LE(
       rank,
       MAX_RANK_SUPPORTED,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The rank of the input 'X' for expand_v2 op must be less than "
           "or equal to %d, but the value received is %d.",
           MAX_RANK_SUPPORTED,
@@ -130,7 +130,7 @@ void ExpandKernel(const Context& ctx,
   PADDLE_ENFORCE_GE(
       shape_size,
       rank,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The number (%d) of elements of 'shape' for expand_v2 op must be "
           "greater than or equal to the rank (%d) of the input 'X'.",
           shape_size,
@@ -138,7 +138,7 @@ void ExpandKernel(const Context& ctx,
   PADDLE_ENFORCE_LE(
       shape_size,
       MAX_RANK_SUPPORTED,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The number (%d) of elements of 'shape' for expand_v2 op must be "
           "less than or equal to %d.",
           shape_size,
@@ -166,4 +166,4 @@ void ExpandKernel(const Context& ctx,
   }
 }
 
-}  // namespace pten
+}  // namespace phi

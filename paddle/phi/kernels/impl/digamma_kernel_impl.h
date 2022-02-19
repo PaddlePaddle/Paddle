@@ -18,7 +18,7 @@
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T>
 struct DigammaFunctor {
@@ -46,4 +46,4 @@ void DigammaKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   for_range(functor);
 }
 
-}  // namespace pten
+}  // namespace phi

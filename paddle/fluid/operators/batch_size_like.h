@@ -37,7 +37,7 @@ class BatchSizeLikeOp : public framework::OperatorWithKernel {
     std::vector<int64_t> shape_int64(shape.size(), 0);
     std::transform(shape.begin(), shape.end(), shape_int64.begin(),
                    [](int a) { return static_cast<int64_t>(a); });
-    auto output_dim = pten::make_ddim(shape_int64);
+    auto output_dim = phi::make_ddim(shape_int64);
 
     int input_dim_idx = ctx->Attrs().Get<int>("input_dim_idx");
     int input_dim_size = static_cast<int>(ctx->GetInputDim("Input").size());

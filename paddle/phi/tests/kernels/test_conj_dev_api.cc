@@ -23,20 +23,20 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-namespace pten {
+namespace phi {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = pten::DDim;
+using DDim = phi::DDim;
 
 TEST(DEV_API, conj) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(alloc.get(),
-                            pten::DenseTensorMeta(pten::DataType::COMPLEX64,
-                                                  pten::make_ddim({3, 4}),
-                                                  pten::DataLayout::NCHW));
+  phi::DenseTensor dense_x(alloc.get(),
+                           phi::DenseTensorMeta(phi::DataType::COMPLEX64,
+                                                phi::make_ddim({3, 4}),
+                                                phi::DataLayout::NCHW));
 
   auto* dense_x_data =
       dense_x.mutable_data<paddle::complex64>(paddle::platform::CPUPlace());
@@ -44,20 +44,20 @@ TEST(DEV_API, conj) {
     dense_x_data[i] = paddle::complex64(i * 1.0, i * 1.0);
   }
 
-  pten::CPUContext dev_ctx;
+  phi::CPUContext dev_ctx;
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(paddle::platform::CPUPlace())
                            .get());
   dev_ctx.Init();
 
   // 2. test API
-  auto out = pten::Conj<paddle::complex64>(dev_ctx, dense_x);
+  auto out = phi::Conj<paddle::complex64>(dev_ctx, dense_x);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);
   ASSERT_EQ(out.numel(), 12);
-  ASSERT_EQ(out.meta().dtype, pten::DataType::COMPLEX64);
-  ASSERT_EQ(out.meta().layout, pten::DataLayout::NCHW);
+  ASSERT_EQ(out.meta().dtype, phi::DataType::COMPLEX64);
+  ASSERT_EQ(out.meta().layout, phi::DataLayout::NCHW);
 
   auto actual_result = out.data<paddle::complex64>();
 
@@ -68,4 +68,4 @@ TEST(DEV_API, conj) {
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi

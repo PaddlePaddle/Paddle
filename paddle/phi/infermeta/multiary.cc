@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
-namespace pten {
+namespace phi {
 
 void ConcatInferMeta(const std::vector<MetaTensor>& x,
                      const Scalar& axis_scalar,
@@ -44,16 +44,16 @@ void ConcatInferMeta(const std::vector<MetaTensor>& x,
   }
 
   // 2. calculate out dims
-  std::vector<pten::DDim> x_dims;
+  std::vector<phi::DDim> x_dims;
   for (auto& x_t : x) {
     x_dims.push_back(x_t.dims());
   }
-  pten::DDim out_dim =
-      pten::funcs::ComputeAndCheckShape(config.is_runtime, x_dims, axis);
+  phi::DDim out_dim =
+      phi::funcs::ComputeAndCheckShape(config.is_runtime, x_dims, axis);
 
   out->set_dims(out_dim);
   out->set_dtype(x.at(0).dtype());
   out->set_layout(x.at(0).layout());
 }
 
-}  // namespace pten
+}  // namespace phi

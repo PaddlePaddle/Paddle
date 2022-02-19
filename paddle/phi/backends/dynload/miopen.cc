@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/miopen.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace pten {
+namespace phi {
 namespace dynload {
 std::once_flag miopen_dso_flag;
 void* miopen_dso_handle = nullptr;
@@ -64,4 +64,4 @@ void EnforceCUDNNLoaded(const char* fn_name) {
 }
 
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi

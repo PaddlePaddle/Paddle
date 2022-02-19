@@ -43,7 +43,7 @@ CUDNN_DNN_ROUTINE_EACH_AFTER_R7(DEFINE_WRAP);
 CUDNN_DNN_ROUTINE_EACH_R8(DEFINE_WRAP);
 #endif
 
-bool HasCUDNN() { return pten::dynload::HasCUDNN(); }
+bool HasCUDNN() { return phi::dynload::HasCUDNN(); }
 
 }  // namespace dynload
 }  // namespace platform

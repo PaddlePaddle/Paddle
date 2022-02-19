@@ -697,7 +697,7 @@ class Pad3dGradCUDAKernel : public framework::OpKernel<T> {
     const T* d_out_data = d_out->data<T>();
     T* d_in_data = d_in->mutable_data<T>(context.GetPlace());
 
-    pten::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
+    phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
     set_zero(context.template device_context<platform::CUDADeviceContext>(),
              d_in, static_cast<T>(0));
 

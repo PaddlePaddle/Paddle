@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/phi/core/utils/intrusive_ref_counter.h"
 #include "paddle/phi/core/utils/type_info.h"
 
-namespace pten {
+namespace phi {
 
 /// \brief The interface of contiguous storage used for the dense tensor.
 /// It should be used in conjunction with the intrusive pointer. We prohibit
@@ -40,11 +40,11 @@ class Storage : public intrusive_ref_counter<Storage> {
 
   /*   --------- shared_ptr<Allocation> -------- */
   // Initialize a Storage with unique Allocation
-  explicit Storage(std::shared_ptr<pten::Allocation>&& data)
+  explicit Storage(std::shared_ptr<phi::Allocation>&& data)
       : data_(std::move(data)) {}
 
   // Initialize a Storage shareing Allocation with another storage
-  explicit Storage(const std::shared_ptr<pten::Allocation>& data)
+  explicit Storage(const std::shared_ptr<phi::Allocation>& data)
       : data_(data) {}
 
   void* data() const {
@@ -53,15 +53,15 @@ class Storage : public intrusive_ref_counter<Storage> {
                  : nullptr;
   }
 
-  const std::shared_ptr<pten::Allocation>& data_shared() const { return data_; }
+  const std::shared_ptr<phi::Allocation>& data_shared() const { return data_; }
 
   virtual void set_data_shared(
-      const std::shared_ptr<pten::Allocation>& holder) = 0;
+      const std::shared_ptr<phi::Allocation>& holder) = 0;
 
-  virtual std::shared_ptr<pten::Allocation>&& move_data_shared() = 0;
+  virtual std::shared_ptr<phi::Allocation>&& move_data_shared() = 0;
 
   virtual void ReallocShared(size_t n) {
-    PADDLE_THROW(pten::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "ReallocShared has not been overrided by the current Storage"));
   }
   /* --------- shared_ptr<Allocation> -------- */
@@ -76,7 +76,7 @@ class Storage : public intrusive_ref_counter<Storage> {
   virtual void Realloc(size_t n) = 0;
 
  protected:
-  std::shared_ptr<pten::Allocation> data_;
+  std::shared_ptr<phi::Allocation> data_;
 };
 
 class TensorStorage : public Storage {
@@ -103,7 +103,7 @@ class TensorStorage : public Storage {
 
   const Place& place() const override {
     if (!data_) {
-      PADDLE_THROW(pten::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Unable to visit place: either data_ or alloc_ has to be initialized "
           "first."));
     }
@@ -113,13 +113,13 @@ class TensorStorage : public Storage {
   bool OwnsMemory() const noexcept override { return true; }
 
   void set_data_shared(
-      const std::shared_ptr<pten::Allocation>& holder) override {
+      const std::shared_ptr<phi::Allocation>& holder) override {
     CHECK(holder);
     data_ = holder;
     size_ = holder->size();
   }
 
-  std::shared_ptr<pten::Allocation>&& move_data_shared() override {
+  std::shared_ptr<phi::Allocation>&& move_data_shared() override {
     size_ = 0;
     return std::move(data_);
   }
@@ -129,4 +129,4 @@ class TensorStorage : public Storage {
   int64_t size_{0};
 };
 
-}  // namespace pten
+}  // namespace phi

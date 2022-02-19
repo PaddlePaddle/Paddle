@@ -14,7 +14,7 @@
 
 #pragma once
 
-namespace pten {
+namespace phi {
 namespace kps {
 
 #ifdef PADDLE_WITH_XPU2
@@ -64,4 +64,4 @@ struct DimConfig {
 };
 
 }  // namespace kps
-}  // namespace pten
+}  // namespace phi

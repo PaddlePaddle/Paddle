@@ -51,9 +51,9 @@ namespace cub = hipcub;
 #define REDUCE_SPLIT_BOUNDARY 512
 #define REDUCE_VEC_SIZE 4
 
-namespace kps = pten::kps;
+namespace kps = phi::kps;
 
-namespace pten {
+namespace phi {
 namespace kernels {
 
 namespace details {
@@ -94,7 +94,7 @@ static inline void CheckReduceRank(int reduce_rank, int rank) {
   if (rank % 2 == 0) {
     PADDLE_ENFORCE_EQ(reduce_rank,
                       rank / 2,
-                      pten::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "ReduceOp: invalid reduce rank. When rank = %d, "
                           "reduce_rank must be %d, but got %d.",
                           rank,
@@ -106,7 +106,7 @@ static inline void CheckReduceRank(int reduce_rank, int rank) {
     PADDLE_ENFORCE_EQ(
         reduce_rank == lower_rank || reduce_rank == upper_rank,
         true,
-        pten::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "ReduceOp: invalid reduce rank. When rank = %d, reduce_rank "
             "must be %d or %d, but got %d.",
             rank,
@@ -118,17 +118,17 @@ static inline void CheckReduceRank(int reduce_rank, int rank) {
 
 // convert dims from vector to array
 template <typename T, size_t ElementCount, typename VectorLikeType>
-static inline pten::Array<T, ElementCount> VectorToArray(
+static inline phi::Array<T, ElementCount> VectorToArray(
     const VectorLikeType& vec) {
-  PADDLE_ENFORCE_LE(vec.size(),
-                    ElementCount,
-                    pten::errors::InvalidArgument(
-                        "Cub reduce Array: size not match. Received "
-                        "vec.size() %d > ElementCount %d.",
-                        vec.size(),
-                        ElementCount));
+  PADDLE_ENFORCE_LE(
+      vec.size(),
+      ElementCount,
+      phi::errors::InvalidArgument("Cub reduce Array: size not match. Received "
+                                   "vec.size() %d > ElementCount %d.",
+                                   vec.size(),
+                                   ElementCount));
   size_t n = static_cast<size_t>(vec.size());
-  pten::Array<T, ElementCount> ret;
+  phi::Array<T, ElementCount> ret;
   for (size_t i = 0; i < n; ++i) {
     ret[i] = vec[i];
   }
@@ -149,7 +149,7 @@ static inline std::vector<int> GetReduceDim(const std::vector<int64_t>& dims,
     for (auto e : dims) {
       PADDLE_ENFORCE_LT(e,
                         dim_size,
-                        pten::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "ReduceOp: invalid axis, when x_dims is %d, "
                             "axis[i] should less than x_dims, but got %d.",
                             dim_size,
@@ -162,7 +162,7 @@ static inline std::vector<int> GetReduceDim(const std::vector<int64_t>& dims,
 
 }  // namespace details
 
-constexpr int kMaxRank = pten::DDim::kMaxRank;
+constexpr int kMaxRank = phi::DDim::kMaxRank;
 
 enum ReduceType {
   kReduceLastDim = 0x01,    // when reduce_dim[0] == x_dim.size() - 1;
@@ -202,9 +202,9 @@ struct IndexCalculator {
   }
 
   int dim;
-  pten::Array<int, kMaxRank> dims;
-  pten::Array<int, kMaxRank> strides;
-  pten::Array<paddle::platform::FastDivMod, kMaxRank> divmoders;
+  phi::Array<int, kMaxRank> dims;
+  phi::Array<int, kMaxRank> strides;
+  phi::Array<paddle::platform::FastDivMod, kMaxRank> divmoders;
 };
 
 template <bool ReduceLastDim = false>
@@ -324,9 +324,9 @@ struct ReduceConfig {
   // when should_reduce_again is true, we need malloc temp space for temp data
   void SetOutputData(Ty* y_data,
                      const paddle::platform::Place& place,
-                     pten::DenseTensor* tmp) {
+                     phi::DenseTensor* tmp) {
     if (should_reduce_again) {
-      tmp->ResizeAndAllocate(pten::make_ddim(
+      tmp->ResizeAndAllocate(phi::make_ddim(
           {static_cast<int64_t>(left_num * grid.z * grid.y * sizeof(Ty))}));
       output_data = tmp->mutable_data<Ty>(place);
     } else {
@@ -1004,7 +1004,7 @@ template <typename Tx,
           typename Ty,
           template <typename> class ReduceOp,
           typename TransformOp>
-static typename std::enable_if<!std::is_same<Tx, pten::dtype::float16>::value,
+static typename std::enable_if<!std::is_same<Tx, phi::dtype::float16>::value,
                                void>::type
 CubTensorReduceImpl(const Tx* x_data,
                     Ty* y_data,
@@ -1025,11 +1025,11 @@ CubTensorReduceImpl(const Tx* x_data,
                             reducer.initial(),
                             stream);
 
-  pten::DenseTensor tmp = pten::DenseTensor(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(place),
-      pten::DenseTensorMeta(
-          pten::DataType::UINT8,
-          pten::make_ddim({static_cast<int64_t>(temp_storage_bytes)})));
+  phi::DenseTensor tmp = phi::DenseTensor(
+      phi::make_intrusive<paddle::experimental::SharedStorage>(place),
+      phi::DenseTensorMeta(
+          phi::DataType::UINT8,
+          phi::make_ddim({static_cast<int64_t>(temp_storage_bytes)})));
 
   auto* temp_storage = tmp.mutable_data<uint8_t>(place);
 
@@ -1047,7 +1047,7 @@ template <typename Tx,
           typename Ty,
           template <typename> class ReduceOp,
           typename TransformOp>
-static typename std::enable_if<std::is_same<Tx, pten::dtype::float16>::value,
+static typename std::enable_if<std::is_same<Tx, phi::dtype::float16>::value,
                                void>::type
 CubTensorReduceImpl(const Tx* x_data,
                     Ty* y_data,
@@ -1055,7 +1055,7 @@ CubTensorReduceImpl(const Tx* x_data,
                     int reduce_num,
                     const paddle::platform::Place& place,
                     gpuStream_t stream) {
-  PADDLE_THROW(pten::errors::InvalidArgument(
+  PADDLE_THROW(phi::errors::InvalidArgument(
       "Tx should not be float16 when using cub::DeviceReduce::Reduce()."));
 }
 
@@ -1063,15 +1063,15 @@ template <typename Tx,
           typename Ty,
           template <typename> class ReduceOp,
           typename TransformOp>
-void TensorReduceImpl(const pten::GPUContext& dev_ctx,
-                      const pten::DenseTensor& x,
-                      pten::DenseTensor* y,
+void TensorReduceImpl(const phi::GPUContext& dev_ctx,
+                      const phi::DenseTensor& x,
+                      phi::DenseTensor* y,
                       const TransformOp& transform,
                       const std::vector<int>& origin_reduce_dims,
                       gpuStream_t stream) {
   y->mutable_data<Ty>(x.place());
 
-  auto x_dim = pten::vectorize<int>(x.dims());
+  auto x_dim = phi::vectorize<int>(x.dims());
   auto config = ReduceConfig<Ty>(origin_reduce_dims, x_dim);
   config.Run();
   int numel = x.numel();
@@ -1080,10 +1080,10 @@ void TensorReduceImpl(const pten::GPUContext& dev_ctx,
   // temp_output should be stored temp_data in output_data space or stored in
   // y_data;
 
-  pten::DDim tmp_ddim;
-  pten::DenseTensor tmp = pten::DenseTensor(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(y->place()),
-      pten::DenseTensorMeta(y->dtype(), tmp_ddim, y->layout()));
+  phi::DDim tmp_ddim;
+  phi::DenseTensor tmp = phi::DenseTensor(
+      phi::make_intrusive<paddle::experimental::SharedStorage>(y->place()),
+      phi::DenseTensorMeta(y->dtype(), tmp_ddim, y->layout()));
 
   auto x_data = x.data<Tx>();
   auto y_data = y->data<Ty>();
@@ -1097,7 +1097,7 @@ void TensorReduceImpl(const pten::GPUContext& dev_ctx,
   }
 
   config.SetOutputData(y_data, x.place(), &tmp);
-  constexpr bool kIsTxFP16 = std::is_same<Tx, pten::dtype::float16>::value;
+  constexpr bool kIsTxFP16 = std::is_same<Tx, phi::dtype::float16>::value;
   bool use_cub_reduce = config.reduce_num == numel && !kIsTxFP16;
   if (use_cub_reduce) {
     CubTensorReduceImpl<Tx, Ty, ReduceOp, TransformOp>(
@@ -1221,7 +1221,7 @@ void Reduce(const GPUContext& dev_ctx,
             DataType out_dtype,
             DenseTensor* out) {
   std::vector<int> reduce_dims =
-      pten::kernels::details::GetReduceDim(dims, x.dims().size(), reduce_all);
+      phi::kernels::details::GetReduceDim(dims, x.dims().size(), reduce_all);
 
   int reduce_num = 1;
   for (auto i : reduce_dims) {
@@ -1230,20 +1230,20 @@ void Reduce(const GPUContext& dev_ctx,
 
   gpuStream_t stream = dev_ctx.stream();
 
-  if (out_dtype != pten::DataType::UNDEFINED && out_dtype != x.dtype()) {
-    auto tmp_tensor = pten::Cast<T>(dev_ctx, x, out_dtype);
+  if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x.dtype()) {
+    auto tmp_tensor = phi::Cast<T>(dev_ctx, x, out_dtype);
     PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_3_TYPES(
-        pten::DataType::INT32,
-        pten::DataType::INT64,
-        pten::DataType::FLOAT16,
+        phi::DataType::INT32,
+        phi::DataType::INT64,
+        phi::DataType::FLOAT16,
         out_dtype,
         "TensorReduceImpl",
         ([&] {
           using MPType = typename kps::details::MPTypeTrait<data_t>::Type;
-          pten::kernels::TensorReduceImpl<data_t,
-                                          data_t,
-                                          ReduceOp,
-                                          TransformOp<data_t, MPType>>(
+          phi::kernels::TensorReduceImpl<data_t,
+                                         data_t,
+                                         ReduceOp,
+                                         TransformOp<data_t, MPType>>(
               dev_ctx,
               tmp_tensor,
               out,
@@ -1253,7 +1253,7 @@ void Reduce(const GPUContext& dev_ctx,
         }));
   } else {
     using MPType = typename kps::details::MPTypeTrait<T>::Type;
-    pten::kernels::TensorReduceImpl<T, T, ReduceOp, TransformOp<T, MPType>>(
+    phi::kernels::TensorReduceImpl<T, T, ReduceOp, TransformOp<T, MPType>>(
         dev_ctx,
         x,
         out,
@@ -1262,6 +1262,6 @@ void Reduce(const GPUContext& dev_ctx,
         stream);
   }
 }
-}  // namespace pten
+}  // namespace phi
 
 #endif

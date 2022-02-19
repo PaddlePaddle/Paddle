@@ -20,7 +20,7 @@ limitations under the License. */
 
 DECLARE_string(selected_gpus);
 
-namespace pten {
+namespace phi {
 namespace backends {
 namespace gpu {
 
@@ -57,4 +57,4 @@ std::vector<int> GetSelectedDevices() {
 
 }  // namespace gpu
 }  // namespace backends
-}  // namespace pten
+}  // namespace phi

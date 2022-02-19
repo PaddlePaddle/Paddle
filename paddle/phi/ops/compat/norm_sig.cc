@@ -14,7 +14,7 @@
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
 KernelSignature NormOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature(
@@ -28,7 +28,7 @@ KernelSignature NormGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
                          {GradVarName("X")});
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(norm, pten::NormOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(norm_grad, pten::NormGradOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(norm, phi::NormOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(norm_grad, phi::NormGradOpArgumentMapping);

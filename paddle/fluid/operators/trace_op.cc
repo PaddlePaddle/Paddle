@@ -108,7 +108,7 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(TraceGradNoNeedBufferVarsInferer, "Input");
 
 namespace ops = paddle::operators;
 DELCARE_INFER_SHAPE_FUNCTOR(trace, TraceInferShapeFunctor,
-                            PT_INFER_META(pten::TraceInferMeta));
+                            PT_INFER_META(phi::TraceInferMeta));
 REGISTER_OPERATOR(trace, ops::TraceOp, ops::TraceOpMaker,
                   ops::TraceGradOpMaker<paddle::framework::OpDesc>,
                   ops::TraceGradOpMaker<paddle::imperative::OpBase>,

@@ -27,8 +27,8 @@ namespace dynload {
 
 extern bool HasCUFFT();
 
-#define PLATFORM_DECLARE_DYNAMIC_LOAD_CUFFT_WRAP(__name)      \
-  using DynLoad__##__name = pten::dynload::DynLoad__##__name; \
+#define PLATFORM_DECLARE_DYNAMIC_LOAD_CUFFT_WRAP(__name)     \
+  using DynLoad__##__name = phi::dynload::DynLoad__##__name; \
   extern DynLoad__##__name __name
 
 /**

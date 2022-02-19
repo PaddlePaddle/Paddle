@@ -17,7 +17,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace pten {
+namespace phi {
 
 /*
  * \brief Concatenate the input tensors along the dimension axis.
@@ -135,4 +135,4 @@ void SplitImpl(const Context& context,
   }
 }
 
-}  // namespace pten
+}  // namespace phi

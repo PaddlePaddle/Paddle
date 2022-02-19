@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/dynload/cupti.h"
 
-namespace pten {
+namespace phi {
 namespace dynload {
 
 std::once_flag cupti_dso_flag;
@@ -27,6 +27,6 @@ void *cupti_dso_handle = nullptr;
 CUPTI_ROUTINE_EACH(DEFINE_WRAP);
 
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi
 
 #endif  // PADDLE_WITH_CUPTI

@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/backends/dynload/port.h"
 
-namespace pten {
+namespace phi {
 namespace dynload {
 
 extern std::once_flag rocblas_dso_flag;
@@ -41,7 +41,7 @@ extern void *rocblas_dso_handle;
     rocblas_status operator()(Args... args) {                       \
       using rocblas_func = decltype(&::__name);                     \
       std::call_once(rocblas_dso_flag, []() {                       \
-        rocblas_dso_handle = pten::dynload::GetCublasDsoHandle();   \
+        rocblas_dso_handle = phi::dynload::GetCublasDsoHandle();    \
       });                                                           \
       static void *p_##__name = dlsym(rocblas_dso_handle, #__name); \
       return reinterpret_cast<rocblas_func>(p_##__name)(args...);   \
@@ -109,4 +109,4 @@ ROCBLAS_BLAS_ROUTINE_EACH_R4(DECLARE_DYNAMIC_LOAD_ROCBLAS_WRAP)
 
 #undef DECLARE_DYNAMIC_LOAD_ROCBLAS_WRAP
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi

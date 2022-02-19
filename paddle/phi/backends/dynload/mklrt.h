@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/backends/dynload/port.h"
 
-namespace pten {
+namespace phi {
 namespace dynload {
 
 extern std::once_flag mklrt_dso_flag;
@@ -37,7 +37,7 @@ extern void* mklrt_dso_handle;
     auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) { \
       using mklrtFunc = decltype(&::__name);                         \
       std::call_once(mklrt_dso_flag, []() {                          \
-        mklrt_dso_handle = pten::dynload::GetMKLRTDsoHandle();       \
+        mklrt_dso_handle = phi::dynload::GetMKLRTDsoHandle();        \
       });                                                            \
       static void* p_##__name = dlsym(mklrt_dso_handle, #__name);    \
       return reinterpret_cast<mklrtFunc>(p_##__name)(args...);       \
@@ -76,4 +76,4 @@ DFTI_EXTERN MKL_LONG DftiCreateDescriptorX(DFTI_DESCRIPTOR_HANDLE* desc,
                                            MKL_LONG* sizes);
 
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi

@@ -20,7 +20,7 @@
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/phi/common/complex.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void DotKernel(const Context& dev_ctx,
@@ -44,15 +44,15 @@ void DotKernel(const Context& dev_ctx,
   }
 }
 
-}  // namespace pten
+}  // namespace phi
 
-using complex64 = ::pten::dtype::complex<float>;
-using complex128 = ::pten::dtype::complex<double>;
+using complex64 = ::phi::dtype::complex<float>;
+using complex128 = ::phi::dtype::complex<double>;
 
 PT_REGISTER_KERNEL(dot,
                    CPU,
                    ALL_LAYOUT,
-                   pten::DotKernel,
+                   phi::DotKernel,
                    float,
                    double,
                    int,

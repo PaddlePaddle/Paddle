@@ -20,12 +20,12 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context, typename VType>
 void FullValue(const Context& dev_ctx, DenseTensor* tensor, VType val) {
   dev_ctx.template Alloc<T>(tensor);
-  auto t = pten::EigenVector<T>::Flatten(*tensor);
+  auto t = phi::EigenVector<T>::Flatten(*tensor);
   t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(val));
 }
 
@@ -35,7 +35,7 @@ void FullKernel(const Context& dev_ctx,
                 const Scalar& val,
                 DataType dtype,
                 DenseTensor* out) {
-  out->ResizeAndAllocate(pten::make_ddim(shape.GetData()));
+  out->ResizeAndAllocate(phi::make_ddim(shape.GetData()));
   FullValue<T>(dev_ctx, out, val.to<T>());
 }
 
@@ -48,7 +48,7 @@ void FullLikeKernel(const Context& dev_ctx,
   auto value = val.to<float>();
   using CommonType = typename std::common_type<
       float,
-      typename std::conditional<std::is_same<T, pten::dtype::float16>::value,
+      typename std::conditional<std::is_same<T, phi::dtype::float16>::value,
                                 float,
                                 T>::type>::type;
 
@@ -60,7 +60,7 @@ void FullLikeKernel(const Context& dev_ctx,
           (common_type_value <=
            static_cast<CommonType>(std::numeric_limits<T>::max())),
       true,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The filled value is out of range for target type, "
           "current kernel type is %s, the range should between %f "
           "and %f, but now value is %f.",
@@ -71,12 +71,12 @@ void FullLikeKernel(const Context& dev_ctx,
   FullValue<T>(dev_ctx, out, value);
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(full,
                    CPU,
                    ALL_LAYOUT,
-                   pten::FullKernel,
+                   phi::FullKernel,
                    float,
                    double,
                    uint8_t,
@@ -84,18 +84,18 @@ PT_REGISTER_KERNEL(full,
                    int,
                    int64_t,
                    bool,
-                   pten::dtype::float16,
-                   pten::dtype::bfloat16,
-                   pten::dtype::complex<float>,
-                   pten::dtype::complex<double>) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(full_like,
                    CPU,
                    ALL_LAYOUT,
-                   pten::FullLikeKernel,
+                   phi::FullLikeKernel,
                    float,
                    double,
                    int,
                    int64_t,
                    bool,
-                   pten::dtype::float16) {}
+                   phi::dtype::float16) {}

@@ -24,7 +24,7 @@
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T>
 struct TraceGradFunctor {
@@ -89,14 +89,14 @@ void TraceGradKernel(const Context& ctx,
                      int axis2,
                      DenseTensor* in_grad) {
   auto input_dims = in_grad->dims();
-  auto input_stride = pten::stride(input_dims);
+  auto input_stride = phi::stride(input_dims);
   auto output_dims = out_grad.dims();
-  auto output_stride = pten::stride(output_dims);
+  auto output_stride = phi::stride(output_dims);
 
   auto* out_data = out_grad.data<T>();
   T* x_data = ctx.template Alloc<T>(in_grad);
 
-  pten::funcs::SetConstant<Context, T> set_zero;
+  phi::funcs::SetConstant<Context, T> set_zero;
 
   set_zero(ctx, in_grad, static_cast<T>(0.0));
   auto dim1 = axis1;
@@ -144,4 +144,4 @@ void TraceGradKernel(const Context& ctx,
   }
 }
 
-}  // namespace pten
+}  // namespace phi

@@ -19,7 +19,7 @@
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
-namespace pten {
+namespace phi {
 
 template <typename Context>
 void ReshapeKernel(const Context& dev_ctx,
@@ -36,7 +36,7 @@ void ReshapeKernel(const Context& dev_ctx,
   // TODO(chenweihang): the output dims are overwrite after copying,
   // here we need to use copy method that only copy data
   auto dims = out->dims();
-  pten::Copy(dev_ctx, x, false, out);
+  phi::Copy(dev_ctx, x, false, out);
   out->Resize(dims);
   out->ResetLoD(x.lod());
 }
@@ -51,41 +51,32 @@ void ReshapeWithXShape(const Context& dev_ctx,
   ReshapeKernel(dev_ctx, x, shape, out);
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_GENERAL_KERNEL(reshape,
-                           CPU,
-                           ALL_LAYOUT,
-                           pten::ReshapeKernel<pten::CPUContext>,
-                           ALL_DTYPE) {}
+PT_REGISTER_GENERAL_KERNEL(
+    reshape, CPU, ALL_LAYOUT, phi::ReshapeKernel<phi::CPUContext>, ALL_DTYPE) {}
 PT_REGISTER_GENERAL_KERNEL(reshape_with_xshape,
                            CPU,
                            ALL_LAYOUT,
-                           pten::ReshapeWithXShape<pten::CPUContext>,
+                           phi::ReshapeWithXShape<phi::CPUContext>,
                            ALL_DTYPE) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_REGISTER_GENERAL_KERNEL(reshape,
-                           GPU,
-                           ALL_LAYOUT,
-                           pten::ReshapeKernel<pten::GPUContext>,
-                           ALL_DTYPE) {}
+PT_REGISTER_GENERAL_KERNEL(
+    reshape, GPU, ALL_LAYOUT, phi::ReshapeKernel<phi::GPUContext>, ALL_DTYPE) {}
 PT_REGISTER_GENERAL_KERNEL(reshape_with_xshape,
                            GPU,
                            ALL_LAYOUT,
-                           pten::ReshapeWithXShape<pten::GPUContext>,
+                           phi::ReshapeWithXShape<phi::GPUContext>,
                            ALL_DTYPE) {}
 #endif
 
 #ifdef PADDLE_WITH_XPU
-PT_REGISTER_GENERAL_KERNEL(reshape,
-                           XPU,
-                           ALL_LAYOUT,
-                           pten::ReshapeKernel<pten::XPUContext>,
-                           ALL_DTYPE) {}
+PT_REGISTER_GENERAL_KERNEL(
+    reshape, XPU, ALL_LAYOUT, phi::ReshapeKernel<phi::XPUContext>, ALL_DTYPE) {}
 PT_REGISTER_GENERAL_KERNEL(reshape_with_xshape,
                            XPU,
                            ALL_LAYOUT,
-                           pten::ReshapeWithXShape<pten::XPUContext>,
+                           phi::ReshapeWithXShape<phi::XPUContext>,
                            ALL_DTYPE) {}
 #endif

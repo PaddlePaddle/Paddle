@@ -24,7 +24,7 @@ limitations under the License. */
 #define ELEMENTWISE_BLOCK_SIZE 512
 #endif
 
-namespace pten {
+namespace phi {
 namespace funcs {
 /*
 * According to NVIDIA, if number of threads per block is 64/128/256/512,
@@ -32,7 +32,7 @@ namespace funcs {
 * 2x~4x) than number of SMs. Hence, SM count is took into account within
 * this function to determine the right number of threads per block.
 */
-inline int GetThreadsConfig(const pten::GPUContext &ctx,
+inline int GetThreadsConfig(const phi::GPUContext &ctx,
                             int64_t numel,
                             int vec_size) {
   int threads = ELEMENTWISE_BLOCK_SIZE;
@@ -54,4 +54,4 @@ inline int GetThreadsConfig(const pten::GPUContext &ctx,
 }
 
 }  // namespace funcs
-}  // namespace pten
+}  // namespace phi

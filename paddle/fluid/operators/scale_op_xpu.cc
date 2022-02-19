@@ -32,9 +32,9 @@ class ScaleXPUKernel : public framework::OpKernel<T> {
     auto bias = static_cast<float>(ctx.Attr<float>("bias"));
     auto bias_after_scale = ctx.Attr<bool>("bias_after_scale");
     auto* out_var = ctx.OutputVar("Out");
-    if (in_var->IsType<pten::SelectedRows>() && in_var != out_var) {
-      auto& in_slr = in_var->Get<pten::SelectedRows>();
-      auto* out_slr = out_var->GetMutable<pten::SelectedRows>();
+    if (in_var->IsType<phi::SelectedRows>() && in_var != out_var) {
+      auto& in_slr = in_var->Get<phi::SelectedRows>();
+      auto* out_slr = out_var->GetMutable<phi::SelectedRows>();
       out_slr->set_rows(in_slr.rows());
       out_slr->set_height(in_slr.height());
     }
@@ -43,7 +43,7 @@ class ScaleXPUKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(in->place());
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     // call pten kernel
-    pten::ScaleKernel<T>(
+    phi::ScaleKernel<T>(
         static_cast<const typename framework::ConvertToPtenContext<
             DeviceContext>::TYPE&>(dev_ctx),
         *in, scale, bias, bias_after_scale, out);

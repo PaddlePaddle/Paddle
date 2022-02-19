@@ -18,11 +18,11 @@ limitations under the License. */
 
 #include "paddle/phi/core/meta_tensor.h"
 
-namespace pten {
+namespace phi {
 
 void GeneralBinaryGradInferMeta(const MetaTensor& x,
                                 const MetaTensor& y,
                                 MetaTensor* dx,
                                 MetaTensor* dy);
 
-}  // namespace pten
+}  // namespace phi

@@ -17,7 +17,7 @@
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
-namespace pten {
+namespace phi {
 
 template <typename Context, typename T, size_t D>
 static void LerpGradFunction(const Context& ctx,
@@ -34,18 +34,18 @@ static void LerpGradFunction(const Context& ctx,
   auto* dy = y_grad;
 
   auto dout_dims = dout.dims();
-  auto dx_dims = pten::funcs::ExtendDims2Rank(dx->dims(), D);
-  auto dy_dims = pten::funcs::ExtendDims2Rank(dy->dims(), D);
-  auto w_dims = pten::funcs::ExtendDims2Rank(w.dims(), D);
+  auto dx_dims = phi::funcs::ExtendDims2Rank(dx->dims(), D);
+  auto dy_dims = phi::funcs::ExtendDims2Rank(dy->dims(), D);
+  auto w_dims = phi::funcs::ExtendDims2Rank(w.dims(), D);
   Eigen::DSizes<int, D> dx_bcast_dims;
   Eigen::DSizes<int, D> dy_bcast_dims;
   Eigen::DSizes<int, D> w_bcast_dims;
-  pten::funcs::GetBroadcastDims<D>(dx_dims, dout_dims, &dx_bcast_dims);
-  pten::funcs::GetBroadcastDims<D>(dy_dims, dout_dims, &dy_bcast_dims);
-  pten::funcs::GetBroadcastDims<D>(w_dims, dout_dims, &w_bcast_dims);
+  phi::funcs::GetBroadcastDims<D>(dx_dims, dout_dims, &dx_bcast_dims);
+  phi::funcs::GetBroadcastDims<D>(dy_dims, dout_dims, &dy_bcast_dims);
+  phi::funcs::GetBroadcastDims<D>(w_dims, dout_dims, &w_bcast_dims);
 
-  auto eigen_w = pten::EigenTensor<T, D>::From(w, w_dims);
-  auto eigen_dout = pten::EigenTensor<T, D>::From(dout);
+  auto eigen_w = phi::EigenTensor<T, D>::From(w, w_dims);
+  auto eigen_dout = phi::EigenTensor<T, D>::From(dout);
 
   Eigen::DSizes<int, D * 2> dx_reshape_dims;
   Eigen::DSizes<int, D * 2> dy_reshape_dims;
@@ -62,7 +62,7 @@ static void LerpGradFunction(const Context& ctx,
 
   if (dx) {
     ctx.template Alloc<T>(dx);
-    auto eigen_dx = pten::EigenTensor<T, D>::From(*dx, dx_dims);
+    auto eigen_dx = phi::EigenTensor<T, D>::From(*dx, dx_dims);
     auto eigen_expr = (1 - eigen_w.broadcast(w_bcast_dims)) * eigen_dout;
     eigen_dx.device(place) = eigen_expr.reshape(dx_reshape_dims)
                                  .sum(reduce_dims)
@@ -70,7 +70,7 @@ static void LerpGradFunction(const Context& ctx,
   }
   if (dy) {
     ctx.template Alloc<T>(dy);
-    auto eigen_dy = pten::EigenTensor<T, D>::From(*dy, dy_dims);
+    auto eigen_dy = phi::EigenTensor<T, D>::From(*dy, dy_dims);
     auto eigen_expr = eigen_w.broadcast(w_bcast_dims) * eigen_dout;
     eigen_dy.device(place) = eigen_expr.reshape(dy_reshape_dims)
                                  .sum(reduce_dims)
@@ -91,14 +91,14 @@ void LerpGradKernel(const Context& ctx,
   PADDLE_ENFORCE_GE(
       rank,
       1,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The number of dimensions for LerpGradOp must be "
           "greater than or equal to 1, but the value received is %d.",
           rank));
   PADDLE_ENFORCE_LE(
       rank,
       6,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The number of dimensions for LerpGradOp must be "
           "less than or equal to 6, but the value received is %d.",
           rank));
@@ -130,4 +130,4 @@ void LerpGradKernel(const Context& ctx,
   }
 }
 
-}  // namespace pten
+}  // namespace phi

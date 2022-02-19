@@ -80,15 +80,13 @@ class OverlapAddKernel : public framework::OpKernel<T> {
       framework::DDim x_resized_dims;
       framework::DDim out_resized_dims;
       if (axis == 0) {
-        preserved_dims = pten::slice_ddim(out->dims(), 1, out_rank);
-        x_resized_dims = {n_frames, frame_length,
-                          pten::product(preserved_dims)};
-        out_resized_dims = {seq_length, pten::product(preserved_dims)};
+        preserved_dims = phi::slice_ddim(out->dims(), 1, out_rank);
+        x_resized_dims = {n_frames, frame_length, phi::product(preserved_dims)};
+        out_resized_dims = {seq_length, phi::product(preserved_dims)};
       } else {
-        preserved_dims = pten::slice_ddim(out->dims(), 0, out_rank - 1);
-        x_resized_dims = {pten::product(preserved_dims), frame_length,
-                          n_frames};
-        out_resized_dims = {pten::product(preserved_dims), seq_length};
+        preserved_dims = phi::slice_ddim(out->dims(), 0, out_rank - 1);
+        x_resized_dims = {phi::product(preserved_dims), frame_length, n_frames};
+        out_resized_dims = {phi::product(preserved_dims), seq_length};
       }
       x_.Resize(x_resized_dims);
       out->Resize(out_resized_dims);
@@ -103,31 +101,31 @@ class OverlapAddKernel : public framework::OpKernel<T> {
         trans_out = *out;
 
         std::vector<int> perm_x{1, 0};
-        auto x_dims_vec = pten::vectorize(x_.dims());
+        auto x_dims_vec = phi::vectorize(x_.dims());
         for (int i = 0; i < x_.dims().size(); ++i) {
           x_dims_vec[i] = x_.dims()[perm_x[i]];
         }
-        trans_x.Resize(pten::make_ddim(x_dims_vec));
+        trans_x.Resize(phi::make_ddim(x_dims_vec));
         trans_x.mutable_data<T>(ctx.GetPlace());
         TransCompute<DeviceContext, T>(perm_x.size(), dev_ctx, x_, &trans_x,
                                        perm_x);
       } else {
         std::vector<int> perm_out{1, 0};
-        auto out_dims_vec = pten::vectorize(out->dims());
+        auto out_dims_vec = phi::vectorize(out->dims());
         for (int i = 0; i < out->dims().size(); ++i) {
           out_dims_vec[i] = out->dims()[perm_out[i]];
         }
-        trans_out.Resize(pten::make_ddim(out_dims_vec));
+        trans_out.Resize(phi::make_ddim(out_dims_vec));
         trans_out.mutable_data<T>(ctx.GetPlace());
         TransCompute<DeviceContext, T>(perm_out.size(), dev_ctx, *out,
                                        &trans_out, perm_out);
 
         std::vector<int> perm_x{2, 1, 0};
-        auto x_dims_vec = pten::vectorize(x_.dims());
+        auto x_dims_vec = phi::vectorize(x_.dims());
         for (int i = 0; i < x_.dims().size(); ++i) {
           x_dims_vec[i] = x_.dims()[perm_x[i]];
         }
-        trans_x.Resize(pten::make_ddim(x_dims_vec));
+        trans_x.Resize(phi::make_ddim(x_dims_vec));
         trans_x.mutable_data<T>(ctx.GetPlace());
         TransCompute<DeviceContext, T>(perm_x.size(), dev_ctx, x_, &trans_x,
                                        perm_x);
@@ -163,7 +161,7 @@ class OverlapAddKernel : public framework::OpKernel<T> {
         restored_out_shape.push_back(seq_length);
       }
 
-      out->Resize(pten::make_ddim(restored_out_shape));
+      out->Resize(phi::make_ddim(restored_out_shape));
     }
   }
 };
@@ -202,15 +200,15 @@ class OverlapAddGradKernel : public framework::OpKernel<T> {
       framework::DDim d_x_resized_dims;
       framework::DDim d_out_resized_dims;
       if (axis == 0) {
-        preserved_dims = pten::slice_ddim(d_out_.dims(), 1, d_out_rank);
+        preserved_dims = phi::slice_ddim(d_out_.dims(), 1, d_out_rank);
         d_x_resized_dims = {n_frames, frame_length,
-                            pten::product(preserved_dims)};
-        d_out_resized_dims = {seq_length, pten::product(preserved_dims)};
+                            phi::product(preserved_dims)};
+        d_out_resized_dims = {seq_length, phi::product(preserved_dims)};
       } else {
-        preserved_dims = pten::slice_ddim(d_out_.dims(), 0, d_out_rank - 1);
-        d_x_resized_dims = {pten::product(preserved_dims), frame_length,
+        preserved_dims = phi::slice_ddim(d_out_.dims(), 0, d_out_rank - 1);
+        d_x_resized_dims = {phi::product(preserved_dims), frame_length,
                             n_frames};
-        d_out_resized_dims = {pten::product(preserved_dims), seq_length};
+        d_out_resized_dims = {phi::product(preserved_dims), seq_length};
       }
       d_x->Resize(d_x_resized_dims);
       d_out_.Resize(d_out_resized_dims);
@@ -225,31 +223,31 @@ class OverlapAddGradKernel : public framework::OpKernel<T> {
         trans_d_out = d_out_;
 
         std::vector<int> perm_d_x{1, 0};
-        auto d_x_dims_vec = pten::vectorize(d_x->dims());
+        auto d_x_dims_vec = phi::vectorize(d_x->dims());
         for (int i = 0; i < d_x->dims().size(); ++i) {
           d_x_dims_vec[i] = d_x->dims()[perm_d_x[i]];
         }
-        trans_d_x.Resize(pten::make_ddim(d_x_dims_vec));
+        trans_d_x.Resize(phi::make_ddim(d_x_dims_vec));
         trans_d_x.mutable_data<T>(ctx.GetPlace());
         TransCompute<DeviceContext, T>(perm_d_x.size(), dev_ctx, *d_x,
                                        &trans_d_x, perm_d_x);
       } else {
         std::vector<int> perm_d_out{1, 0};
-        auto d_out_dims_vec = pten::vectorize(d_out_.dims());
+        auto d_out_dims_vec = phi::vectorize(d_out_.dims());
         for (int i = 0; i < d_out_.dims().size(); ++i) {
           d_out_dims_vec[i] = d_out_.dims()[perm_d_out[i]];
         }
-        trans_d_out.Resize(pten::make_ddim(d_out_dims_vec));
+        trans_d_out.Resize(phi::make_ddim(d_out_dims_vec));
         trans_d_out.mutable_data<T>(ctx.GetPlace());
         TransCompute<DeviceContext, T>(perm_d_out.size(), dev_ctx, d_out_,
                                        &trans_d_out, perm_d_out);
 
         std::vector<int> perm_d_x{2, 1, 0};
-        auto d_x_dims_vec = pten::vectorize(d_x->dims());
+        auto d_x_dims_vec = phi::vectorize(d_x->dims());
         for (int i = 0; i < d_x->dims().size(); ++i) {
           d_x_dims_vec[i] = d_x->dims()[perm_d_x[i]];
         }
-        trans_d_x.Resize(pten::make_ddim(d_x_dims_vec));
+        trans_d_x.Resize(phi::make_ddim(d_x_dims_vec));
         trans_d_x.mutable_data<T>(ctx.GetPlace());
         TransCompute<DeviceContext, T>(perm_d_x.size(), dev_ctx, *d_x,
                                        &trans_d_x, perm_d_x);
@@ -294,7 +292,7 @@ class OverlapAddGradKernel : public framework::OpKernel<T> {
         restored_d_x_shape.push_back(n_frames);
       }
 
-      d_x->Resize(pten::make_ddim(restored_d_x_shape));
+      d_x->Resize(phi::make_ddim(restored_d_x_shape));
     }
   }
 };

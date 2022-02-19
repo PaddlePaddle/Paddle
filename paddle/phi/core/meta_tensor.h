@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
 
-namespace pten {
+namespace phi {
 
 // TODO(chenweihang): add other flags if needed
 struct MetaConfig {
@@ -69,4 +69,4 @@ class MetaTensor {
   TensorBase* tensor_;
 };
 
-}  // namespace pten
+}  // namespace phi

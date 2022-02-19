@@ -22,7 +22,7 @@ limitations under the License. */
 // TODO(wilber): Do we need to use place in pten kernel?
 #include "paddle/phi/common/place.h"
 
-namespace pten {
+namespace phi {
 
 class CPUContext : public DeviceContext {
  public:
@@ -51,4 +51,4 @@ class CPUContext : public DeviceContext {
   std::unique_ptr<Impl> impl_;
 };
 
-}  // namespace pten
+}  // namespace phi

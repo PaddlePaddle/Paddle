@@ -14,12 +14,12 @@ limitations under the License. */
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
 KernelSignature CastOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("cast", {"X"}, {"out_dtype"}, {"Out"});
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(cast, pten::CastOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(cast, phi::CastOpArgumentMapping);

@@ -20,12 +20,12 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/tensor_meta.h"
 
-namespace pten {
+namespace phi {
 
 std::string TransToPtenKernelName(const std::string& fluid_op_name);
 const std::string& TransToFluidOpName(const std::string& pten_kernel_name);
 
-Backend TransToPtenBackend(const pten::Place& place);
-pten::Place TransToPtenPlace(const Backend& backend, bool set_device_id = true);
+Backend TransToPtenBackend(const phi::Place& place);
+phi::Place TransToPtenPlace(const Backend& backend, bool set_device_id = true);
 
-}  // namespace pten
+}  // namespace phi

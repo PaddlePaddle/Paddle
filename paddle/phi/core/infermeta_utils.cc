@@ -14,20 +14,20 @@ limitations under the License. */
 
 #include "paddle/phi/core/infermeta_utils.h"
 
-namespace pten {
+namespace phi {
 
 void InferMetaContext::SetMetaConfig(MetaConfig config) {
   config_ = std::move(config);
 }
 
 void InferMetaContext::EmplaceBackInput(
-    std::shared_ptr<pten::MetaTensor> input) {
+    std::shared_ptr<phi::MetaTensor> input) {
   int index = inputs_.size();
   inputs_.emplace_back(std::move(input));
   input_range_.emplace_back(std::pair<int, int>(index, index + 1));
 }
 void InferMetaContext::EmplaceBackOutput(
-    std::shared_ptr<pten::MetaTensor> output) {
+    std::shared_ptr<phi::MetaTensor> output) {
   int index = outputs_.size();
   outputs_.emplace_back(std::move(output));
   output_range_.emplace_back(std::pair<int, int>(index, index + 1));
@@ -37,7 +37,7 @@ void InferMetaContext::EmplaceBackAttr(paddle::any attr) {
 }
 
 void InferMetaContext::EmplaceBackInputs(
-    paddle::SmallVector<std::shared_ptr<pten::MetaTensor>> inputs) {
+    paddle::SmallVector<std::shared_ptr<phi::MetaTensor>> inputs) {
   int index = inputs_.size();
   input_range_.emplace_back(std::pair<int, int>(index, index + inputs.size()));
   inputs_.insert(inputs_.end(),
@@ -45,7 +45,7 @@ void InferMetaContext::EmplaceBackInputs(
                  std::make_move_iterator(inputs.end()));
 }
 void InferMetaContext::EmplaceBackOutputs(
-    paddle::SmallVector<std::shared_ptr<pten::MetaTensor>> outputs) {
+    paddle::SmallVector<std::shared_ptr<phi::MetaTensor>> outputs) {
   int index = outputs_.size();
   output_range_.emplace_back(
       std::pair<int, int>(index, index + outputs.size()));
@@ -88,4 +88,4 @@ MetaFnFactory& MetaFnFactory::Instance() {
   return g_meta_fn_map;
 }
 
-}  // namespace pten
+}  // namespace phi

@@ -19,10 +19,10 @@
 
 namespace infrt {
 namespace kernel {
-namespace pten {
+namespace phi {
 
 backends::CpuPtenContext CreateCpuContext();
 
-}  // namespace pten
+}  // namespace phi
 }  // namespace kernel
 }  // namespace infrt

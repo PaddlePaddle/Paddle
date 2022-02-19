@@ -50,7 +50,7 @@ class PADDLE_API OpKernelInfoHelper;
 }  // namespace framework
 
 // TODO(Aganlengzi): Simple DeviceContext temporarily for stream getting
-// before pten::DeviceContext is exposed.
+// before phi::DeviceContext is exposed.
 class DeviceContext {
  public:
   DeviceContext() { stream_ = nullptr; }
@@ -64,11 +64,11 @@ class CPUContext : public DeviceContext {};
 
 // TODO(Aganlengzi): Use paddle::Tensor before DenseTensor is exposed
 using Tensor = paddle::experimental::Tensor;
-using Scalar = pten::Scalar;
-using ScalarArray = pten::ScalarArray;
+using Scalar = phi::Scalar;
+using ScalarArray = phi::ScalarArray;
 
 // Record custom kernel core information
-// We can not use pten::KernelFn directly, so users' custom kernel function
+// We can not use phi::KernelFn directly, so users' custom kernel function
 // is signatured to `CustomKernelFunc', notice that the first parameter is
 // fixed to `const DeviceContext&'.
 using CustomKernelFunc =
@@ -367,7 +367,7 @@ struct CustomKernelFuncImpl<Return (*)(DevCtx, Args...), impl_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(double);
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(int);
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(int64_t);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(pten::dtype::float16);
+  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(phi::dtype::float16);
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataType);
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const Scalar&);
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const ScalarArray&);
@@ -410,41 +410,41 @@ struct CustomKernelFuncImpl<Return (*)(DevCtx, Args...), impl_fn> {
 
 ////////////////////// Op Kernel Info depended structs //////////////////////
 // TODO(Aganlengzi): Re-define TensorArgDef and AttributeArgDef temporarily.
-// TensorArgDef follows pten::TensorArgDef in kernel_factory.h, the
+// TensorArgDef follows phi::TensorArgDef in kernel_factory.h, the
 // difference is that custom_kernel needs extra `is_vector' to ensure we can
 // deal with case like vector with only one element.
 struct TensorArgDef {
-  pten::Backend backend;
-  pten::DataLayout layout;
-  pten::DataType dtype;
+  phi::Backend backend;
+  phi::DataLayout layout;
+  phi::DataType dtype;
   bool is_vector{false};
 
-  TensorArgDef(pten::Backend in_backend,
-               pten::DataLayout in_layout,
-               pten::DataType in_dtype,
+  TensorArgDef(phi::Backend in_backend,
+               phi::DataLayout in_layout,
+               phi::DataType in_dtype,
                bool is_vector = false)
       : backend(in_backend),
         layout(in_layout),
         dtype(in_dtype),
         is_vector(is_vector) {}
 
-  TensorArgDef& SetBackend(pten::Backend in_backend) {
+  TensorArgDef& SetBackend(phi::Backend in_backend) {
     backend = in_backend;
     return *this;
   }
 
-  TensorArgDef& SetDataLayout(pten::DataLayout in_layout) {
+  TensorArgDef& SetDataLayout(phi::DataLayout in_layout) {
     layout = in_layout;
     return *this;
   }
 
-  TensorArgDef& SetDataType(pten::DataType in_dtype) {
+  TensorArgDef& SetDataType(phi::DataType in_dtype) {
     dtype = in_dtype;
     return *this;
   }
 };
 
-// AttributeArgDef follows pten::AttributeArgDef in kernel_factory.h
+// AttributeArgDef follows phi::AttributeArgDef in kernel_factory.h
 struct AttributeArgDef {
   std::type_index type_index;
 
@@ -461,9 +461,9 @@ struct AttributeArgDef {
 class PADDLE_API OpKernelInfo {
  public:
   explicit OpKernelInfo(const std::string& op_name,
-                        pten::Backend backend,
-                        pten::DataLayout data_layout,
-                        pten::DataType data_type)
+                        phi::Backend backend,
+                        phi::DataLayout data_layout,
+                        phi::DataType data_type)
       : op_name_(op_name),
         backend_(backend),
         layout_(data_layout),
@@ -475,16 +475,16 @@ class PADDLE_API OpKernelInfo {
   OpKernelInfo& SetVariadicKernelFn(void* func);
 
   // for Args parsing and storing
-  void AppendInput(pten::Backend backend,
-                   pten::DataLayout layout,
-                   pten::DataType dtype,
+  void AppendInput(phi::Backend backend,
+                   phi::DataLayout layout,
+                   phi::DataType dtype,
                    bool is_vector = false) {
     input_defs_.emplace_back(TensorArgDef(backend, layout, dtype, is_vector));
   }
 
-  void AppendOutput(pten::Backend backend,
-                    pten::DataLayout layout,
-                    pten::DataType dtype,
+  void AppendOutput(phi::Backend backend,
+                    phi::DataLayout layout,
+                    phi::DataType dtype,
                     bool is_vector = false) {
     output_defs_.emplace_back(TensorArgDef(backend, layout, dtype, is_vector));
   }
@@ -497,9 +497,9 @@ class PADDLE_API OpKernelInfo {
   TensorArgDef& InputAt(size_t idx) { return input_defs_.at(idx); }
   TensorArgDef& OutputAt(size_t idx) { return output_defs_.at(idx); }
 
-  const pten::Backend& GetBackend() const { return backend_; }
-  const pten::DataLayout& GetDataLayout() const { return layout_; }
-  const pten::DataType& GetDataType() const { return dtype_; }
+  const phi::Backend& GetBackend() const { return backend_; }
+  const phi::DataLayout& GetDataLayout() const { return layout_; }
+  const phi::DataType& GetDataType() const { return dtype_; }
 
  private:
   friend class framework::OpKernelInfoHelper;
@@ -508,9 +508,9 @@ class PADDLE_API OpKernelInfo {
   std::string op_name_;
 
   // 2. kernel key info
-  pten::Backend backend_{pten::Backend::UNDEFINED};
-  pten::DataLayout layout_{pten::DataLayout::UNDEFINED};
-  pten::DataType dtype_{pten::DataType::UNDEFINED};
+  phi::Backend backend_{phi::Backend::UNDEFINED};
+  phi::DataLayout layout_{phi::DataLayout::UNDEFINED};
+  phi::DataType dtype_{phi::DataType::UNDEFINED};
 
   // 3. args info
   paddle::SmallVector<TensorArgDef> input_defs_{{}};
@@ -525,7 +525,7 @@ class PADDLE_API OpKernelInfo {
 ////////////////////// Op Kernel Args Parser //////////////////////
 // Define CustomKernelArgsParseFunctor for args parsing
 // We have to store parsed info into OpKernelInfo before
-// mapping to pten::KernelArgsDef in pten::Kernel
+// mapping to phi::KernelArgsDef in phi::Kernel
 template <typename Func>
 struct CustomKernelArgsParseFunctor;
 
@@ -538,12 +538,12 @@ struct CustomKernelArgsParseFunctor<Return_ (*)(Args_...)> {
   using Arg = typename std::tuple_element<Index, Args>::type;
 
   static void Parse(OpKernelInfo* op_kernel_info) {
-    const pten::Backend& backend = op_kernel_info->GetBackend();
-    const pten::DataLayout& layout = op_kernel_info->GetDataLayout();
-    const pten::DataType& dtype = op_kernel_info->GetDataType();
+    const phi::Backend& backend = op_kernel_info->GetBackend();
+    const phi::DataLayout& layout = op_kernel_info->GetDataLayout();
+    const phi::DataType& dtype = op_kernel_info->GetDataType();
 
-    auto default_tensor_layout = pten::DataLayout::NCHW;
-    if (layout != pten::DataLayout::ANY) {
+    auto default_tensor_layout = phi::DataLayout::NCHW;
+    if (layout != phi::DataLayout::ANY) {
       default_tensor_layout = layout;
     }
     auto args_type = ParseArgType(Indices{});
@@ -607,9 +607,9 @@ using CustomKernelArgsDefFn = void (*)(OpKernelInfo* kernel);
 class PADDLE_API OpKernelInfoBuilder {
  public:
   explicit OpKernelInfoBuilder(std::string&& op_name,
-                               pten::Backend backend,
-                               pten::DataLayout data_layout,
-                               pten::DataType data_type);
+                               phi::Backend backend,
+                               phi::DataLayout data_layout,
+                               phi::DataType data_type);
 
   OpKernelInfoBuilder& SetKernelFn(CustomKernelFunc func);
   OpKernelInfoBuilder& SetVariadicKernelFn(void* func);
@@ -621,9 +621,9 @@ class PADDLE_API OpKernelInfoBuilder {
   std::string op_name_;
 
   // kernel key info
-  pten::Backend backend_{pten::Backend::UNDEFINED};
-  pten::DataLayout layout_{pten::DataLayout::UNDEFINED};
-  pten::DataType dtype_{pten::DataType::UNDEFINED};
+  phi::Backend backend_{phi::Backend::UNDEFINED};
+  phi::DataLayout layout_{phi::DataLayout::UNDEFINED};
+  phi::DataType dtype_{phi::DataType::UNDEFINED};
 
   // ref current info ptr
   OpKernelInfo* info_ptr_;
@@ -642,9 +642,9 @@ void RegisterAllCustomKernel();
 // pten kernel management. Only providing PD_REGISTER_KERNEL which
 // supports 2 template arguments.
 
-#define PD_BACKEND(arg__) pten::Backend::arg__
-#define PD_DATALAYOUT(arg__) pten::DataLayout::arg__
-#define PD_DATATYPE(arg__) pten::DataType::arg__
+#define PD_BACKEND(arg__) phi::Backend::arg__
+#define PD_DATALAYOUT(arg__) phi::DataLayout::arg__
+#define PD_DATATYPE(arg__) phi::DataType::arg__
 
 #define PD_NARGS(...) _PD_NARGS((__VA_ARGS__, _PD_RESQ_N()))
 #define _PD_NARGS(...) _PD_ARG_N(__VA_ARGS__)

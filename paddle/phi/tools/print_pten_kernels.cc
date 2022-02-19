@@ -19,6 +19,6 @@
 #include "paddle/phi/kernels/declarations.h"
 
 int main(int argc, char** argv) {
-  std::cout << pten::KernelFactory::Instance() << std::endl;
+  std::cout << phi::KernelFactory::Instance() << std::endl;
   return 0;
 }

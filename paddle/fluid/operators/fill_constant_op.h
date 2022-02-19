@@ -93,8 +93,8 @@ class FillConstantKernel : public framework::OpKernel<T> {
     if (out_var->IsType<framework::LoDTensor>()) {
       tensor = out_var->GetMutable<framework::LoDTensor>();
       tensor->Resize(shape);
-    } else if (out_var->IsType<pten::SelectedRows>()) {
-      tensor = out_var->GetMutable<pten::SelectedRows>()->mutable_value();
+    } else if (out_var->IsType<phi::SelectedRows>()) {
+      tensor = out_var->GetMutable<phi::SelectedRows>()->mutable_value();
       tensor->Resize(shape);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -123,7 +123,7 @@ class FillConstantKernel : public framework::OpKernel<T> {
                                                                  : "<T>");
       tensor->mutable_data(platform::CPUPlace(),
                            framework::TransToPtenDataType(data_type));
-      pten::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
+      phi::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
       auto &dev_ctx = *pool.Get(platform::CPUPlace());
       functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
               tensor, static_cast<T>(value));
@@ -131,7 +131,7 @@ class FillConstantKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       tensor->mutable_data(ctx.GetPlace(),
                            framework::TransToPtenDataType(data_type));
-      pten::funcs::SetConstant<platform::CUDADeviceContext, T> functor;
+      phi::funcs::SetConstant<platform::CUDADeviceContext, T> functor;
       auto &dev_ctx = *pool.Get(ctx.GetPlace());
       functor(reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx),
               tensor, static_cast<T>(value));
@@ -143,7 +143,7 @@ class FillConstantKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       tensor->mutable_data(platform::CUDAPinnedPlace(),
                            framework::TransToPtenDataType(data_type));
-      pten::funcs::SetConstant<platform::CUDAPinnedDeviceContext, T> functor;
+      phi::funcs::SetConstant<platform::CUDAPinnedDeviceContext, T> functor;
       auto &dev_ctx = *pool.Get(platform::CUDAPinnedPlace());
       functor(
           reinterpret_cast<const platform::CUDAPinnedDeviceContext &>(dev_ctx),
@@ -156,7 +156,7 @@ class FillConstantKernel : public framework::OpKernel<T> {
 #ifdef PADDLE_WITH_XPU
       tensor->mutable_data(ctx.GetPlace(),
                            framework::TransToPtenDataType(data_type));
-      pten::funcs::SetConstant<platform::XPUDeviceContext, T> functor;
+      phi::funcs::SetConstant<platform::XPUDeviceContext, T> functor;
       auto &dev_ctx = *pool.Get(ctx.GetPlace());
       functor(reinterpret_cast<const platform::XPUDeviceContext &>(dev_ctx),
               tensor, static_cast<T>(value));

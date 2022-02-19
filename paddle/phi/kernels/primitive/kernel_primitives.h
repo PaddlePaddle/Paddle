@@ -21,7 +21,7 @@
 #include "paddle/phi/kernels/primitive/functor_primitives_xpu2.h"
 
 #define KPStream XPUStream
-#define KPDevice pten::XPUContext
+#define KPDevice phi::XPUContext
 #define _ptr_ _global_ptr_
 #define __forceinline__ __inline__
 #define __restrict__
@@ -48,7 +48,7 @@
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 
 #define KPStream gpuStream_t
-#define KPDevice pten::GPUContext
+#define KPDevice phi::GPUContext
 #define _ptr_
 
 #define THREAD_ID_X threadIdx.x

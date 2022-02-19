@@ -22,7 +22,7 @@ typedef struct {
   PyObject_HEAD paddle::experimental::Tensor tensor;
 } TensorObject;
 
-int TensorDtype2NumpyDtype(pten::DataType dtype);
+int TensorDtype2NumpyDtype(phi::DataType dtype);
 
 bool PyObject_CheckLongOrConvertToLong(PyObject** obj);
 bool PyObject_CheckFloatOrConvertToFloat(PyObject** obj);

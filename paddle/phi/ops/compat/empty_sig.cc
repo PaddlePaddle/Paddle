@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
 KernelSignature EmptyOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.HasInput("ShapeTensor")) {
@@ -26,6 +26,6 @@ KernelSignature EmptyOpArgumentMapping(const ArgumentMappingContext& ctx) {
   }
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(empty, pten::EmptyOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(empty, phi::EmptyOpArgumentMapping);

@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
 KernelSignature DotGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("dot_grad",
@@ -23,6 +23,6 @@ KernelSignature DotGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
                          {GradVarName("X"), GradVarName("Y")});
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(dot_grad, pten::DotGradOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(dot_grad, phi::DotGradOpArgumentMapping);

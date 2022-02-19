@@ -18,7 +18,7 @@
 #include "paddle/phi/kernels/diagonal_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/diagonal.h"
 
-namespace pten {
+namespace phi {
 
 using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 
@@ -35,7 +35,7 @@ void DiagonalGradKernel(const Context& dev_ctx,
   auto dout_dim = dout->dims().Get();
   auto dout_dim_size = dout->dims().size();
 
-  std::vector<int64_t> res_dout = vectorize(pten::stride(dout->dims()));
+  std::vector<int64_t> res_dout = vectorize(phi::stride(dout->dims()));
   DenseTensor dout_stride_tensor;
   paddle::framework::TensorFromVector<int64_t>(
       res_dout, dev_ctx, &dout_stride_tensor);
@@ -46,7 +46,7 @@ void DiagonalGradKernel(const Context& dev_ctx,
   auto dx_dim = dx->dims().Get();
   auto dx_dim_size = dx->dims().size();
 
-  std::vector<int64_t> res_dx = vectorize(pten::stride(dx->dims()));
+  std::vector<int64_t> res_dx = vectorize(phi::stride(dx->dims()));
   DenseTensor dx_stride_tensor;
   paddle::framework::TensorFromVector<int64_t>(
       res_dx, dev_ctx, &dx_stride_tensor);
@@ -157,11 +157,11 @@ void DiagonalGradKernel(const Context& dev_ctx,
           dx_dim_size));
   }
 }
-}  // namespace pten
+}  // namespace phi
 PT_REGISTER_KERNEL(diagonal_grad,
                    GPU,
                    ALL_LAYOUT,
-                   pten::DiagonalGradKernel,
+                   phi::DiagonalGradKernel,
                    float,
                    double,
                    int,

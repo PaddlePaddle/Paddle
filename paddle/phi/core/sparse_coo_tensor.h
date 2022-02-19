@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
 
-namespace pten {
+namespace phi {
 
 /// \brief The SparseCooTensor uses two DenseTensors to represent
 /// the non zero elements and the indices of non zero elements of
@@ -182,4 +182,4 @@ class SparseCooTensor : public TensorBase,
    */
 };
 
-}  // namespace pten
+}  // namespace phi

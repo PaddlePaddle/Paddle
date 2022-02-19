@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/dynload/rocm_driver.h"
 
-namespace pten {
+namespace phi {
 namespace dynload {
 
 std::once_flag rocm_dso_flag;
@@ -30,4 +30,4 @@ bool HasCUDADriver() {
 }
 
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi

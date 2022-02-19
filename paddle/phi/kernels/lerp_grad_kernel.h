@@ -16,7 +16,7 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void LerpGradKernel(const Context& ctx,
@@ -28,4 +28,4 @@ void LerpGradKernel(const Context& ctx,
                     DenseTensor* x_grad,
                     DenseTensor* y_grad);
 
-}  // namespace pten
+}  // namespace phi

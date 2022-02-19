@@ -280,7 +280,7 @@ extern "C" void spotrs_(char *uplo,
                         int *ldb,
                         int *info);
 
-namespace pten {
+namespace phi {
 namespace dynload {
 
 extern std::once_flag lapack_dso_flag;
@@ -297,7 +297,7 @@ extern void *lapack_dso_handle;
     auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) { \
       using lapackFunc = decltype(&::__name);                        \
       std::call_once(lapack_dso_flag, []() {                         \
-        lapack_dso_handle = pten::dynload::GetLAPACKDsoHandle();     \
+        lapack_dso_handle = phi::dynload::GetLAPACKDsoHandle();      \
       });                                                            \
       static void *p_##_name = dlsym(lapack_dso_handle, #__name);    \
       return reinterpret_cast<lapackFunc>(p_##_name)(args...);       \
@@ -337,4 +337,4 @@ LAPACK_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_LAPACK_WRAP);
 #undef DYNAMIC_LOAD_LAPACK_WRAP
 
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi

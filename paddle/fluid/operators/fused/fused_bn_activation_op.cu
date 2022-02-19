@@ -256,8 +256,8 @@ class FusedBatchNormActGradKernel<platform::CUDADeviceContext, T>
         PADDLE_THROW(
             platform::errors::Unimplemented("Unsupported activation type"));
       }
-      pten::funcs::SetConstant<platform::CUDADeviceContext,
-                               BatchNormParamType<T>>
+      phi::funcs::SetConstant<platform::CUDADeviceContext,
+                              BatchNormParamType<T>>
           functor;
       functor(dev_ctx, d_scale, static_cast<BatchNormParamType<T>>(0));
       functor(dev_ctx, d_bias, static_cast<BatchNormParamType<T>>(0));

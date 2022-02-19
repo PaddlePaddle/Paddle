@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
 KernelSignature ReshapeOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.InputSize("ShapeTensor") > 0) {
@@ -37,13 +37,13 @@ KernelSignature ReshapeDoubleGradOpArgumentMapping(
   return KernelSignature("reshape_double_grad", {"DDX"}, {}, {"DDOut"});
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_BASE_KERNEL_NAME(reshape2, reshape);
 PT_REGISTER_BASE_KERNEL_NAME(reshape2_grad, reshape_grad);
 PT_REGISTER_BASE_KERNEL_NAME(reshape2_grad_grad, reshape_double_grad);
 
-PT_REGISTER_ARG_MAPPING_FN(reshape2, pten::ReshapeOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(reshape2_grad, pten::ReshapeGradOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(reshape2, phi::ReshapeOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(reshape2_grad, phi::ReshapeGradOpArgumentMapping);
 PT_REGISTER_ARG_MAPPING_FN(reshape2_grad_grad,
-                           pten::ReshapeDoubleGradOpArgumentMapping);
+                           phi::ReshapeDoubleGradOpArgumentMapping);

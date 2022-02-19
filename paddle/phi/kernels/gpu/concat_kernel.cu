@@ -25,7 +25,7 @@
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 #include "paddle/phi/kernels/gpu/concat_and_split.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void ConcatKernel(const Context& dev_ctx,
@@ -34,14 +34,14 @@ void ConcatKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   int64_t axis = axis_scalar.to<int64_t>();
 
-  axis = pten::funcs::ComputeAxis(axis, x[0].dims().size());
+  axis = phi::funcs::ComputeAxis(axis, x[0].dims().size());
 
-  std::vector<pten::DDim> x_dims;
+  std::vector<phi::DDim> x_dims;
   for (size_t i = 0; i < x.size(); ++i) {
     x_dims.push_back(x[i].dims());
   }
 
-  pten::DDim out_dims = pten::funcs::ComputeAndCheckShape(true, x_dims, axis);
+  phi::DDim out_dims = phi::funcs::ComputeAndCheckShape(true, x_dims, axis);
   out->Resize(out_dims);
   out->mutable_data<T>(dev_ctx.GetPlace());
 
@@ -70,8 +70,8 @@ void ConcatKernel(const Context& dev_ctx,
     if (lod_size) {
       auto* out_lod = out->mutable_lod();
       for (size_t i = 1; i < x.size(); ++i) {
-        auto in_lod = pten::ConvertToLengthBasedLoD(x[i].lod());
-        pten::AppendLoD(out_lod, in_lod);
+        auto in_lod = phi::ConvertToLengthBasedLoD(x[i].lod());
+        phi::AppendLoD(out_lod, in_lod);
       }
     }
   }
@@ -83,8 +83,8 @@ void ConcatKernel(const Context& dev_ctx,
       if (in.numel() == 0UL) {
         continue;
       }
-      auto in_stride = pten::stride_numel(in.dims());
-      auto out_stride = pten::stride_numel(out->dims());
+      auto in_stride = phi::stride_numel(in.dims());
+      auto out_stride = phi::stride_numel(out->dims());
       paddle::operators::StridedNumelCopyWithAxis<T>(
           dev_ctx,
           axis,
@@ -96,7 +96,7 @@ void ConcatKernel(const Context& dev_ctx,
       output_offset += in_stride[axis];
     }
   } else {
-    std::vector<pten::DenseTensor> inputs;
+    std::vector<phi::DenseTensor> inputs;
     for (size_t j = 0; j < x.size(); ++j) {
       if (x[j].numel() > 0) {
         inputs.push_back(x[j]);
@@ -108,19 +108,19 @@ void ConcatKernel(const Context& dev_ctx,
   }
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(concat,
                    GPU,
                    ALL_LAYOUT,
-                   pten::ConcatKernel,
+                   phi::ConcatKernel,
                    float,
                    double,
                    bool,
                    int64_t,
                    int,
                    uint8_t,
-                   pten::dtype::float16,
-                   pten::dtype::bfloat16,
-                   pten::dtype::complex<float>,
-                   pten::dtype::complex<double>) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

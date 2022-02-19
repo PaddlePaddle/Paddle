@@ -76,7 +76,7 @@ TEST(test_var_helper, eager_var_helper) {
   auto egr_tensor = std::make_shared<egr::EagerVariable>();
   auto egr_tensor2 = std::make_shared<egr::EagerVariable>();
   egr_tensor->MutableVar()
-      ->GetMutable<pten::SelectedRows>()
+      ->GetMutable<phi::SelectedRows>()
       ->mutable_value()
       ->mutable_data<float>(platform::CPUPlace());
   egr_tensor2->MutableVar()->GetMutable<framework::LoDRankTable>();

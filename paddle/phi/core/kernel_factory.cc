@@ -17,7 +17,7 @@
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/phi/core/enforce.h"
 
-namespace pten {
+namespace phi {
 
 uint32_t KernelKey::Hash::operator()(const KernelKey& key) const {
   uint32_t hash_value = 0;
@@ -62,23 +62,23 @@ KernelKeyMap KernelFactory::SelectKernelMap(
 const Kernel& KernelFactory::SelectKernelOrThrowError(
     const std::string& kernel_name, const KernelKey& kernel_key) const {
   auto iter = kernels_.find(kernel_name);
-  PADDLE_ENFORCE_NE(iter,
-                    kernels_.end(),
-                    pten::errors::NotFound("The kernel `%s` is not registered.",
-                                           kernel_name));
+  PADDLE_ENFORCE_NE(
+      iter,
+      kernels_.end(),
+      phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
 
   auto kernel_iter = iter->second.find(kernel_key);
   // TODO(chenweihang): polish refind impl here
   if (kernel_iter == iter->second.end() &&
-      kernel_key.layout() != pten::DataLayout::ALL_LAYOUT) {
-    pten::KernelKey any_layout_kernel_key(
-        kernel_key.backend(), pten::DataLayout::ALL_LAYOUT, kernel_key.dtype());
+      kernel_key.layout() != phi::DataLayout::ALL_LAYOUT) {
+    phi::KernelKey any_layout_kernel_key(
+        kernel_key.backend(), phi::DataLayout::ALL_LAYOUT, kernel_key.dtype());
     kernel_iter = iter->second.find(any_layout_kernel_key);
   }
   PADDLE_ENFORCE_NE(
       kernel_iter,
       iter->second.end(),
-      pten::errors::NotFound(
+      phi::errors::NotFound(
           "The kernel with key %s of kernel `%s` is not registered.",
           kernel_key,
           kernel_name));
@@ -173,4 +173,4 @@ std::ostream& operator<<(std::ostream& os, KernelFactory& kernel_factory) {
   return os;
 }
 
-}  // namespace pten
+}  // namespace phi

@@ -228,7 +228,7 @@ using Scalar = paddle::experimental::ScalarBase<paddle::experimental::Tensor>;
 }  // namespace experimental
 }  // namespace paddle
 
-namespace pten {
+namespace phi {
 class DenseTensor;
 using Scalar = paddle::experimental::ScalarBase<DenseTensor>;
-}  // namespace pten
+}  // namespace phi

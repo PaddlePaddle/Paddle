@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/backends/dynload/port.h"
 
-namespace pten {
+namespace phi {
 namespace dynload {
 extern std::once_flag curand_dso_flag;
 extern void *curand_dso_handle;
@@ -30,7 +30,7 @@ extern void *curand_dso_handle;
     curandStatus_t operator()(Args... args) {                      \
       using curandFunc = decltype(&::__name);                      \
       std::call_once(curand_dso_flag, []() {                       \
-        curand_dso_handle = pten::dynload::GetCurandDsoHandle();   \
+        curand_dso_handle = phi::dynload::GetCurandDsoHandle();    \
       });                                                          \
       static void *p_##__name = dlsym(curand_dso_handle, #__name); \
       return reinterpret_cast<curandFunc>(p_##__name)(args...);    \
@@ -50,4 +50,4 @@ extern void *curand_dso_handle;
 CURAND_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CURAND_WRAP);
 
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi

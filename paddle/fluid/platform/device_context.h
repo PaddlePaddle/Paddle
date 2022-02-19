@@ -126,12 +126,12 @@ constexpr DeviceType kNPU = DeviceType::NPU;
 constexpr DeviceType kIPU = DeviceType::IPU;
 constexpr DeviceType kMLU = DeviceType::MLU;
 
-using DeviceContext = pten::DeviceContext;
+using DeviceContext = phi::DeviceContext;
 
-// using CPUDeviceContext = pten::CPUContext;
+// using CPUDeviceContext = phi::CPUContext;
 // TODO(wilber): The place constructor is used in many places, it is more
-// difficult to use CPUDeviceContext = pten::CPUContext directly.
-class CPUDeviceContext : public pten::CPUContext {
+// difficult to use CPUDeviceContext = phi::CPUContext directly.
+class CPUDeviceContext : public phi::CPUContext {
  public:
   CPUDeviceContext();
   explicit CPUDeviceContext(CPUPlace place);
@@ -175,7 +175,7 @@ struct DefaultDeviceContextType<platform::MLUPlace>;
 
 #ifdef PADDLE_WITH_XPU
 namespace xpu = baidu::xpu::api;
-class XPUDeviceContext : public pten::XPUContext {
+class XPUDeviceContext : public phi::XPUContext {
  public:
   XPUDeviceContext();
   explicit XPUDeviceContext(XPUPlace place);
@@ -346,7 +346,7 @@ class CUDAContext {
 #ifndef PADDLE_WITH_HIP
   /*! \brief  Call cusparse function safely. */
   inline void CusparseCall(
-      const std::function<void(pten::sparseHandle_t)>& callback) const {
+      const std::function<void(phi::sparseHandle_t)>& callback) const {
     cusparse_handle_->Call(callback);
   }
 #endif
@@ -499,7 +499,7 @@ class CUDAContext {
   DISABLE_COPY_AND_ASSIGN(CUDAContext);
 };
 
-class CUDADeviceContext : public pten::GPUContext {
+class CUDADeviceContext : public phi::GPUContext {
  public:
   explicit CUDADeviceContext(CUDAPlace place);
   virtual ~CUDADeviceContext();
@@ -514,7 +514,7 @@ class CUDADeviceContext : public pten::GPUContext {
   inline void CublasCall(
       const std::function<void(blasHandle_t)>& callback) const {
     if (!thread_ctx_.count(this)) {
-      pten::GPUContext::CublasCall(callback);
+      phi::GPUContext::CublasCall(callback);
       return;
     }
     return context()->CublasCall(callback);
@@ -523,9 +523,9 @@ class CUDADeviceContext : public pten::GPUContext {
 #ifndef PADDLE_WITH_HIP
   /*! \brief  Call cusparse function safely. */
   inline void CusparseCall(
-      const std::function<void(pten::sparseHandle_t)>& callback) const {
+      const std::function<void(phi::sparseHandle_t)>& callback) const {
     if (!thread_ctx_.count(this)) {
-      pten::GPUContext::CusparseCall(callback);
+      phi::GPUContext::CusparseCall(callback);
       return;
     }
     context()->CusparseCall(callback);
@@ -537,7 +537,7 @@ class CUDADeviceContext : public pten::GPUContext {
   inline void TensorCoreCublasCallIfAvailable(
       const std::function<void(blasHandle_t)>& callback) const {
     if (!thread_ctx_.count(this)) {
-      pten::GPUContext::TensorCoreCublasCallIfAvailable(callback);
+      phi::GPUContext::TensorCoreCublasCallIfAvailable(callback);
       return;
     }
     context()->TensorCoreCublasCallIfAvailable(callback);
@@ -569,7 +569,7 @@ class CUDADeviceContext : public pten::GPUContext {
    *  workspace. Once the handle is destructed, the lock would be released.
    *  CudnnWorkspaceHandle is an RAII object to implement thread-safe
    *  sequential cudnn function calls. */
-  pten::DnnWorkspaceHandle cudnn_workspace_handle() const;
+  phi::DnnWorkspaceHandle cudnn_workspace_handle() const;
 
   /*! \brief  Return cuda stream in the device context. */
   gpuStream_t stream() const;
@@ -610,7 +610,7 @@ class CUDADeviceContext : public pten::GPUContext {
   // NOTE: Just for compatibility with the past, please delete if there is an
   // elegant way.
   std::unique_ptr<stream::CUDAStream> cuda_stream_;
-  std::unique_ptr<pten::DnnWorkspaceHandle> workspace_{nullptr};
+  std::unique_ptr<phi::DnnWorkspaceHandle> workspace_{nullptr};
 
   DISABLE_COPY_AND_ASSIGN(CUDADeviceContext);
 };

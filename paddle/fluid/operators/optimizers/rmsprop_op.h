@@ -43,7 +43,7 @@ struct SparseRmspropGradFunctor {
 
   HOSTDEVICE inline T operator()(int64_t idx) const {
     auto row_idx =
-        pten::funcs::BinarySearch(rows_, row_count_, idx / row_numel_);
+        phi::funcs::BinarySearch(rows_, row_count_, idx / row_numel_);
     return row_idx >= 0 ? grad_[row_idx * row_numel_ + idx % row_numel_] : 0;
   }
 
@@ -219,10 +219,10 @@ class RmspropOpKernel : public framework::OpKernel<T> {
               rho, epsilon, momentum, grad_func));
         }
       }
-    } else if (grad_var->IsType<pten::SelectedRows>()) {
-      auto &grad = grad_var->Get<pten::SelectedRows>();
-      pten::SelectedRows tmp_merged_grad;
-      pten::SelectedRows *merged_grad = &tmp_merged_grad;
+    } else if (grad_var->IsType<phi::SelectedRows>()) {
+      auto &grad = grad_var->Get<phi::SelectedRows>();
+      phi::SelectedRows tmp_merged_grad;
+      phi::SelectedRows *merged_grad = &tmp_merged_grad;
       math::scatter::MergeAdd<DeviceContext, T> merge_func;
       merge_func(dev_ctx, grad, merged_grad);
 

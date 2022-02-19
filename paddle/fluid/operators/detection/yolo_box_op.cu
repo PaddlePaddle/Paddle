@@ -114,7 +114,7 @@ class YoloBoxOpCUDAKernel : public framework::OpKernel<T> {
     T* boxes_data = boxes->mutable_data<T>({n, box_num, 4}, ctx.GetPlace());
     T* scores_data =
         scores->mutable_data<T>({n, box_num, class_num}, ctx.GetPlace());
-    pten::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
+    phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
     set_zero(dev_ctx, boxes, static_cast<T>(0));
     set_zero(dev_ctx, scores, static_cast<T>(0));
     platform::GpuLaunchConfig config =

@@ -25,7 +25,7 @@
 #include "paddle/infrt/dialect/phi/infrt_pten_baseDialect.cpp.inc"
 
 namespace infrt {
-namespace pten {
+namespace phi {
 
 void PTENDialect::printType(::mlir::Type type,
                             mlir::DialectAsmPrinter& os) const {
@@ -77,7 +77,7 @@ mlir::Type PTENDialect::parseType(mlir::DialectAsmParser& parser) const {
   return mlir::Type();
 }
 
-}  // namespace pten
+}  // namespace phi
 }  // namespace infrt
 
 #define GET_TYPEDEF_CLASSES

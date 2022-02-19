@@ -19,7 +19,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 #include "paddle/phi/kernels/gpu/concat_and_split.h"
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void SplitKernel(const Context& dev_ctx,
@@ -34,7 +34,7 @@ void SplitKernel(const Context& dev_ctx,
       out_metas.push_back(outs[i]);
     }
 
-    pten::SplitInferMeta(x, num_or_sections, axis_scalar, &out_metas, true);
+    phi::SplitInferMeta(x, num_or_sections, axis_scalar, &out_metas, true);
 
     for (size_t i = 0; i < out_metas.size(); ++i) {
       outs[i]->Resize(out_metas[i].dims());
@@ -57,16 +57,16 @@ void SplitKernel(const Context& dev_ctx,
   }
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(split,
                    GPU,
                    ALL_LAYOUT,
-                   pten::SplitKernel,
+                   phi::SplitKernel,
                    float,
                    double,
                    int64_t,
                    int,
                    bool,
-                   pten::dtype::float16,
-                   pten::dtype::bfloat16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

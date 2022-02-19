@@ -22,7 +22,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 #include "paddle/phi/kernels/funcs/common_shape.h"
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void NormGradKernel(const Context& ctx,
@@ -81,7 +81,7 @@ void NormGradKernel(const Context& ctx,
   dx.device(*place) = (dy - dx) / norm_r.broadcast(bcast);
 }
 
-}  // namespace pten
+}  // namespace phi
 
 PT_REGISTER_KERNEL(
-    norm_grad, CPU, ALL_LAYOUT, pten::NormGradKernel, float, double) {}
+    norm_grad, CPU, ALL_LAYOUT, phi::NormGradKernel, float, double) {}

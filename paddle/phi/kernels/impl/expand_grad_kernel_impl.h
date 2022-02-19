@@ -19,7 +19,7 @@
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/impl/expand_kernel_impl.h"
 
-namespace pten {
+namespace phi {
 template <typename Context, typename T, int Dims>
 void ExpandBackward(const Context& ctx,
                     const DenseTensor& out_grad,
@@ -42,7 +42,7 @@ void ExpandBackward(const Context& ctx,
   }
   auto out_grad0 = EigenVector<T>::Flatten(out_grad);
   auto& place = *ctx.eigen_device();
-  pten::funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
+  phi::funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
       place, x_grad, out_grad0, reduce_dims, reshape_dims);
 }
 
@@ -54,7 +54,7 @@ void ExpandGradKernel(const Context& ctx,
                       DenseTensor* in_grad) {
   auto expand_shape = shape.GetData();
   auto x_dims = x.dims();
-  auto vec_in_dims = pten::vectorize<int>(x_dims);
+  auto vec_in_dims = phi::vectorize<int>(x_dims);
   auto diff = expand_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   // 1. reshape_dims_vec is the broadcast parameter.
@@ -88,18 +88,18 @@ void ExpandGradKernel(const Context& ctx,
   }
   // no need reduce, just copy
   if (just_copy) {
-    pten::Copy(ctx, out_grad, false, in_grad);
+    phi::Copy(ctx, out_grad, false, in_grad);
   } else {
     PADDLE_ENFORCE_GE(dims,
                       1,
-                      pten::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The rank of the input 'Out@GRAD' for "
                           "expand_v2_grad op must be greater than or "
                           "equal to 1, but the value received is %d.",
                           dims));
     PADDLE_ENFORCE_LE(dims,
                       MAX_RANK_SUPPORTED,
-                      pten::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The rank of the input 'Out@GRAD' for "
                           "expand_v2_grad op must be less than or equal "
                           "to %d, but the value received is %d.",
@@ -131,7 +131,7 @@ void ExpandGradKernel(const Context& ctx,
             ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
         break;
       default:
-        PADDLE_THROW(pten::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "Only support tensor with rank being between 1 and 6. But "
             "received tensor's rank = %d.",
             dims));
@@ -139,4 +139,4 @@ void ExpandGradKernel(const Context& ctx,
   }
 }
 
-}  // namespace pten
+}  // namespace phi

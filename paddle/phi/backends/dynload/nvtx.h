@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/backends/dynload/port.h"
 
-namespace pten {
+namespace phi {
 namespace dynload {
 extern std::once_flag nvtx_dso_flag;
 extern void *nvtx_dso_handle;
@@ -31,7 +31,7 @@ extern void *nvtx_dso_handle;
     int operator()(Args... args) {                               \
       using nvtxFunc = decltype(&::__name);                      \
       std::call_once(nvtx_dso_flag, []() {                       \
-        nvtx_dso_handle = pten::dynload::GetNvtxDsoHandle();     \
+        nvtx_dso_handle = phi::dynload::GetNvtxDsoHandle();      \
       });                                                        \
       static void *p_##__name = dlsym(nvtx_dso_handle, #__name); \
       return reinterpret_cast<nvtxFunc>(p_##__name)(args...);    \
@@ -47,5 +47,5 @@ NVTX_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_NVTX_WRAP);
 
 #undef DECLARE_DYNAMIC_LOAD_NVTX_WRAP
 }  // namespace dynload
-}  // namespace pten
+}  // namespace phi
 #endif

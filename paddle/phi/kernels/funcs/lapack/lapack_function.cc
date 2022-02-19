@@ -16,7 +16,7 @@
 #include "paddle/fluid/platform/dynload/lapack.h"
 #include "paddle/phi/common/complex.h"
 
-namespace pten {
+namespace phi {
 namespace funcs {
 
 // LU (for example)
@@ -72,14 +72,14 @@ void lapackEigh<double>(char jobz,
 }
 
 template <>
-void lapackEigh<pten::dtype::complex<float>, float>(
+void lapackEigh<phi::dtype::complex<float>, float>(
     char jobz,
     char uplo,
     int n,
-    pten::dtype::complex<float> *a,
+    phi::dtype::complex<float> *a,
     int lda,
     float *w,
-    pten::dtype::complex<float> *work,
+    phi::dtype::complex<float> *work,
     int lwork,
     float *rwork,
     int lrwork,
@@ -103,14 +103,14 @@ void lapackEigh<pten::dtype::complex<float>, float>(
 }
 
 template <>
-void lapackEigh<pten::dtype::complex<double>, double>(
+void lapackEigh<phi::dtype::complex<double>, double>(
     char jobz,
     char uplo,
     int n,
-    pten::dtype::complex<double> *a,
+    phi::dtype::complex<double> *a,
     int lda,
     double *w,
-    pten::dtype::complex<double> *work,
+    phi::dtype::complex<double> *work,
     int lwork,
     double *rwork,
     int lrwork,
@@ -203,18 +203,18 @@ void lapackEig<float>(char jobvl,
 }
 
 template <>
-void lapackEig<pten::dtype::complex<double>, double>(
+void lapackEig<phi::dtype::complex<double>, double>(
     char jobvl,
     char jobvr,
     int n,
-    pten::dtype::complex<double> *a,
+    phi::dtype::complex<double> *a,
     int lda,
-    pten::dtype::complex<double> *w,
-    pten::dtype::complex<double> *vl,
+    phi::dtype::complex<double> *w,
+    phi::dtype::complex<double> *vl,
     int ldvl,
-    pten::dtype::complex<double> *vr,
+    phi::dtype::complex<double> *vr,
     int ldvr,
-    pten::dtype::complex<double> *work,
+    phi::dtype::complex<double> *work,
     int lwork,
     double *rwork,
     int *info) {
@@ -236,18 +236,18 @@ void lapackEig<pten::dtype::complex<double>, double>(
 }
 
 template <>
-void lapackEig<pten::dtype::complex<float>, float>(
+void lapackEig<phi::dtype::complex<float>, float>(
     char jobvl,
     char jobvr,
     int n,
-    pten::dtype::complex<float> *a,
+    phi::dtype::complex<float> *a,
     int lda,
-    pten::dtype::complex<float> *w,
-    pten::dtype::complex<float> *vl,
+    phi::dtype::complex<float> *w,
+    phi::dtype::complex<float> *vl,
     int ldvl,
-    pten::dtype::complex<float> *vr,
+    phi::dtype::complex<float> *vr,
     int ldvr,
-    pten::dtype::complex<float> *work,
+    phi::dtype::complex<float> *work,
     int lwork,
     float *rwork,
     int *info) {
@@ -441,13 +441,13 @@ void lapackGelss<float>(int m,
 }
 
 template <>
-void lapackCholeskySolve<pten::dtype::complex<double>>(
+void lapackCholeskySolve<phi::dtype::complex<double>>(
     char uplo,
     int n,
     int nrhs,
-    pten::dtype::complex<double> *a,
+    phi::dtype::complex<double> *a,
     int lda,
-    pten::dtype::complex<double> *b,
+    phi::dtype::complex<double> *b,
     int ldb,
     int *info) {
   paddle::platform::dynload::zpotrs_(
@@ -462,13 +462,13 @@ void lapackCholeskySolve<pten::dtype::complex<double>>(
 }
 
 template <>
-void lapackCholeskySolve<pten::dtype::complex<float>>(
+void lapackCholeskySolve<phi::dtype::complex<float>>(
     char uplo,
     int n,
     int nrhs,
-    pten::dtype::complex<float> *a,
+    phi::dtype::complex<float> *a,
     int lda,
-    pten::dtype::complex<float> *b,
+    phi::dtype::complex<float> *b,
     int ldb,
     int *info) {
   paddle::platform::dynload::cpotrs_(&uplo,
@@ -506,4 +506,4 @@ void lapackCholeskySolve<float>(char uplo,
 }
 
 }  // namespace funcs
-}  // namespace pten
+}  // namespace phi

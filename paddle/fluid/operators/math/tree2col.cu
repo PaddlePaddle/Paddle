@@ -56,7 +56,7 @@ class Tree2ColFunctor<platform::CUDADeviceContext, T> {
     auto cpu_place = platform::CPUPlace();
     auto stream = context.stream();
     auto feature_dims = node_features.dims();
-    pten::funcs::SetConstant<platform::CUDADeviceContext, T> constant;
+    phi::funcs::SetConstant<platform::CUDADeviceContext, T> constant;
 
     Tensor EdgeSet_cpu;
     framework::TensorCopy(EdgeSet, cpu_place, &EdgeSet_cpu);
@@ -128,7 +128,7 @@ class Col2TreeFunctor<platform::CUDADeviceContext, T> {
     auto cpu_place = platform::CPUPlace();
     auto stream = context.stream();
     auto output_dims = patch_grad.dims();
-    pten::funcs::SetConstant<platform::CUDADeviceContext, T> constant;
+    phi::funcs::SetConstant<platform::CUDADeviceContext, T> constant;
 
     Tensor EdgeSet_cpu;
     framework::TensorCopy(EdgeSet, cpu_place, &EdgeSet_cpu);

@@ -209,7 +209,7 @@ class FusionSeqExpandConcatFCOpKernel : public framework::OpKernel<T> {
     T* out_data = out->mutable_data<T>(ctx.GetPlace());
     T* fc_out_data = fc_out->mutable_data<T>(ctx.GetPlace());
 
-    auto blas = pten::funcs::GetBlas<DeviceContext, T>(ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
 
     auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
     math::FCFunctor<DeviceContext, T> fc;
