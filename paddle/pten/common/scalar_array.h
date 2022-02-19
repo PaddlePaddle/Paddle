@@ -45,7 +45,7 @@ class ScalarArrayBase {
 
   bool FromTensor() const { return is_from_tensor_; }
 
-  void SetInitFromTensor(bool val) { is_from_tensor_ = val; }
+  void SetFromTensor(bool val) { is_from_tensor_ = val; }
 
   // The Tensor must have one dim
   ScalarArrayBase(const T& tensor) {  // NOLINT

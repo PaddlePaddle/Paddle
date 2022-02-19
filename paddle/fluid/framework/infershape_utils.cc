@@ -294,14 +294,15 @@ pten::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
   auto& attr_names = std::get<1>(signature.args);
   auto& output_names = std::get<2>(signature.args);
 
-  auto kernels = pten::KernelFactory::Instance().kernels().find(signature.name);
-  if (kernels == pten::KernelFactory::Instance().kernels().end()) {
+  auto kernels_map =
+      pten::KernelFactory::Instance().SelectKernelMap(signature.name);
+  if (kernels_map.size() == 0) {
     PADDLE_THROW(
         platform::errors::Unimplemented("Not find `%s` kernels when construct "
                                         "InferMetaContext.",
                                         signature.name));
   }
-  auto attr_defs = kernels->second.cbegin()->second.args_def().attribute_defs();
+  auto attr_defs = kernels_map.cbegin()->second.args_def().attribute_defs();
 
   // TODO(chenweihang): support multiple inputs and outputs later
   pten::InferMetaContext infer_mete_context;
@@ -359,7 +360,7 @@ pten::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
             }
           }
           pten::ScalarArray tensor_attr(std::vector<int32_t>(num_ele, -1));
-          tensor_attr.SetInitFromTensor(true);
+          tensor_attr.SetFromTensor(true);
           infer_meta_context.EmplaceBackAttr(std::move(tensor_attr));
         }
       } else if (ctx->HasAttr(attr_name)) {

@@ -131,7 +131,7 @@ pten::ScalarArray MakePtenScalarArrayFromVarList(
   }
 
   pten::ScalarArray result{vector_data};
-  result.SetInitFromTensor(true);
+  result.SetFromTensor(true);
 
   return result;
 }
