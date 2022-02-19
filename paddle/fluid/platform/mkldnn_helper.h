@@ -23,7 +23,7 @@ limitations under the License. */
 #include "dnnl.hpp"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 namespace paddle {
 #ifdef PADDLE_WITH_MKLDNN
 using MKLDNNMemoryFormat = dnnl::memory::format_tag;
@@ -190,7 +190,8 @@ inline void Reorder(dnnl::memory src, dnnl::memory dst,
   auto reorder_prim = dnnl::reorder(src, dst);
   auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
   platform::RecordEvent record_reorder("int_reorder",
-                                       platform::EventRole::kUniqueOp);
+                                       platform::TracerEventType::UserDefined,
+                                       2, platform::EventRole::kUniqueOp);
   reorder_prim.execute(astream, src, dst);
   astream.wait();
 }

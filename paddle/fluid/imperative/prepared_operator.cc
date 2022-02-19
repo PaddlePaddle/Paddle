@@ -27,7 +27,7 @@
 #endif
 #include "paddle/fluid/framework/library_type.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);
@@ -348,16 +348,18 @@ static void PreparedOpRunImpl(
   framework::Scope scope;
 
   {
-    platform::RecordEvent record_event(op.Type() + " infer_shape",
-                                       platform::EventRole::kInnerOp);
+    platform::RecordEvent record_event(op.Type() + "::infer_shape",
+                                       platform::TracerEventType::OperatorInner,
+                                       1, platform::EventRole::kInnerOp);
     DygraphInferShapeContext<VarType> infer_shape_ctx(
         &ins, &outs, &attrs, &default_attrs, op.Type(), &kernel_type);
     op.Info().infer_shape_(&infer_shape_ctx);
   }
 
   {
-    platform::RecordEvent record_event(op.Type() + " compute",
-                                       platform::EventRole::kInnerOp);
+    platform::RecordEvent record_event(op.Type() + "::compute",
+                                       platform::TracerEventType::OperatorInner,
+                                       1, platform::EventRole::kInnerOp);
 
     func(DygraphExecutionContext<VarType>(op, scope, *dev_ctx, ctx, ins, outs,
                                           attrs, default_attrs));
@@ -403,16 +405,18 @@ static void PreparedOpRunPtImpl(
     const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs) {
   {
-    platform::RecordEvent record_event(op.Type() + " infer_shape",
-                                       platform::EventRole::kInnerOp);
+    platform::RecordEvent record_event(op.Type() + "::infer_shape",
+                                       platform::TracerEventType::OperatorInner,
+                                       1, platform::EventRole::kInnerOp);
     DygraphInferShapeContext<VarType> infer_shape_ctx(
         &ins, &outs, &attrs, &default_attrs, op.Type(), &kernel_type);
     op.Info().infer_shape_(&infer_shape_ctx);
   }
 
   {
-    platform::RecordEvent record_event(op.Type() + " compute",
-                                       platform::EventRole::kInnerOp);
+    platform::RecordEvent record_event(op.Type() + "::compute",
+                                       platform::TracerEventType::OperatorInner,
+                                       1, platform::EventRole::kInnerOp);
 
     PreparePtenData<VarType>(pt_kernel, pt_kernel_signature, ins);
 
