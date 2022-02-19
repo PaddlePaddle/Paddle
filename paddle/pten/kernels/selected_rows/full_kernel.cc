@@ -29,8 +29,9 @@ template <typename T, typename Context>
 void FullSR(const Context& dev_ctx,
             const ScalarArray& shape,
             const Scalar& val,
+            DataType dtype,
             SelectedRows* out) {
-  pten::FullKernel<T>(dev_ctx, shape, val, out->mutable_value());
+  pten::FullKernel<T>(dev_ctx, shape, val, dtype, out->mutable_value());
 }
 
 }  // namespace pten

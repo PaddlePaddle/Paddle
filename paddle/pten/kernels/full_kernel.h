@@ -35,6 +35,7 @@ template <typename T, typename Context>
 void FullSR(const Context& dev_ctx,
             const ScalarArray& shape,
             const Scalar& val,
+            DataType dtype,
             SelectedRows* out);
 
 template <typename T, typename Context>
