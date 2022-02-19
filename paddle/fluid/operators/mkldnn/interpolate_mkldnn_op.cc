@@ -170,7 +170,6 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(nearest_interp, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::InterpolateMKLDNNKernel<float>,
-                   ops::InterpolateMKLDNNKernel<paddle::platform::bfloat16>,
                    ops::InterpolateMKLDNNKernel<int8_t>,
                    ops::InterpolateMKLDNNKernel<uint8_t>);
 REGISTER_OP_KERNEL(bilinear_interp, MKLDNN, ::paddle::platform::CPUPlace,
