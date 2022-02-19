@@ -240,7 +240,6 @@ if(WITH_PYTHON)
     # LD_LIBRARY_PATH. This is different with Windows platformm, which search
     # *.dll in current directory automatically.
     if(WITH_ONNXRUNTIME)
-      message(==WITH_ONNXRUNTIME=========pybind=======)
       ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libpaddle2onnx.so
         COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE2ONNX_LIB} ${CMAKE_CURRENT_BINARY_DIR}
         DEPENDS paddle2onnx)
@@ -249,7 +248,7 @@ if(WITH_PYTHON)
 
       ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libonnxruntime.so
         COMMAND ${CMAKE_COMMAND} -E copy ${ONNXRUNTIME_LIB} ${CMAKE_CURRENT_BINARY_DIR} 
-        DEPENDS onnxruntime_predictor)
+        DEPENDS onnxruntime)
       list(APPEND OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/libonnxruntime.so)
       list(APPEND EAGER_OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/libonnxruntime.so)
     endif()

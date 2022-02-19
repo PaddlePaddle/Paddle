@@ -35,11 +35,13 @@ endif()
 
 
 INCLUDE_DIRECTORIES(${ONNXRUNTIME_INC_DIR}) # For ONNXRUNTIME code to include internal headers.
-SET(ONNXRUNTIME_LIB "${ONNXRUNTIME_INSTALL_DIR}/lib/libonnxruntime.so" CACHE FILEPATH "ONNXRUNTIME library." FORCE)
-
-
-
-message("onnxruntime --------CMakeLists-------:${ONNXRUNTIME_LIB}========")
+if (WIN32)
+  SET(ONNXRUNTIME_SOURCE_LIB "${ONNXRUNTIME_SOURCE_DIR}/lib/libonnxruntime.dll.1.10.0" CACHE FILEPATH "ONNXRUNTIME source library." FORCE)
+  SET(ONNXRUNTIME_LIB "${ONNXRUNTIME_INSTALL_DIR}/lib/libonnxruntime.dll.1.10.0" CACHE FILEPATH "ONNXRUNTIME library." FORCE)
+else ()
+    SET(ONNXRUNTIME_SOURCE_LIB "${ONNXRUNTIME_SOURCE_DIR}/lib/libonnxruntime.so.1.10.0" CACHE FILEPATH "ONNXRUNTIME source library." FORCE)
+    SET(ONNXRUNTIME_LIB "${ONNXRUNTIME_INSTALL_DIR}/lib/libonnxruntime.so.1.10.0" CACHE FILEPATH "ONNXRUNTIME library." FORCE)
+endif ()
 
 
 ExternalProject_Add(
@@ -51,13 +53,11 @@ ExternalProject_Add(
     CONFIGURE_COMMAND     ""
     BUILD_COMMAND         ""
     UPDATE_COMMAND        ""
-    INSTALL_COMMAND       ${CMAKE_COMMAND} -E copy_directory ${ONNXRUNTIME_SOURCE_DIR}/include ${ONNXRUNTIME_INC_DIR} &&
-                          ${CMAKE_COMMAND} -E copy_directory ${ONNXRUNTIME_SOURCE_DIR}/lib ${ONNXRUNTIME_LIB_DIR}
+    INSTALL_COMMAND       ${CMAKE_COMMAND} -E copy ${ONNXRUNTIME_SOURCE_LIB} ${ONNXRUNTIME_LIB} &&
+                          ${CMAKE_COMMAND} -E copy_directory ${ONNXRUNTIME_SOURCE_DIR}/include ${ONNXRUNTIME_INC_DIR}
     BUILD_BYPRODUCTS      ${ONNXRUNTIME_LIB}
 )
 
-
-ADD_LIBRARY(onnxruntime STATIC IMPORTED GLOBAL)
+ADD_LIBRARY(onnxruntime SHARED IMPORTED mGLOBAL)
 SET_PROPERTY(TARGET onnxruntime PROPERTY IMPORTED_LOCATION ${ONNXRUNTIME_LIB})
 ADD_DEPENDENCIES(onnxruntime ${ONNXRUNTIME_PROJECT})
-
