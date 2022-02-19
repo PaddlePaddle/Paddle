@@ -45,7 +45,7 @@ class SoftmaxWithCrossEntropyXPUKernel : public framework::OpKernel<T> {
     loss->mutable_data<T>(context.GetPlace());
     const int n = SizeToAxis(axis, logits->dims());
     const int d = SizeFromAxis(axis, logits->dims());
-    std::vector<int> logits_dims = framework::vectorize<int>(logits->dims());
+    std::vector<int> logits_dims = pten::vectorize<int>(logits->dims());
     const bool soft_label = context.Attr<bool>("soft_label");
 
     // softmax

@@ -65,8 +65,8 @@ class CholeskySolveOp : public framework::OperatorWithKernel {
             "But Got %ld and %ld",
             b_dims[b_rank - 2], u_dims[u_rank - 2]));
 
-    std::vector<int64_t> u_dims_vec = paddle::framework::vectorize(u_dims);
-    std::vector<int64_t> b_dims_vec = paddle::framework::vectorize(b_dims);
+    std::vector<int64_t> u_dims_vec = pten::vectorize(u_dims);
+    std::vector<int64_t> b_dims_vec = pten::vectorize(b_dims);
 
     std::vector<int64_t> u_dims_vec_cut(u_dims_vec.begin(),
                                         u_dims_vec.end() - 2);
@@ -81,7 +81,7 @@ class CholeskySolveOp : public framework::OperatorWithKernel {
                             {b_dims_vec[b_rank - 2], b_dims_vec[b_rank - 1]});
 
     // dim of 'Out' is the same with 'Y' after broadcast
-    context->SetOutputDim("Out", framework::make_ddim(b_broadcast_dims));
+    context->SetOutputDim("Out", pten::make_ddim(b_broadcast_dims));
   }
 
  protected:

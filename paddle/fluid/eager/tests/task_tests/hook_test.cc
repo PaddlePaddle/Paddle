@@ -39,8 +39,7 @@ paddle::experimental::Tensor hook_function(
   auto ret_meta = pten::DenseTensorMeta(t_dense->dtype(), t_dense->dims(),
                                         t_dense->layout());
   auto place = t_dense->place();
-  size_t bytes_size =
-      paddle::framework::product(t_dense->dims()) * SizeOf(t_dense->dtype());
+  size_t bytes_size = pten::product(t_dense->dims()) * SizeOf(t_dense->dtype());
   auto ret_dense = std::make_shared<pten::DenseTensor>(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           paddle::memory::Alloc(place, bytes_size)),
@@ -64,7 +63,7 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
 
   // Prepare Inputs
   std::vector<paddle::experimental::Tensor> target_tensors;
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = pten::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
   paddle::experimental::Tensor tensor = egr_utils_api::CreateTensorWithValue(
@@ -147,7 +146,7 @@ TEST(RetainGrad, HookAfterRetainGrad) {
 
   // Prepare Inputs
   std::vector<paddle::experimental::Tensor> target_tensors;
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = pten::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
   paddle::experimental::Tensor tensor = egr_utils_api::CreateTensorWithValue(

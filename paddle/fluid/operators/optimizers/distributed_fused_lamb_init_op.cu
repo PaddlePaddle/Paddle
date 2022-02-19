@@ -254,7 +254,7 @@ static void ShareBufferForNonInitedTensor(framework::Tensor *origin,
 
   framework::DDim fused_out_dim = fused_out->dims();
   auto fused_out_numel = fused_out->numel();
-  auto numel = framework::product(dims);
+  auto numel = pten::product(dims);
   *origin = fused_out->Resize({fused_out_numel})
                 .Slice(numel_offset, numel + numel_offset);
   origin->Resize(dims);

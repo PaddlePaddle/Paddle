@@ -51,7 +51,7 @@ class ModeOp : public framework::OperatorWithKernel {
     for (int64_t i = axis + 1; i < dim_size; i++) {
       dimvec.emplace_back(input_dims[i]);
     }
-    framework::DDim dims = framework::make_ddim(dimvec);
+    framework::DDim dims = pten::make_ddim(dimvec);
     PADDLE_ENFORCE_GE(input_dims.size(), 1, platform::errors::InvalidArgument(
                                                 "input shape should >= 1d"));
     ctx->SetOutputDim("Out", dims);

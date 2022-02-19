@@ -36,9 +36,9 @@ class OneHotV2Op : public framework::OperatorWithKernel {
       depth = -1;
     }
 
-    auto out_dims_vec = framework::vectorize(x_dims);
+    auto out_dims_vec = pten::vectorize(x_dims);
     out_dims_vec.push_back(depth);
-    auto out_dims = framework::make_ddim(out_dims_vec);
+    auto out_dims = pten::make_ddim(out_dims_vec);
     ctx->SetOutputDim("Out", out_dims);
     ctx->ShareLoD("X", /* --> */ "Out");
   }

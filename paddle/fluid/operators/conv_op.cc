@@ -95,8 +95,8 @@ std::vector<int64_t> ConvOp::ComputeOutputShape(
           "But received: input's dimension is %d, input's shape is [%s]; "
           "Attr(stride)'s length is %d, Attr(stride) is [%s]; "
           "difference of input's dimention and Attr(strides)'s length = %u.",
-          in_dims.size(), in_dims, strides.size(),
-          framework::make_ddim(strides), in_sub_stride_size));
+          in_dims.size(), in_dims, strides.size(), pten::make_ddim(strides),
+          in_sub_stride_size));
 
   const auto input_channels =
       channel_last ? in_dims[in_dims.size() - 1] : in_dims[1];
@@ -129,15 +129,15 @@ std::vector<int64_t> ConvOp::ComputeOutputShape(
 
   framework::DDim in_data_dims;
   if (channel_last) {
-    in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
+    in_data_dims = pten::slice_ddim(in_dims, 1, in_dims.size() - 1);
   } else {
-    in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+    in_data_dims = pten::slice_ddim(in_dims, 2, in_dims.size());
   }
 
   framework::DDim filter_data_dims =
-      framework::slice_ddim(filter_dims, 2, filter_dims.size());
+      pten::slice_ddim(filter_dims, 2, filter_dims.size());
 
-  std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = pten::vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                            in_data_dims, strides, ksize);
 

@@ -79,7 +79,7 @@ class CompareOp : public framework::OperatorWithKernel {
       GetBroadcastDimsArrays(dim_x, dim_y, x_dims_array.data(),
                              y_dims_array.data(), out_dims_array.data(),
                              max_dim, axis);
-      context->SetOutputDim("Out", framework::make_ddim(out_dims_array));
+      context->SetOutputDim("Out", pten::make_ddim(out_dims_array));
       // to do
       context->ShareLoD("X", /*->*/ "Out");
     }

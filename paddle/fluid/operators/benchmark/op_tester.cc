@@ -273,13 +273,13 @@ void OpTester::SetupTensor(framework::LoDTensor *tensor,
   std::mt19937 rng(seed++);
   std::uniform_real_distribution<double> uniform_dist(0, 1);
 
-  T *ptr = tensor->mutable_data<T>(framework::make_ddim(shape), place_);
+  T *ptr = tensor->mutable_data<T>(pten::make_ddim(shape), place_);
 
   framework::LoDTensor cpu_tensor;
   T *cpu_ptr = nullptr;
 
   if (!platform::is_cpu_place(place_)) {
-    cpu_ptr = cpu_tensor.mutable_data<T>(framework::make_ddim(shape),
+    cpu_ptr = cpu_tensor.mutable_data<T>(pten::make_ddim(shape),
                                          platform::CPUPlace());
   } else {
     cpu_ptr = ptr;

@@ -523,16 +523,16 @@ class ROIPerspectiveTransformOp : public framework::OperatorWithKernel {
                                      input_dims[1],  // channels
                                      static_cast<int64_t>(transformed_height),
                                      static_cast<int64_t>(transformed_width)});
-    auto out_dims = framework::make_ddim(out_dims_v);
+    auto out_dims = pten::make_ddim(out_dims_v);
 
     std::vector<int64_t> mask_dims_v({rois_dims[0],  // num_rois
                                       1,             // channels
                                       static_cast<int64_t>(transformed_height),
                                       static_cast<int64_t>(transformed_width)});
-    auto mask_dims = framework::make_ddim(mask_dims_v);
+    auto mask_dims = pten::make_ddim(mask_dims_v);
 
     std::vector<int64_t> matrix_dims_v({rois_dims[0], 9});
-    auto matrix_dims = framework::make_ddim(matrix_dims_v);
+    auto matrix_dims = pten::make_ddim(matrix_dims_v);
 
     ctx->SetOutputDim("Out", out_dims);
     ctx->SetOutputDim("Mask", mask_dims);

@@ -34,9 +34,9 @@ struct alignas(sizeof(T) * VecSize) VectorType {
 #pragma pack(4)
 template <int kDims>
 struct BroadcastConfig {
-  int strides_in[framework::DDim::kMaxRank];
-  int strides_out[framework::DDim::kMaxRank];
-  int in_dim[framework::DDim::kMaxRank];
+  int strides_in[DDim::kMaxRank];
+  int strides_out[DDim::kMaxRank];
+  int in_dim[DDim::kMaxRank];
 
   HOSTDEVICE BroadcastConfig() {}
 

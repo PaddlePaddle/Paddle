@@ -93,7 +93,7 @@ class AccuracyNPUKernel : public framework::OpKernel<T> {
     // [correct]
     // reduce_max
     Tensor tmp_correct_max(experimental::DataType::FLOAT32);
-    tmp_correct_max.Resize(framework::make_ddim({num_samples}));
+    tmp_correct_max.Resize(pten::make_ddim({num_samples}));
     tmp_correct_max.mutable_data<float>(ctx.GetPlace());
     const auto& runner_reduce_max =
         NpuOpRunner("ReduceMaxD", {tmp_equal_cast}, {tmp_correct_max},

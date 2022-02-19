@@ -64,9 +64,9 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
                             const std::vector<int>& dims = {},
                             framework::proto::VarType::Type var_type =
                                 paddle::framework::proto::VarType::LOD_TENSOR) {
-  auto ddims = paddle::framework::make_ddim(dims);
+  auto ddims = pten::make_ddim(dims);
   PADDLE_ENFORCE_GE(
-      paddle::framework::product(ddims), 0,
+      pten::product(ddims), 0,
       paddle::platform::errors::InvalidArgument(
           "Create Eager Tensor with dims contain minus num is ilegal"
           "Please check your code and make sure you new a "

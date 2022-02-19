@@ -24,7 +24,7 @@ limitations under the License. */
 namespace paddle {
 namespace tests {
 
-using DDim = pten::framework::DDim;
+using DDim = pten::DDim;
 
 // TODO(chentianyu03): Remove this test after the API is used in the dygraph
 TEST(API, concat) {
@@ -34,7 +34,7 @@ TEST(API, concat) {
   auto dense_x = std::make_shared<pten::DenseTensor>(
       alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            pten::framework::make_ddim({3, 10}),
+                            pten::make_ddim({3, 10}),
                             pten::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x->mutable_data<float>(paddle::platform::CPUPlace());
@@ -42,7 +42,7 @@ TEST(API, concat) {
   auto dense_y = std::make_shared<pten::DenseTensor>(
       alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            pten::framework::make_ddim({3, 10}),
+                            pten::make_ddim({3, 10}),
                             pten::DataLayout::NCHW));
   auto* dense_y_data =
       dense_y->mutable_data<float>(paddle::platform::CPUPlace());

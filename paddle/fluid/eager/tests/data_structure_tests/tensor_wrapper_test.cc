@@ -22,8 +22,8 @@
 TEST(TensorWrapper, Basic) {
   VLOG(6) << "Test Full reserved";
   paddle::experimental::Tensor et1;
-  pten::DenseTensorMeta meta = pten::DenseTensorMeta(
-      pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 2}));
+  pten::DenseTensorMeta meta =
+      pten::DenseTensorMeta(pten::DataType::FLOAT32, pten::make_ddim({1, 2}));
   std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
@@ -49,8 +49,8 @@ TEST(TensorWrapper, Basic) {
            egr::EagerUtils::OutRankInfo(et1).second);
   VLOG(6) << "Test reconstruct";
   paddle::experimental::Tensor et2;
-  pten::DenseTensorMeta meta2 = pten::DenseTensorMeta(
-      pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 2}));
+  pten::DenseTensorMeta meta2 =
+      pten::DenseTensorMeta(pten::DataType::FLOAT32, pten::make_ddim({1, 2}));
   std::shared_ptr<pten::DenseTensor> dt2 = std::make_shared<pten::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())

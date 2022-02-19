@@ -135,7 +135,7 @@ struct TestGatherOpHandle {
     int height = kDims[0] * 2;
     std::vector<int64_t> rows{0, 1, 2, 3, 3, 0, 14, 7, 3, 1,
                               2, 4, 6, 3, 1, 1, 1,  1, 3, 7};
-    std::vector<float> send_vector(f::product(kDims));
+    std::vector<float> send_vector(pten::product(kDims));
     for (size_t k = 0; k < send_vector.size(); ++k) {
       send_vector[k] = k;
     }
@@ -200,7 +200,8 @@ struct TestGatherOpHandle {
     float* ct = result_tensor.data<float>();
 
     for (int64_t j = 0;
-         j < f::product(kDims) * static_cast<int64_t>(gpu_list_.size()); ++j) {
+         j < pten::product(kDims) * static_cast<int64_t>(gpu_list_.size());
+         ++j) {
       ASSERT_NEAR(ct[j], send_vector[j % send_vector.size()], 1e-5);
     }
   }
