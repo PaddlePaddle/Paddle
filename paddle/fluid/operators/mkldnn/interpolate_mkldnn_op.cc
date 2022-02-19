@@ -147,7 +147,13 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
     InterpolateMKLDNNHandler<T> handler(algo, mkldnn_engine, ctx.GetPlace(), x,
                                         z);
 
+    auto src_memory_p = handler.AcquireSrcMemory(x);
     auto dst_memory_p = handler.AcquireDstMemory(z);
+
+    auto resampling_prim = handler.AcquireForwardPrimitive();
+    const std::unordered_map<int, dnnl::memory> args = {
+        {DNNL_ARG_SRC, *src_memory_p}, {DNNL_ARG_DST, *dst_memory_p}};
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
     resampling_prim->execute(astream, args);
     astream.wait();
