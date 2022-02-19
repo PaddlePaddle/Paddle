@@ -21,6 +21,7 @@ namespace platform {
 
 static const char* kDefaultFilename = "pid_%s_time_%s.paddle_trace.pb";
 static const char* version = "1.0.0";
+static uint32_t span_indx = 0;
 
 static std::string DefaultFileName() {
   auto pid = GetProcessId();
@@ -40,6 +41,7 @@ void SerializationLogger::OpenFile() {
   }
   node_trees_proto_ = new NodeTreesProto();
   node_trees_proto_->set_version(std::string(version));
+  node_trees_proto_->set_span_indx(span_indx++);
 }
 
 void SerializationLogger::LogNodeTrees(const NodeTrees& node_trees) {
