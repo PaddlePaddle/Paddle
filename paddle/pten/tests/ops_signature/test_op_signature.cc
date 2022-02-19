@@ -89,6 +89,29 @@ TEST(ARG_MAP, fill_constant) {
   auto signature7 =
       OpUtilsMap::Instance().GetArgumentMappingFn("fill_constant")(arg_case7);
   ASSERT_EQ(signature7.name, "full_sr");
+
+  TestArgumentMappingContext arg_case8(
+      {},
+      {},
+      {{"shape", paddle::any{std::vector<int64_t>{2, 3}}},
+       {"value", paddle::any{0}},
+       {"str_value", paddle::any{std::string{""}}}},
+      {},
+      {"Out"});
+  auto signature8 =
+      OpUtilsMap::Instance().GetArgumentMappingFn("fill_constant")(arg_case8);
+  ASSERT_EQ(signature8.name, "full_sr");
+
+  TestArgumentMappingContext arg_case9(
+      {},
+      {},
+      {{"shape", paddle::any{std::vector<int64_t>{2, 3}}},
+       {"str_value", paddle::any{std::string{"10"}}}},
+      {},
+      {"Out"});
+  auto signature9 =
+      OpUtilsMap::Instance().GetArgumentMappingFn("fill_constant")(arg_case9);
+  ASSERT_EQ(signature9.name, "full_sr");
 }
 
 }  // namespace tests
