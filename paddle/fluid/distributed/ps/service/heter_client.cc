@@ -15,7 +15,6 @@
 #include "paddle/fluid/distributed/ps/service/heter_client.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/string/split.h"
 
 DECLARE_int32(rpc_deadline);
