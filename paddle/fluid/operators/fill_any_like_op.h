@@ -33,6 +33,7 @@ class FillAnyLikeKernel : public framework::OpKernel<T> {
                                 float, T>::type>::type;
 
   void Compute(const framework::ExecutionContext& context) const override {
+    auto* x = context.Input<framework::Tensor>("X");
     auto* out = context.Output<framework::Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
 
@@ -65,7 +66,7 @@ class FillAnyLikeKernel : public framework::OpKernel<T> {
     pten::FullLikeKernel<T>(
         static_cast<const typename paddle::framework::ConvertToPtenContext<
             DeviceContext>::TYPE&>(dev_ctx),
-        value, out);
+        *x, value, pten::DataType::UNDEFINED, out);
   }
 };
 

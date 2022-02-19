@@ -25,10 +25,14 @@ namespace pten {
 template <typename T, typename Context>
 void EmptyKernel(const Context& dev_ctx,
                  const ScalarArray& shape,
+                 DataType dtype,
                  DenseTensor* out);
 
 template <typename T, typename Context>
-void EmptyLikeKernel(const Context& dev_ctx, DenseTensor* out);
+void EmptyLikeKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     DataType dtype,
+                     DenseTensor* out);
 
 // TODO(chenweihang): the tensor creation method need to be replaced later,
 // all kernel api call Empty here instead of making tensor self
@@ -52,27 +56,22 @@ DenseTensor Empty(const Context& dev_ctx) {
 template <typename T, typename Context>
 DenseTensor Empty(const Context& dev_ctx,
                   const ScalarArray& shape,
-                  DataType dtype = DataType::FLOAT32,
-                  Backend backend = Backend::CPU,  // Is backend needed here?
-                  DataLayout layout = DataLayout::NCHW) {
+                  DataType dtype = DataType::FLOAT32) {
   auto dense_out = Empty<T, Context>(dev_ctx);
   MetaTensor meta_out(&dense_out);
-  CreateInferMeta(shape, dtype, layout, &meta_out);
-  EmptyKernel<T, Context>(dev_ctx, shape, &dense_out);
+  CreateInferMeta(shape, dtype, &meta_out);
+  EmptyKernel<T, Context>(dev_ctx, shape, dtype, &dense_out);
   return dense_out;
 }
 
 template <typename T, typename Context>
-DenseTensor EmptyLike(
-    const Context& dev_ctx,
-    const DenseTensor& x,
-    DataType dtype = DataType::UNDEFINED,
-    Backend backend = Backend::UNDEFINED,  // Is backend needed here?
-    DataLayout layout = DataLayout::UNDEFINED) {
+DenseTensor EmptyLike(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      DataType dtype = DataType::UNDEFINED) {
   auto dense_out = Empty<T, Context>(dev_ctx);
   MetaTensor meta_out(&dense_out);
-  CreateLikeInferMeta(x, dtype, layout, &meta_out);
-  EmptyLikeKernel<T, Context>(dev_ctx, &dense_out);
+  CreateLikeInferMeta(x, dtype, &meta_out);
+  EmptyLikeKernel<T, Context>(dev_ctx, x, dtype, &dense_out);
   return dense_out;
 }
 
