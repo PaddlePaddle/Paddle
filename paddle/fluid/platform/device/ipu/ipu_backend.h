@@ -74,7 +74,7 @@ class IpuBackend {
   void SetCustomOps(const std::vector<IpuCustomOpIdentifier> &custom_ops);
 
   // save compiled model to onnx
-  void SaveMoldeProto(const std::string &path);
+  void SaveModelProto(const std::string &path);
 
  private:
   void Prepare();

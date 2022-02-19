@@ -16,6 +16,7 @@
 
 #include <type_traits>
 #include "paddle/infrt/tensor/dense_host_tensor.h"
+#include "paddle/pten/core/dense_tensor.h"
 
 namespace infrt {
 namespace kernel {

@@ -33,9 +33,6 @@ void CreateInferMetaBase(const std::vector<int64_t>& shape,
                          DataLayout layout,
                          MetaTensor* out);
 
-void CreateInferMeta(const ScalarArray& shape,
-                     DataType dtype,
-                     DataLayout layout,
-                     MetaTensor* out);
+void CreateInferMeta(const ScalarArray& shape, DataType dtype, MetaTensor* out);
 
 }  // namespace pten

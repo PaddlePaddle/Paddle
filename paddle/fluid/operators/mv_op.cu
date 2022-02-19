@@ -59,7 +59,7 @@ class MVGradKernel<platform::CUDADeviceContext, T>
 
     auto &dev_ctx =
         context.template device_context<platform::CUDADeviceContext>();
-    auto blas = math::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
+    auto blas = pten::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
     auto stream = context.cuda_device_context().stream();
     auto config = GetGpuLaunchConfig1D(dev_ctx, m * n);
 

@@ -22,7 +22,7 @@
 #include "paddle/infrt/kernel/pten/allocator_kernels.h"
 #include "paddle/infrt/kernel/pten/context_kernels.h"
 #include "paddle/infrt/kernel/pten/dense_tensor_kernels.h"
-#include "paddle/infrt/kernel/pten/infershaped/elementwise_add.h"
+#include "paddle/infrt/kernel/pten/infershaped/pten_kernel_launcher.h"
 #include "paddle/pten/include/infermeta.h"
 #include "paddle/pten/include/kernels.h"
 #include "paddle/pten/kernels/matmul_kernel.h"

@@ -19,29 +19,11 @@ limitations under the License. */
 
 namespace pten {
 namespace funcs {
-
-// // MulFunctor
-// // NOTE(chenfeiyu): IT IS NOLONGER USED, use pten::funcs::MultiplyFunctor
-// instead
-// template <typename T>
-// struct MulFunctor {
-//   // out = x * y;
-//   inline HOSTDEVICE T operator()(T x, T y) { return x * y; }
-// };
-
 template <typename T>
 struct MulGradFunctor {
   inline HOSTDEVICE T Dx(T x, T y) { return y; }
   inline HOSTDEVICE T Dy(T x, T y) { return x; }
 };
-
-// // AddFunctor
-// // NOTE(chenfeiyu): IT IS NOLONGER USED, use pten::funcs::AddFunctor instead
-// template <typename T>
-// struct AddFunctor {
-//   // out = x + y;
-//   inline HOSTDEVICE T operator()(T x, T y) { return x + y; }
-// };
 
 template <typename T>
 struct MaxFunctor {
