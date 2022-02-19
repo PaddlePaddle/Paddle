@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/pten/common/pstring.h"
 #include "paddle/pten/core/string_tensor.h"
 #include "paddle/pten/kernels/strings/strings_copy_kernel.h"
+#include "paddle/pten/kernels/strings/strings_empty_kernel.h"
 
 namespace pten {
 namespace tests {
@@ -40,13 +41,8 @@ TEST(DEV_API, strings_copy) {
   auto* gpu_dev_ctx =
       reinterpret_cast<pten::GPUContext*>(pool.Get(pten::GPUPlace()));
 
-  const auto string_allocator =
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          pten::CPUPlace());
-  const auto alloc = string_allocator.get();
-  StringTensor string_src(alloc, meta);
-  StringTensor string_dst(alloc, meta);
-
+  StringTensor string_src = pten::strings::Empty(*dev_ctx, std::move(meta));
+  StringTensor string_dst = pten::strings::Empty(*dev_ctx, std::move(meta));
   // 2. Assign input text
   const char* input[] = {"A Short Pstring.",
                          "A Large Pstring Whose Length Is Longer Than 22.",
@@ -58,25 +54,17 @@ TEST(DEV_API, strings_copy) {
   for (int i = 0; i < string_src.numel(); ++i) {
     string_src_data[i] = input[i];
   }
-
-  const auto gpu_string_allocator =
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          pten::GPUPlace());
-  const auto gpu_alloc = gpu_string_allocator.get();
-  StringTensor string_gpu1(gpu_alloc, meta);
-  StringTensor string_gpu2(gpu_alloc, meta);
+  StringTensor string_gpu1 =
+      pten::strings::Empty(*gpu_dev_ctx, std::move(meta));
+  StringTensor string_gpu2 =
+      pten::strings::Empty(*gpu_dev_ctx, std::move(meta));
 
   // cpu->gpu
   pten::strings::Copy(*gpu_dev_ctx, string_src, false, &string_gpu1);
-  //   // gpu->gpu
-  //   pten::strings::Copy(*gpu_dev_ctx, string_gpu1, false, &string_gpu2);
+  // gpu->gpu
+  pten::strings::Copy(*gpu_dev_ctx, string_gpu1, false, &string_gpu2);
   // gpu->cpu
-  //   pten::strings::Copy(*gpu_dev_ctx, string_gpu2, false, &string_dst);
-  pten::strings::Copy(*gpu_dev_ctx, string_gpu1, false, &string_dst);
-
-  for (int64_t i = 0; i < string_src.numel(); i++) {
-    ASSERT_EQ(string_src.data()[i], string_dst.data()[i]);
-  }
+  pten::strings::Copy(*gpu_dev_ctx, string_gpu2, false, &string_dst);
 }
 
 }  // namespace tests

@@ -12,6 +12,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/device/gpu/gpu_helper.h"
 #include "paddle/pten/backends/gpu/gpu_context.h"
+#include "paddle/pten/backends/gpu/gpu_launch_config.h"
 #include "paddle/pten/common/pstring.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/strings/case_utils.h"
@@ -42,7 +43,12 @@ struct AsciiCaseConverter<pten::GPUContext, CharConverter> {
                   const pstring* in,
                   pstring* out,
                   size_t num) const {
-    StringCaseConvertCUDAKernel<CharConverter><<<1, 32>>>(out, in, num);
+    dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
+    dim3 grid_size =
+        dim3((num + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
+    StringCaseConvertCUDAKernel<
+        CharConverter><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+        out, in, num);
   }
 };
 

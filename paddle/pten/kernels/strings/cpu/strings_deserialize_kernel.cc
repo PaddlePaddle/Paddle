@@ -27,7 +27,8 @@ void Deserialize(const Context& dev_ctx,
   int numel = strings_offset[0] / sizeof(int) - 1;
   auto* dst_str = dst->mutable_data(src.place(), numel);
   for (int i = 0; i < numel; ++i) {
-    auto len = strings_offset[i + 1] - strings_offset[i];
+    // -1 not include '\0'
+    auto len = strings_offset[i + 1] - strings_offset[i] - 1;
     dst_str[i] = pten::dtype::pstring(strings_data + strings_offset[i], len);
   }
 }

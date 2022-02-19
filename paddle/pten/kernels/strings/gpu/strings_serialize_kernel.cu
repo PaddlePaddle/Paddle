@@ -17,11 +17,13 @@ limitations under the License. */
 
 #include "paddle/pten/backends/gpu/gpu_helper.h"
 #include "paddle/pten/backends/gpu/gpu_info.h"
-#include "paddle/pten/backends/gpu/gpu_launch_config.h"
 #include "paddle/pten/common/pstring.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/empty_kernel.h"
 #include "paddle/pten/kernels/strings/strings_serialize_kernel.h"
+
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+
 using pstring = ::pten::dtype::pstring;
 
 namespace pten {
@@ -32,7 +34,7 @@ __global__ void SerializeStringsData(const pstring* src_str,
                                      int32_t* strings_offset,
                                      int64_t numel,
                                      int32_t start_offset) {
-  if (threadIdx.x == 0) {
+  if (threadIdx.x == 0 && blockIdx.x == 0) {
     strings_offset[0] = start_offset;
     for (int64_t i = 1; i <= numel; ++i) {
       strings_offset[i] = strings_offset[i - 1] + src_str[i - 1].length() + 1;
@@ -47,29 +49,17 @@ __global__ void SerializeStringsData(const pstring* src_str,
 }
 
 __global__ void SumStringsLen(const pstring* src_ptr, int64_t numel, int* num) {
-  // extern __shared__ int counter[];
-  // int thread_counter = 0;
-  // CUDA_KERNEL_LOOP(i, numel) {
-  //     thread_counter += src_ptr[i].length() + 1;
-  // }
-  // counter[threadIdx.x] = thread_counter;
-  // __syncthreads();
-  // if (threadIdx.x == 0) {
-  //     int block_counter = 0;
-  //     for (int i = 0; i < blockDim.x; ++i) {
-  //         block_counter += counter[i];
-  //     }
-  //     atomicAdd(num, block_counter);
-  // }
-  __shared__ int counter;
-  if (threadIdx.x == 0) {
-    counter = 0;
-  }
-  __syncthreads();
-  CUDA_KERNEL_LOOP(i, numel) { atomicAdd(&counter, src_ptr[i].length() + 1); }
+  extern __shared__ int counter[];
+  int thread_counter = 0;
+  CUDA_KERNEL_LOOP(i, numel) { thread_counter += src_ptr[i].length() + 1; }
+  counter[threadIdx.x] = thread_counter;
   __syncthreads();
   if (threadIdx.x == 0) {
-    atomicAdd(num, counter);
+    int block_counter = 0;
+    for (int i = 0; i < blockDim.x; ++i) {
+      block_counter += counter[i];
+    }
+    atomicAdd(num, block_counter);
   }
 }
 
@@ -80,34 +70,26 @@ int GetAllStringsSize(const Context& dev_ctx,
   auto nums_meta =
       pten::DenseTensorMeta(DataType::INT32, {1}, pten::DataLayout::NCHW);
   DenseTensor nums_tensor = pten::Empty(dev_ctx, std::move(nums_meta));
-  VLOG(0) << "before nums_tensor.mutable_data";
   const auto place = dev_ctx.GetPlace();
-  VLOG(0) << "before nums_tensor.mutable_data";
   int* nums_ptr = nums_tensor.mutable_data<int>(place);
-  VLOG(0) << "after nums_tensor.mutable_data";
-  VLOG(0) << "nums_tensor numel:" << nums_tensor.numel();
-  VLOG(0) << "nums_tensor capacity:" << nums_tensor.capacity();
   pten::backends::gpu::GpuMemsetAsync(
       nums_ptr, 0, sizeof(int), dev_ctx.stream());
 
-  VLOG(0) << "After set nums_ptr: " << nums_ptr;
   dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
   dim3 grid_size =
       dim3((numel + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
-  // SumStringsLen<<<grid_size, block_size, PREDEFINED_BLOCK_SIZE * sizeof(int),
-  // dev_ctx.stream()>>>(src_ptr, numel, nums_ptr);
-  SumStringsLen<<<grid_size, block_size, 0, dev_ctx.stream()>>>(
-      src_ptr, numel, nums_ptr);
-  VLOG(0) << "Before set num";
+  SumStringsLen<<<grid_size,
+                  block_size,
+                  PREDEFINED_BLOCK_SIZE * sizeof(int),
+                  dev_ctx.stream()>>>(src_ptr, numel, nums_ptr);
   int num = -1;
 #ifdef PADDLE_WITH_HIP
-  pten::backends::gpu::GpuMemcpySync(
-      &num, nums_ptr, sizeof(int), hipMemcpyDeviceToHost);
+  pten::backends::gpu::GpuMemcpyAsync(
+      &num, nums_ptr, sizeof(int), hipMemcpyDeviceToHost, dev_ctx.stream());
 #else
-  pten::backends::gpu::GpuMemcpySync(
-      &num, nums_ptr, sizeof(int), cudaMemcpyDeviceToHost);
+  pten::backends::gpu::GpuMemcpyAsync(
+      &num, nums_ptr, sizeof(int), cudaMemcpyDeviceToHost, dev_ctx.stream());
 #endif
-  VLOG(0) << "After set num: " << num;
   return num;
 }
 
@@ -119,20 +101,18 @@ void Serialize(const Context& dev_ctx,
   auto* src_str = src.data();
   // 1.get the number of bytes of all strings in string tensor
   auto strings_size = GetAllStringsSize(dev_ctx, src_str, numel);
-  VLOG(0) << "before strings_size: " << strings_size;
   strings_size += sizeof(int32_t) * (numel + 1);
-  VLOG(0) << "after strings_size: " << strings_size;
-  auto* strings_data = dst->mutable_data<uint8_t>(src.place(), strings_size);
+  dst->ResizeAndAllocate({strings_size});
+  auto* strings_data = dst->mutable_data<uint8_t>(src.place());
   auto* strings_offset = reinterpret_cast<int32_t*>(strings_data);
   int32_t start_offset = sizeof(int32_t) * (numel + 1);
-  VLOG(0) << "Before SerializeStringsData";
   // 2. serialize strings data to dense tensor
   dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
   dim3 grid_size =
       dim3((numel + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
+
   SerializeStringsData<<<grid_size, block_size, 0, dev_ctx.stream()>>>(
       src_str, strings_data, strings_offset, numel, start_offset);
-  VLOG(0) << "After SerializeStringsData";
 }
 
 }  // namespace strings

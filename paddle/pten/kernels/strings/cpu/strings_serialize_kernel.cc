@@ -23,12 +23,13 @@ void Serialize(const Context& dev_ctx,
                const StringTensor& src,
                DenseTensor* dst) {
   int64_t numel = src.numel();
-  size_t num = sizeof(int) * (numel + 1);
+  int64_t num = sizeof(int) * (numel + 1);
   auto* src_str = src.data();
   for (int64_t i = 0; i < numel; ++i) {
     num += src_str[i].length() + 1;
   }
-  auto* strings_data = dst->mutable_data<uint8_t>(src.place(), num);
+  dst->ResizeAndAllocate({num});
+  auto* strings_data = dst->mutable_data<uint8_t>(src.place());
   auto* strings_offset = reinterpret_cast<int*>(strings_data);
   int start_offset = sizeof(int) * (numel + 1);
   for (int64_t i = 0; i <= numel; ++i) {

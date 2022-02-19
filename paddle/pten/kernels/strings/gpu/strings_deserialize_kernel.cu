@@ -12,8 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/pten/backends/gpu/gpu_helper.h"
-#include "paddle/pten/backends/gpu/gpu_launch_config.h"
+#include "paddle/pten/backends/gpu/gpu_info.h"
 #include "paddle/pten/common/pstring.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/strings/strings_deserialize_kernel.h"
@@ -42,20 +43,13 @@ void Deserialize(const Context& dev_ctx,
   auto* strings_offset = reinterpret_cast<const int*>(strings_data);
   int numel = 0;
 #ifdef PADDLE_WITH_HIP
-  PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpyAsync(&numel,
-                                            strings_offset,
-                                            sizeof(numel),
-                                            hipMemcpyDeviceToHost,
-                                            dev_ctx.stream()));
+  pten::backends::gpu::GpuMemcpySync(
+      &numel, strings_data, sizeof(numel), hipMemcpyDeviceToHost);
 #else
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&numel,
-                                             strings_offset,
-                                             sizeof(numel),
-                                             cudaMemcpyDeviceToHost,
-                                             dev_ctx.stream()));
+  pten::backends::gpu::GpuMemcpySync(
+      &numel, strings_data, sizeof(numel), cudaMemcpyDeviceToHost);
 #endif
   numel = numel / sizeof(int) - 1;
-  VLOG(0) << "Deserialize numel=" << numel;
   auto* dst_str = dst->mutable_data(src.place(), numel);
   dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
   dim3 grid_size =

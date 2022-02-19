@@ -12,15 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/pten/kernels/strings/strings_deserialize_kernel.h"
+
 #include "paddle/pten/backends/gpu/gpu_helper.h"
-#include "paddle/pten/backends/gpu/gpu_launch_config.h"
 #include "paddle/pten/common/pstring.h"
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/copy_kernel.h"
 #include "paddle/pten/kernels/empty_kernel.h"
 #include "paddle/pten/kernels/strings/strings_copy_kernel.h"
-#include "paddle/pten/kernels/strings/strings_deserialize_kernel.h"
 #include "paddle/pten/kernels/strings/strings_serialize_kernel.h"
+
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+
 using pstring = ::pten::dtype::pstring;
 
 namespace pten {
@@ -68,7 +71,6 @@ void Copy(const Context& dev_ctx,
     DenseTensor gpu_serialized =
         pten::Empty<uint8_t, GPUContext>(dev_ctx, {1}, DataType::UINT8);
     pten::strings::Serialize(dev_ctx, src, &gpu_serialized);
-    VLOG(0) << "After gpu Serialize";
 
     DenseTensor cpu_serialized =
         pten::EmptyLike<uint8_t>(*dst_ctx, gpu_serialized, DataType::UINT8);
@@ -106,7 +108,6 @@ void Copy(const Context& dev_ctx,
     dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
     dim3 grid_size =
         dim3((numel + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
-    VLOG(0) << "Before CopyFromStringTensor";
     if (paddle::platform::is_same_place(src_place, dst_place)) {
       // Copy
       CopyFromStringTensor<<<grid_size, block_size, 0, dev_ctx.stream()>>>(
@@ -130,7 +131,6 @@ void Copy(const Context& dev_ctx,
             "Context place dose not match the source and destination place."));
       }
     }
-    VLOG(0) << "After CopyFromStringTensor";
   }
   // TODO(zhoushunjie): Add pinned memory copy
   // Situation 4: cuda_pinned_place->cuda_pinned_place
