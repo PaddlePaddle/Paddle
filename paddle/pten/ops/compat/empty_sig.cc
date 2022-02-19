@@ -18,11 +18,11 @@ namespace pten {
 
 KernelSignature EmptyOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.HasInput("ShapeTensor")) {
-    return KernelSignature("empty", {}, {"ShapeTensor"}, {"Out"});
+    return KernelSignature("empty", {}, {"ShapeTensor", "dtype"}, {"Out"});
   } else if (ctx.InputSize("ShapeTensorList") > 0) {
-    return KernelSignature("empty", {}, {"ShapeTensorList"}, {"Out"});
+    return KernelSignature("empty", {}, {"ShapeTensorList", "dtype"}, {"Out"});
   } else {
-    return KernelSignature("empty", {}, {"shape"}, {"Out"});
+    return KernelSignature("empty", {}, {"shape", "dtype"}, {"Out"});
   }
 }
 

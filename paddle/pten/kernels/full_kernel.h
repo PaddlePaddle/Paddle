@@ -28,6 +28,7 @@ template <typename T, typename Context>
 void FullKernel(const Context& dev_ctx,
                 const ScalarArray& shape,
                 const Scalar& val,
+                DataType dtype,
                 DenseTensor* out);
 
 template <typename T, typename Context>
@@ -38,35 +39,32 @@ void FullSR(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void FullLikeKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
                     const Scalar& val,
+                    DataType dtype,
                     DenseTensor* out);
 
 template <typename T, typename Context>
 DenseTensor Full(const Context& dev_ctx,
                  const ScalarArray& shape,
                  const Scalar& val,
-                 DataType dtype = DataType::FLOAT32,
-                 Backend backend = Backend::CPU,  // Is backend needed here?
-                 DataLayout layout = DataLayout::NCHW) {
+                 DataType dtype = DataType::FLOAT32) {
   auto dense_out = Empty<T, Context>(dev_ctx);
   MetaTensor meta_out(&dense_out);
-  CreateInferMeta(shape, dtype, layout, &meta_out);
-  FullKernel<T, Context>(dev_ctx, shape, val, &dense_out);
+  CreateInferMeta(shape, dtype, &meta_out);
+  FullKernel<T, Context>(dev_ctx, shape, val, dtype, &dense_out);
   return dense_out;
 }
 
 template <typename T, typename Context>
-DenseTensor FullLike(
-    const Context& dev_ctx,
-    const DenseTensor& x,
-    const Scalar& val,
-    DataType dtype = DataType::UNDEFINED,
-    Backend backend = Backend::UNDEFINED,  // Is backend needed here?
-    DataLayout layout = DataLayout::UNDEFINED) {
+DenseTensor FullLike(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const Scalar& val,
+                     DataType dtype = DataType::UNDEFINED) {
   auto dense_out = Empty<T, Context>(dev_ctx);
   MetaTensor meta_out(&dense_out);
-  CreateLikeInferMeta(x, dtype, layout, &meta_out);
-  FullLikeKernel<T, Context>(dev_ctx, val, &dense_out);
+  CreateLikeInferMeta(x, dtype, &meta_out);
+  FullLikeKernel<T, Context>(dev_ctx, x, val, dtype, &dense_out);
   return dense_out;
 }
 

@@ -33,10 +33,11 @@ struct FullFuctor {
   }
 };
 
-template <typename T, typename ContextT>
-void FullKernel(const ContextT& dev_ctx,
+template <typename T, typename Context>
+void FullKernel(const Context& dev_ctx,
                 const ScalarArray& shape,
                 const Scalar& val,
+                DataType dtype,
                 DenseTensor* out) {
   out->Resize(paddle::framework::make_ddim(shape.GetData()));
   int numel = out->numel();
@@ -53,9 +54,11 @@ void FullKernel(const ContextT& dev_ctx,
   }
 }
 
-template <typename T, typename ContextT>
-void FullLikeKernel(const ContextT& dev_ctx,
+template <typename T, typename Context>
+void FullLikeKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
                     const Scalar& val,
+                    DataType dtype,
                     DenseTensor* out) {
   auto value = val.to<float>();
   using CommonType = typename std::common_type<
