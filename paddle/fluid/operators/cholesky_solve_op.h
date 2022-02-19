@@ -94,12 +94,12 @@ void cholesky_solve_fn(const paddle::framework::ExecutionContext &ctx,
   framework::TensorCopy(b_conj, dev_ctx.GetPlace(), out);
   T *out_data = out->mutable_data<T>(dev_ctx.GetPlace());
 
-  auto info_dims = slice_ddim(bindims, 0, binrank - 2);
+  auto info_dims = pten::slice_ddim(bindims, 0, binrank - 2);
   auto batchsize = product(info_dims);
 
   framework::Tensor tmp;
   std::vector<int> tmpdim(1, batchsize);
-  tmp.Resize(framework::make_ddim(tmpdim));
+  tmp.Resize(pten::make_ddim(tmpdim));
   int *info = tmp.mutable_data<int>(dev_ctx.GetPlace());
 
   CholeskySolveFunctor<DeviceContext, T> functor;

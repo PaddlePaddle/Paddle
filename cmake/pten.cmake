@@ -288,7 +288,7 @@ function(append_op_util_declare TARGET)
     string(REGEX MATCH "(PT_REGISTER_BASE_KERNEL_NAME|PT_REGISTER_ARG_MAPPING_FN)\\([ \t\r\n]*[a-z0-9_]*" util_registrar "${target_content}")
     string(REPLACE "PT_REGISTER_ARG_MAPPING_FN" "PT_DECLARE_ARG_MAPPING_FN" util_declare "${util_registrar}")
     string(REPLACE "PT_REGISTER_BASE_KERNEL_NAME" "PT_DECLARE_BASE_KERNEL_NAME" util_declare "${util_declare}")
-    string(APPEND util_declare ");")
+    string(APPEND util_declare ");\n")
     file(APPEND ${op_utils_header} "${util_declare}")
 endfunction()
 

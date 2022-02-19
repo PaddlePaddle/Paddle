@@ -46,15 +46,15 @@ class SigmoidCrossEntropyWithLogitsOp : public framework::OperatorWithKernel {
                           rank, labels_dims.size()));
 
     bool check = true;
-    if ((!ctx->IsRuntime()) && (framework::product(x_dims) <= 0 ||
-                                framework::product(labels_dims) <= 0)) {
+    if ((!ctx->IsRuntime()) &&
+        (pten::product(x_dims) <= 0 || pten::product(labels_dims) <= 0)) {
       check = false;
     }
 
     if (check) {
       PADDLE_ENFORCE_EQ(
-          framework::slice_ddim(x_dims, 0, rank),
-          framework::slice_ddim(labels_dims, 0, rank),
+          pten::slice_ddim(x_dims, 0, rank),
+          pten::slice_ddim(labels_dims, 0, rank),
           platform::errors::InvalidArgument(
               "Input(X) and Input(Label) shall have the same shape "
               "except the last dimension. But received: the shape of "
@@ -90,15 +90,15 @@ class SigmoidCrossEntropyWithLogitsGradOp
 
     int rank = x_dims.size();
     bool check = true;
-    if ((!ctx->IsRuntime()) && (framework::product(x_dims) <= 0 ||
-                                framework::product(labels_dims) <= 0)) {
+    if ((!ctx->IsRuntime()) &&
+        (pten::product(x_dims) <= 0 || pten::product(labels_dims) <= 0)) {
       check = false;
     }
 
     if (check) {
       PADDLE_ENFORCE_EQ(
-          framework::slice_ddim(x_dims, 0, rank),
-          framework::slice_ddim(labels_dims, 0, rank),
+          pten::slice_ddim(x_dims, 0, rank),
+          pten::slice_ddim(labels_dims, 0, rank),
           platform::errors::InvalidArgument(
               "Input(X) and Input(Label) shall have the same shape "
               "except the last dimension. But received: the shape of "
@@ -106,8 +106,8 @@ class SigmoidCrossEntropyWithLogitsGradOp
               x_dims, labels_dims));
 
       PADDLE_ENFORCE_EQ(
-          framework::slice_ddim(x_dims, 0, rank),
-          framework::slice_ddim(dout_dims, 0, rank),
+          pten::slice_ddim(x_dims, 0, rank),
+          pten::slice_ddim(dout_dims, 0, rank),
           platform::errors::InvalidArgument(
               "Input(X) and Input(Out@Grad) shall have the same shape "
               "except the last dimension. But received: the shape of "

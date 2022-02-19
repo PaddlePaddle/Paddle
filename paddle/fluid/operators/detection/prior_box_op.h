@@ -172,7 +172,7 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
 
     framework::Tensor var_t;
     var_t.mutable_data<K>(
-        framework::make_ddim({1, static_cast<int>(variances.size())}),
+        pten::make_ddim({1, static_cast<int>(variances.size())}),
         ctx.GetPlace());
     auto var_et = framework::EigenTensor<K, 2>::From(var_t);
 

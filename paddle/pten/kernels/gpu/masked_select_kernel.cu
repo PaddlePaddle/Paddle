@@ -74,7 +74,7 @@ void MaskedSelectKernel(const Context& dev_ctx,
   thrust::device_vector<T> mask_vec(mask_dev_ptr, mask_dev_ptr + mask_size);
   auto out_size = thrust::count(mask_vec.begin(), mask_vec.end(), true);
 
-  framework::DDim out_dim{out_size};
+  DDim out_dim{out_size};
   out->Resize(out_dim);
   auto out_data = out->mutable_data<T>(dev_ctx.GetPlace());
 

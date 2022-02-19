@@ -46,7 +46,7 @@ class FillKernel : public framework::OpKernel<T> {
   void Compute(const paddle::framework::ExecutionContext &ctx) const override {
     auto &out = GET_DATA_SAFELY(ctx.Output<framework::LoDTensor>("Out"),
                                 "Output", "Out", "Fill");
-    out.Resize(framework::make_ddim(ctx.Attr<std::vector<int>>("shape")));
+    out.Resize(pten::make_ddim(ctx.Attr<std::vector<int>>("shape")));
     auto dtype =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
     auto pten_dtype = framework::TransToPtenDataType(dtype);

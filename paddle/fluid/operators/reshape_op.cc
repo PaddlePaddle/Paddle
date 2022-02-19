@@ -78,7 +78,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
           infer_shape[i] = in_dims[i];
         }
       }
-      auto infer_out_dims = framework::make_ddim(infer_shape);
+      auto infer_out_dims = pten::make_ddim(infer_shape);
       ctx->SetOutputDim("Out", infer_out_dims);
       return;
     }
@@ -91,7 +91,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
         num_ele *= shape_dims[i];
       }
       auto vec_dims = std::vector<int>(num_ele, -1);
-      auto out_dims = framework::make_ddim(vec_dims);
+      auto out_dims = pten::make_ddim(vec_dims);
       ctx->SetOutputDim("Out", out_dims);
       ctx->ShareLoD("X", /*->*/ "Out");
       return;
@@ -120,8 +120,8 @@ class ReshapeOp : public framework::OperatorWithKernel {
 
   static framework::DDim ValidateShape(const std::vector<int> shape,
                                        const framework::DDim &in_dims) {
-    const int64_t in_size = framework::product(in_dims);
-    auto in_dims_vec = framework::vectorize(in_dims);
+    const int64_t in_size = pten::product(in_dims);
+    auto in_dims_vec = pten::vectorize(in_dims);
     bool all_positive = std::all_of(in_dims_vec.cbegin(), in_dims_vec.cend(),
                                     [](int64_t i) { return i > 0; });
     // only one dimension can be set to -1, whose size will be automatically
@@ -139,7 +139,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
             platform::errors::InvalidArgument(
                 "Only one dimension value of 'shape' in ReshapeOp can "
                 "be -1. But received shape = [%s], shape[%d] is also -1.",
-                framework::make_ddim(shape), i));
+                pten::make_ddim(shape), i));
         unk_dim_idx = i;
       } else if (shape[i] == copy_dim_val) {
         PADDLE_ENFORCE_LT(
@@ -149,7 +149,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
                 "the input tensor X's dimensions. "
                 "But received shape = [%s], shape[%d] = 0, X's shape = [%s], "
                 "X's dimensions = %d.",
-                framework::make_ddim(shape), i, in_dims, in_dims.size()));
+                pten::make_ddim(shape), i, in_dims, in_dims.size()));
       } else {
         PADDLE_ENFORCE_GT(
             shape[i], 0,
@@ -157,7 +157,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
                 "Each dimension value of 'shape' in ReshapeOp must not "
                 "be negative except one unknown dimension. "
                 "But received  shape = [%s], shape[%d] = %d.",
-                framework::make_ddim(shape), i, shape[i]));
+                pten::make_ddim(shape), i, shape[i]));
       }
 
       // NOTE all non-zero values will be converted to True (include negative
@@ -182,7 +182,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
                 "capacity of 'shape'. "
                 "But received X's shape = [%s], X's size = %d, "
                 "'shape' is [%s], known capacity of 'shape' is %d.",
-                in_dims, in_size, framework::make_ddim(shape), capacity));
+                in_dims, in_size, pten::make_ddim(shape), capacity));
       } else {
         output_shape[unk_dim_idx] = -1;
       }
@@ -196,7 +196,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
                 "'shape'. "
                 "But received X's shape = [%s], X's size = %d, 'shape' is "
                 "[%s], the capacity of 'shape' is %d.",
-                in_dims, in_size, framework::make_ddim(shape), capacity));
+                in_dims, in_size, pten::make_ddim(shape), capacity));
       }
     }
 
@@ -211,10 +211,10 @@ class ReshapeOp : public framework::OperatorWithKernel {
               "The input tensor X's shape = [%s], X's capacity = %d."
               "But the target shape of Out is [%s],  the "
               "capacity of 'Out' is %d.",
-              in_dims, in_size, framework::make_ddim(shape), capacity));
+              in_dims, in_size, pten::make_ddim(shape), capacity));
     }
 
-    return framework::make_ddim(output_shape);
+    return pten::make_ddim(output_shape);
   }
 
  protected:
@@ -483,7 +483,7 @@ class Reshape2Op : public ReshapeOp {
     for (int i = 0; i < x_dims.size(); ++i) {
       xshape_dims[i + 1] = x_dims[i];
     }
-    ctx->SetOutputDim("XShape", framework::make_ddim(xshape_dims));
+    ctx->SetOutputDim("XShape", pten::make_ddim(xshape_dims));
     ctx->ShareLoD("X", /*->*/ "XShape");
 
     ReshapeOp::InferShape(ctx);
@@ -556,7 +556,7 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "Input(Out@GRAD) shouldn't be null."));
     auto xshape_dims = ctx->GetInputDim("XShape");
-    auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    auto x_dims = pten::slice_ddim(xshape_dims, 1, xshape_dims.size());
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
     ctx->ShareLoD("XShape", framework::GradVarName("X"));
   }

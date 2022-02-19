@@ -50,8 +50,8 @@ template <typename InT, typename OutT, int ShapeSize, int VecSize,
           int DATA_PER_THREAD, typename Functor>
 __global__ void BroadcastKernelBinary(
     const InT* __restrict__ in0, const InT* __restrict__ in1, OutT* out,
-    framework::Array<bool, MAX_INPUT_NUM> use_broadcast, uint32_t numel,
-    framework::Array<kps::details::BroadcastConfig<ShapeSize>, MAX_INPUT_NUM>
+    pten::Array<bool, MAX_INPUT_NUM> use_broadcast, uint32_t numel,
+    pten::Array<kps::details::BroadcastConfig<ShapeSize>, MAX_INPUT_NUM>
         configlists,
     int main_tid, int tail_tid, Functor func) {
   int fix = blockIdx.x * blockDim.x * VecSize;
@@ -104,8 +104,8 @@ void LaunchBiasAddFwKernel(const platform::CUDADeviceContext& ctx, int m, int n,
   int main_tid = numel / (data_per_thread * vec_size * threads);
   int tail_tid = numel % (data_per_thread * vec_size * threads);
 
-  framework::Array<kps::details::BroadcastConfig<2>, MAX_INPUT_NUM> configlists;
-  framework::Array<bool, MAX_INPUT_NUM> use_broadcast;
+  pten::Array<kps::details::BroadcastConfig<2>, MAX_INPUT_NUM> configlists;
+  pten::Array<bool, MAX_INPUT_NUM> use_broadcast;
 
   use_broadcast[0] = false;
   use_broadcast[1] = false;

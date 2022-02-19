@@ -120,20 +120,20 @@ struct DimensionsTransform {
 
  public:
   explicit DimensionsTransform(const std::vector<const DenseTensor *> &ins,
-                               const pten::framework::DDim &dims,
+                               const pten::DDim &dims,
                                int axis) {
     const int N = max(static_cast<int>(ins.size()), 2);
     dim_size = dims.size();
-    out_dims = pten::framework::vectorize<int64_t>(dims);
+    out_dims = pten::vectorize<int64_t>(dims);
     in_dims.resize(N);
     if (ins.size() == 1) {
       // when ins.size() = 1, broadcast input to output
-      in_dims[0] = pten::framework::vectorize<int64_t>(ins[0]->dims());
+      in_dims[0] = pten::vectorize<int64_t>(ins[0]->dims());
       in_dims[1] = out_dims;
       // Add out_dims to in_dims to avoid errors in dims merging
     } else {
       for (int j = 0; j < N; ++j) {
-        in_dims[j] = pten::framework::vectorize<int64_t>(ins[j]->dims());
+        in_dims[j] = pten::vectorize<int64_t>(ins[j]->dims());
       }
     }
     InputDimensionsExtend(N, axis);
@@ -213,12 +213,11 @@ template <typename InT,
           int Rank,
           bool IsBoundary = false>
 __device__ void VectorizedBroadcastKernelImpl(
-    const pten::framework::Array<const _ptr_ InT *__restrict__, Arity> &ins,
-    pten::framework::Array<_ptr_ OutT *, NumOuts> outs,
-    const pten::framework::Array<int, Arity> &use_broadcast,
+    const pten::Array<const _ptr_ InT *__restrict__, Arity> &ins,
+    pten::Array<_ptr_ OutT *, NumOuts> outs,
+    const pten::Array<int, Arity> &use_broadcast,
     uint32_t numel,
-    const pten::framework::Array<kps::details::BroadcastConfig<Rank>, Arity>
-        &configs,
+    const pten::Array<kps::details::BroadcastConfig<Rank>, Arity> &configs,
     int num,
     int block_offset,
     Functor func) {
@@ -258,11 +257,11 @@ template <typename InT,
           int VecSize,
           int Rank>
 __global__ void VectorizedBroadcastKernel(
-    pten::framework::Array<const _ptr_ InT *__restrict__, Arity> ins,
-    pten::framework::Array<_ptr_ OutT *, NumOuts> outs,
-    pten::framework::Array<int, Arity> use_broadcast,
+    pten::Array<const _ptr_ InT *__restrict__, Arity> ins,
+    pten::Array<_ptr_ OutT *, NumOuts> outs,
+    pten::Array<int, Arity> use_broadcast,
     uint32_t numel,
-    pten::framework::Array<kps::details::BroadcastConfig<Rank>, Arity> configs,
+    pten::Array<kps::details::BroadcastConfig<Rank>, Arity> configs,
     int main_offset,
     int tail_tid,
     Functor func) {
@@ -343,10 +342,10 @@ void LaunchBroadcastKernel(const KPDevice &ctx,
                            Functor func,
                            DimensionsTransform merge_dims) {
   int numel = (*outs)[0]->numel();
-  pten::framework::Array<kps::details::BroadcastConfig<Rank>, Arity> configs;
-  pten::framework::Array<int, Arity> use_broadcast;
-  pten::framework::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
-  pten::framework::Array<_ptr_ OutT *, NumOuts> outs_data;
+  pten::Array<kps::details::BroadcastConfig<Rank>, Arity> configs;
+  pten::Array<int, Arity> use_broadcast;
+  pten::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
+  pten::Array<_ptr_ OutT *, NumOuts> outs_data;
 
   for (int i = 0; i < NumOuts; ++i) {
     outs_data[i] = ctx.Alloc<OutT>((*outs)[i]);
@@ -441,7 +440,7 @@ void BroadcastKernelForDifferentDimSize(
           "The maximum dimension of input tensor is expected to be less than "
           "%d, but recieved %d.",
           merge_dims.dim_size,
-          pten::framework::DDim::kMaxRank));
+          pten::DDim::kMaxRank));
     }
   }
 #undef CALL_BROADCAST_FOR_DIM_SIZE

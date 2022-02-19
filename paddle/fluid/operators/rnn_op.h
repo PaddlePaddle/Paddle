@@ -61,7 +61,7 @@ void create_mask_matrix(const framework::ExecutionContext& context,
   const int& table_width = mask_matrix->dims()[0];
   Tensor temp;
   temp.Resize(
-      framework::make_ddim({mask_matrix->dims()[1], mask_matrix->dims()[0]}));
+      pten::make_ddim({mask_matrix->dims()[1], mask_matrix->dims()[0]}));
   T* data_temp = temp.mutable_data<T>(context.GetPlace());
   std::fill(data_temp, data_temp + mask_matrix->numel(), static_cast<T>(1.0));
   *min_seq_len = table_width;
@@ -243,7 +243,7 @@ void dropout_cpu_function_inplace(const framework::ExecutionContext& context,
   if (is_test) {
     return;
   }
-  size_t size = framework::product(x->dims());
+  size_t size = pten::product(x->dims());
   auto* mask_data = mask->data<uint8_t>();
   if (!(*is_has_reset)) {
     // Special case when dropout_prob is 1.0
@@ -284,8 +284,8 @@ struct Layer {
     auto& dev_ctx =
         context.template device_context<platform::CPUDeviceContext>();
     const int& hidden_size = weight.dims()[0];
-    cache_input->Resize(framework::make_ddim(
-        {input->dims()[0], input->dims()[1], hidden_size}));
+    cache_input->Resize(
+        pten::make_ddim({input->dims()[0], input->dims()[1], hidden_size}));
     if (is_test) {
       cache_input->mutable_data<T>(context.GetPlace());
     }
@@ -303,9 +303,9 @@ struct Layer {
     auto in = framework::EigenMatrix<T>::Reshape(
         *cache_input, cache_input->dims().size() - 1);
     auto bias_ih_tmp = framework::EigenMatrix<T>::From(
-        bias_ih, framework::make_ddim({1, bias_ih.dims()[0]}));
+        bias_ih, pten::make_ddim({1, bias_ih.dims()[0]}));
     const int& row_num =
-        framework::product(cache_input->dims()) / cache_input->dims()[2];
+        pten::product(cache_input->dims()) / cache_input->dims()[2];
     in = in + bias_ih_tmp.broadcast(Eigen::DSizes<int, 2>(row_num, 1));
     if (is_gru(context)) {
       // reset_gate update_gate cell_gate = [1, 1, 0]
@@ -319,11 +319,11 @@ struct Layer {
       zero(dev_ctx, &bias_hh_tmp_unbind[2], static_cast<T>(0.0));
 
       auto bias_hh_after_mask = framework::EigenMatrix<T>::From(
-          bias_hh_tmp, framework::make_ddim({1, bias_hh.dims()[0]}));
+          bias_hh_tmp, pten::make_ddim({1, bias_hh.dims()[0]}));
       in = in + bias_hh_after_mask.broadcast(Eigen::DSizes<int, 2>(row_num, 1));
     } else {
       auto bias_hh_no_mask = framework::EigenMatrix<T>::From(
-          bias_hh, framework::make_ddim({1, bias_hh.dims()[0]}));
+          bias_hh, pten::make_ddim({1, bias_hh.dims()[0]}));
       in = in + bias_hh_no_mask.broadcast(Eigen::DSizes<int, 2>(row_num, 1));
     }
   }
@@ -337,7 +337,7 @@ struct Layer {
     auto out =
         framework::EigenMatrix<T>::Reshape(*output, output->dims().size() - 1);
     auto mask = framework::EigenMatrix<T>::From(
-        mask_tensor, framework::make_ddim({mask_tensor.dims()[1], 1}));
+        mask_tensor, pten::make_ddim({mask_tensor.dims()[1], 1}));
     auto pre_h =
         framework::EigenMatrix<T>::Reshape(*init_h, init_h->dims().size() - 1);
     auto curr_h =
@@ -400,7 +400,7 @@ struct Layer {
     Tensor mask_matrix;
     int mask_min_length = time_step;
     if (has_sequence_length) {
-      mask_matrix.Resize(framework::make_ddim({time_step, input->dims()[1]}));
+      mask_matrix.Resize(pten::make_ddim({time_step, input->dims()[1]}));
 
       create_mask_matrix<T>(context, sequence_length, &mask_matrix, is_reverse,
                             &mask_min_length);
@@ -547,7 +547,7 @@ struct Layer {
     Tensor mask_matrix;
     int mask_min_length = time_step;
     if (has_sequence_length) {
-      mask_matrix.Resize(framework::make_ddim({time_step, input->dims()[1]}));
+      mask_matrix.Resize(pten::make_ddim({time_step, input->dims()[1]}));
       create_mask_matrix<T>(context, sequence_length, &mask_matrix, is_reverse,
                             &mask_min_length);
       mask_tensor_list = Unbind(mask_matrix);
@@ -1080,7 +1080,7 @@ struct GradLayer {
     TensorList mask_tensor_list;
     int mask_min_length = time_step;
     if (has_sequence_length) {
-      mask_matrix.Resize(framework::make_ddim({time_step, input->dims()[1]}));
+      mask_matrix.Resize(pten::make_ddim({time_step, input->dims()[1]}));
       create_mask_matrix<T>(context, sequence_length, &mask_matrix, is_reverse,
                             &mask_min_length);
       mask_tensor_list = Unbind(mask_matrix);
@@ -1242,7 +1242,7 @@ struct GradLayer {
     auto& place = *context.template device_context<platform::CPUDeviceContext>()
                        .eigen_device();
     auto mask = framework::EigenMatrix<T>::From(
-        mask_tensor, framework::make_ddim({mask_tensor.dims()[1], 1}));
+        mask_tensor, pten::make_ddim({mask_tensor.dims()[1], 1}));
     auto mask_broadcast =
         mask.broadcast(Eigen::DSizes<int, 2>(1, grad_output->dims()[2]));
 
@@ -1564,7 +1564,7 @@ struct GradCell {
           *context.template device_context<platform::CPUDeviceContext>()
                .eigen_device();
       auto mask = framework::EigenMatrix<T>::From(
-          mask_tensor, framework::make_ddim({mask_tensor.dims()[1], 1}));
+          mask_tensor, pten::make_ddim({mask_tensor.dims()[1], 1}));
       auto mask_broadcast =
           mask.broadcast(Eigen::DSizes<int, 2>(1, grad_pre_hidden->dims()[2]));
       auto pre_hidden_grad = framework::EigenMatrix<T>::Reshape(
@@ -1924,8 +1924,8 @@ void RnnGradFunc(const framework::ExecutionContext& context,
   // squeeze the hidden first dim
   for (unsigned int i = 0; i < hidden_tensor_unbind.size(); i++) {
     hidden_tensor_unbind[i].Resize(
-        framework::slice_ddim(hidden_tensor_unbind[i].dims(), 1,
-                              hidden_tensor_unbind[i].dims().size()));
+        pten::slice_ddim(hidden_tensor_unbind[i].dims(), 1,
+                         hidden_tensor_unbind[i].dims().size()));
   }
   // add the output tensor to the hidden vector
   Tensor tmp;

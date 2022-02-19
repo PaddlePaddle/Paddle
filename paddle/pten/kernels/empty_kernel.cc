@@ -25,7 +25,7 @@ void EmptyKernel(const Context& dev_ctx,
                  const ScalarArray& shape,
                  DataType dtype,
                  DenseTensor* out) {
-  out->ResizeAndAllocate(pten::framework::make_ddim(shape.GetData()));
+  out->ResizeAndAllocate(pten::make_ddim(shape.GetData()));
 }
 
 template <typename T, typename Context>

@@ -417,11 +417,11 @@ class ExecutionContext {
         std::shared_ptr<pten::Allocation>(allocation_ptr, deleter);
 
     PADDLE_ENFORCE_GE(
-        allocation_ptr->size(), framework::product(dim) * sizeof(T),
+        allocation_ptr->size(), pten::product(dim) * sizeof(T),
         platform::errors::PreconditionNotMet(
             "The data memory size(%d) is less than the tensor needed memory "
             "size(%d).",
-            allocation_ptr->size(), framework::product(dim) * sizeof(T)));
+            allocation_ptr->size(), pten::product(dim) * sizeof(T)));
 
     paddle::framework::Tensor temp_tensor(framework::TransToPtenDataType(
         framework::ToDataType(std::type_index(typeid(T)))));

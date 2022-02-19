@@ -57,10 +57,10 @@ class Conv2DTransposeXPUKernel : public framework::OpKernel<T> {
             ("XPU do support data_format is NCHW in conv_transpose op.")));
 
     framework::DDim in_data_dims =
-        framework::slice_ddim(input->dims(), 2, input->dims().size());
+        pten::slice_ddim(input->dims(), 2, input->dims().size());
     framework::DDim filter_data_dims =
-        framework::slice_ddim(filter.dims(), 2, filter.dims().size());
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+        pten::slice_ddim(filter.dims(), 2, filter.dims().size());
+    std::vector<int> ksize = pten::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 
@@ -131,10 +131,10 @@ class Conv2DTransposeGradXPUKernel : public framework::OpKernel<T> {
             ("XPU do support data_format is NCHW in conv grad op.")));
 
     framework::DDim in_data_dims =
-        framework::slice_ddim(input->dims(), 2, input->dims().size());
+        pten::slice_ddim(input->dims(), 2, input->dims().size());
     framework::DDim filter_data_dims =
-        framework::slice_ddim(filter.dims(), 2, filter.dims().size());
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+        pten::slice_ddim(filter.dims(), 2, filter.dims().size());
+    std::vector<int> ksize = pten::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 

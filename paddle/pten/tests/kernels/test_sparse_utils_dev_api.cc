@@ -342,7 +342,7 @@ void TestSparseCsrToCoo(const DDim& dense_dims,
 }
 
 TEST(DEV_API, sparse_csr_to_coo) {
-  DDim dense_dims = framework::make_ddim({3, 3});
+  DDim dense_dims = pten::make_ddim({3, 3});
   std::vector<float> non_zero_data = {1.0, 2.0, 3.0, 3.2};
   std::vector<int64_t> indices_data = {0, 1, 1, 2, 1, 0, 2, 0};
   std::vector<int64_t> cols_data = {1, 0, 2, 0};
@@ -357,7 +357,7 @@ TEST(DEV_API, sparse_csr_to_coo) {
 }
 
 TEST(DEV_API, sparse_csr_to_coo_batch_and_fp16) {
-  DDim dense_dims = framework::make_ddim({2, 3, 3});
+  DDim dense_dims = pten::make_ddim({2, 3, 3});
   std::vector<float> non_zero_data = {1.0, 2.0, 3.0, 3.2, 1.0, 2.0, 3.0, 3.2};
   std::vector<int64_t> cols_data = {1, 0, 2, 0, 1, 0, 2, 0};
   std::vector<int64_t> crows_data = {0, 1, 3, 4, 0, 1, 3, 4};
@@ -522,7 +522,7 @@ TEST(DEV_API, coo_to_csr) {
   std::vector<int64_t> cols_data = {1, 0, 2, 0};
   std::vector<int64_t> crows_data = {0, 1, 3, 4};
   const int64_t non_zero_num = 4;
-  auto dense_dims = pten::framework::make_ddim({3, 3});
+  auto dense_dims = pten::make_ddim({3, 3});
   TestCooToCsr<float>(dense_dims,
                       non_zero_num,
                       non_zero_data,
@@ -545,7 +545,7 @@ TEST(DEV_API, batch_coo_to_csr) {
                                            0, 1, 1, 1, 0, 2, 0, 1, 0, 2};
   std::vector<int64_t> cols_data = {1, 0, 2, 0, 1, 0, 2};
   std::vector<int64_t> crows_data = {0, 1, 3, 4, 0, 1, 3, 3};
-  auto dense_dims = pten::framework::make_ddim({2, 3, 3});
+  auto dense_dims = pten::make_ddim({2, 3, 3});
   TestCooToCsr<pten::dtype::float16>(dense_dims,
                                      non_zero_num,
                                      non_zero_data,
@@ -613,7 +613,7 @@ TEST(DEV_API, dense_to_sparse_csr) {
   DenseTensor dense_x(
       alloc.get(),
       DenseTensorMeta(
-          DataType::FLOAT32, framework::make_ddim({3, 3}), DataLayout::NCHW));
+          DataType::FLOAT32, pten::make_ddim({3, 3}), DataLayout::NCHW));
 
   pten::CPUPlace cpu;
   auto* dense_x_data = dense_x.mutable_data<float>(cpu);
@@ -632,10 +632,10 @@ TEST(DEV_API, dense_to_sparse_csr_batch) {
   const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
 
-  DenseTensor dense_x(alloc.get(),
-                      DenseTensorMeta(DataType::FLOAT16,
-                                      framework::make_ddim({2, 3, 3}),
-                                      DataLayout::NCHW));
+  DenseTensor dense_x(
+      alloc.get(),
+      DenseTensorMeta(
+          DataType::FLOAT16, pten::make_ddim({2, 3, 3}), DataLayout::NCHW));
 
   pten::CPUPlace cpu;
   auto* dense_x_data = dense_x.mutable_data<pten::dtype::float16>(cpu);
@@ -673,14 +673,14 @@ void TestSparseCooToDense(const DDim& dense_dims,
   DenseTensor dense_indices(
       alloc.get(),
       DenseTensorMeta(DataType::INT64,
-                      framework::make_ddim({sparse_dim, non_zero_num}),
+                      pten::make_ddim({sparse_dim, non_zero_num}),
                       DataLayout::NCHW));
   std::vector<int64_t> dense_elements_vec;
   dense_elements_vec.push_back(non_zero_num);
   for (int64_t i = sparse_dim; i < dense_dims.size(); i++) {
     dense_elements_vec.push_back(dense_dims[i]);
   }
-  DDim dense_elements_dims = framework::make_ddim(dense_elements_vec);
+  DDim dense_elements_dims = pten::make_ddim(dense_elements_vec);
   DenseTensor dense_elements(
       alloc.get(),
       DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
@@ -742,7 +742,7 @@ TEST(DEV_API, sparse_coo_to_dense) {
   std::vector<float> dense_data = {0.0, 1.0, 0.0, 2.0, 0.0, 3.0, 3.2, 0.0, 0.0};
   std::vector<float> non_zero_data = {1.0, 2.0, 3.0, 3.2};
   std::vector<int64_t> indices_data = {0, 1, 1, 2, 1, 0, 2, 0};
-  DDim dense_dims = framework::make_ddim({3, 3});
+  DDim dense_dims = pten::make_ddim({3, 3});
   TestSparseCooToDense(dense_dims,
                        dense_data,
                        non_zero_data,
@@ -774,7 +774,7 @@ TEST(DEV_API, sparse_coo_to_dense_batch_and_fp16) {
   std::vector<int64_t> indices_data = {0, 0, 1, 1, 0, 2, 1, 2, 1, 0, 1, 0};
   const int non_zero_num = 4;
   const int sparse_dim = 3;
-  DDim dense_dims = framework::make_ddim({2, 3, 3});
+  DDim dense_dims = pten::make_ddim({2, 3, 3});
   using float16 = pten::dtype::float16;
   std::vector<float16> dense_data_fp16(dense_data.size()),
       non_zero_data_fp16(non_zero_num);
@@ -806,13 +806,13 @@ void TestSparseCsrToDense(const DDim& dense_dims,
     rows = dense_dims[1];
   }
   pten::DenseTensorMeta crows_meta(DataType::INT64,
-                                   framework::make_ddim({batchs * (rows + 1)}),
+                                   pten::make_ddim({batchs * (rows + 1)}),
                                    DataLayout::NCHW);
   pten::DenseTensorMeta cols_meta(
-      DataType::INT64, framework::make_ddim({non_zero_num}), DataLayout::NCHW);
+      DataType::INT64, pten::make_ddim({non_zero_num}), DataLayout::NCHW);
   pten::DenseTensorMeta values_meta(
       paddle::experimental::CppTypeToDataType<T>::Type(),
-      framework::make_ddim({non_zero_num}),
+      pten::make_ddim({non_zero_num}),
       DataLayout::NCHW);
   const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
@@ -873,7 +873,7 @@ void TestSparseCsrToDense(const DDim& dense_dims,
 }
 
 TEST(DEV_API, sparse_csr_to_dense) {
-  DDim dense_dims = framework::make_ddim({3, 3});
+  DDim dense_dims = pten::make_ddim({3, 3});
   std::vector<float> dense_data = {0.0, 1.0, 0.0, 2.0, 0.0, 3.0, 3.2, 0.0, 0.0};
   std::vector<float> non_zero_data = {1.0, 2.0, 3.0, 3.2};
   std::vector<int64_t> cols_data = {1, 0, 2, 0};
@@ -889,7 +889,7 @@ TEST(DEV_API, sparse_csr_to_dense) {
 }
 
 TEST(DEV_API, sparse_csr_to_dense_batch_and_fp16) {
-  DDim dense_dims = framework::make_ddim({2, 3, 3});
+  DDim dense_dims = pten::make_ddim({2, 3, 3});
   std::vector<float> dense_data = {0.0,
                                    1.0,
                                    0.0,

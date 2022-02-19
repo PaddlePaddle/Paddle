@@ -607,7 +607,7 @@ void SetGetLoDLevelTestMain(std::string op_type) {
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   auto* x_var = scope.Var("x.0");
   auto* x = x_var->GetMutable<paddle::framework::LoDTensor>();
-  x->mutable_data<float>(paddle::framework::make_ddim({64}), place);
+  x->mutable_data<float>(pten::make_ddim({64}), place);
   auto* out_var = scope.Var("out.0");
   out_var->GetMutable<paddle::framework::LoDTensor>();
 

@@ -148,7 +148,7 @@ class CUDAPReluGradKernel : public framework::OpKernel<T> {
     int numel = x->numel();
     auto dim = x->dims();
     auto x_rank = dim.size();
-    std::vector<int> input_shape = framework::vectorize<int>(dim);
+    std::vector<int> input_shape = pten::vectorize<int>(dim);
     auto stream = context.cuda_device_context().stream();
 
     T* dalpha_tmp_ptr;

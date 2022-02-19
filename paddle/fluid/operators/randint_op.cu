@@ -41,7 +41,7 @@ class GPURandintKernel : public framework::OpKernel<T> {
     auto dtype = static_cast<framework::proto::VarType::Type>(
         context.Attr<int>("dtype"));
     auto* out = context.Output<framework::LoDTensor>("Out");
-    if (!new_shape.empty()) out->Resize(framework::make_ddim(new_shape));
+    if (!new_shape.empty()) out->Resize(pten::make_ddim(new_shape));
     T low = static_cast<T>(context.Attr<int>("low"));
     T high = static_cast<T>(context.Attr<int>("high")) - 1;
     framework::LoDTensor tensor;

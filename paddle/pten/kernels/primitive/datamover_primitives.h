@@ -85,7 +85,7 @@ struct FastDivMod {
 template <int kDims>
 struct BroadcastConfig {
   FastDivMod divmoders[kDims];
-  uint32_t strides[pten::framework::DDim::kMaxRank];
+  uint32_t strides[pten::DDim::kMaxRank];
   HOSTDEVICE BroadcastConfig() {}
 
   HOSTDEVICE BroadcastConfig(const std::vector<int64_t>& out_dims,
