@@ -17,8 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/math/bert_encoder_functor.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 #include "paddle/pten/kernels/funcs/math_cuda_utils.h"
 
 namespace paddle {
@@ -502,7 +502,7 @@ inline void MatMulWithHeadQK(const platform::CUDADeviceContext &context,
 
   typedef typename CUDATypeTraits<T>::TYPE run_type;
   auto blas =
-      operators::math::GetBlas<platform::CUDADeviceContext, run_type>(context);
+      pten::funcs::GetBlas<platform::CUDADeviceContext, run_type>(context);
   auto stream = context.stream();
 
   blas.BatchedGEMM(
@@ -568,7 +568,7 @@ inline void MatMulWithHeadQKV(const platform::CUDADeviceContext &context,
 
   typedef typename CUDATypeTraits<T>::TYPE run_type;
   auto blas =
-      operators::math::GetBlas<platform::CUDADeviceContext, run_type>(context);
+      pten::funcs::GetBlas<platform::CUDADeviceContext, run_type>(context);
   auto stream = context.stream();
   CBLAS_TRANSPOSE transA = !qk_trans ? CblasNoTrans : CblasTrans;
   CBLAS_TRANSPOSE transB = !v_trans ? CblasNoTrans : CblasTrans;

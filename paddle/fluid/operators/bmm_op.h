@@ -20,7 +20,7 @@
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
 namespace paddle {
 namespace operators {
@@ -28,7 +28,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 static void ReshapeTensorIntoMatrixSequence(
-    framework::Tensor *x, const math::MatDescriptor &descriptor) {
+    framework::Tensor *x, const pten::funcs::MatDescriptor &descriptor) {
   int64_t h, w;
   h = descriptor.height_;
   w = descriptor.width_;
@@ -45,8 +45,8 @@ static void ReshapeXYOutIntoMatrixSequence(framework::Tensor *x,
                                            bool trans_y) {
   auto x_dim = x->dims();
   auto y_dim = y->dims();
-  auto mat_dim_x = math::CreateMatrixDescriptor(x_dim, 0, false);
-  auto mat_dim_y = math::CreateMatrixDescriptor(y_dim, 0, false);
+  auto mat_dim_x = pten::funcs::CreateMatrixDescriptor(x_dim, 0, false);
+  auto mat_dim_y = pten::funcs::CreateMatrixDescriptor(y_dim, 0, false);
 
   out->Resize({std::max(mat_dim_x.batch_size_, mat_dim_y.batch_size_),
                mat_dim_x.height_, mat_dim_y.width_});
@@ -68,10 +68,10 @@ class BmmKernel : public framework::OpKernel<T> {
       return;
     }
 
-    auto blas = math::GetBlas<DeviceContext, T>(context);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(context);
 
-    auto mat_dim_a = math::CreateMatrixDescriptor(x.dims(), 0, false);
-    auto mat_dim_b = math::CreateMatrixDescriptor(y.dims(), 0, false);
+    auto mat_dim_a = pten::funcs::CreateMatrixDescriptor(x.dims(), 0, false);
+    auto mat_dim_b = pten::funcs::CreateMatrixDescriptor(y.dims(), 0, false);
 
     // auto scale = static_cast<T>(context.Attr<float>("alpha"));
     blas.MatMul(x, mat_dim_a, y, mat_dim_b, T(1), out, T(0));
@@ -86,9 +86,9 @@ class BmmGradKernel : public framework::OpKernel<T> {
               const framework::Tensor &b, bool trans_b,
               framework::Tensor *out) const {
     out->mutable_data<T>(context.GetPlace());
-    auto blas = math::GetBlas<DeviceContext, T>(context);
-    auto mat_dim_a = math::CreateMatrixDescriptor(a.dims(), 0, trans_a);
-    auto mat_dim_b = math::CreateMatrixDescriptor(b.dims(), 0, trans_b);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(context);
+    auto mat_dim_a = pten::funcs::CreateMatrixDescriptor(a.dims(), 0, trans_a);
+    auto mat_dim_b = pten::funcs::CreateMatrixDescriptor(b.dims(), 0, trans_b);
 
     blas.MatMul(a, mat_dim_a, b, mat_dim_b, T(1), out, T(0));
   }

@@ -66,8 +66,6 @@ TEST(AccumulationNode, Tensor) {
   grad_meta->SetGradNode(node);
   grad_meta->SetStopGradient(false);
 
-  egr::egr_utils_api::RetainGradForTensor(grad_et);
-
   // operator()
   paddle::experimental::Tensor ret_et0 = node->operator()({{et0}})[0][0];
   auto* ret_et0_ptr =
@@ -86,4 +84,46 @@ TEST(AccumulationNode, Tensor) {
   auto* grad_ptr = std::dynamic_pointer_cast<pten::DenseTensor>(grad->impl())
                        ->data<paddle::platform::float16>();
   CHECK_EQ(grad_ptr[0], paddle::platform::float16(30.0f));
+
+  // Reduce Hook case 1: Call RegisterReduceHook and run operator()
+  VLOG(6) << "Test Reduce Hook";
+  auto reduce_hook_1 = [&](void) -> void {
+    auto* grad_et_ptr =
+        std::dynamic_pointer_cast<pten::DenseTensor>(grad_et.impl())
+            ->data<paddle::platform::float16>();
+    grad_et_ptr[0] = 36.0;
+    VLOG(6) << "Running Reduce Hook";
+  };
+
+  node.RegisterReduceHook(reduce_hook_1);
+
+  // operator()
+  paddle::experimental::Tensor _ret = node({{et0}})[0][0];
+
+  // Check operator() result, should be 36.0
+  auto* _ret_ptr = std::dynamic_pointer_cast<pten::DenseTensor>(_ret.impl())
+                       ->data<paddle::platform::float16>();
+  CHECK_EQ(_ret_ptr[0], paddle::platform::float16(36.0f));
+
+  // Check Retain Grad, should be 36.0
+  auto* _ret_grad_et_ptr =
+      std::dynamic_pointer_cast<pten::DenseTensor>(grad_et.impl())
+          ->data<paddle::platform::float16>();
+  CHECK_EQ(_ret_grad_et_ptr[0], paddle::platform::float16(36.0f));
+
+  // Reduce Hook case 2: Call RegisterReduceHook and ApplyReduceHooks directly
+  VLOG(6) << "Test Reduce Hook";
+  auto reduce_hook_2 = [&](void) -> void {
+    auto* ret_et0_ptr = std::dynamic_pointer_cast<pten::DenseTensor>(et0.impl())
+                            ->data<paddle::platform::float16>();
+    ret_et0_ptr[0] = 100.0;  // set to 100.0
+    VLOG(6) << "Running Reduce Hook";
+  };
+  node.RegisterReduceHook(reduce_hook_2);
+  node.ApplyReduceHooks();
+
+  // Check ApplyReduceHooks result
+  CHECK_EQ(std::dynamic_pointer_cast<pten::DenseTensor>(et0.impl())
+               ->data<paddle::platform::float16>()[0],
+           paddle::platform::float16(100.0f));
 }

@@ -172,11 +172,8 @@ void RunBackward(const std::vector<paddle::experimental::Tensor>& tensors,
 
     std::unique_ptr<GradTensorHolder> node_input_buffer =
         std::move(node_input_buffers_dict[node]);
-    VLOG(6) << "Run Backward Kernel with input_buffer";
 
-    RunBackwardHooks(node_input_buffer->Buffers(), node);
-    // TODO(jiabin): Support post hook here and make hook run in seperate
-    // operator
+    VLOG(6) << "Run Backward Kernel with input_buffer";
     // Run Pre Backward Node and get outputs
     std::vector<std::vector<paddle::experimental::Tensor>> grad_output_tensors =
         (*node)(node_input_buffer->Buffers());

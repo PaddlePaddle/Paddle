@@ -149,6 +149,8 @@ DeviceContext::DeviceContext(DeviceContext&& other) {
   impl_ = std::move(other.impl_);
 }
 
+DeviceContext& DeviceContext::operator=(DeviceContext&&) = default;
+
 DeviceContext::~DeviceContext() = default;
 
 void DeviceContext::SetAllocator(const Allocator* allocator) {

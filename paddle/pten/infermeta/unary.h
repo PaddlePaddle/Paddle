@@ -41,10 +41,7 @@ void FlattenInferMeta(const MetaTensor& x,
 
 void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out);
 
-void CreateLikeInferMeta(const MetaTensor& x,
-                         DataType dtype,
-                         DataLayout layout,
-                         MetaTensor* out);
+void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out);
 
 void InferMetaFromVecValue(const MetaTensor& x,
                            const std::vector<int64_t>& shape,
@@ -80,4 +77,8 @@ void SplitInferMeta(const MetaTensor& x_meta,
                     const Scalar& axis,
                     std::vector<MetaTensor>* out,
                     MetaConfig config = MetaConfig());
+
+void TraceInferMeta(
+    const MetaTensor& x, int offset, int axis1, int axis2, MetaTensor* out);
+
 }  // namespace pten

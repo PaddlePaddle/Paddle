@@ -28,9 +28,8 @@ void CreateInferMetaBase(const std::vector<int64_t>& shape,
 
 void CreateInferMeta(const ScalarArray& shape,
                      DataType dtype,
-                     DataLayout layout,
                      MetaTensor* out) {
-  CreateInferMetaBase(shape.GetData(), dtype, layout, out);
+  CreateInferMetaBase(shape.GetData(), dtype, DataLayout::NCHW, out);
 }
 
 }  // namespace pten

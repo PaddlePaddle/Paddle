@@ -278,7 +278,8 @@ void EagerUtils::OverwriteOutputs(const paddle::experimental::Tensor& out,
                   "We are tring to OverwriteOutput from its "
                   "shared_ptr, this error may indicate some outputs "
                   "are nullptr"));
-  *tensor = out;
+  // Don't copy AutogradMeta
+  tensor->set_impl(out.impl());
 }
 void EagerUtils::OverwriteOutputs(
     const std::vector<paddle::experimental::Tensor>& outs,
@@ -290,7 +291,8 @@ void EagerUtils::OverwriteOutputs(
                         "We are tring to OverwriteOutput from its "
                         "shared_ptr, this error may indicate some outputs "
                         "are nullptr"));
-    *tensors[i] = outs[i];
+    // Don't copy AutogradMeta
+    tensors[i]->set_impl(outs[i].impl());
   }
 }
 
