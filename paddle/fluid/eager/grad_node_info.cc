@@ -214,10 +214,6 @@ void GradNodeBase::RegisterGradientHook(
   gradient_hooks_.emplace_back(std::make_tuple(slot_id, rank, hook));
 }
 
-void GradNodeBase::RegisterReduceHook(const std::function<void(void)>& hook) {
-  reduce_hooks_.emplace_back(hook);
-}
-
 std::vector<std::vector<paddle::experimental::Tensor>>
 GradNodeBase::ApplyGradientHooks(
     const std::vector<std::vector<paddle::experimental::Tensor>>& tensors) {
@@ -246,7 +242,8 @@ GradNodeBase::ApplyGradientHooks(
       VLOG(8) << "Run Hook for tensor: " << tensors[slot_id][rank].name();
       out = hook(tensors[slot_id][rank]);
     } else {
-      // TODO(jiabin): Why this?
+      // If more than one hook is registered, the input to the next hook func
+      // should be the output of the previous hook
       out = hook(out);
     }
   }
@@ -266,9 +263,4 @@ GradNodeBase::ApplyGradientHooks(
   return outs;
 }
 
-void GradNodeBase::ApplyReduceHooks() {
-  for (auto& hook : reduce_hooks_) {
-    hook();
-  }
-}
 }  // namespace egr
