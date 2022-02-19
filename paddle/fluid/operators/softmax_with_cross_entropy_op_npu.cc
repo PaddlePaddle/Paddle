@@ -99,12 +99,9 @@ class SoftmaxWithCrossEntropyGradNPUKernel : public framework::OpKernel<T> {
     logits_grad->mutable_data<T>(ctx.GetPlace());
 
     const int rank = logits_grad->dims().size();
-    const int axis =
-        pten::funcs::pten::funcs::CanonicalAxis(ctx.Attr<int>("axis"), rank);
-    const int n =
-        pten::funcs::pten::funcs::SizeToAxis(axis, logits_grad->dims());
-    const int d =
-        pten::funcs::pten::funcs::SizeFromAxis(axis, logits_grad->dims());
+    const int axis = pten::funcs::CanonicalAxis(ctx.Attr<int>("axis"), rank);
+    const int n = pten::funcs::SizeToAxis(axis, logits_grad->dims());
+    const int d = pten::funcs::SizeFromAxis(axis, logits_grad->dims());
 
     Tensor logits_grad_2d, loss_grad_1d, backprop_2d;
 
