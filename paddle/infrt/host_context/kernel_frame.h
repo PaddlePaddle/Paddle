@@ -31,11 +31,10 @@ namespace host_context {
 class KernelFrame {
  public:
   int GetNumArgs() const { return num_arguments_; }
-  int GetNumResults() const { return num_results_ == -1 ? 0 : num_results_; }
-  int GetNumAttributes() const {
-    return value_or_attrs_.size() - num_arguments_ -
-           (num_results_ == -1 ? 0 : num_results_);
+  int GetNumResults() const {
+    return value_or_attrs_.size() - num_arguments_ - GetNumAttributes();
   }
+  int GetNumAttributes() const { return num_attrs_ == -1 ? 0 : num_attrs_; }
 
   //! Get something at a specific position \p index. The element might be an
   //! argument, an attribute or a result.
@@ -72,16 +71,19 @@ class KernelFrame {
   Value* GetAttributeAt(int idx) {
     // CHECK_NE(num_results_, -1)
     //<< "Must call SetNumResults before GetAttributeAt";
-    CHECK_LT(idx,
-             static_cast<int>(value_or_attrs_.size() - num_arguments_ -
-                              num_results_));
-    return value_or_attrs_[num_arguments_ + num_results_ + idx];
+    CHECK_LT(idx, GetNumAttributes());
+    return value_or_attrs_[num_arguments_ + idx];
   }
 
   void AddAttribute(Value* v) {
-    CHECK_NE(num_results_, -1)
-        << "Must call SetNumResults before calling AddAttribute";
+    CHECK_EQ(num_results_, -1)
+        << "Must call SetNumResults after calling AddAttribute";
     value_or_attrs_.emplace_back(v);
+    if (num_attrs_ = -1) {
+      num_attrs_ = 1;
+    } else {
+      num_attrs_++;
+    }
   }
 
   template <typename T, typename... Args>
@@ -96,16 +98,17 @@ class KernelFrame {
 
   template <typename T>
   void SetResultAt(int index, T&& value) {
-    CHECK_LT(index, num_results_) << "Invalid result index";
-    CHECK(value_or_attrs_[num_arguments_ + index]);
-    value_or_attrs_[num_arguments_ + index]->set(std::move(value));
+    CHECK_LT(index, GetNumResults()) << "Invalid result index";
+    CHECK(value_or_attrs_[num_arguments_ + GetNumAttributes() + index]);
+    value_or_attrs_[num_arguments_ + GetNumAttributes() + index]->set(
+        std::move(value));
   }
 
   llvm::ArrayRef<Value*> GetResults() const {
-    return GetValues(num_arguments_, num_results_);
+    return GetValues(num_arguments_ + GetNumAttributes(), num_results_);
   }
   llvm::MutableArrayRef<Value*> GetResults() {
-    return GetMutableValues(num_arguments_, num_results_);
+    return GetMutableValues(num_arguments_ + GetNumAttributes(), num_results_);
   }
 
   llvm::ArrayRef<Value*> GetValues(size_t from, size_t length) const {
@@ -129,6 +132,7 @@ class KernelFrame {
 
  protected:
   int num_arguments_{};
+  int num_attrs_{-1};
   int num_results_{-1};
 
   llvm::SmallVector<Value*, 8> value_or_attrs_;
@@ -140,15 +144,15 @@ class KernelFrameBuilder : public KernelFrame {
  public:
   void AddArgument(Value* value) {
     CHECK(value);
-    CHECK_EQ(num_results_, -1)
-        << "Should call AddArgument before calling SetNumResults";
+    CHECK_EQ(num_attrs_, -1)
+        << "Should call AddArgument before calling SetAttributes";
     value_or_attrs_.push_back(value);
     ++num_arguments_;
   }
 
   void SetResults(llvm::ArrayRef<Value*> values) {
-    CHECK_EQ(num_arguments_, static_cast<int>(value_or_attrs_.size()));
-    CHECK_EQ(num_results_, -1);
+    CHECK_EQ(num_arguments_ + GetNumAttributes(),
+             static_cast<int>(value_or_attrs_.size()));
     for (Value* x : values) {
       value_or_attrs_.push_back(x);
     }
@@ -156,9 +160,8 @@ class KernelFrameBuilder : public KernelFrame {
   }
 
   void SetNumResults(size_t n) {
-    CHECK_EQ(num_arguments_, static_cast<int>(value_or_attrs_.size()));
-    CHECK_EQ(num_results_, -1);
-    num_results_ = n;
+    CHECK_EQ(num_arguments_ + GetNumAttributes(),
+             static_cast<int>(value_or_attrs_.size()));
     for (size_t i = 0; i < n; i++) {
       value_or_attrs_.emplace_back(new Value);
     }
@@ -166,18 +169,20 @@ class KernelFrameBuilder : public KernelFrame {
 
   void SetResultAt(int result_id, Value* value) {
     CHECK_EQ(static_cast<int>(value_or_attrs_.size()),
-             num_arguments_ + num_results_)
+             num_arguments_ + GetNumAttributes() + num_results_)
         << "Call SetNumResults first";
-    CHECK_LT(result_id + num_arguments_,
+    CHECK_LT(result_id + num_arguments_ + GetNumAttributes(),
              static_cast<int>(value_or_attrs_.size()));
     CHECK(value);
-    value_or_attrs_[num_arguments_ + result_id]->set(value);
+    value_or_attrs_[num_arguments_ + GetNumAttributes() + result_id]->set(
+        value);
   }
 
   void Reset() {
     value_or_attrs_.clear();
     num_arguments_ = 0;
     num_results_ = -1;
+    num_attrs_ = -1;
   }
 };
 

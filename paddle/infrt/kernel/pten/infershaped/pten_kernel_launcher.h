@@ -24,13 +24,13 @@ namespace kernel {
 
 static void FakePtenInferShape(const ::pten::MetaTensor& a,
                                const ::pten::MetaTensor& b,
-                               host_context::Attribute<bool> arg_0,
+                               bool arg_0,
                                ::pten::MetaTensor* c) {}
 
 static void FakePtenKernel(const ::pten::CPUContext& /*Context*/,
                            const ::pten::DenseTensor& a,
                            const ::pten::DenseTensor& b,
-                           host_context::Attribute<bool> arg_0,
+                           bool arg_0,
                            ::pten::DenseTensor* c) {}
 
 template <typename KernelFunc,
