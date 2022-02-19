@@ -47,7 +47,7 @@ set(STATIC_INFERENCE_API paddle_inference_api analysis_predictor
         analysis_config paddle_pass_builder activation_functions ${mkldnn_quantizer_cfg})
 
 if(WITH_ONNXRUNTIME)
-set(STATIC_INFERENCE_API ${STATIC_INFERENCE_API} onnxruntime_predictor)
+  set(STATIC_INFERENCE_API ${STATIC_INFERENCE_API} onnxruntime_predictor)
 endif()
 
 #TODO(wilber, T8T9): Do we still need to support windows gpu static library?
@@ -101,10 +101,7 @@ if (WITH_ONNXRUNTIME)
   set(SHARED_INFERENCE_SRCS ${SHARED_INFERENCE_SRCS} 
       ${CMAKE_CURRENT_SOURCE_DIR}/api/onnxruntime_predictor.cc
   )
-  if (WIN32)
-  else ()
-    set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} onnxruntime_predictor)
-  endif (WIN32)
+  set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} onnxruntime_predictor)
 endif (WITH_ONNXRUNTIME)
 
 # Create shared inference library
