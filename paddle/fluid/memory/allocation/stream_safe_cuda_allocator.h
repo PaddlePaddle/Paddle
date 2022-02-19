@@ -51,8 +51,8 @@ class StreamSafeCUDAAllocation : public Allocation {
   std::map<gpuStream_t, gpuEvent_t> outstanding_event_map_;
   gpuStream_t owning_stream_;
   SpinLock outstanding_event_map_lock_;
-  // To compatiable with CUDA Graph, hold the allocator so that Allocator will
-  // not deconstruct before Allocation
+  // To compatiable with CUDA Graph, hold the allocator shared_ptr so that
+  // Allocator will not deconstruct before Allocation
   std::shared_ptr<Allocator> allocator_;
 };
 

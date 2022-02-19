@@ -638,12 +638,14 @@ class AllocatorFacadePrivate {
     allocator = std::make_shared<RetryAllocator>(allocator, retry_time);
   }
 
+#ifdef PADDLE_WITH_CUDA
   void WrapCUDAGraphAllocator() {
     for (auto& item : allocators_) {
       auto& allocator = item.second;
       allocator = CUDAGraphAllocator::Create(allocator);
     }
   }
+#endif
 
   static void CheckCUDAAllocThreadSafe(const CUDAAllocatorMap& allocators) {
     for (auto& place_pair : allocators) {
@@ -865,9 +867,9 @@ const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (FLAGS_use_stream_safe_cuda_allocator && platform::is_gpu_place(place) &&
       FLAGS_use_system_allocator == false) {
+    AllocatorFacadePrivate* m = GetPrivate();
     platform::CUDAPlace cuda_place(place.GetDeviceId());
-    return GetPrivate()->GetAllocator(
-        cuda_place, GetPrivate()->GetDefaultStream(cuda_place));
+    return m->GetAllocator(cuda_place, m->GetDefaultStream(cuda_place));
   }
 #endif
 
