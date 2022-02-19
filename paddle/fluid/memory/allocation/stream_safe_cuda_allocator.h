@@ -16,6 +16,7 @@
 
 #include <list>
 #include <map>
+#include <set>
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/place.h"
