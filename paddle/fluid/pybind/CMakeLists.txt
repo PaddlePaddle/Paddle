@@ -23,6 +23,9 @@ endif()
 if (WITH_NCCL OR WITH_RCCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} nccl_wrapper)
   set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
+endif()
+
+if (WITH_NCCL)
   set (PYBIND_DEPS ${PYBIND_DEPS} processgroup_nccl)
 endif()
 

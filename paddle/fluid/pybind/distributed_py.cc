@@ -27,7 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/pybind/distributed_py.h"
-#include "paddle/fluid/pybind/eager_utils.h"
+// #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/pten/api/all.h"
 
 #if defined(PADDLE_WITH_NCCL)
@@ -40,6 +40,21 @@ namespace paddle {
 namespace pybind {
 
 using Tensor = paddle::experimental::Tensor;
+
+typedef struct { Tensor tensor; } TensorObject;
+
+PyTypeObject *p_tensor_type;
+
+Tensor CastPyArg2Tensor(PyObject *obj, ssize_t arg_pos) {
+  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject *>(p_tensor_type))) {
+    return reinterpret_cast<TensorObject *>(obj)->tensor;
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "argument (position %d) must be "
+        "EagerVariable, but got %s",
+        arg_pos + 1, reinterpret_cast<PyTypeObject *>(obj->ob_type)->tp_name));
+  }
+}
 
 void BindDistributed(py::module *m) {
   py::enum_<distributed::ReduceOp>(*m, "ReduceOp")
