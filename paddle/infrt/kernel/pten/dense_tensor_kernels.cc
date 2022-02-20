@@ -12,26 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/kernel/phi/dense_tensor_kernels.h"
+#include "paddle/infrt/kernel/pten/dense_tensor_kernels.h"
 
 namespace infrt {
 namespace kernel {
-namespace phi {
+namespace pten {
 
-::phi::DenseTensor CreateDenseTensorCpuF32Nchw(
+::pten::DenseTensor CreateDenseTensorCpuF32Nchw(
     backends::CpuPtenAllocator* allocator,
     host_context::Attribute<std::vector<int64_t>> dims,
     host_context::Attribute<std::vector<int64_t>> lod) {
-  return ::phi::DenseTensor(allocator,
-                            ::phi::DenseTensorMeta(::phi::DataType::FLOAT32,
-                                                   ::phi::make_ddim(dims.get()),
-                                                   ::phi::DataLayout::NCHW,
-                                                   {}));
+  return ::pten::DenseTensor(
+      allocator,
+      ::pten::DenseTensorMeta(::pten::DataType::FLOAT32,
+                              ::pten::make_ddim(dims.get()),
+                              ::pten::DataLayout::NCHW,
+                              {}));
 }
 
-void FillDenseTensorF32(::phi::DenseTensor* dense_tensor,
+void FillDenseTensorF32(::pten::DenseTensor* dense_tensor,
                         host_context::Attribute<std::vector<int64_t>> values) {}
 
-}  // namespace phi
+}  // namespace pten
 }  // namespace kernel
 }  // namespace infrt

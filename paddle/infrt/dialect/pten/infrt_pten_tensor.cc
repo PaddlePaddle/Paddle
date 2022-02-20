@@ -12,25 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/dialect/phi/infrt_pten_tensor.h"
+#include "paddle/infrt/dialect/pten/infrt_pten_tensor.h"
 
 #include <mlir/IR/BuiltinTypes.h>
 
-#include "paddle/infrt/dialect/phi/infrt_pten_tensorDialect.cpp.inc"
-#include "paddle/infrt/dialect/phi/infrt_pten_tensorTypes.cpp.inc"
+#include "paddle/infrt/dialect/pten/infrt_pten_tensorDialect.cpp.inc"
+#include "paddle/infrt/dialect/pten/infrt_pten_tensorTypes.cpp.inc"
 
 namespace infrt {
-namespace phi {
+namespace pten {
 
 void PTENDenseTensorDialect::initialize() {
 #define GET_OP_LIST
   addOperations<
-#include "paddle/infrt/dialect/phi/infrt_pten_tensor.cpp.inc"
+#include "paddle/infrt/dialect/pten/infrt_pten_tensor.cpp.inc"
       >();
 }
 
-}  // namespace phi
+}  // namespace pten
 }  // namespace infrt
 
 #define GET_OP_CLASSES
-#include "paddle/infrt/dialect/phi/infrt_pten_tensor.cpp.inc"  // NOLINT
+#include "paddle/infrt/dialect/pten/infrt_pten_tensor.cpp.inc"  // NOLINT

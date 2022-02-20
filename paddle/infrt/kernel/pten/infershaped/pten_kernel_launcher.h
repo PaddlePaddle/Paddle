@@ -16,8 +16,8 @@
 #include <llvm/ADT/SmallVector.h>
 
 #include "paddle/infrt/host_context/kernel_utils.h"
-#include "paddle/infrt/kernel/phi/infershaped/infershaped_kernel_launcher.h"
-#include "paddle/infrt/kernel/phi/infershaped/infershaped_utils.h"
+#include "paddle/infrt/kernel/pten/infershaped/infershaped_kernel_launcher.h"
+#include "paddle/infrt/kernel/pten/infershaped/infershaped_utils.h"
 
 namespace infrt {
 namespace kernel {

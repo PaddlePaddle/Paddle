@@ -11,20 +11,20 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/core/allocator.h"
+#include "paddle/pten/core/allocator.h"
 
 namespace infrt {
 namespace backends {
 
-class CpuPtenAllocator : public phi::Allocator {
+class CpuPtenAllocator : public pten::Allocator {
  public:
-  static void deleter(phi::Allocation* ptr) { ::operator delete(ptr); }
+  static void deleter(pten::Allocation* ptr) { ::operator delete(ptr); }
 
   AllocationPtr Allocate(size_t bytes_size) {
     return AllocationPtr(
-        new phi::Allocation(::operator new(bytes_size),
-                            bytes_size,
-                            phi::Place(phi::AllocationType::CPU)),
+        new pten::Allocation(::operator new(bytes_size),
+                             bytes_size,
+                             pten::Place(pten::AllocationType::CPU)),
         deleter);
   }
 };

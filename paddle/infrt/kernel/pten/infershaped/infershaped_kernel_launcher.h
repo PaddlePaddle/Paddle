@@ -44,7 +44,7 @@ struct InferShapedKernelLauncher {
 
   // values to hold the TensorMeta.
   llvm::SmallVector<host_context::ValueRef, 3> values;
-  llvm::SmallVector<::phi::DDim, 3> tensor_shape_cache;
+  llvm::SmallVector<::pten::DDim, 3> tensor_shape_cache;
   host_context::KernelFrameBuilder infershape_kernel_frame_builder;
 };
 

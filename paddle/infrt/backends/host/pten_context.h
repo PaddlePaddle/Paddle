@@ -11,15 +11,15 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/pten/backends/cpu/cpu_context.h"
 
 namespace infrt {
 namespace backends {
 
-class CpuPtenContext : public phi::CPUContext {
+class CpuPtenContext : public pten::CPUContext {
  public:
-  using Base = phi::CPUContext;
-  using phi::CPUContext::SetEigenDevice;
+  using Base = pten::CPUContext;
+  using pten::CPUContext::SetEigenDevice;
 };
 
 }  // namespace backends

@@ -26,11 +26,11 @@ ValueRef::ValueRef(double val) : Shared<Value>(new Value(val)) {}
 ValueRef::ValueRef(bool val) : Shared<Value>(new Value(val)) {}
 ValueRef::ValueRef(backends::CpuPtenContext&& val)
     : Shared<Value>(new Value(std::move(val))) {}
-ValueRef::ValueRef(::phi::CPUContext&& val)
+ValueRef::ValueRef(::pten::CPUContext&& val)
     : Shared<Value>(new Value(std::move(val))) {}
-ValueRef::ValueRef(::phi::DenseTensor&& val)
+ValueRef::ValueRef(::pten::DenseTensor&& val)
     : Shared<Value>(new Value(std::move(val))) {}
-ValueRef::ValueRef(::phi::MetaTensor&& val)
+ValueRef::ValueRef(::pten::MetaTensor&& val)
     : Shared<Value>(new Value(std::move(val))) {}
 
 const char* Value::type_info() const { return __type_info__; }

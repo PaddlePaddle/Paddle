@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/kernel/phi/allocator_kernels.h"
+#include "paddle/infrt/kernel/pten/context_kernels.h"
 
 namespace infrt {
 namespace kernel {
-namespace phi {
+namespace pten {
 
-backends::CpuPtenAllocator CreateCpuAllocator() { return {}; }
+backends::CpuPtenContext CreateCpuContext() { return {}; }
 
-}  // namespace phi
+}  // namespace pten
 }  // namespace kernel
 }  // namespace infrt

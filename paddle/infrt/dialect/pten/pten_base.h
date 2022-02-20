@@ -13,16 +13,18 @@
 // limitations under the License.
 
 #pragma once
+#include <mlir/IR/Dialect.h>
+#include <mlir/IR/OpDefinition.h>
+#include <mlir/Interfaces/SideEffectInterfaces.h>
 
-#include "paddle/infrt/backends/host/pten_allocator.h"
-#include "paddle/phi/core/dense_tensor.h"
+#include <string>
+
+#include "paddle/infrt/dialect/pten/infrt_pten_base.h.inc"
+#include "paddle/infrt/dialect/pten/infrt_pten_baseDialect.h.inc"
+
+#define GET_TYPEDEF_CLASSES
+#include "paddle/infrt/dialect/pten/infrt_pten_baseTypes.h.inc"
 
 namespace infrt {
-namespace kernel {
-namespace phi {
-
-backends::CpuPtenAllocator CreateCpuAllocator();
-
-}  // namespace phi
-}  // namespace kernel
+namespace pten {}  // namespace pten
 }  // namespace infrt

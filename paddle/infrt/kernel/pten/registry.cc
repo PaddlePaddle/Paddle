@@ -12,20 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/kernel/phi/registry.h"
+#include "paddle/infrt/kernel/pten/registry.h"
 
 #include <iostream>
 #include <string>
 
 #include "paddle/infrt/host_context/kernel_registry.h"
 #include "paddle/infrt/host_context/kernel_utils.h"
-#include "paddle/infrt/kernel/phi/allocator_kernels.h"
-#include "paddle/infrt/kernel/phi/context_kernels.h"
-#include "paddle/infrt/kernel/phi/dense_tensor_kernels.h"
-#include "paddle/infrt/kernel/phi/infershaped/pten_kernel_launcher.h"
-#include "paddle/phi/include/infermeta.h"
-#include "paddle/phi/include/kernels.h"
-#include "paddle/phi/kernels/matmul_kernel.h"
+#include "paddle/infrt/kernel/pten/allocator_kernels.h"
+#include "paddle/infrt/kernel/pten/context_kernels.h"
+#include "paddle/infrt/kernel/pten/dense_tensor_kernels.h"
+#include "paddle/infrt/kernel/pten/infershaped/pten_kernel_launcher.h"
+#include "paddle/pten/include/infermeta.h"
+#include "paddle/pten/include/kernels.h"
+#include "paddle/pten/kernels/matmul_kernel.h"
 
 using infrt::host_context::Attribute;
 
@@ -34,26 +34,26 @@ namespace kernel {
 
 void RegisterPtenKernels(host_context::KernelRegistry* registry) {
   registry->AddKernel("pten_dt.create_allocator.cpu",
-                      INFRT_KERNEL(infrt::kernel::phi::CreateCpuAllocator));
+                      INFRT_KERNEL(infrt::kernel::pten::CreateCpuAllocator));
   registry->AddKernel("pten_dt.create_context.cpu",
-                      INFRT_KERNEL(infrt::kernel::phi::CreateCpuContext));
+                      INFRT_KERNEL(infrt::kernel::pten::CreateCpuContext));
   registry->AddKernel(
       "pten_dt.create_dense_tensor.cpu.f32.nchw",
-      INFRT_KERNEL(infrt::kernel::phi::CreateDenseTensorCpuF32Nchw));
+      INFRT_KERNEL(infrt::kernel::pten::CreateDenseTensorCpuF32Nchw));
   registry->AddKernel("pten_dt.fill_dense_tensor.f32",
-                      INFRT_KERNEL(infrt::kernel::phi::FillDenseTensorF32));
+                      INFRT_KERNEL(infrt::kernel::pten::FillDenseTensorF32));
   registry->AddKernel(
       "pten.matmul.host.fp32",
       std::bind(&kernel::KernelLauncherFunc<
-                    decltype(&::phi::MatmulKernel<float, ::phi::CPUContext>),
-                    &::phi::MatmulKernel<float, ::phi::CPUContext>,
-                    decltype(&::phi::MatmulInferMeta),
-                    &::phi::MatmulInferMeta>,
+                    decltype(&::pten::MatmulKernel<float, ::pten::CPUContext>),
+                    &::pten::MatmulKernel<float, ::pten::CPUContext>,
+                    decltype(&::pten::MatmulInferMeta),
+                    &::pten::MatmulInferMeta>,
                 kernel::KernelLauncher<
-                    decltype(&::phi::MatmulKernel<float, ::phi::CPUContext>),
-                    &::phi::MatmulKernel<float, ::phi::CPUContext>,
-                    decltype(&::phi::MatmulInferMeta),
-                    &::phi::MatmulInferMeta>(),
+                    decltype(&::pten::MatmulKernel<float, ::pten::CPUContext>),
+                    &::pten::MatmulKernel<float, ::pten::CPUContext>,
+                    decltype(&::pten::MatmulInferMeta),
+                    &::pten::MatmulInferMeta>(),
                 std::placeholders::_1));
 }
 

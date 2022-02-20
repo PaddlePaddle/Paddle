@@ -12,14 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/kernel/phi/context_kernels.h"
+#pragma once
+
+#include "paddle/infrt/backends/host/pten_context.h"
+#include "paddle/pten/core/dense_tensor.h"
 
 namespace infrt {
 namespace kernel {
-namespace phi {
+namespace pten {
 
-backends::CpuPtenContext CreateCpuContext() { return {}; }
+backends::CpuPtenContext CreateCpuContext();
 
-}  // namespace phi
+}  // namespace pten
 }  // namespace kernel
 }  // namespace infrt

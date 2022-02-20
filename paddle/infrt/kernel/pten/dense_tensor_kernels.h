@@ -14,15 +14,22 @@
 
 #pragma once
 
-#include "paddle/infrt/backends/host/pten_context.h"
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/infrt/backends/host/pten_allocator.h"
+#include "paddle/infrt/host_context/kernel_utils.h"
+#include "paddle/pten/core/dense_tensor.h"
 
 namespace infrt {
 namespace kernel {
-namespace phi {
+namespace pten {
 
-backends::CpuPtenContext CreateCpuContext();
+::pten::DenseTensor CreateDenseTensorCpuF32Nchw(
+    backends::CpuPtenAllocator* allocator,
+    host_context::Attribute<std::vector<int64_t>> dims,
+    host_context::Attribute<std::vector<int64_t>> lod);
 
-}  // namespace phi
+void FillDenseTensorF32(::pten::DenseTensor* dense_tensor,
+                        host_context::Attribute<std::vector<int64_t>> values);
+
+}  // namespace pten
 }  // namespace kernel
 }  // namespace infrt

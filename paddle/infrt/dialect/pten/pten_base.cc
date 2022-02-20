@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/dialect/phi/pten_base.h"
+#include "paddle/infrt/dialect/pten/pten_base.h"
 
 #include <mlir/IR/Builders.h>
 #include <mlir/IR/Dialect.h>
@@ -21,11 +21,11 @@
 #include <mlir/IR/TypeUtilities.h>
 #include <mlir/IR/Types.h>
 #include "paddle/infrt/common/global.h"
-#include "paddle/infrt/dialect/phi/infrt_pten_base.cpp.inc"
-#include "paddle/infrt/dialect/phi/infrt_pten_baseDialect.cpp.inc"
+#include "paddle/infrt/dialect/pten/infrt_pten_base.cpp.inc"
+#include "paddle/infrt/dialect/pten/infrt_pten_baseDialect.cpp.inc"
 
 namespace infrt {
-namespace phi {
+namespace pten {
 
 void PTENDialect::printType(::mlir::Type type,
                             mlir::DialectAsmPrinter& os) const {
@@ -51,11 +51,11 @@ void PTENDialect::printType(::mlir::Type type,
 void PTENDialect::initialize() {
   addOperations<
 #define GET_OP_LIST
-#include "paddle/infrt/dialect/phi/infrt_pten_base.cpp.inc"  // NOLINT
+#include "paddle/infrt/dialect/pten/infrt_pten_base.cpp.inc"  // NOLINT
       >();
   addTypes<
 #define GET_TYPEDEF_LIST
-#include "paddle/infrt/dialect/phi/infrt_pten_baseTypes.cpp.inc"  // NOLINT
+#include "paddle/infrt/dialect/pten/infrt_pten_baseTypes.cpp.inc"  // NOLINT
       >();
 }
 
@@ -77,8 +77,8 @@ mlir::Type PTENDialect::parseType(mlir::DialectAsmParser& parser) const {
   return mlir::Type();
 }
 
-}  // namespace phi
+}  // namespace pten
 }  // namespace infrt
 
 #define GET_TYPEDEF_CLASSES
-#include "paddle/infrt/dialect/phi/infrt_pten_baseTypes.cpp.inc"  // NOLINT
+#include "paddle/infrt/dialect/pten/infrt_pten_baseTypes.cpp.inc"  // NOLINT

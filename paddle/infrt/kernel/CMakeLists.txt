@@ -1,4 +1,4 @@
-add_subdirectory(phi)
+add_subdirectory(pten)
 
 core_gather_headers()
 

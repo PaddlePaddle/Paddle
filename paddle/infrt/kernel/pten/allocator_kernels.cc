@@ -12,24 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/infrt/backends/host/pten_allocator.h"
-#include "paddle/infrt/host_context/kernel_utils.h"
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/infrt/kernel/pten/allocator_kernels.h"
 
 namespace infrt {
 namespace kernel {
-namespace phi {
+namespace pten {
 
-::phi::DenseTensor CreateDenseTensorCpuF32Nchw(
-    backends::CpuPtenAllocator* allocator,
-    host_context::Attribute<std::vector<int64_t>> dims,
-    host_context::Attribute<std::vector<int64_t>> lod);
+backends::CpuPtenAllocator CreateCpuAllocator() { return {}; }
 
-void FillDenseTensorF32(::phi::DenseTensor* dense_tensor,
-                        host_context::Attribute<std::vector<int64_t>> values);
-
-}  // namespace phi
+}  // namespace pten
 }  // namespace kernel
 }  // namespace infrt
