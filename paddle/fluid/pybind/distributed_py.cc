@@ -43,10 +43,10 @@ using Tensor = paddle::experimental::Tensor;
 
 typedef struct { Tensor tensor; } TensorObject;
 
-PyTypeObject *p_tensor_type;
+PyTypeObject *g_tensor_type;
 
-Tensor CastPyArg2Tensor(PyObject *obj, ssize_t arg_pos) {
-  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject *>(p_tensor_type))) {
+Tensor PyArg2Tensor(PyObject *obj, ssize_t arg_pos) {
+  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject *>(g_tensor_type))) {
     return reinterpret_cast<TensorObject *>(obj)->tensor;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -77,7 +77,7 @@ void BindDistributed(py::module *m) {
           .def("allreduce",
                [](distributed::ProcessGroup &self, py::handle py_tensor,
                   distributed::ReduceOp op) {
-                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                 auto tensor = PyArg2Tensor(py_tensor.ptr(), 0);
                  distributed::AllreduceOptions opts;
                  opts.reduce_op = op;
                  std::vector<Tensor> tensors = {tensor};
@@ -89,7 +89,7 @@ void BindDistributed(py::module *m) {
           .def("broadcast",
                [](distributed::ProcessGroup &self, py::handle py_tensor,
                   int source_rank) {
-                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                 auto tensor = PyArg2Tensor(py_tensor.ptr(), 0);
                  distributed::BroadcastOptions opts;
                  opts.source_rank = source_rank;
                  std::vector<Tensor> tensors = {tensor};
