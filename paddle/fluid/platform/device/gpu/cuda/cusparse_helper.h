@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/cusparse.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/pten/backends/gpu/gpu_decls.h"
+#include "paddle/phi/backends/gpu/gpu_decls.h"
 
 namespace paddle {
 namespace platform {
@@ -48,7 +48,7 @@ class CusparseHandleHolder {
   }
 
   inline void Call(
-      const std::function<void(pten::sparseHandle_t)>& callback) const {
+      const std::function<void(phi::sparseHandle_t)>& callback) const {
     std::lock_guard<std::mutex> guard(mtx_);
     callback(handle_);
   }
