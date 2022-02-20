@@ -23,6 +23,7 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/pten/core/ddim.h"
 
 // type declaration forward
 struct cinn_buffer_t;

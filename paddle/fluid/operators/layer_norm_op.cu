@@ -27,8 +27,8 @@ void LayerNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
                                                const T *bias, const T *scale,
                                                T *output, T *mean, T *variance,
                                                int begin_norm_axis, float eps) {
-  const auto x_dims = framework::make_ddim(input_shape);
-  auto matrix_dim = framework::flatten_to_2d(x_dims, begin_norm_axis);
+  const auto x_dims = pten::make_ddim(input_shape);
+  auto matrix_dim = pten::flatten_to_2d(x_dims, begin_norm_axis);
   int64_t batch_size = static_cast<int64_t>(matrix_dim[0]);
   int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
   switch (GetDesiredBlockDim(feature_size)) {
@@ -95,7 +95,7 @@ class LayerNormKernel<platform::CUDADeviceContext, T>
                             framework::DataTypeToString(scale_bias_dtype)));
     }
 
-    auto matrix_dim = framework::flatten_to_2d(x_dims, begin_norm_axis);
+    auto matrix_dim = pten::flatten_to_2d(x_dims, begin_norm_axis);
     int64_t batch_size = static_cast<int64_t>(matrix_dim[0]);
     int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
 
@@ -185,7 +185,7 @@ class LayerNormGradKernel<platform::CUDADeviceContext, T>
 
     const auto &x_dims = x->dims();
     const auto begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
-    auto matrix_dim = framework::flatten_to_2d(x_dims, begin_norm_axis);
+    auto matrix_dim = pten::flatten_to_2d(x_dims, begin_norm_axis);
     int64_t batch_size = static_cast<int64_t>(matrix_dim[0]);
     int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
 

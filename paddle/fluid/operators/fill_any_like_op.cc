@@ -94,6 +94,7 @@ REGISTER_OPERATOR(
 
 REGISTER_OP_CPU_KERNEL(
     fill_any_like,
+    ops::FillAnyLikeKernel<paddle::platform::CPUDeviceContext, int16_t>,
     ops::FillAnyLikeKernel<paddle::platform::CPUDeviceContext, int>,
     ops::FillAnyLikeKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::FillAnyLikeKernel<paddle::platform::CPUDeviceContext, float>,

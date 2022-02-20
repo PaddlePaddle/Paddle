@@ -185,16 +185,16 @@ TEST(CustomKernel, custom_kernel_dot) {
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
   auto dense_x = std::make_shared<pten::DenseTensor>(
-      alloc.get(), pten::DenseTensorMeta(pten::DataType::UINT8,
-                                         pten::framework::make_ddim({2, 3}),
-                                         pten::DataLayout::NCHW));
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::UINT8, pten::make_ddim({2, 3}),
+                            pten::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x->mutable_data<uint8_t>(paddle::platform::CPUPlace());
 
   auto dense_y = std::make_shared<pten::DenseTensor>(
-      alloc.get(), pten::DenseTensorMeta(pten::DataType::UINT8,
-                                         pten::framework::make_ddim({2, 3}),
-                                         pten::DataLayout::NCHW));
+      alloc.get(),
+      pten::DenseTensorMeta(pten::DataType::UINT8, pten::make_ddim({2, 3}),
+                            pten::DataLayout::NCHW));
   auto* dense_y_data =
       dense_y->mutable_data<uint8_t>(paddle::platform::CPUPlace());
 

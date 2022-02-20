@@ -40,11 +40,11 @@ class IncrementOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(framework::product(ctx->GetInputDim("X")), 1UL,
+    PADDLE_ENFORCE_EQ(pten::product(ctx->GetInputDim("X")), 1UL,
                       platform::errors::InvalidArgument(
                           "The number of elements in Input(X) should be 1."
                           "Now the number is %d.",
-                          framework::product(ctx->GetInputDim("X"))));
+                          pten::product(ctx->GetInputDim("X"))));
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "increment");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "increment");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));

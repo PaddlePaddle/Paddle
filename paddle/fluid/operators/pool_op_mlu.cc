@@ -72,13 +72,13 @@ class MLUPoolOpKernel : public framework::OpKernel<T> {
     int64_t out_w = out_dims[3];
     auto in_x_dims = in_x->dims();
     framework::DDim data_dims =
-        framework::slice_ddim(in_x_dims, 2, in_x_dims.size());
+        pten::slice_ddim(in_x_dims, 2, in_x_dims.size());
 
     if (channel_last) {
       cnnl_layout = CNNL_LAYOUT_NHWC;
       out_h = out_dims[1];
       out_w = out_dims[2];
-      data_dims = framework::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
+      data_dims = pten::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
     }
 
     UpdatePadding(&paddings, global_pooling, adaptive, padding_algorithm,
@@ -188,9 +188,9 @@ class MLUPoolGradOpKernel : public framework::OpKernel<T> {
 
     auto in_x_dims = in_x->dims();
     framework::DDim data_dims =
-        framework::slice_ddim(in_x_dims, 2, in_x_dims.size());
+        pten::slice_ddim(in_x_dims, 2, in_x_dims.size());
     if (channel_last) {
-      data_dims = framework::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
+      data_dims = pten::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
     }
 
     UpdatePadding(&paddings, global_pooling, adaptive, padding_algorithm,

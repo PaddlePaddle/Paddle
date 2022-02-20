@@ -91,7 +91,7 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
         num_ele *= shape_dims[i];
       }
       auto vec_dims = std::vector<int>(num_ele, -1);
-      ctx->SetOutputDim("Out", framework::make_ddim(vec_dims));
+      ctx->SetOutputDim("Out", pten::make_ddim(vec_dims));
 
       return;
     }
@@ -104,7 +104,7 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
               shape.size()));
     }
 
-    ctx->SetOutputDim("Out", framework::make_ddim(temp));
+    ctx->SetOutputDim("Out", pten::make_ddim(temp));
   }
 
  protected:

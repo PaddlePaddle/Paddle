@@ -285,13 +285,13 @@ static void RunInferShapeFunc(framework::InferShapeContext* ctx,
       std::transform(vec_ddim.begin(), vec_ddim.end(),
                      std::back_inserter(vec_shape),
                      [&](const DDim& ddim) -> std::vector<int64_t> {
-                       return framework::vectorize(ddim);
+                       return pten::vectorize(ddim);
                      });
       vec_input_shapes.emplace_back(vec_shape);
     } else {
       OP_INOUT_CHECK(ctx->HasInput(in_name), "Input", in_name, "Custom");
       auto ddim = ctx->GetInputDim(in_name);
-      input_shapes.emplace_back(framework::vectorize(ddim));
+      input_shapes.emplace_back(pten::vectorize(ddim));
     }
   }
 
@@ -347,11 +347,11 @@ static void RunInferShapeFunc(framework::InferShapeContext* ctx,
       std::transform(output_shapes.begin(), output_shapes.end(),
                      std::back_inserter(vec_ddim),
                      [&](const std::vector<int64_t>& shape) -> DDim {
-                       return framework::make_ddim(shape);
+                       return pten::make_ddim(shape);
                      });
       ctx->SetOutputsDim(out_name, vec_ddim);
     } else {
-      ctx->SetOutputDim(out_name, framework::make_ddim(output_shapes[i]));
+      ctx->SetOutputDim(out_name, pten::make_ddim(output_shapes[i]));
     }
   }
 }

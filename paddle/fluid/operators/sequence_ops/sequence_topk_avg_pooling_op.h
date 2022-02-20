@@ -106,7 +106,7 @@ class SequenceTopkAvgPoolingKernel : public framework::OpKernel<T> {
     int batch_size = row_lod.size() - 1;
     int pos_total_size = row_lod[batch_size] * channel_num * max_k;
     vec_pos_shape.push_back(pos_total_size);
-    pos->Resize({framework::make_ddim(vec_pos_shape)});
+    pos->Resize({pten::make_ddim(vec_pos_shape)});
     auto pos_data = pos->mutable_data<int>(context.GetPlace());
 
     int offset = 0;

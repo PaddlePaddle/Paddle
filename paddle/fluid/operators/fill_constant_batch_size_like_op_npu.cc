@@ -87,7 +87,7 @@ class FillConstantBatchSizeLikeOpNPUKernel : public framework::OpKernel<T> {
               .stream();
       const auto &runner =
           NpuOpRunner("FillD", {tensor_tmp}, {*out},
-                      {{"dims", framework::vectorize(out->dims())}});
+                      {{"dims", pten::vectorize(out->dims())}});
       runner.Run(stream);
     }
   }

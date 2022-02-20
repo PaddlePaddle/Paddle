@@ -35,8 +35,7 @@ paddle::experimental::Tensor hook_function(
   auto ret_meta = pten::DenseTensorMeta(t_dense->dtype(), t_dense->dims(),
                                         t_dense->layout());
   auto place = t_dense->place();
-  size_t bytes_size =
-      paddle::framework::product(t_dense->dims()) * SizeOf(t_dense->dtype());
+  size_t bytes_size = pten::product(t_dense->dims()) * SizeOf(t_dense->dtype());
   auto ret_dense = std::make_shared<pten::DenseTensor>(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           paddle::memory::Alloc(place, bytes_size)),
@@ -61,7 +60,7 @@ TEST(Hook_intermidiate, Sigmoid) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   VLOG(6) << "Make Dim";
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
+  paddle::framework::DDim ddim = pten::make_ddim({2, 4, 4, 4});
 
   VLOG(6) << "Make paddle::experimental::Tensor";
   paddle::experimental::Tensor tensor = egr_utils_api::CreateTensorWithValue(
@@ -73,11 +72,23 @@ TEST(Hook_intermidiate, Sigmoid) {
       const paddle::experimental::Tensor&)>
       hook = &hook_function;
 
+  VLOG(6) << "Make ReduceHook function";
+  auto reduce_hook = [&](void) -> void {
+    auto* t_ptr = std::dynamic_pointer_cast<pten::DenseTensor>(tensor.impl())
+                      ->data<float>();
+    for (int i = 0; i < tensor.numel(); i++) {
+      t_ptr[i] = 100.0;  // set to 100.0
+    }
+  };
+
   VLOG(6) << "Retain Grad for Tensor";
   egr_utils_api::RetainGradForTensor(tensor);
 
   VLOG(6) << "Register GradientHook for Tensor";
   egr_utils_api::RegisterGradientHookForTensor(tensor, hook);
+
+  VLOG(6) << "Register ReduceHook for Tensor";
+  egr_utils_api::RegisterReduceHookForTensor(tensor, reduce_hook);
 
   VLOG(6) << "Runing Forward";
   auto output_tensor = sigmoid_dygraph_function(tensor, {});
@@ -92,6 +103,13 @@ TEST(Hook_intermidiate, Sigmoid) {
   VLOG(6) << "Finish Backward";
 
   eager_test::CompareGradTensorWithValue<float>(tensor, 0.25 + 3);
+
+  VLOG(6) << "Checking ReduceHook results";
+  for (int i = 0; i < tensor.numel(); i++) {
+    CHECK_EQ(std::dynamic_pointer_cast<pten::DenseTensor>(tensor.impl())
+                 ->data<float>()[i],
+             static_cast<float>(100.0f));
+  }
   VLOG(6) << "After Tests";
 }
 
@@ -103,13 +121,13 @@ TEST(Hook_intermidiate, ElementwiseAdd) {
   paddle::imperative::SetCurrentTracer(tracer);
 
   // 1. Prepare Input
-  paddle::framework::DDim ddimX = paddle::framework::make_ddim({4, 16});
+  paddle::framework::DDim ddimX = pten::make_ddim({4, 16});
   paddle::experimental::Tensor X = egr_utils_api::CreateTensorWithValue(
       ddimX, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 3.0, true);
   egr_utils_api::RetainGradForTensor(X);
 
-  paddle::framework::DDim ddimY = paddle::framework::make_ddim({4, 16});
+  paddle::framework::DDim ddimY = pten::make_ddim({4, 16});
   paddle::experimental::Tensor Y = egr_utils_api::CreateTensorWithValue(
       ddimY, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 2.0, true);
@@ -118,8 +136,17 @@ TEST(Hook_intermidiate, ElementwiseAdd) {
       const paddle::experimental::Tensor&)>
       hook = &hook_function;
 
+  auto reduce_hook = [&](void) -> void {
+    auto* t_ptr =
+        std::dynamic_pointer_cast<pten::DenseTensor>(Y.impl())->data<float>();
+    for (int i = 0; i < Y.numel(); i++) {
+      t_ptr[i] = 100.0;  // set to 100.0
+    }
+  };
+
   egr_utils_api::RetainGradForTensor(Y);
   egr_utils_api::RegisterGradientHookForTensor(Y, hook);
+  egr_utils_api::RegisterReduceHookForTensor(Y, reduce_hook);
 
   auto output_tensor = elementwise_add_dygraph_function(X, Y, {});
 
@@ -130,6 +157,13 @@ TEST(Hook_intermidiate, ElementwiseAdd) {
 
   eager_test::CompareGradTensorWithValue<float>(X, 1.0);
   eager_test::CompareGradTensorWithValue<float>(Y, 4.0);
+
+  // Checking ReduceHook results
+  for (int i = 0; i < Y.numel(); i++) {
+    CHECK_EQ(std::dynamic_pointer_cast<pten::DenseTensor>(Y.impl())
+                 ->data<float>()[i],
+             static_cast<float>(100.0f));
+  }
 }
 
 TEST(Hook_intermidiate, Matmul_v2) {
@@ -140,13 +174,13 @@ TEST(Hook_intermidiate, Matmul_v2) {
   paddle::imperative::SetCurrentTracer(tracer);
 
   // 1. Prepare Input
-  paddle::framework::DDim ddimX = paddle::framework::make_ddim({4, 16});
+  paddle::framework::DDim ddimX = pten::make_ddim({4, 16});
   paddle::experimental::Tensor X = egr_utils_api::CreateTensorWithValue(
       ddimX, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 3.0, true);
   egr_utils_api::RetainGradForTensor(X);
 
-  paddle::framework::DDim ddimY = paddle::framework::make_ddim({16, 20});
+  paddle::framework::DDim ddimY = pten::make_ddim({16, 20});
   paddle::experimental::Tensor Y = egr_utils_api::CreateTensorWithValue(
       ddimY, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 2.0, true);
@@ -155,8 +189,17 @@ TEST(Hook_intermidiate, Matmul_v2) {
       const paddle::experimental::Tensor&)>
       hook = &hook_function;
 
+  auto reduce_hook = [&](void) -> void {
+    auto* t_ptr =
+        std::dynamic_pointer_cast<pten::DenseTensor>(Y.impl())->data<float>();
+    for (int i = 0; i < Y.numel(); i++) {
+      t_ptr[i] = 100.0;  // set to 100.0
+    }
+  };
+
   egr_utils_api::RetainGradForTensor(Y);
   egr_utils_api::RegisterGradientHookForTensor(Y, hook);
+  egr_utils_api::RegisterReduceHookForTensor(Y, reduce_hook);
 
   auto output_tensor = matmul_v2_dygraph_function(
       X, Y, {{"trans_x", false}, {"trans_y", false}});
@@ -168,8 +211,14 @@ TEST(Hook_intermidiate, Matmul_v2) {
 
   eager_test::CompareGradTensorWithValue<float>(X, 2.0 * 20);
   eager_test::CompareGradTensorWithValue<float>(Y, 3.0 * 4 + 3);
-}
 
+  // Checking ReduceHook results
+  for (int i = 0; i < Y.numel(); i++) {
+    CHECK_EQ(std::dynamic_pointer_cast<pten::DenseTensor>(Y.impl())
+                 ->data<float>()[i],
+             static_cast<float>(100.0f));
+  }
+}
 }  // namespace egr
 
 USE_OP(sigmoid);

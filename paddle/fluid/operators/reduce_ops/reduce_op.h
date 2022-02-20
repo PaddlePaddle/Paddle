@@ -493,8 +493,8 @@ class ReduceOp : public framework::OperatorWithKernel {
     bool keep_dim = ctx->Attrs().Get<bool>("keep_dim");
     if (reduce_all) {
       if (keep_dim)
-        ctx->SetOutputDim(
-            "Out", framework::make_ddim(std::vector<int64_t>(x_rank, 1)));
+        ctx->SetOutputDim("Out",
+                          pten::make_ddim(std::vector<int64_t>(x_rank, 1)));
       else
         ctx->SetOutputDim("Out", {1});
     } else {
@@ -515,7 +515,7 @@ class ReduceOp : public framework::OperatorWithKernel {
       if (!keep_dim && dims_vector.size() == 0) {
         dims_vector.push_back(1);
       }
-      auto out_dims = framework::make_ddim(dims_vector);
+      auto out_dims = pten::make_ddim(dims_vector);
       ctx->SetOutputDim("Out", out_dims);
       if (dims.size() > 0 && dims[0] != 0) {
         // Only pass LoD when not reducing on the first dim.
@@ -727,7 +727,7 @@ class ReduceCudaGradKernel : public framework::OpKernel<T> {
     // make new tensor
     framework::Tensor new_d_out(d_out->type());
     new_d_out.ShareDataWith(*d_out);
-    new_d_out.Resize(paddle::framework::make_ddim(update_dims));
+    new_d_out.Resize(pten::make_ddim(update_dims));
     auto& dev_ctx = context.cuda_device_context();
     if (out_dtype > 0) {
       d_x->mutable_data(dev_ctx.GetPlace(), pt_out_dtype);

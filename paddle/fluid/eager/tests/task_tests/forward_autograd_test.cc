@@ -35,7 +35,7 @@ TEST(Forward, SingleNode) {
 
   // Prepare Inputs
   std::vector<paddle::experimental::Tensor> target_tensors;
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = pten::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
   paddle::experimental::Tensor t = egr_utils_api::CreateTensorWithValue(
@@ -81,7 +81,7 @@ TEST(Forward, LinearNodes) {
 
   // Prepare Inputs
   std::vector<paddle::experimental::Tensor> target_tensors;
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = pten::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
   paddle::experimental::Tensor t = egr_utils_api::CreateTensorWithValue(
@@ -157,7 +157,7 @@ TEST(Forward, BranchedNodes) {
 
   // Prepare Inputs
   std::vector<paddle::experimental::Tensor> target_tensors;
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = pten::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
   paddle::experimental::Tensor t = egr_utils_api::CreateTensorWithValue(

@@ -102,7 +102,7 @@ class BroadcastTensorsOpKernel : public framework::OpKernel<T> {
         new_input_dims_vec[out_axis] = input_dims[in_axis];
       }
     }
-    auto new_input_dims = framework::make_ddim(new_input_dims_vec);
+    auto new_input_dims = pten::make_ddim(new_input_dims_vec);
 
     // Initialize input X with new_input_dims_vec, so it's rank-aligned with the
     // output

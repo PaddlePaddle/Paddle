@@ -29,8 +29,8 @@ class LogLossOp : public framework::OperatorWithKernel {
     auto pred_dims = ctx->GetInputDim("Predicted");
     auto label_dims = ctx->GetInputDim("Labels");
 
-    if (ctx->IsRuntime() || (framework::product(pred_dims) > 0 &&
-                             framework::product(label_dims) > 0)) {
+    if (ctx->IsRuntime() ||
+        (pten::product(pred_dims) > 0 && pten::product(label_dims) > 0)) {
       PADDLE_ENFORCE_EQ(
           pred_dims, label_dims,
           platform::errors::InvalidArgument(

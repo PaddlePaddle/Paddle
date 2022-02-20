@@ -115,8 +115,8 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
                         bias_dim, bias_dim.size()));
 
   bool check = true;
-  if ((!ctx->IsRuntime()) && (framework::product(scale_dim) <= 0 ||
-                              framework::product(bias_dim) <= 0)) {
+  if ((!ctx->IsRuntime()) &&
+      (pten::product(scale_dim) <= 0 || pten::product(bias_dim) <= 0)) {
     check = false;
   }
 

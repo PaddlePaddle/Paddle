@@ -358,8 +358,8 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name() + '_'}({self.
 """
 
         if len(input_names) == 0:
-            assert attr_backend_count > 0 and attr_layout_count > 0 and attr_data_type_count > 0, \
-                f"{api} api: When there is no input tensor, the args must have 'Backend', 'DataLayout' and 'DataType'."
+            assert attr_backend_count > 0 and attr_data_type_count > 0, \
+                f"{api} api: When there is no input tensor, the args must have 'Backend' and 'DataType'."
 
         kernel_select_args = ""
         for input_name in input_names:

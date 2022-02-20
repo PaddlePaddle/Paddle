@@ -116,11 +116,11 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
       tensor = selected_rows->mutable_value();
       auto shape = context.Attr<std::vector<int64_t>>("shape");
       if (!new_shape.empty()) shape = new_shape;
-      tensor->Resize(framework::make_ddim(shape));
+      tensor->Resize(pten::make_ddim(shape));
       selected_rows->mutable_rows()->reserve(shape[0]);
     } else if (out_var->IsType<framework::LoDTensor>()) {
       tensor = out_var->GetMutable<framework::LoDTensor>();
-      if (!new_shape.empty()) tensor->Resize(framework::make_ddim(new_shape));
+      if (!new_shape.empty()) tensor->Resize(pten::make_ddim(new_shape));
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Expected type of Output(out) in uniform_random_op must be Tensor, "

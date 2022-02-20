@@ -79,7 +79,7 @@ void TransDataLayout(const OpKernelType& kernel_type_for_var,
     dst_dim[i] = src_dim[axis[i]];
   }
 
-  out->Resize(make_ddim(dst_dim));
+  out->Resize(pten::make_ddim(dst_dim));
   out->mutable_data(expected_kernel_type.place_, in.dtype());
 
   framework::VisitDataType(
@@ -151,7 +151,7 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
   auto* dev_ctx = dynamic_cast<platform::MKLDNNDeviceContext*>(pool.Get(place));
   auto& cpu_engine = dev_ctx->GetEngine();
 
-  auto in_tz = paddle::framework::vectorize<int64_t>(in.dims());
+  auto in_tz = pten::vectorize<int64_t>(in.dims());
   auto out_tz = in_tz;
 
   memory::data_type in_type =
@@ -183,7 +183,8 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     platform::RecordEvent record_reorder("ext_reorder",
-                                         platform::EventRole::kUniqueOp);
+                                         platform::TracerEventType::UserDefined,
+                                         2, platform::EventRole::kUniqueOp);
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
     astream.wait();
   } else {

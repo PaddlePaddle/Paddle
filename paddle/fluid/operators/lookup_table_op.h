@@ -194,7 +194,7 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
 
       auto d_output_dims = d_output->dims();
       auto d_output_dims_2d =
-          framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
+          pten::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
       PADDLE_ENFORCE_EQ(d_table_value->dims(), d_output_dims_2d,
                         platform::errors::InvalidArgument(
                             "ShapeError: The shape of lookup_table@Grad and "

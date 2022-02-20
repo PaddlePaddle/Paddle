@@ -45,10 +45,10 @@ class CPUROIPoolOpKernel : public framework::OpKernel<T> {
     int width = in_dims[3];
     int rois_num = rois->dims()[0];
 
-    auto in_stride = framework::stride(in_dims);
-    auto argmax_stride = framework::stride(argmax->dims());
-    auto roi_stride = framework::stride(rois->dims());
-    auto out_stride = framework::stride(out->dims());
+    auto in_stride = pten::stride(in_dims);
+    auto argmax_stride = pten::stride(argmax->dims());
+    auto roi_stride = pten::stride(rois->dims());
+    auto out_stride = pten::stride(out->dims());
 
     const T* input_data = in->data<T>();
 
@@ -216,10 +216,10 @@ class CPUROIPoolGradOpKernel : public framework::OpKernel<T> {
       set_zero(ctx.template device_context<DeviceContext>(), in_grad,
                static_cast<T>(0));
 
-      auto in_stride = framework::stride(in->dims());
-      auto argmax_stride = framework::stride(argmax->dims());
-      auto roi_stride = framework::stride(rois->dims());
-      auto out_stride = framework::stride(out_grad->dims());
+      auto in_stride = pten::stride(in->dims());
+      auto argmax_stride = pten::stride(argmax->dims());
+      auto roi_stride = pten::stride(rois->dims());
+      auto out_stride = pten::stride(out_grad->dims());
 
       int channels = in->dims()[1];
 

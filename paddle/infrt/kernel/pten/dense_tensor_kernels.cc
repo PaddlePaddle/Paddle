@@ -25,7 +25,7 @@ namespace pten {
   return ::pten::DenseTensor(
       allocator,
       ::pten::DenseTensorMeta(::pten::DataType::FLOAT32,
-                              ::pten::framework::make_ddim(dims.get()),
+                              ::pten::make_ddim(dims.get()),
                               ::pten::DataLayout::NCHW,
                               {}));
 }

@@ -57,14 +57,17 @@ template <typename T, typename Context>
 void FullKernel(const Context& dev_ctx,
                 const ScalarArray& shape,
                 const Scalar& val,
+                DataType dtype,
                 DenseTensor* out) {
-  out->ResizeAndAllocate(pten::framework::make_ddim(shape.GetData()));
+  out->ResizeAndAllocate(pten::make_ddim(shape.GetData()));
   FullValueXPU<T>(dev_ctx, out, val.to<T>());
 }
 
 template <typename T, typename Context>
 void FullLikeKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
                     const Scalar& val,
+                    DataType dtype,
                     DenseTensor* out) {
   auto value = val.to<float>();
   using XPUInTDType = typename XPUTypeTrait<T>::Type;

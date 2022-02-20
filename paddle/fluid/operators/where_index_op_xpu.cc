@@ -47,14 +47,13 @@ class WhereIndexXPUKernel : public framework::OpKernel<T> {
                  context.GetPlace(), static_cast<void*>(true_num),
                  sizeof(int32_t));
 
-    out->Resize(
-        framework::make_ddim({static_cast<int64_t>(true_num_cpu), rank}));
+    out->Resize(pten::make_ddim({static_cast<int64_t>(true_num_cpu), rank}));
     auto out_data = out->mutable_data<int64_t>(context.GetPlace());
     if (true_num_cpu == 0) {
       return;
     }
 
-    auto condition_shape = framework::vectorize<int>(dims);
+    auto condition_shape = pten::vectorize<int>(dims);
     ret = xpu::where(dev_ctx.x_context(), cond_data, out_data, condition_shape,
                      true_num_cpu);
     PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,

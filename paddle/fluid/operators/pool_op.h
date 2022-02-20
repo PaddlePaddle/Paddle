@@ -79,7 +79,7 @@ inline void UpdatePadding(std::vector<T>* paddings, const bool global_pooling,
                           const std::vector<T>& strides,
                           const std::vector<T>& ksize) {
   // set padding size == data_dims.size() * 2
-  auto data_shape = framework::vectorize<T>(data_dims);
+  auto data_shape = pten::vectorize<T>(data_dims);
   if (static_cast<int>(paddings->size()) == data_dims.size()) {
     for (int i = 0; i < data_dims.size(); ++i) {
       T copy_pad = *(paddings->begin() + 2 * i);
@@ -172,9 +172,9 @@ class PoolKernel : public framework::OpKernel<T> {
     auto in_x_dims = in_x->dims();
     framework::DDim data_dims;
     if (channel_last) {
-      data_dims = framework::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
+      data_dims = pten::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
     } else {
-      data_dims = framework::slice_ddim(in_x_dims, 2, in_x_dims.size());
+      data_dims = pten::slice_ddim(in_x_dims, 2, in_x_dims.size());
     }
 
     UpdatePadding(&paddings, global_pooling, adaptive, padding_algorithm,
@@ -280,9 +280,9 @@ class PoolGradKernel : public framework::OpKernel<T> {
     auto in_x_dims = in_x->dims();
     framework::DDim data_dims;
     if (channel_last) {
-      data_dims = framework::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
+      data_dims = pten::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
     } else {
-      data_dims = framework::slice_ddim(in_x_dims, 2, in_x_dims.size());
+      data_dims = pten::slice_ddim(in_x_dims, 2, in_x_dims.size());
     }
     UpdatePadding(&paddings, global_pooling, adaptive, padding_algorithm,
                   data_dims, strides, ksize);

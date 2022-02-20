@@ -36,7 +36,7 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
   OP_INOUT_CHECK(ctx->HasOutput("Hidden"), "Output", "Hidden", "fusion_gru");
   auto x_dims = ctx->GetInputDim("X");
   auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)
-                        ? framework::flatten_to_2d(x_dims, 1)
+                        ? pten::flatten_to_2d(x_dims, 1)
                         : x_dims;
   PADDLE_ENFORCE_EQ(
       x_mat_dims.size(), 2,
@@ -246,17 +246,17 @@ class FusionGRUKernel : public framework::OpKernel<T> {
     }
   }
 
-#define INIT_BASE_DEFINES                                     \
-  auto* x = ctx.Input<LoDTensor>("X");                        \
-  auto* wh = ctx.Input<Tensor>("WeightH");                    \
-  auto* xx = ctx.Output<LoDTensor>("XX");                     \
-  auto x_lod = x->lod();                                      \
-  auto x_dims = x->dims(); /* T x M*/                         \
-  auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)    \
-                        ? framework::flatten_to_2d(x_dims, 1) \
-                        : x_dims;                             \
-  auto wh_dims = wh->dims(); /* D x 3D*/                      \
-  const int total_T = x_mat_dims[0];                          \
+#define INIT_BASE_DEFINES                                  \
+  auto* x = ctx.Input<LoDTensor>("X");                     \
+  auto* wh = ctx.Input<Tensor>("WeightH");                 \
+  auto* xx = ctx.Output<LoDTensor>("XX");                  \
+  auto x_lod = x->lod();                                   \
+  auto x_dims = x->dims(); /* T x M*/                      \
+  auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1) \
+                        ? pten::flatten_to_2d(x_dims, 1)   \
+                        : x_dims;                          \
+  auto wh_dims = wh->dims(); /* D x 3D*/                   \
+  const int total_T = x_mat_dims[0];                       \
   const int D3 = wh_dims[1]
 
 #define INIT_OTHER_DEFINES                                                   \
