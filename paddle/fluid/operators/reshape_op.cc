@@ -639,10 +639,12 @@ REGISTER_OPERATOR(reshape_grad, ops::ReshapeGradOp,
                   ops::ReshapeGradInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape, float, ops::ReshapeKernel, double,
-                               ops::ReshapeKernel, int, ops::ReshapeKernel,
-                               int64_t, ops::ReshapeKernel);
+                               ops::ReshapeKernel, int16_t, ops::ReshapeKernel,
+                               int, ops::ReshapeKernel, int64_t,
+                               ops::ReshapeKernel);
 REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape_grad, float, ops::ReshapeGradKernel,
-                               double, ops::ReshapeGradKernel, int,
+                               double, ops::ReshapeGradKernel, int16_t,
+                               ops::ReshapeGradKernel, int,
                                ops::ReshapeGradKernel, int64_t,
                                ops::ReshapeGradKernel);
 REGISTER_OPERATOR(reshape2, ops::Reshape2Op, ops::Reshape2OpMaker,
@@ -659,15 +661,15 @@ REGISTER_OPERATOR(reshape2_grad_grad, ops::Reshape2DoubleGradOp,
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape, float, ops::ReshapeKernel, double,
-                                ops::ReshapeKernel, int, ops::ReshapeKernel,
-                                uint8_t, ops::ReshapeKernel, int64_t,
-                                ops::ReshapeKernel, plat::float16,
-                                ops::ReshapeKernel, plat::bfloat16,
-                                ops::ReshapeKernel);
+                                ops::ReshapeKernel, int16_t, ops::ReshapeKernel,
+                                int, ops::ReshapeKernel, uint8_t,
+                                ops::ReshapeKernel, int64_t, ops::ReshapeKernel,
+                                plat::float16, ops::ReshapeKernel,
+                                plat::bfloat16, ops::ReshapeKernel);
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape_grad, float, ops::ReshapeGradKernel,
-                                double, ops::ReshapeGradKernel, int,
-                                ops::ReshapeGradKernel, int64_t,
-                                ops::ReshapeGradKernel, uint8_t,
+                                double, ops::ReshapeGradKernel, int16_t,
+                                ops::ReshapeKernel, int, ops::ReshapeGradKernel,
+                                int64_t, ops::ReshapeGradKernel, uint8_t,
                                 ops::ReshapeGradKernel, plat::float16,
                                 ops::ReshapeGradKernel, plat::bfloat16,
                                 ops::ReshapeGradKernel);

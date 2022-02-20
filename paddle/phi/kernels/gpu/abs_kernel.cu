@@ -47,8 +47,7 @@ void AbsKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   std::vector<DenseTensor*> outs = {out};
   auto functor = CudaAbsFunctor<T>();
 
-  funcs::LaunchSameDimsElementwiseCudaKernel<phi::funcs::Real<T>>(
-      ctx, ins, &outs, functor);
+  funcs::ElementwiseKernel<pten::funcs::Real<T>>(ctx, ins, &outs, functor);
 }
 
 }  // namespace phi

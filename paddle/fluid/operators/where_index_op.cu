@@ -158,6 +158,7 @@ class CUDAWhereIndexKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(where_index, ops::CUDAWhereIndexKernel<int64_t>,
                         ops::CUDAWhereIndexKernel<int>,
+                        ops::CUDAWhereIndexKernel<int16_t>,
                         ops::CUDAWhereIndexKernel<bool>,
                         ops::CUDAWhereIndexKernel<float>,
                         ops::CUDAWhereIndexKernel<double>);
