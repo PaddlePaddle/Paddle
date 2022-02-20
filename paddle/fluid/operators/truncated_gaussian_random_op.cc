@@ -66,7 +66,7 @@ class TruncatedGaussianRandomOp : public framework::OperatorWithKernel {
             "the input shape of TruncatedGaussianRandomOp must be set, "
             "But the rank of shape we received is %d",
             shape.size()));
-    ctx->SetOutputDim("Out", pten::make_ddim(out_dim));
+    ctx->SetOutputDim("Out", phi::make_ddim(out_dim));
   }
 
  protected:

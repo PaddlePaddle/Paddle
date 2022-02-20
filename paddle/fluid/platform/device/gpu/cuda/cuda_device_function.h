@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/pten/core/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace platform {

@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/svd_helper.h"
-#include "paddle/pten/kernels/funcs/lapack/lapack_function.h"
+#include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cusolver.h"
 #endif  // PADDLE_WITH_CUDA
@@ -63,7 +63,7 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, T> {
   void operator()(const framework::ExecutionContext &ctx, const Tensor &input,
                   Tensor *eigen_values, Tensor *eigen_vectors, bool is_lower,
                   bool has_vectors) {
-    using ValueType = pten::funcs::Real<T>;
+    using ValueType = phi::funcs::Real<T>;
     auto *out_value = eigen_values->mutable_data<ValueType>(ctx.GetPlace());
 
     auto dito =
@@ -98,7 +98,7 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, T> {
 
     int info = 0;
     // Call lapackEigh to get the optimal size of work data
-    pten::funcs::lapackEigh<T, ValueType>(
+    phi::funcs::lapackEigh<T, ValueType>(
         jobz, uplo, n, input_vector, lda, out_value, &lwork_opt, lwork,
         &rwork_opt, lrwork, &iwork_opt, liwork, &info);
     lwork = std::max<int>(1, static_cast<int>(lwork_opt));
@@ -112,18 +112,18 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, T> {
             framework::TransToProtoVarType(input.dtype()))) {
       lrwork = std::max<int>(1, static_cast<int>(rwork_opt));
       rwork_data = rwork_tensor.mutable_data<ValueType>(
-          pten::make_ddim({lrwork}), ctx.GetPlace());
+          phi::make_ddim({lrwork}), ctx.GetPlace());
     }
     Tensor iwork_tensor, work_tensor;
-    auto *iwork_data = iwork_tensor.mutable_data<int>(pten::make_ddim({liwork}),
+    auto *iwork_data = iwork_tensor.mutable_data<int>(phi::make_ddim({liwork}),
                                                       ctx.GetPlace());
     auto *work_data =
-        work_tensor.mutable_data<T>(pten::make_ddim({lwork}), ctx.GetPlace());
+        work_tensor.mutable_data<T>(phi::make_ddim({lwork}), ctx.GetPlace());
 
     for (auto i = 0; i < batch_size; i++) {
       auto *value_data = out_value + i * values_stride;
       auto *input_data = input_vector + i * vector_stride;
-      pten::funcs::lapackEigh<T, pten::funcs::Real<T>>(
+      phi::funcs::lapackEigh<T, phi::funcs::Real<T>>(
           jobz, uplo, n, input_data, lda, value_data, work_data, lwork,
           rwork_data, lrwork, iwork_data, liwork, &info);
       CheckEighResult(i, info);
@@ -151,7 +151,7 @@ struct MatrixEighFunctor<platform::CUDADeviceContext, T> {
   void operator()(const framework::ExecutionContext &ctx, const Tensor &input,
                   Tensor *eigen_values, Tensor *eigen_vectors, bool is_lower,
                   bool has_vectors) {
-    using ValueType = pten::funcs::Real<T>;
+    using ValueType = phi::funcs::Real<T>;
     auto *out_value = eigen_values->mutable_data<ValueType>(ctx.GetPlace());
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
@@ -233,7 +233,7 @@ struct MatrixEighFunctor<platform::CUDADeviceContext, T> {
     }
   }
 
-  using ValueType = pten::funcs::Real<T>;
+  using ValueType = phi::funcs::Real<T>;
   inline void EvdBuffer(cusolverDnHandle_t handle, cusolverEigMode_t jobz,
                         cublasFillMode_t uplo, int n, const T *A, int lda,
                         const ValueType *W, int *lwork) const;

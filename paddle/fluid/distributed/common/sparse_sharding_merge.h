@@ -28,7 +28,7 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/string/split.h"
-#include "paddle/pten/core/utils/dim.h"
+#include "paddle/phi/core/utils/dim.h"
 
 constexpr int FG = 256 * 1024 * 1024;
 constexpr int Q_SIZE = 10000;

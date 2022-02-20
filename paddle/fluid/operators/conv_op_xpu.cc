@@ -41,10 +41,10 @@ class GemmConvXPUKernel : public framework::OpKernel<T> {
                           ("XPU do support data_format is NCHW in conv op.")));
 
     framework::DDim in_data_dims =
-        pten::slice_ddim(input->dims(), 2, input->dims().size());
+        phi::slice_ddim(input->dims(), 2, input->dims().size());
     framework::DDim filter_data_dims =
-        pten::slice_ddim(filter.dims(), 2, filter.dims().size());
-    std::vector<int> ksize = pten::vectorize<int>(filter_data_dims);
+        phi::slice_ddim(filter.dims(), 2, filter.dims().size());
+    std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 
@@ -95,10 +95,10 @@ class GemmConvGradXPUKernel : public framework::OpKernel<T> {
             ("XPU do support data_format is NCHW in conv grad op.")));
 
     framework::DDim in_data_dims =
-        pten::slice_ddim(input->dims(), 2, input->dims().size());
+        phi::slice_ddim(input->dims(), 2, input->dims().size());
     framework::DDim filter_data_dims =
-        pten::slice_ddim(filter.dims(), 2, filter.dims().size());
-    std::vector<int> ksize = pten::vectorize<int>(filter_data_dims);
+        phi::slice_ddim(filter.dims(), 2, filter.dims().size());
+    std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 

@@ -567,7 +567,7 @@ inline void CombineTransposeDim3(const framework::DDim& shape,
     new_perm->resize(1);
     (*new_perm)[0] = perm[0];
     dim_vec.push_back(shape[0]);
-    *new_dims = pten::make_ddim(dim_vec);
+    *new_dims = phi::make_ddim(dim_vec);
     return;
   }
   std::vector<int> new_dim_pos(shape.size(), -1);
@@ -602,7 +602,7 @@ inline void CombineTransposeDim3(const framework::DDim& shape,
     }
   }
 
-  *new_dims = pten::make_ddim(dim_vec);
+  *new_dims = phi::make_ddim(dim_vec);
 }
 
 template <typename T>
@@ -616,7 +616,7 @@ struct TransposeSimple {
 
     // Only use tile copy GPU kernel when dimension is 2 or 3.
     int dims = new_dims.size();
-    std::vector<int> new_dim_vec = pten::vectorize<int>(new_dims);
+    std::vector<int> new_dim_vec = phi::vectorize<int>(new_dims);
     if (dims < 2 || dims > 3) return false;
     auto in_data = in.data<T>();
     auto out_data = out->data<T>();

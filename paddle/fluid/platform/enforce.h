@@ -68,43 +68,43 @@ limitations under the License. */
 #include "paddle/fluid/platform/variant.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/to_string.h"
-#include "paddle/pten/backends/dynload/port.h"
+#include "paddle/phi/backends/dynload/port.h"
 
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/pten/backends/dynload/cublas.h"
-#include "paddle/pten/backends/dynload/cudnn.h"
-#include "paddle/pten/backends/dynload/curand.h"
-#include "paddle/pten/backends/dynload/cusolver.h"
+#include "paddle/phi/backends/dynload/cublas.h"
+#include "paddle/phi/backends/dynload/cudnn.h"
+#include "paddle/phi/backends/dynload/curand.h"
+#include "paddle/phi/backends/dynload/cusolver.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include <error.h>
-#include "paddle/pten/backends/dynload/nccl.h"
+#include "paddle/phi/backends/dynload/nccl.h"
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_CUDA
 
 #ifdef PADDLE_WITH_HIP
-#include "paddle/pten/backends/dynload/hipfft.h"
-#include "paddle/pten/backends/dynload/hiprand.h"
-#include "paddle/pten/backends/dynload/miopen.h"
-#include "paddle/pten/backends/dynload/rocblas.h"
+#include "paddle/phi/backends/dynload/hipfft.h"
+#include "paddle/phi/backends/dynload/hiprand.h"
+#include "paddle/phi/backends/dynload/miopen.h"
+#include "paddle/phi/backends/dynload/rocblas.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
 #include <error.h>  // NOLINT
-#include "paddle/pten/backends/dynload/rccl.h"
+#include "paddle/phi/backends/dynload/rccl.h"
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_HIP
 
 // Note: these headers for simplify demangle type string
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/imperative/type_defs.h"
-#include "paddle/pten/core/enforce.h"
+#include "paddle/phi/core/enforce.h"
 // Note: this header for simplify HIP and CUDA type string
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #endif
 #include "paddle/fluid/platform/flags.h"
 
-namespace pten {
+namespace phi {
 class ErrorSummary;
-}  // namespace pten
+}  // namespace phi
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 DECLARE_int64(gpu_allocator_retry_time);
@@ -113,7 +113,7 @@ DECLARE_int32(call_stack_level);
 
 namespace paddle {
 namespace platform {
-using namespace ::pten::enforce;  // NOLINT
+using namespace ::phi::enforce;  // NOLINT
 
 /** HELPER MACROS AND FUNCTIONS **/
 
@@ -144,7 +144,7 @@ using namespace ::pten::enforce;  // NOLINT
  */
 namespace details {
 
-using namespace pten::enforce::details;  // NOLINT
+using namespace phi::enforce::details;  // NOLINT
 
 #define DEFINE_SAFE_BOOST_GET(__InputType, __OutputType, __OutputTypePtr,      \
                               __FuncName)                                      \
@@ -157,12 +157,12 @@ using namespace pten::enforce::details;  // NOLINT
       return boost::get<OutputType>(input);                                    \
     } catch (boost::bad_get&) {                                                \
       HANDLE_THE_ERROR                                                         \
-      throw ::pten::enforce::EnforceNotMet(                                    \
-          pten::errors::InvalidArgument(                                       \
+      throw ::phi::enforce::EnforceNotMet(                                     \
+          phi::errors::InvalidArgument(                                        \
               "boost::get failed, cannot get value "                           \
               "(%s) by type %s, its type is %s.",                              \
-              expression, pten::enforce::demangle(typeid(OutputType).name()),  \
-              pten::enforce::demangle(input.type().name())),                   \
+              expression, phi::enforce::demangle(typeid(OutputType).name()),   \
+              phi::enforce::demangle(input.type().name())),                    \
           file, line);                                                         \
       END_HANDLE_THE_ERROR                                                     \
     }                                                                          \
@@ -205,12 +205,12 @@ struct EOFException : public std::exception {
     END_HANDLE_THE_ERROR                                                     \
   } while (0)
 
-#define PADDLE_THROW_BAD_ALLOC(...)                                       \
-  do {                                                                    \
-    HANDLE_THE_ERROR                                                      \
-    throw ::paddle::memory::allocation::BadAlloc(                         \
-        pten::ErrorSummary(__VA_ARGS__).to_string(), __FILE__, __LINE__); \
-    END_HANDLE_THE_ERROR                                                  \
+#define PADDLE_THROW_BAD_ALLOC(...)                                      \
+  do {                                                                   \
+    HANDLE_THE_ERROR                                                     \
+    throw ::paddle::memory::allocation::BadAlloc(                        \
+        phi::ErrorSummary(__VA_ARGS__).to_string(), __FILE__, __LINE__); \
+    END_HANDLE_THE_ERROR                                                 \
   } while (0)
 
 /**************************************************************************/
@@ -408,7 +408,7 @@ inline bool is_error(cudnnStatus_t stat) {
 inline std::string build_nvidia_error_msg(cudnnStatus_t stat) {
   std::ostringstream sout;
   sout << "CUDNN error(" << stat << "), "
-       << pten::dynload::cudnnGetErrorString(stat) << ". "
+       << phi::dynload::cudnnGetErrorString(stat) << ". "
        << GetExternalErrorMsg(stat);
   return sout.str();
 }
@@ -473,7 +473,7 @@ inline bool is_error(ncclResult_t nccl_result) {
 inline std::string build_nvidia_error_msg(ncclResult_t nccl_result) {
   std::ostringstream sout;
   sout << "NCCL error(" << nccl_result << "), "
-       << pten::dynload::ncclGetErrorString(nccl_result) << ". ";
+       << phi::dynload::ncclGetErrorString(nccl_result) << ". ";
   if (errno == ENOSPC || errno == EAGAIN) {
     std::string detail(strerror(errno));
     detail += "\nPlease try one of the following solutions:";
@@ -498,7 +498,7 @@ inline std::string build_nvidia_error_msg(ncclResult_t nccl_result) {
         ::paddle::platform::details::ExternalApiType<            \
             __CUDA_STATUS_TYPE__>::kSuccess;                     \
     if (UNLIKELY(__cond__ != __success_type__)) {                \
-      auto __summary__ = pten::errors::External(                 \
+      auto __summary__ = phi::errors::External(                  \
           ::paddle::platform::build_nvidia_error_msg(__cond__)); \
       __THROW_ERROR_INTERNAL__(__summary__);                     \
     }                                                            \
@@ -544,7 +544,7 @@ inline void retry_sleep(unsigned milliseconds) {
       ++retry_count;                                                    \
     }                                                                   \
     if (UNLIKELY(__cond__ != __success_type__)) {                       \
-      auto __summary__ = pten::errors::External(                        \
+      auto __summary__ = phi::errors::External(                         \
           ::paddle::platform::build_nvidia_error_msg(__cond__));        \
       __THROW_ERROR_INTERNAL__(__summary__);                            \
     }                                                                   \
@@ -618,7 +618,7 @@ inline bool is_error(miopenStatus_t stat) {
 
 inline std::string build_rocm_error_msg(miopenStatus_t stat) {
   std::string msg(" Miopen error, ");
-  return msg + pten::dynload::miopenGetErrorString(stat) + " ";
+  return msg + phi::dynload::miopenGetErrorString(stat) + " ";
 }
 
 /***** ROCBLAS ERROR *****/
@@ -660,7 +660,7 @@ inline bool is_error(ncclResult_t nccl_result) {
 
 inline std::string build_rocm_error_msg(ncclResult_t nccl_result) {
   std::string msg(" Rccl error, ");
-  return msg + pten::dynload::ncclGetErrorString(nccl_result) + " ";
+  return msg + phi::dynload::ncclGetErrorString(nccl_result) + " ";
 }
 #endif  // not(__APPLE__) and PADDLE_WITH_NCCL
 
@@ -669,7 +669,7 @@ inline bool is_error(hipfftResult_t stat) { return stat != HIPFFT_SUCCESS; }
 
 inline std::string build_rocm_error_msg(hipfftResult_t stat) {
   std::string msg(" HIPFFT error, ");
-  return msg + pten::dynload::hipfftGetErrorString(stat) + " ";
+  return msg + phi::dynload::hipfftGetErrorString(stat) + " ";
 }
 
 namespace details {
@@ -704,7 +704,7 @@ DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess);
         ::paddle::platform::details::ExternalApiType<          \
             __CUDA_STATUS_TYPE__>::kSuccess;                   \
     if (UNLIKELY(__cond__ != __success_type__)) {              \
-      auto __summary__ = pten::errors::External(               \
+      auto __summary__ = phi::errors::External(                \
           ::paddle::platform::build_rocm_error_msg(__cond__)); \
       __THROW_ERROR_INTERNAL__(__summary__);                   \
     }                                                          \
@@ -732,7 +732,7 @@ inline void retry_sleep(unsigned millisecond) {
       ++retry_count;                                                    \
     }                                                                   \
     if (UNLIKELY(__cond__ != __success_type__)) {                       \
-      auto __summary__ = pten::errors::External(                        \
+      auto __summary__ = phi::errors::External(                         \
           ::paddle::platform::build_rocm_error_msg(__cond__));          \
       __THROW_ERROR_INTERNAL__(__summary__);                            \
     }                                                                   \
