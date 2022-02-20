@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/pten/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -53,15 +53,15 @@ class BilinearTensorProductKernel : public framework::OpKernel<T> {
     // Input(X) multiplied by Input(Weight_i), the formula is:
     // left_mul = X Weight_i.
     Tensor left_mul;
-    left_mul.mutable_data<T>(pten::make_ddim({batch_size, y_dim}),
+    left_mul.mutable_data<T>(phi::make_ddim({batch_size, y_dim}),
                              ctx.GetPlace());
     auto left_mul_mat = EigenMatrix<T>::From(left_mul);
 
     for (int i = 0; i < out_dim; ++i) {
       auto output_col_vec = output_mat.chip(i, 1);
       Tensor weight_mat =
-          weight->Slice(i, i + 1).Resize(pten::make_ddim({x_dim, y_dim}));
-      pten::funcs::GetBlas<DeviceContext, T>(dev_ctx).GEMM(
+          weight->Slice(i, i + 1).Resize(phi::make_ddim({x_dim, y_dim}));
+      phi::funcs::GetBlas<DeviceContext, T>(dev_ctx).GEMM(
           CblasNoTrans, CblasNoTrans, batch_size, y_dim, x_dim, 1, x->data<T>(),
           weight_mat.data<T>(), 0, left_mul.data<T>());
       output_col_vec.device(place) =
@@ -101,17 +101,17 @@ class BilinearTensorProductGradKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     // Create the intermediate variable to calculate the Output(Y@Grad).
     Tensor x_scale;
-    x_scale.mutable_data<T>(pten::make_ddim({batch_size, x_dim}),
+    x_scale.mutable_data<T>(phi::make_ddim({batch_size, x_dim}),
                             ctx.GetPlace());
     auto x_scale_mat = EigenMatrix<T>::From(x_scale);
 
     // Create the intermediate variable to calculate the Output(X@Grad).
     Tensor y_scale;
-    y_scale.mutable_data<T>(pten::make_ddim({batch_size, y_dim}),
+    y_scale.mutable_data<T>(phi::make_ddim({batch_size, y_dim}),
                             ctx.GetPlace());
     auto y_scale_mat = EigenMatrix<T>::From(y_scale);
 
-    pten::funcs::SetConstant<DeviceContext, T> set_zero;
+    phi::funcs::SetConstant<DeviceContext, T> set_zero;
 
     if (d_x) {
       d_x->mutable_data<T>(ctx.GetPlace());
@@ -127,7 +127,7 @@ class BilinearTensorProductGradKernel : public framework::OpKernel<T> {
       d_weight->mutable_data<T>(ctx.GetPlace());
     }
 
-    auto blas = pten::funcs::GetBlas<DeviceContext, T>(ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
 
     // Caculate the Output(X@Grad) and Output(Y@Grad).
     if (d_x || d_y || d_weight) {
@@ -137,7 +137,7 @@ class BilinearTensorProductGradKernel : public framework::OpKernel<T> {
 
       for (int i = 0; i < out_dim; ++i) {
         Tensor weight_i =
-            weight->Slice(i, i + 1).Resize(pten::make_ddim({x_dim, y_dim}));
+            weight->Slice(i, i + 1).Resize(phi::make_ddim({x_dim, y_dim}));
         auto output_vec = d_out_mat.chip(i, 1);
 
         if (d_x) {
@@ -160,7 +160,7 @@ class BilinearTensorProductGradKernel : public framework::OpKernel<T> {
           }
           if (d_weight) {
             Tensor d_weight_i = d_weight->Slice(i, i + 1).Resize(
-                pten::make_ddim({x_dim, y_dim}));
+                phi::make_ddim({x_dim, y_dim}));
             blas.GEMM(CblasTrans, CblasNoTrans, x_dim, y_dim, batch_size, 1,
                       x_scale.data<T>(), y->data<T>(), 0, d_weight_i.data<T>());
           }

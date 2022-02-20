@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/scatter_op.h"
 #include <memory>
-#include "paddle/pten/core/ddim.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace operators {

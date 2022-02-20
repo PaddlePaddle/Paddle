@@ -52,8 +52,8 @@ class AnchorGeneratorOp : public framework::OperatorWithKernel {
     dim_vec[1] = input_dims[3];
     dim_vec[2] = num_anchors;
     dim_vec[3] = 4;
-    ctx->SetOutputDim("Anchors", pten::make_ddim(dim_vec));
-    ctx->SetOutputDim("Variances", pten::make_ddim(dim_vec));
+    ctx->SetOutputDim("Anchors", phi::make_ddim(dim_vec));
+    ctx->SetOutputDim("Variances", phi::make_ddim(dim_vec));
   }
 
  protected:

@@ -20,7 +20,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/pten/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/complex_functors.h"
 
 namespace paddle {
 namespace operators {
@@ -74,20 +74,19 @@ class QrCPUKernel : public framework::OpKernel<T> {
     int q_stride = m * k;
     int r_stride = k * n;
 
-    auto* x_data = x.data<pten::funcs::Real<T>>();
+    auto* x_data = x.data<phi::funcs::Real<T>>();
     T* q_data = nullptr;
     if (compute_q) {
-      q_data = q.mutable_data<pten::funcs::Real<T>>(
+      q_data = q.mutable_data<phi::funcs::Real<T>>(
           context.GetPlace(),
-          size_t(batch_size * m * k * sizeof(pten::funcs::Real<T>)));
+          size_t(batch_size * m * k * sizeof(phi::funcs::Real<T>)));
       memset(q_data, 0,
-             size_t(batch_size * m * k * sizeof(pten::funcs::Real<T>)));
+             size_t(batch_size * m * k * sizeof(phi::funcs::Real<T>)));
     }
-    auto* r_data = r.mutable_data<pten::funcs::Real<T>>(
+    auto* r_data = r.mutable_data<phi::funcs::Real<T>>(
         context.GetPlace(),
-        size_t(batch_size * k * n * sizeof(pten::funcs::Real<T>)));
-    memset(r_data, 0,
-           size_t(batch_size * k * n * sizeof(pten::funcs::Real<T>)));
+        size_t(batch_size * k * n * sizeof(phi::funcs::Real<T>)));
+    memset(r_data, 0, size_t(batch_size * k * n * sizeof(phi::funcs::Real<T>)));
 
     // Implement QR by calling Eigen
     for (int i = 0; i < batch_size; ++i) {
@@ -143,9 +142,9 @@ class QrGradKernel : public framework::OpKernel<T> {
     // Use a different name dA instead of dX
     framework::Tensor& dA =
         *ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    dA.mutable_data<pten::funcs::Real<T>>(ctx.GetPlace());
+    dA.mutable_data<phi::funcs::Real<T>>(ctx.GetPlace());
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    pten::funcs::SetConstant<DeviceContext, T>()(dev_ctx, &dA, T(0));
+    phi::funcs::SetConstant<DeviceContext, T>()(dev_ctx, &dA, T(0));
 
     auto dito = math::DeviceIndependenceTensorOperations<DeviceContext, T>(ctx);
 
@@ -183,7 +182,7 @@ class QrGradKernel : public framework::OpKernel<T> {
       if (ctx.HasInput(framework::GradVarName("R"))) {
         R_term = dito.Matmul(R, dito.Transpose(dR));
       } else {
-        R_term = dito.Fill(pten::vectorize<int>(R.dims()), 0);
+        R_term = dito.Fill(phi::vectorize<int>(R.dims()), 0);
       }
 
       // dQ^H * Q
@@ -191,7 +190,7 @@ class QrGradKernel : public framework::OpKernel<T> {
       if (ctx.HasInput(framework::GradVarName("Q"))) {
         Q_term = dito.Matmul(dito.Transpose(dQ), Q);
       } else {
-        Q_term = dito.Fill(pten::vectorize<int>(R.dims()), 0);
+        Q_term = dito.Fill(phi::vectorize<int>(R.dims()), 0);
       }
 
       framework::Tensor M_tmp1 = dito.Sub(R_term, Q_term);
@@ -225,7 +224,7 @@ class QrGradKernel : public framework::OpKernel<T> {
     } else {
       // If m < n for input matrices A, we partition A = [X|Y] and R = [U|V]
       // Calculate dX and dY individually and concatenate them to get dA
-      dA.mutable_data<pten::funcs::Real<T>>(ctx.GetPlace());
+      dA.mutable_data<phi::funcs::Real<T>>(ctx.GetPlace());
 
       auto Y = dito.Slice(A, {-1}, {m}, {n});
       auto U = dito.Slice(R, {-1}, {0}, {m});
@@ -237,8 +236,8 @@ class QrGradKernel : public framework::OpKernel<T> {
         // Y * dV^H
         dQ_prime = dito.Matmul(Y, dito.Transpose(dV));
       } else {
-        dV = dito.Fill(pten::vectorize<int>(Y.dims()), 0);
-        dQ_prime = dito.Fill(pten::vectorize<int>(Q.dims()), 0);
+        dV = dito.Fill(phi::vectorize<int>(Y.dims()), 0);
+        dQ_prime = dito.Fill(phi::vectorize<int>(Q.dims()), 0);
       }
 
       if (ctx.HasInput(framework::GradVarName("Q"))) {

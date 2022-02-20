@@ -65,7 +65,7 @@ bool TestMain(const platform::Place &place, const std::string &op_type,
   std::uniform_real_distribution<T> dist(static_cast<T>(10.0),
                                          static_cast<T>(20.0));
   std::mt19937 engine;
-  size_t numel = static_cast<size_t>(pten::product(dims));
+  size_t numel = static_cast<size_t>(phi::product(dims));
   for (int i = 0; i < num_inputs; ++i) {
     input_names[i].tensor->Resize(dims);
     auto data_ptr = input_names[i].tensor->mutable_data<T>(place);

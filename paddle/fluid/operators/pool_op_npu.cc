@@ -52,8 +52,8 @@ class NPUPoolOpKernel : public framework::OpKernel<T> {
     std::vector<int> strides_vec(4, 1);
 
     if (channel_last) {
-      data_dims = pten::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
-      out_data_dims = pten::slice_ddim(out_dims, 1, out_dims.size() - 1);
+      data_dims = phi::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
+      out_data_dims = phi::slice_ddim(out_dims, 1, out_dims.size() - 1);
       ksize_vec[1] = ksize[0];
       ksize_vec[2] = ksize[1];
       strides_vec[1] = strides[0];
@@ -61,8 +61,8 @@ class NPUPoolOpKernel : public framework::OpKernel<T> {
       in_x_tensor.set_layout(DataLayout::kNHWC);
       out_tensor.set_layout(DataLayout::kNHWC);
     } else {
-      data_dims = pten::slice_ddim(in_x_dims, 2, in_x_dims.size());
-      out_data_dims = pten::slice_ddim(out_dims, 2, out_dims.size());
+      data_dims = phi::slice_ddim(in_x_dims, 2, in_x_dims.size());
+      out_data_dims = phi::slice_ddim(out_dims, 2, out_dims.size());
       ksize_vec[2] = ksize[0];
       ksize_vec[3] = ksize[1];
       strides_vec[2] = strides[0];
@@ -91,11 +91,11 @@ class NPUPoolOpKernel : public framework::OpKernel<T> {
       Tensor transformed_input, transformed_output;
       if (pooling_type == "avg" && channel_last) {
         transformed_input.mutable_data<T>(
-            pten::make_dim(in_x_dims[0], in_x_dims[3], in_x_dims[1],
-                           in_x_dims[2]),
+            phi::make_dim(in_x_dims[0], in_x_dims[3], in_x_dims[1],
+                          in_x_dims[2]),
             ctx.GetPlace());
         transformed_output.mutable_data<T>(
-            pten::make_dim(out_dims[0], out_dims[3], out_dims[1], out_dims[2]),
+            phi::make_dim(out_dims[0], out_dims[3], out_dims[1], out_dims[2]),
             ctx.GetPlace());
 
         const auto &trans_runner =
@@ -110,7 +110,7 @@ class NPUPoolOpKernel : public framework::OpKernel<T> {
 
       const auto &runner =
           NpuOpRunner(pooling_mode, {transformed_input}, {transformed_output},
-                      {{"output_size", pten::vectorize<int>(out_data_dims)}});
+                      {{"output_size", phi::vectorize<int>(out_data_dims)}});
       runner.Run(dev_ctx.stream());
 
       if (pooling_type == "avg" && channel_last) {
@@ -183,8 +183,8 @@ class NPUPoolGradOpKernel : public framework::OpKernel<T> {
     out_grad_tensor.ShareDataWith(*out_grad);
     in_x_grad_tensor.ShareDataWith(*in_x_grad);
     if (channel_last) {
-      data_dims = pten::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
-      out_data_dims = pten::slice_ddim(out_dims, 1, out_dims.size() - 1);
+      data_dims = phi::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
+      out_data_dims = phi::slice_ddim(out_dims, 1, out_dims.size() - 1);
       ksize_vec[1] = ksize[0];
       ksize_vec[2] = ksize[1];
       strides_vec[1] = strides[0];
@@ -194,8 +194,8 @@ class NPUPoolGradOpKernel : public framework::OpKernel<T> {
       out_grad_tensor.set_layout(DataLayout::kNHWC);
       in_x_grad_tensor.set_layout(DataLayout::kNHWC);
     } else {
-      data_dims = pten::slice_ddim(in_x_dims, 2, in_x_dims.size());
-      out_data_dims = pten::slice_ddim(out_dims, 2, out_dims.size());
+      data_dims = phi::slice_ddim(in_x_dims, 2, in_x_dims.size());
+      out_data_dims = phi::slice_ddim(out_dims, 2, out_dims.size());
       ksize_vec[2] = ksize[0];
       ksize_vec[3] = ksize[1];
       strides_vec[2] = strides[0];
@@ -274,7 +274,7 @@ class NPUPoolGradOpKernel : public framework::OpKernel<T> {
 
       NpuOpRunner runner;
       runner.SetType("AvgPoolV2Grad");
-      runner.AddInput(pten::vectorize<int>(in_x->dims()));
+      runner.AddInput(phi::vectorize<int>(in_x->dims()));
       runner.AddInput(out_grad_tensor);
       runner.AddOutput(in_x_grad_tensor);
       runner.AddAttrs(attrs);

@@ -68,7 +68,7 @@ struct SequenceExpandAsFunctor<platform::CUDADeviceContext, T> {
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
       LoDTensor *out) {
     int height = x.dims()[0];
-    int width = pten::product(x.dims()) / height;
+    int width = phi::product(x.dims()) / height;
 
     const int kThreadsPerBlock = 1024;
     int thread_x = kThreadsPerBlock;
@@ -94,7 +94,7 @@ struct SequenceExpandAsGradFunctor<platform::CUDADeviceContext, T> {
                   const framework::Vector<size_t> &ref_lod, /*expand based lod*/
                   LoDTensor *dx) {
     int height = dx->dims()[0];
-    int width = pten::product(dx->dims()) / height;
+    int width = phi::product(dx->dims()) / height;
 
     const int kThreadsPerBlock = 1024;
     int thread_x = kThreadsPerBlock;

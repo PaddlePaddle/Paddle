@@ -77,11 +77,11 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
     // update padding and dilation
     auto in_dims = transformed_input_channel.dims();
     auto filter_dims = filter->dims();
-    framework::DDim in_data_dims = pten::slice_ddim(in_dims, 2, in_dims.size());
+    framework::DDim in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
 
     framework::DDim filter_data_dims =
-        pten::slice_ddim(filter_dims, 2, filter_dims.size());
-    std::vector<int> ksize = pten::vectorize<int>(filter_data_dims);
+        phi::slice_ddim(filter_dims, 2, filter_dims.size());
+    std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 
@@ -106,7 +106,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
         input_pad[2 * i + 4] = paddings[2 * i] - padding_common[i];
         input_pad[2 * i + 4 + 1] = paddings[2 * i + 1] - padding_common[i];
       }
-      framework::DDim new_input_shape(pten::make_ddim(new_input_shape_vec));
+      framework::DDim new_input_shape(phi::make_ddim(new_input_shape_vec));
       transformed_input.Resize(new_input_shape);
       auto& dev_ctx =
           ctx.template device_context<paddle::platform::CUDADeviceContext>();
@@ -170,11 +170,11 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
     std::vector<int> bias_dim = {
         1, static_cast<int>(transformed_output.dims()[1]), 1, 1};
     miopenTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
-        layout, pten::vectorize<int>(transformed_input.dims()));
+        layout, phi::vectorize<int>(transformed_input.dims()));
     miopenTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
-        layout, pten::vectorize<int>(transformed_output.dims()));
+        layout, phi::vectorize<int>(transformed_output.dims()));
     miopenTensorDescriptor_t cudnn_filter_desc =
-        filter_desc.descriptor<T>(layout, pten::vectorize<int>(filter->dims()));
+        filter_desc.descriptor<T>(layout, phi::vectorize<int>(filter->dims()));
     miopenTensorDescriptor_t cudnn_bias_desc =
         bias_desc.descriptor<T>(layout, bias_dim);
     miopenActivationDescriptor_t cudnn_act_desc =
@@ -184,8 +184,8 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
     auto handle = dev_ctx.cudnn_handle();
     auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
-    auto x_dims = pten::vectorize(transformed_input.dims());
-    auto f_dims = pten::vectorize(filter->dims());
+    auto x_dims = phi::vectorize(transformed_input.dims());
+    auto f_dims = phi::vectorize(filter->dims());
 
     size_t workspace_size = 0;
     PADDLE_ENFORCE_GPU_SUCCESS(
@@ -238,11 +238,11 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
         cudnn_conv_desc, groups));
 
     cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
-        layout, pten::vectorize<int>(transformed_input.dims()));
+        layout, phi::vectorize<int>(transformed_input.dims()));
     cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
-        layout, pten::vectorize<int>(transformed_output.dims()));
+        layout, phi::vectorize<int>(transformed_output.dims()));
     cudnnFilterDescriptor_t cudnn_filter_desc =
-        filter_desc.descriptor<T>(layout, pten::vectorize<int>(filter->dims()));
+        filter_desc.descriptor<T>(layout, phi::vectorize<int>(filter->dims()));
     // Now only support NCHW
     std::vector<int> bias_dim = {
         1, static_cast<int>(transformed_output.dims()[1]), 1, 1};
@@ -275,8 +275,8 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
     }
 #endif  // CUDA_VERSION >= 11000 && CUDNN_VERSION >= 8000
 
-    auto x_dims = pten::vectorize(transformed_input.dims());
-    auto f_dims = pten::vectorize(filter->dims());
+    auto x_dims = phi::vectorize(transformed_input.dims());
+    auto f_dims = phi::vectorize(filter->dims());
     if (!exhaustive_search) {
 #if CUDNN_VERSION >= 8000
       int perf_count;
@@ -416,7 +416,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Input with batch size greater than 1 is unsupported. The recieved "
             "batch size is %d, Input's shape is [%s].",
-            x_dims[0], pten::make_ddim(x_dims)));
+            x_dims[0], phi::make_ddim(x_dims)));
       }
     }
   }

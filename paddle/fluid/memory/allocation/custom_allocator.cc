@@ -21,7 +21,7 @@ namespace memory {
 namespace allocation {
 
 bool CustomAllocator::IsAllocThreadSafe() const { return true; }
-void CustomAllocator::FreeImpl(pten::Allocation* allocation) {
+void CustomAllocator::FreeImpl(phi::Allocation* allocation) {
   PADDLE_ENFORCE_EQ(
       allocation->place(), place_,
       platform::errors::PermissionDenied("CustomDevice memory is "
@@ -31,7 +31,7 @@ void CustomAllocator::FreeImpl(pten::Allocation* allocation) {
   delete allocation;
 }
 
-pten::Allocation* CustomAllocator::AllocateImpl(size_t size) {
+phi::Allocation* CustomAllocator::AllocateImpl(size_t size) {
   std::call_once(once_flag_,
                  [this] { platform::DeviceManager::SetDevice(place_); });
 
