@@ -183,7 +183,9 @@ REGISTER_OPERATOR(gather_nd_grad, ops::GatherNdGradOp,
 REGISTER_OP_CPU_KERNEL(gather_nd, ops::GatherNdOpKernel<float>,
                        ops::GatherNdOpKernel<double>,
                        ops::GatherNdOpKernel<int64_t>,
-                       ops::GatherNdOpKernel<int>, ops::GatherNdOpKernel<bool>,
+                       ops::GatherNdOpKernel<int>,
+                       ops::GatherNdOpKernel<int16_t>,
+                       ops::GatherNdOpKernel<bool>,
                        ops::GatherNdOpKernel<uint8_t>);
 
 REGISTER_OP_CPU_KERNEL(gather_nd_grad, ops::GatherNdGradOpKernel<float>,
