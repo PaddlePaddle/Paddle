@@ -37,5 +37,5 @@ add_subdirectory(infrt)
 add_subdirectory(tensorrt)
 
 if (INFRT_WITH_PTEN)
-    add_subdirectory(pten)
+    add_subdirectory(phi)
 endif()
