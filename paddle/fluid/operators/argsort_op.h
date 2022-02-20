@@ -110,8 +110,8 @@ class ArgsortKernel : public framework::OpKernel<T> {
 
     // Do full sort
     if (axis == -1 || axis + 1 == in_dims.size()) {
-      const int64_t input_height = framework::product(
-          framework::slice_ddim(in_dims, 0, in_dims.size() - 1));
+      const int64_t input_height =
+          pten::product(pten::slice_ddim(in_dims, 0, in_dims.size() - 1));
       const int64_t input_width = in_dims[in_dims.size() - 1];
 
       int64_t* ids_data = indices->mutable_data<int64_t>(ctx.GetPlace());
@@ -141,8 +141,8 @@ class ArgsortKernel : public framework::OpKernel<T> {
       TransCompute<platform::CPUDeviceContext, T>(ndims, dev_ctx, *input,
                                                   &trans_inp, trans);
 
-      const int64_t input_height = framework::product(
-          framework::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+      const int64_t input_height =
+          pten::product(pten::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
       const int64_t input_width = trans_dims[trans_dims.size() - 1];
 
       Tensor tmp_out;
@@ -188,8 +188,8 @@ class ArgsortGradientKernel : public framework::OpKernel<T> {
 
     // Do full assign
     if (axis == -1 || axis + 1 == in_dims.size()) {
-      const int64_t input_height = framework::product(
-          framework::slice_ddim(in_dims, 0, in_dims.size() - 1));
+      const int64_t input_height =
+          pten::product(pten::slice_ddim(in_dims, 0, in_dims.size() - 1));
       const int64_t input_width = in_dims[in_dims.size() - 1];
 
       FullAssign<T, int64_t>(input_height, input_width, in_dims.size(), dO,
@@ -222,8 +222,8 @@ class ArgsortGradientKernel : public framework::OpKernel<T> {
       TransCompute<platform::CPUDeviceContext, int64_t>(
           ndims, dev_ctx, *indices, &trans_ind, trans);
 
-      const int64_t input_height = framework::product(
-          framework::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+      const int64_t input_height =
+          pten::product(pten::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
       const int64_t input_width = trans_dims[trans_dims.size() - 1];
 
       Tensor tmp_out;

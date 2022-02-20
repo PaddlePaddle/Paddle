@@ -60,7 +60,7 @@ class EighGradKernel : public framework::OpKernel<T> {
                                           dito.Unsqueeze(output_w, -1));
     Tensor result = dito.Matmul(tV, output_v_grad);
     result.mutable_data<T>(dims, ctx.GetPlace());
-    std::vector<int> out_shape = framework::vectorize<int>(dims);
+    std::vector<int> out_shape = pten::vectorize<int>(dims);
     auto constant = dito.Fill(out_shape, 0.5);
     result = dito.Sub(result, dito.Conj(dito.Transpose(result)));
     result = dito.Mul(result, constant);

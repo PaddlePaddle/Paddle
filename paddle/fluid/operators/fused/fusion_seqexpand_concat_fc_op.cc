@@ -14,10 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fusion_seqexpand_concat_fc_op.h"
 #include <string>
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/cpu_vec.h"
 #include "paddle/fluid/operators/math/fc.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -209,7 +209,7 @@ class FusionSeqExpandConcatFCOpKernel : public framework::OpKernel<T> {
     T* out_data = out->mutable_data<T>(ctx.GetPlace());
     T* fc_out_data = fc_out->mutable_data<T>(ctx.GetPlace());
 
-    auto blas = math::GetBlas<DeviceContext, T>(ctx);
+    auto blas = pten::funcs::GetBlas<DeviceContext, T>(ctx);
 
     auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
     math::FCFunctor<DeviceContext, T> fc;

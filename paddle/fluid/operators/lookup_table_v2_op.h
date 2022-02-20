@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -124,7 +124,8 @@ struct LookupTableV2CPUFunctor {
             memcpy(output + i * row_width, table + id_index * row_width,
                    row_width * sizeof(T));
           } else {
-            auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context_);
+            auto blas =
+                pten::funcs::GetBlas<platform::CPUDeviceContext, T>(context_);
             blas.VCOPY(row_width, table + id_index * row_width,
                        output + i * row_width);
           }
@@ -197,7 +198,7 @@ struct LookupTableV2GradCPUFunctor {
 
       auto d_output_dims = d_output->dims();
       auto d_output_dims_2d =
-          framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
+          pten::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
       PADDLE_ENFORCE_EQ(d_table_value->dims(), d_output_dims_2d,
                         platform::errors::InvalidArgument(
                             "ShapeError: The shape of lookup_table@Grad and "

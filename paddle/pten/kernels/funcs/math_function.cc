@@ -142,8 +142,8 @@ void TransposeNormal<DeviceContext, T>::operator()(
     paddle::framework::Tensor* out,
     const std::vector<int>& axis) {
   const int rank = axis.size();
-  auto in_stride = paddle::framework::stride(in.dims());
-  auto out_stride = paddle::framework::stride(out->dims());
+  auto in_stride = pten::stride(in.dims());
+  auto out_stride = pten::stride(out->dims());
   const T* in_ptr = in.data<T>();
   T* out_ptr = out->data<T>();
 
@@ -359,6 +359,8 @@ struct ElementwiseAddTo<paddle::platform::CPUDeviceContext, T> {
 
 template struct ElementwiseAddTo<paddle::platform::CPUDeviceContext,
                                  pten::dtype::float16>;
+template struct ElementwiseAddTo<paddle::platform::CPUDeviceContext,
+                                 pten::dtype::bfloat16>;
 
 }  // namespace funcs
 }  // namespace pten

@@ -16,10 +16,10 @@ limitations under the License. */
 
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/pooling.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -100,7 +100,7 @@ class UnsqueezeKernel : public framework::OpKernel<T> {
       }
     }
 
-    return framework::make_ddim(output_shape);
+    return pten::make_ddim(output_shape);
   }
 };
 
@@ -129,7 +129,7 @@ class Unsqueeze2GradKernel : public framework::OpKernel<T> {
     // auto in_dims = d_x->dims();
 
     auto xshape_dims = ctx.Input<framework::LoDTensor>("XShape")->dims();
-    auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    auto x_dims = pten::slice_ddim(xshape_dims, 1, xshape_dims.size());
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopySync(*d_out, ctx.GetPlace(), d_x);

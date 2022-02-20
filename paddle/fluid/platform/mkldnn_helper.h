@@ -23,7 +23,7 @@ limitations under the License. */
 #include "dnnl.hpp"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 namespace paddle {
 #ifdef PADDLE_WITH_MKLDNN
 using MKLDNNMemoryFormat = dnnl::memory::format_tag;
@@ -103,18 +103,18 @@ inline void MatchShapeToLayout(framework::Tensor* tensor_in,
   switch (from) {
     case framework::DataLayout::kMKLDNN:
       if (to == framework::DataLayout::kNHWC) {
-        auto dims = framework::vectorize<int>(tensor_in->dims());
+        auto dims = pten::vectorize<int>(tensor_in->dims());
         std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
-        tensor_in->Resize(framework::make_ddim(dims));
+        tensor_in->Resize(pten::make_ddim(dims));
         VLOG(3) << "Rotating Shape from: kMKLDNN to: kNHWC output_shape"
                 << print_dims(dims);
       }
       break;
     case framework::DataLayout::kNHWC:
       if (to == framework::DataLayout::kMKLDNN) {
-        auto dims = framework::vectorize<int>(tensor_in->dims());
+        auto dims = pten::vectorize<int>(tensor_in->dims());
         std::rotate(dims.begin() + 1, dims.end() - 1, dims.end());
-        tensor_in->Resize(framework::make_ddim(dims));
+        tensor_in->Resize(pten::make_ddim(dims));
         VLOG(3) << "Rotating Shape from: kNHWC to: kMKLDNN output_shape"
                 << print_dims(dims);
       }
@@ -190,7 +190,8 @@ inline void Reorder(dnnl::memory src, dnnl::memory dst,
   auto reorder_prim = dnnl::reorder(src, dst);
   auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
   platform::RecordEvent record_reorder("int_reorder",
-                                       platform::EventRole::kUniqueOp);
+                                       platform::TracerEventType::UserDefined,
+                                       2, platform::EventRole::kUniqueOp);
   reorder_prim.execute(astream, src, dst);
   astream.wait();
 }

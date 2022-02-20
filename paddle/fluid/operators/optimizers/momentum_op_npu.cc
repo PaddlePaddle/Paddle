@@ -51,7 +51,7 @@ class NPUMomentumOpKernel : public framework::OpKernel<T> {
     if (grad_var->IsType<framework::LoDTensor>()) {
       auto grad = ctx.Input<framework::Tensor>("Grad");
       Tensor mu_tensor;
-      mu_tensor.mutable_data<T>(framework::make_ddim({1}), ctx.GetPlace());
+      mu_tensor.mutable_data<T>(pten::make_ddim({1}), ctx.GetPlace());
       FillNpuTensorWithConstant<T>(&mu_tensor, mu);
 
       Tensor regularized_grad;

@@ -120,7 +120,7 @@ class CompatMetaTensor : public pten::MetaTensor {
       }
     } else {
       auto* var = BOOST_GET_CONST(VarDesc*, var_);
-      return make_ddim(var->GetShape());
+      return pten::make_ddim(var->GetShape());
     }
   }
 

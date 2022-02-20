@@ -20,7 +20,7 @@ void CreateInferMetaBase(const std::vector<int64_t>& shape,
                          DataType dtype,
                          DataLayout layout,
                          MetaTensor* out) {
-  auto out_dims = pten::framework::make_ddim(shape);
+  auto out_dims = pten::make_ddim(shape);
   out->set_dims(out_dims);
   out->set_dtype(dtype);
   out->set_layout(layout);
@@ -28,9 +28,8 @@ void CreateInferMetaBase(const std::vector<int64_t>& shape,
 
 void CreateInferMeta(const ScalarArray& shape,
                      DataType dtype,
-                     DataLayout layout,
                      MetaTensor* out) {
-  CreateInferMetaBase(shape.GetData(), dtype, layout, out);
+  CreateInferMetaBase(shape.GetData(), dtype, DataLayout::NCHW, out);
 }
 
 }  // namespace pten

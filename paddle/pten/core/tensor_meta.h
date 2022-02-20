@@ -30,7 +30,7 @@ limitations under the License. */
 
 namespace pten {
 
-using DDim = pten::framework::DDim;
+using DDim = pten::DDim;
 #ifndef PADDLE_WITH_CUSTOM_KERNEL
 using LoD = std::vector<paddle::framework::Vector<size_t>>;
 #else

@@ -84,7 +84,7 @@ class Conv2DFusionOp : public operators::ConvOp {
             data_format));
 
     std::vector<int64_t> output_shape = ComputeOutputShape(ctx);
-    ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
+    ctx->SetOutputDim("Output", pten::make_ddim(output_shape));
     ctx->ShareLoD("Input", "Output");
 
     std::vector<int> split_channels =
@@ -100,15 +100,14 @@ class Conv2DFusionOp : public operators::ConvOp {
               "reiceved: the number of Output(Outputs) = %u; the length of "
               "Attr(split_channels) = %u, the content = [%s].",
               ctx->Outputs("Outputs").size(), split_channels.size(),
-              framework::make_ddim(split_channels)));
+              pten::make_ddim(split_channels)));
 
       int split_channels_sum = 0;
       std::vector<framework::DDim> output_shapes(split_channels.size());
       for (size_t i = 0; i < split_channels.size(); ++i) {
         split_channels_sum += split_channels[i];
-        output_shapes[i] =
-            framework::make_ddim({output_shape[0], split_channels[i],
-                                  output_shape[2], output_shape[3]});
+        output_shapes[i] = pten::make_ddim({output_shape[0], split_channels[i],
+                                            output_shape[2], output_shape[3]});
       }
       PADDLE_ENFORCE_EQ(
           split_channels_sum, output_shape[1],

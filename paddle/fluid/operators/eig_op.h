@@ -17,12 +17,12 @@
 #include <math.h>
 #include <algorithm>
 #include <complex>
-#include "paddle/fluid/operators/math/lapack_function.h"
 #include "paddle/fluid/operators/math/matrix_solve.h"
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/pten/kernels/funcs/complex_functors.h"
+#include "paddle/pten/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
 #define EPSILON 1e-6
 
@@ -89,19 +89,19 @@ void LapackEig(Tensor* input, Tensor* values, Tensor* vectors, int info,
   Tensor rwork;
   pten::funcs::Real<T>* rwork_data = nullptr;
 
-  rwork.Resize(framework::make_ddim({lda * 2}));
+  rwork.Resize(pten::make_ddim({lda * 2}));
   rwork_data = rwork.mutable_data<pten::funcs::Real<T>>(context.GetPlace());
 
   // call lapackEig once to compute the size of work;
   T computed_work_size;
-  math::lapackEig<T, pten::funcs::Real<T>>(
+  pten::funcs::lapackEig<T, pten::funcs::Real<T>>(
       jobvl, jobvr, order, input_data, lda, values_data, lvector_data, ldvl,
       rvector_data, ldvr, &computed_work_size, lwork, rwork_data, &info);
 
   lwork = std::max<int>(
       1, static_cast<int>(pten::funcs::Real<T>(computed_work_size)));
   Tensor work;
-  work.Resize(framework::make_ddim({lwork}));
+  work.Resize(pten::make_ddim({lwork}));
   T* work_data = work.mutable_data<T>(context.GetPlace());
 
   for (auto i = 0; i < batch_count; ++i) {
@@ -109,7 +109,7 @@ void LapackEig(Tensor* input, Tensor* values, Tensor* vectors, int info,
     T* current_values = &values_data[i * values_stride];
     T* current_rvectors = &rvector_data[i * matrix_stride];
 
-    math::lapackEig<T, pten::funcs::Real<T>>(
+    pten::funcs::lapackEig<T, pten::funcs::Real<T>>(
         jobvl, jobvr, order, current_matrix, lda, current_values, lvector_data,
         ldvl, current_rvectors, ldvr, work_data, lwork, rwork_data, &info);
     PADDLE_ENFORCE_EQ(
@@ -201,12 +201,11 @@ class EigKernel : public framework::OpKernel<T> {
       Tensor real_vectors;
       // double the size of real_values, the first half stores the real part,
       // the next half stores the imag part
-      std::vector<int> origin_dim =
-          framework::vectorize<int>(out_values->dims());
+      std::vector<int> origin_dim = pten::vectorize<int>(out_values->dims());
       int last_item = origin_dim.back();
       origin_dim.pop_back();
       origin_dim.push_back(last_item * 2);
-      framework::DDim big_dim = framework::make_ddim(origin_dim);
+      framework::DDim big_dim = pten::make_ddim(origin_dim);
 
       real_values.mutable_data<pten::funcs::Real<T>>(big_dim,
                                                      context.GetPlace());

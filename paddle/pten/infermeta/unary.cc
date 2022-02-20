@@ -61,7 +61,7 @@ void FlattenInferMeta(const MetaTensor& x,
   for (int i = stop_axis + 1; i < in_dims_size; i++) {
     out_shape.push_back(x_dims[i]);
   }
-  const auto& out_dims = pten::framework::make_ddim(out_shape);
+  const auto& out_dims = pten::make_ddim(out_shape);
   out->set_dims(out_dims);
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
@@ -79,19 +79,16 @@ void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
   out->set_layout(x.layout());
 }
 
-void CreateLikeInferMeta(const MetaTensor& x,
-                         DataType dtype,
-                         DataLayout layout,
-                         MetaTensor* out) {
+void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(dtype == DataType::UNDEFINED ? x.dtype() : dtype);
-  out->set_layout(layout == DataLayout::UNDEFINED ? x.layout() : layout);
+  out->set_layout(x.layout());
 }
 
-static pten::framework::DDim ValidateShape(
-    const std::vector<int64_t> shape, const pten::framework::DDim& in_dims) {
-  const int64_t in_size = pten::framework::product(in_dims);
-  auto in_dims_vec = pten::framework::vectorize(in_dims);
+static pten::DDim ValidateShape(const std::vector<int64_t> shape,
+                                const pten::DDim& in_dims) {
+  const int64_t in_size = pten::product(in_dims);
+  auto in_dims_vec = pten::vectorize(in_dims);
   bool all_positive = std::all_of(in_dims_vec.cbegin(),
                                   in_dims_vec.cend(),
                                   [](int64_t i) { return i > 0; });
@@ -111,7 +108,7 @@ static pten::framework::DDim ValidateShape(
           paddle::platform::errors::InvalidArgument(
               "Only one dimension value of 'shape' in ReshapeOp can "
               "be -1. But received shape = [%s], shape[%d] is also -1.",
-              pten::framework::make_ddim(shape),
+              pten::make_ddim(shape),
               i));
       unk_dim_idx = i;
     } else if (shape[i] == copy_dim_val) {
@@ -123,7 +120,7 @@ static pten::framework::DDim ValidateShape(
               "the input tensor X's dimensions. "
               "But received shape = [%s], shape[%d] = 0, X's shape = [%s], "
               "X's dimensions = %d.",
-              pten::framework::make_ddim(shape),
+              pten::make_ddim(shape),
               i,
               in_dims,
               in_dims.size()));
@@ -135,7 +132,7 @@ static pten::framework::DDim ValidateShape(
               "Each dimension value of 'shape' in ReshapeOp must not "
               "be negative except one unknown dimension. "
               "But received  shape = [%s], shape[%d] = %d.",
-              pten::framework::make_ddim(shape),
+              pten::make_ddim(shape),
               i,
               shape[i]));
     }
@@ -164,7 +161,7 @@ static pten::framework::DDim ValidateShape(
               "'shape' is [%s], known capacity of 'shape' is %d.",
               in_dims,
               in_size,
-              pten::framework::make_ddim(shape),
+              pten::make_ddim(shape),
               capacity));
     } else {
       output_shape[unk_dim_idx] = -1;
@@ -182,7 +179,7 @@ static pten::framework::DDim ValidateShape(
               "[%s], the capacity of 'shape' is %d.",
               in_dims,
               in_size,
-              pten::framework::make_ddim(shape),
+              pten::make_ddim(shape),
               capacity));
     }
   }
@@ -201,11 +198,11 @@ static pten::framework::DDim ValidateShape(
             "capacity of 'Out' is %d.",
             in_dims,
             in_size,
-            pten::framework::make_ddim(shape),
+            pten::make_ddim(shape),
             capacity));
   }
 
-  return pten::framework::make_ddim(output_shape);
+  return pten::make_ddim(output_shape);
 }
 
 void InferMetaFromVecValue(const MetaTensor& x,
@@ -281,7 +278,7 @@ void ReduceInferMetaBase(const MetaTensor& x,
       out_dim_vector.push_back(1);
     }
   }
-  DDim out_dim = pten::framework::make_ddim(out_dim_vector);
+  DDim out_dim = pten::make_ddim(out_dim_vector);
 
   DataType out_dtype;
   if (dtype != DataType::UNDEFINED) {
@@ -381,7 +378,7 @@ void SplitInferMeta(const MetaTensor& x,
                             "Only one dimension value of Attr(num_or_sections) "
                             "in SplitOp can be -1. "
                             "But received Attr(num_or_sections) = [%s].",
-                            pten::framework::make_ddim(num_or_sections_data)));
+                            pten::make_ddim(num_or_sections_data)));
     }
 
     if (unknow_dim_idx != -1) {
@@ -397,7 +394,7 @@ void SplitInferMeta(const MetaTensor& x,
               "size "
               "along the split dimension. But received Attr(num_or_sections) "
               "= [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
-              pten::framework::make_ddim(num_or_sections_data),
+              pten::make_ddim(num_or_sections_data),
               x.dims(),
               axis_value));
 
@@ -413,7 +410,7 @@ void SplitInferMeta(const MetaTensor& x,
               "size "
               "along the split dimension. But received Attr(num_or_sections)"
               " = [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
-              pten::framework::make_ddim(num_or_sections_data),
+              pten::make_ddim(num_or_sections_data),
               x.dims(),
               axis_value));
     }
@@ -496,7 +493,7 @@ void TraceInferMeta(
     sizes.erase(sizes.begin() + std::max(dim1_, dim2_));
     sizes.erase(sizes.begin() + std::min(dim1_, dim2_));
   }
-  out->set_dims(framework::make_ddim(sizes));
+  out->set_dims(pten::make_ddim(sizes));
 }
 
 }  // namespace pten

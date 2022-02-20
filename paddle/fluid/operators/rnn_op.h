@@ -19,7 +19,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/dropout_op.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/math/detail/activation_functions.h"
 #include "paddle/fluid/operators/math/fc.h"
@@ -27,6 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/lstm_compute.h"
 #include "paddle/fluid/operators/unique_op.h"
 #include "paddle/fluid/operators/utils.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -61,7 +61,7 @@ void create_mask_matrix(const framework::ExecutionContext& context,
   const int& table_width = mask_matrix->dims()[0];
   Tensor temp;
   temp.Resize(
-      framework::make_ddim({mask_matrix->dims()[1], mask_matrix->dims()[0]}));
+      pten::make_ddim({mask_matrix->dims()[1], mask_matrix->dims()[0]}));
   T* data_temp = temp.mutable_data<T>(context.GetPlace());
   std::fill(data_temp, data_temp + mask_matrix->numel(), static_cast<T>(1.0));
   *min_seq_len = table_width;
@@ -108,9 +108,12 @@ struct SimpleRNNCell : Cell<T> {
                   const Tensor* init_c, Tensor* last_h, Tensor* last_c,
                   Tensor* last_c_act, Tensor* output, const Tensor* bias_hh,
                   Tensor* weight_hh_gru) const override {
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(*device_ctx);
-    auto mat_dim_a = math::CreateMatrixDescriptor(init_h->dims(), 0, false);
-    auto mat_dim_b = math::CreateMatrixDescriptor(weight_hh->dims(), 0, true);
+    auto blas =
+        pten::funcs::GetBlas<platform::CPUDeviceContext, T>(*device_ctx);
+    auto mat_dim_a =
+        pten::funcs::CreateMatrixDescriptor(init_h->dims(), 0, false);
+    auto mat_dim_b =
+        pten::funcs::CreateMatrixDescriptor(weight_hh->dims(), 0, true);
     mat_dim_a.height_ *= mat_dim_a.batch_size_;
     mat_dim_a.batch_size_ = 0;
     // convert the batch matmul to matmul, this operator could be speed faster
@@ -134,10 +137,12 @@ struct GRUCell : Cell<T> {
                   const Tensor* init_c, Tensor* last_h, Tensor* last_c,
                   Tensor* last_c_act, Tensor* output, const Tensor* bias_hh,
                   Tensor* weight_hh_gru) const override {
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(*device_ctx);
-    auto mat_dim_a = math::CreateMatrixDescriptor(init_h->dims(), 0, false);
+    auto blas =
+        pten::funcs::GetBlas<platform::CPUDeviceContext, T>(*device_ctx);
+    auto mat_dim_a =
+        pten::funcs::CreateMatrixDescriptor(init_h->dims(), 0, false);
     auto mat_dim_b =
-        math::CreateMatrixDescriptor(weight_hh_gru->dims(), 0, true);
+        pten::funcs::CreateMatrixDescriptor(weight_hh_gru->dims(), 0, true);
     mat_dim_a.height_ *= mat_dim_a.batch_size_;
     mat_dim_a.batch_size_ = 0;
     // convert the batch matmul to matmul, this operator could be speed faster
@@ -171,9 +176,12 @@ struct LSTMCell : Cell<T> {
                   const Tensor* init_c, Tensor* last_h, Tensor* last_c,
                   Tensor* last_c_act, Tensor* output, const Tensor* bias_hh,
                   Tensor* weight_hh_gru) const override {
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(*device_ctx);
-    auto mat_dim_a = math::CreateMatrixDescriptor(init_h->dims(), 0, false);
-    auto mat_dim_b = math::CreateMatrixDescriptor(weight_hh->dims(), 0, true);
+    auto blas =
+        pten::funcs::GetBlas<platform::CPUDeviceContext, T>(*device_ctx);
+    auto mat_dim_a =
+        pten::funcs::CreateMatrixDescriptor(init_h->dims(), 0, false);
+    auto mat_dim_b =
+        pten::funcs::CreateMatrixDescriptor(weight_hh->dims(), 0, true);
     mat_dim_a.height_ *= mat_dim_a.batch_size_;
     mat_dim_a.batch_size_ = 0;
     // convert the batch matmul to matmul, this operator could be speed faster
@@ -235,7 +243,7 @@ void dropout_cpu_function_inplace(const framework::ExecutionContext& context,
   if (is_test) {
     return;
   }
-  size_t size = framework::product(x->dims());
+  size_t size = pten::product(x->dims());
   auto* mask_data = mask->data<uint8_t>();
   if (!(*is_has_reset)) {
     // Special case when dropout_prob is 1.0
@@ -276,14 +284,16 @@ struct Layer {
     auto& dev_ctx =
         context.template device_context<platform::CPUDeviceContext>();
     const int& hidden_size = weight.dims()[0];
-    cache_input->Resize(framework::make_ddim(
-        {input->dims()[0], input->dims()[1], hidden_size}));
+    cache_input->Resize(
+        pten::make_ddim({input->dims()[0], input->dims()[1], hidden_size}));
     if (is_test) {
       cache_input->mutable_data<T>(context.GetPlace());
     }
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(dev_ctx);
-    auto mat_dim_a = math::CreateMatrixDescriptor(input->dims(), 0, false);
-    auto mat_dim_b = math::CreateMatrixDescriptor(weight.dims(), 0, true);
+    auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(dev_ctx);
+    auto mat_dim_a =
+        pten::funcs::CreateMatrixDescriptor(input->dims(), 0, false);
+    auto mat_dim_b =
+        pten::funcs::CreateMatrixDescriptor(weight.dims(), 0, true);
     // convert the batch matmul to matmul, this operator could be speed faster
     mat_dim_a.height_ *= mat_dim_a.batch_size_;
     mat_dim_a.batch_size_ = 0;
@@ -293,9 +303,9 @@ struct Layer {
     auto in = framework::EigenMatrix<T>::Reshape(
         *cache_input, cache_input->dims().size() - 1);
     auto bias_ih_tmp = framework::EigenMatrix<T>::From(
-        bias_ih, framework::make_ddim({1, bias_ih.dims()[0]}));
+        bias_ih, pten::make_ddim({1, bias_ih.dims()[0]}));
     const int& row_num =
-        framework::product(cache_input->dims()) / cache_input->dims()[2];
+        pten::product(cache_input->dims()) / cache_input->dims()[2];
     in = in + bias_ih_tmp.broadcast(Eigen::DSizes<int, 2>(row_num, 1));
     if (is_gru(context)) {
       // reset_gate update_gate cell_gate = [1, 1, 0]
@@ -309,11 +319,11 @@ struct Layer {
       zero(dev_ctx, &bias_hh_tmp_unbind[2], static_cast<T>(0.0));
 
       auto bias_hh_after_mask = framework::EigenMatrix<T>::From(
-          bias_hh_tmp, framework::make_ddim({1, bias_hh.dims()[0]}));
+          bias_hh_tmp, pten::make_ddim({1, bias_hh.dims()[0]}));
       in = in + bias_hh_after_mask.broadcast(Eigen::DSizes<int, 2>(row_num, 1));
     } else {
       auto bias_hh_no_mask = framework::EigenMatrix<T>::From(
-          bias_hh, framework::make_ddim({1, bias_hh.dims()[0]}));
+          bias_hh, pten::make_ddim({1, bias_hh.dims()[0]}));
       in = in + bias_hh_no_mask.broadcast(Eigen::DSizes<int, 2>(row_num, 1));
     }
   }
@@ -327,7 +337,7 @@ struct Layer {
     auto out =
         framework::EigenMatrix<T>::Reshape(*output, output->dims().size() - 1);
     auto mask = framework::EigenMatrix<T>::From(
-        mask_tensor, framework::make_ddim({mask_tensor.dims()[1], 1}));
+        mask_tensor, pten::make_ddim({mask_tensor.dims()[1], 1}));
     auto pre_h =
         framework::EigenMatrix<T>::Reshape(*init_h, init_h->dims().size() - 1);
     auto curr_h =
@@ -390,7 +400,7 @@ struct Layer {
     Tensor mask_matrix;
     int mask_min_length = time_step;
     if (has_sequence_length) {
-      mask_matrix.Resize(framework::make_ddim({time_step, input->dims()[1]}));
+      mask_matrix.Resize(pten::make_ddim({time_step, input->dims()[1]}));
 
       create_mask_matrix<T>(context, sequence_length, &mask_matrix, is_reverse,
                             &mask_min_length);
@@ -537,7 +547,7 @@ struct Layer {
     Tensor mask_matrix;
     int mask_min_length = time_step;
     if (has_sequence_length) {
-      mask_matrix.Resize(framework::make_ddim({time_step, input->dims()[1]}));
+      mask_matrix.Resize(pten::make_ddim({time_step, input->dims()[1]}));
       create_mask_matrix<T>(context, sequence_length, &mask_matrix, is_reverse,
                             &mask_min_length);
       mask_tensor_list = Unbind(mask_matrix);
@@ -1070,7 +1080,7 @@ struct GradLayer {
     TensorList mask_tensor_list;
     int mask_min_length = time_step;
     if (has_sequence_length) {
-      mask_matrix.Resize(framework::make_ddim({time_step, input->dims()[1]}));
+      mask_matrix.Resize(pten::make_ddim({time_step, input->dims()[1]}));
       create_mask_matrix<T>(context, sequence_length, &mask_matrix, is_reverse,
                             &mask_min_length);
       mask_tensor_list = Unbind(mask_matrix);
@@ -1232,7 +1242,7 @@ struct GradLayer {
     auto& place = *context.template device_context<platform::CPUDeviceContext>()
                        .eigen_device();
     auto mask = framework::EigenMatrix<T>::From(
-        mask_tensor, framework::make_ddim({mask_tensor.dims()[1], 1}));
+        mask_tensor, pten::make_ddim({mask_tensor.dims()[1], 1}));
     auto mask_broadcast =
         mask.broadcast(Eigen::DSizes<int, 2>(1, grad_output->dims()[2]));
 
@@ -1268,12 +1278,13 @@ struct GradLayer {
     }
     auto& device_ctx =
         context.template device_context<platform::CPUDeviceContext>();
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(device_ctx);
+    auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(device_ctx);
 
     // calc the gradient for the w_hi
     auto mat_dim_out_grad =
-        math::CreateMatrixDescriptor(grad_gate.dims(), 0, true);
-    auto mat_dim_input = math::CreateMatrixDescriptor(input.dims(), 0, false);
+        pten::funcs::CreateMatrixDescriptor(grad_gate.dims(), 0, true);
+    auto mat_dim_input =
+        pten::funcs::CreateMatrixDescriptor(input.dims(), 0, false);
     mat_dim_out_grad.width_ *= mat_dim_out_grad.batch_size_;
     mat_dim_out_grad.batch_size_ = 0;
     mat_dim_input.height_ *= mat_dim_input.batch_size_;
@@ -1284,11 +1295,11 @@ struct GradLayer {
 
     // calc the gradient for the X
     auto mat_dim_out_grad_new =
-        math::CreateMatrixDescriptor(grad_gate.dims(), 0, false);
+        pten::funcs::CreateMatrixDescriptor(grad_gate.dims(), 0, false);
     mat_dim_out_grad_new.height_ *= mat_dim_out_grad_new.batch_size_;
     mat_dim_out_grad_new.batch_size_ = 0;
     auto mat_dim_parameter =
-        math::CreateMatrixDescriptor(parameters[0].dims(), 0, false);
+        pten::funcs::CreateMatrixDescriptor(parameters[0].dims(), 0, false);
     blas.MatMul(grad_gate, mat_dim_out_grad_new, parameters[begin_idx + 0],
                 mat_dim_parameter, static_cast<T>(1.0), input_grad, T(1));
 
@@ -1553,7 +1564,7 @@ struct GradCell {
           *context.template device_context<platform::CPUDeviceContext>()
                .eigen_device();
       auto mask = framework::EigenMatrix<T>::From(
-          mask_tensor, framework::make_ddim({mask_tensor.dims()[1], 1}));
+          mask_tensor, pten::make_ddim({mask_tensor.dims()[1], 1}));
       auto mask_broadcast =
           mask.broadcast(Eigen::DSizes<int, 2>(1, grad_pre_hidden->dims()[2]));
       auto pre_hidden_grad = framework::EigenMatrix<T>::Reshape(
@@ -1583,13 +1594,14 @@ struct GradCell {
       bool has_sequence_length) const {
     auto& device_ctx =
         context.template device_context<platform::CPUDeviceContext>();
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(device_ctx);
+    auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(device_ctx);
     Tensor* grad_gate_tmp = grad_gate;
     auto mat_dim_a =
-        math::CreateMatrixDescriptor(grad_gate_tmp->dims(), 0, false);
+        pten::funcs::CreateMatrixDescriptor(grad_gate_tmp->dims(), 0, false);
     mat_dim_a.height_ *= mat_dim_a.batch_size_;
     mat_dim_a.batch_size_ = 0;
-    auto mat_dim_b = math::CreateMatrixDescriptor(weight_hh->dims(), 0, false);
+    auto mat_dim_b =
+        pten::funcs::CreateMatrixDescriptor(weight_hh->dims(), 0, false);
     blas.MatMul(*grad_gate_tmp, mat_dim_a, *weight_hh, mat_dim_b,
                 static_cast<T>(1.0), grad_pre_hidden, 0);
     postprocess_pre_hidden_grad(context, grad_pre_hidden, grad_pre_hidden_bak,
@@ -1602,11 +1614,13 @@ struct GradCell {
                                      Tensor* grad_weight_hh) const {
     auto& device_ctx =
         context.template device_context<platform::CPUDeviceContext>();
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(device_ctx);
-    auto mat_dim_c = math::CreateMatrixDescriptor(grad_gate->dims(), 0, true);
+    auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(device_ctx);
+    auto mat_dim_c =
+        pten::funcs::CreateMatrixDescriptor(grad_gate->dims(), 0, true);
     mat_dim_c.height_ *= mat_dim_c.batch_size_;
     mat_dim_c.batch_size_ = 0;
-    auto mat_dim_d = math::CreateMatrixDescriptor(pre_hidden->dims(), 0, false);
+    auto mat_dim_d =
+        pten::funcs::CreateMatrixDescriptor(pre_hidden->dims(), 0, false);
     mat_dim_d.height_ *= mat_dim_d.batch_size_;
     mat_dim_d.batch_size_ = 0;
     blas.MatMul(*grad_gate, mat_dim_c, *pre_hidden, mat_dim_d,
@@ -1910,8 +1924,8 @@ void RnnGradFunc(const framework::ExecutionContext& context,
   // squeeze the hidden first dim
   for (unsigned int i = 0; i < hidden_tensor_unbind.size(); i++) {
     hidden_tensor_unbind[i].Resize(
-        framework::slice_ddim(hidden_tensor_unbind[i].dims(), 1,
-                              hidden_tensor_unbind[i].dims().size()));
+        pten::slice_ddim(hidden_tensor_unbind[i].dims(), 1,
+                         hidden_tensor_unbind[i].dims().size()));
   }
   // add the output tensor to the hidden vector
   Tensor tmp;

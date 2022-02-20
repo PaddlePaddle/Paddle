@@ -35,7 +35,7 @@ void SoftmaxCUDNNFunctor<T>::operator()(
   // ------------------- cudnn descriptors ---------------------
   ScopedTensorDescriptor xDesc;
   ScopedTensorDescriptor yDesc;
-  std::vector<int> cudnn_tensor_dims = framework::vectorize<int>(X->dims());
+  std::vector<int> cudnn_tensor_dims = pten::vectorize<int>(X->dims());
   DataLayout layout = DataLayout::kNCHW;
   if (cudnn_tensor_dims.size() == 5) {
     layout = DataLayout::kNCDHW;
@@ -76,7 +76,7 @@ void SoftmaxGradCUDNNFunctor<T>::operator()(
   ScopedTensorDescriptor yDesc;
   ScopedTensorDescriptor dyDesc;
   ScopedTensorDescriptor dxDesc;
-  std::vector<int> cudnn_tensor_dims = framework::vectorize<int>(Y->dims());
+  std::vector<int> cudnn_tensor_dims = pten::vectorize<int>(Y->dims());
   DataLayout layout = DataLayout::kNCHW;
   if (cudnn_tensor_dims.size() == 5) {
     layout = DataLayout::kNCDHW;

@@ -29,17 +29,16 @@ namespace pten {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = pten::framework::DDim;
+using DDim = pten::DDim;
 
 TEST(DEV_API, cast) {
   // 1. create tensor
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  pten::DenseTensor dense_x(
-      alloc.get(),
-      pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            pten::framework::make_ddim({3, 4}),
-                            pten::DataLayout::NCHW));
+  pten::DenseTensor dense_x(alloc.get(),
+                            pten::DenseTensorMeta(pten::DataType::FLOAT32,
+                                                  pten::make_ddim({3, 4}),
+                                                  pten::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x.mutable_data<float>(paddle::platform::CPUPlace());
 

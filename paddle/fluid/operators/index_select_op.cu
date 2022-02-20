@@ -79,7 +79,7 @@ class IndexSelectCUDAKernel : public framework::OpKernel<T> {
     auto input_dim = in->dims();
     auto output_dim = out->dims();
     dim = dim >= 0 ? dim : dim + input_dim.size();
-    auto stride_dim = framework::stride(input_dim);
+    auto stride_dim = pten::stride(input_dim);
     int64_t stride = stride_dim[dim];
     int64_t size = output_dim[dim];
     int64_t delta = input_dim[dim] - size;
@@ -137,7 +137,7 @@ class IndexSelectGradCUDAKernel : public framework::OpKernel<T> {
     auto input_dim = in_grad->dims();
     auto output_dim = output_grad->dims();
     dim = dim >= 0 ? dim : dim + input_dim.size();
-    auto stride_dim = framework::stride(input_dim);
+    auto stride_dim = pten::stride(input_dim);
     int64_t stride = stride_dim[dim];
     int64_t size = output_dim[dim];
     int64_t delta = input_dim[dim] - size;
