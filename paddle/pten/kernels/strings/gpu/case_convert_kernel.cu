@@ -62,27 +62,93 @@ struct UTF8CaseConverter<pten::GPUContext, CharConverter> {
         strings::UnicodeFlagMap<pten::GPUContext, uint8_t>::Instance()->data();
     auto cases_map =
         strings::UnicodeFlagMap<pten::GPUContext, uint16_t>::Instance()->data();
-    // paddle::platform::Transform<GPUContext> trans;
-    // uint32_t unicode_len =
-    //     pten::strings::get_unicode_str_len(in.data(), in.size());
-    // thrust::device_vector<uint32_t> unicode_in(unicode_len, 0);
-    // uint32_t* unicode_raw_ptr = thrust::raw_pointer_cast(unicode_in.data());
-    // pten::strings::get_unicode_str(in.data(), unicode_raw_ptr, unicode_len);
-    // auto unicode_flag_map =
-    //     strings::UnicodeFlagMap<GPUContext, uint8_t>::Instance()->data();
-    // auto cases_map =
-    //     strings::UnicodeFlagMap<GPUContext, uint16_t>::Instance()->data();
-    // trans(dev_ctx,
-    //       unicode_in.begin(),
-    //       unicode_in.end(),
-    //       unicode_in.begin(),
-    //       CharConverter<GPUContext>(unicode_flag_map, cases_map));
-    // uint32_t utf8_len =
-    //     pten::strings::get_utf8_str_len(unicode_raw_ptr, unicode_len);
-    // thrust::device_vector<char> result(utf8_len, 0);
-    // char* result_ptr = thrust::raw_pointer_cast(result.data());
-    // pten::strings::get_utf8_str(unicode_raw_ptr, result_ptr, unicode_len);
-    // *out = result_ptr;
+
+    thrust::device_vector<uint32_t> unicode_offsets(num + 1, 0);
+    uint32_t* unicode_offsets_ptr =
+        thrust::raw_pointer_cast(unicode_offsets.data());
+
+    thrust::for_each_n(thrust::device,
+                       thrust::make_counting_iterator<unsigned int>(0),
+                       num,
+                       [unicode_offsets_ptr, in] __device__(uint32_t idx) {
+                         unicode_offsets_ptr[idx + 1] =
+                             pten::strings::get_unicode_str_len(in[idx].data(),
+                                                                in[idx].size());
+                       });
+    uint32_t total_lengths = thrust::reduce(
+        thrust::device, unicode_offsets_ptr, unicode_offsets_ptr + num + 1, 0);
+    if (total_lengths == 0) {
+      return;
+    }
+
+    thrust::device_vector<uint32_t> unicode_output(total_lengths, 0);
+    uint32_t* unicode_output_ptr =
+        thrust::raw_pointer_cast(unicode_output.data());
+
+    CharConverter<GPUContext> converter(unicode_flag_map, cases_map);
+    thrust::for_each_n(
+        thrust::device,
+        thrust::make_counting_iterator<unsigned int>(0),
+        num,
+        [in,
+         out,
+         unicode_output_ptr,
+         unicode_offsets_ptr,
+         converter] __device__(uint32_t idx) {
+          uint32_t unicode_len =
+              unicode_offsets_ptr[idx + 1] - unicode_offsets_ptr[idx];
+          pten::strings::get_unicode_str(
+              in[idx].data(),
+              unicode_output_ptr + unicode_offsets_ptr[idx],
+              unicode_len);
+          uint32_t* curr_unicode_output_ptr =
+              unicode_output_ptr + unicode_offsets_ptr[idx];
+          for (uint32_t i = 0; i < unicode_len; ++i) {
+            curr_unicode_output_ptr[i] = converter(curr_unicode_output_ptr[i]);
+          }
+          thrust::transform(thrust::device,
+                            unicode_output_ptr + unicode_offsets_ptr[idx],
+                            unicode_output_ptr + unicode_offsets_ptr[idx + 1],
+                            unicode_output_ptr + unicode_offsets_ptr[idx],
+                            converter);
+        });
+
+    thrust::device_vector<uint32_t> utf8_offsets(num + 1, 0);
+    uint32_t* utf8_offsets_ptr = thrust::raw_pointer_cast(utf8_offsets.data());
+
+    thrust::for_each_n(
+        thrust::device,
+        thrust::make_counting_iterator<unsigned int>(0),
+        num,
+        [utf8_offsets_ptr, unicode_output_ptr, unicode_offsets_ptr] __device__(
+            uint32_t idx) {
+          uint32_t unicode_len =
+              unicode_offsets_ptr[idx + 1] - unicode_offsets_ptr[idx];
+          utf8_offsets_ptr[idx + 1] = pten::strings::get_utf8_str_len(
+              unicode_output_ptr + unicode_offsets_ptr[idx], unicode_len);
+        });
+    uint32_t total_utf8_lengths = thrust::reduce(
+        thrust::device, utf8_offsets_ptr, utf8_offsets_ptr + num + 1, 0);
+
+    thrust::device_vector<char> utf8_output(total_utf8_lengths, 0);
+    char* utf8_output_ptr = thrust::raw_pointer_cast(utf8_output.data());
+    thrust::for_each_n(
+        thrust::device,
+        thrust::make_counting_iterator<unsigned int>(0),
+        num,
+        [utf8_output_ptr,
+         utf8_offsets_ptr,
+         unicode_output_ptr,
+         unicode_offsets_ptr,
+         out] __device__(uint32_t idx) {
+          uint32_t unicode_len =
+              unicode_offsets_ptr[idx + 1] - unicode_offsets_ptr[idx];
+          const uint32_t* input_ptr =
+              unicode_output_ptr + unicode_offsets_ptr[idx];
+          char* result_ptr = utf8_output_ptr + utf8_offsets_ptr[idx];
+          pten::strings::get_utf8_str(input_ptr, result_ptr, unicode_len);
+          out[idx] = result_ptr;
+        });
   }
 };
 

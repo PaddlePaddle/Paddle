@@ -95,6 +95,7 @@ TEST(DEV_API, strings_cast_convert) {
       long_str.begin(), long_str.end(), expected_results[2].begin(), ::tolower);
   std::transform(
       long_str.begin(), long_str.end(), expected_results[3].begin(), ::toupper);
+
   // 3. test API, ascii encoding
   auto gpu_strings_lower_out =
       pten::strings::StringLower(*dev_ctx, "", gpu_strings_x);
@@ -118,58 +119,51 @@ TEST(DEV_API, strings_cast_convert) {
   }
 }
 
-// TEST(DEV_API, strings_cast_convert_utf8) {
-//   auto gpu0 = CUDAPlace();
-//   // 1. create tensor
-//   const DDim dims({1, 1});
-//   StringTensorMeta meta(dims);
+TEST(DEV_API, strings_cast_convert_utf8) {
+  auto gpu0 = CUDAPlace();
+  auto cpu = CPUPlace();
 
-//   const auto string_allocator =
-//       std::make_unique<paddle::experimental::DefaultAllocator>(gpu0);
-//   const auto alloc = string_allocator.get();
-//   StringTensor dense_x(alloc, meta);
+  paddle::platform::DeviceContextPool& pool =
+      paddle::platform::DeviceContextPool::Instance();
+  GPUContext* dev_ctx = reinterpret_cast<GPUContext*>(pool.Get(gpu0));
+  CPUContext* cpu_ctx = reinterpret_cast<CPUContext*>(pool.Get(cpu));
 
-//   std::string utf8_str = "óÓsscHloëË";
+  // 1. create tensor
+  const DDim dims({1, 1});
+  StringTensorMeta meta(dims);
+  StringTensor gpu_strings_x = pten::strings::Empty(*dev_ctx, std::move(meta));
+  StringTensor cpu_strings_x = pten::strings::Empty(*cpu_ctx, std::move(meta));
+  StringTensor cpu_strings_lower_out =
+      pten::strings::Empty(*cpu_ctx, std::move(meta));
+  StringTensor cpu_strings_upper_out =
+      pten::strings::Empty(*cpu_ctx, std::move(meta));
+  const char* cpu_results[] = {cpu_strings_lower_out.data()[0].data(),
+                               cpu_strings_upper_out.data()[0].data()};
+  std::string utf8_str = "óÓsscHloëË";
+  pstring* cpu_strings_x_data = cpu_strings_x.mutable_data(cpu);
+  cpu_strings_x_data[0] = utf8_str;
+  pten::strings::Copy(*dev_ctx, cpu_strings_x, false, &gpu_strings_x);
 
-//   pstring* dense_x_data = dense_x.mutable_data();
-//   dense_x_data[0] = utf8_str;
+  // 2. get expected results
+  std::string expected_results[] = {"óósschloëë", "ÓÓSSCHLOËË"};
 
-//   paddle::platform::DeviceContextPool& pool =
-//       paddle::platform::DeviceContextPool::Instance();
-//   pten::GPUContext* dev_ctx =
-//   reinterpret_cast<pten::GPUContext*>(pool.Get(gpu0));
+  // 3. test API, ascii encoding
+  auto gpu_strings_lower_out =
+      pten::strings::StringLower(*dev_ctx, "utf-8", gpu_strings_x);
+  auto gpu_strings_upper_out =
+      pten::strings::StringUpper(*dev_ctx, "utf-8", gpu_strings_x);
+  pten::strings::Copy(
+      *dev_ctx, gpu_strings_lower_out, false, &cpu_strings_lower_out);
+  pten::strings::Copy(
+      *dev_ctx, gpu_strings_upper_out, false, &cpu_strings_upper_out);
 
-//   // 2. get expected results
-//   std::string expected_results[] = {"óósschloëë", "ÓÓSSCHLOËË"};
-//   std::string cpu_results[] = {"", ""};
-//   for (int i = 0; i < 2; ++i) {
-//       cpu_results[i] = std::string(expected_results[i].length(), 0);
-//   }
-//   // 3. test API, ascii encoding
-//   auto dense_lower_out = pten::StringLower(
-//       *dev_ctx,
-//       "utf-8",
-//       dense_x);
-//   auto dense_upper_out = pten::StringUpper(
-//       *dev_ctx,
-//       "utf-8",
-//       dense_x);
-
-//   // 4. check results
-//   ASSERT_EQ(dense_lower_out.numel(), 1);
-//   ASSERT_EQ(dense_upper_out.numel(), 1);
-
-//   paddle::memory::Copy(CPUPlace(), const_cast<char*>(cpu_results[0].data()),
-//   gpu0, dense_lower_out.data()[0].data(), cpu_results[0].length(),
-//   dev_ctx->stream());
-//   paddle::memory::Copy(CPUPlace(), const_cast<char*>(cpu_results[1].data()),
-//   gpu0, dense_upper_out.data()[0].data(), cpu_results[1].length(),
-//   dev_ctx->stream());
-
-//   for (int i = 0; i < 2; ++i) {
-//       ASSERT_EQ(cpu_results[i], expected_results[i]);
-//   }
-// }
+  // 4. check results
+  ASSERT_EQ(cpu_strings_lower_out.numel(), 1);
+  ASSERT_EQ(cpu_strings_upper_out.numel(), 1);
+  for (int i = 0; i < 2; ++i) {
+    ASSERT_EQ(cpu_results[i], expected_results[i]);
+  }
+}
 
 }  // namespace tests
 }  // namespace pten

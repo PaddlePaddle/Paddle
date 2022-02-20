@@ -79,7 +79,7 @@ class StringTensor : public TensorBase,
 
   /// \brief Returns the data layout of the tensor.
   /// \return The data layout of the tensor.
-  DataLayout layout() const noexcept override { return DataLayout::ALL_LAYOUT; }
+  DataLayout layout() const noexcept override { return DataLayout::STRINGS; }
 
   /// \brief Sets the meta information of the tensor. Only when the original
   /// attribute of Tensor is incomplete, can it be reset.
