@@ -292,8 +292,19 @@ pten::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
   pten::InferMetaContext infer_mete_context;
   for (auto& in_name : input_names) {
     if (ctx->HasInput(in_name)) {
-      infer_meta_context.EmplaceBackInput(std::make_shared<CompatMetaTensor>(
-          ctx->GetInputVarPtrs(in_name)[0], ctx->IsRuntime()));
+      auto input_var = ctx->GetInputVarPtrs(in_name);
+      if (input_var.size() == 1) {
+        infer_meta_context.EmplaceBackInput(
+            std::make_shared<CompatMetaTensor>(input_var[0], ctx->IsRuntime()));
+      } else {
+        paddle::SmallVector<std::shared_ptr<pten::MetaTensor>> inputs;
+        inputs.reserve(input_var.size());
+        for (const auto& in : input_var) {
+          inputs.emplace_back(
+              std::make_shared<CompatMetaTensor>(in, ctx->IsRuntime()));
+        }
+        infer_meta_context.EmplaceBackInputs(std::move(inputs));
+      }
     } else {
       infer_meta_context.EmplaceBackInput({nullptr});
     }
