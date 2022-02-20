@@ -36,7 +36,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-#include "paddle/pten/kernels/funcs/cuda_kernel_config.h"
 
 namespace paddle {
 namespace operators {
@@ -189,7 +188,7 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     int64_t x_numel = x.numel();
     auto stream = dev_ctx.stream();
     auto* mask_data = mask->data<uint8_t>();
-    size_t size = pten::product(mask->dims());
+    size_t size = phi::product(mask->dims());
 
     auto* x_data = x.data<T>();
     auto* y_data = y->data<T>();

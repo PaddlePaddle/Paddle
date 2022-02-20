@@ -22,7 +22,7 @@ if (pos GREATER 1)
     foreach(header ${HEADERS})
         if (${header} MATCHES ".*.h$")
             file(READ ${header} HEADER_CONTENT)
-            string(REPLACE "paddle/pten/" "paddle/include/experimental/pten/" HEADER_CONTENT "${HEADER_CONTENT}")
+            string(REPLACE "paddle/phi/" "paddle/include/experimental/phi/" HEADER_CONTENT "${HEADER_CONTENT}")
             string(REPLACE "paddle/utils/" "paddle/include/experimental/utils/" HEADER_CONTENT "${HEADER_CONTENT}")
             file(WRITE ${header} "${HEADER_CONTENT}")
             message(STATUS "pten header path compat processing complete: ${header}")
@@ -32,10 +32,10 @@ endif()
 endfunction()
 
 pten_header_path_compat(${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental)
-pten_header_path_compat(${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/api)
-pten_header_path_compat(${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/api/ext)
-pten_header_path_compat(${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/api/include)
-pten_header_path_compat(${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/common)
+pten_header_path_compat(${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/api)
+pten_header_path_compat(${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/api/ext)
+pten_header_path_compat(${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/api/include)
+pten_header_path_compat(${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/common)
 
 # In order to be compatible with the original behavior, the header file name needs to be changed
 file(RENAME ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/extension.h

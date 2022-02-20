@@ -22,9 +22,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_code.h"
 #include "paddle/fluid/platform/float16.h"
 
-namespace pten {
+namespace phi {
 class DenseTensor;
-}  // namespace pten
+}  // namespace phi
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
@@ -265,7 +265,7 @@ void TestElementwiseMain(
   // Prepare CPU tensors which always hold float.
   std::vector<paddle::framework::LoDTensor> cpu_tensors(ids.size());
   auto dims =
-      pten::make_ddim({static_cast<int64_t>(256), static_cast<int64_t>(1024)});
+      phi::make_ddim({static_cast<int64_t>(256), static_cast<int64_t>(1024)});
   for (size_t i = 0; i < cpu_tensors.size(); ++i) {
     cpu_tensors[i].mutable_data<float>(dims, paddle::platform::CPUPlace());
   }

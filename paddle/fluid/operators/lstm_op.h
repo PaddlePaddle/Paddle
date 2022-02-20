@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/detail/activation_functions.h"
 #include "paddle/fluid/operators/math/lstm_compute.h"
 #include "paddle/fluid/operators/math/sequence2batch.h"
-#include "paddle/pten/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -76,7 +76,7 @@ class LSTMKernel : public framework::OpKernel<T> {
       Tensor b = *bias;
       b.Resize({bias->numel(), 1});
       Tensor gate_bias = b.Slice(0, 4 * frame_size);
-      pten::funcs::RowwiseAdd<DeviceContext, T> add_bias;
+      phi::funcs::RowwiseAdd<DeviceContext, T> add_bias;
       add_bias(device_ctx, *batch_gate, gate_bias, batch_gate);
     }
 
@@ -128,7 +128,7 @@ class LSTMKernel : public framework::OpKernel<T> {
     auto cand_act = math::detail::GetActivationType(
         ctx.Attr<std::string>("candidate_activation"));
 
-    auto blas = pten::funcs::GetBlas<DeviceContext, T>(device_ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(device_ctx);
     for (size_t n = 0; n < num_batch; n++) {
       int bstart = static_cast<int>(batch_starts[n]);
       int bend = static_cast<int>(batch_starts[n + 1]);
@@ -210,7 +210,7 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     auto* c0_g = ctx.Output<Tensor>(framework::GradVarName("C0"));
 
     auto& device_ctx = ctx.template device_context<DeviceContext>();
-    pten::funcs::SetConstant<DeviceContext, T> zero;
+    phi::funcs::SetConstant<DeviceContext, T> zero;
     if (weight_g) {
       weight_g->mutable_data<T>(ctx.GetPlace());
       zero(device_ctx, weight_g, static_cast<T>(0.0));
@@ -302,7 +302,7 @@ class LSTMGradKernel : public framework::OpKernel<T> {
 
     auto batch_starts = batch_gate->lod()[0];
     size_t num_batch = batch_starts.size() - 1;
-    auto blas = pten::funcs::GetBlas<DeviceContext, T>(device_ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(device_ctx);
     for (int n = static_cast<int>(num_batch) - 1; n >= 0; n--) {
       int bstart = static_cast<int>(batch_starts[n]);
       int bend = static_cast<int>(batch_starts[n + 1]);
@@ -380,7 +380,7 @@ class LSTMGradKernel : public framework::OpKernel<T> {
       Tensor b_g = *bias_g;
       b_g.Resize({bias_g->numel(), 1});
       Tensor gate_bias_g = b_g.Slice(0, 4 * frame_size);
-      pten::funcs::ColwiseSum<DeviceContext, T> col_sum;
+      phi::funcs::ColwiseSum<DeviceContext, T> col_sum;
       col_sum(device_ctx, batch_gate_g, &gate_bias_g);
     }
 

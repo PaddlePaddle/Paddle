@@ -77,7 +77,7 @@ framework::DDim GetOutputShape(const std::vector<int> squeeze_dims,
       output_shape.push_back(in_dims[i]);
     }
   }
-  return pten::make_ddim(output_shape);
+  return phi::make_ddim(output_shape);
 }
 
 class SqueezeOp : public framework::OperatorWithKernel {
@@ -232,7 +232,7 @@ class Squeeze2Op : public framework::OperatorWithKernel {
     for (int i = 0; i < x_dims.size(); ++i) {
       xshape_dims[i + 1] = x_dims[i];
     }
-    ctx->SetOutputDim("XShape", pten::make_ddim(xshape_dims));
+    ctx->SetOutputDim("XShape", phi::make_ddim(xshape_dims));
     ctx->ShareLoD("X", /*->*/ "XShape");
   }
 
@@ -276,7 +276,7 @@ class Squeeze2GradOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(context->HasInput(framework::GradVarName("Out")), "Input",
                    framework::GradVarName("Out"), "Squeeze2Grad");
     auto xshape_dims = context->GetInputDim("XShape");
-    auto x_dims = pten::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
     context->SetOutputDim(framework::GradVarName("X"), x_dims);
     context->ShareLoD("XShape", framework::GradVarName("X"));
   }

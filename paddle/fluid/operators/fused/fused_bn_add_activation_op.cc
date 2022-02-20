@@ -88,7 +88,7 @@ void FusedBatchNormAddActOp::InferShape(
 
   bool check = true;
   if ((!ctx->IsRuntime()) &&
-      (pten::product(scale_dim) <= 0 || pten::product(bias_dim) <= 0)) {
+      (phi::product(scale_dim) <= 0 || phi::product(bias_dim) <= 0)) {
     check = false;
   }
 

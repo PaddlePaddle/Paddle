@@ -22,9 +22,9 @@
 // \author Yi Li, Guodong Zhang, Jifeng Dai
 
 #pragma once
-#include "paddle/pten/core/hostdevice.h"
-#include "paddle/pten/kernels/funcs/blas/blas.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/core/hostdevice.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 template <typename T>
 HOSTDEVICE T DmcnGetGradientWeight(T argmax_h, T argmax_w, const int h,

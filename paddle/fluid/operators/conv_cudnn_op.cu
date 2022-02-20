@@ -135,15 +135,15 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     framework::DDim filter_data_dims;
 
     if (compute_format == DataLayout::kNCHW) {
-      in_data_dims = pten::slice_ddim(in_dims, 2, in_dims.size());
-      filter_data_dims = pten::slice_ddim(filter_dims, 2, filter_dims.size());
+      in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
+      filter_data_dims = phi::slice_ddim(filter_dims, 2, filter_dims.size());
     } else {
-      in_data_dims = pten::slice_ddim(in_dims, 1, in_dims.size() - 1);
+      in_data_dims = phi::slice_ddim(in_dims, 1, in_dims.size() - 1);
       filter_data_dims =
-          pten::slice_ddim(filter_dims, 1, filter_dims.size() - 1);
+          phi::slice_ddim(filter_dims, 1, filter_dims.size() - 1);
     }
 
-    std::vector<int> ksize = pten::vectorize<int>(filter_data_dims);
+    std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 
@@ -184,7 +184,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
           input_pad[2 * i + 2 + 1] = paddings[2 * i + 1] - padding_common[i];
         }
       }
-      framework::DDim new_input_shape(pten::make_ddim(new_input_shape_vec));
+      framework::DDim new_input_shape(phi::make_ddim(new_input_shape_vec));
       transformed_input.Resize(new_input_shape);
       auto& dev_ctx =
           ctx.template device_context<paddle::platform::CUDADeviceContext>();
@@ -474,14 +474,14 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     framework::DDim in_data_dims;
     framework::DDim filter_data_dims;
     if (compute_format == DataLayout::kNCHW) {
-      in_data_dims = pten::slice_ddim(in_dims, 2, in_dims.size());
-      filter_data_dims = pten::slice_ddim(filter_dims, 2, filter_dims.size());
+      in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
+      filter_data_dims = phi::slice_ddim(filter_dims, 2, filter_dims.size());
     } else {
-      in_data_dims = pten::slice_ddim(in_dims, 1, in_dims.size() - 1);
+      in_data_dims = phi::slice_ddim(in_dims, 1, in_dims.size() - 1);
       filter_data_dims =
-          pten::slice_ddim(filter_dims, 1, filter_dims.size() - 1);
+          phi::slice_ddim(filter_dims, 1, filter_dims.size() - 1);
     }
-    std::vector<int> ksize = pten::vectorize<int>(filter_data_dims);
+    std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 
@@ -524,7 +524,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
           input_pad[2 * i + 2 + 1] = paddings[2 * i + 1] - padding_common[i];
         }
       }
-      framework::DDim new_input_shape(pten::make_ddim(new_input_shape_vec));
+      framework::DDim new_input_shape(phi::make_ddim(new_input_shape_vec));
       transformed_input.Resize(new_input_shape);
 
       transformed_input_grad.Resize(new_input_shape);
@@ -857,7 +857,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
     auto dX = ctx.Output<Tensor>("DInput");
     if (ddO) {
       ddO->mutable_data<T>(ctx.GetPlace());
-      pten::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
+      phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
       set_zero(dev_ctx, ddO, static_cast<T>(0));
     }
     if (dW) {
@@ -948,10 +948,10 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
 
     auto in_dims = transformed_X_channel.dims();
     auto filter_dims = W->dims();
-    framework::DDim in_data_dims = pten::slice_ddim(in_dims, 2, in_dims.size());
+    framework::DDim in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
     framework::DDim filter_data_dims =
-        pten::slice_ddim(filter_dims, 2, filter_dims.size());
-    std::vector<int> ksize = pten::vectorize<int>(filter_data_dims);
+        phi::slice_ddim(filter_dims, 2, filter_dims.size());
+    std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 
@@ -980,7 +980,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
         input_pad[2 * i + 4] = paddings[2 * i] - padding_common[i];
         input_pad[2 * i + 4 + 1] = paddings[2 * i + 1] - padding_common[i];
       }
-      framework::DDim new_input_shape(pten::make_ddim(new_input_shape_vec));
+      framework::DDim new_input_shape(phi::make_ddim(new_input_shape_vec));
       transformed_X.Resize(new_input_shape);
       transformed_ddX.Resize(new_input_shape);
       transformed_dX.Resize(new_input_shape);

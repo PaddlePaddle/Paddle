@@ -25,15 +25,15 @@
 #include <vector>
 
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/pten/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace distributed {
 
 template <typename T>
-inline pten::funcs::BlasT<paddle::platform::CPUDeviceContext, T> GetBlas() {
+inline phi::funcs::BlasT<paddle::platform::CPUDeviceContext, T> GetBlas() {
   paddle::platform::CPUDeviceContext cpu_ctx;
-  return pten::funcs::GetBlas<paddle::platform::CPUDeviceContext, T>(cpu_ctx);
+  return phi::funcs::GetBlas<paddle::platform::CPUDeviceContext, T>(cpu_ctx);
 }
 
 template <typename T>

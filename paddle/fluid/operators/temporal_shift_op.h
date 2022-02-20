@@ -11,7 +11,7 @@
 
 #pragma once
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -148,8 +148,8 @@ class TemporalShiftKernel : public framework::OpKernel<T> {
     const int c2 = static_cast<int>(c * 2 * shift_ratio);
 
     framework::DDim out_dims =
-        (data_layout == DataLayout::kNCHW ? pten::make_ddim({nt, c, h, w})
-                                          : pten::make_ddim({nt, h, w, c}));
+        (data_layout == DataLayout::kNCHW ? phi::make_ddim({nt, c, h, w})
+                                          : phi::make_ddim({nt, h, w, c}));
     const T* input_data = input->data<T>();
     T* output_data = output->mutable_data<T>(out_dims, ctx.GetPlace());
 
@@ -192,8 +192,8 @@ class TemporalShiftGradKernel : public framework::OpKernel<T> {
     const int c2 = static_cast<int>(c * 2 * shift_ratio);
 
     framework::DDim in_grad_dims =
-        (data_layout == DataLayout::kNCHW ? pten::make_ddim({nt, c, h, w})
-                                          : pten::make_ddim({nt, h, w, c}));
+        (data_layout == DataLayout::kNCHW ? phi::make_ddim({nt, c, h, w})
+                                          : phi::make_ddim({nt, h, w, c}));
     const T* output_grad_data = output_grad->data<T>();
     T* input_grad_data =
         input_grad->mutable_data<T>(in_grad_dims, ctx.GetPlace());

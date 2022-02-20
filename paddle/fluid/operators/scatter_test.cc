@@ -24,9 +24,9 @@ TEST(scatter, ScatterUpdate) {
   paddle::framework::Tensor index;
   paddle::framework::Tensor output;
 
-  auto* p_src = src.mutable_data<float>(pten::make_ddim({1, 4}),
+  auto* p_src = src.mutable_data<float>(phi::make_ddim({1, 4}),
                                         paddle::platform::CPUPlace());
-  auto* p_index = index.mutable_data<int>(pten::make_ddim({1}),
+  auto* p_index = index.mutable_data<int>(phi::make_ddim({1}),
                                           paddle::platform::CPUPlace());
 
   for (size_t i = 0; i < 4; ++i) {
@@ -34,7 +34,7 @@ TEST(scatter, ScatterUpdate) {
   }
   p_index[0] = 1;
 
-  auto* p_output = output.mutable_data<float>(pten::make_ddim({4, 4}),
+  auto* p_output = output.mutable_data<float>(phi::make_ddim({4, 4}),
                                               paddle::platform::CPUPlace());
 
   for (int64_t i = 0; i < output.numel(); ++i) {

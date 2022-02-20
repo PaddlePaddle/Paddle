@@ -36,13 +36,13 @@ class AucOp : public framework::OperatorWithKernel {
             predict_dims));
     auto predict_width = predict_dims[1];
     PADDLE_ENFORCE_NE(
-        pten::product(predict_dims), 0,
+        phi::product(predict_dims), 0,
         platform::errors::InvalidArgument(
             "The Input(Predict) has not been initialized properly. The "
             "shape of Input(Predict) = [%s], the shape can not involes 0.",
             predict_dims));
     PADDLE_ENFORCE_NE(
-        pten::product(label_dims), 0,
+        phi::product(label_dims), 0,
         platform::errors::InvalidArgument(
             "The Input(Label) has not been initialized properly. The "
             "shape of Input(Label) = [%s], the shape can not involes 0.",

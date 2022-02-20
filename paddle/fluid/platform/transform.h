@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/pten/core/hostdevice.h"
+#include "paddle/phi/core/hostdevice.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include <thrust/execution_policy.h>
@@ -78,16 +78,16 @@ struct Transform<platform::CPUDeviceContext> {
 };
 
 template <>
-struct Transform<pten::CPUContext> {
+struct Transform<phi::CPUContext> {
   template <typename InputIter, typename OutputIter, typename UnaryOperation>
-  void operator()(const pten::CPUContext& context, InputIter first,
+  void operator()(const phi::CPUContext& context, InputIter first,
                   InputIter last, OutputIter result, UnaryOperation op) {
     std::transform(first, last, result, op);
   }
 
   template <typename InputIter1, typename InputIter2, typename OutputIter,
             typename BinaryOperation>
-  void operator()(const pten::CPUContext& context, InputIter1 first1,
+  void operator()(const phi::CPUContext& context, InputIter1 first1,
                   InputIter1 last1, InputIter2 first2, OutputIter result,
                   BinaryOperation op) {
     std::transform(first1, last1, first2, result, op);
@@ -143,9 +143,9 @@ struct Transform<platform::CUDADeviceContext> {
 };
 
 template <>
-struct Transform<pten::GPUContext> {
+struct Transform<phi::GPUContext> {
   template <typename InputIter, typename OutputIter, typename UnaryOperation>
-  void operator()(const pten::GPUContext& context, InputIter first,
+  void operator()(const phi::GPUContext& context, InputIter first,
                   InputIter last, OutputIter result, UnaryOperation op) {
     auto place = context.GetPlace();
     PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
@@ -166,7 +166,7 @@ struct Transform<pten::GPUContext> {
 
   template <typename InputIter1, typename InputIter2, typename OutputIter,
             typename BinaryOperation>
-  void operator()(const pten::GPUContext& context, InputIter1 first1,
+  void operator()(const phi::GPUContext& context, InputIter1 first1,
                   InputIter1 last1, InputIter2 first2, OutputIter result,
                   BinaryOperation op) {
     auto place = context.GetPlace();

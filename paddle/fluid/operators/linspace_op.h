@@ -16,7 +16,7 @@ limitations under the License. */
 #include <functional>
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -51,7 +51,7 @@ class CPULinspaceKernel : public framework::OpKernel<T> {
                                   "than 0, but received num is %d",
                                   num));
 
-    out->Resize(pten::make_ddim({num}));
+    out->Resize(phi::make_ddim({num}));
 
     T* out_data = out->mutable_data<T>(context.GetPlace());
 

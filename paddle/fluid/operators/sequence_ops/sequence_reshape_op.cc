@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/operators/sequence_ops/sequence_reshape_op.h"
 #include <memory>
-#include "paddle/pten/core/ddim.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace operators {
