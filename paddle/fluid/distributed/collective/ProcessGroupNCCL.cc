@@ -12,11 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <chrono>
-#include <memory>
-#include <string>
-#include <vector>
-
 #include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 
@@ -27,7 +22,7 @@ namespace paddle {
 namespace distributed {
 
 static ncclRedOp_t ToNCCLRedType(ReduceOp reduction) {
-  static const std::unordered_map<ReduceOp, ncclRedOp_t> red_type = {
+  static const std::map<ReduceOp, ncclRedOp_t> red_type = {
       {ReduceOp::MIN, ncclMin},
       {ReduceOp::MAX, ncclMax},
       {ReduceOp::SUM, ncclSum},
@@ -41,7 +36,7 @@ static ncclRedOp_t ToNCCLRedType(ReduceOp reduction) {
   return it->second;
 }
 
-std::string BuildNcclUniqueIdStr(const ncclUniqueId& ncclID) {
+std::string SerializeNCCLUniqueId(const ncclUniqueId& ncclID) {
   const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&ncclID);
   std::ostringstream oss;
   for (auto i = 0; i < NCCL_UNIQUE_ID_BYTES; ++i) {
@@ -203,7 +198,7 @@ void ProcessGroupNCCL::CreateNCCLManagerCache(
 
   VLOG(3) << "init nccl rank: " << strategy_.local_rank_
           << ", nranks: " << strategy_.nranks_ << ", place: " << places_key
-          << ", nccl uniqueid: " << BuildNcclUniqueIdStr(nccl_id);
+          << ", nccl uniqueid: " << SerializeNCCLUniqueId(nccl_id);
 
   std::vector<std::unique_ptr<CUDADeviceContext>> dev_ctx;
   dev_ctx.resize(places.size());

@@ -22,7 +22,6 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
-#include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
 #include "paddle/fluid/distributed/collective/Types.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -30,6 +29,10 @@ limitations under the License. */
 #include "paddle/fluid/pybind/distributed_py.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/pten/api/all.h"
+
+#if defined(PADDLE_WITH_NCCL)
+#include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
+#endif
 
 namespace py = pybind11;
 

@@ -15,24 +15,27 @@
 #pragma once
 
 #include <chrono>
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/distributed/collective/NCCLTools.h"
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
-// #include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/dynload/nccl.h"
+
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/stream/cuda_stream.h"
 
+#if defined(PADDLE_WITH_NCCL)
+#include "paddle/fluid/distributed/collective/NCCLTools.h"
+#include "paddle/fluid/platform/dynload/nccl.h"
+#endif
+
 constexpr const char* NCCL_BACKEND_NAME = "NCCL";
-#define NCCL_UNIQUE_ID_BYTES 128
 
 namespace paddle {
 namespace distributed {
