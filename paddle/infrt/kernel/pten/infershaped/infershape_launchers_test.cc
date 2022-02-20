@@ -17,10 +17,10 @@
 #include "paddle/infrt/kernel/pten/infershaped/infershaped_kernel_launcher.h"
 #include "paddle/infrt/kernel/pten/infershaped/infershaped_kernel_launchers.h"
 #include "paddle/infrt/kernel/pten/infershaped/infershaped_utils.h"
-#include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/common/place.h"
-#include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/meta_tensor.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/meta_tensor.h"
 
 namespace infrt {
 namespace kernel {
@@ -37,15 +37,15 @@ TEST(utils, registry) {
   CHECK_EQ(count, 2U);
 }
 
-class FancyAllocator : public pten::Allocator {
+class FancyAllocator : public phi::Allocator {
  public:
-  static void Delete(pten::Allocation* allocation) {
+  static void Delete(phi::Allocation* allocation) {
     ::operator delete(allocation->ptr());
   }
 
   AllocationPtr Allocate(size_t bytes_size) override {
     void* data = ::operator new(bytes_size);
-    auto* allocation = new pten::Allocation(data, bytes_size, pten::CPUPlace());
+    auto* allocation = new phi::Allocation(data, bytes_size, pten::CPUPlace());
     return AllocationPtr(allocation, Delete);
   }
 };
@@ -62,7 +62,7 @@ TEST(ElementwiseAdd, launcher_registry) {
   const pten::LoD lod{};
   pten::DenseTensorMeta meta(dtype, dims, layout, lod);
 
-  auto fancy_allocator = std::unique_ptr<pten::Allocator>(new FancyAllocator);
+  auto fancy_allocator = std::unique_ptr<phi::Allocator>(new FancyAllocator);
   auto* alloc = fancy_allocator.get();
 
   pten::DenseTensor a(alloc, meta);
