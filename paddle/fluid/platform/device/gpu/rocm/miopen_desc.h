@@ -131,7 +131,7 @@ class TensorDescriptor {
   T* desc() const { return desc_.get(); }
 
   void set(const Tensor& tensor, const int groups = 1) {
-    auto dims = framework::vectorize<int>(tensor.dims());
+    auto dims = pten::vectorize<int>(tensor.dims());
     std::vector<int> strides(dims.size());
     strides[dims.size() - 1] = 1;
     for (int i = dims.size() - 2; i >= 0; i--) {
@@ -142,7 +142,8 @@ class TensorDescriptor {
       dims_with_group[1] = dims_with_group[1] / groups;
     }
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetTensorDescriptor(
-        (miopenTensorDescriptor_t)(desc_.get()), ToCudnnDataType(tensor.type()),
+        (miopenTensorDescriptor_t)(desc_.get()),
+        ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype())),
         static_cast<int>(dims_with_group.size()),
         const_cast<int*>(dims_with_group.data()),
         const_cast<int*>(strides.data())));
@@ -153,7 +154,7 @@ class TensorDescriptor {
     PADDLE_ENFORCE_EQ(format, MIOPEN_TENSOR_NCHW,
                       platform::errors::InvalidArgument(
                           "format should ONLY be NCHW in MIOPEN."));
-    auto dims = framework::vectorize<int>(tensor.dims());
+    auto dims = pten::vectorize<int>(tensor.dims());
     std::vector<int> strides(dims.size());
     strides[dims.size() - 1] = 1;
     for (int i = dims.size() - 2; i >= 0; i--) {
@@ -164,7 +165,8 @@ class TensorDescriptor {
       dims_with_group[1] = dims_with_group[1] / groups;
     }
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetTensorDescriptor(
-        (miopenTensorDescriptor_t)(desc_.get()), ToCudnnDataType(tensor.type()),
+        (miopenTensorDescriptor_t)(desc_.get()),
+        ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype())),
         static_cast<int>(dims_with_group.size()),
         const_cast<int*>(dims_with_group.data()),
         const_cast<int*>(strides.data())));
@@ -198,7 +200,7 @@ class FilterDescriptor {
     PADDLE_ENFORCE_EQ(format, MIOPEN_TENSOR_NCHW,
                       platform::errors::InvalidArgument(
                           "format should ONLY be NCHW in MIOPEN."));
-    auto dims = framework::vectorize<int>(tensor.dims());
+    auto dims = pten::vectorize<int>(tensor.dims());
     std::vector<int> strides(dims.size());
     strides[dims.size() - 1] = 1;
     for (int i = dims.size() - 2; i >= 0; i--) {
@@ -209,7 +211,8 @@ class FilterDescriptor {
       dims_with_group[1] = dims_with_group[1] / groups;
     }
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetTensorDescriptor(
-        (miopenTensorDescriptor_t)(desc_.get()), ToCudnnDataType(tensor.type()),
+        (miopenTensorDescriptor_t)(desc_.get()),
+        ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype())),
         static_cast<int>(dims_with_group.size()),
         const_cast<int*>(dims_with_group.data()),
         const_cast<int*>(strides.data())));

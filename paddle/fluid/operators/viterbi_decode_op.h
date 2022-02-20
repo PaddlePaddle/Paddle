@@ -250,14 +250,14 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     auto batch_size = static_cast<int>(input->dims()[0]);
     auto seq_len = static_cast<int>(input->dims()[1]);
     auto n_labels = static_cast<int>(input->dims()[2]);
-    math::SetConstant<DeviceContext, T> float_functor;
-    math::SetConstant<DeviceContext, int64_t> int_functor;
+    pten::funcs::SetConstant<DeviceContext, T> float_functor;
+    pten::funcs::SetConstant<DeviceContext, int64_t> int_functor;
     std::vector<Tensor> historys;
     // We create tensor buffer in order to avoid allocating memory frequently
     // 10 means allocate 10*batch_size bytes memory, such as int_mask, zero...
     int buffer_size = batch_size * (n_labels + 1) * seq_len + 10 * batch_size;
     LoDTensor int_buffer;
-    int_buffer.Resize(framework::make_ddim({buffer_size}));
+    int_buffer.Resize(pten::make_ddim({buffer_size}));
     int_buffer.mutable_data<int64_t>(ctx.GetPlace());
     TensorBuffer int_tensor_buffer(int_buffer);
     // create float tensor buffer
@@ -265,7 +265,7 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     buffer_size = batch_size * (seq_len + 10) * n_labels +
                   (batch_size + 2) * n_labels * n_labels;
     LoDTensor float_buffer;
-    float_buffer.Resize(framework::make_ddim({buffer_size}));
+    float_buffer.Resize(pten::make_ddim({buffer_size}));
     float_buffer.mutable_data<T>(ctx.GetPlace());
     TensorBuffer float_tensor_buffer(float_buffer);
     auto* length = ctx.Input<Tensor>("Length");

@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/pten/backends/all_context.h"
 #include "paddle/pten/common/data_type.h"
 #include "paddle/pten/common/layout.h"
+#include "paddle/pten/core/selected_rows.h"
 
 // TODO(chenweihang): split Key, Kernel, Factory into diff files
 #include "paddle/pten/core/kernel_factory.h"
@@ -37,6 +38,11 @@ std::size_t CountLeadingZeros(uint64_t val);
 }  // namespace detail
 
 pten::DeviceContext* GetDeviceContextByBackend(pten::Backend backend);
+
+enum class KernelType {
+  DENSE_TENSOR_KENREL,  // kernel for DenseTensor
+  SELECTED_ROWS_KENREL  // kernel for SelectedRows
+};
 
 // TODO(chenweihang): support DataLayout and DataType selected
 struct KernelKeySet {
@@ -113,11 +119,34 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   }
 };
 
+struct KernelTypeParser : ArgsIterator<KernelTypeParser> {
+  KernelType kernel_type{KernelType::DENSE_TENSOR_KENREL};
+
+  // TODO(chenweihang): deal with multiple diff input Tensors
+  // TODO(chenweihang): add global device guard method to set backend
+  void operator()(const Tensor& x) {
+    if (pten::SelectedRows::classof(x.impl().get())) {
+      kernel_type = KernelType::SELECTED_ROWS_KENREL;
+    }
+  }
+
+  // skip other type args, these args don't used in kernel selection
+  template <typename T>
+  void operator()(const T& x) {
+    // do nothing
+  }
+};
+
 }  // namespace detail
 
 template <typename... Args>
 KernelKeySet ParseKernelKeyByInputArgs(const Args&... args) {
   return detail::KernelKeyParser().apply(args...).key_set;
+}
+
+template <typename... Args>
+KernelType ParseKernelTypeByInputArgs(const Args&... args) {
+  return detail::KernelTypeParser().apply(args...).kernel_type;
 }
 
 DataType ParseDataType(DataType dtype);

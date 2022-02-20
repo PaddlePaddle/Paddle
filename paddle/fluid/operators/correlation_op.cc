@@ -96,7 +96,7 @@ class CorrelationOp : public framework::OperatorWithKernel {
     std::vector<int64_t> output_shape =
         CorrelationOutputSize(in_dims[0], in_dims[2], in_dims[3], stride1,
                               stride2, kernel_size, pad_size, max_displacement);
-    ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
+    ctx->SetOutputDim("Output", pten::make_ddim(output_shape));
   }
 
  protected:
@@ -104,9 +104,11 @@ class CorrelationOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "Input1");
-    PADDLE_ENFORCE_EQ(input_data_type, ctx.Input<Tensor>("Input2")->type(),
-                      platform::errors::InvalidArgument(
-                          "X and Y shoule have the same datatype"));
+    PADDLE_ENFORCE_EQ(
+        input_data_type,
+        framework::TransToProtoVarType(ctx.Input<Tensor>("Input2")->dtype()),
+        platform::errors::InvalidArgument(
+            "X and Y shoule have the same datatype"));
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 

@@ -17,11 +17,11 @@ limitations under the License. */
 #include <cstring>
 #include <vector>
 
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/pten/core/ddim.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -109,8 +109,8 @@ void CPUGatherNd(const platform::DeviceContext& ctx, const Tensor& input,
   // final dim
   int64_t end_size = index_dims[index_dims_size - 1];
   // remain dim
-  auto remain_ddim = framework::slice_ddim(index_dims, 0, index_dims_size - 1);
-  int64_t remain_numel = framework::product(remain_ddim);
+  auto remain_ddim = pten::slice_ddim(index_dims, 0, index_dims_size - 1);
+  int64_t remain_numel = pten::product(remain_ddim);
   // slice size
   int64_t slice_size = 1;
   for (int64_t i = end_size; i < input_dims_size; ++i) {
@@ -181,7 +181,7 @@ void GatherV2Function(const Tensor* input, const Tensor* index, int axis,
     outer_dim_size *= input_dim[i];
     out_dim_vec.push_back(input_dim[i]);
   }
-  auto out_dim = framework::make_ddim(out_dim_vec);
+  auto out_dim = pten::make_ddim(out_dim_vec);
 
   out->Resize(out_dim);
   auto* out_data = out->mutable_data<T>(place);
@@ -226,7 +226,7 @@ void GatherV2GradFunction(const Tensor* input, const Tensor* index,
   auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
   auto out_dim = out->dims();
   int64_t out_index_dim_size = out_dim[axis_index];
-  operators::math::set_constant(*dev_ctx, out, 0.0);
+  pten::funcs::set_constant(*dev_ctx, out, 0.0);
 
   for (int64_t i = 0; i < inner_dim_size; i++) {
     for (int64_t j = 0; j < input_index_dim_size; j++) {

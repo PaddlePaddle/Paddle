@@ -63,7 +63,7 @@ class DotOp : public framework::OperatorWithKernel {
                           x_dims.to_str(), y_dims.to_str()));
     auto dims = vectorize(x_dims);
     dims[dims.size() - 1] = 1;
-    ctx->SetOutputDim("Out", framework::make_ddim(dims));
+    ctx->SetOutputDim("Out", pten::make_ddim(dims));
   }
 
   framework::OpKernelType GetExpectedKernelType(
@@ -116,13 +116,6 @@ class DotGradOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
                                        ctx, framework::GradVarName("Out")),
                                    ctx.GetPlace());
-  }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::KernelSignature(
-        "dot_grad", {"X", "Y", framework::GradVarName("Out")}, {},
-        {framework::GradVarName("X"), framework::GradVarName("Y")});
   }
 };
 

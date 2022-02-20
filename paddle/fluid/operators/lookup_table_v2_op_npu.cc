@@ -59,7 +59,7 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
       FillNpuTensorWithConstant<int32_t>(&index,
                                          static_cast<int32_t>(padding_idx));
 
-      auto updata_dim = framework::make_ddim({1, table_t->dims()[1]});
+      auto updata_dim = pten::make_ddim({1, table_t->dims()[1]});
       Tensor update;
       update.mutable_data<T>(updata_dim, ctx.GetPlace());
       FillNpuTensorWithConstant<T>(&update, static_cast<T>(0));
@@ -134,7 +134,8 @@ class LookupTableV2GradNPUKernel : public framework::OpKernel<T> {
       runner_scatter.Run(stream);
     } else {
       Tensor casted_ids_t;
-      if (ids_t->type() != framework::proto::VarType::INT32) {
+      if (framework::TransToProtoVarType(ids_t->dtype()) !=
+          framework::proto::VarType::INT32) {
         casted_ids_t.mutable_data<int32_t>(ids_t->dims(), ctx.GetPlace());
         const auto &cast_runner = NpuOpRunner("Cast", {*ids_t}, {casted_ids_t},
                                               {{"dst_type", ACL_INT32}});

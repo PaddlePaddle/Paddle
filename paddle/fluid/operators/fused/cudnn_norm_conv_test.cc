@@ -21,8 +21,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/fused/cudnn_norm_conv.cu.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
@@ -37,8 +37,8 @@ USE_OP_DEVICE_KERNEL(conv2d_grad, CUDNN);
 template <typename T>
 void InitRandomTensor(const std::vector<int64_t> &dims,
                       framework::Tensor *cpu_out) {
-  T *cpu_out_ptr = cpu_out->mutable_data<T>(framework::make_ddim(dims),
-                                            platform::CPUPlace());
+  T *cpu_out_ptr =
+      cpu_out->mutable_data<T>(pten::make_ddim(dims), platform::CPUPlace());
 
   std::default_random_engine random(0);
   std::uniform_real_distribution<float> dis(0.0, 1.0);
@@ -318,14 +318,14 @@ class CudnnNormConvolutionTester {
     paddle::framework::TensorCopySync(cpu_input_, place, &input);
     paddle::framework::TensorCopySync(cpu_filter_nhwc_, place, &filter_nhwc);
 
-    output.Resize(framework::make_ddim(
+    output.Resize(pten::make_ddim(
         {batch_size_, out_height_, out_width_, output_channels_}));
-    sum.Resize(framework::make_ddim({1, 1, 1, output_channels_}));
-    sum_of_square.Resize(framework::make_ddim({1, 1, 1, output_channels_}));
+    sum.Resize(pten::make_ddim({1, 1, 1, output_channels_}));
+    sum_of_square.Resize(pten::make_ddim({1, 1, 1, output_channels_}));
 
-    auto input_shape = framework::vectorize<int>(input.dims());
-    auto filter_shape = framework::vectorize<int>(filter_nhwc.dims());
-    auto output_shape = framework::vectorize<int>(output.dims());
+    auto input_shape = pten::vectorize<int>(input.dims());
+    auto filter_shape = pten::vectorize<int>(filter_nhwc.dims());
+    auto output_shape = pten::vectorize<int>(output.dims());
     op::CudnnNormConvolution<T> conv_op(ctx, input_shape, filter_shape,
                                         output_shape, padding_, stride_,
                                         dilation_, group_);
@@ -354,9 +354,9 @@ class CudnnNormConvolutionTester {
     input_grad.Resize(input.dims());
     filter_grad.Resize(filter_nhwc.dims());
 
-    auto input_shape = framework::vectorize<int>(input.dims());
-    auto filter_shape = framework::vectorize<int>(filter_nhwc.dims());
-    auto output_shape = framework::vectorize<int>(output_grad.dims());
+    auto input_shape = pten::vectorize<int>(input.dims());
+    auto filter_shape = pten::vectorize<int>(filter_nhwc.dims());
+    auto output_shape = pten::vectorize<int>(output_grad.dims());
     op::CudnnNormConvolutionGrad<T> conv_grad_op(ctx, input_shape, filter_shape,
                                                  output_shape, padding_,
                                                  stride_, dilation_, group_);

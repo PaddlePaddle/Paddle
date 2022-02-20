@@ -17,8 +17,8 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -70,7 +70,7 @@ class CPUWhereIndexKernel : public framework::OpKernel<T> {
     }
     auto true_num = true_index.size();
 
-    out->Resize(framework::make_ddim({static_cast<int64_t>(true_num), rank}));
+    out->Resize(pten::make_ddim({static_cast<int64_t>(true_num), rank}));
     auto out_ptr = out->mutable_data<int64_t>(context.GetPlace());
 
     if (true_num == 0) {

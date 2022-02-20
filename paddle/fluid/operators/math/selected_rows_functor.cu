@@ -15,10 +15,10 @@ limitations under the License. */
 #include <set>
 #include <vector>
 
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -156,7 +156,7 @@ struct SelectedRowsAddTensor<platform::CUDADeviceContext, T> {
     auto* in2_data = input2.data<T>();
     auto* out_data = output->data<T>();
 
-    SetConstant<platform::CUDADeviceContext, T> functor;
+    pten::funcs::SetConstant<platform::CUDADeviceContext, T> functor;
     functor(context, output, static_cast<T>(0));
 
     const int block_size = 256;
@@ -344,11 +344,10 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
     out.set_rows(merge_rows);
     out.set_height(input.height());
     out.mutable_value()->mutable_data<T>(
-        framework::make_ddim(
-            {static_cast<int64_t>(merge_rows.size()), input_width}),
+        pten::make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}),
         context.GetPlace());
 
-    math::SetConstant<platform::CUDADeviceContext, T> constant_functor;
+    pten::funcs::SetConstant<platform::CUDADeviceContext, T> constant_functor;
     constant_functor(context, out.mutable_value(), static_cast<T>(0));
 
     auto* out_data = out.mutable_value()->data<T>();
@@ -407,11 +406,10 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
     out.set_rows(merge_rows);
     out.set_height(input_height);
     out.mutable_value()->mutable_data<T>(
-        framework::make_ddim(
-            {static_cast<int64_t>(merge_rows.size()), input_width}),
+        pten::make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}),
         context.GetPlace());
 
-    math::SetConstant<platform::CUDADeviceContext, T> constant_functor;
+    pten::funcs::SetConstant<platform::CUDADeviceContext, T> constant_functor;
     constant_functor(context, out.mutable_value(), static_cast<T>(0));
 
     auto* out_data = out.mutable_value()->data<T>();

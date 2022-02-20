@@ -132,10 +132,11 @@ PT_REGISTER_KERNEL(add_grad,
                    pten::AddGradKernel,
                    float,
                    double,
+                   int16_t,
                    int,
                    int64_t,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(add_double_grad,
                    CPU,
@@ -143,10 +144,11 @@ PT_REGISTER_KERNEL(add_double_grad,
                    pten::AddDoubleGradKernel,
                    float,
                    double,
+                   int16_t,
                    int,
                    int64_t,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(add_triple_grad,
                    CPU,
@@ -154,10 +156,11 @@ PT_REGISTER_KERNEL(add_triple_grad,
                    pten::AddTripleGradKernel,
                    float,
                    double,
+                   int16_t,
                    int,
                    int64_t,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(subtract_grad,
                    CPU,
@@ -165,10 +168,11 @@ PT_REGISTER_KERNEL(subtract_grad,
                    pten::SubtractGradKernel,
                    float,
                    double,
+                   int16_t,
                    int,
                    int64_t,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(subtract_double_grad,
                    CPU,
@@ -176,7 +180,8 @@ PT_REGISTER_KERNEL(subtract_double_grad,
                    pten::SubtractDoubleGradKernel,
                    float,
                    double,
+                   int16_t,
                    int,
                    int64_t,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}

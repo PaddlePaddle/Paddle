@@ -14,14 +14,14 @@ limitations under the License. */
 
 #pragma once
 #include <vector>
-#include "paddle/fluid/framework/dim.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/pten/core/utils/dim.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 namespace paddle {
 namespace operators {
 
@@ -130,8 +130,8 @@ void GPUGatherNd(const framework::ExecutionContext& context,
   // final dim
   int64_t end_size = index_dims[index_dims_size - 1];
   // remain dim
-  auto remain_ddim = framework::slice_ddim(index_dims, 0, index_dims_size - 1);
-  int64_t remain_numel = framework::product(remain_ddim);
+  auto remain_ddim = pten::slice_ddim(index_dims, 0, index_dims_size - 1);
+  int64_t remain_numel = pten::product(remain_ddim);
   // slice size
   int64_t slice_size = 1;
   for (int64_t i = end_size; i < input_dims_size; ++i) {
@@ -238,7 +238,7 @@ void GatherV2CUDAFunction(const Tensor* input, const Tensor* index,
     outer_dim_size *= input_dim[i];
     out_dim_vec.push_back(input_dim[i]);
   }
-  auto out_dim = framework::make_ddim(out_dim_vec);
+  auto out_dim = pten::make_ddim(out_dim_vec);
 
   out->Resize(out_dim);
   auto* out_data = out->mutable_data<T>(place);
@@ -283,7 +283,7 @@ void GatherV2GradCUDAFunction(const Tensor* input, const Tensor* index,
   auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
   auto out_dim = out->dims();
   int64_t out_index_dim_size = out_dim[axis_index];
-  operators::math::set_constant(*dev_ctx, out, 0.0);
+  pten::funcs::set_constant(*dev_ctx, out, 0.0);
 
   platform::GpuLaunchConfig config =
       platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), input_size);

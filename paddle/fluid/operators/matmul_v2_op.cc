@@ -16,6 +16,10 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/pten/core/infermeta_utils.h"
+#include "paddle/pten/infermeta/backward.h"
+
 namespace paddle {
 namespace operators {
 
@@ -104,10 +108,8 @@ class MatMulV2Op : public framework::OperatorWithKernel {
     bool trans_x = ctx->Attrs().Get<bool>("trans_x");
     bool trans_y = ctx->Attrs().Get<bool>("trans_y");
 
-    std::vector<int64_t> dims_x =
-        framework::vectorize(GetDimForInput(*ctx, "X"));
-    std::vector<int64_t> dims_y =
-        framework::vectorize(GetDimForInput(*ctx, "Y"));
+    std::vector<int64_t> dims_x = pten::vectorize(GetDimForInput(*ctx, "X"));
+    std::vector<int64_t> dims_y = pten::vectorize(GetDimForInput(*ctx, "Y"));
     auto ndims_x = dims_x.size();
     auto ndims_y = dims_y.size();
     PADDLE_ENFORCE_GT(ndims_x, 0,
@@ -165,7 +167,7 @@ class MatMulV2Op : public framework::OperatorWithKernel {
       new_dims.push_back(1);
     }
 
-    auto ddim_out = framework::make_ddim(new_dims);
+    auto ddim_out = pten::make_ddim(new_dims);
 
 #ifdef PADDLE_WITH_MKLDNN
     //  if mkldnn matmul_v2+transpose+reshape fuse activated
@@ -223,7 +225,7 @@ class MatMulV2Op : public framework::OperatorWithKernel {
       if (it != reshape_out.end()) {
         int index = std::distance(reshape_out.begin(), it);
 
-        auto ddim_out_vec = framework::vectorize(ddim_out);
+        auto ddim_out_vec = pten::vectorize(ddim_out);
 
         int ddim_out_product =
             std::accumulate(ddim_out_vec.begin(), ddim_out_vec.end(), 1,
@@ -268,8 +270,9 @@ class MatMulV2Op : public framework::OperatorWithKernel {
       const framework::OpKernelType& expected_kernel_type) const {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(tensor.type(), tensor.place(),
-                                     tensor.layout());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+          tensor.layout());
     } else {
       return framework::OpKernelType(expected_kernel_type.data_type_,
                                      tensor.place(), tensor.layout());
@@ -343,25 +346,6 @@ class MatMulV2OpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContext* context) const override {
-    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "matmul_v2");
-    OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y", "matmul_v2");
-    OP_INOUT_CHECK(context->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "matmul_v2");
-    auto x_dims = context->GetInputDim("X");
-    auto y_dims = context->GetInputDim("Y");
-
-    auto x_grad_name = framework::GradVarName("X");
-    auto y_grad_name = framework::GradVarName("Y");
-
-    if (context->HasOutput(x_grad_name)) {
-      context->SetOutputDim(x_grad_name, x_dims);
-    }
-    if (context->HasOutput(y_grad_name)) {
-      context->SetOutputDim(y_grad_name, y_dims);
-    }
-  }
-
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(
@@ -382,20 +366,13 @@ class MatMulV2OpGrad : public framework::OperatorWithKernel {
       const framework::OpKernelType& expected_kernel_type) const {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(tensor.type(), tensor.place(),
-                                     tensor.layout());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+          tensor.layout());
     } else {
       return framework::OpKernelType(expected_kernel_type.data_type_,
                                      tensor.place(), tensor.layout());
     }
-  }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::KernelSignature(
-        "matmul_grad", {"X", "Y", framework::GradVarName("Out")},
-        {"trans_x", "trans_y"},
-        {framework::GradVarName("X"), framework::GradVarName("Y")});
   }
 };
 
@@ -438,13 +415,6 @@ class MatMulV2OpDoubleGrad : public framework::OperatorWithKernel {
         (context->HasInput("DDY") || context->HasInput("DDX"))) {
       context->ShareDim("DOut", "DDOut");
     }
-  }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::KernelSignature(
-        "matmul_double_grad", {"X", "Y", "DOut", "DDX", "DDY"},
-        {"trans_x", "trans_y"}, {"DX", "DY", "DDOut"});
   }
 };
 
@@ -515,15 +485,6 @@ class MatMulV2OpTripleGrad : public framework::OperatorWithKernel {
       context->ShareDim("Y", "D_DDY_out");
     }
   }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::KernelSignature(
-        "matmul_triple_grad",
-        {"X", "Y", "DOut", "DDX", "DDY", "D_DX", "D_DY", "D_DDOut"},
-        {"trans_x", "trans_y"},
-        {"D_X_out", "D_Y_out", "D_DOut_out", "D_DDX_out", "D_DDY_out"});
-  }
 };
 
 template <typename T>
@@ -563,46 +524,15 @@ REGISTER_OPERATOR(matmul_v2, ops::MatMulV2Op, ops::MatMulV2OpMaker,
                   ops::MatMulV2GradOpMaker<paddle::framework::OpDesc>,
                   ops::MatMulV2GradOpMaker<paddle::imperative::OpBase>);
 
+DELCARE_INFER_SHAPE_FUNCTOR(matmul_v2_grad, MatMulV2GradInferShapeFunctor,
+                            PT_INFER_META(pten::GeneralBinaryGradInferMeta));
 REGISTER_OPERATOR(matmul_v2_grad, ops::MatMulV2OpGrad,
                   ops::MatMulV2OpDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::MatMulV2OpDoubleGradMaker<paddle::imperative::OpBase>);
+                  ops::MatMulV2OpDoubleGradMaker<paddle::imperative::OpBase>,
+                  MatMulV2GradInferShapeFunctor);
 
 REGISTER_OPERATOR(matmul_v2_grad_grad, ops::MatMulV2OpDoubleGrad,
                   ops::MatMulV2OpTripleGradMaker<paddle::framework::OpDesc>,
                   ops::MatMulV2OpTripleGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(matmul_v2_triple_grad, ops::MatMulV2OpTripleGrad);
-
-REGISTER_OP_CPU_KERNEL(
-    matmul_v2, ops::MatMulV2Kernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MatMulV2Kernel<paddle::platform::CPUDeviceContext, double>,
-    ops::MatMulV2Kernel<paddle::platform::CPUDeviceContext,
-                        paddle::platform::complex<float>>,
-    ops::MatMulV2Kernel<paddle::platform::CPUDeviceContext,
-                        paddle::platform::complex<double>>);
-
-REGISTER_OP_CPU_KERNEL(
-    matmul_v2_grad,
-    ops::MatMulV2GradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MatMulV2GradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::MatMulV2GradKernel<paddle::platform::CPUDeviceContext,
-                            paddle::platform::complex<float>>,
-    ops::MatMulV2GradKernel<paddle::platform::CPUDeviceContext,
-                            paddle::platform::complex<double>>);
-REGISTER_OP_CPU_KERNEL(
-    matmul_v2_grad_grad,
-    ops::MatMulV2DoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MatMulV2DoubleGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::MatMulV2DoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex<float>>,
-    ops::MatMulV2DoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex<double>>);
-
-REGISTER_OP_CPU_KERNEL(
-    matmul_v2_triple_grad,
-    ops::MatMulV2TripleGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MatMulV2TripleGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::MatMulV2TripleGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex<float>>,
-    ops::MatMulV2TripleGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex<double>>);

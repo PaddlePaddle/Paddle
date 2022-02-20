@@ -54,10 +54,10 @@ class CUDALinspaceKernel : public framework::OpKernel<T> {
 
     Tensor start_t;
     Tensor stop_t;
-    auto start_dtype =
-        framework::OpKernelType(pre_start->type(), context.GetPlace());
-    auto stop_dtype =
-        framework::OpKernelType(pre_stop->type(), context.GetPlace());
+    auto start_dtype = framework::OpKernelType(
+        framework::TransToProtoVarType(pre_start->dtype()), context.GetPlace());
+    auto stop_dtype = framework::OpKernelType(
+        framework::TransToProtoVarType(pre_stop->dtype()), context.GetPlace());
     auto out_dtype = framework::OpKernelType(dtype, context.GetPlace());
     framework::TransDataType(start_dtype, out_dtype, *pre_start, &start_t);
     framework::TransDataType(stop_dtype, out_dtype, *pre_stop, &stop_t);
@@ -77,7 +77,7 @@ class CUDALinspaceKernel : public framework::OpKernel<T> {
                                   "than 0, but received num is %d",
                                   num));
 
-    out->Resize(framework::make_ddim({num}));
+    out->Resize(pten::make_ddim({num}));
     T* out_data = out->mutable_data<T>(context.GetPlace());
 
     double step = 0;

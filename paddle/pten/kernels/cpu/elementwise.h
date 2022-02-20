@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/pten/kernels/funcs/common_shape.h"
 #include "paddle/pten/kernels/funcs/elementwise_base.h"
 
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 #include "paddle/pten/kernels/funcs/eigen/common.h"
 
 namespace pten {
@@ -44,7 +44,7 @@ struct SameDimsAddFunctor<
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* z) {
-    auto blas = paddle::operators::math::GetBlas<DevCtx, T>(dev_ctx);
+    auto blas = pten::funcs::GetBlas<DevCtx, T>(dev_ctx);
     blas.VADD(
         x.numel(), x.data<T>(), y.data<T>(), dev_ctx.template Alloc<T>(z));
   }
@@ -86,7 +86,7 @@ struct SameDimsSubtractFunctor<
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* z) {
-    auto blas = paddle::operators::math::GetBlas<DevCtx, T>(dev_ctx);
+    auto blas = pten::funcs::GetBlas<DevCtx, T>(dev_ctx);
     blas.VSUB(
         x.numel(), x.data<T>(), y.data<T>(), dev_ctx.template Alloc<T>(z));
   }
@@ -142,7 +142,7 @@ struct SameDimsDivideFunctor<
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* z) {
-    auto blas = paddle::operators::math::GetBlas<DevCtx, T>(dev_ctx);
+    auto blas = pten::funcs::GetBlas<DevCtx, T>(dev_ctx);
     blas.VDIV(
         x.numel(), x.data<T>(), y.data<T>(), dev_ctx.template Alloc<T>(z));
   }
@@ -166,7 +166,7 @@ struct SameDimsMultiplyFunctor<
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* z) {
-    auto blas = paddle::operators::math::GetBlas<DevCtx, T>(dev_ctx);
+    auto blas = pten::funcs::GetBlas<DevCtx, T>(dev_ctx);
     blas.VMUL(
         x.numel(), x.data<T>(), y.data<T>(), dev_ctx.template Alloc<T>(z));
   }
@@ -587,8 +587,8 @@ void CommonElementwiseBroadcastBackward(const CPUContext& ctx,
   }
 
   VLOG(3) << "CommonElementwiseBroadcastBackward xdims:"
-          << pten::framework::make_ddim(x_dims_array)
-          << " ydim:" << pten::framework::make_ddim(y_dims_array);
+          << pten::make_ddim(x_dims_array)
+          << " ydim:" << pten::make_ddim(y_dims_array);
 
   CommonGradBroadcastCPU<T, DX_OP, DY_OP, Tout>(x,
                                                 y,
@@ -763,7 +763,7 @@ elementwise_add_grad(const CPUContext& ctx,
                      DenseTensor* dx,
                      DenseTensor* dy,
                      int axis = -1) {
-  auto blas = paddle::operators::math::GetBlas<CPUContext, T>(ctx);
+  auto blas = pten::funcs::GetBlas<CPUContext, T>(ctx);
   if (dx) {
     blas.VCOPY(
         dout.numel(), dout.data<T>(), dx->mutable_data<T>(ctx.GetPlace()));

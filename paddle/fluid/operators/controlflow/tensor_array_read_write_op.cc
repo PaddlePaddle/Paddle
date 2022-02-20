@@ -169,8 +169,8 @@ class ReadFromArrayOp : public ArrayOp {
       auto &fw_var_tensor = fw_var->Get<framework::LoDTensor>();
 
       framework::AttributeMap attrs;
-      attrs["dtype"] = fw_var_tensor.type();
-      attrs["shape"] = framework::vectorize<int>(fw_var_tensor.dims());
+      attrs["dtype"] = framework::TransToProtoVarType(fw_var_tensor.dtype());
+      attrs["shape"] = pten::vectorize<int>(fw_var_tensor.dims());
       attrs["value"] = 0.0f;
 
       auto zero_op = framework::OpRegistry::CreateOp(

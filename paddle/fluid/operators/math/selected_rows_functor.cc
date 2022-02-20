@@ -129,7 +129,7 @@ struct SelectedRowsAddTensor<platform::CPUDeviceContext, T> {
             "But recieved input width = [%d], output width = [%d]",
             in1_row_numel, output->numel() / in1_height));
 
-    SetConstant<platform::CPUDeviceContext, T> functor;
+    pten::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
     functor(context, output, 0.0);
 
     auto* in1_data = in1_value.data<T>();
@@ -224,7 +224,7 @@ struct SelectedRowsSumTo<platform::CPUDeviceContext, T> {
 
     auto* in2_value = input2->mutable_value();
     auto* in2_data = in2_value->data<T>();
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+    auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(context);
     size_t offset = 0u;
     for (size_t i = 0u; i != input1.size(); ++i) {
       auto& in_value = input1[i]->value();
@@ -295,15 +295,15 @@ namespace scatter {
 
 template <typename T>
 typename std::enable_if<!std::is_integral<T>::value>::type elementwise_add_to(
-    BlasT<platform::CPUDeviceContext, T>* blas, size_t data_len, const T* in,
-    T* out) {
+    pten::funcs::BlasT<platform::CPUDeviceContext, T>* blas, size_t data_len,
+    const T* in, T* out) {
   blas->AXPY(data_len, T(1.f), in, out);
 }
 
 template <typename T>
 typename std::enable_if<std::is_integral<T>::value>::type elementwise_add_to(
-    BlasT<platform::CPUDeviceContext, T>* blas, size_t data_len, const T* in,
-    T* out) {
+    pten::funcs::BlasT<platform::CPUDeviceContext, T>* blas, size_t data_len,
+    const T* in, T* out) {
   for (size_t i = 0; i < data_len; i++) {
     out[i] += in[i];
   }
@@ -316,7 +316,7 @@ add_sparse_inputs(const std::vector<const pten::SelectedRows*>& inputs,
                   int64_t input_width,
                   const platform::CPUDeviceContext& context, T* out_data) {
 #ifndef PADDLE_WITH_MKLDNN
-  auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+  auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(context);
 #endif
   for (auto* input : inputs) {
     if (input->rows().size() == 0) {
@@ -350,7 +350,7 @@ add_sparse_inputs(const std::vector<const pten::SelectedRows*>& inputs,
                   int64_t input_width,
                   const platform::CPUDeviceContext& context, T* out_data) {
   VLOG(4) << "[CPU] add_sparse_inputs <" << typeid(T).name();
-  auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+  auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(context);
   for (auto* input : inputs) {
     if (input->rows().size() == 0) {
       continue;
@@ -426,7 +426,7 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
 
     out.set_height(input_height);
     out.mutable_value()->mutable_data<T>(
-        framework::make_ddim(
+        pten::make_ddim(
             {static_cast<int64_t>(merged_row_set.size()), input_width}),
         context.GetPlace());
     auto* out_data = out.mutable_value()->data<T>();
@@ -461,7 +461,7 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
 
       out.set_rows(merge_rows);
 
-      math::SetConstant<platform::CPUDeviceContext, T> constant_functor;
+      pten::funcs::SetConstant<platform::CPUDeviceContext, T> constant_functor;
       constant_functor(context, out.mutable_value(), static_cast<T>(0.f));
 
       std::unordered_map<int64_t, size_t> rows_to_id;
@@ -501,8 +501,7 @@ struct MergeAdd<platform::XPUDeviceContext, T> {
     out.set_rows(merge_rows);
     out.set_height(input.height());
     out.mutable_value()->mutable_data<T>(
-        framework::make_ddim(
-            {static_cast<int64_t>(merge_rows.size()), input_width}),
+        pten::make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}),
         context.GetPlace());
     int r =
         xpu::constant<T>(context.x_context(), out.mutable_value()->data<T>(),
@@ -581,7 +580,7 @@ struct MergeAdd<platform::XPUDeviceContext, T> {
     out.set_rows(merge_rows);
     out.set_height(input_height);
     out.mutable_value()->mutable_data<T>(
-        framework::make_ddim(
+        pten::make_ddim(
             {static_cast<int64_t>(merged_row_set.size()), input_width}),
         context.GetPlace());
 
@@ -678,7 +677,7 @@ struct MergeAverage<platform::CPUDeviceContext, T> {
 
     out.set_height(input_height);
     out.mutable_value()->mutable_data<T>(
-        framework::make_ddim(
+        pten::make_ddim(
             {static_cast<int64_t>(merged_row_set.size()), input_width}),
         context.GetPlace());
     auto* out_data = out.mutable_value()->data<T>();
@@ -689,7 +688,7 @@ struct MergeAverage<platform::CPUDeviceContext, T> {
 
     out.set_rows(merge_rows);
 
-    math::SetConstant<platform::CPUDeviceContext, T> constant_functor;
+    pten::funcs::SetConstant<platform::CPUDeviceContext, T> constant_functor;
     constant_functor(context, out.mutable_value(), 0.0);
 
     std::unordered_map<int64_t, size_t> rows_to_id;
@@ -697,7 +696,7 @@ struct MergeAverage<platform::CPUDeviceContext, T> {
       rows_to_id[merge_rows[i]] = i;
     }
 
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+    auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(context);
     for (auto* input : inputs) {
       if (input->rows().size() == 0) {
         continue;

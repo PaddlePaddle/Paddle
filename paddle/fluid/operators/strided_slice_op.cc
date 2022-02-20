@@ -141,7 +141,7 @@ class StridedSliceOp : public framework::OperatorWithKernel {
                           decrease_axis, out_dims_vector.data(), axes.size(),
                           true);
     }
-    framework::DDim out_dims(framework::make_ddim(out_dims_vector));
+    framework::DDim out_dims(pten::make_ddim(out_dims_vector));
     // generate new shape
     if (decrease_axis.size() > 0) {
       std::vector<int64_t> new_out_shape;
@@ -165,7 +165,7 @@ class StridedSliceOp : public framework::OperatorWithKernel {
         new_out_shape.push_back(1);
       }
 
-      out_dims = framework::make_ddim(new_out_shape);
+      out_dims = pten::make_ddim(new_out_shape);
     }
     ctx->SetOutputDim("Out", out_dims);
     ctx->ShareLoD("Input", /*->*/ "Out");
@@ -198,7 +198,9 @@ class StridedSliceOp : public framework::OperatorWithKernel {
     // NOTE: cuda pinned tensor need to copy its data to target place
     auto in_tensor = ctx.Input<Tensor>("Input");
     if (platform::is_cuda_pinned_place(in_tensor->place())) {
-      return framework::OpKernelType(in_tensor->type(), ctx.device_context());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(in_tensor->dtype()),
+          ctx.device_context());
     }
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "Input"),

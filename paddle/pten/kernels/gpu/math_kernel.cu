@@ -48,7 +48,7 @@ namespace pten {
     inputs.emplace_back(&y);                                         \
     outputs.emplace_back(out);                                       \
     dev_ctx.template Alloc<T>(out);                                  \
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(     \
+    funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(          \
         dev_ctx, inputs, &outputs, axis, funcs::name##Functor<T>()); \
   }
 
@@ -91,9 +91,9 @@ DEFINE_CUDA_ELEMENTWISE_OP(Divide)
 
 }  // namespace pten
 
-using float16 = paddle::platform::float16;
-using complex64 = ::paddle::platform::complex<float>;
-using complex128 = ::paddle::platform::complex<double>;
+using float16 = pten::dtype::float16;
+using complex64 = ::pten::dtype::complex<float>;
+using complex128 = ::pten::dtype::complex<double>;
 
 PT_REGISTER_KERNEL(add_raw,
                    GPU,
@@ -101,6 +101,7 @@ PT_REGISTER_KERNEL(add_raw,
                    pten::AddRawKernel,
                    float,
                    double,
+                   int16_t,
                    int,
                    int64_t,
                    float16,
@@ -112,6 +113,7 @@ PT_REGISTER_KERNEL(subtract_raw,
                    pten::SubtractRawKernel,
                    float,
                    double,
+                   int16_t,
                    int,
                    int64_t,
                    float16,
@@ -148,6 +150,7 @@ PT_REGISTER_KERNEL(sum_raw,
                    float,
                    double,
                    float16,
+                   int16_t,
                    int,
                    int64_t,
                    complex64,

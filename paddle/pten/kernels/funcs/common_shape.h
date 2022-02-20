@@ -15,6 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/kernels/funcs/eigen/common.h"
+#include "paddle/pten/kernels/funcs/eigen/eigen_function.h"
 
 namespace pten {
 namespace funcs {
@@ -26,7 +28,7 @@ inline void SetXShape(const DenseTensor &x, DenseTensor *xshape) {
   for (int i = 0; i < in_dims.size(); ++i) {
     xshape_dims[i + 1] = in_dims[i];
   }
-  xshape->ResizeAndAllocate(pten::framework::make_ddim(xshape_dims));
+  xshape->ResizeAndAllocate(pten::make_ddim(xshape_dims));
   xshape->ResetLoD(x.meta().lod);
 }
 
@@ -90,7 +92,7 @@ inline void GetBroadcastDimsArrays(const DDim &x_dims,
 }
 
 inline void GetPrePostNumel(
-    const framework::DDim &dim, int axis, int *pre, int *n, int *post) {
+    const DDim &dim, int axis, int *pre, int *n, int *post) {
   *pre = 1;
   *post = 1;
   *n = dim[axis];
@@ -99,6 +101,30 @@ inline void GetPrePostNumel(
   }
   for (int i = axis + 1; i < dim.size(); ++i) {
     (*post) *= dim[i];
+  }
+}
+
+static DDim ExtendDims2Rank(const DDim &in_dims, int rank) {
+  if (in_dims.size() == rank) {
+    return in_dims;
+  }
+  std::vector<int64_t> shapes(rank, 1);
+  for (int i = in_dims.size() - 1, j = rank - 1; i >= 0; --i, --j) {
+    shapes[j] = in_dims[i];
+  }
+  return make_ddim(shapes);
+}
+
+template <size_t D>
+static void GetBroadcastDims(const DDim &in_dims,
+                             const DDim &out_dims,
+                             Eigen::DSizes<int, D> *bcast_dims) {
+  for (size_t i = 0; i < D; ++i) {
+    if (in_dims[i] == out_dims[i]) {
+      (*bcast_dims)[i] = 1;
+    } else {
+      (*bcast_dims)[i] = std::max(in_dims[i], out_dims[i]);
+    }
   }
 }
 

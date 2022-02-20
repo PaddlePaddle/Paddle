@@ -49,50 +49,49 @@ inline const void* GetBasePtr(const Tensor* t) { return t->data(); }
 
 inline void* GetBasePtr(Tensor* t) { return t->data(); }
 
-template <typename T>
-inline cnnlDataType_t ToCnnlDataType(const T& t) {
-  auto type = framework::ToDataType(t);
-  return ToCnnlDataType(type);
-}
-
-template <typename T>
-inline cnnlDataType_t ToCnnlDataType() {
-  auto type = framework::ToDataType(std::type_index(typeid(T)));
-  return ToCnnlDataType(type);
-}
-
-template <>
-inline cnnlDataType_t ToCnnlDataType(const framework::proto::VarType::Type& t) {
+inline cnnlDataType_t ToCnnlDataType(
+    const paddle::experimental::DataType& dtype) {
   cnnlDataType_t type = CNNL_DTYPE_FLOAT;
-  switch (t) {
-    case framework::proto::VarType::FP16:
+  switch (dtype) {
+    case DataType::FLOAT16:
       type = CNNL_DTYPE_HALF;
       break;
-    case framework::proto::VarType::FP32:
+    case DataType::FLOAT32:
       type = CNNL_DTYPE_FLOAT;
       break;
-    case framework::proto::VarType::INT8:
+    case DataType::INT8:
       type = CNNL_DTYPE_INT8;
       break;
-    case framework::proto::VarType::INT16:
+    case DataType::INT16:
       type = CNNL_DTYPE_INT16;
       break;
-    case framework::proto::VarType::INT32:
+    case DataType::INT32:
       type = CNNL_DTYPE_INT32;
       break;
-    case framework::proto::VarType::INT64:
+    case DataType::INT64:
       type = CNNL_DTYPE_INT64;
       break;
-    case framework::proto::VarType::BOOL:
+    case DataType::BOOL:
       type = CNNL_DTYPE_BOOL;
       break;
-    case framework::proto::VarType::UINT8:
+    case DataType::UINT8:
       type = CNNL_DTYPE_UINT8;
       break;
     default:
       break;
   }
   return type;
+}
+
+inline cnnlDataType_t ToCnnlDataType(
+    const paddle::framework::proto::VarType::Type& type) {
+  return ToCnnlDataType(framework::TransToPtenDataType(type));
+}
+
+template <typename T>
+inline cnnlDataType_t ToCnnlDataType() {
+  auto type = framework::ToDataType(std::type_index(typeid(T)));
+  return ToCnnlDataType(type);
 }
 
 // Converts (via narrowing) a type T value to a type U, and checks that the
@@ -236,7 +235,8 @@ class MLUCnnlPoolingDesc {
                      const cnnlNanPropagation_t maxpooling_nan_opt,
                      int window_rows, int window_cols, int64_t pad_up,
                      int64_t pad_down, int64_t pad_left, int64_t pad_right,
-                     int row_stride, int col_stride);
+                     int row_stride, int col_stride, int row_dilation,
+                     int col_dilation, bool ceil_mode);
 
   MLUCnnlPoolingDesc(const cnnlPoolingMode_t mode,
                      const cnnlNanPropagation_t maxpooling_nan_opt,
@@ -512,7 +512,7 @@ class MLUCnnl {
   static void RandomUniform(const ExecutionContext& ctx, const int num,
                             const cnnlDataType_t data_type,
                             const cnnlRandGenerator_t mlu_generator,
-                            void* output);
+                            const float min, const float max, void* output);
 
   static void Cumsum(const ExecutionContext& ctx, const int axis,
                      const bool exclusive, const bool reverse,
@@ -643,11 +643,16 @@ class MLUCnnl {
 
   static void PoolingForward(
       const ExecutionContext& ctx, cnnlPoolingMode_t pool_mode,
-      const std::vector<int64_t>& output_shape,
-      cnnlPoolingDescriptor_t pooling_desc, const void* alpha,
-      const cnnlTensorDescriptor_t input_desc, const void* input,
-      const void* beta, const void* extra_input_ptr,
+      int64_t output_h, int64_t output_w, cnnlPoolingDescriptor_t pooling_desc,
+      const void* alpha, const cnnlTensorDescriptor_t input_desc,
+      const void* input, const void* beta, const void* extra_input_ptr,
       const cnnlTensorDescriptor_t output_desc, void* output);
+
+  static void AdaptivePoolingForward(
+      const ExecutionContext& ctx, cnnlPoolingMode_t pool_mode,
+      const cnnlTensorDescriptor_t input_desc, const void* input,
+      const cnnlTensorDescriptor_t output_desc, void* output,
+      const cnnlTensorDescriptor_t index_desc, void* index);
 
   static void Pool3D(const ExecutionContext& ctx, cnnlPoolingMode_t pool_mode,
                      const std::vector<int64_t>& output_shape,
@@ -958,6 +963,12 @@ class MLUCnnl {
       const cnnlTensorDescriptor_t x_desc, const void* x, const void* beta,
       const cnnlTensorDescriptor_t diff_x_desc, void* diff_x);
 
+  static void AdaptivePoolingBackward(
+      const ExecutionContext& ctx, const cnnlPoolingMode_t pool_mode,
+      const cnnlTensorDescriptor_t y_desc, const void* y,
+      const cnnlTensorDescriptor_t index_desc, const void* index,
+      const cnnlTensorDescriptor_t diff_x_desc, void* diff_x);
+
   static void PoolingIndex(const ExecutionContext& ctx,
                            const cnnlPoolingDescriptor_t pooling_desc,
                            const cnnlTensorDescriptor_t x_desc, const void* x,
@@ -1146,7 +1157,7 @@ inline void TransposeFromMLUTensor(const ExecutionContext& ctx,
                                    const Tensor* transformed_input,
                                    Tensor* transformed_output,
                                    bool need_reshape_or_alloc) {
-  auto in_dims_vec = framework::vectorize(transformed_input->dims());
+  auto in_dims_vec = pten::vectorize(transformed_input->dims());
   if (need_reshape_or_alloc) {
     transformed_output->mutable_data<T>(
         {in_dims_vec[perm[0]], in_dims_vec[perm[1]], in_dims_vec[perm[2]],

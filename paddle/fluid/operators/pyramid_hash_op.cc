@@ -15,6 +15,7 @@ limitations under the License. */
 #include <xxhash.h>
 #include <algorithm>
 #include <cmath>
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/search_compute.h"
 
@@ -195,7 +196,7 @@ class PyramidHashOP : public framework::OperatorWithKernel {
       // something to do in runtime.
     } else {
       // compile time
-      ctx->SetOutputDim("Out", framework::make_ddim({-1, num_emb}));
+      ctx->SetOutputDim("Out", pten::make_ddim({-1, num_emb}));
       ctx->SetOutputDim("X_Temp_Out", x_dims);
       ctx->ShareLoD("X", /*->*/ "Out");
     }
@@ -268,7 +269,7 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
     const auto& offset = bottom->lod()[0];
     const auto* bottom_data_ori = bottom->data<int32_t>();
     auto* buff = ctx.Output<LoDTensor>("X_Temp_Out");
-    buff->Resize(framework::make_ddim({bottom->dims()[0], bottom->dims()[1]}));
+    buff->Resize(pten::make_ddim({bottom->dims()[0], bottom->dims()[1]}));
     float* bottom_data = buff->mutable_data<float>(ctx.GetPlace());
     for (int i = 0; i < bottom->dims()[0]; i++) {
       bottom_data[i] = bottom_data_ori[i];
@@ -303,7 +304,7 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
       }
     }
 
-    drop_pos->Resize(framework::make_ddim(
+    drop_pos->Resize(pten::make_ddim(
         {bottom->dims()[0] * bottom->dims()[1] * _pyramid_layer, 1}));
     std::vector<size_t> drop_pos_offset;
     drop_pos_offset.resize(offset.size());
@@ -348,7 +349,7 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
     framework::LoD top_lod;
     top_lod.push_back(top_offset);
     top->set_lod(top_lod);
-    top->Resize(framework::make_ddim({top_l, _num_emb}));
+    top->Resize(pten::make_ddim({top_l, _num_emb}));
     auto* top_data = top->mutable_data<T>(ctx.GetPlace());
 
     framework::LoD drop_pos_lod;
@@ -391,7 +392,7 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
     if (iter != iter_end) {
       exit(1);
     }
-    auto weight_type = _blobs_0->type();
+    auto weight_type = framework::TransToProtoVarType(_blobs_0->dtype());
     if (_is_training == 0 && weight_type != framework::proto::VarType::INT8) {
       axpy_noadd(top_data, top_data, top->dims()[0] * top->dims()[1],
                  _drop_out_percent);

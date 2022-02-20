@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/operators/layer_norm_kernel.cu.h"
 #include "paddle/fluid/operators/layer_norm_op.h"
 #include "paddle/fluid/platform/float16.h"
@@ -26,8 +27,8 @@ void LayerNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
                                                const T *bias, const T *scale,
                                                T *output, T *mean, T *variance,
                                                int begin_norm_axis, float eps) {
-  const auto x_dims = framework::make_ddim(input_shape);
-  auto matrix_dim = framework::flatten_to_2d(x_dims, begin_norm_axis);
+  const auto x_dims = pten::make_ddim(input_shape);
+  auto matrix_dim = pten::flatten_to_2d(x_dims, begin_norm_axis);
   int64_t batch_size = static_cast<int64_t>(matrix_dim[0]);
   int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
   switch (GetDesiredBlockDim(feature_size)) {
@@ -67,18 +68,22 @@ class LayerNormKernel<platform::CUDADeviceContext, T>
     auto *void_scale_data = (scale == nullptr ? nullptr : scale->data());
     auto *void_bias_data = (bias == nullptr ? nullptr : bias->data());
 
-    framework::proto::VarType::Type x_dtype = x->type();
+    framework::proto::VarType::Type x_dtype =
+        framework::TransToProtoVarType(x->dtype());
     framework::proto::VarType::Type scale_bias_dtype;
     if (void_scale_data != nullptr) {
-      scale_bias_dtype = scale->type();
+      scale_bias_dtype = framework::TransToProtoVarType(scale->dtype());
       if (void_bias_data != nullptr) {
-        PADDLE_ENFORCE_EQ(scale_bias_dtype, bias->type(),
+        PADDLE_ENFORCE_EQ(scale_bias_dtype,
+                          framework::TransToProtoVarType(bias->dtype()),
                           platform::errors::InvalidArgument(
                               "Thie Scale and Bias of layer_norm op "
                               "should have the same data type."));
       }
     } else {
-      scale_bias_dtype = (void_bias_data != nullptr ? bias->type() : x_dtype);
+      scale_bias_dtype = (void_bias_data != nullptr
+                              ? framework::TransToProtoVarType(bias->dtype())
+                              : x_dtype);
     }
 
     bool is_scale_bias_same_dtype_with_x = x_dtype == scale_bias_dtype;
@@ -90,7 +95,7 @@ class LayerNormKernel<platform::CUDADeviceContext, T>
                             framework::DataTypeToString(scale_bias_dtype)));
     }
 
-    auto matrix_dim = framework::flatten_to_2d(x_dims, begin_norm_axis);
+    auto matrix_dim = pten::flatten_to_2d(x_dims, begin_norm_axis);
     int64_t batch_size = static_cast<int64_t>(matrix_dim[0]);
     int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
 
@@ -180,7 +185,7 @@ class LayerNormGradKernel<platform::CUDADeviceContext, T>
 
     const auto &x_dims = x->dims();
     const auto begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
-    auto matrix_dim = framework::flatten_to_2d(x_dims, begin_norm_axis);
+    auto matrix_dim = pten::flatten_to_2d(x_dims, begin_norm_axis);
     int64_t batch_size = static_cast<int64_t>(matrix_dim[0]);
     int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
 
@@ -193,16 +198,17 @@ class LayerNormGradKernel<platform::CUDADeviceContext, T>
     auto *d_x_data =
         (d_x == nullptr ? nullptr : d_x->mutable_data<T>(ctx.GetPlace()));
 
-    framework::proto::VarType::Type x_dtype = x->type();
+    framework::proto::VarType::Type x_dtype =
+        framework::TransToProtoVarType(x->dtype());
     framework::proto::VarType::Type scale_bias_dtype;
     if (scale != nullptr) {
-      scale_bias_dtype = scale->type();
+      scale_bias_dtype = framework::TransToProtoVarType(scale->dtype());
     } else {
       // FIXME(zengjinle): do not find a better way to get the right
       // data type of the d_scale and d_bias if scale == nullptr.
       auto *bias = ctx.Input<Tensor>("Bias");
       if (bias != nullptr) {
-        scale_bias_dtype = bias->saved_type();
+        scale_bias_dtype = framework::TransToProtoVarType(bias->dtype());
       } else {
         scale_bias_dtype = x_dtype;
       }

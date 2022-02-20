@@ -137,6 +137,11 @@ if(WITH_PYTHON)
   target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})
   add_executable(eager_op_function_generator eager_op_function_generator.cc)
   target_link_libraries(eager_op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})
+  add_executable(kernel_signature_generator kernel_signature_generator.cc)
+  target_link_libraries(kernel_signature_generator ${OP_FUNCTION_GENERETOR_DEPS})
+  if(WIN32)
+    target_link_libraries(kernel_signature_generator shlwapi.lib)
+  endif()
 
   get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(op_function_generator ${os_dependency_modules})
@@ -144,6 +149,7 @@ if(WITH_PYTHON)
   if(WITH_ROCM)
     target_link_libraries(op_function_generator ${ROCM_HIPRTC_LIB})
     target_link_libraries(eager_op_function_generator ${ROCM_HIPRTC_LIB})
+    target_link_libraries(kernel_signature_generator ${ROCM_HIPRTC_LIB})
   endif()
 
   set(impl_file ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function_impl.h)
@@ -152,7 +158,7 @@ if(WITH_PYTHON)
   set(tmp_eager_impl_file ${eager_impl_file}.tmp)
 
   set(OP_IMPL_DEPS op_function_generator)
-  set(EAGER_OP_IMPL_DEPS eager_op_function_generator)
+  set(EAGER_OP_IMPL_DEPS eager_op_function_generator eager_final_state_python_c_codegen)
 
   if(WIN32)
     if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
@@ -276,7 +282,7 @@ if(WITH_PYTHON)
   if(NOT ON_INFER)
     cc_library(paddle_eager
     SRCS eager.cc eager_functions.cc eager_method.cc eager_properties.cc eager_utils.cc
-    DEPS eager_api autograd_meta backward grad_node_info pten op_function_common dygraph_function dygraph_node accumulation_node global_utils utils python)
+    DEPS eager_api autograd_meta backward grad_node_info pten op_function_common final_dygraph_function final_dygraph_node dygraph_function dygraph_node accumulation_node global_utils utils python)
     add_dependencies(paddle_eager eager_codegen)
     add_dependencies(paddle_eager eager_op_function_generator_cmd)
     list(APPEND PYBIND_DEPS paddle_eager)
@@ -284,7 +290,7 @@ if(WITH_PYTHON)
 
   cc_library(paddle_pybind SHARED
     SRCS ${PYBIND_SRCS}
-    DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+    DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} ${GLOB_DEV_LIB})
 
   if(NOT APPLE AND NOT WIN32)
     target_link_libraries(paddle_pybind rt)

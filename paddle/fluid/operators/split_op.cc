@@ -46,8 +46,7 @@ class SplitOp : public framework::OperatorWithKernel {
     }
 
     if (ctx->HasInput("AxisTensor")) {
-      auto out_dims =
-          framework::make_ddim(std::vector<int>(in_dims.size(), -1));
+      auto out_dims = pten::make_ddim(std::vector<int>(in_dims.size(), -1));
       std::vector<framework::DDim> outs_dims(outs_number, out_dims);
       ctx->SetOutputsDim("Out", outs_dims);
       for (size_t i = 0; i < outs_number; ++i) {
@@ -83,7 +82,7 @@ class SplitOp : public framework::OperatorWithKernel {
       // 16(depending on which blocking format is used) submemory cannot be
       // created, so in that scenario a fallback is needed
       auto tmp_md = dnnl::memory::desc(
-          framework::vectorize(ctx.Input<Tensor>("X")->dims()),
+          pten::vectorize(ctx.Input<Tensor>("X")->dims()),
           dnnl::memory::data_type::f32, ctx.Input<Tensor>("X")->format());
       if (tmp_md.data.format_desc.blocking.inner_nblks == 0)
         return framework::OpKernelType(input_data_type, ctx.GetPlace(),
@@ -172,11 +171,3 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(split, ops::SplitOp, ops::SplitOpMaker,
                   ops::SplitGradMaker<paddle::framework::OpDesc>,
                   ops::SplitGradMaker<paddle::imperative::OpBase>);
-namespace plat = paddle::platform;
-REGISTER_OP_CPU_KERNEL(
-    split, ops::SplitOpKernel<plat::CPUDeviceContext, double>,
-    ops::SplitOpKernel<plat::CPUDeviceContext, float>,
-    ops::SplitOpKernel<plat::CPUDeviceContext, int64_t>,
-    ops::SplitOpKernel<plat::CPUDeviceContext, int>,
-    ops::SplitOpKernel<plat::CPUDeviceContext, bool>,
-    ops::SplitOpKernel<plat::CPUDeviceContext, plat::float16>);

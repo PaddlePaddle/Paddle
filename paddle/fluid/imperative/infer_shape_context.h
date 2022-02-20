@@ -17,13 +17,13 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/var_helper.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
+#include "paddle/pten/core/ddim.h"
 
 namespace paddle {
 namespace imperative {
@@ -76,6 +76,10 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
         platform::errors::PreconditionNotMet(
             "Output %s should not have more than one outputs", name));
     return out[0] != nullptr;
+  }
+
+  bool HasAttr(const std::string& name) const override {
+    return attrs_->count(name) > 0 || default_attrs_->count(name) > 0;
   }
 
   bool HasInputs(const std::string& name) const override {

@@ -46,7 +46,7 @@ class LayerNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
   std::shared_ptr<dnnl::memory> AcquireScaleShiftMemory(const Tensor* scale,
                                                         const Tensor* shift) {
     // OneDNN requires a single piece of memory for scale and shift data
-    const unsigned int C = framework::vectorize(scale->dims())[0];
+    const unsigned int C = pten::vectorize(scale->dims())[0];
 
     auto scaleshift_memory =
         this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc());
@@ -92,7 +92,7 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-    auto src_tz = paddle::framework::vectorize(x->dims());
+    auto src_tz = pten::vectorize(x->dims());
     PADDLE_ENFORCE_EQ(begin_norm_axis, (src_tz.size() - 1),
                       platform::errors::InvalidArgument(
                           "MKL-DNN Layer Norm supports only last logical "

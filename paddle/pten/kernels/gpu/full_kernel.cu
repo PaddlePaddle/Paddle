@@ -33,12 +33,13 @@ struct FullFuctor {
   }
 };
 
-template <typename T, typename ContextT>
-void FullKernel(const ContextT& dev_ctx,
+template <typename T, typename Context>
+void FullKernel(const Context& dev_ctx,
                 const ScalarArray& shape,
                 const Scalar& val,
+                DataType dtype,
                 DenseTensor* out) {
-  out->Resize(paddle::framework::make_ddim(shape.GetData()));
+  out->Resize(pten::make_ddim(shape.GetData()));
   int numel = out->numel();
   out->mutable_data<T>(dev_ctx.GetPlace());
   if (numel > 0) {
@@ -48,16 +49,16 @@ void FullKernel(const ContextT& dev_ctx,
     // This function has no input, so the inputs.size() == 0. Use kUnary, but
     // the data will not be loaded in the kernel because the number of
     // parameters in the operator is 0
-    pten::funcs::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary,
-                                                     T,
-                                                     T>(
+    pten::funcs::ElementwiseKernel<T>(
         dev_ctx, inputs, &outputs, FullFuctor<T>(val.to<T>()));
   }
 }
 
-template <typename T, typename ContextT>
-void FullLikeKernel(const ContextT& dev_ctx,
+template <typename T, typename Context>
+void FullLikeKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
                     const Scalar& val,
+                    DataType dtype,
                     DenseTensor* out) {
   auto value = val.to<float>();
   using CommonType = typename std::common_type<
@@ -90,9 +91,7 @@ void FullLikeKernel(const ContextT& dev_ctx,
   // the operator is 0
   int numel = out->numel();
   if (numel > 0) {
-    pten::funcs::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary,
-                                                     T,
-                                                     T>(
+    pten::funcs::ElementwiseKernel<T>(
         dev_ctx, inputs, &outputs, FullFuctor<T>(value));
   }
 }
@@ -110,9 +109,9 @@ PT_REGISTER_KERNEL(full,
                    int,
                    int64_t,
                    bool,
-                   paddle::platform::float16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::float16,
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(full_like,
                    GPU,
@@ -120,7 +119,8 @@ PT_REGISTER_KERNEL(full_like,
                    pten::FullLikeKernel,
                    float,
                    double,
+                   int16_t,
                    int,
                    int64_t,
                    bool,
-                   paddle::platform::float16) {}
+                   pten::dtype::float16) {}

@@ -71,7 +71,7 @@ PADDLE_API Tensor scale_kernel_context(const Tensor& x,
 
   auto dense_out = std::make_shared<pten::DenseTensor>(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
-          pten::TransToFluidPlace(kernel_backend)),
+          pten::TransToPtenPlace(kernel_backend)),
       pten::DenseTensorMeta());
   pten::MetaTensor meta_out(dense_out.get());
   pten::UnchangedInferMeta(*dense_x, &meta_out);
@@ -162,7 +162,7 @@ static void ScaleGPU(DataType kernel_dtype,
       break;
     }
     case pten::DataType::FLOAT16: {
-      pten::ScaleKernel<paddle::platform::float16>(
+      pten::ScaleKernel<pten::dtype::float16>(
           dev_ctx, x, pten::Scalar(scale), bias, bias_after_scale, dense_out);
       break;
     }
@@ -238,7 +238,7 @@ Tensor scale_switch_case(const Tensor& x,
 
   auto dense_out = std::make_shared<pten::DenseTensor>(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
-          pten::TransToFluidPlace(kernel_backend)),
+          pten::TransToPtenPlace(kernel_backend)),
       pten::DenseTensorMeta());
   pten::MetaTensor meta_out(dense_out.get());
   pten::UnchangedInferMeta(*dense_x, &meta_out);

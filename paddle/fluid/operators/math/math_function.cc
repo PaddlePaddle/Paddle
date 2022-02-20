@@ -112,8 +112,8 @@ struct TransposeNormal<platform::CPUDeviceContext, T> {
                   const framework::Tensor& in, framework::Tensor* out,
                   const std::vector<int>& axis) {
     const int rank = axis.size();
-    auto in_stride = framework::stride(in.dims());
-    auto out_stride = framework::stride(out->dims());
+    auto in_stride = pten::stride(in.dims());
+    auto out_stride = pten::stride(out->dims());
     const T* in_ptr = in.data<T>();
     T* out_ptr = out->data<T>();
 
@@ -205,6 +205,13 @@ void set_constant_with_place<platform::MLUPlace>(
     const platform::DeviceContext& context, framework::Tensor* tensor,
     float value) {
   PADDLE_THROW(platform::errors::Unimplemented("MLUPlace is not supported"));
+}
+
+template <>
+void set_constant_with_place<platform::CustomPlace>(
+    const platform::DeviceContext& context, framework::Tensor* tensor,
+    float value) {
+  PADDLE_THROW(platform::errors::Unimplemented("CustomPlace is not supported"));
 }
 
 template <>

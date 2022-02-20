@@ -140,6 +140,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   bool enable_int8_;
   bool enable_fp16_;
   bool use_calib_mode_;
+  bool use_inspector_;
   std::string calibration_data_;
   std::string engine_key_;
   std::string calibration_engine_key_;
@@ -175,6 +176,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     shape_range_info_path_ = Attr<std::string>("shape_range_info_path");
     allow_build_at_runtime_ = Attr<bool>("allow_build_at_runtime");
     use_static_engine_ = Attr<bool>("use_static_engine");
+    use_inspector_ = HasAttr("use_inspector") && Attr<bool>("use_inspector");
     if (use_static_engine_) {
       model_opt_cache_dir_ = Attr<std::string>("model_opt_cache_dir");
     }
@@ -285,6 +287,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
       return;
     }
     auto *trt_engine = GetEngine(scope, dev_place);
+    if (use_inspector_) {
+      trt_engine->GetEngineInfo();
+    }
     if (trt_engine->with_dynamic_shape()) {
       // get runtime input shapes.
       std::map<std::string, std::vector<int32_t>> runtime_input_shape;
@@ -293,7 +298,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
                                                                           name);
         VLOG(4) << "trt engine runtime input name(" << name << "), dims("
                 << t.dims() << ")";
-        auto t_shape = framework::vectorize<int32_t>(t.dims());
+        auto t_shape = pten::vectorize<int32_t>(t.dims());
         runtime_input_shape.insert(std::make_pair(name, t_shape));
       }
 
@@ -331,7 +336,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
             anc = &scope;
           }
           PrepareTRTEngine(*anc, trt_engine);
-
           // update shape_range_info_pbtxt
           if (!shape_range_info_path_.empty()) {
             inference::UpdateShapeRangeInfo(
@@ -380,7 +384,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         auto &t =
             inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
         calib_buffers[x] = t.memory_size();
-        auto t_shape = framework::vectorize(t.dims());
+        auto t_shape = pten::vectorize(t.dims());
         runtime_batch = t_shape[0];
       }
       calib_res->calib_.reset(new TRTInt8Calibrator(
@@ -456,7 +460,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         framework::TransDataDevice(t, dst_place, &out);
         t.ShareDataWith(out);
       }
-      auto t_shape = framework::vectorize<int64_t>(t.dims());
+      auto t_shape = pten::vectorize<int64_t>(t.dims());
       // const int bind_index = engine->engine()->getBindingIndex(x.c_str());
       // Get index of profile 0 first, then plus binding offset
       const int bind_index =
@@ -509,7 +513,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
 #endif
       }
       runtime_batch = t_shape[0];
-      auto type = t.type();
+      auto type = framework::TransToProtoVarType(t.dtype());
       if (type == framework::proto::VarType::FP32) {
         buffers[bind_index] = static_cast<void *>(t.data<float>());
       } else if (type == framework::proto::VarType::INT64) {
@@ -558,7 +562,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
           platform::errors::NotFound(
               "Output variable %s is not found in TensorRT subgraph.", y));
       auto *fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
-      fluid_t->Resize(framework::make_ddim(ddim));
+      fluid_t->Resize(pten::make_ddim(ddim));
 
       PADDLE_ENFORCE_LT(bind_index, num_bindings,
                         platform::errors::InvalidArgument(

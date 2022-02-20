@@ -38,7 +38,7 @@ class ReduceSumGradKernel : public framework::OpKernel<T> {
 
     // handle reduce_all
     if (input2->dims().size() == 1 && input2->dims()[0] == 1) {
-      for (int64_t i = 0; i < framework::product(input0->dims()); ++i) {
+      for (int64_t i = 0; i < pten::product(input0->dims()); ++i) {
         output_d[i] = input2_d[0];
       }
       return;
@@ -79,8 +79,9 @@ class ReduceSumGradKernel : public framework::OpKernel<T> {
       if (in_dtype >= 0) {
         Tensor tmp_tensor;
         auto* pre_input = context.Input<Tensor>(framework::GradVarName("Out"));
-        auto in_kernel_type =
-            framework::OpKernelType(pre_input->type(), context.GetPlace());
+        auto in_kernel_type = framework::OpKernelType(
+            framework::TransToProtoVarType(pre_input->dtype()),
+            context.GetPlace());
         auto out_kernel_type = framework::OpKernelType(
             static_cast<framework::proto::VarType::Type>(in_dtype),
             context.GetPlace());

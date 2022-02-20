@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/scatter_nd_add_op.h"
 #include <memory>
 #include <vector>
-#include "paddle/fluid/framework/ddim.h"
+#include "paddle/pten/core/ddim.h"
 
 namespace paddle {
 namespace operators {
@@ -98,8 +98,9 @@ class ScatterNdAddOp : public framework::OperatorWithKernel {
                       OperatorWithKernel::IndicateVarDataType(ctx, "Updates"),
                       platform::errors::InvalidArgument(
                           "Ref and Updates must have same type"));
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        framework::TransToProtoVarType(ctx.Input<Tensor>("X")->type()),
+        ctx.device_context());
   }
 };
 

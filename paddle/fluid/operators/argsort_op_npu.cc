@@ -75,15 +75,16 @@ class ArgsortNPUKernel : public framework::OpKernel<T> {
     framework::NPUAttributeMap attr = {{"axis", -1},
                                        {"descending", descending}};
 
-    Tensor indices_tmp(framework::proto::VarType::INT32);
+    Tensor indices_tmp(experimental::DataType::INT32);
     indices_tmp.Resize(indices->dims());
 
-    if (input->type() == framework::proto::VarType::INT64) {
-      Tensor input_fp32(framework::proto::VarType::FP32);
+    if (framework::TransToProtoVarType(input->dtype()) ==
+        framework::proto::VarType::INT64) {
+      Tensor input_fp32(experimental::DataType::FLOAT32);
       input_fp32.Resize(input->dims());
       CastToFP32(ctx, stream, *input, &input_fp32);
 
-      Tensor output_fp32(framework::proto::VarType::FP32);
+      Tensor output_fp32(experimental::DataType::FLOAT32);
       output_fp32.Resize(output->dims());
 
       if (axis == -1 || axis + 1 == in_dims.size()) {
@@ -105,14 +106,14 @@ class ArgsortNPUKernel : public framework::OpKernel<T> {
         for (size_t i = 0; i < perm.size(); i++) {
           shape.emplace_back(in_dims[perm[i]]);
         }
-        auto trans_dims = framework::make_ddim(shape);
+        auto trans_dims = pten::make_ddim(shape);
 
         Tensor trans_input(input_fp32.type());
         trans_input.Resize(trans_dims);
         TranposeNPU<float>(ctx, stream, &perm, input_fp32, &trans_input);
 
         Tensor trans_output(input_fp32.type());
-        Tensor trans_indices(framework::proto::VarType::INT32);
+        Tensor trans_indices(experimental::DataType::INT32);
         trans_output.mutable_data<float>(trans_dims, ctx.GetPlace());
         trans_indices.mutable_data<int32_t>(trans_dims, ctx.GetPlace());
 
@@ -143,14 +144,14 @@ class ArgsortNPUKernel : public framework::OpKernel<T> {
         for (size_t i = 0; i < perm.size(); i++) {
           shape.emplace_back(in_dims[perm[i]]);
         }
-        auto trans_dims = framework::make_ddim(shape);
+        auto trans_dims = pten::make_ddim(shape);
 
         Tensor trans_input(input->type());
         trans_input.Resize(trans_dims);
         TranposeNPU<T>(ctx, stream, &perm, *input, &trans_input);
 
         Tensor trans_output(input->type());
-        Tensor trans_indices(framework::proto::VarType::INT32);
+        Tensor trans_indices(experimental::DataType::INT32);
         trans_output.mutable_data<T>(trans_dims, ctx.GetPlace());
         trans_indices.mutable_data<int32_t>(trans_dims, ctx.GetPlace());
 
@@ -173,18 +174,18 @@ static void FullAssignNPU(const framework::ExecutionContext& ctx,
                           const framework::DDim in_dims, const Tensor& input,
                           const Tensor& indices, Tensor* t_out) {
   const int64_t input_height =
-      framework::product(framework::slice_ddim(in_dims, 0, in_dims.size() - 1));
+      pten::product(pten::slice_ddim(in_dims, 0, in_dims.size() - 1));
   const int64_t input_width = in_dims[in_dims.size() - 1];
 
   Tensor input_tmp;
   input_tmp.ShareDataWith(input);
   input_tmp.Resize(
-      framework::make_ddim(std::vector<int64_t>{input_height * input_width}));
+      pten::make_ddim(std::vector<int64_t>{input_height * input_width}));
 
   Tensor indices_tmp;
   indices_tmp.ShareDataWith(indices);
   indices_tmp.Resize(
-      framework::make_ddim(std::vector<int64_t>{input_height, input_width}));
+      pten::make_ddim(std::vector<int64_t>{input_height, input_width}));
 
   std::vector<int64_t> indexs_value;
   for (Type i = 0; i < input_height; i++) {
@@ -193,8 +194,7 @@ static void FullAssignNPU(const framework::ExecutionContext& ctx,
   Tensor indexs_tmp(indices.type());
   framework::TensorFromVector<int64_t>(indexs_value, ctx.device_context(),
                                        &indexs_tmp);
-  indexs_tmp.Resize(
-      framework::make_ddim(std::vector<int64_t>{input_height, 1}));
+  indexs_tmp.Resize(pten::make_ddim(std::vector<int64_t>{input_height, 1}));
 
   Tensor indices_index(indices.type());
   indices_index.mutable_data<int64_t>(indices_tmp.dims(), ctx.GetPlace());
@@ -203,7 +203,7 @@ static void FullAssignNPU(const framework::ExecutionContext& ctx,
   runner_add.Run(stream);
 
   indices_index.Resize(
-      framework::make_ddim(std::vector<int64_t>{input_height * input_width}));
+      pten::make_ddim(std::vector<int64_t>{input_height * input_width}));
 
   t_out->mutable_data<T>(ctx.GetPlace());
   Tensor out_tmp(t_out->type());
@@ -243,7 +243,7 @@ class ArgsortGradNPUKernel : public framework::OpKernel<T> {
       for (size_t i = 0; i < perm.size(); i++) {
         shape.emplace_back(in_dims[perm[i]]);
       }
-      auto trans_dims = framework::make_ddim(shape);
+      auto trans_dims = pten::make_ddim(shape);
 
       Tensor trans_dout(dO->type());
       Tensor trans_ids(indices->type());

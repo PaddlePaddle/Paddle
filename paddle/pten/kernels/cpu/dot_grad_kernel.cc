@@ -28,5 +28,5 @@ PT_REGISTER_KERNEL(dot_grad,
                    double,
                    int,
                    int64_t,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}

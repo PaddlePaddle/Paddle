@@ -118,7 +118,7 @@ static inline void CheckReduceRank(int reduce_rank, int rank) {
 
 // convert dims from vector to array
 template <typename T, size_t ElementCount, typename VectorLikeType>
-static inline pten::framework::Array<T, ElementCount> VectorToArray(
+static inline pten::Array<T, ElementCount> VectorToArray(
     const VectorLikeType& vec) {
   PADDLE_ENFORCE_LE(vec.size(),
                     ElementCount,
@@ -128,7 +128,7 @@ static inline pten::framework::Array<T, ElementCount> VectorToArray(
                         vec.size(),
                         ElementCount));
   size_t n = static_cast<size_t>(vec.size());
-  pten::framework::Array<T, ElementCount> ret;
+  pten::Array<T, ElementCount> ret;
   for (size_t i = 0; i < n; ++i) {
     ret[i] = vec[i];
   }
@@ -162,7 +162,7 @@ static inline std::vector<int> GetReduceDim(const std::vector<int64_t>& dims,
 
 }  // namespace details
 
-constexpr int kMaxRank = pten::framework::DDim::kMaxRank;
+constexpr int kMaxRank = pten::DDim::kMaxRank;
 
 enum ReduceType {
   kReduceLastDim = 0x01,    // when reduce_dim[0] == x_dim.size() - 1;
@@ -202,9 +202,9 @@ struct IndexCalculator {
   }
 
   int dim;
-  pten::framework::Array<int, kMaxRank> dims;
-  pten::framework::Array<int, kMaxRank> strides;
-  pten::framework::Array<paddle::platform::FastDivMod, kMaxRank> divmoders;
+  pten::Array<int, kMaxRank> dims;
+  pten::Array<int, kMaxRank> strides;
+  pten::Array<paddle::platform::FastDivMod, kMaxRank> divmoders;
 };
 
 template <bool ReduceLastDim = false>
@@ -326,7 +326,7 @@ struct ReduceConfig {
                      const paddle::platform::Place& place,
                      pten::DenseTensor* tmp) {
     if (should_reduce_again) {
-      tmp->ResizeAndAllocate(pten::framework::make_ddim(
+      tmp->ResizeAndAllocate(pten::make_ddim(
           {static_cast<int64_t>(left_num * grid.z * grid.y * sizeof(Ty))}));
       output_data = tmp->mutable_data<Ty>(place);
     } else {
@@ -1004,15 +1004,14 @@ template <typename Tx,
           typename Ty,
           template <typename> class ReduceOp,
           typename TransformOp>
-static
-    typename std::enable_if<!std::is_same<Tx, paddle::platform::float16>::value,
-                            void>::type
-    CubTensorReduceImpl(const Tx* x_data,
-                        Ty* y_data,
-                        const TransformOp& transform,
-                        int reduce_num,
-                        const paddle::platform::Place& place,
-                        gpuStream_t stream) {
+static typename std::enable_if<!std::is_same<Tx, pten::dtype::float16>::value,
+                               void>::type
+CubTensorReduceImpl(const Tx* x_data,
+                    Ty* y_data,
+                    const TransformOp& transform,
+                    int reduce_num,
+                    const paddle::platform::Place& place,
+                    gpuStream_t stream) {
   auto reducer = ReduceOp<Ty>();
   cub::TransformInputIterator<Ty, TransformOp, const Tx*> trans_x(x_data,
                                                                   transform);
@@ -1028,9 +1027,9 @@ static
 
   pten::DenseTensor tmp = pten::DenseTensor(
       pten::make_intrusive<paddle::experimental::SharedStorage>(place),
-      pten::DenseTensorMeta(pten::DataType::UINT8,
-                            pten::framework::make_ddim(
-                                {static_cast<int64_t>(temp_storage_bytes)})));
+      pten::DenseTensorMeta(
+          pten::DataType::UINT8,
+          pten::make_ddim({static_cast<int64_t>(temp_storage_bytes)})));
 
   auto* temp_storage = tmp.mutable_data<uint8_t>(place);
 
@@ -1048,15 +1047,14 @@ template <typename Tx,
           typename Ty,
           template <typename> class ReduceOp,
           typename TransformOp>
-static
-    typename std::enable_if<std::is_same<Tx, paddle::platform::float16>::value,
-                            void>::type
-    CubTensorReduceImpl(const Tx* x_data,
-                        Ty* y_data,
-                        const TransformOp& transform,
-                        int reduce_num,
-                        const paddle::platform::Place& place,
-                        gpuStream_t stream) {
+static typename std::enable_if<std::is_same<Tx, pten::dtype::float16>::value,
+                               void>::type
+CubTensorReduceImpl(const Tx* x_data,
+                    Ty* y_data,
+                    const TransformOp& transform,
+                    int reduce_num,
+                    const paddle::platform::Place& place,
+                    gpuStream_t stream) {
   PADDLE_THROW(pten::errors::InvalidArgument(
       "Tx should not be float16 when using cub::DeviceReduce::Reduce()."));
 }
@@ -1073,7 +1071,7 @@ void TensorReduceImpl(const pten::GPUContext& dev_ctx,
                       gpuStream_t stream) {
   y->mutable_data<Ty>(x.place());
 
-  auto x_dim = pten::framework::vectorize<int>(x.dims());
+  auto x_dim = pten::vectorize<int>(x.dims());
   auto config = ReduceConfig<Ty>(origin_reduce_dims, x_dim);
   config.Run();
   int numel = x.numel();
@@ -1093,13 +1091,12 @@ void TensorReduceImpl(const pten::GPUContext& dev_ctx,
   if (config.reduce_num == 1) {
     std::vector<const DenseTensor*> inputs = {&x};
     std::vector<DenseTensor*> outputs = {y};
-    funcs::LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, Tx, Ty>(
-        dev_ctx, inputs, &outputs, transform);
+    funcs::ElementwiseKernel<Ty>(dev_ctx, inputs, &outputs, transform);
     return;
   }
 
   config.SetOutputData(y_data, x.place(), &tmp);
-  constexpr bool kIsTxFP16 = std::is_same<Tx, paddle::platform::float16>::value;
+  constexpr bool kIsTxFP16 = std::is_same<Tx, pten::dtype::float16>::value;
   bool use_cub_reduce = config.reduce_num == numel && !kIsTxFP16;
   if (use_cub_reduce) {
     CubTensorReduceImpl<Tx, Ty, ReduceOp, TransformOp>(

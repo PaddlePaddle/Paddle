@@ -14,8 +14,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -80,7 +80,7 @@ void SelectedRowsCompute(const framework::ExecutionContext &context) {
 
   } else {
     // no data, just set a empty out tensor.
-    out->mutable_value()->mutable_data<T>(framework::make_ddim({0}),
+    out->mutable_value()->mutable_data<T>(pten::make_ddim({0}),
                                           context.GetPlace());
   }
 }
@@ -167,7 +167,7 @@ class SumKernel : public framework::OpKernel<T> {
         }
         if (start != 2) {
           VLOG(10) << "Fill with constant = 0 in sum kernel.";
-          math::SetConstant<DeviceContext, T> constant_functor;
+          pten::funcs::SetConstant<DeviceContext, T> constant_functor;
           constant_functor(context.template device_context<DeviceContext>(),
                            out, static_cast<T>(0));
         }

@@ -36,7 +36,7 @@ void FullKernel(const Context& dev_ctx,
                 const ScalarArray& shape,
                 const Scalar& val,
                 DenseTensor* out) {
-  out->ResizeAndAllocate(pten::framework::make_ddim(shape.GetData()));
+  out->ResizeAndAllocate(pten::make_ddim(shape.GetData()));
   FullValue<T>(dev_ctx, out, val.to<T>());
 }
 
@@ -47,10 +47,9 @@ void FullLikeKernel(const Context& dev_ctx,
   auto value = val.to<float>();
   using CommonType = typename std::common_type<
       float,
-      typename std::conditional<
-          std::is_same<T, paddle::platform::float16>::value,
-          float,
-          T>::type>::type;
+      typename std::conditional<std::is_same<T, pten::dtype::float16>::value,
+                                float,
+                                T>::type>::type;
 
   auto common_type_value = static_cast<CommonType>(value);
 

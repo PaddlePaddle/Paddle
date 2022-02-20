@@ -36,6 +36,18 @@ enum class TracerEventType {
   Memset = 6,
   // Used to mark record defined by user
   UserDefined = 7,
+  // Used to mark operator detail, (such as infer shape, compute)
+  OperatorInner = 8,
+  // Used to mark model training or testing perspective, forward process
+  Forward = 9,
+  // Used to mark model training perspective, backward process
+  Backward = 10,
+  // Used to mark model training perspective, optimization process
+  Optimization = 11,
+  // Used to mark distributed training perspective
+  Communication = 12,
+  // Used to mark python api
+  PythonOp = 13,
   // A flag to denote the number of current types
   NumTypes
 };
@@ -84,7 +96,7 @@ struct MemcpyEventInfo {
   // The kind of the memory copy.
   // Each kind represents the source and destination targets of a memory copy.
   // Targets are host, device, and array. Refer to CUpti_ActivityMemcpyKind
-  // std::string copy_kind;
+  char copy_kind[kMemKindMaxLen];
   // The source memory kind read by the memory copy.
   // Each kind represents the type of the memory accessed by a memory
   // operation/copy. Refer to CUpti_ActivityMemoryKind

@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/take_along_axis_op.h"
+#include "paddle/pten/core/ddim.h"
 
 namespace paddle {
 namespace operators {
@@ -32,7 +32,7 @@ class TakeAlongAxisCUDAKernel : public framework::OpKernel<T> {
     auto result = ctx.Output<Tensor>("Result");
     result->Resize(index->dims());
     result->mutable_data<T>(ctx.GetPlace());
-    const auto &index_type = index->type();
+    const auto &index_type = framework::TransToProtoVarType(index->dtype());
     if (index_type == framework::proto::VarType::INT32) {
       gpu_gather_kernel<T, int32_t>(*input, axis, *index, *result,
                                     ctx.device_context());
@@ -63,10 +63,10 @@ class TakeAlongAxisGradOpCUDAKernel : public framework::OpKernel<T> {
 
     // Set to zero tensor.
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    math::SetConstant<platform::CUDADeviceContext, T> functor;
+    pten::funcs::SetConstant<platform::CUDADeviceContext, T> functor;
     functor(reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx),
             input_grad, static_cast<T>(0));
-    const auto &index_type = index->type();
+    const auto &index_type = framework::TransToProtoVarType(index->dtype());
 
     if (index_type == framework::proto::VarType::INT32) {
       gpu_scatter_add_kernel<T, int32_t>(

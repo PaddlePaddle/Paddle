@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/operators/fused/fusion_lstm_op.h"
 #include "paddle/fluid/operators/fused/mkldnn/fusion_rnn_mkldnn.h"
@@ -114,7 +115,7 @@ class LSTMMKLDNNHandler
   void ReorderGates(U* weights, int64_t I) {
     size_t inner_block_size = this->OC;
     size_t block_size = inner_block_size * this->G;
-    for (size_t i = 0; i < (size_t)I; ++i) {
+    for (size_t i = 0; i < (size_t)I; ++i) {  // NOLINT
       size_t offset = i * block_size;
 
       U* base_pos = weights + offset;
@@ -305,15 +306,15 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
     cell = cell;
     auto x_dims = input->dims();
     auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)
-                          ? framework::flatten_to_2d(x_dims, 1)
+                          ? pten::flatten_to_2d(x_dims, 1)
                           : x_dims;
     // Get attributes
     const bool is_reverse = ctx.Attr<bool>("is_reverse");
     const bool use_peepholes = ctx.Attr<bool>("use_peepholes");
 
     // Get tensor dimensions
-    const auto x_mat_dims_vec = framework::vectorize(x_mat_dims);
-    const auto weight_h_dims = framework::vectorize(weight_h->dims());
+    const auto x_mat_dims_vec = pten::vectorize(x_mat_dims);
+    const auto weight_h_dims = pten::vectorize(weight_h->dims());
     const auto& input_lod = input->lod()[0];
 
     // Calculate RNN dimensions
@@ -341,13 +342,14 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
     std::shared_ptr<dnnl::memory> h0_memory_p, weight_h_memory_p,
         weight_x_memory_p;
 
-    if (weight_h->type() == paddle::framework::proto::VarType_Type_FP32) {
+    if (framework::TransToProtoVarType(weight_h->dtype()) ==
+        paddle::framework::proto::VarType_Type_FP32) {
       h0_memory_p = handler.template AcquireH0Memory<float>(h0);
       weight_x_memory_p =
           handler.template AcquireWeightXMemory<float>(weight_x);
       weight_h_memory_p =
           handler.template AcquireWeightHMemory<float>(weight_h);
-    } else if (weight_h->type() ==
+    } else if (framework::TransToProtoVarType(weight_h->dtype()) ==
                paddle::framework::proto::VarType_Type_BF16) {
       h0_memory_p =
           handler.template AcquireH0Memory<paddle::platform::bfloat16>(h0);

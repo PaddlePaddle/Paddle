@@ -24,18 +24,16 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace distributed {
 
 template <typename T>
-inline paddle::operators::math::BlasT<paddle::platform::CPUDeviceContext, T>
-GetBlas() {
+inline pten::funcs::BlasT<paddle::platform::CPUDeviceContext, T> GetBlas() {
   paddle::platform::CPUDeviceContext cpu_ctx;
-  return paddle::operators::math::GetBlas<paddle::platform::CPUDeviceContext,
-                                          T>(cpu_ctx);
+  return pten::funcs::GetBlas<paddle::platform::CPUDeviceContext, T>(cpu_ctx);
 }
 
 template <typename T>

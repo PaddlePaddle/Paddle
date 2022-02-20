@@ -14,12 +14,12 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/fluid/platform/transform.h"
 #include "paddle/pten/backends/all_context.h"
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/kernels/empty_kernel.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/fluid/platform/aligned_vector.h"
@@ -38,10 +38,10 @@ enum ElementwiseType { kUnary = 1, kBinary = 2, kTernary = 3, kAny = -1 };
    for supporting multiple-output feature in elementwise system.*/
 template <class T, int Num>
 using ConditionalT =
-    typename std::conditional_t<Num == 1, T, pten::framework::Array<T, Num>>;
+    typename std::conditional_t<Num == 1, T, pten::Array<T, Num>>;
 
 namespace funcs {
-using DDim = pten::framework::DDim;
+using DDim = pten::DDim;
 
 template <typename T, typename DX_OP, typename DY_OP, typename Tout = T>
 struct ElemwiseGradNoBroadcast {
@@ -305,9 +305,9 @@ inline DDim trim_trailing_singular_dims(const DDim &dims) {
     trim_dims[i] = dims[i];
   }
   if (trim_dims.size() == 0) {
-    return DDim(pten::framework::make_dim());
+    return DDim(pten::make_dim());
   }
-  DDim actual_dims = pten::framework::make_ddim(trim_dims);
+  DDim actual_dims = pten::make_ddim(trim_dims);
   return actual_dims;
 }
 
@@ -363,8 +363,8 @@ inline void get_mid_dims(const DDim &x_dims,
 }
 
 // for broadcast backwards
-static inline std::vector<int> GetReduceDim(const paddle::framework::DDim &in,
-                                            const paddle::framework::DDim &out,
+static inline std::vector<int> GetReduceDim(const DDim &in,
+                                            const DDim &out,
                                             int axis) {
   axis =
       (axis == -1 ? std::abs(static_cast<int>(out.size() - in.size())) : axis);
@@ -394,7 +394,7 @@ static inline void GetDoubleGradSafeTensor(const DeviceContext &dev_ctx,
     auto meta = pten::DenseTensorMeta(x.dtype(), x.dims(), x.layout());
     *ddx_safe = pten::Empty(dev_ctx, std::move(meta));
     ddx_safe->mutable_data(dev_ctx.GetPlace());
-    paddle::operators::math::SetConstant<DeviceContext, T> set_zero;
+    pten::funcs::SetConstant<DeviceContext, T> set_zero;
     set_zero(dev_ctx, ddx_safe, static_cast<T>(0));
   }
 }
@@ -416,7 +416,7 @@ void ElemwiseGradComputeNoBroadcast(const DeviceContext &dev_ctx,
                                     DenseTensor *dy,
                                     DX_OP dx_op,
                                     DY_OP dy_op) {
-  size_t N = static_cast<size_t>(pten::framework::product(x_dim));
+  size_t N = static_cast<size_t>(pten::product(x_dim));
   paddle::platform::ForRange<DeviceContext> for_range(dev_ctx, N);
   for_range(ElemwiseGradNoBroadcast<T, DX_OP, DY_OP, Tout>{
       x.data<T>(),
@@ -438,14 +438,78 @@ inline void ElementwiseGradPreProcess(const DenseTensor &dout,
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 
-template <typename InT, typename OutT>
+// static unroller
+template <template <int Index, int VecSize> typename Func,
+          int VecSize,
+          int End,
+          int Begin = 0>
+struct Unroller {
+  template <typename... Args>
+  static HOSTDEVICE inline void step(Args &&... args) {
+    Func<Begin, VecSize>::Apply(std::forward<Args>(args)...);
+    Unroller<Func, VecSize, End, Begin + 1>::step(args...);
+  }
+};
+
+template <template <int Index, int VecSize> typename Func, int VecSize, int End>
+struct Unroller<Func, VecSize, End, End> {
+  template <typename... Args>
+  static HOSTDEVICE inline void step(Args &&... args) {}
+};
+
+template <int Index, int VecSize>
+struct Loader {
+  template <typename Array, typename ArgsT>
+  static __device__ void Apply(const Array &in,
+                               ArgsT *args,
+                               int num,
+                               int data_offset,
+                               bool is_boundary) {
+    using Type = std::tuple_element_t<Index, ArgsT>;
+    kps::Init<Type, ArgsT, Index, VecSize>(args, static_cast<Type>(1.0f));
+    if (is_boundary) {
+      kps::ReadData<Type, VecSize, 1, 1, ArgsT, Index, true>(
+          args, reinterpret_cast<const Type *>(in[Index]) + data_offset, num);
+    } else {
+      kps::ReadData<Type, VecSize, 1, 1, ArgsT, Index, false>(
+          args, reinterpret_cast<const Type *>(in[Index]) + data_offset, num);
+    }
+  }
+};
+
+template <int Index, int VecSize>
+struct InputSetter {
+  template <typename Array>
+  static HOSTDEVICE void Apply(
+      const std::vector<const DenseTensor *> &ins_tensor, Array *ins_data) {
+    (*ins_data)[Index] =
+        reinterpret_cast<const _ptr_ char *>(ins_tensor[Index]->data());
+  }
+};
+
+template <int Index, int VecSize>
+struct VecSizeGetter {
+  template <typename ArgsT>
+  static HOSTDEVICE void Apply(const std::vector<const DenseTensor *> &ins,
+                               const ArgsT &args,
+                               int *vec_size) {
+    using Type = std::tuple_element_t<Index, ArgsT>;
+    *vec_size = std::min<int>(
+        *vec_size,
+        paddle::platform::GetVectorizedSize(ins[Index]->data<Type>()));
+  }
+};
+
+template <typename OutT, typename Functor>
 int GetVectorizedSizeForTensors(const std::vector<const DenseTensor *> &ins,
                                 const std::vector<DenseTensor *> &outs) {
+  using Traits = paddle::platform::FunctionTraits<Functor>;
+  using ArgsT = typename Traits::ArgsTuple;
+  const int Arity = Traits::arity;
   int vec_size = 4;
-  for (auto iter = ins.begin(); iter != ins.end(); ++iter) {
-    vec_size = std::min<int>(
-        vec_size, paddle::platform::GetVectorizedSize((*iter)->data<InT>()));
-  }
+  ArgsT arg;
+  // The Arg VecSize=1 is to match the Unroller template.
+  Unroller<VecSizeGetter, 1, Arity>::step(ins, arg, &vec_size);
   for (auto iter = outs.begin(); iter != outs.end(); ++iter) {
     vec_size = std::min<int>(
         vec_size, paddle::platform::GetVectorizedSize((*iter)->data<OutT>()));
@@ -514,10 +578,43 @@ struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 3, false> {
   }
 };
 
+namespace detail {
+template <class F, class Tuple, std::size_t... Index>
+// GCC/Clang need the decltype() return type
+HOSTDEVICE constexpr decltype(auto) ApplyImpl(F &&f,
+                                              Tuple &&t,
+                                              std::index_sequence<Index...>) {
+  return std::forward<F>(f)(std::get<Index>(std::forward<Tuple>(t))...);
+}
+}  // namespace detail
+
+template <class F, class Tuple>
+HOSTDEVICE constexpr decltype(auto) Apply(F &&f, Tuple &&t) {
+  return detail::ApplyImpl(
+      std::forward<F>(f),
+      std::forward<Tuple>(t),
+      std::make_index_sequence<
+          std::tuple_size<std::remove_reference_t<Tuple>>::value>{});
+}
+
+template <typename OutT,
+          int VecSize,
+          typename Functor,
+          typename ArgsT,
+          int Arity>
+struct SameDimsElementwisePrimitiveCaller {
+  __device__ inline void operator()(Functor func, ArgsT *args, OutT *result) {
+#pragma unroll
+    for (int idx = 0; idx < VecSize; ++idx) {
+      result[idx] = static_cast<OutT>(Apply(func, args[idx]));
+    }
+  }
+};
+
 template <typename OutT, int VecSize, bool IsBoundary, int NumOuts>
 struct ElementwiseWriteDataCaller {
   __device__ __forceinline__ void operator()(
-      pten::framework::Array<_ptr_ OutT *, NumOuts> outs,
+      pten::Array<_ptr_ OutT *, NumOuts> outs,
       ConditionalT<OutT, NumOuts> src[VecSize],
       int block_offset,
       int num) {
@@ -539,18 +636,16 @@ struct ElementwiseWriteDataCaller {
 
 template <typename OutT, int VecSize, bool IsBoundary>
 struct ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, 1> {
-  __device__ __forceinline__ void operator()(
-      pten::framework::Array<_ptr_ OutT *, 1> outs,
-      OutT src[VecSize],
-      int block_offset,
-      int num) {
+  __device__ __forceinline__ void operator()(pten::Array<_ptr_ OutT *, 1> outs,
+                                             OutT src[VecSize],
+                                             int block_offset,
+                                             int num) {
     kps::WriteData<OutT, VecSize, 1, 1, IsBoundary>(
         outs[0] + block_offset, src, num);
   }
 };
 
-template <typename InT,
-          typename OutT,
+template <typename OutT,
           typename Functor,
           int Arity,
           int NumOuts,
@@ -558,51 +653,40 @@ template <typename InT,
           bool IsBoundary>
 __device__ void VectorizedElementwiseKernelImpl(
 
-    const pten::framework::Array<const _ptr_ InT *__restrict__, Arity> &in,
-    pten::framework::Array<_ptr_ OutT *, NumOuts> outs,
+    const pten::Array<const _ptr_ char *__restrict__, Arity> &in,
+    pten::Array<_ptr_ OutT *, NumOuts> outs,
     int num,
     int data_offset,
     Functor func) {
-  InT args[Arity > 1 ? Arity : 1][VecSize];
+  using Traits = paddle::platform::FunctionTraits<Functor>;
+  using ArgsT = typename Traits::ArgsTuple;
+  ArgsT args[VecSize];
   ConditionalT<OutT, NumOuts> result[VecSize];
 
-#pragma unroll
-  for (int i = 0; i < Arity; i++) {
-    kps::Init<InT, VecSize>(args[i], static_cast<InT>(1.0f));
-    kps::ReadData<InT, VecSize, 1, 1, IsBoundary>(
-        args[i], in[i] + data_offset, num);
-  }
+  Unroller<Loader, VecSize, Arity>::step(
+      in, args, num, data_offset, IsBoundary);
 
-  constexpr bool kCallElementwiseAny =
-      paddle::platform::FunctionTraits<Functor>::has_pointer_args;
-  ElementwisePrimitiveCaller<InT,
-                             ConditionalT<OutT, NumOuts>,
-                             VecSize,
-                             Functor,
-                             Arity,
-                             kCallElementwiseAny>()(func, args, result);
+  SameDimsElementwisePrimitiveCaller<ConditionalT<OutT, NumOuts>,
+                                     VecSize,
+                                     Functor,
+                                     ArgsT,
+                                     Arity>()(func, args, result);
 
   ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, NumOuts>()(
       outs, result, data_offset, num);
 }
 
-template <typename InT,
-          typename OutT,
-          typename Functor,
-          int Arity,
-          int NumOuts,
-          int VecSize>
+template <typename OutT, typename Functor, int Arity, int NumOuts, int VecSize>
 __global__ void VectorizedElementwiseKernel(
-    pten::framework::Array<const _ptr_ InT *__restrict__, Arity> ins,
-    pten::framework::Array<_ptr_ OutT *, NumOuts> outs,
+    pten::Array<const _ptr_ char *__restrict__, Arity> ins,
+    pten::Array<_ptr_ OutT *, NumOuts> outs,
     int size,
     int main_offset,
     Functor func) {
   int data_offset = BLOCK_ID_X * BLOCK_NUM_X * VecSize;
   int stride = BLOCK_NUM_X * GRID_NUM_X * VecSize;
   for (; data_offset < main_offset; data_offset += stride) {
-    VectorizedElementwiseKernelImpl<InT,
-                                    OutT,
+    VectorizedElementwiseKernelImpl<OutT,
                                     Functor,
                                     Arity,
                                     NumOuts,
@@ -613,8 +697,7 @@ __global__ void VectorizedElementwiseKernel(
 
   int num = size - data_offset;
   if (num > 0) {
-    VectorizedElementwiseKernelImpl<InT,
-                                    OutT,
+    VectorizedElementwiseKernelImpl<OutT,
                                     Functor,
                                     Arity,
                                     NumOuts,
@@ -623,24 +706,17 @@ __global__ void VectorizedElementwiseKernel(
   }
 }
 
-template <typename InT,
-          typename OutT,
-          typename Functor,
-          int Arity,
-          int NumOuts,
-          int VecSize>
+template <typename OutT, typename Functor, int Arity, int NumOuts, int VecSize>
 void ElementwiseCudaKernel(const KPDevice &ctx,
                            const std::vector<const DenseTensor *> &ins,
                            std::vector<DenseTensor *> *outs,
                            Functor func) {
   auto numel =
       (*outs)[0]->numel();  // To avoid running errors when ins.size()== 0
-  pten::framework::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
-  pten::framework::Array<_ptr_ OutT *, NumOuts> outs_data;
+  pten::Array<const _ptr_ char *__restrict__, Arity> ins_data;
+  pten::Array<_ptr_ OutT *, NumOuts> outs_data;
 
-  for (int i = 0; i < Arity; ++i) {
-    ins_data[i] = ins[i]->data<InT>();
-  }
+  Unroller<InputSetter, VecSize, Arity>::step(ins, &ins_data);
   for (int i = 0; i < NumOuts; ++i) {
     outs_data[i] = ctx.Alloc<OutT>((*outs)[i]);
   }
@@ -649,8 +725,7 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
   int grid_size = 8;
   auto stream = ctx.x_context()->xpu_stream;
   int main_offset = (numel / (VecSize * block_size)) * VecSize * block_size;
-  VectorizedElementwiseKernel<InT,
-                              OutT,
+  VectorizedElementwiseKernel<OutT,
                               Functor,
                               Arity,
                               NumOuts,
@@ -662,7 +737,7 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
   int main_offset = (numel / (VecSize * gpu_config.GetBlockSize())) * VecSize *
                     gpu_config.GetBlockSize();
   auto stream = ctx.stream();
-  VectorizedElementwiseKernel<InT, OutT, Functor, Arity, NumOuts, VecSize><<<
+  VectorizedElementwiseKernel<OutT, Functor, Arity, NumOuts, VecSize><<<
       gpu_config.block_per_grid,
       gpu_config.thread_per_block,
       0,
@@ -670,19 +745,13 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
 #endif
 }
 
-template <ElementwiseType ET,
-          typename InT,
-          typename OutT,
-          typename Functor,
-          int NumOuts = 1>
-void LaunchSameDimsElementwiseCudaKernel(
-    const KPDevice &ctx,
-    const std::vector<const DenseTensor *> &ins,
-    std::vector<DenseTensor *> *outs,
-    Functor func) {
+template <typename OutT, typename Functor, int NumOuts = 1>
+void ElementwiseKernel(const KPDevice &ctx,
+                       const std::vector<const DenseTensor *> &ins,
+                       std::vector<DenseTensor *> *outs,
+                       Functor func) {
   using Traits = paddle::platform::FunctionTraits<Functor>;
-  const int kArity =
-      Traits::has_pointer_args ? static_cast<int>(ET) : Traits::arity;
+  const int kArity = Traits::arity;
   PADDLE_ENFORCE_EQ(ins.size(),
                     kArity,
                     paddle::platform::errors::InvalidArgument(
@@ -712,18 +781,18 @@ void LaunchSameDimsElementwiseCudaKernel(
   }
 
   // calculate the max vec_size for all ins and outs
-  int vec_size = GetVectorizedSizeForTensors<InT, OutT>(ins, *outs);
+  int vec_size = GetVectorizedSizeForTensors<OutT, Functor>(ins, *outs);
   switch (vec_size) {
     case 4:
-      ElementwiseCudaKernel<InT, OutT, Functor, kArity, NumOuts, 4>(
+      ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 4>(
           ctx, ins, outs, func);
       break;
     case 2:
-      ElementwiseCudaKernel<InT, OutT, Functor, kArity, NumOuts, 2>(
+      ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 2>(
           ctx, ins, outs, func);
       break;
     case 1:
-      ElementwiseCudaKernel<InT, OutT, Functor, kArity, NumOuts, 1>(
+      ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 1>(
           ctx, ins, outs, func);
       break;
     default: {

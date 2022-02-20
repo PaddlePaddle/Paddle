@@ -23,12 +23,16 @@ namespace pten {
 template <typename T, typename Context>
 void EmptyKernel(const Context& dev_ctx,
                  const ScalarArray& shape,
+                 DataType dtype,
                  DenseTensor* out) {
-  out->ResizeAndAllocate(pten::framework::make_ddim(shape.GetData()));
+  out->ResizeAndAllocate(pten::make_ddim(shape.GetData()));
 }
 
 template <typename T, typename Context>
-void EmptyLikeKernel(const Context& dev_ctx, DenseTensor* out) {
+void EmptyLikeKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     DataType dtype,
+                     DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
 }
 
@@ -45,10 +49,10 @@ PT_REGISTER_KERNEL(empty,
                    int,
                    int64_t,
                    bool,
-                   paddle::platform::float16,
-                   paddle::platform::bfloat16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::float16,
+                   pten::dtype::bfloat16,
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(empty_like,
                    CPU,
@@ -61,10 +65,10 @@ PT_REGISTER_KERNEL(empty_like,
                    int,
                    int64_t,
                    bool,
-                   paddle::platform::float16,
-                   paddle::platform::bfloat16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::float16,
+                   pten::dtype::bfloat16,
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PT_REGISTER_KERNEL(empty,
@@ -78,9 +82,9 @@ PT_REGISTER_KERNEL(empty,
                    int,
                    int64_t,
                    bool,
-                   paddle::platform::float16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::float16,
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
 
 PT_REGISTER_KERNEL(empty_like,
                    GPU,
@@ -93,7 +97,8 @@ PT_REGISTER_KERNEL(empty_like,
                    int,
                    int64_t,
                    bool,
-                   paddle::platform::float16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   pten::dtype::float16,
+                   pten::dtype::bfloat16,
+                   pten::dtype::complex<float>,
+                   pten::dtype::complex<double>) {}
 #endif

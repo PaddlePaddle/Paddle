@@ -56,6 +56,7 @@ PT_REGISTER_KERNEL(flatten,
                    double,
                    uint8_t,
                    int8_t,
+                   int16_t,
                    int,
                    int64_t) {}
 
@@ -67,6 +68,7 @@ PT_REGISTER_KERNEL(flatten_with_xshape,
                    double,
                    uint8_t,
                    int8_t,
+                   int16_t,
                    int,
                    int64_t) {}
 
@@ -76,10 +78,11 @@ PT_REGISTER_KERNEL(flatten,
                    ALL_LAYOUT,
                    pten::FlattenKernel,
                    float,
-                   paddle::platform::float16,
+                   pten::dtype::float16,
                    double,
                    uint8_t,
                    int8_t,
+                   int16_t,
                    int,
                    int64_t) {}
 
@@ -88,10 +91,11 @@ PT_REGISTER_KERNEL(flatten_with_xshape,
                    ALL_LAYOUT,
                    pten::FlattenWithXShape,
                    float,
-                   paddle::platform::float16,
+                   pten::dtype::float16,
                    double,
                    uint8_t,
                    int8_t,
+                   int16_t,
                    int,
                    int64_t) {}
 #endif
@@ -102,8 +106,9 @@ PT_REGISTER_KERNEL(flatten,
                    ALL_LAYOUT,
                    pten::FlattenKernel,
                    float,
-                   paddle::platform::float16,
+                   pten::dtype::float16,
                    int8_t,
+                   int16_t,
                    int,
                    int64_t) {}
 
@@ -112,8 +117,9 @@ PT_REGISTER_KERNEL(flatten_with_xshape,
                    ALL_LAYOUT,
                    pten::FlattenWithXShape,
                    float,
-                   paddle::platform::float16,
+                   pten::dtype::float16,
                    int8_t,
+                   int16_t,
                    int,
                    int64_t) {}
 #endif

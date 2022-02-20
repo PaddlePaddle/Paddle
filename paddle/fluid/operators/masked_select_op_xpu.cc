@@ -11,7 +11,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/masked_select_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 
 namespace paddle {
@@ -53,8 +53,8 @@ class MaskedSelectXPUKernel : public framework::OpKernel<T> {
     out->Resize(out_dim);
     auto out_data = out->mutable_data<T>(context.GetPlace());
 
-    auto input_shape = framework::vectorize<int>(input_dim);
-    auto mask_shape = framework::vectorize<int>(mask_dim);
+    auto input_shape = pten::vectorize<int>(input_dim);
+    auto mask_shape = pten::vectorize<int>(mask_dim);
 
     PADDLE_ENFORCE_XDNN_SUCCESS(
         xpu::masked_select(dev_ctx.x_context(), input_data, mask_data, out_data,

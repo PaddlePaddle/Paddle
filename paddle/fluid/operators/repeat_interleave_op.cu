@@ -79,7 +79,7 @@ class RepeatInterleaveCUDAKernel : public framework::OpKernel<T> {
     int dim = context.Attr<int>("dim");
     auto input_dim = in->dims();
     dim = dim >= 0 ? dim : dim + input_dim.size();
-    auto stride_dim = framework::stride(input_dim);
+    auto stride_dim = pten::stride(input_dim);
     int64_t stride = stride_dim[dim];
 
     auto stream =
@@ -99,7 +99,8 @@ class RepeatInterleaveCUDAKernel : public framework::OpKernel<T> {
                             "But received: [%s], required: [%d].",
                             repeats_tensor->dims()[0], in->dims()[dim]));
 
-      const auto& index_type = repeats_tensor->type();
+      const auto& index_type =
+          framework::TransToProtoVarType(repeats_tensor->dtype());
       bool index_type_match = index_type == framework::proto::VarType::INT64 ||
                               index_type == framework::proto::VarType::INT32;
       PADDLE_ENFORCE_EQ(
@@ -118,9 +119,9 @@ class RepeatInterleaveCUDAKernel : public framework::OpKernel<T> {
                                                           &index);
 
         const int64_t* index_data = index.data<int64_t>();
-        auto output_dim = framework::vectorize(in->dims());
+        auto output_dim = pten::vectorize(in->dims());
         output_dim[dim] = index.dims()[0];
-        out->Resize(framework::make_ddim(output_dim));
+        out->Resize(pten::make_ddim(output_dim));
         auto* out_data = out->mutable_data<T>(context.GetPlace());
         int64_t numel = out->numel();
         int64_t size = output_dim[dim];
@@ -134,9 +135,9 @@ class RepeatInterleaveCUDAKernel : public framework::OpKernel<T> {
         RepeatsTensor2IndexTensor<DeviceContext, int>(*repeats_tensor, &index);
 
         const int* index_data = index.data<int>();
-        auto output_dim = framework::vectorize(in->dims());
+        auto output_dim = pten::vectorize(in->dims());
         output_dim[dim] = index.dims()[0];
-        out->Resize(framework::make_ddim(output_dim));
+        out->Resize(pten::make_ddim(output_dim));
         auto* out_data = out->mutable_data<T>(context.GetPlace());
         int64_t numel = out->numel();
         int64_t size = output_dim[dim];
@@ -153,14 +154,14 @@ class RepeatInterleaveCUDAKernel : public framework::OpKernel<T> {
       for (int i = 0; i < in->dims()[dim]; i++) {
         std::fill_n(index_vec.begin() + i * repeats, repeats, i);
       }
-      index.Resize(framework::make_ddim({index_size}));
+      index.Resize(pten::make_ddim({index_size}));
       auto ctx = paddle::platform::DeviceContextPool::Instance().Get(
           context.GetPlace());
       paddle::framework::TensorFromVector<int>(index_vec, *ctx, &index);
 
-      auto output_dim = framework::vectorize(in->dims());
+      auto output_dim = pten::vectorize(in->dims());
       output_dim[dim] = index_size;
-      out->Resize(framework::make_ddim(output_dim));
+      out->Resize(pten::make_ddim(output_dim));
       auto* out_data = out->mutable_data<T>(context.GetPlace());
 
       int64_t numel = out->numel();
@@ -194,7 +195,7 @@ class RepeatInterleaveGradCUDAKernel : public framework::OpKernel<T> {
     auto input_dim = in_grad->dims();
     auto output_dim = output_grad->dims();
     dim = dim >= 0 ? dim : dim + input_dim.size();
-    auto stride_dim = framework::stride(input_dim);
+    auto stride_dim = pten::stride(input_dim);
     int64_t stride = stride_dim[dim];
     int64_t size = output_dim[dim];
     int64_t delta = input_dim[dim] - size;
@@ -215,7 +216,8 @@ class RepeatInterleaveGradCUDAKernel : public framework::OpKernel<T> {
       auto repeats_tensor =
           context.Input<framework::LoDTensor>("RepeatsTensor");
 
-      const auto& index_type = repeats_tensor->type();
+      const auto& index_type =
+          framework::TransToProtoVarType(repeats_tensor->dtype());
       bool index_type_match = index_type == framework::proto::VarType::INT64 ||
                               index_type == framework::proto::VarType::INT32;
       PADDLE_ENFORCE_EQ(
@@ -259,7 +261,7 @@ class RepeatInterleaveGradCUDAKernel : public framework::OpKernel<T> {
       for (int i = 0; i < in_grad->dims()[dim]; i++) {
         std::fill_n(index_vec.begin() + i * repeats, repeats, i);
       }
-      index.Resize(framework::make_ddim({index_size}));
+      index.Resize(pten::make_ddim({index_size}));
       auto ctx = paddle::platform::DeviceContextPool::Instance().Get(
           context.GetPlace());
       paddle::framework::TensorFromVector<int>(index_vec, *ctx, &index);

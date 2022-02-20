@@ -17,7 +17,6 @@
 #include <set>
 
 namespace pten {
-namespace framework {
 
 DDim make_ddim(std::initializer_list<int64_t> dims) {
   return DDim(dims.begin(), dims.size());
@@ -230,5 +229,4 @@ DDim DDim::transpose(const std::vector<int>& axis) const {
   return out_dims;
 }
 
-}  // namespace framework
 }  // namespace pten

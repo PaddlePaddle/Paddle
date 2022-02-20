@@ -26,8 +26,8 @@
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/deformable_conv_func.h"
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/blas/blas.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -340,8 +340,8 @@ class DeformableConvCPUKernel : public framework::OpKernel<T> {
 
     const int batch_size = static_cast<int>(input->dims()[0]);
 
-    std::vector<int64_t> filter_shape_vec(framework::vectorize(filter.dims()));
-    std::vector<int64_t> output_shape_vec(framework::vectorize(output->dims()));
+    std::vector<int64_t> filter_shape_vec(pten::vectorize(filter.dims()));
+    std::vector<int64_t> output_shape_vec(pten::vectorize(output->dims()));
 
     // col_shape_vec: {c_i * k_h * k_w, im2col_step, o_h, o_w}
     std::vector<int64_t> col_buffer_shape_vec(filter_shape_vec.size());
@@ -351,11 +351,11 @@ class DeformableConvCPUKernel : public framework::OpKernel<T> {
     for (size_t j = 0; j < filter_shape_vec.size() - 2; ++j) {
       col_buffer_shape_vec[j + 2] = output_shape_vec[j + 2];
     }
-    framework::DDim col_shape(framework::make_ddim(col_buffer_shape_vec));
+    framework::DDim col_shape(pten::make_ddim(col_buffer_shape_vec));
     std::vector<int64_t> output_buffer_shape_vec(1);
     output_buffer_shape_vec[0] = batch_size * output_shape_vec[1] *
                                  output_shape_vec[2] * output_shape_vec[3];
-    framework::DDim output_shape(framework::make_ddim(output_buffer_shape_vec));
+    framework::DDim output_shape(pten::make_ddim(output_buffer_shape_vec));
     Tensor col_buffer;
     Tensor output_buffer;
     col_buffer = ctx.AllocateTmpTensor<T, CPUDeviceContext>(col_shape, dev_ctx);
@@ -367,22 +367,21 @@ class DeformableConvCPUKernel : public framework::OpKernel<T> {
         input->dims()[1] * filter_shape_vec[2] * filter_shape_vec[3] / groups;
 
     Tensor weight_3d;
-    weight_3d.ShareDataWith(filter).Resize(
-        framework::make_ddim({groups, M, K}));
+    weight_3d.ShareDataWith(filter).Resize(pten::make_ddim({groups, M, K}));
     Tensor col_buffer_3d;
     col_buffer_3d.ShareDataWith(col_buffer)
-        .Resize(framework::make_ddim({groups, K, N}));
+        .Resize(pten::make_ddim({groups, K, N}));
     Tensor output_4d;
     output_4d.ShareDataWith(output_buffer)
-        .Resize(framework::make_ddim({batch_size / im2col_step, groups, M, N}));
+        .Resize(pten::make_ddim({batch_size / im2col_step, groups, M, N}));
     output_4d.mutable_data<T>(ctx.GetPlace());
     framework::DDim input_shape =
-        framework::slice_ddim(input->dims(), 1, input->dims().size());
-    std::vector<int64_t> input_shape_vec = framework::vectorize(input_shape);
+        pten::slice_ddim(input->dims(), 1, input->dims().size());
+    std::vector<int64_t> input_shape_vec = pten::vectorize(input_shape);
     int input_dim = input->numel() / input->dims()[0];
     int input_offset_dim = offset->numel() / offset->dims()[0];
     int input_mask_dim = mask->numel() / mask->dims()[0];
-    auto blas = math::GetBlas<CPUDeviceContext, T>(dev_ctx);
+    auto blas = pten::funcs::GetBlas<CPUDeviceContext, T>(dev_ctx);
     const T* input_ptr = input->data<T>();
     const T* offset_ptr = offset->data<T>();
     const T* mask_ptr = mask->data<T>();
@@ -396,24 +395,22 @@ class DeformableConvCPUKernel : public framework::OpKernel<T> {
           col_buffer_shape_vec, filter_shape_vec, paddings, strides, dilations,
           deformable_groups, col_buffer_ptr);
       Tensor output_3d = output_4d.Slice(i, i + 1).Resize(
-          framework::slice_ddim(output_4d.dims(), 1, output_4d.dims().size()));
+          pten::slice_ddim(output_4d.dims(), 1, output_4d.dims().size()));
       // get the product of pixel and weight
       for (int g = 0; g < groups; ++g) {
-        Tensor weight_3d_slice =
-            weight_3d.Slice(g, g + 1).Resize(framework::slice_ddim(
-                weight_3d.dims(), 1, weight_3d.dims().size()));
+        Tensor weight_3d_slice = weight_3d.Slice(g, g + 1).Resize(
+            pten::slice_ddim(weight_3d.dims(), 1, weight_3d.dims().size()));
         Tensor col_buffer_3d_slice =
-            col_buffer_3d.Slice(g, g + 1).Resize(framework::slice_ddim(
+            col_buffer_3d.Slice(g, g + 1).Resize(pten::slice_ddim(
                 col_buffer_3d.dims(), 1, col_buffer_3d.dims().size()));
-        Tensor output_3d_slice =
-            output_3d.Slice(g, g + 1).Resize(framework::slice_ddim(
-                output_3d.dims(), 1, output_3d.dims().size()));
+        Tensor output_3d_slice = output_3d.Slice(g, g + 1).Resize(
+            pten::slice_ddim(output_3d.dims(), 1, output_3d.dims().size()));
         blas.MatMul(weight_3d_slice, false, col_buffer_3d_slice, false, T(1.0),
                     &output_3d_slice, T(0.0));
       }
     }
     output->ShareDataWith(output_buffer)
-        .Resize(framework::make_ddim(output_shape_vec));
+        .Resize(pten::make_ddim(output_shape_vec));
   }
 };
 
@@ -445,11 +442,10 @@ class DeformableConvGradCPUKernel : public framework::OpKernel<T> {
     const int batch_size = static_cast<int>(input->dims()[0]);
 
     framework::DDim input_shape =
-        framework::slice_ddim(input->dims(), 1, input->dims().size());
-    std::vector<int64_t> input_shape_vec = framework::vectorize(input_shape);
-    std::vector<int64_t> filter_shape_vec(framework::vectorize(filter.dims()));
-    std::vector<int64_t> output_shape_vec(
-        framework::vectorize(output_grad->dims()));
+        pten::slice_ddim(input->dims(), 1, input->dims().size());
+    std::vector<int64_t> input_shape_vec = pten::vectorize(input_shape);
+    std::vector<int64_t> filter_shape_vec(pten::vectorize(filter.dims()));
+    std::vector<int64_t> output_shape_vec(pten::vectorize(output_grad->dims()));
 
     std::vector<int64_t> col_buffer_shape_vec(filter_shape_vec.size());
     col_buffer_shape_vec[0] =
@@ -458,11 +454,11 @@ class DeformableConvGradCPUKernel : public framework::OpKernel<T> {
     for (size_t j = 0; j < filter_shape_vec.size() - 2; ++j) {
       col_buffer_shape_vec[j + 2] = output_shape_vec[j + 2];
     }
-    framework::DDim col_shape(framework::make_ddim(col_buffer_shape_vec));
+    framework::DDim col_shape(pten::make_ddim(col_buffer_shape_vec));
     std::vector<int64_t> output_buffer_shape_vec(1);
     output_buffer_shape_vec[0] = batch_size * output_shape_vec[1] *
                                  output_shape_vec[2] * output_shape_vec[3];
-    framework::DDim output_shape(framework::make_ddim(output_buffer_shape_vec));
+    framework::DDim output_shape(pten::make_ddim(output_buffer_shape_vec));
     Tensor col_buffer;
     Tensor output_buffer;
     col_buffer = ctx.AllocateTmpTensor<T, CPUDeviceContext>(col_shape, dev_ctx);
@@ -489,8 +485,8 @@ class DeformableConvGradCPUKernel : public framework::OpKernel<T> {
     Tensor col_buffer_3d;
     col_buffer_3d.ShareDataWith(col_buffer).Resize(col_buffer_3d_shape);
 
-    math::SetConstant<CPUDeviceContext, T> set_zero;
-    auto blas = math::GetBlas<CPUDeviceContext, T>(dev_ctx);
+    pten::funcs::SetConstant<CPUDeviceContext, T> set_zero;
+    auto blas = pten::funcs::GetBlas<CPUDeviceContext, T>(dev_ctx);
 
     col_buffer.mutable_data<T>(ctx.GetPlace());
     col_buffer_3d.mutable_data<T>(ctx.GetPlace());
@@ -519,18 +515,15 @@ class DeformableConvGradCPUKernel : public framework::OpKernel<T> {
     }
 
     for (int i = 0; i < batch_size / im2col_step; ++i) {
-      Tensor out_grad_3d =
-          out_grad_4d.Slice(i, i + 1).Resize(framework::slice_ddim(
-              out_grad_4d.dims(), 1, out_grad_4d.dims().size()));
+      Tensor out_grad_3d = out_grad_4d.Slice(i, i + 1).Resize(
+          pten::slice_ddim(out_grad_4d.dims(), 1, out_grad_4d.dims().size()));
       for (int g = 0; g < groups; ++g) {
-        Tensor weight_3d_slice =
-            weight_3d.Slice(g, g + 1).Resize(framework::slice_ddim(
-                weight_3d.dims(), 1, weight_3d.dims().size()));
-        Tensor out_grad_3d_slice =
-            out_grad_3d.Slice(g, g + 1).Resize(framework::slice_ddim(
-                out_grad_3d.dims(), 1, out_grad_3d.dims().size()));
+        Tensor weight_3d_slice = weight_3d.Slice(g, g + 1).Resize(
+            pten::slice_ddim(weight_3d.dims(), 1, weight_3d.dims().size()));
+        Tensor out_grad_3d_slice = out_grad_3d.Slice(g, g + 1).Resize(
+            pten::slice_ddim(out_grad_3d.dims(), 1, out_grad_3d.dims().size()));
         Tensor col_buffer_3d_slice =
-            col_buffer_3d.Slice(g, g + 1).Resize(framework::slice_ddim(
+            col_buffer_3d.Slice(g, g + 1).Resize(pten::slice_ddim(
                 col_buffer_3d.dims(), 1, col_buffer_3d.dims().size()));
 
         blas.MatMul(weight_3d_slice, true, out_grad_3d_slice, false, T(1.0),
@@ -586,14 +579,13 @@ class DeformableConvGradCPUKernel : public framework::OpKernel<T> {
             filter_grad_shape, dev_ctx);
         for (int g = 0; g < groups; ++g) {
           Tensor out_grad_3d_slice =
-              out_grad_3d.Slice(g, g + 1).Resize(framework::slice_ddim(
+              out_grad_3d.Slice(g, g + 1).Resize(pten::slice_ddim(
                   out_grad_3d.dims(), 1, out_grad_3d.dims().size()));
           Tensor col_buffer_3d_slice =
-              col_buffer_3d.Slice(g, g + 1).Resize(framework::slice_ddim(
+              col_buffer_3d.Slice(g, g + 1).Resize(pten::slice_ddim(
                   col_buffer_3d.dims(), 1, col_buffer_3d.dims().size()));
-          Tensor dweight_3d_slice =
-              dweight_3d.Slice(g, g + 1).Resize(framework::slice_ddim(
-                  dweight_3d.dims(), 1, dweight_3d.dims().size()));
+          Tensor dweight_3d_slice = dweight_3d.Slice(g, g + 1).Resize(
+              pten::slice_ddim(dweight_3d.dims(), 1, dweight_3d.dims().size()));
 
           blas.MatMul(out_grad_3d_slice, false, col_buffer_3d_slice, true,
                       T(1.0), &dweight_3d_slice, T(0.0));

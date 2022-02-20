@@ -16,9 +16,9 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/pooling.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -32,7 +32,7 @@ class SppKernel : public framework::OpKernel<T> {
     std::string pooling_type =
         context.template Attr<std::string>("pooling_type");
     out->mutable_data<T>(context.GetPlace());
-    auto out_stride = framework::stride(out->dims());
+    auto out_stride = pten::stride(out->dims());
     int input_h = in_x->dims()[2];
     int input_w = in_x->dims()[3];
     size_t output_offset = 0;
@@ -49,7 +49,7 @@ class SppKernel : public framework::OpKernel<T> {
       framework::Tensor out_level;
       std::vector<int64_t> output_shape_vec(
           {in_x->dims()[0], in_x->dims()[1], bins, bins});
-      framework::DDim output_shape(framework::make_ddim(output_shape_vec));
+      framework::DDim output_shape(pten::make_ddim(output_shape_vec));
       out_level.mutable_data<T>(output_shape, context.GetPlace());
       // pooling
       if (pooling_type == "max") {
@@ -70,10 +70,10 @@ class SppKernel : public framework::OpKernel<T> {
       std::vector<int64_t> output_flatten_shape_vec(
           {in_x->dims()[0], output_flatten_w});
       framework::DDim output_flatten_shape(
-          framework::make_ddim(output_flatten_shape_vec));
+          pten::make_ddim(output_flatten_shape_vec));
       out_level.Resize(output_flatten_shape);
       // concat
-      auto out_level_stride = framework::stride(out_level.dims());
+      auto out_level_stride = pten::stride(out_level.dims());
       StridedMemcpy<T>(context.template device_context<DeviceContext>(),
                        out_level.data<T>(), out_level_stride, out_level.dims(),
                        out_stride, out->data<T>() + output_offset);
@@ -95,10 +95,10 @@ class SppGradKernel : public framework::OpKernel<T> {
     std::string pooling_type =
         context.template Attr<std::string>("pooling_type");
     auto& device_ctx = context.template device_context<DeviceContext>();
-    math::SetConstant<DeviceContext, T> zero;
+    pten::funcs::SetConstant<DeviceContext, T> zero;
     in_x_grad->mutable_data<T>(context.GetPlace());
     zero(device_ctx, in_x_grad, static_cast<T>(0));
-    auto out_stride = framework::stride(out->dims());
+    auto out_stride = pten::stride(out->dims());
     int input_h = in_x->dims()[2];
     int input_w = in_x->dims()[3];
     size_t out_offset = 0;
@@ -117,11 +117,10 @@ class SppGradKernel : public framework::OpKernel<T> {
       int out_flatten_w = in_x->dims()[1] * bins * bins;
       std::vector<int64_t> out_flatten_shape_vec(
           {in_x->dims()[0], out_flatten_w});
-      framework::DDim out_flatten_shape(
-          framework::make_ddim(out_flatten_shape_vec));
+      framework::DDim out_flatten_shape(pten::make_ddim(out_flatten_shape_vec));
       out_level.mutable_data<T>(out_flatten_shape, context.GetPlace());
       outgrad_level.mutable_data<T>(out_flatten_shape, context.GetPlace());
-      auto flatten_stride = framework::stride(out_level.dims());
+      auto flatten_stride = pten::stride(out_level.dims());
       // memcpy
       StridedMemcpy<T>(context.template device_context<DeviceContext>(),
                        out->data<T>() + out_offset, out_stride,
@@ -139,7 +138,7 @@ class SppGradKernel : public framework::OpKernel<T> {
           (input_h - kernel_size_h + 2 * padding_h) / kernel_size_h + 1);
       out_shape_vec.push_back(
           (input_w - kernel_size_w + 2 * padding_w) / kernel_size_w + 1);
-      framework::DDim out_shape(framework::make_ddim(out_shape_vec));
+      framework::DDim out_shape(pten::make_ddim(out_shape_vec));
       out_level.ShareDataWith(out_level);
       out_level.Resize(out_shape);
       outgrad_level.ShareDataWith(outgrad_level);

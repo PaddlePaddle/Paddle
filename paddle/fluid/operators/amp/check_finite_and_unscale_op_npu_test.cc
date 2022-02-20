@@ -24,12 +24,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
-namespace m = paddle::operators::math;
 
 using Tensor = paddle::framework::Tensor;
 
@@ -43,7 +42,7 @@ struct InputVars {
 
 template <typename T>
 void Compare(f::Scope *scope, const p::DeviceContext &ctx) {
-  const f::DDim dims = f::make_ddim({2, 2});
+  const f::DDim dims = pten::make_ddim({2, 2});
   auto place = ctx.GetPlace();
 
   // init input
@@ -60,7 +59,7 @@ void Compare(f::Scope *scope, const p::DeviceContext &ctx) {
 
   // Initialize input data
   const int num_inputs = input_names.size();
-  size_t numel = static_cast<size_t>(f::product(dims));
+  size_t numel = static_cast<size_t>(pten::product(dims));
 
   for (int i = 0; i < num_inputs; ++i) {
     std::vector<T> init_xs;

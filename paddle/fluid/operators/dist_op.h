@@ -19,7 +19,7 @@
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -65,7 +65,7 @@ static framework::DDim GetNewDims(const framework::DDim& in_dims, int rank) {
   } else {
     new_dims_vec = vectorize(in_dims);
   }
-  return framework::make_ddim(new_dims_vec);
+  return pten::make_ddim(new_dims_vec);
 }
 
 template <typename DeviceContext, typename T, int Rank>
@@ -153,7 +153,7 @@ static void DistGradFunction(const framework::ExecutionContext& context) {
     new_dims_vec[i] = std::max(x_new_dims[i], y_new_dims[i]);
     out_bcast_dims[i] = new_dims_vec[i];
   }
-  framework::DDim new_dims = framework::make_ddim(new_dims_vec);
+  framework::DDim new_dims = pten::make_ddim(new_dims_vec);
 
   auto& place =
       *context.template device_context<DeviceContext>().eigen_device();
@@ -171,7 +171,7 @@ static void DistGradFunction(const framework::ExecutionContext& context) {
 
   // 1: Lp-norm(z), z = x-y, compute dz
   if (p == 0) {
-    math::SetConstant<DeviceContext, T> set_zero;
+    pten::funcs::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
     set_zero(dev_ctx, &grad, static_cast<T>(0));
   } else if (p == INFINITY || p == -INFINITY) {

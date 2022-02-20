@@ -27,7 +27,7 @@ class ArgumentMappingContext;
 class InferMetaContext;
 
 using KernelFn = std::function<void(KernelContext* ctx)>;
-using KernelArgsDefFn = void (*)(Kernel* kernel);
+using KernelArgsDefFn = void (*)(const KernelKey& kernel_key, Kernel* kernel);
 using KernelArgsParseFn = void (*)(const KernelKey& default_key,
                                    KernelArgsDef* args_def);
 

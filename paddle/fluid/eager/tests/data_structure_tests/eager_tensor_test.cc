@@ -33,8 +33,8 @@ TEST(Tensor, Constructor) {
   CHECK_EQ(et1.defined(), false);
   CHECK_EQ(et2.name(), "et2");
 
-  pten::DenseTensorMeta meta = pten::DenseTensorMeta(
-      pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 2}));
+  pten::DenseTensorMeta meta =
+      pten::DenseTensorMeta(pten::DataType::FLOAT32, pten::make_ddim({1, 2}));
   std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
@@ -63,8 +63,8 @@ TEST(Tensor, Constructor) {
 
 TEST(Tensor, MemberFunction) {
   paddle::experimental::Tensor et3;
-  pten::DenseTensorMeta meta = pten::DenseTensorMeta(
-      pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 2}));
+  pten::DenseTensorMeta meta =
+      pten::DenseTensorMeta(pten::DataType::FLOAT32, pten::make_ddim({1, 2}));
   std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
@@ -84,7 +84,7 @@ TEST(Tensor, MemberFunction) {
   CHECK_EQ(et3.is_cpu(), true);
   CHECK_EQ(et3.is_cuda(), false);
   CHECK_EQ(et3.numel(), 2);
-  auto expected_dim = paddle::framework::make_ddim({1, 2});
+  auto expected_dim = pten::make_ddim({1, 2});
   CHECK_EQ(et3.dims(), expected_dim);
   CHECK_EQ(et3.type(), paddle::experimental::DataType::FLOAT32);
   CHECK_EQ(et3.layout(), paddle::experimental::DataLayout::NCHW);
@@ -115,10 +115,10 @@ TEST(Tensor, MemberFunction) {
   CHECK_EQ(tmp_autograd_meta_test->val_, 2);
 }
 
-TEST(EagerTensor, Constructor) {
+TEST(EagerVariable, Constructor) {
   paddle::experimental::Tensor t3;
-  pten::DenseTensorMeta meta = pten::DenseTensorMeta(
-      pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 2}));
+  pten::DenseTensorMeta meta =
+      pten::DenseTensorMeta(pten::DataType::FLOAT32, pten::make_ddim({1, 2}));
   std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
@@ -134,7 +134,7 @@ TEST(EagerTensor, Constructor) {
   CHECK_EQ(t3.defined(), false);
   t3.set_impl(dt);
 
-  egr::EagerTensor et3 = egr::EagerTensor(t3);
+  egr::EagerVariable et3 = egr::EagerVariable(t3);
   VLOG(6) << "SyncToVar";
   CHECK_EQ(et3.Var().Get<paddle::framework::LoDTensor>().data<float>()[0],
            5.0f);

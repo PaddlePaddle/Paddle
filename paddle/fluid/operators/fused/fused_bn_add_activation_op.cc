@@ -87,8 +87,8 @@ void FusedBatchNormAddActOp::InferShape(
                         bias_dim, bias_dim.size()));
 
   bool check = true;
-  if ((!ctx->IsRuntime()) && (framework::product(scale_dim) <= 0 ||
-                              framework::product(bias_dim) <= 0)) {
+  if ((!ctx->IsRuntime()) &&
+      (pten::product(scale_dim) <= 0 || pten::product(bias_dim) <= 0)) {
     check = false;
   }
 
@@ -120,10 +120,12 @@ framework::OpKernelType FusedBatchNormAddActOp::GetExpectedKernelType(
   auto bn_param_type = framework::proto::VarType::FP32;
 
   PADDLE_ENFORCE_EQ(
-      bn_param_type, ctx.Input<Tensor>("Scale")->type(),
+      bn_param_type,
+      framework::TransToProtoVarType(ctx.Input<Tensor>("Scale")->dtype()),
       platform::errors::InvalidArgument("Scale input should be of float type"));
   PADDLE_ENFORCE_EQ(
-      bn_param_type, ctx.Input<Tensor>("Bias")->type(),
+      bn_param_type,
+      framework::TransToProtoVarType(ctx.Input<Tensor>("Bias")->dtype()),
       platform::errors::InvalidArgument("Bias input should be of float type"));
 
   framework::LibraryType library = framework::LibraryType::kPlain;

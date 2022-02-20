@@ -43,8 +43,13 @@ class ScalarArrayBase {
     AssignData(date_value, n);
   }
 
+  bool IsInitByTensor() const { return is_init_by_tensor_; }
+
+  void setInitByTensor(bool val) { is_init_by_tensor_ = val; }
+
   // The Tensor must have one dim
   ScalarArrayBase(const T& tensor) {  // NOLINT
+    is_init_by_tensor_ = true;
     size_t n = tensor.numel();
     array_.reserve(n);
     switch (tensor.dtype()) {
@@ -66,41 +71,17 @@ class ScalarArrayBase {
 
   // The Tensor in vec must have only one element
   ScalarArrayBase(const std::vector<T>& tensor_list) {  // NOLINT
-    auto n = tensor_list.size();
-    array_.reserve(n);
-    if (!tensor_list.empty()) {
-      DataType data_type = tensor_list[0].dtype();
+    is_init_by_tensor_ = true;
+
+    for (size_t i = 0; i < tensor_list.size(); ++i) {
+      DataType data_type = tensor_list[i].dtype();
       switch (data_type) {
-        case DataType::INT32: {
-          for (size_t i = 0; i < n; ++i) {
-            PD_CHECK(tensor_list[i].dtype() == data_type,
-                     "The data_type of tensors in the list isn't consistent."
-                     "the first tensor is`",
-                     data_type,
-                     "` but `",
-                     i,
-                     "`th tensor is`",
-                     tensor_list[i].dtype(),
-                     "`.");
-            array_.push_back(*tensor_list[i].template data<int32_t>());
-          }
+        case DataType::INT32:
+          array_.push_back(*tensor_list[i].template data<int32_t>());
           break;
-        }
-        case DataType::INT64: {
-          for (size_t i = 0; i < n; ++i) {
-            PD_CHECK(tensor_list[i].dtype() == data_type,
-                     "The data_type of tensors in the list isn't consistent."
-                     "the first tensor is`",
-                     data_type,
-                     "` but `",
-                     i,
-                     "`th tensor is`",
-                     tensor_list[i].dtype(),
-                     "`.");
-            array_.push_back(*tensor_list[i].template data<int64_t>());
-          }
+        case DataType::INT64:
+          array_.push_back(*tensor_list[i].template data<int64_t>());
           break;
-        }
         default:
           PD_THROW(
               "Data type error. Currently, The data type of ScalarArrayBase "
@@ -136,6 +117,7 @@ class ScalarArrayBase {
   // TODO(zhangyunfei) Replace std::vector with a more efficient container
   // structure.
   std::vector<int64_t> array_;
+  bool is_init_by_tensor_{false};
 };
 
 using ScalarArray =

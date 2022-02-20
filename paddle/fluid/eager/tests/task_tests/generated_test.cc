@@ -37,7 +37,7 @@ TEST(Generated, Sigmoid) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
   VLOG(6) << "Init Env";
   // 1. Prepare Input
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
+  paddle::framework::DDim ddim = pten::make_ddim({2, 4, 4, 4});
   VLOG(6) << "Make Dim";
   paddle::experimental::Tensor tensor = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
@@ -65,13 +65,13 @@ TEST(Generated, Matmul_v2) {
   paddle::imperative::SetCurrentTracer(tracer);
 
   // 1. Prepare Input
-  paddle::framework::DDim ddimX = paddle::framework::make_ddim({4, 16});
+  paddle::framework::DDim ddimX = pten::make_ddim({4, 16});
   paddle::experimental::Tensor X = egr_utils_api::CreateTensorWithValue(
       ddimX, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 3.0, true);
   egr_utils_api::RetainGradForTensor(X);
 
-  paddle::framework::DDim ddimY = paddle::framework::make_ddim({16, 20});
+  paddle::framework::DDim ddimY = pten::make_ddim({16, 20});
   paddle::experimental::Tensor Y = egr_utils_api::CreateTensorWithValue(
       ddimY, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 2.0, true);
@@ -97,13 +97,13 @@ TEST(Generated, ElementwiseAdd) {
   paddle::imperative::SetCurrentTracer(tracer);
 
   // 1. Prepare Input
-  paddle::framework::DDim ddimX = paddle::framework::make_ddim({4, 16});
+  paddle::framework::DDim ddimX = pten::make_ddim({4, 16});
   paddle::experimental::Tensor X = egr_utils_api::CreateTensorWithValue(
       ddimX, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 3.0, true);
   egr_utils_api::RetainGradForTensor(X);
 
-  paddle::framework::DDim ddimY = paddle::framework::make_ddim({4, 16});
+  paddle::framework::DDim ddimY = pten::make_ddim({4, 16});
   paddle::experimental::Tensor Y = egr_utils_api::CreateTensorWithValue(
       ddimY, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 2.0, true);
@@ -123,5 +123,5 @@ TEST(Generated, ElementwiseAdd) {
 }  // namespace egr
 
 USE_OP(sigmoid);
-USE_OP(elementwise_add);
-USE_OP(matmul_v2);
+USE_OP_ITSELF(elementwise_add);
+USE_OP_ITSELF(matmul_v2);

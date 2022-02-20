@@ -32,7 +32,7 @@ class PReluOp : public framework::OperatorWithKernel {
     auto x_dim = ctx->GetInputDim("X");
     std::string mode = ctx->Attrs().Get<std::string>("mode");
     if (mode == "all") {
-      PADDLE_ENFORCE_EQ(product(ctx->GetInputDim("Alpha")), 1,
+      PADDLE_ENFORCE_EQ(pten::product(ctx->GetInputDim("Alpha")), 1,
                         platform::errors::InvalidArgument(
                             "For mode 'all', size of weight Alpha must be one. "
                             "But recevied alpha's size: %d.",

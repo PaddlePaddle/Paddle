@@ -18,7 +18,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -45,10 +45,10 @@ class CPUROIPoolOpKernel : public framework::OpKernel<T> {
     int width = in_dims[3];
     int rois_num = rois->dims()[0];
 
-    auto in_stride = framework::stride(in_dims);
-    auto argmax_stride = framework::stride(argmax->dims());
-    auto roi_stride = framework::stride(rois->dims());
-    auto out_stride = framework::stride(out->dims());
+    auto in_stride = pten::stride(in_dims);
+    auto argmax_stride = pten::stride(argmax->dims());
+    auto roi_stride = pten::stride(rois->dims());
+    auto out_stride = pten::stride(out->dims());
 
     const T* input_data = in->data<T>();
 
@@ -212,14 +212,14 @@ class CPUROIPoolGradOpKernel : public framework::OpKernel<T> {
       const T* out_grad_data = out_grad->data<T>();
       const int64_t* argmax_data = argmax->data<int64_t>();
       T* in_grad_data = in_grad->mutable_data<T>(ctx.GetPlace());
-      math::SetConstant<DeviceContext, T> set_zero;
+      pten::funcs::SetConstant<DeviceContext, T> set_zero;
       set_zero(ctx.template device_context<DeviceContext>(), in_grad,
                static_cast<T>(0));
 
-      auto in_stride = framework::stride(in->dims());
-      auto argmax_stride = framework::stride(argmax->dims());
-      auto roi_stride = framework::stride(rois->dims());
-      auto out_stride = framework::stride(out_grad->dims());
+      auto in_stride = pten::stride(in->dims());
+      auto argmax_stride = pten::stride(argmax->dims());
+      auto roi_stride = pten::stride(rois->dims());
+      auto out_stride = pten::stride(out_grad->dims());
 
       int channels = in->dims()[1];
 

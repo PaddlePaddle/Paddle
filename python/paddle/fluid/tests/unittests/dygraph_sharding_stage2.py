@@ -27,7 +27,7 @@ from paddle.fluid.dygraph import nn
 from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.sharding_optimizer_stage2 import ShardingOptimizerStage2
 from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage2 import ShardingStage2
 
-seed = 2021
+seed = 2022
 epoch = 2
 linear_size = 1000
 
@@ -105,11 +105,7 @@ def train_mlp(model,
             params=model.parameters(), optim=optimizer, group=group)
 
         model = ShardingStage2(
-            model,
-            optimizer,
-            group=group,
-            buffer_max_size=2**21,
-            accumulate_grads=batch_size == 20)
+            model, optimizer, group=group, buffer_max_size=2**21)
     else:
         optimizer = fleet.distributed_optimizer(optimizer)
         model = fleet.distributed_model(model)
@@ -140,6 +136,8 @@ def train_mlp(model,
             loss = paddle.nn.functional.cross_entropy(input=out, label=label)
 
             avg_loss = paddle.mean(x=loss.cast(dtype=paddle.float32))
+            if batch_size == 20:
+                avg_loss = avg_loss / 5
             avg_loss.backward()
 
             if not accumulate_grad:
@@ -166,6 +164,7 @@ def test_dp_stage2():
     mlp4.set_state_dict(state_dict)
     mlp5.set_state_dict(state_dict)
 
+    # DP VS stage2
     dp_params = train_mlp(
         mlp1, sharding_stage="dp", use_pure_fp16=False, opt_group=False)
     stage2_params = train_mlp(
@@ -174,7 +173,8 @@ def test_dp_stage2():
         np.testing.assert_allclose(
             dp_params[i].numpy(), stage2_params[i].numpy(), rtol=1e-6)
 
-    stage2_params = train_mlp(mlp3, sharding_stage=2)
+    # stage2 accumulate grad
+    stage2_params = train_mlp(mlp3, sharding_stage=2, accumulate_grad=True)
     stage2_accumulate_grad = train_mlp(
         mlp4, sharding_stage=2, batch_size=20, accumulate_grad=True)
     for i in range(len(stage2_params)):
@@ -184,6 +184,7 @@ def test_dp_stage2():
             rtol=1e-5,
             atol=1e-5)
 
+    # stage2 param list VS param group
     stage2_params = train_mlp(
         mlp2, sharding_stage=2, use_pure_fp16=False, opt_group=True)
     for i in range(len(dp_params)):

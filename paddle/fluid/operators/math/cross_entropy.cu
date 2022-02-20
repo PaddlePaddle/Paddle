@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/operators/math/cross_entropy.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
@@ -122,7 +123,8 @@ class CrossEntropyFunctor<platform::CUDADeviceContext, T> {
       HardLabelCrossEntropyCUDAFunctorImpl<T> functor(
           loss_data, prob_data, labels->data(), batch_size, class_num,
           ignore_index, kMaxBlockDim, ctx.stream());
-      framework::VisitDataType(labels->type(), functor);
+      framework::VisitDataType(framework::TransToProtoVarType(labels->dtype()),
+                               functor);
     }
   }
 };

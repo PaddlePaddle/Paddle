@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/operators/elementwise/mkldnn/elementwise_mkldnn_op.h"
 
 namespace paddle {
@@ -40,10 +41,12 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
 
-    auto tz = paddle::framework::vectorize<int64_t>(dout->dims());
-    memory::data_type dout_type = framework::ToMKLDNNDataType(dout->type());
-    platform::ReorderMKLDNNHandler handler(tz, dout->type(), dout_type,
-                                           onednn_engine);
+    auto tz = pten::vectorize<int64_t>(dout->dims());
+    memory::data_type dout_type = framework::ToMKLDNNDataType(
+        framework::TransToProtoVarType(dout->dtype()));
+    platform::ReorderMKLDNNHandler handler(
+        tz, framework::TransToProtoVarType(dout->dtype()), dout_type,
+        onednn_engine);
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     auto reorder_src_memory_p = handler.AcquireSrcMemory(
@@ -54,8 +57,9 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
           handler.AcquireDstMemory(dx, dout->format(), ctx.GetPlace());
       auto reorder_p =
           handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
-      platform::RecordEvent record_reorder("int_reorder",
-                                           platform::EventRole::kUniqueOp);
+      platform::RecordEvent record_reorder(
+          "int_reorder", platform::TracerEventType::UserDefined, 2,
+          platform::EventRole::kUniqueOp);
       reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
       astream.wait();
 
@@ -70,8 +74,9 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
             handler.AcquireDstMemory(dy, dout->format(), ctx.GetPlace());
         auto reorder_p =
             handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
-        platform::RecordEvent record_reorder("int_reorder",
-                                             platform::EventRole::kUniqueOp);
+        platform::RecordEvent record_reorder(
+            "int_reorder", platform::TracerEventType::UserDefined, 2,
+            platform::EventRole::kUniqueOp);
         reorder_p->execute(astream, *reorder_src_memory_p,
                            *reorder_dst_memory_p);
         astream.wait();
@@ -92,7 +97,7 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
         dy->set_layout(DataLayout::kMKLDNN);
         dy->set_format(
             platform::GetMKLDNNFormat(dy_memory_p->get_desc().reshape(
-                paddle::framework::vectorize<int64_t>(dy->dims()))));
+                pten::vectorize<int64_t>(dy->dims()))));
       }
     }
   }
