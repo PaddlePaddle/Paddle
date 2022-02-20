@@ -20,17 +20,21 @@ namespace operators {
 using framework::Tensor;
 
 template <typename T>
-class ShuffleChannelMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
-                                   T, dnnl::shuffle_forward> {
+class ShuffleChannelMKLDNNHandler
+    : public platform::MKLDNNHandlerNoCachingT<T, dnnl::shuffle_forward> {
  public:
   ShuffleChannelMKLDNNHandler(const Tensor* x, const int group,
-                         const dnnl::engine engine, platform::Place cpu_place)
-      : platform::MKLDNNHandlerNoCachingT<T, dnnl::shuffle_forward>(
-            engine, cpu_place) {
+                              const dnnl::engine engine,
+                              platform::Place cpu_place)
+      : platform::MKLDNNHandlerNoCachingT<T, dnnl::shuffle_forward>(engine,
+                                                                    cpu_place) {
     static constexpr int channel_axis = 1;
-    const auto md = dnnl::memory::desc(pten::vectorize(x->dims()), platform::MKLDNNGetDataType<T>(), x->format());
+    const auto md =
+        dnnl::memory::desc(pten::vectorize(x->dims()),
+                           platform::MKLDNNGetDataType<T>(), x->format());
 
-    this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training, md, channel_axis, group);
+    this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
+                                            md, channel_axis, group);
   }
 };
 
@@ -45,11 +49,11 @@ class ShuffleChannelMKLDNNKernel : public framework::OpKernel<T> {
     const auto* x = ctx.Input<Tensor>("X");
     auto* out = ctx.Output<Tensor>("Out");
 
-    // oneDNN handles group in a different way than Paddle using C/g instead of g
+    // oneDNN handles group using C/g instead of g
     const int group = x->dims()[1] / ctx.Attr<int>("group");
 
-    ShuffleChannelMKLDNNHandler<T> handler(
-        x, group, mkldnn_engine, ctx.GetPlace());
+    ShuffleChannelMKLDNNHandler<T> handler(x, group, mkldnn_engine,
+                                           ctx.GetPlace());
 
     auto src_memory_p = handler.AcquireSrcMemory(x);
     auto dst_memory_p = handler.AcquireDstMemory(out);
@@ -58,7 +62,7 @@ class ShuffleChannelMKLDNNKernel : public framework::OpKernel<T> {
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     shuffle_p->execute(astream, {{DNNL_ARG_SRC, *src_memory_p},
-                                    {DNNL_ARG_DST, *dst_memory_p}});
+                                 {DNNL_ARG_DST, *dst_memory_p}});
     astream.wait();
 
     out->set_layout(framework::DataLayout::kMKLDNN);
