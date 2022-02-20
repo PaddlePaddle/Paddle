@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/infer_shape_context.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
-#include "paddle/pten/core/ddim.h"
+#include "paddle/phi/core/ddim.h"
 
 USE_OP(relu);
 USE_OP_ITSELF(elementwise_add);

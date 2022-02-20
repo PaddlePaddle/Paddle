@@ -16,7 +16,7 @@
 #include "gtest/gtest.h"
 
 #include "paddle/fluid/eager/eager_tensor.h"
-#include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/phi/api/lib/utils/allocator.h"
 
 namespace eager_test {
 using AbstractAutogradMeta = paddle::experimental::AbstractAutogradMeta;
@@ -33,9 +33,9 @@ TEST(Tensor, Constructor) {
   CHECK_EQ(et1.defined(), false);
   CHECK_EQ(et2.name(), "et2");
 
-  pten::DenseTensorMeta meta =
-      pten::DenseTensorMeta(pten::DataType::FLOAT32, pten::make_ddim({1, 2}));
-  std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
+  phi::DenseTensorMeta meta =
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 2}));
+  std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
           .get(),
@@ -45,27 +45,27 @@ TEST(Tensor, Constructor) {
   dt_ptr[1] = 10.0f;
   paddle::experimental::Tensor et3 = paddle::experimental::Tensor(dt);
   auto* et3_ptr =
-      std::dynamic_pointer_cast<pten::DenseTensor>(et3.impl())->data<float>();
+      std::dynamic_pointer_cast<phi::DenseTensor>(et3.impl())->data<float>();
   CHECK_EQ(et3_ptr[0], 5.0f);
   CHECK_EQ(et3_ptr[1], 10.0f);
   // copy constructor
   paddle::experimental::Tensor et4(et3);
   auto* et4_ptr =
-      std::dynamic_pointer_cast<pten::DenseTensor>(et4.impl())->data<float>();
+      std::dynamic_pointer_cast<phi::DenseTensor>(et4.impl())->data<float>();
   CHECK_EQ(et4_ptr[0], 5.0f);
   CHECK_EQ(et4_ptr[1], 10.0f);
   paddle::experimental::Tensor et5(std::move(et4));
   auto* et5_ptr =
-      std::dynamic_pointer_cast<pten::DenseTensor>(et5.impl())->data<float>();
+      std::dynamic_pointer_cast<phi::DenseTensor>(et5.impl())->data<float>();
   CHECK_EQ(et5_ptr[0], 5.0f);
   CHECK_EQ(et5_ptr[1], 10.0f);
 }
 
 TEST(Tensor, MemberFunction) {
   paddle::experimental::Tensor et3;
-  pten::DenseTensorMeta meta =
-      pten::DenseTensorMeta(pten::DataType::FLOAT32, pten::make_ddim({1, 2}));
-  std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
+  phi::DenseTensorMeta meta =
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 2}));
+  std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
           .get(),
@@ -84,27 +84,27 @@ TEST(Tensor, MemberFunction) {
   CHECK_EQ(et3.is_cpu(), true);
   CHECK_EQ(et3.is_cuda(), false);
   CHECK_EQ(et3.numel(), 2);
-  auto expected_dim = pten::make_ddim({1, 2});
+  auto expected_dim = phi::make_ddim({1, 2});
   CHECK_EQ(et3.dims(), expected_dim);
   CHECK_EQ(et3.type(), paddle::experimental::DataType::FLOAT32);
   CHECK_EQ(et3.layout(), paddle::experimental::DataLayout::NCHW);
   CHECK(paddle::platform::is_cpu_place(et3.inner_place()));
   VLOG(6) << "Get impl";
   auto* dt3_ptr =
-      std::dynamic_pointer_cast<pten::DenseTensor>(et3.impl())->data<float>();
+      std::dynamic_pointer_cast<phi::DenseTensor>(et3.impl())->data<float>();
   CHECK_EQ(dt3_ptr[0], 5.0f);
   CHECK_EQ(dt3_ptr[1], 10.0f);
   paddle::experimental::Tensor et4 = et3;
   VLOG(6) << "copy =";
   CHECK(et4.initialized() == true);
   auto* dt4_ptr =
-      std::dynamic_pointer_cast<pten::DenseTensor>(et4.impl())->data<float>();
+      std::dynamic_pointer_cast<phi::DenseTensor>(et4.impl())->data<float>();
   CHECK_EQ(dt4_ptr[0], 5.0f);
   CHECK_EQ(dt4_ptr[1], 10.0f);
   VLOG(6) << "move =";
   paddle::experimental::Tensor et5 = std::move(et4);
   auto* dt5_ptr =
-      std::dynamic_pointer_cast<pten::DenseTensor>(et5.impl())->data<float>();
+      std::dynamic_pointer_cast<phi::DenseTensor>(et5.impl())->data<float>();
   CHECK_EQ(dt5_ptr[0], 5.0f);
   CHECK_EQ(dt5_ptr[1], 10.0f);
   VLOG(6) << "AutogradMeta";
@@ -117,9 +117,9 @@ TEST(Tensor, MemberFunction) {
 
 TEST(EagerVariable, Constructor) {
   paddle::experimental::Tensor t3;
-  pten::DenseTensorMeta meta =
-      pten::DenseTensorMeta(pten::DataType::FLOAT32, pten::make_ddim({1, 2}));
-  std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
+  phi::DenseTensorMeta meta =
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 2}));
+  std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
           .get(),
@@ -146,7 +146,7 @@ TEST(EagerVariable, Constructor) {
   CHECK(t4.initialized() == true);
   VLOG(6) << "Check Tensor";
   auto* dt3_tmp_ptr =
-      std::dynamic_pointer_cast<pten::DenseTensor>(t4.impl())->data<float>();
+      std::dynamic_pointer_cast<phi::DenseTensor>(t4.impl())->data<float>();
   CHECK_EQ(dt3_tmp_ptr[0], 5.0f);
   CHECK_EQ(dt3_tmp_ptr[1], 10.0f);
   t4.reset();

@@ -28,8 +28,8 @@ void XPUCompare(
   auto* y = ctx.Input<framework::Tensor>("Y");
   auto* z = ctx.Output<framework::Tensor>("Out");
 
-  auto x_shape = pten::vectorize<int>(x->dims());
-  auto y_shape = pten::vectorize<int>(y->dims());
+  auto x_shape = phi::vectorize<int>(x->dims());
+  auto y_shape = phi::vectorize<int>(y->dims());
 
   auto x_data = reinterpret_cast<const XPUType*>(x->data<T>());
   auto y_data = reinterpret_cast<const XPUType*>(y->data<T>());

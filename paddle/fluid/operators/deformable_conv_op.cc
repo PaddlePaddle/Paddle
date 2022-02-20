@@ -258,7 +258,7 @@ class DeformableConvOp : public framework::OperatorWithKernel {
                             deformable_groups));
     }
 
-    ctx->SetOutputDim("Output", pten::make_ddim(output_shape));
+    ctx->SetOutputDim("Output", phi::make_ddim(output_shape));
   }
 
  protected:

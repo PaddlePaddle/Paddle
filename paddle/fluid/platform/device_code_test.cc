@@ -60,7 +60,7 @@ TEST(DeviceCode, cuda) {
 
   float scale = 2;
   auto dims =
-      pten::make_ddim({static_cast<int64_t>(256), static_cast<int64_t>(1024)});
+      phi::make_ddim({static_cast<int64_t>(256), static_cast<int64_t>(1024)});
   cpu_x.mutable_data<float>(dims, paddle::platform::CPUPlace());
   cpu_y.mutable_data<float>(dims, paddle::platform::CPUPlace());
 

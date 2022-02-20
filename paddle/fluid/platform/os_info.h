@@ -19,7 +19,7 @@ limitations under the License. */
 #ifdef _POSIX_C_SOURCE
 #include <time.h>
 #endif
-#include "paddle/pten/backends/dynload/port.h"
+#include "paddle/phi/backends/dynload/port.h"
 
 namespace paddle {
 namespace platform {

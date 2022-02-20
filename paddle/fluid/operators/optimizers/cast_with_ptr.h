@@ -17,9 +17,9 @@
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/pten/api/include/tensor.h"
-#include "paddle/pten/core/ddim.h"
-#include "paddle/pten/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/core/ddim.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
 
 namespace paddle {
 namespace operators {
@@ -39,11 +39,11 @@ static void VecCastKernel(const platform::CUDADeviceContext &ctx, const InT *x,
   auto main_offset = n / (VecSize * thread) * VecSize * thread;
   auto stream = ctx.stream();
   using FunctorT = CastFunctor<InT, OutT>;
-  pten::Array<const _ptr_ char *__restrict__, 1> in_arr;
+  phi::Array<const _ptr_ char *__restrict__, 1> in_arr;
   in_arr[0] = reinterpret_cast<const _ptr_ char *>(x);
-  pten::Array<_ptr_ OutT *, 1> out_arr;
+  phi::Array<_ptr_ OutT *, 1> out_arr;
   out_arr[0] = y;
-  pten::funcs::VectorizedElementwiseKernel<
+  phi::funcs::VectorizedElementwiseKernel<
       OutT, FunctorT, 1, 1, VecSize><<<block, thread, 0, stream>>>(
       in_arr, out_arr, n, main_offset, FunctorT());
 }

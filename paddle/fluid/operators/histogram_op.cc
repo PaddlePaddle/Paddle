@@ -45,7 +45,7 @@ class HistogramOp : public framework::OperatorWithKernel {
                                           "But received max is %d, min is %d",
                                           maxval, minval));
 
-    ctx->SetOutputDim("Out", pten::make_ddim({nbins}));
+    ctx->SetOutputDim("Out", phi::make_ddim({nbins}));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 

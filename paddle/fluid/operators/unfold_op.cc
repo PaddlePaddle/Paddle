@@ -178,7 +178,7 @@ class UnfoldOp : public framework::OperatorWithKernel {
     }
     int output_col_length = output_height * output_width;
     out_dims.push_back(output_col_length);
-    ctx->SetOutputDim("Y", pten::make_ddim(out_dims));
+    ctx->SetOutputDim("Y", phi::make_ddim(out_dims));
   }
 
  protected:

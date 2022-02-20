@@ -121,7 +121,7 @@ class EltwiseDivMKLDNNGradKernel : public ElemwiseGradKernel<T> {
         astream.wait();
         dy->set_format(
             platform::GetMKLDNNFormat(dy_memory_p->get_desc().reshape(
-                pten::vectorize<int64_t>(dy->dims()))));
+                phi::vectorize<int64_t>(dy->dims()))));
 
       } else {
         dy->set_format(platform::GetMKLDNNFormat(*dst_dy_memory));

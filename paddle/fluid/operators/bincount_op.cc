@@ -69,7 +69,7 @@ class BincountOp : public framework::OperatorWithKernel {
               weights_dim, input_dim));
     }
 
-    ctx->SetOutputDim("Out", pten::make_ddim({-1}));
+    ctx->SetOutputDim("Out", phi::make_ddim({-1}));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 
