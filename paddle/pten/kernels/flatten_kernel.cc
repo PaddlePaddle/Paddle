@@ -56,6 +56,7 @@ PT_REGISTER_KERNEL(flatten,
                    double,
                    uint8_t,
                    int8_t,
+                   int16_t,
                    int,
                    int64_t) {}
 
@@ -67,6 +68,7 @@ PT_REGISTER_KERNEL(flatten_with_xshape,
                    double,
                    uint8_t,
                    int8_t,
+                   int16_t,
                    int,
                    int64_t) {}
 
@@ -80,6 +82,7 @@ PT_REGISTER_KERNEL(flatten,
                    double,
                    uint8_t,
                    int8_t,
+                   int16_t,
                    int,
                    int64_t) {}
 
@@ -92,6 +95,7 @@ PT_REGISTER_KERNEL(flatten_with_xshape,
                    double,
                    uint8_t,
                    int8_t,
+                   int16_t,
                    int,
                    int64_t) {}
 #endif
@@ -104,6 +108,7 @@ PT_REGISTER_KERNEL(flatten,
                    float,
                    pten::dtype::float16,
                    int8_t,
+                   int16_t,
                    int,
                    int64_t) {}
 
@@ -114,6 +119,7 @@ PT_REGISTER_KERNEL(flatten_with_xshape,
                    float,
                    pten::dtype::float16,
                    int8_t,
+                   int16_t,
                    int,
                    int64_t) {}
 #endif
