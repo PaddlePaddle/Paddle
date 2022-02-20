@@ -202,7 +202,6 @@ compute_positions_with_mask(T coord, int size, PaddingMode padding_mode,
   return coord;
 }
 
-/*
 template <typename T>
 __global__ void grid_sample_cuda_kernel(const int nthreads, int n, int out_c,
                                         int out_h, int out_w, int in_h,
@@ -228,9 +227,6 @@ __global__ void grid_sample_cuda_kernel(const int nthreads, int n, int out_c,
     const int h = (index / out_w) % out_h;
     const int n = index / (out_h * out_w);
     const int grid_offset = n * grid_sN + h * grid_sH + w * grid_sW;
-
-    // printf("🍏 idx: %d, grid_offset: %d = %d * %d + %d * %d + %d * %d\n",
-    //     index, grid_offset, n, grid_sN, h, grid_sH, w, grid_sW);
 
     T ix = grid[grid_offset];
     T iy = grid[grid_offset + grid_sCoor];
@@ -280,11 +276,11 @@ __global__ void grid_sample_cuda_kernel(const int nthreads, int n, int out_c,
       int iy_nearest = static_cast<int>(std::nearbyint(iy));
       auto inp_offset_NC = n * inp_sN;
       auto out_ptr_NCHW = output + n * out_sN + h * out_sH + w * out_sW;
-      for (int c = 0; c < out_c; ++c, inp_offset_NC += inp_sC, out_ptr_NCHW +=
-out_sC) {
+      for (int c = 0; c < out_c;
+           ++c, inp_offset_NC += inp_sC, out_ptr_NCHW += out_sC) {
         if (in_bounds(iy_nearest, ix_nearest, in_h, in_w)) {
-          *out_ptr_NCHW = input[inp_offset_NC + iy_nearest * inp_sH + ix_nearest
-* inp_sW];
+          *out_ptr_NCHW =
+              input[inp_offset_NC + iy_nearest * inp_sH + ix_nearest * inp_sW];
         } else {
           *out_ptr_NCHW = static_cast<T>(0);
         }
@@ -292,83 +288,12 @@ out_sC) {
     }
   }
 }
-*/
-
-template <typename T>
-__global__ void grid_sample_cuda_kernel_bilinear(
-    const int nthreads, int n, int out_c, int out_h, int out_w, int in_h,
-    int in_w, const T* input, const T* grid, T* output, const Mode mode,
-    const PaddingMode padding_mode, bool align_corners) {
-  int inp_sN = out_c * in_h * in_w;
-
-  int inp_sC = in_h * in_w;
-  int inp_sH = in_w;
-  int inp_sW = 1;
-  int grid_sN = out_h * out_w * 2;
-  int grid_sH = out_w * 2;
-  int grid_sW = 2;
-  int grid_sCoor = 1;
-  int out_sN = out_c * out_h * out_w;
-  int out_sC = out_h * out_w;
-  int out_sH = out_w;
-  int out_sW = 1;
-  CUDA_KERNEL_LOOP(index, nthreads) {
-    const int w = index % out_w;
-    const int h = (index / out_w) % out_h;
-    const int n = index / (out_h * out_w);
-    const int grid_offset = n * grid_sN + h * grid_sH + w * grid_sW;
-
-    T ix = grid[grid_offset];
-    T iy = grid[grid_offset + grid_sCoor];
-
-    ix = compute_positions(ix, in_w, padding_mode, align_corners);
-    iy = compute_positions(iy, in_h, padding_mode, align_corners);
-
-    int ix_nw = static_cast<int>(floor(ix));
-    int iy_nw = static_cast<int>(floor(iy));
-    int ix_ne = ix_nw + 1;
-    int iy_ne = iy_nw;
-    int ix_sw = ix_nw;
-    int iy_sw = iy_nw + 1;
-    int ix_se = ix_nw + 1;
-    int iy_se = iy_nw + 1;
-
-    T nw = (ix_se - ix) * (iy_se - iy);
-    T ne = (ix - ix_sw) * (iy_sw - iy);
-    T sw = (ix_ne - ix) * (iy - iy_ne);
-    T se = (ix - ix_nw) * (iy - iy_nw);
-
-    auto inp_offset_NC = n * inp_sN;
-
-    auto out_ptr_NCHW = output + n * out_sN + h * out_sH + w * out_sW;
-    for (int c = 0; c < out_c;
-         ++c, inp_offset_NC += inp_sC, out_ptr_NCHW += out_sC) {
-      *out_ptr_NCHW = static_cast<T>(0);
-      if (in_bounds(iy_nw, ix_nw, in_h, in_w)) {
-        *out_ptr_NCHW +=
-            input[inp_offset_NC + iy_nw * inp_sH + ix_nw * inp_sW] * nw;
-      }
-      if (in_bounds(iy_ne, ix_ne, in_h, in_w)) {
-        *out_ptr_NCHW +=
-            input[inp_offset_NC + iy_ne * inp_sH + ix_ne * inp_sW] * ne;
-      }
-      if (in_bounds(iy_sw, ix_sw, in_h, in_w)) {
-        *out_ptr_NCHW +=
-            input[inp_offset_NC + iy_sw * inp_sH + ix_sw * inp_sW] * sw;
-      }
-      if (in_bounds(iy_se, ix_se, in_h, in_w)) {
-        *out_ptr_NCHW +=
-            input[inp_offset_NC + iy_se * inp_sH + ix_se * inp_sW] * se;
-      }
-    }
-  }
-}
 
 template <typename T>
 __global__ void grid_sample_cuda_kernel_nearest(
-    const int nthreads, int num_batch, int out_c, int out_h, int out_w,
-    int in_h, int in_w, const T* input, const T* grid, T* output,
-    const Mode mode, const PaddingMode padding_mode, bool align_corners) {
+    int num_batch, int out_c, int out_h, int out_w, int in_h, int in_w,
+    const T* input, const T* grid, T* output, const Mode mode,
+    const PaddingMode padding_mode, bool align_corners) {
   int inp_sC = in_h * in_w;
   int out_sC = out_h * out_w;
   int grid_sCoor = 1;
@@ -454,8 +379,7 @@ class GridSampleOpCUDAKernel : public framework::OpKernel<T> {
 
     // 优化后
     if (mode == Mode::bilinear) {
-      grid_sample_cuda_kernel_bilinear<
-          T><<<grid_size, block_size, 0, cu_stream>>>(
+      grid_sample_cuda_kernel<T><<<grid_size, block_size, 0, cu_stream>>>(
           count, n, c, out_h, out_w, in_h, in_w, input->data<T>(),
           grid->data<T>(), output_data, mode, padding_mode, align_corners);
     } else {  // Mode::nearest
@@ -464,8 +388,8 @@ class GridSampleOpCUDAKernel : public framework::OpKernel<T> {
           GetGpuLaunchConfig3D(ctx.cuda_device_context(), nc, out_h, out_w);
       grid_sample_cuda_kernel_nearest<T><<<
           config_3d.block_per_grid, config_3d.thread_per_block, 0, cu_stream>>>(
-          count, n, c, out_h, out_w, in_h, in_w, input->data<T>(),
-          grid->data<T>(), output_data, mode, padding_mode, align_corners);
+          n, c, out_h, out_w, in_h, in_w, input->data<T>(), grid->data<T>(),
+          output_data, mode, padding_mode, align_corners);
     }
 
     // 优化前
