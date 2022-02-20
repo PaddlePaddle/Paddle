@@ -117,8 +117,8 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
     out->Resize(out_dims);
     out->set_lod(out_lod);
 
-    auto in_stride = framework::stride(in->dims());
-    auto out_stride = framework::stride(out->dims());
+    auto in_stride = pten::stride(in->dims());
+    auto out_stride = pten::stride(out->dims());
 
     size_t out_offset = 0;
     for (size_t i = 0; i < n; ++i) {
@@ -177,9 +177,9 @@ class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
         Tensor out_grad_t =
             out_grad->Slice(static_cast<int>(out_lod[0][i]),
                             static_cast<int>(out_lod[0][i + 1]));
-        auto out_grad_stride = framework::stride(out_grad_t.dims());
+        auto out_grad_stride = pten::stride(out_grad_t.dims());
 
-        auto x_grad_stride = framework::stride(x_grad->dims());
+        auto x_grad_stride = pten::stride(x_grad->dims());
 
         Tensor x_grad_t = x_grad->Slice(
             static_cast<int>(lod[0][i] + offset_data[i]),

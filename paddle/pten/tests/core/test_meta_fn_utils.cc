@@ -25,7 +25,7 @@ namespace tests {
 
 TEST(WrappedInferMeta, Scale) {
   pten::DenseTensor dense_x;
-  dense_x.Resize(pten::framework::make_ddim({3, 4}));
+  dense_x.Resize(pten::make_ddim({3, 4}));
 
   pten::MetaTensor meta_x(&dense_x);
   pten::DenseTensor dense_out1;
@@ -39,7 +39,7 @@ TEST(WrappedInferMeta, Scale) {
 
 TEST(MetaFnFactory, InferMetaFnExists) {
   pten::DenseTensor dense_x;
-  dense_x.Resize(pten::framework::make_ddim({3, 4}));
+  dense_x.Resize(pten::make_ddim({3, 4}));
 
   pten::MetaTensor meta_x(&dense_x);
   pten::DenseTensor dense_out1;

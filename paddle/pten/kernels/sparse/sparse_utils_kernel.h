@@ -33,9 +33,9 @@ inline const DDim InferDenseDims(const DDim& x_dims,
     memcpy(&dense_dim_vec[1],
            x_dims.Get() + sparse_dim,
            dense_dim * sizeof(x_dims[0]));
-    values_dims = pten::framework::make_ddim(dense_dim_vec);
+    values_dims = pten::make_ddim(dense_dim_vec);
   } else {
-    values_dims = pten::framework::make_ddim({non_zero_num});
+    values_dims = pten::make_ddim({non_zero_num});
   }
   return values_dims;
 }

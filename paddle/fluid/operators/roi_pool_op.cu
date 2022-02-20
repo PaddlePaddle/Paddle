@@ -138,7 +138,7 @@ class GPUROIPoolOpKernel : public framework::OpKernel<T> {
 
     auto in_dims = in->dims();
     int batch_size = in_dims[0];
-    auto in_stride = framework::stride(in_dims);
+    auto in_stride = pten::stride(in_dims);
     int channels = in_dims[1];
     int height = in_dims[2];
     int width = in_dims[3];

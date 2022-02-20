@@ -23,13 +23,13 @@ namespace tests {
 
 TEST(sparse_coo_tensor, construct) {
   pten::CPUPlace cpu;
-  auto dense_dims = pten::framework::make_ddim({3, 3});
+  auto dense_dims = pten::make_ddim({3, 3});
   std::vector<float> non_zero_data = {1.0, 2.0, 3.0};
   std::vector<int64_t> indices_data = {0, 1, 2, 0, 2, 1};
   auto fancy_allocator = std::unique_ptr<Allocator>(new FancyAllocator);
   auto* alloc = fancy_allocator.get();
   auto indices_dims =
-      pten::framework::make_ddim({2, static_cast<int>(non_zero_data.size())});
+      pten::make_ddim({2, static_cast<int>(non_zero_data.size())});
   DenseTensorMeta indices_meta(DataType::INT64, indices_dims, DataLayout::NCHW);
   DenseTensor indices(alloc, indices_meta);
   memcpy(indices.mutable_data<int64_t>(cpu),
@@ -37,7 +37,7 @@ TEST(sparse_coo_tensor, construct) {
          indices_data.size() * sizeof(int64_t));
 
   auto elements_dims =
-      pten::framework::make_ddim({static_cast<int>(non_zero_data.size())});
+      pten::make_ddim({static_cast<int>(non_zero_data.size())});
   DenseTensorMeta elements_meta(
       DataType::FLOAT32, elements_dims, DataLayout::NCHW);
   DenseTensor elements(alloc, elements_meta);
@@ -60,13 +60,13 @@ TEST(sparse_coo_tensor, construct) {
 TEST(sparse_coo_tensor, other_function) {
   auto fancy_allocator = std::unique_ptr<Allocator>(new FancyAllocator);
   auto* alloc = fancy_allocator.get();
-  auto dense_dims = pten::framework::make_ddim({4, 4});
+  auto dense_dims = pten::make_ddim({4, 4});
   const int non_zero_num = 2;
-  auto indices_dims = pten::framework::make_ddim({2, non_zero_num});
+  auto indices_dims = pten::make_ddim({2, non_zero_num});
   DenseTensorMeta indices_meta(DataType::INT64, indices_dims, DataLayout::NCHW);
   DenseTensor indices(alloc, indices_meta);
 
-  auto elements_dims = pten::framework::make_ddim({non_zero_num});
+  auto elements_dims = pten::make_ddim({non_zero_num});
   DenseTensorMeta elements_meta(
       DataType::FLOAT32, elements_dims, DataLayout::NCHW);
   DenseTensor elements(alloc, elements_meta);
@@ -76,7 +76,7 @@ TEST(sparse_coo_tensor, other_function) {
   CHECK_EQ(coo.dims(), dense_dims);
 
   // Test Resize
-  auto dense_dims_3d = pten::framework::make_ddim({2, 4, 4});
+  auto dense_dims_3d = pten::make_ddim({2, 4, 4});
   coo.Resize(dense_dims_3d, 1, 3);
   CHECK_EQ(coo.nnz(), 3);
 

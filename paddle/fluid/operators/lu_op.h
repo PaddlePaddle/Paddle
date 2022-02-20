@@ -68,7 +68,7 @@ void SetValueCompute(const framework::ExecutionContext& ctx,
       none_axes_cur++;
     }
 
-    slice_dims_for_assign = framework::make_ddim(slice_dims_with_none);
+    slice_dims_for_assign = pten::make_ddim(slice_dims_with_none);
   }
 
   auto place = ctx.GetPlace();
@@ -148,7 +148,7 @@ void SetValueCompute(const framework::ExecutionContext& ctx,
         ctx, &slice_tensor, value_tensor, -1, SubFunctor<T>(), &slice_tensor);
   } else {
     Tensor value_t(framework::TransToPtenDataType(dtype));
-    auto value_dims = framework::make_ddim(shape);
+    auto value_dims = pten::make_ddim(shape);
     CheckIsDimsMatch(slice_dims_for_assign, value_dims);
 
     value_t.mutable_data<T>(value_dims, place);
@@ -368,7 +368,7 @@ void Tensor_narrow(const framework::ExecutionContext& ctx,
 template <typename DeviceContext>
 void arange(const DeviceContext& dev_ctx, framework::Tensor* tmp, int w,
             int batchsize = 1, int h = 1) {
-  tmp->Resize(framework::make_ddim({batchsize * w}));
+  tmp->Resize(pten::make_ddim({batchsize * w}));
   platform::CPUPlace cpu;
   auto tmpdata = tmp->mutable_data<int32_t>(cpu);
   for (int b = 0; b < batchsize; b++) {
@@ -413,7 +413,7 @@ void LU_Unpack(const DeviceContext& dev_ctx, const framework::Tensor* LU,
   // set L's diagonal 1
   auto dim = std::min(H, W);
   framework::Tensor rowtensor, rt_dev;
-  auto batchsize = product(framework::slice_ddim(udims, 0, udims.size() - 2));
+  auto batchsize = product(pten::slice_ddim(udims, 0, udims.size() - 2));
   batchsize = std::max(static_cast<int>(batchsize), 1);
   arange<DeviceContext>(dev_ctx, &rowtensor, dim, batchsize, H);
   auto idtptr = rowtensor.data<int32_t>();
@@ -454,13 +454,13 @@ void Unpack_Pivot(const DeviceContext& dev_ctx, const framework::Tensor& Pivot,
   auto pdataptr = Pivot_cpu.data<int32_t>();
   Pdimvec[prank - 1] = h;
   Pdimvec.emplace_back(h);
-  auto Pdim = framework::make_ddim(Pdimvec);
+  auto Pdim = pten::make_ddim(Pdimvec);
   P->Resize(Pdim);
   auto pdata = P->mutable_data<T>(dev_ctx.GetPlace());
   pten::funcs::SetConstant<DeviceContext, T> setter;
   setter(dev_ctx, P, static_cast<T>(0));
 
-  auto batchsize = product(framework::slice_ddim(dims, 0, prank - 1));
+  auto batchsize = product(pten::slice_ddim(dims, 0, prank - 1));
   batchsize = std::max(static_cast<int>(batchsize), 1);
   framework::Tensor idt;
   for (int i = 0; i < batchsize; i++) {

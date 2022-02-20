@@ -233,9 +233,9 @@ class CPUROIAlignOpKernel : public framework::OpKernel<T> {
     int width = in_dims[3];
     int rois_num = rois->dims()[0];
 
-    auto in_stride = framework::stride(in_dims);
-    auto roi_stride = framework::stride(rois->dims());
-    auto out_stride = framework::stride(out->dims());
+    auto in_stride = pten::stride(in_dims);
+    auto roi_stride = pten::stride(rois->dims());
+    auto out_stride = pten::stride(out->dims());
 
     const T* input_data = in->data<T>();
     framework::Tensor roi_batch_id_list;
@@ -402,9 +402,9 @@ class CPUROIAlignGradOpKernel : public framework::OpKernel<T> {
     const T* out_grad_data = out_grad->data<T>();
     T* in_grad_data = in_grad->mutable_data<T>(ctx.GetPlace());
 
-    auto in_stride = framework::stride(in->dims());
-    auto roi_stride = framework::stride(rois->dims());
-    auto out_stride = framework::stride(out_grad->dims());
+    auto in_stride = pten::stride(in->dims());
+    auto roi_stride = pten::stride(rois->dims());
+    auto out_stride = pten::stride(out_grad->dims());
 
     T roi_offset = aligned ? T(0.5) : 0;
     for (int n = 0; n < rois_num; ++n) {

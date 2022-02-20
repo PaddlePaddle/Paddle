@@ -73,8 +73,8 @@ void IndexSelectInner(const framework::ExecutionContext& context,
   VLOG(3) << "Index_Select_Debug; outer_nums: " << outer_nums
           << "; slice_size: " << slice_size << "; index_size: " << index_size;
 
-  input->Resize(framework::make_ddim({outer_nums, input_dim[dim], slice_size}));
-  output->Resize(framework::make_ddim({outer_nums, index_size, slice_size}));
+  input->Resize(pten::make_ddim({outer_nums, input_dim[dim], slice_size}));
+  output->Resize(pten::make_ddim({outer_nums, index_size, slice_size}));
 
   auto input_tensor = framework::EigenTensor<T, 3>::From(*input);
   auto output_tensor = framework::EigenTensor<T, 3>::From(*output);

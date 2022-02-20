@@ -81,10 +81,10 @@ class TDMChildOp : public framework::OperatorWithKernel {
             "tree info's shape = [%s].",
             info_dims.size(), info_dims));
 
-    auto output_dims = framework::vectorize(input_dims);
+    auto output_dims = pten::vectorize(input_dims);
     output_dims.push_back(child_nums);
-    ctx->SetOutputDim("Child", framework::make_ddim(output_dims));
-    ctx->SetOutputDim("LeafMask", framework::make_ddim(output_dims));
+    ctx->SetOutputDim("Child", pten::make_ddim(output_dims));
+    ctx->SetOutputDim("LeafMask", pten::make_ddim(output_dims));
 
     if (ctx->GetOutputsVarType("Child")[0] ==
         framework::proto::VarType::LOD_TENSOR) {

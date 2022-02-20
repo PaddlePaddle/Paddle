@@ -85,8 +85,8 @@ class MaxPoolWithIndexOp : public framework::OperatorWithKernel {
                                                  paddings[i], strides[i]));
       }
     }
-    ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
-    ctx->SetOutputDim("Mask", framework::make_ddim(output_shape));
+    ctx->SetOutputDim("Out", pten::make_ddim(output_shape));
+    ctx->SetOutputDim("Mask", pten::make_ddim(output_shape));
   }
 
  protected:

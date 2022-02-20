@@ -85,7 +85,7 @@ bool IsPersistable(const framework::VarDesc *var) {
 
 bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
                              const platform::Place &place) {
-  framework::DDim ddim = framework::make_ddim(pt.shape);
+  framework::DDim ddim = pten::make_ddim(pt.shape);
   void *input_ptr;
   if (pt.dtype == PaddleDType::INT64) {
     input_ptr = t->mutable_data<int64_t>(ddim, place);
@@ -521,7 +521,7 @@ template <typename T>
 void AnalysisPredictor::GetFetchOne(const framework::LoDTensor &fetch,
                                     PaddleTensor *output) {
   // set shape.
-  auto shape = framework::vectorize(fetch.dims());
+  auto shape = pten::vectorize(fetch.dims());
   output->shape.assign(shape.begin(), shape.end());
   // set data.
   const T *data = fetch.data<T>();

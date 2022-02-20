@@ -112,13 +112,13 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, T> {
             framework::TransToProtoVarType(input.dtype()))) {
       lrwork = std::max<int>(1, static_cast<int>(rwork_opt));
       rwork_data = rwork_tensor.mutable_data<ValueType>(
-          framework::make_ddim({lrwork}), ctx.GetPlace());
+          pten::make_ddim({lrwork}), ctx.GetPlace());
     }
     Tensor iwork_tensor, work_tensor;
-    auto *iwork_data = iwork_tensor.mutable_data<int>(
-        framework::make_ddim({liwork}), ctx.GetPlace());
-    auto *work_data = work_tensor.mutable_data<T>(framework::make_ddim({lwork}),
-                                                  ctx.GetPlace());
+    auto *iwork_data = iwork_tensor.mutable_data<int>(pten::make_ddim({liwork}),
+                                                      ctx.GetPlace());
+    auto *work_data =
+        work_tensor.mutable_data<T>(pten::make_ddim({lwork}), ctx.GetPlace());
 
     for (auto i = 0; i < batch_size; i++) {
       auto *value_data = out_value + i * values_stride;
