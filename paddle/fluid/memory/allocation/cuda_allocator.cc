@@ -42,7 +42,6 @@ void CUDAAllocator::FreeImpl(pten::Allocation* allocation) {
           "GPU memory is freed in incorrect device. This may be a bug"));
   platform::RecordedGpuFree(allocation->ptr(), allocation->size(),
                             place_.device);
-  StatUpdate("Reserved", place_.device, -allocation->size());
   delete allocation;
 }
 
@@ -52,7 +51,6 @@ pten::Allocation* CUDAAllocator::AllocateImpl(size_t size) {
   void* ptr;
   auto result = platform::RecordedGpuMalloc(&ptr, size, place_.device);
   if (LIKELY(result == gpuSuccess)) {
-    StatUpdate("Reserved", place_.device, size);
     return new Allocation(ptr, size, platform::Place(place_));
   }
 

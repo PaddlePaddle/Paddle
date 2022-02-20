@@ -28,10 +28,6 @@
 
 DECLARE_string(allocator_strategy);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-USE_GPU_ALLOC_STAT;
-#endif
-
 namespace paddle {
 namespace memory {
 namespace allocation {
@@ -142,8 +138,8 @@ class Allocator : public pten::Allocator {
  public:
   static void AllocationDeleter(pten::Allocation* allocation) {
     if (platform::is_gpu_place(allocation->place())) {
-      StatUpdate("Allocated", allocation->place().GetDeviceId(),
-                 -allocation->size());
+      MEMORY_STAT_UPDATE(Allocated, allocation->place().GetDeviceId(),
+                         -allocation->size());
     }
 
     Allocator* allocator =

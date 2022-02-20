@@ -22,8 +22,8 @@
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
 #include "paddle/fluid/memory/allocation/naive_best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
+#include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -33,7 +33,6 @@
 #include "paddle/fluid/memory/allocation/pinned_allocator.h"
 #include "paddle/fluid/memory/allocation/stream_safe_cuda_allocator.h"
 #include "paddle/fluid/memory/allocation/thread_local_allocator.h"
-#include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
 
@@ -920,7 +919,7 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
 
   AllocationPtr allocation = m_->GetAllocator(place, size)->Allocate(size);
   if (platform::is_gpu_place(place)) {
-    StatUpdate("Allocated", place.GetDeviceId(), allocation->size());
+    MEMORY_STAT_UPDATE(Allocated, place.GetDeviceId(), allocation->size());
   }
 
   return allocation;
@@ -1022,11 +1021,9 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place, size_t size,
     allocation = m_->GetAllocator(p, size)->Allocate(size);
   }
 
-  int dev_id = p.GetDeviceId();
-  int64_t alloc_size = STAT_INT_ADD(
-      "STAT_gpu" + std::to_string(dev_id) + "_alloc_size", allocation->size());
-  STAT_INT_UPDATE_MAXIMUM(
-      "STAT_gpu" + std::to_string(dev_id) + "_max_alloc_size", alloc_size);
+  if (platform::is_gpu_place(p)) {
+    MEMORY_STAT_UPDATE(Allocated, p.GetDeviceId(), allocation->size());
+  }
 
   return allocation;
 }
