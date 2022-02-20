@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/meta_tensor.h"
 #include "paddle/pten/core/selected_rows.h"
+#include "paddle/utils/optional.h"
 
 namespace paddle {
 namespace experimental {
@@ -29,6 +30,14 @@ namespace experimental {
 inline std::shared_ptr<pten::DenseTensor> TensorToDenseTensor(
     const Tensor& tensor) {
   return std::dynamic_pointer_cast<pten::DenseTensor>(tensor.impl());
+}
+
+inline paddle::optional<const pten::DenseTensor&> TensorToDenseTensor(
+    const paddle::optional<Tensor>& tensor) {
+  if (tensor) {
+    return {*std::dynamic_pointer_cast<pten::DenseTensor>(tensor->impl())};
+  }
+  return paddle::none;
 }
 
 inline std::unique_ptr<std::vector<pten::DenseTensor>> TensorToDenseTensor(
@@ -49,10 +58,26 @@ inline std::shared_ptr<pten::SelectedRows> TensorToSelectedRows(
   return std::dynamic_pointer_cast<pten::SelectedRows>(tensor.impl());
 }
 
+inline paddle::optional<const pten::SelectedRows&> TensorToSelectedRows(
+    const paddle::optional<Tensor>& tensor) {
+  if (tensor) {
+    return {*std::dynamic_pointer_cast<pten::SelectedRows>(tensor->impl())};
+  }
+  return paddle::none;
+}
+
 /* ----------------- for infer_meta --------------------- */
 
 inline pten::MetaTensor MakeMetaTensor(const pten::DenseTensor& tensor) {
   return pten::MetaTensor(tensor);
+}
+
+inline paddle::optional<pten::MetaTensor> MakeMetaTensor(
+    const paddle::optional<const pten::DenseTensor&>& tensor) {
+  if (tensor) {
+    return pten::MetaTensor(*tensor);
+  }
+  return paddle::none;
 }
 
 inline std::vector<pten::MetaTensor> MakeMetaTensor(
@@ -67,6 +92,14 @@ inline std::vector<pten::MetaTensor> MakeMetaTensor(
 
 inline pten::MetaTensor MakeMetaTensor(const pten::SelectedRows& tensor) {
   return pten::MetaTensor(tensor);
+}
+
+inline paddle::optional<pten::MetaTensor> MakeMetaTensor(
+    const paddle::optional<const pten::SelectedRows&>& tensor) {
+  if (tensor) {
+    return pten::MetaTensor(*tensor);
+  }
+  return paddle::none;
 }
 
 /* ------------------ for output ----------------------- */

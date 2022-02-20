@@ -68,6 +68,7 @@ def header_include():
 #include "paddle/pten/api/include/tensor.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
+#include "paddle/utils/optional.h"
 """
 
 

@@ -21,6 +21,7 @@
 #define PADDLE_OPTIONAL_OPTIONAL_FLC_19NOV2002_HPP
 
 #include <algorithm>
+#include <cassert>
 #include <functional>
 #include <new>
 #include <type_traits>

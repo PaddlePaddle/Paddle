@@ -15,6 +15,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
+#include "paddle/pten/api/backward/backward_api.h"
 #include "paddle/pten/api/include/api.h"
 
 #include "paddle/pten/api/lib/utils/allocator.h"
@@ -158,6 +159,34 @@ TEST(API, matmul_cuda) {
 }
 
 #endif
+
+TEST(API, matmul_double_grad) {
+  // 1. create tensor
+  auto x = paddle::experimental::full({3, 3}, 1.0);
+  auto y = paddle::experimental::full({3, 3}, 2.0);
+  auto out_grad = paddle::experimental::full({3, 3}, 2.0);
+  auto dx_grad = paddle::experimental::full({3, 3}, 2.0);
+
+  // 2. test API
+  const auto out = paddle::experimental::matmul_double_grad(
+      x, y, out_grad, dx_grad, {}, false, false);
+
+  VLOG(1) << "######### matmul_double_grad";
+
+  // 3. check result
+  ASSERT_EQ(out.size(), 3UL);
+  ASSERT_EQ(out[0].size(), 1UL);
+  ASSERT_EQ(out[1].size(), 1UL);
+  ASSERT_EQ(out[2].size(), 1UL);
+  ASSERT_EQ(out[0][0].dims()[1], 3);
+  ASSERT_EQ(out[0][0].numel(), 9);
+  ASSERT_EQ(out[1][0].numel(), 9);
+  ASSERT_EQ(out[2][0].numel(), 9);
+  ASSERT_EQ(out[0][0].type(), pten::DataType::FLOAT32);
+  ASSERT_EQ(out[0][0].layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(out[1][0].initialized(), true);
+  ASSERT_EQ(out[2][0].initialized(), true);
+}
 
 }  // namespace tests
 }  // namespace paddle

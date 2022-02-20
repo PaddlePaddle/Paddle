@@ -31,10 +31,10 @@ class BackwardAPI(BaseAPI):
     def parse_forward_config(self, forward_config):
         # api_name (const Tensor& input, ... , int attr, ...) -> Tensor(out)
         result = re.search(
-            r"(?P<api>[a-z][a-z0-9_]+)\s*(?P<args>\([^\)]+\))\s*->[^\(]*\((?P<outputs>[^\)]+)\)",
+            r"(?P<api>[a-z][a-z0-9_]+)\s*(?P<args>\([^\)]+\))\s*->\s*(?P<outputs>.+)",
             forward_config)
         api = result.group('api')
-        outputs = [item.strip() for item in result.group('outputs').split(',')]
+        _, outputs, _ = self.parse_output(self.api, result.group('outputs'))
         fw_inputs, fw_attrs, _, = self.parse_input_and_attr(
             api, result.group('args'))
 
@@ -47,7 +47,7 @@ class BackwardAPI(BaseAPI):
 
         # check the inputs of backward
         for input in self.inputs['names']:
-            if input not in fw_inputs and input not in fw_outputs:
+            if input not in fw_inputs['names'] and input not in fw_outputs:
                 if input.endswith('_grad'):
                     original_name = input[:-5]
                     assert original_name in fw_outputs, \
@@ -114,6 +114,7 @@ def header_include():
 #include "paddle/pten/api/include/tensor.h"
 #include "paddle/pten/common/scalar.h"
 #include "paddle/pten/common/scalar_array.h"
+#include "paddle/utils/optional.h"
 """
 
 
