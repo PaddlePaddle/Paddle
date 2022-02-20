@@ -522,7 +522,7 @@ class Pad2dOp : public framework::OperatorWithKernel {
       }
     }
 
-    ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
+    ctx->SetOutputDim("Out", pten::make_ddim(out_dims));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 

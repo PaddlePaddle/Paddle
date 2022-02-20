@@ -29,8 +29,8 @@ namespace egr {
 
 TEST(EagerUtils, AutoGradMeta) {
   // Construct Eager Tensor
-  pten::DenseTensorMeta meta = pten::DenseTensorMeta(
-      pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 1}));
+  pten::DenseTensorMeta meta =
+      pten::DenseTensorMeta(pten::DataType::FLOAT32, pten::make_ddim({1, 1}));
   std::shared_ptr<pten::DenseTensor> dt0 = std::make_shared<pten::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
@@ -166,7 +166,7 @@ TEST(EagerUtils, PassStopGradient) {
 }
 
 TEST(EagerUtils, TrySyncToVar) {
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
+  paddle::framework::DDim ddim = pten::make_ddim({2, 4, 4, 4});
   auto tensor = CreateTestCPUTensor(5.0f, ddim);
   std::vector<std::shared_ptr<egr::EagerVariable>> var_bases = {
       egr::EagerUtils::TrySyncToVar(tensor)};
@@ -184,7 +184,7 @@ TEST(EagerUtils, TrySyncToVar) {
 }
 
 TEST(EagerUtils, TrySyncToVars) {
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
+  paddle::framework::DDim ddim = pten::make_ddim({2, 4, 4, 4});
   std::vector<paddle::experimental::Tensor> tensors = {
       CreateTestCPUTensor(1.0f, ddim), CreateTestCPUTensor(2.0f, ddim)};
 

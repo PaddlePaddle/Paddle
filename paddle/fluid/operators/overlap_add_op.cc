@@ -91,7 +91,7 @@ class OverlapAddOp : public framework::OperatorWithKernel {
       output_shape.push_back(seq_length);
     }
 
-    ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
+    ctx->SetOutputDim("Out", pten::make_ddim(output_shape));
   }
 
  protected:

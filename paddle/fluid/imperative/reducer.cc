@@ -445,7 +445,7 @@ void Reducer::InitializeGroups(
       // process the dense gradient.
       InitializeDenseGroups(variable_indices_, &group);
       auto tensor = group.dense_contents_.GetMutable<framework::LoDTensor>();
-      tensor->Resize(framework::make_ddim({group.all_length_}))
+      tensor->Resize(pten::make_ddim({group.all_length_}))
           .mutable_data(place_, framework::TransToPtenDataType(group.dtype_));
     }
 

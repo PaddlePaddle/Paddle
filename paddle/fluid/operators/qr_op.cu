@@ -79,7 +79,7 @@ class QrGPUKernel : public framework::OpKernel<T> {
     paddle::framework::TensorCopy(x, context.GetPlace(), &qr);
 
     // Prepare tau
-    auto tau_dims_vec = framework::vectorize<int>(x_dims);
+    auto tau_dims_vec = pten::vectorize<int>(x_dims);
     tau_dims_vec.pop_back();
     tau_dims_vec[tau_dims_vec.size() - 1] = min_mn;
     Tensor tau = dito.Fill(tau_dims_vec, 0);
@@ -118,7 +118,7 @@ class QrGPUKernel : public framework::OpKernel<T> {
         framework::TensorCopy(sliced_q, q.place(), &q);
       } else {
         if (m > n) {
-          auto new_qr_dims_vec = framework::vectorize<int>(x_dims);
+          auto new_qr_dims_vec = pten::vectorize<int>(x_dims);
           new_qr_dims_vec[new_qr_dims_vec.size() - 1] = m;
           Tensor new_qr = dito.Fill(new_qr_dims_vec, 0);
           auto new_qr_data = new_qr.mutable_data<T>(context.GetPlace());

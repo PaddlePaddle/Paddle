@@ -50,7 +50,7 @@ void getModebySort(const platform::CUDADeviceContext& ctx,
   framework::Tensor input_tmp;
   framework::TensorCopy(*input_tensor, ctx.GetPlace(), &input_tmp);
   T* input_tmp_data = input_tmp.mutable_data<T>(ctx.GetPlace());
-  input_tmp.Resize(framework::make_ddim({num_rows, num_cols}));
+  input_tmp.Resize(pten::make_ddim({num_rows, num_cols}));
   thrust::device_ptr<T> out_tensor_ptr(out_tensor);
   thrust::device_ptr<int64_t> indices_tensor_ptr(indices_tensor);
 
@@ -106,8 +106,8 @@ class ModeOpCUDAKernel : public framework::OpKernel<T> {
     int64_t* indices_data = indices->mutable_data<int64_t>(ctx.GetPlace());
 
     if (axis == in_dims.size() - 1) {
-      const int64_t& input_height = framework::product(
-          framework::slice_ddim(in_dims, 0, in_dims.size() - 1));
+      const int64_t& input_height =
+          pten::product(pten::slice_ddim(in_dims, 0, in_dims.size() - 1));
       const int64_t& input_width = in_dims[in_dims.size() - 1];
       const auto& dev_ctx = ctx.cuda_device_context();
       getModebySort<T>(dev_ctx, input, input_width, input_height, output_data,
@@ -132,7 +132,7 @@ class ModeOpCUDAKernel : public framework::OpKernel<T> {
         for (int i = axis + 1; i < in_dims.size(); i++) {
           tmp_out_shape.emplace_back(in_dims[i]);
         }
-        framework::DDim tmp_out_dim = framework::make_ddim(tmp_out_shape);
+        framework::DDim tmp_out_dim = pten::make_ddim(tmp_out_shape);
         output->Resize(tmp_out_dim);
         indices->Resize(tmp_out_dim);
       }
@@ -159,8 +159,8 @@ class ModeOpCUDAKernel : public framework::OpKernel<T> {
       T* trans_out_data =
           trans_out.mutable_data<T>(trans_out_shape, ctx.GetPlace());
 
-      const int64_t input_height = framework::product(
-          framework::slice_ddim(trans_shape, 0, trans_shape.size() - 1));
+      const int64_t input_height = pten::product(
+          pten::slice_ddim(trans_shape, 0, trans_shape.size() - 1));
       const int64_t input_width = trans_shape[trans_shape.size() - 1];
       getModebySort<T>(dev_ctx, &trans_input, input_width, input_height,
                        trans_out_data, trans_ind_data);

@@ -72,9 +72,9 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
     auto in_x_dims = input->dims();
     framework::DDim data_dims;
     if (channel_last) {
-      data_dims = framework::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
+      data_dims = pten::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
     } else {
-      data_dims = framework::slice_ddim(in_x_dims, 2, in_x_dims.size());
+      data_dims = pten::slice_ddim(in_x_dims, 2, in_x_dims.size());
     }
     UpdatePadding(&paddings, global_pooling, adaptive, padding_algorithm,
                   data_dims, strides, ksize);
@@ -106,12 +106,12 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
       // input
       transformed_input.Resize(input->dims());
 
-      auto in_dims_vec = framework::vectorize(input->dims());
+      auto in_dims_vec = pten::vectorize(input->dims());
       in_dims_vec[1] = input->dims()[4];
       in_dims_vec[2] = input->dims()[1];
       in_dims_vec[3] = input->dims()[2];
       in_dims_vec[4] = input->dims()[3];
-      transformed_input.Resize(framework::make_ddim(in_dims_vec));
+      transformed_input.Resize(pten::make_ddim(in_dims_vec));
       transformed_input.mutable_data(ctx.GetPlace(), input->type());
 
       pten::funcs::Transpose<paddle::platform::CUDADeviceContext, T, 5> trans5;
@@ -120,12 +120,12 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
       // output
       transformed_output.Resize(output->dims());
 
-      auto out_dims_vec = framework::vectorize(output->dims());
+      auto out_dims_vec = pten::vectorize(output->dims());
       out_dims_vec[1] = output->dims()[4];
       out_dims_vec[2] = output->dims()[1];
       out_dims_vec[3] = output->dims()[2];
       out_dims_vec[4] = output->dims()[3];
-      transformed_output.Resize(framework::make_ddim(out_dims_vec));
+      transformed_output.Resize(pten::make_ddim(out_dims_vec));
 #ifdef PADDLE_WITH_HIP
       // MIOPEN not support NHWC data layout
     } else if (data_format == str_NHWC) {
@@ -135,22 +135,22 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
       std::vector<int> axis{0, 3, 1, 2};
 
       transformed_input.Resize(input->dims());
-      auto in_dims_vec = framework::vectorize(input->dims());
+      auto in_dims_vec = pten::vectorize(input->dims());
       in_dims_vec[1] = input->dims()[3];
       in_dims_vec[2] = input->dims()[1];
       in_dims_vec[3] = input->dims()[2];
-      transformed_input.Resize(framework::make_ddim(in_dims_vec));
+      transformed_input.Resize(pten::make_ddim(in_dims_vec));
       transformed_input.mutable_data(ctx.GetPlace(), input->type());
 
       pten::funcs::Transpose<paddle::platform::CUDADeviceContext, T, 4> trans;
       trans(dev_ctx, *input, &transformed_input, axis);
 
       transformed_output.Resize(output->dims());
-      auto out_dims_vec = framework::vectorize(output->dims());
+      auto out_dims_vec = pten::vectorize(output->dims());
       out_dims_vec[1] = output->dims()[3];
       out_dims_vec[2] = output->dims()[1];
       out_dims_vec[3] = output->dims()[2];
-      transformed_output.Resize(framework::make_ddim(out_dims_vec));
+      transformed_output.Resize(pten::make_ddim(out_dims_vec));
 #endif
     } else {
       layout = getLayoutFromStr(data_format);
@@ -169,14 +169,14 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
 
 #ifdef PADDLE_WITH_HIP
     miopenTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
-        layout, framework::vectorize<int>(transformed_input.dims()));
+        layout, pten::vectorize<int>(transformed_input.dims()));
     miopenTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
-        layout, framework::vectorize<int>(transformed_output.dims()));
+        layout, pten::vectorize<int>(transformed_output.dims()));
 #else
     cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
-        layout, framework::vectorize<int>(transformed_input.dims()));
+        layout, pten::vectorize<int>(transformed_input.dims()));
     cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
-        layout, framework::vectorize<int>(transformed_output.dims()));
+        layout, pten::vectorize<int>(transformed_output.dims()));
 #endif
     PoolingMode pooling_mode;
     if (pooling_type == "max") {
@@ -296,9 +296,9 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
     auto in_x_dims = input->dims();
     framework::DDim data_dims;
     if (channel_last) {
-      data_dims = framework::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
+      data_dims = pten::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
     } else {
-      data_dims = framework::slice_ddim(in_x_dims, 2, in_x_dims.size());
+      data_dims = pten::slice_ddim(in_x_dims, 2, in_x_dims.size());
     }
     UpdatePadding(&paddings, global_pooling, adaptive, padding_algorithm,
                   data_dims, strides, ksize);
@@ -330,12 +330,12 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
 
       // input
       transformed_input.Resize(input->dims());
-      auto in_dims_vec = framework::vectorize(input->dims());
+      auto in_dims_vec = pten::vectorize(input->dims());
       in_dims_vec[1] = input->dims()[4];
       in_dims_vec[2] = input->dims()[1];
       in_dims_vec[3] = input->dims()[2];
       in_dims_vec[4] = input->dims()[3];
-      transformed_input.Resize(framework::make_ddim(in_dims_vec));
+      transformed_input.Resize(pten::make_ddim(in_dims_vec));
       transformed_input.mutable_data(ctx.GetPlace(), input->type());
 
       pten::funcs::Transpose<paddle::platform::CUDADeviceContext, T, 5> trans5;
@@ -343,12 +343,12 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
 
       // output
       transformed_output.Resize(output->dims());
-      auto out_dims_vec = framework::vectorize(output->dims());
+      auto out_dims_vec = pten::vectorize(output->dims());
       out_dims_vec[1] = output->dims()[4];
       out_dims_vec[2] = output->dims()[1];
       out_dims_vec[3] = output->dims()[2];
       out_dims_vec[4] = output->dims()[3];
-      transformed_output.Resize(framework::make_ddim(out_dims_vec));
+      transformed_output.Resize(pten::make_ddim(out_dims_vec));
 
       transformed_output.mutable_data(ctx.GetPlace(), output->type());
 
@@ -357,7 +357,7 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
       trans5_v2(dev_ctx, *output, &transformed_output, axis);
 
       // output grad
-      transformed_output_grad.Resize(framework::make_ddim(out_dims_vec));
+      transformed_output_grad.Resize(pten::make_ddim(out_dims_vec));
       transformed_output_grad.mutable_data(ctx.GetPlace(), output_grad->type());
 
       pten::funcs::Transpose<paddle::platform::CUDADeviceContext, T, 5>
@@ -365,7 +365,7 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
       trans5_v3(dev_ctx, *output_grad, &transformed_output_grad, axis);
 
       // input grad
-      transformed_input_grad.Resize(framework::make_ddim(in_dims_vec));
+      transformed_input_grad.Resize(pten::make_ddim(in_dims_vec));
 
 #ifdef PADDLE_WITH_HIP
       // MIOPEN not support NHWC data layout
@@ -377,11 +377,11 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
 
       // input
       transformed_input.Resize(input->dims());
-      auto in_dims_vec = framework::vectorize(input->dims());
+      auto in_dims_vec = pten::vectorize(input->dims());
       in_dims_vec[1] = input->dims()[3];
       in_dims_vec[2] = input->dims()[1];
       in_dims_vec[3] = input->dims()[2];
-      transformed_input.Resize(framework::make_ddim(in_dims_vec));
+      transformed_input.Resize(pten::make_ddim(in_dims_vec));
       transformed_input.mutable_data(ctx.GetPlace(), input->type());
 
       pten::funcs::Transpose<paddle::platform::CUDADeviceContext, T, 4> trans4;
@@ -389,11 +389,11 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
 
       // output
       transformed_output.Resize(output->dims());
-      auto out_dims_vec = framework::vectorize(output->dims());
+      auto out_dims_vec = pten::vectorize(output->dims());
       out_dims_vec[1] = output->dims()[3];
       out_dims_vec[2] = output->dims()[1];
       out_dims_vec[3] = output->dims()[2];
-      transformed_output.Resize(framework::make_ddim(out_dims_vec));
+      transformed_output.Resize(pten::make_ddim(out_dims_vec));
 
       transformed_output.mutable_data(ctx.GetPlace(), output->type());
 
@@ -402,7 +402,7 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
       trans4_v2(dev_ctx, *output, &transformed_output, axis);
 
       // output grad
-      transformed_output_grad.Resize(framework::make_ddim(out_dims_vec));
+      transformed_output_grad.Resize(pten::make_ddim(out_dims_vec));
       transformed_output_grad.mutable_data(ctx.GetPlace(), output_grad->type());
 
       pten::funcs::Transpose<paddle::platform::CUDADeviceContext, T, 4>
@@ -410,7 +410,7 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
       trans4_v3(dev_ctx, *output_grad, &transformed_output_grad, axis);
 
       // input grad
-      transformed_input_grad.Resize(framework::make_ddim(in_dims_vec));
+      transformed_input_grad.Resize(pten::make_ddim(in_dims_vec));
 #endif
     } else {
       layout = getLayoutFromStr(data_format);
@@ -431,14 +431,14 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
 
 #ifdef PADDLE_WITH_HIP
     miopenTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
-        layout, framework::vectorize<int>(transformed_input.dims()));
+        layout, pten::vectorize<int>(transformed_input.dims()));
     miopenTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
-        layout, framework::vectorize<int>(transformed_output.dims()));
+        layout, pten::vectorize<int>(transformed_output.dims()));
 #else
     cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
-        layout, framework::vectorize<int>(transformed_input.dims()));
+        layout, pten::vectorize<int>(transformed_input.dims()));
     cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
-        layout, framework::vectorize<int>(transformed_output.dims()));
+        layout, pten::vectorize<int>(transformed_output.dims()));
 #endif
     PoolingMode pooling_mode;
     if (pooling_type == "max") {

@@ -34,8 +34,8 @@ TEST(GradTensorHolder, Constructor) {
   GradTensorHolder grad_tensor_holder2 = GradTensorHolder(grad_tensor_holder);
 
   // Construct Eager Tensor
-  pten::DenseTensorMeta meta = pten::DenseTensorMeta(
-      pten::DataType::FLOAT32, paddle::framework::make_ddim({2, 2}));
+  pten::DenseTensorMeta meta =
+      pten::DenseTensorMeta(pten::DataType::FLOAT32, pten::make_ddim({2, 2}));
   std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
@@ -51,8 +51,8 @@ TEST(GradTensorHolder, Constructor) {
 
 TEST(GradTensorHolder, Interfaces) {
   // Construct Eager Tensor
-  pten::DenseTensorMeta meta = pten::DenseTensorMeta(
-      pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 1}));
+  pten::DenseTensorMeta meta =
+      pten::DenseTensorMeta(pten::DataType::FLOAT32, pten::make_ddim({1, 1}));
   std::shared_ptr<pten::DenseTensor> dt0 = std::make_shared<pten::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
@@ -115,8 +115,7 @@ TEST(GradTensorHolder, SelectedRowsMergeAdd) {
   auto sr2 = std::make_shared<pten::SelectedRows>(rows, table_size);
 
   // initialize a sparse table 1
-  sr1->mutable_value()->Resize(
-      pten::framework::make_ddim({table_size, embedding_width}));
+  sr1->mutable_value()->Resize(pten::make_ddim({table_size, embedding_width}));
   auto* data_sr1 = sr1->mutable_value()->mutable_data<float>(cpu);
   for (int64_t i = 0; i < table_size; ++i) {
     for (int64_t j = 0; j < embedding_width; ++j) {
@@ -125,8 +124,7 @@ TEST(GradTensorHolder, SelectedRowsMergeAdd) {
   }
 
   // initialize a sparse table 2
-  sr2->mutable_value()->Resize(
-      pten::framework::make_ddim({table_size, embedding_width}));
+  sr2->mutable_value()->Resize(pten::make_ddim({table_size, embedding_width}));
   auto* data_sr2 = sr2->mutable_value()->mutable_data<float>(cpu);
   for (int64_t i = 0; i < table_size; ++i) {
     for (int64_t j = 0; j < embedding_width; ++j) {

@@ -29,7 +29,7 @@ namespace paddle {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = pten::framework::DDim;
+using DDim = pten::DDim;
 
 TEST(API, matmul_cpu) {
   // 1. create tensor
@@ -38,7 +38,7 @@ TEST(API, matmul_cpu) {
   auto dense_x = std::make_shared<pten::DenseTensor>(
       alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            pten::framework::make_ddim({3, 3}),
+                            pten::make_ddim({3, 3}),
                             pten::DataLayout::NCHW));
 
   auto* dense_x_data =
@@ -47,7 +47,7 @@ TEST(API, matmul_cpu) {
   auto dense_y = std::make_shared<pten::DenseTensor>(
       alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            pten::framework::make_ddim({3, 3}),
+                            pten::make_ddim({3, 3}),
                             pten::DataLayout::NCHW));
   auto* dense_y_data =
       dense_y->mutable_data<float>(paddle::platform::CPUPlace());
@@ -89,7 +89,7 @@ TEST(API, matmul_cuda) {
   auto ref_x = std::make_shared<pten::DenseTensor>(
       alloc_cpu.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            pten::framework::make_ddim({3, 3}),
+                            pten::make_ddim({3, 3}),
                             pten::DataLayout::NCHW));
 
   auto* ref_x_data = ref_x->mutable_data<float>(paddle::platform::CPUPlace());
@@ -97,7 +97,7 @@ TEST(API, matmul_cuda) {
   auto ref_y = std::make_shared<pten::DenseTensor>(
       alloc_cpu.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            pten::framework::make_ddim({3, 3}),
+                            pten::make_ddim({3, 3}),
                             pten::DataLayout::NCHW));
   auto* ref_y_data = ref_y->mutable_data<float>(paddle::platform::CPUPlace());
 
@@ -114,13 +114,13 @@ TEST(API, matmul_cuda) {
   auto dense_x = std::make_shared<pten::DenseTensor>(
       alloc_cuda.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            pten::framework::make_ddim({3, 3}),
+                            pten::make_ddim({3, 3}),
                             pten::DataLayout::NCHW));
 
   auto dense_y = std::make_shared<pten::DenseTensor>(
       alloc_cuda.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            pten::framework::make_ddim({3, 3}),
+                            pten::make_ddim({3, 3}),
                             pten::DataLayout::NCHW));
 
   auto& pool = paddle::platform::DeviceContextPool::Instance();

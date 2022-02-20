@@ -37,8 +37,8 @@ class NLLLossOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(x_dims.size() == 2 || x_dims.size() == 4, true,
                       platform::errors::InvalidArgument(
                           "The tensor rank of Input(X) must be 2 or 4."));
-    bool contain_unknown_dim = framework::contain_unknown_dim(x_dims) ||
-                               framework::contain_unknown_dim(label_dims);
+    bool contain_unknown_dim = pten::contain_unknown_dim(x_dims) ||
+                               pten::contain_unknown_dim(label_dims);
     bool check = ctx->IsRuntime() || !contain_unknown_dim;
     if (check) {
       PADDLE_ENFORCE_EQ(
@@ -175,8 +175,8 @@ class NLLLossGradOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto label_dims = ctx->GetInputDim("Label");
     auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-    bool contain_unknown_dim = framework::contain_unknown_dim(x_dims) ||
-                               framework::contain_unknown_dim(dout_dims);
+    bool contain_unknown_dim = pten::contain_unknown_dim(x_dims) ||
+                               pten::contain_unknown_dim(dout_dims);
     bool check = ctx->IsRuntime() || !contain_unknown_dim;
 
     if (check) {

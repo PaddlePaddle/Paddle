@@ -391,7 +391,7 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
 
   Tensor input_indices;
   const std::vector<int64_t> dims = {num_rows, num_cols};
-  auto dim = framework::make_ddim(dims);
+  auto dim = pten::make_ddim(dims);
   input_indices.Resize(dim);
   // input_indices.Resize(num_rows*num_cols);
   input_indices.mutable_data<int64_t>(ctx.GetPlace());
@@ -568,7 +568,7 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
         static_cast<const Tensor>(temp_indices));
 
     std::vector<int> odims = {static_cast<int>(num_rows), static_cast<int>(k)};
-    auto dim = framework::make_ddim(odims);
+    auto dim = pten::make_ddim(odims);
     auto e_values = framework::EigenMatrix<T>::From(*out_tensor, dim);
     auto e_tmp_values =
         framework::EigenMatrix<T>::From(static_cast<const Tensor>(temp_values));

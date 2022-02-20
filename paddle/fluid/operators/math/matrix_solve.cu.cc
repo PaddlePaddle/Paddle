@@ -74,7 +74,7 @@ class MatrixSolveFunctor<platform::CUDADeviceContext, T> {
     // because cuBlas assumes column-major while Paddle uses row-majar.
     Tensor tmp_b(b.type());
     const auto& new_dims_vec = getNewDimsVec(b_dims);
-    tmp_b.Resize(framework::make_ddim(new_dims_vec));
+    tmp_b.Resize(pten::make_ddim(new_dims_vec));
     tmp_b.mutable_data<T>(context.GetPlace());
     pten::funcs::TransposeNormal<platform::CUDADeviceContext, T> trans;
     std::vector<int> new_axis = getNewAxis(b_rank);
