@@ -250,7 +250,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
     for (size_t i = 0; i < inputs.size(); ++i) {
       cuda_guard.SetDevice(places[i]);
       auto dense_tensor =
-          std::dynamic_pointer_cast<pten::DenseTensor>(inputs[i].impl());
+          std::dynamic_pointer_cast<phi::DenseTensor>(inputs[i].impl());
       memory::RecordStream(dense_tensor->Holder(),
                            places_to_ctx_[key][i]->stream());
     }
@@ -282,9 +282,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
       [&](const Tensor& input, Tensor& output, ncclComm_t comm,
           const gpuStream_t& stream) {
         auto input_tensor =
-            std::dynamic_pointer_cast<pten::DenseTensor>(input.impl());
+            std::dynamic_pointer_cast<phi::DenseTensor>(input.impl());
         auto output_tensor =
-            std::dynamic_pointer_cast<pten::DenseTensor>(output.impl());
+            std::dynamic_pointer_cast<phi::DenseTensor>(output.impl());
         return platform::dynload::ncclAllReduce(
             input_tensor->data(), output_tensor->data(), input_tensor->numel(),
             platform::ToNCCLDataType(input.type()),
@@ -305,9 +305,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
           const gpuStream_t& stream) {
         const auto root = opts.source_rank * tensors.size();
         auto input_tensor =
-            std::dynamic_pointer_cast<pten::DenseTensor>(input.impl());
+            std::dynamic_pointer_cast<phi::DenseTensor>(input.impl());
         auto output_tensor =
-            std::dynamic_pointer_cast<pten::DenseTensor>(output.impl());
+            std::dynamic_pointer_cast<phi::DenseTensor>(output.impl());
         return platform::dynload::ncclBcast(
             input_tensor->data(), input_tensor->numel(),
             platform::ToNCCLDataType(input.type()), root, comm, stream);

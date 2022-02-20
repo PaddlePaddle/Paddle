@@ -27,8 +27,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/pybind/distributed_py.h"
-// #include "paddle/fluid/pybind/eager_utils.h"
-#include "paddle/pten/api/all.h"
+#include "paddle/fluid/pybind/eager_utils.h"
+#include "paddle/phi/api/all.h"
 
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
@@ -40,21 +40,6 @@ namespace paddle {
 namespace pybind {
 
 using Tensor = paddle::experimental::Tensor;
-
-typedef struct { Tensor tensor; } TensorObject;
-
-PyTypeObject *g_tensor_type;
-
-Tensor PyArg2Tensor(PyObject *obj, ssize_t arg_pos) {
-  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject *>(g_tensor_type))) {
-    return reinterpret_cast<TensorObject *>(obj)->tensor;
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "argument (position %d) must be "
-        "EagerVariable, but got %s",
-        arg_pos + 1, reinterpret_cast<PyTypeObject *>(obj->ob_type)->tp_name));
-  }
-}
 
 void BindDistributed(py::module *m) {
   py::enum_<distributed::ReduceOp>(*m, "ReduceOp")
@@ -77,7 +62,7 @@ void BindDistributed(py::module *m) {
           .def("allreduce",
                [](distributed::ProcessGroup &self, py::handle py_tensor,
                   distributed::ReduceOp op) {
-                 auto tensor = PyArg2Tensor(py_tensor.ptr(), 0);
+                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
                  distributed::AllreduceOptions opts;
                  opts.reduce_op = op;
                  std::vector<Tensor> tensors = {tensor};
@@ -89,7 +74,7 @@ void BindDistributed(py::module *m) {
           .def("broadcast",
                [](distributed::ProcessGroup &self, py::handle py_tensor,
                   int source_rank) {
-                 auto tensor = PyArg2Tensor(py_tensor.ptr(), 0);
+                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
                  distributed::BroadcastOptions opts;
                  opts.source_rank = source_rank;
                  std::vector<Tensor> tensors = {tensor};
