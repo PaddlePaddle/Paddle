@@ -1157,7 +1157,7 @@ inline void TransposeFromMLUTensor(const ExecutionContext& ctx,
                                    const Tensor* transformed_input,
                                    Tensor* transformed_output,
                                    bool need_reshape_or_alloc) {
-  auto in_dims_vec = framework::vectorize(transformed_input->dims());
+  auto in_dims_vec = phi::vectorize(transformed_input->dims());
   if (need_reshape_or_alloc) {
     transformed_output->mutable_data<T>(
         {in_dims_vec[perm[0]], in_dims_vec[perm[1]], in_dims_vec[perm[2]],

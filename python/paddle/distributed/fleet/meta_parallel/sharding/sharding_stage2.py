@@ -85,7 +85,8 @@ class ShardingStage2(nn.Layer):
         self._world_size_scaling = 1.0 / self._group.nranks
         assert self._group.nranks > 1, "Training must be distributed, ranks must be greater than 1"
         self._rank = self._group.rank
-        self._global_root_rank = 0  # picking rank 0 as the reference
+        self._global_root_rank = self._group.ranks[
+            0]  # picking rank 0 as the reference
         self._default_device = device
 
         # Global statistical parameters
@@ -319,7 +320,7 @@ class ShardingStage2(nn.Layer):
                         Taskflow(
                             task=dist.reduce(
                                 tensor=param.grad,
-                                dst=dst_rank,
+                                dst=self._group.ranks[dst_rank],
                                 group=self._group,
                                 use_calc_stream=True),
                             callback=cleanup))
@@ -377,7 +378,8 @@ class ShardingStage2(nn.Layer):
                             Taskflow(
                                 task=dist.reduce(
                                     tensor=grad_storage.buffer,
-                                    dst=grad_storage.destination,
+                                    dst=self._group.ranks[
+                                        grad_storage.destination],
                                     group=self._group,
                                     use_calc_stream=True),
                                 callback=cleanup))
