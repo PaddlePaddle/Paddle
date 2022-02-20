@@ -124,7 +124,7 @@ TEST(test_prepare_op, test_prepare_data) {
 
   // prepare an cpu only input
   auto* vin_tensor = vin->MutableVar()->GetMutable<framework::LoDTensor>();
-  vin_tensor->Resize(framework::make_ddim(dims));
+  vin_tensor->Resize(pten::make_ddim(dims));
   auto* vin_mutable_tensor = vin_tensor->mutable_data<float>(cpu_place);
   paddle::memory::Copy(cpu_place, vin_mutable_tensor, cpu_place,
                        src_data.data(), sizeof(float) * src_data.size());
@@ -173,7 +173,7 @@ void TestPrepareDataSamePlace(framework::AttributeMap attr_map) {
 
   // prepare an cpu only input
   auto* vin_tensor = vin->MutableVar()->GetMutable<framework::LoDTensor>();
-  vin_tensor->Resize(framework::make_ddim(dims));
+  vin_tensor->Resize(pten::make_ddim(dims));
   auto* vin_mutable_tensor = vin_tensor->mutable_data<float>(cpu_place);
   paddle::memory::Copy(cpu_place, vin_mutable_tensor, cpu_place,
                        src_data.data(), sizeof(float) * src_data.size());

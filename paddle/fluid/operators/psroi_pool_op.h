@@ -47,8 +47,8 @@ class CPUPSROIPoolOpKernel : public framework::OpKernel<T> {
                           "X should equal the product of "
                           "output_channels x pooled_height x pooled_width"));
 
-    auto in_stride = framework::stride(in_dims);
-    auto out_stride = framework::stride(out->dims());
+    auto in_stride = pten::stride(in_dims);
+    auto out_stride = pten::stride(out->dims());
 
     const T* input_data = in->data<T>();
 

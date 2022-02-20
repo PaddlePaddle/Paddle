@@ -39,11 +39,9 @@ class ElementwiseModNPUKernel : public framework::OpKernel<T> {
 
     bool direct_compute = false;
     if (x_dims.size() >= y_dims.size()) {
-      direct_compute =
-          y_dims == framework::slice_ddim(x_dims, axis, x_dims.size());
+      direct_compute = y_dims == pten::slice_ddim(x_dims, axis, x_dims.size());
     } else {
-      direct_compute =
-          x_dims == framework::slice_ddim(y_dims, axis, y_dims.size());
+      direct_compute = x_dims == pten::slice_ddim(y_dims, axis, y_dims.size());
     }
 
     Tensor transformed_x, transformed_y;

@@ -20,7 +20,6 @@
 #include "paddle/pten/core/utils/unroll_array_ops.h"
 
 namespace pten {
-namespace framework {
 
 template <typename T, size_t N>
 class Array {
@@ -140,5 +139,4 @@ class Array<T, 0> {
   }
 };
 
-}  // namespace framework
 }  // namespace pten

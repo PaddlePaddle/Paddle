@@ -142,7 +142,7 @@ class TensorDescriptor {
   T* desc() { return desc_.get(); }
   T* desc() const { return desc_.get(); }
   void set(const Tensor& tensor, const int groups = 1) {
-    auto dims = framework::vectorize<int>(tensor.dims());
+    auto dims = pten::vectorize<int>(tensor.dims());
     std::vector<int> strides(dims.size());
     strides[dims.size() - 1] = 1;
     for (int i = dims.size() - 2; i >= 0; i--) {
@@ -172,7 +172,7 @@ class TensorDescriptor {
   }
 
   void set(const Tensor& tensor, const cudnnTensorFormat_t format) {
-    auto dims = framework::vectorize<int>(tensor.dims());
+    auto dims = pten::vectorize<int>(tensor.dims());
     auto dtype =
         ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype()));
     set(dims, format, dtype);
@@ -219,7 +219,7 @@ class FilterDescriptor {
 
   void set(const Tensor& tensor, const cudnnTensorFormat_t format,
            const int groups = 1) {
-    auto dims = framework::vectorize<int>(tensor.dims());
+    auto dims = pten::vectorize<int>(tensor.dims());
     auto dtype =
         ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype()));
     set(dims, format, dtype, groups);

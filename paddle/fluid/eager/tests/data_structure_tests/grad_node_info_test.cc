@@ -38,8 +38,8 @@ TEST(GradNodeInfo, GradNodeBase) {
       /* val */ 5.0, /* in_num */ 2, /* out_num */ 2);
   auto grad_test_node1 = std::make_shared<eager_test::GradTestNode>();
   std::vector<std::vector<paddle::experimental::Tensor>> grads;
-  pten::DenseTensorMeta meta = pten::DenseTensorMeta(
-      pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 1}));
+  pten::DenseTensorMeta meta =
+      pten::DenseTensorMeta(pten::DataType::FLOAT32, pten::make_ddim({1, 1}));
   std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
@@ -96,8 +96,8 @@ TEST(GradNodeInfo, GradNodeBase) {
   auto gradient_hook = [](
       const paddle::experimental::Tensor& et) -> paddle::experimental::Tensor {
     paddle::experimental::Tensor res;
-    pten::DenseTensorMeta meta = pten::DenseTensorMeta(
-        pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 1}));
+    pten::DenseTensorMeta meta =
+        pten::DenseTensorMeta(pten::DataType::FLOAT32, pten::make_ddim({1, 1}));
     std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
         std::make_unique<paddle::experimental::DefaultAllocator>(
             paddle::platform::CPUPlace())

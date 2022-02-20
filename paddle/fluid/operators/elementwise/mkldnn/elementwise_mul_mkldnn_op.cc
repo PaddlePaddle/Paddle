@@ -110,7 +110,7 @@ class EltwiseMulMKLDNNGradKernel : public ElemwiseGradKernel<T> {
         astream.wait();
         dy->set_format(
             platform::GetMKLDNNFormat(dy_memory_p->get_desc().reshape(
-                paddle::framework::vectorize<int64_t>(dy->dims()))));
+                pten::vectorize<int64_t>(dy->dims()))));
 
       } else {
         dy->set_format(platform::GetMKLDNNFormat(*dst_dy_memory));

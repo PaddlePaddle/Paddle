@@ -32,7 +32,7 @@ void InstanceNormOp::InferShape(framework::InferShapeContext *ctx) const {
                  "InstanceNorm");
 
   const auto x_dims = ctx->GetInputDim("X");
-  PADDLE_ENFORCE_NE(framework::product(x_dims), 0,
+  PADDLE_ENFORCE_NE(pten::product(x_dims), 0,
                     platform::errors::PreconditionNotMet(
                         "The Input variable X(%s) has not "
                         "been initialized. You may need to confirm "
@@ -68,7 +68,7 @@ void InstanceNormOp::InferShape(framework::InferShapeContext *ctx) const {
             "of scale is [%d]",
             scale_dim, scale_dim.size()));
 
-    bool check = !((!ctx->IsRuntime()) && (framework::product(scale_dim) <= 0));
+    bool check = !((!ctx->IsRuntime()) && (pten::product(scale_dim) <= 0));
 
     if (check) {
       PADDLE_ENFORCE_EQ(scale_dim[0], C,
@@ -88,7 +88,7 @@ void InstanceNormOp::InferShape(framework::InferShapeContext *ctx) const {
             "of bias is [%d]",
             bias_dim, bias_dim.size()));
 
-    bool check = !((!ctx->IsRuntime()) && (framework::product(bias_dim) <= 0));
+    bool check = !((!ctx->IsRuntime()) && (pten::product(bias_dim) <= 0));
     if (check) {
       PADDLE_ENFORCE_EQ(bias_dim[0], C,
                         platform::errors::InvalidArgument(

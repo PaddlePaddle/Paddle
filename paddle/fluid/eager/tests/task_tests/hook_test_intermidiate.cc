@@ -35,8 +35,7 @@ paddle::experimental::Tensor hook_function(
   auto ret_meta = pten::DenseTensorMeta(t_dense->dtype(), t_dense->dims(),
                                         t_dense->layout());
   auto place = t_dense->place();
-  size_t bytes_size =
-      paddle::framework::product(t_dense->dims()) * SizeOf(t_dense->dtype());
+  size_t bytes_size = pten::product(t_dense->dims()) * SizeOf(t_dense->dtype());
   auto ret_dense = std::make_shared<pten::DenseTensor>(
       pten::make_intrusive<paddle::experimental::SharedStorage>(
           paddle::memory::Alloc(place, bytes_size)),
@@ -61,7 +60,7 @@ TEST(Hook_intermidiate, Sigmoid) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   VLOG(6) << "Make Dim";
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
+  paddle::framework::DDim ddim = pten::make_ddim({2, 4, 4, 4});
 
   VLOG(6) << "Make paddle::experimental::Tensor";
   paddle::experimental::Tensor tensor = egr_utils_api::CreateTensorWithValue(
@@ -122,13 +121,13 @@ TEST(Hook_intermidiate, ElementwiseAdd) {
   paddle::imperative::SetCurrentTracer(tracer);
 
   // 1. Prepare Input
-  paddle::framework::DDim ddimX = paddle::framework::make_ddim({4, 16});
+  paddle::framework::DDim ddimX = pten::make_ddim({4, 16});
   paddle::experimental::Tensor X = egr_utils_api::CreateTensorWithValue(
       ddimX, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 3.0, true);
   egr_utils_api::RetainGradForTensor(X);
 
-  paddle::framework::DDim ddimY = paddle::framework::make_ddim({4, 16});
+  paddle::framework::DDim ddimY = pten::make_ddim({4, 16});
   paddle::experimental::Tensor Y = egr_utils_api::CreateTensorWithValue(
       ddimY, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 2.0, true);
@@ -175,13 +174,13 @@ TEST(Hook_intermidiate, Matmul_v2) {
   paddle::imperative::SetCurrentTracer(tracer);
 
   // 1. Prepare Input
-  paddle::framework::DDim ddimX = paddle::framework::make_ddim({4, 16});
+  paddle::framework::DDim ddimX = pten::make_ddim({4, 16});
   paddle::experimental::Tensor X = egr_utils_api::CreateTensorWithValue(
       ddimX, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 3.0, true);
   egr_utils_api::RetainGradForTensor(X);
 
-  paddle::framework::DDim ddimY = paddle::framework::make_ddim({16, 20});
+  paddle::framework::DDim ddimY = pten::make_ddim({16, 20});
   paddle::experimental::Tensor Y = egr_utils_api::CreateTensorWithValue(
       ddimY, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
       pten::DataLayout::NCHW, 2.0, true);

@@ -41,7 +41,7 @@ static framework::DDim RowMatrixFromVector(const framework::DDim &x_dim) {
   if (x_dim.size() > 1) {
     return x_dim;
   }
-  return framework::make_ddim({1, x_dim[0]});
+  return pten::make_ddim({1, x_dim[0]});
 }
 
 /**
@@ -52,7 +52,7 @@ static framework::DDim ColumnMatrixFromVector(const framework::DDim &y_dim) {
   if (y_dim.size() > 1) {
     return y_dim;
   }
-  return framework::make_ddim({y_dim[0], 1});
+  return pten::make_ddim({y_dim[0], 1});
 }
 
 template <typename DeviceContext, typename T>
@@ -639,11 +639,11 @@ class MatMulOp : public framework::OperatorWithKernel {
 
     std::vector<int64_t> dim_out;
     if (mat_dim_x.batch_size_ != 0) {
-      dim_out = framework::vectorize(dim_x);
+      dim_out = pten::vectorize(dim_x);
       dim_out[dim_out.size() - 2] = mat_dim_x.height_;
       dim_out[dim_out.size() - 1] = dim_out_y;
     } else if (mat_dim_y.batch_size_ != 0) {
-      dim_out = framework::vectorize(dim_y);
+      dim_out = pten::vectorize(dim_y);
       dim_out[dim_out.size() - 2] = mat_dim_x.height_;
       dim_out[dim_out.size() - 1] = dim_out_y;
     } else {
@@ -663,7 +663,7 @@ class MatMulOp : public framework::OperatorWithKernel {
       dim_out = {1};
     }
 
-    framework::DDim ddim_out = framework::make_ddim(dim_out);
+    framework::DDim ddim_out = pten::make_ddim(dim_out);
 
 #ifdef PADDLE_WITH_MKLDNN
     //  if mkldnn matmul+transpose+reshape fuse activated
@@ -722,7 +722,7 @@ class MatMulOp : public framework::OperatorWithKernel {
       if (it != reshape_out.end()) {
         int index = std::distance(reshape_out.begin(), it);
 
-        auto ddim_out_vec = framework::vectorize(ddim_out);
+        auto ddim_out_vec = pten::vectorize(ddim_out);
 
         int ddim_out_product =
             std::accumulate(ddim_out_vec.begin(), ddim_out_vec.end(), 1,

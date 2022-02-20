@@ -376,7 +376,7 @@ aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor,
   auto dtype =
       ConvertToNpuDtype(framework::TransToProtoVarType(tensor.dtype()));
   auto format = ConvertToNpuFormat(tensor.layout());
-  auto dims = framework::vectorize(tensor.dims());
+  auto dims = pten::vectorize(tensor.dims());
   int size = dims.size();
   // TODO(pangyoki): `keep_prob` used in `DropOutGenMask` NPU
   // OP must be a scalar with shape[0]. At present, the shape

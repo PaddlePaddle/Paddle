@@ -50,7 +50,7 @@ class ModifiedHuberLossGradGPUKernel : public framework::OpKernel<T> {
     auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
 
     if (out0) {
-      auto counts = framework::product(in1->dims());
+      auto counts = pten::product(in1->dims());
       auto y_ptr = thrust::device_pointer_cast(in0->data<T>());
       auto inter_val_ptr = thrust::device_pointer_cast(in1->data<T>());
       auto out_grad_ptr = thrust::device_pointer_cast(in2->data<T>());

@@ -26,7 +26,7 @@ namespace paddle {
 namespace tests {
 
 namespace framework = paddle::framework;
-using DDim = pten::framework::DDim;
+using DDim = pten::DDim;
 
 // TODO(chentianyu03): Remove this test after the API is used in the dygraph
 TEST(API, split) {
@@ -36,7 +36,7 @@ TEST(API, split) {
   auto dense_x = std::make_shared<pten::DenseTensor>(
       alloc.get(),
       pten::DenseTensorMeta(pten::DataType::FLOAT32,
-                            pten::framework::make_ddim({4, 10}),
+                            pten::make_ddim({4, 10}),
                             pten::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x->mutable_data<float>(paddle::platform::CPUPlace());

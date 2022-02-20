@@ -77,7 +77,7 @@ class DiagEmbedKernel : public framework::OpKernel<T> {
     auto out_dims = out->dims();
     int dim1_ = dim1 < 0 ? out_dims.size() + dim1 : dim1;
     int dim2_ = dim2 < 0 ? out_dims.size() + dim2 : dim2;
-    auto stride = framework::stride(out_dims);
+    auto stride = pten::stride(out_dims);
     int64_t diag_size;
     int64_t storage_offset = 0;
     if (offset >= 0) {

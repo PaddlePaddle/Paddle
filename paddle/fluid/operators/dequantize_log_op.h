@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include <vector>
 
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/pten/core/ddim.h"
 
 namespace pten {
 class DenseTensor;

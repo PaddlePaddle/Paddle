@@ -213,7 +213,7 @@ void TensorCopyAsync(paddle::lite_api::Tensor* dst,
   const platform::Place& dst_place = GetNativePlace(dst->target());
   const size_t bytes =
       static_cast<size_t>(src.numel()) * framework::DataTypeSize(src.dtype());
-  dst->Resize(framework::vectorize(src.dims()));
+  dst->Resize(pten::vectorize(src.dims()));
   const void* src_data = src.data();
   void* dst_data{nullptr};
   dst_data = GetLiteTensorDataPtr(
@@ -230,7 +230,7 @@ template <>
 void TensorCopyAsync(framework::LoDTensor* dst,
                      const paddle::lite_api::Tensor& src,
                      const platform::DeviceContext& ctx) {
-  dst->Resize(paddle::framework::make_ddim(src.shape()));
+  dst->Resize(pten::make_ddim(src.shape()));
   InitDstTensor(dst, src);
   const platform::Place& src_place = GetNativePlace(src.target());
   const platform::Place& dst_place = dst->place();
@@ -248,7 +248,7 @@ void TensorCopyAsync(framework::LoDTensor* dst,
 
 template <>
 void TensorDataShare(paddle::lite_api::Tensor* dst, framework::LoDTensor* src) {
-  dst->Resize(framework::vectorize(src->dims()));
+  dst->Resize(pten::vectorize(src->dims()));
   dst->ShareExternalMemory(src->data(), src->memory_size(),
                            GetLiteTargetType(src->place()));
   dst->SetPrecision(
@@ -267,7 +267,7 @@ void TensorDataShare(framework::LoDTensor* dst, paddle::lite_api::Tensor* src) {
       framework::SizeOfType(GetNativePrecisionType(src->precision()));
   std::shared_ptr<pten::Allocation> holder(new pten::Allocation(
       src_raw_data, memory_size, GetNativePlace(src->target())));
-  dst->Resize(paddle::framework::make_ddim(src->shape()));
+  dst->Resize(pten::make_ddim(src->shape()));
   SetLoD(dst->mutable_lod(), src->lod());
   dst->ResetHolderWithType(
       holder,

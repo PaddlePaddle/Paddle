@@ -120,7 +120,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     // Now, all the inputs and outputs should be on the CPU memory.
     Tensor emission_row_max;
     emission_row_max.mutable_data<T>(
-        framework::make_ddim({static_cast<int64_t>(batch_size), 1}),
+        pten::make_ddim({static_cast<int64_t>(batch_size), 1}),
         platform::CPUPlace());
     auto& place = *ctx.template device_context<platform::CPUDeviceContext>()
                        .eigen_device();
