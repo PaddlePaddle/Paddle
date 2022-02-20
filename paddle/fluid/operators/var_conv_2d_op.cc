@@ -16,8 +16,8 @@ limitations under the License. */
 #include <memory>
 #include <vector>
 #include "paddle/fluid/platform/dynload/mklml.h"
-#include "paddle/pten/kernels/funcs/blas/blas.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -146,8 +146,8 @@ void VarConv2dOP::InferShape(framework::InferShapeContext* ctx) const {
     out_dims_vec.push_back(1);
     std::vector<int64_t> col_dims_vec{-1};
     col_dims_vec.push_back(1);
-    ctx->SetOutputDim("Out", pten::make_ddim(out_dims_vec));
-    ctx->SetOutputDim("Col", pten::make_ddim(col_dims_vec));
+    ctx->SetOutputDim("Out", phi::make_ddim(out_dims_vec));
+    ctx->SetOutputDim("Col", phi::make_ddim(col_dims_vec));
   }
 }
 
@@ -200,7 +200,7 @@ class CPUVarConv2dOPKernel : public framework::OpKernel<T> {
     std::vector<int64_t> col_dims_vec{top_size};
     col_dims_vec.push_back(1);
     auto* top_data =
-        col->mutable_data<T>(pten::make_ddim(col_dims_vec), ctx.GetPlace());
+        col->mutable_data<T>(phi::make_ddim(col_dims_vec), ctx.GetPlace());
     auto* bottom_data = input.data<T>();
 
     int kernel_win_size = kernel_h * kernel_w;
@@ -295,12 +295,12 @@ class CPUVarConv2dOPKernel : public framework::OpKernel<T> {
     std::vector<int64_t> top_dims_vec{top_size};
     top_dims_vec.push_back(1);
     auto* top_data =
-        top->mutable_data<T>(pten::make_ddim(top_dims_vec), ctx.GetPlace());
+        top->mutable_data<T>(phi::make_ddim(top_dims_vec), ctx.GetPlace());
 
     auto* w_data = w->data<T>();
     auto* col_data = col->data<T>();
 
-    auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(ctx);
+    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(ctx);
     for (int b = 0; b < batch; ++b) {
       int top_im_size = (top_offset[b + 1] - top_offset[b]) / output_channel;
       if (top_im_size == 0) {
@@ -448,7 +448,7 @@ class CPUVarConv2dOPGradKernel : public framework::OpKernel<T> {
     int batch = x->lod()[0].size() - 1;
     const auto& top_offset = out->lod()[0];
     const auto& col_offset = col->lod()[0];
-    auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(ctx);
+    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(ctx);
     for (int b = 0; b < batch; ++b) {
       int top_im_size = (top_offset[b + 1] - top_offset[b]) / output_channel;
       if (top_im_size == 0) {

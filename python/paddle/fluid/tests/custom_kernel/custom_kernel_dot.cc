@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/core/kernel_registry.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace paddle {
 
@@ -22,9 +22,9 @@ namespace custom_kernel {
 // This test will fail when this kernel is supported in framework
 template <typename T, typename Context>
 void DotKernel(const Context& dev_ctx,
-               const pten::DenseTensor& x,
-               const pten::DenseTensor& y,
-               pten::DenseTensor* out) {
+               const phi::DenseTensor& x,
+               const phi::DenseTensor& y,
+               phi::DenseTensor* out) {
   auto const *x_ptr = x.data<T>(), *x_ptr_ = &x_ptr[0];
   auto const *y_ptr = y.data<T>(), *y_ptr_ = &y_ptr[0];
   T* z = dev_ctx.template Alloc<T>(out);

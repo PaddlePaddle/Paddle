@@ -18,14 +18,14 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/framework/custom_kernel.h"
-#include "paddle/pten/core/custom_kernel.h"
+#include "paddle/phi/core/custom_kernel.h"
 
 namespace paddle {
 namespace framework {
 
 void LoadCustomKernelLib(const std::string& dso_lib_path, void* dso_handle) {
 #ifdef _LINUX
-  typedef pten::CustomKernelMap& get_custom_kernel_map_t();
+  typedef phi::CustomKernelMap& get_custom_kernel_map_t();
   auto* func = reinterpret_cast<get_custom_kernel_map_t*>(
       dlsym(dso_handle, "PD_GetCustomKernelMap"));
 
@@ -35,7 +35,7 @@ void LoadCustomKernelLib(const std::string& dso_lib_path, void* dso_handle) {
     return;
   }
   auto& custom_kernel_map = func();
-  pten::RegisterCustomKernels(custom_kernel_map);
+  phi::RegisterCustomKernels(custom_kernel_map);
   LOG(INFO) << "Successed in loading custom kernels in lib: " << dso_lib_path;
 #else
   VLOG(3) << "Unsupported: Custom kernel is only implemented on Linux.";

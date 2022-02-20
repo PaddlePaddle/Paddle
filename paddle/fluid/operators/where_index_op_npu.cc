@@ -75,7 +75,7 @@ class NPUWhereIndexKernel : public framework::OpKernel<T> {
                                       &local_true_num);
     auto true_num = *local_true_num.data<int64_t>();
 
-    out->Resize(pten::make_ddim({true_num, rank}));
+    out->Resize(phi::make_ddim({true_num, rank}));
     out->mutable_data<int64_t>(place);
 
     if (true_num == 0) {

@@ -30,7 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/pten/core/ddim.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 

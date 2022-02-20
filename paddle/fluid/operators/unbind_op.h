@@ -32,7 +32,7 @@ static inline framework::DDim UnbindOutsDims(const framework::DDim in_dims,
   for (int i = 0; i < in_dims.size(); i++) {
     if (i != axis) out_dims.push_back(in_dims[i]);
   }
-  return pten::make_ddim(out_dims);
+  return phi::make_ddim(out_dims);
 }
 template <typename DeviceContext, typename T>
 class UnbindOpKernel : public framework::OpKernel<T> {

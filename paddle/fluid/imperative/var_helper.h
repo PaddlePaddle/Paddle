@@ -20,7 +20,7 @@
 namespace egr {
 class EagerVariable;
 }  // namespace egr
-namespace pten {
+namespace phi {
 class DenseTensor;
 }
 namespace paddle {

@@ -28,7 +28,7 @@ namespace paddle {
 namespace distributed {
 
 using framework::LoDTensor;
-using pten::SelectedRows;
+using phi::SelectedRows;
 
 const uint32_t MAX_FEASIGN_NUM = 1024 * 100 * 100;
 
@@ -303,7 +303,7 @@ void Communicator::RpcSendSparse(const std::string &var_name, int table_id,
   std::vector<float *> push_g_vec;
 
   auto *send_var = scope.FindVar(var_name);
-  auto *tensor = send_var->GetMutable<pten::SelectedRows>();
+  auto *tensor = send_var->GetMutable<phi::SelectedRows>();
   auto dim = tensor->value().dims()[1];
   std::transform(tensor->rows().begin(), tensor->rows().end(),
                  std::back_inserter(sparse_push_keys),
@@ -866,7 +866,7 @@ bool AsyncCommunicator::Check(const std::vector<std::string> &var_tables) {
     VLOG(3) << "send step_counter into queue";
     auto tmp_var = std::make_shared<Variable>();
     auto *tensor = tmp_var->GetMutable<framework::LoDTensor>();
-    tensor->Resize(pten::make_ddim({1}));
+    tensor->Resize(phi::make_ddim({1}));
     auto *out_d = tensor->mutable_data<int64_t>(platform::CPUPlace());
     out_d[0] = 1;
     send_varname_to_queue_[table_name]->Push(tmp_var);
@@ -1027,10 +1027,10 @@ void GeoCommunicator::Send(const std::vector<std::string> &var_names,
 
   auto *var = scope.FindVar(table_name);
 
-  PADDLE_ENFORCE_EQ(var->IsType<pten::SelectedRows>(), true,
+  PADDLE_ENFORCE_EQ(var->IsType<phi::SelectedRows>(), true,
                     platform::errors::InvalidArgument(
                         "Only need to send Sparse Grad in Geo mode."));
-  auto &rows = var->Get<pten::SelectedRows>().rows();
+  auto &rows = var->Get<phi::SelectedRows>().rows();
 
   // insert ids which has not been record
   for (size_t j = 0; j < rows.size(); j++) {
@@ -1177,8 +1177,7 @@ void GeoCommunicator::SendDense(const CommContext &send_ctx) {
     auto *t_delta = var_delta->GetMutable<framework::LoDTensor>();
     t_delta->mutable_data<float>(t_latest.dims(), cpu_ctx.GetPlace());
 
-    auto blas =
-        pten::funcs::GetBlas<platform::CPUDeviceContext, float>(cpu_ctx);
+    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, float>(cpu_ctx);
     blas.VSUB(t_latest.numel(), t_latest.data<float>(),
               t_timestamp->data<float>(), t_delta->data<float>());
 
@@ -1218,8 +1217,7 @@ void GeoCommunicator::RecvDense(const CommContext &send_ctx) {
     auto *t_delta = var_delta->GetMutable<framework::LoDTensor>();
     t_delta->mutable_data<float>(t_latest->dims(), cpu_ctx.GetPlace());
 
-    auto blas =
-        pten::funcs::GetBlas<platform::CPUDeviceContext, float>(cpu_ctx);
+    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, float>(cpu_ctx);
     blas.VSUB(t_latest->numel(), t_pserver.data<float>(), t_old->data<float>(),
               t_delta->data<float>());
     blas.VADD(t_latest->numel(), t_latest->data<float>(),
@@ -1316,7 +1314,7 @@ void GeoCommunicator::SendSparse(const std::string &varname,
   paddle::platform::CPUDeviceContext cpu_ctx;
 
   auto *var_delta = delta_scope_->Var(varname);
-  auto *t_delta = var_delta->GetMutable<pten::SelectedRows>();
+  auto *t_delta = var_delta->GetMutable<phi::SelectedRows>();
   auto *var_t_value = t_delta->mutable_value();
   var_t_value->Resize({static_cast<int64_t>(sparse_ids.size()), dims1});
   auto *t_value = var_t_value->mutable_data<float>(cpu_ctx.GetPlace());
@@ -1324,7 +1322,7 @@ void GeoCommunicator::SendSparse(const std::string &varname,
   t_delta->set_rows(sparse_ids);
   t_delta->set_height(t_latest.dims()[0]);
 
-  auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, float>(cpu_ctx);
+  auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, float>(cpu_ctx);
   float coefficient = 1.0 / static_cast<float>(trainers_);
 
   std::vector<float *> push_g_vec;
@@ -1392,7 +1390,7 @@ void GeoCommunicator::RecvSparse(const std::string &varname, int table_id,
   v_delta.resize(numel);
 
   paddle::platform::CPUDeviceContext cpu_ctx;
-  auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, float>(cpu_ctx);
+  auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, float>(cpu_ctx);
 
   for (auto j = 0; j < static_cast<int>(keys.size()); ++j) {
     VLOG(5) << "DEBUG GeoCommunicator::RecvSparse recv sparse key" << keys[j]

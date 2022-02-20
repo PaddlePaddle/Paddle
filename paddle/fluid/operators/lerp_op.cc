@@ -46,7 +46,7 @@ class LerpOp : public framework::OperatorWithKernel {
     if (s_dims.size() > l_dims.size()) {
       return GetOutputDims(l_dims, s_dims);
     }
-    std::vector<int64_t> shapes = pten::vectorize<int64_t>(l_dims);
+    std::vector<int64_t> shapes = phi::vectorize<int64_t>(l_dims);
     for (int i = s_dims.size() - 1, j = l_dims.size() - 1; i >= 0; --i, --j) {
       int64_t s = s_dims[i];
       int64_t l = l_dims[j];
@@ -61,7 +61,7 @@ class LerpOp : public framework::OperatorWithKernel {
         }
       }
     }
-    return pten::make_ddim(shapes);
+    return phi::make_ddim(shapes);
   }
 };
 

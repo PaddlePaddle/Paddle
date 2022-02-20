@@ -38,7 +38,7 @@ class HuberLossOp : public framework::OperatorWithKernel {
                           x_dims.size(), y_dims.size()));
 
     bool contain_unknown_dim =
-        pten::contain_unknown_dim(x_dims) || pten::contain_unknown_dim(y_dims);
+        phi::contain_unknown_dim(x_dims) || phi::contain_unknown_dim(y_dims);
     if (ctx->IsRuntime() || !contain_unknown_dim) {
       PADDLE_ENFORCE_EQ(
           x_dims, y_dims,

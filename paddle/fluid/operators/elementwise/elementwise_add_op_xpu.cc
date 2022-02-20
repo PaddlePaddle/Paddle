@@ -68,7 +68,7 @@ class ElementwiseAddGradXPUKernel : public ElemwiseGradKernel<T> {
           dx->mutable_data<T>(x->dims(), ctx.GetPlace());
         }
         std::vector<int> reduce_dims = GetReduceDim(dx->dims(), dz_dims, axis);
-        std::vector<int> dz_vector = pten::vectorize<int>(dz_dims);
+        std::vector<int> dz_vector = phi::vectorize<int>(dz_dims);
 
         int ret = xpu::reduce_sum<XPUType>(
             dev_ctx.x_context(), reinterpret_cast<const XPUType*>(dz_data),
@@ -87,7 +87,7 @@ class ElementwiseAddGradXPUKernel : public ElemwiseGradKernel<T> {
         }
       } else {
         std::vector<int> reduce_dims = GetReduceDim(dy->dims(), dz_dims, axis);
-        std::vector<int> dz_vector = pten::vectorize<int>(dz_dims);
+        std::vector<int> dz_vector = phi::vectorize<int>(dz_dims);
         int ret = xpu::reduce_sum<XPUType>(
             dev_ctx.x_context(), reinterpret_cast<const XPUType*>(dz_data),
             reinterpret_cast<XPUType*>(dy_data), dz_vector, reduce_dims);

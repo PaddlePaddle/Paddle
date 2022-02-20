@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 
 namespace paddle {
 namespace platform {
@@ -45,8 +45,8 @@ struct ForRange<CPUDeviceContext> {
 };
 
 template <>
-struct ForRange<pten::CPUContext> {
-  ForRange(const pten::CPUContext& dev_ctx, size_t limit) : limit_(limit) {}
+struct ForRange<phi::CPUContext> {
+  ForRange(const phi::CPUContext& dev_ctx, size_t limit) : limit_(limit) {}
 
   template <typename Function>
   void operator()(Function func) const {
@@ -109,8 +109,8 @@ struct ForRange<CUDADeviceContext> {
 };
 
 template <>
-struct ForRange<pten::GPUContext> {
-  ForRange(const pten::GPUContext& dev_ctx, size_t limit)
+struct ForRange<phi::GPUContext> {
+  ForRange(const phi::GPUContext& dev_ctx, size_t limit)
       : dev_ctx_(dev_ctx), limit_(static_cast<size_t>(limit)) {}
 
   template <typename Function>
@@ -138,7 +138,7 @@ struct ForRange<pten::GPUContext> {
     }
   }
 
-  const pten::GPUContext& dev_ctx_;
+  const phi::GPUContext& dev_ctx_;
   size_t limit_;
 };
 
