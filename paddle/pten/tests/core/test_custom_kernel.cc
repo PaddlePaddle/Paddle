@@ -17,17 +17,21 @@ limitations under the License. */
 #define _LINUX
 #endif
 
-#include "paddle/fluid/framework/custom_kernel.h"
-#include <gtest/gtest.h>
+#ifdef _LINUX
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/pten/api/ext/op_kernel_info.h"
 #include "paddle/pten/api/lib/utils/allocator.h"
 #include "paddle/pten/api/lib/utils/storage.h"
+#include "paddle/pten/common/scalar.h"
+#include "paddle/pten/common/scalar_array.h"
+#include "paddle/pten/core/kernel_context.h"
+#include "paddle/pten/core/kernel_factory.h"
+#include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/core/meta_tensor.h"
 #include "paddle/pten/infermeta/binary.h"
 
-#ifdef _LINUX
+#include <gtest/gtest.h>
+
 // user kernel function
 namespace custom_kernel {
 
@@ -36,18 +40,23 @@ namespace custom_kernel {
 // attribute 11: fake_attributes
 // output 2: one Tensor* and one std::vector<Tensor*>
 template <typename T, typename Context>
-void FakeDot(const Context& dev_ctx, const paddle::DenseTensor& x,
-             const paddle::DenseTensor& y,
-             const std::vector<paddle::DenseTensor>& fake_input_vec,
-             bool fake_attr_bool, int fake_attr_int, float fake_attr_float,
-             double fake_attr_double, int64_t fake_attr_int64,
-             pten::dtype::float16 fake_attr_f16, pten::DataType fake_attr_dtype,
+void FakeDot(const Context& dev_ctx,
+             const pten::DenseTensor& x,
+             const pten::DenseTensor& y,
+             const std::vector<pten::DenseTensor>& fake_input_vec,
+             bool fake_attr_bool,
+             int fake_attr_int,
+             float fake_attr_float,
+             double fake_attr_double,
+             int64_t fake_attr_int64,
+             pten::dtype::float16 fake_attr_f16,
+             pten::DataType fake_attr_dtype,
              const pten::Scalar& fake_attr_scalar,
              const pten::ScalarArray& fake_attr_scalar_array,
              const std::vector<int64_t>& fake_attr_int64_vec,
              const std::vector<int>& fake_attr_int_vec,
-             paddle::DenseTensor* out,
-             std::vector<paddle::DenseTensor*> fake_out_vec) {
+             pten::DenseTensor* out,
+             std::vector<pten::DenseTensor*> fake_out_vec) {
   // print param info
   std::cout << "fake_input_vec.size: " << fake_input_vec.size() << std::endl;
   std::cout << "fake_attr_bool: " << fake_attr_bool << std::endl;
@@ -89,8 +98,19 @@ void FakeDot(const Context& dev_ctx, const paddle::DenseTensor& x,
 }
 }  // namespace custom_kernel
 
-PD_REGISTER_KERNEL(fake_dot, CPU, ALL_LAYOUT, custom_kernel::FakeDot, float,
-                   double, int, int64_t, int8_t, uint8_t) {}
+PD_REGISTER_KERNEL(fake_dot,
+                   CPU,
+                   ALL_LAYOUT,
+                   custom_kernel::FakeDot,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   int8_t,
+                   uint8_t) {}
+
+namespace pten {
+namespace tests {
 
 // Upper code will store dot kernels info into OpKernelInfoMap
 TEST(CustomKernel, custom_kernel_dot) {
@@ -99,10 +119,10 @@ TEST(CustomKernel, custom_kernel_dot) {
   pten::DataLayout layout = pten::DataLayout::ALL_LAYOUT;
 
   // 1.custom kernel info parsed and store
-  EXPECT_TRUE(paddle::OpKernelInfoMap::Instance().GetMap().find(op_name) !=
-              paddle::OpKernelInfoMap::Instance().GetMap().end());
+  EXPECT_TRUE(pten::CustomKernelMap::Instance().GetMap().find(op_name) !=
+              pten::CustomKernelMap::Instance().GetMap().end());
 
-  auto& custom_kernels = paddle::OpKernelInfoMap::Instance().Kernels();
+  auto& custom_kernels = pten::CustomKernelMap::Instance().Kernels();
   // 2.info check
   EXPECT_EQ(6, static_cast<int>(custom_kernels[op_name].size()));
   auto& custom_fake_dot_kernels = custom_kernels[op_name];
@@ -154,8 +174,7 @@ TEST(CustomKernel, custom_kernel_dot) {
               fake_dot_kernels.end());
 
   // register
-  paddle::framework::RegisterWithOpKernelInfoMap(
-      paddle::OpKernelInfoMap::Instance());
+  pten::RegisterCustomKernels(pten::CustomKernelMap::Instance());
 
   EXPECT_TRUE(fake_dot_kernels.find(
                   pten::KernelKey(backend, layout, pten::DataType::FLOAT32)) !=
@@ -185,14 +204,16 @@ TEST(CustomKernel, custom_kernel_dot) {
       paddle::platform::CPUPlace());
   auto dense_x = std::make_shared<pten::DenseTensor>(
       alloc.get(),
-      pten::DenseTensorMeta(pten::DataType::UINT8, pten::make_ddim({2, 3}),
+      pten::DenseTensorMeta(pten::DataType::UINT8,
+                            pten::make_ddim({2, 3}),
                             pten::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x->mutable_data<uint8_t>(paddle::platform::CPUPlace());
 
   auto dense_y = std::make_shared<pten::DenseTensor>(
       alloc.get(),
-      pten::DenseTensorMeta(pten::DataType::UINT8, pten::make_ddim({2, 3}),
+      pten::DenseTensorMeta(pten::DataType::UINT8,
+                            pten::make_ddim({2, 3}),
                             pten::DataLayout::NCHW));
   auto* dense_y_data =
       dense_y->mutable_data<uint8_t>(paddle::platform::CPUPlace());
@@ -286,5 +307,8 @@ TEST(CustomKernel, custom_kernel_dot) {
   ASSERT_EQ(expect_result[0], actual_result0);
   ASSERT_EQ(expect_result[1], actual_result1);
 }
+
+}  // namespace tests
+}  // namespace pten
 
 #endif

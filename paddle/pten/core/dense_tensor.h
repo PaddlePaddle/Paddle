@@ -171,6 +171,8 @@ class DenseTensor : public TensorBase,
   DenseTensorMeta meta_;
   std::shared_ptr<pten::Allocation> holder_;
 
+#ifndef PADDLE_WITH_CUSTOM_KERNEL
 #include "paddle/pten/core/dense_tensor.inl"
+#endif
 };
 }  // namespace pten

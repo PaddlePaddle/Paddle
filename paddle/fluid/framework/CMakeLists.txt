@@ -437,7 +437,7 @@ message(STATUS "branch: ${PADDLE_BRANCH}")
 configure_file(commit.h.in commit.h)
 
 cc_library(custom_operator SRCS custom_operator.cc DEPS tensor attribute framework_proto op_registry operator dynamic_loader string_helper pten_tensor op_meta_info pten_api)
-cc_library(custom_kernel SRCS custom_kernel.cc DEPS op_registry op_kernel_info)
+cc_library(custom_kernel SRCS custom_kernel.cc DEPS op_registry pten_custom_kernel pten_tensor_raw)
 #cc_binary(test_executor SRCS test_executor.cc DEPS executor op_registry ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} )
 #cc_binary(new_executor SRCS new_exec_test.cc DEPS operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} profiler)
 
@@ -458,4 +458,3 @@ else()
   cc_library(fluid_convert_utils SRCS convert_utils.cc DEPS data_type place)
 endif()
 cc_test(convert_utils_test SRCS convert_utils_test.cc DEPS fluid_convert_utils)
-cc_test(custom_kernel_test SRCS custom_kernel_test.cc DEPS custom_kernel pten_tensor)

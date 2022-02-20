@@ -9,6 +9,9 @@ endforeach()
 add_subdirectory(unittests)
 add_subdirectory(book)
 add_subdirectory(custom_op)
+
+if(WITH_CUSTOM_DEVICE)
 add_subdirectory(custom_kernel)
+endif()
 
 set_tests_properties(test_beam_search_decoder PROPERTIES TIMEOUT 120)
