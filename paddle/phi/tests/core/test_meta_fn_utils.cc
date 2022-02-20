@@ -106,7 +106,6 @@ TEST(MetaFnFactory, SplitInferMetaFn) {
   ctx.EmplaceBackAttr(axis);
   ctx.EmplaceBackOutputs(out);
   ctx.SetMetaConfig(/*is_runtime=*/true);
-
   phi::MetaFnFactory::Instance().Get("split")(&ctx);
 
   ASSERT_EQ(dense_out1.dims().size(), 2);
