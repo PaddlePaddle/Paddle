@@ -23,6 +23,6 @@ KernelSignature FillAnyLikeOpArgumentMapping(
 
 }  // namespace phi
 
-PT_REGISTER_BASE_KERNEL_NAME(fill_any_like, full_like);
+PHI_REGISTER_BASE_KERNEL_NAME(fill_any_like, full_like);
 
-PT_REGISTER_ARG_MAPPING_FN(fill_any_like, phi::FillAnyLikeOpArgumentMapping);
+PHI_REGISTER_ARG_MAPPING_FN(fill_any_like, phi::FillAnyLikeOpArgumentMapping);

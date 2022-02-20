@@ -25,4 +25,4 @@ KernelSignature DiagonalGradOpArgumentMapping(
 }
 
 }  // namespace phi
-PT_REGISTER_ARG_MAPPING_FN(diagonal_grad, phi::DiagonalGradOpArgumentMapping);
+PHI_REGISTER_ARG_MAPPING_FN(diagonal_grad, phi::DiagonalGradOpArgumentMapping);

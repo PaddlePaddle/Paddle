@@ -210,7 +210,7 @@ struct KernelRegistrar {
 #define _PT_ARG_N(args) _PT_ARG_N_EXPAND args
 #define _PT_RESQ_N() 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
 
-/** PT_REGISTER_KERNEL
+/** PHI_REGISTER_KERNEL
  *
  * The most frequently used kernel registration macro, used for kernel
  * registration with only data type as template parameter, and the function
@@ -219,15 +219,15 @@ struct KernelRegistrar {
  *
  * Note: `2TA` means `2 template argument`
  */
-#define PT_REGISTER_KERNEL(kernel_name, backend, layout, meta_kernel_fn, ...) \
-  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \
-      pt_register_tp_kernel_ns_check_##kernel_name##_##backend##_##layout,    \
-      "PT_REGISTER_KERNEL must be called in global namespace.");              \
-  PT_EXPAND(_PT_REGISTER_2TA_KERNEL(                                          \
+#define PHI_REGISTER_KERNEL(kernel_name, backend, layout, meta_kernel_fn, ...) \
+  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                           \
+      PHI_REGISTER_tp_kernel_ns_check_##kernel_name##_##backend##_##layout,    \
+      "PHI_REGISTER_KERNEL must be called in global namespace.");              \
+  PT_EXPAND(_PHI_REGISTER_2TA_KERNEL(                                          \
       kernel_name, backend, layout, meta_kernel_fn, __VA_ARGS__))
 
 #ifndef _WIN32
-#define _PT_REGISTER_2TA_KERNEL(                                            \
+#define _PHI_REGISTER_2TA_KERNEL(                                           \
     kernel_name, backend, layout, meta_kernel_fn, ...)                      \
   PT_KERNEL_INSTANTIATION(meta_kernel_fn, backend, __VA_ARGS__);            \
   static void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
@@ -254,7 +254,7 @@ struct KernelRegistrar {
  *
  * And msvc can work without template instantiation
  */
-#define _PT_REGISTER_2TA_KERNEL(                                            \
+#define _PHI_REGISTER_2TA_KERNEL(                                           \
     kernel_name, backend, layout, meta_kernel_fn, ...)                      \
   static void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
       const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel);           \
@@ -753,21 +753,21 @@ struct KernelRegistrar {
                                          meta_kernel_fn,                       \
                                          __VA_ARGS__))
 
-/** PT_REGISTER_GENERAL_KERNEL
+/** PHI_REGISTER_GENERAL_KERNEL
  *
  * Basic Kernel register marco, used to register a instantiated kernel function
  * with one template argument.
  */
 
-#define PT_REGISTER_GENERAL_KERNEL(                                          \
-    kernel_name, backend, layout, kernel_fn, dtype)                          \
-  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                         \
-      pt_register_no_t_kernel_ns_check_##kernel_name##_##backend##_##layout, \
-      "PT_REGISTER_NO_TEMPLATE_KERNEL must be called in global namespace."); \
-  _PT_REGISTER_GENERAL_KERNEL(kernel_name, backend, layout, kernel_fn, dtype)
+#define PHI_REGISTER_GENERAL_KERNEL(                                          \
+    kernel_name, backend, layout, kernel_fn, dtype)                           \
+  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \
+      PHI_REGISTER_no_t_kernel_ns_check_##kernel_name##_##backend##_##layout, \
+      "PHI_REGISTER_NO_TEMPLATE_KERNEL must be called in global namespace."); \
+  _PHI_REGISTER_GENERAL_KERNEL(kernel_name, backend, layout, kernel_fn, dtype)
 
 #ifndef _WIN32
-#define _PT_REGISTER_GENERAL_KERNEL(                                        \
+#define _PHI_REGISTER_GENERAL_KERNEL(                                       \
     kernel_name, backend, layout, kernel_fn, dtype)                         \
   template decltype(kernel_fn) kernel_fn;                                   \
   static void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
@@ -787,7 +787,7 @@ struct KernelRegistrar {
   void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(        \
       const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel)
 #else
-#define _PT_REGISTER_GENERAL_KERNEL(                                        \
+#define _PHI_REGISTER_GENERAL_KERNEL(                                       \
     kernel_name, backend, layout, kernel_fn, dtype)                         \
   static void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
       const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel);           \

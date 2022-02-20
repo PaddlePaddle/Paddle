@@ -61,13 +61,13 @@ void MaskedSelectKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(masked_select,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::MaskedSelectKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {
+PHI_REGISTER_KERNEL(masked_select,
+                    CPU,
+                    ALL_LAYOUT,
+                    phi::MaskedSelectKernel,
+                    float,
+                    double,
+                    int,
+                    int64_t) {
   kernel->InputAt(1).SetDataType(phi::DataType::BOOL);
 }

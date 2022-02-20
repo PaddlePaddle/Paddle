@@ -36,10 +36,10 @@ KernelSignature FlattenGradOpArgumentMapping(
 
 }  // namespace phi
 
-PT_REGISTER_BASE_KERNEL_NAME(flatten_contiguous_range, flatten);
-PT_REGISTER_BASE_KERNEL_NAME(flatten_contiguous_range_grad, flatten_grad);
+PHI_REGISTER_BASE_KERNEL_NAME(flatten_contiguous_range, flatten);
+PHI_REGISTER_BASE_KERNEL_NAME(flatten_contiguous_range_grad, flatten_grad);
 
-PT_REGISTER_ARG_MAPPING_FN(flatten_contiguous_range,
-                           phi::FlattenOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(flatten_contiguous_range_grad,
-                           phi::FlattenGradOpArgumentMapping);
+PHI_REGISTER_ARG_MAPPING_FN(flatten_contiguous_range,
+                            phi::FlattenOpArgumentMapping);
+PHI_REGISTER_ARG_MAPPING_FN(flatten_contiguous_range_grad,
+                            phi::FlattenGradOpArgumentMapping);

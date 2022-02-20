@@ -19,33 +19,33 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/impl/matmul_grad_kernel_impl.h"
 
-PT_REGISTER_KERNEL(matmul_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::MatmulGradKernel,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+PHI_REGISTER_KERNEL(matmul_grad,
+                    GPU,
+                    ALL_LAYOUT,
+                    phi::MatmulGradKernel,
+                    float,
+                    double,
+                    phi::dtype::float16,
+                    phi::dtype::bfloat16,
+                    phi::dtype::complex<float>,
+                    phi::dtype::complex<double>) {}
 
-PT_REGISTER_KERNEL(matmul_double_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::MatmulDoubleGradKernel,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+PHI_REGISTER_KERNEL(matmul_double_grad,
+                    GPU,
+                    ALL_LAYOUT,
+                    phi::MatmulDoubleGradKernel,
+                    float,
+                    double,
+                    phi::dtype::float16,
+                    phi::dtype::complex<float>,
+                    phi::dtype::complex<double>) {}
 
-PT_REGISTER_KERNEL(matmul_triple_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::MatmulTripleGradKernel,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+PHI_REGISTER_KERNEL(matmul_triple_grad,
+                    GPU,
+                    ALL_LAYOUT,
+                    phi::MatmulTripleGradKernel,
+                    float,
+                    double,
+                    phi::dtype::float16,
+                    phi::dtype::complex<float>,
+                    phi::dtype::complex<double>) {}

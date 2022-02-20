@@ -76,13 +76,13 @@ TEST(KernelRegistry, SetFP32Input) {
 }  // namespace tests
 }  // namespace phi
 
-PT_REGISTER_KERNEL(test,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::tests::TestKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {
+PHI_REGISTER_KERNEL(test,
+                    CPU,
+                    ALL_LAYOUT,
+                    phi::tests::TestKernel,
+                    float,
+                    double,
+                    phi::dtype::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
   }

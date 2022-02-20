@@ -30,5 +30,5 @@ KernelSignature NormGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 }  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(norm, phi::NormOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(norm_grad, phi::NormGradOpArgumentMapping);
+PHI_REGISTER_ARG_MAPPING_FN(norm, phi::NormOpArgumentMapping);
+PHI_REGISTER_ARG_MAPPING_FN(norm_grad, phi::NormGradOpArgumentMapping);

@@ -59,14 +59,14 @@ void SplitKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(split,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::SplitKernel,
-                   float,
-                   double,
-                   int64_t,
-                   int,
-                   bool,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+PHI_REGISTER_KERNEL(split,
+                    GPU,
+                    ALL_LAYOUT,
+                    phi::SplitKernel,
+                    float,
+                    double,
+                    int64_t,
+                    int,
+                    bool,
+                    phi::dtype::float16,
+                    phi::dtype::bfloat16) {}

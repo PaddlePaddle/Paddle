@@ -49,13 +49,13 @@ void DotKernel(const Context& dev_ctx,
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
-PT_REGISTER_KERNEL(dot,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::DotKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   complex64,
-                   complex128) {}
+PHI_REGISTER_KERNEL(dot,
+                    CPU,
+                    ALL_LAYOUT,
+                    phi::DotKernel,
+                    float,
+                    double,
+                    int,
+                    int64_t,
+                    complex64,
+                    complex128) {}

@@ -73,5 +73,5 @@ void BernoulliKernel(const Context& ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(
+PHI_REGISTER_KERNEL(
     bernoulli, GPU, ALL_LAYOUT, phi::BernoulliKernel, float, double) {}

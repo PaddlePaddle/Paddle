@@ -147,4 +147,4 @@ PADDLE_API std::vector<Tensor> split(const Tensor& x,
 }  // namespace experimental
 }  // namespace paddle
 
-PT_REGISTER_API(Utils);
+PHI_REGISTER_API(Utils);

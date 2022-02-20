@@ -19,23 +19,23 @@
 
 using phi::dtype::complex;
 
-PT_REGISTER_KERNEL(abs_grad,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::AbsGradKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   complex<float>,
-                   complex<double>) {}
-PT_REGISTER_KERNEL(abs_double_grad,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::AbsDoubleGradKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   complex<float>,
-                   complex<double>) {}
+PHI_REGISTER_KERNEL(abs_grad,
+                    CPU,
+                    ALL_LAYOUT,
+                    phi::AbsGradKernel,
+                    float,
+                    double,
+                    int,
+                    int64_t,
+                    complex<float>,
+                    complex<double>) {}
+PHI_REGISTER_KERNEL(abs_double_grad,
+                    CPU,
+                    ALL_LAYOUT,
+                    phi::AbsDoubleGradKernel,
+                    float,
+                    double,
+                    int,
+                    int64_t,
+                    complex<float>,
+                    complex<double>) {}

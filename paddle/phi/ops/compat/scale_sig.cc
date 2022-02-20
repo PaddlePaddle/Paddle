@@ -72,4 +72,4 @@ KernelSignature ScaleOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }  // namespace phi
 
 // op_type, api_name, arg_mapping_fn
-PT_REGISTER_ARG_MAPPING_FN(scale, phi::ScaleOpArgumentMapping);
+PHI_REGISTER_ARG_MAPPING_FN(scale, phi::ScaleOpArgumentMapping);

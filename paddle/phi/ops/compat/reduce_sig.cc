@@ -45,8 +45,8 @@ KernelSignature ReduceMeanOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 }  // namespace phi
 
-PT_REGISTER_BASE_KERNEL_NAME(reduce_sum, sum);
-PT_REGISTER_BASE_KERNEL_NAME(reduce_mean, mean);
+PHI_REGISTER_BASE_KERNEL_NAME(reduce_sum, sum);
+PHI_REGISTER_BASE_KERNEL_NAME(reduce_mean, mean);
 
-PT_REGISTER_ARG_MAPPING_FN(reduce_sum, phi::ReduceSumOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(reduce_mean, phi::ReduceMeanOpArgumentMapping);
+PHI_REGISTER_ARG_MAPPING_FN(reduce_sum, phi::ReduceSumOpArgumentMapping);
+PHI_REGISTER_ARG_MAPPING_FN(reduce_mean, phi::ReduceMeanOpArgumentMapping);

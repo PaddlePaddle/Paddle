@@ -53,30 +53,30 @@ void ReshapeWithXShape(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_GENERAL_KERNEL(
+PHI_REGISTER_GENERAL_KERNEL(
     reshape, CPU, ALL_LAYOUT, phi::ReshapeKernel<phi::CPUContext>, ALL_DTYPE) {}
-PT_REGISTER_GENERAL_KERNEL(reshape_with_xshape,
-                           CPU,
-                           ALL_LAYOUT,
-                           phi::ReshapeWithXShape<phi::CPUContext>,
-                           ALL_DTYPE) {}
+PHI_REGISTER_GENERAL_KERNEL(reshape_with_xshape,
+                            CPU,
+                            ALL_LAYOUT,
+                            phi::ReshapeWithXShape<phi::CPUContext>,
+                            ALL_DTYPE) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_REGISTER_GENERAL_KERNEL(
+PHI_REGISTER_GENERAL_KERNEL(
     reshape, GPU, ALL_LAYOUT, phi::ReshapeKernel<phi::GPUContext>, ALL_DTYPE) {}
-PT_REGISTER_GENERAL_KERNEL(reshape_with_xshape,
-                           GPU,
-                           ALL_LAYOUT,
-                           phi::ReshapeWithXShape<phi::GPUContext>,
-                           ALL_DTYPE) {}
+PHI_REGISTER_GENERAL_KERNEL(reshape_with_xshape,
+                            GPU,
+                            ALL_LAYOUT,
+                            phi::ReshapeWithXShape<phi::GPUContext>,
+                            ALL_DTYPE) {}
 #endif
 
 #ifdef PADDLE_WITH_XPU
-PT_REGISTER_GENERAL_KERNEL(
+PHI_REGISTER_GENERAL_KERNEL(
     reshape, XPU, ALL_LAYOUT, phi::ReshapeKernel<phi::XPUContext>, ALL_DTYPE) {}
-PT_REGISTER_GENERAL_KERNEL(reshape_with_xshape,
-                           XPU,
-                           ALL_LAYOUT,
-                           phi::ReshapeWithXShape<phi::XPUContext>,
-                           ALL_DTYPE) {}
+PHI_REGISTER_GENERAL_KERNEL(reshape_with_xshape,
+                            XPU,
+                            ALL_LAYOUT,
+                            phi::ReshapeWithXShape<phi::XPUContext>,
+                            ALL_DTYPE) {}
 #endif

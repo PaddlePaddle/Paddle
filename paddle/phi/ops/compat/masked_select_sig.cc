@@ -31,6 +31,6 @@ KernelSignature MaskedSelectGradOpArgumentMapping(
 
 }  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(masked_select, phi::MaskedSelectOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(masked_select_grad,
-                           phi::MaskedSelectGradOpArgumentMapping);
+PHI_REGISTER_ARG_MAPPING_FN(masked_select, phi::MaskedSelectOpArgumentMapping);
+PHI_REGISTER_ARG_MAPPING_FN(masked_select_grad,
+                            phi::MaskedSelectGradOpArgumentMapping);

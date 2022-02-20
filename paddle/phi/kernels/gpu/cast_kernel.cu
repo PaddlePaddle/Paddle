@@ -61,21 +61,21 @@ void CastKernel(const Context& dev_ctx,
 }  // namespace phi
 
 #define PTEN_REGISTER_CAST_CUDA_BASE_TYPE(op_name, ...) \
-  PT_REGISTER_KERNEL(cast,                              \
-                     GPU,                               \
-                     ALL_LAYOUT,                        \
-                     phi::CastKernel,                   \
-                     float,                             \
-                     double,                            \
-                     int,                               \
-                     int64_t,                           \
-                     int16_t,                           \
-                     bool,                              \
-                     uint8_t,                           \
-                     phi::dtype::float16,               \
-                     phi::dtype::complex<float>,        \
-                     phi::dtype::complex<double>,       \
-                     ##__VA_ARGS__) {                   \
+  PHI_REGISTER_KERNEL(cast,                             \
+                      GPU,                              \
+                      ALL_LAYOUT,                       \
+                      phi::CastKernel,                  \
+                      float,                            \
+                      double,                           \
+                      int,                              \
+                      int64_t,                          \
+                      int16_t,                          \
+                      bool,                             \
+                      uint8_t,                          \
+                      phi::dtype::float16,              \
+                      phi::dtype::complex<float>,       \
+                      phi::dtype::complex<double>,      \
+                      ##__VA_ARGS__) {                  \
     kernel->OutputAt(0).SetDataType(                    \
         paddle::experimental::DataType::UNDEFINED);     \
   }

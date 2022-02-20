@@ -58,20 +58,20 @@ void CastKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(cast,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::CastKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   int16_t,
-                   bool,
-                   uint8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+PHI_REGISTER_KERNEL(cast,
+                    CPU,
+                    ALL_LAYOUT,
+                    phi::CastKernel,
+                    float,
+                    double,
+                    int,
+                    int64_t,
+                    int16_t,
+                    bool,
+                    uint8_t,
+                    phi::dtype::float16,
+                    phi::dtype::bfloat16,
+                    phi::dtype::complex<float>,
+                    phi::dtype::complex<double>) {
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }

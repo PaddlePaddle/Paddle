@@ -82,11 +82,11 @@ void DiagonalGradKernel(const Context& dev_ctx,
   }
 }
 }  // namespace phi
-PT_REGISTER_KERNEL(diagonal_grad,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::DiagonalGradKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
+PHI_REGISTER_KERNEL(diagonal_grad,
+                    CPU,
+                    ALL_LAYOUT,
+                    phi::DiagonalGradKernel,
+                    float,
+                    double,
+                    int,
+                    int64_t) {}

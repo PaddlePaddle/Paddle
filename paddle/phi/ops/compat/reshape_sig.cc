@@ -39,11 +39,11 @@ KernelSignature ReshapeDoubleGradOpArgumentMapping(
 
 }  // namespace phi
 
-PT_REGISTER_BASE_KERNEL_NAME(reshape2, reshape);
-PT_REGISTER_BASE_KERNEL_NAME(reshape2_grad, reshape_grad);
-PT_REGISTER_BASE_KERNEL_NAME(reshape2_grad_grad, reshape_double_grad);
+PHI_REGISTER_BASE_KERNEL_NAME(reshape2, reshape);
+PHI_REGISTER_BASE_KERNEL_NAME(reshape2_grad, reshape_grad);
+PHI_REGISTER_BASE_KERNEL_NAME(reshape2_grad_grad, reshape_double_grad);
 
-PT_REGISTER_ARG_MAPPING_FN(reshape2, phi::ReshapeOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(reshape2_grad, phi::ReshapeGradOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(reshape2_grad_grad,
-                           phi::ReshapeDoubleGradOpArgumentMapping);
+PHI_REGISTER_ARG_MAPPING_FN(reshape2, phi::ReshapeOpArgumentMapping);
+PHI_REGISTER_ARG_MAPPING_FN(reshape2_grad, phi::ReshapeGradOpArgumentMapping);
+PHI_REGISTER_ARG_MAPPING_FN(reshape2_grad_grad,
+                            phi::ReshapeDoubleGradOpArgumentMapping);

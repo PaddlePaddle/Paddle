@@ -56,10 +56,10 @@ void ScaleKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(scale,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::ScaleKernel,
-                   float,
-                   phi::dtype::float16,
-                   int64_t) {}
+PHI_REGISTER_KERNEL(scale,
+                    XPU,
+                    ALL_LAYOUT,
+                    phi::ScaleKernel,
+                    float,
+                    phi::dtype::float16,
+                    int64_t) {}

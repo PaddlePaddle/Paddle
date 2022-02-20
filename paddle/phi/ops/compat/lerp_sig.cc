@@ -29,5 +29,5 @@ KernelSignature LerpGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 }  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(lerp, phi::LerpOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(lerp_grad, phi::LerpGradOpArgumentMapping);
+PHI_REGISTER_ARG_MAPPING_FN(lerp, phi::LerpOpArgumentMapping);
+PHI_REGISTER_ARG_MAPPING_FN(lerp_grad, phi::LerpGradOpArgumentMapping);

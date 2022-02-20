@@ -56,5 +56,5 @@ void Copy(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_GENERAL_KERNEL(
+PHI_REGISTER_GENERAL_KERNEL(
     copy, CPU, ALL_LAYOUT, phi::Copy<phi::CPUContext>, ALL_DTYPE) {}

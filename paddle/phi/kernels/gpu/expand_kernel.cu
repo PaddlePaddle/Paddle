@@ -19,13 +19,13 @@
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/impl/expand_kernel_impl.h"
 
-PT_REGISTER_KERNEL(expand,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::ExpandKernel,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   int,
-                   int64_t,
-                   bool) {}
+PHI_REGISTER_KERNEL(expand,
+                    GPU,
+                    ALL_LAYOUT,
+                    phi::ExpandKernel,
+                    float,
+                    double,
+                    phi::dtype::float16,
+                    int,
+                    int64_t,
+                    bool) {}

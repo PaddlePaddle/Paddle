@@ -32,41 +32,41 @@ void FlattenGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(flatten_grad,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::FlattenGradKernel,
-                   float,
-                   double,
-                   uint8_t,
-                   int8_t,
-                   int,
-                   int64_t) {}
+PHI_REGISTER_KERNEL(flatten_grad,
+                    CPU,
+                    ALL_LAYOUT,
+                    phi::FlattenGradKernel,
+                    float,
+                    double,
+                    uint8_t,
+                    int8_t,
+                    int,
+                    int64_t) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_REGISTER_KERNEL(flatten_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::FlattenGradKernel,
-                   float,
-                   phi::dtype::float16,
-                   double,
-                   uint8_t,
-                   int8_t,
-                   int,
-                   int64_t) {}
+PHI_REGISTER_KERNEL(flatten_grad,
+                    GPU,
+                    ALL_LAYOUT,
+                    phi::FlattenGradKernel,
+                    float,
+                    phi::dtype::float16,
+                    double,
+                    uint8_t,
+                    int8_t,
+                    int,
+                    int64_t) {}
 
 #endif
 
 #ifdef PADDLE_WITH_XPU
-PT_REGISTER_KERNEL(flatten_grad,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::FlattenGradKernel,
-                   float,
-                   phi::dtype::float16,
-                   int8_t,
-                   int,
-                   int64_t) {}
+PHI_REGISTER_KERNEL(flatten_grad,
+                    XPU,
+                    ALL_LAYOUT,
+                    phi::FlattenGradKernel,
+                    float,
+                    phi::dtype::float16,
+                    int8_t,
+                    int,
+                    int64_t) {}
 
 #endif

@@ -45,14 +45,14 @@ void TraceKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(trace,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::TraceKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+PHI_REGISTER_KERNEL(trace,
+                    CPU,
+                    ALL_LAYOUT,
+                    phi::TraceKernel,
+                    float,
+                    double,
+                    int,
+                    int64_t,
+                    phi::dtype::float16,
+                    phi::dtype::complex<float>,
+                    phi::dtype::complex<double>) {}

@@ -25,4 +25,4 @@ KernelSignature DotGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 }  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(dot_grad, phi::DotGradOpArgumentMapping);
+PHI_REGISTER_ARG_MAPPING_FN(dot_grad, phi::DotGradOpArgumentMapping);

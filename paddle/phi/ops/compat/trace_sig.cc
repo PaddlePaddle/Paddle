@@ -30,5 +30,5 @@ KernelSignature TraceGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 }  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(trace, phi::TraceOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(trace_grad, phi::TraceGradOpArgumentMapping);
+PHI_REGISTER_ARG_MAPPING_FN(trace, phi::TraceOpArgumentMapping);
+PHI_REGISTER_ARG_MAPPING_FN(trace_grad, phi::TraceGradOpArgumentMapping);

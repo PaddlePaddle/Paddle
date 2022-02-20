@@ -124,10 +124,10 @@ void NormKernel(const Context& ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(norm,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::NormKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {}
+PHI_REGISTER_KERNEL(norm,
+                    GPU,
+                    ALL_LAYOUT,
+                    phi::NormKernel,
+                    float,
+                    double,
+                    phi::dtype::float16) {}
