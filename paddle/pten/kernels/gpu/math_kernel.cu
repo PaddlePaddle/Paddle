@@ -48,7 +48,7 @@ namespace pten {
     inputs.emplace_back(&y);                                         \
     outputs.emplace_back(out);                                       \
     dev_ctx.template Alloc<T>(out);                                  \
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(     \
+    funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(          \
         dev_ctx, inputs, &outputs, axis, funcs::name##Functor<T>()); \
   }
 

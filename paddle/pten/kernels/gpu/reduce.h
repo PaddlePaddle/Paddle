@@ -1091,8 +1091,7 @@ void TensorReduceImpl(const pten::GPUContext& dev_ctx,
   if (config.reduce_num == 1) {
     std::vector<const DenseTensor*> inputs = {&x};
     std::vector<DenseTensor*> outputs = {y};
-    funcs::LaunchSameDimsElementwiseCudaKernel<Ty>(
-        dev_ctx, inputs, &outputs, transform);
+    funcs::ElementwiseKernel<Ty>(dev_ctx, inputs, &outputs, transform);
     return;
   }
 
