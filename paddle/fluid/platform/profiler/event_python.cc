@@ -82,15 +82,16 @@ ProfilerResult::ProfilerResult(std::unique_ptr<NodeTrees> tree)
   if (tree_ != nullptr) {
     std::map<uint64_t, HostTraceEventNode*> nodetrees = tree_->GetNodeTrees();
     for (auto it = nodetrees.begin(); it != nodetrees.end(); ++it) {
-      thread_event_trees_map[it->first] = CopyTree(it->second);
+      thread_event_trees_map_[it->first] = CopyTree(it->second);
     }
   }
+  extra_info_ = ExtraInfo::GetInstance().GetMetaInfo();
 }
 
 ProfilerResult::~ProfilerResult() {
   // delete all root nodes
-  for (auto it = thread_event_trees_map.begin();
-       it != thread_event_trees_map.end(); ++it) {
+  for (auto it = thread_event_trees_map_.begin();
+       it != thread_event_trees_map_.end(); ++it) {
     delete it->second;
   }
 }

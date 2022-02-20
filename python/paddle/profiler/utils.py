@@ -14,6 +14,7 @@
 
 from paddle.fluid.core import (_RecordEvent, TracerEventType)
 from typing import Any
+from warnings import warn
 try:
     # Available in Python >= 3.2
     from contextlib import ContextDecorator
@@ -36,6 +37,14 @@ except ImportError:
             return wrapped
 
 
+_AllowedEventTypeList = [
+    TracerEventType.Dataloader, TracerEventType.ProfileStep,
+    TracerEventType.UserDefined, TracerEventType.Forward,
+    TracerEventType.Backward, TracerEventType.Optimization,
+    TracerEventType.PythonOp
+]
+
+
 class Record_Event(ContextDecorator):
     '''
   Interface for recording a time range.
@@ -51,6 +60,7 @@ class Record_Event(ContextDecorator):
                  event_type: TracerEventType=TracerEventType.UserDefined):
         self.name = name
         self.event_type = event_type
+        self.event = None
 
     def __enter__(self):
         self.begin()
@@ -60,7 +70,13 @@ class Record_Event(ContextDecorator):
         self.end()
 
     def begin(self):
-        self.event = _RecordEvent(self.name, self.event_type)
+        if self.event_type not in _AllowedEventTypeList:
+            warn("Only TracerEvent Type in [{}, {}, {}, {}, {}, {},{}]\
+                  can be recorded.".format(*_AllowedEventTypeList))
+            self.event = None
+        else:
+            self.event = _RecordEvent(self.name, self.event_type)
 
     def end(self):
-        self.event.end()
+        if self.event:
+            self.event.end()

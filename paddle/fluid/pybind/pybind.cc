@@ -2922,7 +2922,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def(py::init<>())
       .def("get_data", &paddle::platform::ProfilerResult::GetData,
            py::return_value_policy::automatic_reference)
-      .def("save", &paddle::platform::ProfilerResult::Save);
+      .def("save", &paddle::platform::ProfilerResult::Save)
+      .def("get_extra_info", &paddle::platform::ProfilerResult::GetExtraInfo);
 
   py::class_<paddle::platform::DevicePythonNode>(m, "DevicePythonNode")
       .def(py::init<>())
@@ -2983,12 +2984,19 @@ All parameter, weight, gradient are variables in Paddle.
       .def("end", [](platform::RecordEvent *event) { event->End(); });
 
   py::enum_<paddle::platform::TracerEventType>(m, "TracerEventType")
-      .value("UserDefined", paddle::platform::TracerEventType::UserDefined)
+      .value("Operator", paddle::platform::TracerEventType::Operator)
       .value("Dataloader", paddle::platform::TracerEventType::Dataloader)
       .value("ProfileStep", paddle::platform::TracerEventType::ProfileStep)
+      .value("CudaRuntime", paddle::platform::TracerEventType::CudaRuntime)
+      .value("Kernel", paddle::platform::TracerEventType::Kernel)
+      .value("Memcpy", paddle::platform::TracerEventType::Memcpy)
+      .value("Memset", paddle::platform::TracerEventType::Memset)
+      .value("UserDefined", paddle::platform::TracerEventType::UserDefined)
+      .value("OperatorInner", paddle::platform::TracerEventType::OperatorInner)
       .value("Forward", paddle::platform::TracerEventType::Forward)
       .value("Backward", paddle::platform::TracerEventType::Backward)
       .value("Optimization", paddle::platform::TracerEventType::Optimization)
+      .value("Communication", paddle::platform::TracerEventType::Communication)
       .value("PythonOp", paddle::platform::TracerEventType::PythonOp);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
