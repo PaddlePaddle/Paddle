@@ -12,10 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/huber_loss_op.h"
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -143,10 +144,3 @@ REGISTER_OPERATOR(huber_loss, ops::HuberLossOp, ops::HuberLossOpMaker<float>,
                   ops::HuberLossGradOpMaker<paddle::framework::OpDesc>,
                   ops::HuberLossGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(huber_loss_grad, ops::HuberLossGradOp);
-REGISTER_OP_CPU_KERNEL(
-    huber_loss, ops::HuberLossKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::HuberLossKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    huber_loss_grad,
-    ops::HuberLossGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::HuberLossGradKernel<paddle::platform::CPUDeviceContext, double>);
