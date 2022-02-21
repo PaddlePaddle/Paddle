@@ -57,10 +57,10 @@ class UnStackOp : public framework::OperatorWithKernel {
               "%d axis of Input(X). Expect %d but got %d.",
               axis, x_dim[axis], num));
     }
-    auto vec = framework::vectorize<int>(x_dim);
+    auto vec = phi::vectorize<int>(x_dim);
     vec.erase(vec.begin() + axis);
     ctx->SetOutputsDim("Y", std::vector<framework::DDim>(  // NOLINT
-                                x_dim[axis], framework::make_ddim(vec)));
+                                x_dim[axis], phi::make_ddim(vec)));
   }
 };
 
@@ -129,9 +129,9 @@ class UnStackGradOp : public framework::OperatorWithKernel {
                           rank));
     if (axis < 0) axis += (rank + 1);
 
-    auto vec = framework::vectorize<int>(input_dims[0]);
+    auto vec = phi::vectorize<int>(input_dims[0]);
     vec.insert(vec.begin() + axis, input_dims.size());
-    ctx->SetOutputDim(framework::GradVarName("X"), framework::make_ddim(vec));
+    ctx->SetOutputDim(framework::GradVarName("X"), phi::make_ddim(vec));
   }
 };
 

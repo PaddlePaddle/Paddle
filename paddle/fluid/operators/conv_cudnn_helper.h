@@ -291,8 +291,8 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
       AlgorithmsCache<algo_t>& algo_cache =
           *(framework::ConvSearchCache::Instance().GetForward());
 
-      auto x_dims = framework::vectorize(args.x->dims());
-      auto w_dims = framework::vectorize(args.w->dims());
+      auto x_dims = phi::vectorize(args.x->dims());
+      auto w_dims = phi::vectorize(args.w->dims());
 
       VLOG(10) << "cudnnConvolutionFwdAlgoPerf_t:"
                << ", x_dims:" << x_dims << ", w_dims:" << w_dims << ", args.s"
@@ -420,8 +420,8 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
       AlgorithmsCache<algo_t>& algo_cache =
           *(framework::ConvSearchCache::Instance().GetBackwardData());
 
-      auto x_dims = framework::vectorize(args.x->dims());
-      auto w_dims = framework::vectorize(args.w->dims());
+      auto x_dims = phi::vectorize(args.x->dims());
+      auto w_dims = phi::vectorize(args.w->dims());
 
       VLOG(10) << "cudnnConvolutionFwdAlgoPerf_t"
                << ", x_dims:" << x_dims << ", w_dims:" << w_dims << ", args.s"
@@ -540,8 +540,8 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
       AlgorithmsCache<algo_t>& algo_cache =
           *(framework::ConvSearchCache::Instance().GetBackwardFilter());
 
-      auto x_dims = framework::vectorize(args.x->dims());
-      auto w_dims = framework::vectorize(args.w->dims());
+      auto x_dims = phi::vectorize(args.x->dims());
+      auto w_dims = phi::vectorize(args.w->dims());
 
       VLOG(10) << "cudnnConvolutionFwdAlgoPerf_t:"
                << ", x_dims:" << x_dims << ", w_dims:" << w_dims << ", args.s"

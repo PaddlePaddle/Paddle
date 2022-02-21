@@ -11,8 +11,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
@@ -56,7 +56,7 @@ class AttnMatMul {
     T beta = static_cast<T>(0.0);
 
     // here: (m, n, k) = bsz_seq, output_size, input_size, (input, weight, out)
-    auto blas = math::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
+    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
     blas.GEMM(transA, transB, bsz_seq_, output_size_, input_size_, alpha,
               input->data<T>(), weight->data<T>(), beta, output->data<T>());
     if (compute_bias_) {
@@ -80,7 +80,7 @@ class AttnMatMul {
                        framework::Tensor* d_bias) {
     T alpha = static_cast<T>(1.0);
     T beta = static_cast<T>(0.0);
-    auto blas = math::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
+    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
 
     CBLAS_TRANSPOSE dB_transA = CblasNoTrans;
     CBLAS_TRANSPOSE dB_transB = CblasNoTrans;

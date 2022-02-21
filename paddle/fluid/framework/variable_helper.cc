@@ -31,7 +31,7 @@ void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
   if (var_type == proto::VarType::LOD_TENSOR) {
     var->GetMutable<LoDTensor>();
   } else if (var_type == proto::VarType::SELECTED_ROWS) {
-    var->GetMutable<pten::SelectedRows>();
+    var->GetMutable<phi::SelectedRows>();
   } else if (var_type == proto::VarType::FEED_MINIBATCH) {
     var->GetMutable<FeedList>();
   } else if (var_type == proto::VarType::FETCH_LIST) {
@@ -70,9 +70,9 @@ void CopyVariable(const Variable &src_var, Variable *dst_var) {
     auto &src_tensor = src_var.Get<framework::LoDTensor>();
     tmp_grad_tensor->set_lod(src_tensor.lod());
     framework::TensorCopy(src_tensor, cpu_place, tmp_grad_tensor);
-  } else if (src_var.IsType<pten::SelectedRows>()) {
-    auto &src_slr = src_var.Get<pten::SelectedRows>();
-    auto *tmp_grad_slr = dst_var->GetMutable<pten::SelectedRows>();
+  } else if (src_var.IsType<phi::SelectedRows>()) {
+    auto &src_slr = src_var.Get<phi::SelectedRows>();
+    auto *tmp_grad_slr = dst_var->GetMutable<phi::SelectedRows>();
     tmp_grad_slr->set_rows(src_slr.rows());
     tmp_grad_slr->set_height(src_slr.height());
     auto &src_t = src_slr.value();

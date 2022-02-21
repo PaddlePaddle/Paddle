@@ -116,6 +116,8 @@ REGISTER_OP_CPU_KERNEL(
                       ops::SumFunctor>,
     ops::ReduceKernel<paddle::platform::CPUDeviceContext,
                       paddle::platform::float16, ops::SumFunctor>,
+    ops::ReduceKernel<paddle::platform::CPUDeviceContext, int16_t,
+                      ops::SumFunctor>,
     ops::ReduceKernel<paddle::platform::CPUDeviceContext, int, ops::SumFunctor>,
     ops::ReduceKernel<paddle::platform::CPUDeviceContext, int64_t,
                       ops::SumFunctor>,
