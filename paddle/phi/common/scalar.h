@@ -191,6 +191,8 @@ class ScalarBase {
     }
   }
 
+  DataType GetDType() { return dtype_; }
+
  private:
   template <typename T1, typename T2>
   friend void CopyScalar(const ScalarBase<T1>& src, ScalarBase<T2>* dst);
