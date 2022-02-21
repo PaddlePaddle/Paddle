@@ -46,7 +46,7 @@ void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
       dense_grad_names_[table_id][j] = table.dense_grad_name(j);
     }
   }
-
+  // add for hbmps optimizer config
   auto fleet_desc_str = trainer_desc.fleet_desc();
   google::protobuf::TextFormat::ParseFromString(fleet_desc_str, &_ps_param);
   auto sparse_table =
