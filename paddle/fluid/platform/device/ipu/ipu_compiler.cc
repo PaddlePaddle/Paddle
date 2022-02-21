@@ -293,7 +293,7 @@ void Compiler::LowerConstants(const Graph* graph, const Scope* scope) {
       ConstantOpAttrVisitor visitor(tensor, dtype);
       auto value = op_desc->GetAttr("value");
       boost::apply_visitor(visitor, value);
-      auto ddim = framework::make_ddim(shape);
+      auto ddim = phi::make_ddim(shape);
       tensor->Resize(ddim);
 
       auto const_data = std::unique_ptr<popart::ConstVoidData>();

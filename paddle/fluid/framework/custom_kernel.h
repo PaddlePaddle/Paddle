@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/api/ext/op_kernel_info.h"
+#include "paddle/phi/api/ext/op_kernel_info.h"
 
 namespace paddle {
 namespace framework {

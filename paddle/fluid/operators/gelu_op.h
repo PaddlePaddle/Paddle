@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/pten/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -63,13 +63,13 @@ struct GeluFunctor {
       int n = std::min(x.size(), out.size());
 
       std::memset(out_data, 0, n * sizeof(T));
-      pten::funcs::CBlas<T>::AXPY(n, static_cast<T>(M_SQRT1_2), x_data, 1,
-                                  out_data, 1);
-      pten::funcs::CBlas<T>::VMERF(n, out_data, out_data, VML_LA);
+      phi::funcs::CBlas<T>::AXPY(n, static_cast<T>(M_SQRT1_2), x_data, 1,
+                                 out_data, 1);
+      phi::funcs::CBlas<T>::VMERF(n, out_data, out_data, VML_LA);
       for (int i = 0; i < n; i++) {
         out_data[i] += static_cast<T>(1);
       }
-      pten::funcs::CBlas<T>::VMUL(n, x_data, out_data, out_data);
+      phi::funcs::CBlas<T>::VMUL(n, x_data, out_data, out_data);
       for (int i = 0; i < n; i++) {
         out_data[i] *= static_cast<T>(0.5);
       }
@@ -138,25 +138,25 @@ struct GeluGradFunctor {
       std::memset(second, 0, n * sizeof(T));
 
       // first = (0.5 * (1 + erf(x / sqrt(2))))
-      pten::funcs::CBlas<T>::AXPY(n, static_cast<T>(M_SQRT1_2), x_data, 1,
-                                  first, 1);
-      pten::funcs::CBlas<T>::VMERF(n, first, first, VML_LA);
+      phi::funcs::CBlas<T>::AXPY(n, static_cast<T>(M_SQRT1_2), x_data, 1, first,
+                                 1);
+      phi::funcs::CBlas<T>::VMERF(n, first, first, VML_LA);
       for (int i = 0; i < n; i++) {
         first[i] += static_cast<T>(1);
       }
-      pten::funcs::CBlas<T>::SCAL(n, static_cast<T>(0.5), first, 1);
+      phi::funcs::CBlas<T>::SCAL(n, static_cast<T>(0.5), first, 1);
 
       // second = (0.5 * 2/sqrt(pi) * 1/sqrt(2) * x * exp(-0.5 * x^2))
-      pten::funcs::CBlas<T>::VSQUARE(n, x_data, second);
-      pten::funcs::CBlas<T>::SCAL(n, -static_cast<T>(0.5), second, 1);
-      pten::funcs::CBlas<T>::VEXP(n, second, second);
-      pten::funcs::CBlas<T>::VMUL(n, x_data, second, second);
-      pten::funcs::CBlas<T>::SCAL(
+      phi::funcs::CBlas<T>::VSQUARE(n, x_data, second);
+      phi::funcs::CBlas<T>::SCAL(n, -static_cast<T>(0.5), second, 1);
+      phi::funcs::CBlas<T>::VEXP(n, second, second);
+      phi::funcs::CBlas<T>::VMUL(n, x_data, second, second);
+      phi::funcs::CBlas<T>::SCAL(
           n, static_cast<T>(0.5 * M_2_SQRTPI * M_SQRT1_2), second, 1);
 
       // dx = dout * (first + second);
-      pten::funcs::CBlas<T>::VADD(n, first, second, first);
-      pten::funcs::CBlas<T>::VMUL(n, dout_data, first, dx_data);
+      phi::funcs::CBlas<T>::VADD(n, first, second, first);
+      phi::funcs::CBlas<T>::VMUL(n, dout_data, first, dx_data);
 
       std::free(first);
       std::free(second);

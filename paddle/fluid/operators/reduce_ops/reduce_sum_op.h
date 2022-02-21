@@ -38,7 +38,7 @@ class ReduceSumGradKernel : public framework::OpKernel<T> {
 
     // handle reduce_all
     if (input2->dims().size() == 1 && input2->dims()[0] == 1) {
-      for (int64_t i = 0; i < framework::product(input0->dims()); ++i) {
+      for (int64_t i = 0; i < phi::product(input0->dims()); ++i) {
         output_d[i] = input2_d[0];
       }
       return;

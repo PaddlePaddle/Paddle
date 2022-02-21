@@ -14,7 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/pscore/distributed_lookup_table_op.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -58,10 +58,9 @@ class DistributedLookupTableOp : public framework::OperatorWithKernel {
 
     for (auto &ids_dim : ids_dims) {
       if (lookup_table_version == "lookup_table") {
-        outputs_dims.push_back(
-            framework::make_ddim({ids_dim[0], table_dims[1]}));
+        outputs_dims.push_back(phi::make_ddim({ids_dim[0], table_dims[1]}));
       } else if (lookup_table_version == "lookup_table_v2") {
-        outputs_dims.push_back(framework::make_ddim(
+        outputs_dims.push_back(phi::make_ddim(
             {static_cast<int64_t>(ids_dim[0]), static_cast<int64_t>(ids_dim[1]),
              static_cast<int64_t>(table_dims[1])}));
       }

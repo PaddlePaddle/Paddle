@@ -75,7 +75,7 @@ void IndexSampleInner(const framework::ExecutionContext &context,
     res[i] = v;
   }
 
-  auto ddim = framework::make_ddim({batch_size, index_length});
+  auto ddim = phi::make_ddim({batch_size, index_length});
   output->mutable_data<T>(context.GetPlace());
   framework::TensorFromVector(res, context.device_context(), output);
   output->Resize(ddim);

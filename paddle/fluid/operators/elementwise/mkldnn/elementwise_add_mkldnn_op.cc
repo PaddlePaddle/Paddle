@@ -41,7 +41,7 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
 
-    auto tz = paddle::framework::vectorize<int64_t>(dout->dims());
+    auto tz = phi::vectorize<int64_t>(dout->dims());
     memory::data_type dout_type = framework::ToMKLDNNDataType(
         framework::TransToProtoVarType(dout->dtype()));
     platform::ReorderMKLDNNHandler handler(
@@ -97,7 +97,7 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
         dy->set_layout(DataLayout::kMKLDNN);
         dy->set_format(
             platform::GetMKLDNNFormat(dy_memory_p->get_desc().reshape(
-                paddle::framework::vectorize<int64_t>(dy->dims()))));
+                phi::vectorize<int64_t>(dy->dims()))));
       }
     }
   }

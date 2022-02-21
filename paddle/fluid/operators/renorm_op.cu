@@ -132,11 +132,10 @@ class CUDARenormKernel : public framework::OpKernel<T> {
     int64_t dim_divisor = 1, pre_mul = 1;
     for (int i = dim + 1; i < dim_size; i++) dim_divisor *= input_dims[i];
     for (int i = 0; i < dim; i++) pre_mul *= input_dims[i];
-    pow_value.Resize(
-        framework::make_ddim({pre_mul, dimension_each, dim_divisor}));
-    dim_value.Resize(framework::make_ddim({dimension_each}));
+    pow_value.Resize(phi::make_ddim({pre_mul, dimension_each, dim_divisor}));
+    dim_value.Resize(phi::make_ddim({dimension_each}));
     pow_value.mutable_data<T>(context.GetPlace());
-    out->Resize(framework::make_ddim(framework::vectorize(input_dims)));
+    out->Resize(phi::make_ddim(phi::vectorize(input_dims)));
     T* out_data = out->mutable_data<T>(context.GetPlace());
     auto stream = context.cuda_device_context().stream();
     int block = std::min(numel, static_cast<int64_t>(256));
@@ -188,17 +187,15 @@ class CUDAGradRenormKernel : public framework::OpKernel<T> {
     int64_t dim_divisor = 1, pre_mul = 1;
     for (int i = dim + 1; i < dim_size; i++) dim_divisor *= input_dims[i];
     for (int i = 0; i < dim; i++) pre_mul *= input_dims[i];
-    d_x->Resize(framework::make_ddim(framework::vectorize(input_dims)));
+    d_x->Resize(phi::make_ddim(phi::vectorize(input_dims)));
     T* dx_data = d_x->mutable_data<T>(ctx.GetPlace());
     framework::Tensor pow_value, mul_value, dim_value, dim_power_sum,
         weight_derivative;
-    pow_value.Resize(
-        framework::make_ddim({pre_mul, dimension_each, dim_divisor}));
-    mul_value.Resize(
-        framework::make_ddim({pre_mul, dimension_each, dim_divisor}));
-    dim_value.Resize(framework::make_ddim({dimension_each}));
-    dim_power_sum.Resize(framework::make_ddim({dimension_each}));
-    weight_derivative.Resize(framework::make_ddim({dimension_each}));
+    pow_value.Resize(phi::make_ddim({pre_mul, dimension_each, dim_divisor}));
+    mul_value.Resize(phi::make_ddim({pre_mul, dimension_each, dim_divisor}));
+    dim_value.Resize(phi::make_ddim({dimension_each}));
+    dim_power_sum.Resize(phi::make_ddim({dimension_each}));
+    weight_derivative.Resize(phi::make_ddim({dimension_each}));
     auto stream = ctx.cuda_device_context().stream();
     int block = std::min(numel, static_cast<int64_t>(256));
     int grid = (numel + block - 1) / block;

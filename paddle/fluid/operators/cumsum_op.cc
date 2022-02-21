@@ -24,9 +24,8 @@ class CumOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     if (ctx->Attrs().Get<bool>("flatten")) {
-      ctx->SetOutputDim(
-          "Out",
-          framework::make_ddim({framework::product(ctx->GetInputDim("X"))}));
+      ctx->SetOutputDim("Out",
+                        phi::make_ddim({phi::product(ctx->GetInputDim("X"))}));
     } else {
       ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     }
@@ -94,6 +93,7 @@ REGISTER_OPERATOR(cumsum, ops::CumOp, ops::CumsumOpMaker,
                   ops::CumsumGradMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(cumsum, ops::CumKernel<CPU, ops::CumsumFunctor<float>>,
                        ops::CumKernel<CPU, ops::CumsumFunctor<double>>,
+                       ops::CumKernel<CPU, ops::CumsumFunctor<int16_t>>,
                        ops::CumKernel<CPU, ops::CumsumFunctor<int>>,
                        ops::CumKernel<CPU, ops::CumsumFunctor<int64_t>>);
 

@@ -19,7 +19,7 @@
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tests/data_structure_tests/grad_node_test.h"
-#include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/phi/api/lib/utils/allocator.h"
 
 TEST(AutogradMeta, Constructor) {
   paddle::experimental::Tensor et1;
@@ -39,9 +39,9 @@ TEST(AutogradMeta, MemberFunction) {
   VLOG(6) << "Test Grad";
   CHECK(tmp_auto->Grad().defined() == false);
   auto* grad_t = tmp_auto->MutableGrad();
-  pten::DenseTensorMeta meta = pten::DenseTensorMeta(
-      pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 2}));
-  std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
+  phi::DenseTensorMeta meta =
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 2}));
+  std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
           .get(),
@@ -52,7 +52,7 @@ TEST(AutogradMeta, MemberFunction) {
   grad_t->set_impl(dt);
   VLOG(6) << "Test Mutable Grad";
   auto impl_ptr =
-      std::dynamic_pointer_cast<pten::DenseTensor>(tmp_auto->Grad().impl());
+      std::dynamic_pointer_cast<phi::DenseTensor>(tmp_auto->Grad().impl());
   CHECK_EQ(impl_ptr->data<float>()[0], 5.0f);
   CHECK_EQ(impl_ptr->data<float>()[1], 10.0f);
   VLOG(6) << "Test IsInitialized";
