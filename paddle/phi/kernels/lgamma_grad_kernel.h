@@ -15,9 +15,9 @@
 
 #pragma once
 
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 // XKTODO (change name)

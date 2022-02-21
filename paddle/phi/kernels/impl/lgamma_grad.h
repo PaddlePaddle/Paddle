@@ -14,7 +14,7 @@
 
 #pragma once
 #include "paddle/fluid/platform/for_range.h"
-namespace pten {
+namespace phi {
 template <typename T>
 struct LgammaGradFunctor {
   LgammaGradFunctor(const T* dout, const T* x, T* output, int64_t numel)
@@ -46,4 +46,4 @@ void LgammaGradKernel(const Context& dev_ctx,
   LgammaGradFunctor<T> functor(dout_data, x_data, dx_data, numel);
   for_range(functor);
 }
-}  // namespace pten
+}  // namespace phi

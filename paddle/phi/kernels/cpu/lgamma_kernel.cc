@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/kernels/lgamma_kernel.h"
+#include "paddle/phi/kernels/lgamma_kernel.h"
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/core/kernel_registry.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-namespace pten {
+namespace phi {
 template <typename T>
 struct LgammaFunctor {
   LgammaFunctor(const T* input, T* output, int64_t numel)
@@ -44,8 +44,7 @@ void LgammaKernel(const Context& dev_ctx,
   LgammaFunctor<T> functor(x_data, out_data, numel);
   for_range(functor);
 }
-}  // namespace pten
+}  // namespace phi
 
 // XKTODO(change the dtype.)
-PT_REGISTER_KERNEL(lgamma, CPU, ALL_LAYOUT, pten::LgammaKernel, float, double) {
-}
+PT_REGISTER_KERNEL(lgamma, CPU, ALL_LAYOUT, phi::LgammaKernel, float, double) {}

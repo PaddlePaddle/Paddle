@@ -15,11 +15,11 @@
 
 #include <unsupported/Eigen/SpecialFunctions>
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
-#include "paddle/pten/backends/gpu/gpu_context.h"
-#include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/lgamma_kernel.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/lgamma_kernel.h"
 
-namespace pten {
+namespace phi {
 template <typename T>
 struct CudaLgammaFunctor {
   __device__ __forceinline__ T operator()(const T x) const {
@@ -38,7 +38,6 @@ void LgammaKernel(const Context& dev_ctx,
   paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
       dev_ctx, ins, &outs, functor);
 }
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_KERNEL(lgamma, GPU, ALL_LAYOUT, pten::LgammaKernel, float, double) {
-}
+PT_REGISTER_KERNEL(lgamma, GPU, ALL_LAYOUT, phi::LgammaKernel, float, double) {}

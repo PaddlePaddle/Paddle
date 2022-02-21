@@ -17,7 +17,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/pten/infermeta/unary.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -79,7 +79,7 @@ class LgammaGradOp : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 
 DELCARE_INFER_SHAPE_FUNCTOR(lgamma, LgammaInferShapeFunctor,
-                            PT_INFER_META(pten::UnchangedInferMeta));
+                            PT_INFER_META(phi::UnchangedInferMeta));
 
 REGISTER_OPERATOR(lgamma, ops::LgammaOp, ops::LgammaOpMaker,
                   ops::LgammaGradMaker<paddle::framework::OpDesc>,

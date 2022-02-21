@@ -12,14 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/core/compat/op_utils.h"
-
-namespace pten {
-
-KernelSignature LgammaGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "lgamma_grad", {GradVarName("Out"), "X"}, {}, {GradVarName("X")});
-}
-
-}  // namespace pten
-PT_REGISTER_ARG_MAPPING_FN(lgamma_grad, pten::LgammaGradOpArgumentMapping);
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/lgamma_grad.h"
+#include "paddle/phi/kernels/lgamma_grad_kernel.h"
+PT_REGISTER_KERNEL(
+    lgamma_grad, GPU, ALL_LAYOUT, phi::LgammaGradKernel, float, double) {}
