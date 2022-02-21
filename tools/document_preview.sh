@@ -25,10 +25,14 @@ is_shell_attribute_set() { # attribute, like "x"
 
 # build all the Chinese and English docs, and upload them. Controlled with Env BUILD_DOC and UPLOAD_DOC
 PREVIEW_URL_PROMPT="ipipe_log_param_preview_url: None"
-BUILD_DOC=${BUILD_DOC:=false}
+BUILD_DOC=${BUILD_DOC:=true}
 UPLOAD_DOC=${UPLOAD_DOC:=false}
 
 CURPWD=${PWD}
+
+if [ ! -f /usr/local/bin/sphinx-build ] && [ -f /usr/local/python3.7.0/bin/sphinx-build ] ; then
+    ln -s /usr/local/python3.7.0/bin/sphinx-build /usr/local/bin/sphinx-build
+fi
 
 if [ "${BUILD_DOC}" = "true" ] &&  [ -x /usr/local/bin/sphinx-build ] ; then
     export FLUIDDOCDIR=/FluidDoc
