@@ -90,6 +90,9 @@ void SplitInferMeta(const MetaTensor& x_meta,
                     std::vector<MetaTensor>* out,
                     MetaConfig config = MetaConfig());
 
+void UnbindInferMeta(const MetaTensor& x,
+                     int axis,
+                     std::vector<MetaTensor>* outs);
 void TraceInferMeta(
     const MetaTensor& x, int offset, int axis1, int axis2, MetaTensor* out);
 
