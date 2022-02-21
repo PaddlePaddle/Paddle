@@ -2,7 +2,7 @@ set(PYBIND_DEPS init pybind python proto_desc memory executor fleet_wrapper box_
   feed_fetch_method pass generate_pass pass_builder parallel_executor profiler layer tracer engine scope_pool
   analysis_predictor imperative_profiler imperative_flag save_load_util dlpack_tensor device_context
   gloo_wrapper infer_io_utils heter_wrapper generator op_version_registry ps_gpu_wrapper custom_operator
-  cost_model cuda_graph_with_memory_pool fleet_executor global_utils pten_utils processgroup)
+  cost_model cuda_graph_with_memory_pool fleet_executor global_utils pten_utils)
 
 if (WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -23,10 +23,6 @@ endif()
 if (WITH_NCCL OR WITH_RCCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} nccl_wrapper)
   set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
-endif()
-
-if (WITH_NCCL)
-  set (PYBIND_DEPS ${PYBIND_DEPS} processgroup_nccl)
 endif()
 
 if (WITH_XPU_BKCL)
@@ -77,8 +73,15 @@ set(PYBIND_SRCS
   compatible.cc
   io.cc
   generator_py.cc
-  cuda_streams_py.cc
-  distributed_py.cc)
+  cuda_streams_py.cc)
+
+if(NOT ON_INFER)
+  set (PYBIND_DEPS ${PYBIND_DEPS} processgroup)
+  if (WITH_NCCL)
+    set (PYBIND_DEPS ${PYBIND_DEPS} processgroup_nccl)
+  endif()
+  set(PYBIND_SRCS ${PYBIND_SRCS} distributed_py.cc)
+endif()
 
 if(WITH_ASCEND)
   set(PYBIND_DEPS ${PYBIND_DEPS} ascend_wrapper)
