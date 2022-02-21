@@ -29,6 +29,7 @@ struct AllreduceOptions {
 
 struct BroadcastOptions {
   int source_rank = 0;
+  int source_root = 0;
 };
 
 }  //  namespace distributed

@@ -305,7 +305,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
       tensors, tensors,
       [&](Tensor& input, Tensor& output, ncclComm_t comm,
           const gpuStream_t& stream) {
-        const auto root = opts.source_rank * tensors.size();
+        const auto root = opts.source_rank * tensors.size() + opts.source_root;
         auto input_tensor =
             std::dynamic_pointer_cast<phi::DenseTensor>(input.impl());
         auto output_tensor =

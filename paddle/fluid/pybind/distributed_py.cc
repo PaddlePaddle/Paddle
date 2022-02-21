@@ -53,6 +53,12 @@ void BindDistributed(py::module *m) {
       .def(py::init<>())
       .def_readwrite("reduce_op", &distributed::AllreduceOptions::reduce_op);
 
+  py::class_<distributed::BroadcastOptions>(*m, "BroadcastOptions")
+      .def(py::init<>())
+      .def_readwrite("source_rank", &distributed::BroadcastOptions::source_rank)
+      .def_readwrite("source_root",
+                     &distributed::BroadcastOptions::source_root);
+
   auto ProcessGroup =
       py::class_<distributed::ProcessGroup,
                  std::shared_ptr<distributed::ProcessGroup>>(*m, "ProcessGroup")
