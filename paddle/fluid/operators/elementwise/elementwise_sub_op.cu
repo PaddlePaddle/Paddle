@@ -56,6 +56,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseSubDoubleGradKernel<paddle::platform::CUDADeviceContext,
                                         int64_t>,
     ops::ElementwiseSubDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                                        paddle::platform::bfloat16>,
+    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CUDADeviceContext,
                                         paddle::platform::complex<float>>,
     ops::ElementwiseSubDoubleGradKernel<paddle::platform::CUDADeviceContext,
                                         paddle::platform::complex<double>>);
