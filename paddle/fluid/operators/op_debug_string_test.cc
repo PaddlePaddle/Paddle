@@ -18,7 +18,7 @@
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_registry.h"
 
-USE_OP(elementwise_add_grad);
+USE_OP_ITSELF(elementwise_add_grad);
 
 namespace paddle {
 namespace operators {

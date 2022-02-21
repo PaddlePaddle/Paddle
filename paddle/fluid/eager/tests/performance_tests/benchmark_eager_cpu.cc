@@ -176,6 +176,6 @@ TEST(Benchmark, EagerIntermediateMLPCPU) {
 }
 
 USE_OP_ITSELF(scale);
-USE_OP(elementwise_add);
-USE_OP(matmul_v2);
+USE_OP_ITSELF(elementwise_add);
+USE_OP_ITSELF(matmul_v2);
 USE_OP(reduce_sum);

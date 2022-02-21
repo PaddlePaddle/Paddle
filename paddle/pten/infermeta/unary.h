@@ -80,4 +80,8 @@ void SplitInferMeta(const MetaTensor& x_meta,
                     const Scalar& axis,
                     std::vector<MetaTensor>* out,
                     MetaConfig config = MetaConfig());
+
+void TraceInferMeta(
+    const MetaTensor& x, int offset, int axis1, int axis2, MetaTensor* out);
+
 }  // namespace pten

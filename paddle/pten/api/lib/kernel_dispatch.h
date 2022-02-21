@@ -46,8 +46,6 @@ enum class KernelType {
 
 // TODO(chenweihang): support DataLayout and DataType selected
 struct KernelKeySet {
-  KernelType kernel_type{KernelType::DENSE_TENSOR_KENREL};
-
   BackendSet backend_set{Backend::UNDEFINED};
   DataLayout layout{DataLayout::UNDEFINED};
   DataType dtype{DataType::UNDEFINED};
@@ -97,9 +95,6 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   void operator()(const Tensor& x) {
     key_set.backend_set = key_set.backend_set | detail::GetTensorBackendSet(x);
     // TODO(chenweihang): selecte multi layout and dtype
-    if (pten::SelectedRows::classof(x.impl().get())) {
-      key_set.kernel_type = KernelType::SELECTED_ROWS_KENREL;
-    }
     key_set.layout = x.layout();
     key_set.dtype = x.type();
     dtype_set = dtype_set | DataTypeSet(x.dtype());
@@ -124,11 +119,34 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   }
 };
 
+struct KernelTypeParser : ArgsIterator<KernelTypeParser> {
+  KernelType kernel_type{KernelType::DENSE_TENSOR_KENREL};
+
+  // TODO(chenweihang): deal with multiple diff input Tensors
+  // TODO(chenweihang): add global device guard method to set backend
+  void operator()(const Tensor& x) {
+    if (pten::SelectedRows::classof(x.impl().get())) {
+      kernel_type = KernelType::SELECTED_ROWS_KENREL;
+    }
+  }
+
+  // skip other type args, these args don't used in kernel selection
+  template <typename T>
+  void operator()(const T& x) {
+    // do nothing
+  }
+};
+
 }  // namespace detail
 
 template <typename... Args>
 KernelKeySet ParseKernelKeyByInputArgs(const Args&... args) {
   return detail::KernelKeyParser().apply(args...).key_set;
+}
+
+template <typename... Args>
+KernelType ParseKernelTypeByInputArgs(const Args&... args) {
+  return detail::KernelTypeParser().apply(args...).kernel_type;
 }
 
 DataType ParseDataType(DataType dtype);
