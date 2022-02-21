@@ -23,14 +23,15 @@ limitations under the License. */
 #include "cinn/hlir/framework/tensor.h"
 #include "cinn/runtime/cinn_runtime.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/operators/cinn/cinn_op_helper.h"
+#include "paddle/phi/core/ddim.h"
 
 USE_OP(cinn_instruction_run);
 namespace paddle {
@@ -186,7 +187,7 @@ TEST_F(CinnLaunchContextTest, TestCheckTensorEquivalent) {
   auto* tensor1 = scope.Var("var1")->GetMutable<LoDTensor>();
 
   // CheckTensorEquivalent: tensor dimension not equivalent
-  tensor1->mutable_data<float>(framework::make_ddim({3, 5}), place);
+  tensor1->mutable_data<float>(phi::make_ddim({3, 5}), place);
   ASSERT_THROW(launch_context->CheckTensorEquivalent("var1", *tensor1),
                paddle::platform::EnforceNotMet);
 }
@@ -240,8 +241,7 @@ TEST_F(CinnLaunchContextTest, TestCallbackAssignment) {
 
   // assign external variables
   auto* tensor1 = scope.Var("var1")->GetMutable<LoDTensor>();
-  float* data1 =
-      tensor1->mutable_data<float>(framework::make_ddim({3, 4}), place);
+  float* data1 = tensor1->mutable_data<float>(phi::make_ddim({3, 4}), place);
   data1[0] = 9.99f;
   data1[10] = 19.99f;
   // check argument is set correctly and alloc/free callbacks work well

@@ -135,7 +135,7 @@ class SmoothL1LossGradNPUKernel : public framework::OpKernel<T> {
     // broadcast og(output_grad) to adapt to the npu interface
     const auto& runner_broad =
         NpuOpRunner("BroadcastToD", {*og}, {grad},
-                    {{"shape", framework::vectorize(diff->dims())}});
+                    {{"shape", phi::vectorize(diff->dims())}});
     runner_broad.Run(stream);
 
     Tensor gradient(diff->dtype());

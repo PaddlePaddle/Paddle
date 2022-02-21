@@ -25,39 +25,39 @@ namespace paddle {
 namespace platform {
 
 bool is_gpu_place(const Place &p) {
-  return p.GetType() == pten::AllocationType::GPU;
+  return p.GetType() == phi::AllocationType::GPU;
 }
 
 bool is_xpu_place(const Place &p) {
-  return p.GetType() == pten::AllocationType::XPU;
+  return p.GetType() == phi::AllocationType::XPU;
 }
 
 bool is_mlu_place(const Place &p) {
-  return p.GetType() == pten::AllocationType::MLU;
+  return p.GetType() == phi::AllocationType::MLU;
 }
 
 bool is_npu_place(const Place &p) {
-  return p.GetType() == pten::AllocationType::NPU;
+  return p.GetType() == phi::AllocationType::NPU;
 }
 
 bool is_ipu_place(const Place &p) {
-  return p.GetType() == pten::AllocationType::IPU;
+  return p.GetType() == phi::AllocationType::IPU;
 }
 
 bool is_cpu_place(const Place &p) {
-  return p.GetType() == pten::AllocationType::CPU;
+  return p.GetType() == phi::AllocationType::CPU;
 }
 
 bool is_cuda_pinned_place(const Place &p) {
-  return p.GetType() == pten::AllocationType::GPUPINNED;
+  return p.GetType() == phi::AllocationType::GPUPINNED;
 }
 
 bool is_npu_pinned_place(const Place &p) {
-  return p.GetType() == pten::AllocationType::NPUPINNED;
+  return p.GetType() == phi::AllocationType::NPUPINNED;
 }
 
 bool is_custom_place(const Place &p) {
-  return p.GetType() == pten::AllocationType::CUSTOM;
+  return p.GetType() == phi::AllocationType::CUSTOM;
 }
 
 bool places_are_same_class(const Place &p1, const Place &p2) {

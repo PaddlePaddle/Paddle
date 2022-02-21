@@ -22,7 +22,6 @@
 #include "cinn/hlir/framework/scope.h"
 #include "cinn/hlir/framework/tensor.h"
 #include "cinn/runtime/cinn_runtime.h"
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
 #include "paddle/fluid/framework/ir/graph.h"
@@ -34,6 +33,7 @@
 #include "paddle/fluid/operators/cinn/cinn_op_helper.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace operators::details {
@@ -185,7 +185,7 @@ void CinnLaunchContext::CheckTensorEquivalent(
                         "Variable(%s) not applied in cinn", var_name));
   // check dimension
   auto cinn_tensor = GetCinnTensorOfVar(var_name);
-  auto cinn_dims = framework::make_ddim(cinn_tensor->shape().data());
+  auto cinn_dims = phi::make_ddim(cinn_tensor->shape().data());
   PADDLE_ENFORCE_EQ(paddle_tensor.dims(), cinn_dims,
                     platform::errors::PreconditionNotMet(
                         "Tensors' shape in variable(%s) are not equivalent, "

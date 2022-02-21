@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 #include <algorithm>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #endif
@@ -314,8 +314,8 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
     int rois_num = rois->dims()[0];
     if (rois_num == 0) return;
 
-    auto in_stride = framework::stride(in_dims);
-    auto out_stride = framework::stride(out->dims());
+    auto in_stride = phi::stride(in_dims);
+    auto out_stride = phi::stride(out->dims());
 
     const T* input_data = in->data<T>();
 
@@ -500,7 +500,7 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
       input_grad->mutable_data<T>(ctx.GetPlace());
       input_roi_grad->mutable_data<T>(ctx.GetPlace());
       // set gradient of X to be 0. before backpropagate.
-      pten::funcs::SetConstant<DeviceContext, T> set_zero;
+      phi::funcs::SetConstant<DeviceContext, T> set_zero;
       set_zero(ctx.template device_context<DeviceContext>(), input_grad,
                static_cast<T>(0));
       set_zero(ctx.template device_context<DeviceContext>(), input_roi_grad,

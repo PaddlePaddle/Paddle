@@ -81,9 +81,9 @@ class FlipKernel<platform::CUDADeviceContext, T>
       }
     }
 
-    auto x_stride = framework::stride(x_dims);
-    std::vector<int64_t> x_dims_v = framework::vectorize(x_dims);
-    std::vector<int64_t> x_stride_v = framework::vectorize(x_stride);
+    auto x_stride = phi::stride(x_dims);
+    std::vector<int64_t> x_dims_v = phi::vectorize(x_dims);
+    std::vector<int64_t> x_stride_v = phi::vectorize(x_stride);
 
     int bytes = total_dims * sizeof(int64_t);
     auto x_strides_array_tmp = memory::Alloc(dev_ctx, bytes);
