@@ -87,8 +87,8 @@ void FusedBatchNormAddActOp::InferShape(
                         bias_dim, bias_dim.size()));
 
   bool check = true;
-  if ((!ctx->IsRuntime()) && (framework::product(scale_dim) <= 0 ||
-                              framework::product(bias_dim) <= 0)) {
+  if ((!ctx->IsRuntime()) &&
+      (phi::product(scale_dim) <= 0 || phi::product(bias_dim) <= 0)) {
     check = false;
   }
 

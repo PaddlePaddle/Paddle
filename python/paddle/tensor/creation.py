@@ -219,11 +219,13 @@ def full_like(x, fill_value, dtype=None, name=None):
 
     helper = LayerHelper("full_like", **locals())
     check_variable_and_dtype(
-        x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+        x, 'x',
+        ['bool', 'float16', 'float32', 'float64', 'int16', 'int32', 'int64'],
         'full_like')
-    check_dtype(dtype, 'dtype',
-                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-                'full_like/zeros_like/ones_like')
+    check_dtype(
+        dtype, 'dtype',
+        ['bool', 'float16', 'float32', 'float64', 'int16', 'int32', 'int64'],
+        'full_like/zeros_like/ones_like')
     out = helper.create_variable_for_type_inference(dtype=dtype)
 
     helper.append_op(

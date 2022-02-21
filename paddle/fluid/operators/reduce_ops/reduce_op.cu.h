@@ -22,8 +22,8 @@
 
 #include "paddle/fluid/framework/tensor.h"
 
-#include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/gpu/reduce.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/gpu/reduce.h"
 
 namespace paddle {
 namespace operators {
@@ -37,8 +37,8 @@ void TensorReduceImpl(const platform::CUDADeviceContext& dev_ctx,
                       gpuStream_t stream) {
   y->mutable_data<Ty>(x.place());
 
-  pten::kernels::TensorReduceImpl<Tx, Ty, ReduceOp, TransformOp>(
-      static_cast<const pten::GPUContext&>(dev_ctx), x, y, transform,
+  phi::kernels::TensorReduceImpl<Tx, Ty, ReduceOp, TransformOp>(
+      static_cast<const phi::GPUContext&>(dev_ctx), x, y, transform,
       origin_reduce_dims, stream);
 }
 
