@@ -24,7 +24,7 @@ set -e
 kernel_register_info_file=`mktemp`
 PADDLE_ROOT="$( cd "$( dirname "$0" )/../../" && pwd )"
 unset GREP_OPTIONS && find ${PADDLE_ROOT}/paddle/phi/kernels -name "*.c*" \
-  | xargs sed -e '/PT_REGISTER_\(GENERAL_\)\?KERNEL(/,/)/!d' \
+  | xargs sed -e '/PD_REGISTER_\(GENERAL_\)\?KERNEL(/,/)/!d' \
   | awk 'BEGIN { RS="{" }{ gsub(/\n /,""); print $0 }' \
   | grep PT_REGISTER \
   | awk -F ",|\(|\)" '{gsub(/ /,"");$1="";print}' \
@@ -38,7 +38,7 @@ python3 ${PADDLE_ROOT}/python/paddle/utils/code_gen/wrapped_infermeta_gen.py \
   --wrapped_infermeta_header_path ${temp_path}/generate.h \
   --wrapped_infermeta_source_path ${temp_path}/generate.cc
 
-grep PT_REGISTER_INFER_META_FN ${temp_path}/generate.cc  \
+grep PD_REGISTER_INFER_META_FN ${temp_path}/generate.cc  \
   | awk -F "\(|,|::|\)" '{print $2, $4}' > ${temp_path}/wrap_info.txt
 
 #step 3: merge all infos

@@ -17,6 +17,8 @@ limitations under the License. */
 #define _LINUX
 #endif
 
+#include <gtest/gtest.h>
+
 #ifdef _LINUX
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -29,8 +31,6 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/infermeta/binary.h"
-
-#include <gtest/gtest.h>
 
 // user kernel function
 namespace custom_kernel {
@@ -98,16 +98,16 @@ void FakeDot(const Context& dev_ctx,
 }
 }  // namespace custom_kernel
 
-PD_REGISTER_KERNEL(fake_dot,
-                   CPU,
-                   ALL_LAYOUT,
-                   custom_kernel::FakeDot,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   int8_t,
-                   uint8_t) {}
+PD_REGISTER_BUILTIN_KERNEL(fake_dot,
+                           CPU,
+                           ALL_LAYOUT,
+                           custom_kernel::FakeDot,
+                           float,
+                           double,
+                           int,
+                           int64_t,
+                           int8_t,
+                           uint8_t) {}
 
 namespace phi {
 namespace tests {

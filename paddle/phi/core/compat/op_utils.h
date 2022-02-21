@@ -164,10 +164,10 @@ struct ArgumentMappingFnRegistrar {
   }
 };
 
-#define PT_REGISTER_BASE_KERNEL_NAME(op_type, base_kernel_name)                \
+#define PD_REGISTER_BASE_KERNEL_NAME(op_type, base_kernel_name)                \
   PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                           \
-      pt_register_base_kernel_name_ns_check_##op_type,                         \
-      "PT_REGISTER_BASE_KERNEL_NAME must be called in global namespace.");     \
+      PD_REGISTER_base_kernel_name_ns_check_##op_type,                         \
+      "PD_REGISTER_BASE_KERNEL_NAME must be called in global namespace.");     \
   static const ::phi::BaseKernelNameRegistrar                                  \
       __registrar_base_kernel_name_for_##op_type(#op_type, #base_kernel_name); \
   int TouchBaseKernelNameSymbol_##op_type() { return 0; }
@@ -180,10 +180,10 @@ struct ArgumentMappingFnRegistrar {
   UNUSED static int __declare_base_kernel_name_symbol_for_##op_type =     \
       TouchBaseKernelNameSymbol_##op_type()
 
-#define PT_REGISTER_ARG_MAPPING_FN(op_type, arg_mapping_fn)              \
+#define PD_REGISTER_ARG_MAPPING_FN(op_type, arg_mapping_fn)              \
   PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                     \
-      pt_register_arg_map_fn_ns_check_##op_type,                         \
-      "PT_REGISTER_ARG_MAPPING_FN must be called in global namespace."); \
+      PD_REGISTER_arg_map_fn_ns_check_##op_type,                         \
+      "PD_REGISTER_ARG_MAPPING_FN must be called in global namespace."); \
   static const ::phi::ArgumentMappingFnRegistrar                         \
       __registrar_arg_map_fn_for_##op_type(#op_type, arg_mapping_fn);    \
   int TouchArgumentMappingFnSymbol_##op_type() { return 0; }

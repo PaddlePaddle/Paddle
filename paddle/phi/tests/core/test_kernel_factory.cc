@@ -76,7 +76,7 @@ TEST(KernelRegistry, SetFP32Input) {
 }  // namespace tests
 }  // namespace phi
 
-PT_REGISTER_KERNEL(test,
+PD_REGISTER_KERNEL(test,
                    CPU,
                    ALL_LAYOUT,
                    phi::tests::TestKernel,

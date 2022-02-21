@@ -228,4 +228,4 @@ PADDLE_API Tensor to_dense(const Tensor& x, Backend backend) {
 }  // namespace experimental
 }  // namespace paddle
 
-PT_REGISTER_API(SparseApi);
+PD_REGISTER_API(SparseApi);
