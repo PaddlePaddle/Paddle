@@ -61,7 +61,7 @@ class ExpandV2Op : public framework::OperatorWithKernel {
     auto out_rank =
         std::max(static_cast<size_t>(x_dims.size()), expand_shape.size());
     std::vector<int64_t> out_shape(out_rank);
-    auto x_dim_vec = framework::vectorize<int>(x_dims);
+    auto x_dim_vec = phi::vectorize<int>(x_dims);
     auto diff = expand_shape.size() - x_dim_vec.size();
     x_dim_vec.insert(x_dim_vec.begin(), diff, -1);
     for (size_t i = 0; i < expand_shape.size(); ++i) {
@@ -87,7 +87,7 @@ class ExpandV2Op : public framework::OperatorWithKernel {
       }
     }
 
-    ctx->SetOutputDim("Out", framework::make_ddim(out_shape));
+    ctx->SetOutputDim("Out", phi::make_ddim(out_shape));
     if (out_shape[0] == x_dims[0]) {
       ctx->ShareLoD("X", "Out");
     }
@@ -197,7 +197,7 @@ class ExpandV2GradOp : public framework::OperatorWithKernel {
     }
 
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-    auto x_dim_vec = framework::vectorize<int>(x_dims);
+    auto x_dim_vec = phi::vectorize<int>(x_dims);
     auto diff = expand_shape.size() - x_dim_vec.size();
     x_dim_vec.insert(x_dim_vec.begin(), diff, -1);
 

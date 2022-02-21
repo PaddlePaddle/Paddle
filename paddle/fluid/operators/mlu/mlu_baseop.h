@@ -49,50 +49,49 @@ inline const void* GetBasePtr(const Tensor* t) { return t->data(); }
 
 inline void* GetBasePtr(Tensor* t) { return t->data(); }
 
-template <typename T>
-inline cnnlDataType_t ToCnnlDataType(const T& t) {
-  auto type = framework::ToDataType(t);
-  return ToCnnlDataType(type);
-}
-
-template <typename T>
-inline cnnlDataType_t ToCnnlDataType() {
-  auto type = framework::ToDataType(std::type_index(typeid(T)));
-  return ToCnnlDataType(type);
-}
-
-template <>
-inline cnnlDataType_t ToCnnlDataType(const framework::proto::VarType::Type& t) {
+inline cnnlDataType_t ToCnnlDataType(
+    const paddle::experimental::DataType& dtype) {
   cnnlDataType_t type = CNNL_DTYPE_FLOAT;
-  switch (t) {
-    case framework::proto::VarType::FP16:
+  switch (dtype) {
+    case DataType::FLOAT16:
       type = CNNL_DTYPE_HALF;
       break;
-    case framework::proto::VarType::FP32:
+    case DataType::FLOAT32:
       type = CNNL_DTYPE_FLOAT;
       break;
-    case framework::proto::VarType::INT8:
+    case DataType::INT8:
       type = CNNL_DTYPE_INT8;
       break;
-    case framework::proto::VarType::INT16:
+    case DataType::INT16:
       type = CNNL_DTYPE_INT16;
       break;
-    case framework::proto::VarType::INT32:
+    case DataType::INT32:
       type = CNNL_DTYPE_INT32;
       break;
-    case framework::proto::VarType::INT64:
+    case DataType::INT64:
       type = CNNL_DTYPE_INT64;
       break;
-    case framework::proto::VarType::BOOL:
+    case DataType::BOOL:
       type = CNNL_DTYPE_BOOL;
       break;
-    case framework::proto::VarType::UINT8:
+    case DataType::UINT8:
       type = CNNL_DTYPE_UINT8;
       break;
     default:
       break;
   }
   return type;
+}
+
+inline cnnlDataType_t ToCnnlDataType(
+    const paddle::framework::proto::VarType::Type& type) {
+  return ToCnnlDataType(framework::TransToPtenDataType(type));
+}
+
+template <typename T>
+inline cnnlDataType_t ToCnnlDataType() {
+  auto type = framework::ToDataType(std::type_index(typeid(T)));
+  return ToCnnlDataType(type);
 }
 
 // Converts (via narrowing) a type T value to a type U, and checks that the
@@ -1158,7 +1157,7 @@ inline void TransposeFromMLUTensor(const ExecutionContext& ctx,
                                    const Tensor* transformed_input,
                                    Tensor* transformed_output,
                                    bool need_reshape_or_alloc) {
-  auto in_dims_vec = framework::vectorize(transformed_input->dims());
+  auto in_dims_vec = phi::vectorize(transformed_input->dims());
   if (need_reshape_or_alloc) {
     transformed_output->mutable_data<T>(
         {in_dims_vec[perm[0]], in_dims_vec[perm[1]], in_dims_vec[perm[2]],

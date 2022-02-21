@@ -94,7 +94,7 @@ def GeneratePythonCFunction(fwd_api_name, forward_inputs_position_map,
                 get_eager_tensor_str += f"    auto {name} = GetTensorFromArgs(\"{fwd_api_name}\", \"{name}\", args, {pos}, false);\n"
         dygraph_function_call_list[pos] = f"{name}"
 
-    parse_attributes_str = "    paddle::framework::AttributeMap attrs;\n"
+    parse_attributes_str = ""
     # Get Attributes
     for name, atype, _, pos in forward_attrs_list:
         parsing_function = FindParsingFunctionFromAttributeType(atype)

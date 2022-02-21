@@ -28,12 +28,12 @@ namespace allocation {
 
 class RecordedAllocator : public Allocator {
  protected:
-  pten::Allocation *AllocateImpl(size_t size) override {
+  phi::Allocation *AllocateImpl(size_t size) override {
     allocated_size_ += size;
     return new Allocation(malloc(size), size, platform::CPUPlace());
   }
 
-  void FreeImpl(pten::Allocation *allocation) {
+  void FreeImpl(phi::Allocation *allocation) {
     allocated_size_ -= allocation->size();
     free(allocation->ptr());
     delete allocation;
@@ -79,7 +79,7 @@ class LimitedResourceAllocator : public Allocator {
   size_t AllocatedSize() const { return allocated_size_; }
 
  protected:
-  pten::Allocation *AllocateImpl(size_t size) override {
+  phi::Allocation *AllocateImpl(size_t size) override {
     if (allocated_size_ + size > capacity_) {
       throw BadAlloc("", __FILE__, __LINE__);
     }
@@ -88,7 +88,7 @@ class LimitedResourceAllocator : public Allocator {
     return new Allocation(malloc(size), size, platform::CPUPlace());
   }
 
-  void FreeImpl(pten::Allocation *allocation) {
+  void FreeImpl(phi::Allocation *allocation) {
     allocated_size_ -= allocation->size();
     free(allocation->ptr());
     delete allocation;

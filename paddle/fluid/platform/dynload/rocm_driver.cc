@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/dynload/rocm_driver.h"
-#include "paddle/pten/backends/dynload/rocm_driver.h"
+#include "paddle/phi/backends/dynload/rocm_driver.h"
 
 namespace paddle {
 namespace platform {
@@ -23,7 +23,7 @@ namespace dynload {
 
 ROCM_ROUTINE_EACH(DEFINE_WRAP);
 
-bool HasCUDADriver() { return pten::dynload::HasCUDADriver(); }
+bool HasCUDADriver() { return phi::dynload::HasCUDADriver(); }
 
 }  // namespace dynload
 }  // namespace platform

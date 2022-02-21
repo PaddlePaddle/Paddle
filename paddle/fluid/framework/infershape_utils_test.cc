@@ -23,8 +23,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/pten/core/compat/op_utils.h"
-#include "paddle/pten/core/infermeta_utils.h"
+#include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/core/infermeta_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -84,9 +84,9 @@ class InferShapeUtilsTestOp : public OperatorWithKernel {
   }
 };
 
-pten::KernelSignature InferShapeUtilsTestOpArgumentMapping(
-    const pten::ArgumentMappingContext& ctx) {
-  return pten::KernelSignature(
+phi::KernelSignature InferShapeUtilsTestOpArgumentMapping(
+    const phi::ArgumentMappingContext& ctx) {
+  return phi::KernelSignature(
       "infer_shape_utils_test", {},
       {"bool", "int", "int64", "float", "string", "vec_bool", "vec_int",
        "vec_int64", "vec_float", "vec_double", "vec_str"},
@@ -155,7 +155,7 @@ TEST(InferShapeUtilsTest, ALL) {
   paddle::framework::Attribute vec_str_attr = vec_str;
   op->SetAttr("vec_str", vec_str_attr);
 
-  pten::OpUtilsMap::Instance().InsertArgumentMappingFn(
+  phi::OpUtilsMap::Instance().InsertArgumentMappingFn(
       "infer_shape_utils_test",
       paddle::framework::InferShapeUtilsTestOpArgumentMapping);
 

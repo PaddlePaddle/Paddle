@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/platform/complex.h"
 #include <complex>
-#include "paddle/pten/kernels/funcs/eigen/extensions.h"
+#include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "gtest/gtest.h"
