@@ -22,10 +22,10 @@
 #include "paddle/infrt/kernel/pten/allocator_kernels.h"
 #include "paddle/infrt/kernel/pten/context_kernels.h"
 #include "paddle/infrt/kernel/pten/dense_tensor_kernels.h"
-#include "paddle/infrt/kernel/pten/infershaped/elementwise_add.h"
-#include "paddle/pten/include/infermeta.h"
-#include "paddle/pten/include/kernels.h"
-#include "paddle/pten/kernels/matmul_kernel.h"
+#include "paddle/infrt/kernel/pten/infershaped/pten_kernel_launcher.h"
+#include "paddle/phi/include/infermeta.h"
+#include "paddle/phi/include/kernels.h"
+#include "paddle/phi/kernels/matmul_kernel.h"
 
 using infrt::host_context::Attribute;
 
@@ -45,15 +45,15 @@ void RegisterPtenKernels(host_context::KernelRegistry* registry) {
   registry->AddKernel(
       "pten.matmul.host.fp32",
       std::bind(&kernel::KernelLauncherFunc<
-                    decltype(&::pten::MatmulKernel<float, ::pten::CPUContext>),
-                    &::pten::MatmulKernel<float, ::pten::CPUContext>,
-                    decltype(&::pten::MatmulInferMeta),
-                    &::pten::MatmulInferMeta>,
+                    decltype(&::phi::MatmulKernel<float, ::phi::CPUContext>),
+                    &::phi::MatmulKernel<float, ::phi::CPUContext>,
+                    decltype(&::phi::MatmulInferMeta),
+                    &::phi::MatmulInferMeta>,
                 kernel::KernelLauncher<
-                    decltype(&::pten::MatmulKernel<float, ::pten::CPUContext>),
-                    &::pten::MatmulKernel<float, ::pten::CPUContext>,
-                    decltype(&::pten::MatmulInferMeta),
-                    &::pten::MatmulInferMeta>(),
+                    decltype(&::phi::MatmulKernel<float, ::phi::CPUContext>),
+                    &::phi::MatmulKernel<float, ::phi::CPUContext>,
+                    decltype(&::phi::MatmulInferMeta),
+                    &::phi::MatmulInferMeta>(),
                 std::placeholders::_1));
 }
 

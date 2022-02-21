@@ -47,7 +47,7 @@ class CUDAAllocatoionBasePtrTest : public ::testing::Test {
   }
 
   void BatchByBatchAllocTest() {
-    std::vector<std::shared_ptr<pten::Allocation>> allocations;
+    std::vector<std::shared_ptr<phi::Allocation>> allocations;
     allocations.reserve(batch_size_);
     size_t batch_num = alloc_times_ / batch_size_;
 
@@ -70,7 +70,7 @@ class CUDAAllocatoionBasePtrTest : public ::testing::Test {
   }
 
   void ContinuousAllocTest() {
-    std::vector<std::shared_ptr<pten::Allocation>> allocations;
+    std::vector<std::shared_ptr<phi::Allocation>> allocations;
     allocations.reserve(alloc_times_);
 
     for (size_t i = 0; i < alloc_times_; ++i) {

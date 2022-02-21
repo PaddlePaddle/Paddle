@@ -26,10 +26,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/pten/core/hostdevice.h"
+#include "paddle/phi/core/hostdevice.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/pten/kernels/primitive/kernel_primitives.h"
+#include "paddle/phi/kernels/primitive/kernel_primitives.h"
 #endif
 
 #if !defined(_WIN32)
@@ -95,7 +95,7 @@ struct normal_transform {
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 
-namespace kps = pten::kps;
+namespace kps = phi::kps;
 
 /*********************** Distribution Function *************************/
 template <typename T>
