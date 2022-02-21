@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/uniform_random_op.h"
-#include "paddle/pten/kernels/full_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace paddle {
 namespace operators {
