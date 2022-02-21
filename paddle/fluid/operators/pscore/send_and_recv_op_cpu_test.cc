@@ -55,7 +55,7 @@ framework::BlockDesc* AppendSendAndRecvBlock(framework::ProgramDesc* program) {
 
 void CreateVarsOnScope(framework::Scope* scope) {
   auto w_var = scope->Var("w");
-  w_var->GetMutable<pten::SelectedRows>();
+  w_var->GetMutable<phi::SelectedRows>();
 
   auto out_var = scope->Var("out");
   out_var->GetMutable<framework::LoDTensor>();
@@ -76,7 +76,7 @@ void CreateVarsOnScope(framework::Scope* scope) {
 void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope);
-  auto w = scope->Var("w")->GetMutable<pten::SelectedRows>();
+  auto w = scope->Var("w")->GetMutable<phi::SelectedRows>();
   auto w_value = w->mutable_value();
   w_value->Resize({rows_numel, 10});
   for (int64_t i = 0; i < rows_numel; ++i) w->AutoGrownIndex(i, true);

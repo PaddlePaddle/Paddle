@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/string/printf.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 #include "paddle/fluid/operators/collective/gen_hccl_id_op_helper.h"
 #include "paddle/fluid/operators/collective/recv_v2_op.h"

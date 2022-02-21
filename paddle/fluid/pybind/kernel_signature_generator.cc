@@ -17,10 +17,10 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
-#include "paddle/pten/core/compat/op_utils.h"
-#include "paddle/pten/core/kernel_factory.h"
-#include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/declarations.h"
+#include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/declarations.h"
 
 // print names of kernel function params with json format:
 // {
@@ -42,8 +42,8 @@
 // }
 int main(int argc, char **argv) {
   paddle::framework::InitDefaultKernelSignatureMap();
-  auto &kernel_signature_map = pten::DefaultKernelSignatureMap::Instance();
-  auto &kernel_factory = pten::KernelFactory::Instance();
+  auto &kernel_signature_map = phi::DefaultKernelSignatureMap::Instance();
+  auto &kernel_factory = phi::KernelFactory::Instance();
   std::cout << "{";
   for (const auto &op_kernel_pair : kernel_factory.kernels()) {
     if (kernel_signature_map.Has(op_kernel_pair.first)) {

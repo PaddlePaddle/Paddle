@@ -52,26 +52,26 @@ TEST(Tensor, MutableData) {
     float* p1 = nullptr;
     float* p2 = nullptr;
     // initialization
-    p1 = src_tensor.mutable_data<float>(framework::make_ddim({1, 2, 3}),
+    p1 = src_tensor.mutable_data<float>(phi::make_ddim({1, 2, 3}),
                                         platform::CPUPlace());
     auto p1_holder = src_tensor.Holder();
     EXPECT_NE(p1, nullptr);
     // set src_tensor a new dim with large size
     // momery is supposed to be re-allocated
-    p2 = src_tensor.mutable_data<float>(framework::make_ddim({3, 4}),
+    p2 = src_tensor.mutable_data<float>(phi::make_ddim({3, 4}),
                                         platform::CPUPlace());
     EXPECT_NE(p2, nullptr);
     auto p2_holder1 = src_tensor.Holder();
     EXPECT_NE(p1_holder.get(), p2_holder1.get());
     // set src_tensor a new dim with same size
     // momery block is supposed to be unchanged
-    p1 = src_tensor.mutable_data<float>(framework::make_ddim({2, 2, 3}),
+    p1 = src_tensor.mutable_data<float>(phi::make_ddim({2, 2, 3}),
                                         platform::CPUPlace());
     auto p2_holder2 = src_tensor.Holder();
     EXPECT_EQ(p2_holder1.get(), p2_holder2.get());
     // set src_tensor a new dim with smaller size
     // momery block is supposed to be unchanged
-    p2 = src_tensor.mutable_data<float>(framework::make_ddim({2, 2}),
+    p2 = src_tensor.mutable_data<float>(phi::make_ddim({2, 2}),
                                         platform::CPUPlace());
     auto p2_holder3 = src_tensor.Holder();
     EXPECT_EQ(p1, p2);
@@ -81,7 +81,7 @@ TEST(Tensor, MutableData) {
     float* p4 = nullptr;
     // set src_tensor a different type but smaller size.
     // memory block is supposed to be unchanged.
-    auto* tmp = src_tensor.mutable_data<uint8_t>(framework::make_ddim({2, 2}),
+    auto* tmp = src_tensor.mutable_data<uint8_t>(phi::make_ddim({2, 2}),
                                                  platform::CPUPlace());
     p3 = reinterpret_cast<float*>(tmp);
     auto p3_holder1 = src_tensor.Holder();
@@ -90,8 +90,8 @@ TEST(Tensor, MutableData) {
 
     // set src_tensor a different type but bigger size.
     // memory block is supposed to be changed.
-    auto* tmp2 = src_tensor.mutable_data<double>(
-        framework::make_ddim({2, 2, 3}), platform::CPUPlace());
+    auto* tmp2 = src_tensor.mutable_data<double>(phi::make_ddim({2, 2, 3}),
+                                                 platform::CPUPlace());
     auto p3_holder2 = src_tensor.Holder();
     p4 = reinterpret_cast<float*>(tmp2);
     EXPECT_NE(p1, p4);
@@ -100,12 +100,12 @@ TEST(Tensor, MutableData) {
   // Not sure if it's desired, but currently, Tensor type can be changed.
   {
     framework::Tensor src_tensor;
-    int8_t* p1 = src_tensor.mutable_data<int8_t>(framework::make_ddim({1}),
+    int8_t* p1 = src_tensor.mutable_data<int8_t>(phi::make_ddim({1}),
                                                  platform::CPUPlace());
     EXPECT_NE(p1, nullptr);
     *p1 = 1;
 
-    uint8_t* p2 = src_tensor.mutable_data<uint8_t>(framework::make_ddim({1}),
+    uint8_t* p2 = src_tensor.mutable_data<uint8_t>(phi::make_ddim({1}),
                                                    platform::CPUPlace());
     EXPECT_NE(p2, nullptr);
     EXPECT_EQ(static_cast<int>(p2[0]), 1);
@@ -117,25 +117,25 @@ TEST(Tensor, MutableData) {
     float* p1 = nullptr;
     float* p2 = nullptr;
     // initialization
-    p1 = src_tensor.mutable_data<float>(framework::make_ddim({1, 2, 3}),
+    p1 = src_tensor.mutable_data<float>(phi::make_ddim({1, 2, 3}),
                                         platform::CUDAPlace(0));
     auto p1_holder = src_tensor.Holder();
     EXPECT_NE(p1, nullptr);
     // set src_tensor a new dim with large size
     // momery is supposed to be re-allocated
-    p2 = src_tensor.mutable_data<float>(framework::make_ddim({3, 1024}),
+    p2 = src_tensor.mutable_data<float>(phi::make_ddim({3, 1024}),
                                         platform::CUDAPlace(0));
     auto p2_holder = src_tensor.Holder();
     EXPECT_NE(p2, nullptr);
     EXPECT_NE(p1_holder.get(), p2_holder.get());
     // set src_tensor a new dim with same size
     // momery block is supposed to be unchanged
-    p1 = src_tensor.mutable_data<float>(framework::make_ddim({2, 2, 3}),
+    p1 = src_tensor.mutable_data<float>(phi::make_ddim({2, 2, 3}),
                                         platform::CUDAPlace(0));
     EXPECT_EQ(p1, p2);
     // set src_tensor a new dim with smaller size
     // momery block is supposed to be unchanged
-    p2 = src_tensor.mutable_data<float>(framework::make_ddim({2, 2}),
+    p2 = src_tensor.mutable_data<float>(phi::make_ddim({2, 2}),
                                         platform::CUDAPlace(0));
     EXPECT_EQ(p1, p2);
   }
@@ -146,25 +146,25 @@ TEST(Tensor, MutableData) {
     float* p1 = nullptr;
     float* p2 = nullptr;
     // initialization
-    p1 = src_tensor.mutable_data<float>(framework::make_ddim({1, 2, 3}),
+    p1 = src_tensor.mutable_data<float>(phi::make_ddim({1, 2, 3}),
                                         platform::NPUPlace(0));
     auto p1_holder = src_tensor.Holder();
     EXPECT_NE(p1, nullptr);
     // set src_tensor a new dim with large size
     // momery is supposed to be re-allocated
-    p2 = src_tensor.mutable_data<float>(framework::make_ddim({3, 1024}),
+    p2 = src_tensor.mutable_data<float>(phi::make_ddim({3, 1024}),
                                         platform::NPUPlace(0));
     auto p2_holder = src_tensor.Holder();
     EXPECT_NE(p2, nullptr);
     EXPECT_NE(p1_holder.get(), p2_holder.get());
     // set src_tensor a new dim with same size
     // momery block is supposed to be unchanged
-    p1 = src_tensor.mutable_data<float>(framework::make_ddim({2, 2, 3}),
+    p1 = src_tensor.mutable_data<float>(phi::make_ddim({2, 2, 3}),
                                         platform::NPUPlace(0));
     EXPECT_EQ(p1, p2);
     // set src_tensor a new dim with smaller size
     // momery block is supposed to be unchanged
-    p2 = src_tensor.mutable_data<float>(framework::make_ddim({2, 2}),
+    p2 = src_tensor.mutable_data<float>(phi::make_ddim({2, 2}),
                                         platform::NPUPlace(0));
     EXPECT_EQ(p1, p2);
   }
@@ -188,7 +188,7 @@ TEST(Tensor, ShareDataWith) {
     }
     ASSERT_TRUE(caught);
 
-    src_tensor.mutable_data<int>(framework::make_ddim({2, 3, 4}),
+    src_tensor.mutable_data<int>(phi::make_ddim({2, 3, 4}),
                                  platform::CPUPlace());
     dst_tensor.ShareDataWith(src_tensor);
     ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
@@ -198,7 +198,7 @@ TEST(Tensor, ShareDataWith) {
   {
     framework::Tensor src_tensor;
     framework::Tensor dst_tensor;
-    src_tensor.mutable_data<int>(framework::make_ddim({2, 3, 4}),
+    src_tensor.mutable_data<int>(phi::make_ddim({2, 3, 4}),
                                  platform::CUDAPlace(0));
     dst_tensor.ShareDataWith(src_tensor);
     ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
@@ -208,7 +208,7 @@ TEST(Tensor, ShareDataWith) {
   {
     framework::Tensor src_tensor;
     framework::Tensor dst_tensor;
-    src_tensor.mutable_data<int>(framework::make_ddim({2, 3, 4}),
+    src_tensor.mutable_data<int>(phi::make_ddim({2, 3, 4}),
                                  platform::NPUPlace(0));
     dst_tensor.ShareDataWith(src_tensor);
     ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
@@ -219,7 +219,7 @@ TEST(Tensor, ShareDataWith) {
 TEST(Tensor, Slice) {
   {
     framework::Tensor src_tensor;
-    src_tensor.mutable_data<int>(framework::make_ddim({5, 3, 4}),
+    src_tensor.mutable_data<int>(phi::make_ddim({5, 3, 4}),
                                  platform::CPUPlace());
     framework::Tensor slice_tensor = src_tensor.Slice(1, 3);
     framework::DDim slice_dims = slice_tensor.dims();
@@ -245,7 +245,7 @@ TEST(Tensor, Slice) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   {
     framework::Tensor src_tensor;
-    src_tensor.mutable_data<double>(framework::make_ddim({6, 9}),
+    src_tensor.mutable_data<double>(phi::make_ddim({6, 9}),
                                     platform::CUDAPlace(0));
     framework::Tensor slice_tensor = src_tensor.Slice(2, 6);
     framework::DDim slice_dims = slice_tensor.dims();
@@ -272,7 +272,7 @@ TEST(Tensor, Slice) {
 #ifdef PADDLE_WITH_ASCEND_CL
   {
     framework::Tensor src_tensor;
-    src_tensor.mutable_data<double>(framework::make_ddim({6, 9}),
+    src_tensor.mutable_data<double>(phi::make_ddim({6, 9}),
                                     platform::NPUPlace(0));
     framework::Tensor slice_tensor = src_tensor.Slice(2, 6);
     framework::DDim slice_dims = slice_tensor.dims();
@@ -332,8 +332,7 @@ TEST(Tensor, FP16) {
 TEST(Tensor, Split) {
   {
     framework::Tensor src_tensor;
-    src_tensor.mutable_data<int>(framework::make_ddim({6, 2}),
-                                 platform::CPUPlace());
+    src_tensor.mutable_data<int>(phi::make_ddim({6, 2}), platform::CPUPlace());
     std::vector<framework::Tensor> split_tensor_list = src_tensor.Split(2, 0);
     ASSERT_EQ(split_tensor_list.size(), 3UL);
     EXPECT_EQ(split_tensor_list[0].dims()[0], 2);
@@ -361,7 +360,7 @@ TEST(Tensor, Split) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   {
     framework::Tensor src_tensor;
-    src_tensor.mutable_data<double>(framework::make_ddim({6, 4}),
+    src_tensor.mutable_data<double>(phi::make_ddim({6, 4}),
                                     platform::CUDAPlace(0));
     std::vector<framework::Tensor> split_tensor_list = src_tensor.Split(2, 0);
     ASSERT_EQ(split_tensor_list.size(), 3UL);
@@ -395,8 +394,7 @@ TEST(Tensor, Split) {
 TEST(Tensor, Chunk) {
   {
     framework::Tensor src_tensor;
-    src_tensor.mutable_data<int>(framework::make_ddim({6, 2}),
-                                 platform::CPUPlace());
+    src_tensor.mutable_data<int>(phi::make_ddim({6, 2}), platform::CPUPlace());
     std::vector<framework::Tensor> split_tensor_list = src_tensor.Chunk(3, 0);
     ASSERT_EQ(split_tensor_list.size(), 3UL);
     EXPECT_EQ(split_tensor_list[0].dims()[0], 2);
@@ -424,7 +422,7 @@ TEST(Tensor, Chunk) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   {
     framework::Tensor src_tensor;
-    src_tensor.mutable_data<double>(framework::make_ddim({6, 4}),
+    src_tensor.mutable_data<double>(phi::make_ddim({6, 4}),
                                     platform::CUDAPlace(0));
     std::vector<framework::Tensor> split_tensor_list = src_tensor.Chunk(3, 0);
     ASSERT_EQ(split_tensor_list.size(), 3UL);

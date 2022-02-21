@@ -17,7 +17,7 @@ limitations under the License. */
 #include <stdlib.h>
 
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/pten/core/hostdevice.h"
+#include "paddle/phi/core/hostdevice.h"
 
 namespace paddle {
 namespace operators {
