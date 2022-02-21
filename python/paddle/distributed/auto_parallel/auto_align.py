@@ -21,9 +21,9 @@ import numpy as np
 import paddle
 from paddle.fluid import core
 from paddle.fluid.framework import Program
-from .dist_context import get_default_distributed_context
-from .utils import _merge_parameter, _load_distributed_attribute
-from .reshard import _compute_complete_shape, _compute_partition_index
+from paddle.distributed.auto_parallel.dist_context import get_default_distributed_context
+from paddle.distributed.auto_parallel.utils import _merge_parameter, _load_distributed_attribute
+from paddle.distributed.auto_parallel.reshard import _compute_complete_shape, _compute_partition_index
 
 
 class AutoAlign:
@@ -260,3 +260,61 @@ class AutoAlign:
                         'The tensor {} is different at step {}, serial tensor: {}, merged tensor: {}'.
                         format(tensor_name, diff_step, serial_tensor,
                                merged_tensor))
+
+    def check_serial_stage(self, grad_var_list, loss_print, loss_dict,
+                           eval_step):
+        save_losses = {}
+        saved_values = {}
+        if os.path.exists('./diff_info.pkl'):
+            with open('./diff_info.pkl', 'rb') as f:
+                diff_info = pickle.load(f)
+                if diff_info[1] == 'backward':
+                    eval_step = diff_info[0]
+                    for idx, item in enumerate(loss_print):
+                        if idx == 0:
+                            saved_values["loss"] = item
+                        else:
+                            saved_values[grad_var_list[idx - 1]] = item
+                        loss_dict[eval_step] = saved_values
+        else:
+            for idx, item in enumerate(loss_print):
+                if idx == 0:
+                    save_losses["loss"] = item
+                loss_dict[eval_step] = save_losses
+        return loss_dict
+
+    def check_auto_stage(self, auto_grad_var_list, loss_print, auto_loss_dict,
+                         eval_step, loss):
+        save_losses = {}
+        saved_values = {}
+        if os.path.exists('./diff_info.pkl'):
+            with open('./diff_info.pkl', 'rb') as f:
+                diff_info = pickle.load(f)
+                if diff_info[1] == 'backward':
+                    eval_step = diff_info[0]
+                    if loss_print is not None:
+                        print('loss_print is not None')
+                        if loss.name not in self._program.global_block().vars:
+                            minus_one = False
+                        else:
+                            minus_one = True
+                        for idx, item in enumerate(loss_print):
+                            if idx == 0:
+                                if minus_one:
+                                    saved_values["loss"] = item
+                                else:
+                                    saved_values[auto_grad_var_list[idx]] = item
+                            else:
+                                if minus_one:
+                                    saved_values[auto_grad_var_list[idx -
+                                                                    1]] = item
+                                else:
+                                    saved_values[auto_grad_var_list[idx]] = item
+                            auto_loss_dict[eval_step] = saved_values
+        else:
+            if loss.name in self._program.global_block().vars:
+                for idx, item in enumerate(loss_print):
+                    if idx == 0:
+                        saved_values["loss"] = item
+                    auto_loss_dict[eval_step] = saved_values
+        return auto_loss_dict
