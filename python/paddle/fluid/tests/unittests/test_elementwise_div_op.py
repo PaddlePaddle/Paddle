@@ -80,18 +80,15 @@ class TestElementwiseDivOpBF16(OpTest):
 
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['X', 'Y'], 'Out', max_relative_error=1)
+        self.check_grad_with_place(place, ['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['Y'], 'Out', max_relative_error=1, no_grad_set=set("X"))
+        self.check_grad_with_place(place, ['Y'], 'Out', no_grad_set=set("X"))
 
     def test_check_grad_ingore_y(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['X'], 'Out', max_relative_error=1, no_grad_set=set('Y'))
+        self.check_grad_with_place(place, ['X'], 'Out', no_grad_set=set('Y'))
 
 
 @skip_check_grad_ci(
