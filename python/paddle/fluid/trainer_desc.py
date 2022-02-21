@@ -110,6 +110,7 @@ class TrainerDesc(object):
         self._infer = infer
 
     def _set_fleet_desc(self, fleet_desc):
+        self._fleet_desc = fleet_desc
         ## serialize fleet_desc
         from google.protobuf import text_format
         fleet_desc_str = text_format.MessageToString(fleet_desc)
