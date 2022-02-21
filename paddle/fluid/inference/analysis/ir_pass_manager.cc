@@ -198,6 +198,7 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("lite_ops_filter",
                 new std::vector<std::string>(argument->lite_ops_filter()));
       pass->Set("predictor_id", new int(argument->predictor_id()));
+      pass->Erase("enable_int8");
       pass->Set("enable_int8", new bool(lite_enable_int8));
       pass->Set("use_gpu", new bool(argument->use_gpu()));
       pass->Set("zero_copy", new bool(argument->lite_zero_copy()));
