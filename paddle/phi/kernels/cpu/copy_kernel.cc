@@ -28,6 +28,7 @@ namespace phi {
 template <typename Context>
 void Copy(const Context& dev_ctx,
           const DenseTensor& src,
+          Place dst_place,
           bool blocking,
           DenseTensor* dst) {
   auto* src_ptr = src.data();
