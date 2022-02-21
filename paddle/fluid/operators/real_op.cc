@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/real_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -93,13 +93,3 @@ REGISTER_OPERATOR(real, ops::RealOp, ops::RealOpMaker,
                   ops::RealGradOpMaker<::paddle::framework::OpDesc>,
                   ops::RealGradOpMaker<::paddle::imperative::OpBase>);
 REGISTER_OPERATOR(real_grad, ops::RealGradOp);
-
-REGISTER_OP_CPU_KERNEL(real, ops::RealKernel<paddle::platform::CPUDeviceContext,
-                                             paddle::platform::complex<float>>,
-                       ops::RealKernel<paddle::platform::CPUDeviceContext,
-                                       paddle::platform::complex<double>>);
-REGISTER_OP_CPU_KERNEL(real_grad,
-                       ops::RealGradKernel<paddle::platform::CPUDeviceContext,
-                                           paddle::platform::complex<float>>,
-                       ops::RealGradKernel<paddle::platform::CPUDeviceContext,
-                                           paddle::platform::complex<double>>);
