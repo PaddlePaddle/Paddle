@@ -169,8 +169,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
 
     # TOOD(jiabin): Support kwargs in eager tensor constructor
     if _in_eager_mode() and isinstance(data, np.ndarray):
-        return core.eager.EagerTensor(data, place, False, False, None,
-                                      stop_gradient)
+        return core.eager.Tensor(data, place, False, False, None, stop_gradient)
     else:
         return paddle.Tensor(
             value=data,
@@ -220,11 +219,13 @@ def full_like(x, fill_value, dtype=None, name=None):
 
     helper = LayerHelper("full_like", **locals())
     check_variable_and_dtype(
-        x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+        x, 'x',
+        ['bool', 'float16', 'float32', 'float64', 'int16', 'int32', 'int64'],
         'full_like')
-    check_dtype(dtype, 'dtype',
-                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-                'full_like/zeros_like/ones_like')
+    check_dtype(
+        dtype, 'dtype',
+        ['bool', 'float16', 'float32', 'float64', 'int16', 'int32', 'int64'],
+        'full_like/zeros_like/ones_like')
     out = helper.create_variable_for_type_inference(dtype=dtype)
 
     helper.append_op(
