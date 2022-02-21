@@ -208,7 +208,6 @@ void Conv3dKernel(const Context& dev_ctx,
                   const SparseCooTensor& x,
                   const DenseTensor& kernel,
                   const std::vector<int>& paddings,
-                  const std::string& padding_algorithm,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
                   const int groups,
@@ -317,10 +316,6 @@ void Conv3dKernel(const Context& dev_ctx,
 }  // namespace sparse
 }  // namespace pten
 
-PT_REGISTER_KERNEL(conv3d,
-                   CPU,
-                   ALL_LAYOUT,
-                   pten::sparse::Conv3dKernel,
-                   float,
-                   double,
-                   pten::dtype::float16) {}
+// float16 GEMM not supported on CPU
+PT_REGISTER_KERNEL(
+    conv3d, CPU, ALL_LAYOUT, pten::sparse::Conv3dKernel, float, double) {}

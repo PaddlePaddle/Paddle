@@ -52,7 +52,6 @@ void Conv3dKernel(const Context& dev_ctx,
                   const SparseCooTensor& x,
                   const DenseTensor& kernel,
                   const std::vector<int>& paddings,
-                  const std::string& padding_algorithm,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
                   const int groups,
@@ -63,22 +62,14 @@ SparseCooTensor Conv3d(const Context& dev_ctx,
                        const SparseCooTensor& x,
                        const DenseTensor kernel,
                        const std::vector<int>& paddings,
-                       const std::string& padding_algorithm,
                        const std::vector<int>& dilations,
                        const std::vector<int>& strides,
                        const int groups) {
   DenseTensor indices = pten::Empty<T, Context>(dev_ctx);
   DenseTensor values = pten::Empty<T, Context>(dev_ctx);
   SparseCooTensor coo(indices, values, x.dims());
-  Conv3dKernel<T, Context>(dev_ctx,
-                           x,
-                           kernel,
-                           paddings,
-                           padding_algorithm,
-                           dilations,
-                           strides,
-                           groups,
-                           &coo);
+  Conv3dKernel<T, Context>(
+      dev_ctx, x, kernel, paddings, dilations, strides, groups, &coo);
   return coo;
 }
 
