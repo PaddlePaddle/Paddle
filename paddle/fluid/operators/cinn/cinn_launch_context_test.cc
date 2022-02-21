@@ -29,7 +29,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/operators/cinn/cinn_op_helper.h"
 #include "paddle/phi/core/ddim.h"
 
@@ -171,7 +170,7 @@ TEST_F(CinnLaunchContextTest, TestConstructResult) {
     auto* buffer = launch_context->GetCinnBufferOfVar(var_name);
     auto&& scope = compiled_obj->scope;
     ASSERT_EQ(framework::DDim(buffer->dims, buffer->dimensions),
-              framework::make_ddim(scope->GetTensor(arg_name)->shape().data()));
+              phi::make_ddim(scope->GetTensor(arg_name)->shape().data()));
   };
   check_argument_fn("var1", "cinn_var1");
   check_argument_fn("var2", "cinn_var2");
@@ -210,7 +209,7 @@ TEST_F(CinnLaunchContextTest, TestBuildCompiledProgram) {
     ASSERT_NE(var, nullptr);
     auto* buffer = launch_context->GetCinnBufferOfVar(var_name);
     ASSERT_EQ(framework::DDim(buffer->dims, buffer->dimensions),
-              framework::make_ddim(var->GetShape()));
+              phi::make_ddim(var->GetShape()));
   }
   ASSERT_TRUE(block.FindVar("var1")->Persistable());
   ASSERT_FALSE(block.FindVar("var5")->Persistable());
