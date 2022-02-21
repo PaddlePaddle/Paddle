@@ -29,7 +29,23 @@ namespace pten {
 
 void PTENDialect::printType(::mlir::Type type,
                             mlir::DialectAsmPrinter& os) const {
-  Dialect::printType(type, os);
+  if (type.isa<CPUAllocatorType>()) {
+    os << "CPU_Allocator";
+    return;
+  }
+  if (type.isa<GPUAllocatorType>()) {
+    os << "GPU_Allocator";
+    return;
+  }
+  if (type.isa<CPUContextType>()) {
+    os << "CPU_Context";
+    return;
+  }
+  if (type.isa<GPUContextType>()) {
+    os << "GPU_Context";
+    return;
+  }
+  llvm_unreachable("unexpected 'allocator/context' type kind");
 }
 
 void PTENDialect::initialize() {
@@ -46,14 +62,16 @@ void PTENDialect::initialize() {
 mlir::Type PTENDialect::parseType(mlir::DialectAsmParser& parser) const {
   llvm::StringRef keyword;
   if (parser.parseKeyword(&keyword)) return mlir::Type();
-  if (keyword == "allocator_CPU") {
+  if (keyword == "CPU_allocator") {
     return CPUAllocatorType::get(parser.getContext());
-  } else if (keyword == "allocator_GPU") {
+  } else if (keyword == "GPU_allocator") {
     return GPUAllocatorType::get(parser.getContext());
-  } else if (keyword == "context_CPU") {
+  } else if (keyword == "CPU_context") {
     return CPUContextType::get(parser.getContext());
-  } else if (keyword == "context_GPU") {
+  } else if (keyword == "GPU_context") {
     return GPUContextType::get(parser.getContext());
+  } else {
+    llvm_unreachable("unexpected 'allocator/context' type kind");
   }
 
   return mlir::Type();
