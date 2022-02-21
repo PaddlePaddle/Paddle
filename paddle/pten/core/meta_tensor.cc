@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/enforce.h"
+#include "paddle/pten/core/string_tensor.h"
+#include "paddle/pten/core/string_tensor_utils.h"
 #include "paddle/pten/core/tensor_utils.h"
 
 namespace pten {
@@ -32,6 +34,9 @@ void MetaTensor::set_dims(const DDim& dims) {
   if (pten::DenseTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))->dims =
         dims;
+  } else if (pten::StringTensor::classof(tensor_)) {
+    StringTensorUtils::GetMutableMeta(static_cast<StringTensor*>(tensor_))
+        ->dims = dims;
   } else {
     PADDLE_THROW(pten::errors::Unimplemented(
         "Unsupported setting dims for `%s`.", tensor_->type_info().name()));
@@ -42,6 +47,8 @@ void MetaTensor::set_dtype(DataType dtype) {
   if (pten::DenseTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))
         ->dtype = dtype;
+  } else if (pten::StringTensor::classof(tensor_)) {
+    // No need to set dtype
   } else {
     PADDLE_THROW(pten::errors::Unimplemented(
         "Unsupported settting dtype for `%s`.", tensor_->type_info().name()));
@@ -52,6 +59,8 @@ void MetaTensor::set_layout(DataLayout layout) {
   if (pten::DenseTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))
         ->layout = layout;
+  } else if (pten::StringTensor::classof(tensor_)) {
+    // No need to set layout
   } else {
     PADDLE_THROW(pten::errors::Unimplemented(
         "Unsupported settting layout for `%s`.", tensor_->type_info().name()));

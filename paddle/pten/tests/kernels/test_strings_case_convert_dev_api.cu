@@ -39,27 +39,14 @@ namespace tests {
 namespace framework = paddle::framework;
 using DDim = pten::framework::DDim;
 using pstring = ::pten::dtype::pstring;
-using paddle::platform::CPUPlace;
-using paddle::platform::CUDAPlace;
-using paddle::platform::CUDADeviceContext;
-
-__global__ void CopyFromVec(pstring* dst, char** src, const int64_t num) {
-  CUDA_KERNEL_LOOP(i, num) { dst[i] = pstring(src[i]); }
-}
-
-__global__ void CopyToVec(char** dst, pstring** src, const int64_t num) {
-  CUDA_KERNEL_LOOP(i, num) {
-    // Copy from gpu to cpu
-    memcpy(dst[i], src[i]->data(), src[i]->size() + 1);
-  }
-}
+using pten::GPUPlace;
+using pten::CPUPlace;
 
 TEST(DEV_API, strings_cast_convert) {
-  auto gpu0 = CUDAPlace();
+  auto gpu0 = GPUPlace();
   auto cpu = CPUPlace();
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
+  pten::DeviceContextPool& pool = pten::DeviceContextPool::Instance();
   GPUContext* dev_ctx = reinterpret_cast<GPUContext*>(pool.Get(gpu0));
   CPUContext* cpu_ctx = reinterpret_cast<CPUContext*>(pool.Get(cpu));
 
@@ -120,7 +107,7 @@ TEST(DEV_API, strings_cast_convert) {
 }
 
 TEST(DEV_API, strings_cast_convert_utf8) {
-  auto gpu0 = CUDAPlace();
+  auto gpu0 = GPUPlace();
   auto cpu = CPUPlace();
 
   paddle::platform::DeviceContextPool& pool =

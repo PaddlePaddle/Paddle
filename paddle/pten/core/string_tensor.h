@@ -27,6 +27,8 @@ namespace pten {
 /// arrays are used in math operators.
 /// During the entire life cycle of a StringTensor, its device type and key
 /// metadata are set unchanged.
+class StringTensorUtils;
+
 class StringTensor : public TensorBase,
                      public TypeInfoTraits<TensorBase, StringTensor> {
  public:
@@ -132,6 +134,9 @@ class StringTensor : public TensorBase,
   void* AllocateFrom(Allocator* allocator,
                      DataType dtype,
                      size_t requested_size = 0);
+
+ private:
+  friend class StringTensorUtils;
 
  private:
   StringTensorMeta meta_;

@@ -25,3 +25,4 @@ cc_test(test_concat_api SRCS test_concat_api.cc DEPS pten_tensor pten_api pten_a
 
 cc_test(test_data_transform SRCS test_data_transform.cc DEPS pten_tensor pten_api pten_api_utils)
 cc_test(test_sparse_utils_api SRCS test_sparse_utils_api.cc DEPS pten_tensor pten_api pten_api_utils)
+cc_test(test_strings_case_convert_api SRCS test_strings_case_convert_api.cc DEPS pten_tensor pten_api pten_api_utils)

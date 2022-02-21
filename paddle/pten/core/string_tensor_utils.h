@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,10 +14,15 @@ limitations under the License. */
 
 #pragma once
 
-// api symbols declare, remove in the future
-#include "paddle/pten/api/lib/api_registry.h"
+#include "paddle/pten/core/string_tensor.h"
+#include "paddle/pten/core/tensor_meta.h"
 
-PT_DECLARE_API(Math);
-PT_DECLARE_API(Utils);
-PT_DECLARE_API(SparseApi);
-PT_DECLARE_API(StringsApi);
+namespace pten {
+class StringTensorUtils {
+ public:
+  static StringTensorMeta* GetMutableMeta(StringTensor* tensor) {
+    return &(tensor->meta_);
+  }
+};
+
+}  // namespace pten
