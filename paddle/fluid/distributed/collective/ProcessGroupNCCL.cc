@@ -18,6 +18,8 @@
 DECLARE_bool(nccl_blocking_wait);
 DECLARE_bool(use_stream_safe_cuda_allocator);
 
+constexpr int64_t kWaitBlockTImeout = 10;
+
 namespace paddle {
 namespace distributed {
 
@@ -134,7 +136,7 @@ bool ProcessGroupNCCL::NCCLTask::Wait(std::chrono::milliseconds timeout) {
   if (FLAGS_nccl_blocking_wait) {
     // NOTE(shenliang03): It will block host for sync
     while (!IsCompleted()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      std::this_thread::sleep_for(std::chrono::milliseconds(kWaitBlockTImeout));
     }
   }
   return true;

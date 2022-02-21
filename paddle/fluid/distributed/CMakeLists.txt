@@ -1,6 +1,6 @@
+add_subdirectory(collective)
 if(NOT WITH_PSCORE)
     add_subdirectory(fleet_executor)
-    add_subdirectory(collective)
     return()
 endif()
 
@@ -18,4 +18,3 @@ add_subdirectory(ps)
 add_subdirectory(test)
 add_subdirectory(index_dataset)
 add_subdirectory(fleet_executor)
-add_subdirectory(collective)
