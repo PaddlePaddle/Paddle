@@ -21,7 +21,7 @@ namespace infrt {
 namespace kernel {
 namespace pten {
 
-backends::CpuPtenContext CreateCpuContext();
+::pten::CPUContext CreateCpuContext();
 
 }  // namespace pten
 }  // namespace kernel

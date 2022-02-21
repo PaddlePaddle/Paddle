@@ -44,14 +44,16 @@ void RegisterPtenKernels(host_context::KernelRegistry* registry) {
                       INFRT_KERNEL(infrt::kernel::pten::FillDenseTensorF32));
   registry->AddKernel(
       "pten_dt.fake_pten_kernel",
-      std::bind(&KernelLauncherFunc<decltype(&FakePtenKernel),
-                                    &FakePtenKernel,
-                                    decltype(&FakePtenInferShape),
-                                    &FakePtenInferShape>,
-                KernelLauncher<decltype(&FakePtenKernel),
-                               &FakePtenKernel,
-                               decltype(&FakePtenInferShape),
-                               &FakePtenInferShape>(),
+      std::bind(&kernel::KernelLauncherFunc<
+                    decltype(&::pten::MatmulKernel<float, ::pten::CPUContext>),
+                    &::pten::MatmulKernel<float, ::pten::CPUContext>,
+                    decltype(&::pten::MatmulInferMeta),
+                    &::pten::MatmulInferMeta>,
+                kernel::KernelLauncher<
+                    decltype(&::pten::MatmulKernel<float, ::pten::CPUContext>),
+                    &::pten::MatmulKernel<float, ::pten::CPUContext>,
+                    decltype(&::pten::MatmulInferMeta),
+                    &::pten::MatmulInferMeta>(),
                 std::placeholders::_1));
 }
 
