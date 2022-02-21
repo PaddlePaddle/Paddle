@@ -21,6 +21,80 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+template <typename T, typename std::enable_if<!std::is_same<
+                          platform::float16, T>::value>::type * = nullptr>
+__device__ __forceinline__ void fastVectorizedAtomicAdd(T *arr, size_t index,
+                                                        T value_1, T value_2) {
+  paddle::platform::CudaAtomicAdd(arr + index, value_1);
+  paddle::platform::CudaAtomicAdd(arr + index + 1, value_2);
+}
+
+template <typename T, typename std::enable_if<std::is_same<
+                          platform::float16, T>::value>::type * = nullptr>
+__device__ __forceinline__ void fastVectorizedAtomicAdd(T *arr, size_t index,
+                                                        T value_1, T value_2) {
+  __half2 value2;
+  value2.x = *reinterpret_cast<__half *>(&value_1);
+  value2.y = *reinterpret_cast<__half *>(&value_2);
+  atomicAdd(reinterpret_cast<__half2 *>(arr + index), value2);
+}
+
+template <typename T, typename std::enable_if<std::is_same<
+                          platform::float16, T>::value>::type * = nullptr>
+__device__ __forceinline__ void fastSpecializedAtomicAdd(T *tensor,
+                                                         size_t index,
+                                                         const size_t numel,
+                                                         T value) {
+#if ((CUDA_VERSION < 10000) || \
+     (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 700)))
+  paddle::platform::CudaAtomicAdd(
+      reinterpret_cast<platform::float16 *>(tensor) + index,
+      static_cast<platform::float16>(value));
+#else
+  // Accounts for the chance tensor falls on an odd 16 bit alignment (ie, not 32
+  // bit aligned)
+  __half *target_addr = reinterpret_cast<__half *>(tensor + index);
+  bool low_byte =
+      (reinterpret_cast<std::uintptr_t>(target_addr) % sizeof(__half2) == 0);
+
+  if (low_byte && index < (numel - 1)) {
+    __half2 value2;
+    value2.x = *reinterpret_cast<__half *>(&value);
+    value2.y = __int2half_rz(0);
+    atomicAdd(reinterpret_cast<__half2 *>(target_addr), value2);
+
+  } else if (!low_byte && index > 0) {
+    __half2 value2;
+    value2.x = __int2half_rz(0);
+    value2.y = *reinterpret_cast<__half *>(&value);
+    atomicAdd(reinterpret_cast<__half2 *>(target_addr - 1), value2);
+
+  } else {
+    atomicAdd(reinterpret_cast<__half *>(tensor) + index,
+              *reinterpret_cast<__half *>(&value));
+  }
+#endif
+}
+
+template <typename T, typename std::enable_if<!std::is_same<
+                          platform::float16, T>::value>::type * = nullptr>
+__device__ __forceinline__ void fastSpecializedAtomicAdd(T *arr, size_t index,
+                                                         const size_t numel,
+                                                         T value) {
+  paddle::platform::CudaAtomicAdd(arr + index, value);
+}
+
+template <class T>
+__device__ __forceinline__ void fastAtomicAdd(T *arr, size_t index,
+                                              const size_t numel, T value,
+                                              bool fast_atomics) {
+  if (fast_atomics) {
+    fastSpecializedAtomicAdd(arr, index, numel, value);
+  } else {
+    paddle::platform::CudaAtomicAdd(arr + index, value);
+  }
+}
+
 template <typename T, typename IdT, bool PaddingFlag>
 __global__ void LookupTableV2(T *output, const T *table, const IdT *ids,
                               const int64_t N, const int64_t K, const int64_t D,
@@ -57,8 +131,20 @@ __global__ void LookupTableV2Grad(T *table, const T *output, const IdT *ids,
     auto id = static_cast<int64_t>(ids[idy]);
     const T *out = output + idy * D;
     T *tab = table + id * D;
+#if 0
     for (int i = idx; i < D; i += blockDim.x) {
-      paddle::platform::CudaAtomicAdd(&tab[i], out[i]);
+      // paddle::platform::CudaAtomicAdd(&tab[i], out[i]);
+      fastAtomicAdd(tab, i, D, out[i], true);
+    }
+#endif
+    for (int i = idx * 2; i < D; i += blockDim.x * 2) {
+#if 0
+      __half2 value2;
+      value2.x = *reinterpret_cast<__half *>(&out[i]);
+      value2.y = *reinterpret_cast<__half *>(&out[i+1]);
+      atomicAdd(reinterpret_cast<__half2*>(&tab[i]), value2);
+#endif
+      fastVectorizedAtomicAdd(tab, i, out[i], out[i + 1]);
     }
     idy += blockDim.y * gridDim.x;
   }
