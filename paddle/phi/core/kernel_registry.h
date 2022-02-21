@@ -296,7 +296,7 @@ struct KernelRegistrar {
  * And msvc can work without template instantiation
  */
 #define _PT_REGISTER_2TA_KERNEL(                                            \
-    reg_type, kernel_name, backend, layout, meta_kernel_fn, ...)            \
+    reg_type, kernel_name, backend, context, layout, meta_kernel_fn, ...)   \
   static void __PT_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
       const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel);           \
   PT_EXPAND(PT_KERNEL_REGISTRAR_INIT(                                       \
@@ -432,19 +432,19 @@ struct KernelRegistrar {
 /* The =pre-commit always treats this macro into the wrong format,
   and multi-line macros cannot be skipped with NOLINT.*/
 #define _PT_KERNEL_REGISTRAR_INIT(N,                       \
-                                  reg_type,                  \
+                                  reg_type,                \
                                   kernel_name,             \
                                   backend,                 \
-                                  context,                  \
+                                  context,                 \
                                   layout,                  \
                                   args_def_fn,             \
                                   meta_kernel_fn,          \
                                   ...)                     \
   PT_EXPAND(PT_CONCATENATE(_PT_KERNEL_REGISTRAR_INIT_, N) ( \
-    reg_type,                  \
+    reg_type,                                              \
     kernel_name,                                           \
     backend,                                               \
-    context,                                                \
+    context,                                               \
     layout,                                                \
     PT_ID,                                                 \
     args_def_fn,                                           \

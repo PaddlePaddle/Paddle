@@ -32,7 +32,6 @@ namespace phi {
 
 using DDim = phi::DDim;
 #ifndef PADDLE_WITH_CUSTOM_KERNEL
-
 using LoD = std::vector<paddle::framework::Vector<size_t>>;
 #else
 using LoD = std::vector<std::vector<size_t>>;

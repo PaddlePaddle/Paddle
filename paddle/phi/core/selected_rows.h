@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#ifndef PADDLE_WITH_CUSTOM_KERNEL
 
 #include <algorithm>
 #include <memory>
@@ -172,5 +171,3 @@ class SelectedRows : public TensorBase,
 };
 
 }  // namespace phi
-
-#endif  // PADDLE_WITH_CUSTOM_KERNEL
