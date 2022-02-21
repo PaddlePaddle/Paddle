@@ -222,6 +222,8 @@ class AutoParallelizer:
             HAS_ALLGATHER.clear()
             _g_process_group_map.clear()
             _g_process_group_map[0] = ProcessGroup(0, [])
+            for process_mesh in dist_context._process_meshes:
+                _g_process_group_map[0].add_ranks(process_mesh.processes)
         return dist_optimize_ops, dist_params_grads, dist_startup_prog, dist_main_prog, g_process_group_map
 
     def parallelize(self,
