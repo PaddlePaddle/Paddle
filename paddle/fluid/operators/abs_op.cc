@@ -141,7 +141,8 @@ class AbsDoubleGradOp : public framework::OperatorWithKernel {
 }  // namespace operators
 }  // namespace paddle
 
-DELCARE_INFER_SHAPE_FUNCTOR(abs, AbsInferShapeFunctor, PT_INFER_META(phi::UnchangedInferMeta));
+DELCARE_INFER_SHAPE_FUNCTOR(abs, AbsInferShapeFunctor,
+                            PT_INFER_META(phi::UnchangedInferMeta));
 
 namespace ops = paddle::operators;
 
