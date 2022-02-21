@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/core/compat/op_utils.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
 KernelSignature TransposeOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("transpose", {"X"}, {"axis"}, {"Out"});
@@ -26,14 +26,13 @@ KernelSignature TransposeGradOpArgumentMapping(
       "transpose_grad", {GradVarName("Out")}, {"axis"}, {GradVarName("X")});
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(transpose, pten::TransposeOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(transpose_grad,
-                           pten::TransposeGradOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(transpose2, pten::TransposeOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(transpose, phi::TransposeOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(transpose_grad, phi::TransposeGradOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(transpose2, phi::TransposeOpArgumentMapping);
 PT_REGISTER_ARG_MAPPING_FN(transpose2_grad,
-                           pten::TransposeGradOpArgumentMapping);
+                           phi::TransposeGradOpArgumentMapping);
 
 PT_REGISTER_BASE_KERNEL_NAME(transpose2, transpose);
 PT_REGISTER_BASE_KERNEL_NAME(transpose2_grad, transpose_grad);

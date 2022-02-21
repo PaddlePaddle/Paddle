@@ -12,21 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/kernels/transpose_grad_kernel.h"
-#include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/common/bfloat16.h"
-#include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/impl/transpose_grad_kernel_impl.h"
+#include "paddle/phi/kernels/transpose_grad_kernel.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/transpose_grad_kernel_impl.h"
 
 PT_REGISTER_KERNEL(transpose_grad,
                    CPU,
                    ALL_LAYOUT,
-                   pten::TransposeGradKernel,
+                   phi::TransposeGradKernel,
                    bool,
                    float,
                    double,
                    int32_t,
                    int64_t,
-                   pten::dtype::bfloat16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

@@ -15,9 +15,9 @@
 #pragma once
 
 #include <vector>
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void TransposeGradKernel(const Context& dev_ctx,
@@ -25,4 +25,4 @@ void TransposeGradKernel(const Context& dev_ctx,
                          const std::vector<int>& axis,
                          DenseTensor* x_grad);
 
-}  // namespace pten
+}  // namespace phi

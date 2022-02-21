@@ -12,35 +12,45 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/kernels/transpose_kernel.h"
 #include <vector>
-#include "paddle/pten/api/ext/dispatch.h"
-#include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/common/bfloat16.h"
-#include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
-#include "paddle/pten/kernels/impl/transpose_grad_kernel_impl.h"
+#include "paddle/phi/api/ext/dispatch.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
 
-namespace pten {
+#include "paddle/fluid/framework/gpu_utils.h"
+#include "paddle/fluid/operators/transpose_op.cu.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/kernels/impl/transpose_grad_kernel_impl.h"
 
+namespace phi {
 template <typename T, typename Context>
 void TransposeKernel(const Context& ctx,
                      const DenseTensor& x,
                      const std::vector<int>& axis,
                      DenseTensor* out) {
-  TransposeKernelImpl<T>(ctx, x, axis, out);
+  int rank = axis.size();
+  ctx.template Alloc<T>(out);
+  if (out->numel() == 0) {
+    return;
+  }
+  paddle::operators::TransposeGPUKernelDriver<T>(ctx, rank, x, axis, out);
 }
-}  // namespace pten
+
+}  // namespace phi
 
 PT_REGISTER_KERNEL(transpose,
-                   CPU,
+                   GPU,
                    ALL_LAYOUT,
-                   pten::TransposeKernel,
+                   phi::TransposeKernel,
                    bool,
                    float,
                    double,
                    int32_t,
                    int64_t,
-                   pten::dtype::bfloat16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

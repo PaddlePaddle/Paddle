@@ -14,11 +14,11 @@
 
 #pragma once
 
-#include "paddle/pten/kernels/funcs/math_function.h"
-#include "paddle/pten/kernels/transpose_grad_kernel.h"
-#include "paddle/pten/kernels/transpose_kernel.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/transpose_grad_kernel.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void TransposeKernelImpl(const Context& ctx,
@@ -77,4 +77,4 @@ void TransposeGradKernel(const Context& dev_ctx,
   TransposeKernelImpl<T, Context>(dev_ctx, out_grad, reversed_axis, x_grad);
 }
 
-}  // namespace pten
+}  // namespace phi

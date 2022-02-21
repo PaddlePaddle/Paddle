@@ -188,14 +188,14 @@ void TransposeNormal<DeviceContext, T>::operator()(
 }
 
 template <typename T>
-struct TransposeNormal<pten::GPUContext, T> {
-  void operator()(const pten::GPUContext& context,
+struct TransposeNormal<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext& context,
                   const DenseTensor& in,
                   DenseTensor* out,
                   const std::vector<int>& axis) {
     const int rank = axis.size();
-    auto in_stride = framework::stride(in.dims());
-    auto out_stride = framework::stride(out->dims());
+    auto in_stride = stride(in.dims());
+    auto out_stride = stride(out->dims());
     auto* in_ptr = in.data<T>();
     auto* out_ptr = out->data<T>();
 
