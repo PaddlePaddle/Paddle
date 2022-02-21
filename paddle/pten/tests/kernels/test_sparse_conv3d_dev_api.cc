@@ -72,8 +72,9 @@ void TestConv3d(const std::vector<int>& indices,
          indices.size() * sizeof(int));
   DenseTensor features_tensor(
       alloc.get(),
-      DenseTensorMeta(
-          DataType::FLOAT32, {non_zero_num, in_channels}, DataLayout::NCHW));
+      DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
+                      {non_zero_num, in_channels},
+                      DataLayout::NCHW));
   memcpy(features_tensor.mutable_data<T>(cpu),
          features.data(),
          features.size() * sizeof(T));
@@ -83,12 +84,14 @@ void TestConv3d(const std::vector<int>& indices,
   // TODO(zhangkaihuo) change layout to DHWCOC
   DenseTensor kernel_tensor(
       alloc.get(),
-      DenseTensorMeta(DataType::FLOAT32, kernel_dims, DataLayout::NCHW));
+      DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
+                      kernel_dims,
+                      DataLayout::NCHW));
   memcpy(kernel_tensor.mutable_data<T>(cpu),
          kernel.data(),
          kernel.size() * sizeof(T));
 
-  const T diff = 1e-3;
+  const float diff = 1e-1;
   if (false) {
     SparseCooTensor out = sparse::Conv3d<T>(dev_ctx_cpu,
                                             x_tensor,
@@ -111,8 +114,8 @@ void TestConv3d(const std::vector<int>& indices,
     ASSERT_EQ(cmp_indices, 0);
 
     for (uint64_t i = 0; i < correct_out_features.size(); i++) {
-      T tmp = std::fabs(correct_out_features[i] -
-                        out.non_zero_elements().data<T>()[i]);
+      float tmp = std::fabs(static_cast<float>(
+          correct_out_features[i] - out.non_zero_elements().data<T>()[i]));
       ASSERT_LT(tmp, diff);
     }
   }
@@ -139,8 +142,9 @@ void TestConv3d(const std::vector<int>& indices,
   pten::Copy(dev_ctx_gpu, indices_tensor, true, &d_indices_tensor);
   DenseTensor d_features_tensor(
       cuda_alloc.get(),
-      DenseTensorMeta(
-          DataType::FLOAT32, {non_zero_num, in_channels}, DataLayout::NCHW));
+      DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
+                      {non_zero_num, in_channels},
+                      DataLayout::NCHW));
   pten::Copy(dev_ctx_gpu, features_tensor, true, &d_features_tensor);
 
   SparseCooTensor d_x_tensor(d_indices_tensor, d_features_tensor, x_dims);
@@ -148,7 +152,9 @@ void TestConv3d(const std::vector<int>& indices,
   // TODO(zhangkaihuo) change layout to DHWCOC
   DenseTensor d_kernel_tensor(
       cuda_alloc.get(),
-      DenseTensorMeta(DataType::FLOAT32, kernel_dims, DataLayout::NCHW));
+      DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
+                      kernel_dims,
+                      DataLayout::NCHW));
   pten::Copy(dev_ctx_gpu, kernel_tensor, true, &d_kernel_tensor);
 
   SparseCooTensor d_out = sparse::Conv3d<T>(dev_ctx_gpu,
@@ -189,10 +195,13 @@ void TestConv3d(const std::vector<int>& indices,
 
   DenseTensor h_features_tensor(
       alloc.get(),
-      DenseTensorMeta(DataType::FLOAT32, {d_out.nnz()}, d_out.layout()));
+      DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
+                      {d_out.nnz()},
+                      d_out.layout()));
   pten::Copy(dev_ctx_gpu, d_out.non_zero_elements(), true, &h_features_tensor);
   for (uint64_t i = 0; i < correct_out_features.size(); i++) {
-    T tmp = std::fabs(correct_out_features[i] - h_features_tensor.data<T>()[i]);
+    float tmp = std::fabs(static_cast<float>(correct_out_features[i] -
+                                             h_features_tensor.data<T>()[i]));
     ASSERT_LT(tmp, diff);
   }
 #endif
@@ -375,12 +384,18 @@ TEST(DEV_API, performance) {
   const int non_zero_num = 60000;
   const int out_non_zero_num = 1187206;
   std::vector<int> indices(non_zero_num * 4), out_indices(out_non_zero_num * 4);
-  std::vector<float> features(non_zero_num * in_channels),
+  using pten::dtype::float16;
+  std::vector<float16> features(non_zero_num * in_channels),
       kernels(product(kernel_dims)),
       out_features(out_non_zero_num * out_channels);
 
   auto load_int = [](FILE* fp, int* data) { fscanf(fp, "%d\n", data); };
-  auto load_float = [](FILE* fp, float* data) { fscanf(fp, "%f\n", data); };
+  // auto load_float = [](FILE* fp, float* data) { fscanf(fp, "%f\n", data); };
+  auto load_fp16 = [](FILE* fp, pten::dtype::float16* data) {
+    float tmp;
+    fscanf(fp, "%f\n", &tmp);
+    *data = static_cast<pten::dtype::float16>(tmp);
+  };
 
   const std::string base_path = "/home/zhangkaihuo/project/Paddle/build/";
   LoadData(base_path + "indices.txt", &indices, non_zero_num * 4, load_int);
@@ -391,26 +406,26 @@ TEST(DEV_API, performance) {
   LoadData(base_path + "features.txt",
            &features,
            non_zero_num * in_channels,
-           load_float);
+           load_fp16);
   LoadData(
-      base_path + "kernels.txt", &kernels, product(kernel_dims), load_float);
+      base_path + "kernels.txt", &kernels, product(kernel_dims), load_fp16);
   LoadData(base_path + "out_features.txt",
            &out_features,
            out_non_zero_num * out_channels,
-           load_float);
+           load_fp16);
 
-  TestConv3d<float>(indices,
-                    features,
-                    x_dims,
-                    kernels,
-                    kernel_dims,
-                    out_indices,
-                    out_features,
-                    out_dims,
-                    non_zero_num,
-                    paddings,
-                    strides,
-                    dilations);
+  TestConv3d<pten::dtype::float16>(indices,
+                                   features,
+                                   x_dims,
+                                   kernels,
+                                   kernel_dims,
+                                   out_indices,
+                                   out_features,
+                                   out_dims,
+                                   non_zero_num,
+                                   paddings,
+                                   strides,
+                                   dilations);
 }
 
 }  // namespace tests
