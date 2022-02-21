@@ -50,11 +50,11 @@ class TensorWrapper {
 
     // shallow copy tensor_impl here
     if (no_need_buffer) {
-      if (pten::DenseTensor::classof(tensor.impl().get())) {
+      if (phi::DenseTensor::classof(tensor.impl().get())) {
         // Only Copy Meta
-        pten::DenseTensor* dense_tensor =
-            static_cast<pten::DenseTensor*>(tensor.impl().get());
-        auto tw_dense_tensor = std::make_shared<pten::DenseTensor>();
+        phi::DenseTensor* dense_tensor =
+            static_cast<phi::DenseTensor*>(tensor.impl().get());
+        auto tw_dense_tensor = std::make_shared<phi::DenseTensor>();
         tw_dense_tensor->set_meta(dense_tensor->meta());
         intermidiate_tensor_.set_impl(tw_dense_tensor);
       } else {
