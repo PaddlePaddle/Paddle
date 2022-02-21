@@ -291,7 +291,7 @@ __global__ void grid_sample_cuda_kernel(const int nthreads, int n, int out_c,
 
 template <typename T>
 __global__ void grid_sample_cuda_kernel_bilinear(
-    num_batch, int out_c, int out_h, int out_w, int in_h, int in_w,
+    int num_batch, int out_c, int out_h, int out_w, int in_h, int in_w,
     const T* input, const T* grid, T* output, const Mode mode,
     const PaddingMode padding_mode, bool align_corners) {
   int inp_sC = in_h * in_w;
