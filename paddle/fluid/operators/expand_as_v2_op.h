@@ -83,7 +83,7 @@ class ExpandAsV2Kernel : public framework::OpKernel<T> {
     auto* in0 = context.Input<Tensor>("X");
     auto in_dims = in0->dims();
     auto target_shape = context.Attr<std::vector<int>>("target_shape");
-    auto vec_in_dims = framework::vectorize<int>(in_dims);
+    auto vec_in_dims = phi::vectorize<int>(in_dims);
     auto diff = target_shape.size() - vec_in_dims.size();
     vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
     std::vector<int> repeat_times(vec_in_dims.size());
@@ -127,8 +127,8 @@ class ExpandAsV2Kernel : public framework::OpKernel<T> {
       bcast_dims[i] = repeat_times[i];
     }
 
-    framework::DDim new_in_dims = framework::make_ddim(vec_in_dims);
-    framework::DDim out_dims = framework::make_ddim(target_shape);
+    framework::DDim new_in_dims = phi::make_ddim(vec_in_dims);
+    framework::DDim out_dims = phi::make_ddim(target_shape);
 
     out0->Resize(out_dims);
     auto x = EigenTensor<T, Rank>::From(*in0, new_in_dims);
@@ -148,7 +148,7 @@ class ExpandAsV2GradKernel : public framework::OpKernel<T> {
     auto* in0 = context.Input<Tensor>("X");
     auto target_shape = context.Attr<std::vector<int>>("target_shape");
     auto x_dims = in0->dims();
-    auto vec_in_dims = framework::vectorize<int>(x_dims);
+    auto vec_in_dims = phi::vectorize<int>(x_dims);
     auto diff = target_shape.size() - vec_in_dims.size();
     vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
     std::vector<int> repeat_times(vec_in_dims.size());

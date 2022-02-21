@@ -19,9 +19,9 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/functors.h"
 #include "paddle/fluid/platform/transform.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+
 namespace paddle {
 namespace operators {
 
@@ -84,7 +84,7 @@ class CenterLossKernel : public framework::OpKernel<T> {
     int numel = centers_diffacc.numel();
     std::memset(centers_diffacc_data, 0, sizeof(T) * numel);
 
-    auto blas = math::GetBlas<DeviceContext, T>(ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
     int tLabel;
 
     const T *x_index;
@@ -145,8 +145,7 @@ class CenterLossGradKernel : public framework::OpKernel<T> {
         *context.template device_context<DeviceContext>().eigen_device();
     x_g->mutable_data<T>(context.GetPlace());
     // eigen matrix
-    auto x_grad =
-        EigenMatrix<T>::From(*x_g, framework::make_ddim({x_dims[0], cols}));
+    auto x_grad = EigenMatrix<T>::From(*x_g, phi::make_ddim({x_dims[0], cols}));
     x_grad.device(eigen_place) = grad_mat;
   }
 };

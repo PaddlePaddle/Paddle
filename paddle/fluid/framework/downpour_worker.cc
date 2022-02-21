@@ -16,9 +16,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/metrics.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 
-namespace pten {
+namespace phi {
 class DenseTensor;
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 namespace framework {
@@ -832,8 +832,8 @@ void DownpourWorker::TrainFiles() {
             if (var->IsType<framework::LoDTensor>()) {
               tensor = var->GetMutable<LoDTensor>();
               len = tensor->numel();
-            } else if (var->IsType<pten::SelectedRows>()) {
-              auto selected_rows = var->GetMutable<pten::SelectedRows>();
+            } else if (var->IsType<phi::SelectedRows>()) {
+              auto selected_rows = var->GetMutable<phi::SelectedRows>();
               tensor = selected_rows->mutable_value();
               len = tensor->numel();
             }
