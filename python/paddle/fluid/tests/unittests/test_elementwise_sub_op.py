@@ -60,20 +60,16 @@ class TestBF16ElementwiseOp(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['Y'], 'Out', no_grad_set=set("X"))
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
 
     def test_check_grad_ingore_y(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', no_grad_set=set('Y'))
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
 
 
 @skip_check_grad_ci(
