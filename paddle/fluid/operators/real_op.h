@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/complex_functors.h"
 
 namespace paddle {
 namespace operators {
@@ -31,12 +31,13 @@ class RealKernel : public framework::OpKernel<T> {
 
     auto numel = x->numel();
     auto* x_data = x->data<T>();
-    auto* out_data = out->mutable_data<math::Real<T>>(
-        ctx.GetPlace(), static_cast<size_t>(numel * sizeof(math::Real<T>)));
+    auto* out_data = out->mutable_data<phi::funcs::Real<T>>(
+        ctx.GetPlace(),
+        static_cast<size_t>(numel * sizeof(phi::funcs::Real<T>)));
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
-    math::RealFunctor<T> functor(x_data, out_data, numel);
+    phi::funcs::RealFunctor<T> functor(x_data, out_data, numel);
     for_range(functor);
   }
 };
@@ -51,13 +52,13 @@ class RealGradKernel : public framework::OpKernel<T> {
         ctx.Output<framework::Tensor>(framework::GradVarName("X"));
 
     auto numel = d_out->numel();
-    auto* dout_data = d_out->data<math::Real<T>>();
+    auto* dout_data = d_out->data<phi::funcs::Real<T>>();
     auto* dx_data = d_x->mutable_data<T>(
         ctx.GetPlace(), static_cast<size_t>(numel * sizeof(T)));
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
-    math::RealToComplexFunctor<T> functor(dout_data, dx_data, numel);
+    phi::funcs::RealToComplexFunctor<T> functor(dout_data, dx_data, numel);
     for_range(functor);
   }
 };

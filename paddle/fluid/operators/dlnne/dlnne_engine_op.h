@@ -217,7 +217,7 @@ class DlnneEngineOp : public framework::OperatorBase {
       }
       input_buffers[bind_index] = buffer;
 
-      auto t_shape = framework::vectorize<int64_t>(t.dims());
+      auto t_shape = phi::vectorize<int64_t>(t.dims());
       std::vector<int64_t> runtime_input_shape(t_shape.begin(), t_shape.end());
       for (auto &size : t_shape) {
         data_bytes = data_bytes * size;
@@ -269,7 +269,7 @@ class DlnneEngineOp : public framework::OperatorBase {
       auto *fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
 
       VLOG(4) << "out_shapes[bind_index] dim:" << out_shapes[bind_index].size();
-      fluid_t->Resize(framework::make_ddim(out_shapes[bind_index]));
+      fluid_t->Resize(phi::make_ddim(out_shapes[bind_index]));
 
       int32_t dtype;
       output_buffers[bind_index] = fluid_t->mutable_data<float>(dev_place);

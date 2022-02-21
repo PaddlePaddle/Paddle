@@ -18,8 +18,8 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/im2col.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -125,12 +125,12 @@ class ContextProjectFunctor {
             {sequence_height, 1, 1, context_length,
              sequence_width});  // output_height, output_width,
         // input_channels, filter_height, filter_width
-        out_t.Resize(framework::make_ddim(output_shape));
+        out_t.Resize(phi::make_ddim(output_shape));
 
         std::vector<int64_t> input_shape(
             {1, input_row_end - input_row_begin,
              sequence_width});  // input_channels, input_height, input_width
-        in_t.Resize(framework::make_ddim(input_shape));
+        in_t.Resize(phi::make_ddim(input_shape));
         im2col_ocf(context, in_t, dilation, stride, padding, &out_t);
         out_t.Resize({sequence_height, context_length * sequence_width});
       }
@@ -223,7 +223,7 @@ class ContextProjectGradFunctor {
     int input_row_begin, input_row_end;
     int sequence_height, sequence_width;
     sequence_width = in.dims()[1];
-    auto blas = math::GetBlas<DeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
 
     if (input_grad) {
       for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {
@@ -246,12 +246,12 @@ class ContextProjectGradFunctor {
               {sequence_height, 1, 1, context_length,
                sequence_width});  // output_height, output_width,
           // input_channels, filter_height, filter_width
-          out_t.Resize(framework::make_ddim(output_shape));
+          out_t.Resize(phi::make_ddim(output_shape));
 
           std::vector<int64_t> input_shape(
               {1, input_row_end - input_row_begin,
                sequence_width});  // input_channels, input_height, input_width
-          in_t.Resize(framework::make_ddim(input_shape));
+          in_t.Resize(phi::make_ddim(input_shape));
 
           col2im_ocf(context, out_t, dilation, stride, padding, &in_t);
           out_t.Resize({sequence_height, context_length * sequence_width});

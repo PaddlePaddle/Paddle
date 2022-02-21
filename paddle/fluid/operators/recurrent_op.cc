@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/recurrent_op.h"
 
-namespace pten {
+namespace phi {
 class DenseTensor;
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 namespace framework {
@@ -186,9 +186,9 @@ void RecurrentBase::LinkTensor(const framework::Scope &src_scope,
 // (seq_len, shape) -> return [seq_len] + list(shape)
 framework::DDim RecurrentBase::PrependDims(size_t seq_len,
                                            const framework::DDim &src) {
-  auto dims = framework::vectorize(src);
+  auto dims = phi::vectorize(src);
   dims.insert(dims.begin(), static_cast<int64_t>(seq_len));
-  return framework::make_ddim(dims);
+  return phi::make_ddim(dims);
 }
 
 RecurrentOp::RecurrentOp(const std::string &type,
@@ -232,9 +232,9 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
         [&seq_offset](const framework::Tensor &outside,
                       framework::Tensor *inside) {
           inside->ShareDataWith(outside.Slice(seq_offset, seq_offset + 1));
-          auto dims = framework::vectorize(inside->dims());
+          auto dims = phi::vectorize(inside->dims());
           dims.erase(dims.begin());
-          inside->Resize(framework::make_ddim(dims));
+          inside->Resize(phi::make_ddim(dims));
         });
 
     if (has_state) {
@@ -337,9 +337,9 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
         scope, Inputs(kOutputGrads), &cur_scope, Inputs(kOutputGrads),
         [&](const framework::Tensor &outside, framework::Tensor *inside) {
           inside->ShareDataWith(outside.Slice(seq_offset, seq_offset + 1));
-          auto dims = framework::vectorize(inside->dims());
+          auto dims = phi::vectorize(inside->dims());
           dims.erase(dims.begin());
-          inside->Resize(framework::make_ddim(dims));
+          inside->Resize(phi::make_ddim(dims));
         },
         true /*is_backward*/);
     auto og_set = List2Set(Inputs(kOutputGrads));
@@ -440,7 +440,7 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
           framework::AttributeMap attrs;
           attrs["dtype"] =
               framework::TransToProtoVarType(inside_tensor.dtype());
-          attrs["shape"] = framework::vectorize<int>(inside_tensor.dims());
+          attrs["shape"] = phi::vectorize<int>(inside_tensor.dims());
           attrs["value"] = 0.0f;
 
           auto zero_op = framework::OpRegistry::CreateOp(

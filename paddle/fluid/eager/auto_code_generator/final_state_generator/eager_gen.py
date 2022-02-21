@@ -930,8 +930,8 @@ std::unordered_map<std::string, std::vector<std::string>> core_ops_final_state_r
 def GenerateNodeCCFile(filepath, node_definition_str):
     file_contents = """
 #include "glog/logging.h"
-#include "paddle/pten/api/all.h"
-#include "paddle/pten/api/backward/backward_api.h"
+#include "paddle/phi/api/all.h"
+#include "paddle/phi/api/backward/backward_api.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/eager/utils.h"
@@ -976,7 +976,7 @@ def GenerateForwardHFile(filepath, forward_function_declaration_str):
 #pragma once
 #include "glog/logging.h"
 #include "paddle/fluid/eager/autograd_meta.h"
-#include "paddle/pten/api/all.h"
+#include "paddle/phi/api/all.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 

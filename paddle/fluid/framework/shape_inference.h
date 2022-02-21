@@ -18,9 +18,9 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/attribute.h"
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace framework {

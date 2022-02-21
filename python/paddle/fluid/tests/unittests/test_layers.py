@@ -1361,6 +1361,7 @@ class TestLayer(LayerTest):
                 feed_dict['word_{0}'.format(i)] = inp_word[i]
             static_rlt = self.get_static_graph_result(
                 feed=feed_dict, fetch_list=[nce_loss])[0]
+
         with self.static_graph():
             words = []
             for i in range(window_size):
@@ -1401,7 +1402,41 @@ class TestLayer(LayerTest):
                 feed=feed_dict, fetch_list=[nce_loss2])[0]
 
         with self.dynamic_graph():
-            # TODO(wuweilong): Add with _test_eager_guard():
+            with _test_eager_guard():
+                words = []
+                for i in range(window_size):
+                    words.append(base.to_variable(inp_word[i]))
+                sample_weights = layers.fill_constant(
+                    shape=[5, 1], dtype='float32', value=1)
+                emb = nn.Embedding(
+                    size=[dict_size, 32],
+                    param_attr='eager_emb.w',
+                    is_sparse=False)
+
+                embs3 = []
+                for i in range(window_size):
+                    if i == label_word:
+                        continue
+
+                    emb_rlt = emb(words[i])
+                    embs3.append(emb_rlt)
+
+                embs3 = layers.concat(
+                    input=embs3, axis=fluid.dygraph.to_variable(np.array([1])))
+                nce = nn.NCE(num_total_classes=dict_size,
+                             dim=embs3.shape[1],
+                             num_neg_samples=2,
+                             sampler="custom_dist",
+                             custom_dist=nid_freq_arr.tolist(),
+                             seed=seed,
+                             param_attr='eager_nce.w',
+                             bias_attr='eager_nce.b',
+                             sample_weight=sample_weights)
+
+                wl = fluid.layers.unsqueeze(words[label_word], axes=[0])
+                dy_eager_rlt = nce(embs3, wl)
+                dy_eager_rlt_value = dy_eager_rlt.numpy()
+
             words = []
             for i in range(window_size):
                 words.append(base.to_variable(inp_word[i]))
@@ -1436,9 +1471,75 @@ class TestLayer(LayerTest):
 
         self.assertTrue(np.allclose(static_rlt2, static_rlt))
         self.assertTrue(np.allclose(dy_rlt_value, static_rlt))
+        self.assertTrue(np.allclose(dy_eager_rlt_value, static_rlt))
 
         with self.dynamic_graph():
-            # TODO(wuweilong): Add with _test_eager_guard():
+            with _test_eager_guard():
+                custom_weight = np.random.randn(dict_size,
+                                                128).astype("float32")
+                weight_attr = fluid.ParamAttr(
+                    initializer=fluid.initializer.NumpyArrayInitializer(
+                        custom_weight))
+                words = []
+                for i in range(window_size):
+                    words.append(base.to_variable(inp_word[i]))
+                sample_weights = layers.fill_constant(
+                    shape=fluid.dygraph.to_variable(np.array([5, 1])),
+                    dtype='float32',
+                    value=1)
+                emb = nn.Embedding(
+                    size=[dict_size, 32],
+                    param_attr='eager_emb.w',
+                    is_sparse=False)
+
+                embs3 = []
+                for i in range(window_size):
+                    if i == label_word:
+                        continue
+
+                    emb_rlt = emb(words[i])
+                    embs3.append(emb_rlt)
+
+                embs3 = layers.concat(input=embs3, axis=1)
+                nce1 = nn.NCE(num_total_classes=dict_size,
+                              dim=embs3.shape[1],
+                              num_neg_samples=2,
+                              sampler="custom_dist",
+                              custom_dist=nid_freq_arr.tolist(),
+                              seed=seed,
+                              param_attr='eager_nce1.w',
+                              bias_attr='eager_nce1.b',
+                              sample_weight=sample_weights)
+
+                nce2 = nn.NCE(num_total_classes=dict_size,
+                              dim=embs3.shape[1],
+                              num_neg_samples=2,
+                              sampler="custom_dist",
+                              custom_dist=nid_freq_arr.tolist(),
+                              seed=seed,
+                              param_attr=weight_attr,
+                              bias_attr='eager_nce2.b',
+                              sample_weight=sample_weights)
+
+                wl = fluid.layers.unsqueeze(words[label_word], axes=[0])
+                nce1_loss = nce1(embs3, wl)
+                nce2_loss = nce2(embs3, wl)
+                self.assertFalse(
+                    np.array_equal(nce1_loss.numpy(), nce2_loss.numpy()))
+                nce2.weight.set_value(nce1.weight.numpy())
+                nce2.bias.set_value(nce1.bias)
+                nce1_loss = nce1(embs3, wl)
+                nce2_loss = nce2(embs3, wl)
+                self.assertTrue(
+                    np.array_equal(nce1_loss.numpy(), nce2_loss.numpy()))
+
+                nce2.weight = nce1.weight
+                nce2.bias = nce1.bias
+                self.assertTrue(
+                    np.array_equal(nce1.weight.numpy(), nce2.weight.numpy()))
+                self.assertTrue(
+                    np.array_equal(nce1.bias.numpy(), nce2.bias.numpy()))
+
             custom_weight = np.random.randn(dict_size, 128).astype("float32")
             weight_attr = fluid.ParamAttr(
                 initializer=fluid.initializer.NumpyArrayInitializer(
