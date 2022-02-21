@@ -32,3 +32,17 @@ PT_REGISTER_KERNEL(conj,
                    double,
                    int,
                    int64_t) {}
+
+PT_REGISTER_KERNEL(real,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::RealKernel,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+PT_REGISTER_KERNEL(imag,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ImagKernel,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

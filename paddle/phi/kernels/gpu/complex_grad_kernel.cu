@@ -12,14 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/complex_grad_kernel.h"
+#include "paddle/phi/kernels/impl/complex_grad_kernel_impl.h"
+
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/imag_grad_kernel.h"
-#include "paddle/phi/kernels/impl/imag_grad_kernel_impl.h"
 
 PT_REGISTER_KERNEL(imag_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::ImagGradKernel,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+PT_REGISTER_KERNEL(real_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::RealGradKernel,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
