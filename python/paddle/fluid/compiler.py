@@ -683,6 +683,17 @@ class IpuStrategy(object):
         
         Returns:
             None.
+
+        Examples:
+            .. code-block:: python
+
+                # required: ipu
+
+                import paddle
+
+                paddle.enable_static()
+                ipu_strategy = paddle.static.IpuStrategy()
+                ipu_strategy.add_custom_op('paddle_relu', 'popart_relu')
         """
         if popart_op is None:
             popart_op = paddle_op
@@ -697,17 +708,29 @@ class IpuStrategy(object):
         if not self.has_custom_ops:
             self.has_custom_ops = True
 
-    def set_option(self, conf):
+    def set_options(self, options):
         """
-        Set option from Dict
+        Set options from dict.
 
         Args:
-            conf(Dict): Dict of options.
+            options(dict): dict of options.
         
         Returns:
             None.
+
+        Examples:
+            .. code-block:: python
+
+                # required: ipu
+
+                import paddle
+
+                paddle.enable_static()
+                ipu_strategy = paddle.static.IpuStrategy()
+                conf = {'num_ipus':1, 'enable_fp16': True}
+                ipu_strategy.set_options(conf)
         """
-        self._ipu_strategy.set_option(conf)
+        self._ipu_strategy.set_option(options)
 
     def get_option(self, option):
         """
@@ -718,44 +741,19 @@ class IpuStrategy(object):
         
         Returns:
             option value.
+
+        Examples:
+            .. code-block:: python
+
+                # required: ipu
+
+                import paddle
+
+                paddle.enable_static()
+                ipu_strategy = paddle.static.IpuStrategy()
+                num_ipus = ipu_strategy.get_option('num_ipus')
         """
         return self._ipu_strategy.get_option(option)['value']
-
-    def enable_pattern(self, pattern):
-        """
-        Enable a popart pattern.
-
-        Args:
-            pattern(str): name of a pattern.
-        
-        Returns:
-            None.
-        """
-        self._ipu_strategy.enable_pattern(pattern)
-
-    def disable_pattern(self, pattern):
-        """
-        Disable a popart pattern.
-
-        Args:
-            pattern(str): name of a pattern.
-        
-        Returns:
-            None.
-        """
-        self._ipu_strategy.disable_pattern(pattern)
-
-    def is_pattern_enabled(self, pattern):
-        """
-        Check if a popart pattern is enabled.
-
-        Args:
-            pattern(str): name of a pattern.
-        
-        Returns:
-            bool.
-        """
-        return self._ipu_strategy.is_pattern_enabled(pattern)
 
     @property
     def num_ipus(self):
@@ -992,15 +990,3 @@ class IpuCompiledProgram(object):
             program.org_program = self._program
 
         return program
-
-    def save_onnx_model(self, file_name):
-        """
-        Save compiled IpuCompiledProgram in ONNX format.
-
-        Args:
-            file_name(str): path of onnx model.
-
-        Returns:
-            None
-        """
-        self._backend.save_model_proto(file_name)
