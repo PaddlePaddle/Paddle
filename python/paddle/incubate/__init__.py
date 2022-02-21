@@ -28,6 +28,7 @@ from .tensor import segment_min
 from .passes import fuse_resnet_unit_pass
 
 from . import nn  #noqa: F401
+from . import xpu
 
 __all__ = [
     'LookAhead',

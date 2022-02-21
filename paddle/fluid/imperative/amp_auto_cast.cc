@@ -15,6 +15,7 @@
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
@@ -22,6 +23,12 @@
 
 namespace paddle {
 namespace imperative {
+
+static inline bool need_to_cast_on_xpu(const std::string& kname) {
+  static std::unordered_set<std::string> kset{"Filter1", "Filter2", "Filter3",
+                                              "Input",   "Filter",  "X"};
+  return kset.find(kname) != kset.end();
+}
 
 class VarBase;
 
@@ -219,6 +226,7 @@ inline bool NeedCast(const std::shared_ptr<VarType>& var) {
   if (paddle::platform::is_gpu_place(place) ||
       paddle::platform::is_cuda_pinned_place(place) ||
       paddle::platform::is_xpu_place(place) ||
+      paddle::platform::is_cpu_place(place) ||
       paddle::platform::is_mlu_place(place) ||
       paddle::platform::is_npu_place(place) ||
       paddle::platform::is_npu_pinned_place(place)) {
@@ -324,7 +332,11 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
           pair.first != "X") {
         continue;
       }
-
+      if ((op_type == "resnet_basic_block" ||
+           op_type == "fused_conv2d_bias_act") &&
+          !need_to_cast_on_xpu(pair.first)) {
+        continue;
+      }
       if ((op_type == "fused_attention" || op_type == "fused_feedforward")) {
         if (pair.first == "LnScale" || pair.first == "LnBias" ||
             pair.first == "Ln2Scale" || pair.first == "Ln2Bias" ||
@@ -364,6 +376,12 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
       if ((op_type == "batch_norm" || op_type == "layer_norm" ||
            op_type == "sync_batch_norm") &&
           pair.first == "X" && dst_type == framework::proto::VarType::FP32) {
+        continue;
+      }
+      if ((op_type == "resnet_basic_block" ||
+           op_type == "fused_conv2d_bias_act") &&
+          need_to_cast_on_xpu(pair.first) &&
+          dst_type == framework::proto::VarType::FP32) {
         continue;
       }
       if ((op_type == "fused_attention" || op_type == "fused_feedforwad") &&
@@ -411,6 +429,11 @@ NameVarMap<VarType> CastPureFp16Inputs(const std::string& op_type,
     if ((op_type == "batch_norm" || op_type == "layer_norm" ||
          op_type == "sync_batch_norm") &&
         pair.first != "X") {
+      continue;
+    }
+    if ((op_type == "resnet_basic_block" ||
+         op_type == "fused_conv2d_bias_act") &&
+        !need_to_cast_on_xpu(pair.first)) {
       continue;
     }
     if ((op_type == "fused_attention" || op_type == "fused_feedforward")) {
