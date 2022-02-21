@@ -91,16 +91,10 @@ DEFINE_CUDA_ELEMENTWISE_OP(Divide)
 
 }  // namespace phi
 
-<<<<<<< HEAD:paddle/pten/kernels/gpu/math_kernel.cu
-using float16 = pten::dtype::float16;
-using bfloat16 = pten::dtype::bfloat16;
-using complex64 = ::pten::dtype::complex<float>;
-using complex128 = ::pten::dtype::complex<double>;
-=======
 using float16 = phi::dtype::float16;
+using bfloat16 = phi::dtype::bfloat16;
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
->>>>>>> dcfe198631058dbcd4fe6e887a4e514008ed1e68:paddle/phi/kernels/gpu/math_kernel.cu
 
 PT_REGISTER_KERNEL(add_raw,
                    GPU,
