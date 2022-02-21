@@ -27,19 +27,11 @@ void ErfinvGradKernel(const Context& ctx,
                       const DenseTensor& out,
                       const DenseTensor& out_grad,
                       DenseTensor* x_grad) {
-  // auto out = ctx.Input<framework::Tensor>("Out");
-  // auto dout = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-  // auto dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-  // dx->mutable_data<T>(ctx.GetPlace());
-
   ctx.template Alloc<T>(x_grad);
-
   auto eigen_out = EigenVector<T>::Flatten(out);
   auto eigen_dout = EigenVector<T>::Flatten(out_grad);
   auto eigen_dx = EigenVector<T>::Flatten(*x_grad);
-  // auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
   auto& place = *ctx.eigen_device();
-
   constexpr T half_sqrt_pi = static_cast<T>(1 / M_2_SQRTPI);
   eigen_dx.device(place) = half_sqrt_pi * eigen_dout * eigen_out.square().exp();
 }
