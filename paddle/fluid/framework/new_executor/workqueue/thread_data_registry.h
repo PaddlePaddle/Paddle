@@ -44,7 +44,6 @@ class ThreadDataRegistry {
   template <typename Alias = T,
             typename = std::enable_if_t<std::is_copy_assignable<Alias>::value>>
   void SetCurrentThreadData(const T& val) {
-    std::lock_guard<std::mutex> lock(lock_);
     CurrentThreadData() = val;
   }
 
