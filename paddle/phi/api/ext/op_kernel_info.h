@@ -635,7 +635,7 @@ void RegisterAllCustomKernel();
 
 //////////////// Custom kernel register macro /////////////////////
 // Refer to paddle/phi/core/kernel_registry.h, we can not use
-// PT_REGISTER_KERNEL directly, common macros and functions are
+// PHI_REGISTER_KERNEL directly, common macros and functions are
 // not ready for custom kernel now.
 // Difference: custom_kernel stores all kernels' info into global
 // g_custom_kernel_info_map before loading and registering into

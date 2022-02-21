@@ -505,5 +505,5 @@ void TraceInferMeta(
 
 }  // namespace phi
 
-PT_REGISTER_INFER_META_FN(copy_to, phi::CopyToInferMeta);
-PT_REGISTER_INFER_META_FN(split, phi::SplitInferMeta);
+PHI_REGISTER_INFER_META_FN(copy_to, phi::CopyToInferMeta);
+PHI_REGISTER_INFER_META_FN(split, phi::SplitInferMeta);
