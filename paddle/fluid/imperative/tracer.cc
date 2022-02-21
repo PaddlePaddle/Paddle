@@ -38,7 +38,7 @@ thread_local AmpLevel Tracer::amp_level_ = AmpLevel::O0;
 
 thread_local phi::DataType Tracer::amp_dtype_ = phi::DataType::FLOAT32;
 
-static std::shared_ptr<Tracer> g_current_tracer(nullptr);
+static thread_local std::shared_ptr<Tracer> g_current_tracer(nullptr);
 
 const std::shared_ptr<Tracer>& GetCurrentTracer() { return g_current_tracer; }
 

@@ -25,7 +25,7 @@ from .tracer import Tracer
 import logging
 from ..data_feeder import convert_dtype
 import warnings
-from ..framework import _get_paddle_place, _in_eager_mode
+from ..framework import _get_paddle_place, _in_eager_mode, thread_local_data
 import paddle
 
 __all__ = [
@@ -79,7 +79,13 @@ def program_desc_tracing_guard(enable):
             tracer._enable_program_desc_tracing = original_val
 
 
-_functional_dygraph_context_manager = None
+thread_local_data._functional_dygraph_context_manager = None
+
+
+def __functional_dygraph_context_manager():
+    return None if not hasattr(
+        thread_local_data, '_functional_dygraph_context_manager'
+    ) else thread_local_data._functional_dygraph_context_manager
 
 
 @signature_safe_contextmanager
@@ -185,11 +191,11 @@ def enable_dygraph(place=None):
             print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
 
     """
-    global _functional_dygraph_context_manager
-    if _functional_dygraph_context_manager is None:
-        _functional_dygraph_context_manager = guard(
+    global thread_local_data
+    if __functional_dygraph_context_manager() is None:
+        thread_local_data._functional_dygraph_context_manager = guard(
             place=_get_paddle_place(place))
-        _functional_dygraph_context_manager.__enter__()
+        thread_local_data._functional_dygraph_context_manager.__enter__()
 
         # call disable_dygraph when Python exit
         CleanupFuncRegistrar.register(disable_dygraph)
@@ -219,10 +225,11 @@ def disable_dygraph():
             print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
 
     """
-    global _functional_dygraph_context_manager
-    if _functional_dygraph_context_manager is not None:
-        _functional_dygraph_context_manager.__exit__(*sys.exc_info())
-        _functional_dygraph_context_manager = None
+    global thread_local_data
+    if __functional_dygraph_context_manager() is not None:
+        thread_local_data._functional_dygraph_context_manager.__exit__(
+            *sys.exc_info())
+        thread_local_data._functional_dygraph_context_manager = None
 
 
 @signature_safe_contextmanager

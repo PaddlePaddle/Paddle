@@ -41,6 +41,7 @@ import warnings
 import functools
 from .variable_index import _getitem_impl_, _setitem_impl_
 from paddle import _C_ops
+import threading
 
 __all__ = [
     'Program',
@@ -73,7 +74,9 @@ GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 
-_dygraph_tracer_ = None
+thread_local_data = threading.local()
+thread_local_data._dygraph_tracer_ = None
+
 _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
@@ -81,6 +84,12 @@ _current_pipeline_stage = None
 _already_patch_eager_tensor = False
 _global_flags_ = core.globals()
 core._disable_eager_mode()
+
+
+def _dygraph_tracer():
+    return None if not hasattr(
+        thread_local_data,
+        '_dygraph_tracer_') else thread_local_data._dygraph_tracer_
 
 
 @signature_safe_contextmanager
@@ -95,7 +104,7 @@ def _test_eager_guard(tracer=None):
         monkey_patch_math_varbase()
         _already_patch_eager_tensor = True
     if tracer is None:
-        core._set_eager_tracer(_dygraph_tracer_)
+        core._set_eager_tracer(_dygraph_tracer())
     else:
         core._set_eager_tracer(tracer)
     try:
@@ -298,7 +307,7 @@ def in_dygraph_mode():
             print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
 
     """
-    return _dygraph_tracer_ is not None
+    return _dygraph_tracer() is not None
 
 
 def _in_eager_mode():
@@ -381,10 +390,6 @@ static_only = wrap_decorator(_static_only_)
 fake_interface_only = wrap_decorator(_fake_interface_only_)
 
 
-def _dygraph_tracer():
-    return _dygraph_tracer_
-
-
 def _global_flags():
     return _global_flags_
 
@@ -435,9 +440,9 @@ def _current_expected_place():
 
 
 def _set_dygraph_tracer_expected_place(place):
-    global _dygraph_tracer_
-    if _dygraph_tracer_ is not None:
-        _dygraph_tracer_._expected_place = place
+    global thread_local_data
+    if _dygraph_tracer() is not None:
+        _dygraph_tracer()._expected_place = place
 
 
 def _set_expected_place(place):
@@ -6743,16 +6748,18 @@ def _get_var(name, program=None):
 
 @signature_safe_contextmanager
 def _dygraph_guard(tracer):
-    global _dygraph_tracer_
-    tmp_tracer = _dygraph_tracer_
-    _dygraph_tracer_ = tracer
+    global thread_local_data
+    tmp_tracer = _dygraph_tracer()
+    thread_local_data._dygraph_tracer_ = tracer
     core._switch_tracer(tracer)
 
     try:
         yield
     finally:
-        core._switch_tracer(tmp_tracer)
-        _dygraph_tracer_ = tmp_tracer
+        if core:
+            core._switch_tracer(tmp_tracer)
+        if thread_local_data:
+            thread_local_data._dygraph_tracer_ = tmp_tracer
 
 
 @signature_safe_contextmanager
@@ -6768,7 +6775,7 @@ def _dygraph_place_guard(place):
         yield
     finally:
         _global_expected_place_ = tmp_place
-        if _in_eager_mode():
+        if core and _in_eager_mode():
             core.eager._set_expected_place(_global_expected_place_)
         _set_dygraph_tracer_expected_place(_global_expected_place_)
 
