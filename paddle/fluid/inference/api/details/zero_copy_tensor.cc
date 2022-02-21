@@ -41,7 +41,7 @@ void Tensor::Reshape(const std::vector<int> &shape) {
       var, paddle::platform::errors::PreconditionNotMet(
                "No tensor called [%s] in the runtime scope", name_));
   auto *tensor = var->GetMutable<paddle::framework::LoDTensor>();
-  tensor->Resize(pten::make_ddim(shape));
+  tensor->Resize(phi::make_ddim(shape));
 }
 
 void Tensor::ReshapeStrings(const size_t &shape) {
@@ -446,17 +446,17 @@ std::vector<int> Tensor::shape() const {
     // at last nhwC, so for dim==2 these layouts are the same and nothing should
     // be done. Similarly for dim==1 when you have just one possible
     // combination.
-    if (tensor->dims().size() < 3) return pten::vectorize<int>(tensor->dims());
+    if (tensor->dims().size() < 3) return phi::vectorize<int>(tensor->dims());
     if (out_layout == paddle::framework::DataLayout::kNHWC) {
-      auto dims = pten::vectorize<int>(tensor->dims());
+      auto dims = phi::vectorize<int>(tensor->dims());
       std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
       return dims;
     } else {
-      return pten::vectorize<int>(tensor->dims());
+      return phi::vectorize<int>(tensor->dims());
     }
   }
 #endif
-  return pten::vectorize<int>(tensor->dims());
+  return phi::vectorize<int>(tensor->dims());
 }
 
 void Tensor::SetLoD(const std::vector<std::vector<size_t>> &x) {

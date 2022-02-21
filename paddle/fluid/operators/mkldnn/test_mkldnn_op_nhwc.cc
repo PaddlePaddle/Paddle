@@ -52,7 +52,7 @@ TEST(test_pool2d_transpose_nhwc, cpu_place) {
   std::uniform_real_distribution<float> dist(static_cast<float>(10.0),
                                              static_cast<float>(20.0));
   std::mt19937 engine;
-  size_t numel = static_cast<size_t>(pten::product(dims));
+  size_t numel = static_cast<size_t>(phi::product(dims));
   input_name.tensor->Resize(dims);
   auto data_ptr = input_name.tensor->mutable_data<float>(p);
   for (size_t i = 0; i < numel; ++i) {
@@ -104,7 +104,7 @@ TEST(test_pool2d_relu_relu_nhwc, cpu_place) {
   std::uniform_real_distribution<float> dist(static_cast<float>(10.0),
                                              static_cast<float>(20.0));
   std::mt19937 engine;
-  size_t numel = static_cast<size_t>(pten::product(dims));
+  size_t numel = static_cast<size_t>(phi::product(dims));
   input_name.tensor->Resize(dims);
   auto data_ptr = input_name.tensor->mutable_data<float>(p);
   for (size_t i = 0; i < numel; ++i) {

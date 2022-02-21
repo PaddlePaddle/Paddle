@@ -92,8 +92,8 @@ class MulGradXPUKernel : public framework::OpKernel<T> {
                         : static_cast<const Tensor&>(*y);
     auto* dout = ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
     Tensor dout_mat;
-    dout_mat.Resize({pten::flatten_to_2d(x->dims(), x_num_col_dims)[0],
-                     pten::flatten_to_2d(y->dims(), y_num_col_dims)[1]});
+    dout_mat.Resize({phi::flatten_to_2d(x->dims(), x_num_col_dims)[0],
+                     phi::flatten_to_2d(y->dims(), y_num_col_dims)[1]});
     auto* dx = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<framework::LoDTensor>(framework::GradVarName("Y"));
     if (dx != nullptr) {

@@ -19,7 +19,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/pten/kernels/funcs/concat_funcs.h"
+#include "paddle/phi/kernels/funcs/concat_funcs.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include <paddle/fluid/platform/mkldnn_helper.h>
@@ -51,15 +51,15 @@ class ConcatOp : public framework::OperatorWithKernel {
 
     if (ctx->HasInput("AxisTensor")) {
       auto out_dims =
-          pten::make_ddim(std::vector<int>(inputs_dims[0].size(), -1));
+          phi::make_ddim(std::vector<int>(inputs_dims[0].size(), -1));
       ctx->SetOutputDim("Out", out_dims);
       ctx->ShareLoD("X", /*->*/ "Out");
     } else {
       size_t axis =
           ComputeAxis(static_cast<int64_t>(ctx->Attrs().Get<int>("axis")),
                       static_cast<int64_t>(inputs_dims[0].size()));
-      framework::DDim out_dims = pten::funcs::ComputeAndCheckShape(
-          ctx->IsRuntime(), inputs_dims, axis);
+      framework::DDim out_dims =
+          phi::funcs::ComputeAndCheckShape(ctx->IsRuntime(), inputs_dims, axis);
       if (out_dims[axis] < 0) {
         out_dims[axis] = -1;
       }

@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/dynload/cudnn.h"
-#include "paddle/pten/backends/dynload/cudnn.h"
+#include "paddle/phi/backends/dynload/cudnn.h"
 
 namespace paddle {
 namespace platform {
@@ -43,7 +43,7 @@ CUDNN_DNN_ROUTINE_EACH_AFTER_R7(DEFINE_WRAP);
 CUDNN_DNN_ROUTINE_EACH_R8(DEFINE_WRAP);
 #endif
 
-bool HasCUDNN() { return pten::dynload::HasCUDNN(); }
+bool HasCUDNN() { return phi::dynload::HasCUDNN(); }
 
 }  // namespace dynload
 }  // namespace platform

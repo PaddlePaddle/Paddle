@@ -82,7 +82,7 @@ class CumSumNPUKernel : public framework::OpKernel<T> {
       Tensor new_x(x->type());
       new_x.ShareDataWith(*x);
 
-      new_x.Resize(pten::make_ddim({x->numel()}));
+      new_x.Resize(phi::make_ddim({x->numel()}));
 
       CumsumImp(new_x, out, attr_input, ctx);
     } else {

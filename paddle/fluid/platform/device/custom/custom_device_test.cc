@@ -78,22 +78,22 @@ void TestTensorMutableData(const paddle::platform::Place& place) {
   float* p1 = nullptr;
   float* p2 = nullptr;
   // initialization
-  p1 = src_tensor.mutable_data<float>(pten::make_ddim({1, 2, 3}), place);
+  p1 = src_tensor.mutable_data<float>(phi::make_ddim({1, 2, 3}), place);
   auto p1_holder = src_tensor.Holder();
   EXPECT_NE(p1, nullptr);
   // set src_tensor a new dim with large size
   // momery is supposed to be re-allocated
-  p2 = src_tensor.mutable_data<float>(pten::make_ddim({3, 1024}), place);
+  p2 = src_tensor.mutable_data<float>(phi::make_ddim({3, 1024}), place);
   auto p2_holder = src_tensor.Holder();
   EXPECT_NE(p2, nullptr);
   EXPECT_NE(p1_holder.get(), p2_holder.get());
   // set src_tensor a new dim with same size
   // momery block is supposed to be unchanged
-  p1 = src_tensor.mutable_data<float>(pten::make_ddim({2, 2, 3}), place);
+  p1 = src_tensor.mutable_data<float>(phi::make_ddim({2, 2, 3}), place);
   EXPECT_EQ(p1, p2);
   // set src_tensor a new dim with smaller size
   // momery block is supposed to be unchanged
-  p2 = src_tensor.mutable_data<float>(pten::make_ddim({2, 2}), place);
+  p2 = src_tensor.mutable_data<float>(phi::make_ddim({2, 2}), place);
   EXPECT_EQ(p1, p2);
 }
 
@@ -101,7 +101,7 @@ void TestTensorShareDataWith(const paddle::platform::Place& place) {
   std::cout << "TestTensorShareDataWith on " << place << std::endl;
   paddle::framework::Tensor src_tensor;
   paddle::framework::Tensor dst_tensor;
-  src_tensor.mutable_data<int>(pten::make_ddim({2, 3, 4}), place);
+  src_tensor.mutable_data<int>(phi::make_ddim({2, 3, 4}), place);
   dst_tensor.ShareDataWith(src_tensor);
   ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
 }
@@ -114,7 +114,7 @@ void TestTensorUtils(const paddle::platform::Place& place) {
   paddle::framework::Tensor gpu_tensor;
   paddle::framework::Tensor dst_tensor;
 
-  int* src_ptr = src_tensor.mutable_data<int>(pten::make_ddim({3, 3}),
+  int* src_ptr = src_tensor.mutable_data<int>(phi::make_ddim({3, 3}),
                                               paddle::platform::CPUPlace());
 
   int arr[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};

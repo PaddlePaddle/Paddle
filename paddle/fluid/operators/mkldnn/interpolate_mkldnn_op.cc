@@ -37,8 +37,8 @@ class InterpolateMKLDNNHandler
                            const Tensor* x, Tensor* z)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::resampling_forward>(
             engine, cpu_place) {
-    const auto src_x_tz = pten::vectorize(x->dims());
-    const auto dst_tz = pten::vectorize(z->dims());
+    const auto src_x_tz = phi::vectorize(x->dims());
+    const auto dst_tz = phi::vectorize(z->dims());
     const auto src_md = dnnl::memory::desc(
         src_x_tz, platform::MKLDNNGetDataType<T>(), x->format());
     const auto dst_md = memory::desc(dst_tz, platform::MKLDNNGetDataType<T>(),
@@ -56,7 +56,7 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
     const auto& in_dims = x->dims();
 
     const framework::DDim in_dhw_dims =
-        pten::slice_ddim(in_dims, 2, in_dims.size());
+        phi::slice_ddim(in_dims, 2, in_dims.size());
 
     std::vector<int> out_dims;
     out_dims.reserve(5);
@@ -108,7 +108,7 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
       }
       if (scale[0] > 0.0f && scale[1] > 0.0f && scale[2] > 0.0f) {
         int j = 0;
-        std::vector<int64_t> in_dhw_vec = pten::vectorize(in_dhw_dims);
+        std::vector<int64_t> in_dhw_vec = phi::vectorize(in_dhw_dims);
         std::transform(
             in_dhw_vec.begin(), in_dhw_vec.end(), out_dims.begin(),
             [&](int64_t i) -> int { return static_cast<int>(i * scale[j++]); });
@@ -141,7 +141,7 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
                                      : dnnl::algorithm::resampling_linear;
 
     const auto out_dims_vec = ComputeOutputShape(ctx);
-    framework::DDim dim_out = pten::make_ddim(out_dims_vec);
+    framework::DDim dim_out = phi::make_ddim(out_dims_vec);
     z->Resize(dim_out);
 
     InterpolateMKLDNNHandler<T> handler(algo, mkldnn_engine, ctx.GetPlace(), x,

@@ -56,8 +56,8 @@ class QuantOpKernel : public framework::OpKernel<T> {
     const auto& engine = dev_ctx.GetEngine();
 
     std::vector<primitive> pipeline;
-    auto src_tz = pten::vectorize<int64_t>(input->dims());
-    auto dst_tz = pten::vectorize<int64_t>(output->dims());
+    auto src_tz = phi::vectorize<int64_t>(input->dims());
+    auto dst_tz = phi::vectorize<int64_t>(output->dims());
 
     const T* input_data = input->data<T>();
 

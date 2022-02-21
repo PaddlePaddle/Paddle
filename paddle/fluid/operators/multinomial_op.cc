@@ -76,7 +76,7 @@ class MultinomialOp : public framework::OperatorWithKernel {
             "The number of samples should be > 0, but got %d.", num_samples));
     out_dims[x_rank - 1] = num_samples;
 
-    ctx->SetOutputDim("Out", pten::make_ddim(out_dims));
+    ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
   }
 };
 

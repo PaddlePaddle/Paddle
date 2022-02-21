@@ -6276,7 +6276,8 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
         return dygraph_utils._append_activation_in_dygraph(out, act)
 
     check_variable_and_dtype(x, 'x', [
-        'float16', 'float32', 'float64', 'int32', 'int64', 'bool', 'uint16'
+        'float16', 'float32', 'float64', 'int16', 'int32', 'int64', 'bool',
+        'uint16'
     ], 'reshape')
     check_type(shape, 'shape', (list, tuple, Variable), 'reshape')
     check_type(actual_shape, 'actual_shape', (Variable, type(None)), 'reshape')
@@ -6456,10 +6457,10 @@ def unsqueeze(input, axes, name=None):
         return out
 
     check_type(axes, 'axis/axes', (int, list, tuple, Variable), 'unsqueeze')
-    check_variable_and_dtype(
-        input, 'input',
-        ['float16', 'float32', 'float64', 'bool', 'int8', 'int32', 'int64'],
-        'unsqueeze')
+    check_variable_and_dtype(input, 'input', [
+        'float16', 'float32', 'float64', 'bool', 'int8', 'int16', 'int32',
+        'int64'
+    ], 'unsqueeze')
     helper = LayerHelper("unsqueeze2", **locals())
     inputs = {"X": input}
     attrs = {}
@@ -8539,9 +8540,9 @@ def gather_nd(input, index, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.gather_nd(input, index)
-    check_variable_and_dtype(input, 'input',
-                             ['bool', 'float32', 'float64', 'int32', 'int64'],
-                             'gather_np')
+    check_variable_and_dtype(
+        input, 'input',
+        ['bool', 'float32', 'float64', 'int16', 'int32', 'int64'], 'gather_np')
     check_variable_and_dtype(index, 'index', ['int32', 'int64'], 'gather_np')
     helper = LayerHelper('gather_nd', **locals())
     dtype = helper.input_dtype()

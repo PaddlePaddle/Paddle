@@ -16,7 +16,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/pten/core/ddim.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace operators {
@@ -59,7 +59,7 @@ class GatherNdOp : public framework::OperatorWithKernel {
       result_dims.emplace_back(x_dims[i]);
     }
 
-    ctx->SetOutputDim("Out", pten::make_ddim(result_dims));
+    ctx->SetOutputDim("Out", phi::make_ddim(result_dims));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 
@@ -183,7 +183,9 @@ REGISTER_OPERATOR(gather_nd_grad, ops::GatherNdGradOp,
 REGISTER_OP_CPU_KERNEL(gather_nd, ops::GatherNdOpKernel<float>,
                        ops::GatherNdOpKernel<double>,
                        ops::GatherNdOpKernel<int64_t>,
-                       ops::GatherNdOpKernel<int>, ops::GatherNdOpKernel<bool>,
+                       ops::GatherNdOpKernel<int>,
+                       ops::GatherNdOpKernel<int16_t>,
+                       ops::GatherNdOpKernel<bool>,
                        ops::GatherNdOpKernel<uint8_t>);
 
 REGISTER_OP_CPU_KERNEL(gather_nd_grad, ops::GatherNdGradOpKernel<float>,

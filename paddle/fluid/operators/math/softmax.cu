@@ -16,7 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/operators/math/softmax_impl.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -35,7 +35,7 @@ void SoftmaxCUDNNFunctor<T>::operator()(
   // ------------------- cudnn descriptors ---------------------
   ScopedTensorDescriptor xDesc;
   ScopedTensorDescriptor yDesc;
-  std::vector<int> cudnn_tensor_dims = pten::vectorize<int>(X->dims());
+  std::vector<int> cudnn_tensor_dims = phi::vectorize<int>(X->dims());
   DataLayout layout = DataLayout::kNCHW;
   if (cudnn_tensor_dims.size() == 5) {
     layout = DataLayout::kNCDHW;
@@ -76,7 +76,7 @@ void SoftmaxGradCUDNNFunctor<T>::operator()(
   ScopedTensorDescriptor yDesc;
   ScopedTensorDescriptor dyDesc;
   ScopedTensorDescriptor dxDesc;
-  std::vector<int> cudnn_tensor_dims = pten::vectorize<int>(Y->dims());
+  std::vector<int> cudnn_tensor_dims = phi::vectorize<int>(Y->dims());
   DataLayout layout = DataLayout::kNCHW;
   if (cudnn_tensor_dims.size() == 5) {
     layout = DataLayout::kNCDHW;

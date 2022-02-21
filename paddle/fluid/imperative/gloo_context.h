@@ -59,7 +59,7 @@ class GLOOParallelContext : public ParallelContext {
 
  private:
   void AllReduce(const framework::Tensor& src, framework::Tensor* dst);
-  void AllReduce(const pten::SelectedRows& src, pten::SelectedRows* dst);
+  void AllReduce(const phi::SelectedRows& src, phi::SelectedRows* dst);
 
  private:
   std::unique_ptr<platform::CPUDeviceContext> device_;
