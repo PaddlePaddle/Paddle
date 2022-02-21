@@ -39,10 +39,10 @@ if [ "${BUILD_DOC}" = "true" ] &&  [ -x /usr/local/bin/sphinx-build ] ; then
     export OUTPUTDIR=/docs
     export VERSIONSTR=$(echo ${BRANCH} | sed 's@release/@@g')
 
-    if [ -d ${FluidDoc} ] ; then
-        echo "$0: rm -rf ${FluidDoc}"
-        rm -rf ${FluidDoc}
-        git clone https://github.com/PaddlePaddle/docs.git ${FluidDoc}
+    if [ -d ${FLUIDDOCDIR} ] ; then
+        echo "$0: rm -rf ${FLUIDDOCDIR}"
+        rm -rf ${FLUIDDOCDIR}
+        git clone https://github.com/PaddlePaddle/docs.git ${FLUIDDOCDIR}
         # TODO: checkout the required docs PR?
     fi
     if [ -d ${OUTPUTDIR} ] ; then
