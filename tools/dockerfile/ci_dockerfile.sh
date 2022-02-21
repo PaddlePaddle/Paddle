@@ -15,11 +15,10 @@
 # limitations under the License.
 
 function make_ubuntu_dockerfile(){
-cat > Dockerfile.cuda10_cudnn7_gcc82_ubuntu16 << EOF
-    FROM paddlepaddle/paddle:latest-gpu-cuda10.1-cudnn7-gcc82-dev
-    RUN apt-get update
-    RUN apt install -y pigz zstd
-EOF
+echo -e 'FROM paddlepaddle/paddle:latest-gpu-cuda10.1-cudnn7-gcc82-dev
+RUN apt-get update && apt install -y pigz zstd
+RUN mkdir -p /root/.pip && echo "[global]" >/root/.pip/pip.conf && echo "index-url = https://pypi.tuna.tsinghua.edu.cn/simple" >>/root/.pip/pip.conf
+RUN pip3.7 install PyGithub wheel && pip3.8 install PyGithub wheel && pip3.9 install PyGithub wheel' >Dockerfile.cuda10_cudnn7_gcc82_ubuntu16
 }
 
 
