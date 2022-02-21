@@ -598,6 +598,8 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetMinInputShape(config_.min_input_shape_);
   argument_.SetMaxInputShape(config_.max_input_shape_);
   argument_.SetOptimInputShape(config_.optim_input_shape_);
+  argument_.SetTensorRtTunedDynamicShape(
+      config_.tuned_tensorrt_dynamic_shape());
   if (config_.use_gpu() && config_.tensorrt_engine_enabled()) {
     LOG(INFO) << "TensorRT subgraph engine is enabled";
     argument_.SetUseTensorRT(true);
@@ -611,8 +613,6 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetTensorRtUseCalibMode(config_.trt_use_calib_mode_);
     argument_.SetCloseTrtPluginFp16(config_.disable_trt_plugin_fp16_);
     argument_.SetTensorRtShapeRangeInfoPath(config_.shape_range_info_path());
-    argument_.SetTensorRtTunedDynamicShape(
-        config_.tuned_tensorrt_dynamic_shape());
     argument_.SetTensorRtAllowBuildAtRuntime(
         config_.trt_allow_build_at_runtime());
     argument_.SetTensorRtUseInspector(config_.trt_use_inspector_);

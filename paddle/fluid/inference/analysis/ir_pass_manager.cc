@@ -67,6 +67,9 @@ void IRPassManager::CreatePasses(Argument *argument,
                                      argument->min_input_shape()));
     pass->Set("optim_input_shape", new std::map<std::string, std::vector<int>>(
                                        argument->optim_input_shape()));
+    // tuned trt dynamic_shape
+    pass->Set("trt_tuned_dynamic_shape",
+              new bool(argument->tensorrt_tuned_dynamic_shape()));
     bool with_dynamic_shape = (argument->max_input_shape().size() > 0 &&
                                argument->min_input_shape().size() > 0 &&
                                argument->optim_input_shape().size() > 0) ||
@@ -171,8 +174,6 @@ void IRPassManager::CreatePasses(Argument *argument,
       // tuned trt dynamic_shape
       pass->Set("trt_shape_range_info_path",
                 new std::string(argument->tensorrt_shape_range_info_path()));
-      pass->Set("trt_tuned_dynamic_shape",
-                new bool(argument->tensorrt_tuned_dynamic_shape()));
       pass->Set("trt_allow_build_at_runtime",
                 new bool(argument->tensorrt_allow_build_at_runtime()));
       pass->Set("trt_disabled_ops", new std::vector<std::string>(
