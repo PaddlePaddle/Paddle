@@ -117,7 +117,7 @@ StreamSafeCUDAAllocator::~StreamSafeCUDAAllocator() {
 
 bool StreamSafeCUDAAllocator::IsAllocThreadSafe() const { return true; }
 
-pten::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
+phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
   platform::RecordEvent("StreamSafeCUDAAllocator::Allocate",
                         platform::TracerEventType::UserDefined, 9 /*level*/);
   ProcessUnfreedAllocations();
@@ -146,9 +146,13 @@ pten::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
   return allocation;
 }
 
+<<<<<<< HEAD
 void StreamSafeCUDAAllocator::FreeImpl(pten::Allocation* allocation) {
   platform::RecordEvent("StreamSafeCUDAAllocator::Free",
                         platform::TracerEventType::UserDefined, 9 /*level*/);
+=======
+void StreamSafeCUDAAllocator::FreeImpl(phi::Allocation* allocation) {
+>>>>>>> develop
   StreamSafeCUDAAllocation* stream_safe_cuda_allocation =
       dynamic_cast<StreamSafeCUDAAllocation*>(allocation);
   PADDLE_ENFORCE_NOT_NULL(stream_safe_cuda_allocation,

@@ -17,7 +17,7 @@
 #include <math.h>
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/imperative/layer.h"
-#include "paddle/pten/api/all.h"
+#include "paddle/phi/api/all.h"
 
 /* MLP Configurations */
 // Out1 = X[M, N] x W[N, K] + B[K]

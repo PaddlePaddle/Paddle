@@ -34,8 +34,8 @@ inline void FillNPU(Tensor *dst, T val,
       context.template device_context<paddle::platform::NPUDeviceContext>()
           .stream();
 
-  const auto &runner = NpuOpRunner(
-      "FillD", {value}, {*dst}, {{"dims", framework::vectorize(dst->dims())}});
+  const auto &runner = NpuOpRunner("FillD", {value}, {*dst},
+                                   {{"dims", phi::vectorize(dst->dims())}});
   runner.Run(stream);
 }
 
@@ -120,8 +120,7 @@ void NPUGetIdsEmbedding(const framework::ExecutionContext &context) {
   ids_t_local.mutable_data<TIds>(ids_t->dims(), context.GetPlace());
   shard_index<TIds>(*table_t, *ids_t, start_idx, ids_t_local, context);
 
-  auto pad_shape =
-      framework::make_ddim({table_t->dims()[0] + 1, table_t->dims()[1]});
+  auto pad_shape = phi::make_ddim({table_t->dims()[0] + 1, table_t->dims()[1]});
   framework::LoDTensor table_t_pad;
 
   size_t mem_size =
@@ -193,8 +192,7 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
   shard_index<TIds>(*table_t, *ids_t, start_idx, ids_t_local, context);
 
   // padding table_t -> table_t_pad
-  auto pad_shape =
-      framework::make_ddim({table_t->dims()[0] + 1, table_t->dims()[1]});
+  auto pad_shape = phi::make_ddim({table_t->dims()[0] + 1, table_t->dims()[1]});
   framework::LoDTensor table_t_pad;
 
   // set table_t_pad to zero

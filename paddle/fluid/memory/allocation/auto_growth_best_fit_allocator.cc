@@ -46,7 +46,7 @@ AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
       chunk_size_(std::max(AlignedSize(chunk_size, alignment), alignment)),
       allow_free_idle_chunk_(allow_free_idle_chunk) {}
 
-pten::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
+phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
     size_t unaligned_size) {
   platform::RecordEvent("AutoGrowthBestFitAllocator::Allocate",
                         platform::TracerEventType::UserDefined, 9 /*level*/);
@@ -110,7 +110,7 @@ pten::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
   return new BlockAllocation(block_it);
 }
 
-void AutoGrowthBestFitAllocator::FreeImpl(pten::Allocation *allocation) {
+void AutoGrowthBestFitAllocator::FreeImpl(phi::Allocation *allocation) {
   platform::RecordEvent("AutoGrowthBestFitAllocator::Free",
                         platform::TracerEventType::UserDefined, 9 /*level*/);
   VLOG(10) << "Free " << allocation->size()
