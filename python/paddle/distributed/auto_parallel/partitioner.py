@@ -178,8 +178,6 @@ class Partitioner(object):
             self.partition_block(ref_block, target_block)
 
         partitioned_main_prog.current_block_idx = 0
-        assert len(partitioned_main_prog.blocks) == len(
-            serial_main_program.blocks)
 
         partitioned_params_and_grads = []
         for p, g in params_and_grads:
