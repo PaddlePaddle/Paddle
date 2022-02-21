@@ -98,8 +98,8 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
 
 inline std::vector<int64_t> CalculateBroadcastedDims(const Tensor* x,
                                                      const Tensor* y) {
-  const auto src_tz = pten::vectorize(x->dims());
-  const auto dst_tz = pten::vectorize(y->dims());
+  const auto src_tz = phi::vectorize(x->dims());
+  const auto dst_tz = phi::vectorize(y->dims());
 
   size_t j = 0;
   std::vector<int64_t> dst_tz_ex(src_tz.size(), 1);

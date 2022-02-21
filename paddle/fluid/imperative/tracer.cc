@@ -36,7 +36,7 @@ thread_local bool Tracer::has_grad_ = true;
 
 thread_local AmpLevel Tracer::amp_level_ = AmpLevel::O0;
 
-thread_local pten::DataType Tracer::amp_dtype_ = pten::DataType::FLOAT32;
+thread_local phi::DataType Tracer::amp_dtype_ = phi::DataType::FLOAT32;
 
 static std::shared_ptr<Tracer> g_current_tracer(nullptr);
 
@@ -204,16 +204,16 @@ void Tracer::TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
   NameVarMap<VarType> new_ins = ins;
   if (amp_level_ == AmpLevel::O1) {
     VLOG(5) << "Auto mixed precision run operator: " << type;
-    if (amp_dtype_ == pten::DataType::FLOAT16) {
+    if (amp_dtype_ == phi::DataType::FLOAT16) {
       new_ins = AutoCastInputs<VarType>(type, ins);
-    } else if (amp_dtype_ == pten::DataType::BFLOAT16) {
+    } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
       new_ins = AutoCastBF16Inputs<VarType>(type, ins);
     }
   } else if (amp_level_ == AmpLevel::O2) {
     VLOG(5) << "Pure fp16 run operator: " << type;
-    if (amp_dtype_ == pten::DataType::FLOAT16) {
+    if (amp_dtype_ == phi::DataType::FLOAT16) {
       new_ins = CastPureFp16Inputs<VarType>(type, ins);
-    } else if (amp_dtype_ == pten::DataType::BFLOAT16) {
+    } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
       new_ins = CastPureBf16Inputs<VarType>(type, ins);
     }
   }

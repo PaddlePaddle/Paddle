@@ -244,10 +244,10 @@ template <typename DeviceContext, typename C>
 void fill_conj(const DeviceContext& ctx, const Tensor* src, Tensor* dst,
                const std::vector<int64_t>& axes) {
   std::vector<int64_t> src_strides_v =
-      pten::vectorize<int64_t>(pten::stride(src->dims()));
+      phi::vectorize<int64_t>(phi::stride(src->dims()));
   std::vector<int64_t> dst_strides_v =
-      pten::vectorize<int64_t>(pten::stride(dst->dims()));
-  std::vector<int64_t> dst_shape_v = pten::vectorize<int64_t>(dst->dims());
+      phi::vectorize<int64_t>(phi::stride(dst->dims()));
+  std::vector<int64_t> dst_shape_v = phi::vectorize<int64_t>(dst->dims());
   const auto src_data = src->data<C>();
   auto dst_data = dst->data<C>();
   const auto last_axis = axes.back();
@@ -442,10 +442,10 @@ class FFTC2RGradKernel : public framework::OpKernel<T> {
 
     const int64_t double_length =
         dy->dims()[axes.back()] - dx->dims()[axes.back()];
-    const framework::DDim strides = pten::stride(dx->dims());
+    const framework::DDim strides = phi::stride(dx->dims());
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-    const thrust::device_vector<int64_t> strides_g(pten::vectorize(strides));
+    const thrust::device_vector<int64_t> strides_g(phi::vectorize(strides));
     const int64_t* pstrides = thrust::raw_pointer_cast(strides_g.data());
 #else
     const int64_t* pstrides = strides.Get();

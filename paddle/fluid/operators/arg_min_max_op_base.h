@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/printf.h"
-#include "paddle/pten/core/ddim.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace operators {
@@ -76,7 +76,7 @@ struct VisitDataArgMinMaxFunctor {
     // if flatten, will construct the new dims for the cacluate
     framework::DDim x_dims;
     if (flatten) {
-      x_dims = pten::make_ddim({x.numel()});
+      x_dims = phi::make_ddim({x.numel()});
       // if flatten, the axis just as 0
       axis = 0;
     } else {
@@ -188,7 +188,7 @@ class ArgMinMaxOp : public framework::OperatorWithKernel {
       if (dtype == framework::proto::VarType::INT32) {
         int64_t all_element_num = 0;
         if (flatten) {
-          all_element_num = pten::product(x_dims);
+          all_element_num = phi::product(x_dims);
 
         } else {
           all_element_num = x_dims[axis];
@@ -212,7 +212,7 @@ class ArgMinMaxOp : public framework::OperatorWithKernel {
       }
       for (int64_t i = axis + 1; i < x_rank; i++) vec.emplace_back(x_dims[i]);
     }
-    ctx->SetOutputDim("Out", pten::make_ddim(vec));
+    ctx->SetOutputDim("Out", phi::make_ddim(vec));
   }
 };
 

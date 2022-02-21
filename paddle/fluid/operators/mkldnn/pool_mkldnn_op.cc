@@ -80,7 +80,7 @@ class PoolingMKLDNNHandler
 
     const auto input_dims = input->dims();
     framework::DDim data_dims =
-        pten::slice_ddim(input_dims, 2, input_dims.size());
+        phi::slice_ddim(input_dims, 2, input_dims.size());
 
     if (global_pooling) {
       operators::UpdateKsize(&ksize, data_dims);
@@ -89,8 +89,8 @@ class PoolingMKLDNNHandler
     operators::UpdatePadding(&paddings, global_pooling, 0, padding_algorithm,
                              data_dims, strides, ksize);
 
-    const auto src_tz = pten::vectorize(input->dims());
-    const auto dst_tz = pten::vectorize(output->dims());
+    const auto src_tz = phi::vectorize(input->dims());
+    const auto dst_tz = phi::vectorize(output->dims());
 
     const auto is_test = ctx.Attr<bool>("is_test");
 
@@ -170,8 +170,7 @@ class PoolingMKLDNNHandler
     std::string padding_algorithm = ctx.Attr<std::string>("padding_algorithm");
 
     auto in_x_dims = in_x->dims();
-    framework::DDim data_dims =
-        pten::slice_ddim(in_x_dims, 2, in_x_dims.size());
+    framework::DDim data_dims = phi::slice_ddim(in_x_dims, 2, in_x_dims.size());
 
     if (global_pooling) {
       operators::UpdateKsize(&ksize, data_dims);
@@ -180,9 +179,9 @@ class PoolingMKLDNNHandler
     operators::UpdatePadding(&paddings, global_pooling, 0, padding_algorithm,
                              data_dims, strides, ksize);
 
-    auto src_tz = pten::vectorize<int64_t>(in_x->dims());
-    auto diff_src_tz = pten::vectorize<int64_t>(in_x_grad->dims());
-    auto diff_dst_tz = pten::vectorize<int64_t>(out_grad->dims());
+    auto src_tz = phi::vectorize<int64_t>(in_x->dims());
+    auto diff_src_tz = phi::vectorize<int64_t>(in_x_grad->dims());
+    auto diff_dst_tz = phi::vectorize<int64_t>(out_grad->dims());
 
     const auto dt = framework::ToMKLDNNDataType(
         framework::TransToProtoVarType(in_x->dtype()));

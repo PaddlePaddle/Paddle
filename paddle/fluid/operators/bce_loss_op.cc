@@ -44,7 +44,7 @@ class BCELossOp : public framework::OperatorWithKernel {
 
     bool check = true;
     if ((!ctx->IsRuntime()) &&
-        (pten::product(x_dims) <= 0 || pten::product(labels_dims) <= 0)) {
+        (phi::product(x_dims) <= 0 || phi::product(labels_dims) <= 0)) {
       check = false;
     }
 
@@ -88,7 +88,7 @@ class BCELossGradOp : public framework::OperatorWithKernel {
 
     bool check = true;
     if ((!ctx->IsRuntime()) &&
-        (pten::product(x_dims) <= 0 || pten::product(labels_dims) <= 0)) {
+        (phi::product(x_dims) <= 0 || phi::product(labels_dims) <= 0)) {
       check = false;
     }
 

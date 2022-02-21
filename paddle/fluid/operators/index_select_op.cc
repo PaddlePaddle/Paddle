@@ -58,12 +58,12 @@ class IndexSelectOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "The length of Input(Index) can't be 0."));
 
-    auto output_dim = pten::vectorize(input_dim);
+    auto output_dim = phi::vectorize(input_dim);
     if (dim < 0) {
       dim += input_dim.size();
     }
     output_dim[dim] = index_dim[0];
-    ctx->SetOutputDim("Out", pten::make_ddim(output_dim));
+    ctx->SetOutputDim("Out", phi::make_ddim(output_dim));
     auto type = ctx->GetInputsVarType("X")[0];
     if (type == framework::proto::VarType::LOD_TENSOR) {
       ctx->ShareLoD("X", /*->*/ "Out");

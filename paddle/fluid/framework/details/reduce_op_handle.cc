@@ -116,10 +116,10 @@ void ReduceOpHandle::RunImpl() {
     t_out_p = platform::CPUPlace();
   }
 
-  if (pre_in_var->IsType<pten::SelectedRows>()) {
+  if (pre_in_var->IsType<phi::SelectedRows>()) {
     this->RunAndRecordEvent([&] {
-      std::vector<const pten::SelectedRows *> in_selected_rows =
-          GetInputValues<pten::SelectedRows>(in_var_handles, var_scopes);
+      std::vector<const phi::SelectedRows *> in_selected_rows =
+          GetInputValues<phi::SelectedRows>(in_var_handles, var_scopes);
 
       const CollectiveContext &collective_context =
           *CollectiveContext::GetInstance();
@@ -132,7 +132,7 @@ void ReduceOpHandle::RunImpl() {
           platform::is_cpu_place(t_out_p)) {
         GatherLocalSelectedRowsFunctor functor(
             in_selected_rows, in_places, dev_ctxes_, t_out_p,
-            out_var->GetMutable<pten::SelectedRows>());
+            out_var->GetMutable<phi::SelectedRows>());
         WaitInputVarGenerated();
         functor();
         return;

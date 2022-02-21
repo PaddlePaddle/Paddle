@@ -62,7 +62,7 @@ TEST(DataTypeTransform, GPUTransform) {
     paddle::framework::Tensor out_gpu;
     paddle::framework::Tensor out;
 
-    float* in_ptr = in.mutable_data<float>(pten::make_ddim({2, 3}), cpu_place);
+    float* in_ptr = in.mutable_data<float>(phi::make_ddim({2, 3}), cpu_place);
     float arr[6] = {0, 1, 2, 3, 4, 5};
     int data_number = sizeof(arr) / sizeof(arr[0]);
     memcpy(in_ptr, arr, sizeof(arr));
@@ -98,7 +98,7 @@ TEST(DataTypeTransform, GPUTransform) {
     paddle::framework::Tensor out;
 
     paddle::platform::float16* ptr = in.mutable_data<paddle::platform::float16>(
-        pten::make_ddim({2, 3}), cpu_place);
+        phi::make_ddim({2, 3}), cpu_place);
     paddle::platform::float16 arr[6] = {
         paddle::platform::float16(0), paddle::platform::float16(1),
         paddle::platform::float16(2), paddle::platform::float16(3),
@@ -162,7 +162,7 @@ TEST(DataTypeTransform, GPUTransform) {
 
     // transform float to float16
     float* in_data_float =
-        in.mutable_data<float>(pten::make_ddim({2, 3}), cpu_place);
+        in.mutable_data<float>(phi::make_ddim({2, 3}), cpu_place);
     for (int i = 0; i < data_number; ++i) {
       in_data_float[i] = i;
     }
@@ -182,7 +182,7 @@ TEST(DataTypeTransform, GPUTransform) {
 
     // transform double to float16
     double* in_data_double =
-        in.mutable_data<double>(pten::make_ddim({2, 3}), cpu_place);
+        in.mutable_data<double>(phi::make_ddim({2, 3}), cpu_place);
     for (int i = 0; i < data_number; ++i) {
       in_data_double[i] = i;
     }
@@ -201,7 +201,7 @@ TEST(DataTypeTransform, GPUTransform) {
     }
 
     // transform int to float16
-    int* in_data_int = in.mutable_data<int>(pten::make_ddim({2, 3}), cpu_place);
+    int* in_data_int = in.mutable_data<int>(phi::make_ddim({2, 3}), cpu_place);
     for (int i = 0; i < data_number; ++i) {
       in_data_int[i] = i;
     }
@@ -221,7 +221,7 @@ TEST(DataTypeTransform, GPUTransform) {
 
     // transform int64 to float16
     int64_t* in_data_int64 =
-        in.mutable_data<int64_t>(pten::make_ddim({2, 3}), cpu_place);
+        in.mutable_data<int64_t>(phi::make_ddim({2, 3}), cpu_place);
     for (int i = 0; i < data_number; ++i) {
       in_data_int64[i] = i;
     }
@@ -241,7 +241,7 @@ TEST(DataTypeTransform, GPUTransform) {
 
     // transform bool to float16
     bool* in_data_bool =
-        in.mutable_data<bool>(pten::make_ddim({2, 3}), cpu_place);
+        in.mutable_data<bool>(phi::make_ddim({2, 3}), cpu_place);
     for (int i = 0; i < data_number; ++i) {
       in_data_bool[i] = i;
     }
