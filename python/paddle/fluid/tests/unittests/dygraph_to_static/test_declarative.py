@@ -214,6 +214,7 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
             self.assertTrue(np.allclose(x_data + y_data, out_1.numpy()))
             self.assertTrue(len(foo.program_cache) == 1)
             self.assertTrue(len(foo.program_cache.concrete_programs()) == 1)
+            first_program = foo.program_cache.last()
 
             # [16, 10] + [10] (numpy)
             out_2 = foo(to_variable(x_data), y_data)
@@ -231,6 +232,11 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
             self.assertTrue(np.allclose(x_data + z_data, out_4.numpy()))
             # create a new program
             self.assertTrue(len(foo.program_cache) == 2)
+
+            # test for recent program
+            foo(to_variable(x_data), y_data)
+            recent_program = foo.program_cache.last()
+            self.assertTrue(first_program == recent_program)
 
     def test_get_concrete_program(self):
 

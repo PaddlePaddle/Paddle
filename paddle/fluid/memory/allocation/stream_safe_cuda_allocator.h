@@ -67,8 +67,8 @@ class StreamSafeCUDAAllocator
   bool IsAllocThreadSafe() const override;
 
  protected:
-  pten::Allocation *AllocateImpl(size_t size) override;
-  void FreeImpl(pten::Allocation *allocation) override;
+  phi::Allocation *AllocateImpl(size_t size) override;
+  void FreeImpl(phi::Allocation *allocation) override;
   uint64_t ReleaseImpl(const platform::Place &place) override;
 
  private:

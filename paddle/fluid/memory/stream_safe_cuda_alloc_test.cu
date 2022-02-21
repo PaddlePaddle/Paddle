@@ -20,7 +20,7 @@
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/pten/core/stream.h"
+#include "paddle/phi/core/stream.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
@@ -69,7 +69,7 @@ TEST(StreamSafeCUDAAllocInterfaceTest, AllocInterfaceTest) {
           ->stream();
   allocation::AllocationPtr allocation_unique =
       Alloc(place, alloc_size,
-            pten::Stream(reinterpret_cast<pten::StreamId>(default_stream)));
+            phi::Stream(reinterpret_cast<phi::StreamId>(default_stream)));
   EXPECT_GE(allocation_unique->size(), alloc_size);
   EXPECT_EQ(allocation_unique->ptr(), address);
   allocation_unique.reset();
@@ -143,7 +143,7 @@ TEST(StreamSafeCUDAAllocInterfaceTest, GetStreamInterfaceTest) {
 
   std::shared_ptr<Allocation> allocation_new_stream =
       AllocShared(place, alloc_size,
-                  pten::Stream(reinterpret_cast<pten::StreamId>(new_stream)));
+                  phi::Stream(reinterpret_cast<phi::StreamId>(new_stream)));
   EXPECT_EQ(GetStream(allocation_new_stream), new_stream);
 
 #ifdef PADDLE_WITH_CUDA
@@ -173,16 +173,14 @@ TEST(StreamSafeCUDAAllocRetryTest, RetryTest) {
   // so the second alloc will fail and retry
   size_t alloc_size = available_size / 4 * 3;
 
-  allocation::AllocationPtr allocation1 =
-      Alloc(place, alloc_size,
-            pten::Stream(reinterpret_cast<pten::StreamId>(stream1)));
+  allocation::AllocationPtr allocation1 = Alloc(
+      place, alloc_size, phi::Stream(reinterpret_cast<phi::StreamId>(stream1)));
   allocation::AllocationPtr allocation2;
 
   std::thread th([&allocation2, &place, &stream2, alloc_size]() {
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    allocation2 =
-        Alloc(place, alloc_size,
-              pten::Stream(reinterpret_cast<pten::StreamId>(stream2)));
+    allocation2 = Alloc(place, alloc_size,
+                        phi::Stream(reinterpret_cast<phi::StreamId>(stream2)));
   });
   allocation1.reset();  // free but not release
   th.join();
@@ -218,13 +216,13 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
       PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&stream));
 #endif
 
-      std::shared_ptr<pten::Allocation> workspace_allocation =
+      std::shared_ptr<phi::Allocation> workspace_allocation =
           AllocShared(place_, workspace_size_,
-                      pten::Stream(reinterpret_cast<pten::StreamId>(stream)));
-      std::shared_ptr<pten::Allocation> result_allocation =
+                      phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+      std::shared_ptr<phi::Allocation> result_allocation =
           AllocShared(place_, workspace_size_,
-                      pten::Stream(reinterpret_cast<pten::StreamId>(stream)));
-      std::shared_ptr<pten::Allocation> host_result_allocation =
+                      phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+      std::shared_ptr<phi::Allocation> host_result_allocation =
           AllocShared(platform::CPUPlace(), workspace_size_);
 
 #ifdef PADDLE_WITH_CUDA
@@ -373,9 +371,9 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
   size_t workspace_size_;
   platform::CUDAPlace place_;
   std::vector<gpuStream_t> streams_;
-  std::vector<std::shared_ptr<pten::Allocation>> workspaces_;
-  std::vector<std::shared_ptr<pten::Allocation>> results_;
-  std::vector<std::shared_ptr<pten::Allocation>> host_results_;
+  std::vector<std::shared_ptr<phi::Allocation>> workspaces_;
+  std::vector<std::shared_ptr<phi::Allocation>> results_;
+  std::vector<std::shared_ptr<phi::Allocation>> host_results_;
 };
 
 TEST_F(StreamSafeCUDAAllocTest, CUDAMutilStreamTest) {

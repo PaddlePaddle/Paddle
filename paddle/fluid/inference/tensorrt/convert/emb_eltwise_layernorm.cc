@@ -85,7 +85,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     for (int i = 0; i < input_num; i++) {
       framework::DDim emb_dims;
       float* emb_data = get_persistable_data(emb_names[i], &emb_dims);
-      int64_t emb_size = framework::product(emb_dims);
+      int64_t emb_size = phi::product(emb_dims);
       input_embs.push_back(emb_data);
       emb_sizes.push_back(emb_size);
       PADDLE_ENFORCE_EQ(
@@ -101,8 +101,8 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
         get_persistable_data(op_desc.Input("Bias").front(), &bias_dims);
     auto* scale =
         get_persistable_data(op_desc.Input("Scale").front(), &scale_dims);
-    int64_t bias_size = framework::product(bias_dims);
-    int64_t scale_size = framework::product(scale_dims);
+    int64_t bias_size = phi::product(bias_dims);
+    int64_t scale_size = phi::product(scale_dims);
     nvinfer1::ILayer* layer = nullptr;
     bool enable_int8 = op_desc.HasAttr("enable_int8");
 

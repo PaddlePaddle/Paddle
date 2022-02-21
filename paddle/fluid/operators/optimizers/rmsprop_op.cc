@@ -86,11 +86,11 @@ class RmspropOp : public framework::OperatorWithKernel {
                           param_dim, ctx->GetInputDim("MeanSquare")));
 
     auto lr_dim = ctx->GetInputDim("LearningRate");
-    PADDLE_ENFORCE_EQ(framework::product(lr_dim), 1,
+    PADDLE_ENFORCE_EQ(phi::product(lr_dim), 1,
                       platform::errors::InvalidArgument(
                           "Learning Rate of RmspropOp should be a scalar. But "
                           "received LearningRate's dim [%s]",
-                          framework::product(lr_dim)));
+                          phi::product(lr_dim)));
 
     ctx->SetOutputDim("ParamOut", param_dim);
     ctx->SetOutputDim("MomentOut", param_dim);

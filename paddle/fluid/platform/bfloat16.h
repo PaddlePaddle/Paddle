@@ -14,11 +14,11 @@
 
 #pragma once
 
-#include "paddle/pten/common/bfloat16.h"
+#include "paddle/phi/common/bfloat16.h"
 
 namespace paddle {
 namespace platform {
-using bfloat16 = pten::dtype::bfloat16;
-using namespace pten::dtype;  // NOLINT
+using bfloat16 = phi::dtype::bfloat16;
+using namespace phi::dtype;  // NOLINT
 }  // namespace platform
 }  // namespace paddle

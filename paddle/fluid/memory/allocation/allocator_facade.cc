@@ -127,14 +127,14 @@ class CUDAGraphAllocator
   }
 
  protected:
-  pten::Allocation* AllocateImpl(size_t size) {
+  phi::Allocation* AllocateImpl(size_t size) {
     VLOG(10) << "Allocate " << size << " for CUDA Graph";
     return new PrivateAllocation(this,
                                  static_unique_ptr_cast<Allocation>(
                                      underlying_allocator_->Allocate(size)));
   }
 
-  void FreeImpl(pten::Allocation* allocation) {
+  void FreeImpl(phi::Allocation* allocation) {
     VLOG(10) << "delete for CUDA Graph";
     delete allocation;
   }
@@ -316,7 +316,7 @@ class AllocatorFacadePrivate {
     return iter->second;
   }
 
-  void* GetBasePtr(const std::shared_ptr<pten::Allocation>& allocation) {
+  void* GetBasePtr(const std::shared_ptr<phi::Allocation>& allocation) {
     return static_cast<Allocation*>(allocation.get())->base_ptr();
   }
 
@@ -362,7 +362,7 @@ class AllocatorFacadePrivate {
     return static_cast<platform::CUDADeviceContext*>(pool.Get(place))->stream();
   }
 
-  void RecordStream(std::shared_ptr<pten::Allocation> allocation,
+  void RecordStream(std::shared_ptr<phi::Allocation> allocation,
                     const gpuStream_t& stream) {
     if (allocation->size() == 0) {
       return;
@@ -379,7 +379,7 @@ class AllocatorFacadePrivate {
   }
 
   const gpuStream_t& GetStream(
-      const std::shared_ptr<pten::Allocation>& allocation) const {
+      const std::shared_ptr<phi::Allocation>& allocation) const {
     const StreamSafeCUDAAllocation* stream_safe_cuda_allocation =
         dynamic_cast<const StreamSafeCUDAAllocation*>(allocation.get());
     PADDLE_ENFORCE_NOT_NULL(stream_safe_cuda_allocation,
@@ -398,10 +398,10 @@ class AllocatorFacadePrivate {
     bool IsAllocThreadSafe() const override { return true; }
 
    protected:
-    pten::Allocation* AllocateImpl(size_t size) override {
+    phi::Allocation* AllocateImpl(size_t size) override {
       return new Allocation(nullptr, 0, place_);
     }
-    void FreeImpl(pten::Allocation* allocation) override { delete allocation; }
+    void FreeImpl(phi::Allocation* allocation) override { delete allocation; }
 
    private:
     platform::Place place_;
@@ -878,7 +878,7 @@ const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
 }
 
 void* AllocatorFacade::GetBasePtr(
-    const std::shared_ptr<pten::Allocation>& allocation) {
+    const std::shared_ptr<phi::Allocation>& allocation) {
   PADDLE_ENFORCE_EQ(GetAllocatorStrategy(), AllocatorStrategy::kAutoGrowth,
                     paddle::platform::errors::Unimplemented(
                         "GetBasePtr() is only implemented for auto_growth "
@@ -910,9 +910,9 @@ const std::shared_ptr<Allocator>& AllocatorFacade::GetZeroAllocator(
   return GetPrivate()->GetAllocator(place, /* zero size */ 0);
 }
 
-std::shared_ptr<pten::Allocation> AllocatorFacade::AllocShared(
+std::shared_ptr<phi::Allocation> AllocatorFacade::AllocShared(
     const platform::Place& place, size_t size) {
-  return std::shared_ptr<pten::Allocation>(Alloc(place, size));
+  return std::shared_ptr<phi::Allocation>(Alloc(place, size));
 }
 
 AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
@@ -921,7 +921,7 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
   if (FLAGS_use_stream_safe_cuda_allocator && platform::is_gpu_place(place) &&
       size > 0 && FLAGS_use_system_allocator == false) {
     platform::CUDAPlace cuda_place(place.GetDeviceId());
-    pten::Stream default_stream = pten::Stream(reinterpret_cast<pten::StreamId>(
+    phi::Stream default_stream = phi::Stream(reinterpret_cast<phi::StreamId>(
         GetPrivate()->GetDefaultStream(cuda_place)));
     return Alloc(cuda_place, size, default_stream);
   }
@@ -942,8 +942,8 @@ uint64_t AllocatorFacade::Release(const platform::Place& place) {
       ->Release(place);
 }
 
-std::shared_ptr<pten::Allocation> AllocatorFacade::AllocShared(
-    const platform::Place& place, size_t size, const pten::Stream& stream) {
+std::shared_ptr<phi::Allocation> AllocatorFacade::AllocShared(
+    const platform::Place& place, size_t size, const phi::Stream& stream) {
   PADDLE_ENFORCE_EQ(
       FLAGS_use_stream_safe_cuda_allocator, true,
       platform::errors::Unimplemented(
@@ -951,11 +951,11 @@ std::shared_ptr<pten::Allocation> AllocatorFacade::AllocShared(
           "multi-stream 'AllocaShared' function. To enable it, you can enter"
           "'export FLAGS_use_stream_safe_cuda_allocator=true' in the "
           "terminal."));
-  return std::shared_ptr<pten::Allocation>(Alloc(place, size, stream));
+  return std::shared_ptr<phi::Allocation>(Alloc(place, size, stream));
 }
 
 AllocationPtr AllocatorFacade::Alloc(const platform::Place& place, size_t size,
-                                     const pten::Stream& stream) {
+                                     const phi::Stream& stream) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_EQ(
       FLAGS_use_stream_safe_cuda_allocator, true,
@@ -980,8 +980,8 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place, size_t size,
 }
 
 bool AllocatorFacade::InSameStream(
-    const std::shared_ptr<pten::Allocation>& allocation,
-    const pten::Stream& stream) {
+    const std::shared_ptr<phi::Allocation>& allocation,
+    const phi::Stream& stream) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_EQ(
       FLAGS_use_stream_safe_cuda_allocator, true,
@@ -1010,7 +1010,7 @@ uint64_t AllocatorFacade::Release(const platform::CUDAPlace& place,
   return GetPrivate()->GetAllocator(place, stream)->Release(place);
 }
 
-void AllocatorFacade::RecordStream(std::shared_ptr<pten::Allocation> allocation,
+void AllocatorFacade::RecordStream(std::shared_ptr<phi::Allocation> allocation,
                                    const gpuStream_t& stream) {
   PADDLE_ENFORCE_EQ(
       FLAGS_use_stream_safe_cuda_allocator, true,
@@ -1023,7 +1023,7 @@ void AllocatorFacade::RecordStream(std::shared_ptr<pten::Allocation> allocation,
 }
 
 const gpuStream_t& AllocatorFacade::GetStream(
-    const std::shared_ptr<pten::Allocation>& allocation) const {
+    const std::shared_ptr<phi::Allocation>& allocation) const {
   PADDLE_ENFORCE_EQ(
       FLAGS_use_stream_safe_cuda_allocator, true,
       platform::errors::Unimplemented(

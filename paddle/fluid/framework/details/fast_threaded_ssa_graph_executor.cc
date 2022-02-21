@@ -24,7 +24,7 @@
 #include "paddle/fluid/framework/details/fetch_async_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace framework {
@@ -65,7 +65,8 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors, bool return_merged) {
   VLOG(3) << "enter FastThreadedSSAGraphExecutor Run";
   std::unique_ptr<platform::RecordEvent> event(
-      new platform::RecordEvent("FastThreadedSSAGraphExecutorPrepare"));
+      new platform::RecordEvent("FastThreadedSSAGraphExecutorPrepare",
+                                platform::TracerEventType::UserDefined, 2));
   std::unique_ptr<std::unordered_map<OpHandleBase *, std::atomic<int>>>
       op_deps = atomic_op_deps_.get();
   PrepareAtomicOpDeps();
