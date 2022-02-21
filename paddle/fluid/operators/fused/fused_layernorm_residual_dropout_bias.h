@@ -156,7 +156,7 @@ __global__ void FusedLayernormResidualDropoutBias(
 }
 
 /*
-* @brief layernorm(residual + dropout(x));
+ * @brief layernorm(residual + dropout(x));
  * Conditions:
  * (1) The number of cols is 1024;
  * (2) layer_norm scale and bias is not null;
@@ -173,12 +173,12 @@ __global__ void FusedLayernormResidualDropoutBias(
  * y_: [rows, cols], layernorm result
  * mean_out_: [rows]: layernorm means
  * var_out_: [rows]: layernorm vars
-*/
+ */
 template <
     typename T, typename U, typename ScaleT = U, typename MaskType = uint8_t,
     int VecSize = 8, int WARPS_M = 4, int WARPS_N = 1, int BYTES_PER_LDG = 16,
-    int ELTS_PER_ROW = 1024, int THREADS_PER_WARP = 32,
-    int THREADS_PER_ROW = WARPS_N *THREADS_PER_WARP,
+    int ELTS_PER_ROW = 1024, bool deterministic = false,
+    int THREADS_PER_WARP = 32, int THREADS_PER_ROW = WARPS_N *THREADS_PER_WARP,
     int THREADS_PER_CTA = WARPS_M *THREADS_PER_ROW, int ROWS_PER_CTA = WARPS_M,
     int ELTS_PER_ROW_PER_CTA = THREADS_PER_ROW *VecSize,
     int LDGS = ELTS_PER_ROW / ELTS_PER_ROW_PER_CTA>
@@ -419,16 +419,33 @@ void LaunchLayernormResidualDropoutBias(
       const int THREADS_PER_CTA = WARPS_N * THREADS_PER_WARP * WARPS_M;
       const int ROWS_PER_CTA = WARPS_M;
 
+#define PADDLE_LAUNCH_FUSED_LAYERNORM_1024_FWD(is_deterministic)             \
+  do {                                                                       \
+    fused_ln_fwd_1024_kernel<                                                \
+        T, U, LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>, uint8_t,    \
+        VecSize, WARPS_M, WARPS_N, BYTES_PER_LDG, 1024,                      \
+        is_deterministic><<<grid, THREADS_PER_CTA, 0, ctx.stream()>>>(       \
+        rows, cols, seed, dropout_prob, is_upscale_in_train, is_test,        \
+        increment, epsilon, src, residual, scale, layernorm_bias, mask_data, \
+        mean, var, dst, layernorm_dst);                                      \
+  } while (0)
+
       // Note: the grid can not exceed max_grid of the gpu.
       const int grid =
           static_cast<int>(std::ceil(rows / static_cast<float>(ROWS_PER_CTA)));
-      fused_ln_fwd_1024_kernel<
-          T, U, LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>, uint8_t,
-          VecSize, WARPS_M, WARPS_N,
-          BYTES_PER_LDG><<<grid, THREADS_PER_CTA, 0, ctx.stream()>>>(
-          rows, cols, seed, dropout_prob, is_upscale_in_train, is_test,
-          increment, epsilon, src, residual, scale, layernorm_bias, mask_data,
-          mean, var, dst, layernorm_dst);
+      // fused_ln_fwd_1024_kernel<
+      //     T, U, LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>, uint8_t,
+      //     VecSize, WARPS_M, WARPS_N, BYTES_PER_LDG>
+      //     <<<grid, THREADS_PER_CTA, 0, ctx.stream()>>>(
+      //         rows, cols, seed, dropout_prob, is_upscale_in_train, is_test,
+      //         increment, epsilon, src, residual, scale, layernorm_bias,
+      //         mask_data, mean, var, dst, layernorm_dst);
+      if (FLAGS_mlperf_bert_deterministic) {
+        PADDLE_LAUNCH_FUSED_LAYERNORM_1024_FWD(true);
+      } else {
+        PADDLE_LAUNCH_FUSED_LAYERNORM_1024_FWD(false);
+      }
+#undef PADDLE_LAUNCH_FUSED_LAYERNORM_1024_FWD
     } else {
       int blockDim = GetDesiredBlockDim(cols / VecSize);
       FusedLayernormResidualDropoutBias<
@@ -439,7 +456,7 @@ void LaunchLayernormResidualDropoutBias(
           mask_data, dst, layernorm_dst, mean, var);
     }
   }
-}
+}  // namespace operators
 
 template <typename T, typename U, typename MaskType,
           bool ScaleBiasWithSameTypeX = false>
