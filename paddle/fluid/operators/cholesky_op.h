@@ -19,9 +19,9 @@ limitations under the License. */
 #include "Eigen/Cholesky"
 #include "Eigen/Core"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -323,9 +323,9 @@ class CholeskyGradKernel : public framework::OpKernel<T> {
     /*! phi = matmul(L.transpose(-1, -2), grad) */
     Tensor middle;
     auto* middle_data = middle.mutable_data<T>(dims, context.GetPlace());
-    auto trans_desc = math::CreateMatrixDescriptor(dims, 0, true);
-    auto no_trans_desc = math::CreateMatrixDescriptor(dims, 0, false);
-    auto blas = math::GetBlas<DeviceContext, T>(context);
+    auto trans_desc = phi::funcs::CreateMatrixDescriptor(dims, 0, true);
+    auto no_trans_desc = phi::funcs::CreateMatrixDescriptor(dims, 0, false);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
     blas.MatMul(l, trans_desc, l_grad, no_trans_desc, T(1), &middle, T(0));
 
     /*! phi.tril_().diagonal(0, -2, -1).mul_(0.5) */

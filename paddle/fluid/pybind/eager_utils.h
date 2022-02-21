@@ -11,7 +11,7 @@ limitations under the License. */
 #pragma once
 
 #include <Python.h>
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 
@@ -22,7 +22,7 @@ typedef struct {
   PyObject_HEAD paddle::experimental::Tensor tensor;
 } TensorObject;
 
-int TensorDtype2NumpyDtype(pten::DataType dtype);
+int TensorDtype2NumpyDtype(phi::DataType dtype);
 
 bool PyObject_CheckLongOrConvertToLong(PyObject** obj);
 bool PyObject_CheckFloatOrConvertToFloat(PyObject** obj);

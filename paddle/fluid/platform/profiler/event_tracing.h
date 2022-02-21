@@ -21,12 +21,13 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+static constexpr uint32_t kDefaultTraceLevel = 4;
 // CPU event tracing. A trace marks something that happens but has no duration
 // associated with it. For example, thread starts working.
 // Chrome Trace Viewer Format: Instant Event
 struct RecordInstantEvent {
   explicit RecordInstantEvent(const char* name, TracerEventType type,
-                              uint32_t level = 1);
+                              uint32_t level = kDefaultTraceLevel);
 };
 
 // CPU event tracing. A trace starts when an object of this clas is created and
@@ -34,16 +35,21 @@ struct RecordInstantEvent {
 // Chrome Trace Viewer Format: Duration Event/Complte Event
 class RecordEvent {
  public:
-  explicit RecordEvent(const std::string& name,
-                       const EventRole role = EventRole::kOrdinary,
-                       uint32_t level = 1);
+  explicit RecordEvent(
+      const std::string& name,
+      const TracerEventType type = TracerEventType::UserDefined,
+      uint32_t level = kDefaultTraceLevel,
+      const EventRole role = EventRole::kOrdinary);
 
-  explicit RecordEvent(const char* name,
-                       const EventRole role = EventRole::kOrdinary,
-                       uint32_t level = 1);
+  explicit RecordEvent(const char* name, const TracerEventType type =
+                                             TracerEventType::UserDefined,
+                       uint32_t level = kDefaultTraceLevel,
+                       const EventRole role = EventRole::kOrdinary);
 
-  RecordEvent(const std::string& name, const EventRole role,
-              const std::string& attr, uint32_t level = 1);
+  RecordEvent(const std::string& name, const std::string& attr,
+              const TracerEventType type = TracerEventType::UserDefined,
+              uint32_t level = kDefaultTraceLevel,
+              const EventRole role = EventRole::kOrdinary);
 
   // Stop event tracing explicitly before the object goes out of scope.
   // Sometimes it's inconvenient to use RAII
@@ -65,6 +71,7 @@ class RecordEvent {
   // different kernel invocations within an op.
   // std::string full_name_;
   EventRole role_{EventRole::kOrdinary};
+  TracerEventType type_{TracerEventType::UserDefined};
   std::string* attr_{nullptr};
   bool finished_{false};
 };
