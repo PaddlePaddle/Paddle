@@ -93,4 +93,6 @@ void SplitInferMeta(const MetaTensor& x_meta,
 void TraceInferMeta(
     const MetaTensor& x, int offset, int axis1, int axis2, MetaTensor* out);
 
+void TruncInferMeta(const MetaTensor& x, MetaTensor* out);
+
 }  // namespace phi

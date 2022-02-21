@@ -537,6 +537,16 @@ void TraceInferMeta(
   out->set_dims(phi::make_ddim(sizes));
 }
 
+void TruncInferMeta(const MetaTensor& x, MetaTensor* out) {
+  PADDLE_ENFORCE_NOT_NULL(
+      out,
+      phi::errors::InvalidArgument(
+          "The Output(out) of TruncOp should not be null."));
+  auto input_dims = x.dims();
+  out->set_dims(input_dims);
+  out->share_lod(x);
+}
+
 }  // namespace phi
 
 PT_REGISTER_INFER_META_FN(copy_to, phi::CopyToInferMeta);
