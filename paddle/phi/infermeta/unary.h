@@ -41,6 +41,11 @@ void FlattenInferMeta(const MetaTensor& x,
 
 void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out);
 
+void CopyToInferMeta(const MetaTensor& x,
+                     Backend backend,
+                     bool blocking,
+                     MetaTensor* out);
+
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out);
 
 void InferMetaFromVecValue(const MetaTensor& x,
