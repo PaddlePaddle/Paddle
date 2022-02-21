@@ -35,12 +35,25 @@ class GradNodeAccumulation : public GradNodeBase {
 
   paddle::experimental::Tensor* Grad() { return &accumulated_grad; }
 
+  /**
+   * Register ReduceHook
+   * **/
+  void RegisterReduceHook(const std::function<void(void)>& hook);
+
+  /**
+   * Apply ReduceHook here
+   * **/
+  inline bool ReduceHooksRegistered() { return reduce_hooks_.size() != 0; }
+  void ApplyReduceHooks();
+
  private:
   paddle::experimental::Tensor accumulated_grad;
 
   std::function<paddle::experimental::Tensor(
       const paddle::experimental::Tensor&)>
       retain_grad_hook_;
+
+  std::vector<std::function<void(void)>> reduce_hooks_;
 };
 
 }  // namespace egr

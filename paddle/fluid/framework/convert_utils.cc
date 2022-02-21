@@ -176,7 +176,7 @@ std::string DataType2String(DataType dtype) {
       return "complex128";
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-          "Unknow pten::DataType, the int value = %d.",
+          "Unknow phi::DataType, the int value = %d.",
           static_cast<int>(dtype)));
       return "";
   }

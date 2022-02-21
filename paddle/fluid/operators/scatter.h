@@ -16,11 +16,11 @@ limitations under the License. */
 #include <cstring>
 #include <string>
 
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/pten/kernels/funcs/blas/blas.h"
+#include "paddle/phi/core/ddim.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "unordered_set"
 
 namespace paddle {
@@ -37,7 +37,7 @@ typename std::enable_if<std::is_floating_point<T>::value>::type
 elementwise_inner_add(const framework::ExecutionContext& ctx,
                       const T* src_pointer, T* dst_pointer, size_t src_index,
                       IndexT dst_index, size_t slice_size) {
-  auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(ctx);
+  auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(ctx);
   blas.VADD(slice_size, src_pointer + src_index * slice_size,
             dst_pointer + dst_index * slice_size,
             dst_pointer + dst_index * slice_size);
@@ -236,8 +236,8 @@ void ScatterNdAdd(const framework::ExecutionContext& ctx, const Tensor& update,
   // final dim
   int64_t end_size = index_dims[index_dims_size - 1];
   // remain dim
-  auto remain_ddim = framework::slice_ddim(index_dims, 0, index_dims_size - 1);
-  int64_t remain_numel = framework::product(remain_ddim);
+  auto remain_ddim = phi::slice_ddim(index_dims, 0, index_dims_size - 1);
+  int64_t remain_numel = phi::product(remain_ddim);
   // slice size
   int64_t slice_size = 1;
   for (int64_t i = end_size; i < output_dims_size; ++i) {
