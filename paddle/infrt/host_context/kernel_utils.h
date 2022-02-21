@@ -265,7 +265,7 @@ struct KernelImpl<Return (*)(Args...), impl_fn> {
       static_assert(const_idx == 0,
                     "Arguments and results should appear before attributes.");
 
-      auto* value = frame->GetArgAt(in_idx);
+      auto* value = frame->GetElementAt(in_idx);
       auto&& arg = value->get<ArgT>();
 
       KernelCallHelper<

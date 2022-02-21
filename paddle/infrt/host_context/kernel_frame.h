@@ -44,6 +44,11 @@ class KernelFrame {
     return value_or_attrs_[index]->template get_or_default<T>();
   }
 
+  Value* GetElementAt(int index) {
+    CHECK_LT(static_cast<size_t>(index), GetNumElements());
+    return value_or_attrs_[index];
+  }
+
   // Get number of elements, either input, attributes or results.
   size_t GetNumElements() const { return value_or_attrs_.size(); }
 
@@ -79,11 +84,11 @@ class KernelFrame {
     CHECK_EQ(num_results_, -1)
         << "Must call SetNumResults after calling AddAttribute";
     value_or_attrs_.emplace_back(v);
-    if (num_attrs_ = -1) {
-      num_attrs_ = 1;
-    } else {
-      num_attrs_++;
-    }
+    if (num_attrs_ == -1) num_attrs_ = 0;
+    num_attrs_++;
+
+    CHECK_EQ(value_or_attrs_.size(),
+             static_cast<size_t>(num_arguments_ + num_attrs_));
   }
 
   template <typename T, typename... Args>

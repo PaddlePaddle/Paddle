@@ -138,10 +138,10 @@ class Variant {
 
   IndexT index() { return index_; }
 
- private:
   template <typename T>
   static constexpr size_t IndexOf = TupleIndexOf<T, Types>::value;
 
+ private:
   static constexpr size_t kStorageSize = std::max({sizeof(Ts)...});
   static constexpr size_t kAlignment = std::max({alignof(Ts)...});
 

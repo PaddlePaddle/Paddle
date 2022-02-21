@@ -15,6 +15,9 @@
 
 #include <llvm/ADT/SmallVector.h>
 
+#include <iostream>
+
+#include "paddle/infrt/backends/host/pten_context.h"
 #include "paddle/infrt/host_context/kernel_utils.h"
 #include "paddle/infrt/kernel/pten/infershaped/infershaped_kernel_launcher.h"
 #include "paddle/infrt/kernel/pten/infershaped/infershaped_utils.h"
@@ -27,11 +30,13 @@ static void FakePtenInferShape(const ::pten::MetaTensor& a,
                                bool arg_0,
                                ::pten::MetaTensor* c) {}
 
-static void FakePtenKernel(const ::pten::CPUContext& /*Context*/,
+static void FakePtenKernel(const backends::CpuPtenContext& /*Context*/,
                            const ::pten::DenseTensor& a,
                            const ::pten::DenseTensor& b,
                            bool arg_0,
-                           ::pten::DenseTensor* c) {}
+                           ::pten::DenseTensor* c) {
+  std::cout << "@FakePtenKernel@" << std::endl;
+}
 
 template <typename KernelFunc,
           KernelFunc kernel,

@@ -46,6 +46,8 @@ std::string KernelFrame::DumpArgTypes() const {
       ss << "pten::CPUContext,";
     } else if (value->is_type<host_context::None>()) {
       ss << "none,";
+    } else if (value->is_type<backends::CpuPtenContext>()) {
+      ss << "CpuPtenContext,";
     } else {
       ss << "unk,";
     }
