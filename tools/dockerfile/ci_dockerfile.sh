@@ -18,7 +18,7 @@ function make_ubuntu_dockerfile(){
 cat > Dockerfile.cuda10_cudnn7_gcc82_ubuntu16 << EOF
     FROM paddlepaddle/paddle:latest-gpu-cuda10.1-cudnn7-gcc82-dev
     RUN apt-get update
-    RUN apt install -y zstd
+    RUN apt install -y pigz zstd
 EOF
 }
 
