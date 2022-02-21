@@ -191,7 +191,7 @@ class ScalarBase {
     }
   }
 
-  DataType dtype() { return dtype_; }
+  DataType dtype() const { return dtype_; }
 
  private:
   template <typename T1, typename T2>
