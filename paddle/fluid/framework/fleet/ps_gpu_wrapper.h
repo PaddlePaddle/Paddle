@@ -189,7 +189,6 @@ class PSGPUWrapper {
   void SetEmbedxSGD(float mf_create_thresholds, float mf_learning_rate,
                     float mf_initial_g2sum, float mf_initial_range,
                     float mf_min_bound, float mf_max_bound);
-
   void InitializeGPUServer(std::unordered_map<std::string, float> config) {
     float nonclk_coeff = (config.find("nonclk_coeff") == config.end())
                              ? 1.0
@@ -232,7 +231,6 @@ class PSGPUWrapper {
     float mf_max_bound = (config.find("mf_max_bound") == config.end())
                              ? 1.0
                              : config["mf_max_bound"];
-
     for (size_t i = 0; i < heter_devices_.size(); i++) {
       PADDLE_ENFORCE_GPU_SUCCESS(cudaSetDevice(heter_devices_[i]));
       this->SetSparseSGD(nonclk_coeff, clk_coeff, min_bound, max_bound,
