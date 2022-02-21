@@ -245,16 +245,13 @@ class DownpourSGD(DeviceWorker):
             raise ValueError("%s not found in program_id_to_worker" %
                              program_id)
         worker = opt_info["program_id_to_worker"][program_id]
-
         for i in worker.get_desc().dense_table:
             if i.table_id in dense_table_set:
                 dense_table = pull_thread.dense_table.add()
                 dense_table.dense_value_name.extend(i.dense_variable_name)
                 dense_table.table_id = \
                     i.table_id
-
         sparse_len = len(worker.get_desc().sparse_table)
-
         for i in range(sparse_len):
             sparse_table = downpour.sparse_table.add()
             sparse_table.table_id = worker.get_desc().sparse_table[i].table_id
@@ -264,7 +261,6 @@ class DownpourSGD(DeviceWorker):
                                                   .sparse_table[i].slot_value)
             sparse_table.sparse_grad_name.extend(worker.get_desc().sparse_table[
                 i].slot_gradient)
-
             if opt_info["use_cvm"] or "no_cvm" in opt_info and opt_info[
                     "no_cvm"] == True:
                 sparse_table.emb_dim = \
@@ -278,7 +274,6 @@ class DownpourSGD(DeviceWorker):
                 sparse_table.fea_dim = sparse_table.emb_dim + 2
             # TODO(guru4elephant): hard code here, need to improve
             sparse_table.label_var_name = "click"
-
         if opt_info["stat_var_names"]:
             for i in opt_info["stat_var_names"]:
                 downpour.stat_var_names.extend([i])

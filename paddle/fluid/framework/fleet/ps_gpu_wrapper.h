@@ -190,9 +190,6 @@ class PSGPUWrapper {
                     float mf_initial_g2sum, float mf_initial_range,
                     float mf_min_bound, float mf_max_bound);
 
-  void TestSparseSGD(float* ret);
-  void TestEmbedxSGD(float* ret);
-
   void InitializeGPUServer(std::unordered_map<std::string, float> config) {
     float nonclk_coeff = (config.find("nonclk_coeff") == config.end())
                              ? 1.0
@@ -236,19 +233,6 @@ class PSGPUWrapper {
                              ? 1.0
                              : config["mf_max_bound"];
 
-    std::cout << "[DEBUG in PSGPUWrapper] clk_coeff: " << clk_coeff
-              << " nonclk_coeff: " << nonclk_coeff
-              << " min_bound: " << min_bound << " max_bound: " << max_bound
-              << " learning_rate: " << learning_rate
-              << "initial_g2sum: " << initial_g2sum
-              << " initial_range: " << initial_range
-              << " mf_create_thresholds: " << mf_create_thresholds
-              << "mf_learning_rate: " << mf_learning_rate
-              << " mf_initial_g2sum: " << mf_initial_g2sum
-              << " mf_initial_range: " << mf_initial_range
-              << "mf_min_bound: " << mf_min_bound
-              << "mf_max_bound: " << mf_max_bound << std::endl;
-
     for (size_t i = 0; i < heter_devices_.size(); i++) {
       PADDLE_ENFORCE_GPU_SUCCESS(cudaSetDevice(heter_devices_[i]));
       this->SetSparseSGD(nonclk_coeff, clk_coeff, min_bound, max_bound,
@@ -257,21 +241,6 @@ class PSGPUWrapper {
                          mf_initial_g2sum, mf_initial_range, mf_min_bound,
                          mf_max_bound);
     }
-
-    // test after copy from cpu to gpu, copy from gpu to cpu and print
-    float ret[13];
-    this->TestSparseSGD(&ret[0]);
-    this->TestEmbedxSGD(&ret[7]);
-
-    std::cout << "[DEBUG in PSGPUWrapper] nonclk_coeff: " << ret[0]
-              << " clk_coeff: " << ret[1] << " min_bound: " << ret[2]
-              << " max_bound: " << ret[3] << " learning_rate: " << ret[4]
-              << "initial_g2sum: " << ret[5] << " initial_range: " << ret[6]
-              << " mf_create_thresholds: " << ret[7]
-              << "mf_learning_rate: " << ret[8]
-              << " mf_initial_g2sum: " << ret[9]
-              << " mf_initial_range: " << ret[10] << "mf_min_bound: " << ret[11]
-              << "mf_max_bound: " << ret[12] << std::endl;
   }
   void SetDate(int year, int month, int day) {
     year_ = year;

@@ -192,29 +192,6 @@ void PSGPUWrapper::SetSparseSGD(float nonclk_coeff, float clk_coeff,
                      sizeof(float));
 }
 
-void PSGPUWrapper::TestSparseSGD(float* ret) {
-  cudaMemcpyFromSymbol(ret, optimizer_config::nonclk_coeff, sizeof(float));
-  cudaMemcpyFromSymbol(ret + 1, optimizer_config::clk_coeff, sizeof(float));
-  cudaMemcpyFromSymbol(ret + 2, optimizer_config::min_bound, sizeof(float));
-  cudaMemcpyFromSymbol(ret + 3, optimizer_config::max_bound, sizeof(float));
-  cudaMemcpyFromSymbol(ret + 4, optimizer_config::learning_rate, sizeof(float));
-  cudaMemcpyFromSymbol(ret + 5, optimizer_config::initial_g2sum, sizeof(float));
-  cudaMemcpyFromSymbol(ret + 6, optimizer_config::initial_range, sizeof(float));
-}
-
-void PSGPUWrapper::TestEmbedxSGD(float* ret) {
-  cudaMemcpyFromSymbol(ret, optimizer_config::mf_create_thresholds,
-                       sizeof(float));
-  cudaMemcpyFromSymbol(ret + 1, optimizer_config::mf_learning_rate,
-                       sizeof(float));
-  cudaMemcpyFromSymbol(ret + 2, optimizer_config::mf_initial_g2sum,
-                       sizeof(float));
-  cudaMemcpyFromSymbol(ret + 3, optimizer_config::mf_initial_range,
-                       sizeof(float));
-  cudaMemcpyFromSymbol(ret + 4, optimizer_config::mf_min_bound, sizeof(float));
-  cudaMemcpyFromSymbol(ret + 5, optimizer_config::mf_max_bound, sizeof(float));
-}
-
 void PSGPUWrapper::SetEmbedxSGD(float mf_create_thresholds,
                                 float mf_learning_rate, float mf_initial_g2sum,
                                 float mf_initial_range, float mf_min_bound,
