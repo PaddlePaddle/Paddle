@@ -110,7 +110,7 @@ class PnormOp : public framework::OperatorWithKernel {
         for (int i = 1; i < x_dim.size(); ++i) {
           reduce_dims.emplace_back(1);
         }
-        x_dim = pten::make_ddim(reduce_dims);
+        x_dim = phi::make_ddim(reduce_dims);
       }
     } else {
       if (axis < 0) axis = x_dim.size() + axis;
@@ -126,7 +126,7 @@ class PnormOp : public framework::OperatorWithKernel {
     if (keepdim) {
       ctx->SetOutputDim("Out", x_dim);
     } else {
-      ctx->SetOutputDim("Out", pten::make_ddim(reduce_dims));
+      ctx->SetOutputDim("Out", phi::make_ddim(reduce_dims));
     }
   }
 };

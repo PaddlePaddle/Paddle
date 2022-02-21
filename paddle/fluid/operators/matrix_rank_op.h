@@ -16,7 +16,7 @@
 #include <vector>
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/controlflow/compare_op.h"
-#include "paddle/pten/core/ddim.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace operators {
@@ -25,25 +25,25 @@ using DDim = framework::DDim;
 
 namespace detail {
 static DDim GetEigenvalueDim(const DDim& dim, int k) {
-  auto vec = pten::vectorize(dim);
+  auto vec = phi::vectorize(dim);
   vec.erase(vec.end() - 2, vec.end());
   vec.push_back(k);
-  return pten::make_ddim(vec);
+  return phi::make_ddim(vec);
 }
 
 static DDim NewAxisDim(const DDim& dim, int k) {
-  auto vec = pten::vectorize(dim);
+  auto vec = phi::vectorize(dim);
   vec.push_back(k);
-  return pten::make_ddim(vec);
+  return phi::make_ddim(vec);
 }
 
 static DDim RemoveLastDim(const DDim& dim) {
-  auto vec = pten::vectorize(dim);
+  auto vec = phi::vectorize(dim);
   if (vec.size() <= 1) {
-    return pten::make_ddim({1});
+    return phi::make_ddim({1});
   }
   vec.erase(vec.end() - 1, vec.end());
-  return pten::make_ddim(vec);
+  return phi::make_ddim(vec);
 }
 }  // namespace detail
 

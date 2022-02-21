@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/pten/core/ddim.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle::operators {
 

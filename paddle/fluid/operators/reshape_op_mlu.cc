@@ -83,7 +83,7 @@ class Reshape2MLUKernel : public framework::OpKernel<T> {
     auto it =
         std::find(target_shape_vector.begin(), target_shape_vector.end(), -1);
     if (it != target_shape_vector.end()) {
-      auto ddim_out_vec = pten::vectorize(x->dims());
+      auto ddim_out_vec = phi::vectorize(x->dims());
       int ddim_out_product = std::accumulate(
           ddim_out_vec.begin(), ddim_out_vec.end(), 1, std::multiplies<int>());
       int reshape_out_product = std::accumulate(target_shape_vector.begin(),
@@ -93,7 +93,7 @@ class Reshape2MLUKernel : public framework::OpKernel<T> {
       target_shape_vector[index] = ddim_out_product / reshape_out_product;
     }
 
-    auto out_dims = pten::make_ddim(target_shape_vector);
+    auto out_dims = phi::make_ddim(target_shape_vector);
     out->mutable_data<T>(out_dims, ctx.GetPlace());
 
     // output should copy to mlu

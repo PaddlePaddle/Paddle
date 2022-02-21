@@ -37,15 +37,15 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
     auto y_dims = ctx->GetInputDim("Y");
 
     PADDLE_ENFORCE_EQ(
-        pten::arity(x_dims), pten::arity(y_dims),
+        phi::arity(x_dims), phi::arity(y_dims),
         platform::errors::InvalidArgument(
             "Input(X) and Input(X) of SquaredL2DistanceOp should "
             "have same dimensions. "
             "But received X's shape = [%s] and Y's shape = [%s], "
             "the dimensions are %d and %d respectively",
-            x_dims, y_dims, pten::arity(x_dims), pten::arity(y_dims)));
+            x_dims, y_dims, phi::arity(x_dims), phi::arity(y_dims)));
 
-    int rank = pten::arity(x_dims);
+    int rank = phi::arity(x_dims);
     PADDLE_ENFORCE_GE(
         rank, 2,
         platform::errors::InvalidArgument(
@@ -54,7 +54,7 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
             x_dims, rank));
     bool check = true;
     if ((!ctx->IsRuntime()) &&
-        (pten::product(x_dims) <= 0 || pten::product(y_dims) <= 0)) {
+        (phi::product(x_dims) <= 0 || phi::product(y_dims) <= 0)) {
       check = false;
     }
     if (check) {

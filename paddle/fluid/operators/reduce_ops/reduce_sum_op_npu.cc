@@ -115,7 +115,7 @@ class ReduceSumGradNPUKernel : public framework::OpKernel<T> {
             .stream();
     if (keep_dims || reduce_all) {
       const auto& runner = NpuOpRunner("BroadcastToD", {*out_grad}, {*x_grad},
-                                       {{"shape", pten::vectorize(x->dims())}});
+                                       {{"shape", phi::vectorize(x->dims())}});
       runner.Run(stream);
     } else {
       framework::DDim out_dims;
@@ -133,7 +133,7 @@ class ReduceSumGradNPUKernel : public framework::OpKernel<T> {
 
       const auto& runner =
           NpuOpRunner("BroadcastToD", {out_grad_tmp}, {*x_grad},
-                      {{"shape", pten::vectorize(x->dims())}});
+                      {{"shape", phi::vectorize(x->dims())}});
       runner.Run(stream);
     }
   }

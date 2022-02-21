@@ -49,7 +49,7 @@ class LayerNormOp : public framework::OperatorWithKernel {
             "received the dimensions of X is [%d].",
             begin_norm_axis, x_dim.size()));
 
-    auto matrix_dim = pten::flatten_to_2d(x_dim, begin_norm_axis);
+    auto matrix_dim = phi::flatten_to_2d(x_dim, begin_norm_axis);
     int left = static_cast<int>(matrix_dim[0]);
     int right = static_cast<int>(matrix_dim[1]);
     if (ctx->HasInput("Scale")) {

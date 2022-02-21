@@ -46,7 +46,7 @@ class ConcatMLUKernel : public framework::OpKernel<T> {
       }
 
       framework::DDim out_dims =
-          pten::funcs::ComputeAndCheckShape(true, ins_dims, axis);
+          phi::funcs::ComputeAndCheckShape(true, ins_dims, axis);
       out->Resize(out_dims);
     }
     const int axis_t = axis;

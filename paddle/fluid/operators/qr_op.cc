@@ -17,7 +17,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "paddle/pten/core/ddim.h"
+#include "paddle/phi/core/ddim.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -50,18 +50,18 @@ class QrOp : public framework::OperatorWithKernel {
 
     if (compute_q) {
       int k = reduced_mode ? min_mn : m;
-      auto q_dims_vec = pten::vectorize(x_dims);
+      auto q_dims_vec = phi::vectorize(x_dims);
       q_dims_vec[q_dims_vec.size() - 1] = k;
-      ctx->SetOutputDim("Q", pten::make_ddim(q_dims_vec));
+      ctx->SetOutputDim("Q", phi::make_ddim(q_dims_vec));
     } else {
-      ctx->SetOutputDim("Q", pten::make_ddim({0}));
+      ctx->SetOutputDim("Q", phi::make_ddim({0}));
     }
 
     int k = reduced_mode ? min_mn : m;
-    auto r_dims_vec = pten::vectorize(x_dims);
+    auto r_dims_vec = phi::vectorize(x_dims);
     r_dims_vec[r_dims_vec.size() - 2] = k;
     r_dims_vec[r_dims_vec.size() - 1] = n;
-    ctx->SetOutputDim("R", pten::make_ddim(r_dims_vec));
+    ctx->SetOutputDim("R", phi::make_ddim(r_dims_vec));
 
     ctx->ShareLoD("X", /*->*/ "Q");
     ctx->ShareLoD("X", /*->*/ "R");

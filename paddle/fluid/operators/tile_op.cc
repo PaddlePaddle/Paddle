@@ -58,7 +58,7 @@ class TileOp : public framework::OperatorWithKernel {
     auto out_rank =
         std::max(static_cast<size_t>(x_dims.size()), repeat_times.size());
     std::vector<int64_t> out_shape(out_rank);
-    auto x_dim_vec = pten::vectorize<int>(x_dims);
+    auto x_dim_vec = phi::vectorize<int>(x_dims);
     if (x_dim_vec.size() > repeat_times.size()) {
       auto diff = x_dim_vec.size() - repeat_times.size();
       repeat_times.insert(repeat_times.begin(), diff, -1);
@@ -80,7 +80,7 @@ class TileOp : public framework::OperatorWithKernel {
       }
     }
 
-    ctx->SetOutputDim("Out", pten::make_ddim(out_shape));
+    ctx->SetOutputDim("Out", phi::make_ddim(out_shape));
     if (out_shape[0] == x_dims[0]) {
       ctx->ShareLoD("X", "Out");
     }
@@ -175,7 +175,7 @@ class TileGradOp : public framework::OperatorWithKernel {
     }
 
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-    auto x_dim_vec = pten::vectorize<int>(x_dims);
+    auto x_dim_vec = phi::vectorize<int>(x_dims);
     if (x_dim_vec.size() > repeat_times.size()) {
       auto diff = x_dim_vec.size() - repeat_times.size();
       repeat_times.insert(repeat_times.begin(), diff, -1);

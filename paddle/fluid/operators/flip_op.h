@@ -53,7 +53,7 @@ class FlipKernel<platform::CPUDeviceContext, T>
       }
       dim_bitset[dim] = true;
     }
-    auto x_strides = pten::stride(x_dims);
+    auto x_strides = phi::stride(x_dims);
     auto numel = x->numel();
     const T* x_data = x->data<T>();
     T* out_data = out->mutable_data<T>(ctx.GetPlace());

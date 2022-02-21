@@ -16,7 +16,7 @@
 #include "paddle/fluid/operators/index_sample_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 #define PREDEFINED_BLOCK_SIZE_X 512
 #define PREDEFINED_BLOCK_SIZE 1024
@@ -179,7 +179,7 @@ class IndexSampleGradKernel<platform::CUDADeviceContext, T>
                   (batch_size + block_dim.y - 1) / block_dim.y);
     LimitGridDim(ctx, &grid_dim);
 
-    pten::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
+    phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     set_zero(dev_ctx, input_grad, static_cast<T>(0));
 

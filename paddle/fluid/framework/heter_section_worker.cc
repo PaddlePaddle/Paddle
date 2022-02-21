@@ -36,7 +36,7 @@ void SetMicroId(paddle::framework::Scope* scope,
                         "the type of microbatch_id  should be LoDTensor"));
   auto* tensor = var->GetMutable<framework::LoDTensor>();
   std::vector<int> dims{1};
-  tensor->Resize(pten::make_ddim(dims));
+  tensor->Resize(phi::make_ddim(dims));
   void* tensor_data = tensor->mutable_data(
       place, framework::TransToPtenDataType(framework::proto::VarType::FP32));
   if (platform::is_gpu_place(place)) {

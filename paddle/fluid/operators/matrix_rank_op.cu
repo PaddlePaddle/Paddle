@@ -22,22 +22,22 @@ limitations under the License. */
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/platform/dynload/cusolver.h"
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/pten/kernels/funcs/complex_functors.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 namespace detail {
 DDim GetUDDim(const DDim& x_dim, int k) {
-  auto x_vec = pten::vectorize(x_dim);
+  auto x_vec = phi::vectorize(x_dim);
   x_vec[x_vec.size() - 1] = k;
-  return pten::make_ddim(x_vec);
+  return phi::make_ddim(x_vec);
 }
 
 DDim GetVHDDim(const DDim& x_dim, int k) {
-  auto x_vec = pten::vectorize(x_dim);
+  auto x_vec = phi::vectorize(x_dim);
   x_vec[x_vec.size() - 2] = k;
-  return pten::make_ddim(x_vec);
+  return phi::make_ddim(x_vec);
 }
 }  // namespace detail
 
@@ -93,8 +93,8 @@ class MatrixRankGPUKernel : public framework::OpKernel<T> {
                    info_ptr);
       platform::ForRange<platform::CUDADeviceContext> for_range(
           dev_ctx, eigenvalue_tensor.numel());
-      pten::funcs::AbsFunctor<T> functor(eigenvalue_data, eigenvalue_data,
-                                         eigenvalue_tensor.numel());
+      phi::funcs::AbsFunctor<T> functor(eigenvalue_data, eigenvalue_data,
+                                        eigenvalue_tensor.numel());
       for_range(functor);
     } else {
       Tensor U, VH;
@@ -110,7 +110,7 @@ class MatrixRankGPUKernel : public framework::OpKernel<T> {
         math::DeviceIndependenceTensorOperations<platform::CUDADeviceContext,
                                                  T>(context);
     std::vector<int> max_eigenvalue_shape =
-        pten::vectorize<int>(detail::RemoveLastDim(eigenvalue_tensor.dims()));
+        phi::vectorize<int>(detail::RemoveLastDim(eigenvalue_tensor.dims()));
     Tensor max_eigenvalue_tensor =
         dito_T.ReduceMax(eigenvalue_tensor, max_eigenvalue_shape);
     Tensor temp_rtol_tensor;
@@ -136,7 +136,7 @@ class MatrixRankGPUKernel : public framework::OpKernel<T> {
     auto dito_int =
         math::DeviceIndependenceTensorOperations<platform::CUDADeviceContext,
                                                  int64_t>(context);
-    std::vector<int> result_shape = pten::vectorize<int>(dim_out);
+    std::vector<int> result_shape = phi::vectorize<int>(dim_out);
     Tensor result = dito_int.ReduceSum(compare_result, result_shape);
     out->ShareDataWith(result);
   }
