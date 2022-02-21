@@ -147,6 +147,63 @@ CUDA_ATOMIC_WRAPPER(Add, float16) {
   }
 }
 #endif
+
+template <typename T, typename std::enable_if<std::is_same<
+                          platform::float16, T>::value>::type * = nullptr>
+__device__ __forceinline__ void fastSpecializedAtomicAdd(T *tensor,
+                                                         size_t index,
+                                                         const size_t numel,
+                                                         T value) {
+#if ((CUDA_VERSION < 10000) || \
+     (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 700)))
+  paddle::platform::CudaAtomicAdd(
+      reinterpret_cast<platform::float16 *>(tensor) + index,
+      static_cast<platform::float16>(value));
+#else
+  // Accounts for the chance tensor falls on an odd 16 bit alignment (ie, not 32
+  // bit aligned)
+  __half *target_addr = reinterpret_cast<__half *>(tensor + index);
+  bool low_byte =
+      (reinterpret_cast<std::uintptr_t>(target_addr) % sizeof(__half2) == 0);
+
+  if (low_byte && index < (numel - 1)) {
+    __half2 value2;
+    value2.x = *reinterpret_cast<__half *>(&value);
+    value2.y = __int2half_rz(0);
+    atomicAdd(reinterpret_cast<__half2 *>(target_addr), value2);
+
+  } else if (!low_byte && index > 0) {
+    __half2 value2;
+    value2.x = __int2half_rz(0);
+    value2.y = *reinterpret_cast<__half *>(&value);
+    atomicAdd(reinterpret_cast<__half2 *>(target_addr - 1), value2);
+
+  } else {
+    atomicAdd(reinterpret_cast<__half *>(tensor) + index,
+              *reinterpret_cast<__half *>(&value));
+  }
+#endif
+}
+
+template <typename T, typename std::enable_if<!std::is_same<
+                          platform::float16, T>::value>::type * = nullptr>
+__device__ __forceinline__ void fastSpecializedAtomicAdd(T *arr, size_t index,
+                                                         const size_t numel,
+                                                         T value) {
+  paddle::platform::CudaAtomicAdd(arr + index, value);
+}
+
+template <class T>
+__device__ __forceinline__ void fastAtomicAdd(T *arr, size_t index,
+                                              const size_t numel, T value,
+                                              bool fast_atomics) {
+  if (fast_atomics) {
+    fastSpecializedAtomicAdd(arr, index, numel, value);
+  } else {
+    paddle::platform::CudaAtomicAdd(arr + index, value);
+  }
+}
+
 #endif
 
 CUDA_ATOMIC_WRAPPER(Add, complex<float>) {
