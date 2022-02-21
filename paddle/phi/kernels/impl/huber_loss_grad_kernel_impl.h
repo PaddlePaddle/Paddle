@@ -14,11 +14,11 @@
 
 #pragma once
 
-#include "paddle/pten/kernels/funcs/eigen/common.h"
-#include "paddle/pten/kernels/funcs/eigen/eigen_function.h"
-#include "paddle/pten/kernels/huber_loss_grad_kernel.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/huber_loss_grad_kernel.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T>
 struct HuberLossBackward {
@@ -72,4 +72,4 @@ void HuberLossGradKernel(const Context& dev_ctx,
   }
 }
 
-}  // namespace pten
+}  // namespace phi

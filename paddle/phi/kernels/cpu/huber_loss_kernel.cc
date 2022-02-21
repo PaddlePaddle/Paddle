@@ -12,19 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/huber_loss_kernel.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/huber_loss_kernel_impl.h"
 
-#include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/device_context.h"
-
-namespace pten {
-
-template <typename T, typename Context>
-void HuberLossKernel(const Context& dev_ctx,
-                     const DenseTensor& input,
-                     const DenseTensor& label,
-                     float delta,
-                     DenseTensor* out,
-                     DenseTensor* residual);
-
-}  // namespace pten
+PT_REGISTER_KERNEL(
+    huber_loss, CPU, ALL_LAYOUT, phi::HuberLossKernel, float, double) {}

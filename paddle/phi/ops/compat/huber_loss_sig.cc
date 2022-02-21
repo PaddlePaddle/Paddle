@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/core/compat/op_utils.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
 KernelSignature HuberLossOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature(
@@ -29,8 +29,8 @@ KernelSignature HuberLossGradOpArgumentMapping(
                          {GradVarName("X"), GradVarName("Y")});
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(huber_loss, pten::HuberLossOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(huber_loss, phi::HuberLossOpArgumentMapping);
 PT_REGISTER_ARG_MAPPING_FN(huber_loss_grad,
-                           pten::HuberLossGradOpArgumentMapping);
+                           phi::HuberLossGradOpArgumentMapping);

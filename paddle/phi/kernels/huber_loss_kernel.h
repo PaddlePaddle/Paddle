@@ -12,14 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/backends/gpu/gpu_context.h"
-#include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/huber_loss_grad_kernel.h"
-#include "paddle/pten/kernels/impl/huber_loss_grad_kernel_impl.h"
+#pragma once
 
-PT_REGISTER_KERNEL(huber_loss_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   pten::HuberLossGradKernel,
-                   float,
-                   double) {}
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
+
+namespace phi {
+
+template <typename T, typename Context>
+void HuberLossKernel(const Context& dev_ctx,
+                     const DenseTensor& input,
+                     const DenseTensor& label,
+                     float delta,
+                     DenseTensor* out,
+                     DenseTensor* residual);
+
+}  // namespace phi
