@@ -93,10 +93,10 @@ def gen_include_headers():
     return """
 #include "paddle/infrt/kernel/pten/infershaped/infershaped_kernel_launchers.h"
 #include "paddle/infrt/kernel/pten/infershaped/pten_kernel_launcher.h"
-#include "paddle/pten/backends/all_context.h"
-#include "paddle/pten/include/kernels.h"
-#include "paddle/pten/include/infermeta.h"
-#include "paddle/pten/infermeta/generated.h"
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/include/kernels.h"
+#include "paddle/phi/include/infermeta.h"
+#include "paddle/phi/infermeta/generated.h"
 """
 
 
@@ -114,11 +114,11 @@ namespace kernel {
 
 def gen_context(val):
     if val == "CPU":
-        return "pten::CPUContext"
+        return "phi::CPUContext"
     # elif val == "GPU":
-    #     return "pten::GPUContext"
+    #     return "phi::GPUContext"
     # elif val == "XPU":
-    #     return "pten::XPUContext"
+    #     return "phi::XPUContext"
     else:
         # raise Exception(f"Unknown context type {val}")
         return ""
@@ -138,12 +138,12 @@ def gen_kernel_func(val, ctx_name, dtype_name):
         ed = val.index('>')
         func_name = val[:st]
         template_name = val[st + 1:ed]
-        if 'pten::' in template_name:
-            return "&pten::" + val
+        if 'phi::' in template_name:
+            return "&phi::" + val
         else:
-            return "&pten::" + func_name + "<pten::" + template_name + ">"
+            return "&phi::" + func_name + "<phi::" + template_name + ">"
     else:
-        return "&pten::" + val + "<" + dtype_name + ", " + ctx_name + ">"
+        return "&phi::" + val + "<" + dtype_name + ", " + ctx_name + ">"
 
 
 def gen_dtype(vals: List[str]):
@@ -210,7 +210,7 @@ def gen_register_info(resources: List[List[str]]):
             continue
         update_item[2] = gen_layout(update_item[2])
         ir_dtypes, origin_dtypes = gen_dtype(update_item[4:-1])
-        infer_shape_func = "&pten::" + update_item[-1]
+        infer_shape_func = "&phi::" + update_item[-1]
 
         if update_item[-1] == "unknown":
             # TODO(wilber): handle the unknown inferShape func.

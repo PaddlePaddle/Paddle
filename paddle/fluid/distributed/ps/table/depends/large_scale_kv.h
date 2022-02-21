@@ -41,8 +41,8 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/string_helper.h"
-#include "paddle/pten/backends/dynload/port.h"
-#include "paddle/pten/core/utils/rw_lock.h"
+#include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/core/utils/rw_lock.h"
 
 namespace paddle {
 namespace distributed {

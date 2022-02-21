@@ -46,13 +46,13 @@ void BufferedAllocator::FreeCache(size_t size) {
 
 bool BufferedAllocator::IsAllocThreadSafe() const { return mtx_ != nullptr; }
 
-void BufferedAllocator::FreeImpl(pten::Allocation *allocation) {
+void BufferedAllocator::FreeImpl(phi::Allocation *allocation) {
   platform::LockGuardPtr<std::mutex> guard(mtx_);
   allocations_.emplace(allocation->size(),
                        AllocationPtr(allocation, Allocator::AllocationDeleter));
 }
 
-pten::Allocation *BufferedAllocator::AllocateImpl(size_t size) {
+phi::Allocation *BufferedAllocator::AllocateImpl(size_t size) {
   {
     platform::LockGuardPtr<std::mutex> guard(mtx_);
     auto it = allocations_.lower_bound(size);
