@@ -60,8 +60,8 @@ class TestEighGPUCase(unittest.TestCase):
         np.random.seed(123)
         self.x_np = np.random.random(self.x_shape).astype(self.dtype)
         if (paddle.version.cuda() >= "11.6"):
-            self.rtol = 2e-6
-            self.atol = 2e-6
+            self.rtol = 5e-6
+            self.atol = 6e-5
         else:
             self.rtol = 1e-5
             self.atol = 1e-5
@@ -86,8 +86,8 @@ class TestEighAPI(unittest.TestCase):
         self.init_input_data()
         self.UPLO = 'L'
         if (paddle.version.cuda() >= "11.6"):
-            self.rtol = 2e-6
-            self.atol = 2e-6
+            self.rtol = 5e-6
+            self.atol = 6e-5
         else:
             self.rtol = 1e-5
             self.atol = 1e-5
