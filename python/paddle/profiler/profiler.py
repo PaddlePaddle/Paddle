@@ -23,6 +23,7 @@ import paddle
 from paddle.fluid.core import (_Profiler, _ProfilerResult, ProfilerOptions,
                                TracerEventType)
 from .utils import Record_Event
+from .profiler_statistic import StatisticData, _build_table
 
 
 class ProfilerState(Enum):
@@ -385,4 +386,6 @@ class Profiler:
         default: default statistics
         detail: expand each operator detail information
         '''
-        pass
+        statistic_data = StatisticData(self.profiler_result.get_data(),
+                                       self.profiler_result.get_extra_info())
+        print(_build_table(statistic_data))
