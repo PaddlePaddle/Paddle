@@ -21,9 +21,9 @@
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/device_context.h"
 
-namespace pten {
+namespace phi {
 class DenseTensor;
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 namespace framework {
@@ -98,7 +98,7 @@ class TransferLayoutFunctor {
                        const framework::Tensor &in,
                        framework::Tensor *out) const {
     PADDLE_ENFORCE_EQ(
-        framework::arity(in.dims()), 4,
+        phi::arity(in.dims()), 4,
         platform::errors::InvalidArgument(
             "Input dimension arity only can be 4, the input dimension is %s.",
             in.dims()));
@@ -112,7 +112,7 @@ class TransferLayoutFunctor {
       dst_dim[i] = src_dim[axis[i]];
     }
 
-    out->Resize(framework::make_ddim(dst_dim));
+    out->Resize(phi::make_ddim(dst_dim));
     out->mutable_data(in.place(), in.type());
 
     framework::VisitDataType(

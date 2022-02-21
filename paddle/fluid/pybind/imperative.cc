@@ -136,10 +136,13 @@ static const platform::Place PyObjectToPlace(const py::object &place_obj) {
     return place_obj.cast<platform::Place>();
   } else if (py::isinstance<platform::MLUPlace>(place_obj)) {
     return place_obj.cast<platform::MLUPlace>();
+  } else if (py::isinstance<platform::CustomPlace>(place_obj)) {
+    return place_obj.cast<platform::CustomPlace>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
-        "Place/CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace/MLUPlace"));
+        "Place/CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace/MLUPlace/"
+        "CustomPlace"));
   }
 }
 
@@ -183,6 +186,9 @@ static void InitVarBaseAndTensor(
     SetTensorFromPyArray<platform::NPUPlace>(tensor, array, place, zero_copy);
   } else if (platform::is_mlu_place(place)) {
     SetTensorFromPyArray<platform::MLUPlace>(tensor, array, place, zero_copy);
+  } else if (platform::is_custom_place(place)) {
+    SetTensorFromPyArray<platform::CustomPlace>(tensor, array, place,
+                                                zero_copy);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
@@ -700,10 +706,10 @@ static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,  // NOLINT
             platform::DeviceContextPool::Instance().Get(src_device)->Wait();
           }
         }
-      } else if (src->Var().IsType<pten::SelectedRows>()) {
-        auto &src_selected_rows = src->Var().Get<pten::SelectedRows>();
+      } else if (src->Var().IsType<phi::SelectedRows>()) {
+        auto &src_selected_rows = src->Var().Get<phi::SelectedRows>();
         auto *dst_selected_rows =
-            dst.MutableVar()->GetMutable<pten::SelectedRows>();
+            dst.MutableVar()->GetMutable<phi::SelectedRows>();
         dst_selected_rows->set_height(src_selected_rows.height());
         dst_selected_rows->set_rows(src_selected_rows.rows());
         framework::TensorCopy(src_selected_rows.value(), dst_device,
@@ -914,7 +920,7 @@ void BindImperative(py::module *m_ptr) {
              if (type == framework::proto::VarType::LOD_TENSOR) {
                auto *tensor =
                    self.MutableVar()->GetMutable<framework::LoDTensor>();
-               tensor->Resize(framework::make_ddim(dims));
+               tensor->Resize(phi::make_ddim(dims));
              }
            })
       .def("__init__", &InitVarBaseFromNumpyWithArg<platform::CPUPlace>,
@@ -941,6 +947,10 @@ void BindImperative(py::module *m_ptr) {
            py::arg("value"), py::arg("place"), py::arg("persistable") = false,
            py::arg("zero_copy") = false, py::arg("name") = "",
            py::arg("stop_gradient") = -1)
+      .def("__init__", &InitVarBaseFromNumpyWithArg<platform::CustomPlace>,
+           py::arg("value"), py::arg("place"), py::arg("persistable") = false,
+           py::arg("zero_copy") = false, py::arg("name") = "",
+           py::arg("stop_gradient") = -1)
       .def("__init__", &InitVarBaseFromNumpyWithArgDefault, py::arg("value"))
       .def("__init__", &InitVarBaseFromTensorWithArgDefault, py::arg("tensor"),
            py::arg("name") = "")
@@ -955,6 +965,8 @@ void BindImperative(py::module *m_ptr) {
       .def("__init__", &InitVarBaseFromTensorWithArg<platform::NPUPlace>,
            py::arg("tensor"), py::arg("place"), py::arg("name") = "")
       .def("__init__", &InitVarBaseFromTensorWithArg<platform::MLUPlace>,
+           py::arg("tensor"), py::arg("place"), py::arg("name") = "")
+      .def("__init__", &InitVarBaseFromTensorWithArg<platform::CustomPlace>,
            py::arg("tensor"), py::arg("place"), py::arg("name") = "")
       .def("__init__", &InitVarBaseFromNumpyWithKwargs)
       .def(
@@ -1394,7 +1406,7 @@ void BindImperative(py::module *m_ptr) {
 
              PADDLE_ENFORCE_EQ(
                  self.Var().IsType<framework::LoDTensor>() ||
-                     self.Var().IsType<pten::SelectedRows>(),
+                     self.Var().IsType<phi::SelectedRows>(),
                  true,
                  platform::errors::InvalidArgument(
                      "Type of Tensor[%s] must be LoDTensor or SelectedRows!",
@@ -1425,14 +1437,14 @@ void BindImperative(py::module *m_ptr) {
                detach_tensor->ShareInplaceVersionCounterWith(origin_tensor);
              } else {
                const auto &origin_selected_rows =
-                   self.Var().Get<pten::SelectedRows>();
+                   self.Var().Get<phi::SelectedRows>();
                PADDLE_ENFORCE_EQ(
                    origin_selected_rows.value().IsInitialized(), true,
                    platform::errors::InvalidArgument(
                        "Tensor %s has not been initialized!", self.Name()));
 
                auto *detach_selected_rows =
-                   detach_var->MutableVar()->GetMutable<pten::SelectedRows>();
+                   detach_var->MutableVar()->GetMutable<phi::SelectedRows>();
                detach_selected_rows->set_height(origin_selected_rows.height());
                detach_selected_rows->set_rows(origin_selected_rows.rows());
                detach_selected_rows->mutable_value()->ShareDataWith(
@@ -1598,7 +1610,7 @@ void BindImperative(py::module *m_ptr) {
                        ? grad_var->MutableVar()
                              ->GetMutable<framework::LoDTensor>()
                        : grad_var->MutableVar()
-                             ->GetMutable<pten::SelectedRows>()
+                             ->GetMutable<phi::SelectedRows>()
                              ->mutable_value();
 
                if (tensor->IsInitialized()) {
@@ -1614,7 +1626,7 @@ void BindImperative(py::module *m_ptr) {
            })
       .def("_is_sparse",
            [](imperative::VarBase &self) {
-             return self.Var().IsType<pten::SelectedRows>();
+             return self.Var().IsType<phi::SelectedRows>();
            })
       .def("_allreduce",
            [](imperative::VarBase &self,
@@ -1624,7 +1636,7 @@ void BindImperative(py::module *m_ptr) {
 #if NCCL_VERSION_CODE >= 2212
                imperative::AllReduce(self.Var(), self.MutableVar(), strategy);
 #else
-               if (!self.Var().IsType<pten::SelectedRows>()) {
+               if (!self.Var().IsType<phi::SelectedRows>()) {
                  imperative::AllReduce(self.Var(), self.MutableVar(), strategy);
                } else {
                  PADDLE_THROW(platform::errors::Unimplemented(
@@ -2126,15 +2138,15 @@ void BindImperative(py::module *m_ptr) {
       .def_property_readonly("shape",
                              [](imperative::VarBase &self) {
                                if (self.Var().IsType<framework::LoDTensor>()) {
-                                 return framework::vectorize<int>(
+                                 return phi::vectorize<int>(
                                      self.Var()
                                          .Get<framework::LoDTensor>()
                                          .dims());
                                } else if (self.Var()
-                                              .IsType<pten::SelectedRows>()) {
-                                 return framework::vectorize<int>(
+                                              .IsType<phi::SelectedRows>()) {
+                                 return phi::vectorize<int>(
                                      self.Var()
-                                         .Get<pten::SelectedRows>()
+                                         .Get<phi::SelectedRows>()
                                          .value()
                                          .dims());
                                } else if (self.Var()
@@ -2218,6 +2230,8 @@ void BindImperative(py::module *m_ptr) {
                     &imperative::Tracer::SetEnableProgramDescTracing)
       .def_property("_amp_level", &imperative::Tracer::GetAmpLevel,
                     &imperative::Tracer::SetAmpLevel)
+      .def_property("_amp_dtype", &imperative::Tracer::GetAmpDtype,
+                    &imperative::Tracer::SetAmpDtype)
       .def_property("_has_grad", &imperative::Tracer::HasGrad,
                     &imperative::Tracer::SetHasGrad)
       .def_property(
@@ -2255,6 +2269,11 @@ void BindImperative(py::module *m_ptr) {
                       << " set expected place " << *p;
             } else if (py::isinstance<platform::MLUPlace>(obj)) {
               auto p = obj.cast<platform::MLUPlace *>();
+              self.SetExpectedPlace(*p);
+              VLOG(4) << "Tracer(" << &self << ")"
+                      << " set expected place " << *p;
+            } else if (py::isinstance<platform::CustomPlace>(obj)) {
+              auto p = obj.cast<platform::CustomPlace *>();
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
@@ -2300,6 +2319,21 @@ void BindImperative(py::module *m_ptr) {
              return std::make_tuple(
                  *(imperative::AmpOperators::Instance().GetMutableAllowOps()),
                  *(imperative::AmpOperators::Instance().GetMutableBlockOps()));
+           })
+      .def("trace",
+           [](imperative::Tracer &self, const std::string &type,
+              const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,
+              framework::AttributeMap attrs, const platform::CustomPlace &place,
+              bool trace_backward,
+              const std::map<std::string, std::string> &inplace_map = {}) {
+             auto ins_map = ConvertToNameVarBaseMap(ins);
+             auto outs_map = ConvertToNameVarBaseMap(outs);
+             {
+               py::gil_scoped_release release;
+               self.TraceOp<imperative::VarBase>(
+                   type, std::move(ins_map), std::move(outs_map),
+                   std::move(attrs), place, trace_backward, inplace_map);
+             }
            })
       .def("trace",
            [](imperative::Tracer &self, const std::string &type,

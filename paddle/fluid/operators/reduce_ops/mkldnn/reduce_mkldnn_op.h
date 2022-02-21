@@ -27,12 +27,12 @@ inline std::vector<int64_t> CalculateReducedDims(
     const Tensor* input, const Tensor* output,
     std::vector<int>& reduce_dims,  // NOLINT
     bool reduce_all, bool keep_dim) {
-  if (keep_dim) return framework::vectorize(output->dims());
+  if (keep_dim) return phi::vectorize(output->dims());
 
   if (reduce_all)
-    return std::vector<int64_t>(framework::vectorize(input->dims()).size(), 1);
+    return std::vector<int64_t>(phi::vectorize(input->dims()).size(), 1);
 
-  std::vector<int64_t> output_dims(framework::vectorize(input->dims()));
+  std::vector<int64_t> output_dims(phi::vectorize(input->dims()));
   for (size_t i = 0; i < reduce_dims.size(); ++i) {
     reduce_dims[i] = (reduce_dims[i] >= 0)
                          ? reduce_dims[i]
@@ -61,7 +61,7 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
 
     auto output_dims =
         CalculateReducedDims(input, output, reduce_dims, reduce_all, keep_dim);
-    auto input_dims = framework::vectorize(input->dims());
+    auto input_dims = phi::vectorize(input->dims());
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
@@ -85,16 +85,13 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
       auto reorder_p = reorder_handler.AcquireReorder(reorder_src_memory_p,
                                                       reorder_dst_memory_p);
 
-      platform::RecordEvent record_reorder("int_reorder",
-                                           platform::EventRole::kUniqueOp);
-
       reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
       astream.wait();
 
       output->set_layout(framework::DataLayout::kMKLDNN);
       output->set_format(
           platform::GetMKLDNNFormat(reorder_dst_memory_p->get_desc().reshape(
-              paddle::framework::vectorize<int64_t>(output->dims()))));
+              phi::vectorize<int64_t>(output->dims()))));
     } else {
       platform::ReductionMKLDNNHandler<T> handler(reduction_type, 0.0f, 0.0f,
                                                   onednn_engine, ctx.GetPlace(),
@@ -113,7 +110,7 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
       output->set_layout(framework::DataLayout::kMKLDNN);
       output->set_format(
           platform::GetMKLDNNFormat(dst_memory_p->get_desc().reshape(
-              paddle::framework::vectorize<int64_t>(output->dims()))));
+              phi::vectorize<int64_t>(output->dims()))));
     }
   }
 };
@@ -137,12 +134,12 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
     dnnl::memory::format_tag x_format_tag;
     auto input_dims =
         CalculateReducedDims(output_dx, input_dy, dims, reduce_all, keep_dim);
-    auto output_dims = framework::vectorize(output_dx->dims());
+    auto output_dims = phi::vectorize(output_dx->dims());
 
     if (input_dims != output_dims) {
-      auto input_dy_md = dnnl::memory::desc(
-          framework::vectorize(input_dy->dims()),
-          platform::MKLDNNGetDataType<T>(), input_dy->format());
+      auto input_dy_md = dnnl::memory::desc(phi::vectorize(input_dy->dims()),
+                                            platform::MKLDNNGetDataType<T>(),
+                                            input_dy->format());
       auto input_dy_ex_md = input_dy_md.reshape(input_dims);
       // TODO(jczaja): once MD is stored in Tensor we no longer need to guess
       // formats

@@ -83,8 +83,8 @@ type_dict_str_to_numpy = {
 }
 
 xpu_test_op_white_list = []
-xpu_test_type_white_list = []
-xpu_test_op_type_white_list = ['float64']
+xpu_test_type_white_list = ['float64']
+xpu_test_op_type_white_list = []
 xpu_test_device_op_white_list = []
 xpu_test_device_op_type_white_list = []
 
@@ -186,7 +186,7 @@ def get_xpu_op_support_types(op_name, dev_id=0):
                 paddle.bfloat16])
         else:
             support_type_str_list.append(type_dict_paddle_to_str[stype])
-    type_white_list = get_op_type_white_list()
+    type_white_list = get_type_white_list()
     return [
         stype for stype in support_type_str_list if stype not in type_white_list
     ]

@@ -39,6 +39,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -532,6 +533,21 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
       PADDLE_THROW(platform::errors::PermissionDenied(
           "Paddle can't use XPU device since it's not compiled with XPU,"
           "Please recompile or reinstall Paddle with XPU support."));
+#endif
+    } else if (platform::is_custom_place(place)) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+      if (IsFastEagerDeletionModeEnabled()) {
+        gc.reset(
+            new CustomDeviceUnsafeFastGarbageCollector(place, max_memory_size));
+      } else {
+        gc.reset(new CustomStreamGarbageCollector(place, max_memory_size));
+      }
+      VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
+#else
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Paddle can't use custom device since it's not compiled with "
+          "CustomDevice,"
+          "Please recompile or reinstall Paddle with CustomDevice support."));
 #endif
     } else if (platform::is_cpu_place(place)) {
       gc.reset(new CPUGarbageCollector(place, max_memory_size));

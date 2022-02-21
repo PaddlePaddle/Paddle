@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/controlflow/conditional_block_op.h"
 
 #include "paddle/fluid/operators/assign_op.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -245,7 +245,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
     outside_tensor->mutable_data(place, input_tensor.dtype());
     const platform::DeviceContext *dev_ctx =
         platform::DeviceContextPool::Instance().Get(place);
-    pten::funcs::set_constant(*dev_ctx, outside_tensor, 0.0f);
+    phi::funcs::set_constant(*dev_ctx, outside_tensor, 0.0f);
     outside_tensor->set_lod(input_tensor.lod());
   }
 };
@@ -261,6 +261,28 @@ class ConditionalBlockGradInferShape : public framework::InferShapeBase {
         context->HasOutputs(framework::GradVarName(ConditionalOp::kInputs))) {
       context->SetOutputsDim(framework::GradVarName(ConditionalOp::kInputs),
                              context->GetInputsDim(ConditionalOp::kInputs));
+    }
+  }
+};
+
+class ConditionalBlockGradInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    // NOTE(Aurelius84): VarType of Output is LoDTensor by default. In case of
+    // Input is {Tensor, LoDTensorArray}, we need synchronous the Input's
+    // VarType into Input@GRAD to avoid generating {Tensor, Tensor} as
+    // Input@GRAD.
+    auto input_size = ctx->InputSize(ConditionalOp::kInputs);
+    auto output_size =
+        ctx->OutputSize(framework::GradVarName(ConditionalOp::kInputs));
+    PADDLE_ENFORCE_EQ(input_size, output_size,
+                      platform::errors::InvalidArgument(
+                          "input_size and output_size should be equal for "
+                          "conditional_block_grad_op."));
+    for (size_t i = 0; i < output_size; ++i) {
+      ctx->SyncTypeAndDataType(ConditionalOp::kInputs,
+                               framework::GradVarName(ConditionalOp::kInputs),
+                               i);
     }
   }
 };
@@ -300,4 +322,5 @@ REGISTER_OPERATOR(conditional_block, ops::ConditionalBlockOp,
                   ops::ConditionalBlockOpProtoMaker,
                   ops::ConditionalBlockGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(conditional_block_grad, ops::ConditionalBlockGradOp,
-                  ops::ConditionalBlockGradInferShape);
+                  ops::ConditionalBlockGradInferShape,
+                  ops::ConditionalBlockGradInferVarType);

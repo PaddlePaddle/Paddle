@@ -97,7 +97,7 @@ class CpuSyncPsProgramBuilder(PsProgramBuilder):
     def __init__(self, pass_ctx):
         logger.info("start building cpu-sync-ps program")
         super(CpuSyncPsProgramBuilder, self).__init__(pass_ctx)
-        if self.ps_mode == DistributedMode.GEO:
+        if self.ps_mode != DistributedMode.SYNC:
             raise ValueError("ps mode: {} not matched {}",
                              format(ps_mode, "CpuSyncPsProgramBuilder"))
 
