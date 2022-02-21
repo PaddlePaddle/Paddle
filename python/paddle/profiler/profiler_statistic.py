@@ -560,13 +560,16 @@ def _build_table(statistic_data,
         else:
             row_values = [
                 '  Prepare Data', format_time(
-                    item.prepare_data_time, unit=time_unit, indent=2),
-                format_time(
-                    item.avg_prepare_data_time, unit=time_unit, indent=2),
-                format_time(
-                    item.max_prepare_data_time, unit=time_unit, indent=2),
-                format_time(
-                    item.min_prepare_data_time, unit=time_unit, indent=2),
+                    item.prepare_data_time, unit=time_unit,
+                    indent=2), format_time(
+                        item.avg_prepare_data_time, unit=time_unit,
+                        indent=2), format_time(
+                            item.max_prepare_data_time,
+                            unit=time_unit,
+                            indent=2), format_time(
+                                item.min_prepare_data_time,
+                                unit=time_unit,
+                                indent=2),
                 format_ratio(
                     float(item.prepare_data_time) / item.cpu_time, indent=2)
             ]
@@ -574,25 +577,25 @@ def _build_table(statistic_data,
         row_values = [
             '  Infer Shape', format_time(
                 item.infer_shape_time, unit=time_unit, indent=2), format_time(
-                    item.avg_infer_shape_time, unit=time_unit, indent=2),
+                    item.avg_infer_shape_time, unit=time_unit,
+                    indent=2), format_time(
+                        item.max_infer_shape_time, unit=time_unit, indent=2),
             format_time(
-                item.max_infer_shape_time, unit=time_unit, indent=2),
-            format_time(
-                item.min_infer_shape_time, unit=time_unit, indent=2),
-            format_ratio(
-                float(item.infer_shape_time) / item.cpu_time, indent=2)
+                item.min_infer_shape_time, unit=time_unit,
+                indent=2), format_ratio(
+                    float(item.infer_shape_time) / item.cpu_time, indent=2)
         ]
         append(row_format.format(*row_values))
         row_values = [
             '  Compute', format_time(
                 item.computation_time, unit=time_unit, indent=2), format_time(
-                    item.avg_computation_time, unit=time_unit, indent=2),
+                    item.avg_computation_time, unit=time_unit,
+                    indent=2), format_time(
+                        item.max_computation_time, unit=time_unit, indent=2),
             format_time(
-                item.max_computation_time, unit=time_unit, indent=2),
-            format_time(
-                item.min_computation_time, unit=time_unit, indent=2),
-            format_ratio(
-                float(item.computation_time) / item.cpu_time, indent=2)
+                item.min_computation_time, unit=time_unit,
+                indent=2), format_ratio(
+                    float(item.computation_time) / item.cpu_time, indent=2)
         ]
         append(row_format.format(*row_values))
         row_values = [
