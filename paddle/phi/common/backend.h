@@ -130,6 +130,32 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
   return os;
 }
 
+inline Backend StringToBackend(const char* backend_cstr) {
+  std::string s(backend_cstr);
+  if (s == std::string("Undefined")) {
+    return Backend::UNDEFINED;
+  }
+  for (size_t i = 0; i < s.size(); ++i) {
+    s[i] = toupper(s[i]);
+  }
+  if (s == std::string("CPU")) {
+    return Backend::CPU;
+  } else if (s == std::string("GPU")) {
+    return Backend::GPU;
+  } else if (s == std::string("XPU")) {
+    return Backend::XPU;
+  } else if (s == std::string("NPU")) {
+    return Backend::NPU;
+  } else if (s == std::string("MKLDNN")) {
+    return Backend::MKLDNN;
+  } else if (s == std::string("CUDNN")) {
+    return Backend::CUDNN;
+  } else {
+    return static_cast<Backend>(static_cast<size_t>(Backend::NUM_BACKENDS) +
+                                phi::GetOrRegisterGlobalDeviceTypeId(s));
+  }
+}
+
 }  // namespace experimental
 }  // namespace paddle
 
