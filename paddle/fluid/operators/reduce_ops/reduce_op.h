@@ -26,10 +26,7 @@ limitations under the License. */
 
 // only can include the headers in paddle/phi/api dirs
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
-#include "paddle/phi/core/infermeta_utils.h"
-#include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/cpu/reduce.h"
 
 #if defined(__HIPCC__) || defined(__NVCC__)
@@ -463,6 +460,70 @@ class ReduceOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ReduceOp");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ReduceOp");
+    auto x_dims = ctx->GetInputDim("X");
+    auto x_rank = x_dims.size();
+    auto dims = ctx->Attrs().Get<std::vector<int>>("dim");
+    PADDLE_ENFORCE_GT(dims.size(), 0,
+                      platform::errors::InvalidArgument(
+                          "The input dim dimensions of ReduceOp "
+                          "should be greater than 0. But received the dim "
+                          "dimesions of Reduce = %d.",
+                          dims.size()));
+
+    for (size_t i = 0; i < dims.size(); ++i) {
+      PADDLE_ENFORCE_LT(dims[i], x_rank,
+                        platform::errors::InvalidArgument(
+                            "The reduce dim index %d should be in the "
+                            "range [-dimension(X), dimension(X)] "
+                            "which dimesion = %d. But received dim index = %d.",
+                            i, x_rank, dims[i]));
+      PADDLE_ENFORCE_GE(dims[i], -x_rank,
+                        platform::errors::InvalidArgument(
+                            "The reduce dim index %d should be in the "
+                            "range [-dimension(X), dimension(X)] "
+                            "which dimesion = %d. But received dim index = %d.",
+                            i, x_rank, dims[i]));
+      if (dims[i] < 0) dims[i] = x_rank + dims[i];
+    }
+    sort(dims.begin(), dims.end());
+    bool reduce_all = ctx->Attrs().Get<bool>("reduce_all");
+    bool keep_dim = ctx->Attrs().Get<bool>("keep_dim");
+    if (reduce_all) {
+      if (keep_dim)
+        ctx->SetOutputDim("Out",
+                          phi::make_ddim(std::vector<int64_t>(x_rank, 1)));
+      else
+        ctx->SetOutputDim("Out", {1});
+    } else {
+      auto dims_vector = vectorize(x_dims);
+      if (keep_dim) {
+        for (size_t i = 0; i < dims.size(); ++i) {
+          dims_vector[dims[i]] = 1;
+        }
+      } else {
+        const int kDelFlag = -2;
+        for (size_t i = 0; i < dims.size(); ++i) {
+          dims_vector[dims[i]] = kDelFlag;
+        }
+        dims_vector.erase(
+            remove(dims_vector.begin(), dims_vector.end(), kDelFlag),
+            dims_vector.end());
+      }
+      if (!keep_dim && dims_vector.size() == 0) {
+        dims_vector.push_back(1);
+      }
+      auto out_dims = phi::make_ddim(dims_vector);
+      ctx->SetOutputDim("Out", out_dims);
+      if (dims.size() > 0 && dims[0] != 0) {
+        // Only pass LoD when not reducing on the first dim.
+        ctx->ShareLoD("X", /*->*/ "Out");
+      }
+    }
+  }
+
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     // choose cudnn kernel if the runtime supported.
@@ -690,20 +751,18 @@ class ReduceCudaGradKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DELCARE_INFER_SHAPE_FUNCTOR(redcue, ReduceInferShapeFunctor,
-                            PT_INFER_META(phi::ReduceInferMeta));
 
-#define REGISTER_REDUCE_OP(op_name)                                            \
-  class __##op_name##Maker__ : public ops::ReduceOpMaker {                     \
-   protected:                                                                  \
-    virtual std::string GetName() const { return #op_name; }                   \
-    virtual std::string GetOpType() const { return "Reduce " #op_name; }       \
-  };                                                                           \
-  REGISTER_OPERATOR(                                                           \
-      op_name, ops::ReduceOp, __##op_name##Maker__,                            \
-      paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,  \
-      paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>, \
-      ReduceInferShapeFunctor);                                                \
+#define REGISTER_REDUCE_OP(op_name)                                           \
+  class __##op_name##Maker__ : public ops::ReduceOpMaker {                    \
+   protected:                                                                 \
+    virtual std::string GetName() const { return #op_name; }                  \
+    virtual std::string GetOpType() const { return "Reduce " #op_name; }      \
+  };                                                                          \
+  REGISTER_OPERATOR(                                                          \
+      op_name, ops::ReduceOp, __##op_name##Maker__,                           \
+      paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>, \
+      paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase,       \
+                                            true>);                           \
   REGISTER_OPERATOR(op_name##_grad, ops::ReduceGradOp)
 
 #define REGISTER_REDUCE_OP_WITHOUT_GRAD(op_name, ...)                    \
