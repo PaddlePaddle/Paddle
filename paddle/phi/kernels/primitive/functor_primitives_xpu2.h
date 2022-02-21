@@ -29,9 +29,7 @@ struct IdentityFunctor {
 
   explicit inline IdentityFunctor(int n) {}
 
-  inline Ty operator()(const Tx& x) const {
-    return static_cast<Ty>(x);
-  }
+  inline Ty operator()(const Tx& x) const { return static_cast<Ty>(x); }
   __device__ inline IdentityFunctor() {}
 
   __device__ explicit inline IdentityFunctor(int n) {}
@@ -49,22 +47,23 @@ template <typename Tx, typename Ty = Tx>
 struct DivideFunctor {
   inline DivideFunctor() { n_inv = static_cast<Tx>(1.0f); }
 
-  explicit inline DivideFunctor(int n) : n_inv(static_cast<Tx>(((float)1.0) / (static_cast<float>(n)))) {}
+  explicit inline DivideFunctor(int n)
+      : n_inv(static_cast<Tx>(((float)1.0) / (static_cast<float>(n)))) {}
 
-  inline Ty operator()(const Tx& x) const {
-    return static_cast<Ty>(x * n_inv);
-  }
+  inline Ty operator()(const Tx& x) const { return static_cast<Ty>(x * n_inv); }
 
   __device__ inline DivideFunctor() { n_inv = static_cast<Tx>(1.0f); }
 
-  __device__ inline DivideFunctor(int n) : n_inv(static_cast<Tx>(((float)1.0) / (static_cast<float>(n)))) {}
+  __device__ inline DivideFunctor(int n)
+      : n_inv(static_cast<Tx>(((float)1.0) / (static_cast<float>(n)))) {}
 
   __device__ inline Ty operator()(const Tx& x) const {
     return static_cast<Ty>(x * n_inv);
   }
 
-  __device__ inline void SetDiv(int n) { n_inv = static_cast<Tx>(((float)1.0) / (static_cast<float>(n))); }
-
+  __device__ inline void SetDiv(int n) {
+    n_inv = static_cast<Tx>(((float)1.0) / (static_cast<float>(n)));
+  }
 
  private:
   Tx n_inv;
@@ -91,9 +90,10 @@ struct SquareFunctor {
  */
 template <typename T>
 struct MinFunctor {
-  inline T initial() { /*return static_cast<T>(std::numeric_limits<T>::max());*/ }
+  inline T initial() { /*return static_cast<T>(std::numeric_limits<T>::max());*/
+  }
 
-  __device__  T operator()(const T& a, const T& b) const {
+  __device__ T operator()(const T& a, const T& b) const {
     return (b < a) ? b : a;
   }
 };
@@ -107,7 +107,7 @@ struct MaxFunctor {
     // return static_cast<T>(std::numeric_limits<T>::lowest());
   }
 
-  __device__  T operator()(const T& a, const T& b) const {
+  __device__ T operator()(const T& a, const T& b) const {
     return (b > a) ? b : a;
   }
 };
@@ -119,9 +119,7 @@ template <typename T>
 struct AddFunctor {
   inline T initial() { return static_cast<T>(0.0f); }
 
-  __device__  T operator()(const T a, const T b) const {
-    return b + a;
-  }
+  __device__ T operator()(const T a, const T b) const { return b + a; }
 };
 
 /**
@@ -131,9 +129,7 @@ template <typename T>
 struct MulFunctor {
   inline T initial() { return static_cast<T>(1.0f); }
 
-  __device__  T operator()(const T& a, const T& b) const {
-    return b * a;
-  }
+  __device__ T operator()(const T& a, const T& b) const { return b * a; }
 };
 
 /**
@@ -143,9 +139,7 @@ template <typename T>
 struct LogicalOrFunctor {
   inline T initial() { return static_cast<T>(false); }
 
-  __device__  T operator()(const T& a, const T& b) const {
-    return b || a;
-  }
+  __device__ T operator()(const T& a, const T& b) const { return b || a; }
 };
 
 /**
@@ -155,9 +149,7 @@ template <typename T>
 struct LogicalAndFunctor {
   inline T initial() { return static_cast<T>(true); }
 
-  __device__  T operator()(const T& a, const T& b) const {
-    return b && a;
-  }
+  __device__ T operator()(const T& a, const T& b) const { return b && a; }
 };
 
 /**
@@ -187,7 +179,8 @@ struct DivFunctor<T,
 
   inline HOSTDEVICE T operator()(const T& a, const T& b) const {
     // For int32/int64, need to check whether the divison is zero.
-    PADDLE_ENFORCE_NE(b, 0,
+    PADDLE_ENFORCE_NE(b,
+                      0,
                       pten::errors::InvalidArgument(
                           "Integer division by zero encountered "
                           "in (floor) divide. Please check the input value."));
@@ -203,7 +196,8 @@ struct FloorDivFunctor {
   inline T initial() { return static_cast<T>(1.0f); }
 
   inline HOSTDEVICE T operator()(const T& a, const T& b) const {
-    PADDLE_ENFORCE_NE(b, 0,
+    PADDLE_ENFORCE_NE(b,
+                      0,
                       pten::errors::InvalidArgument(
                           "Integer division by zero encountered "
                           "in (floor) divide. Please check the input value."));
