@@ -243,15 +243,15 @@ class FusionGRUMKLDNNKernel : public framework::OpKernel<T> {
     auto* hidden = ctx.Output<LoDTensor>("Hidden");
     auto x_dims = input->dims();
     auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)
-                          ? framework::flatten_to_2d(x_dims, 1)
+                          ? phi::flatten_to_2d(x_dims, 1)
                           : x_dims;
     // Get attributes
     const bool is_reverse = ctx.Attr<bool>("is_reverse");
     const bool origin_mode = ctx.Attr<bool>("origin_mode");
 
     // Get tensor dimensions
-    const auto x_mat_dims_vec = framework::vectorize(x_mat_dims);
-    const auto weight_h_dims = framework::vectorize(weight_h->dims());
+    const auto x_mat_dims_vec = phi::vectorize(x_mat_dims);
+    const auto weight_h_dims = phi::vectorize(weight_h->dims());
     const auto& input_lod = input->lod()[0];
 
     // Calculate RNN dimensions
