@@ -594,7 +594,7 @@ class IpuStrategy(object):
             'enable_manual_shard': enable_manual_shard,
             'need_avg_shard': need_avg_shard,
         }
-        self.set_option(conf)
+        self.set_options(conf)
 
     def set_pipelining_config(self,
                               enable_pipelining=False,
@@ -638,7 +638,7 @@ class IpuStrategy(object):
             'batches_per_step': batches_per_step,
             'accumulationFactor': accumulationFactor,
         }
-        self.set_option(conf)
+        self.set_options(conf)
 
     def set_half_config(self, enable_fp16=False):
         """
@@ -662,7 +662,7 @@ class IpuStrategy(object):
                 ipu_strategy.set_half_config(enable_fp16=False)
         """
         conf = {'enable_fp16': enable_fp16, }
-        self.set_option(conf)
+        self.set_options(conf)
 
     def add_custom_op(self,
                       paddle_op,
@@ -703,7 +703,7 @@ class IpuStrategy(object):
             'domain': domain,
             'version': version,
         }
-        self.set_option({'custom_op': custom_op})
+        self.set_options({'custom_op': custom_op})
         self.custom_op_names.append(paddle_op)
         if not self.has_custom_ops:
             self.has_custom_ops = True
