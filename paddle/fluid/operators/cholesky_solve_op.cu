@@ -95,10 +95,9 @@ class MatrixReduceSumFunctor<platform::CUDADeviceContext, T> {
                   const framework::ExecutionContext &ctx) {
     // For example: in's dim = [5, 3, 2, 7, 3] ; out's dim = [3, 1, 7, 3]
     // out_reduce_dim should be [0, 2]
-    const std::vector<std::int64_t> in_dims = framework::vectorize(in.dims());
+    const std::vector<std::int64_t> in_dims = phi::vectorize(in.dims());
     auto in_size = in_dims.size();
-    const std::vector<std::int64_t> out_dims =
-        framework::vectorize(out->dims());
+    const std::vector<std::int64_t> out_dims = phi::vectorize(out->dims());
     auto out_size = out_dims.size();
 
     std::vector<std::int64_t> out_bst_dims(in_size);
@@ -114,7 +113,7 @@ class MatrixReduceSumFunctor<platform::CUDADeviceContext, T> {
       }
     }
     gpuStream_t stream = ctx.cuda_device_context().stream();
-    TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+    TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
         ctx.cuda_device_context(), in, out, kps::IdentityFunctor<T>(),
         out_reduce_dims, stream);
   }

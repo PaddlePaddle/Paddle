@@ -15,8 +15,8 @@
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/autograd_meta.h"
-#include "paddle/pten/common/data_type.h"
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -209,22 +209,20 @@ const std::vector<std::vector<Edge>>& GradNodeBase::GetEdges() const {
 
 void GradNodeBase::RegisterGradientHook(
     size_t slot_id, size_t rank,
-    const std::function<egr::EagerTensor(const egr::EagerTensor&)>& hook) {
+    const std::function<paddle::experimental::Tensor(
+        const paddle::experimental::Tensor&)>& hook) {
   gradient_hooks_.emplace_back(std::make_tuple(slot_id, rank, hook));
 }
 
-void GradNodeBase::RegisterReduceHook(const std::function<void(void)>& hook) {
-  reduce_hooks_.emplace_back(hook);
-}
-
-std::vector<std::vector<egr::EagerTensor>> GradNodeBase::ApplyGradientHooks(
-    const std::vector<std::vector<egr::EagerTensor>>& tensors) {
-  std::vector<std::vector<egr::EagerTensor>> outs(tensors.size());
+std::vector<std::vector<paddle::experimental::Tensor>>
+GradNodeBase::ApplyGradientHooks(
+    const std::vector<std::vector<paddle::experimental::Tensor>>& tensors) {
+  std::vector<std::vector<paddle::experimental::Tensor>> outs(tensors.size());
   for (auto& tuple : gradient_hooks_) {
     size_t slot_id = std::get<0>(tuple);
     size_t rank = std::get<1>(tuple);
-    std::function<egr::EagerTensor(const egr::EagerTensor&)>& hook =
-        std::get<2>(tuple);
+    std::function<paddle::experimental::Tensor(
+        const paddle::experimental::Tensor&)>& hook = std::get<2>(tuple);
 
     PADDLE_ENFORCE(slot_id < tensors.size(),
                    paddle::platform::errors::Fatal(
@@ -237,14 +235,15 @@ std::vector<std::vector<egr::EagerTensor>> GradNodeBase::ApplyGradientHooks(
                        "than rank size of grad_tensors",
                        slot_id));
 
-    std::vector<egr::EagerTensor>& slot_out = outs[slot_id];
+    std::vector<paddle::experimental::Tensor>& slot_out = outs[slot_id];
     slot_out.resize(tensors[slot_id].size());
-    egr::EagerTensor& out = slot_out[rank];
+    paddle::experimental::Tensor& out = slot_out[rank];
     if (!out.defined() || !out.initialized()) {
       VLOG(8) << "Run Hook for tensor: " << tensors[slot_id][rank].name();
       out = hook(tensors[slot_id][rank]);
     } else {
-      // TODO(jiabin): Why this?
+      // If more than one hook is registered, the input to the next hook func
+      // should be the output of the previous hook
       out = hook(out);
     }
   }
@@ -264,9 +263,4 @@ std::vector<std::vector<egr::EagerTensor>> GradNodeBase::ApplyGradientHooks(
   return outs;
 }
 
-void GradNodeBase::ApplyReduceHooks() {
-  for (auto& hook : reduce_hooks_) {
-    hook();
-  }
-}
 }  // namespace egr

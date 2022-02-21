@@ -50,7 +50,7 @@ class ReduceSumOpGradMaker : public framework::SingleGradOpMaker<T> {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
-    int in_dtype = ctx.Attr<int>("in_dtype");
+    int in_dtype = ctx.Attr<int>("out_dtype");
     if (in_dtype >= 0) {
       return framework::OpKernelType(
           static_cast<framework::proto::VarType::Type>(in_dtype),
@@ -116,6 +116,8 @@ REGISTER_OP_CPU_KERNEL(
                       ops::SumFunctor>,
     ops::ReduceKernel<paddle::platform::CPUDeviceContext,
                       paddle::platform::float16, ops::SumFunctor>,
+    ops::ReduceKernel<paddle::platform::CPUDeviceContext, int16_t,
+                      ops::SumFunctor>,
     ops::ReduceKernel<paddle::platform::CPUDeviceContext, int, ops::SumFunctor>,
     ops::ReduceKernel<paddle::platform::CPUDeviceContext, int64_t,
                       ops::SumFunctor>,

@@ -19,9 +19,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/device_context.h"
 
-namespace pten {
+namespace phi {
 class DenseTensor;
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 namespace framework {
@@ -50,8 +50,8 @@ class AssignFunctor {
     }
   }
 
-  void operator()(const pten::SelectedRows &rows) const {
-    pten::SelectedRows &out_rows = *out_->GetMutable<pten::SelectedRows>();
+  void operator()(const phi::SelectedRows &rows) const {
+    phi::SelectedRows &out_rows = *out_->GetMutable<phi::SelectedRows>();
     out_rows.set_rows(rows.rows());
     out_rows.set_height(rows.height());
     auto &t = rows.value();

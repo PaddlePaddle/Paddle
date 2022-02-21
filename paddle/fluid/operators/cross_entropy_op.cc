@@ -33,14 +33,14 @@ class CrossEntropyOpBase : public framework::OperatorWithKernel {
     auto label_dims = ctx->GetInputDim("Label");
     int rank = x_dims.size();
 
-    bool contain_unknown_dim = framework::contain_unknown_dim(x_dims) ||
-                               framework::contain_unknown_dim(label_dims);
+    bool contain_unknown_dim = phi::contain_unknown_dim(x_dims) ||
+                               phi::contain_unknown_dim(label_dims);
     bool check = ctx->IsRuntime() || !contain_unknown_dim;
 
     if (check) {
       PADDLE_ENFORCE_EQ(
-          framework::slice_ddim(x_dims, 0, rank - 1),
-          framework::slice_ddim(label_dims, 0, rank - 1),
+          phi::slice_ddim(x_dims, 0, rank - 1),
+          phi::slice_ddim(label_dims, 0, rank - 1),
           platform::errors::InvalidArgument(
               "Input(X) and Input(Label) shall have the same shape "
               "except the last dimension. But received: the shape of Input(X) "
@@ -145,15 +145,15 @@ class CrossEntropyGradientOpBase : public framework::OperatorWithKernel {
             "But received: Y@Grad's rank is [%d], Y's rank is [%d]",
             dy_dims.size(), label_dims.size()));
 
-    bool contain_unknown_dim = framework::contain_unknown_dim(x_dims) ||
-                               framework::contain_unknown_dim(dy_dims);
+    bool contain_unknown_dim =
+        phi::contain_unknown_dim(x_dims) || phi::contain_unknown_dim(dy_dims);
 
     bool check = ctx->IsRuntime() || !contain_unknown_dim;
 
     if (check) {
       PADDLE_ENFORCE_EQ(
-          framework::slice_ddim(x_dims, 0, rank - 1),
-          framework::slice_ddim(dy_dims, 0, rank - 1),
+          phi::slice_ddim(x_dims, 0, rank - 1),
+          phi::slice_ddim(dy_dims, 0, rank - 1),
           platform::errors::InvalidArgument(
               "The Input(X) and Input(Y@Grad) should have the same "
               "shape except the last dimension. but received: "
@@ -299,9 +299,9 @@ class CrossEntropyOp2 : public CrossEntropyOpBase {
     OP_INOUT_CHECK(ctx->HasOutput("MatchX"), "Output", "MatchX",
                    "CrossEntropyOp2");
     auto x_dims = ctx->GetInputDim("X");
-    auto x_dims_vec = framework::vectorize(x_dims);
+    auto x_dims_vec = phi::vectorize(x_dims);
     x_dims_vec.push_back(0);
-    ctx->SetOutputDim("XShape", framework::make_ddim(x_dims_vec));
+    ctx->SetOutputDim("XShape", phi::make_ddim(x_dims_vec));
     x_dims[x_dims.size() - 1] = 1;
     ctx->SetOutputDim("MatchX", x_dims);
     ctx->ShareLoD("X", /*->*/ "XShape");

@@ -26,9 +26,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/core/compat/arg_map_context.h"
-#include "paddle/pten/core/kernel_factory.h"
+#include "paddle/phi/api/lib/utils/tensor_utils.h"
+#include "paddle/phi/common/backend.h"
+#include "paddle/phi/core/compat/arg_map_context.h"
+#include "paddle/phi/core/kernel_factory.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
 
@@ -39,17 +40,16 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-using KernelSignature = pten::KernelSignature;
+using KernelSignature = phi::KernelSignature;
 
 /* Kernel Key translate */
 
-OpKernelType TransPtenKernelKeyToOpKernelType(
-    const pten::KernelKey& kernel_key);
-pten::KernelKey TransOpKernelTypeToPtenKernelKey(
+OpKernelType TransPtenKernelKeyToOpKernelType(const phi::KernelKey& kernel_key);
+phi::KernelKey TransOpKernelTypeToPtenKernelKey(
     const OpKernelType& kernel_type);
-pten::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
-                              const pten::KernelKey& kernel_key,
-                              const framework::OperatorBase& op);
+phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
+                             const phi::KernelKey& kernel_key,
+                             const framework::OperatorBase& op);
 
 /* Kernel Args parse */
 
@@ -63,7 +63,7 @@ class KernelArgsNameMaker {
 
 void InitDefaultKernelSignatureMap();
 
-void SetAllocationForOutputTenosr(pten::DenseTensor* tensor,
+void SetAllocationForOutputTenosr(phi::TensorBase* tensor,
                                   const platform::Place& place);
 
 // TODO(Wilber): support others device context.
@@ -74,20 +74,20 @@ struct ConvertToPtenContext {
 
 template <>
 struct ConvertToPtenContext<platform::CPUDeviceContext> {
-  using TYPE = pten::CPUContext;
+  using TYPE = phi::CPUContext;
 };
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
 struct ConvertToPtenContext<platform::CUDADeviceContext> {
-  using TYPE = pten::GPUContext;
+  using TYPE = phi::GPUContext;
 };
 #endif
 
 #ifdef PADDLE_WITH_XPU
 template <>
 struct ConvertToPtenContext<platform::XPUDeviceContext> {
-  using TYPE = pten::XPUContext;
+  using TYPE = phi::XPUContext;
 };
 #endif
 

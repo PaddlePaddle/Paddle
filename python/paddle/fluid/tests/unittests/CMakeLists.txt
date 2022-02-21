@@ -846,6 +846,8 @@ set_tests_properties(test_parallel_executor_crf test_sync_batch_norm_op test_inp
         test_parallel_executor_seresnext_base_gpu
         test_parallel_executor_seresnext_with_reduce_gpu
         test_parallel_executor_seresnext_with_fuse_all_reduce_gpu
+        test_distributed_fused_lamb_op_with_clip
+        test_distributed_fused_lamb_op_without_clip
         test_parallel_executor_fetch_isolated_var
         PROPERTIES LABELS "RUN_TYPE=DIST")
 
@@ -897,7 +899,7 @@ endif()
 # setting timeout value as 15S
 set_tests_properties(test_sync_batch_norm_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cross_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_imperative_lod_tensor_to_selected_rows PROPERTIES TIMEOUT 120)
+set_tests_properties(test_imperative_lod_tensor_to_selected_rows PROPERTIES TIMEOUT 200)
 set_tests_properties(test_lstm_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_star_gan_with_gradient_penalty PROPERTIES TIMEOUT 120)
 set_tests_properties(test_warpctc_op PROPERTIES TIMEOUT 120)
@@ -974,6 +976,8 @@ set_tests_properties(test_nn_grad PROPERTIES TIMEOUT 120)
 set_tests_properties(test_elementwise_sub_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_row_conv_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_gpu PROPERTIES TIMEOUT 120)
+set_tests_properties(test_distributed_fused_lamb_op_with_clip PROPERTIES TIMEOUT 120)
+set_tests_properties(test_distributed_fused_lamb_op_without_clip PROPERTIES TIMEOUT 120)
 set_tests_properties(test_elementwise_min_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nan_inf PROPERTIES TIMEOUT 120)
 set_tests_properties(test_deformable_conv_v1_op PROPERTIES TIMEOUT 120)
@@ -1000,7 +1004,7 @@ set_tests_properties(test_trilinear_interp_v2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_static_runner_mnist PROPERTIES TIMEOUT 120)
 set_tests_properties(test_masked_select_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sigmoid_cross_entropy_with_logits_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_imperative_optimizer_v2 PROPERTIES TIMEOUT 120)
+set_tests_properties(test_imperative_optimizer_v2 PROPERTIES TIMEOUT 150)
 set_tests_properties(test_partial_sum_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cond PROPERTIES TIMEOUT 120)
 set_tests_properties(test_space_to_depth_op PROPERTIES TIMEOUT 200)

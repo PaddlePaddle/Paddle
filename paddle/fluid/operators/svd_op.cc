@@ -17,7 +17,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "paddle/fluid/framework/ddim.h"
+#include "paddle/phi/core/ddim.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -30,20 +30,20 @@ static DDim UDDim(const DDim& x_dim, int k) {
   // get x_dim and return the ddim of U
   auto x_vec = vectorize(x_dim);
   x_vec[x_vec.size() - 1] = k;
-  return framework::make_ddim(x_vec);
+  return phi::make_ddim(x_vec);
 }
 static DDim VHDDim(const DDim& x_dim, int k) {
   // get x_dim and return the ddim of U
   auto x_vec = vectorize(x_dim);
   x_vec[x_vec.size() - 2] = k;
-  return framework::make_ddim(x_vec);
+  return phi::make_ddim(x_vec);
 }
 static DDim SDDim(const DDim& x_dim, int k) {
   // get x_dim and return the ddim of U
   auto x_vec = vectorize(x_dim);
   x_vec[x_vec.size() - 2] = k;
   x_vec.erase(x_vec.end() - 1);  // rank - 1
-  return framework::make_ddim(x_vec);
+  return phi::make_ddim(x_vec);
 }
 
 class SvdOp : public framework::OperatorWithKernel {

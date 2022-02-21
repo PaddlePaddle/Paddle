@@ -19,6 +19,7 @@
 #include <tuple>
 #include <unordered_set>
 
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/type_defs.h"
 
 namespace paddle {
@@ -31,6 +32,11 @@ enum class AmpLevel {
   O2,      // almost fp16
   O3,      // fp16
 };
+
+std::tuple<std::unordered_set<std::string>, std::unordered_set<std::string>,
+           std::unordered_set<std::string>>
+OpSupportedInfos(const std::string& place,
+                 framework::proto::VarType::Type dtype);
 
 class Tracer;
 
@@ -50,6 +56,9 @@ class AmpOperators {
   std::shared_ptr<std::unordered_set<std::string>>
   GetMutableUnsupportedFp16Ops();
 
+  std::shared_ptr<std::unordered_set<std::string>>
+  GetMutableUnsupportedBf16Ops();
+
  private:
   AmpOperators();  // forbid calling default constructor
 
@@ -63,6 +72,9 @@ class AmpOperators {
 
   // The set of ops that has no fp16 CUDA kennel.
   std::shared_ptr<std::unordered_set<std::string>> unsupported_fp16_ops_;
+
+  // The set of ops that has no bf16 CUDA kennel.
+  std::shared_ptr<std::unordered_set<std::string>> unsupported_bf16_ops_;
 };
 
 std::ostream& operator<<(std::ostream& os, AmpOperators& ops);
@@ -88,6 +100,12 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
                                    const NameVarMap<VarType>& ins);
 template <typename VarType>
 NameVarMap<VarType> CastPureFp16Inputs(const std::string& op_type,
+                                       const NameVarMap<VarType>& ins);
+template <typename VarType>
+NameVarMap<VarType> AutoCastBF16Inputs(const std::string& op_type,
+                                       const NameVarMap<VarType>& ins);
+template <typename VarType>
+NameVarMap<VarType> CastPureBf16Inputs(const std::string& op_type,
                                        const NameVarMap<VarType>& ins);
 
 }  // namespace imperative
