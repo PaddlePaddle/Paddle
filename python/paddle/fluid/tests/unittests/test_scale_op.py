@@ -167,7 +167,7 @@ class TestScaleBF16Op(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', numeric_grad_delta=0.8)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),

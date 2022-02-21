@@ -133,6 +133,10 @@ class TestGatherBF16Op(OpTest):
         place = core.CUDAPlace(0)
         self.check_output_with_place(place)
 
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out', numeric_grad_delta=0.5)
+
     def config(self):
         """
         For multi-dimension input

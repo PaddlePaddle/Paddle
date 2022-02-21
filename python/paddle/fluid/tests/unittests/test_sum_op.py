@@ -299,7 +299,7 @@ def create_test_sum_fp16_class(parent):
 
 
 #----------- test bf16 -----------
-class TestSumOp(OpTest):
+class TestSumBF16Op(OpTest):
     def setUp(self):
         self.op_type = "sum"
         self.init_kernel_type()
@@ -321,7 +321,7 @@ class TestSumOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out')
+        self.check_grad(['x0'], 'Out', numeric_grad_delta=0.5)
 
 
 class API_Test_Add_n(unittest.TestCase):

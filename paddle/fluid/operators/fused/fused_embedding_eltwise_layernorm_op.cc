@@ -84,7 +84,7 @@ class EmbeddingEltWiseLayerNormOp : public framework::OperatorWithKernel {
               embs_dims[i][1], hidden));
     }
 
-    auto dim_output = framework::make_ddim({batch, seq_len, hidden});
+    auto dim_output = phi::make_ddim({batch, seq_len, hidden});
     context->SetOutputDim("Out", dim_output);
     context->ShareLoD("Ids", /*->*/ "Out");
   }

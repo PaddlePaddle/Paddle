@@ -71,8 +71,8 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
         auto numel = out->numel();
         PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
             out->data<T>(), numel, dtype, peer, comm->comm(), stream));
-        VLOG(3) << "rank " << comm->rank() << " recv "
-                << framework::product(out_dims) << " from " << peer;
+        VLOG(3) << "rank " << comm->rank() << " recv " << phi::product(out_dims)
+                << " from " << peer;
       }
       return;
     }
@@ -85,8 +85,8 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(out_dims, place);
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
         out->data<T>(), numel, dtype, peer, comm->comm(), stream));
-    VLOG(3) << "rank " << comm->rank() << " recv "
-            << framework::product(out->dims()) << " from " << peer;
+    VLOG(3) << "rank " << comm->rank() << " recv " << phi::product(out->dims())
+            << " from " << peer;
 #else
     PADDLE_THROW(platform::errors::Unavailable(
         "PaddlePaddle should be compiled with NCCL and "

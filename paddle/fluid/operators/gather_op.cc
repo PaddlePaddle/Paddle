@@ -16,8 +16,8 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace operators {
@@ -72,7 +72,7 @@ class GatherOp : public framework::OperatorWithKernel {
       for (int i = axis + 1; i < input_dim.size(); i++) {
         out_dim_vec.push_back(input_dim[i]);
       }
-      auto output_dims = framework::make_ddim(out_dim_vec);
+      auto output_dims = phi::make_ddim(out_dim_vec);
       ctx->SetOutputDim("Out", output_dims);
       ctx->ShareLoD("X", /*->*/ "Out");
     }
@@ -202,13 +202,13 @@ REGISTER_OP_CPU_KERNEL(gather, ops::GatherOpKernel<float>,
                        ops::GatherOpKernel<double>, ops::GatherOpKernel<int>,
                        ops::GatherOpKernel<uint8_t>,
                        ops::GatherOpKernel<int64_t>,
-                       ops::GatherOpKernel<pten::dtype::bfloat16>);
+                       ops::GatherOpKernel<phi::dtype::bfloat16>);
 REGISTER_OP_CPU_KERNEL(gather_grad, ops::GatherGradientOpKernel<float>,
                        ops::GatherGradientOpKernel<double>,
                        ops::GatherGradientOpKernel<int>,
                        ops::GatherGradientOpKernel<uint8_t>,
                        ops::GatherGradientOpKernel<int64_t>,
-                       ops::GatherGradientOpKernel<pten::dtype::bfloat16>);
+                       ops::GatherGradientOpKernel<phi::dtype::bfloat16>);
 REGISTER_OP_VERSION(gather)
     .AddCheckpoint(R"ROC(upgrad gather, add a new input [Axis])ROC",
                    paddle::framework::compatible::OpVersionDesc().NewInput(

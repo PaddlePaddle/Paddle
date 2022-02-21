@@ -233,7 +233,7 @@ class DeformableConvV1Op : public framework::OperatorWithKernel {
               offset_dims[1] / (2 * filter_dims[2] * filter_dims[3]),
               deformable_groups));
     }
-    ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
+    ctx->SetOutputDim("Output", phi::make_ddim(output_shape));
   }
 
  protected:

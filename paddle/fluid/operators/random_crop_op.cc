@@ -32,7 +32,7 @@ class RandomCropOp : public framework::OperatorWithKernel {
             "But received dimensions of Input(X) is [%d], receivecd length"
             "of Attr(shape) is [%d].",
             x_dim.size(), static_cast<int64_t>(shape.size())));
-    auto out_dim = framework::vectorize<int>(x_dim);
+    auto out_dim = phi::vectorize<int>(x_dim);
     for (size_t i = 1; i <= shape.size(); ++i) {
       size_t x_i = x_dim.size() - i;
       size_t shape_i = shape.size() - i;
@@ -47,7 +47,7 @@ class RandomCropOp : public framework::OperatorWithKernel {
       }
       out_dim[x_i] = shape[shape_i];
     }
-    ctx->SetOutputDim("Out", framework::make_ddim(out_dim));
+    ctx->SetOutputDim("Out", phi::make_ddim(out_dim));
   }
 
   framework::OpKernelType GetExpectedKernelType(

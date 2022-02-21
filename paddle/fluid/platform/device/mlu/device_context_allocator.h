@@ -91,7 +91,7 @@ class MLUDeviceContextAllocator : public Allocator {
   }
 
  protected:
-  pten::Allocation *AllocateImpl(size_t size) override {
+  phi::Allocation *AllocateImpl(size_t size) override {
     PADDLE_ENFORCE_NOT_NULL(
         default_stream_,
         platform::errors::PreconditionNotMet(
@@ -105,7 +105,7 @@ class MLUDeviceContextAllocator : public Allocator {
     return allocation;
   }
 
-  void FreeImpl(pten::Allocation *allocation) override { delete allocation; }
+  void FreeImpl(phi::Allocation *allocation) override { delete allocation; }
 
  private:
   platform::MLUPlace place_;
