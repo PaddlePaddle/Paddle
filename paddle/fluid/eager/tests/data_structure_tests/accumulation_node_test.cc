@@ -81,7 +81,7 @@ TEST(AccumulationNode, Tensor) {
 
   // Check Retain Grad
   paddle::experimental::Tensor* grad = EagerUtils::mutable_grad(grad_et);
-  auto* grad_ptr = std::dynamic_pointer_cast<pten::DenseTensor>(grad->impl())
+  auto* grad_ptr = std::dynamic_pointer_cast<phi::DenseTensor>(grad->impl())
                        ->data<paddle::platform::float16>();
   CHECK_EQ(grad_ptr[0], paddle::platform::float16(30.0f));
 
@@ -95,10 +95,10 @@ TEST(AccumulationNode, Tensor) {
     VLOG(6) << "Running Reduce Hook";
   };
 
-  node.RegisterReduceHook(reduce_hook_1);
+  node->RegisterReduceHook(reduce_hook_1);
 
   // operator()
-  paddle::experimental::Tensor _ret = node({{et0}})[0][0];
+  paddle::experimental::Tensor _ret = node->operator()({{et0}})[0][0];
 
   // Check operator() result, should be 36.0
   auto* _ret_ptr = std::dynamic_pointer_cast<phi::DenseTensor>(_ret.impl())
@@ -119,8 +119,8 @@ TEST(AccumulationNode, Tensor) {
     ret_et0_ptr[0] = 100.0;  // set to 100.0
     VLOG(6) << "Running Reduce Hook";
   };
-  node.RegisterReduceHook(reduce_hook_2);
-  node.ApplyReduceHooks();
+  node->RegisterReduceHook(reduce_hook_2);
+  node->ApplyReduceHooks();
 
   // Check ApplyReduceHooks result
   CHECK_EQ(std::dynamic_pointer_cast<phi::DenseTensor>(et0.impl())
