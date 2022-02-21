@@ -20,11 +20,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/matrix_solve.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
 #include "paddle/fluid/operators/squeeze_op.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #endif
@@ -61,8 +61,8 @@ static inline bool is_vector_rhs(const Tensor& input, const Tensor& other) {
   auto y_dim = other.dims();
   auto x_dim_size = x_dim.size();
   auto y_dim_size = y_dim.size();
-  std::vector<int64_t> x_dims_vec = paddle::framework::vectorize(x_dim);
-  std::vector<int64_t> y_dims_vec = paddle::framework::vectorize(y_dim);
+  std::vector<int64_t> x_dims_vec = phi::vectorize(x_dim);
+  std::vector<int64_t> y_dims_vec = phi::vectorize(y_dim);
 
   std::vector<int64_t>::const_iterator f = x_dims_vec.begin();
   std::vector<int64_t>::const_iterator l = x_dims_vec.end() - 1;
@@ -119,7 +119,7 @@ static framework::DDim GetOutputShapeUnsqueeze(
     }
   }
 
-  return framework::make_ddim(output_shape);
+  return phi::make_ddim(output_shape);
 }
 
 // operation like squeeze(-1)
@@ -179,8 +179,8 @@ static std::vector<int64_t> get_broadcast_batch_portion(
 // broadcast the batch dimensions of tensor x and tensor y.
 static inline std::tuple<std::vector<int64_t>, std::vector<int64_t>>
 get_broadcast_dims(const Tensor& x, const Tensor& y) {
-  std::vector<int64_t> x_dims_vec = paddle::framework::vectorize(x.dims());
-  std::vector<int64_t> y_dims_vec = paddle::framework::vectorize(y.dims());
+  std::vector<int64_t> x_dims_vec = phi::vectorize(x.dims());
+  std::vector<int64_t> y_dims_vec = phi::vectorize(y.dims());
 
   std::vector<int64_t>::const_iterator f1 = x_dims_vec.begin();
   std::vector<int64_t>::const_iterator l1 = x_dims_vec.end() - 2;
@@ -209,7 +209,7 @@ get_broadcast_dims(const Tensor& x, const Tensor& y) {
 template <int Rank, typename T, typename DeviceContext>
 void expand_impl(const DeviceContext& context, const Tensor& in, Tensor* out,
                  const std::vector<int64_t>& expand_shape) {
-  auto vec_in_dims = framework::vectorize<int>(in.dims());
+  auto vec_in_dims = phi::vectorize<int>(in.dims());
   auto diff = expand_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   std::vector<int> repeat_times(vec_in_dims.size());
@@ -254,7 +254,7 @@ void expand_impl(const DeviceContext& context, const Tensor& in, Tensor* out,
     bcast_dims[i] = repeat_times[i];
   }
 
-  framework::DDim new_in_dims = framework::make_ddim(vec_in_dims);
+  framework::DDim new_in_dims = phi::make_ddim(vec_in_dims);
   framework::DDim out_dims(new_in_dims);
   for (size_t i = 0; i < repeat_times.size(); ++i) {
     out_dims[i] *= repeat_times[i];
@@ -426,7 +426,7 @@ static std::vector<int> getNewAxis(const int b_rank) {
 
 // for Resize
 static std::vector<int64_t> getNewDimsVec(const DDim& b_dims) {
-  std::vector<int64_t> b_dims_vec = paddle::framework::vectorize(b_dims);
+  std::vector<int64_t> b_dims_vec = phi::vectorize(b_dims);
   int size = b_dims_vec.size();
   if (size >= 2) {
     // swap the last 2 elements in b_dims_vec
@@ -497,19 +497,19 @@ class SolveGradKernel : public framework::OpKernel<T> {
 
     // tmp_dx
     Tensor tmp_dx;
-    tmp_dx.Resize(framework::make_ddim(x_broadcast_dims));
+    tmp_dx.Resize(phi::make_ddim(x_broadcast_dims));
     tmp_dx.mutable_data<T>(ctx.GetPlace());
 
     // tmp_dy
     Tensor tmp_dy;
-    tmp_dy.Resize(framework::make_ddim(y_broadcast_dims));
+    tmp_dy.Resize(phi::make_ddim(y_broadcast_dims));
     tmp_dy.mutable_data<T>(ctx.GetPlace());
 
     Tensor tmp_input(input->dtype());
     const auto& new_dims_vec = getNewDimsVec(input->dims());
-    tmp_input.Resize(framework::make_ddim(new_dims_vec));
+    tmp_input.Resize(phi::make_ddim(new_dims_vec));
     tmp_input.mutable_data<T>(ctx.GetPlace());
-    pten::funcs::TransposeNormal<DeviceContext, T> trans;
+    phi::funcs::TransposeNormal<DeviceContext, T> trans;
     std::vector<int> new_axis = getNewAxis(input->dims().size());
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     trans(dev_ctx, *input, &tmp_input, new_axis);
@@ -523,10 +523,12 @@ class SolveGradKernel : public framework::OpKernel<T> {
     if (dx) {
       dx->mutable_data<T>(ctx.GetPlace());
       // to get dx
-      auto blas = math::GetBlas<DeviceContext, T>(ctx);
+      auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
       if (input->dims().size() == 2 && y->dims().size() == 2) {
-        auto mat_dim_a1 = math::CreateMatrixDescriptor(tmp_dy.dims(), 0, false);
-        auto mat_dim_b1 = math::CreateMatrixDescriptor(out->dims(), 0, true);
+        auto mat_dim_a1 =
+            phi::funcs::CreateMatrixDescriptor(tmp_dy.dims(), 0, false);
+        auto mat_dim_b1 =
+            phi::funcs::CreateMatrixDescriptor(out->dims(), 0, true);
         blas.MatMul(tmp_dy, mat_dim_a1, *out, mat_dim_b1, T(-1), &tmp_dx, T(0));
       } else if (is_vector_rhs(*input, *y)) {
         Tensor tmp_dy_;
@@ -538,14 +540,16 @@ class SolveGradKernel : public framework::OpKernel<T> {
         to_unsqueeze(ctx, *out, &tmp_out_);
 
         auto mat_dim_a1 =
-            math::CreateMatrixDescriptor(tmp_dy_.dims(), 0, false);
+            phi::funcs::CreateMatrixDescriptor(tmp_dy_.dims(), 0, false);
         auto mat_dim_b1 =
-            math::CreateMatrixDescriptor(tmp_out_.dims(), 0, true);
+            phi::funcs::CreateMatrixDescriptor(tmp_out_.dims(), 0, true);
         blas.MatMul(tmp_dy_, mat_dim_a1, tmp_out_, mat_dim_b1, T(-1), &tmp_dx,
                     T(0));
       } else {
-        auto mat_dim_a1 = math::CreateMatrixDescriptor(tmp_dy.dims(), 0, false);
-        auto mat_dim_b1 = math::CreateMatrixDescriptor(out->dims(), 0, true);
+        auto mat_dim_a1 =
+            phi::funcs::CreateMatrixDescriptor(tmp_dy.dims(), 0, false);
+        auto mat_dim_b1 =
+            phi::funcs::CreateMatrixDescriptor(out->dims(), 0, true);
         blas.MatMul(tmp_dy, mat_dim_a1, *out, mat_dim_b1, T(-1), &tmp_dx, T(0));
       }
     }

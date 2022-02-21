@@ -31,7 +31,7 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
-using SelectedRows = pten::SelectedRows;
+using SelectedRows = phi::SelectedRows;
 using Sampler = math::Sampler;
 using DDim = framework::DDim;
 
@@ -152,10 +152,10 @@ class NCEKernel : public framework::OpKernel<T> {
           (num_true_classes == -1) ? -1 : (num_neg_samples + num_true_classes));
 
       sample_labels = &sample_labels_tmp;
-      sample_labels->Resize(framework::make_ddim(sample_out_dims));
+      sample_labels->Resize(phi::make_ddim(sample_out_dims));
 
       sample_out = &sample_out_tmp;
-      sample_out->Resize(framework::make_ddim(sample_out_dims));
+      sample_out->Resize(phi::make_ddim(sample_out_dims));
     } else {
       sample_labels = context.Output<Tensor>("SampleLabels");
       sample_out = context.Output<Tensor>("SampleLogits");
@@ -364,8 +364,8 @@ class NCEGradKernel : public framework::OpKernel<T> {
       DDim table_dim;
       if (table_var->IsType<LoDTensor>()) {
         table_dim = context.Input<LoDTensor>("Weight")->dims();
-      } else if (table_var->IsType<pten::SelectedRows>()) {
-        auto *table_t = context.Input<pten::SelectedRows>("Weight");
+      } else if (table_var->IsType<phi::SelectedRows>()) {
+        auto *table_t = context.Input<phi::SelectedRows>("Weight");
         table_dim = table_t->value().dims();
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
@@ -374,7 +374,7 @@ class NCEGradKernel : public framework::OpKernel<T> {
       }
 
       auto d_w =
-          context.Output<pten::SelectedRows>(framework::GradVarName("Weight"));
+          context.Output<phi::SelectedRows>(framework::GradVarName("Weight"));
 
       d_w->set_rows(labels);
       d_w->set_height(table_dim[0]);
