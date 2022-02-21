@@ -756,8 +756,8 @@ set +x
         tmpfile_rand=`date +%s%N`
         tmpfile=$tmp_dir/$tmpfile_rand
         #EXIT_CODE=0;
-        #get_quickly_disable_ut||disable_ut_quickly='disable_ut' # indicate whether the case was in quickly disable list 
-        disable_ut_quickly='^disable_ut$|^test_post_training_quantization_lstm_model$|^test_dist_fleet_grad_clip$|^test_trt_subgraph_pass$|^test_communicator_geo$|^test_trt_convert_reduce_sum$|^test_activation_nn_grad$|^test_trt_convert_dropout$|^test_trt_fc_fuse_quant_dequant_pass$|^test_collective_allreduce_api_xpu$|^test_trt_convert_matmul$|^test_multiprocess_dataloader_iterable_dataset_static$|^test_dist_fleet_heter_ctr$|^test_matmul_v2_mkldnn_op$|^test_dist_fleet_ps_gpu_ctr$|^test_dropout_op_xpu$|^heter_server_test$|^test_scale_op_xpu$|^test_quant2_int8_lstm_mkldnn$|^send_and_recv_cpu_test$|^test_paddle_save_load_binary$|^heter_listen_and_server_test$|^test_fleet_graph_executor$'
+        get_quickly_disable_ut||disable_ut_quickly='disable_ut' # indicate whether the case was in quickly disable list 
+        #disable_ut_quickly='^disable_ut$|^test_post_training_quantization_lstm_model$|^test_dist_fleet_grad_clip$|^test_trt_subgraph_pass$|^test_communicator_geo$|^test_trt_convert_reduce_sum$|^test_activation_nn_grad$|^test_trt_convert_dropout$|^test_trt_fc_fuse_quant_dequant_pass$|^test_collective_allreduce_api_xpu$|^test_trt_convert_matmul$|^test_multiprocess_dataloader_iterable_dataset_static$|^test_dist_fleet_heter_ctr$|^test_matmul_v2_mkldnn_op$|^test_dist_fleet_ps_gpu_ctr$|^test_dropout_op_xpu$|^heter_server_test$|^test_scale_op_xpu$|^test_quant2_int8_lstm_mkldnn$|^send_and_recv_cpu_test$|^test_paddle_save_load_binary$|^heter_listen_and_server_test$|^test_fleet_graph_executor$'
         if [ ${NIGHTLY_MODE:-OFF} == "ON" ]; then
             nightly_label="NIGHTLY_LABEL"
         else
@@ -767,6 +767,7 @@ set +x
             echo "========================================="
         fi
         get_precision_ut_mac
+        ut_startTime_s=`date +%s`
         if [[ "$on_precision" == "0" ]];then
             ctest -E "$disable_ut_quickly" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
         else
