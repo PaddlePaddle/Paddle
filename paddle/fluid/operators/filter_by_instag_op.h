@@ -195,9 +195,6 @@ template <typename T>
 class FilterByInstagGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    platform::Timer timeline_;
-    timeline_.Start();
-
     auto* output_grad = context.Input<LoDTensor>(framework::GradVarName("Out"));
     auto* x1_grad = context.Output<LoDTensor>(framework::GradVarName("Ins"));
     auto* loss_weight = context.Input<LoDTensor>("LossWeight");
@@ -226,10 +223,6 @@ class FilterByInstagGradKernel : public framework::OpKernel<T> {
         }
       }
     }
-
-    timeline_.Pause();
-    std::cout << "grad kernel phase cost time: " << timeline_.ElapsedSec()
-              << std::endl;
   }
 };
 }  // namespace operators
