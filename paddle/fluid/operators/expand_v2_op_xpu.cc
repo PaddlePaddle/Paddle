@@ -30,7 +30,7 @@ class ExpandV2XPUKernel : public framework::OpKernel<T> {
 
     auto in_dims = X->dims();
     auto expand_shape = get_expand_shape(context);
-    auto vec_in_dims = framework::vectorize<int>(in_dims);
+    auto vec_in_dims = phi::vectorize<int>(in_dims);
     auto diff = expand_shape.size() - vec_in_dims.size();
     vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
     std::vector<int> final_expand_shape(vec_in_dims.size());
@@ -89,11 +89,11 @@ class ExpandV2XPUKernel : public framework::OpKernel<T> {
             "greater than or equal to the rank (%d) of the input 'X'.",
             shape_size, rank));
 
-    framework::DDim out_dims = framework::make_ddim(final_expand_shape);
+    framework::DDim out_dims = phi::make_ddim(final_expand_shape);
     Out->Resize(out_dims);
     Out->mutable_data<T>(context.GetPlace());
     auto& x_shape = vec_in_dims;
-    auto out_shape = framework::vectorize<int>(out_dims);
+    auto out_shape = phi::vectorize<int>(out_dims);
 
     const auto& dev_ctx =
         context.template device_context<paddle::platform::XPUDeviceContext>();

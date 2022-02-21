@@ -37,8 +37,8 @@ class HuberLossOp : public framework::OperatorWithKernel {
                           "same, but received input rank(%d) != label rank(%d)",
                           x_dims.size(), y_dims.size()));
 
-    bool contain_unknown_dim = framework::contain_unknown_dim(x_dims) ||
-                               framework::contain_unknown_dim(y_dims);
+    bool contain_unknown_dim =
+        phi::contain_unknown_dim(x_dims) || phi::contain_unknown_dim(y_dims);
     if (ctx->IsRuntime() || !contain_unknown_dim) {
       PADDLE_ENFORCE_EQ(
           x_dims, y_dims,

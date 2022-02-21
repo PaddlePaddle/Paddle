@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/infrt/kernel/pten/infershaped/infershaped_kernel_launcher.h"
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace infrt {
 namespace kernel {
@@ -23,12 +23,11 @@ void InferShapedKernelLauncher::CreateKernelFrameForInferShape(
   for (host_context::Value* value :
        frame->GetValues(1, frame->GetNumElements() - 1)) {
     // TODO(Superjomn) To extend this.
-    if (value->is_type<::pten::DenseTensor>()) {
-      values.emplace_back(
-          ::pten::MetaTensor{&value->get<::pten::DenseTensor>()});
+    if (value->is_type<::phi::DenseTensor>()) {
+      values.emplace_back(::phi::MetaTensor{&value->get<::phi::DenseTensor>()});
       infershape_kernel_frame_builder.AddArgument(values.back().get());
-    } else if (value->is_type<pten::DenseTensor>()) {
-      values.emplace_back(pten::MetaTensor{&value->get<pten::DenseTensor>()});
+    } else if (value->is_type<phi::DenseTensor>()) {
+      values.emplace_back(phi::MetaTensor{&value->get<phi::DenseTensor>()});
       infershape_kernel_frame_builder.AddArgument(values.back().get());
     } else {
       infershape_kernel_frame_builder.AddArgument(value);
@@ -41,7 +40,7 @@ void InferShapedKernelLauncher::BuildInferShapeCache(
   tensor_shape_cache.resize(num_inputs);
   for (uint16_t i = 0; i < num_inputs; i++) {
     tensor_shape_cache[i] = infershape_kernel_frame_builder.GetArgAt(i)
-                                ->get<::pten::MetaTensor>()
+                                ->get<::phi::MetaTensor>()
                                 .dims();
   }
 }
@@ -53,10 +52,10 @@ bool InferShapedKernelLauncher::IsShapeChanged(
 
   bool changed = false;
   for (uint16_t i = 0; i < num_inputs && !changed; i++) {
-    changed = changed ||
-              (tensor_shape_cache[i] !=
-               infershape_kernel_frame_builder.GetArgAt<::pten::MetaTensor>(i)
-                   .dims());
+    changed =
+        changed ||
+        (tensor_shape_cache[i] !=
+         infershape_kernel_frame_builder.GetArgAt<::phi::MetaTensor>(i).dims());
   }
   return changed;
 }

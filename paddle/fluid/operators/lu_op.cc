@@ -51,22 +51,22 @@ class LUOp : public framework::OperatorWithKernel {
     int m = x_dims[x_rank - 1];
     int n = x_dims[x_rank - 2];
     int min_mn = std::min(m, n);
-    auto dims_vec = framework::vectorize(x_dims);
+    auto dims_vec = phi::vectorize(x_dims);
     OP_INOUT_CHECK(context->HasOutput("Infos"), "Output", "Infos", "LU");
     if (x_rank == 2) {
       auto Infos_dim = std::vector<int>(1);
-      context->SetOutputDim("Infos", framework::make_ddim(Infos_dim));
+      context->SetOutputDim("Infos", phi::make_ddim(Infos_dim));
     } else {
       auto Infos_dim =
           std::vector<int>(dims_vec.begin(), dims_vec.begin() + x_rank - 2);
-      context->SetOutputDim("Infos", framework::make_ddim(Infos_dim));
+      context->SetOutputDim("Infos", phi::make_ddim(Infos_dim));
     }
     if (pivots) {
       OP_INOUT_CHECK(context->HasOutput("Pivots"), "Output", "Pivots", "LU");
       auto Pivots_dim =
           std::vector<int>(dims_vec.begin(), dims_vec.begin() + x_rank - 1);
       Pivots_dim[x_rank - 2] = min_mn;
-      context->SetOutputDim("Pivots", framework::make_ddim(Pivots_dim));
+      context->SetOutputDim("Pivots", phi::make_ddim(Pivots_dim));
     }
   }
 
@@ -123,14 +123,14 @@ class LUKernel : public framework::OpKernel<T> {
     int n = static_cast<int>(outdims[outrank - 2]);
     int lda = std::max(1, m);
 
-    auto ipiv_dims = slice_ddim(outdims, 0, outrank - 1);
+    auto ipiv_dims = phi::slice_ddim(outdims, 0, outrank - 1);
     ipiv_dims[outrank - 2] = std::min(m, n);
     IpivT->Resize(ipiv_dims);
     auto ipiv_data = IpivT->mutable_data<int>(ctx.GetPlace());
 
-    auto info_dims = slice_ddim(outdims, 0, outrank - 2);
+    auto info_dims = phi::slice_ddim(outdims, 0, outrank - 2);
     if (info_dims.size() == 0) {
-      info_dims = framework::make_ddim({1});
+      info_dims = phi::make_ddim({1});
     }
     InfoT->Resize(info_dims);
     auto info_data = InfoT->mutable_data<int>(ctx.GetPlace());
@@ -142,8 +142,8 @@ class LUKernel : public framework::OpKernel<T> {
       auto out_data_item = &out_data[b * m * n];
       int *info_data_item = &info_data[b];
       int *ipiv_data_item = &ipiv_data[b * std::min(m, n)];
-      math::lapackLu<T>(m, n, out_data_item, lda, ipiv_data_item,
-                        info_data_item);
+      phi::funcs::lapackLu<T>(m, n, out_data_item, lda, ipiv_data_item,
+                              info_data_item);
     }
     *out = helper.Transpose(*out);
   }

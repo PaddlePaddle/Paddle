@@ -40,8 +40,8 @@ static const platform::Place &GetVarPlace(const framework::Variable &src) {
   if (src.IsType<framework::LoDTensor>()) {
     return src.Get<framework::LoDTensor>().place();
 #if NCCL_VERSION_CODE >= 2212
-  } else if (src.IsType<pten::SelectedRows>()) {
-    return src.Get<pten::SelectedRows>().value().place();
+  } else if (src.IsType<phi::SelectedRows>()) {
+    return src.Get<phi::SelectedRows>().value().place();
 #endif
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -72,7 +72,7 @@ static void AllReduce(const framework::Tensor &src, framework::Tensor *dst,
 }
 
 #if NCCL_VERSION_CODE >= 2212
-static void AllReduce(const pten::SelectedRows &src, pten::SelectedRows *dst,
+static void AllReduce(const phi::SelectedRows &src, phi::SelectedRows *dst,
                       const ParallelStrategy &strategy,
                       const gpuStream_t stream,
                       const platform::NCCLComm *comm) {
@@ -127,7 +127,7 @@ static void AllReduce(const pten::SelectedRows &src, pten::SelectedRows *dst,
   auto *dst_tensor = dst->mutable_value();
   auto dims = src_tensor.dims();
   dims[0] = rows_num;
-  auto feature_size = framework::product(dims) / dims[0];
+  auto feature_size = phi::product(dims) / dims[0];
   dst_tensor->Resize(dims);
   auto *dst_tensor_ptr = dst_tensor->mutable_data(place, src_tensor.dtype());
   const auto *src_tensor_ptr = src_tensor.data();
@@ -192,18 +192,18 @@ void AllReduce(const framework::Variable &src, framework::Variable *dst,
     AllReduce(src.Get<framework::LoDTensor>(),
               dst->GetMutable<framework::LoDTensor>(), stream, comm);
 #if NCCL_VERSION_CODE >= 2212
-  } else if (src.IsType<pten::SelectedRows>()) {
+  } else if (src.IsType<phi::SelectedRows>()) {
     if (&src != dst) {
-      if (!dst->IsType<pten::SelectedRows>()) {
+      if (!dst->IsType<phi::SelectedRows>()) {
         dst->Clear();
       }
-      AllReduce(src.Get<pten::SelectedRows>(),
-                dst->GetMutable<pten::SelectedRows>(), strategy, stream, comm);
+      AllReduce(src.Get<phi::SelectedRows>(),
+                dst->GetMutable<phi::SelectedRows>(), strategy, stream, comm);
     } else {
       // SelectedRows cannot be allreduce in-place
       framework::Variable tmp_dst;
-      AllReduce(src.Get<pten::SelectedRows>(),
-                tmp_dst.GetMutable<pten::SelectedRows>(), strategy, stream,
+      AllReduce(src.Get<phi::SelectedRows>(),
+                tmp_dst.GetMutable<phi::SelectedRows>(), strategy, stream,
                 comm);
       // stream must synchronize to ensure accuracy of the move operation
       platform::GpuStreamSync(stream);

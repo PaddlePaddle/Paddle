@@ -86,7 +86,7 @@ class DistributedOperator:
                                                        tensor_dims_mapping)
         for tensor_name in self._serial_op.output_arg_names:
             tensor = self._serial_op.block._var_recursive(tensor_name)
-            if tensor.type == core.VarDesc.VarType.READER:
+            if tensor.type == core.VarDesc.VarType.READER or tensor.type == core.VarDesc.VarType.STEP_SCOPES:
                 tensor_shape = []
             else:
                 tensor_shape = tensor.shape
