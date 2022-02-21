@@ -68,7 +68,7 @@ class LogsumexpOp : public framework::OperatorWithKernel {
     if (reduce_all) {
       if (keepdim)
         ctx->SetOutputDim("Out",
-                          pten::make_ddim(std::vector<int64_t>(x_rank, 1)));
+                          phi::make_ddim(std::vector<int64_t>(x_rank, 1)));
       else
         ctx->SetOutputDim("Out", {1});
     } else {
@@ -89,7 +89,7 @@ class LogsumexpOp : public framework::OperatorWithKernel {
       if (!keepdim && dims_vector.size() == 0) {
         dims_vector.push_back(1);
       }
-      auto out_dims = pten::make_ddim(dims_vector);
+      auto out_dims = phi::make_ddim(dims_vector);
       ctx->SetOutputDim("Out", out_dims);
       if (axis.size() > 0 && axis[0] != 0) {
         // Only pass LoD when not reducing on the first dim.

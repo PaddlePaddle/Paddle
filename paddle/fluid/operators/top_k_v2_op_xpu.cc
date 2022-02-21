@@ -68,7 +68,7 @@ class TopkV2XPUKernel : public framework::OpKernel<T> {
           RAII_GUARD.alloc_l3_or_gm<int32_t>(indices->numel());
 
       const size_t row =
-          pten::product(pten::slice_ddim(in_dims, 0, in_dims.size() - 1));
+          phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
       const size_t col = in_dims[in_dims.size() - 1];
       int r = xpu::sorted_topk<T>(dev_ctx.x_context(), in_data, output_data,
                                   indices_int_data, row, col, k);
@@ -132,7 +132,7 @@ class TopkV2XPUKernel : public framework::OpKernel<T> {
       int32_t* trans_idx_int32_data =
           RAII_GUARD.alloc_l3_or_gm<int32_t>(output->numel());
       const size_t row =
-          pten::product(pten::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+          phi::product(phi::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
       const size_t col = trans_dims[trans_dims.size() - 1];
 
       // Do top k on transposed input

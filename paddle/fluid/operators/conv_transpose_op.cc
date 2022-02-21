@@ -115,13 +115,13 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
 
   framework::DDim in_data_dims;
   if (data_layout != DataLayout::kNHWC) {
-    in_data_dims = pten::slice_ddim(in_dims, 2, in_dims.size());
+    in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
   } else {
-    in_data_dims = pten::slice_ddim(in_dims, 1, in_dims.size() - 1);
+    in_data_dims = phi::slice_ddim(in_dims, 1, in_dims.size() - 1);
   }
   framework::DDim filter_data_dims =
-      pten::slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = pten::vectorize<int>(filter_data_dims);
+      phi::slice_ddim(filter_dims, 2, filter_dims.size());
+  std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                            in_data_dims, strides, ksize);
 
@@ -145,7 +145,7 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
                 "output_size of Op(ConvTransposeOp) should not be "
                 "less than the infered output size. But received output_size = "
                 "[%s], whose dim %d is less than the infered output size [%s]",
-                pten::make_ddim(output_size).to_str(), i, infer_shape));
+                phi::make_ddim(output_size).to_str(), i, infer_shape));
         PADDLE_ENFORCE_LT(
             output_size[i], infer_shape + strides[i],
             platform::errors::InvalidArgument(
@@ -153,7 +153,7 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
                 "than infered size + stride. But received output_size = [%s], "
                 "whose dim %d is not less than the infered output size (%d) + "
                 "stride (%d) = %d",
-                pten::make_ddim(output_size).to_str(), i, infer_shape,
+                phi::make_ddim(output_size).to_str(), i, infer_shape,
                 strides[i], infer_shape + strides[i]));
       }
       output_shape.push_back(output_size[i]);
@@ -165,7 +165,7 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
                 "output_padding of Op(ConvTransposeOp) should not be "
                 "less than the 0. But received output_padding = "
                 "[%s], whose dim %d is less than 0",
-                pten::make_ddim(output_padding).to_str(), i));
+                phi::make_ddim(output_padding).to_str(), i));
         PADDLE_ENFORCE_LT(
             output_padding[i], std::max(strides[i], dilations[i]),
             platform::errors::InvalidArgument(
@@ -174,7 +174,7 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
                 "[%s], "
                 "whose dim %d is not less than either stride (%d)  or "
                 "dilation (%d)",
-                pten::make_ddim(output_size).to_str(), i, strides[i],
+                phi::make_ddim(output_size).to_str(), i, strides[i],
                 dilations[i]));
       }
       output_shape.push_back((infer_shape + output_padding[i]));
@@ -185,7 +185,7 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
   if (data_layout == DataLayout::kNHWC) {
     output_shape.push_back(filter_dims[1] * groups);
   }
-  ctx->SetOutputDim("Output", pten::make_ddim(output_shape));
+  ctx->SetOutputDim("Output", phi::make_ddim(output_shape));
 }
 
 framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(

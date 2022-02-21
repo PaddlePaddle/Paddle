@@ -50,7 +50,7 @@ class TopkXPUKernel : public framework::OpKernel<T> {
     // reshape input to a flattern matrix(like flat_inner_dims)
     framework::DDim inputdims = input->dims();
     const size_t row =
-        pten::product(pten::slice_ddim(inputdims, 0, inputdims.size() - 1));
+        phi::product(phi::slice_ddim(inputdims, 0, inputdims.size() - 1));
     const size_t col = inputdims[inputdims.size() - 1];
     auto& dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
 

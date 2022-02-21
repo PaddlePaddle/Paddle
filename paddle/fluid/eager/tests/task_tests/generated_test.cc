@@ -28,7 +28,7 @@
 #include "paddle/fluid/imperative/tracer.h"
 
 #include "paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h"
-#include "paddle/pten/core/kernel_registry.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace egr {
 
@@ -37,11 +37,11 @@ TEST(Generated, Sigmoid) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
   VLOG(6) << "Init Env";
   // 1. Prepare Input
-  paddle::framework::DDim ddim = pten::make_ddim({2, 4, 4, 4});
+  paddle::framework::DDim ddim = phi::make_ddim({2, 4, 4, 4});
   VLOG(6) << "Make Dim";
   paddle::experimental::Tensor tensor = egr_utils_api::CreateTensorWithValue(
-      ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
-      pten::DataLayout::NCHW, 0.0, true);
+      ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+      phi::DataLayout::NCHW, 0.0, true);
   VLOG(6) << "Make paddle::experimental::Tensor";
   egr_utils_api::RetainGradForTensor(tensor);
   VLOG(6) << "Retain Grad for Tensor";
@@ -65,16 +65,16 @@ TEST(Generated, Matmul_v2) {
   paddle::imperative::SetCurrentTracer(tracer);
 
   // 1. Prepare Input
-  paddle::framework::DDim ddimX = pten::make_ddim({4, 16});
+  paddle::framework::DDim ddimX = phi::make_ddim({4, 16});
   paddle::experimental::Tensor X = egr_utils_api::CreateTensorWithValue(
-      ddimX, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
-      pten::DataLayout::NCHW, 3.0, true);
+      ddimX, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+      phi::DataLayout::NCHW, 3.0, true);
   egr_utils_api::RetainGradForTensor(X);
 
-  paddle::framework::DDim ddimY = pten::make_ddim({16, 20});
+  paddle::framework::DDim ddimY = phi::make_ddim({16, 20});
   paddle::experimental::Tensor Y = egr_utils_api::CreateTensorWithValue(
-      ddimY, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
-      pten::DataLayout::NCHW, 2.0, true);
+      ddimY, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+      phi::DataLayout::NCHW, 2.0, true);
   egr_utils_api::RetainGradForTensor(Y);
 
   auto output_tensor = matmul_v2_dygraph_function(
@@ -97,16 +97,16 @@ TEST(Generated, ElementwiseAdd) {
   paddle::imperative::SetCurrentTracer(tracer);
 
   // 1. Prepare Input
-  paddle::framework::DDim ddimX = pten::make_ddim({4, 16});
+  paddle::framework::DDim ddimX = phi::make_ddim({4, 16});
   paddle::experimental::Tensor X = egr_utils_api::CreateTensorWithValue(
-      ddimX, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
-      pten::DataLayout::NCHW, 3.0, true);
+      ddimX, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+      phi::DataLayout::NCHW, 3.0, true);
   egr_utils_api::RetainGradForTensor(X);
 
-  paddle::framework::DDim ddimY = pten::make_ddim({4, 16});
+  paddle::framework::DDim ddimY = phi::make_ddim({4, 16});
   paddle::experimental::Tensor Y = egr_utils_api::CreateTensorWithValue(
-      ddimY, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
-      pten::DataLayout::NCHW, 2.0, true);
+      ddimY, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+      phi::DataLayout::NCHW, 2.0, true);
   egr_utils_api::RetainGradForTensor(Y);
 
   auto output_tensor = elementwise_add_dygraph_function(X, Y, {});

@@ -298,7 +298,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
                                                                           name);
         VLOG(4) << "trt engine runtime input name(" << name << "), dims("
                 << t.dims() << ")";
-        auto t_shape = pten::vectorize<int32_t>(t.dims());
+        auto t_shape = phi::vectorize<int32_t>(t.dims());
         runtime_input_shape.insert(std::make_pair(name, t_shape));
       }
 
@@ -384,7 +384,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         auto &t =
             inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
         calib_buffers[x] = t.memory_size();
-        auto t_shape = pten::vectorize(t.dims());
+        auto t_shape = phi::vectorize(t.dims());
         runtime_batch = t_shape[0];
       }
       calib_res->calib_.reset(new TRTInt8Calibrator(
@@ -460,7 +460,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         framework::TransDataDevice(t, dst_place, &out);
         t.ShareDataWith(out);
       }
-      auto t_shape = pten::vectorize<int64_t>(t.dims());
+      auto t_shape = phi::vectorize<int64_t>(t.dims());
       // const int bind_index = engine->engine()->getBindingIndex(x.c_str());
       // Get index of profile 0 first, then plus binding offset
       const int bind_index =
@@ -562,7 +562,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
           platform::errors::NotFound(
               "Output variable %s is not found in TensorRT subgraph.", y));
       auto *fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
-      fluid_t->Resize(pten::make_ddim(ddim));
+      fluid_t->Resize(phi::make_ddim(ddim));
 
       PADDLE_ENFORCE_LT(bind_index, num_bindings,
                         platform::errors::InvalidArgument(

@@ -20,7 +20,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/pten/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {

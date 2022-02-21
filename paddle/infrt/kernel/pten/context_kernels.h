@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/infrt/backends/host/pten_context.h"
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace infrt {
 namespace kernel {

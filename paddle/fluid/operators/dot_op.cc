@@ -63,7 +63,7 @@ class DotOp : public framework::OperatorWithKernel {
                           x_dims.to_str(), y_dims.to_str()));
     auto dims = vectorize(x_dims);
     dims[dims.size() - 1] = 1;
-    ctx->SetOutputDim("Out", pten::make_ddim(dims));
+    ctx->SetOutputDim("Out", phi::make_ddim(dims));
   }
 
   framework::OpKernelType GetExpectedKernelType(

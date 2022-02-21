@@ -15,8 +15,8 @@ limitations under the License. */
 #include <set>
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/stream/cuda_stream.h"
-#include "paddle/pten/backends/gpu/gpu_context.h"
-#include "paddle/pten/core/allocator.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/allocator.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
@@ -272,12 +272,12 @@ DeviceContextPool::DeviceContextPool(
   }
 }
 
-CPUDeviceContext::CPUDeviceContext() : pten::CPUContext() {
-  pten::CPUContext::Init();
+CPUDeviceContext::CPUDeviceContext() : phi::CPUContext() {
+  phi::CPUContext::Init();
 }
 
-CPUDeviceContext::CPUDeviceContext(CPUPlace place) : pten::CPUContext(place) {
-  pten::CPUContext::Init();
+CPUDeviceContext::CPUDeviceContext(CPUPlace place) : phi::CPUContext(place) {
+  phi::CPUContext::Init();
 }
 
 #ifdef PADDLE_WITH_IPU
@@ -293,14 +293,14 @@ IPUDeviceContext::~IPUDeviceContext() {}
 
 #endif
 #ifdef PADDLE_WITH_XPU
-XPUDeviceContext::XPUDeviceContext() : pten::XPUContext() {
-  pten::XPUContext::Init();
+XPUDeviceContext::XPUDeviceContext() : phi::XPUContext() {
+  phi::XPUContext::Init();
 }
 
 XPUDeviceContext::~XPUDeviceContext() {}
 
-XPUDeviceContext::XPUDeviceContext(XPUPlace place) : pten::XPUContext(place) {
-  pten::XPUContext::Init();
+XPUDeviceContext::XPUDeviceContext(XPUPlace place) : phi::XPUContext(place) {
+  phi::XPUContext::Init();
   LOG_FIRST_N(WARNING, 1) << "Please NOTE: xpu device: "
                           << static_cast<int>(place.device);
 }
@@ -499,13 +499,12 @@ CUDAContext::~CUDAContext() {
 #endif
 }
 
-CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
-    : pten::GPUContext(place) {
-  pten::GPUContext::PartialInitWithoutAllocator();
-  cuda_stream_.reset(new stream::CUDAStream(pten::GPUContext::stream(), place));
-  workspace_.reset(new pten::DnnWorkspaceHandle(
+CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : phi::GPUContext(place) {
+  phi::GPUContext::PartialInitWithoutAllocator();
+  cuda_stream_.reset(new stream::CUDAStream(phi::GPUContext::stream(), place));
+  workspace_.reset(new phi::DnnWorkspaceHandle(
       memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(place, pten::GPUContext::stream())
+          .GetAllocator(place, phi::GPUContext::stream())
           .get()));
 }
 
@@ -515,7 +514,7 @@ Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
   if (thread_ctx_.count(this)) {
     return context()->EigenDevice().get();
   }
-  return pten::GPUContext::eigen_device();
+  return phi::GPUContext::eigen_device();
 }
 
 void CUDADeviceContext::Wait() const {
@@ -523,7 +522,7 @@ void CUDADeviceContext::Wait() const {
     context()->Stream()->Wait();
     return;
   }
-  pten::GPUContext::Wait();
+  phi::GPUContext::Wait();
 }
 
 #ifdef PADDLE_WITH_HIP
@@ -534,7 +533,7 @@ cudnnHandle_t CUDADeviceContext::cudnn_handle() const {
   if (thread_ctx_.count(this)) {
     return context()->CudnnHandle();
   }
-  return pten::GPUContext::cudnn_handle();
+  return phi::GPUContext::cudnn_handle();
 }
 
 #ifdef PADDLE_WITH_HIP
@@ -542,26 +541,26 @@ rocblas_handle CUDADeviceContext::cublas_handle() const {
   if (thread_ctx_.count(this)) {
     return context()->CublasHandle()->GetCublasHandle();
   }
-  return pten::GPUContext::cublas_handle();
+  return phi::GPUContext::cublas_handle();
 }
 #else
 cublasHandle_t CUDADeviceContext::cublas_handle() const {
   if (thread_ctx_.count(this)) {
     return context()->CublasHandle()->GetCublasHandle();
   }
-  return pten::GPUContext::cublas_handle();
+  return phi::GPUContext::cublas_handle();
 }
 cusparseHandle_t CUDADeviceContext::cusparse_handle() const {
   if (thread_ctx_.count(this)) {
     return context()->CusparseHandle()->GetCusparseHandle();
   }
-  return pten::GPUContext::cusparse_handle();
+  return phi::GPUContext::cusparse_handle();
 }
 cusolverDnHandle_t CUDADeviceContext::cusolver_dn_handle() const {
   if (thread_ctx_.count(this)) {
     return context()->CusolverDnHandle();
   }
-  return pten::GPUContext::cusolver_dn_handle();
+  return phi::GPUContext::cusolver_dn_handle();
 }
 #endif
 
@@ -571,7 +570,7 @@ void CUDADeviceContext::RecordEvent(
     context()->Stream()->RecordEvent(ev, callback);
     return;
   }
-  pten::GPUContext::RecordEvent(ev, callback);
+  phi::GPUContext::RecordEvent(ev, callback);
 }
 
 void CUDADeviceContext::AddStreamCallback(
@@ -580,7 +579,7 @@ void CUDADeviceContext::AddStreamCallback(
     context()->Stream()->AddCallback(callback);
     return;
   }
-  pten::GPUContext::AddStreamCallback(callback);
+  phi::GPUContext::AddStreamCallback(callback);
 }
 
 void CUDADeviceContext::WaitStreamCallback() const {
@@ -588,25 +587,25 @@ void CUDADeviceContext::WaitStreamCallback() const {
     context()->Stream()->WaitCallback();
     return;
   }
-  pten::GPUContext::WaitStreamCallback();
+  phi::GPUContext::WaitStreamCallback();
 }
 
-pten::DnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
+phi::DnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
   if (thread_ctx_.count(this)) {
     // return workspace_.get();
-    return pten::DnnWorkspaceHandle(
+    return phi::DnnWorkspaceHandle(
         memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(GetPlace(), pten::GPUContext::stream())
+            .GetAllocator(GetPlace(), phi::GPUContext::stream())
             .get());
   }
-  return pten::GPUContext::cudnn_workspace_handle();
+  return phi::GPUContext::cudnn_workspace_handle();
 }
 
 gpuStream_t CUDADeviceContext::stream() const {
   if (thread_ctx_.count(this)) {
     return context()->RawStream();
   }
-  return pten::GPUContext::stream();
+  return phi::GPUContext::stream();
 }
 
 std::shared_ptr<CUDAContext> CUDADeviceContext::context() const {

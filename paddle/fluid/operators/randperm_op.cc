@@ -35,7 +35,7 @@ class RandpermOp : public framework::OperatorWithKernel {
                   "But received %d.",
                   n));
 
-    ctx->SetOutputDim("Out", pten::make_ddim({n}));
+    ctx->SetOutputDim("Out", phi::make_ddim({n}));
   }
 
  protected:

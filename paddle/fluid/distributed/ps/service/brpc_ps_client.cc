@@ -1227,7 +1227,7 @@ int32_t BrpcPsClient::recv_and_save_table(const uint64_t table_id,
   framework::LoDTensor *var_tensor = var->GetMutable<framework::LoDTensor>();
 
   std::vector<int64_t> vec_dim = {var_num, var_shape};
-  var_tensor->Resize(pten::make_ddim(vec_dim));
+  var_tensor->Resize(phi::make_ddim(vec_dim));
 
   // copy and save
   float *tensor_data = var_tensor->mutable_data<float>(place);

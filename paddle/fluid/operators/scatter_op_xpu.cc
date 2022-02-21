@@ -73,7 +73,7 @@ class ScatterOpXPUKernel : public framework::OpKernel<T> {
 
     int dim0 = static_cast<int>(x->dims()[0]);
     int dim1 = static_cast<int>(
-        pten::product(pten::slice_ddim(x_dims, 1, x_dims.size())));
+        phi::product(phi::slice_ddim(x_dims, 1, x_dims.size())));
     T *out_data = out->data<T>();
     const T *updates_data = updates->data<T>();
 

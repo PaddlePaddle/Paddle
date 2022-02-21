@@ -421,7 +421,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
         VLOG(4) << "Run pten kernel: " << op->Type();
         VLOG(4) << instr_node.InnerRuntimeContext().get() << " "
                 << &instr_node.DeviceContext();
-        pten::KernelContext pt_kernel_context;
+        phi::KernelContext pt_kernel_context;
         op_with_kernel->BuildPtenKernelContext(
             *instr_node.InnerRuntimeContext().get(),
             const_cast<platform::DeviceContext*>(&instr_node.DeviceContext()),
@@ -683,9 +683,9 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
                    operators::reader::
                        OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {
       // do nothing
-    } else if (var->IsType<pten::SelectedRows>()) {
+    } else if (var->IsType<phi::SelectedRows>()) {
       TensorRecordStream(
-          *(var->GetMutable<pten::SelectedRows>()->mutable_value()));
+          *(var->GetMutable<phi::SelectedRows>()->mutable_value()));
     } else if (var->IsType<LoDTensorArray>()) {
       auto* tensor_arr = var->GetMutable<LoDTensorArray>();
       for (auto& tensor : *tensor_arr) {
