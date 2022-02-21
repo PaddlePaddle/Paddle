@@ -22,7 +22,7 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 
-PT_DECLARE_KERNEL(scale, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(scale, CPU, ALL_LAYOUT);
 
 namespace phi {
 namespace tests {

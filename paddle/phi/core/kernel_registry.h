@@ -971,15 +971,15 @@ struct KernelRegistrar {
       const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel)
 #endif
 
-/** PT_DECLARE_KERNEL
+/** PD_DECLARE_KERNEL
  *
  * Used to export the symbols of the file where the kernel is located,
  * to avoid being removed by linker
  */
-#define PT_DECLARE_KERNEL(kernel_name, backend, layout)                   \
+#define PD_DECLARE_KERNEL(kernel_name, backend, layout)                   \
   PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                      \
-      pt_declare_tp_kernel_ns_check_##kernel_name##_##backend##_##layout, \
-      "PT_DECLARE_KERNEL must be called in global namespace.");           \
+      PD_DECLARE_tp_kernel_ns_check_##kernel_name##_##backend##_##layout, \
+      "PD_DECLARE_KERNEL must be called in global namespace.");           \
   extern int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout(); \
   UNUSED static int                                                       \
       __declare_kernel_symbol_for_##kernel_name##_##backend##_##layout =  \
