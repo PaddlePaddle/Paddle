@@ -16,7 +16,10 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
+import os
+import re
+import paddle.fluid.core as core
 
 
 class TestElementwiseOp(OpTest):
@@ -44,6 +47,38 @@ class TestElementwiseOp(OpTest):
     def test_check_grad_ingore_y(self):
         self.check_grad(
             ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y'))
+
+
+@unittest.skipIf(
+    core.is_compiled_with_cuda() and core.cudnn_version() < 8100,
+    "run test when gpu is availble and the minimum cudnn version is 8.1.0.")
+class TestElementwiseBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "elementwise_max"
+        self.dtype = np.uint16
+        # If x and y have the same value, the max() is not differentiable.
+        # So we generate test data by the following method
+        # to avoid them being too close to each other.
+        x = np.random.uniform(0.1, 1, [13, 17]).astype(np.float32)
+        sgn = np.random.choice([-1, 1], [13, 17]).astype(np.float32)
+        y = x + sgn * np.random.uniform(0.1, 1, [13, 17]).astype(np.float32)
+        self.inputs = {
+            'X': convert_float_to_uint16(x),
+            'Y': convert_float_to_uint16(y)
+        }
+        self.outputs = {'Out': convert_float_to_uint16(np.maximum(x, y))}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out')
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
 
 
 @skip_check_grad_ci(
