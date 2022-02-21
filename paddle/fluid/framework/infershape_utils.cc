@@ -291,13 +291,13 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
   // TODO(chenweihang): support multiple inputs and outputs later
   phi::InferMetaContext infer_mete_context;
   for (auto& in_name : input_names) {
-    if (ctx->HasInput(in_name)) {
+    if (ctx->HasInputs(in_name)) {
       auto input_var = ctx->GetInputVarPtrs(in_name);
       if (input_var.size() == 1) {
         infer_meta_context.EmplaceBackInput(
             std::make_shared<CompatMetaTensor>(input_var[0], ctx->IsRuntime()));
       } else {
-        paddle::SmallVector<std::shared_ptr<pten::MetaTensor>> inputs;
+        paddle::SmallVector<std::shared_ptr<phi::MetaTensor>> inputs;
         inputs.reserve(input_var.size());
         for (const auto& in : input_var) {
           inputs.emplace_back(
@@ -362,9 +362,20 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
   }
 
   for (auto& out_name : output_names) {
-    if (ctx->HasOutput(out_name)) {
-      infer_meta_context.EmplaceBackOutput(std::make_shared<CompatMetaTensor>(
-          ctx->GetOutputVarPtrs(out_name)[0], ctx->IsRuntime()));
+    if (ctx->HasOutputs(out_name)) {
+      auto output_var = ctx->GetOutputVarPtrs(out_name);
+      if (output_var.size() == 1) {
+        infer_meta_context.EmplaceBackOutput(std::make_shared<CompatMetaTensor>(
+            output_var[0], ctx->IsRuntime()));
+      } else {
+        paddle::SmallVector<std::shared_ptr<phi::MetaTensor>> outputs;
+        outputs.reserve(output_var.size());
+        for (const auto& out : output_var) {
+          outputs.emplace_back(
+              std::make_shared<CompatMetaTensor>(out, ctx->IsRuntime()));
+        }
+        infer_meta_context.EmplaceBackOutputs(std::move(outputs));
+      }
     } else {
       infer_meta_context.EmplaceBackOutput({nullptr});
     }
