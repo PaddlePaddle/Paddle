@@ -22,7 +22,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 #include "paddle/fluid/platform/variant.h"
-#include "paddle/pten/core/compat/type_defs.h"
+#include "paddle/phi/core/compat/type_defs.h"
 #include "paddle/utils/small_vector.h"
 
 namespace paddle {

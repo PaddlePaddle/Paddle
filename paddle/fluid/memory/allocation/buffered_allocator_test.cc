@@ -27,7 +27,7 @@ namespace memory {
 namespace allocation {
 
 inline std::unique_ptr<BufferedAllocator> GetBufferedAllocator(
-    pten::Allocation *allocation, bool thread_safe) {
+    phi::Allocation *allocation, bool thread_safe) {
   std::unique_ptr<Allocator> allocator(new BestFitAllocator(allocation));
   if (thread_safe) {
     allocator.reset(new LockedAllocator(std::move(allocator)));
@@ -68,7 +68,7 @@ class StubAllocator : public Allocator {
   size_t GetFreeCount() const { return destruct_count_; }
 
  protected:
-  void FreeImpl(pten::Allocation *allocation) override {
+  void FreeImpl(phi::Allocation *allocation) override {
     auto *alloc = dynamic_cast<StubAllocation *>(allocation);
     PADDLE_ENFORCE_NOT_NULL(
         alloc, platform::errors::InvalidArgument(
@@ -77,7 +77,7 @@ class StubAllocator : public Allocator {
     ++destruct_count_;
     delete allocation;
   }
-  pten::Allocation *AllocateImpl(size_t size) override {
+  phi::Allocation *AllocateImpl(size_t size) override {
     ++construct_count_;
     if (size == 0) {
       return new StubAllocation(nullptr, 0, platform::CPUPlace());
