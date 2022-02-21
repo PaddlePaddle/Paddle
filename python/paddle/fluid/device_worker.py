@@ -246,10 +246,6 @@ class DownpourSGD(DeviceWorker):
                              program_id)
         worker = opt_info["program_id_to_worker"][program_id]
 
-        ## add for gpups
-        ps_param = opt_info["fleet_desc"]
-        trainer_desc._set_fleet_desc(ps_param)
-
         for i in worker.get_desc().dense_table:
             if i.table_id in dense_table_set:
                 dense_table = pull_thread.dense_table.add()
