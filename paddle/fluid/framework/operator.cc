@@ -2175,30 +2175,51 @@ void OperatorWithKernel::BuildPtenKernelContext(
 
     } else {
       // TODO(chenweihang): support other attrs later
+      auto attr_it = attrs_.find(attr_names[i]);
       auto& attr = Attrs().at(attr_names[i]);
       if (attr_defs[i].type_index == std::type_index(typeid(int))) {
-        pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(int, attr));
+        if (attr_it == attrs_.end()) {
+          auto in_it = ctx.inputs.find(attr_names[i]);
+          if (in_it != ctx.inputs.end()) {
+            // get data from input
+            auto val = experimental::MakePtenScalarFromVar(*(in_it->second[0]));
+            int32_t val_int = val.template to<int32_t>();
+            pt_kernel_context->EmplaceBackAttr(val_int);
+          } else {
+            PADDLE_THROW(platform::errors::NotFound(
+                "can not find attribute `%s` both in attribute and input ",
+                attr_names[i]));
+          }
+        } else {
+          pt_kernel_context->EmplaceBackAttr(
+              BOOST_GET_CONST(int, attr_it->second));
+        }
       } else if (attr_defs[i].type_index == std::type_index(typeid(float))) {
-        pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(float, attr));
+        pt_kernel_context->EmplaceBackAttr(
+            BOOST_GET_CONST(float, attr_it->second));
       } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
-        pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
+        pt_kernel_context->EmplaceBackAttr(
+            BOOST_GET_CONST(bool, attr_it->second));
       } else if (attr_defs[i].type_index == std::type_index(typeid(int64_t))) {
-        pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(int64_t, attr));
+        pt_kernel_context->EmplaceBackAttr(
+            BOOST_GET_CONST(int64_t, attr_it->second));
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::string))) {
-        pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(std::string, attr));
+        pt_kernel_context->EmplaceBackAttr(
+            BOOST_GET_CONST(std::string, attr_it->second));
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(phi::DataType))) {
         auto data_type = paddle::framework::TransToPtenDataType(
             static_cast<framework::proto::VarType::Type>(
-                BOOST_GET_CONST(int, attr)));
+                BOOST_GET_CONST(int, attr_it->second)));
         pt_kernel_context->EmplaceBackAttr(data_type);
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<int64_t>))) {
         if (std::type_index(attr.type()) ==
             std::type_index(typeid(std::vector<int>))) {
           // Emplace Back Attr according to the type of Pten_Kernel args.
-          const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
+          const auto& vector_int_attr =
+              BOOST_GET_CONST(std::vector<int>, attr_it->second);
           const std::vector<int64_t> vector_int64_attr(vector_int_attr.begin(),
                                                        vector_int_attr.end());
           pt_kernel_context->EmplaceBackAttr(vector_int64_attr);
