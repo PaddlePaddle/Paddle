@@ -67,7 +67,11 @@ void FusedBatchNormAddActOp::InferShape(
                                           "[%d]",
                                           x_dims, x_dims.size()));
 
+#ifdef PADDLE_WITH_XPU
+  const int64_t C = x_dims[1];
+#else
   const int64_t C = x_dims[x_dims.size() - 1];
+#endif
 
   auto scale_dim = ctx->GetInputDim("Scale");
   auto bias_dim = ctx->GetInputDim("Bias");
@@ -144,6 +148,12 @@ void FusedBatchNormAddActOpMaker::Make() {
   AddInput("Bias",
            "Bias is a 1-dimensional tensor of size C "
            "that is applied to the output");
+  AddInput("Mean",
+           "The global mean (for training) or "
+           "estimated mean (for testing)");
+  AddInput("Variance",
+           "The global variance (for training) "
+           "or estimated Variance (for testing)");
   AddOutput("Y", "result after normalization");
   AddOutput("MeanOut",
             "Share memory with Mean. "
@@ -172,6 +182,16 @@ void FusedBatchNormAddActOpMaker::Make() {
       });
   AddAttr<std::string>("act_type", "The activation type to be fused.")
       .SetDefault("relu");
+  AddAttr<bool>("use_global_stats", "").SetDefault(false);
+  AddAttr<bool>("is_test",
+                "(bool, default false) Set to true for inference only, false "
+                "for training. Some layers may run faster when this is true.")
+      .SetDefault(false);
+  AddAttr<bool>("trainable_statistics",
+                "(bool, default false) Whether to calculate mean and variance "
+                "in test mode. If setting true in test mode, mean and variace "
+                "will be calculated by current batch statistics.")
+      .SetDefault(false);
   AddComment(R"DOC(
 Fused Batch Normalization with activation.
 

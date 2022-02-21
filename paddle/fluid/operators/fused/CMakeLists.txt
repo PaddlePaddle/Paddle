@@ -25,6 +25,12 @@ register_operators(EXCLUDES
 op_library(fusion_gru_op)
 op_library(fusion_lstm_op)
 
+if (WITH_XPU)
+  # fused_bn_activation_op on XPU
+  op_library(fused_bn_activation_op)
+  op_library(fused_bn_add_activation_op)
+endif()
+
 
 if (WITH_GPU OR WITH_ROCM)
     # fused_bn_activation_op needs cudnn 7.4.1 above

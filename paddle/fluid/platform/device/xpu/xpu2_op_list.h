@@ -390,6 +390,18 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"sequence_conv_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+
+      // fuse
+      {"fused_batch_norm_act",
+       XPUKernelSet({pOpKernelType(vartype::FP16, XPUPlace()),
+                     pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"fused_batch_norm_act_grad",
+       XPUKernelSet({pOpKernelType(vartype::FP16, XPUPlace()),
+                     pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"fused_bn_add_activation",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"fused_bn_add_activation_grad",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
   };
 
   return s_xpu2_kernels;
