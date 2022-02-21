@@ -23,6 +23,8 @@ limitations under the License. */
 #include "paddle/pten/core/kernel_registry.h"
 #include "paddle/pten/kernels/copy_kernel.h"
 
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/platform/device_context.h"
 namespace paddle {
 namespace tests {
 

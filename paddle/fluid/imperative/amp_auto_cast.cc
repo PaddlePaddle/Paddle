@@ -340,8 +340,8 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
 }
 template NameVarMap<VarBase> AutoCastInputs<VarBase>(
     const std::string& op_type, const NameVarMap<VarBase>& ins);
-template NameVarMap<egr::EagerTensor> AutoCastInputs<egr::EagerTensor>(
-    const std::string& op_type, const NameVarMap<egr::EagerTensor>& ins);
+template NameVarMap<egr::EagerVariable> AutoCastInputs<egr::EagerVariable>(
+    const std::string& op_type, const NameVarMap<egr::EagerVariable>& ins);
 template <typename VarType>
 NameVarMap<VarType> CastPureFp16Inputs(const std::string& op_type,
                                        const NameVarMap<VarType>& ins) {
@@ -384,7 +384,7 @@ NameVarMap<VarType> CastPureFp16Inputs(const std::string& op_type,
 }
 template NameVarMap<VarBase> CastPureFp16Inputs<VarBase>(
     const std::string& op_type, const NameVarMap<VarBase>& ins);
-template NameVarMap<egr::EagerTensor> CastPureFp16Inputs<egr::EagerTensor>(
-    const std::string& op_type, const NameVarMap<egr::EagerTensor>& ins);
+template NameVarMap<egr::EagerVariable> CastPureFp16Inputs<egr::EagerVariable>(
+    const std::string& op_type, const NameVarMap<egr::EagerVariable>& ins);
 }  // namespace imperative
 }  // namespace paddle

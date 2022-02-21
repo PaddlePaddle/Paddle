@@ -35,6 +35,9 @@
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #endif
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/operators/mlu/mlu_baseop.h"
+#endif
 
 namespace paddle {
 namespace imperative {
@@ -297,13 +300,10 @@ void TensorAdd(const VarType& src, VarType* dst) {
                         "should be equal, Otherwise, the calculation results "
                         "will be incorrect."));
 
-#ifdef PADDLE_WITH_XPU
   // if src and dst are in different place, copy dst to src's place
   if (dst_tensor->place() != place) {
     paddle::framework::TensorCopySync(*dst_tensor, place, dst_tensor);
   }
-#endif
-
 #define PADDLE_TENSOR_ADD(cpp_type)                                  \
   if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) { \
     TensorAddFunctor<cpp_type> func(                                 \
@@ -358,6 +358,35 @@ void TensorAdd(const VarType& src, VarType* dst) {
           "supported in imperative mode",
           framework::DataTypeToString(data_type), place));
     }
+    return;
+  }
+#endif
+
+#ifdef PADDLE_WITH_MLU
+  if (platform::is_mlu_place(place)) {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    platform::DeviceContext* ctx = pool.Get(place);
+    auto dev_ctx = dynamic_cast<platform::MLUDeviceContext*>(ctx);
+    if (data_type == framework::DataTypeTrait<float>::DataType()) {
+      dst_tensor->mutable_data<float>(place);
+    } else if (data_type ==
+               framework::DataTypeTrait<platform::float16>::DataType()) {
+      dst_tensor->mutable_data<platform::float16>(place);
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Gradient accumulation of data type (%s) on place (%s) is not "
+          "supported in imperative mode",
+          framework::DataTypeToString(data_type), place));
+    }
+    static const float alpha = 1.f;
+    static const float beta = 1.f;
+    operators::MLUCnnlTensorDesc src_tensor_desc(src_tensor);
+    operators::MLUCnnlTensorDesc dst_tensor_desc(*dst_tensor);
+    PADDLE_ENFORCE_MLU_SUCCESS(cnnlAssignAdd(
+        dev_ctx->cnnl_handle(), static_cast<const void*>(&alpha),
+        src_tensor_desc.get(), operators::GetBasePtr(&src_tensor), nullptr, 0,
+        static_cast<const void*>(&beta), dst_tensor_desc.get(),
+        operators::GetBasePtr(dst_tensor)));
     return;
   }
 #endif

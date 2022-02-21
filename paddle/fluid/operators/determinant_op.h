@@ -19,11 +19,11 @@
 #include <cmath>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/math/matrix_inverse.h"
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/kernels/funcs/complex_functors.h"
 
 namespace paddle {
 namespace operators {
@@ -395,7 +395,7 @@ class SlogDeterminantGradKernel : public framework::OpKernel<T> {
                                                      size_t(numel * sizeof(T)));
 
     platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
-    math::ConjFunctor<T> functor(inverse_A.data<T>(), numel, conj_data);
+    pten::funcs::ConjFunctor<T> functor(inverse_A.data<T>(), numel, conj_data);
     for_range(functor);
 
     VLOG(3) << "inverse(A).conj() dims: " << conj_inverse_A.dims();
