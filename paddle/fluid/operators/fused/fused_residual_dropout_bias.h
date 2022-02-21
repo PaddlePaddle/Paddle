@@ -115,12 +115,12 @@ __global__ void FusedResidualDropoutBias(
   curandStatePhilox4_32_10_t state;
   curand_init(seed, idx, increment, &state);
   const T factor = GetFactor<T>(dropout_prob, is_upscale_in_train, is_test);
-  pten::funcs::ReluFunctor<T> relu;
+  phi::funcs::ReluFunctor<T> relu;
   for (int r = row_id; r < rows; r += blockDim.y * gridDim.y) {
     for (int i = col_id * VecSize; i < cols;
          i += blockDim.x * gridDim.x * VecSize) {
       FusedResidualDropoutBiasOneThread<T, MaskType, VecSize, false, false,
-                                        pten::funcs::ReluFunctor<T>>(
+                                        phi::funcs::ReluFunctor<T>>(
           r, i, cols, &state, dropout_prob, factor, src, residual, bias, dst,
           mask, is_test, nullptr, nullptr, relu);
     }

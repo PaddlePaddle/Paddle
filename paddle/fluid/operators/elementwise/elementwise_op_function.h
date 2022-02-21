@@ -29,8 +29,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/transform.h"
 
-#include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/kernels/cpu/elementwise.h"
+#include "paddle/phi/api/lib/utils/tensor_utils.h"
+#include "paddle/phi/kernels/cpu/elementwise.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #ifdef __NVCC__
@@ -48,7 +48,7 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 #define DIVUP(x, y) (((x) + (y)-1) / (y))
 
@@ -84,7 +84,7 @@ int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
     auto *x = ctx.Input<framework::LoDTensor>("X");
     z = ctx.Output<framework::LoDTensor>("Out");
     ins->emplace_back(x);
-  } else if (x_var->IsType<pten::SelectedRows>()) {
+  } else if (x_var->IsType<phi::SelectedRows>()) {
     PADDLE_ENFORCE_EQ(y->dims().size() == 1 && y->dims()[0] == 1, true,
                       platform::errors::InvalidArgument(
                           "For elementwise_op, if X is Sparse, Y must be "
@@ -96,15 +96,15 @@ int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
             "The parameter x_for_selectedrows is excepted to "
             "be valid, once input varible X`s class type is "
             "SelectedRows.\n"));
-    auto &x_sele = x_var->Get<pten::SelectedRows>();
-    auto out_sele = ctx.Output<pten::SelectedRows>("Out");
+    auto &x_sele = x_var->Get<phi::SelectedRows>();
+    auto out_sele = ctx.Output<phi::SelectedRows>("Out");
     *x_for_selectedrows = x_sele.value();
     out_sele->set_rows(x_sele.rows());
     out_sele->set_height(x_sele.height());
     out_sele->mutable_value()->Resize(x_sele.value().dims());
     out_sele->mutable_value()->mutable_data(ctx.GetPlace(),
                                             x_for_selectedrows->type());
-    z = ctx.Output<pten::SelectedRows>("Out")->mutable_value();
+    z = ctx.Output<phi::SelectedRows>("Out")->mutable_value();
     ins->emplace_back(x_for_selectedrows);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -127,14 +127,13 @@ inline void GetBroadcastDimsArrays(const framework::DDim &x_dims,
                                    int *x_dims_array, int *y_dims_array,
                                    int *out_dims_array, const int max_dim,
                                    const int axis) {
-  pten::funcs::GetBroadcastDimsArrays(x_dims, y_dims, x_dims_array,
-                                      y_dims_array, out_dims_array, max_dim,
-                                      axis);
+  phi::funcs::GetBroadcastDimsArrays(x_dims, y_dims, x_dims_array, y_dims_array,
+                                     out_dims_array, max_dim, axis);
 }
 
 inline framework::DDim trim_trailing_singular_dims(
     const framework::DDim &dims) {
-  return pten::funcs::trim_trailing_singular_dims(dims);
+  return phi::funcs::trim_trailing_singular_dims(dims);
 }
 
 template <typename DeviceContext, typename T, typename DX_OP, typename DY_OP,
@@ -149,11 +148,11 @@ void ElemwiseGradCompute(const framework::ExecutionContext &ctx,
   const framework::DDim &y_dim = y.dims();
   const auto &dev_ctx = ctx.template device_context<DeviceContext>();
   if (x.dims() == y.dims()) {
-    pten::funcs::ElemwiseGradComputeNoBroadcast<DeviceContext, T, DX_OP, DY_OP,
-                                                Tout>(
+    phi::funcs::ElemwiseGradComputeNoBroadcast<DeviceContext, T, DX_OP, DY_OP,
+                                               Tout>(
         dev_ctx, x_dim, y_dim, x, y, out, dout, axis, dx, dy, dx_op, dy_op);
   } else {
-    pten::ElemwiseGradComputeWithBroadcast<T, DX_OP, DY_OP, Tout>(
+    phi::ElemwiseGradComputeWithBroadcast<T, DX_OP, DY_OP, Tout>(
         dev_ctx, x_dim, y_dim, x, y, out, dout, axis, dx, dy, dx_op, dy_op);
   }
 }
@@ -178,15 +177,15 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
 #if defined(__NVCC__) || defined(__HIPCC__)
     const auto &dev_ctx =
         ctx.template device_context<platform::CUDADeviceContext>();
-    pten::ElementwiseCompute<Functor, T, OutType>(dev_ctx, *x, *y, axis, func,
-                                                  z);
+    phi::ElementwiseCompute<Functor, T, OutType>(dev_ctx, *x, *y, axis, func,
+                                                 z);
 
 #endif
     return;
   }
   const auto &dev_ctx =
       ctx.template device_context<platform::CPUDeviceContext>();
-  pten::ElementwiseCompute<Functor, T, OutType>(dev_ctx, *x, *y, axis, func, z);
+  phi::ElementwiseCompute<Functor, T, OutType>(dev_ctx, *x, *y, axis, func, z);
 }
 
 // FusedElemwiseAndAct
@@ -417,7 +416,7 @@ void FusedElemwiseAndActComputeNoBroadcast(
     const framework::Tensor &x, const framework::Tensor &y,
     CompoundFunctor compound_functor, framework::Tensor *out,
     framework::Tensor *intermediate_out) {
-  size_t N = static_cast<size_t>(framework::product(x_dim));
+  size_t N = static_cast<size_t>(phi::product(x_dim));
 
   platform::ForRange<DeviceContext> for_range(
       ctx.template device_context<DeviceContext>(), N);
@@ -444,8 +443,8 @@ void FusedElemwiseAndActComputeWithBroadcast(
   axis = (y_dim.size() == 0) ? x_dim.size() : axis;
 
   int pre, n, post, is_run_common_broadcast;
-  pten::funcs::get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post,
-                            &is_run_common_broadcast);
+  phi::funcs::get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post,
+                           &is_run_common_broadcast);
   if (post == 1) {
     int h = pre;
     int w = n;
@@ -547,7 +546,7 @@ void FusedElemwiseAndActGradComputeNoBroadcast(
     framework::Tensor *dx, framework::Tensor *dy,
     framework::Tensor *dintermediate, DX_OP dx_op, DY_OP dy_op,
     DIntermediate_OP dintermediate_op) {
-  size_t N = static_cast<size_t>(framework::product(x_dim));
+  size_t N = static_cast<size_t>(phi::product(x_dim));
   platform::ForRange<DeviceContext> for_range(
       ctx.template device_context<DeviceContext>(), N);
   const T *x_data = nullptr;
@@ -992,8 +991,8 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
   axis = (y_dim.size() == 0) ? x_dim.size() : axis;
 
   int pre, n, post, is_run_common_broadcast;
-  pten::funcs::get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post,
-                            &is_run_common_broadcast);
+  phi::funcs::get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post,
+                           &is_run_common_broadcast);
   const T *x_data = nullptr;
   const T *y_data = nullptr;
   if (x->IsInitialized()) x_data = x->data<T>();
@@ -1172,15 +1171,15 @@ static inline void GetDoubleGradSafeTensor(
     const framework::ExecutionContext &ctx, const framework::Tensor *x,
     const framework::Tensor *ddx, framework::Tensor *ddx_safe) {
   const auto &dev_ctx = ctx.template device_context<DeviceContext>();
-  pten::funcs::GetDoubleGradSafeTensor<DeviceContext, T>(dev_ctx, *x, ddx,
-                                                         ddx_safe);
+  phi::funcs::GetDoubleGradSafeTensor<DeviceContext, T>(dev_ctx, *x, ddx,
+                                                        ddx_safe);
 }
 
 // for broadcast backwards
 static inline std::vector<int> GetReduceDim(const framework::DDim &in,
                                             const framework::DDim &out,
                                             int axis) {
-  return pten::funcs::GetReduceDim(in, out, axis);
+  return phi::funcs::GetReduceDim(in, out, axis);
 }
 
 #if defined(__NVCC__) || defined(__HIPCC__)

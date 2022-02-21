@@ -34,7 +34,7 @@ void CreateCUDATensor(framework::Scope* scope, const std::string& name,
                       const std::vector<int64_t>& shape) {
   auto* var = scope->Var(name);
   auto* tensor = var->GetMutable<framework::LoDTensor>();
-  auto dims = framework::make_ddim(shape);
+  auto dims = phi::make_ddim(shape);
   tensor->Resize(dims);
   platform::CUDAPlace place;
   platform::CUDADeviceContext ctx(place);

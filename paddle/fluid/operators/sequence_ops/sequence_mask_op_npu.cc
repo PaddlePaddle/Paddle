@@ -54,7 +54,7 @@ class SequenceMaskNPUKernel : public framework::OpKernel<T> {
       auto x_data = x_vec.data();
       maxlen = static_cast<int>(*std::max_element(x_data, x_data + x_numel));
     }
-    auto y_dim = framework::vectorize<int>(x->dims());
+    auto y_dim = phi::vectorize<int>(x->dims());
     y_dim.push_back(maxlen);
 
     Tensor cast_x;
@@ -66,7 +66,7 @@ class SequenceMaskNPUKernel : public framework::OpKernel<T> {
     cast1_runner.Run(dev_ctx.stream());
 
     Tensor tmp;
-    tmp.mutable_data<int32_t>(framework::make_ddim({maxlen}), ctx.GetPlace());
+    tmp.mutable_data<int32_t>(phi::make_ddim({maxlen}), ctx.GetPlace());
     NpuOpRunner range_runner;
     range_runner.SetType("Range");
     range_runner.AddInput(std::vector<int32_t>({0}));
@@ -76,29 +76,28 @@ class SequenceMaskNPUKernel : public framework::OpKernel<T> {
     range_runner.Run(dev_ctx.stream());
 
     Tensor expand_tmp;
-    expand_tmp.mutable_data<int32_t>(framework::make_ddim(y_dim),
-                                     ctx.GetPlace());
+    expand_tmp.mutable_data<int32_t>(phi::make_ddim(y_dim), ctx.GetPlace());
     const auto& expand_runner =
         NpuOpRunner("ExpandD", {tmp}, {expand_tmp}, {{"shape", y_dim}});
     expand_runner.Run(dev_ctx.stream());
 
-    auto x_dims = framework::vectorize<int>(x->dims());
+    auto x_dims = phi::vectorize<int>(x->dims());
     x_dims.push_back(1);
-    cast_x.Resize(framework::make_ddim({x_dims}));
+    cast_x.Resize(phi::make_ddim({x_dims}));
     Tensor x_tmp;
-    x_tmp.mutable_data<int32_t>(framework::make_ddim(y_dim), ctx.GetPlace());
+    x_tmp.mutable_data<int32_t>(phi::make_ddim(y_dim), ctx.GetPlace());
     const auto& tile_runner =
         NpuOpRunner("TileWithAxis", {cast_x}, {x_tmp},
                     {{"axis", x->dims().size()}, {"tiles", maxlen}});
     tile_runner.Run(dev_ctx.stream());
 
     Tensor y_tmp;
-    y_tmp.mutable_data<uint8_t>(framework::make_ddim(y_dim), ctx.GetPlace());
+    y_tmp.mutable_data<uint8_t>(phi::make_ddim(y_dim), ctx.GetPlace());
     const auto& less_runner =
         NpuOpRunner("Less", {expand_tmp, x_tmp}, {y_tmp}, {});
     less_runner.Run(dev_ctx.stream());
 
-    y->Resize(framework::make_ddim(y_dim));
+    y->Resize(phi::make_ddim(y_dim));
     auto out_dtype = static_cast<framework::proto::VarType::Type>(
         ctx.Attr<int>("out_dtype"));
     if (out_dtype == framework::proto::VarType::INT32) {

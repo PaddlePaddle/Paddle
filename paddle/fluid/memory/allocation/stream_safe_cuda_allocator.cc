@@ -116,7 +116,7 @@ StreamSafeCUDAAllocator::~StreamSafeCUDAAllocator() {
 
 bool StreamSafeCUDAAllocator::IsAllocThreadSafe() const { return true; }
 
-pten::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
+phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
   ProcessUnfreedAllocations();
   VLOG(8) << "Try allocate " << size << " bytes";
   AllocationPtr underlying_allocation;
@@ -143,7 +143,7 @@ pten::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
   return allocation;
 }
 
-void StreamSafeCUDAAllocator::FreeImpl(pten::Allocation* allocation) {
+void StreamSafeCUDAAllocator::FreeImpl(phi::Allocation* allocation) {
   StreamSafeCUDAAllocation* stream_safe_cuda_allocation =
       dynamic_cast<StreamSafeCUDAAllocation*>(allocation);
   PADDLE_ENFORCE_NOT_NULL(stream_safe_cuda_allocation,

@@ -13,7 +13,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/row_conv_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -398,7 +398,7 @@ class RowConvGradKernel<platform::CUDADeviceContext, T>
     size_t *idx = mixv_batch_indices.CUDAMutableData(context.GetPlace());
 
     auto &device_ctx = context.cuda_device_context();
-    pten::funcs::SetConstant<platform::CUDADeviceContext, T> zero;
+    phi::funcs::SetConstant<platform::CUDADeviceContext, T> zero;
 
     if (dFilter) {
       T *dfilter = dFilter->mutable_data<T>(context.GetPlace());
