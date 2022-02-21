@@ -63,7 +63,7 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
                             const std::vector<int>& dims = {},
                             framework::proto::VarType::Type var_type =
                                 paddle::framework::proto::VarType::LOD_TENSOR) {
-  auto ddims = paddle::framework::make_ddim(dims);
+  auto ddims = phi::make_ddim(dims);
   self->tensor.set_name(name);
   auto autograd_meta = egr::EagerUtils::autograd_meta(&(self->tensor));
   autograd_meta->SetPersistable(persistable);
@@ -77,7 +77,7 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
             phi::make_intrusive<paddle::experimental::SharedStorage>(place),
             phi::DenseTensorMeta(paddle::framework::TransToPtenDataType(dtype),
                                  ddims));
-    if (paddle::framework::product(ddims) > 0) {
+    if (phi::product(ddims) > 0) {
       dense_tensor->mutable_data(place);
     }
     self->tensor.set_impl(dense_tensor);
