@@ -72,11 +72,11 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
   }
   if (var_type == paddle::framework::proto::VarType::LOD_TENSOR) {
     // TODO(jiabin): Maybe support LOD later
-    std::shared_ptr<pten::DenseTensor> dense_tensor =
-        std::make_shared<pten::DenseTensor>(
-            pten::make_intrusive<paddle::experimental::SharedStorage>(place),
-            pten::DenseTensorMeta(paddle::framework::TransToPtenDataType(dtype),
-                                  ddims));
+    std::shared_ptr<phi::DenseTensor> dense_tensor =
+        std::make_shared<phi::DenseTensor>(
+            phi::make_intrusive<paddle::experimental::SharedStorage>(place),
+            phi::DenseTensorMeta(paddle::framework::TransToPtenDataType(dtype),
+                                 ddims));
     if (paddle::framework::product(ddims) > 0) {
       dense_tensor->mutable_data(place);
     }
