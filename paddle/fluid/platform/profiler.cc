@@ -66,8 +66,8 @@ double Event::CudaElapsedMs(const Event &e) const {
 #endif
 }
 
-RecordEvent::RecordEvent(const char *name, const EventRole role,
-                         uint32_t level) {
+RecordEvent::RecordEvent(const char *name, const TracerEventType type,
+                         uint32_t level, const EventRole role) {
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
   if (g_enable_nvprof_hook) {
@@ -86,11 +86,12 @@ RecordEvent::RecordEvent(const char *name, const EventRole role,
   is_enabled_ = true;
   shallow_copy_name_ = name;
   role_ = role;
+  type_ = type;
   start_ns_ = PosixInNsec();
 }
 
-RecordEvent::RecordEvent(const std::string &name, const EventRole role,
-                         uint32_t level) {
+RecordEvent::RecordEvent(const std::string &name, const TracerEventType type,
+                         uint32_t level, const EventRole role) {
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
   if (g_enable_nvprof_hook) {
@@ -109,11 +110,13 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role,
   is_enabled_ = true;
   name_ = new std::string(name);
   role_ = role;
+  type_ = type;
   start_ns_ = PosixInNsec();
 }
 
-RecordEvent::RecordEvent(const std::string &name, const EventRole role,
-                         const std::string &attr, uint32_t level) {
+RecordEvent::RecordEvent(const std::string &name, const std::string &attr,
+                         const TracerEventType type, uint32_t level,
+                         const EventRole role) {
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
   if (g_enable_nvprof_hook) {
@@ -130,6 +133,7 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role,
     return;
   }
   is_enabled_ = true;
+  type_ = type;
   name_ = new std::string(name);
   start_ns_ = PosixInNsec();
   attr_ = new std::string(attr);
@@ -164,17 +168,15 @@ void RecordEvent::End() {
   uint64_t end_ns = PosixInNsec();
   if (LIKELY(FLAGS_enable_host_event_recorder_hook && is_enabled_)) {
     if (LIKELY(shallow_copy_name_ != nullptr)) {
-      HostEventRecorder::GetInstance().RecordEvent(shallow_copy_name_,
-                                                   start_ns_, end_ns, role_,
-                                                   TracerEventType::NumTypes);
+      HostEventRecorder::GetInstance().RecordEvent(
+          shallow_copy_name_, start_ns_, end_ns, role_, type_);
     } else if (name_ != nullptr) {
       if (attr_ == nullptr) {
-        HostEventRecorder::GetInstance().RecordEvent(
-            *name_, start_ns_, end_ns, role_, TracerEventType::NumTypes);
+        HostEventRecorder::GetInstance().RecordEvent(*name_, start_ns_, end_ns,
+                                                     role_, type_);
       } else {
-        HostEventRecorder::GetInstance().RecordEvent(
-            *name_, start_ns_, end_ns, role_, TracerEventType::NumTypes,
-            *attr_);
+        HostEventRecorder::GetInstance().RecordEvent(*name_, start_ns_, end_ns,
+                                                     role_, type_, *attr_);
         delete attr_;
       }
       delete name_;
@@ -301,7 +303,7 @@ void PopMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
 void Mark(const std::string &name) {
   if (FLAGS_enable_host_event_recorder_hook) {
     HostEventRecorder::GetInstance().RecordEvent(
-        name, 0, 0, EventRole::kOrdinary, TracerEventType::NumTypes);
+        name, 0, 0, EventRole::kOrdinary, TracerEventType::UserDefined);
     return;
   }
   GetEventList().Record(EventType::kMark, name, g_thread_id);

@@ -18,7 +18,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/pten/infermeta/binary.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -113,7 +113,7 @@ class HuberLossGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 DELCARE_INFER_SHAPE_FUNCTOR(huber_loss, HuberLossInferShapeFunctor,
-                            PT_INFER_META(pten::HuberLossInferMeta));
+                            PT_INFER_META(phi::HuberLossInferMeta));
 
 REGISTER_OPERATOR(huber_loss, ops::HuberLossOp, ops::HuberLossOpMaker<float>,
                   ops::HuberLossGradOpMaker<paddle::framework::OpDesc>,

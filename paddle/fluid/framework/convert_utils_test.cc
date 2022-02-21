@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "gtest/gtest.h"
 
-namespace pten {
+namespace phi {
 namespace tests {
 
 TEST(ConvertUtils, DataType) {
@@ -77,4 +77,4 @@ TEST(ConvertUtils, DataType) {
 }
 
 }  // namespace tests
-}  // namespace pten
+}  // namespace phi

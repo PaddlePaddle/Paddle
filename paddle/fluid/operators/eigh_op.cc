@@ -52,7 +52,7 @@ class EighOp : public framework::OperatorWithKernel {
       values_dim.emplace_back(input_dim[i]);
     }
 
-    ctx->SetOutputDim("Eigenvalues", framework::make_ddim(values_dim));
+    ctx->SetOutputDim("Eigenvalues", phi::make_ddim(values_dim));
     ctx->SetOutputDim("Eigenvectors", input_dim);
   }
 };
