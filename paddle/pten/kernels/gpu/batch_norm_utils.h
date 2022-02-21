@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/pten/kernels/funcs/transpose.h"
+#include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace pten {
 
@@ -105,16 +105,16 @@ inline void TransToChannelFirst(const DeviceContext& context,
   int dim = input->dims().size() - 2;
   if (dim == 3) {
     std::vector<int> axis{0, 4, 1, 2, 3};
-    pten::math::Transpose<DeviceContext, T, 5> trans5;
+    funcs::Transpose<DeviceContext, T, 5> trans5;
     trans5(context, *input, transformed_input, axis);
 
   } else if (dim == 2) {
     std::vector<int> axis{0, 3, 1, 2};
-    pten::math::Transpose<DeviceContext, T, 4> trans4;
+    funcs::Transpose<DeviceContext, T, 4> trans4;
     trans4(context, *input, transformed_input, axis);
   } else if (dim == 1) {
     std::vector<int> axis{0, 2, 1};
-    pten::math::Transpose<DeviceContext, T, 3> trans3;
+    funcs::Transpose<DeviceContext, T, 3> trans3;
     trans3(context, *input, transformed_input, axis);
   }
 }
@@ -126,16 +126,16 @@ inline void TransToChannelLast(const DeviceContext& context,
   int dim = input->dims().size() - 2;
   if (dim == 3) {
     std::vector<int> axis{0, 2, 3, 4, 1};
-    pten::math::Transpose<DeviceContext, T, 5> trans5;
+    funcs::Transpose<DeviceContext, T, 5> trans5;
     trans5(context, *input, transformed_input, axis);
 
   } else if (dim == 2) {
     std::vector<int> axis{0, 2, 3, 1};
-    pten::math::Transpose<DeviceContext, T, 4> trans4;
+    funcs::Transpose<DeviceContext, T, 4> trans4;
     trans4(context, *input, transformed_input, axis);
   } else if (dim == 1) {
     std::vector<int> axis{0, 2, 1};
-    pten::math::Transpose<DeviceContext, T, 3> trans3;
+    funcs::Transpose<DeviceContext, T, 3> trans3;
     trans3(context, *input, transformed_input, axis);
   }
 }
