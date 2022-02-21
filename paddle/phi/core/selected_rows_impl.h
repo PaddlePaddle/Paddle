@@ -1,11 +1,8 @@
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -60,24 +57,20 @@ class SelectedRowsImpl {
     rwlock_.reset(new RWLock);
   }
 
-  const DenseTensor& value() const { return impl_->value(); }
+  const DenseTensor& value() const { return *value_; }
 
-  DenseTensor* mutable_value() { return impl_->mutable_value(); }
+  DenseTensor* mutable_value() { return value_.get(); }
 
-  int64_t height() const { return impl_->height(); }
+  int64_t height() const { return height_; }
 
-  void set_height(int64_t height) { impl_->set_height(height); }
+  void set_height(int64_t height) { height_ = height; }
 
-  const paddle::framework::Vector<int64_t>& rows() const {
-    return impl_->rows();
-  }
+  const paddle::framework::Vector<int64_t>& rows() const { return rows_; }
 
-  paddle::framework::Vector<int64_t>* mutable_rows() {
-    return impl_->mutable_rows();
-  }
+  paddle::framework::Vector<int64_t>* mutable_rows() { return &rows_; }
 
   void set_rows(const paddle::framework::Vector<int64_t>& rows) {
-    impl_->set_rows(rows);
+    rows_ = rows;
   }
 
   /*
@@ -85,14 +78,21 @@ class SelectedRowsImpl {
    *
    * @return -1 if the key does not exists.
    */
-  int64_t Index(int64_t key) const { return impl_->Index(key); }
+  int64_t Index(int64_t key) const {
+    auto it = std::find(rows_.begin(), rows_.end(), key);
+    if (it == rows_.end()) {
+      PADDLE_THROW(paddle::platform::errors::NotFound(
+          "Input id (%lld) is not in current rows table.", key));
+    }
+    return static_cast<int64_t>(std::distance(rows_.begin(), it));
+  }
 
   /*
    * @brief whether has the specified key in the table.
    *
    * @return true if the key is exists.
    */
-  bool HasKey(int64_t key) const { return impl_->HasKey(key); }
+  bool HasKey(int64_t key) const;
 
   /*
    * @brief Get value by the key list.
@@ -106,9 +106,7 @@ class SelectedRowsImpl {
   void Get(const DenseTensor& ids,
            DenseTensor* value,
            bool auto_grown = false,
-           bool is_test = false) {
-    impl_->Get(ids, value, auto_grown, is_test);
-  }
+           bool is_test = false);
 
   void* AllocateFrom(Allocator* allocator,
                      DataType dtype,
@@ -125,18 +123,21 @@ class SelectedRowsImpl {
    *
    * @return index of the key.
    */
-  int64_t AutoGrownIndex(int64_t key, bool auto_grown, bool is_test = false) {
-    return impl_->AutoGrownIndex(key, auto_grown, is_test);
-  }
+  int64_t AutoGrownIndex(int64_t key, bool auto_grown, bool is_test = false);
 
   /*
    * @brief Get the index of the key from id_to_index_ map.
    */
   inline int64_t GetIndexFromId(int64_t key) const {
-    return impl_->GetIndexFromId(key);
+    auto iter = id_to_index_.find(key);
+    if (iter == id_to_index_.end()) {
+      return -1;
+    } else {
+      return iter->second;
+    }
   }
 
-  void SyncIndex() { impl_->SyncIndex(); }
+  void SyncIndex();
   /*
    * @brief Get complete Dims before
    */
@@ -148,13 +149,13 @@ class SelectedRowsImpl {
 
   /// \brief Returns the number of elements contained in tensor.
   /// \return The number of elements contained in tensor.
-  int64_t numel() const override { return impl_->numel(); };
+  int64_t numel() const { return value_->numel(); }
 
   /// \brief Returns the dims of the tensor.
   /// \return The dims of the tensor.
-  const DDim& dims() const noexcept override {
-    return impl_->dims();
-    // return paddle::framework::make_ddim(dims);
+  const DDim& dims() const noexcept {
+    return value_->dims();
+    // return phi::make_ddim(dims);
   }
 
   /// \brief Returns the data type of the tensor.
