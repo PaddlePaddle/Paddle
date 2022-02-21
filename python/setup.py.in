@@ -579,12 +579,12 @@ def find_files(pattern, root, recursive=False):
 headers = (
     # paddle level api headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle')) +
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pten/api')) +  # pten unify api header
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pten/api/ext')) +  # custom op api
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pten/api/include')) +  # pten api
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pten/common')) +  # pten common headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api')) +  # pten unify api header
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api/ext')) +  # custom op api
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api/include')) +  # pten api
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/common')) +  # pten common headers
     # pten level api headers (low level api)
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pten/core', recursive=True)) +  # pten core headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/core', recursive=True)) +  # pten core headers
     # utila api headers
     ['@PADDLE_SOURCE_DIR@/paddle/utils/any.h'] +
     ['@PADDLE_SOURCE_DIR@/paddle/utils/small_vector.h'] +

@@ -238,17 +238,17 @@ include_directories(${CMAKE_BINARY_DIR}/../paddle/fluid/framework/io)
 
 # copy api headers for pten & custom op
 copy(inference_lib_dist
-        SRCS  ${PADDLE_SOURCE_DIR}/paddle/pten/api/ext/*.h
-        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/api/ext/)
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/phi/api/ext/*.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/api/ext/)
 copy(inference_lib_dist
-        SRCS  ${PADDLE_SOURCE_DIR}/paddle/pten/api/include/*.h
-        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/api/include/)
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/phi/api/include/*.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/api/include/)
 copy(inference_lib_dist
-        SRCS  ${PADDLE_SOURCE_DIR}/paddle/pten/api/all.h
-        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/api/)
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/phi/api/all.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/api/)
 copy(inference_lib_dist
-        SRCS  ${PADDLE_SOURCE_DIR}/paddle/pten/common/*.h
-        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/common/)
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/phi/common/*.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/common/)
 copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/utils/any.h
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils/)

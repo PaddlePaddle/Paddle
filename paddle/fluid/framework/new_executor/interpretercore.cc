@@ -16,15 +16,12 @@
 #include <unordered_set>
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
-#include "paddle/fluid/framework/new_executor/interpretercore_event_garbage_collector.h"
+#include "paddle/fluid/framework/new_executor/garbage_collector/event_garbage_collector.h"
+#include "paddle/fluid/framework/new_executor/garbage_collector/fast_garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/framework/new_executor/interpretercore_fast_garbage_collector.h"
-#endif
 
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace, true,
                             "Use inplace in new executor");
@@ -391,7 +388,9 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
                            : global_scope_->GetMutableScope();
   auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
   {
-    platform::RecordEvent infershape_event("InferShape");
+    platform::RecordEvent infershape_event(
+        "InferShape", platform::TracerEventType::OperatorInner, 1,
+        platform::EventRole::kInnerOp);
     // If it is OperatorBase, InferShape do nothing.
     if (op_with_kernel != nullptr)
       op_with_kernel->Info().infer_shape_(
@@ -411,7 +410,9 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
     }
   }
   {
-    platform::RecordEvent compute_event("Compute");
+    platform::RecordEvent compute_event(
+        "Compute", platform::TracerEventType::OperatorInner, 1,
+        platform::EventRole::kInnerOp);
     if (op_with_kernel == nullptr) {
       instr_node.OpBase()->Run(*local_scope, place_);
     } else {
@@ -420,7 +421,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
         VLOG(4) << "Run pten kernel: " << op->Type();
         VLOG(4) << instr_node.InnerRuntimeContext().get() << " "
                 << &instr_node.DeviceContext();
-        pten::KernelContext pt_kernel_context;
+        phi::KernelContext pt_kernel_context;
         op_with_kernel->BuildPtenKernelContext(
             *instr_node.InnerRuntimeContext().get(),
             const_cast<platform::DeviceContext*>(&instr_node.DeviceContext()),
@@ -682,9 +683,9 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
                    operators::reader::
                        OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {
       // do nothing
-    } else if (var->IsType<pten::SelectedRows>()) {
+    } else if (var->IsType<phi::SelectedRows>()) {
       TensorRecordStream(
-          *(var->GetMutable<pten::SelectedRows>()->mutable_value()));
+          *(var->GetMutable<phi::SelectedRows>()->mutable_value()));
     } else if (var->IsType<LoDTensorArray>()) {
       auto* tensor_arr = var->GetMutable<LoDTensorArray>();
       for (auto& tensor : *tensor_arr) {
@@ -726,12 +727,12 @@ void InterpreterCore::CheckGC(const Instruction& instr) {
 
       } else {
         static_cast<InterpreterCoreEventGarbageCollector*>(gc_.get())->Add(
-            var_scope.Var(var_id), gc_event_.at(instr_id),
+            var_scope.Var(var_id), &gc_event_.at(instr_id),
             &instr.DeviceContext());
       }
 #else
       static_cast<InterpreterCoreEventGarbageCollector*>(gc_.get())->Add(
-          var_scope.Var(var_id), gc_event_.at(instr_id),
+          var_scope.Var(var_id), &gc_event_.at(instr_id),
           &instr.DeviceContext());
 #endif
     }
