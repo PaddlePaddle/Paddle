@@ -18,7 +18,7 @@ namespace paddle {
 namespace operators {
 
 using framework::Tensor;
-
+using platform::MKLDNNGetDataType;
 template <typename T>
 class ShuffleChannelMKLDNNHandler
     : public platform::MKLDNNHandlerNoCachingT<T, dnnl::shuffle_forward> {
@@ -29,9 +29,8 @@ class ShuffleChannelMKLDNNHandler
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::shuffle_forward>(engine,
                                                                     cpu_place) {
     static constexpr int channel_axis = 1;
-    const auto md =
-        dnnl::memory::desc(pten::vectorize(x->dims()),
-                           platform::MKLDNNGetDataType<T>(), x->format());
+    const auto md = dnnl::memory::desc(phi::vectorize(x->dims()),
+                                       MKLDNNGetDataType<T>(), x->format());
 
     this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
                                             md, channel_axis, group);
