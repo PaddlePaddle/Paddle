@@ -66,8 +66,9 @@ class CinnLaunchContext {
   explicit CinnLaunchContext(const framework::ir::Graph& graph,
                              const CinnCompiledObject& compiled_obj);
 
-  // Initialize a ParallelExecutor for running the runtime graph,
-  // if it has been initialized then return immediately
+  // Initialize a ParallelExecutor to execute the runtime graph,
+  // it will be constructed in the first call, and just update
+  // the execution scope in the following usage.
   framework::ParallelExecutor* InitializePE(const platform::Place& place,
                                             framework::Scope* scope);
 
@@ -79,9 +80,8 @@ class CinnLaunchContext {
   // Return whether a Paddle variable used in cinn execution
   bool IsVariableUsed(const std::string& var_name) const;
 
-  // Check whether the tensor in Paddle and the compiled
-  // tensor returned by CINN of a same variable
-  // are equivalent in type and dimension
+  // Check the equiality in type and dimension between the tensor
+  // in Paddle and the compiled tensor returned by CINN of a same variable
   void CheckTensorEquivalent(const std::string& var_name,
                              const framework::LoDTensor& paddle_tensor);
 
@@ -99,7 +99,7 @@ class CinnLaunchContext {
   cinn_buffer_t* GetCinnBufferOfVar(const std::string& var_name);
 
  private:
-  // Get corresponding compiled tensor of a paddle variable name
+  // Get corresponding compiled tensor of a Paddle variable name
   CinnTensor GetCinnTensorOfVar(const std::string& var_name);
 
   // Build the name maps of paddle->cinn and cinn->paddle
@@ -123,8 +123,8 @@ class CinnLaunchContext {
   // Assign tensor buffer to internal variables
   void AssignInternalVariable(const std::string& var_name);
 
-  // Construct Paddle ProgramDesc with CINN runtime instructions
-  // included in the compiled CINN Program
+  // Construct a Paddle ProgramDesc with the CINN runtime
+  // instructions included in the compiled CINN Program
   framework::ProgramDesc BuildCompiledProgram(
       const framework::ir::Graph& graph,
       const CinnCompiledObject& compiled_obj);
@@ -147,7 +147,7 @@ class CinnLaunchContext {
 
   // the ir::Graph object converted from the program compiled by CINN
   std::unique_ptr<framework::ir::Graph> runtime_graph_;
-  // a ParallelExecutor for running the runtime graph
+  // a ParallelExecutor to execute the runtime graph
   std::unique_ptr<framework::ParallelExecutor> parallel_executor_;
 
   // because a cinn_pod_value_t does not own a cinn_buffer_t object,

@@ -49,7 +49,7 @@ using framework::paddle2cinn::kMemOptVarInfoFromMainGraph;
 CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
                                      const CinnCompiledObject& compiled_obj)
     : cinn_scope_(compiled_obj.scope) {
-  // collect all names of cinn execution arguments
+  // collect all names of the CINN execution arguments
   auto var_names = cinn_scope_->var_names();
   cinn_argument_names_.reserve(var_names.size());
   std::transform(
@@ -87,7 +87,7 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
     AssignInternalVariable(var_name);
   }
 
-  // Convert cinn program to graph and apply memory pass
+  // Convert the CINN runtime program to a Paddle graph
   runtime_graph_ = std::make_unique<framework::ir::Graph>(
       BuildCompiledProgram(graph, compiled_obj));
   runtime_graph_->SetNotOwned<Name2VarInfoMap>(
@@ -270,7 +270,7 @@ framework::ProgramDesc CinnLaunchContext::BuildCompiledProgram(
   const std::vector<std::unique_ptr<CinnInstruction>>& instructions =
       runtime_program->GetRunInstructions();
 
-  // build a map that link a paddle variable to its VarDesc
+  // build a map that links the name of a Paddle variable to its VarDesc
   const std::unordered_set<framework::ir::Node*>& nodes = graph.Nodes();
   std::unordered_map<std::string, framework::VarDesc*> original_vardescs;
   for (auto* node : nodes) {
@@ -279,14 +279,15 @@ framework::ProgramDesc CinnLaunchContext::BuildCompiledProgram(
     }
   }
 
-  // Step 1: Create a VarDesc for every execution variable to in the main block.
-  //         (1) For those variables that are input or output variables of the
-  //         original subgraph, there must exist an original VarDesc, so
-  //         we copy some useful info to the new VarDesc
-  //         (2) For all variables, the shape, data type of their VarDescs
-  //         are set with the value from compiled tensors, including the
-  //         in/out variables because we will check the equiality
-  //         between their tensors and CINN compiled ones in cinn_launch_op
+  // Step 1: Create a VarDesc for each execution argument:
+  //   (1) For those variables that are input or output variables of the
+  //   original subgraph, there must exist an original VarDesc, so
+  //   we copy some useful info(such as IsParameter,Persistable)
+  //   to the new VarDesc.
+  //   (2) For all variables, the shape, data type of their VarDescs
+  //   are set by values of the corresponding compiled tensors,
+  //   including the in/out variables where the equiality between their tensors
+  //   and the CINN compiled ones is verified in corresponding cinn_launch_op.
   for (auto&& arg : cinn_argument_names_) {
     const std::string& var_name = cinn2paddle_varmap_.at(arg);
     framework::VarDesc* var_desc = block->Var(var_name);
@@ -307,8 +308,8 @@ framework::ProgramDesc CinnLaunchContext::BuildCompiledProgram(
                                             cinn_tensor->shape().data().end()));
   }
 
-  // transform names of the input or output arguments of a cinn instruction
-  // to the corresponding paddle variable names, and repack them as one vector
+  // transform names of the input or output arguments of a CINN instruction
+  // to the corresponding Paddle variable names, and repack them as one vector
   auto trans_and_pack_args_fn =
       [this](const std::vector<std::vector<std::string>>& cinn_args_array) {
         std::vector<std::string> var_names;
@@ -325,7 +326,7 @@ framework::ProgramDesc CinnLaunchContext::BuildCompiledProgram(
       };
 
   // Step 2: create a VarDesc of cinn_instruction_run op for
-  //         every CINN instruction and append it to the main block
+  //         each CINN instruction and append it to the main block
   for (auto ins_idx = 0; ins_idx < instructions.size(); ++ins_idx) {
     auto* ins = instructions.at(ins_idx).get();
     auto in_args = trans_and_pack_args_fn(ins->GetInArgs());
@@ -352,7 +353,7 @@ ParallelExecutor* CinnLaunchContext::InitializePE(const platform::Place& place,
         place, scope, exec_strategy, build_strategy, runtime_graph_.get());
   }
 
-  // need to update scope bound to OpHandle and rebuild temporary variables
+  // update the scope bound to an OpHandle and rebuild temporary variables
   std::unordered_map<Scope*, Scope*> scope_map = {
       {parallel_executor_->GetLocalScopes().front(), scope}};
   parallel_executor_->ResetOpHandleScopeMapOfGraphs(scope_map);
