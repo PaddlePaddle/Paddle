@@ -49,7 +49,7 @@ bool SortKthvalue(const platform::CUDADeviceContext& ctx,
   auto cu_stream = ctx.stream();
   framework::Tensor input_indices;
   const std::vector<int64_t> dims = {num_rows, num_cols};
-  auto dim = pten::make_ddim(dims);
+  auto dim = phi::make_ddim(dims);
   input_indices.Resize(dim);
   input_indices.mutable_data<int64_t>(ctx.GetPlace());
   size_t temp_storage_bytes = -1;
@@ -124,7 +124,7 @@ bool SortKthvalue(const platform::CUDADeviceContext& ctx,
   auto e_tmp_indices = framework::EigenMatrix<int64_t>::From(
       static_cast<const framework::Tensor>(temp_indices));
   std::vector<int> odims = {static_cast<int>(num_rows), static_cast<int>(1)};
-  dim = pten::make_ddim(odims);
+  dim = phi::make_ddim(odims);
   auto e_values = framework::EigenMatrix<T>::From(*out_tensor, dim);
   auto e_tmp_values = framework::EigenMatrix<T>::From(
       static_cast<const framework::Tensor>(temp_values));
@@ -159,7 +159,7 @@ class KthvalueOpCUDAKernel : public framework::OpKernel<T> {
 
     if (axis == in_dims.size() - 1) {
       const int64_t& input_height =
-          pten::product(pten::slice_ddim(in_dims, 0, in_dims.size() - 1));
+          phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
       const int64_t& input_width = in_dims[in_dims.size() - 1];
       const auto& dev_ctx = ctx.cuda_device_context();
       PADDLE_ENFORCE_EQ(SortKthvalue<T>(dev_ctx, input, input_width,
@@ -186,7 +186,7 @@ class KthvalueOpCUDAKernel : public framework::OpKernel<T> {
         for (int i = axis + 1; i < in_dims.size(); i++) {
           tmp_out_shape.emplace_back(in_dims[i]);
         }
-        framework::DDim tmp_out_dims = pten::make_ddim(tmp_out_shape);
+        framework::DDim tmp_out_dims = phi::make_ddim(tmp_out_shape);
         output->Resize(tmp_out_dims);
         indices->Resize(tmp_out_dims);
       }
@@ -207,7 +207,7 @@ class KthvalueOpCUDAKernel : public framework::OpKernel<T> {
       trans_ind.mutable_data<int64_t>(trans_out_dims, ctx.GetPlace());
       trans_out.mutable_data<T>(trans_out_dims, ctx.GetPlace());
       const int64_t input_height =
-          pten::product(pten::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+          phi::product(phi::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
       const int64_t input_width = trans_dims[trans_dims.size() - 1];
       PADDLE_ENFORCE_EQ(
           SortKthvalue<T>(dev_ctx, &trans_input, input_width, input_height, k,

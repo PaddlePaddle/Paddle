@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/pten/core/utils/dim.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/core/utils/dim.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {

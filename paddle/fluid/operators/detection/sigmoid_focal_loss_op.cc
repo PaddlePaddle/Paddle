@@ -55,14 +55,14 @@ class SigmoidFocalLossOp : public framework::OperatorWithKernel {
             fg_dims.size(), fg_dims));
     bool check = true;
     if ((!ctx->IsRuntime()) &&
-        (pten::product(x_dims) <= 0 || pten::product(labels_dims) <= 0)) {
+        (phi::product(x_dims) <= 0 || phi::product(labels_dims) <= 0)) {
       check = false;
     }
 
     if (check) {
       PADDLE_ENFORCE_EQ(
-          pten::slice_ddim(x_dims, 0, rank - 1),
-          pten::slice_ddim(labels_dims, 0, rank - 1),
+          phi::slice_ddim(x_dims, 0, rank - 1),
+          phi::slice_ddim(labels_dims, 0, rank - 1),
           platform::errors::InvalidArgument(
               "Input(X) and Input(Label) should have the same shape "
               "except the last dimension, but received X shape is:[%s], "
@@ -126,14 +126,14 @@ class SigmoidFocalLossGradOp : public framework::OperatorWithKernel {
             fg_dims.size(), fg_dims));
     bool check = true;
     if ((!ctx->IsRuntime()) &&
-        (pten::product(x_dims) <= 0 || pten::product(labels_dims) <= 0)) {
+        (phi::product(x_dims) <= 0 || phi::product(labels_dims) <= 0)) {
       check = false;
     }
 
     if (check) {
       PADDLE_ENFORCE_EQ(
-          pten::slice_ddim(x_dims, 0, rank - 1),
-          pten::slice_ddim(labels_dims, 0, rank - 1),
+          phi::slice_ddim(x_dims, 0, rank - 1),
+          phi::slice_ddim(labels_dims, 0, rank - 1),
           platform::errors::InvalidArgument(
               "Input(X) and Input(Label) should have the same shape "
               "except the last dimension, but received X shape is:[%s], "
@@ -147,8 +147,8 @@ class SigmoidFocalLossGradOp : public framework::OperatorWithKernel {
               "Label shape is:[%s].",
               labels_dims));
 
-      PADDLE_ENFORCE_EQ(pten::slice_ddim(x_dims, 0, rank),
-                        pten::slice_ddim(dout_dims, 0, rank),
+      PADDLE_ENFORCE_EQ(phi::slice_ddim(x_dims, 0, rank),
+                        phi::slice_ddim(dout_dims, 0, rank),
                         platform::errors::InvalidArgument(
                             "Input(X) and Input(Out@Grad) should have the same "
                             "shape, but received "

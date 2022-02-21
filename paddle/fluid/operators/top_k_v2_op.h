@@ -191,7 +191,7 @@ class TopkV2Kernel : public framework::OpKernel<T> {
     const auto& out_dims = output->dims();
     if (axis + 1 == in_dims.size()) {
       const int64_t& input_height =
-          pten::product(pten::slice_ddim(in_dims, 0, in_dims.size() - 1));
+          phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
       const int64_t& input_width = in_dims[in_dims.size() - 1];
       FullTopK<T, int64_t>(input_height, input_width, in_dims.size(), input,
                            output_data, indices_data, k, largest, sorted);
@@ -228,7 +228,7 @@ class TopkV2Kernel : public framework::OpKernel<T> {
                                                   &trans_inp, trans);
 
       const int64_t input_height =
-          pten::product(pten::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+          phi::product(phi::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
       const int64_t input_width = trans_dims[trans_dims.size() - 1];
 
       // Allocate the temp tensor to the save the topk indices, values
@@ -273,7 +273,7 @@ class TopkV2GradKernel : public framework::OpKernel<T> {
 
       // assign the out_grad to input_grad directly
       const int64_t input_height =
-          pten::product(pten::slice_ddim(in_dims, 0, in_dims.size() - 1));
+          phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
       const int64_t input_width = in_dims[in_dims.size() - 1];
 
       // init the output grad with 0, because some input elements has no grad
@@ -312,8 +312,8 @@ class TopkV2GradKernel : public framework::OpKernel<T> {
                                                   &trans_dO, trans);
       TransCompute<platform::CPUDeviceContext, int64_t>(
           ndims, dev_context, *indices, &trans_ind, trans);
-      const int64_t input_height = pten::product(
-          pten::slice_ddim(trans_in_dims, 0, trans_in_dims.size() - 1));
+      const int64_t input_height = phi::product(
+          phi::slice_ddim(trans_in_dims, 0, trans_in_dims.size() - 1));
       const int64_t input_width = trans_in_dims[trans_in_dims.size() - 1];
 
       // Assign the out_grad to tranpose input_grad

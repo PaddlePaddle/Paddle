@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/cinn/test_helper.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/init.h"
-#include "paddle/pten/core/ddim.h"
+#include "paddle/phi/core/ddim.h"
 
 USE_OP(cinn_launch);
 USE_OP_ITSELF(elementwise_add);
