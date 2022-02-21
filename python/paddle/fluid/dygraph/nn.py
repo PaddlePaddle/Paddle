@@ -2233,6 +2233,19 @@ class NCE(layers.Layer):
         self._inputs['Weight'] = self.weight
 
     def forward(self, input, label, sample_weight=None):
+        if in_dygraph_mode():
+            attrs = ('num_total_classes', self._attrs['num_total_classes'],
+                     'num_neg_samples', self._attrs['num_neg_samples'], 'seed',
+                     self._attrs['seed'], 'sampler', self._attrs['sampler'],
+                     'is_sparse', self._attrs['is_sparse'], 'remote_prefetch',
+                     self._attrs['remote_prefetch'])
+            cost, _, _ = _C_ops.nce(
+                input, label, self.weight, self.bias,
+                self._inputs['SampleWeight'], self._inputs['CustomDistProbs'],
+                self._inputs['CustomDistAlias'],
+                self._inputs['CustomDistAliasProbs'], *attrs)
+            return cost / (self._num_neg_samples + 1)
+
         check_variable_and_dtype(input, "input", ['float32', 'float64'], "NCE")
         check_variable_and_dtype(label, "label", ['int64'], "NCE")
         check_type(sample_weight, 'sample_weight', (Variable, type(None)),

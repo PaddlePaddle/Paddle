@@ -17,8 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/platform/place.h"
 
-#include "paddle/pten/kernels/elementwise_grad_kernel.h"
-#include "paddle/pten/kernels/math_kernel.h"
+#include "paddle/phi/kernels/elementwise_grad_kernel.h"
+#include "paddle/phi/kernels/math_kernel.h"
 namespace paddle {
 namespace operators {
 
@@ -33,7 +33,7 @@ class ElementwiseSubKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = ctx.device_context<DeviceContext>();
     int axis = ctx.Attr<int>("axis");
-    pten::SubtractRawKernel<T>(
+    phi::SubtractRawKernel<T>(
         static_cast<const typename framework::ConvertToPtenContext<
             DeviceContext>::TYPE&>(dev_ctx),
         *x, *y, axis, z);
@@ -55,7 +55,7 @@ class ElementwiseSubGradKernel : public ElemwiseGradKernel<T> {
     int axis = ctx.Attr<int>("axis");
     auto& dev_ctx = ctx.device_context<DeviceContext>();
 
-    pten::SubtractGradKernel<T>(
+    phi::SubtractGradKernel<T>(
         static_cast<const typename framework::ConvertToPtenContext<
             DeviceContext>::TYPE&>(dev_ctx),
         *x, *y, *dout, axis, dx, dy);
@@ -77,15 +77,15 @@ class ElementwiseSubDoubleGradKernel : public framework::OpKernel<T> {
     int axis = ctx.Attr<int>("axis");
     auto& dev_ctx = ctx.device_context<DeviceContext>();
 
-    paddle::optional<const pten::DenseTensor&> ddx_optional = paddle::none;
-    paddle::optional<const pten::DenseTensor&> ddy_optional = paddle::none;
+    paddle::optional<const phi::DenseTensor&> ddx_optional = paddle::none;
+    paddle::optional<const phi::DenseTensor&> ddy_optional = paddle::none;
     if (ddx != nullptr) {
       ddx_optional = *ddx;
     }
     if (ddy != nullptr) {
       ddy_optional = *ddy;
     }
-    pten::SubtractDoubleGradKernel<T>(
+    phi::SubtractDoubleGradKernel<T>(
         static_cast<const typename framework::ConvertToPtenContext<
             DeviceContext>::TYPE&>(dev_ctx),
         *y, ddx_optional, ddy_optional, *dout, axis, ddout);

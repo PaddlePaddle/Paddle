@@ -1057,7 +1057,7 @@ def _varbase_creator(type=core.VarDesc.VarType.LOD_TENSOR,
             dtype = convert_np_dtype_to_dtype_(dtype)
 
     if _in_eager_mode():
-        eager_tensor = core.eager.EagerTensor(
+        eager_tensor = core.eager.Tensor(
             dtype if dtype else core.VarDesc.VarType.FP32,
             list(shape) if shape else [], name, type
             if type else core.VarDesc.VarType.LOD_TENSOR, True
@@ -1076,7 +1076,7 @@ class VariableMetaClass(type):
         t = type(instance)
         if in_dygraph_mode():
             if _in_eager_mode():
-                return issubclass(t, core.eager.EagerTensor)
+                return issubclass(t, core.eager.Tensor)
             return issubclass(t, core.VarBase)
         else:
             return issubclass(t, Variable)
@@ -6412,7 +6412,7 @@ class ParamBase(core.VarBase):
 
 
 if hasattr(core, "eager"):
-    _core_eager_eagertensor = core.eager.EagerTensor
+    _core_eager_eagertensor = core.eager.Tensor
 else:
     _core_eager_eagertensor = object
 
@@ -6918,7 +6918,7 @@ def _get_paddle_place(place):
         return place
     if isinstance(place, (core.Place, core.XPUPlace, core.CPUPlace,
                           core.CUDAPinnedPlace, core.CUDAPlace, core.NPUPlace,
-                          core.IPUPlace, core.MLUPlace)):
+                          core.IPUPlace, core.MLUPlace, core.CustomPlace)):
         return place
 
     if not isinstance(place, str):

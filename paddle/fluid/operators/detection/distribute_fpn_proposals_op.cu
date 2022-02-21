@@ -27,7 +27,7 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/gather.cu.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -121,7 +121,7 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     Tensor sub_lod_list;
     sub_lod_list.Resize({num_level, lod_size});
     int* sub_lod_list_data = sub_lod_list.mutable_data<int>(dev_ctx.GetPlace());
-    pten::funcs::SetConstant<platform::CUDADeviceContext, int> set_zero;
+    phi::funcs::SetConstant<platform::CUDADeviceContext, int> set_zero;
     set_zero(dev_ctx, &sub_lod_list, static_cast<int>(0));
 
     Tensor target_lvls;

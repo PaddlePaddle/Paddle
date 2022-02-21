@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/recurrent_op.h"
 
-namespace pten {
+namespace phi {
 class DenseTensor;
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 namespace framework {
@@ -186,9 +186,9 @@ void RecurrentBase::LinkTensor(const framework::Scope &src_scope,
 // (seq_len, shape) -> return [seq_len] + list(shape)
 framework::DDim RecurrentBase::PrependDims(size_t seq_len,
                                            const framework::DDim &src) {
-  auto dims = framework::vectorize(src);
+  auto dims = phi::vectorize(src);
   dims.insert(dims.begin(), static_cast<int64_t>(seq_len));
-  return framework::make_ddim(dims);
+  return phi::make_ddim(dims);
 }
 
 RecurrentOp::RecurrentOp(const std::string &type,
@@ -232,9 +232,9 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
         [&seq_offset](const framework::Tensor &outside,
                       framework::Tensor *inside) {
           inside->ShareDataWith(outside.Slice(seq_offset, seq_offset + 1));
-          auto dims = framework::vectorize(inside->dims());
+          auto dims = phi::vectorize(inside->dims());
           dims.erase(dims.begin());
-          inside->Resize(framework::make_ddim(dims));
+          inside->Resize(phi::make_ddim(dims));
         });
 
     if (has_state) {
@@ -265,7 +265,7 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
               framework::LoDTensor *dst_tensor) {
             // create output tensor at begin
             dst_tensor->Resize(PrependDims(seq_len, src_tensor.dims()));
-            dst_tensor->mutable_data(place, src_tensor.type());
+            dst_tensor->mutable_data(place, src_tensor.dtype());
 
             auto dst_out = dst_tensor->Slice(seq_offset, seq_offset + 1);
             // Explicit copy output since the local RNN scope can be destroyed
@@ -337,9 +337,9 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
         scope, Inputs(kOutputGrads), &cur_scope, Inputs(kOutputGrads),
         [&](const framework::Tensor &outside, framework::Tensor *inside) {
           inside->ShareDataWith(outside.Slice(seq_offset, seq_offset + 1));
-          auto dims = framework::vectorize(inside->dims());
+          auto dims = phi::vectorize(inside->dims());
           dims.erase(dims.begin());
-          inside->Resize(framework::make_ddim(dims));
+          inside->Resize(phi::make_ddim(dims));
         },
         true /*is_backward*/);
     auto og_set = List2Set(Inputs(kOutputGrads));
@@ -438,8 +438,9 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
           auto &inside_tensor =
               cur_scope.FindVar(inside_grad_name)->Get<framework::LoDTensor>();
           framework::AttributeMap attrs;
-          attrs["dtype"] = inside_tensor.type();
-          attrs["shape"] = framework::vectorize<int>(inside_tensor.dims());
+          attrs["dtype"] =
+              framework::TransToProtoVarType(inside_tensor.dtype());
+          attrs["shape"] = phi::vectorize<int>(inside_tensor.dims());
           attrs["value"] = 0.0f;
 
           auto zero_op = framework::OpRegistry::CreateOp(
@@ -474,7 +475,7 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
             }
             // Alloc outside memory
             outside->Resize(PrependDims(seq_len, inside.dims()));
-            outside->mutable_data(place, inside.type());
+            outside->mutable_data(place, inside.dtype());
 
             auto dst = outside->Slice(seq_offset, seq_offset + 1);
             framework::TensorCopy(inside, place, dev_ctx, &dst);
@@ -492,7 +493,7 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
             [&](const framework::LoDTensor &inside,
                 framework::LoDTensor *outside) {
               outside->Resize(inside.dims());
-              outside->mutable_data(place, inside.type());
+              outside->mutable_data(place, inside.dtype());
               framework::TensorCopy(inside, place, dev_ctx, outside);
             },
             true /*is_backward*/);
