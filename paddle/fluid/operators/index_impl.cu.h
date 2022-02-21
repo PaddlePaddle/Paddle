@@ -22,14 +22,14 @@ limitations under the License. */
 #include "paddle/fluid/operators/distribution_helper.h"
 #include "paddle/fluid/operators/fill_constant_op.h"
 #include "paddle/fluid/platform/aligned_vector.h"
-#include "paddle/pten/backends/gpu/gpu_launch_config.h"
-#include "paddle/pten/core/hostdevice.h"
-#include "paddle/pten/kernels/primitive/kernel_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/core/hostdevice.h"
+#include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 namespace paddle {
 namespace operators {
 
-namespace kps = pten::kps;
+namespace kps = phi::kps;
 template <typename T, typename Functor, int VecSize>
 __global__ void VectorizedIndexKernel(T *out, int numel, int main_offset,
                                       Functor func) {
@@ -65,7 +65,7 @@ void IndexKernel(const KPDevice &dev_ctx, Tensor *out, Functor func) {
   auto stream = dev_ctx.x_context()->xpu_stream;
 #else
   auto config =
-      pten::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, vec_size);
+      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, vec_size);
   int grid = config.block_per_grid.x;
   int block = config.thread_per_block.x;
   auto stream = dev_ctx.stream();

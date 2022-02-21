@@ -36,7 +36,7 @@ class GPUUniformRandomInplaceGradKernel : public framework::OpKernel<T> {
     const auto& dev_cxt =
         ctx.template device_context<platform::CUDADeviceContext>();
     float value = static_cast<float>(0.0f);
-    pten::FullLikeKernel<T>(
+    phi::FullLikeKernel<T>(
         static_cast<const typename paddle::framework::ConvertToPtenContext<
             platform::CUDADeviceContext>::TYPE&>(dev_cxt),
         value, dx);

@@ -26,7 +26,7 @@ DECLARE_bool(use_curand);
 #include <thrust/transform.h>
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/operators/index_impl.cu.h"
-#include "paddle/pten/kernels/full_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #endif
 
 namespace paddle {
