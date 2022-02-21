@@ -75,6 +75,7 @@ void ProductRuleBook(const Context& dev_ctx,
   memset(counter_ptr, 0, kernel_size * sizeof(int));
 
   int kernel_index = 0, rulebook_len = 0;
+  // calc the rulebook_len
   for (int kernel_z = 0; kernel_z < kernel_dims[0]; kernel_z++) {
     for (int kernel_y = 0; kernel_y < kernel_dims[1]; kernel_y++) {
       for (int kernel_x = 0; kernel_x < kernel_dims[2]; kernel_x++) {
@@ -99,11 +100,13 @@ void ProductRuleBook(const Context& dev_ctx,
     }
   }
 
+  // alloc the rulebook
   rulebook->ResizeAndAllocate({3, rulebook_len});
   int* rulebook_ptr = rulebook->mutable_data<int>(place);
   int rulebook_index = 0;
   kernel_index = 0;
 
+  // calc the rulebook:(kernel_index, in_index, out_index)
   for (int kernel_z = 0; kernel_z < kernel_dims[0]; kernel_z++) {
     for (int kernel_y = 0; kernel_y < kernel_dims[1]; kernel_y++) {
       for (int kernel_x = 0; kernel_x < kernel_dims[2]; kernel_x++) {

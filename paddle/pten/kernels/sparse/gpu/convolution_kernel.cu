@@ -77,7 +77,7 @@ inline __device__ void IndexToPoint(
   *batch = n;
 }
 
-__global__ void InitByIndex(const int n, int* out1, int* out2) {
+__global__ void InitByIndexKernel(const int n, int* out1, int* out2) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   for (int i = tid; i < n; i += gridDim.x * blockDim.x) {
     out1[i] = i;
@@ -85,14 +85,14 @@ __global__ void InitByIndex(const int n, int* out1, int* out2) {
   }
 }
 
-__global__ void UpdateIndex(const int* unique_keys,
-                            const int* unique_values,
-                            const int* out_indexs,
-                            const int non_zero_num,
-                            const int rulebook_len,
-                            const Dims4D out_dims,
-                            int* out_indices,
-                            int* rulebook_out_indexs) {
+__global__ void UpdateIndexKernel(const int* unique_keys,
+                                  const int* unique_values,
+                                  const int* out_indexs,
+                                  const int non_zero_num,
+                                  const int rulebook_len,
+                                  const Dims4D out_dims,
+                                  int* out_indices,
+                                  int* rulebook_out_indexs) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   for (int i = tid; i < non_zero_num; i += gridDim.x * blockDim.x) {
     const int index = unique_keys[i];
@@ -167,12 +167,15 @@ __global__ void ProductRuleBookKernel(
   }
 }
 
+// TODO(zhangkaihuo): After the GatherCUDAKernel is migrated to phi, replace
+// this kernel with
+// phi::GatherCUDAKernel;
 template <typename T, typename IndexT = int>
-__global__ void GatherCUDAKernel(const T* params,
-                                 const IndexT* indices,
-                                 T* output,
-                                 size_t index_size,
-                                 size_t slice_size) {
+__global__ void GatherKernel(const T* params,
+                             const IndexT* indices,
+                             T* output,
+                             size_t index_size,
+                             size_t slice_size) {
   CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
     int64_t indices_i = i / slice_size;
     int64_t slice_i = i - indices_i * slice_size;  // offset inside the slice
@@ -182,36 +185,47 @@ __global__ void GatherCUDAKernel(const T* params,
   }
 }
 
-template <typename T, typename IndexT = int>
-__global__ void ScatterCUDAKernel(const T* params,
-                                  const IndexT* indices,
-                                  T* output,
-                                  size_t index_size,
-                                  size_t slice_size,
-                                  bool overwrite) {
-  CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
-    int64_t indices_i = i / slice_size;
-    int64_t slice_i = i - indices_i * slice_size;  // offset inside the slice
-    IndexT scatter_i = indices[indices_i];
+// unique_value:
+template <typename T>
+__global__ void ScatterKernel(const T* input,
+                              const int* unique_value,
+                              const int* out_index,
+                              const int non_zero_num,
+                              const int rulebook_len,
+                              const int channels,
+                              T* out) {
+  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  for (int i = tid; i < non_zero_num * channels; i += gridDim.x * blockDim.x) {
+    int indices_i = i / channels;
+    int channels_i = i - indices_i * channels;
 
-    PADDLE_ENFORCE(scatter_i >= 0,
-                   "The index is out of bounds, "
-                   "please check whether the dimensions of index and "
-                   "input meet the requirements. It should "
-                   "be greater than or equal to 0, but received [%d]",
-                   scatter_i);
-
-    int64_t out_i = scatter_i * slice_size + slice_i;
-    if (overwrite) {
-      *(output + out_i) = *(params + i);
-    } else {
-      paddle::platform::CudaAtomicAdd(output + out_i, *(params + i));
+    int start = unique_value[indices_i];
+    int end = indices_i == non_zero_num - 1 ? rulebook_len
+                                            : unique_value[indices_i + 1];
+    // max(end-start) = kernel_size
+    for (int j = start; j < end; j++) {
+      const int out_feature_i = out_index[j];
+      out[indices_i * channels + channels_i] +=
+          input[out_feature_i * channels + channels_i];
     }
   }
 }
 
-// such as: kernel(3, 3, 3), kernel_size = 27
-// counter_per_weight: (kernel_size)
+// the basic algorithm can refer to convolution_kernel.cc or
+// the second paper
+// example:
+// 1. the rulebook:
+//  the kernel_index:               0, 0, 0, 1, 1, 1, 2, 2, ....
+//  the out_index(key):                  20, 30, 33, 30, 33, 20, 25
+// 2. mark the index of out_index(value):   0, 1, 2, 3, 4, 5, 6, ....
+// 3. sorted the (key, value)
+// 4. unique the (key, value):
+//  unique_key:     20, 25, 30, 33
+//  unique_values:  0, 2, 3, 5
+//  the index of unique_values is: 0, 1, 2, 3
+// 5. update the out_index by unique_key, uniqe_value and the index of
+// unique_value:
+//  the new out_index: 0, 2, 3, 2, 3, 0, 1
 template <typename T, typename Context>
 int ProductRuleBook(const Context& dev_ctx,
                     const SparseCooTensor& x,
@@ -222,6 +236,10 @@ int ProductRuleBook(const Context& dev_ctx,
                     const DDim& out_dims,
                     DenseTensor* rulebook,
                     DenseTensor* counter_per_kernel,
+                    DenseTensor* offsets_per_kernel,
+                    DenseTensor* out_index,
+                    DenseTensor* unique_key,
+                    DenseTensor* unique_value,
                     SparseCooTensor* out,
                     std::vector<int>* h_counter,
                     std::vector<int>* h_offsets) {
@@ -231,6 +249,7 @@ int ProductRuleBook(const Context& dev_ctx,
   const auto& non_zero_indices = x.non_zero_indices();
   const int* indices_ptr = non_zero_indices.data<int>();
   int* counter_ptr = counter_per_kernel->mutable_data<int>(place);
+  int* offsets_ptr = offsets_per_kernel->mutable_data<int>(place);
   int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
   rulebook->ResizeAndAllocate({2 * kernel_size * non_zero_num});
   int* rulebook_ptr = rulebook->mutable_data<int>(place);
@@ -265,42 +284,38 @@ int ProductRuleBook(const Context& dev_ctx,
                              rulebook_ptr,
                              rulebook_ptr + 2 * kernel_size * non_zero_num,
                              -1);
+  thrust::exclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
+                         counter_ptr,
+                         counter_ptr + kernel_size,
+                         offsets_ptr);
 
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&(*h_counter)[0],
                                              counter_ptr,
                                              kernel_size * sizeof(int),
                                              cudaMemcpyDeviceToHost,
                                              dev_ctx.stream()));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&(*h_offsets)[0],
+                                             offsets_ptr,
+                                             kernel_size * sizeof(int),
+                                             cudaMemcpyDeviceToHost,
+                                             dev_ctx.stream()));
   dev_ctx.Wait();
-  int offset = 0;
-  for (int i = 0; i < kernel_size; i++) {
-    (*h_offsets)[i] = offset;
-    offset += (*h_counter)[i];
-  }
-  (*h_offsets)[kernel_size] = offset;
-  int rulebook_len = offset;  // (last - rulebook_ptr) / 2;
+  int rulebook_len =
+      (*h_counter)[kernel_size - 1] + (*h_offsets)[kernel_size - 1];
 
-  // 3. sorted or merge the out index => tmp_out_index
-  DenseTensorMeta tmp_indexs_meta(
-      DataType::INT32, {rulebook_len}, DataLayout::NCHW);
-  DenseTensorMeta tmp_indexs2_meta(
-      DataType::INT32, {rulebook_len}, DataLayout::NCHW);
-  DenseTensor tmp_indexs = pten::Empty(dev_ctx, std::move(tmp_indexs_meta));
-  DenseTensor tmp_indexs2 = pten::Empty(dev_ctx, std::move(tmp_indexs2_meta));
-  int* tmp_indexs_ptr = tmp_indexs.mutable_data<int>(place);
-  int* tmp_indexs2_ptr = tmp_indexs2.mutable_data<int>(place);
+  // 3. sorted or merge the out index
+  out_index->ResizeAndAllocate({rulebook_len});
+  unique_value->ResizeAndAllocate({rulebook_len});
+  unique_key->ResizeAndAllocate({rulebook_len});
+  int* out_index_ptr = out_index->mutable_data<int>(place);
+  int* unique_value_ptr = unique_value->mutable_data<int>(place);
+  int* unique_key_ptr = unique_key->mutable_data<int>(place);
 
   GetGpuLaunchConfig1D(dev_ctx, rulebook_len, &grid_size, &block_size);
-  InitByIndex<<<grid_size, block_size, 0, dev_ctx.stream()>>>(
-      rulebook_len, tmp_indexs_ptr, tmp_indexs2_ptr);
+  InitByIndexKernel<<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+      rulebook_len, out_index_ptr, unique_value_ptr);
 
-  DenseTensorMeta tmp_out_indexs_meta(
-      DataType::INT32, {rulebook_len}, DataLayout::NCHW);
-  DenseTensor tmp_out_indexs =
-      pten::Empty(dev_ctx, std::move(tmp_out_indexs_meta));
-  int* tmp_out_indexs_ptr = tmp_out_indexs.mutable_data<int>(place);
-
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(tmp_out_indexs_ptr,
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(unique_key_ptr,
                                              rulebook_ptr + rulebook_len,
                                              sizeof(int) * rulebook_len,
                                              cudaMemcpyDeviceToDevice,
@@ -309,22 +324,20 @@ int ProductRuleBook(const Context& dev_ctx,
   // compared with thrust::sort_by_key, thrust::merge_by_key may achieved higher
   // performance, but thrust::merge_by_key limited by data size
   thrust::sort_by_key(thrust::cuda::par.on(dev_ctx.stream()),
-                      tmp_out_indexs_ptr,
-                      tmp_out_indexs_ptr + rulebook_len,
-                      tmp_indexs_ptr);
+                      unique_key_ptr,
+                      unique_key_ptr + rulebook_len,
+                      out_index_ptr);
 
   // 4. unique => tmp2_out_index
   thrust::pair<int*, int*> new_end =
       thrust::unique_by_key(thrust::cuda::par.on(dev_ctx.stream()),
-                            tmp_out_indexs_ptr,
-                            tmp_out_indexs_ptr + rulebook_len,
-                            tmp_indexs2_ptr);
+                            unique_key_ptr,
+                            unique_key_ptr + rulebook_len,
+                            unique_value_ptr);
   dev_ctx.Wait();
-  // const int out_non_zero_num = new_end.first - tmp_out_indexs_ptr;
-  const int out_non_zero_num =
-      thrust::distance(tmp_out_indexs_ptr, new_end.first);
+  const int out_non_zero_num = thrust::distance(unique_key_ptr, new_end.first);
 
-  // 5. update out_indices and rulebook by tmp2_indexs2_ptr
+  // 5. update out_indices and rulebook by unique_value_ptr
   const int64_t sparse_dim = 4;
   DenseTensorMeta indices_meta(
       DataType::INT32, {sparse_dim, out_non_zero_num}, DataLayout::NCHW);
@@ -334,14 +347,15 @@ int ProductRuleBook(const Context& dev_ctx,
   pten::DenseTensor out_values = pten::Empty(dev_ctx, std::move(values_meta));
   int* out_indices_ptr = out_indices.mutable_data<int>(dev_ctx.GetPlace());
   GetGpuLaunchConfig1D(dev_ctx, out_non_zero_num, &grid_size, &block_size);
-  UpdateIndex<<<grid_size, block_size>>>(tmp_out_indexs_ptr,
-                                         tmp_indexs2_ptr,
-                                         tmp_indexs_ptr,
-                                         out_non_zero_num,
-                                         rulebook_len,
-                                         d_out_dims,
-                                         out_indices_ptr,
-                                         rulebook_ptr + rulebook_len);
+  UpdateIndexKernel<<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+      unique_key_ptr,
+      unique_value_ptr,
+      out_index_ptr,
+      out_non_zero_num,
+      rulebook_len,
+      d_out_dims,
+      out_indices_ptr,
+      rulebook_ptr + rulebook_len);
   out->SetMember(out_indices, out_values, out_dims, true);
   return rulebook_len;
 }
@@ -380,9 +394,16 @@ void Conv3dKernel(const Context& dev_ctx,
   // 1. product rulebook
   DenseTensorMeta counter_meta(
       DataType::INT32, {kernel_size}, DataLayout::NCHW);
+  DenseTensorMeta offsets_meta(
+      DataType::INT32, {kernel_size}, DataLayout::NCHW);
   DenseTensor rulebook = pten::Empty<int, Context>(dev_ctx);
   DenseTensor counter_per_kernel =
       pten::Empty(dev_ctx, std::move(counter_meta));
+  DenseTensor offsets_per_kernel =
+      pten::Empty(dev_ctx, std::move(offsets_meta));
+  DenseTensor out_index = pten::Empty<int, Context>(dev_ctx);
+  DenseTensor unique_key = pten::Empty<int, Context>(dev_ctx);
+  DenseTensor unique_value = pten::Empty<int, Context>(dev_ctx);
 
   int n = ProductRuleBook<T, Context>(dev_ctx,
                                       x,
@@ -393,11 +414,16 @@ void Conv3dKernel(const Context& dev_ctx,
                                       out_dims,
                                       &rulebook,
                                       &counter_per_kernel,
+                                      &offsets_per_kernel,
+                                      &out_index,
+                                      &unique_key,
+                                      &unique_value,
                                       out,
                                       &h_counter,
                                       &offsets);
 
   const int* counter_ptr = counter_per_kernel.data<int>();
+  const int* offsets_ptr = counter_per_kernel.data<int>();
 
   // 2. gather
   DenseTensorMeta in_features_meta(
@@ -413,7 +439,7 @@ void Conv3dKernel(const Context& dev_ctx,
 
   int grid_size = 1, block_size = 1;
   GetGpuLaunchConfig1D(dev_ctx, n * in_channels, &grid_size, &block_size);
-  GatherCUDAKernel<T, int><<<grid_size, block_size>>>(
+  GatherKernel<T, int><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
       x.non_zero_elements().data<T>(),
       rulebook.data<int>(),
       in_features_ptr,
@@ -422,6 +448,12 @@ void Conv3dKernel(const Context& dev_ctx,
 
   // 3. call gemm for every werght
   auto blas = paddle::operators::math::GetBlas<Context, T>(dev_ctx);
+  T* out_values_ptr = out->mutable_non_zero_elements()->mutable_data<T>(place);
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaMemsetAsync(out_values_ptr,
+                      0,
+                      sizeof(T) * out->nnz() * out_channels,
+                      dev_ctx.stream()));
 
   const T* kernel_ptr = kernel.data<T>();
   for (int i = 0; i < kernel_size; i++) {
@@ -429,13 +461,15 @@ void Conv3dKernel(const Context& dev_ctx,
       continue;
     }
 
-    // call gemm: (n, in_channels) * (in_channels, out_channels)
+    // call gemm: (n, out_channels) = (n, in_channels) * (in_channels,
+    // out_channels)
     const int M = h_counter[i];
     const int K = in_channels;   // in_channels
     const int N = out_channels;  // out_channels
     T* tmp_in_ptr = in_features_ptr + offsets[i] * in_channels;
     const T* tmp_kernel_ptr = kernel_ptr + i * K * N;
     T* tmp_out_ptr = out_features_ptr + offsets[i] * out_channels;
+
     blas.GEMM(CblasNoTrans,
               CblasNoTrans,
               M,
@@ -449,19 +483,16 @@ void Conv3dKernel(const Context& dev_ctx,
   }
 
   // 4. scatter
-  T* out_values_ptr = out->mutable_non_zero_elements()->mutable_data<T>(place);
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaMemsetAsync(out_values_ptr,
-                      0,
-                      sizeof(T) * out->nnz() * out_channels,
-                      dev_ctx.stream()));
-  GetGpuLaunchConfig1D(dev_ctx, n * out_channels, &grid_size, &block_size);
-  ScatterCUDAKernel<T><<<grid_size, block_size>>>(out_features_ptr,
-                                                  rulebook.data<int>() + n,
-                                                  out_values_ptr,
-                                                  n,
-                                                  out_channels,
-                                                  false);
+  GetGpuLaunchConfig1D(
+      dev_ctx, out->nnz() * out_channels, &grid_size, &block_size);
+  ScatterKernel<T><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+      out_features_ptr,
+      unique_value.data<int>(),
+      out_index.data<int>(),
+      out->nnz(),
+      n,
+      out_channels,
+      out_values_ptr);
 }
 
 }  // namespace sparse
