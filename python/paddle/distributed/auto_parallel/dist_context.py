@@ -584,8 +584,8 @@ class DistributedOperatorContext:
         for input_name in src_op.desc.input_names():
             varnames = []
             for varname in src_op.desc.input(input_name):
-                assert varname in self._varname_mapping
-                varnames.append(self._varname_mapping[varname])
+                assert varname in self.varname_mapping
+                varnames.append(self.varname_mapping[varname])
             kinputs[input_name] = varnames
 
         # build output varname mapping
@@ -593,8 +593,8 @@ class DistributedOperatorContext:
         for output_name in src_op.desc.output_names():
             varnames = []
             for varname in src_op.desc.output(output_name):
-                assert varname in self._varname_mapping
-                varnames.append(self._varname_mapping[varname])
+                assert varname in self.varname_mapping
+                varnames.append(self.varname_mapping[varname])
             koutputs[output_name] = varnames
 
         return kinputs, koutputs
