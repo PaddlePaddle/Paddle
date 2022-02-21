@@ -33,7 +33,10 @@ class DistributedFusedLambOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
-    if (var_name == "ParamInfo") {
+    if (var_name == "ParamInfo" ||
+        var_name == "FP32ShardFusedParamOffsetsCPU" ||
+        var_name == "FP16ShardFusedParamOffsetsCPU" ||
+        var_name == "FusedParamOffsetsCPU") {
       return expected_kernel_type;
     } else {
       return framework::OperatorWithKernel::GetKernelTypeForVar(
@@ -85,6 +88,9 @@ class DistributedFusedLambOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("FP16ShardFusedParamOffsets",
              "The sharded numel offset of each parameter in the local rank. "
              "Its shape is [fp16_local_param_num + 1].");
+    AddInput("FusedParamOffsetsCPU", "");
+    AddInput("FP32ShardFusedParamOffsetsCPU", "");
+    AddInput("FP16ShardFusedParamOffsetsCPU", "");
     AddInput("WeightDecay",
              "The sharded fp32 weight decay tensor. Its shape is [(M1+M2)/N].");
     AddInput("ParamInfo",

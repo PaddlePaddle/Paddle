@@ -69,12 +69,16 @@ class DistributedFusedLambInitOpMaker
         "The numel offset of each parameter inside the FP32FusedParam. Its "
         "shape is [param_num + 1]. It is like [0, n_0, n_0 + n_1, n_0 + n_1 "
         "+ n_2, ...].");
+    AddOutput("FusedParamOffsetsCPU", "");
     AddOutput("FP32ShardFusedParamOffsets",
               "The sharded numel offset of each parameter in the local rank. "
               "Its shape is [fp32_local_param_num + 1].");
+    AddOutput("FP32ShardFusedParamOffsetsCPU", "");
     AddOutput("FP16ShardFusedParamOffsets",
               "The sharded numel offset of each parameter in the local rank. "
               "Its shape is [fp16_local_param_num + 1].");
+    AddOutput("FP16ShardFusedParamOffsetsCPU", "");
+
     AddOutput(
         "WeightDecay",
         "The sharded fp32 weight decay tensor. Its shape is [(M1+M2)/N].");

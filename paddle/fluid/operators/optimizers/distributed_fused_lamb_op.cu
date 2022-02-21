@@ -16,6 +16,7 @@
 #include "paddle/fluid/memory/buffer.h"
 #include "paddle/fluid/operators/optimizers/cast_with_ptr.h"
 #include "paddle/fluid/operators/optimizers/distributed_fused_lamb_op.h"
+#include "paddle/fluid/operators/optimizers/multi_tensor_l2_norm.h"
 #include "paddle/fluid/operators/tensor_to_string.h"
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/collective_helper.h"
@@ -33,6 +34,9 @@
 #include "math.h"  // NOLINT
 namespace cub = hipcub;
 #endif
+
+PADDLE_DEFINE_EXPORTED_bool(lamb_allreduce_first, true, "");
+PADDLE_DEFINE_EXPORTED_bool(use_multi_tensor_apply, false, "");
 
 namespace paddle {
 namespace operators {
@@ -672,6 +676,13 @@ static void CubDeviceSegmentedSquareNorm(const T *x, MasterT<T> *y, int n,
                                          OffsetT init_offset,
                                          gpuStream_t stream,
                                          memory::Buffer *buffer) {
+  if (FLAGS_use_multi_tensor_apply) {
+    auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
+        platform::DeviceContextPool::Instance().Get(buffer->GetPlace()));
+    MultiTensorL2Norm(*dev_ctx, x, offset, n, y);
+    return;
+  }
+
   if (n <= 0) return;
   cub::TransformInputIterator<MasterT<T>, SquareFunctor<T>, const T *> iter(
       x, SquareFunctor<T>());
@@ -1103,7 +1114,7 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
             global_scale, max_global_grad_norm, fp32_square_grad_norm,
             fp32_scale, fp16_scale, clip_scale);
         VLOG(1) << "Grad scale: " << FlattenToString(fp32_scale, 1, place);
-        if (num_devices > 1) {
+        if (num_devices > 1 && FLAGS_lamb_allreduce_first) {
           PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
               fp32_square_grad_norm, fp32_square_grad_norm, 1, ncclFloat32,
               ncclSum, comm, stream));
@@ -1115,6 +1126,11 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
         NCCLReduceScatterWithScale(fp16_grad, fp16_sum_grad,
                                    fp16_numel_each_device, num_devices, comm,
                                    stream, dev_ctx, fp16_scale);
+        if (num_devices > 1 && !FLAGS_lamb_allreduce_first) {
+          PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+              fp32_square_grad_norm, fp32_square_grad_norm, 1, ncclFloat32,
+              ncclSum, comm, stream));
+        }
         // (4) mark max_global_grad_norm as 0, meaning that clip has been
         // already performed
         max_global_grad_norm = 0;
@@ -1179,14 +1195,18 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
     auto *param_square_norm = square_norm_buffer.Alloc<float>(2 * param_num);
     auto *trust_ratio_div_square_norm = param_square_norm + param_num;
 
-    auto *fused_offsets_t = ctx.Input<framework::Tensor>("FusedParamOffsets");
+    auto *fused_offsets_t = ctx.Input<framework::Tensor>(
+        FLAGS_use_multi_tensor_apply ? "FusedParamOffsetsCPU"
+                                     : "FusedParamOffsets");
     auto *fused_offsets = fused_offsets_t->data<int>();
-    auto *fp32_partial_fused_offsets_t =
-        ctx.Input<framework::Tensor>("FP32ShardFusedParamOffsets");
+    auto *fp32_partial_fused_offsets_t = ctx.Input<framework::Tensor>(
+        FLAGS_use_multi_tensor_apply ? "FP32ShardFusedParamOffsetsCPU"
+                                     : "FP32ShardFusedParamOffsets");
     const auto *fp32_partial_fused_offsets =
         fp32_partial_fused_offsets_t->data<int>();
-    auto *fp16_partial_fused_offsets_t =
-        ctx.Input<framework::Tensor>("FP16ShardFusedParamOffsets");
+    auto *fp16_partial_fused_offsets_t = ctx.Input<framework::Tensor>(
+        FLAGS_use_multi_tensor_apply ? "FP16ShardFusedParamOffsetsCPU"
+                                     : "FP16ShardFusedParamOffsets");
     const auto *fp16_partial_fused_offsets =
         fp16_partial_fused_offsets_t->data<int>();
 

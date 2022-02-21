@@ -178,14 +178,24 @@ class DistributedFusedLamb(Optimizer):
         param_info = self._create_persistable_var('param_info', dtype='int32')
         param_info.is_distributed = True
 
-        fused_offsets = self._create_persistable_var('fused_offsets')
+        fused_offsets = self._create_persistable_var(
+            'fused_offsets', dtype='int32')
+        fused_offsets_cpu = self._create_persistable_var(
+            'fused_offsets_cpu', dtype='int32')
 
         fp32_partial_fused_offsets = self._create_persistable_var(
             'fp32_partial_fused_offsets', dtype='int32')
         fp32_partial_fused_offsets.is_distributed = True
+        fp32_partial_fused_offsets_cpu = self._create_persistable_var(
+            'fp32_partial_fused_offsets_cpu', dtype='int32')
+        fp32_partial_fused_offsets_cpu.is_distributed = True
+
         fp16_partial_fused_offsets = self._create_persistable_var(
             'fp16_partial_fused_offsets', dtype='int32')
         fp16_partial_fused_offsets.is_distributed = True
+        fp16_partial_fused_offsets_cpu = self._create_persistable_var(
+            'fp16_partial_fused_offsets_cpu', dtype='int32')
+        fp16_partial_fused_offsets_cpu.is_distributed = True
 
         rank = get_rank()
         nranks = get_world_size()
@@ -233,6 +243,11 @@ class DistributedFusedLamb(Optimizer):
                 'FP32ShardFusedParamOffsets': [fp32_partial_fused_offsets],
                 'FP16ShardFusedParamOffsets': [fp16_partial_fused_offsets],
                 'FusedParamOffsets': [fused_offsets],
+                'FP32ShardFusedParamOffsetsCPU':
+                [fp32_partial_fused_offsets_cpu],
+                'FP16ShardFusedParamOffsetsCPU':
+                [fp16_partial_fused_offsets_cpu],
+                'FusedParamOffsetsCPU': [fused_offsets_cpu],
             },
             attrs={
                 'alignment': self._alignment,
@@ -279,6 +294,11 @@ class DistributedFusedLamb(Optimizer):
                 'FusedParamOffsets': [fused_offsets],
                 'FP32ShardFusedParamOffsets': [fp32_partial_fused_offsets],
                 'FP16ShardFusedParamOffsets': [fp16_partial_fused_offsets],
+                'FP32ShardFusedParamOffsetsCPU':
+                [fp32_partial_fused_offsets_cpu],
+                'FP16ShardFusedParamOffsetsCPU':
+                [fp16_partial_fused_offsets_cpu],
+                'FusedParamOffsetsCPU': [fused_offsets_cpu],
             },
             outputs={
                 'FP32FusedParamOut': [fp32_fused_param],
