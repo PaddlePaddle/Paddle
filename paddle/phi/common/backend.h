@@ -134,11 +134,7 @@ inline Backend StringToBackend(const char* backend_cstr) {
   std::string s(backend_cstr);
   if (s == std::string("Undefined")) {
     return Backend::UNDEFINED;
-  }
-  for (size_t i = 0; i < s.size(); ++i) {
-    s[i] = toupper(s[i]);
-  }
-  if (s == std::string("CPU")) {
+  } else if (s == std::string("CPU")) {
     return Backend::CPU;
   } else if (s == std::string("GPU")) {
     return Backend::GPU;
