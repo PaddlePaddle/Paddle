@@ -106,6 +106,48 @@ def _update_padding_nd(padding, channel_last, num_dims):
     return padding, padding_algorithm
 
 
+def _conv_nd_with_bias_act(x,
+                           weight,
+                           bias=None,
+                           stride=1,
+                           padding=0,
+                           padding_algorithm=None,
+                           dilation=1,
+                           groups=1,
+                           data_format="NCHW",
+                           channel_dim=1,
+                           op_type="fused_conv2d_bias_act",
+                           name=None,
+                           act_type="relu"):
+
+    # Due to the poor performance of NHWC, we transpose the input to NCHW.
+    if in_dynamic_mode():
+        attrs = ('activation', act_type, 'strides', stride, 'paddings', padding,
+                 'dilations', dilation, 'groups', groups, "padding_algorithm",
+                 padding_algorithm, 'data_format', "NCHW")
+        out = getattr(_C_ops, op_type)(x, weight, bias, *attrs)
+    else:
+        inputs = {'Input': [x], 'Filter': [weight], 'Bias': [bias]}
+        attrs = {
+            'strides': stride,
+            'paddings': padding,
+            'dilations': dilation,
+            'groups': groups,
+            "padding_algorithm": padding_algorithm,
+            "activation": act_type,
+            'data_format': "NCHW"
+        }
+        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                                 op_type)
+        helper = LayerHelper(op_type, **locals())
+        dtype = helper.input_dtype(input_param_name='x')
+        out = helper.create_variable_for_type_inference(dtype)
+        outputs = {"Output": [out]}
+        helper.append_op(
+            type=op_type, inputs=inputs, outputs=outputs, attrs=attrs)
+    return out
+
+
 def _conv_nd(x,
              weight,
              bias=None,

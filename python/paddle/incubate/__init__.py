@@ -36,6 +36,7 @@ from . import nn  #noqa: F401
 from . import asp  #noqa: F401
 
 from ..fluid.incubate import fleet
+from . import xpu
 
 __all__ = [
     'LookAhead',

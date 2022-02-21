@@ -105,7 +105,11 @@ void FusedBatchNormActOp::InferShape(framework::InferShapeContext *ctx) const {
                                            x_dims,
                                            x_dims.size()));
 
+#ifdef PADDLE_WITH_XPU
+  const int64_t C = x_dims[1];
+#else
   const int64_t C = x_dims[x_dims.size() - 1];
+#endif
 
   auto scale_dim = ctx->GetInputDim("Scale");
   auto bias_dim = ctx->GetInputDim("Bias");
@@ -249,6 +253,16 @@ void FusedBatchNormActOpMaker::Make() {
   AddOutput("ReserveSpace",
             "Reserve GPU space for triggering the new semi-persistent "
             "NHWC kernel");
+  AddAttr<bool>("use_global_stats", "").SetDefault(false);
+  AddAttr<bool>("is_test",
+                "(bool, default false) Set to true for inference only, false "
+                "for training. Some layers may run faster when this is true.")
+      .SetDefault(false);
+  AddAttr<bool>("trainable_statistics",
+                "(bool, default false) Whether to calculate mean and variance "
+                "in test mode. If setting true in test mode, mean and variace "
+                "will be calculated by current batch statistics.")
+      .SetDefault(false);
   AddComment(R"DOC(
 Fused Batch Normalization with activation.
 
@@ -299,7 +313,12 @@ void FusedBatchNormActGradOp::InferShape(
                         "Output(Bias@GRAD) should not be null."));
 
   const auto x_dims = ctx->GetInputDim("X");
+
+#ifdef PADDLE_WITH_XPU
+  const int C = x_dims[1];
+#else
   const int C = x_dims[x_dims.size() - 1];
+#endif
 
   ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
   // has_scale_grad == has_bias_grad, judge has_scale_grad is enough

@@ -231,6 +231,7 @@ inline bool NeedCast(const std::shared_ptr<VarType>& var) {
   if (paddle::platform::is_gpu_place(place) ||
       paddle::platform::is_cuda_pinned_place(place) ||
       paddle::platform::is_xpu_place(place) ||
+      paddle::platform::is_cpu_place(place) ||
       paddle::platform::is_mlu_place(place) ||
       paddle::platform::is_custom_place(place) ||
       paddle::platform::is_npu_place(place) ||
@@ -337,7 +338,14 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
           pair.first != "X") {
         continue;
       }
-
+      if (op_type == "resnet_basic_block" ||
+          op_type == "fused_conv2d_bias_act") {
+        if (pair.first == "Filter1" || pair.first == "Filter2" ||
+            pair.first == "Filter3" || pair.first == "Input" ||
+            pair.first == "Filter" || pair.first == "X") {
+          continue;
+        }
+      }
       if ((op_type == "fused_attention" || op_type == "fused_feedforward")) {
         if (pair.first == "LnScale" || pair.first == "LnBias" ||
             pair.first == "Ln2Scale" || pair.first == "Ln2Bias" ||
@@ -378,6 +386,15 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
            op_type == "sync_batch_norm") &&
           pair.first == "X" && dst_type == framework::proto::VarType::FP32) {
         continue;
+      }
+      if ((op_type == "resnet_basic_block" ||
+           op_type == "fused_conv2d_bias_act") &&
+          dst_type == framework::proto::VarType::FP32) {
+        if (pair.first != "Filter1" || pair.first != "Filter2" ||
+            pair.first != "Filter3" || pair.first != "Input" ||
+            pair.first != "Filter" || pair.first != "X") {
+          continue;
+        }
       }
       if ((op_type == "fused_attention" || op_type == "fused_feedforwad") &&
           dst_type == framework::proto::VarType::FP32) {
@@ -425,6 +442,13 @@ NameVarMap<VarType> CastPureFp16Inputs(const std::string& op_type,
          op_type == "sync_batch_norm") &&
         pair.first != "X") {
       continue;
+    }
+    if (op_type == "resnet_basic_block" || op_type == "fused_conv2d_bias_act") {
+      if (pair.first == "Filter1" || pair.first == "Filter2" ||
+          pair.first == "Filter3" || pair.first == "Input" ||
+          pair.first == "Filter" || pair.first == "X") {
+        continue;
+      }
     }
     if ((op_type == "fused_attention" || op_type == "fused_feedforward")) {
       if (pair.first == "LnScale" || pair.first == "LnBias" ||
